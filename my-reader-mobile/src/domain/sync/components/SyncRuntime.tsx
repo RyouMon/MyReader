@@ -11,7 +11,7 @@ import {
   type SidecarSyncRuntime,
 } from "@/src/domain/sync/sidecar-sync-runtime"
 import { isRemoteSourceType } from "@/src/domain/types"
-import { SyncConfigError } from "@/src/errors"
+import { DataIntegrityError, SyncConfigError } from "@/src/errors"
 import i18n from "@/src/i18n"
 import { getValidAccessToken } from "@/src/services/auth/onedrive"
 import { subscribeLocalSidecarWork } from "@/src/services/core/sync-events"
@@ -19,9 +19,9 @@ import { setCachedAuth } from "@/src/services/remote/auth-cache"
 import { useAppStore } from "@/src/store/app-store"
 import { cancelIdleWork, scheduleIdleWork } from "@/src/utils/common"
 
-function notifySyncConfigError(message: string): void {
+function notifySyncError(title: string, message: string): void {
   Notifier.showNotification({
-    title: i18n.t("sync.configError"),
+    title,
     description: message,
     duration: 6000,
     hideOnPress: true,
@@ -43,7 +43,11 @@ function getSyncDeps(): SyncLibrariesDeps {
 
 function handleSyncError(err: unknown, label: string): void {
   if (err instanceof SyncConfigError) {
-    notifySyncConfigError(err.message)
+    notifySyncError(i18n.t("sync.configError"), err.message)
+    return
+  }
+  if (err instanceof DataIntegrityError) {
+    notifySyncError(i18n.t("sync.dataIntegrityError"), err.message)
     return
   }
   console.warn(`[SyncRuntime] ${label} sync failed`, err)

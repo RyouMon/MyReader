@@ -32,7 +32,7 @@ pub enum SidecarSyncReason {
     AppFocused,
     NetworkReconnected,
     LibraryActivated,
-    RecoverySweep,
+    SafetySweep,
     StartupRecovery,
 }
 
@@ -43,7 +43,7 @@ impl SidecarSyncReason {
             Self::AppFocused => "app_focused",
             Self::NetworkReconnected => "network_reconnected",
             Self::LibraryActivated => "library_activated",
-            Self::RecoverySweep => "recovery_sweep",
+            Self::SafetySweep => "safety_sweep",
             Self::StartupRecovery => "startup_recovery",
         }
     }
@@ -286,7 +286,7 @@ impl SidecarSyncScheduler {
     ) {
         let library_id = execution.library_id.clone();
         let kind = SyncService::failure_kind(&failure);
-        let event = if kind == SyncFailureKind::Connectivity {
+        let event = if matches!(kind, SyncFailureKind::Connectivity) {
             "sync.scheduler_retry"
         } else {
             "sync.scheduler_suspended"
@@ -344,7 +344,7 @@ impl SidecarSyncScheduler {
                     jitter_fraction(),
                 )))
                 .await;
-                scheduler.schedule_active_pull(SidecarSyncReason::RecoverySweep);
+                scheduler.schedule_active_pull(SidecarSyncReason::SafetySweep);
             }
         });
     }

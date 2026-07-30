@@ -1,3 +1,4 @@
+import { DataIntegrityError } from "@/src/errors"
 import {
   invalidateFavoriteBooks,
   invalidateReaderAnnotations,
@@ -89,16 +90,25 @@ export async function syncMyReader(
     }
     return result
   } catch (err) {
-    console.error("[reading-sync] sync:failed", {
+    const details = {
       libraryId: ctx.library.id,
       mode,
       backend: ctx.backend.kind,
       providers,
       error: describeError(err),
-    })
+    }
+    if (err instanceof DataIntegrityError) {
+      console.warn("[reading-sync] sync:failed", details)
+    } else {
+      console.error("[reading-sync] sync:failed", details)
+    }
     return {
       skipped: true,
       skipReason: "error",
+      failureKind:
+        err instanceof DataIntegrityError
+          ? ("data_integrity" as const)
+          : undefined,
       mode,
       providers,
       error: describeError(err),

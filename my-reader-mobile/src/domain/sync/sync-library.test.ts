@@ -20,8 +20,8 @@ jest.mock("./resolve", () => ({
   isRemoteBackend: jest.fn(),
 }))
 
+import { DataIntegrityError, SyncConnectivityError } from "@/src/errors"
 import type { DataSource, Library } from "../types"
-import { SyncConnectivityError } from "@/src/errors"
 
 import { skippedCalibre, syncCalibre } from "./calibre-sync"
 import { checkConnectivity } from "./connectivity"
@@ -269,6 +269,18 @@ describe("syncLibrary", () => {
     await expect(
       syncLibrary(library, dataSources, { throwOnFailure: true }),
     ).rejects.toThrow("myreader failed")
+  })
+
+  it("should preserve data integrity error when MyReader history is damaged", async () => {
+    mockSyncMyReader.mockResolvedValue({
+      ...myreaderResult(),
+      failureKind: "data_integrity",
+      error: "missing change abc",
+    })
+
+    await expect(
+      syncLibrary(library, dataSources, { throwOnFailure: true }),
+    ).rejects.toBeInstanceOf(DataIntegrityError)
   })
 })
 

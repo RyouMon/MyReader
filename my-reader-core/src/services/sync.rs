@@ -475,7 +475,7 @@ mod tests {
     }
 
     #[test]
-    fn should_retry_only_when_failure_is_connectivity_related() {
+    fn should_retry_when_failure_can_recover_automatically() {
         assert_eq!(
             SyncService::classify_failure(SyncFailureKind::Connectivity),
             SyncFailureDisposition::Retry

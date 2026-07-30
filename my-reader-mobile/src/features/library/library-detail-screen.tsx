@@ -148,7 +148,6 @@ export default function LibraryDetailScreen() {
   const activeLibraryId = useAppStore((state) => state.activeLibraryId)
   const dataSources = useAppStore((state) => state.dataSources)
   const { syncNow, isSyncing } = useSyncLibrary()
-
   const libraryIndex = useMemo(
     () => libraries.findIndex((item) => item.id === libraryId),
     [libraries, libraryId],

@@ -168,19 +168,21 @@ function LibraryCard({
           </div>
         }
         actions={
-          <button
-            type="button"
-            onClick={() => onDeleteClick(lib.id)}
-            title={t("settings.libraries.deleteTitle")}
-            className={cn(
-              "size-[30px] rounded-md border flex items-center justify-center transition-colors",
-              isPendingDelete
-                ? "border-destructive/30 bg-destructive/10 text-destructive"
-                : "border-transparent text-muted-foreground hover:border-destructive/20 hover:bg-destructive/10 hover:text-destructive",
-            )}
-          >
-            <Trash2 className="size-3.5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => onDeleteClick(lib.id)}
+              title={t("settings.libraries.deleteTitle")}
+              className={cn(
+                "size-[30px] rounded-md border flex items-center justify-center transition-colors",
+                isPendingDelete
+                  ? "border-destructive/30 bg-destructive/10 text-destructive"
+                  : "border-transparent text-muted-foreground hover:border-destructive/20 hover:bg-destructive/10 hover:text-destructive",
+              )}
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          </div>
         }
       />
     </GroupListItem>

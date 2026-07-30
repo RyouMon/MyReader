@@ -58,7 +58,7 @@ async fn should_initialize_automerge_replica_when_local_library_syncs() {
 
     assert_eq!(report.pushed, 1);
     assert_eq!(report.pulled, 0);
-    assert_eq!(identity.protocol, "library-sidecar-automerge");
+    assert_eq!(identity.protocol, "library-sidecar-automerge-repo");
     assert_eq!(
         identity.library_uuid,
         "018f2f8d-980b-40ef-b72e-c6e86cb7cc28"

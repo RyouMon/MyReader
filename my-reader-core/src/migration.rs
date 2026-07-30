@@ -45,6 +45,8 @@ pub(crate) const LEGACY_MIGRATIONS: &[LegacyMigrationSpec] = &[
     legacy_migration!("0015_remove_hlc_projection_columns", 1_784_925_791_603),
     legacy_migration!("0016_discard_legacy_sync_state", 1_784_927_312_000),
     legacy_migration!("0017_square_toro", 1_785_046_521_990),
+    legacy_migration!("0018_add_automerge_recovery", 1_785_304_000_000),
+    legacy_migration!("0019_adopt_automerge_repo_storage", 1_785_344_400_000),
 ];
 
 pub struct LibraryMigrator;
@@ -148,12 +150,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn up_should_discard_legacy_sync_state_when_automerge_protocol_replaces_v4() {
+    async fn up_should_replace_legacy_sync_storage_when_automerge_repo_layout_is_adopted() {
         let db = Database::connect("sqlite::memory:").await.unwrap();
-        LibraryMigrator::up(&db, Some(16)).await.unwrap();
+        LibraryMigrator::up(&db, Some(18)).await.unwrap();
         db.execute_unprepared(
             "INSERT INTO sync_local_meta (id, protocol, library_uuid, replica_id)
-             VALUES ('legacy', 'library-sidecar-v4', 'library', 'replica');
+             VALUES ('legacy', 'library-sidecar-automerge', 'library', 'replica');
              INSERT INTO sync_automerge_changes
                (id, change_hash, actor_id, actor_sequence, bytes, origin, created_at)
              VALUES ('change', 'hash', 'actor', '1', X'00', 'local', 1);",
@@ -163,18 +165,29 @@ mod tests {
 
         LibraryMigrator::up(&db, None).await.unwrap();
 
-        for table in ["sync_local_meta", "sync_automerge_changes"] {
-            let count = db
-                .query_one_raw(Statement::from_string(
-                    DbBackend::Sqlite,
-                    format!("SELECT COUNT(*) AS count FROM {table}"),
-                ))
-                .await
-                .unwrap()
-                .unwrap()
-                .try_get::<i64>("", "count")
-                .unwrap();
-            assert_eq!(count, 0, "{table} should discard legacy sync state");
-        }
+        let legacy_table = db
+            .query_one_raw(Statement::from_string(
+                DbBackend::Sqlite,
+                "SELECT COUNT(*) AS count FROM sqlite_master \
+                 WHERE type = 'table' AND name = 'sync_automerge_changes'",
+            ))
+            .await
+            .unwrap()
+            .unwrap()
+            .try_get::<i64>("", "count")
+            .unwrap();
+        assert_eq!(legacy_table, 0);
+
+        let protocol = db
+            .query_one_raw(Statement::from_string(
+                DbBackend::Sqlite,
+                "SELECT protocol FROM sync_local_meta LIMIT 1",
+            ))
+            .await
+            .unwrap()
+            .unwrap()
+            .try_get::<String>("", "protocol")
+            .unwrap();
+        assert_eq!(protocol, "library-sidecar-automerge-repo");
     }
 }

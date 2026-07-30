@@ -356,10 +356,8 @@ mod tests {
             .collect();
 
         for table in [
-            "sync_automerge_changes",
             "sync_automerge_outbox",
             "sync_automerge_projection_meta",
-            "sync_automerge_receipts",
             "sync_automerge_state",
             "sync_errors",
             "sync_local_meta",
@@ -368,6 +366,10 @@ mod tests {
             assert!(names.contains(&table.to_owned()));
         }
         for table in [
+            "sync_automerge_backups",
+            "sync_automerge_changes",
+            "sync_automerge_generation",
+            "sync_automerge_receipts",
             "sync_cursors",
             "sync_hlc_state",
             "sync_meta",
@@ -385,10 +387,8 @@ mod tests {
         let db = open_db(&sidecar_root).await.expect("database should open");
 
         for table in [
-            "sync_automerge_changes",
             "sync_automerge_outbox",
             "sync_automerge_projection_meta",
-            "sync_automerge_receipts",
             "sync_automerge_state",
             "sync_errors",
             "sync_local_meta",
@@ -410,23 +410,11 @@ mod tests {
             assert_eq!(id.try_get::<i64>("", "pk").unwrap(), 1);
         }
 
-        for (table, index, expected_column) in [
-            (
-                "sync_automerge_changes",
-                "idx_sync_automerge_changes_hash",
-                "change_hash",
-            ),
-            (
-                "sync_automerge_outbox",
-                "idx_sync_automerge_outbox_path",
-                "object_path",
-            ),
-            (
-                "sync_automerge_receipts",
-                "idx_sync_automerge_receipts_path",
-                "object_path",
-            ),
-        ] {
+        for (table, index, expected_column) in [(
+            "sync_automerge_outbox",
+            "idx_sync_automerge_outbox_storage_key",
+            "storage_key_json",
+        )] {
             let unique = db
                 .query_all_raw(Statement::from_string(
                     DbBackend::Sqlite,
@@ -457,8 +445,12 @@ mod tests {
 
     #[tokio::test]
     async fn migrate_should_adopt_drizzle_history_when_mobile_database_already_exists() {
+        const LAST_DRIZZLE_MIGRATION_AT: i64 = 1_785_046_521_990;
         let db = sea_orm::Database::connect("sqlite::memory:").await.unwrap();
-        for migration in LEGACY_MIGRATIONS {
+        for migration in LEGACY_MIGRATIONS
+            .iter()
+            .take_while(|migration| migration.drizzle_timestamp_ms <= LAST_DRIZZLE_MIGRATION_AT)
+        {
             for statement in migration.sql.split("--> statement-breakpoint") {
                 let statement = statement.trim();
                 if !statement.is_empty() {

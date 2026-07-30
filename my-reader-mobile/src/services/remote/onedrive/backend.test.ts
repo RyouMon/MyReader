@@ -17,11 +17,11 @@ type RecordedRequest = {
 }
 
 const libraryRootPath = "/Library/CalibreLibrary"
-const actorId = "018f2f8d980b40efb72ec6e86cb7cc30"
+const documentId = "d25f5daa-1a97-4a68-a9e0-77384c45df5d"
 const changeHash = "a".repeat(64)
-const changesPrefix = ".myreader/automerge/changes"
-const replicaPrefix = `${changesPrefix}/${actorId}`
-const remotePath = `${replicaPrefix}/00000000000000000001-${changeHash}.am`
+const documentPrefix = `.myreader/automerge/${documentId}`
+const incrementalPrefix = `${documentPrefix}/incremental`
+const remotePath = `${incrementalPrefix}/${changeHash}`
 
 function recordRequest(
   requests: RecordedRequest[],
@@ -97,20 +97,20 @@ describe("OneDriveRemoteBackend", () => {
       const request = recordRequest(requests, input, init)
       if (
         request.url.endsWith(
-          "/Library/CalibreLibrary/.myreader/automerge/changes:/children",
+          `/Library/CalibreLibrary/${documentPrefix}:/children`,
         )
       ) {
         return Response.json({
-          value: [{ name: actorId, folder: {} }],
+          value: [{ name: "incremental", folder: {} }],
         })
       }
       if (
         request.url.endsWith(
-          `/Library/CalibreLibrary/.myreader/automerge/changes/${actorId}:/children`,
+          `/Library/CalibreLibrary/${incrementalPrefix}:/children`,
         )
       ) {
         return Response.json({
-          value: [{ name: `00000000000000000001-${changeHash}.am` }],
+          value: [{ name: changeHash }],
         })
       }
       if (
@@ -125,11 +125,11 @@ describe("OneDriveRemoteBackend", () => {
       libraryRootPath,
     )
 
-    await expect(backend.listRemote(changesPrefix)).resolves.toEqual([
-      `${actorId}/`,
+    await expect(backend.listRemote(documentPrefix)).resolves.toEqual([
+      "incremental/",
     ])
-    await expect(backend.listRemote(replicaPrefix)).resolves.toEqual([
-      `00000000000000000001-${changeHash}.am`,
+    await expect(backend.listRemote(incrementalPrefix)).resolves.toEqual([
+      changeHash,
     ])
     await expect(backend.readBytes(remotePath)).resolves.toEqual(
       new TextEncoder().encode("segment"),
@@ -137,12 +137,12 @@ describe("OneDriveRemoteBackend", () => {
 
     expect(requests).toEqual([
       {
-        url: `${GRAPH_API_BASE}/me/drive/root:/Library/CalibreLibrary/.myreader/automerge/changes:/children`,
+        url: `${GRAPH_API_BASE}/me/drive/root:/Library/CalibreLibrary/${documentPrefix}:/children`,
         method: "GET",
         body: undefined,
       },
       {
-        url: `${GRAPH_API_BASE}/me/drive/root:/Library/CalibreLibrary/.myreader/automerge/changes/${actorId}:/children`,
+        url: `${GRAPH_API_BASE}/me/drive/root:/Library/CalibreLibrary/${incrementalPrefix}:/children`,
         method: "GET",
         body: undefined,
       },

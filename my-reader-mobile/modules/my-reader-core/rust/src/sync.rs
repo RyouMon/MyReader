@@ -178,6 +178,17 @@ pub fn sync_complete(
         .into())
 }
 
+#[uniffi::export]
+pub fn sync_resume(
+    coordinator_id: String,
+    library_id: String,
+    now_ms: f64,
+) -> Result<SchedulerTransition, CoreFfiError> {
+    Ok(sync_coordinator(&coordinator_id)?
+        .resume(&library_id, required_u64(now_ms, "nowMs")?)
+        .into())
+}
+
 #[uniffi::export(async_runtime = "tokio")]
 pub async fn sync_fail(
     coordinator_id: String,
@@ -326,12 +337,18 @@ pub async fn sync_run_sidecar(
                 };
                 progress.stage.clone()
             };
+            let is_data_integrity = matches!(&error, my_reader_core::CoreError::DataIntegrity(_));
             let message = error.to_string();
-            Err(CoreFfiError::sync(if failure_stage == "cancelled" {
+            let message = if failure_stage == "cancelled" {
                 message
             } else {
                 format!("[stage={failure_stage}] {message}")
-            }))
+            };
+            if is_data_integrity {
+                Err(CoreFfiError::data_integrity(message))
+            } else {
+                Err(CoreFfiError::sync(message))
+            }
         }
     }
 }

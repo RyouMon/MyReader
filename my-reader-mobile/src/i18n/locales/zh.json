@@ -696,6 +696,7 @@
     "libraryNotFound": "未找到书库: {{id}}",
     "localDirectLabel": "本地直读 · {{path}}",
     "configError": "同步配置有误",
+    "dataIntegrityError": "同步数据完整性错误",
     "webdavSourceNotFound": "当前书库关联的 WebDAV 数据源不存在。",
     "webdavPasswordMissing": "当前 WebDAV 数据源缺少密码，请重新编辑数据源。",
     "cannotResolveLocalPath": "无法解析本地书库根目录。",

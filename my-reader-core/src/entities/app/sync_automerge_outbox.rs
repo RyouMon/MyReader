@@ -9,14 +9,12 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, column_type = "Text")]
     pub id: String,
     #[sea_orm(column_type = "Text", unique)]
-    pub object_path: String,
+    pub storage_key_json: String,
     #[sea_orm(column_type = "Blob")]
     pub bytes: Vec<u8>,
     #[sea_orm(column_type = "Text")]
     pub sha256: String,
-    #[sea_orm(column_type = "Text")]
-    pub change_hashes_json: String,
-    pub published_at: Option<i64>,
+    pub change_count: i64,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

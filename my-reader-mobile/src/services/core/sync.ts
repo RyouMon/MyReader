@@ -1,4 +1,15 @@
 import {
+  CoreFfiError,
+  type SchedulerTransition as CoreSchedulerTransition,
+  type SidecarStorageConfig as CoreSidecarStorageConfig,
+  type RetrySchedule,
+  type ScheduledSync,
+  type SidecarSyncMode,
+  type SidecarSyncReport,
+  type SyncExecution,
+  type SyncFailureKind,
+  type SyncTaskProgress,
+  type SyncTiming,
   syncBegin,
   syncCancelTask,
   syncComplete,
@@ -12,19 +23,11 @@ import {
   syncReleaseTask,
   syncRequest,
   syncRequestContextualPull,
+  syncResume,
   syncRunSidecar,
   syncSetLibraryOnline,
-  type RetrySchedule,
-  type ScheduledSync,
-  type SchedulerTransition as CoreSchedulerTransition,
-  type SidecarStorageConfig as CoreSidecarStorageConfig,
-  type SidecarSyncMode,
-  type SidecarSyncReport,
-  type SyncExecution,
-  type SyncFailureKind,
-  type SyncTaskProgress,
-  type SyncTiming,
 } from "my-reader-core"
+import { DataIntegrityError } from "@/src/errors"
 
 export type {
   RetrySchedule,
@@ -202,6 +205,16 @@ export function completeCoordinatedSync(input: {
   )
 }
 
+export function resumeCoordinatedSync(input: {
+  coordinatorId: string
+  libraryId: string
+  nowMs: number
+}): SchedulerTransition {
+  return transitionFromCore(
+    syncResume(input.coordinatorId, input.libraryId, input.nowMs),
+  )
+}
+
 export async function failCoordinatedSync(input: {
   coordinatorId: string
   sidecarRootPath: string
@@ -258,7 +271,7 @@ export function releaseSyncTask(taskId: string): boolean {
   return syncReleaseTask(taskId)
 }
 
-export function syncLibrarySidecar(input: {
+export async function syncLibrarySidecar(input: {
   taskId: string
   sidecarRootPath: string
   libraryRootPath: string
@@ -266,12 +279,19 @@ export function syncLibrarySidecar(input: {
   mode: SidecarSyncMode
   storage: SidecarStorageConfig
 }): Promise<SidecarSyncReport> {
-  return syncRunSidecar(
-    input.taskId,
-    input.sidecarRootPath,
-    input.libraryRootPath,
-    input.nowMs,
-    input.mode,
-    storageToCore(input.storage),
-  )
+  try {
+    return await syncRunSidecar(
+      input.taskId,
+      input.sidecarRootPath,
+      input.libraryRootPath,
+      input.nowMs,
+      input.mode,
+      storageToCore(input.storage),
+    )
+  } catch (error) {
+    if (CoreFfiError.DataIntegrity.instanceOf(error)) {
+      throw new DataIntegrityError(error.message)
+    }
+    throw error
+  }
 }

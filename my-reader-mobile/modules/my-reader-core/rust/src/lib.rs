@@ -18,6 +18,9 @@ pub enum CoreFfiError {
 
     #[error("SYNC_ERROR: {0}")]
     Sync(String),
+
+    #[error("DATA_INTEGRITY_ERROR: {0}")]
+    DataIntegrity(String),
 }
 
 impl CoreFfiError {
@@ -29,9 +32,33 @@ impl CoreFfiError {
         Self::Sync(message.into())
     }
 
+    pub(crate) fn data_integrity(message: impl Into<String>) -> Self {
+        Self::DataIntegrity(message.into())
+    }
+
     pub(crate) fn from_core(error: my_reader_core::CoreError) -> Self {
-        Self::Core(error.to_string())
+        match error {
+            my_reader_core::CoreError::DataIntegrity(message) => Self::DataIntegrity(message),
+            error => Self::Core(error.to_string()),
+        }
     }
 }
 
 uniffi::setup_scaffolding!();
+
+#[cfg(test)]
+mod tests {
+    use super::CoreFfiError;
+
+    #[test]
+    fn should_preserve_data_integrity_variant_when_core_error_crosses_ffi() {
+        let error = CoreFfiError::from_core(my_reader_core::CoreError::DataIntegrity(
+            "missing change abc".to_owned(),
+        ));
+
+        assert!(matches!(
+            error,
+            CoreFfiError::DataIntegrity(message) if message == "missing change abc"
+        ));
+    }
+}

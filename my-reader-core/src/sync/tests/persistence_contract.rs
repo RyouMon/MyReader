@@ -1,10 +1,10 @@
 use crate::sync::document::{FavoriteValue, LIBRARY_SIDECAR_SCHEMA_VERSION};
 use crate::sync::document_engine::DocumentCommand;
 use crate::sync::persistence::{
-    apply_remote_database_objects, ensure_database_document, ensure_database_identity,
-    execute_local_database_command, list_pending_outbox, mark_schedule_succeeded,
-    read_schedule_state, write_schedule_state, DatabaseIdentity, SyncDatabaseCommand,
-    SyncRemoteObject, SyncScheduleState,
+    apply_remote_database_objects, delete_outbox_entry, ensure_database_document,
+    ensure_database_identity, execute_local_database_command, list_pending_outbox,
+    mark_schedule_succeeded, read_schedule_state, write_schedule_state, DatabaseIdentity,
+    SyncDatabaseCommand, SyncRemoteObject, SyncScheduleState,
 };
 use rusqlite::Connection;
 
@@ -74,35 +74,18 @@ fn create_database() -> (tempfile::TempDir, String) {
                 completed_at REAL NOT NULL,
                 updated_at REAL NOT NULL
             );
-            CREATE TABLE sync_automerge_changes (
-                id TEXT PRIMARY KEY NOT NULL,
-                change_hash TEXT NOT NULL UNIQUE,
-                actor_id TEXT NOT NULL,
-                actor_sequence TEXT NOT NULL,
-                bytes BLOB NOT NULL,
-                origin TEXT NOT NULL,
-                created_at INTEGER NOT NULL,
-                UNIQUE(actor_id, actor_sequence)
-            );
             CREATE TABLE sync_automerge_outbox (
                 id TEXT PRIMARY KEY NOT NULL,
-                object_path TEXT NOT NULL UNIQUE,
+                storage_key_json TEXT NOT NULL UNIQUE,
                 bytes BLOB NOT NULL,
                 sha256 TEXT NOT NULL,
-                change_hashes_json TEXT NOT NULL,
-                published_at INTEGER
+                change_count INTEGER NOT NULL
             );
             CREATE TABLE sync_automerge_projection_meta (
                 id TEXT PRIMARY KEY NOT NULL,
                 projection_version INTEGER NOT NULL,
                 heads_json TEXT NOT NULL,
                 rebuilt_at INTEGER
-            );
-            CREATE TABLE sync_automerge_receipts (
-                id TEXT PRIMARY KEY NOT NULL,
-                object_path TEXT NOT NULL UNIQUE,
-                sha256 TEXT NOT NULL,
-                applied_at INTEGER NOT NULL
             );
             CREATE TABLE sync_automerge_state (
                 id TEXT PRIMARY KEY NOT NULL,
@@ -231,13 +214,6 @@ fn should_commit_projection_change_and_outbox_when_local_mutation_succeeds() {
     );
     assert_eq!(
         connection
-            .query_row("SELECT COUNT(*) FROM sync_automerge_changes", [], |row| row
-                .get::<_, i64>(0))
-            .unwrap(),
-        2
-    );
-    assert_eq!(
-        connection
             .query_row("SELECT COUNT(*) FROM sync_automerge_outbox", [], |row| row
                 .get::<_, i64>(
                 0
@@ -245,6 +221,20 @@ fn should_commit_projection_change_and_outbox_when_local_mutation_succeeds() {
             .unwrap(),
         2
     );
+}
+
+#[test]
+fn should_preserve_later_change_when_covered_outbox_entry_is_deleted() {
+    let (_directory, path) = create_database();
+    ensure_database_document(&path, &identity(), 100).unwrap();
+    let covered = list_pending_outbox(&path).unwrap();
+
+    execute_local_database_command(&path, &identity(), 101, favorite_command()).unwrap();
+    for entry in covered {
+        delete_outbox_entry(&path, &entry.storage_key).unwrap();
+    }
+
+    assert_eq!(list_pending_outbox(&path).unwrap().len(), 1);
 }
 
 #[test]
@@ -268,7 +258,6 @@ fn should_roll_back_state_change_outbox_and_projection_when_projection_fails() {
     for table in [
         "favorite_books",
         "sync_automerge_state",
-        "sync_automerge_changes",
         "sync_automerge_outbox",
         "sync_automerge_projection_meta",
     ] {
@@ -295,21 +284,10 @@ fn should_project_remote_mutation_when_two_databases_exchange_outbox_objects() {
     };
     let objects = source_objects
         .into_iter()
-        .map(|entry| {
-            let head = entry
-                .object_path
-                .rsplit_once('-')
-                .unwrap()
-                .1
-                .strip_suffix(".am")
-                .unwrap()
-                .to_owned();
-            SyncRemoteObject {
-                object_path: entry.object_path,
-                bytes: entry.bytes,
-                sha256: entry.sha256,
-                head,
-            }
+        .map(|entry| SyncRemoteObject {
+            storage_key: entry.storage_key,
+            bytes: entry.bytes,
+            sha256: entry.sha256,
         })
         .collect();
 
@@ -328,13 +306,44 @@ fn should_project_remote_mutation_when_two_databases_exchange_outbox_objects() {
             .unwrap(),
         1
     );
+}
+
+#[test]
+fn should_report_missing_change_when_remote_history_is_incomplete() {
+    let (_source_directory, source_path) = create_database();
+    execute_local_database_command(&source_path, &identity(), 100, favorite_command()).unwrap();
+    let source_objects = list_pending_outbox(&source_path).unwrap();
+    let dependent = source_objects.into_iter().last().unwrap();
+
+    let (_target_directory, target_path) = create_database();
+    let target_identity = DatabaseIdentity {
+        library_uuid: LIBRARY_UUID.to_owned(),
+        replica_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb".to_owned(),
+    };
+    let error = apply_remote_database_objects(
+        &target_path,
+        &target_identity,
+        200,
+        vec![SyncRemoteObject {
+            storage_key: dependent.storage_key,
+            bytes: dependent.bytes,
+            sha256: dependent.sha256,
+        }],
+    )
+    .unwrap_err();
+
+    assert!(error.to_string().contains("Missing changes"));
+    assert!(error
+        .to_string()
+        .contains("Restore the remote storage from a complete backup"));
+    let connection = Connection::open(target_path).unwrap();
     assert_eq!(
         connection
-            .query_row("SELECT COUNT(*) FROM sync_automerge_receipts", [], |row| {
+            .query_row("SELECT COUNT(*) FROM favorite_books", [], |row| {
                 row.get::<_, i64>(0)
             })
             .unwrap(),
-        2
+        0
     );
 }
 

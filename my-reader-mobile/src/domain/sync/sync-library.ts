@@ -1,10 +1,9 @@
-import type { DataSource, Library } from "../types"
-import { SyncConnectivityError } from "../../errors"
 import i18n from "@/src/i18n"
+import { DataIntegrityError, SyncConnectivityError } from "../../errors"
 import { describeError } from "../../utils/common"
-
-import { checkConnectivity } from "./connectivity"
+import type { DataSource, Library } from "../types"
 import { skippedCalibre, syncCalibre } from "./calibre-sync"
+import { checkConnectivity } from "./connectivity"
 import { openSyncContext } from "./context"
 import { skippedMyreader, syncMyReader } from "./myreader-sync"
 import {
@@ -78,7 +77,6 @@ export async function syncLibrary(
   options: SyncLibraryOptions = {},
 ): Promise<LibrarySyncReport> {
   const startedAt = Date.now()
-  const scope = options.scope ?? "all"
   const throwOnFailure = options.throwOnFailure ?? false
 
   let ctx
@@ -135,6 +133,9 @@ export async function syncLibrary(
     throw new Error(calibre.error)
   }
   if (myreader.error && throwOnFailure) {
+    if (myreader.failureKind === "data_integrity") {
+      throw new DataIntegrityError(myreader.error)
+    }
     throw new Error(myreader.error)
   }
 

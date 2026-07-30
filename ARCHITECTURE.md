@@ -202,7 +202,7 @@ Calibre `metadata.db` 是外部只读数据库：
 ### 6.2 每书库 sidecar
 
 每个书库拥有逻辑独立的 `.myreader/myreader.db`。远程书库在设备容器中维护本地 sidecar，
-多设备通过 Automerge change 文件交换数据，不直接共享活动 SQLite/WAL/SHM。
+多设备通过 Automerge StorageKey 对象交换数据，不直接共享活动 SQLite/WAL/SHM。
 
 业务表：
 
@@ -224,9 +224,7 @@ Calibre `metadata.db` 是外部只读数据库：
 |---|---|
 | `sync_local_meta` | 当前书库 Automerge 本地身份与协议元数据 |
 | `sync_automerge_state` | Automerge document 快照 |
-| `sync_automerge_changes` | 已知 change |
-| `sync_automerge_outbox` | 待发布的本地 change |
-| `sync_automerge_receipts` | 已拉取对象的幂等回执 |
+| `sync_automerge_outbox` | 待保存到远端的本地 incremental chunk |
 | `sync_automerge_projection_meta` | document 到业务表的投影状态 |
 | `sync_errors` | 可诊断同步错误 |
 | `sync_schedule_state` | pull freshness、retry 和 suspension 持久状态 |
@@ -276,13 +274,17 @@ my-reader-core/src/entities/app
 [ADR-0016](./docs/adr/0016-adopt-automerge-for-library-sidecar-sync.md) 已落地：
 
 - 每个书库一个 Automerge document。
-- 远端交换
-  `.myreader/automerge/changes/<actor_id>/<sequence>-<change_hash>.am`
-  不可变增量。
 - 同步范围固定为收藏、阅读位置、书签、批注、阅读 session 和完成记录六个现有 domain。
 - core 负责 change 因果关系、去重、冲突候选、SQLite projection、outbox 和收敛。
 - 阅读位置真并发时保留候选；用户选择后写入因果上更新的 change。
 - 同步完成后平台只负责刷新可见查询。
+
+[ADR-0020](./docs/adr/0020-adopt-automerge-repo-storage-model.md) 进一步规定：
+
+- 远端采用 automerge-repo `StorageSubsystem` 的 snapshot/incremental `StorageKey`，直接映射到
+  `.myreader/automerge/<document_id>/<kind>/<hash>`；当前 `document_id` 就是 Calibre
+  `library_uuid`。
+- core 负责 snapshot-first 加载、内容寻址增量和只删除 covered chunks 的并发安全压缩。
 
 自动同步遵循 [ADR-0017](./docs/adr/0017-event-driven-library-sidecar-sync-scheduling.md)：业务写入通知
 平台 trigger，core 负责 debounce/max-wait、single-flight、pull freshness、retry/backoff、
@@ -357,3 +359,4 @@ pnpm db:generate
 | [ADR-0017](./docs/adr/0017-event-driven-library-sidecar-sync-scheduling.md) | 当前自动同步调度语义 |
 | [ADR-0018](./docs/adr/0018-shared-rust-components.md) | 共享 Rust/UniFFI 试点，crate 组织由 ADR-0019 部分取代 |
 | [ADR-0019](./docs/adr/0019-adopt-modular-my-reader-core.md) | 当前共享后端和数据库权威 |
+| [ADR-0020](./docs/adr/0020-adopt-automerge-repo-storage-model.md) | 当前 Automerge 远端存储、压缩和故障恢复模型 |

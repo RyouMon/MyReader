@@ -14,12 +14,12 @@ use super::{
         execute_document_command, execute_document_mutation, DocumentCommand,
         DocumentCommandRequest, DocumentCommandResult, DocumentProjection,
     },
+    storage::{incremental_key, StorageKey},
     SyncError,
 };
 
 const PROJECTION_VERSION: i64 = 1;
-const REMOTE_CHANGES_ROOT: &str = ".myreader/automerge/changes";
-const SIDECAR_PROTOCOL: &str = "library-sidecar-automerge";
+const SIDECAR_PROTOCOL: &str = "library-sidecar-automerge-repo";
 
 static WRITER: OnceLock<Mutex<()>> = OnceLock::new();
 
@@ -47,16 +47,15 @@ pub struct SyncDatabaseCommand {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SyncOutboxEntry {
-    pub object_path: String,
+    pub storage_key: StorageKey,
     pub bytes: Vec<u8>,
     pub sha256: String,
-    pub change_hashes_json: String,
+    pub change_count: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SyncRemoteObject {
-    pub object_path: String,
-    pub head: String,
+    pub storage_key: StorageKey,
     pub bytes: Vec<u8>,
     pub sha256: String,
 }
@@ -71,9 +70,7 @@ pub struct ApplyRemoteDatabaseResult {
 pub struct SyncDatabaseDiagnostics {
     pub schema_version: Option<i64>,
     pub heads: Vec<String>,
-    pub changes: i64,
     pub pending_outbox: i64,
-    pub receipts: i64,
     pub projection_version: Option<i64>,
 }
 
@@ -309,8 +306,14 @@ fn sha256_hex(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
 }
 
-fn outbox_path(actor_id: &str, sequence: u64, hash: &str) -> String {
-    format!("{REMOTE_CHANGES_ROOT}/{actor_id}/{sequence:020}-{hash}.am")
+fn encode_storage_key(key: &[String]) -> Result<String, SyncError> {
+    serde_json::to_string(key)
+        .map_err(|error| sync_error(format!("Failed to encode Automerge storage key: {error}")))
+}
+
+fn decode_storage_key(value: &str) -> Result<StorageKey, SyncError> {
+    serde_json::from_str(value)
+        .map_err(|error| sync_error(format!("Stored Automerge storage key is invalid: {error}")))
 }
 
 fn request(
@@ -400,102 +403,44 @@ fn write_state(
     Ok(heads_json)
 }
 
-fn insert_changes(
-    transaction: &Transaction<'_>,
-    result: &DocumentCommandResult,
-    origin: &str,
-    now_ms: i64,
-) -> Result<(), SyncError> {
-    for change in &result.changes {
-        let existing = transaction
-            .query_row(
-                "SELECT change_hash
-                 FROM sync_automerge_changes
-                 WHERE change_hash = ?1
-                    OR (actor_id = ?2 AND actor_sequence = ?3)
-                 LIMIT 1",
-                params![change.hash, change.actor_id, change.sequence.to_string()],
-                |row| row.get::<_, String>(0),
-            )
-            .optional()
-            .map_err(database_error)?;
-        if let Some(existing_hash) = existing {
-            if existing_hash != change.hash {
-                return Err(sync_error(format!(
-                    "Automerge actor {} sequence {} is a fork",
-                    change.actor_id, change.sequence
-                )));
-            }
-            continue;
-        }
-        transaction
-            .execute(
-                "INSERT INTO sync_automerge_changes
-                 (id, change_hash, actor_id, actor_sequence, bytes, origin, created_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-                params![
-                    new_id(),
-                    change.hash,
-                    change.actor_id,
-                    change.sequence.to_string(),
-                    change.bytes,
-                    origin,
-                    now_ms
-                ],
-            )
-            .map_err(database_error)?;
-    }
-    Ok(())
-}
-
 fn insert_outbox(
     transaction: &Transaction<'_>,
+    document_id: &str,
     result: &DocumentCommandResult,
 ) -> Result<(), SyncError> {
-    let Some(last_change) = result.changes.last() else {
+    if result.changes.is_empty() || result.incremental_bytes.is_empty() {
         return Ok(());
-    };
-    let path = outbox_path(
-        &last_change.actor_id,
-        last_change.sequence,
-        &last_change.hash,
-    );
+    }
     let sha256 = sha256_hex(&result.incremental_bytes);
+    let storage_key = incremental_key(document_id, &sha256);
+    let storage_key_json = encode_storage_key(&storage_key)?;
     let existing = transaction
         .query_row(
-            "SELECT sha256 FROM sync_automerge_outbox WHERE object_path = ?1",
-            [&path],
+            "SELECT sha256 FROM sync_automerge_outbox WHERE storage_key_json = ?1",
+            [&storage_key_json],
             |row| row.get::<_, String>(0),
         )
         .optional()
         .map_err(database_error)?;
     if let Some(existing_sha256) = existing {
         if existing_sha256 != sha256 {
-            return Err(sync_error(format!(
-                "Automerge outbox path collision: {path}"
-            )));
+            return Err(sync_error("Automerge outbox storage key collision"));
         }
         return Ok(());
     }
-    let change_hashes_json = serde_json::to_string(
-        &result
-            .changes
-            .iter()
-            .map(|change| change.hash.as_str())
-            .collect::<Vec<_>>(),
-    )
-    .map_err(|error| sync_error(format!("Failed to encode change hashes: {error}")))?;
+    let change_count = i64::try_from(result.changes.len())
+        .map_err(|_| sync_error("Automerge outbox change count exceeds SQLite INTEGER range"))?;
     transaction
         .execute(
             "INSERT INTO sync_automerge_outbox
-             (id, object_path, bytes, sha256, change_hashes_json, published_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
+             (id, storage_key_json, bytes, sha256, change_count)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
             params![
                 new_id(),
-                path,
+                storage_key_json,
                 result.incremental_bytes,
                 sha256,
-                change_hashes_json
+                change_count
             ],
         )
         .map_err(database_error)?;
@@ -723,38 +668,29 @@ fn rebuild_projection(
 
 fn persist_local_result(
     transaction: &Transaction<'_>,
+    identity: &DatabaseIdentity,
     result: &DocumentCommandResult,
     now_ms: i64,
     rebuilt_at: Option<i64>,
 ) -> Result<(), SyncError> {
     let heads_json = write_state(transaction, result, now_ms)?;
-    insert_changes(transaction, result, "local", now_ms)?;
-    insert_outbox(transaction, result)?;
+    insert_outbox(transaction, &identity.library_uuid, result)?;
     project_document(transaction, &result.projection)?;
     write_projection_meta(transaction, &heads_json, rebuilt_at)
 }
 
 fn persist_remote_result(
     transaction: &Transaction<'_>,
+    identity: &DatabaseIdentity,
     result: &DocumentCommandResult,
-    objects: &[SyncRemoteObject],
+    local_delta: &DocumentCommandResult,
     now_ms: i64,
 ) -> Result<(), SyncError> {
     let heads_json = write_state(transaction, result, now_ms)?;
-    insert_changes(transaction, result, "remote", now_ms)?;
-    for object in objects {
-        transaction
-            .execute(
-                "INSERT INTO sync_automerge_receipts
-                 (id, object_path, sha256, applied_at)
-                 VALUES (?1, ?2, ?3, ?4)
-                 ON CONFLICT(object_path) DO UPDATE SET
-                   sha256 = excluded.sha256,
-                   applied_at = excluded.applied_at",
-                params![new_id(), object.object_path, object.sha256, now_ms],
-            )
-            .map_err(database_error)?;
-    }
+    transaction
+        .execute("DELETE FROM sync_automerge_outbox", [])
+        .map_err(database_error)?;
+    insert_outbox(transaction, &identity.library_uuid, local_delta)?;
     project_document(transaction, &result.projection)?;
     write_projection_meta(transaction, &heads_json, None)
 }
@@ -787,7 +723,7 @@ fn initialize(
         },
         None,
     )?;
-    persist_local_result(transaction, &initialized, now_ms, Some(now_ms))?;
+    persist_local_result(transaction, identity, &initialized, now_ms, Some(now_ms))?;
     Ok(initialized)
 }
 
@@ -820,7 +756,7 @@ pub fn execute_local_database_command(
         None,
     )?;
     if !result.changes.is_empty() {
-        persist_local_result(&transaction, &result, now_ms, None)?;
+        persist_local_result(&transaction, identity, &result, now_ms, None)?;
     } else {
         rebuild_projection(&transaction, &result, now_ms)?;
     }
@@ -862,7 +798,7 @@ where
         mutate,
     )?;
     if !result.changes.is_empty() {
-        persist_local_result(&transaction, &result, now_ms, None)?;
+        persist_local_result(&transaction, identity, &result, now_ms, None)?;
     } else {
         rebuild_projection(&transaction, &result, now_ms)?;
     }
@@ -889,30 +825,36 @@ pub fn list_pending_outbox(database_path: &str) -> Result<Vec<SyncOutboxEntry>, 
     let connection = open_connection(database_path)?;
     let mut statement = connection
         .prepare(
-            "SELECT object_path, bytes, sha256, change_hashes_json
+            "SELECT storage_key_json, bytes, sha256, change_count
              FROM sync_automerge_outbox
-             WHERE published_at IS NULL
-             ORDER BY object_path",
+             ORDER BY rowid",
         )
         .map_err(database_error)?;
     let rows = statement
         .query_map([], |row| {
-            Ok(SyncOutboxEntry {
-                object_path: row.get(0)?,
-                bytes: row.get(1)?,
-                sha256: row.get(2)?,
-                change_hashes_json: row.get(3)?,
-            })
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, Vec<u8>>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, i64>(3)?,
+            ))
         })
         .map_err(database_error)?;
-    rows.collect::<Result<Vec<_>, _>>().map_err(database_error)
+    rows.map(|row| {
+        let (storage_key_json, bytes, sha256, change_count) = row.map_err(database_error)?;
+        Ok(SyncOutboxEntry {
+            storage_key: decode_storage_key(&storage_key_json)?,
+            bytes,
+            sha256,
+            change_count: usize::try_from(change_count)
+                .map_err(|_| sync_error("Stored Automerge change count is invalid"))?,
+        })
+    })
+    .collect()
 }
 
-pub fn mark_outbox_published(
-    database_path: &str,
-    object_path: &str,
-    published_at: i64,
-) -> Result<(), SyncError> {
+pub fn delete_outbox_entry(database_path: &str, storage_key: &[String]) -> Result<(), SyncError> {
+    let storage_key_json = encode_storage_key(storage_key)?;
     let _writer = writer()
         .lock()
         .map_err(|_| sync_error("SQLite sync writer lock is poisoned"))?;
@@ -922,65 +864,25 @@ pub fn mark_outbox_published(
         .map_err(database_error)?;
     transaction
         .execute(
-            "UPDATE sync_automerge_outbox
-             SET published_at = ?1
-             WHERE object_path = ?2",
-            params![published_at, object_path],
+            "DELETE FROM sync_automerge_outbox
+             WHERE storage_key_json = ?1",
+            [storage_key_json],
         )
         .map_err(database_error)?;
     transaction.commit().map_err(database_error)
 }
 
-pub fn has_receipt(database_path: &str, object_path: &str) -> Result<bool, SyncError> {
-    let connection = open_connection(database_path)?;
-    connection
-        .query_row(
-            "SELECT 1
-             FROM sync_automerge_receipts
-             WHERE object_path = ?1
-             LIMIT 1",
-            [object_path],
-            |_| Ok(()),
-        )
-        .optional()
-        .map(|value| value.is_some())
-        .map_err(database_error)
-}
-
-fn unreceived_remote_objects(
-    transaction: &Transaction<'_>,
-    objects: Vec<SyncRemoteObject>,
-) -> Result<Vec<SyncRemoteObject>, SyncError> {
-    let mut unreceived = Vec::new();
+fn validate_remote_objects(objects: &[SyncRemoteObject]) -> Result<(), SyncError> {
     for object in objects {
         if sha256_hex(&object.bytes) != object.sha256 {
-            return Err(sync_error(format!(
-                "Remote Automerge object digest mismatch: {}",
-                object.object_path
-            )));
-        }
-        let receipt_sha256 = transaction
-            .query_row(
-                "SELECT sha256
-                 FROM sync_automerge_receipts
-                 WHERE object_path = ?1",
-                [&object.object_path],
-                |row| row.get::<_, String>(0),
-            )
-            .optional()
-            .map_err(database_error)?;
-        match receipt_sha256 {
-            Some(value) if value == object.sha256 => continue,
-            Some(_) => {
-                return Err(sync_error(format!(
-                    "Remote Automerge object changed: {}",
-                    object.object_path
-                )));
-            }
-            None => unreceived.push(object),
+            return Err(sync_error("Remote Automerge object digest mismatch"));
         }
     }
-    Ok(unreceived)
+    Ok(())
+}
+
+fn display_storage_key(key: &[String]) -> String {
+    key.join("/")
 }
 
 pub fn apply_remote_database_objects(
@@ -1006,7 +908,6 @@ pub fn apply_remote_database_objects(
             }
         }
     };
-    let objects = unreceived_remote_objects(&transaction, objects)?;
     if objects.is_empty() {
         let document = execute_document_command(
             Some(&current.snapshot_bytes),
@@ -1019,41 +920,73 @@ pub fn apply_remote_database_objects(
             applied_objects: 0,
         });
     }
-    let base_heads = current.heads;
-    let mut snapshot = current.snapshot_bytes;
+    validate_remote_objects(&objects)?;
+    let genesis = execute_document_command(
+        None,
+        DocumentCommandRequest {
+            replica_id: identity.replica_id.clone(),
+            expected_library_uuid: None,
+            base_heads: Vec::new(),
+            command: DocumentCommand::Inspect,
+        },
+        None,
+    )?;
+    let mut remote_snapshot = genesis.snapshot_bytes;
     for object in &objects {
         let applied = execute_document_command(
-            Some(&snapshot),
-            request(
-                identity,
-                base_heads.clone(),
-                DocumentCommand::ApplyIncremental,
-            ),
+            Some(&remote_snapshot),
+            request(identity, Vec::new(), DocumentCommand::ApplyIncremental),
             Some(&object.bytes),
-        )?;
-        snapshot = applied.snapshot_bytes;
+        )
+        .map_err(|error| SyncError::InvalidRemoteObject {
+            object_path: display_storage_key(&object.storage_key),
+            reason: error.to_string(),
+        })?;
+        remote_snapshot = applied.snapshot_bytes;
     }
-    let result = execute_document_command(
-        Some(&snapshot),
+    let remote = execute_document_command(
+        Some(&remote_snapshot),
         request(
             identity,
-            base_heads,
-            DocumentCommand::InspectDependencies {
-                heads: objects.iter().map(|object| object.head.clone()).collect(),
-            },
+            Vec::new(),
+            DocumentCommand::InspectDependencies { heads: Vec::new() },
         ),
         None,
     )?;
-    if !result.missing_dependencies.is_empty() {
-        return Err(sync_error(
-            "Remote Automerge objects have missing dependencies",
-        ));
+    if !remote.missing_dependencies.is_empty() {
+        return Err(SyncError::MissingDependencies {
+            change_hashes: remote.missing_dependencies.join(","),
+            object_paths: objects
+                .iter()
+                .map(|object| display_storage_key(&object.storage_key))
+                .collect::<Vec<_>>()
+                .join(","),
+        });
     }
-    persist_remote_result(&transaction, &result, &objects, now_ms)?;
+    let merged_bytes = objects
+        .iter()
+        .flat_map(|object| object.bytes.iter().copied())
+        .collect::<Vec<_>>();
+    let result = execute_document_command(
+        Some(&current.snapshot_bytes),
+        request(
+            identity,
+            current.heads.clone(),
+            DocumentCommand::ApplyIncremental,
+        ),
+        Some(&merged_bytes),
+    )?;
+    let applied_changes = result.changes.len();
+    let local_delta = execute_document_command(
+        Some(&result.snapshot_bytes),
+        request(identity, remote.heads, DocumentCommand::Inspect),
+        None,
+    )?;
+    persist_remote_result(&transaction, identity, &result, &local_delta, now_ms)?;
     transaction.commit().map_err(database_error)?;
     Ok(ApplyRemoteDatabaseResult {
         document: result,
-        applied_objects: objects.len(),
+        applied_objects: applied_changes,
     })
 }
 
@@ -1066,9 +999,7 @@ pub fn read_database_diagnostics(
             "SELECT
                (SELECT schema_version FROM sync_automerge_state WHERE id = 'local'),
                (SELECT heads_json FROM sync_automerge_state WHERE id = 'local'),
-               (SELECT COUNT(*) FROM sync_automerge_changes),
-               (SELECT COUNT(*) FROM sync_automerge_outbox WHERE published_at IS NULL),
-               (SELECT COUNT(*) FROM sync_automerge_receipts),
+               (SELECT COUNT(*) FROM sync_automerge_outbox),
                (SELECT projection_version
                 FROM sync_automerge_projection_meta
                 WHERE id = 'local')",
@@ -1090,10 +1021,8 @@ pub fn read_database_diagnostics(
                 Ok(SyncDatabaseDiagnostics {
                     schema_version: row.get(0)?,
                     heads,
-                    changes: row.get(2)?,
-                    pending_outbox: row.get(3)?,
-                    receipts: row.get(4)?,
-                    projection_version: row.get(5)?,
+                    pending_outbox: row.get(2)?,
+                    projection_version: row.get(3)?,
                 })
             },
         )

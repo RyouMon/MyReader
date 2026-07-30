@@ -1,3 +1,4 @@
+import { DataIntegrityError } from "@/src/errors"
 import {
   invalidateFavoriteBooks,
   invalidateReaderAnnotations,
@@ -133,5 +134,22 @@ describe("syncMyReader", () => {
       error: "network unavailable",
     })
     error.mockRestore()
+  })
+
+  it("should classify data integrity failure when sidecar history is damaged", async () => {
+    const warning = jest.spyOn(console, "warn").mockImplementation()
+    jest
+      .mocked(syncLibrarySidecarDatabase)
+      .mockRejectedValue(new DataIntegrityError("missing change abc"))
+
+    const result = await syncMyReader(context)
+
+    expect(result).toMatchObject({
+      skipped: true,
+      skipReason: "error",
+      failureKind: "data_integrity",
+      error: "missing change abc",
+    })
+    warning.mockRestore()
   })
 })

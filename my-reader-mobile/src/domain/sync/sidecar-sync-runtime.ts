@@ -37,7 +37,7 @@ export type SidecarSyncReason =
   | "network_reconnected"
   | "library_activated"
   | "remote_change_hint"
-  | "recovery_sweep"
+  | "safety_sweep"
 
 export type SidecarSyncRuntimeState = {
   libraries: Library[]
@@ -60,7 +60,7 @@ export type SidecarSyncRuntime = {
       | "app_foregrounded"
       | "network_reconnected"
       | "library_activated"
-      | "recovery_sweep",
+      | "safety_sweep",
   ): Promise<boolean>
   setLibraryOnline(libraryId: string, online: boolean): void
   startSafetySweep(getActiveLibraryId: () => string | null): () => void
@@ -300,7 +300,7 @@ export function createSidecarSyncRuntime(
             const libraryId = getActiveLibraryId()
             if (libraryId) {
               try {
-                await runtime.requestContextualPull(libraryId, "recovery_sweep")
+                await runtime.requestContextualPull(libraryId, "safety_sweep")
               } catch (error) {
                 onError?.(error)
               }

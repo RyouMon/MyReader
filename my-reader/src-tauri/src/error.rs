@@ -37,6 +37,9 @@ pub enum AppError {
 
     #[error("SYNC_ERROR: {0}")]
     Sync(String),
+
+    #[error("DATA_INTEGRITY_ERROR: {0}")]
+    DataIntegrity(String),
 }
 
 impl From<sqlx::Error> for AppError {
@@ -61,6 +64,7 @@ impl From<my_reader_core::CoreError> for AppError {
             my_reader_core::CoreError::Serialize(message) => Self::Serialize(message),
             my_reader_core::CoreError::Storage(message) => Self::Storage(message),
             my_reader_core::CoreError::Sync(message) => Self::Sync(message),
+            my_reader_core::CoreError::DataIntegrity(message) => Self::DataIntegrity(message),
         }
     }
 }
@@ -92,6 +96,7 @@ pub enum ErrorKind {
     Credential(String),
     Storage(String),
     Sync(String),
+    DataIntegrity(String),
 }
 
 impl specta::Type for AppError {
@@ -118,6 +123,7 @@ impl serde::Serialize for AppError {
             Self::Credential(_) => ErrorKind::Credential(self.to_string()),
             Self::Storage(_) => ErrorKind::Storage(self.to_string()),
             Self::Sync(_) => ErrorKind::Sync(self.to_string()),
+            Self::DataIntegrity(_) => ErrorKind::DataIntegrity(self.to_string()),
         };
         kind.serialize(serializer)
     }

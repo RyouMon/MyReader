@@ -3484,6 +3484,38 @@ export async function syncRequestContextualPull(
   }
 }
 
+export function syncResume(
+  coordinatorId: string,
+  libraryId: string,
+  nowMs: number,
+): SchedulerTransition /*throws*/ {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterTypeSchedulerTransition.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCallWithError(
+      /*liftError:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+      /*caller:*/ (callStatus) => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_sync_resume(
+          FfiConverterString.lower(
+            coordinatorId,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(libraryId, nativeModule().rustbuffer_alloc),
+          FfiConverterFloat64.lower(nowMs, nativeModule().rustbuffer_alloc),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
+
 export async function syncRunSidecar(
   taskId: string,
   sidecarRootPath: string,
@@ -6116,6 +6148,7 @@ const FfiConverterTypeSyncTaskProgress = (() => {
 export enum CoreFfiError_Tags {
   Core = "Core",
   Sync = "Sync",
+  DataIntegrity = "DataIntegrity",
 }
 export const CoreFfiError = (() => {
   class Core extends UniffiError {
@@ -6162,6 +6195,28 @@ export const CoreFfiError = (() => {
       return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 2;
     }
   }
+  class DataIntegrity extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = "CoreFfiError";
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 3;
+
+    readonly tag = CoreFfiError_Tags.DataIntegrity;
+
+    constructor(message: string) {
+      super("CoreFfiError", "DataIntegrity", message);
+    }
+
+    static instanceOf(e: any): e is DataIntegrity {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 3;
+    }
+  }
 
   // Utility function which does not rely on instanceof.
   function instanceOf(e: any): e is CoreFfiError {
@@ -6170,12 +6225,15 @@ export const CoreFfiError = (() => {
   return {
     Core,
     Sync,
+    DataIntegrity,
     instanceOf,
   };
 })();
 
 // Union type for CoreFfiError error type.
-export type CoreFfiError = InstanceType<(typeof CoreFfiError)["Core" | "Sync"]>;
+export type CoreFfiError = InstanceType<
+  (typeof CoreFfiError)["Core" | "Sync" | "DataIntegrity"]
+>;
 
 const FfiConverterTypeCoreFfiError = (() => {
   const intConverter = FfiConverterInt32;
@@ -6188,6 +6246,9 @@ const FfiConverterTypeCoreFfiError = (() => {
 
         case 2:
           return new CoreFfiError.Sync(FfiConverterString.read(from));
+
+        case 3:
+          return new CoreFfiError.DataIntegrity(FfiConverterString.read(from));
 
         default:
           throw new UniffiInternalError.UnexpectedEnumCase();
@@ -7088,6 +7149,14 @@ function uniffiEnsureInitialized() {
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_sync_request_contextual_pull",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_resume() !==
+    31310
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_sync_resume",
     );
   }
   if (

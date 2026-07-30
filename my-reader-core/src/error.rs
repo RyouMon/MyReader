@@ -20,6 +20,9 @@ pub enum CoreError {
 
     #[error("SYNC_ERROR: {0}")]
     Sync(String),
+
+    #[error("DATA_INTEGRITY_ERROR: {0}")]
+    DataIntegrity(String),
 }
 
 impl From<sea_orm::DbErr> for CoreError {
@@ -38,6 +41,10 @@ impl From<crate::sync::SyncError> for CoreError {
     fn from(error: crate::sync::SyncError) -> Self {
         match error {
             crate::sync::SyncError::Sync(message) => Self::Sync(message),
+            crate::sync::SyncError::InvalidRemoteObject { .. }
+            | crate::sync::SyncError::MissingDependencies { .. } => {
+                Self::DataIntegrity(error.to_string())
+            }
         }
     }
 }

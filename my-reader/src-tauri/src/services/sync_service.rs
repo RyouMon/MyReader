@@ -91,7 +91,9 @@ impl SyncService {
             AppError::Request(_) => SyncFailureKind::Connectivity,
             AppError::Credential(_) => SyncFailureKind::Credential,
             AppError::Auth(_) | AppError::Config(_) => SyncFailureKind::Configuration,
-            AppError::Database(_) | AppError::Serialize(_) => SyncFailureKind::DataIntegrity,
+            AppError::Database(_) | AppError::Serialize(_) | AppError::DataIntegrity(_) => {
+                SyncFailureKind::DataIntegrity
+            }
             _ => SyncFailureKind::Unexpected,
         }
     }
@@ -156,7 +158,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn should_publish_automerge_changes_when_local_progress_exists() {
+    async fn should_publish_automerge_snapshot_when_local_progress_exists() {
         let app_data = tempfile::tempdir().unwrap();
         let library_root = tempfile::tempdir().unwrap();
         create_calibre_metadata(library_root.path()).await;
@@ -187,21 +189,14 @@ mod tests {
             .unwrap();
 
         assert_eq!(report.pushed, 2);
-        let replicas = std::fs::read_dir(
-            library_root
-                .path()
-                .join(".myreader")
-                .join("automerge")
-                .join("changes"),
-        )
-        .unwrap()
-        .filter_map(Result::ok)
-        .collect::<Vec<_>>();
-        assert_eq!(replicas.len(), 1);
-        assert!(std::fs::read_dir(replicas[0].path())
+        let document_root = library_root
+            .path()
+            .join(".myreader/automerge")
+            .join(LIBRARY_UUID);
+        assert!(std::fs::read_dir(document_root.join("snapshot"))
             .unwrap()
             .filter_map(Result::ok)
-            .any(|entry| entry.file_name().to_string_lossy().ends_with(".am")));
+            .any(|entry| entry.path().is_file()));
     }
 
     #[tokio::test]

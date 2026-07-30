@@ -583,6 +583,12 @@ interface NativeModuleInterface {
     nowMs: number,
     freshnessMs: number,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_sync_resume(
+    coordinatorId: Uint8Array,
+    libraryId: Uint8Array,
+    nowMs: number,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
   ubrn_uniffi_my_reader_core_ffi_fn_func_sync_run_sidecar(
     taskId: Uint8Array,
     sidecarRootPath: Uint8Array,
@@ -677,6 +683,7 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_release_task(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_request(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_request_contextual_pull(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_resume(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_run_sidecar(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_set_library_online(): number;
   // Codegen call sites use these via `nativeModule().rustbuffer_alloc(...)`

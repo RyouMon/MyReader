@@ -697,6 +697,7 @@
     "libraryNotFound": "Library not found: {{id}}",
     "localDirectLabel": "Local · {{path}}",
     "configError": "Sync configuration error",
+    "dataIntegrityError": "Sync data integrity error",
     "webdavSourceNotFound": "The WebDAV source associated with this library does not exist.",
     "webdavPasswordMissing": "The current WebDAV source is missing a password. Please re-edit the source.",
     "onedriveSourceNotFound": "The OneDrive source associated with this library does not exist.",

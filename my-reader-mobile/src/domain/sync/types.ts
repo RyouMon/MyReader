@@ -1,6 +1,6 @@
+import type { BookItem, DataSource, Library } from "../types"
 import type { BookDiff } from "./book-diff"
 import type { SyncTargetContext } from "./context"
-import type { BookItem, DataSource, Library } from "../types"
 
 /** 同步范围 */
 export type SyncScope = "all" | "calibre" | "myreader"
@@ -54,6 +54,7 @@ export type CalibreSyncResult = {
 export type MyReaderSyncResult = {
   skipped: boolean
   skipReason?: "not_applicable" | "error"
+  failureKind?: "data_integrity"
   mode: MyReaderSyncMode
   providers: Record<string, { pushed: number; pulled: number; error?: string }>
   error?: string

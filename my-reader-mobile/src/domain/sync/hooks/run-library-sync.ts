@@ -1,13 +1,13 @@
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import {
   DEFAULT_SYNC_POLICY,
-  resolveSyncOptions,
-  syncLibrary,
   type LibrarySyncReport,
+  resolveSyncOptions,
   type SyncLibraryOptions,
   type SyncTrigger,
+  syncLibrary,
 } from "@/src/domain/sync"
-import { SyncConnectivityError } from "@/src/errors"
+import { DataIntegrityError, SyncConnectivityError } from "@/src/errors"
 import i18n from "@/src/i18n"
 import { useAppStore } from "@/src/store/app-store"
 
@@ -19,8 +19,8 @@ export type RunLibrarySyncInput = {
   options?: Partial<SyncLibraryOptions>
 }
 
-function showSyncFailureAlert(message: string): void {
-  showAlertWithStatusBarRestore(i18n.t("sync.sourceUnreachable"), message, [
+function showSyncFailureAlert(title: string, message: string): void {
+  showAlertWithStatusBarRestore(title, message, [
     { text: i18n.t("common.gotIt") },
   ])
 }
@@ -54,11 +54,18 @@ export async function runLibrarySync(
     if (err instanceof SyncConnectivityError) {
       await applySyncReport(err.report, { trigger: input.trigger })
       if (options.throwOnFailure) {
-        showSyncFailureAlert(err.message)
+        showSyncFailureAlert(i18n.t("sync.sourceUnreachable"), err.message)
       }
     } else if (options.throwOnFailure) {
       const message = err instanceof Error ? err.message : String(err)
-      showSyncFailureAlert(message)
+      showSyncFailureAlert(
+        i18n.t(
+          err instanceof DataIntegrityError
+            ? "sync.dataIntegrityError"
+            : "sync.sourceUnreachable",
+        ),
+        message,
+      )
     }
     throw err
   }

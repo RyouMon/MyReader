@@ -30,7 +30,7 @@ export class NetworkError extends AppError {
   }
 }
 
-/** 文件损坏、哈希不匹配、下载后文件缺失等数据完整性问题，需要重新下载。 */
+/** 文件损坏、哈希不匹配或因果历史缺失等数据完整性问题，需要从可靠副本恢复。 */
 export class DataIntegrityError extends AppError {}
 
 /** 内部逻辑断言失败，属于代码 bug，不应在正常流程中出现。 */

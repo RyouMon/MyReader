@@ -1,265 +1,182 @@
-# 阅读数据跨设备同步手工回归
+# 阅读数据跨端同步回归
 
-本文固定 desktop 与 iOS 通过同一个书库 sidecar 双向同步阅读数据的回归流程。跨端 UI
-自动化尚未覆盖完整链路；修改 Automerge 文档模型、本地投影、远端存储、查询刷新或 reader
-初始定位后，都必须先运行自动化门禁，再执行本文的真实双端闭环。
-
-## 数据流
-
-一次同步必须完整经过：
-
-1. 产品操作在本地 Automerge document fork 上产生 change；
-2. Automerge snapshot/change、durable outbox 和 SQLite 业务投影在同一事务中提交；
-3. 写端把不可变增量发布到
-   `.myreader/automerge/changes/<actor_id>/<sequence>-<change_hash>.am`；
-4. 读端列举未处理对象，在临时 document 上导入、验证依赖与书库身份；
-5. Automerge state、receipt、projection 和 projection metadata 在同一事务中提交；
-6. 同步完成后刷新列表、详情、reader、收藏、书签、批注和阅读统计查询；
-7. reader 从投影后的 canonical `ReaderLocator` 打开到同步位置。
-
-两端只同步不可变 Automerge 增量，不同步 SQLite、WAL、SHM、凭据、缓存或 Calibre
-`metadata.db`。
-
-## 固定样本
-
-- 书库：两端添加的同一个 OneDrive Calibre 书库 `CalibreLibrary`。
-- 书籍：`夜空中最亮的星 - 弹唱谱`。
-- Calibre `book_id`：`542`。
-- 格式：PDF。
-- 页数：3 页。
-- 桌面到 iOS 目标：第 2 页，显示进度 `67%`。
-- iOS 到桌面目标：第 3 页，显示进度 `100%`。
-
-若样本被移除，可以换用另一本至少有三个稳定位置的书，但测试记录必须写明书名、
-`book_id`、格式、总位置数和目标位置。
+本流程验证 desktop 与 mobile 通过同一书库 sidecar 交换 Automerge snapshot/incremental，并在同步
+完成后立即更新 SQLite projection。它是固定的手工回归流程，不替代单元测试。
 
 ## 前置条件
 
-1. 两端使用包含待测改动的构建。
-2. 两端配置同一数据源和书库根目录。
-3. 两端从 Calibre `library_id.uuid` 读取到相同的稳定书库 UUID；应用本地 `library_id`
-   可以不同。
-4. 两端 replica ID 不同，格式均为小写 UUIDv4。
-5. 远端使用 `.myreader/automerge/changes/`；旧 `changes/` 与 `changes-v4/` 不兼容，
-   不得双读或双写。
-6. 开始前关闭两端 reader，等待前一次同步结束。
+- desktop 与 iOS 模拟器添加同一个 Calibre 书库；
+- 两端读取到相同的 Calibre `library_uuid`；
+- 两端使用同一个 local-direct、WebDAV 或 OneDrive 书库目录；
+- 远端测试数据已经按 ADR-0020 的 breaking change 清理；
+- 两端运行包含相同 Automerge document schema 的构建。
 
-## 自动化门禁
+不要修改 `metadata.db`。阅读数据只写各端本地 sidecar SQLite 和书库中的 `.myreader/`。
 
-```bash
-cargo test -p my-reader-core -p my-reader-core-ffi
-pnpm --filter @my-reader/tools test
-pnpm --filter my-reader-mobile exec jest --runInBand
-pnpm --filter my-reader run test:unit
+## 预期远端结构
 
-cd my-reader/src-tauri
-cargo test
+逻辑 key：
+
+```text
+[<document_id>, "snapshot", <heads_hash>]
+[<document_id>, "incremental", <content_sha256>]
 ```
 
-重点确认以下用例通过：
+远端路径：
 
-- Rust 导入 canonical genesis 和历史跨实现 incremental fixture；
-- 三个 actor 的 change 乱序、重复导入后收敛；
-- 两个 replica 的并发位置保留候选，选择后由新 change 消除冲突；
-- 第二个本地 SQLite 从同一对象存储拉取并立即投影进度；
-- 初始化、产品写、远端导入和 projection rebuild 具有事务回滚保护；
-- OneDrive backend 在书库根目录下读写规范的 Automerge 路径；
-- 超大远端对象、书库身份不一致、损坏 binary 和缺失依赖不写 receipt 或 projection；
-- iOS Metro/Hermes production export 或 release build 成功。
+```text
+.myreader/automerge/
+  <document_id>/
+    snapshot/
+      <heads_hash>
+    incremental/
+      <content_sha256>
+```
 
-自动化通过后再执行真实双端闭环。
+每个 `document_id` 目录只包含 `snapshot/` 和 `incremental/`，对象名分别使用 heads hash 和
+内容 SHA-256。
 
-## 桌面端到 iOS
+## 首次 bootstrap
 
-1. 桌面端打开固定样本并翻到第 2 页。
-2. 保持 reader 打开，确认 `reading_progress` 已立即更新为第 2 页和 `0.666667`；关闭
-   reader 不是保存进度的必要条件。
-3. 不执行手动同步，等待事件调度完成；确认 pending outbox 自动变为 `0`。
-4. 将 iOS 切到前台或重新激活当前书库，确认机会性 pull 自动执行并取得远端 change。
-5. 不打开书，先确认 iOS 列表和详情均显示 `67%`。
-6. 打开该书，确认初始位置是第 2 页。
-7. 检查当前书库阅读统计已刷新；本次会话时长不应因重复同步而重复累计。
+1. 删除测试书库中的旧 `.myreader` 同步数据，并在两端重新添加或重置该测试书库的本地 sidecar。
+2. 在设备 A 执行 full sync。
+3. 确认远端产生一个 snapshot StorageKey。
+4. 在设备 B 执行 full sync。
+5. 确认 B 能加载 snapshot，且同步不产生缺失依赖或摘要错误。
 
-成功判据：读端同步完成后，列表、详情和 reader 初始位置已经一致，不依赖“先打开一次书”
-触发延迟投影。
+通过标准：
 
-## iOS 到桌面端
+- 两端同步完成；
+- 远端路径以完整 `document_id` 作为目录；当前值等于 Calibre `library_uuid`；
+- B 的本地 projection 与 A 的初始状态一致。
 
-1. iOS 打开固定样本并翻到第 3 页。
-2. 确认本地列表/详情更新为 `100%` 或已读。
-3. 不执行手动同步，等待事件调度完成；确认 pending outbox 自动变为 `0`。
-4. 聚焦桌面应用或重新激活当前书库，确认机会性 pull 自动执行并取得远端 change。
-5. 不打开书，先确认桌面列表和详情显示 `100%` 或已读。
-6. 打开该书，确认初始位置是第 3 页。
-7. 重复同步两次，确认进度、session 时长和完成本数不再变化。
+## Desktop → iOS 阅读进度
 
-## 其他 domain
+1. 在 desktop 打开固定测试书籍《夜空中最亮的星》PDF。
+2. 跳到一个容易识别且不是第一页的位置，等待进度保存日志出现后关闭阅读器。
+3. 确认 desktop 列表或详情已显示新进度。
+4. 等待自动 push，或手动执行同步；记录 `pushed` 数量。
+5. 在 iOS 执行 full sync；记录 `pulled` 数量。
+6. 不打开书，先检查 iOS 列表和详情中的阅读状态与进度。
+7. 打开书，确认 reader 初始位置就是 desktop 保存的位置。
 
-在同一轮回归中至少验证：
+通过标准：
 
-1. 桌面收藏，iOS 同步后收藏列表立即出现；iOS 取消收藏，desktop 同步后消失。
-2. 一端新增书签，另一端同步后 reader 书签列表出现；删除后同步不会复活。
-3. 一端新增高亮并填写短笔记，另一端可见；两端离线分别修改颜色和笔记后同步，两项修改都保留。
-4. 删除批注后，另一端对普通字段的旧更新不能复活该批注。
-5. 同一 session 的增量重复同步不会重复计时。
-6. 多个 completion 存在时，两端投影都选择 `(completedAt, id)` 最小的合法记录。
+- desktop 写入后产生 durable outbox；
+- 远端出现内容摘要命名的 incremental；
+- iOS `pulled > 0`；
+- iOS 列表、详情和 reader 均使用同步后的 projection；
+- 不需要先打开书才能刷新进度。
+
+## iOS → Desktop 阅读进度
+
+反向重复上一流程：
+
+1. iOS 移动到另一个明确位置并关闭 reader；
+2. iOS push；
+3. desktop full sync；
+4. desktop 列表、详情立即更新；
+5. desktop 打开书后定位到 iOS 保存的位置。
+
+## 六个 domain
+
+对同一本测试书依次验证：
+
+| Domain | 设备 A 操作 | 设备 B 验收 |
+|---|---|---|
+| 收藏 | 收藏，再取消收藏 | 列表/详情状态一致 |
+| 阅读进度 | 保存新位置 | 列表、详情、reader 初始位置一致 |
+| 书签 | 添加、删除、重新添加 | reader 书签列表一致 |
+| 高亮/笔记 | 新建高亮、编辑颜色与笔记、删除 | reader 批注立即一致 |
+| 阅读会话 | 阅读一段可识别时长 | 当前书库统计累计一次 |
+| 阅读完成 | 标记或读至完成 | 已读本数与完成状态一致 |
+
+每个操作都要再反向验证一次。重复 full sync 不得重复累计 session 或 completion。
 
 ## 并发进度
 
-1. 两端先同步到相同 heads，然后离线。
-2. desktop 移到第 2 页，iOS 移到第 3 页。
-3. 两端分别恢复网络并同步。
-4. 再次同步后，打开该书应出现两个位置候选；暂不选择时不得静默丢失任一候选。
-5. 选择第 2 页并同步。
-6. 另一端再次同步后，候选消失，列表、详情和 reader 均为第 2 页。
+1. A、B 都先同步到相同 heads。
+2. 两端离线。
+3. A 保存位置 P1，B 保存不同位置 P2。
+4. A、B 分别恢复在线并同步。
+5. 确认 Automerge 文档保留两个并发候选，projection 使用确定性默认候选并标记冲突。
+6. 在一个设备选择 P1 或 P2，再同步两端。
+7. 确认选择产生的新 change 因果上覆盖两个旧候选。
 
-若两端在离线状态又并发作出不同选择，允许重新出现冲突；下一次看见所有候选后的选择才会
-消除冲突。
+不得用“较大的百分比”或设备时间直接丢弃另一个候选。
 
-## 证据
+## 自动同步时机
 
-每次回归至少保留：
+验证以下触发源：
 
-| 证据 | 预期 |
-| --- | --- |
-| 写端 `reading_progress` | Locator、展示进度和目标页一致 |
-| 写端 `sync_automerge_outbox` | 新对象存在；发布后 `published_at` 非空 |
-| 远端对象 | `.am` 路径符合 actor、20 位 sequence 和 change hash 规则 |
-| 远端对象正文 | 字节数和 SHA-256 与 outbox 完全一致，不得以 multipart boundary `--` 开头 |
-| 读端同步结果 | `pulled > 0`，没有 `sync.stage_failed` |
-| 读端 `sync_automerge_receipts` | 对应对象仅记录一次 |
-| 两端 state | `heads_json` 最终一致 |
-| 读端 projection | 列表、详情、reader 初始位置在同步后立即一致 |
-| 统计 projection | 重复同步不重复累计 session/completion |
+- 本地阅读数据变更后计划 debounced push；
+- reader 关闭或应用进入后台时 flush；
+- 应用回到前台、网络恢复、切换书库时请求 contextual pull；
+- 前台 active library 约每 60 秒带 jitter 执行一次 safety sweep；
+- 手动同步执行 full sync。
 
-必要时执行：
+直接横向/纵向 UI 操作不应改变这些同步语义。
 
-```sql
-SELECT protocol, library_uuid, replica_id
-FROM sync_local_meta;
+## 故障回归
 
-SELECT change_hash, actor_id, actor_sequence, origin
-FROM sync_automerge_changes
-ORDER BY created_at;
+### 重复与乱序
 
-SELECT object_path, published_at
-FROM sync_automerge_outbox
-ORDER BY object_path;
+1. 让两个设备分别产生多个 incremental。
+2. 让对象存储以不同顺序返回文件。
+3. 重复执行 full sync。
+4. 确认文档 heads 和六张 projection 收敛，业务数据不重复。
 
-SELECT object_path, sha256, applied_at
-FROM sync_automerge_receipts
-ORDER BY applied_at;
+### 摘要不匹配
 
-SELECT heads_json, projection_version, rebuilt_at
-FROM sync_automerge_projection_meta
-WHERE id = 'local';
+1. 在隔离的测试目录修改一个 incremental 的 bytes，但保留文件名。
+2. 执行 full sync。
+3. 确认同步停止并报告具体 StorageKey 与摘要不匹配。
+4. 确认本地 Automerge state 和 projection 没有部分更新。
 
-SELECT book_id, format, locator_json, display_progression, sync_conflict_count
-FROM reading_progress
-WHERE book_id = 542;
+### 缺失依赖
+
+1. 在隔离的测试目录删除一个仍被后续 incremental 依赖的对象。
+2. 执行 full sync。
+3. 确认同步停止，错误列出相关 StorageKey 或缺失 change hash。
+4. 从仍然完整的副本或备份恢复原对象，再次同步并确认收敛。
+
+若所有副本都缺失该 change，不存在无损推导算法。必须清空损坏的远端测试 sidecar，并由确认完整
+的设备重新 bootstrap；不能创建假的 change、截断文档或手改 Automerge binary。
+
+### 压缩与中断
+
+1. 产生足够多的 incrementals，使总量达到当前 snapshot 大小。
+2. full sync 后确认先出现新 snapshot。
+3. 确认只有 snapshot 保存成功后，旧 chunks 才被删除。
+4. 在保存 snapshot 前、保存后删除前、删除过程中分别中断。
+5. 重试后应保留可加载 snapshot；中断最多留下冗余对象，不得造成数据丢失。
+
+### 崩溃恢复
+
+- SQLite 提交后、上传前终止进程：重启后仍上传相同 outbox bytes；
+- 上传后、删除对应 outbox 条目前终止：重试覆盖同一 StorageKey；
+- 下载后、projection 提交前终止：本地事务回滚，重试后完整应用；
+- 网络断开：按 scheduler 退避，网络恢复后继续。
+
+## 记录模板
+
+每轮记录：
+
+```text
+日期 / 构建：
+书库 UUID：
+数据源：local-direct | WebDAV | OneDrive
+设备 A：
+设备 B：
+测试书籍与格式：
+A heads：
+B heads：
+pushed / pulled：
+列表进度：
+详情进度：
+reader 初始位置：
+六个 domain：
+远端路径检查：
+异常日志：
+结论：通过 | 失败
 ```
-
-桌面数据库位于应用数据目录
-`libraries/<library_id>/.myreader/myreader.db`；iOS 数据库位于应用容器
-`Documents/libraries/<library_id>/.myreader/myreader.db`。
-
-## 故障定位
-
-1. **写端 projection 未变化**：检查产品入口是否调用 Automerge command；禁止绕过 document
-   直接写 projection。
-2. **本地身份错误**：`sync_local_meta.protocol` 必须是
-   `library-sidecar-automerge`，`library_uuid` 必须等于当前 Calibre UUID。旧开发协议状态由
-   breaking-change migration 丢弃，不转换旧 change。
-3. **outbox 未发布**：检查数据源凭据、远端目录创建和 immutable object 摘要冲突。
-   iOS WebDAV/OneDrive 后台上传必须发送原始 `.am` 字节；省略 `fieldName` 表示 raw upload，
-   不能把对象包装成 multipart。小文件任务创建后必须立即报告 begin，不能在后台会话尚未调度
-   首个字节时被 JS 启动超时误杀。
-4. **远端已有对象但 `pulled = 0`**：检查 actor 路径过滤、receipt、依赖和 library identity。
-5. **receipt 已写但 projection 未更新**：这是事务不变量破坏；远端 state、receipt 与
-   projection 必须一起提交。
-6. **数据库已更新但 UI 仍旧**：检查同步完成后的 React Query invalidation。
-7. **列表正确但打开位置错误**：检查格式匹配、canonical `ReaderLocator` 和 native/JS
-   Locator 转换。
-8. **Finder 出现 `.myreader 2`**：先确认 OneDrive 远端逻辑路径；不要把 File Provider
-   的本地冲突名写入协议。
-
-## 2026-07-25 实施验证记录
-
-- canonical Automerge fixture、Rust/TypeScript 互操作、Rust 双 replica 本地对象存储闭环通过；
-- iOS signed Debug 构建在 Hermes 中使用原生 Automerge backend，不再依赖全局
-  `WebAssembly`；应用启动后的真实 OneDrive 同步成功；
-- Tauri 真实打开固定 PDF 并定位到第 2 页，列表与详情立即投影为 `67%`；同步后 iOS 日志记录
-  `pulled: 21, pushed: 0`，主页在打开书前已显示 `67%`，打开后 reader 显示
-  `第 2 页` 和 `2 / 3`；
-- iOS 将同一本书推进到第 3 页，本地日志记录 `position: 3`、
-  `displayProgression: 1`；完整同步记录 `pulled: 0, pushed: 2`；
-- Tauri 随后同步，列表与详情在打开书前更新为 `100%` / `已读完`，打开后 reader 显示
-  `第 3 / 3 页`；
-- 关闭两端 reader 后再次同步，双方 `heads_json` 收敛到同一个 head，进度均为
-  `position: 3`、`displayProgression: 1`；下一次 iOS 同步为 `pulled: 0, pushed: 0`；
-- Metro 模块重载后不会重复安装 UniFFI 全局绑定，Fast Refresh 不再触发
-  `property is not configurable`；
-- 真实运行暴露旧 `library-sidecar-v4` identity 阻止写入，已增加回归测试和一次性丢弃旧同步
-  内部状态的 migration；业务 projection 保留。
-
-本次真实闭环使用运行中的 Tauri 桌面端、iPhone 17 Pro iOS 26.5 模拟器和同一个 OneDrive
-`CalibreLibrary`，已覆盖双向远端增量、同步后查询刷新和 reader 初始位置恢复。
-
-## 2026-07-25 WebDAV 恢复与冲突验证记录
-
-本轮使用 Tauri 桌面端、iPhone 17 Pro iOS 26.5 模拟器和同一个 WebDAV 书库
-`CalibreTest`。固定样本为 PDF《明日ちゃんのセーラー服 12》，Calibre `book_id` 为 `8`。
-
-- 两端从相同 heads 离线分叉：desktop 保存第 6 页，iOS 保存第 5 页。交换增量后 iOS 展示两个
-  真实并发候选；选择第 5 页产生新的因果 change，随后两端 heads 和进度均收敛。
-- desktop 保存第 6 页后、上传前强制终止进程。本地已提交的 outbox 和 projection 在重启后保留；
-  重试发布同一个不可变对象，iOS 拉取后收敛到第 6 页。
-- desktop 保存第 7 页后将 WebDAV endpoint 临时改为不可达地址。同步在
-  `sync_automerge` 阶段明确失败，pending outbox 保持为 `1`，本地 heads 未回退。恢复原 endpoint
-  后成功发布原对象，iOS 拉取后两端收敛到第 7 页。
-- 恢复完成后重复同步没有产生新 change：desktop 返回 `pushed: 0, pulled: 0`，iOS heads
-  保持不变且 pending outbox 为 `0`。
-
-该记录只证明 WebDAV 实机闭环。local-direct 与 WebDAV 共用相同的 Automerge
-bootstrap、增量、outbox 和 projection 事务路径，本轮只保留自动化覆盖，没有执行
-local-direct 手工闭环。
-
-## 2026-07-27 WebDAV 自动调度验证记录
-
-本轮使用运行中的 Tauri 桌面端、iPhone 17 Pro iOS 26.5 模拟器和同一个 WebDAV 书库
-`CalibreTest`。固定样本为 PDF《明日ちゃんのセーラー服 12》，Calibre `book_id` 为 `8`，
-总页数为 `189`。
-
-- desktop 保存第 20 页后没有执行手动同步；durable outbox 在 debounce 后自动发布。iOS 从后台
-  回到前台后自动拉取，主页在打开书前更新为 `11%`，reader 初始位置为第 20 页。
-- iOS 从第 21 页滑到第 22 页后没有执行手动同步；本地 `reading_progress` 为
-  `position: 22`、`displayProgression: 0.116402`，pending outbox 自动变为 `0`。
-- desktop 重新激活当前书库后没有执行手动同步；约 3 秒内列表更新为 `12%`，Tauri IPC 读取到
-  `position: 22`，独立 reader 窗口显示 `第 22 / 189 页`。
-- 真实 WebDAV 闭环暴露 iOS 后台 uploader 的两个上游缺陷：省略 `fieldName` 仍默认包装
-  multipart，以及小文件等待首个字节才报告 begin。pnpm patch 将 raw upload 和 begin 时机对齐
-  Android；修复后远端对象正文与 outbox 字节、SHA-256 一致。
-
-最终验收轮只使用事件驱动 push 和书库激活 pull；手动 `scope: "all"` 未参与。
-
-## 2026-07-27 共享 Rust Component 试点验证记录
-
-本轮使用签名的 iOS Debug 构建、运行中的 Tauri 桌面端和同一个 WebDAV 书库
-`CalibreTest`。固定样本为 EPUB《Jane Eyre》，Calibre `book_id` 为 `11`。
-
-- desktop 从位置 `4 / 1023` 阅读到 `37 / 1023`；本地 projection 记录
-  `display_progression: 0.036168` 和 `epub/text/chapter-3.xhtml`，对应 outbox 已发布；
-- iOS 执行一次确定性的手动 pull 后，主页无需先打开书籍就显示 `4%`；数据库中的
-  `position: 37`、Locator、展示进度和 desktop 完全一致；
-- iOS 打开该书时直接进入第三章而非第一页，证明列表 projection 与 reader 初始 Locator
-  使用同一份同步结果；
-- Rust 文件存储双设备测试一次写入并验证收藏、进度、书签、批注、阅读会话和完成记录六个
-  已冻结 domain，目标数据库的六张 projection 表均立即得到记录；
-- 真实 iOS 首次运行暴露 UniFFI 调用方没有 Tokio reactor 时会在网络等待阶段终止进程。
-  共享 use case 现在自带异步运行环境，并由“原生调用方没有 Tokio runtime”回归测试保护；
-- mobile 已删除 JavaScript Automerge engine、通用二进制 adapter 和对应生成脚本；
-  Swift/Kotlin/TypeScript bridge 只保留 projection、数据库用例、同步任务与调度 API。
-
-这轮手工记录证明 desktop 到 iOS 的 WebDAV 写入、发布、拉取、查询刷新和 reader 定位闭环；
-拉取使用手动入口固定测试边界，不计作自动调度验证。自动 push/pull 的真实验证仍以前一节
-记录为准。

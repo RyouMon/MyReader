@@ -42,7 +42,8 @@
 | [ADR-0013](./0013-maintain-mobile-readium-integration.md) | 在 MyReader 仓库维护移动端 Readium 集成层 | 已接受（回溯） | 2026-06-18 |
 | [ADR-0014](./0014-data-ownership-and-sync-storage.md) | 将应用数据拆分为书库域和用户域 | 已撤回（未实施） | 2026-07-22 |
 | [ADR-0015](./0015-library-sidecar-crdt-reading-sync.md) | 将书库 sidecar 升级为类型化 CRDT 阅读数据同步 | 部分实施，已取代 | 2026-07-22 |
-| [ADR-0016](./0016-adopt-automerge-for-library-sidecar-sync.md) | 采用 Automerge 作为书库 sidecar 的 CRDT 核心 | 已实施 | 2026-07-25 |
+| [ADR-0016](./0016-adopt-automerge-for-library-sidecar-sync.md) | 采用 Automerge 作为书库 sidecar 的 CRDT 核心 | 已实施，存储部分已取代 | 2026-07-25 |
 | [ADR-0017](./0017-event-driven-library-sidecar-sync-scheduling.md) | 使用事件驱动调度自动同步书库 sidecar | 已实施 | 2026-07-26 |
 | [ADR-0018](./0018-shared-rust-components.md) | 使用分域 Rust Components 和聚合原生产物统一桌面与移动后端 | 部分实施、部分已取代 | 2026-07-27 |
 | [ADR-0019](./0019-adopt-modular-my-reader-core.md) | 采用模块化 my-reader-core 统一跨端后端业务 | 已实施 | 2026-07-28 |
+| [ADR-0020](./0020-adopt-automerge-repo-storage-model.md) | 采用 automerge-repo 存储模型重构书库 sidecar | 已接受 | 2026-07-30 |
