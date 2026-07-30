@@ -16,3 +16,7 @@ export type Library = {
     stale: boolean
   }
 }
+
+export function isRemoteLibrarySourceType(sourceType?: string | null): boolean {
+  return sourceType === "webdav" || sourceType === "onedrive"
+}

@@ -23,10 +23,7 @@ impl LibraryConfig {
     }
 
     pub fn is_remote(&self) -> bool {
-        matches!(
-            self.source_type.as_deref(),
-            Some("webdav") | Some("onedrive")
-        )
+        my_reader_core::models::is_remote_library_source_type(self.source_type.as_deref())
     }
 }
 

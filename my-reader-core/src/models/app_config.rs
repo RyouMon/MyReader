@@ -182,9 +182,13 @@ fn enabled_by_default() -> bool {
     true
 }
 
+pub fn is_remote_library_source_type(source_type: Option<&str>) -> bool {
+    matches!(source_type, Some("webdav") | Some("onedrive"))
+}
+
 #[cfg(test)]
 mod tests {
-    use super::DataSource;
+    use super::{is_remote_library_source_type, DataSource};
 
     #[test]
     fn should_read_legacy_snake_case_when_data_source_is_deserialized() {
@@ -229,6 +233,14 @@ mod tests {
         assert_eq!(value["rootPath"], "Books");
         assert_eq!(value["hasRefreshToken"], true);
         assert!(value.get("client_id").is_none());
+    }
+
+    #[test]
+    fn should_classify_network_backed_library_when_source_type_is_remote() {
+        assert!(is_remote_library_source_type(Some("webdav")));
+        assert!(is_remote_library_source_type(Some("onedrive")));
+        assert!(!is_remote_library_source_type(Some("local")));
+        assert!(!is_remote_library_source_type(None));
     }
 }
 

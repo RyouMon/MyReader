@@ -1,7 +1,10 @@
 import { Directory, File } from "expo-file-system"
 import { Platform } from "react-native"
 
-import type { Library } from "@my-reader/tools/types/library"
+import {
+  isRemoteLibrarySourceType,
+  type Library,
+} from "@my-reader/tools/types/library"
 import type { RemoteBackend } from "@/src/services/remote/backend"
 import {
   canonicalRelativePath,
@@ -15,10 +18,6 @@ export const METADATA_DB_RELATIVE = "metadata.db"
 export const LIBRARY_MYREADER_DIR = ".myreader"
 
 const LIBRARIES_DOCUMENT_DIR = "libraries"
-
-function isRemoteSourceType(sourceType?: string | null): boolean {
-  return sourceType === "webdav" || sourceType === "onedrive"
-}
 
 /** App container root for a library (`Documents/libraries/{id}/`). */
 export function libraryContainerRootUri(libraryId: string): string {
@@ -34,7 +33,7 @@ export function librariesContainerRootUri(): string {
 export function usesIosContainerSidecar(library: Library): boolean {
   return (
     Platform.OS === "ios" &&
-    !isRemoteSourceType(library.sourceType) &&
+    !isRemoteLibrarySourceType(library.sourceType) &&
     Boolean(library.securityScopedBookmark)
   )
 }
@@ -49,7 +48,7 @@ export function libraryLocalRootUri(library: Library): string {
  * Remote → container; local → {@link libraryLocalRootUri}.
  */
 export function libraryRootUri(library: Library): string {
-  if (isRemoteSourceType(library.sourceType)) {
+  if (isRemoteLibrarySourceType(library.sourceType)) {
     return libraryContainerRootUri(library.id)
   }
   return libraryLocalRootUri(library)
@@ -61,7 +60,7 @@ export function libraryRootUri(library: Library): string {
  */
 export function librarySidecarRootUri(library: Library): string {
   if (
-    isRemoteSourceType(library.sourceType) ||
+    isRemoteLibrarySourceType(library.sourceType) ||
     usesIosContainerSidecar(library)
   ) {
     return libraryContainerRootUri(library.id)
@@ -91,7 +90,7 @@ export function libraryBookFileUri(
 export function ensureLibrarySidecarDirectory(library: Library): string {
   const sidecarRoot = librarySidecarRootUri(library)
   if (
-    isRemoteSourceType(library.sourceType) ||
+    isRemoteLibrarySourceType(library.sourceType) ||
     usesIosContainerSidecar(library)
   ) {
     libraryContainerRootUri(library.id)
@@ -122,7 +121,7 @@ export function resolveCoverUri(
   if (!bookPath || !hasCover) return undefined
 
   if (
-    !isRemoteSourceType(library.sourceType) &&
+    !isRemoteLibrarySourceType(library.sourceType) &&
     hasLocalCoverFile(library, bookPath)
   ) {
     return libraryBookFileUri(

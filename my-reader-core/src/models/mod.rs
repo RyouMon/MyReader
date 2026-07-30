@@ -8,8 +8,8 @@ mod storage;
 mod sync;
 
 pub use app_config::{
-    AppConfig, AppPreferences, DataSource, Library, SecurityScopedBookmark,
-    APP_CONFIG_SCHEMA_VERSION,
+    is_remote_library_source_type, AppConfig, AppPreferences, DataSource, Library,
+    SecurityScopedBookmark, APP_CONFIG_SCHEMA_VERSION,
 };
 pub use catalog::{
     BookDetail, BookEntry, BookFormat, BookIdentifier, BookSummary, FormatSize, PaginatedBooks,
