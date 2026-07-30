@@ -3,8 +3,8 @@ import type {
   CalibreBook,
   PaginatedBooks,
 } from "@my-reader/tools/types/book"
-import MyReaderRustComponents from "@/modules/myreader-rust-components"
 import { toNativeFilesystemPath } from "../fs/path"
+import { invokeCoreAsync, invokeCoreSync } from "./transport"
 
 export type CalibreBookSummary = {
   id: number
@@ -26,19 +26,23 @@ function nativePath(libraryRootUri: string): string {
 }
 
 export function validateCalibreLibrary(libraryRootUri: string): boolean {
-  return MyReaderRustComponents.validateCalibreLibrary(
-    nativePath(libraryRootUri),
-  )
+  return invokeCoreSync<boolean>("catalog", "validateLibrary", {
+    libraryRootPath: nativePath(libraryRootUri),
+  })
 }
 
 export function countCalibreBooks(libraryRootUri: string): Promise<number> {
-  return MyReaderRustComponents.countCalibreBooks(nativePath(libraryRootUri))
+  return invokeCoreAsync<number>("catalog", "countBooks", {
+    libraryRootPath: nativePath(libraryRootUri),
+  })
 }
 
 export async function listCalibreBooks(
   libraryRootUri: string,
 ): Promise<CalibreBook[]> {
-  return MyReaderRustComponents.listCalibreBooks(nativePath(libraryRootUri))
+  return invokeCoreAsync<CalibreBook[]>("catalog", "listBooks", {
+    libraryRootPath: nativePath(libraryRootUri),
+  })
 }
 
 export async function listCalibreBooksPage(
@@ -48,13 +52,13 @@ export async function listCalibreBooksPage(
   sortBy?: string,
   search?: string,
 ): Promise<PaginatedBooks> {
-  return MyReaderRustComponents.listCalibreBooksPage(
-    nativePath(libraryRootUri),
+  return invokeCoreAsync<PaginatedBooks>("catalog", "listBooksPage", {
+    libraryRootPath: nativePath(libraryRootUri),
     offset,
     limit,
-    sortBy ?? null,
-    search ?? null,
-  )
+    sortBy: sortBy ?? null,
+    search: search ?? null,
+  })
 }
 
 export async function listCalibreBooksPageByLastRead(
@@ -64,23 +68,23 @@ export async function listCalibreBooksPageByLastRead(
   limit: number,
   search?: string,
 ): Promise<PaginatedBooks> {
-  return MyReaderRustComponents.listCalibreBooksPageByLastRead(
-    nativePath(libraryRootUri),
-    nativePath(sidecarRootUri),
+  return invokeCoreAsync<PaginatedBooks>("catalog", "listBooksPageByLastRead", {
+    libraryRootPath: nativePath(libraryRootUri),
+    sidecarRootPath: nativePath(sidecarRootUri),
     offset,
     limit,
-    search ?? null,
-  )
+    search: search ?? null,
+  })
 }
 
 export async function getCalibreBookDetail(
   libraryRootUri: string,
   bookId: number,
 ): Promise<BookDetail> {
-  return MyReaderRustComponents.getCalibreBookDetail(
-    nativePath(libraryRootUri),
+  return invokeCoreAsync<BookDetail>("catalog", "getBookDetail", {
+    libraryRootPath: nativePath(libraryRootUri),
     bookId,
-  )
+  })
 }
 
 export async function listCalibreSeriesBooks(
@@ -88,33 +92,33 @@ export async function listCalibreSeriesBooks(
   seriesName: string,
   excludeBookId?: number,
 ): Promise<CalibreBook[]> {
-  return MyReaderRustComponents.listCalibreSeriesBooks(
-    nativePath(libraryRootUri),
+  return invokeCoreAsync<CalibreBook[]>("catalog", "listSeriesBooks", {
+    libraryRootPath: nativePath(libraryRootUri),
     seriesName,
-    excludeBookId ?? null,
-  )
+    excludeBookId: excludeBookId ?? null,
+  })
 }
 
 export function getCalibreLibraryUuid(libraryRootUri: string): Promise<string> {
-  return MyReaderRustComponents.getCalibreLibraryUuid(
-    nativePath(libraryRootUri),
-  )
+  return invokeCoreAsync<string>("catalog", "getLibraryUuid", {
+    libraryRootPath: nativePath(libraryRootUri),
+  })
 }
 
 export async function listCalibreBookSummaries(
   libraryRootUri: string,
 ): Promise<CalibreBookSummary[]> {
-  return MyReaderRustComponents.listCalibreBookSummaries(
-    nativePath(libraryRootUri),
-  )
+  return invokeCoreAsync<CalibreBookSummary[]>("catalog", "listBookSummaries", {
+    libraryRootPath: nativePath(libraryRootUri),
+  })
 }
 
 export async function listCalibreBookFormats(
   libraryRootUri: string,
   bookId: number,
 ): Promise<CalibreBookFormat[]> {
-  return MyReaderRustComponents.listCalibreBookFormats(
-    nativePath(libraryRootUri),
+  return invokeCoreAsync<CalibreBookFormat[]>("catalog", "listBookFormats", {
+    libraryRootPath: nativePath(libraryRootUri),
     bookId,
-  )
+  })
 }

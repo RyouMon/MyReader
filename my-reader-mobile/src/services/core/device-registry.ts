@@ -1,13 +1,8 @@
 import type { DataSource } from "@my-reader/tools/types/data-source"
 import type { Library } from "@my-reader/tools/types/library"
 import { File, Paths } from "expo-file-system"
-import MyReaderRustComponents, {
-  type NativeDataSource,
-  type NativeDeviceRegistry,
-  type NativeLibrary,
-  type NativeLibraryResult,
-} from "@/modules/myreader-rust-components"
 import { toNativeFilesystemPath } from "../fs/path"
+import { invokeCoreAsync } from "./transport"
 
 export type DeviceRegistry = {
   schemaVersion: number
@@ -21,34 +16,90 @@ export type LocalLibraryResult = {
   library: Library
 }
 
+type CoreDataSource = {
+  type: "local" | "webdav" | "onedrive"
+  id: string
+  name: string
+  enabled: boolean
+  rootPath: string | null
+  readonly: boolean | null
+  createdAt: number | null
+  endpoint?: string
+  username?: string
+  hasPassword?: boolean
+  credentialReference?: string | null
+  clientId?: string
+  tenantId?: string | null
+  displayName?: string | null
+  email?: string | null
+  hasRefreshToken?: boolean
+}
+
+type CoreLibrary = {
+  id: string
+  name: string
+  path: string
+  bookCount: number
+  metadataUri: string | null
+  addedAt: number | null
+  dataSourceId: string | null
+  sourceType: string | null
+  sourcePath: string | null
+  metadataEtag: string | null
+  securityScopedBookmark: Library["securityScopedBookmark"] | null
+}
+
+type CoreDeviceRegistry = {
+  schemaVersion: number
+  dataSources: CoreDataSource[]
+  libraries: CoreLibrary[]
+  activeLibraryId: string | null
+}
+
+export type CoreLibraryResult = {
+  registry: CoreDeviceRegistry
+  library: CoreLibrary
+}
+
 const registryPath = toNativeFilesystemPath(
   new File(Paths.document, "device-registry.json").uri,
 )
 
-export function toNativeDataSource(source: DataSource): NativeDataSource {
+export function toCoreDataSource(source: DataSource): CoreDataSource {
+  if (source.type === "webdav") {
+    return {
+      type: "webdav",
+      id: source.id,
+      name: source.name,
+      enabled: source.enabled,
+      endpoint: source.endpoint,
+      username: source.username,
+      rootPath: source.rootPath ?? null,
+      hasPassword: source.hasPassword,
+      credentialReference: null,
+      readonly: source.readonly ?? null,
+      createdAt: source.createdAt ?? null,
+    }
+  }
   return {
-    sourceType: source.type,
+    type: "onedrive",
     id: source.id,
     name: source.name,
     enabled: source.enabled,
+    clientId: source.clientId,
+    tenantId: source.tenantId ?? null,
+    displayName: source.displayName ?? null,
+    email: source.email ?? null,
     rootPath: source.rootPath ?? null,
+    hasRefreshToken: source.hasRefreshToken,
+    credentialReference: null,
     readonly: source.readonly ?? null,
     createdAt: source.createdAt ?? null,
-    endpoint: source.type === "webdav" ? source.endpoint : null,
-    username: source.type === "webdav" ? source.username : null,
-    hasPassword: source.type === "webdav" && source.hasPassword,
-    credentialReference: null,
-    clientId: source.type === "onedrive" ? source.clientId : null,
-    tenantId: source.type === "onedrive" ? (source.tenantId ?? null) : null,
-    displayName:
-      source.type === "onedrive" ? (source.displayName ?? null) : null,
-    email: source.type === "onedrive" ? (source.email ?? null) : null,
-    hasRefreshToken: source.type === "onedrive" && source.hasRefreshToken,
   }
 }
 
-function dataSourceFromNative(source: NativeDataSource): DataSource | null {
-  if (source.sourceType === "webdav") {
+function dataSourceFromCore(source: CoreDataSource): DataSource | null {
+  if (source.type === "webdav") {
     return {
       id: source.id,
       type: "webdav",
@@ -57,12 +108,12 @@ function dataSourceFromNative(source: NativeDataSource): DataSource | null {
       endpoint: source.endpoint ?? "",
       username: source.username ?? "",
       rootPath: source.rootPath,
-      hasPassword: source.hasPassword,
+      hasPassword: source.hasPassword ?? false,
       readonly: source.readonly ?? undefined,
       createdAt: source.createdAt ?? undefined,
     }
   }
-  if (source.sourceType === "onedrive") {
+  if (source.type === "onedrive") {
     return {
       id: source.id,
       type: "onedrive",
@@ -73,7 +124,7 @@ function dataSourceFromNative(source: NativeDataSource): DataSource | null {
       displayName: source.displayName,
       email: source.email,
       rootPath: source.rootPath,
-      hasRefreshToken: source.hasRefreshToken,
+      hasRefreshToken: source.hasRefreshToken ?? false,
       readonly: source.readonly ?? undefined,
       createdAt: source.createdAt ?? undefined,
     }
@@ -81,7 +132,7 @@ function dataSourceFromNative(source: NativeDataSource): DataSource | null {
   return null
 }
 
-export function toNativeLibrary(library: Library): NativeLibrary {
+export function toCoreLibrary(library: Library): CoreLibrary {
   return {
     id: library.id,
     name: library.name,
@@ -97,7 +148,7 @@ export function toNativeLibrary(library: Library): NativeLibrary {
   }
 }
 
-function libraryFromNative(library: NativeLibrary): Library {
+function libraryFromCore(library: CoreLibrary): Library {
   return {
     id: library.id,
     name: library.name,
@@ -113,25 +164,25 @@ function libraryFromNative(library: NativeLibrary): Library {
   }
 }
 
-export function deviceRegistryFromNative(
-  registry: NativeDeviceRegistry,
+export function deviceRegistryFromCore(
+  registry: CoreDeviceRegistry,
 ): DeviceRegistry {
   return {
     schemaVersion: registry.schemaVersion,
     dataSources: registry.dataSources
-      .map(dataSourceFromNative)
+      .map(dataSourceFromCore)
       .filter((source): source is DataSource => source !== null),
-    libraries: registry.libraries.map(libraryFromNative),
+    libraries: registry.libraries.map(libraryFromCore),
     activeLibraryId: registry.activeLibraryId,
   }
 }
 
-export function libraryResultFromNative(
-  result: NativeLibraryResult,
+export function libraryResultFromCore(
+  result: CoreLibraryResult,
 ): LocalLibraryResult {
   return {
-    registry: deviceRegistryFromNative(result.registry),
-    library: libraryFromNative(result.library),
+    registry: deviceRegistryFromCore(result.registry),
+    library: libraryFromCore(result.library),
   }
 }
 
@@ -140,34 +191,40 @@ export async function initializeDeviceRegistry(legacy: {
   libraries: Library[]
   activeLibraryId: string | null
 }): Promise<DeviceRegistry> {
-  return deviceRegistryFromNative(
-    await MyReaderRustComponents.initializeDeviceRegistry(registryPath, {
-      schemaVersion: 1,
-      dataSources: legacy.dataSources.map(toNativeDataSource),
-      libraries: legacy.libraries.map(toNativeLibrary),
-      activeLibraryId: legacy.activeLibraryId,
-    }),
+  const registry = await invokeCoreAsync<CoreDeviceRegistry>(
+    "registry",
+    "initialize",
+    {
+      registryPath,
+      legacyRegistry: {
+        schemaVersion: 1,
+        dataSources: legacy.dataSources.map(toCoreDataSource),
+        libraries: legacy.libraries.map(toCoreLibrary),
+        activeLibraryId: legacy.activeLibraryId,
+      },
+    },
   )
+  return deviceRegistryFromCore(registry)
 }
 
 export async function upsertDeviceDataSource(
   source: DataSource,
 ): Promise<DeviceRegistry> {
-  return deviceRegistryFromNative(
-    await MyReaderRustComponents.upsertDeviceDataSource(
+  return deviceRegistryFromCore(
+    await invokeCoreAsync<CoreDeviceRegistry>("registry", "upsertDataSource", {
       registryPath,
-      toNativeDataSource(source),
-    ),
+      source: toCoreDataSource(source),
+    }),
   )
 }
 
 export async function prepareDeviceDataSource(
   source: DataSource,
 ): Promise<DataSource> {
-  const prepared = dataSourceFromNative(
-    await MyReaderRustComponents.prepareDeviceDataSource(
-      toNativeDataSource(source),
-    ),
+  const prepared = dataSourceFromCore(
+    await invokeCoreAsync<CoreDataSource>("registry", "prepareDataSource", {
+      source: toCoreDataSource(source),
+    }),
   )
   if (!prepared) {
     throw new Error("UNSUPPORTED_DATA_SOURCE_TYPE")
@@ -178,58 +235,64 @@ export async function prepareDeviceDataSource(
 export async function validateDeviceDataSource(
   source: DataSource,
 ): Promise<void> {
-  await MyReaderRustComponents.validateDeviceDataSource(
+  await invokeCoreAsync<void>("registry", "validateDataSource", {
     registryPath,
-    toNativeDataSource(source),
-  )
+    source: toCoreDataSource(source),
+  })
 }
 
 export async function removeDeviceDataSource(
   dataSourceId: string,
 ): Promise<DeviceRegistry> {
-  return deviceRegistryFromNative(
-    await MyReaderRustComponents.removeDeviceDataSource(
+  return deviceRegistryFromCore(
+    await invokeCoreAsync<CoreDeviceRegistry>("registry", "removeDataSource", {
       registryPath,
       dataSourceId,
-    ),
+    }),
   )
 }
 
 export async function registerDeviceLibrary(
   library: Library,
 ): Promise<DeviceRegistry> {
-  return deviceRegistryFromNative(
-    await MyReaderRustComponents.registerDeviceLibrary(
+  return deviceRegistryFromCore(
+    await invokeCoreAsync<CoreDeviceRegistry>("registry", "registerLibrary", {
       registryPath,
-      toNativeLibrary(library),
-    ),
+      library: toCoreLibrary(library),
+    }),
   )
 }
 
 export async function replaceDeviceLibrary(
   library: Library,
 ): Promise<DeviceRegistry> {
-  return deviceRegistryFromNative(
-    await MyReaderRustComponents.replaceDeviceLibrary(
+  return deviceRegistryFromCore(
+    await invokeCoreAsync<CoreDeviceRegistry>("registry", "replaceLibrary", {
       registryPath,
-      toNativeLibrary(library),
-    ),
+      library: toCoreLibrary(library),
+    }),
   )
 }
 
 export async function removeDeviceLibrary(
   libraryId: string,
 ): Promise<DeviceRegistry> {
-  return deviceRegistryFromNative(
-    await MyReaderRustComponents.removeDeviceLibrary(registryPath, libraryId),
+  return deviceRegistryFromCore(
+    await invokeCoreAsync<CoreDeviceRegistry>("registry", "removeLibrary", {
+      registryPath,
+      libraryId,
+    }),
   )
 }
 
 export async function switchDeviceLibrary(
   libraryId: string,
 ): Promise<DeviceRegistry> {
-  return deviceRegistryFromNative(
-    await MyReaderRustComponents.switchDeviceLibrary(registryPath, libraryId),
+  return deviceRegistryFromCore(
+    await invokeCoreAsync<CoreDeviceRegistry>("registry", "switchLibrary", {
+      registryPath,
+      libraryId,
+    }),
   )
 }
 
@@ -242,17 +305,20 @@ export async function addLocalDeviceLibrary(request: {
   addedAt?: number
   securityScopedBookmark?: Library["securityScopedBookmark"]
 }): Promise<LocalLibraryResult> {
-  return libraryResultFromNative(
-    await MyReaderRustComponents.addLocalLibrary(registryPath, {
-      libraryRootPath: toNativeFilesystemPath(request.libraryRootUri),
-      path: request.path,
-      sidecarContainerParentPath: request.sidecarContainerParentUri
-        ? toNativeFilesystemPath(request.sidecarContainerParentUri)
-        : null,
-      name: request.name ?? null,
-      metadataUri: request.metadataUri ?? null,
-      addedAt: request.addedAt ?? null,
-      securityScopedBookmark: request.securityScopedBookmark ?? null,
+  return libraryResultFromCore(
+    await invokeCoreAsync<CoreLibraryResult>("registry", "addLocalLibrary", {
+      registryPath,
+      request: {
+        libraryRootPath: toNativeFilesystemPath(request.libraryRootUri),
+        path: request.path,
+        sidecarContainerParentPath: request.sidecarContainerParentUri
+          ? toNativeFilesystemPath(request.sidecarContainerParentUri)
+          : null,
+        name: request.name ?? null,
+        metadataUri: request.metadataUri ?? null,
+        addedAt: request.addedAt ?? null,
+        securityScopedBookmark: request.securityScopedBookmark ?? null,
+      },
     }),
   )
 }

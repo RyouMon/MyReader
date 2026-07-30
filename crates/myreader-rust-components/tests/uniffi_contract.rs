@@ -1,12 +1,12 @@
 use myreader_rust_components::{
     begin_coordinated_sync, cancel_download_task, cancel_sync_task, claim_download_task,
-    count_calibre_books, create_sync_coordinator, dispose_sync_coordinator, enqueue_download_task,
-    fail_coordinated_sync, get_reading_position, initialize_device_registry,
-    list_book_cover_thumbnail_cache, list_download_tasks, migrate_library_database,
-    read_sync_task_progress, register_device_library, release_download_task, release_sync_task,
+    core_contract_version, create_sync_coordinator, dispose_sync_coordinator,
+    enqueue_download_task, fail_coordinated_sync, get_reading_position, invoke_core_async,
+    invoke_core_sync, list_book_cover_thumbnail_cache, list_download_tasks,
+    migrate_library_database, read_sync_task_progress, release_download_task, release_sync_task,
     report_download_task_progress, request_coordinated_sync, set_reading_position,
     sync_contract_version, sync_library_sidecar, upsert_book_cover_thumbnail_cache,
-    NativeBookCoverThumbnailCachePatch, NativeDataSource, NativeLibrary, NativeRemoteCredential,
+    NativeBookCoverThumbnailCachePatch,
 };
 use rusqlite::Connection;
 
@@ -40,24 +40,35 @@ fn should_expose_current_sync_contract_version_when_bridge_loads() {
 }
 
 #[test]
-fn should_create_library_schema_when_native_bridge_migrates_database() {
-    let (_database_directory, database_path) = create_database();
-    let connection = Connection::open(database_path).unwrap();
+fn should_route_catalog_validation_when_transport_receives_typed_request() {
+    let library = create_calibre_library();
+    let request = serde_json::json!({
+        "domain": "catalog",
+        "request": {
+            "operation": "validateLibrary",
+            "input": {
+                "libraryRootPath": library.path(),
+            },
+        },
+    });
 
-    let table_count: i64 = connection
-        .query_row(
-            "SELECT COUNT(*) FROM sqlite_master
-             WHERE type = 'table' AND name = 'reading_progress'",
-            [],
-            |row| row.get(0),
-        )
-        .unwrap();
+    let response = invoke_core_sync(request.to_string()).unwrap();
 
-    assert_eq!(table_count, 1);
+    assert_eq!(core_contract_version(), 1);
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&response).unwrap(),
+        serde_json::json!({
+            "domain": "catalog",
+            "response": {
+                "operation": "validateLibrary",
+                "output": true,
+            },
+        })
+    );
 }
 
 #[test]
-fn should_return_catalog_count_when_native_bridge_reads_calibre_library() {
+fn should_route_catalog_count_when_async_transport_receives_typed_request() {
     let directory = tempfile::tempdir().unwrap();
     let connection = Connection::open(directory.path().join("metadata.db")).unwrap();
     connection
@@ -81,10 +92,80 @@ fn should_return_catalog_count_when_native_bridge_reads_calibre_library() {
              INSERT INTO books (id) VALUES (1), (2);",
         )
         .unwrap();
+    let request = serde_json::json!({
+        "domain": "catalog",
+        "request": {
+            "operation": "countBooks",
+            "input": {
+                "libraryRootPath": directory.path(),
+            },
+        },
+    });
 
-    let count = count_calibre_books(directory.path().to_string_lossy().into_owned()).unwrap();
+    let response = invoke_core_async(request.to_string()).unwrap();
 
-    assert_eq!(count, 2);
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&response).unwrap(),
+        serde_json::json!({
+            "domain": "catalog",
+            "response": {
+                "operation": "countBooks",
+                "output": 2,
+            },
+        })
+    );
+}
+
+#[test]
+fn should_route_registry_initialization_when_transport_receives_typed_request() {
+    let directory = tempfile::tempdir().unwrap();
+    let registry_path = directory.path().join("device-registry.json");
+    let request = serde_json::json!({
+        "domain": "registry",
+        "request": {
+            "operation": "initialize",
+            "input": {
+                "registryPath": registry_path,
+                "legacyRegistry": null,
+            },
+        },
+    });
+
+    let response = invoke_core_async(request.to_string()).unwrap();
+
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&response).unwrap(),
+        serde_json::json!({
+            "domain": "registry",
+            "response": {
+                "operation": "initialize",
+                "output": {
+                    "schemaVersion": 1,
+                    "dataSources": [],
+                    "libraries": [],
+                    "activeLibraryId": null,
+                },
+            },
+        })
+    );
+    assert!(registry_path.exists());
+}
+
+#[test]
+fn should_create_library_schema_when_native_bridge_migrates_database() {
+    let (_database_directory, database_path) = create_database();
+    let connection = Connection::open(database_path).unwrap();
+
+    let table_count: i64 = connection
+        .query_row(
+            "SELECT COUNT(*) FROM sqlite_master
+             WHERE type = 'table' AND name = 'reading_progress'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+
+    assert_eq!(table_count, 1);
 }
 
 #[test]
@@ -141,63 +222,85 @@ fn should_return_typed_position_when_native_bridge_reads_locator_document() {
 }
 
 #[test]
-fn should_persist_registry_when_native_bridge_registers_library() {
+fn should_persist_registry_when_transport_registers_library() {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("registry.json");
-    let path = path.to_string_lossy().into_owned();
-    initialize_device_registry(path.clone(), None).unwrap();
-
-    let registry = register_device_library(
-        path.clone(),
-        NativeLibrary {
-            id: "library".into(),
-            name: "Library".into(),
-            path: "/library".into(),
-            book_count: 0,
-            metadata_uri: None,
-            added_at: None,
-            data_source_id: None,
-            source_type: Some("local".into()),
-            source_path: None,
-            metadata_etag: None,
-            security_scoped_bookmark: None,
+    let register_request = serde_json::json!({
+        "domain": "registry",
+        "request": {
+            "operation": "registerLibrary",
+            "input": {
+                "registryPath": path,
+                "library": {
+                    "id": "library",
+                    "name": "Library",
+                    "path": "/library",
+                    "bookCount": 0,
+                    "metadataUri": null,
+                    "addedAt": null,
+                    "dataSourceId": null,
+                    "sourceType": "local",
+                    "sourcePath": null,
+                    "metadataEtag": null,
+                    "securityScopedBookmark": null,
+                },
+            },
         },
-    )
-    .unwrap();
-    let persisted = initialize_device_registry(path, None).unwrap();
+    });
 
-    assert_eq!(registry.active_library_id, persisted.active_library_id);
-    assert_eq!(registry.libraries[0].id, persisted.libraries[0].id);
+    let response = invoke_core_async(register_request.to_string()).unwrap();
+    let registry = serde_json::from_str::<serde_json::Value>(&response).unwrap();
+    let persisted_request = serde_json::json!({
+        "domain": "registry",
+        "request": {
+            "operation": "initialize",
+            "input": {
+                "registryPath": path,
+                "legacyRegistry": null,
+            },
+        },
+    });
+    let persisted = invoke_core_async(persisted_request.to_string()).unwrap();
+    let persisted = serde_json::from_str::<serde_json::Value>(&persisted).unwrap();
+
+    assert_eq!(
+        registry["response"]["output"]["activeLibraryId"],
+        persisted["response"]["output"]["activeLibraryId"]
+    );
+    assert_eq!(
+        registry["response"]["output"]["libraries"][0]["id"],
+        persisted["response"]["output"]["libraries"][0]["id"]
+    );
 }
 
 #[test]
 fn should_return_core_error_when_remote_credential_type_does_not_match_source() {
-    let error = myreader_rust_components::test_remote_data_source(
-        NativeDataSource {
-            source_type: "webdav".into(),
-            id: "source".into(),
-            name: "Source".into(),
-            enabled: true,
-            root_path: None,
-            readonly: None,
-            created_at: None,
-            endpoint: Some("https://example.com".into()),
-            username: Some("reader".into()),
-            has_password: true,
-            credential_reference: None,
-            client_id: None,
-            tenant_id: None,
-            display_name: None,
-            email: None,
-            has_refresh_token: false,
+    let request = serde_json::json!({
+        "domain": "registry",
+        "request": {
+            "operation": "testRemoteDataSource",
+            "input": {
+                "source": {
+                    "type": "webdav",
+                    "id": "source",
+                    "name": "Source",
+                    "enabled": true,
+                    "rootPath": null,
+                    "readonly": null,
+                    "createdAt": null,
+                    "endpoint": "https://example.com",
+                    "username": "reader",
+                    "hasPassword": true,
+                    "credentialReference": null,
+                },
+                "credential": {
+                    "type": "onedrive",
+                    "accessToken": "token",
+                },
+            },
         },
-        NativeRemoteCredential {
-            credential_type: "onedrive".into(),
-            password: None,
-            access_token: Some("token".into()),
-        },
-    )
-    .unwrap_err();
+    });
+    let error = invoke_core_async(request.to_string()).unwrap_err();
 
     assert!(
         error

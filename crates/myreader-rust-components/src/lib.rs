@@ -5,14 +5,28 @@ use std::{future::Future, path::Path, sync::OnceLock};
 mod catalog;
 mod content;
 mod reading;
-mod registry;
 mod sync;
+mod transport;
 
 pub use catalog::*;
 pub use content::*;
 pub use reading::*;
-pub use registry::*;
 pub use sync::*;
+
+#[uniffi::export]
+pub fn core_contract_version() -> u32 {
+    transport::CORE_CONTRACT_VERSION
+}
+
+#[uniffi::export]
+pub fn invoke_core_async(request_json: String) -> Result<String, RustComponentsError> {
+    transport::invoke(&request_json)
+}
+
+#[uniffi::export]
+pub fn invoke_core_sync(request_json: String) -> Result<String, RustComponentsError> {
+    transport::invoke(&request_json)
+}
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum RustComponentsError {

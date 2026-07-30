@@ -1,9 +1,6 @@
 import type { DataSource } from "@my-reader/tools/types/data-source"
 import type { Library } from "@my-reader/tools/types/library"
 import { Directory, File, Paths } from "expo-file-system"
-import MyReaderRustComponents, {
-  type NativeRemoteCredential,
-} from "@/modules/myreader-rust-components"
 import { refreshAccessToken } from "../auth/onedrive"
 import { libraryContainerRootUri } from "../fs/library-paths"
 import { toNativeFilesystemPath } from "../fs/path"
@@ -13,10 +10,12 @@ import {
   readWebDavPassword,
 } from "../storage/credentials"
 import {
+  type CoreLibraryResult,
   type DeviceRegistry,
-  libraryResultFromNative,
-  toNativeDataSource,
+  libraryResultFromCore,
+  toCoreDataSource,
 } from "./device-registry"
+import { invokeCoreAsync } from "./transport"
 
 export type RemoteDirectoryEntry = {
   name: string
@@ -36,7 +35,13 @@ const registryPath = toNativeFilesystemPath(
 async function credentialFor(
   source: DataSource,
   secrets?: DataSourceSecrets,
-): Promise<NativeRemoteCredential> {
+): Promise<
+  | { type: "webdav"; password: string }
+  | {
+      type: "onedrive"
+      accessToken: string
+    }
+> {
   if (source.type === "webdav") {
     const password =
       secrets?.type === "webdav"
@@ -46,16 +51,14 @@ async function credentialFor(
       throw new Error("WEBDAV_PASSWORD_REQUIRED")
     }
     return {
-      credentialType: "webdav",
+      type: "webdav",
       password,
-      accessToken: null,
     }
   }
 
   if (secrets?.type === "onedrive" && secrets.accessToken) {
     return {
-      credentialType: "onedrive",
-      password: null,
+      type: "onedrive",
       accessToken: secrets.accessToken,
     }
   }
@@ -65,8 +68,7 @@ async function credentialFor(
   }
   const { accessToken } = await refreshAccessToken(source.id)
   return {
-    credentialType: "onedrive",
-    password: null,
+    type: "onedrive",
     accessToken,
   }
 }
@@ -76,10 +78,10 @@ export async function testRemoteDataSource(
   secrets?: DataSourceSecrets,
 ): Promise<void> {
   const credential = await credentialFor(source, secrets)
-  await MyReaderRustComponents.testRemoteDataSource(
-    toNativeDataSource(source),
+  await invokeCoreAsync<void>("registry", "testRemoteDataSource", {
+    source: toCoreDataSource(source),
     credential,
-  )
+  })
 }
 
 export async function listRemoteDirectories(
@@ -87,11 +89,15 @@ export async function listRemoteDirectories(
   path: string,
 ): Promise<RemoteDirectoryEntry[]> {
   const credential = await credentialFor(source)
-  return MyReaderRustComponents.listRemoteDirectories(
-    registryPath,
-    source.id,
-    path,
-    credential,
+  return invokeCoreAsync<RemoteDirectoryEntry[]>(
+    "registry",
+    "listRemoteDirectories",
+    {
+      registryPath,
+      dataSourceId: source.id,
+      path,
+      credential,
+    },
   )
 }
 
@@ -104,10 +110,10 @@ export async function addRemoteLibrary(
     librariesRoot.create({ idempotent: true, intermediates: true })
   }
   const credential = await credentialFor(source)
-  return libraryResultFromNative(
-    await MyReaderRustComponents.addRemoteLibrary(
+  return libraryResultFromCore(
+    await invokeCoreAsync<CoreLibraryResult>("registry", "addRemoteLibrary", {
       registryPath,
-      {
+      request: {
         dataSourceId: source.id,
         sourcePath,
         librariesRootPath: toNativeFilesystemPath(librariesRoot.uri),
@@ -116,7 +122,7 @@ export async function addRemoteLibrary(
         addedAt: Date.now(),
       },
       credential,
-    ),
+    }),
   )
 }
 
@@ -125,12 +131,18 @@ export async function refreshRemoteLibrary(
   source: DataSource,
 ): Promise<RemoteLibraryResult> {
   const credential = await credentialFor(source)
-  return libraryResultFromNative(
-    await MyReaderRustComponents.refreshRemoteLibrary(
-      registryPath,
-      library.id,
-      toNativeFilesystemPath(libraryContainerRootUri(library.id)),
-      credential,
+  return libraryResultFromCore(
+    await invokeCoreAsync<CoreLibraryResult>(
+      "registry",
+      "refreshRemoteLibrary",
+      {
+        registryPath,
+        libraryId: library.id,
+        localRootPath: toNativeFilesystemPath(
+          libraryContainerRootUri(library.id),
+        ),
+        credential,
+      },
     ),
   )
 }

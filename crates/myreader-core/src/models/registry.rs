@@ -29,17 +29,23 @@ fn default_schema_version() -> u32 {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "camelCase")]
+#[serde(
+    tag = "type",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub enum DataSource {
     Local {
         id: String,
         name: String,
         #[serde(default = "enabled_by_default")]
         enabled: bool,
+        #[serde(alias = "root_path")]
         root_path: String,
         #[serde(default)]
         readonly: Option<bool>,
         #[serde(default)]
+        #[serde(alias = "created_at")]
         created_at: Option<f64>,
     },
     Webdav {
@@ -50,14 +56,18 @@ pub enum DataSource {
         endpoint: String,
         username: String,
         #[serde(default)]
+        #[serde(alias = "root_path")]
         root_path: Option<String>,
         #[serde(default)]
+        #[serde(alias = "has_password")]
         has_password: bool,
         #[serde(default)]
+        #[serde(alias = "credential_reference")]
         credential_reference: Option<String>,
         #[serde(default)]
         readonly: Option<bool>,
         #[serde(default)]
+        #[serde(alias = "created_at")]
         created_at: Option<f64>,
     },
     Onedrive {
@@ -65,22 +75,29 @@ pub enum DataSource {
         name: String,
         #[serde(default = "enabled_by_default")]
         enabled: bool,
+        #[serde(alias = "client_id")]
         client_id: String,
         #[serde(default)]
+        #[serde(alias = "tenant_id")]
         tenant_id: Option<String>,
         #[serde(default)]
+        #[serde(alias = "display_name")]
         display_name: Option<String>,
         #[serde(default)]
         email: Option<String>,
         #[serde(default)]
+        #[serde(alias = "root_path")]
         root_path: Option<String>,
         #[serde(default)]
+        #[serde(alias = "has_refresh_token")]
         has_refresh_token: bool,
         #[serde(default)]
+        #[serde(alias = "credential_reference")]
         credential_reference: Option<String>,
         #[serde(default)]
         readonly: Option<bool>,
         #[serde(default)]
+        #[serde(alias = "created_at")]
         created_at: Option<f64>,
     },
 }
@@ -111,6 +128,56 @@ impl DataSource {
 
 fn enabled_by_default() -> bool {
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::DataSource;
+
+    #[test]
+    fn should_read_legacy_snake_case_when_data_source_is_deserialized() {
+        let source = serde_json::from_value::<DataSource>(serde_json::json!({
+            "type": "webdav",
+            "id": "source",
+            "name": "WebDAV",
+            "enabled": true,
+            "endpoint": "https://example.com",
+            "username": "reader",
+            "root_path": "Books",
+            "has_password": true,
+            "credential_reference": null,
+            "readonly": false,
+            "created_at": 1.0
+        }))
+        .unwrap();
+
+        assert_eq!(source.id(), "source");
+    }
+
+    #[test]
+    fn should_write_camel_case_when_data_source_is_serialized() {
+        let source = DataSource::Onedrive {
+            id: "source".into(),
+            name: "OneDrive".into(),
+            enabled: true,
+            client_id: "client".into(),
+            tenant_id: Some("consumers".into()),
+            display_name: None,
+            email: None,
+            root_path: Some("Books".into()),
+            has_refresh_token: true,
+            credential_reference: None,
+            readonly: None,
+            created_at: Some(1.0),
+        };
+
+        let value = serde_json::to_value(source).unwrap();
+
+        assert_eq!(value["clientId"], "client");
+        assert_eq!(value["rootPath"], "Books");
+        assert_eq!(value["hasRefreshToken"], true);
+        assert!(value.get("client_id").is_none());
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

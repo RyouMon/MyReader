@@ -20,20 +20,23 @@ jest.mock("../storage/credentials", () => ({
   readOneDriveRefreshToken: jest.fn(),
   readWebDavPassword: jest.fn(),
 }))
+jest.mock("./transport", () => ({
+  invokeCoreAsync: jest.fn(),
+}))
 
 import type { DataSourceOnedrive } from "@my-reader/tools/types/data-source"
-import MyReaderRustComponents from "@/modules/myreader-rust-components"
 import { testRemoteDataSource } from "./remote"
+import { invokeCoreAsync } from "./transport"
 
 describe("core remote adapter", () => {
+  const mockInvokeCoreAsync = jest.mocked(invokeCoreAsync)
+
   beforeEach(() => {
     jest.clearAllMocks()
   })
 
   it("should pass only stable source fields and short-lived credential when OneDrive is tested", async () => {
-    jest
-      .spyOn(MyReaderRustComponents, "testRemoteDataSource")
-      .mockResolvedValue()
+    mockInvokeCoreAsync.mockResolvedValue(undefined)
     const source: DataSourceOnedrive = {
       id: "source",
       type: "onedrive",
@@ -51,29 +54,29 @@ describe("core remote adapter", () => {
       accessToken: "short-lived-access-token",
     })
 
-    expect(MyReaderRustComponents.testRemoteDataSource).toHaveBeenCalledWith(
+    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
+      "registry",
+      "testRemoteDataSource",
       {
-        sourceType: "onedrive",
-        id: "source",
-        name: "OneDrive",
-        enabled: true,
-        rootPath: null,
-        readonly: null,
-        createdAt: null,
-        endpoint: null,
-        username: null,
-        hasPassword: false,
-        credentialReference: null,
-        clientId: "client",
-        tenantId: "consumers",
-        displayName: null,
-        email: null,
-        hasRefreshToken: true,
-      },
-      {
-        credentialType: "onedrive",
-        password: null,
-        accessToken: "short-lived-access-token",
+        source: {
+          type: "onedrive",
+          id: "source",
+          name: "OneDrive",
+          enabled: true,
+          clientId: "client",
+          tenantId: "consumers",
+          displayName: null,
+          email: null,
+          rootPath: null,
+          hasRefreshToken: true,
+          credentialReference: null,
+          readonly: null,
+          createdAt: null,
+        },
+        credential: {
+          type: "onedrive",
+          accessToken: "short-lived-access-token",
+        },
       },
     )
   })

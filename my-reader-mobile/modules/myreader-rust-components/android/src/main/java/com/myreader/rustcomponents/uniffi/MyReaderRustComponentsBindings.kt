@@ -833,48 +833,6 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is
 // rather `InterfaceTooLargeException`, caused by too many methods
@@ -890,17 +848,13 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 // when the library is loaded.
 internal interface IntegrityCheckingUniffiLib : Library {
     // Integrity check functions only
-    fun uniffi_myreader_rust_components_checksum_func_add_local_library(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_add_reader_annotation(
+    fun uniffi_myreader_rust_components_checksum_func_add_reader_annotation(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_add_reader_bookmark(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_add_reading_completion(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_add_reading_session_interval(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_add_remote_library(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_begin_coordinated_sync(
 ): Short
@@ -920,7 +874,7 @@ fun uniffi_myreader_rust_components_checksum_func_complete_coordinated_sync(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_complete_download_task(
 ): Short
-fun uniffi_myreader_rust_components_checksum_func_count_calibre_books(
+fun uniffi_myreader_rust_components_checksum_func_core_contract_version(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_create_sync_coordinator(
 ): Short
@@ -944,33 +898,19 @@ fun uniffi_myreader_rust_components_checksum_func_find_active_download_task(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_flush_coordinated_sync(
 ): Short
-fun uniffi_myreader_rust_components_checksum_func_get_calibre_book_detail(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_get_calibre_library_uuid(
-): Short
 fun uniffi_myreader_rust_components_checksum_func_get_library_file_state(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_get_reading_position(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_get_reading_statistics(
 ): Short
-fun uniffi_myreader_rust_components_checksum_func_initialize_device_registry(
+fun uniffi_myreader_rust_components_checksum_func_invoke_core_async(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_invoke_core_sync(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_list_book_cover_thumbnail_cache(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_list_book_reading_formats(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_list_calibre_book_formats(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_list_calibre_book_summaries(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_list_calibre_books(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_list_calibre_books_page(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_list_calibre_books_page_by_last_read(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_list_calibre_series_books(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_list_download_tasks(
 ): Short
@@ -986,37 +926,23 @@ fun uniffi_myreader_rust_components_checksum_func_list_reading_position_candidat
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_list_reading_positions(
 ): Short
-fun uniffi_myreader_rust_components_checksum_func_list_remote_directories(
-): Short
 fun uniffi_myreader_rust_components_checksum_func_mark_download_task_started(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_mark_library_file_remote_only(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_migrate_library_database(
 ): Short
-fun uniffi_myreader_rust_components_checksum_func_prepare_device_data_source(
-): Short
 fun uniffi_myreader_rust_components_checksum_func_read_sync_task_progress(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_recover_coordinated_sync(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_refresh_remote_library(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_register_device_library(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_release_download_task(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_release_sync_task(
 ): Short
-fun uniffi_myreader_rust_components_checksum_func_remove_device_data_source(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_remove_device_library(
-): Short
 fun uniffi_myreader_rust_components_checksum_func_remove_reader_annotation(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_remove_reader_bookmark(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_replace_device_library(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_report_download_task_progress(
 ): Short
@@ -1034,25 +960,15 @@ fun uniffi_myreader_rust_components_checksum_func_set_favorite_book(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_set_reading_position(
 ): Short
-fun uniffi_myreader_rust_components_checksum_func_switch_device_library(
-): Short
 fun uniffi_myreader_rust_components_checksum_func_sync_contract_version(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_sync_library_sidecar(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_test_remote_data_source(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_update_reader_annotation(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_upsert_book_cover_thumbnail_cache(
 ): Short
-fun uniffi_myreader_rust_components_checksum_func_upsert_device_data_source(
-): Short
 fun uniffi_myreader_rust_components_checksum_func_upsert_library_file_state(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_validate_calibre_library(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_validate_device_data_source(
 ): Short
 fun ffi_myreader_rust_components_uniffi_contract_version(
 ): Int
@@ -1099,9 +1015,7 @@ internal interface UniffiLib : Library {
     }
 
     // FFI functions
-    fun uniffi_myreader_rust_components_fn_func_add_local_library(`registryPath`: RustBuffer.ByValue,`request`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_add_reader_annotation(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`locatorJson`: RustBuffer.ByValue,`color`: RustBuffer.ByValue,`note`: RustBuffer.ByValue,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
+    fun uniffi_myreader_rust_components_fn_func_add_reader_annotation(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`locatorJson`: RustBuffer.ByValue,`color`: RustBuffer.ByValue,`note`: RustBuffer.ByValue,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_add_reader_bookmark(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`locatorKey`: RustBuffer.ByValue,`locatorJson`: RustBuffer.ByValue,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
@@ -1109,8 +1023,6 @@ fun uniffi_myreader_rust_components_fn_func_add_reading_completion(`sidecarRootP
 ): Byte
 fun uniffi_myreader_rust_components_fn_func_add_reading_session_interval(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`id`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`localDay`: RustBuffer.ByValue,`startedAtMs`: Long,`durationSeconds`: Long,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_myreader_rust_components_fn_func_add_remote_library(`registryPath`: RustBuffer.ByValue,`request`: RustBuffer.ByValue,`credential`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_begin_coordinated_sync(`coordinatorId`: RustBuffer.ByValue,`libraryId`: RustBuffer.ByValue,`generation`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_cancel_download_task(`taskId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1129,8 +1041,8 @@ fun uniffi_myreader_rust_components_fn_func_complete_coordinated_sync(`coordinat
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_complete_download_task(`taskId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_count_calibre_books(`libraryRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): Long
+fun uniffi_myreader_rust_components_fn_func_core_contract_version(uniffi_out_err: UniffiRustCallStatus,
+): Int
 fun uniffi_myreader_rust_components_fn_func_create_sync_coordinator(`coordinatorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Byte
 fun uniffi_myreader_rust_components_fn_func_delete_book_cover_thumbnail_cache(`sidecarRootPath`: RustBuffer.ByValue,`bookId`: Long,`thumbnailVersion`: RustBuffer.ByValue,`widthPx`: Long,`heightPx`: Long,uniffi_out_err: UniffiRustCallStatus,
@@ -1153,33 +1065,19 @@ fun uniffi_myreader_rust_components_fn_func_find_active_download_task(`libraryId
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_flush_coordinated_sync(`coordinatorId`: RustBuffer.ByValue,`libraryId`: RustBuffer.ByValue,`reason`: RustBuffer.ByValue,`nowMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_get_calibre_book_detail(`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_get_calibre_library_uuid(`libraryRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_get_library_file_state(`sidecarRootPath`: RustBuffer.ByValue,`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_get_reading_position(`sidecarRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_get_reading_statistics(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`startDay`: RustBuffer.ByValue,`endDay`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_initialize_device_registry(`registryPath`: RustBuffer.ByValue,`legacyRegistry`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+fun uniffi_myreader_rust_components_fn_func_invoke_core_async(`requestJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_invoke_core_sync(`requestJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_list_book_cover_thumbnail_cache(`sidecarRootPath`: RustBuffer.ByValue,`thumbnailVersion`: RustBuffer.ByValue,`widthPx`: Long,`heightPx`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_list_book_reading_formats(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_list_calibre_book_formats(`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_list_calibre_book_summaries(`libraryRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_list_calibre_books(`libraryRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_list_calibre_books_page(`libraryRootPath`: RustBuffer.ByValue,`offset`: Long,`limit`: Long,`sortBy`: RustBuffer.ByValue,`search`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_list_calibre_books_page_by_last_read(`libraryRootPath`: RustBuffer.ByValue,`sidecarRootPath`: RustBuffer.ByValue,`offset`: Long,`limit`: Long,`search`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_list_calibre_series_books(`libraryRootPath`: RustBuffer.ByValue,`seriesName`: RustBuffer.ByValue,`excludeBookId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_list_download_tasks(uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
@@ -1195,38 +1093,24 @@ fun uniffi_myreader_rust_components_fn_func_list_reading_position_candidates(`si
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_list_reading_positions(`sidecarRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_list_remote_directories(`registryPath`: RustBuffer.ByValue,`dataSourceId`: RustBuffer.ByValue,`path`: RustBuffer.ByValue,`credential`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_mark_download_task_started(`taskId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_mark_library_file_remote_only(`sidecarRootPath`: RustBuffer.ByValue,`relativePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
 fun uniffi_myreader_rust_components_fn_func_migrate_library_database(`databasePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_myreader_rust_components_fn_func_prepare_device_data_source(`source`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_read_sync_task_progress(`taskId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_recover_coordinated_sync(`coordinatorId`: RustBuffer.ByValue,`sidecarRootPath`: RustBuffer.ByValue,`libraryId`: RustBuffer.ByValue,`nowMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_refresh_remote_library(`registryPath`: RustBuffer.ByValue,`libraryId`: RustBuffer.ByValue,`localRootPath`: RustBuffer.ByValue,`credential`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_register_device_library(`registryPath`: RustBuffer.ByValue,`library`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_release_download_task(`taskId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Byte
 fun uniffi_myreader_rust_components_fn_func_release_sync_task(`taskId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Byte
-fun uniffi_myreader_rust_components_fn_func_remove_device_data_source(`registryPath`: RustBuffer.ByValue,`dataSourceId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_remove_device_library(`registryPath`: RustBuffer.ByValue,`libraryId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_remove_reader_annotation(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`id`: RustBuffer.ByValue,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
 fun uniffi_myreader_rust_components_fn_func_remove_reader_bookmark(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`locatorKey`: RustBuffer.ByValue,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_myreader_rust_components_fn_func_replace_device_library(`registryPath`: RustBuffer.ByValue,`library`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_report_download_task_progress(`taskId`: RustBuffer.ByValue,`received`: Long,`total`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_request_coordinated_pull(`coordinatorId`: RustBuffer.ByValue,`sidecarRootPath`: RustBuffer.ByValue,`libraryId`: RustBuffer.ByValue,`reason`: RustBuffer.ByValue,`nowMs`: RustBuffer.ByValue,`freshnessMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1243,25 +1127,15 @@ fun uniffi_myreader_rust_components_fn_func_set_favorite_book(`sidecarRootPath`:
 ): Unit
 fun uniffi_myreader_rust_components_fn_func_set_reading_position(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`locatorJson`: RustBuffer.ByValue,`displayProgression`: RustBuffer.ByValue,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_myreader_rust_components_fn_func_switch_device_library(`registryPath`: RustBuffer.ByValue,`libraryId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_sync_contract_version(uniffi_out_err: UniffiRustCallStatus,
 ): Int
 fun uniffi_myreader_rust_components_fn_func_sync_library_sidecar(`taskId`: RustBuffer.ByValue,`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`nowMs`: RustBuffer.ByValue,`mode`: RustBuffer.ByValue,`storageJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_test_remote_data_source(`source`: RustBuffer.ByValue,`credential`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): Unit
 fun uniffi_myreader_rust_components_fn_func_update_reader_annotation(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`id`: RustBuffer.ByValue,`color`: RustBuffer.ByValue,`note`: RustBuffer.ByValue,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_upsert_book_cover_thumbnail_cache(`sidecarRootPath`: RustBuffer.ByValue,`patch`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_myreader_rust_components_fn_func_upsert_device_data_source(`registryPath`: RustBuffer.ByValue,`source`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_upsert_library_file_state(`sidecarRootPath`: RustBuffer.ByValue,`path`: RustBuffer.ByValue,`update`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): Unit
-fun uniffi_myreader_rust_components_fn_func_validate_calibre_library(`libraryRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): Byte
-fun uniffi_myreader_rust_components_fn_func_validate_device_data_source(`registryPath`: RustBuffer.ByValue,`source`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
 fun ffi_myreader_rust_components_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
@@ -1389,9 +1263,6 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
-    if (lib.uniffi_myreader_rust_components_checksum_func_add_local_library() != 12888.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_myreader_rust_components_checksum_func_add_reader_annotation() != 58369.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1402,9 +1273,6 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_add_reading_session_interval() != 55280.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_add_remote_library() != 56305.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_begin_coordinated_sync() != 19096.toShort()) {
@@ -1434,7 +1302,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_complete_download_task() != 25084.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_myreader_rust_components_checksum_func_count_calibre_books() != 56896.toShort()) {
+    if (lib.uniffi_myreader_rust_components_checksum_func_core_contract_version() != 22598.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_create_sync_coordinator() != 2040.toShort()) {
@@ -1470,12 +1338,6 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_flush_coordinated_sync() != 58831.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_myreader_rust_components_checksum_func_get_calibre_book_detail() != 16448.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_get_calibre_library_uuid() != 363.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_myreader_rust_components_checksum_func_get_library_file_state() != 55721.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1485,31 +1347,16 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_get_reading_statistics() != 26545.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_myreader_rust_components_checksum_func_initialize_device_registry() != 24516.toShort()) {
+    if (lib.uniffi_myreader_rust_components_checksum_func_invoke_core_async() != 45771.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_myreader_rust_components_checksum_func_invoke_core_sync() != 2439.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_list_book_cover_thumbnail_cache() != 39738.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_list_book_reading_formats() != 20962.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_list_calibre_book_formats() != 57412.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_list_calibre_book_summaries() != 62934.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_list_calibre_books() != 54373.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_list_calibre_books_page() != 20959.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_list_calibre_books_page_by_last_read() != 62199.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_list_calibre_series_books() != 45512.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_list_download_tasks() != 23651.toShort()) {
@@ -1533,9 +1380,6 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_list_reading_positions() != 30981.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_myreader_rust_components_checksum_func_list_remote_directories() != 59291.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_myreader_rust_components_checksum_func_mark_download_task_started() != 61109.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1545,19 +1389,10 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_migrate_library_database() != 32989.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_myreader_rust_components_checksum_func_prepare_device_data_source() != 29182.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_myreader_rust_components_checksum_func_read_sync_task_progress() != 25370.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_recover_coordinated_sync() != 65499.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_refresh_remote_library() != 56457.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_register_device_library() != 18136.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_release_download_task() != 38401.toShort()) {
@@ -1566,19 +1401,10 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_release_sync_task() != 18555.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_myreader_rust_components_checksum_func_remove_device_data_source() != 47106.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_remove_device_library() != 15606.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_myreader_rust_components_checksum_func_remove_reader_annotation() != 31848.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_remove_reader_bookmark() != 17298.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_replace_device_library() != 7667.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_report_download_task_progress() != 57547.toShort()) {
@@ -1605,16 +1431,10 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_set_reading_position() != 4866.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_myreader_rust_components_checksum_func_switch_device_library() != 32994.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_myreader_rust_components_checksum_func_sync_contract_version() != 20300.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_sync_library_sidecar() != 46225.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_test_remote_data_source() != 57171.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_update_reader_annotation() != 46513.toShort()) {
@@ -1623,16 +1443,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_upsert_book_cover_thumbnail_cache() != 3143.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_myreader_rust_components_checksum_func_upsert_device_data_source() != 6924.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_myreader_rust_components_checksum_func_upsert_library_file_state() != 37376.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_validate_calibre_library() != 40706.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_validate_device_data_source() != 63418.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -1734,29 +1545,6 @@ public object FfiConverterUInt: FfiConverter<UInt, Int> {
 
     override fun write(value: UInt, buf: ByteBuffer) {
         buf.putInt(value.toInt())
-    }
-}
-
-/**
- * @suppress
- */
-public object FfiConverterInt: FfiConverter<Int, Int> {
-    override fun lift(value: Int): Int {
-        return value
-    }
-
-    override fun read(buf: ByteBuffer): Int {
-        return buf.getInt()
-    }
-
-    override fun lower(value: Int): Int {
-        return value
-    }
-
-    override fun allocationSize(value: Int) = 4UL
-
-    override fun write(value: Int, buf: ByteBuffer) {
-        buf.putInt(value)
     }
 }
 
@@ -2027,386 +1815,6 @@ public object FfiConverterTypeNativeBookCoverThumbnailCachePatch: FfiConverterRu
 
 
 
-data class NativeBookDetail (
-    var `book`: NativeBookEntry,
-    var `formatSizes`: List<NativeFormatSize>,
-    var `identifiers`: List<NativeBookIdentifier>
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeBookDetail: FfiConverterRustBuffer<NativeBookDetail> {
-    override fun read(buf: ByteBuffer): NativeBookDetail {
-        return NativeBookDetail(
-            FfiConverterTypeNativeBookEntry.read(buf),
-            FfiConverterSequenceTypeNativeFormatSize.read(buf),
-            FfiConverterSequenceTypeNativeBookIdentifier.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeBookDetail) = (
-            FfiConverterTypeNativeBookEntry.allocationSize(value.`book`) +
-            FfiConverterSequenceTypeNativeFormatSize.allocationSize(value.`formatSizes`) +
-            FfiConverterSequenceTypeNativeBookIdentifier.allocationSize(value.`identifiers`)
-    )
-
-    override fun write(value: NativeBookDetail, buf: ByteBuffer) {
-            FfiConverterTypeNativeBookEntry.write(value.`book`, buf)
-            FfiConverterSequenceTypeNativeFormatSize.write(value.`formatSizes`, buf)
-            FfiConverterSequenceTypeNativeBookIdentifier.write(value.`identifiers`, buf)
-    }
-}
-
-
-
-data class NativeBookEntry (
-    var `id`: kotlin.Long,
-    var `title`: kotlin.String,
-    var `titleSort`: kotlin.String,
-    var `authorSort`: kotlin.String,
-    var `authors`: List<kotlin.String>,
-    var `tags`: List<kotlin.String>,
-    var `series`: kotlin.String?,
-    var `seriesIndex`: kotlin.Double?,
-    var `formats`: List<kotlin.String>,
-    var `hasCover`: kotlin.Boolean,
-    var `path`: kotlin.String,
-    var `timestamp`: kotlin.String?,
-    var `pubdate`: kotlin.String?,
-    var `lastModified`: kotlin.String?,
-    var `comment`: kotlin.String?,
-    var `publisher`: kotlin.String?,
-    var `languages`: List<kotlin.String>,
-    var `rating`: kotlin.Int?,
-    var `uuid`: kotlin.String?
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeBookEntry: FfiConverterRustBuffer<NativeBookEntry> {
-    override fun read(buf: ByteBuffer): NativeBookEntry {
-        return NativeBookEntry(
-            FfiConverterLong.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterSequenceString.read(buf),
-            FfiConverterSequenceString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalDouble.read(buf),
-            FfiConverterSequenceString.read(buf),
-            FfiConverterBoolean.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterSequenceString.read(buf),
-            FfiConverterOptionalInt.read(buf),
-            FfiConverterOptionalString.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeBookEntry) = (
-            FfiConverterLong.allocationSize(value.`id`) +
-            FfiConverterString.allocationSize(value.`title`) +
-            FfiConverterString.allocationSize(value.`titleSort`) +
-            FfiConverterString.allocationSize(value.`authorSort`) +
-            FfiConverterSequenceString.allocationSize(value.`authors`) +
-            FfiConverterSequenceString.allocationSize(value.`tags`) +
-            FfiConverterOptionalString.allocationSize(value.`series`) +
-            FfiConverterOptionalDouble.allocationSize(value.`seriesIndex`) +
-            FfiConverterSequenceString.allocationSize(value.`formats`) +
-            FfiConverterBoolean.allocationSize(value.`hasCover`) +
-            FfiConverterString.allocationSize(value.`path`) +
-            FfiConverterOptionalString.allocationSize(value.`timestamp`) +
-            FfiConverterOptionalString.allocationSize(value.`pubdate`) +
-            FfiConverterOptionalString.allocationSize(value.`lastModified`) +
-            FfiConverterOptionalString.allocationSize(value.`comment`) +
-            FfiConverterOptionalString.allocationSize(value.`publisher`) +
-            FfiConverterSequenceString.allocationSize(value.`languages`) +
-            FfiConverterOptionalInt.allocationSize(value.`rating`) +
-            FfiConverterOptionalString.allocationSize(value.`uuid`)
-    )
-
-    override fun write(value: NativeBookEntry, buf: ByteBuffer) {
-            FfiConverterLong.write(value.`id`, buf)
-            FfiConverterString.write(value.`title`, buf)
-            FfiConverterString.write(value.`titleSort`, buf)
-            FfiConverterString.write(value.`authorSort`, buf)
-            FfiConverterSequenceString.write(value.`authors`, buf)
-            FfiConverterSequenceString.write(value.`tags`, buf)
-            FfiConverterOptionalString.write(value.`series`, buf)
-            FfiConverterOptionalDouble.write(value.`seriesIndex`, buf)
-            FfiConverterSequenceString.write(value.`formats`, buf)
-            FfiConverterBoolean.write(value.`hasCover`, buf)
-            FfiConverterString.write(value.`path`, buf)
-            FfiConverterOptionalString.write(value.`timestamp`, buf)
-            FfiConverterOptionalString.write(value.`pubdate`, buf)
-            FfiConverterOptionalString.write(value.`lastModified`, buf)
-            FfiConverterOptionalString.write(value.`comment`, buf)
-            FfiConverterOptionalString.write(value.`publisher`, buf)
-            FfiConverterSequenceString.write(value.`languages`, buf)
-            FfiConverterOptionalInt.write(value.`rating`, buf)
-            FfiConverterOptionalString.write(value.`uuid`, buf)
-    }
-}
-
-
-
-data class NativeBookFormat (
-    var `format`: kotlin.String,
-    var `name`: kotlin.String,
-    var `sizeBytes`: kotlin.Long,
-    var `relativePath`: kotlin.String
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeBookFormat: FfiConverterRustBuffer<NativeBookFormat> {
-    override fun read(buf: ByteBuffer): NativeBookFormat {
-        return NativeBookFormat(
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterLong.read(buf),
-            FfiConverterString.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeBookFormat) = (
-            FfiConverterString.allocationSize(value.`format`) +
-            FfiConverterString.allocationSize(value.`name`) +
-            FfiConverterLong.allocationSize(value.`sizeBytes`) +
-            FfiConverterString.allocationSize(value.`relativePath`)
-    )
-
-    override fun write(value: NativeBookFormat, buf: ByteBuffer) {
-            FfiConverterString.write(value.`format`, buf)
-            FfiConverterString.write(value.`name`, buf)
-            FfiConverterLong.write(value.`sizeBytes`, buf)
-            FfiConverterString.write(value.`relativePath`, buf)
-    }
-}
-
-
-
-data class NativeBookIdentifier (
-    var `idType`: kotlin.String,
-    var `value`: kotlin.String
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeBookIdentifier: FfiConverterRustBuffer<NativeBookIdentifier> {
-    override fun read(buf: ByteBuffer): NativeBookIdentifier {
-        return NativeBookIdentifier(
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeBookIdentifier) = (
-            FfiConverterString.allocationSize(value.`idType`) +
-            FfiConverterString.allocationSize(value.`value`)
-    )
-
-    override fun write(value: NativeBookIdentifier, buf: ByteBuffer) {
-            FfiConverterString.write(value.`idType`, buf)
-            FfiConverterString.write(value.`value`, buf)
-    }
-}
-
-
-
-data class NativeBookSummary (
-    var `id`: kotlin.Long,
-    var `path`: kotlin.String,
-    var `hasCover`: kotlin.Boolean,
-    var `formats`: List<kotlin.String>,
-    var `formatPaths`: List<kotlin.String>
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeBookSummary: FfiConverterRustBuffer<NativeBookSummary> {
-    override fun read(buf: ByteBuffer): NativeBookSummary {
-        return NativeBookSummary(
-            FfiConverterLong.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterBoolean.read(buf),
-            FfiConverterSequenceString.read(buf),
-            FfiConverterSequenceString.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeBookSummary) = (
-            FfiConverterLong.allocationSize(value.`id`) +
-            FfiConverterString.allocationSize(value.`path`) +
-            FfiConverterBoolean.allocationSize(value.`hasCover`) +
-            FfiConverterSequenceString.allocationSize(value.`formats`) +
-            FfiConverterSequenceString.allocationSize(value.`formatPaths`)
-    )
-
-    override fun write(value: NativeBookSummary, buf: ByteBuffer) {
-            FfiConverterLong.write(value.`id`, buf)
-            FfiConverterString.write(value.`path`, buf)
-            FfiConverterBoolean.write(value.`hasCover`, buf)
-            FfiConverterSequenceString.write(value.`formats`, buf)
-            FfiConverterSequenceString.write(value.`formatPaths`, buf)
-    }
-}
-
-
-
-data class NativeDataSource (
-    var `sourceType`: kotlin.String,
-    var `id`: kotlin.String,
-    var `name`: kotlin.String,
-    var `enabled`: kotlin.Boolean,
-    var `rootPath`: kotlin.String?,
-    var `readonly`: kotlin.Boolean?,
-    var `createdAt`: kotlin.Double?,
-    var `endpoint`: kotlin.String?,
-    var `username`: kotlin.String?,
-    var `hasPassword`: kotlin.Boolean,
-    var `credentialReference`: kotlin.String?,
-    var `clientId`: kotlin.String?,
-    var `tenantId`: kotlin.String?,
-    var `displayName`: kotlin.String?,
-    var `email`: kotlin.String?,
-    var `hasRefreshToken`: kotlin.Boolean
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeDataSource: FfiConverterRustBuffer<NativeDataSource> {
-    override fun read(buf: ByteBuffer): NativeDataSource {
-        return NativeDataSource(
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterBoolean.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalBoolean.read(buf),
-            FfiConverterOptionalDouble.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterBoolean.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterBoolean.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeDataSource) = (
-            FfiConverterString.allocationSize(value.`sourceType`) +
-            FfiConverterString.allocationSize(value.`id`) +
-            FfiConverterString.allocationSize(value.`name`) +
-            FfiConverterBoolean.allocationSize(value.`enabled`) +
-            FfiConverterOptionalString.allocationSize(value.`rootPath`) +
-            FfiConverterOptionalBoolean.allocationSize(value.`readonly`) +
-            FfiConverterOptionalDouble.allocationSize(value.`createdAt`) +
-            FfiConverterOptionalString.allocationSize(value.`endpoint`) +
-            FfiConverterOptionalString.allocationSize(value.`username`) +
-            FfiConverterBoolean.allocationSize(value.`hasPassword`) +
-            FfiConverterOptionalString.allocationSize(value.`credentialReference`) +
-            FfiConverterOptionalString.allocationSize(value.`clientId`) +
-            FfiConverterOptionalString.allocationSize(value.`tenantId`) +
-            FfiConverterOptionalString.allocationSize(value.`displayName`) +
-            FfiConverterOptionalString.allocationSize(value.`email`) +
-            FfiConverterBoolean.allocationSize(value.`hasRefreshToken`)
-    )
-
-    override fun write(value: NativeDataSource, buf: ByteBuffer) {
-            FfiConverterString.write(value.`sourceType`, buf)
-            FfiConverterString.write(value.`id`, buf)
-            FfiConverterString.write(value.`name`, buf)
-            FfiConverterBoolean.write(value.`enabled`, buf)
-            FfiConverterOptionalString.write(value.`rootPath`, buf)
-            FfiConverterOptionalBoolean.write(value.`readonly`, buf)
-            FfiConverterOptionalDouble.write(value.`createdAt`, buf)
-            FfiConverterOptionalString.write(value.`endpoint`, buf)
-            FfiConverterOptionalString.write(value.`username`, buf)
-            FfiConverterBoolean.write(value.`hasPassword`, buf)
-            FfiConverterOptionalString.write(value.`credentialReference`, buf)
-            FfiConverterOptionalString.write(value.`clientId`, buf)
-            FfiConverterOptionalString.write(value.`tenantId`, buf)
-            FfiConverterOptionalString.write(value.`displayName`, buf)
-            FfiConverterOptionalString.write(value.`email`, buf)
-            FfiConverterBoolean.write(value.`hasRefreshToken`, buf)
-    }
-}
-
-
-
-data class NativeDeviceRegistry (
-    var `schemaVersion`: kotlin.UInt,
-    var `dataSources`: List<NativeDataSource>,
-    var `libraries`: List<NativeLibrary>,
-    var `activeLibraryId`: kotlin.String?
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeDeviceRegistry: FfiConverterRustBuffer<NativeDeviceRegistry> {
-    override fun read(buf: ByteBuffer): NativeDeviceRegistry {
-        return NativeDeviceRegistry(
-            FfiConverterUInt.read(buf),
-            FfiConverterSequenceTypeNativeDataSource.read(buf),
-            FfiConverterSequenceTypeNativeLibrary.read(buf),
-            FfiConverterOptionalString.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeDeviceRegistry) = (
-            FfiConverterUInt.allocationSize(value.`schemaVersion`) +
-            FfiConverterSequenceTypeNativeDataSource.allocationSize(value.`dataSources`) +
-            FfiConverterSequenceTypeNativeLibrary.allocationSize(value.`libraries`) +
-            FfiConverterOptionalString.allocationSize(value.`activeLibraryId`)
-    )
-
-    override fun write(value: NativeDeviceRegistry, buf: ByteBuffer) {
-            FfiConverterUInt.write(value.`schemaVersion`, buf)
-            FfiConverterSequenceTypeNativeDataSource.write(value.`dataSources`, buf)
-            FfiConverterSequenceTypeNativeLibrary.write(value.`libraries`, buf)
-            FfiConverterOptionalString.write(value.`activeLibraryId`, buf)
-    }
-}
-
-
-
 data class NativeDownloadTask (
     var `id`: kotlin.String,
     var `libraryId`: kotlin.String,
@@ -2618,222 +2026,6 @@ public object FfiConverterTypeNativeFileStateUpdate: FfiConverterRustBuffer<Nati
             FfiConverterOptionalString.write(value.`localBlake3`, buf)
             FfiConverterOptionalLong.write(value.`localSize`, buf)
             FfiConverterOptionalLong.write(value.`localMtime`, buf)
-    }
-}
-
-
-
-data class NativeFormatSize (
-    var `format`: kotlin.String,
-    var `sizeBytes`: kotlin.Long
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeFormatSize: FfiConverterRustBuffer<NativeFormatSize> {
-    override fun read(buf: ByteBuffer): NativeFormatSize {
-        return NativeFormatSize(
-            FfiConverterString.read(buf),
-            FfiConverterLong.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeFormatSize) = (
-            FfiConverterString.allocationSize(value.`format`) +
-            FfiConverterLong.allocationSize(value.`sizeBytes`)
-    )
-
-    override fun write(value: NativeFormatSize, buf: ByteBuffer) {
-            FfiConverterString.write(value.`format`, buf)
-            FfiConverterLong.write(value.`sizeBytes`, buf)
-    }
-}
-
-
-
-data class NativeLibrary (
-    var `id`: kotlin.String,
-    var `name`: kotlin.String,
-    var `path`: kotlin.String,
-    var `bookCount`: kotlin.Long,
-    var `metadataUri`: kotlin.String?,
-    var `addedAt`: kotlin.Double?,
-    var `dataSourceId`: kotlin.String?,
-    var `sourceType`: kotlin.String?,
-    var `sourcePath`: kotlin.String?,
-    var `metadataEtag`: kotlin.String?,
-    var `securityScopedBookmark`: NativeSecurityScopedBookmark?
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeLibrary: FfiConverterRustBuffer<NativeLibrary> {
-    override fun read(buf: ByteBuffer): NativeLibrary {
-        return NativeLibrary(
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterLong.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalDouble.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalTypeNativeSecurityScopedBookmark.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeLibrary) = (
-            FfiConverterString.allocationSize(value.`id`) +
-            FfiConverterString.allocationSize(value.`name`) +
-            FfiConverterString.allocationSize(value.`path`) +
-            FfiConverterLong.allocationSize(value.`bookCount`) +
-            FfiConverterOptionalString.allocationSize(value.`metadataUri`) +
-            FfiConverterOptionalDouble.allocationSize(value.`addedAt`) +
-            FfiConverterOptionalString.allocationSize(value.`dataSourceId`) +
-            FfiConverterOptionalString.allocationSize(value.`sourceType`) +
-            FfiConverterOptionalString.allocationSize(value.`sourcePath`) +
-            FfiConverterOptionalString.allocationSize(value.`metadataEtag`) +
-            FfiConverterOptionalTypeNativeSecurityScopedBookmark.allocationSize(value.`securityScopedBookmark`)
-    )
-
-    override fun write(value: NativeLibrary, buf: ByteBuffer) {
-            FfiConverterString.write(value.`id`, buf)
-            FfiConverterString.write(value.`name`, buf)
-            FfiConverterString.write(value.`path`, buf)
-            FfiConverterLong.write(value.`bookCount`, buf)
-            FfiConverterOptionalString.write(value.`metadataUri`, buf)
-            FfiConverterOptionalDouble.write(value.`addedAt`, buf)
-            FfiConverterOptionalString.write(value.`dataSourceId`, buf)
-            FfiConverterOptionalString.write(value.`sourceType`, buf)
-            FfiConverterOptionalString.write(value.`sourcePath`, buf)
-            FfiConverterOptionalString.write(value.`metadataEtag`, buf)
-            FfiConverterOptionalTypeNativeSecurityScopedBookmark.write(value.`securityScopedBookmark`, buf)
-    }
-}
-
-
-
-data class NativeLibraryResult (
-    var `registry`: NativeDeviceRegistry,
-    var `library`: NativeLibrary
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeLibraryResult: FfiConverterRustBuffer<NativeLibraryResult> {
-    override fun read(buf: ByteBuffer): NativeLibraryResult {
-        return NativeLibraryResult(
-            FfiConverterTypeNativeDeviceRegistry.read(buf),
-            FfiConverterTypeNativeLibrary.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeLibraryResult) = (
-            FfiConverterTypeNativeDeviceRegistry.allocationSize(value.`registry`) +
-            FfiConverterTypeNativeLibrary.allocationSize(value.`library`)
-    )
-
-    override fun write(value: NativeLibraryResult, buf: ByteBuffer) {
-            FfiConverterTypeNativeDeviceRegistry.write(value.`registry`, buf)
-            FfiConverterTypeNativeLibrary.write(value.`library`, buf)
-    }
-}
-
-
-
-data class NativeLocalLibraryRequest (
-    var `libraryRootPath`: kotlin.String,
-    var `path`: kotlin.String,
-    var `sidecarContainerParentPath`: kotlin.String?,
-    var `name`: kotlin.String?,
-    var `metadataUri`: kotlin.String?,
-    var `addedAt`: kotlin.Double?,
-    var `securityScopedBookmark`: NativeSecurityScopedBookmark?
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeLocalLibraryRequest: FfiConverterRustBuffer<NativeLocalLibraryRequest> {
-    override fun read(buf: ByteBuffer): NativeLocalLibraryRequest {
-        return NativeLocalLibraryRequest(
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalDouble.read(buf),
-            FfiConverterOptionalTypeNativeSecurityScopedBookmark.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeLocalLibraryRequest) = (
-            FfiConverterString.allocationSize(value.`libraryRootPath`) +
-            FfiConverterString.allocationSize(value.`path`) +
-            FfiConverterOptionalString.allocationSize(value.`sidecarContainerParentPath`) +
-            FfiConverterOptionalString.allocationSize(value.`name`) +
-            FfiConverterOptionalString.allocationSize(value.`metadataUri`) +
-            FfiConverterOptionalDouble.allocationSize(value.`addedAt`) +
-            FfiConverterOptionalTypeNativeSecurityScopedBookmark.allocationSize(value.`securityScopedBookmark`)
-    )
-
-    override fun write(value: NativeLocalLibraryRequest, buf: ByteBuffer) {
-            FfiConverterString.write(value.`libraryRootPath`, buf)
-            FfiConverterString.write(value.`path`, buf)
-            FfiConverterOptionalString.write(value.`sidecarContainerParentPath`, buf)
-            FfiConverterOptionalString.write(value.`name`, buf)
-            FfiConverterOptionalString.write(value.`metadataUri`, buf)
-            FfiConverterOptionalDouble.write(value.`addedAt`, buf)
-            FfiConverterOptionalTypeNativeSecurityScopedBookmark.write(value.`securityScopedBookmark`, buf)
-    }
-}
-
-
-
-data class NativePaginatedBooks (
-    var `items`: List<NativeBookEntry>,
-    var `total`: kotlin.ULong
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativePaginatedBooks: FfiConverterRustBuffer<NativePaginatedBooks> {
-    override fun read(buf: ByteBuffer): NativePaginatedBooks {
-        return NativePaginatedBooks(
-            FfiConverterSequenceTypeNativeBookEntry.read(buf),
-            FfiConverterULong.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativePaginatedBooks) = (
-            FfiConverterSequenceTypeNativeBookEntry.allocationSize(value.`items`) +
-            FfiConverterULong.allocationSize(value.`total`)
-    )
-
-    override fun write(value: NativePaginatedBooks, buf: ByteBuffer) {
-            FfiConverterSequenceTypeNativeBookEntry.write(value.`items`, buf)
-            FfiConverterULong.write(value.`total`, buf)
     }
 }
 
@@ -3083,162 +2275,6 @@ public object FfiConverterTypeNativeReadingStatistics: FfiConverterRustBuffer<Na
 
 
 
-data class NativeRemoteCredential (
-    var `credentialType`: kotlin.String,
-    var `password`: kotlin.String?,
-    var `accessToken`: kotlin.String?
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeRemoteCredential: FfiConverterRustBuffer<NativeRemoteCredential> {
-    override fun read(buf: ByteBuffer): NativeRemoteCredential {
-        return NativeRemoteCredential(
-            FfiConverterString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalString.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeRemoteCredential) = (
-            FfiConverterString.allocationSize(value.`credentialType`) +
-            FfiConverterOptionalString.allocationSize(value.`password`) +
-            FfiConverterOptionalString.allocationSize(value.`accessToken`)
-    )
-
-    override fun write(value: NativeRemoteCredential, buf: ByteBuffer) {
-            FfiConverterString.write(value.`credentialType`, buf)
-            FfiConverterOptionalString.write(value.`password`, buf)
-            FfiConverterOptionalString.write(value.`accessToken`, buf)
-    }
-}
-
-
-
-data class NativeRemoteDirectoryEntry (
-    var `name`: kotlin.String,
-    var `path`: kotlin.String,
-    var `isDirectory`: kotlin.Boolean
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeRemoteDirectoryEntry: FfiConverterRustBuffer<NativeRemoteDirectoryEntry> {
-    override fun read(buf: ByteBuffer): NativeRemoteDirectoryEntry {
-        return NativeRemoteDirectoryEntry(
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterBoolean.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeRemoteDirectoryEntry) = (
-            FfiConverterString.allocationSize(value.`name`) +
-            FfiConverterString.allocationSize(value.`path`) +
-            FfiConverterBoolean.allocationSize(value.`isDirectory`)
-    )
-
-    override fun write(value: NativeRemoteDirectoryEntry, buf: ByteBuffer) {
-            FfiConverterString.write(value.`name`, buf)
-            FfiConverterString.write(value.`path`, buf)
-            FfiConverterBoolean.write(value.`isDirectory`, buf)
-    }
-}
-
-
-
-data class NativeRemoteLibraryRequest (
-    var `dataSourceId`: kotlin.String,
-    var `sourcePath`: kotlin.String,
-    var `librariesRootPath`: kotlin.String,
-    var `librariesRootUri`: kotlin.String?,
-    var `name`: kotlin.String?,
-    var `addedAt`: kotlin.Double?
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeRemoteLibraryRequest: FfiConverterRustBuffer<NativeRemoteLibraryRequest> {
-    override fun read(buf: ByteBuffer): NativeRemoteLibraryRequest {
-        return NativeRemoteLibraryRequest(
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalDouble.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeRemoteLibraryRequest) = (
-            FfiConverterString.allocationSize(value.`dataSourceId`) +
-            FfiConverterString.allocationSize(value.`sourcePath`) +
-            FfiConverterString.allocationSize(value.`librariesRootPath`) +
-            FfiConverterOptionalString.allocationSize(value.`librariesRootUri`) +
-            FfiConverterOptionalString.allocationSize(value.`name`) +
-            FfiConverterOptionalDouble.allocationSize(value.`addedAt`)
-    )
-
-    override fun write(value: NativeRemoteLibraryRequest, buf: ByteBuffer) {
-            FfiConverterString.write(value.`dataSourceId`, buf)
-            FfiConverterString.write(value.`sourcePath`, buf)
-            FfiConverterString.write(value.`librariesRootPath`, buf)
-            FfiConverterOptionalString.write(value.`librariesRootUri`, buf)
-            FfiConverterOptionalString.write(value.`name`, buf)
-            FfiConverterOptionalDouble.write(value.`addedAt`, buf)
-    }
-}
-
-
-
-data class NativeSecurityScopedBookmark (
-    var `bookmarkBase64`: kotlin.String,
-    var `resolvedUri`: kotlin.String,
-    var `stale`: kotlin.Boolean
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeSecurityScopedBookmark: FfiConverterRustBuffer<NativeSecurityScopedBookmark> {
-    override fun read(buf: ByteBuffer): NativeSecurityScopedBookmark {
-        return NativeSecurityScopedBookmark(
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterBoolean.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeSecurityScopedBookmark) = (
-            FfiConverterString.allocationSize(value.`bookmarkBase64`) +
-            FfiConverterString.allocationSize(value.`resolvedUri`) +
-            FfiConverterBoolean.allocationSize(value.`stale`)
-    )
-
-    override fun write(value: NativeSecurityScopedBookmark, buf: ByteBuffer) {
-            FfiConverterString.write(value.`bookmarkBase64`, buf)
-            FfiConverterString.write(value.`resolvedUri`, buf)
-            FfiConverterBoolean.write(value.`stale`, buf)
-    }
-}
-
-
-
 data class SyncLibrarySidecarReport (
     var `pushed`: kotlin.UInt,
     var `pulled`: kotlin.UInt
@@ -3395,38 +2431,6 @@ public object FfiConverterTypeRustComponentsError : FfiConverterRustBuffer<RustC
 /**
  * @suppress
  */
-public object FfiConverterOptionalInt: FfiConverterRustBuffer<kotlin.Int?> {
-    override fun read(buf: ByteBuffer): kotlin.Int? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterInt.read(buf)
-    }
-
-    override fun allocationSize(value: kotlin.Int?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterInt.allocationSize(value)
-        }
-    }
-
-    override fun write(value: kotlin.Int?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterInt.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
 public object FfiConverterOptionalLong: FfiConverterRustBuffer<kotlin.Long?> {
     override fun read(buf: ByteBuffer): kotlin.Long? {
         if (buf.get().toInt() == 0) {
@@ -3491,38 +2495,6 @@ public object FfiConverterOptionalDouble: FfiConverterRustBuffer<kotlin.Double?>
 /**
  * @suppress
  */
-public object FfiConverterOptionalBoolean: FfiConverterRustBuffer<kotlin.Boolean?> {
-    override fun read(buf: ByteBuffer): kotlin.Boolean? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterBoolean.read(buf)
-    }
-
-    override fun allocationSize(value: kotlin.Boolean?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterBoolean.allocationSize(value)
-        }
-    }
-
-    override fun write(value: kotlin.Boolean?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterBoolean.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
 public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?> {
     override fun read(buf: ByteBuffer): kotlin.String? {
         if (buf.get().toInt() == 0) {
@@ -3545,38 +2517,6 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
         } else {
             buf.put(1)
             FfiConverterString.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterOptionalTypeNativeDeviceRegistry: FfiConverterRustBuffer<NativeDeviceRegistry?> {
-    override fun read(buf: ByteBuffer): NativeDeviceRegistry? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterTypeNativeDeviceRegistry.read(buf)
-    }
-
-    override fun allocationSize(value: NativeDeviceRegistry?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterTypeNativeDeviceRegistry.allocationSize(value)
-        }
-    }
-
-    override fun write(value: NativeDeviceRegistry?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterTypeNativeDeviceRegistry.write(value, buf)
         }
     }
 }
@@ -3683,38 +2623,6 @@ public object FfiConverterOptionalTypeNativeReadingPosition: FfiConverterRustBuf
 /**
  * @suppress
  */
-public object FfiConverterOptionalTypeNativeSecurityScopedBookmark: FfiConverterRustBuffer<NativeSecurityScopedBookmark?> {
-    override fun read(buf: ByteBuffer): NativeSecurityScopedBookmark? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterTypeNativeSecurityScopedBookmark.read(buf)
-    }
-
-    override fun allocationSize(value: NativeSecurityScopedBookmark?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterTypeNativeSecurityScopedBookmark.allocationSize(value)
-        }
-    }
-
-    override fun write(value: NativeSecurityScopedBookmark?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterTypeNativeSecurityScopedBookmark.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
 public object FfiConverterOptionalTypeSyncTaskProgress: FfiConverterRustBuffer<SyncTaskProgress?> {
     override fun read(buf: ByteBuffer): SyncTaskProgress? {
         if (buf.get().toInt() == 0) {
@@ -3775,34 +2683,6 @@ public object FfiConverterSequenceLong: FfiConverterRustBuffer<List<kotlin.Long>
 /**
  * @suppress
  */
-public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.String>> {
-    override fun read(buf: ByteBuffer): List<kotlin.String> {
-        val len = buf.getInt()
-        return List<kotlin.String>(len) {
-            FfiConverterString.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<kotlin.String>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterString.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<kotlin.String>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterString.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
 public object FfiConverterSequenceTypeNativeBookCoverThumbnailCache: FfiConverterRustBuffer<List<NativeBookCoverThumbnailCache>> {
     override fun read(buf: ByteBuffer): List<NativeBookCoverThumbnailCache> {
         val len = buf.getInt()
@@ -3821,146 +2701,6 @@ public object FfiConverterSequenceTypeNativeBookCoverThumbnailCache: FfiConverte
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeNativeBookCoverThumbnailCache.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeNativeBookEntry: FfiConverterRustBuffer<List<NativeBookEntry>> {
-    override fun read(buf: ByteBuffer): List<NativeBookEntry> {
-        val len = buf.getInt()
-        return List<NativeBookEntry>(len) {
-            FfiConverterTypeNativeBookEntry.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<NativeBookEntry>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeNativeBookEntry.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<NativeBookEntry>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeNativeBookEntry.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeNativeBookFormat: FfiConverterRustBuffer<List<NativeBookFormat>> {
-    override fun read(buf: ByteBuffer): List<NativeBookFormat> {
-        val len = buf.getInt()
-        return List<NativeBookFormat>(len) {
-            FfiConverterTypeNativeBookFormat.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<NativeBookFormat>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeNativeBookFormat.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<NativeBookFormat>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeNativeBookFormat.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeNativeBookIdentifier: FfiConverterRustBuffer<List<NativeBookIdentifier>> {
-    override fun read(buf: ByteBuffer): List<NativeBookIdentifier> {
-        val len = buf.getInt()
-        return List<NativeBookIdentifier>(len) {
-            FfiConverterTypeNativeBookIdentifier.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<NativeBookIdentifier>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeNativeBookIdentifier.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<NativeBookIdentifier>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeNativeBookIdentifier.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeNativeBookSummary: FfiConverterRustBuffer<List<NativeBookSummary>> {
-    override fun read(buf: ByteBuffer): List<NativeBookSummary> {
-        val len = buf.getInt()
-        return List<NativeBookSummary>(len) {
-            FfiConverterTypeNativeBookSummary.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<NativeBookSummary>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeNativeBookSummary.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<NativeBookSummary>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeNativeBookSummary.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeNativeDataSource: FfiConverterRustBuffer<List<NativeDataSource>> {
-    override fun read(buf: ByteBuffer): List<NativeDataSource> {
-        val len = buf.getInt()
-        return List<NativeDataSource>(len) {
-            FfiConverterTypeNativeDataSource.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<NativeDataSource>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeNativeDataSource.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<NativeDataSource>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeNativeDataSource.write(it, buf)
         }
     }
 }
@@ -4017,62 +2757,6 @@ public object FfiConverterSequenceTypeNativeFileState: FfiConverterRustBuffer<Li
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeNativeFileState.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeNativeFormatSize: FfiConverterRustBuffer<List<NativeFormatSize>> {
-    override fun read(buf: ByteBuffer): List<NativeFormatSize> {
-        val len = buf.getInt()
-        return List<NativeFormatSize>(len) {
-            FfiConverterTypeNativeFormatSize.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<NativeFormatSize>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeNativeFormatSize.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<NativeFormatSize>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeNativeFormatSize.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeNativeLibrary: FfiConverterRustBuffer<List<NativeLibrary>> {
-    override fun read(buf: ByteBuffer): List<NativeLibrary> {
-        val len = buf.getInt()
-        return List<NativeLibrary>(len) {
-            FfiConverterTypeNativeLibrary.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<NativeLibrary>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeNativeLibrary.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<NativeLibrary>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeNativeLibrary.write(it, buf)
         }
     }
 }
@@ -4195,34 +2879,6 @@ public object FfiConverterSequenceTypeNativeReadingPositionCandidate: FfiConvert
 /**
  * @suppress
  */
-public object FfiConverterSequenceTypeNativeRemoteDirectoryEntry: FfiConverterRustBuffer<List<NativeRemoteDirectoryEntry>> {
-    override fun read(buf: ByteBuffer): List<NativeRemoteDirectoryEntry> {
-        val len = buf.getInt()
-        return List<NativeRemoteDirectoryEntry>(len) {
-            FfiConverterTypeNativeRemoteDirectoryEntry.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<NativeRemoteDirectoryEntry>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeNativeRemoteDirectoryEntry.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<NativeRemoteDirectoryEntry>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeNativeRemoteDirectoryEntry.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
 public object FfiConverterMapStringLong: FfiConverterRustBuffer<Map<kotlin.String, kotlin.Long>> {
     override fun read(buf: ByteBuffer): Map<kotlin.String, kotlin.Long> {
         val len = buf.getInt()
@@ -4294,16 +2950,6 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
         }
     }
 }
-    @Throws(RustComponentsException::class) fun `addLocalLibrary`(`registryPath`: kotlin.String, `request`: NativeLocalLibraryRequest): NativeLibraryResult {
-            return FfiConverterTypeNativeLibraryResult.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_add_local_library(
-        FfiConverterString.lower(`registryPath`),FfiConverterTypeNativeLocalLibraryRequest.lower(`request`),_status)
-}
-    )
-    }
-
-
     @Throws(RustComponentsException::class) fun `addReaderAnnotation`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String, `locatorJson`: kotlin.String, `color`: kotlin.String, `note`: kotlin.String?, `recordedAtMs`: kotlin.Long): NativeReaderAnnotation {
             return FfiConverterTypeNativeReaderAnnotation.lift(
     uniffiRustCallWithError(RustComponentsException) { _status ->
@@ -4341,16 +2987,6 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
         FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterString.lower(`id`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),FfiConverterString.lower(`localDay`),FfiConverterLong.lower(`startedAtMs`),FfiConverterLong.lower(`durationSeconds`),FfiConverterLong.lower(`recordedAtMs`),_status)
 }
 
-
-
-    @Throws(RustComponentsException::class) fun `addRemoteLibrary`(`registryPath`: kotlin.String, `request`: NativeRemoteLibraryRequest, `credential`: NativeRemoteCredential): NativeLibraryResult {
-            return FfiConverterTypeNativeLibraryResult.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_add_remote_library(
-        FfiConverterString.lower(`registryPath`),FfiConverterTypeNativeRemoteLibraryRequest.lower(`request`),FfiConverterTypeNativeRemoteCredential.lower(`credential`),_status)
-}
-    )
-    }
 
 
     @Throws(RustComponentsException::class) fun `beginCoordinatedSync`(`coordinatorId`: kotlin.String, `libraryId`: kotlin.String, `generation`: kotlin.ULong): kotlin.String {
@@ -4434,12 +3070,11 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
     )
     }
 
-
-    @Throws(RustComponentsException::class) fun `countCalibreBooks`(`libraryRootPath`: kotlin.String): kotlin.ULong {
-            return FfiConverterULong.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_count_calibre_books(
-        FfiConverterString.lower(`libraryRootPath`),_status)
+ fun `coreContractVersion`(): kotlin.UInt {
+            return FfiConverterUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_core_contract_version(
+        _status)
 }
     )
     }
@@ -4550,26 +3185,6 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
     }
 
 
-    @Throws(RustComponentsException::class) fun `getCalibreBookDetail`(`libraryRootPath`: kotlin.String, `bookId`: kotlin.Long): NativeBookDetail {
-            return FfiConverterTypeNativeBookDetail.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_get_calibre_book_detail(
-        FfiConverterString.lower(`libraryRootPath`),FfiConverterLong.lower(`bookId`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `getCalibreLibraryUuid`(`libraryRootPath`: kotlin.String): kotlin.String {
-            return FfiConverterString.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_get_calibre_library_uuid(
-        FfiConverterString.lower(`libraryRootPath`),_status)
-}
-    )
-    }
-
-
     @Throws(RustComponentsException::class) fun `getLibraryFileState`(`sidecarRootPath`: kotlin.String, `path`: kotlin.String): NativeFileState? {
             return FfiConverterOptionalTypeNativeFileState.lift(
     uniffiRustCallWithError(RustComponentsException) { _status ->
@@ -4600,11 +3215,21 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
     }
 
 
-    @Throws(RustComponentsException::class) fun `initializeDeviceRegistry`(`registryPath`: kotlin.String, `legacyRegistry`: NativeDeviceRegistry?): NativeDeviceRegistry {
-            return FfiConverterTypeNativeDeviceRegistry.lift(
+    @Throws(RustComponentsException::class) fun `invokeCoreAsync`(`requestJson`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
     uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_initialize_device_registry(
-        FfiConverterString.lower(`registryPath`),FfiConverterOptionalTypeNativeDeviceRegistry.lower(`legacyRegistry`),_status)
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_invoke_core_async(
+        FfiConverterString.lower(`requestJson`),_status)
+}
+    )
+    }
+
+
+    @Throws(RustComponentsException::class) fun `invokeCoreSync`(`requestJson`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_invoke_core_sync(
+        FfiConverterString.lower(`requestJson`),_status)
 }
     )
     }
@@ -4625,66 +3250,6 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
     uniffiRustCallWithError(RustComponentsException) { _status ->
     UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_book_reading_formats(
         FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `listCalibreBookFormats`(`libraryRootPath`: kotlin.String, `bookId`: kotlin.Long): List<NativeBookFormat> {
-            return FfiConverterSequenceTypeNativeBookFormat.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_calibre_book_formats(
-        FfiConverterString.lower(`libraryRootPath`),FfiConverterLong.lower(`bookId`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `listCalibreBookSummaries`(`libraryRootPath`: kotlin.String): List<NativeBookSummary> {
-            return FfiConverterSequenceTypeNativeBookSummary.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_calibre_book_summaries(
-        FfiConverterString.lower(`libraryRootPath`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `listCalibreBooks`(`libraryRootPath`: kotlin.String): List<NativeBookEntry> {
-            return FfiConverterSequenceTypeNativeBookEntry.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_calibre_books(
-        FfiConverterString.lower(`libraryRootPath`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `listCalibreBooksPage`(`libraryRootPath`: kotlin.String, `offset`: kotlin.ULong, `limit`: kotlin.ULong, `sortBy`: kotlin.String?, `search`: kotlin.String?): NativePaginatedBooks {
-            return FfiConverterTypeNativePaginatedBooks.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_calibre_books_page(
-        FfiConverterString.lower(`libraryRootPath`),FfiConverterULong.lower(`offset`),FfiConverterULong.lower(`limit`),FfiConverterOptionalString.lower(`sortBy`),FfiConverterOptionalString.lower(`search`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `listCalibreBooksPageByLastRead`(`libraryRootPath`: kotlin.String, `sidecarRootPath`: kotlin.String, `offset`: kotlin.ULong, `limit`: kotlin.ULong, `search`: kotlin.String?): NativePaginatedBooks {
-            return FfiConverterTypeNativePaginatedBooks.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_calibre_books_page_by_last_read(
-        FfiConverterString.lower(`libraryRootPath`),FfiConverterString.lower(`sidecarRootPath`),FfiConverterULong.lower(`offset`),FfiConverterULong.lower(`limit`),FfiConverterOptionalString.lower(`search`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `listCalibreSeriesBooks`(`libraryRootPath`: kotlin.String, `seriesName`: kotlin.String, `excludeBookId`: kotlin.Long?): List<NativeBookEntry> {
-            return FfiConverterSequenceTypeNativeBookEntry.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_calibre_series_books(
-        FfiConverterString.lower(`libraryRootPath`),FfiConverterString.lower(`seriesName`),FfiConverterOptionalLong.lower(`excludeBookId`),_status)
 }
     )
     }
@@ -4758,16 +3323,6 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
     )
     }
 
-
-    @Throws(RustComponentsException::class) fun `listRemoteDirectories`(`registryPath`: kotlin.String, `dataSourceId`: kotlin.String, `path`: kotlin.String, `credential`: NativeRemoteCredential): List<NativeRemoteDirectoryEntry> {
-            return FfiConverterSequenceTypeNativeRemoteDirectoryEntry.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_remote_directories(
-        FfiConverterString.lower(`registryPath`),FfiConverterString.lower(`dataSourceId`),FfiConverterString.lower(`path`),FfiConverterTypeNativeRemoteCredential.lower(`credential`),_status)
-}
-    )
-    }
-
  fun `markDownloadTaskStarted`(`taskId`: kotlin.String): NativeDownloadTask? {
             return FfiConverterOptionalTypeNativeDownloadTask.lift(
     uniffiRustCall() { _status ->
@@ -4795,16 +3350,6 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
 }
 
 
-
-    @Throws(RustComponentsException::class) fun `prepareDeviceDataSource`(`source`: NativeDataSource): NativeDataSource {
-            return FfiConverterTypeNativeDataSource.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_prepare_device_data_source(
-        FfiConverterTypeNativeDataSource.lower(`source`),_status)
-}
-    )
-    }
-
  fun `readSyncTaskProgress`(`taskId`: kotlin.String): SyncTaskProgress? {
             return FfiConverterOptionalTypeSyncTaskProgress.lift(
     uniffiRustCall() { _status ->
@@ -4820,26 +3365,6 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
     uniffiRustCallWithError(RustComponentsException) { _status ->
     UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_recover_coordinated_sync(
         FfiConverterString.lower(`coordinatorId`),FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryId`),FfiConverterString.lower(`nowMs`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `refreshRemoteLibrary`(`registryPath`: kotlin.String, `libraryId`: kotlin.String, `localRootPath`: kotlin.String, `credential`: NativeRemoteCredential): NativeLibraryResult {
-            return FfiConverterTypeNativeLibraryResult.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_refresh_remote_library(
-        FfiConverterString.lower(`registryPath`),FfiConverterString.lower(`libraryId`),FfiConverterString.lower(`localRootPath`),FfiConverterTypeNativeRemoteCredential.lower(`credential`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `registerDeviceLibrary`(`registryPath`: kotlin.String, `library`: NativeLibrary): NativeDeviceRegistry {
-            return FfiConverterTypeNativeDeviceRegistry.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_register_device_library(
-        FfiConverterString.lower(`registryPath`),FfiConverterTypeNativeLibrary.lower(`library`),_status)
 }
     )
     }
@@ -4863,26 +3388,6 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
     }
 
 
-    @Throws(RustComponentsException::class) fun `removeDeviceDataSource`(`registryPath`: kotlin.String, `dataSourceId`: kotlin.String): NativeDeviceRegistry {
-            return FfiConverterTypeNativeDeviceRegistry.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_remove_device_data_source(
-        FfiConverterString.lower(`registryPath`),FfiConverterString.lower(`dataSourceId`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `removeDeviceLibrary`(`registryPath`: kotlin.String, `libraryId`: kotlin.String): NativeDeviceRegistry {
-            return FfiConverterTypeNativeDeviceRegistry.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_remove_device_library(
-        FfiConverterString.lower(`registryPath`),FfiConverterString.lower(`libraryId`),_status)
-}
-    )
-    }
-
-
     @Throws(RustComponentsException::class) fun `removeReaderAnnotation`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String, `id`: kotlin.String, `recordedAtMs`: kotlin.Long)
         =
     uniffiRustCallWithError(RustComponentsException) { _status ->
@@ -4899,16 +3404,6 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
         FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),FfiConverterString.lower(`locatorKey`),FfiConverterLong.lower(`recordedAtMs`),_status)
 }
 
-
-
-    @Throws(RustComponentsException::class) fun `replaceDeviceLibrary`(`registryPath`: kotlin.String, `library`: NativeLibrary): NativeDeviceRegistry {
-            return FfiConverterTypeNativeDeviceRegistry.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_replace_device_library(
-        FfiConverterString.lower(`registryPath`),FfiConverterTypeNativeLibrary.lower(`library`),_status)
-}
-    )
-    }
 
  fun `reportDownloadTaskProgress`(`taskId`: kotlin.String, `received`: kotlin.ULong, `total`: kotlin.ULong): NativeDownloadTask? {
             return FfiConverterOptionalTypeNativeDownloadTask.lift(
@@ -4985,16 +3480,6 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
 }
 
 
-
-    @Throws(RustComponentsException::class) fun `switchDeviceLibrary`(`registryPath`: kotlin.String, `libraryId`: kotlin.String): NativeDeviceRegistry {
-            return FfiConverterTypeNativeDeviceRegistry.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_switch_device_library(
-        FfiConverterString.lower(`registryPath`),FfiConverterString.lower(`libraryId`),_status)
-}
-    )
-    }
-
  fun `syncContractVersion`(): kotlin.UInt {
             return FfiConverterUInt.lift(
     uniffiRustCall() { _status ->
@@ -5013,15 +3498,6 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
 }
     )
     }
-
-
-    @Throws(RustComponentsException::class) fun `testRemoteDataSource`(`source`: NativeDataSource, `credential`: NativeRemoteCredential)
-        =
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_test_remote_data_source(
-        FfiConverterTypeNativeDataSource.lower(`source`),FfiConverterTypeNativeRemoteCredential.lower(`credential`),_status)
-}
-
 
 
     @Throws(RustComponentsException::class) fun `updateReaderAnnotation`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String, `id`: kotlin.String, `color`: kotlin.String, `note`: kotlin.String?, `recordedAtMs`: kotlin.Long): NativeReaderAnnotation {
@@ -5043,37 +3519,9 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
 
 
 
-    @Throws(RustComponentsException::class) fun `upsertDeviceDataSource`(`registryPath`: kotlin.String, `source`: NativeDataSource): NativeDeviceRegistry {
-            return FfiConverterTypeNativeDeviceRegistry.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_upsert_device_data_source(
-        FfiConverterString.lower(`registryPath`),FfiConverterTypeNativeDataSource.lower(`source`),_status)
-}
-    )
-    }
-
-
     @Throws(RustComponentsException::class) fun `upsertLibraryFileState`(`sidecarRootPath`: kotlin.String, `path`: kotlin.String, `update`: NativeFileStateUpdate)
         =
     uniffiRustCallWithError(RustComponentsException) { _status ->
     UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_upsert_library_file_state(
         FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`path`),FfiConverterTypeNativeFileStateUpdate.lower(`update`),_status)
-}
-
-
- fun `validateCalibreLibrary`(`libraryRootPath`: kotlin.String): kotlin.Boolean {
-            return FfiConverterBoolean.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_validate_calibre_library(
-        FfiConverterString.lower(`libraryRootPath`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `validateDeviceDataSource`(`registryPath`: kotlin.String, `source`: NativeDataSource)
-        =
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_validate_device_data_source(
-        FfiConverterString.lower(`registryPath`),FfiConverterTypeNativeDataSource.lower(`source`),_status)
 }
