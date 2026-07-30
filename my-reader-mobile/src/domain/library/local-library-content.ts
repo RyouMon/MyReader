@@ -1,23 +1,29 @@
 import { File as FSFile } from "expo-file-system"
 
-import { withSecurityScopedLibraryAccess } from "../../services/fs/bookmarks"
-import { fileUriFor } from "@/src/services/fs/path"
-import type { Library } from "../types"
-import { isRemoteSourceType } from "../types"
 import {
   libraryLocalRootUri,
+  libraryRootUri,
   METADATA_DB_RELATIVE,
   usesIosContainerSidecar,
 } from "@/src/services/fs/library-paths"
+import { fileUriFor } from "@/src/services/fs/path"
+import { withSecurityScopedLibraryAccess } from "../../services/fs/bookmarks"
+import type { Library } from "../types"
+import { isRemoteSourceType } from "../types"
 
 /**
- * Runs an operation against a local library's Calibre content root.
+ * Runs an operation against the library's local Calibre content root.
+ * Remote libraries resolve their current app-container cache instead of a persisted sandbox path.
  * On iOS external libraries, acquires security-scoped access to the bookmark path first.
  */
 export async function withLocalLibraryCalibreRoot<T>(
   library: Library,
   operation: (calibreRootUri: string) => Promise<T>,
 ): Promise<T> {
+  if (isRemoteSourceType(library.sourceType)) {
+    return operation(libraryRootUri(library))
+  }
+
   if (usesIosContainerSidecar(library)) {
     const { result } = await withSecurityScopedLibraryAccess(library, operation)
     return result

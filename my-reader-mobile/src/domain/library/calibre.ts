@@ -1,33 +1,32 @@
-import { Directory, File as FSFile } from "expo-file-system"
-
-import i18n from "@/src/i18n"
 import type { BookDetail, CalibreBook } from "@my-reader/tools/types/book"
+import { Directory, File as FSFile } from "expo-file-system"
+import i18n from "@/src/i18n"
+import {
+  ensureLibrarySidecarDirectory,
+  libraryMetadataUri,
+  libraryRootUri,
+  resolveCoverUri,
+} from "@/src/services/fs/library-paths"
+import { fileUriFor, joinRelativePath } from "@/src/services/fs/path"
 import { showAlertWithStatusBarRestore } from "../../constants/alert-with-status-bar"
 import {
   countCalibreBooks,
   getCalibreBookDetail,
   listCalibreBookFormats,
-  listCalibreBooks,
   listCalibreBookSummaries,
+  listCalibreBooks,
 } from "../../services/core/catalog"
 import {
   createSecurityScopedBookmark,
   withSecurityScopedLibraryAccess,
 } from "../../services/fs/bookmarks"
-import { fileUriFor, joinRelativePath } from "@/src/services/fs/path"
-import {
-  ensureLibrarySidecarDirectory,
-  libraryLocalRootUri,
-  libraryMetadataUri,
-  resolveCoverUri,
-} from "@/src/services/fs/library-paths"
+import { queryClient } from "../../services/query/query-client"
+import type { BookItem, DataSource, Library } from "../types"
+import { isRemoteSourceType } from "../types"
 import {
   resolveLocalLibraryMetadataUri,
   withLocalLibraryCalibreRoot,
 } from "./local-library-content"
-import { queryClient } from "../../services/query/query-client"
-import type { BookItem, DataSource, Library } from "../types"
-import { isRemoteSourceType } from "../types"
 
 type PickedDirectoryLike = {
   uri: string
@@ -308,12 +307,9 @@ export async function resolveBookFileForRead(
     return sourceFile
   }
 
-  const sourceFile = createBookFile(
-    libraryLocalRootUri(library),
-    segments,
-    fileName,
-  )
-  assertBookFileExists(sourceFile, libraryLocalRootUri(library), rowPath)
+  const libraryRoot = libraryRootUri(library)
+  const sourceFile = createBookFile(libraryRoot, segments, fileName)
+  assertBookFileExists(sourceFile, libraryRoot, rowPath)
   return sourceFile
 }
 
