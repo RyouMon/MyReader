@@ -27,7 +27,6 @@ static LIBRARY_STORES: LazyLock<Mutex<HashMap<PathBuf, LibraryStore>>> =
 /// Open and migrate a per-library SQLite database, then return the connection
 /// for SeaORM entity queries.
 pub async fn open_db(sidecar_root: &str) -> Result<DatabaseConnection, CoreError> {
-    info!("Start to open library database.");
     let path = library_db_path(sidecar_root)?;
     open_database_file(&path).await
 }
@@ -43,6 +42,10 @@ pub async fn open_database_file(path: &Path) -> Result<DatabaseConnection, CoreE
         stores.remove(&path);
     }
 
+    info!(
+        "Start to open library database. path: \"{}\"",
+        path.display()
+    );
     let url = format!("sqlite://{}?mode=rwc", path.display());
     let db = Database::connect(&url).await?;
     migrate_database(&db).await?;
