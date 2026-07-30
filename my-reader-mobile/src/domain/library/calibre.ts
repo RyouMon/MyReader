@@ -10,7 +10,6 @@ import {
 import { fileUriFor, joinRelativePath } from "@/src/services/fs/path"
 import { showAlertWithStatusBarRestore } from "../../constants/alert-with-status-bar"
 import {
-  countCalibreBooks,
   getCalibreBookDetail,
   listCalibreBookFormats,
   listCalibreBookSummaries,
@@ -122,31 +121,6 @@ export async function ensureLibraryMetadataCached(
   return {
     ...library,
     metadataUri: metadataUri ?? libraryMetadataUri(library),
-  }
-}
-
-export async function forceRefreshLibraryMetadata(
-  library: Library,
-): Promise<Library> {
-  if (isRemoteSourceType(library.sourceType)) {
-    return { ...library, metadataUri: libraryMetadataUri(library) }
-  }
-
-  ensureLibrarySidecarDirectory(library)
-  const metadataUri = await resolveLocalLibraryMetadataUri(library)
-  if (!metadataUri) {
-    throw new Error(i18n.t("sync.notValidCalibreLibrary"))
-  }
-
-  const bookCount = await withLocalLibraryCalibreRoot(
-    library,
-    (calibreRootUri) => countCalibreBooks(calibreRootUri),
-  )
-
-  return {
-    ...library,
-    metadataUri,
-    bookCount,
   }
 }
 

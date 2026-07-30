@@ -168,20 +168,10 @@ impl LibraryService {
             return Err(AppError::Config("WEBDAV_LIBRARY_USE_ASYNC_REFRESH".into()));
         }
 
-        let lib_path = lib.path.clone();
-        let lib_path_canon = dunce::canonicalize(&lib_path)
-            .map_err(|e| AppError::Config(format!("INVALID_LIBRARY_PATH: {e}")))?;
+        let (lib_path_canon, books) =
+            my_reader_core::api::catalog::CatalogService::inspect_library(Path::new(&lib.path))
+                .await?;
         let lib_path_str = lib_path_canon.to_string_lossy().to_string();
-
-        if !my_reader_core::api::catalog::CatalogService::validate_library(&lib_path_canon) {
-            return Err(AppError::NotFound(format!(
-                "METADATA_DB_NOT_FOUND: {}",
-                lib_path_str
-            )));
-        }
-
-        let books =
-            my_reader_core::api::catalog::CatalogService::list_books(&lib_path_canon).await?;
         let book_count = books.len();
         let book_ids: Vec<i64> = books.iter().map(|book| book.id).collect();
 

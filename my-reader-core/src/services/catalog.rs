@@ -15,6 +15,21 @@ impl CatalogService {
         CalibreBookRepository::validate_library(&library_root.to_string_lossy())
     }
 
+    pub async fn inspect_library(
+        library_root: &Path,
+    ) -> Result<(PathBuf, Vec<BookSummary>), CoreError> {
+        let library_root = dunce::canonicalize(library_root)
+            .map_err(|error| CoreError::Config(format!("INVALID_LIBRARY_PATH: {error}")))?;
+        if !Self::validate_library(&library_root) {
+            return Err(CoreError::NotFound(format!(
+                "METADATA_DB_NOT_FOUND: {}",
+                library_root.display()
+            )));
+        }
+        let books = Self::list_book_summaries(&library_root).await?;
+        Ok((library_root, books))
+    }
+
     pub async fn list_books(library_root: &Path) -> Result<Vec<BookEntry>, CoreError> {
         CalibreBookRepository::open(&library_root.to_string_lossy())
             .await?
@@ -363,6 +378,19 @@ mod tests {
             summaries[0].format_paths,
             vec![formats[0].relative_path.clone()]
         );
+    }
+
+    #[tokio::test]
+    async fn should_canonicalize_root_and_list_books_when_calibre_library_is_inspected() {
+        let library = tempfile::tempdir().expect("create library");
+        seed_library(library.path()).await;
+
+        let (root, books) = super::CatalogService::inspect_library(&library.path().join("."))
+            .await
+            .expect("inspect library");
+
+        assert_eq!(root, dunce::canonicalize(library.path()).unwrap());
+        assert_eq!(books.iter().map(|book| book.id).collect::<Vec<_>>(), [42]);
     }
 
     #[tokio::test]

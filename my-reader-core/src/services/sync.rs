@@ -774,12 +774,11 @@ async fn sync_calibre(
         )
         .await?;
     }
-    let new_books = super::catalog::CatalogService::list_book_summaries(library_root).await?;
+    let (_, new_books) = super::catalog::CatalogService::inspect_library(library_root).await?;
     if is_remote_library(&library) {
         evict_stale_book_files(sidecar_root, library_root, &old_books, &new_books).await;
     }
-    let book_count = super::catalog::CatalogService::count_books(library_root).await?;
-    library.book_count = u64::try_from(book_count).unwrap_or(u64::MAX);
+    library.book_count = u64::try_from(new_books.len()).unwrap_or(u64::MAX);
     library.metadata_etag = version;
     super::config::ConfigService::replace_library(config_path, library.clone())?;
 
