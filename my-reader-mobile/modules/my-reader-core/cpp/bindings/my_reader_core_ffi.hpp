@@ -113,7 +113,8 @@ protected:
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_data_source_list_directories(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
-  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_data_source_prepare(
+  jsi::Value
+  cpp_uniffi_my_reader_core_ffi_fn_func_data_source_prepare_for_upsert(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_data_source_remove(
@@ -123,9 +124,6 @@ protected:
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_data_source_upsert(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_data_source_validate(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_download_cancel(
@@ -531,7 +529,8 @@ protected:
   cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_list_directories(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
-  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_prepare(
+  jsi::Value
+  cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_prepare_for_upsert(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_remove(
@@ -542,9 +541,6 @@ protected:
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_upsert(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_validate(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_download_cancel(

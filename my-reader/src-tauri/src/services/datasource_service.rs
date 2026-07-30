@@ -86,7 +86,8 @@ impl DataSourceService {
             return Err(AppError::Config("WEBDAV_PASSWORD_REQUIRED".into()));
         }
 
-        let prepared = my_reader_core::api::datasource::DataSourceService::prepare(
+        let prepared = my_reader_core::api::datasource::DataSourceService::prepare_for_upsert(
+            config_path,
             my_reader_core::models::DataSource::Webdav {
                 id: String::new(),
                 name: name.into(),
@@ -101,7 +102,6 @@ impl DataSourceService {
             },
         )?;
         let mut source = DataSourceConfig::from(&prepared);
-        my_reader_core::api::datasource::DataSourceService::validate(config_path, &prepared)?;
 
         if let DataSourceDetail::Webdav {
             credential_account, ..
@@ -211,7 +211,8 @@ impl DataSourceService {
             config_path,
             Some(config.to_core_config()),
         )?;
-        let prepared = my_reader_core::api::datasource::DataSourceService::prepare(
+        let prepared = my_reader_core::api::datasource::DataSourceService::prepare_for_upsert(
+            config_path,
             my_reader_core::models::DataSource::Onedrive {
                 id: String::new(),
                 name: name.into(),
@@ -228,7 +229,6 @@ impl DataSourceService {
             },
         )?;
         let mut source = DataSourceConfig::from(&prepared);
-        my_reader_core::api::datasource::DataSourceService::validate(config_path, &prepared)?;
 
         let refresh_token = refresh_token.filter(|t| !t.is_empty());
         if refresh_token.is_none() {

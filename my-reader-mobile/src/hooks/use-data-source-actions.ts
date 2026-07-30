@@ -7,10 +7,9 @@ import { DataSourceInUseError } from "@/src/errors"
 import {
   type AppConfigSnapshot,
   initializeAppConfig,
-  prepareAppDataSource,
+  prepareAppDataSourceForUpsert,
   removeAppDataSource,
   upsertAppDataSource,
-  validateAppDataSource,
 } from "@/src/services/core/app-config"
 import { testRemoteDataSource } from "@/src/services/core/remote"
 import type { DataSourceSecrets } from "@/src/services/storage/credentials"
@@ -62,12 +61,11 @@ export function useDataSourceActions() {
     ds: DataSource,
     secrets?: DataSourceSecrets,
   ): Promise<DataSource> {
-    const stored = await prepareAppDataSource({
+    const stored = await prepareAppDataSourceForUpsert({
       ...ds,
       ...deriveCredentialFlags(secrets),
     })
 
-    await validateAppDataSource(stored)
     if (secrets) {
       await writeSecrets(stored.id, secrets)
     }
@@ -81,12 +79,11 @@ export function useDataSourceActions() {
     ds: DataSource,
     secrets?: DataSourceSecrets,
   ): Promise<void> {
-    const stored = await prepareAppDataSource({
+    const stored = await prepareAppDataSourceForUpsert({
       ...ds,
       ...deriveCredentialFlags(secrets),
     })
 
-    await validateAppDataSource(stored)
     if (secrets) {
       await writeSecrets(ds.id, secrets)
     }

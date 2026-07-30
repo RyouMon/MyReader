@@ -1232,7 +1232,8 @@ export async function dataSourceListDirectories(
   }
 }
 
-export async function dataSourcePrepare(
+export async function dataSourcePrepareForUpsert(
+  configPath: string,
   source: DataSource,
   asyncOpts_?: { signal: AbortSignal },
 ): Promise<DataSource> /*throws*/ {
@@ -1241,7 +1242,8 @@ export async function dataSourcePrepare(
     return await uniffiRustCallAsync(
       /*rustCaller:*/ uniffiCaller,
       /*rustFutureFunc:*/ () => {
-        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_data_source_prepare(
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_data_source_prepare_for_upsert(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
           FfiConverterTypeDataSource.lower(
             source,
             nativeModule().rustbuffer_alloc,
@@ -1404,47 +1406,6 @@ export async function dataSourceUpsert(
       /*liftFunc:*/ FfiConverterTypeAppConfig.lift.bind(
         FfiConverterTypeAppConfig,
       ),
-      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
-      /*asyncOpts:*/ asyncOpts_,
-      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
-        FfiConverterTypeCoreFfiError,
-      ),
-    );
-  } catch (__error: any) {
-    if (uniffiIsDebug && __error instanceof Error) {
-      __error.stack = __stack;
-    }
-    throw __error;
-  }
-}
-
-export async function dataSourceValidate(
-  configPath: string,
-  source: DataSource,
-  asyncOpts_?: { signal: AbortSignal },
-): Promise<void> /*throws*/ {
-  const __stack = uniffiIsDebug ? new Error().stack : undefined;
-  try {
-    return await uniffiRustCallAsync(
-      /*rustCaller:*/ uniffiCaller,
-      /*rustFutureFunc:*/ () => {
-        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_data_source_validate(
-          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
-          FfiConverterTypeDataSource.lower(
-            source,
-            nativeModule().rustbuffer_alloc,
-          ),
-        );
-      },
-      /*pollFunc:*/ nativeModule()
-        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_void,
-      /*cancelFunc:*/ nativeModule()
-        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_void,
-      /*completeFunc:*/ nativeModule()
-        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_void,
-      /*freeFunc:*/ nativeModule()
-        .ubrn_ffi_my_reader_core_ffi_rust_future_free_void,
-      /*liftFunc:*/ (_v) => {},
       /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
       /*asyncOpts:*/ asyncOpts_,
       /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
@@ -7019,11 +6980,11 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
-    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_data_source_prepare() !==
-    58925
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_data_source_prepare_for_upsert() !==
+    38199
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
-      "uniffi_my_reader_core_ffi_checksum_func_data_source_prepare",
+      "uniffi_my_reader_core_ffi_checksum_func_data_source_prepare_for_upsert",
     );
   }
   if (
@@ -7048,14 +7009,6 @@ function uniffiEnsureInitialized() {
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_data_source_upsert",
-    );
-  }
-  if (
-    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_data_source_validate() !==
-    17167
-  ) {
-    throw new UniffiInternalError.ApiChecksumMismatch(
-      "uniffi_my_reader_core_ffi_checksum_func_data_source_validate",
     );
   }
   if (

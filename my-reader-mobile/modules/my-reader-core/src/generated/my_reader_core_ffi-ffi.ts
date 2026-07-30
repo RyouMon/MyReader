@@ -281,7 +281,8 @@ interface NativeModuleInterface {
     path: Uint8Array,
     credential: Uint8Array,
   ): bigint;
-  ubrn_uniffi_my_reader_core_ffi_fn_func_data_source_prepare(
+  ubrn_uniffi_my_reader_core_ffi_fn_func_data_source_prepare_for_upsert(
+    configPath: Uint8Array,
     source: Uint8Array,
   ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_data_source_remove(
@@ -293,10 +294,6 @@ interface NativeModuleInterface {
     credential: Uint8Array,
   ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_data_source_upsert(
-    configPath: Uint8Array,
-    source: Uint8Array,
-  ): bigint;
-  ubrn_uniffi_my_reader_core_ffi_fn_func_data_source_validate(
     configPath: Uint8Array,
     source: Uint8Array,
   ): bigint;
@@ -638,11 +635,10 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_content_upsert_cover_thumbnail_cache(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_content_upsert_file_state(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_data_source_list_directories(): number;
-  ubrn_uniffi_my_reader_core_ffi_checksum_func_data_source_prepare(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_data_source_prepare_for_upsert(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_data_source_remove(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_data_source_test_connection(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_data_source_upsert(): number;
-  ubrn_uniffi_my_reader_core_ffi_checksum_func_data_source_validate(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_download_cancel(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_download_claim(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_download_claim_ready(): number;

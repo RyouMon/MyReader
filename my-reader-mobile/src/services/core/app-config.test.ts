@@ -1,15 +1,13 @@
 import {
   appConfigInitialize,
   appConfigWriteMobile,
-  dataSourcePrepare,
-  dataSourceValidate,
+  dataSourcePrepareForUpsert,
   libraryAddLocal,
 } from "my-reader-core"
 import {
   addLocalAppLibrary,
   initializeAppConfig,
-  prepareAppDataSource,
-  validateAppDataSource,
+  prepareAppDataSourceForUpsert,
   writeMobileAppConfig,
 } from "./app-config"
 
@@ -21,8 +19,7 @@ jest.mock("../fs/path", () => ({
   toNativeFilesystemPath: (uri: string) => uri.replace("file://", ""),
 }))
 jest.mock("my-reader-core", () => ({
-  dataSourcePrepare: jest.fn(),
-  dataSourceValidate: jest.fn(),
+  dataSourcePrepareForUpsert: jest.fn(),
   appConfigInitialize: jest.fn(),
   appConfigWriteMobile: jest.fn(),
   libraryAddLocal: jest.fn(),
@@ -72,34 +69,6 @@ describe("app config", () => {
     })
   })
 
-  it("should validate source through core before platform credentials are written", async () => {
-    jest.mocked(dataSourceValidate).mockResolvedValue()
-    const source = {
-      id: "source",
-      type: "webdav" as const,
-      name: "WebDAV",
-      enabled: true,
-      endpoint: "https://example.com",
-      username: "reader",
-      hasPassword: true,
-    }
-
-    await validateAppDataSource(source)
-
-    expect(dataSourceValidate).toHaveBeenCalledWith("/documents/config.json", {
-      kind: "webdav",
-      id: "source",
-      name: "WebDAV",
-      enabled: true,
-      endpoint: "https://example.com",
-      username: "reader",
-      rootPath: undefined,
-      hasPassword: true,
-      readonly: undefined,
-      createdAt: undefined,
-    })
-  })
-
   it("should write mobile state through core when preferences change", async () => {
     jest.mocked(appConfigWriteMobile).mockResolvedValue({
       schemaVersion: 1,
@@ -130,7 +99,7 @@ describe("app config", () => {
     )
   })
 
-  it("should use normalized source returned by core when source is prepared", async () => {
+  it("should use normalized source returned by core when source is prepared for upsert", async () => {
     const source = {
       id: "",
       type: "webdav" as const,
@@ -140,7 +109,7 @@ describe("app config", () => {
       username: "reader",
       hasPassword: true,
     }
-    jest.mocked(dataSourcePrepare).mockResolvedValue({
+    jest.mocked(dataSourcePrepareForUpsert).mockResolvedValue({
       kind: "webdav",
       id: "source",
       name: "WebDAV",
@@ -150,7 +119,7 @@ describe("app config", () => {
       hasPassword: true,
     })
 
-    await expect(prepareAppDataSource(source)).resolves.toEqual({
+    await expect(prepareAppDataSourceForUpsert(source)).resolves.toEqual({
       ...source,
       id: "source",
       endpoint: "https://example.com",
@@ -158,6 +127,21 @@ describe("app config", () => {
       readonly: undefined,
       createdAt: undefined,
     })
+    expect(dataSourcePrepareForUpsert).toHaveBeenCalledWith(
+      "/documents/config.json",
+      {
+        kind: "webdav",
+        id: "",
+        name: "WebDAV",
+        enabled: true,
+        endpoint: "https://example.com/",
+        username: "reader",
+        rootPath: undefined,
+        hasPassword: true,
+        readonly: undefined,
+        createdAt: undefined,
+      },
+    )
   })
 
   it("should delegate local library creation when a directory is selected", async () => {

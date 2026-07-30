@@ -13,12 +13,10 @@ use crate::{
 pub struct DataSourceService;
 
 impl DataSourceService {
-    pub fn prepare(source: DataSource) -> Result<DataSource, CoreError> {
-        config::ConfigService::prepare_data_source(source)
-    }
-
-    pub fn validate(path: &Path, source: &DataSource) -> Result<(), CoreError> {
-        config::ConfigService::ensure_data_source_can_upsert(path, source)
+    pub fn prepare_for_upsert(path: &Path, source: DataSource) -> Result<DataSource, CoreError> {
+        let source = config::ConfigService::prepare_data_source(source)?;
+        config::ConfigService::ensure_data_source_can_upsert(path, &source)?;
+        Ok(source)
     }
 
     pub fn upsert(path: &Path, source: DataSource) -> Result<AppConfig, CoreError> {
@@ -212,6 +210,45 @@ mod tests {
     use opendal::services::Fs;
 
     use super::*;
+
+    #[test]
+    fn should_normalize_and_validate_uniqueness_when_source_is_prepared_for_upsert() {
+        let config_dir = tempfile::tempdir().unwrap();
+        let config_path = config_dir.path().join("config.json");
+        config::ConfigService::load_or_initialize(&config_path, None).unwrap();
+        let source = DataSource::Webdav {
+            id: String::new(),
+            name: " WebDAV ".into(),
+            enabled: true,
+            endpoint: "https://example.com/".into(),
+            username: " reader ".into(),
+            root_path: None,
+            has_password: true,
+            credential_reference: None,
+            readonly: None,
+            created_at: None,
+        };
+
+        let prepared = DataSourceService::prepare_for_upsert(&config_path, source.clone())
+            .expect("prepare first source");
+        assert_eq!(prepared.name(), "WebDAV");
+        if let DataSource::Webdav {
+            endpoint, username, ..
+        } = &prepared
+        {
+            assert_eq!(endpoint, "https://example.com");
+            assert_eq!(username, "reader");
+        } else {
+            panic!("expected WebDAV source");
+        }
+        DataSourceService::upsert(&config_path, prepared).expect("persist first source");
+
+        let error = DataSourceService::prepare_for_upsert(&config_path, source)
+            .expect_err("duplicate source should fail");
+        assert!(error
+            .to_string()
+            .contains("WEBDAV_DATASOURCE_ALREADY_EXISTS"));
+    }
 
     #[tokio::test]
     async fn list_directories_should_return_only_immediate_directories_when_path_is_browsed() {

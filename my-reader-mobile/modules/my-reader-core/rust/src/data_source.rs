@@ -20,19 +20,15 @@ pub async fn data_source_upsert(
 }
 
 #[uniffi::export(async_runtime = "tokio")]
-pub async fn data_source_prepare(source: DataSource) -> Result<DataSource, CoreFfiError> {
-    Ok(DataSourceService::prepare(source.try_into()?)
-        .map_err(CoreFfiError::from_core)?
-        .into())
-}
-
-#[uniffi::export(async_runtime = "tokio")]
-pub async fn data_source_validate(
+pub async fn data_source_prepare_for_upsert(
     config_path: String,
     source: DataSource,
-) -> Result<(), CoreFfiError> {
-    DataSourceService::validate(Path::new(&config_path), &source.try_into()?)
-        .map_err(CoreFfiError::from_core)
+) -> Result<DataSource, CoreFfiError> {
+    Ok(
+        DataSourceService::prepare_for_upsert(Path::new(&config_path), source.try_into()?)
+            .map_err(CoreFfiError::from_core)?
+            .into(),
+    )
 }
 
 #[uniffi::export(async_runtime = "tokio")]

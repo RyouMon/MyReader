@@ -4,10 +4,9 @@ import { File, Paths } from "expo-file-system"
 import {
   appConfigInitialize,
   appConfigWriteMobile,
-  dataSourcePrepare,
+  dataSourcePrepareForUpsert,
   dataSourceRemove,
   dataSourceUpsert,
-  dataSourceValidate,
   libraryAddLocal,
   libraryRemove,
   libraryReplace,
@@ -206,20 +205,16 @@ export async function upsertAppDataSource(
   )
 }
 
-export async function prepareAppDataSource(
+export async function prepareAppDataSourceForUpsert(
   source: DataSource,
 ): Promise<DataSource> {
   const prepared = dataSourceFromCore(
-    await dataSourcePrepare(toCoreDataSource(source)),
+    await dataSourcePrepareForUpsert(appConfigPath, toCoreDataSource(source)),
   )
   if (!prepared) {
     throw new Error("UNSUPPORTED_DATA_SOURCE_TYPE")
   }
   return prepared
-}
-
-export async function validateAppDataSource(source: DataSource): Promise<void> {
-  await dataSourceValidate(appConfigPath, toCoreDataSource(source))
 }
 
 export async function removeAppDataSource(
