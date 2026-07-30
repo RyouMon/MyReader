@@ -110,53 +110,28 @@ pub async fn core_library_storage(
     config: &AppConfig,
     library: &LibraryConfig,
 ) -> Result<my_reader_core::models::LibraryStorageConfig, AppError> {
-    use my_reader_core::models::LibraryStorageConfig;
-    use my_reader_core::models::RemoteCredential;
-
-    if !library.is_remote() {
-        return Ok(LibraryStorageConfig::LocalDirect {
-            root: library.path.clone(),
-        });
-    }
-
-    let data_source_id = library
-        .data_source_id
-        .as_deref()
-        .ok_or_else(|| AppError::Config("LIBRARY_DATA_SOURCE_MISSING".into()))?;
-    let source = config
-        .data_sources
-        .iter()
-        .find(|source| source.id == data_source_id)
-        .ok_or_else(|| AppError::NotFound(format!("DATASOURCE_NOT_FOUND: {data_source_id}")))?;
-    let relative_root = library.source_path.as_deref().unwrap_or_default();
-    let credential = core_remote_credential(source).await?;
-
-    match (&source.detail, credential) {
-        (
-            DataSourceDetail::Webdav {
-                endpoint,
-                username,
-                root_path,
-                ..
-            },
-            RemoteCredential::Webdav { password },
-        ) => Ok(LibraryStorageConfig::Webdav {
-            endpoint: endpoint.clone(),
-            username: username.clone(),
-            password,
-            root: Some(join_remote_root(root_path.as_deref(), relative_root)),
-        }),
-        (
-            DataSourceDetail::Onedrive { root_path, .. },
-            RemoteCredential::Onedrive { access_token },
-        ) => Ok(LibraryStorageConfig::Onedrive {
-            access_token,
-            root: Some(join_remote_root(root_path.as_deref(), relative_root)),
-        }),
-        _ => Err(AppError::Config(
-            "DATASOURCE_CREDENTIAL_TYPE_MISMATCH".into(),
-        )),
-    }
+    let credential = if library.is_remote() {
+        let data_source_id = library
+            .data_source_id
+            .as_deref()
+            .ok_or_else(|| AppError::Config("LIBRARY_DATA_SOURCE_MISSING".into()))?;
+        let source = config
+            .data_sources
+            .iter()
+            .find(|source| source.id == data_source_id)
+            .ok_or_else(|| AppError::NotFound(format!("DATASOURCE_NOT_FOUND: {data_source_id}")))?;
+        Some(core_remote_credential(source).await?)
+    } else {
+        None
+    };
+    Ok(
+        my_reader_core::api::sync::SyncService::resolve_library_storage(
+            &config.to_core_config(),
+            &library.id,
+            &library.path,
+            credential.as_ref(),
+        )?,
+    )
 }
 
 pub async fn from_data_source_at_path(
@@ -174,7 +149,10 @@ pub async fn from_data_source_at_path(
             }
             StorageBackend::Webdav { root_path, .. }
             | StorageBackend::Onedrive { root_path, .. } => {
-                *root_path = Some(join_remote_root(root_path.as_deref(), relative_root));
+                *root_path = Some(my_reader_core::api::sync::SyncService::scope_remote_root(
+                    root_path.as_deref(),
+                    relative_root,
+                )?);
             }
         }
     }
@@ -203,17 +181,6 @@ pub async fn from_data_source_at_path(
         _ => {}
     }
     build_operator(&backend)
-}
-
-fn join_remote_root(base: Option<&str>, relative: &str) -> String {
-    let base = base.unwrap_or_default().trim().trim_matches('/');
-    let relative = relative.trim().trim_matches('/');
-    match (base.is_empty(), relative.is_empty()) {
-        (true, true) => "/".to_owned(),
-        (true, false) => format!("/{relative}"),
-        (false, true) => format!("/{base}"),
-        (false, false) => format!("/{base}/{relative}"),
-    }
 }
 
 fn build_backend(source: &DataSourceConfig) -> Result<StorageBackend, AppError> {
@@ -304,15 +271,6 @@ mod tests {
         let op = from_data_source(&source).await.unwrap();
         // Listing the root confirms the operator is usable.
         op.list("/").await.unwrap();
-    }
-
-    #[test]
-    fn should_scope_library_below_data_source_root_when_remote_root_is_joined() {
-        assert_eq!(
-            join_remote_root(Some("/Reading/"), "/Calibre/Library/"),
-            "/Reading/Calibre/Library"
-        );
-        assert_eq!(join_remote_root(None, "/Calibre"), "/Calibre");
     }
 
     #[tokio::test]

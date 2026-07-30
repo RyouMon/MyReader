@@ -12,8 +12,8 @@ use my_reader_core::api::sync::{SyncCoordinator, SyncService};
 use crate::{
     types::{
         required_i64, required_u64, LibraryStorageConfig, LibrarySyncReport, LibrarySyncScope,
-        SchedulerTransition, SidecarSyncMode, SidecarSyncReport, SyncExecution, SyncFailureKind,
-        SyncTaskProgress, SyncTiming,
+        RemoteCredential, SchedulerTransition, SidecarSyncMode, SidecarSyncReport, SyncExecution,
+        SyncFailureKind, SyncTaskProgress, SyncTiming,
     },
     CoreFfiError,
 };
@@ -310,6 +310,24 @@ pub fn sync_release_task(task_id: String) -> bool {
         .unwrap_or_else(|error| error.into_inner())
         .remove(&task_id)
         .is_some()
+}
+
+#[uniffi::export]
+pub fn sync_resolve_library_storage(
+    config_path: String,
+    library_id: String,
+    local_root_path: String,
+    credential: Option<RemoteCredential>,
+) -> Result<LibraryStorageConfig, CoreFfiError> {
+    let credential = credential.map(TryInto::try_into).transpose()?;
+    my_reader_core::api::sync::SyncService::resolve_library_storage_at_path(
+        Path::new(&config_path),
+        &library_id,
+        &local_root_path,
+        credential.as_ref(),
+    )
+    .map(Into::into)
+    .map_err(CoreFfiError::from_core)
 }
 
 #[allow(clippy::too_many_arguments)]

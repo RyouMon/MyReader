@@ -577,6 +577,13 @@ interface NativeModuleInterface {
     nowMs: number,
     freshnessMs: number,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_sync_resolve_library_storage(
+    configPath: Uint8Array,
+    libraryId: Uint8Array,
+    localRootPath: Uint8Array,
+    credential: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
   ubrn_uniffi_my_reader_core_ffi_fn_func_sync_resume(
     coordinatorId: Uint8Array,
     libraryId: Uint8Array,
@@ -681,6 +688,7 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_release_task(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_request(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_request_contextual_pull(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_resolve_library_storage(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_resume(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_run_library(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_set_library_online(): number;

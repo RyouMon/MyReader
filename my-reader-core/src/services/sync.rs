@@ -11,9 +11,10 @@ use tokio::sync::Mutex as AsyncMutex;
 use crate::{
     database,
     models::{
-        BookSummary, CalibreSyncReport, Library, LibraryStorageConfig, LibrarySyncOptions,
-        LibrarySyncReport, LibrarySyncScope, MyReaderSyncReport, SidecarSyncMode,
-        SidecarSyncReport, SyncFailureDisposition, SyncFailureKind, SyncScheduleSnapshot,
+        AppConfig, BookSummary, CalibreSyncReport, DataSource, Library, LibraryStorageConfig,
+        LibrarySyncOptions, LibrarySyncReport, LibrarySyncScope, MyReaderSyncReport,
+        RemoteCredential, SidecarSyncMode, SidecarSyncReport, SyncFailureDisposition,
+        SyncFailureKind, SyncScheduleSnapshot,
     },
     sync::{
         exchange::{self, SyncMode, SyncObserver},
@@ -285,6 +286,97 @@ fn sqlite_timestamp(timestamp: u64) -> Result<i64, CoreError> {
 pub struct SyncService;
 
 impl SyncService {
+    pub fn scope_remote_root(base: Option<&str>, library: &str) -> Result<String, CoreError> {
+        let root =
+            crate::infrastructure::storage::join_remote_path(base.unwrap_or_default(), library)?;
+        Ok(if root.is_empty() {
+            "/".to_owned()
+        } else {
+            format!("/{root}")
+        })
+    }
+
+    pub fn resolve_library_storage_at_path(
+        config_path: &Path,
+        library_id: &str,
+        local_root_path: &str,
+        credential: Option<&RemoteCredential>,
+    ) -> Result<LibraryStorageConfig, CoreError> {
+        let config = super::config::ConfigService::load(config_path)?
+            .ok_or_else(|| CoreError::NotFound("APP_CONFIG_NOT_FOUND".into()))?;
+        Self::resolve_library_storage(&config, library_id, local_root_path, credential)
+    }
+
+    pub fn resolve_library_storage(
+        config: &AppConfig,
+        library_id: &str,
+        local_root_path: &str,
+        credential: Option<&RemoteCredential>,
+    ) -> Result<LibraryStorageConfig, CoreError> {
+        let library = config
+            .libraries
+            .iter()
+            .find(|library| library.id == library_id)
+            .ok_or_else(|| CoreError::NotFound(format!("LIBRARY_NOT_FOUND: {library_id}")))?;
+        if !is_remote_library(library) {
+            let root = local_root_path.trim();
+            if root.is_empty() {
+                return Err(CoreError::Config("LIBRARY_ROOT_PATH_REQUIRED".into()));
+            }
+            return Ok(LibraryStorageConfig::LocalDirect {
+                root: root.to_owned(),
+            });
+        }
+
+        let data_source_id = library
+            .data_source_id
+            .as_deref()
+            .ok_or_else(|| CoreError::Config("LIBRARY_DATA_SOURCE_MISSING".into()))?;
+        let source = config
+            .data_sources
+            .iter()
+            .find(|source| source.id() == data_source_id)
+            .ok_or_else(|| {
+                CoreError::NotFound(format!("DATASOURCE_NOT_FOUND: {data_source_id}"))
+            })?;
+        if library.source_type.as_deref() != Some(source.kind()) {
+            return Err(CoreError::Config("LIBRARY_DATASOURCE_TYPE_MISMATCH".into()));
+        }
+        let credential =
+            credential.ok_or_else(|| CoreError::Config("REMOTE_CREDENTIAL_REQUIRED".into()))?;
+        let library_root = library.source_path.as_deref().unwrap_or_default();
+
+        match (source, credential) {
+            (
+                DataSource::Webdav {
+                    endpoint,
+                    username,
+                    root_path,
+                    ..
+                },
+                RemoteCredential::Webdav { password },
+            ) => Ok(LibraryStorageConfig::Webdav {
+                endpoint: endpoint.clone(),
+                username: username.clone(),
+                password: password.clone(),
+                root: Some(Self::scope_remote_root(root_path.as_deref(), library_root)?),
+            }),
+            (
+                DataSource::Onedrive { root_path, .. },
+                RemoteCredential::Onedrive { access_token },
+            ) => Ok(LibraryStorageConfig::Onedrive {
+                access_token: access_token.clone(),
+                root: Some(Self::scope_remote_root(root_path.as_deref(), library_root)?),
+            }),
+            (DataSource::Local { .. }, _) => {
+                Err(CoreError::Config("LIBRARY_DATASOURCE_TYPE_MISMATCH".into()))
+            }
+            _ => Err(CoreError::Config(
+                "DATASOURCE_CREDENTIAL_TYPE_MISMATCH".into(),
+            )),
+        }
+    }
+
     pub async fn sync_sidecar(
         sidecar_root: &Path,
         library_root: &Path,
@@ -775,7 +867,8 @@ mod tests {
     use std::sync::Mutex;
 
     use crate::models::{
-        AppConfig, Library, LibraryStorageConfig, LibrarySyncOptions, LibrarySyncScope,
+        AppConfig, DataSource, Library, LibraryStorageConfig, LibrarySyncOptions, LibrarySyncScope,
+        RemoteCredential,
     };
     use crate::sync::exchange::{SyncProgress, SyncReport};
 
@@ -896,6 +989,139 @@ mod tests {
             *self.count_at_sidecar_completion.lock().unwrap() =
                 Some(count_calibre_books(&self.library_root));
         }
+    }
+
+    #[test]
+    fn should_scope_webdav_storage_to_library_when_data_source_has_root() {
+        let mut config = AppConfig::empty();
+        config.data_sources.push(DataSource::Webdav {
+            id: "source-1".into(),
+            name: "WebDAV".into(),
+            enabled: true,
+            endpoint: "https://example.com/dav".into(),
+            username: "reader".into(),
+            root_path: Some("/Reading/".into()),
+            has_password: true,
+            credential_reference: None,
+            readonly: None,
+            created_at: None,
+        });
+        config.libraries.push(Library {
+            id: "library-1".into(),
+            name: "Library".into(),
+            path: "file:///cached/library".into(),
+            book_count: 0,
+            metadata_uri: None,
+            added_at: None,
+            data_source_id: Some("source-1".into()),
+            source_type: Some("webdav".into()),
+            source_path: Some("/Calibre/Library/".into()),
+            metadata_etag: None,
+            security_scoped_bookmark: None,
+        });
+
+        let storage = SyncService::resolve_library_storage(
+            &config,
+            "library-1",
+            "/runtime/library",
+            Some(&RemoteCredential::Webdav {
+                password: "secret".into(),
+            }),
+        )
+        .unwrap();
+
+        assert_eq!(
+            storage,
+            LibraryStorageConfig::Webdav {
+                endpoint: "https://example.com/dav".into(),
+                username: "reader".into(),
+                password: "secret".into(),
+                root: Some("/Reading/Calibre/Library".into()),
+            }
+        );
+    }
+
+    #[test]
+    fn should_scope_onedrive_storage_to_library_when_data_source_root_is_empty() {
+        let mut config = AppConfig::empty();
+        config.data_sources.push(DataSource::Onedrive {
+            id: "source-1".into(),
+            name: "OneDrive".into(),
+            enabled: true,
+            client_id: "client".into(),
+            tenant_id: Some("consumers".into()),
+            display_name: None,
+            email: None,
+            root_path: None,
+            has_refresh_token: true,
+            credential_reference: None,
+            readonly: None,
+            created_at: None,
+        });
+        config.libraries.push(Library {
+            id: "library-1".into(),
+            name: "Library".into(),
+            path: "file:///cached/library".into(),
+            book_count: 0,
+            metadata_uri: None,
+            added_at: None,
+            data_source_id: Some("source-1".into()),
+            source_type: Some("onedrive".into()),
+            source_path: Some("/Calibre/Library/".into()),
+            metadata_etag: None,
+            security_scoped_bookmark: None,
+        });
+
+        let storage = SyncService::resolve_library_storage(
+            &config,
+            "library-1",
+            "/runtime/library",
+            Some(&RemoteCredential::Onedrive {
+                access_token: "token".into(),
+            }),
+        )
+        .unwrap();
+
+        assert_eq!(
+            storage,
+            LibraryStorageConfig::Onedrive {
+                access_token: "token".into(),
+                root: Some("/Calibre/Library".into()),
+            }
+        );
+    }
+
+    #[test]
+    fn should_use_runtime_root_when_local_library_path_is_resolved_by_platform() {
+        let mut config = AppConfig::empty();
+        config.libraries.push(Library {
+            id: "library-1".into(),
+            name: "Library".into(),
+            path: "file:///stale/sandbox/library".into(),
+            book_count: 0,
+            metadata_uri: None,
+            added_at: None,
+            data_source_id: None,
+            source_type: Some("local".into()),
+            source_path: None,
+            metadata_etag: None,
+            security_scoped_bookmark: None,
+        });
+
+        let storage = SyncService::resolve_library_storage(
+            &config,
+            "library-1",
+            "/current/sandbox/library",
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(
+            storage,
+            LibraryStorageConfig::LocalDirect {
+                root: "/current/sandbox/library".into(),
+            }
+        );
     }
 
     #[tokio::test]

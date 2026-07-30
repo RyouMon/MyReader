@@ -3439,6 +3439,43 @@ export async function syncRequestContextualPull(
   }
 }
 
+export function syncResolveLibraryStorage(
+  configPath: string,
+  libraryId: string,
+  localRootPath: string,
+  credential: RemoteCredential | undefined,
+): LibraryStorageConfig /*throws*/ {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterTypeLibraryStorageConfig.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCallWithError(
+      /*liftError:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+      /*caller:*/ (callStatus) => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_sync_resolve_library_storage(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(libraryId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            localRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterOptionalTypeRemoteCredential.lower(
+            credential,
+            nativeModule().rustbuffer_alloc,
+          ),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
+
 export function syncResume(
   coordinatorId: string,
   libraryId: string,
@@ -6709,6 +6746,11 @@ const FfiConverterOptionalTypeSidecarSyncReport = new FfiConverterOptional(
   FfiConverterTypeSidecarSyncReport,
 );
 
+// FfiConverter for RemoteCredential | undefined
+const FfiConverterOptionalTypeRemoteCredential = new FfiConverterOptional(
+  FfiConverterTypeRemoteCredential,
+);
+
 /**
  * This should be called before anything else.
  *
@@ -7353,6 +7395,14 @@ function uniffiEnsureInitialized() {
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_sync_request_contextual_pull",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_resolve_library_storage() !==
+    20218
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_sync_resolve_library_storage",
     );
   }
   if (

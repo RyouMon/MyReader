@@ -1056,6 +1056,42 @@ impl TryFrom<LibraryStorageConfig> for models::LibraryStorageConfig {
     }
 }
 
+impl From<models::LibraryStorageConfig> for LibraryStorageConfig {
+    fn from(value: models::LibraryStorageConfig) -> Self {
+        match value {
+            models::LibraryStorageConfig::LocalDirect { root } => Self {
+                kind: "local-direct".into(),
+                root: Some(root),
+                endpoint: None,
+                username: None,
+                password: None,
+                access_token: None,
+            },
+            models::LibraryStorageConfig::Webdav {
+                endpoint,
+                username,
+                password,
+                root,
+            } => Self {
+                kind: "webdav".into(),
+                root,
+                endpoint: Some(endpoint),
+                username: Some(username),
+                password: Some(password),
+                access_token: None,
+            },
+            models::LibraryStorageConfig::Onedrive { access_token, root } => Self {
+                kind: "onedrive".into(),
+                root,
+                endpoint: None,
+                username: None,
+                password: None,
+                access_token: Some(access_token),
+            },
+        }
+    }
+}
+
 impl From<models::SidecarSyncReport> for SidecarSyncReport {
     fn from(value: models::SidecarSyncReport) -> Self {
         Self {

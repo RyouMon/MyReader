@@ -1,18 +1,18 @@
-import type { DataSource, Library, WebDavDataSource } from "../types"
+import type { DataSource, Library } from "../types"
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../../constants/local-library-data-source"
-import {
-  readWebDavPassword,
-  readOneDriveRefreshToken,
-} from "../../services/storage/credentials"
 import {
   libraryRootUri,
   librarySidecarRootUri,
 } from "@/src/services/fs/library-paths"
 import { toNativeFilesystemPath } from "@/src/services/fs/path"
 import { SyncConfigError } from "../../errors"
-import { createRemoteBackend } from "../../services/remote/factory"
+import { resolveRemoteBackend } from "../../services/remote/factory"
 import type { RemoteBackend } from "../../services/remote/backend"
-import type { LibraryStorageConfig } from "../../services/core/sync"
+import {
+  resolveLibraryStorage,
+  type LibraryStorageConfig,
+} from "../../services/core/sync"
+import { appConfigPath } from "../../services/core/app-config"
 import { LocalDirectBackend } from "./local"
 import i18n from "@/src/i18n"
 
@@ -29,16 +29,6 @@ export type ResolvedSyncTarget = {
   librarySidecarRootUri: string
 }
 
-function remoteLibraryRoot(
-  sourceRoot: string | null | undefined,
-  libraryPath: string,
-): string {
-  const parts = [sourceRoot, libraryPath]
-    .map((value) => value?.trim().replace(/^\/+|\/+$/g, "") ?? "")
-    .filter(Boolean)
-  return parts.length === 0 ? "/" : `/${parts.join("/")}`
-}
-
 export async function resolveSyncTarget(
   library: Library,
   dataSources: DataSource[],
@@ -53,26 +43,12 @@ export async function resolveSyncTarget(
     if (!rawSource || rawSource.type !== "webdav") {
       throw new SyncConfigError(i18n.t("sync.webdavSourceNotFound"))
     }
-    const password = (await readWebDavPassword(rawSource.id)) ?? ""
-    if (!password) {
-      throw new SyncConfigError(i18n.t("sync.webdavPasswordMissing"))
-    }
-    const source: WebDavDataSource = { ...rawSource, password }
-    const backend = await createRemoteBackend(source, library)
-    if (!backend)
+    const resolved = await resolveRemoteBackend(rawSource, library)
+    if (!resolved)
       throw new SyncConfigError(i18n.t("sync.webdavPasswordMissing"))
     return {
-      backend,
-      libraryStorage: {
-        kind: "webdav",
-        endpoint: rawSource.endpoint,
-        username: rawSource.username,
-        password,
-        root: remoteLibraryRoot(
-          rawSource.rootPath,
-          library.sourcePath ?? library.path ?? "",
-        ),
-      },
+      backend: resolved.backend,
+      libraryStorage: resolved.libraryStorage,
       dataSourceId: rawSource.id,
       libraryId: library.id,
       libraryRootUri: rootUri,
@@ -87,28 +63,12 @@ export async function resolveSyncTarget(
     if (!rawSource || rawSource.type !== "onedrive") {
       throw new SyncConfigError(i18n.t("sync.onedriveSourceNotFound"))
     }
-    const refreshToken = await readOneDriveRefreshToken(rawSource.id)
-    if (!refreshToken) {
+    const resolved = await resolveRemoteBackend(rawSource, library)
+    if (!resolved)
       throw new SyncConfigError(i18n.t("sync.onedriveRefreshTokenMissing"))
-    }
-    const backend = await createRemoteBackend(rawSource, library)
-    if (!backend)
-      throw new SyncConfigError(i18n.t("sync.onedriveRefreshTokenMissing"))
-    const authorization = (await backend.getAuthHeaders()).Authorization
-    const accessToken = authorization?.replace(/^Bearer\s+/i, "") ?? ""
-    if (!accessToken) {
-      throw new SyncConfigError(i18n.t("sync.onedriveRefreshTokenMissing"))
-    }
     return {
-      backend,
-      libraryStorage: {
-        kind: "onedrive",
-        accessToken,
-        root: remoteLibraryRoot(
-          rawSource.rootPath,
-          library.sourcePath ?? library.path ?? "",
-        ),
-      },
+      backend: resolved.backend,
+      libraryStorage: resolved.libraryStorage,
       dataSourceId: rawSource.id,
       libraryId: library.id,
       libraryRootUri: rootUri,
@@ -119,10 +79,11 @@ export async function resolveSyncTarget(
   const backend = new LocalDirectBackend(rootUri)
   return {
     backend,
-    libraryStorage: {
-      kind: "local-direct",
-      root: toNativeFilesystemPath(rootUri),
-    },
+    libraryStorage: resolveLibraryStorage({
+      configPath: appConfigPath,
+      libraryId: library.id,
+      localRootPath: toNativeFilesystemPath(rootUri),
+    }),
     dataSourceId: library.dataSourceId ?? LOCAL_LIBRARY_DATA_SOURCE_ID,
     libraryId: library.id,
     libraryRootUri: rootUri,

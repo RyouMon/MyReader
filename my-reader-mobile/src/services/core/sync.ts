@@ -2,6 +2,7 @@ import {
   CoreFfiError,
   type SchedulerTransition as CoreSchedulerTransition,
   type LibraryStorageConfig as CoreLibraryStorageConfig,
+  type RemoteCredential,
   type LibrarySyncReport,
   type LibrarySyncScope,
   type RetrySchedule,
@@ -24,6 +25,7 @@ import {
   syncReadTaskSidecarReport,
   syncRecover,
   syncReleaseTask,
+  syncResolveLibraryStorage,
   syncRequest,
   syncRequestContextualPull,
   syncResume,
@@ -99,6 +101,54 @@ function storageToCore(
         root: storage.root ?? undefined,
       }
   }
+}
+
+function storageFromCore(
+  storage: CoreLibraryStorageConfig,
+): LibraryStorageConfig {
+  switch (storage.kind) {
+    case "local-direct":
+      if (!storage.root) throw new Error("LIBRARY_ROOT_PATH_REQUIRED")
+      return { kind: storage.kind, root: storage.root }
+    case "webdav":
+      if (!storage.endpoint || !storage.username || !storage.password) {
+        throw new Error("WEBDAV_STORAGE_CONFIG_INVALID")
+      }
+      return {
+        kind: storage.kind,
+        endpoint: storage.endpoint,
+        username: storage.username,
+        password: storage.password,
+        root: storage.root ?? null,
+      }
+    case "onedrive":
+      if (!storage.accessToken) {
+        throw new Error("ONEDRIVE_STORAGE_CONFIG_INVALID")
+      }
+      return {
+        kind: storage.kind,
+        accessToken: storage.accessToken,
+        root: storage.root ?? null,
+      }
+    default:
+      throw new Error(`Unsupported sidecar storage type: ${storage.kind}`)
+  }
+}
+
+export function resolveLibraryStorage(input: {
+  configPath: string
+  libraryId: string
+  localRootPath: string
+  credential?: RemoteCredential
+}): LibraryStorageConfig {
+  return storageFromCore(
+    syncResolveLibraryStorage(
+      input.configPath,
+      input.libraryId,
+      input.localRootPath,
+      input.credential,
+    ),
+  )
 }
 
 export function createSyncCoordinator(coordinatorId: string): boolean {
