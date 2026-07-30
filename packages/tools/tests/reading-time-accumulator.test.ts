@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   MAX_READING_POSITION_MS,
+  ReadingSessionBatchBuilder,
   ReadingTimeAccumulator,
   splitReadingIntervalByLocalDay,
 } from "../src/reading-time-accumulator"
@@ -48,6 +49,64 @@ describe("ReadingTimeAccumulator", () => {
         localDay: "2026-01-02",
         startedAt: startedAt + 5_000,
         durationSeconds: 5,
+      },
+    ])
+  })
+
+  it("should reuse the daily session when multiple intervals are recorded on one day", () => {
+    const builder = new ReadingSessionBatchBuilder(() => "session-1")
+    const startedAt = new Date(2026, 0, 1, 20, 0).getTime()
+
+    expect(
+      builder.build({ startedAt, durationMs: 10_000 }, startedAt + 10_000),
+    ).toEqual([
+      {
+        id: "session-1",
+        localDay: "2026-01-01",
+        startedAt,
+        durationSeconds: 10,
+        recordedAt: startedAt + 10_000,
+      },
+    ])
+    expect(
+      builder.build(
+        { startedAt: startedAt + 20_000, durationMs: 10_000 },
+        startedAt + 30_000,
+      ),
+    ).toEqual([
+      {
+        id: "session-1",
+        localDay: "2026-01-01",
+        startedAt,
+        durationSeconds: 10,
+        recordedAt: startedAt + 30_000,
+      },
+    ])
+  })
+
+  it("should create one daily session when an interval crosses midnight", () => {
+    let sequence = 0
+    const builder = new ReadingSessionBatchBuilder(
+      () => `session-${++sequence}`,
+    )
+    const startedAt = new Date(2026, 0, 1, 23, 59, 55).getTime()
+
+    expect(
+      builder.build({ startedAt, durationMs: 10_000 }, startedAt + 10_000),
+    ).toEqual([
+      {
+        id: "session-1",
+        localDay: "2026-01-01",
+        startedAt,
+        durationSeconds: 5,
+        recordedAt: startedAt + 10_000,
+      },
+      {
+        id: "session-2",
+        localDay: "2026-01-02",
+        startedAt: startedAt + 5_000,
+        durationSeconds: 5,
+        recordedAt: startedAt + 10_000,
       },
     ])
   })

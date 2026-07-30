@@ -1,8 +1,8 @@
 import type { Locator } from "@readium/shared"
 import {
   READING_HEARTBEAT_MS,
+  ReadingSessionBatchBuilder,
   ReadingTimeAccumulator,
-  splitReadingIntervalByLocalDay,
   type TimedReadingInterval,
 } from "@my-reader/tools/reading-time-accumulator"
 import { isTauri } from "@tauri-apps/api/core"
@@ -16,7 +16,7 @@ type ReadingSessionContext = {
   libraryId: string
   bookId: number
   format: string
-  sessions: Map<string, { id: string; startedAt: number }>
+  sessionBatches: ReadingSessionBatchBuilder
 }
 
 function compactUuid(): string {
@@ -65,31 +65,22 @@ export function useLocatorProgressSync(params: {
 
   const enqueueReadingInterval = useCallback(
     (context: ReadingSessionContext, interval: TimedReadingInterval | null) => {
-      if (!interval) return
-      const pieces = splitReadingIntervalByLocalDay(interval)
+      const pieces = context.sessionBatches.build(interval, Date.now())
       if (pieces.length === 0) return
 
       readingWriteTailRef.current = readingWriteTailRef.current
         .catch(() => undefined)
         .then(async () => {
           for (const piece of pieces) {
-            let session = context.sessions.get(piece.localDay)
-            if (!session) {
-              session = {
-                id: compactUuid(),
-                startedAt: piece.startedAt,
-              }
-              context.sessions.set(piece.localDay, session)
-            }
             await api.addReadingSessionInterval(
               context.libraryId,
-              session.id,
+              piece.id,
               context.bookId,
               context.format,
               piece.localDay,
-              session.startedAt,
+              piece.startedAt,
               piece.durationSeconds,
-              Date.now(),
+              piece.recordedAt,
             )
           }
         })
@@ -107,7 +98,7 @@ export function useLocatorProgressSync(params: {
       libraryId,
       bookId,
       format: format.toUpperCase(),
-      sessions: new Map(),
+      sessionBatches: new ReadingSessionBatchBuilder(compactUuid),
     }
     const counter = new ReadingTimeAccumulator()
     readingContextRef.current = context

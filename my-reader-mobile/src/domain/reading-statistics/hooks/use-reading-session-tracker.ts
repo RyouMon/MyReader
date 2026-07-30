@@ -1,7 +1,7 @@
 import {
   READING_HEARTBEAT_MS,
+  ReadingSessionBatchBuilder,
   ReadingTimeAccumulator,
-  splitReadingIntervalByLocalDay,
   type TimedReadingInterval,
 } from "@my-reader/tools/reading-time-accumulator"
 import { useCallback, useEffect, useRef } from "react"
@@ -15,7 +15,7 @@ type ReadingContext = {
   library: Library
   bookId: number
   format: string
-  sessions: Map<string, { id: string; startedAt: number }>
+  sessionBatches: ReadingSessionBatchBuilder
 }
 
 type ReadingTrackerState = {
@@ -46,27 +46,21 @@ export function useReadingSessionTracker(
 
   const enqueueInterval = useCallback(
     (context: ReadingContext, interval: TimedReadingInterval | null) => {
-      if (!interval) return
-      const pieces = splitReadingIntervalByLocalDay(interval)
+      const pieces = context.sessionBatches.build(interval, Date.now())
       if (pieces.length === 0) return
 
       writeTailRef.current = writeTailRef.current
         .catch(() => undefined)
         .then(async () => {
           for (const piece of pieces) {
-            let session = context.sessions.get(piece.localDay)
-            if (!session) {
-              session = { id: uuid(), startedAt: piece.startedAt }
-              context.sessions.set(piece.localDay, session)
-            }
             await addReadingSessionInterval(context.library, {
-              id: session.id,
+              id: piece.id,
               bookId: context.bookId,
               format: context.format,
               localDay: piece.localDay,
-              startedAt: session.startedAt,
+              startedAt: piece.startedAt,
               durationSeconds: piece.durationSeconds,
-              updatedAt: Date.now(),
+              updatedAt: piece.recordedAt,
             })
           }
           await invalidateReadingStatistics(context.library.id)
@@ -87,7 +81,7 @@ export function useReadingSessionTracker(
       library,
       bookId,
       format: format.toUpperCase(),
-      sessions: new Map(),
+      sessionBatches: new ReadingSessionBatchBuilder(uuid),
     }
     const counter = new ReadingTimeAccumulator()
     contextRef.current = context

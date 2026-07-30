@@ -59,6 +59,45 @@ export type LocalDayInterval = {
   durationSeconds: number
 }
 
+export type ReadingSessionBatchItem = LocalDayInterval & {
+  id: string
+  recordedAt: number
+}
+
+export class ReadingSessionBatchBuilder {
+  private readonly sessions = new Map<
+    string,
+    { id: string; startedAt: number }
+  >()
+
+  constructor(private readonly createId: () => string) {}
+
+  build(
+    interval: TimedReadingInterval | null,
+    recordedAt: number,
+  ): ReadingSessionBatchItem[] {
+    if (!interval) return []
+
+    return splitReadingIntervalByLocalDay(interval).map((piece) => {
+      let session = this.sessions.get(piece.localDay)
+      if (!session) {
+        session = {
+          id: this.createId(),
+          startedAt: piece.startedAt,
+        }
+        this.sessions.set(piece.localDay, session)
+      }
+      return {
+        id: session.id,
+        localDay: piece.localDay,
+        startedAt: session.startedAt,
+        durationSeconds: piece.durationSeconds,
+        recordedAt,
+      }
+    })
+  }
+}
+
 export function splitReadingIntervalByLocalDay(
   interval: TimedReadingInterval,
 ): LocalDayInterval[] {
