@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest"
 import {
   displayProgressionForPosition,
   getProgressDisplay,
-  locatorToPercent,
   positionForDisplayProgressPercent,
   readingProgressRowsToMap,
 } from "@/lib/readingProgress"
@@ -20,37 +19,6 @@ describe("displayProgressionForPosition", () => {
     expect(positionForDisplayProgressPercent(100 / 3, 3)).toBe(1)
     expect(positionForDisplayProgressPercent(200 / 3, 3)).toBe(2)
     expect(positionForDisplayProgressPercent(100, 3)).toBe(3)
-  })
-})
-
-describe("locatorToPercent", () => {
-  it("should prefer total progression when resource progression is also available", () => {
-    expect(
-      locatorToPercent({
-        href: "chapter.xhtml",
-        locations: { progression: 0.4, totalProgression: 0.25 },
-      }),
-    ).toBe(25)
-  })
-
-  it("should clamp resource progression when total progression is missing", () => {
-    expect(
-      locatorToPercent({
-        href: "chapter.xhtml",
-        locations: { progression: 1.5 },
-      }),
-    ).toBe(100)
-    expect(
-      locatorToPercent({
-        href: "chapter.xhtml",
-        locations: { progression: -0.1 },
-      }),
-    ).toBe(0)
-  })
-
-  it("should return undefined when no usable progression exists", () => {
-    expect(locatorToPercent({ href: "chapter.xhtml" })).toBeUndefined()
-    expect(locatorToPercent(null)).toBeUndefined()
   })
 })
 

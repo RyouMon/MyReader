@@ -9,10 +9,3 @@ export function displayProgressionForPosition(
   const index = Math.max(0, Math.min(count - 1, Math.round(positionIndex)))
   return (index + 1) / count
 }
-
-export function displayProgressionToPercent(
-  displayProgression: number | null | undefined,
-): number | undefined {
-  if (typeof displayProgression !== "number") return undefined
-  return Math.max(0, Math.min(1, displayProgression)) * 100
-}

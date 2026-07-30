@@ -4,10 +4,9 @@ import {
   useQueryClient,
 } from "@tanstack/react-query"
 import { listen, type UnlistenFn } from "@tauri-apps/api/event"
+import { readingProgressToPercent } from "@my-reader/tools/reading-progress"
 import { useEffect } from "react"
 import {
-  displayProgressionToPercent,
-  locatorToPercent,
   type ReadingProgressByBook,
   readingProgressRowsToMap,
 } from "@/lib/readingProgress"
@@ -36,9 +35,10 @@ export function applyReadingProgressEvent(
   event: ReadingProgressChangedEvent,
   client: QueryClient = defaultQueryClient,
 ) {
-  const percent =
-    displayProgressionToPercent(event.displayProgression) ??
-    locatorToPercent(event.locator)
+  const percent = readingProgressToPercent(
+    event.displayProgression,
+    event.locator,
+  )
   if (percent === undefined) return
 
   const bookId = String(event.bookId)

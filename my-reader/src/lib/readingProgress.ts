@@ -1,3 +1,5 @@
+import { readingProgressToPercent } from "@my-reader/tools/reading-progress"
+
 export type BookProgressSnapshot = {
   percent?: number
   statusLabel?: string
@@ -12,14 +14,6 @@ export type ReadingProgressRowLike = {
 }
 
 export type ReadingProgressByBook = Record<string, Record<string, number>>
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
-function clampProgression(value: number): number {
-  return Math.max(0, Math.min(1, value))
-}
 
 export function displayProgressionForPosition(
   position: number,
@@ -41,40 +35,16 @@ export function positionForDisplayProgressPercent(
   return Math.max(1, Math.min(count, Math.ceil(normalized * count)))
 }
 
-export function displayProgressionToPercent(
-  displayProgression: number | null | undefined,
-): number | undefined {
-  if (typeof displayProgression !== "number") return undefined
-  return clampProgression(displayProgression) * 100
-}
-
-export function locatorToPercent(locator: unknown): number | undefined {
-  if (!isRecord(locator)) return undefined
-  const locations = locator.locations
-  if (!isRecord(locations)) return undefined
-
-  const totalProgression = locations.totalProgression
-  if (typeof totalProgression === "number") {
-    return clampProgression(totalProgression) * 100
-  }
-
-  const progression = locations.progression
-  if (typeof progression === "number") {
-    return clampProgression(progression) * 100
-  }
-
-  return undefined
-}
-
 export function readingProgressRowsToMap(
   rows: ReadingProgressRowLike[],
 ): ReadingProgressByBook {
   const byBook: ReadingProgressByBook = {}
 
   for (const row of rows) {
-    const percent =
-      displayProgressionToPercent(row.displayProgression) ??
-      locatorToPercent(row.locator)
+    const percent = readingProgressToPercent(
+      row.displayProgression,
+      row.locator,
+    )
     if (percent === undefined) continue
 
     const bookId = String(row.bookId)

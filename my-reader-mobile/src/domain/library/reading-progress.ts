@@ -24,26 +24,6 @@ export function parseStoredLocator(raw: unknown): Locator | null {
   return raw as unknown as Locator
 }
 
-/**
- * Derive a 0-100 percentage from a Locator.
- * Prefers `totalProgression` (book-wide), falls back to `progression` (resource-relative).
- * Returns `undefined` when no usable progression exists.
- */
-export function locatorToPercent(
-  locator: Locator | null | undefined,
-): number | undefined {
-  if (!locator) return undefined
-  const totalProgression = locator.locations?.totalProgression
-  if (typeof totalProgression === "number") {
-    return Math.max(0, Math.min(1, totalProgression)) * 100
-  }
-  const progression = locator.locations?.progression
-  if (typeof progression === "number") {
-    return Math.max(0, Math.min(1, progression)) * 100
-  }
-  return undefined
-}
-
 /** Read reading progress by book id and format (case-insensitive). */
 export async function getReadingProgress(
   library: Library,
