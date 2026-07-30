@@ -89,6 +89,21 @@ public class MyReaderRustComponentsModule: Module {
       }
     }
 
+    Function("advanceSyncScheduler") {
+      (
+        stateJson: String?,
+        policyJson: String,
+        eventJson: String
+      ) -> String in
+      try syncCall {
+        try advanceSyncScheduler(
+          stateJson: stateJson,
+          policyJson: policyJson,
+          eventJson: eventJson
+        )
+      }
+    }
+
     AsyncFunction("ensureSyncDatabaseDocument") {
       (
         databasePath: String,
@@ -205,8 +220,32 @@ public class MyReaderRustComponentsModule: Module {
       }
     }
 
+    Function("readSyncTaskProgress") {
+      (taskId: String) -> [String: Any]? in
+      guard let progress = readSyncTaskProgress(taskId: taskId) else {
+        return nil
+      }
+      return [
+        "taskId": progress.taskId,
+        "stage": progress.stage,
+        "completed": Int(progress.completed),
+        "total": Int(progress.total),
+      ]
+    }
+
+    Function("cancelSyncTask") {
+      (taskId: String) -> Bool in
+      cancelSyncTask(taskId: taskId)
+    }
+
+    Function("releaseSyncTask") {
+      (taskId: String) -> Bool in
+      releaseSyncTask(taskId: taskId)
+    }
+
     AsyncFunction("syncLibrarySidecar") {
       (
+        taskId: String,
         databasePath: String,
         libraryUuid: String,
         replicaId: String,
@@ -216,6 +255,7 @@ public class MyReaderRustComponentsModule: Module {
       ) async throws -> [String: Any] in
       let result = try await syncAsyncCall {
         try await syncLibrarySidecar(
+          taskId: taskId,
           databasePath: databasePath,
           libraryUuid: libraryUuid,
           replicaId: replicaId,

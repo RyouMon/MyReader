@@ -17,6 +17,7 @@ export type SyncLibraryOptions = {
   forceCalibre?: boolean
   throwOnFailure?: boolean
   myreaderMode?: MyReaderSyncMode
+  myreaderTaskId?: string
 }
 
 /** 某触发源下的策略条目 */

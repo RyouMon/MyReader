@@ -1,3 +1,5 @@
+import MyReaderRustComponents from "@/modules/myreader-rust-components"
+
 import type { MyReaderSyncMode } from "./types"
 
 export type SidecarSyncReason =
@@ -34,11 +36,27 @@ export type SidecarSyncScheduler = {
 
 export type SidecarSyncErrorDisposition = "retry" | "suspend"
 
-type PendingWork = {
-  mode: MyReaderSyncMode
-  reasons: Set<SidecarSyncReason>
-  timer: ReturnType<typeof setTimeout> | null
-  firstRequestedAt: number
+type ScheduledSync = {
+  libraryId: string
+  generation: number
+  deadline: number
+}
+
+type SchedulerRetry = {
+  retryCount: number
+  nextRetryAt: number
+}
+
+type SchedulerTransition = {
+  schedules: ScheduledSync[]
+  cancelTimersFor: string[]
+  execution: SidecarSyncExecution | null
+  retry: SchedulerRetry | null
+}
+
+type SchedulerEnvelope = {
+  state: unknown
+  transition: SchedulerTransition
 }
 
 const DEFAULT_DEBOUNCE_MS = 2_000
@@ -46,15 +64,9 @@ const DEFAULT_MAX_WAIT_MS = 10_000
 const DEFAULT_RETRY_BASE_MS = 2_000
 const DEFAULT_RETRY_MAX_MS = 5 * 60_000
 
-function mergeMode(
-  current: MyReaderSyncMode,
-  incoming: MyReaderSyncMode,
-): MyReaderSyncMode {
-  return current === "full" || incoming === "full" ? "full" : "push_only"
-}
-
 export function createSidecarSyncScheduler(options: {
-  execute(execution: SidecarSyncExecution): Promise<void>
+  execute(execution: SidecarSyncExecution, taskId: string): Promise<void>
+  cancelTask?(taskId: string): void
   classifyError?(error: unknown): SidecarSyncErrorDisposition
   onError?(error: unknown, execution: SidecarSyncExecution): void
   onCompleted?(
@@ -64,7 +76,7 @@ export function createSidecarSyncScheduler(options: {
   onRetryScheduled?(
     error: unknown,
     execution: SidecarSyncExecution,
-    retry: { retryCount: number; nextRetryAt: number },
+    retry: SchedulerRetry,
   ): Promise<void> | void
   onSuspended?(
     error: unknown,
@@ -76,222 +88,155 @@ export function createSidecarSyncScheduler(options: {
   retryMaxMs?: number
   random?: () => number
 }): SidecarSyncScheduler {
-  const pendingByLibrary = new Map<string, PendingWork>()
-  const runningLibraries = new Set<string>()
-  const retryCounts = new Map<string, number>()
-  const suspendedLibraries = new Set<string>()
-  const offlineLibraries = new Set<string>()
-  let online = true
-  let disposed = false
-  const debounceMs = options.debounceMs ?? DEFAULT_DEBOUNCE_MS
-  const maxWaitMs = options.maxWaitMs ?? DEFAULT_MAX_WAIT_MS
-  const retryBaseMs = options.retryBaseMs ?? DEFAULT_RETRY_BASE_MS
-  const retryMaxMs = options.retryMaxMs ?? DEFAULT_RETRY_MAX_MS
+  const policyJson = JSON.stringify({
+    debounceMs: options.debounceMs ?? DEFAULT_DEBOUNCE_MS,
+    maxWaitMs: options.maxWaitMs ?? DEFAULT_MAX_WAIT_MS,
+    retryBaseMs: options.retryBaseMs ?? DEFAULT_RETRY_BASE_MS,
+    retryMaxMs: options.retryMaxMs ?? DEFAULT_RETRY_MAX_MS,
+  })
+  const timers = new Map<string, ReturnType<typeof setTimeout>>()
+  const runningTasks = new Map<string, string>()
+  const cancelledTasks = new Set<string>()
   const random = options.random ?? Math.random
+  let stateJson: string | null = null
+  let disposed = false
+  let nextTaskSequence = 0
 
-  function mergeExecution(
-    execution: SidecarSyncExecution,
-    existing?: PendingWork,
-  ): PendingWork {
-    const pending = existing ?? {
-      mode: execution.mode,
-      reasons: new Set<SidecarSyncReason>(),
-      timer: null,
-      firstRequestedAt: Date.now(),
-    }
-    pending.mode = mergeMode(pending.mode, execution.mode)
-    for (const reason of execution.reasons) pending.reasons.add(reason)
-    return pending
+  function clearTimer(libraryId: string): void {
+    const timer = timers.get(libraryId)
+    if (timer) clearTimeout(timer)
+    timers.delete(libraryId)
   }
 
-  async function execute(libraryId: string): Promise<void> {
-    if (
-      disposed ||
-      !online ||
-      offlineLibraries.has(libraryId) ||
-      suspendedLibraries.has(libraryId) ||
-      runningLibraries.has(libraryId)
-    ) {
-      return
-    }
-    const pending = pendingByLibrary.get(libraryId)
-    if (!pending) return
-    pendingByLibrary.delete(libraryId)
-    runningLibraries.add(libraryId)
-    const execution: SidecarSyncExecution = {
-      libraryId,
-      mode: pending.mode,
-      reasons: [...pending.reasons].sort(),
-    }
-    try {
-      await options.execute(execution)
-      await options.onCompleted?.(execution, Date.now())
-      retryCounts.delete(libraryId)
-    } catch (error) {
-      options.onError?.(error, execution)
-      const retry = mergeExecution(execution, pendingByLibrary.get(libraryId))
-      pendingByLibrary.set(libraryId, retry)
-      if ((options.classifyError?.(error) ?? "retry") === "retry") {
-        const retryCount = (retryCounts.get(libraryId) ?? 0) + 1
-        retryCounts.set(libraryId, retryCount)
-        const ceiling = Math.min(
-          retryMaxMs,
-          retryBaseMs * 2 ** (retryCount - 1),
-        )
-        const delay = Math.floor(random() * ceiling)
-        await options.onRetryScheduled?.(error, execution, {
-          retryCount,
-          nextRetryAt: Date.now() + delay,
+  function schedule(sync: ScheduledSync): void {
+    clearTimer(sync.libraryId)
+    const timer = setTimeout(
+      () => {
+        timers.delete(sync.libraryId)
+        const transition = advance({
+          type: "begin",
+          libraryId: sync.libraryId,
+          generation: sync.generation,
         })
-        retry.timer = setTimeout(() => {
-          retry.timer = null
-          void execute(libraryId)
-        }, delay)
+        if (transition.execution) {
+          void execute(transition.execution)
+        }
+      },
+      Math.max(0, sync.deadline - Date.now()),
+    )
+    timers.set(sync.libraryId, timer)
+  }
+
+  function advance(event: object): SchedulerTransition {
+    const envelope = JSON.parse(
+      MyReaderRustComponents.advanceSyncScheduler(
+        stateJson,
+        policyJson,
+        JSON.stringify(event),
+      ),
+    ) as SchedulerEnvelope
+    stateJson = JSON.stringify(envelope.state)
+    for (const libraryId of envelope.transition.cancelTimersFor) {
+      clearTimer(libraryId)
+    }
+    for (const scheduled of envelope.transition.schedules) {
+      schedule(scheduled)
+    }
+    return envelope.transition
+  }
+
+  async function execute(execution: SidecarSyncExecution): Promise<void> {
+    nextTaskSequence += 1
+    const taskId = `${execution.libraryId}:${Date.now()}:${nextTaskSequence}`
+    runningTasks.set(execution.libraryId, taskId)
+    try {
+      await options.execute(execution, taskId)
+      const completedAt = Date.now()
+      await options.onCompleted?.(execution, completedAt)
+      advance({
+        type: "complete",
+        libraryId: execution.libraryId,
+        nowMs: completedAt,
+      })
+    } catch (error) {
+      if (cancelledTasks.has(taskId)) return
+      options.onError?.(error, execution)
+      if ((options.classifyError?.(error) ?? "retry") === "retry") {
+        const transition = advance({
+          type: "retry",
+          execution,
+          nowMs: Date.now(),
+          randomFraction: random(),
+        })
+        if (transition.retry) {
+          await options.onRetryScheduled?.(error, execution, transition.retry)
+        }
       } else {
+        advance({ type: "suspend", execution })
         await options.onSuspended?.(error, execution)
-        suspendedLibraries.add(libraryId)
       }
     } finally {
-      runningLibraries.delete(libraryId)
-      const rerun = pendingByLibrary.get(libraryId)
-      if (
-        !disposed &&
-        online &&
-        !offlineLibraries.has(libraryId) &&
-        !suspendedLibraries.has(libraryId) &&
-        rerun &&
-        !rerun.timer
-      ) {
-        rerun.timer = setTimeout(() => {
-          void execute(libraryId)
-        }, 0)
+      if (runningTasks.get(execution.libraryId) === taskId) {
+        runningTasks.delete(execution.libraryId)
       }
+      cancelledTasks.delete(taskId)
     }
   }
 
   return {
     request(request) {
-      const existing = pendingByLibrary.get(request.libraryId)
-      const pending: PendingWork = existing ?? {
-        mode: request.mode,
-        reasons: new Set(),
-        timer: null,
-        firstRequestedAt: Date.now(),
-      }
-      pending.mode = mergeMode(pending.mode, request.mode)
-      pending.reasons.add(request.reason)
-      pendingByLibrary.set(request.libraryId, pending)
-      if (
-        disposed ||
-        !online ||
-        offlineLibraries.has(request.libraryId) ||
-        suspendedLibraries.has(request.libraryId) ||
-        runningLibraries.has(request.libraryId)
-      ) {
-        return
-      }
-      if (pending.timer) clearTimeout(pending.timer)
-      const delay =
-        request.timing === "immediate"
-          ? 0
-          : Math.min(
-              debounceMs,
-              Math.max(0, pending.firstRequestedAt + maxWaitMs - Date.now()),
-            )
-      pending.timer = setTimeout(() => {
-        pending.timer = null
-        void execute(request.libraryId)
-      }, delay)
+      if (disposed) return
+      advance({
+        type: "request",
+        ...request,
+        nowMs: Date.now(),
+      })
     },
     flushPending(libraryId, reason) {
-      const pending = pendingByLibrary.get(libraryId)
-      if (!pending) return
-      pending.reasons.add(reason)
-      if (
-        disposed ||
-        !online ||
-        offlineLibraries.has(libraryId) ||
-        suspendedLibraries.has(libraryId) ||
-        runningLibraries.has(libraryId)
-      ) {
-        return
-      }
-      if (pending.timer) clearTimeout(pending.timer)
-      pending.timer = setTimeout(() => {
-        pending.timer = null
-        void execute(libraryId)
-      }, 0)
+      if (disposed) return
+      advance({
+        type: "flush",
+        libraryId,
+        reason,
+        nowMs: Date.now(),
+      })
     },
     resume(libraryId) {
-      suspendedLibraries.delete(libraryId)
-      retryCounts.delete(libraryId)
-      const pending = pendingByLibrary.get(libraryId)
-      if (
-        !disposed &&
-        online &&
-        !offlineLibraries.has(libraryId) &&
-        pending &&
-        !pending.timer
-      ) {
-        pending.timer = setTimeout(() => {
-          pending.timer = null
-          void execute(libraryId)
-        }, 0)
-      }
+      if (disposed) return
+      advance({
+        type: "resume",
+        libraryId,
+        nowMs: Date.now(),
+      })
     },
-    setOnline(nextOnline) {
-      if (online === nextOnline) return
-      online = nextOnline
-      for (const [libraryId, pending] of pendingByLibrary) {
-        if (pending.timer) {
-          clearTimeout(pending.timer)
-          pending.timer = null
-        }
-        if (
-          online &&
-          !offlineLibraries.has(libraryId) &&
-          !suspendedLibraries.has(libraryId)
-        ) {
-          pending.timer = setTimeout(() => {
-            pending.timer = null
-            void execute(libraryId)
-          }, 0)
-        }
-      }
+    setOnline(online) {
+      if (disposed) return
+      advance({
+        type: "set_online",
+        online,
+        nowMs: Date.now(),
+      })
     },
-    setLibraryOnline(libraryId, nextOnline) {
-      const pending = pendingByLibrary.get(libraryId)
-      if (!nextOnline) {
-        offlineLibraries.add(libraryId)
-        if (pending?.timer) {
-          clearTimeout(pending.timer)
-          pending.timer = null
-        }
-        return
-      }
-      offlineLibraries.delete(libraryId)
-      if (
-        !disposed &&
-        online &&
-        pending &&
-        !pending.timer &&
-        !suspendedLibraries.has(libraryId)
-      ) {
-        pending.timer = setTimeout(() => {
-          pending.timer = null
-          void execute(libraryId)
-        }, 0)
-      }
+    setLibraryOnline(libraryId, online) {
+      if (disposed) return
+      advance({
+        type: "set_library_online",
+        libraryId,
+        online,
+        nowMs: Date.now(),
+      })
     },
     dispose() {
+      if (disposed) return
+      advance({ type: "dispose" })
       disposed = true
-      for (const pending of pendingByLibrary.values()) {
-        if (pending.timer) clearTimeout(pending.timer)
+      for (const taskId of runningTasks.values()) {
+        cancelledTasks.add(taskId)
+        options.cancelTask?.(taskId)
       }
-      pendingByLibrary.clear()
-      suspendedLibraries.clear()
-      offlineLibraries.clear()
-      retryCounts.clear()
+      runningTasks.clear()
+      for (const timer of timers.values()) clearTimeout(timer)
+      timers.clear()
     },
   }
 }

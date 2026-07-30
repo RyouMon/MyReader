@@ -1131,6 +1131,92 @@ public func FfiConverterTypeSyncRemoteObject_lower(_ value: SyncRemoteObject) ->
 }
 
 
+public struct SyncTaskProgress {
+    public var taskId: String
+    public var stage: String
+    public var completed: UInt32
+    public var total: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(taskId: String, stage: String, completed: UInt32, total: UInt32) {
+        self.taskId = taskId
+        self.stage = stage
+        self.completed = completed
+        self.total = total
+    }
+}
+
+#if compiler(>=6)
+extension SyncTaskProgress: Sendable {}
+#endif
+
+
+extension SyncTaskProgress: Equatable, Hashable {
+    public static func ==(lhs: SyncTaskProgress, rhs: SyncTaskProgress) -> Bool {
+        if lhs.taskId != rhs.taskId {
+            return false
+        }
+        if lhs.stage != rhs.stage {
+            return false
+        }
+        if lhs.completed != rhs.completed {
+            return false
+        }
+        if lhs.total != rhs.total {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(taskId)
+        hasher.combine(stage)
+        hasher.combine(completed)
+        hasher.combine(total)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSyncTaskProgress: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SyncTaskProgress {
+        return
+            try SyncTaskProgress(
+                taskId: FfiConverterString.read(from: &buf),
+                stage: FfiConverterString.read(from: &buf),
+                completed: FfiConverterUInt32.read(from: &buf),
+                total: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SyncTaskProgress, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.taskId, into: &buf)
+        FfiConverterString.write(value.stage, into: &buf)
+        FfiConverterUInt32.write(value.completed, into: &buf)
+        FfiConverterUInt32.write(value.total, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyncTaskProgress_lift(_ buf: RustBuffer) throws -> SyncTaskProgress {
+    return try FfiConverterTypeSyncTaskProgress.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyncTaskProgress_lower(_ value: SyncTaskProgress) -> RustBuffer {
+    return FfiConverterTypeSyncTaskProgress.lower(value)
+}
+
+
 public enum RustComponentsError: Swift.Error {
 
 
@@ -1281,6 +1367,30 @@ fileprivate struct FfiConverterOptionData: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeSyncTaskProgress: FfiConverterRustBuffer {
+    typealias SwiftType = SyncTaskProgress?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeSyncTaskProgress.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeSyncTaskProgress.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
     typealias SwiftType = [String]
 
@@ -1423,6 +1533,15 @@ fileprivate func uniffiFutureContinuationCallback(handle: UInt64, pollResult: In
         print("uniffiFutureContinuationCallback invalid handle")
     }
 }
+public func advanceSyncScheduler(stateJson: String?, policyJson: String, eventJson: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_advance_sync_scheduler(
+        FfiConverterOptionString.lower(stateJson),
+        FfiConverterString.lower(policyJson),
+        FfiConverterString.lower(eventJson),$0
+    )
+})
+}
 public func applySyncDatabaseRemoteObjects(databasePath: String, libraryUuid: String, replicaId: String, nowMs: String, objects: [SyncRemoteObject])throws  -> ApplyRemoteDatabaseResult  {
     return try  FfiConverterTypeApplyRemoteDatabaseResult_lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_apply_sync_database_remote_objects(
@@ -1431,6 +1550,13 @@ public func applySyncDatabaseRemoteObjects(databasePath: String, libraryUuid: St
         FfiConverterString.lower(replicaId),
         FfiConverterString.lower(nowMs),
         FfiConverterSequenceTypeSyncRemoteObject.lower(objects),$0
+    )
+})
+}
+public func cancelSyncTask(taskId: String) -> Bool  {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+    uniffi_myreader_rust_components_fn_func_cancel_sync_task(
+        FfiConverterString.lower(taskId),$0
     )
 })
 }
@@ -1494,17 +1620,31 @@ public func readSyncDatabaseDiagnostics(databasePath: String)throws  -> SyncData
     )
 })
 }
+public func readSyncTaskProgress(taskId: String) -> SyncTaskProgress?  {
+    return try!  FfiConverterOptionTypeSyncTaskProgress.lift(try! rustCall() {
+    uniffi_myreader_rust_components_fn_func_read_sync_task_progress(
+        FfiConverterString.lower(taskId),$0
+    )
+})
+}
+public func releaseSyncTask(taskId: String) -> Bool  {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+    uniffi_myreader_rust_components_fn_func_release_sync_task(
+        FfiConverterString.lower(taskId),$0
+    )
+})
+}
 public func syncContractVersion() -> UInt32  {
     return try!  FfiConverterUInt32.lift(try! rustCall() {
     uniffi_myreader_rust_components_fn_func_sync_contract_version($0
     )
 })
 }
-public func syncLibrarySidecar(databasePath: String, libraryUuid: String, replicaId: String, nowMs: String, mode: String, storageJson: String)async throws  -> SyncLibrarySidecarReport  {
+public func syncLibrarySidecar(taskId: String, databasePath: String, libraryUuid: String, replicaId: String, nowMs: String, mode: String, storageJson: String)async throws  -> SyncLibrarySidecarReport  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_myreader_rust_components_fn_func_sync_library_sidecar(FfiConverterString.lower(databasePath),FfiConverterString.lower(libraryUuid),FfiConverterString.lower(replicaId),FfiConverterString.lower(nowMs),FfiConverterString.lower(mode),FfiConverterString.lower(storageJson)
+                uniffi_myreader_rust_components_fn_func_sync_library_sidecar(FfiConverterString.lower(taskId),FfiConverterString.lower(databasePath),FfiConverterString.lower(libraryUuid),FfiConverterString.lower(replicaId),FfiConverterString.lower(nowMs),FfiConverterString.lower(mode),FfiConverterString.lower(storageJson)
                 )
             },
             pollFunc: ffi_myreader_rust_components_rust_future_poll_rust_buffer,
@@ -1530,7 +1670,13 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_advance_sync_scheduler() != 4510) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_apply_sync_database_remote_objects() != 20397) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_cancel_sync_task() != 41701) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_ensure_sync_database_document() != 40101) {
@@ -1554,10 +1700,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_read_sync_database_diagnostics() != 34122) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_read_sync_task_progress() != 25370) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_release_sync_task() != 18555) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_sync_contract_version() != 20300) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_myreader_rust_components_checksum_func_sync_library_sidecar() != 22445) {
+    if (uniffi_myreader_rust_components_checksum_func_sync_library_sidecar() != 32793) {
         return InitializationResult.apiChecksumMismatch
     }
 

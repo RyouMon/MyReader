@@ -1,277 +1,232 @@
+jest.mock("@/modules/myreader-rust-components", () => ({
+  __esModule: true,
+  default: {
+    advanceSyncScheduler: jest.fn(),
+  },
+}))
+
+import MyReaderRustComponents from "@/modules/myreader-rust-components"
+
 import {
   createSidecarSyncScheduler,
   type SidecarSyncExecution,
 } from "./sidecar-scheduler"
 
-describe("sidecar sync scheduler", () => {
+const emptyTransition = {
+  schedules: [],
+  cancelTimersFor: [],
+  execution: null,
+  retry: null,
+}
+
+type TestTransition = {
+  schedules: Array<{
+    libraryId: string
+    generation: number
+    deadline: number
+  }>
+  cancelTimersFor: string[]
+  execution: SidecarSyncExecution | null
+  retry: { retryCount: number; nextRetryAt: number } | null
+}
+
+function result(transition: Partial<TestTransition>): string {
+  return JSON.stringify({
+    state: { revision: 1 },
+    transition: { ...emptyTransition, ...transition },
+  })
+}
+
+describe("sidecar sync scheduler native adapter", () => {
   beforeEach(() => {
     jest.useFakeTimers()
+    jest.setSystemTime(1_000)
+    jest.clearAllMocks()
   })
 
   afterEach(() => {
     jest.useRealTimers()
   })
 
-  it("should coalesce and upgrade work when changes arrive during debounce", async () => {
-    const executions: SidecarSyncExecution[] = []
-    const scheduler = createSidecarSyncScheduler({
-      execute: async (execution) => {
-        executions.push(execution)
-      },
-    })
-
-    scheduler.request({
+  it("should execute scheduled work when the Rust state machine reaches its deadline", async () => {
+    const execution: SidecarSyncExecution = {
       libraryId: "library-1",
-      mode: "push_only",
-      reason: "local_change",
-      timing: "debounced",
-    })
-    jest.advanceTimersByTime(1_000)
+      mode: "full",
+      reasons: ["app_foregrounded", "local_change"],
+    }
+    jest
+      .mocked(MyReaderRustComponents.advanceSyncScheduler)
+      .mockReturnValue(result({}))
+      .mockReturnValueOnce(
+        result({
+          schedules: [
+            { libraryId: "library-1", generation: 7, deadline: 1_100 },
+          ],
+        }),
+      )
+      .mockReturnValueOnce(result({ execution }))
+      .mockReturnValueOnce(result({}))
+    const execute = jest.fn(async () => {})
+    const scheduler = createSidecarSyncScheduler({ execute })
+
     scheduler.request({
       libraryId: "library-1",
       mode: "full",
       reason: "app_foregrounded",
       timing: "debounced",
     })
+    await jest.advanceTimersByTimeAsync(100)
 
-    await jest.advanceTimersByTimeAsync(2_000)
-
-    expect(executions).toEqual([
-      {
+    expect(execute).toHaveBeenCalledWith(execution, "library-1:1100:1")
+    expect(MyReaderRustComponents.advanceSyncScheduler).toHaveBeenNthCalledWith(
+      2,
+      JSON.stringify({ revision: 1 }),
+      expect.any(String),
+      JSON.stringify({
+        type: "begin",
         libraryId: "library-1",
-        mode: "full",
-        reasons: ["app_foregrounded", "local_change"],
-      },
-    ])
-    scheduler.dispose()
-  })
-
-  it("should execute by maximum wait when writes keep resetting debounce", async () => {
-    const execute = jest.fn(async () => {})
-    const scheduler = createSidecarSyncScheduler({
-      execute,
-      debounceMs: 2_000,
-      maxWaitMs: 5_000,
-    })
-
-    for (let elapsed = 0; elapsed < 5_000; elapsed += 1_000) {
-      scheduler.request({
-        libraryId: "library-1",
-        mode: "push_only",
-        reason: "local_change",
-        timing: "debounced",
-      })
-      await jest.advanceTimersByTimeAsync(1_000)
-    }
-
-    expect(execute).toHaveBeenCalledTimes(1)
-    scheduler.dispose()
-  })
-
-  it("should rerun without overlap when work arrives during execution", async () => {
-    const releases: Array<() => void> = []
-    const execute = jest.fn(
-      () =>
-        new Promise<void>((resolve) => {
-          releases.push(resolve)
-        }),
+        generation: 7,
+      }),
     )
-    const scheduler = createSidecarSyncScheduler({ execute })
-
-    scheduler.request({
-      libraryId: "library-1",
-      mode: "push_only",
-      reason: "local_change",
-      timing: "immediate",
-    })
-    await jest.advanceTimersByTimeAsync(0)
-    scheduler.request({
-      libraryId: "library-1",
-      mode: "full",
-      reason: "network_reconnected",
-      timing: "immediate",
-    })
-    await jest.advanceTimersByTimeAsync(0)
-
-    expect(execute).toHaveBeenCalledTimes(1)
-
-    releases[0]!()
-    await Promise.resolve()
-    await jest.advanceTimersByTimeAsync(0)
-
-    expect(execute).toHaveBeenCalledTimes(2)
-    expect(execute).toHaveBeenLastCalledWith({
-      libraryId: "library-1",
-      mode: "full",
-      reasons: ["network_reconnected"],
-    })
     scheduler.dispose()
   })
 
-  it("should retry with jittered backoff when execution fails transiently", async () => {
-    const execute = jest
-      .fn<Promise<void>, [SidecarSyncExecution]>()
-      .mockRejectedValueOnce(new Error("network unavailable"))
-      .mockResolvedValueOnce()
-    const scheduler = createSidecarSyncScheduler({
-      execute,
-      classifyError: () => "retry",
-      random: () => 0.5,
-      retryBaseMs: 2_000,
-    })
-
-    scheduler.request({
+  it("should expose retry metadata when Rust schedules transient backoff", async () => {
+    const execution: SidecarSyncExecution = {
       libraryId: "library-1",
       mode: "push_only",
-      reason: "local_change",
-      timing: "immediate",
-    })
-    await jest.advanceTimersByTimeAsync(0)
-    await jest.advanceTimersByTimeAsync(999)
-
-    expect(execute).toHaveBeenCalledTimes(1)
-
-    await jest.advanceTimersByTimeAsync(1)
-
-    expect(execute).toHaveBeenCalledTimes(2)
-    scheduler.dispose()
-  })
-
-  it("should expose retry deadline when transient backoff is scheduled", async () => {
-    jest.setSystemTime(100_000)
+      reasons: ["local_change"],
+    }
+    jest
+      .mocked(MyReaderRustComponents.advanceSyncScheduler)
+      .mockReturnValue(result({}))
+      .mockReturnValueOnce(
+        result({
+          schedules: [
+            { libraryId: "library-1", generation: 1, deadline: 1_000 },
+          ],
+        }),
+      )
+      .mockReturnValueOnce(result({ execution }))
+      .mockReturnValueOnce(
+        result({
+          schedules: [
+            { libraryId: "library-1", generation: 2, deadline: 2_000 },
+          ],
+          retry: { retryCount: 1, nextRetryAt: 2_000 },
+        }),
+      )
     const onRetryScheduled = jest.fn(async () => {})
+    const error = new Error("network unavailable")
     const scheduler = createSidecarSyncScheduler({
       execute: async () => {
-        throw new Error("network unavailable")
+        throw error
       },
       classifyError: () => "retry",
       random: () => 0.5,
-      retryBaseMs: 2_000,
       onRetryScheduled,
     })
 
     scheduler.request({
       libraryId: "library-1",
-      mode: "full",
-      reason: "app_foregrounded",
+      mode: "push_only",
+      reason: "local_change",
       timing: "immediate",
     })
     await jest.advanceTimersByTimeAsync(0)
 
-    expect(onRetryScheduled).toHaveBeenCalledWith(
-      expect.any(Error),
-      {
-        libraryId: "library-1",
-        mode: "full",
-        reasons: ["app_foregrounded"],
-      },
-      {
-        retryCount: 1,
-        nextRetryAt: 101_000,
-      },
+    expect(onRetryScheduled).toHaveBeenCalledWith(error, execution, {
+      retryCount: 1,
+      nextRetryAt: 2_000,
+    })
+    expect(MyReaderRustComponents.advanceSyncScheduler).toHaveBeenNthCalledWith(
+      3,
+      JSON.stringify({ revision: 1 }),
+      expect.any(String),
+      JSON.stringify({
+        type: "retry",
+        execution,
+        nowMs: 1_000,
+        randomFraction: 0.5,
+      }),
     )
     scheduler.dispose()
   })
 
-  it("should wait for resume when execution fails with suspended error", async () => {
-    const execute = jest
-      .fn<Promise<void>, [SidecarSyncExecution]>()
-      .mockRejectedValueOnce(new Error("credential expired"))
-      .mockResolvedValueOnce()
+  it("should pass custom timing policy to the Rust state machine", () => {
+    jest
+      .mocked(MyReaderRustComponents.advanceSyncScheduler)
+      .mockReturnValue(result({}))
     const scheduler = createSidecarSyncScheduler({
-      execute,
-      classifyError: () => "suspend",
+      execute: async () => {},
+      debounceMs: 500,
+      maxWaitMs: 2_000,
+      retryBaseMs: 3_000,
+      retryMaxMs: 30_000,
     })
 
-    scheduler.request({
-      libraryId: "library-1",
-      mode: "full",
-      reason: "app_foregrounded",
-      timing: "immediate",
-    })
-    await jest.advanceTimersByTimeAsync(0)
-    await jest.advanceTimersByTimeAsync(10 * 60_000)
-
-    expect(execute).toHaveBeenCalledTimes(1)
-
-    scheduler.resume("library-1")
-    await jest.advanceTimersByTimeAsync(0)
-
-    expect(execute).toHaveBeenCalledTimes(2)
-    scheduler.dispose()
-  })
-
-  it("should execute pending work when network reconnects", async () => {
-    const execute = jest.fn(async () => {})
-    const scheduler = createSidecarSyncScheduler({ execute })
     scheduler.setOnline(false)
 
-    scheduler.request({
-      libraryId: "library-1",
-      mode: "push_only",
-      reason: "local_change",
-      timing: "immediate",
-    })
-    await jest.advanceTimersByTimeAsync(60_000)
-
-    expect(execute).not.toHaveBeenCalled()
-
-    scheduler.setOnline(true)
-    await jest.advanceTimersByTimeAsync(0)
-
-    expect(execute).toHaveBeenCalledTimes(1)
-    scheduler.dispose()
-  })
-
-  it("should keep local libraries runnable when one remote library is offline", async () => {
-    const execute = jest.fn(async () => {})
-    const scheduler = createSidecarSyncScheduler({ execute })
-    scheduler.setLibraryOnline("remote-library", false)
-
-    scheduler.request({
-      libraryId: "remote-library",
-      mode: "push_only",
-      reason: "local_change",
-      timing: "immediate",
-    })
-    scheduler.request({
-      libraryId: "local-library",
-      mode: "push_only",
-      reason: "local_change",
-      timing: "immediate",
-    })
-    await jest.advanceTimersByTimeAsync(0)
-
-    expect(execute).toHaveBeenCalledTimes(1)
-    expect(execute).toHaveBeenCalledWith(
-      expect.objectContaining({ libraryId: "local-library" }),
+    expect(MyReaderRustComponents.advanceSyncScheduler).toHaveBeenCalledWith(
+      null,
+      JSON.stringify({
+        debounceMs: 500,
+        maxWaitMs: 2_000,
+        retryBaseMs: 3_000,
+        retryMaxMs: 30_000,
+      }),
+      JSON.stringify({
+        type: "set_online",
+        online: false,
+        nowMs: 1_000,
+      }),
     )
-
-    scheduler.setLibraryOnline("remote-library", true)
-    await jest.advanceTimersByTimeAsync(0)
-
-    expect(execute).toHaveBeenCalledTimes(2)
     scheduler.dispose()
   })
 
-  it("should run immediately when pending work is flushed before backgrounding", async () => {
-    const execute = jest.fn(async () => {})
-    const scheduler = createSidecarSyncScheduler({ execute })
+  it("should cancel running native task when scheduler is disposed", async () => {
+    const execution: SidecarSyncExecution = {
+      libraryId: "library-1",
+      mode: "full",
+      reasons: ["app_foregrounded"],
+    }
+    jest
+      .mocked(MyReaderRustComponents.advanceSyncScheduler)
+      .mockReturnValue(result({}))
+      .mockReturnValueOnce(
+        result({
+          schedules: [
+            { libraryId: "library-1", generation: 1, deadline: 1_000 },
+          ],
+        }),
+      )
+      .mockReturnValueOnce(result({ execution }))
+    const cancelTask = jest.fn()
+    const onSuspended = jest.fn()
+    let rejectTask!: (error: Error) => void
+    const scheduler = createSidecarSyncScheduler({
+      execute: async () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectTask = reject
+        }),
+      cancelTask,
+      classifyError: () => "suspend",
+      onSuspended,
+    })
 
     scheduler.request({
       libraryId: "library-1",
-      mode: "push_only",
-      reason: "local_change",
-      timing: "debounced",
+      mode: "full",
+      reason: "app_foregrounded",
+      timing: "immediate",
     })
-    scheduler.flushPending("library-1", "app_backgrounding")
     await jest.advanceTimersByTimeAsync(0)
-
-    expect(execute).toHaveBeenCalledWith({
-      libraryId: "library-1",
-      mode: "push_only",
-      reasons: ["app_backgrounding", "local_change"],
-    })
     scheduler.dispose()
+
+    expect(cancelTask).toHaveBeenCalledWith("library-1:1000:1")
+    rejectTask(new Error("Sync task cancelled"))
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(onSuspended).not.toHaveBeenCalled()
   })
 })

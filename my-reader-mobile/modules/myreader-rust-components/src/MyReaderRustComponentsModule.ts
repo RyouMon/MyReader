@@ -51,8 +51,20 @@ export type NativeSyncLibrarySidecarReport = {
   pulled: number
 }
 
+export type NativeSyncTaskProgress = {
+  taskId: string
+  stage: string
+  completed: number
+  total: number
+}
+
 export type MyReaderRustComponentsModule = {
   syncContractVersion(): number
+  advanceSyncScheduler(
+    stateJson: string | null,
+    policyJson: string,
+    eventJson: string,
+  ): string
   executeSyncDocumentCommand(
     snapshotBytes: Uint8Array | null,
     requestJson: string,
@@ -91,7 +103,11 @@ export type MyReaderRustComponentsModule = {
   readSyncDatabaseDiagnostics(
     databasePath: string,
   ): Promise<NativeSyncDatabaseDiagnostics>
+  readSyncTaskProgress(taskId: string): NativeSyncTaskProgress | null
+  cancelSyncTask(taskId: string): boolean
+  releaseSyncTask(taskId: string): boolean
   syncLibrarySidecar(
+    taskId: string,
     databasePath: string,
     libraryUuid: string,
     replicaId: string,
@@ -113,6 +129,13 @@ function getNativeModule(): MyReaderRustComponentsModule {
 const moduleFacade: MyReaderRustComponentsModule = {
   syncContractVersion() {
     return getNativeModule().syncContractVersion()
+  },
+  advanceSyncScheduler(stateJson, policyJson, eventJson) {
+    return getNativeModule().advanceSyncScheduler(
+      stateJson,
+      policyJson,
+      eventJson,
+    )
   },
   executeSyncDocumentCommand(snapshotBytes, requestJson, payloadBytes) {
     return getNativeModule().executeSyncDocumentCommand(
@@ -175,7 +198,17 @@ const moduleFacade: MyReaderRustComponentsModule = {
   readSyncDatabaseDiagnostics(databasePath) {
     return getNativeModule().readSyncDatabaseDiagnostics(databasePath)
   },
+  readSyncTaskProgress(taskId) {
+    return getNativeModule().readSyncTaskProgress(taskId)
+  },
+  cancelSyncTask(taskId) {
+    return getNativeModule().cancelSyncTask(taskId)
+  },
+  releaseSyncTask(taskId) {
+    return getNativeModule().releaseSyncTask(taskId)
+  },
   syncLibrarySidecar(
+    taskId,
     databasePath,
     libraryUuid,
     replicaId,
@@ -184,6 +217,7 @@ const moduleFacade: MyReaderRustComponentsModule = {
     storageJson,
   ) {
     return getNativeModule().syncLibrarySidecar(
+      taskId,
       databasePath,
       libraryUuid,
       replicaId,

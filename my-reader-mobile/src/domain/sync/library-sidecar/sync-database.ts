@@ -3,6 +3,7 @@ import type { Library } from "@my-reader/tools/types/library"
 import MyReaderRustComponents, {
   type NativeSyncOutboxEntry,
   type NativeSyncRemoteObject,
+  type NativeSyncTaskProgress,
 } from "@/modules/myreader-rust-components"
 import { getLibraryDatabase } from "@/src/services/db/library-db"
 import {
@@ -12,6 +13,41 @@ import {
 } from "./automerge-document"
 import type { LibrarySidecarReplicaIdentity } from "./replica-identity"
 import type { NativeSidecarStorageConfig } from "../resolve"
+
+export type LibrarySidecarSyncProgress = NativeSyncTaskProgress & {
+  libraryId: string
+}
+
+const progressListeners = new Set<
+  (progress: LibrarySidecarSyncProgress) => void
+>()
+let nextTaskSequence = 0
+
+export function subscribeLibrarySidecarSyncProgress(
+  listener: (progress: LibrarySidecarSyncProgress) => void,
+): () => void {
+  progressListeners.add(listener)
+  return () => progressListeners.delete(listener)
+}
+
+export function createLibrarySidecarSyncTaskId(libraryId: string): string {
+  nextTaskSequence += 1
+  return `${libraryId}:${Date.now()}:${nextTaskSequence}`
+}
+
+export function cancelLibrarySidecarSyncTask(taskId: string): boolean {
+  return MyReaderRustComponents.cancelSyncTask(taskId)
+}
+
+function emitProgress(
+  libraryId: string,
+  progress: NativeSyncTaskProgress,
+  listener?: (progress: LibrarySidecarSyncProgress) => void,
+): void {
+  const event = { ...progress, libraryId }
+  listener?.(event)
+  for (const subscribed of progressListeners) subscribed(event)
+}
 
 async function databasePath(library: Library): Promise<string> {
   return (await getLibraryDatabase(library)).path
@@ -106,8 +142,23 @@ export async function syncLibrarySidecarDatabase(
   nowMs: number,
   mode: "push_only" | "full",
   storage: NativeSidecarStorageConfig,
+  task?: {
+    taskId?: string
+    onProgress?: (progress: LibrarySidecarSyncProgress) => void
+  },
 ): Promise<{ pushed: number; pulled: number }> {
-  return MyReaderRustComponents.syncLibrarySidecar(
+  const taskId = task?.taskId ?? createLibrarySidecarSyncTaskId(library.id)
+  let previousProgress = ""
+  const publishProgress = () => {
+    const progress = MyReaderRustComponents.readSyncTaskProgress(taskId)
+    const serialized = progress ? JSON.stringify(progress) : ""
+    if (progress && serialized !== previousProgress) {
+      previousProgress = serialized
+      emitProgress(library.id, progress, task?.onProgress)
+    }
+  }
+  const sync = MyReaderRustComponents.syncLibrarySidecar(
+    taskId,
     await databasePath(library),
     identity.libraryUuid,
     identity.replicaId,
@@ -115,4 +166,12 @@ export async function syncLibrarySidecarDatabase(
     mode,
     JSON.stringify(storage),
   )
+  const progressTimer = setInterval(publishProgress, 100)
+  try {
+    return await sync
+  } finally {
+    clearInterval(progressTimer)
+    publishProgress()
+    MyReaderRustComponents.releaseSyncTask(taskId)
+  }
 }

@@ -44,6 +44,7 @@ async function syncProviders(
   ctx: SyncTargetContext,
   mode: MyReaderSyncMode,
   providers: MyReaderSyncResult["providers"],
+  taskId?: string,
 ): Promise<MyReaderSyncResult> {
   const providerId = "library-sidecar"
   console.info("[reading-sync] provider:start", {
@@ -53,13 +54,16 @@ async function syncProviders(
     backend: ctx.backend.kind,
   })
   const identity = await ensureLibrarySidecarIdentity(ctx.library)
-  const report = await syncLibrarySidecarDatabase(
+  const syncArguments = [
     ctx.library,
     identity,
     Date.now(),
     mode,
     ctx.sidecarStorage,
-  )
+  ] as const
+  const report = taskId
+    ? await syncLibrarySidecarDatabase(...syncArguments, { taskId })
+    : await syncLibrarySidecarDatabase(...syncArguments)
   providers[providerId] = report
   if (report.pulled > 0) {
     await Promise.all([
@@ -87,7 +91,7 @@ async function syncProviders(
 /** Syncs the Automerge sidecar stream for the current library. */
 export async function syncMyReader(
   ctx: SyncTargetContext,
-  options?: Pick<SyncLibraryOptions, "myreaderMode">,
+  options?: Pick<SyncLibraryOptions, "myreaderMode" | "myreaderTaskId">,
 ): Promise<MyReaderSyncResult> {
   const mode: MyReaderSyncMode = options?.myreaderMode ?? "full"
   const providers: MyReaderSyncResult["providers"] = {}
@@ -103,10 +107,15 @@ export async function syncMyReader(
       ctx.library.securityScopedBookmark
     ) {
       result = await withLocalLibraryCalibreRoot(ctx.library, () =>
-        syncProviders(ctx, mode, providers),
+        syncProviders(ctx, mode, providers, options?.myreaderTaskId),
       )
     } else {
-      result = await syncProviders(ctx, mode, providers)
+      result = await syncProviders(
+        ctx,
+        mode,
+        providers,
+        options?.myreaderTaskId,
+      )
     }
     await logAutomergeDiagnostics(ctx, "complete")
     return result

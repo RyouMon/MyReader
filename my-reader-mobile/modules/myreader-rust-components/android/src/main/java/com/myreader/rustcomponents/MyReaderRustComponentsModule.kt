@@ -3,7 +3,9 @@ package com.myreader.rustcomponents
 import com.myreader.rustcomponents.uniffi.RustComponentsException
 import com.myreader.rustcomponents.uniffi.SyncDocumentCommandResult
 import com.myreader.rustcomponents.uniffi.SyncRemoteObject
+import com.myreader.rustcomponents.uniffi.advanceSyncScheduler
 import com.myreader.rustcomponents.uniffi.applySyncDatabaseRemoteObjects
+import com.myreader.rustcomponents.uniffi.cancelSyncTask
 import com.myreader.rustcomponents.uniffi.ensureSyncDatabaseDocument
 import com.myreader.rustcomponents.uniffi.executeSyncDatabaseCommand
 import com.myreader.rustcomponents.uniffi.executeSyncDocumentCommand
@@ -11,6 +13,8 @@ import com.myreader.rustcomponents.uniffi.hasSyncDatabaseReceipt
 import com.myreader.rustcomponents.uniffi.listSyncDatabaseOutbox
 import com.myreader.rustcomponents.uniffi.markSyncDatabaseOutboxPublished
 import com.myreader.rustcomponents.uniffi.readSyncDatabaseDiagnostics
+import com.myreader.rustcomponents.uniffi.readSyncTaskProgress
+import com.myreader.rustcomponents.uniffi.releaseSyncTask
 import com.myreader.rustcomponents.uniffi.syncContractVersion
 import com.myreader.rustcomponents.uniffi.syncLibrarySidecar
 import expo.modules.kotlin.exception.CodedException
@@ -72,6 +76,15 @@ class MyReaderRustComponentsModule : Module() {
           payloadBytes,
         )
         documentResult(result)
+      }
+    }
+
+    Function("advanceSyncScheduler") {
+        stateJson: String?,
+        policyJson: String,
+        eventJson: String ->
+      syncCall {
+        advanceSyncScheduler(stateJson, policyJson, eventJson)
       }
     }
 
@@ -178,7 +191,27 @@ class MyReaderRustComponentsModule : Module() {
       }
     }
 
+    Function("readSyncTaskProgress") { taskId: String ->
+      readSyncTaskProgress(taskId)?.let { progress ->
+        mapOf(
+          "taskId" to progress.taskId,
+          "stage" to progress.stage,
+          "completed" to progress.completed.toInt(),
+          "total" to progress.total.toInt(),
+        )
+      }
+    }
+
+    Function("cancelSyncTask") { taskId: String ->
+      cancelSyncTask(taskId)
+    }
+
+    Function("releaseSyncTask") { taskId: String ->
+      releaseSyncTask(taskId)
+    }
+
     AsyncFunction("syncLibrarySidecar") {
+        taskId: String,
         databasePath: String,
         libraryUuid: String,
         replicaId: String,
@@ -187,6 +220,7 @@ class MyReaderRustComponentsModule : Module() {
         storageJson: String ->
       syncAsyncCall {
         val result = syncLibrarySidecar(
+          taskId,
           databasePath,
           libraryUuid,
           replicaId,

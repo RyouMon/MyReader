@@ -1,8 +1,14 @@
-use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use myreader_rust_components::sync::{
+    exchange::SyncMode,
+    scheduler::{
+        SchedulerEvent, SchedulerPolicy, SchedulerState, SchedulerTransition, SyncExecution,
+        SyncTiming,
+    },
+};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::Semaphore;
@@ -12,11 +18,7 @@ use crate::commands::AppState;
 use crate::error::AppError;
 use crate::services::sync_service::{SidecarSyncMode, SyncService};
 
-const DEBOUNCE_MS: u64 = 2_000;
-const MAX_WAIT_MS: u64 = 10_000;
 const PULL_FRESHNESS_MS: u64 = 30_000;
-const RETRY_BASE_MS: u64 = 2_000;
-const RETRY_MAX_MS: u64 = 5 * 60_000;
 const SAFETY_SWEEP_MS: u64 = 60_000;
 const MAX_CONCURRENT_SYNCS: usize = 2;
 
@@ -36,194 +38,31 @@ pub enum SidecarSyncReason {
     StartupRecovery,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct SidecarSyncExecution {
-    library_id: String,
-    mode: SidecarSyncMode,
-    reasons: BTreeSet<SidecarSyncReason>,
-}
-
-#[derive(Debug, Clone)]
-struct PendingIntent {
-    mode: SidecarSyncMode,
-    reasons: BTreeSet<SidecarSyncReason>,
-    first_requested_at: u64,
-    deadline: u64,
-    generation: u64,
-}
-
-#[derive(Debug, Default)]
-struct LibrarySchedule {
-    pending: Option<PendingIntent>,
-    running: bool,
-    retry_count: u32,
-}
-
-#[derive(Debug, Default)]
-struct SchedulerState {
-    libraries: HashMap<String, LibrarySchedule>,
-    suspended: HashSet<String>,
-    blocked_until: HashMap<String, u64>,
-    next_generation: u64,
-}
-
-impl SchedulerState {
-    fn request(
-        &mut self,
-        library_id: &str,
-        mode: SidecarSyncMode,
-        reason: SidecarSyncReason,
-        timing: SidecarSyncTiming,
-        now_ms: u64,
-    ) -> Option<(u64, u64)> {
-        if self.suspended.contains(library_id) {
-            return None;
-        }
-        self.next_generation += 1;
-        let generation = self.next_generation;
-        let schedule = self.libraries.entry(library_id.to_owned()).or_default();
-        let pending = schedule.pending.get_or_insert_with(|| PendingIntent {
-            mode,
-            reasons: BTreeSet::new(),
-            first_requested_at: now_ms,
-            deadline: now_ms,
-            generation,
-        });
-        pending.mode = merge_mode(pending.mode, mode);
-        pending.reasons.insert(reason);
-        pending.generation = generation;
-        pending.deadline = match timing {
-            SidecarSyncTiming::Immediate => now_ms,
-            SidecarSyncTiming::Debounced => {
-                (now_ms + DEBOUNCE_MS).min(pending.first_requested_at + MAX_WAIT_MS)
-            }
-        }
-        .max(self.blocked_until.get(library_id).copied().unwrap_or(0));
-        if schedule.running {
-            None
-        } else {
-            Some((generation, pending.deadline))
-        }
-    }
-
-    fn begin(&mut self, library_id: &str, generation: u64) -> Option<SidecarSyncExecution> {
-        let schedule = self.libraries.get_mut(library_id)?;
-        let pending = schedule.pending.as_ref()?;
-        if schedule.running || pending.generation != generation {
-            return None;
-        }
-        let pending = schedule.pending.take()?;
-        schedule.running = true;
-        Some(SidecarSyncExecution {
-            library_id: library_id.to_owned(),
-            mode: pending.mode,
-            reasons: pending.reasons,
-        })
-    }
-
-    fn complete(&mut self, library_id: &str, now_ms: u64) -> Option<(u64, u64)> {
-        let schedule = self.libraries.get_mut(library_id)?;
-        schedule.running = false;
-        schedule.retry_count = 0;
-        self.blocked_until.remove(library_id);
-        schedule
-            .pending
-            .as_ref()
-            .map(|pending| (pending.generation, pending.deadline.max(now_ms)))
-    }
-
-    fn retry(
-        &mut self,
-        execution: SidecarSyncExecution,
-        now_ms: u64,
-        random_fraction: f64,
-    ) -> (u64, u64, u32) {
-        self.next_generation += 1;
-        let generation = self.next_generation;
-        let schedule = self
-            .libraries
-            .entry(execution.library_id.clone())
-            .or_default();
-        schedule.running = false;
-        schedule.retry_count += 1;
-        let delay = retry_delay_ms(schedule.retry_count, random_fraction);
-        self.blocked_until
-            .insert(execution.library_id.clone(), now_ms + delay);
-        let pending = schedule.pending.get_or_insert_with(|| PendingIntent {
-            mode: execution.mode,
-            reasons: BTreeSet::new(),
-            first_requested_at: now_ms,
-            deadline: now_ms + delay,
-            generation,
-        });
-        pending.mode = merge_mode(pending.mode, execution.mode);
-        pending.reasons.extend(execution.reasons);
-        pending.generation = generation;
-        pending.deadline = now_ms + delay;
-        (generation, pending.deadline, schedule.retry_count)
-    }
-
-    fn suspend(&mut self, execution: SidecarSyncExecution) {
-        if let Some(schedule) = self.libraries.get_mut(&execution.library_id) {
-            schedule.running = false;
-        }
-        self.suspended.insert(execution.library_id);
-    }
-
-    fn resume(&mut self, library_id: &str, now_ms: u64) -> Option<(u64, u64)> {
-        self.suspended.remove(library_id);
-        self.blocked_until.remove(library_id);
-        let schedule = self.libraries.get_mut(library_id)?;
-        schedule.retry_count = 0;
-        schedule
-            .pending
-            .as_ref()
-            .map(|pending| (pending.generation, pending.deadline.max(now_ms)))
-    }
-
-    fn wake_retry(&mut self, library_id: &str, now_ms: u64) -> Option<(u64, u64)> {
-        self.blocked_until.remove(library_id);
-        let schedule = self.libraries.get_mut(library_id)?;
-        schedule.pending.as_mut().map(|pending| {
-            pending.deadline = now_ms;
-            (pending.generation, pending.deadline)
-        })
-    }
-
-    fn restore(
-        &mut self,
-        library_id: &str,
-        next_retry_at: Option<u64>,
-        retry_count: u32,
-        suspended: bool,
-    ) {
-        self.libraries
-            .entry(library_id.to_owned())
-            .or_default()
-            .retry_count = retry_count;
-        if suspended {
-            self.suspended.insert(library_id.to_owned());
-        }
-        if let Some(next_retry_at) = next_retry_at {
-            self.blocked_until
-                .insert(library_id.to_owned(), next_retry_at);
+impl SidecarSyncReason {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::LocalChange => "local_change",
+            Self::AppFocused => "app_focused",
+            Self::NetworkReconnected => "network_reconnected",
+            Self::LibraryActivated => "library_activated",
+            Self::RecoverySweep => "recovery_sweep",
+            Self::StartupRecovery => "startup_recovery",
         }
     }
 }
 
-fn merge_mode(current: SidecarSyncMode, incoming: SidecarSyncMode) -> SidecarSyncMode {
-    if current == SidecarSyncMode::Full || incoming == SidecarSyncMode::Full {
-        SidecarSyncMode::Full
-    } else {
-        SidecarSyncMode::PushOnly
+fn scheduler_mode(mode: SidecarSyncMode) -> SyncMode {
+    match mode {
+        SidecarSyncMode::PushOnly => SyncMode::PushOnly,
+        SidecarSyncMode::Full => SyncMode::Full,
     }
 }
 
-fn retry_delay_ms(retry_count: u32, random_fraction: f64) -> u64 {
-    let ceiling = RETRY_BASE_MS
-        .saturating_mul(2_u64.saturating_pow(retry_count.saturating_sub(1)))
-        .min(RETRY_MAX_MS);
-    (ceiling as f64 * random_fraction.clamp(0.0, 1.0)) as u64
+fn scheduler_timing(timing: SidecarSyncTiming) -> SyncTiming {
+    match timing {
+        SidecarSyncTiming::Debounced => SyncTiming::Debounced,
+        SidecarSyncTiming::Immediate => SyncTiming::Immediate,
+    }
 }
 
 fn safety_sweep_delay_ms(random_fraction: f64) -> u64 {
@@ -253,7 +92,7 @@ impl SidecarSyncScheduler {
         let scheduler = Self {
             app,
             app_data_dir,
-            state: Arc::new(Mutex::new(SchedulerState::default())),
+            state: Arc::new(Mutex::new(SchedulerState::new(SchedulerPolicy::default()))),
             concurrency: Arc::new(Semaphore::new(MAX_CONCURRENT_SYNCS)),
         };
         scheduler.start_safety_sweep();
@@ -269,14 +108,18 @@ impl SidecarSyncScheduler {
     ) {
         let library_id = library_id.into();
         let now_ms = unix_epoch_millis();
-        let scheduled = self
+        let transition = self
             .state
             .lock()
             .unwrap_or_else(|error| error.into_inner())
-            .request(&library_id, mode, reason, timing, now_ms);
-        if let Some((generation, deadline)) = scheduled {
-            self.spawn_deadline(library_id, generation, deadline);
-        }
+            .apply(SchedulerEvent::Request {
+                library_id,
+                mode: scheduler_mode(mode),
+                reason: reason.as_str().to_owned(),
+                timing: scheduler_timing(timing),
+                now_ms,
+            });
+        self.spawn_transition(transition);
     }
 
     pub fn schedule_active_pull(&self, reason: SidecarSyncReason) {
@@ -325,12 +168,12 @@ impl SidecarSyncScheduler {
                     .state
                     .lock()
                     .unwrap_or_else(|error| error.into_inner())
-                    .restore(
-                        &library.id,
-                        snapshot.next_retry_at,
-                        snapshot.transient_failure_count,
-                        snapshot.suspended_reason.is_some(),
-                    );
+                    .apply(SchedulerEvent::Restore {
+                        library_id: library.id.clone(),
+                        next_retry_at: snapshot.next_retry_at,
+                        retry_count: snapshot.transient_failure_count,
+                        suspended: snapshot.suspended_reason.is_some(),
+                    });
                 if snapshot.suspended_reason.is_some() {
                     continue;
                 }
@@ -370,28 +213,30 @@ impl SidecarSyncScheduler {
             .collect::<Vec<_>>();
         let now_ms = unix_epoch_millis();
         for library_id in &library_ids {
-            let scheduled = self
+            let transition = self
                 .state
                 .lock()
                 .unwrap_or_else(|error| error.into_inner())
-                .wake_retry(library_id, now_ms);
-            if let Some((generation, deadline)) = scheduled {
-                self.spawn_deadline(library_id.clone(), generation, deadline);
-            }
+                .apply(SchedulerEvent::WakeRetry {
+                    library_id: library_id.clone(),
+                    now_ms,
+                });
+            self.spawn_transition(transition);
         }
         self.recover_pending_work();
         self.schedule_active_pull(SidecarSyncReason::NetworkReconnected);
     }
 
     pub fn resume_library(&self, library_id: &str) {
-        let scheduled = self
+        let transition = self
             .state
             .lock()
             .unwrap_or_else(|error| error.into_inner())
-            .resume(library_id, unix_epoch_millis());
-        if let Some((generation, deadline)) = scheduled {
-            self.spawn_deadline(library_id.to_owned(), generation, deadline);
-        }
+            .apply(SchedulerEvent::Resume {
+                library_id: library_id.to_owned(),
+                now_ms: unix_epoch_millis(),
+            });
+        self.spawn_transition(transition);
     }
 
     fn config_snapshot(&self) -> crate::models::AppConfig {
@@ -400,6 +245,16 @@ impl SidecarSyncScheduler {
             .lock()
             .unwrap_or_else(|error| error.into_inner())
             .clone()
+    }
+
+    fn spawn_transition(&self, transition: SchedulerTransition) {
+        for scheduled in transition.schedules {
+            self.spawn_deadline(
+                scheduled.library_id,
+                scheduled.generation,
+                scheduled.deadline,
+            );
+        }
     }
 
     fn spawn_deadline(&self, library_id: String, generation: u64, deadline: u64) {
@@ -412,12 +267,15 @@ impl SidecarSyncScheduler {
     }
 
     async fn run(&self, library_id: String, generation: u64) {
-        let execution = self
+        let transition = self
             .state
             .lock()
             .unwrap_or_else(|error| error.into_inner())
-            .begin(&library_id, generation);
-        let Some(execution) = execution else {
+            .apply(SchedulerEvent::Begin {
+                library_id: library_id.clone(),
+                generation,
+            });
+        let Some(execution) = transition.execution else {
             return;
         };
         let _permit = match self.concurrency.acquire().await {
@@ -461,24 +319,26 @@ impl SidecarSyncScheduler {
                         },
                     );
                 }
-                let scheduled = self
+                let transition = self
                     .state
                     .lock()
                     .unwrap_or_else(|error| error.into_inner())
-                    .complete(&library_id, unix_epoch_millis());
-                if let Some((generation, deadline)) = scheduled {
-                    self.spawn_deadline(library_id, generation, deadline);
-                }
+                    .apply(SchedulerEvent::Complete {
+                        library_id,
+                        now_ms: unix_epoch_millis(),
+                    });
+                self.spawn_transition(transition);
             }
             Ok(None) => {
-                let scheduled = self
+                let transition = self
                     .state
                     .lock()
                     .unwrap_or_else(|error| error.into_inner())
-                    .complete(&library_id, unix_epoch_millis());
-                if let Some((generation, deadline)) = scheduled {
-                    self.spawn_deadline(library_id, generation, deadline);
-                }
+                    .apply(SchedulerEvent::Complete {
+                        library_id,
+                        now_ms: unix_epoch_millis(),
+                    });
+                self.spawn_transition(transition);
             }
             Err(error) if should_suspend(&error) => {
                 error!(
@@ -491,7 +351,7 @@ impl SidecarSyncScheduler {
                 self.state
                     .lock()
                     .unwrap_or_else(|poisoned| poisoned.into_inner())
-                    .suspend(execution);
+                    .apply(SchedulerEvent::Suspend { execution });
                 if let Err(state_error) = SyncService::record_suspension(
                     &self.app_data_dir,
                     &config,
@@ -518,17 +378,24 @@ impl SidecarSyncScheduler {
                     "Scheduled automatic sidecar sync retry"
                 );
                 let random_fraction = jitter_fraction();
-                let (generation, deadline, retry_count) = self
+                let transition = self
                     .state
                     .lock()
                     .unwrap_or_else(|poisoned| poisoned.into_inner())
-                    .retry(execution, unix_epoch_millis(), random_fraction);
+                    .apply(SchedulerEvent::Retry {
+                        execution,
+                        now_ms: unix_epoch_millis(),
+                        random_fraction,
+                    });
+                let Some(retry) = transition.retry.as_ref() else {
+                    return;
+                };
                 if let Err(state_error) = SyncService::record_retry(
                     &self.app_data_dir,
                     &config,
                     &library_id,
-                    deadline,
-                    retry_count,
+                    retry.next_retry_at,
+                    retry.retry_count,
                 )
                 .await
                 {
@@ -540,7 +407,7 @@ impl SidecarSyncScheduler {
                         "Failed to persist sidecar scheduler retry"
                     );
                 }
-                self.spawn_deadline(library_id, generation, deadline);
+                self.spawn_transition(transition);
             }
         }
     }
@@ -548,9 +415,9 @@ impl SidecarSyncScheduler {
     async fn effective_mode(
         &self,
         config: &crate::models::AppConfig,
-        execution: &SidecarSyncExecution,
+        execution: &SyncExecution,
     ) -> Result<Option<SidecarSyncMode>, AppError> {
-        if execution.mode == SidecarSyncMode::PushOnly {
+        if execution.mode == SyncMode::PushOnly {
             return Ok(Some(SidecarSyncMode::PushOnly));
         }
         if !SyncService::is_pull_fresh(
@@ -609,129 +476,6 @@ fn jitter_fraction() -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn should_coalesce_and_upgrade_work_when_changes_arrive_during_debounce() {
-        let mut state = SchedulerState::default();
-        state.request(
-            "library-1",
-            SidecarSyncMode::PushOnly,
-            SidecarSyncReason::LocalChange,
-            SidecarSyncTiming::Debounced,
-            1_000,
-        );
-        let (generation, deadline) = state
-            .request(
-                "library-1",
-                SidecarSyncMode::Full,
-                SidecarSyncReason::AppFocused,
-                SidecarSyncTiming::Debounced,
-                2_000,
-            )
-            .unwrap();
-
-        assert_eq!(deadline, 4_000);
-        assert_eq!(
-            state.begin("library-1", generation),
-            Some(SidecarSyncExecution {
-                library_id: "library-1".to_owned(),
-                mode: SidecarSyncMode::Full,
-                reasons: BTreeSet::from([
-                    SidecarSyncReason::LocalChange,
-                    SidecarSyncReason::AppFocused,
-                ]),
-            })
-        );
-    }
-
-    #[test]
-    fn should_execute_by_maximum_wait_when_changes_keep_resetting_debounce() {
-        let mut state = SchedulerState::default();
-        let mut scheduled = None;
-        for now_ms in (0..=10_000).step_by(1_000) {
-            scheduled = state.request(
-                "library-1",
-                SidecarSyncMode::PushOnly,
-                SidecarSyncReason::LocalChange,
-                SidecarSyncTiming::Debounced,
-                now_ms,
-            );
-        }
-
-        assert_eq!(scheduled.unwrap().1, MAX_WAIT_MS);
-    }
-
-    #[test]
-    fn should_rerun_without_overlap_when_work_arrives_during_execution() {
-        let mut state = SchedulerState::default();
-        let (generation, _) = state
-            .request(
-                "library-1",
-                SidecarSyncMode::PushOnly,
-                SidecarSyncReason::LocalChange,
-                SidecarSyncTiming::Immediate,
-                1_000,
-            )
-            .unwrap();
-        assert!(state.begin("library-1", generation).is_some());
-
-        assert!(state
-            .request(
-                "library-1",
-                SidecarSyncMode::Full,
-                SidecarSyncReason::NetworkReconnected,
-                SidecarSyncTiming::Immediate,
-                1_100,
-            )
-            .is_none());
-        let (rerun_generation, _) = state.complete("library-1", 1_200).unwrap();
-        let rerun = state.begin("library-1", rerun_generation).unwrap();
-
-        assert_eq!(rerun.mode, SidecarSyncMode::Full);
-        assert_eq!(
-            rerun.reasons,
-            BTreeSet::from([SidecarSyncReason::NetworkReconnected])
-        );
-    }
-
-    #[test]
-    fn should_keep_library_state_independent_when_requests_target_two_libraries() {
-        let mut state = SchedulerState::default();
-        let (first_generation, _) = state
-            .request(
-                "library-1",
-                SidecarSyncMode::PushOnly,
-                SidecarSyncReason::LocalChange,
-                SidecarSyncTiming::Immediate,
-                1_000,
-            )
-            .unwrap();
-        let (second_generation, _) = state
-            .request(
-                "library-2",
-                SidecarSyncMode::Full,
-                SidecarSyncReason::AppFocused,
-                SidecarSyncTiming::Immediate,
-                1_000,
-            )
-            .unwrap();
-
-        assert_eq!(
-            state.begin("library-1", first_generation).unwrap().mode,
-            SidecarSyncMode::PushOnly
-        );
-        assert_eq!(
-            state.begin("library-2", second_generation).unwrap().mode,
-            SidecarSyncMode::Full
-        );
-    }
-
-    #[test]
-    fn should_use_jittered_exponential_delay_when_retrying() {
-        assert_eq!(retry_delay_ms(1, 0.5), 1_000);
-        assert_eq!(retry_delay_ms(2, 0.5), 2_000);
-        assert_eq!(retry_delay_ms(20, 1.0), RETRY_MAX_MS);
-    }
 
     #[test]
     fn should_keep_safety_sweep_between_48_and_72_seconds_when_jittering() {

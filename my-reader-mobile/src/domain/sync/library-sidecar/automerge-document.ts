@@ -5,7 +5,7 @@ import MyReaderRustComponents, {
 import { LIBRARY_SIDECAR_GENESIS_HEADS } from "./automerge-genesis.generated"
 
 export const LIBRARY_SIDECAR_SCHEMA_VERSION = 1
-const SYNC_CONTRACT_VERSION = 3
+const SYNC_CONTRACT_VERSION = 5
 
 type ReadingFormat = "EPUB" | "PDF" | "CBZ"
 

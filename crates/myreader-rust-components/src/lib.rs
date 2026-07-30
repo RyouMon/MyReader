@@ -1,5 +1,13 @@
 //! Aggregation root for MyReader Rust components.
 
+use std::{
+    collections::HashMap,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, LazyLock, Mutex,
+    },
+};
+
 pub use myreader_sync as sync;
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
@@ -66,9 +74,104 @@ pub struct SyncLibrarySidecarReport {
     pub pulled: u32,
 }
 
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct SyncTaskProgress {
+    pub task_id: String,
+    pub stage: String,
+    pub completed: u32,
+    pub total: u32,
+}
+
+struct SyncTaskState {
+    cancelled: AtomicBool,
+    progress: Mutex<SyncTaskProgress>,
+}
+
+static SYNC_TASKS: LazyLock<Mutex<HashMap<String, Arc<SyncTaskState>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+struct NativeSyncObserver {
+    task: Arc<SyncTaskState>,
+}
+
+impl sync::exchange::SyncObserver for NativeSyncObserver {
+    fn is_cancelled(&self) -> bool {
+        self.task.cancelled.load(Ordering::Relaxed)
+    }
+
+    fn on_progress(&self, progress: sync::exchange::SyncProgress) {
+        let stage = match progress.stage {
+            sync::exchange::SyncStage::Preparing => "preparing",
+            sync::exchange::SyncStage::Pushing => "pushing",
+            sync::exchange::SyncStage::Pulling => "pulling",
+            sync::exchange::SyncStage::Applying => "applying",
+            sync::exchange::SyncStage::Complete => "complete",
+        };
+        let mut current = self
+            .task
+            .progress
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        current.stage = stage.to_owned();
+        current.completed = u32::try_from(progress.completed).unwrap_or(u32::MAX);
+        current.total = u32::try_from(progress.total).unwrap_or(u32::MAX);
+    }
+}
+
 #[uniffi::export]
 pub fn sync_contract_version() -> u32 {
-    3
+    5
+}
+
+#[uniffi::export]
+pub fn advance_sync_scheduler(
+    state_json: Option<String>,
+    policy_json: String,
+    event_json: String,
+) -> Result<String, RustComponentsError> {
+    sync::scheduler::reduce_json(state_json.as_deref(), &policy_json, &event_json)
+        .map_err(map_sync_error)
+}
+
+#[uniffi::export]
+pub fn read_sync_task_progress(task_id: String) -> Option<SyncTaskProgress> {
+    SYNC_TASKS
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+        .get(&task_id)
+        .map(|task| {
+            task.progress
+                .lock()
+                .unwrap_or_else(|error| error.into_inner())
+                .clone()
+        })
+}
+
+#[uniffi::export]
+pub fn cancel_sync_task(task_id: String) -> bool {
+    let task = SYNC_TASKS
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+        .get(&task_id)
+        .cloned();
+    let Some(task) = task else {
+        return false;
+    };
+    task.cancelled.store(true, Ordering::Relaxed);
+    task.progress
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+        .stage = "cancelling".to_owned();
+    true
+}
+
+#[uniffi::export]
+pub fn release_sync_task(task_id: String) -> bool {
+    SYNC_TASKS
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+        .remove(&task_id)
+        .is_some()
 }
 
 fn map_document_result(
@@ -266,6 +369,7 @@ pub fn read_sync_database_diagnostics(
 
 #[uniffi::export]
 pub async fn sync_library_sidecar(
+    task_id: String,
     database_path: String,
     library_uuid: String,
     replica_id: String,
@@ -284,18 +388,52 @@ pub async fn sync_library_sidecar(
     };
     let storage = serde_json::from_str(&storage_json)
         .map_err(|error| RustComponentsError::Sync(format!("Invalid storage config: {error}")))?;
-    let report = sync::transport::sync_database(
+    let now_ms = parse_now_ms(&now_ms)?;
+    let task = Arc::new(SyncTaskState {
+        cancelled: AtomicBool::new(false),
+        progress: Mutex::new(SyncTaskProgress {
+            task_id: task_id.clone(),
+            stage: "queued".to_owned(),
+            completed: 0,
+            total: 0,
+        }),
+    });
+    {
+        let mut tasks = SYNC_TASKS.lock().unwrap_or_else(|error| error.into_inner());
+        if tasks.contains_key(&task_id) {
+            return Err(RustComponentsError::Sync(format!(
+                "Sync task already exists: {task_id}"
+            )));
+        }
+        tasks.insert(task_id, task.clone());
+    }
+    let report = sync::transport::sync_database_observed(
         &database_path,
         &sync::persistence::DatabaseIdentity {
             library_uuid,
             replica_id,
         },
-        parse_now_ms(&now_ms)?,
+        now_ms,
         mode,
         &storage,
+        &NativeSyncObserver { task: task.clone() },
     )
-    .await
-    .map_err(map_sync_error)?;
+    .await;
+    let report = match report {
+        Ok(report) => report,
+        Err(error) => {
+            task.progress
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .stage = if task.cancelled.load(Ordering::Relaxed) {
+                "cancelled"
+            } else {
+                "failed"
+            }
+            .to_owned();
+            return Err(map_sync_error(error));
+        }
+    };
     Ok(SyncLibrarySidecarReport {
         pushed: u32::try_from(report.pushed)
             .map_err(|_| RustComponentsError::Sync("Pushed count is out of range".to_owned()))?,

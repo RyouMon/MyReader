@@ -1,9 +1,12 @@
 jest.mock("@/modules/myreader-rust-components", () => ({
   __esModule: true,
   default: {
-    syncContractVersion: jest.fn(() => 3),
+    syncContractVersion: jest.fn(() => 5),
     ensureSyncDatabaseDocument: jest.fn(),
     executeSyncDatabaseCommand: jest.fn(),
+    readSyncTaskProgress: jest.fn(),
+    cancelSyncTask: jest.fn(),
+    releaseSyncTask: jest.fn(),
     syncLibrarySidecar: jest.fn(),
   },
 }))
@@ -62,6 +65,10 @@ describe("sync database adapter", () => {
     jest
       .mocked(MyReaderRustComponents.syncLibrarySidecar)
       .mockResolvedValue({ pushed: 2, pulled: 1 })
+    jest
+      .mocked(MyReaderRustComponents.readSyncTaskProgress)
+      .mockReturnValue(null)
+    jest.mocked(MyReaderRustComponents.releaseSyncTask).mockReturnValue(true)
   })
 
   it("should pass the migrated library database path when state is ensured", async () => {
@@ -113,16 +120,24 @@ describe("sync database adapter", () => {
 
   it("should delegate sidecar exchange to the Rust use case when sync runs", async () => {
     await expect(
-      syncLibrarySidecarDatabase(library, identity, 300, "full", {
-        kind: "webdav",
-        endpoint: "https://example.com/dav",
-        username: "reader",
-        password: "secret",
-        root: "/books/library",
-      }),
+      syncLibrarySidecarDatabase(
+        library,
+        identity,
+        300,
+        "full",
+        {
+          kind: "webdav",
+          endpoint: "https://example.com/dav",
+          username: "reader",
+          password: "secret",
+          root: "/books/library",
+        },
+        { taskId: "task-1" },
+      ),
     ).resolves.toEqual({ pushed: 2, pulled: 1 })
 
     expect(MyReaderRustComponents.syncLibrarySidecar).toHaveBeenCalledWith(
+      "task-1",
       "/library/.myreader/myreader.db",
       identity.libraryUuid,
       identity.replicaId,
@@ -136,5 +151,35 @@ describe("sync database adapter", () => {
         root: "/books/library",
       }),
     )
+    expect(MyReaderRustComponents.releaseSyncTask).toHaveBeenCalledWith(
+      "task-1",
+    )
+  })
+
+  it("should publish final native task progress before task state is released", async () => {
+    jest.mocked(MyReaderRustComponents.readSyncTaskProgress).mockReturnValue({
+      taskId: "task-1",
+      stage: "complete",
+      completed: 1,
+      total: 1,
+    })
+    const onProgress = jest.fn()
+
+    await syncLibrarySidecarDatabase(
+      library,
+      identity,
+      300,
+      "full",
+      { kind: "local-direct", root: "/library" },
+      { taskId: "task-1", onProgress },
+    )
+
+    expect(onProgress).toHaveBeenCalledWith({
+      taskId: "task-1",
+      libraryId: "library-1",
+      stage: "complete",
+      completed: 1,
+      total: 1,
+    })
   })
 })

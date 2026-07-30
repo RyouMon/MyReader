@@ -10,9 +10,39 @@ jest.mock("./library-sidecar/automerge-store", () => ({
   hasPendingLibrarySidecarAutomergeChanges: jest.fn(),
 }))
 
+jest.mock("./library-sidecar/sync-database", () => ({
+  cancelLibrarySidecarSyncTask: jest.fn(),
+}))
+
 jest.mock("@/src/repos/library-sidecar-schedule", () => ({
   readLibrarySidecarScheduleState: jest.fn(),
   writeLibrarySidecarScheduleState: jest.fn(),
+}))
+
+jest.mock("./sidecar-scheduler", () => ({
+  createSidecarSyncScheduler: jest.fn((options) => ({
+    request(request: {
+      libraryId: string
+      mode: "push_only" | "full"
+      reason: string
+    }) {
+      setTimeout(() => {
+        void options.execute(
+          {
+            libraryId: request.libraryId,
+            mode: request.mode,
+            reasons: [request.reason],
+          },
+          "task-1",
+        )
+      }, 0)
+    },
+    flushPending: jest.fn(),
+    resume: jest.fn(),
+    setOnline: jest.fn(),
+    setLibraryOnline: jest.fn(),
+    dispose: jest.fn(),
+  })),
 }))
 
 import type { DataSource, Library } from "../types"
@@ -87,6 +117,7 @@ describe("automatic sidecar sync", () => {
     expect(syncLibrary).toHaveBeenCalledWith(library, dataSources, {
       scope: "myreader",
       myreaderMode: "push_only",
+      myreaderTaskId: "task-1",
       throwOnFailure: true,
     })
     expect(applySyncReport).toHaveBeenCalled()

@@ -16,7 +16,8 @@ const REMOTE_CHANGES_ROOT: &str = ".myreader/automerge/changes";
 const MAX_REMOTE_OBJECT_BYTES: usize = 4 * 1024 * 1024;
 const MAX_REMOTE_OBJECTS_PER_SYNC: usize = 10_000;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum SyncMode {
     PushOnly,
     Full,
@@ -28,8 +29,48 @@ pub struct SyncReport {
     pub pulled: usize,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SyncStage {
+    Preparing,
+    Pushing,
+    Pulling,
+    Applying,
+    Complete,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+pub struct SyncProgress {
+    pub stage: SyncStage,
+    pub completed: usize,
+    pub total: usize,
+}
+
+pub trait SyncObserver: Send + Sync {
+    fn is_cancelled(&self) -> bool;
+    fn on_progress(&self, progress: SyncProgress);
+}
+
+struct NoopObserver;
+
+impl SyncObserver for NoopObserver {
+    fn is_cancelled(&self) -> bool {
+        false
+    }
+
+    fn on_progress(&self, _progress: SyncProgress) {}
+}
+
 fn sync_error(message: impl Into<String>) -> SyncError {
     SyncError::Sync(message.into())
+}
+
+fn check_cancelled(observer: &dyn SyncObserver) -> Result<(), SyncError> {
+    if observer.is_cancelled() {
+        Err(sync_error("Sync task cancelled"))
+    } else {
+        Ok(())
+    }
 }
 
 fn sha256_hex(bytes: &[u8]) -> String {
@@ -60,10 +101,18 @@ async fn publish(
     database_path: &str,
     operator: &Operator,
     now_ms: i64,
+    observer: &dyn SyncObserver,
 ) -> Result<usize, SyncError> {
     let pending = list_pending_outbox(database_path)?;
+    observer.on_progress(SyncProgress {
+        stage: SyncStage::Pushing,
+        completed: 0,
+        total: pending.len(),
+    });
     let mut pushed = 0;
-    for row in pending {
+    let total = pending.len();
+    for (index, row) in pending.into_iter().enumerate() {
+        check_cancelled(observer)?;
         match operator.read(&row.object_path).await {
             Ok(existing) => {
                 if sha256_hex(&existing.to_vec()) != row.sha256 {
@@ -95,6 +144,11 @@ async fn publish(
         pushed += serde_json::from_str::<Vec<String>>(&row.change_hashes_json)
             .map_err(|error| sync_error(format!("Invalid outbox change hashes: {error}")))?
             .len();
+        observer.on_progress(SyncProgress {
+            stage: SyncStage::Pushing,
+            completed: index + 1,
+            total,
+        });
     }
     Ok(pushed)
 }
@@ -103,6 +157,7 @@ async fn list_remote_objects(
     database_path: &str,
     operator: &Operator,
     identity: &DatabaseIdentity,
+    observer: &dyn SyncObserver,
 ) -> Result<Vec<SyncRemoteObject>, SyncError> {
     let entries = match operator
         .list_with(REMOTE_CHANGES_ROOT)
@@ -123,7 +178,7 @@ async fn list_remote_objects(
         )));
     }
     let local_actor = identity.replica_id.replace('-', "");
-    let mut objects = Vec::new();
+    let mut candidates = Vec::new();
     for entry in entries {
         let path = entry.path().trim_end_matches('/');
         let Some((actor, head)) = parse_remote_path(path) else {
@@ -132,8 +187,19 @@ async fn list_remote_objects(
         if actor == local_actor || has_receipt(database_path, path)? {
             continue;
         }
+        candidates.push((path.to_owned(), head));
+    }
+    let total = candidates.len();
+    observer.on_progress(SyncProgress {
+        stage: SyncStage::Pulling,
+        completed: 0,
+        total,
+    });
+    let mut objects = Vec::new();
+    for (index, (path, head)) in candidates.into_iter().enumerate() {
+        check_cancelled(observer)?;
         let bytes = operator
-            .read(path)
+            .read(&path)
             .await
             .map_err(|error| sync_error(format!("Read {path} failed: {error}")))?
             .to_vec();
@@ -143,10 +209,15 @@ async fn list_remote_objects(
             )));
         }
         objects.push(SyncRemoteObject {
-            object_path: path.to_owned(),
+            object_path: path,
             head,
             sha256: sha256_hex(&bytes),
             bytes,
+        });
+        observer.on_progress(SyncProgress {
+            stage: SyncStage::Pulling,
+            completed: index + 1,
+            total,
         });
     }
     objects.sort_by(|left, right| left.object_path.cmp(&right.object_path));
@@ -158,13 +229,27 @@ async fn pull(
     operator: &Operator,
     identity: &DatabaseIdentity,
     now_ms: i64,
+    observer: &dyn SyncObserver,
 ) -> Result<usize, SyncError> {
-    let objects = list_remote_objects(database_path, operator, identity).await?;
+    let objects = list_remote_objects(database_path, operator, identity, observer).await?;
     if objects.is_empty() {
         return Ok(0);
     }
-    apply_remote_database_objects(database_path, identity, now_ms, objects)
-        .map(|result| result.applied_objects)
+    check_cancelled(observer)?;
+    observer.on_progress(SyncProgress {
+        stage: SyncStage::Applying,
+        completed: 0,
+        total: objects.len(),
+    });
+    let total = objects.len();
+    apply_remote_database_objects(database_path, identity, now_ms, objects).map(|result| {
+        observer.on_progress(SyncProgress {
+            stage: SyncStage::Applying,
+            completed: total,
+            total,
+        });
+        result.applied_objects
+    })
 }
 
 pub async fn sync_database_with_operator(
@@ -174,12 +259,48 @@ pub async fn sync_database_with_operator(
     now_ms: i64,
     mode: SyncMode,
 ) -> Result<SyncReport, SyncError> {
+    sync_database_with_operator_observed(
+        database_path,
+        operator,
+        identity,
+        now_ms,
+        mode,
+        &NoopObserver,
+    )
+    .await
+}
+
+pub async fn sync_database_with_operator_observed(
+    database_path: &str,
+    operator: &Operator,
+    identity: &DatabaseIdentity,
+    now_ms: i64,
+    mode: SyncMode,
+    observer: &dyn SyncObserver,
+) -> Result<SyncReport, SyncError> {
+    check_cancelled(observer)?;
+    observer.on_progress(SyncProgress {
+        stage: SyncStage::Preparing,
+        completed: 0,
+        total: 1,
+    });
     ensure_database_document(database_path, identity, now_ms)?;
-    let pushed = publish(database_path, operator, now_ms).await?;
+    observer.on_progress(SyncProgress {
+        stage: SyncStage::Preparing,
+        completed: 1,
+        total: 1,
+    });
+    let pushed = publish(database_path, operator, now_ms, observer).await?;
     let pulled = match mode {
         SyncMode::PushOnly => 0,
-        SyncMode::Full => pull(database_path, operator, identity, now_ms).await?,
+        SyncMode::Full => pull(database_path, operator, identity, now_ms, observer).await?,
     };
+    check_cancelled(observer)?;
+    observer.on_progress(SyncProgress {
+        stage: SyncStage::Complete,
+        completed: 1,
+        total: 1,
+    });
     Ok(SyncReport { pushed, pulled })
 }
 
@@ -189,6 +310,11 @@ pub fn has_pending_database_work(database_path: &str) -> Result<bool, SyncError>
 
 #[cfg(test)]
 mod tests {
+    use std::sync::{
+        atomic::{AtomicBool, Ordering},
+        Mutex,
+    };
+
     use crate::{
         document::{set_reading_position, ReadingPositionValue},
         persistence::execute_local_database_mutation,
@@ -287,5 +413,95 @@ mod tests {
             )
             .unwrap();
         assert_eq!(locator, r#"{"href":"page=7","type":"application/pdf"}"#);
+    }
+
+    struct TestObserver {
+        cancelled: AtomicBool,
+        progress: Mutex<Vec<SyncProgress>>,
+    }
+
+    impl SyncObserver for TestObserver {
+        fn is_cancelled(&self) -> bool {
+            self.cancelled.load(Ordering::Relaxed)
+        }
+
+        fn on_progress(&self, progress: SyncProgress) {
+            self.progress.lock().unwrap().push(progress);
+        }
+    }
+
+    #[tokio::test]
+    async fn should_stop_before_storage_work_when_task_is_cancelled() {
+        let (_directory, path) = database();
+        let identity = DatabaseIdentity {
+            library_uuid: LIBRARY_UUID.to_owned(),
+            replica_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa".to_owned(),
+        };
+        let remote = tempfile::tempdir().unwrap();
+        let operator = opendal::Operator::new(
+            opendal::services::Fs::default().root(remote.path().to_str().unwrap()),
+        )
+        .unwrap()
+        .finish();
+        let observer = TestObserver {
+            cancelled: AtomicBool::new(true),
+            progress: Mutex::new(Vec::new()),
+        };
+
+        let error = sync_database_with_operator_observed(
+            &path,
+            &operator,
+            &identity,
+            1,
+            SyncMode::Full,
+            &observer,
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(error.to_string(), "SYNC_ERROR: Sync task cancelled");
+        assert!(observer.progress.lock().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn should_report_stage_progress_when_sync_completes() {
+        let (_directory, path) = database();
+        let identity = DatabaseIdentity {
+            library_uuid: LIBRARY_UUID.to_owned(),
+            replica_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa".to_owned(),
+        };
+        let remote = tempfile::tempdir().unwrap();
+        let operator = opendal::Operator::new(
+            opendal::services::Fs::default().root(remote.path().to_str().unwrap()),
+        )
+        .unwrap()
+        .finish();
+        let observer = TestObserver {
+            cancelled: AtomicBool::new(false),
+            progress: Mutex::new(Vec::new()),
+        };
+
+        sync_database_with_operator_observed(
+            &path,
+            &operator,
+            &identity,
+            1,
+            SyncMode::Full,
+            &observer,
+        )
+        .await
+        .unwrap();
+
+        let stages = observer
+            .progress
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|progress| progress.stage)
+            .collect::<Vec<_>>();
+        assert_eq!(stages.first(), Some(&SyncStage::Preparing));
+        assert_eq!(stages.last(), Some(&SyncStage::Complete));
+        assert!(stages.contains(&SyncStage::Pushing));
+        assert!(stages.contains(&SyncStage::Pulling));
     }
 }

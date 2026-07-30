@@ -8,7 +8,10 @@ use opendal::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    exchange::{sync_database_with_operator, SyncMode, SyncReport},
+    exchange::{
+        sync_database_with_operator, sync_database_with_operator_observed, SyncMode, SyncObserver,
+        SyncReport,
+    },
     persistence::DatabaseIdentity,
     SyncError,
 };
@@ -105,6 +108,19 @@ pub async fn sync_database(
 ) -> Result<SyncReport, SyncError> {
     let operator = build_storage_operator(storage)?;
     sync_database_with_operator(database_path, &operator, identity, now_ms, mode).await
+}
+
+pub async fn sync_database_observed(
+    database_path: &str,
+    identity: &DatabaseIdentity,
+    now_ms: i64,
+    mode: SyncMode,
+    storage: &StorageConfig,
+    observer: &dyn SyncObserver,
+) -> Result<SyncReport, SyncError> {
+    let operator = build_storage_operator(storage)?;
+    sync_database_with_operator_observed(database_path, &operator, identity, now_ms, mode, observer)
+        .await
 }
 
 #[cfg(test)]

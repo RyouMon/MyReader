@@ -12,6 +12,7 @@ import {
 } from "../../errors"
 import { applySyncReport } from "./hooks/apply-sync-report"
 import { hasPendingLibrarySidecarAutomergeChanges } from "./library-sidecar/automerge-store"
+import { cancelLibrarySidecarSyncTask } from "./library-sidecar/sync-database"
 import {
   createSidecarSyncScheduler,
   type SidecarSyncErrorDisposition,
@@ -155,7 +156,7 @@ export function createAutomaticSidecarSyncScheduler(
   onError?: (error: unknown) => void,
 ): SidecarSyncScheduler {
   return createSidecarSyncScheduler({
-    async execute(execution) {
+    async execute(execution, taskId) {
       const state = getState()
       if (!state.enableAutoSync) return
       const library = state.libraries.find(
@@ -165,10 +166,12 @@ export function createAutomaticSidecarSyncScheduler(
       const report = await syncLibrary(library, state.dataSources, {
         scope: "myreader",
         myreaderMode: execution.mode,
+        myreaderTaskId: taskId,
         throwOnFailure: true,
       })
       applySyncReport(report, { trigger: "scheduled" })
     },
+    cancelTask: cancelLibrarySidecarSyncTask,
     classifyError: classifyAutomaticSidecarSyncError,
     onError(error, execution) {
       console.warn("[reading-sync] automatic:failed", {
