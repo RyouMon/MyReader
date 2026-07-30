@@ -5,6 +5,8 @@ use automerge::{
 use serde::{Deserialize, Serialize};
 use uuid::{Uuid, Variant, Version};
 
+use crate::models::ReadingFormatPolicy;
+
 use super::SyncError;
 
 pub const LIBRARY_SIDECAR_SCHEMA_VERSION: u64 = 1;
@@ -296,7 +298,7 @@ pub fn set_reading_position(
     if book_id < 1 {
         return Err(sync_error("Book ID must be positive"));
     }
-    if !matches!(value.format.as_str(), "EPUB" | "PDF" | "CBZ") {
+    if !ReadingFormatPolicy::is_canonical(&value.format) {
         return Err(sync_error("Reading position format is unsupported"));
     }
     if value
@@ -487,7 +489,7 @@ pub fn favorite_projections(doc: &AutoCommit) -> Result<Vec<(i64, FavoriteValue)
 
 fn bookmark_key(value: &BookmarkValue) -> Result<String, SyncError> {
     if value.book_id < 1
-        || !matches!(value.format.as_str(), "EPUB" | "PDF" | "CBZ")
+        || !ReadingFormatPolicy::is_canonical(&value.format)
         || value.locator_key.is_empty()
     {
         return Err(sync_error("Bookmark identity is invalid"));
@@ -575,7 +577,7 @@ pub fn create_annotation(
 ) -> Result<ChangeHash, SyncError> {
     validate_compact_id(&value.id, "Annotation")?;
     if value.book_id < 1
-        || !matches!(value.format.as_str(), "EPUB" | "PDF" | "CBZ")
+        || !ReadingFormatPolicy::is_canonical(&value.format)
         || value.kind != "highlight"
     {
         return Err(sync_error("Annotation value is invalid"));
@@ -755,7 +757,7 @@ pub fn add_reading_session_duration(
         ));
     }
     if interval.book_id < 1
-        || !matches!(interval.format.as_str(), "EPUB" | "PDF" | "CBZ")
+        || !ReadingFormatPolicy::is_canonical(&interval.format)
         || interval.duration_seconds < 0
     {
         return Err(sync_error("Reading session value is invalid"));
@@ -815,7 +817,7 @@ pub fn add_reading_completion(
     parse_replica_actor(&completion.replica_id)?;
     if completion.replica_id != document_replica_id(doc)?
         || completion.book_id < 1
-        || !matches!(completion.format.as_str(), "EPUB" | "PDF" | "CBZ")
+        || !ReadingFormatPolicy::is_canonical(&completion.format)
     {
         return Err(sync_error("Reading completion value is invalid"));
     }
@@ -857,7 +859,7 @@ pub fn reading_session_projections(
             parse_replica_actor(&value.origin_replica_id)?;
             if value.id != id
                 || value.book_id < 1
-                || !matches!(value.format.as_str(), "EPUB" | "PDF" | "CBZ")
+                || !ReadingFormatPolicy::is_canonical(&value.format)
                 || value.duration_seconds < 0
             {
                 return Err(sync_error("Reading session value is invalid"));
@@ -889,7 +891,7 @@ pub fn reading_completion_records(
             parse_replica_actor(&value.replica_id)?;
             if value.id != id
                 || value.book_id < 1
-                || !matches!(value.format.as_str(), "EPUB" | "PDF" | "CBZ")
+                || !ReadingFormatPolicy::is_canonical(&value.format)
             {
                 return Err(sync_error("Reading completion value is invalid"));
             }

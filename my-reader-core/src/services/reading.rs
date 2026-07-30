@@ -19,7 +19,7 @@ use tracing::info;
 
 use crate::database;
 use crate::models::{
-    LegacyFinishedReading, ReaderAnnotation, ReaderBookmark, ReadingPosition,
+    LegacyFinishedReading, ReaderAnnotation, ReaderBookmark, ReadingFormatPolicy, ReadingPosition,
     ReadingPositionCandidate, ReadingStatistics,
 };
 use crate::repositories::calibre::CalibreBookRepository;
@@ -756,14 +756,8 @@ async fn sync_context(
 }
 
 fn normalize_reading_format(format: &str) -> Result<String, CoreError> {
-    let format = format.trim().to_uppercase();
-    if matches!(format.as_str(), "EPUB" | "PDF" | "CBZ") {
-        Ok(format)
-    } else {
-        Err(CoreError::Config(
-            "Reading position format is unsupported".into(),
-        ))
-    }
+    ReadingFormatPolicy::normalize(format)
+        .ok_or_else(|| CoreError::Config("Reading position format is unsupported".into()))
 }
 
 fn validate_compact_uuid(value: &str, name: &str) -> Result<(), CoreError> {

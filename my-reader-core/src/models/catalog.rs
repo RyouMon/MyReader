@@ -10,10 +10,19 @@ pub struct ReadingFormatPolicy {
 }
 
 impl ReadingFormatPolicy {
+    pub fn normalize(format: &str) -> Option<String> {
+        let format = format.trim().to_uppercase();
+        Self::is_canonical(&format).then_some(format)
+    }
+
+    pub fn is_canonical(format: &str) -> bool {
+        READING_FORMAT_PRIORITY.contains(&format)
+    }
+
     pub fn from_formats(formats: &[String]) -> Self {
         let available = formats
             .iter()
-            .map(|format| format.to_uppercase())
+            .filter_map(|format| Self::normalize(format))
             .collect::<std::collections::BTreeSet<_>>();
         let readable_formats = READING_FORMAT_PRIORITY
             .iter()
@@ -28,10 +37,15 @@ impl ReadingFormatPolicy {
     }
 
     pub fn resolve(&self, requested: Option<&str>) -> Option<String> {
-        let requested = requested.map(str::to_uppercase);
+        let requested = requested.and_then(Self::normalize);
         requested
             .filter(|format| self.readable_formats.contains(format))
-            .or_else(|| self.preferred_format.clone())
+            .or_else(|| {
+                self.preferred_format
+                    .as_deref()
+                    .and_then(Self::normalize)
+                    .filter(|format| self.readable_formats.contains(format))
+            })
     }
 }
 
@@ -138,5 +152,16 @@ mod tests {
 
         assert_eq!(policy.resolve(Some("mobi")).as_deref(), Some("EPUB"));
         assert_eq!(policy.resolve(Some("pdf")).as_deref(), Some("PDF"));
+    }
+
+    #[test]
+    fn should_distinguish_normalized_input_from_canonical_format_when_format_is_validated() {
+        assert_eq!(
+            ReadingFormatPolicy::normalize(" pdf ").as_deref(),
+            Some("PDF")
+        );
+        assert!(ReadingFormatPolicy::is_canonical("EPUB"));
+        assert!(!ReadingFormatPolicy::is_canonical("epub"));
+        assert!(!ReadingFormatPolicy::is_canonical("MOBI"));
     }
 }
