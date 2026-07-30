@@ -6,6 +6,7 @@ import MyReaderRustComponents from "@/modules/myreader-rust-components"
 import {
   getCalibreBookDetail,
   listCalibreBookFormats,
+  listCalibreBooksPageByLastRead,
   listCalibreBookSummaries,
 } from "./catalog"
 
@@ -103,5 +104,23 @@ describe("core catalog adapter", () => {
     expect(summaries[0]?.formatPaths).toEqual([
       "Ursula K. Le Guin/The Left Hand of Darkness/The Left Hand of Darkness.epub",
     ])
+  })
+
+  it("should delegate recent-book ordering when last-read page is requested", async () => {
+    jest
+      .spyOn(MyReaderRustComponents, "listCalibreBooksPageByLastRead")
+      .mockResolvedValue(JSON.stringify({ items: [], total: 0 }))
+
+    await listCalibreBooksPageByLastRead(
+      "file:///library",
+      "file:///sidecar",
+      0,
+      20,
+      "Earthsea",
+    )
+
+    expect(
+      MyReaderRustComponents.listCalibreBooksPageByLastRead,
+    ).toHaveBeenCalledWith("/library", "/sidecar", 0, 20, "Earthsea")
   })
 })

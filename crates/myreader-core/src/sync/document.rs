@@ -8,6 +8,7 @@ use uuid::{Uuid, Variant, Version};
 use super::SyncError;
 
 pub const LIBRARY_SIDECAR_SCHEMA_VERSION: u64 = 1;
+#[cfg(test)]
 pub const LIBRARY_SIDECAR_GENESIS_HEAD: &str =
     "ac137b1318ef97f275852452df5c683406ec657e68e1b51d3656ac5f684ce1f2";
 pub const LIBRARY_SIDECAR_ROOTS: [&str; 6] = [

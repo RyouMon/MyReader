@@ -12,7 +12,7 @@ struct TestFileStateRepository;
 
 impl TestFileStateRepository {
     async fn open(sidecar_root: &str) -> Result<std::path::PathBuf, myreader_core::CoreError> {
-        myreader_core::database::open_db(sidecar_root).await?;
+        myreader_core::test_support::open_db(sidecar_root).await?;
         Ok(sidecar_root.into())
     }
 

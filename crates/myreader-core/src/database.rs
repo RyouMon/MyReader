@@ -1,7 +1,12 @@
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    sync::LazyLock,
+};
 
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement};
 use sea_orm_migration::MigratorTrait;
+use tokio::sync::Mutex;
 use tracing::info;
 
 use crate::{
@@ -12,6 +17,13 @@ use crate::{
 const MYREADER_LIBRARY_DIR_NAME: &str = ".myreader";
 const MYREADER_LIBRARY_DB_FILE_NAME: &str = "myreader.db";
 
+struct LibraryStore {
+    database: DatabaseConnection,
+}
+
+static LIBRARY_STORES: LazyLock<Mutex<HashMap<PathBuf, LibraryStore>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
 /// Open and migrate a per-library SQLite database, then return the connection
 /// for SeaORM entity queries.
 pub async fn open_db(sidecar_root: &str) -> Result<DatabaseConnection, CoreError> {
@@ -21,17 +33,39 @@ pub async fn open_db(sidecar_root: &str) -> Result<DatabaseConnection, CoreError
 }
 
 pub async fn open_database_file(path: &Path) -> Result<DatabaseConnection, CoreError> {
+    let path = absolute_path(path)?;
+    let mut stores = LIBRARY_STORES.lock().await;
+    if path.exists() {
+        if let Some(store) = stores.get(&path) {
+            return Ok(store.database.clone());
+        }
+    } else {
+        stores.remove(&path);
+    }
+
     let url = format!("sqlite://{}?mode=rwc", path.display());
-
     let db = Database::connect(&url).await?;
-
     migrate_database(&db).await?;
+    stores.insert(
+        path.clone(),
+        LibraryStore {
+            database: db.clone(),
+        },
+    );
 
     info!(
         "Success to open library database. path: \"{}\"",
         path.display()
     );
     Ok(db)
+}
+
+fn absolute_path(path: &Path) -> Result<PathBuf, CoreError> {
+    if path.is_absolute() {
+        Ok(path.to_path_buf())
+    } else {
+        Ok(std::env::current_dir()?.join(path))
+    }
 }
 
 pub async fn migrate_database_file(path: &Path) -> Result<(), CoreError> {
@@ -182,6 +216,33 @@ mod tests {
             .try_get::<i64>("", "count")
             .unwrap();
         assert_eq!(drizzle_table_count, 0);
+    }
+
+    #[tokio::test]
+    async fn open_should_recreate_schema_when_cached_database_file_was_removed() {
+        let temp = tempfile::tempdir().unwrap();
+        let sidecar_root = temp.path().to_string_lossy().to_string();
+        let database_path = super::library_db_path(&sidecar_root).unwrap();
+        let database = open_db(&sidecar_root).await.expect("database should open");
+        drop(database);
+        std::fs::remove_file(&database_path).expect("database file should be removed");
+
+        let reopened = open_db(&sidecar_root)
+            .await
+            .expect("removed database should be recreated");
+        let table_count = reopened
+            .query_one_raw(Statement::from_string(
+                DbBackend::Sqlite,
+                "SELECT COUNT(*) AS count FROM sqlite_master \
+                 WHERE type = 'table' AND name = 'sync_local_meta'",
+            ))
+            .await
+            .expect("SQLite schema should be readable")
+            .expect("table count should exist")
+            .try_get::<i64>("", "count")
+            .unwrap();
+
+        assert_eq!(table_count, 1);
     }
 
     #[tokio::test]

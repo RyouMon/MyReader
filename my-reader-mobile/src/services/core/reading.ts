@@ -4,7 +4,6 @@ import type { Library } from "@my-reader/tools/types/library"
 
 import MyReaderRustComponents from "@/modules/myreader-rust-components"
 import { withLocalLibraryCalibreRoot } from "@/src/domain/library/local-library-content"
-import { uuid } from "@/src/utils/common"
 import { librarySidecarRootUri } from "../fs/library-paths"
 import { toNativeFilesystemPath } from "../fs/path"
 import { announceLocalSidecarWork } from "./sync-events"
@@ -109,12 +108,6 @@ export type ReadingStatistics = {
   totalDurationSeconds: number
   longestStreakDays: number
   completedBooks: number
-}
-
-type LegacyFinishedReading = {
-  bookId: number
-  format: string
-  updatedAt: number
 }
 
 export async function getReadingPosition(
@@ -384,39 +377,19 @@ export function addReadingCompletion(
   )
 }
 
-function localDayKey(value: number): string {
-  const date = new Date(value)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
-  return `${year}-${month}-${day}`
-}
-
 export async function getReadingStatistics(
   library: Library,
   startDay: string,
   endDay: string,
 ): Promise<ReadingStatistics> {
-  const legacyReadings: LegacyFinishedReading[] = JSON.parse(
-    await MyReaderRustComponents.listLegacyFinishedReadings(
-      sidecarRootPath(library),
-    ),
-  )
-  for (const reading of legacyReadings) {
-    await addReadingCompletion(library, {
-      id: uuid(),
-      bookId: reading.bookId,
-      format: reading.format,
-      localDay: localDayKey(reading.updatedAt),
-      completedAt: reading.updatedAt,
-      updatedAt: reading.updatedAt,
-    })
-  }
-  return JSON.parse(
-    await MyReaderRustComponents.getReadingStatistics(
-      sidecarRootPath(library),
-      startDay,
-      endDay,
+  return withLocalLibraryCalibreRoot(library, async (libraryRootUri) =>
+    JSON.parse(
+      await MyReaderRustComponents.getReadingStatistics(
+        sidecarRootPath(library),
+        toNativeFilesystemPath(libraryRootUri),
+        startDay,
+        endDay,
+      ),
     ),
   )
 }

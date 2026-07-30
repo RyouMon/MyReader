@@ -79,34 +79,26 @@ impl DataSourceService {
             registry_path,
             Some(config.device_registry()),
         )?;
-        if name.is_empty() {
-            return Err(AppError::Config("DATASOURCE_NAME_REQUIRED".into()));
-        }
-        if endpoint.is_empty() {
-            return Err(AppError::Config("WEBDAV_ENDPOINT_REQUIRED".into()));
-        }
-        if username.is_empty() {
-            return Err(AppError::Config("WEBDAV_USERNAME_REQUIRED".into()));
-        }
         if password.is_empty() {
             return Err(AppError::Config("WEBDAV_PASSWORD_REQUIRED".into()));
         }
 
-        let mut source = DataSourceConfig {
-            id: uuid::Uuid::new_v4().to_string(),
-            name: name.to_string(),
-            enabled: true,
-            detail: DataSourceDetail::Webdav {
-                endpoint: endpoint.to_string(),
-                username: username.to_string(),
-                credential_account: None,
-                root_path: root_path.filter(|p| !p.is_empty()).map(ToString::to_string),
+        let prepared = myreader_core::api::registry::prepare_data_source(
+            myreader_core::models::DataSource::Webdav {
+                id: String::new(),
+                name: name.into(),
+                enabled: true,
+                endpoint: endpoint.into(),
+                username: username.into(),
+                root_path: root_path.map(ToOwned::to_owned),
+                has_password: true,
+                credential_reference: None,
+                readonly: None,
+                created_at: None,
             },
-        };
-        myreader_core::api::registry::ensure_data_source_can_upsert(
-            registry_path,
-            &(&source).into(),
         )?;
+        let mut source = DataSourceConfig::from(&prepared);
+        myreader_core::api::registry::ensure_data_source_can_upsert(registry_path, &prepared)?;
 
         if let DataSourceDetail::Webdav {
             credential_account, ..
@@ -211,36 +203,24 @@ impl DataSourceService {
             registry_path,
             Some(config.device_registry()),
         )?;
-        if name.is_empty() {
-            return Err(AppError::Config("DATASOURCE_NAME_REQUIRED".into()));
-        }
-
-        let resolved_client_id = client_id
-            .filter(|s| !s.trim().is_empty())
-            .unwrap_or("")
-            .to_string();
-        let resolved_tenant_id = tenant_id
-            .filter(|s| !s.trim().is_empty())
-            .unwrap_or("consumers")
-            .to_string();
-
-        let mut source = DataSourceConfig {
-            id: uuid::Uuid::new_v4().to_string(),
-            name: name.to_string(),
-            enabled: true,
-            detail: DataSourceDetail::Onedrive {
-                client_id: resolved_client_id,
-                tenant_id: resolved_tenant_id,
-                credential_account: None,
-                root_path: root_path.filter(|p| !p.is_empty()).map(ToString::to_string),
-                user_name: user_name.map(ToString::to_string),
-                user_email: user_email.map(ToString::to_string),
+        let prepared = myreader_core::api::registry::prepare_data_source(
+            myreader_core::models::DataSource::Onedrive {
+                id: String::new(),
+                name: name.into(),
+                enabled: true,
+                client_id: client_id.unwrap_or_default().into(),
+                tenant_id: tenant_id.map(ToOwned::to_owned),
+                display_name: user_name.map(ToOwned::to_owned),
+                email: user_email.map(ToOwned::to_owned),
+                root_path: root_path.map(ToOwned::to_owned),
+                has_refresh_token: refresh_token.is_some_and(|value| !value.trim().is_empty()),
+                credential_reference: None,
+                readonly: None,
+                created_at: None,
             },
-        };
-        myreader_core::api::registry::ensure_data_source_can_upsert(
-            registry_path,
-            &(&source).into(),
         )?;
+        let mut source = DataSourceConfig::from(&prepared);
+        myreader_core::api::registry::ensure_data_source_can_upsert(registry_path, &prepared)?;
 
         let refresh_token = refresh_token.filter(|t| !t.is_empty());
         if refresh_token.is_none() {

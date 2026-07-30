@@ -9,7 +9,6 @@ mod error;
 pub mod models;
 mod protocols;
 mod reader_ui_prefs;
-pub mod repositories;
 pub mod services;
 mod storage;
 pub mod streamer;

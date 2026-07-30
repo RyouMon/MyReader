@@ -20,16 +20,24 @@ pub struct RemoteDirectoryEntry {
     pub is_directory: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RemoteLibraryRequest {
-    pub data_source_id: String,
-    pub source_path: String,
-    pub libraries_root_path: String,
-    #[serde(default)]
-    pub libraries_root_uri: Option<String>,
-    #[serde(default)]
-    pub name: Option<String>,
-    #[serde(default)]
-    pub added_at: Option<f64>,
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(
+    tag = "kind",
+    rename_all = "kebab-case",
+    rename_all_fields = "camelCase"
+)]
+pub enum SidecarStorageConfig {
+    LocalDirect {
+        root: String,
+    },
+    Webdav {
+        endpoint: String,
+        username: String,
+        password: String,
+        root: Option<String>,
+    },
+    Onedrive {
+        access_token: String,
+        root: Option<String>,
+    },
 }

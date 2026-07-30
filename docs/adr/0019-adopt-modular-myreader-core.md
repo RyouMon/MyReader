@@ -1,7 +1,7 @@
 ---
 adr: ADR-0019
 proposal_date: 2026-07-28
-status: 已实施
+status: 部分实施
 name: 采用模块化 myreader-core 统一跨端后端业务
 overview: 在 ADR-0018 已验证共享 Rust、UniFFI 和单一原生产物可行的基础上，将长期源码组织从多个业务 component crate 收敛为一个具有严格内部边界的 myreader-core 模块化单体；业务范围以现有 Tauri command/service 能力为基线，覆盖数据源、书库、书目、图书内容、阅读与同步；MyReader 自有数据库改由 Rust migrations 和 SeaORM 统一拥有，保留薄 Tauri/Expo adapter，并先迁移基础设施和核心业务，最后收敛同步协调器和删除旧实现。
 isProject: true
@@ -11,7 +11,9 @@ isProject: true
 
 ## 状态说明
 
-本提案已于 2026-07-28 接受，并于同日完成 Phase 0–6。它部分取代
+本提案已于 2026-07-28 接受。2026-07-28 的实施审计确认 Phase 0–4 主体已完成，Phase 5–6
+仍有同步 coordinator、下载状态机、binding 边界和运行时门禁未收口，因此状态为“部分实施”。
+它部分取代
 [ADR-0018](./0018-shared-rust-components.md) 关于“每个业务边界建立独立 Rust component crate”
 的长期源码组织决策，但保留 ADR-0018 已验证的共享 Rust、薄平台 adapter、UniFFI 和单一移动
 原生产物方向；在数据库迁移执行权切换到 `myreader-core` 后，本提案还将取代
@@ -21,14 +23,28 @@ ADR-0008 继续保留为当时双后端架构下的历史决策。
 ### 实施记录
 
 - `myreader-core` 已成为 desktop/mobile 共用的书库、书目、内容状态、阅读数据和同步业务实现。
-- `myreader-rust-components` 只保留 UniFFI、runtime 和移动原生产物 binding。
+- `myreader-rust-components` 已不承载业务规则，但 UniFFI DTO、Expo wrapper 与运行时生命周期
+  仍需继续收口。
 - Tauri Commands 与移动 `services/core` 已切换为平台 adapter；移动 UI 不再直接访问数据库。
-- Automerge 引擎、sidecar 持久化和同步协调规则已并入 `myreader-core::sync`，迁移期
-  `myreader-sync` crate 已删除。
+- Automerge 引擎、sidecar 持久化和同步调度 reducer 已并入 `myreader-core`，迁移期
+  `myreader-sync` crate 已删除；完整 coordinator 仍分别存在于 desktop/mobile。
 - MyReader 数据库由 core SeaORM Migrator 接管；旧移动 Drizzle 状态只在首次打开时完成一次
   handoff。
 - `packages/db`、Drizzle、OP-SQLite、移动 `repos/`/`services/db/` 和无调用兼容层已删除。
-- 当前架构与开发文档已按实施结果更新；后续演进应新增 ADR，不回写本提案原始决策背景。
+- Core 已复用移动端 Tokio runtime 和每书库数据库连接；完整 `LibraryStore` 生命周期、下载与
+  同步 coordinator 仍按下表继续实施。
+
+### 阶段状态
+
+| 阶段 | 状态 | 已落地事实与剩余工作 |
+|---|---|---|
+| Phase 0 | 完成 | 已冻结现有能力、数据所有权与非目标 |
+| Phase 1 | 完成 | Core、Rust migration、registry 与本地书库纵向切片已接入两端 |
+| Phase 2 | 完成 | WebDAV、OneDrive 数据源和远程书库用例已进入 Core |
+| Phase 3 | 部分完成 | 书目和文件 projection 已进入 Core；下载队列、取消和状态机仍是双实现 |
+| Phase 4 | 完成 | 收藏、进度、书签、批注、阅读 session 与统计由 Core 原子写入 |
+| Phase 5 | 部分完成 | 同步引擎和 reducer 已统一；完整 coordinator 仍在两端各有执行壳 |
+| Phase 6 | 部分完成 | TypeScript 数据库后端已删除；typed FFI、原生 smoke test 和性能基线未完成 |
 
 ## 结论
 

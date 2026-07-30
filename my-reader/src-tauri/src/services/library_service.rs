@@ -7,7 +7,6 @@ use crate::cache;
 use crate::error::AppError;
 use crate::models::{AppConfig, LibraryConfig, LibraryInfo};
 use crate::utils::paths::{library_container_dir, library_root_path};
-use myreader_core::database;
 
 pub struct LibraryService;
 
@@ -38,60 +37,26 @@ impl LibraryService {
         config: &mut AppConfig,
     ) -> Result<LibraryInfo, AppError> {
         ensure_registry(app_data_dir, config)?;
-        let canon_path = dunce::canonicalize(path)
-            .map_err(|e| AppError::Config(format!("INVALID_LIBRARY_PATH: {e}")))?;
-        let canon_str = canon_path.to_string_lossy().to_string();
-
-        if !myreader_core::api::catalog::validate_library(&canon_path) {
-            return Err(AppError::NotFound(format!(
-                "METADATA_DB_NOT_FOUND: {}",
-                canon_str
-            )));
-        }
-
-        let lib_name = name.map(ToString::to_string).unwrap_or_else(|| {
-            canon_path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("Unnamed Library")
-                .to_string()
-        });
-
-        let id = uuid::Uuid::new_v4().to_string();
-        let candidate = LibraryInfo {
-            id: id.clone(),
-            name: lib_name.clone(),
-            path: canon_str.clone(),
-            book_count: 0,
-            source_type: Some("local".into()),
-            data_source_id: None,
-            source_path: None,
-        };
-        myreader_core::api::registry::ensure_library_can_register(
+        let (registry, library) = myreader_core::api::library::add_local(
             &crate::config::device_registry_path(app_data_dir),
-            &core_library(&candidate),
-        )?;
-
-        // Sidecar lives in the app container for all library types.
-        let sidecar_root = library_container_dir(app_data_dir, &id);
-        std::fs::create_dir_all(&sidecar_root)?;
-        database::ensure_library_data_dir(sidecar_root.to_str().unwrap_or(&id))?;
-
-        let book_count = myreader_core::api::catalog::count_books(&canon_path)
-            .await
-            .unwrap_or(0);
-
-        let info = LibraryInfo {
-            id,
-            name: lib_name,
-            path: canon_str,
-            book_count,
-            source_type: Some("local".into()),
-            data_source_id: None,
-            source_path: None,
-        };
-        register_library(app_data_dir, &info, config)?;
-        Ok(info)
+            myreader_core::models::LocalLibraryRequest {
+                library_root_path: path.to_owned(),
+                path: path.to_owned(),
+                sidecar_container_parent_path: Some(
+                    app_data_dir
+                        .join("libraries")
+                        .to_string_lossy()
+                        .into_owned(),
+                ),
+                name: name.map(ToOwned::to_owned),
+                metadata_uri: None,
+                added_at: None,
+                security_scoped_bookmark: None,
+            },
+        )
+        .await?;
+        config.apply_device_registry(&registry);
+        Ok(library_info_from_core(library))
     }
 
     /// Add a local library and refresh the asset protocol scope so the reader can fetch files.
@@ -395,39 +360,10 @@ fn library_info_from_core(library: myreader_core::models::Library) -> LibraryInf
     }
 }
 
-fn register_library(
-    app_data_dir: &Path,
-    info: &LibraryInfo,
-    config: &mut AppConfig,
-) -> Result<(), AppError> {
-    let registry = myreader_core::api::registry::register_library(
-        &crate::config::device_registry_path(app_data_dir),
-        core_library(info),
-    )?;
-    config.apply_device_registry(&registry);
-    Ok(())
-}
-
 fn ensure_registry(app_data_dir: &Path, config: &AppConfig) -> Result<(), AppError> {
     myreader_core::api::registry::load_or_initialize(
         &crate::config::device_registry_path(app_data_dir),
         Some(config.device_registry()),
     )?;
     Ok(())
-}
-
-fn core_library(info: &LibraryInfo) -> myreader_core::models::Library {
-    myreader_core::models::Library {
-        id: info.id.clone(),
-        name: info.name.clone(),
-        path: info.path.clone(),
-        book_count: u64::try_from(info.book_count).unwrap_or(u64::MAX),
-        metadata_uri: None,
-        added_at: None,
-        data_source_id: info.data_source_id.clone(),
-        source_type: info.source_type.clone(),
-        source_path: info.source_path.clone(),
-        metadata_etag: None,
-        security_scoped_bookmark: None,
-    }
 }

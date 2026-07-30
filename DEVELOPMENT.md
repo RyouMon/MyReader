@@ -105,7 +105,7 @@ Use the repository scripts instead of committing prebuilt host libraries:
 
 ```bash
 cargo test -p myreader-core -p myreader-rust-components
-bash crates/myreader-rust-components/scripts/verify-native.sh
+bash my-reader-mobile/modules/myreader-rust-components/scripts/verify-native.sh
 ```
 
 To build the iOS bridge target directly:

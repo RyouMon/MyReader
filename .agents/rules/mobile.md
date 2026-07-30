@@ -42,9 +42,9 @@ Own only workflows that are both:
 1. reused by multiple mobile features; and
 2. tied to mobile UI or platform behavior.
 
-Examples include React Query invalidation, download task coordination, Expo file URIs and lifecycle-triggered
-sync. Do not retain a `domain` file that merely renames or forwards one core method; call the thin core facade
-directly.
+Examples include React Query invalidation, native background-task queue/concurrency, Expo file URIs and
+lifecycle-triggered sync. Downloaded-file validation and persisted file-state transitions belong to core. Do not
+retain a `domain` file that merely renames or forwards one core method; call the thin core facade directly.
 
 ### `services/core/`
 
@@ -53,7 +53,7 @@ This is the mobile adapter to shared Rust. It may:
 - convert Expo URIs to native paths;
 - load platform credentials and pass short-lived values to core;
 - serialize/parse binding DTOs;
-- attach device timestamps or generated IDs required by the API;
+- pass platform timestamps or identity values explicitly requested by a core API;
 - invalidate React Query or announce a platform sync trigger after a successful mutation.
 
 It must not contain SQL, Automerge rules, conflict resolution, migration logic, backend business policy or a
@@ -140,7 +140,7 @@ For Rust/binding changes:
 
 ```bash
 cargo test -p myreader-core -p myreader-rust-components
-bash crates/myreader-rust-components/scripts/verify-native.sh
+bash my-reader-mobile/modules/myreader-rust-components/scripts/verify-native.sh
 ```
 
 ## Required Post-Change Verification

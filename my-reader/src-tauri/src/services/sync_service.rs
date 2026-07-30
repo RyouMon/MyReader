@@ -7,7 +7,8 @@ use tracing::{error, info};
 
 use crate::cache;
 use crate::error::AppError;
-use crate::models::{AppConfig, LibraryConfig};
+use crate::models::AppConfig;
+use crate::services::library_service::LibraryService;
 use crate::storage;
 use crate::utils::paths::{library_root_path, library_sidecar_path};
 
@@ -51,9 +52,8 @@ impl SyncService {
             "Starting library sidecar sync"
         );
 
-        let library = Self::resolve_library(config, library_id)
-            .map_err(|err| Self::log_stage_error(library_id, "resolve_library", err))?
-            .clone();
+        let library = LibraryService::resolve_library(Some(library_id), config)
+            .map_err(|err| Self::log_stage_error(library_id, "resolve_library", err))?;
         let sidecar_path = library_sidecar_path(&library, app_data_dir);
         let library_root = library_root_path(&library, app_data_dir);
         let storage = storage::core_sidecar_storage(config, &library)
@@ -93,8 +93,8 @@ impl SyncService {
         config: &AppConfig,
         library_id: &str,
     ) -> Result<bool, AppError> {
-        let library = Self::resolve_library(config, library_id)?;
-        let sidecar_path = library_sidecar_path(library, app_data_dir);
+        let library = LibraryService::resolve_library(Some(library_id), config)?;
+        let sidecar_path = library_sidecar_path(&library, app_data_dir);
         myreader_core::api::sync::has_pending_work(&sidecar_path)
             .await
             .map_err(Into::into)
@@ -108,8 +108,8 @@ impl SyncService {
         now_ms: u64,
         freshness_ms: u64,
     ) -> Result<Option<SidecarSyncMode>, AppError> {
-        let library = Self::resolve_library(config, library_id)?;
-        let sidecar_path = library_sidecar_path(library, app_data_dir);
+        let library = LibraryService::resolve_library(Some(library_id), config)?;
+        let sidecar_path = library_sidecar_path(&library, app_data_dir);
         myreader_core::api::sync::effective_mode(
             &sidecar_path,
             requested_mode,
@@ -125,8 +125,8 @@ impl SyncService {
         config: &AppConfig,
         library_id: &str,
     ) -> Result<SyncScheduleSnapshot, AppError> {
-        let library = Self::resolve_library(config, library_id)?;
-        let sidecar_path = library_sidecar_path(library, app_data_dir);
+        let library = LibraryService::resolve_library(Some(library_id), config)?;
+        let sidecar_path = library_sidecar_path(&library, app_data_dir);
         let state = myreader_core::api::sync::schedule_snapshot(&sidecar_path).await?;
         Ok(SyncScheduleSnapshot {
             next_retry_at: state.next_retry_at.map(|value| value.max(0) as u64),
@@ -142,8 +142,8 @@ impl SyncService {
         next_retry_at: u64,
         failure_count: u32,
     ) -> Result<(), AppError> {
-        let library = Self::resolve_library(config, library_id)?;
-        let sidecar_path = library_sidecar_path(library, app_data_dir);
+        let library = LibraryService::resolve_library(Some(library_id), config)?;
+        let sidecar_path = library_sidecar_path(&library, app_data_dir);
         myreader_core::api::sync::record_retry(
             &sidecar_path,
             Self::sqlite_timestamp(next_retry_at)?,
@@ -159,8 +159,8 @@ impl SyncService {
         library_id: &str,
         reason: String,
     ) -> Result<(), AppError> {
-        let library = Self::resolve_library(config, library_id)?;
-        let sidecar_path = library_sidecar_path(library, app_data_dir);
+        let library = LibraryService::resolve_library(Some(library_id), config)?;
+        let sidecar_path = library_sidecar_path(&library, app_data_dir);
         myreader_core::api::sync::record_suspension(&sidecar_path, &reason)
             .await
             .map_err(Into::into)
@@ -192,17 +192,6 @@ impl SyncService {
             "Library sidecar sync stage failed"
         );
         err
-    }
-
-    fn resolve_library<'a>(
-        config: &'a AppConfig,
-        library_id: &str,
-    ) -> Result<&'a LibraryConfig, AppError> {
-        config
-            .libraries
-            .iter()
-            .find(|library| library.id == library_id)
-            .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {library_id}")))
     }
 
     fn unix_epoch_millis() -> u64 {
@@ -250,22 +239,6 @@ mod tests {
         ))
         .await
         .unwrap();
-    }
-
-    #[test]
-    fn should_return_library_when_registered_id_exists() {
-        let config = AppConfig {
-            libraries: vec![local_library("library-1", "/library")],
-            ..Default::default()
-        };
-
-        assert_eq!(
-            SyncService::resolve_library(&config, "library-1")
-                .unwrap()
-                .id,
-            "library-1"
-        );
-        assert!(SyncService::resolve_library(&config, "missing").is_err());
     }
 
     #[tokio::test]

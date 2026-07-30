@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use my_reader_lib::models::{AppConfig, LibraryConfig};
 use my_reader_lib::services::book_reading_format_service::BookReadingFormatService;
-use myreader_core::entities::{
+use myreader_core::test_support::entities::{
     app::book_reading_format,
     calibre::{books, data},
 };
@@ -83,7 +83,7 @@ fn config_for(lib_root: &std::path::Path) -> AppConfig {
 
 async fn raw_preferences(app_data_dir: &std::path::Path) -> Vec<(i64, String)> {
     let sidecar_root = app_data_dir.join("libraries").join("lib-format");
-    let db = myreader_core::database::open_db(&sidecar_root.to_string_lossy())
+    let db = myreader_core::test_support::open_db(&sidecar_root.to_string_lossy())
         .await
         .expect("open reading format db");
     book_reading_format::Entity::find()
@@ -98,7 +98,7 @@ async fn raw_preferences(app_data_dir: &std::path::Path) -> Vec<(i64, String)> {
 
 async fn set_raw_preference(app_data_dir: &std::path::Path, book_id: i64, format: &str) {
     let sidecar_root = app_data_dir.join("libraries").join("lib-format");
-    let db = myreader_core::database::open_db(&sidecar_root.to_string_lossy())
+    let db = myreader_core::test_support::open_db(&sidecar_root.to_string_lossy())
         .await
         .expect("open reading format db");
     let existing = book_reading_format::Entity::find()

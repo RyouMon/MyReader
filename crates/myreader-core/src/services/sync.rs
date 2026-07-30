@@ -9,13 +9,13 @@ use tokio::sync::Mutex as AsyncMutex;
 use crate::{
     database,
     models::{
-        SidecarSyncMode, SidecarSyncReport, SyncFailureDisposition, SyncFailureKind,
-        SyncScheduleSnapshot,
+        SidecarStorageConfig, SidecarSyncMode, SidecarSyncReport, SyncFailureDisposition,
+        SyncFailureKind, SyncScheduleSnapshot,
     },
     sync::{
         exchange::{self, SyncMode, SyncObserver},
         persistence::{self, SyncScheduleState},
-        transport::{self, StorageConfig},
+        transport,
     },
     CoreError,
 };
@@ -60,7 +60,7 @@ pub(crate) async fn sync_sidecar(
     library_root: &Path,
     now_ms: i64,
     mode: SidecarSyncMode,
-    storage: &StorageConfig,
+    storage: &SidecarStorageConfig,
 ) -> Result<SidecarSyncReport, CoreError> {
     sync_sidecar_observed(
         sidecar_root,
@@ -78,7 +78,7 @@ pub(crate) async fn sync_sidecar_observed(
     library_root: &Path,
     now_ms: i64,
     mode: SidecarSyncMode,
-    storage: &StorageConfig,
+    storage: &SidecarStorageConfig,
     observer: &dyn SyncObserver,
 ) -> Result<SidecarSyncReport, CoreError> {
     database::open_db(&sidecar_root.to_string_lossy()).await?;

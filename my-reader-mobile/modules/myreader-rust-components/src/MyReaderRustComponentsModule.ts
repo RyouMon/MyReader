@@ -29,6 +29,7 @@ export type MyReaderRustComponentsModule = {
     registryPath: string,
     sourceJson: string,
   ): Promise<string>
+  prepareDeviceDataSource(sourceJson: string): Promise<string>
   validateDeviceDataSource(
     registryPath: string,
     sourceJson: string,
@@ -47,6 +48,7 @@ export type MyReaderRustComponentsModule = {
   ): Promise<string>
   removeDeviceLibrary(registryPath: string, libraryId: string): Promise<string>
   switchDeviceLibrary(registryPath: string, libraryId: string): Promise<string>
+  addLocalLibrary(registryPath: string, requestJson: string): Promise<string>
   testRemoteDataSource(
     sourceJson: string,
     credentialJson: string,
@@ -76,6 +78,13 @@ export type MyReaderRustComponentsModule = {
     offset: number,
     limit: number,
     sortBy: string | null,
+    search: string | null,
+  ): Promise<string>
+  listCalibreBooksPageByLastRead(
+    libraryRootPath: string,
+    sidecarRootPath: string,
+    offset: number,
+    limit: number,
     search: string | null,
   ): Promise<string>
   getCalibreBookDetail(libraryRootPath: string, bookId: number): Promise<string>
@@ -108,6 +117,15 @@ export type MyReaderRustComponentsModule = {
     updateJson: string,
   ): Promise<void>
   deleteLibraryFileState(sidecarRootPath: string, path: string): Promise<void>
+  finalizeDownloadedFile(
+    sidecarRootPath: string,
+    relativePath: string,
+    localPath: string,
+  ): Promise<string>
+  markLibraryFileRemoteOnly(
+    sidecarRootPath: string,
+    relativePath: string,
+  ): Promise<void>
   listBookCoverThumbnailCache(
     sidecarRootPath: string,
     thumbnailVersion: string,
@@ -242,10 +260,10 @@ export type MyReaderRustComponentsModule = {
   ): Promise<boolean>
   getReadingStatistics(
     sidecarRootPath: string,
+    libraryRootPath: string,
     startDay: string,
     endDay: string,
   ): Promise<string>
-  listLegacyFinishedReadings(sidecarRootPath: string): Promise<string>
   syncContractVersion(): number
   advanceSyncScheduler(
     stateJson: string | null,
@@ -307,6 +325,9 @@ const moduleFacade: MyReaderRustComponentsModule = {
   upsertDeviceDataSource(registryPath, sourceJson) {
     return getNativeModule().upsertDeviceDataSource(registryPath, sourceJson)
   },
+  prepareDeviceDataSource(sourceJson) {
+    return getNativeModule().prepareDeviceDataSource(sourceJson)
+  },
   validateDeviceDataSource(registryPath, sourceJson) {
     return getNativeModule().validateDeviceDataSource(registryPath, sourceJson)
   },
@@ -324,6 +345,9 @@ const moduleFacade: MyReaderRustComponentsModule = {
   },
   switchDeviceLibrary(registryPath, libraryId) {
     return getNativeModule().switchDeviceLibrary(registryPath, libraryId)
+  },
+  addLocalLibrary(registryPath, requestJson) {
+    return getNativeModule().addLocalLibrary(registryPath, requestJson)
   },
   testRemoteDataSource(sourceJson, credentialJson) {
     return getNativeModule().testRemoteDataSource(sourceJson, credentialJson)
@@ -366,6 +390,21 @@ const moduleFacade: MyReaderRustComponentsModule = {
       offset,
       limit,
       sortBy,
+      search,
+    )
+  },
+  listCalibreBooksPageByLastRead(
+    libraryRootPath,
+    sidecarRootPath,
+    offset,
+    limit,
+    search,
+  ) {
+    return getNativeModule().listCalibreBooksPageByLastRead(
+      libraryRootPath,
+      sidecarRootPath,
+      offset,
+      limit,
       search,
     )
   },
@@ -417,6 +456,19 @@ const moduleFacade: MyReaderRustComponentsModule = {
   },
   deleteLibraryFileState(sidecarRootPath, path) {
     return getNativeModule().deleteLibraryFileState(sidecarRootPath, path)
+  },
+  finalizeDownloadedFile(sidecarRootPath, relativePath, localPath) {
+    return getNativeModule().finalizeDownloadedFile(
+      sidecarRootPath,
+      relativePath,
+      localPath,
+    )
+  },
+  markLibraryFileRemoteOnly(sidecarRootPath, relativePath) {
+    return getNativeModule().markLibraryFileRemoteOnly(
+      sidecarRootPath,
+      relativePath,
+    )
   },
   listBookCoverThumbnailCache(
     sidecarRootPath,
@@ -683,15 +735,13 @@ const moduleFacade: MyReaderRustComponentsModule = {
       recordedAtMs,
     )
   },
-  getReadingStatistics(sidecarRootPath, startDay, endDay) {
+  getReadingStatistics(sidecarRootPath, libraryRootPath, startDay, endDay) {
     return getNativeModule().getReadingStatistics(
       sidecarRootPath,
+      libraryRootPath,
       startDay,
       endDay,
     )
-  },
-  listLegacyFinishedReadings(sidecarRootPath) {
-    return getNativeModule().listLegacyFinishedReadings(sidecarRootPath)
   },
   syncContractVersion() {
     return getNativeModule().syncContractVersion()

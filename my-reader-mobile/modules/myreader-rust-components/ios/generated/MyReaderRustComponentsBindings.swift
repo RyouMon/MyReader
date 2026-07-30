@@ -949,6 +949,14 @@ fileprivate struct FfiConverterOptionTypeSyncTaskProgress: FfiConverterRustBuffe
         }
     }
 }
+public func addLocalLibrary(registryPath: String, requestJson: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_add_local_library(
+        FfiConverterString.lower(registryPath),
+        FfiConverterString.lower(requestJson),$0
+    )
+})
+}
 public func addReaderAnnotation(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String, locatorJson: String, color: String, note: String?, recordedAtMs: Int64)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_add_reader_annotation(
@@ -1076,6 +1084,15 @@ public func effectiveSidecarSyncMode(sidecarRootPath: String, requestedMode: Str
     )
 })
 }
+public func finalizeDownloadedFile(sidecarRootPath: String, relativePath: String, localPath: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_finalize_downloaded_file(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(relativePath),
+        FfiConverterString.lower(localPath),$0
+    )
+})
+}
 public func getCalibreBookDetail(libraryRootPath: String, bookId: Int64)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_get_calibre_book_detail(
@@ -1108,10 +1125,11 @@ public func getReadingPosition(sidecarRootPath: String, bookId: Int64, format: S
     )
 })
 }
-public func getReadingStatistics(sidecarRootPath: String, startDay: String, endDay: String)throws  -> String  {
+public func getReadingStatistics(sidecarRootPath: String, libraryRootPath: String, startDay: String, endDay: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_get_reading_statistics(
         FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(libraryRootPath),
         FfiConverterString.lower(startDay),
         FfiConverterString.lower(endDay),$0
     )
@@ -1183,6 +1201,17 @@ public func listCalibreBooksPage(libraryRootPath: String, offset: UInt64, limit:
     )
 })
 }
+public func listCalibreBooksPageByLastRead(libraryRootPath: String, sidecarRootPath: String, offset: UInt64, limit: UInt64, search: String?)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_list_calibre_books_page_by_last_read(
+        FfiConverterString.lower(libraryRootPath),
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterUInt64.lower(offset),
+        FfiConverterUInt64.lower(limit),
+        FfiConverterOptionString.lower(search),$0
+    )
+})
+}
 public func listCalibreSeriesBooks(libraryRootPath: String, seriesName: String, excludeBookId: Int64?)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_list_calibre_series_books(
@@ -1195,13 +1224,6 @@ public func listCalibreSeriesBooks(libraryRootPath: String, seriesName: String, 
 public func listFavoriteBookIds(sidecarRootPath: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_list_favorite_book_ids(
-        FfiConverterString.lower(sidecarRootPath),$0
-    )
-})
-}
-public func listLegacyFinishedReadings(sidecarRootPath: String)throws  -> String  {
-    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_list_legacy_finished_readings(
         FfiConverterString.lower(sidecarRootPath),$0
     )
 })
@@ -1259,11 +1281,25 @@ public func listRemoteDirectories(registryPath: String, dataSourceId: String, pa
     )
 })
 }
+public func markLibraryFileRemoteOnly(sidecarRootPath: String, relativePath: String)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_mark_library_file_remote_only(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(relativePath),$0
+    )
+}
+}
 public func migrateLibraryDatabase(databasePath: String)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_migrate_library_database(
         FfiConverterString.lower(databasePath),$0
     )
 }
+}
+public func prepareDeviceDataSource(sourceJson: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_prepare_device_data_source(
+        FfiConverterString.lower(sourceJson),$0
+    )
+})
 }
 public func readSidecarSyncSchedule(sidecarRootPath: String)throws  -> SyncDatabaseScheduleState  {
     return try  FfiConverterTypeSyncDatabaseScheduleState_lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
@@ -1507,6 +1543,9 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_add_local_library() != 54756) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_add_reader_annotation() != 49911) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1546,6 +1585,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_effective_sidecar_sync_mode() != 25640) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_finalize_downloaded_file() != 9231) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_get_calibre_book_detail() != 17242) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1558,7 +1600,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_get_reading_position() != 24023) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_myreader_rust_components_checksum_func_get_reading_statistics() != 7607) {
+    if (uniffi_myreader_rust_components_checksum_func_get_reading_statistics() != 6610) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_has_sidecar_sync_pending_work() != 46572) {
@@ -1585,13 +1627,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_list_calibre_books_page() != 1089) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_list_calibre_books_page_by_last_read() != 24967) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_list_calibre_series_books() != 63405) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_list_favorite_book_ids() != 64697) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_list_legacy_finished_readings() != 13801) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_list_library_file_states() != 54011) {
@@ -1612,7 +1654,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_list_remote_directories() != 26595) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_mark_library_file_remote_only() != 5940) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_migrate_library_database() != 32989) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_prepare_device_data_source() != 27455) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_read_sidecar_sync_schedule() != 23984) {

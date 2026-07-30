@@ -18,7 +18,6 @@ jest.mock("@/modules/myreader-rust-components", () => ({
     addReadingSessionInterval: jest.fn(),
     addReadingCompletion: jest.fn(),
     getReadingStatistics: jest.fn(),
-    listLegacyFinishedReadings: jest.fn(),
   },
 }))
 
@@ -235,13 +234,7 @@ describe("core reading adapter", () => {
     )
   })
 
-  it("should backfill legacy completion before statistics are read", async () => {
-    jest
-      .mocked(MyReaderRustComponents.listLegacyFinishedReadings)
-      .mockResolvedValue('[{"bookId":42,"format":"EPUB","updatedAt":900}]')
-    jest
-      .mocked(MyReaderRustComponents.addReadingCompletion)
-      .mockResolvedValue(true)
+  it("should provide library root when statistics are read", async () => {
     jest
       .mocked(MyReaderRustComponents.getReadingStatistics)
       .mockResolvedValue(
@@ -252,18 +245,9 @@ describe("core reading adapter", () => {
       getReadingStatistics(library, "2026-01-01", "2026-12-31"),
     ).resolves.toMatchObject({ completedBooks: 1 })
 
-    expect(MyReaderRustComponents.addReadingCompletion).toHaveBeenCalledWith(
-      "/sidecar",
-      "/library",
-      expect.any(String),
-      42,
-      "EPUB",
-      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
-      900,
-      900,
-    )
     expect(MyReaderRustComponents.getReadingStatistics).toHaveBeenCalledWith(
       "/sidecar",
+      "/library",
       "2026-01-01",
       "2026-12-31",
     )

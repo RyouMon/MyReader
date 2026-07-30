@@ -2,6 +2,7 @@ package com.myreader.rustcomponents
 
 import com.myreader.rustcomponents.uniffi.RustComponentsException
 import com.myreader.rustcomponents.uniffi.advanceSyncScheduler
+import com.myreader.rustcomponents.uniffi.addLocalLibrary
 import com.myreader.rustcomponents.uniffi.addRemoteLibrary
 import com.myreader.rustcomponents.uniffi.addReaderBookmark
 import com.myreader.rustcomponents.uniffi.addReaderAnnotation
@@ -15,6 +16,7 @@ import com.myreader.rustcomponents.uniffi.effectiveSidecarSyncMode
 import com.myreader.rustcomponents.uniffi.getCalibreBookDetail
 import com.myreader.rustcomponents.uniffi.getCalibreLibraryUuid
 import com.myreader.rustcomponents.uniffi.getLibraryFileState
+import com.myreader.rustcomponents.uniffi.finalizeDownloadedFile
 import com.myreader.rustcomponents.uniffi.getReadingPosition
 import com.myreader.rustcomponents.uniffi.hasSidecarSyncPendingWork
 import com.myreader.rustcomponents.uniffi.initializeDeviceRegistry
@@ -22,17 +24,20 @@ import com.myreader.rustcomponents.uniffi.listCalibreBookFormats
 import com.myreader.rustcomponents.uniffi.listCalibreBookSummaries
 import com.myreader.rustcomponents.uniffi.listCalibreBooks
 import com.myreader.rustcomponents.uniffi.listCalibreBooksPage
+import com.myreader.rustcomponents.uniffi.listCalibreBooksPageByLastRead
 import com.myreader.rustcomponents.uniffi.listCalibreSeriesBooks
 import com.myreader.rustcomponents.uniffi.listBookCoverThumbnailCache
 import com.myreader.rustcomponents.uniffi.listBookReadingFormats
 import com.myreader.rustcomponents.uniffi.listFavoriteBookIds
 import com.myreader.rustcomponents.uniffi.listLibraryFileStates
+import com.myreader.rustcomponents.uniffi.markLibraryFileRemoteOnly
 import com.myreader.rustcomponents.uniffi.listRemoteDirectories
 import com.myreader.rustcomponents.uniffi.listReadingPositionCandidates
 import com.myreader.rustcomponents.uniffi.listReadingPositions
 import com.myreader.rustcomponents.uniffi.listReaderBookmarks
 import com.myreader.rustcomponents.uniffi.listReaderAnnotations
 import com.myreader.rustcomponents.uniffi.migrateLibraryDatabase
+import com.myreader.rustcomponents.uniffi.prepareDeviceDataSource
 import com.myreader.rustcomponents.uniffi.registerDeviceLibrary
 import com.myreader.rustcomponents.uniffi.removeDeviceDataSource
 import com.myreader.rustcomponents.uniffi.removeDeviceLibrary
@@ -100,6 +105,12 @@ class MyReaderRustComponentsModule : Module() {
       }
     }
 
+    AsyncFunction("prepareDeviceDataSource") { sourceJson: String ->
+      componentCall {
+        prepareDeviceDataSource(sourceJson)
+      }
+    }
+
     AsyncFunction("validateDeviceDataSource") {
         registryPath: String,
         sourceJson: String ->
@@ -145,6 +156,14 @@ class MyReaderRustComponentsModule : Module() {
         libraryId: String ->
       componentCall {
         switchDeviceLibrary(registryPath, libraryId)
+      }
+    }
+
+    AsyncFunction("addLocalLibrary") {
+        registryPath: String,
+        requestJson: String ->
+      componentCall {
+        addLocalLibrary(registryPath, requestJson)
       }
     }
 
@@ -223,6 +242,23 @@ class MyReaderRustComponentsModule : Module() {
           offset.toULong(),
           limit.toULong(),
           sortBy,
+          search,
+        )
+      }
+    }
+
+    AsyncFunction("listCalibreBooksPageByLastRead") {
+        libraryRootPath: String,
+        sidecarRootPath: String,
+        offset: Long,
+        limit: Long,
+        search: String? ->
+      componentCall {
+        listCalibreBooksPageByLastRead(
+          libraryRootPath,
+          sidecarRootPath,
+          offset.toULong(),
+          limit.toULong(),
           search,
         )
       }
@@ -315,6 +351,23 @@ class MyReaderRustComponentsModule : Module() {
         path: String ->
       componentCall {
         deleteLibraryFileState(sidecarRootPath, path)
+      }
+    }
+
+    AsyncFunction("finalizeDownloadedFile") {
+        sidecarRootPath: String,
+        relativePath: String,
+        localPath: String ->
+      componentCall {
+        finalizeDownloadedFile(sidecarRootPath, relativePath, localPath)
+      }
+    }
+
+    AsyncFunction("markLibraryFileRemoteOnly") {
+        sidecarRootPath: String,
+        relativePath: String ->
+      componentCall {
+        markLibraryFileRemoteOnly(sidecarRootPath, relativePath)
       }
     }
 
@@ -632,16 +685,11 @@ class MyReaderRustComponentsModule : Module() {
 
     AsyncFunction("getReadingStatistics") {
         sidecarRootPath: String,
+        libraryRootPath: String,
         startDay: String,
         endDay: String ->
       componentCall {
-        getReadingStatistics(sidecarRootPath, startDay, endDay)
-      }
-    }
-
-    AsyncFunction("listLegacyFinishedReadings") { sidecarRootPath: String ->
-      componentCall {
-        listLegacyFinishedReadings(sidecarRootPath)
+        getReadingStatistics(sidecarRootPath, libraryRootPath, startDay, endDay)
       }
     }
 

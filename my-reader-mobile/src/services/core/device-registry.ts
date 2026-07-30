@@ -11,6 +11,11 @@ export type DeviceRegistry = {
   activeLibraryId: string | null
 }
 
+export type LocalLibraryResult = {
+  registry: DeviceRegistry
+  library: Library
+}
+
 const registryPath = toNativeFilesystemPath(
   new File(Paths.document, "device-registry.json").uri,
 )
@@ -44,6 +49,16 @@ export async function upsertDeviceDataSource(
       JSON.stringify(source),
     ),
   )
+}
+
+export async function prepareDeviceDataSource(
+  source: DataSource,
+): Promise<DataSource> {
+  return JSON.parse(
+    await MyReaderRustComponents.prepareDeviceDataSource(
+      JSON.stringify(source),
+    ),
+  ) as DataSource
 }
 
 export async function validateDeviceDataSource(
@@ -102,4 +117,31 @@ export async function switchDeviceLibrary(
   return parseRegistry(
     await MyReaderRustComponents.switchDeviceLibrary(registryPath, libraryId),
   )
+}
+
+export async function addLocalDeviceLibrary(request: {
+  libraryRootUri: string
+  path: string
+  sidecarContainerParentUri?: string
+  name?: string
+  metadataUri?: string
+  addedAt?: number
+  securityScopedBookmark?: Library["securityScopedBookmark"]
+}): Promise<LocalLibraryResult> {
+  return JSON.parse(
+    await MyReaderRustComponents.addLocalLibrary(
+      registryPath,
+      JSON.stringify({
+        libraryRootPath: toNativeFilesystemPath(request.libraryRootUri),
+        path: request.path,
+        sidecarContainerParentPath: request.sidecarContainerParentUri
+          ? toNativeFilesystemPath(request.sidecarContainerParentUri)
+          : null,
+        name: request.name,
+        metadataUri: request.metadataUri,
+        addedAt: request.addedAt,
+        securityScopedBookmark: request.securityScopedBookmark,
+      }),
+    ),
+  ) as LocalLibraryResult
 }

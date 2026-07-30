@@ -25,6 +25,11 @@ export function libraryContainerRootUri(libraryId: string): string {
   return ensureDocumentSubdirUri(LIBRARIES_DOCUMENT_DIR, libraryId)
 }
 
+/** App container parent for all library-owned data (`Documents/libraries/`). */
+export function librariesContainerRootUri(): string {
+  return ensureDocumentSubdirUri(LIBRARIES_DOCUMENT_DIR)
+}
+
 /** iOS local external libraries keep sidecar data in the app container. */
 export function usesIosContainerSidecar(library: Library): boolean {
   return (

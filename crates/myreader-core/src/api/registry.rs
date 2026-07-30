@@ -16,6 +16,10 @@ pub fn upsert_data_source(path: &Path, source: DataSource) -> Result<DeviceRegis
     services::registry::upsert_data_source(path, source)
 }
 
+pub fn prepare_data_source(source: DataSource) -> Result<DataSource, CoreError> {
+    services::registry::prepare_data_source(source)
+}
+
 pub fn ensure_data_source_can_upsert(path: &Path, source: &DataSource) -> Result<(), CoreError> {
     services::registry::ensure_data_source_can_upsert(path, source)
 }

@@ -2,9 +2,8 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use myreader_core::sync::{
-    exchange::SyncMode,
-    scheduler::{SchedulerEvent, SchedulerPolicy, SchedulerState, SchedulerTransition, SyncTiming},
+use myreader_core::api::sync::{
+    SchedulerEvent, SchedulerPolicy, SchedulerState, SchedulerTransition, SyncMode, SyncTiming,
 };
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};

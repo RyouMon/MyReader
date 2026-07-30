@@ -1,7 +1,7 @@
 //! Command-layer integration tests for `src/commands/reading_statistics.rs`.
 
 use my_reader_lib::models::{AppConfig, LibraryConfig};
-use myreader_core::entities::app::{reading_completions, reading_sessions};
+use myreader_core::test_support::entities::app::{reading_completions, reading_sessions};
 use sea_orm::{Database, EntityTrait};
 use serde_json::json;
 

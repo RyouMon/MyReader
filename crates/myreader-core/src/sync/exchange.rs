@@ -51,8 +51,10 @@ pub trait SyncObserver: Send + Sync {
     fn on_progress(&self, progress: SyncProgress);
 }
 
+#[cfg(test)]
 struct NoopObserver;
 
+#[cfg(test)]
 impl SyncObserver for NoopObserver {
     fn is_cancelled(&self) -> bool {
         false
@@ -252,6 +254,7 @@ async fn pull(
     })
 }
 
+#[cfg(test)]
 pub async fn sync_database_with_operator(
     database_path: &str,
     operator: &Operator,

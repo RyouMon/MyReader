@@ -58,6 +58,56 @@ pub(crate) fn upsert_data_source(
     })
 }
 
+pub(crate) fn prepare_data_source(mut source: DataSource) -> Result<DataSource, CoreError> {
+    match &mut source {
+        DataSource::Local {
+            id,
+            name,
+            root_path,
+            ..
+        } => {
+            normalize_id(id);
+            *name = name.trim().to_owned();
+            *root_path = root_path.trim().to_owned();
+        }
+        DataSource::Webdav {
+            id,
+            name,
+            endpoint,
+            username,
+            root_path,
+            ..
+        } => {
+            normalize_id(id);
+            *name = name.trim().to_owned();
+            *endpoint = endpoint.trim().trim_end_matches('/').to_owned();
+            *username = username.trim().to_owned();
+            *root_path = normalize_optional_text(root_path.take());
+        }
+        DataSource::Onedrive {
+            id,
+            name,
+            client_id,
+            tenant_id,
+            display_name,
+            email,
+            root_path,
+            ..
+        } => {
+            normalize_id(id);
+            *name = name.trim().to_owned();
+            *client_id = client_id.trim().to_owned();
+            *tenant_id =
+                normalize_optional_text(tenant_id.take()).or_else(|| Some("consumers".into()));
+            *display_name = normalize_optional_text(display_name.take());
+            *email = normalize_optional_text(email.take());
+            *root_path = normalize_optional_text(root_path.take());
+        }
+    }
+    validate_data_source(&source)?;
+    Ok(source)
+}
+
 pub(crate) fn ensure_data_source_can_upsert(
     path: &Path,
     source: &DataSource,
@@ -267,6 +317,20 @@ fn validate_data_source(source: &DataSource) -> Result<(), CoreError> {
         DataSource::Onedrive { .. } => {}
     }
     Ok(())
+}
+
+fn normalize_id(id: &mut String) {
+    *id = if id.trim().is_empty() {
+        Uuid::new_v4().to_string()
+    } else {
+        id.trim().to_owned()
+    };
+}
+
+fn normalize_optional_text(value: Option<String>) -> Option<String> {
+    value
+        .map(|value| value.trim().to_owned())
+        .filter(|value| !value.is_empty())
 }
 
 fn validate_library(library: &Library) -> Result<(), CoreError> {
@@ -496,6 +560,40 @@ mod tests {
         assert!(error
             .to_string()
             .contains("WEBDAV_DATASOURCE_ALREADY_EXISTS"));
+    }
+
+    #[test]
+    fn should_assign_id_and_normalize_fields_when_data_source_is_prepared() {
+        let source = prepare_data_source(DataSource::Webdav {
+            id: " ".into(),
+            name: " Books ".into(),
+            enabled: true,
+            endpoint: " https://example.com/dav/ ".into(),
+            username: " reader ".into(),
+            root_path: Some(" /Library/ ".into()),
+            has_password: true,
+            credential_reference: None,
+            readonly: None,
+            created_at: None,
+        })
+        .unwrap();
+
+        let DataSource::Webdav {
+            id,
+            name,
+            endpoint,
+            username,
+            root_path,
+            ..
+        } = source
+        else {
+            panic!("expected WebDAV data source");
+        };
+        assert!(Uuid::parse_str(&id).is_ok());
+        assert_eq!(name, "Books");
+        assert_eq!(endpoint, "https://example.com/dav");
+        assert_eq!(username, "reader");
+        assert_eq!(root_path.as_deref(), Some("/Library/"));
     }
 
     #[test]

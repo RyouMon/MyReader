@@ -7,22 +7,29 @@ paths:
 
 Desktop is a two-process app: **Tauri (Rust) backend** + **React frontend**, communicating via typed IPC.
 
-### Tauri Backend (Rust) — Layered Model
+### Shared Rust Backend — Layered Model
 
 ```
-commands/   — Tauri IPC entry points (thin, delegate to services)
+Tauri commands/        — typed IPC entry points
  ↓
-services/   — business logic (library, book, progress, cache, datasource, reader)
+Tauri services/        — thin platform orchestration and DTO mapping
  ↓
-repositories/ — DB access (calibre_repo, progress_repo)
+myreader-core api/     — stable use-case boundary
  ↓
-entities/ + db/ + utils/ — infrastructure (SeaORM entities, SQLite, HTTP, IO)
+services/              — shared business rules and use-case orchestration
+ ↓
+repositories/ + infrastructure/ — SeaORM, SQLite, storage and registry adapters
 ```
 
 **Rules**:
-- `commands/` calls `services/` (and `sync/`); never calls `repositories/` directly.
-- `services/` calls `repositories/` and `utils/`; never called from `repositories/`.
-- `repositories/` only accesses `entities/` and `db/`; no business logic.
+- Tauri `commands/` calls thin Tauri `services/`; commands do not implement business rules.
+- Tauri `services/` may resolve platform paths, credentials, windows, events and DTOs, then call
+  `myreader_core::api`; they must not reimplement filtering, sorting, validation, state transitions,
+  persistence or other cross-platform business behavior.
+- Shared business dependencies flow `api → services → repositories/infrastructure` inside
+  `crates/myreader-core`.
+- Tauri storage, Keychain/keyring, asset scope, protocol, streamer and lifecycle code remain platform
+  adapters. They do not become a second business backend.
 
 ### React Frontend — Layered Model
 
@@ -77,12 +84,9 @@ my-reader/
 ├── src-tauri/src/                Rust backend
 │   ├── main.rs → lib.rs          Tauri app bootstrap
 │   ├── commands/                 IPC entry points (book, library, progress, reader, source)
-│   ├── services/                 Business logic (book_service, datasource_service,
-│   │                             library_service, progress_service, reader_service)
-│   ├── repositories/             DB access (calibre_repo, progress_repo)
-│   ├── entities/                 SeaORM entities (app/, calibre/)
-│   ├── sync/                     Sync engine (backend/, credentials, db_sync, file_ops, file_state, manifest)
-│   ├── db.rs                     SQLite connection management
+│   ├── services/                 Thin platform orchestration and Core adapters
+│   ├── auth/                     OAuth and platform credential storage
+│   ├── storage/                  Platform credential-to-Core storage adapters
 │   ├── cache.rs                  Cover cache management
 │   ├── config.rs                 App config
 │   ├── error.rs                  Error types
@@ -92,6 +96,9 @@ my-reader/
 │   ├── reader_ui_prefs.rs        Reader UI preferences
 │   ├── storage_paths.rs          Path constants
 │   └── utils/                    HTTP client, IO helpers
+│
+├── ../crates/myreader-core/      Shared Rust business backend used by desktop and mobile
+│   └── src/                      api/, services/, repositories/, infrastructure/, models/
 │
 └── src-tauri/                    Tauri config (tauri.conf.json, Cargo.toml, icons/)
 ```

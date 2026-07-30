@@ -21,6 +21,13 @@ pub struct FileStateUpdate {
     pub local_mtime: Option<i64>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadedFile {
+    pub size: i64,
+    pub mtime_ms: i64,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BookCoverThumbnailCache {

@@ -2,27 +2,29 @@ import type { DataSource } from "@my-reader/tools/types/data-source"
 import type { Library } from "@my-reader/tools/types/library"
 import { Directory } from "expo-file-system"
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
-import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "@/src/constants/local-library-data-source"
 import {
   ensureLibraryMetadataCached,
   libraryQueryKeys,
-  readBookCountFromLibrary,
+  type PickedCalibreLibrary,
 } from "@/src/domain/library/calibre"
+import { withSecurityScopedLibraryAccess } from "@/src/services/fs/bookmarks"
 import { runLibrarySync } from "@/src/domain/sync/hooks/run-library-sync"
 import { isRemoteSourceType } from "@/src/domain/types"
 import i18n from "@/src/i18n"
 import {
-  type DeviceRegistry,
+  addLocalDeviceLibrary,
   initializeDeviceRegistry,
-  registerDeviceLibrary,
   removeDeviceLibrary,
   switchDeviceLibrary,
 } from "@/src/services/core/device-registry"
 import { addRemoteLibrary } from "@/src/services/core/remote"
 import {
   libraryContainerRootUri,
+  librariesContainerRootUri,
+  METADATA_DB_RELATIVE,
   usesIosContainerSidecar,
 } from "@/src/services/fs/library-paths"
+import { fileUriFor } from "@/src/services/fs/path"
 import { queryClient } from "@/src/services/query/query-client"
 import { useAppStore } from "@/src/store/app-store"
 import { excludeLocalLibrarySource } from "@/src/store/app-store.constants"
@@ -64,40 +66,6 @@ export async function hydrateLibraries(): Promise<void> {
   } finally {
     useAppStore.getState().setStoreReady(true)
   }
-}
-
-/** Registers a new library, dedupes, and runs add-trigger full sync. */
-export async function registerLibrary(
-  library: Library,
-): Promise<Library | null> {
-  const prepared = isRemoteSourceType(library.sourceType)
-    ? library
-    : (await readBookCountFromLibrary(library)).library
-
-  let registry: DeviceRegistry
-  try {
-    registry = await registerDeviceLibrary(prepared)
-  } catch (error) {
-    if (String(error).includes("LIBRARY_ALREADY_EXISTS")) {
-      showAlertWithStatusBarRestore(
-        i18n.t("sync.cannotAddDuplicate"),
-        i18n.t("sync.alreadyAdded"),
-        [{ text: i18n.t("common.gotIt") }],
-      )
-      return null
-    }
-    throw error
-  }
-  useAppStore.getState().setLibraries(registry.libraries)
-  useAppStore.getState().setActiveLibraryId(registry.activeLibraryId)
-
-  try {
-    await runLibrarySync({ libraryId: prepared.id, trigger: "add" })
-  } catch (err) {
-    console.warn("[registerLibrary] add sync failed:", err)
-  }
-
-  return prepared
 }
 
 /** Downloads, validates, and registers a remote Calibre library through core. */
@@ -151,17 +119,65 @@ export async function switchActiveLibrary(id: string): Promise<void> {
   useAppStore.getState().setActiveLibraryId(registry.activeLibraryId)
 }
 
-/** @deprecated Use registerLibrary after picker resolves a local library. */
 export async function addLibraryFromPicker(
-  picked: Library | null,
+  picked: PickedCalibreLibrary | null,
 ): Promise<Library | null> {
   if (picked === null) return null
 
-  const nextLibrary: Library = {
-    ...picked,
-    dataSourceId: LOCAL_LIBRARY_DATA_SOURCE_ID,
-    sourceType: "local",
+  const accessLibrary: Library = {
+    id: "",
+    name: picked.name ?? "",
+    path: picked.uri,
+    bookCount: 0,
+    securityScopedBookmark: picked.securityScopedBookmark,
+  }
+  let result: Awaited<ReturnType<typeof addLocalDeviceLibrary>>
+  try {
+    const access = await withSecurityScopedLibraryAccess(
+      accessLibrary,
+      async (libraryRootUri) =>
+        addLocalDeviceLibrary({
+          libraryRootUri,
+          path: picked.uri,
+          sidecarContainerParentUri: picked.securityScopedBookmark
+            ? librariesContainerRootUri()
+            : undefined,
+          name: picked.name,
+          metadataUri: fileUriFor(libraryRootUri, METADATA_DB_RELATIVE),
+          addedAt: Date.now(),
+          securityScopedBookmark: picked.securityScopedBookmark,
+        }),
+    )
+    result = access.result
+  } catch (error) {
+    const message = String(error)
+    if (message.includes("LIBRARY_ALREADY_EXISTS")) {
+      showAlertWithStatusBarRestore(
+        i18n.t("sync.cannotAddDuplicate"),
+        i18n.t("sync.alreadyAdded"),
+        [{ text: i18n.t("common.gotIt") }],
+      )
+      return null
+    }
+    if (message.includes("METADATA_DB_NOT_FOUND")) {
+      showAlertWithStatusBarRestore(
+        i18n.t("sync.metadataNotFound"),
+        i18n.t("sync.metadataNotFoundDetail"),
+        [{ text: i18n.t("common.gotIt") }],
+      )
+      return null
+    }
+    throw error
   }
 
-  return registerLibrary(nextLibrary)
+  useAppStore.getState().setLibraries(result.registry.libraries)
+  useAppStore.getState().setActiveLibraryId(result.registry.activeLibraryId)
+
+  try {
+    await runLibrarySync({ libraryId: result.library.id, trigger: "add" })
+  } catch (error) {
+    console.warn("[addLibraryFromPicker] add sync failed:", error)
+  }
+
+  return result.library
 }

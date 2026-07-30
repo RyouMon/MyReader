@@ -1,46 +1,34 @@
 import { useQuery } from "@tanstack/react-query"
-import { useMemo } from "react"
 
-import type { BookItem, Library } from "@/src/domain/types"
-import { listReadingPositions } from "@/src/services/core/reading"
+import { mapListRowsToBookItems } from "@/src/domain/library/calibre"
+import { withLocalLibraryCalibreRoot } from "@/src/domain/library/local-library-content"
+import type { Library } from "@/src/domain/types"
+import { listCalibreBooksPageByLastRead } from "@/src/services/core/catalog"
+import { librarySidecarRootUri } from "@/src/services/fs/library-paths"
 import { queryKeys } from "@/src/services/query/query-keys"
 
 /**
  * Returns books with reading progress for the given library, sorted by most
  * recent read time in descending order.
  */
-export function useRecentlyReadBooks(
-  library: Library | null,
-  books: BookItem[],
-) {
-  const { data: progressRows = [] } = useQuery({
+export function useRecentlyReadBooks(library: Library | null) {
+  const { data = [] } = useQuery({
     queryKey: queryKeys.recentlyReadBooks(library?.id),
     queryFn: async () => {
       if (!library) return []
-      return listReadingPositions(library)
+      return withLocalLibraryCalibreRoot(library, async (libraryRootUri) => {
+        const page = await listCalibreBooksPageByLastRead(
+          libraryRootUri,
+          librarySidecarRootUri(library),
+          0,
+          200,
+        )
+        return mapListRowsToBookItems(library, page.items)
+      })
     },
     enabled: !!library,
     staleTime: 1000 * 60 * 5,
   })
 
-  return useMemo(() => {
-    const bookById = new Map(books.map((book) => [book.id, book]))
-    const latestReadAtByBook = new Map<string, number>()
-
-    for (const row of progressRows) {
-      const bookId = String(row.bookId)
-      if (!bookById.has(bookId)) continue
-
-      const existing = latestReadAtByBook.get(bookId)
-      if (!existing || row.updatedAt > existing) {
-        latestReadAtByBook.set(bookId, row.updatedAt)
-      }
-    }
-
-    return Array.from(latestReadAtByBook.entries())
-      .map(([bookId]) => bookById.get(bookId)!)
-      .sort(
-        (a, b) => latestReadAtByBook.get(b.id)! - latestReadAtByBook.get(a.id)!,
-      )
-  }, [books, progressRows])
+  return data
 }

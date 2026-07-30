@@ -7,6 +7,7 @@ import { DataSourceInUseError } from "@/src/errors"
 import {
   type DeviceRegistry,
   initializeDeviceRegistry,
+  prepareDeviceDataSource,
   removeDeviceDataSource,
   upsertDeviceDataSource,
   validateDeviceDataSource,
@@ -20,7 +21,6 @@ import {
   writeSecrets,
 } from "@/src/services/storage/credentials"
 import { useAppStore } from "@/src/store/app-store"
-import { uuid } from "@/src/utils/common"
 
 export function useDataSourceActions() {
   const store = useAppStore
@@ -69,16 +69,14 @@ export function useDataSourceActions() {
     ds: DataSource,
     secrets?: DataSourceSecrets,
   ): Promise<DataSource> {
-    const id = ds.id || uuid()
-    const dsWithId = { ...ds, id }
-    const stored: DataSource = {
-      ...dsWithId,
+    const stored = await prepareDeviceDataSource({
+      ...ds,
       ...deriveCredentialFlags(secrets),
-    }
+    })
 
     await validateDeviceDataSource(stored)
     if (secrets) {
-      await writeSecrets(dsWithId.id, secrets)
+      await writeSecrets(stored.id, secrets)
     }
 
     const registry = await upsertDeviceDataSource(stored)
@@ -90,10 +88,10 @@ export function useDataSourceActions() {
     ds: DataSource,
     secrets?: DataSourceSecrets,
   ): Promise<void> {
-    const stored: DataSource = {
+    const stored = await prepareDeviceDataSource({
       ...ds,
       ...deriveCredentialFlags(secrets),
-    }
+    })
 
     await validateDeviceDataSource(stored)
     if (secrets) {

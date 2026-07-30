@@ -2,20 +2,35 @@ use std::path::Path;
 
 use crate::{
     models::{
-        SidecarSyncMode, SidecarSyncReport, SyncFailureDisposition, SyncFailureKind,
-        SyncScheduleSnapshot,
+        SidecarStorageConfig, SidecarSyncMode, SidecarSyncReport, SyncFailureDisposition,
+        SyncFailureKind, SyncScheduleSnapshot,
     },
-    services,
-    sync::{exchange::SyncObserver, transport::StorageConfig},
-    CoreError,
+    services, CoreError,
 };
+
+pub use crate::sync::{
+    exchange::{SyncMode, SyncObserver, SyncProgress, SyncStage},
+    scheduler::{
+        SchedulerEvent, SchedulerPolicy, SchedulerState, SchedulerTransition, SyncExecution,
+        SyncTiming,
+    },
+};
+
+pub fn reduce_scheduler_json(
+    state_json: Option<&str>,
+    policy_json: &str,
+    event_json: &str,
+) -> Result<String, CoreError> {
+    crate::sync::scheduler::reduce_json(state_json, policy_json, event_json)
+        .map_err(CoreError::from)
+}
 
 pub async fn sync_sidecar(
     sidecar_root: &Path,
     library_root: &Path,
     now_ms: i64,
     mode: SidecarSyncMode,
-    storage: &StorageConfig,
+    storage: &SidecarStorageConfig,
 ) -> Result<SidecarSyncReport, CoreError> {
     services::sync::sync_sidecar(sidecar_root, library_root, now_ms, mode, storage).await
 }
@@ -25,7 +40,7 @@ pub async fn sync_sidecar_observed(
     library_root: &Path,
     now_ms: i64,
     mode: SidecarSyncMode,
-    storage: &StorageConfig,
+    storage: &SidecarStorageConfig,
     observer: &dyn SyncObserver,
 ) -> Result<SidecarSyncReport, CoreError> {
     services::sync::sync_sidecar_observed(

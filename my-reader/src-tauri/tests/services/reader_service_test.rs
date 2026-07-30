@@ -5,8 +5,8 @@ use my_reader_lib::cache;
 use my_reader_lib::models::AppConfig;
 use my_reader_lib::services::reader_service::ReaderService;
 use my_reader_lib::streamer::{EpubStreamer, StreamerState};
-use myreader_core::entities::calibre::data;
 use myreader_core::models::FileStateUpdate;
+use myreader_core::test_support::entities::calibre::data;
 use sea_orm::{ActiveModelTrait, Database, Set};
 use tokio::sync::RwLock;
 

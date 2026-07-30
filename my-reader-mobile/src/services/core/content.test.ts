@@ -18,6 +18,7 @@ jest.mock("../query/invalidate-table", () => ({
 import MyReaderRustComponents from "@/modules/myreader-rust-components"
 import type { Library } from "@my-reader/tools/types/library"
 import {
+  finalizeDownloadedFile,
   listBookReadingFormats,
   listBookCoverThumbnailCache,
   setBookReadingFormat,
@@ -80,6 +81,26 @@ describe("core content adapter", () => {
         localSize: 1024,
         localMtime: null,
       }),
+    )
+  })
+
+  it("should delegate final state commit when downloaded file is finalized", async () => {
+    jest
+      .spyOn(MyReaderRustComponents, "finalizeDownloadedFile")
+      .mockResolvedValue(JSON.stringify({ size: 1024, mtimeMs: 2000 }))
+
+    await expect(
+      finalizeDownloadedFile(
+        library,
+        "Author/Book/Book.epub",
+        "file:///library/Author/Book/Book.epub",
+      ),
+    ).resolves.toEqual({ size: 1024, mtimeMs: 2000 })
+
+    expect(MyReaderRustComponents.finalizeDownloadedFile).toHaveBeenCalledWith(
+      "/sidecar",
+      "Author/Book/Book.epub",
+      "/library/Author/Book/Book.epub",
     )
   })
 

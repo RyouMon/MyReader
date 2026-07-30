@@ -3,7 +3,8 @@ use std::path::Path;
 
 use crate::database;
 use crate::models::{
-    BookCoverThumbnailCache, BookCoverThumbnailCachePatch, FileState, FileStateUpdate,
+    BookCoverThumbnailCache, BookCoverThumbnailCachePatch, DownloadedFile, FileState,
+    FileStateUpdate,
 };
 use crate::repositories::calibre::CalibreBookRepository;
 use crate::repositories::content::ContentRepository;
@@ -107,6 +108,71 @@ pub(crate) async fn upsert_file_state(
 pub(crate) async fn delete_file_state(sidecar_root: &Path, path: &str) -> Result<(), CoreError> {
     let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
     ContentRepository::new(&db).delete_file_state(path).await
+}
+
+pub(crate) async fn finalize_downloaded_file(
+    sidecar_root: &Path,
+    relative_path: &str,
+    local_path: &Path,
+) -> Result<DownloadedFile, CoreError> {
+    let relative_path = crate::infrastructure::storage::normalize_remote_path(relative_path)?;
+    if relative_path.is_empty() {
+        return Err(CoreError::Config("BOOK_FILE_PATH_REQUIRED".into()));
+    }
+    let metadata = tokio::fs::metadata(local_path)
+        .await
+        .map_err(|error| CoreError::Storage(format!("DOWNLOADED_FILE_NOT_FOUND: {error}")))?;
+    if !metadata.is_file() || metadata.len() == 0 {
+        return Err(CoreError::Storage("DOWNLOADED_FILE_EMPTY".into()));
+    }
+    let size = i64::try_from(metadata.len())
+        .map_err(|error| CoreError::Storage(format!("DOWNLOADED_FILE_TOO_LARGE: {error}")))?;
+    let mtime_ms = metadata
+        .modified()
+        .ok()
+        .and_then(|value| value.duration_since(std::time::UNIX_EPOCH).ok())
+        .and_then(|value| i64::try_from(value.as_millis()).ok())
+        .unwrap_or(0);
+    upsert_file_state(
+        sidecar_root,
+        &relative_path,
+        FileStateUpdate {
+            local_state: "present".into(),
+            local_blake3: None,
+            local_size: Some(size),
+            local_mtime: Some(mtime_ms),
+        },
+    )
+    .await?;
+    Ok(DownloadedFile { size, mtime_ms })
+}
+
+pub(crate) async fn mark_file_remote_only(
+    sidecar_root: &Path,
+    relative_path: &str,
+) -> Result<(), CoreError> {
+    let relative_path = crate::infrastructure::storage::normalize_remote_path(relative_path)?;
+    if relative_path.is_empty() {
+        return Err(CoreError::Config("BOOK_FILE_PATH_REQUIRED".into()));
+    }
+    upsert_file_state(
+        sidecar_root,
+        &relative_path,
+        FileStateUpdate {
+            local_state: "remote_only".into(),
+            local_blake3: None,
+            local_size: None,
+            local_mtime: None,
+        },
+    )
+    .await
+}
+
+pub(crate) fn resolve_remote_file_path(
+    source_path: Option<&str>,
+    relative_path: &str,
+) -> Result<String, CoreError> {
+    crate::infrastructure::storage::join_remote_path(source_path.unwrap_or_default(), relative_path)
 }
 
 pub(crate) async fn list_cover_thumbnail_cache(
@@ -259,6 +325,43 @@ mod tests {
             .await
             .unwrap()
             .is_none());
+    }
+
+    #[tokio::test]
+    async fn should_commit_present_state_when_downloaded_file_is_finalized() {
+        let sidecar = tempfile::tempdir().unwrap();
+        let files = tempfile::tempdir().unwrap();
+        let local_path = files.path().join("book.epub");
+        tokio::fs::write(&local_path, b"epub").await.unwrap();
+
+        let downloaded =
+            super::finalize_downloaded_file(sidecar.path(), "/Author/Book/book.epub", &local_path)
+                .await
+                .unwrap();
+
+        assert_eq!(downloaded.size, 4);
+        let state = super::get_file_state(sidecar.path(), "Author/Book/book.epub")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(state.local_state, "present");
+        assert_eq!(state.local_size, Some(4));
+    }
+
+    #[tokio::test]
+    async fn should_commit_remote_only_state_when_local_file_is_removed() {
+        let sidecar = tempfile::tempdir().unwrap();
+        super::mark_file_remote_only(sidecar.path(), "Author/Book/book.epub")
+            .await
+            .unwrap();
+
+        let state = super::get_file_state(sidecar.path(), "Author/Book/book.epub")
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(state.local_state, "remote_only");
+        assert_eq!(state.local_size, None);
     }
 
     #[tokio::test]

@@ -1,9 +1,8 @@
 import i18n from "@/src/i18n"
 
 import { AppInvariantError } from "../../errors"
-import { upsertFileState } from "../../services/core/content"
+import { finalizeDownloadedFile } from "../../services/core/content"
 import type { NativeDownloadOptions } from "../../services/download/native"
-import { readFileStat } from "../../services/fs/file-io"
 import { assertSafeRelativePath, fileUriFor } from "../../services/fs/path"
 import { openSyncContext, type SyncTargetContext } from "../sync/context"
 import {
@@ -88,18 +87,16 @@ export async function finalizeRecoveredDownload(
     dataSources,
   )
   assertSafeRelativePath(relativePath)
-  const stat = readFileStat(fileUriFor(ctx.libraryRootUri, relativePath))
+  const downloaded = await finalizeDownloadedFile(
+    ctx.library,
+    relativePath,
+    fileUriFor(ctx.libraryRootUri, relativePath),
+  )
   const outcome: DownloadOutcome = {
     blake3: null,
-    size: stat.size,
-    mtimeMs: stat.mtimeMs,
+    size: downloaded.size,
+    mtimeMs: downloaded.mtimeMs,
   }
   onProgress?.(outcome.size, outcome.size)
-  await upsertFileState(ctx.library, relativePath, {
-    localState: "present",
-    localBlake3: outcome.blake3,
-    localSize: outcome.size,
-    localMtime: outcome.mtimeMs,
-  })
   return outcome
 }

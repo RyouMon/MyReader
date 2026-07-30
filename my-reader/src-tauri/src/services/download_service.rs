@@ -8,8 +8,6 @@ use tokio::io::AsyncWriteExt;
 use tokio::sync::watch;
 use tracing::{debug, info, warn};
 
-use myreader_core::models::FileStateUpdate;
-
 use crate::error::AppError;
 use crate::models::{
     AppConfig, BookFileStateDto, FileStateDto, FileStateRequestDto, LibraryConfig,
@@ -60,24 +58,6 @@ fn emit_download_progress<R: Runtime>(
     }
     if let Err(e) = app.emit(&event_name, payload) {
         debug!("Failed to emit download progress event. event: \"{event_name}\", error: {e}");
-    }
-}
-
-fn normalize_remote_path(source_path: Option<&str>, relative: &str) -> String {
-    let relative = relative
-        .replace('\\', "/")
-        .trim_start_matches('/')
-        .to_string();
-    match source_path {
-        Some(sp) => {
-            let sp = sp.trim().trim_start_matches('/').trim_end_matches('/');
-            if sp.is_empty() {
-                relative
-            } else {
-                format!("{sp}/{relative}")
-            }
-        }
-        None => relative,
     }
 }
 
@@ -376,26 +356,6 @@ impl DownloadService {
         Ok(myreader_core::api::content::get_file_state(sidecar_root, path).await?)
     }
 
-    async fn set_stored_file_state(
-        sidecar_root: &Path,
-        path: &str,
-        local_state: &str,
-        local_size: Option<i64>,
-        local_mtime: Option<i64>,
-    ) -> Result<(), AppError> {
-        Ok(myreader_core::api::content::upsert_file_state(
-            sidecar_root,
-            path,
-            FileStateUpdate {
-                local_state: local_state.to_owned(),
-                local_blake3: None,
-                local_size,
-                local_mtime,
-            },
-        )
-        .await?)
-    }
-
     /// Resolve a library and reject file mutations against original local Calibre files.
     fn resolve_remote_library(
         config: &AppConfig,
@@ -572,8 +532,7 @@ impl DownloadService {
                 .map_err(|e| AppError::Config(format!("BOOK_FILE_DELETE_FAILED: {e}")))?;
         }
 
-        Self::set_stored_file_state(&sidecar_root, &relative_path, "remote_only", None, None)
-            .await?;
+        myreader_core::api::content::mark_file_remote_only(&sidecar_root, &relative_path).await?;
         Ok(())
     }
 
@@ -707,7 +666,8 @@ impl DownloadService {
             return Ok(local_path.to_path_buf());
         }
 
-        let remote_path = normalize_remote_path(source_path, book_relative_path);
+        let remote_path =
+            myreader_core::api::content::resolve_remote_file_path(source_path, book_relative_path)?;
         info!(
             "Resolved remote book file path. library id: \"{}\", book id: {}, format: \"{}\", remote: \"{}\"",
             library_id, book_id, format, remote_path
@@ -859,24 +819,10 @@ impl DownloadService {
             .await
             .map_err(|e| AppError::Config(format!("BOOK_FILE_CACHE_FLUSH_FAILED: {e}")))?;
 
-        let local_size = tokio::fs::metadata(local_path)
-            .await
-            .map(|m| m.len() as i64)
-            .unwrap_or(bytes_written as i64);
-        let local_mtime = tokio::fs::metadata(local_path)
-            .await
-            .ok()
-            .and_then(|m| m.modified().ok())
-            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-            .map(|d| d.as_secs() as i64);
-
-        // Update file_state to present.
-        Self::set_stored_file_state(
+        myreader_core::api::content::finalize_downloaded_file(
             sidecar_root,
             book_relative_path,
-            "present",
-            Some(local_size),
-            local_mtime,
+            local_path,
         )
         .await?;
 
@@ -912,7 +858,7 @@ impl DownloadService {
                 );
             }
         }
-        Self::set_stored_file_state(sidecar_root, book_relative_path, "remote_only", None, None)
+        myreader_core::api::content::mark_file_remote_only(sidecar_root, book_relative_path)
             .await?;
         Ok(())
     }
@@ -933,7 +879,7 @@ impl DownloadService {
                 );
             }
         }
-        Self::set_stored_file_state(sidecar_root, book_relative_path, "remote_only", None, None)
+        myreader_core::api::content::mark_file_remote_only(sidecar_root, book_relative_path)
             .await?;
         Ok(())
     }
@@ -948,41 +894,5 @@ mod tests {
         assert_eq!(DownloadService::normalize_format("epub"), "EPUB");
         assert_eq!(DownloadService::normalize_format("Epub"), "EPUB");
         assert_eq!(DownloadService::normalize_format("PDF"), "PDF");
-    }
-
-    #[test]
-    fn normalize_remote_path_should_return_relative_when_source_path_is_none() {
-        assert_eq!(
-            normalize_remote_path(None, "author/book/file.epub"),
-            "author/book/file.epub"
-        );
-    }
-
-    #[test]
-    fn normalize_remote_path_should_prepend_source_path_and_trim_slashes() {
-        assert_eq!(
-            normalize_remote_path(Some("/Library/CalibreLibrary/"), "author/book/file.epub"),
-            "Library/CalibreLibrary/author/book/file.epub"
-        );
-    }
-
-    #[test]
-    fn normalize_remote_path_should_ignore_empty_source_path() {
-        assert_eq!(
-            normalize_remote_path(Some(""), "author/book/file.epub"),
-            "author/book/file.epub"
-        );
-        assert_eq!(
-            normalize_remote_path(Some("/"), "author/book/file.epub"),
-            "author/book/file.epub"
-        );
-    }
-
-    #[test]
-    fn normalize_remote_path_should_convert_backslashes_to_forward_slashes() {
-        assert_eq!(
-            normalize_remote_path(Some("Library/CalibreLibrary"), "author\\book\\file.epub"),
-            "Library/CalibreLibrary/author/book/file.epub"
-        );
     }
 }

@@ -143,30 +143,6 @@ fn validated_database_identity(
     })
 }
 
-pub fn read_database_identity(database_path: &str) -> Result<Option<DatabaseIdentity>, SyncError> {
-    let connection = open_connection(database_path)?;
-    connection
-        .query_row(
-            "SELECT protocol, library_uuid, replica_id
-             FROM sync_local_meta
-             LIMIT 1",
-            [],
-            |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, String>(2)?,
-                ))
-            },
-        )
-        .optional()
-        .map_err(database_error)?
-        .map(|(protocol, library_uuid, replica_id)| {
-            validated_database_identity(protocol, library_uuid, replica_id)
-        })
-        .transpose()
-}
-
 pub fn ensure_database_identity(
     database_path: &str,
     library_uuid: &str,

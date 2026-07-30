@@ -3,8 +3,12 @@ name = "myreader-core"
 version = "0.1.0"
 edition.workspace = true
 
+[features]
+test-support = []
+
 [dependencies]
 automerge.workspace = true
+chrono.workspace = true
 dunce.workspace = true
 opendal.workspace = true
 rusqlite.workspace = true

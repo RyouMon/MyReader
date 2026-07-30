@@ -71,14 +71,6 @@ impl From<serde_json::Error> for AppError {
     }
 }
 
-impl From<myreader_rust_components::sync::SyncError> for AppError {
-    fn from(err: myreader_rust_components::sync::SyncError) -> Self {
-        match err {
-            myreader_rust_components::sync::SyncError::Sync(message) => AppError::Sync(message),
-        }
-    }
-}
-
 impl From<tauri::Error> for AppError {
     fn from(err: tauri::Error) -> Self {
         AppError::Config(err.to_string())

@@ -61,6 +61,24 @@ export async function listCalibreBooksPage(
   ) as PaginatedBooks
 }
 
+export async function listCalibreBooksPageByLastRead(
+  libraryRootUri: string,
+  sidecarRootUri: string,
+  offset: number,
+  limit: number,
+  search?: string,
+): Promise<PaginatedBooks> {
+  return JSON.parse(
+    await MyReaderRustComponents.listCalibreBooksPageByLastRead(
+      nativePath(libraryRootUri),
+      nativePath(sidecarRootUri),
+      offset,
+      limit,
+      search ?? null,
+    ),
+  ) as PaginatedBooks
+}
+
 export async function getCalibreBookDetail(
   libraryRootUri: string,
   bookId: number,

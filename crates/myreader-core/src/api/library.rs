@@ -1,9 +1,18 @@
 use std::path::Path;
 
 use crate::{
-    models::{DeviceRegistry, Library, RemoteCredential, RemoteLibraryRequest},
+    models::{
+        DeviceRegistry, Library, LocalLibraryRequest, RemoteCredential, RemoteLibraryRequest,
+    },
     services, CoreError,
 };
+
+pub async fn add_local(
+    registry_path: &Path,
+    request: LocalLibraryRequest,
+) -> Result<(DeviceRegistry, Library), CoreError> {
+    services::library::add_local_library(registry_path, request).await
+}
 
 pub async fn add_remote(
     registry_path: &Path,

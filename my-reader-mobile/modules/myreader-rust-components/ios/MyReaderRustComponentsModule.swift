@@ -55,6 +55,13 @@ public class MyReaderRustComponentsModule: Module {
       }
     }
 
+    AsyncFunction("prepareDeviceDataSource") {
+      (sourceJson: String) -> String in
+      try componentCall {
+        try prepareDeviceDataSource(sourceJson: sourceJson)
+      }
+    }
+
     AsyncFunction("validateDeviceDataSource") {
       (registryPath: String, sourceJson: String) in
       try componentCall {
@@ -112,6 +119,13 @@ public class MyReaderRustComponentsModule: Module {
           registryPath: registryPath,
           libraryId: libraryId
         )
+      }
+    }
+
+    AsyncFunction("addLocalLibrary") {
+      (registryPath: String, requestJson: String) -> String in
+      try componentCall {
+        try addLocalLibrary(registryPath: registryPath, requestJson: requestJson)
       }
     }
 
@@ -207,6 +221,25 @@ public class MyReaderRustComponentsModule: Module {
           offset: UInt64(offset),
           limit: UInt64(limit),
           sortBy: sortBy,
+          search: search
+        )
+      }
+    }
+
+    AsyncFunction("listCalibreBooksPageByLastRead") {
+      (
+        libraryRootPath: String,
+        sidecarRootPath: String,
+        offset: Int,
+        limit: Int,
+        search: String?
+      ) -> String in
+      try componentCall {
+        try listCalibreBooksPageByLastRead(
+          libraryRootPath: libraryRootPath,
+          sidecarRootPath: sidecarRootPath,
+          offset: UInt64(offset),
+          limit: UInt64(limit),
           search: search
         )
       }
@@ -322,6 +355,27 @@ public class MyReaderRustComponentsModule: Module {
         try deleteLibraryFileState(
           sidecarRootPath: sidecarRootPath,
           path: path
+        )
+      }
+    }
+
+    AsyncFunction("finalizeDownloadedFile") {
+      (sidecarRootPath: String, relativePath: String, localPath: String) -> String in
+      try componentCall {
+        try finalizeDownloadedFile(
+          sidecarRootPath: sidecarRootPath,
+          relativePath: relativePath,
+          localPath: localPath
+        )
+      }
+    }
+
+    AsyncFunction("markLibraryFileRemoteOnly") {
+      (sidecarRootPath: String, relativePath: String) in
+      try componentCall {
+        try markLibraryFileRemoteOnly(
+          sidecarRootPath: sidecarRootPath,
+          relativePath: relativePath
         )
       }
     }
@@ -678,22 +732,17 @@ public class MyReaderRustComponentsModule: Module {
     AsyncFunction("getReadingStatistics") {
       (
         sidecarRootPath: String,
+        libraryRootPath: String,
         startDay: String,
         endDay: String
       ) -> String in
       try componentCall {
         try getReadingStatistics(
           sidecarRootPath: sidecarRootPath,
+          libraryRootPath: libraryRootPath,
           startDay: startDay,
           endDay: endDay
         )
-      }
-    }
-
-    AsyncFunction("listLegacyFinishedReadings") {
-      (sidecarRootPath: String) -> String in
-      try componentCall {
-        try listLegacyFinishedReadings(sidecarRootPath: sidecarRootPath)
       }
     }
 

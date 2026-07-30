@@ -33,9 +33,7 @@ sea-orm-migration.workspace = true
 sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio-rustls"] }
 thiserror = "1"
 base64 = "0.22"
-uuid = { version = "1", features = ["v4"] }
 log = "0.4"
-myreader-rust-components.workspace = true
 myreader-core.workspace = true
 tauri-plugin-log = "2"
 tracing = "0.1"
@@ -62,6 +60,8 @@ percent-encoding = "2"
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSButton", "NSControl", "NSResponder", "NSView", "NSWindow"] }
 
 [dev-dependencies]
+myreader-core = { workspace = true, features = ["test-support"] }
 bytes = "1"
 tempfile = "3"
 tauri = { version = "2", features = ["test"] }
+uuid = { version = "1", features = ["v4"] }

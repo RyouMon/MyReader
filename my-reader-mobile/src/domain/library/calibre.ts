@@ -19,7 +19,6 @@ import {
   ensureLibrarySidecarDirectory,
   libraryLocalRootUri,
   libraryMetadataUri,
-  METADATA_DB_RELATIVE,
   resolveCoverUri,
 } from "@/src/services/fs/library-paths"
 import {
@@ -33,21 +32,10 @@ import { isRemoteSourceType } from "../types"
 type PickedDirectoryLike = {
   uri: string
   name?: string
-  list?: () => unknown[]
 }
 
-function createId() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-}
-
-function getMetadataFileFromDirectory(directory: PickedDirectoryLike) {
-  const typedDirectory = new Directory(directory.uri)
-  const entries = (directory.list?.() ?? typedDirectory.list()) as unknown[]
-  const metadata = entries.find(
-    (entry) => entry instanceof FSFile && entry.name === METADATA_DB_RELATIVE,
-  )
-
-  return metadata instanceof FSFile ? metadata : null
+export type PickedCalibreLibrary = PickedDirectoryLike & {
+  securityScopedBookmark?: Library["securityScopedBookmark"]
 }
 
 export function buildCoverUri(
@@ -94,7 +82,7 @@ export function mapListRowsToBookItems(
   })
 }
 
-export async function pickCalibreLibrary(): Promise<Library | null> {
+export async function pickCalibreLibrary(): Promise<PickedCalibreLibrary | null> {
   let directory: PickedDirectoryLike | null = null
 
   try {
@@ -107,40 +95,17 @@ export async function pickCalibreLibrary(): Promise<Library | null> {
     return null
   }
 
-  const metadataFile = getMetadataFileFromDirectory(directory)
-
-  if (!metadataFile) {
-    showAlertWithStatusBarRestore(
-      i18n.t("sync.metadataNotFound"),
-      i18n.t("sync.metadataNotFoundDetail"),
-      [{ text: i18n.t("common.gotIt") }],
-    )
-    return null
-  }
-
-  const libraryRoot = directory
-  const id = createId()
   const securityScopedBookmark = await createSecurityScopedBookmark(
-    libraryRoot.uri,
+    directory.uri,
   )
-  const resolvedPath = securityScopedBookmark?.resolvedUri ?? libraryRoot.uri
-
-  const draftLibrary: Library = {
-    id,
+  return {
+    uri: securityScopedBookmark?.resolvedUri ?? directory.uri,
     name:
-      libraryRoot.name ||
-      new Directory(libraryRoot.uri).name ||
+      directory.name ||
+      new Directory(directory.uri).name ||
       i18n.t("common.unnamedLibrary"),
-    path: resolvedPath,
-    metadataUri: "",
-    bookCount: 0,
-    addedAt: Date.now(),
     securityScopedBookmark: securityScopedBookmark ?? undefined,
   }
-
-  ensureLibrarySidecarDirectory(draftLibrary)
-  const { library } = await readBookCountFromLibrary(draftLibrary)
-  return library
 }
 
 export async function ensureLibraryMetadataCached(
@@ -180,24 +145,6 @@ export async function forceRefreshLibraryMetadata(
   return {
     ...library,
     metadataUri,
-    bookCount,
-  }
-}
-
-export async function readBookCountFromLibrary(library: Library) {
-  const nextLibrary = await ensureLibraryMetadataCached(library)
-  const metadataUri = nextLibrary.metadataUri ?? libraryMetadataUri(nextLibrary)
-  const bookCount = await withLocalLibraryCalibreRoot(
-    library,
-    (calibreRootUri) => countCalibreBooks(calibreRootUri),
-  )
-
-  return {
-    library: {
-      ...nextLibrary,
-      metadataUri,
-      bookCount,
-    },
     bookCount,
   }
 }

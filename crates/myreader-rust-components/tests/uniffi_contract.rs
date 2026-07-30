@@ -32,7 +32,7 @@ fn create_calibre_library() -> tempfile::TempDir {
 
 #[test]
 fn should_expose_current_sync_contract_version_when_bridge_loads() {
-    assert_eq!(sync_contract_version(), 9);
+    assert_eq!(sync_contract_version(), 10);
 }
 
 #[test]

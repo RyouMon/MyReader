@@ -6,11 +6,9 @@ use std::{
     path::Path,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, LazyLock, Mutex,
+        Arc, LazyLock, Mutex, OnceLock,
     },
 };
-
-pub use myreader_core::sync;
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum RustComponentsError {
@@ -50,23 +48,24 @@ struct SyncTaskState {
 
 static SYNC_TASKS: LazyLock<Mutex<HashMap<String, Arc<SyncTaskState>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
+static CORE_RUNTIME: OnceLock<Result<tokio::runtime::Runtime, String>> = OnceLock::new();
 
 struct NativeSyncObserver {
     task: Arc<SyncTaskState>,
 }
 
-impl sync::exchange::SyncObserver for NativeSyncObserver {
+impl myreader_core::api::sync::SyncObserver for NativeSyncObserver {
     fn is_cancelled(&self) -> bool {
         self.task.cancelled.load(Ordering::Relaxed)
     }
 
-    fn on_progress(&self, progress: sync::exchange::SyncProgress) {
+    fn on_progress(&self, progress: myreader_core::api::sync::SyncProgress) {
         let stage = match progress.stage {
-            sync::exchange::SyncStage::Preparing => "preparing",
-            sync::exchange::SyncStage::Pushing => "pushing",
-            sync::exchange::SyncStage::Pulling => "pulling",
-            sync::exchange::SyncStage::Applying => "applying",
-            sync::exchange::SyncStage::Complete => "complete",
+            myreader_core::api::sync::SyncStage::Preparing => "preparing",
+            myreader_core::api::sync::SyncStage::Pushing => "pushing",
+            myreader_core::api::sync::SyncStage::Pulling => "pulling",
+            myreader_core::api::sync::SyncStage::Applying => "applying",
+            myreader_core::api::sync::SyncStage::Complete => "complete",
         };
         let mut current = self
             .task
@@ -81,19 +80,13 @@ impl sync::exchange::SyncObserver for NativeSyncObserver {
 
 #[uniffi::export]
 pub fn sync_contract_version() -> u32 {
-    9
+    10
 }
 
 #[uniffi::export]
 pub fn migrate_library_database(database_path: String) -> Result<(), RustComponentsError> {
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .map_err(|error| {
-            RustComponentsError::Core(format!("Failed to start database runtime: {error}"))
-        })?;
-    runtime
-        .block_on(myreader_core::database::migrate_database_file(Path::new(
+    core_runtime()?
+        .block_on(myreader_core::api::migrate_library_database(Path::new(
             &database_path,
         )))
         .map_err(|error| RustComponentsError::Core(error.to_string()))
@@ -118,15 +111,21 @@ fn map_core_result(
 fn run_core_async<T>(
     future: impl Future<Output = Result<T, myreader_core::CoreError>>,
 ) -> Result<T, RustComponentsError> {
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .map_err(|error| {
-            RustComponentsError::Core(format!("Failed to start core runtime: {error}"))
-        })?;
-    runtime
+    core_runtime()?
         .block_on(future)
         .map_err(|error| RustComponentsError::Core(error.to_string()))
+}
+
+fn core_runtime() -> Result<&'static tokio::runtime::Runtime, RustComponentsError> {
+    CORE_RUNTIME
+        .get_or_init(|| {
+            tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .map_err(|error| format!("Failed to start core runtime: {error}"))
+        })
+        .as_ref()
+        .map_err(|error| RustComponentsError::Core(error.clone()))
 }
 
 #[uniffi::export]
@@ -153,6 +152,13 @@ pub fn upsert_device_data_source(
         Path::new(&registry_path),
         parse_core_json(&source_json)?,
     ))
+}
+
+#[uniffi::export]
+pub fn prepare_device_data_source(source_json: String) -> Result<String, RustComponentsError> {
+    let source = myreader_core::api::registry::prepare_data_source(parse_core_json(&source_json)?)
+        .map_err(|error| RustComponentsError::Core(error.to_string()))?;
+    serialize_core_json(&source)
 }
 
 #[uniffi::export]
@@ -220,6 +226,22 @@ pub fn switch_device_library(
         Path::new(&registry_path),
         &library_id,
     ))
+}
+
+#[uniffi::export]
+pub fn add_local_library(
+    registry_path: String,
+    request_json: String,
+) -> Result<String, RustComponentsError> {
+    let request = parse_core_json(&request_json)?;
+    let (registry, library) = run_core_async(myreader_core::api::library::add_local(
+        Path::new(&registry_path),
+        request,
+    ))?;
+    serialize_core_json(&serde_json::json!({
+        "registry": registry,
+        "library": library,
+    }))
 }
 
 #[uniffi::export]
@@ -330,6 +352,28 @@ pub fn list_calibre_books_page(
         offset,
         limit,
         sort_by.as_deref(),
+        search.as_deref(),
+    ))?;
+    serialize_core_json(&page)
+}
+
+#[uniffi::export]
+pub fn list_calibre_books_page_by_last_read(
+    library_root_path: String,
+    sidecar_root_path: String,
+    offset: u64,
+    limit: u64,
+    search: Option<String>,
+) -> Result<String, RustComponentsError> {
+    let offset = usize::try_from(offset)
+        .map_err(|error| RustComponentsError::Core(format!("Invalid page offset: {error}")))?;
+    let limit = usize::try_from(limit)
+        .map_err(|error| RustComponentsError::Core(format!("Invalid page limit: {error}")))?;
+    let page = run_core_async(myreader_core::api::catalog::list_books_page_by_last_read(
+        Path::new(&library_root_path),
+        Path::new(&sidecar_root_path),
+        offset,
+        limit,
         search.as_deref(),
     ))?;
     serialize_core_json(&page)
@@ -458,6 +502,31 @@ pub fn delete_library_file_state(
     run_core_async(myreader_core::api::content::delete_file_state(
         Path::new(&sidecar_root_path),
         &path,
+    ))
+}
+
+#[uniffi::export]
+pub fn finalize_downloaded_file(
+    sidecar_root_path: String,
+    relative_path: String,
+    local_path: String,
+) -> Result<String, RustComponentsError> {
+    let downloaded = run_core_async(myreader_core::api::content::finalize_downloaded_file(
+        Path::new(&sidecar_root_path),
+        &relative_path,
+        Path::new(&local_path),
+    ))?;
+    serialize_core_json(&downloaded)
+}
+
+#[uniffi::export]
+pub fn mark_library_file_remote_only(
+    sidecar_root_path: String,
+    relative_path: String,
+) -> Result<(), RustComponentsError> {
+    run_core_async(myreader_core::api::content::mark_file_remote_only(
+        Path::new(&sidecar_root_path),
+        &relative_path,
     ))
 }
 
@@ -810,25 +879,17 @@ pub fn add_reading_completion(
 #[uniffi::export]
 pub fn get_reading_statistics(
     sidecar_root_path: String,
+    library_root_path: String,
     start_day: String,
     end_day: String,
 ) -> Result<String, RustComponentsError> {
     let statistics = run_core_async(myreader_core::api::reading::get_reading_statistics(
         Path::new(&sidecar_root_path),
+        Path::new(&library_root_path),
         &start_day,
         &end_day,
     ))?;
     serialize_core_json(&statistics)
-}
-
-#[uniffi::export]
-pub fn list_legacy_finished_readings(
-    sidecar_root_path: String,
-) -> Result<String, RustComponentsError> {
-    let readings = run_core_async(myreader_core::api::reading::list_legacy_finished_readings(
-        Path::new(&sidecar_root_path),
-    ))?;
-    serialize_core_json(&readings)
 }
 
 #[uniffi::export]
@@ -837,8 +898,12 @@ pub fn advance_sync_scheduler(
     policy_json: String,
     event_json: String,
 ) -> Result<String, RustComponentsError> {
-    sync::scheduler::reduce_json(state_json.as_deref(), &policy_json, &event_json)
-        .map_err(map_sync_error)
+    myreader_core::api::sync::reduce_scheduler_json(
+        state_json.as_deref(),
+        &policy_json,
+        &event_json,
+    )
+    .map_err(|error| RustComponentsError::Sync(error.to_string()))
 }
 
 #[uniffi::export]
@@ -880,12 +945,6 @@ pub fn release_sync_task(task_id: String) -> bool {
         .unwrap_or_else(|error| error.into_inner())
         .remove(&task_id)
         .is_some()
-}
-
-fn map_sync_error(error: sync::SyncError) -> RustComponentsError {
-    match error {
-        sync::SyncError::Sync(message) => RustComponentsError::Sync(message),
-    }
 }
 
 fn parse_now_ms(value: &str) -> Result<i64, RustComponentsError> {
@@ -1001,12 +1060,6 @@ pub fn sync_library_sidecar(
     let storage = serde_json::from_str(&storage_json)
         .map_err(|error| RustComponentsError::Sync(format!("Invalid storage config: {error}")))?;
     let now_ms = parse_now_ms(&now_ms)?;
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .map_err(|error| {
-            RustComponentsError::Sync(format!("Failed to start sync runtime: {error}"))
-        })?;
     let task = Arc::new(SyncTaskState {
         cancelled: AtomicBool::new(false),
         progress: Mutex::new(SyncTaskProgress {
@@ -1025,7 +1078,7 @@ pub fn sync_library_sidecar(
         }
         tasks.insert(task_id, task.clone());
     }
-    let report = runtime.block_on(myreader_core::api::sync::sync_sidecar_observed(
+    let report = core_runtime()?.block_on(myreader_core::api::sync::sync_sidecar_observed(
         Path::new(&sidecar_root_path),
         Path::new(&library_root_path),
         now_ms,

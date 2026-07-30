@@ -9,3 +9,6 @@ pub mod scheduler;
 pub mod transport;
 
 pub use error::SyncError;
+
+#[cfg(test)]
+mod tests;

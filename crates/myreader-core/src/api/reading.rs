@@ -2,8 +2,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use crate::models::{
-    LegacyFinishedReading, ReaderAnnotation, ReaderBookmark, ReadingPosition,
-    ReadingPositionCandidate, ReadingStatistics,
+    ReaderAnnotation, ReaderBookmark, ReadingPosition, ReadingPositionCandidate, ReadingStatistics,
 };
 use crate::{services, CoreError};
 
@@ -278,14 +277,9 @@ pub async fn add_reading_completion(
 
 pub async fn get_reading_statistics(
     sidecar_root: &Path,
+    library_root: &Path,
     start_day: &str,
     end_day: &str,
 ) -> Result<ReadingStatistics, CoreError> {
-    services::reading::get_reading_statistics(sidecar_root, start_day, end_day).await
-}
-
-pub async fn list_legacy_finished_readings(
-    sidecar_root: &Path,
-) -> Result<Vec<LegacyFinishedReading>, CoreError> {
-    services::reading::list_legacy_finished_readings(sidecar_root).await
+    services::reading::get_reading_statistics(sidecar_root, library_root, start_day, end_day).await
 }

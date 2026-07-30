@@ -42,7 +42,7 @@ export default function HomeScreen() {
     [activeLibraryId, libraries],
   )
 
-  const readingBooks = useRecentlyReadBooks(activeLibrary, books)
+  const readingBooks = useRecentlyReadBooks(activeLibrary)
   const { data: progressByBookId = {} } = useBookReadingProgress(activeLibrary)
 
   const { selectedFormatById, setBookReadingFormat } =

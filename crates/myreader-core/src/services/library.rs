@@ -6,10 +6,96 @@ use uuid::Uuid;
 
 use crate::{
     infrastructure::{registry_store, storage},
-    models::{DataSource, Library, RemoteCredential, RemoteLibraryRequest},
+    models::{DataSource, Library, LocalLibraryRequest, RemoteCredential, RemoteLibraryRequest},
     services::registry,
     CoreError,
 };
+
+pub(crate) async fn add_local_library(
+    registry_path: &Path,
+    request: LocalLibraryRequest,
+) -> Result<(crate::models::DeviceRegistry, Library), CoreError> {
+    let requested_library_root = request.library_root_path.trim();
+    let library_root = dunce::canonicalize(requested_library_root)
+        .map_err(|error| CoreError::Config(format!("INVALID_LIBRARY_PATH: {error}")))?;
+    if !crate::services::catalog::validate_library(&library_root) {
+        return Err(CoreError::NotFound(format!(
+            "METADATA_DB_NOT_FOUND: {}",
+            library_root.display()
+        )));
+    }
+
+    let requested_path = request.path.trim();
+    if requested_path.is_empty() {
+        return Err(CoreError::Config("LIBRARY_PATH_REQUIRED".into()));
+    }
+    let path = if requested_path == requested_library_root {
+        library_root.to_string_lossy().into_owned()
+    } else {
+        requested_path.to_owned()
+    };
+    let name = request
+        .name
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+        .or_else(|| {
+            library_root
+                .file_name()
+                .and_then(|value| value.to_str())
+                .map(ToOwned::to_owned)
+        })
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| CoreError::Config("LIBRARY_NAME_REQUIRED".into()))?;
+    let id = Uuid::new_v4().to_string();
+    let book_count = crate::services::catalog::count_books(&library_root)
+        .await
+        .unwrap_or(0) as u64;
+    let library = Library {
+        id: id.clone(),
+        name,
+        path,
+        book_count,
+        metadata_uri: request.metadata_uri,
+        added_at: request.added_at,
+        data_source_id: None,
+        source_type: Some("local".into()),
+        source_path: None,
+        metadata_etag: None,
+        security_scoped_bookmark: request.security_scoped_bookmark,
+    };
+
+    registry::ensure_library_can_register(registry_path, &library)?;
+
+    let container_parent = request
+        .sidecar_container_parent_path
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    let sidecar_root = container_parent
+        .map(|parent| Path::new(parent).join(&id))
+        .unwrap_or_else(|| library_root.clone());
+    let created_container = container_parent.is_some() && !sidecar_root.exists();
+    if created_container {
+        std::fs::create_dir_all(&sidecar_root)?;
+    }
+
+    let result = (|| {
+        crate::database::ensure_library_data_dir(
+            sidecar_root
+                .to_str()
+                .ok_or_else(|| CoreError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?,
+        )?;
+        let registry = registry::register_library(registry_path, library.clone())?;
+        Ok((registry, library))
+    })();
+
+    if result.is_err() && created_container {
+        let _ = std::fs::remove_dir_all(&sidecar_root);
+    }
+    result
+}
 
 pub(crate) async fn add_remote_library(
     registry_path: &Path,
@@ -225,6 +311,98 @@ mod tests {
                 [],
             )
             .unwrap();
+    }
+
+    #[tokio::test]
+    async fn should_validate_count_and_register_when_local_library_is_added() {
+        let directory = tempfile::tempdir().unwrap();
+        let registry_path = directory.path().join("registry.json");
+        let library_root = directory.path().join("Ursula K. Le Guin");
+        let sidecars = directory.path().join("sidecars");
+        std::fs::create_dir_all(&library_root).unwrap();
+        seed_calibre_database(&library_root.join("metadata.db"));
+
+        let (registry, library) = add_local_library(
+            &registry_path,
+            LocalLibraryRequest {
+                library_root_path: library_root.to_string_lossy().into_owned(),
+                path: "file:///library".into(),
+                sidecar_container_parent_path: Some(sidecars.to_string_lossy().into_owned()),
+                name: None,
+                metadata_uri: Some("file:///library/metadata.db".into()),
+                added_at: Some(1.0),
+                security_scoped_bookmark: None,
+            },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(library.name, "Ursula K. Le Guin");
+        assert_eq!(library.book_count, 1);
+        assert_eq!(library.path, "file:///library");
+        assert_eq!(library.source_type.as_deref(), Some("local"));
+        assert_eq!(
+            registry.active_library_id.as_deref(),
+            Some(library.id.as_str())
+        );
+        assert!(sidecars.join(&library.id).join(".myreader").is_dir());
+    }
+
+    #[tokio::test]
+    async fn should_reject_duplicate_when_local_library_path_is_already_registered() {
+        let directory = tempfile::tempdir().unwrap();
+        let registry_path = directory.path().join("registry.json");
+        let library_root = directory.path().join("Library");
+        std::fs::create_dir_all(&library_root).unwrap();
+        seed_calibre_database(&library_root.join("metadata.db"));
+        let request = || LocalLibraryRequest {
+            library_root_path: library_root.to_string_lossy().into_owned(),
+            path: "file:///library".into(),
+            sidecar_container_parent_path: Some(
+                directory
+                    .path()
+                    .join("sidecars")
+                    .to_string_lossy()
+                    .into_owned(),
+            ),
+            name: None,
+            metadata_uri: Some("file:///library/metadata.db".into()),
+            added_at: None,
+            security_scoped_bookmark: None,
+        };
+        add_local_library(&registry_path, request()).await.unwrap();
+
+        let error = add_local_library(&registry_path, request())
+            .await
+            .unwrap_err();
+
+        assert!(error.to_string().contains("LIBRARY_ALREADY_EXISTS"));
+    }
+
+    #[tokio::test]
+    async fn should_register_with_zero_books_when_local_book_count_is_unavailable() {
+        let directory = tempfile::tempdir().unwrap();
+        let registry_path = directory.path().join("registry.json");
+        let library_root = directory.path().join("Library");
+        std::fs::create_dir_all(&library_root).unwrap();
+        std::fs::write(library_root.join("metadata.db"), []).unwrap();
+
+        let (_, library) = add_local_library(
+            &registry_path,
+            LocalLibraryRequest {
+                library_root_path: library_root.to_string_lossy().into_owned(),
+                path: library_root.to_string_lossy().into_owned(),
+                sidecar_container_parent_path: None,
+                name: None,
+                metadata_uri: None,
+                added_at: None,
+                security_scoped_bookmark: None,
+            },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(library.book_count, 0);
     }
 
     #[tokio::test]

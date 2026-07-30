@@ -1,7 +1,11 @@
 import i18n from "@/src/i18n"
 import { libraryContainerRootUri } from "@/src/services/fs/library-paths"
 import { AppInvariantError } from "../../errors"
-import { deleteFileState, upsertFileState } from "../../services/core/content"
+import {
+  deleteFileState,
+  finalizeDownloadedFile,
+  markFileRemoteOnly,
+} from "../../services/core/content"
 import type { NativeDownloadOptions } from "../../services/download/native"
 import { downloadRemoteToLocalUri } from "../../services/download/remote-to-local"
 import { deleteFileAtUri } from "../../services/fs/file-io"
@@ -18,13 +22,6 @@ export type DownloadOutcome = {
 }
 
 type BackgroundDownloadOptions = NativeDownloadOptions
-
-function toDownloadOutcome(stat: {
-  size: number
-  mtimeMs: number
-}): DownloadOutcome {
-  return { blake3: null, size: stat.size, mtimeMs: stat.mtimeMs }
-}
 
 function localFileUri(ctx: SyncTargetContext, relativePath: string): string {
   assertSafeRelativePath(relativePath)
@@ -50,21 +47,20 @@ export async function downloadFileDirectWithProgress(
   onProgress?: (received: number, total: number) => void,
   options: BackgroundDownloadOptions = {},
 ): Promise<DownloadOutcome> {
-  const stat = await downloadRemoteToLocalUri(
+  const fileUri = localFileUri(ctx, relativePath)
+  await downloadRemoteToLocalUri(
     requireRemoteBackend(ctx),
     relativePath,
-    localFileUri(ctx, relativePath),
+    fileUri,
     onProgress,
     options,
   )
-  const outcome = toDownloadOutcome(stat)
-  await upsertFileState(ctx.library, relativePath, {
-    localState: "present",
-    localBlake3: outcome.blake3,
-    localSize: outcome.size,
-    localMtime: outcome.mtimeMs,
-  })
-  return outcome
+  const downloaded = await finalizeDownloadedFile(
+    ctx.library,
+    relativePath,
+    fileUri,
+  )
+  return { ...downloaded, blake3: null }
 }
 
 export async function evictLocalFile(
@@ -72,12 +68,7 @@ export async function evictLocalFile(
   relativePath: string,
 ): Promise<void> {
   await removeLocalFile(localFileUri(ctx, relativePath))
-  await upsertFileState(ctx.library, relativePath, {
-    localState: "remote_only",
-    localBlake3: null,
-    localSize: null,
-    localMtime: null,
-  })
+  await markFileRemoteOnly(ctx.library, relativePath)
 }
 
 export async function evictLocalFileOfflineSafe(
@@ -88,12 +79,7 @@ export async function evictLocalFileOfflineSafe(
   assertSafeRelativePath(relativePath)
   const fileUri = fileUriFor(libraryContainerRootUri(library.id), relativePath)
   await removeLocalFile(fileUri)
-  await upsertFileState(library, relativePath, {
-    localState: "remote_only",
-    localBlake3: null,
-    localSize: null,
-    localMtime: null,
-  })
+  await markFileRemoteOnly(library, relativePath)
 }
 
 export async function deleteFileEverywhere(

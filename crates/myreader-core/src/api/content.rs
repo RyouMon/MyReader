@@ -2,7 +2,8 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 
 use crate::models::{
-    BookCoverThumbnailCache, BookCoverThumbnailCachePatch, FileState, FileStateUpdate,
+    BookCoverThumbnailCache, BookCoverThumbnailCachePatch, DownloadedFile, FileState,
+    FileStateUpdate,
 };
 use crate::{services, CoreError};
 
@@ -53,6 +54,28 @@ pub async fn upsert_file_state(
 
 pub async fn delete_file_state(sidecar_root: &Path, path: &str) -> Result<(), CoreError> {
     services::content::delete_file_state(sidecar_root, path).await
+}
+
+pub async fn finalize_downloaded_file(
+    sidecar_root: &Path,
+    relative_path: &str,
+    local_path: &Path,
+) -> Result<DownloadedFile, CoreError> {
+    services::content::finalize_downloaded_file(sidecar_root, relative_path, local_path).await
+}
+
+pub async fn mark_file_remote_only(
+    sidecar_root: &Path,
+    relative_path: &str,
+) -> Result<(), CoreError> {
+    services::content::mark_file_remote_only(sidecar_root, relative_path).await
+}
+
+pub fn resolve_remote_file_path(
+    source_path: Option<&str>,
+    relative_path: &str,
+) -> Result<String, CoreError> {
+    services::content::resolve_remote_file_path(source_path, relative_path)
 }
 
 pub async fn list_cover_thumbnail_cache(

@@ -14,6 +14,7 @@ use crate::sync::{
         DatabaseIdentity,
     },
 };
+use chrono::{Local, TimeZone};
 use tracing::info;
 
 use crate::database;
@@ -630,6 +631,7 @@ pub(crate) async fn add_reading_completion(
 
 pub(crate) async fn get_reading_statistics(
     sidecar_root: &Path,
+    library_root: &Path,
     start_day: &str,
     end_day: &str,
 ) -> Result<ReadingStatistics, CoreError> {
@@ -640,6 +642,7 @@ pub(crate) async fn get_reading_statistics(
             "Reading statistics day range is invalid".into(),
         ));
     }
+    backfill_legacy_reading_completions(sidecar_root, library_root).await?;
     let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
     let repository = ReadingRepository::new(&db);
     let sessions = repository
@@ -669,6 +672,79 @@ pub(crate) async fn get_reading_statistics(
             .collect::<std::collections::BTreeSet<_>>()
             .len(),
     })
+}
+
+async fn backfill_legacy_reading_completions(
+    sidecar_root: &Path,
+    library_root: &Path,
+) -> Result<(), CoreError> {
+    let legacy = list_legacy_finished_readings(sidecar_root).await?;
+    if legacy.is_empty() {
+        return Ok(());
+    }
+
+    let mut values = Vec::with_capacity(legacy.len());
+    for reading in legacy {
+        if !reading.updated_at.is_finite()
+            || reading.updated_at < 0.0
+            || reading.updated_at.fract() != 0.0
+            || reading.updated_at > i64::MAX as f64
+        {
+            return Err(CoreError::Config(
+                "Legacy reading completion time is invalid".into(),
+            ));
+        }
+        let updated_at = reading.updated_at as i64;
+        let local_day = Local
+            .timestamp_millis_opt(updated_at)
+            .single()
+            .ok_or_else(|| CoreError::Config("Legacy reading completion time is invalid".into()))?
+            .format("%Y-%m-%d")
+            .to_string();
+        values.push(ReadingCompletionValue {
+            id: uuid::Uuid::new_v4().simple().to_string(),
+            book_id: reading.book_id,
+            format: normalize_reading_format(&reading.format)?,
+            local_day,
+            completed_at: updated_at,
+            updated_at,
+            replica_id: String::new(),
+        });
+    }
+
+    let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+    let recorded_at = values
+        .iter()
+        .map(|value| value.updated_at)
+        .max()
+        .unwrap_or_default();
+    let replica_id = identity.replica_id.clone();
+    let mut changed = 0_usize;
+    execute_local_database_mutation(&database_path, &identity, recorded_at, |document| {
+        let mut completed_books = reading_completion_records(document)?
+            .into_iter()
+            .map(|value| value.book_id)
+            .collect::<std::collections::BTreeSet<_>>();
+        for value in &values {
+            if completed_books.insert(value.book_id) {
+                let mut value = value.clone();
+                value.replica_id.clone_from(&replica_id);
+                changed += usize::from(write_reading_completion(document, &value)?.is_some());
+            }
+        }
+        Ok(())
+    })?;
+    if changed > 0 {
+        info!(
+            target: "myreader_sync",
+            event = "reading_completion.legacy_backfill",
+            library_uuid = identity.library_uuid,
+            replica_id = identity.replica_id,
+            completions = changed,
+            "Backfilled legacy finished readings"
+        );
+    }
+    Ok(())
 }
 
 pub(crate) async fn list_legacy_finished_readings(
@@ -867,7 +943,7 @@ fn normalize_annotation_note(note: Option<&str>) -> Result<Option<String>, CoreE
 mod tests {
     use sea_orm::{ActiveModelTrait, ConnectionTrait, Database, Schema, Set};
 
-    use crate::entities::app::sync_automerge_outbox;
+    use crate::entities::app::{reading_progress, sync_automerge_outbox};
     use crate::entities::calibre::library_id;
 
     async fn seed_library_uuid(root: &Path) {
@@ -1224,15 +1300,57 @@ mod tests {
         .await
         .unwrap();
 
-        let statistics = super::get_reading_statistics(sidecar.path(), "2024-01-01", "2024-12-31")
-            .await
-            .unwrap();
+        let statistics = super::get_reading_statistics(
+            sidecar.path(),
+            library.path(),
+            "2024-01-01",
+            "2024-12-31",
+        )
+        .await
+        .unwrap();
 
         assert_eq!(statistics.days["2024-02-28"], 900);
         assert_eq!(statistics.days["2024-02-29"], 120);
         assert_eq!(statistics.total_duration_seconds, 1_020);
         assert_eq!(statistics.longest_streak_days, 2);
         assert_eq!(statistics.completed_books, 1);
+    }
+
+    #[tokio::test]
+    async fn should_backfill_legacy_completion_when_finished_progress_is_read_as_statistics() {
+        let sidecar = tempfile::tempdir().unwrap();
+        let library = tempfile::tempdir().unwrap();
+        seed_library_uuid(library.path()).await;
+        let db = crate::database::open_db(&sidecar.path().to_string_lossy())
+            .await
+            .unwrap();
+        reading_progress::ActiveModel {
+            id: Set("11111111111141118111111111111111".into()),
+            book_id: Set(42),
+            format: Set("EPUB".into()),
+            locator_json: Set(r#"{"href":"chapter.xhtml","type":"application/xhtml+xml"}"#.into()),
+            updated_at: Set(1_720_000_000_000.0),
+            display_progression: Set(Some(1.0)),
+            sync_conflict_count: Set(0),
+        }
+        .insert(&db)
+        .await
+        .unwrap();
+
+        let statistics = super::get_reading_statistics(
+            sidecar.path(),
+            library.path(),
+            "2024-01-01",
+            "2024-12-31",
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(statistics.completed_books, 1);
+        assert!(super::list_legacy_finished_readings(sidecar.path())
+            .await
+            .unwrap()
+            .is_empty());
     }
 
     #[tokio::test]

@@ -330,7 +330,7 @@ pnpm --filter my-reader run test:unit
 
 # 移动
 pnpm --filter my-reader-mobile exec jest --runInBand
-bash crates/myreader-rust-components/scripts/verify-native.sh
+bash my-reader-mobile/modules/myreader-rust-components/scripts/verify-native.sh
 
 # 从 core Migrator 重新生成 app entities
 pnpm db:generate

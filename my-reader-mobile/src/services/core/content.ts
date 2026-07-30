@@ -25,6 +25,11 @@ export type FileStateUpdate = {
   localMtime?: number | null
 }
 
+export type DownloadedFile = {
+  size: number
+  mtimeMs: number
+}
+
 export type BookCoverThumbnailCache = {
   id: string
   bookId: number
@@ -126,6 +131,33 @@ export async function deleteFileState(
   await MyReaderRustComponents.deleteLibraryFileState(
     sidecarRootPath(library),
     path,
+  )
+  await invalidateFileStates(library.id)
+}
+
+export async function finalizeDownloadedFile(
+  library: Library,
+  relativePath: string,
+  localFileUri: string,
+): Promise<DownloadedFile> {
+  const downloaded = JSON.parse(
+    await MyReaderRustComponents.finalizeDownloadedFile(
+      sidecarRootPath(library),
+      relativePath,
+      toNativeFilesystemPath(localFileUri),
+    ),
+  ) as DownloadedFile
+  await invalidateFileStates(library.id)
+  return downloaded
+}
+
+export async function markFileRemoteOnly(
+  library: Library,
+  relativePath: string,
+): Promise<void> {
+  await MyReaderRustComponents.markLibraryFileRemoteOnly(
+    sidecarRootPath(library),
+    relativePath,
   )
   await invalidateFileStates(library.id)
 }

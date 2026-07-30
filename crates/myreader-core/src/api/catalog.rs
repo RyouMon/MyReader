@@ -22,6 +22,23 @@ pub async fn list_books_page(
     services::catalog::list_books_page(library_root, offset, limit, sort_by, search).await
 }
 
+pub async fn list_books_page_by_last_read(
+    library_root: &Path,
+    sidecar_root: &Path,
+    offset: usize,
+    limit: usize,
+    search: Option<&str>,
+) -> Result<PaginatedBooks, CoreError> {
+    services::catalog::list_books_page_by_last_read(
+        library_root,
+        sidecar_root,
+        offset,
+        limit,
+        search,
+    )
+    .await
+}
+
 pub async fn get_book_detail(library_root: &Path, book_id: i64) -> Result<BookDetail, CoreError> {
     services::catalog::get_book_detail(library_root, book_id).await
 }

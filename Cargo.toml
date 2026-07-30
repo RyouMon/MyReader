@@ -10,6 +10,7 @@ edition = "2021"
 
 [workspace.dependencies]
 automerge = "=0.10.0"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 dunce = "1"
 myreader-core = { path = "crates/myreader-core" }
 myreader-rust-components = { path = "crates/myreader-rust-components" }

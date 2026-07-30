@@ -38,6 +38,53 @@ pub(crate) async fn list_books_page(
     Ok(PaginatedBooks { items, total })
 }
 
+pub(crate) async fn list_books_page_by_last_read(
+    library_root: &Path,
+    sidecar_root: &Path,
+    offset: usize,
+    limit: usize,
+    search: Option<&str>,
+) -> Result<PaginatedBooks, CoreError> {
+    let mut books = list_books(library_root).await?;
+    if let Some(keyword) = search.filter(|value| !value.trim().is_empty()) {
+        let keyword = keyword.to_lowercase();
+        books.retain(|book| {
+            book.title.to_lowercase().contains(&keyword)
+                || book.author_sort.to_lowercase().contains(&keyword)
+                || book
+                    .authors
+                    .iter()
+                    .any(|author| author.to_lowercase().contains(&keyword))
+                || book
+                    .tags
+                    .iter()
+                    .any(|tag| tag.to_lowercase().contains(&keyword))
+        });
+    }
+
+    let latest_by_book = crate::services::reading::latest_read_at_by_book(sidecar_root).await?;
+    books.retain(|book| latest_by_book.contains_key(&book.id));
+    books.sort_by(|left, right| {
+        let left_read_at = latest_by_book.get(&left.id).copied();
+        let right_read_at = latest_by_book.get(&right.id).copied();
+        match (left_read_at, right_read_at) {
+            (Some(left_time), Some(right_time)) => right_time
+                .partial_cmp(&left_time)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| left.title.to_lowercase().cmp(&right.title.to_lowercase())),
+            _ => left.title.to_lowercase().cmp(&right.title.to_lowercase()),
+        }
+    });
+
+    let total = books.len();
+    let items = books
+        .into_iter()
+        .skip(offset)
+        .take(limit.clamp(1, 200))
+        .collect();
+    Ok(PaginatedBooks { items, total })
+}
+
 pub(crate) async fn get_book_detail(
     library_root: &Path,
     book_id: i64,
@@ -311,5 +358,73 @@ mod tests {
             summaries[0].format_paths,
             vec![formats[0].relative_path.clone()]
         );
+    }
+
+    #[tokio::test]
+    async fn should_sort_and_filter_books_when_last_read_page_is_requested() {
+        let library = tempfile::tempdir().expect("create library");
+        let sidecar = tempfile::tempdir().expect("create sidecar");
+        seed_library(library.path()).await;
+        let database = Database::connect(format!(
+            "sqlite://{}?mode=rw",
+            library.path().join("metadata.db").to_string_lossy()
+        ))
+        .await
+        .expect("open fixture database");
+        books::ActiveModel {
+            id: Set(43),
+            title: Set(Some("A Wizard of Earthsea".to_owned())),
+            sort: Set(Some("Wizard of Earthsea, A".to_owned())),
+            author_sort: Set(Some("Le Guin, Ursula K.".to_owned())),
+            path: Set(Some("Ursula K. Le Guin/A Wizard of Earthsea".to_owned())),
+            has_cover: Set(Some(0)),
+            ..Default::default()
+        }
+        .insert(&database)
+        .await
+        .expect("seed second book");
+        database.close().await.expect("close fixture database");
+
+        crate::services::reading::set_reading_position(
+            sidecar.path(),
+            library.path(),
+            42,
+            "EPUB",
+            r#"{"href":"left-hand.xhtml","type":"application/xhtml+xml"}"#,
+            Some(0.4),
+            1_000,
+        )
+        .await
+        .expect("write older position");
+        crate::services::reading::set_reading_position(
+            sidecar.path(),
+            library.path(),
+            43,
+            "EPUB",
+            r#"{"href":"earthsea.xhtml","type":"application/xhtml+xml"}"#,
+            Some(0.6),
+            2_000,
+        )
+        .await
+        .expect("write newer position");
+
+        let page = super::list_books_page_by_last_read(library.path(), sidecar.path(), 0, 10, None)
+            .await
+            .expect("list recent books");
+        let filtered = super::list_books_page_by_last_read(
+            library.path(),
+            sidecar.path(),
+            0,
+            10,
+            Some("Darkness"),
+        )
+        .await
+        .expect("filter recent books");
+
+        assert_eq!(page.total, 2);
+        assert_eq!(page.items[0].id, 43);
+        assert_eq!(page.items[1].id, 42);
+        assert_eq!(filtered.total, 1);
+        assert_eq!(filtered.items[0].id, 42);
     }
 }
