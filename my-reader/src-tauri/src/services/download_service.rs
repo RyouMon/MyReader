@@ -453,10 +453,7 @@ impl DownloadService {
         let row = Self::get_stored_file_state(&sidecar_root, &relative_path).await?;
 
         let present = Self::is_book_file_present(&file_path).await
-            && (!lib.is_remote()
-                || row
-                    .as_ref()
-                    .is_some_and(|r| r.local_state.as_str() == "present"));
+            && (!lib.is_remote() || row.as_ref().is_some_and(|r| r.is_locally_available()));
         let local_state = if present { "present" } else { "remote_only" };
 
         Ok(FileStateDto {
@@ -528,8 +525,7 @@ impl DownloadService {
                 .expect("relative path should be resolved for request");
             let row = rows_by_path.get(&relative_path);
             let present = Self::is_book_file_present(&file_path).await
-                && (!lib.is_remote()
-                    || row.is_some_and(|row| row.local_state.as_str() == "present"));
+                && (!lib.is_remote() || row.is_some_and(|row| row.is_locally_available()));
             result.push(BookFileStateDto {
                 book_id,
                 format,
@@ -679,9 +675,7 @@ impl DownloadService {
         cancellation: Option<DownloadCancellation>,
     ) -> Result<PathBuf, AppError> {
         let row = Self::get_stored_file_state(sidecar_root, book_relative_path).await?;
-        let sidecar_present = row
-            .as_ref()
-            .is_some_and(|r| r.local_state.as_str() == "present");
+        let sidecar_present = row.as_ref().is_some_and(|r| r.is_locally_available());
 
         if sidecar_present && Self::is_book_file_present(local_path).await {
             info!(

@@ -74,7 +74,10 @@ function buildMetaMap(formats: string[] = [], effectiveFormat?: string) {
 }
 
 function buildFileStateBundle(
-  rows: Record<string, { path: string; localState: string }[]> = {},
+  rows: Record<
+    string,
+    { path: string; localState: string; isLocallyAvailable?: boolean }[]
+  > = {},
 ) {
   const fullRows: Record<string, FileStateRow[]> = {}
   for (const [bookId, bookRows] of Object.entries(rows)) {
@@ -82,6 +85,8 @@ function buildFileStateBundle(
       id: `fs-${bookId}-${index}`,
       path: row.path,
       localState: row.localState as FileStateRow["localState"],
+      isLocallyAvailable:
+        row.isLocallyAvailable ?? row.localState === "present",
       localBlake3: null,
       localSize: null,
       localMtime: null,

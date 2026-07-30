@@ -12,17 +12,11 @@ import {
 } from "@/src/domain/library/book-formats"
 import { getAllBookFormats } from "@/src/domain/library/calibre"
 import { useFileStates } from "@/src/domain/sync/hooks/use-file-states"
-import type { BookItem, Library, LocalState } from "@/src/domain/types"
+import type { BookItem, Library } from "@/src/domain/types"
 import { isRemoteSourceType } from "@/src/domain/types"
 import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover"
 import type { FileState as FileStateRow } from "@/src/services/core/content"
 import { queryKeys } from "@/src/services/query/query-keys"
-
-const downloadedStates = new Set<LocalState>([
-  "present",
-  "local_only",
-  "dirty_push",
-])
 
 type BookFileStateMap = Record<string, BookDownloadStatus>
 type BookFileStateRowMap = Record<string, FileStateRow[]>
@@ -71,9 +65,7 @@ export function useLibraryBookMeta(
         pathBelongsToBook(row.path, book.path),
       )
       rowsByBook[book.id] = matchedRows
-      statuses[book.id] = matchedRows.some((row) =>
-        downloadedStates.has(row.localState),
-      )
+      statuses[book.id] = matchedRows.some((row) => row.isLocallyAvailable)
         ? "downloaded"
         : "notDownloaded"
     }
@@ -159,7 +151,7 @@ export function useLibraryBookMeta(
       const isDownloadedByEffectiveFormat = effectiveFormat
         ? bookRows.some(
             (row) =>
-              downloadedStates.has(row.localState) &&
+              row.isLocallyAvailable &&
               getFormatFromPath(row.path) === effectiveFormat,
           )
         : false

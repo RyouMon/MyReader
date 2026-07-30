@@ -68,8 +68,16 @@ function makeBookWithFormatPolicy(
 }
 
 const fileStateRows = [
-  { path: "Author/Test Book/Test Book.epub", localState: "present" },
-  { path: "Author/Test Book/Test Book.pdf", localState: "present" },
+  {
+    path: "Author/Test Book/Test Book.epub",
+    localState: "present",
+    isLocallyAvailable: true,
+  },
+  {
+    path: "Author/Test Book/Test Book.pdf",
+    localState: "present",
+    isLocallyAvailable: true,
+  },
 ]
 
 describe("useLibraryBookMeta", () => {
@@ -228,7 +236,11 @@ describe("useLibraryBookMeta", () => {
   it("should mark remote book as not downloaded when effective format is missing", async () => {
     jest.mocked(useFileStates).mockReturnValue({
       data: [
-        { path: "Author/Test Book/Test Book.epub", localState: "present" },
+        {
+          path: "Author/Test Book/Test Book.epub",
+          localState: "present",
+          isLocallyAvailable: true,
+        },
       ],
       isLoading: false,
     } as unknown as ReturnType<typeof useFileStates>)
@@ -251,7 +263,11 @@ describe("useLibraryBookMeta", () => {
   it("should ignore file state rows that do not belong to the book when resolving library book metadata", async () => {
     jest.mocked(useFileStates).mockReturnValue({
       data: [
-        { path: "Author/Other Book/Other Book.epub", localState: "present" },
+        {
+          path: "Author/Other Book/Other Book.epub",
+          localState: "present",
+          isLocallyAvailable: true,
+        },
       ],
       isLoading: false,
     } as unknown as ReturnType<typeof useFileStates>)
@@ -274,7 +290,11 @@ describe("useLibraryBookMeta", () => {
   it("should ignore file state rows with non-downloaded local states when resolving library book metadata", async () => {
     jest.mocked(useFileStates).mockReturnValue({
       data: [
-        { path: "Author/Test Book/Test Book.epub", localState: "remote_only" },
+        {
+          path: "Author/Test Book/Test Book.epub",
+          localState: "remote_only",
+          isLocallyAvailable: false,
+        },
       ],
       isLoading: false,
     } as unknown as ReturnType<typeof useFileStates>)
@@ -612,7 +632,11 @@ describe("useLibraryBookMeta", () => {
   it("should mark remote book without readable formats as not downloaded when resolving library book metadata", async () => {
     jest.mocked(useFileStates).mockReturnValue({
       data: [
-        { path: "Author/Test Book/Test Book.mobi", localState: "present" },
+        {
+          path: "Author/Test Book/Test Book.mobi",
+          localState: "present",
+          isLocallyAvailable: true,
+        },
       ],
       isLoading: false,
     } as unknown as ReturnType<typeof useFileStates>)
@@ -635,7 +659,11 @@ describe("useLibraryBookMeta", () => {
   it("should keep downloaded status when an active download exists", async () => {
     jest.mocked(useFileStates).mockReturnValue({
       data: [
-        { path: "Author/Test Book/Test Book.epub", localState: "present" },
+        {
+          path: "Author/Test Book/Test Book.epub",
+          localState: "present",
+          isLocallyAvailable: true,
+        },
       ],
       isLoading: false,
     } as unknown as ReturnType<typeof useFileStates>)

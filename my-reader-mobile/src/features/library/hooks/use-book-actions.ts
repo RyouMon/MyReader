@@ -20,8 +20,6 @@ import i18n from "@/src/i18n"
 import type { FileState as FileStateRow } from "@/src/services/core/content"
 import { confirmDeleteLocalDownload } from "../utils/delete-download"
 
-const downloadedStates = new Set(["present", "local_only", "dirty_push"])
-
 export function useBookActions(
   books: BookItem[],
   bookDownloadStatusById: Record<string, string>,
@@ -274,9 +272,7 @@ export function useBookActions(
       }
       if (actionId === "deleteDownload") {
         const rows = latest.fileStateBundle.rows[bookId] ?? []
-        const downloadedRows = rows.filter((row) =>
-          downloadedStates.has(row.localState),
-        )
+        const downloadedRows = rows.filter((row) => row.isLocallyAvailable)
         if (downloadedRows.length === 0) return
         const lib = latest.selectedLibrary
         if (!lib) return

@@ -10,12 +10,7 @@ import {
 } from "@/src/domain/library/calibre"
 import { getReadingProgress } from "@/src/domain/library/reading-progress"
 import { createRemoteOps } from "@/src/domain/library/remote-library"
-import type {
-  BookItem,
-  DataSource,
-  Library,
-  LocalState,
-} from "@/src/domain/types"
+import type { BookItem, DataSource, Library } from "@/src/domain/types"
 import { isRemoteSourceType } from "@/src/domain/types"
 import { pageIndexFromFixedLocator } from "@/src/features/reader/components/reader/locator"
 import i18n from "@/src/i18n"
@@ -42,10 +37,6 @@ async function resolveRemoteCoverUri(
   const ops = await createRemoteOps(library, dataSources)
   if (!ops) return undefined
   return ops.buildCoverUri(library, bookPath, hasCover)
-}
-
-function isDownloadedLocalState(state: LocalState | null | undefined): boolean {
-  return state === "present" || state === "local_only" || state === "dirty_push"
 }
 
 async function readFileHeaderBytes(
@@ -95,7 +86,7 @@ async function resolveDownloadedWebDavBookFile(input: {
   if (!match) return null
 
   const state = await getFileState(input.library, match.relativePath)
-  if (!isDownloadedLocalState(state?.localState)) return null
+  if (!state?.isLocallyAvailable) return null
 
   const file = new File(libraryBookFileUri(input.library, match.relativePath))
   if (await hasExpectedReaderSignature(file, input.format)) return file

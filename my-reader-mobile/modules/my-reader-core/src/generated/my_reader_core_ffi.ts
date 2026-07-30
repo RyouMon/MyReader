@@ -4973,6 +4973,7 @@ export type FileState = {
   id: string;
   path: string;
   localState: FileLocalState;
+  isLocallyAvailable: boolean;
   localBlake3?: string;
   localSize?: number;
   localMtime?: number;
@@ -5002,6 +5003,7 @@ const FfiConverterTypeFileState = (() => {
         id: FfiConverterString.read(from),
         path: FfiConverterString.read(from),
         localState: FfiConverterTypeFileLocalState.read(from),
+        isLocallyAvailable: FfiConverterBool.read(from),
         localBlake3: FfiConverterOptionalString.read(from),
         localSize: FfiConverterOptionalFloat64.read(from),
         localMtime: FfiConverterOptionalFloat64.read(from),
@@ -5012,6 +5014,7 @@ const FfiConverterTypeFileState = (() => {
       FfiConverterString.write(value.id, into);
       FfiConverterString.write(value.path, into);
       FfiConverterTypeFileLocalState.write(value.localState, into);
+      FfiConverterBool.write(value.isLocallyAvailable, into);
       FfiConverterOptionalString.write(value.localBlake3, into);
       FfiConverterOptionalFloat64.write(value.localSize, into);
       FfiConverterOptionalFloat64.write(value.localMtime, into);
@@ -5022,6 +5025,7 @@ const FfiConverterTypeFileState = (() => {
         FfiConverterString.allocationSize(value.id) +
         FfiConverterString.allocationSize(value.path) +
         FfiConverterTypeFileLocalState.allocationSize(value.localState) +
+        FfiConverterBool.allocationSize(value.isLocallyAvailable) +
         FfiConverterOptionalString.allocationSize(value.localBlake3) +
         FfiConverterOptionalFloat64.allocationSize(value.localSize) +
         FfiConverterOptionalFloat64.allocationSize(value.localMtime) +

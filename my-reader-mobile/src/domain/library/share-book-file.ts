@@ -36,11 +36,8 @@ export async function resolveShareableFormat(
 
   if (isRemoteSourceType(library.sourceType)) {
     const fileState = await getFileState(library, match.relativePath)
-    const isDownloaded =
-      fileState?.localState === "present" ||
-      fileState?.localState === "local_only" ||
-      fileState?.localState === "dirty_push"
-    isLocal = isDownloaded && fileHasNonEmptyBytes(fileUri)
+    isLocal =
+      (fileState?.isLocallyAvailable ?? false) && fileHasNonEmptyBytes(fileUri)
   } else {
     const file = new File(fileUri)
     isLocal = file.exists && (file.size ?? 0) > 0

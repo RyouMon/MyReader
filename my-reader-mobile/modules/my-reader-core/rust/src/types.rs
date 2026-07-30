@@ -141,6 +141,7 @@ pub struct FileState {
     pub id: String,
     pub path: String,
     pub local_state: FileLocalState,
+    pub is_locally_available: bool,
     pub local_blake3: Option<String>,
     pub local_size: Option<f64>,
     pub local_mtime: Option<f64>,
@@ -561,10 +562,12 @@ impl From<models::BookFormat> for BookFormat {
 
 impl From<models::FileState> for FileState {
     fn from(value: models::FileState) -> Self {
+        let is_locally_available = value.is_locally_available();
         Self {
             id: value.id,
             path: value.path,
             local_state: FileLocalState(value.local_state),
+            is_locally_available,
             local_blake3: value.local_blake3,
             local_size: value.local_size.map(|value| value as f64),
             local_mtime: value.local_mtime.map(|value| value as f64),

@@ -109,7 +109,7 @@ impl ReaderService {
             relative_path,
         )
         .await?;
-        Ok(row.is_some_and(|r| r.local_state == "present"))
+        Ok(row.is_some_and(|r| r.is_locally_available()))
     }
 
     pub fn get_reader_ui_preferences(config: &AppConfig) -> ReaderUiPreferences {
@@ -140,7 +140,7 @@ mod tests {
     use super::ReaderService;
 
     #[tokio::test]
-    async fn remote_book_file_available_should_require_present_sidecar_row() {
+    async fn should_report_remote_book_available_when_file_and_local_state_are_available() {
         let book_dir = tempfile::tempdir().unwrap();
         let file_path = book_dir.path().join("It.epub");
         tokio::fs::write(&file_path, b"partial").await.unwrap();
@@ -178,14 +178,14 @@ mod tests {
             sidecar_root.path(),
             "It.epub",
             FileStateUpdate {
-                local_state: "present".into(),
+                local_state: "local_only".into(),
                 local_blake3: None,
                 local_size: Some(7),
                 local_mtime: None,
             },
         )
         .await
-        .expect("upsert present state");
+        .expect("upsert local_only state");
         assert!(ReaderService::remote_book_file_available(
             &file_path,
             Some(sidecar_root.path()),
