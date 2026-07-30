@@ -58,6 +58,8 @@ pub struct BookEntry {
     pub series: Option<String>,
     pub series_index: Option<f64>,
     pub formats: Vec<String>,
+    pub readable_formats: Vec<String>,
+    pub preferred_format: Option<String>,
     pub has_cover: bool,
     pub path: String,
     pub timestamp: Option<String>,
@@ -81,6 +83,8 @@ pub struct BookDetail {
     pub series: Option<String>,
     pub series_index: Option<f64>,
     pub formats: Vec<String>,
+    pub readable_formats: Vec<String>,
+    pub preferred_format: Option<String>,
     pub has_cover: bool,
     pub path: String,
     pub timestamp: Option<String>,
@@ -113,6 +117,8 @@ pub struct BookSummary {
     pub path: String,
     pub has_cover: bool,
     pub formats: Vec<String>,
+    pub readable_formats: Vec<String>,
+    pub preferred_format: Option<String>,
     pub format_paths: Vec<String>,
 }
 
@@ -450,6 +456,7 @@ impl From<models::PaginatedBooks> for PaginatedBooks {
 
 impl From<models::BookEntry> for BookEntry {
     fn from(value: models::BookEntry) -> Self {
+        let policy = models::ReadingFormatPolicy::from_formats(&value.formats);
         Self {
             id: value.id as f64,
             title: value.title,
@@ -460,6 +467,8 @@ impl From<models::BookEntry> for BookEntry {
             series: value.series,
             series_index: value.series_index,
             formats: value.formats,
+            readable_formats: policy.readable_formats,
+            preferred_format: policy.preferred_format,
             has_cover: value.has_cover,
             path: value.path,
             timestamp: value.timestamp,
@@ -477,6 +486,7 @@ impl From<models::BookEntry> for BookEntry {
 impl From<models::BookDetail> for BookDetail {
     fn from(value: models::BookDetail) -> Self {
         let book = value.book;
+        let policy = models::ReadingFormatPolicy::from_formats(&book.formats);
         Self {
             id: book.id as f64,
             title: book.title,
@@ -487,6 +497,8 @@ impl From<models::BookDetail> for BookDetail {
             series: book.series,
             series_index: book.series_index,
             formats: book.formats,
+            readable_formats: policy.readable_formats,
+            preferred_format: policy.preferred_format,
             has_cover: book.has_cover,
             path: book.path,
             timestamp: book.timestamp,
@@ -523,11 +535,14 @@ impl From<models::BookIdentifier> for BookIdentifier {
 
 impl From<models::BookSummary> for BookSummary {
     fn from(value: models::BookSummary) -> Self {
+        let policy = models::ReadingFormatPolicy::from_formats(&value.formats);
         Self {
             id: value.id as f64,
             path: value.path,
             has_cover: value.has_cover,
             formats: value.formats,
+            readable_formats: policy.readable_formats,
+            preferred_format: policy.preferred_format,
             format_paths: value.format_paths,
         }
     }

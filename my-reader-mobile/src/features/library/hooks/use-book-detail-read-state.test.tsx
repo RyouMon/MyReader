@@ -10,11 +10,6 @@ import { Alert } from "react-native"
 import type { FormatInfo } from "./use-book-detail-formats"
 import { useBookDetailReadState } from "./use-book-detail-read-state"
 
-jest.mock("@my-reader/tools/utils", () => ({
-  isReadableInAppFormat: jest.fn(() => true),
-  pickReadableFormat: jest.fn(() => "EPUB"),
-}))
-
 jest.mock("react-i18next", () => {
   const t = (key: string, params?: Record<string, string>) =>
     params ? `${key}:${JSON.stringify(params)}` : key
@@ -43,6 +38,8 @@ const baseDetail = {
   id: 1,
   title: "Test Book",
   formats: ["EPUB", "PDF"],
+  readableFormats: ["EPUB", "PDF"],
+  preferredFormat: "EPUB",
 } as unknown as BookDetail
 
 type ReadStateOptions = {
@@ -87,11 +84,6 @@ function renderReadState(overrides: Partial<ReadStateOptions> = {}) {
 describe("useBookDetailReadState", () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    const { isReadableInAppFormat, pickReadableFormat } = jest.requireMock(
-      "@my-reader/tools/utils",
-    )
-    isReadableInAppFormat.mockReturnValue(true)
-    pickReadableFormat.mockReturnValue("EPUB")
   })
 
   describe("format selection", () => {
@@ -103,15 +95,14 @@ describe("useBookDetailReadState", () => {
       expect(result.current.readableSelectedFormat).toBeNull()
     })
 
-    it("should filter formats with isReadableInAppFormat when resolving book detail read state", () => {
-      const { isReadableInAppFormat } = jest.requireMock(
-        "@my-reader/tools/utils",
-      )
-      isReadableInAppFormat.mockImplementation(
-        (format: string) => format === "EPUB",
-      )
-
-      const { result } = renderReadState()
+    it("should use readable formats when core supplies the format policy", () => {
+      const { result } = renderReadState({
+        detail: {
+          ...baseDetail,
+          readableFormats: ["EPUB"],
+          preferredFormat: "EPUB",
+        },
+      })
 
       expect(result.current.readableFormats).toEqual(["EPUB"])
       expect(result.current.canReadInApp).toBe(true)
@@ -123,19 +114,18 @@ describe("useBookDetailReadState", () => {
       expect(result.current.readableSelectedFormat).toBe("PDF")
     })
 
-    it("should fallback to pickReadableFormat when selectedFormat is null", () => {
-      const { pickReadableFormat } = jest.requireMock("@my-reader/tools/utils")
-      pickReadableFormat.mockReturnValue("PDF")
-
-      const { result } = renderReadState()
+    it("should fallback to preferred format when selectedFormat is null", () => {
+      const { result } = renderReadState({
+        detail: {
+          ...baseDetail,
+          preferredFormat: "PDF",
+        },
+      })
 
       expect(result.current.readableSelectedFormat).toBe("PDF")
     })
 
     it("should have no selected format when detail and fallback are missing", () => {
-      const { pickReadableFormat } = jest.requireMock("@my-reader/tools/utils")
-      pickReadableFormat.mockReturnValue(null)
-
       const { result } = renderReadState({ detail: null })
 
       expect(result.current.readableSelectedFormat).toBeNull()
@@ -155,15 +145,19 @@ describe("useBookDetailReadState", () => {
     })
 
     it("should do nothing when there is no readable format", () => {
-      const { isReadableInAppFormat } = jest.requireMock(
-        "@my-reader/tools/utils",
-      )
-      isReadableInAppFormat.mockReturnValue(false)
       const onOpenReader = jest.fn()
       const handleDownloadFormat = jest.fn()
       const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {})
 
-      const { result } = renderReadState({ onOpenReader, handleDownloadFormat })
+      const { result } = renderReadState({
+        detail: {
+          ...baseDetail,
+          readableFormats: [],
+          preferredFormat: null,
+        },
+        onOpenReader,
+        handleDownloadFormat,
+      })
 
       act(() => {
         result.current.handleReadAction()
@@ -175,11 +169,16 @@ describe("useBookDetailReadState", () => {
     })
 
     it("should do nothing when selected format is null", () => {
-      const { pickReadableFormat } = jest.requireMock("@my-reader/tools/utils")
-      pickReadableFormat.mockReturnValue(null)
       const onOpenReader = jest.fn()
 
-      const { result } = renderReadState({ onOpenReader })
+      const { result } = renderReadState({
+        detail: {
+          ...baseDetail,
+          readableFormats: [],
+          preferredFormat: null,
+        },
+        onOpenReader,
+      })
 
       act(() => {
         result.current.handleReadAction()
@@ -201,12 +200,13 @@ describe("useBookDetailReadState", () => {
     })
 
     it("should show no readable format title when formats are empty", () => {
-      const { isReadableInAppFormat } = jest.requireMock(
-        "@my-reader/tools/utils",
-      )
-      isReadableInAppFormat.mockReturnValue(false)
-
-      const { result } = renderReadState()
+      const { result } = renderReadState({
+        detail: {
+          ...baseDetail,
+          readableFormats: [],
+          preferredFormat: null,
+        },
+      })
 
       expect(result.current.readButtonTitle).toBe("bookDetail.noReadableFormat")
     })
@@ -265,12 +265,14 @@ describe("useBookDetailReadState", () => {
     })
 
     it("should show no readable format title for remote library without readable formats when resolving book detail read state", () => {
-      const { isReadableInAppFormat } = jest.requireMock(
-        "@my-reader/tools/utils",
-      )
-      isReadableInAppFormat.mockReturnValue(false)
-
-      const { result } = renderReadState({ activeLibrary: remoteLibrary })
+      const { result } = renderReadState({
+        activeLibrary: remoteLibrary,
+        detail: {
+          ...baseDetail,
+          readableFormats: [],
+          preferredFormat: null,
+        },
+      })
 
       expect(result.current.readButtonTitle).toBe("bookDetail.noReadableFormat")
     })

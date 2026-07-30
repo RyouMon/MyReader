@@ -37,7 +37,6 @@ import { usePaginatedBooks } from "@/hooks/reader/usePaginatedBooks"
 import { useWindowSizeClass } from "@/hooks/use-window-size-class"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { resetBrokenCovers } from "@/lib/coverFailureCache"
-import { pickReadableFormat } from "@/lib/readFormats"
 import { api, formatApiError } from "@/lib/tauri-api"
 import { cn } from "@/lib/utils"
 import { useAppUiStore } from "@/stores/appUiStore"
@@ -132,8 +131,7 @@ export default function LibraryWorkspace({
 
     return Array.from(displayedBooks.values(), (book) => ({
       bookId: book.id,
-      format:
-        selectedFormatById[String(book.id)] ?? pickReadableFormat(book.formats),
+      format: selectedFormatById[String(book.id)] ?? book.preferredFormat,
     }))
   }, [activeLibraryId, displayedBooks, fileActionsEnabled, selectedFormatById])
   useBookFileStates(

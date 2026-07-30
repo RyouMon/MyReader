@@ -7,7 +7,6 @@ import {
 } from "@/src/domain/download/download-store"
 import {
   getFormatFromPath,
-  getReadableFormats,
   pathBelongsToBook,
   resolveEffectiveFormat,
 } from "@/src/domain/library/book-formats"
@@ -84,12 +83,12 @@ export function useLibraryBookMeta(
   const bookFormatMetaById = useMemo(() => {
     const map = new Map<string, BookFormatMeta>()
     for (const book of books) {
-      const readableFormats = getReadableFormats(
-        book.formats ?? bookFormatsById[book.id],
-      )
+      const readableFormats =
+        book.readableFormats ?? bookFormatsById[book.id] ?? []
       const effectiveFormat = resolveEffectiveFormat(
         readableFormats,
         selectedFormatById[book.id],
+        book.preferredFormat,
       )
       map.set(book.id, { readableFormats, effectiveFormat })
     }

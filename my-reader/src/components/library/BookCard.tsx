@@ -41,9 +41,9 @@ const BookCard = memo(function BookCard({
   const downloadState = useBookDownloadState(
     libraryId,
     book.id,
-    book.formats,
+    book.readableFormats,
     selectedFormat,
-    { fileStateSource },
+    { fileStateSource, preferredFormat: book.preferredFormat },
   )
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {

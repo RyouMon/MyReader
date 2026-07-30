@@ -68,7 +68,13 @@ describe("BookMoreMenu", () => {
 
     renderWithClient(
       <BookMoreMenu
-        book={{ id: 42, title: "下载状态测试书", formats: ["EPUB"] }}
+        book={{
+          id: 42,
+          title: "下载状态测试书",
+          formats: ["EPUB"],
+          readableFormats: ["EPUB"],
+          preferredFormat: "EPUB",
+        }}
         fileActionsEnabled
         libraryId="lib-1"
         triggerVariant="row"
@@ -96,7 +102,13 @@ describe("BookMoreMenu", () => {
 
     renderWithClient(
       <BookMoreMenu
-        book={{ id: 42, title: "下载状态测试书", formats: ["EPUB", "PDF"] }}
+        book={{
+          id: 42,
+          title: "下载状态测试书",
+          formats: ["EPUB", "PDF"],
+          readableFormats: ["EPUB", "PDF"],
+          preferredFormat: "EPUB",
+        }}
         fileActionsEnabled
         libraryId="lib-1"
         selectedFormat="EPUB"
@@ -126,7 +138,13 @@ describe("BookMoreMenu", () => {
 
     renderWithClient(
       <BookMoreMenu
-        book={{ id: 42, title: "下载状态测试书", formats: ["EPUB"] }}
+        book={{
+          id: 42,
+          title: "下载状态测试书",
+          formats: ["EPUB"],
+          readableFormats: ["EPUB"],
+          preferredFormat: "EPUB",
+        }}
         fileActionsEnabled
         libraryId="lib-1"
         selectedFormat="EPUB"
@@ -151,7 +169,13 @@ describe("BookMoreMenu", () => {
 
     renderWithClient(
       <BookMoreMenu
-        book={{ id: 42, title: "下载状态测试书", formats: ["EPUB", "PDF"] }}
+        book={{
+          id: 42,
+          title: "下载状态测试书",
+          formats: ["EPUB", "PDF"],
+          readableFormats: ["EPUB", "PDF"],
+          preferredFormat: "EPUB",
+        }}
         fileActionsEnabled
         libraryId="lib-1"
         selectedFormat="EPUB"

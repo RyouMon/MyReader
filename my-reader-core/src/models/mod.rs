@@ -13,6 +13,7 @@ pub use app_config::{
 };
 pub use catalog::{
     BookDetail, BookEntry, BookFormat, BookIdentifier, BookSummary, FormatSize, PaginatedBooks,
+    ReadingFormatPolicy,
 };
 pub use content::{
     BookCoverThumbnailCache, BookCoverThumbnailCachePatch, DownloadedFile, FileState,

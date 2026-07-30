@@ -84,6 +84,8 @@ export type BookEntry = {
 	series: string | null,
 	seriesIndex: number | null,
 	formats: string[],
+	readableFormats: string[],
+	preferredFormat: string | null,
 	hasCover: boolean,
 	path: string,
 	timestamp: string | null,

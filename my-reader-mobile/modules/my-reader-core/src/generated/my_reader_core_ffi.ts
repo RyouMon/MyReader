@@ -4271,6 +4271,8 @@ export type BookDetail = {
   series?: string;
   seriesIndex?: number;
   formats: Array<string>;
+  readableFormats: Array<string>;
+  preferredFormat?: string;
   hasCover: boolean;
   path: string;
   timestamp?: string;
@@ -4316,6 +4318,8 @@ const FfiConverterTypeBookDetail = (() => {
         series: FfiConverterOptionalString.read(from),
         seriesIndex: FfiConverterOptionalFloat64.read(from),
         formats: FfiConverterSequenceString.read(from),
+        readableFormats: FfiConverterSequenceString.read(from),
+        preferredFormat: FfiConverterOptionalString.read(from),
         hasCover: FfiConverterBool.read(from),
         path: FfiConverterString.read(from),
         timestamp: FfiConverterOptionalString.read(from),
@@ -4340,6 +4344,8 @@ const FfiConverterTypeBookDetail = (() => {
       FfiConverterOptionalString.write(value.series, into);
       FfiConverterOptionalFloat64.write(value.seriesIndex, into);
       FfiConverterSequenceString.write(value.formats, into);
+      FfiConverterSequenceString.write(value.readableFormats, into);
+      FfiConverterOptionalString.write(value.preferredFormat, into);
       FfiConverterBool.write(value.hasCover, into);
       FfiConverterString.write(value.path, into);
       FfiConverterOptionalString.write(value.timestamp, into);
@@ -4364,6 +4370,8 @@ const FfiConverterTypeBookDetail = (() => {
         FfiConverterOptionalString.allocationSize(value.series) +
         FfiConverterOptionalFloat64.allocationSize(value.seriesIndex) +
         FfiConverterSequenceString.allocationSize(value.formats) +
+        FfiConverterSequenceString.allocationSize(value.readableFormats) +
+        FfiConverterOptionalString.allocationSize(value.preferredFormat) +
         FfiConverterBool.allocationSize(value.hasCover) +
         FfiConverterString.allocationSize(value.path) +
         FfiConverterOptionalString.allocationSize(value.timestamp) +
@@ -4392,6 +4400,8 @@ export type BookEntry = {
   series?: string;
   seriesIndex?: number;
   formats: Array<string>;
+  readableFormats: Array<string>;
+  preferredFormat?: string;
   hasCover: boolean;
   path: string;
   timestamp?: string;
@@ -4433,6 +4443,8 @@ const FfiConverterTypeBookEntry = (() => {
         series: FfiConverterOptionalString.read(from),
         seriesIndex: FfiConverterOptionalFloat64.read(from),
         formats: FfiConverterSequenceString.read(from),
+        readableFormats: FfiConverterSequenceString.read(from),
+        preferredFormat: FfiConverterOptionalString.read(from),
         hasCover: FfiConverterBool.read(from),
         path: FfiConverterString.read(from),
         timestamp: FfiConverterOptionalString.read(from),
@@ -4455,6 +4467,8 @@ const FfiConverterTypeBookEntry = (() => {
       FfiConverterOptionalString.write(value.series, into);
       FfiConverterOptionalFloat64.write(value.seriesIndex, into);
       FfiConverterSequenceString.write(value.formats, into);
+      FfiConverterSequenceString.write(value.readableFormats, into);
+      FfiConverterOptionalString.write(value.preferredFormat, into);
       FfiConverterBool.write(value.hasCover, into);
       FfiConverterString.write(value.path, into);
       FfiConverterOptionalString.write(value.timestamp, into);
@@ -4477,6 +4491,8 @@ const FfiConverterTypeBookEntry = (() => {
         FfiConverterOptionalString.allocationSize(value.series) +
         FfiConverterOptionalFloat64.allocationSize(value.seriesIndex) +
         FfiConverterSequenceString.allocationSize(value.formats) +
+        FfiConverterSequenceString.allocationSize(value.readableFormats) +
+        FfiConverterOptionalString.allocationSize(value.preferredFormat) +
         FfiConverterBool.allocationSize(value.hasCover) +
         FfiConverterString.allocationSize(value.path) +
         FfiConverterOptionalString.allocationSize(value.timestamp) +
@@ -4551,6 +4567,8 @@ export type BookSummary = {
   path: string;
   hasCover: boolean;
   formats: Array<string>;
+  readableFormats: Array<string>;
+  preferredFormat?: string;
   formatPaths: Array<string>;
 };
 
@@ -4580,6 +4598,8 @@ const FfiConverterTypeBookSummary = (() => {
         path: FfiConverterString.read(from),
         hasCover: FfiConverterBool.read(from),
         formats: FfiConverterSequenceString.read(from),
+        readableFormats: FfiConverterSequenceString.read(from),
+        preferredFormat: FfiConverterOptionalString.read(from),
         formatPaths: FfiConverterSequenceString.read(from),
       };
     }
@@ -4588,6 +4608,8 @@ const FfiConverterTypeBookSummary = (() => {
       FfiConverterString.write(value.path, into);
       FfiConverterBool.write(value.hasCover, into);
       FfiConverterSequenceString.write(value.formats, into);
+      FfiConverterSequenceString.write(value.readableFormats, into);
+      FfiConverterOptionalString.write(value.preferredFormat, into);
       FfiConverterSequenceString.write(value.formatPaths, into);
     }
     allocationSize(value: TypeName): number {
@@ -4596,6 +4618,8 @@ const FfiConverterTypeBookSummary = (() => {
         FfiConverterString.allocationSize(value.path) +
         FfiConverterBool.allocationSize(value.hasCover) +
         FfiConverterSequenceString.allocationSize(value.formats) +
+        FfiConverterSequenceString.allocationSize(value.readableFormats) +
+        FfiConverterOptionalString.allocationSize(value.preferredFormat) +
         FfiConverterSequenceString.allocationSize(value.formatPaths)
       );
     }

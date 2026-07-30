@@ -37,6 +37,8 @@ function makeBook(id: number): CalibreBook {
     series: null,
     seriesIndex: null,
     formats: ["EPUB"],
+    readableFormats: ["EPUB"],
+    preferredFormat: "EPUB",
     hasCover: false,
     path: `Book ${id}`,
     timestamp: null,

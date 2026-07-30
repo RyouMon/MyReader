@@ -1,9 +1,6 @@
 import { useCallback, useMemo } from "react"
 
-import {
-  isReadableInAppFormat,
-  pickReadableFormat,
-} from "@my-reader/tools/utils"
+import { resolveReadFormat } from "@my-reader/tools/utils"
 import { useTranslation } from "react-i18next"
 import { Alert } from "react-native"
 
@@ -25,13 +22,15 @@ export function useBookDetailReadState(
 ) {
   const { t } = useTranslation()
 
-  const readableFormats = useMemo(
-    () => (detail ? detail.formats.filter(isReadableInAppFormat) : []),
-    [detail],
-  )
+  const readableFormats = useMemo(() => detail?.readableFormats ?? [], [detail])
 
-  const readableSelectedFormat =
-    selectedFormat ?? (detail ? pickReadableFormat(detail.formats) : null)
+  const readableSelectedFormat = detail
+    ? resolveReadFormat(
+        detail.readableFormats,
+        detail.preferredFormat,
+        selectedFormat,
+      )
+    : null
   const selectedFormatUpper = readableSelectedFormat?.toUpperCase() ?? null
   const isSelectedFormatPresent = selectedFormatUpper
     ? formatInfoMap[selectedFormatUpper]?.localState === "present"

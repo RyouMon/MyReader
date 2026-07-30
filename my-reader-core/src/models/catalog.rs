@@ -1,5 +1,40 @@
 use serde::{Deserialize, Serialize};
 
+const READING_FORMAT_PRIORITY: [&str; 3] = ["EPUB", "CBZ", "PDF"];
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReadingFormatPolicy {
+    pub readable_formats: Vec<String>,
+    pub preferred_format: Option<String>,
+}
+
+impl ReadingFormatPolicy {
+    pub fn from_formats(formats: &[String]) -> Self {
+        let available = formats
+            .iter()
+            .map(|format| format.to_uppercase())
+            .collect::<std::collections::BTreeSet<_>>();
+        let readable_formats = READING_FORMAT_PRIORITY
+            .iter()
+            .filter(|format| available.contains(**format))
+            .map(|format| (*format).to_owned())
+            .collect::<Vec<_>>();
+        let preferred_format = readable_formats.first().cloned();
+        Self {
+            readable_formats,
+            preferred_format,
+        }
+    }
+
+    pub fn resolve(&self, requested: Option<&str>) -> Option<String> {
+        let requested = requested.map(str::to_uppercase);
+        requested
+            .filter(|format| self.readable_formats.contains(format))
+            .or_else(|| self.preferred_format.clone())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PaginatedBooks {
@@ -77,4 +112,31 @@ pub struct BookFormat {
 pub(crate) struct BookFilePathRequest {
     pub book_id: i64,
     pub format: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ReadingFormatPolicy;
+
+    #[test]
+    fn should_keep_supported_formats_in_priority_order_when_formats_are_mixed() {
+        let policy = ReadingFormatPolicy::from_formats(&[
+            "mobi".into(),
+            "pdf".into(),
+            "EPUB".into(),
+            "cbz".into(),
+            "epub".into(),
+        ]);
+
+        assert_eq!(policy.readable_formats, ["EPUB", "CBZ", "PDF"]);
+        assert_eq!(policy.preferred_format.as_deref(), Some("EPUB"));
+    }
+
+    #[test]
+    fn should_fall_back_to_preferred_format_when_requested_format_is_not_readable() {
+        let policy = ReadingFormatPolicy::from_formats(&["PDF".into(), "EPUB".into()]);
+
+        assert_eq!(policy.resolve(Some("mobi")).as_deref(), Some("EPUB"));
+        assert_eq!(policy.resolve(Some("pdf")).as_deref(), Some("PDF"));
+    }
 }

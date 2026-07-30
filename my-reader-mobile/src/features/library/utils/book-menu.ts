@@ -4,10 +4,7 @@ import i18n from "@/src/i18n"
 
 import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover"
 
-import {
-  getReadableFormats,
-  resolveEffectiveFormat,
-} from "@/src/domain/library/book-formats"
+import { resolveEffectiveFormat } from "@/src/domain/library/book-formats"
 
 export type BookMenuConfig = {
   isRemote: boolean
@@ -25,7 +22,7 @@ export function buildBookMenuActions(
   menuConfig: BookMenuConfig,
 ): MenuAction[] {
   const { isRemote, isFavorite, formats, selectedFormat } = menuConfig
-  const readableFormats = getReadableFormats(formats)
+  const readableFormats = formats ?? []
   const effectiveFormat = resolveEffectiveFormat(
     readableFormats,
     selectedFormat,

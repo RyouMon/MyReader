@@ -10,7 +10,6 @@ import {
 } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar"
-import { pickReadableFormat } from "@/lib/readFormats"
 import {
   getBookProgressSnapshot,
   type ReadingProgressByBook,
@@ -402,7 +401,7 @@ export default function BookGrid({
                       const progress = getBookProgressSnapshot(
                         progressByBookId,
                         book.id,
-                        selectedFormat ?? pickReadableFormat(book.formats),
+                        selectedFormat ?? book.preferredFormat,
                       )
                       return (
                         <BookCard
@@ -513,7 +512,7 @@ function renderListRow(
   const progress = getBookProgressSnapshot(
     progressByBookId,
     book.id,
-    selectedFormat ?? pickReadableFormat(book.formats),
+    selectedFormat ?? book.preferredFormat,
   )
   return (
     <BookRow

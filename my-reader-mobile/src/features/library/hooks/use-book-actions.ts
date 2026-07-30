@@ -7,10 +7,7 @@ import {
   enqueue as enqueueDownload,
   useDownloadStatusTasks,
 } from "@/src/domain/download/download-store"
-import {
-  getReadableFormats,
-  resolveEffectiveFormat,
-} from "@/src/domain/library/book-formats"
+import { resolveEffectiveFormat } from "@/src/domain/library/book-formats"
 import { getBookFormatPaths } from "@/src/domain/library/calibre"
 import {
   resolveShareableFormat,
@@ -75,8 +72,11 @@ export function useBookActions(
 
   const downloadBook = useCallback(
     async (book: BookItem, targetFormat?: string) => {
-      const { selectedLibrary: lib, selectedFormatById: formatById } =
-        stateRef.current
+      const {
+        selectedLibrary: lib,
+        selectedFormatById: formatById,
+        bookFormatMetaById: formatMetaById,
+      } = stateRef.current
       const calibreId = Number(book.id)
       if (
         !Number.isFinite(calibreId) ||
@@ -87,14 +87,19 @@ export function useBookActions(
         return
 
       try {
+        const formatMeta = formatMetaById.get(book.id)
+        const readableFormats =
+          formatMeta?.readableFormats ?? book.readableFormats ?? []
         const paths = await getBookFormatPaths(lib, calibreId)
-        const readableFormats = getReadableFormats(
-          paths.map((path) => path.format),
-        )
         const normalizedTarget = targetFormat?.toUpperCase()
         const format = normalizedTarget
           ? readableFormats.find((item) => item === normalizedTarget)
-          : resolveEffectiveFormat(readableFormats, formatById[book.id])
+          : (formatMeta?.effectiveFormat ??
+            resolveEffectiveFormat(
+              readableFormats,
+              formatById[book.id],
+              book.preferredFormat,
+            ))
         if (!format) {
           showAlertWithStatusBarRestore(
             i18n.t("sync.cannotDownload"),
@@ -121,16 +126,18 @@ export function useBookActions(
   )
 
   const promptSetDefaultFormat = useCallback(async (book: BookItem) => {
-    const { selectedLibrary: lib, selectedFormatById: formatById } =
-      stateRef.current
+    const {
+      selectedLibrary: lib,
+      selectedFormatById: formatById,
+      bookFormatMetaById: formatMetaById,
+    } = stateRef.current
     const calibreId = Number(book.id)
     if (!Number.isFinite(calibreId) || calibreId <= 0 || !lib) return
 
     try {
-      const paths = await getBookFormatPaths(lib, calibreId)
-      const readableFormats = getReadableFormats(
-        paths.map((path) => path.format),
-      )
+      const formatMeta = formatMetaById.get(book.id)
+      const readableFormats =
+        formatMeta?.readableFormats ?? book.readableFormats ?? []
 
       if (readableFormats.length === 0) {
         showAlertWithStatusBarRestore(
@@ -151,7 +158,9 @@ export function useBookActions(
       }
 
       const current = formatById[book.id]
-      const effectiveFormat = resolveEffectiveFormat(readableFormats, current)
+      const effectiveFormat =
+        formatMeta?.effectiveFormat ??
+        resolveEffectiveFormat(readableFormats, current, book.preferredFormat)
       showAlertWithStatusBarRestore(
         i18n.t("sync.setDefaultFormat"),
         i18n.t("sync.currentDefault", { format: effectiveFormat }),
@@ -301,14 +310,15 @@ export function useBookActions(
               )
             } else {
               const paths = await getBookFormatPaths(lib, calibreId)
-              const readableFormats = getReadableFormats(
-                paths.map((path) => path.format),
-              )
+              const formatMeta = latest.bookFormatMetaById.get(book.id)
+              const readableFormats =
+                formatMeta?.readableFormats ?? book.readableFormats ?? []
               const defaultFormat = resolveEffectiveFormat(
                 readableFormats,
                 latest.selectedFormatById[book.id],
+                book.preferredFormat,
               )
-              const pick = defaultFormat ?? readableFormats[0]
+              const pick = formatMeta?.effectiveFormat ?? defaultFormat
               if (pick) {
                 resolved = await resolveShareableFormat(lib, calibreId, pick)
               }

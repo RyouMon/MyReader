@@ -35,6 +35,8 @@ describe("core catalog adapter", () => {
       authors: ["Ursula K. Le Guin"],
       tags: [],
       formats: ["EPUB"],
+      readableFormats: ["EPUB"],
+      preferredFormat: "EPUB",
       hasCover: true,
       path: "Ursula K. Le Guin/The Left Hand of Darkness",
       languages: [],
@@ -75,6 +77,8 @@ describe("core catalog adapter", () => {
         path: "Ursula K. Le Guin/The Left Hand of Darkness",
         hasCover: true,
         formats: ["EPUB"],
+        readableFormats: ["EPUB"],
+        preferredFormat: "EPUB",
         formatPaths: [
           "Ursula K. Le Guin/The Left Hand of Darkness/The Left Hand of Darkness.epub",
         ],

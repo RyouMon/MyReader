@@ -232,7 +232,11 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
           void WebviewWindow.getCurrent().setTitle(detail.title)
         }
 
-        fmt = resolveReadFormat(detail.formats, formatFromSearch)
+        fmt = resolveReadFormat(
+          detail.readableFormats,
+          detail.preferredFormat,
+          formatFromSearch,
+        )
         if (!fmt) {
           setFetchError(t("reader.noReadableFormat"))
           return

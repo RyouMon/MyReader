@@ -4,7 +4,7 @@ use std::path::Path;
 use crate::database;
 use crate::models::{
     BookCoverThumbnailCache, BookCoverThumbnailCachePatch, DownloadedFile, FileState,
-    FileStateUpdate,
+    FileStateUpdate, ReadingFormatPolicy,
 };
 use crate::repositories::calibre::CalibreBookRepository;
 use crate::repositories::content::ContentRepository;
@@ -25,7 +25,12 @@ impl ContentService {
             .await?;
         let formats_by_book = books
             .into_iter()
-            .map(|book| (book.id, readable_formats(&book.formats)))
+            .map(|book| {
+                (
+                    book.id,
+                    ReadingFormatPolicy::from_formats(&book.formats).readable_formats,
+                )
+            })
             .collect::<BTreeMap<_, _>>();
 
         Ok(rows
@@ -58,7 +63,7 @@ impl ContentService {
             .into_iter()
             .find(|book| book.id == book_id)
             .ok_or_else(|| CoreError::NotFound(format!("BOOK_NOT_FOUND: {book_id}")))?;
-        let readable = readable_formats(&book.formats);
+        let readable = ReadingFormatPolicy::from_formats(&book.formats).readable_formats;
         if readable.len() <= 1 {
             return repository.clear_reading_format(book_id).await;
         }
@@ -222,17 +227,6 @@ impl ContentService {
             .clear_cover_thumbnail_cache()
             .await
     }
-}
-
-fn readable_formats(formats: &[String]) -> Vec<String> {
-    let mut result = formats
-        .iter()
-        .map(|format| format.to_uppercase())
-        .filter(|format| matches!(format.as_str(), "EPUB" | "CBZ" | "PDF"))
-        .collect::<Vec<_>>();
-    result.sort();
-    result.dedup();
-    result
 }
 
 #[cfg(test)]

@@ -73,6 +73,8 @@ export function mapListRowsToBookItems(
         row.authors[0] || row.authorSort || i18n.t("common.unknownAuthor"),
       authors: row.authors,
       formats: row.formats,
+      readableFormats: row.readableFormats,
+      preferredFormat: row.preferredFormat,
       path: row.path || undefined,
       hasCover,
       timestamp: row.timestamp,
@@ -255,10 +257,7 @@ export async function getAllBookFormats(
     listCalibreBookSummaries(calibreRootUri),
   )
   return Object.fromEntries(
-    books.map((book) => [
-      String(book.id),
-      book.formats.map((format) => format.toUpperCase()),
-    ]),
+    books.map((book) => [String(book.id), book.readableFormats]),
   )
 }
 

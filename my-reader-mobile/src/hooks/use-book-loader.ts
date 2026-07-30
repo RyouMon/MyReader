@@ -249,7 +249,11 @@ export function useBookLoader(
         }
         setBookTitle(detail.title)
 
-        const fmt = resolveReadFormat(detail.formats, formatParam)
+        const fmt = resolveReadFormat(
+          detail.readableFormats,
+          detail.preferredFormat,
+          formatParam,
+        )
         if (!fmt) {
           setLoadState({
             status: "error",

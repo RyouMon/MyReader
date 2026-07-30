@@ -18,6 +18,7 @@ export type BookDownloadSnapshot = {
 
 export type BookDownloadStateOptions = {
   fileStateSource?: "query" | "prefetched"
+  preferredFormat?: string | null
 }
 
 export function useBookDownloadState(
@@ -29,8 +30,13 @@ export function useBookDownloadState(
 ): BookDownloadSnapshot | null {
   const queryClient = useQueryClient()
   const format = useMemo(
-    () => resolveReadFormat(formats, selectedFormat),
-    [formats, selectedFormat],
+    () =>
+      resolveReadFormat(
+        formats,
+        options.preferredFormat ?? formats[0],
+        selectedFormat,
+      ),
+    [formats, options.preferredFormat, selectedFormat],
   )
   const fmt = format?.toUpperCase() ?? null
   const queryFileState = options.fileStateSource !== "prefetched"

@@ -55,6 +55,18 @@ const baseBook: BookItem = {
   path: "Author/Test Book",
 }
 
+function makeBookWithFormatPolicy(
+  readableFormats: string[],
+  formats = readableFormats,
+): BookItem {
+  return {
+    ...baseBook,
+    formats,
+    readableFormats,
+    preferredFormat: readableFormats[0] ?? null,
+  }
+}
+
 const fileStateRows = [
   { path: "Author/Test Book/Test Book.epub", localState: "present" },
   { path: "Author/Test Book/Test Book.pdf", localState: "present" },
@@ -94,7 +106,7 @@ describe("useLibraryBookMeta", () => {
   })
 
   it("should treat local library books as downloaded and use embedded formats when resolving library book metadata", async () => {
-    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }]
+    const books = [makeBookWithFormatPolicy(["EPUB", "PDF"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(localLibrary, books, {}),
       { wrapper },
@@ -134,7 +146,7 @@ describe("useLibraryBookMeta", () => {
   })
 
   it("should use selected format when it exists in readable formats", async () => {
-    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }]
+    const books = [makeBookWithFormatPolicy(["EPUB", "PDF"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(localLibrary, books, { "1": "pdf" }),
       { wrapper },
@@ -151,7 +163,7 @@ describe("useLibraryBookMeta", () => {
   })
 
   it("should ignore selected format when it is not readable", async () => {
-    const books = [{ ...baseBook, formats: ["EPUB"] }]
+    const books = [makeBookWithFormatPolicy(["EPUB"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(localLibrary, books, { "1": "pdf" }),
       { wrapper },
@@ -173,7 +185,7 @@ describe("useLibraryBookMeta", () => {
       isLoading: false,
     } as unknown as ReturnType<typeof useFileStates>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }]
+    const books = [makeBookWithFormatPolicy(["EPUB"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
@@ -194,7 +206,7 @@ describe("useLibraryBookMeta", () => {
       isLoading: false,
     } as unknown as ReturnType<typeof useFileStates>)
 
-    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }]
+    const books = [makeBookWithFormatPolicy(["EPUB", "PDF"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, { "1": "epub" }),
       { wrapper },
@@ -221,7 +233,7 @@ describe("useLibraryBookMeta", () => {
       isLoading: false,
     } as unknown as ReturnType<typeof useFileStates>)
 
-    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }]
+    const books = [makeBookWithFormatPolicy(["EPUB", "PDF"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, { "1": "pdf" }),
       { wrapper },
@@ -244,7 +256,7 @@ describe("useLibraryBookMeta", () => {
       isLoading: false,
     } as unknown as ReturnType<typeof useFileStates>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }]
+    const books = [makeBookWithFormatPolicy(["EPUB"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
@@ -267,7 +279,7 @@ describe("useLibraryBookMeta", () => {
       isLoading: false,
     } as unknown as ReturnType<typeof useFileStates>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }]
+    const books = [makeBookWithFormatPolicy(["EPUB"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
@@ -287,7 +299,7 @@ describe("useLibraryBookMeta", () => {
       ...remoteLibrary,
       dataSourceId: undefined,
     }
-    const books = [{ ...baseBook, formats: ["EPUB"] }]
+    const books = [makeBookWithFormatPolicy(["EPUB"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(libraryWithoutDataSource, books, {}),
       { wrapper },
@@ -314,7 +326,7 @@ describe("useLibraryBookMeta", () => {
       },
     ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }]
+    const books = [makeBookWithFormatPolicy(["EPUB", "PDF"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, { "1": "epub" }),
       { wrapper },
@@ -342,7 +354,7 @@ describe("useLibraryBookMeta", () => {
       },
     ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }]
+    const books = [makeBookWithFormatPolicy(["EPUB"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
@@ -369,7 +381,7 @@ describe("useLibraryBookMeta", () => {
       },
     ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }]
+    const books = [makeBookWithFormatPolicy(["EPUB"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
@@ -394,7 +406,7 @@ describe("useLibraryBookMeta", () => {
       },
     ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }]
+    const books = [makeBookWithFormatPolicy(["EPUB"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
@@ -427,7 +439,7 @@ describe("useLibraryBookMeta", () => {
       },
     ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }]
+    const books = [makeBookWithFormatPolicy(["EPUB"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
@@ -452,7 +464,7 @@ describe("useLibraryBookMeta", () => {
       },
     ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }]
+    const books = [makeBookWithFormatPolicy(["EPUB"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
@@ -485,7 +497,7 @@ describe("useLibraryBookMeta", () => {
       },
     ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }]
+    const books = [makeBookWithFormatPolicy(["EPUB", "PDF"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, { "1": "epub" }),
       { wrapper },
@@ -518,7 +530,7 @@ describe("useLibraryBookMeta", () => {
       },
     ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }]
+    const books = [makeBookWithFormatPolicy(["EPUB", "PDF"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
@@ -551,7 +563,7 @@ describe("useLibraryBookMeta", () => {
       },
     ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }]
+    const books = [makeBookWithFormatPolicy(["EPUB"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
@@ -584,7 +596,7 @@ describe("useLibraryBookMeta", () => {
       },
     ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }]
+    const books = [makeBookWithFormatPolicy(["EPUB", "PDF"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, { "1": "epub" }),
       { wrapper },
@@ -605,7 +617,7 @@ describe("useLibraryBookMeta", () => {
       isLoading: false,
     } as unknown as ReturnType<typeof useFileStates>)
 
-    const books = [{ ...baseBook, formats: ["mobi"] }]
+    const books = [makeBookWithFormatPolicy([], ["MOBI"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
@@ -638,7 +650,7 @@ describe("useLibraryBookMeta", () => {
       },
     ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }]
+    const books = [makeBookWithFormatPolicy(["EPUB"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
@@ -665,7 +677,7 @@ describe("useLibraryBookMeta", () => {
       },
     ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }]
+    const books = [makeBookWithFormatPolicy(["EPUB"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
@@ -690,7 +702,7 @@ describe("useLibraryBookMeta", () => {
       },
     ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }]
+    const books = [makeBookWithFormatPolicy(["EPUB"])]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },

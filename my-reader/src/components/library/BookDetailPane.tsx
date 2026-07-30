@@ -78,7 +78,6 @@ import {
 } from "@/lib/coverFailureCache"
 import { removeCachedCoverObjectUrl } from "@/lib/coverObjectUrlCache"
 import { openReaderInNewWindow } from "@/lib/readerWindow"
-import { getReadableFormats, pickReadableFormat } from "@/lib/readFormats"
 import {
   getBookProgressSnapshot,
   getProgressDisplay,
@@ -437,12 +436,12 @@ export default function BookDetailPane({
     [navigate, book?.title],
   )
 
-  const readableFormats = book ? getReadableFormats(book.formats) : []
+  const readableFormats = book?.readableFormats ?? []
   const canReadInApp = readableFormats.length > 0
   const activeSelectedFormat = book
     ? (selectedFormat ??
       selectedFormatById[String(book.id)] ??
-      pickReadableFormat(book.formats))
+      book.preferredFormat)
     : null
   const currentProgress = book
     ? getBookProgressSnapshot(progressByBookId, book.id, activeSelectedFormat)

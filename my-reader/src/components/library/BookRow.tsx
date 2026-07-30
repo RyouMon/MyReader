@@ -50,9 +50,9 @@ const BookRow = memo(function BookRow({
   const downloadState = useBookDownloadState(
     libraryId,
     book.id,
-    book.formats,
+    book.readableFormats,
     selectedFormat,
-    { fileStateSource },
+    { fileStateSource, preferredFormat: book.preferredFormat },
   )
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {

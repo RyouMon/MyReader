@@ -12,6 +12,8 @@ export interface CalibreBook {
   series: string | null
   seriesIndex: number | null
   formats: string[]
+  readableFormats: string[]
+  preferredFormat: string | null
   hasCover: boolean
   path: string
   timestamp: string | null
@@ -34,6 +36,8 @@ export interface BookDetail {
   series: string | null
   seriesIndex: number | null
   formats: string[]
+  readableFormats: string[]
+  preferredFormat: string | null
   hasCover: boolean
   path: string
   timestamp: string | null

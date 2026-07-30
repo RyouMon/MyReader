@@ -1,11 +1,4 @@
-const readableFormatSet = new Set(["EPUB", "PDF", "CBZ"])
-
-export function getReadableFormats(formats?: string[]): string[] {
-  return (formats ?? [])
-    .map((format) => format.toUpperCase())
-    .filter((format) => readableFormatSet.has(format))
-    .sort((left, right) => left.localeCompare(right, "en"))
-}
+import { resolveReadFormat } from "@my-reader/tools/utils"
 
 export function getFormatFromPath(path: string): string | undefined {
   const match = path.match(/\.([A-Za-z0-9]+)$/)
@@ -15,12 +8,15 @@ export function getFormatFromPath(path: string): string | undefined {
 export function resolveEffectiveFormat(
   readableFormats: string[],
   selectedFormat?: string,
+  preferredFormat?: string | null,
 ): string | undefined {
-  const normalizedSelected = selectedFormat?.toUpperCase()
-  if (normalizedSelected && readableFormats.includes(normalizedSelected)) {
-    return normalizedSelected
-  }
-  return readableFormats[0]
+  return (
+    resolveReadFormat(
+      readableFormats,
+      preferredFormat ?? readableFormats[0],
+      selectedFormat,
+    ) ?? undefined
+  )
 }
 
 export function pathBelongsToBook(

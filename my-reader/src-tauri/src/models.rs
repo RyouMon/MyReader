@@ -381,6 +381,8 @@ pub struct BookEntry {
     pub series: Option<String>,
     pub series_index: Option<f64>,
     pub formats: Vec<String>,
+    pub readable_formats: Vec<String>,
+    pub preferred_format: Option<String>,
     pub has_cover: bool,
     pub path: String,
     pub timestamp: Option<String>,
@@ -419,6 +421,7 @@ pub struct BookIdentifier {
 
 impl From<my_reader_core::models::BookEntry> for BookEntry {
     fn from(value: my_reader_core::models::BookEntry) -> Self {
+        let policy = my_reader_core::models::ReadingFormatPolicy::from_formats(&value.formats);
         Self {
             id: value.id,
             title: value.title,
@@ -428,6 +431,8 @@ impl From<my_reader_core::models::BookEntry> for BookEntry {
             series: value.series,
             series_index: value.series_index,
             formats: value.formats,
+            readable_formats: policy.readable_formats,
+            preferred_format: policy.preferred_format,
             has_cover: value.has_cover,
             path: value.path,
             timestamp: value.timestamp,

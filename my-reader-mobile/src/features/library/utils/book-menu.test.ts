@@ -29,7 +29,7 @@ describe("buildBookMenuActions", () => {
   it("should share single format directly when only one readable format exists", () => {
     const actions = buildBookMenuActions("downloaded", {
       isRemote: false,
-      formats: ["epub"],
+      formats: ["EPUB"],
     })
 
     const share = actions.find((a) => a.id === "share:EPUB")
@@ -40,7 +40,7 @@ describe("buildBookMenuActions", () => {
   it("should use submenu when multiple formats are available", () => {
     const actions = buildBookMenuActions("downloaded", {
       isRemote: false,
-      formats: ["pdf", "epub"],
+      formats: ["EPUB", "PDF"],
     })
 
     const share = actions.find((a) => a.id === "share")
@@ -52,23 +52,10 @@ describe("buildBookMenuActions", () => {
     ])
   })
 
-  it("should filter out non-readable formats from share when building book menu actions", () => {
-    const actions = buildBookMenuActions("downloaded", {
-      isRemote: false,
-      formats: ["epub", "mobi", "pdf"],
-    })
-
-    const share = actions.find((a) => a.id === "share")
-    expect(share?.subactions?.map((a) => a.id)).toEqual([
-      "share:EPUB",
-      "share:PDF",
-    ])
-  })
-
   it("should offer cancel download when remote book is downloading", () => {
     const actions = buildBookMenuActions("downloading", {
       isRemote: true,
-      formats: ["epub"],
+      formats: ["EPUB"],
     })
 
     expect(actions.map((a) => a.id)).toEqual([
@@ -82,7 +69,7 @@ describe("buildBookMenuActions", () => {
   it("should offer single-format download when remote book is not downloaded", () => {
     const actions = buildBookMenuActions("notDownloaded", {
       isRemote: true,
-      formats: ["epub"],
+      formats: ["EPUB"],
     })
 
     expect(actions.map((a) => a.id)).toEqual([
@@ -96,7 +83,7 @@ describe("buildBookMenuActions", () => {
   it("should offer download submenu when remote book is not downloaded and multiple formats exist", () => {
     const actions = buildBookMenuActions("notDownloaded", {
       isRemote: true,
-      formats: ["pdf", "epub"],
+      formats: ["EPUB", "PDF"],
     })
 
     const download = actions.find((a) => a.id === "download")
@@ -110,7 +97,7 @@ describe("buildBookMenuActions", () => {
   it("should not offer download actions when remote book is already downloaded", () => {
     const actions = buildBookMenuActions("downloaded", {
       isRemote: true,
-      formats: ["epub"],
+      formats: ["EPUB"],
     })
 
     expect(actions.map((a) => a.id)).toEqual([
@@ -124,7 +111,7 @@ describe("buildBookMenuActions", () => {
   it("should offer no download actions when remote book is not downloaded and has no readable formats", () => {
     const actions = buildBookMenuActions("notDownloaded", {
       isRemote: true,
-      formats: ["mobi"],
+      formats: [],
     })
 
     expect(actions.map((a) => a.id)).toEqual(["detail", "favorite", "share"])
@@ -133,7 +120,7 @@ describe("buildBookMenuActions", () => {
   it("should not offer remote-only actions for local library when building book menu actions", () => {
     const actions = buildBookMenuActions("notDownloaded", {
       isRemote: false,
-      formats: ["epub"],
+      formats: ["EPUB"],
     })
 
     expect(actions.map((a) => a.id)).toEqual([
@@ -146,8 +133,8 @@ describe("buildBookMenuActions", () => {
   it("should offer default format submenu when multiple formats exist", () => {
     const actions = buildBookMenuActions("downloaded", {
       isRemote: false,
-      formats: ["pdf", "epub"],
-      selectedFormat: "epub",
+      formats: ["EPUB", "PDF"],
+      selectedFormat: "EPUB",
     })
 
     const setDefault = actions.find((a) => a.id === "setDefaultFormat")
@@ -159,7 +146,7 @@ describe("buildBookMenuActions", () => {
   it("should not offer default format submenu when only one format exists", () => {
     const actions = buildBookMenuActions("downloaded", {
       isRemote: false,
-      formats: ["epub"],
+      formats: ["EPUB"],
     })
 
     expect(actions.find((a) => a.id === "setDefaultFormat")).toBeUndefined()
@@ -168,13 +155,13 @@ describe("buildBookMenuActions", () => {
   it("should mark selected format in default format submenu when building book menu actions", () => {
     const actions = buildBookMenuActions("downloaded", {
       isRemote: false,
-      formats: ["pdf", "epub", "cbz"],
-      selectedFormat: "pdf",
+      formats: ["EPUB", "CBZ", "PDF"],
+      selectedFormat: "PDF",
     })
 
     const setDefault = actions.find((a) => a.id === "setDefaultFormat")!
-    expect(setDefault.subactions?.[0]?.title).toBe("CBZ")
-    expect(setDefault.subactions?.[1]?.title).toBe("EPUB")
+    expect(setDefault.subactions?.[0]?.title).toBe("EPUB")
+    expect(setDefault.subactions?.[1]?.title).toBe("CBZ")
     expect(setDefault.subactions?.[2]?.title).toBe("✓ PDF")
   })
 })

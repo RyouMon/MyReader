@@ -42,6 +42,8 @@ function makeBook(): CalibreBook {
     series: null,
     seriesIndex: null,
     formats: ["EPUB"],
+    readableFormats: ["EPUB"],
+    preferredFormat: "EPUB",
     hasCover: false,
     path: "Night Bookstore/Night Bookstore.epub",
     timestamp: null,

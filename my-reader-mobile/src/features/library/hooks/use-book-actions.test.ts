@@ -8,7 +8,6 @@ import {
   enqueue as enqueueDownload,
   useDownloadStatusTasks,
 } from "@/src/domain/download/download-store"
-import * as bookFormats from "@/src/domain/library/book-formats"
 import { getBookFormatPaths } from "@/src/domain/library/calibre"
 import {
   resolveShareableFormat,
@@ -95,14 +94,6 @@ function buildFileStateBundle(
 describe("useBookActions", () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    jest
-      .spyOn(bookFormats, "getReadableFormats")
-      .mockImplementation((formats?: string[]) =>
-        (formats ?? [])
-          .map((f) => f.toUpperCase())
-          .filter((f) => ["EPUB", "PDF", "CBZ"].includes(f))
-          .sort(),
-      )
     jest.mocked(useDownloadStatusTasks).mockReturnValue([])
   })
 
@@ -396,7 +387,6 @@ describe("useBookActions", () => {
     })
 
     it("should do nothing when matching path is missing for selected format", async () => {
-      jest.mocked(bookFormats.getReadableFormats).mockReturnValue(["EPUB"])
       jest
         .mocked(getBookFormatPaths)
         .mockResolvedValue([
@@ -568,87 +558,6 @@ describe("useBookActions", () => {
       result.current.handleBookMenuAction("1", "cancelDownload")
       expect(cancelDownload).toHaveBeenCalledWith("task-1")
       expect(cancelDownload).not.toHaveBeenCalledWith("task-2")
-    })
-
-    it("should show alert when reading format paths fails", async () => {
-      jest.mocked(getBookFormatPaths).mockRejectedValue(new Error("Disk error"))
-
-      const { result } = renderHook(() =>
-        useBookActions(
-          [baseBook],
-          {},
-          buildMetaMap(["EPUB", "PDF"], "EPUB"),
-          buildFileStateBundle(),
-          null,
-          {},
-          localLibrary,
-          jest.fn(),
-        ),
-      )
-
-      result.current.handleBookMenuAction("1", "setDefaultFormat")
-      await new Promise((resolve) => setTimeout(resolve, 50))
-
-      expect(showAlertWithStatusBarRestore).toHaveBeenCalledWith(
-        expect.any(String),
-        "Disk error",
-      )
-    })
-
-    it("should show alert when reading format paths fails with non-error value", async () => {
-      jest.mocked(getBookFormatPaths).mockRejectedValue("Disk error")
-
-      const { result } = renderHook(() =>
-        useBookActions(
-          [baseBook],
-          {},
-          buildMetaMap(["EPUB", "PDF"], "EPUB"),
-          buildFileStateBundle(),
-          null,
-          {},
-          localLibrary,
-          jest.fn(),
-        ),
-      )
-
-      result.current.handleBookMenuAction("1", "setDefaultFormat")
-      await new Promise((resolve) => setTimeout(resolve, 50))
-
-      expect(showAlertWithStatusBarRestore).toHaveBeenCalledWith(
-        expect.any(String),
-        "Disk error",
-      )
-    })
-
-    it("should do nothing when single readable format resolves to undefined", async () => {
-      jest
-        .mocked(bookFormats.getReadableFormats)
-        .mockReturnValue(new Array(1) as string[])
-      jest
-        .mocked(getBookFormatPaths)
-        .mockResolvedValue([
-          { format: "EPUB", relativePath: "Author/Test Book/Test Book.epub" },
-        ])
-
-      const setFormat = jest.fn()
-      const { result } = renderHook(() =>
-        useBookActions(
-          [baseBook],
-          {},
-          buildMetaMap(["EPUB"], "EPUB"),
-          buildFileStateBundle(),
-          null,
-          {},
-          localLibrary,
-          setFormat,
-        ),
-      )
-
-      result.current.handleBookMenuAction("1", "setDefaultFormat")
-      await new Promise((resolve) => setTimeout(resolve, 50))
-
-      expect(setFormat).not.toHaveBeenCalled()
-      expect(showAlertWithStatusBarRestore).not.toHaveBeenCalled()
     })
 
     it("should do nothing when setting default format for invalid book id", async () => {

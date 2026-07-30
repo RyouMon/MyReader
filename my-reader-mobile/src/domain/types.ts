@@ -12,6 +12,8 @@ export type BookItem = {
   author: string
   authors?: string[]
   formats?: string[]
+  readableFormats?: string[]
+  preferredFormat?: string | null
   coverUri?: BookCoverUri
   progress?: number
   path?: string

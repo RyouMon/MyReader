@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import Feather from "@expo/vector-icons/Feather"
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
-import { pickReadableFormat } from "@my-reader/tools/utils"
 import { router, Stack, useLocalSearchParams } from "expo-router"
 import { useHeaderHeight } from "expo-router/react-navigation"
 import { useTranslation } from "react-i18next"
@@ -391,9 +390,8 @@ export default function BookDetailScreen() {
 
   const selectedFormat = currentId
     ? (selectedFormatById[currentId] ??
-      (currentEntry?.detail
-        ? pickReadableFormat(currentEntry.detail.formats)
-        : null))
+      currentEntry?.detail?.preferredFormat ??
+      null)
     : null
 
   if (!currentId) {

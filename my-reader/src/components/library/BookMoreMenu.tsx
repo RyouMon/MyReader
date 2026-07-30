@@ -43,7 +43,7 @@ import {
   useBookDownloadState,
 } from "@/hooks/queries/useBookDownloadState"
 import { useSetBookReadingFormat } from "@/hooks/queries/useBookReadingFormatsQuery"
-import { getReadableFormats, resolveReadFormat } from "@/lib/readFormats"
+import { resolveReadFormat } from "@/lib/readFormats"
 import { api } from "@/lib/tauri-api"
 import { cn } from "@/lib/utils"
 
@@ -76,6 +76,8 @@ interface BookMoreMenuProps {
     id: number
     title: string
     formats: string[]
+    readableFormats: string[]
+    preferredFormat: string | null
   }
   libraryId: string | null
   fileActionsEnabled?: boolean
@@ -294,8 +296,12 @@ function BookMoreMenuItems({
 }) {
   const { t } = useTranslation()
   const Item = parts.Item
-  const readableFormats = getReadableFormats(book.formats)
-  const activeFormat = resolveReadFormat(book.formats, selectedFormat)
+  const readableFormats = book.readableFormats
+  const activeFormat = resolveReadFormat(
+    book.readableFormats,
+    book.preferredFormat,
+    selectedFormat,
+  )
   const sortedFormats = activeFormat
     ? [
         ...readableFormats.filter((format) => format === activeFormat),
