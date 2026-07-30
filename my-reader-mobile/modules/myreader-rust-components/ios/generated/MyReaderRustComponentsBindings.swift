@@ -1192,6 +1192,15 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
         return seq
     }
 }
+public func addRemoteLibrary(registryPath: String, requestJson: String, credentialJson: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_add_remote_library(
+        FfiConverterString.lower(registryPath),
+        FfiConverterString.lower(requestJson),
+        FfiConverterString.lower(credentialJson),$0
+    )
+})
+}
 public func advanceSyncScheduler(stateJson: String?, policyJson: String, eventJson: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_advance_sync_scheduler(
@@ -1244,6 +1253,24 @@ public func hasSyncDatabasePendingWork(databasePath: String)throws  -> Bool  {
     )
 })
 }
+public func initializeDeviceRegistry(registryPath: String, legacyRegistryJson: String?)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_initialize_device_registry(
+        FfiConverterString.lower(registryPath),
+        FfiConverterOptionString.lower(legacyRegistryJson),$0
+    )
+})
+}
+public func listRemoteDirectories(registryPath: String, dataSourceId: String, path: String, credentialJson: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_list_remote_directories(
+        FfiConverterString.lower(registryPath),
+        FfiConverterString.lower(dataSourceId),
+        FfiConverterString.lower(path),
+        FfiConverterString.lower(credentialJson),$0
+    )
+})
+}
 public func markSyncDatabaseScheduleSucceeded(databasePath: String, completedPullAt: Int64?)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_mark_sync_database_schedule_succeeded(
         FfiConverterString.lower(databasePath),
@@ -1278,10 +1305,60 @@ public func readSyncTaskProgress(taskId: String) -> SyncTaskProgress?  {
     )
 })
 }
+public func refreshRemoteLibrary(registryPath: String, libraryId: String, localRootPath: String, credentialJson: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_refresh_remote_library(
+        FfiConverterString.lower(registryPath),
+        FfiConverterString.lower(libraryId),
+        FfiConverterString.lower(localRootPath),
+        FfiConverterString.lower(credentialJson),$0
+    )
+})
+}
+public func registerDeviceLibrary(registryPath: String, libraryJson: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_register_device_library(
+        FfiConverterString.lower(registryPath),
+        FfiConverterString.lower(libraryJson),$0
+    )
+})
+}
 public func releaseSyncTask(taskId: String) -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
     uniffi_myreader_rust_components_fn_func_release_sync_task(
         FfiConverterString.lower(taskId),$0
+    )
+})
+}
+public func removeDeviceDataSource(registryPath: String, dataSourceId: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_remove_device_data_source(
+        FfiConverterString.lower(registryPath),
+        FfiConverterString.lower(dataSourceId),$0
+    )
+})
+}
+public func removeDeviceLibrary(registryPath: String, libraryId: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_remove_device_library(
+        FfiConverterString.lower(registryPath),
+        FfiConverterString.lower(libraryId),$0
+    )
+})
+}
+public func replaceDeviceLibrary(registryPath: String, libraryJson: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_replace_device_library(
+        FfiConverterString.lower(registryPath),
+        FfiConverterString.lower(libraryJson),$0
+    )
+})
+}
+public func switchDeviceLibrary(registryPath: String, libraryId: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_switch_device_library(
+        FfiConverterString.lower(registryPath),
+        FfiConverterString.lower(libraryId),$0
     )
 })
 }
@@ -1303,6 +1380,28 @@ public func syncLibrarySidecar(taskId: String, databasePath: String, libraryUuid
         FfiConverterString.lower(storageJson),$0
     )
 })
+}
+public func testRemoteDataSource(sourceJson: String, credentialJson: String)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_test_remote_data_source(
+        FfiConverterString.lower(sourceJson),
+        FfiConverterString.lower(credentialJson),$0
+    )
+}
+}
+public func upsertDeviceDataSource(registryPath: String, sourceJson: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_upsert_device_data_source(
+        FfiConverterString.lower(registryPath),
+        FfiConverterString.lower(sourceJson),$0
+    )
+})
+}
+public func validateDeviceDataSource(registryPath: String, sourceJson: String)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_validate_device_data_source(
+        FfiConverterString.lower(registryPath),
+        FfiConverterString.lower(sourceJson),$0
+    )
+}
 }
 public func writeSyncDatabaseScheduleState(databasePath: String, state: SyncDatabaseScheduleState)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_write_sync_database_schedule_state(
@@ -1327,6 +1426,9 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_add_remote_library() != 56260) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_advance_sync_scheduler() != 4510) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1345,6 +1447,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_has_sync_database_pending_work() != 63542) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_initialize_device_registry() != 45379) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_list_remote_directories() != 26595) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_mark_sync_database_schedule_succeeded() != 64229) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1360,13 +1468,40 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_read_sync_task_progress() != 25370) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_refresh_remote_library() != 14599) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_register_device_library() != 18070) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_release_sync_task() != 18555) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_remove_device_data_source() != 44552) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_remove_device_library() != 28527) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_replace_device_library() != 2175) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_switch_device_library() != 62391) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_sync_contract_version() != 20300) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_sync_library_sidecar() != 43777) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_test_remote_data_source() != 36092) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_upsert_device_data_source() != 13321) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_validate_device_data_source() != 3261) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_write_sync_database_schedule_state() != 6095) {

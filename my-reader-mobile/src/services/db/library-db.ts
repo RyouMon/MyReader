@@ -5,7 +5,7 @@ import * as schema from "@my-reader/db/schema"
 
 import MyReaderRustComponents from "@/modules/myreader-rust-components"
 import type { Library } from "@my-reader/tools/types/library"
-import { fileUriFor } from "../fs/path"
+import { fileUriFor, toNativeFilesystemPath } from "../fs/path"
 import {
   librarySidecarRootUri,
   LIBRARY_MYREADER_DIR,
@@ -37,13 +37,6 @@ function libraryDbUri(library: Library): string {
   return fileUriFor(rootUri, SIDECAR_RELATIVE_PATH)
 }
 
-function uriToNativePath(uri: string): string {
-  if (uri.startsWith("file://")) {
-    return decodeURIComponent(uri.slice(7))
-  }
-  return decodeURIComponent(uri)
-}
-
 /**
  * Returns a process-wide handle to the library-wide database.
  * Path: {libraryRoot}/.myreader/myreader.db
@@ -68,7 +61,7 @@ export async function getLibraryDatabase(
     let raw: DB | undefined
 
     try {
-      const nativePath = uriToNativePath(dbUri)
+      const nativePath = toNativeFilesystemPath(dbUri)
       const lastSlash = nativePath.lastIndexOf("/")
       const location = lastSlash > 0 ? nativePath.slice(0, lastSlash) : "."
       const name = lastSlash >= 0 ? nativePath.slice(lastSlash + 1) : nativePath

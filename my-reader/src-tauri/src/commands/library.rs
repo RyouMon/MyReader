@@ -226,7 +226,10 @@ pub fn switch_library<R: tauri::Runtime>(
 ) -> Result<(), AppError> {
     info!("Start to switch active library. id: \"{id}\"");
     let result = (|| {
-        common::with_config_mut(&state, |config| LibraryService::switch_library(&id, config))?;
+        let app_data_dir = common::app_data_dir(&app)?;
+        common::with_config_mut(&state, |config| {
+            LibraryService::switch_library(&app_data_dir, &id, config)
+        })?;
         let snapshot = common::config_snapshot(&state);
         common::persist_config(&app, &snapshot)
     })();

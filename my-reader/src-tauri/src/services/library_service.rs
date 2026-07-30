@@ -7,8 +7,7 @@ use crate::cache;
 use crate::error::AppError;
 use crate::models::{AppConfig, LibraryConfig, LibraryInfo};
 use crate::repositories::calibre_repo::{BookRepository, CalibreBookRepository};
-use crate::utils::io::download_metadata_db;
-use crate::utils::paths::{library_container_dir, library_metadata_db_path, library_root_path};
+use crate::utils::paths::{library_container_dir, library_root_path};
 use myreader_core::database;
 
 pub struct LibraryService;
@@ -40,6 +39,7 @@ impl LibraryService {
         name: Option<&str>,
         config: &mut AppConfig,
     ) -> Result<LibraryInfo, AppError> {
+        ensure_registry(app_data_dir, config)?;
         let canon_path = dunce::canonicalize(path)
             .map_err(|e| AppError::Config(format!("INVALID_LIBRARY_PATH: {e}")))?;
         let canon_str = canon_path.to_string_lossy().to_string();
@@ -59,11 +59,20 @@ impl LibraryService {
                 .to_string()
         });
 
-        if config.libraries.iter().any(|l| l.path == canon_str) {
-            return Err(AppError::Config("LIBRARY_ALREADY_EXISTS".into()));
-        }
-
         let id = uuid::Uuid::new_v4().to_string();
+        let candidate = LibraryInfo {
+            id: id.clone(),
+            name: lib_name.clone(),
+            path: canon_str.clone(),
+            book_count: 0,
+            source_type: Some("local".into()),
+            data_source_id: None,
+            source_path: None,
+        };
+        myreader_core::api::registry::ensure_library_can_register(
+            &crate::config::device_registry_path(app_data_dir),
+            &core_library(&candidate),
+        )?;
 
         // Sidecar lives in the app container for all library types.
         let sidecar_root = library_container_dir(app_data_dir, &id);
@@ -75,19 +84,7 @@ impl LibraryService {
             Err(_) => 0,
         };
 
-        config.libraries.push(LibraryConfig {
-            id: id.clone(),
-            name: lib_name.clone(),
-            path: canon_str.clone(),
-            source_type: Some("local".into()),
-            data_source_id: None,
-            source_path: None,
-        });
-        if config.active_library_id.is_none() {
-            config.active_library_id = Some(id.clone());
-        }
-
-        Ok(LibraryInfo {
+        let info = LibraryInfo {
             id,
             name: lib_name,
             path: canon_str,
@@ -95,7 +92,9 @@ impl LibraryService {
             source_type: Some("local".into()),
             data_source_id: None,
             source_path: None,
-        })
+        };
+        register_library(app_data_dir, &info, config)?;
+        Ok(info)
     }
 
     /// Add a local library and refresh the asset protocol scope so the reader can fetch files.
@@ -123,65 +122,7 @@ impl LibraryService {
         name: Option<&str>,
         config: &mut AppConfig,
     ) -> Result<LibraryInfo, AppError> {
-        let source = config
-            .data_sources
-            .iter()
-            .find(|s| s.id == data_source_id)
-            .ok_or_else(|| {
-                AppError::NotFound(format!("DATASOURCE_NOT_FOUND: {}", data_source_id))
-            })?;
-
-        if remote_library_exists(config, "webdav", data_source_id, remote_path) {
-            return Err(AppError::Config("LIBRARY_ALREADY_EXISTS".into()));
-        }
-
-        let id = uuid::Uuid::new_v4().to_string();
-        let cache_dir = library_container_dir(app_data_dir, &id);
-        std::fs::create_dir_all(&cache_dir)?;
-        let db_path = cache_dir.join("metadata.db");
-
-        download_metadata_db(source, remote_path, &db_path).await?;
-
-        let cache_str = cache_dir.to_string_lossy().to_string();
-
-        let lib_name = name.map(ToString::to_string).unwrap_or_else(|| {
-            remote_path
-                .trim_end_matches('/')
-                .split('/')
-                .filter(|s| !s.is_empty())
-                .next_back()
-                .unwrap_or("WebDAV Library")
-                .to_string()
-        });
-
-        database::ensure_library_data_dir(&cache_str)?;
-
-        let book_count = match CalibreBookRepository::open(&cache_str).await {
-            Ok(repo) => repo.get_book_count().await.unwrap_or(0),
-            Err(_) => 0,
-        };
-
-        config.libraries.push(LibraryConfig {
-            id: id.clone(),
-            name: lib_name.clone(),
-            path: cache_str.clone(),
-            source_type: Some("webdav".into()),
-            data_source_id: Some(data_source_id.to_string()),
-            source_path: Some(remote_path.to_string()),
-        });
-        if config.active_library_id.is_none() {
-            config.active_library_id = Some(id.clone());
-        }
-
-        Ok(LibraryInfo {
-            id,
-            name: lib_name,
-            path: cache_str,
-            book_count,
-            source_type: Some("webdav".into()),
-            data_source_id: Some(data_source_id.to_string()),
-            source_path: Some(remote_path.to_string()),
-        })
+        add_remote_library(app_data_dir, data_source_id, remote_path, name, config).await
     }
 
     /// Add a WebDAV library and refresh the asset protocol scope.
@@ -212,65 +153,7 @@ impl LibraryService {
         name: Option<&str>,
         config: &mut AppConfig,
     ) -> Result<LibraryInfo, AppError> {
-        let source = config
-            .data_sources
-            .iter()
-            .find(|s| s.id == data_source_id)
-            .ok_or_else(|| {
-                AppError::NotFound(format!("DATASOURCE_NOT_FOUND: {}", data_source_id))
-            })?;
-
-        if remote_library_exists(config, "onedrive", data_source_id, remote_path) {
-            return Err(AppError::Config("LIBRARY_ALREADY_EXISTS".into()));
-        }
-
-        let id = uuid::Uuid::new_v4().to_string();
-        let cache_dir = library_container_dir(app_data_dir, &id);
-        std::fs::create_dir_all(&cache_dir)?;
-        let db_path = cache_dir.join("metadata.db");
-
-        download_metadata_db(source, remote_path, &db_path).await?;
-
-        let cache_str = cache_dir.to_string_lossy().to_string();
-
-        let lib_name = name.map(ToString::to_string).unwrap_or_else(|| {
-            remote_path
-                .trim_end_matches('/')
-                .split('/')
-                .filter(|s| !s.is_empty())
-                .next_back()
-                .unwrap_or("OneDrive Library")
-                .to_string()
-        });
-
-        database::ensure_library_data_dir(&cache_str)?;
-
-        let book_count = match CalibreBookRepository::open(&cache_str).await {
-            Ok(repo) => repo.get_book_count().await.unwrap_or(0),
-            Err(_) => 0,
-        };
-
-        config.libraries.push(LibraryConfig {
-            id: id.clone(),
-            name: lib_name.clone(),
-            path: cache_str.clone(),
-            source_type: Some("onedrive".into()),
-            data_source_id: Some(data_source_id.to_string()),
-            source_path: Some(remote_path.to_string()),
-        });
-        if config.active_library_id.is_none() {
-            config.active_library_id = Some(id.clone());
-        }
-
-        Ok(LibraryInfo {
-            id,
-            name: lib_name,
-            path: cache_str,
-            book_count,
-            source_type: Some("onedrive".into()),
-            data_source_id: Some(data_source_id.to_string()),
-            source_path: Some(remote_path.to_string()),
-        })
+        add_remote_library(app_data_dir, data_source_id, remote_path, name, config).await
     }
 
     /// Add a OneDrive library and refresh the asset protocol scope.
@@ -299,59 +182,7 @@ impl LibraryService {
         id: &str,
         config: &AppConfig,
     ) -> Result<LibraryInfo, AppError> {
-        let lib = config
-            .libraries
-            .iter()
-            .find(|l| l.id == id)
-            .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", id)))?;
-
-        let data_source_id = lib
-            .data_source_id
-            .as_deref()
-            .ok_or_else(|| AppError::Config("WEBDAV_LIBRARY_MISSING_DATASOURCE".into()))?;
-        let remote_path = lib
-            .source_path
-            .as_deref()
-            .ok_or_else(|| AppError::Config("WEBDAV_LIBRARY_MISSING_SOURCE_PATH".into()))?;
-
-        let source = config
-            .data_sources
-            .iter()
-            .find(|s| s.id == data_source_id)
-            .ok_or_else(|| {
-                AppError::NotFound(format!("DATASOURCE_NOT_FOUND: {}", data_source_id))
-            })?;
-
-        let cache_dir = library_container_dir(app_data_dir, id);
-        let db_path = library_metadata_db_path(lib, app_data_dir);
-
-        download_metadata_db(source, remote_path, &db_path).await?;
-
-        let cache_str = cache_dir.to_string_lossy().to_string();
-        let repo = CalibreBookRepository::open(&cache_str).await?;
-        let book_count = repo.get_book_count().await?;
-        let book_ids: Vec<i64> = repo.get_all_books().await?.iter().map(|b| b.id).collect();
-
-        cache::clear_orphaned_library_cache_files(id, &book_ids)?;
-        cache::clear_library_missing_cover_markers(app_data_dir, id)?;
-
-        let lib_name = remote_path
-            .trim_end_matches('/')
-            .split('/')
-            .filter(|s| !s.is_empty())
-            .next_back()
-            .unwrap_or("WebDAV Library")
-            .to_string();
-
-        Ok(LibraryInfo {
-            id: id.to_string(),
-            name: lib_name,
-            path: cache_str,
-            book_count,
-            source_type: lib.source_type.clone(),
-            data_source_id: lib.data_source_id.clone(),
-            source_path: lib.source_path.clone(),
-        })
+        refresh_remote_library(app_data_dir, id, config).await
     }
 
     /// Refresh a OneDrive library: re-download metadata.db.
@@ -360,59 +191,7 @@ impl LibraryService {
         id: &str,
         config: &AppConfig,
     ) -> Result<LibraryInfo, AppError> {
-        let lib = config
-            .libraries
-            .iter()
-            .find(|l| l.id == id)
-            .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", id)))?;
-
-        let data_source_id = lib
-            .data_source_id
-            .as_deref()
-            .ok_or_else(|| AppError::Config("ONEDRIVE_LIBRARY_MISSING_DATASOURCE".into()))?;
-        let remote_path = lib
-            .source_path
-            .as_deref()
-            .ok_or_else(|| AppError::Config("ONEDRIVE_LIBRARY_MISSING_SOURCE_PATH".into()))?;
-
-        let source = config
-            .data_sources
-            .iter()
-            .find(|s| s.id == data_source_id)
-            .ok_or_else(|| {
-                AppError::NotFound(format!("DATASOURCE_NOT_FOUND: {}", data_source_id))
-            })?;
-
-        let cache_dir = library_container_dir(app_data_dir, id);
-        let db_path = library_metadata_db_path(lib, app_data_dir);
-
-        download_metadata_db(source, remote_path, &db_path).await?;
-
-        let cache_str = cache_dir.to_string_lossy().to_string();
-        let repo = CalibreBookRepository::open(&cache_str).await?;
-        let book_count = repo.get_book_count().await?;
-        let book_ids: Vec<i64> = repo.get_all_books().await?.iter().map(|b| b.id).collect();
-
-        cache::clear_orphaned_library_cache_files(id, &book_ids)?;
-        cache::clear_library_missing_cover_markers(app_data_dir, id)?;
-
-        let lib_name = remote_path
-            .trim_end_matches('/')
-            .split('/')
-            .filter(|s| !s.is_empty())
-            .next_back()
-            .unwrap_or("OneDrive Library")
-            .to_string();
-
-        Ok(LibraryInfo {
-            id: id.to_string(),
-            name: lib_name,
-            path: cache_str,
-            book_count,
-            source_type: lib.source_type.clone(),
-            data_source_id: lib.data_source_id.clone(),
-            source_path: lib.source_path.clone(),
-        })
+        refresh_remote_library(app_data_dir, id, config).await
     }
 
     pub async fn refresh_library(id: &str, config: &AppConfig) -> Result<LibraryInfo, AppError> {
@@ -467,25 +246,31 @@ impl LibraryService {
         id: &str,
         config: &mut AppConfig,
     ) -> Result<(), AppError> {
-        config.libraries.retain(|lib| lib.id != id);
+        ensure_registry(app_data_dir, config)?;
+        let registry = myreader_core::api::registry::remove_library(
+            &crate::config::device_registry_path(app_data_dir),
+            id,
+        )?;
+        config.apply_device_registry(&registry);
         cache::clear_library_cache_files(id)?;
         let container = library_container_dir(app_data_dir, id);
         if container.exists() {
             std::fs::remove_dir_all(&container)?;
         }
-
-        if config.active_library_id.as_ref() == Some(&id.to_string()) {
-            config.active_library_id = config.libraries.first().map(|lib| lib.id.clone());
-        }
-
         Ok(())
     }
 
-    pub fn switch_library(id: &str, config: &mut AppConfig) -> Result<(), AppError> {
-        if !config.libraries.iter().any(|lib| lib.id == id) {
-            return Err(AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", id)));
-        }
-        config.active_library_id = Some(id.to_string());
+    pub fn switch_library(
+        app_data_dir: &Path,
+        id: &str,
+        config: &mut AppConfig,
+    ) -> Result<(), AppError> {
+        ensure_registry(app_data_dir, config)?;
+        let registry = myreader_core::api::registry::switch_library(
+            &crate::config::device_registry_path(app_data_dir),
+            id,
+        )?;
+        config.apply_device_registry(&registry);
         Ok(())
     }
 
@@ -526,19 +311,129 @@ impl LibraryService {
     }
 }
 
-fn remote_library_exists(
-    config: &AppConfig,
-    source_type: &str,
+async fn add_remote_library(
+    app_data_dir: &Path,
     data_source_id: &str,
     remote_path: &str,
-) -> bool {
-    let normalized_remote_path = remote_path.trim().trim_matches('/');
-    config.libraries.iter().any(|library| {
-        library.source_type.as_deref() == Some(source_type)
-            && library.data_source_id.as_deref() == Some(data_source_id)
-            && library
-                .source_path
-                .as_deref()
-                .is_some_and(|path| path.trim().trim_matches('/') == normalized_remote_path)
-    })
+    name: Option<&str>,
+    config: &mut AppConfig,
+) -> Result<LibraryInfo, AppError> {
+    ensure_registry(app_data_dir, config)?;
+    let source = config
+        .data_sources
+        .iter()
+        .find(|source| source.id == data_source_id)
+        .cloned()
+        .ok_or_else(|| AppError::NotFound(format!("DATASOURCE_NOT_FOUND: {data_source_id}")))?;
+    let credential = crate::storage::core_remote_credential(&source).await?;
+    let (registry, library) = myreader_core::api::library::add_remote(
+        &crate::config::device_registry_path(app_data_dir),
+        myreader_core::models::RemoteLibraryRequest {
+            data_source_id: data_source_id.to_owned(),
+            source_path: remote_path.to_owned(),
+            libraries_root_path: app_data_dir
+                .join("libraries")
+                .to_string_lossy()
+                .into_owned(),
+            libraries_root_uri: None,
+            name: name.map(ToOwned::to_owned),
+            added_at: None,
+        },
+        &credential,
+    )
+    .await?;
+    config.apply_device_registry(&registry);
+    Ok(library_info_from_core(library))
+}
+
+async fn refresh_remote_library(
+    app_data_dir: &Path,
+    id: &str,
+    config: &AppConfig,
+) -> Result<LibraryInfo, AppError> {
+    ensure_registry(app_data_dir, config)?;
+    let library = config
+        .libraries
+        .iter()
+        .find(|library| library.id == id)
+        .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {id}")))?;
+    let data_source_id = library
+        .data_source_id
+        .as_deref()
+        .ok_or_else(|| AppError::Config("REMOTE_LIBRARY_MISSING_DATASOURCE".into()))?;
+    let source = config
+        .data_sources
+        .iter()
+        .find(|source| source.id == data_source_id)
+        .ok_or_else(|| AppError::NotFound(format!("DATASOURCE_NOT_FOUND: {data_source_id}")))?;
+    let credential = crate::storage::core_remote_credential(source).await?;
+    let local_root = library_container_dir(app_data_dir, id);
+    let (_, library) = myreader_core::api::library::refresh_remote(
+        &crate::config::device_registry_path(app_data_dir),
+        id,
+        &local_root,
+        &credential,
+    )
+    .await?;
+
+    let repo = CalibreBookRepository::open(&local_root.to_string_lossy()).await?;
+    let book_ids = repo
+        .get_all_books()
+        .await?
+        .into_iter()
+        .map(|book| book.id)
+        .collect::<Vec<_>>();
+    cache::clear_orphaned_library_cache_files(id, &book_ids)?;
+    cache::clear_library_missing_cover_markers(app_data_dir, id)?;
+
+    Ok(library_info_from_core(library))
+}
+
+fn library_info_from_core(library: myreader_core::models::Library) -> LibraryInfo {
+    LibraryInfo {
+        id: library.id,
+        name: library.name,
+        path: library.path,
+        book_count: usize::try_from(library.book_count).unwrap_or(usize::MAX),
+        source_type: library.source_type,
+        data_source_id: library.data_source_id,
+        source_path: library.source_path,
+    }
+}
+
+fn register_library(
+    app_data_dir: &Path,
+    info: &LibraryInfo,
+    config: &mut AppConfig,
+) -> Result<(), AppError> {
+    let registry = myreader_core::api::registry::register_library(
+        &crate::config::device_registry_path(app_data_dir),
+        core_library(info),
+    )?;
+    config.apply_device_registry(&registry);
+    Ok(())
+}
+
+fn ensure_registry(app_data_dir: &Path, config: &AppConfig) -> Result<(), AppError> {
+    myreader_core::api::registry::load_or_initialize(
+        &crate::config::device_registry_path(app_data_dir),
+        Some(config.device_registry()),
+    )?;
+    Ok(())
+}
+
+fn core_library(info: &LibraryInfo) -> myreader_core::models::Library {
+    myreader_core::models::Library {
+        id: info.id.clone(),
+        name: info.name.clone(),
+        path: info.path.clone(),
+        book_count: u64::try_from(info.book_count).unwrap_or(u64::MAX),
+        metadata_uri: None,
+        added_at: None,
+        data_source_id: info.data_source_id.clone(),
+        source_type: info.source_type.clone(),
+        source_path: info.source_path.clone(),
+        metadata_etag: None,
+        security_scoped_bookmark: None,
+    }
 }

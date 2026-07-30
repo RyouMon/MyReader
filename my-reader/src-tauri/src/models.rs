@@ -30,6 +30,37 @@ impl LibraryConfig {
     }
 }
 
+impl From<&LibraryConfig> for myreader_core::models::Library {
+    fn from(value: &LibraryConfig) -> Self {
+        Self {
+            id: value.id.clone(),
+            name: value.name.clone(),
+            path: value.path.clone(),
+            book_count: 0,
+            metadata_uri: None,
+            added_at: None,
+            data_source_id: value.data_source_id.clone(),
+            source_type: value.source_type.clone(),
+            source_path: value.source_path.clone(),
+            metadata_etag: None,
+            security_scoped_bookmark: None,
+        }
+    }
+}
+
+impl From<&myreader_core::models::Library> for LibraryConfig {
+    fn from(value: &myreader_core::models::Library) -> Self {
+        Self {
+            id: value.id.clone(),
+            name: value.name.clone(),
+            path: value.path.clone(),
+            source_type: value.source_type.clone(),
+            data_source_id: value.data_source_id.clone(),
+            source_path: value.source_path.clone(),
+        }
+    }
+}
+
 /// Data source configuration; persisted locally to describe connectable data locations (local directories, WebDAV, etc.).
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -71,25 +102,167 @@ pub enum DataSourceDetail {
     },
 }
 
+impl From<&DataSourceConfig> for myreader_core::models::DataSource {
+    fn from(value: &DataSourceConfig) -> Self {
+        match &value.detail {
+            DataSourceDetail::Local { root_path } => Self::Local {
+                id: value.id.clone(),
+                name: value.name.clone(),
+                enabled: value.enabled,
+                root_path: root_path.clone(),
+                readonly: None,
+                created_at: None,
+            },
+            DataSourceDetail::Webdav {
+                endpoint,
+                username,
+                credential_account,
+                root_path,
+            } => Self::Webdav {
+                id: value.id.clone(),
+                name: value.name.clone(),
+                enabled: value.enabled,
+                endpoint: endpoint.clone(),
+                username: username.clone(),
+                root_path: root_path.clone(),
+                has_password: credential_account
+                    .as_ref()
+                    .is_some_and(|account| !account.trim().is_empty()),
+                credential_reference: credential_account.clone(),
+                readonly: None,
+                created_at: None,
+            },
+            DataSourceDetail::Onedrive {
+                client_id,
+                tenant_id,
+                credential_account,
+                root_path,
+                user_name,
+                user_email,
+            } => Self::Onedrive {
+                id: value.id.clone(),
+                name: value.name.clone(),
+                enabled: value.enabled,
+                client_id: client_id.clone(),
+                tenant_id: Some(tenant_id.clone()),
+                display_name: user_name.clone(),
+                email: user_email.clone(),
+                root_path: root_path.clone(),
+                has_refresh_token: credential_account
+                    .as_ref()
+                    .is_some_and(|account| !account.trim().is_empty()),
+                credential_reference: credential_account.clone(),
+                readonly: None,
+                created_at: None,
+            },
+        }
+    }
+}
+
+impl From<&myreader_core::models::DataSource> for DataSourceConfig {
+    fn from(value: &myreader_core::models::DataSource) -> Self {
+        match value {
+            myreader_core::models::DataSource::Local {
+                id,
+                name,
+                enabled,
+                root_path,
+                ..
+            } => Self {
+                id: id.clone(),
+                name: name.clone(),
+                enabled: *enabled,
+                detail: DataSourceDetail::Local {
+                    root_path: root_path.clone(),
+                },
+            },
+            myreader_core::models::DataSource::Webdav {
+                id,
+                name,
+                enabled,
+                endpoint,
+                username,
+                root_path,
+                credential_reference,
+                ..
+            } => Self {
+                id: id.clone(),
+                name: name.clone(),
+                enabled: *enabled,
+                detail: DataSourceDetail::Webdav {
+                    endpoint: endpoint.clone(),
+                    username: username.clone(),
+                    credential_account: credential_reference.clone(),
+                    root_path: root_path.clone(),
+                },
+            },
+            myreader_core::models::DataSource::Onedrive {
+                id,
+                name,
+                enabled,
+                client_id,
+                tenant_id,
+                display_name,
+                email,
+                root_path,
+                credential_reference,
+                ..
+            } => Self {
+                id: id.clone(),
+                name: name.clone(),
+                enabled: *enabled,
+                detail: DataSourceDetail::Onedrive {
+                    client_id: client_id.clone(),
+                    tenant_id: tenant_id.clone().unwrap_or_else(|| "consumers".into()),
+                    credential_account: credential_reference.clone(),
+                    root_path: root_path.clone(),
+                    user_name: display_name.clone(),
+                    user_email: email.clone(),
+                },
+            },
+        }
+    }
+}
+
 /// Newly added data sources are enabled by default so migrated legacy configs do not become invisible.
 fn default_data_source_enabled() -> bool {
     true
 }
 
-/// Root application config structure, persisted to `app_data_dir/config.json` (machine-local only: library registry, active library, reader UI).
+/// Platform-local application settings. Registry fields are accepted only for
+/// migration from legacy config and are persisted by myreader-core separately.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 #[derive(Default)]
 pub struct AppConfig {
+    #[serde(default, skip_serializing)]
     pub libraries: Vec<LibraryConfig>,
+    #[serde(default, skip_serializing)]
     pub active_library_id: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub data_sources: Vec<DataSourceConfig>,
     #[serde(default)]
     pub reader_ui: ReaderUiPreferences,
     /// Stable per-install device UUID, written back to config.json after first generation.
     #[serde(default)]
     pub device_id: Option<String>,
+}
+
+impl AppConfig {
+    pub fn device_registry(&self) -> myreader_core::models::DeviceRegistry {
+        myreader_core::models::DeviceRegistry {
+            schema_version: myreader_core::models::DEVICE_REGISTRY_SCHEMA_VERSION,
+            data_sources: self.data_sources.iter().map(Into::into).collect(),
+            libraries: self.libraries.iter().map(Into::into).collect(),
+            active_library_id: self.active_library_id.clone(),
+        }
+    }
+
+    pub fn apply_device_registry(&mut self, registry: &myreader_core::models::DeviceRegistry) {
+        self.data_sources = registry.data_sources.iter().map(Into::into).collect();
+        self.libraries = registry.libraries.iter().map(Into::into).collect();
+        self.active_library_id = registry.active_library_id.clone();
+    }
 }
 
 /// Data source DTO for the frontend. For WebDAV only whether a password is configured is returned, to avoid echoing plaintext secrets on the settings page.

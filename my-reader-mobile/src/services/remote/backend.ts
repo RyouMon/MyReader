@@ -24,12 +24,6 @@ export type RemoteFileStat = {
   mtimeMs: number
 }
 
-export type RemoteDirEntry = {
-  name: string
-  path: string
-  isDirectory: boolean
-}
-
 export type RemoteBackendKind = "onedrive" | "webdav"
 
 export interface RemoteBackend {
@@ -66,9 +60,5 @@ export interface RemoteBackend {
   ): Promise<PreparedUpload>
 
   // -- Path / URL --
-  normalizePath(path: string): string
   contentUrl(remotePath: string): string
-
-  // -- Browse --
-  listDirectory(path: string): Promise<RemoteDirEntry[]>
 }

@@ -23,6 +23,7 @@ jest.mock("../fs/library-paths", () => ({
 }))
 jest.mock("../fs/path", () => ({
   fileUriFor: () => "file:///library/.myreader/myreader.db",
+  toNativeFilesystemPath: () => "/library/.myreader/myreader.db",
 }))
 
 describe("getLibraryDatabase", () => {

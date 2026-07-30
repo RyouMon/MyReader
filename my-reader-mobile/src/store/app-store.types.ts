@@ -53,9 +53,10 @@ export type ReaderSettings = {
 
 export type PersistedAppState = {
   settings: ReaderSettings
-  dataSources: import("@my-reader/tools/types/data-source").DataSource[]
-  libraries: import("@my-reader/tools/types/library").Library[]
-  activeLibraryId: string | null
+  /** Legacy registry fields, read once when migrating to myreader-core. */
+  dataSources?: import("@my-reader/tools/types/data-source").DataSource[]
+  libraries?: import("@my-reader/tools/types/library").Library[]
+  activeLibraryId?: string | null
   libraryViewMode: LibraryViewMode
 }
 

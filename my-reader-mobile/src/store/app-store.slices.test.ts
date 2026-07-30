@@ -41,8 +41,8 @@ function createHarness<TSlice>(
   }
 }
 
-function dataSource(id: string, name = id): DataSource {
-  return { id, name, hasPassword: false } as DataSource
+function dataSource(id: string): DataSource {
+  return { id, name: id, hasPassword: false } as DataSource
 }
 
 function library(id: string, name = id): Library {
@@ -66,29 +66,6 @@ describe("data source slice", () => {
 
     expect(harness.state.dataSources).toEqual(sources)
   })
-
-  it("should append and replace sources when upserting by id", () => {
-    const harness = createHarness(createDataSourceSlice)
-
-    harness.slice.upsertDataSource(dataSource("one", "Original"))
-    harness.slice.upsertDataSource(dataSource("two", "Second"))
-    harness.slice.upsertDataSource(dataSource("one", "Updated"))
-
-    expect(harness.state.dataSources).toEqual([
-      dataSource("one", "Updated"),
-      dataSource("two", "Second"),
-    ])
-  })
-
-  it("should remove matching sources when removing by id", () => {
-    const harness = createHarness(createDataSourceSlice, {
-      dataSources: [dataSource("one"), dataSource("two")],
-    })
-
-    harness.slice.removeDataSourceById("one")
-
-    expect(harness.state.dataSources).toEqual([dataSource("two")])
-  })
 })
 
 describe("library slice", () => {
@@ -101,55 +78,6 @@ describe("library slice", () => {
 
     expect(harness.state.libraries).toEqual(libraries)
     expect(harness.state.activeLibraryId).toBe("two")
-  })
-
-  it("should append and replace libraries when upserting by id", () => {
-    const harness = createHarness(createLibrarySlice)
-
-    harness.slice.upsertLibrary(library("one", "Original"))
-    harness.slice.upsertLibrary(library("two", "Second"))
-    harness.slice.upsertLibrary(library("one", "Updated"))
-
-    expect(harness.state.libraries).toEqual([
-      library("one", "Updated"),
-      library("two", "Second"),
-    ])
-  })
-
-  it("should keep active library when removing another library", () => {
-    const harness = createHarness(createLibrarySlice, {
-      libraries: [library("one"), library("two")],
-      activeLibraryId: "two",
-    })
-
-    harness.slice.removeLibraryById("one")
-
-    expect(harness.state.libraries).toEqual([library("two")])
-    expect(harness.state.activeLibraryId).toBe("two")
-  })
-
-  it("should select the next library when removing the active library", () => {
-    const harness = createHarness(createLibrarySlice, {
-      libraries: [library("one"), library("two")],
-      activeLibraryId: "one",
-    })
-
-    harness.slice.removeLibraryById("one")
-
-    expect(harness.state.libraries).toEqual([library("two")])
-    expect(harness.state.activeLibraryId).toBe("two")
-  })
-
-  it("should clear active library when removing the last active library", () => {
-    const harness = createHarness(createLibrarySlice, {
-      libraries: [library("one")],
-      activeLibraryId: "one",
-    })
-
-    harness.slice.removeLibraryById("one")
-
-    expect(harness.state.libraries).toEqual([])
-    expect(harness.state.activeLibraryId).toBeNull()
   })
 })
 

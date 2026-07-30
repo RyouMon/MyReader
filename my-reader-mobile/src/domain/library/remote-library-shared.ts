@@ -1,29 +1,15 @@
 import { File as ExpoFile } from "expo-file-system"
 
 import i18n from "@/src/i18n"
-
-import { showAlertWithStatusBarRestore } from "../../constants/alert-with-status-bar"
-import { countBooks, listBooksWithAuthors } from "../../repos/calibre/books"
-import type { RemoteBackend } from "../../services/remote/backend"
-import type { BookItem, Library } from "../types"
-import { mapListRowsToBookItems } from "./calibre"
 import {
-  libraryContainerRootUri,
   libraryMetadataUri,
   METADATA_DB_RELATIVE,
 } from "@/src/services/fs/library-paths"
-
-function describeError(error: unknown): string {
-  if (error instanceof Error) return error.message
-  return String(error)
-}
-
-function metadataDbError(error: unknown): Error {
-  const detail = describeError(error)
-  return new Error(`${i18n.t("sync.cannotRedownloadMeta")}: ${detail}`, {
-    cause: error,
-  })
-}
+import { showAlertWithStatusBarRestore } from "../../constants/alert-with-status-bar"
+import { listBooksWithAuthors } from "../../repos/calibre/books"
+import type { RemoteBackend } from "../../services/remote/backend"
+import type { BookItem, Library } from "../types"
+import { mapListRowsToBookItems } from "./calibre"
 
 function logMetadataDbFailure(
   scope: string,
@@ -65,61 +51,6 @@ async function ensureMetadataCached(
       [{ text: i18n.t("common.gotIt") }],
     )
     return null
-  }
-}
-
-export async function forceRefreshMetadata(
-  library: Library,
-  backend: RemoteBackend,
-): Promise<string> {
-  const metadataUri = libraryMetadataUri(library)
-  try {
-    const metadataFile = await backend.downloadToUri(
-      METADATA_DB_RELATIVE,
-      metadataUri,
-    )
-    return metadataFile.uri
-  } catch (error) {
-    logMetadataDbFailure("forceRefreshMetadata", library, backend, error)
-    showAlertWithStatusBarRestore(
-      i18n.t("sync.corruptedLibrary"),
-      i18n.t("sync.corruptedLibraryRedownloadMessage"),
-      [{ text: i18n.t("common.gotIt") }],
-    )
-    throw metadataDbError(error)
-  }
-}
-
-export async function createLibraryFromPath(
-  backend: RemoteBackend,
-  sourceId: string,
-  sourceName: string,
-  remoteLibraryPath: string,
-): Promise<Library> {
-  const normalizedPath = backend.normalizePath(remoteLibraryPath)
-  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-  libraryContainerRootUri(id)
-  const stubLibrary: Library = {
-    id,
-    name: normalizedPath.split("/").filter(Boolean).at(-1) ?? sourceName,
-    path: normalizedPath,
-    metadataUri: "",
-    bookCount: 0,
-    addedAt: Date.now(),
-    dataSourceId: sourceId,
-    sourceType: backend.kind,
-    sourcePath: normalizedPath,
-  }
-  const metadataUri = libraryMetadataUri(stubLibrary)
-
-  await backend.downloadToUri(`${normalizedPath}/metadata.db`, metadataUri)
-
-  const bookCount = await countBooks(metadataUri)
-
-  return {
-    ...stubLibrary,
-    metadataUri,
-    bookCount,
   }
 }
 

@@ -1,45 +1,64 @@
-import { DataSourceInUseError } from "@/src/errors"
-import type { DataSourceSecrets } from "@/src/services/storage/credentials"
-import {
-  deleteSecrets,
-  deriveCredentialFlags,
-  hydrateDataSourcesFromSecureCredentials,
-  readWebDavPassword,
-  writeSecrets,
-} from "@/src/services/storage/credentials"
-import { useAppStore } from "@/src/store/app-store"
-import { uuid } from "@/src/utils/common"
 import type {
   DataSource,
   DataSourceConnectionTestResult,
   DataSourceWebdav,
 } from "@my-reader/tools/types/data-source"
-import { testConnection as probeWebDav } from "../services/remote/webdav/probe"
+import { DataSourceInUseError } from "@/src/errors"
+import {
+  type DeviceRegistry,
+  initializeDeviceRegistry,
+  removeDeviceDataSource,
+  upsertDeviceDataSource,
+  validateDeviceDataSource,
+} from "@/src/services/core/device-registry"
+import { testRemoteDataSource } from "@/src/services/core/remote"
+import type { DataSourceSecrets } from "@/src/services/storage/credentials"
+import {
+  deleteSecrets,
+  deriveCredentialFlags,
+  hydrateDataSourcesFromSecureCredentials,
+  writeSecrets,
+} from "@/src/services/storage/credentials"
+import { useAppStore } from "@/src/store/app-store"
+import { uuid } from "@/src/utils/common"
 
 export function useDataSourceActions() {
   const store = useAppStore
 
   async function hydrateFromBackend() {
     try {
-      const snapshot = store.getState().dataSources
-      const hydrated = await hydrateDataSourcesFromSecureCredentials(snapshot)
-      const latest = store.getState().dataSources
-      // Merge so concurrent inserts during hydration are not wiped out.
-      const merged = latest.map((ds) => {
+      const state = store.getState()
+      const registry = await initializeDeviceRegistry({
+        dataSources: state.dataSources,
+        libraries: state.libraries,
+        activeLibraryId: state.activeLibraryId,
+      })
+      const hydrated = await hydrateDataSourcesFromSecureCredentials(
+        registry.dataSources,
+      )
+      const merged = registry.dataSources.map((ds) => {
         const h = hydrated.find((d) => d.id === ds.id)
         return h ? { ...ds, ...h } : ds
       })
       store.getState().setDataSources(merged)
+      store.getState().setLibraries(registry.libraries)
+      store.getState().setActiveLibraryId(registry.activeLibraryId)
     } finally {
       store.getState().setStoreReady(true)
     }
   }
 
   async function refreshDataSources() {
-    const snapshot = store.getState().dataSources
-    const hydrated = await hydrateDataSourcesFromSecureCredentials(snapshot)
-    const latest = store.getState().dataSources
-    const merged = latest.map((ds) => {
+    const state = store.getState()
+    const registry = await initializeDeviceRegistry({
+      dataSources: state.dataSources,
+      libraries: state.libraries,
+      activeLibraryId: state.activeLibraryId,
+    })
+    const hydrated = await hydrateDataSourcesFromSecureCredentials(
+      registry.dataSources,
+    )
+    const merged = registry.dataSources.map((ds) => {
       const h = hydrated.find((d) => d.id === ds.id)
       return h ? { ...ds, ...h } : ds
     })
@@ -52,17 +71,18 @@ export function useDataSourceActions() {
   ): Promise<DataSource> {
     const id = ds.id || uuid()
     const dsWithId = { ...ds, id }
-
-    if (secrets) {
-      await writeSecrets(dsWithId.id, secrets)
-    }
-
     const stored: DataSource = {
       ...dsWithId,
       ...deriveCredentialFlags(secrets),
     }
 
-    store.getState().upsertDataSource(stored)
+    await validateDeviceDataSource(stored)
+    if (secrets) {
+      await writeSecrets(dsWithId.id, secrets)
+    }
+
+    const registry = await upsertDeviceDataSource(stored)
+    store.getState().setDataSources(registry.dataSources)
     return stored
   }
 
@@ -70,30 +90,43 @@ export function useDataSourceActions() {
     ds: DataSource,
     secrets?: DataSourceSecrets,
   ): Promise<void> {
-    if (secrets) {
-      await writeSecrets(ds.id, secrets)
-    }
-
     const stored: DataSource = {
       ...ds,
       ...deriveCredentialFlags(secrets),
     }
 
-    store.getState().upsertDataSource(stored)
+    await validateDeviceDataSource(stored)
+    if (secrets) {
+      await writeSecrets(ds.id, secrets)
+    }
+
+    const registry = await upsertDeviceDataSource(stored)
+    store.getState().setDataSources(registry.dataSources)
   }
 
   async function deleteDataSource(id: string) {
     const state = store.getState()
-    const usedByLibraries = state.libraries.filter((l) => l.dataSourceId === id)
-    if (usedByLibraries.length > 0) {
-      const names = usedByLibraries.map((l) => l.name)
-      throw new DataSourceInUseError(names.join("、"), names)
-    }
     const ds = state.dataSources.find((d) => d.id === id)
+    let registry: DeviceRegistry
+    try {
+      registry = await removeDeviceDataSource(id)
+    } catch (error) {
+      const usedByLibraries = state.libraries.filter(
+        (library) => library.dataSourceId === id,
+      )
+      if (
+        usedByLibraries.length > 0 &&
+        String(error).includes("DATA_SOURCE_IN_USE")
+      ) {
+        const names = usedByLibraries.map((library) => library.name)
+        throw new DataSourceInUseError(names.join("、"), names)
+      }
+      throw error
+    }
+    store.getState().setDataSources(registry.dataSources)
     if (ds) {
       await deleteSecrets(id, ds.type)
     }
-    state.removeDataSourceById(id)
   }
 
   async function testDataSourceConnection(
@@ -101,18 +134,8 @@ export function useDataSourceActions() {
     secrets?: DataSourceSecrets,
   ): Promise<DataSourceConnectionTestResult> {
     try {
-      const password =
-        secrets?.type === "webdav"
-          ? secrets.password
-          : ((await readWebDavPassword(source.id)) ?? "")
-      const response = await probeWebDav({ ...source, password })
-      if (response.ok || response.status === 207) {
-        return { ok: true, message: "OK" }
-      }
-      if (response.status === 401 || response.status === 403) {
-        return { ok: false, message: "Authentication failed" }
-      }
-      return { ok: false, message: `HTTP ${response.status}` }
+      await testRemoteDataSource(source, secrets)
+      return { ok: true, message: "OK" }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       return { ok: false, message: msg }

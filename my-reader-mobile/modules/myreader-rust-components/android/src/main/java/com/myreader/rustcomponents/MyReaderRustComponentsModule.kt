@@ -3,20 +3,32 @@ package com.myreader.rustcomponents
 import com.myreader.rustcomponents.uniffi.RustComponentsException
 import com.myreader.rustcomponents.uniffi.SyncDocumentCommandResult
 import com.myreader.rustcomponents.uniffi.advanceSyncScheduler
+import com.myreader.rustcomponents.uniffi.addRemoteLibrary
 import com.myreader.rustcomponents.uniffi.cancelSyncTask
 import com.myreader.rustcomponents.uniffi.ensureSyncDatabaseIdentity
 import com.myreader.rustcomponents.uniffi.ensureSyncDatabaseDocument
 import com.myreader.rustcomponents.uniffi.executeSyncDatabaseCommand
 import com.myreader.rustcomponents.uniffi.hasSyncDatabasePendingWork
+import com.myreader.rustcomponents.uniffi.initializeDeviceRegistry
+import com.myreader.rustcomponents.uniffi.listRemoteDirectories
 import com.myreader.rustcomponents.uniffi.markSyncDatabaseScheduleSucceeded
 import com.myreader.rustcomponents.uniffi.migrateLibraryDatabase
+import com.myreader.rustcomponents.uniffi.registerDeviceLibrary
+import com.myreader.rustcomponents.uniffi.removeDeviceDataSource
+import com.myreader.rustcomponents.uniffi.removeDeviceLibrary
+import com.myreader.rustcomponents.uniffi.replaceDeviceLibrary
 import com.myreader.rustcomponents.uniffi.readSyncDatabaseDiagnostics
 import com.myreader.rustcomponents.uniffi.readSyncDatabaseScheduleState
 import com.myreader.rustcomponents.uniffi.readSyncTaskProgress
+import com.myreader.rustcomponents.uniffi.refreshRemoteLibrary
 import com.myreader.rustcomponents.uniffi.releaseSyncTask
 import com.myreader.rustcomponents.uniffi.SyncDatabaseScheduleState
 import com.myreader.rustcomponents.uniffi.syncContractVersion
 import com.myreader.rustcomponents.uniffi.syncLibrarySidecar
+import com.myreader.rustcomponents.uniffi.switchDeviceLibrary
+import com.myreader.rustcomponents.uniffi.testRemoteDataSource
+import com.myreader.rustcomponents.uniffi.upsertDeviceDataSource
+import com.myreader.rustcomponents.uniffi.validateDeviceDataSource
 import com.myreader.rustcomponents.uniffi.writeSyncDatabaseScheduleState
 import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.modules.Module
@@ -26,11 +38,12 @@ class MyReaderRustComponentsModule : Module() {
   private fun <T> componentCall(operation: () -> T): T = try {
     operation()
   } catch (error: RustComponentsException) {
-    val message = when (error) {
-      is RustComponentsException.Core -> error.v1
-      is RustComponentsException.Sync -> error.v1
+    when (error) {
+      is RustComponentsException.Core ->
+        throw CodedException("CORE_ERROR", error.v1, error)
+      is RustComponentsException.Sync ->
+        throw CodedException("SYNC_ERROR", error.v1, error)
     }
-    throw CodedException("SYNC_ERROR", message, error)
   }
 
   private fun documentResult(result: SyncDocumentCommandResult) = mapOf(
@@ -45,6 +58,117 @@ class MyReaderRustComponentsModule : Module() {
     AsyncFunction("migrateLibraryDatabase") { databasePath: String ->
       componentCall {
         migrateLibraryDatabase(databasePath)
+      }
+    }
+
+    AsyncFunction("initializeDeviceRegistry") {
+        registryPath: String,
+        legacyRegistryJson: String? ->
+      componentCall {
+        initializeDeviceRegistry(registryPath, legacyRegistryJson)
+      }
+    }
+
+    AsyncFunction("upsertDeviceDataSource") {
+        registryPath: String,
+        sourceJson: String ->
+      componentCall {
+        upsertDeviceDataSource(registryPath, sourceJson)
+      }
+    }
+
+    AsyncFunction("validateDeviceDataSource") {
+        registryPath: String,
+        sourceJson: String ->
+      componentCall {
+        validateDeviceDataSource(registryPath, sourceJson)
+      }
+    }
+
+    AsyncFunction("removeDeviceDataSource") {
+        registryPath: String,
+        dataSourceId: String ->
+      componentCall {
+        removeDeviceDataSource(registryPath, dataSourceId)
+      }
+    }
+
+    AsyncFunction("registerDeviceLibrary") {
+        registryPath: String,
+        libraryJson: String ->
+      componentCall {
+        registerDeviceLibrary(registryPath, libraryJson)
+      }
+    }
+
+    AsyncFunction("replaceDeviceLibrary") {
+        registryPath: String,
+        libraryJson: String ->
+      componentCall {
+        replaceDeviceLibrary(registryPath, libraryJson)
+      }
+    }
+
+    AsyncFunction("removeDeviceLibrary") {
+        registryPath: String,
+        libraryId: String ->
+      componentCall {
+        removeDeviceLibrary(registryPath, libraryId)
+      }
+    }
+
+    AsyncFunction("switchDeviceLibrary") {
+        registryPath: String,
+        libraryId: String ->
+      componentCall {
+        switchDeviceLibrary(registryPath, libraryId)
+      }
+    }
+
+    AsyncFunction("testRemoteDataSource") {
+        sourceJson: String,
+        credentialJson: String ->
+      componentCall {
+        testRemoteDataSource(sourceJson, credentialJson)
+      }
+    }
+
+    AsyncFunction("listRemoteDirectories") {
+        registryPath: String,
+        dataSourceId: String,
+        path: String,
+        credentialJson: String ->
+      componentCall {
+        listRemoteDirectories(
+          registryPath,
+          dataSourceId,
+          path,
+          credentialJson,
+        )
+      }
+    }
+
+    AsyncFunction("addRemoteLibrary") {
+        registryPath: String,
+        requestJson: String,
+        credentialJson: String ->
+      componentCall {
+        addRemoteLibrary(registryPath, requestJson, credentialJson)
+      }
+    }
+
+    AsyncFunction("refreshRemoteLibrary") {
+        registryPath: String,
+        libraryId: String,
+        localRootPath: String,
+        credentialJson: String ->
+      componentCall {
+        refreshRemoteLibrary(
+          registryPath,
+          libraryId,
+          localRootPath,
+          credentialJson,
+        )
       }
     }
 

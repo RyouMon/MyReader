@@ -1,7 +1,9 @@
 use std::path::{Path, PathBuf};
 
+use my_reader_lib::auth::test_support as credentials;
 use my_reader_lib::models::{AppConfig, DataSourceConfig, DataSourceDetail, LibraryConfig};
 use my_reader_lib::services::library_service::LibraryService;
+use warp::Filter;
 
 use crate::common::app::TestApp;
 use crate::common::calibre::seed_minimal_calibre_library;
@@ -37,22 +39,48 @@ fn remote_library(
     LibraryConfig {
         id: id.into(),
         name: "Remote".into(),
-        path: String::new(),
+        path: format!("/app-data/libraries/{id}"),
         source_type: Some(source_type.into()),
         data_source_id: data_source_id.map(str::to_string),
         source_path: source_path.map(str::to_string),
     }
 }
 
-fn local_data_source(id: &str, root: &Path) -> DataSourceConfig {
+fn webdav_data_source(id: &str, endpoint: &str) -> DataSourceConfig {
+    let account = credentials::webdav_password_account(id);
+    credentials::save_webdav_password(&account, "password").unwrap();
     DataSourceConfig {
         id: id.into(),
         name: "Remote Root".into(),
         enabled: true,
-        detail: DataSourceDetail::Local {
-            root_path: root.to_string_lossy().to_string(),
+        detail: DataSourceDetail::Webdav {
+            endpoint: endpoint.into(),
+            username: "reader".into(),
+            credential_account: Some(account),
+            root_path: None,
         },
     }
+}
+
+fn start_webdav_file_server(metadata: Vec<u8>) -> std::net::SocketAddr {
+    let route = warp::any().and(warp::method()).and(warp::path::full()).map(
+        move |method: warp::http::Method, path: warp::path::FullPath| {
+            if method == warp::http::Method::GET && path.as_str().ends_with("/metadata.db") {
+                warp::http::Response::builder()
+                    .status(200)
+                    .body(metadata.clone())
+                    .unwrap()
+            } else {
+                warp::http::Response::builder()
+                    .status(404)
+                    .body(Vec::new())
+                    .unwrap()
+            }
+        },
+    );
+    let (address, server) = warp::serve(route).bind_ephemeral(([127, 0, 0, 1], 0));
+    tokio::spawn(server);
+    address
 }
 
 #[tokio::test]
@@ -148,14 +176,15 @@ async fn add_library_should_reject_missing_metadata_and_duplicate_paths() {
 #[tokio::test]
 async fn add_library_with_scope_sync_should_return_same_info_as_add_library() {
     let test_app = TestApp::new();
-    let app_data = tempfile::tempdir().unwrap();
+    let direct_app_data = tempfile::tempdir().unwrap();
+    let wrapped_app_data = tempfile::tempdir().unwrap();
     let lib_root = tempfile::tempdir().unwrap();
     seed_minimal_calibre_library(lib_root.path()).await;
     let mut config = AppConfig::default();
 
     let mut config_without_sync = config.clone();
     let info_direct = LibraryService::add_library(
-        app_data.path(),
+        direct_app_data.path(),
         &lib_root.path().to_string_lossy(),
         Some("Synced"),
         &mut config_without_sync,
@@ -165,7 +194,7 @@ async fn add_library_with_scope_sync_should_return_same_info_as_add_library() {
 
     let info_wrapped = LibraryService::add_library_with_scope_sync(
         test_app.app.handle(),
-        app_data.path(),
+        wrapped_app_data.path(),
         &lib_root.path().to_string_lossy(),
         Some("Synced"),
         &mut config,
@@ -179,7 +208,8 @@ async fn add_library_with_scope_sync_should_return_same_info_as_add_library() {
 }
 
 #[tokio::test]
-async fn add_remote_libraries_should_download_metadata_from_data_source_and_set_active_id() {
+async fn add_remote_library_should_download_metadata_from_data_source_and_set_active_id() {
+    let _guard = credentials::use_test_backend(credentials::MemoryBackend::default());
     let app_data = tempfile::tempdir().unwrap();
     let remote_root = tempfile::tempdir().unwrap();
     let remote_library_root = remote_root.path().join("RemoteLibrary");
@@ -187,8 +217,13 @@ async fn add_remote_libraries_should_download_metadata_from_data_source_and_set_
         .await
         .unwrap();
     seed_minimal_calibre_library(&remote_library_root).await;
+    let address =
+        start_webdav_file_server(std::fs::read(remote_library_root.join("metadata.db")).unwrap());
     let mut config = AppConfig {
-        data_sources: vec![local_data_source("ds-remote", remote_root.path())],
+        data_sources: vec![webdav_data_source(
+            "ds-remote",
+            &format!("http://{address}"),
+        )],
         ..Default::default()
     };
 
@@ -209,38 +244,24 @@ async fn add_remote_libraries_should_download_metadata_from_data_source_and_set_
         Some(webdav.id.as_str())
     );
     assert!(PathBuf::from(&webdav.path).join("metadata.db").is_file());
-
-    let onedrive = LibraryService::add_onedrive_library(
-        app_data.path(),
-        "ds-remote",
-        "/RemoteLibrary",
-        None,
-        &mut config,
-    )
-    .await
-    .expect("onedrive add should succeed");
-    assert_eq!(onedrive.name, "RemoteLibrary");
-    assert_eq!(onedrive.book_count, 1);
-    assert_eq!(onedrive.source_type.as_deref(), Some("onedrive"));
-    assert!(PathBuf::from(&onedrive.path).join("metadata.db").is_file());
 }
 
 #[tokio::test]
 async fn add_remote_library_should_reject_same_source_path_when_library_already_exists() {
+    let _guard = credentials::use_test_backend(credentials::MemoryBackend::default());
     let app_data = tempfile::tempdir().unwrap();
-    let remote_root = tempfile::tempdir().unwrap();
     let mut config = AppConfig {
         libraries: vec![remote_library(
-            "lib-onedrive",
-            "onedrive",
+            "lib-webdav",
+            "webdav",
             Some("ds-remote"),
             Some("/RemoteLibrary/"),
         )],
-        data_sources: vec![local_data_source("ds-remote", remote_root.path())],
+        data_sources: vec![webdav_data_source("ds-remote", "http://127.0.0.1:1")],
         ..Default::default()
     };
 
-    let err = LibraryService::add_onedrive_library(
+    let err = LibraryService::add_webdav_library(
         app_data.path(),
         "ds-remote",
         "RemoteLibrary",
@@ -256,6 +277,7 @@ async fn add_remote_library_should_reject_same_source_path_when_library_already_
 
 #[tokio::test]
 async fn add_remote_library_with_scope_sync_should_delegate_to_remote_add() {
+    let _guard = credentials::use_test_backend(credentials::MemoryBackend::default());
     let test_app = TestApp::new();
     let app_data = tempfile::tempdir().unwrap();
     let remote_root = tempfile::tempdir().unwrap();
@@ -264,8 +286,13 @@ async fn add_remote_library_with_scope_sync_should_delegate_to_remote_add() {
         .await
         .unwrap();
     seed_minimal_calibre_library(&remote_library_root).await;
+    let address =
+        start_webdav_file_server(std::fs::read(remote_library_root.join("metadata.db")).unwrap());
     let mut config = AppConfig {
-        data_sources: vec![local_data_source("ds-remote", remote_root.path())],
+        data_sources: vec![webdav_data_source(
+            "ds-remote",
+            &format!("http://{address}"),
+        )],
         ..Default::default()
     };
 
@@ -279,21 +306,9 @@ async fn add_remote_library_with_scope_sync_should_delegate_to_remote_add() {
     )
     .await
     .expect("webdav scoped add should succeed");
-    let onedrive = LibraryService::add_onedrive_library_with_scope_sync(
-        test_app.app.handle(),
-        app_data.path(),
-        "ds-remote",
-        "/RemoteLibrary",
-        Some("Scoped OneDrive"),
-        &mut config,
-    )
-    .await
-    .expect("onedrive scoped add should succeed");
 
     assert_eq!(webdav.name, "Scoped WebDAV");
-    assert_eq!(onedrive.name, "Scoped OneDrive");
     assert_eq!(webdav.book_count, 1);
-    assert_eq!(onedrive.book_count, 1);
 }
 
 #[tokio::test]
@@ -365,7 +380,8 @@ async fn refresh_library_should_return_updated_info_and_reject_remote_or_missing
 }
 
 #[tokio::test]
-async fn refresh_remote_libraries_should_redownload_metadata_and_report_config_errors() {
+async fn refresh_remote_library_should_redownload_metadata_and_report_config_errors() {
+    let _guard = credentials::use_test_backend(credentials::MemoryBackend::default());
     let app_data = tempfile::tempdir().unwrap();
     let remote_root = tempfile::tempdir().unwrap();
     let remote_library_root = remote_root.path().join("RemoteLibrary");
@@ -373,6 +389,8 @@ async fn refresh_remote_libraries_should_redownload_metadata_and_report_config_e
         .await
         .unwrap();
     seed_minimal_calibre_library(&remote_library_root).await;
+    let address =
+        start_webdav_file_server(std::fs::read(remote_library_root.join("metadata.db")).unwrap());
     let config = AppConfig {
         libraries: vec![
             remote_library(
@@ -381,21 +399,8 @@ async fn refresh_remote_libraries_should_redownload_metadata_and_report_config_e
                 Some("ds-remote"),
                 Some("/RemoteLibrary"),
             ),
-            remote_library(
-                "lib-onedrive",
-                "onedrive",
-                Some("ds-remote"),
-                Some("/RemoteLibrary"),
-            ),
             remote_library("lib-webdav-no-ds", "webdav", None, Some("/RemoteLibrary")),
             remote_library("lib-webdav-no-path", "webdav", Some("ds-remote"), None),
-            remote_library(
-                "lib-onedrive-no-ds",
-                "onedrive",
-                None,
-                Some("/RemoteLibrary"),
-            ),
-            remote_library("lib-onedrive-no-path", "onedrive", Some("ds-remote"), None),
             remote_library(
                 "lib-unknown-ds",
                 "webdav",
@@ -403,52 +408,31 @@ async fn refresh_remote_libraries_should_redownload_metadata_and_report_config_e
                 Some("/RemoteLibrary"),
             ),
         ],
-        data_sources: vec![local_data_source("ds-remote", remote_root.path())],
+        data_sources: vec![webdav_data_source(
+            "ds-remote",
+            &format!("http://{address}"),
+        )],
         ..Default::default()
     };
 
     let webdav = LibraryService::refresh_webdav_library(app_data.path(), "lib-webdav", &config)
         .await
         .expect("webdav refresh should succeed");
-    assert_eq!(webdav.name, "RemoteLibrary");
+    assert_eq!(webdav.name, "Remote");
     assert_eq!(webdav.book_count, 1);
     assert!(app_data
         .path()
         .join("libraries/lib-webdav/metadata.db")
         .is_file());
 
-    let onedrive =
-        LibraryService::refresh_onedrive_library(app_data.path(), "lib-onedrive", &config)
-            .await
-            .expect("onedrive refresh should succeed");
-    assert_eq!(onedrive.name, "RemoteLibrary");
-    assert_eq!(onedrive.book_count, 1);
-    assert!(app_data
-        .path()
-        .join("libraries/lib-onedrive/metadata.db")
-        .is_file());
-
     for (id, expected) in [
-        ("lib-webdav-no-ds", "WEBDAV_LIBRARY_MISSING_DATASOURCE"),
-        ("lib-webdav-no-path", "WEBDAV_LIBRARY_MISSING_SOURCE_PATH"),
+        ("lib-webdav-no-ds", "REMOTE_LIBRARY_MISSING_DATASOURCE"),
+        ("lib-webdav-no-path", "REMOTE_LIBRARY_MISSING_SOURCE_PATH"),
         ("lib-unknown-ds", "DATASOURCE_NOT_FOUND"),
     ] {
         let err = LibraryService::refresh_webdav_library(app_data.path(), id, &config)
             .await
             .expect_err("webdav refresh should fail");
-        assert!(format!("{err}").contains(expected));
-    }
-
-    for (id, expected) in [
-        ("lib-onedrive-no-ds", "ONEDRIVE_LIBRARY_MISSING_DATASOURCE"),
-        (
-            "lib-onedrive-no-path",
-            "ONEDRIVE_LIBRARY_MISSING_SOURCE_PATH",
-        ),
-    ] {
-        let err = LibraryService::refresh_onedrive_library(app_data.path(), id, &config)
-            .await
-            .expect_err("onedrive refresh should fail");
         assert!(format!("{err}").contains(expected));
     }
 
@@ -499,10 +483,11 @@ fn switch_library_should_update_active_id_and_reject_unknown_library() {
         ..Default::default()
     };
 
-    LibraryService::switch_library("lib-b", &mut config).expect("switch should succeed");
+    LibraryService::switch_library(root.path(), "lib-b", &mut config)
+        .expect("switch should succeed");
     assert_eq!(config.active_library_id.as_deref(), Some("lib-b"));
 
-    let err = LibraryService::switch_library("ghost", &mut config)
+    let err = LibraryService::switch_library(root.path(), "ghost", &mut config)
         .expect_err("unknown library should fail");
     assert!(format!("{err}").contains("LIBRARY_NOT_FOUND"));
 }

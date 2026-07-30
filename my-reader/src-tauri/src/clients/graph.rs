@@ -10,7 +10,6 @@ use tracing::info;
 
 use crate::error::AppError;
 use crate::models::OnedriveFolderEntry;
-use crate::utils::http::build_client;
 
 const GRAPH_ME_URL: &str = "https://graph.microsoft.com/v1.0/me";
 const ONEDRIVE_ROOT_CHILDREN_URL: &str = "https://graph.microsoft.com/v1.0/me/drive/root/children?$filter=folder ne null&$select=name,id,parentReference";
@@ -36,7 +35,9 @@ pub struct ReqwestGraphClient {
 impl ReqwestGraphClient {
     pub fn new() -> Result<Self, AppError> {
         Ok(Self {
-            client: build_client(15)?,
+            client: reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(15))
+                .build()?,
         })
     }
 }

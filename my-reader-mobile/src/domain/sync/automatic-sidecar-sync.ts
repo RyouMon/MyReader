@@ -169,7 +169,7 @@ export function createAutomaticSidecarSyncScheduler(
         myreaderTaskId: taskId,
         throwOnFailure: true,
       })
-      applySyncReport(report, { trigger: "scheduled" })
+      await applySyncReport(report, { trigger: "scheduled" })
     },
     cancelTask: cancelLibrarySidecarSyncTask,
     classifyError: classifyAutomaticSidecarSyncError,

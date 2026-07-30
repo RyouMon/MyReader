@@ -41,6 +41,53 @@ export type NativeSyncTaskProgress = {
 
 export type MyReaderRustComponentsModule = {
   migrateLibraryDatabase(databasePath: string): Promise<void>
+  initializeDeviceRegistry(
+    registryPath: string,
+    legacyRegistryJson: string | null,
+  ): Promise<string>
+  upsertDeviceDataSource(
+    registryPath: string,
+    sourceJson: string,
+  ): Promise<string>
+  validateDeviceDataSource(
+    registryPath: string,
+    sourceJson: string,
+  ): Promise<void>
+  removeDeviceDataSource(
+    registryPath: string,
+    dataSourceId: string,
+  ): Promise<string>
+  registerDeviceLibrary(
+    registryPath: string,
+    libraryJson: string,
+  ): Promise<string>
+  replaceDeviceLibrary(
+    registryPath: string,
+    libraryJson: string,
+  ): Promise<string>
+  removeDeviceLibrary(registryPath: string, libraryId: string): Promise<string>
+  switchDeviceLibrary(registryPath: string, libraryId: string): Promise<string>
+  testRemoteDataSource(
+    sourceJson: string,
+    credentialJson: string,
+  ): Promise<void>
+  listRemoteDirectories(
+    registryPath: string,
+    dataSourceId: string,
+    path: string,
+    credentialJson: string,
+  ): Promise<string>
+  addRemoteLibrary(
+    registryPath: string,
+    requestJson: string,
+    credentialJson: string,
+  ): Promise<string>
+  refreshRemoteLibrary(
+    registryPath: string,
+    libraryId: string,
+    localRootPath: string,
+    credentialJson: string,
+  ): Promise<string>
   syncContractVersion(): number
   advanceSyncScheduler(
     stateJson: string | null,
@@ -108,6 +155,59 @@ function getNativeModule(): MyReaderRustComponentsModule {
 const moduleFacade: MyReaderRustComponentsModule = {
   migrateLibraryDatabase(databasePath) {
     return getNativeModule().migrateLibraryDatabase(databasePath)
+  },
+  initializeDeviceRegistry(registryPath, legacyRegistryJson) {
+    return getNativeModule().initializeDeviceRegistry(
+      registryPath,
+      legacyRegistryJson,
+    )
+  },
+  upsertDeviceDataSource(registryPath, sourceJson) {
+    return getNativeModule().upsertDeviceDataSource(registryPath, sourceJson)
+  },
+  validateDeviceDataSource(registryPath, sourceJson) {
+    return getNativeModule().validateDeviceDataSource(registryPath, sourceJson)
+  },
+  removeDeviceDataSource(registryPath, dataSourceId) {
+    return getNativeModule().removeDeviceDataSource(registryPath, dataSourceId)
+  },
+  registerDeviceLibrary(registryPath, libraryJson) {
+    return getNativeModule().registerDeviceLibrary(registryPath, libraryJson)
+  },
+  replaceDeviceLibrary(registryPath, libraryJson) {
+    return getNativeModule().replaceDeviceLibrary(registryPath, libraryJson)
+  },
+  removeDeviceLibrary(registryPath, libraryId) {
+    return getNativeModule().removeDeviceLibrary(registryPath, libraryId)
+  },
+  switchDeviceLibrary(registryPath, libraryId) {
+    return getNativeModule().switchDeviceLibrary(registryPath, libraryId)
+  },
+  testRemoteDataSource(sourceJson, credentialJson) {
+    return getNativeModule().testRemoteDataSource(sourceJson, credentialJson)
+  },
+  listRemoteDirectories(registryPath, dataSourceId, path, credentialJson) {
+    return getNativeModule().listRemoteDirectories(
+      registryPath,
+      dataSourceId,
+      path,
+      credentialJson,
+    )
+  },
+  addRemoteLibrary(registryPath, requestJson, credentialJson) {
+    return getNativeModule().addRemoteLibrary(
+      registryPath,
+      requestJson,
+      credentialJson,
+    )
+  },
+  refreshRemoteLibrary(registryPath, libraryId, localRootPath, credentialJson) {
+    return getNativeModule().refreshRemoteLibrary(
+      registryPath,
+      libraryId,
+      localRootPath,
+      credentialJson,
+    )
   },
   syncContractVersion() {
     return getNativeModule().syncContractVersion()

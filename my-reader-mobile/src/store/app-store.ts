@@ -44,9 +44,6 @@ export const useAppStore = create<AppState>()(
       storage: createJSONStorage(() => jsonStorage),
       partialize: (state) => ({
         settings: state.settings,
-        dataSources: excludeLocalLibrarySource(state.dataSources),
-        libraries: state.libraries,
-        activeLibraryId: state.activeLibraryId,
         libraryViewMode: state.libraryViewMode,
       }),
       merge: (persistedState, currentState) => {

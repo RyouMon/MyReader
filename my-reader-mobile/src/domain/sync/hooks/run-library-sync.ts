@@ -48,11 +48,11 @@ export async function runLibrarySync(
 
   try {
     const report = await syncLibrary(library, state.dataSources, options)
-    applySyncReport(report, { trigger: input.trigger })
+    await applySyncReport(report, { trigger: input.trigger })
     return report
   } catch (err) {
     if (err instanceof SyncConnectivityError) {
-      applySyncReport(err.report, { trigger: input.trigger })
+      await applySyncReport(err.report, { trigger: input.trigger })
       if (options.throwOnFailure) {
         showSyncFailureAlert(err.message)
       }

@@ -119,8 +119,9 @@ pub fn add_local_data_source<R: tauri::Runtime>(
         "Start to add local data source. name: \"{}\", root path: \"{}\"",
         name, root_path
     );
+    let registry_path = crate::config::device_registry_path(&common::app_data_dir(&app)?);
     let result = common::with_config_mut_then_persist(&app, &state, |config| {
-        DataSourceService::add_local_data_source(name, root_path, config)
+        DataSourceService::add_local_data_source(name, root_path, &registry_path, config)
     });
     match &result {
         Ok(source) => info!(
@@ -148,9 +149,16 @@ pub fn add_webdav_data_source<R: tauri::Runtime>(
         "Start to add WebDAV data source. name: \"{}\", endpoint: \"{}\", username: \"{}\"",
         name, endpoint, username
     );
+    let registry_path = crate::config::device_registry_path(&common::app_data_dir(&app)?);
     let result = common::with_config_mut_then_persist(&app, &state, |config| {
         DataSourceService::add_webdav_data_source(
-            name, endpoint, username, password, root_path, config,
+            name,
+            endpoint,
+            username,
+            password,
+            root_path,
+            &registry_path,
+            config,
         )
     });
     match &result {
@@ -204,6 +212,7 @@ pub fn add_onedrive_data_source<R: tauri::Runtime>(
         "Start to add OneDrive data source. name=\"{}\" user_name={:?} user_email={:?}",
         name, input.user_name, input.user_email
     );
+    let registry_path = crate::config::device_registry_path(&common::app_data_dir(&app)?);
     let result = common::with_config_mut_then_persist(&app, &state, |config| {
         DataSourceService::add_onedrive_data_source(
             name,
@@ -213,6 +222,7 @@ pub fn add_onedrive_data_source<R: tauri::Runtime>(
             input.user_name.as_deref(),
             input.user_email.as_deref(),
             input.refresh_token.as_deref(),
+            &registry_path,
             config,
         )
     });
@@ -247,8 +257,9 @@ pub fn remove_data_source<R: tauri::Runtime>(
     id: String,
 ) -> Result<(), AppError> {
     info!("Start to remove data source. id: \"{id}\"");
+    let registry_path = crate::config::device_registry_path(&common::app_data_dir(&app)?);
     let result = common::with_config_mut_then_persist(&app, &state, |config| {
-        DataSourceService::remove_data_source(&id, config)
+        DataSourceService::remove_data_source(&id, &registry_path, config)
     });
     match &result {
         Ok(()) => info!("Success to remove data source. id: \"{id}\""),
@@ -259,14 +270,18 @@ pub fn remove_data_source<R: tauri::Runtime>(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn webdav_list_folders(
+pub async fn webdav_list_folders<R: tauri::Runtime>(
+    app: AppHandle<R>,
     state: State<'_, AppState>,
     data_source_id: String,
     path: String,
 ) -> Result<Vec<WebdavFolderEntry>, AppError> {
     info!("Start to list WebDAV folders. data_source_id: \"{data_source_id}\", path: \"{path}\"");
     let config = common::config_snapshot(&state);
-    let result = DataSourceService::list_webdav_folders(&data_source_id, &path, &config).await;
+    let registry_path = crate::config::device_registry_path(&common::app_data_dir(&app)?);
+    let result =
+        DataSourceService::list_webdav_folders(&data_source_id, &path, &registry_path, &config)
+            .await;
     match &result {
         Ok(folders) => info!(
             "Success to list WebDAV folders. data_source_id: \"{data_source_id}\", count: {}",
@@ -281,14 +296,18 @@ pub async fn webdav_list_folders(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn onedrive_list_folders(
+pub async fn onedrive_list_folders<R: tauri::Runtime>(
+    app: AppHandle<R>,
     state: State<'_, AppState>,
     data_source_id: String,
     path: String,
 ) -> Result<Vec<OnedriveFolderEntry>, AppError> {
     info!("Start to list OneDrive folders. data_source_id: \"{data_source_id}\", path: \"{path}\"");
     let config = common::config_snapshot(&state);
-    let result = DataSourceService::list_onedrive_folders(&data_source_id, &path, &config).await;
+    let registry_path = crate::config::device_registry_path(&common::app_data_dir(&app)?);
+    let result =
+        DataSourceService::list_onedrive_folders(&data_source_id, &path, &registry_path, &config)
+            .await;
     match &result {
         Ok(folders) => info!(
             "Success to list OneDrive folders. data_source_id: \"{data_source_id}\", count: {}",

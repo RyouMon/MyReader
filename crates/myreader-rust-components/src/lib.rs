@@ -2,6 +2,7 @@
 
 use std::{
     collections::HashMap,
+    future::Future,
     path::Path,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -119,6 +120,198 @@ pub fn migrate_library_database(database_path: String) -> Result<(), RustCompone
             &database_path,
         )))
         .map_err(|error| RustComponentsError::Core(error.to_string()))
+}
+
+fn parse_core_json<T: serde::de::DeserializeOwned>(value: &str) -> Result<T, RustComponentsError> {
+    serde_json::from_str(value)
+        .map_err(|error| RustComponentsError::Core(format!("Invalid core input: {error}")))
+}
+
+fn serialize_core_json<T: serde::Serialize>(value: &T) -> Result<String, RustComponentsError> {
+    serde_json::to_string(value)
+        .map_err(|error| RustComponentsError::Core(format!("Invalid core output: {error}")))
+}
+
+fn map_core_result(
+    result: Result<myreader_core::models::DeviceRegistry, myreader_core::CoreError>,
+) -> Result<String, RustComponentsError> {
+    serialize_core_json(&result.map_err(|error| RustComponentsError::Core(error.to_string()))?)
+}
+
+fn run_core_async<T>(
+    future: impl Future<Output = Result<T, myreader_core::CoreError>>,
+) -> Result<T, RustComponentsError> {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|error| {
+            RustComponentsError::Core(format!("Failed to start core runtime: {error}"))
+        })?;
+    runtime
+        .block_on(future)
+        .map_err(|error| RustComponentsError::Core(error.to_string()))
+}
+
+#[uniffi::export]
+pub fn initialize_device_registry(
+    registry_path: String,
+    legacy_registry_json: Option<String>,
+) -> Result<String, RustComponentsError> {
+    let legacy = legacy_registry_json
+        .as_deref()
+        .map(parse_core_json)
+        .transpose()?;
+    map_core_result(myreader_core::api::registry::load_or_initialize(
+        Path::new(&registry_path),
+        legacy,
+    ))
+}
+
+#[uniffi::export]
+pub fn upsert_device_data_source(
+    registry_path: String,
+    source_json: String,
+) -> Result<String, RustComponentsError> {
+    map_core_result(myreader_core::api::registry::upsert_data_source(
+        Path::new(&registry_path),
+        parse_core_json(&source_json)?,
+    ))
+}
+
+#[uniffi::export]
+pub fn validate_device_data_source(
+    registry_path: String,
+    source_json: String,
+) -> Result<(), RustComponentsError> {
+    myreader_core::api::registry::ensure_data_source_can_upsert(
+        Path::new(&registry_path),
+        &parse_core_json(&source_json)?,
+    )
+    .map_err(|error| RustComponentsError::Core(error.to_string()))
+}
+
+#[uniffi::export]
+pub fn remove_device_data_source(
+    registry_path: String,
+    data_source_id: String,
+) -> Result<String, RustComponentsError> {
+    map_core_result(myreader_core::api::registry::remove_data_source(
+        Path::new(&registry_path),
+        &data_source_id,
+    ))
+}
+
+#[uniffi::export]
+pub fn register_device_library(
+    registry_path: String,
+    library_json: String,
+) -> Result<String, RustComponentsError> {
+    map_core_result(myreader_core::api::registry::register_library(
+        Path::new(&registry_path),
+        parse_core_json(&library_json)?,
+    ))
+}
+
+#[uniffi::export]
+pub fn replace_device_library(
+    registry_path: String,
+    library_json: String,
+) -> Result<String, RustComponentsError> {
+    map_core_result(myreader_core::api::registry::replace_library(
+        Path::new(&registry_path),
+        parse_core_json(&library_json)?,
+    ))
+}
+
+#[uniffi::export]
+pub fn remove_device_library(
+    registry_path: String,
+    library_id: String,
+) -> Result<String, RustComponentsError> {
+    map_core_result(myreader_core::api::registry::remove_library(
+        Path::new(&registry_path),
+        &library_id,
+    ))
+}
+
+#[uniffi::export]
+pub fn switch_device_library(
+    registry_path: String,
+    library_id: String,
+) -> Result<String, RustComponentsError> {
+    map_core_result(myreader_core::api::registry::switch_library(
+        Path::new(&registry_path),
+        &library_id,
+    ))
+}
+
+#[uniffi::export]
+pub fn test_remote_data_source(
+    source_json: String,
+    credential_json: String,
+) -> Result<(), RustComponentsError> {
+    let source = parse_core_json(&source_json)?;
+    let credential = parse_core_json(&credential_json)?;
+    run_core_async(myreader_core::api::datasource::test_connection(
+        &source,
+        &credential,
+    ))
+}
+
+#[uniffi::export]
+pub fn list_remote_directories(
+    registry_path: String,
+    data_source_id: String,
+    path: String,
+    credential_json: String,
+) -> Result<String, RustComponentsError> {
+    let credential = parse_core_json(&credential_json)?;
+    let entries = run_core_async(myreader_core::api::datasource::list_directories(
+        Path::new(&registry_path),
+        &data_source_id,
+        &path,
+        &credential,
+    ))?;
+    serialize_core_json(&entries)
+}
+
+#[uniffi::export]
+pub fn add_remote_library(
+    registry_path: String,
+    request_json: String,
+    credential_json: String,
+) -> Result<String, RustComponentsError> {
+    let request = parse_core_json(&request_json)?;
+    let credential = parse_core_json(&credential_json)?;
+    let (registry, library) = run_core_async(myreader_core::api::library::add_remote(
+        Path::new(&registry_path),
+        request,
+        &credential,
+    ))?;
+    serialize_core_json(&serde_json::json!({
+        "registry": registry,
+        "library": library,
+    }))
+}
+
+#[uniffi::export]
+pub fn refresh_remote_library(
+    registry_path: String,
+    library_id: String,
+    local_root_path: String,
+    credential_json: String,
+) -> Result<String, RustComponentsError> {
+    let credential = parse_core_json(&credential_json)?;
+    let (registry, library) = run_core_async(myreader_core::api::library::refresh_remote(
+        Path::new(&registry_path),
+        &library_id,
+        Path::new(&local_root_path),
+        &credential,
+    ))?;
+    serialize_core_json(&serde_json::json!({
+        "registry": registry,
+        "library": library,
+    }))
 }
 
 #[uniffi::export]

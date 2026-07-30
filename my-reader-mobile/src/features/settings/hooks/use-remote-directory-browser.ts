@@ -2,18 +2,17 @@ import { router } from "expo-router"
 import { useEffect, useMemo, useState } from "react"
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import { registerRemoteLibrary } from "@/src/domain/library/hooks/library-actions"
 import {
-  createBrowseRemoteOps,
   isMissingMetadataDbError,
   normalizeCurrentPath,
 } from "@/src/domain/library/remote-library"
-import type {
-  RemoteDirEntry,
-  RemoteLibraryOps,
-} from "@/src/domain/library/remote-library"
-import { useAppStore } from "@/src/store/app-store"
-import { registerLibrary } from "@/src/domain/library/hooks/library-actions"
 import { notifyLibraryAdded } from "@/src/domain/notifications/library-notifications"
+import {
+  listRemoteDirectories,
+  type RemoteDirectoryEntry,
+} from "@/src/services/core/remote"
+import { useAppStore } from "@/src/store/app-store"
 
 export type UseRemoteDirectoryBrowserOpts = {
   dataSourceId: string | undefined
@@ -27,7 +26,7 @@ export type RemoteDirectoryBrowserState = {
   /** Data source found but credentials could not be resolved. */
   resolveFailed: boolean
   candidateId: string | undefined
-  entries: RemoteDirEntry[]
+  entries: RemoteDirectoryEntry[]
   loading: boolean
   error: string | null
   saving: boolean
@@ -57,9 +56,8 @@ export function useRemoteDirectoryBrowser({
     [dataSourceId, dataSources, sourceType],
   )
 
-  const [ops, setOps] = useState<RemoteLibraryOps | null>(null)
   const [resolveFailed, setResolveFailed] = useState(false)
-  const [entries, setEntries] = useState<RemoteDirEntry[]>([])
+  const [entries, setEntries] = useState<RemoteDirectoryEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -67,47 +65,19 @@ export function useRemoteDirectoryBrowser({
   useEffect(() => {
     let active = true
 
-    async function resolve() {
-      if (!candidate) {
-        return
-      }
-
-      if (active) {
-        setOps(null)
-        setResolveFailed(false)
-        setLoading(true)
-        setError(null)
-      }
-
-      const result = await createBrowseRemoteOps(candidate)
-      if (active) {
-        setOps(result)
-        if (!result) {
-          setResolveFailed(true)
-          setLoading(false)
-        }
-      }
-    }
-
-    void resolve()
-    return () => {
-      active = false
-    }
-  }, [candidate])
-
-  useEffect(() => {
-    let active = true
-
     async function load() {
-      if (!ops) {
+      if (!candidate) {
+        setLoading(false)
         return
       }
 
       setLoading(true)
       setError(null)
+      setResolveFailed(false)
 
       try {
-        const items = await ops.listDirectory(
+        const items = await listRemoteDirectories(
+          candidate,
           currentPath === "/" ? "" : currentPath,
         )
         if (active) {
@@ -115,11 +85,18 @@ export function useRemoteDirectoryBrowser({
         }
       } catch (caught) {
         if (active) {
-          setError(
+          const message =
             caught instanceof Error
               ? caught.message
-              : "Failed to read directory",
-          )
+              : "Failed to read directory"
+          if (
+            message.includes("PASSWORD_REQUIRED") ||
+            message.includes("REFRESH_TOKEN_REQUIRED")
+          ) {
+            setResolveFailed(true)
+          } else {
+            setError(message)
+          }
         }
       } finally {
         if (active) {
@@ -132,14 +109,14 @@ export function useRemoteDirectoryBrowser({
     return () => {
       active = false
     }
-  }, [currentPath, ops])
+  }, [candidate, currentPath])
 
   async function chooseCurrentPath(errorMessages: {
     notValidTitle: string
     notValidMessage: string
     generic: string
   }) {
-    if (!ops) {
+    if (!candidate) {
       return
     }
 
@@ -147,12 +124,9 @@ export function useRemoteDirectoryBrowser({
     setError(null)
 
     try {
-      const library = await ops.createLibraryFromPath(currentPath || "/")
-      const added = await registerLibrary(library)
-      if (added) {
-        router.dismissTo("/settings")
-        notifyLibraryAdded(added.name)
-      }
+      const library = await registerRemoteLibrary(candidate, currentPath || "/")
+      router.dismissTo("/settings")
+      notifyLibraryAdded(library.name)
     } catch (caught) {
       if (isMissingMetadataDbError(caught)) {
         showAlertWithStatusBarRestore(

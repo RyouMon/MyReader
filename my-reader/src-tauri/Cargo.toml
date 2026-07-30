@@ -56,7 +56,6 @@ futures = "0.3"
 warp = "0.3"
 portpicker = "0.1"
 dunce = "1"
-quick-xml = "0.37"
 percent-encoding = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]

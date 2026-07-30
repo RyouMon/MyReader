@@ -125,7 +125,7 @@ export type DbSyncReport = {
 	pulled: number,
 };
 
-export type ErrorKind = { kind: "Io"; message: string } | { kind: "Database"; message: string } | { kind: "NotFound"; message: string } | { kind: "Config"; message: string } | { kind: "Serialize"; message: string } | { kind: "Request"; message: string } | { kind: "Zip"; message: string } | { kind: "Task"; message: string } | { kind: "Auth"; message: string } | { kind: "Credential"; message: string } | { kind: "Sync"; message: string };
+export type ErrorKind = { kind: "Io"; message: string } | { kind: "Database"; message: string } | { kind: "NotFound"; message: string } | { kind: "Config"; message: string } | { kind: "Serialize"; message: string } | { kind: "Request"; message: string } | { kind: "Zip"; message: string } | { kind: "Task"; message: string } | { kind: "Auth"; message: string } | { kind: "Credential"; message: string } | { kind: "Storage"; message: string } | { kind: "Sync"; message: string };
 
 /**  Returned by `check_book_file_state`: describes whether a book file is cached locally. */
 export type FileStateDto = {

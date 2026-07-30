@@ -1,37 +1,43 @@
-import i18n from "@/src/i18n"
+import type { DataSource } from "@my-reader/tools/types/data-source"
 import type { Library } from "@my-reader/tools/types/library"
+import { Directory } from "expo-file-system"
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "@/src/constants/local-library-data-source"
 import {
   ensureLibraryMetadataCached,
+  libraryQueryKeys,
   readBookCountFromLibrary,
 } from "@/src/domain/library/calibre"
-import { libraryQueryKeys } from "@/src/domain/library/calibre"
 import { runLibrarySync } from "@/src/domain/sync/hooks/run-library-sync"
 import { isRemoteSourceType } from "@/src/domain/types"
+import i18n from "@/src/i18n"
+import {
+  type DeviceRegistry,
+  initializeDeviceRegistry,
+  registerDeviceLibrary,
+  removeDeviceLibrary,
+  switchDeviceLibrary,
+} from "@/src/services/core/device-registry"
+import { addRemoteLibrary } from "@/src/services/core/remote"
 import {
   libraryContainerRootUri,
   usesIosContainerSidecar,
 } from "@/src/services/fs/library-paths"
-import { Directory } from "expo-file-system"
 import { queryClient } from "@/src/services/query/query-client"
 import { useAppStore } from "@/src/store/app-store"
 import { excludeLocalLibrarySource } from "@/src/store/app-store.constants"
-
-function isDuplicateLibrary(libraries: Library[], candidate: Library): boolean {
-  return libraries.some(
-    (item) =>
-      item.metadataUri === candidate.metadataUri ||
-      item.path === candidate.path,
-  )
-}
 
 /** Hydrates persisted libraries into store on app startup. */
 export async function hydrateLibraries(): Promise<void> {
   try {
     const state = useAppStore.getState()
+    const registry = await initializeDeviceRegistry({
+      dataSources: state.dataSources,
+      libraries: state.libraries,
+      activeLibraryId: state.activeLibraryId,
+    })
     const hydratedLibraries = await Promise.all(
-      state.libraries.map(async (library) => {
+      registry.libraries.map(async (library) => {
         try {
           return await ensureLibraryMetadataCached(library)
         } catch {
@@ -41,15 +47,16 @@ export async function hydrateLibraries(): Promise<void> {
     )
 
     const nextActiveLibraryId =
-      hydratedLibraries.find((library) => library.id === state.activeLibraryId)
-        ?.id ??
+      hydratedLibraries.find(
+        (library) => library.id === registry.activeLibraryId,
+      )?.id ??
       hydratedLibraries[0]?.id ??
       null
 
     useAppStore.getState().setLibraries(hydratedLibraries)
     useAppStore
       .getState()
-      .setDataSources(excludeLocalLibrarySource(state.dataSources))
+      .setDataSources(excludeLocalLibrarySource(registry.dataSources))
     useAppStore.getState().setActiveLibraryId(nextActiveLibraryId)
   } catch {
     useAppStore.getState().setLibraries([])
@@ -63,25 +70,26 @@ export async function hydrateLibraries(): Promise<void> {
 export async function registerLibrary(
   library: Library,
 ): Promise<Library | null> {
-  const state = useAppStore.getState()
   const prepared = isRemoteSourceType(library.sourceType)
     ? library
     : (await readBookCountFromLibrary(library)).library
 
-  if (isDuplicateLibrary(state.libraries, prepared)) {
-    showAlertWithStatusBarRestore(
-      i18n.t("sync.cannotAddDuplicate"),
-      i18n.t("sync.alreadyAdded"),
-      [{ text: i18n.t("common.gotIt") }],
-    )
-    return null
+  let registry: DeviceRegistry
+  try {
+    registry = await registerDeviceLibrary(prepared)
+  } catch (error) {
+    if (String(error).includes("LIBRARY_ALREADY_EXISTS")) {
+      showAlertWithStatusBarRestore(
+        i18n.t("sync.cannotAddDuplicate"),
+        i18n.t("sync.alreadyAdded"),
+        [{ text: i18n.t("common.gotIt") }],
+      )
+      return null
+    }
+    throw error
   }
-
-  const nextLibraries = [...state.libraries, prepared]
-  const nextActiveLibraryId = state.activeLibraryId ?? prepared.id
-
-  useAppStore.getState().setLibraries(nextLibraries)
-  useAppStore.getState().setActiveLibraryId(nextActiveLibraryId)
+  useAppStore.getState().setLibraries(registry.libraries)
+  useAppStore.getState().setActiveLibraryId(registry.activeLibraryId)
 
   try {
     await runLibrarySync({ libraryId: prepared.id, trigger: "add" })
@@ -92,19 +100,32 @@ export async function registerLibrary(
   return prepared
 }
 
+/** Downloads, validates, and registers a remote Calibre library through core. */
+export async function registerRemoteLibrary(
+  source: DataSource,
+  sourcePath: string,
+): Promise<Library> {
+  const { library, registry } = await addRemoteLibrary(source, sourcePath)
+  useAppStore.getState().setLibraries(registry.libraries)
+  useAppStore.getState().setActiveLibraryId(registry.activeLibraryId)
+
+  try {
+    await runLibrarySync({ libraryId: library.id, trigger: "add" })
+  } catch (error) {
+    console.warn("[registerRemoteLibrary] add sync failed:", error)
+  }
+
+  return library
+}
+
 /** Removes a library and deletes its app container when applicable. */
 export async function removeLibrary(id: string): Promise<void> {
   const state = useAppStore.getState()
-  const nextLibraries = state.libraries.filter((library) => library.id !== id)
-  const removedActiveLibrary = state.activeLibraryId === id
-  const nextActiveLibraryId = removedActiveLibrary
-    ? (nextLibraries[0]?.id ?? null)
-    : state.activeLibraryId
-
   const removed = state.libraries.find((library) => library.id === id)
+  const registry = await removeDeviceLibrary(id)
 
-  useAppStore.getState().setLibraries(nextLibraries)
-  useAppStore.getState().setActiveLibraryId(nextActiveLibraryId)
+  useAppStore.getState().setLibraries(registry.libraries)
+  useAppStore.getState().setActiveLibraryId(registry.activeLibraryId)
 
   if (
     removed &&
@@ -117,16 +138,17 @@ export async function removeLibrary(id: string): Promise<void> {
   }
 
   await queryClient.invalidateQueries({ queryKey: libraryQueryKeys.books(id) })
-  if (nextActiveLibraryId) {
+  if (registry.activeLibraryId) {
     await queryClient.invalidateQueries({
-      queryKey: libraryQueryKeys.books(nextActiveLibraryId),
+      queryKey: libraryQueryKeys.books(registry.activeLibraryId),
     })
   }
 }
 
 /** Switches the active library without blocking on sync. */
-export function switchActiveLibrary(id: string): void {
-  useAppStore.getState().setActiveLibraryId(id)
+export async function switchActiveLibrary(id: string): Promise<void> {
+  const registry = await switchDeviceLibrary(id)
+  useAppStore.getState().setActiveLibraryId(registry.activeLibraryId)
 }
 
 /** @deprecated Use registerLibrary after picker resolves a local library. */

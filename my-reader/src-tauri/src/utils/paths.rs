@@ -25,11 +25,6 @@ pub fn library_sidecar_path(lib: &LibraryConfig, app_data_dir: &Path) -> PathBuf
     library_container_dir(app_data_dir, &lib.id)
 }
 
-/// `{library_root}/metadata.db`.
-pub fn library_metadata_db_path(lib: &LibraryConfig, app_data_dir: &Path) -> PathBuf {
-    library_root_path(lib, app_data_dir).join("metadata.db")
-}
-
 /// `{sidecar_root}/.myreader`.
 #[allow(dead_code)]
 pub fn library_myreader_dir_path(lib: &LibraryConfig, app_data_dir: &Path) -> PathBuf {
@@ -152,19 +147,6 @@ mod tests {
         assert_eq!(
             library_sidecar_path(&webdav_library(), &app_data),
             PathBuf::from("/app-data/libraries/lib-webdav")
-        );
-    }
-
-    #[test]
-    fn library_metadata_db_path_should_use_root_path() {
-        let app_data = PathBuf::from("/app-data");
-        assert_eq!(
-            library_metadata_db_path(&local_library(), &app_data),
-            PathBuf::from("/users/wen/books/metadata.db")
-        );
-        assert_eq!(
-            library_metadata_db_path(&webdav_library(), &app_data),
-            PathBuf::from("/app-data/libraries/lib-webdav/metadata.db")
         );
     }
 

@@ -1,6 +1,7 @@
 import type { LibrarySyncReport, SyncTrigger } from "@/src/domain/sync/types"
 import { libraryQueryKeys } from "@/src/domain/library/calibre"
 import { queryClient } from "@/src/services/query/query-client"
+import { replaceDeviceLibrary } from "@/src/services/core/device-registry"
 import { useAppStore } from "@/src/store/app-store"
 
 function isPassiveTrigger(trigger?: SyncTrigger): boolean {
@@ -11,7 +12,7 @@ function isPassiveTrigger(trigger?: SyncTrigger): boolean {
 export function applySyncReport(
   report: LibrarySyncReport,
   context?: { trigger?: SyncTrigger },
-): void {
+): Promise<void> {
   const passive = isPassiveTrigger(context?.trigger)
   const { calibre, libraryId } = report
 
@@ -24,6 +25,11 @@ export function applySyncReport(
           library.id === libraryId ? calibre.library : library,
         ),
     )
+  const persistRegistry = replaceDeviceLibrary(calibre.library).then(
+    (registry) => {
+      useAppStore.getState().setLibraries(registry.libraries)
+    },
+  )
 
   if (calibre.books && (!passive || calibre.changed)) {
     queryClient.setQueryData(libraryQueryKeys.books(libraryId), calibre.books)
@@ -32,14 +38,15 @@ export function applySyncReport(
       queryKey: libraryQueryKeys.books(libraryId),
     })
   }
+  return persistRegistry
 }
 
 /** Applies multiple library reports from a batch sync run. */
-export function applySyncRunReports(
+export async function applySyncRunReports(
   results: LibrarySyncReport[],
   context?: { trigger?: SyncTrigger },
-): void {
+): Promise<void> {
   for (const report of results) {
-    applySyncReport(report, context)
+    await applySyncReport(report, context)
   }
 }

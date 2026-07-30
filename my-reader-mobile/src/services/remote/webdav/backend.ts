@@ -18,30 +18,19 @@ import type {
   DownloadRequest,
   PreparedUpload,
   RemoteBackend,
-  RemoteDirEntry,
   RemoteFileStat,
   UploadRequest,
 } from "../backend"
-import { parseWebDavPropfind } from "./propfind"
 
 type WebDavDataSource = DataSourceWebdav & { password: string }
-
-function normalizeRemotePath(path: string) {
-  const trimmed = path.trim()
-  if (!trimmed || trimmed === "/") return ""
-  return `/${trimmed.replace(/^\/+/, "").replace(/\/+$/, "")}`
-}
 
 export class WebDavRemoteBackend implements RemoteBackend {
   readonly kind = "webdav" as const
   readonly dataSourceId: string
 
   private readonly urlBuilder: WebDavUrlBuilder
-  private readonly source: WebDavDataSource
-
   constructor(source: WebDavDataSource, libraryRootPath: string) {
     this.dataSourceId = source.id
-    this.source = source
     this.urlBuilder = new WebDavUrlBuilder(source, libraryRootPath)
   }
 
@@ -176,8 +165,8 @@ export class WebDavRemoteBackend implements RemoteBackend {
     ).replace(/\/?$/, "/")
     const children: string[] = []
     const hrefRegex = /<(?:[^>:]*:)?href>([^<]+)</gi
-    let match: RegExpExecArray | null
-    while ((match = hrefRegex.exec(xml)) !== null) {
+    let match = hrefRegex.exec(xml)
+    while (match !== null) {
       const hrefPath = decodeURIComponent(
         match[1]!.trim().replace(/^https?:\/\/[^/]+/, ""),
       )
@@ -191,6 +180,7 @@ export class WebDavRemoteBackend implements RemoteBackend {
       if (childName && !childName.replace(/\/$/, "").includes("/")) {
         children.push(childName)
       }
+      match = hrefRegex.exec(xml)
     }
     return children
   }
@@ -240,7 +230,7 @@ export class WebDavRemoteBackend implements RemoteBackend {
   }
 
   async prepareUpload(
-    localFileUri: string,
+    _localFileUri: string,
     remotePath: string,
   ): Promise<PreparedUpload> {
     await this.ensureParentDirectories(remotePath)
@@ -249,41 +239,8 @@ export class WebDavRemoteBackend implements RemoteBackend {
 
   // -- Path / URL --
 
-  normalizePath(path: string): string {
-    return normalizeRemotePath(path)
-  }
-
   contentUrl(remotePath: string): string {
     return this.urlBuilder.urlFor(remotePath)
-  }
-
-  // -- Browse --
-
-  async listDirectory(path: string): Promise<RemoteDirEntry[]> {
-    const response = await ky(this.urlBuilder.urlFor(path), {
-      method: "PROPFIND",
-      headers: {
-        ...this.urlBuilder.authHeaders,
-        Depth: "1",
-        "Content-Type": "application/xml; charset=utf-8",
-      },
-      body: `<?xml version="1.0" encoding="utf-8" ?><d:propfind xmlns:d="DAV:"><d:allprop /></d:propfind>`,
-    })
-
-    const xml = await response.text()
-    const currentPath = normalizeRemotePath(path).replace(/\/+$/, "")
-
-    return parseWebDavPropfind(this.source, xml)
-      .filter((entry) => {
-        const href = entry.href.replace(/\/+$/, "")
-        return href !== currentPath
-      })
-      .sort((left, right) => {
-        if (left.isDirectory !== right.isDirectory) {
-          return left.isDirectory ? -1 : 1
-        }
-        return left.name.localeCompare(right.name, "zh-CN")
-      })
   }
 
   // -- Private helpers --

@@ -3436,7 +3436,6 @@ dependencies = [
  "opendal",
  "percent-encoding",
  "portpicker",
- "quick-xml 0.37.5",
  "reqwest 0.12.28",
  "sea-orm",
  "sea-orm-migration",
@@ -3468,13 +3467,19 @@ dependencies = [
 name = "myreader-core"
 version = "0.1.0"
 dependencies = [
+ "dunce",
+ "opendal",
+ "rusqlite",
  "sea-orm",
  "sea-orm-migration",
  "serde",
+ "serde_json",
  "tempfile",
  "thiserror 1.0.69",
  "tokio",
  "tracing",
+ "url",
+ "uuid",
 ]
 
 [[package]]
@@ -3484,6 +3489,7 @@ dependencies = [
  "myreader-core",
  "myreader-sync",
  "rusqlite",
+ "serde",
  "serde_json",
  "tempfile",
  "thiserror 1.0.69",
@@ -4725,15 +4731,6 @@ checksum = "f7649a7b4df05aed9ea7ec6f628c67c9953a43869b8bc50929569b2999d443fe"
 dependencies = [
  "memchr",
  "serde",
-]
-
-[[package]]
-name = "quick-xml"
-version = "0.37.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "331e97a1af0bf59823e6eadffe373d7b27f485be8748f71471c662c1f269b7fb"
-dependencies = [
- "memchr",
 ]
 
 [[package]]

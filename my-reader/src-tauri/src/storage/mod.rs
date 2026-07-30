@@ -77,6 +77,35 @@ pub async fn from_data_source(source: &DataSourceConfig) -> Result<opendal::Oper
     from_data_source_at_path(source, None).await
 }
 
+pub async fn core_remote_credential(
+    source: &DataSourceConfig,
+) -> Result<myreader_core::models::RemoteCredential, AppError> {
+    match &source.detail {
+        DataSourceDetail::Webdav {
+            credential_account, ..
+        } => {
+            let account = credential_account
+                .as_deref()
+                .filter(|value| !value.trim().is_empty())
+                .ok_or_else(|| AppError::Config("WEBDAV_PASSWORD_REQUIRED".into()))?;
+            let password = credentials::read_webdav_password(account)?
+                .ok_or_else(|| AppError::Config("WEBDAV_PASSWORD_REQUIRED".into()))?;
+            Ok(myreader_core::models::RemoteCredential::Webdav { password })
+        }
+        DataSourceDetail::Onedrive {
+            client_id,
+            tenant_id,
+            ..
+        } => {
+            let access_token = onedrive_token_manager()
+                .get_access_token(&source.id, Some(client_id), Some(tenant_id))
+                .await?;
+            Ok(myreader_core::models::RemoteCredential::Onedrive { access_token })
+        }
+        DataSourceDetail::Local { .. } => Err(AppError::Config("DATASOURCE_NOT_REMOTE".into())),
+    }
+}
+
 pub async fn from_data_source_at_path(
     source: &DataSourceConfig,
     relative_root: Option<&str>,

@@ -11,6 +11,7 @@ edition = "2021"
 
 [workspace.dependencies]
 automerge = "=0.10.0"
+dunce = "1"
 myreader-core = { path = "crates/myreader-core" }
 myreader-rust-components = { path = "crates/myreader-rust-components" }
 myreader-sync = { path = "crates/myreader-sync" }
@@ -26,6 +27,7 @@ rusqlite = "0.32.1"
 sea-orm = { version = "2.0.0-rc.38", features = ["sqlx-sqlite", "runtime-tokio-rustls"] }
 sea-orm-migration = { version = "2.0.0-rc.38", default-features = false }
 tracing = "0.1"
+url = "2"
 
 [profile.release]
 opt-level = "s"

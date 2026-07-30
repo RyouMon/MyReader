@@ -38,7 +38,7 @@ export const defaultSettings: ReaderSettings = {
 
 export const DEFAULT_LIBRARY_VIEW_MODE = "grid"
 
-/** Exclude the local library data source id. Used in persist partialize and merge. */
+/** Exclude the synthetic local-library source from legacy state and UI caches. */
 export function excludeLocalLibrarySource(dataSources: DataSource[]) {
   return dataSources.filter(
     (source) => source.id !== LOCAL_LIBRARY_DATA_SOURCE_ID,

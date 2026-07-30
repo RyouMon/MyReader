@@ -1,6 +1,7 @@
 use myreader_rust_components::{
-    cancel_sync_task, ensure_sync_database_identity, mark_sync_database_schedule_succeeded,
-    migrate_library_database, read_sync_database_schedule_state, read_sync_task_progress,
+    cancel_sync_task, ensure_sync_database_identity, initialize_device_registry,
+    mark_sync_database_schedule_succeeded, migrate_library_database,
+    read_sync_database_schedule_state, read_sync_task_progress, register_device_library,
     release_sync_task, sync_contract_version, sync_library_sidecar,
     write_sync_database_schedule_state, SyncDatabaseScheduleState,
 };
@@ -34,6 +35,62 @@ fn should_create_library_schema_when_native_bridge_migrates_database() {
         .unwrap();
 
     assert_eq!(table_count, 1);
+}
+
+#[test]
+fn should_persist_registry_when_native_bridge_registers_library() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("registry.json");
+    let path = path.to_string_lossy().into_owned();
+    initialize_device_registry(path.clone(), None).unwrap();
+
+    let registry_json = register_device_library(
+        path.clone(),
+        serde_json::json!({
+            "id": "library",
+            "name": "Library",
+            "path": "/library",
+            "bookCount": 0,
+            "sourceType": "local"
+        })
+        .to_string(),
+    )
+    .unwrap();
+    let persisted_json = initialize_device_registry(path, None).unwrap();
+
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&registry_json).unwrap(),
+        serde_json::from_str::<serde_json::Value>(&persisted_json).unwrap()
+    );
+}
+
+#[test]
+fn should_return_core_error_when_remote_credential_type_does_not_match_source() {
+    let error = myreader_rust_components::test_remote_data_source(
+        serde_json::json!({
+            "type": "webdav",
+            "id": "source",
+            "name": "Source",
+            "enabled": true,
+            "endpoint": "https://example.com",
+            "username": "reader",
+            "hasPassword": true
+        })
+        .to_string(),
+        serde_json::json!({
+            "type": "onedrive",
+            "accessToken": "token"
+        })
+        .to_string(),
+    )
+    .unwrap_err();
+
+    assert!(
+        error
+            .to_string()
+            .contains("DATASOURCE_CREDENTIAL_TYPE_MISMATCH"),
+        "unexpected error: {error}"
+    );
 }
 
 #[test]

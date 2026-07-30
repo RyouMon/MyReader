@@ -1,5 +1,7 @@
 import { Redirect, useLocalSearchParams } from "expo-router"
+import { useEffect } from "react"
 
+import { switchActiveLibrary } from "@/src/domain/library/hooks/library-actions"
 import { useAppStore } from "@/src/store/app-store"
 
 /**
@@ -8,12 +10,13 @@ import { useAppStore } from "@/src/store/app-store"
 export default function LibraryIdBridgeRoute() {
   const { libraryId } = useLocalSearchParams<{ libraryId?: string }>()
 
-  if (typeof libraryId === "string") {
+  useEffect(() => {
+    if (typeof libraryId !== "string") return
     const { activeLibraryId } = useAppStore.getState()
     if (activeLibraryId !== libraryId) {
-      useAppStore.getState().setActiveLibraryId(libraryId)
+      void switchActiveLibrary(libraryId)
     }
-  }
+  }, [libraryId])
 
   return <Redirect href="/library" />
 }

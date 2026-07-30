@@ -1,25 +1,10 @@
-import { createRemoteBackend } from "../../services/remote/factory"
-import type { RemoteBackend } from "../../services/remote/backend"
-import type { BookItem, DataSource, Library } from "../types"
 import { resolveCoverUri } from "@/src/services/fs/library-paths"
-import {
-  createLibraryFromPath,
-  forceRefreshMetadata,
-  readBooks,
-} from "./remote-library-shared"
-
-// -- Types (kept here for backward compat) --
-
-export type RemoteDirEntry = {
-  name: string
-  path: string
-  isDirectory: boolean
-}
+import type { RemoteBackend } from "../../services/remote/backend"
+import { createRemoteBackend } from "../../services/remote/factory"
+import type { BookItem, DataSource, Library } from "../types"
+import { readBooks } from "./remote-library-shared"
 
 export type RemoteLibraryOps = {
-  testConnection(): Promise<Response>
-  listDirectory(path: string): Promise<RemoteDirEntry[]>
-  createLibraryFromPath(remotePath: string): Promise<Library>
   readBooks(
     library: Library,
   ): Promise<{ books: BookItem[]; metadataUri: string }>
@@ -28,7 +13,6 @@ export type RemoteLibraryOps = {
     bookPath: string,
     hasCover: boolean,
   ): BookItem["coverUri"]
-  forceRefreshMetadata(library: Library): Promise<string>
 }
 
 export function normalizeCurrentPath(path: string | undefined) {
@@ -38,74 +22,23 @@ export function normalizeCurrentPath(path: string | undefined) {
 }
 
 export function isMissingMetadataDbError(error: unknown) {
-  return error instanceof Error && /404/.test(error.message)
+  return (
+    error instanceof Error &&
+    /404|WEBDAV_NOT_FOUND|ONEDRIVE_NOT_FOUND/.test(error.message)
+  )
 }
 
 // -- Factory --
 
-function browsePlaceholderLibrary(dataSource: DataSource): Library {
+function buildRemoteOps(backend: RemoteBackend): RemoteLibraryOps {
   return {
-    id: "browse",
-    name: "",
-    path: "",
-    bookCount: 0,
-    dataSourceId: dataSource.id,
-    sourceType: dataSource.type,
-  }
-}
-
-function buildRemoteOps(
-  backend: RemoteBackend,
-  source: DataSource,
-  mode: "library" | "browse",
-): RemoteLibraryOps {
-  const shared = {
-    testConnection: async () => {
-      const headers = await backend.getAuthHeaders()
-      return fetch(backend.contentUrl("/"), { method: "HEAD", headers })
-    },
-    listDirectory: (path: string) => backend.listDirectory(path),
-    createLibraryFromPath: (remotePath: string) =>
-      createLibraryFromPath(backend, source.id, source.name, remotePath),
-  }
-
-  if (mode === "browse") {
-    return {
-      ...shared,
-      readBooks: async () => ({ books: [], metadataUri: "" }),
-      buildCoverUri: () => undefined,
-      forceRefreshMetadata: async () => {
-        throw new Error("forceRefreshMetadata unavailable in browse mode")
-      },
-    }
-  }
-
-  return {
-    ...shared,
     readBooks: (lib: Library) =>
       readBooks(lib, backend, (l, bookPath, hasCover) =>
         resolveCoverUri(l, bookPath, hasCover, backend),
       ),
     buildCoverUri: (lib: Library, bookPath: string, hasCover: boolean) =>
       resolveCoverUri(lib, bookPath, hasCover, backend),
-    forceRefreshMetadata: (lib: Library) => forceRefreshMetadata(lib, backend),
   }
-}
-
-/** Resolves browse-only remote ops for directory picker screens. */
-export async function createBrowseRemoteOps(
-  dataSource: DataSource,
-): Promise<RemoteLibraryOps | null> {
-  if (dataSource.type !== "webdav" && dataSource.type !== "onedrive")
-    return null
-
-  const backend = await createRemoteBackend(
-    dataSource,
-    browsePlaceholderLibrary(dataSource),
-  )
-  if (!backend) return null
-
-  return buildRemoteOps(backend, dataSource, "browse")
 }
 
 export async function createRemoteOps(
@@ -122,5 +55,5 @@ export async function createRemoteOps(
   const backend = await createRemoteBackend(source, library)
   if (!backend) return null
 
-  return buildRemoteOps(backend, source, "library")
+  return buildRemoteOps(backend)
 }

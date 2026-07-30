@@ -11,7 +11,7 @@ pub mod onedrive;
 #[doc(hidden)]
 pub mod test_support {
     pub use super::credentials::{
-        read_onedrive_refresh_token, read_webdav_password, use_test_backend,
+        read_onedrive_refresh_token, read_webdav_password, save_webdav_password, use_test_backend,
         webdav_password_account, MemoryBackend,
     };
 }

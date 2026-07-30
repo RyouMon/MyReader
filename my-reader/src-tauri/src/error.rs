@@ -32,6 +32,9 @@ pub enum AppError {
     #[error("CREDENTIAL_ERROR: {0}")]
     Credential(String),
 
+    #[error("STORAGE_ERROR: {0}")]
+    Storage(String),
+
     #[error("SYNC_ERROR: {0}")]
     Sync(String),
 }
@@ -53,6 +56,10 @@ impl From<myreader_core::CoreError> for AppError {
         match error {
             myreader_core::CoreError::Io(error) => Self::Io(error),
             myreader_core::CoreError::Database(message) => Self::Database(message),
+            myreader_core::CoreError::Config(message) => Self::Config(message),
+            myreader_core::CoreError::NotFound(message) => Self::NotFound(message),
+            myreader_core::CoreError::Serialize(message) => Self::Serialize(message),
+            myreader_core::CoreError::Storage(message) => Self::Storage(message),
         }
     }
 }
@@ -90,6 +97,7 @@ pub enum ErrorKind {
     Task(String),
     Auth(String),
     Credential(String),
+    Storage(String),
     Sync(String),
 }
 
@@ -115,6 +123,7 @@ impl serde::Serialize for AppError {
             Self::Task(_) => ErrorKind::Task(self.to_string()),
             Self::Auth(_) => ErrorKind::Auth(self.to_string()),
             Self::Credential(_) => ErrorKind::Credential(self.to_string()),
+            Self::Storage(_) => ErrorKind::Storage(self.to_string()),
             Self::Sync(_) => ErrorKind::Sync(self.to_string()),
         };
         kind.serialize(serializer)

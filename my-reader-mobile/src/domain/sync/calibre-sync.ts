@@ -1,27 +1,25 @@
 import { File } from "expo-file-system"
-
-import { countBooks, listBookSummaries } from "../../repos/calibre/books"
-import { getBookFormatRows } from "../../repos/calibre/data"
-import { forceRefreshLibraryMetadata } from "../library/calibre"
-import { fetchBooks } from "../library/calibre"
-import { forceRefreshMetadata } from "../library/remote-library-shared"
+import i18n from "@/src/i18n"
 import {
   COVER_FILE_NAME,
   METADATA_DB_RELATIVE,
 } from "@/src/services/fs/library-paths"
+import { countBooks, listBookSummaries } from "../../repos/calibre/books"
+import { getBookFormatRows } from "../../repos/calibre/data"
+import { refreshRemoteLibrary } from "../../services/core/remote"
+import { joinRelativePath } from "../../services/fs/path"
+import { describeError } from "../../utils/common"
+import { fetchBooks, forceRefreshLibraryMetadata } from "../library/calibre"
 import { withLocalLibraryCalibreRoot } from "../library/local-library-content"
 import type { Library } from "../types"
 import { isRemoteSourceType } from "../types"
-import { joinRelativePath } from "../../services/fs/path"
-import i18n from "@/src/i18n"
-import { describeError } from "../../utils/common"
 
-import { diffBooks, type BookDiff, type BookSummary } from "./book-diff"
+import { type BookDiff, type BookSummary, diffBooks } from "./book-diff"
 import type { SyncTargetContext } from "./context"
+import { LocalDirectBackend } from "./local"
+import { isRemoteBackend, type SyncBackend } from "./resolve"
 import { evictLocalFileOfflineSafe } from "./transfer"
 import type { CalibreSyncResult, SyncLibraryOptions } from "./types"
-import { isRemoteBackend, type SyncBackend } from "./resolve"
-import { LocalDirectBackend } from "./local"
 
 function mapSummaries(
   rows: Awaited<ReturnType<typeof listBookSummaries>>,
@@ -55,12 +53,19 @@ async function statMetadataEtag(
 async function materializeMetadata(
   ctx: SyncTargetContext,
   etag: string,
+  dataSources: import("../types").DataSource[],
 ): Promise<Library> {
   const { library, backend } = ctx
 
   if (isRemoteBackend(backend)) {
-    const newMetadataUri = await forceRefreshMetadata(library, backend)
-    return { ...library, metadataEtag: etag, metadataUri: newMetadataUri }
+    const source = dataSources.find(
+      (candidate) => candidate.id === library.dataSourceId,
+    )
+    if (!source) {
+      throw new Error(`DATASOURCE_NOT_FOUND: ${library.dataSourceId ?? ""}`)
+    }
+    const refreshed = await refreshRemoteLibrary(library, source)
+    return { ...refreshed.library, metadataEtag: etag }
   }
 
   const refreshed = await forceRefreshLibraryMetadata(library)
@@ -163,7 +168,7 @@ export async function syncCalibre(
     }
 
     const nextEtag = etag ?? library.metadataEtag ?? ""
-    let newLibrary = await materializeMetadata(ctx, nextEtag)
+    let newLibrary = await materializeMetadata(ctx, nextEtag, dataSources)
 
     const newMetadataUri = newLibrary.metadataUri
     if (!newMetadataUri) {

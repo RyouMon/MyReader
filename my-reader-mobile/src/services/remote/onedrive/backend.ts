@@ -19,26 +19,14 @@ import type {
   DownloadRequest,
   PreparedUpload,
   RemoteBackend,
-  RemoteDirEntry,
   RemoteFileStat,
   UploadRequest,
 } from "../backend"
 
 type DriveItem = {
-  id: string
-  name: string
   size?: number
   cTag?: string
   lastModifiedDateTime?: string
-  file?: { mimeType: string }
-  folder?: { childCount: number }
-  deleted?: object
-  parentReference?: { path: string }
-}
-
-type DriveChildrenResponse = {
-  value: DriveItem[]
-  "@odata.nextLink"?: string
 }
 
 export class OneDriveRemoteBackend implements RemoteBackend {
@@ -208,23 +196,19 @@ export class OneDriveRemoteBackend implements RemoteBackend {
     const headers = await this.getAuthHeaders()
     const ep = this.encodedPath(remotePath)
     const apiContentUrl = `${GRAPH_API_BASE}/me/drive/root:${ep}:/content`
-    try {
-      const res = await fetch(apiContentUrl, {
-        method: "GET",
-        headers,
-        redirect: "manual",
-      })
-      if (res.status === 302 || res.status === 301) {
-        const directUrl = res.headers.get("Location")
-        if (directUrl) {
-          this.resolvedDownloadUrls.set(remotePath, directUrl)
-          return { remotePath, localFileUri, headers: {} }
-        }
+    const res = await fetch(apiContentUrl, {
+      method: "GET",
+      headers,
+      redirect: "manual",
+    })
+    if (res.status === 302 || res.status === 301) {
+      const directUrl = res.headers.get("Location")
+      if (directUrl) {
+        this.resolvedDownloadUrls.set(remotePath, directUrl)
+        return { remotePath, localFileUri, headers: {} }
       }
-      return { remotePath, localFileUri, headers }
-    } catch (e) {
-      throw e
     }
+    return { remotePath, localFileUri, headers }
   }
 
   async getUploadRequest(
@@ -240,7 +224,7 @@ export class OneDriveRemoteBackend implements RemoteBackend {
   }
 
   async prepareUpload(
-    localFileUri: string,
+    _localFileUri: string,
     remotePath: string,
   ): Promise<PreparedUpload> {
     await this.ensureParentDirectories(remotePath)
@@ -248,10 +232,6 @@ export class OneDriveRemoteBackend implements RemoteBackend {
   }
 
   // -- Path / URL --
-
-  normalizePath(path: string): string {
-    return path.startsWith("/") ? path : `/${path}`
-  }
 
   contentUrl(remotePath: string): string {
     const resolved = this.resolvedDownloadUrls.get(remotePath)
@@ -264,49 +244,6 @@ export class OneDriveRemoteBackend implements RemoteBackend {
       .split("/")
       .map((s) => encodeURIComponent(s))
       .join("/")
-  }
-
-  // -- Browse --
-
-  async listDirectory(path: string): Promise<RemoteDirEntry[]> {
-    const normalizedPath = path.startsWith("/") ? path : `/${path}`
-    const segments = normalizedPath
-      .split("/")
-      .map((s) => encodeURIComponent(s))
-      .join("/")
-    const endpoint =
-      segments === "/"
-        ? "/me/drive/root/children"
-        : `/me/drive/root:${segments}:/children`
-
-    let allItems: DriveItem[] = []
-    let nextUrl: string | undefined = endpoint
-
-    while (nextUrl) {
-      const data: DriveChildrenResponse =
-        await this.graphGetJson<DriveChildrenResponse>(
-          nextUrl.replace(GRAPH_API_BASE, ""),
-        )
-      allItems = allItems.concat(data.value ?? [])
-      nextUrl = data["@odata.nextLink"]
-    }
-
-    return allItems
-      .filter((item) => item.folder && !item.deleted)
-      .map((item) => {
-        const parentPath = item.parentReference?.path ?? ""
-        const relativeParent = parentPath.replace(/^\/drive\/root:/, "")
-        const fullPath = relativeParent
-          ? `${relativeParent}/${item.name}`
-          : item.name
-
-        return {
-          name: item.name,
-          path: fullPath,
-          isDirectory: true,
-        }
-      })
-      .sort((a, b) => a.name.localeCompare(b.name, "zh-CN"))
   }
 
   // -- Private helpers --
@@ -356,24 +293,6 @@ export class OneDriveRemoteBackend implements RemoteBackend {
     }
 
     return res
-  }
-
-  private async graphGetJson<T>(graphPath: string): Promise<T> {
-    const headers = await this.getAuthHeaders()
-    const res = await ky(`${GRAPH_API_BASE}${graphPath}`, {
-      headers,
-      throwHttpErrors: false,
-    })
-    if (res.status === 401) {
-      this.invalidateAuth()
-      const retryHeaders = await this.getAuthHeaders()
-      const retryRes = await ky(`${GRAPH_API_BASE}${graphPath}`, {
-        headers: retryHeaders,
-        throwHttpErrors: false,
-      })
-      return (await retryRes.json()) as T
-    }
-    return (await res.json()) as T
   }
 
   private async ensureParentDirectories(relativePath: string): Promise<void> {

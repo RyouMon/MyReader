@@ -100,8 +100,8 @@ export function SyncRuntime(): null {
 
     const startupHandle = scheduleIdleWork(() => {
       void runSyncLibraries("startup", getSyncDeps())
-        .then((report) => {
-          applySyncRunReports(report.results, { trigger: "startup" })
+        .then(async (report) => {
+          await applySyncRunReports(report.results, { trigger: "startup" })
         })
         .catch((err) => handleSyncError(err, "startup"))
     })

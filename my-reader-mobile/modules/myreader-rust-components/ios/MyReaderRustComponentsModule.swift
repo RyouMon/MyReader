@@ -45,6 +45,145 @@ public class MyReaderRustComponentsModule: Module {
       }
     }
 
+    AsyncFunction("initializeDeviceRegistry") {
+      (registryPath: String, legacyRegistryJson: String?) -> String in
+      try componentCall {
+        try initializeDeviceRegistry(
+          registryPath: registryPath,
+          legacyRegistryJson: legacyRegistryJson
+        )
+      }
+    }
+
+    AsyncFunction("upsertDeviceDataSource") {
+      (registryPath: String, sourceJson: String) -> String in
+      try componentCall {
+        try upsertDeviceDataSource(
+          registryPath: registryPath,
+          sourceJson: sourceJson
+        )
+      }
+    }
+
+    AsyncFunction("validateDeviceDataSource") {
+      (registryPath: String, sourceJson: String) in
+      try componentCall {
+        try validateDeviceDataSource(
+          registryPath: registryPath,
+          sourceJson: sourceJson
+        )
+      }
+    }
+
+    AsyncFunction("removeDeviceDataSource") {
+      (registryPath: String, dataSourceId: String) -> String in
+      try componentCall {
+        try removeDeviceDataSource(
+          registryPath: registryPath,
+          dataSourceId: dataSourceId
+        )
+      }
+    }
+
+    AsyncFunction("registerDeviceLibrary") {
+      (registryPath: String, libraryJson: String) -> String in
+      try componentCall {
+        try registerDeviceLibrary(
+          registryPath: registryPath,
+          libraryJson: libraryJson
+        )
+      }
+    }
+
+    AsyncFunction("replaceDeviceLibrary") {
+      (registryPath: String, libraryJson: String) -> String in
+      try componentCall {
+        try replaceDeviceLibrary(
+          registryPath: registryPath,
+          libraryJson: libraryJson
+        )
+      }
+    }
+
+    AsyncFunction("removeDeviceLibrary") {
+      (registryPath: String, libraryId: String) -> String in
+      try componentCall {
+        try removeDeviceLibrary(
+          registryPath: registryPath,
+          libraryId: libraryId
+        )
+      }
+    }
+
+    AsyncFunction("switchDeviceLibrary") {
+      (registryPath: String, libraryId: String) -> String in
+      try componentCall {
+        try switchDeviceLibrary(
+          registryPath: registryPath,
+          libraryId: libraryId
+        )
+      }
+    }
+
+    AsyncFunction("testRemoteDataSource") {
+      (sourceJson: String, credentialJson: String) in
+      try componentCall {
+        try testRemoteDataSource(
+          sourceJson: sourceJson,
+          credentialJson: credentialJson
+        )
+      }
+    }
+
+    AsyncFunction("listRemoteDirectories") {
+      (
+        registryPath: String,
+        dataSourceId: String,
+        path: String,
+        credentialJson: String
+      ) -> String in
+      try componentCall {
+        try listRemoteDirectories(
+          registryPath: registryPath,
+          dataSourceId: dataSourceId,
+          path: path,
+          credentialJson: credentialJson
+        )
+      }
+    }
+
+    AsyncFunction("addRemoteLibrary") {
+      (
+        registryPath: String,
+        requestJson: String,
+        credentialJson: String
+      ) -> String in
+      try componentCall {
+        try addRemoteLibrary(
+          registryPath: registryPath,
+          requestJson: requestJson,
+          credentialJson: credentialJson
+        )
+      }
+    }
+
+    AsyncFunction("refreshRemoteLibrary") {
+      (
+        registryPath: String,
+        libraryId: String,
+        localRootPath: String,
+        credentialJson: String
+      ) -> String in
+      try componentCall {
+        try refreshRemoteLibrary(
+          registryPath: registryPath,
+          libraryId: libraryId,
+          localRootPath: localRootPath,
+          credentialJson: credentialJson
+        )
+      }
+    }
+
     Function("syncContractVersion") {
       Int(syncContractVersion())
     }
