@@ -6,7 +6,9 @@ Swift, Kotlin, and TypeScript only convert platform inputs, errors, and result D
 
 ## Source and generated files
 
-- `crates/myreader-rust-components/src/lib.rs` is the exported UniFFI API.
+- `crates/myreader-rust-components/src/lib.rs` owns runtime initialization and UniFFI scaffolding.
+- `crates/myreader-rust-components/src/{catalog,content,reading,registry,sync}.rs` export the
+  domain-specific UniFFI adapters.
 - `src/MyReaderRustComponentsModule.ts`, `ios/MyReaderRustComponentsModule.swift`, and
   `android/src/main/java/com/myreader/rustcomponents/MyReaderRustComponentsModule.kt` are
   handwritten adapters.
@@ -32,6 +34,15 @@ Run the shared component tests independently with:
 ```bash
 cargo test -p myreader-core -p myreader-rust-components
 ```
+
+Measure the Core high-frequency paths with:
+
+```bash
+cargo run -p myreader-core --release --example runtime_baseline -- 1000
+```
+
+The reference environment and results are recorded in
+[`docs/myreader-core-runtime-baseline.md`](../../../docs/myreader-core-runtime-baseline.md).
 
 Run the native runtime smoke tests with:
 

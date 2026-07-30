@@ -11,8 +11,9 @@ isProject: true
 
 ## 状态说明
 
-本提案已于 2026-07-28 接受。2026-07-28 的实施审计确认 Phase 0–4 主体已完成，Phase 5–6
-仍有同步 coordinator、下载状态机、binding 边界和运行时门禁未收口，因此状态为“部分实施”。
+本提案已于 2026-07-28 接受。Phase 0–5 已完成；Phase 6 在实施审计中确认共享业务已经收口，
+但移动 binding 仍把 82 个 Core 方法和 DTO 分别手写映射到 Swift、Kotlin 与 TypeScript，尚未
+达到本提案要求的薄 adapter，因此重新标记为“部分实施”。
 它部分取代
 [ADR-0018](./0018-shared-rust-components.md) 关于“每个业务边界建立独立 Rust component crate”
 的长期源码组织决策，但保留 ADR-0018 已验证的共享 Rust、薄平台 adapter、UniFFI 和单一移动
@@ -23,28 +24,35 @@ ADR-0008 继续保留为当时双后端架构下的历史决策。
 ### 实施记录
 
 - `myreader-core` 已成为 desktop/mobile 共用的书库、书目、内容状态、阅读数据和同步业务实现。
-- `myreader-rust-components` 已不承载业务规则，但 UniFFI DTO、Expo wrapper 与运行时生命周期
-  仍需继续收口。
+- `myreader-rust-components` 不包含业务规则，但仍承载过宽的逐方法 UniFFI DTO 与 Expo
+  wrapper；Phase 6 将其收敛为少量稳定 transport gateway。
 - Tauri Commands 与移动 `services/core` 已切换为平台 adapter；移动 UI 不再直接访问数据库。
-- Automerge 引擎、sidecar 持久化和同步调度 reducer 已并入 `myreader-core`，迁移期
-  `myreader-sync` crate 已删除；完整 coordinator 仍分别存在于 desktop/mobile。
+- Automerge 引擎、sidecar 持久化和同步 coordinator 已并入 `myreader-core`，迁移期
+  `myreader-sync` crate 已删除；desktop/mobile 只保留生命周期、计时器、凭据、传输和查询刷新
+  等平台执行壳。
 - MyReader 数据库由 core SeaORM Migrator 接管；旧移动 Drizzle 状态只在首次打开时完成一次
   handoff。
 - `packages/db`、Drizzle、OP-SQLite、移动 `repos/`/`services/db/` 和无调用兼容层已删除。
-- Core 已复用移动端 Tokio runtime 和每书库数据库连接；完整 `LibraryStore` 生命周期、下载与
-  同步 coordinator 仍按下表继续实施。
+- Core 通过进程级 Tokio runtime 和按书库缓存的 `LibraryStore` 复用数据库连接。
+- Core `DownloadCoordinator` 已统一下载去重、并发限制、取消和状态转换；平台只执行实际文件
+  传输和后台任务。
+- 旧阅读完成数据的统计回填已进入 Core。
+- Core 与移动 facade 已具有稳定业务 DTO，但中间 Swift/Kotlin transit layer 仍重复理解和转换
+  这些 DTO，属于待删除的 binding 债务。
+- 原生 runtime smoke test 和本地构建、产物与高频查询基线已经建立，详见
+  [myreader-core 运行基线](../myreader-core-runtime-baseline.md)。
 
 ### 阶段状态
 
-| 阶段 | 状态 | 已落地事实与剩余工作 |
+| 阶段 | 状态 | 实施结果 |
 |---|---|---|
 | Phase 0 | 完成 | 已冻结现有能力、数据所有权与非目标 |
 | Phase 1 | 完成 | Core、Rust migration、registry 与本地书库纵向切片已接入两端 |
 | Phase 2 | 完成 | WebDAV、OneDrive 数据源和远程书库用例已进入 Core |
-| Phase 3 | 部分完成 | 书目和文件 projection 已进入 Core；下载队列、取消和状态机仍是双实现 |
+| Phase 3 | 完成 | 书目和文件 projection 已进入 Core；下载 coordinator 统一去重、并发、取消和状态转换 |
 | Phase 4 | 完成 | 收藏、进度、书签、批注、阅读 session 与统计由 Core 原子写入 |
-| Phase 5 | 部分完成 | 同步引擎和 reducer 已统一；完整 coordinator 仍在两端各有执行壳 |
-| Phase 6 | 部分完成 | TypeScript 数据库后端已删除；typed FFI、原生 smoke test 和性能基线未完成 |
+| Phase 5 | 完成 | 同步引擎、调度策略和 single-flight 已统一；两端只保留必要的平台执行壳 |
+| Phase 6 | 部分完成 | 旧后端已删除且原生门禁已建立；待把逐方法 binding 收敛为最小 transport gateway |
 
 ## 结论
 
@@ -328,7 +336,13 @@ crates/
       lib.rs
 
   myreader-rust-components/
-    src/lib.rs
+    src/
+      lib.rs
+      catalog.rs
+      content.rs
+      reading.rs
+      registry.rs
+      sync.rs
 ```
 
 结构规则：
@@ -632,6 +646,16 @@ openRawConnection
 - 确认 TypeScript 已无数据库消费者后删除 `packages/db`、Drizzle 依赖和跨语言 entity 生成链。
 - 更新 `ARCHITECTURE.md` 描述已经实施的事实。
 - 审核依赖方向、数据库 writer、FFI 粒度、构建成本和真实平台运行。
+- 移动原生层只暴露合同版本、同步 transport 和异步 transport 等少量稳定入口，不再为每个 Core
+  用例分别维护 Swift/Kotlin 方法与 DTO。
+- transport 使用带 domain/operation 标签的 JSON envelope；Rust 在边界立即反序列化为强类型
+  request 并调用现有 Core API，TypeScript 继续通过命名 facade 暴露具体用例。
+- Rust request/response 是 transport contract 的权威来源；TypeScript contract 由 Rust
+  生成或执行确定性漂移检查，Swift/Kotlin 不拥有业务 DTO。
+- 删除旧的逐方法 UniFFI export、`Native*` record、Swift/Kotlin DTO 映射和重复的
+  TypeScript NativeModule 方法声明。
+- 验证书目分页与下载进度等批量/高频路径没有不可接受的序列化退化，并完成 iOS、Android 原生
+  runtime 与跨端同步回归。
 
 ## 每阶段验证
 

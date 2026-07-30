@@ -105,6 +105,7 @@ models/             跨层稳定业务 DTO
 - 本地、WebDAV 和 OneDrive 数据源校验、远程目录、远程书库添加与刷新。
 - Calibre 书目数量、分页、搜索、详情、系列、格式和文件相对路径查询。
 - 阅读格式选择、文件状态和封面缩略图 manifest。
+- 下载任务去重、并发限制、取消和状态转换。
 - 收藏、阅读位置与冲突候选、书签、高亮和笔记。
 - 阅读 session、完成记录和当前书库统计。
 - Automerge change、projection、outbox、远端交换、pull freshness、retry/suspend 和
@@ -160,7 +161,7 @@ app/ + features/ + domain/ + hooks/
         UI、交互、React Query、Zustand、平台流程
                     ↓
 services/core/
-        路径/凭据准备、DTO 序列化、查询失效和 UniFFI 调用
+        路径/凭据准备、DTO 转换、查询失效和 UniFFI 调用
                     ↓
 modules/myreader-rust-components/
         Expo Native Module + UniFFI
@@ -320,6 +321,9 @@ Navigator/格式显式判断，不能假设三种格式完全相同。
 # 共享 Rust
 cargo test -p myreader-core -p myreader-rust-components
 
+# Core 高频路径基线
+cargo run -p myreader-core --release --example runtime_baseline -- 1000
+
 # 共享 TypeScript
 pnpm --filter @my-reader/fonts test
 pnpm --filter @my-reader/tools test
@@ -336,7 +340,8 @@ bash my-reader-mobile/modules/myreader-rust-components/scripts/verify-native.sh
 pnpm db:generate
 ```
 
-本机构建、E2E 和平台测试见 [DEVELOPMENT.md](./DEVELOPMENT.md)。
+本机构建、E2E 和平台测试见 [DEVELOPMENT.md](./DEVELOPMENT.md)。Core 的本机构建、原生产物和
+高频查询参考值见 [myreader-core 运行基线](./docs/myreader-core-runtime-baseline.md)。
 
 ## 11. 相关 ADR
 
