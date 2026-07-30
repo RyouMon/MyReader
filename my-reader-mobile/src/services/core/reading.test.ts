@@ -39,6 +39,10 @@ jest.mock("../fs/path", () => ({
   ),
 }))
 
+jest.mock("./sync-events", () => ({
+  announceLocalSidecarWork: jest.fn(),
+}))
+
 import type { Library } from "@my-reader/tools/types/library"
 import MyReaderRustComponents from "@/modules/myreader-rust-components"
 import {
@@ -51,6 +55,7 @@ import {
   setFavoriteBook,
   setReadingPosition,
 } from "./reading"
+import { announceLocalSidecarWork } from "./sync-events"
 
 const library = { id: "library-1" } as Library
 
@@ -89,6 +94,19 @@ describe("core reading adapter", () => {
       true,
       900,
     )
+    expect(announceLocalSidecarWork).toHaveBeenCalledWith("library-1")
+  })
+
+  it("should not announce work when core mutation fails", async () => {
+    jest
+      .mocked(MyReaderRustComponents.setFavoriteBook)
+      .mockRejectedValue(new Error("write failed"))
+
+    await expect(setFavoriteBook(library, 42, true)).rejects.toThrow(
+      "write failed",
+    )
+
+    expect(announceLocalSidecarWork).not.toHaveBeenCalled()
   })
 
   it("should decode position when core returns stored reading data", async () => {

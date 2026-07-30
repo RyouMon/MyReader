@@ -9,7 +9,7 @@
 
 共享 Rust component 路线已经达到 sync 试点的主要目的：
 
-- desktop、iOS 和 Android adapter 使用同一个 `myreader-sync` 源码和同一个 aggregation
+- desktop、iOS 和 Android adapter 使用同一个 `myreader-core::sync` 源码和同一个 aggregation
   crate；
 - Automerge 文档、六个既有同步 domain 的 CRDT 编码、SQLite 同步事务、sidecar 交换和调度
   状态由 Rust 单一实现拥有；

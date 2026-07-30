@@ -1,35 +1,17 @@
 use std::path::Path;
 
-use opendal::Operator;
-use sea_orm::DatabaseConnection;
+pub use myreader_core::models::SidecarSyncMode;
+use myreader_core::models::{SyncFailureDisposition, SyncFailureKind};
 use serde::Serialize;
 use tracing::{error, info};
 
 use crate::cache;
 use crate::error::AppError;
 use crate::models::{AppConfig, LibraryConfig};
-use crate::storage::{self, StorageBackend};
-use crate::sync::automerge_store::{
-    database_path, publish_library_sidecar_automerge, sync_library_sidecar_automerge,
-};
-use crate::sync::replica_identity::ensure_replica_identity;
+use crate::storage;
 use crate::utils::paths::{library_root_path, library_sidecar_path};
-use myreader_core::database;
-use myreader_rust_components::sync::{
-    exchange::has_pending_database_work,
-    persistence::{
-        mark_schedule_succeeded, read_schedule_state, write_schedule_state, SyncScheduleState,
-    },
-    SyncError,
-};
 
 pub struct SyncService;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SidecarSyncMode {
-    PushOnly,
-    Full,
-}
 
 #[derive(Debug, Clone)]
 pub struct SyncScheduleSnapshot {
@@ -74,46 +56,19 @@ impl SyncService {
             .clone();
         let sidecar_path = library_sidecar_path(&library, app_data_dir);
         let library_root = library_root_path(&library, app_data_dir);
-        let db = Self::open_library_db(&sidecar_path)
+        let storage = storage::core_sidecar_storage(config, &library)
             .await
-            .map_err(|err| Self::log_stage_error(library_id, "open_sidecar_database", err))?;
-        let library_uuid = myreader_core::api::catalog::get_library_uuid(&library_root)
-            .await
-            .map_err(AppError::from)
-            .map_err(|err| Self::log_stage_error(library_id, "read_library_uuid", err))?;
-        let identity = ensure_replica_identity(&db, &library_uuid)
-            .await
-            .map_err(|err| Self::log_stage_error(library_id, "ensure_replica_identity", err))?;
-        let operator = Self::library_operator(config, &library)
-            .await
-            .map_err(|err| Self::log_stage_error(library_id, "build_storage_operator", err))?;
-        let now_ms = Self::unix_epoch_millis();
-        info!(
-            target: "myreader_sync",
-            event = "sync.identity_ready",
-            library_id,
-            library_uuid,
-            replica_id = %identity.replica_id,
-            source_type = library.source_type.as_deref().unwrap_or("local"),
-            "Resolved library sidecar identity"
-        );
-
-        let (pushed, pulled) = match mode {
-            SidecarSyncMode::PushOnly => {
-                let pushed = publish_library_sidecar_automerge(&db, &operator, &identity, now_ms)
-                    .await
-                    .map_err(|err| Self::log_stage_error(library_id, "publish_automerge", err))?;
-                Self::clear_retry_state(&db).await?;
-                (pushed, 0)
-            }
-            SidecarSyncMode::Full => {
-                let report = sync_library_sidecar_automerge(&db, &operator, &identity, now_ms)
-                    .await
-                    .map_err(|err| Self::log_stage_error(library_id, "sync_automerge", err))?;
-                Self::record_successful_pull(&db, now_ms).await?;
-                report
-            }
-        };
+            .map_err(|err| Self::log_stage_error(library_id, "resolve_storage", err))?;
+        let report = myreader_core::api::sync::sync_sidecar(
+            &sidecar_path,
+            &library_root,
+            Self::sqlite_timestamp(Self::unix_epoch_millis())?,
+            mode,
+            &storage,
+        )
+        .await
+        .map_err(AppError::from)
+        .map_err(|err| Self::log_stage_error(library_id, "sync_sidecar", err))?;
 
         cache::clear_library_missing_cover_markers(app_data_dir, library_id)
             .map_err(|err| Self::log_stage_error(library_id, "clear_cover_cache", err))?;
@@ -122,14 +77,15 @@ impl SyncService {
             target: "myreader_sync",
             event = "sync.complete",
             library_id,
-            library_uuid,
-            replica_id = %identity.replica_id,
             mode = ?mode,
-            pushed,
-            pulled,
+            pushed = report.pushed,
+            pulled = report.pulled,
             "Completed library sidecar sync"
         );
-        Ok(DbSyncReport { pushed, pulled })
+        Ok(DbSyncReport {
+            pushed: report.pushed,
+            pulled: report.pulled,
+        })
     }
 
     pub async fn has_pending_sidecar_work(
@@ -139,29 +95,29 @@ impl SyncService {
     ) -> Result<bool, AppError> {
         let library = Self::resolve_library(config, library_id)?;
         let sidecar_path = library_sidecar_path(library, app_data_dir);
-        let db = Self::open_library_db(&sidecar_path).await?;
-        has_pending_database_work(&database_path(&db).await?).map_err(Self::component_error)
+        myreader_core::api::sync::has_pending_work(&sidecar_path)
+            .await
+            .map_err(Into::into)
     }
 
-    pub async fn is_pull_fresh(
+    pub async fn effective_mode(
         app_data_dir: &Path,
         config: &AppConfig,
         library_id: &str,
+        requested_mode: SidecarSyncMode,
         now_ms: u64,
         freshness_ms: u64,
-    ) -> Result<bool, AppError> {
+    ) -> Result<Option<SidecarSyncMode>, AppError> {
         let library = Self::resolve_library(config, library_id)?;
         let sidecar_path = library_sidecar_path(library, app_data_dir);
-        let db = Self::open_library_db(&sidecar_path).await?;
-        let Some(state) =
-            read_schedule_state(&database_path(&db).await?).map_err(Self::component_error)?
-        else {
-            return Ok(false);
-        };
-        let Some(last_pull) = state.last_successful_pull_at else {
-            return Ok(false);
-        };
-        Ok(now_ms.saturating_sub(last_pull.max(0) as u64) < freshness_ms)
+        myreader_core::api::sync::effective_mode(
+            &sidecar_path,
+            requested_mode,
+            Self::sqlite_timestamp(now_ms)?,
+            Self::sqlite_timestamp(freshness_ms)?,
+        )
+        .await
+        .map_err(Into::into)
     }
 
     pub async fn schedule_snapshot(
@@ -169,18 +125,13 @@ impl SyncService {
         config: &AppConfig,
         library_id: &str,
     ) -> Result<SyncScheduleSnapshot, AppError> {
-        let db = Self::open_schedule_db(app_data_dir, config, library_id).await?;
-        let state =
-            read_schedule_state(&database_path(&db).await?).map_err(Self::component_error)?;
+        let library = Self::resolve_library(config, library_id)?;
+        let sidecar_path = library_sidecar_path(library, app_data_dir);
+        let state = myreader_core::api::sync::schedule_snapshot(&sidecar_path).await?;
         Ok(SyncScheduleSnapshot {
-            next_retry_at: state
-                .as_ref()
-                .and_then(|state| state.next_retry_at)
-                .map(|value| value.max(0) as u64),
-            transient_failure_count: state
-                .as_ref()
-                .map_or(0, |state| state.transient_failure_count.max(0) as u32),
-            suspended_reason: state.and_then(|state| state.suspended_reason),
+            next_retry_at: state.next_retry_at.map(|value| value.max(0) as u64),
+            transient_failure_count: state.transient_failure_count,
+            suspended_reason: state.suspended_reason,
         })
     }
 
@@ -191,19 +142,15 @@ impl SyncService {
         next_retry_at: u64,
         failure_count: u32,
     ) -> Result<(), AppError> {
-        let db = Self::open_schedule_db(app_data_dir, config, library_id).await?;
-        let path = database_path(&db).await?;
-        let current = read_schedule_state(&path).map_err(Self::component_error)?;
-        write_schedule_state(
-            &path,
-            &SyncScheduleState {
-                last_successful_pull_at: current.and_then(|state| state.last_successful_pull_at),
-                next_retry_at: Some(Self::sqlite_timestamp(next_retry_at)?),
-                transient_failure_count: failure_count,
-                suspended_reason: None,
-            },
+        let library = Self::resolve_library(config, library_id)?;
+        let sidecar_path = library_sidecar_path(library, app_data_dir);
+        myreader_core::api::sync::record_retry(
+            &sidecar_path,
+            Self::sqlite_timestamp(next_retry_at)?,
+            failure_count,
         )
-        .map_err(Self::component_error)
+        .await
+        .map_err(Into::into)
     }
 
     pub async fn record_suspension(
@@ -212,41 +159,11 @@ impl SyncService {
         library_id: &str,
         reason: String,
     ) -> Result<(), AppError> {
-        let db = Self::open_schedule_db(app_data_dir, config, library_id).await?;
-        let path = database_path(&db).await?;
-        let current = read_schedule_state(&path).map_err(Self::component_error)?;
-        write_schedule_state(
-            &path,
-            &SyncScheduleState {
-                last_successful_pull_at: current.and_then(|state| state.last_successful_pull_at),
-                next_retry_at: None,
-                transient_failure_count: 0,
-                suspended_reason: Some(reason),
-            },
-        )
-        .map_err(Self::component_error)
-    }
-
-    async fn record_successful_pull(db: &DatabaseConnection, now_ms: u64) -> Result<(), AppError> {
-        mark_schedule_succeeded(
-            &database_path(db).await?,
-            Some(Self::sqlite_timestamp(now_ms)?),
-        )
-        .map_err(Self::component_error)
-    }
-
-    async fn clear_retry_state(db: &DatabaseConnection) -> Result<(), AppError> {
-        mark_schedule_succeeded(&database_path(db).await?, None).map_err(Self::component_error)
-    }
-
-    async fn open_schedule_db(
-        app_data_dir: &Path,
-        config: &AppConfig,
-        library_id: &str,
-    ) -> Result<DatabaseConnection, AppError> {
         let library = Self::resolve_library(config, library_id)?;
         let sidecar_path = library_sidecar_path(library, app_data_dir);
-        Self::open_library_db(&sidecar_path).await
+        myreader_core::api::sync::record_suspension(&sidecar_path, &reason)
+            .await
+            .map_err(Into::into)
     }
 
     fn sqlite_timestamp(timestamp: u64) -> Result<i64, AppError> {
@@ -254,10 +171,15 @@ impl SyncService {
             .map_err(|_| AppError::Sync("Timestamp exceeds SQLite INTEGER range".into()))
     }
 
-    fn component_error(error: SyncError) -> AppError {
-        match error {
-            SyncError::Sync(message) => AppError::Sync(message),
-        }
+    pub fn should_suspend(error: &AppError) -> bool {
+        let kind = match error {
+            AppError::Request(_) => SyncFailureKind::Connectivity,
+            AppError::Credential(_) => SyncFailureKind::Credential,
+            AppError::Auth(_) | AppError::Config(_) => SyncFailureKind::Configuration,
+            AppError::Database(_) | AppError::Serialize(_) => SyncFailureKind::DataIntegrity,
+            _ => SyncFailureKind::Unexpected,
+        };
+        myreader_core::api::sync::classify_failure(kind) == SyncFailureDisposition::Suspend
     }
 
     fn log_stage_error(library_id: &str, stage: &'static str, err: AppError) -> AppError {
@@ -281,35 +203,6 @@ impl SyncService {
             .iter()
             .find(|library| library.id == library_id)
             .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {library_id}")))
-    }
-
-    async fn library_operator(
-        config: &AppConfig,
-        library: &LibraryConfig,
-    ) -> Result<Operator, AppError> {
-        if !library.is_remote() {
-            return storage::build_operator(&StorageBackend::LocalDirect {
-                root: library.path.clone(),
-            });
-        }
-
-        let data_source_id = library
-            .data_source_id
-            .as_deref()
-            .ok_or_else(|| AppError::Config("LIBRARY_DATA_SOURCE_MISSING".into()))?;
-        let data_source = config
-            .data_sources
-            .iter()
-            .find(|source| source.id == data_source_id)
-            .ok_or_else(|| AppError::NotFound(format!("DATASOURCE_NOT_FOUND: {data_source_id}")))?;
-        storage::from_data_source_at_path(data_source, library.source_path.as_deref()).await
-    }
-
-    async fn open_library_db(sidecar_path: &Path) -> Result<DatabaseConnection, AppError> {
-        let path_str = sidecar_path
-            .to_str()
-            .ok_or_else(|| AppError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?;
-        database::open_db(path_str).await.map_err(Into::into)
     }
 
     fn unix_epoch_millis() -> u64 {

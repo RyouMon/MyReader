@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use uuid::{Uuid, Variant, Version};
 
-use crate::{
+use super::{
     document::LIBRARY_SIDECAR_SCHEMA_VERSION,
     document_engine::{
         execute_document_command, execute_document_mutation, DocumentCommand,

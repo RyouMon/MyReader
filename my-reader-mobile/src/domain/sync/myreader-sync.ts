@@ -1,44 +1,20 @@
+import {
+  invalidateFavoriteBooks,
+  invalidateReaderAnnotations,
+  invalidateReaderBookmarks,
+  invalidateReadingProgress,
+  invalidateReadingStatistics,
+  invalidateRecentlyReadBooks,
+} from "@/src/services/query/invalidate-table"
+import { describeError } from "../../utils/common"
+import { withLocalLibraryCalibreRoot } from "../library/local-library-content"
 import type { SyncTargetContext } from "./context"
+import { syncLibrarySidecarDatabase } from "./library-sidecar/sync-database"
 import type {
   MyReaderSyncMode,
   MyReaderSyncResult,
   SyncLibraryOptions,
 } from "./types"
-import { describeError } from "../../utils/common"
-import { ensureLibrarySidecarIdentity } from "./library-sidecar/identity"
-import { readLibrarySidecarAutomergeDiagnosticSnapshot } from "./library-sidecar/database-store"
-import { syncLibrarySidecarDatabase } from "./library-sidecar/sync-database"
-import {
-  invalidateFavoriteBooks,
-  invalidateReadingProgress,
-  invalidateReadingStatistics,
-  invalidateReaderAnnotations,
-  invalidateReaderBookmarks,
-  invalidateRecentlyReadBooks,
-} from "@/src/services/query/invalidate-table"
-import { withLocalLibraryCalibreRoot } from "../library/local-library-content"
-import { markLibrarySidecarSyncSucceeded } from "@/src/repos/library-sidecar-schedule"
-
-async function logAutomergeDiagnostics(
-  ctx: SyncTargetContext,
-  event: "complete" | "failed",
-): Promise<void> {
-  try {
-    const diagnostics = await readLibrarySidecarAutomergeDiagnosticSnapshot(
-      ctx.library,
-    )
-    console.info(`[reading-sync] automerge:${event}`, {
-      libraryId: ctx.library.id,
-      backend: ctx.backend.kind,
-      ...diagnostics,
-    })
-  } catch (error) {
-    console.warn("[reading-sync] automerge:diagnostics-failed", {
-      libraryId: ctx.library.id,
-      error: describeError(error),
-    })
-  }
-}
 
 async function syncProviders(
   ctx: SyncTargetContext,
@@ -53,10 +29,8 @@ async function syncProviders(
     mode,
     backend: ctx.backend.kind,
   })
-  const identity = await ensureLibrarySidecarIdentity(ctx.library)
   const syncArguments = [
     ctx.library,
-    identity,
     Date.now(),
     mode,
     ctx.sidecarStorage,
@@ -81,10 +55,6 @@ async function syncProviders(
     mode,
     ...report,
   })
-  await markLibrarySidecarSyncSucceeded(
-    ctx.library,
-    mode === "full" ? Date.now() : null,
-  )
   return { skipped: false, mode, providers }
 }
 
@@ -117,10 +87,8 @@ export async function syncMyReader(
         options?.myreaderTaskId,
       )
     }
-    await logAutomergeDiagnostics(ctx, "complete")
     return result
   } catch (err) {
-    await logAutomergeDiagnostics(ctx, "failed")
     console.error("[reading-sync] sync:failed", {
       libraryId: ctx.library.id,
       mode,

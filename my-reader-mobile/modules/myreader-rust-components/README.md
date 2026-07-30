@@ -30,5 +30,5 @@ After changing the exported Rust API, run one of:
 Run the shared component tests independently with:
 
 ```bash
-cargo test -p myreader-sync -p myreader-rust-components
+cargo test -p myreader-core -p myreader-rust-components
 ```

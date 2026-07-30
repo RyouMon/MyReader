@@ -1,4 +1,4 @@
-use myreader_sync::document::{
+use myreader_core::sync::document::{
     library_sidecar_heads, load_library_sidecar_document, LIBRARY_SIDECAR_GENESIS_HEAD,
 };
 

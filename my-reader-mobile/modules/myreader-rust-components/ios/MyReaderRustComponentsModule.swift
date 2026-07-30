@@ -1,15 +1,5 @@
 import ExpoModulesCore
 
-private func documentResultDictionary(
-  _ result: SyncDocumentCommandResult
-) -> [String: Any] {
-  [
-    "schemaVersion": Int(result.schemaVersion),
-    "heads": result.heads,
-    "projectionJson": result.projectionJson,
-  ]
-}
-
 private func componentCall<T>(_ operation: () throws -> T) throws -> T {
   do {
     return try operation()
@@ -673,29 +663,10 @@ public class MyReaderRustComponentsModule: Module {
       }
     }
 
-    AsyncFunction("ensureSyncDatabaseIdentity") {
-      (
-        databasePath: String,
-        libraryUuid: String
-      ) -> [String: Any] in
+    AsyncFunction("readSidecarSyncSchedule") {
+      (sidecarRootPath: String) -> [String: Any] in
       try componentCall {
-        let identity = try ensureSyncDatabaseIdentity(
-          databasePath: databasePath,
-          libraryUuid: libraryUuid
-        )
-        return [
-          "libraryUuid": identity.libraryUuid,
-          "replicaId": identity.replicaId,
-        ]
-      }
-    }
-
-    AsyncFunction("readSyncDatabaseScheduleState") {
-      (databasePath: String) -> [String: Any]? in
-      try componentCall {
-        guard let state = try readSyncDatabaseScheduleState(databasePath: databasePath) else {
-          return nil
-        }
+        let state = try readSidecarSyncSchedule(sidecarRootPath: sidecarRootPath)
         return [
           "lastSuccessfulPullAt": state.lastSuccessfulPullAt ?? NSNull(),
           "nextRetryAt": state.nextRetryAt ?? NSNull(),
@@ -705,96 +676,61 @@ public class MyReaderRustComponentsModule: Module {
       }
     }
 
-    AsyncFunction("writeSyncDatabaseScheduleState") {
+    AsyncFunction("effectiveSidecarSyncMode") {
       (
-        databasePath: String,
-        lastSuccessfulPullAt: Int64?,
-        nextRetryAt: Int64?,
-        transientFailureCount: UInt32,
-        suspendedReason: String?
-      ) in
-      try componentCall {
-        try writeSyncDatabaseScheduleState(
-          databasePath: databasePath,
-          state: SyncDatabaseScheduleState(
-            lastSuccessfulPullAt: lastSuccessfulPullAt,
-            nextRetryAt: nextRetryAt,
-            transientFailureCount: transientFailureCount,
-            suspendedReason: suspendedReason
-          )
-        )
-      }
-    }
-
-    AsyncFunction("markSyncDatabaseScheduleSucceeded") {
-      (
-        databasePath: String,
-        completedPullAt: Int64?
-      ) in
-      try componentCall {
-        try markSyncDatabaseScheduleSucceeded(
-          databasePath: databasePath,
-          completedPullAt: completedPullAt
-        )
-      }
-    }
-
-    AsyncFunction("ensureSyncDatabaseDocument") {
-      (
-        databasePath: String,
-        libraryUuid: String,
-        replicaId: String,
-        nowMs: String
-      ) -> [String: Any] in
-      try componentCall {
-        documentResultDictionary(try ensureSyncDatabaseDocument(
-          databasePath: databasePath,
-          libraryUuid: libraryUuid,
-          replicaId: replicaId,
-          nowMs: nowMs
-        ))
-      }
-    }
-
-    AsyncFunction("executeSyncDatabaseCommand") {
-      (
-        databasePath: String,
-        libraryUuid: String,
-        replicaId: String,
+        sidecarRootPath: String,
+        requestedMode: String,
         nowMs: String,
-        commandJson: String
-      ) -> [String: Any] in
+        freshnessMs: String
+      ) -> String? in
       try componentCall {
-        documentResultDictionary(try executeSyncDatabaseCommand(
-          databasePath: databasePath,
-          libraryUuid: libraryUuid,
-          replicaId: replicaId,
+        try effectiveSidecarSyncMode(
+          sidecarRootPath: sidecarRootPath,
+          requestedMode: requestedMode,
           nowMs: nowMs,
-          commandJson: commandJson
-        ))
+          freshnessMs: freshnessMs
+        )
       }
     }
 
-    AsyncFunction("hasSyncDatabasePendingWork") {
-      (databasePath: String) -> Bool in
+    AsyncFunction("recordSidecarSyncRetry") {
+      (
+        sidecarRootPath: String,
+        nextRetryAt: String,
+        failureCount: UInt32
+      ) in
       try componentCall {
-        try hasSyncDatabasePendingWork(databasePath: databasePath)
+        try recordSidecarSyncRetry(
+          sidecarRootPath: sidecarRootPath,
+          nextRetryAt: nextRetryAt,
+          failureCount: failureCount
+        )
       }
     }
 
-    AsyncFunction("readSyncDatabaseDiagnostics") {
-      (databasePath: String) -> [String: Any] in
+    AsyncFunction("recordSidecarSyncSuspension") {
+      (
+        sidecarRootPath: String,
+        reason: String
+      ) in
       try componentCall {
-        let result = try readSyncDatabaseDiagnostics(databasePath: databasePath)
-        return [
-          "schemaVersion": result.schemaVersion ?? NSNull(),
-          "heads": result.heads,
-          "changes": result.changes,
-          "pendingOutbox": result.pendingOutbox,
-          "receipts": result.receipts,
-          "projectionVersion": result.projectionVersion ?? NSNull(),
-        ]
+        try recordSidecarSyncSuspension(
+          sidecarRootPath: sidecarRootPath,
+          reason: reason
+        )
       }
+    }
+
+    AsyncFunction("hasSidecarSyncPendingWork") {
+      (sidecarRootPath: String) -> Bool in
+      try componentCall {
+        try hasSidecarSyncPendingWork(sidecarRootPath: sidecarRootPath)
+      }
+    }
+
+    Function("classifySidecarSyncFailure") {
+      (kind: String) -> String in
+      classifySidecarSyncFailure(kind: kind)
     }
 
     Function("readSyncTaskProgress") {
@@ -823,9 +759,8 @@ public class MyReaderRustComponentsModule: Module {
     AsyncFunction("syncLibrarySidecar") {
       (
         taskId: String,
-        databasePath: String,
-        libraryUuid: String,
-        replicaId: String,
+        sidecarRootPath: String,
+        libraryRootPath: String,
         nowMs: String,
         mode: String,
         storageJson: String
@@ -833,9 +768,8 @@ public class MyReaderRustComponentsModule: Module {
       let result = try componentCall {
         try syncLibrarySidecar(
           taskId: taskId,
-          databasePath: databasePath,
-          libraryUuid: libraryUuid,
-          replicaId: replicaId,
+          sidecarRootPath: sidecarRootPath,
+          libraryRootPath: libraryRootPath,
           nowMs: nowMs,
           mode: mode,
           storageJson: storageJson

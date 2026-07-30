@@ -1,9 +1,7 @@
 use myreader_rust_components::{
-    cancel_sync_task, count_calibre_books, ensure_sync_database_identity,
-    initialize_device_registry, mark_sync_database_schedule_succeeded, migrate_library_database,
-    read_sync_database_schedule_state, read_sync_task_progress, register_device_library,
-    release_sync_task, sync_contract_version, sync_library_sidecar,
-    write_sync_database_schedule_state, SyncDatabaseScheduleState,
+    cancel_sync_task, count_calibre_books, initialize_device_registry, migrate_library_database,
+    read_sidecar_sync_schedule, read_sync_task_progress, record_sidecar_sync_retry,
+    register_device_library, release_sync_task, sync_contract_version, sync_library_sidecar,
 };
 use rusqlite::Connection;
 
@@ -15,9 +13,25 @@ fn create_database() -> (tempfile::TempDir, String) {
     (directory, database_path)
 }
 
+fn create_calibre_library() -> tempfile::TempDir {
+    let directory = tempfile::tempdir().unwrap();
+    let connection = Connection::open(directory.path().join("metadata.db")).unwrap();
+    connection
+        .execute_batch(
+            "CREATE TABLE library_id (
+                id INTEGER PRIMARY KEY,
+                uuid TEXT NOT NULL UNIQUE
+             );
+             INSERT INTO library_id (id, uuid)
+             VALUES (1, '11111111-2222-4333-8444-555555555555');",
+        )
+        .unwrap();
+    directory
+}
+
 #[test]
 fn should_expose_current_sync_contract_version_when_bridge_loads() {
-    assert_eq!(sync_contract_version(), 7);
+    assert_eq!(sync_contract_version(), 8);
 }
 
 #[test]
@@ -133,14 +147,14 @@ fn should_report_missing_task_when_task_is_not_registered() {
 
 #[test]
 fn should_run_sync_when_native_caller_has_no_tokio_runtime() {
-    let (_database_directory, database_path) = create_database();
+    let sidecar_directory = tempfile::tempdir().unwrap();
+    let library_directory = create_calibre_library();
     let remote_directory = tempfile::tempdir().unwrap();
 
     let report = sync_library_sidecar(
         "native-task".to_owned(),
-        database_path,
-        "11111111-2222-4333-8444-555555555555".to_owned(),
-        "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa".to_owned(),
+        sidecar_directory.path().to_string_lossy().into_owned(),
+        library_directory.path().to_string_lossy().into_owned(),
         "100".to_owned(),
         "full".to_owned(),
         serde_json::json!({
@@ -153,53 +167,38 @@ fn should_run_sync_when_native_caller_has_no_tokio_runtime() {
 
     assert!(report.pushed > 0);
     assert_eq!(report.pulled, 0);
+    assert_eq!(
+        read_sidecar_sync_schedule(sidecar_directory.path().to_string_lossy().into_owned())
+            .unwrap()
+            .last_successful_pull_at,
+        Some(100)
+    );
     assert!(release_sync_task("native-task".to_owned()));
 }
 
 #[test]
-fn should_own_identity_and_schedule_when_native_bridge_uses_database() {
-    let (_database_directory, database_path) = create_database();
-    let identity = ensure_sync_database_identity(
-        database_path.clone(),
-        "11111111-2222-4333-8444-555555555555".to_owned(),
-    )
-    .unwrap();
-    write_sync_database_schedule_state(
-        database_path.clone(),
-        SyncDatabaseScheduleState {
-            last_successful_pull_at: Some(100),
-            next_retry_at: Some(200),
-            transient_failure_count: 2,
-            suspended_reason: Some("network".to_owned()),
-        },
-    )
-    .unwrap();
+fn should_own_retry_schedule_when_native_bridge_uses_sidecar_root() {
+    let sidecar_directory = tempfile::tempdir().unwrap();
+    let sidecar_root = sidecar_directory.path().to_string_lossy().into_owned();
 
-    mark_sync_database_schedule_succeeded(database_path.clone(), None).unwrap();
+    record_sidecar_sync_retry(sidecar_root.clone(), "200".to_owned(), 2).unwrap();
 
-    assert_eq!(
-        identity.library_uuid,
-        "11111111-2222-4333-8444-555555555555"
-    );
-    assert_eq!(identity.replica_id.len(), 36);
-    let state = read_sync_database_schedule_state(database_path)
-        .unwrap()
-        .unwrap();
-    assert_eq!(state.last_successful_pull_at, Some(100));
-    assert_eq!(state.next_retry_at, None);
-    assert_eq!(state.transient_failure_count, 0);
+    let state = read_sidecar_sync_schedule(sidecar_root).unwrap();
+    assert_eq!(state.last_successful_pull_at, None);
+    assert_eq!(state.next_retry_at, Some(200));
+    assert_eq!(state.transient_failure_count, 2);
     assert_eq!(state.suspended_reason, None);
 }
 
 #[test]
 fn should_preserve_failure_stage_when_native_sync_returns_original_cause() {
-    let (_database_directory, database_path) = create_database();
+    let sidecar_directory = tempfile::tempdir().unwrap();
+    let library_directory = create_calibre_library();
 
     let error = sync_library_sidecar(
         "failing-task".to_owned(),
-        database_path,
-        "11111111-2222-4333-8444-555555555555".to_owned(),
-        "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa".to_owned(),
+        sidecar_directory.path().to_string_lossy().into_owned(),
+        library_directory.path().to_string_lossy().into_owned(),
         "100".to_owned(),
         "full".to_owned(),
         serde_json::json!({ "kind": "local-direct", "root": "" }).to_string(),

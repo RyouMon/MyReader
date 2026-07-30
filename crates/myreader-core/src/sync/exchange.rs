@@ -4,7 +4,7 @@ use automerge::ChangeHash;
 use opendal::Operator;
 use sha2::{Digest, Sha256};
 
-use crate::{
+use super::{
     persistence::{
         apply_remote_database_objects, ensure_database_document, has_receipt, list_pending_outbox,
         mark_outbox_published, read_database_diagnostics, DatabaseIdentity, SyncRemoteObject,
@@ -315,7 +315,7 @@ mod tests {
         Mutex,
     };
 
-    use crate::{
+    use super::super::{
         document::{
             add_reading_completion, add_reading_session_duration, create_annotation, set_bookmark,
             set_favorite, set_reading_position, AnnotationValue, BookmarkValue, FavoriteValue,
@@ -333,28 +333,28 @@ mod tests {
         let path = directory.path().join("library.sqlite");
         let connection = rusqlite::Connection::open(&path).unwrap();
         for migration in [
-            include_str!("../../../crates/myreader-core/migrations/legacy/0000_initial.sql"),
-            include_str!("../../../crates/myreader-core/migrations/legacy/0001_add_book_reading_format.sql"),
-            include_str!("../../../crates/myreader-core/migrations/legacy/0002_add_favorite_books.sql"),
-            include_str!("../../../crates/myreader-core/migrations/legacy/0003_add_book_cover_thumbnail_cache.sql"),
-            include_str!("../../../crates/myreader-core/migrations/legacy/0004_add_bookmarks.sql"),
-            include_str!("../../../crates/myreader-core/migrations/legacy/0005_add_annotations.sql"),
+            include_str!("../../migrations/legacy/0000_initial.sql"),
+            include_str!("../../migrations/legacy/0001_add_book_reading_format.sql"),
+            include_str!("../../migrations/legacy/0002_add_favorite_books.sql"),
+            include_str!("../../migrations/legacy/0003_add_book_cover_thumbnail_cache.sql"),
+            include_str!("../../migrations/legacy/0004_add_bookmarks.sql"),
+            include_str!("../../migrations/legacy/0005_add_annotations.sql"),
             include_str!(
-                "../../../crates/myreader-core/migrations/legacy/0006_add_reading_progress_display_progression.sql"
+                "../../migrations/legacy/0006_add_reading_progress_display_progression.sql"
             ),
-            include_str!("../../../crates/myreader-core/migrations/legacy/0007_add_reading_statistics.sql"),
-            include_str!("../../../crates/myreader-core/migrations/legacy/0008_add_library_sidecar_sync_kernel.sql"),
-            include_str!("../../../crates/myreader-core/migrations/legacy/0009_add_reading_progress_sync_clock.sql"),
-            include_str!("../../../crates/myreader-core/migrations/legacy/0010_add_favorite_sync_projection.sql"),
-            include_str!("../../../crates/myreader-core/migrations/legacy/0011_add_bookmark_sync_projection.sql"),
-            include_str!("../../../crates/myreader-core/migrations/legacy/0012_add_automerge_sync_storage.sql"),
+            include_str!("../../migrations/legacy/0007_add_reading_statistics.sql"),
+            include_str!("../../migrations/legacy/0008_add_library_sidecar_sync_kernel.sql"),
+            include_str!("../../migrations/legacy/0009_add_reading_progress_sync_clock.sql"),
+            include_str!("../../migrations/legacy/0010_add_favorite_sync_projection.sql"),
+            include_str!("../../migrations/legacy/0011_add_bookmark_sync_projection.sql"),
+            include_str!("../../migrations/legacy/0012_add_automerge_sync_storage.sql"),
             include_str!(
-                "../../../crates/myreader-core/migrations/legacy/0013_add_reading_position_conflict_projection.sql"
+                "../../migrations/legacy/0013_add_reading_position_conflict_projection.sql"
             ),
-            include_str!("../../../crates/myreader-core/migrations/legacy/0014_remove_legacy_sidecar_sync.sql"),
-            include_str!("../../../crates/myreader-core/migrations/legacy/0015_remove_hlc_projection_columns.sql"),
-            include_str!("../../../crates/myreader-core/migrations/legacy/0016_discard_legacy_sync_state.sql"),
-            include_str!("../../../crates/myreader-core/migrations/legacy/0017_square_toro.sql"),
+            include_str!("../../migrations/legacy/0014_remove_legacy_sidecar_sync.sql"),
+            include_str!("../../migrations/legacy/0015_remove_hlc_projection_columns.sql"),
+            include_str!("../../migrations/legacy/0016_discard_legacy_sync_state.sql"),
+            include_str!("../../migrations/legacy/0017_square_toro.sql"),
         ] {
             connection.execute_batch(migration).unwrap();
         }

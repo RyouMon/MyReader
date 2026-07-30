@@ -2,12 +2,9 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use myreader_rust_components::sync::{
+use myreader_core::sync::{
     exchange::SyncMode,
-    scheduler::{
-        SchedulerEvent, SchedulerPolicy, SchedulerState, SchedulerTransition, SyncExecution,
-        SyncTiming,
-    },
+    scheduler::{SchedulerEvent, SchedulerPolicy, SchedulerState, SchedulerTransition, SyncTiming},
 };
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
@@ -15,7 +12,6 @@ use tokio::sync::Semaphore;
 use tracing::{error, info};
 
 use crate::commands::AppState;
-use crate::error::AppError;
 use crate::services::sync_service::{SidecarSyncMode, SyncService};
 
 const PULL_FRESHNESS_MS: u64 = 30_000;
@@ -283,7 +279,18 @@ impl SidecarSyncScheduler {
             Err(_) => return,
         };
         let config = self.config_snapshot();
-        let mode = self.effective_mode(&config, &execution).await;
+        let mode = SyncService::effective_mode(
+            &self.app_data_dir,
+            &config,
+            &execution.library_id,
+            match execution.mode {
+                SyncMode::PushOnly => SidecarSyncMode::PushOnly,
+                SyncMode::Full => SidecarSyncMode::Full,
+            },
+            unix_epoch_millis(),
+            PULL_FRESHNESS_MS,
+        )
+        .await;
         let result = match mode {
             Ok(Some(mode)) => SyncService::sync_sidecar_for_library(
                 &self.app_data_dir,
@@ -340,7 +347,7 @@ impl SidecarSyncScheduler {
                     });
                 self.spawn_transition(transition);
             }
-            Err(error) if should_suspend(&error) => {
+            Err(error) if SyncService::should_suspend(&error) => {
                 error!(
                     target: "myreader_sync",
                     event = "sync.scheduler_suspended",
@@ -412,33 +419,6 @@ impl SidecarSyncScheduler {
         }
     }
 
-    async fn effective_mode(
-        &self,
-        config: &crate::models::AppConfig,
-        execution: &SyncExecution,
-    ) -> Result<Option<SidecarSyncMode>, AppError> {
-        if execution.mode == SyncMode::PushOnly {
-            return Ok(Some(SidecarSyncMode::PushOnly));
-        }
-        if !SyncService::is_pull_fresh(
-            &self.app_data_dir,
-            config,
-            &execution.library_id,
-            unix_epoch_millis(),
-            PULL_FRESHNESS_MS,
-        )
-        .await?
-        {
-            return Ok(Some(SidecarSyncMode::Full));
-        }
-        if SyncService::has_pending_sidecar_work(&self.app_data_dir, config, &execution.library_id)
-            .await?
-        {
-            return Ok(Some(SidecarSyncMode::PushOnly));
-        }
-        Ok(None)
-    }
-
     fn start_safety_sweep(&self) {
         let scheduler = self.clone();
         tauri::async_runtime::spawn(async move {
@@ -451,13 +431,6 @@ impl SidecarSyncScheduler {
             }
         });
     }
-}
-
-fn should_suspend(error: &AppError) -> bool {
-    matches!(
-        error,
-        AppError::Credential(_) | AppError::Auth(_) | AppError::Config(_)
-    )
 }
 
 fn unix_epoch_millis() -> u64 {

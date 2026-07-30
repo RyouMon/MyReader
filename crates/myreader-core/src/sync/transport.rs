@@ -7,7 +7,7 @@ use opendal::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{
+use super::{
     exchange::{
         sync_database_with_operator, sync_database_with_operator_observed, SyncMode, SyncObserver,
         SyncReport,

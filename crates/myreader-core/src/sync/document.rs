@@ -5,7 +5,7 @@ use automerge::{
 use serde::{Deserialize, Serialize};
 use uuid::{Uuid, Variant, Version};
 
-use crate::SyncError;
+use super::SyncError;
 
 pub const LIBRARY_SIDECAR_SCHEMA_VERSION: u64 = 1;
 pub const LIBRARY_SIDECAR_GENESIS_HEAD: &str =
@@ -20,10 +20,11 @@ pub const LIBRARY_SIDECAR_ROOTS: [&str; 6] = [
 ];
 
 const GENESIS_BYTES: &[u8] =
-    include_bytes!("../../../fixtures/library-sidecar-automerge/genesis.automerge");
+    include_bytes!("../../../../fixtures/library-sidecar-automerge/genesis.automerge");
 #[cfg(test)]
-const TYPESCRIPT_POSITION_INCREMENTAL: &[u8] =
-    include_bytes!("../../../fixtures/library-sidecar-automerge/typescript-position.incremental");
+const TYPESCRIPT_POSITION_INCREMENTAL: &[u8] = include_bytes!(
+    "../../../../fixtures/library-sidecar-automerge/typescript-position.incremental"
+);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

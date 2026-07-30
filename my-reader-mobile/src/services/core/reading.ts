@@ -7,9 +7,19 @@ import { withLocalLibraryCalibreRoot } from "@/src/domain/library/local-library-
 import { uuid } from "@/src/utils/common"
 import { librarySidecarRootUri } from "../fs/library-paths"
 import { toNativeFilesystemPath } from "../fs/path"
+import { announceLocalSidecarWork } from "./sync-events"
 
 function sidecarRootPath(library: Library): string {
   return toNativeFilesystemPath(librarySidecarRootUri(library))
+}
+
+async function mutateSidecar<T>(
+  library: Library,
+  mutation: () => Promise<T>,
+): Promise<T> {
+  const result = await mutation()
+  announceLocalSidecarWork(library.id)
+  return result
 }
 
 export async function listFavoriteBookIds(library: Library): Promise<number[]> {
@@ -23,13 +33,15 @@ export function setFavoriteBook(
   bookId: number,
   isFavorite: boolean,
 ): Promise<void> {
-  return withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
-    MyReaderRustComponents.setFavoriteBook(
-      sidecarRootPath(library),
-      toNativeFilesystemPath(libraryRootUri),
-      bookId,
-      isFavorite,
-      Date.now(),
+  return mutateSidecar(library, () =>
+    withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
+      MyReaderRustComponents.setFavoriteBook(
+        sidecarRootPath(library),
+        toNativeFilesystemPath(libraryRootUri),
+        bookId,
+        isFavorite,
+        Date.now(),
+      ),
     ),
   )
 }
@@ -134,15 +146,17 @@ export function setReadingPosition(
   locator: ReaderLocator,
   displayProgression: number | null,
 ): Promise<void> {
-  return withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
-    MyReaderRustComponents.setReadingPosition(
-      sidecarRootPath(library),
-      toNativeFilesystemPath(libraryRootUri),
-      bookId,
-      format,
-      JSON.stringify(locator),
-      displayProgression,
-      Date.now(),
+  return mutateSidecar(library, () =>
+    withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
+      MyReaderRustComponents.setReadingPosition(
+        sidecarRootPath(library),
+        toNativeFilesystemPath(libraryRootUri),
+        bookId,
+        format,
+        JSON.stringify(locator),
+        displayProgression,
+        Date.now(),
+      ),
     ),
   )
 }
@@ -171,14 +185,16 @@ export function selectReadingPositionCandidate(
   format: string,
   operationId: string,
 ): Promise<void> {
-  return withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
-    MyReaderRustComponents.selectReadingPositionCandidate(
-      sidecarRootPath(library),
-      toNativeFilesystemPath(libraryRootUri),
-      bookId,
-      format,
-      operationId,
-      Date.now(),
+  return mutateSidecar(library, () =>
+    withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
+      MyReaderRustComponents.selectReadingPositionCandidate(
+        sidecarRootPath(library),
+        toNativeFilesystemPath(libraryRootUri),
+        bookId,
+        format,
+        operationId,
+        Date.now(),
+      ),
     ),
   )
 }
@@ -204,16 +220,18 @@ export function addReaderBookmark(
   locatorKey: string,
   locator: ReaderLocator,
 ): Promise<ReaderBookmark> {
-  return withLocalLibraryCalibreRoot(library, async (libraryRootUri) =>
-    JSON.parse(
-      await MyReaderRustComponents.addReaderBookmark(
-        sidecarRootPath(library),
-        toNativeFilesystemPath(libraryRootUri),
-        bookId,
-        format,
-        locatorKey,
-        JSON.stringify(locator),
-        Date.now(),
+  return mutateSidecar(library, () =>
+    withLocalLibraryCalibreRoot(library, async (libraryRootUri) =>
+      JSON.parse(
+        await MyReaderRustComponents.addReaderBookmark(
+          sidecarRootPath(library),
+          toNativeFilesystemPath(libraryRootUri),
+          bookId,
+          format,
+          locatorKey,
+          JSON.stringify(locator),
+          Date.now(),
+        ),
       ),
     ),
   )
@@ -225,14 +243,16 @@ export function removeReaderBookmark(
   format: string,
   locatorKey: string,
 ): Promise<void> {
-  return withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
-    MyReaderRustComponents.removeReaderBookmark(
-      sidecarRootPath(library),
-      toNativeFilesystemPath(libraryRootUri),
-      bookId,
-      format,
-      locatorKey,
-      Date.now(),
+  return mutateSidecar(library, () =>
+    withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
+      MyReaderRustComponents.removeReaderBookmark(
+        sidecarRootPath(library),
+        toNativeFilesystemPath(libraryRootUri),
+        bookId,
+        format,
+        locatorKey,
+        Date.now(),
+      ),
     ),
   )
 }
@@ -259,17 +279,19 @@ export function addReaderAnnotation(
   color: ReaderAnnotationColor,
   note: string | null,
 ): Promise<ReaderAnnotation> {
-  return withLocalLibraryCalibreRoot(library, async (libraryRootUri) =>
-    JSON.parse(
-      await MyReaderRustComponents.addReaderAnnotation(
-        sidecarRootPath(library),
-        toNativeFilesystemPath(libraryRootUri),
-        bookId,
-        format,
-        JSON.stringify(locator),
-        color,
-        note,
-        Date.now(),
+  return mutateSidecar(library, () =>
+    withLocalLibraryCalibreRoot(library, async (libraryRootUri) =>
+      JSON.parse(
+        await MyReaderRustComponents.addReaderAnnotation(
+          sidecarRootPath(library),
+          toNativeFilesystemPath(libraryRootUri),
+          bookId,
+          format,
+          JSON.stringify(locator),
+          color,
+          note,
+          Date.now(),
+        ),
       ),
     ),
   )
@@ -283,17 +305,19 @@ export function updateReaderAnnotation(
   color: ReaderAnnotationColor,
   note: string | null,
 ): Promise<ReaderAnnotation> {
-  return withLocalLibraryCalibreRoot(library, async (libraryRootUri) =>
-    JSON.parse(
-      await MyReaderRustComponents.updateReaderAnnotation(
-        sidecarRootPath(library),
-        toNativeFilesystemPath(libraryRootUri),
-        bookId,
-        format,
-        id,
-        color,
-        note,
-        Date.now(),
+  return mutateSidecar(library, () =>
+    withLocalLibraryCalibreRoot(library, async (libraryRootUri) =>
+      JSON.parse(
+        await MyReaderRustComponents.updateReaderAnnotation(
+          sidecarRootPath(library),
+          toNativeFilesystemPath(libraryRootUri),
+          bookId,
+          format,
+          id,
+          color,
+          note,
+          Date.now(),
+        ),
       ),
     ),
   )
@@ -305,14 +329,16 @@ export function removeReaderAnnotation(
   format: string,
   id: string,
 ): Promise<void> {
-  return withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
-    MyReaderRustComponents.removeReaderAnnotation(
-      sidecarRootPath(library),
-      toNativeFilesystemPath(libraryRootUri),
-      bookId,
-      format,
-      id,
-      Date.now(),
+  return mutateSidecar(library, () =>
+    withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
+      MyReaderRustComponents.removeReaderAnnotation(
+        sidecarRootPath(library),
+        toNativeFilesystemPath(libraryRootUri),
+        bookId,
+        format,
+        id,
+        Date.now(),
+      ),
     ),
   )
 }
@@ -321,17 +347,19 @@ export function addReadingSessionInterval(
   library: Library,
   interval: ReadingSessionInterval,
 ): Promise<void> {
-  return withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
-    MyReaderRustComponents.addReadingSessionInterval(
-      sidecarRootPath(library),
-      toNativeFilesystemPath(libraryRootUri),
-      interval.id,
-      interval.bookId,
-      interval.format,
-      interval.localDay,
-      interval.startedAt,
-      interval.durationSeconds,
-      interval.updatedAt,
+  return mutateSidecar(library, () =>
+    withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
+      MyReaderRustComponents.addReadingSessionInterval(
+        sidecarRootPath(library),
+        toNativeFilesystemPath(libraryRootUri),
+        interval.id,
+        interval.bookId,
+        interval.format,
+        interval.localDay,
+        interval.startedAt,
+        interval.durationSeconds,
+        interval.updatedAt,
+      ),
     ),
   )
 }
@@ -340,16 +368,18 @@ export function addReadingCompletion(
   library: Library,
   completion: ReadingCompletionInsert,
 ): Promise<boolean> {
-  return withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
-    MyReaderRustComponents.addReadingCompletion(
-      sidecarRootPath(library),
-      toNativeFilesystemPath(libraryRootUri),
-      completion.id,
-      completion.bookId,
-      completion.format,
-      completion.localDay,
-      completion.completedAt,
-      completion.updatedAt,
+  return mutateSidecar(library, () =>
+    withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
+      MyReaderRustComponents.addReadingCompletion(
+        sidecarRootPath(library),
+        toNativeFilesystemPath(libraryRootUri),
+        completion.id,
+        completion.bookId,
+        completion.format,
+        completion.localDay,
+        completion.completedAt,
+        completion.updatedAt,
+      ),
     ),
   )
 }

@@ -1,5 +1,5 @@
-use myreader_sync::document::{FavoriteValue, ReadingPositionValue};
-use myreader_sync::document_engine::{
+use myreader_core::sync::document::{FavoriteValue, ReadingPositionValue};
+use myreader_core::sync::document_engine::{
     execute_document_command, DocumentCommand, DocumentCommandRequest,
 };
 
@@ -10,7 +10,7 @@ fn execute(
     snapshot: Option<&[u8]>,
     command: DocumentCommand,
     base_heads: Vec<String>,
-) -> myreader_sync::document_engine::DocumentCommandResult {
+) -> myreader_core::sync::document_engine::DocumentCommandResult {
     execute_document_command(
         snapshot,
         DocumentCommandRequest {

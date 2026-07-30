@@ -3,7 +3,7 @@ use std::str::FromStr;
 use automerge::ChangeHash;
 use serde::{Deserialize, Serialize};
 
-use crate::document::{
+use super::document::{
     add_reading_completion, add_reading_session_duration, annotation_projections,
     apply_library_sidecar_incremental, bookmark_projections, create_annotation, delete_annotation,
     favorite_projections, library_identity, library_sidecar_changes_since, library_sidecar_heads,
@@ -17,7 +17,7 @@ use crate::document::{
     ReadingPositionCandidate, ReadingPositionProjection, ReadingPositionValue, ReadingSessionValue,
     LIBRARY_SIDECAR_SCHEMA_VERSION,
 };
-use crate::SyncError;
+use super::SyncError;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

@@ -3467,14 +3467,15 @@ dependencies = [
 name = "myreader-core"
 version = "0.1.0"
 dependencies = [
+ "automerge",
  "dunce",
- "myreader-sync",
  "opendal",
  "rusqlite",
  "sea-orm",
  "sea-orm-migration",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "tempfile",
  "thiserror 1.0.69",
  "tokio",
@@ -3488,7 +3489,6 @@ name = "myreader-rust-components"
 version = "0.1.0"
 dependencies = [
  "myreader-core",
- "myreader-sync",
  "rusqlite",
  "serde",
  "serde_json",
@@ -3496,22 +3496,6 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio",
  "uniffi",
-]
-
-[[package]]
-name = "myreader-sync"
-version = "0.1.0"
-dependencies = [
- "automerge",
- "opendal",
- "rusqlite",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "tempfile",
- "thiserror 1.0.69",
- "tokio",
- "uuid",
 ]
 
 [[package]]

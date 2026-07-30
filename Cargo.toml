@@ -3,7 +3,6 @@ resolver = "2"
 members = [
     "crates/myreader-core",
     "crates/myreader-rust-components",
-    "crates/myreader-sync",
     "my-reader/src-tauri",
 ]
 [workspace.package]
@@ -14,7 +13,6 @@ automerge = "=0.10.0"
 dunce = "1"
 myreader-core = { path = "crates/myreader-core" }
 myreader-rust-components = { path = "crates/myreader-rust-components" }
-myreader-sync = { path = "crates/myreader-sync" }
 opendal = { version = "0.50", default-features = false, features = ["services-webdav", "services-fs", "services-onedrive"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

@@ -4,3 +4,4 @@ pub mod datasource;
 pub mod library;
 pub mod reading;
 pub mod registry;
+pub mod sync;

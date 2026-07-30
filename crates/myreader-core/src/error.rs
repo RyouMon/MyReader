@@ -34,10 +34,10 @@ impl From<serde_json::Error> for CoreError {
     }
 }
 
-impl From<myreader_sync::SyncError> for CoreError {
-    fn from(error: myreader_sync::SyncError) -> Self {
+impl From<crate::sync::SyncError> for CoreError {
+    fn from(error: crate::sync::SyncError) -> Self {
         match error {
-            myreader_sync::SyncError::Sync(message) => Self::Sync(message),
+            crate::sync::SyncError::Sync(message) => Self::Sync(message),
         }
     }
 }

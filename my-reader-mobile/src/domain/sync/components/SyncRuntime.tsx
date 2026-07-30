@@ -4,24 +4,17 @@ import { useEffect, useRef } from "react"
 import { AppState } from "react-native"
 import { Notifier } from "react-native-notifier"
 import { InAppNotification } from "@/src/domain/notifications/in-app-notification"
-import {
-  runSyncLibraries,
-  type SidecarSyncScheduler,
-  type SyncLibrariesDeps,
-} from "@/src/domain/sync"
-import {
-  createAutomaticSidecarSyncScheduler,
-  recoverPendingSidecarWork,
-  requestContextualSidecarPull,
-  startSidecarPullSafetySweep,
-} from "@/src/domain/sync/automatic-sidecar-sync"
-import { recoverLibrarySidecarUploads } from "@/src/domain/sync/background-sidecar-upload"
+import { runSyncLibraries, type SyncLibrariesDeps } from "@/src/domain/sync"
 import { applySyncRunReports } from "@/src/domain/sync/hooks/apply-sync-report"
-import { subscribeLibrarySidecarWork } from "@/src/domain/sync/sidecar-work"
+import {
+  createSidecarSyncRuntime,
+  type SidecarSyncRuntime,
+} from "@/src/domain/sync/sidecar-sync-runtime"
 import { isRemoteSourceType } from "@/src/domain/types"
 import { SyncConfigError } from "@/src/errors"
 import i18n from "@/src/i18n"
 import { getValidAccessToken } from "@/src/services/auth/onedrive"
+import { subscribeLocalSidecarWork } from "@/src/services/core/sync-events"
 import { setCachedAuth } from "@/src/services/remote/auth-cache"
 import { useAppStore } from "@/src/store/app-store"
 import { cancelIdleWork, scheduleIdleWork } from "@/src/utils/common"
@@ -68,7 +61,7 @@ export function SyncRuntime(): null {
   const dataSources = useAppStore((state) => state.dataSources)
   const pathname = usePathname()
   const hasRunStartup = useRef(false)
-  const sidecarScheduler = useRef<SidecarSyncScheduler | null>(null)
+  const sidecarRuntime = useRef<SidecarSyncRuntime | null>(null)
   const previousPathname = useRef(pathname)
   const previousActiveLibraryId = useRef(activeLibraryId)
 
@@ -77,13 +70,6 @@ export function SyncRuntime(): null {
     hasRunStartup.current = true
 
     const state = useAppStore.getState()
-    void recoverLibrarySidecarUploads()
-      .then((count) => {
-        if (count > 0) {
-          console.info("[reading-sync] background-upload:recovered", { count })
-        }
-      })
-      .catch((error) => handleSyncError(error, "background-upload-recovery"))
     for (const ds of state.dataSources) {
       if (ds.type === "onedrive") {
         void getValidAccessToken(ds.id)
@@ -112,7 +98,7 @@ export function SyncRuntime(): null {
   useEffect(() => {
     if (!storeReady || !enableAutoSync) return
 
-    const scheduler = createAutomaticSidecarSyncScheduler(
+    const runtime = createSidecarSyncRuntime(
       () => {
         const state = useAppStore.getState()
         return {
@@ -123,31 +109,17 @@ export function SyncRuntime(): null {
       },
       (error) => handleSyncError(error, "automatic"),
     )
-    sidecarScheduler.current = scheduler
-    const unsubscribeWork = subscribeLibrarySidecarWork((work) => {
-      scheduler.request({
-        libraryId: work.libraryId,
-        mode: "push_only",
-        reason: work.reason,
-        timing: "debounced",
-      })
+    sidecarRuntime.current = runtime
+    const unsubscribeWork = subscribeLocalSidecarWork((work) => {
+      runtime.request(work.libraryId, "push_only", "local_change", "debounced")
     })
-    const state = useAppStore.getState()
-    void recoverPendingSidecarWork(scheduler, state.libraries).catch((error) =>
-      handleSyncError(error, "recovery"),
-    )
+    void runtime.recover().catch((error) => handleSyncError(error, "recovery"))
     let stopSafetySweep: (() => void) | null = null
     const startSafetySweep = () => {
       if (stopSafetySweep) return
-      stopSafetySweep = startSidecarPullSafetySweep({
-        scheduler,
-        getActiveLibrary: () => {
-          const current = useAppStore.getState()
-          return current.libraries.find(
-            (library) => library.id === current.activeLibraryId,
-          )
-        },
-        onError: (error) => handleSyncError(error, "recovery_sweep"),
+      stopSafetySweep = runtime.startSafetySweep(() => {
+        const current = useAppStore.getState()
+        return current.activeLibraryId
       })
     }
     const stopSafety = () => {
@@ -162,13 +134,13 @@ export function SyncRuntime(): null {
         (library) => library.id === current.activeLibraryId,
       )
       if (!activeLibrary) return
-      void requestContextualSidecarPull(scheduler, activeLibrary, reason).catch(
-        (error) => handleSyncError(error, reason),
-      )
+      void runtime
+        .requestContextualPull(activeLibrary.id, reason)
+        .catch((error) => handleSyncError(error, reason))
     }
     if (AppState.currentState === "active") {
       startSafetySweep()
-      if (!state.settings.syncOnStartup) {
+      if (!useAppStore.getState().settings.syncOnStartup) {
         requestActivePull("app_foregrounded")
       }
     }
@@ -183,7 +155,7 @@ export function SyncRuntime(): null {
         stopSafety()
         const activeLibraryId = useAppStore.getState().activeLibraryId
         if (activeLibraryId) {
-          scheduler.flushPending(activeLibraryId, "app_backgrounding")
+          runtime.flush(activeLibraryId, "app_backgrounding")
         }
       },
     )
@@ -194,7 +166,7 @@ export function SyncRuntime(): null {
       const current = useAppStore.getState()
       for (const library of current.libraries) {
         if (isRemoteSourceType(library.sourceType)) {
-          scheduler.setLibraryOnline(library.id, reachable)
+          runtime.setLibraryOnline(library.id, reachable)
         }
       }
       if (reachable && lastNetworkReachable === false) {
@@ -213,9 +185,9 @@ export function SyncRuntime(): null {
       networkSubscription.remove()
       appStateSubscription.remove()
       unsubscribeWork()
-      scheduler.dispose()
-      if (sidecarScheduler.current === scheduler) {
-        sidecarScheduler.current = null
+      runtime.dispose()
+      if (sidecarRuntime.current === runtime) {
+        sidecarRuntime.current = null
       }
     }
   }, [storeReady, enableAutoSync, dataSources])
@@ -226,7 +198,7 @@ export function SyncRuntime(): null {
     if (!isReaderRoute(previous) || isReaderRoute(pathname)) return
     const activeLibraryId = useAppStore.getState().activeLibraryId
     if (activeLibraryId) {
-      sidecarScheduler.current?.flushPending(activeLibraryId, "reader_closed")
+      sidecarRuntime.current?.flush(activeLibraryId, "reader_closed")
     }
   }, [pathname])
 
@@ -245,13 +217,11 @@ export function SyncRuntime(): null {
     const library = state.libraries.find(
       (candidate) => candidate.id === activeLibraryId,
     )
-    const scheduler = sidecarScheduler.current
-    if (!library || !scheduler) return
-    void requestContextualSidecarPull(
-      scheduler,
-      library,
-      "library_activated",
-    ).catch((error) => handleSyncError(error, "library_activated"))
+    const runtime = sidecarRuntime.current
+    if (!library || !runtime) return
+    void runtime
+      .requestContextualPull(library.id, "library_activated")
+      .catch((error) => handleSyncError(error, "library_activated"))
   }, [storeReady, enableAutoSync, activeLibraryId])
 
   return null

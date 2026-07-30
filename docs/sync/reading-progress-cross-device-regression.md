@@ -47,7 +47,7 @@
 ## 自动化门禁
 
 ```bash
-cargo test -p myreader-sync -p myreader-rust-components
+cargo test -p myreader-core -p myreader-rust-components
 pnpm --filter @my-reader/tools test
 pnpm --filter my-reader-mobile exec jest --runInBand
 pnpm --filter my-reader run test:unit

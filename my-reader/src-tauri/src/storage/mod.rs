@@ -10,7 +10,7 @@ mod webdav;
 use crate::auth::credentials;
 use crate::auth::onedrive::onedrive_token_manager;
 use crate::error::AppError;
-use crate::models::{DataSourceConfig, DataSourceDetail};
+use crate::models::{AppConfig, DataSourceConfig, DataSourceDetail, LibraryConfig};
 
 /// Runtime description of a storage backend.
 #[derive(Debug, Clone)]
@@ -103,6 +103,59 @@ pub async fn core_remote_credential(
             Ok(myreader_core::models::RemoteCredential::Onedrive { access_token })
         }
         DataSourceDetail::Local { .. } => Err(AppError::Config("DATASOURCE_NOT_REMOTE".into())),
+    }
+}
+
+pub async fn core_sidecar_storage(
+    config: &AppConfig,
+    library: &LibraryConfig,
+) -> Result<myreader_core::sync::transport::StorageConfig, AppError> {
+    use myreader_core::models::RemoteCredential;
+    use myreader_core::sync::transport::StorageConfig;
+
+    if !library.is_remote() {
+        return Ok(StorageConfig::LocalDirect {
+            root: library.path.clone(),
+        });
+    }
+
+    let data_source_id = library
+        .data_source_id
+        .as_deref()
+        .ok_or_else(|| AppError::Config("LIBRARY_DATA_SOURCE_MISSING".into()))?;
+    let source = config
+        .data_sources
+        .iter()
+        .find(|source| source.id == data_source_id)
+        .ok_or_else(|| AppError::NotFound(format!("DATASOURCE_NOT_FOUND: {data_source_id}")))?;
+    let relative_root = library.source_path.as_deref().unwrap_or_default();
+    let credential = core_remote_credential(source).await?;
+
+    match (&source.detail, credential) {
+        (
+            DataSourceDetail::Webdav {
+                endpoint,
+                username,
+                root_path,
+                ..
+            },
+            RemoteCredential::Webdav { password },
+        ) => Ok(StorageConfig::Webdav {
+            endpoint: endpoint.clone(),
+            username: username.clone(),
+            password,
+            root: Some(join_remote_root(root_path.as_deref(), relative_root)),
+        }),
+        (
+            DataSourceDetail::Onedrive { root_path, .. },
+            RemoteCredential::Onedrive { access_token },
+        ) => Ok(StorageConfig::Onedrive {
+            access_token,
+            root: Some(join_remote_root(root_path.as_deref(), relative_root)),
+        }),
+        _ => Err(AppError::Config(
+            "DATASOURCE_CREDENTIAL_TYPE_MISMATCH".into(),
+        )),
     }
 }
 

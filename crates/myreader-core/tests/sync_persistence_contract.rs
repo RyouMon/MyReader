@@ -1,6 +1,6 @@
-use myreader_sync::document::{FavoriteValue, LIBRARY_SIDECAR_SCHEMA_VERSION};
-use myreader_sync::document_engine::DocumentCommand;
-use myreader_sync::persistence::{
+use myreader_core::sync::document::{FavoriteValue, LIBRARY_SIDECAR_SCHEMA_VERSION};
+use myreader_core::sync::document_engine::DocumentCommand;
+use myreader_core::sync::persistence::{
     apply_remote_database_objects, ensure_database_document, ensure_database_identity,
     execute_local_database_command, list_pending_outbox, mark_schedule_succeeded,
     read_schedule_state, write_schedule_state, DatabaseIdentity, SyncDatabaseCommand,

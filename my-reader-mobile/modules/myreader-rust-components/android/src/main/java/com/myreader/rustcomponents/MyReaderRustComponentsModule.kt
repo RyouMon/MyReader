@@ -1,22 +1,20 @@
 package com.myreader.rustcomponents
 
 import com.myreader.rustcomponents.uniffi.RustComponentsException
-import com.myreader.rustcomponents.uniffi.SyncDocumentCommandResult
 import com.myreader.rustcomponents.uniffi.advanceSyncScheduler
 import com.myreader.rustcomponents.uniffi.addRemoteLibrary
 import com.myreader.rustcomponents.uniffi.addReaderBookmark
 import com.myreader.rustcomponents.uniffi.addReaderAnnotation
 import com.myreader.rustcomponents.uniffi.cancelSyncTask
+import com.myreader.rustcomponents.uniffi.classifySidecarSyncFailure
 import com.myreader.rustcomponents.uniffi.countCalibreBooks
 import com.myreader.rustcomponents.uniffi.deleteLibraryFileState
-import com.myreader.rustcomponents.uniffi.ensureSyncDatabaseIdentity
-import com.myreader.rustcomponents.uniffi.ensureSyncDatabaseDocument
-import com.myreader.rustcomponents.uniffi.executeSyncDatabaseCommand
+import com.myreader.rustcomponents.uniffi.effectiveSidecarSyncMode
 import com.myreader.rustcomponents.uniffi.getCalibreBookDetail
 import com.myreader.rustcomponents.uniffi.getCalibreLibraryUuid
 import com.myreader.rustcomponents.uniffi.getLibraryFileState
 import com.myreader.rustcomponents.uniffi.getReadingPosition
-import com.myreader.rustcomponents.uniffi.hasSyncDatabasePendingWork
+import com.myreader.rustcomponents.uniffi.hasSidecarSyncPendingWork
 import com.myreader.rustcomponents.uniffi.initializeDeviceRegistry
 import com.myreader.rustcomponents.uniffi.listCalibreBookFormats
 import com.myreader.rustcomponents.uniffi.listCalibreBookSummaries
@@ -31,7 +29,6 @@ import com.myreader.rustcomponents.uniffi.listReadingPositionCandidates
 import com.myreader.rustcomponents.uniffi.listReadingPositions
 import com.myreader.rustcomponents.uniffi.listReaderBookmarks
 import com.myreader.rustcomponents.uniffi.listReaderAnnotations
-import com.myreader.rustcomponents.uniffi.markSyncDatabaseScheduleSucceeded
 import com.myreader.rustcomponents.uniffi.migrateLibraryDatabase
 import com.myreader.rustcomponents.uniffi.registerDeviceLibrary
 import com.myreader.rustcomponents.uniffi.removeDeviceDataSource
@@ -39,12 +36,12 @@ import com.myreader.rustcomponents.uniffi.removeDeviceLibrary
 import com.myreader.rustcomponents.uniffi.removeReaderBookmark
 import com.myreader.rustcomponents.uniffi.removeReaderAnnotation
 import com.myreader.rustcomponents.uniffi.replaceDeviceLibrary
-import com.myreader.rustcomponents.uniffi.readSyncDatabaseDiagnostics
-import com.myreader.rustcomponents.uniffi.readSyncDatabaseScheduleState
+import com.myreader.rustcomponents.uniffi.readSidecarSyncSchedule
 import com.myreader.rustcomponents.uniffi.readSyncTaskProgress
 import com.myreader.rustcomponents.uniffi.refreshRemoteLibrary
 import com.myreader.rustcomponents.uniffi.releaseSyncTask
-import com.myreader.rustcomponents.uniffi.SyncDatabaseScheduleState
+import com.myreader.rustcomponents.uniffi.recordSidecarSyncRetry
+import com.myreader.rustcomponents.uniffi.recordSidecarSyncSuspension
 import com.myreader.rustcomponents.uniffi.syncContractVersion
 import com.myreader.rustcomponents.uniffi.syncLibrarySidecar
 import com.myreader.rustcomponents.uniffi.setBookReadingFormat
@@ -58,7 +55,6 @@ import com.myreader.rustcomponents.uniffi.validateDeviceDataSource
 import com.myreader.rustcomponents.uniffi.validateCalibreLibrary
 import com.myreader.rustcomponents.uniffi.upsertLibraryFileState
 import com.myreader.rustcomponents.uniffi.updateReaderAnnotation
-import com.myreader.rustcomponents.uniffi.writeSyncDatabaseScheduleState
 import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -74,12 +70,6 @@ class MyReaderRustComponentsModule : Module() {
         throw CodedException("SYNC_ERROR", error.v1, error)
     }
   }
-
-  private fun documentResult(result: SyncDocumentCommandResult) = mapOf(
-    "schemaVersion" to result.schemaVersion.toInt(),
-    "heads" to result.heads,
-    "projectionJson" to result.projectionJson,
-  )
 
   override fun definition() = ModuleDefinition {
     Name("MyReaderRustComponents")
@@ -618,107 +608,62 @@ class MyReaderRustComponentsModule : Module() {
       }
     }
 
-    AsyncFunction("ensureSyncDatabaseIdentity") {
-        databasePath: String,
-        libraryUuid: String ->
+    AsyncFunction("readSidecarSyncSchedule") { sidecarRootPath: String ->
       componentCall {
-        val identity = ensureSyncDatabaseIdentity(databasePath, libraryUuid)
+        val state = readSidecarSyncSchedule(sidecarRootPath)
         mapOf(
-          "libraryUuid" to identity.libraryUuid,
-          "replicaId" to identity.replicaId,
+          "lastSuccessfulPullAt" to state.lastSuccessfulPullAt,
+          "nextRetryAt" to state.nextRetryAt,
+          "transientFailureCount" to state.transientFailureCount.toInt(),
+          "suspendedReason" to state.suspendedReason,
         )
       }
     }
 
-    AsyncFunction("readSyncDatabaseScheduleState") { databasePath: String ->
-      componentCall {
-        readSyncDatabaseScheduleState(databasePath)?.let { state ->
-          mapOf(
-            "lastSuccessfulPullAt" to state.lastSuccessfulPullAt,
-            "nextRetryAt" to state.nextRetryAt,
-            "transientFailureCount" to state.transientFailureCount.toInt(),
-            "suspendedReason" to state.suspendedReason,
-          )
-        }
-      }
-    }
-
-    AsyncFunction("writeSyncDatabaseScheduleState") {
-        databasePath: String,
-        lastSuccessfulPullAt: Long?,
-        nextRetryAt: Long?,
-        transientFailureCount: Int,
-        suspendedReason: String? ->
-      componentCall {
-        writeSyncDatabaseScheduleState(
-          databasePath,
-          SyncDatabaseScheduleState(
-            lastSuccessfulPullAt,
-            nextRetryAt,
-            transientFailureCount.toUInt(),
-            suspendedReason,
-          ),
-        )
-      }
-    }
-
-    AsyncFunction("markSyncDatabaseScheduleSucceeded") {
-        databasePath: String,
-        completedPullAt: Long? ->
-      componentCall {
-        markSyncDatabaseScheduleSucceeded(databasePath, completedPullAt)
-      }
-    }
-
-    AsyncFunction("ensureSyncDatabaseDocument") {
-        databasePath: String,
-        libraryUuid: String,
-        replicaId: String,
-        nowMs: String ->
-      componentCall {
-        documentResult(
-        ensureSyncDatabaseDocument(databasePath, libraryUuid, replicaId, nowMs),
-      )
-      }
-    }
-
-    AsyncFunction("executeSyncDatabaseCommand") {
-        databasePath: String,
-        libraryUuid: String,
-        replicaId: String,
+    AsyncFunction("effectiveSidecarSyncMode") {
+        sidecarRootPath: String,
+        requestedMode: String,
         nowMs: String,
-        commandJson: String ->
+        freshnessMs: String ->
       componentCall {
-        documentResult(
-        executeSyncDatabaseCommand(
-          databasePath,
-          libraryUuid,
-          replicaId,
+        effectiveSidecarSyncMode(
+          sidecarRootPath,
+          requestedMode,
           nowMs,
-          commandJson,
-        ),
-      )
-      }
-    }
-
-    AsyncFunction("hasSyncDatabasePendingWork") { databasePath: String ->
-      componentCall {
-        hasSyncDatabasePendingWork(databasePath)
-      }
-    }
-
-    AsyncFunction("readSyncDatabaseDiagnostics") { databasePath: String ->
-      componentCall {
-        val result = readSyncDatabaseDiagnostics(databasePath)
-        mapOf(
-          "schemaVersion" to result.schemaVersion,
-          "heads" to result.heads,
-          "changes" to result.changes,
-          "pendingOutbox" to result.pendingOutbox,
-          "receipts" to result.receipts,
-          "projectionVersion" to result.projectionVersion,
+          freshnessMs,
         )
       }
+    }
+
+    AsyncFunction("recordSidecarSyncRetry") {
+        sidecarRootPath: String,
+        nextRetryAt: String,
+        failureCount: Int ->
+      componentCall {
+        recordSidecarSyncRetry(
+          sidecarRootPath,
+          nextRetryAt,
+          failureCount.toUInt(),
+        )
+      }
+    }
+
+    AsyncFunction("recordSidecarSyncSuspension") {
+        sidecarRootPath: String,
+        reason: String ->
+      componentCall {
+        recordSidecarSyncSuspension(sidecarRootPath, reason)
+      }
+    }
+
+    AsyncFunction("hasSidecarSyncPendingWork") { sidecarRootPath: String ->
+      componentCall {
+        hasSidecarSyncPendingWork(sidecarRootPath)
+      }
+    }
+
+    Function("classifySidecarSyncFailure") { kind: String ->
+      classifySidecarSyncFailure(kind)
     }
 
     Function("readSyncTaskProgress") { taskId: String ->
@@ -742,18 +687,16 @@ class MyReaderRustComponentsModule : Module() {
 
     AsyncFunction("syncLibrarySidecar") {
         taskId: String,
-        databasePath: String,
-        libraryUuid: String,
-        replicaId: String,
+        sidecarRootPath: String,
+        libraryRootPath: String,
         nowMs: String,
         mode: String,
         storageJson: String ->
       componentCall {
         val result = syncLibrarySidecar(
           taskId,
-          databasePath,
-          libraryUuid,
-          replicaId,
+          sidecarRootPath,
+          libraryRootPath,
           nowMs,
           mode,
           storageJson,

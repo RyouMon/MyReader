@@ -10,7 +10,7 @@ use std::{
     },
 };
 
-pub use myreader_sync as sync;
+pub use myreader_core::sync;
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum RustComponentsError {
@@ -22,34 +22,11 @@ pub enum RustComponentsError {
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct SyncDocumentCommandResult {
-    pub schema_version: u32,
-    pub heads: Vec<String>,
-    pub projection_json: String,
-}
-
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct SyncDatabaseIdentity {
-    pub library_uuid: String,
-    pub replica_id: String,
-}
-
-#[derive(Debug, Clone, uniffi::Record)]
 pub struct SyncDatabaseScheduleState {
     pub last_successful_pull_at: Option<i64>,
     pub next_retry_at: Option<i64>,
     pub transient_failure_count: u32,
     pub suspended_reason: Option<String>,
-}
-
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct SyncDatabaseDiagnostics {
-    pub schema_version: Option<i64>,
-    pub heads: Vec<String>,
-    pub changes: i64,
-    pub pending_outbox: i64,
-    pub receipts: i64,
-    pub projection_version: Option<i64>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -104,7 +81,7 @@ impl sync::exchange::SyncObserver for NativeSyncObserver {
 
 #[uniffi::export]
 pub fn sync_contract_version() -> u32 {
-    7
+    8
 }
 
 #[uniffi::export]
@@ -852,19 +829,6 @@ pub fn release_sync_task(task_id: String) -> bool {
         .is_some()
 }
 
-fn map_document_result(
-    result: sync::document_engine::DocumentCommandResult,
-) -> Result<SyncDocumentCommandResult, RustComponentsError> {
-    let projection_json = serde_json::to_string(&result.projection)
-        .map_err(|error| RustComponentsError::Sync(format!("Invalid projection: {error}")))?;
-    Ok(SyncDocumentCommandResult {
-        schema_version: u32::try_from(result.schema_version)
-            .map_err(|_| RustComponentsError::Sync("Schema version is out of range".to_owned()))?,
-        heads: result.heads,
-        projection_json,
-    })
-}
-
 fn map_sync_error(error: sync::SyncError) -> RustComponentsError {
     match error {
         sync::SyncError::Sync(message) => RustComponentsError::Sync(message),
@@ -877,146 +841,110 @@ fn parse_now_ms(value: &str) -> Result<i64, RustComponentsError> {
         .map_err(|_| RustComponentsError::Sync("Sync timestamp is invalid".to_owned()))
 }
 
-#[uniffi::export]
-pub fn ensure_sync_database_identity(
-    database_path: String,
-    library_uuid: String,
-) -> Result<SyncDatabaseIdentity, RustComponentsError> {
-    sync::persistence::ensure_database_identity(&database_path, &library_uuid)
-        .map(|identity| SyncDatabaseIdentity {
-            library_uuid: identity.library_uuid,
-            replica_id: identity.replica_id,
-        })
-        .map_err(map_sync_error)
+fn parse_sidecar_sync_mode(
+    value: &str,
+) -> Result<myreader_core::models::SidecarSyncMode, RustComponentsError> {
+    match value {
+        "push_only" => Ok(myreader_core::models::SidecarSyncMode::PushOnly),
+        "full" => Ok(myreader_core::models::SidecarSyncMode::Full),
+        _ => Err(RustComponentsError::Sync(
+            "Sync mode is unsupported".to_owned(),
+        )),
+    }
 }
 
 #[uniffi::export]
-pub fn read_sync_database_schedule_state(
-    database_path: String,
-) -> Result<Option<SyncDatabaseScheduleState>, RustComponentsError> {
-    sync::persistence::read_schedule_state(&database_path)
-        .map(|state| {
-            state.map(|state| SyncDatabaseScheduleState {
-                last_successful_pull_at: state.last_successful_pull_at,
-                next_retry_at: state.next_retry_at,
-                transient_failure_count: state.transient_failure_count,
-                suspended_reason: state.suspended_reason,
-            })
-        })
-        .map_err(map_sync_error)
+pub fn read_sidecar_sync_schedule(
+    sidecar_root_path: String,
+) -> Result<SyncDatabaseScheduleState, RustComponentsError> {
+    let state = run_core_async(myreader_core::api::sync::schedule_snapshot(Path::new(
+        &sidecar_root_path,
+    )))?;
+    Ok(SyncDatabaseScheduleState {
+        last_successful_pull_at: state.last_successful_pull_at,
+        next_retry_at: state.next_retry_at,
+        transient_failure_count: state.transient_failure_count,
+        suspended_reason: state.suspended_reason,
+    })
 }
 
 #[uniffi::export]
-pub fn write_sync_database_schedule_state(
-    database_path: String,
-    state: SyncDatabaseScheduleState,
-) -> Result<(), RustComponentsError> {
-    sync::persistence::write_schedule_state(
-        &database_path,
-        &sync::persistence::SyncScheduleState {
-            last_successful_pull_at: state.last_successful_pull_at,
-            next_retry_at: state.next_retry_at,
-            transient_failure_count: state.transient_failure_count,
-            suspended_reason: state.suspended_reason,
-        },
-    )
-    .map_err(map_sync_error)
-}
-
-#[uniffi::export]
-pub fn mark_sync_database_schedule_succeeded(
-    database_path: String,
-    completed_pull_at: Option<i64>,
-) -> Result<(), RustComponentsError> {
-    sync::persistence::mark_schedule_succeeded(&database_path, completed_pull_at)
-        .map_err(map_sync_error)
-}
-
-#[uniffi::export]
-pub fn ensure_sync_database_document(
-    database_path: String,
-    library_uuid: String,
-    replica_id: String,
+pub fn effective_sidecar_sync_mode(
+    sidecar_root_path: String,
+    requested_mode: String,
     now_ms: String,
-) -> Result<SyncDocumentCommandResult, RustComponentsError> {
-    let identity = sync::persistence::DatabaseIdentity {
-        library_uuid,
-        replica_id,
-    };
-    let result = sync::persistence::ensure_database_document(
-        &database_path,
-        &identity,
+    freshness_ms: String,
+) -> Result<Option<String>, RustComponentsError> {
+    let mode = run_core_async(myreader_core::api::sync::effective_mode(
+        Path::new(&sidecar_root_path),
+        parse_sidecar_sync_mode(&requested_mode)?,
         parse_now_ms(&now_ms)?,
-    )
-    .map_err(map_sync_error)?;
-    map_document_result(result)
+        parse_now_ms(&freshness_ms)?,
+    ))?;
+    Ok(mode.map(|mode| match mode {
+        myreader_core::models::SidecarSyncMode::PushOnly => "push_only".to_owned(),
+        myreader_core::models::SidecarSyncMode::Full => "full".to_owned(),
+    }))
 }
 
 #[uniffi::export]
-pub fn execute_sync_database_command(
-    database_path: String,
-    library_uuid: String,
-    replica_id: String,
-    now_ms: String,
-    command_json: String,
-) -> Result<SyncDocumentCommandResult, RustComponentsError> {
-    let identity = sync::persistence::DatabaseIdentity {
-        library_uuid,
-        replica_id,
+pub fn record_sidecar_sync_retry(
+    sidecar_root_path: String,
+    next_retry_at: String,
+    failure_count: u32,
+) -> Result<(), RustComponentsError> {
+    run_core_async(myreader_core::api::sync::record_retry(
+        Path::new(&sidecar_root_path),
+        parse_now_ms(&next_retry_at)?,
+        failure_count,
+    ))
+}
+
+#[uniffi::export]
+pub fn record_sidecar_sync_suspension(
+    sidecar_root_path: String,
+    reason: String,
+) -> Result<(), RustComponentsError> {
+    run_core_async(myreader_core::api::sync::record_suspension(
+        Path::new(&sidecar_root_path),
+        &reason,
+    ))
+}
+
+#[uniffi::export]
+pub fn has_sidecar_sync_pending_work(
+    sidecar_root_path: String,
+) -> Result<bool, RustComponentsError> {
+    run_core_async(myreader_core::api::sync::has_pending_work(Path::new(
+        &sidecar_root_path,
+    )))
+}
+
+#[uniffi::export]
+pub fn classify_sidecar_sync_failure(kind: String) -> String {
+    let kind = match kind.as_str() {
+        "connectivity" => myreader_core::models::SyncFailureKind::Connectivity,
+        "configuration" => myreader_core::models::SyncFailureKind::Configuration,
+        "credential" => myreader_core::models::SyncFailureKind::Credential,
+        "data_integrity" => myreader_core::models::SyncFailureKind::DataIntegrity,
+        _ => myreader_core::models::SyncFailureKind::Unexpected,
     };
-    let command = serde_json::from_str(&command_json).map_err(|error| {
-        RustComponentsError::Sync(format!("Invalid sync database command: {error}"))
-    })?;
-    let result = sync::persistence::execute_local_database_command(
-        &database_path,
-        &identity,
-        parse_now_ms(&now_ms)?,
-        command,
-    )
-    .map_err(map_sync_error)?;
-    map_document_result(result)
-}
-
-#[uniffi::export]
-pub fn has_sync_database_pending_work(database_path: String) -> Result<bool, RustComponentsError> {
-    sync::exchange::has_pending_database_work(&database_path).map_err(map_sync_error)
-}
-
-#[uniffi::export]
-pub fn read_sync_database_diagnostics(
-    database_path: String,
-) -> Result<SyncDatabaseDiagnostics, RustComponentsError> {
-    sync::persistence::read_database_diagnostics(&database_path)
-        .map(|diagnostics| SyncDatabaseDiagnostics {
-            schema_version: diagnostics.schema_version,
-            heads: diagnostics.heads,
-            changes: diagnostics.changes,
-            pending_outbox: diagnostics.pending_outbox,
-            receipts: diagnostics.receipts,
-            projection_version: diagnostics.projection_version,
-        })
-        .map_err(map_sync_error)
+    match myreader_core::api::sync::classify_failure(kind) {
+        myreader_core::models::SyncFailureDisposition::Retry => "retry".to_owned(),
+        myreader_core::models::SyncFailureDisposition::Suspend => "suspend".to_owned(),
+    }
 }
 
 #[uniffi::export]
 pub fn sync_library_sidecar(
     task_id: String,
-    database_path: String,
-    library_uuid: String,
-    replica_id: String,
+    sidecar_root_path: String,
+    library_root_path: String,
     now_ms: String,
     mode: String,
     storage_json: String,
 ) -> Result<SyncLibrarySidecarReport, RustComponentsError> {
-    let mode = match mode.as_str() {
-        "push_only" => sync::exchange::SyncMode::PushOnly,
-        "full" => sync::exchange::SyncMode::Full,
-        _ => {
-            return Err(RustComponentsError::Sync(
-                "Sync mode is unsupported".to_owned(),
-            ))
-        }
-    };
+    let mode = parse_sidecar_sync_mode(&mode)?;
     let storage = serde_json::from_str(&storage_json)
         .map_err(|error| RustComponentsError::Sync(format!("Invalid storage config: {error}")))?;
     let now_ms = parse_now_ms(&now_ms)?;
@@ -1044,12 +972,9 @@ pub fn sync_library_sidecar(
         }
         tasks.insert(task_id, task.clone());
     }
-    let report = runtime.block_on(sync::transport::sync_database_observed(
-        &database_path,
-        &sync::persistence::DatabaseIdentity {
-            library_uuid,
-            replica_id,
-        },
+    let report = runtime.block_on(myreader_core::api::sync::sync_sidecar_observed(
+        Path::new(&sidecar_root_path),
+        Path::new(&library_root_path),
         now_ms,
         mode,
         &storage,
@@ -1070,9 +995,7 @@ pub fn sync_library_sidecar(
                 };
                 progress.stage.clone()
             };
-            let message = match error {
-                sync::SyncError::Sync(message) => message,
-            };
+            let message = error.to_string();
             return Err(RustComponentsError::Sync(if failure_stage == "cancelled" {
                 message
             } else {

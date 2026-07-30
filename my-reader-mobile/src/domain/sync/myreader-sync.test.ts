@@ -1,25 +1,14 @@
-import type { SyncTargetContext } from "./context"
-import { ensureLibrarySidecarIdentity } from "./library-sidecar/identity"
-import { readLibrarySidecarAutomergeDiagnosticSnapshot } from "./library-sidecar/database-store"
-import { syncLibrarySidecarDatabase } from "./library-sidecar/sync-database"
-import { syncMyReader } from "./myreader-sync"
 import {
   invalidateFavoriteBooks,
-  invalidateReadingProgress,
-  invalidateReadingStatistics,
   invalidateReaderAnnotations,
   invalidateReaderBookmarks,
+  invalidateReadingProgress,
+  invalidateReadingStatistics,
   invalidateRecentlyReadBooks,
 } from "@/src/services/query/invalidate-table"
-import { markLibrarySidecarSyncSucceeded } from "@/src/repos/library-sidecar-schedule"
-
-jest.mock("./library-sidecar/identity", () => ({
-  ensureLibrarySidecarIdentity: jest.fn(),
-}))
-
-jest.mock("./library-sidecar/database-store", () => ({
-  readLibrarySidecarAutomergeDiagnosticSnapshot: jest.fn(),
-}))
+import type { SyncTargetContext } from "./context"
+import { syncLibrarySidecarDatabase } from "./library-sidecar/sync-database"
+import { syncMyReader } from "./myreader-sync"
 
 jest.mock("./library-sidecar/sync-database", () => ({
   syncLibrarySidecarDatabase: jest.fn(),
@@ -32,10 +21,6 @@ jest.mock("@/src/services/query/invalidate-table", () => ({
   invalidateReaderAnnotations: jest.fn(),
   invalidateReaderBookmarks: jest.fn(),
   invalidateRecentlyReadBooks: jest.fn(),
-}))
-
-jest.mock("@/src/repos/library-sidecar-schedule", () => ({
-  markLibrarySidecarSyncSucceeded: jest.fn(),
 }))
 
 const context = {
@@ -58,23 +43,9 @@ const context = {
 describe("syncMyReader", () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    jest.mocked(ensureLibrarySidecarIdentity).mockResolvedValue({
-      libraryUuid: "018f2f8d-980b-40ef-b72e-c6e86cb7cc28",
-      replicaId: "018f2f8d-980b-40ef-b72e-c6e86cb7cc29",
-    })
     jest
       .mocked(syncLibrarySidecarDatabase)
       .mockResolvedValue({ pushed: 1, pulled: 1 })
-    jest
-      .mocked(readLibrarySidecarAutomergeDiagnosticSnapshot)
-      .mockResolvedValue({
-        schemaVersion: 1,
-        heads: ["head"],
-        changes: 2,
-        pendingOutbox: 0,
-        receipts: 1,
-        projectionVersion: 1,
-      })
     jest.mocked(invalidateReadingProgress).mockResolvedValue(undefined)
     jest.mocked(invalidateReadingStatistics).mockResolvedValue(undefined)
     jest.mocked(invalidateReaderAnnotations).mockResolvedValue(undefined)
@@ -88,10 +59,6 @@ describe("syncMyReader", () => {
 
     expect(syncLibrarySidecarDatabase).toHaveBeenCalledWith(
       context.library,
-      {
-        libraryUuid: "018f2f8d-980b-40ef-b72e-c6e86cb7cc28",
-        replicaId: "018f2f8d-980b-40ef-b72e-c6e86cb7cc29",
-      },
       expect.any(Number),
       "full",
       context.sidecarStorage,
@@ -103,10 +70,6 @@ describe("syncMyReader", () => {
     expect(result.providers).toEqual({
       "library-sidecar": { pushed: 1, pulled: 1 },
     })
-    expect(markLibrarySidecarSyncSucceeded).toHaveBeenCalledWith(
-      context.library,
-      expect.any(Number),
-    )
   })
 
   it("should not pull remote changes when push-only sync runs", async () => {
@@ -119,7 +82,6 @@ describe("syncMyReader", () => {
 
     expect(syncLibrarySidecarDatabase).toHaveBeenCalledWith(
       context.library,
-      expect.any(Object),
       expect.any(Number),
       "push_only",
       context.sidecarStorage,
@@ -127,10 +89,6 @@ describe("syncMyReader", () => {
     expect(result.providers).toEqual({
       "library-sidecar": { pushed: 1, pulled: 0 },
     })
-    expect(markLibrarySidecarSyncSucceeded).toHaveBeenCalledWith(
-      context.library,
-      null,
-    )
   })
 
   it("should wait for progress cache refresh when remote positions are pulled", async () => {
@@ -161,8 +119,7 @@ describe("syncMyReader", () => {
     await expect(syncPromise).resolves.toMatchObject({ skipped: false })
   })
 
-  it("should log Automerge diagnostics when sync fails", async () => {
-    const info = jest.spyOn(console, "info").mockImplementation()
+  it("should preserve the original error when sidecar sync fails", async () => {
     const error = jest.spyOn(console, "error").mockImplementation()
     jest
       .mocked(syncLibrarySidecarDatabase)
@@ -170,25 +127,11 @@ describe("syncMyReader", () => {
 
     const result = await syncMyReader(context)
 
-    expect(readLibrarySidecarAutomergeDiagnosticSnapshot).toHaveBeenCalledWith(
-      context.library,
-    )
-    expect(info).toHaveBeenCalledWith("[reading-sync] automerge:failed", {
-      libraryId: context.library.id,
-      backend: "local-direct",
-      schemaVersion: 1,
-      heads: ["head"],
-      changes: 2,
-      pendingOutbox: 0,
-      receipts: 1,
-      projectionVersion: 1,
-    })
     expect(result).toMatchObject({
       skipped: true,
       skipReason: "error",
       error: "network unavailable",
     })
-    info.mockRestore()
     error.mockRestore()
   })
 })

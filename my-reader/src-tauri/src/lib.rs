@@ -13,7 +13,6 @@ pub mod repositories;
 pub mod services;
 mod storage;
 pub mod streamer;
-pub mod sync;
 mod utils;
 
 // Re-exports for integration tests under `src-tauri/tests/`.

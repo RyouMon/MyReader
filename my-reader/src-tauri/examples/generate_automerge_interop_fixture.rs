@@ -1,7 +1,7 @@
 use std::{env, fs, path::PathBuf, str::FromStr};
 
 use automerge::ChangeHash;
-use my_reader_lib::sync::automerge_document::{
+use myreader_core::sync::document::{
     load_library_sidecar_document, set_library_identity, set_reading_position,
     ReadingPositionValue, LIBRARY_SIDECAR_GENESIS_HEAD,
 };

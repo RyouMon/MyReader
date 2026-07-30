@@ -527,178 +527,6 @@ fileprivate struct FfiConverterString: FfiConverter {
 }
 
 
-public struct SyncDatabaseDiagnostics {
-    public var schemaVersion: Int64?
-    public var heads: [String]
-    public var changes: Int64
-    public var pendingOutbox: Int64
-    public var receipts: Int64
-    public var projectionVersion: Int64?
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(schemaVersion: Int64?, heads: [String], changes: Int64, pendingOutbox: Int64, receipts: Int64, projectionVersion: Int64?) {
-        self.schemaVersion = schemaVersion
-        self.heads = heads
-        self.changes = changes
-        self.pendingOutbox = pendingOutbox
-        self.receipts = receipts
-        self.projectionVersion = projectionVersion
-    }
-}
-
-#if compiler(>=6)
-extension SyncDatabaseDiagnostics: Sendable {}
-#endif
-
-
-extension SyncDatabaseDiagnostics: Equatable, Hashable {
-    public static func ==(lhs: SyncDatabaseDiagnostics, rhs: SyncDatabaseDiagnostics) -> Bool {
-        if lhs.schemaVersion != rhs.schemaVersion {
-            return false
-        }
-        if lhs.heads != rhs.heads {
-            return false
-        }
-        if lhs.changes != rhs.changes {
-            return false
-        }
-        if lhs.pendingOutbox != rhs.pendingOutbox {
-            return false
-        }
-        if lhs.receipts != rhs.receipts {
-            return false
-        }
-        if lhs.projectionVersion != rhs.projectionVersion {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(schemaVersion)
-        hasher.combine(heads)
-        hasher.combine(changes)
-        hasher.combine(pendingOutbox)
-        hasher.combine(receipts)
-        hasher.combine(projectionVersion)
-    }
-}
-
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeSyncDatabaseDiagnostics: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SyncDatabaseDiagnostics {
-        return
-            try SyncDatabaseDiagnostics(
-                schemaVersion: FfiConverterOptionInt64.read(from: &buf),
-                heads: FfiConverterSequenceString.read(from: &buf),
-                changes: FfiConverterInt64.read(from: &buf),
-                pendingOutbox: FfiConverterInt64.read(from: &buf),
-                receipts: FfiConverterInt64.read(from: &buf),
-                projectionVersion: FfiConverterOptionInt64.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: SyncDatabaseDiagnostics, into buf: inout [UInt8]) {
-        FfiConverterOptionInt64.write(value.schemaVersion, into: &buf)
-        FfiConverterSequenceString.write(value.heads, into: &buf)
-        FfiConverterInt64.write(value.changes, into: &buf)
-        FfiConverterInt64.write(value.pendingOutbox, into: &buf)
-        FfiConverterInt64.write(value.receipts, into: &buf)
-        FfiConverterOptionInt64.write(value.projectionVersion, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeSyncDatabaseDiagnostics_lift(_ buf: RustBuffer) throws -> SyncDatabaseDiagnostics {
-    return try FfiConverterTypeSyncDatabaseDiagnostics.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeSyncDatabaseDiagnostics_lower(_ value: SyncDatabaseDiagnostics) -> RustBuffer {
-    return FfiConverterTypeSyncDatabaseDiagnostics.lower(value)
-}
-
-
-public struct SyncDatabaseIdentity {
-    public var libraryUuid: String
-    public var replicaId: String
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(libraryUuid: String, replicaId: String) {
-        self.libraryUuid = libraryUuid
-        self.replicaId = replicaId
-    }
-}
-
-#if compiler(>=6)
-extension SyncDatabaseIdentity: Sendable {}
-#endif
-
-
-extension SyncDatabaseIdentity: Equatable, Hashable {
-    public static func ==(lhs: SyncDatabaseIdentity, rhs: SyncDatabaseIdentity) -> Bool {
-        if lhs.libraryUuid != rhs.libraryUuid {
-            return false
-        }
-        if lhs.replicaId != rhs.replicaId {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(libraryUuid)
-        hasher.combine(replicaId)
-    }
-}
-
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeSyncDatabaseIdentity: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SyncDatabaseIdentity {
-        return
-            try SyncDatabaseIdentity(
-                libraryUuid: FfiConverterString.read(from: &buf),
-                replicaId: FfiConverterString.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: SyncDatabaseIdentity, into buf: inout [UInt8]) {
-        FfiConverterString.write(value.libraryUuid, into: &buf)
-        FfiConverterString.write(value.replicaId, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeSyncDatabaseIdentity_lift(_ buf: RustBuffer) throws -> SyncDatabaseIdentity {
-    return try FfiConverterTypeSyncDatabaseIdentity.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeSyncDatabaseIdentity_lower(_ value: SyncDatabaseIdentity) -> RustBuffer {
-    return FfiConverterTypeSyncDatabaseIdentity.lower(value)
-}
-
-
 public struct SyncDatabaseScheduleState {
     public var lastSuccessfulPullAt: Int64?
     public var nextRetryAt: Int64?
@@ -782,84 +610,6 @@ public func FfiConverterTypeSyncDatabaseScheduleState_lift(_ buf: RustBuffer) th
 #endif
 public func FfiConverterTypeSyncDatabaseScheduleState_lower(_ value: SyncDatabaseScheduleState) -> RustBuffer {
     return FfiConverterTypeSyncDatabaseScheduleState.lower(value)
-}
-
-
-public struct SyncDocumentCommandResult {
-    public var schemaVersion: UInt32
-    public var heads: [String]
-    public var projectionJson: String
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(schemaVersion: UInt32, heads: [String], projectionJson: String) {
-        self.schemaVersion = schemaVersion
-        self.heads = heads
-        self.projectionJson = projectionJson
-    }
-}
-
-#if compiler(>=6)
-extension SyncDocumentCommandResult: Sendable {}
-#endif
-
-
-extension SyncDocumentCommandResult: Equatable, Hashable {
-    public static func ==(lhs: SyncDocumentCommandResult, rhs: SyncDocumentCommandResult) -> Bool {
-        if lhs.schemaVersion != rhs.schemaVersion {
-            return false
-        }
-        if lhs.heads != rhs.heads {
-            return false
-        }
-        if lhs.projectionJson != rhs.projectionJson {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(schemaVersion)
-        hasher.combine(heads)
-        hasher.combine(projectionJson)
-    }
-}
-
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeSyncDocumentCommandResult: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SyncDocumentCommandResult {
-        return
-            try SyncDocumentCommandResult(
-                schemaVersion: FfiConverterUInt32.read(from: &buf),
-                heads: FfiConverterSequenceString.read(from: &buf),
-                projectionJson: FfiConverterString.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: SyncDocumentCommandResult, into buf: inout [UInt8]) {
-        FfiConverterUInt32.write(value.schemaVersion, into: &buf)
-        FfiConverterSequenceString.write(value.heads, into: &buf)
-        FfiConverterString.write(value.projectionJson, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeSyncDocumentCommandResult_lift(_ buf: RustBuffer) throws -> SyncDocumentCommandResult {
-    return try FfiConverterTypeSyncDocumentCommandResult.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeSyncDocumentCommandResult_lower(_ value: SyncDocumentCommandResult) -> RustBuffer {
-    return FfiConverterTypeSyncDocumentCommandResult.lower(value)
 }
 
 
@@ -1179,30 +929,6 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-fileprivate struct FfiConverterOptionTypeSyncDatabaseScheduleState: FfiConverterRustBuffer {
-    typealias SwiftType = SyncDatabaseScheduleState?
-
-    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
-        guard let value = value else {
-            writeInt(&buf, Int8(0))
-            return
-        }
-        writeInt(&buf, Int8(1))
-        FfiConverterTypeSyncDatabaseScheduleState.write(value, into: &buf)
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
-        switch try readInt(&buf) as Int8 {
-        case 0: return nil
-        case 1: return try FfiConverterTypeSyncDatabaseScheduleState.read(from: &buf)
-        default: throw UniffiInternalError.unexpectedOptionalTag
-        }
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
 fileprivate struct FfiConverterOptionTypeSyncTaskProgress: FfiConverterRustBuffer {
     typealias SwiftType = SyncTaskProgress?
 
@@ -1221,31 +947,6 @@ fileprivate struct FfiConverterOptionTypeSyncTaskProgress: FfiConverterRustBuffe
         case 1: return try FfiConverterTypeSyncTaskProgress.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
-    typealias SwiftType = [String]
-
-    public static func write(_ value: [String], into buf: inout [UInt8]) {
-        let len = Int32(value.count)
-        writeInt(&buf, len)
-        for item in value {
-            FfiConverterString.write(item, into: &buf)
-        }
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [String] {
-        let len: Int32 = try readInt(&buf)
-        var seq = [String]()
-        seq.reserveCapacity(Int(len))
-        for _ in 0 ..< len {
-            seq.append(try FfiConverterString.read(from: &buf))
-        }
-        return seq
     }
 }
 public func addReaderAnnotation(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String, locatorJson: String, color: String, note: String?, recordedAtMs: Int64)throws  -> String  {
@@ -1328,6 +1029,13 @@ public func cancelSyncTask(taskId: String) -> Bool  {
     )
 })
 }
+public func classifySidecarSyncFailure(kind: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_myreader_rust_components_fn_func_classify_sidecar_sync_failure(
+        FfiConverterString.lower(kind),$0
+    )
+})
+}
 public func countCalibreBooks(libraryRootPath: String)throws  -> UInt64  {
     return try  FfiConverterUInt64.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_count_calibre_books(
@@ -1342,32 +1050,13 @@ public func deleteLibraryFileState(sidecarRootPath: String, path: String)throws 
     )
 }
 }
-public func ensureSyncDatabaseDocument(databasePath: String, libraryUuid: String, replicaId: String, nowMs: String)throws  -> SyncDocumentCommandResult  {
-    return try  FfiConverterTypeSyncDocumentCommandResult_lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_ensure_sync_database_document(
-        FfiConverterString.lower(databasePath),
-        FfiConverterString.lower(libraryUuid),
-        FfiConverterString.lower(replicaId),
-        FfiConverterString.lower(nowMs),$0
-    )
-})
-}
-public func ensureSyncDatabaseIdentity(databasePath: String, libraryUuid: String)throws  -> SyncDatabaseIdentity  {
-    return try  FfiConverterTypeSyncDatabaseIdentity_lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_ensure_sync_database_identity(
-        FfiConverterString.lower(databasePath),
-        FfiConverterString.lower(libraryUuid),$0
-    )
-})
-}
-public func executeSyncDatabaseCommand(databasePath: String, libraryUuid: String, replicaId: String, nowMs: String, commandJson: String)throws  -> SyncDocumentCommandResult  {
-    return try  FfiConverterTypeSyncDocumentCommandResult_lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_execute_sync_database_command(
-        FfiConverterString.lower(databasePath),
-        FfiConverterString.lower(libraryUuid),
-        FfiConverterString.lower(replicaId),
+public func effectiveSidecarSyncMode(sidecarRootPath: String, requestedMode: String, nowMs: String, freshnessMs: String)throws  -> String?  {
+    return try  FfiConverterOptionString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_effective_sidecar_sync_mode(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(requestedMode),
         FfiConverterString.lower(nowMs),
-        FfiConverterString.lower(commandJson),$0
+        FfiConverterString.lower(freshnessMs),$0
     )
 })
 }
@@ -1412,10 +1101,10 @@ public func getReadingStatistics(sidecarRootPath: String, startDay: String, endD
     )
 })
 }
-public func hasSyncDatabasePendingWork(databasePath: String)throws  -> Bool  {
+public func hasSidecarSyncPendingWork(sidecarRootPath: String)throws  -> Bool  {
     return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_has_sync_database_pending_work(
-        FfiConverterString.lower(databasePath),$0
+    uniffi_myreader_rust_components_fn_func_has_sidecar_sync_pending_work(
+        FfiConverterString.lower(sidecarRootPath),$0
     )
 })
 }
@@ -1544,30 +1233,16 @@ public func listRemoteDirectories(registryPath: String, dataSourceId: String, pa
     )
 })
 }
-public func markSyncDatabaseScheduleSucceeded(databasePath: String, completedPullAt: Int64?)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_mark_sync_database_schedule_succeeded(
-        FfiConverterString.lower(databasePath),
-        FfiConverterOptionInt64.lower(completedPullAt),$0
-    )
-}
-}
 public func migrateLibraryDatabase(databasePath: String)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_migrate_library_database(
         FfiConverterString.lower(databasePath),$0
     )
 }
 }
-public func readSyncDatabaseDiagnostics(databasePath: String)throws  -> SyncDatabaseDiagnostics  {
-    return try  FfiConverterTypeSyncDatabaseDiagnostics_lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_read_sync_database_diagnostics(
-        FfiConverterString.lower(databasePath),$0
-    )
-})
-}
-public func readSyncDatabaseScheduleState(databasePath: String)throws  -> SyncDatabaseScheduleState?  {
-    return try  FfiConverterOptionTypeSyncDatabaseScheduleState.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_read_sync_database_schedule_state(
-        FfiConverterString.lower(databasePath),$0
+public func readSidecarSyncSchedule(sidecarRootPath: String)throws  -> SyncDatabaseScheduleState  {
+    return try  FfiConverterTypeSyncDatabaseScheduleState_lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_read_sidecar_sync_schedule(
+        FfiConverterString.lower(sidecarRootPath),$0
     )
 })
 }
@@ -1577,6 +1252,21 @@ public func readSyncTaskProgress(taskId: String) -> SyncTaskProgress?  {
         FfiConverterString.lower(taskId),$0
     )
 })
+}
+public func recordSidecarSyncRetry(sidecarRootPath: String, nextRetryAt: String, failureCount: UInt32)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_record_sidecar_sync_retry(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(nextRetryAt),
+        FfiConverterUInt32.lower(failureCount),$0
+    )
+}
+}
+public func recordSidecarSyncSuspension(sidecarRootPath: String, reason: String)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_record_sidecar_sync_suspension(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(reason),$0
+    )
+}
 }
 public func refreshRemoteLibrary(registryPath: String, libraryId: String, localRootPath: String, credentialJson: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
@@ -1705,13 +1395,12 @@ public func syncContractVersion() -> UInt32  {
     )
 })
 }
-public func syncLibrarySidecar(taskId: String, databasePath: String, libraryUuid: String, replicaId: String, nowMs: String, mode: String, storageJson: String)throws  -> SyncLibrarySidecarReport  {
+public func syncLibrarySidecar(taskId: String, sidecarRootPath: String, libraryRootPath: String, nowMs: String, mode: String, storageJson: String)throws  -> SyncLibrarySidecarReport  {
     return try  FfiConverterTypeSyncLibrarySidecarReport_lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_sync_library_sidecar(
         FfiConverterString.lower(taskId),
-        FfiConverterString.lower(databasePath),
-        FfiConverterString.lower(libraryUuid),
-        FfiConverterString.lower(replicaId),
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(libraryRootPath),
         FfiConverterString.lower(nowMs),
         FfiConverterString.lower(mode),
         FfiConverterString.lower(storageJson),$0
@@ -1769,13 +1458,6 @@ public func validateDeviceDataSource(registryPath: String, sourceJson: String)th
     )
 }
 }
-public func writeSyncDatabaseScheduleState(databasePath: String, state: SyncDatabaseScheduleState)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_write_sync_database_schedule_state(
-        FfiConverterString.lower(databasePath),
-        FfiConverterTypeSyncDatabaseScheduleState_lower(state),$0
-    )
-}
-}
 
 private enum InitializationResult {
     case ok
@@ -1813,19 +1495,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_cancel_sync_task() != 41701) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_classify_sidecar_sync_failure() != 3331) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_count_calibre_books() != 56896) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_delete_library_file_state() != 13171) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_myreader_rust_components_checksum_func_ensure_sync_database_document() != 40101) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_ensure_sync_database_identity() != 60943) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_execute_sync_database_command() != 40736) {
+    if (uniffi_myreader_rust_components_checksum_func_effective_sidecar_sync_mode() != 25640) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_get_calibre_book_detail() != 17242) {
@@ -1843,7 +1522,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_get_reading_statistics() != 7607) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_myreader_rust_components_checksum_func_has_sync_database_pending_work() != 63542) {
+    if (uniffi_myreader_rust_components_checksum_func_has_sidecar_sync_pending_work() != 46572) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_initialize_device_registry() != 45379) {
@@ -1891,19 +1570,19 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_list_remote_directories() != 26595) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_myreader_rust_components_checksum_func_mark_sync_database_schedule_succeeded() != 64229) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_myreader_rust_components_checksum_func_migrate_library_database() != 32989) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_myreader_rust_components_checksum_func_read_sync_database_diagnostics() != 34122) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_read_sync_database_schedule_state() != 4255) {
+    if (uniffi_myreader_rust_components_checksum_func_read_sidecar_sync_schedule() != 23984) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_read_sync_task_progress() != 25370) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_record_sidecar_sync_retry() != 38326) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_record_sidecar_sync_suspension() != 55448) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_refresh_remote_library() != 14599) {
@@ -1948,7 +1627,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_sync_contract_version() != 20300) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_myreader_rust_components_checksum_func_sync_library_sidecar() != 43777) {
+    if (uniffi_myreader_rust_components_checksum_func_sync_library_sidecar() != 46225) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_test_remote_data_source() != 36092) {
@@ -1967,9 +1646,6 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_validate_device_data_source() != 3261) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_write_sync_database_schedule_state() != 6095) {
         return InitializationResult.apiChecksumMismatch
     }
 

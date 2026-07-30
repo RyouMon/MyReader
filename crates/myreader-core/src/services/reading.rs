@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use myreader_sync::{
+use crate::sync::{
     document::{
         add_reading_completion as write_reading_completion, add_reading_session_duration,
         annotation_projections, bookmark_projections, create_annotation, delete_annotation,

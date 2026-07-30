@@ -4,3 +4,4 @@ pub(crate) mod datasource;
 pub(crate) mod library;
 pub(crate) mod reading;
 pub(crate) mod registry;
+pub(crate) mod sync;
