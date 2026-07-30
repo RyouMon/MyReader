@@ -1,4 +1,7 @@
-import { readingProgressToPercent } from "@my-reader/tools/reading-progress"
+import {
+  readingProgressDisplay,
+  readingProgressToPercent,
+} from "@my-reader/tools/reading-progress"
 
 export type BookProgressSnapshot = {
   percent?: number
@@ -71,51 +74,11 @@ export function getBookProgressSnapshot(
 export function getProgressDisplay(
   progress: BookProgressSnapshot | undefined,
   t: (key: string) => string,
-): {
-  text: string
-  isUnread: boolean
-  isFinished: boolean
-  isStatusLabel: boolean
-} {
-  if (progress?.statusLabel) {
-    return {
-      text: progress.statusLabel,
-      isUnread: false,
-      isFinished: false,
-      isStatusLabel: true,
-    }
-  }
-
-  const percent = progress?.percent ?? 0
-  const hasProgress = typeof progress?.percent === "number"
-  const roundedPercent = Math.round(percent)
-  const isUnread = !hasProgress || roundedPercent <= 0
-  const isFinished = hasProgress && roundedPercent >= 100
-
-  if (isUnread) {
-    return {
-      text: t("bookRow.unread"),
-      isUnread: true,
-      isFinished: false,
-      isStatusLabel: true,
-    }
-  }
-
-  if (isFinished) {
-    return {
-      text: t("bookRow.finished"),
-      isUnread: false,
-      isFinished: true,
-      isStatusLabel: true,
-    }
-  }
-
-  return {
-    text: `${roundedPercent}%`,
-    isUnread: false,
-    isFinished: false,
-    isStatusLabel: false,
-  }
+): ReturnType<typeof readingProgressDisplay> {
+  return readingProgressDisplay(progress, {
+    finished: t("bookRow.finished"),
+    unread: t("bookRow.unread"),
+  })
 }
 
 export function getReadActionLabel(

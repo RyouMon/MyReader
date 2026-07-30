@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   locatorProgressionToPercent,
+  readingProgressDisplay,
   readingProgressToPercent,
 } from "../src/reading-progress"
 
@@ -33,5 +34,29 @@ describe("reading progress", () => {
     expect(readingProgressToPercent(null, { href: "chapter.xhtml" })).toBe(
       undefined,
     )
+  })
+
+  it("should prefer status label when explicit reading state is available", () => {
+    expect(
+      readingProgressDisplay(
+        { percent: 40, statusLabel: "Downloading" },
+        { unread: "Unread", finished: "Finished" },
+      ),
+    ).toEqual({
+      text: "Downloading",
+      isUnread: false,
+      isFinished: false,
+      isStatusLabel: true,
+    })
+  })
+
+  it("should classify unread finished and active states when progress is displayed", () => {
+    const labels = { unread: "Unread", finished: "Finished" }
+
+    expect(readingProgressDisplay(undefined, labels).text).toBe("Unread")
+    expect(readingProgressDisplay({ percent: 100 }, labels).text).toBe(
+      "Finished",
+    )
+    expect(readingProgressDisplay({ percent: 42.4 }, labels).text).toBe("42%")
   })
 })
