@@ -13,7 +13,7 @@ import {
   deleteBookCoverThumbnailCache,
   listBookCoverThumbnailCache,
   upsertBookCoverThumbnailCache,
-} from "@/src/repos/book-cover-thumbnail-cache"
+} from "@/src/services/core/content"
 import {
   COVER_THUMBNAIL_CACHE_VERSION,
   ensureCoverThumbnailFilesAsync,
@@ -33,7 +33,7 @@ import {
   useCoverThumbnails,
 } from "./use-cover-thumbnails"
 
-jest.mock("@/src/repos/book-cover-thumbnail-cache", () => ({
+jest.mock("@/src/services/core/content", () => ({
   deleteBookCoverThumbnailCache: jest.fn(),
   listBookCoverThumbnailCache: jest.fn(),
   upsertBookCoverThumbnailCache: jest.fn(),

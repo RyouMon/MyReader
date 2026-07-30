@@ -207,10 +207,7 @@ export function parentDirectoryUriForFileUri(fileUri: string): string | null {
   return toFileUri(nativePath.slice(0, lastSlash))
 }
 
-/**
- * Split a file URI into native directory path and filename, for op-sqlite's
- * `{ location, name }`.
- */
+/** Split a file URI into a native directory path and filename. */
 export function fileUriToNativeDirAndName(fileUri: string): {
   dir: string
   name: string

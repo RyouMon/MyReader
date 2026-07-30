@@ -2,11 +2,14 @@ use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, Set,
+    sea_query::OnConflict, ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait,
+    QueryFilter, QueryOrder, Set,
 };
 
-use crate::entities::app::{book_reading_format, file_state};
-use crate::models::{FileState, FileStateUpdate};
+use crate::entities::app::{book_cover_thumbnail_cache, book_reading_format, file_state};
+use crate::models::{
+    BookCoverThumbnailCache, BookCoverThumbnailCachePatch, FileState, FileStateUpdate,
+};
 use crate::CoreError;
 
 pub(crate) struct ContentRepository<'a> {
@@ -140,6 +143,85 @@ impl<'a> ContentRepository<'a> {
             .await?;
         Ok(())
     }
+
+    pub(crate) async fn list_cover_thumbnail_cache(
+        &self,
+        thumbnail_version: &str,
+        width_px: i64,
+        height_px: i64,
+    ) -> Result<Vec<BookCoverThumbnailCache>, CoreError> {
+        Ok(book_cover_thumbnail_cache::Entity::find()
+            .filter(book_cover_thumbnail_cache::Column::ThumbnailVersion.eq(thumbnail_version))
+            .filter(book_cover_thumbnail_cache::Column::WidthPx.eq(width_px))
+            .filter(book_cover_thumbnail_cache::Column::HeightPx.eq(height_px))
+            .order_by_asc(book_cover_thumbnail_cache::Column::BookId)
+            .all(self.db)
+            .await?
+            .into_iter()
+            .map(Into::into)
+            .collect())
+    }
+
+    pub(crate) async fn upsert_cover_thumbnail_cache(
+        &self,
+        patch: BookCoverThumbnailCachePatch,
+    ) -> Result<(), CoreError> {
+        let now = now_milliseconds();
+        book_cover_thumbnail_cache::Entity::insert(book_cover_thumbnail_cache::ActiveModel {
+            id: Set(uuid::Uuid::new_v4().as_simple().to_string()),
+            book_id: Set(patch.book_id),
+            cover_identity: Set(patch.cover_identity),
+            thumbnail_version: Set(patch.thumbnail_version),
+            width_px: Set(patch.width_px),
+            height_px: Set(patch.height_px),
+            file_name: Set(patch.file_name),
+            file_size_bytes: Set(patch.file_size_bytes),
+            created_at: Set(now),
+            updated_at: Set(now),
+        })
+        .on_conflict(
+            OnConflict::columns([
+                book_cover_thumbnail_cache::Column::BookId,
+                book_cover_thumbnail_cache::Column::WidthPx,
+                book_cover_thumbnail_cache::Column::HeightPx,
+                book_cover_thumbnail_cache::Column::ThumbnailVersion,
+            ])
+            .update_columns([
+                book_cover_thumbnail_cache::Column::CoverIdentity,
+                book_cover_thumbnail_cache::Column::FileName,
+                book_cover_thumbnail_cache::Column::FileSizeBytes,
+                book_cover_thumbnail_cache::Column::UpdatedAt,
+            ])
+            .to_owned(),
+        )
+        .exec(self.db)
+        .await?;
+        Ok(())
+    }
+
+    pub(crate) async fn delete_cover_thumbnail_cache(
+        &self,
+        book_id: i64,
+        thumbnail_version: &str,
+        width_px: i64,
+        height_px: i64,
+    ) -> Result<(), CoreError> {
+        book_cover_thumbnail_cache::Entity::delete_many()
+            .filter(book_cover_thumbnail_cache::Column::BookId.eq(book_id))
+            .filter(book_cover_thumbnail_cache::Column::ThumbnailVersion.eq(thumbnail_version))
+            .filter(book_cover_thumbnail_cache::Column::WidthPx.eq(width_px))
+            .filter(book_cover_thumbnail_cache::Column::HeightPx.eq(height_px))
+            .exec(self.db)
+            .await?;
+        Ok(())
+    }
+
+    pub(crate) async fn clear_cover_thumbnail_cache(&self) -> Result<(), CoreError> {
+        book_cover_thumbnail_cache::Entity::delete_many()
+            .exec(self.db)
+            .await?;
+        Ok(())
+    }
 }
 
 impl From<file_state::Model> for FileState {
@@ -156,8 +238,29 @@ impl From<file_state::Model> for FileState {
     }
 }
 
+impl From<book_cover_thumbnail_cache::Model> for BookCoverThumbnailCache {
+    fn from(value: book_cover_thumbnail_cache::Model) -> Self {
+        Self {
+            id: value.id,
+            book_id: value.book_id,
+            cover_identity: value.cover_identity,
+            thumbnail_version: value.thumbnail_version,
+            width_px: value.width_px,
+            height_px: value.height_px,
+            file_name: value.file_name,
+            file_size_bytes: value.file_size_bytes,
+            created_at: value.created_at,
+            updated_at: value.updated_at,
+        }
+    }
+}
+
 fn now_seconds() -> f64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0.0, |duration| duration.as_secs_f64())
+}
+
+fn now_milliseconds() -> f64 {
+    now_seconds() * 1000.0
 }

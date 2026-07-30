@@ -8,7 +8,9 @@ mod sync;
 pub use catalog::{
     BookDetail, BookEntry, BookFormat, BookIdentifier, BookSummary, FormatSize, PaginatedBooks,
 };
-pub use content::{FileState, FileStateUpdate};
+pub use content::{
+    BookCoverThumbnailCache, BookCoverThumbnailCachePatch, FileState, FileStateUpdate,
+};
 pub use reading::{
     LegacyFinishedReading, ReaderAnnotation, ReaderBookmark, ReadingPosition,
     ReadingPositionCandidate, ReadingStatistics,

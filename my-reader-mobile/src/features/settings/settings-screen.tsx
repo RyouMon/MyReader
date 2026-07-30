@@ -13,7 +13,7 @@ import {
 } from "@/src/config/library-list-performance"
 import { DEVELOPER_TOOLS_ENABLED } from "@/src/constants/developer-tools"
 import { changeLanguage } from "@/src/i18n"
-import { clearBookCoverThumbnailCache } from "@/src/repos/book-cover-thumbnail-cache"
+import { clearBookCoverThumbnailCache } from "@/src/services/core/content"
 import { clearCoverThumbnailCache } from "@/src/services/fs/cover-thumbnail-cache"
 import { useTheme, useThemePalette, type ThemeMode } from "@/src/design/tokens"
 import type { HomeCardStyle } from "@/src/store/app-store.types"

@@ -32,12 +32,10 @@
     "@kesha-antonov/react-native-background-downloader": "^4.5.4",
     "@material/material-color-utilities": "^0.4.0",
     "@my-reader/book-transition": "link:modules/book-transition",
-    "@my-reader/db": "workspace:*",
     "@my-reader/fonts": "workspace:*",
     "@my-reader/readium": "link:./modules/readium",
     "@my-reader/tools": "workspace:*",
     "@noble/hashes": "^2.2.0",
-    "@op-engineering/op-sqlite": "^15.2.11",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/slider": "^5.2.0",
     "@react-native-menu/menu": "^2.0.0",
@@ -52,7 +50,6 @@
     "base-64": "^1.0.0",
     "chroma-js": "^3.2.0",
     "clsx": "^2.1.1",
-    "drizzle-orm": "^0.40.0",
     "expo": "^56.0.0",
     "expo-asset": "~56.0.15",
     "expo-auth-session": "~56.0.13",
@@ -105,10 +102,6 @@
     "zod": "^4.3.6",
     "zustand": "^5.0.10"
   },
-  "op-sqlite": {
-    "crsqlite": false,
-    "performanceMode": true
-  },
   "devDependencies": {
     "@expo/config-plugins": "~56.0.8",
     "@sentry/cli": "2.58.4",
@@ -137,8 +130,6 @@
     "moduleNameMapper": {
       "^@/tw$": "<rootDir>/__mocks__/tw.tsx",
       "^@/(.*)$": "<rootDir>/$1",
-      "^@my-reader/db/drizzle/migrations$": "<rootDir>/../packages/db/drizzle/migrations.js",
-      "^@my-reader/db/(.*)$": "<rootDir>/../packages/db/src/$1",
       "^@my-reader/fonts$": "<rootDir>/../packages/fonts/src/index.ts",
       "^@my-reader/fonts/(.*)$": "<rootDir>/../packages/fonts/src/$1",
       "^@my-reader/tools/(.*)$": "<rootDir>/../packages/tools/src/$1",

@@ -26,6 +26,3 @@ export async function deleteFileEverywhereForLibrary(
   const ctx = await openSyncContext(library, state.dataSources)
   await deleteFileEverywhere(ctx, relativePath)
 }
-
-/** @deprecated alias */
-export const deleteRemoteFileForLibrary = deleteFileEverywhereForLibrary

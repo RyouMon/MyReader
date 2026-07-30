@@ -326,6 +326,59 @@ public class MyReaderRustComponentsModule: Module {
       }
     }
 
+    AsyncFunction("listBookCoverThumbnailCache") {
+      (
+        sidecarRootPath: String,
+        thumbnailVersion: String,
+        widthPx: Int64,
+        heightPx: Int64
+      ) -> String in
+      try componentCall {
+        try listBookCoverThumbnailCache(
+          sidecarRootPath: sidecarRootPath,
+          thumbnailVersion: thumbnailVersion,
+          widthPx: widthPx,
+          heightPx: heightPx
+        )
+      }
+    }
+
+    AsyncFunction("upsertBookCoverThumbnailCache") {
+      (sidecarRootPath: String, patchJson: String) in
+      try componentCall {
+        try upsertBookCoverThumbnailCache(
+          sidecarRootPath: sidecarRootPath,
+          patchJson: patchJson
+        )
+      }
+    }
+
+    AsyncFunction("deleteBookCoverThumbnailCache") {
+      (
+        sidecarRootPath: String,
+        bookId: Int64,
+        thumbnailVersion: String,
+        widthPx: Int64,
+        heightPx: Int64
+      ) in
+      try componentCall {
+        try deleteBookCoverThumbnailCache(
+          sidecarRootPath: sidecarRootPath,
+          bookId: bookId,
+          thumbnailVersion: thumbnailVersion,
+          widthPx: widthPx,
+          heightPx: heightPx
+        )
+      }
+    }
+
+    AsyncFunction("clearBookCoverThumbnailCache") {
+      (sidecarRootPath: String) in
+      try componentCall {
+        try clearBookCoverThumbnailCache(sidecarRootPath: sidecarRootPath)
+      }
+    }
+
     AsyncFunction("listFavoriteBookIds") {
       (sidecarRootPath: String) -> String in
       try componentCall {

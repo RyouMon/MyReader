@@ -108,6 +108,24 @@ export type MyReaderRustComponentsModule = {
     updateJson: string,
   ): Promise<void>
   deleteLibraryFileState(sidecarRootPath: string, path: string): Promise<void>
+  listBookCoverThumbnailCache(
+    sidecarRootPath: string,
+    thumbnailVersion: string,
+    widthPx: number,
+    heightPx: number,
+  ): Promise<string>
+  upsertBookCoverThumbnailCache(
+    sidecarRootPath: string,
+    patchJson: string,
+  ): Promise<void>
+  deleteBookCoverThumbnailCache(
+    sidecarRootPath: string,
+    bookId: number,
+    thumbnailVersion: string,
+    widthPx: number,
+    heightPx: number,
+  ): Promise<void>
+  clearBookCoverThumbnailCache(sidecarRootPath: string): Promise<void>
   listFavoriteBookIds(sidecarRootPath: string): Promise<string>
   setFavoriteBook(
     sidecarRootPath: string,
@@ -399,6 +417,43 @@ const moduleFacade: MyReaderRustComponentsModule = {
   },
   deleteLibraryFileState(sidecarRootPath, path) {
     return getNativeModule().deleteLibraryFileState(sidecarRootPath, path)
+  },
+  listBookCoverThumbnailCache(
+    sidecarRootPath,
+    thumbnailVersion,
+    widthPx,
+    heightPx,
+  ) {
+    return getNativeModule().listBookCoverThumbnailCache(
+      sidecarRootPath,
+      thumbnailVersion,
+      widthPx,
+      heightPx,
+    )
+  },
+  upsertBookCoverThumbnailCache(sidecarRootPath, patchJson) {
+    return getNativeModule().upsertBookCoverThumbnailCache(
+      sidecarRootPath,
+      patchJson,
+    )
+  },
+  deleteBookCoverThumbnailCache(
+    sidecarRootPath,
+    bookId,
+    thumbnailVersion,
+    widthPx,
+    heightPx,
+  ) {
+    return getNativeModule().deleteBookCoverThumbnailCache(
+      sidecarRootPath,
+      bookId,
+      thumbnailVersion,
+      widthPx,
+      heightPx,
+    )
+  },
+  clearBookCoverThumbnailCache(sidecarRootPath) {
+    return getNativeModule().clearBookCoverThumbnailCache(sidecarRootPath)
   },
   listFavoriteBookIds(sidecarRootPath) {
     return getNativeModule().listFavoriteBookIds(sidecarRootPath)

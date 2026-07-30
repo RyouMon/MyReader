@@ -35,8 +35,6 @@
       "!**/my-reader/src-tauri/target/**/*",
       "!**/my-reader/public/*.min.mjs",
       "!packages/tools/src/reader-note-marker/*.css",
-      "!**/drizzle/meta/*.json",
-      "!**/drizzle/migrations.js",
       "!**/package-lock.json",
       "!**/pnpm-lock.yaml",
       "!**/coverage/**/*",

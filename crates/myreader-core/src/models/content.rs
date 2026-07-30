@@ -20,3 +20,30 @@ pub struct FileStateUpdate {
     pub local_size: Option<i64>,
     pub local_mtime: Option<i64>,
 }
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BookCoverThumbnailCache {
+    pub id: String,
+    pub book_id: i64,
+    pub cover_identity: String,
+    pub thumbnail_version: String,
+    pub width_px: i64,
+    pub height_px: i64,
+    pub file_name: String,
+    pub file_size_bytes: i64,
+    pub created_at: f64,
+    pub updated_at: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BookCoverThumbnailCachePatch {
+    pub book_id: i64,
+    pub cover_identity: String,
+    pub thumbnail_version: String,
+    pub width_px: i64,
+    pub height_px: i64,
+    pub file_name: String,
+    pub file_size_bytes: i64,
+}

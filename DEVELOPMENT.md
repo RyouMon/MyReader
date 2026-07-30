@@ -3,350 +3,237 @@
 ## Prerequisites
 
 | Tool | Version | Notes |
-|------|---------|-------|
+|---|---|---|
 | Node.js | ≥ 22 | LTS recommended |
-| pnpm | ≥ 10 | Install via `npm install -g pnpm` or `corepack enable` |
-| Rust | ≥ 1.77 | Edition 2021; install via [rustup](https://rustup.rs) |
-| Android Studio | Latest | For android development (SDK 34+, NDK 26+) |
-| Xcode | ≥ 16 | For iOS development (macOS only) |
+| pnpm | 11.7.0 | Repository `packageManager` version |
+| Rust | stable | Edition 2021; install with [rustup](https://rustup.rs) |
+| Android Studio | Latest | Android SDK/NDK and emulator |
+| Xcode | ≥ 16 | iOS development on macOS |
 
 ## First-Time Setup
 
 ```bash
 git clone https://github.com/RyouMon/MyReader.git
 cd MyReader
+corepack enable
 pnpm install
 ```
 
-This installs dependencies for all workspace packages (`my-reader`, `my-reader-mobile`, `packages/tools`) and runs the `prepare` hook (husky git hooks).
+This installs the desktop, mobile, fonts and tools workspaces and prepares the Git hooks.
 
 ## Project Structure
 
-```
+```text
 MyReader/
-├── packages/tools/        @my-reader/tools — shared types, utils, stores
-├── my-reader/             Desktop app (Tauri 2 + React 18 + Vite + Tailwind CSS 4)
-├── my-reader-mobile/      Mobile app (Expo SDK 55 + React Native 0.83 + NativeWind)
-├── scripts/               Design-token sync and other repo-level scripts
-├── pnpm-workspace.yaml    Workspace package definitions
-├── package.json           Root scripts and devDependencies
-└── .npmrc                 node-linker=hoisted (required for Metro compatibility)
+├── crates/
+│   ├── myreader-core/             Shared Rust backend
+│   └── myreader-rust-components/  UniFFI/mobile binding shell
+├── my-reader/                     Tauri 2 + React desktop app
+├── my-reader-mobile/              Expo 56 + React Native 0.85 app
+├── packages/
+│   ├── fonts/                     Shared reading font catalog
+│   └── tools/                     Shared TypeScript types and reader algorithms
+├── docs/                           ADR and protocol documentation
+└── scripts/                        Code generation and design-token scripts
 ```
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for ownership and dependency boundaries.
 
 ## Desktop (Tauri)
 
-### Change working directory
+### Development
 
 ```bash
-cd my-reader
+pnpm dev:desktop
 ```
 
-### Start dev server with native window
+This starts Vite on port 1420 and launches the Tauri window. The first Rust build takes longer.
+
+### Tests
 
 ```bash
-pnpm tauri dev
+pnpm --filter my-reader run test:unit
+pnpm --filter my-reader run test:unit:watch
+pnpm --filter my-reader run test:unit:coverage
+
+pnpm --filter my-reader run test:e2e:frontend
+pnpm --filter my-reader run test:e2e:frontend:ui
+pnpm --filter my-reader run test:e2e:desktop
+
+(cd my-reader/src-tauri && cargo test)
 ```
 
-This runs `pnpm run dev` (Vite on port 1420) then launches the Tauri native window. The Rust backend compiles on first run — expect a longer startup.
-
-### Unit tests
+### Formatting
 
 ```bash
-pnpm test:unit          # run once
-pnpm test:unit:watch    # watch mode
-pnpm test:unit:coverage # with coverage
+pnpm --filter my-reader exec biome check --write .
+cargo fmt --all
 ```
-
-### E2E tests
-
-```bash
-pnpm test:e2e:frontend      # Playwright BDD (browser tests)
-pnpm test:e2e:frontend:ui   # Playwright with UI mode
-pnpm test:e2e:desktop       # WebdriverIO + Edge (native window)
-```
-
-### Linting
-
-```bash
-npx biome check --write .
-```
-
-Biome config is at `my-reader/biome.json`. VS Code uses it as the default formatter with format-on-save.
 
 ## Mobile (Expo)
 
-### Change working directory
+### Development
 
 ```bash
-cd my-reader-mobile
+pnpm dev:mobile
+pnpm --filter my-reader-mobile ios
+pnpm --filter my-reader-mobile android
 ```
 
-### Generate native projects
+`ios` and `android` build and install the development client. JS/TS-only changes normally need only a running
+Metro server; native module, dependency or app-config changes require a native rebuild.
+
+After changing `app.json`, config plugins or other generated native configuration:
 
 ```bash
-pnpm expo prebuild
+pnpm --filter my-reader-mobile expo prebuild --clean
 ```
 
-### Run on device
-
-Build, install, and launch the **development client** locally (wraps `expo run:* --device`):
+### Tests
 
 ```bash
-pnpm android    # expo run:android --device
-pnpm ios        # expo run:ios --device (macOS only)
+pnpm --filter my-reader-mobile exec jest --runInBand
+pnpm --filter my-reader-mobile test:e2e
 ```
 
-| Command | Requires | What it does |
-|---------|----------|--------------|
-| `pnpm android` | Android Studio (SDK 34+, NDK 26+), USB debugging or emulator | Gradle compile → install APK → open app with Metro |
-| `pnpm ios` | Xcode ≥ 16, Apple signing for a physical device | Xcode compile → install on device → open app with Metro |
+Maestro E2E requires the Maestro CLI and a running development client.
 
-Both scripts pass `--device`, so they prefer a **connected physical device**. Connect one before running, or start an emulator/simulator and pick it when prompted.
+### Shared Rust native verification
 
-**Typical loop** (JS/TS-only changes):
-
-1. `pnpm start` in one terminal (Metro; `pnpm android` / `pnpm ios` can also start it).
-2. `pnpm android` or `pnpm ios` when you need a native rebuild or first install.
-
-The first native compile is slow (Readium and other native modules). Later runs are incremental unless you change native config or dependencies.
-
-### Start Metro bundler
+The mobile app consumes `myreader-core` through `myreader-rust-components`, UniFFI and an Expo Native Module.
+Use the repository scripts instead of committing prebuilt host libraries:
 
 ```bash
-pnpm start
+cargo test -p myreader-core -p myreader-rust-components
+bash crates/myreader-rust-components/scripts/verify-native.sh
 ```
 
-### Regenerate native projects
-
-After changing `app.json`, config plugins under `plugins/`, or other native-facing settings, regenerate `ios/` and `android/`:
+To build the iOS bridge target directly:
 
 ```bash
-pnpm expo prebuild --clean
+xcodebuild \
+  -workspace my-reader-mobile/ios/MyReaderMobile.xcworkspace \
+  -scheme MyReaderRustComponents \
+  -configuration Debug \
+  -sdk iphonesimulator \
+  -destination 'generic/platform=iOS Simulator' \
+  CODE_SIGNING_ALLOWED=NO \
+  build
 ```
 
-`--clean` deletes the existing native directories before regenerating so plugin changes are applied reliably. Run this before `pnpm android` / `pnpm ios` or a new EAS dev build when native config has changed.
-
-### Unit tests
-
-```bash
-pnpm test
-pnpm test:ci           # single-threaded (CI)
-pnpm test:update-snapshots  # update Jest snapshots
-```
-
-### E2E tests
-
-```bash
-pnpm test:e2e   # Maestro (requires Maestro CLI installed)
-```
+The generated UniFFI Swift/Kotlin bindings and platform build integration are derived from Rust source. Personal
+machine build output and precompiled static libraries do not belong in Git.
 
 ### Environment variables
 
-Copy `.env.example` to `.env` in `my-reader-mobile/`:
+Copy `my-reader-mobile/.env.example` to `my-reader-mobile/.env`:
 
-```
+```text
 EXPO_PUBLIC_SENTRY_DSN=<your Sentry DSN>
 SENTRY_AUTH_TOKEN=<your Sentry auth token>
 ```
 
-Sentry is optional — the app runs without it.
+Sentry is optional.
 
-## Shared Tools Package
-
-`packages/tools` (`@my-reader/tools`) exports types, utils, and store interfaces used by both apps. It has no runtime dependencies.
+## Shared Packages
 
 ```bash
-cd packages/tools && pnpm test       # vitest run (no test files yet)
-cd packages/tools && pnpm test:watch # vitest watch
+pnpm --filter @my-reader/fonts test
+pnpm --filter @my-reader/tools test
 ```
 
-Import pattern in consuming apps:
+`packages/tools` contains stable TypeScript contracts and Reader-side pure algorithms. Cross-platform backend
+business belongs in `myreader-core`, not in a new TypeScript service package.
 
-```ts
-import type { CalibreBook } from "@my-reader/tools/types/book"
-import type { LibraryStore } from "@my-reader/tools/store/library"
-import { pickReadableFormat } from "@my-reader/tools/utils"
+## Database and Migration Ownership
+
+### MyReader sidecar
+
+Each library has an independent `.myreader/myreader.db`. Both desktop and mobile open it through
+`myreader-core`; TypeScript does not own a SQLite connection or run migrations.
+
+```text
+crates/myreader-core/
+├── migrations/legacy/        Immutable imported migration history
+├── src/migration.rs          Ordered SeaORM Migrator
+├── src/database.rs           Open, handoff and migration lifecycle
+├── src/entities/app/         SeaORM query mappings
+└── src/repositories/         Database access hidden behind core services
 ```
+
+The first core open of an older mobile database recognizes the historical `__drizzle_migrations` state, records
+the equivalent SeaORM versions, applies later migrations, and removes the obsolete metadata table. This is a
+one-time compatibility handoff, not a second active migration system.
+
+### Calibre database
+
+Calibre `metadata.db` is external and read-only. Its checked-in query mappings live under
+`crates/myreader-core/src/entities/calibre/`. They are not registered with the MyReader Migrator and must never
+be used to alter a Calibre library.
+
+When support for a Calibre table or column changes:
+
+1. Verify the field against a real supported Calibre schema.
+2. Update the read-only entity mapping and repository query together.
+3. Add or update a query test using a Calibre fixture.
+4. Do not create a MyReader migration for the Calibre change.
+
+### MyReader schema changes
+
+1. Add an ordered migration to the Rust-owned `myreader-core` Migrator. Existing migration files are immutable.
+2. Update repository/service behavior and migration tests.
+3. Run the complete Migrator against a new database and relevant upgrade fixtures.
+4. Regenerate and review SeaORM query mappings:
+
+   ```bash
+   pnpm db:generate
+   ```
+
+5. Commit the migration, generated entities and behavior changes together.
+
+`pnpm db:generate` creates a temporary database by executing the same `myreader-core` Migrator used at runtime,
+then runs `sea-orm-cli generate entity`. It does not use Drizzle or an Entity-First schema synchronizer.
+
+Prerequisites for entity generation:
+
+```bash
+cargo install sea-orm-cli
+```
+
+### Database verification
+
+At minimum, schema changes must cover:
+
+- complete migration replay on a new SQLite database;
+- upgrade from the applicable prior SeaORM version;
+- one-time handoff when an older mobile Drizzle metadata table is relevant;
+- repository behavior against the resulting real schema;
+- no generated entity drift after `pnpm db:generate`.
 
 ## Design Tokens
 
-After changing tokens in `.agents/skills/myreader-design-system/colors_and_type.css` or `DESIGN.md`:
+After changing `.agents/skills/myreader-design-system/colors_and_type.css` or `DESIGN.md`:
 
 ```bash
 pnpm sync:design-tokens
 ```
 
-This runs `scripts/sync-design-tokens.mjs` which propagates tokens to both desktop and mobile implementations.
+This propagates colors to desktop and mobile implementations.
 
 ## Monorepo Notes
 
-- **`node-linker=hoisted`** — Required for Metro compatibility. Dependencies are installed in a flat layout similar to npm.
-- **Workspace protocol** — Internal packages use `"workspace:*"` in dependencies. pnpm resolves this to the local package.
-- **React versions** — Desktop uses React 18, mobile uses React 19. Each workspace resolves its own version from its `node_modules`.
-- **`patch-package`** — Mobile uses `patch-package` for native dependency patches. Patches live in `my-reader-mobile/patches/`.
-
-## Database Layer
-
-The project uses a **single-source-of-truth** schema defined in `packages/db/` via Drizzle ORM. Mobile runs the generated migrations with Drizzle. Desktop embeds the same SQL files in a SeaORM `LibraryMigrator`; generated SeaORM entities are query models only.
-
-### Architecture
-
-```
-packages/db/                          Schema single source of truth
-  src/schema/                         Drizzle table definitions
-    calibre/                          Calibre metadata.db tables (read-only)
-  src/types.ts                        InferSelectModel / InferInsertModel exports
-  drizzle/                            Generated by drizzle-kit
-    0000_*.sql                        SQL migration files
-    migrations.js                     JS module for mobile runtime migrator
-    meta/_journal.json                Migration journal
-
-my-reader/src-tauri/src/entities/     Generated by sea-orm-cli
-  app/                                Query entities for MyReader-owned tables
-  calibre/                            Calibre SeaORM entities (read-only)
-
-my-reader/src-tauri/
-  build.rs                            Discovers and embeds Drizzle SQL migrations
-  src/migration.rs                    SeaORM LibraryMigrator wrapper
-```
-
-### Tables
-
-| Table | Scope | Purpose |
-|-------|-------|---------|
-| `reading_progress` | Library-wide | Book reading position + timestamp |
-| `file_state` | Library-wide | Per-file sync state |
-| `sync_meta` | Library-wide | Sync cursor metadata |
-| `book_reading_format` | Library-wide | Preferred format for each book |
-| `favorite_books` | Library-wide | Favorite book IDs |
-| `book_cover_thumbnail_cache` | Library-wide | Mobile cover thumbnail cache metadata |
-| `bookmarks` | Library-wide | Reader bookmarks and tombstones |
-| `annotations` | Library-wide | Reader highlights, notes, and tombstones |
-
-Each library has its own `myreader.db` inside the library's `.myreader/` directory. There is no app-wide database.
-
-### Calibre tables
-
-Calibre's `metadata.db` is an external database owned by Calibre — we only **query** it, never migrate it. The schema is defined in `packages/db/src/schema/calibre/` for type safety and Rust entity generation.
-
-| Table | Purpose |
-|-------|---------|
-| `books` | Primary book metadata |
-| `authors` | Author names |
-| `tags` | Tag names |
-| `series` | Series names |
-| `publishers` | Publisher names |
-| `languages` | Language codes |
-| `ratings` | Star ratings |
-| `data` | Format/file info (EPUB, PDF, etc.) |
-| `comments` | Book descriptions |
-| `identifiers` | External IDs (ISBN, DOI, etc.) |
-| `books_authors_link` | book↔author join |
-| `books_tags_link` | book↔tag join |
-| `books_series_link` | book↔series join |
-| `books_publishers_link` | book↔publisher join |
-| `books_languages_link` | book↔language join |
-| `books_ratings_link` | book↔rating join |
-
-These tables are **excluded from Drizzle migrations** — `drizzle.config.ts` points at `index.ts`, which only exports MyReader-owned library tables.
-
-### Schema change workflow
-
-1. **Edit Drizzle schema** in `packages/db/src/schema/`
-2. **Generate migration + entities**: `pnpm db:generate` — runs `drizzle-kit generate` then regenerates SeaORM entities from the SQL
-3. **Update queries** — mobile: Drizzle queries auto-align with schema; desktop: update SeaORM entity queries if columns changed. At runtime, SeaORM applies the generated SQL through `LibraryMigrator::up()`.
-4. **Commit** — schema + migration + entities + query changes together
-
-### Calibre schema change workflow
-
-1. **Edit Drizzle schema** in `packages/db/src/schema/calibre/`
-2. **Regenerate Rust entities**: `pnpm db:generate:calibre` — generates temp SQL from Drizzle schema → temp SQLite DB → `sea-orm-cli generate entity` → Rust entities in `entities/calibre/`, then cleans up all temp files
-3. **Update queries** — desktop: update `calibre_repo.rs` to use new SeaORM entities; mobile: Drizzle queries auto-align
-4. **Commit** — schema + entity changes together
-
-### Mobile (Drizzle ORM + cr-sqlite)
-
-Runtime migration uses Drizzle's official `migrate()` function from `drizzle-orm/op-sqlite/migrator`:
-
-```ts
-import { migrate } from "drizzle-orm/op-sqlite/migrator";
-import migrations from "@my-reader/db/drizzle/migrations";
-
-const db = drizzle(raw, { schema });
-migrate(db, migrations);
-```
-
-**Prerequisites for `.sql` imports** (already configured):
-- `metro.config.js` — `config.resolver.sourceExts.push("sql")`
-- `babel.config.js` — `plugins: [["inline-import", { extensions: [".sql"] }]]`
-
-After migration, CRR tables are registered for cr-sqlite CRDT sync:
-
-```ts
-import { crrRegistrationSQL } from "@my-reader/db/crdt";
-for (const sql of crrRegistrationSQL()) {
-  raw.executeSync(sql);
-}
-```
-
-### Desktop (SeaORM migrations + query entities)
-
-Desktop uses SeaORM's official migrator for each library database. `build.rs` discovers `packages/db/drizzle/*.sql` in lexical order and embeds them as migrations, so the desktop does not maintain a second migration list or write `seaql_migrations` directly.
-
-```rust
-use sea_orm::Database;
-use sea_orm_migration::MigratorTrait;
-
-let db = Database::connect(&url).await?;
-LibraryMigrator::up(&db, None).await?;
-```
-
-Each database records its own state in `seaql_migrations`, and Drizzle SQL is executed unchanged. Databases created by the former Entity-First path are not supported and must be recreated. The desktop does not read or write Drizzle's `__drizzle_migrations` table.
-
-Queries use generated SeaORM entities rather than migration SQL:
-
-```rust
-use crate::entities::reading_progress;
-
-// SELECT
-let model = reading_progress::Entity::find()
-    .filter(reading_progress::Column::BookId.eq(book_id))
-    .one(&db).await?;
-
-// INSERT / UPSERT
-let active = reading_progress::ActiveModel {
-    book_id: ActiveValue::set(book_id),
-    format: ActiveValue::set(format),
-    locator_json: ActiveValue::set(json),
-    updated_at: ActiveValue::set(ts),
-};
-active.save(&db).await?;
-```
-
-`calibre_repo.rs` still uses raw `sqlx::query` because it reads from Calibre's external `metadata.db` (schema not under our control).
-
-### Key commands
-
-| Command | What it does |
-|---------|-------------|
-| `pnpm db:generate` | `drizzle-kit generate` + regenerate SeaORM query entities for library tables |
-| `pnpm db:generate:calibre` | Regenerate SeaORM entities for Calibre tables from `schema/calibre/` |
-
-### Package exports (`@my-reader/db`)
-
-| Export | Contents |
-|--------|---------|
-| `@my-reader/db/schema` | Drizzle table definitions for MyReader-owned library tables |
-| `@my-reader/db/schema/calibre` | Drizzle table definitions for Calibre mirror schema (`books`, `authors`, link tables, etc.) |
-| `@my-reader/db/types` | Inferred TypeScript types for MyReader-owned library tables |
-| `@my-reader/db/drizzle/migrations` | Generated `migrations.js` for mobile runtime migrator |
+- `node-linker=hoisted` is required for Metro compatibility.
+- Internal pnpm packages use `workspace:*`.
+- Desktop uses React 18; mobile uses React 19.
+- Mobile dependency patches are registered in `pnpm-workspace.yaml` and stored under repository patch folders.
+- Cargo packages share dependency versions from the root `Cargo.toml`.
 
 ## VS Code Setup
 
-Recommended extensions (auto-suggested via `.vscode/extensions.json`):
+Recommended extensions:
 
-- **Tauri** (`tauri-apps.tauri-vscode`) — Tauri development support
-- **rust-analyzer** (`rust-lang.rust-analyzer`) — Rust IDE features
-- **Expo Tools** (`expo.vscode-expo-tools`) — Expo/React Native development
+- Tauri (`tauri-apps.tauri-vscode`)
+- rust-analyzer (`rust-lang.rust-analyzer`)
+- Expo Tools (`expo.vscode-expo-tools`)
 
-Settings in `.vscode/settings.json` configure Biome as the default formatter with format-on-save and organize-imports-on-save.
+Repository VS Code settings configure Biome formatting and import organization.

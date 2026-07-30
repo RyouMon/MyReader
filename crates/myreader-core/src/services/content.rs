@@ -2,7 +2,9 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use crate::database;
-use crate::models::{FileState, FileStateUpdate};
+use crate::models::{
+    BookCoverThumbnailCache, BookCoverThumbnailCachePatch, FileState, FileStateUpdate,
+};
 use crate::repositories::calibre::CalibreBookRepository;
 use crate::repositories::content::ContentRepository;
 use crate::CoreError;
@@ -107,6 +109,48 @@ pub(crate) async fn delete_file_state(sidecar_root: &Path, path: &str) -> Result
     ContentRepository::new(&db).delete_file_state(path).await
 }
 
+pub(crate) async fn list_cover_thumbnail_cache(
+    sidecar_root: &Path,
+    thumbnail_version: &str,
+    width_px: i64,
+    height_px: i64,
+) -> Result<Vec<BookCoverThumbnailCache>, CoreError> {
+    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+    ContentRepository::new(&db)
+        .list_cover_thumbnail_cache(thumbnail_version, width_px, height_px)
+        .await
+}
+
+pub(crate) async fn upsert_cover_thumbnail_cache(
+    sidecar_root: &Path,
+    patch: BookCoverThumbnailCachePatch,
+) -> Result<(), CoreError> {
+    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+    ContentRepository::new(&db)
+        .upsert_cover_thumbnail_cache(patch)
+        .await
+}
+
+pub(crate) async fn delete_cover_thumbnail_cache(
+    sidecar_root: &Path,
+    book_id: i64,
+    thumbnail_version: &str,
+    width_px: i64,
+    height_px: i64,
+) -> Result<(), CoreError> {
+    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+    ContentRepository::new(&db)
+        .delete_cover_thumbnail_cache(book_id, thumbnail_version, width_px, height_px)
+        .await
+}
+
+pub(crate) async fn clear_cover_thumbnail_cache(sidecar_root: &Path) -> Result<(), CoreError> {
+    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+    ContentRepository::new(&db)
+        .clear_cover_thumbnail_cache()
+        .await
+}
+
 fn readable_formats(formats: &[String]) -> Vec<String> {
     let mut result = formats
         .iter()
@@ -126,7 +170,7 @@ mod tests {
     use sea_orm::{ActiveModelTrait, ConnectionTrait, Database, Schema, Set};
 
     use crate::entities::calibre::{books, data};
-    use crate::models::FileStateUpdate;
+    use crate::models::{BookCoverThumbnailCachePatch, FileStateUpdate};
 
     async fn seed_catalog(root: &Path) {
         let db = Database::connect(format!(
@@ -215,5 +259,78 @@ mod tests {
             .await
             .unwrap()
             .is_none());
+    }
+
+    #[tokio::test]
+    async fn should_replace_cover_manifest_values_when_cache_key_matches() {
+        let sidecar = tempfile::tempdir().unwrap();
+        let patch = BookCoverThumbnailCachePatch {
+            book_id: 42,
+            cover_identity: "cover-v1".into(),
+            thumbnail_version: "v3".into(),
+            width_px: 180,
+            height_px: 270,
+            file_name: "old.jpg".into(),
+            file_size_bytes: 1024,
+        };
+
+        super::upsert_cover_thumbnail_cache(sidecar.path(), patch)
+            .await
+            .unwrap();
+        super::upsert_cover_thumbnail_cache(
+            sidecar.path(),
+            BookCoverThumbnailCachePatch {
+                book_id: 42,
+                cover_identity: "cover-v2".into(),
+                thumbnail_version: "v3".into(),
+                width_px: 180,
+                height_px: 270,
+                file_name: "new.jpg".into(),
+                file_size_bytes: 2048,
+            },
+        )
+        .await
+        .unwrap();
+
+        let rows = super::list_cover_thumbnail_cache(sidecar.path(), "v3", 180, 270)
+            .await
+            .unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].cover_identity, "cover-v2");
+        assert_eq!(rows[0].file_name, "new.jpg");
+        assert_eq!(rows[0].file_size_bytes, 2048);
+    }
+
+    #[tokio::test]
+    async fn should_remove_only_selected_cover_manifest_when_cache_entry_is_deleted() {
+        let sidecar = tempfile::tempdir().unwrap();
+        for book_id in [42, 43] {
+            super::upsert_cover_thumbnail_cache(
+                sidecar.path(),
+                BookCoverThumbnailCachePatch {
+                    book_id,
+                    cover_identity: format!("cover-{book_id}"),
+                    thumbnail_version: "v3".into(),
+                    width_px: 180,
+                    height_px: 270,
+                    file_name: format!("{book_id}.jpg"),
+                    file_size_bytes: 1024,
+                },
+            )
+            .await
+            .unwrap();
+        }
+
+        super::delete_cover_thumbnail_cache(sidecar.path(), 42, "v3", 180, 270)
+            .await
+            .unwrap();
+
+        let rows = super::list_cover_thumbnail_cache(sidecar.path(), "v3", 180, 270)
+            .await
+            .unwrap();
+        assert_eq!(
+            rows.into_iter().map(|row| row.book_id).collect::<Vec<_>>(),
+            vec![43]
+        );
     }
 }

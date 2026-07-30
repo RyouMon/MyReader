@@ -10,7 +10,8 @@
 - 使用 Readium `Locator` 保存阅读进度、书签和批注位置，不把重排后的视觉页码当作持久化主键。
 - 支持收藏、阅读进度、书签、高亮与笔记；具体阅读能力按格式和平台分别实现。
 - 每个书库拥有独立的 MyReader SQLite sidecar，应用设置和凭据保留在设备本地。
-- 当前 sidecar v3 同步阅读进度与书签；已接受但尚未实施的 v4 CRDT 目标见 [ADR-0015](./docs/adr/0015-library-sidecar-crdt-reading-sync.md)。
+- 使用 Automerge 同步每个书库的收藏、阅读位置、书签、批注、阅读会话和完成记录。
+- 桌面端与移动端通过 `myreader-core` 共享书库、书目、内容状态、阅读数据和 sidecar 同步业务。
 
 MyReader 不再维护一套跨平台共享的自研渲染内核。桌面端使用 Web/JS 阅读适配，移动端通过应用自有 Expo Module 接入 Readium Swift/Kotlin Toolkit；两端共享的是 Publication、Link、Locator 等语义和产品规则，而不是渲染 UI。
 
@@ -18,14 +19,16 @@ MyReader 不再维护一套跨平台共享的自研渲染内核。桌面端使�
 
 ```text
 MyReader/
-├── my-reader/             桌面端：Tauri 2 + React 18
-├── my-reader-mobile/      移动端：Expo 56 + React Native 0.85
+├── crates/
+│   ├── myreader-core/             跨端共享 Rust 后端
+│   └── myreader-rust-components/  UniFFI 与移动原生绑定外壳
+├── my-reader/                     桌面端：Tauri 2 + React 18
+├── my-reader-mobile/              移动端：Expo 56 + React Native 0.85
 ├── packages/
-│   ├── db/                跨端数据库 schema 与 SQL migrations
-│   ├── fonts/             阅读字体目录与资产来源
-│   └── tools/             跨端类型、Locator/书签/批注/目录等纯工具
-├── docs/                  ADR 与同步协议文档
-└── scripts/               schema、生成代码和设计 token 脚本
+│   ├── fonts/                     阅读字体目录与资产来源
+│   └── tools/                     跨端类型和 Reader 纯算法
+├── docs/                           ADR 与同步协议文档
+└── scripts/                        生成代码和设计 token 脚本
 ```
 
 完整的运行边界、分层和数据流见 [ARCHITECTURE.md](./ARCHITECTURE.md)。
@@ -36,7 +39,7 @@ MyReader/
 
 - Node.js 22 或更高版本
 - pnpm 11.7.0（仓库 `packageManager` 锁定版本）
-- Rust stable 1.85 或更高版本（桌面端）
+- Rust stable（桌面端和移动共享后端）
 - Xcode 16+（iOS）或 Android Studio / Android SDK（Android）
 
 ### 安装与开发
@@ -92,7 +95,8 @@ pnpm --filter my-reader-mobile exec jest --runInBand
 | 桌面 UI | React 18、TypeScript、Vite 6、Tailwind CSS 4、TanStack Router/Query、Zustand |
 | 桌面后端 | Tauri 2、Rust、SeaORM、SQLite、tauri-specta、OpenDAL |
 | 移动端 | Expo 56、React Native 0.85、Expo Router、NativeWind 5、TanStack Query、Zustand |
-| 移动数据 | op-sqlite、Drizzle ORM |
+| 共享后端 | `myreader-core`、SeaORM、SQLite、Automerge |
+| 移动绑定 | UniFFI、Expo Native Module |
 | 阅读器 | 桌面 `@readium/*` + PDF.js 适配；移动 Readium Swift/Kotlin Toolkit + 应用自有 Expo Module |
 | 远程数据源 | WebDAV、OneDrive |
 | 测试 | Vitest、Jest、Playwright BDD、WebdriverIO、Maestro、Cargo test |

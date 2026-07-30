@@ -14,9 +14,9 @@ import {
   resolveShareableFormat,
   shareBookFile,
 } from "@/src/domain/library/share-book-file"
-import type { FileStateRow } from "@/src/domain/sync/actions"
 import type { BookItem, Library } from "@/src/domain/types"
 import { confirmDeleteLocalDownload } from "@/src/features/library/utils/delete-download"
+import type { FileState as FileStateRow } from "@/src/services/core/content"
 
 import { useBookActions } from "./use-book-actions"
 

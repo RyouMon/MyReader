@@ -1,7 +1,8 @@
 use myreader_rust_components::{
-    cancel_sync_task, count_calibre_books, initialize_device_registry, migrate_library_database,
-    read_sidecar_sync_schedule, read_sync_task_progress, record_sidecar_sync_retry,
-    register_device_library, release_sync_task, sync_contract_version, sync_library_sidecar,
+    cancel_sync_task, count_calibre_books, initialize_device_registry,
+    list_book_cover_thumbnail_cache, migrate_library_database, read_sidecar_sync_schedule,
+    read_sync_task_progress, record_sidecar_sync_retry, register_device_library, release_sync_task,
+    sync_contract_version, sync_library_sidecar, upsert_book_cover_thumbnail_cache,
 };
 use rusqlite::Connection;
 
@@ -31,7 +32,7 @@ fn create_calibre_library() -> tempfile::TempDir {
 
 #[test]
 fn should_expose_current_sync_contract_version_when_bridge_loads() {
-    assert_eq!(sync_contract_version(), 8);
+    assert_eq!(sync_contract_version(), 9);
 }
 
 #[test]
@@ -80,6 +81,34 @@ fn should_return_catalog_count_when_native_bridge_reads_calibre_library() {
     let count = count_calibre_books(directory.path().to_string_lossy().into_owned()).unwrap();
 
     assert_eq!(count, 2);
+}
+
+#[test]
+fn should_round_trip_cover_manifest_when_native_bridge_owns_database() {
+    let directory = tempfile::tempdir().unwrap();
+    let sidecar_root = directory.path().to_string_lossy().into_owned();
+    upsert_book_cover_thumbnail_cache(
+        sidecar_root.clone(),
+        serde_json::json!({
+            "bookId": 42,
+            "coverIdentity": "cover-v2",
+            "thumbnailVersion": "v3",
+            "widthPx": 180,
+            "heightPx": 270,
+            "fileName": "42.jpg",
+            "fileSizeBytes": 2048
+        })
+        .to_string(),
+    )
+    .unwrap();
+
+    let rows: serde_json::Value = serde_json::from_str(
+        &list_book_cover_thumbnail_cache(sidecar_root, "v3".into(), 180, 270).unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(rows[0]["bookId"], 42);
+    assert_eq!(rows[0]["fileName"], "42.jpg");
 }
 
 #[test]

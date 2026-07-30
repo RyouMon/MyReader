@@ -10,8 +10,9 @@ import type { BookItem, Library } from "@/src/domain/types"
 import {
   deleteBookCoverThumbnailCache,
   listBookCoverThumbnailCache,
+  type BookCoverThumbnailCache,
   upsertBookCoverThumbnailCache,
-} from "@/src/repos/book-cover-thumbnail-cache"
+} from "@/src/services/core/content"
 import { queryKeys } from "@/src/services/query/query-keys"
 import {
   COVER_THUMBNAIL_CACHE_VERSION,
@@ -38,8 +39,6 @@ import {
   setCoverThumbnailSessionEntries,
   type CoverThumbnailSessionEntry,
 } from "../cover-thumbnail-session-store"
-import type { BookCoverThumbnailCache } from "@my-reader/db/types"
-
 export { resolveCoverThumbnailPixelSize }
 
 type UseCoverThumbnailsInput = {

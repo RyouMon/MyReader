@@ -1,5 +1,4 @@
 packages:
-  - "packages/db"
   - "packages/fonts"
   - "packages/tools"
   - "my-reader"
@@ -7,7 +6,6 @@ packages:
 patchedDependencies:
   "@kesha-antonov/react-native-background-downloader@4.5.4": "patches/@kesha-antonov__react-native-background-downloader@4.5.4.patch"
   "@react-native-menu/menu@2.0.0": "patches/@react-native-menu__menu@2.0.0.patch"
-  drizzle-orm@0.40.1: patches/drizzle-orm@0.40.1.patch
   "react-native-css@3.0.7": "patches/react-native-css@3.0.7.patch"
 allowBuilds:
   '@sentry/cli': true

@@ -41,7 +41,6 @@ export default defineConfig(async () => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "@my-reader/db": path.resolve(__dirname, "../packages/db/src"),
       "@my-reader/fonts": path.resolve(
         __dirname,
         "../packages/fonts/src/index.ts",

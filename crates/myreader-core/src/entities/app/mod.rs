@@ -3,6 +3,7 @@
 pub mod prelude;
 
 pub mod annotations;
+pub mod book_cover_thumbnail_cache;
 pub mod book_reading_format;
 pub mod bookmarks;
 pub mod favorite_books;

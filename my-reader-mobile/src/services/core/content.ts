@@ -25,6 +25,29 @@ export type FileStateUpdate = {
   localMtime?: number | null
 }
 
+export type BookCoverThumbnailCache = {
+  id: string
+  bookId: number
+  coverIdentity: string
+  thumbnailVersion: string
+  widthPx: number
+  heightPx: number
+  fileName: string
+  fileSizeBytes: number
+  createdAt: number
+  updatedAt: number
+}
+
+export type BookCoverThumbnailCachePatch = {
+  bookId: number
+  coverIdentity: string
+  thumbnailVersion: string
+  widthPx: number
+  heightPx: number
+  fileName: string
+  fileSizeBytes: number
+}
+
 function sidecarRootPath(library: Library): string {
   return toNativeFilesystemPath(librarySidecarRootUri(library))
 }
@@ -105,4 +128,56 @@ export async function deleteFileState(
     path,
   )
   await invalidateFileStates(library.id)
+}
+
+export async function listBookCoverThumbnailCache(
+  library: Library,
+  input: {
+    thumbnailVersion: string
+    widthPx: number
+    heightPx: number
+  },
+): Promise<BookCoverThumbnailCache[]> {
+  return JSON.parse(
+    await MyReaderRustComponents.listBookCoverThumbnailCache(
+      sidecarRootPath(library),
+      input.thumbnailVersion,
+      input.widthPx,
+      input.heightPx,
+    ),
+  )
+}
+
+export function upsertBookCoverThumbnailCache(
+  library: Library,
+  patch: BookCoverThumbnailCachePatch,
+): Promise<void> {
+  return MyReaderRustComponents.upsertBookCoverThumbnailCache(
+    sidecarRootPath(library),
+    JSON.stringify(patch),
+  )
+}
+
+export function deleteBookCoverThumbnailCache(
+  library: Library,
+  input: {
+    bookId: number
+    thumbnailVersion: string
+    widthPx: number
+    heightPx: number
+  },
+): Promise<void> {
+  return MyReaderRustComponents.deleteBookCoverThumbnailCache(
+    sidecarRootPath(library),
+    input.bookId,
+    input.thumbnailVersion,
+    input.widthPx,
+    input.heightPx,
+  )
+}
+
+export function clearBookCoverThumbnailCache(library: Library): Promise<void> {
+  return MyReaderRustComponents.clearBookCoverThumbnailCache(
+    sidecarRootPath(library),
+  )
 }

@@ -827,6 +827,14 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is
 // rather `InterfaceTooLargeException`, caused by too many methods
@@ -858,7 +866,11 @@ fun uniffi_myreader_rust_components_checksum_func_cancel_sync_task(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_classify_sidecar_sync_failure(
 ): Short
+fun uniffi_myreader_rust_components_checksum_func_clear_book_cover_thumbnail_cache(
+): Short
 fun uniffi_myreader_rust_components_checksum_func_count_calibre_books(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_delete_book_cover_thumbnail_cache(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_delete_library_file_state(
 ): Short
@@ -877,6 +889,8 @@ fun uniffi_myreader_rust_components_checksum_func_get_reading_statistics(
 fun uniffi_myreader_rust_components_checksum_func_has_sidecar_sync_pending_work(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_initialize_device_registry(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_list_book_cover_thumbnail_cache(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_list_book_reading_formats(
 ): Short
@@ -950,6 +964,8 @@ fun uniffi_myreader_rust_components_checksum_func_test_remote_data_source(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_update_reader_annotation(
 ): Short
+fun uniffi_myreader_rust_components_checksum_func_upsert_book_cover_thumbnail_cache(
+): Short
 fun uniffi_myreader_rust_components_checksum_func_upsert_device_data_source(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_upsert_library_file_state(
@@ -1019,8 +1035,12 @@ fun uniffi_myreader_rust_components_fn_func_cancel_sync_task(`taskId`: RustBuffe
 ): Byte
 fun uniffi_myreader_rust_components_fn_func_classify_sidecar_sync_failure(`kind`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_clear_book_cover_thumbnail_cache(`sidecarRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): Unit
 fun uniffi_myreader_rust_components_fn_func_count_calibre_books(`libraryRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Long
+fun uniffi_myreader_rust_components_fn_func_delete_book_cover_thumbnail_cache(`sidecarRootPath`: RustBuffer.ByValue,`bookId`: Long,`thumbnailVersion`: RustBuffer.ByValue,`widthPx`: Long,`heightPx`: Long,uniffi_out_err: UniffiRustCallStatus,
+): Unit
 fun uniffi_myreader_rust_components_fn_func_delete_library_file_state(`sidecarRootPath`: RustBuffer.ByValue,`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
 fun uniffi_myreader_rust_components_fn_func_effective_sidecar_sync_mode(`sidecarRootPath`: RustBuffer.ByValue,`requestedMode`: RustBuffer.ByValue,`nowMs`: RustBuffer.ByValue,`freshnessMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1038,6 +1058,8 @@ fun uniffi_myreader_rust_components_fn_func_get_reading_statistics(`sidecarRootP
 fun uniffi_myreader_rust_components_fn_func_has_sidecar_sync_pending_work(`sidecarRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Byte
 fun uniffi_myreader_rust_components_fn_func_initialize_device_registry(`registryPath`: RustBuffer.ByValue,`legacyRegistryJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_list_book_cover_thumbnail_cache(`sidecarRootPath`: RustBuffer.ByValue,`thumbnailVersion`: RustBuffer.ByValue,`widthPx`: Long,`heightPx`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_list_book_reading_formats(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
@@ -1111,6 +1133,8 @@ fun uniffi_myreader_rust_components_fn_func_test_remote_data_source(`sourceJson`
 ): Unit
 fun uniffi_myreader_rust_components_fn_func_update_reader_annotation(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`id`: RustBuffer.ByValue,`color`: RustBuffer.ByValue,`note`: RustBuffer.ByValue,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_upsert_book_cover_thumbnail_cache(`sidecarRootPath`: RustBuffer.ByValue,`patchJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): Unit
 fun uniffi_myreader_rust_components_fn_func_upsert_device_data_source(`registryPath`: RustBuffer.ByValue,`sourceJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_upsert_library_file_state(`sidecarRootPath`: RustBuffer.ByValue,`path`: RustBuffer.ByValue,`updateJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1269,7 +1293,13 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_classify_sidecar_sync_failure() != 3331.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_myreader_rust_components_checksum_func_clear_book_cover_thumbnail_cache() != 33565.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_myreader_rust_components_checksum_func_count_calibre_books() != 56896.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_myreader_rust_components_checksum_func_delete_book_cover_thumbnail_cache() != 52456.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_delete_library_file_state() != 13171.toShort()) {
@@ -1297,6 +1327,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_initialize_device_registry() != 45379.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_myreader_rust_components_checksum_func_list_book_cover_thumbnail_cache() != 10577.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_list_book_reading_formats() != 43967.toShort()) {
@@ -1405,6 +1438,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_update_reader_annotation() != 57307.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_myreader_rust_components_checksum_func_upsert_book_cover_thumbnail_cache() != 54780.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_upsert_device_data_source() != 13321.toShort()) {
@@ -2066,6 +2102,15 @@ public object FfiConverterOptionalTypeSyncTaskProgress: FfiConverterRustBuffer<S
     }
 
 
+    @Throws(RustComponentsException::class) fun `clearBookCoverThumbnailCache`(`sidecarRootPath`: kotlin.String)
+        =
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_clear_book_cover_thumbnail_cache(
+        FfiConverterString.lower(`sidecarRootPath`),_status)
+}
+
+
+
     @Throws(RustComponentsException::class) fun `countCalibreBooks`(`libraryRootPath`: kotlin.String): kotlin.ULong {
             return FfiConverterULong.lift(
     uniffiRustCallWithError(RustComponentsException) { _status ->
@@ -2074,6 +2119,15 @@ public object FfiConverterOptionalTypeSyncTaskProgress: FfiConverterRustBuffer<S
 }
     )
     }
+
+
+    @Throws(RustComponentsException::class) fun `deleteBookCoverThumbnailCache`(`sidecarRootPath`: kotlin.String, `bookId`: kotlin.Long, `thumbnailVersion`: kotlin.String, `widthPx`: kotlin.Long, `heightPx`: kotlin.Long)
+        =
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_delete_book_cover_thumbnail_cache(
+        FfiConverterString.lower(`sidecarRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`thumbnailVersion`),FfiConverterLong.lower(`widthPx`),FfiConverterLong.lower(`heightPx`),_status)
+}
+
 
 
     @Throws(RustComponentsException::class) fun `deleteLibraryFileState`(`sidecarRootPath`: kotlin.String, `path`: kotlin.String)
@@ -2160,6 +2214,16 @@ public object FfiConverterOptionalTypeSyncTaskProgress: FfiConverterRustBuffer<S
     uniffiRustCallWithError(RustComponentsException) { _status ->
     UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_initialize_device_registry(
         FfiConverterString.lower(`registryPath`),FfiConverterOptionalString.lower(`legacyRegistryJson`),_status)
+}
+    )
+    }
+
+
+    @Throws(RustComponentsException::class) fun `listBookCoverThumbnailCache`(`sidecarRootPath`: kotlin.String, `thumbnailVersion`: kotlin.String, `widthPx`: kotlin.Long, `heightPx`: kotlin.Long): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_book_cover_thumbnail_cache(
+        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`thumbnailVersion`),FfiConverterLong.lower(`widthPx`),FfiConverterLong.lower(`heightPx`),_status)
 }
     )
     }
@@ -2510,6 +2574,15 @@ public object FfiConverterOptionalTypeSyncTaskProgress: FfiConverterRustBuffer<S
 }
     )
     }
+
+
+    @Throws(RustComponentsException::class) fun `upsertBookCoverThumbnailCache`(`sidecarRootPath`: kotlin.String, `patchJson`: kotlin.String)
+        =
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_upsert_book_cover_thumbnail_cache(
+        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`patchJson`),_status)
+}
+
 
 
     @Throws(RustComponentsException::class) fun `upsertDeviceDataSource`(`registryPath`: kotlin.String, `sourceJson`: kotlin.String): kotlin.String {

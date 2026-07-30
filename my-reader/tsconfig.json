@@ -24,8 +24,7 @@
       "@/*": ["./src/*"],
       "@my-reader/fonts": ["../packages/fonts/src/index.ts"],
       "@my-reader/fonts/*": ["../packages/fonts/src/*"],
-      "@my-reader/tools/*": ["../packages/tools/src/*"],
-      "@my-reader/db/*": ["../packages/db/src/*"]
+      "@my-reader/tools/*": ["../packages/tools/src/*"]
     }
   },
   "include": ["src"],

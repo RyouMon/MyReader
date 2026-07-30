@@ -19,7 +19,9 @@ import MyReaderRustComponents from "@/modules/myreader-rust-components"
 import type { Library } from "@my-reader/tools/types/library"
 import {
   listBookReadingFormats,
+  listBookCoverThumbnailCache,
   setBookReadingFormat,
+  upsertBookCoverThumbnailCache,
   upsertFileState,
 } from "./content"
 
@@ -79,5 +81,41 @@ describe("core content adapter", () => {
         localMtime: null,
       }),
     )
+  })
+
+  it("should delegate cover manifest persistence when thumbnail is generated", async () => {
+    jest
+      .spyOn(MyReaderRustComponents, "upsertBookCoverThumbnailCache")
+      .mockResolvedValue(undefined)
+    const patch = {
+      bookId: 42,
+      coverIdentity: "cover-v2",
+      thumbnailVersion: "v3",
+      widthPx: 180,
+      heightPx: 270,
+      fileName: "42.jpg",
+      fileSizeBytes: 2048,
+    }
+
+    await upsertBookCoverThumbnailCache(library, patch)
+
+    expect(
+      MyReaderRustComponents.upsertBookCoverThumbnailCache,
+    ).toHaveBeenCalledWith("/sidecar", JSON.stringify(patch))
+  })
+
+  it("should parse cover manifest rows when cache is loaded", async () => {
+    const rows = [{ bookId: 42, fileName: "42.jpg" }]
+    jest
+      .spyOn(MyReaderRustComponents, "listBookCoverThumbnailCache")
+      .mockResolvedValue(JSON.stringify(rows))
+
+    await expect(
+      listBookCoverThumbnailCache(library, {
+        thumbnailVersion: "v3",
+        widthPx: 180,
+        heightPx: 270,
+      }),
+    ).resolves.toEqual(rows)
   })
 })

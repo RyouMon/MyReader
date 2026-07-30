@@ -1036,12 +1036,28 @@ public func classifySidecarSyncFailure(kind: String) -> String  {
     )
 })
 }
+public func clearBookCoverThumbnailCache(sidecarRootPath: String)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_clear_book_cover_thumbnail_cache(
+        FfiConverterString.lower(sidecarRootPath),$0
+    )
+}
+}
 public func countCalibreBooks(libraryRootPath: String)throws  -> UInt64  {
     return try  FfiConverterUInt64.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_count_calibre_books(
         FfiConverterString.lower(libraryRootPath),$0
     )
 })
+}
+public func deleteBookCoverThumbnailCache(sidecarRootPath: String, bookId: Int64, thumbnailVersion: String, widthPx: Int64, heightPx: Int64)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_delete_book_cover_thumbnail_cache(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterInt64.lower(bookId),
+        FfiConverterString.lower(thumbnailVersion),
+        FfiConverterInt64.lower(widthPx),
+        FfiConverterInt64.lower(heightPx),$0
+    )
+}
 }
 public func deleteLibraryFileState(sidecarRootPath: String, path: String)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_delete_library_file_state(
@@ -1113,6 +1129,16 @@ public func initializeDeviceRegistry(registryPath: String, legacyRegistryJson: S
     uniffi_myreader_rust_components_fn_func_initialize_device_registry(
         FfiConverterString.lower(registryPath),
         FfiConverterOptionString.lower(legacyRegistryJson),$0
+    )
+})
+}
+public func listBookCoverThumbnailCache(sidecarRootPath: String, thumbnailVersion: String, widthPx: Int64, heightPx: Int64)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_list_book_cover_thumbnail_cache(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(thumbnailVersion),
+        FfiConverterInt64.lower(widthPx),
+        FfiConverterInt64.lower(heightPx),$0
     )
 })
 }
@@ -1428,6 +1454,13 @@ public func updateReaderAnnotation(sidecarRootPath: String, libraryRootPath: Str
     )
 })
 }
+public func upsertBookCoverThumbnailCache(sidecarRootPath: String, patchJson: String)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_upsert_book_cover_thumbnail_cache(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(patchJson),$0
+    )
+}
+}
 public func upsertDeviceDataSource(registryPath: String, sourceJson: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_upsert_device_data_source(
@@ -1498,7 +1531,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_classify_sidecar_sync_failure() != 3331) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_clear_book_cover_thumbnail_cache() != 33565) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_count_calibre_books() != 56896) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_delete_book_cover_thumbnail_cache() != 52456) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_delete_library_file_state() != 13171) {
@@ -1526,6 +1565,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_initialize_device_registry() != 45379) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_list_book_cover_thumbnail_cache() != 10577) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_list_book_reading_formats() != 43967) {
@@ -1634,6 +1676,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_update_reader_annotation() != 57307) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_upsert_book_cover_thumbnail_cache() != 54780) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_upsert_device_data_source() != 13321) {

@@ -1,10 +1,9 @@
+import { useQuery } from "@tanstack/react-query"
 import { useMemo } from "react"
 
-import { useQuery } from "@tanstack/react-query"
-
 import {
-  useDownloadStatusTasks,
   type DownloadStatusTask,
+  useDownloadStatusTasks,
 } from "@/src/domain/download/download-store"
 import {
   getFormatFromPath,
@@ -14,10 +13,10 @@ import {
 } from "@/src/domain/library/book-formats"
 import { getAllBookFormats } from "@/src/domain/library/calibre"
 import { useFileStates } from "@/src/domain/sync/hooks/use-file-states"
-import type { FileStateRow } from "@/src/domain/sync/actions"
 import type { BookItem, Library, LocalState } from "@/src/domain/types"
 import { isRemoteSourceType } from "@/src/domain/types"
 import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover"
+import type { FileState as FileStateRow } from "@/src/services/core/content"
 import { queryKeys } from "@/src/services/query/query-keys"
 
 const downloadedStates = new Set<LocalState>([

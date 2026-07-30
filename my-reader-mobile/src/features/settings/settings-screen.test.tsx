@@ -13,7 +13,7 @@ import {
 } from "react-native"
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
-import { clearBookCoverThumbnailCache } from "@/src/repos/book-cover-thumbnail-cache"
+import { clearBookCoverThumbnailCache } from "@/src/services/core/content"
 import { clearCoverThumbnailCache } from "@/src/services/fs/cover-thumbnail-cache"
 
 import SettingsScreen from "./settings-screen"
@@ -80,7 +80,7 @@ jest.mock("@/src/constants/alert-with-status-bar", () => ({
   showAlertWithStatusBarRestore: jest.fn(),
 }))
 
-jest.mock("@/src/repos/book-cover-thumbnail-cache", () => ({
+jest.mock("@/src/services/core/content", () => ({
   clearBookCoverThumbnailCache: jest.fn(() => Promise.resolve()),
 }))
 

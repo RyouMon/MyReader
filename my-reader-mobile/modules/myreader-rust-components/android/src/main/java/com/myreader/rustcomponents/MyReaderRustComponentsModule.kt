@@ -7,7 +7,9 @@ import com.myreader.rustcomponents.uniffi.addReaderBookmark
 import com.myreader.rustcomponents.uniffi.addReaderAnnotation
 import com.myreader.rustcomponents.uniffi.cancelSyncTask
 import com.myreader.rustcomponents.uniffi.classifySidecarSyncFailure
+import com.myreader.rustcomponents.uniffi.clearBookCoverThumbnailCache
 import com.myreader.rustcomponents.uniffi.countCalibreBooks
+import com.myreader.rustcomponents.uniffi.deleteBookCoverThumbnailCache
 import com.myreader.rustcomponents.uniffi.deleteLibraryFileState
 import com.myreader.rustcomponents.uniffi.effectiveSidecarSyncMode
 import com.myreader.rustcomponents.uniffi.getCalibreBookDetail
@@ -21,6 +23,7 @@ import com.myreader.rustcomponents.uniffi.listCalibreBookSummaries
 import com.myreader.rustcomponents.uniffi.listCalibreBooks
 import com.myreader.rustcomponents.uniffi.listCalibreBooksPage
 import com.myreader.rustcomponents.uniffi.listCalibreSeriesBooks
+import com.myreader.rustcomponents.uniffi.listBookCoverThumbnailCache
 import com.myreader.rustcomponents.uniffi.listBookReadingFormats
 import com.myreader.rustcomponents.uniffi.listFavoriteBookIds
 import com.myreader.rustcomponents.uniffi.listLibraryFileStates
@@ -50,6 +53,7 @@ import com.myreader.rustcomponents.uniffi.setReadingPosition
 import com.myreader.rustcomponents.uniffi.selectReadingPositionCandidate
 import com.myreader.rustcomponents.uniffi.switchDeviceLibrary
 import com.myreader.rustcomponents.uniffi.testRemoteDataSource
+import com.myreader.rustcomponents.uniffi.upsertBookCoverThumbnailCache
 import com.myreader.rustcomponents.uniffi.upsertDeviceDataSource
 import com.myreader.rustcomponents.uniffi.validateDeviceDataSource
 import com.myreader.rustcomponents.uniffi.validateCalibreLibrary
@@ -311,6 +315,52 @@ class MyReaderRustComponentsModule : Module() {
         path: String ->
       componentCall {
         deleteLibraryFileState(sidecarRootPath, path)
+      }
+    }
+
+    AsyncFunction("listBookCoverThumbnailCache") {
+        sidecarRootPath: String,
+        thumbnailVersion: String,
+        widthPx: Long,
+        heightPx: Long ->
+      componentCall {
+        listBookCoverThumbnailCache(
+          sidecarRootPath,
+          thumbnailVersion,
+          widthPx,
+          heightPx,
+        )
+      }
+    }
+
+    AsyncFunction("upsertBookCoverThumbnailCache") {
+        sidecarRootPath: String,
+        patchJson: String ->
+      componentCall {
+        upsertBookCoverThumbnailCache(sidecarRootPath, patchJson)
+      }
+    }
+
+    AsyncFunction("deleteBookCoverThumbnailCache") {
+        sidecarRootPath: String,
+        bookId: Long,
+        thumbnailVersion: String,
+        widthPx: Long,
+        heightPx: Long ->
+      componentCall {
+        deleteBookCoverThumbnailCache(
+          sidecarRootPath,
+          bookId,
+          thumbnailVersion,
+          widthPx,
+          heightPx,
+        )
+      }
+    }
+
+    AsyncFunction("clearBookCoverThumbnailCache") { sidecarRootPath: String ->
+      componentCall {
+        clearBookCoverThumbnailCache(sidecarRootPath)
       }
     }
 

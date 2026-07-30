@@ -81,7 +81,7 @@ impl sync::exchange::SyncObserver for NativeSyncObserver {
 
 #[uniffi::export]
 pub fn sync_contract_version() -> u32 {
-    8
+    9
 }
 
 #[uniffi::export]
@@ -458,6 +458,59 @@ pub fn delete_library_file_state(
     run_core_async(myreader_core::api::content::delete_file_state(
         Path::new(&sidecar_root_path),
         &path,
+    ))
+}
+
+#[uniffi::export]
+pub fn list_book_cover_thumbnail_cache(
+    sidecar_root_path: String,
+    thumbnail_version: String,
+    width_px: i64,
+    height_px: i64,
+) -> Result<String, RustComponentsError> {
+    let rows = run_core_async(myreader_core::api::content::list_cover_thumbnail_cache(
+        Path::new(&sidecar_root_path),
+        &thumbnail_version,
+        width_px,
+        height_px,
+    ))?;
+    serialize_core_json(&rows)
+}
+
+#[uniffi::export]
+pub fn upsert_book_cover_thumbnail_cache(
+    sidecar_root_path: String,
+    patch_json: String,
+) -> Result<(), RustComponentsError> {
+    run_core_async(myreader_core::api::content::upsert_cover_thumbnail_cache(
+        Path::new(&sidecar_root_path),
+        parse_core_json(&patch_json)?,
+    ))
+}
+
+#[uniffi::export]
+pub fn delete_book_cover_thumbnail_cache(
+    sidecar_root_path: String,
+    book_id: i64,
+    thumbnail_version: String,
+    width_px: i64,
+    height_px: i64,
+) -> Result<(), RustComponentsError> {
+    run_core_async(myreader_core::api::content::delete_cover_thumbnail_cache(
+        Path::new(&sidecar_root_path),
+        book_id,
+        &thumbnail_version,
+        width_px,
+        height_px,
+    ))
+}
+
+#[uniffi::export]
+pub fn clear_book_cover_thumbnail_cache(
+    sidecar_root_path: String,
+) -> Result<(), RustComponentsError> {
+    run_core_async(myreader_core::api::content::clear_cover_thumbnail_cache(
+        Path::new(&sidecar_root_path),
     ))
 }
 

@@ -50,7 +50,7 @@ module.exports = defineConfig([
             // store/ is global state (Zustand), not UI — domain may read it
             {
               target: "domain",
-              from: ["hooks", "features", "app", "services/db"],
+              from: ["hooks", "features", "app"],
             },
           ],
         },

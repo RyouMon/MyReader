@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useRef } from "react"
-
 import { router } from "expo-router"
+import { useCallback, useEffect, useRef } from "react"
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import {
@@ -17,12 +16,12 @@ import {
   resolveShareableFormat,
   shareBookFile,
 } from "@/src/domain/library/share-book-file"
-import type { FileStateRow } from "@/src/domain/sync/actions"
-import { confirmDeleteLocalDownload } from "../utils/delete-download"
 import type { BookItem, Library } from "@/src/domain/types"
 import { isRemoteSourceType } from "@/src/domain/types"
 import { describeDownloadError } from "@/src/errors"
 import i18n from "@/src/i18n"
+import type { FileState as FileStateRow } from "@/src/services/core/content"
+import { confirmDeleteLocalDownload } from "../utils/delete-download"
 
 const downloadedStates = new Set(["present", "local_only", "dirty_push"])
 

@@ -1,17 +1,16 @@
 import i18n from "@/src/i18n"
 
 import { AppInvariantError } from "../../errors"
-import type { DataSource, Library } from "../types"
-
 import { upsertFileState } from "../../services/core/content"
 import type { NativeDownloadOptions } from "../../services/download/native"
 import { readFileStat } from "../../services/fs/file-io"
 import { assertSafeRelativePath, fileUriFor } from "../../services/fs/path"
-import { openSyncContext, type SyncTargetContext } from "../sync/actions"
+import { openSyncContext, type SyncTargetContext } from "../sync/context"
 import {
-  downloadFileDirectWithProgress,
   type DownloadOutcome,
+  downloadFileDirectWithProgress,
 } from "../sync/transfer"
+import type { DataSource, Library } from "../types"
 
 type BackgroundDownloadOptions = NativeDownloadOptions
 

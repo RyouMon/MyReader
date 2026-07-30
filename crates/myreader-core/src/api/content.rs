@@ -1,7 +1,9 @@
 use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 
-use crate::models::{FileState, FileStateUpdate};
+use crate::models::{
+    BookCoverThumbnailCache, BookCoverThumbnailCachePatch, FileState, FileStateUpdate,
+};
 use crate::{services, CoreError};
 
 pub async fn list_reading_formats(
@@ -51,4 +53,47 @@ pub async fn upsert_file_state(
 
 pub async fn delete_file_state(sidecar_root: &Path, path: &str) -> Result<(), CoreError> {
     services::content::delete_file_state(sidecar_root, path).await
+}
+
+pub async fn list_cover_thumbnail_cache(
+    sidecar_root: &Path,
+    thumbnail_version: &str,
+    width_px: i64,
+    height_px: i64,
+) -> Result<Vec<BookCoverThumbnailCache>, CoreError> {
+    services::content::list_cover_thumbnail_cache(
+        sidecar_root,
+        thumbnail_version,
+        width_px,
+        height_px,
+    )
+    .await
+}
+
+pub async fn upsert_cover_thumbnail_cache(
+    sidecar_root: &Path,
+    patch: BookCoverThumbnailCachePatch,
+) -> Result<(), CoreError> {
+    services::content::upsert_cover_thumbnail_cache(sidecar_root, patch).await
+}
+
+pub async fn delete_cover_thumbnail_cache(
+    sidecar_root: &Path,
+    book_id: i64,
+    thumbnail_version: &str,
+    width_px: i64,
+    height_px: i64,
+) -> Result<(), CoreError> {
+    services::content::delete_cover_thumbnail_cache(
+        sidecar_root,
+        book_id,
+        thumbnail_version,
+        width_px,
+        height_px,
+    )
+    .await
+}
+
+pub async fn clear_cover_thumbnail_cache(sidecar_root: &Path) -> Result<(), CoreError> {
+    services::content::clear_cover_thumbnail_cache(sidecar_root).await
 }

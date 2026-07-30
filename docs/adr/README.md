@@ -34,7 +34,7 @@
 | [ADR-0005](./0005-adopt-readium-reader-architecture.md) | 使用 Readium 取代自研 Reader V2 架构 | 已接受（回溯） | 2026-05-07 |
 | [ADR-0006](./0006-desktop-typed-ipc-and-layered-backend.md) | 桌面端使用生成式类型 IPC 和分层 Rust 后端 | 已接受（回溯） | 2026-05-11 |
 | [ADR-0007](./0007-pnpm-monorepo-and-shared-code-ownership.md) | 采用 pnpm monorepo 并按语义共享跨端代码 | 已接受（回溯） | 2026-05-17 |
-| [ADR-0008](./0008-shared-database-schema-authority.md) | 以 Drizzle schema 和 SQL migrations 作为跨端数据库权威 | 已接受（回溯） | 2026-05-18 |
+| [ADR-0008](./0008-shared-database-schema-authority.md) | 以 Drizzle schema 和 SQL migrations 作为跨端数据库权威 | 已取代 | 2026-05-18 |
 | [ADR-0009](./0009-store-refactor.md) | Store Refactor | 已实施 | 2026-05-27 |
 | [ADR-0010](./0010-remote-library-acceleration.md) | 远程书库通用加速层 | 已实施 | 2026-05-28 18:21 |
 | [ADR-0011](./0011-mobile-layer-refactor.md) | 移动端分层重构 | 已实施 | 2026-05-28 23:37 |
@@ -42,7 +42,7 @@
 | [ADR-0013](./0013-maintain-mobile-readium-integration.md) | 在 MyReader 仓库维护移动端 Readium 集成层 | 已接受（回溯） | 2026-06-18 |
 | [ADR-0014](./0014-data-ownership-and-sync-storage.md) | 将应用数据拆分为书库域和用户域 | 已撤回（未实施） | 2026-07-22 |
 | [ADR-0015](./0015-library-sidecar-crdt-reading-sync.md) | 将书库 sidecar 升级为类型化 CRDT 阅读数据同步 | 部分实施，已取代 | 2026-07-22 |
-| [ADR-0016](./0016-adopt-automerge-for-library-sidecar-sync.md) | 采用 Automerge 作为书库 sidecar 的 CRDT 核心 | 已接受 | 2026-07-25 |
-| [ADR-0017](./0017-event-driven-library-sidecar-sync-scheduling.md) | 使用事件驱动调度自动同步书库 sidecar | 已接受 | 2026-07-26 |
-| [ADR-0018](./0018-shared-rust-components.md) | 使用分域 Rust Components 和聚合原生产物统一桌面与移动后端 | 已接受 | 2026-07-27 |
-| [ADR-0019](./0019-adopt-modular-myreader-core.md) | 采用模块化 myreader-core 统一跨端后端业务 | 已接受 | 2026-07-28 |
+| [ADR-0016](./0016-adopt-automerge-for-library-sidecar-sync.md) | 采用 Automerge 作为书库 sidecar 的 CRDT 核心 | 已实施 | 2026-07-25 |
+| [ADR-0017](./0017-event-driven-library-sidecar-sync-scheduling.md) | 使用事件驱动调度自动同步书库 sidecar | 已实施 | 2026-07-26 |
+| [ADR-0018](./0018-shared-rust-components.md) | 使用分域 Rust Components 和聚合原生产物统一桌面与移动后端 | 部分实施、部分已取代 | 2026-07-27 |
+| [ADR-0019](./0019-adopt-modular-myreader-core.md) | 采用模块化 myreader-core 统一跨端后端业务 | 已实施 | 2026-07-28 |

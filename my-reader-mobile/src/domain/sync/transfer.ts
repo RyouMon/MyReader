@@ -44,25 +44,6 @@ async function removeLocalFile(fileUri: string): Promise<void> {
   await deleteFileAtUri(fileUri)
 }
 
-export async function downloadFileDirect(
-  ctx: SyncTargetContext,
-  relativePath: string,
-): Promise<DownloadOutcome> {
-  const stat = await downloadRemoteToLocalUri(
-    requireRemoteBackend(ctx),
-    relativePath,
-    localFileUri(ctx, relativePath),
-  )
-  const outcome = toDownloadOutcome(stat)
-  await upsertFileState(ctx.library, relativePath, {
-    localState: "present",
-    localBlake3: outcome.blake3,
-    localSize: outcome.size,
-    localMtime: outcome.mtimeMs,
-  })
-  return outcome
-}
-
 export async function downloadFileDirectWithProgress(
   ctx: SyncTargetContext,
   relativePath: string,

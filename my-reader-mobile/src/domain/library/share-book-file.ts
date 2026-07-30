@@ -1,12 +1,11 @@
 import { File } from "expo-file-system"
 import { shareAsync } from "expo-sharing"
-
-import { getBookFormatPaths } from "./calibre"
-import { isRemoteSourceType } from "../types"
-import type { Library } from "../types"
-import { getFileState } from "../sync/actions"
 import { fileHasNonEmptyBytes } from "@/src/services/fs/file-io"
 import { libraryBookFileUri } from "@/src/services/fs/library-paths"
+import { getFileState } from "../../services/core/content"
+import type { Library } from "../types"
+import { isRemoteSourceType } from "../types"
+import { getBookFormatPaths } from "./calibre"
 
 export type ShareableFormat = {
   format: string

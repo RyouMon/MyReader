@@ -1,7 +1,7 @@
 ---
 adr: ADR-0019
 proposal_date: 2026-07-28
-status: 已接受
+status: 已实施
 name: 采用模块化 myreader-core 统一跨端后端业务
 overview: 在 ADR-0018 已验证共享 Rust、UniFFI 和单一原生产物可行的基础上，将长期源码组织从多个业务 component crate 收敛为一个具有严格内部边界的 myreader-core 模块化单体；业务范围以现有 Tauri command/service 能力为基线，覆盖数据源、书库、书目、图书内容、阅读与同步；MyReader 自有数据库改由 Rust migrations 和 SeaORM 统一拥有，保留薄 Tauri/Expo adapter，并先迁移基础设施和核心业务，最后收敛同步协调器和删除旧实现。
 isProject: true
@@ -11,12 +11,24 @@ isProject: true
 
 ## 状态说明
 
-本提案已于 2026-07-28 接受并进入分阶段实施。它部分取代
+本提案已于 2026-07-28 接受，并于同日完成 Phase 0–6。它部分取代
 [ADR-0018](./0018-shared-rust-components.md) 关于“每个业务边界建立独立 Rust component crate”
 的长期源码组织决策，但保留 ADR-0018 已验证的共享 Rust、薄平台 adapter、UniFFI 和单一移动
 原生产物方向；在数据库迁移执行权切换到 `myreader-core` 后，本提案还将取代
 [ADR-0008](./0008-shared-database-schema-authority.md) 以 Drizzle 为跨端数据库权威的长期约束。
 ADR-0008 继续保留为当时双后端架构下的历史决策。
+
+### 实施记录
+
+- `myreader-core` 已成为 desktop/mobile 共用的书库、书目、内容状态、阅读数据和同步业务实现。
+- `myreader-rust-components` 只保留 UniFFI、runtime 和移动原生产物 binding。
+- Tauri Commands 与移动 `services/core` 已切换为平台 adapter；移动 UI 不再直接访问数据库。
+- Automerge 引擎、sidecar 持久化和同步协调规则已并入 `myreader-core::sync`，迁移期
+  `myreader-sync` crate 已删除。
+- MyReader 数据库由 core SeaORM Migrator 接管；旧移动 Drizzle 状态只在首次打开时完成一次
+  handoff。
+- `packages/db`、Drizzle、OP-SQLite、移动 `repos/`/`services/db/` 和无调用兼容层已删除。
+- 当前架构与开发文档已按实施结果更新；后续演进应新增 ADR，不回写本提案原始决策背景。
 
 ## 结论
 
