@@ -10,6 +10,7 @@ jest.mock("@/src/services/core/reading", () => ({
 
 jest.mock("@/src/services/query/invalidate-table", () => ({
   invalidateReadingProgress: jest.fn(),
+  invalidateReadingStatistics: jest.fn(),
   invalidateRecentlyReadBooks: jest.fn(),
 }))
 
@@ -29,6 +30,32 @@ const locator: Locator = {
 }
 
 describe("setReadingProgress", () => {
+  it("should persist a canonical locator when a desktop asset href is saved", async () => {
+    const assetLocator: Locator = {
+      ...locator,
+      href: "asset://localhost/%2Ftmp%2Fextracted%2Fruntime-id%2FOPS%2Fchapter.xhtml#part",
+    }
+
+    await setReadingProgress(library, 42, "epub", assetLocator, {
+      invalidate: false,
+    })
+
+    expect(setReadingPosition).toHaveBeenCalledWith(
+      library,
+      42,
+      "EPUB",
+      {
+        ...locator,
+        href: "OPS/chapter.xhtml",
+        locations: {
+          ...locator.locations,
+          fragments: ["part"],
+        },
+      },
+      null,
+    )
+  })
+
   it("should reject when the atomic local position write fails", async () => {
     const error = new Error("database unavailable")
     jest.mocked(setReadingPosition).mockRejectedValueOnce(error)
