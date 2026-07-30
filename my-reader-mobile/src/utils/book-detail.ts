@@ -7,6 +7,8 @@ import { createRemoteOps } from "../domain/library/remote-library"
 import type { BookItem, DataSource, Library } from "../domain/types"
 import { isRemoteSourceType } from "../domain/types"
 
+export { extractYear, formatFileSize } from "@my-reader/tools/book-metadata"
+
 export const IDENTIFIER_LABELS: Record<string, string> = {
   isbn: "ISBN",
   goodreads: "Goodreads",
@@ -31,12 +33,6 @@ export function formatLanguage(code: string): string {
   return map[code] ?? code
 }
 
-export function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
 export function formatDate(dateStr: string | null): string {
   if (!dateStr) return "—"
   try {
@@ -49,18 +45,6 @@ export function formatDate(dateStr: string | null): string {
     })
   } catch {
     return dateStr
-  }
-}
-
-export function extractYear(dateStr: string | null): string | null {
-  if (!dateStr) return null
-  try {
-    const d = new Date(dateStr)
-    const year = d.getFullYear()
-    if (year <= 100) return null
-    return String(year)
-  } catch {
-    return null
   }
 }
 

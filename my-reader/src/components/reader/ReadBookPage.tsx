@@ -57,6 +57,7 @@ import {
   useState,
 } from "react"
 import { useTranslation } from "react-i18next"
+import { formatFileSize } from "@my-reader/tools/book-metadata"
 import {
   Empty,
   EmptyContent,
@@ -65,12 +66,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
 
 function toReaderAssetSrc(path: string): string {
   return isTauri() ? convertFileSrc(path) : path

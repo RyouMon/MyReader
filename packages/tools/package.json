@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./book-metadata": "./src/book-metadata.ts",
     "./human-readable-time": "./src/human-readable-time.ts",
     "./reader-chrome-palette": "./src/reader-chrome-palette.ts",
     "./reader-annotations": "./src/reader-annotations.ts",

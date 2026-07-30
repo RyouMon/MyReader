@@ -1,4 +1,5 @@
-﻿import type { CalibreBook } from "@my-reader/tools/types/book"
+﻿import { extractYear, formatFileSize } from "@my-reader/tools/book-metadata"
+import type { CalibreBook } from "@my-reader/tools/types/book"
 import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { isTauri } from "@tauri-apps/api/core"
@@ -101,12 +102,6 @@ interface BookDetailPaneProps {
   showSidebarToggle?: boolean
 }
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
 const FORMAT_TONES: Record<string, string> = {
   EPUB: "bg-primary text-primary-foreground",
   PDF: "bg-secondary text-secondary-foreground border border-border",
@@ -157,18 +152,6 @@ function formatDate(dateStr: string | null): string {
     })
   } catch {
     return dateStr
-  }
-}
-
-function extractYear(dateStr: string | null): string | null {
-  if (!dateStr) return null
-  try {
-    const d = new Date(dateStr)
-    const year = d.getFullYear()
-    if (year <= 100) return null
-    return String(year)
-  } catch {
-    return null
   }
 }
 
