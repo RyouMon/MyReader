@@ -1,3 +1,9 @@
 /build/
+/.gradle/
 /android/build/
+/android/.cxx/
+/android/.gradle/
+/android/generated/codegen/
+/android/src/main/jniLibs/
 /ios/build/
+/ios/generated/codegen/

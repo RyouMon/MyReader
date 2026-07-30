@@ -1,6 +1,14 @@
 import type { DataSource } from "@my-reader/tools/types/data-source"
 import type { Library } from "@my-reader/tools/types/library"
 import { Directory, File, Paths } from "expo-file-system"
+import {
+  registryAddRemoteLibrary,
+  registryListRemoteDirectories,
+  registryRefreshRemoteLibrary,
+  registryTestRemoteDataSource,
+  type RemoteCredential as CoreRemoteCredential,
+  type RemoteDirectoryEntry as CoreRemoteDirectoryEntry,
+} from "my-reader-core"
 import { refreshAccessToken } from "../auth/onedrive"
 import { libraryContainerRootUri } from "../fs/library-paths"
 import { toNativeFilesystemPath } from "../fs/path"
@@ -9,16 +17,11 @@ import {
   readOneDriveRefreshToken,
   readWebDavPassword,
 } from "../storage/credentials"
-import type {
-  RemoteCredential as CoreRemoteCredential,
-  RemoteDirectoryEntry as CoreRemoteDirectoryEntry,
-} from "./contract.generated"
 import {
   type DeviceRegistry,
   libraryResultFromCore,
   toCoreDataSource,
 } from "./device-registry"
-import { invokeCoreAsync } from "./transport"
 
 export type RemoteDirectoryEntry = CoreRemoteDirectoryEntry
 
@@ -44,14 +47,14 @@ async function credentialFor(
       throw new Error("WEBDAV_PASSWORD_REQUIRED")
     }
     return {
-      type: "webdav",
+      kind: "webdav",
       password,
     }
   }
 
   if (secrets?.type === "onedrive" && secrets.accessToken) {
     return {
-      type: "onedrive",
+      kind: "onedrive",
       accessToken: secrets.accessToken,
     }
   }
@@ -61,7 +64,7 @@ async function credentialFor(
   }
   const { accessToken } = await refreshAccessToken(source.id)
   return {
-    type: "onedrive",
+    kind: "onedrive",
     accessToken,
   }
 }
@@ -71,10 +74,7 @@ export async function testRemoteDataSource(
   secrets?: DataSourceSecrets,
 ): Promise<void> {
   const credential = await credentialFor(source, secrets)
-  await invokeCoreAsync("registry", "testRemoteDataSource", {
-    source: toCoreDataSource(source),
-    credential,
-  })
+  await registryTestRemoteDataSource(toCoreDataSource(source), credential)
 }
 
 export async function listRemoteDirectories(
@@ -82,12 +82,12 @@ export async function listRemoteDirectories(
   path: string,
 ): Promise<RemoteDirectoryEntry[]> {
   const credential = await credentialFor(source)
-  return invokeCoreAsync("registry", "listRemoteDirectories", {
+  return registryListRemoteDirectories(
     registryPath,
-    dataSourceId: source.id,
+    source.id,
     path,
     credential,
-  })
+  )
 }
 
 export async function addRemoteLibrary(
@@ -100,18 +100,17 @@ export async function addRemoteLibrary(
   }
   const credential = await credentialFor(source)
   return libraryResultFromCore(
-    await invokeCoreAsync("registry", "addRemoteLibrary", {
+    await registryAddRemoteLibrary(
       registryPath,
-      request: {
+      {
         dataSourceId: source.id,
         sourcePath,
         librariesRootPath: toNativeFilesystemPath(librariesRoot.uri),
         librariesRootUri: librariesRoot.uri,
-        name: null,
         addedAt: Date.now(),
       },
       credential,
-    }),
+    ),
   )
 }
 
@@ -121,13 +120,11 @@ export async function refreshRemoteLibrary(
 ): Promise<RemoteLibraryResult> {
   const credential = await credentialFor(source)
   return libraryResultFromCore(
-    await invokeCoreAsync("registry", "refreshRemoteLibrary", {
+    await registryRefreshRemoteLibrary(
       registryPath,
-      libraryId: library.id,
-      localRootPath: toNativeFilesystemPath(
-        libraryContainerRootUri(library.id),
-      ),
+      library.id,
+      toNativeFilesystemPath(libraryContainerRootUri(library.id)),
       credential,
-    }),
+    ),
   )
 }

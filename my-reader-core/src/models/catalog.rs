@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct PaginatedBooks {
     pub items: Vec<BookEntry>,
@@ -9,7 +8,6 @@ pub struct PaginatedBooks {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct BookEntry {
     pub id: i64,
@@ -34,7 +32,6 @@ pub struct BookEntry {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct BookDetail {
     #[serde(flatten)]
@@ -44,7 +41,6 @@ pub struct BookDetail {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct FormatSize {
     pub format: String,
@@ -52,7 +48,6 @@ pub struct FormatSize {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct BookIdentifier {
     pub id_type: String,
@@ -60,7 +55,6 @@ pub struct BookIdentifier {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct BookSummary {
     pub id: i64,
@@ -71,7 +65,6 @@ pub struct BookSummary {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct BookFormat {
     pub format: String,

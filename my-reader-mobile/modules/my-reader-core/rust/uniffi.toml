@@ -4,3 +4,33 @@ cdylib_name = "my_reader_core_ffi"
 
 [bindings.swift]
 module_name = "MyReaderCoreFfiBindings"
+
+[bindings.typescript.customTypes.ReaderLocatorJson]
+typeName = 'import("@my-reader/tools/reader-toc").ReaderLocator'
+lift = 'JSON.parse({}) as import("@my-reader/tools/reader-toc").ReaderLocator'
+lower = "JSON.stringify({})"
+
+[bindings.typescript.customTypes.DownloadTaskStatus]
+typeName = '"queued" | "starting" | "downloading" | "done" | "error" | "cancelled"'
+lift = '{} as "queued" | "starting" | "downloading" | "done" | "error" | "cancelled"'
+lower = "{}"
+
+[bindings.typescript.customTypes.FileLocalState]
+typeName = '"present" | "remote_only" | "local_only" | "dirty_push"'
+lift = '{} as "present" | "remote_only" | "local_only" | "dirty_push"'
+lower = "{}"
+
+[bindings.typescript.customTypes.SidecarSyncMode]
+typeName = '"push_only" | "full"'
+lift = '{} as "push_only" | "full"'
+lower = "{}"
+
+[bindings.typescript.customTypes.SyncTiming]
+typeName = '"debounced" | "immediate"'
+lift = '{} as "debounced" | "immediate"'
+lower = "{}"
+
+[bindings.typescript.customTypes.SyncFailureKind]
+typeName = '"connectivity" | "configuration" | "credential" | "data_integrity" | "unexpected"'
+lift = '{} as "connectivity" | "configuration" | "credential" | "data_integrity" | "unexpected"'
+lower = "{}"

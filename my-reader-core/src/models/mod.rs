@@ -6,9 +6,6 @@ mod reading;
 mod registry;
 mod storage;
 mod sync;
-#[cfg(feature = "typescript-contract")]
-#[doc(hidden)]
-pub mod typescript_contract;
 
 pub use catalog::{
     BookDetail, BookEntry, BookFormat, BookIdentifier, BookSummary, FormatSize, PaginatedBooks,

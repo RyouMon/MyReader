@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
-#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "snake_case")]
 pub enum SidecarSyncMode {
     PushOnly,
@@ -9,7 +8,6 @@ pub enum SidecarSyncMode {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct SidecarSyncReport {
     pub pushed: usize,

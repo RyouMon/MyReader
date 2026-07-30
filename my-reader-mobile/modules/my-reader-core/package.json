@@ -1,0 +1,45 @@
+{
+  "name": "my-reader-core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "React Native bindings for the shared MyReader Core backend",
+  "homepage": "https://github.com/RyouMon/MyReader",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RyouMon/MyReader.git"
+  },
+  "license": "MIT",
+  "author": "RyouMon",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "react-native": "src/index.ts",
+  "files": [
+    "MyReaderCore.podspec",
+    "android",
+    "cpp",
+    "ios",
+    "src",
+    "react-native.config.js"
+  ],
+  "dependencies": {
+    "@ubjs/core": "0.31.0-3",
+    "uniffi-bindgen-react-native": "0.31.0-3"
+  },
+  "peerDependencies": {
+    "@my-reader/tools": "*",
+    "react": "*",
+    "react-native": "*"
+  },
+  "codegenConfig": {
+    "name": "NativeMyReaderCore",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "android": {
+      "javaPackageName": "com.myreader.core"
+    },
+    "outputDir": {
+      "ios": "ios/generated/codegen",
+      "android": "android/build/generated/source/codegen"
+    }
+  }
+}

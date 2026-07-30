@@ -1,16 +1,48 @@
-import type { DownloadTask, EnqueuedDownloadTask } from "./contract.generated"
-import { invokeCoreSync } from "./transport"
+import {
+  downloadCancel,
+  downloadClaim,
+  downloadClaimReady,
+  downloadClearFinished,
+  downloadComplete,
+  downloadEnqueue,
+  downloadFail,
+  downloadFindActive,
+  downloadList,
+  downloadMarkStarted,
+  downloadRelease,
+  downloadReportProgress,
+  type DownloadTask as NativeDownloadTask,
+  type EnqueuedDownloadTask as NativeEnqueuedDownloadTask,
+} from "my-reader-core"
 
-export type CoreDownloadTask = DownloadTask
+export type CoreDownloadTask = Omit<
+  NativeDownloadTask,
+  "bookId" | "format" | "error"
+> & {
+  bookId: string | null
+  format: string | null
+  error: string | null
+}
+
+export type EnqueuedDownloadTask = Omit<NativeEnqueuedDownloadTask, "task"> & {
+  task: CoreDownloadTask
+}
+
+function taskFromCore(task: NativeDownloadTask): CoreDownloadTask {
+  return {
+    ...task,
+    bookId: task.bookId ?? null,
+    format: task.format ?? null,
+    error: task.error ?? null,
+  }
+}
 
 export function findActiveDownloadTask(
   libraryId: string,
   relativePath: string,
 ): CoreDownloadTask | null {
-  return invokeCoreSync("download", "findActive", {
-    libraryId,
-    relativePath,
-  })
+  const task = downloadFindActive(libraryId, relativePath)
+  return task ? taskFromCore(task) : null
 }
 
 export function enqueueDownloadTask(input: {
@@ -21,25 +53,31 @@ export function enqueueDownloadTask(input: {
   relativePath: string
   label: string
 }): EnqueuedDownloadTask {
-  return invokeCoreSync("download", "enqueue", {
-    ...input,
-    bookId: input.bookId ?? null,
-    format: input.format ?? null,
-  })
+  const result = downloadEnqueue(
+    input.id,
+    input.libraryId,
+    input.bookId,
+    input.format,
+    input.relativePath,
+    input.label,
+  )
+  return { ...result, task: taskFromCore(result.task) }
 }
 
 export function claimDownloadTasks(): CoreDownloadTask[] {
-  return invokeCoreSync("download", "claimReady", undefined)
+  return downloadClaimReady().map(taskFromCore)
 }
 
 export function claimDownloadTask(taskId: string): CoreDownloadTask | null {
-  return invokeCoreSync("download", "claim", { taskId })
+  const task = downloadClaim(taskId)
+  return task ? taskFromCore(task) : null
 }
 
 export function markDownloadTaskStarted(
   taskId: string,
 ): CoreDownloadTask | null {
-  return invokeCoreSync("download", "markStarted", { taskId })
+  const task = downloadMarkStarted(taskId)
+  return task ? taskFromCore(task) : null
 }
 
 export function reportDownloadTaskProgress(
@@ -47,36 +85,35 @@ export function reportDownloadTaskProgress(
   received: number,
   total: number,
 ): CoreDownloadTask | null {
-  return invokeCoreSync("download", "reportProgress", {
-    taskId,
-    received,
-    total,
-  })
+  const task = downloadReportProgress(taskId, received, total)
+  return task ? taskFromCore(task) : null
 }
 
 export function completeDownloadTask(taskId: string): CoreDownloadTask | null {
-  return invokeCoreSync("download", "complete", { taskId })
+  const task = downloadComplete(taskId)
+  return task ? taskFromCore(task) : null
 }
 
 export function failDownloadTask(
   taskId: string,
   error: string,
 ): CoreDownloadTask | null {
-  return invokeCoreSync("download", "fail", { taskId, error })
+  const task = downloadFail(taskId, error)
+  return task ? taskFromCore(task) : null
 }
 
 export function cancelDownloadTask(taskId: string): boolean {
-  return invokeCoreSync("download", "cancel", { taskId })
+  return downloadCancel(taskId)
 }
 
 export function listDownloadTasks(): CoreDownloadTask[] {
-  return invokeCoreSync("download", "list", undefined)
+  return downloadList().map(taskFromCore)
 }
 
 export function releaseDownloadTask(taskId: string): boolean {
-  return invokeCoreSync("download", "release", { taskId })
+  return downloadRelease(taskId)
 }
 
 export function clearFinishedDownloadTasks(): void {
-  invokeCoreSync("download", "clearFinished", undefined)
+  downloadClearFinished()
 }

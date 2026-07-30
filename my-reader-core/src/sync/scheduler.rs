@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use super::exchange::SyncMode;
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
-#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "snake_case")]
 pub enum SyncTiming {
     Debounced,
@@ -13,7 +12,6 @@ pub enum SyncTiming {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct SchedulerPolicy {
     pub debounce_ms: u64,
@@ -34,7 +32,6 @@ impl Default for SchedulerPolicy {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct SyncExecution {
     pub library_id: String,
@@ -43,7 +40,6 @@ pub struct SyncExecution {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct ScheduledSync {
     pub library_id: String,
@@ -52,7 +48,6 @@ pub struct ScheduledSync {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct RetrySchedule {
     pub retry_count: u32,
@@ -60,7 +55,6 @@ pub struct RetrySchedule {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
-#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct SchedulerTransition {
     pub schedules: Vec<ScheduledSync>,

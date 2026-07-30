@@ -3,7 +3,7 @@ adr: ADR-0019
 proposal_date: 2026-07-28
 status: 已实施
 name: 采用模块化 my-reader-core 统一跨端后端业务
-overview: 在 ADR-0018 已验证共享 Rust、UniFFI 和单一原生产物可行的基础上，将长期源码组织从多个业务 component crate 收敛为一个具有严格内部边界的 my-reader-core 模块化单体；业务范围以现有 Tauri command/service 能力为基线，覆盖数据源、书库、书目、图书内容、阅读与同步；MyReader 自有数据库改由 Rust migrations 和 SeaORM 统一拥有，保留薄 Tauri/Expo adapter，并先迁移基础设施和核心业务，最后收敛同步协调器和删除旧实现。
+overview: 在 ADR-0018 已验证共享 Rust、UniFFI 和单一原生产物可行的基础上，将长期源码组织从多个业务 component crate 收敛为一个具有严格内部边界的 my-reader-core 模块化单体；业务范围以现有 Tauri command/service 能力为基线，覆盖数据源、书库、书目、图书内容、阅读与同步；MyReader 自有数据库改由 Rust migrations 和 SeaORM 统一拥有，保留薄 Tauri/移动 adapter，并先迁移基础设施和核心业务，最后收敛同步协调器和删除旧实现。
 isProject: true
 ---
 
@@ -12,8 +12,8 @@ isProject: true
 ## 状态说明
 
 本提案已于 2026-07-28 接受并完成 Phase 0–6。实施审计发现的移动 binding 债务也已偿还：
-移动原生层只保留合同版本、同步 transport 和异步 transport 三个稳定入口，业务 request/response
-由 Rust 生成 TypeScript 合同，Swift/Kotlin 不再分别维护 Core 方法和 DTO。
+`uniffi-bindgen-react-native` 从 typed UniFFI exports 生成 TypeScript、C++、JSI 和
+TurboModule glue；移动端不再维护 JSON envelope、合同版本网关或逐方法 Swift/Kotlin wrapper。
 它部分取代
 [ADR-0018](./0018-shared-rust-components.md) 关于“每个业务边界建立独立 Rust component crate”
 的长期源码组织决策，但保留 ADR-0018 已验证的共享 Rust、薄平台 adapter、UniFFI 和单一移动
@@ -25,7 +25,7 @@ ADR-0008 继续保留为当时双后端架构下的历史决策。
 
 - `my-reader-core` 已成为 desktop/mobile 共用的书库、书目、内容状态、阅读数据和同步业务实现。
 - `my-reader-mobile/modules/my-reader-core` 是移动适配器；其内部 `my-reader-core-ffi` crate
-  不包含业务规则，只保留三个稳定 UniFFI transport gateway、runtime 初始化和原生产物。
+  不包含业务规则，只保留 typed UniFFI export、FFI 安全数据转换和原生产物。
 - Tauri Commands 与移动 `services/core` 已切换为平台 adapter；移动 UI 不再直接访问数据库。
 - Automerge 引擎、sidecar 持久化和同步 coordinator 已并入 `my-reader-core`，迁移期
   `myreader-sync` crate 已删除；desktop/mobile 只保留生命周期、计时器、凭据、传输和查询刷新
@@ -37,9 +37,9 @@ ADR-0008 继续保留为当时双后端架构下的历史决策。
 - Core `DownloadCoordinator` 已统一下载去重、并发限制、取消和状态转换；平台只执行实际文件
   传输和后台任务。
 - 旧阅读完成数据的统计回填已进入 Core。
-- Core 是 request/response 的权威来源；移动 TypeScript 合同由 Rust 确定性生成，Swift/Kotlin
-  仅转发 JSON envelope 和错误。
-- 原生 runtime smoke test 和本地构建、产物与高频查询基线已经建立，详见
+- Core 的 Rust export/record 是移动合同的权威来源；TypeScript/C++/TurboModule binding
+  确定性生成，应用 facade 使用明确参数与返回类型。
+- 本地 binding 构建、实际应用编译和高频查询基线已经建立，详见
   [my-reader-core 运行基线](../my-reader-core-runtime-baseline.md)。
 
 ### 阶段状态
@@ -52,7 +52,7 @@ ADR-0008 继续保留为当时双后端架构下的历史决策。
 | Phase 3 | 完成 | 书目和文件 projection 已进入 Core；下载 coordinator 统一去重、并发、取消和状态转换 |
 | Phase 4 | 完成 | 收藏、进度、书签、批注、阅读 session 与统计由 Core 原子写入 |
 | Phase 5 | 完成 | 同步引擎、调度策略和 single-flight 已统一；两端只保留必要的平台执行壳 |
-| Phase 6 | 完成 | 旧后端与逐方法 binding 已删除，移动层收敛为三个 transport gateway，并建立合同、原生构建与 runtime 门禁 |
+| Phase 6 | 完成 | 旧后端、JSON transport 和手写平台 wrapper 已删除，移动层使用生成的 typed UniFFI/JSI binding，并建立合同与原生构建门禁 |
 
 ## 结论
 
@@ -70,11 +70,11 @@ ADR-0008 继续保留为当时双后端架构下的历史决策。
 4. **业务范围以现有后端能力为基线，而不是以 Sidecar 的六种同步数据为基线。** 当前 Tauri
    command/service 已体现数据源管理、书库管理、书目查询、图书文件、阅读准备、阅读数据和同步
    等真实业务；六种 CRDT 数据只定义同步范围，不定义 `my-reader-core` 的全部范围。
-5. **Tauri Commands 与 Expo Native Module/UniFFI 继续作为薄 adapter。** adapter 负责平台
+5. **Tauri Commands 与移动 UniFFI/JSI binding 继续作为薄 adapter。** adapter 负责平台
    state、生命周期、授权、凭据、目录句柄、窗口、Readium、事件和 DTO 转换，不复制已经迁入
    core 的业务流程。
 6. **保留 `my-reader-mobile/modules/my-reader-core` 移动技术外壳。** 其中
-   `my-reader-core-ffi` crate 只负责 UniFFI 导出、移动原生产物、runtime 初始化和平台 binding，
+   `my-reader-core-ffi` crate 只负责 typed UniFFI 导出、FFI 转换、移动原生产物和平台 binding，
    不成为第二个业务 service。
 7. **先迁移基础设施和核心业务，再清理同步。** 先让 core 拥有数据源、书库、书目、内容和阅读
    use case 的实际数据来源与事务边界；待需要同步的 mutation 都由 core 产生后，再统一同步
@@ -319,13 +319,20 @@ my-reader-core/
 my-reader-mobile/
   modules/
     my-reader-core/
-      src/                  # TypeScript Expo adapter
-      ios/                  # Swift adapter and generated binding
-      android/              # Kotlin adapter and generated binding
+      src/                  # generated TypeScript binding and TurboModule spec
+      cpp/                  # generated JSI and UniFFI binding
+      ios/                  # generated Objective-C++ TurboModule adapter
+      android/              # generated Java/C++ TurboModule adapter
       rust/                 # my-reader-core-ffi Cargo crate
         src/
           lib.rs
-          transport/
+          catalog.rs
+          content.rs
+          download.rs
+          reading.rs
+          registry.rs
+          sync.rs
+          types.rs
 ```
 
 结构规则：
@@ -339,8 +346,8 @@ my-reader-mobile/
 - 不建立通用 `utils/` 垃圾目录；工具与其所有者就近放置，只有稳定多处复用后才提升。
 
 `my-reader-core-ffi` 只依赖并导出 `my-reader-core`，不包含业务规则。desktop 在 Rust 内直接
-调用 core，不经过 UniFFI；mobile 通过 `modules/my-reader-core` 中的 Expo Module 和 UniFFI
-调用。
+调用 core，不经过 UniFFI；mobile 通过 `modules/my-reader-core` 中生成的 JSI/TurboModule 和
+UniFFI 调用。
 
 ### 为什么没有独立 `domain/`
 
@@ -392,7 +399,7 @@ flowchart TB
   D_UI["Desktop React UI"]
   M_UI["Mobile React Native UI"]
   D_ADAPTER["Tauri Commands and platform adapters"]
-  M_ADAPTER["Expo Module, Swift and Kotlin adapters"]
+  M_ADAPTER["Generated TurboModule, JSI and UniFFI adapter"]
   FFI["my-reader-core-ffi"]
   CORE["my-reader-core API"]
   SERVICES["services"]
@@ -625,19 +632,16 @@ openRawConnection
 ### Phase 6：收口与架构门禁
 
 - `my-reader-core-ffi` 只剩 binding、初始化和原生产物职责。
-- Tauri Commands 与 Expo facade 不再包含已迁移业务流程。
+- Tauri Commands 与移动 TypeScript facade 不再包含已迁移业务流程。
 - 清理旧 service/repository、测试替身和兼容 fallback。
 - 确认 TypeScript 已无数据库消费者后删除 `packages/db`、Drizzle 依赖和跨语言 entity 生成链。
 - 更新 `ARCHITECTURE.md` 描述已经实施的事实。
 - 审核依赖方向、数据库 writer、FFI 粒度、构建成本和真实平台运行。
-- 移动原生层只暴露合同版本、同步 transport 和异步 transport 等少量稳定入口，不再为每个 Core
-  用例分别维护 Swift/Kotlin 方法与 DTO。
-- transport 使用带 domain/operation 标签的 JSON envelope；Rust 在边界立即反序列化为强类型
-  request 并调用现有 Core API，TypeScript 继续通过命名 facade 暴露具体用例。
-- Rust request/response 是 transport contract 的权威来源；TypeScript contract 由 Rust
-  生成或执行确定性漂移检查，Swift/Kotlin 不拥有业务 DTO。
-- 删除旧的逐方法 UniFFI export、`Native*` record、Swift/Kotlin DTO 映射和重复的
-  TypeScript NativeModule 方法声明。
+- 以 typed UniFFI export 和 record 作为移动 contract 的权威来源。
+- 使用 `uniffi-bindgen-react-native` 生成 TypeScript、C++、JSI 和 TurboModule glue；应用
+  `services/core` facade 继续提供稳定的产品 DTO 与平台值转换。
+- 删除 JSON envelope、合同版本检查、Specta 移动合同、手写 Swift/Kotlin wrapper 和旧 JNA
+  binding。
 - 验证书目分页与下载进度等批量/高频路径没有不可接受的序列化退化，并完成 iOS、Android 原生
   runtime 与跨端同步回归。
 
@@ -683,7 +687,7 @@ openRawConnection
 - `my-reader-core` 的编译单元和依赖集合会扩大。
 - 内部模块边界不像 crate 边界一样自动强制，需要 Rust 可见性、测试和评审门禁。
 - 修改共享后端需要重新构建移动原生开发客户端。
-- UniFFI、Swift/Kotlin wrapper、cross-compilation 和原生 CI 仍是长期成本。
+- UniFFI API 设计、UBRN codegen、cross-compilation 和原生 CI 仍是长期成本。
 - 迁移期会同时存在 core 和未迁移平台实现，需要严格表级/用例级所有权清单。
 
 ## 风险与缓解

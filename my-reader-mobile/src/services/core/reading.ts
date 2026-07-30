@@ -1,19 +1,37 @@
-import type { ReaderAnnotationColor } from "@my-reader/tools/reader-annotations"
+import type {
+  ReaderAnnotationColor,
+  ReaderAnnotationKind,
+} from "@my-reader/tools/reader-annotations"
 import type { ReaderLocator } from "@my-reader/tools/reader-toc"
 import type { Library } from "@my-reader/tools/types/library"
 
 import { withLocalLibraryCalibreRoot } from "@/src/domain/library/local-library-content"
+import {
+  readingAddAnnotation,
+  readingAddBookmark,
+  readingAddCompletion,
+  readingAddSessionInterval,
+  readingGetPosition,
+  readingGetStatistics,
+  readingListAnnotations,
+  readingListBookmarks,
+  readingListFavoriteBookIds,
+  readingListPositionCandidates,
+  readingListPositions,
+  readingRemoveAnnotation,
+  readingRemoveBookmark,
+  readingSelectPositionCandidate,
+  readingSetFavoriteBook,
+  readingSetPosition,
+  readingUpdateAnnotation,
+  type ReaderAnnotation as CoreReaderAnnotation,
+  type ReaderBookmark as CoreReaderBookmark,
+  type ReadingPosition as CoreReadingPosition,
+  type ReadingPositionCandidate as CoreReadingPositionCandidate,
+} from "my-reader-core"
 import { librarySidecarRootUri } from "../fs/library-paths"
 import { toNativeFilesystemPath } from "../fs/path"
-import type {
-  ReaderAnnotation as CoreReaderAnnotation,
-  ReaderBookmark as CoreReaderBookmark,
-  ReadingPosition as CoreReadingPosition,
-  ReadingPositionCandidate as CoreReadingPositionCandidate,
-  ReadingStatistics as CoreReadingStatistics,
-} from "./contract.generated"
 import { announceLocalSidecarWork } from "./sync-events"
-import { invokeCoreAsync } from "./transport"
 
 function sidecarRootPath(library: Library): string {
   return toNativeFilesystemPath(librarySidecarRootUri(library))
@@ -28,13 +46,30 @@ async function mutateSidecar<T>(
   return result
 }
 
-export type ReadingPosition = CoreReadingPosition
+export type ReadingPosition = Omit<
+  CoreReadingPosition,
+  "displayProgression"
+> & {
+  displayProgression: number | null
+}
 
-export type ReadingPositionCandidate = CoreReadingPositionCandidate
+export type ReadingPositionCandidate = Omit<
+  CoreReadingPositionCandidate,
+  "displayProgression"
+> & {
+  displayProgression: number | null
+}
 
 export type ReaderBookmark = CoreReaderBookmark
 
-export type ReaderAnnotation = CoreReaderAnnotation
+export type ReaderAnnotation = Omit<
+  CoreReaderAnnotation,
+  "kind" | "color" | "note"
+> & {
+  kind: ReaderAnnotationKind
+  color: ReaderAnnotationColor
+  note: string | null
+}
 
 export type ReadingSessionInterval = {
   id: string
@@ -55,12 +90,42 @@ export type ReadingCompletionInsert = {
   updatedAt: number
 }
 
-export type ReadingStatistics = CoreReadingStatistics
+export type ReadingStatistics = {
+  days: Record<string, number>
+  totalDurationSeconds: number
+  longestStreakDays: number
+  completedBooks: number
+}
+
+function positionFromCore(position: CoreReadingPosition): ReadingPosition {
+  return {
+    ...position,
+    displayProgression: position.displayProgression ?? null,
+  }
+}
+
+function positionCandidateFromCore(
+  candidate: CoreReadingPositionCandidate,
+): ReadingPositionCandidate {
+  return {
+    ...candidate,
+    displayProgression: candidate.displayProgression ?? null,
+  }
+}
+
+function annotationFromCore(
+  annotation: CoreReaderAnnotation,
+): ReaderAnnotation {
+  return {
+    ...annotation,
+    kind: annotation.kind as ReaderAnnotationKind,
+    color: annotation.color as ReaderAnnotationColor,
+    note: annotation.note ?? null,
+  }
+}
 
 export function listFavoriteBookIds(library: Library): Promise<number[]> {
-  return invokeCoreAsync("reading", "listFavoriteBookIds", {
-    sidecarRootPath: sidecarRootPath(library),
-  })
+  return readingListFavoriteBookIds(sidecarRootPath(library))
 }
 
 export function setFavoriteBook(
@@ -70,35 +135,36 @@ export function setFavoriteBook(
 ): Promise<void> {
   return mutateSidecar(library, () =>
     withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
-      invokeCoreAsync("reading", "setFavoriteBook", {
-        sidecarRootPath: sidecarRootPath(library),
-        libraryRootPath: toNativeFilesystemPath(libraryRootUri),
+      readingSetFavoriteBook(
+        sidecarRootPath(library),
+        toNativeFilesystemPath(libraryRootUri),
         bookId,
         isFavorite,
-        recordedAtMs: Date.now(),
-      }),
+        Date.now(),
+      ),
     ),
   )
 }
 
-export function getReadingPosition(
+export async function getReadingPosition(
   library: Library,
   bookId: number,
   format: string,
 ): Promise<ReadingPosition | null> {
-  return invokeCoreAsync("reading", "getReadingPosition", {
-    sidecarRootPath: sidecarRootPath(library),
+  const position = await readingGetPosition(
+    sidecarRootPath(library),
     bookId,
     format,
-  })
+  )
+  return position ? positionFromCore(position) : null
 }
 
-export function listReadingPositions(
+export async function listReadingPositions(
   library: Library,
 ): Promise<ReadingPosition[]> {
-  return invokeCoreAsync("reading", "listReadingPositions", {
-    sidecarRootPath: sidecarRootPath(library),
-  })
+  return (await readingListPositions(sidecarRootPath(library))).map(
+    positionFromCore,
+  )
 }
 
 export function setReadingPosition(
@@ -110,33 +176,36 @@ export function setReadingPosition(
 ): Promise<void> {
   return mutateSidecar(library, () =>
     withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
-      invokeCoreAsync("reading", "setReadingPosition", {
-        sidecarRootPath: sidecarRootPath(library),
-        libraryRootPath: toNativeFilesystemPath(libraryRootUri),
+      readingSetPosition(
+        sidecarRootPath(library),
+        toNativeFilesystemPath(libraryRootUri),
         bookId,
         format,
         locator,
-        displayProgression,
-        recordedAtMs: Date.now(),
-      }),
+        displayProgression ?? undefined,
+        Date.now(),
+      ),
     ),
   )
 }
 
-export function listReadingPositionCandidates(
+export async function listReadingPositionCandidates(
   library: Library,
   bookId: number,
   format: string,
 ): Promise<ReadingPositionCandidate[]> {
-  return withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
-    invokeCoreAsync("reading", "listReadingPositionCandidates", {
-      sidecarRootPath: sidecarRootPath(library),
-      libraryRootPath: toNativeFilesystemPath(libraryRootUri),
-      bookId,
-      format,
-      nowMs: Date.now(),
-    }),
+  const candidates = await withLocalLibraryCalibreRoot(
+    library,
+    (libraryRootUri) =>
+      readingListPositionCandidates(
+        sidecarRootPath(library),
+        toNativeFilesystemPath(libraryRootUri),
+        bookId,
+        format,
+        Date.now(),
+      ),
   )
+  return candidates.map(positionCandidateFromCore)
 }
 
 export function selectReadingPositionCandidate(
@@ -147,14 +216,14 @@ export function selectReadingPositionCandidate(
 ): Promise<void> {
   return mutateSidecar(library, () =>
     withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
-      invokeCoreAsync("reading", "selectReadingPositionCandidate", {
-        sidecarRootPath: sidecarRootPath(library),
-        libraryRootPath: toNativeFilesystemPath(libraryRootUri),
+      readingSelectPositionCandidate(
+        sidecarRootPath(library),
+        toNativeFilesystemPath(libraryRootUri),
         bookId,
         format,
         operationId,
-        recordedAtMs: Date.now(),
-      }),
+        Date.now(),
+      ),
     ),
   )
 }
@@ -164,11 +233,7 @@ export function listReaderBookmarks(
   bookId: number,
   format: string,
 ): Promise<ReaderBookmark[]> {
-  return invokeCoreAsync("reading", "listReaderBookmarks", {
-    sidecarRootPath: sidecarRootPath(library),
-    bookId,
-    format,
-  })
+  return readingListBookmarks(sidecarRootPath(library), bookId, format)
 }
 
 export function addReaderBookmark(
@@ -180,15 +245,15 @@ export function addReaderBookmark(
 ): Promise<ReaderBookmark> {
   return mutateSidecar(library, () =>
     withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
-      invokeCoreAsync("reading", "addReaderBookmark", {
-        sidecarRootPath: sidecarRootPath(library),
-        libraryRootPath: toNativeFilesystemPath(libraryRootUri),
+      readingAddBookmark(
+        sidecarRootPath(library),
+        toNativeFilesystemPath(libraryRootUri),
         bookId,
         format,
         locatorKey,
         locator,
-        recordedAtMs: Date.now(),
-      }),
+        Date.now(),
+      ),
     ),
   )
 }
@@ -201,28 +266,26 @@ export function removeReaderBookmark(
 ): Promise<void> {
   return mutateSidecar(library, () =>
     withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
-      invokeCoreAsync("reading", "removeReaderBookmark", {
-        sidecarRootPath: sidecarRootPath(library),
-        libraryRootPath: toNativeFilesystemPath(libraryRootUri),
+      readingRemoveBookmark(
+        sidecarRootPath(library),
+        toNativeFilesystemPath(libraryRootUri),
         bookId,
         format,
         locatorKey,
-        recordedAtMs: Date.now(),
-      }),
+        Date.now(),
+      ),
     ),
   )
 }
 
-export function listReaderAnnotations(
+export async function listReaderAnnotations(
   library: Library,
   bookId: number,
   format: string,
 ): Promise<ReaderAnnotation[]> {
-  return invokeCoreAsync("reading", "listReaderAnnotations", {
-    sidecarRootPath: sidecarRootPath(library),
-    bookId,
-    format,
-  })
+  return (
+    await readingListAnnotations(sidecarRootPath(library), bookId, format)
+  ).map(annotationFromCore)
 }
 
 export function addReaderAnnotation(
@@ -234,17 +297,19 @@ export function addReaderAnnotation(
   note: string | null,
 ): Promise<ReaderAnnotation> {
   return mutateSidecar(library, () =>
-    withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
-      invokeCoreAsync("reading", "addReaderAnnotation", {
-        sidecarRootPath: sidecarRootPath(library),
-        libraryRootPath: toNativeFilesystemPath(libraryRootUri),
-        bookId,
-        format,
-        locator,
-        color,
-        note,
-        recordedAtMs: Date.now(),
-      }),
+    withLocalLibraryCalibreRoot(library, async (libraryRootUri) =>
+      annotationFromCore(
+        await readingAddAnnotation(
+          sidecarRootPath(library),
+          toNativeFilesystemPath(libraryRootUri),
+          bookId,
+          format,
+          locator,
+          color,
+          note ?? undefined,
+          Date.now(),
+        ),
+      ),
     ),
   )
 }
@@ -258,17 +323,19 @@ export function updateReaderAnnotation(
   note: string | null,
 ): Promise<ReaderAnnotation> {
   return mutateSidecar(library, () =>
-    withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
-      invokeCoreAsync("reading", "updateReaderAnnotation", {
-        sidecarRootPath: sidecarRootPath(library),
-        libraryRootPath: toNativeFilesystemPath(libraryRootUri),
-        bookId,
-        format,
-        id,
-        color,
-        note,
-        recordedAtMs: Date.now(),
-      }),
+    withLocalLibraryCalibreRoot(library, async (libraryRootUri) =>
+      annotationFromCore(
+        await readingUpdateAnnotation(
+          sidecarRootPath(library),
+          toNativeFilesystemPath(libraryRootUri),
+          bookId,
+          format,
+          id,
+          color,
+          note ?? undefined,
+          Date.now(),
+        ),
+      ),
     ),
   )
 }
@@ -281,14 +348,14 @@ export function removeReaderAnnotation(
 ): Promise<void> {
   return mutateSidecar(library, () =>
     withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
-      invokeCoreAsync("reading", "removeReaderAnnotation", {
-        sidecarRootPath: sidecarRootPath(library),
-        libraryRootPath: toNativeFilesystemPath(libraryRootUri),
+      readingRemoveAnnotation(
+        sidecarRootPath(library),
+        toNativeFilesystemPath(libraryRootUri),
         bookId,
         format,
         id,
-        recordedAtMs: Date.now(),
-      }),
+        Date.now(),
+      ),
     ),
   )
 }
@@ -299,17 +366,17 @@ export function addReadingSessionInterval(
 ): Promise<void> {
   return mutateSidecar(library, () =>
     withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
-      invokeCoreAsync("reading", "addReadingSessionInterval", {
-        sidecarRootPath: sidecarRootPath(library),
-        libraryRootPath: toNativeFilesystemPath(libraryRootUri),
-        id: interval.id,
-        bookId: interval.bookId,
-        format: interval.format,
-        localDay: interval.localDay,
-        startedAtMs: interval.startedAt,
-        durationSeconds: interval.durationSeconds,
-        recordedAtMs: interval.updatedAt,
-      }),
+      readingAddSessionInterval(
+        sidecarRootPath(library),
+        toNativeFilesystemPath(libraryRootUri),
+        interval.id,
+        interval.bookId,
+        interval.format,
+        interval.localDay,
+        interval.startedAt,
+        interval.durationSeconds,
+        interval.updatedAt,
+      ),
     ),
   )
 }
@@ -320,31 +387,41 @@ export function addReadingCompletion(
 ): Promise<boolean> {
   return mutateSidecar(library, () =>
     withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
-      invokeCoreAsync("reading", "addReadingCompletion", {
-        sidecarRootPath: sidecarRootPath(library),
-        libraryRootPath: toNativeFilesystemPath(libraryRootUri),
-        id: completion.id,
-        bookId: completion.bookId,
-        format: completion.format,
-        localDay: completion.localDay,
-        completedAtMs: completion.completedAt,
-        recordedAtMs: completion.updatedAt,
-      }),
+      readingAddCompletion(
+        sidecarRootPath(library),
+        toNativeFilesystemPath(libraryRootUri),
+        completion.id,
+        completion.bookId,
+        completion.format,
+        completion.localDay,
+        completion.completedAt,
+        completion.updatedAt,
+      ),
     ),
   )
 }
 
-export function getReadingStatistics(
+export async function getReadingStatistics(
   library: Library,
   startDay: string,
   endDay: string,
 ): Promise<ReadingStatistics> {
-  return withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
-    invokeCoreAsync("reading", "getReadingStatistics", {
-      sidecarRootPath: sidecarRootPath(library),
-      libraryRootPath: toNativeFilesystemPath(libraryRootUri),
-      startDay,
-      endDay,
-    }),
+  const statistics = await withLocalLibraryCalibreRoot(
+    library,
+    (libraryRootUri) =>
+      readingGetStatistics(
+        sidecarRootPath(library),
+        toNativeFilesystemPath(libraryRootUri),
+        startDay,
+        endDay,
+      ),
   )
+  return {
+    days: Object.fromEntries(
+      statistics.days.map(({ day, durationSeconds }) => [day, durationSeconds]),
+    ),
+    totalDurationSeconds: statistics.totalDurationSeconds,
+    longestStreakDays: statistics.longestStreakDays,
+    completedBooks: statistics.completedBooks,
+  }
 }

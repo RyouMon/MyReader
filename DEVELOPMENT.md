@@ -28,7 +28,7 @@ MyReader/
 ├── my-reader-core/                Shared Rust backend
 ├── my-reader/                     Tauri 2 + React desktop app
 ├── my-reader-mobile/              Expo 56 + React Native 0.85 app
-│   └── modules/my-reader-core/    Core Expo/UniFFI mobile adapter
+│   └── modules/my-reader-core/    Core UniFFI/JSI mobile adapter
 ├── packages/
 │   ├── fonts/                     Shared reading font catalog
 │   └── tools/                     Shared TypeScript types and reader algorithms
@@ -99,21 +99,24 @@ Maestro E2E requires the Maestro CLI and a running development client.
 
 ### Shared Rust native verification
 
-The mobile app consumes `my-reader-core` through the `modules/my-reader-core` Expo adapter. Its
-internal `my-reader-core-ffi` crate owns only UniFFI transport and native artifacts.
-Use the repository scripts instead of committing prebuilt host libraries:
+The mobile app consumes `my-reader-core` through generated UniFFI/JSI bindings in
+`modules/my-reader-core`. Its internal `my-reader-core-ffi` crate owns the typed FFI boundary.
+Build binaries locally instead of committing them:
 
 ```bash
 cargo test -p my-reader-core -p my-reader-core-ffi
-bash my-reader-mobile/modules/my-reader-core/scripts/verify-native.sh
+pnpm core:build-bindings:ios
+pnpm core:build-bindings:android
 ```
 
-To build the iOS bridge target directly:
+To compile the iOS app against the generated bridge:
 
 ```bash
+cd my-reader-mobile/ios
+pod install
 xcodebuild \
-  -workspace my-reader-mobile/ios/myreadermobile.xcworkspace \
-  -scheme MyReaderCore \
+  -workspace myreadermobile.xcworkspace \
+  -scheme myreadermobile \
   -configuration Debug \
   -sdk iphonesimulator \
   -destination 'generic/platform=iOS Simulator' \
@@ -121,8 +124,8 @@ xcodebuild \
   build
 ```
 
-The generated UniFFI Swift/Kotlin bindings and platform build integration are derived from Rust source. Personal
-machine build output and precompiled static libraries do not belong in Git.
+The generated TypeScript/C++ bindings and platform integration are derived from Rust source. Personal machine
+build output, XCFrameworks and Android shared libraries do not belong in Git.
 
 ### Environment variables
 

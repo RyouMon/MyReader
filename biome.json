@@ -32,7 +32,7 @@
       "!**/src/client/**/*",
       "!**/my-reader/src/components/ui/**/*",
       "!**/my-reader/src/lib/tauri-specta.ts",
-      "!**/my-reader-mobile/src/services/core/contract.generated.ts",
+      "!**/my-reader-mobile/modules/my-reader-core/src/**/*",
       "!**/my-reader/src-tauri/target/**/*",
       "!**/my-reader/public/*.min.mjs",
       "!packages/tools/src/reader-note-marker/*.css",

@@ -20,23 +20,21 @@ jest.mock("../storage/credentials", () => ({
   readOneDriveRefreshToken: jest.fn(),
   readWebDavPassword: jest.fn(),
 }))
-jest.mock("./transport", () => ({
-  invokeCoreAsync: jest.fn(),
+jest.mock("my-reader-core", () => ({
+  registryTestRemoteDataSource: jest.fn(),
 }))
 
 import type { DataSourceOnedrive } from "@my-reader/tools/types/data-source"
+import { registryTestRemoteDataSource } from "my-reader-core"
 import { testRemoteDataSource } from "./remote"
-import { invokeCoreAsync } from "./transport"
 
 describe("core remote adapter", () => {
-  const mockInvokeCoreAsync = jest.mocked(invokeCoreAsync)
-
   beforeEach(() => {
     jest.clearAllMocks()
   })
 
   it("should pass only stable source fields and short-lived credential when OneDrive is tested", async () => {
-    mockInvokeCoreAsync.mockResolvedValue(null)
+    jest.mocked(registryTestRemoteDataSource).mockResolvedValue()
     const source: DataSourceOnedrive = {
       id: "source",
       type: "onedrive",
@@ -54,29 +52,24 @@ describe("core remote adapter", () => {
       accessToken: "short-lived-access-token",
     })
 
-    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
-      "registry",
-      "testRemoteDataSource",
+    expect(registryTestRemoteDataSource).toHaveBeenCalledWith(
       {
-        source: {
-          type: "onedrive",
-          id: "source",
-          name: "OneDrive",
-          enabled: true,
-          clientId: "client",
-          tenantId: "consumers",
-          displayName: null,
-          email: null,
-          rootPath: null,
-          hasRefreshToken: true,
-          credentialReference: null,
-          readonly: null,
-          createdAt: null,
-        },
-        credential: {
-          type: "onedrive",
-          accessToken: "short-lived-access-token",
-        },
+        kind: "onedrive",
+        id: "source",
+        name: "OneDrive",
+        enabled: true,
+        clientId: "client",
+        tenantId: "consumers",
+        displayName: undefined,
+        email: undefined,
+        rootPath: undefined,
+        hasRefreshToken: true,
+        readonly: undefined,
+        createdAt: undefined,
+      },
+      {
+        kind: "onedrive",
+        accessToken: "short-lived-access-token",
       },
     )
   })

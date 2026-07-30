@@ -8,8 +8,9 @@ paths:
 - **Routing**: Expo Router under `src/app/`.
 - **Server state**: TanStack Query.
 - **Device/UI state**: Zustand and platform storage.
-- **Shared backend**: `my-reader-core` through the `modules/my-reader-core` Expo adapter. Its
-  internal `my-reader-core-ffi` crate owns only UniFFI transport and native artifacts.
+- **Shared backend**: `my-reader-core` through the generated
+  `modules/my-reader-core` UniFFI/JSI adapter. Its internal `my-reader-core-ffi` crate owns only
+  typed UniFFI exports and FFI data conversion.
 - **Reader**: application-owned Expo Readium module backed by Readium Swift/Kotlin Toolkit.
 - **Patches**: only the dependencies registered in `pnpm-workspace.yaml`; applied by pnpm.
 
@@ -28,7 +29,7 @@ domain/             Shared mobile UI/platform workflows
 services/core/      Thin FFI facade
 services/*          Platform infrastructure
                     ↓
-Expo Native Modules / UniFFI / my-reader-core
+generated JSI / UniFFI / my-reader-core
 ```
 
 ### `features/`
@@ -141,7 +142,8 @@ For Rust/binding changes:
 
 ```bash
 cargo test -p my-reader-core -p my-reader-core-ffi
-bash my-reader-mobile/modules/my-reader-core/scripts/verify-native.sh
+pnpm core:build-bindings:ios
+pnpm core:build-bindings:android
 ```
 
 ## Required Post-Change Verification

@@ -1,20 +1,34 @@
-import type {
-  ScheduledSync,
-  SchedulerTransition,
-  SidecarStorageConfig,
-  SidecarSyncMode,
-  SidecarSyncReport,
-  SyncExecution,
-  SyncFailureKind,
-  SyncTaskProgress,
-  SyncTiming,
-} from "./contract.generated"
-import { invokeCoreAsync, invokeCoreSync } from "./transport"
+import {
+  syncBegin,
+  syncCancelTask,
+  syncComplete,
+  syncCreateCoordinator,
+  syncDisposeCoordinator,
+  syncEffectiveExecution,
+  syncFail,
+  syncFlush,
+  syncReadTaskProgress,
+  syncRecover,
+  syncReleaseTask,
+  syncRequest,
+  syncRequestContextualPull,
+  syncRunSidecar,
+  syncSetLibraryOnline,
+  type RetrySchedule,
+  type ScheduledSync,
+  type SchedulerTransition as CoreSchedulerTransition,
+  type SidecarStorageConfig as CoreSidecarStorageConfig,
+  type SidecarSyncMode,
+  type SidecarSyncReport,
+  type SyncExecution,
+  type SyncFailureKind,
+  type SyncTaskProgress,
+  type SyncTiming,
+} from "my-reader-core"
 
 export type {
+  RetrySchedule,
   ScheduledSync,
-  SchedulerTransition,
-  SidecarStorageConfig,
   SidecarSyncMode,
   SidecarSyncReport,
   SyncExecution,
@@ -23,8 +37,64 @@ export type {
   SyncTiming,
 }
 
+export type SchedulerTransition = Omit<
+  CoreSchedulerTransition,
+  "execution" | "retry"
+> & {
+  execution: SyncExecution | null
+  retry: RetrySchedule | null
+}
+
+export type SidecarStorageConfig =
+  | { kind: "local-direct"; root: string }
+  | {
+      kind: "webdav"
+      endpoint: string
+      username: string
+      password: string
+      root: string | null
+    }
+  | {
+      kind: "onedrive"
+      accessToken: string
+      root: string | null
+    }
+
+function transitionFromCore(
+  transition: CoreSchedulerTransition,
+): SchedulerTransition {
+  return {
+    ...transition,
+    execution: transition.execution ?? null,
+    retry: transition.retry ?? null,
+  }
+}
+
+function storageToCore(
+  storage: SidecarStorageConfig,
+): CoreSidecarStorageConfig {
+  switch (storage.kind) {
+    case "local-direct":
+      return { kind: storage.kind, root: storage.root }
+    case "webdav":
+      return {
+        kind: storage.kind,
+        endpoint: storage.endpoint,
+        username: storage.username,
+        password: storage.password,
+        root: storage.root ?? undefined,
+      }
+    case "onedrive":
+      return {
+        kind: storage.kind,
+        accessToken: storage.accessToken,
+        root: storage.root ?? undefined,
+      }
+  }
+}
+
 export function createSyncCoordinator(coordinatorId: string): boolean {
-  return invokeCoreSync("sync", "createCoordinator", { coordinatorId })
+  return syncCreateCoordinator(coordinatorId)
 }
 
 export function requestCoordinatedSync(input: {
@@ -35,7 +105,16 @@ export function requestCoordinatedSync(input: {
   timing: SyncTiming
   nowMs: number
 }): SchedulerTransition {
-  return invokeCoreSync("sync", "request", input)
+  return transitionFromCore(
+    syncRequest(
+      input.coordinatorId,
+      input.libraryId,
+      input.mode,
+      input.reason,
+      input.timing,
+      input.nowMs,
+    ),
+  )
 }
 
 export function flushCoordinatedSync(input: {
@@ -44,19 +123,28 @@ export function flushCoordinatedSync(input: {
   reason: string
   nowMs: number
 }): SchedulerTransition {
-  return invokeCoreSync("sync", "flush", input)
+  return transitionFromCore(
+    syncFlush(input.coordinatorId, input.libraryId, input.reason, input.nowMs),
+  )
 }
 
-export function recoverCoordinatedSync(input: {
+export async function recoverCoordinatedSync(input: {
   coordinatorId: string
   sidecarRootPath: string
   libraryId: string
   nowMs: number
 }): Promise<SchedulerTransition> {
-  return invokeCoreAsync("sync", "recover", input)
+  return transitionFromCore(
+    await syncRecover(
+      input.coordinatorId,
+      input.sidecarRootPath,
+      input.libraryId,
+      input.nowMs,
+    ),
+  )
 }
 
-export function requestCoordinatedPull(input: {
+export async function requestCoordinatedPull(input: {
   coordinatorId: string
   sidecarRootPath: string
   libraryId: string
@@ -64,7 +152,16 @@ export function requestCoordinatedPull(input: {
   nowMs: number
   freshnessMs: number
 }): Promise<SchedulerTransition> {
-  return invokeCoreAsync("sync", "requestContextualPull", input)
+  return transitionFromCore(
+    await syncRequestContextualPull(
+      input.coordinatorId,
+      input.sidecarRootPath,
+      input.libraryId,
+      input.reason,
+      input.nowMs,
+      input.freshnessMs,
+    ),
+  )
 }
 
 export function beginCoordinatedSync(input: {
@@ -72,17 +169,27 @@ export function beginCoordinatedSync(input: {
   libraryId: string
   generation: number
 }): SchedulerTransition {
-  return invokeCoreSync("sync", "begin", input)
+  return transitionFromCore(
+    syncBegin(input.coordinatorId, input.libraryId, input.generation),
+  )
 }
 
-export function effectiveCoordinatedSyncExecution(input: {
+export async function effectiveCoordinatedSyncExecution(input: {
   coordinatorId: string
   sidecarRootPath: string
   execution: SyncExecution
   nowMs: number
   freshnessMs: number
 }): Promise<SyncExecution | null> {
-  return invokeCoreAsync("sync", "effectiveExecution", input)
+  return (
+    (await syncEffectiveExecution(
+      input.coordinatorId,
+      input.sidecarRootPath,
+      input.execution,
+      input.nowMs,
+      input.freshnessMs,
+    )) ?? null
+  )
 }
 
 export function completeCoordinatedSync(input: {
@@ -90,10 +197,12 @@ export function completeCoordinatedSync(input: {
   libraryId: string
   nowMs: number
 }): SchedulerTransition {
-  return invokeCoreSync("sync", "complete", input)
+  return transitionFromCore(
+    syncComplete(input.coordinatorId, input.libraryId, input.nowMs),
+  )
 }
 
-export function failCoordinatedSync(input: {
+export async function failCoordinatedSync(input: {
   coordinatorId: string
   sidecarRootPath: string
   execution: SyncExecution
@@ -102,7 +211,17 @@ export function failCoordinatedSync(input: {
   nowMs: number
   randomFraction: number
 }): Promise<SchedulerTransition> {
-  return invokeCoreAsync("sync", "fail", input)
+  return transitionFromCore(
+    await syncFail(
+      input.coordinatorId,
+      input.sidecarRootPath,
+      input.execution,
+      input.failureKind,
+      input.reason,
+      input.nowMs,
+      input.randomFraction,
+    ),
+  )
 }
 
 export function setCoordinatedSyncLibraryOnline(input: {
@@ -111,25 +230,32 @@ export function setCoordinatedSyncLibraryOnline(input: {
   online: boolean
   nowMs: number
 }): SchedulerTransition {
-  return invokeCoreSync("sync", "setLibraryOnline", input)
+  return transitionFromCore(
+    syncSetLibraryOnline(
+      input.coordinatorId,
+      input.libraryId,
+      input.online,
+      input.nowMs,
+    ),
+  )
 }
 
 export function disposeSyncCoordinator(
   coordinatorId: string,
 ): SchedulerTransition {
-  return invokeCoreSync("sync", "disposeCoordinator", { coordinatorId })
+  return transitionFromCore(syncDisposeCoordinator(coordinatorId))
 }
 
 export function readSyncTaskProgress(taskId: string): SyncTaskProgress | null {
-  return invokeCoreSync("sync", "readTaskProgress", { taskId })
+  return syncReadTaskProgress(taskId) ?? null
 }
 
 export function cancelSyncTask(taskId: string): boolean {
-  return invokeCoreSync("sync", "cancelTask", { taskId })
+  return syncCancelTask(taskId)
 }
 
 export function releaseSyncTask(taskId: string): boolean {
-  return invokeCoreSync("sync", "releaseTask", { taskId })
+  return syncReleaseTask(taskId)
 }
 
 export function syncLibrarySidecar(input: {
@@ -140,5 +266,12 @@ export function syncLibrarySidecar(input: {
   mode: SidecarSyncMode
   storage: SidecarStorageConfig
 }): Promise<SidecarSyncReport> {
-  return invokeCoreAsync("sync", "runSidecar", input)
+  return syncRunSidecar(
+    input.taskId,
+    input.sidecarRootPath,
+    input.libraryRootPath,
+    input.nowMs,
+    input.mode,
+    storageToCore(input.storage),
+  )
 }

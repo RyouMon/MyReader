@@ -22,7 +22,7 @@ MyReader/
 ├── my-reader-core/                跨端共享 Rust 后端
 ├── my-reader/                     桌面端：Tauri 2 + React 18
 ├── my-reader-mobile/              移动端：Expo 56 + React Native 0.85
-│   └── modules/my-reader-core/    Core 的 Expo/UniFFI 移动适配器
+│   └── modules/my-reader-core/    Core 的 UniFFI/JSI 移动适配器
 ├── packages/
 │   ├── fonts/                     阅读字体目录与资产来源
 │   └── tools/                     跨端类型和 Reader 纯算法
@@ -95,7 +95,7 @@ pnpm --filter my-reader-mobile exec jest --runInBand
 | 桌面后端 | Tauri 2、Rust、SeaORM、SQLite、tauri-specta、OpenDAL |
 | 移动端 | Expo 56、React Native 0.85、Expo Router、NativeWind 5、TanStack Query、Zustand |
 | 共享后端 | `my-reader-core`、SeaORM、SQLite、Automerge |
-| 移动绑定 | UniFFI、Expo Native Module |
+| 移动绑定 | UniFFI、JSI、React Native TurboModule |
 | 阅读器 | 桌面 `@readium/*` + PDF.js 适配；移动 Readium Swift/Kotlin Toolkit + 应用自有 Expo Module |
 | 远程数据源 | WebDAV、OneDrive |
 | 测试 | Vitest、Jest、Playwright BDD、WebdriverIO、Maestro、Cargo test |

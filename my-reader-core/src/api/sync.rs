@@ -7,7 +7,10 @@ use crate::{
 
 pub use crate::sync::{
     exchange::{SyncMode, SyncObserver, SyncProgress, SyncStage},
-    scheduler::{SchedulerPolicy, SchedulerTransition, SyncExecution, SyncTiming},
+    scheduler::{
+        RetrySchedule, ScheduledSync, SchedulerPolicy, SchedulerTransition, SyncExecution,
+        SyncTiming,
+    },
 };
 
 pub struct SyncCoordinator {

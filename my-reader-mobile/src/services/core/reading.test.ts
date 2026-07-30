@@ -19,11 +19,28 @@ jest.mock("./sync-events", () => ({
   announceLocalSidecarWork: jest.fn(),
 }))
 
-jest.mock("./transport", () => ({
-  invokeCoreAsync: jest.fn(),
+jest.mock("my-reader-core", () => ({
+  readingAddAnnotation: jest.fn(),
+  readingAddBookmark: jest.fn(),
+  readingAddSessionInterval: jest.fn(),
+  readingGetPosition: jest.fn(),
+  readingGetStatistics: jest.fn(),
+  readingListFavoriteBookIds: jest.fn(),
+  readingSetFavoriteBook: jest.fn(),
+  readingSetPosition: jest.fn(),
 }))
 
 import type { Library } from "@my-reader/tools/types/library"
+import {
+  readingAddAnnotation,
+  readingAddBookmark,
+  readingAddSessionInterval,
+  readingGetPosition,
+  readingGetStatistics,
+  readingListFavoriteBookIds,
+  readingSetFavoriteBook,
+  readingSetPosition,
+} from "my-reader-core"
 import {
   addReaderAnnotation,
   addReaderBookmark,
@@ -35,13 +52,10 @@ import {
   setReadingPosition,
 } from "./reading"
 import { announceLocalSidecarWork } from "./sync-events"
-import { invokeCoreAsync } from "./transport"
 
 const library = { id: "library-1" } as Library
 
 describe("core reading adapter", () => {
-  const mockInvokeCoreAsync = jest.mocked(invokeCoreAsync)
-
   beforeEach(() => {
     jest.clearAllMocks()
     jest.spyOn(Date, "now").mockReturnValue(900)
@@ -52,39 +66,31 @@ describe("core reading adapter", () => {
   })
 
   it("should return favorite IDs when core returns a typed projection", async () => {
-    mockInvokeCoreAsync.mockResolvedValue([7, 42])
+    jest.mocked(readingListFavoriteBookIds).mockResolvedValue([7, 42])
 
     await expect(listFavoriteBookIds(library)).resolves.toEqual([7, 42])
-    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
-      "reading",
-      "listFavoriteBookIds",
-      {
-        sidecarRootPath: "/sidecar",
-      },
-    )
+    expect(readingListFavoriteBookIds).toHaveBeenCalledWith("/sidecar")
   })
 
   it("should pass both library roots when favorite state changes", async () => {
-    mockInvokeCoreAsync.mockResolvedValue(null)
+    jest.mocked(readingSetFavoriteBook).mockResolvedValue()
 
     await setFavoriteBook(library, 42, true)
 
-    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
-      "reading",
-      "setFavoriteBook",
-      {
-        sidecarRootPath: "/sidecar",
-        libraryRootPath: "/library",
-        bookId: 42,
-        isFavorite: true,
-        recordedAtMs: 900,
-      },
+    expect(readingSetFavoriteBook).toHaveBeenCalledWith(
+      "/sidecar",
+      "/library",
+      42,
+      true,
+      900,
     )
     expect(announceLocalSidecarWork).toHaveBeenCalledWith("library-1")
   })
 
   it("should not announce work when core mutation fails", async () => {
-    mockInvokeCoreAsync.mockRejectedValue(new Error("write failed"))
+    jest
+      .mocked(readingSetFavoriteBook)
+      .mockRejectedValue(new Error("write failed"))
 
     await expect(setFavoriteBook(library, 42, true)).rejects.toThrow(
       "write failed",
@@ -94,7 +100,7 @@ describe("core reading adapter", () => {
   })
 
   it("should return locator when core returns typed reading data", async () => {
-    mockInvokeCoreAsync.mockResolvedValue({
+    jest.mocked(readingGetPosition).mockResolvedValue({
       bookId: 42,
       format: "EPUB",
       locator: {
@@ -115,36 +121,27 @@ describe("core reading adapter", () => {
   })
 
   it("should pass typed locator when reading position changes", async () => {
-    mockInvokeCoreAsync.mockResolvedValue(null)
+    jest.mocked(readingSetPosition).mockResolvedValue()
+    const locator = {
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+    }
 
-    await setReadingPosition(
-      library,
+    await setReadingPosition(library, 42, "EPUB", locator, 0.4)
+
+    expect(readingSetPosition).toHaveBeenCalledWith(
+      "/sidecar",
+      "/library",
       42,
       "EPUB",
-      { href: "chapter.xhtml", type: "application/xhtml+xml" },
+      locator,
       0.4,
-    )
-
-    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
-      "reading",
-      "setReadingPosition",
-      {
-        sidecarRootPath: "/sidecar",
-        libraryRootPath: "/library",
-        bookId: 42,
-        format: "EPUB",
-        locator: {
-          href: "chapter.xhtml",
-          type: "application/xhtml+xml",
-        },
-        displayProgression: 0.4,
-        recordedAtMs: 900,
-      },
+      900,
     )
   })
 
   it("should pass canonical bookmark fields when bookmark is added", async () => {
-    mockInvokeCoreAsync.mockResolvedValue({
+    jest.mocked(readingAddBookmark).mockResolvedValue({
       id: "bookmark-1",
       bookId: 42,
       format: "EPUB",
@@ -156,33 +153,27 @@ describe("core reading adapter", () => {
       createdAt: 900,
       updatedAt: 900,
     })
+    const locator = {
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+    }
 
     await expect(
-      addReaderBookmark(library, 42, "EPUB", "chapter.xhtml", {
-        href: "chapter.xhtml",
-        type: "application/xhtml+xml",
-      }),
+      addReaderBookmark(library, 42, "EPUB", "chapter.xhtml", locator),
     ).resolves.toMatchObject({ id: "bookmark-1", bookId: 42 })
-    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
-      "reading",
-      "addReaderBookmark",
-      {
-        sidecarRootPath: "/sidecar",
-        libraryRootPath: "/library",
-        bookId: 42,
-        format: "EPUB",
-        locatorKey: "chapter.xhtml",
-        locator: {
-          href: "chapter.xhtml",
-          type: "application/xhtml+xml",
-        },
-        recordedAtMs: 900,
-      },
+    expect(readingAddBookmark).toHaveBeenCalledWith(
+      "/sidecar",
+      "/library",
+      42,
+      "EPUB",
+      "chapter.xhtml",
+      locator,
+      900,
     )
   })
 
   it("should pass selected text when annotation is added", async () => {
-    mockInvokeCoreAsync.mockResolvedValue({
+    jest.mocked(readingAddAnnotation).mockResolvedValue({
       id: "annotation-1",
       bookId: 42,
       format: "EPUB",
@@ -193,47 +184,32 @@ describe("core reading adapter", () => {
         text: { highlight: "Selected" },
       },
       color: "yellow",
-      note: null,
       createdAt: 900,
       updatedAt: 900,
     })
+    const locator = {
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      text: { highlight: "Selected" },
+    }
 
     await expect(
-      addReaderAnnotation(
-        library,
-        42,
-        "EPUB",
-        {
-          href: "chapter.xhtml",
-          type: "application/xhtml+xml",
-          text: { highlight: "Selected" },
-        },
-        "yellow",
-        null,
-      ),
+      addReaderAnnotation(library, 42, "EPUB", locator, "yellow", null),
     ).resolves.toMatchObject({ id: "annotation-1", kind: "highlight" })
-    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
-      "reading",
-      "addReaderAnnotation",
-      {
-        sidecarRootPath: "/sidecar",
-        libraryRootPath: "/library",
-        bookId: 42,
-        format: "EPUB",
-        locator: {
-          href: "chapter.xhtml",
-          type: "application/xhtml+xml",
-          text: { highlight: "Selected" },
-        },
-        color: "yellow",
-        note: null,
-        recordedAtMs: 900,
-      },
+    expect(readingAddAnnotation).toHaveBeenCalledWith(
+      "/sidecar",
+      "/library",
+      42,
+      "EPUB",
+      locator,
+      "yellow",
+      undefined,
+      900,
     )
   })
 
   it("should pass incremental duration when reading session is recorded", async () => {
-    mockInvokeCoreAsync.mockResolvedValue(null)
+    jest.mocked(readingAddSessionInterval).mockResolvedValue()
 
     await addReadingSessionInterval(library, {
       id: "11111111111141118111111111111111",
@@ -245,44 +221,39 @@ describe("core reading adapter", () => {
       updatedAt: 900,
     })
 
-    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
-      "reading",
-      "addReadingSessionInterval",
-      {
-        sidecarRootPath: "/sidecar",
-        libraryRootPath: "/library",
-        id: "11111111111141118111111111111111",
-        bookId: 42,
-        format: "EPUB",
-        localDay: "2026-07-28",
-        startedAtMs: 600,
-        durationSeconds: 30,
-        recordedAtMs: 900,
-      },
+    expect(readingAddSessionInterval).toHaveBeenCalledWith(
+      "/sidecar",
+      "/library",
+      "11111111111141118111111111111111",
+      42,
+      "EPUB",
+      "2026-07-28",
+      600,
+      30,
+      900,
     )
   })
 
   it("should provide library root when statistics are read", async () => {
-    mockInvokeCoreAsync.mockResolvedValue({
-      days: {},
-      totalDurationSeconds: 0,
-      longestStreakDays: 0,
+    jest.mocked(readingGetStatistics).mockResolvedValue({
+      days: [{ day: "2026-07-28", durationSeconds: 30 }],
+      totalDurationSeconds: 30,
+      longestStreakDays: 1,
       completedBooks: 1,
     })
 
     await expect(
       getReadingStatistics(library, "2026-01-01", "2026-12-31"),
-    ).resolves.toMatchObject({ completedBooks: 1 })
+    ).resolves.toMatchObject({
+      days: { "2026-07-28": 30 },
+      completedBooks: 1,
+    })
 
-    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
-      "reading",
-      "getReadingStatistics",
-      {
-        sidecarRootPath: "/sidecar",
-        libraryRootPath: "/library",
-        startDay: "2026-01-01",
-        endDay: "2026-12-31",
-      },
+    expect(readingGetStatistics).toHaveBeenCalledWith(
+      "/sidecar",
+      "/library",
+      "2026-01-01",
+      "2026-12-31",
     )
   })
 })

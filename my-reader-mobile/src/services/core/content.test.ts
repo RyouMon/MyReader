@@ -14,11 +14,24 @@ jest.mock("../query/invalidate-table", () => ({
   invalidateBookReadingFormat: jest.fn(),
   invalidateFileStates: jest.fn(),
 }))
-jest.mock("./transport", () => ({
-  invokeCoreAsync: jest.fn(),
+jest.mock("my-reader-core", () => ({
+  contentFinalizeDownloadedFile: jest.fn(),
+  contentListCoverThumbnailCache: jest.fn(),
+  contentListReadingFormats: jest.fn(),
+  contentSetReadingFormat: jest.fn(),
+  contentUpsertCoverThumbnailCache: jest.fn(),
+  contentUpsertFileState: jest.fn(),
 }))
 
 import type { Library } from "@my-reader/tools/types/library"
+import {
+  contentFinalizeDownloadedFile,
+  contentListCoverThumbnailCache,
+  contentListReadingFormats,
+  contentSetReadingFormat,
+  contentUpsertCoverThumbnailCache,
+  contentUpsertFileState,
+} from "my-reader-core"
 import {
   finalizeDownloadedFile,
   listBookCoverThumbnailCache,
@@ -27,76 +40,65 @@ import {
   upsertBookCoverThumbnailCache,
   upsertFileState,
 } from "./content"
-import { invokeCoreAsync } from "./transport"
 
 const library = { id: "library-1" } as Library
 
 describe("core content adapter", () => {
-  const mockInvokeCoreAsync = jest.mocked(invokeCoreAsync)
-
   beforeEach(() => {
     jest.clearAllMocks()
   })
 
-  it("should return validated reading formats when core returns a typed map", async () => {
-    mockInvokeCoreAsync.mockResolvedValue({ "42": "PDF" })
+  it("should return reading formats when core returns typed entries", async () => {
+    jest
+      .mocked(contentListReadingFormats)
+      .mockResolvedValue([{ bookId: "42", format: "PDF" }])
 
     await expect(listBookReadingFormats(library)).resolves.toEqual({
       "42": "PDF",
     })
-    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
-      "content",
-      "listReadingFormats",
-      {
-        sidecarRootPath: "/sidecar",
-        libraryRootPath: "/library",
-      },
+    expect(contentListReadingFormats).toHaveBeenCalledWith(
+      "/sidecar",
+      "/library",
     )
   })
 
-  it("should send nullable format when reading format changes", async () => {
-    mockInvokeCoreAsync.mockResolvedValue(null)
+  it("should send absence when reading format is cleared", async () => {
+    jest.mocked(contentSetReadingFormat).mockResolvedValue()
 
     await setBookReadingFormat(library, 42, null)
 
-    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
-      "content",
-      "setReadingFormat",
-      {
-        sidecarRootPath: "/sidecar",
-        libraryRootPath: "/library",
-        bookId: 42,
-        format: null,
-      },
+    expect(contentSetReadingFormat).toHaveBeenCalledWith(
+      "/sidecar",
+      "/library",
+      42,
+      undefined,
     )
   })
 
   it("should pass typed file state update when download completes", async () => {
-    mockInvokeCoreAsync.mockResolvedValue(null)
+    jest.mocked(contentUpsertFileState).mockResolvedValue()
 
     await upsertFileState(library, "Author/Book/Book.epub", {
       localState: "present",
       localSize: 1024,
     })
 
-    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
-      "content",
-      "upsertFileState",
+    expect(contentUpsertFileState).toHaveBeenCalledWith(
+      "/sidecar",
+      "Author/Book/Book.epub",
       {
-        sidecarRootPath: "/sidecar",
-        path: "Author/Book/Book.epub",
-        update: {
-          localState: "present",
-          localBlake3: null,
-          localSize: 1024,
-          localMtime: null,
-        },
+        localState: "present",
+        localBlake3: undefined,
+        localSize: 1024,
+        localMtime: undefined,
       },
     )
   })
 
   it("should delegate final state commit when downloaded file is finalized", async () => {
-    mockInvokeCoreAsync.mockResolvedValue({ size: 1024, mtimeMs: 2000 })
+    jest
+      .mocked(contentFinalizeDownloadedFile)
+      .mockResolvedValue({ size: 1024, mtimeMs: 2000 })
 
     await expect(
       finalizeDownloadedFile(
@@ -106,19 +108,15 @@ describe("core content adapter", () => {
       ),
     ).resolves.toEqual({ size: 1024, mtimeMs: 2000 })
 
-    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
-      "content",
-      "finalizeDownloadedFile",
-      {
-        sidecarRootPath: "/sidecar",
-        relativePath: "Author/Book/Book.epub",
-        localPath: "/library/Author/Book/Book.epub",
-      },
+    expect(contentFinalizeDownloadedFile).toHaveBeenCalledWith(
+      "/sidecar",
+      "Author/Book/Book.epub",
+      "/library/Author/Book/Book.epub",
     )
   })
 
   it("should delegate cover manifest persistence when thumbnail is generated", async () => {
-    mockInvokeCoreAsync.mockResolvedValue(null)
+    jest.mocked(contentUpsertCoverThumbnailCache).mockResolvedValue()
     const patch = {
       bookId: 42,
       coverIdentity: "cover-v2",
@@ -131,13 +129,9 @@ describe("core content adapter", () => {
 
     await upsertBookCoverThumbnailCache(library, patch)
 
-    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
-      "content",
-      "upsertCoverThumbnailCache",
-      {
-        sidecarRootPath: "/sidecar",
-        patch,
-      },
+    expect(contentUpsertCoverThumbnailCache).toHaveBeenCalledWith(
+      "/sidecar",
+      patch,
     )
   })
 
@@ -156,7 +150,7 @@ describe("core content adapter", () => {
         updatedAt: 1000,
       },
     ]
-    mockInvokeCoreAsync.mockResolvedValue(rows)
+    jest.mocked(contentListCoverThumbnailCache).mockResolvedValue(rows)
 
     await expect(
       listBookCoverThumbnailCache(library, {

@@ -17,7 +17,6 @@ const MAX_REMOTE_OBJECT_BYTES: usize = 4 * 1024 * 1024;
 const MAX_REMOTE_OBJECTS_PER_SYNC: usize = 10_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "snake_case")]
 pub enum SyncMode {
     PushOnly,

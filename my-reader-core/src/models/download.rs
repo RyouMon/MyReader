@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "snake_case")]
 pub enum DownloadTaskStatus {
     Queued,
@@ -30,7 +29,6 @@ impl DownloadTaskStatus {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct DownloadTaskRequest {
     pub id: String,
@@ -43,7 +41,6 @@ pub struct DownloadTaskRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct DownloadTask {
     pub id: String,
@@ -58,7 +55,6 @@ pub struct DownloadTask {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct EnqueuedDownloadTask {
     pub task: DownloadTask,

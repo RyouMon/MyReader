@@ -12,7 +12,7 @@ MyReader 是一个面向 Calibre 书库的 Local-First 跨平台阅读器：
 - 每个书库拥有独立的 MyReader SQLite sidecar 和 Automerge document。
 - desktop、iOS 和 Android 共同使用 Rust `my-reader-core` 处理数据库、书库、书目、阅读数据与
   sidecar 同步业务。
-- Tauri Commands 与移动 UniFFI/Expo Module 是平台 adapter，不再维护第二套数据库或业务规则。
+- Tauri Commands 与移动 UniFFI/JSI binding 是平台 adapter，不再维护第二套数据库或业务规则。
 - UI、Readium Navigator、系统授权、凭据、目录句柄、生命周期和后台调度触发仍由平台实现。
 - 当前数据源为本地目录、WebDAV 和 OneDrive；当前可读格式为 EPUB、PDF 和 CBZ。
 
@@ -29,12 +29,12 @@ flowchart TB
     subgraph Mobile["移动端 my-reader-mobile"]
         MobileUI["Expo / React Native UI<br/>Features · Hooks · Query · Zustand"]
         Facade["薄 services/core 门面"]
-        Binding["Expo Native Module + UniFFI<br/>平台路径 · 凭据 · 生命周期"]
+        Binding["生成的 JSI + UniFFI<br/>类型转换 · 异步调用"]
         NativeReader["Readium Swift / Kotlin Toolkit"]
     end
 
     subgraph SharedRust["共享 Rust"]
-        Components["MyReaderCore 移动适配器<br/>Expo Native Module · UniFFI"]
+        Components["MyReaderCore 移动适配器<br/>TurboModule · JSI · UniFFI"]
         Core["my-reader-core<br/>API · Services · Repositories · Infrastructure"]
         Sidecar["SeaORM + SQLite<br/>Automerge sidecar"]
     end
@@ -54,7 +54,7 @@ pnpm workspace：
 | Workspace | 所有权 |
 |---|---|
 | `my-reader` | 桌面 UI、Tauri adapter、桌面 Readium、桌面平台能力 |
-| `my-reader-mobile` | 移动 UI、Expo adapter、移动 Readium、移动平台能力 |
+| `my-reader-mobile` | 移动 UI、Core binding adapter、移动 Readium、移动平台能力 |
 | `packages/fonts` | 跨端阅读字体目录和资产来源 |
 | `packages/tools` | 跨端 TypeScript 类型、Reader 纯算法和产品语义 |
 
@@ -63,11 +63,11 @@ Cargo workspace 中与共享后端相关的 crate：
 | Crate | 所有权 |
 |---|---|
 | `my-reader-core` | 跨端业务 API、SeaORM 数据访问、Calibre 查询、Automerge 与同步规则 |
-| `my-reader-core-ffi`（位于 `my-reader-mobile/modules/my-reader-core/rust`） | UniFFI 导出、异步 runtime、移动原生产物和 transport binding |
+| `my-reader-core-ffi`（位于 `my-reader-mobile/modules/my-reader-core/rust`） | typed UniFFI 导出、FFI 数据转换和移动原生产物 |
 
 移动端另有应用内原生模块：
 
-- `my-reader-mobile/modules/my-reader-core`：把 UniFFI 产物接入 Expo。
+- `my-reader-mobile/modules/my-reader-core`：通过生成的 JSI/TurboModule 把 UniFFI 产物接入 React Native。
 - `my-reader-mobile/modules/readium`：应用自有 Readium Swift/Kotlin 集成。
 - `my-reader-mobile/modules/book-transition`：阅读器原生转场。
 
@@ -164,7 +164,7 @@ services/core/
         路径/凭据准备、DTO 转换、查询失效和 UniFFI 调用
                     ↓
 modules/my-reader-core/
-        Expo Native Module + UniFFI
+        generated TurboModule + JSI + UniFFI
                     ↓
 my-reader-core
 ```
@@ -334,7 +334,8 @@ pnpm --filter my-reader run test:unit
 
 # 移动
 pnpm --filter my-reader-mobile exec jest --runInBand
-bash my-reader-mobile/modules/my-reader-core/scripts/verify-native.sh
+pnpm core:build-bindings:ios
+pnpm core:build-bindings:android
 
 # 从 core Migrator 重新生成 app entities
 pnpm db:generate

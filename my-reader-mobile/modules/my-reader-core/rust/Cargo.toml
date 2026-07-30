@@ -6,42 +6,11 @@ edition.workspace = true
 [lib]
 crate-type = ["rlib", "staticlib", "cdylib"]
 
-[features]
-bindgen = ["uniffi/cli"]
-typescript-contract = [
-    "dep:specta",
-    "dep:specta-serde",
-    "dep:specta-typescript",
-    "dep:specta-util",
-    "my-reader-core/typescript-contract",
-]
-
 [dependencies]
 my-reader-core.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-specta = { workspace = true, optional = true }
-specta-serde = { workspace = true, optional = true }
-specta-typescript = { workspace = true, optional = true }
-specta-util = { workspace = true, optional = true }
 thiserror.workspace = true
-tokio.workspace = true
-uniffi.workspace = true
+uniffi = { workspace = true, features = ["tokio"] }
 
 [dev-dependencies]
 rusqlite.workspace = true
 tempfile = "3"
-
-[[bin]]
-name = "uniffi-bindgen"
-path = "src/bin/uniffi-bindgen.rs"
-required-features = ["bindgen"]
-
-[[bin]]
-name = "generate-core-contract"
-path = "src/bin/generate-core-contract.rs"
-required-features = ["typescript-contract"]
-
-[[test]]
-name = "typescript_contract"
-required-features = ["typescript-contract"]

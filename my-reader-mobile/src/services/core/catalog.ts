@@ -3,9 +3,22 @@ import type {
   CalibreBook,
   PaginatedBooks,
 } from "@my-reader/tools/types/book"
+import {
+  catalogCountBooks,
+  catalogGetBookDetail,
+  catalogGetLibraryUuid,
+  catalogListBookFormats,
+  catalogListBookSummaries,
+  catalogListBooks,
+  catalogListBooksPage,
+  catalogListBooksPageByLastRead,
+  catalogListSeriesBooks,
+  catalogValidateLibrary,
+  type BookEntry as CoreBookEntry,
+  type BookFormat,
+  type BookSummary,
+} from "my-reader-core"
 import { toNativeFilesystemPath } from "../fs/path"
-import type { BookFormat, BookSummary } from "./contract.generated"
-import { invokeCoreAsync, invokeCoreSync } from "./transport"
 
 export type CalibreBookSummary = BookSummary
 
@@ -15,24 +28,33 @@ function nativePath(libraryRootUri: string): string {
   return toNativeFilesystemPath(libraryRootUri)
 }
 
+function bookFromCore(book: CoreBookEntry): CalibreBook {
+  return {
+    ...book,
+    series: book.series ?? null,
+    seriesIndex: book.seriesIndex ?? null,
+    timestamp: book.timestamp ?? null,
+    pubdate: book.pubdate ?? null,
+    lastModified: book.lastModified ?? null,
+    comment: book.comment ?? null,
+    publisher: book.publisher ?? null,
+    rating: book.rating ?? null,
+    uuid: book.uuid ?? null,
+  }
+}
+
 export function validateCalibreLibrary(libraryRootUri: string): boolean {
-  return invokeCoreSync("catalog", "validateLibrary", {
-    libraryRootPath: nativePath(libraryRootUri),
-  })
+  return catalogValidateLibrary(nativePath(libraryRootUri))
 }
 
 export function countCalibreBooks(libraryRootUri: string): Promise<number> {
-  return invokeCoreAsync("catalog", "countBooks", {
-    libraryRootPath: nativePath(libraryRootUri),
-  })
+  return catalogCountBooks(nativePath(libraryRootUri))
 }
 
 export async function listCalibreBooks(
   libraryRootUri: string,
 ): Promise<CalibreBook[]> {
-  return invokeCoreAsync("catalog", "listBooks", {
-    libraryRootPath: nativePath(libraryRootUri),
-  })
+  return (await catalogListBooks(nativePath(libraryRootUri))).map(bookFromCore)
 }
 
 export async function listCalibreBooksPage(
@@ -42,13 +64,14 @@ export async function listCalibreBooksPage(
   sortBy?: string,
   search?: string,
 ): Promise<PaginatedBooks> {
-  return invokeCoreAsync("catalog", "listBooksPage", {
-    libraryRootPath: nativePath(libraryRootUri),
+  const page = await catalogListBooksPage(
+    nativePath(libraryRootUri),
     offset,
     limit,
-    sortBy: sortBy ?? null,
-    search: search ?? null,
-  })
+    sortBy,
+    search,
+  )
+  return { items: page.items.map(bookFromCore), total: page.total }
 }
 
 export async function listCalibreBooksPageByLastRead(
@@ -58,23 +81,27 @@ export async function listCalibreBooksPageByLastRead(
   limit: number,
   search?: string,
 ): Promise<PaginatedBooks> {
-  return invokeCoreAsync("catalog", "listBooksPageByLastRead", {
-    libraryRootPath: nativePath(libraryRootUri),
-    sidecarRootPath: nativePath(sidecarRootUri),
+  const page = await catalogListBooksPageByLastRead(
+    nativePath(libraryRootUri),
+    nativePath(sidecarRootUri),
     offset,
     limit,
-    search: search ?? null,
-  })
+    search,
+  )
+  return { items: page.items.map(bookFromCore), total: page.total }
 }
 
 export async function getCalibreBookDetail(
   libraryRootUri: string,
   bookId: number,
 ): Promise<BookDetail> {
-  return invokeCoreAsync("catalog", "getBookDetail", {
-    libraryRootPath: nativePath(libraryRootUri),
-    bookId,
-  })
+  const book = await catalogGetBookDetail(nativePath(libraryRootUri), bookId)
+  return {
+    ...bookFromCore(book),
+    titleSort: book.titleSort,
+    formatSizes: book.formatSizes,
+    identifiers: book.identifiers,
+  }
 }
 
 export async function listCalibreSeriesBooks(
@@ -82,33 +109,28 @@ export async function listCalibreSeriesBooks(
   seriesName: string,
   excludeBookId?: number,
 ): Promise<CalibreBook[]> {
-  return invokeCoreAsync("catalog", "listSeriesBooks", {
-    libraryRootPath: nativePath(libraryRootUri),
-    seriesName,
-    excludeBookId: excludeBookId ?? null,
-  })
+  return (
+    await catalogListSeriesBooks(
+      nativePath(libraryRootUri),
+      seriesName,
+      excludeBookId,
+    )
+  ).map(bookFromCore)
 }
 
 export function getCalibreLibraryUuid(libraryRootUri: string): Promise<string> {
-  return invokeCoreAsync("catalog", "getLibraryUuid", {
-    libraryRootPath: nativePath(libraryRootUri),
-  })
+  return catalogGetLibraryUuid(nativePath(libraryRootUri))
 }
 
 export async function listCalibreBookSummaries(
   libraryRootUri: string,
 ): Promise<CalibreBookSummary[]> {
-  return invokeCoreAsync("catalog", "listBookSummaries", {
-    libraryRootPath: nativePath(libraryRootUri),
-  })
+  return catalogListBookSummaries(nativePath(libraryRootUri))
 }
 
 export async function listCalibreBookFormats(
   libraryRootUri: string,
   bookId: number,
 ): Promise<CalibreBookFormat[]> {
-  return invokeCoreAsync("catalog", "listBookFormats", {
-    libraryRootPath: nativePath(libraryRootUri),
-    bookId,
-  })
+  return catalogListBookFormats(nativePath(libraryRootUri), bookId)
 }

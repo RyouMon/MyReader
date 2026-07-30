@@ -7,6 +7,7 @@ patchedDependencies:
   "@kesha-antonov/react-native-background-downloader@4.5.4": "patches/@kesha-antonov__react-native-background-downloader@4.5.4.patch"
   "@react-native-menu/menu@2.0.0": "patches/@react-native-menu__menu@2.0.0.patch"
   "react-native-css@3.0.7": "patches/react-native-css@3.0.7.patch"
+  uniffi-bindgen-react-native@0.31.0-3: patches/uniffi-bindgen-react-native@0.31.0-3.patch
 allowBuilds:
   '@sentry/cli': true
   edgedriver: true
