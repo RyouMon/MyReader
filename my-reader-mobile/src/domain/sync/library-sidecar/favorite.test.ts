@@ -1,7 +1,7 @@
-jest.mock("./automerge-store", () => ({
-  commitLibrarySidecarAutomergeMutation: jest.fn(),
+jest.mock("./database-store", () => ({
+  commitLibrarySidecarMutation: jest.fn(),
 }))
-jest.mock("./automerge-document", () => ({
+jest.mock("./document-contract", () => ({
   librarySidecarFavoriteProjections: jest.fn(),
 }))
 jest.mock("./identity", () => ({
@@ -9,8 +9,8 @@ jest.mock("./identity", () => ({
 }))
 import type { Library } from "@my-reader/tools/types/library"
 
-import { librarySidecarFavoriteProjections } from "./automerge-document"
-import { commitLibrarySidecarAutomergeMutation } from "./automerge-store"
+import { librarySidecarFavoriteProjections } from "./document-contract"
+import { commitLibrarySidecarMutation } from "./database-store"
 import { writeLocalFavorite } from "./favorite"
 import { ensureLibrarySidecarIdentity } from "./identity"
 
@@ -27,7 +27,7 @@ describe("Automerge favorite", () => {
     jest.clearAllMocks()
     jest.mocked(ensureLibrarySidecarIdentity).mockResolvedValue(identity)
     jest
-      .mocked(commitLibrarySidecarAutomergeMutation)
+      .mocked(commitLibrarySidecarMutation)
       .mockImplementation(async (_library, _identity, _now, selectCommand) => {
         selectedCommand = selectCommand(document)
         return document
@@ -48,7 +48,7 @@ describe("Automerge favorite", () => {
         replicaId: identity.replicaId,
       },
     })
-    expect(commitLibrarySidecarAutomergeMutation).toHaveBeenCalledWith(
+    expect(commitLibrarySidecarMutation).toHaveBeenCalledWith(
       library,
       identity,
       900,

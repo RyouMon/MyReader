@@ -1,9 +1,9 @@
-jest.mock("./automerge-store", () => ({
-  commitLibrarySidecarAutomergeMutation: jest.fn(),
-  ensureLibrarySidecarAutomergeState: jest.fn(),
+jest.mock("./database-store", () => ({
+  commitLibrarySidecarMutation: jest.fn(),
+  ensureLibrarySidecarState: jest.fn(),
 }))
 
-jest.mock("./automerge-document", () => ({
+jest.mock("./document-contract", () => ({
   librarySidecarReadingPositionCandidates: jest.fn(),
 }))
 
@@ -14,10 +14,10 @@ jest.mock("./identity", () => ({
 import type { Library } from "@my-reader/tools/types/library"
 
 import {
-  commitLibrarySidecarAutomergeMutation,
-  ensureLibrarySidecarAutomergeState,
-} from "./automerge-store"
-import { librarySidecarReadingPositionCandidates } from "./automerge-document"
+  commitLibrarySidecarMutation,
+  ensureLibrarySidecarState,
+} from "./database-store"
+import { librarySidecarReadingPositionCandidates } from "./document-contract"
 import { ensureLibrarySidecarIdentity } from "./identity"
 import {
   getReadingPositionCandidates,
@@ -45,7 +45,7 @@ describe("Automerge reading position", () => {
     jest.clearAllMocks()
     jest.mocked(ensureLibrarySidecarIdentity).mockResolvedValue(identity)
     jest
-      .mocked(commitLibrarySidecarAutomergeMutation)
+      .mocked(commitLibrarySidecarMutation)
       .mockImplementation(async (_library, _identity, _now, selectCommand) => {
         selectedCommand = selectCommand(document)
         return document
@@ -83,7 +83,7 @@ describe("Automerge reading position", () => {
         replicaId: identity.replicaId,
       },
     })
-    expect(commitLibrarySidecarAutomergeMutation).toHaveBeenCalledWith(
+    expect(commitLibrarySidecarMutation).toHaveBeenCalledWith(
       library,
       identity,
       900,
@@ -104,7 +104,7 @@ describe("Automerge reading position", () => {
         },
       },
     ]
-    jest.mocked(ensureLibrarySidecarAutomergeState).mockResolvedValue(document)
+    jest.mocked(ensureLibrarySidecarState).mockResolvedValue(document)
     jest
       .mocked(librarySidecarReadingPositionCandidates)
       .mockReturnValue(candidates)

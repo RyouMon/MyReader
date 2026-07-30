@@ -2,10 +2,10 @@ jest.mock("@/src/repos/library-sidecar-sync", () => ({
   readLibrarySidecarBookmark: jest.fn(),
   withLibrarySidecarSyncTransaction: jest.fn(),
 }))
-jest.mock("./automerge-store", () => ({
-  commitLibrarySidecarAutomergeMutation: jest.fn(),
+jest.mock("./database-store", () => ({
+  commitLibrarySidecarMutation: jest.fn(),
 }))
-jest.mock("./automerge-document", () => ({
+jest.mock("./document-contract", () => ({
   librarySidecarBookmarkProjections: jest.fn(),
 }))
 jest.mock("./identity", () => ({
@@ -21,8 +21,8 @@ import {
   readLibrarySidecarBookmark,
   withLibrarySidecarSyncTransaction,
 } from "@/src/repos/library-sidecar-sync"
-import { librarySidecarBookmarkProjections } from "./automerge-document"
-import { commitLibrarySidecarAutomergeMutation } from "./automerge-store"
+import { librarySidecarBookmarkProjections } from "./document-contract"
+import { commitLibrarySidecarMutation } from "./database-store"
 import { addLocalBookmark, removeLocalBookmark } from "./bookmark"
 import { ensureLibrarySidecarIdentity } from "./identity"
 
@@ -40,7 +40,7 @@ describe("Automerge bookmark", () => {
     jest.clearAllMocks()
     jest.mocked(ensureLibrarySidecarIdentity).mockResolvedValue(identity)
     jest
-      .mocked(commitLibrarySidecarAutomergeMutation)
+      .mocked(commitLibrarySidecarMutation)
       .mockImplementation(async (_library, _identity, _now, selectCommand) => {
         selectedCommand = selectCommand(document)
         return document

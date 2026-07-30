@@ -30,13 +30,6 @@ import java.nio.CharBuffer
 import java.nio.charset.CodingErrorAction
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.coroutines.resume
-import kotlinx.coroutines.CancellableContinuation
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 
 // This is a helper for safely working with byte buffers returned from the Rust code.
 // A rust-owned buffer is represented by its capacity, its current length, and a
@@ -763,23 +756,21 @@ internal interface IntegrityCheckingUniffiLib : Library {
     // Integrity check functions only
     fun uniffi_myreader_rust_components_checksum_func_advance_sync_scheduler(
 ): Short
-fun uniffi_myreader_rust_components_checksum_func_apply_sync_database_remote_objects(
-): Short
 fun uniffi_myreader_rust_components_checksum_func_cancel_sync_task(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_ensure_sync_database_document(
 ): Short
+fun uniffi_myreader_rust_components_checksum_func_ensure_sync_database_identity(
+): Short
 fun uniffi_myreader_rust_components_checksum_func_execute_sync_database_command(
 ): Short
-fun uniffi_myreader_rust_components_checksum_func_execute_sync_document_command(
+fun uniffi_myreader_rust_components_checksum_func_has_sync_database_pending_work(
 ): Short
-fun uniffi_myreader_rust_components_checksum_func_has_sync_database_receipt(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_list_sync_database_outbox(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_mark_sync_database_outbox_published(
+fun uniffi_myreader_rust_components_checksum_func_mark_sync_database_schedule_succeeded(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_read_sync_database_diagnostics(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_read_sync_database_schedule_state(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_read_sync_task_progress(
 ): Short
@@ -788,6 +779,8 @@ fun uniffi_myreader_rust_components_checksum_func_release_sync_task(
 fun uniffi_myreader_rust_components_checksum_func_sync_contract_version(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_sync_library_sidecar(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_write_sync_database_schedule_state(
 ): Short
 fun ffi_myreader_rust_components_uniffi_contract_version(
 ): Int
@@ -836,23 +829,21 @@ internal interface UniffiLib : Library {
     // FFI functions
     fun uniffi_myreader_rust_components_fn_func_advance_sync_scheduler(`stateJson`: RustBuffer.ByValue,`policyJson`: RustBuffer.ByValue,`eventJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_apply_sync_database_remote_objects(`databasePath`: RustBuffer.ByValue,`libraryUuid`: RustBuffer.ByValue,`replicaId`: RustBuffer.ByValue,`nowMs`: RustBuffer.ByValue,`objects`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_cancel_sync_task(`taskId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Byte
 fun uniffi_myreader_rust_components_fn_func_ensure_sync_database_document(`databasePath`: RustBuffer.ByValue,`libraryUuid`: RustBuffer.ByValue,`replicaId`: RustBuffer.ByValue,`nowMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_ensure_sync_database_identity(`databasePath`: RustBuffer.ByValue,`libraryUuid`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_execute_sync_database_command(`databasePath`: RustBuffer.ByValue,`libraryUuid`: RustBuffer.ByValue,`replicaId`: RustBuffer.ByValue,`nowMs`: RustBuffer.ByValue,`commandJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_execute_sync_document_command(`snapshotBytes`: RustBuffer.ByValue,`requestJson`: RustBuffer.ByValue,`payloadBytes`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_has_sync_database_receipt(`databasePath`: RustBuffer.ByValue,`objectPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+fun uniffi_myreader_rust_components_fn_func_has_sync_database_pending_work(`databasePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Byte
-fun uniffi_myreader_rust_components_fn_func_list_sync_database_outbox(`databasePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_mark_sync_database_outbox_published(`databasePath`: RustBuffer.ByValue,`objectPath`: RustBuffer.ByValue,`publishedAt`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+fun uniffi_myreader_rust_components_fn_func_mark_sync_database_schedule_succeeded(`databasePath`: RustBuffer.ByValue,`completedPullAt`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
 fun uniffi_myreader_rust_components_fn_func_read_sync_database_diagnostics(`databasePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_read_sync_database_schedule_state(`databasePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_read_sync_task_progress(`taskId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
@@ -860,8 +851,10 @@ fun uniffi_myreader_rust_components_fn_func_release_sync_task(`taskId`: RustBuff
 ): Byte
 fun uniffi_myreader_rust_components_fn_func_sync_contract_version(uniffi_out_err: UniffiRustCallStatus,
 ): Int
-fun uniffi_myreader_rust_components_fn_func_sync_library_sidecar(`taskId`: RustBuffer.ByValue,`databasePath`: RustBuffer.ByValue,`libraryUuid`: RustBuffer.ByValue,`replicaId`: RustBuffer.ByValue,`nowMs`: RustBuffer.ByValue,`mode`: RustBuffer.ByValue,`storageJson`: RustBuffer.ByValue,
-): Long
+fun uniffi_myreader_rust_components_fn_func_sync_library_sidecar(`taskId`: RustBuffer.ByValue,`databasePath`: RustBuffer.ByValue,`libraryUuid`: RustBuffer.ByValue,`replicaId`: RustBuffer.ByValue,`nowMs`: RustBuffer.ByValue,`mode`: RustBuffer.ByValue,`storageJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_write_sync_database_schedule_state(`databasePath`: RustBuffer.ByValue,`state`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): Unit
 fun ffi_myreader_rust_components_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun ffi_myreader_rust_components_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -991,31 +984,28 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_advance_sync_scheduler() != 4510.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_myreader_rust_components_checksum_func_apply_sync_database_remote_objects() != 20397.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_myreader_rust_components_checksum_func_cancel_sync_task() != 41701.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_ensure_sync_database_document() != 40101.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_myreader_rust_components_checksum_func_ensure_sync_database_identity() != 60943.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_myreader_rust_components_checksum_func_execute_sync_database_command() != 40736.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_myreader_rust_components_checksum_func_execute_sync_document_command() != 21785.toShort()) {
+    if (lib.uniffi_myreader_rust_components_checksum_func_has_sync_database_pending_work() != 63542.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_myreader_rust_components_checksum_func_has_sync_database_receipt() != 5819.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_list_sync_database_outbox() != 23255.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_mark_sync_database_outbox_published() != 5060.toShort()) {
+    if (lib.uniffi_myreader_rust_components_checksum_func_mark_sync_database_schedule_succeeded() != 64229.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_read_sync_database_diagnostics() != 34122.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_myreader_rust_components_checksum_func_read_sync_database_schedule_state() != 4255.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_read_sync_task_progress() != 25370.toShort()) {
@@ -1027,7 +1017,10 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_sync_contract_version() != 20300.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_myreader_rust_components_checksum_func_sync_library_sidecar() != 32793.toShort()) {
+    if (lib.uniffi_myreader_rust_components_checksum_func_sync_library_sidecar() != 43777.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_myreader_rust_components_checksum_func_write_sync_database_schedule_state() != 6095.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -1040,46 +1033,6 @@ public fun uniffiEnsureInitialized() {
 }
 
 // Async support
-// Async return type handlers
-
-internal const val UNIFFI_RUST_FUTURE_POLL_READY = 0.toByte()
-internal const val UNIFFI_RUST_FUTURE_POLL_MAYBE_READY = 1.toByte()
-
-internal val uniffiContinuationHandleMap = UniffiHandleMap<CancellableContinuation<Byte>>()
-
-// FFI type for Rust future continuations
-internal object uniffiRustFutureContinuationCallbackImpl: UniffiRustFutureContinuationCallback {
-    override fun callback(data: Long, pollResult: Byte) {
-        uniffiContinuationHandleMap.remove(data).resume(pollResult)
-    }
-}
-
-internal suspend fun<T, F, E: kotlin.Exception> uniffiRustCallAsync(
-    rustFuture: Long,
-    pollFunc: (Long, UniffiRustFutureContinuationCallback, Long) -> Unit,
-    completeFunc: (Long, UniffiRustCallStatus) -> F,
-    freeFunc: (Long) -> Unit,
-    liftFunc: (F) -> T,
-    errorHandler: UniffiRustCallStatusErrorHandler<E>
-): T {
-    try {
-        do {
-            val pollResult = suspendCancellableCoroutine<Byte> { continuation ->
-                pollFunc(
-                    rustFuture,
-                    uniffiRustFutureContinuationCallbackImpl,
-                    uniffiContinuationHandleMap.insert(continuation)
-                )
-            }
-        } while (pollResult != UNIFFI_RUST_FUTURE_POLL_READY);
-
-        return liftFunc(
-            uniffiRustCallWithError(errorHandler, { status -> completeFunc(rustFuture, status) })
-        )
-    } finally {
-        freeFunc(rustFuture)
-    }
-}
 
 // Public interface members begin here.
 
@@ -1275,57 +1228,6 @@ public object FfiConverterString: FfiConverter<String, RustBuffer.ByValue> {
     }
 }
 
-/**
- * @suppress
- */
-public object FfiConverterByteArray: FfiConverterRustBuffer<ByteArray> {
-    override fun read(buf: ByteBuffer): ByteArray {
-        val len = buf.getInt()
-        val byteArr = ByteArray(len)
-        buf.get(byteArr)
-        return byteArr
-    }
-    override fun allocationSize(value: ByteArray): ULong {
-        return 4UL + value.size.toULong()
-    }
-    override fun write(value: ByteArray, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        buf.put(value)
-    }
-}
-
-
-
-data class ApplyRemoteDatabaseResult (
-    var `document`: SyncDocumentCommandResult,
-    var `appliedObjects`: kotlin.UInt
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeApplyRemoteDatabaseResult: FfiConverterRustBuffer<ApplyRemoteDatabaseResult> {
-    override fun read(buf: ByteBuffer): ApplyRemoteDatabaseResult {
-        return ApplyRemoteDatabaseResult(
-            FfiConverterTypeSyncDocumentCommandResult.read(buf),
-            FfiConverterUInt.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: ApplyRemoteDatabaseResult) = (
-            FfiConverterTypeSyncDocumentCommandResult.allocationSize(value.`document`) +
-            FfiConverterUInt.allocationSize(value.`appliedObjects`)
-    )
-
-    override fun write(value: ApplyRemoteDatabaseResult, buf: ByteBuffer) {
-            FfiConverterTypeSyncDocumentCommandResult.write(value.`document`, buf)
-            FfiConverterUInt.write(value.`appliedObjects`, buf)
-    }
-}
-
 
 
 data class SyncDatabaseDiagnostics (
@@ -1376,11 +1278,9 @@ public object FfiConverterTypeSyncDatabaseDiagnostics: FfiConverterRustBuffer<Sy
 
 
 
-data class SyncDocumentChange (
-    var `actorId`: kotlin.String,
-    var `sequence`: kotlin.String,
-    var `hash`: kotlin.String,
-    var `bytes`: kotlin.ByteArray
+data class SyncDatabaseIdentity (
+    var `libraryUuid`: kotlin.String,
+    var `replicaId`: kotlin.String
 ) {
 
     companion object
@@ -1389,28 +1289,62 @@ data class SyncDocumentChange (
 /**
  * @suppress
  */
-public object FfiConverterTypeSyncDocumentChange: FfiConverterRustBuffer<SyncDocumentChange> {
-    override fun read(buf: ByteBuffer): SyncDocumentChange {
-        return SyncDocumentChange(
+public object FfiConverterTypeSyncDatabaseIdentity: FfiConverterRustBuffer<SyncDatabaseIdentity> {
+    override fun read(buf: ByteBuffer): SyncDatabaseIdentity {
+        return SyncDatabaseIdentity(
             FfiConverterString.read(buf),
             FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterByteArray.read(buf),
         )
     }
 
-    override fun allocationSize(value: SyncDocumentChange) = (
-            FfiConverterString.allocationSize(value.`actorId`) +
-            FfiConverterString.allocationSize(value.`sequence`) +
-            FfiConverterString.allocationSize(value.`hash`) +
-            FfiConverterByteArray.allocationSize(value.`bytes`)
+    override fun allocationSize(value: SyncDatabaseIdentity) = (
+            FfiConverterString.allocationSize(value.`libraryUuid`) +
+            FfiConverterString.allocationSize(value.`replicaId`)
     )
 
-    override fun write(value: SyncDocumentChange, buf: ByteBuffer) {
-            FfiConverterString.write(value.`actorId`, buf)
-            FfiConverterString.write(value.`sequence`, buf)
-            FfiConverterString.write(value.`hash`, buf)
-            FfiConverterByteArray.write(value.`bytes`, buf)
+    override fun write(value: SyncDatabaseIdentity, buf: ByteBuffer) {
+            FfiConverterString.write(value.`libraryUuid`, buf)
+            FfiConverterString.write(value.`replicaId`, buf)
+    }
+}
+
+
+
+data class SyncDatabaseScheduleState (
+    var `lastSuccessfulPullAt`: kotlin.Long?,
+    var `nextRetryAt`: kotlin.Long?,
+    var `transientFailureCount`: kotlin.UInt,
+    var `suspendedReason`: kotlin.String?
+) {
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSyncDatabaseScheduleState: FfiConverterRustBuffer<SyncDatabaseScheduleState> {
+    override fun read(buf: ByteBuffer): SyncDatabaseScheduleState {
+        return SyncDatabaseScheduleState(
+            FfiConverterOptionalLong.read(buf),
+            FfiConverterOptionalLong.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SyncDatabaseScheduleState) = (
+            FfiConverterOptionalLong.allocationSize(value.`lastSuccessfulPullAt`) +
+            FfiConverterOptionalLong.allocationSize(value.`nextRetryAt`) +
+            FfiConverterUInt.allocationSize(value.`transientFailureCount`) +
+            FfiConverterOptionalString.allocationSize(value.`suspendedReason`)
+    )
+
+    override fun write(value: SyncDatabaseScheduleState, buf: ByteBuffer) {
+            FfiConverterOptionalLong.write(value.`lastSuccessfulPullAt`, buf)
+            FfiConverterOptionalLong.write(value.`nextRetryAt`, buf)
+            FfiConverterUInt.write(value.`transientFailureCount`, buf)
+            FfiConverterOptionalString.write(value.`suspendedReason`, buf)
     }
 }
 
@@ -1418,12 +1352,7 @@ public object FfiConverterTypeSyncDocumentChange: FfiConverterRustBuffer<SyncDoc
 
 data class SyncDocumentCommandResult (
     var `schemaVersion`: kotlin.UInt,
-    var `libraryUuid`: kotlin.String?,
-    var `snapshotBytes`: kotlin.ByteArray,
     var `heads`: List<kotlin.String>,
-    var `incrementalBytes`: kotlin.ByteArray,
-    var `changes`: List<SyncDocumentChange>,
-    var `missingDependencies`: List<kotlin.String>,
     var `projectionJson`: kotlin.String
 ) {
 
@@ -1437,11 +1366,6 @@ public object FfiConverterTypeSyncDocumentCommandResult: FfiConverterRustBuffer<
     override fun read(buf: ByteBuffer): SyncDocumentCommandResult {
         return SyncDocumentCommandResult(
             FfiConverterUInt.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterByteArray.read(buf),
-            FfiConverterSequenceString.read(buf),
-            FfiConverterByteArray.read(buf),
-            FfiConverterSequenceTypeSyncDocumentChange.read(buf),
             FfiConverterSequenceString.read(buf),
             FfiConverterString.read(buf),
         )
@@ -1449,23 +1373,13 @@ public object FfiConverterTypeSyncDocumentCommandResult: FfiConverterRustBuffer<
 
     override fun allocationSize(value: SyncDocumentCommandResult) = (
             FfiConverterUInt.allocationSize(value.`schemaVersion`) +
-            FfiConverterOptionalString.allocationSize(value.`libraryUuid`) +
-            FfiConverterByteArray.allocationSize(value.`snapshotBytes`) +
             FfiConverterSequenceString.allocationSize(value.`heads`) +
-            FfiConverterByteArray.allocationSize(value.`incrementalBytes`) +
-            FfiConverterSequenceTypeSyncDocumentChange.allocationSize(value.`changes`) +
-            FfiConverterSequenceString.allocationSize(value.`missingDependencies`) +
             FfiConverterString.allocationSize(value.`projectionJson`)
     )
 
     override fun write(value: SyncDocumentCommandResult, buf: ByteBuffer) {
             FfiConverterUInt.write(value.`schemaVersion`, buf)
-            FfiConverterOptionalString.write(value.`libraryUuid`, buf)
-            FfiConverterByteArray.write(value.`snapshotBytes`, buf)
             FfiConverterSequenceString.write(value.`heads`, buf)
-            FfiConverterByteArray.write(value.`incrementalBytes`, buf)
-            FfiConverterSequenceTypeSyncDocumentChange.write(value.`changes`, buf)
-            FfiConverterSequenceString.write(value.`missingDependencies`, buf)
             FfiConverterString.write(value.`projectionJson`, buf)
     }
 }
@@ -1499,86 +1413,6 @@ public object FfiConverterTypeSyncLibrarySidecarReport: FfiConverterRustBuffer<S
     override fun write(value: SyncLibrarySidecarReport, buf: ByteBuffer) {
             FfiConverterUInt.write(value.`pushed`, buf)
             FfiConverterUInt.write(value.`pulled`, buf)
-    }
-}
-
-
-
-data class SyncOutboxEntry (
-    var `objectPath`: kotlin.String,
-    var `bytes`: kotlin.ByteArray,
-    var `sha256`: kotlin.String,
-    var `changeHashesJson`: kotlin.String
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeSyncOutboxEntry: FfiConverterRustBuffer<SyncOutboxEntry> {
-    override fun read(buf: ByteBuffer): SyncOutboxEntry {
-        return SyncOutboxEntry(
-            FfiConverterString.read(buf),
-            FfiConverterByteArray.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: SyncOutboxEntry) = (
-            FfiConverterString.allocationSize(value.`objectPath`) +
-            FfiConverterByteArray.allocationSize(value.`bytes`) +
-            FfiConverterString.allocationSize(value.`sha256`) +
-            FfiConverterString.allocationSize(value.`changeHashesJson`)
-    )
-
-    override fun write(value: SyncOutboxEntry, buf: ByteBuffer) {
-            FfiConverterString.write(value.`objectPath`, buf)
-            FfiConverterByteArray.write(value.`bytes`, buf)
-            FfiConverterString.write(value.`sha256`, buf)
-            FfiConverterString.write(value.`changeHashesJson`, buf)
-    }
-}
-
-
-
-data class SyncRemoteObject (
-    var `objectPath`: kotlin.String,
-    var `head`: kotlin.String,
-    var `bytes`: kotlin.ByteArray,
-    var `sha256`: kotlin.String
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeSyncRemoteObject: FfiConverterRustBuffer<SyncRemoteObject> {
-    override fun read(buf: ByteBuffer): SyncRemoteObject {
-        return SyncRemoteObject(
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterByteArray.read(buf),
-            FfiConverterString.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: SyncRemoteObject) = (
-            FfiConverterString.allocationSize(value.`objectPath`) +
-            FfiConverterString.allocationSize(value.`head`) +
-            FfiConverterByteArray.allocationSize(value.`bytes`) +
-            FfiConverterString.allocationSize(value.`sha256`)
-    )
-
-    override fun write(value: SyncRemoteObject, buf: ByteBuffer) {
-            FfiConverterString.write(value.`objectPath`, buf)
-            FfiConverterString.write(value.`head`, buf)
-            FfiConverterByteArray.write(value.`bytes`, buf)
-            FfiConverterString.write(value.`sha256`, buf)
     }
 }
 
@@ -1751,28 +1585,28 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
 /**
  * @suppress
  */
-public object FfiConverterOptionalByteArray: FfiConverterRustBuffer<kotlin.ByteArray?> {
-    override fun read(buf: ByteBuffer): kotlin.ByteArray? {
+public object FfiConverterOptionalTypeSyncDatabaseScheduleState: FfiConverterRustBuffer<SyncDatabaseScheduleState?> {
+    override fun read(buf: ByteBuffer): SyncDatabaseScheduleState? {
         if (buf.get().toInt() == 0) {
             return null
         }
-        return FfiConverterByteArray.read(buf)
+        return FfiConverterTypeSyncDatabaseScheduleState.read(buf)
     }
 
-    override fun allocationSize(value: kotlin.ByteArray?): ULong {
+    override fun allocationSize(value: SyncDatabaseScheduleState?): ULong {
         if (value == null) {
             return 1UL
         } else {
-            return 1UL + FfiConverterByteArray.allocationSize(value)
+            return 1UL + FfiConverterTypeSyncDatabaseScheduleState.allocationSize(value)
         }
     }
 
-    override fun write(value: kotlin.ByteArray?, buf: ByteBuffer) {
+    override fun write(value: SyncDatabaseScheduleState?, buf: ByteBuffer) {
         if (value == null) {
             buf.put(0)
         } else {
             buf.put(1)
-            FfiConverterByteArray.write(value, buf)
+            FfiConverterTypeSyncDatabaseScheduleState.write(value, buf)
         }
     }
 }
@@ -1836,113 +1670,11 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
         }
     }
 }
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeSyncDocumentChange: FfiConverterRustBuffer<List<SyncDocumentChange>> {
-    override fun read(buf: ByteBuffer): List<SyncDocumentChange> {
-        val len = buf.getInt()
-        return List<SyncDocumentChange>(len) {
-            FfiConverterTypeSyncDocumentChange.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<SyncDocumentChange>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeSyncDocumentChange.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<SyncDocumentChange>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeSyncDocumentChange.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeSyncOutboxEntry: FfiConverterRustBuffer<List<SyncOutboxEntry>> {
-    override fun read(buf: ByteBuffer): List<SyncOutboxEntry> {
-        val len = buf.getInt()
-        return List<SyncOutboxEntry>(len) {
-            FfiConverterTypeSyncOutboxEntry.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<SyncOutboxEntry>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeSyncOutboxEntry.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<SyncOutboxEntry>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeSyncOutboxEntry.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeSyncRemoteObject: FfiConverterRustBuffer<List<SyncRemoteObject>> {
-    override fun read(buf: ByteBuffer): List<SyncRemoteObject> {
-        val len = buf.getInt()
-        return List<SyncRemoteObject>(len) {
-            FfiConverterTypeSyncRemoteObject.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<SyncRemoteObject>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeSyncRemoteObject.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<SyncRemoteObject>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeSyncRemoteObject.write(it, buf)
-        }
-    }
-}
-
-
-
-
-
-
-
-
     @Throws(RustComponentsException::class) fun `advanceSyncScheduler`(`stateJson`: kotlin.String?, `policyJson`: kotlin.String, `eventJson`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCallWithError(RustComponentsException) { _status ->
     UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_advance_sync_scheduler(
         FfiConverterOptionalString.lower(`stateJson`),FfiConverterString.lower(`policyJson`),FfiConverterString.lower(`eventJson`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `applySyncDatabaseRemoteObjects`(`databasePath`: kotlin.String, `libraryUuid`: kotlin.String, `replicaId`: kotlin.String, `nowMs`: kotlin.String, `objects`: List<SyncRemoteObject>): ApplyRemoteDatabaseResult {
-            return FfiConverterTypeApplyRemoteDatabaseResult.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_apply_sync_database_remote_objects(
-        FfiConverterString.lower(`databasePath`),FfiConverterString.lower(`libraryUuid`),FfiConverterString.lower(`replicaId`),FfiConverterString.lower(`nowMs`),FfiConverterSequenceTypeSyncRemoteObject.lower(`objects`),_status)
 }
     )
     }
@@ -1967,6 +1699,16 @@ public object FfiConverterSequenceTypeSyncRemoteObject: FfiConverterRustBuffer<L
     }
 
 
+    @Throws(RustComponentsException::class) fun `ensureSyncDatabaseIdentity`(`databasePath`: kotlin.String, `libraryUuid`: kotlin.String): SyncDatabaseIdentity {
+            return FfiConverterTypeSyncDatabaseIdentity.lift(
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_ensure_sync_database_identity(
+        FfiConverterString.lower(`databasePath`),FfiConverterString.lower(`libraryUuid`),_status)
+}
+    )
+    }
+
+
     @Throws(RustComponentsException::class) fun `executeSyncDatabaseCommand`(`databasePath`: kotlin.String, `libraryUuid`: kotlin.String, `replicaId`: kotlin.String, `nowMs`: kotlin.String, `commandJson`: kotlin.String): SyncDocumentCommandResult {
             return FfiConverterTypeSyncDocumentCommandResult.lift(
     uniffiRustCallWithError(RustComponentsException) { _status ->
@@ -1977,41 +1719,21 @@ public object FfiConverterSequenceTypeSyncRemoteObject: FfiConverterRustBuffer<L
     }
 
 
-    @Throws(RustComponentsException::class) fun `executeSyncDocumentCommand`(`snapshotBytes`: kotlin.ByteArray?, `requestJson`: kotlin.String, `payloadBytes`: kotlin.ByteArray?): SyncDocumentCommandResult {
-            return FfiConverterTypeSyncDocumentCommandResult.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_execute_sync_document_command(
-        FfiConverterOptionalByteArray.lower(`snapshotBytes`),FfiConverterString.lower(`requestJson`),FfiConverterOptionalByteArray.lower(`payloadBytes`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `hasSyncDatabaseReceipt`(`databasePath`: kotlin.String, `objectPath`: kotlin.String): kotlin.Boolean {
+    @Throws(RustComponentsException::class) fun `hasSyncDatabasePendingWork`(`databasePath`: kotlin.String): kotlin.Boolean {
             return FfiConverterBoolean.lift(
     uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_has_sync_database_receipt(
-        FfiConverterString.lower(`databasePath`),FfiConverterString.lower(`objectPath`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `listSyncDatabaseOutbox`(`databasePath`: kotlin.String): List<SyncOutboxEntry> {
-            return FfiConverterSequenceTypeSyncOutboxEntry.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_sync_database_outbox(
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_has_sync_database_pending_work(
         FfiConverterString.lower(`databasePath`),_status)
 }
     )
     }
 
 
-    @Throws(RustComponentsException::class) fun `markSyncDatabaseOutboxPublished`(`databasePath`: kotlin.String, `objectPath`: kotlin.String, `publishedAt`: kotlin.String)
+    @Throws(RustComponentsException::class) fun `markSyncDatabaseScheduleSucceeded`(`databasePath`: kotlin.String, `completedPullAt`: kotlin.Long?)
         =
     uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_mark_sync_database_outbox_published(
-        FfiConverterString.lower(`databasePath`),FfiConverterString.lower(`objectPath`),FfiConverterString.lower(`publishedAt`),_status)
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_mark_sync_database_schedule_succeeded(
+        FfiConverterString.lower(`databasePath`),FfiConverterOptionalLong.lower(`completedPullAt`),_status)
 }
 
 
@@ -2020,6 +1742,16 @@ public object FfiConverterSequenceTypeSyncRemoteObject: FfiConverterRustBuffer<L
             return FfiConverterTypeSyncDatabaseDiagnostics.lift(
     uniffiRustCallWithError(RustComponentsException) { _status ->
     UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_read_sync_database_diagnostics(
+        FfiConverterString.lower(`databasePath`),_status)
+}
+    )
+    }
+
+
+    @Throws(RustComponentsException::class) fun `readSyncDatabaseScheduleState`(`databasePath`: kotlin.String): SyncDatabaseScheduleState? {
+            return FfiConverterOptionalTypeSyncDatabaseScheduleState.lift(
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_read_sync_database_schedule_state(
         FfiConverterString.lower(`databasePath`),_status)
 }
     )
@@ -2053,17 +1785,19 @@ public object FfiConverterSequenceTypeSyncRemoteObject: FfiConverterRustBuffer<L
     }
 
 
-    @Throws(RustComponentsException::class)
-    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
-     suspend fun `syncLibrarySidecar`(`taskId`: kotlin.String, `databasePath`: kotlin.String, `libraryUuid`: kotlin.String, `replicaId`: kotlin.String, `nowMs`: kotlin.String, `mode`: kotlin.String, `storageJson`: kotlin.String) : SyncLibrarySidecarReport {
-        return uniffiRustCallAsync(
-        UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_sync_library_sidecar(FfiConverterString.lower(`taskId`),FfiConverterString.lower(`databasePath`),FfiConverterString.lower(`libraryUuid`),FfiConverterString.lower(`replicaId`),FfiConverterString.lower(`nowMs`),FfiConverterString.lower(`mode`),FfiConverterString.lower(`storageJson`),),
-        { future, callback, continuation -> UniffiLib.INSTANCE.ffi_myreader_rust_components_rust_future_poll_rust_buffer(future, callback, continuation) },
-        { future, continuation -> UniffiLib.INSTANCE.ffi_myreader_rust_components_rust_future_complete_rust_buffer(future, continuation) },
-        { future -> UniffiLib.INSTANCE.ffi_myreader_rust_components_rust_future_free_rust_buffer(future) },
-        // lift function
-        { FfiConverterTypeSyncLibrarySidecarReport.lift(it) },
-        // Error FFI converter
-        RustComponentsException.ErrorHandler,
+    @Throws(RustComponentsException::class) fun `syncLibrarySidecar`(`taskId`: kotlin.String, `databasePath`: kotlin.String, `libraryUuid`: kotlin.String, `replicaId`: kotlin.String, `nowMs`: kotlin.String, `mode`: kotlin.String, `storageJson`: kotlin.String): SyncLibrarySidecarReport {
+            return FfiConverterTypeSyncLibrarySidecarReport.lift(
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_sync_library_sidecar(
+        FfiConverterString.lower(`taskId`),FfiConverterString.lower(`databasePath`),FfiConverterString.lower(`libraryUuid`),FfiConverterString.lower(`replicaId`),FfiConverterString.lower(`nowMs`),FfiConverterString.lower(`mode`),FfiConverterString.lower(`storageJson`),_status)
+}
     )
     }
+
+
+    @Throws(RustComponentsException::class) fun `writeSyncDatabaseScheduleState`(`databasePath`: kotlin.String, `state`: SyncDatabaseScheduleState)
+        =
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_write_sync_database_schedule_state(
+        FfiConverterString.lower(`databasePath`),FfiConverterTypeSyncDatabaseScheduleState.lower(`state`),_status)
+}

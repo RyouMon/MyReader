@@ -1,40 +1,21 @@
 import { requireNativeModule } from "expo"
 
-export type NativeSyncDocumentChange = {
-  actorId: string
-  sequence: string
-  hash: string
-  bytes: Uint8Array
-}
-
 export type NativeSyncDocumentCommandResult = {
   schemaVersion: number
-  libraryUuid: string | null
-  snapshotBytes: Uint8Array
   heads: string[]
-  incrementalBytes: Uint8Array
-  changes: NativeSyncDocumentChange[]
-  missingDependencies: string[]
   projectionJson: string
 }
 
-export type NativeSyncOutboxEntry = {
-  objectPath: string
-  bytes: Uint8Array
-  sha256: string
-  changeHashesJson: string
+export type NativeSyncDatabaseIdentity = {
+  libraryUuid: string
+  replicaId: string
 }
 
-export type NativeSyncRemoteObject = {
-  objectPath: string
-  head: string
-  bytes: Uint8Array
-  sha256: string
-}
-
-export type NativeApplyRemoteDatabaseResult = {
-  document: NativeSyncDocumentCommandResult
-  appliedObjects: number
+export type NativeSyncDatabaseScheduleState = {
+  lastSuccessfulPullAt: number | null
+  nextRetryAt: number | null
+  transientFailureCount: number
+  suspendedReason: string | null
 }
 
 export type NativeSyncDatabaseDiagnostics = {
@@ -65,11 +46,24 @@ export type MyReaderRustComponentsModule = {
     policyJson: string,
     eventJson: string,
   ): string
-  executeSyncDocumentCommand(
-    snapshotBytes: Uint8Array | null,
-    requestJson: string,
-    payloadBytes: Uint8Array | null,
-  ): NativeSyncDocumentCommandResult
+  ensureSyncDatabaseIdentity(
+    databasePath: string,
+    libraryUuid: string,
+  ): Promise<NativeSyncDatabaseIdentity>
+  readSyncDatabaseScheduleState(
+    databasePath: string,
+  ): Promise<NativeSyncDatabaseScheduleState | null>
+  writeSyncDatabaseScheduleState(
+    databasePath: string,
+    lastSuccessfulPullAt: number | null,
+    nextRetryAt: number | null,
+    transientFailureCount: number,
+    suspendedReason: string | null,
+  ): Promise<void>
+  markSyncDatabaseScheduleSucceeded(
+    databasePath: string,
+    completedPullAt: number | null,
+  ): Promise<void>
   ensureSyncDatabaseDocument(
     databasePath: string,
     libraryUuid: string,
@@ -83,23 +77,7 @@ export type MyReaderRustComponentsModule = {
     nowMs: string,
     commandJson: string,
   ): Promise<NativeSyncDocumentCommandResult>
-  listSyncDatabaseOutbox(databasePath: string): Promise<NativeSyncOutboxEntry[]>
-  markSyncDatabaseOutboxPublished(
-    databasePath: string,
-    objectPath: string,
-    publishedAt: string,
-  ): Promise<void>
-  hasSyncDatabaseReceipt(
-    databasePath: string,
-    objectPath: string,
-  ): Promise<boolean>
-  applySyncDatabaseRemoteObjects(
-    databasePath: string,
-    libraryUuid: string,
-    replicaId: string,
-    nowMs: string,
-    objects: NativeSyncRemoteObject[],
-  ): Promise<NativeApplyRemoteDatabaseResult>
+  hasSyncDatabasePendingWork(databasePath: string): Promise<boolean>
   readSyncDatabaseDiagnostics(
     databasePath: string,
   ): Promise<NativeSyncDatabaseDiagnostics>
@@ -137,11 +115,34 @@ const moduleFacade: MyReaderRustComponentsModule = {
       eventJson,
     )
   },
-  executeSyncDocumentCommand(snapshotBytes, requestJson, payloadBytes) {
-    return getNativeModule().executeSyncDocumentCommand(
-      snapshotBytes,
-      requestJson,
-      payloadBytes,
+  ensureSyncDatabaseIdentity(databasePath, libraryUuid) {
+    return getNativeModule().ensureSyncDatabaseIdentity(
+      databasePath,
+      libraryUuid,
+    )
+  },
+  readSyncDatabaseScheduleState(databasePath) {
+    return getNativeModule().readSyncDatabaseScheduleState(databasePath)
+  },
+  writeSyncDatabaseScheduleState(
+    databasePath,
+    lastSuccessfulPullAt,
+    nextRetryAt,
+    transientFailureCount,
+    suspendedReason,
+  ) {
+    return getNativeModule().writeSyncDatabaseScheduleState(
+      databasePath,
+      lastSuccessfulPullAt,
+      nextRetryAt,
+      transientFailureCount,
+      suspendedReason,
+    )
+  },
+  markSyncDatabaseScheduleSucceeded(databasePath, completedPullAt) {
+    return getNativeModule().markSyncDatabaseScheduleSucceeded(
+      databasePath,
+      completedPullAt,
     )
   },
   ensureSyncDatabaseDocument(databasePath, libraryUuid, replicaId, nowMs) {
@@ -167,33 +168,8 @@ const moduleFacade: MyReaderRustComponentsModule = {
       commandJson,
     )
   },
-  listSyncDatabaseOutbox(databasePath) {
-    return getNativeModule().listSyncDatabaseOutbox(databasePath)
-  },
-  markSyncDatabaseOutboxPublished(databasePath, objectPath, publishedAt) {
-    return getNativeModule().markSyncDatabaseOutboxPublished(
-      databasePath,
-      objectPath,
-      publishedAt,
-    )
-  },
-  hasSyncDatabaseReceipt(databasePath, objectPath) {
-    return getNativeModule().hasSyncDatabaseReceipt(databasePath, objectPath)
-  },
-  applySyncDatabaseRemoteObjects(
-    databasePath,
-    libraryUuid,
-    replicaId,
-    nowMs,
-    objects,
-  ) {
-    return getNativeModule().applySyncDatabaseRemoteObjects(
-      databasePath,
-      libraryUuid,
-      replicaId,
-      nowMs,
-      objects,
-    )
+  hasSyncDatabasePendingWork(databasePath) {
+    return getNativeModule().hasSyncDatabasePendingWork(databasePath)
   },
   readSyncDatabaseDiagnostics(databasePath) {
     return getNativeModule().readSyncDatabaseDiagnostics(databasePath)

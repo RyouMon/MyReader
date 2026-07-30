@@ -47,7 +47,7 @@
 ## 自动化门禁
 
 ```bash
-pnpm test:automerge-fixtures
+cargo test -p myreader-sync -p myreader-rust-components
 pnpm --filter @my-reader/tools test
 pnpm --filter my-reader-mobile exec jest --runInBand
 pnpm --filter my-reader run test:unit
@@ -58,7 +58,7 @@ cargo test
 
 重点确认以下用例通过：
 
-- Rust 与 TypeScript 双向导入 canonical genesis 和 incremental fixture；
+- Rust 导入 canonical genesis 和历史跨实现 incremental fixture；
 - 三个 actor 的 change 乱序、重复导入后收敛；
 - 两个 replica 的并发位置保留候选，选择后由新 change 消除冲突；
 - 第二个本地 SQLite 从同一对象存储拉取并立即投影进度；
@@ -241,3 +241,25 @@ local-direct 手工闭环。
   Android；修复后远端对象正文与 outbox 字节、SHA-256 一致。
 
 最终验收轮只使用事件驱动 push 和书库激活 pull；手动 `scope: "all"` 未参与。
+
+## 2026-07-27 共享 Rust Component 试点验证记录
+
+本轮使用签名的 iOS Debug 构建、运行中的 Tauri 桌面端和同一个 WebDAV 书库
+`CalibreTest`。固定样本为 EPUB《Jane Eyre》，Calibre `book_id` 为 `11`。
+
+- desktop 从位置 `4 / 1023` 阅读到 `37 / 1023`；本地 projection 记录
+  `display_progression: 0.036168` 和 `epub/text/chapter-3.xhtml`，对应 outbox 已发布；
+- iOS 执行一次确定性的手动 pull 后，主页无需先打开书籍就显示 `4%`；数据库中的
+  `position: 37`、Locator、展示进度和 desktop 完全一致；
+- iOS 打开该书时直接进入第三章而非第一页，证明列表 projection 与 reader 初始 Locator
+  使用同一份同步结果；
+- Rust 文件存储双设备测试一次写入并验证收藏、进度、书签、批注、阅读会话和完成记录六个
+  已冻结 domain，目标数据库的六张 projection 表均立即得到记录；
+- 真实 iOS 首次运行暴露 UniFFI 调用方没有 Tokio reactor 时会在网络等待阶段终止进程。
+  共享 use case 现在自带异步运行环境，并由“原生调用方没有 Tokio runtime”回归测试保护；
+- mobile 已删除 JavaScript Automerge engine、通用二进制 adapter 和对应生成脚本；
+  Swift/Kotlin/TypeScript bridge 只保留 projection、数据库用例、同步任务与调度 API。
+
+这轮手工记录证明 desktop 到 iOS 的 WebDAV 写入、发布、拉取、查询刷新和 reader 定位闭环；
+拉取使用手动入口固定测试边界，不计作自动调度验证。自动 push/pull 的真实验证仍以前一节
+记录为准。

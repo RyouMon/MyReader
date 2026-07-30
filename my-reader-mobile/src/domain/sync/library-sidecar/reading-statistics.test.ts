@@ -1,7 +1,7 @@
-jest.mock("./automerge-store", () => ({
-  commitLibrarySidecarAutomergeMutation: jest.fn(),
+jest.mock("./database-store", () => ({
+  commitLibrarySidecarMutation: jest.fn(),
 }))
-jest.mock("./automerge-document", () => ({
+jest.mock("./document-contract", () => ({
   librarySidecarReadingCompletionRecords: jest.fn(),
 }))
 jest.mock("./identity", () => ({
@@ -10,8 +10,8 @@ jest.mock("./identity", () => ({
 
 import type { Library } from "@my-reader/tools/types/library"
 
-import { librarySidecarReadingCompletionRecords } from "./automerge-document"
-import { commitLibrarySidecarAutomergeMutation } from "./automerge-store"
+import { librarySidecarReadingCompletionRecords } from "./document-contract"
+import { commitLibrarySidecarMutation } from "./database-store"
 import { ensureLibrarySidecarIdentity } from "./identity"
 import {
   addLocalReadingCompletion,
@@ -31,7 +31,7 @@ describe("Automerge reading statistics", () => {
     jest.clearAllMocks()
     jest.mocked(ensureLibrarySidecarIdentity).mockResolvedValue(identity)
     jest
-      .mocked(commitLibrarySidecarAutomergeMutation)
+      .mocked(commitLibrarySidecarMutation)
       .mockImplementation(async (_library, _identity, _now, selectCommand) => {
         selectedCommand = selectCommand(document)
         return document

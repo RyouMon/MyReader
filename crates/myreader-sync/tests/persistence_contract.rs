@@ -1,8 +1,10 @@
 use myreader_sync::document::{FavoriteValue, LIBRARY_SIDECAR_SCHEMA_VERSION};
 use myreader_sync::document_engine::DocumentCommand;
 use myreader_sync::persistence::{
-    apply_remote_database_objects, ensure_database_document, execute_local_database_command,
-    list_pending_outbox, DatabaseIdentity, SyncDatabaseCommand, SyncRemoteObject,
+    apply_remote_database_objects, ensure_database_document, ensure_database_identity,
+    execute_local_database_command, list_pending_outbox, mark_schedule_succeeded,
+    read_schedule_state, write_schedule_state, DatabaseIdentity, SyncDatabaseCommand,
+    SyncRemoteObject, SyncScheduleState,
 };
 use rusqlite::Connection;
 
@@ -109,10 +111,75 @@ fn create_database() -> (tempfile::TempDir, String) {
                 heads_json TEXT NOT NULL,
                 updated_at INTEGER NOT NULL
             );
+            CREATE TABLE sync_local_meta (
+                id TEXT PRIMARY KEY NOT NULL,
+                protocol TEXT NOT NULL,
+                library_uuid TEXT NOT NULL,
+                replica_id TEXT NOT NULL
+            );
+            CREATE TABLE sync_schedule_state (
+                id TEXT PRIMARY KEY NOT NULL,
+                last_successful_pull_at INTEGER,
+                next_retry_at INTEGER,
+                transient_failure_count INTEGER DEFAULT 0 NOT NULL,
+                suspended_reason TEXT
+            );
             "#,
         )
         .unwrap();
     (directory, path.to_string_lossy().into_owned())
+}
+
+#[test]
+fn should_reuse_replica_identity_when_database_identity_is_ensured_again() {
+    let (_directory, path) = create_database();
+
+    let first = ensure_database_identity(&path, LIBRARY_UUID).unwrap();
+    let second = ensure_database_identity(&path, LIBRARY_UUID).unwrap();
+
+    assert_eq!(first, second);
+    assert_eq!(first.library_uuid, LIBRARY_UUID);
+    assert_eq!(first.replica_id.len(), 36);
+}
+
+#[test]
+fn should_reject_library_mismatch_when_database_identity_already_exists() {
+    let (_directory, path) = create_database();
+    ensure_database_identity(&path, LIBRARY_UUID).unwrap();
+
+    let error =
+        ensure_database_identity(&path, "22222222-3333-4444-8555-666666666666").unwrap_err();
+
+    assert!(error
+        .to_string()
+        .contains("Local sidecar identity does not match this library"));
+}
+
+#[test]
+fn should_preserve_last_pull_when_schedule_retry_is_cleared_after_push() {
+    let (_directory, path) = create_database();
+    write_schedule_state(
+        &path,
+        &SyncScheduleState {
+            last_successful_pull_at: Some(100),
+            next_retry_at: Some(200),
+            transient_failure_count: 2,
+            suspended_reason: Some("network".to_owned()),
+        },
+    )
+    .unwrap();
+
+    mark_schedule_succeeded(&path, None).unwrap();
+
+    assert_eq!(
+        read_schedule_state(&path).unwrap(),
+        Some(SyncScheduleState {
+            last_successful_pull_at: Some(100),
+            next_retry_at: None,
+            transient_failure_count: 0,
+            suspended_reason: None,
+        })
+    );
 }
 
 fn identity() -> DatabaseIdentity {

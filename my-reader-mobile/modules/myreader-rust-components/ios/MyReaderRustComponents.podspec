@@ -22,8 +22,9 @@ Pod::Spec.new do |s|
     :name => 'Build MyReader Rust components',
     :script => '"${PODS_TARGET_SRCROOT}/../scripts/build-ios.sh"',
     :execution_position => :before_compile,
+    :always_out_of_date => '1',
     :output_files => [
-      '${CONFIGURATION_BUILD_DIR}/libmyreader_rust_components.a'
+      '${BUILT_PRODUCTS_DIR}/../libmyreader_rust_components.a'
     ],
   }
 end

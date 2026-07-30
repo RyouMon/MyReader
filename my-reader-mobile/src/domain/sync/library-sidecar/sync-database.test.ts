@@ -1,7 +1,8 @@
 jest.mock("@/modules/myreader-rust-components", () => ({
   __esModule: true,
   default: {
-    syncContractVersion: jest.fn(() => 5),
+    syncContractVersion: jest.fn(() => 7),
+    ensureSyncDatabaseIdentity: jest.fn(),
     ensureSyncDatabaseDocument: jest.fn(),
     executeSyncDatabaseCommand: jest.fn(),
     readSyncTaskProgress: jest.fn(),
@@ -21,6 +22,7 @@ import MyReaderRustComponents from "@/modules/myreader-rust-components"
 import { getLibraryDatabase } from "@/src/services/db/library-db"
 import {
   ensureSyncDatabaseDocument,
+  ensureSyncDatabaseIdentity,
   executeSyncDatabaseCommand,
   syncLibrarySidecarDatabase,
 } from "./sync-database"
@@ -32,12 +34,7 @@ const identity = {
 }
 const nativeResult = {
   schemaVersion: 1,
-  libraryUuid: identity.libraryUuid,
-  snapshotBytes: new Uint8Array([1]),
   heads: ["head-1"],
-  incrementalBytes: new Uint8Array(),
-  changes: [],
-  missingDependencies: [],
   projectionJson: JSON.stringify({
     readingPositions: [],
     readingPositionCandidates: [],
@@ -57,6 +54,9 @@ describe("sync database adapter", () => {
       path: "/library/.myreader/myreader.db",
     } as never)
     jest
+      .mocked(MyReaderRustComponents.ensureSyncDatabaseIdentity)
+      .mockResolvedValue(identity)
+    jest
       .mocked(MyReaderRustComponents.ensureSyncDatabaseDocument)
       .mockResolvedValue(nativeResult)
     jest
@@ -69,6 +69,19 @@ describe("sync database adapter", () => {
       .mocked(MyReaderRustComponents.readSyncTaskProgress)
       .mockReturnValue(null)
     jest.mocked(MyReaderRustComponents.releaseSyncTask).mockReturnValue(true)
+  })
+
+  it("should delegate replica identity ownership when library identity is known", async () => {
+    await expect(
+      ensureSyncDatabaseIdentity(library, identity.libraryUuid),
+    ).resolves.toEqual(identity)
+
+    expect(
+      MyReaderRustComponents.ensureSyncDatabaseIdentity,
+    ).toHaveBeenCalledWith(
+      "/library/.myreader/myreader.db",
+      identity.libraryUuid,
+    )
   })
 
   it("should pass the migrated library database path when state is ensured", async () => {

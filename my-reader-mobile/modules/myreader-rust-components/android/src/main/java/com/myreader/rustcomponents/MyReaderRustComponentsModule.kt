@@ -2,21 +2,21 @@ package com.myreader.rustcomponents
 
 import com.myreader.rustcomponents.uniffi.RustComponentsException
 import com.myreader.rustcomponents.uniffi.SyncDocumentCommandResult
-import com.myreader.rustcomponents.uniffi.SyncRemoteObject
 import com.myreader.rustcomponents.uniffi.advanceSyncScheduler
-import com.myreader.rustcomponents.uniffi.applySyncDatabaseRemoteObjects
 import com.myreader.rustcomponents.uniffi.cancelSyncTask
+import com.myreader.rustcomponents.uniffi.ensureSyncDatabaseIdentity
 import com.myreader.rustcomponents.uniffi.ensureSyncDatabaseDocument
 import com.myreader.rustcomponents.uniffi.executeSyncDatabaseCommand
-import com.myreader.rustcomponents.uniffi.executeSyncDocumentCommand
-import com.myreader.rustcomponents.uniffi.hasSyncDatabaseReceipt
-import com.myreader.rustcomponents.uniffi.listSyncDatabaseOutbox
-import com.myreader.rustcomponents.uniffi.markSyncDatabaseOutboxPublished
+import com.myreader.rustcomponents.uniffi.hasSyncDatabasePendingWork
+import com.myreader.rustcomponents.uniffi.markSyncDatabaseScheduleSucceeded
 import com.myreader.rustcomponents.uniffi.readSyncDatabaseDiagnostics
+import com.myreader.rustcomponents.uniffi.readSyncDatabaseScheduleState
 import com.myreader.rustcomponents.uniffi.readSyncTaskProgress
 import com.myreader.rustcomponents.uniffi.releaseSyncTask
+import com.myreader.rustcomponents.uniffi.SyncDatabaseScheduleState
 import com.myreader.rustcomponents.uniffi.syncContractVersion
 import com.myreader.rustcomponents.uniffi.syncLibrarySidecar
+import com.myreader.rustcomponents.uniffi.writeSyncDatabaseScheduleState
 import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -33,30 +33,9 @@ class MyReaderRustComponentsModule : Module() {
 
   private fun documentResult(result: SyncDocumentCommandResult) = mapOf(
     "schemaVersion" to result.schemaVersion.toInt(),
-    "libraryUuid" to result.libraryUuid,
-    "snapshotBytes" to result.snapshotBytes,
     "heads" to result.heads,
-    "incrementalBytes" to result.incrementalBytes,
-    "changes" to result.changes.map { change ->
-      mapOf(
-        "actorId" to change.actorId,
-        "sequence" to change.sequence,
-        "hash" to change.hash,
-        "bytes" to change.bytes,
-      )
-    },
-    "missingDependencies" to result.missingDependencies,
     "projectionJson" to result.projectionJson,
   )
-
-  private suspend fun <T> syncAsyncCall(operation: suspend () -> T): T = try {
-    operation()
-  } catch (error: RustComponentsException) {
-    val message = when (error) {
-      is RustComponentsException.Sync -> error.v1
-    }
-    throw CodedException("SYNC_ERROR", message, error)
-  }
 
   override fun definition() = ModuleDefinition {
     Name("MyReaderRustComponents")
@@ -65,26 +44,64 @@ class MyReaderRustComponentsModule : Module() {
       syncContractVersion().toInt()
     }
 
-    Function("executeSyncDocumentCommand") {
-        snapshotBytes: ByteArray?,
-        requestJson: String,
-        payloadBytes: ByteArray? ->
-      syncCall {
-        val result = executeSyncDocumentCommand(
-          snapshotBytes,
-          requestJson,
-          payloadBytes,
-        )
-        documentResult(result)
-      }
-    }
-
     Function("advanceSyncScheduler") {
         stateJson: String?,
         policyJson: String,
         eventJson: String ->
       syncCall {
         advanceSyncScheduler(stateJson, policyJson, eventJson)
+      }
+    }
+
+    AsyncFunction("ensureSyncDatabaseIdentity") {
+        databasePath: String,
+        libraryUuid: String ->
+      syncCall {
+        val identity = ensureSyncDatabaseIdentity(databasePath, libraryUuid)
+        mapOf(
+          "libraryUuid" to identity.libraryUuid,
+          "replicaId" to identity.replicaId,
+        )
+      }
+    }
+
+    AsyncFunction("readSyncDatabaseScheduleState") { databasePath: String ->
+      syncCall {
+        readSyncDatabaseScheduleState(databasePath)?.let { state ->
+          mapOf(
+            "lastSuccessfulPullAt" to state.lastSuccessfulPullAt,
+            "nextRetryAt" to state.nextRetryAt,
+            "transientFailureCount" to state.transientFailureCount.toInt(),
+            "suspendedReason" to state.suspendedReason,
+          )
+        }
+      }
+    }
+
+    AsyncFunction("writeSyncDatabaseScheduleState") {
+        databasePath: String,
+        lastSuccessfulPullAt: Long?,
+        nextRetryAt: Long?,
+        transientFailureCount: Int,
+        suspendedReason: String? ->
+      syncCall {
+        writeSyncDatabaseScheduleState(
+          databasePath,
+          SyncDatabaseScheduleState(
+            lastSuccessfulPullAt,
+            nextRetryAt,
+            transientFailureCount.toUInt(),
+            suspendedReason,
+          ),
+        )
+      }
+    }
+
+    AsyncFunction("markSyncDatabaseScheduleSucceeded") {
+        databasePath: String,
+        completedPullAt: Long? ->
+      syncCall {
+        markSyncDatabaseScheduleSucceeded(databasePath, completedPullAt)
       }
     }
 
@@ -119,61 +136,9 @@ class MyReaderRustComponentsModule : Module() {
       }
     }
 
-    AsyncFunction("listSyncDatabaseOutbox") { databasePath: String ->
+    AsyncFunction("hasSyncDatabasePendingWork") { databasePath: String ->
       syncCall {
-        listSyncDatabaseOutbox(databasePath).map { entry ->
-          mapOf(
-            "objectPath" to entry.objectPath,
-            "bytes" to entry.bytes,
-            "sha256" to entry.sha256,
-            "changeHashesJson" to entry.changeHashesJson,
-          )
-        }
-      }
-    }
-
-    AsyncFunction("markSyncDatabaseOutboxPublished") {
-        databasePath: String,
-        objectPath: String,
-        publishedAt: String ->
-      syncCall {
-        markSyncDatabaseOutboxPublished(databasePath, objectPath, publishedAt)
-      }
-    }
-
-    AsyncFunction("hasSyncDatabaseReceipt") {
-        databasePath: String,
-        objectPath: String ->
-      syncCall {
-        hasSyncDatabaseReceipt(databasePath, objectPath)
-      }
-    }
-
-    AsyncFunction("applySyncDatabaseRemoteObjects") {
-        databasePath: String,
-        libraryUuid: String,
-        replicaId: String,
-        nowMs: String,
-        objects: List<SyncRemoteObjectRecord> ->
-      syncCall {
-        val result = applySyncDatabaseRemoteObjects(
-          databasePath,
-          libraryUuid,
-          replicaId,
-          nowMs,
-          objects.map { object ->
-            SyncRemoteObject(
-              objectPath = object.objectPath,
-              head = object.head,
-              bytes = object.bytes,
-              sha256 = object.sha256,
-            )
-          },
-        )
-        mapOf(
-          "document" to documentResult(result.document),
-          "appliedObjects" to result.appliedObjects.toInt(),
-        )
+        hasSyncDatabasePendingWork(databasePath)
       }
     }
 
@@ -218,7 +183,7 @@ class MyReaderRustComponentsModule : Module() {
         nowMs: String,
         mode: String,
         storageJson: String ->
-      syncAsyncCall {
+      syncCall {
         val result = syncLibrarySidecar(
           taskId,
           databasePath,

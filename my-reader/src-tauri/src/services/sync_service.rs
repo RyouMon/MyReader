@@ -1,24 +1,28 @@
 use std::path::Path;
 
 use opendal::Operator;
-use sea_orm::{
-    ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter,
-};
+use sea_orm::DatabaseConnection;
 use serde::Serialize;
 use tracing::{error, info};
 
 use crate::cache;
 use crate::db;
-use crate::entities::app::{sync_automerge_outbox, sync_schedule_state};
 use crate::error::AppError;
 use crate::models::{AppConfig, LibraryConfig};
 use crate::repositories::calibre_repo::CalibreBookRepository;
 use crate::storage::{self, StorageBackend};
 use crate::sync::automerge_store::{
-    publish_library_sidecar_automerge, sync_library_sidecar_automerge,
+    database_path, publish_library_sidecar_automerge, sync_library_sidecar_automerge,
 };
 use crate::sync::replica_identity::ensure_replica_identity;
 use crate::utils::paths::{library_root_path, library_sidecar_path};
+use myreader_rust_components::sync::{
+    exchange::has_pending_database_work,
+    persistence::{
+        mark_schedule_succeeded, read_schedule_state, write_schedule_state, SyncScheduleState,
+    },
+    SyncError,
+};
 
 pub struct SyncService;
 
@@ -140,12 +144,7 @@ impl SyncService {
         let library = Self::resolve_library(config, library_id)?;
         let sidecar_path = library_sidecar_path(library, app_data_dir);
         let db = Self::open_library_db(&sidecar_path).await?;
-        Ok(sync_automerge_outbox::Entity::find()
-            .filter(sync_automerge_outbox::Column::PublishedAt.is_null())
-            .one(&db)
-            .await
-            .map_err(AppError::from)?
-            .is_some())
+        has_pending_database_work(&database_path(&db).await?).map_err(Self::component_error)
     }
 
     pub async fn is_pull_fresh(
@@ -158,10 +157,8 @@ impl SyncService {
         let library = Self::resolve_library(config, library_id)?;
         let sidecar_path = library_sidecar_path(library, app_data_dir);
         let db = Self::open_library_db(&sidecar_path).await?;
-        let Some(state) = sync_schedule_state::Entity::find_by_id("local")
-            .one(&db)
-            .await
-            .map_err(AppError::from)?
+        let Some(state) =
+            read_schedule_state(&database_path(&db).await?).map_err(Self::component_error)?
         else {
             return Ok(false);
         };
@@ -177,10 +174,8 @@ impl SyncService {
         library_id: &str,
     ) -> Result<SyncScheduleSnapshot, AppError> {
         let db = Self::open_schedule_db(app_data_dir, config, library_id).await?;
-        let state = sync_schedule_state::Entity::find_by_id("local")
-            .one(&db)
-            .await
-            .map_err(AppError::from)?;
+        let state =
+            read_schedule_state(&database_path(&db).await?).map_err(Self::component_error)?;
         Ok(SyncScheduleSnapshot {
             next_retry_at: state
                 .as_ref()
@@ -201,18 +196,18 @@ impl SyncService {
         failure_count: u32,
     ) -> Result<(), AppError> {
         let db = Self::open_schedule_db(app_data_dir, config, library_id).await?;
-        let current = sync_schedule_state::Entity::find_by_id("local")
-            .one(&db)
-            .await
-            .map_err(AppError::from)?;
-        Self::write_schedule_state(
-            &db,
-            current.and_then(|state| state.last_successful_pull_at),
-            Some(Self::sqlite_timestamp(next_retry_at)?),
-            i64::from(failure_count),
-            None,
+        let path = database_path(&db).await?;
+        let current = read_schedule_state(&path).map_err(Self::component_error)?;
+        write_schedule_state(
+            &path,
+            &SyncScheduleState {
+                last_successful_pull_at: current.and_then(|state| state.last_successful_pull_at),
+                next_retry_at: Some(Self::sqlite_timestamp(next_retry_at)?),
+                transient_failure_count: failure_count,
+                suspended_reason: None,
+            },
         )
-        .await
+        .map_err(Self::component_error)
     }
 
     pub async fn record_suspension(
@@ -222,73 +217,30 @@ impl SyncService {
         reason: String,
     ) -> Result<(), AppError> {
         let db = Self::open_schedule_db(app_data_dir, config, library_id).await?;
-        let current = sync_schedule_state::Entity::find_by_id("local")
-            .one(&db)
-            .await
-            .map_err(AppError::from)?;
-        Self::write_schedule_state(
-            &db,
-            current.and_then(|state| state.last_successful_pull_at),
-            None,
-            0,
-            Some(reason),
+        let path = database_path(&db).await?;
+        let current = read_schedule_state(&path).map_err(Self::component_error)?;
+        write_schedule_state(
+            &path,
+            &SyncScheduleState {
+                last_successful_pull_at: current.and_then(|state| state.last_successful_pull_at),
+                next_retry_at: None,
+                transient_failure_count: 0,
+                suspended_reason: Some(reason),
+            },
         )
-        .await
+        .map_err(Self::component_error)
     }
 
     async fn record_successful_pull(db: &DatabaseConnection, now_ms: u64) -> Result<(), AppError> {
-        Self::write_schedule_state(db, Some(Self::sqlite_timestamp(now_ms)?), None, 0, None).await
+        mark_schedule_succeeded(
+            &database_path(db).await?,
+            Some(Self::sqlite_timestamp(now_ms)?),
+        )
+        .map_err(Self::component_error)
     }
 
     async fn clear_retry_state(db: &DatabaseConnection) -> Result<(), AppError> {
-        let current = sync_schedule_state::Entity::find_by_id("local")
-            .one(db)
-            .await
-            .map_err(AppError::from)?;
-        Self::write_schedule_state(
-            db,
-            current.and_then(|state| state.last_successful_pull_at),
-            None,
-            0,
-            None,
-        )
-        .await
-    }
-
-    async fn write_schedule_state(
-        db: &DatabaseConnection,
-        last_successful_pull_at: Option<i64>,
-        next_retry_at: Option<i64>,
-        transient_failure_count: i64,
-        suspended_reason: Option<String>,
-    ) -> Result<(), AppError> {
-        match sync_schedule_state::Entity::find_by_id("local")
-            .one(db)
-            .await
-            .map_err(AppError::from)?
-        {
-            Some(existing) => {
-                let mut active: sync_schedule_state::ActiveModel = existing.into();
-                active.last_successful_pull_at = Set(last_successful_pull_at);
-                active.next_retry_at = Set(next_retry_at);
-                active.transient_failure_count = Set(transient_failure_count);
-                active.suspended_reason = Set(suspended_reason);
-                active.update(db).await.map_err(AppError::from)?;
-            }
-            None => {
-                sync_schedule_state::ActiveModel {
-                    id: Set("local".to_owned()),
-                    last_successful_pull_at: Set(last_successful_pull_at),
-                    next_retry_at: Set(next_retry_at),
-                    transient_failure_count: Set(transient_failure_count),
-                    suspended_reason: Set(suspended_reason),
-                }
-                .insert(db)
-                .await
-                .map_err(AppError::from)?;
-            }
-        }
-        Ok(())
+        mark_schedule_succeeded(&database_path(db).await?, None).map_err(Self::component_error)
     }
 
     async fn open_schedule_db(
@@ -304,6 +256,12 @@ impl SyncService {
     fn sqlite_timestamp(timestamp: u64) -> Result<i64, AppError> {
         i64::try_from(timestamp)
             .map_err(|_| AppError::Sync("Timestamp exceeds SQLite INTEGER range".into()))
+    }
+
+    fn component_error(error: SyncError) -> AppError {
+        match error {
+            SyncError::Sync(message) => AppError::Sync(message),
+        }
     }
 
     fn log_stage_error(library_id: &str, stage: &'static str, err: AppError) -> AppError {

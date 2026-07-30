@@ -4,8 +4,8 @@ import type {
   ReadingCompletionInsert,
   ReadingSessionInterval,
 } from "@/src/repos/reading-statistics"
-import { librarySidecarReadingCompletionRecords } from "./automerge-document"
-import { commitLibrarySidecarAutomergeMutation } from "./automerge-store"
+import { librarySidecarReadingCompletionRecords } from "./document-contract"
+import { commitLibrarySidecarMutation } from "./database-store"
 import { ensureLibrarySidecarIdentity } from "./identity"
 
 function normalizedFormat(format: string): "EPUB" | "PDF" | "CBZ" {
@@ -21,7 +21,7 @@ export async function addLocalReadingSessionInterval(
   interval: ReadingSessionInterval,
 ): Promise<void> {
   const identity = await ensureLibrarySidecarIdentity(library)
-  await commitLibrarySidecarAutomergeMutation(
+  await commitLibrarySidecarMutation(
     library,
     identity,
     interval.updatedAt,
@@ -42,7 +42,7 @@ export async function addLocalReadingCompletion(
 ): Promise<boolean> {
   const identity = await ensureLibrarySidecarIdentity(library)
   let changed = false
-  await commitLibrarySidecarAutomergeMutation(
+  await commitLibrarySidecarMutation(
     library,
     identity,
     completion.updatedAt,

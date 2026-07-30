@@ -43,9 +43,10 @@ cp \
   "$CARGO_TARGET_DIR/$RUST_TARGET/release/libmyreader_rust_components.a" \
   "$OUTPUT_DIR/"
 
-if [[ -n "${CONFIGURATION_BUILD_DIR:-}" ]]; then
-  mkdir -p "$CONFIGURATION_BUILD_DIR"
+if [[ -n "${BUILT_PRODUCTS_DIR:-}" ]]; then
+  LINK_PRODUCTS_DIR="$(dirname "$BUILT_PRODUCTS_DIR")"
+  mkdir -p "$LINK_PRODUCTS_DIR"
   cp \
     "$CARGO_TARGET_DIR/$RUST_TARGET/release/libmyreader_rust_components.a" \
-    "$CONFIGURATION_BUILD_DIR/"
+    "$LINK_PRODUCTS_DIR/"
 fi

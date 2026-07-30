@@ -3468,8 +3468,11 @@ name = "myreader-rust-components"
 version = "0.1.0"
 dependencies = [
  "myreader-sync",
+ "rusqlite",
  "serde_json",
+ "tempfile",
  "thiserror 1.0.69",
+ "tokio",
  "uniffi",
 ]
 

@@ -6,7 +6,7 @@ use std::{
 use rusqlite::{params, Connection, OptionalExtension, Transaction, TransactionBehavior};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use uuid::Uuid;
+use uuid::{Uuid, Variant, Version};
 
 use crate::{
     document::LIBRARY_SIDECAR_SCHEMA_VERSION,
@@ -19,6 +19,7 @@ use crate::{
 
 const PROJECTION_VERSION: i64 = 1;
 const REMOTE_CHANGES_ROOT: &str = ".myreader/automerge/changes";
+const SIDECAR_PROTOCOL: &str = "library-sidecar-automerge";
 
 static WRITER: OnceLock<Mutex<()>> = OnceLock::new();
 
@@ -27,6 +28,15 @@ static WRITER: OnceLock<Mutex<()>> = OnceLock::new();
 pub struct DatabaseIdentity {
     pub library_uuid: String,
     pub replica_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncScheduleState {
+    pub last_successful_pull_at: Option<i64>,
+    pub next_retry_at: Option<i64>,
+    pub transient_failure_count: u32,
+    pub suspended_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -95,6 +105,228 @@ fn open_connection(database_path: &str) -> Result<Connection, SyncError> {
 
 fn new_id() -> String {
     Uuid::new_v4().as_simple().to_string()
+}
+
+fn parse_library_uuid(value: &str) -> Result<String, SyncError> {
+    let uuid = Uuid::parse_str(value).map_err(|_| sync_error("Invalid library UUID"))?;
+    if uuid.get_variant() != Variant::RFC4122
+        || !(1..=8).contains(&uuid.get_version_num())
+        || uuid.hyphenated().to_string() != value
+    {
+        return Err(sync_error("Invalid library UUID"));
+    }
+    Ok(uuid.hyphenated().to_string())
+}
+
+fn parse_replica_id(value: &str) -> Result<String, SyncError> {
+    let uuid = Uuid::parse_str(value).map_err(|_| sync_error("Invalid local replica ID"))?;
+    if uuid.get_variant() != Variant::RFC4122
+        || uuid.get_version() != Some(Version::Random)
+        || uuid.hyphenated().to_string() != value
+    {
+        return Err(sync_error("Invalid local replica ID"));
+    }
+    Ok(uuid.hyphenated().to_string())
+}
+
+fn validated_database_identity(
+    protocol: String,
+    library_uuid: String,
+    replica_id: String,
+) -> Result<DatabaseIdentity, SyncError> {
+    if protocol != SIDECAR_PROTOCOL {
+        return Err(sync_error("Local sidecar protocol is unsupported"));
+    }
+    Ok(DatabaseIdentity {
+        library_uuid: parse_library_uuid(&library_uuid)?,
+        replica_id: parse_replica_id(&replica_id)?,
+    })
+}
+
+pub fn read_database_identity(database_path: &str) -> Result<Option<DatabaseIdentity>, SyncError> {
+    let connection = open_connection(database_path)?;
+    connection
+        .query_row(
+            "SELECT protocol, library_uuid, replica_id
+             FROM sync_local_meta
+             LIMIT 1",
+            [],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(database_error)?
+        .map(|(protocol, library_uuid, replica_id)| {
+            validated_database_identity(protocol, library_uuid, replica_id)
+        })
+        .transpose()
+}
+
+pub fn ensure_database_identity(
+    database_path: &str,
+    library_uuid: &str,
+) -> Result<DatabaseIdentity, SyncError> {
+    let library_uuid = parse_library_uuid(library_uuid)?;
+    let _writer = writer()
+        .lock()
+        .map_err(|_| sync_error("SQLite sync writer lock is poisoned"))?;
+    let mut connection = open_connection(database_path)?;
+    let transaction = connection
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(database_error)?;
+    let existing = transaction
+        .query_row(
+            "SELECT protocol, library_uuid, replica_id
+             FROM sync_local_meta
+             LIMIT 1",
+            [],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(database_error)?;
+    let identity = if let Some((protocol, existing_library_uuid, replica_id)) = existing {
+        let existing = validated_database_identity(protocol, existing_library_uuid, replica_id)?;
+        if existing.library_uuid != library_uuid {
+            return Err(sync_error(
+                "Local sidecar identity does not match this library",
+            ));
+        }
+        existing
+    } else {
+        let replica_id = Uuid::new_v4().to_string();
+        transaction
+            .execute(
+                "INSERT INTO sync_local_meta
+                 (id, protocol, library_uuid, replica_id)
+                 VALUES (?1, ?2, ?3, ?4)",
+                params![new_id(), SIDECAR_PROTOCOL, library_uuid, replica_id],
+            )
+            .map_err(database_error)?;
+        DatabaseIdentity {
+            library_uuid,
+            replica_id,
+        }
+    };
+    transaction.commit().map_err(database_error)?;
+    Ok(identity)
+}
+
+pub fn read_schedule_state(database_path: &str) -> Result<Option<SyncScheduleState>, SyncError> {
+    let connection = open_connection(database_path)?;
+    connection
+        .query_row(
+            "SELECT last_successful_pull_at, next_retry_at,
+                    transient_failure_count, suspended_reason
+             FROM sync_schedule_state
+             WHERE id = 'local'",
+            [],
+            |row| {
+                let transient_failure_count = row.get::<_, i64>(2)?;
+                Ok(SyncScheduleState {
+                    last_successful_pull_at: row.get(0)?,
+                    next_retry_at: row.get(1)?,
+                    transient_failure_count: u32::try_from(transient_failure_count).map_err(
+                        |error| {
+                            rusqlite::Error::FromSqlConversionFailure(
+                                2,
+                                rusqlite::types::Type::Integer,
+                                Box::new(error),
+                            )
+                        },
+                    )?,
+                    suspended_reason: row.get(3)?,
+                })
+            },
+        )
+        .optional()
+        .map_err(database_error)
+}
+
+fn write_schedule_state_in_transaction(
+    transaction: &Transaction<'_>,
+    state: &SyncScheduleState,
+) -> Result<(), SyncError> {
+    transaction
+        .execute(
+            "INSERT INTO sync_schedule_state
+             (id, last_successful_pull_at, next_retry_at,
+              transient_failure_count, suspended_reason)
+             VALUES ('local', ?1, ?2, ?3, ?4)
+             ON CONFLICT(id) DO UPDATE SET
+               last_successful_pull_at = excluded.last_successful_pull_at,
+               next_retry_at = excluded.next_retry_at,
+               transient_failure_count = excluded.transient_failure_count,
+               suspended_reason = excluded.suspended_reason",
+            params![
+                state.last_successful_pull_at,
+                state.next_retry_at,
+                i64::from(state.transient_failure_count),
+                state.suspended_reason,
+            ],
+        )
+        .map(|_| ())
+        .map_err(database_error)
+}
+
+pub fn write_schedule_state(
+    database_path: &str,
+    state: &SyncScheduleState,
+) -> Result<(), SyncError> {
+    let _writer = writer()
+        .lock()
+        .map_err(|_| sync_error("SQLite sync writer lock is poisoned"))?;
+    let mut connection = open_connection(database_path)?;
+    let transaction = connection
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(database_error)?;
+    write_schedule_state_in_transaction(&transaction, state)?;
+    transaction.commit().map_err(database_error)
+}
+
+pub fn mark_schedule_succeeded(
+    database_path: &str,
+    completed_pull_at: Option<i64>,
+) -> Result<(), SyncError> {
+    let _writer = writer()
+        .lock()
+        .map_err(|_| sync_error("SQLite sync writer lock is poisoned"))?;
+    let mut connection = open_connection(database_path)?;
+    let transaction = connection
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(database_error)?;
+    let previous_pull_at = transaction
+        .query_row(
+            "SELECT last_successful_pull_at
+             FROM sync_schedule_state
+             WHERE id = 'local'",
+            [],
+            |row| row.get::<_, Option<i64>>(0),
+        )
+        .optional()
+        .map_err(database_error)?
+        .flatten();
+    let last_successful_pull_at = completed_pull_at.or(previous_pull_at);
+    write_schedule_state_in_transaction(
+        &transaction,
+        &SyncScheduleState {
+            last_successful_pull_at,
+            next_retry_at: None,
+            transient_failure_count: 0,
+            suspended_reason: None,
+        },
+    )?;
+    transaction.commit().map_err(database_error)
 }
 
 fn sha256_hex(bytes: &[u8]) -> String {

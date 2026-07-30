@@ -1,6 +1,6 @@
 import type { SyncTargetContext } from "./context"
 import { ensureLibrarySidecarIdentity } from "./library-sidecar/identity"
-import { readLibrarySidecarAutomergeDiagnosticSnapshot } from "./library-sidecar/automerge-store"
+import { readLibrarySidecarAutomergeDiagnosticSnapshot } from "./library-sidecar/database-store"
 import { syncLibrarySidecarDatabase } from "./library-sidecar/sync-database"
 import { syncMyReader } from "./myreader-sync"
 import {
@@ -17,7 +17,7 @@ jest.mock("./library-sidecar/identity", () => ({
   ensureLibrarySidecarIdentity: jest.fn(),
 }))
 
-jest.mock("./library-sidecar/automerge-store", () => ({
+jest.mock("./library-sidecar/database-store", () => ({
   readLibrarySidecarAutomergeDiagnosticSnapshot: jest.fn(),
 }))
 

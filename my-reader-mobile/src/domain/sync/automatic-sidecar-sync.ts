@@ -11,7 +11,7 @@ import {
   SyncConnectivityError,
 } from "../../errors"
 import { applySyncReport } from "./hooks/apply-sync-report"
-import { hasPendingLibrarySidecarAutomergeChanges } from "./library-sidecar/automerge-store"
+import { hasPendingLibrarySidecarChanges } from "./library-sidecar/database-store"
 import { cancelLibrarySidecarSyncTask } from "./library-sidecar/sync-database"
 import {
   createSidecarSyncScheduler,
@@ -213,7 +213,7 @@ export async function recoverPendingSidecarWork(
   libraries: Library[],
 ): Promise<void> {
   for (const library of libraries) {
-    if (await hasPendingLibrarySidecarAutomergeChanges(library)) {
+    if (await hasPendingLibrarySidecarChanges(library)) {
       scheduler.request({
         libraryId: library.id,
         mode: "push_only",

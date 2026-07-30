@@ -28,3 +28,12 @@ cp "$BUILD_DIR/MyReaderRustComponentsBindings.swift" "$SWIFT_DIR/"
 cp "$BUILD_DIR/MyReaderRustComponentsBindingsFFI.h" "$SWIFT_DIR/"
 cp "$BUILD_DIR/com/myreader/rustcomponents/uniffi/myreader_rust_components.kt" \
   "$KOTLIN_DIR/MyReaderRustComponentsBindings.kt"
+
+perl -pi -e 's/[ \t]+$//' \
+  "$SWIFT_DIR/MyReaderRustComponentsBindings.swift" \
+  "$SWIFT_DIR/MyReaderRustComponentsBindingsFFI.h" \
+  "$KOTLIN_DIR/MyReaderRustComponentsBindings.kt"
+perl -0777 -pi -e 's/\n+\z/\n/' \
+  "$SWIFT_DIR/MyReaderRustComponentsBindings.swift" \
+  "$SWIFT_DIR/MyReaderRustComponentsBindingsFFI.h" \
+  "$KOTLIN_DIR/MyReaderRustComponentsBindings.kt"

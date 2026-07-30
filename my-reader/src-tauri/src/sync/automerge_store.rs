@@ -27,7 +27,7 @@ fn now_i64(now_ms: u64) -> Result<i64, AppError> {
     i64::try_from(now_ms).map_err(|_| sync_error("Sync time is out of range"))
 }
 
-async fn database_path(db: &DatabaseConnection) -> Result<String, AppError> {
+pub(crate) async fn database_path(db: &DatabaseConnection) -> Result<String, AppError> {
     let row = db
         .query_one_raw(Statement::from_string(
             DbBackend::Sqlite,

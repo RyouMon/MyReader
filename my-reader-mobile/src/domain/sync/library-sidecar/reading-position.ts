@@ -2,13 +2,13 @@ import type { ReaderLocator } from "@my-reader/tools/reader-toc"
 import type { Library } from "@my-reader/tools/types/library"
 
 import {
-  commitLibrarySidecarAutomergeMutation,
-  ensureLibrarySidecarAutomergeState,
-} from "./automerge-store"
+  commitLibrarySidecarMutation,
+  ensureLibrarySidecarState,
+} from "./database-store"
 import {
   librarySidecarReadingPositionCandidates,
   type LibrarySidecarReadingPositionCandidate,
-} from "./automerge-document"
+} from "./document-contract"
 import { ensureLibrarySidecarIdentity } from "./identity"
 
 export type ReadingPositionInput = {
@@ -59,7 +59,7 @@ export async function writeLocalReadingPosition(
     recordedAt: nowMs,
     replicaId: identity.replicaId,
   }
-  await commitLibrarySidecarAutomergeMutation(library, identity, nowMs, () => ({
+  await commitLibrarySidecarMutation(library, identity, nowMs, () => ({
     type: "setReadingPosition",
     bookId: input.bookId,
     value,
@@ -89,7 +89,7 @@ export async function getReadingPositionCandidates(
     locator: { href: "_", type: "_" },
     displayProgression: null,
   })
-  const document = await ensureLibrarySidecarAutomergeState(
+  const document = await ensureLibrarySidecarState(
     library,
     identity,
     Date.now(),
@@ -115,7 +115,7 @@ export async function selectReadingPositionCandidate(
     locator: { href: "_", type: "_" },
     displayProgression: null,
   })
-  await commitLibrarySidecarAutomergeMutation(library, identity, nowMs, () => ({
+  await commitLibrarySidecarMutation(library, identity, nowMs, () => ({
     type: "resolveReadingPosition",
     bookId,
     format: normalizedFormat,

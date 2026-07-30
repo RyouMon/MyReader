@@ -7,8 +7,8 @@ import {
   type LibrarySidecarBookmarkRow,
 } from "@/src/repos/library-sidecar-sync"
 import { uuid } from "@/src/utils/common"
-import { librarySidecarBookmarkProjections } from "./automerge-document"
-import { commitLibrarySidecarAutomergeMutation } from "./automerge-store"
+import { librarySidecarBookmarkProjections } from "./document-contract"
+import { commitLibrarySidecarMutation } from "./database-store"
 import { ensureLibrarySidecarIdentity } from "./identity"
 
 function normalizedBookmarkFormat(format: string): "EPUB" | "PDF" | "CBZ" {
@@ -41,41 +41,36 @@ async function writeLocalBookmark(
   }
   const identity = await ensureLibrarySidecarIdentity(library)
   let changed = false
-  await commitLibrarySidecarAutomergeMutation(
-    library,
-    identity,
-    nowMs,
-    (document) => {
-      const current = librarySidecarBookmarkProjections(document).find(
-        (item) =>
-          item.bookId === bookId &&
-          item.format === normalizedFormat &&
-          item.locatorKey === locatorKey,
-      )
-      const currentIsPresent = current?.deletedAt === null
-      if ((present && currentIsPresent) || (!present && !currentIsPresent)) {
-        return null
-      }
-      const locatorJson =
-        locator === null ? current?.locatorJson : JSON.stringify(locator)
-      if (!locatorJson) throw new Error("Bookmark does not exist")
-      changed = true
-      return {
-        type: "setBookmark",
-        value: {
-          id: current?.id ?? uuid(),
-          bookId,
-          format: normalizedFormat,
-          locatorKey,
-          locatorJson,
-          createdAt: current?.createdAt ?? nowMs,
-          deletedAt: present ? null : nowMs,
-          recordedAt: nowMs,
-          replicaId: identity.replicaId,
-        },
-      }
-    },
-  )
+  await commitLibrarySidecarMutation(library, identity, nowMs, (document) => {
+    const current = librarySidecarBookmarkProjections(document).find(
+      (item) =>
+        item.bookId === bookId &&
+        item.format === normalizedFormat &&
+        item.locatorKey === locatorKey,
+    )
+    const currentIsPresent = current?.deletedAt === null
+    if ((present && currentIsPresent) || (!present && !currentIsPresent)) {
+      return null
+    }
+    const locatorJson =
+      locator === null ? current?.locatorJson : JSON.stringify(locator)
+    if (!locatorJson) throw new Error("Bookmark does not exist")
+    changed = true
+    return {
+      type: "setBookmark",
+      value: {
+        id: current?.id ?? uuid(),
+        bookId,
+        format: normalizedFormat,
+        locatorKey,
+        locatorJson,
+        createdAt: current?.createdAt ?? nowMs,
+        deletedAt: present ? null : nowMs,
+        recordedAt: nowMs,
+        replicaId: identity.replicaId,
+      },
+    }
+  })
   const row = await withLibrarySidecarSyncTransaction(library, (tx) =>
     readLibrarySidecarBookmark(tx, bookId, normalizedFormat, locatorKey),
   )

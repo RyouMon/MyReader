@@ -8,8 +8,8 @@ import {
 import {
   librarySidecarAnnotationProjections,
   type LibrarySidecarAnnotationValue,
-} from "./automerge-document"
-import { commitLibrarySidecarAutomergeMutation } from "./automerge-store"
+} from "./document-contract"
+import { commitLibrarySidecarMutation } from "./database-store"
 import { ensureLibrarySidecarIdentity } from "./identity"
 
 async function projectedAnnotation(
@@ -30,7 +30,7 @@ export async function createLocalAnnotation(
   nowMs = Date.now(),
 ): Promise<LibrarySidecarAnnotationRow> {
   const identity = await ensureLibrarySidecarIdentity(library)
-  await commitLibrarySidecarAutomergeMutation(library, identity, nowMs, () => ({
+  await commitLibrarySidecarMutation(library, identity, nowMs, () => ({
     type: "createAnnotation",
     value: {
       ...value,
@@ -54,21 +54,16 @@ export async function updateLocalAnnotation(
 ): Promise<LibrarySidecarAnnotationRow | null> {
   const identity = await ensureLibrarySidecarIdentity(library)
   let exists = true
-  await commitLibrarySidecarAutomergeMutation(
-    library,
-    identity,
-    nowMs,
-    (document) => {
-      const current = librarySidecarAnnotationProjections(document).find(
-        (annotation) => annotation.id === id && !annotation.deleted,
-      )
-      if (!current) {
-        exists = false
-        return null
-      }
-      return { type: "updateAnnotation", id, color, note, updatedAt: nowMs }
-    },
-  )
+  await commitLibrarySidecarMutation(library, identity, nowMs, (document) => {
+    const current = librarySidecarAnnotationProjections(document).find(
+      (annotation) => annotation.id === id && !annotation.deleted,
+    )
+    if (!current) {
+      exists = false
+      return null
+    }
+    return { type: "updateAnnotation", id, color, note, updatedAt: nowMs }
+  })
   return exists ? projectedAnnotation(library, id) : null
 }
 
@@ -79,20 +74,15 @@ export async function deleteLocalAnnotation(
 ): Promise<boolean> {
   const identity = await ensureLibrarySidecarIdentity(library)
   let exists = true
-  await commitLibrarySidecarAutomergeMutation(
-    library,
-    identity,
-    nowMs,
-    (document) => {
-      const current = librarySidecarAnnotationProjections(document).find(
-        (annotation) => annotation.id === id && !annotation.deleted,
-      )
-      if (!current) {
-        exists = false
-        return null
-      }
-      return { type: "deleteAnnotation", id, deletedAt: nowMs }
-    },
-  )
+  await commitLibrarySidecarMutation(library, identity, nowMs, (document) => {
+    const current = librarySidecarAnnotationProjections(document).find(
+      (annotation) => annotation.id === id && !annotation.deleted,
+    )
+    if (!current) {
+      exists = false
+      return null
+    }
+    return { type: "deleteAnnotation", id, deletedAt: nowMs }
+  })
   return exists
 }

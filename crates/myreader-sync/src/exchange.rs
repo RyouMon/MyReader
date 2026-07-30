@@ -316,7 +316,11 @@ mod tests {
     };
 
     use crate::{
-        document::{set_reading_position, ReadingPositionValue},
+        document::{
+            add_reading_completion, add_reading_session_duration, create_annotation, set_bookmark,
+            set_favorite, set_reading_position, AnnotationValue, BookmarkValue, FavoriteValue,
+            ReadingCompletionValue, ReadingPositionValue, ReadingSessionValue,
+        },
         persistence::execute_local_database_mutation,
     };
 
@@ -413,6 +417,136 @@ mod tests {
             )
             .unwrap();
         assert_eq!(locator, r#"{"href":"page=7","type":"application/pdf"}"#);
+    }
+
+    #[tokio::test]
+    async fn should_exchange_every_frozen_domain_when_two_devices_sync() {
+        let (_source_directory, source_path) = database();
+        let (_target_directory, target_path) = database();
+        let source = DatabaseIdentity {
+            library_uuid: LIBRARY_UUID.to_owned(),
+            replica_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa".to_owned(),
+        };
+        let target = DatabaseIdentity {
+            library_uuid: LIBRARY_UUID.to_owned(),
+            replica_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb".to_owned(),
+        };
+        let replica_id = source.replica_id.clone();
+        execute_local_database_mutation(&source_path, &source, 10, |document| {
+            set_reading_position(
+                document,
+                42,
+                &ReadingPositionValue {
+                    format: "EPUB".to_owned(),
+                    locator_json: r#"{"href":"chapter-7.xhtml","type":"application/xhtml+xml"}"#
+                        .to_owned(),
+                    display_progression_ppm: Some(700_000),
+                    recorded_at: 10,
+                    replica_id: replica_id.clone(),
+                },
+            )?;
+            set_favorite(
+                document,
+                42,
+                &FavoriteValue {
+                    is_favorite: true,
+                    added_at: Some(10),
+                    recorded_at: 10,
+                    replica_id: replica_id.clone(),
+                },
+            )?;
+            set_bookmark(
+                document,
+                &BookmarkValue {
+                    id: "11111111111141118111111111111111".to_owned(),
+                    book_id: 42,
+                    format: "EPUB".to_owned(),
+                    locator_key: "chapter-7".to_owned(),
+                    locator_json: r#"{"href":"chapter-7.xhtml","type":"application/xhtml+xml"}"#
+                        .to_owned(),
+                    created_at: 10,
+                    deleted_at: None,
+                    recorded_at: 10,
+                    replica_id: replica_id.clone(),
+                },
+            )?;
+            create_annotation(
+                document,
+                &AnnotationValue {
+                    id: "22222222222242228222222222222222".to_owned(),
+                    book_id: 42,
+                    format: "EPUB".to_owned(),
+                    kind: "highlight".to_owned(),
+                    locator_json: r#"{"href":"chapter-7.xhtml","type":"application/xhtml+xml"}"#
+                        .to_owned(),
+                    created_at: 10,
+                    color: "orange".to_owned(),
+                    note: Some("A note".to_owned()),
+                    updated_at: 10,
+                    deleted: false,
+                    deleted_at: None,
+                },
+            )?;
+            add_reading_session_duration(
+                document,
+                &ReadingSessionValue {
+                    id: "33333333333343338333333333333333".to_owned(),
+                    origin_replica_id: replica_id.clone(),
+                    book_id: 42,
+                    format: "EPUB".to_owned(),
+                    local_day: "2026-07-27".to_owned(),
+                    started_at: 10,
+                    duration_seconds: 120,
+                    updated_at: 130,
+                },
+            )?;
+            add_reading_completion(
+                document,
+                &ReadingCompletionValue {
+                    id: "44444444444444448444444444444444".to_owned(),
+                    book_id: 42,
+                    format: "EPUB".to_owned(),
+                    local_day: "2026-07-27".to_owned(),
+                    completed_at: 130,
+                    updated_at: 130,
+                    replica_id,
+                },
+            )?;
+            Ok(())
+        })
+        .unwrap();
+        let remote = tempfile::tempdir().unwrap();
+        let operator = opendal::Operator::new(
+            opendal::services::Fs::default().root(remote.path().to_str().unwrap()),
+        )
+        .unwrap()
+        .finish();
+
+        sync_database_with_operator(&source_path, &operator, &source, 140, SyncMode::Full)
+            .await
+            .unwrap();
+        let report =
+            sync_database_with_operator(&target_path, &operator, &target, 150, SyncMode::Full)
+                .await
+                .unwrap();
+
+        assert!(report.pulled > 0);
+        let target_db = rusqlite::Connection::open(target_path).unwrap();
+        for table in [
+            "reading_progress",
+            "favorite_books",
+            "bookmarks",
+            "annotations",
+            "reading_sessions",
+            "reading_completions",
+        ] {
+            let count: i64 = target_db
+                .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
+                    row.get(0)
+                })
+                .unwrap();
+            assert_eq!(count, 1, "{table} projection was not synchronized");
+        }
     }
 
     struct TestObserver {

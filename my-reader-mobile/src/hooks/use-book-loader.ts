@@ -13,7 +13,7 @@ import {
   getReadingPositionCandidates,
   selectReadingPositionCandidate,
 } from "@/src/domain/sync/library-sidecar/reading-position"
-import type { LibrarySidecarReadingPositionCandidate } from "@/src/domain/sync/library-sidecar/automerge-document"
+import type { LibrarySidecarReadingPositionCandidate } from "@/src/domain/sync/library-sidecar/document-contract"
 import { createRemoteOps } from "@/src/domain/library/remote-library"
 import { getFileState } from "@/src/domain/sync/actions"
 import type {

@@ -1,8 +1,6 @@
 import type { Library } from "@my-reader/tools/types/library"
 
 import MyReaderRustComponents, {
-  type NativeSyncOutboxEntry,
-  type NativeSyncRemoteObject,
   type NativeSyncTaskProgress,
 } from "@/modules/myreader-rust-components"
 import { getLibraryDatabase } from "@/src/services/db/library-db"
@@ -10,7 +8,7 @@ import {
   librarySidecarDocumentFromNativeResult,
   type LibrarySidecarDocument,
   type LibrarySidecarDocumentCommand,
-} from "./automerge-document"
+} from "./document-contract"
 import type { LibrarySidecarReplicaIdentity } from "./replica-identity"
 import type { NativeSidecarStorageConfig } from "../resolve"
 
@@ -53,6 +51,16 @@ async function databasePath(library: Library): Promise<string> {
   return (await getLibraryDatabase(library)).path
 }
 
+export async function ensureSyncDatabaseIdentity(
+  library: Library,
+  libraryUuid: string,
+): Promise<LibrarySidecarReplicaIdentity> {
+  return MyReaderRustComponents.ensureSyncDatabaseIdentity(
+    await databasePath(library),
+    libraryUuid,
+  )
+}
+
 export async function ensureSyncDatabaseDocument(
   library: Library,
   identity: LibrarySidecarReplicaIdentity,
@@ -64,7 +72,7 @@ export async function ensureSyncDatabaseDocument(
     identity.replicaId,
     String(nowMs),
   )
-  return librarySidecarDocumentFromNativeResult(result, identity.replicaId)
+  return librarySidecarDocumentFromNativeResult(result)
 }
 
 export async function executeSyncDatabaseCommand(
@@ -80,54 +88,15 @@ export async function executeSyncDatabaseCommand(
     String(nowMs),
     JSON.stringify({ command }),
   )
-  return librarySidecarDocumentFromNativeResult(result, identity.replicaId)
+  return librarySidecarDocumentFromNativeResult(result)
 }
 
-export async function listSyncDatabaseOutbox(
+export async function hasSyncDatabasePendingWork(
   library: Library,
-): Promise<NativeSyncOutboxEntry[]> {
-  return MyReaderRustComponents.listSyncDatabaseOutbox(
-    await databasePath(library),
-  )
-}
-
-export async function markSyncDatabaseOutboxPublished(
-  library: Library,
-  objectPath: string,
-  publishedAt: number,
-): Promise<void> {
-  await MyReaderRustComponents.markSyncDatabaseOutboxPublished(
-    await databasePath(library),
-    objectPath,
-    String(publishedAt),
-  )
-}
-
-export async function hasSyncDatabaseReceipt(
-  library: Library,
-  objectPath: string,
 ): Promise<boolean> {
-  return MyReaderRustComponents.hasSyncDatabaseReceipt(
+  return MyReaderRustComponents.hasSyncDatabasePendingWork(
     await databasePath(library),
-    objectPath,
   )
-}
-
-export async function applySyncDatabaseRemoteObjects(
-  library: Library,
-  identity: LibrarySidecarReplicaIdentity,
-  nowMs: number,
-  objects: NativeSyncRemoteObject[],
-): Promise<number> {
-  const result = await MyReaderRustComponents.applySyncDatabaseRemoteObjects(
-    await databasePath(library),
-    identity.libraryUuid,
-    identity.replicaId,
-    String(nowMs),
-    objects,
-  )
-  librarySidecarDocumentFromNativeResult(result.document, identity.replicaId)
-  return result.appliedObjects
 }
 
 export async function readSyncDatabaseDiagnostics(library: Library) {

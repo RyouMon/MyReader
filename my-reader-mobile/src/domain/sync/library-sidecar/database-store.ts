@@ -4,12 +4,12 @@ import { announceLibrarySidecarWork } from "../sidecar-work"
 import type {
   LibrarySidecarDocument,
   LibrarySidecarDocumentCommand,
-} from "./automerge-document"
+} from "./document-contract"
 import type { LibrarySidecarReplicaIdentity } from "./replica-identity"
 import {
   ensureSyncDatabaseDocument,
   executeSyncDatabaseCommand,
-  listSyncDatabaseOutbox,
+  hasSyncDatabasePendingWork,
   readSyncDatabaseDiagnostics,
 } from "./sync-database"
 
@@ -35,7 +35,7 @@ async function withLibraryWriter<T>(
   }
 }
 
-export async function ensureLibrarySidecarAutomergeState(
+export async function ensureLibrarySidecarState(
   library: Library,
   identity: LibrarySidecarReplicaIdentity,
   nowMs: number,
@@ -45,7 +45,7 @@ export async function ensureLibrarySidecarAutomergeState(
   )
 }
 
-export async function commitLibrarySidecarAutomergeMutation(
+export async function commitLibrarySidecarMutation(
   library: Library,
   identity: LibrarySidecarReplicaIdentity,
   nowMs: number,
@@ -72,11 +72,10 @@ export async function commitLibrarySidecarAutomergeMutation(
   })
 }
 
-export async function hasPendingLibrarySidecarAutomergeChanges(
+export async function hasPendingLibrarySidecarChanges(
   library: Library,
 ): Promise<boolean> {
-  const pending = await listSyncDatabaseOutbox(library)
-  return pending.length > 0
+  return hasSyncDatabasePendingWork(library)
 }
 
 export type LibrarySidecarAutomergeDiagnosticSnapshot = {

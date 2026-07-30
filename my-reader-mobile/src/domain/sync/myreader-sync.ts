@@ -6,7 +6,7 @@ import type {
 } from "./types"
 import { describeError } from "../../utils/common"
 import { ensureLibrarySidecarIdentity } from "./library-sidecar/identity"
-import { readLibrarySidecarAutomergeDiagnosticSnapshot } from "./library-sidecar/automerge-store"
+import { readLibrarySidecarAutomergeDiagnosticSnapshot } from "./library-sidecar/database-store"
 import { syncLibrarySidecarDatabase } from "./library-sidecar/sync-database"
 import {
   invalidateFavoriteBooks,

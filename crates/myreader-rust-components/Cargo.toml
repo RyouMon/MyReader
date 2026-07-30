@@ -13,7 +13,12 @@ bindgen = ["uniffi/cli"]
 myreader-sync.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
 uniffi.workspace = true
+
+[dev-dependencies]
+rusqlite.workspace = true
+tempfile = "3"
 
 [[bin]]
 name = "uniffi-bindgen"

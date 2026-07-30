@@ -6,8 +6,8 @@ jest.mock("./hooks/apply-sync-report", () => ({
   applySyncReport: jest.fn(),
 }))
 
-jest.mock("./library-sidecar/automerge-store", () => ({
-  hasPendingLibrarySidecarAutomergeChanges: jest.fn(),
+jest.mock("./library-sidecar/database-store", () => ({
+  hasPendingLibrarySidecarChanges: jest.fn(),
 }))
 
 jest.mock("./library-sidecar/sync-database", () => ({
@@ -51,7 +51,7 @@ import {
   writeLibrarySidecarScheduleState,
 } from "@/src/repos/library-sidecar-schedule"
 import { applySyncReport } from "./hooks/apply-sync-report"
-import { hasPendingLibrarySidecarAutomergeChanges } from "./library-sidecar/automerge-store"
+import { hasPendingLibrarySidecarChanges } from "./library-sidecar/database-store"
 import { syncLibrary } from "./sync-library"
 import {
   createAutomaticSidecarSyncScheduler,
@@ -127,7 +127,7 @@ describe("automatic sidecar sync", () => {
   it("should schedule only libraries with pending outbox when recovering", async () => {
     const otherLibrary = { ...library, id: "library-2", name: "Other" }
     jest
-      .mocked(hasPendingLibrarySidecarAutomergeChanges)
+      .mocked(hasPendingLibrarySidecarChanges)
       .mockImplementation(async (candidate) => candidate.id === library.id)
     const scheduler = createAutomaticSidecarSyncScheduler(() => ({
       libraries: [library, otherLibrary],

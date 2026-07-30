@@ -10,8 +10,6 @@
     "test:tools": "pnpm --filter @my-reader/tools test",
     "test:desktop": "pnpm --filter my-reader test",
     "test:mobile": "pnpm --filter my-reader-mobile test",
-    "test:automerge-fixtures": "node scripts/verify-library-sidecar-automerge-fixtures.mjs",
-    "generate:automerge-fixtures": "node scripts/generate-library-sidecar-automerge-fixtures.mjs",
     "sync:design-tokens": "node scripts/sync-design-tokens.mjs",
     "db:generate": "pnpm --filter @my-reader/db generate && bash scripts/generate-seaorm-entities.sh",
     "db:generate:calibre": "bash scripts/generate-seaorm-calibre-entities.sh",
@@ -21,7 +19,6 @@
     "format:check": "biome format ."
   },
   "devDependencies": {
-    "@automerge/automerge": "3.3.2",
     "husky": "^9.1.7",
     "lint-staged": "^15.0.0"
   }

@@ -1,21 +1,21 @@
 jest.mock("./sync-database", () => ({
   ensureSyncDatabaseDocument: jest.fn(),
   executeSyncDatabaseCommand: jest.fn(),
-  listSyncDatabaseOutbox: jest.fn(),
+  hasSyncDatabasePendingWork: jest.fn(),
   readSyncDatabaseDiagnostics: jest.fn(),
 }))
 
 import { subscribeLibrarySidecarWork } from "../sidecar-work"
 import {
-  commitLibrarySidecarAutomergeMutation,
-  ensureLibrarySidecarAutomergeState,
-  hasPendingLibrarySidecarAutomergeChanges,
+  commitLibrarySidecarMutation,
+  ensureLibrarySidecarState,
+  hasPendingLibrarySidecarChanges,
   readLibrarySidecarAutomergeDiagnosticSnapshot,
-} from "./automerge-store"
+} from "./database-store"
 import {
   ensureSyncDatabaseDocument,
   executeSyncDatabaseCommand,
-  listSyncDatabaseOutbox,
+  hasSyncDatabasePendingWork,
   readSyncDatabaseDiagnostics,
 } from "./sync-database"
 
@@ -34,10 +34,6 @@ const identity = {
 }
 
 const document = {
-  schema: 1,
-  libraryUuid: identity.libraryUuid,
-  replicaId: identity.replicaId,
-  snapshotBytes: new Uint8Array([1]),
   heads: ["head-1"],
   projection: {
     readingPositions: [],
@@ -51,7 +47,7 @@ const document = {
   },
 }
 
-describe("library sidecar Automerge store", () => {
+describe("library sidecar Rust database store", () => {
   beforeEach(() => {
     jest.clearAllMocks()
     jest.mocked(ensureSyncDatabaseDocument).mockResolvedValue(document)
@@ -70,9 +66,9 @@ describe("library sidecar Automerge store", () => {
   })
 
   it("should initialize state through the Rust database store when state is requested", async () => {
-    await expect(
-      ensureLibrarySidecarAutomergeState(library, identity, 1),
-    ).resolves.toBe(document)
+    await expect(ensureLibrarySidecarState(library, identity, 1)).resolves.toBe(
+      document,
+    )
     expect(ensureSyncDatabaseDocument).toHaveBeenCalledWith(
       library,
       identity,
@@ -81,26 +77,24 @@ describe("library sidecar Automerge store", () => {
   })
 
   it("should report pending work when the durable outbox is not empty", async () => {
-    jest.mocked(listSyncDatabaseOutbox).mockResolvedValue([
-      {
-        objectPath: ".myreader/automerge/changes/actor/change.am",
-        bytes: new Uint8Array([1]),
-        sha256: "a".repeat(64),
-        changeHashesJson: `["${"b".repeat(64)}"]`,
-      },
-    ])
+    jest.mocked(hasSyncDatabasePendingWork).mockResolvedValue(true)
 
-    await expect(
-      hasPendingLibrarySidecarAutomergeChanges(library),
-    ).resolves.toBe(true)
+    await expect(hasPendingLibrarySidecarChanges(library)).resolves.toBe(true)
   })
 
   it("should announce work when the Rust transaction commits a local mutation", async () => {
     const listener = jest.fn()
     const unsubscribe = subscribeLibrarySidecarWork(listener)
 
-    await commitLibrarySidecarAutomergeMutation(library, identity, 2, () => ({
-      type: "inspect",
+    await commitLibrarySidecarMutation(library, identity, 2, () => ({
+      type: "setFavorite",
+      bookId: 7,
+      value: {
+        isFavorite: true,
+        addedAt: 2,
+        recordedAt: 2,
+        replicaId: identity.replicaId,
+      },
     }))
 
     expect(listener).toHaveBeenCalledWith({
@@ -118,8 +112,15 @@ describe("library sidecar Automerge store", () => {
     const unsubscribe = subscribeLibrarySidecarWork(listener)
 
     await expect(
-      commitLibrarySidecarAutomergeMutation(library, identity, 2, () => ({
-        type: "inspect",
+      commitLibrarySidecarMutation(library, identity, 2, () => ({
+        type: "setFavorite",
+        bookId: 7,
+        value: {
+          isFavorite: true,
+          addedAt: 2,
+          recordedAt: 2,
+          replicaId: identity.replicaId,
+        },
       })),
     ).rejects.toThrow("transaction failed")
 

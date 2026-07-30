@@ -17,45 +17,24 @@ pub enum RustComponentsError {
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct SyncDocumentChange {
-    pub actor_id: String,
-    pub sequence: String,
-    pub hash: String,
-    pub bytes: Vec<u8>,
-}
-
-#[derive(Debug, Clone, uniffi::Record)]
 pub struct SyncDocumentCommandResult {
     pub schema_version: u32,
-    pub library_uuid: Option<String>,
-    pub snapshot_bytes: Vec<u8>,
     pub heads: Vec<String>,
-    pub incremental_bytes: Vec<u8>,
-    pub changes: Vec<SyncDocumentChange>,
-    pub missing_dependencies: Vec<String>,
     pub projection_json: String,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct SyncOutboxEntry {
-    pub object_path: String,
-    pub bytes: Vec<u8>,
-    pub sha256: String,
-    pub change_hashes_json: String,
+pub struct SyncDatabaseIdentity {
+    pub library_uuid: String,
+    pub replica_id: String,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct SyncRemoteObject {
-    pub object_path: String,
-    pub head: String,
-    pub bytes: Vec<u8>,
-    pub sha256: String,
-}
-
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct ApplyRemoteDatabaseResult {
-    pub document: SyncDocumentCommandResult,
-    pub applied_objects: u32,
+pub struct SyncDatabaseScheduleState {
+    pub last_successful_pull_at: Option<i64>,
+    pub next_retry_at: Option<i64>,
+    pub transient_failure_count: u32,
+    pub suspended_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -120,7 +99,7 @@ impl sync::exchange::SyncObserver for NativeSyncObserver {
 
 #[uniffi::export]
 pub fn sync_contract_version() -> u32 {
-    5
+    7
 }
 
 #[uniffi::export]
@@ -182,21 +161,7 @@ fn map_document_result(
     Ok(SyncDocumentCommandResult {
         schema_version: u32::try_from(result.schema_version)
             .map_err(|_| RustComponentsError::Sync("Schema version is out of range".to_owned()))?,
-        library_uuid: result.library_uuid,
-        snapshot_bytes: result.snapshot_bytes,
         heads: result.heads,
-        incremental_bytes: result.incremental_bytes,
-        changes: result
-            .changes
-            .into_iter()
-            .map(|change| SyncDocumentChange {
-                actor_id: change.actor_id,
-                sequence: change.sequence.to_string(),
-                hash: change.hash,
-                bytes: change.bytes,
-            })
-            .collect(),
-        missing_dependencies: result.missing_dependencies,
         projection_json,
     })
 }
@@ -214,20 +179,58 @@ fn parse_now_ms(value: &str) -> Result<i64, RustComponentsError> {
 }
 
 #[uniffi::export]
-pub fn execute_sync_document_command(
-    snapshot_bytes: Option<Vec<u8>>,
-    request_json: String,
-    payload_bytes: Option<Vec<u8>>,
-) -> Result<SyncDocumentCommandResult, RustComponentsError> {
-    let request = serde_json::from_str(&request_json)
-        .map_err(|error| RustComponentsError::Sync(format!("Invalid document command: {error}")))?;
-    let result = sync::document_engine::execute_document_command(
-        snapshot_bytes.as_deref(),
-        request,
-        payload_bytes.as_deref(),
+pub fn ensure_sync_database_identity(
+    database_path: String,
+    library_uuid: String,
+) -> Result<SyncDatabaseIdentity, RustComponentsError> {
+    sync::persistence::ensure_database_identity(&database_path, &library_uuid)
+        .map(|identity| SyncDatabaseIdentity {
+            library_uuid: identity.library_uuid,
+            replica_id: identity.replica_id,
+        })
+        .map_err(map_sync_error)
+}
+
+#[uniffi::export]
+pub fn read_sync_database_schedule_state(
+    database_path: String,
+) -> Result<Option<SyncDatabaseScheduleState>, RustComponentsError> {
+    sync::persistence::read_schedule_state(&database_path)
+        .map(|state| {
+            state.map(|state| SyncDatabaseScheduleState {
+                last_successful_pull_at: state.last_successful_pull_at,
+                next_retry_at: state.next_retry_at,
+                transient_failure_count: state.transient_failure_count,
+                suspended_reason: state.suspended_reason,
+            })
+        })
+        .map_err(map_sync_error)
+}
+
+#[uniffi::export]
+pub fn write_sync_database_schedule_state(
+    database_path: String,
+    state: SyncDatabaseScheduleState,
+) -> Result<(), RustComponentsError> {
+    sync::persistence::write_schedule_state(
+        &database_path,
+        &sync::persistence::SyncScheduleState {
+            last_successful_pull_at: state.last_successful_pull_at,
+            next_retry_at: state.next_retry_at,
+            transient_failure_count: state.transient_failure_count,
+            suspended_reason: state.suspended_reason,
+        },
     )
-    .map_err(map_sync_error)?;
-    map_document_result(result)
+    .map_err(map_sync_error)
+}
+
+#[uniffi::export]
+pub fn mark_sync_database_schedule_succeeded(
+    database_path: String,
+    completed_pull_at: Option<i64>,
+) -> Result<(), RustComponentsError> {
+    sync::persistence::mark_schedule_succeeded(&database_path, completed_pull_at)
+        .map_err(map_sync_error)
 }
 
 #[uniffi::export]
@@ -276,79 +279,8 @@ pub fn execute_sync_database_command(
 }
 
 #[uniffi::export]
-pub fn list_sync_database_outbox(
-    database_path: String,
-) -> Result<Vec<SyncOutboxEntry>, RustComponentsError> {
-    sync::persistence::list_pending_outbox(&database_path)
-        .map(|entries| {
-            entries
-                .into_iter()
-                .map(|entry| SyncOutboxEntry {
-                    object_path: entry.object_path,
-                    bytes: entry.bytes,
-                    sha256: entry.sha256,
-                    change_hashes_json: entry.change_hashes_json,
-                })
-                .collect()
-        })
-        .map_err(map_sync_error)
-}
-
-#[uniffi::export]
-pub fn mark_sync_database_outbox_published(
-    database_path: String,
-    object_path: String,
-    published_at: String,
-) -> Result<(), RustComponentsError> {
-    sync::persistence::mark_outbox_published(
-        &database_path,
-        &object_path,
-        parse_now_ms(&published_at)?,
-    )
-    .map_err(map_sync_error)
-}
-
-#[uniffi::export]
-pub fn has_sync_database_receipt(
-    database_path: String,
-    object_path: String,
-) -> Result<bool, RustComponentsError> {
-    sync::persistence::has_receipt(&database_path, &object_path).map_err(map_sync_error)
-}
-
-#[uniffi::export]
-pub fn apply_sync_database_remote_objects(
-    database_path: String,
-    library_uuid: String,
-    replica_id: String,
-    now_ms: String,
-    objects: Vec<SyncRemoteObject>,
-) -> Result<ApplyRemoteDatabaseResult, RustComponentsError> {
-    let identity = sync::persistence::DatabaseIdentity {
-        library_uuid,
-        replica_id,
-    };
-    let result = sync::persistence::apply_remote_database_objects(
-        &database_path,
-        &identity,
-        parse_now_ms(&now_ms)?,
-        objects
-            .into_iter()
-            .map(|object| sync::persistence::SyncRemoteObject {
-                object_path: object.object_path,
-                head: object.head,
-                bytes: object.bytes,
-                sha256: object.sha256,
-            })
-            .collect(),
-    )
-    .map_err(map_sync_error)?;
-    Ok(ApplyRemoteDatabaseResult {
-        document: map_document_result(result.document)?,
-        applied_objects: u32::try_from(result.applied_objects).map_err(|_| {
-            RustComponentsError::Sync("Applied object count is out of range".to_owned())
-        })?,
-    })
+pub fn has_sync_database_pending_work(database_path: String) -> Result<bool, RustComponentsError> {
+    sync::exchange::has_pending_database_work(&database_path).map_err(map_sync_error)
 }
 
 #[uniffi::export]
@@ -368,7 +300,7 @@ pub fn read_sync_database_diagnostics(
 }
 
 #[uniffi::export]
-pub async fn sync_library_sidecar(
+pub fn sync_library_sidecar(
     task_id: String,
     database_path: String,
     library_uuid: String,
@@ -389,11 +321,17 @@ pub async fn sync_library_sidecar(
     let storage = serde_json::from_str(&storage_json)
         .map_err(|error| RustComponentsError::Sync(format!("Invalid storage config: {error}")))?;
     let now_ms = parse_now_ms(&now_ms)?;
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .map_err(|error| {
+            RustComponentsError::Sync(format!("Failed to start sync runtime: {error}"))
+        })?;
     let task = Arc::new(SyncTaskState {
         cancelled: AtomicBool::new(false),
         progress: Mutex::new(SyncTaskProgress {
             task_id: task_id.clone(),
-            stage: "queued".to_owned(),
+            stage: "preparing".to_owned(),
             completed: 0,
             total: 0,
         }),
@@ -407,7 +345,7 @@ pub async fn sync_library_sidecar(
         }
         tasks.insert(task_id, task.clone());
     }
-    let report = sync::transport::sync_database_observed(
+    let report = runtime.block_on(sync::transport::sync_database_observed(
         &database_path,
         &sync::persistence::DatabaseIdentity {
             library_uuid,
@@ -417,21 +355,30 @@ pub async fn sync_library_sidecar(
         mode,
         &storage,
         &NativeSyncObserver { task: task.clone() },
-    )
-    .await;
+    ));
     let report = match report {
         Ok(report) => report,
         Err(error) => {
-            task.progress
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .stage = if task.cancelled.load(Ordering::Relaxed) {
-                "cancelled"
+            let failure_stage = {
+                let mut progress = task
+                    .progress
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner());
+                progress.stage = if task.cancelled.load(Ordering::Relaxed) {
+                    "cancelled".to_owned()
+                } else {
+                    format!("{}_failed", progress.stage)
+                };
+                progress.stage.clone()
+            };
+            let message = match error {
+                sync::SyncError::Sync(message) => message,
+            };
+            return Err(RustComponentsError::Sync(if failure_stage == "cancelled" {
+                message
             } else {
-                "failed"
-            }
-            .to_owned();
-            return Err(map_sync_error(error));
+                format!("[stage={failure_stage}] {message}")
+            }));
         }
     };
     Ok(SyncLibrarySidecarReport {

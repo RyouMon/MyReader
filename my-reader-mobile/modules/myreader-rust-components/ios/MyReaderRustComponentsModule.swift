@@ -1,30 +1,11 @@
 import ExpoModulesCore
 
-struct SyncRemoteObjectRecord: Record {
-  @Field var objectPath: String = ""
-  @Field var head: String = ""
-  @Field var bytes: Data = Data()
-  @Field var sha256: String = ""
-}
-
 private func documentResultDictionary(
   _ result: SyncDocumentCommandResult
 ) -> [String: Any] {
   [
     "schemaVersion": Int(result.schemaVersion),
-    "libraryUuid": result.libraryUuid ?? NSNull(),
-    "snapshotBytes": result.snapshotBytes,
     "heads": result.heads,
-    "incrementalBytes": result.incrementalBytes,
-    "changes": result.changes.map { change in
-      [
-        "actorId": change.actorId,
-        "sequence": change.sequence,
-        "hash": change.hash,
-        "bytes": change.bytes,
-      ]
-    },
-    "missingDependencies": result.missingDependencies,
     "projectionJson": result.projectionJson,
   ]
 }
@@ -32,24 +13,6 @@ private func documentResultDictionary(
 private func syncCall<T>(_ operation: () throws -> T) throws -> T {
   do {
     return try operation()
-  } catch let RustComponentsError.Sync(message) {
-    throw Exception(
-      name: "SyncComponentException",
-      description: message,
-      code: "SYNC_ERROR"
-    )
-  } catch {
-    throw Exception(
-      name: "SyncComponentException",
-      description: error.localizedDescription,
-      code: "SYNC_ERROR"
-    )
-  }
-}
-
-private func syncAsyncCall<T>(_ operation: () async throws -> T) async throws -> T {
-  do {
-    return try await operation()
   } catch let RustComponentsError.Sync(message) {
     throw Exception(
       name: "SyncComponentException",
@@ -73,22 +36,6 @@ public class MyReaderRustComponentsModule: Module {
       Int(syncContractVersion())
     }
 
-    Function("executeSyncDocumentCommand") {
-      (
-        snapshotBytes: Data?,
-        requestJson: String,
-        payloadBytes: Data?
-      ) -> [String: Any] in
-      try syncCall {
-        let result = try executeSyncDocumentCommand(
-          snapshotBytes: snapshotBytes,
-          requestJson: requestJson,
-          payloadBytes: payloadBytes
-        )
-        return documentResultDictionary(result)
-      }
-    }
-
     Function("advanceSyncScheduler") {
       (
         stateJson: String?,
@@ -100,6 +47,72 @@ public class MyReaderRustComponentsModule: Module {
           stateJson: stateJson,
           policyJson: policyJson,
           eventJson: eventJson
+        )
+      }
+    }
+
+    AsyncFunction("ensureSyncDatabaseIdentity") {
+      (
+        databasePath: String,
+        libraryUuid: String
+      ) -> [String: Any] in
+      try syncCall {
+        let identity = try ensureSyncDatabaseIdentity(
+          databasePath: databasePath,
+          libraryUuid: libraryUuid
+        )
+        return [
+          "libraryUuid": identity.libraryUuid,
+          "replicaId": identity.replicaId,
+        ]
+      }
+    }
+
+    AsyncFunction("readSyncDatabaseScheduleState") {
+      (databasePath: String) -> [String: Any]? in
+      try syncCall {
+        guard let state = try readSyncDatabaseScheduleState(databasePath: databasePath) else {
+          return nil
+        }
+        return [
+          "lastSuccessfulPullAt": state.lastSuccessfulPullAt ?? NSNull(),
+          "nextRetryAt": state.nextRetryAt ?? NSNull(),
+          "transientFailureCount": Int(state.transientFailureCount),
+          "suspendedReason": state.suspendedReason ?? NSNull(),
+        ]
+      }
+    }
+
+    AsyncFunction("writeSyncDatabaseScheduleState") {
+      (
+        databasePath: String,
+        lastSuccessfulPullAt: Int64?,
+        nextRetryAt: Int64?,
+        transientFailureCount: UInt32,
+        suspendedReason: String?
+      ) in
+      try syncCall {
+        try writeSyncDatabaseScheduleState(
+          databasePath: databasePath,
+          state: SyncDatabaseScheduleState(
+            lastSuccessfulPullAt: lastSuccessfulPullAt,
+            nextRetryAt: nextRetryAt,
+            transientFailureCount: transientFailureCount,
+            suspendedReason: suspendedReason
+          )
+        )
+      }
+    }
+
+    AsyncFunction("markSyncDatabaseScheduleSucceeded") {
+      (
+        databasePath: String,
+        completedPullAt: Int64?
+      ) in
+      try syncCall {
+        try markSyncDatabaseScheduleSucceeded(
+          databasePath: databasePath,
+          completedPullAt: completedPullAt
         )
       }
     }
@@ -140,68 +153,10 @@ public class MyReaderRustComponentsModule: Module {
       }
     }
 
-    AsyncFunction("listSyncDatabaseOutbox") {
-      (databasePath: String) -> [[String: Any]] in
+    AsyncFunction("hasSyncDatabasePendingWork") {
+      (databasePath: String) -> Bool in
       try syncCall {
-        try listSyncDatabaseOutbox(databasePath: databasePath).map { entry in
-          [
-            "objectPath": entry.objectPath,
-            "bytes": entry.bytes,
-            "sha256": entry.sha256,
-            "changeHashesJson": entry.changeHashesJson,
-          ]
-        }
-      }
-    }
-
-    AsyncFunction("markSyncDatabaseOutboxPublished") {
-      (databasePath: String, objectPath: String, publishedAt: String) in
-      try syncCall {
-        try markSyncDatabaseOutboxPublished(
-          databasePath: databasePath,
-          objectPath: objectPath,
-          publishedAt: publishedAt
-        )
-      }
-    }
-
-    AsyncFunction("hasSyncDatabaseReceipt") {
-      (databasePath: String, objectPath: String) -> Bool in
-      try syncCall {
-        try hasSyncDatabaseReceipt(
-          databasePath: databasePath,
-          objectPath: objectPath
-        )
-      }
-    }
-
-    AsyncFunction("applySyncDatabaseRemoteObjects") {
-      (
-        databasePath: String,
-        libraryUuid: String,
-        replicaId: String,
-        nowMs: String,
-        objects: [SyncRemoteObjectRecord]
-      ) -> [String: Any] in
-      try syncCall {
-        let result = try applySyncDatabaseRemoteObjects(
-          databasePath: databasePath,
-          libraryUuid: libraryUuid,
-          replicaId: replicaId,
-          nowMs: nowMs,
-          objects: objects.map { object in
-            SyncRemoteObject(
-              objectPath: object.objectPath,
-              head: object.head,
-              bytes: object.bytes,
-              sha256: object.sha256
-            )
-          }
-        )
-        return [
-          "document": documentResultDictionary(result.document),
-          "appliedObjects": Int(result.appliedObjects),
-        ]
+        try hasSyncDatabasePendingWork(databasePath: databasePath)
       }
     }
 
@@ -253,8 +208,8 @@ public class MyReaderRustComponentsModule: Module {
         mode: String,
         storageJson: String
       ) async throws -> [String: Any] in
-      let result = try await syncAsyncCall {
-        try await syncLibrarySidecar(
+      let result = try syncCall {
+        try syncLibrarySidecar(
           taskId: taskId,
           databasePath: databasePath,
           libraryUuid: libraryUuid,

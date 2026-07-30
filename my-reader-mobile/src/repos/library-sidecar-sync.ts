@@ -2,15 +2,8 @@ import type { Scalar, Transaction } from "@op-engineering/op-sqlite"
 
 import type { Library } from "@my-reader/tools/types/library"
 import { getLibraryDatabase } from "@/src/services/db/library-db"
-import { uuid } from "@/src/utils/common"
 
 export type LibrarySidecarSyncTransaction = Transaction
-
-export type LibrarySidecarLocalMetaRow = {
-  protocol: string
-  libraryUuid: string
-  replicaId: string
-}
 
 export type LibrarySidecarBookmarkRow = {
   id: string
@@ -52,7 +45,7 @@ function optionalString(row: DbRow, key: string): string | null {
   return requiredString(row, key)
 }
 
-/** Runs the remaining mobile-owned identity and projection reads atomically. */
+/** Runs the remaining mobile-owned product projection reads atomically. */
 export async function withLibrarySidecarSyncTransaction<T>(
   library: Library,
   operation: (tx: LibrarySidecarSyncTransaction) => Promise<T>,
@@ -63,33 +56,6 @@ export async function withLibrarySidecarSyncTransaction<T>(
     result = await operation(tx)
   })
   return result as T
-}
-
-export async function readLibrarySidecarLocalMeta(
-  tx: LibrarySidecarSyncTransaction,
-): Promise<LibrarySidecarLocalMetaRow | null> {
-  const result = await tx.execute(
-    "SELECT protocol, library_uuid, replica_id FROM sync_local_meta LIMIT 1",
-  )
-  const row = result.rows[0]
-  if (!row) return null
-  return {
-    protocol: requiredString(row, "protocol"),
-    libraryUuid: requiredString(row, "library_uuid"),
-    replicaId: requiredString(row, "replica_id"),
-  }
-}
-
-export async function insertLibrarySidecarLocalMeta(
-  tx: LibrarySidecarSyncTransaction,
-  row: LibrarySidecarLocalMetaRow,
-): Promise<void> {
-  await tx.execute(
-    `INSERT INTO sync_local_meta
-      (id, protocol, library_uuid, replica_id)
-      VALUES (?, ?, ?, ?)`,
-    [uuid(), row.protocol, row.libraryUuid, row.replicaId],
-  )
 }
 
 export async function readLibrarySidecarBookmark(
