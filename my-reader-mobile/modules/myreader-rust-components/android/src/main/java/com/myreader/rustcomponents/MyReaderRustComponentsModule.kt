@@ -1,7 +1,30 @@
 package com.myreader.rustcomponents
 
 import com.myreader.rustcomponents.uniffi.RustComponentsException
+import com.myreader.rustcomponents.uniffi.NativeBookDetail
+import com.myreader.rustcomponents.uniffi.NativeBookEntry
+import com.myreader.rustcomponents.uniffi.NativeBookFormat
+import com.myreader.rustcomponents.uniffi.NativeBookCoverThumbnailCache
+import com.myreader.rustcomponents.uniffi.NativeBookCoverThumbnailCachePatch
+import com.myreader.rustcomponents.uniffi.NativeBookSummary
 import com.myreader.rustcomponents.uniffi.NativeDownloadTask
+import com.myreader.rustcomponents.uniffi.NativeDownloadedFile
+import com.myreader.rustcomponents.uniffi.NativeDataSource
+import com.myreader.rustcomponents.uniffi.NativeDeviceRegistry
+import com.myreader.rustcomponents.uniffi.NativeFileState
+import com.myreader.rustcomponents.uniffi.NativeFileStateUpdate
+import com.myreader.rustcomponents.uniffi.NativeLibrary
+import com.myreader.rustcomponents.uniffi.NativeLibraryResult
+import com.myreader.rustcomponents.uniffi.NativeLocalLibraryRequest
+import com.myreader.rustcomponents.uniffi.NativePaginatedBooks
+import com.myreader.rustcomponents.uniffi.NativeReaderAnnotation
+import com.myreader.rustcomponents.uniffi.NativeReaderBookmark
+import com.myreader.rustcomponents.uniffi.NativeReadingPosition
+import com.myreader.rustcomponents.uniffi.NativeReadingPositionCandidate
+import com.myreader.rustcomponents.uniffi.NativeReadingStatistics
+import com.myreader.rustcomponents.uniffi.NativeRemoteCredential
+import com.myreader.rustcomponents.uniffi.NativeRemoteLibraryRequest
+import com.myreader.rustcomponents.uniffi.NativeSecurityScopedBookmark
 import com.myreader.rustcomponents.uniffi.addReadingCompletion
 import com.myreader.rustcomponents.uniffi.addReadingSessionInterval
 import com.myreader.rustcomponents.uniffi.beginCoordinatedSync
@@ -105,7 +128,354 @@ data class ReadingSessionIntervalRecord(
   @Field val recordedAtMs: Long = 0,
 ) : Record
 
+@OptimizedRecord
+data class FileStateUpdateRecord(
+  @Field val localState: String = "",
+  @Field val localBlake3: String? = null,
+  @Field val localSize: Long? = null,
+  @Field val localMtime: Long? = null,
+) : Record
+
+@OptimizedRecord
+data class BookCoverThumbnailCachePatchRecord(
+  @Field val bookId: Long = 0,
+  @Field val coverIdentity: String = "",
+  @Field val thumbnailVersion: String = "",
+  @Field val widthPx: Long = 0,
+  @Field val heightPx: Long = 0,
+  @Field val fileName: String = "",
+  @Field val fileSizeBytes: Long = 0,
+) : Record
+
+@OptimizedRecord
+data class DataSourceRecord(
+  @Field val sourceType: String = "",
+  @Field val id: String = "",
+  @Field val name: String = "",
+  @Field val enabled: Boolean = true,
+  @Field val rootPath: String? = null,
+  @Field val readonly: Boolean? = null,
+  @Field val createdAt: Double? = null,
+  @Field val endpoint: String? = null,
+  @Field val username: String? = null,
+  @Field val hasPassword: Boolean = false,
+  @Field val credentialReference: String? = null,
+  @Field val clientId: String? = null,
+  @Field val tenantId: String? = null,
+  @Field val displayName: String? = null,
+  @Field val email: String? = null,
+  @Field val hasRefreshToken: Boolean = false,
+) : Record {
+  fun native() = NativeDataSource(
+    sourceType = sourceType,
+    id = id,
+    name = name,
+    enabled = enabled,
+    rootPath = rootPath,
+    readonly = readonly,
+    createdAt = createdAt,
+    endpoint = endpoint,
+    username = username,
+    hasPassword = hasPassword,
+    credentialReference = credentialReference,
+    clientId = clientId,
+    tenantId = tenantId,
+    displayName = displayName,
+    email = email,
+    hasRefreshToken = hasRefreshToken,
+  )
+}
+
+@OptimizedRecord
+data class SecurityScopedBookmarkRecord(
+  @Field val bookmarkBase64: String = "",
+  @Field val resolvedUri: String = "",
+  @Field val stale: Boolean = false,
+) : Record {
+  fun native() = NativeSecurityScopedBookmark(
+    bookmarkBase64 = bookmarkBase64,
+    resolvedUri = resolvedUri,
+    stale = stale,
+  )
+}
+
+@OptimizedRecord
+data class LibraryRecord(
+  @Field val id: String = "",
+  @Field val name: String = "",
+  @Field val path: String = "",
+  @Field val bookCount: Long = 0,
+  @Field val metadataUri: String? = null,
+  @Field val addedAt: Double? = null,
+  @Field val dataSourceId: String? = null,
+  @Field val sourceType: String? = null,
+  @Field val sourcePath: String? = null,
+  @Field val metadataEtag: String? = null,
+  @Field val securityScopedBookmark: SecurityScopedBookmarkRecord? = null,
+) : Record {
+  fun native() = NativeLibrary(
+    id = id,
+    name = name,
+    path = path,
+    bookCount = bookCount,
+    metadataUri = metadataUri,
+    addedAt = addedAt,
+    dataSourceId = dataSourceId,
+    sourceType = sourceType,
+    sourcePath = sourcePath,
+    metadataEtag = metadataEtag,
+    securityScopedBookmark = securityScopedBookmark?.native(),
+  )
+}
+
+@OptimizedRecord
+data class DeviceRegistryRecord(
+  @Field val schemaVersion: Int = 1,
+  @Field val dataSources: List<DataSourceRecord> = emptyList(),
+  @Field val libraries: List<LibraryRecord> = emptyList(),
+  @Field val activeLibraryId: String? = null,
+) : Record {
+  fun native() = NativeDeviceRegistry(
+    schemaVersion = schemaVersion.toUInt(),
+    dataSources = dataSources.map(DataSourceRecord::native),
+    libraries = libraries.map(LibraryRecord::native),
+    activeLibraryId = activeLibraryId,
+  )
+}
+
+@OptimizedRecord
+data class LocalLibraryRequestRecord(
+  @Field val libraryRootPath: String = "",
+  @Field val path: String = "",
+  @Field val sidecarContainerParentPath: String? = null,
+  @Field val name: String? = null,
+  @Field val metadataUri: String? = null,
+  @Field val addedAt: Double? = null,
+  @Field val securityScopedBookmark: SecurityScopedBookmarkRecord? = null,
+) : Record {
+  fun native() = NativeLocalLibraryRequest(
+    libraryRootPath = libraryRootPath,
+    path = path,
+    sidecarContainerParentPath = sidecarContainerParentPath,
+    name = name,
+    metadataUri = metadataUri,
+    addedAt = addedAt,
+    securityScopedBookmark = securityScopedBookmark?.native(),
+  )
+}
+
+@OptimizedRecord
+data class RemoteLibraryRequestRecord(
+  @Field val dataSourceId: String = "",
+  @Field val sourcePath: String = "",
+  @Field val librariesRootPath: String = "",
+  @Field val librariesRootUri: String? = null,
+  @Field val name: String? = null,
+  @Field val addedAt: Double? = null,
+) : Record {
+  fun native() = NativeRemoteLibraryRequest(
+    dataSourceId = dataSourceId,
+    sourcePath = sourcePath,
+    librariesRootPath = librariesRootPath,
+    librariesRootUri = librariesRootUri,
+    name = name,
+    addedAt = addedAt,
+  )
+}
+
+@OptimizedRecord
+data class RemoteCredentialRecord(
+  @Field val credentialType: String = "",
+  @Field val password: String? = null,
+  @Field val accessToken: String? = null,
+) : Record {
+  fun native() = NativeRemoteCredential(
+    credentialType = credentialType,
+    password = password,
+    accessToken = accessToken,
+  )
+}
+
 class MyReaderRustComponentsModule : Module() {
+  private fun dataSourceMap(source: NativeDataSource): Map<String, Any?> = mapOf(
+    "sourceType" to source.sourceType,
+    "id" to source.id,
+    "name" to source.name,
+    "enabled" to source.enabled,
+    "rootPath" to source.rootPath,
+    "readonly" to source.readonly,
+    "createdAt" to source.createdAt,
+    "endpoint" to source.endpoint,
+    "username" to source.username,
+    "hasPassword" to source.hasPassword,
+    "credentialReference" to source.credentialReference,
+    "clientId" to source.clientId,
+    "tenantId" to source.tenantId,
+    "displayName" to source.displayName,
+    "email" to source.email,
+    "hasRefreshToken" to source.hasRefreshToken,
+  )
+
+  private fun bookmarkMap(bookmark: NativeSecurityScopedBookmark): Map<String, Any?> = mapOf(
+    "bookmarkBase64" to bookmark.bookmarkBase64,
+    "resolvedUri" to bookmark.resolvedUri,
+    "stale" to bookmark.stale,
+  )
+
+  private fun libraryMap(library: NativeLibrary): Map<String, Any?> = mapOf(
+    "id" to library.id,
+    "name" to library.name,
+    "path" to library.path,
+    "bookCount" to library.bookCount,
+    "metadataUri" to library.metadataUri,
+    "addedAt" to library.addedAt,
+    "dataSourceId" to library.dataSourceId,
+    "sourceType" to library.sourceType,
+    "sourcePath" to library.sourcePath,
+    "metadataEtag" to library.metadataEtag,
+    "securityScopedBookmark" to library.securityScopedBookmark?.let(::bookmarkMap),
+  )
+
+  private fun registryMap(registry: NativeDeviceRegistry): Map<String, Any?> = mapOf(
+    "schemaVersion" to registry.schemaVersion.toLong(),
+    "dataSources" to registry.dataSources.map(::dataSourceMap),
+    "libraries" to registry.libraries.map(::libraryMap),
+    "activeLibraryId" to registry.activeLibraryId,
+  )
+
+  private fun libraryResultMap(result: NativeLibraryResult): Map<String, Any?> = mapOf(
+    "registry" to registryMap(result.registry),
+    "library" to libraryMap(result.library),
+  )
+
+  private fun bookMap(book: NativeBookEntry): Map<String, Any?> = mapOf(
+    "id" to book.id,
+    "title" to book.title,
+    "titleSort" to book.titleSort,
+    "authorSort" to book.authorSort,
+    "authors" to book.authors,
+    "tags" to book.tags,
+    "series" to book.series,
+    "seriesIndex" to book.seriesIndex,
+    "formats" to book.formats,
+    "hasCover" to book.hasCover,
+    "path" to book.path,
+    "timestamp" to book.timestamp,
+    "pubdate" to book.pubdate,
+    "lastModified" to book.lastModified,
+    "comment" to book.comment,
+    "publisher" to book.publisher,
+    "languages" to book.languages,
+    "rating" to book.rating,
+    "uuid" to book.uuid,
+  )
+
+  private fun pageMap(page: NativePaginatedBooks): Map<String, Any?> = mapOf(
+    "items" to page.items.map(::bookMap),
+    "total" to page.total.toLong(),
+  )
+
+  private fun detailMap(detail: NativeBookDetail): Map<String, Any?> =
+    bookMap(detail.book) + mapOf(
+      "formatSizes" to detail.formatSizes.map {
+        mapOf("format" to it.format, "sizeBytes" to it.sizeBytes)
+      },
+      "identifiers" to detail.identifiers.map {
+        mapOf("idType" to it.idType, "value" to it.value)
+      },
+    )
+
+  private fun summaryMap(summary: NativeBookSummary): Map<String, Any?> = mapOf(
+    "id" to summary.id,
+    "path" to summary.path,
+    "hasCover" to summary.hasCover,
+    "formats" to summary.formats,
+    "formatPaths" to summary.formatPaths,
+  )
+
+  private fun formatMap(format: NativeBookFormat): Map<String, Any?> = mapOf(
+    "format" to format.format,
+    "name" to format.name,
+    "sizeBytes" to format.sizeBytes,
+    "relativePath" to format.relativePath,
+  )
+
+  private fun fileStateMap(state: NativeFileState): Map<String, Any?> = mapOf(
+    "id" to state.id,
+    "path" to state.path,
+    "localState" to state.localState,
+    "localBlake3" to state.localBlake3,
+    "localSize" to state.localSize,
+    "localMtime" to state.localMtime,
+    "updatedAt" to state.updatedAt,
+  )
+
+  private fun downloadedFileMap(file: NativeDownloadedFile): Map<String, Any?> = mapOf(
+    "size" to file.size,
+    "mtimeMs" to file.mtimeMs,
+  )
+
+  private fun coverCacheMap(cache: NativeBookCoverThumbnailCache): Map<String, Any?> = mapOf(
+    "id" to cache.id,
+    "bookId" to cache.bookId,
+    "coverIdentity" to cache.coverIdentity,
+    "thumbnailVersion" to cache.thumbnailVersion,
+    "widthPx" to cache.widthPx,
+    "heightPx" to cache.heightPx,
+    "fileName" to cache.fileName,
+    "fileSizeBytes" to cache.fileSizeBytes,
+    "createdAt" to cache.createdAt,
+    "updatedAt" to cache.updatedAt,
+  )
+
+  private fun readingPositionMap(position: NativeReadingPosition): Map<String, Any?> = mapOf(
+    "bookId" to position.bookId,
+    "format" to position.format,
+    "locatorJson" to position.locatorJson,
+    "displayProgression" to position.displayProgression,
+    "updatedAt" to position.updatedAt,
+    "conflictCount" to position.conflictCount,
+  )
+
+  private fun readingPositionCandidateMap(
+    candidate: NativeReadingPositionCandidate,
+  ): Map<String, Any?> = mapOf(
+    "operationId" to candidate.operationId,
+    "locatorJson" to candidate.locatorJson,
+    "displayProgression" to candidate.displayProgression,
+    "recordedAt" to candidate.recordedAt,
+    "replicaId" to candidate.replicaId,
+  )
+
+  private fun readerBookmarkMap(bookmark: NativeReaderBookmark): Map<String, Any?> = mapOf(
+    "id" to bookmark.id,
+    "bookId" to bookmark.bookId,
+    "format" to bookmark.format,
+    "locatorKey" to bookmark.locatorKey,
+    "locatorJson" to bookmark.locatorJson,
+    "createdAt" to bookmark.createdAt,
+    "updatedAt" to bookmark.updatedAt,
+  )
+
+  private fun readerAnnotationMap(annotation: NativeReaderAnnotation): Map<String, Any?> = mapOf(
+    "id" to annotation.id,
+    "bookId" to annotation.bookId,
+    "format" to annotation.format,
+    "kind" to annotation.kind,
+    "locatorJson" to annotation.locatorJson,
+    "color" to annotation.color,
+    "note" to annotation.note,
+    "createdAt" to annotation.createdAt,
+    "updatedAt" to annotation.updatedAt,
+  )
+
+  private fun readingStatisticsMap(statistics: NativeReadingStatistics): Map<String, Any?> = mapOf(
+    "days" to statistics.days,
+    "totalDurationSeconds" to statistics.totalDurationSeconds,
+    "longestStreakDays" to statistics.longestStreakDays.toLong(),
+    "completedBooks" to statistics.completedBooks.toLong(),
+  )
+
   private fun downloadTaskMap(task: NativeDownloadTask): Map<String, Any?> = mapOf(
     "id" to task.id,
     "libraryId" to task.libraryId,
@@ -153,31 +523,31 @@ class MyReaderRustComponentsModule : Module() {
   private fun ModuleDefinitionBuilder.defineRegistryFunctions() {
     AsyncFunction("initializeDeviceRegistry") {
         registryPath: String,
-        legacyRegistryJson: String? ->
+        legacyRegistry: DeviceRegistryRecord? ->
       componentCall {
-        initializeDeviceRegistry(registryPath, legacyRegistryJson)
+        registryMap(initializeDeviceRegistry(registryPath, legacyRegistry?.native()))
       }
     }
 
     AsyncFunction("upsertDeviceDataSource") {
         registryPath: String,
-        sourceJson: String ->
+        source: DataSourceRecord ->
       componentCall {
-        upsertDeviceDataSource(registryPath, sourceJson)
+        registryMap(upsertDeviceDataSource(registryPath, source.native()))
       }
     }
 
-    AsyncFunction("prepareDeviceDataSource") { sourceJson: String ->
+    AsyncFunction("prepareDeviceDataSource") { source: DataSourceRecord ->
       componentCall {
-        prepareDeviceDataSource(sourceJson)
+        dataSourceMap(prepareDeviceDataSource(source.native()))
       }
     }
 
     AsyncFunction("validateDeviceDataSource") {
         registryPath: String,
-        sourceJson: String ->
+        source: DataSourceRecord ->
       componentCall {
-        validateDeviceDataSource(registryPath, sourceJson)
+        validateDeviceDataSource(registryPath, source.native())
       }
     }
 
@@ -185,23 +555,23 @@ class MyReaderRustComponentsModule : Module() {
         registryPath: String,
         dataSourceId: String ->
       componentCall {
-        removeDeviceDataSource(registryPath, dataSourceId)
+        registryMap(removeDeviceDataSource(registryPath, dataSourceId))
       }
     }
 
     AsyncFunction("registerDeviceLibrary") {
         registryPath: String,
-        libraryJson: String ->
+        library: LibraryRecord ->
       componentCall {
-        registerDeviceLibrary(registryPath, libraryJson)
+        registryMap(registerDeviceLibrary(registryPath, library.native()))
       }
     }
 
     AsyncFunction("replaceDeviceLibrary") {
         registryPath: String,
-        libraryJson: String ->
+        library: LibraryRecord ->
       componentCall {
-        replaceDeviceLibrary(registryPath, libraryJson)
+        registryMap(replaceDeviceLibrary(registryPath, library.native()))
       }
     }
 
@@ -209,7 +579,7 @@ class MyReaderRustComponentsModule : Module() {
         registryPath: String,
         libraryId: String ->
       componentCall {
-        removeDeviceLibrary(registryPath, libraryId)
+        registryMap(removeDeviceLibrary(registryPath, libraryId))
       }
     }
 
@@ -217,23 +587,23 @@ class MyReaderRustComponentsModule : Module() {
         registryPath: String,
         libraryId: String ->
       componentCall {
-        switchDeviceLibrary(registryPath, libraryId)
+        registryMap(switchDeviceLibrary(registryPath, libraryId))
       }
     }
 
     AsyncFunction("addLocalLibrary") {
         registryPath: String,
-        requestJson: String ->
+        request: LocalLibraryRequestRecord ->
       componentCall {
-        addLocalLibrary(registryPath, requestJson)
+        libraryResultMap(addLocalLibrary(registryPath, request.native()))
       }
     }
 
     AsyncFunction("testRemoteDataSource") {
-        sourceJson: String,
-        credentialJson: String ->
+        source: DataSourceRecord,
+        credential: RemoteCredentialRecord ->
       componentCall {
-        testRemoteDataSource(sourceJson, credentialJson)
+        testRemoteDataSource(source.native(), credential.native())
       }
     }
 
@@ -241,23 +611,31 @@ class MyReaderRustComponentsModule : Module() {
         registryPath: String,
         dataSourceId: String,
         path: String,
-        credentialJson: String ->
+        credential: RemoteCredentialRecord ->
       componentCall {
         listRemoteDirectories(
           registryPath,
           dataSourceId,
           path,
-          credentialJson,
-        )
+          credential.native(),
+        ).map {
+          mapOf(
+            "name" to it.name,
+            "path" to it.path,
+            "isDirectory" to it.isDirectory,
+          )
+        }
       }
     }
 
     AsyncFunction("addRemoteLibrary") {
         registryPath: String,
-        requestJson: String,
-        credentialJson: String ->
+        request: RemoteLibraryRequestRecord,
+        credential: RemoteCredentialRecord ->
       componentCall {
-        addRemoteLibrary(registryPath, requestJson, credentialJson)
+        libraryResultMap(
+          addRemoteLibrary(registryPath, request.native(), credential.native()),
+        )
       }
     }
 
@@ -265,13 +643,15 @@ class MyReaderRustComponentsModule : Module() {
         registryPath: String,
         libraryId: String,
         localRootPath: String,
-        credentialJson: String ->
+        credential: RemoteCredentialRecord ->
       componentCall {
-        refreshRemoteLibrary(
-          registryPath,
-          libraryId,
-          localRootPath,
-          credentialJson,
+        libraryResultMap(
+          refreshRemoteLibrary(
+            registryPath,
+            libraryId,
+            localRootPath,
+            credential.native(),
+          ),
         )
       }
     }
@@ -290,7 +670,7 @@ class MyReaderRustComponentsModule : Module() {
 
     AsyncFunction("listCalibreBooks") { libraryRootPath: String ->
       componentCall {
-        listCalibreBooks(libraryRootPath)
+        listCalibreBooks(libraryRootPath).map(::bookMap)
       }
     }
 
@@ -301,13 +681,13 @@ class MyReaderRustComponentsModule : Module() {
         sortBy: String?,
         search: String? ->
       componentCall {
-        listCalibreBooksPage(
+        pageMap(listCalibreBooksPage(
           libraryRootPath,
           offset.toULong(),
           limit.toULong(),
           sortBy,
           search,
-        )
+        ))
       }
     }
 
@@ -318,13 +698,13 @@ class MyReaderRustComponentsModule : Module() {
         limit: Long,
         search: String? ->
       componentCall {
-        listCalibreBooksPageByLastRead(
+        pageMap(listCalibreBooksPageByLastRead(
           libraryRootPath,
           sidecarRootPath,
           offset.toULong(),
           limit.toULong(),
           search,
-        )
+        ))
       }
     }
 
@@ -332,7 +712,7 @@ class MyReaderRustComponentsModule : Module() {
         libraryRootPath: String,
         bookId: Long ->
       componentCall {
-        getCalibreBookDetail(libraryRootPath, bookId)
+        detailMap(getCalibreBookDetail(libraryRootPath, bookId))
       }
     }
 
@@ -345,7 +725,7 @@ class MyReaderRustComponentsModule : Module() {
           libraryRootPath,
           seriesName,
           excludeBookId,
-        )
+        ).map(::bookMap)
       }
     }
 
@@ -357,7 +737,7 @@ class MyReaderRustComponentsModule : Module() {
 
     AsyncFunction("listCalibreBookSummaries") { libraryRootPath: String ->
       componentCall {
-        listCalibreBookSummaries(libraryRootPath)
+        listCalibreBookSummaries(libraryRootPath).map(::summaryMap)
       }
     }
 
@@ -365,7 +745,7 @@ class MyReaderRustComponentsModule : Module() {
         libraryRootPath: String,
         bookId: Long ->
       componentCall {
-        listCalibreBookFormats(libraryRootPath, bookId)
+        listCalibreBookFormats(libraryRootPath, bookId).map(::formatMap)
       }
     }
 
@@ -393,22 +773,31 @@ class MyReaderRustComponentsModule : Module() {
         sidecarRootPath: String,
         path: String ->
       componentCall {
-        getLibraryFileState(sidecarRootPath, path)
+        getLibraryFileState(sidecarRootPath, path)?.let(::fileStateMap)
       }
     }
 
     AsyncFunction("listLibraryFileStates") { sidecarRootPath: String ->
       componentCall {
-        listLibraryFileStates(sidecarRootPath)
+        listLibraryFileStates(sidecarRootPath).map(::fileStateMap)
       }
     }
 
     AsyncFunction("upsertLibraryFileState") {
         sidecarRootPath: String,
         path: String,
-        updateJson: String ->
+        update: FileStateUpdateRecord ->
       componentCall {
-        upsertLibraryFileState(sidecarRootPath, path, updateJson)
+        upsertLibraryFileState(
+          sidecarRootPath,
+          path,
+          NativeFileStateUpdate(
+            localState = update.localState,
+            localBlake3 = update.localBlake3,
+            localSize = update.localSize,
+            localMtime = update.localMtime,
+          ),
+        )
       }
     }
 
@@ -425,7 +814,7 @@ class MyReaderRustComponentsModule : Module() {
         relativePath: String,
         localPath: String ->
       componentCall {
-        finalizeDownloadedFile(sidecarRootPath, relativePath, localPath)
+        downloadedFileMap(finalizeDownloadedFile(sidecarRootPath, relativePath, localPath))
       }
     }
 
@@ -448,15 +837,26 @@ class MyReaderRustComponentsModule : Module() {
           thumbnailVersion,
           widthPx,
           heightPx,
-        )
+        ).map(::coverCacheMap)
       }
     }
 
     AsyncFunction("upsertBookCoverThumbnailCache") {
         sidecarRootPath: String,
-        patchJson: String ->
+        patch: BookCoverThumbnailCachePatchRecord ->
       componentCall {
-        upsertBookCoverThumbnailCache(sidecarRootPath, patchJson)
+        upsertBookCoverThumbnailCache(
+          sidecarRootPath,
+          NativeBookCoverThumbnailCachePatch(
+            bookId = patch.bookId,
+            coverIdentity = patch.coverIdentity,
+            thumbnailVersion = patch.thumbnailVersion,
+            widthPx = patch.widthPx,
+            heightPx = patch.heightPx,
+            fileName = patch.fileName,
+            fileSizeBytes = patch.fileSizeBytes,
+          ),
+        )
       }
     }
 
@@ -515,13 +915,13 @@ class MyReaderRustComponentsModule : Module() {
         bookId: Long,
         format: String ->
       componentCall {
-        getReadingPosition(sidecarRootPath, bookId, format)
+        getReadingPosition(sidecarRootPath, bookId, format)?.let(::readingPositionMap)
       }
     }
 
     AsyncFunction("listReadingPositions") { sidecarRootPath: String ->
       componentCall {
-        listReadingPositions(sidecarRootPath)
+        listReadingPositions(sidecarRootPath).map(::readingPositionMap)
       }
     }
 
@@ -559,7 +959,7 @@ class MyReaderRustComponentsModule : Module() {
           bookId,
           format,
           nowMs,
-        )
+        ).map(::readingPositionCandidateMap)
       }
     }
 
@@ -589,7 +989,7 @@ class MyReaderRustComponentsModule : Module() {
         bookId: Long,
         format: String ->
       componentCall {
-        listReaderBookmarks(sidecarRootPath, bookId, format)
+        listReaderBookmarks(sidecarRootPath, bookId, format).map(::readerBookmarkMap)
       }
     }
 
@@ -610,7 +1010,7 @@ class MyReaderRustComponentsModule : Module() {
           locatorKey,
           locatorJson,
           recordedAtMs,
-        )
+        ).let(::readerBookmarkMap)
       }
     }
 
@@ -638,7 +1038,7 @@ class MyReaderRustComponentsModule : Module() {
         bookId: Long,
         format: String ->
       componentCall {
-        listReaderAnnotations(sidecarRootPath, bookId, format)
+        listReaderAnnotations(sidecarRootPath, bookId, format).map(::readerAnnotationMap)
       }
     }
 
@@ -661,7 +1061,7 @@ class MyReaderRustComponentsModule : Module() {
           color,
           note,
           recordedAtMs,
-        )
+        ).let(::readerAnnotationMap)
       }
     }
 
@@ -684,7 +1084,7 @@ class MyReaderRustComponentsModule : Module() {
           color,
           note,
           recordedAtMs,
-        )
+        ).let(::readerAnnotationMap)
       }
     }
 
@@ -752,7 +1152,12 @@ class MyReaderRustComponentsModule : Module() {
         startDay: String,
         endDay: String ->
       componentCall {
-        getReadingStatistics(sidecarRootPath, libraryRootPath, startDay, endDay)
+        getReadingStatistics(
+          sidecarRootPath,
+          libraryRootPath,
+          startDay,
+          endDay,
+        ).let(::readingStatisticsMap)
       }
     }
   }

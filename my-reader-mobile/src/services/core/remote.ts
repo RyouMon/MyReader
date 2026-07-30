@@ -1,7 +1,9 @@
 import type { DataSource } from "@my-reader/tools/types/data-source"
 import type { Library } from "@my-reader/tools/types/library"
 import { Directory, File, Paths } from "expo-file-system"
-import MyReaderRustComponents from "@/modules/myreader-rust-components"
+import MyReaderRustComponents, {
+  type NativeRemoteCredential,
+} from "@/modules/myreader-rust-components"
 import { refreshAccessToken } from "../auth/onedrive"
 import { libraryContainerRootUri } from "../fs/library-paths"
 import { toNativeFilesystemPath } from "../fs/path"
@@ -10,7 +12,11 @@ import {
   readOneDriveRefreshToken,
   readWebDavPassword,
 } from "../storage/credentials"
-import type { DeviceRegistry } from "./device-registry"
+import {
+  type DeviceRegistry,
+  libraryResultFromNative,
+  toNativeDataSource,
+} from "./device-registry"
 
 export type RemoteDirectoryEntry = {
   name: string
@@ -27,22 +33,10 @@ const registryPath = toNativeFilesystemPath(
   new File(Paths.document, "device-registry.json").uri,
 )
 
-function safeSource(source: DataSource): DataSource {
-  if (source.type !== "onedrive") {
-    return source
-  }
-  const {
-    refreshToken: _refreshToken,
-    accessTokenExpiresAt: _expiresAt,
-    ...safe
-  } = source
-  return safe
-}
-
 async function credentialFor(
   source: DataSource,
   secrets?: DataSourceSecrets,
-): Promise<Record<string, string>> {
+): Promise<NativeRemoteCredential> {
   if (source.type === "webdav") {
     const password =
       secrets?.type === "webdav"
@@ -51,18 +45,30 @@ async function credentialFor(
     if (!password) {
       throw new Error("WEBDAV_PASSWORD_REQUIRED")
     }
-    return { type: "webdav", password }
+    return {
+      credentialType: "webdav",
+      password,
+      accessToken: null,
+    }
   }
 
   if (secrets?.type === "onedrive" && secrets.accessToken) {
-    return { type: "onedrive", accessToken: secrets.accessToken }
+    return {
+      credentialType: "onedrive",
+      password: null,
+      accessToken: secrets.accessToken,
+    }
   }
   const refreshToken = await readOneDriveRefreshToken(source.id)
   if (!refreshToken) {
     throw new Error("ONEDRIVE_REFRESH_TOKEN_REQUIRED")
   }
   const { accessToken } = await refreshAccessToken(source.id)
-  return { type: "onedrive", accessToken }
+  return {
+    credentialType: "onedrive",
+    password: null,
+    accessToken,
+  }
 }
 
 export async function testRemoteDataSource(
@@ -71,8 +77,8 @@ export async function testRemoteDataSource(
 ): Promise<void> {
   const credential = await credentialFor(source, secrets)
   await MyReaderRustComponents.testRemoteDataSource(
-    JSON.stringify(safeSource(source)),
-    JSON.stringify(credential),
+    toNativeDataSource(source),
+    credential,
   )
 }
 
@@ -81,14 +87,12 @@ export async function listRemoteDirectories(
   path: string,
 ): Promise<RemoteDirectoryEntry[]> {
   const credential = await credentialFor(source)
-  return JSON.parse(
-    await MyReaderRustComponents.listRemoteDirectories(
-      registryPath,
-      source.id,
-      path,
-      JSON.stringify(credential),
-    ),
-  ) as RemoteDirectoryEntry[]
+  return MyReaderRustComponents.listRemoteDirectories(
+    registryPath,
+    source.id,
+    path,
+    credential,
+  )
 }
 
 export async function addRemoteLibrary(
@@ -100,19 +104,20 @@ export async function addRemoteLibrary(
     librariesRoot.create({ idempotent: true, intermediates: true })
   }
   const credential = await credentialFor(source)
-  return JSON.parse(
+  return libraryResultFromNative(
     await MyReaderRustComponents.addRemoteLibrary(
       registryPath,
-      JSON.stringify({
+      {
         dataSourceId: source.id,
         sourcePath,
         librariesRootPath: toNativeFilesystemPath(librariesRoot.uri),
         librariesRootUri: librariesRoot.uri,
+        name: null,
         addedAt: Date.now(),
-      }),
-      JSON.stringify(credential),
+      },
+      credential,
     ),
-  ) as RemoteLibraryResult
+  )
 }
 
 export async function refreshRemoteLibrary(
@@ -120,12 +125,12 @@ export async function refreshRemoteLibrary(
   source: DataSource,
 ): Promise<RemoteLibraryResult> {
   const credential = await credentialFor(source)
-  return JSON.parse(
+  return libraryResultFromNative(
     await MyReaderRustComponents.refreshRemoteLibrary(
       registryPath,
       library.id,
       toNativeFilesystemPath(libraryContainerRootUri(library.id)),
-      JSON.stringify(credential),
+      credential,
     ),
-  ) as RemoteLibraryResult
+  )
 }

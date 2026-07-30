@@ -1,11 +1,12 @@
 use myreader_rust_components::{
     begin_coordinated_sync, cancel_download_task, cancel_sync_task, claim_download_task,
     count_calibre_books, create_sync_coordinator, dispose_sync_coordinator, enqueue_download_task,
-    fail_coordinated_sync, initialize_device_registry, list_book_cover_thumbnail_cache,
-    list_download_tasks, migrate_library_database, read_sync_task_progress,
-    register_device_library, release_download_task, release_sync_task,
-    report_download_task_progress, request_coordinated_sync, sync_contract_version,
-    sync_library_sidecar, upsert_book_cover_thumbnail_cache,
+    fail_coordinated_sync, get_reading_position, initialize_device_registry,
+    list_book_cover_thumbnail_cache, list_download_tasks, migrate_library_database,
+    read_sync_task_progress, register_device_library, release_download_task, release_sync_task,
+    report_download_task_progress, request_coordinated_sync, set_reading_position,
+    sync_contract_version, sync_library_sidecar, upsert_book_cover_thumbnail_cache,
+    NativeBookCoverThumbnailCachePatch, NativeDataSource, NativeLibrary, NativeRemoteCredential,
 };
 use rusqlite::Connection;
 
@@ -92,26 +93,51 @@ fn should_round_trip_cover_manifest_when_native_bridge_owns_database() {
     let sidecar_root = directory.path().to_string_lossy().into_owned();
     upsert_book_cover_thumbnail_cache(
         sidecar_root.clone(),
-        serde_json::json!({
-            "bookId": 42,
-            "coverIdentity": "cover-v2",
-            "thumbnailVersion": "v3",
-            "widthPx": 180,
-            "heightPx": 270,
-            "fileName": "42.jpg",
-            "fileSizeBytes": 2048
-        })
-        .to_string(),
+        NativeBookCoverThumbnailCachePatch {
+            book_id: 42,
+            cover_identity: "cover-v2".into(),
+            thumbnail_version: "v3".into(),
+            width_px: 180,
+            height_px: 270,
+            file_name: "42.jpg".into(),
+            file_size_bytes: 2048,
+        },
     )
     .unwrap();
 
-    let rows: serde_json::Value = serde_json::from_str(
-        &list_book_cover_thumbnail_cache(sidecar_root, "v3".into(), 180, 270).unwrap(),
+    let rows = list_book_cover_thumbnail_cache(sidecar_root, "v3".into(), 180, 270).unwrap();
+
+    assert_eq!(rows[0].book_id, 42);
+    assert_eq!(rows[0].file_name, "42.jpg");
+}
+
+#[test]
+fn should_return_typed_position_when_native_bridge_reads_locator_document() {
+    let sidecar_directory = tempfile::tempdir().unwrap();
+    let library_directory = create_calibre_library();
+    let sidecar_root = sidecar_directory.path().to_string_lossy().into_owned();
+    let library_root = library_directory.path().to_string_lossy().into_owned();
+    set_reading_position(
+        sidecar_root.clone(),
+        library_root,
+        42,
+        "EPUB".into(),
+        r#"{"href":"chapter.xhtml","type":"application/xhtml+xml"}"#.into(),
+        Some(0.4),
+        900,
     )
     .unwrap();
 
-    assert_eq!(rows[0]["bookId"], 42);
-    assert_eq!(rows[0]["fileName"], "42.jpg");
+    let position = get_reading_position(sidecar_root, 42, "EPUB".into())
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(position.book_id, 42);
+    assert_eq!(position.display_progression, Some(0.4));
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&position.locator_json).unwrap()["href"],
+        "chapter.xhtml"
+    );
 }
 
 #[test]
@@ -121,44 +147,55 @@ fn should_persist_registry_when_native_bridge_registers_library() {
     let path = path.to_string_lossy().into_owned();
     initialize_device_registry(path.clone(), None).unwrap();
 
-    let registry_json = register_device_library(
+    let registry = register_device_library(
         path.clone(),
-        serde_json::json!({
-            "id": "library",
-            "name": "Library",
-            "path": "/library",
-            "bookCount": 0,
-            "sourceType": "local"
-        })
-        .to_string(),
+        NativeLibrary {
+            id: "library".into(),
+            name: "Library".into(),
+            path: "/library".into(),
+            book_count: 0,
+            metadata_uri: None,
+            added_at: None,
+            data_source_id: None,
+            source_type: Some("local".into()),
+            source_path: None,
+            metadata_etag: None,
+            security_scoped_bookmark: None,
+        },
     )
     .unwrap();
-    let persisted_json = initialize_device_registry(path, None).unwrap();
+    let persisted = initialize_device_registry(path, None).unwrap();
 
-    assert_eq!(
-        serde_json::from_str::<serde_json::Value>(&registry_json).unwrap(),
-        serde_json::from_str::<serde_json::Value>(&persisted_json).unwrap()
-    );
+    assert_eq!(registry.active_library_id, persisted.active_library_id);
+    assert_eq!(registry.libraries[0].id, persisted.libraries[0].id);
 }
 
 #[test]
 fn should_return_core_error_when_remote_credential_type_does_not_match_source() {
     let error = myreader_rust_components::test_remote_data_source(
-        serde_json::json!({
-            "type": "webdav",
-            "id": "source",
-            "name": "Source",
-            "enabled": true,
-            "endpoint": "https://example.com",
-            "username": "reader",
-            "hasPassword": true
-        })
-        .to_string(),
-        serde_json::json!({
-            "type": "onedrive",
-            "accessToken": "token"
-        })
-        .to_string(),
+        NativeDataSource {
+            source_type: "webdav".into(),
+            id: "source".into(),
+            name: "Source".into(),
+            enabled: true,
+            root_path: None,
+            readonly: None,
+            created_at: None,
+            endpoint: Some("https://example.com".into()),
+            username: Some("reader".into()),
+            has_password: true,
+            credential_reference: None,
+            client_id: None,
+            tenant_id: None,
+            display_name: None,
+            email: None,
+            has_refresh_token: false,
+        },
+        NativeRemoteCredential {
+            credential_type: "onedrive".into(),
+            password: None,
+            access_token: Some("token".into()),
+        },
     )
     .unwrap_err();
 

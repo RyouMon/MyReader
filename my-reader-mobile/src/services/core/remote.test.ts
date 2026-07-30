@@ -52,19 +52,29 @@ describe("core remote adapter", () => {
     })
 
     expect(MyReaderRustComponents.testRemoteDataSource).toHaveBeenCalledWith(
-      JSON.stringify({
+      {
+        sourceType: "onedrive",
         id: "source",
-        type: "onedrive",
         name: "OneDrive",
         enabled: true,
+        rootPath: null,
+        readonly: null,
+        createdAt: null,
+        endpoint: null,
+        username: null,
+        hasPassword: false,
+        credentialReference: null,
         clientId: "client",
         tenantId: "consumers",
+        displayName: null,
+        email: null,
         hasRefreshToken: true,
-      }),
-      JSON.stringify({
-        type: "onedrive",
+      },
+      {
+        credentialType: "onedrive",
+        password: null,
         accessToken: "short-lived-access-token",
-      }),
+      },
     )
   })
 })

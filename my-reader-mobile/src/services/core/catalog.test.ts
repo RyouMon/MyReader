@@ -15,34 +15,32 @@ describe("core catalog adapter", () => {
     jest.clearAllMocks()
   })
 
-  it("should parse book detail when core returns catalog JSON", async () => {
+  it("should return book detail when core returns a typed catalog record", async () => {
     jest
       .spyOn(MyReaderRustComponents, "getCalibreBookDetail")
-      .mockResolvedValue(
-        JSON.stringify({
-          id: 42,
-          title: "The Left Hand of Darkness",
-          titleSort: "Left Hand of Darkness, The",
-          authorSort: "Le Guin, Ursula K.",
-          authors: ["Ursula K. Le Guin"],
-          tags: [],
-          series: null,
-          seriesIndex: null,
-          formats: ["EPUB"],
-          hasCover: true,
-          path: "Ursula K. Le Guin/The Left Hand of Darkness",
-          timestamp: null,
-          pubdate: null,
-          lastModified: null,
-          comment: null,
-          publisher: null,
-          languages: [],
-          rating: null,
-          uuid: null,
-          formatSizes: [{ format: "EPUB", sizeBytes: 1024 }],
-          identifiers: [],
-        }),
-      )
+      .mockResolvedValue({
+        id: 42,
+        title: "The Left Hand of Darkness",
+        titleSort: "Left Hand of Darkness, The",
+        authorSort: "Le Guin, Ursula K.",
+        authors: ["Ursula K. Le Guin"],
+        tags: [],
+        series: null,
+        seriesIndex: null,
+        formats: ["EPUB"],
+        hasCover: true,
+        path: "Ursula K. Le Guin/The Left Hand of Darkness",
+        timestamp: null,
+        pubdate: null,
+        lastModified: null,
+        comment: null,
+        publisher: null,
+        languages: [],
+        rating: null,
+        uuid: null,
+        formatSizes: [{ format: "EPUB", sizeBytes: 1024 }],
+        identifiers: [],
+      })
 
     const detail = await getCalibreBookDetail("file:///library", 42)
 
@@ -57,17 +55,15 @@ describe("core catalog adapter", () => {
   it("should preserve relative file path when core returns book formats", async () => {
     jest
       .spyOn(MyReaderRustComponents, "listCalibreBookFormats")
-      .mockResolvedValue(
-        JSON.stringify([
-          {
-            format: "EPUB",
-            name: "The Left Hand of Darkness",
-            sizeBytes: 1024,
-            relativePath:
-              "Ursula K. Le Guin/The Left Hand of Darkness/The Left Hand of Darkness.epub",
-          },
-        ]),
-      )
+      .mockResolvedValue([
+        {
+          format: "EPUB",
+          name: "The Left Hand of Darkness",
+          sizeBytes: 1024,
+          relativePath:
+            "Ursula K. Le Guin/The Left Hand of Darkness/The Left Hand of Darkness.epub",
+        },
+      ])
 
     const formats = await listCalibreBookFormats("file:///library", 42)
 
@@ -85,19 +81,17 @@ describe("core catalog adapter", () => {
   it("should preserve format paths when core returns book summaries", async () => {
     jest
       .spyOn(MyReaderRustComponents, "listCalibreBookSummaries")
-      .mockResolvedValue(
-        JSON.stringify([
-          {
-            id: 42,
-            path: "Ursula K. Le Guin/The Left Hand of Darkness",
-            hasCover: true,
-            formats: ["EPUB"],
-            formatPaths: [
-              "Ursula K. Le Guin/The Left Hand of Darkness/The Left Hand of Darkness.epub",
-            ],
-          },
-        ]),
-      )
+      .mockResolvedValue([
+        {
+          id: 42,
+          path: "Ursula K. Le Guin/The Left Hand of Darkness",
+          hasCover: true,
+          formats: ["EPUB"],
+          formatPaths: [
+            "Ursula K. Le Guin/The Left Hand of Darkness/The Left Hand of Darkness.epub",
+          ],
+        },
+      ])
 
     const summaries = await listCalibreBookSummaries("file:///library")
 
@@ -109,7 +103,7 @@ describe("core catalog adapter", () => {
   it("should delegate recent-book ordering when last-read page is requested", async () => {
     jest
       .spyOn(MyReaderRustComponents, "listCalibreBooksPageByLastRead")
-      .mockResolvedValue(JSON.stringify({ items: [], total: 0 }))
+      .mockResolvedValue({ items: [], total: 0 })
 
     await listCalibreBooksPageByLastRead(
       "file:///library",

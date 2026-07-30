@@ -33,10 +33,10 @@ describe("core content adapter", () => {
     jest.clearAllMocks()
   })
 
-  it("should return validated reading formats when core returns JSON", async () => {
+  it("should return validated reading formats when core returns a typed map", async () => {
     jest
       .spyOn(MyReaderRustComponents, "listBookReadingFormats")
-      .mockResolvedValue(JSON.stringify({ "42": "PDF" }))
+      .mockResolvedValue({ "42": "PDF" })
 
     await expect(listBookReadingFormats(library)).resolves.toEqual({
       "42": "PDF",
@@ -62,7 +62,7 @@ describe("core content adapter", () => {
     )
   })
 
-  it("should serialize file state update when download completes", async () => {
+  it("should pass typed file state update when download completes", async () => {
     jest
       .spyOn(MyReaderRustComponents, "upsertLibraryFileState")
       .mockResolvedValue(undefined)
@@ -75,19 +75,19 @@ describe("core content adapter", () => {
     expect(MyReaderRustComponents.upsertLibraryFileState).toHaveBeenCalledWith(
       "/sidecar",
       "Author/Book/Book.epub",
-      JSON.stringify({
+      {
         localState: "present",
         localBlake3: null,
         localSize: 1024,
         localMtime: null,
-      }),
+      },
     )
   })
 
   it("should delegate final state commit when downloaded file is finalized", async () => {
     jest
       .spyOn(MyReaderRustComponents, "finalizeDownloadedFile")
-      .mockResolvedValue(JSON.stringify({ size: 1024, mtimeMs: 2000 }))
+      .mockResolvedValue({ size: 1024, mtimeMs: 2000 })
 
     await expect(
       finalizeDownloadedFile(
@@ -122,14 +122,27 @@ describe("core content adapter", () => {
 
     expect(
       MyReaderRustComponents.upsertBookCoverThumbnailCache,
-    ).toHaveBeenCalledWith("/sidecar", JSON.stringify(patch))
+    ).toHaveBeenCalledWith("/sidecar", patch)
   })
 
-  it("should parse cover manifest rows when cache is loaded", async () => {
-    const rows = [{ bookId: 42, fileName: "42.jpg" }]
+  it("should return cover manifest rows when typed cache is loaded", async () => {
+    const rows = [
+      {
+        id: "cache-1",
+        bookId: 42,
+        coverIdentity: "cover-v2",
+        thumbnailVersion: "v3",
+        widthPx: 180,
+        heightPx: 270,
+        fileName: "42.jpg",
+        fileSizeBytes: 2048,
+        createdAt: 1000,
+        updatedAt: 1000,
+      },
+    ]
     jest
       .spyOn(MyReaderRustComponents, "listBookCoverThumbnailCache")
-      .mockResolvedValue(JSON.stringify(rows))
+      .mockResolvedValue(rows)
 
     await expect(
       listBookCoverThumbnailCache(library, {

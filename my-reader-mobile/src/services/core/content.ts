@@ -60,12 +60,10 @@ function sidecarRootPath(library: Library): string {
 export function listBookReadingFormats(
   library: Library,
 ): Promise<Record<string, string>> {
-  return withLocalLibraryCalibreRoot(library, async (libraryRootUri) =>
-    JSON.parse(
-      await MyReaderRustComponents.listBookReadingFormats(
-        sidecarRootPath(library),
-        toNativeFilesystemPath(libraryRootUri),
-      ),
+  return withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
+    MyReaderRustComponents.listBookReadingFormats(
+      sidecarRootPath(library),
+      toNativeFilesystemPath(libraryRootUri),
     ),
   )
 }
@@ -90,20 +88,14 @@ export async function getFileState(
   library: Library,
   path: string,
 ): Promise<FileState | null> {
-  return JSON.parse(
-    await MyReaderRustComponents.getLibraryFileState(
-      sidecarRootPath(library),
-      path,
-    ),
+  return MyReaderRustComponents.getLibraryFileState(
+    sidecarRootPath(library),
+    path,
   )
 }
 
 export async function listFileStates(library: Library): Promise<FileState[]> {
-  return JSON.parse(
-    await MyReaderRustComponents.listLibraryFileStates(
-      sidecarRootPath(library),
-    ),
-  )
+  return MyReaderRustComponents.listLibraryFileStates(sidecarRootPath(library))
 }
 
 export async function upsertFileState(
@@ -114,12 +106,12 @@ export async function upsertFileState(
   await MyReaderRustComponents.upsertLibraryFileState(
     sidecarRootPath(library),
     path,
-    JSON.stringify({
+    {
       localState: update.localState,
       localBlake3: update.localBlake3 ?? null,
       localSize: update.localSize ?? null,
       localMtime: update.localMtime ?? null,
-    }),
+    },
   )
   await invalidateFileStates(library.id)
 }
@@ -140,13 +132,11 @@ export async function finalizeDownloadedFile(
   relativePath: string,
   localFileUri: string,
 ): Promise<DownloadedFile> {
-  const downloaded = JSON.parse(
-    await MyReaderRustComponents.finalizeDownloadedFile(
-      sidecarRootPath(library),
-      relativePath,
-      toNativeFilesystemPath(localFileUri),
-    ),
-  ) as DownloadedFile
+  const downloaded = await MyReaderRustComponents.finalizeDownloadedFile(
+    sidecarRootPath(library),
+    relativePath,
+    toNativeFilesystemPath(localFileUri),
+  )
   await invalidateFileStates(library.id)
   return downloaded
 }
@@ -170,13 +160,11 @@ export async function listBookCoverThumbnailCache(
     heightPx: number
   },
 ): Promise<BookCoverThumbnailCache[]> {
-  return JSON.parse(
-    await MyReaderRustComponents.listBookCoverThumbnailCache(
-      sidecarRootPath(library),
-      input.thumbnailVersion,
-      input.widthPx,
-      input.heightPx,
-    ),
+  return MyReaderRustComponents.listBookCoverThumbnailCache(
+    sidecarRootPath(library),
+    input.thumbnailVersion,
+    input.widthPx,
+    input.heightPx,
   )
 }
 
@@ -186,7 +174,7 @@ export function upsertBookCoverThumbnailCache(
 ): Promise<void> {
   return MyReaderRustComponents.upsertBookCoverThumbnailCache(
     sidecarRootPath(library),
-    JSON.stringify(patch),
+    patch,
   )
 }
 

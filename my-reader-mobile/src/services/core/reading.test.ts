@@ -68,10 +68,10 @@ describe("core reading adapter", () => {
     jest.restoreAllMocks()
   })
 
-  it("should decode favorite IDs when core returns a projection", async () => {
+  it("should return favorite IDs when core returns a typed projection", async () => {
     jest
       .mocked(MyReaderRustComponents.listFavoriteBookIds)
-      .mockResolvedValue("[7,42]")
+      .mockResolvedValue([7, 42])
 
     await expect(listFavoriteBookIds(library)).resolves.toEqual([7, 42])
     expect(MyReaderRustComponents.listFavoriteBookIds).toHaveBeenCalledWith(
@@ -108,12 +108,15 @@ describe("core reading adapter", () => {
     expect(announceLocalSidecarWork).not.toHaveBeenCalled()
   })
 
-  it("should decode position when core returns stored reading data", async () => {
-    jest
-      .mocked(MyReaderRustComponents.getReadingPosition)
-      .mockResolvedValue(
-        '{"bookId":42,"format":"EPUB","locator":{"href":"chapter.xhtml","type":"application/xhtml+xml"},"displayProgression":0.4,"updatedAt":900,"conflictCount":1}',
-      )
+  it("should decode locator when core returns typed reading data", async () => {
+    jest.mocked(MyReaderRustComponents.getReadingPosition).mockResolvedValue({
+      bookId: 42,
+      format: "EPUB",
+      locatorJson: '{"href":"chapter.xhtml","type":"application/xhtml+xml"}',
+      displayProgression: 0.4,
+      updatedAt: 900,
+      conflictCount: 1,
+    })
 
     await expect(
       getReadingPosition(library, 42, "epub"),
@@ -148,11 +151,15 @@ describe("core reading adapter", () => {
   })
 
   it("should pass canonical bookmark fields when bookmark is added", async () => {
-    jest
-      .mocked(MyReaderRustComponents.addReaderBookmark)
-      .mockResolvedValue(
-        '{"id":"bookmark-1","bookId":42,"format":"EPUB","locatorKey":"chapter.xhtml","locator":{"href":"chapter.xhtml","type":"application/xhtml+xml"},"createdAt":900,"updatedAt":900}',
-      )
+    jest.mocked(MyReaderRustComponents.addReaderBookmark).mockResolvedValue({
+      id: "bookmark-1",
+      bookId: 42,
+      format: "EPUB",
+      locatorKey: "chapter.xhtml",
+      locatorJson: '{"href":"chapter.xhtml","type":"application/xhtml+xml"}',
+      createdAt: 900,
+      updatedAt: 900,
+    })
 
     await expect(
       addReaderBookmark(library, 42, "EPUB", "chapter.xhtml", {
@@ -172,11 +179,18 @@ describe("core reading adapter", () => {
   })
 
   it("should serialize selected text when annotation is added", async () => {
-    jest
-      .mocked(MyReaderRustComponents.addReaderAnnotation)
-      .mockResolvedValue(
-        '{"id":"annotation-1","bookId":42,"format":"EPUB","kind":"highlight","locator":{"href":"chapter.xhtml","type":"application/xhtml+xml","text":{"highlight":"Selected"}},"color":"yellow","note":null,"createdAt":900,"updatedAt":900}',
-      )
+    jest.mocked(MyReaderRustComponents.addReaderAnnotation).mockResolvedValue({
+      id: "annotation-1",
+      bookId: 42,
+      format: "EPUB",
+      kind: "highlight",
+      locatorJson:
+        '{"href":"chapter.xhtml","type":"application/xhtml+xml","text":{"highlight":"Selected"}}',
+      color: "yellow",
+      note: null,
+      createdAt: 900,
+      updatedAt: 900,
+    })
 
     await expect(
       addReaderAnnotation(
@@ -235,11 +249,12 @@ describe("core reading adapter", () => {
   })
 
   it("should provide library root when statistics are read", async () => {
-    jest
-      .mocked(MyReaderRustComponents.getReadingStatistics)
-      .mockResolvedValue(
-        '{"days":{},"totalDurationSeconds":0,"longestStreakDays":0,"completedBooks":1}',
-      )
+    jest.mocked(MyReaderRustComponents.getReadingStatistics).mockResolvedValue({
+      days: {},
+      totalDurationSeconds: 0,
+      longestStreakDays: 0,
+      completedBooks: 1,
+    })
 
     await expect(
       getReadingStatistics(library, "2026-01-01", "2026-12-31"),

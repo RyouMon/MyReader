@@ -29,6 +29,226 @@ export type NativeEnqueuedDownloadTask = {
   inserted: boolean
 }
 
+export type NativeCalibreBook = {
+  id: number
+  title: string
+  titleSort: string
+  authorSort: string
+  authors: string[]
+  tags: string[]
+  series: string | null
+  seriesIndex: number | null
+  formats: string[]
+  hasCover: boolean
+  path: string
+  timestamp: string | null
+  pubdate: string | null
+  lastModified: string | null
+  comment: string | null
+  publisher: string | null
+  languages: string[]
+  rating: number | null
+  uuid: string | null
+}
+
+export type NativePaginatedBooks = {
+  items: NativeCalibreBook[]
+  total: number
+}
+
+export type NativeBookDetail = NativeCalibreBook & {
+  formatSizes: Array<{ format: string; sizeBytes: number }>
+  identifiers: Array<{ idType: string; value: string }>
+}
+
+export type NativeBookSummary = {
+  id: number
+  path: string
+  hasCover: boolean
+  formats: string[]
+  formatPaths: string[]
+}
+
+export type NativeBookFormat = {
+  format: string
+  name: string
+  sizeBytes: number
+  relativePath: string
+}
+
+export type NativeFileState = {
+  id: string
+  path: string
+  localState: "present" | "remote_only" | "local_only" | "dirty_push"
+  localBlake3: string | null
+  localSize: number | null
+  localMtime: number | null
+  updatedAt: number
+}
+
+export type NativeFileStateUpdate = {
+  localState: NativeFileState["localState"]
+  localBlake3: string | null
+  localSize: number | null
+  localMtime: number | null
+}
+
+export type NativeDownloadedFile = {
+  size: number
+  mtimeMs: number
+}
+
+export type NativeBookCoverThumbnailCache = {
+  id: string
+  bookId: number
+  coverIdentity: string
+  thumbnailVersion: string
+  widthPx: number
+  heightPx: number
+  fileName: string
+  fileSizeBytes: number
+  createdAt: number
+  updatedAt: number
+}
+
+export type NativeBookCoverThumbnailCachePatch = {
+  bookId: number
+  coverIdentity: string
+  thumbnailVersion: string
+  widthPx: number
+  heightPx: number
+  fileName: string
+  fileSizeBytes: number
+}
+
+export type NativeReadingPosition = {
+  bookId: number
+  format: string
+  locatorJson: string
+  displayProgression: number | null
+  updatedAt: number
+  conflictCount: number
+}
+
+export type NativeReadingPositionCandidate = {
+  operationId: string
+  locatorJson: string
+  displayProgression: number | null
+  recordedAt: number
+  replicaId: string
+}
+
+export type NativeReaderBookmark = {
+  id: string
+  bookId: number
+  format: string
+  locatorKey: string
+  locatorJson: string
+  createdAt: number
+  updatedAt: number
+}
+
+export type NativeReaderAnnotation = {
+  id: string
+  bookId: number
+  format: string
+  kind: string
+  locatorJson: string
+  color: string
+  note: string | null
+  createdAt: number
+  updatedAt: number
+}
+
+export type NativeReadingStatistics = {
+  days: Record<string, number>
+  totalDurationSeconds: number
+  longestStreakDays: number
+  completedBooks: number
+}
+
+export type NativeDataSource = {
+  sourceType: string
+  id: string
+  name: string
+  enabled: boolean
+  rootPath: string | null
+  readonly: boolean | null
+  createdAt: number | null
+  endpoint: string | null
+  username: string | null
+  hasPassword: boolean
+  credentialReference: string | null
+  clientId: string | null
+  tenantId: string | null
+  displayName: string | null
+  email: string | null
+  hasRefreshToken: boolean
+}
+
+export type NativeSecurityScopedBookmark = {
+  bookmarkBase64: string
+  resolvedUri: string
+  stale: boolean
+}
+
+export type NativeLibrary = {
+  id: string
+  name: string
+  path: string
+  bookCount: number
+  metadataUri: string | null
+  addedAt: number | null
+  dataSourceId: string | null
+  sourceType: string | null
+  sourcePath: string | null
+  metadataEtag: string | null
+  securityScopedBookmark: NativeSecurityScopedBookmark | null
+}
+
+export type NativeDeviceRegistry = {
+  schemaVersion: number
+  dataSources: NativeDataSource[]
+  libraries: NativeLibrary[]
+  activeLibraryId: string | null
+}
+
+export type NativeLocalLibraryRequest = {
+  libraryRootPath: string
+  path: string
+  sidecarContainerParentPath: string | null
+  name: string | null
+  metadataUri: string | null
+  addedAt: number | null
+  securityScopedBookmark: NativeSecurityScopedBookmark | null
+}
+
+export type NativeRemoteLibraryRequest = {
+  dataSourceId: string
+  sourcePath: string
+  librariesRootPath: string
+  librariesRootUri: string | null
+  name: string | null
+  addedAt: number | null
+}
+
+export type NativeRemoteCredential = {
+  credentialType: string
+  password: string | null
+  accessToken: string | null
+}
+
+export type NativeRemoteDirectoryEntry = {
+  name: string
+  path: string
+  isDirectory: boolean
+}
+
+export type NativeLibraryResult = {
+  registry: NativeDeviceRegistry
+  library: NativeLibrary
+}
+
 type NativeReadingSessionIntervalInput = {
   sidecarRootPath: string
   libraryRootPath: string
@@ -45,105 +265,122 @@ export type MyReaderRustComponentsModule = {
   migrateLibraryDatabase(databasePath: string): Promise<void>
   initializeDeviceRegistry(
     registryPath: string,
-    legacyRegistryJson: string | null,
-  ): Promise<string>
+    legacyRegistry: NativeDeviceRegistry | null,
+  ): Promise<NativeDeviceRegistry>
   upsertDeviceDataSource(
     registryPath: string,
-    sourceJson: string,
-  ): Promise<string>
-  prepareDeviceDataSource(sourceJson: string): Promise<string>
+    source: NativeDataSource,
+  ): Promise<NativeDeviceRegistry>
+  prepareDeviceDataSource(source: NativeDataSource): Promise<NativeDataSource>
   validateDeviceDataSource(
     registryPath: string,
-    sourceJson: string,
+    source: NativeDataSource,
   ): Promise<void>
   removeDeviceDataSource(
     registryPath: string,
     dataSourceId: string,
-  ): Promise<string>
+  ): Promise<NativeDeviceRegistry>
   registerDeviceLibrary(
     registryPath: string,
-    libraryJson: string,
-  ): Promise<string>
+    library: NativeLibrary,
+  ): Promise<NativeDeviceRegistry>
   replaceDeviceLibrary(
     registryPath: string,
-    libraryJson: string,
-  ): Promise<string>
-  removeDeviceLibrary(registryPath: string, libraryId: string): Promise<string>
-  switchDeviceLibrary(registryPath: string, libraryId: string): Promise<string>
-  addLocalLibrary(registryPath: string, requestJson: string): Promise<string>
+    library: NativeLibrary,
+  ): Promise<NativeDeviceRegistry>
+  removeDeviceLibrary(
+    registryPath: string,
+    libraryId: string,
+  ): Promise<NativeDeviceRegistry>
+  switchDeviceLibrary(
+    registryPath: string,
+    libraryId: string,
+  ): Promise<NativeDeviceRegistry>
+  addLocalLibrary(
+    registryPath: string,
+    request: NativeLocalLibraryRequest,
+  ): Promise<NativeLibraryResult>
   testRemoteDataSource(
-    sourceJson: string,
-    credentialJson: string,
+    source: NativeDataSource,
+    credential: NativeRemoteCredential,
   ): Promise<void>
   listRemoteDirectories(
     registryPath: string,
     dataSourceId: string,
     path: string,
-    credentialJson: string,
-  ): Promise<string>
+    credential: NativeRemoteCredential,
+  ): Promise<NativeRemoteDirectoryEntry[]>
   addRemoteLibrary(
     registryPath: string,
-    requestJson: string,
-    credentialJson: string,
-  ): Promise<string>
+    request: NativeRemoteLibraryRequest,
+    credential: NativeRemoteCredential,
+  ): Promise<NativeLibraryResult>
   refreshRemoteLibrary(
     registryPath: string,
     libraryId: string,
     localRootPath: string,
-    credentialJson: string,
-  ): Promise<string>
+    credential: NativeRemoteCredential,
+  ): Promise<NativeLibraryResult>
   validateCalibreLibrary(libraryRootPath: string): boolean
   countCalibreBooks(libraryRootPath: string): Promise<number>
-  listCalibreBooks(libraryRootPath: string): Promise<string>
+  listCalibreBooks(libraryRootPath: string): Promise<NativeCalibreBook[]>
   listCalibreBooksPage(
     libraryRootPath: string,
     offset: number,
     limit: number,
     sortBy: string | null,
     search: string | null,
-  ): Promise<string>
+  ): Promise<NativePaginatedBooks>
   listCalibreBooksPageByLastRead(
     libraryRootPath: string,
     sidecarRootPath: string,
     offset: number,
     limit: number,
     search: string | null,
-  ): Promise<string>
-  getCalibreBookDetail(libraryRootPath: string, bookId: number): Promise<string>
+  ): Promise<NativePaginatedBooks>
+  getCalibreBookDetail(
+    libraryRootPath: string,
+    bookId: number,
+  ): Promise<NativeBookDetail>
   listCalibreSeriesBooks(
     libraryRootPath: string,
     seriesName: string,
     excludeBookId: number | null,
-  ): Promise<string>
+  ): Promise<NativeCalibreBook[]>
   getCalibreLibraryUuid(libraryRootPath: string): Promise<string>
-  listCalibreBookSummaries(libraryRootPath: string): Promise<string>
+  listCalibreBookSummaries(
+    libraryRootPath: string,
+  ): Promise<NativeBookSummary[]>
   listCalibreBookFormats(
     libraryRootPath: string,
     bookId: number,
-  ): Promise<string>
+  ): Promise<NativeBookFormat[]>
   listBookReadingFormats(
     sidecarRootPath: string,
     libraryRootPath: string,
-  ): Promise<string>
+  ): Promise<Record<string, string>>
   setBookReadingFormat(
     sidecarRootPath: string,
     libraryRootPath: string,
     bookId: number,
     format: string | null,
   ): Promise<void>
-  getLibraryFileState(sidecarRootPath: string, path: string): Promise<string>
-  listLibraryFileStates(sidecarRootPath: string): Promise<string>
+  getLibraryFileState(
+    sidecarRootPath: string,
+    path: string,
+  ): Promise<NativeFileState | null>
+  listLibraryFileStates(sidecarRootPath: string): Promise<NativeFileState[]>
   upsertLibraryFileState(
     sidecarRootPath: string,
     path: string,
-    updateJson: string,
+    update: NativeFileStateUpdate,
   ): Promise<void>
   deleteLibraryFileState(sidecarRootPath: string, path: string): Promise<void>
   finalizeDownloadedFile(
     sidecarRootPath: string,
     relativePath: string,
     localPath: string,
-  ): Promise<string>
+  ): Promise<NativeDownloadedFile>
   markLibraryFileRemoteOnly(
     sidecarRootPath: string,
     relativePath: string,
@@ -179,10 +416,10 @@ export type MyReaderRustComponentsModule = {
     thumbnailVersion: string,
     widthPx: number,
     heightPx: number,
-  ): Promise<string>
+  ): Promise<NativeBookCoverThumbnailCache[]>
   upsertBookCoverThumbnailCache(
     sidecarRootPath: string,
-    patchJson: string,
+    patch: NativeBookCoverThumbnailCachePatch,
   ): Promise<void>
   deleteBookCoverThumbnailCache(
     sidecarRootPath: string,
@@ -192,7 +429,7 @@ export type MyReaderRustComponentsModule = {
     heightPx: number,
   ): Promise<void>
   clearBookCoverThumbnailCache(sidecarRootPath: string): Promise<void>
-  listFavoriteBookIds(sidecarRootPath: string): Promise<string>
+  listFavoriteBookIds(sidecarRootPath: string): Promise<number[]>
   setFavoriteBook(
     sidecarRootPath: string,
     libraryRootPath: string,
@@ -204,8 +441,10 @@ export type MyReaderRustComponentsModule = {
     sidecarRootPath: string,
     bookId: number,
     format: string,
-  ): Promise<string>
-  listReadingPositions(sidecarRootPath: string): Promise<string>
+  ): Promise<NativeReadingPosition | null>
+  listReadingPositions(
+    sidecarRootPath: string,
+  ): Promise<NativeReadingPosition[]>
   setReadingPosition(
     sidecarRootPath: string,
     libraryRootPath: string,
@@ -221,7 +460,7 @@ export type MyReaderRustComponentsModule = {
     bookId: number,
     format: string,
     nowMs: number,
-  ): Promise<string>
+  ): Promise<NativeReadingPositionCandidate[]>
   selectReadingPositionCandidate(
     sidecarRootPath: string,
     libraryRootPath: string,
@@ -234,7 +473,7 @@ export type MyReaderRustComponentsModule = {
     sidecarRootPath: string,
     bookId: number,
     format: string,
-  ): Promise<string>
+  ): Promise<NativeReaderBookmark[]>
   addReaderBookmark(
     sidecarRootPath: string,
     libraryRootPath: string,
@@ -243,7 +482,7 @@ export type MyReaderRustComponentsModule = {
     locatorKey: string,
     locatorJson: string,
     recordedAtMs: number,
-  ): Promise<string>
+  ): Promise<NativeReaderBookmark>
   removeReaderBookmark(
     sidecarRootPath: string,
     libraryRootPath: string,
@@ -256,7 +495,7 @@ export type MyReaderRustComponentsModule = {
     sidecarRootPath: string,
     bookId: number,
     format: string,
-  ): Promise<string>
+  ): Promise<NativeReaderAnnotation[]>
   addReaderAnnotation(
     sidecarRootPath: string,
     libraryRootPath: string,
@@ -266,7 +505,7 @@ export type MyReaderRustComponentsModule = {
     color: string,
     note: string | null,
     recordedAtMs: number,
-  ): Promise<string>
+  ): Promise<NativeReaderAnnotation>
   updateReaderAnnotation(
     sidecarRootPath: string,
     libraryRootPath: string,
@@ -276,7 +515,7 @@ export type MyReaderRustComponentsModule = {
     color: string,
     note: string | null,
     recordedAtMs: number,
-  ): Promise<string>
+  ): Promise<NativeReaderAnnotation>
   removeReaderAnnotation(
     sidecarRootPath: string,
     libraryRootPath: string,
@@ -311,7 +550,7 @@ export type MyReaderRustComponentsModule = {
     libraryRootPath: string,
     startDay: string,
     endDay: string,
-  ): Promise<string>
+  ): Promise<NativeReadingStatistics>
   syncContractVersion(): number
   createSyncCoordinator(coordinatorId: string): boolean
   requestCoordinatedSync(
@@ -410,29 +649,29 @@ const moduleFacade: MyReaderRustComponentsModule = {
   migrateLibraryDatabase(databasePath) {
     return getNativeModule().migrateLibraryDatabase(databasePath)
   },
-  initializeDeviceRegistry(registryPath, legacyRegistryJson) {
+  initializeDeviceRegistry(registryPath, legacyRegistry) {
     return getNativeModule().initializeDeviceRegistry(
       registryPath,
-      legacyRegistryJson,
+      legacyRegistry,
     )
   },
-  upsertDeviceDataSource(registryPath, sourceJson) {
-    return getNativeModule().upsertDeviceDataSource(registryPath, sourceJson)
+  upsertDeviceDataSource(registryPath, source) {
+    return getNativeModule().upsertDeviceDataSource(registryPath, source)
   },
-  prepareDeviceDataSource(sourceJson) {
-    return getNativeModule().prepareDeviceDataSource(sourceJson)
+  prepareDeviceDataSource(source) {
+    return getNativeModule().prepareDeviceDataSource(source)
   },
-  validateDeviceDataSource(registryPath, sourceJson) {
-    return getNativeModule().validateDeviceDataSource(registryPath, sourceJson)
+  validateDeviceDataSource(registryPath, source) {
+    return getNativeModule().validateDeviceDataSource(registryPath, source)
   },
   removeDeviceDataSource(registryPath, dataSourceId) {
     return getNativeModule().removeDeviceDataSource(registryPath, dataSourceId)
   },
-  registerDeviceLibrary(registryPath, libraryJson) {
-    return getNativeModule().registerDeviceLibrary(registryPath, libraryJson)
+  registerDeviceLibrary(registryPath, library) {
+    return getNativeModule().registerDeviceLibrary(registryPath, library)
   },
-  replaceDeviceLibrary(registryPath, libraryJson) {
-    return getNativeModule().replaceDeviceLibrary(registryPath, libraryJson)
+  replaceDeviceLibrary(registryPath, library) {
+    return getNativeModule().replaceDeviceLibrary(registryPath, library)
   },
   removeDeviceLibrary(registryPath, libraryId) {
     return getNativeModule().removeDeviceLibrary(registryPath, libraryId)
@@ -440,33 +679,29 @@ const moduleFacade: MyReaderRustComponentsModule = {
   switchDeviceLibrary(registryPath, libraryId) {
     return getNativeModule().switchDeviceLibrary(registryPath, libraryId)
   },
-  addLocalLibrary(registryPath, requestJson) {
-    return getNativeModule().addLocalLibrary(registryPath, requestJson)
+  addLocalLibrary(registryPath, request) {
+    return getNativeModule().addLocalLibrary(registryPath, request)
   },
-  testRemoteDataSource(sourceJson, credentialJson) {
-    return getNativeModule().testRemoteDataSource(sourceJson, credentialJson)
+  testRemoteDataSource(source, credential) {
+    return getNativeModule().testRemoteDataSource(source, credential)
   },
-  listRemoteDirectories(registryPath, dataSourceId, path, credentialJson) {
+  listRemoteDirectories(registryPath, dataSourceId, path, credential) {
     return getNativeModule().listRemoteDirectories(
       registryPath,
       dataSourceId,
       path,
-      credentialJson,
+      credential,
     )
   },
-  addRemoteLibrary(registryPath, requestJson, credentialJson) {
-    return getNativeModule().addRemoteLibrary(
-      registryPath,
-      requestJson,
-      credentialJson,
-    )
+  addRemoteLibrary(registryPath, request, credential) {
+    return getNativeModule().addRemoteLibrary(registryPath, request, credential)
   },
-  refreshRemoteLibrary(registryPath, libraryId, localRootPath, credentialJson) {
+  refreshRemoteLibrary(registryPath, libraryId, localRootPath, credential) {
     return getNativeModule().refreshRemoteLibrary(
       registryPath,
       libraryId,
       localRootPath,
-      credentialJson,
+      credential,
     )
   },
   validateCalibreLibrary(libraryRootPath) {

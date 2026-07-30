@@ -3,6 +3,12 @@ import type { ReaderLocator } from "@my-reader/tools/reader-toc"
 import type { Library } from "@my-reader/tools/types/library"
 
 import MyReaderRustComponents from "@/modules/myreader-rust-components"
+import type {
+  NativeReaderAnnotation,
+  NativeReaderBookmark,
+  NativeReadingPosition,
+  NativeReadingPositionCandidate,
+} from "@/modules/myreader-rust-components"
 import { withLocalLibraryCalibreRoot } from "@/src/domain/library/local-library-content"
 import { librarySidecarRootUri } from "../fs/library-paths"
 import { toNativeFilesystemPath } from "../fs/path"
@@ -22,8 +28,95 @@ async function mutateSidecar<T>(
 }
 
 export async function listFavoriteBookIds(library: Library): Promise<number[]> {
-  return JSON.parse(
-    await MyReaderRustComponents.listFavoriteBookIds(sidecarRootPath(library)),
+  return MyReaderRustComponents.listFavoriteBookIds(sidecarRootPath(library))
+}
+
+function parseLocator(locatorJson: string): ReaderLocator {
+  return JSON.parse(locatorJson) as ReaderLocator
+}
+
+function readingPositionFromNative(
+  position: NativeReadingPosition,
+): ReadingPosition {
+  return {
+    bookId: position.bookId,
+    format: position.format,
+    locator: parseLocator(position.locatorJson),
+    displayProgression: position.displayProgression,
+    updatedAt: position.updatedAt,
+    conflictCount: position.conflictCount,
+  }
+}
+
+function readingPositionCandidateFromNative(
+  candidate: NativeReadingPositionCandidate,
+): ReadingPositionCandidate {
+  return {
+    operationId: candidate.operationId,
+    locator: parseLocator(candidate.locatorJson),
+    displayProgression: candidate.displayProgression,
+    recordedAt: candidate.recordedAt,
+    replicaId: candidate.replicaId,
+  }
+}
+
+function readerBookmarkFromNative(
+  bookmark: NativeReaderBookmark,
+): ReaderBookmark {
+  return {
+    id: bookmark.id,
+    bookId: bookmark.bookId,
+    format: bookmark.format,
+    locatorKey: bookmark.locatorKey,
+    locator: parseLocator(bookmark.locatorJson),
+    createdAt: bookmark.createdAt,
+    updatedAt: bookmark.updatedAt,
+  }
+}
+
+function readerAnnotationFromNative(
+  annotation: NativeReaderAnnotation,
+): ReaderAnnotation {
+  return {
+    id: annotation.id,
+    bookId: annotation.bookId,
+    format: annotation.format,
+    kind: annotation.kind as ReaderAnnotation["kind"],
+    locator: parseLocator(annotation.locatorJson),
+    color: annotation.color as ReaderAnnotationColor,
+    note: annotation.note,
+    createdAt: annotation.createdAt,
+    updatedAt: annotation.updatedAt,
+  }
+}
+
+async function mapOptional<TSource, TResult>(
+  value: Promise<TSource | null>,
+  transform: (source: TSource) => TResult,
+): Promise<TResult | null> {
+  const source = await value
+  return source === null ? null : transform(source)
+}
+
+async function mapArray<TSource, TResult>(
+  value: Promise<TSource[]>,
+  transform: (source: TSource) => TResult,
+): Promise<TResult[]> {
+  return (await value).map(transform)
+}
+
+export async function getReadingPosition(
+  library: Library,
+  bookId: number,
+  format: string,
+): Promise<ReadingPosition | null> {
+  return mapOptional(
+    MyReaderRustComponents.getReadingPosition(
+      sidecarRootPath(library),
+      bookId,
+      format,
+    ),
+    readingPositionFromNative,
   )
 }
 
@@ -110,25 +203,12 @@ export type ReadingStatistics = {
   completedBooks: number
 }
 
-export async function getReadingPosition(
-  library: Library,
-  bookId: number,
-  format: string,
-): Promise<ReadingPosition | null> {
-  return JSON.parse(
-    await MyReaderRustComponents.getReadingPosition(
-      sidecarRootPath(library),
-      bookId,
-      format,
-    ),
-  )
-}
-
 export async function listReadingPositions(
   library: Library,
 ): Promise<ReadingPosition[]> {
-  return JSON.parse(
-    await MyReaderRustComponents.listReadingPositions(sidecarRootPath(library)),
+  return mapArray(
+    MyReaderRustComponents.listReadingPositions(sidecarRootPath(library)),
+    readingPositionFromNative,
   )
 }
 
@@ -159,15 +239,16 @@ export function listReadingPositionCandidates(
   bookId: number,
   format: string,
 ): Promise<ReadingPositionCandidate[]> {
-  return withLocalLibraryCalibreRoot(library, async (libraryRootUri) =>
-    JSON.parse(
-      await MyReaderRustComponents.listReadingPositionCandidates(
+  return withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
+    mapArray(
+      MyReaderRustComponents.listReadingPositionCandidates(
         sidecarRootPath(library),
         toNativeFilesystemPath(libraryRootUri),
         bookId,
         format,
         Date.now(),
       ),
+      readingPositionCandidateFromNative,
     ),
   )
 }
@@ -197,12 +278,13 @@ export async function listReaderBookmarks(
   bookId: number,
   format: string,
 ): Promise<ReaderBookmark[]> {
-  return JSON.parse(
-    await MyReaderRustComponents.listReaderBookmarks(
+  return mapArray(
+    MyReaderRustComponents.listReaderBookmarks(
       sidecarRootPath(library),
       bookId,
       format,
     ),
+    readerBookmarkFromNative,
   )
 }
 
@@ -215,7 +297,7 @@ export function addReaderBookmark(
 ): Promise<ReaderBookmark> {
   return mutateSidecar(library, () =>
     withLocalLibraryCalibreRoot(library, async (libraryRootUri) =>
-      JSON.parse(
+      readerBookmarkFromNative(
         await MyReaderRustComponents.addReaderBookmark(
           sidecarRootPath(library),
           toNativeFilesystemPath(libraryRootUri),
@@ -255,12 +337,13 @@ export async function listReaderAnnotations(
   bookId: number,
   format: string,
 ): Promise<ReaderAnnotation[]> {
-  return JSON.parse(
-    await MyReaderRustComponents.listReaderAnnotations(
+  return mapArray(
+    MyReaderRustComponents.listReaderAnnotations(
       sidecarRootPath(library),
       bookId,
       format,
     ),
+    readerAnnotationFromNative,
   )
 }
 
@@ -274,7 +357,7 @@ export function addReaderAnnotation(
 ): Promise<ReaderAnnotation> {
   return mutateSidecar(library, () =>
     withLocalLibraryCalibreRoot(library, async (libraryRootUri) =>
-      JSON.parse(
+      readerAnnotationFromNative(
         await MyReaderRustComponents.addReaderAnnotation(
           sidecarRootPath(library),
           toNativeFilesystemPath(libraryRootUri),
@@ -300,7 +383,7 @@ export function updateReaderAnnotation(
 ): Promise<ReaderAnnotation> {
   return mutateSidecar(library, () =>
     withLocalLibraryCalibreRoot(library, async (libraryRootUri) =>
-      JSON.parse(
+      readerAnnotationFromNative(
         await MyReaderRustComponents.updateReaderAnnotation(
           sidecarRootPath(library),
           toNativeFilesystemPath(libraryRootUri),
@@ -382,14 +465,12 @@ export async function getReadingStatistics(
   startDay: string,
   endDay: string,
 ): Promise<ReadingStatistics> {
-  return withLocalLibraryCalibreRoot(library, async (libraryRootUri) =>
-    JSON.parse(
-      await MyReaderRustComponents.getReadingStatistics(
-        sidecarRootPath(library),
-        toNativeFilesystemPath(libraryRootUri),
-        startDay,
-        endDay,
-      ),
+  return withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
+    MyReaderRustComponents.getReadingStatistics(
+      sidecarRootPath(library),
+      toNativeFilesystemPath(libraryRootUri),
+      startDay,
+      endDay,
     ),
   )
 }

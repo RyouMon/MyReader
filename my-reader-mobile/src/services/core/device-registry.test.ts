@@ -16,6 +16,20 @@ import {
 } from "./device-registry"
 
 describe("device registry", () => {
+  const nativeLibrary = {
+    id: "library",
+    name: "Library",
+    path: "file:///library",
+    bookCount: 1,
+    metadataUri: null,
+    addedAt: null,
+    dataSourceId: null,
+    sourceType: "local",
+    sourcePath: null,
+    metadataEtag: null,
+    securityScopedBookmark: null,
+  }
+
   const mockInitializeDeviceRegistry = jest.spyOn(
     MyReaderRustComponents,
     "initializeDeviceRegistry",
@@ -42,14 +56,12 @@ describe("device registry", () => {
   })
 
   it("should pass legacy registry to core when registry is initialized", async () => {
-    mockInitializeDeviceRegistry.mockResolvedValue(
-      JSON.stringify({
-        schemaVersion: 1,
-        dataSources: [],
-        libraries: [],
-        activeLibraryId: null,
-      }),
-    )
+    mockInitializeDeviceRegistry.mockResolvedValue({
+      schemaVersion: 1,
+      dataSources: [],
+      libraries: [],
+      activeLibraryId: null,
+    })
 
     await initializeDeviceRegistry({
       dataSources: [],
@@ -59,12 +71,12 @@ describe("device registry", () => {
 
     expect(mockInitializeDeviceRegistry).toHaveBeenCalledWith(
       "/documents/device-registry.json",
-      JSON.stringify({
+      {
         schemaVersion: 1,
         dataSources: [],
         libraries: [],
         activeLibraryId: null,
-      }),
+      },
     )
   })
 
@@ -75,20 +87,21 @@ describe("device registry", () => {
       path: "file:///library",
       bookCount: 1,
     }
-    mockRegisterDeviceLibrary.mockResolvedValue(
-      JSON.stringify({
-        schemaVersion: 1,
-        dataSources: [],
-        libraries: [library],
-        activeLibraryId: "library",
-      }),
-    )
+    mockRegisterDeviceLibrary.mockResolvedValue({
+      schemaVersion: 1,
+      dataSources: [],
+      libraries: [nativeLibrary],
+      activeLibraryId: "library",
+    })
 
     const registry = await registerDeviceLibrary(library)
 
     expect(mockRegisterDeviceLibrary).toHaveBeenCalledWith(
       "/documents/device-registry.json",
-      JSON.stringify(library),
+      {
+        ...nativeLibrary,
+        sourceType: null,
+      },
     )
     expect(registry.activeLibraryId).toBe("library")
   })
@@ -109,7 +122,24 @@ describe("device registry", () => {
 
     expect(mockValidateDeviceDataSource).toHaveBeenCalledWith(
       "/documents/device-registry.json",
-      JSON.stringify(source),
+      {
+        sourceType: "webdav",
+        id: "source",
+        name: "WebDAV",
+        enabled: true,
+        rootPath: null,
+        readonly: null,
+        createdAt: null,
+        endpoint: "https://example.com",
+        username: "reader",
+        hasPassword: true,
+        credentialReference: null,
+        clientId: null,
+        tenantId: null,
+        displayName: null,
+        email: null,
+        hasRefreshToken: false,
+      },
     )
   })
 
@@ -127,13 +157,48 @@ describe("device registry", () => {
       ...source,
       id: "source",
       endpoint: "https://example.com",
+      rootPath: null,
+      readonly: undefined,
+      createdAt: undefined,
     }
-    mockPrepareDeviceDataSource.mockResolvedValue(JSON.stringify(prepared))
+    mockPrepareDeviceDataSource.mockResolvedValue({
+      sourceType: "webdav",
+      id: "source",
+      name: "WebDAV",
+      enabled: true,
+      rootPath: null,
+      readonly: null,
+      createdAt: null,
+      endpoint: "https://example.com",
+      username: "reader",
+      hasPassword: true,
+      credentialReference: null,
+      clientId: null,
+      tenantId: null,
+      displayName: null,
+      email: null,
+      hasRefreshToken: false,
+    })
 
     await expect(prepareDeviceDataSource(source)).resolves.toEqual(prepared)
-    expect(mockPrepareDeviceDataSource).toHaveBeenCalledWith(
-      JSON.stringify(source),
-    )
+    expect(mockPrepareDeviceDataSource).toHaveBeenCalledWith({
+      sourceType: "webdav",
+      id: "",
+      name: "WebDAV",
+      enabled: true,
+      rootPath: null,
+      readonly: null,
+      createdAt: null,
+      endpoint: "https://example.com/",
+      username: "reader",
+      hasPassword: true,
+      credentialReference: null,
+      clientId: null,
+      tenantId: null,
+      displayName: null,
+      email: null,
+      hasRefreshToken: false,
+    })
   })
 
   it("should delegate local library creation when a directory is selected", async () => {
@@ -144,17 +209,15 @@ describe("device registry", () => {
       bookCount: 1,
       sourceType: "local",
     }
-    mockAddLocalLibrary.mockResolvedValue(
-      JSON.stringify({
-        registry: {
-          schemaVersion: 1,
-          dataSources: [],
-          libraries: [library],
-          activeLibraryId: "library",
-        },
-        library,
-      }),
-    )
+    mockAddLocalLibrary.mockResolvedValue({
+      registry: {
+        schemaVersion: 1,
+        dataSources: [],
+        libraries: [nativeLibrary],
+        activeLibraryId: "library",
+      },
+      library: nativeLibrary,
+    })
 
     const result = await addLocalDeviceLibrary({
       libraryRootUri: "file:///library",
@@ -167,14 +230,15 @@ describe("device registry", () => {
 
     expect(mockAddLocalLibrary).toHaveBeenCalledWith(
       "/documents/device-registry.json",
-      JSON.stringify({
+      {
         libraryRootPath: "/library",
         path: "file:///library",
         sidecarContainerParentPath: "/documents/libraries",
         name: "Library",
         metadataUri: "file:///library/metadata.db",
         addedAt: 1,
-      }),
+        securityScopedBookmark: null,
+      },
     )
     expect(result.library.id).toBe("library")
   })

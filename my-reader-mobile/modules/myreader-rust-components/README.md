@@ -32,3 +32,27 @@ Run the shared component tests independently with:
 ```bash
 cargo test -p myreader-core -p myreader-rust-components
 ```
+
+Run the native runtime smoke tests with:
+
+```bash
+# Regenerate the iOS project first when the test-spec scheme is missing, then:
+cd my-reader-mobile/ios
+pod install
+RUST_COMPONENTS_SIMULATOR_UDID="paste-simulator-udid-here"
+xcodebuild test \
+  -workspace myreadermobile.xcworkspace \
+  -scheme MyReaderRustComponents-Unit-Tests \
+  -destination "platform=iOS Simulator,id=$RUST_COMPONENTS_SIMULATOR_UDID"
+
+# Compile the Android instrumentation tests.
+cd my-reader-mobile/android
+ANDROID_HOME=/path/to/android-sdk \
+  ./gradlew \
+  :myreader-rust-components:assembleDebugAndroidTest
+
+# Run them when an emulator or device is connected.
+ANDROID_HOME=/path/to/android-sdk \
+  ./gradlew \
+  :myreader-rust-components:connectedDebugAndroidTest
+```

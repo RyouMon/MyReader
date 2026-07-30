@@ -38,9 +38,7 @@ export function countCalibreBooks(libraryRootUri: string): Promise<number> {
 export async function listCalibreBooks(
   libraryRootUri: string,
 ): Promise<CalibreBook[]> {
-  return JSON.parse(
-    await MyReaderRustComponents.listCalibreBooks(nativePath(libraryRootUri)),
-  ) as CalibreBook[]
+  return MyReaderRustComponents.listCalibreBooks(nativePath(libraryRootUri))
 }
 
 export async function listCalibreBooksPage(
@@ -50,15 +48,13 @@ export async function listCalibreBooksPage(
   sortBy?: string,
   search?: string,
 ): Promise<PaginatedBooks> {
-  return JSON.parse(
-    await MyReaderRustComponents.listCalibreBooksPage(
-      nativePath(libraryRootUri),
-      offset,
-      limit,
-      sortBy ?? null,
-      search ?? null,
-    ),
-  ) as PaginatedBooks
+  return MyReaderRustComponents.listCalibreBooksPage(
+    nativePath(libraryRootUri),
+    offset,
+    limit,
+    sortBy ?? null,
+    search ?? null,
+  )
 }
 
 export async function listCalibreBooksPageByLastRead(
@@ -68,27 +64,23 @@ export async function listCalibreBooksPageByLastRead(
   limit: number,
   search?: string,
 ): Promise<PaginatedBooks> {
-  return JSON.parse(
-    await MyReaderRustComponents.listCalibreBooksPageByLastRead(
-      nativePath(libraryRootUri),
-      nativePath(sidecarRootUri),
-      offset,
-      limit,
-      search ?? null,
-    ),
-  ) as PaginatedBooks
+  return MyReaderRustComponents.listCalibreBooksPageByLastRead(
+    nativePath(libraryRootUri),
+    nativePath(sidecarRootUri),
+    offset,
+    limit,
+    search ?? null,
+  )
 }
 
 export async function getCalibreBookDetail(
   libraryRootUri: string,
   bookId: number,
 ): Promise<BookDetail> {
-  return JSON.parse(
-    await MyReaderRustComponents.getCalibreBookDetail(
-      nativePath(libraryRootUri),
-      bookId,
-    ),
-  ) as BookDetail
+  return MyReaderRustComponents.getCalibreBookDetail(
+    nativePath(libraryRootUri),
+    bookId,
+  )
 }
 
 export async function listCalibreSeriesBooks(
@@ -96,13 +88,11 @@ export async function listCalibreSeriesBooks(
   seriesName: string,
   excludeBookId?: number,
 ): Promise<CalibreBook[]> {
-  return JSON.parse(
-    await MyReaderRustComponents.listCalibreSeriesBooks(
-      nativePath(libraryRootUri),
-      seriesName,
-      excludeBookId ?? null,
-    ),
-  ) as CalibreBook[]
+  return MyReaderRustComponents.listCalibreSeriesBooks(
+    nativePath(libraryRootUri),
+    seriesName,
+    excludeBookId ?? null,
+  )
 }
 
 export function getCalibreLibraryUuid(libraryRootUri: string): Promise<string> {
@@ -114,21 +104,17 @@ export function getCalibreLibraryUuid(libraryRootUri: string): Promise<string> {
 export async function listCalibreBookSummaries(
   libraryRootUri: string,
 ): Promise<CalibreBookSummary[]> {
-  return JSON.parse(
-    await MyReaderRustComponents.listCalibreBookSummaries(
-      nativePath(libraryRootUri),
-    ),
-  ) as CalibreBookSummary[]
+  return MyReaderRustComponents.listCalibreBookSummaries(
+    nativePath(libraryRootUri),
+  )
 }
 
 export async function listCalibreBookFormats(
   libraryRootUri: string,
   bookId: number,
 ): Promise<CalibreBookFormat[]> {
-  return JSON.parse(
-    await MyReaderRustComponents.listCalibreBookFormats(
-      nativePath(libraryRootUri),
-      bookId,
-    ),
-  ) as CalibreBookFormat[]
+  return MyReaderRustComponents.listCalibreBookFormats(
+    nativePath(libraryRootUri),
+    bookId,
+  )
 }

@@ -12,6 +12,369 @@ private struct ReadingSessionIntervalRecord: Record {
   @Field var recordedAtMs: Int64 = 0
 }
 
+private struct FileStateUpdateRecord: Record {
+  @Field var localState = ""
+  @Field var localBlake3: String? = nil
+  @Field var localSize: Int64? = nil
+  @Field var localMtime: Int64? = nil
+}
+
+private struct BookCoverThumbnailCachePatchRecord: Record {
+  @Field var bookId: Int64 = 0
+  @Field var coverIdentity = ""
+  @Field var thumbnailVersion = ""
+  @Field var widthPx: Int64 = 0
+  @Field var heightPx: Int64 = 0
+  @Field var fileName = ""
+  @Field var fileSizeBytes: Int64 = 0
+}
+
+private struct DataSourceRecord: Record {
+  @Field var sourceType = ""
+  @Field var id = ""
+  @Field var name = ""
+  @Field var enabled = true
+  @Field var rootPath: String? = nil
+  @Field var readonly: Bool? = nil
+  @Field var createdAt: Double? = nil
+  @Field var endpoint: String? = nil
+  @Field var username: String? = nil
+  @Field var hasPassword = false
+  @Field var credentialReference: String? = nil
+  @Field var clientId: String? = nil
+  @Field var tenantId: String? = nil
+  @Field var displayName: String? = nil
+  @Field var email: String? = nil
+  @Field var hasRefreshToken = false
+
+  var native: NativeDataSource {
+    NativeDataSource(
+      sourceType: sourceType,
+      id: id,
+      name: name,
+      enabled: enabled,
+      rootPath: rootPath,
+      readonly: readonly,
+      createdAt: createdAt,
+      endpoint: endpoint,
+      username: username,
+      hasPassword: hasPassword,
+      credentialReference: credentialReference,
+      clientId: clientId,
+      tenantId: tenantId,
+      displayName: displayName,
+      email: email,
+      hasRefreshToken: hasRefreshToken
+    )
+  }
+}
+
+private struct SecurityScopedBookmarkRecord: Record {
+  @Field var bookmarkBase64 = ""
+  @Field var resolvedUri = ""
+  @Field var stale = false
+
+  var native: NativeSecurityScopedBookmark {
+    NativeSecurityScopedBookmark(
+      bookmarkBase64: bookmarkBase64,
+      resolvedUri: resolvedUri,
+      stale: stale
+    )
+  }
+}
+
+private struct LibraryRecord: Record {
+  @Field var id = ""
+  @Field var name = ""
+  @Field var path = ""
+  @Field var bookCount: Int64 = 0
+  @Field var metadataUri: String? = nil
+  @Field var addedAt: Double? = nil
+  @Field var dataSourceId: String? = nil
+  @Field var sourceType: String? = nil
+  @Field var sourcePath: String? = nil
+  @Field var metadataEtag: String? = nil
+  @Field var securityScopedBookmark: SecurityScopedBookmarkRecord? = nil
+
+  var native: NativeLibrary {
+    NativeLibrary(
+      id: id,
+      name: name,
+      path: path,
+      bookCount: bookCount,
+      metadataUri: metadataUri,
+      addedAt: addedAt,
+      dataSourceId: dataSourceId,
+      sourceType: sourceType,
+      sourcePath: sourcePath,
+      metadataEtag: metadataEtag,
+      securityScopedBookmark: securityScopedBookmark?.native
+    )
+  }
+}
+
+private struct DeviceRegistryRecord: Record {
+  @Field var schemaVersion: Int = 1
+  @Field var dataSources: [DataSourceRecord] = []
+  @Field var libraries: [LibraryRecord] = []
+  @Field var activeLibraryId: String? = nil
+
+  var native: NativeDeviceRegistry {
+    NativeDeviceRegistry(
+      schemaVersion: UInt32(schemaVersion),
+      dataSources: dataSources.map(\.native),
+      libraries: libraries.map(\.native),
+      activeLibraryId: activeLibraryId
+    )
+  }
+}
+
+private struct LocalLibraryRequestRecord: Record {
+  @Field var libraryRootPath = ""
+  @Field var path = ""
+  @Field var sidecarContainerParentPath: String? = nil
+  @Field var name: String? = nil
+  @Field var metadataUri: String? = nil
+  @Field var addedAt: Double? = nil
+  @Field var securityScopedBookmark: SecurityScopedBookmarkRecord? = nil
+
+  var native: NativeLocalLibraryRequest {
+    NativeLocalLibraryRequest(
+      libraryRootPath: libraryRootPath,
+      path: path,
+      sidecarContainerParentPath: sidecarContainerParentPath,
+      name: name,
+      metadataUri: metadataUri,
+      addedAt: addedAt,
+      securityScopedBookmark: securityScopedBookmark?.native
+    )
+  }
+}
+
+private struct RemoteLibraryRequestRecord: Record {
+  @Field var dataSourceId = ""
+  @Field var sourcePath = ""
+  @Field var librariesRootPath = ""
+  @Field var librariesRootUri: String? = nil
+  @Field var name: String? = nil
+  @Field var addedAt: Double? = nil
+
+  var native: NativeRemoteLibraryRequest {
+    NativeRemoteLibraryRequest(
+      dataSourceId: dataSourceId,
+      sourcePath: sourcePath,
+      librariesRootPath: librariesRootPath,
+      librariesRootUri: librariesRootUri,
+      name: name,
+      addedAt: addedAt
+    )
+  }
+}
+
+private struct RemoteCredentialRecord: Record {
+  @Field var credentialType = ""
+  @Field var password: String? = nil
+  @Field var accessToken: String? = nil
+
+  var native: NativeRemoteCredential {
+    NativeRemoteCredential(
+      credentialType: credentialType,
+      password: password,
+      accessToken: accessToken
+    )
+  }
+}
+
+private func dataSourceDictionary(_ source: NativeDataSource) -> [String: Any?] {
+  [
+    "sourceType": source.sourceType,
+    "id": source.id,
+    "name": source.name,
+    "enabled": source.enabled,
+    "rootPath": source.rootPath,
+    "readonly": source.readonly,
+    "createdAt": source.createdAt,
+    "endpoint": source.endpoint,
+    "username": source.username,
+    "hasPassword": source.hasPassword,
+    "credentialReference": source.credentialReference,
+    "clientId": source.clientId,
+    "tenantId": source.tenantId,
+    "displayName": source.displayName,
+    "email": source.email,
+    "hasRefreshToken": source.hasRefreshToken
+  ]
+}
+
+private func bookmarkDictionary(
+  _ bookmark: NativeSecurityScopedBookmark
+) -> [String: Any] {
+  [
+    "bookmarkBase64": bookmark.bookmarkBase64,
+    "resolvedUri": bookmark.resolvedUri,
+    "stale": bookmark.stale
+  ]
+}
+
+private func libraryDictionary(_ library: NativeLibrary) -> [String: Any?] {
+  [
+    "id": library.id,
+    "name": library.name,
+    "path": library.path,
+    "bookCount": library.bookCount,
+    "metadataUri": library.metadataUri,
+    "addedAt": library.addedAt,
+    "dataSourceId": library.dataSourceId,
+    "sourceType": library.sourceType,
+    "sourcePath": library.sourcePath,
+    "metadataEtag": library.metadataEtag,
+    "securityScopedBookmark": library.securityScopedBookmark.map(bookmarkDictionary)
+  ]
+}
+
+private func registryDictionary(_ registry: NativeDeviceRegistry) -> [String: Any?] {
+  [
+    "schemaVersion": Int(registry.schemaVersion),
+    "dataSources": registry.dataSources.map(dataSourceDictionary),
+    "libraries": registry.libraries.map(libraryDictionary),
+    "activeLibraryId": registry.activeLibraryId
+  ]
+}
+
+private func libraryResultDictionary(_ result: NativeLibraryResult) -> [String: Any?] {
+  [
+    "registry": registryDictionary(result.registry),
+    "library": libraryDictionary(result.library)
+  ]
+}
+
+private func bookDictionary(_ book: NativeBookEntry) -> [String: Any?] {
+  [
+    "id": book.id,
+    "title": book.title,
+    "titleSort": book.titleSort,
+    "authorSort": book.authorSort,
+    "authors": book.authors,
+    "tags": book.tags,
+    "series": book.series,
+    "seriesIndex": book.seriesIndex,
+    "formats": book.formats,
+    "hasCover": book.hasCover,
+    "path": book.path,
+    "timestamp": book.timestamp,
+    "pubdate": book.pubdate,
+    "lastModified": book.lastModified,
+    "comment": book.comment,
+    "publisher": book.publisher,
+    "languages": book.languages,
+    "rating": book.rating,
+    "uuid": book.uuid
+  ]
+}
+
+private func pageDictionary(_ page: NativePaginatedBooks) -> [String: Any] {
+  [
+    "items": page.items.map(bookDictionary),
+    "total": Int(page.total)
+  ]
+}
+
+private func detailDictionary(_ detail: NativeBookDetail) -> [String: Any?] {
+  var result = bookDictionary(detail.book)
+  result["formatSizes"] = detail.formatSizes.map {
+    ["format": $0.format, "sizeBytes": $0.sizeBytes]
+  }
+  result["identifiers"] = detail.identifiers.map {
+    ["idType": $0.idType, "value": $0.value]
+  }
+  return result
+}
+
+private func fileStateDictionary(_ state: NativeFileState) -> [String: Any?] {
+  [
+    "id": state.id,
+    "path": state.path,
+    "localState": state.localState,
+    "localBlake3": state.localBlake3,
+    "localSize": state.localSize,
+    "localMtime": state.localMtime,
+    "updatedAt": state.updatedAt
+  ]
+}
+
+private func coverCacheDictionary(_ cache: NativeBookCoverThumbnailCache) -> [String: Any] {
+  [
+    "id": cache.id,
+    "bookId": cache.bookId,
+    "coverIdentity": cache.coverIdentity,
+    "thumbnailVersion": cache.thumbnailVersion,
+    "widthPx": cache.widthPx,
+    "heightPx": cache.heightPx,
+    "fileName": cache.fileName,
+    "fileSizeBytes": cache.fileSizeBytes,
+    "createdAt": cache.createdAt,
+    "updatedAt": cache.updatedAt
+  ]
+}
+
+private func readingPositionDictionary(_ position: NativeReadingPosition) -> [String: Any?] {
+  [
+    "bookId": position.bookId,
+    "format": position.format,
+    "locatorJson": position.locatorJson,
+    "displayProgression": position.displayProgression,
+    "updatedAt": position.updatedAt,
+    "conflictCount": position.conflictCount
+  ]
+}
+
+private func readingPositionCandidateDictionary(
+  _ candidate: NativeReadingPositionCandidate
+) -> [String: Any?] {
+  [
+    "operationId": candidate.operationId,
+    "locatorJson": candidate.locatorJson,
+    "displayProgression": candidate.displayProgression,
+    "recordedAt": candidate.recordedAt,
+    "replicaId": candidate.replicaId
+  ]
+}
+
+private func readerBookmarkDictionary(_ bookmark: NativeReaderBookmark) -> [String: Any] {
+  [
+    "id": bookmark.id,
+    "bookId": bookmark.bookId,
+    "format": bookmark.format,
+    "locatorKey": bookmark.locatorKey,
+    "locatorJson": bookmark.locatorJson,
+    "createdAt": bookmark.createdAt,
+    "updatedAt": bookmark.updatedAt
+  ]
+}
+
+private func readerAnnotationDictionary(_ annotation: NativeReaderAnnotation) -> [String: Any?] {
+  [
+    "id": annotation.id,
+    "bookId": annotation.bookId,
+    "format": annotation.format,
+    "kind": annotation.kind,
+    "locatorJson": annotation.locatorJson,
+    "color": annotation.color,
+    "note": annotation.note,
+    "createdAt": annotation.createdAt,
+    "updatedAt": annotation.updatedAt
+  ]
+}
+
+private func readingStatisticsDictionary(_ statistics: NativeReadingStatistics) -> [String: Any] {
+  [
+    "days": statistics.days,
+    "totalDurationSeconds": statistics.totalDurationSeconds,
+    "longestStreakDays": statistics.longestStreakDays,
+    "completedBooks": statistics.completedBooks
+  ]
+}
+
 private func componentCall<T>(_ operation: () throws -> T) throws -> T {
   do {
     return try operation()
@@ -62,105 +425,108 @@ public class MyReaderRustComponentsModule: Module {
     }
 
     AsyncFunction("initializeDeviceRegistry") {
-      (registryPath: String, legacyRegistryJson: String?) -> String in
+      (registryPath: String, legacyRegistry: DeviceRegistryRecord?) -> [String: Any?] in
       try componentCall {
-        try initializeDeviceRegistry(
+        registryDictionary(try initializeDeviceRegistry(
           registryPath: registryPath,
-          legacyRegistryJson: legacyRegistryJson
-        )
+          legacyRegistry: legacyRegistry?.native
+        ))
       }
     }
 
     AsyncFunction("upsertDeviceDataSource") {
-      (registryPath: String, sourceJson: String) -> String in
+      (registryPath: String, source: DataSourceRecord) -> [String: Any?] in
       try componentCall {
-        try upsertDeviceDataSource(
+        registryDictionary(try upsertDeviceDataSource(
           registryPath: registryPath,
-          sourceJson: sourceJson
-        )
+          source: source.native
+        ))
       }
     }
 
     AsyncFunction("prepareDeviceDataSource") {
-      (sourceJson: String) -> String in
+      (source: DataSourceRecord) -> [String: Any?] in
       try componentCall {
-        try prepareDeviceDataSource(sourceJson: sourceJson)
+        dataSourceDictionary(try prepareDeviceDataSource(source: source.native))
       }
     }
 
     AsyncFunction("validateDeviceDataSource") {
-      (registryPath: String, sourceJson: String) in
+      (registryPath: String, source: DataSourceRecord) in
       try componentCall {
         try validateDeviceDataSource(
           registryPath: registryPath,
-          sourceJson: sourceJson
+          source: source.native
         )
       }
     }
 
     AsyncFunction("removeDeviceDataSource") {
-      (registryPath: String, dataSourceId: String) -> String in
+      (registryPath: String, dataSourceId: String) -> [String: Any?] in
       try componentCall {
-        try removeDeviceDataSource(
+        registryDictionary(try removeDeviceDataSource(
           registryPath: registryPath,
           dataSourceId: dataSourceId
-        )
+        ))
       }
     }
 
     AsyncFunction("registerDeviceLibrary") {
-      (registryPath: String, libraryJson: String) -> String in
+      (registryPath: String, library: LibraryRecord) -> [String: Any?] in
       try componentCall {
-        try registerDeviceLibrary(
+        registryDictionary(try registerDeviceLibrary(
           registryPath: registryPath,
-          libraryJson: libraryJson
-        )
+          library: library.native
+        ))
       }
     }
 
     AsyncFunction("replaceDeviceLibrary") {
-      (registryPath: String, libraryJson: String) -> String in
+      (registryPath: String, library: LibraryRecord) -> [String: Any?] in
       try componentCall {
-        try replaceDeviceLibrary(
+        registryDictionary(try replaceDeviceLibrary(
           registryPath: registryPath,
-          libraryJson: libraryJson
-        )
+          library: library.native
+        ))
       }
     }
 
     AsyncFunction("removeDeviceLibrary") {
-      (registryPath: String, libraryId: String) -> String in
+      (registryPath: String, libraryId: String) -> [String: Any?] in
       try componentCall {
-        try removeDeviceLibrary(
+        registryDictionary(try removeDeviceLibrary(
           registryPath: registryPath,
           libraryId: libraryId
-        )
+        ))
       }
     }
 
     AsyncFunction("switchDeviceLibrary") {
-      (registryPath: String, libraryId: String) -> String in
+      (registryPath: String, libraryId: String) -> [String: Any?] in
       try componentCall {
-        try switchDeviceLibrary(
+        registryDictionary(try switchDeviceLibrary(
           registryPath: registryPath,
           libraryId: libraryId
-        )
+        ))
       }
     }
 
     AsyncFunction("addLocalLibrary") {
-      (registryPath: String, requestJson: String) -> String in
+      (registryPath: String, request: LocalLibraryRequestRecord) -> [String: Any?] in
       try componentCall {
-        try addLocalLibrary(registryPath: registryPath, requestJson: requestJson)
+        libraryResultDictionary(try addLocalLibrary(
+          registryPath: registryPath,
+          request: request.native
+        ))
       }
     }
 
     AsyncFunction("testRemoteDataSource") {
-      (sourceJson: String, credentialJson: String) in
+      (source: DataSourceRecord, credential: RemoteCredentialRecord) in
       try componentCall {
         try testRemoteDataSource(
-          sourceJson: sourceJson,
-          credentialJson: credentialJson
+          source: source.native,
+          credential: credential.native
         )
       }
     }
@@ -170,30 +536,32 @@ public class MyReaderRustComponentsModule: Module {
         registryPath: String,
         dataSourceId: String,
         path: String,
-        credentialJson: String
-      ) -> String in
+        credential: RemoteCredentialRecord
+      ) -> [[String: Any]] in
       try componentCall {
         try listRemoteDirectories(
           registryPath: registryPath,
           dataSourceId: dataSourceId,
           path: path,
-          credentialJson: credentialJson
-        )
+          credential: credential.native
+        ).map {
+          ["name": $0.name, "path": $0.path, "isDirectory": $0.isDirectory]
+        }
       }
     }
 
     AsyncFunction("addRemoteLibrary") {
       (
         registryPath: String,
-        requestJson: String,
-        credentialJson: String
-      ) -> String in
+        request: RemoteLibraryRequestRecord,
+        credential: RemoteCredentialRecord
+      ) -> [String: Any?] in
       try componentCall {
-        try addRemoteLibrary(
+        libraryResultDictionary(try addRemoteLibrary(
           registryPath: registryPath,
-          requestJson: requestJson,
-          credentialJson: credentialJson
-        )
+          request: request.native,
+          credential: credential.native
+        ))
       }
     }
 
@@ -202,15 +570,15 @@ public class MyReaderRustComponentsModule: Module {
         registryPath: String,
         libraryId: String,
         localRootPath: String,
-        credentialJson: String
-      ) -> String in
+        credential: RemoteCredentialRecord
+      ) -> [String: Any?] in
       try componentCall {
-        try refreshRemoteLibrary(
+        libraryResultDictionary(try refreshRemoteLibrary(
           registryPath: registryPath,
           libraryId: libraryId,
           localRootPath: localRootPath,
-          credentialJson: credentialJson
-        )
+          credential: credential.native
+        ))
       }
     }
 
@@ -227,9 +595,9 @@ public class MyReaderRustComponentsModule: Module {
     }
 
     AsyncFunction("listCalibreBooks") {
-      (libraryRootPath: String) -> String in
+      (libraryRootPath: String) -> [[String: Any?]] in
       try componentCall {
-        try listCalibreBooks(libraryRootPath: libraryRootPath)
+        try listCalibreBooks(libraryRootPath: libraryRootPath).map(bookDictionary)
       }
     }
 
@@ -240,15 +608,15 @@ public class MyReaderRustComponentsModule: Module {
         limit: Int,
         sortBy: String?,
         search: String?
-      ) -> String in
+      ) -> [String: Any] in
       try componentCall {
-        try listCalibreBooksPage(
+        pageDictionary(try listCalibreBooksPage(
           libraryRootPath: libraryRootPath,
           offset: UInt64(offset),
           limit: UInt64(limit),
           sortBy: sortBy,
           search: search
-        )
+        ))
       }
     }
 
@@ -259,25 +627,25 @@ public class MyReaderRustComponentsModule: Module {
         offset: Int,
         limit: Int,
         search: String?
-      ) -> String in
+      ) -> [String: Any] in
       try componentCall {
-        try listCalibreBooksPageByLastRead(
+        pageDictionary(try listCalibreBooksPageByLastRead(
           libraryRootPath: libraryRootPath,
           sidecarRootPath: sidecarRootPath,
           offset: UInt64(offset),
           limit: UInt64(limit),
           search: search
-        )
+        ))
       }
     }
 
     AsyncFunction("getCalibreBookDetail") {
-      (libraryRootPath: String, bookId: Int64) -> String in
+      (libraryRootPath: String, bookId: Int64) -> [String: Any?] in
       try componentCall {
-        try getCalibreBookDetail(
+        detailDictionary(try getCalibreBookDetail(
           libraryRootPath: libraryRootPath,
           bookId: bookId
-        )
+        ))
       }
     }
 
@@ -286,13 +654,13 @@ public class MyReaderRustComponentsModule: Module {
         libraryRootPath: String,
         seriesName: String,
         excludeBookId: Int64?
-      ) -> String in
+      ) -> [[String: Any?]] in
       try componentCall {
         try listCalibreSeriesBooks(
           libraryRootPath: libraryRootPath,
           seriesName: seriesName,
           excludeBookId: excludeBookId
-        )
+        ).map(bookDictionary)
       }
     }
 
@@ -304,24 +672,39 @@ public class MyReaderRustComponentsModule: Module {
     }
 
     AsyncFunction("listCalibreBookSummaries") {
-      (libraryRootPath: String) -> String in
+      (libraryRootPath: String) -> [[String: Any]] in
       try componentCall {
-        try listCalibreBookSummaries(libraryRootPath: libraryRootPath)
+        try listCalibreBookSummaries(libraryRootPath: libraryRootPath).map {
+          [
+            "id": $0.id,
+            "path": $0.path,
+            "hasCover": $0.hasCover,
+            "formats": $0.formats,
+            "formatPaths": $0.formatPaths
+          ]
+        }
       }
     }
 
     AsyncFunction("listCalibreBookFormats") {
-      (libraryRootPath: String, bookId: Int64) -> String in
+      (libraryRootPath: String, bookId: Int64) -> [[String: Any]] in
       try componentCall {
         try listCalibreBookFormats(
           libraryRootPath: libraryRootPath,
           bookId: bookId
-        )
+        ).map {
+          [
+            "format": $0.format,
+            "name": $0.name,
+            "sizeBytes": $0.sizeBytes,
+            "relativePath": $0.relativePath
+          ]
+        }
       }
     }
 
     AsyncFunction("listBookReadingFormats") {
-      (sidecarRootPath: String, libraryRootPath: String) -> String in
+      (sidecarRootPath: String, libraryRootPath: String) -> [String: String] in
       try componentCall {
         try listBookReadingFormats(
           sidecarRootPath: sidecarRootPath,
@@ -348,29 +731,34 @@ public class MyReaderRustComponentsModule: Module {
     }
 
     AsyncFunction("getLibraryFileState") {
-      (sidecarRootPath: String, path: String) -> String in
+      (sidecarRootPath: String, path: String) -> [String: Any?]? in
       try componentCall {
         try getLibraryFileState(
           sidecarRootPath: sidecarRootPath,
           path: path
-        )
+        ).map(fileStateDictionary)
       }
     }
 
     AsyncFunction("listLibraryFileStates") {
-      (sidecarRootPath: String) -> String in
+      (sidecarRootPath: String) -> [[String: Any?]] in
       try componentCall {
-        try listLibraryFileStates(sidecarRootPath: sidecarRootPath)
+        try listLibraryFileStates(sidecarRootPath: sidecarRootPath).map(fileStateDictionary)
       }
     }
 
     AsyncFunction("upsertLibraryFileState") {
-      (sidecarRootPath: String, path: String, updateJson: String) in
+      (sidecarRootPath: String, path: String, update: FileStateUpdateRecord) in
       try componentCall {
         try upsertLibraryFileState(
           sidecarRootPath: sidecarRootPath,
           path: path,
-          updateJson: updateJson
+          update: NativeFileStateUpdate(
+            localState: update.localState,
+            localBlake3: update.localBlake3,
+            localSize: update.localSize,
+            localMtime: update.localMtime
+          )
         )
       }
     }
@@ -386,13 +774,14 @@ public class MyReaderRustComponentsModule: Module {
     }
 
     AsyncFunction("finalizeDownloadedFile") {
-      (sidecarRootPath: String, relativePath: String, localPath: String) -> String in
+      (sidecarRootPath: String, relativePath: String, localPath: String) -> [String: Any] in
       try componentCall {
-        try finalizeDownloadedFile(
+        let file = try finalizeDownloadedFile(
           sidecarRootPath: sidecarRootPath,
           relativePath: relativePath,
           localPath: localPath
         )
+        return ["size": file.size, "mtimeMs": file.mtimeMs]
       }
     }
 
@@ -412,23 +801,31 @@ public class MyReaderRustComponentsModule: Module {
         thumbnailVersion: String,
         widthPx: Int64,
         heightPx: Int64
-      ) -> String in
+      ) -> [[String: Any]] in
       try componentCall {
         try listBookCoverThumbnailCache(
           sidecarRootPath: sidecarRootPath,
           thumbnailVersion: thumbnailVersion,
           widthPx: widthPx,
           heightPx: heightPx
-        )
+        ).map(coverCacheDictionary)
       }
     }
 
     AsyncFunction("upsertBookCoverThumbnailCache") {
-      (sidecarRootPath: String, patchJson: String) in
+      (sidecarRootPath: String, patch: BookCoverThumbnailCachePatchRecord) in
       try componentCall {
         try upsertBookCoverThumbnailCache(
           sidecarRootPath: sidecarRootPath,
-          patchJson: patchJson
+          patch: NativeBookCoverThumbnailCachePatch(
+            bookId: patch.bookId,
+            coverIdentity: patch.coverIdentity,
+            thumbnailVersion: patch.thumbnailVersion,
+            widthPx: patch.widthPx,
+            heightPx: patch.heightPx,
+            fileName: patch.fileName,
+            fileSizeBytes: patch.fileSizeBytes
+          )
         )
       }
     }
@@ -460,7 +857,7 @@ public class MyReaderRustComponentsModule: Module {
     }
 
     AsyncFunction("listFavoriteBookIds") {
-      (sidecarRootPath: String) -> String in
+      (sidecarRootPath: String) -> [Int64] in
       try componentCall {
         try listFavoriteBookIds(sidecarRootPath: sidecarRootPath)
       }
@@ -486,20 +883,22 @@ public class MyReaderRustComponentsModule: Module {
     }
 
     AsyncFunction("getReadingPosition") {
-      (sidecarRootPath: String, bookId: Int64, format: String) -> String in
+      (sidecarRootPath: String, bookId: Int64, format: String) -> [String: Any?]? in
       try componentCall {
         try getReadingPosition(
           sidecarRootPath: sidecarRootPath,
           bookId: bookId,
           format: format
-        )
+        ).map(readingPositionDictionary)
       }
     }
 
     AsyncFunction("listReadingPositions") {
-      (sidecarRootPath: String) -> String in
+      (sidecarRootPath: String) -> [[String: Any?]] in
       try componentCall {
-        try listReadingPositions(sidecarRootPath: sidecarRootPath)
+        try listReadingPositions(
+          sidecarRootPath: sidecarRootPath
+        ).map(readingPositionDictionary)
       }
     }
 
@@ -533,7 +932,7 @@ public class MyReaderRustComponentsModule: Module {
         bookId: Int64,
         format: String,
         nowMs: Int64
-      ) -> String in
+      ) -> [[String: Any?]] in
       try componentCall {
         try listReadingPositionCandidates(
           sidecarRootPath: sidecarRootPath,
@@ -541,7 +940,7 @@ public class MyReaderRustComponentsModule: Module {
           bookId: bookId,
           format: format,
           nowMs: nowMs
-        )
+        ).map(readingPositionCandidateDictionary)
       }
     }
 
@@ -567,13 +966,13 @@ public class MyReaderRustComponentsModule: Module {
     }
 
     AsyncFunction("listReaderBookmarks") {
-      (sidecarRootPath: String, bookId: Int64, format: String) -> String in
+      (sidecarRootPath: String, bookId: Int64, format: String) -> [[String: Any]] in
       try componentCall {
         try listReaderBookmarks(
           sidecarRootPath: sidecarRootPath,
           bookId: bookId,
           format: format
-        )
+        ).map(readerBookmarkDictionary)
       }
     }
 
@@ -586,9 +985,9 @@ public class MyReaderRustComponentsModule: Module {
         locatorKey: String,
         locatorJson: String,
         recordedAtMs: Int64
-      ) -> String in
+      ) -> [String: Any] in
       try componentCall {
-        try addReaderBookmark(
+        readerBookmarkDictionary(try addReaderBookmark(
           sidecarRootPath: sidecarRootPath,
           libraryRootPath: libraryRootPath,
           bookId: bookId,
@@ -596,7 +995,7 @@ public class MyReaderRustComponentsModule: Module {
           locatorKey: locatorKey,
           locatorJson: locatorJson,
           recordedAtMs: recordedAtMs
-        )
+        ))
       }
     }
 
@@ -622,13 +1021,13 @@ public class MyReaderRustComponentsModule: Module {
     }
 
     AsyncFunction("listReaderAnnotations") {
-      (sidecarRootPath: String, bookId: Int64, format: String) -> String in
+      (sidecarRootPath: String, bookId: Int64, format: String) -> [[String: Any?]] in
       try componentCall {
         try listReaderAnnotations(
           sidecarRootPath: sidecarRootPath,
           bookId: bookId,
           format: format
-        )
+        ).map(readerAnnotationDictionary)
       }
     }
 
@@ -642,9 +1041,9 @@ public class MyReaderRustComponentsModule: Module {
         color: String,
         note: String?,
         recordedAtMs: Int64
-      ) -> String in
+      ) -> [String: Any?] in
       try componentCall {
-        try addReaderAnnotation(
+        readerAnnotationDictionary(try addReaderAnnotation(
           sidecarRootPath: sidecarRootPath,
           libraryRootPath: libraryRootPath,
           bookId: bookId,
@@ -653,7 +1052,7 @@ public class MyReaderRustComponentsModule: Module {
           color: color,
           note: note,
           recordedAtMs: recordedAtMs
-        )
+        ))
       }
     }
 
@@ -667,9 +1066,9 @@ public class MyReaderRustComponentsModule: Module {
         color: String,
         note: String?,
         recordedAtMs: Int64
-      ) -> String in
+      ) -> [String: Any?] in
       try componentCall {
-        try updateReaderAnnotation(
+        readerAnnotationDictionary(try updateReaderAnnotation(
           sidecarRootPath: sidecarRootPath,
           libraryRootPath: libraryRootPath,
           bookId: bookId,
@@ -678,7 +1077,7 @@ public class MyReaderRustComponentsModule: Module {
           color: color,
           note: note,
           recordedAtMs: recordedAtMs
-        )
+        ))
       }
     }
 
@@ -750,14 +1149,14 @@ public class MyReaderRustComponentsModule: Module {
         libraryRootPath: String,
         startDay: String,
         endDay: String
-      ) -> String in
+      ) -> [String: Any] in
       try componentCall {
-        try getReadingStatistics(
+        readingStatisticsDictionary(try getReadingStatistics(
           sidecarRootPath: sidecarRootPath,
           libraryRootPath: libraryRootPath,
           startDay: startDay,
           endDay: endDay
-        )
+        ))
       }
     }
 
