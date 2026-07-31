@@ -23,7 +23,8 @@ pnpm core:build-bindings
 ```
 
 `pnpm --filter my-reader-mobile ios` and `pnpm --filter my-reader-mobile android` run the matching
-binding build automatically. EAS runs it in `eas-build-post-install`.
+binding build automatically. EAS runs it in `eas-build-pre-install` so CocoaPods can inspect the
+generated XCFramework.
 
 The workspace patch for `uniffi-bindgen-react-native@0.31.0-3` only exports the package's own
 `package.json`. Its generated Android CMake resolves that subpath, while the published package
