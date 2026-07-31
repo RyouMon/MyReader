@@ -1,6 +1,11 @@
 import { render, screen } from "@testing-library/react-native"
 
 import type { BookItem } from "@/src/domain/types"
+import {
+  createCoverThumbnailSessionIdentity,
+  resetCoverThumbnailSessionStoreForTests,
+  setCoverThumbnailSessionEntries,
+} from "@/src/features/library/cover-thumbnail-session-store"
 
 import { ContinueReadingCard } from "./continue-reading-card"
 
@@ -63,7 +68,36 @@ const baseBook = {
 
 describe("ContinueReadingCard", () => {
   beforeEach(() => {
+    resetCoverThumbnailSessionStoreForTests()
     jest.clearAllMocks()
+  })
+
+  it("should reuse the cached thumbnail across the home cover surfaces when available", () => {
+    const scopeKey = "library-1:300x450"
+    const thumbnailUri = "file:///cache/cover-thumbnail.jpg"
+    setCoverThumbnailSessionEntries(scopeKey, [
+      {
+        bookId: baseBook.id,
+        identity: createCoverThumbnailSessionIdentity(scopeKey, baseBook)!,
+        uri: thumbnailUri,
+      },
+    ])
+    render(<ContinueReadingCard book={baseBook} thumbnailScopeKey={scopeKey} />)
+
+    expect(screen.getByTestId("book-cover-image-1").props.source).toEqual([
+      { uri: thumbnailUri },
+    ])
+    const { CoverAdaptiveBackground } = jest.requireMock(
+      "@/src/components/cover-adaptive-background",
+    )
+    expect(CoverAdaptiveBackground).toHaveBeenCalledWith(
+      expect.objectContaining({ coverUri: thumbnailUri }),
+      undefined,
+    )
+    const { useCoverPalette } = jest.requireMock(
+      "@/src/domain/library/hooks/use-cover-palette",
+    )
+    expect(useCoverPalette).toHaveBeenCalledWith(thumbnailUri, "light")
   })
 
   it("should render menu trigger without responder wrapper when rendering card menu actions", () => {

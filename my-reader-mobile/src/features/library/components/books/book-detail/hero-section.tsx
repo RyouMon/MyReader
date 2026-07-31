@@ -31,6 +31,7 @@ type HeroSectionProps = {
   readingProgress: number
   readButtonTitle: string
   selectedFormat: string | null
+  thumbnailScopeKey?: string
   coverRef?: Ref<RNView>
   onRead: () => void
   onSetFormat: (format: string) => void
@@ -49,6 +50,7 @@ export function HeroSection({
   readingProgress,
   readButtonTitle,
   selectedFormat,
+  thumbnailScopeKey,
   coverRef,
   onRead,
   onSetFormat,
@@ -97,8 +99,9 @@ export function HeroSection({
       title: book.title,
       author: authors,
       coverUri,
+      timestamp: book.timestamp,
     }),
-    [authors, book.id, book.title, coverUri],
+    [authors, book.id, book.timestamp, book.title, coverUri],
   )
 
   const formatMenuActions = useMemo<MenuAction[]>(
@@ -284,6 +287,8 @@ export function HeroSection({
               width={coverWidth}
               height={coverHeight}
               borderRadius={8}
+              thumbnailScopeKey={thumbnailScopeKey}
+              thumbnailUsage="placeholder"
             />
           </RNView>
 
@@ -336,6 +341,8 @@ export function HeroSection({
             height={coverHeight}
             borderRadius={0}
             shadowEnabled={false}
+            thumbnailScopeKey={thumbnailScopeKey}
+            thumbnailUsage="placeholder"
           />
         </RNView>
 

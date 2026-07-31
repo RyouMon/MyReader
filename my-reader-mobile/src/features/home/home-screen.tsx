@@ -1,6 +1,7 @@
 import { router } from "expo-router"
 import { useCallback, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { Dimensions, PixelRatio, useWindowDimensions } from "react-native"
 
 import type { MenuAction } from "@react-native-menu/menu"
 
@@ -21,9 +22,11 @@ import {
   ReadingStatisticsCard,
 } from "@/src/features/home/components"
 import { useBookActions } from "@/src/features/library/hooks/use-book-actions"
+import { useCoverThumbnails } from "@/src/features/library/hooks/use-cover-thumbnails"
 import { useBookReadingProgress } from "@/src/domain/library/hooks/use-book-reading-progress"
 import { useBooks } from "@/src/features/library/hooks/useLibraryQuery"
 import { buildBookMenuActions } from "@/src/features/library/utils/book-menu"
+import { resolveFullscreenGridCoverThumbnailSizes } from "@/src/features/library/utils/cover-thumbnail-profiles"
 import { useLibraryBookMeta } from "@/src/hooks/use-library-book-meta"
 import { useAppStore } from "@/src/store/app-store"
 
@@ -33,6 +36,18 @@ import { useRecentlyReadBooks } from "./hooks/use-recently-read-books"
 
 export default function HomeScreen() {
   const { t } = useTranslation()
+  const { height, width } = useWindowDimensions()
+  const screenBounds = Dimensions.get("screen")
+  const pixelRatio = PixelRatio.get()
+  const coverThumbnailGridSizes = useMemo(
+    () =>
+      resolveFullscreenGridCoverThumbnailSizes({
+        pixelRatio,
+        screenHeight: Math.max(screenBounds.height, height),
+        screenWidth: Math.max(screenBounds.width, width),
+      }),
+    [height, pixelRatio, screenBounds.height, screenBounds.width, width],
+  )
   const libraries = useAppStore((s) => s.libraries)
   const activeLibraryId = useAppStore((s) => s.activeLibraryId)
   const homeCardStyle = useAppStore((s) => s.settings.homeCardStyle)
@@ -42,7 +57,7 @@ export default function HomeScreen() {
     [activeLibraryId, libraries],
   )
 
-  const readingBooks = useRecentlyReadBooks(activeLibrary)
+  const readingBooks = useRecentlyReadBooks(activeLibrary, books)
   const { data: progressByBookId = {} } = useBookReadingProgress(activeLibrary)
 
   const { selectedFormatById, setBookReadingFormat } =
@@ -64,6 +79,15 @@ export default function HomeScreen() {
       return { ...book, readingProgress, readingFormat: effectiveFormat ?? "" }
     })
   }, [readingBooks, bookFormatMetaById, progressByBookId])
+  const coverThumbnailScopeKey = useCoverThumbnails({
+    enabled: !!activeLibrary,
+    generateMissing: false,
+    library: activeLibrary,
+    books: readingBooksWithMeta,
+    thumbnailSizes: coverThumbnailGridSizes,
+    width: 112,
+    height: 168,
+  })
 
   const currentBook = readingBooksWithMeta[0]
 
@@ -157,6 +181,7 @@ export default function HomeScreen() {
                 onMenuAction={handleCurrentBookMenuAction}
                 onMenuOpen={() => handleMenuOpen(currentBook.id)}
                 onMenuClose={handleMenuClose}
+                thumbnailScopeKey={coverThumbnailScopeKey}
               />
             </View>
 
@@ -176,6 +201,7 @@ export default function HomeScreen() {
                 isAnyMenuOpen={isMenuOpen}
                 homeCardStyle={homeCardStyle}
                 favoriteBookIds={favoriteSet}
+                thumbnailScopeKey={coverThumbnailScopeKey}
               />
             </View>
 

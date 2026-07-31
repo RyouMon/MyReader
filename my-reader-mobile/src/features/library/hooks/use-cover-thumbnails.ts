@@ -44,6 +44,7 @@ export { resolveCoverThumbnailPixelSize }
 type UseCoverThumbnailsInput = {
   enabled: boolean
   backgroundGenerationBookIds?: ReadonlySet<string>
+  generateMissing?: boolean
   generationConcurrency?: number
   generationBookIds?: ReadonlySet<string>
   paused?: boolean
@@ -142,6 +143,7 @@ function numericBookId(bookId: string): number | null {
 export function useCoverThumbnails({
   backgroundGenerationBookIds,
   enabled,
+  generateMissing = true,
   generationConcurrency = COVER_THUMBNAIL_GENERATION_CONCURRENCY,
   generationBookIds,
   paused = false,
@@ -267,59 +269,68 @@ export function useCoverThumbnails({
   )
 
   useEffect(() => {
-    if (enabled && !paused) {
+    if (enabled && !paused && generateMissing) {
       scheduleGeneratedThumbnailsFlush()
     } else if (flushGeneratedThumbnailsTimerRef.current) {
       clearTimeout(flushGeneratedThumbnailsTimerRef.current)
       flushGeneratedThumbnailsTimerRef.current = null
     }
-  }, [enabled, paused, scheduleGeneratedThumbnailsFlush])
+  }, [enabled, generateMissing, paused, scheduleGeneratedThumbnailsFlush])
 
   useEffect(() => {
+    if (!generateMissing) return
     coverThumbnailGenerationQueue.setConcurrency(generationConcurrency)
-  }, [generationConcurrency])
+  }, [generateMissing, generationConcurrency])
 
   useEffect(() => {
+    if (!generateMissing) return
     coverThumbnailGenerationQueue.setPaused(!enabled || paused)
     return () => {
       coverThumbnailGenerationQueue.setPaused(true)
     }
-  }, [enabled, paused])
+  }, [enabled, generateMissing, paused])
 
-  useEffect(
-    () =>
-      coverThumbnailGenerationQueue.subscribe((result) => {
-        const activeLibrary = libraryRef.current
-        const bookId = numericBookId(result.bookId)
-        if (activeLibrary && bookId !== null) {
-          void upsertBookCoverThumbnailCache(activeLibrary, {
-            bookId,
-            coverIdentity: result.input.coverIdentity,
-            fileName: result.file.fileName,
-            fileSizeBytes: result.file.fileSizeBytes,
-            heightPx: result.input.heightPx,
-            thumbnailVersion: COVER_THUMBNAIL_CACHE_VERSION,
-            widthPx: result.input.widthPx,
-          })
-        }
+  useEffect(() => {
+    if (!generateMissing) return
 
-        if (result.scopeKey !== scopeKeyRef.current) {
-          return
-        }
+    return coverThumbnailGenerationQueue.subscribe((result) => {
+      const activeLibrary = libraryRef.current
+      const bookId = numericBookId(result.bookId)
+      if (activeLibrary && bookId !== null) {
+        void upsertBookCoverThumbnailCache(activeLibrary, {
+          bookId,
+          coverIdentity: result.input.coverIdentity,
+          fileName: result.file.fileName,
+          fileSizeBytes: result.file.fileSizeBytes,
+          heightPx: result.input.heightPx,
+          thumbnailVersion: COVER_THUMBNAIL_CACHE_VERSION,
+          widthPx: result.input.widthPx,
+        })
+      }
 
-        pendingGeneratedThumbnailsRef.current.set(
-          `${result.scopeKey}:${result.bookId}`,
+      if (result.scopeKey !== scopeKeyRef.current) {
+        setCoverThumbnailSessionEntries(result.scopeKey, [
           {
             bookId: result.bookId,
             identity: result.identity,
-            scopeKey: result.scopeKey,
             uri: result.file.uri,
           },
-        )
-        scheduleGeneratedThumbnailsFlush()
-      }),
-    [scheduleGeneratedThumbnailsFlush],
-  )
+        ])
+        return
+      }
+
+      pendingGeneratedThumbnailsRef.current.set(
+        `${result.scopeKey}:${result.bookId}`,
+        {
+          bookId: result.bookId,
+          identity: result.identity,
+          scopeKey: result.scopeKey,
+          uri: result.file.uri,
+        },
+      )
+      scheduleGeneratedThumbnailsFlush()
+    })
+  }, [generateMissing, scheduleGeneratedThumbnailsFlush])
 
   useEffect(() => {
     if (!enabled || !libraryId || !library) {
@@ -528,7 +539,7 @@ export function useCoverThumbnails({
 
     setCoverThumbnailSessionEntries(scopeKey, visibleEntries)
 
-    if (paused) {
+    if (paused || !generateMissing) {
       return
     }
 
@@ -540,6 +551,7 @@ export function useCoverThumbnails({
     backgroundGenerationBookIds,
     books,
     enabled,
+    generateMissing,
     generationBookIds,
     library,
     libraryId,

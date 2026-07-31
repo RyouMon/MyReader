@@ -27,6 +27,7 @@ export type ReadingShelfProps = {
   isAnyMenuOpen?: boolean
   homeCardStyle?: HomeCardStyle
   favoriteBookIds?: Set<string>
+  thumbnailScopeKey?: string
 }
 
 export function ReadingShelf({
@@ -43,6 +44,7 @@ export function ReadingShelf({
   isAnyMenuOpen,
   homeCardStyle,
   favoriteBookIds,
+  thumbnailScopeKey,
 }: ReadingShelfProps) {
   const { width } = useWindowDimensions()
   const cardWidth = getCardWidth(width)
@@ -75,6 +77,7 @@ export function ReadingShelf({
           onMenuClose={onMenuClose}
           isAnyMenuOpen={isAnyMenuOpen}
           homeCardStyle={homeCardStyle}
+          thumbnailScopeKey={thumbnailScopeKey}
         />
       )}
     />

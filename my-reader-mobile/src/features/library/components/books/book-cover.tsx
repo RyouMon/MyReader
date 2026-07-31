@@ -114,6 +114,13 @@ const fallbackStyleByKey = new Map<string, FallbackCoverStyleSet>()
 const coverFrameStyleByKey = new Map<string, CoverFrameStyleSet>()
 const displayedCoverKeys = new Set<string>()
 const displayedCoverListenersByKey = new Map<string, Set<() => void>>()
+const COVER_IMAGE_MAX_CONSECUTIVE_FAILURES = 2
+
+type CoverLoadFailureState = {
+  coverKey: string
+  consecutiveFailures: number
+  retryGeneration: number
+}
 
 function cachedValue<T>(
   cache: Map<string, T>,
@@ -272,7 +279,18 @@ function getCoverStateKey(coverUri: BookCoverUri | undefined) {
     return undefined
   }
 
-  return typeof coverUri === "string" ? coverUri : coverUri.uri
+  if (typeof coverUri === "string" || !coverUri.headers) {
+    return typeof coverUri === "string" ? coverUri : coverUri.uri
+  }
+
+  const headers = Object.entries(coverUri.headers)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([name, value]) => `${name}:${value}`)
+    .join("\n")
+
+  return headers
+    ? `${coverUri.uri}:headers:${getTitleHash(headers).toString(36)}`
+    : coverUri.uri
 }
 
 function subscribeDisplayedCoverKey(
@@ -365,6 +383,7 @@ type BookCoverProps = {
   loadingSkeletonPulseEnabled?: boolean
   shadowEnabled?: boolean
   thumbnailScopeKey?: string
+  thumbnailUsage?: "source" | "placeholder"
 }
 
 type BookCoverBaseProps = BookCoverProps & {
@@ -425,6 +444,7 @@ function BookCoverBaseImpl({
   loadingSkeletonPulseEnabled = COVER_LOADING_SKELETON_PULSE_ENABLED,
   shadowEnabled = true,
   thumbnailScopeKey,
+  thumbnailUsage = "source",
   shadowColor,
   skeletonColor,
 }: BookCoverBaseProps) {
@@ -432,17 +452,29 @@ function BookCoverBaseImpl({
   // RN primitives + StyleSheet and receive colors from the parent so cells avoid
   // NativeWind class resolution and theme context subscriptions.
   const thumbnailCoverUri = useCoverThumbnailSessionUri(thumbnailScopeKey, book)
+  const thumbnailSourceUri =
+    thumbnailUsage === "source" ? thumbnailCoverUri : undefined
+  const thumbnailPlaceholderUri =
+    thumbnailUsage === "placeholder" ? thumbnailCoverUri : undefined
   const hasExpectedCover = !!(
     displayCoverUri ??
-    thumbnailCoverUri ??
+    thumbnailSourceUri ??
+    thumbnailPlaceholderUri ??
     book.coverUri
   )
   const effectiveCoverUri =
     displayCoverUri ??
-    thumbnailCoverUri ??
+    thumbnailSourceUri ??
     (deferCoverUntilDisplayUri ? undefined : book.coverUri)
   const coverKey = getCoverStateKey(effectiveCoverUri)
-  const [failedCoverKey, setFailedCoverKey] = useState<string>()
+  const [failureState, setFailureState] = useState<CoverLoadFailureState>()
+  const activeFailureState =
+    failureState?.coverKey === coverKey ? failureState : undefined
+  const consecutiveFailures = activeFailureState?.consecutiveFailures ?? 0
+  const retryGeneration = activeFailureState?.retryGeneration ?? 0
+  const retryExhausted =
+    consecutiveFailures >= COVER_IMAGE_MAX_CONSECUTIVE_FAILURES
+  const keepsThumbnailAfterFailure = retryExhausted && !!thumbnailPlaceholderUri
   const coverStyles = getCoverFrameStyles({
     backgroundColor,
     borderRadius,
@@ -457,16 +489,49 @@ function BookCoverBaseImpl({
     LIBRARY_COVER_PROFILING_MODE !== "fallback-only" &&
     !!effectiveCoverUri &&
     !!coverKey &&
-    failedCoverKey !== coverKey
+    (!retryExhausted || keepsThumbnailAfterFailure)
   const coverImageDisplayed = useCoverImageDisplayed(coverKey)
   const coverMode = resolveBookCoverMode({
     hasExpectedCover,
     hasRenderableImage: shouldRenderImage,
     imageDisplayed: coverImageDisplayed,
-    imageFailed: !!coverKey && failedCoverKey === coverKey,
+    imageFailed: retryExhausted && !keepsThumbnailAfterFailure,
   })
   const handleImageDisplay = useCallback(() => {
     markCoverImageDisplayed(coverKey)
+    setFailureState((current) => {
+      if (
+        !current ||
+        current.coverKey !== coverKey ||
+        current.consecutiveFailures === 0
+      ) {
+        return current
+      }
+      return { ...current, consecutiveFailures: 0 }
+    })
+  }, [coverKey])
+  const handleImageError = useCallback(() => {
+    if (!coverKey) return
+
+    setFailureState((current) => {
+      const currentFailures =
+        current?.coverKey === coverKey ? current.consecutiveFailures : 0
+      const currentRetryGeneration =
+        current?.coverKey === coverKey ? current.retryGeneration : 0
+      if (currentFailures >= COVER_IMAGE_MAX_CONSECUTIVE_FAILURES) {
+        return current
+      }
+
+      const consecutiveFailures = currentFailures + 1
+      return {
+        coverKey,
+        consecutiveFailures,
+        retryGeneration:
+          consecutiveFailures < COVER_IMAGE_MAX_CONSECUTIVE_FAILURES
+            ? currentRetryGeneration + 1
+            : currentRetryGeneration,
+      }
+    })
   }, [coverKey])
 
   return (
@@ -492,17 +557,20 @@ function BookCoverBaseImpl({
       ) : null}
       {shouldRenderImage ? (
         <ExpoImage
+          key={`${coverKey}:${retryGeneration}`}
           source={effectiveCoverUri}
+          placeholder={thumbnailPlaceholderUri}
+          placeholderContentFit="cover"
           contentFit="cover"
           style={coverStyles.image}
-          recyclingKey={`${book.id}:${coverKey}`}
+          recyclingKey={`${book.id}:${coverKey}:${retryGeneration}`}
           testID={`book-cover-image-${book.id}`}
           cachePolicy="memory-disk"
           transition={
             coverImageDisplayed ? undefined : COVER_IMAGE_TRANSITION_MS
           }
           onDisplay={handleImageDisplay}
-          onError={() => setFailedCoverKey(coverKey)}
+          onError={handleImageError}
         />
       ) : null}
     </View>

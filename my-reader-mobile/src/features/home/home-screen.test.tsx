@@ -89,6 +89,10 @@ jest.mock("@/src/features/library/hooks/use-book-actions", () => ({
   })),
 }))
 
+jest.mock("@/src/features/library/hooks/use-cover-thumbnails", () => ({
+  useCoverThumbnails: jest.fn(() => "library-1:300x450"),
+}))
+
 jest.mock("@/src/features/library/hooks/useLibraryQuery", () => ({
   useBooks: jest.fn(() => ({ data: [] })),
 }))
@@ -135,5 +139,40 @@ describe("HomeScreen", () => {
     fireEvent.press(screen.getByText("home.noReadingHistory.action"))
 
     expect(router.push).toHaveBeenCalledWith("/library")
+  })
+
+  it("should share the cached thumbnail scope with home cover surfaces when reading history exists", () => {
+    const book = {
+      id: "1",
+      author: "Author",
+      coverUri: "https://example.com/cover.jpg",
+      title: "Book",
+    }
+    const { useBooks } = jest.requireMock(
+      "@/src/features/library/hooks/useLibraryQuery",
+    )
+    const { useRecentlyReadBooks } = jest.requireMock(
+      "./hooks/use-recently-read-books",
+    )
+    const { ContinueReadingCard, ReadingShelf } = jest.requireMock(
+      "@/src/features/home/components",
+    )
+    useBooks.mockReturnValueOnce({ data: [book] })
+    useRecentlyReadBooks.mockReturnValueOnce([book])
+
+    render(<HomeScreen />)
+
+    expect(ContinueReadingCard).toHaveBeenCalledWith(
+      expect.objectContaining({
+        thumbnailScopeKey: "library-1:300x450",
+      }),
+      undefined,
+    )
+    expect(ReadingShelf).toHaveBeenCalledWith(
+      expect.objectContaining({
+        thumbnailScopeKey: "library-1:300x450",
+      }),
+      undefined,
+    )
   })
 })

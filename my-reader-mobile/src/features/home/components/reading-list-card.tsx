@@ -19,6 +19,7 @@ import {
   BookCover,
   type BookDownloadStatus,
 } from "@/src/features/library/components/books/book-cover"
+import { useCoverThumbnailSessionUri } from "@/src/features/library/cover-thumbnail-session-store"
 import { buildBookMenuActions } from "@/src/features/library/utils/book-menu"
 import {
   canStartReaderOpenTransition,
@@ -49,6 +50,7 @@ export type ReadingListCardProps = {
   onMenuClose?: () => void
   isAnyMenuOpen?: boolean
   homeCardStyle?: HomeCardStyle
+  thumbnailScopeKey?: string
 }
 
 function ReadingListCardImpl({
@@ -67,12 +69,18 @@ function ReadingListCardImpl({
   onMenuClose,
   isAnyMenuOpen,
   homeCardStyle,
+  thumbnailScopeKey,
 }: ReadingListCardProps) {
   const { t } = useTranslation()
   const palette = useThemePalette()
   const { colorScheme } = useTheme()
   const resolvedScheme = colorScheme === "dark" ? "dark" : "light"
-  const { raw: coverRawColors } = useCoverPalette(book.coverUri, resolvedScheme)
+  const thumbnailCoverUri = useCoverThumbnailSessionUri(thumbnailScopeKey, book)
+  const displayCoverUri = thumbnailCoverUri ?? book.coverUri
+  const { raw: coverRawColors } = useCoverPalette(
+    displayCoverUri,
+    resolvedScheme,
+  )
   const coverRef = useRef<RNView>(null)
 
   const showCloudIcon = downloadStatus === "notDownloaded"
@@ -167,6 +175,7 @@ function ReadingListCardImpl({
           width={COVER_WIDTH}
           height={COVER_HEIGHT}
           borderRadius={COVER_BORDER_RADIUS}
+          thumbnailScopeKey={thumbnailScopeKey}
         />
       </RNView>
       <View className="min-w-0 flex-1 justify-center gap-1">
@@ -228,7 +237,7 @@ function ReadingListCardImpl({
       }}
     >
       <CoverAdaptiveBackground
-        coverUri={book.coverUri}
+        coverUri={displayCoverUri}
         rawColors={coverRawColors}
         colorScheme={resolvedScheme}
         variant={homeCardStyle}

@@ -2,7 +2,12 @@ import { render, screen } from "@testing-library/react-native"
 
 import type { BookDetail } from "@my-reader/tools/types/book"
 
-import type { Library } from "@/src/domain/types"
+import type { BookItem, Library } from "@/src/domain/types"
+import {
+  createCoverThumbnailSessionIdentity,
+  resetCoverThumbnailSessionStoreForTests,
+  setCoverThumbnailSessionEntries,
+} from "@/src/features/library/cover-thumbnail-session-store"
 
 import { BookDetailContent } from "./book-detail-content"
 import type { DetailColors } from "./types"
@@ -40,6 +45,10 @@ jest.mock("@/src/domain/library/hooks/use-book-reading-progress", () => ({
 
 jest.mock("../../../hooks/use-book-cover-uri", () => ({
   useBookCoverUri: jest.fn(() => ({ coverUri: undefined })),
+}))
+
+jest.mock("../../../hooks/use-cover-thumbnails", () => ({
+  useCoverThumbnails: jest.fn(() => "lib-1:300x450"),
 }))
 
 jest.mock("../../../hooks/use-book-detail-formats", () => ({
@@ -147,6 +156,7 @@ function renderContent(
 
 describe("BookDetailContent", () => {
   beforeEach(() => {
+    resetCoverThumbnailSessionStoreForTests()
     jest.clearAllMocks()
   })
 
@@ -156,6 +166,31 @@ describe("BookDetailContent", () => {
     expect(
       screen.getByText("bookDetail.loadingDetail").props.className,
     ).toContain("text-base")
+  })
+
+  it("should keep the cached cover visible while detail is loading", () => {
+    const scopeKey = "lib-1:300x450"
+    const thumbnailUri = "file:///cache/detail-thumbnail.jpg"
+    const listBook: BookItem = {
+      id: "1",
+      author: "Author",
+      coverUri: "https://example.com/original.jpg",
+      timestamp: "2026-01-01",
+      title: "Test Book",
+    }
+    setCoverThumbnailSessionEntries(scopeKey, [
+      {
+        bookId: listBook.id,
+        identity: createCoverThumbnailSessionIdentity(scopeKey, listBook)!,
+        uri: thumbnailUri,
+      },
+    ])
+
+    renderContent({ detail: null, listBook, loadingDetail: true })
+
+    expect(screen.getByTestId("book-detail-loading-cover").props.source).toBe(
+      thumbnailUri,
+    )
   })
 
   it("should show empty state when detail is missing", () => {
@@ -216,6 +251,42 @@ describe("BookDetailContent", () => {
         includeHiddenElements: true,
       }),
     ).toBeTruthy()
+  })
+
+  it("should reuse the cached thumbnail across detail cover surfaces when available", () => {
+    const scopeKey = "lib-1:300x450"
+    const thumbnailUri = "file:///cache/detail-thumbnail.jpg"
+    const listBook: BookItem = {
+      id: "1",
+      author: "Author",
+      coverUri: "https://example.com/original.jpg",
+      timestamp: "2026-01-01",
+      title: "Test Book",
+    }
+    setCoverThumbnailSessionEntries(scopeKey, [
+      {
+        bookId: listBook.id,
+        identity: createCoverThumbnailSessionIdentity(scopeKey, listBook)!,
+        uri: thumbnailUri,
+      },
+    ])
+    const { useBookCoverUri } = jest.requireMock(
+      "../../../hooks/use-book-cover-uri",
+    )
+    const { HeroSection } = jest.requireMock("./hero-section")
+    useBookCoverUri.mockReturnValueOnce({ coverUri: listBook.coverUri })
+
+    renderContent({ availableWidth: 834, listBook })
+
+    expect(
+      screen.getByTestId("book-detail-backdrop", {
+        includeHiddenElements: true,
+      }).props.source,
+    ).toBe(thumbnailUri)
+    expect(HeroSection).toHaveBeenCalledWith(
+      expect.objectContaining({ thumbnailScopeKey: scopeKey }),
+      undefined,
+    )
   })
 
   it("should pass current format progress to hero when progress exists", () => {

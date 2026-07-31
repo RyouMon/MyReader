@@ -22,6 +22,7 @@ import {
   BookCover,
   type BookDownloadStatus,
 } from "@/src/features/library/components/books/book-cover"
+import { useCoverThumbnailSessionUri } from "@/src/features/library/cover-thumbnail-session-store"
 import {
   canStartReaderOpenTransition,
   measureReaderTransitionFrame,
@@ -37,6 +38,7 @@ type ContinueReadingCardProps = {
   libraryId?: string
   menuActions?: MenuAction[]
   homeCardStyle?: HomeCardStyle
+  thumbnailScopeKey?: string
   isAnyMenuOpen?: boolean
   onPress?: () => void
   onMenuAction?: (actionId: string) => void
@@ -50,6 +52,7 @@ export function ContinueReadingCard({
   libraryId,
   menuActions,
   homeCardStyle,
+  thumbnailScopeKey,
   isAnyMenuOpen,
   onPress,
   onMenuAction,
@@ -60,7 +63,12 @@ export function ContinueReadingCard({
   const palette = useThemePalette()
   const { colorScheme } = useTheme()
   const resolvedScheme = colorScheme === "dark" ? "dark" : "light"
-  const { raw: coverRawColors } = useCoverPalette(book.coverUri, resolvedScheme)
+  const thumbnailCoverUri = useCoverThumbnailSessionUri(thumbnailScopeKey, book)
+  const displayCoverUri = thumbnailCoverUri ?? book.coverUri
+  const { raw: coverRawColors } = useCoverPalette(
+    displayCoverUri,
+    resolvedScheme,
+  )
   const coverRef = useRef<RNView>(null)
 
   const handlePress = () => {
@@ -118,6 +126,7 @@ export function ContinueReadingCard({
       width={112}
       height={168}
       borderRadius={CONTINUE_READING_COVER_BORDER_RADIUS}
+      thumbnailScopeKey={thumbnailScopeKey}
     />
   )
 
@@ -125,7 +134,7 @@ export function ContinueReadingCard({
     <HeroCard>
       <View className="relative">
         <CoverAdaptiveBackground
-          coverUri={book.coverUri}
+          coverUri={displayCoverUri}
           rawColors={coverRawColors}
           colorScheme={resolvedScheme}
           variant={homeCardStyle}

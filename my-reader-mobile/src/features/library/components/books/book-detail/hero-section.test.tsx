@@ -126,7 +126,10 @@ const colors = {
   },
 } as unknown as DetailColors
 
-function renderHero(availableWidth: number) {
+function renderHero(
+  availableWidth: number,
+  overrides: Partial<React.ComponentProps<typeof HeroSection>> = {},
+) {
   const onRead = jest.fn()
   const onSetFormat = jest.fn()
 
@@ -142,6 +145,7 @@ function renderHero(availableWidth: number) {
       readingProgress={35}
       readButtonTitle="bookDetail.startReading"
       selectedFormat="EPUB"
+      {...overrides}
     />,
   )
 
@@ -173,6 +177,21 @@ describe("resolveBookDetailHeroMode", () => {
 describe("HeroSection", () => {
   beforeEach(() => {
     jest.clearAllMocks()
+  })
+
+  it("should use the cached thumbnail as the detail cover placeholder when available", () => {
+    const { BookCover } = jest.requireMock("../book-cover")
+
+    renderHero(390, { thumbnailScopeKey: "library-1:300x450" })
+
+    expect(BookCover).toHaveBeenCalledWith(
+      expect.objectContaining({
+        book: expect.objectContaining({ timestamp: detail.timestamp }),
+        thumbnailScopeKey: "library-1:300x450",
+        thumbnailUsage: "placeholder",
+      }),
+      undefined,
+    )
   })
 
   it("should render narrow hero when available width is below the breakpoint", () => {

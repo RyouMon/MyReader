@@ -57,7 +57,6 @@ function inflateCoverUris(
       }
     }
 
-    if (book.coverUri.headers) return book
     return { ...book, coverUri: { ...book.coverUri, headers: cachedHeaders } }
   })
 }

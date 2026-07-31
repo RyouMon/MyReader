@@ -2,12 +2,20 @@ import { useCallback, useMemo, type Ref } from "react"
 
 import { Image as ExpoImage } from "expo-image"
 import { useTranslation } from "react-i18next"
-import { StyleSheet, type View as RNView } from "react-native"
+import {
+  Dimensions,
+  PixelRatio,
+  StyleSheet,
+  useWindowDimensions,
+  type View as RNView,
+} from "react-native"
 
 import { EmptyState } from "@/src/components/ui"
 import { useBookReadingProgress } from "@/src/domain/library/hooks/use-book-reading-progress"
 import type { BookItem, DataSource, Library } from "@/src/domain/types"
 import { isRemoteSourceType } from "@/src/domain/types"
+import { useCoverThumbnailSessionUri } from "@/src/features/library/cover-thumbnail-session-store"
+import { resolveFullscreenGridCoverThumbnailSizes } from "@/src/features/library/utils/cover-thumbnail-profiles"
 import type { BookDetail } from "@my-reader/tools/types/book"
 import {
   formatDate,
@@ -19,8 +27,12 @@ import { ScrollView, Text, View } from "@/tw"
 import { useBookCoverUri } from "../../../hooks/use-book-cover-uri"
 import { useBookDetailFormats } from "../../../hooks/use-book-detail-formats"
 import { useBookDetailReadState } from "../../../hooks/use-book-detail-read-state"
+import { useCoverThumbnails } from "../../../hooks/use-cover-thumbnails"
 import { FormatSection } from "./format-section"
-import { resolveBookDetailHeroMode } from "./hero-layout"
+import {
+  resolveBookDetailHeroMode,
+  resolveNarrowBookDetailCoverHeight,
+} from "./hero-layout"
 import { HeroSection } from "./hero-section"
 import { InfoRowSection } from "./info-row-section"
 import { SynopsisSection } from "./synopsis-section"
@@ -66,6 +78,13 @@ export function BookDetailContent({
   dataSources,
 }: BookDetailContentProps) {
   const { t } = useTranslation()
+  const {
+    fontScale,
+    height: windowHeight,
+    width: windowWidth,
+  } = useWindowDimensions()
+  const screenBounds = Dimensions.get("screen")
+  const pixelRatio = PixelRatio.get()
   const contentWidth = Math.min(availableWidth, BOOK_DETAIL_MAX_CONTENT_WIDTH)
   const heroMode = resolveBookDetailHeroMode(contentWidth)
 
@@ -75,6 +94,60 @@ export function BookDetailContent({
     detail,
     listBook,
     dataSources,
+  )
+  const coverBook = useMemo<BookItem>(
+    () =>
+      listBook ?? {
+        id: bookId,
+        author: detail?.authors.filter(Boolean).join(", ") ?? "",
+        coverUri,
+        timestamp: detail?.timestamp,
+        title: detail?.title ?? "",
+      },
+    [bookId, coverUri, detail, listBook],
+  )
+  const coverThumbnailGridSizes = useMemo(
+    () =>
+      resolveFullscreenGridCoverThumbnailSizes({
+        pixelRatio,
+        screenHeight: Math.max(screenBounds.height, windowHeight),
+        screenWidth: Math.max(screenBounds.width, windowWidth),
+      }),
+    [
+      pixelRatio,
+      screenBounds.height,
+      screenBounds.width,
+      windowHeight,
+      windowWidth,
+    ],
+  )
+  const coverThumbnailBooks = useMemo(
+    () => (coverBook.coverUri ? [coverBook] : []),
+    [coverBook],
+  )
+  const thumbnailScopeKey = useCoverThumbnails({
+    enabled: !!coverBook.coverUri,
+    generateMissing: false,
+    library: activeLibrary,
+    books: coverThumbnailBooks,
+    thumbnailSizes: coverThumbnailGridSizes,
+    width: contentWidth,
+    height: Math.round(contentWidth * 1.5),
+  })
+  const thumbnailCoverUri = useCoverThumbnailSessionUri(
+    thumbnailScopeKey,
+    coverBook,
+  )
+  const loadingCoverUri = thumbnailCoverUri ?? coverUri ?? coverBook.coverUri
+  const loadingCoverWidth = Math.round(
+    heroMode === "narrow"
+      ? contentWidth
+      : Math.min(280, Math.max(152, (contentWidth - 48) * 0.33)),
+  )
+  const loadingCoverHeight = Math.round(
+    heroMode === "narrow"
+      ? resolveNarrowBookDetailCoverHeight(contentWidth, fontScale)
+      : loadingCoverWidth * 1.5,
   )
 
   const {
@@ -129,10 +202,32 @@ export function BookDetailContent({
   if (loadingDetail) {
     return (
       <View
-        className="flex-1 items-center justify-center px-4"
+        className={
+          heroMode === "wide"
+            ? "flex-1 items-start px-4"
+            : "flex-1 items-center"
+        }
         style={{ backgroundColor: colors.background }}
       >
-        <Text className="text-base" style={{ color: colors.palette.textMuted }}>
+        {loadingCoverUri ? (
+          <ExpoImage
+            cachePolicy="memory-disk"
+            contentFit="cover"
+            recyclingKey={`book-detail-loading-${bookId}`}
+            source={loadingCoverUri}
+            style={{
+              borderRadius: heroMode === "wide" ? 8 : 0,
+              height: loadingCoverHeight,
+              marginTop: heroMode === "wide" ? 16 : 0,
+              width: loadingCoverWidth,
+            }}
+            testID="book-detail-loading-cover"
+          />
+        ) : null}
+        <Text
+          className={loadingCoverUri ? "mt-4 text-base" : "my-auto text-base"}
+          style={{ color: colors.palette.textMuted }}
+        >
           {t("bookDetail.loadingDetail")}
         </Text>
       </View>
@@ -208,7 +303,7 @@ export function BookDetailContent({
           importantForAccessibility="no"
           pointerEvents="none"
           recyclingKey={`book-detail-backdrop-${bookId}`}
-          source={coverUri}
+          source={thumbnailCoverUri ?? coverUri}
           style={[StyleSheet.absoluteFill, { opacity: 0.055 }]}
           testID="book-detail-backdrop"
         />
@@ -240,6 +335,7 @@ export function BookDetailContent({
             readingProgress={readingProgress}
             readButtonTitle={readButtonTitle}
             selectedFormat={readableSelectedFormat}
+            thumbnailScopeKey={thumbnailScopeKey}
           />
 
           {synopsisText ? (

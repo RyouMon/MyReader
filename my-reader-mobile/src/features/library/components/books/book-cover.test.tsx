@@ -232,7 +232,40 @@ describe("BookCover", () => {
     expect(screen.getByTestId("book-cover-loading-book-1")).toBeTruthy()
   })
 
-  it("should fall back to default cover art when image loading fails", () => {
+  it("should keep the original cover source while using a cached thumbnail as its placeholder", () => {
+    const scopeKey = "library-1:200x300"
+    const thumbnailUri = "file:///cache/thumb.jpg"
+    const book = {
+      ...baseBook,
+      coverUri: "https://example.com/original.jpg",
+      timestamp: "cover-version-1",
+    }
+    setCoverThumbnailSessionEntries(scopeKey, [
+      {
+        bookId: book.id,
+        identity: createCoverThumbnailSessionIdentity(scopeKey, book)!,
+        uri: thumbnailUri,
+      },
+    ])
+    render(
+      <BookCover
+        book={book}
+        height={450}
+        thumbnailScopeKey={scopeKey}
+        thumbnailUsage="placeholder"
+        width={300}
+      />,
+    )
+
+    const image = screen.getByTestId("book-cover-image-book-1")
+    expect(image.props.source).toEqual([
+      { uri: "https://example.com/original.jpg" },
+    ])
+    expect(image.props.placeholder).toEqual([{ uri: thumbnailUri }])
+    expect(image.props.placeholderContentFit).toBe("cover")
+  })
+
+  it("should retry once before falling back when image loading keeps failing", () => {
     render(
       <BookCover
         book={{ ...baseBook, coverUri: "https://example.com/cover.png" }}
@@ -247,8 +280,103 @@ describe("BookCover", () => {
         .props.onError({ nativeEvent: { error: "failed" } })
     })
 
+    expect(screen.getByTestId("book-cover-image-book-1")).toBeTruthy()
+    expect(screen.queryByText("Fallback Book")).toBeNull()
+
+    act(() => {
+      screen
+        .getByTestId("book-cover-image-book-1")
+        .props.onError({ nativeEvent: { error: "failed again" } })
+    })
+
     expect(screen.getByText("Fallback Book")).toBeTruthy()
     expect(screen.getByText("Author")).toBeTruthy()
     expect(screen.queryByTestId("book-cover-image-book-1")).toBeNull()
+  })
+
+  it("should keep the cached thumbnail visible when the original cover retry fails", () => {
+    const scopeKey = "library-1:200x300"
+    const thumbnailUri = "file:///cache/thumb.jpg"
+    const book = {
+      ...baseBook,
+      coverUri: "https://example.com/original.jpg",
+      timestamp: "cover-version-1",
+    }
+    setCoverThumbnailSessionEntries(scopeKey, [
+      {
+        bookId: book.id,
+        identity: createCoverThumbnailSessionIdentity(scopeKey, book)!,
+        uri: thumbnailUri,
+      },
+    ])
+
+    render(
+      <BookCover
+        book={book}
+        height={450}
+        thumbnailScopeKey={scopeKey}
+        thumbnailUsage="placeholder"
+        width={300}
+      />,
+    )
+
+    act(() => {
+      screen
+        .getByTestId("book-cover-image-book-1")
+        .props.onError({ nativeEvent: { error: "failed" } })
+    })
+    act(() => {
+      screen
+        .getByTestId("book-cover-image-book-1")
+        .props.onError({ nativeEvent: { error: "failed again" } })
+    })
+
+    expect(
+      screen.getByTestId("book-cover-image-book-1").props.placeholder,
+    ).toEqual([{ uri: thumbnailUri }])
+    expect(screen.queryByText("Fallback Book")).toBeNull()
+  })
+
+  it("should retry a failed cover when its request headers change", () => {
+    const oldCoverUri = {
+      uri: "https://example.com/cover.jpg",
+      headers: { Authorization: "Bearer old" },
+    }
+    const freshCoverUri = {
+      uri: oldCoverUri.uri,
+      headers: { Authorization: "Bearer fresh" },
+    }
+    const view = render(
+      <BookCover
+        book={{ ...baseBook, coverUri: oldCoverUri }}
+        width={100}
+        height={150}
+      />,
+    )
+
+    act(() => {
+      screen
+        .getByTestId("book-cover-image-book-1")
+        .props.onError({ nativeEvent: { error: "unauthorized" } })
+    })
+    act(() => {
+      screen
+        .getByTestId("book-cover-image-book-1")
+        .props.onError({ nativeEvent: { error: "unauthorized again" } })
+    })
+    expect(screen.queryByTestId("book-cover-image-book-1")).toBeNull()
+
+    view.rerender(
+      <BookCover
+        book={{ ...baseBook, coverUri: freshCoverUri }}
+        width={100}
+        height={150}
+      />,
+    )
+
+    expect(screen.getByTestId("book-cover-image-book-1").props.source).toEqual([
+      freshCoverUri,
+    ])
+    expect(screen.queryByText("Fallback Book")).toBeNull()
   })
 })

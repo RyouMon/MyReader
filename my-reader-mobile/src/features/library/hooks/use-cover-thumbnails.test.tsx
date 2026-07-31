@@ -139,6 +139,32 @@ describe("resolveCoverThumbnailPixelSize", () => {
     })
   })
 
+  it("should not generate missing thumbnails when only reusing the cover cache", async () => {
+    renderHook(
+      () =>
+        useCoverThumbnails({
+          enabled: true,
+          generateMissing: false,
+          library,
+          books: [book("1")],
+          width: 100,
+          height: 150,
+        }),
+      { wrapper: createWrapper() },
+    )
+
+    await waitFor(() => expect(listBookCoverThumbnailCache).toHaveBeenCalled())
+    await act(
+      () =>
+        new Promise<void>((resolve) => {
+          setTimeout(resolve, 20)
+        }),
+    )
+
+    expect(ensureCoverThumbnailFileAsync).not.toHaveBeenCalled()
+    expect(ensureCoverThumbnailFilesAsync).not.toHaveBeenCalled()
+  })
+
   it("should publish generated thumbnails in batches while generation continues when generating cover thumbnails", async () => {
     const firstThumbnail = deferred<{
       fileName: string
@@ -569,6 +595,11 @@ describe("resolveCoverThumbnailPixelSize", () => {
     await waitFor(() =>
       expect(sessionUri(result.current, books[0]!)).toBe(
         "file:///cache/100x150.jpg",
+      ),
+    )
+    await waitFor(() =>
+      expect(sessionUri(`${library.id}:220x330`, books[0]!)).toBe(
+        "file:///cache/220x330.jpg",
       ),
     )
     await waitFor(() =>
