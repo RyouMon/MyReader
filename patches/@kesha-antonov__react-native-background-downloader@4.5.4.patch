@@ -35,3 +35,9 @@ diff --git a/ios/RNBackgroundDownloader.mm b/ios/RNBackgroundDownloader.mm
 +            @"expectedBytes": @(taskConfig.bytesTotal)
 +        }];
 +#endif
+diff --git a/react-native-background-downloader.podspec b/react-native-background-downloader.podspec
+--- a/react-native-background-downloader.podspec
++++ b/react-native-background-downloader.podspec
+@@ -24 +24 @@
+-  s.dependency 'MMKV'
++  s.dependency 'MMKV', '2.4.1'
