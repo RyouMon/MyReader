@@ -3,9 +3,22 @@ import type { Library } from "@my-reader/tools/types/library"
 
 const mockAddRemoteLibrary = jest.fn()
 const mockAddLocalAppLibrary = jest.fn()
+const mockDirectoryDelete = jest.fn()
+const mockInvalidateQueries = jest.fn()
+const mockRemoveAppLibrary = jest.fn()
+const mockRemoveQueries = jest.fn()
 const mockRunLibrarySync = jest.fn()
+const mockScheduleIdleWork = jest.fn()
 const mockSetLibraries = jest.fn()
 const mockSetActiveLibraryId = jest.fn()
+let mockLibraries: Library[] = []
+
+jest.mock("expo-file-system", () => ({
+  Directory: jest.fn(() => ({
+    delete: mockDirectoryDelete,
+    exists: true,
+  })),
+}))
 
 jest.mock("@/src/services/core/remote", () => ({
   addRemoteLibrary: (...args: unknown[]) => mockAddRemoteLibrary(...args),
@@ -25,8 +38,15 @@ jest.mock("@/src/domain/library/calibre", () => ({
 jest.mock("@/src/services/core/app-config", () => ({
   addLocalAppLibrary: (...args: unknown[]) => mockAddLocalAppLibrary(...args),
   initializeAppConfig: jest.fn(),
-  removeAppLibrary: jest.fn(),
+  removeAppLibrary: (...args: unknown[]) => mockRemoveAppLibrary(...args),
   switchAppLibrary: jest.fn(),
+}))
+
+jest.mock("@/src/services/fs/library-paths", () => ({
+  libraryContainerRootUri: (id: string) => `file:///documents/libraries/${id}`,
+  librariesContainerRootUri: () => "file:///documents/libraries",
+  METADATA_DB_RELATIVE: "metadata.db",
+  usesIosContainerSidecar: jest.fn(() => false),
 }))
 
 jest.mock("@/src/services/fs/bookmarks", () => ({
@@ -40,23 +60,78 @@ jest.mock("@/src/services/fs/bookmarks", () => ({
 
 jest.mock("@/src/services/query/query-client", () => ({
   queryClient: {
-    invalidateQueries: jest.fn(),
+    invalidateQueries: (...args: unknown[]) => mockInvalidateQueries(...args),
+    removeQueries: (...args: unknown[]) => mockRemoveQueries(...args),
   },
 }))
 
 jest.mock("@/src/store/app-store", () => ({
   useAppStore: {
     getState: () => ({
+      libraries: mockLibraries,
       setLibraries: mockSetLibraries,
       setActiveLibraryId: mockSetActiveLibraryId,
     }),
   },
 }))
 
+jest.mock("@/src/utils/common", () => ({
+  scheduleIdleWork: (...args: unknown[]) => mockScheduleIdleWork(...args),
+}))
+
+// Jest factories above must be registered before importing the module under test.
+// eslint-disable-next-line import/first
 import {
   addLibraryFromPicker,
   addRemoteLibraryFromSource,
+  removeLibrary,
 } from "./library-actions"
+
+describe("removeLibrary", () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    mockLibraries = []
+  })
+
+  it("should resolve before container cleanup when removing a remote library", async () => {
+    const removedLibrary = {
+      id: "library-1",
+      name: "Remote Library",
+      path: "file:///documents/libraries/library-1",
+      sourceType: "onedrive",
+    } as Library
+    const remainingLibrary = {
+      id: "library-2",
+      name: "Remaining Library",
+      path: "file:///Library/Remaining",
+    } as Library
+    let cleanup: (() => void) | undefined
+    mockLibraries = [removedLibrary, remainingLibrary]
+    mockRemoveAppLibrary.mockResolvedValue({
+      libraries: [remainingLibrary],
+      activeLibraryId: remainingLibrary.id,
+    })
+    mockScheduleIdleWork.mockImplementation((callback: () => void) => {
+      cleanup = callback
+      return 1
+    })
+
+    await removeLibrary(removedLibrary.id)
+
+    expect(mockSetLibraries).toHaveBeenCalledWith([remainingLibrary])
+    expect(mockSetActiveLibraryId).toHaveBeenCalledWith(remainingLibrary.id)
+    expect(mockRemoveQueries).toHaveBeenCalledWith({
+      queryKey: ["books", removedLibrary.id],
+      exact: true,
+    })
+    expect(mockInvalidateQueries).not.toHaveBeenCalled()
+    expect(mockDirectoryDelete).not.toHaveBeenCalled()
+
+    cleanup?.()
+
+    expect(mockDirectoryDelete).toHaveBeenCalledTimes(1)
+  })
+})
 
 describe("addRemoteLibraryFromSource", () => {
   beforeEach(() => {

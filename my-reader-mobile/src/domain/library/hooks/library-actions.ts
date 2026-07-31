@@ -7,7 +7,6 @@ import {
   libraryQueryKeys,
   type PickedCalibreLibrary,
 } from "@/src/domain/library/calibre"
-import { withSecurityScopedLibraryAccess } from "@/src/services/fs/bookmarks"
 import { runLibrarySync } from "@/src/domain/sync/hooks/run-library-sync"
 import { isRemoteSourceType } from "@/src/domain/types"
 import i18n from "@/src/i18n"
@@ -17,9 +16,10 @@ import {
   switchAppLibrary,
 } from "@/src/services/core/app-config"
 import { addRemoteLibrary } from "@/src/services/core/remote"
+import { withSecurityScopedLibraryAccess } from "@/src/services/fs/bookmarks"
 import {
-  libraryContainerRootUri,
   librariesContainerRootUri,
+  libraryContainerRootUri,
   METADATA_DB_RELATIVE,
   usesIosContainerSidecar,
 } from "@/src/services/fs/library-paths"
@@ -27,6 +27,7 @@ import { fileUriFor } from "@/src/services/fs/path"
 import { queryClient } from "@/src/services/query/query-client"
 import { useAppStore } from "@/src/store/app-store"
 import { excludeLocalLibrarySource } from "@/src/store/app-store.constants"
+import { scheduleIdleWork } from "@/src/utils/common"
 
 function startInitialLibrarySync(libraryId: string, context: string): void {
   void runLibrarySync({
@@ -88,7 +89,31 @@ export async function addRemoteLibraryFromSource(
   return library
 }
 
-/** Removes a library and deletes its app container when applicable. */
+function scheduleLibraryContainerRemoval(
+  id: string,
+  library: Library | undefined,
+): void {
+  if (
+    !library ||
+    (!isRemoteSourceType(library.sourceType) &&
+      !usesIosContainerSidecar(library))
+  ) {
+    return
+  }
+
+  scheduleIdleWork(() => {
+    try {
+      const container = new Directory(libraryContainerRootUri(id))
+      if (container.exists) {
+        container.delete()
+      }
+    } catch (error) {
+      console.warn(`[removeLibrary] container cleanup failed (${id}):`, error)
+    }
+  })
+}
+
+/** Removes a library and schedules non-critical app-container cleanup. */
 export async function removeLibrary(id: string): Promise<void> {
   const config = useAppStore.getState()
   const removed = config.libraries.find((library) => library.id === id)
@@ -97,22 +122,11 @@ export async function removeLibrary(id: string): Promise<void> {
   useAppStore.getState().setLibraries(appConfig.libraries)
   useAppStore.getState().setActiveLibraryId(appConfig.activeLibraryId)
 
-  if (
-    removed &&
-    (isRemoteSourceType(removed.sourceType) || usesIosContainerSidecar(removed))
-  ) {
-    const container = new Directory(libraryContainerRootUri(id))
-    if (container.exists) {
-      container.delete()
-    }
-  }
-
-  await queryClient.invalidateQueries({ queryKey: libraryQueryKeys.books(id) })
-  if (appConfig.activeLibraryId) {
-    await queryClient.invalidateQueries({
-      queryKey: libraryQueryKeys.books(appConfig.activeLibraryId),
-    })
-  }
+  queryClient.removeQueries({
+    queryKey: libraryQueryKeys.books(id),
+    exact: true,
+  })
+  scheduleLibraryContainerRemoval(id, removed)
 }
 
 /** Switches the active library without blocking on sync. */

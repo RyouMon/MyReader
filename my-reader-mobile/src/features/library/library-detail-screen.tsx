@@ -1,12 +1,13 @@
-import { useMemo } from "react"
-
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import * as Haptics from "expo-haptics"
-import { Stack, router, useLocalSearchParams } from "expo-router"
+import { router, Stack, useLocalSearchParams } from "expo-router"
 import { SymbolView } from "expo-symbols"
+import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Platform } from "react-native"
-
+import { EmptyState, ListRow, SectionCard } from "@/src/components"
+import { Button, ButtonGroup } from "@/src/components/ui"
+import { Screen } from "@/src/components/ui/screen"
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import { useThemePalette } from "@/src/design/tokens"
 import {
@@ -17,13 +18,9 @@ import { notifyLibraryRefresh } from "@/src/domain/notifications/download-notifi
 import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library"
 import type { DataSource, Library } from "@/src/domain/types"
 import { isRemoteSourceType } from "@/src/domain/types"
+import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 import { useAppStore } from "@/src/store/app-store"
 import { Text, View } from "@/tw"
-
-import { EmptyState, SectionCard, ListRow } from "@/src/components"
-import { Button, ButtonGroup } from "@/src/components/ui"
-import { Screen } from "@/src/components/ui/screen"
-import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 
 function formatDate(timestamp?: number) {
   if (!timestamp) {
@@ -69,6 +66,15 @@ function getSourcePathDetail(library: Library, dataSource?: DataSource | null) {
   }
 
   return library.path
+}
+
+function dismissLibraryDetail() {
+  if (router.canGoBack()) {
+    router.back()
+    return
+  }
+
+  router.replace("/settings")
 }
 
 function DetailHero({
@@ -152,7 +158,11 @@ export default function LibraryDetailScreen() {
     () => libraries.findIndex((item) => item.id === libraryId),
     [libraries, libraryId],
   )
-  const library = libraryIndex >= 0 ? (libraries[libraryIndex] ?? null) : null
+  const storedLibrary =
+    libraryIndex >= 0 ? (libraries[libraryIndex] ?? null) : null
+  const [deletingLibrarySnapshot, setDeletingLibrarySnapshot] =
+    useState<Library | null>(null)
+  const library = storedLibrary ?? deletingLibrarySnapshot
   const linkedDataSource = useMemo(
     () =>
       dataSources.find((source) => source.id === library?.dataSourceId) ?? null,
@@ -160,15 +170,6 @@ export default function LibraryDetailScreen() {
   )
   const isActive = library?.id === activeLibraryId
   const accent = palette.primary
-
-  function handleBack() {
-    if (router.canGoBack()) {
-      router.back()
-      return
-    }
-
-    router.replace("/settings")
-  }
 
   function confirmDelete() {
     if (!library) {
@@ -185,8 +186,9 @@ export default function LibraryDetailScreen() {
           style: "destructive",
           onPress: () => {
             void (async () => {
+              setDeletingLibrarySnapshot(library)
               await removeLibrary(library.id)
-              handleBack()
+              dismissLibraryDetail()
             })()
           },
         },
