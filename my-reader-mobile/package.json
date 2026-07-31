@@ -37,6 +37,7 @@
     "@material/material-color-utilities": "^0.4.0",
     "@my-reader/book-transition": "link:modules/book-transition",
     "@my-reader/fonts": "workspace:*",
+    "@my-reader/i18n": "workspace:*",
     "@my-reader/readium": "link:./modules/readium",
     "@my-reader/tools": "workspace:*",
     "@noble/hashes": "^2.2.0",

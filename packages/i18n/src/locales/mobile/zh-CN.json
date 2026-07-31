@@ -66,8 +66,6 @@
       "favorites": "收藏"
     },
     "sort": {
-      "title": "书名",
-      "author": "作者",
       "recentlyAdded": "最近添加"
     },
     "view": {
@@ -152,7 +150,6 @@
     "addedAt": "添加时间"
   },
   "settings": {
-    "title": "设置",
     "libraryDetail": "书库详情",
     "addLibrary": "添加书库",
     "librarySection": "书库",
@@ -218,7 +215,6 @@
       "moreActions": "更多操作"
     },
     "toc": "目录",
-    "navigation": "目录",
     "navigationSheet": "目录面板",
     "noToc": "此书籍没有目录",
     "search": {
@@ -310,7 +306,6 @@
     "settingsTheme": "主题",
     "readingMode": "阅读方式",
     "pageDirection": "翻页方向",
-    "background": "背景",
     "backgroundAuto": "自动",
     "backgroundBlack": "黑色",
     "backgroundWhite": "白色",
@@ -341,12 +336,6 @@
     "themeNight": "夜间",
     "themeContrast2": "高对比 2",
     "themes": {
-      "neutral": "纯白",
-      "paper": "羊皮纸",
-      "sepia": "护眼米黄",
-      "green": "护眼绿色",
-      "ocean": "深海",
-      "night": "夜间",
       "contrast1": "高对比 1",
       "contrast2": "高对比 2"
     },
@@ -360,18 +349,11 @@
     "pageProgress": "{{current}} / {{total}} 页",
     "font": "字体",
     "fontOptions": {
-      "default": "默认",
       "defaultChinese": "默认中文",
-      "notoSansSc": "思源黑体",
-      "notoSerifSc": "思源宋体",
       "lxgwWenkai": "霞鹜文楷",
-      "maru975Sc": "阿里妈妈方圆体",
       "oldStyle": "旧式衬线",
       "modern": "现代衬线",
-      "serif": "衬线",
-      "sans": "无衬线",
       "humanist": "人文无衬线",
-      "monospace": "等宽",
       "openDyslexic": "OpenDyslexic",
       "accessibleDfa": "AccessibleDfA",
       "iaWriterDuospace": "IA Writer"
@@ -420,9 +402,7 @@
     "downloadAndRead": "下载并阅读",
     "continueReading": "继续阅读",
     "startReading": "开始阅读",
-    "readingProgress": "阅读进度",
     "back": "返回",
-    "favorite": "收藏",
     "share": "分享",
     "moreActions": "更多操作：{{title}}",
     "openBook": "打开《{{title}}》",
@@ -449,10 +429,8 @@
       "shareFormat": "分享",
       "more": "更多"
     },
-    "synopsis": "简介",
     "setReadingFormat": "设置阅读格式",
-    "expand": "展开",
-    "collapse": "收起"
+    "expand": "展开"
   },
   "share": {
     "fileNotDownloadedTitle": "文件未下载",
@@ -460,7 +438,6 @@
     "shareFailed": "分享失败"
   },
   "bookRow": {
-    "unread": "未读",
     "finished": "已读"
   },
   "addLibrary": {
@@ -648,10 +625,6 @@
   },
   "common": {
     "confirm": "确定",
-    "cancel": "取消",
-    "close": "关闭",
-    "delete": "删除",
-    "save": "保存",
     "gotIt": "知道了",
     "search": "搜索",
     "clear": "清除",
@@ -689,6 +662,7 @@
     "notFoundInLibrary": "在书库中未找到该书",
     "noReadableFormat": "该书没有可阅读的格式（需要 EPUB、CBZ 或 PDF）",
     "downloadingFromWebdav": "正在从 WebDAV 下载书籍…",
+    "downloadingFromRemote": "正在从远程数据源下载书籍…",
     "loadingBookFile": "正在加载书籍文件…",
     "downloadFirst": "请先在书籍详情中下载该格式，再打开阅读。"
   },
@@ -700,6 +674,13 @@
     "dataIntegrityError": "同步数据完整性错误",
     "webdavSourceNotFound": "当前书库关联的 WebDAV 数据源不存在。",
     "webdavPasswordMissing": "当前 WebDAV 数据源缺少密码，请重新编辑数据源。",
+    "onedriveSourceNotFound": "当前书库关联的 OneDrive 数据源不存在。",
+    "onedriveRefreshTokenMissing": "当前 OneDrive 数据源缺少认证信息，请重新认证该数据源。",
+    "onedriveGetFailed": "OneDrive GET 失败: {{status}} {{path}}",
+    "onedrivePutFailed": "OneDrive PUT 失败: {{status}} {{path}}",
+    "onedriveDeleteFailed": "OneDrive DELETE 失败: {{status}} {{path}}",
+    "onedriveListFailed": "OneDrive 列目录失败: {{status}} {{path}}",
+    "onedriveMkdirFailed": "OneDrive 创建目录失败: {{status}} {{path}}",
     "cannotResolveLocalPath": "无法解析本地书库根目录。",
     "downloadCancelled": "下载已取消",
     "downloadFailed": "后台下载失败: {{code}}",

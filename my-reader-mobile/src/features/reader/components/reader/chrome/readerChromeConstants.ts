@@ -1,3 +1,4 @@
+import type { MobileTranslationKey } from "@my-reader/i18n/mobile"
 import { READER_THEME_PRESETS } from "@my-reader/tools/reader-themes"
 import type { ReaderTheme } from "@/src/store/app-store.types"
 
@@ -5,7 +6,7 @@ export type ThemeOption = {
   key: ReaderTheme
   swatch: string
   fg: string
-  label: string
+  label: MobileTranslationKey
 }
 
 export const READER_FLOATING_BUTTON_SIZE = 52
@@ -67,6 +68,6 @@ export const READER_THEME_OPTIONS: ThemeOption[] = READER_THEME_PRESETS.map(
     key: theme.key,
     swatch: theme.backgroundColor,
     fg: theme.foregroundColor,
-    label: `reader.themes.${theme.labelKey}`,
+    label: `reader.themes.${theme.labelKey}` as MobileTranslationKey,
   }),
 )

@@ -1,21 +1,25 @@
-import { normalizeCurrentPath } from "@/src/domain/library/remote-library"
-import { Stack, router, useLocalSearchParams } from "expo-router"
+import type { MobileTranslationKey } from "@my-reader/i18n/mobile"
+import { router, Stack, useLocalSearchParams } from "expo-router"
 import { useTranslation } from "react-i18next"
-
-import { useThemePalette } from "@/src/design/tokens"
-import { Text, View } from "@/tw"
-
-import { EmptyState, Screen, SectionCard, ListRow } from "@/src/components"
+import { EmptyState, ListRow, Screen, SectionCard } from "@/src/components"
 import { ErrorBoundary } from "@/src/components/error-boundary"
+import { useThemePalette } from "@/src/design/tokens"
+import { normalizeCurrentPath } from "@/src/domain/library/remote-library"
 import { useRemoteDirectoryBrowser } from "@/src/features/settings/hooks/use-remote-directory-browser"
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 import { createSaveAction } from "@/src/navigation/toolbar-action-helpers"
+import { Text, View } from "@/tw"
 
 type RemoteDirectoryBrowserScreenProps = {
   sourceType: "webdav" | "onedrive"
   browserRoute: "/settings/webdav/browser" | "/settings/onedrive/browser"
   translationNamespace: "webdav.browser" | "onedrive.browser"
 }
+
+type RemoteBrowserTranslationKey = Extract<
+  MobileTranslationKey,
+  `${RemoteDirectoryBrowserScreenProps["translationNamespace"]}.${string}`
+>
 
 /** Shared directory browser for remote data sources (WebDAV, OneDrive). */
 export function RemoteDirectoryBrowserScreen({
@@ -36,7 +40,7 @@ export function RemoteDirectoryBrowserScreen({
   }>()
 
   const label = (key: string, options?: Record<string, unknown>) =>
-    t(`${translationNamespace}.${key}`, options)
+    t(`${translationNamespace}.${key}` as RemoteBrowserTranslationKey, options)
 
   const {
     notFound,

@@ -1,3 +1,4 @@
+import type { DesktopTranslationKey } from "@my-reader/i18n/desktop"
 import {
   ArrowLeft,
   Database,
@@ -26,7 +27,7 @@ interface SettingsNavProps {
 
 interface NavItem {
   key: SettingsSection
-  tKey: string
+  tKey: DesktopTranslationKey
   Icon: LucideIcon
 }
 

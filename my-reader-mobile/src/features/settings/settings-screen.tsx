@@ -1,32 +1,29 @@
-import { Image as ExpoImage } from "expo-image"
-import { getLocales } from "expo-localization"
 import type { MenuAction } from "@react-native-menu/menu"
+import { Image as ExpoImage } from "expo-image"
 import { router, useNavigation } from "expo-router"
 import { useEffect, useMemo, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { Switch } from "react-native"
-
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import {
+  ListMenuRow,
+  ListRow,
+  Screen,
+  SectionCard,
+  SectionLabel,
+} from "@/src/components"
 import {
   COVER_THUMBNAIL_GENERATION_CONCURRENCY_MAX,
   COVER_THUMBNAIL_GENERATION_CONCURRENCY_MIN,
 } from "@/src/config/library-list-performance"
+import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import { DEVELOPER_TOOLS_ENABLED } from "@/src/constants/developer-tools"
-import { changeLanguage } from "@/src/i18n"
+import { type ThemeMode, useTheme, useThemePalette } from "@/src/design/tokens"
+import { changeLanguage, resolveAppLanguage } from "@/src/i18n"
 import { clearBookCoverThumbnailCache } from "@/src/services/core/content"
 import { clearCoverThumbnailCache } from "@/src/services/fs/cover-thumbnail-cache"
-import { useTheme, useThemePalette, type ThemeMode } from "@/src/design/tokens"
+import { useAppStore } from "@/src/store/app-store"
 import type { HomeCardStyle } from "@/src/store/app-store.types"
 import { View } from "@/tw"
-
-import {
-  Screen,
-  SectionCard,
-  ListMenuRow,
-  ListRow,
-  SectionLabel,
-} from "@/src/components"
-import { useAppStore } from "@/src/store/app-store"
 import { DeveloperConcurrencyControl } from "./components/developer-concurrency-control"
 
 export default function SettingsScreen() {
@@ -121,10 +118,10 @@ export default function SettingsScreen() {
 
   const language = useAppStore((s) => s.settings.language)
   const setLanguage = useAppStore((s) => s.setLanguage)
-  const effectiveLanguage = language || "system"
+  const effectiveLanguage = language ? resolveAppLanguage(language) : "system"
   const languageLabels = useMemo<Record<string, string>>(
     () => ({
-      zh: "中文",
+      "zh-CN": "中文",
       en: "English",
       system: t("settings.themeMode.system"),
     }),
@@ -132,7 +129,7 @@ export default function SettingsScreen() {
   )
   const languageMenuActions = useMemo<MenuAction[]>(
     () =>
-      ["system", "zh", "en"].map((lang) => ({
+      ["system", "zh-CN", "en"].map((lang) => ({
         id: `lang:${lang}`,
         title: `${effectiveLanguage === lang ? "✓ " : ""}${languageLabels[lang]}`,
       })),
@@ -235,11 +232,7 @@ export default function SettingsScreen() {
               onPressAction={({ nativeEvent }) => {
                 const lang = nativeEvent.event.replace("lang:", "")
                 setLanguage(lang === "system" ? "" : lang)
-                void changeLanguage(
-                  lang === "system"
-                    ? (getLocales()[0]?.languageCode ?? "zh")
-                    : lang,
-                )
+                void changeLanguage(resolveAppLanguage(lang))
               }}
               title={t("settings.language")}
               value={languageLabels[effectiveLanguage]}

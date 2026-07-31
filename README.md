@@ -78,6 +78,7 @@ pnpm --filter my-reader-mobile build:dev:android
 
 ```bash
 pnpm --filter @my-reader/fonts test
+pnpm --filter @my-reader/i18n test
 pnpm --filter @my-reader/tools test
 pnpm --filter my-reader run test:unit
 pnpm --filter my-reader-mobile exec jest --runInBand

@@ -1,4 +1,4 @@
-export const en = {
+export const desktopEn = {
   translation: {
     errors: {
       io: "File I/O error",
@@ -63,8 +63,6 @@ export const en = {
       syncLibrary: "Sync current library",
       sort: {
         recent: "Recently added",
-        title: "Title",
-        author: "Author",
         progress: "Progress",
       },
       empty: {
@@ -87,7 +85,6 @@ export const en = {
       openBook: "Open {{title}}",
     },
     bookRow: {
-      unread: "Unread",
       finished: "Finished",
       reading: "Reading",
     },
@@ -141,19 +138,15 @@ export const en = {
         spa: "Spanish",
         rus: "Russian",
       },
-      favorite: "Favorite",
       unfavorite: "Unfavorite",
       openFileLocation: "Open file location",
       more: "More",
       readNow: "Read now",
       addToShelf: "Add to shelf",
       onShelf: "On shelf",
-      synopsis: "Synopsis",
       noSynopsis: "None",
-      readingProgress: "Reading progress",
       authorRole: "Author",
       unknownAuthor: "Unknown author",
-      collapse: "Collapse",
       expand: "Read more",
       fileFormats: "File formats",
       identifiersTitle: "Identifiers",
@@ -188,7 +181,6 @@ export const en = {
       setDefaultFormatFor: "Set {{format}} as default reading format",
     },
     settings: {
-      title: "Settings",
       nav: {
         libraries: "Libraries",
         dataSources: "Data Sources",
@@ -341,7 +333,6 @@ export const en = {
       positionPercentage: "{{percentage}}% read",
       positionUnknown: "Unknown reading position",
       toc: "Contents",
-      navigation: "Contents",
       close: "Close",
       minimize: "Minimize",
       maximize: "Maximize",
@@ -429,28 +420,15 @@ export const en = {
         "Similar to Thorium: preferences are saved to local config and persist on next open.",
       theme: "Theme",
       themes: {
-        neutral: "White",
-        paper: "Paper",
-        sepia: "Sepia",
-        green: "Green",
-        ocean: "Ocean",
-        night: "Night",
         contrast1: "HC1",
         contrast2: "HC2",
       },
       fontOptions: {
-        default: "Default",
         defaultChinese: "Default Chinese",
         oldStyle: "Readium old style",
         modern: "Readium modern",
         humanist: "Readium humanist",
-        serif: "Serif",
-        sans: "Sans",
-        monospace: "Monospace",
-        notoSansSc: "Noto Sans SC",
-        notoSerifSc: "Noto Serif SC",
         lxgwWenkaiGb: "LXGW WenKai GB",
-        maru975Sc: "Alimama FangYuanTi",
       },
       layout: "Layout",
       layoutOptions: {
@@ -463,7 +441,6 @@ export const en = {
         paginate: "Paginated",
         scroll: "Scroll",
       },
-      background: "Background",
       backgroundOptions: {
         auto: "Auto",
         black: "Black",
@@ -529,15 +506,11 @@ export const en = {
     },
     common: {
       add: "Add",
-      delete: "Delete",
-      cancel: "Cancel",
       confirm: "Confirm",
-      save: "Save",
       loading: "Loading…",
       pleaseSelect: "Please select",
       change: "Change",
       back: "Back",
-      close: "Close",
       refresh: "Refresh",
       retry: "Retry",
       more: "More",

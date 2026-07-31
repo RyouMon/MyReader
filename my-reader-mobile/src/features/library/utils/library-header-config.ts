@@ -1,3 +1,4 @@
+import type { MobileTranslationKey } from "@my-reader/i18n/mobile"
 import type {
   LibraryFilterOption,
   SortOption,
@@ -12,7 +13,10 @@ export const libraryFilterOptions = [
   { value: "downloading", labelKey: "library.filter.downloading" as const },
 ] as const
 
-export const librarySortOptions: { value: SortOption; labelKey: string }[] = [
+export const librarySortOptions: {
+  value: SortOption
+  labelKey: MobileTranslationKey
+}[] = [
   { value: "title", labelKey: "library.sort.title" },
   { value: "author", labelKey: "library.sort.author" },
   { value: "recentlyAdded", labelKey: "library.sort.recentlyAdded" },
@@ -20,7 +24,7 @@ export const librarySortOptions: { value: SortOption; labelKey: string }[] = [
 
 export const libraryViewOptions: {
   value: LibraryViewMode
-  labelKey: string
+  labelKey: MobileTranslationKey
 }[] = [
   { value: "grid", labelKey: "library.view.grid" },
   { value: "list", labelKey: "library.view.list" },

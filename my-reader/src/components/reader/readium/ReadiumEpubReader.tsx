@@ -1,3 +1,4 @@
+import type { DesktopTranslationKey } from "@my-reader/i18n/desktop"
 import {
   type ReaderAnnotationColor,
   readerAnnotationExcerpt,
@@ -946,7 +947,7 @@ function EpubSettingsPanel({
                       readerSettingsOptionStateClass(activeFont === option.key),
                     )}
                   >
-                    {t(option.labelKey)}
+                    {t(option.labelKey as DesktopTranslationKey)}
                   </button>
                 ))}
               </div>

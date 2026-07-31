@@ -12,7 +12,7 @@ const mockAppState = {
 jest.mock(".", () => ({
   __esModule: true,
   changeLanguage: jest.fn(() => Promise.resolve()),
-  resolveAppLanguage: jest.fn((language: string) => language || "zh"),
+  resolveAppLanguage: jest.fn((language: string) => language || "zh-CN"),
 }))
 
 jest.mock("../store/app-store", () => ({

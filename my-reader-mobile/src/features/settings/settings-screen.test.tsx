@@ -144,6 +144,9 @@ jest.mock("@/src/design/tokens", () => ({
 
 jest.mock("@/src/i18n", () => ({
   changeLanguage: jest.fn(),
+  resolveAppLanguage: jest.fn((language: string) =>
+    language.startsWith("en") ? "en" : "zh-CN",
+  ),
 }))
 
 jest.mock("@/src/store/app-store", () => ({

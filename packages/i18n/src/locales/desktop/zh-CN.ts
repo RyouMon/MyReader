@@ -1,4 +1,4 @@
-export const zhCN = {
+export const desktopZhCN = {
   translation: {
     errors: {
       io: "文件读写错误",
@@ -62,8 +62,6 @@ export const zhCN = {
       syncLibrary: "同步当前书库",
       sort: {
         recent: "最近添加",
-        title: "书名",
-        author: "作者",
         progress: "进度",
       },
       empty: {
@@ -86,7 +84,6 @@ export const zhCN = {
       openBook: "打开《{{title}}》",
     },
     bookRow: {
-      unread: "未读",
       finished: "已读完",
       reading: "阅读中",
     },
@@ -140,19 +137,15 @@ export const zhCN = {
         spa: "Español",
         rus: "Русский",
       },
-      favorite: "收藏",
       unfavorite: "取消收藏",
       openFileLocation: "打开文件位置",
       more: "更多",
       readNow: "立即阅读",
       addToShelf: "加入书架",
       onShelf: "已加入书架",
-      synopsis: "简介",
       noSynopsis: "无",
-      readingProgress: "阅读进度",
       authorRole: "作者",
       unknownAuthor: "未知作者",
-      collapse: "收起",
       expand: "展开全文",
       fileFormats: "文件格式",
       identifiersTitle: "标识符",
@@ -187,7 +180,6 @@ export const zhCN = {
       setDefaultFormatFor: "将 {{format}} 设为默认阅读格式",
     },
     settings: {
-      title: "设置",
       nav: {
         libraries: "书库管理",
         dataSources: "数据源管理",
@@ -332,7 +324,6 @@ export const zhCN = {
       positionPercentage: "阅读到 {{percentage}}%",
       positionUnknown: "未知阅读位置",
       toc: "目录",
-      navigation: "目录",
       close: "关闭",
       minimize: "最小化",
       maximize: "最大化",
@@ -409,28 +400,15 @@ export const zhCN = {
       fixedLayoutNote: "与 Thorium 类似：偏好写入本机配置，下次打开仍生效。",
       theme: "主题",
       themes: {
-        neutral: "纯白",
-        paper: "羊皮纸",
-        sepia: "护眼米黄",
-        green: "护眼绿色",
-        ocean: "深海",
-        night: "夜间",
         contrast1: "高对比度 1",
         contrast2: "高对比度 2",
       },
       fontOptions: {
-        default: "默认",
         defaultChinese: "默认中文",
         oldStyle: "Readium 旧式",
         modern: "Readium 现代",
         humanist: "Readium 人文",
-        serif: "衬线",
-        sans: "无衬线",
-        monospace: "等宽",
-        notoSansSc: "思源黑体",
-        notoSerifSc: "思源宋体",
         lxgwWenkaiGb: "霞鹜文楷 GB",
-        maru975Sc: "阿里妈妈方圆体",
       },
       layout: "版面",
       layoutOptions: {
@@ -443,7 +421,6 @@ export const zhCN = {
         paginate: "分页",
         scroll: "连续滚动",
       },
-      background: "背景",
       backgroundOptions: {
         auto: "自动",
         black: "黑色",
@@ -506,15 +483,11 @@ export const zhCN = {
     },
     common: {
       add: "添加",
-      delete: "删除",
-      cancel: "取消",
       confirm: "确认",
-      save: "保存",
       loading: "加载中…",
       pleaseSelect: "请选择",
       change: "更换",
       back: "返回",
-      close: "关闭",
       refresh: "刷新",
       retry: "重试",
       more: "更多",

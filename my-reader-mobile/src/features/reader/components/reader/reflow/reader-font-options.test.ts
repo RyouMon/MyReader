@@ -1,5 +1,4 @@
-import en from "@/src/i18n/locales/en.json"
-import zh from "@/src/i18n/locales/zh.json"
+import { mobileResources } from "@my-reader/i18n/mobile"
 import type { ReflowableReaderSettings } from "@/src/store/app-store.types"
 import {
   coerceReaderFontOption,
@@ -24,6 +23,9 @@ const baseSettings: ReflowableReaderSettings = {
 }
 
 describe("reader font options", () => {
+  const en = mobileResources.en.translation
+  const zh = mobileResources["zh-CN"].translation
+
   const localeValue = (locale: object, key: string) =>
     key.split(".").reduce<unknown>((value, segment) => {
       if (!value || typeof value !== "object") return undefined

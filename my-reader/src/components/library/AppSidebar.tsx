@@ -1,3 +1,22 @@
+import type { DesktopTranslationKey } from "@my-reader/i18n/desktop"
+import { Link, useLocation, useNavigate } from "@tanstack/react-router"
+import {
+  BookCopy,
+  Check,
+  ChevronsUpDown,
+  Clock,
+  Library,
+  Monitor,
+  Moon,
+  Palette,
+  PlusCircle,
+  Settings,
+  Star,
+  Sun,
+  Tags,
+  User,
+} from "lucide-react"
+import { useTranslation } from "react-i18next"
 import { useTheme } from "@/components/AppThemeProvider"
 import {
   DropdownMenu,
@@ -27,31 +46,13 @@ import { useFavoriteBookIds } from "@/hooks/queries/useFavoriteBooksQuery"
 import { useLibrariesQuery } from "@/hooks/queries/useLibrariesQuery"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 import type { AppThemeMode } from "@/types/readerUiPreferences"
-import { Link, useLocation, useNavigate } from "@tanstack/react-router"
-import {
-  BookCopy,
-  Check,
-  ChevronsUpDown,
-  Clock,
-  Library,
-  Monitor,
-  Moon,
-  Palette,
-  PlusCircle,
-  Settings,
-  Star,
-  Sun,
-  Tags,
-  User,
-} from "lucide-react"
-import { useTranslation } from "react-i18next"
 
 export type SidebarView = "all" | "recent" | "favorites"
 
 const THEME_OPTIONS: Array<{
   value: AppThemeMode
   icon: typeof Sun
-  tKey: string
+  tKey: DesktopTranslationKey
 }> = [
   { value: "light", icon: Sun, tKey: "theme.light" },
   { value: "dark", icon: Moon, tKey: "theme.dark" },

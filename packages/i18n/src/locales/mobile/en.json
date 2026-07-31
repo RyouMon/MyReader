@@ -66,8 +66,6 @@
       "favorites": "Favorites"
     },
     "sort": {
-      "title": "Title",
-      "author": "Author",
       "recentlyAdded": "Recently Added"
     },
     "view": {
@@ -152,7 +150,6 @@
     "addedAt": "Added At"
   },
   "settings": {
-    "title": "Settings",
     "libraryDetail": "Library Details",
     "addLibrary": "Add Library",
     "librarySection": "Library",
@@ -218,7 +215,6 @@
       "moreActions": "More Actions"
     },
     "toc": "Table of Contents",
-    "navigation": "Contents",
     "navigationSheet": "Contents panel",
     "noToc": "This book has no table of contents",
     "search": {
@@ -310,7 +306,6 @@
     "settingsTheme": "Theme",
     "readingMode": "Reading Mode",
     "pageDirection": "Page Direction",
-    "background": "Background",
     "backgroundAuto": "Auto",
     "backgroundBlack": "Black",
     "backgroundWhite": "White",
@@ -341,12 +336,6 @@
     "themeNight": "Night",
     "themeContrast2": "HC2",
     "themes": {
-      "neutral": "White",
-      "paper": "Paper",
-      "sepia": "Sepia",
-      "green": "Green",
-      "ocean": "Ocean",
-      "night": "Night",
       "contrast1": "HC1",
       "contrast2": "HC2"
     },
@@ -360,18 +349,11 @@
     "pageProgress": "Page {{current}} / {{total}}",
     "font": "Font",
     "fontOptions": {
-      "default": "Default",
       "defaultChinese": "Chinese Default",
-      "notoSansSc": "Noto Sans SC",
-      "notoSerifSc": "Noto Serif SC",
       "lxgwWenkai": "LXGW WenKai",
-      "maru975Sc": "Alimama FangYuanTi",
       "oldStyle": "Old Style",
       "modern": "Modern Serif",
-      "serif": "Serif",
-      "sans": "Sans",
       "humanist": "Humanist Sans",
-      "monospace": "Monospace",
       "openDyslexic": "OpenDyslexic",
       "accessibleDfa": "AccessibleDfA",
       "iaWriterDuospace": "IA Writer"
@@ -420,9 +402,7 @@
     "downloadAndRead": "Download & Read",
     "continueReading": "Continue Reading",
     "startReading": "Start Reading",
-    "readingProgress": "Reading progress",
     "back": "Back",
-    "favorite": "Favorite",
     "share": "Share",
     "moreActions": "More actions: {{title}}",
     "openBook": "Open \"{{title}}\"",
@@ -449,10 +429,8 @@
       "shareFormat": "Share",
       "more": "More"
     },
-    "synopsis": "Synopsis",
     "setReadingFormat": "Set Reading Format",
-    "expand": "Expand",
-    "collapse": "Collapse"
+    "expand": "Expand"
   },
   "share": {
     "fileNotDownloadedTitle": "File not downloaded",
@@ -460,7 +438,6 @@
     "shareFailed": "Share failed"
   },
   "bookRow": {
-    "unread": "Unread",
     "finished": "Finished"
   },
   "addLibrary": {
@@ -648,10 +625,6 @@
   },
   "common": {
     "confirm": "OK",
-    "cancel": "Cancel",
-    "close": "Close",
-    "delete": "Delete",
-    "save": "Save",
     "gotIt": "Got it",
     "search": "Search",
     "clear": "Clear",

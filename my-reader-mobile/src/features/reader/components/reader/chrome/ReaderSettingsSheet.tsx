@@ -1,4 +1,5 @@
 import { BottomSheetScrollView } from "@expo/ui/community/bottom-sheet"
+import type { MobileTranslationKey } from "@my-reader/i18n/mobile"
 import { forwardRef } from "react"
 import { useTranslation } from "react-i18next"
 import { Platform, View as RNView, StyleSheet } from "react-native"
@@ -16,45 +17,52 @@ import type {
 } from "@/src/store/app-store.types"
 import { Text, View } from "@/tw"
 import type { ReaderFontOption } from "../reflow/reader-font-options"
+import ReaderSettingsSheetContainer from "./ReaderSettingsSheetContainer"
+import type { ReaderSettingsSheetRef } from "./ReaderSettingsSheetContainer.types"
 import {
   FontPicker,
   SegmentPicker,
   SliderControl,
   ThemeSwatches,
 } from "./SettingControls"
-import ReaderSettingsSheetContainer from "./ReaderSettingsSheetContainer"
-import type { ReaderSettingsSheetRef } from "./ReaderSettingsSheetContainer.types"
+
 const ALIGNMENT_OPTIONS = [
   { key: "auto", labelKey: "reader.alignmentAuto" },
   { key: "justify", labelKey: "reader.alignmentJustify" },
   { key: "start", labelKey: "reader.alignmentStart" },
-] as const satisfies { key: TextAlignment; labelKey: string }[]
+] as const satisfies { key: TextAlignment; labelKey: MobileTranslationKey }[]
 
 const COLUMN_OPTIONS = [
   { key: "auto", labelKey: "reader.columnAuto" },
   { key: "1", labelKey: "reader.column1" },
-] as const satisfies { key: ColumnCount; labelKey: string }[]
+] as const satisfies { key: ColumnCount; labelKey: MobileTranslationKey }[]
 
 const BACKGROUND_OPTIONS = [
   { key: "auto", labelKey: "reader.backgroundAuto" },
   { key: "black", labelKey: "reader.backgroundBlack" },
   { key: "white", labelKey: "reader.backgroundWhite" },
-] as const satisfies { key: FixedBackground; labelKey: string }[]
+] as const satisfies { key: FixedBackground; labelKey: MobileTranslationKey }[]
 
 const NAVIGATION_OPTIONS = [
   { key: "horizontal", labelKey: "reader.navHorizontal" },
   { key: "vertical", labelKey: "reader.navVertical" },
-] as const satisfies { key: FixedNavigationMode; labelKey: string }[]
+] as const satisfies {
+  key: FixedNavigationMode
+  labelKey: MobileTranslationKey
+}[]
 
 const PROGRESSION_OPTIONS = [
   { key: "ltr", labelKey: "reader.directionLtr" },
   { key: "rtl", labelKey: "reader.directionRtl" },
-] as const satisfies { key: ReadingProgression; labelKey: string }[]
+] as const satisfies {
+  key: ReadingProgression
+  labelKey: MobileTranslationKey
+}[]
 
 const SPREAD_OPTIONS = [
   { key: "auto", labelKey: "reader.spreadAuto" },
   { key: "never", labelKey: "reader.spreadSingle" },
-] as const satisfies { key: Spread; labelKey: string }[]
+] as const satisfies { key: Spread; labelKey: MobileTranslationKey }[]
 
 export type ReflowSettingsBundle = {
   theme: ReaderTheme
@@ -123,7 +131,7 @@ function ReflowGroup({
       <FontPicker
         options={bundle.fontOptions.map((option) => ({
           key: option.key,
-          label: t(option.labelKey),
+          label: t(option.labelKey as MobileTranslationKey),
         }))}
         value={bundle.fontFamily}
         onChange={(key) => bundle.onFontFamilyChange(key as FontFamilyKey)}

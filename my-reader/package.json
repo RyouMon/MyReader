@@ -24,6 +24,7 @@
   "dependencies": {
     "@base-ui/react": "^1.3.0",
     "@my-reader/fonts": "workspace:*",
+    "@my-reader/i18n": "workspace:*",
     "@my-reader/tools": "workspace:*",
     "@panzoom/panzoom": "^4.6.2",
     "@radix-ui/react-dialog": "^1.1.15",

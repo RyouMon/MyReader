@@ -1,3 +1,4 @@
+import type { DesktopTranslationKey } from "@my-reader/i18n/desktop"
 import { Check, type LucideIcon, Monitor, Moon, Sun } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useTheme } from "@/components/AppThemeProvider"
@@ -9,8 +10,8 @@ const LANGUAGE_OPTIONS: Array<{
   value: AppLanguageMode
   icon: LucideIcon | null
   glyph?: string
-  tKey: string
-  descriptionKey: string
+  tKey: DesktopTranslationKey
+  descriptionKey: DesktopTranslationKey
 }> = [
   {
     value: "system",
@@ -37,8 +38,8 @@ const LANGUAGE_OPTIONS: Array<{
 const THEME_OPTIONS: Array<{
   value: AppThemeMode
   icon: LucideIcon
-  tKey: string
-  descriptionKey: string
+  tKey: DesktopTranslationKey
+  descriptionKey: DesktopTranslationKey
 }> = [
   {
     value: "system",

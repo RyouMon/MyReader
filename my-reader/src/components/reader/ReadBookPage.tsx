@@ -1,45 +1,4 @@
-import { ReadiumDivinaReader } from "@/components/reader/readium/ReadiumDivinaReader"
-import { ReadiumEpubReader } from "@/components/reader/readium/ReadiumEpubReader"
-import { ReadiumPdfReader } from "@/components/reader/readium/ReadiumPdfReader"
-import { ReaderBottomStatusBar } from "@/components/reader/shared/ReaderBottomStatusBar"
-import { ReaderChromeShell } from "@/components/reader/shared/ReaderChromeShell"
-import { ReaderPaginateEdgeTurnStrips } from "@/components/reader/shared/ReaderPaginateEdgeTurnStrips"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
-  READER_SETTINGS_CONTENT_CLASS,
-  READER_SETTINGS_LABEL_CLASS,
-  READER_SETTINGS_OPTION_CLASS,
-  READER_SETTINGS_VALUE_CLASS,
-  ReaderSidePanelFrame,
-  ReaderSidePanelHeader,
-  ReaderSidePanelScrollArea,
-  readerSettingsOptionStateClass,
-} from "@/components/reader/shared/ReaderSidePanelChrome"
-import type { ReadingProgressDto } from "@/hooks/reader/useLocatorProgressSync"
-import { useReaderPaginateEdgeHover } from "@/hooks/reader/useReaderPaginateEdgeHover"
-import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
-import { useReadiumDivinaPublication } from "@/hooks/reader/useReadiumDivinaPublication"
-import { useReadiumPublication } from "@/hooks/reader/useReadiumPublication"
-import {
-  setDownloadCancelled,
-  setDownloadError as setGlobalDownloadError,
-  setDownloadStarting,
-  useDownloadProgress,
-} from "@/hooks/useDownloadProgress"
-import { isMainWebviewWindow, openReaderInNewWindow } from "@/lib/readerWindow"
-import { resolveReadFormat } from "@/lib/readFormats"
-import { parseSavedLocator } from "@/lib/readium/locator"
-import { api, type ReadingPositionCandidateDto } from "@/lib/tauri-api"
-import { useAppUiStore } from "@/stores/appUiStore"
-import { useLibraryUiStore } from "@/stores/libraryUiStore"
+import { formatFileSize } from "@my-reader/tools/book-metadata"
 import type { Locator } from "@readium/shared"
 import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
@@ -57,7 +16,31 @@ import {
   useState,
 } from "react"
 import { useTranslation } from "react-i18next"
-import { formatFileSize } from "@my-reader/tools/book-metadata"
+import { ReadiumDivinaReader } from "@/components/reader/readium/ReadiumDivinaReader"
+import { ReadiumEpubReader } from "@/components/reader/readium/ReadiumEpubReader"
+import { ReadiumPdfReader } from "@/components/reader/readium/ReadiumPdfReader"
+import { ReaderBottomStatusBar } from "@/components/reader/shared/ReaderBottomStatusBar"
+import { ReaderChromeShell } from "@/components/reader/shared/ReaderChromeShell"
+import { ReaderPaginateEdgeTurnStrips } from "@/components/reader/shared/ReaderPaginateEdgeTurnStrips"
+import {
+  READER_SETTINGS_CONTENT_CLASS,
+  READER_SETTINGS_LABEL_CLASS,
+  READER_SETTINGS_OPTION_CLASS,
+  READER_SETTINGS_VALUE_CLASS,
+  ReaderSidePanelFrame,
+  ReaderSidePanelHeader,
+  ReaderSidePanelScrollArea,
+  readerSettingsOptionStateClass,
+} from "@/components/reader/shared/ReaderSidePanelChrome"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Empty,
   EmptyContent,
@@ -66,6 +49,23 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
+import type { ReadingProgressDto } from "@/hooks/reader/useLocatorProgressSync"
+import { useReaderPaginateEdgeHover } from "@/hooks/reader/useReaderPaginateEdgeHover"
+import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
+import { useReadiumDivinaPublication } from "@/hooks/reader/useReadiumDivinaPublication"
+import { useReadiumPublication } from "@/hooks/reader/useReadiumPublication"
+import {
+  setDownloadCancelled,
+  setDownloadStarting,
+  setDownloadError as setGlobalDownloadError,
+  useDownloadProgress,
+} from "@/hooks/useDownloadProgress"
+import { isMainWebviewWindow, openReaderInNewWindow } from "@/lib/readerWindow"
+import { resolveReadFormat } from "@/lib/readFormats"
+import { parseSavedLocator } from "@/lib/readium/locator"
+import { api, type ReadingPositionCandidateDto } from "@/lib/tauri-api"
+import { useAppUiStore } from "@/stores/appUiStore"
+import { useLibraryUiStore } from "@/stores/libraryUiStore"
 
 function toReaderAssetSrc(path: string): string {
   return isTauri() ? convertFileSrc(path) : path
@@ -619,7 +619,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   if (isBrowserDemoReader()) {
     return (
       <DemoReaderPreview
-        bookTitle={bookTitle || t("app.name")}
+        bookTitle={bookTitle || "MyReader"}
         format={format || "EPUB"}
       />
     )

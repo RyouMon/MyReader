@@ -38,11 +38,14 @@ export function formatDate(dateStr: string | null): string {
   try {
     const d = new Date(dateStr)
     if (d.getFullYear() <= 100) return "—"
-    return d.toLocaleDateString(i18n.language === "zh" ? "zh-CN" : undefined, {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    })
+    return d.toLocaleDateString(
+      i18n.language.startsWith("zh") ? "zh-CN" : undefined,
+      {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      },
+    )
   } catch {
     return dateStr
   }

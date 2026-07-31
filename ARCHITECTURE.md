@@ -56,6 +56,7 @@ pnpm workspace：
 | `my-reader` | 桌面 UI、Tauri adapter、桌面 Readium、桌面平台能力 |
 | `my-reader-mobile` | 移动 UI、Core binding adapter、移动 Readium、移动平台能力 |
 | `packages/fonts` | 跨端阅读字体目录和资产来源 |
+| `packages/i18n` | 跨端共享文案、平台专属翻译资源和国际化契约 |
 | `packages/tools` | 跨端 TypeScript 类型、Reader 纯算法和产品语义 |
 
 Cargo workspace 中与共享后端相关的 crate：
@@ -328,6 +329,7 @@ cargo run -p my-reader-core --release --example runtime_baseline -- 1000
 
 # 共享 TypeScript
 pnpm --filter @my-reader/fonts test
+pnpm --filter @my-reader/i18n test
 pnpm --filter @my-reader/tools test
 
 # 桌面

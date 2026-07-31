@@ -1,30 +1,34 @@
+import {
+  mobileResources,
+  SUPPORTED_LANGUAGES,
+  type SupportedLanguage,
+} from "@my-reader/i18n/mobile"
+import { getLocales } from "expo-localization"
 import i18n from "i18next"
 import { initReactI18next } from "react-i18next"
-import { getLocales } from "expo-localization"
 
-import zh from "./locales/zh.json"
-import en from "./locales/en.json"
-
-const SUPPORTED_LANGUAGES = ["zh", "en"] as const
-export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number]
+export type { SupportedLanguage } from "@my-reader/i18n/mobile"
 
 export function resolveAppLanguage(
   language: string | null | undefined,
 ): SupportedLanguage {
-  const preferredLanguage = language || getLocales()[0]?.languageCode || "zh"
+  const systemLocale = getLocales()[0]
+  const preferredLanguage =
+    language && language !== "system"
+      ? language
+      : systemLocale?.languageTag || systemLocale?.languageCode || "zh-CN"
+  const normalizedLanguage = preferredLanguage.replace("_", "-").toLowerCase()
 
-  return SUPPORTED_LANGUAGES.includes(preferredLanguage as SupportedLanguage)
-    ? (preferredLanguage as SupportedLanguage)
-    : "zh"
+  if (normalizedLanguage.startsWith("en")) return "en"
+  if (normalizedLanguage.startsWith("zh")) return "zh-CN"
+  return "zh-CN"
 }
 
 i18n.use(initReactI18next).init({
-  resources: {
-    zh: { translation: zh },
-    en: { translation: en },
-  },
+  resources: mobileResources,
   lng: resolveAppLanguage(null),
-  fallbackLng: "zh",
+  fallbackLng: "zh-CN",
+  supportedLngs: SUPPORTED_LANGUAGES,
   interpolation: { escapeValue: false },
 })
 

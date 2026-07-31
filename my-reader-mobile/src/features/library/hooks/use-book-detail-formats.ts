@@ -1,9 +1,8 @@
+import type { BookDetail } from "@my-reader/tools/types/book"
 import { File } from "expo-file-system"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Alert } from "react-native"
-
-import { useCallback, useEffect, useRef, useState } from "react"
-
 import {
   enqueue,
   isTaskErrorAlerted,
@@ -16,14 +15,12 @@ import {
   shareBookFile,
 } from "@/src/domain/library/share-book-file"
 import { useFileStates } from "@/src/domain/sync/hooks/use-file-states"
-import type { BookDetail } from "@my-reader/tools/types/book"
 import type { Library, LocalState } from "@/src/domain/types"
 import { isRemoteSourceType } from "@/src/domain/types"
 import { describeDownloadError } from "@/src/errors"
+import type { FileState as FileStateRow } from "@/src/services/core/content"
 import { libraryBookFileUri } from "@/src/services/fs/library-paths"
 import { confirmDeleteLocalDownload } from "../utils/delete-download"
-
-import type { FileState as FileStateRow } from "@/src/services/core/content"
 
 const EMPTY_FILE_STATE_ROWS: FileStateRow[] = []
 
@@ -274,7 +271,7 @@ export function useBookDetailFormats(
       if (!shareable) {
         Alert.alert(
           t("share.shareFailed"),
-          t("bookLoader.formatNotFoundInLibrary", { format, id: detail.id }),
+          t("sync.formatNotFoundInLibrary", { format, id: detail.id }),
         )
         return
       }

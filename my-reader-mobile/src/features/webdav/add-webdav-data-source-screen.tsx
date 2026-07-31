@@ -1,18 +1,17 @@
+import type { MobileTranslationKey } from "@my-reader/i18n/mobile"
+import type { DataSourceWebdav } from "@my-reader/tools/types/data-source"
 import { useForm, useStore } from "@tanstack/react-form"
-import { Stack, router, useLocalSearchParams } from "expo-router"
+import { router, Stack, useLocalSearchParams } from "expo-router"
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Alert, TextInput as RNTextInput } from "react-native"
 import { z } from "zod"
-
-import { useThemePalette } from "@/src/design/tokens"
-import { TextInput, View } from "@/tw"
-import type { DataSourceWebdav } from "@my-reader/tools/types/data-source"
-
 import { FormFieldSwitch, FormLabeledFieldRow, Screen } from "@/src/components"
+import { useThemePalette } from "@/src/design/tokens"
 import { useDataSourceActions } from "@/src/hooks/use-data-source-actions"
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 import { createSaveAction } from "@/src/navigation/toolbar-action-helpers"
+import { TextInput, View } from "@/tw"
 
 const addWebDavMobileSchema = z
   .object({
@@ -54,6 +53,7 @@ const addWebDavMobileSchema = z
   })
 
 type WebDavFormInput = z.input<typeof addWebDavMobileSchema>
+type WebDavValidationKey = Extract<MobileTranslationKey, `webdav.add.${string}`>
 
 function deriveWebDavDataSourceName(endpoint: string): string {
   try {
@@ -108,7 +108,7 @@ export default function AddWebDavDataSourceScreen() {
   const { createDataSource, testDataSourceConnection } = useDataSourceActions()
   const [saving, setSaving] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<
-    Partial<Record<string, string>>
+    Partial<Record<string, WebDavValidationKey>>
   >({})
 
   const portRef = useRef<RNTextInput>(null)
@@ -146,10 +146,12 @@ export default function AddWebDavDataSourceScreen() {
 
     const parseResult = addWebDavMobileSchema.safeParse(form.store.state.values)
     if (!parseResult.success) {
-      const errors: Record<string, string> = {}
+      const errors: Partial<Record<string, WebDavValidationKey>> = {}
       for (const issue of parseResult.error.issues) {
         const key = String(issue.path[0])
-        if (!errors[key]) errors[key] = t(issue.message)
+        if (!errors[key]) {
+          errors[key] = issue.message as WebDavValidationKey
+        }
       }
       setFieldErrors(errors)
       return
