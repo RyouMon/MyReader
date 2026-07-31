@@ -2,7 +2,7 @@
   "expo": {
     "name": "my-reader-mobile",
     "slug": "my-reader-mobile",
-    "version": "0.10.0",
+    "version": "0.11.0",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "myreadermobile",

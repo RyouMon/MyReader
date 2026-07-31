@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name           = 'MyReaderBookTransition'
-  s.version        = '0.1.0'
+  s.version        = '0.11.0'
   s.summary        = 'Native book open and close transition for MyReader'
   s.description    = 'Window-level native book transition overlay'
   s.author         = 'RyouMon'

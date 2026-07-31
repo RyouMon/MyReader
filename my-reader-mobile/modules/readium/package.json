@@ -1,6 +1,6 @@
 {
   "name": "@my-reader/readium",
-  "version": "0.1.0",
+  "version": "0.11.0",
   "description": "Open-architecture Readium bridge (Expo Module) for iOS + Android.",
   "main": "index.ts",
   "types": "index.ts",

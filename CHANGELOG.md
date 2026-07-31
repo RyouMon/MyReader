@@ -4,6 +4,59 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.11.0] - 2026-07-31
+
+### Breaking Changes
+
+- 应用配置改由 `my-reader-core` 的单一 `config.json` 管理；移动端旧版 Zustand 配置以及开发期的
+  `device-registry.json` / `device-library-state.json` 不会迁移，升级后需重新添加或授权数据源、
+  书库，并检查本机偏好
+- 远端 sidecar 改用 `.myreader/automerge/<document_id>/<kind>/<hash>` StorageKey 布局；旧远端
+  sidecar 与本地传输状态不再读取或迁移，旧目录也不会自动删除；已有本地 Automerge 文档与业务
+  数据会保留，并在新空间首次同步时发布完整 snapshot
+
+### Mobile
+
+#### Changed
+
+- 书库注册、Calibre 书目、内容状态、阅读数据、下载和同步统一切换到共享 Rust Core，通过生成的
+  UniFFI/JSI typed binding 调用
+- 移除 TypeScript 数据库、repository 和旧同步后端，由 Core 统一执行 SQLite migration、事务和
+  连接生命周期
+- 阅读完成、格式选择、进度换算、Locator 规范化与阅读 session 批处理改用跨端一致规则
+
+#### Fixed
+
+- 修复 OneDrive 根目录浏览、书库注册与当前 sandbox 路径解析
+- 修复首页无阅读记录时的空状态、封面缓存复用，以及删除书库和数据源后的状态收敛
+
+#### Build
+
+- 修复 EAS iOS / Android production 构建所需的 Rust target、Cargo NDK、Core binding、MMKV
+  Pod 配置和 Sentry 上传流程
+
+### Desktop
+
+#### Changed
+
+- Tauri Commands 收敛为共享 Core 的平台适配层，统一数据源、书库、书目、阅读、下载和同步语义
+- 应用数据库、配置持久化与 sidecar 同步改由 Core 统一管理
+
+### Shared
+
+#### Added
+
+- 新增模块化 `my-reader-core`，集中维护跨端数据库、书库、Calibre catalog、内容、阅读与同步业务
+- 新增共享 `@my-reader/i18n` 资源，统一桌面端和移动端中英文文案
+- 建立 Core runtime、生成 binding 和跨端合同的验收基线
+
+#### Changed
+
+- MyReader 数据库 schema 与 migration 权威迁移到 Rust / SeaORM，并为旧移动 Drizzle migration
+  状态提供一次性 handoff
+- sidecar 同步采用 automerge-repo StorageKey、内容寻址 snapshot / incremental 与并发安全压缩
+- 自动同步时机、远端目标解析、下载协调和阅读数据投影统一由 Core 管理
+
 ## [0.10.0] - 2026-07-27
 
 ### Breaking Changes

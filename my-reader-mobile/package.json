@@ -1,7 +1,7 @@
 {
   "name": "my-reader-mobile",
   "main": "expo-router/entry",
-  "version": "1.0.0",
+  "version": "0.11.0",
   "scripts": {
     "eas-build-pre-install": "cd .. && pnpm install --frozen-lockfile && pnpm --filter my-reader-mobile prepare:reader-fonts && bash my-reader-mobile/modules/my-reader-core/scripts/prepare-eas.sh",
     "eas-build-post-install": "rm -rf node_modules/.cache",
