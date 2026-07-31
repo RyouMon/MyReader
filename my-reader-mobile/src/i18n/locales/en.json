@@ -38,9 +38,10 @@
       "title": "No library added yet",
       "detail": "Add a local Calibre library in Settings, then your reading progress and recently added books will appear here."
     },
-    "noBooks": {
-      "title": "No books in this library",
-      "detail": "Make sure you selected a valid Calibre library with books in its metadata.db."
+    "noReadingHistory": {
+      "title": "No reading history yet",
+      "detail": "Choose a book from your library to start reading.",
+      "action": "Open Library"
     }
   },
   "library": {

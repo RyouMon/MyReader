@@ -189,8 +189,14 @@ export default function HomeScreen() {
           </>
         ) : (
           <EmptyState
-            title={t("home.noBooks.title")}
-            detail={t("home.noBooks.detail")}
+            title={t("home.noReadingHistory.title")}
+            detail={t("home.noReadingHistory.detail")}
+            action={
+              <PrimaryButton
+                title={t("home.noReadingHistory.action")}
+                onPress={() => router.push("/library")}
+              />
+            }
             icon={{ ios: "book", android: "book" }}
           />
         )}
