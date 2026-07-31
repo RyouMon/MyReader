@@ -1,24 +1,21 @@
-import { useMemo } from "react"
-import { useTranslation } from "react-i18next"
-
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
-import { Stack, router, useLocalSearchParams } from "expo-router"
+import { router, Stack, useLocalSearchParams } from "expo-router"
 import { SymbolView } from "expo-symbols"
+import { useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Platform } from "react-native"
-
+import { ListRow, Screen, SectionCard } from "@/src/components"
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import { useThemePalette } from "@/src/design/tokens"
 import type { DataSourceOnedrive } from "@/src/domain/types"
 import { DataSourceInUseError } from "@/src/errors"
-import { Text, View } from "@/tw"
-
-import { Screen, SectionCard, ListRow } from "@/src/components"
 import { useDataSourceActions } from "@/src/hooks/use-data-source-actions"
 import {
-  useScreenHeader,
   type ScreenHeaderAction,
+  useScreenHeader,
 } from "@/src/navigation/hooks/use-screen-header"
 import { useAppStore } from "@/src/store/app-store"
+import { Text, View } from "@/tw"
 
 function formatDate(timestamp?: number) {
   if (!timestamp) return "—"
@@ -114,8 +111,11 @@ export default function OneDriveDataSourceDetailScreen() {
     [dataSources, dataSourceId],
   )
   const raw = sourceIndex >= 0 ? dataSources[sourceIndex] : undefined
-  const onedriveSource: DataSourceOnedrive | null =
+  const storedOnedriveSource: DataSourceOnedrive | null =
     raw?.type === "onedrive" ? raw : null
+  const [deletingSourceSnapshot, setDeletingSourceSnapshot] =
+    useState<DataSourceOnedrive | null>(null)
+  const onedriveSource = storedOnedriveSource ?? deletingSourceSnapshot
   const accent = palette.primary
 
   function handleBack() {
@@ -139,6 +139,7 @@ export default function OneDriveDataSourceDetailScreen() {
           style: "destructive",
           onPress: () => {
             void (async () => {
+              setDeletingSourceSnapshot(onedriveSource)
               try {
                 await deleteDataSource(onedriveSource.id)
                 handleBack()

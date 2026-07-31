@@ -21,6 +21,19 @@ import {
 } from "@/src/services/storage/credentials"
 import { useAppStore } from "@/src/store/app-store"
 
+function startDataSourceSecretDeletion(
+  id: string,
+  dataSource: DataSource | undefined,
+): void {
+  if (!dataSource) {
+    return
+  }
+
+  void deleteSecrets(id, dataSource.type).catch((error) => {
+    console.warn(`[deleteDataSource] credential cleanup failed (${id}):`, error)
+  })
+}
+
 export function useDataSourceActions() {
   const store = useAppStore
 
@@ -112,9 +125,7 @@ export function useDataSourceActions() {
       throw error
     }
     store.getState().setDataSources(appConfig.dataSources)
-    if (ds) {
-      await deleteSecrets(id, ds.type)
-    }
+    startDataSourceSecretDeletion(id, ds)
   }
 
   async function testDataSourceConnection(
