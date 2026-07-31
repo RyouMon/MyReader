@@ -12,6 +12,16 @@ const READIUM_TEST_SPEC = `  pod 'Readium',
     :path => File.join(readium_root, 'ios'),
     :testspecs => ['Tests']`
 
+const MMKV_POST_INSTALL = `    installer.pods_project.targets.each do |target|
+      next unless target.name == 'MMKVCore'
+
+      target.build_configurations.each do |build_configuration|
+        definitions = Array(build_configuration.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] || '$(inherited)')
+        definitions << '__STDC_WANT_LIB_EXT1__=1'
+        build_configuration.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = definitions.uniq
+      end
+    end`
+
 /**
  * @param {import('@expo/config-plugins').ExpoConfig} config
  */
@@ -71,6 +81,17 @@ function withReadiumIos(config) {
       contents = contents.replace(
         postInstallNeedle,
         `:ccache_enabled => ccache_enabled?(podfile_properties),\n    )\n\n    readium_post_install(installer)\n  end`,
+      )
+    }
+
+    const readiumPostInstallNeedle = "    readium_post_install(installer)"
+    if (
+      contents.includes(readiumPostInstallNeedle) &&
+      !contents.includes("target.name == 'MMKVCore'")
+    ) {
+      contents = contents.replace(
+        readiumPostInstallNeedle,
+        `${readiumPostInstallNeedle}\n\n${MMKV_POST_INSTALL}`,
       )
     }
 

@@ -35,10 +35,18 @@ it("should enable the Readium test spec when generating the iOS Podfile", () => 
   use_expo_modules!`)
 })
 
+it("should configure MMKVCore when generating the iOS Podfile", () => {
+  const result = applyPlugin(podfile)
+
+  expect(result).toContain("target.name == 'MMKVCore'")
+  expect(result).toContain("__STDC_WANT_LIB_EXT1__=1")
+})
+
 it("should keep one Readium test spec when applying the plugin again", () => {
   const once = applyPlugin(podfile)
   const twice = applyPlugin(once)
 
   expect(twice.match(/:testspecs => \['Tests'\]/g)).toHaveLength(1)
+  expect(twice.match(/__STDC_WANT_LIB_EXT1__=1/g)).toHaveLength(1)
   expect(twice).toBe(once)
 })
