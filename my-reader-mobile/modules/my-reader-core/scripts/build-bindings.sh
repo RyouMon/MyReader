@@ -20,7 +20,7 @@ if ! command -v clang-format >/dev/null 2>&1 && command -v xcrun >/dev/null 2>&1
   fi
 fi
 
-if ! command -v clang-format >/dev/null 2>&1; then
+if ! command -v clang-format >/dev/null 2>&1 && [[ -z "${EAS_BUILD_PLATFORM:-}" ]]; then
   echo "clang-format is required to generate MyReader Core bindings." >&2
   exit 1
 fi
@@ -40,14 +40,16 @@ build_platform() {
       generate jsi turbo-module my_reader_core_ffi \
       --config ubrn.config.yaml
 
-    clang-format \
-      -i \
-      --style=file \
-      --fallback-style=LLVM \
-      cpp/bindings/my_reader_core_ffi.cpp \
-      cpp/bindings/my_reader_core_ffi.hpp \
-      cpp/my-reader-core.cpp \
-      cpp/my-reader-core.h
+    if command -v clang-format >/dev/null 2>&1; then
+      clang-format \
+        -i \
+        --style=file \
+        --fallback-style=LLVM \
+        cpp/bindings/my_reader_core_ffi.cpp \
+        cpp/bindings/my_reader_core_ffi.hpp \
+        cpp/my-reader-core.cpp \
+        cpp/my-reader-core.h
+    fi
 
     "$NODE_BINARY" "$MOBILE_DIR/node_modules/prettier/bin/prettier.cjs" \
       --write "src/**/*.ts" \
