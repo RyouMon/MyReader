@@ -2,9 +2,9 @@ import { useQuery } from "@tanstack/react-query"
 import { useMemo } from "react"
 
 import { mapListRowsToBookItems } from "@/src/domain/library/calibre"
-import { withLocalLibraryCalibreRoot } from "@/src/domain/library/local-library-content"
 import type { BookItem, Library } from "@/src/domain/types"
 import { listCalibreBooksPageByLastRead } from "@/src/services/core/catalog"
+import { withLocalLibraryCalibreRoot } from "@/src/services/fs/local-library-content"
 import { librarySidecarRootUri } from "@/src/services/fs/library-paths"
 import { queryKeys } from "@/src/services/query/query-keys"
 

@@ -10,7 +10,7 @@ jest.mock("../library/calibre", () => ({
   fetchBooks: jest.fn(),
 }))
 
-jest.mock("../library/local-library-content", () => ({
+jest.mock("../../services/fs/local-library-content", () => ({
   withLocalLibraryCalibreRoot: jest.fn(
     (_library, operation: (root: string) => Promise<unknown>) =>
       operation("file:///resolved-library"),
@@ -36,8 +36,8 @@ import {
   invalidateRecentlyReadBooks,
 } from "@/src/services/query/invalidate-table"
 import { DataIntegrityError, SyncConnectivityError } from "@/src/errors"
+import { withLocalLibraryCalibreRoot } from "../../services/fs/local-library-content"
 import { fetchBooks } from "../library/calibre"
-import { withLocalLibraryCalibreRoot } from "../library/local-library-content"
 import type { DataSource, Library } from "../types"
 import { openSyncContext, type SyncTargetContext } from "./context"
 import { runCoreLibrarySync } from "./core-sync"

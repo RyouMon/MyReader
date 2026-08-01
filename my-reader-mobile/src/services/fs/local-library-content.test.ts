@@ -1,11 +1,12 @@
-import type { Library } from "../types"
+import type { Library } from "@my-reader/tools/types/library"
+
 import { withLocalLibraryCalibreRoot } from "./local-library-content"
 
-jest.mock("../../services/fs/bookmarks", () => ({
+jest.mock("./bookmarks", () => ({
   withSecurityScopedLibraryAccess: jest.fn(),
 }))
 
-jest.mock("@/src/services/fs/library-paths", () => ({
+jest.mock("./library-paths", () => ({
   libraryLocalRootUri: (library: Library) => library.path,
   libraryRootUri: (library: Library) =>
     `file:///current/Documents/libraries/${library.id}`,
@@ -21,8 +22,7 @@ jest.mock("expo-file-system", () => ({
 }))
 
 const mockWithSecurityScopedLibraryAccess = jest.mocked(
-  jest.requireMock("../../services/fs/bookmarks")
-    .withSecurityScopedLibraryAccess,
+  jest.requireMock("./bookmarks").withSecurityScopedLibraryAccess,
 )
 
 function remoteLibrary(): Library {

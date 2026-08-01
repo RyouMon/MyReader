@@ -8,8 +8,8 @@ import {
   invalidateRecentlyReadBooks,
 } from "../../services/query/invalidate-table"
 import { describeError } from "../../utils/common"
+import { withLocalLibraryCalibreRoot } from "../../services/fs/local-library-content"
 import { fetchBooks } from "../library/calibre"
-import { withLocalLibraryCalibreRoot } from "../library/local-library-content"
 import type { DataSource, Library } from "../types"
 import { openSyncContext } from "./context"
 import { runCoreLibrarySync } from "./core-sync"

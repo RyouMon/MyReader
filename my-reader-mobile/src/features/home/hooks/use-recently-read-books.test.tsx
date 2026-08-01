@@ -12,7 +12,7 @@ jest.mock("@/src/domain/library/calibre", () => ({
   mapListRowsToBookItems: jest.fn(),
 }))
 
-jest.mock("@/src/domain/library/local-library-content", () => ({
+jest.mock("@/src/services/fs/local-library-content", () => ({
   withLocalLibraryCalibreRoot: jest.fn(
     (
       _library: Library,

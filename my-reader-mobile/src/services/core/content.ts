@@ -1,5 +1,5 @@
 import type { Library } from "@my-reader/tools/types/library"
-import { withLocalLibraryCalibreRoot } from "@/src/domain/library/local-library-content"
+import { withLocalLibraryCalibreRoot } from "../fs/local-library-content"
 import {
   contentClearCoverThumbnailCache,
   contentDeleteCoverThumbnailCache,

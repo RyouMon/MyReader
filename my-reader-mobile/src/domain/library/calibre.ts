@@ -26,7 +26,7 @@ import { isRemoteSourceType } from "../types"
 import {
   resolveLocalLibraryMetadataUri,
   withLocalLibraryCalibreRoot,
-} from "./local-library-content"
+} from "../../services/fs/local-library-content"
 
 type PickedDirectoryLike = {
   uri: string

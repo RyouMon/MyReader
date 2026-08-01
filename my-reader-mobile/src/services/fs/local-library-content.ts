@@ -1,3 +1,7 @@
+import {
+  isRemoteLibrarySourceType,
+  type Library,
+} from "@my-reader/tools/types/library"
 import { File as FSFile } from "expo-file-system"
 
 import {
@@ -5,11 +9,9 @@ import {
   libraryRootUri,
   METADATA_DB_RELATIVE,
   usesIosContainerSidecar,
-} from "@/src/services/fs/library-paths"
-import { fileUriFor } from "@/src/services/fs/path"
-import { withSecurityScopedLibraryAccess } from "../../services/fs/bookmarks"
-import type { Library } from "../types"
-import { isRemoteSourceType } from "../types"
+} from "./library-paths"
+import { fileUriFor } from "./path"
+import { withSecurityScopedLibraryAccess } from "./bookmarks"
 
 /**
  * Runs an operation against the library's local Calibre content root.
@@ -20,7 +22,7 @@ export async function withLocalLibraryCalibreRoot<T>(
   library: Library,
   operation: (calibreRootUri: string) => Promise<T>,
 ): Promise<T> {
-  if (isRemoteSourceType(library.sourceType)) {
+  if (isRemoteLibrarySourceType(library.sourceType)) {
     return operation(libraryRootUri(library))
   }
 
@@ -41,7 +43,7 @@ export async function withLocalLibraryCalibreRoot<T>(
 export async function resolveLocalLibraryMetadataUri(
   library: Library,
 ): Promise<string | null> {
-  if (isRemoteSourceType(library.sourceType)) {
+  if (isRemoteLibrarySourceType(library.sourceType)) {
     return null
   }
 

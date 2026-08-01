@@ -4,7 +4,7 @@ jest.mock("../fs/path", () => ({
 jest.mock("../fs/library-paths", () => ({
   librarySidecarRootUri: () => "file:///sidecar",
 }))
-jest.mock("@/src/domain/library/local-library-content", () => ({
+jest.mock("../fs/local-library-content", () => ({
   withLocalLibraryCalibreRoot: (
     _library: unknown,
     operation: (root: string) => unknown,
