@@ -7,9 +7,7 @@ export function parseSavedLocator(data: unknown): Locator | null {
   return Locator.deserialize(data) ?? null
 }
 
-export function locatorToJson(locator: Locator): Record<string, unknown> {
-  const raw = locator.serialize() as Record<string, unknown>
-  return canonicalizeReaderLocatorForStorage(
-    raw as unknown as ReaderLocator,
-  ) as Record<string, unknown>
+export function locatorToJson(locator: Locator): ReaderLocator {
+  const raw = locator.serialize() as unknown as ReaderLocator
+  return canonicalizeReaderLocatorForStorage(raw)
 }

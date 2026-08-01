@@ -54,7 +54,7 @@ describe("EPUB search decorations", () => {
       }),
     )
 
-    const tint = send.mock.calls.at(-1)?.[1].decoration.style.tint as string
+    const tint = send.mock.lastCall?.[1].decoration.style.tint as string
     const alpha = Number(tint.match(/^rgba\(166, 94, 46, ([\d.]+)\)$/)?.[1])
     expect(alpha).toBeGreaterThan(0)
     expect(alpha).toBeLessThan(1)
