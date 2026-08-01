@@ -54,5 +54,7 @@ export function wrapAndroidHeaderAction(
   side: AndroidHeaderSlotSide,
   render: () => ReactNode,
 ): () => ReactNode {
-  return () => <AndroidHeaderSlot side={side}>{render()}</AndroidHeaderSlot>
+  return function AndroidHeaderAction() {
+    return <AndroidHeaderSlot side={side}>{render()}</AndroidHeaderSlot>
+  }
 }
