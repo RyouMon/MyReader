@@ -305,7 +305,6 @@ export function useBookActions(
                 targetFormat,
               )
             } else {
-              const paths = await getBookFormatPaths(lib, calibreId)
               const formatMeta = latest.bookFormatMetaById.get(book.id)
               const readableFormats =
                 formatMeta?.readableFormats ?? book.readableFormats ?? []
