@@ -4,9 +4,12 @@ import type {
   PaginatedBooks,
 } from "@my-reader/tools/types/book"
 import {
+  type BookFormat,
+  type BookSummary,
+  type BookEntry as CoreBookEntry,
   catalogCountBooks,
-  catalogGetBookFormat,
   catalogGetBookDetail,
+  catalogGetBookFormat,
   catalogGetLibraryUuid,
   catalogListBookFormats,
   catalogListBookSummaries,
@@ -15,9 +18,6 @@ import {
   catalogListBooksPageByLastRead,
   catalogListSeriesBooks,
   catalogValidateLibrary,
-  type BookEntry as CoreBookEntry,
-  type BookFormat,
-  type BookSummary,
 } from "my-reader-core"
 import { toNativeFilesystemPath } from "../fs/path"
 
@@ -39,6 +39,7 @@ function bookFromCore(book: CoreBookEntry): CalibreBook {
     lastModified: book.lastModified ?? null,
     comment: book.comment ?? null,
     publisher: book.publisher ?? null,
+    preferredFormat: book.preferredFormat ?? null,
     rating: book.rating ?? null,
     uuid: book.uuid ?? null,
   }

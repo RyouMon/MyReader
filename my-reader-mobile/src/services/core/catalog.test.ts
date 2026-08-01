@@ -10,18 +10,18 @@ jest.mock("my-reader-core", () => ({
 }))
 
 import {
-  catalogGetBookFormat,
   catalogGetBookDetail,
+  catalogGetBookFormat,
   catalogListBookFormats,
   catalogListBookSummaries,
   catalogListBooksPageByLastRead,
 } from "my-reader-core"
 import {
-  getCalibreBookFormat,
   getCalibreBookDetail,
+  getCalibreBookFormat,
   listCalibreBookFormats,
-  listCalibreBooksPageByLastRead,
   listCalibreBookSummaries,
+  listCalibreBooksPageByLastRead,
 } from "./catalog"
 
 describe("core catalog adapter", () => {
@@ -39,7 +39,6 @@ describe("core catalog adapter", () => {
       tags: [],
       formats: ["EPUB"],
       readableFormats: ["EPUB"],
-      preferredFormat: "EPUB",
       hasCover: true,
       path: "Ursula K. Le Guin/The Left Hand of Darkness",
       languages: [],
@@ -51,6 +50,7 @@ describe("core catalog adapter", () => {
 
     expect(catalogGetBookDetail).toHaveBeenCalledWith("/library", 42)
     expect(detail.series).toBeNull()
+    expect(detail.preferredFormat).toBeNull()
     expect(detail.titleSort).toBe("Left Hand of Darkness, The")
     expect(detail.formatSizes).toEqual([{ format: "EPUB", sizeBytes: 1024 }])
   })

@@ -1,6 +1,6 @@
+import { fireEvent, render, screen } from "@testing-library/react-native"
 import { Children, type ReactElement, type ReactNode } from "react"
 import { StyleSheet } from "react-native"
-import { fireEvent, render, screen } from "@testing-library/react-native"
 
 import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
 
@@ -50,6 +50,7 @@ const palette: ReaderChromePalette = {
 type StyledElement = ReactElement<{ children?: ReactNode; style?: unknown }>
 type LayoutStyle = {
   flexBasis?: number
+  flexDirection?: string
   flexShrink?: number
   minWidth?: number
 }
@@ -63,7 +64,9 @@ describe("SettingControls layout", () => {
     const grid = screen.getByTestId("theme-swatches-grid")
     const gridStyle = StyleSheet.flatten(grid.props.style)
     const rows = Children.toArray(grid.props.children) as StyledElement[]
-    const firstRowStyle = StyleSheet.flatten(rows[0]?.props.style)
+    const firstRowStyle = StyleSheet.flatten(
+      rows[0]?.props.style,
+    ) as LayoutStyle
     const swatches = Children.toArray(
       rows[0]?.props.children,
     ) as StyledElement[]

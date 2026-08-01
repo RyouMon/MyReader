@@ -276,7 +276,9 @@ export function useReaderBookmarks(
     if (!currentLocator) return null
     if (isLocatorVisible) {
       const visibleBookmarkLocatorKey =
-        visibleBookmarkResult?.requestKey === visibilityRequest?.key
+        visibleBookmarkResult !== null &&
+        visibilityRequest !== null &&
+        visibleBookmarkResult.requestKey === visibilityRequest.key
           ? visibleBookmarkResult.locatorKey
           : null
       return (
