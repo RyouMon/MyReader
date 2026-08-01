@@ -93,21 +93,16 @@ impl DownloadService {
             return Ok(None);
         }
         let task_id = enqueued.task.id;
-        if self.coordinator.claim(&task_id).is_none() {
-            if self.coordinator.is_cancelled(&task_id) {
-                let cancellation = self
-                    .coordinator
-                    .cancellation_token(&task_id)
-                    .expect("cancelled download must have a cancellation token");
-                return Ok(Some((task_id, cancellation)));
-            }
+        if self.coordinator.claim(&task_id).is_none() && !self.coordinator.is_cancelled(&task_id) {
             self.coordinator.release(&task_id);
             return Ok(None);
         }
-        let cancellation = self
-            .coordinator
-            .cancellation_token(&task_id)
-            .expect("claimed download must have a cancellation token");
+        let Some(cancellation) = self.coordinator.cancellation_token(&task_id) else {
+            self.coordinator.release(&task_id);
+            return Err(AppError::Task(format!(
+                "DOWNLOAD_CANCELLATION_TOKEN_MISSING: {task_id}"
+            )));
+        };
         Ok(Some((task_id, cancellation)))
     }
 
@@ -234,12 +229,14 @@ impl DownloadService {
                 }
             }
 
-            if result.is_ok() {
-                service_clone.coordinator.complete(&task_id);
-            } else if !service_clone.coordinator.is_cancelled(&task_id) {
-                service_clone
-                    .coordinator
-                    .fail(&task_id, result.as_ref().unwrap_err().to_string());
+            match &result {
+                Ok(_) => {
+                    service_clone.coordinator.complete(&task_id);
+                }
+                Err(error) if !service_clone.coordinator.is_cancelled(&task_id) => {
+                    service_clone.coordinator.fail(&task_id, error.to_string());
+                }
+                Err(_) => {}
             }
             service_clone.coordinator.release(&task_id);
             result
@@ -492,18 +489,18 @@ impl DownloadService {
         .await?;
 
         let mut relative_paths = Vec::with_capacity(normalized_requests.len());
-        let mut relative_by_key = HashMap::with_capacity(normalized_requests.len());
-        for (book_id, format) in &normalized_requests {
-            let key = (*book_id, format.clone());
-            let file_path = file_paths.get(&key).ok_or_else(|| {
+        let mut resolved_requests = Vec::with_capacity(normalized_requests.len());
+        for (book_id, format) in normalized_requests {
+            let key = (book_id, format.clone());
+            let file_path = file_paths.get(&key).cloned().ok_or_else(|| {
                 AppError::NotFound(format!(
                     "BOOK_FORMAT_NOT_FOUND: book={}, format={}",
                     book_id, format
                 ))
             })?;
-            let relative_path = compute_book_relative_path(file_path, &lib_root)?;
+            let relative_path = compute_book_relative_path(&file_path, &lib_root)?;
             relative_paths.push(relative_path.clone());
-            relative_by_key.insert(key, (file_path.clone(), relative_path));
+            resolved_requests.push((book_id, format, file_path, relative_path));
         }
 
         let rows_by_path = if lib.is_remote() {
@@ -517,12 +514,8 @@ impl DownloadService {
             HashMap::new()
         };
 
-        let mut result = Vec::with_capacity(normalized_requests.len());
-        for (book_id, format) in normalized_requests {
-            let (file_path, relative_path) = relative_by_key
-                .get(&(book_id, format.clone()))
-                .cloned()
-                .expect("relative path should be resolved for request");
+        let mut result = Vec::with_capacity(resolved_requests.len());
+        for (book_id, format, file_path, relative_path) in resolved_requests {
             let row = rows_by_path.get(&relative_path);
             let present = Self::is_book_file_present(&file_path).await
                 && (!lib.is_remote() || row.is_some_and(|row| row.is_locally_available()));
