@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import {
   ActivityIndicator,
@@ -20,11 +20,11 @@ export function LibrarySyncPill() {
   const insets = useSafeAreaInsets()
   const isSyncing = useIsLibrarySyncing()
 
-  const opacity = useRef(new Animated.Value(0)).current
-  const translateY = useRef(new Animated.Value(14)).current
+  const [opacity] = useState(() => new Animated.Value(0))
+  const [translateY] = useState(() => new Animated.Value(14))
 
   useEffect(() => {
-    Animated.parallel([
+    const animation = Animated.parallel([
       Animated.timing(opacity, {
         toValue: isSyncing ? 1 : 0,
         duration: isSyncing ? 220 : 160,
@@ -35,7 +35,9 @@ export function LibrarySyncPill() {
         duration: isSyncing ? 220 : 160,
         useNativeDriver: true,
       }),
-    ]).start()
+    ])
+    animation.start()
+    return () => animation.stop()
   }, [isSyncing, opacity, translateY])
 
   return (
