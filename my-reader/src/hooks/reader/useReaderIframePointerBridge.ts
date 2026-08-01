@@ -103,15 +103,21 @@ export function useReaderIframePointerBridge(
 
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
-        mutation.removedNodes.forEach((node) => forEachIframe(node, disconnect))
-        mutation.addedNodes.forEach((node) => forEachIframe(node, connect))
+        mutation.removedNodes.forEach((node) => {
+          forEachIframe(node, disconnect)
+        })
+        mutation.addedNodes.forEach((node) => {
+          forEachIframe(node, connect)
+        })
       }
     })
     observer.observe(container, { childList: true, subtree: true })
 
     return () => {
       observer.disconnect()
-      iframeCleanups.forEach((cleanup) => cleanup())
+      iframeCleanups.forEach((cleanup) => {
+        cleanup()
+      })
       iframeCleanups.clear()
     }
   }, [containerRef])
