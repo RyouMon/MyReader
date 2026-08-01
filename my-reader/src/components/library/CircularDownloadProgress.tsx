@@ -26,7 +26,12 @@ export function CircularDownloadProgress({
       )}
       aria-hidden="true"
     >
-      <svg className="size-full" viewBox={`0 0 ${size} ${size}`}>
+      <svg
+        className="size-full"
+        viewBox={`0 0 ${size} ${size}`}
+        aria-hidden="true"
+        focusable="false"
+      >
         <circle
           cx={size / 2}
           cy={size / 2}

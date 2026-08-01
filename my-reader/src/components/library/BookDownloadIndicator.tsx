@@ -44,7 +44,6 @@ export function BookDownloadIndicator({
         )}
         data-download-status={state.status}
         title={label}
-        aria-label={label}
       >
         {isDownloadActive ? (
           <CircularDownloadProgress
@@ -69,6 +68,7 @@ export function BookDownloadIndicator({
         )}
         data-download-status={state.status}
         title={label}
+        role="img"
         aria-label={label}
       >
         {isDownloadActive ? (
@@ -92,6 +92,7 @@ export function BookDownloadIndicator({
       )}
       data-download-status={state.status}
       title={label}
+      role="img"
       aria-label={label}
     >
       {isDownloadActive ? (
