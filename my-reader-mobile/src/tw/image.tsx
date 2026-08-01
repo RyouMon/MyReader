@@ -1,18 +1,11 @@
 import { Image as RNImage } from "expo-image"
-import { useCssElement } from "react-native-css"
-import React from "react"
+import type React from "react"
 import { type ImageStyle, StyleSheet } from "react-native"
 import Animated from "react-native-reanimated"
 
-const AnimatedExpoImage = Animated.createAnimatedComponent(RNImage)
+import { cssElement } from "./css-element"
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const cssElement = useCssElement as unknown as (
-  Component: React.ComponentType<any>,
-  props: any,
-  mapping: any,
-) => any
-/* eslint-enable @typescript-eslint/no-explicit-any */
+const AnimatedExpoImage = Animated.createAnimatedComponent(RNImage)
 
 type FlatStyle = ImageStyle & {
   objectFit?: React.ComponentProps<typeof AnimatedExpoImage>["contentFit"]
@@ -39,10 +32,16 @@ function CSSImage(props: React.ComponentProps<typeof AnimatedExpoImage>) {
   )
 }
 
-export const Image = (
-  props: React.ComponentProps<typeof CSSImage> & { className?: string },
-) => {
-  return cssElement(CSSImage, props, { className: "style" })
+const imageMapping = {
+  className: "style",
+} as const
+
+type CSSImageProps = React.ComponentProps<typeof CSSImage> & {
+  className?: string
+}
+
+export const Image = (props: CSSImageProps) => {
+  return cssElement(CSSImage, props, imageMapping)
 }
 
 Image.displayName = "CSS(Image)"

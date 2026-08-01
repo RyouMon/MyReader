@@ -1,45 +1,39 @@
-import { Link as RouterLink, type LinkProps } from "expo-router"
-import {
-  useCssElement,
-  useNativeVariable as useFunctionalVariable,
-} from "react-native-css"
+import { type LinkProps, Link as RouterLink } from "expo-router"
 import React from "react"
 import {
-  View as RNView,
-  Text as RNText,
   Pressable as RNPressable,
   ScrollView as RNScrollView,
+  Text as RNText,
+  TextInput as RNTextInput,
   TouchableHighlight as RNTouchableHighlight,
   TouchableOpacity as RNTouchableOpacity,
-  TextInput as RNTextInput,
+  View as RNView,
   StyleSheet,
 } from "react-native"
+import { useNativeVariable as useFunctionalVariable } from "react-native-css"
 import Animated from "react-native-reanimated"
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const cssElement = useCssElement as unknown as (
-  Component: React.ComponentType<any>,
-  props: any,
-  mapping: any,
-) => any
-/* eslint-enable @typescript-eslint/no-explicit-any */
+import { cssElement } from "./css-element"
+
+const styleMapping = {
+  className: "style",
+} as const
 
 const RouterLinkForCss = RouterLink as React.ComponentType<
   LinkProps & { className?: string }
 >
 
-export const Link = Object.assign(
-  (props: LinkProps & { className?: string }) => {
-    return cssElement(RouterLinkForCss, props, { className: "style" })
-  },
-  {
-    resolveHref: RouterLink.resolveHref,
-    Menu: RouterLink.Menu,
-    Trigger: RouterLink.Trigger,
-    Preview: RouterLink.Preview,
-    MenuAction: RouterLink.MenuAction,
-  },
-) as typeof RouterLink
+function CSSLink(props: LinkProps & { className?: string }) {
+  return cssElement(RouterLinkForCss, props, styleMapping)
+}
+
+export const Link = Object.assign(CSSLink, {
+  resolveHref: RouterLink.resolveHref,
+  Menu: RouterLink.Menu,
+  Trigger: RouterLink.Trigger,
+  Preview: RouterLink.Preview,
+  MenuAction: RouterLink.MenuAction,
+}) as typeof RouterLink
 
 export const useCSSVariable = useFunctionalVariable
 
@@ -48,7 +42,7 @@ export type ViewProps = React.ComponentProps<typeof RNView> & {
 }
 
 export const View = (props: ViewProps) => {
-  return cssElement(RNView, props, { className: "style" })
+  return cssElement(RNView, props, styleMapping)
 }
 View.displayName = "CSS(View)"
 
@@ -58,10 +52,15 @@ export const Text = (
   return cssElement(
     RNText,
     { maxFontSizeMultiplier: 1.3, ...props },
-    { className: "style" },
+    styleMapping,
   )
 }
 Text.displayName = "CSS(Text)"
+
+const scrollViewMapping = {
+  className: "style",
+  contentContainerClassName: "contentContainerStyle",
+} as const
 
 type ScrollViewCssProps = React.ComponentProps<typeof RNScrollView> & {
   className?: string
@@ -73,14 +72,7 @@ const RNScrollViewForCss =
 
 export const ScrollView = React.forwardRef<RNScrollView, ScrollViewCssProps>(
   function ScrollView(props, ref) {
-    return cssElement(
-      RNScrollViewForCss,
-      { ref, ...props },
-      {
-        className: "style",
-        contentContainerClassName: "contentContainerStyle",
-      },
-    )
+    return cssElement(RNScrollViewForCss, { ref, ...props }, scrollViewMapping)
   },
 )
 ScrollView.displayName = "CSS(ScrollView)"
@@ -88,16 +80,26 @@ ScrollView.displayName = "CSS(ScrollView)"
 export const Pressable = (
   props: React.ComponentProps<typeof RNPressable> & { className?: string },
 ) => {
-  return cssElement(RNPressable, props, { className: "style" })
+  return cssElement(RNPressable, props, styleMapping)
 }
 Pressable.displayName = "CSS(Pressable)"
 
 export const TextInput = (
   props: React.ComponentProps<typeof RNTextInput> & { className?: string },
 ) => {
-  return cssElement(RNTextInput, props, { className: "style" })
+  return cssElement(RNTextInput, props, styleMapping)
 }
 TextInput.displayName = "CSS(TextInput)"
+
+const AnimatedScrollViewForCss = Animated.ScrollView as React.ComponentType<
+  Record<string, unknown>
+>
+
+const animatedScrollViewMapping = {
+  className: "style",
+  contentClassName: "contentContainerStyle",
+  contentContainerClassName: "contentContainerStyle",
+} as const
 
 type AnimatedScrollViewProps = React.ComponentProps<
   typeof Animated.ScrollView
@@ -112,13 +114,9 @@ export const AnimatedScrollView = React.forwardRef<
   AnimatedScrollViewProps
 >(function AnimatedScrollView(props, ref) {
   return cssElement(
-    Animated.ScrollView as React.ComponentType<Record<string, unknown>>,
+    AnimatedScrollViewForCss,
     { ref, ...props },
-    {
-      className: "style",
-      contentClassName: "contentContainerStyle",
-      contentContainerClassName: "contentContainerStyle",
-    },
+    animatedScrollViewMapping,
   )
 })
 
@@ -143,7 +141,7 @@ export const TouchableHighlight = (
     className?: string
   },
 ) => {
-  return cssElement(XXTouchableHighlight, props, { className: "style" })
+  return cssElement(XXTouchableHighlight, props, styleMapping)
 }
 TouchableHighlight.displayName = "CSS(TouchableHighlight)"
 
@@ -153,6 +151,6 @@ export const TouchableOpacity = (
     className?: string
   },
 ) => {
-  return cssElement(RNTouchableOpacity, props, { className: "style" })
+  return cssElement(RNTouchableOpacity, props, styleMapping)
 }
 TouchableOpacity.displayName = "CSS(TouchableOpacity)"
