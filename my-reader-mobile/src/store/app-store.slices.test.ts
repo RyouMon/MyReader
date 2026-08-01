@@ -1,7 +1,7 @@
 import type { DataSource } from "@my-reader/tools/types/data-source"
 import type { Library } from "@my-reader/tools/types/library"
 
-import type { AppState } from "./app-store.types"
+import type { AppState, AppStateSlice } from "./app-store.types"
 import {
   COVER_THUMBNAIL_GENERATION_CONCURRENCY_MAX,
   COVER_THUMBNAIL_GENERATION_CONCURRENCY_MIN,
@@ -17,7 +17,7 @@ type SliceHarness<TSlice> = {
 }
 
 function createHarness<TSlice>(
-  createSlice: (...args: any[]) => TSlice,
+  createSlice: AppStateSlice<TSlice>,
   initialState: Partial<AppState> = {},
 ): SliceHarness<TSlice> {
   let state = initialState as AppState & TSlice
@@ -30,7 +30,11 @@ function createHarness<TSlice>(
     }
   }
   const get = () => state
-  const slice = createSlice(set, get, {} as never)
+  const slice = createSlice(
+    set as Parameters<AppStateSlice<TSlice>>[0],
+    get as Parameters<AppStateSlice<TSlice>>[1],
+    {} as Parameters<AppStateSlice<TSlice>>[2],
+  )
   state = { ...slice, ...state }
 
   return {
