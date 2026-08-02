@@ -62,7 +62,6 @@ export function SyncRuntime(): null {
   const storeReady = useAppStore((state) => state.storeReady)
   const enableAutoSync = useAppStore((state) => state.settings.enableAutoSync)
   const activeLibraryId = useAppStore((state) => state.activeLibraryId)
-  const dataSources = useAppStore((state) => state.dataSources)
   const pathname = usePathname()
   const hasRunStartup = useRef(false)
   const sidecarRuntime = useRef<SidecarSyncRuntime | null>(null)
@@ -107,7 +106,7 @@ export function SyncRuntime(): null {
         const state = useAppStore.getState()
         return {
           libraries: state.libraries,
-          dataSources,
+          dataSources: state.dataSources,
           enableAutoSync: state.settings.enableAutoSync,
         }
       },
@@ -194,7 +193,7 @@ export function SyncRuntime(): null {
         sidecarRuntime.current = null
       }
     }
-  }, [storeReady, enableAutoSync, dataSources])
+  }, [storeReady, enableAutoSync])
 
   useEffect(() => {
     const previous = previousPathname.current

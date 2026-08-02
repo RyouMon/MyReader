@@ -120,10 +120,12 @@ export function createSidecarSyncRuntime(
   }
 
   function schedule(sync: ScheduledSync): void {
+    if (disposed) return
     clearTimer(sync.libraryId)
     const timer = setTimeout(
       () => {
         timers.delete(sync.libraryId)
+        if (disposed) return
         const transition = applyTransition(
           beginCoordinatedSync({
             coordinatorId,
@@ -131,7 +133,11 @@ export function createSidecarSyncRuntime(
             generation: sync.generation,
           }),
         )
-        if (transition.execution) void execute(transition.execution)
+        if (transition.execution) {
+          void execute(transition.execution).catch((error) => {
+            if (!disposed) onError?.(error)
+          })
+        }
       },
       Math.max(0, sync.deadline - Date.now()),
     )
@@ -144,11 +150,13 @@ export function createSidecarSyncRuntime(
     for (const libraryId of transition.cancelTimersFor) {
       clearTimer(libraryId)
     }
+    if (disposed) return transition
     for (const scheduled of transition.schedules) schedule(scheduled)
     return transition
   }
 
   async function execute(execution: SyncExecution): Promise<void> {
+    if (disposed) return
     const state = getState()
     if (!state.enableAutoSync) {
       applyTransition(
@@ -181,6 +189,7 @@ export function createSidecarSyncRuntime(
         execution,
         nowMs: Date.now(),
       })
+      if (disposed || cancelledTasks.has(taskId)) return
       if (effectiveExecution) {
         const report = await syncLibrary(library, state.dataSources, {
           scope: "myreader",
@@ -188,7 +197,9 @@ export function createSidecarSyncRuntime(
           myreaderTaskId: taskId,
           throwOnFailure: true,
         })
+        if (disposed || cancelledTasks.has(taskId)) return
         await applySyncReport(report, { trigger: "scheduled" })
+        if (disposed || cancelledTasks.has(taskId)) return
       }
       applyTransition(
         completeCoordinatedSync({
@@ -198,7 +209,7 @@ export function createSidecarSyncRuntime(
         }),
       )
     } catch (error) {
-      if (cancelledTasks.has(taskId)) return
+      if (disposed || cancelledTasks.has(taskId)) return
       console.warn("[reading-sync] automatic:failed", {
         libraryId: execution.libraryId,
         mode: execution.mode,
@@ -252,29 +263,41 @@ export function createSidecarSyncRuntime(
     },
     async recover() {
       for (const library of getState().libraries) {
-        applyTransition(
-          await recoverCoordinatedSync({
+        if (disposed) return
+        try {
+          const transition = await recoverCoordinatedSync({
             coordinatorId,
             sidecarRootPath: sidecarRootPath(library),
             libraryId: library.id,
             nowMs: Date.now(),
-          }),
-        )
+          })
+          if (disposed) return
+          applyTransition(transition)
+        } catch (error) {
+          if (disposed) return
+          throw error
+        }
       }
     },
     async requestContextualPull(libraryId, reason) {
+      if (disposed) return false
       const library = findLibrary(libraryId)
       if (!library) return false
-      const transition = applyTransition(
-        await requestCoordinatedPull({
+      try {
+        const transition = await requestCoordinatedPull({
           coordinatorId,
           sidecarRootPath: sidecarRootPath(library),
           libraryId,
           reason,
           nowMs: Date.now(),
-        }),
-      )
-      return transition.schedules.length > 0
+        })
+        if (disposed) return false
+        applyTransition(transition)
+        return transition.schedules.length > 0
+      } catch (error) {
+        if (disposed) return false
+        throw error
+      }
     },
     setLibraryOnline(libraryId, online) {
       if (disposed) return
@@ -288,11 +311,14 @@ export function createSidecarSyncRuntime(
       )
     },
     startSafetySweep(getActiveLibraryId) {
+      if (disposed) return () => {}
       let stopped = false
       let timer: ReturnType<typeof setTimeout> | null = null
       const scheduleNext = () => {
+        if (stopped || disposed) return
         timer = setTimeout(
           async () => {
+            if (stopped || disposed) return
             const libraryId = getActiveLibraryId()
             if (libraryId) {
               try {
@@ -301,7 +327,7 @@ export function createSidecarSyncRuntime(
                 onError?.(error)
               }
             }
-            if (!stopped) scheduleNext()
+            if (!stopped && !disposed) scheduleNext()
           },
           safetySweepDelayMs(coordinatorId, Math.random()),
         )
@@ -314,7 +340,6 @@ export function createSidecarSyncRuntime(
     },
     dispose() {
       if (disposed) return
-      applyTransition(disposeSyncCoordinator(coordinatorId))
       disposed = true
       for (const taskId of runningTasks.values()) {
         cancelledTasks.add(taskId)
@@ -323,6 +348,7 @@ export function createSidecarSyncRuntime(
       runningTasks.clear()
       for (const timer of timers.values()) clearTimeout(timer)
       timers.clear()
+      applyTransition(disposeSyncCoordinator(coordinatorId))
     },
   }
 

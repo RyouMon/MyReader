@@ -1,6 +1,8 @@
 import {
+  beginCoordinatedSync,
   recoverCoordinatedSync,
   requestCoordinatedPull,
+  type SchedulerTransition,
 } from "@/src/services/core/sync"
 import { createSidecarSyncRuntime } from "./sidecar-sync-runtime"
 
@@ -15,7 +17,12 @@ jest.mock("@/src/services/core/sync", () => ({
   flushCoordinatedSync: jest.fn(),
   recoverCoordinatedSync: jest.fn(),
   requestCoordinatedPull: jest.fn(),
-  beginCoordinatedSync: jest.fn(),
+  beginCoordinatedSync: jest.fn(() => ({
+    schedules: [],
+    cancelTimersFor: [],
+    execution: null,
+    retry: null,
+  })),
   effectiveCoordinatedSyncExecution: jest.fn(),
   completeCoordinatedSync: jest.fn(),
   failCoordinatedSync: jest.fn(),
@@ -111,5 +118,80 @@ describe("createSidecarSyncRuntime", () => {
       nowMs: expect.any(Number),
     })
     runtime.dispose()
+  })
+
+  it("should ignore a contextual pull completed after disposal", async () => {
+    jest.useFakeTimers()
+    let resolvePull!: (transition: SchedulerTransition) => void
+    jest.mocked(requestCoordinatedPull).mockImplementationOnce(
+      () =>
+        new Promise<SchedulerTransition>((resolve) => {
+          resolvePull = resolve
+        }),
+    )
+    const runtime = createSidecarSyncRuntime(() => ({
+      libraries: [library],
+      dataSources: [],
+      enableAutoSync: true,
+    }))
+
+    try {
+      const pull = runtime.requestContextualPull(
+        "library-1",
+        "app_foregrounded",
+      )
+      runtime.dispose()
+      resolvePull({
+        schedules: [
+          { libraryId: "library-1", generation: 1, deadline: Date.now() },
+        ],
+        cancelTimersFor: [],
+        execution: null,
+        retry: null,
+      })
+
+      await expect(pull).resolves.toBe(false)
+      jest.runOnlyPendingTimers()
+      expect(beginCoordinatedSync).not.toHaveBeenCalled()
+    } finally {
+      runtime.dispose()
+      jest.useRealTimers()
+    }
+  })
+
+  it("should stop recovering libraries after disposal", async () => {
+    let resolveRecovery!: (transition: SchedulerTransition) => void
+    jest
+      .mocked(recoverCoordinatedSync)
+      .mockImplementationOnce(
+        () =>
+          new Promise<SchedulerTransition>((resolve) => {
+            resolveRecovery = resolve
+          }),
+      )
+      .mockResolvedValue({
+        schedules: [],
+        cancelTimersFor: [],
+        execution: null,
+        retry: null,
+      })
+    const secondLibrary = { ...library, id: "library-2" }
+    const runtime = createSidecarSyncRuntime(() => ({
+      libraries: [library, secondLibrary],
+      dataSources: [],
+      enableAutoSync: true,
+    }))
+
+    const recovery = runtime.recover()
+    runtime.dispose()
+    resolveRecovery({
+      schedules: [],
+      cancelTimersFor: [],
+      execution: null,
+      retry: null,
+    })
+
+    await recovery
+    expect(recoverCoordinatedSync).toHaveBeenCalledTimes(1)
   })
 })
