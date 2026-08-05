@@ -1,5 +1,6 @@
 import { router } from "expo-router"
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { libraryTypeOf } from "@my-reader/tools/types/library"
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import {
@@ -8,7 +9,9 @@ import {
   useDownloadStatusTasks,
 } from "@/src/domain/download/download-store"
 import { resolveEffectiveFormat } from "@/src/domain/library/book-formats"
-import { getBookFormatPaths } from "@/src/domain/library/calibre"
+import { getBookFormatPaths } from "@/src/domain/library/catalog"
+import { deleteManagedBook } from "@/src/domain/library/hooks/library-actions"
+import { requestPendingBookUploads } from "@/src/domain/sync/book-upload-store"
 import {
   resolveShareableFormat,
   shareBookFile,
@@ -37,7 +40,13 @@ export function useBookActions(
   toggleFavorite?: (bookId: string) => Promise<void> | void,
 ) {
   const isNavigatingRef = useRef(false)
+  const handledReaderDownloadTaskIdsRef = useRef(new Set<string>())
   const tasks = useDownloadStatusTasks()
+  const [pendingReaderDownload, setPendingReaderDownload] = useState<{
+    bookId: string
+    format: string
+    taskId: string
+  } | null>(null)
 
   // Sync latest props into a ref so callbacks always read current values
   // without rebuilding their references on every parent render.
@@ -108,20 +117,51 @@ export function useBookActions(
         const match = paths.find((p) => p.format.toUpperCase() === format)
         if (!match) return
 
-        await enqueueDownload({
+        const taskId = await enqueueDownload({
           libraryId: lib.id,
           bookId: book.id,
           format,
           relativePath: match.relativePath,
           label: `${book.title} · ${format}`,
         })
+        return { format, taskId }
       } catch (e) {
         const { title, message } = describeDownloadError(e)
         showAlertWithStatusBarRestore(title, message)
       }
+      return null
     },
     [],
   )
+
+  const openReader = useCallback((bookId: string, format?: string) => {
+    if (isNavigatingRef.current) return
+    isNavigatingRef.current = true
+    router.push({
+      pathname: "/reader/[id]",
+      params: format ? { id: bookId, format } : { id: bookId },
+    })
+    setTimeout(() => {
+      isNavigatingRef.current = false
+    }, 1200)
+  }, [])
+
+  useEffect(() => {
+    if (!pendingReaderDownload) return
+    if (
+      handledReaderDownloadTaskIdsRef.current.has(pendingReaderDownload.taskId)
+    ) {
+      return
+    }
+    const task = tasks.find((item) => item.id === pendingReaderDownload.taskId)
+    if (!task) return
+    if (task.status === "done") {
+      handledReaderDownloadTaskIdsRef.current.add(pendingReaderDownload.taskId)
+      openReader(pendingReaderDownload.bookId, pendingReaderDownload.format)
+    } else if (task.status === "error" || task.status === "cancelled") {
+      handledReaderDownloadTaskIdsRef.current.add(pendingReaderDownload.taskId)
+    }
+  }, [openReader, pendingReaderDownload, tasks])
 
   const promptSetDefaultFormat = useCallback(async (book: BookItem) => {
     const {
@@ -195,26 +235,19 @@ export function useBookActions(
         !isRemoteSourceType(latest.selectedLibrary?.sourceType) ||
         status === "downloaded"
       ) {
-        isNavigatingRef.current = true
         const effectiveFormat =
           latest.bookFormatMetaById.get(bookId)?.effectiveFormat
-        if (effectiveFormat) {
-          router.push({
-            pathname: "/reader/[id]",
-            params: { id: bookId, format: effectiveFormat },
-          })
-        } else {
-          router.push({ pathname: "/reader/[id]", params: { id: bookId } })
-        }
-        setTimeout(() => {
-          isNavigatingRef.current = false
-        }, 1200)
+        openReader(bookId, effectiveFormat)
         return
       }
 
-      void downloadBook(book)
+      void downloadBook(book).then((download) => {
+        if (!download) return
+        handledReaderDownloadTaskIdsRef.current.delete(download.taskId)
+        setPendingReaderDownload({ bookId, ...download })
+      })
     },
-    [downloadBook],
+    [downloadBook, openReader],
   )
 
   const handleBookMenuAction = useCallback(
@@ -244,8 +277,61 @@ export function useBookActions(
         }
         return
       }
+      if (actionId === "uploadFile") {
+        const lib = latest.selectedLibrary
+        if (
+          !lib ||
+          libraryTypeOf(lib) !== "myreader" ||
+          !isRemoteSourceType(lib.sourceType)
+        ) {
+          return
+        }
+        requestPendingBookUploads(lib.id)
+        return
+      }
       if (actionId === "detail") {
         router.push({ pathname: "/library-book/[id]", params: { id: bookId } })
+        return
+      }
+      if (actionId === "editMetadata") {
+        const lib = latest.selectedLibrary
+        if (!lib || libraryTypeOf(lib) !== "myreader") return
+        router.push({
+          pathname: "/library-book/edit",
+          params: { id: bookId },
+        })
+        return
+      }
+      if (actionId === "deleteBook") {
+        const lib = latest.selectedLibrary
+        const calibreId = Number(book.id)
+        if (
+          !lib ||
+          libraryTypeOf(lib) !== "myreader" ||
+          !Number.isFinite(calibreId) ||
+          calibreId <= 0
+        ) {
+          return
+        }
+        showAlertWithStatusBarRestore(
+          i18n.t("bookMenu.deleteConfirmTitle"),
+          i18n.t("bookMenu.deleteConfirmDetail", { title: book.title }),
+          [
+            { text: i18n.t("common.cancel"), style: "cancel" },
+            {
+              text: i18n.t("common.delete"),
+              style: "destructive",
+              onPress: () => {
+                void deleteManagedBook(lib, calibreId).catch((error) => {
+                  showAlertWithStatusBarRestore(
+                    i18n.t("bookMenu.deleteFailed"),
+                    error instanceof Error ? error.message : String(error),
+                  )
+                })
+              },
+            },
+          ],
+        )
         return
       }
       if (actionId === "favorite") {

@@ -21,8 +21,9 @@ import {
   BookCoverBase,
   type BookDownloadStatus,
   type BookProgressSnapshot,
+  type BookTransferStatus,
 } from "./book-cover"
-import { BookDownloadStatusIndicator } from "@/src/components/book-download-status-indicator"
+import { BookTransferStatusIndicator } from "@/src/components/book-transfer-status-indicator"
 import { ProgressLabel } from "./progress-label"
 
 /** Cover size constants for the list row. Adjust height and border radius here; width is derived from a standard 2:3 book cover ratio. */
@@ -52,6 +53,7 @@ export type BookRowProps = {
   progress?: BookProgressSnapshot
   readerFormat?: string
   downloadStatus?: BookDownloadStatus
+  transferStatus?: BookTransferStatus
   downloadProgress?: number
   horizontalPadding?: number
   loadingSkeletonPulseEnabled?: boolean
@@ -89,6 +91,7 @@ function BookRowImpl({
   progress,
   readerFormat,
   downloadStatus,
+  transferStatus,
   downloadProgress,
   horizontalPadding = 16,
   loadingSkeletonPulseEnabled,
@@ -107,8 +110,10 @@ function BookRowImpl({
     [palette.backgroundSecondary, palette.textMuted],
   )
 
-  const showCloudIcon = downloadStatus === "notDownloaded"
-  const showProgressIndicator = downloadStatus === "downloading"
+  const displayedTransferStatus = transferStatus ?? downloadStatus
+  const showTransferStatus =
+    displayedTransferStatus !== undefined &&
+    displayedTransferStatus !== "downloaded"
 
   const hasMenuInputs = menuIsRemote !== undefined
   const computedMenuActions = useMemo<MenuAction[] | undefined>(() => {
@@ -222,7 +227,11 @@ function BookRowImpl({
   return (
     <TouchableHighlight
       accessibilityRole={onPress ? "button" : undefined}
-      accessibilityLabel={t("bookDetail.openBook", { title: book.title })}
+      accessibilityLabel={
+        onPress
+          ? t("bookDetail.openBook", { title: book.title })
+          : progress?.statusLabel
+      }
       onPress={handlePress}
       underlayColor={palette.surface}
     >
@@ -269,11 +278,12 @@ function BookRowImpl({
             <View className="flex-row flex-wrap items-center gap-1.5">
               <ProgressLabel progress={progress} />
               <View className="ml-auto flex-row items-center">
-                {showCloudIcon || showProgressIndicator ? (
-                  <BookDownloadStatusIndicator
-                    status={downloadStatus}
+                {showTransferStatus ? (
+                  <BookTransferStatusIndicator
+                    status={displayedTransferStatus}
                     libraryId={subscriptionLibraryId}
                     bookId={book.id}
+                    bookUuid={book.uuid}
                     format={subscriptionFormat}
                     fallbackProgress={downloadProgress}
                   />

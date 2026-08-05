@@ -5,7 +5,7 @@ import { libraryBookFileUri } from "@/src/services/fs/library-paths"
 import { getFileState } from "../../services/core/content"
 import type { Library } from "../types"
 import { isRemoteSourceType } from "../types"
-import { getBookFormatPaths } from "./calibre"
+import { getBookFormatPaths } from "./catalog"
 
 export type ShareableFormat = {
   format: string

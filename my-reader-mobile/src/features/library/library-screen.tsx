@@ -15,9 +15,10 @@ import {
   type ListRenderItemInfo,
   type ViewToken,
 } from "@shopify/flash-list"
-import { Stack, router, useIsFocused } from "expo-router"
+import { Stack, useIsFocused } from "expo-router"
 import { useTranslation } from "react-i18next"
 import { Dimensions, PixelRatio, View, useWindowDimensions } from "react-native"
+import { libraryTypeOf } from "@my-reader/tools/types/library"
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import {
@@ -52,7 +53,10 @@ import {
   RoundIconButton,
   Screen,
 } from "@/src/components"
-import { switchActiveLibrary } from "@/src/domain/library/hooks/library-actions"
+import {
+  importBookFromPicker,
+  switchActiveLibrary,
+} from "@/src/domain/library/hooks/library-actions"
 import { useBookReadingFormat } from "@/src/domain/library/hooks/use-book-reading-format"
 import { useFavoriteBooks } from "@/src/domain/library/hooks/use-favorite-books"
 import { notifyLibraryRefresh } from "@/src/domain/notifications/download-notifications"
@@ -65,6 +69,7 @@ import {
   LibrarySkeletonContent,
   type BookCardChrome,
 } from "@/src/features/library/components/books"
+import { NoLibraryEmptyState } from "@/src/features/library/components/no-library-empty-state"
 import { getBookCardCoverHeight } from "@/src/features/library/components/books/book-card"
 import {
   BOOK_ROW_COVER_HEIGHT,
@@ -80,7 +85,10 @@ import { useLibraryHeaderChrome } from "@/src/features/library/hooks/use-library
 import { useLibraryListPerformanceProfiler } from "@/src/features/library/hooks/use-library-list-performance-profiler"
 import { useSearchQuery } from "@/src/features/library/hooks/use-search-query"
 import { useCoverThumbnails } from "@/src/features/library/hooks/use-cover-thumbnails"
-import { useBooks } from "@/src/features/library/hooks/useLibraryQuery"
+import {
+  useBooks,
+  usePendingBookImports,
+} from "@/src/features/library/hooks/useLibraryQuery"
 import {
   resolveCoverThumbnailBookIds,
   resolveInitialCoverThumbnailBookIds,
@@ -193,7 +201,10 @@ export default function LibraryScreen({
     data: books = [],
     isLoading: loadingBooks,
     error: booksError,
+    refetch: refetchBooks,
   } = useBooks(activeLibraryId)
+  const { data: pendingBookImports = [] } =
+    usePendingBookImports(activeLibraryId)
   const { syncNow } = useSyncLibrary()
   const viewMode = useAppStore((s) => s.libraryViewMode)
   const setViewMode = useAppStore((s) => s.setLibraryViewMode)
@@ -219,7 +230,8 @@ export default function LibraryScreen({
   const thumbnailWorkPausedRef = useRef(true)
   const [thumbnailWorkPaused, setThumbnailWorkPaused] = useState(true)
 
-  const isLoadingNewContent = loadingBooks && books.length === 0
+  const isLoadingNewContent =
+    loadingBooks && books.length === 0 && pendingBookImports.length === 0
 
   const handleMenuOpen = useCallback((bookId: string) => {
     if (menuCloseTimerRef.current) {
@@ -286,7 +298,10 @@ export default function LibraryScreen({
     bookFormatsById,
     bookFormatMetaById,
     fileStateBundle,
+    bookCanUploadById,
+    bookCanDeleteDownloadById,
     bookDownloadStatusById,
+    bookTransferStatusById,
     bookActiveFormatsById,
   } = useLibraryBookMeta(selectedLibrary, books, selectedFormatById)
   const { data: progressByBookId } = useBookReadingProgress(selectedLibrary)
@@ -298,7 +313,13 @@ export default function LibraryScreen({
     bookDownloadStatusById,
     favoriteSet,
   )
+  const displayedBooks = useMemo(
+    () => [...pendingBookImports, ...visibleBooks],
+    [pendingBookImports, visibleBooks],
+  )
   const isRemote = isRemoteSourceType(selectedLibrary?.sourceType)
+  const isManagedLibrary =
+    selectedLibrary !== null && libraryTypeOf(selectedLibrary) === "myreader"
   const selectedLibraryId = selectedLibrary?.id
   const [coverThumbnailDisplayBookIds, setCoverThumbnailDisplayBookIds] =
     useState<Set<string>>(() => new Set())
@@ -347,10 +368,14 @@ export default function LibraryScreen({
     () =>
       buildLibraryBookCellMetaById({
         bookActiveFormatsById,
+        bookCanUploadById,
+        bookCanDeleteDownloadById,
         bookDownloadStatusById,
+        bookTransferStatusById,
         bookFormatMetaById,
         bookFormatsById,
         favoriteSet,
+        isManaged: isManagedLibrary,
         isRemote,
         progressByBookId,
         selectedFormatById,
@@ -360,10 +385,14 @@ export default function LibraryScreen({
       }),
     [
       bookActiveFormatsById,
+      bookCanUploadById,
+      bookCanDeleteDownloadById,
       bookDownloadStatusById,
+      bookTransferStatusById,
       bookFormatMetaById,
       bookFormatsById,
       favoriteSet,
+      isManagedLibrary,
       isRemote,
       progressByBookId,
       selectedFormatById,
@@ -457,6 +486,17 @@ export default function LibraryScreen({
     })()
   }, [selectedLibrary, syncNow])
 
+  const handleImportBook = useCallback(() => {
+    void importBookFromPicker(isManagedLibrary ? selectedLibrary : null).catch(
+      (error) => {
+        showAlertWithStatusBarRestore(
+          t("library.importFailed.title"),
+          error instanceof Error ? error.message : String(error),
+        )
+      },
+    )
+  }, [isManagedLibrary, selectedLibrary, t])
+
   const { options, toolbar } = useLibraryHeaderChrome({
     variant,
     selectedLibrary,
@@ -466,6 +506,8 @@ export default function LibraryScreen({
     sortBy,
     viewMode,
     onSyncCurrentLibrary: handleSyncCurrentLibrary,
+    canImportBook: isManagedLibrary,
+    onImportBook: handleImportBook,
     onSelectLibrary: applyLibrarySelection,
     onOpenLibrarySwitchMenu: openLibrarySwitchMenu,
     onSetFilter: setFilter,
@@ -630,12 +672,24 @@ export default function LibraryScreen({
       recordRenderTarget?.(target)
 
       const cellMeta = bookCellMetaById.get(item.id)
-      const downloadStatus = cellMeta?.downloadStatus ?? "notDownloaded"
+      const isImporting = item.importStatus === "importing"
+      const downloadStatus = isImporting
+        ? "downloading"
+        : (cellMeta?.downloadStatus ?? "notDownloaded")
+      const transferStatus = isImporting
+        ? "downloading"
+        : (cellMeta?.transferStatus ?? downloadStatus)
       const readerFormat = cellMeta?.readerFormat
-      const progress = cellMeta?.progress
-      const subscriptionLibraryId = cellMeta?.subscriptionLibraryId
-      const subscriptionFormat = cellMeta?.subscriptionFormat
-      const menuActions = cellMeta?.menuActions
+      const progress = isImporting
+        ? { statusLabel: t("library.importingBook") }
+        : cellMeta?.progress
+      const subscriptionLibraryId = isImporting
+        ? undefined
+        : cellMeta?.subscriptionLibraryId
+      const subscriptionFormat = isImporting
+        ? undefined
+        : cellMeta?.subscriptionFormat
+      const menuActions = isImporting ? undefined : cellMeta?.menuActions
       const deferCoverUntilDisplayUri = !!item.coverUri
 
       if (isGridView) {
@@ -645,22 +699,25 @@ export default function LibraryScreen({
             deferCoverUntilDisplayUri={deferCoverUntilDisplayUri}
             thumbnailScopeKey={coverThumbnailScopeKey}
             downloadStatus={downloadStatus}
+            transferStatus={transferStatus}
             width={cardWidth}
             readerFormat={readerFormat}
             isAnyMenuOpen={isMenuOpen}
-            onPress={handleBookPress}
-            menuIsRemote={isRemote}
+            onPress={isImporting ? undefined : handleBookPress}
+            menuIsRemote={isImporting ? undefined : isRemote}
             menuActions={menuActions}
-            onMenuAction={handleBookMenuAction}
-            onMenuOpen={handleMenuOpen}
-            onMenuClose={handleMenuClose}
+            onMenuAction={isImporting ? undefined : handleBookMenuAction}
+            onMenuOpen={isImporting ? undefined : handleMenuOpen}
+            onMenuClose={isImporting ? undefined : handleMenuClose}
             subscriptionLibraryId={subscriptionLibraryId}
             subscriptionFormat={subscriptionFormat}
             progress={progress}
             profilerOnRender={cardSegmentProfilerOnRender}
             chrome={bookCardChrome}
-            moreActionsLabel={cellMeta?.moreActionsLabel ?? item.title}
-            openBookLabel={cellMeta?.openBookLabel}
+            moreActionsLabel={
+              cellMeta?.moreActionsLabel ?? t("library.importingBook")
+            }
+            openBookLabel={isImporting ? undefined : cellMeta?.openBookLabel}
           />
         )
 
@@ -686,14 +743,15 @@ export default function LibraryScreen({
           deferCoverUntilDisplayUri={deferCoverUntilDisplayUri}
           thumbnailScopeKey={coverThumbnailScopeKey}
           downloadStatus={downloadStatus}
+          transferStatus={transferStatus}
           readerFormat={readerFormat}
           isAnyMenuOpen={isMenuOpen}
-          onPress={handleBookPress}
-          menuIsRemote={isRemote}
+          onPress={isImporting ? undefined : handleBookPress}
+          menuIsRemote={isImporting ? undefined : isRemote}
           menuActions={menuActions}
-          onMenuAction={handleBookMenuAction}
-          onMenuOpen={handleMenuOpen}
-          onMenuClose={handleMenuClose}
+          onMenuAction={isImporting ? undefined : handleBookMenuAction}
+          onMenuOpen={isImporting ? undefined : handleMenuOpen}
+          onMenuClose={isImporting ? undefined : handleMenuClose}
           horizontalPadding={LIBRARY_LIST_PADDING_X}
           subscriptionLibraryId={subscriptionLibraryId}
           subscriptionFormat={subscriptionFormat}
@@ -717,6 +775,7 @@ export default function LibraryScreen({
       isMenuOpen,
       isRemote,
       recordRenderTarget,
+      t,
     ],
   )
 
@@ -823,17 +882,7 @@ export default function LibraryScreen({
       <>
         {header}
         <Screen>
-          <EmptyState
-            title={t("library.noLibrary.title")}
-            detail={t("library.noLibrary.detail")}
-            action={
-              <PrimaryButton
-                title={t("library.addLibrary")}
-                onPress={() => router.push("/settings/add-library")}
-              />
-            }
-            icon={{ ios: "books.vertical.fill", android: "library-books" }}
-          />
+          <NoLibraryEmptyState />
         </Screen>
       </>
     )
@@ -870,7 +919,7 @@ export default function LibraryScreen({
   const flashList = (
     <FlashList
       key={`${viewMode}-${gridColumns}-${activeLibraryId ?? "none"}`}
-      data={isLoadingNewContent ? [] : visibleBooks}
+      data={isLoadingNewContent ? [] : displayedBooks}
       extraData={flashListExtraData}
       numColumns={isGridView ? gridColumns : 1}
       keyExtractor={(item) => item.id}
@@ -903,6 +952,12 @@ export default function LibraryScreen({
           <EmptyState
             title={t("library.loadError.title")}
             detail={booksError.message}
+            action={
+              <PrimaryButton
+                title={t("errorBoundary.retry")}
+                onPress={() => void refetchBooks()}
+              />
+            }
             icon={{
               ios: "exclamationmark.triangle.fill",
               android: "warning",
@@ -913,6 +968,17 @@ export default function LibraryScreen({
             title={emptyState.title}
             detail={emptyState.detail}
             icon={emptyState.icon}
+            action={
+              isManagedLibrary &&
+              books.length === 0 &&
+              filter === "all" &&
+              query.length === 0 ? (
+                <PrimaryButton
+                  title={t("library.importBook")}
+                  onPress={handleImportBook}
+                />
+              ) : undefined
+            }
           />
         )
       }

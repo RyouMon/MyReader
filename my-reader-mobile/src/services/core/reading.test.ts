@@ -1,5 +1,5 @@
 jest.mock("../fs/local-library-content", () => ({
-  withLocalLibraryCalibreRoot: jest.fn(
+  withLocalLibraryContentRoot: jest.fn(
     async (_library: unknown, operation: (root: string) => Promise<unknown>) =>
       operation("file:///library"),
   ),

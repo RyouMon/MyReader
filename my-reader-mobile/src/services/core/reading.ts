@@ -5,7 +5,7 @@ import type {
 import type { ReaderLocator } from "@my-reader/tools/reader-toc"
 import type { Library } from "@my-reader/tools/types/library"
 
-import { withLocalLibraryCalibreRoot } from "../fs/local-library-content"
+import { withLocalLibraryContentRoot } from "../fs/local-library-content"
 import {
   readingAddAnnotation,
   readingAddBookmark,
@@ -124,7 +124,7 @@ export function setFavoriteBook(
   isFavorite: boolean,
 ): Promise<void> {
   return mutateSidecar(library, () =>
-    withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
+    withLocalLibraryContentRoot(library, (libraryRootUri) =>
       readingSetFavoriteBook(
         sidecarRootPath(library),
         toNativeFilesystemPath(libraryRootUri),
@@ -165,7 +165,7 @@ export function setReadingPosition(
   displayProgression: number | null,
 ): Promise<void> {
   return mutateSidecar(library, () =>
-    withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
+    withLocalLibraryContentRoot(library, (libraryRootUri) =>
       readingSetPosition(
         sidecarRootPath(library),
         toNativeFilesystemPath(libraryRootUri),
@@ -184,7 +184,7 @@ export async function listReadingPositionCandidates(
   bookId: number,
   format: string,
 ): Promise<ReadingPositionCandidate[]> {
-  const candidates = await withLocalLibraryCalibreRoot(
+  const candidates = await withLocalLibraryContentRoot(
     library,
     (libraryRootUri) =>
       readingListPositionCandidates(
@@ -205,7 +205,7 @@ export function selectReadingPositionCandidate(
   operationId: string,
 ): Promise<void> {
   return mutateSidecar(library, () =>
-    withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
+    withLocalLibraryContentRoot(library, (libraryRootUri) =>
       readingSelectPositionCandidate(
         sidecarRootPath(library),
         toNativeFilesystemPath(libraryRootUri),
@@ -234,7 +234,7 @@ export function addReaderBookmark(
   locator: ReaderLocator,
 ): Promise<ReaderBookmark> {
   return mutateSidecar(library, () =>
-    withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
+    withLocalLibraryContentRoot(library, (libraryRootUri) =>
       readingAddBookmark(
         sidecarRootPath(library),
         toNativeFilesystemPath(libraryRootUri),
@@ -255,7 +255,7 @@ export function removeReaderBookmark(
   locatorKey: string,
 ): Promise<void> {
   return mutateSidecar(library, () =>
-    withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
+    withLocalLibraryContentRoot(library, (libraryRootUri) =>
       readingRemoveBookmark(
         sidecarRootPath(library),
         toNativeFilesystemPath(libraryRootUri),
@@ -287,7 +287,7 @@ export function addReaderAnnotation(
   note: string | null,
 ): Promise<ReaderAnnotation> {
   return mutateSidecar(library, () =>
-    withLocalLibraryCalibreRoot(library, async (libraryRootUri) =>
+    withLocalLibraryContentRoot(library, async (libraryRootUri) =>
       annotationFromCore(
         await readingAddAnnotation(
           sidecarRootPath(library),
@@ -313,7 +313,7 @@ export function updateReaderAnnotation(
   note: string | null,
 ): Promise<ReaderAnnotation> {
   return mutateSidecar(library, () =>
-    withLocalLibraryCalibreRoot(library, async (libraryRootUri) =>
+    withLocalLibraryContentRoot(library, async (libraryRootUri) =>
       annotationFromCore(
         await readingUpdateAnnotation(
           sidecarRootPath(library),
@@ -337,7 +337,7 @@ export function removeReaderAnnotation(
   id: string,
 ): Promise<void> {
   return mutateSidecar(library, () =>
-    withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
+    withLocalLibraryContentRoot(library, (libraryRootUri) =>
       readingRemoveAnnotation(
         sidecarRootPath(library),
         toNativeFilesystemPath(libraryRootUri),
@@ -355,7 +355,7 @@ export function addReadingSessionInterval(
   interval: ReadingSessionInterval,
 ): Promise<void> {
   return mutateSidecar(library, () =>
-    withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
+    withLocalLibraryContentRoot(library, (libraryRootUri) =>
       readingAddSessionInterval(
         sidecarRootPath(library),
         toNativeFilesystemPath(libraryRootUri),
@@ -376,7 +376,7 @@ export async function getReadingStatistics(
   startDay: string,
   endDay: string,
 ): Promise<ReadingStatistics> {
-  const statistics = await withLocalLibraryCalibreRoot(
+  const statistics = await withLocalLibraryContentRoot(
     library,
     (libraryRootUri) =>
       readingGetStatistics(

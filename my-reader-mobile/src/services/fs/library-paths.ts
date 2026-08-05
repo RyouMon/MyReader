@@ -1,10 +1,10 @@
-import { Directory, File } from "expo-file-system"
-import { Platform } from "react-native"
-
 import {
   isRemoteLibrarySourceType,
   type Library,
+  libraryTypeOf,
 } from "@my-reader/tools/types/library"
+import { Directory, File } from "expo-file-system"
+import { Platform } from "react-native"
 import type { RemoteBackend } from "@/src/services/remote/backend"
 import {
   canonicalRelativePath,
@@ -18,6 +18,26 @@ export const METADATA_DB_RELATIVE = "metadata.db"
 export const LIBRARY_MYREADER_DIR = ".myreader"
 
 const LIBRARIES_DOCUMENT_DIR = "libraries"
+
+/** User-visible directory name for a local library. */
+export function localLibraryFolderName(library: Library): string | null {
+  if (isRemoteLibrarySourceType(library.sourceType)) return null
+
+  const uri =
+    library.securityScopedBookmark?.resolvedUri ??
+    library.sourcePath ??
+    library.path
+  try {
+    const name = new Directory(uri).name.trim()
+    if (!name) return null
+    if (!uri.startsWith("content://")) return name
+
+    const decoded = decodeURIComponent(name)
+    return decoded.split(/[/:]/).filter(Boolean).at(-1) ?? null
+  } catch {
+    return null
+  }
+}
 
 /** App container root for a library (`Documents/libraries/{id}/`). */
 export function libraryContainerRootUri(libraryId: string): string {
@@ -38,13 +58,21 @@ export function usesIosContainerSidecar(library: Library): boolean {
   )
 }
 
+export function usesLibraryContainerSidecar(library: Library): boolean {
+  return (
+    libraryTypeOf(library) === "myreader" ||
+    isRemoteLibrarySourceType(library.sourceType) ||
+    usesIosContainerSidecar(library)
+  )
+}
+
 /** User-selected Calibre library root (bookmark or filesystem path). */
 export function libraryLocalRootUri(library: Library): string {
   return library.securityScopedBookmark?.resolvedUri ?? library.path
 }
 
 /**
- * Calibre tree root: metadata.db, books, covers.
+ * Local content root for catalog files, books, and covers.
  * Remote → container; local → {@link libraryLocalRootUri}.
  */
 export function libraryRootUri(library: Library): string {
@@ -59,10 +87,7 @@ export function libraryRootUri(library: Library): string {
  * Remote / iOS external → container; other local → local root.
  */
 export function librarySidecarRootUri(library: Library): string {
-  if (
-    isRemoteLibrarySourceType(library.sourceType) ||
-    usesIosContainerSidecar(library)
-  ) {
+  if (usesLibraryContainerSidecar(library)) {
     return libraryContainerRootUri(library.id)
   }
   return libraryLocalRootUri(library)
@@ -78,7 +103,7 @@ export function libraryMyReaderDirUri(library: Library): string {
   return fileUriFor(librarySidecarRootUri(library), LIBRARY_MYREADER_DIR)
 }
 
-/** `{libraryRoot}/{relativePath}` for Calibre book files and covers. */
+/** `{libraryRoot}/{relativePath}` for book files and covers. */
 export function libraryBookFileUri(
   library: Library,
   relativePath: string,
@@ -89,10 +114,7 @@ export function libraryBookFileUri(
 /** Ensures `{sidecarRoot}/.myreader` exists for container-backed sidecars. */
 export function ensureLibrarySidecarDirectory(library: Library): string {
   const sidecarRoot = librarySidecarRootUri(library)
-  if (
-    isRemoteLibrarySourceType(library.sourceType) ||
-    usesIosContainerSidecar(library)
-  ) {
+  if (usesLibraryContainerSidecar(library)) {
     libraryContainerRootUri(library.id)
   }
   const dir = new Directory(fileUriFor(sidecarRoot, LIBRARY_MYREADER_DIR))

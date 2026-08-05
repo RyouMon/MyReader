@@ -107,6 +107,7 @@ jest.mock("@/src/hooks/use-library-book-meta", () => ({
     bookFormatMetaById: new Map(),
     fileStateBundle: {},
     bookDownloadStatusById: {},
+    bookTransferStatusById: {},
   })),
 }))
 

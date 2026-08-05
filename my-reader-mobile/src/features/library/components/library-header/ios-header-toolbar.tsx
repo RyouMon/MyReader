@@ -21,6 +21,8 @@ type LibraryIosHeaderToolbarProps = {
   sortBy: SortOption
   viewMode: LibraryViewMode
   onSyncCurrentLibrary: () => void
+  canImportBook: boolean
+  onImportBook: () => void
   onSelectLibrary: (libraryId: string) => void
   onSetFilter: (value: LibraryFilterOption) => void
   onSetSortBy: (value: SortOption) => void
@@ -35,6 +37,8 @@ export function LibraryIosHeaderToolbar({
   sortBy,
   viewMode,
   onSyncCurrentLibrary,
+  canImportBook,
+  onImportBook,
   onSelectLibrary,
   onSetFilter,
   onSetSortBy,
@@ -46,6 +50,11 @@ export function LibraryIosHeaderToolbar({
     <>
       <Stack.Toolbar placement="left">
         <Stack.Toolbar.Menu icon="ellipsis">
+          {canImportBook ? (
+            <Stack.Toolbar.MenuAction onPress={onImportBook}>
+              {t("library.importBook")}
+            </Stack.Toolbar.MenuAction>
+          ) : null}
           <Stack.Toolbar.MenuAction onPress={onSyncCurrentLibrary}>
             {t("library.syncCurrentLibrary")}
           </Stack.Toolbar.MenuAction>

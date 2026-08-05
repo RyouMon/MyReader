@@ -2,7 +2,7 @@ import type { BookDetail } from "@my-reader/tools/types/book"
 
 import i18n from "@/src/i18n"
 
-import { buildCoverUri } from "../domain/library/calibre"
+import { buildCoverUri } from "../domain/library/catalog"
 import { createRemoteOps } from "../domain/library/remote-library"
 import type { BookItem, DataSource, Library } from "../domain/types"
 import { isRemoteSourceType } from "../domain/types"

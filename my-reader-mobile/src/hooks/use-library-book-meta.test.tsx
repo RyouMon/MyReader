@@ -3,8 +3,9 @@ import { renderHook, waitFor } from "@testing-library/react-native"
 import type { ReactNode } from "react"
 
 import { useDownloadStatusTasks } from "@/src/domain/download/download-store"
-import { getAllBookFormats } from "@/src/domain/library/calibre"
+import { getAllBookFormats } from "@/src/domain/library/catalog"
 import { useFileStates } from "@/src/domain/sync/hooks/use-file-states"
+import { useBookUploadBookUuid } from "@/src/domain/sync/book-upload-store"
 import type { BookItem, Library } from "@/src/domain/types"
 
 import { useLibraryBookMeta } from "./use-library-book-meta"
@@ -13,12 +14,16 @@ jest.mock("@/src/domain/download/download-store", () => ({
   useDownloadStatusTasks: jest.fn(),
 }))
 
-jest.mock("@/src/domain/library/calibre", () => ({
+jest.mock("@/src/domain/library/catalog", () => ({
   getAllBookFormats: jest.fn(),
 }))
 
 jest.mock("@/src/domain/sync/hooks/use-file-states", () => ({
   useFileStates: jest.fn(),
+}))
+
+jest.mock("@/src/domain/sync/book-upload-store", () => ({
+  useBookUploadBookUuid: jest.fn(),
 }))
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -84,6 +89,7 @@ describe("useLibraryBookMeta", () => {
   beforeEach(() => {
     jest.clearAllMocks()
     jest.mocked(useDownloadStatusTasks).mockReturnValue([])
+    jest.mocked(useBookUploadBookUuid).mockReturnValue(undefined)
     jest
       .mocked(useFileStates)
       .mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<
@@ -104,6 +110,7 @@ describe("useLibraryBookMeta", () => {
       expect(result.current.bookDownloadStatusById).toEqual({
         "1": "downloaded",
       })
+      expect(result.current.bookCanDeleteDownloadById).toEqual({ "1": false })
       expect(result.current.bookFormatMetaById.get("1")).toEqual({
         readableFormats: [],
         effectiveFormat: undefined,
@@ -224,10 +231,143 @@ describe("useLibraryBookMeta", () => {
       expect(result.current.bookDownloadStatusById).toEqual({
         "1": "downloaded",
       })
+      expect(result.current.bookCanDeleteDownloadById).toEqual({ "1": true })
       expect(result.current.bookFormatMetaById.get("1")).toEqual({
         readableFormats: ["EPUB", "PDF"],
         effectiveFormat: "EPUB",
       })
+    })
+
+    unmount()
+  })
+
+  it("should show a staged remote MyReader upload as pending while keeping it locally readable", async () => {
+    jest.mocked(useFileStates).mockReturnValue({
+      data: [
+        {
+          path: "Books/book-uuid/book.epub",
+          localState: "dirty_push",
+          isLocallyAvailable: true,
+        },
+      ],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useFileStates>)
+    const book = {
+      ...makeBookWithFormatPolicy(["EPUB"]),
+      path: "Books/book-uuid",
+      uuid: "book-uuid",
+    }
+    const { result, unmount } = renderHook(
+      () => useLibraryBookMeta(remoteLibrary, [book], {}),
+      { wrapper },
+    )
+
+    await waitFor(() => {
+      expect(result.current.bookDownloadStatusById).toEqual({
+        "1": "downloaded",
+      })
+      expect(result.current.bookTransferStatusById).toEqual({
+        "1": "uploadPending",
+      })
+      expect(result.current.bookCanUploadById).toEqual({ "1": true })
+      expect(result.current.bookCanDeleteDownloadById).toEqual({ "1": false })
+    })
+
+    unmount()
+  })
+
+  it("should show a remote-library file that exists only locally as upload pending", async () => {
+    jest.mocked(useFileStates).mockReturnValue({
+      data: [
+        {
+          path: "Books/local-only/book.epub",
+          localState: "local_only",
+          isLocallyAvailable: true,
+        },
+      ],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useFileStates>)
+    const book = {
+      ...makeBookWithFormatPolicy(["EPUB"]),
+      path: "Books/local-only",
+    }
+
+    const { result, unmount } = renderHook(
+      () => useLibraryBookMeta(remoteLibrary, [book], {}),
+      { wrapper },
+    )
+
+    await waitFor(() => {
+      expect(result.current.bookTransferStatusById).toEqual({
+        "1": "uploadPending",
+      })
+      expect(result.current.bookCanUploadById).toEqual({ "1": true })
+      expect(result.current.bookCanDeleteDownloadById).toEqual({ "1": false })
+    })
+
+    unmount()
+  })
+
+  it("should show a dashed cloud when the pending upload source is missing", async () => {
+    jest.mocked(useFileStates).mockReturnValue({
+      data: [
+        {
+          path: "Books/source-missing/book.epub",
+          localState: "source_missing",
+          isLocallyAvailable: false,
+        },
+      ],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useFileStates>)
+    const book = {
+      ...makeBookWithFormatPolicy(["EPUB"]),
+      path: "Books/source-missing",
+    }
+
+    const { result, unmount } = renderHook(
+      () => useLibraryBookMeta(remoteLibrary, [book], {}),
+      { wrapper },
+    )
+
+    await waitFor(() => {
+      expect(result.current.bookTransferStatusById).toEqual({
+        "1": "uploadPending",
+      })
+      expect(result.current.bookCanUploadById).toEqual({ "1": false })
+      expect(result.current.bookCanDeleteDownloadById).toEqual({ "1": false })
+    })
+
+    unmount()
+  })
+
+  it("should show an up-arrow upload state only for the book currently uploading", async () => {
+    jest.mocked(useBookUploadBookUuid).mockReturnValue("book-uuid")
+    jest.mocked(useFileStates).mockReturnValue({
+      data: [
+        {
+          path: "Books/book-uuid/book.epub",
+          localState: "dirty_push",
+          isLocallyAvailable: true,
+        },
+      ],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useFileStates>)
+    const book = {
+      ...makeBookWithFormatPolicy(["EPUB"]),
+      path: "Books/book-uuid",
+      uuid: "book-uuid",
+    }
+
+    const { result, unmount } = renderHook(
+      () => useLibraryBookMeta(remoteLibrary, [book], {}),
+      { wrapper },
+    )
+
+    await waitFor(() => {
+      expect(result.current.bookTransferStatusById).toEqual({
+        "1": "uploading",
+      })
+      expect(result.current.bookCanUploadById).toEqual({ "1": false })
     })
 
     unmount()

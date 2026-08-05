@@ -34,6 +34,56 @@ const authConfig = {
   },
 }
 
+type AccessTokenState = {
+  accessToken: string
+  expiresAt: number
+}
+
+const EXPIRY_SKEW_MS = 5 * 60 * 1000
+const accessTokens = new Map<string, AccessTokenState>()
+const refreshes = new Map<string, Promise<AccessTokenState>>()
+const rejectedAccessTokens = new Set<string>()
+
+function accessTokenExpiresAt(accessToken: string): number | null {
+  try {
+    const encoded = accessToken.split(".")[1]
+    if (!encoded) return null
+    const normalized = encoded.replace(/-/g, "+").replace(/_/g, "/")
+    const padded = normalized.padEnd(
+      normalized.length + ((4 - (normalized.length % 4)) % 4),
+      "=",
+    )
+    const payload = JSON.parse(atob(padded)) as { exp?: number }
+    return typeof payload.exp === "number"
+      ? payload.exp * 1000 - EXPIRY_SKEW_MS
+      : null
+  } catch {
+    return null
+  }
+}
+
+function resultExpiresAt(
+  accessToken: string,
+  expirationDate: string | undefined,
+): number {
+  const responseExpiry = expirationDate
+    ? new Date(expirationDate).getTime() - EXPIRY_SKEW_MS
+    : Number.NaN
+  if (Number.isFinite(responseExpiry)) return responseExpiry
+  return accessTokenExpiresAt(accessToken) ?? Date.now() + EXPIRY_SKEW_MS
+}
+
+function isFresh(
+  state: AccessTokenState | undefined,
+): state is AccessTokenState {
+  return Boolean(state && Date.now() < state.expiresAt)
+}
+
+export function invalidateOneDriveAccessToken(dataSourceId: string): void {
+  accessTokens.delete(dataSourceId)
+  rejectedAccessTokens.add(dataSourceId)
+}
+
 export function isUserCancelled(error: unknown): boolean {
   if (!(error instanceof Error)) return false
   // User closed the browser/SFSafariViewController on iOS (AppAuth general error -3)
@@ -84,21 +134,60 @@ export async function signIn(): Promise<{
 export async function refreshAccessToken(
   dataSourceId: string,
 ): Promise<{ accessToken: string; expiresAt: number }> {
-  const refreshToken = await readOneDriveRefreshToken(dataSourceId)
-  if (!refreshToken) {
-    throw new Error("No refresh token available")
+  const cached = accessTokens.get(dataSourceId)
+  if (isFresh(cached)) return cached
+
+  const existingRefresh = refreshes.get(dataSourceId)
+  if (existingRefresh) return existingRefresh
+
+  const pendingRefresh = (async () => {
+    const storedAccessToken = await readOneDriveAccessToken(dataSourceId)
+    const storedExpiresAt = storedAccessToken
+      ? accessTokenExpiresAt(storedAccessToken)
+      : null
+    if (
+      !rejectedAccessTokens.has(dataSourceId) &&
+      storedAccessToken &&
+      storedExpiresAt !== null &&
+      Date.now() < storedExpiresAt
+    ) {
+      const stored = {
+        accessToken: storedAccessToken,
+        expiresAt: storedExpiresAt,
+      }
+      accessTokens.set(dataSourceId, stored)
+      return stored
+    }
+
+    const refreshToken = await readOneDriveRefreshToken(dataSourceId)
+    if (!refreshToken) {
+      throw new Error("No refresh token available")
+    }
+
+    const result = await refresh(authConfig, { refreshToken })
+    const next = {
+      accessToken: result.accessToken,
+      expiresAt: resultExpiresAt(
+        result.accessToken,
+        result.accessTokenExpirationDate,
+      ),
+    }
+    await writeOneDriveAccessToken(dataSourceId, result.accessToken)
+    if (result.refreshToken) {
+      await writeOneDriveRefreshToken(dataSourceId, result.refreshToken)
+    }
+    rejectedAccessTokens.delete(dataSourceId)
+    accessTokens.set(dataSourceId, next)
+    return next
+  })()
+  refreshes.set(dataSourceId, pendingRefresh)
+  try {
+    return await pendingRefresh
+  } finally {
+    if (refreshes.get(dataSourceId) === pendingRefresh) {
+      refreshes.delete(dataSourceId)
+    }
   }
-
-  const result = await refresh(authConfig, { refreshToken })
-
-  await writeOneDriveAccessToken(dataSourceId, result.accessToken)
-  if (result.refreshToken) {
-    await writeOneDriveRefreshToken(dataSourceId, result.refreshToken)
-  }
-
-  const expiresAt =
-    new Date(result.accessTokenExpirationDate).getTime() - 5 * 60 * 1000
-  return { accessToken: result.accessToken, expiresAt }
 }
 
 export async function getValidAccessToken(
@@ -109,6 +198,7 @@ export async function getValidAccessToken(
 }
 
 export async function revokeAuth(dataSourceId: string): Promise<void> {
+  invalidateOneDriveAccessToken(dataSourceId)
   const token = await readOneDriveAccessToken(dataSourceId)
   if (token) {
     try {

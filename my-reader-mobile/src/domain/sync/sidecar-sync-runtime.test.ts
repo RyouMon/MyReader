@@ -1,10 +1,15 @@
 import {
   beginCoordinatedSync,
+  completeCoordinatedSync,
+  effectiveCoordinatedSyncExecution,
   recoverCoordinatedSync,
+  requestCoordinatedSync,
   requestCoordinatedPull,
   type SchedulerTransition,
 } from "@/src/services/core/sync"
+import { applySyncReport } from "@/src/domain/sync/hooks/apply-sync-report"
 import { createSidecarSyncRuntime } from "./sidecar-sync-runtime"
+import { syncLibrary } from "./sync-library"
 
 jest.mock("@/src/services/core/sync", () => ({
   createSyncCoordinator: jest.fn(() => true),
@@ -193,5 +198,99 @@ describe("createSidecarSyncRuntime", () => {
 
     await recovery
     expect(recoverCoordinatedSync).toHaveBeenCalledTimes(1)
+  })
+
+  it("should publish completed content when automatic sync is disabled", async () => {
+    jest.useFakeTimers()
+    const execution = {
+      libraryId: "library-1",
+      mode: "push_only" as const,
+      reasons: ["content_ready"],
+    }
+    const emptyTransition: SchedulerTransition = {
+      schedules: [],
+      cancelTimersFor: [],
+      execution: null,
+      retry: null,
+    }
+    jest.mocked(requestCoordinatedSync).mockReturnValue({
+      ...emptyTransition,
+      schedules: [
+        { libraryId: "library-1", generation: 1, deadline: Date.now() },
+      ],
+    })
+    jest.mocked(beginCoordinatedSync).mockReturnValue({
+      ...emptyTransition,
+      execution,
+    })
+    jest.mocked(effectiveCoordinatedSyncExecution).mockResolvedValue(execution)
+    jest.mocked(syncLibrary).mockResolvedValue({} as never)
+    jest.mocked(applySyncReport).mockResolvedValue()
+    jest.mocked(completeCoordinatedSync).mockReturnValue(emptyTransition)
+    const runtime = createSidecarSyncRuntime(() => ({
+      libraries: [library],
+      dataSources: [],
+      enableAutoSync: false,
+    }))
+
+    try {
+      runtime.request("library-1", "push_only", "content_ready", "immediate")
+      await jest.runAllTimersAsync()
+
+      expect(syncLibrary).toHaveBeenCalledWith(
+        library,
+        [],
+        expect.objectContaining({
+          scope: "myreader",
+          myreaderMode: "push_only",
+        }),
+      )
+      expect(applySyncReport).toHaveBeenCalled()
+    } finally {
+      runtime.dispose()
+      jest.useRealTimers()
+    }
+  })
+
+  it("should keep ordinary automatic sync disabled for non-required work", async () => {
+    jest.useFakeTimers()
+    const emptyTransition: SchedulerTransition = {
+      schedules: [],
+      cancelTimersFor: [],
+      execution: null,
+      retry: null,
+    }
+    jest.mocked(requestCoordinatedSync).mockReturnValue({
+      ...emptyTransition,
+      schedules: [
+        { libraryId: "library-1", generation: 1, deadline: Date.now() },
+      ],
+    })
+    jest.mocked(beginCoordinatedSync).mockReturnValue({
+      ...emptyTransition,
+      execution: {
+        libraryId: "library-1",
+        mode: "push_only",
+        reasons: ["local_change"],
+      },
+    })
+    jest.mocked(completeCoordinatedSync).mockReturnValue(emptyTransition)
+    const runtime = createSidecarSyncRuntime(() => ({
+      libraries: [library],
+      dataSources: [],
+      enableAutoSync: false,
+    }))
+
+    try {
+      runtime.request("library-1", "push_only", "local_change", "immediate")
+      await jest.runAllTimersAsync()
+
+      expect(syncLibrary).not.toHaveBeenCalled()
+      expect(effectiveCoordinatedSyncExecution).not.toHaveBeenCalled()
+      expect(completeCoordinatedSync).toHaveBeenCalled()
+    } finally {
+      runtime.dispose()
+      jest.useRealTimers()
+    }
   })
 })

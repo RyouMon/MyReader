@@ -2,7 +2,7 @@ import { router } from "expo-router"
 import { useEffect, useMemo, useState } from "react"
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
-import { addRemoteLibraryFromSource } from "@/src/domain/library/hooks/library-actions"
+import { openRemoteExistingLibrary } from "@/src/domain/library/hooks/library-actions"
 import {
   isMissingMetadataDbError,
   normalizeCurrentPath,
@@ -17,8 +17,11 @@ import { useAppStore } from "@/src/store/app-store"
 export type UseRemoteDirectoryBrowserOpts = {
   dataSourceId: string | undefined
   currentPathParam: string | undefined
+  libraryAction: RemoteLibraryAction
   sourceType: "webdav" | "onedrive"
 }
+
+export type RemoteLibraryAction = "create" | "open"
 
 export type RemoteDirectoryBrowserState = {
   /** No matching data source found in the store. */
@@ -31,18 +34,28 @@ export type RemoteDirectoryBrowserState = {
   error: string | null
   saving: boolean
   currentPath: string
-  chooseCurrentPath: (errorMessages: {
-    notValidTitle: string
-    notValidMessage: string
-    duplicateTitle: string
-    duplicateMessage: string
-    generic: string
-  }) => Promise<void>
+  retry: () => void
+  choosePath: (
+    sourcePath: string,
+    errorMessages: RemoteDirectoryBrowserErrorMessages,
+  ) => Promise<void>
+  chooseCurrentPath: (
+    errorMessages: RemoteDirectoryBrowserErrorMessages,
+  ) => Promise<void>
+}
+
+type RemoteDirectoryBrowserErrorMessages = {
+  notValidTitle: string
+  notValidMessage: string
+  duplicateTitle: string
+  duplicateMessage: string
+  generic: string
 }
 
 export function useRemoteDirectoryBrowser({
   dataSourceId,
   currentPathParam,
+  libraryAction,
   sourceType,
 }: UseRemoteDirectoryBrowserOpts): RemoteDirectoryBrowserState {
   const currentPath = useMemo(
@@ -63,6 +76,7 @@ export function useRemoteDirectoryBrowser({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [reloadIndex, setReloadIndex] = useState(0)
 
   useEffect(() => {
     let active = true
@@ -111,15 +125,12 @@ export function useRemoteDirectoryBrowser({
     return () => {
       active = false
     }
-  }, [candidate, currentPath])
+  }, [candidate, currentPath, reloadIndex])
 
-  async function chooseCurrentPath(errorMessages: {
-    notValidTitle: string
-    notValidMessage: string
-    duplicateTitle: string
-    duplicateMessage: string
-    generic: string
-  }) {
+  async function choosePath(
+    selectedPath: string,
+    errorMessages: RemoteDirectoryBrowserErrorMessages,
+  ) {
     if (!candidate) {
       return
     }
@@ -128,31 +139,41 @@ export function useRemoteDirectoryBrowser({
     setError(null)
 
     try {
-      const library = await addRemoteLibraryFromSource(
-        candidate,
-        currentPath || "/",
-      )
+      const sourcePath = selectedPath || "/"
+      if (libraryAction !== "open") return
+      const library = await openRemoteExistingLibrary(candidate, sourcePath)
       router.dismissTo("/settings")
       notifyLibraryAdded(library.name)
     } catch (caught) {
-      if (isMissingMetadataDbError(caught)) {
+      const message = String(caught)
+      if (
+        isMissingMetadataDbError(caught) ||
+        message.includes("LIBRARY_TYPE_NOT_RECOGNIZED") ||
+        message.includes("MYREADER_LIBRARY_MARKER_NOT_FOUND")
+      ) {
         showAlertWithStatusBarRestore(
           errorMessages.notValidTitle,
           errorMessages.notValidMessage,
         )
         return
       }
-      if (String(caught).includes("LIBRARY_ALREADY_EXISTS")) {
+      if (message.includes("LIBRARY_ALREADY_EXISTS")) {
         showAlertWithStatusBarRestore(
           errorMessages.duplicateTitle,
           errorMessages.duplicateMessage,
         )
         return
       }
-      setError(caught instanceof Error ? caught.message : errorMessages.generic)
+      setError(errorMessages.generic)
     } finally {
       setSaving(false)
     }
+  }
+
+  function chooseCurrentPath(
+    errorMessages: RemoteDirectoryBrowserErrorMessages,
+  ) {
+    return choosePath(currentPath, errorMessages)
   }
 
   return {
@@ -164,6 +185,8 @@ export function useRemoteDirectoryBrowser({
     error,
     saving,
     currentPath,
+    retry: () => setReloadIndex((value) => value + 1),
+    choosePath,
     chooseCurrentPath,
   }
 }

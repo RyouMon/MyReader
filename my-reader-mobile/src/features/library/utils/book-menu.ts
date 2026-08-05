@@ -7,7 +7,10 @@ import type { BookDownloadStatus } from "@/src/features/library/components/books
 import { resolveEffectiveFormat } from "@/src/domain/library/book-formats"
 
 export type BookMenuConfig = {
+  isManaged?: boolean
   isRemote: boolean
+  canUpload?: boolean
+  canDeleteDownload?: boolean
   isFavorite?: boolean
   formats?: string[]
   selectedFormat?: string
@@ -21,7 +24,15 @@ export function buildBookMenuActions(
   downloadStatus: BookDownloadStatus | undefined,
   menuConfig: BookMenuConfig,
 ): MenuAction[] {
-  const { isRemote, isFavorite, formats, selectedFormat } = menuConfig
+  const {
+    isManaged,
+    isRemote,
+    canUpload,
+    canDeleteDownload,
+    isFavorite,
+    formats,
+    selectedFormat,
+  } = menuConfig
   const readableFormats = formats ?? []
   const effectiveFormat = resolveEffectiveFormat(
     readableFormats,
@@ -97,11 +108,37 @@ export function buildBookMenuActions(
     })
   }
 
+  if (isManaged && isRemote && canUpload) {
+    actions.push({ id: "uploadFile", title: i18n.t("bookMenu.uploadFile") })
+  }
+
+  const removalActions: MenuAction[] = []
   if (isRemote && downloadStatus === "downloaded") {
-    actions.push({
+    removalActions.push({
       id: "deleteDownload",
       title: i18n.t("bookMenu.deleteDownload"),
+      attributes: { destructive: true, disabled: !canDeleteDownload },
+    })
+  }
+
+  if (isManaged) {
+    actions.push({
+      id: "editMetadata",
+      title: i18n.t("bookMenu.editMetadata"),
+    })
+    removalActions.push({
+      id: "deleteBook",
+      title: i18n.t("bookMenu.deleteBook"),
       attributes: { destructive: true },
+    })
+  }
+
+  if (removalActions.length > 0) {
+    actions.push({
+      id: "bookRemovalActions",
+      title: "",
+      displayInline: true,
+      subactions: removalActions,
     })
   }
 

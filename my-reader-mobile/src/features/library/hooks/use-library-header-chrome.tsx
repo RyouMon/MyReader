@@ -31,6 +31,8 @@ type UseLibraryHeaderChromeParams = {
   sortBy: SortOption
   viewMode: LibraryViewMode
   onSyncCurrentLibrary: () => void
+  canImportBook: boolean
+  onImportBook: () => void
   onSelectLibrary: (libraryId: string) => void
   onOpenLibrarySwitchMenu: () => void
   onSetFilter: (value: LibraryFilterOption) => void
@@ -55,6 +57,8 @@ export function useLibraryHeaderChrome({
   sortBy,
   viewMode,
   onSyncCurrentLibrary,
+  canImportBook,
+  onImportBook,
   onSelectLibrary,
   onOpenLibrarySwitchMenu,
   onSetFilter,
@@ -89,6 +93,8 @@ export function useLibraryHeaderChrome({
     sortBy,
     viewMode,
     onSyncCurrentLibrary,
+    canImportBook,
+    onImportBook,
     onSelectLibrary,
     onSetFilter,
     onSetSortBy,
@@ -98,16 +104,6 @@ export function useLibraryHeaderChrome({
   const rightActions = useMemo((): ScreenHeaderAction[] | undefined => {
     if (chromeMode !== "toolbar-right") {
       return undefined
-    }
-
-    if (variant === "empty") {
-      return [
-        {
-          label: t("library.addLibrary"),
-          onPress: () => router.push("/settings/add-library"),
-          iosSfSymbol: "plus",
-        },
-      ]
     }
 
     return [
@@ -122,7 +118,7 @@ export function useLibraryHeaderChrome({
         iosSfSymbol: "plus",
       },
     ]
-  }, [chromeMode, onOpenLibrarySwitchMenu, t, variant])
+  }, [chromeMode, onOpenLibrarySwitchMenu, t])
 
   const { options: baseOptions, toolbar: baseToolbar } = useScreenHeader({
     title,
@@ -190,6 +186,8 @@ export function useLibraryHeaderChrome({
           sortBy={sortBy}
           viewMode={viewMode}
           onSyncCurrentLibrary={onSyncCurrentLibrary}
+          canImportBook={canImportBook}
+          onImportBook={onImportBook}
           onSelectLibrary={onSelectLibrary}
           onSetFilter={onSetFilter}
           onSetSortBy={onSetSortBy}
@@ -207,6 +205,8 @@ export function useLibraryHeaderChrome({
     sortBy,
     viewMode,
     onSyncCurrentLibrary,
+    canImportBook,
+    onImportBook,
     onSelectLibrary,
     onSetFilter,
     onSetSortBy,

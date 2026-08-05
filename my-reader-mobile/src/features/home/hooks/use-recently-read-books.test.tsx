@@ -2,18 +2,18 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { renderHook, waitFor } from "@testing-library/react-native"
 import type { ComponentProps } from "react"
 
-import { mapListRowsToBookItems } from "@/src/domain/library/calibre"
+import { mapListRowsToBookItems } from "@/src/domain/library/catalog"
 import type { BookItem, Library } from "@/src/domain/types"
-import { listCalibreBooksPageByLastRead } from "@/src/services/core/catalog"
+import { listLibraryBooksPageByLastRead } from "@/src/services/core/catalog"
 
 import { useRecentlyReadBooks } from "./use-recently-read-books"
 
-jest.mock("@/src/domain/library/calibre", () => ({
+jest.mock("@/src/domain/library/catalog", () => ({
   mapListRowsToBookItems: jest.fn(),
 }))
 
 jest.mock("@/src/services/fs/local-library-content", () => ({
-  withLocalLibraryCalibreRoot: jest.fn(
+  withLocalLibraryContentRoot: jest.fn(
     (
       _library: Library,
       operation: (libraryRootUri: string) => Promise<unknown>,
@@ -22,7 +22,7 @@ jest.mock("@/src/services/fs/local-library-content", () => ({
 }))
 
 jest.mock("@/src/services/core/catalog", () => ({
-  listCalibreBooksPageByLastRead: jest.fn(),
+  listLibraryBooksPageByLastRead: jest.fn(),
 }))
 
 jest.mock("@/src/services/fs/library-paths", () => ({
@@ -71,7 +71,7 @@ describe("useRecentlyReadBooks", () => {
       },
       title: "Current title",
     }
-    jest.mocked(listCalibreBooksPageByLastRead).mockResolvedValue({
+    jest.mocked(listLibraryBooksPageByLastRead).mockResolvedValue({
       items: [],
       total: 1,
     })

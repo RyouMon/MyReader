@@ -468,7 +468,20 @@ async function _startTask(taskId: string): Promise<void> {
       (received, total) => {
         transitionTask(taskId, { type: "progress", received, total })
       },
-      { taskId },
+      {
+        taskId,
+        metadata: {
+          source: "myreader",
+          libraryId: task.libraryId,
+          bookId: task.bookId,
+          format: task.format,
+          relativePath: task.relativePath,
+          label: task.label,
+        },
+      },
+      task.bookId && task.format
+        ? { bookId: task.bookId, format: task.format }
+        : undefined,
     )
     if (state.tasks.find((t) => t.id === taskId)?.status !== "cancelled") {
       transitionTask(taskId, { type: "done" })
@@ -532,6 +545,9 @@ function finalizeRecoveredTaskOnce(task: DownloadTask): Promise<void> {
         force: true,
       })
     },
+    task.bookId && task.format
+      ? { bookId: task.bookId, format: task.format }
+      : undefined,
   )
     .then(() => {
       finalizedRecoveredTaskIds.add(task.id)

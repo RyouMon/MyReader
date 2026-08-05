@@ -1,13 +1,13 @@
 import { resolveLibraryHeaderChromeMode } from "./resolve-library-header-chrome-mode"
 
 describe("resolveLibraryHeaderChromeMode", () => {
-  it("should use default chrome for loading and invalid variants when resolving library header chrome mode", () => {
+  it("should use default chrome when no header actions are available", () => {
+    expect(resolveLibraryHeaderChromeMode("empty")).toBe("default")
     expect(resolveLibraryHeaderChromeMode("loading")).toBe("default")
     expect(resolveLibraryHeaderChromeMode("invalid")).toBe("default")
   })
 
-  it("should use toolbar-right chrome for empty and unselected variants when resolving library header chrome mode", () => {
-    expect(resolveLibraryHeaderChromeMode("empty")).toBe("toolbar-right")
+  it("should use toolbar-right chrome for the unselected variant", () => {
     expect(resolveLibraryHeaderChromeMode("unselected")).toBe("toolbar-right")
   })
 

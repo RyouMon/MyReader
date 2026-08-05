@@ -104,8 +104,12 @@ describe("buildBookMenuActions", () => {
       "detail",
       "favorite",
       "share:EPUB",
-      "deleteDownload",
+      "bookRemovalActions",
     ])
+    expect(actions.at(-1)).toMatchObject({
+      displayInline: true,
+      subactions: [{ id: "deleteDownload" }],
+    })
   })
 
   it("should offer no download actions when remote book is not downloaded and has no readable formats", () => {
@@ -128,6 +132,101 @@ describe("buildBookMenuActions", () => {
       "favorite",
       "share:EPUB",
     ])
+  })
+
+  it("should group downloaded-file and whole-book deletion together at the end for remote MyReader libraries", () => {
+    const managed = buildBookMenuActions("downloaded", {
+      isManaged: true,
+      isRemote: true,
+      formats: ["EPUB"],
+    })
+    const calibre = buildBookMenuActions("downloaded", {
+      isManaged: false,
+      isRemote: false,
+      formats: ["EPUB"],
+    })
+
+    expect(managed.map((action) => action.id)).toEqual([
+      "detail",
+      "favorite",
+      "share:EPUB",
+      "editMetadata",
+      "bookRemovalActions",
+    ])
+    const removalGroup = managed.at(-1)
+    expect(removalGroup?.displayInline).toBe(true)
+    expect(removalGroup?.subactions?.map((action) => action.id)).toEqual([
+      "deleteDownload",
+      "deleteBook",
+    ])
+    expect(
+      removalGroup?.subactions?.find((action) => action.id === "deleteBook")
+        ?.attributes,
+    ).toEqual({ destructive: true })
+    expect(
+      calibre.some(
+        (action) =>
+          action.id === "deleteBook" ||
+          action.subactions?.some((subaction) => subaction.id === "deleteBook"),
+      ),
+    ).toBe(false)
+  })
+
+  it("should disable deleting a local file until the remote copy is confirmed", () => {
+    const pendingUpload = buildBookMenuActions("downloaded", {
+      isManaged: true,
+      isRemote: true,
+      canDeleteDownload: false,
+      formats: ["EPUB"],
+    })
+    const uploaded = buildBookMenuActions("downloaded", {
+      isManaged: true,
+      isRemote: true,
+      canDeleteDownload: true,
+      formats: ["EPUB"],
+    })
+
+    const pendingDelete = pendingUpload
+      .find((action) => action.id === "bookRemovalActions")
+      ?.subactions?.find((action) => action.id === "deleteDownload")
+    const uploadedDelete = uploaded
+      .find((action) => action.id === "bookRemovalActions")
+      ?.subactions?.find((action) => action.id === "deleteDownload")
+
+    expect(pendingDelete?.attributes).toEqual({
+      destructive: true,
+      disabled: true,
+    })
+    expect(uploadedDelete?.attributes).toEqual({
+      destructive: true,
+      disabled: false,
+    })
+  })
+
+  it("should offer upload before the separated removal group only when a remote MyReader file can upload", () => {
+    const uploadable = buildBookMenuActions("downloaded", {
+      isManaged: true,
+      isRemote: true,
+      canUpload: true,
+      formats: ["EPUB"],
+    })
+    const uploading = buildBookMenuActions("downloaded", {
+      isManaged: true,
+      isRemote: true,
+      canUpload: false,
+      formats: ["EPUB"],
+    })
+
+    expect(uploadable.map((action) => action.id)).toEqual([
+      "detail",
+      "favorite",
+      "share:EPUB",
+      "uploadFile",
+      "editMetadata",
+      "bookRemovalActions",
+    ])
+    expect(uploadable.at(-1)?.displayInline).toBe(true)
+    expect(uploading.some((action) => action.id === "uploadFile")).toBe(false)
   })
 
   it("should offer default format submenu when multiple formats exist", () => {

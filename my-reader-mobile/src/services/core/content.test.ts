@@ -5,7 +5,7 @@ jest.mock("../fs/library-paths", () => ({
   librarySidecarRootUri: () => "file:///sidecar",
 }))
 jest.mock("../fs/local-library-content", () => ({
-  withLocalLibraryCalibreRoot: (
+  withLocalLibraryContentRoot: (
     _library: unknown,
     operation: (root: string) => unknown,
   ) => operation("file:///library"),
@@ -16,8 +16,10 @@ jest.mock("../query/invalidate-table", () => ({
 }))
 jest.mock("my-reader-core", () => ({
   contentFinalizeDownloadedFile: jest.fn(),
+  contentInstallVerifiedDownloadedFile: jest.fn(),
   contentListCoverThumbnailCache: jest.fn(),
   contentListReadingFormats: jest.fn(),
+  contentMarkFileSourceMissing: jest.fn(),
   contentSetReadingFormat: jest.fn(),
   contentUpsertCoverThumbnailCache: jest.fn(),
   contentUpsertFileState: jest.fn(),
@@ -26,16 +28,20 @@ jest.mock("my-reader-core", () => ({
 import type { Library } from "@my-reader/tools/types/library"
 import {
   contentFinalizeDownloadedFile,
+  contentInstallVerifiedDownloadedFile,
   contentListCoverThumbnailCache,
   contentListReadingFormats,
+  contentMarkFileSourceMissing,
   contentSetReadingFormat,
   contentUpsertCoverThumbnailCache,
   contentUpsertFileState,
 } from "my-reader-core"
 import {
   finalizeDownloadedFile,
+  installVerifiedDownloadedFile,
   listBookCoverThumbnailCache,
   listBookReadingFormats,
+  markFileSourceMissing,
   setBookReadingFormat,
   upsertBookCoverThumbnailCache,
   upsertFileState,
@@ -88,7 +94,7 @@ describe("core content adapter", () => {
       "Author/Book/Book.epub",
       {
         localState: "present",
-        localBlake3: undefined,
+        localSha256: undefined,
         localSize: 1024,
         localMtime: undefined,
       },
@@ -96,9 +102,11 @@ describe("core content adapter", () => {
   })
 
   it("should delegate final state commit when downloaded file is finalized", async () => {
-    jest
-      .mocked(contentFinalizeDownloadedFile)
-      .mockResolvedValue({ size: 1024, mtimeMs: 2000 })
+    jest.mocked(contentFinalizeDownloadedFile).mockResolvedValue({
+      size: 1024,
+      sha256: "ab".repeat(32),
+      mtimeMs: 2000,
+    })
 
     await expect(
       finalizeDownloadedFile(
@@ -106,12 +114,53 @@ describe("core content adapter", () => {
         "Author/Book/Book.epub",
         "file:///library/Author/Book/Book.epub",
       ),
-    ).resolves.toEqual({ size: 1024, mtimeMs: 2000 })
+    ).resolves.toEqual({
+      size: 1024,
+      sha256: "ab".repeat(32),
+      mtimeMs: 2000,
+    })
 
     expect(contentFinalizeDownloadedFile).toHaveBeenCalledWith(
       "/sidecar",
       "Author/Book/Book.epub",
       "/library/Author/Book/Book.epub",
+    )
+  })
+
+  it("should install a managed download only after core verification", async () => {
+    jest.mocked(contentInstallVerifiedDownloadedFile).mockResolvedValue({
+      size: 1024,
+      sha256: "ab".repeat(32),
+      mtimeMs: 2000,
+    })
+
+    await installVerifiedDownloadedFile(
+      library,
+      "Books/book/book.epub",
+      "file:///library/Books/book/book.epub.part",
+      "file:///library/Books/book/book.epub",
+      1024,
+      "ab".repeat(32),
+    )
+
+    expect(contentInstallVerifiedDownloadedFile).toHaveBeenCalledWith(
+      "/sidecar",
+      "Books/book/book.epub",
+      "/library/Books/book/book.epub.part",
+      "/library/Books/book/book.epub",
+      1024,
+      "ab".repeat(32),
+    )
+  })
+
+  it("should preserve a missing remote source state", async () => {
+    jest.mocked(contentMarkFileSourceMissing).mockResolvedValue()
+
+    await markFileSourceMissing(library, "Books/book/book.epub")
+
+    expect(contentMarkFileSourceMissing).toHaveBeenCalledWith(
+      "/sidecar",
+      "Books/book/book.epub",
     )
   })
 

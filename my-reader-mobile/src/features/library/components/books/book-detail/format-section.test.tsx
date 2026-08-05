@@ -191,6 +191,24 @@ describe("FormatSection", () => {
     expect(actions.find((a) => a.id === "delete")).toBeUndefined()
   })
 
+  it("should disable deleting a pending upload while keeping the local file usable", () => {
+    renderFormatSection({
+      fileLocalState: "dirty_push",
+      isNetworkSource: true,
+    })
+
+    const actions = getMenuActions()
+    expect(actions.map((action) => action.id)).toEqual([
+      "setDefault",
+      "share",
+      "delete",
+    ])
+    expect(
+      actions.find((action) => action.id === "delete")?.attributes,
+    ).toEqual({ destructive: true, disabled: true })
+    expect(actions.find((action) => action.id === "download")).toBeUndefined()
+  })
+
   it("should hide delete action when library is local", () => {
     renderFormatSection({ fileLocalState: "present", isNetworkSource: false })
 

@@ -1,0 +1,29 @@
+diff --git a/plugin/template-files/ios/ShareIntoViewController.swift b/plugin/template-files/ios/ShareIntoViewController.swift
+index 71753393f64ed1c37147850647b89712bf1401e5..d6fb628662db88f451211272c8fc2de80739ba22 100644
+--- a/plugin/template-files/ios/ShareIntoViewController.swift
++++ b/plugin/template-files/ios/ShareIntoViewController.swift
+@@ -177,5 +177,6 @@ class ShareIntoViewController: SLComposeServiceViewController {
+         if let data = item as? Data {
+-          let fileName = UUID().randomFilename(forTypeIdentifier: identifier)
++          let fileName = provider.suggestedFilename(forTypeIdentifier: identifier)
++            ?? UUID().randomFilename(forTypeIdentifier: identifier)
+           let result = self.saveDataToAppGroup(
+             data: data,
+             fileName: fileName,
+@@ -294,3 +295,16 @@ private extension UUID {
+     return UUID().uuidString + ext
+   }
+ }
++
++private extension NSItemProvider {
++  func suggestedFilename(forTypeIdentifier identifier: String) -> String? {
++    guard let suggestedName else { return nil }
++    let fileName = URL(fileURLWithPath: suggestedName).lastPathComponent
++    guard !fileName.isEmpty else { return nil }
++    guard URL(fileURLWithPath: fileName).pathExtension.isEmpty,
++          let preferredExtension = UTType(identifier)?.preferredFilenameExtension else {
++      return fileName
++    }
++    return "\(fileName).\(preferredExtension)"
++  }
++}

@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query"
 import { useMemo } from "react"
 
-import { mapListRowsToBookItems } from "@/src/domain/library/calibre"
+import { mapListRowsToBookItems } from "@/src/domain/library/catalog"
 import type { BookItem, Library } from "@/src/domain/types"
-import { listCalibreBooksPageByLastRead } from "@/src/services/core/catalog"
-import { withLocalLibraryCalibreRoot } from "@/src/services/fs/local-library-content"
+import { listLibraryBooksPageByLastRead } from "@/src/services/core/catalog"
+import { withLocalLibraryContentRoot } from "@/src/services/fs/local-library-content"
 import { librarySidecarRootUri } from "@/src/services/fs/library-paths"
 import { queryKeys } from "@/src/services/query/query-keys"
 
@@ -20,8 +20,9 @@ export function useRecentlyReadBooks(
     queryKey: queryKeys.recentlyReadBooks(library?.id),
     queryFn: async () => {
       if (!library) return []
-      return withLocalLibraryCalibreRoot(library, async (libraryRootUri) => {
-        const page = await listCalibreBooksPageByLastRead(
+      return withLocalLibraryContentRoot(library, async (libraryRootUri) => {
+        const page = await listLibraryBooksPageByLastRead(
+          library,
           libraryRootUri,
           librarySidecarRootUri(library),
           0,

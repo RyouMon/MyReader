@@ -99,7 +99,7 @@ export function SyncRuntime(): null {
   }, [storeReady])
 
   useEffect(() => {
-    if (!storeReady || !enableAutoSync) return
+    if (!storeReady) return
 
     const runtime = createSidecarSyncRuntime(
       () => {
@@ -114,7 +114,12 @@ export function SyncRuntime(): null {
     )
     sidecarRuntime.current = runtime
     const unsubscribeWork = subscribeLocalSidecarWork((work) => {
-      runtime.request(work.libraryId, "push_only", "local_change", "debounced")
+      runtime.request(
+        work.libraryId,
+        "push_only",
+        work.required ? "content_ready" : "local_change",
+        "debounced",
+      )
     })
     void runtime.recover().catch((error) => handleSyncError(error, "recovery"))
     let stopSafetySweep: (() => void) | null = null
@@ -133,6 +138,7 @@ export function SyncRuntime(): null {
       reason: "app_foregrounded" | "network_reconnected" | "library_activated",
     ) => {
       const current = useAppStore.getState()
+      if (!current.settings.enableAutoSync) return
       const activeLibrary = current.libraries.find(
         (library) => library.id === current.activeLibraryId,
       )
@@ -142,8 +148,8 @@ export function SyncRuntime(): null {
         .catch((error) => handleSyncError(error, reason))
     }
     if (AppState.currentState === "active") {
-      startSafetySweep()
-      if (!useAppStore.getState().settings.syncOnStartup) {
+      if (enableAutoSync) startSafetySweep()
+      if (enableAutoSync && !useAppStore.getState().settings.syncOnStartup) {
         requestActivePull("app_foregrounded")
       }
     }
@@ -151,7 +157,7 @@ export function SyncRuntime(): null {
       "change",
       (nextState) => {
         if (nextState === "active") {
-          startSafetySweep()
+          if (useAppStore.getState().settings.enableAutoSync) startSafetySweep()
           requestActivePull("app_foregrounded")
           return
         }

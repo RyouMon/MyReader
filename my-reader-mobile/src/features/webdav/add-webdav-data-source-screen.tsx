@@ -103,7 +103,10 @@ function buildDraft(values: WebDavFormInput): {
 
 export default function AddWebDavDataSourceScreen() {
   const { t } = useTranslation()
-  const { from } = useLocalSearchParams<{ from?: string }>()
+  const { from, libraryAction } = useLocalSearchParams<{
+    from?: string
+    libraryAction?: string
+  }>()
   const palette = useThemePalette()
   const { createDataSource, testDataSourceConnection } = useDataSourceActions()
   const [saving, setSaving] = useState(false)
@@ -133,7 +136,19 @@ export default function AddWebDavDataSourceScreen() {
   const useSsl = useStore(form.store, (s) => s.values.useSsl)
 
   async function persistDataSource(ds: DataSourceWebdav, password: string) {
-    await createDataSource(ds, { type: "webdav", password })
+    const source = await createDataSource(ds, { type: "webdav", password })
+    if (from === "add-library") {
+      router.replace({
+        pathname: "/settings/add-library/browser",
+        params: {
+          dataSourceId: source.id,
+          sourceType: "webdav",
+          currentPath: "/",
+          libraryAction: libraryAction === "create" ? "create" : "open",
+        },
+      })
+      return
+    }
     if (router.canGoBack()) {
       router.back()
     } else {
@@ -196,21 +211,23 @@ export default function AddWebDavDataSourceScreen() {
   }
 
   const inputClassName = "border-0 bg-transparent py-1 text-base"
-
   const isAddLibraryFlow = from === "add-library"
 
   const { options, toolbar } = useScreenHeader({
     title: t("webdav.addSource"),
-    backTitle: t("back"),
     ...(isAddLibraryFlow
       ? {
-          close: {
-            target: "/settings/add-library",
-            dismissTo: true,
-            variant: "layout",
-          },
+          back: "hidden" as const,
+          left: [
+            {
+              label: t("back"),
+              onPress: () => router.back(),
+              iosSfSymbol: "chevron.left" as const,
+              iconOnly: true,
+            },
+          ],
         }
-      : {}),
+      : { backTitle: t("back") }),
     right: [
       createSaveAction({
         label: saving ? t("webdav.add.completing") : t("webdav.add.complete"),
@@ -249,6 +266,7 @@ export default function AddWebDavDataSourceScreen() {
                   error={fieldError("serverUrl")}
                 >
                   <TextInput
+                    testID="webdav-server-url"
                     value={field.state.value}
                     onChangeText={(t) => field.handleChange(t)}
                     onBlur={field.handleBlur}
@@ -273,6 +291,7 @@ export default function AddWebDavDataSourceScreen() {
                   error={fieldError("port")}
                 >
                   <RNTextInput
+                    testID="webdav-port"
                     ref={portRef}
                     value={field.state.value}
                     onChangeText={(t) => field.handleChange(t)}
@@ -297,6 +316,7 @@ export default function AddWebDavDataSourceScreen() {
                   error={fieldError("basePath")}
                 >
                   <RNTextInput
+                    testID="webdav-base-path"
                     ref={basePathRef}
                     value={field.state.value}
                     onChangeText={(t) => field.handleChange(t)}
@@ -322,6 +342,7 @@ export default function AddWebDavDataSourceScreen() {
                   error={fieldError("username")}
                 >
                   <RNTextInput
+                    testID="webdav-username"
                     ref={usernameRef}
                     value={field.state.value}
                     onChangeText={(t) => field.handleChange(t)}
@@ -347,6 +368,7 @@ export default function AddWebDavDataSourceScreen() {
                   error={fieldError("password")}
                 >
                   <RNTextInput
+                    testID="webdav-password"
                     ref={passwordRef}
                     value={field.state.value}
                     onChangeText={(t) => field.handleChange(t)}

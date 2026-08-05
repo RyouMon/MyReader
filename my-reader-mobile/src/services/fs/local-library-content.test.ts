@@ -1,6 +1,6 @@
 import type { Library } from "@my-reader/tools/types/library"
 
-import { withLocalLibraryCalibreRoot } from "./local-library-content"
+import { withLocalLibraryContentRoot } from "./local-library-content"
 
 jest.mock("./bookmarks", () => ({
   withSecurityScopedLibraryAccess: jest.fn(),
@@ -37,12 +37,12 @@ function remoteLibrary(): Library {
   }
 }
 
-describe("withLocalLibraryCalibreRoot", () => {
+describe("withLocalLibraryContentRoot", () => {
   it("should use the current app container when a remote library has a stale persisted path", async () => {
     const operation = jest.fn(async (rootUri: string) => rootUri)
 
     await expect(
-      withLocalLibraryCalibreRoot(remoteLibrary(), operation),
+      withLocalLibraryContentRoot(remoteLibrary(), operation),
     ).resolves.toBe("file:///current/Documents/libraries/library-id")
     expect(operation).toHaveBeenCalledWith(
       "file:///current/Documents/libraries/library-id",

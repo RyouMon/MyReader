@@ -29,6 +29,8 @@ type UseLibraryAndroidHeaderMenuOptionsParams = {
   sortBy: SortOption
   viewMode: LibraryViewMode
   onSyncCurrentLibrary: () => void
+  canImportBook: boolean
+  onImportBook: () => void
   onSelectLibrary: (libraryId: string) => void
   onSetFilter: (value: LibraryFilterOption) => void
   onSetSortBy: (value: SortOption) => void
@@ -45,6 +47,8 @@ export function useLibraryAndroidHeaderMenuOptions({
   sortBy,
   viewMode,
   onSyncCurrentLibrary,
+  canImportBook,
+  onImportBook,
   onSelectLibrary,
   onSetFilter,
   onSetSortBy,
@@ -57,6 +61,9 @@ export function useLibraryAndroidHeaderMenuOptions({
 
   const leftActions = useMemo(
     () => [
+      ...(canImportBook
+        ? [{ id: "importBook", title: t("library.importBook") }]
+        : []),
       { id: "refreshLibrary", title: t("library.syncCurrentLibrary") },
       {
         id: "switchLibrary",
@@ -67,7 +74,7 @@ export function useLibraryAndroidHeaderMenuOptions({
         })),
       },
     ],
-    [effectiveLibraryId, libraries, t],
+    [canImportBook, effectiveLibraryId, libraries, t],
   )
 
   const rightActions = useMemo(
@@ -102,6 +109,10 @@ export function useLibraryAndroidHeaderMenuOptions({
 
   const handleLeftMenuAction = useCallback(
     (event: string) => {
+      if (event === "importBook") {
+        onImportBook()
+        return
+      }
       if (event === "refreshLibrary") {
         onSyncCurrentLibrary()
         return
@@ -111,7 +122,7 @@ export function useLibraryAndroidHeaderMenuOptions({
         onSelectLibrary(event.slice("switchLibrary:".length))
       }
     },
-    [onSelectLibrary, onSyncCurrentLibrary],
+    [onImportBook, onSelectLibrary, onSyncCurrentLibrary],
   )
 
   const handleRightMenuAction = useCallback(

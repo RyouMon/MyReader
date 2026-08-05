@@ -184,6 +184,7 @@ export default function SettingsScreen() {
                 key={library.id}
                 testID={`settings-library-row-${library.id}`}
                 title={library.name}
+                label={t("settings.manageLibrary", { name: library.name })}
                 value={
                   activeLibraryId === library.id
                     ? t("settings.currentInUse")

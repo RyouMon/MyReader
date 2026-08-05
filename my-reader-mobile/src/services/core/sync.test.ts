@@ -53,6 +53,7 @@ describe("core sync adapter", () => {
           id: "library-1",
           name: "Library",
           path: "file:///library",
+          libraryType: "calibre",
           bookCount: 2,
           metadataUri: "file:///library/metadata.db",
         },

@@ -51,7 +51,7 @@ async function runNativeDownload(
 
   return startNativeDownload({
     relativePath: remotePath,
-    url: backend.contentUrl(remotePath),
+    url: request.url,
     destinationUri: destUri,
     headers: request.headers,
     onProgress,

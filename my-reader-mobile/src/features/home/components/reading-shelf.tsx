@@ -1,7 +1,10 @@
 import { FlatList, useWindowDimensions } from "react-native"
 
 import type { BookItem } from "@/src/domain/types"
-import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover"
+import type {
+  BookDownloadStatus,
+  BookTransferStatus,
+} from "@/src/features/library/components/books/book-cover"
 import type { HomeCardStyle } from "@/src/store/app-store.types"
 import { ReadingListCard } from "./reading-list-card"
 
@@ -17,9 +20,13 @@ export type ReadingShelfProps = {
     book: BookItem & { readingProgress: number; readingFormat: string },
   ) => void
   downloadStatusById?: Record<string, BookDownloadStatus>
+  transferStatusById?: Record<string, BookTransferStatus>
   libraryId?: string
   bookFormatsById?: Record<string, string[]>
+  bookCanUploadById?: Record<string, boolean>
+  bookCanDeleteDownloadById?: Record<string, boolean>
   selectedFormatById?: Record<string, string>
+  menuIsManaged?: boolean
   menuIsRemote?: boolean
   onMenuAction?: (bookId: string, actionId: string) => void
   onMenuOpen?: (bookId: string) => void
@@ -34,9 +41,13 @@ export function ReadingShelf({
   data,
   onSelectBook,
   downloadStatusById,
+  transferStatusById,
   libraryId,
   bookFormatsById,
+  bookCanUploadById,
+  bookCanDeleteDownloadById,
   selectedFormatById,
+  menuIsManaged,
   menuIsRemote,
   onMenuAction,
   onMenuOpen,
@@ -66,8 +77,12 @@ export function ReadingShelf({
           width={cardWidth}
           progress={item.readingProgress}
           downloadStatus={downloadStatusById?.[item.id]}
+          transferStatus={transferStatusById?.[item.id]}
           libraryId={libraryId}
+          menuIsManaged={menuIsManaged}
           menuIsRemote={menuIsRemote}
+          menuCanUpload={bookCanUploadById?.[item.id]}
+          menuCanDeleteDownload={bookCanDeleteDownloadById?.[item.id]}
           menuFormats={bookFormatsById?.[item.id]}
           menuSelectedFormat={selectedFormatById?.[item.id]}
           isFavorite={favoriteBookIds?.has(item.id)}

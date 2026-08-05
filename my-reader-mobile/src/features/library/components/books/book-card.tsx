@@ -34,8 +34,9 @@ import {
   BookCoverBase,
   type BookDownloadStatus,
   type BookProgressSnapshot,
+  type BookTransferStatus,
 } from "./book-cover"
-import { BookDownloadStatusIndicatorBase } from "@/src/components/book-download-status-indicator"
+import { BookTransferStatusIndicatorBase } from "@/src/components/book-transfer-status-indicator"
 import {
   ProgressLabelBase,
   type ProgressLabelColors,
@@ -73,6 +74,7 @@ export type BookCardProps = {
   progress?: BookProgressSnapshot
   readerFormat?: string
   downloadStatus?: BookDownloadStatus
+  transferStatus?: BookTransferStatus
   downloadProgress?: number
   /**
    * Primitive menu inputs let the card build its own actions while keeping
@@ -120,6 +122,7 @@ function BookCardImpl({
   progress,
   readerFormat,
   downloadStatus,
+  transferStatus,
   downloadProgress,
   menuIsRemote,
   menuFormats,
@@ -137,8 +140,10 @@ function BookCardImpl({
   const cardRootStyle: ViewStyle = { width }
   const titleTextStyle: TextStyle = { color: chrome.textColor }
 
-  const showCloudIcon = downloadStatus === "notDownloaded"
-  const showProgressIndicator = downloadStatus === "downloading"
+  const displayedTransferStatus = transferStatus ?? downloadStatus
+  const showTransferStatus =
+    displayedTransferStatus !== undefined &&
+    displayedTransferStatus !== "downloaded"
 
   const hasMenuInputs = menuIsRemote !== undefined
   const computedMenuActions = useMemo<MenuAction[] | undefined>(() => {
@@ -228,6 +233,7 @@ function BookCardImpl({
 
   const moreButton = (
     <Pressable
+      testID={`book-menu-${book.id}`}
       accessibilityRole="button"
       accessibilityLabel={moreActionsLabel}
       style={styles.actionButton}
@@ -239,6 +245,8 @@ function BookCardImpl({
 
   const menuTrigger = (
     <View
+      accessible
+      testID={`book-menu-${book.id}`}
       accessibilityRole="button"
       accessibilityLabel={moreActionsLabel}
       style={styles.actionButton}
@@ -308,11 +316,12 @@ function BookCardImpl({
 
   const actionsSegment = (
     <View style={styles.actionsRow}>
-      {showCloudIcon || showProgressIndicator ? (
-        <BookDownloadStatusIndicatorBase
-          status={downloadStatus}
+      {showTransferStatus ? (
+        <BookTransferStatusIndicatorBase
+          status={displayedTransferStatus}
           libraryId={subscriptionLibraryId}
           bookId={book.id}
+          bookUuid={book.uuid}
           format={subscriptionFormat}
           fallbackProgress={downloadProgress}
           cloudColor={chrome.textMutedColor}
@@ -322,6 +331,7 @@ function BookCardImpl({
       {hasMenu ? (
         computedMenuActions && onMenuAction ? (
           <MenuView
+            testID={`book-menu-${book.id}`}
             key={
               computedMenuActions.some(
                 (a) =>

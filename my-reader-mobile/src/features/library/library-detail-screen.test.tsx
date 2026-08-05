@@ -17,7 +17,7 @@ const mockLibrary: Library = {
 }
 
 let mockLibraries: Library[] = [mockLibrary]
-let mockDeleteAction: { onPress: () => void } | undefined
+let mockDeleteAction: { label: string; onPress: () => void } | undefined
 
 jest.mock("@expo/vector-icons/MaterialIcons", () => ({
   __esModule: true,
@@ -74,6 +74,10 @@ jest.mock("@/src/design/tokens", () => ({
 jest.mock("@/src/domain/library/hooks/library-actions", () => ({
   removeLibrary: jest.fn(),
   switchActiveLibrary: jest.fn(),
+}))
+
+jest.mock("@/src/services/fs/library-paths", () => ({
+  localLibraryFolderName: () => "Calibre",
 }))
 
 jest.mock("@/src/domain/notifications/download-notifications", () => ({
@@ -136,7 +140,7 @@ jest.mock("@/src/components/ui/screen", () => ({
 
 jest.mock("@/src/navigation/hooks/use-screen-header", () => ({
   useScreenHeader: jest.fn(
-    ({ right }: { right?: { onPress: () => void }[] }) => {
+    ({ right }: { right?: { label: string; onPress: () => void }[] }) => {
       mockDeleteAction = right?.[0]
       return { options: {}, toolbar: null }
     },
@@ -163,6 +167,12 @@ describe("LibraryDetailScreen", () => {
     act(() => {
       mockDeleteAction?.onPress()
     })
+    expect(mockDeleteAction?.label).toBe("libraryDetail.removeLibrary")
+    expect(showAlertWithStatusBarRestore).toHaveBeenCalledWith(
+      "libraryDetail.remove.title",
+      "libraryDetail.remove.message",
+      expect.any(Array),
+    )
     const alertButtons = jest.mocked(showAlertWithStatusBarRestore).mock
       .calls[0]?.[2]
     const confirmButton = alertButtons?.find(
@@ -191,5 +201,30 @@ describe("LibraryDetailScreen", () => {
     await waitFor(() => {
       expect(router.back).toHaveBeenCalledTimes(1)
     })
+  })
+
+  it("should use the same removal semantics for a MyReader library", () => {
+    mockLibraries = [
+      {
+        ...mockLibrary,
+        libraryType: "myreader",
+        path: "file:///external/MyReader",
+      },
+    ]
+
+    render(<LibraryDetailScreen />)
+
+    act(() => {
+      mockDeleteAction?.onPress()
+    })
+
+    expect(mockDeleteAction?.label).toBe("libraryDetail.removeLibrary")
+    expect(showAlertWithStatusBarRestore).toHaveBeenCalledWith(
+      "libraryDetail.remove.title",
+      "libraryDetail.remove.message",
+      expect.any(Array),
+    )
+    expect(screen.getByText("libraryDetail.myreaderLibrary")).toBeTruthy()
+    expect(screen.getByText("common.localStorage")).toBeTruthy()
   })
 })

@@ -19,7 +19,7 @@ import { View } from "@/tw"
 
 import { EmptyState } from "@/src/components"
 import { ErrorBoundary } from "@/src/components/error-boundary"
-import { readBookDetailFromMetadata } from "@/src/domain/library/calibre"
+import { readBookDetailFromMetadata } from "@/src/domain/library/catalog"
 import { useBookReadingFormat } from "@/src/domain/library/hooks/use-book-reading-format"
 import { useFavoriteBooks } from "@/src/domain/library/hooks/use-favorite-books"
 import type { BookItem } from "@/src/domain/types"

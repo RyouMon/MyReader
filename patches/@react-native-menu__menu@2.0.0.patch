@@ -37,3 +37,55 @@ index 967e375..c5dcca8 100644
  					}
  				},
  			}),
+diff --git a/android/src/main/java/com/reactnativemenu/MenuView.kt b/android/src/main/java/com/reactnativemenu/MenuView.kt
+--- a/android/src/main/java/com/reactnativemenu/MenuView.kt
++++ b/android/src/main/java/com/reactnativemenu/MenuView.kt
+@@ -233,6 +233,48 @@ class MenuView(private val mContext: ReactContext) : ReactViewGroup(mContext) {
+       while (i < getActionsCount) {
+         if (!mActions.isNull(i)) {
+           val item = mActions.getMap(i)
++          val inlineSubactions = when (
++            item != null &&
++              item.hasKey("displayInline") &&
++              !item.isNull("displayInline") &&
++              item.getBoolean("displayInline") &&
++              item.hasKey("subactions") &&
++              !item.isNull("subactions")
++          ) {
++            true -> item.getArray("subactions")
++            else -> null
++          }
++          if (inlineSubactions != null) {
++            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
++              mPopupMenu.menu.setGroupDividerEnabled(true)
++            }
++            var subactionIndex = 0
++            while (subactionIndex < inlineSubactions.size()) {
++              if (!inlineSubactions.isNull(subactionIndex)) {
++                val subaction = inlineSubactions.getMap(subactionIndex)
++                val inlineItem = mPopupMenu.menu.add(
++                  i + 1,
++                  Menu.NONE,
++                  Menu.NONE,
++                  subaction?.getString("title")
++                )
++                prepareMenuItem(inlineItem, subaction)
++                inlineItem.setOnMenuItemClickListener {
++                  mIsMenuDisplayed = false
++                  val dispatcher =
++                    UIManagerHelper.getEventDispatcherForReactTag(mContext, id)
++                  val surfaceId: Int = UIManagerHelper.getSurfaceId(this)
++                  dispatcher?.dispatchEvent(
++                    MenuOnPressActionEvent(surfaceId, id, subaction?.getString("id"), id)
++                  )
++                  true
++                }
++              }
++              subactionIndex++
++            }
++            i++
++            continue
++          }
+           val menuItem = when (item != null && item.hasKey("subactions") && !item.isNull("subactions")) {
+             true -> mPopupMenu.menu.addSubMenu(Menu.NONE, Menu.NONE, i, item.getString("title")).item
+             else -> mPopupMenu.menu.add(Menu.NONE, Menu.NONE, i, item?.getString("title"))

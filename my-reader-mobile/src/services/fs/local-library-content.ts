@@ -14,13 +14,13 @@ import { fileUriFor } from "./path"
 import { withSecurityScopedLibraryAccess } from "./bookmarks"
 
 /**
- * Runs an operation against the library's local Calibre content root.
+ * Runs an operation against the library's local content root.
  * Remote libraries resolve their current app-container cache instead of a persisted sandbox path.
  * On iOS external libraries, acquires security-scoped access to the bookmark path first.
  */
-export async function withLocalLibraryCalibreRoot<T>(
+export async function withLocalLibraryContentRoot<T>(
   library: Library,
-  operation: (calibreRootUri: string) => Promise<T>,
+  operation: (contentRootUri: string) => Promise<T>,
 ): Promise<T> {
   if (isRemoteLibrarySourceType(library.sourceType)) {
     return operation(libraryRootUri(library))
@@ -48,10 +48,10 @@ export async function resolveLocalLibraryMetadataUri(
   }
 
   try {
-    return await withLocalLibraryCalibreRoot(
+    return await withLocalLibraryContentRoot(
       library,
-      async (calibreRootUri) => {
-        const metadataUri = fileUriFor(calibreRootUri, METADATA_DB_RELATIVE)
+      async (contentRootUri) => {
+        const metadataUri = fileUriFor(contentRootUri, METADATA_DB_RELATIVE)
         const file = new FSFile(metadataUri)
         if (!file.exists || (file.size ?? 0) <= 0) {
           return null

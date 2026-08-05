@@ -70,6 +70,36 @@ describe("applySyncReport", () => {
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
       queryKey: ["books", "library-1"],
     })
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["file-states", "library-1"],
+    })
     expect(replaceAppLibrary).not.toHaveBeenCalled()
+  })
+
+  it("should invalidate managed books when sidecar changes are pulled", async () => {
+    await applySyncReport(
+      {
+        ...report,
+        calibre: {
+          ...report.calibre,
+          changed: false,
+          library: {
+            ...report.calibre.library,
+            libraryType: "myreader",
+          },
+        },
+        myreader: {
+          ...report.myreader,
+          providers: {
+            "library-sidecar": { pushed: 0, pulled: 1 },
+          },
+        },
+      },
+      { trigger: "scheduled" },
+    )
+
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["books", "library-1"],
+    })
   })
 })

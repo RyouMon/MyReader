@@ -5,6 +5,7 @@ import {
   waitFor,
 } from "@testing-library/react-native"
 import { Image as ExpoImage } from "expo-image"
+import { router } from "expo-router"
 import * as mockReact from "react"
 import {
   Pressable as mockPressable,
@@ -98,15 +99,16 @@ jest.mock("@/src/components", () => {
         value ? mockReact.createElement(mockText, null, value) : null,
       ),
     ),
-    ListRow: jest.fn(({ accessory, detail, onPress, testID, title, value }) =>
-      mockReact.createElement(
-        mockPressable,
-        { onPress, testID },
-        mockReact.createElement(mockText, null, title),
-        detail ? mockReact.createElement(mockText, null, detail) : null,
-        value ? mockReact.createElement(mockText, null, value) : null,
-        accessory ?? null,
-      ),
+    ListRow: jest.fn(
+      ({ accessory, detail, label, onPress, testID, title, value }) =>
+        mockReact.createElement(
+          mockPressable,
+          { accessibilityLabel: label, onPress, testID },
+          mockReact.createElement(mockText, null, title),
+          detail ? mockReact.createElement(mockText, null, detail) : null,
+          value ? mockReact.createElement(mockText, null, value) : null,
+          accessory ?? null,
+        ),
     ),
     Screen: jest.fn(({ children }) =>
       mockReact.createElement(mockView, null, children),
@@ -179,7 +181,10 @@ jest.mock("@/src/store/app-store", () => ({
 jest.mock("react-i18next", () => ({
   initReactI18next: { type: "3rdParty", init: jest.fn() },
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: (key: string, options?: { name?: string }) =>
+      key === "settings.manageLibrary"
+        ? `manage-library:${options?.name}`
+        : key,
   }),
 }))
 
@@ -251,5 +256,23 @@ describe("SettingsScreen developer tools", () => {
     )
 
     expect(mockSetCoverThumbnailGenerationConcurrency).toHaveBeenCalledWith(6)
+  })
+})
+
+describe("SettingsScreen library navigation", () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it("should open library details when a library row is pressed", () => {
+    render(<SettingsScreen />)
+
+    expect(screen.getByLabelText("manage-library:Remote Library")).toBeTruthy()
+    fireEvent.press(screen.getByTestId("settings-library-row-library-2"))
+
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: "/settings/library/[libraryId]",
+      params: { libraryId: "library-2" },
+    })
   })
 })

@@ -1,6 +1,19 @@
 import { queryClient } from "./query-client"
 import { queryKeys } from "./query-keys"
 
+export function cacheFileState<T extends { path: string }>(
+  libraryId: string,
+  state: T,
+): void {
+  queryClient.setQueryData<T[]>(
+    queryKeys.fileStates(libraryId),
+    (current = []) => [
+      state,
+      ...current.filter((candidate) => candidate.path !== state.path),
+    ],
+  )
+}
+
 export function invalidateFavoriteBooks(libraryId?: string) {
   return queryClient.invalidateQueries({
     queryKey: queryKeys.favoriteBooks(libraryId),

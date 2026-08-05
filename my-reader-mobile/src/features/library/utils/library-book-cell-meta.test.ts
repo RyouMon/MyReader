@@ -20,6 +20,7 @@ describe("buildLibraryBookCellMetaById", () => {
     const metaById = buildLibraryBookCellMetaById({
       bookActiveFormatsById: new Map([["book-1", "PDF"]]),
       bookDownloadStatusById: { "book-1": "downloading" },
+      bookTransferStatusById: { "book-1": "downloading" },
       bookFormatMetaById: new Map([["book-1", { effectiveFormat: "EPUB" }]]),
       bookFormatsById: { "book-1": ["EPUB", "PDF"] },
       favoriteSet: new Set(["book-1"]),
@@ -34,6 +35,7 @@ describe("buildLibraryBookCellMetaById", () => {
     const meta = metaById.get("book-1")
 
     expect(meta?.downloadStatus).toBe("downloading")
+    expect(meta?.transferStatus).toBe("downloading")
     expect(meta?.progress).toEqual({ percent: 42 })
     expect(meta?.readerFormat).toBe("EPUB")
     expect(meta?.subscriptionLibraryId).toBe("library-1")
@@ -53,6 +55,61 @@ describe("buildLibraryBookCellMetaById", () => {
     expect(
       meta?.menuActions.find((action) => action.id === "favorite")?.title,
     ).toBe("Remove from Favorites")
+  })
+
+  it("should keep a pending upload separate from local download availability when building library book cell metadata", () => {
+    const metaById = buildLibraryBookCellMetaById({
+      bookActiveFormatsById: new Map(),
+      bookDownloadStatusById: { "book-1": "downloaded" },
+      bookCanUploadById: { "book-1": true },
+      bookCanDeleteDownloadById: { "book-1": false },
+      bookTransferStatusById: { "book-1": "uploadPending" },
+      bookFormatMetaById: new Map([["book-1", { effectiveFormat: "EPUB" }]]),
+      bookFormatsById: { "book-1": ["EPUB"] },
+      favoriteSet: new Set(),
+      isManaged: true,
+      isRemote: true,
+      selectedFormatById: {},
+      selectedLibraryId: "library-1",
+      translate,
+      visibleBooks: [makeBook()],
+    })
+
+    const meta = metaById.get("book-1")
+
+    expect(meta?.downloadStatus).toBe("downloaded")
+    expect(meta?.transferStatus).toBe("uploadPending")
+    expect(meta?.subscriptionLibraryId).toBeUndefined()
+    expect(meta?.menuActions.some((action) => action.id === "uploadFile")).toBe(
+      true,
+    )
+    expect(
+      meta?.menuActions
+        .find((action) => action.id === "bookRemovalActions")
+        ?.subactions?.find((action) => action.id === "deleteDownload")
+        ?.attributes?.disabled,
+    ).toBe(true)
+  })
+
+  it("should subscribe an actively uploading book to its library progress", () => {
+    const metaById = buildLibraryBookCellMetaById({
+      bookActiveFormatsById: new Map(),
+      bookDownloadStatusById: { "book-1": "downloaded" },
+      bookTransferStatusById: { "book-1": "uploading" },
+      bookFormatMetaById: new Map([["book-1", { effectiveFormat: "EPUB" }]]),
+      bookFormatsById: { "book-1": ["EPUB"] },
+      favoriteSet: new Set(),
+      isRemote: true,
+      selectedFormatById: {},
+      selectedLibraryId: "library-1",
+      translate,
+      visibleBooks: [makeBook()],
+    })
+
+    const meta = metaById.get("book-1")
+
+    expect(meta?.subscriptionLibraryId).toBe("library-1")
+    expect(meta?.subscriptionFormat).toBeUndefined()
   })
 
   it("should use active download format when no reader format is resolved yet", () => {

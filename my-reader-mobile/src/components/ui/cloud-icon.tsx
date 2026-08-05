@@ -5,11 +5,24 @@ import { Platform } from "react-native"
 type CloudIconProps = {
   size: number
   color: string
+  variant?: "filled" | "dashed"
 }
 
-export function CloudIcon({ size, color }: CloudIconProps) {
+export function CloudIcon({ size, color, variant = "filled" }: CloudIconProps) {
   if (Platform.OS === "ios") {
-    return <SymbolView name="cloud.fill" size={size} tintColor={color} />
+    return (
+      <SymbolView
+        name={variant === "dashed" ? "icloud.dashed" : "cloud.fill"}
+        size={size}
+        tintColor={color}
+      />
+    )
   }
-  return <MaterialIcons name="cloud" size={size} color={color} />
+  return (
+    <MaterialIcons
+      name={variant === "dashed" ? "cloud-queue" : "cloud"}
+      size={size}
+      color={color}
+    />
+  )
 }

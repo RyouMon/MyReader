@@ -26,8 +26,8 @@ jest.mock("@/src/components/cover-adaptive-background", () => ({
   CoverAdaptiveBackground: jest.fn(() => null),
 }))
 
-jest.mock("@/src/components/book-download-status-indicator", () => ({
-  BookDownloadStatusIndicator: jest.fn(() => null),
+jest.mock("@/src/components/book-transfer-status-indicator", () => ({
+  BookTransferStatusIndicator: jest.fn(() => null),
 }))
 
 jest.mock("@/src/domain/library/hooks/use-cover-palette", () => ({

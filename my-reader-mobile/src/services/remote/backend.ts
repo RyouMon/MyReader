@@ -3,6 +3,7 @@ import type { File as ExpoFile } from "expo-file-system"
 export type DownloadRequest = {
   remotePath: string
   localFileUri: string
+  url: string
   headers: Record<string, string>
 }
 

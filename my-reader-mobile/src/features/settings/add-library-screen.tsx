@@ -1,74 +1,107 @@
-import { Link, router, Stack, type RelativePathString } from "expo-router"
+import { appendRemotePathSegment } from "@my-reader/tools/remote-path"
+import { router, Stack, useLocalSearchParams } from "expo-router"
+import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Platform } from "react-native"
 
-import { LOCAL_LIBRARY_DATA_SOURCE_NAME } from "@/src/constants/local-library-data-source"
+import {
+  FormLabeledFieldRow,
+  ListRow,
+  Screen,
+  SectionCard,
+  SectionLabel,
+} from "@/src/components"
+import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import { useThemePalette } from "@/src/design/tokens"
-import type { DataSource } from "@/src/domain/types"
-import { Text, View } from "@/tw"
-
-import { Screen, SectionCard, ListRow, SectionLabel } from "@/src/components"
-import { pickCalibreLibrary } from "@/src/domain/library/calibre"
-import { addLibraryFromPicker } from "@/src/domain/library/hooks/library-actions"
+import { pickLocalLibraryDirectory } from "@/src/domain/library/local-library-picker"
+import {
+  createFolderMyReaderLibrary,
+  createRemoteMyReaderLibrary,
+  nextMyReaderLibraryName,
+  openExistingLocalLibraryFromPicker,
+} from "@/src/domain/library/hooks/library-actions"
 import { notifyLibraryAdded } from "@/src/domain/notifications/library-notifications"
+import type { DataSource } from "@/src/domain/types"
 import { useAddOneDriveDataSource } from "@/src/features/onedrive/hooks/use-add-onedrive-data-source"
 import { OneDriveAddingEmptyState } from "@/src/features/onedrive/onedrive-adding-empty-state"
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
+import { createSaveAction } from "@/src/navigation/toolbar-action-helpers"
 import { useAppStore } from "@/src/store/app-store"
+import { TextInput, View } from "@/tw"
+import { useAddLibraryFlow } from "./add-library-flow-context"
 
-const SETTINGS_FLOW_ADD_LIBRARY = "add-library"
+export type LibraryOperation = "create" | "open"
 
-function sourceBrowserPath(source: DataSource) {
-  const sharedParams = { currentPath: "/", from: SETTINGS_FLOW_ADD_LIBRARY }
-  if (source.type === "onedrive") {
-    return {
-      pathname: "/settings/onedrive/browser" as RelativePathString,
-      params: { dataSourceId: source.id, ...sharedParams },
-    }
-  }
+function libraryOperation(value: string | undefined): LibraryOperation {
+  return value === "create" ? "create" : "open"
+}
+
+function sourceTypeLabel(source: DataSource): string {
+  return source.type === "onedrive" ? "OneDrive" : "WebDAV"
+}
+
+function remoteSources(dataSources: DataSource[]): DataSource[] {
+  return dataSources.filter(
+    (source) => source.type === "webdav" || source.type === "onedrive",
+  )
+}
+
+function sourceBrowserPath(source: DataSource, operation: LibraryOperation) {
   return {
-    pathname: "/settings/webdav/browser" as RelativePathString,
-    params: { dataSourceId: source.id, ...sharedParams },
+    pathname: "/settings/add-library/browser" as const,
+    params: {
+      dataSourceId: source.id,
+      sourceType: source.type,
+      currentPath: "/",
+      libraryAction: operation,
+    },
   }
 }
 
-function dataSourceTypeLabel(t: (key: string) => string, source: DataSource) {
-  if (source.type === "onedrive") {
-    return t("libraryDetail.typeOnedrive")
-  }
-  return t("libraryDetail.typeWebdav")
+function finishAddingLibrary(name: string): void {
+  router.dismissTo("/settings")
+  notifyLibraryAdded(name)
 }
 
-function dataSourceHelpText(source: DataSource) {
-  if (source.type === "onedrive") {
-    return source.email ?? ""
+function showOperationError(t: (key: string) => string, error: unknown): void {
+  const message = String(error)
+  if (
+    message.includes("LIBRARY_FOLDER_ALREADY_EXISTS") ||
+    message.includes("LIBRARY_ROOT_NOT_EMPTY") ||
+    message.includes("REMOTE_LIBRARY_ROOT_NOT_EMPTY") ||
+    message.includes("ANDROID_SAF_LIBRARY_TARGET_NOT_EMPTY")
+  ) {
+    showAlertWithStatusBarRestore(
+      t("addLibrary.folderExists.title"),
+      t("addLibrary.folderExists.detail"),
+    )
+    return
   }
-  return `${source.endpoint}${source.rootPath ?? ""}`
+  if (message.includes("LIBRARY_ALREADY_EXISTS")) {
+    showAlertWithStatusBarRestore(
+      t("sync.cannotAddDuplicate"),
+      t("sync.alreadyAdded"),
+    )
+    return
+  }
+  if (
+    message.includes("LIBRARY_TYPE_NOT_RECOGNIZED") ||
+    message.includes("METADATA_DB_NOT_FOUND") ||
+    message.includes("MYREADER_LIBRARY_MARKER_NOT_FOUND")
+  ) {
+    showAlertWithStatusBarRestore(
+      t("addLibrary.unrecognized.title"),
+      t("addLibrary.unrecognized.detail"),
+    )
+    return
+  }
+  showAlertWithStatusBarRestore(
+    t("addLibrary.operationFailed"),
+    t("addLibrary.operationFailedDetail"),
+  )
 }
 
-export default function AddLibraryDataSourceScreen() {
+export default function AddLibraryScreen() {
   const { t } = useTranslation()
-  const palette = useThemePalette()
-  const dataSources = useAppStore((s) => s.dataSources)
-  const { addOneDriveDataSource, busy: addingOneDrive } =
-    useAddOneDriveDataSource()
-
-  const showLocalLibraryOption = Platform.OS !== "android"
-  const hasExistingSources = showLocalLibraryOption || dataSources.length > 0
-
-  async function handleAddLocalLibrary() {
-    const picked = await pickCalibreLibrary()
-    const added = await addLibraryFromPicker(picked)
-    if (added != null) {
-      router.dismissTo("/settings")
-      notifyLibraryAdded(added.name)
-    }
-  }
-
-  async function handleAddOneDrive() {
-    await addOneDriveDataSource()
-  }
-
   const { options, toolbar } = useScreenHeader({
     close: { target: "/settings", dismissTo: true, variant: "layout" },
   })
@@ -78,78 +111,295 @@ export default function AddLibraryDataSourceScreen() {
       <Stack.Screen options={options} />
       {toolbar}
       <Screen>
-        {addingOneDrive ? (
-          <OneDriveAddingEmptyState />
-        ) : (
-          <>
-            <View className="gap-3">
-              <SectionLabel>{t("addLibrary.existingSources")}</SectionLabel>
-              <SectionCard>
-                {showLocalLibraryOption && (
-                  <ListRow
-                    title={LOCAL_LIBRARY_DATA_SOURCE_NAME}
-                    onPress={() => {
-                      void handleAddLocalLibrary()
-                    }}
-                    isLast={dataSources.length === 0}
-                  />
-                )}
-                {dataSources.map((source, index) => (
-                  <Link
-                    key={source.id}
-                    href={sourceBrowserPath(source)}
-                    asChild
-                  >
-                    <ListRow
-                      testID={`add-library-source-${source.id}`}
-                      title={source.name}
-                      detail={dataSourceHelpText(source)}
-                      value={dataSourceTypeLabel(t, source)}
-                      isLast={index === dataSources.length - 1}
-                    />
-                  </Link>
-                ))}
-                {!hasExistingSources && (
-                  <View className="py-6 px-4 gap-2">
-                    <Text
-                      className="text-center text-base"
-                      style={{ color: palette.text, fontWeight: "600" }}
-                    >
-                      {t("addLibrary.noSources.title")}
-                    </Text>
-                    <Text
-                      className="text-center text-base"
-                      style={{ color: palette.textMuted }}
-                    >
-                      {t("addLibrary.noSources.detail")}
-                    </Text>
-                  </View>
-                )}
-              </SectionCard>
-            </View>
+        <SectionCard>
+          <ListRow
+            testID="add-library-create"
+            title={t("addLibrary.createNew")}
+            onPress={() =>
+              router.push({
+                pathname: "/settings/add-library/location",
+                params: { libraryAction: "create" },
+              })
+            }
+          />
+          <ListRow
+            testID="add-library-open"
+            title={t("addLibrary.openExisting")}
+            onPress={() =>
+              router.push({
+                pathname: "/settings/add-library/location",
+                params: { libraryAction: "open" },
+              })
+            }
+            isLast
+          />
+        </SectionCard>
+      </Screen>
+    </>
+  )
+}
 
-            <View className="gap-3">
-              <SectionLabel>{t("addLibrary.addSources")}</SectionLabel>
-              <SectionCard>
-                <Link
-                  href={{
-                    pathname: "/settings/webdav/add",
-                    params: { from: "add-library" },
-                  }}
-                  asChild
-                >
-                  <ListRow title="WebDAV" label={t("webdav.addSource")} />
-                </Link>
-                <ListRow
-                  title="OneDrive"
-                  label={t("onedrive.addSource")}
-                  onPress={() => void handleAddOneDrive()}
-                  isLast
-                />
-              </SectionCard>
-            </View>
-          </>
-        )}
+export function AddLibraryLocationScreen() {
+  const { t } = useTranslation()
+  const {
+    libraryAction: libraryActionParam,
+    pendingShareName,
+    pendingShareUri,
+  } = useLocalSearchParams<{
+    libraryAction?: string
+    pendingShareName?: string
+    pendingShareUri?: string
+  }>()
+  const operation = libraryOperation(libraryActionParam)
+  const sources = remoteSources(useAppStore((state) => state.dataSources))
+  const { setLocalFolder, setPendingImport } = useAddLibraryFlow()
+  const { addOneDriveDataSource, busy: addingOneDrive } =
+    useAddOneDriveDataSource()
+
+  useEffect(() => {
+    if (!pendingShareUri) return
+    setPendingImport({
+      uri: pendingShareUri,
+      ...(pendingShareName ? { originalName: pendingShareName } : {}),
+    })
+  }, [pendingShareName, pendingShareUri, setPendingImport])
+
+  async function handleFolder() {
+    try {
+      const picked = await pickLocalLibraryDirectory()
+      if (operation === "create") {
+        if (!picked) return
+        setLocalFolder(picked)
+        router.push("/settings/add-library/create")
+        return
+      }
+      const library = await openExistingLocalLibraryFromPicker(picked)
+      if (library) finishAddingLibrary(library.name)
+    } catch (error) {
+      showOperationError(t, error)
+    }
+  }
+
+  async function handleAddOneDrive() {
+    const source = await addOneDriveDataSource()
+    if (source) router.push(sourceBrowserPath(source, operation))
+  }
+
+  const { options, toolbar } = useScreenHeader({
+    title:
+      operation === "create"
+        ? t("addLibrary.selectSaveLocation")
+        : t("addLibrary.selectLibraryLocation"),
+    backTitle: t("back"),
+  })
+
+  if (addingOneDrive) {
+    return (
+      <>
+        <Stack.Screen options={options} />
+        {toolbar}
+        <Screen>
+          <OneDriveAddingEmptyState />
+        </Screen>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <Stack.Screen options={options} />
+      {toolbar}
+      <Screen>
+        <View className="gap-3">
+          <SectionLabel>{t("addLibrary.existingDataSources")}</SectionLabel>
+          <SectionCard>
+            <ListRow
+              testID="add-library-local-storage"
+              title={t("common.localStorage")}
+              onPress={() => void handleFolder()}
+              isLast={sources.length === 0}
+            />
+            {sources.map((source, index) => (
+              <ListRow
+                key={source.id}
+                testID={`add-library-data-source-${source.id}`}
+                title={source.name}
+                value={sourceTypeLabel(source)}
+                onPress={() =>
+                  router.push(sourceBrowserPath(source, operation))
+                }
+                isLast={index === sources.length - 1}
+              />
+            ))}
+          </SectionCard>
+        </View>
+        <View className="gap-3">
+          <SectionLabel>{t("addLibrary.addDataSource")}</SectionLabel>
+          <SectionCard>
+            <ListRow
+              testID="add-library-add-webdav"
+              title={t("addLibrary.addWebdav")}
+              onPress={() =>
+                router.push({
+                  pathname: "/settings/add-library/webdav",
+                  params: {
+                    from: "add-library",
+                    libraryAction: operation,
+                  },
+                })
+              }
+            />
+            <ListRow
+              testID="add-library-add-onedrive"
+              title={t("addLibrary.addOnedrive")}
+              onPress={() => void handleAddOneDrive()}
+              isLast
+            />
+          </SectionCard>
+        </View>
+      </Screen>
+    </>
+  )
+}
+
+export function CreateLibraryScreen() {
+  const { t } = useTranslation()
+  const palette = useThemePalette()
+  const { dataSourceId, sourcePath } = useLocalSearchParams<{
+    dataSourceId?: string
+    sourcePath?: string
+  }>()
+  const { localFolder, setLocalFolder, takePendingImport } = useAddLibraryFlow()
+  const source = useAppStore((state) =>
+    state.dataSources.find((candidate) => candidate.id === dataSourceId),
+  )
+  const [name, setName] = useState(() => nextMyReaderLibraryName())
+  const [saving, setSaving] = useState(false)
+  const trimmedName = name.trim()
+  const folderNameValid = appendRemotePathSegment("/", trimmedName) !== null
+  const remotePath = source
+    ? appendRemotePathSegment(sourcePath ?? "/", trimmedName)
+    : undefined
+  const usesLocalStorage = !source
+  const nameInvalid =
+    !folderNameValid ||
+    (source !== undefined && remotePath === null) ||
+    (usesLocalStorage && localFolder === null)
+
+  async function chooseFolder() {
+    try {
+      const picked = await pickLocalLibraryDirectory()
+      if (picked) setLocalFolder(picked)
+    } catch (error) {
+      showOperationError(t, error)
+    }
+  }
+
+  async function handleCreate() {
+    if (nameInvalid || saving) return
+
+    setSaving(true)
+    try {
+      if (dataSourceId && !source) {
+        throw new Error("DATASOURCE_NOT_FOUND")
+      }
+      const library = source
+        ? await createRemoteMyReaderLibrary(source, remotePath!, trimmedName)
+        : await createFolderMyReaderLibrary(localFolder, trimmedName)
+      if (!library) return
+      setLocalFolder(null)
+      const pendingImport = takePendingImport()
+      if (pendingImport) {
+        router.replace({
+          pathname: "/handle-share",
+          params: {
+            contentUri: pendingImport.uri,
+            libraryId: library.id,
+            ...(pendingImport.originalName
+              ? { originalName: pendingImport.originalName }
+              : {}),
+          },
+        })
+        return
+      }
+      finishAddingLibrary(library.name)
+    } catch (error) {
+      showOperationError(t, error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const { options, toolbar } = useScreenHeader({
+    title: t("addLibrary.createNew"),
+    back: "hidden",
+    left: [
+      {
+        label: t("back"),
+        onPress: () => router.back(),
+        iosSfSymbol: "chevron.left",
+        iconOnly: true,
+      },
+    ],
+    right: [
+      createSaveAction({
+        label: saving ? t("addLibrary.creating") : t("addLibrary.create"),
+        onPress: () => void handleCreate(),
+        loading: saving,
+        color: palette.primary,
+        disabled: nameInvalid,
+      }),
+    ],
+  })
+
+  return (
+    <>
+      <Stack.Screen options={options} />
+      {toolbar}
+      <Screen>
+        <View
+          className="rounded-3xl px-4 py-4"
+          style={{
+            backgroundColor: palette.surface,
+            borderColor: palette.border,
+            borderWidth: 1,
+          }}
+        >
+          <FormLabeledFieldRow
+            label={t("addLibrary.name")}
+            error={
+              trimmedName.length > 0 && !folderNameValid
+                ? t("addLibrary.invalidName")
+                : undefined
+            }
+            required
+          >
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              placeholder={t("common.myLibrary")}
+              placeholderTextColor={palette.textMuted}
+              autoFocus
+              autoCapitalize="sentences"
+              autoCorrect={false}
+              returnKeyType="done"
+              onSubmitEditing={() => void handleCreate()}
+              className="min-h-10 border-0 bg-transparent py-1 text-base"
+              style={{ color: palette.text }}
+              testID="new-library-name"
+            />
+          </FormLabeledFieldRow>
+        </View>
+        {usesLocalStorage ? (
+          <SectionCard>
+            <ListRow
+              title={t("common.localStorage")}
+              detail={localFolder?.name ?? t("addLibrary.selectSaveLocation")}
+              onPress={() => void chooseFolder()}
+              isLast
+            />
+          </SectionCard>
+        ) : null}
       </Screen>
     </>
   )

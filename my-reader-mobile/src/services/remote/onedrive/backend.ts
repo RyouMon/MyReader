@@ -4,7 +4,10 @@ import ky from "ky"
 import i18n from "@/src/i18n"
 import { GRAPH_API_BASE } from "../../../constants/onedrive"
 import { NetworkError } from "../../../errors"
-import { refreshAccessToken } from "../../auth/onedrive"
+import {
+  invalidateOneDriveAccessToken,
+  refreshAccessToken,
+} from "../../auth/onedrive"
 import {
   canonicalRelativePathSegments,
   parentDirectoryUriForFileUri,
@@ -27,6 +30,7 @@ type DriveItem = {
   size?: number
   cTag?: string
   lastModifiedDateTime?: string
+  "@microsoft.graph.downloadUrl"?: string
 }
 
 export class OneDriveRemoteBackend implements RemoteBackend {
@@ -34,8 +38,6 @@ export class OneDriveRemoteBackend implements RemoteBackend {
   readonly dataSourceId: string
 
   private readonly libraryRootPath: string
-  private readonly resolvedDownloadUrls = new Map<string, string>()
-
   constructor(dataSourceId: string, libraryRootPath: string) {
     this.dataSourceId = dataSourceId
     this.libraryRootPath = libraryRootPath
@@ -61,6 +63,7 @@ export class OneDriveRemoteBackend implements RemoteBackend {
 
   invalidateAuth(): void {
     invalidateCachedAuth(this.dataSourceId)
+    invalidateOneDriveAccessToken(this.dataSourceId)
   }
 
   // -- Stat --
@@ -193,22 +196,30 @@ export class OneDriveRemoteBackend implements RemoteBackend {
     remotePath: string,
     localFileUri: string,
   ): Promise<DownloadRequest> {
-    const headers = await this.getAuthHeaders()
-    const ep = this.encodedPath(remotePath)
-    const apiContentUrl = `${GRAPH_API_BASE}/me/drive/root:${ep}:/content`
-    const res = await fetch(apiContentUrl, {
-      method: "GET",
-      headers,
-      redirect: "manual",
-    })
-    if (res.status === 302 || res.status === 301) {
-      const directUrl = res.headers.get("Location")
-      if (directUrl) {
-        this.resolvedDownloadUrls.set(remotePath, directUrl)
-        return { remotePath, localFileUri, headers: {} }
-      }
+    const select = encodeURIComponent("id,@microsoft.graph.downloadUrl")
+    const res = await this.fetchWithAuth(
+      `${this.itemUrl(remotePath)}?select=${select}`,
+      { method: "GET" },
+    )
+    if (!res.ok) {
+      throw new NetworkError(
+        i18n.t("sync.onedriveGetFailed", {
+          status: res.status,
+          path: remotePath,
+        }),
+        res.status,
+      )
     }
-    return { remotePath, localFileUri, headers }
+    const item = (await res.json()) as DriveItem
+    const url = item["@microsoft.graph.downloadUrl"]
+    if (!url) {
+      throw new NetworkError(
+        i18n.t("sync.onedriveDownloadUrlMissing", {
+          path: remotePath,
+        }),
+      )
+    }
+    return { remotePath, localFileUri, url, headers: {} }
   }
 
   async getUploadRequest(
@@ -234,8 +245,6 @@ export class OneDriveRemoteBackend implements RemoteBackend {
   // -- Path / URL --
 
   contentUrl(remotePath: string): string {
-    const resolved = this.resolvedDownloadUrls.get(remotePath)
-    if (resolved) return resolved
     return `${GRAPH_API_BASE}/me/drive/root:${this.encodedPath(remotePath)}:/content`
   }
 

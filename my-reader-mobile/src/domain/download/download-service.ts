@@ -1,13 +1,13 @@
 import i18n from "@/src/i18n"
 
 import { AppInvariantError } from "../../errors"
-import { finalizeDownloadedFile } from "../../services/core/content"
 import type { NativeDownloadOptions } from "../../services/download/native"
-import { assertSafeRelativePath, fileUriFor } from "../../services/fs/path"
 import { openSyncContext, type SyncTargetContext } from "../sync/context"
 import {
+  type BookDownloadIdentity,
   type DownloadOutcome,
   downloadFileDirectWithProgress,
+  finalizeRecoveredFile,
 } from "../sync/transfer"
 import type { DataSource, Library } from "../types"
 
@@ -22,6 +22,7 @@ export type LibraryDownloadRequest = {
   dataSources: DataSource[]
   onProgress?: DownloadProgressHandler
   options?: BackgroundDownloadOptions
+  identity?: BookDownloadIdentity
 }
 
 /**
@@ -50,13 +51,14 @@ export async function downloadLibraryFile({
   dataSources,
   onProgress,
   options,
+  identity,
 }: LibraryDownloadRequest): Promise<DownloadOutcome> {
   const ctx = await openDownloadContextForLibrary(
     libraryId,
     libraries,
     dataSources,
   )
-  return downloadContextFile(ctx, relativePath, onProgress, options)
+  return downloadContextFile(ctx, relativePath, onProgress, options, identity)
 }
 
 /**
@@ -67,8 +69,15 @@ export async function downloadContextFile(
   relativePath: string,
   onProgress?: DownloadProgressHandler,
   options: BackgroundDownloadOptions = {},
+  identity?: BookDownloadIdentity,
 ): Promise<DownloadOutcome> {
-  return downloadFileDirectWithProgress(ctx, relativePath, onProgress, options)
+  return downloadFileDirectWithProgress(
+    ctx,
+    relativePath,
+    onProgress,
+    options,
+    identity,
+  )
 }
 
 /**
@@ -80,23 +89,14 @@ export async function finalizeRecoveredDownload(
   libraries: Library[],
   dataSources: DataSource[],
   onProgress?: DownloadProgressHandler,
+  identity?: BookDownloadIdentity,
 ): Promise<DownloadOutcome> {
   const ctx = await openDownloadContextForLibrary(
     libraryId,
     libraries,
     dataSources,
   )
-  assertSafeRelativePath(relativePath)
-  const downloaded = await finalizeDownloadedFile(
-    ctx.library,
-    relativePath,
-    fileUriFor(ctx.libraryRootUri, relativePath),
-  )
-  const outcome: DownloadOutcome = {
-    blake3: null,
-    size: downloaded.size,
-    mtimeMs: downloaded.mtimeMs,
-  }
+  const outcome = await finalizeRecoveredFile(ctx, relativePath, identity)
   onProgress?.(outcome.size, outcome.size)
   return outcome
 }

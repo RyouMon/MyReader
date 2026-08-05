@@ -1,4 +1,5 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
+import { libraryTypeOf } from "@my-reader/tools/types/library"
 import * as Haptics from "expo-haptics"
 import { router, Stack, useLocalSearchParams } from "expo-router"
 import { SymbolView } from "expo-symbols"
@@ -19,6 +20,7 @@ import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library"
 import type { DataSource, Library } from "@/src/domain/types"
 import { isRemoteSourceType } from "@/src/domain/types"
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
+import { localLibraryFolderName } from "@/src/services/fs/library-paths"
 import { useAppStore } from "@/src/store/app-store"
 import { Text, View } from "@/tw"
 
@@ -48,24 +50,28 @@ function getSourceTypeLabel(t: (key: string) => string, library: Library) {
   return t("libraryDetail.typeLocal")
 }
 
-function getLibraryTypeLabel(t: (key: string) => string) {
-  return t("libraryDetail.calibreLibrary")
+function getLibraryTypeLabel(t: (key: string) => string, library: Library) {
+  return libraryTypeOf(library) === "myreader"
+    ? t("libraryDetail.myreaderLibrary")
+    : t("libraryDetail.calibreLibrary")
 }
 
-function getSourcePathDetail(library: Library, dataSource?: DataSource | null) {
-  if (
-    isRemoteSourceType(library.sourceType) &&
-    dataSource &&
-    dataSource.type === "webdav"
-  ) {
-    return `${dataSource.endpoint}${library.sourcePath ?? dataSource.rootPath ?? ""}`
-  }
+function getStorageLocationLabel(
+  t: (key: string) => string,
+  library: Library,
+  dataSource?: DataSource | null,
+) {
+  if (!isRemoteSourceType(library.sourceType)) return t("common.localStorage")
+  return dataSource?.name ?? getSourceTypeLabel(t, library)
+}
 
-  if (library.sourceType === "onedrive" && dataSource?.type === "onedrive") {
-    return library.sourcePath ?? dataSource.rootPath ?? ""
-  }
+function getRemotePathDetail(
+  library: Library,
+  dataSource?: DataSource | null,
+): string | null {
+  if (!isRemoteSourceType(library.sourceType)) return null
 
-  return library.path
+  return library.sourcePath ?? dataSource?.rootPath ?? "/"
 }
 
 function dismissLibraryDetail() {
@@ -160,9 +166,9 @@ export default function LibraryDetailScreen() {
   )
   const storedLibrary =
     libraryIndex >= 0 ? (libraries[libraryIndex] ?? null) : null
-  const [deletingLibrarySnapshot, setDeletingLibrarySnapshot] =
+  const [removingLibrarySnapshot, setRemovingLibrarySnapshot] =
     useState<Library | null>(null)
-  const library = storedLibrary ?? deletingLibrarySnapshot
+  const library = storedLibrary ?? removingLibrarySnapshot
   const linkedDataSource = useMemo(
     () =>
       dataSources.find((source) => source.id === library?.dataSourceId) ?? null,
@@ -171,22 +177,25 @@ export default function LibraryDetailScreen() {
   const isActive = library?.id === activeLibraryId
   const accent = palette.primary
 
-  function confirmDelete() {
+  function confirmRemove() {
     if (!library) {
       return
     }
 
     showAlertWithStatusBarRestore(
-      t("libraryDetail.delete.title"),
-      t("libraryDetail.delete.message"),
+      t("libraryDetail.remove.title"),
+      t("libraryDetail.remove.message"),
       [
-        { text: t("libraryDetail.delete.cancel"), style: "cancel" },
         {
-          text: t("libraryDetail.delete.confirm"),
+          text: t("libraryDetail.remove.cancel"),
+          style: "cancel",
+        },
+        {
+          text: t("libraryDetail.remove.confirm"),
           style: "destructive",
           onPress: () => {
             void (async () => {
-              setDeletingLibrarySnapshot(library)
+              setRemovingLibrarySnapshot(library)
               await removeLibrary(library.id)
               dismissLibraryDetail()
             })()
@@ -201,8 +210,8 @@ export default function LibraryDetailScreen() {
     right: library
       ? [
           {
-            label: t("libraryDetail.deleteLibrary"),
-            onPress: confirmDelete,
+            label: t("libraryDetail.removeLibrary"),
+            onPress: confirmRemove,
             iosSfSymbol: "trash",
             color: palette.destructive,
             iconOnly: true,
@@ -227,6 +236,9 @@ export default function LibraryDetailScreen() {
       </>
     )
   }
+
+  const folderName = localLibraryFolderName(library)
+  const remotePath = getRemotePathDetail(library, linkedDataSource)
 
   return (
     <>
@@ -283,16 +295,24 @@ export default function LibraryDetailScreen() {
             <SectionCard>
               <ListRow
                 title={t("libraryDetail.libraryType")}
-                detail={getLibraryTypeLabel(t)}
+                detail={getLibraryTypeLabel(t, library)}
               />
               <ListRow
-                title={t("libraryDetail.sourceType")}
-                detail={getSourceTypeLabel(t, library)}
+                title={t("libraryDetail.storageLocation")}
+                detail={getStorageLocationLabel(t, library, linkedDataSource)}
               />
-              <ListRow
-                title={t("libraryDetail.libraryPath")}
-                detail={getSourcePathDetail(library, linkedDataSource)}
-              />
+              {folderName ? (
+                <ListRow
+                  title={t("libraryDetail.folderName")}
+                  detail={folderName}
+                />
+              ) : null}
+              {remotePath ? (
+                <ListRow
+                  title={t("libraryDetail.remotePath")}
+                  detail={remotePath}
+                />
+              ) : null}
               <ListRow
                 title={t("libraryDetail.bookCountLabel")}
                 detail={t("libraryDetail.bookCount", {

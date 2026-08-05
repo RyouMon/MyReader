@@ -9,7 +9,7 @@ import {
   markTaskErrorAlerted,
   useDownloadStatusTasks,
 } from "@/src/domain/download/download-store"
-import { getBookFormatPaths } from "@/src/domain/library/calibre"
+import { getBookFormatPaths } from "@/src/domain/library/catalog"
 import {
   resolveShareableFormat,
   shareBookFile,

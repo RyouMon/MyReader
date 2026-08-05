@@ -8,6 +8,7 @@ export { isRemoteLibrarySourceType as isRemoteSourceType } from "@my-reader/tool
 
 export type BookItem = {
   id: string
+  uuid?: string
   calibreId?: number
   title: string
   author: string
@@ -20,6 +21,7 @@ export type BookItem = {
   path?: string
   hasCover?: boolean
   timestamp?: string | null
+  importStatus?: "importing"
 }
 
 export type BookCoverUri =
@@ -36,7 +38,13 @@ export type WebDavDataSource = DataSourceWebdav & { password: string }
 /** OneDrive API layer: requires valid access token */
 export type OneDriveDataSource = DataSourceOnedrive & { accessToken: string }
 
-export type LocalState = "present" | "remote_only" | "local_only" | "dirty_push"
+export type LocalState =
+  | "present"
+  | "remote_only"
+  | "source_missing"
+  | "remote_delete_pending"
+  | "local_only"
+  | "dirty_push"
 
 export type MobileLibrariesConfig = {
   libraries: Library[]

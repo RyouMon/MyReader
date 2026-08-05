@@ -10,15 +10,20 @@ import {
   pathBelongsToBook,
   resolveEffectiveFormat,
 } from "@/src/domain/library/book-formats"
-import { getAllBookFormats } from "@/src/domain/library/calibre"
+import { getAllBookFormats } from "@/src/domain/library/catalog"
 import { useFileStates } from "@/src/domain/sync/hooks/use-file-states"
+import { useBookUploadBookUuid } from "@/src/domain/sync/book-upload-store"
 import type { BookItem, Library } from "@/src/domain/types"
 import { isRemoteSourceType } from "@/src/domain/types"
-import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover"
+import type {
+  BookDownloadStatus,
+  BookTransferStatus,
+} from "@/src/features/library/components/books/book-cover"
 import type { FileState as FileStateRow } from "@/src/services/core/content"
 import { queryKeys } from "@/src/services/query/query-keys"
 
 type BookFileStateMap = Record<string, BookDownloadStatus>
+type BookTransferStateMap = Record<string, BookTransferStatus>
 type BookFileStateRowMap = Record<string, FileStateRow[]>
 type BookFileStateBundle = {
   statuses: BookFileStateMap
@@ -45,6 +50,7 @@ export function useLibraryBookMeta(
   })
   const { data: fileStateRows = [] } = useFileStates(selectedLibrary)
   const statusTasks = useDownloadStatusTasks()
+  const activeUploadBookUuid = useBookUploadBookUuid(selectedLibrary?.id)
 
   const isRemote = isRemoteSourceType(selectedLibrary?.sourceType)
 
@@ -178,6 +184,69 @@ export function useLibraryBookMeta(
     return next
   }, [bookFormatMetaById, books, fileStateBundle, isRemote, tasksByBookId])
 
+  const bookTransferStatusById = useMemo(() => {
+    const next: BookTransferStateMap = { ...bookDownloadStatusById }
+    if (!isRemote) return next
+
+    for (const book of books) {
+      if (next[book.id] === "downloading") continue
+      const isNotAvailableRemotely = (fileStateBundle.rows[book.id] ?? []).some(
+        (row) =>
+          row.localState === "dirty_push" ||
+          row.localState === "local_only" ||
+          row.localState === "source_missing",
+      )
+      if (!isNotAvailableRemotely) continue
+      next[book.id] =
+        activeUploadBookUuid &&
+        pathBelongsToBook(`Books/${activeUploadBookUuid}/book`, book.path)
+          ? "uploading"
+          : "uploadPending"
+    }
+    return next
+  }, [
+    activeUploadBookUuid,
+    bookDownloadStatusById,
+    books,
+    fileStateBundle.rows,
+    isRemote,
+  ])
+
+  const bookCanUploadById = useMemo(() => {
+    const next: Record<string, boolean> = {}
+    for (const book of books) {
+      const isUploading =
+        !!activeUploadBookUuid &&
+        pathBelongsToBook(`Books/${activeUploadBookUuid}/book`, book.path)
+      next[book.id] =
+        isRemote &&
+        !isUploading &&
+        (fileStateBundle.rows[book.id] ?? []).some(
+          (row) =>
+            row.isLocallyAvailable &&
+            (row.localState === "dirty_push" ||
+              row.localState === "local_only"),
+        )
+    }
+    return next
+  }, [activeUploadBookUuid, books, fileStateBundle.rows, isRemote])
+
+  const bookCanDeleteDownloadById = useMemo(() => {
+    const next: Record<string, boolean> = {}
+    for (const book of books) {
+      const effectiveFormat = bookFormatMetaById.get(book.id)?.effectiveFormat
+      next[book.id] =
+        isRemote &&
+        (fileStateBundle.rows[book.id] ?? []).some(
+          (row) =>
+            row.localState === "present" &&
+            (!effectiveFormat ||
+              getFormatFromPath(row.path) === effectiveFormat),
+        )
+    }
+    return next
+  }, [bookFormatMetaById, books, fileStateBundle.rows, isRemote])
+
   const bookActiveFormatsById = useMemo(() => {
     const map = new Map<string, string>()
     for (const [bookId, tasks] of tasksByBookId) {
@@ -199,6 +268,9 @@ export function useLibraryBookMeta(
     bookFormatMetaById,
     fileStateBundle,
     bookDownloadStatusById,
+    bookTransferStatusById,
+    bookCanUploadById,
+    bookCanDeleteDownloadById,
     bookActiveFormatsById,
   }
 }

@@ -3,7 +3,7 @@ import {
   type SchedulerTransition as CoreSchedulerTransition,
   type LibraryStorageConfig as CoreLibraryStorageConfig,
   type RemoteCredential,
-  type LibrarySyncReport,
+  type LibrarySyncReport as CoreLibrarySyncReport,
   type LibrarySyncScope,
   type RetrySchedule,
   type ScheduledSync,
@@ -33,12 +33,12 @@ import {
   syncSafetySweepDelayMs,
   syncSetLibraryOnline,
 } from "my-reader-core"
+import type { Library } from "@my-reader/tools/types/library"
 import { DataIntegrityError } from "@/src/errors"
 
 export type {
   RetrySchedule,
   ScheduledSync,
-  LibrarySyncReport,
   LibrarySyncScope,
   SidecarSyncMode,
   SidecarSyncReport,
@@ -46,6 +46,12 @@ export type {
   SyncFailureKind,
   SyncTaskProgress,
   SyncTiming,
+}
+
+export type LibrarySyncReport = Omit<CoreLibrarySyncReport, "calibre"> & {
+  calibre: Omit<CoreLibrarySyncReport["calibre"], "library"> & {
+    library: Library
+  }
 }
 
 export type SchedulerTransition = Omit<
@@ -81,7 +87,23 @@ function transitionFromCore(
   }
 }
 
-function storageToCore(
+function syncReportFromCore(report: CoreLibrarySyncReport): LibrarySyncReport {
+  return {
+    ...report,
+    calibre: {
+      ...report.calibre,
+      library: {
+        ...report.calibre.library,
+        libraryType:
+          report.calibre.library.libraryType === "myreader"
+            ? "myreader"
+            : "calibre",
+      },
+    },
+  }
+}
+
+export function toCoreLibraryStorage(
   storage: LibraryStorageConfig,
 ): CoreLibraryStorageConfig {
   switch (storage.kind) {
@@ -349,17 +371,19 @@ export async function syncLibraryData(input: {
   storage: LibraryStorageConfig
 }): Promise<LibrarySyncReport> {
   try {
-    return await syncRunLibrary(
-      input.taskId,
-      input.configPath,
-      input.sidecarRootPath,
-      input.libraryRootPath,
-      input.libraryId,
-      input.nowMs,
-      input.scope,
-      input.forceCalibre,
-      input.mode,
-      storageToCore(input.storage),
+    return syncReportFromCore(
+      await syncRunLibrary(
+        input.taskId,
+        input.configPath,
+        input.sidecarRootPath,
+        input.libraryRootPath,
+        input.libraryId,
+        input.nowMs,
+        input.scope,
+        input.forceCalibre,
+        input.mode,
+        toCoreLibraryStorage(input.storage),
+      ),
     )
   } catch (error) {
     if (CoreFfiError.DataIntegrity.instanceOf(error)) {

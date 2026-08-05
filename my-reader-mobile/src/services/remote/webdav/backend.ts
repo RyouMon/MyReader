@@ -212,7 +212,12 @@ export class WebDavRemoteBackend implements RemoteBackend {
     localFileUri: string,
   ): Promise<DownloadRequest> {
     const headers = await this.getAuthHeaders()
-    return { remotePath, localFileUri, headers }
+    return {
+      remotePath,
+      localFileUri,
+      url: this.contentUrl(remotePath),
+      headers,
+    }
   }
 
   async getUploadRequest(

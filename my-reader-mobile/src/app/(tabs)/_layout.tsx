@@ -12,7 +12,10 @@ export default function TabsLayout() {
 
   return (
     <NativeTabs tintColor={palette.primary} backgroundColor={palette.surface}>
-      <Trigger name="home">
+      <Trigger
+        name="home"
+        unstable_nativeProps={{ tabBarItemTestID: "tab-home" }}
+      >
         <Trigger.Icon
           sf={{ default: "house", selected: "house.fill" }}
           src={{
@@ -26,7 +29,10 @@ export default function TabsLayout() {
         />
         <Trigger.Label>{t("tabs.home")}</Trigger.Label>
       </Trigger>
-      <Trigger name="library">
+      <Trigger
+        name="library"
+        unstable_nativeProps={{ tabBarItemTestID: "tab-library" }}
+      >
         <Trigger.Icon
           sf={{ default: "books.vertical", selected: "books.vertical.fill" }}
           src={{
@@ -40,7 +46,10 @@ export default function TabsLayout() {
         />
         <Trigger.Label>{t("tabs.library")}</Trigger.Label>
       </Trigger>
-      <Trigger name="settings">
+      <Trigger
+        name="settings"
+        unstable_nativeProps={{ tabBarItemTestID: "tab-settings" }}
+      >
         <Trigger.Icon
           sf={{ default: "gearshape", selected: "gearshape.fill" }}
           src={{

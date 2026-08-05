@@ -3,23 +3,45 @@ import type {
   CalibreBook,
   PaginatedBooks,
 } from "@my-reader/tools/types/book"
+import type { Library } from "@my-reader/tools/types/library"
 import {
   type BookFormat,
+  type BookContent,
   type BookSummary,
   type BookEntry as CoreBookEntry,
   catalogCountBooks,
+  catalogCountLibraryBooks,
+  catalogDeleteLocalBook,
   catalogGetBookDetail,
   catalogGetBookFormat,
+  catalogGetLibraryBookDetail,
+  catalogGetLibraryBookFormat,
+  catalogGetLibraryIdentity,
   catalogGetLibraryUuid,
+  catalogGetMyreaderBookContent,
+  catalogImportLocalBook,
+  catalogStageRemoteBookImport,
   catalogListBookFormats,
   catalogListBookSummaries,
   catalogListBooks,
   catalogListBooksPage,
   catalogListBooksPageByLastRead,
+  catalogListLibraryBookFormats,
+  catalogListLibraryBookSummaries,
+  catalogListLibraryBooks,
+  catalogListLibraryBooksPage,
+  catalogListLibraryBooksPageByLastRead,
+  catalogListLibrarySeriesBooks,
   catalogListSeriesBooks,
+  catalogUpdateLocalBookMetadata,
   catalogValidateLibrary,
+  contentGetFileState,
 } from "my-reader-core"
+import { appConfigPath } from "./app-config"
+import { announceLocalSidecarWork } from "./sync-events"
 import { toNativeFilesystemPath } from "../fs/path"
+import { cacheFileState } from "../query/invalidate-table"
+import type { FileState } from "./content"
 
 export type CalibreBookSummary = BookSummary
 
@@ -143,4 +165,302 @@ export async function getCalibreBookFormat(
   format: string,
 ): Promise<CalibreBookFormat | undefined> {
   return catalogGetBookFormat(nativePath(libraryRootUri), bookId, format)
+}
+
+type CatalogLibrary = Pick<Library, "id">
+
+export function countLibraryBooks(
+  library: CatalogLibrary,
+  contentRootUri: string,
+  sidecarRootUri: string,
+): Promise<number> {
+  return catalogCountLibraryBooks(
+    appConfigPath,
+    library.id,
+    nativePath(sidecarRootUri),
+    nativePath(contentRootUri),
+  )
+}
+
+export async function listLibraryBooks(
+  library: CatalogLibrary,
+  contentRootUri: string,
+  sidecarRootUri: string,
+): Promise<CalibreBook[]> {
+  return (
+    await catalogListLibraryBooks(
+      appConfigPath,
+      library.id,
+      nativePath(sidecarRootUri),
+      nativePath(contentRootUri),
+    )
+  ).map(bookFromCore)
+}
+
+export async function listLibraryBooksPage(
+  library: CatalogLibrary,
+  contentRootUri: string,
+  sidecarRootUri: string,
+  offset: number,
+  limit: number,
+  sortBy?: string,
+  search?: string,
+): Promise<PaginatedBooks> {
+  const page = await catalogListLibraryBooksPage(
+    appConfigPath,
+    library.id,
+    nativePath(sidecarRootUri),
+    nativePath(contentRootUri),
+    offset,
+    limit,
+    sortBy,
+    search,
+  )
+  return { items: page.items.map(bookFromCore), total: page.total }
+}
+
+export async function listLibraryBooksPageByLastRead(
+  library: CatalogLibrary,
+  contentRootUri: string,
+  sidecarRootUri: string,
+  offset: number,
+  limit: number,
+  search?: string,
+): Promise<PaginatedBooks> {
+  const page = await catalogListLibraryBooksPageByLastRead(
+    appConfigPath,
+    library.id,
+    nativePath(sidecarRootUri),
+    nativePath(contentRootUri),
+    offset,
+    limit,
+    search,
+  )
+  return { items: page.items.map(bookFromCore), total: page.total }
+}
+
+export async function getLibraryBookDetail(
+  library: CatalogLibrary,
+  contentRootUri: string,
+  sidecarRootUri: string,
+  bookId: number,
+): Promise<BookDetail> {
+  const book = await catalogGetLibraryBookDetail(
+    appConfigPath,
+    library.id,
+    nativePath(sidecarRootUri),
+    nativePath(contentRootUri),
+    bookId,
+  )
+  return {
+    ...bookFromCore(book),
+    titleSort: book.titleSort,
+    formatSizes: book.formatSizes,
+    identifiers: book.identifiers,
+  }
+}
+
+export async function listLibrarySeriesBooks(
+  library: CatalogLibrary,
+  contentRootUri: string,
+  sidecarRootUri: string,
+  seriesName: string,
+  excludeBookId?: number,
+): Promise<CalibreBook[]> {
+  return (
+    await catalogListLibrarySeriesBooks(
+      appConfigPath,
+      library.id,
+      nativePath(sidecarRootUri),
+      nativePath(contentRootUri),
+      seriesName,
+      excludeBookId,
+    )
+  ).map(bookFromCore)
+}
+
+export function getLibraryIdentity(
+  library: CatalogLibrary,
+  contentRootUri: string,
+  sidecarRootUri: string,
+): Promise<string> {
+  return catalogGetLibraryIdentity(
+    appConfigPath,
+    library.id,
+    nativePath(sidecarRootUri),
+    nativePath(contentRootUri),
+  )
+}
+
+export function listLibraryBookSummaries(
+  library: CatalogLibrary,
+  contentRootUri: string,
+  sidecarRootUri: string,
+): Promise<CalibreBookSummary[]> {
+  return catalogListLibraryBookSummaries(
+    appConfigPath,
+    library.id,
+    nativePath(sidecarRootUri),
+    nativePath(contentRootUri),
+  )
+}
+
+export function listLibraryBookFormats(
+  library: CatalogLibrary,
+  contentRootUri: string,
+  sidecarRootUri: string,
+  bookId: number,
+): Promise<CalibreBookFormat[]> {
+  return catalogListLibraryBookFormats(
+    appConfigPath,
+    library.id,
+    nativePath(sidecarRootUri),
+    nativePath(contentRootUri),
+    bookId,
+  )
+}
+
+export function getLibraryBookFormat(
+  library: CatalogLibrary,
+  contentRootUri: string,
+  sidecarRootUri: string,
+  bookId: number,
+  format: string,
+): Promise<CalibreBookFormat | undefined> {
+  return catalogGetLibraryBookFormat(
+    appConfigPath,
+    library.id,
+    nativePath(sidecarRootUri),
+    nativePath(contentRootUri),
+    bookId,
+    format,
+  )
+}
+
+export function getMyreaderBookContent(
+  contentRootUri: string,
+  sidecarRootUri: string,
+  bookId: number,
+  format: string,
+): Promise<BookContent> {
+  return catalogGetMyreaderBookContent(
+    nativePath(sidecarRootUri),
+    nativePath(contentRootUri),
+    bookId,
+    format,
+  )
+}
+
+export async function importLocalBook(
+  library: CatalogLibrary,
+  contentRootUri: string,
+  sidecarRootUri: string,
+  input: {
+    sourceFileUri: string
+    title?: string
+    authors: string[]
+    consumeSourceFile: boolean
+  },
+  options?: { announce?: boolean },
+): Promise<CalibreBook> {
+  const book = await catalogImportLocalBook(
+    appConfigPath,
+    library.id,
+    nativePath(sidecarRootUri),
+    nativePath(contentRootUri),
+    {
+      sourceFilePath: nativePath(input.sourceFileUri),
+      title: input.title,
+      authors: input.authors,
+      recordedAtMs: Date.now(),
+      consumeSourceFile: input.consumeSourceFile,
+    },
+  )
+  if (options?.announce !== false) announceLocalSidecarWork(library.id)
+  return bookFromCore(book)
+}
+
+export async function importRemoteBook(
+  library: CatalogLibrary,
+  contentRootUri: string,
+  sidecarRootUri: string,
+  input: {
+    sourceFileUri: string
+    title?: string
+    authors: string[]
+    consumeSourceFile: boolean
+  },
+): Promise<CalibreBook> {
+  const book = await catalogStageRemoteBookImport(
+    appConfigPath,
+    library.id,
+    nativePath(sidecarRootUri),
+    nativePath(contentRootUri),
+    {
+      sourceFilePath: nativePath(input.sourceFileUri),
+      title: input.title,
+      authors: input.authors,
+      recordedAtMs: Date.now(),
+      consumeSourceFile: input.consumeSourceFile,
+    },
+  )
+  const format = book.formats[0]
+  if (format) {
+    const relativePath = `${book.path}/book.${format.toLowerCase()}`
+    const state = await contentGetFileState(
+      nativePath(sidecarRootUri),
+      relativePath,
+    )
+    if (state) {
+      const cachedState: FileState = {
+        ...state,
+        localSha256: state.localSha256 ?? null,
+        localSize: state.localSize ?? null,
+        localMtime: state.localMtime ?? null,
+      }
+      cacheFileState(library.id, cachedState)
+    }
+  }
+  return bookFromCore(book)
+}
+
+export async function updateLocalBookMetadata(
+  library: CatalogLibrary,
+  contentRootUri: string,
+  sidecarRootUri: string,
+  input: { bookId: number; title: string; authors: string[] },
+  options?: { announce?: boolean },
+): Promise<CalibreBook> {
+  const book = await catalogUpdateLocalBookMetadata(
+    appConfigPath,
+    library.id,
+    nativePath(sidecarRootUri),
+    nativePath(contentRootUri),
+    {
+      bookId: input.bookId,
+      title: input.title,
+      authors: input.authors,
+      recordedAtMs: Date.now(),
+    },
+  )
+  if (options?.announce !== false) announceLocalSidecarWork(library.id)
+  return bookFromCore(book)
+}
+
+export async function deleteLocalBook(
+  library: CatalogLibrary,
+  contentRootUri: string,
+  sidecarRootUri: string,
+  bookId: number,
+  options?: { announce?: boolean },
+): Promise<void> {
+  await catalogDeleteLocalBook(
+    appConfigPath,
+    library.id,
+    nativePath(sidecarRootUri),
+    nativePath(contentRootUri),
+    bookId,
+    Date.now(),
+  )
+  if (options?.announce !== false) announceLocalSidecarWork(library.id)
 }

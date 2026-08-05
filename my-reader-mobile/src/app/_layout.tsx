@@ -22,6 +22,7 @@ import { hydrateLibraries } from "@/src/domain/library/hooks/library-actions"
 import { initializeDownloadNotifications } from "@/src/domain/notifications/download-notifications"
 import { useAppStore } from "@/src/store/app-store"
 import { SyncRuntime } from "@/src/domain/sync/components/SyncRuntime"
+import { BookUploadRuntime } from "@/src/domain/sync/components/BookUploadRuntime"
 import { setupGlobalErrorHandler } from "@/src/errors/global-handler"
 import { LibrarySyncPill } from "@/src/features/library/components/library-sync-pill"
 import { setReaderTransitionRootNode } from "@/src/features/reader/reader-open-transition"
@@ -120,6 +121,10 @@ function RootNavigator() {
         <StatusBar style={statusBarStyle} />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen
+            name="handle-share"
+            options={{ presentation: "fullScreenModal" }}
+          />
           <Stack.Screen name="book" options={{ presentation: "modal" }} />
           <Stack.Screen
             name="library-book"
@@ -138,6 +143,7 @@ function RootNavigator() {
         </Stack>
       </NavigationThemeProvider>
       <ReaderOpenTransitionHost />
+      <BookUploadRuntime />
       <SyncRuntime />
       <LibrarySyncPill />
     </>

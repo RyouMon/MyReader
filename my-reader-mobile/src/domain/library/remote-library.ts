@@ -2,12 +2,8 @@ import { resolveCoverUri } from "@/src/services/fs/library-paths"
 import type { RemoteBackend } from "../../services/remote/backend"
 import { createRemoteBackend } from "../../services/remote/factory"
 import type { BookItem, DataSource, Library } from "../types"
-import { readBooks } from "./remote-library-shared"
 
 export type RemoteLibraryOps = {
-  readBooks(
-    library: Library,
-  ): Promise<{ books: BookItem[]; metadataUri: string }>
   buildCoverUri(
     library: Library,
     bookPath: string,
@@ -32,10 +28,6 @@ export function isMissingMetadataDbError(error: unknown) {
 
 function buildRemoteOps(backend: RemoteBackend): RemoteLibraryOps {
   return {
-    readBooks: (lib: Library) =>
-      readBooks(lib, backend, (l, bookPath, hasCover) =>
-        resolveCoverUri(l, bookPath, hasCover, backend),
-      ),
     buildCoverUri: (lib: Library, bookPath: string, hasCover: boolean) =>
       resolveCoverUri(lib, bookPath, hasCover, backend),
   }

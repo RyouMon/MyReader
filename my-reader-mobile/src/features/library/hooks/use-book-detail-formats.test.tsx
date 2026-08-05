@@ -11,7 +11,7 @@ import { Alert } from "react-native"
 import type { BookDetail } from "@my-reader/tools/types/book"
 
 import * as downloadStore from "@/src/domain/download/download-store"
-import { getBookFormatPaths } from "@/src/domain/library/calibre"
+import { getBookFormatPaths } from "@/src/domain/library/catalog"
 import * as shareBookFileModule from "@/src/domain/library/share-book-file"
 import { useFileStates } from "@/src/domain/sync/hooks/use-file-states"
 import type { Library } from "@/src/domain/types"
@@ -31,7 +31,7 @@ jest.mock("@/src/domain/download/download-store", () => ({
   useDownloadStatusTasks: jest.fn(() => []),
 }))
 
-jest.mock("@/src/domain/library/calibre", () => ({
+jest.mock("@/src/domain/library/catalog", () => ({
   getBookFormatPaths: jest.fn(),
 }))
 

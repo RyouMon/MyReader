@@ -8,7 +8,6 @@ export function resolveLibraryHeaderChromeMode(
   variant: LibraryScreenVariant,
 ): LibraryHeaderChromeMode {
   switch (variant) {
-    case "empty":
     case "unselected":
       return "toolbar-right"
     case "loaded":

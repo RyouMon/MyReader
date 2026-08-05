@@ -13,8 +13,8 @@ jest.mock("@react-native-menu/menu", () => ({
   MenuView: jest.fn(({ children }) => children),
 }))
 
-jest.mock("@/src/components/book-download-status-indicator", () => ({
-  BookDownloadStatusIndicator: jest.fn(() => null),
+jest.mock("@/src/components/book-transfer-status-indicator", () => ({
+  BookTransferStatusIndicator: jest.fn(() => null),
 }))
 
 jest.mock("@/src/components/cover-adaptive-background", () => ({

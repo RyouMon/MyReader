@@ -1,18 +1,28 @@
 import type { MobileTranslationKey } from "@my-reader/i18n/mobile"
 import { router, Stack, useLocalSearchParams } from "expo-router"
 import { useTranslation } from "react-i18next"
-import { EmptyState, ListRow, Screen, SectionCard } from "@/src/components"
+import {
+  EmptyState,
+  ListRow,
+  PrimaryButton,
+  Screen,
+  SectionCard,
+} from "@/src/components"
 import { ErrorBoundary } from "@/src/components/error-boundary"
 import { useThemePalette } from "@/src/design/tokens"
 import { normalizeCurrentPath } from "@/src/domain/library/remote-library"
 import { useRemoteDirectoryBrowser } from "@/src/features/settings/hooks/use-remote-directory-browser"
+import type { RemoteLibraryAction } from "@/src/features/settings/hooks/use-remote-directory-browser"
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 import { createSaveAction } from "@/src/navigation/toolbar-action-helpers"
 import { Text, View } from "@/tw"
 
 type RemoteDirectoryBrowserScreenProps = {
   sourceType: "webdav" | "onedrive"
-  browserRoute: "/settings/webdav/browser" | "/settings/onedrive/browser"
+  browserRoute:
+    | "/settings/webdav/browser"
+    | "/settings/onedrive/browser"
+    | "/settings/add-library/browser"
   translationNamespace: "webdav.browser" | "onedrive.browser"
 }
 
@@ -33,11 +43,15 @@ export function RemoteDirectoryBrowserScreen({
     dataSourceId,
     currentPath: currentPathParam,
     from,
+    libraryAction: libraryActionParam,
   } = useLocalSearchParams<{
     dataSourceId?: string
     currentPath?: string
     from?: string
+    libraryAction?: RemoteLibraryAction
   }>()
+  const libraryAction: RemoteLibraryAction =
+    libraryActionParam === "create" ? "create" : "open"
 
   const label = (key: string, options?: Record<string, unknown>) =>
     t(`${translationNamespace}.${key}` as RemoteBrowserTranslationKey, options)
@@ -51,10 +65,12 @@ export function RemoteDirectoryBrowserScreen({
     error,
     saving,
     currentPath,
-    chooseCurrentPath,
+    retry,
+    choosePath,
   } = useRemoteDirectoryBrowser({
     dataSourceId,
     currentPathParam,
+    libraryAction,
     sourceType,
   })
 
@@ -64,32 +80,72 @@ export function RemoteDirectoryBrowserScreen({
       pathname: browserRoute,
       params: {
         dataSourceId: candidateId,
+        sourceType,
         currentPath: normalizeCurrentPath(path),
         ...(from ? { from } : {}),
+        libraryAction,
       },
     })
+  }
+
+  function handleChooseCurrentPath() {
+    if (!candidateId) return
+    if (libraryAction === "create") {
+      router.push({
+        pathname: "/settings/add-library/create",
+        params: {
+          dataSourceId: candidateId,
+          sourcePath: currentPath,
+        },
+      })
+      return
+    }
+    void choosePath(currentPath, chooseErrorMessages)
   }
 
   const isAddLibraryFlow = from === "add-library" && currentPath === "/"
   const closeTarget = isAddLibraryFlow ? "/settings/add-library" : "/settings"
   const isRootBrowser = currentPath === "/"
+  const isAddLibraryBrowser = browserRoute === "/settings/add-library/browser"
+
+  const chooseErrorMessages = {
+    notValidTitle: t("addLibrary.unrecognized.title"),
+    notValidMessage: t("addLibrary.unrecognized.detail"),
+    duplicateTitle: t("sync.cannotAddDuplicate"),
+    duplicateMessage: t("sync.alreadyAdded"),
+    generic: t("addLibrary.operationFailedDetail"),
+  }
 
   const { options, toolbar } = useScreenHeader({
-    ...(isRootBrowser
+    ...(isRootBrowser && !isAddLibraryBrowser
       ? { close: { target: closeTarget, dismissTo: true, variant: "layout" } }
+      : {}),
+    ...(isAddLibraryBrowser
+      ? {
+          title:
+            libraryAction === "create"
+              ? t("addLibrary.selectSaveLocation")
+              : t("addLibrary.selectLibraryLocation"),
+          back: "hidden" as const,
+          left: [
+            {
+              label: t("back"),
+              onPress: () => router.back(),
+              iosSfSymbol: "chevron.left" as const,
+              iconOnly: true,
+            },
+          ],
+        }
       : {}),
     backTitle: t("reader.back"),
     right: [
       createSaveAction({
-        label: saving ? label("validating") : label("selectDirectory"),
-        onPress: () =>
-          void chooseCurrentPath({
-            notValidTitle: label("notValidLibrary.title"),
-            notValidMessage: label("notValidLibrary.message"),
-            duplicateTitle: t("sync.cannotAddDuplicate"),
-            duplicateMessage: t("sync.alreadyAdded"),
-            generic: label("notCalibreLibrary"),
-          }),
+        label: saving
+          ? label("validating")
+          : libraryAction === "create"
+            ? t("addLibrary.continue")
+            : t("addLibrary.open"),
+        onPress: handleChooseCurrentPath,
         loading: saving,
         color: palette.primary,
       }),
@@ -117,16 +173,14 @@ export function RemoteDirectoryBrowserScreen({
         <ErrorBoundary
           title={label("loadFailed.title")}
           message={label("loadFailed.message")}
-          onRetry={() => {
-            /* effect re-triggers via loading/error state */
-          }}
+          onRetry={retry}
         >
           <View className="gap-3">
             <Text
               className="px-4 text-base text-muted"
               style={{ color: palette.textMuted }}
             >
-              {label("currentPath", { path: currentPath })}
+              {t("addLibrary.path", { path: currentPath })}
             </Text>
 
             {loading ? (
@@ -148,6 +202,12 @@ export function RemoteDirectoryBrowserScreen({
               <EmptyState
                 title={label("readFailed.title")}
                 detail={error}
+                action={
+                  <PrimaryButton
+                    title={t("errorBoundary.retry")}
+                    onPress={retry}
+                  />
+                }
                 icon={{
                   ios: "exclamationmark.triangle.fill",
                   android: "warning",

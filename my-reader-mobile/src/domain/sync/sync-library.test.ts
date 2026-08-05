@@ -6,12 +6,12 @@ jest.mock("./core-sync", () => ({
   runCoreLibrarySync: jest.fn(),
 }))
 
-jest.mock("../library/calibre", () => ({
+jest.mock("../library/catalog", () => ({
   fetchBooks: jest.fn(),
 }))
 
 jest.mock("../../services/fs/local-library-content", () => ({
-  withLocalLibraryCalibreRoot: jest.fn(
+  withLocalLibraryContentRoot: jest.fn(
     (_library, operation: (root: string) => Promise<unknown>) =>
       operation("file:///resolved-library"),
   ),
@@ -36,8 +36,8 @@ import {
   invalidateRecentlyReadBooks,
 } from "@/src/services/query/invalidate-table"
 import { DataIntegrityError, SyncConnectivityError } from "@/src/errors"
-import { withLocalLibraryCalibreRoot } from "../../services/fs/local-library-content"
-import { fetchBooks } from "../library/calibre"
+import { withLocalLibraryContentRoot } from "../../services/fs/local-library-content"
+import { fetchBooks } from "../library/catalog"
 import type { DataSource, Library } from "../types"
 import { openSyncContext, type SyncTargetContext } from "./context"
 import { runCoreLibrarySync } from "./core-sync"
@@ -156,7 +156,7 @@ describe("syncLibrary", () => {
       taskId: undefined,
       onSidecarComplete: expect.any(Function),
     })
-    expect(withLocalLibraryCalibreRoot).toHaveBeenCalledWith(
+    expect(withLocalLibraryContentRoot).toHaveBeenCalledWith(
       library,
       expect.any(Function),
     )
@@ -184,7 +184,7 @@ describe("syncLibrary", () => {
       myreaderTaskId: "task-1",
     })
 
-    expect(withLocalLibraryCalibreRoot).not.toHaveBeenCalled()
+    expect(withLocalLibraryContentRoot).not.toHaveBeenCalled()
     expect(runCoreLibrarySync).toHaveBeenCalledWith(
       expect.objectContaining({
         libraryRootUri: "file:///cache/lib-1",

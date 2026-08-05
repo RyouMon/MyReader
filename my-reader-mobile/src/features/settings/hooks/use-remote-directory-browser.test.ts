@@ -1,6 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native"
 
-const mockRegisterRemoteLibrary = jest.fn()
+import { useRemoteDirectoryBrowser } from "./use-remote-directory-browser"
+
+const mockOpenRemoteExistingLibrary = jest.fn()
 const mockListRemoteDirectories = jest.fn()
 const mockShowAlert = jest.fn()
 const mockNotifyLibraryAdded = jest.fn()
@@ -21,8 +23,8 @@ jest.mock("expo-router", () => ({
 }))
 
 jest.mock("@/src/domain/library/hooks/library-actions", () => ({
-  addRemoteLibraryFromSource: (...args: unknown[]) =>
-    mockRegisterRemoteLibrary(...args),
+  openRemoteExistingLibrary: (...args: unknown[]) =>
+    mockOpenRemoteExistingLibrary(...args),
 }))
 
 jest.mock("@/src/domain/library/remote-library", () => ({
@@ -53,8 +55,6 @@ jest.mock("@/src/store/app-store", () => ({
     selector(mockStoreState),
 }))
 
-import { useRemoteDirectoryBrowser } from "./use-remote-directory-browser"
-
 const errorMessages = {
   notValidTitle: "Invalid directory",
   notValidMessage: "metadata.db not found",
@@ -70,13 +70,14 @@ describe("useRemoteDirectoryBrowser", () => {
   })
 
   it("should show duplicate feedback without replacing directory state when library already exists", async () => {
-    mockRegisterRemoteLibrary.mockRejectedValue(
+    mockOpenRemoteExistingLibrary.mockRejectedValue(
       new Error("CORE_ERROR: CONFIG_ERROR: LIBRARY_ALREADY_EXISTS"),
     )
     const { result } = renderHook(() =>
       useRemoteDirectoryBrowser({
         dataSourceId: "source-1",
         currentPathParam: "/Library/CalibreLibrary",
+        libraryAction: "open",
         sourceType: "onedrive",
       }),
     )
@@ -92,5 +93,56 @@ describe("useRemoteDirectoryBrowser", () => {
     )
     expect(result.current.error).toBeNull()
     expect(mockDismissTo).not.toHaveBeenCalled()
+    expect(mockNotifyLibraryAdded).not.toHaveBeenCalled()
+  })
+
+  it("should open the selected library and dismiss the add flow", async () => {
+    const library = { id: "library-1", name: "Library" }
+    mockOpenRemoteExistingLibrary.mockResolvedValue(library)
+    const { result } = renderHook(() =>
+      useRemoteDirectoryBrowser({
+        dataSourceId: "source-1",
+        currentPathParam: "/Books",
+        libraryAction: "open",
+        sourceType: "onedrive",
+      }),
+    )
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    await act(async () => {
+      await result.current.choosePath("/Books/Library", errorMessages)
+    })
+
+    expect(mockOpenRemoteExistingLibrary).toHaveBeenCalledWith(
+      mockDataSource,
+      "/Books/Library",
+    )
+    expect(mockDismissTo).toHaveBeenCalledWith("/settings")
+    expect(mockNotifyLibraryAdded).toHaveBeenCalledWith(library.name)
+  })
+
+  it("should reload the directory when retry is requested", async () => {
+    mockListRemoteDirectories
+      .mockRejectedValueOnce(new Error("temporary failure"))
+      .mockResolvedValueOnce([{ name: "Library", isDirectory: true }])
+    const { result } = renderHook(() =>
+      useRemoteDirectoryBrowser({
+        dataSourceId: "source-1",
+        currentPathParam: "/Books",
+        libraryAction: "open",
+        sourceType: "onedrive",
+      }),
+    )
+    await waitFor(() => expect(result.current.error).toBe("temporary failure"))
+
+    act(() => result.current.retry())
+
+    await waitFor(() =>
+      expect(result.current.entries).toEqual([
+        { name: "Library", isDirectory: true },
+      ]),
+    )
+    expect(mockListRemoteDirectories).toHaveBeenCalledTimes(2)
+    expect(result.current.error).toBeNull()
   })
 })

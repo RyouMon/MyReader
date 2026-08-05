@@ -5,6 +5,8 @@ import {
   dataSourceListDirectories,
   dataSourceTestConnection,
   libraryAddRemote,
+  libraryCreateRemoteMyreader,
+  libraryOpenRemoteMyreader,
   libraryRefreshRemote,
   type RemoteCredential as CoreRemoteCredential,
   type RemoteDirectoryEntry as CoreRemoteDirectoryEntry,
@@ -102,6 +104,60 @@ export async function addRemoteLibrary(
         addedAt: Date.now(),
       },
       credential,
+    ),
+  )
+}
+
+function librariesRoot(): Directory {
+  const root = new Directory(Paths.document, "libraries")
+  if (!root.exists) {
+    root.create({ idempotent: true, intermediates: true })
+  }
+  return root
+}
+
+export async function createRemoteMyreaderLibrary(
+  source: DataSource,
+  sourcePath: string,
+  name: string,
+): Promise<RemoteLibraryResult> {
+  const root = librariesRoot()
+  const credential = await credentialFor(source)
+  return libraryResultFromCore(
+    await libraryCreateRemoteMyreader(
+      appConfigPath,
+      {
+        dataSourceId: source.id,
+        sourcePath,
+        librariesRootPath: toNativeFilesystemPath(root.uri),
+        librariesRootUri: root.uri,
+        name,
+        addedAt: Date.now(),
+      },
+      credential,
+      Date.now(),
+    ),
+  )
+}
+
+export async function openRemoteMyreaderLibrary(
+  source: DataSource,
+  sourcePath: string,
+): Promise<RemoteLibraryResult> {
+  const root = librariesRoot()
+  const credential = await credentialFor(source)
+  return libraryResultFromCore(
+    await libraryOpenRemoteMyreader(
+      appConfigPath,
+      {
+        dataSourceId: source.id,
+        sourcePath,
+        librariesRootPath: toNativeFilesystemPath(root.uri),
+        librariesRootUri: root.uri,
+        addedAt: Date.now(),
+      },
+      credential,
+      Date.now(),
     ),
   )
 }

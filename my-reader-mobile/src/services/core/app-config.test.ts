@@ -3,10 +3,14 @@ import {
   appConfigWriteMobile,
   dataSourcePrepareForUpsert,
   libraryAddLocal,
+  libraryCreateLocalMyreader,
+  libraryOpenLocalMyreader,
 } from "my-reader-core"
 import {
   addLocalAppLibrary,
+  createLocalMyReaderLibrary,
   initializeAppConfig,
+  openLocalMyReaderLibrary,
   prepareAppDataSourceForUpsert,
   writeMobileAppConfig,
 } from "./app-config"
@@ -23,6 +27,8 @@ jest.mock("my-reader-core", () => ({
   appConfigInitialize: jest.fn(),
   appConfigWriteMobile: jest.fn(),
   libraryAddLocal: jest.fn(),
+  libraryCreateLocalMyreader: jest.fn(),
+  libraryOpenLocalMyreader: jest.fn(),
 }))
 
 describe("app config", () => {
@@ -30,6 +36,7 @@ describe("app config", () => {
     id: "library",
     name: "Library",
     path: "file:///library",
+    libraryType: "calibre",
     bookCount: 1,
     sourceType: "local",
   }
@@ -178,5 +185,90 @@ describe("app config", () => {
       securityScopedBookmark: undefined,
     })
     expect(result.library.id).toBe("library")
+    expect(result.library.libraryType).toBe("calibre")
+  })
+
+  it("should create a local MyReader library through core with a container sidecar", async () => {
+    const myreaderLibrary = {
+      ...coreLibrary,
+      libraryType: "myreader",
+      bookCount: 0,
+    }
+    jest.mocked(libraryCreateLocalMyreader).mockResolvedValue({
+      config: {
+        schemaVersion: 1,
+        preferences: { theme: "system", language: "system" },
+        dataSources: [],
+        libraries: [myreaderLibrary],
+        activeLibraryId: "library",
+      },
+      library: myreaderLibrary,
+    })
+    jest.spyOn(Date, "now").mockReturnValueOnce(123)
+
+    const result = await createLocalMyReaderLibrary({
+      libraryRootUri: "file:///library",
+      path: "file:///library",
+      sidecarContainerParentUri: "file:///documents/libraries",
+      name: "Library",
+      addedAt: 1,
+    })
+
+    expect(libraryCreateLocalMyreader).toHaveBeenCalledWith(
+      "/documents/config.json",
+      {
+        libraryRootPath: "/library",
+        path: "file:///library",
+        sidecarContainerParentPath: "/documents/libraries",
+        name: "Library",
+        metadataUri: undefined,
+        addedAt: 1,
+        securityScopedBookmark: undefined,
+      },
+      123,
+    )
+    expect(result.library.libraryType).toBe("myreader")
+  })
+
+  it("should open a local MyReader library through core with a device sidecar", async () => {
+    const myreaderLibrary = {
+      ...coreLibrary,
+      libraryType: "myreader",
+      bookCount: 1,
+    }
+    jest.mocked(libraryOpenLocalMyreader).mockResolvedValue({
+      config: {
+        schemaVersion: 1,
+        preferences: { theme: "system", language: "system" },
+        dataSources: [],
+        libraries: [myreaderLibrary],
+        activeLibraryId: "library",
+      },
+      library: myreaderLibrary,
+    })
+    jest.spyOn(Date, "now").mockReturnValueOnce(456)
+
+    const result = await openLocalMyReaderLibrary({
+      libraryRootUri: "file:///library",
+      path: "file:///library",
+      sidecarContainerParentUri: "file:///documents/libraries",
+      name: "Library",
+      addedAt: 1,
+    })
+
+    expect(libraryOpenLocalMyreader).toHaveBeenCalledWith(
+      "/documents/config.json",
+      {
+        libraryRootPath: "/library",
+        path: "file:///library",
+        sidecarContainerParentPath: "/documents/libraries",
+        name: "Library",
+        metadataUri: undefined,
+        addedAt: 1,
+        securityScopedBookmark: undefined,
+      },
+      456,
+    )
+    expect(result.library.libraryType).toBe("myreader")
   })
 })

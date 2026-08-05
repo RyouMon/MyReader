@@ -2,16 +2,15 @@ import { useQuery } from "@tanstack/react-query"
 
 import {
   fetchBooks,
-  fetchBooksWithMeta,
   getBooksForLibrary,
   libraryQueryKeys,
-} from "@/src/domain/library/calibre"
+} from "@/src/domain/library/catalog"
 import type { BookItem } from "@/src/domain/types"
 import { useAppStore } from "@/src/store/app-store"
 
 import { getCachedAuth } from "@/src/services/remote/auth-cache"
 
-export { fetchBooks, fetchBooksWithMeta, getBooksForLibrary, libraryQueryKeys }
+export { fetchBooks, getBooksForLibrary, libraryQueryKeys }
 
 export function useBooks(activeLibraryId: string | null) {
   return useQuery({
@@ -31,6 +30,16 @@ export function useBooks(activeLibraryId: string | null) {
     enabled: !!activeLibraryId,
     staleTime: 1000 * 60 * 5,
     select: (books: BookItem[]) => inflateCoverUris(books, activeLibraryId),
+  })
+}
+
+export function usePendingBookImports(activeLibraryId: string | null) {
+  return useQuery<BookItem[]>({
+    queryKey: libraryQueryKeys.pendingImports(activeLibraryId),
+    queryFn: () => [],
+    enabled: false,
+    initialData: [],
+    staleTime: Infinity,
   })
 }
 

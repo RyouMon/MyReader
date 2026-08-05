@@ -149,12 +149,16 @@ function FormatRow({
     activeTask?.status === "queued"
   const downloadProgress = activeTask?.progress ?? 0
   const isPresent = fileLocalState === "present"
+  const isLocallyAvailable =
+    isPresent ||
+    fileLocalState === "local_only" ||
+    fileLocalState === "dirty_push"
   const isDefault = defaultFormatKey === format
   const isRemote =
     isNetworkSource &&
     isReadable &&
     Boolean(relativePath) &&
-    !isPresent &&
+    !isLocallyAvailable &&
     !isDownloading
   const { text: statusText } = getProgressDisplay(
     progressPercent !== undefined ? { percent: progressPercent } : undefined,
@@ -193,12 +197,12 @@ function FormatRow({
         id: "share",
         title: t("bookDetail.formatSection.shareFormat"),
       },
-      ...(isPresent && isNetworkSource
+      ...(isLocallyAvailable && isNetworkSource
         ? [
             {
               id: "delete",
               title: t("bookMenu.deleteDownload"),
-              attributes: { destructive: true },
+              attributes: { destructive: true, disabled: !isPresent },
             },
           ]
         : []),
@@ -208,6 +212,7 @@ function FormatRow({
       isDefault,
       isDownloading,
       isNetworkSource,
+      isLocallyAvailable,
       isPresent,
       isReadable,
       isRemote,

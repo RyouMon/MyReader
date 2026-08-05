@@ -154,6 +154,61 @@ describe("OneDriveRemoteBackend", () => {
     ])
   })
 
+  it("should return a preauthenticated URL when a native download is prepared", async () => {
+    const directUrl = "https://download.example/book.epub?temporary=token"
+    const fetchSpy = jest.spyOn(globalThis, "fetch").mockResolvedValue(
+      Response.json({
+        id: "book-item",
+        "@microsoft.graph.downloadUrl": directUrl,
+      }),
+    )
+    const backend = new OneDriveRemoteBackend(
+      "onedrive-source",
+      libraryRootPath,
+    )
+
+    await expect(
+      backend.getDownloadRequest(
+        "Books/book-id/book.epub",
+        "file:///cache/book.epub.part",
+      ),
+    ).resolves.toEqual({
+      remotePath: "Books/book-id/book.epub",
+      localFileUri: "file:///cache/book.epub.part",
+      url: directUrl,
+      headers: {},
+    })
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      `${GRAPH_API_BASE}/me/drive/root:/Library/CalibreLibrary/Books/book-id/book.epub?select=id%2C%40microsoft.graph.downloadUrl`,
+      {
+        method: "GET",
+        headers: { Authorization: "Bearer test-token" },
+      },
+    )
+  })
+
+  it("should explain when OneDrive omits the native download URL", async () => {
+    jest.spyOn(globalThis, "fetch").mockResolvedValue(
+      Response.json({
+        id: "book-item",
+      }),
+    )
+    const backend = new OneDriveRemoteBackend(
+      "onedrive-source",
+      libraryRootPath,
+    )
+
+    await expect(
+      backend.getDownloadRequest(
+        "Books/book-id/book.epub",
+        "file:///cache/book.epub.part",
+      ),
+    ).rejects.toThrow(
+      "OneDrive did not return a download URL: Books/book-id/book.epub",
+    )
+  })
+
   it("should recheck the exact directory when concurrent creation returns a conflict", async () => {
     const requests: RecordedRequest[] = []
     let directoryChecks = 0

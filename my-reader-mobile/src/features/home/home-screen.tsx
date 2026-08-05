@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next"
 import { Dimensions, PixelRatio, useWindowDimensions } from "react-native"
 
 import type { MenuAction } from "@react-native-menu/menu"
+import { libraryTypeOf } from "@my-reader/tools/types/library"
 
 import { View } from "@/tw"
 
@@ -21,6 +22,7 @@ import {
   ReadingShelf,
   ReadingStatisticsCard,
 } from "@/src/features/home/components"
+import { NoLibraryEmptyState } from "@/src/features/library/components/no-library-empty-state"
 import { useBookActions } from "@/src/features/library/hooks/use-book-actions"
 import { useCoverThumbnails } from "@/src/features/library/hooks/use-cover-thumbnails"
 import { useBookReadingProgress } from "@/src/domain/library/hooks/use-book-reading-progress"
@@ -67,7 +69,10 @@ export default function HomeScreen() {
     bookFormatsById,
     bookFormatMetaById,
     fileStateBundle,
+    bookCanUploadById = {},
+    bookCanDeleteDownloadById = {},
     bookDownloadStatusById,
+    bookTransferStatusById,
   } = useLibraryBookMeta(activeLibrary, books, selectedFormatById)
 
   const readingBooksWithMeta = useMemo(() => {
@@ -95,6 +100,8 @@ export default function HomeScreen() {
   const [isInspectingReadingDay, setIsInspectingReadingDay] = useState(false)
 
   const isRemote = isRemoteSourceType(activeLibrary?.sourceType)
+  const isManaged =
+    activeLibrary !== null && libraryTypeOf(activeLibrary) === "myreader"
   const isMenuOpen = openMenuBookId !== null
 
   const { handleBookMenuAction, handleBookPress } = useBookActions(
@@ -126,10 +133,15 @@ export default function HomeScreen() {
 
   const currentBookStatus = (bookDownloadStatusById[currentBook?.id ?? ""] ??
     "notDownloaded") as BookDownloadStatus
+  const currentBookTransferStatus =
+    bookTransferStatusById[currentBook?.id ?? ""] ?? currentBookStatus
   const currentBookMenuActions = useMemo<MenuAction[]>(() => {
     if (!currentBook) return []
     return buildBookMenuActions(currentBookStatus, {
+      isManaged,
       isRemote,
+      canUpload: bookCanUploadById[currentBook.id],
+      canDeleteDownload: bookCanDeleteDownloadById[currentBook.id],
       isFavorite: favoriteSet.has(currentBook.id),
       formats: bookFormatsById[currentBook.id],
       selectedFormat: selectedFormatById[currentBook.id],
@@ -137,7 +149,10 @@ export default function HomeScreen() {
   }, [
     currentBook,
     currentBookStatus,
+    isManaged,
     isRemote,
+    bookCanUploadById,
+    bookCanDeleteDownloadById,
     bookFormatsById,
     selectedFormatById,
     favoriteSet,
@@ -155,17 +170,7 @@ export default function HomeScreen() {
     <Screen scrollEnabled={!isInspectingReadingDay}>
       <View testID="home-screen" className="flex-1 gap-5">
         {!activeLibrary ? (
-          <EmptyState
-            title={t("home.noLibrary.title")}
-            detail={t("home.noLibrary.detail")}
-            action={
-              <PrimaryButton
-                title={t("library.addLibrary")}
-                onPress={() => router.push("/settings/add-library")}
-              />
-            }
-            icon={{ ios: "books.vertical.fill", android: "library-books" }}
-          />
+          <NoLibraryEmptyState />
         ) : currentBook ? (
           <>
             <View className="gap-3">
@@ -173,6 +178,7 @@ export default function HomeScreen() {
               <ContinueReadingCard
                 book={currentBook}
                 downloadStatus={currentBookStatus}
+                transferStatus={currentBookTransferStatus}
                 libraryId={activeLibrary?.id}
                 menuActions={currentBookMenuActions}
                 homeCardStyle={homeCardStyle}
@@ -191,9 +197,13 @@ export default function HomeScreen() {
                 data={readingBooksWithMeta.slice(1)}
                 onSelectBook={handleSelectBook}
                 downloadStatusById={bookDownloadStatusById}
+                transferStatusById={bookTransferStatusById}
                 libraryId={activeLibrary?.id}
                 bookFormatsById={bookFormatsById}
+                bookCanUploadById={bookCanUploadById}
+                bookCanDeleteDownloadById={bookCanDeleteDownloadById}
                 selectedFormatById={selectedFormatById}
+                menuIsManaged={isManaged}
                 menuIsRemote={isRemote}
                 onMenuAction={handleBookMenuAction}
                 onMenuOpen={handleMenuOpen}

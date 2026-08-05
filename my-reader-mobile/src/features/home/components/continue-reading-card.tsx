@@ -13,7 +13,7 @@ import { useTheme, useThemePalette } from "@/src/design/tokens"
 import { Pressable, Text, View } from "@/tw"
 
 import { HeroCard, ProgressBar } from "@/src/components"
-import { BookDownloadStatusIndicator } from "@/src/components/book-download-status-indicator"
+import { BookTransferStatusIndicator } from "@/src/components/book-transfer-status-indicator"
 import { CoverAdaptiveBackground } from "@/src/components/cover-adaptive-background"
 import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon"
 import { useCoverPalette } from "@/src/domain/library/hooks/use-cover-palette"
@@ -21,6 +21,7 @@ import type { BookItem } from "@/src/domain/types"
 import {
   BookCover,
   type BookDownloadStatus,
+  type BookTransferStatus,
 } from "@/src/features/library/components/books/book-cover"
 import { useCoverThumbnailSessionUri } from "@/src/features/library/cover-thumbnail-session-store"
 import {
@@ -35,6 +36,7 @@ const CONTINUE_READING_COVER_BORDER_RADIUS = 16
 type ContinueReadingCardProps = {
   book: BookItem & { readingProgress: number; readingFormat: string }
   downloadStatus?: BookDownloadStatus
+  transferStatus?: BookTransferStatus
   libraryId?: string
   menuActions?: MenuAction[]
   homeCardStyle?: HomeCardStyle
@@ -49,6 +51,7 @@ type ContinueReadingCardProps = {
 export function ContinueReadingCard({
   book,
   downloadStatus,
+  transferStatus,
   libraryId,
   menuActions,
   homeCardStyle,
@@ -206,10 +209,11 @@ export function ContinueReadingCard({
                 >
                   {Math.round(book.readingProgress)}%
                 </Text>
-                <BookDownloadStatusIndicator
-                  status={downloadStatus}
+                <BookTransferStatusIndicator
+                  status={transferStatus ?? downloadStatus}
                   libraryId={libraryId}
                   bookId={book.id}
+                  bookUuid={book.uuid}
                   format={book.readingFormat}
                 />
               </View>

@@ -4,7 +4,7 @@ import { MenuView, type MenuAction } from "@react-native-menu/menu"
 import { useTranslation } from "react-i18next"
 import { Platform, View as RNView } from "react-native"
 
-import { BookDownloadStatusIndicator } from "@/src/components/book-download-status-indicator"
+import { BookTransferStatusIndicator } from "@/src/components/book-transfer-status-indicator"
 import { CoverAdaptiveBackground } from "@/src/components/cover-adaptive-background"
 import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon"
 import { ICON_SIZE } from "@/src/design/icon-sizes"
@@ -18,6 +18,7 @@ import type { BookItem } from "@/src/domain/types"
 import {
   BookCover,
   type BookDownloadStatus,
+  type BookTransferStatus,
 } from "@/src/features/library/components/books/book-cover"
 import { useCoverThumbnailSessionUri } from "@/src/features/library/cover-thumbnail-session-store"
 import { buildBookMenuActions } from "@/src/features/library/utils/book-menu"
@@ -39,8 +40,12 @@ export type ReadingListCardProps = {
   width: number
   progress: number
   downloadStatus?: BookDownloadStatus
+  transferStatus?: BookTransferStatus
   libraryId?: string
+  menuIsManaged?: boolean
   menuIsRemote?: boolean
+  menuCanUpload?: boolean
+  menuCanDeleteDownload?: boolean
   menuFormats?: string[]
   menuSelectedFormat?: string
   isFavorite?: boolean
@@ -58,8 +63,12 @@ function ReadingListCardImpl({
   width,
   progress,
   downloadStatus,
+  transferStatus,
   libraryId,
+  menuIsManaged,
   menuIsRemote,
+  menuCanUpload,
+  menuCanDeleteDownload,
   menuFormats,
   menuSelectedFormat,
   isFavorite,
@@ -83,19 +92,27 @@ function ReadingListCardImpl({
   )
   const coverRef = useRef<RNView>(null)
 
-  const showCloudIcon = downloadStatus === "notDownloaded"
-  const showProgressIndicator = downloadStatus === "downloading"
+  const displayedTransferStatus = transferStatus ?? downloadStatus
+  const showTransferStatus =
+    displayedTransferStatus !== undefined &&
+    displayedTransferStatus !== "downloaded"
 
   const computedMenuActions = useMemo<MenuAction[] | undefined>(() => {
     if (menuIsRemote === undefined) return undefined
     return buildBookMenuActions(downloadStatus, {
+      isManaged: menuIsManaged,
       isRemote: menuIsRemote,
+      canUpload: menuCanUpload,
+      canDeleteDownload: menuCanDeleteDownload,
       isFavorite,
       formats: menuFormats,
       selectedFormat: menuSelectedFormat,
     })
   }, [
     downloadStatus,
+    menuCanUpload,
+    menuCanDeleteDownload,
+    menuIsManaged,
     menuIsRemote,
     menuFormats,
     menuSelectedFormat,
@@ -200,11 +217,12 @@ function ReadingListCardImpl({
           >
             {Math.round(progress)}%
           </Text>
-          {showCloudIcon || showProgressIndicator ? (
-            <BookDownloadStatusIndicator
-              status={downloadStatus}
+          {showTransferStatus ? (
+            <BookTransferStatusIndicator
+              status={displayedTransferStatus}
               libraryId={libraryId}
               bookId={book.id}
+              bookUuid={book.uuid}
               format={book.readingFormat}
             />
           ) : null}

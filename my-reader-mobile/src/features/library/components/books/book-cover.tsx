@@ -32,7 +32,10 @@ import type { BookCoverUri, BookItem } from "@/src/domain/types"
 import { useAppStore } from "@/src/store/app-store"
 import { useCoverThumbnailSessionUri } from "../../cover-thumbnail-session-store"
 
-export type BookDownloadStatus = "downloaded" | "notDownloaded" | "downloading"
+export type {
+  BookDownloadStatus,
+  BookTransferStatus,
+} from "@/src/components/book-transfer-status-indicator"
 
 export type BookProgressSnapshot = {
   percent?: number

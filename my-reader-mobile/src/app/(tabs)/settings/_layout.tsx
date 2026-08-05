@@ -18,9 +18,9 @@ export default function SettingsStackLayout() {
         }}
       />
       <Stack.Screen
-        name="add-library/index"
+        name="add-library"
         options={{
-          title: t("settings.addLibrary"),
+          headerShown: false,
           presentation: "modal",
         }}
       />

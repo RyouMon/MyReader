@@ -1,5 +1,5 @@
 import type { DataSource } from "@my-reader/tools/types/data-source"
-import type { Library } from "@my-reader/tools/types/library"
+import { libraryTypeOf, type Library } from "@my-reader/tools/types/library"
 import { File, Paths } from "expo-file-system"
 import {
   appConfigInitialize,
@@ -8,6 +8,8 @@ import {
   dataSourceRemove,
   dataSourceUpsert,
   libraryAddLocal,
+  libraryCreateLocalMyreader,
+  libraryOpenLocalMyreader,
   libraryRemove,
   libraryReplace,
   librarySwitch,
@@ -112,6 +114,7 @@ export function toCoreLibrary(library: Library): CoreLibrary {
     id: library.id,
     name: library.name,
     path: library.path,
+    libraryType: libraryTypeOf(library),
     bookCount: library.bookCount,
     metadataUri: library.metadataUri,
     addedAt: library.addedAt,
@@ -128,6 +131,7 @@ function libraryFromCore(library: CoreLibrary): Library {
     id: library.id,
     name: library.name,
     path: library.path,
+    libraryType: library.libraryType === "myreader" ? "myreader" : "calibre",
     bookCount: library.bookCount,
     metadataUri: library.metadataUri,
     addedAt: library.addedAt,
@@ -264,5 +268,63 @@ export async function addLocalAppLibrary(request: {
       addedAt: request.addedAt,
       securityScopedBookmark: request.securityScopedBookmark,
     }),
+  )
+}
+
+export async function createLocalMyReaderLibrary(request: {
+  libraryRootUri: string
+  path: string
+  sourcePath?: string
+  sidecarContainerParentUri: string
+  name?: string
+  addedAt?: number
+  securityScopedBookmark?: Library["securityScopedBookmark"]
+}): Promise<LocalLibraryResult> {
+  return libraryResultFromCore(
+    await libraryCreateLocalMyreader(
+      appConfigPath,
+      {
+        libraryRootPath: toNativeFilesystemPath(request.libraryRootUri),
+        path: request.path,
+        sourcePath: request.sourcePath,
+        sidecarContainerParentPath: toNativeFilesystemPath(
+          request.sidecarContainerParentUri,
+        ),
+        name: request.name,
+        metadataUri: undefined,
+        addedAt: request.addedAt,
+        securityScopedBookmark: request.securityScopedBookmark,
+      },
+      Date.now(),
+    ),
+  )
+}
+
+export async function openLocalMyReaderLibrary(request: {
+  libraryRootUri: string
+  path: string
+  sourcePath?: string
+  sidecarContainerParentUri: string
+  name?: string
+  addedAt?: number
+  securityScopedBookmark?: Library["securityScopedBookmark"]
+}): Promise<LocalLibraryResult> {
+  return libraryResultFromCore(
+    await libraryOpenLocalMyreader(
+      appConfigPath,
+      {
+        libraryRootPath: toNativeFilesystemPath(request.libraryRootUri),
+        path: request.path,
+        sourcePath: request.sourcePath,
+        sidecarContainerParentPath: toNativeFilesystemPath(
+          request.sidecarContainerParentUri,
+        ),
+        name: request.name,
+        metadataUri: undefined,
+        addedAt: request.addedAt,
+        securityScopedBookmark: request.securityScopedBookmark,
+      },
+      Date.now(),
+    ),
   )
 }

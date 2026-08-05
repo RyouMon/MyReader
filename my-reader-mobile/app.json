@@ -86,7 +86,26 @@
       "expo-asset",
       "expo-localization",
       "expo-secure-store",
-      "expo-sharing"
+      [
+        "expo-sharing",
+        {
+          "ios": {
+            "enabled": true,
+            "activationRule": {
+              "supportsFileWithMaxCount": 1
+            }
+          },
+          "android": {
+            "enabled": true,
+            "singleShareMimeTypes": [
+              "application/epub+zip",
+              "application/pdf",
+              "application/vnd.comicbook+zip",
+              "application/zip"
+            ]
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

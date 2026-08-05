@@ -1,6 +1,8 @@
 import { AppState } from "react-native"
 import { Notifier } from "react-native-notifier"
 
+import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import { describeDownloadError } from "@/src/errors/app-errors"
 import i18n from "@/src/i18n"
 import { InAppNotification } from "./in-app-notification"
 
@@ -50,14 +52,20 @@ export function notifyDownloadState(
   if (!initialized) return
   if (AppState.currentState !== "active") return
 
+  if (kind === "error") {
+    const error = describeDownloadError(detail ?? label)
+    showAlertWithStatusBarRestore(
+      error.title,
+      detail ? `${label}\n${error.message}` : error.message,
+    )
+    return
+  }
+
   const title =
     kind === "start"
       ? i18n.t("notifications.downloadStart")
-      : kind === "done"
-        ? i18n.t("notifications.downloadDone")
-        : i18n.t("notifications.downloadFailed")
-  const notifKind =
-    kind === "done" ? "success" : kind === "error" ? "error" : "info"
+      : i18n.t("notifications.downloadDone")
+  const notifKind = kind === "done" ? "success" : "info"
 
   Notifier.showNotification({
     title,

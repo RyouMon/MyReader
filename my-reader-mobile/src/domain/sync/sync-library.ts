@@ -8,8 +8,15 @@ import {
   invalidateRecentlyReadBooks,
 } from "../../services/query/invalidate-table"
 import { describeError } from "../../utils/common"
-import { withLocalLibraryCalibreRoot } from "../../services/fs/local-library-content"
-import { fetchBooks } from "../library/calibre"
+import { withLocalLibraryContentRoot } from "../../services/fs/local-library-content"
+import { fetchBooks } from "../library/catalog"
+import {
+  isAndroidSafLibrary,
+  managedBookRelativePaths,
+  pullAndroidSafControl,
+  pushAndroidSafControl,
+  reconcileAndroidSafBooks,
+} from "../library/android-saf-library"
 import type { DataSource, Library } from "../types"
 import { openSyncContext } from "./context"
 import { runCoreLibrarySync } from "./core-sync"
@@ -141,11 +148,23 @@ export async function syncLibrary(
     })
 
   let coreReport
+  let safBooks: Awaited<ReturnType<typeof fetchBooks>> | undefined
   try {
+    if (isAndroidSafLibrary(library) && library.sourcePath) {
+      await pullAndroidSafControl(library.sourcePath, library.path)
+    }
     coreReport =
       ctx.backend.kind === "local-direct"
-        ? await withLocalLibraryCalibreRoot(library, syncCore)
+        ? await withLocalLibraryContentRoot(library, syncCore)
         : await syncCore(ctx.libraryRootUri)
+    if (isAndroidSafLibrary(library) && !coreReport.error) {
+      await pushAndroidSafControl(library)
+      safBooks = await fetchBooks(coreReport.calibre.library, dataSources)
+      await reconcileAndroidSafBooks(
+        library,
+        managedBookRelativePaths(safBooks),
+      )
+    }
   } catch (err) {
     const message = describeError(err)
     if (throwOnFailure) throw err instanceof Error ? err : new Error(message)
@@ -158,8 +177,8 @@ export async function syncLibrary(
     )
   }
 
-  let books
-  if (coreReport.calibre.changed && !coreReport.calibre.error) {
+  let books = safBooks
+  if (!books && coreReport.calibre.changed && !coreReport.calibre.error) {
     try {
       books = await fetchBooks(coreReport.calibre.library, dataSources)
     } catch (error) {

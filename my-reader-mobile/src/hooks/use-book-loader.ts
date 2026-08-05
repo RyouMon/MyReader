@@ -7,7 +7,7 @@ import {
   getBookFormatPaths,
   readBookDetailFromMetadata,
   resolveBookFileForRead,
-} from "@/src/domain/library/calibre"
+} from "@/src/domain/library/catalog"
 import { getReadingProgress } from "@/src/domain/library/reading-progress"
 import { createRemoteOps } from "@/src/domain/library/remote-library"
 import type { BookItem, DataSource, Library } from "@/src/domain/types"

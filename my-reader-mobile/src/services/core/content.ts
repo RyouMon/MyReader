@@ -1,15 +1,17 @@
 import type { Library } from "@my-reader/tools/types/library"
-import { withLocalLibraryCalibreRoot } from "../fs/local-library-content"
+import { withLocalLibraryContentRoot } from "../fs/local-library-content"
 import {
   contentClearCoverThumbnailCache,
   contentDeleteCoverThumbnailCache,
   contentDeleteFileState,
   contentFinalizeDownloadedFile,
+  contentInstallVerifiedDownloadedFile,
   contentGetFileState,
   contentListCoverThumbnailCache,
   contentListFileStates,
   contentListReadingFormats,
   contentMarkFileRemoteOnly,
+  contentMarkFileSourceMissing,
   contentSetReadingFormat,
   contentUpsertCoverThumbnailCache,
   contentUpsertFileState,
@@ -27,16 +29,16 @@ import {
 
 export type FileState = Omit<
   CoreFileState,
-  "localBlake3" | "localSize" | "localMtime"
+  "localSha256" | "localSize" | "localMtime"
 > & {
-  localBlake3: string | null
+  localSha256: string | null
   localSize: number | null
   localMtime: number | null
 }
 
 export type FileStateUpdate = {
   localState: FileState["localState"]
-  localBlake3?: string | null
+  localSha256?: string | null
   localSize?: number | null
   localMtime?: number | null
 }
@@ -54,7 +56,7 @@ function sidecarRootPath(library: Library): string {
 function fileStateFromCore(state: CoreFileState): FileState {
   return {
     ...state,
-    localBlake3: state.localBlake3 ?? null,
+    localSha256: state.localSha256 ?? null,
     localSize: state.localSize ?? null,
     localMtime: state.localMtime ?? null,
   }
@@ -63,7 +65,7 @@ function fileStateFromCore(state: CoreFileState): FileState {
 export async function listBookReadingFormats(
   library: Library,
 ): Promise<Record<string, string>> {
-  const formats = await withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
+  const formats = await withLocalLibraryContentRoot(library, (libraryRootUri) =>
     contentListReadingFormats(
       sidecarRootPath(library),
       toNativeFilesystemPath(libraryRootUri),
@@ -79,7 +81,7 @@ export async function setBookReadingFormat(
   bookId: number,
   format: string | null,
 ): Promise<void> {
-  await withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
+  await withLocalLibraryContentRoot(library, (libraryRootUri) =>
     contentSetReadingFormat(
       sidecarRootPath(library),
       toNativeFilesystemPath(libraryRootUri),
@@ -112,7 +114,7 @@ export async function upsertFileState(
 ): Promise<void> {
   await contentUpsertFileState(sidecarRootPath(library), path, {
     localState: update.localState,
-    localBlake3: update.localBlake3 ?? undefined,
+    localSha256: update.localSha256 ?? undefined,
     localSize: update.localSize ?? undefined,
     localMtime: update.localMtime ?? undefined,
   })
@@ -141,11 +143,39 @@ export async function finalizeDownloadedFile(
   return downloaded
 }
 
+export async function installVerifiedDownloadedFile(
+  library: Library,
+  relativePath: string,
+  partialFileUri: string,
+  finalFileUri: string,
+  expectedSize: number,
+  expectedSha256: string,
+): Promise<DownloadedFile> {
+  const downloaded = await contentInstallVerifiedDownloadedFile(
+    sidecarRootPath(library),
+    relativePath,
+    toNativeFilesystemPath(partialFileUri),
+    toNativeFilesystemPath(finalFileUri),
+    expectedSize,
+    expectedSha256,
+  )
+  await invalidateFileStates(library.id)
+  return downloaded
+}
+
 export async function markFileRemoteOnly(
   library: Library,
   relativePath: string,
 ): Promise<void> {
   await contentMarkFileRemoteOnly(sidecarRootPath(library), relativePath)
+  await invalidateFileStates(library.id)
+}
+
+export async function markFileSourceMissing(
+  library: Library,
+  relativePath: string,
+): Promise<void> {
+  await contentMarkFileSourceMissing(sidecarRootPath(library), relativePath)
   await invalidateFileStates(library.id)
 }
 

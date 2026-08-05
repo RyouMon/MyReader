@@ -15,11 +15,17 @@ jest.mock("expo-file-system", () => {
   class MockDirectory {
     static nextExists = true
     exists = MockDirectory.nextExists
+    name: string
     uri: string
     create = jest.fn()
 
-    constructor(mockUri: string) {
-      this.uri = mockUri
+    constructor(...parts: (string | { uri: string })[]) {
+      const [first, ...rest] = parts
+      const root = typeof first === "string" ? first : (first?.uri ?? "")
+      this.uri = [root.replace(/\/$/, ""), ...rest].join("/")
+      this.name = decodeURIComponent(
+        this.uri.split("/").filter(Boolean).at(-1) ?? "",
+      )
       lastDirectory = this
     }
   }
@@ -58,14 +64,15 @@ jest.mock("react-native", () => ({
 import type { RemoteBackend } from "@/src/services/remote/backend"
 
 import {
+  ensureLibrarySidecarDirectory,
   libraryBookFileUri,
   libraryContainerRootUri,
-  ensureLibrarySidecarDirectory,
   libraryLocalRootUri,
   libraryMetadataUri,
   libraryMyReaderDirUri,
   libraryRootUri,
   librarySidecarRootUri,
+  localLibraryFolderName,
   resolveCoverUri,
   usesIosContainerSidecar,
 } from "./library-paths"
@@ -156,10 +163,47 @@ describe("library path helpers", () => {
     )
   })
 
+  test("should keep MyReader content external and sidecar state in the app container", () => {
+    platformOs.current = "android"
+    const library = localLibrary({
+      libraryType: "myreader",
+      path: "file:///sdcard/MyReader",
+    })
+
+    expect(libraryRootUri(library)).toBe("file:///sdcard/MyReader")
+    expect(librarySidecarRootUri(library)).toBe(
+      "file:///documents/libraries/lib-1",
+    )
+    expect(libraryMyReaderDirUri(library)).toBe(
+      "file:///documents/libraries/lib-1/.myreader",
+    )
+  })
+
   test("should create predictable document path when building library container root", () => {
     expect(libraryContainerRootUri("abc")).toBe(
       "file:///documents/libraries/abc",
     )
+  })
+
+  test("should use the external source when naming a folder-backed library", () => {
+    const library = localLibrary({
+      libraryType: "myreader",
+      path: "file:///documents/saf-library-mirrors/library-1",
+      sourcePath: "file:///external/My Books",
+    })
+
+    expect(localLibraryFolderName(library)).toBe("My Books")
+  })
+
+  test("should extract a readable folder name from an Android tree URI", () => {
+    platformOs.current = "android"
+    const library = localLibrary({
+      libraryType: "myreader",
+      path: "file:///documents/saf-library-mirrors/library-1",
+      sourcePath: "content://tree/primary%3ABooks%2FTravel",
+    })
+
+    expect(localLibraryFolderName(library)).toBe("Travel")
   })
 
   test("should create sidecar directory when container sidecar is missing", () => {

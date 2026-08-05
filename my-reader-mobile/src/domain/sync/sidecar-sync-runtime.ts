@@ -32,6 +32,7 @@ import type { MyReaderSyncMode } from "./types"
 
 export type SidecarSyncReason =
   | "local_change"
+  | "content_ready"
   | "reader_closed"
   | "app_backgrounding"
   | "app_foregrounded"
@@ -158,7 +159,8 @@ export function createSidecarSyncRuntime(
   async function execute(execution: SyncExecution): Promise<void> {
     if (disposed) return
     const state = getState()
-    if (!state.enableAutoSync) {
+    const required = execution.reasons.includes("content_ready")
+    if (!state.enableAutoSync && !required) {
       applyTransition(
         completeCoordinatedSync({
           coordinatorId,

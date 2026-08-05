@@ -12,6 +12,7 @@ export default function LibraryBookLayout() {
       }}
     >
       <Stack.Screen name="[id]" />
+      <Stack.Screen name="edit" options={{ title: t("bookEdit.title") }} />
     </Stack>
   )
 }

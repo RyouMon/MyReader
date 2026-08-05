@@ -30,6 +30,7 @@ export type CreateSaveActionParams = {
   onPress: () => void
   loading?: boolean
   color?: string
+  disabled?: boolean
 }
 
 /** Builds a prominent "save" toolbar action with checkmark icon. */
@@ -38,6 +39,7 @@ export function createSaveAction({
   onPress,
   loading,
   color,
+  disabled,
 }: CreateSaveActionParams): ScreenHeaderAction {
   return {
     label,
@@ -46,6 +48,7 @@ export function createSaveAction({
     iconOnly: true,
     loading,
     color,
+    disabled,
     variant: "prominent",
   }
 }

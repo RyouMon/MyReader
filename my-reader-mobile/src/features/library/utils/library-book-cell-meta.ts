@@ -4,6 +4,7 @@ import type { BookItem } from "@/src/domain/types"
 import type {
   BookDownloadStatus,
   BookProgressSnapshot,
+  BookTransferStatus,
 } from "@/src/features/library/components/books/book-cover"
 import { buildBookMenuActions } from "@/src/features/library/utils/book-menu"
 
@@ -15,6 +16,7 @@ type ProgressByBookId = Record<string, Record<string, number | undefined>>
 
 export type LibraryBookCellMeta = {
   downloadStatus: BookDownloadStatus
+  transferStatus: BookTransferStatus
   menuActions: MenuAction[]
   moreActionsLabel: string
   openBookLabel: string
@@ -31,10 +33,14 @@ export type LibraryBookCellMetaTranslate = (
 
 type BuildLibraryBookCellMetaByIdInput = {
   bookActiveFormatsById: ReadonlyMap<string, string>
+  bookCanUploadById?: Record<string, boolean>
+  bookCanDeleteDownloadById?: Record<string, boolean>
   bookDownloadStatusById: Record<string, BookDownloadStatus | string>
+  bookTransferStatusById?: Record<string, BookTransferStatus | string>
   bookFormatMetaById: ReadonlyMap<string, BookFormatMetaLike>
   bookFormatsById: Record<string, string[] | undefined>
   favoriteSet: ReadonlySet<string>
+  isManaged?: boolean
   isRemote: boolean
   progressByBookId?: ProgressByBookId
   selectedFormatById: Record<string, string | undefined>
@@ -56,6 +62,14 @@ function normalizeDownloadStatus(
   return "notDownloaded"
 }
 
+function normalizeTransferStatus(
+  status: BookTransferStatus | string | undefined,
+  downloadStatus: BookDownloadStatus,
+): BookTransferStatus {
+  if (status === "uploadPending" || status === "uploading") return status
+  return normalizeDownloadStatus(status ?? downloadStatus)
+}
+
 /**
  * Precomputes per-cell values outside FlashList's `renderItem` hot path.
  * i18n labels, menu action arrays, progress snapshots, and subscription keys
@@ -63,10 +77,14 @@ function normalizeDownloadStatus(
  */
 export function buildLibraryBookCellMetaById({
   bookActiveFormatsById,
+  bookCanUploadById,
+  bookCanDeleteDownloadById,
   bookDownloadStatusById,
+  bookTransferStatusById,
   bookFormatMetaById,
   bookFormatsById,
   favoriteSet,
+  isManaged,
   isRemote,
   progressByBookId,
   selectedFormatById,
@@ -80,6 +98,10 @@ export function buildLibraryBookCellMetaById({
     const downloadStatus = normalizeDownloadStatus(
       bookDownloadStatusById[book.id],
     )
+    const transferStatus = normalizeTransferStatus(
+      bookTransferStatusById?.[book.id],
+      downloadStatus,
+    )
     const readerFormat = bookFormatMetaById.get(book.id)?.effectiveFormat
     const activeFormat =
       readerFormat ??
@@ -87,7 +109,8 @@ export function buildLibraryBookCellMetaById({
         ? bookActiveFormatsById.get(book.id)
         : undefined)
     const subscriptionLibraryId =
-      isRemote && downloadStatus === "downloading"
+      isRemote &&
+      (downloadStatus === "downloading" || transferStatus === "uploading")
         ? selectedLibraryId
         : undefined
     const progressPercent = readerFormat
@@ -103,8 +126,12 @@ export function buildLibraryBookCellMetaById({
 
     next.set(book.id, {
       downloadStatus,
+      transferStatus,
       menuActions: buildBookMenuActions(downloadStatus, {
+        isManaged,
         isRemote,
+        canUpload: bookCanUploadById?.[book.id],
+        canDeleteDownload: bookCanDeleteDownloadById?.[book.id],
         isFavorite,
         formats: menuFormats,
         selectedFormat: menuSelectedFormat,
@@ -115,7 +142,10 @@ export function buildLibraryBookCellMetaById({
       openBookLabel: translate("bookDetail.openBook", { title: book.title }),
       progress,
       readerFormat,
-      subscriptionFormat: subscriptionLibraryId ? activeFormat : undefined,
+      subscriptionFormat:
+        subscriptionLibraryId && downloadStatus === "downloading"
+          ? activeFormat
+          : undefined,
       subscriptionLibraryId,
     })
   }

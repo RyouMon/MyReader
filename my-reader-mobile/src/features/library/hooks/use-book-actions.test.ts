@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react-native"
+import { act, renderHook, waitFor } from "@testing-library/react-native"
 
 import { router } from "expo-router"
 
@@ -8,11 +8,13 @@ import {
   enqueue as enqueueDownload,
   useDownloadStatusTasks,
 } from "@/src/domain/download/download-store"
-import { getBookFormatPaths } from "@/src/domain/library/calibre"
+import { getBookFormatPaths } from "@/src/domain/library/catalog"
+import { deleteManagedBook } from "@/src/domain/library/hooks/library-actions"
 import {
   resolveShareableFormat,
   shareBookFile,
 } from "@/src/domain/library/share-book-file"
+import { requestPendingBookUploads } from "@/src/domain/sync/book-upload-store"
 import type { BookItem, Library } from "@/src/domain/types"
 import { confirmDeleteLocalDownload } from "@/src/features/library/utils/delete-download"
 import type { FileState as FileStateRow } from "@/src/services/core/content"
@@ -33,13 +35,21 @@ jest.mock("@/src/domain/download/download-store", () => ({
   useDownloadStatusTasks: jest.fn(),
 }))
 
-jest.mock("@/src/domain/library/calibre", () => ({
+jest.mock("@/src/domain/library/catalog", () => ({
   getBookFormatPaths: jest.fn(),
+}))
+
+jest.mock("@/src/domain/library/hooks/library-actions", () => ({
+  deleteManagedBook: jest.fn(),
 }))
 
 jest.mock("@/src/domain/library/share-book-file", () => ({
   resolveShareableFormat: jest.fn(),
   shareBookFile: jest.fn(),
+}))
+
+jest.mock("@/src/domain/sync/book-upload-store", () => ({
+  requestPendingBookUploads: jest.fn(),
 }))
 
 jest.mock("@/src/features/library/utils/delete-download", () => ({
@@ -59,6 +69,24 @@ const remoteLibrary: Library = {
   path: "/remote",
   sourceType: "webdav",
   dataSourceId: "ds-1",
+} as Library
+
+const managedLibrary: Library = {
+  id: "lib-managed",
+  name: "My Library",
+  path: "/managed",
+  libraryType: "myreader",
+  bookCount: 1,
+}
+
+const remoteManagedLibrary: Library = {
+  id: "lib-managed-remote",
+  name: "Remote MyReader Library",
+  path: "/managed-remote",
+  sourceType: "webdav",
+  dataSourceId: "ds-1",
+  libraryType: "myreader",
+  bookCount: 1,
 } as Library
 
 const baseBook: BookItem = {
@@ -87,7 +115,7 @@ function buildFileStateBundle(
       localState: row.localState as FileStateRow["localState"],
       isLocallyAvailable:
         row.isLocallyAvailable ?? row.localState === "present",
-      localBlake3: null,
+      localSha256: null,
       localSize: null,
       localMtime: null,
       updatedAt: 0,
@@ -100,6 +128,8 @@ describe("useBookActions", () => {
   beforeEach(() => {
     jest.clearAllMocks()
     jest.mocked(useDownloadStatusTasks).mockReturnValue([])
+    jest.mocked(enqueueDownload).mockResolvedValue("task-1")
+    jest.mocked(deleteManagedBook).mockResolvedValue(undefined)
   })
 
   describe("handleBookPress", () => {
@@ -149,8 +179,10 @@ describe("useBookActions", () => {
         ),
       )
 
-      result.current.handleBookPress("1")
-      await new Promise((resolve) => setTimeout(resolve, 50))
+      await act(async () => {
+        result.current.handleBookPress("1")
+        await Promise.resolve()
+      })
 
       expect(enqueueDownload).toHaveBeenCalled()
       expect(router.push).not.toHaveBeenCalled()
@@ -218,11 +250,55 @@ describe("useBookActions", () => {
         ),
       )
 
-      result.current.handleBookPress("1")
-      await new Promise((resolve) => setTimeout(resolve, 50))
+      await act(async () => {
+        result.current.handleBookPress("1")
+        await Promise.resolve()
+      })
 
       expect(enqueueDownload).toHaveBeenCalledWith(
         expect.objectContaining({ bookId: "1", format: "EPUB" }),
+      )
+    })
+
+    it("should open a remote book after its requested download completes", async () => {
+      jest
+        .mocked(getBookFormatPaths)
+        .mockResolvedValue([
+          { format: "EPUB", relativePath: "Author/Test Book/Test Book.epub" },
+        ])
+      const { result, rerender } = renderHook(() =>
+        useBookActions(
+          [baseBook],
+          { "1": "notDownloaded" },
+          buildMetaMap(["EPUB"], "EPUB"),
+          buildFileStateBundle(),
+          null,
+          {},
+          remoteLibrary,
+          null,
+        ),
+      )
+
+      act(() => result.current.handleBookPress("1"))
+      await waitFor(() => expect(enqueueDownload).toHaveBeenCalled())
+
+      jest.mocked(useDownloadStatusTasks).mockReturnValue([
+        {
+          id: "task-1",
+          libraryId: "lib-remote",
+          bookId: "1",
+          format: "EPUB",
+          relativePath: "Author/Test Book/Test Book.epub",
+          status: "done",
+        },
+      ] as ReturnType<typeof useDownloadStatusTasks>)
+      rerender({})
+
+      await waitFor(() =>
+        expect(router.push).toHaveBeenCalledWith({
+          pathname: "/reader/[id]",
+          params: { id: "1", format: "EPUB" },
+        }),
       )
     })
 
@@ -264,6 +340,79 @@ describe("useBookActions", () => {
   })
 
   describe("handleBookMenuAction", () => {
+    it("should request pending uploads when upload file action is invoked for a remote MyReader library", () => {
+      const { result } = renderHook(() =>
+        useBookActions(
+          [baseBook],
+          { "1": "downloaded" },
+          buildMetaMap(["EPUB"], "EPUB"),
+          buildFileStateBundle({
+            "1": [
+              {
+                path: "Books/book-uuid/book.epub",
+                localState: "dirty_push",
+                isLocallyAvailable: true,
+              },
+            ],
+          }),
+          null,
+          {},
+          remoteManagedLibrary,
+          null,
+        ),
+      )
+
+      result.current.handleBookMenuAction("1", "uploadFile")
+
+      expect(requestPendingBookUploads).toHaveBeenCalledWith(
+        "lib-managed-remote",
+      )
+    })
+
+    it("should open the metadata editor only for a managed book", () => {
+      const { result } = renderHook(() =>
+        useBookActions(
+          [baseBook],
+          {},
+          buildMetaMap(["EPUB"], "EPUB"),
+          buildFileStateBundle(),
+          null,
+          {},
+          managedLibrary,
+          null,
+        ),
+      )
+
+      result.current.handleBookMenuAction("1", "editMetadata")
+
+      expect(router.push).toHaveBeenCalledWith({
+        pathname: "/library-book/edit",
+        params: { id: "1" },
+      })
+    })
+
+    it("should confirm before deleting a managed book", () => {
+      const { result } = renderHook(() =>
+        useBookActions(
+          [baseBook],
+          {},
+          buildMetaMap(["EPUB"], "EPUB"),
+          buildFileStateBundle(),
+          null,
+          {},
+          managedLibrary,
+          null,
+        ),
+      )
+
+      result.current.handleBookMenuAction("1", "deleteBook")
+      const buttons = jest.mocked(showAlertWithStatusBarRestore).mock
+        .calls[0]?.[2]
+      buttons?.find((button) => button.style === "destructive")?.onPress?.()
+
+      expect(deleteManagedBook).toHaveBeenCalledWith(managedLibrary, 1)
+    })
+
     it("should navigate to book detail when detail action is invoked", () => {
       const { result } = renderHook(() =>
         useBookActions(
