@@ -8,6 +8,7 @@ const LIBRARY_UUID: &str = "018f2f8d-980b-40ef-b72e-c6e86cb7cc28";
 
 fn library_config(id: &str) -> LibraryConfig {
     LibraryConfig {
+        library_type: Default::default(),
         id: id.into(),
         name: id.into(),
         path: "/unused".into(),

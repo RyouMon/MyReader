@@ -12,15 +12,154 @@ static LIBRARY_ADD_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn list_libraries(state: State<'_, AppState>) -> Result<Vec<LibraryInfo>, AppError> {
+pub async fn list_libraries<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+) -> Result<Vec<LibraryInfo>, AppError> {
     info!("Start to list libraries.");
+    let app_data_dir = common::app_data_dir(&app)?;
     let config = common::config_snapshot(&state);
-    let result = LibraryService::list_libraries(&config).await;
+    let result = LibraryService::list_libraries(&app_data_dir, &config).await;
     match &result {
         Ok(infos) => info!("Success to list libraries. count: {}", infos.len()),
         Err(err) => error!("Failed to list libraries. error: {err}"),
     }
     result
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn create_myreader_library<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    path: String,
+    name: Option<String>,
+) -> Result<LibraryInfo, AppError> {
+    info!("Start to create MyReader library. path: \"{path}\", requested name: {name:?}");
+    let _add_guard = LIBRARY_ADD_LOCK.lock().await;
+    let app_data_dir = common::app_data_dir(&app)?;
+    let mut config = common::config_snapshot(&state);
+    let info = LibraryService::create_myreader_library_with_scope_sync(
+        &app,
+        &app_data_dir,
+        &path,
+        name.as_deref(),
+        common::unix_epoch_millis(),
+        &mut config,
+    )
+    .await?;
+
+    common::with_config_mut(&state, |current| *current = config.clone());
+    common::persist_config(&app, &config)?;
+    common::schedule_sidecar_push(&app, &info.id);
+    info!(
+        "Success to create MyReader library. id: \"{}\", name: \"{}\"",
+        info.id, info.name
+    );
+    Ok(info)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn create_default_myreader_library<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    name: String,
+) -> Result<LibraryInfo, AppError> {
+    let _add_guard = LIBRARY_ADD_LOCK.lock().await;
+    let app_data_dir = common::app_data_dir(&app)?;
+    let mut config = common::config_snapshot(&state);
+    let info = LibraryService::create_default_myreader_library_with_scope_sync(
+        &app,
+        &app_data_dir,
+        &name,
+        common::unix_epoch_millis(),
+        &mut config,
+    )
+    .await?;
+    common::with_config_mut(&state, |current| *current = config.clone());
+    common::persist_config(&app, &config)?;
+    common::schedule_sidecar_push(&app, &info.id);
+    Ok(info)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn open_myreader_library<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    path: String,
+    name: Option<String>,
+) -> Result<LibraryInfo, AppError> {
+    let _add_guard = LIBRARY_ADD_LOCK.lock().await;
+    let app_data_dir = common::app_data_dir(&app)?;
+    let mut config = common::config_snapshot(&state);
+    let info = LibraryService::open_myreader_library_with_scope_sync(
+        &app,
+        &app_data_dir,
+        &path,
+        name.as_deref(),
+        common::unix_epoch_millis(),
+        &mut config,
+    )
+    .await?;
+    common::with_config_mut(&state, |current| *current = config.clone());
+    common::persist_config(&app, &config)?;
+    Ok(info)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn create_remote_myreader_library<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    data_source_id: String,
+    remote_path: String,
+    name: Option<String>,
+) -> Result<LibraryInfo, AppError> {
+    let _add_guard = LIBRARY_ADD_LOCK.lock().await;
+    let app_data_dir = common::app_data_dir(&app)?;
+    let mut config = common::config_snapshot(&state);
+    let info = LibraryService::create_remote_myreader_library_with_scope_sync(
+        &app,
+        &app_data_dir,
+        &data_source_id,
+        &remote_path,
+        name.as_deref(),
+        common::unix_epoch_millis(),
+        &mut config,
+    )
+    .await?;
+    common::with_config_mut(&state, |current| *current = config.clone());
+    common::persist_config(&app, &config)?;
+    Ok(info)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn open_remote_myreader_library<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    data_source_id: String,
+    remote_path: String,
+    name: Option<String>,
+) -> Result<LibraryInfo, AppError> {
+    let _add_guard = LIBRARY_ADD_LOCK.lock().await;
+    let app_data_dir = common::app_data_dir(&app)?;
+    let mut config = common::config_snapshot(&state);
+    let info = LibraryService::open_remote_myreader_library_with_scope_sync(
+        &app,
+        &app_data_dir,
+        &data_source_id,
+        &remote_path,
+        name.as_deref(),
+        common::unix_epoch_millis(),
+        &mut config,
+    )
+    .await?;
+    common::with_config_mut(&state, |current| *current = config.clone());
+    common::persist_config(&app, &config)?;
+    Ok(info)
 }
 
 #[tauri::command]
@@ -176,14 +315,16 @@ pub async fn refresh_onedrive_library<R: tauri::Runtime>(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn refresh_library(
+pub async fn refresh_library<R: tauri::Runtime>(
+    app: AppHandle<R>,
     state: State<'_, AppState>,
     id: String,
 ) -> Result<LibraryInfo, AppError> {
     info!("Start to refresh library. id: \"{id}\"");
+    let app_data_dir = common::app_data_dir(&app)?;
     let config = common::config_snapshot(&state);
 
-    let info = LibraryService::refresh_library(&id, &config).await?;
+    let info = LibraryService::refresh_library(&app_data_dir, &id, &config).await?;
 
     info!(
         "Success to refresh library. id: \"{}\", name: \"{}\", book count: {}",

@@ -43,6 +43,7 @@ interface BookGridProps {
   onRead?: (book: CalibreBook) => void
   onOpenReader?: (book: CalibreBook) => void
   onMore?: (book: CalibreBook) => void
+  onDeleteBook?: (book: CalibreBook) => void
   ensureRange: (start: number, end: number) => void
   header?: ReactNode
   viewMode?: LibraryViewMode
@@ -68,6 +69,7 @@ export default function BookGrid({
   onRead,
   onOpenReader,
   onMore,
+  onDeleteBook,
   ensureRange,
   header,
   viewMode = "grid",
@@ -111,6 +113,7 @@ export default function BookGrid({
   }, [])
 
   // Keep parent-driven pane width changes from painting with stale grid metrics.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Detail and view-mode changes must remeasure even though the callback reads the resulting layout from the DOM.
   useLayoutEffect(() => {
     if (frameRef.current !== null) {
       window.cancelAnimationFrame(frameRef.current)
@@ -382,6 +385,7 @@ export default function BookGrid({
                     handleRead,
                     onOpenReader,
                     onMore,
+                    onDeleteBook,
                   )
                 ) : (
                   <div
@@ -411,6 +415,7 @@ export default function BookGrid({
                           onRead={handleRead}
                           onOpenReader={onOpenReader}
                           onMore={onMore}
+                          onDeleteBook={onDeleteBook}
                           fileActionsEnabled={fileActionsEnabled}
                           selectedFormat={selectedFormat}
                           progress={progress}
@@ -505,6 +510,7 @@ function renderListRow(
   onRead?: (book: CalibreBook) => void,
   onOpenReader?: (book: CalibreBook) => void,
   onMore?: (book: CalibreBook) => void,
+  onDeleteBook?: (book: CalibreBook) => void,
 ) {
   const book = books.get(index)
   if (!book) return <BookRowSkeleton />
@@ -522,6 +528,7 @@ function renderListRow(
       onRead={onRead}
       onOpenReader={onOpenReader}
       onMore={onMore}
+      onDeleteBook={onDeleteBook}
       fileActionsEnabled={fileActionsEnabled}
       selectedFormat={selectedFormat}
       progress={progress}

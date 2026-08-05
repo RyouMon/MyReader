@@ -1,7 +1,8 @@
 import "@/i18n"
 import type { CalibreBook } from "@my-reader/tools/types/book"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { render, waitFor } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import type { ReactNode } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { useBookFileStates } from "@/hooks/queries/useBookFileState"
@@ -175,5 +176,31 @@ describe("library list download state", () => {
       expect(getRemoteOnlyIndicator()).toBeInTheDocument()
     })
     expect(tauriApiMock.checkBookFileState).not.toHaveBeenCalled()
+  })
+
+  it("should expose managed book deletion from a library row", async () => {
+    const user = userEvent.setup()
+    const onDeleteBook = vi.fn()
+    tauriApiMock.checkBookFileState.mockResolvedValue({
+      path: "book.epub",
+      localState: "present",
+      localSize: 1024,
+    })
+
+    renderWithClient(
+      makeClient(),
+      <BookRow
+        book={makeBook()}
+        libraryId="lib-1"
+        onDeleteBook={onDeleteBook}
+      />,
+    )
+
+    await user.click(screen.getByRole("button", { name: "更多操作" }))
+    await user.click(
+      await screen.findByRole("menuitem", { name: "从书库删除图书" }),
+    )
+
+    expect(onDeleteBook).toHaveBeenCalledWith(makeBook())
   })
 })

@@ -1,15 +1,48 @@
 use crate::cache;
 use crate::commands::PreparedBookSource;
 use crate::error::AppError;
-use crate::models::AppConfig;
+use crate::models::{AppConfig, LibraryConfig};
 use crate::reader_ui_prefs::ReaderUiPreferences;
-use crate::utils::paths::compute_book_relative_path;
+use crate::utils::paths::{compute_book_relative_path, library_root_path, library_sidecar_path};
 
 use std::path::Path;
 
 pub struct ReaderService;
 
 impl ReaderService {
+    pub async fn prepare_library_book_source(
+        lib: &LibraryConfig,
+        app_data_dir: &Path,
+        book_id: i64,
+        format: &str,
+    ) -> Result<PreparedBookSource, AppError> {
+        let content_root = library_root_path(lib, app_data_dir);
+        let sidecar_root = library_sidecar_path(lib, app_data_dir);
+        let book_format = my_reader_core::api::catalog::CatalogService::get_library_book_format(
+            lib.library_type.into(),
+            &sidecar_root,
+            &content_root,
+            book_id,
+            format,
+        )
+        .await?
+        .ok_or_else(|| {
+            AppError::NotFound(format!(
+                "BOOK_FORMAT_NOT_FOUND: book={book_id}, format={format}"
+            ))
+        })?;
+        Self::prepare_resolved_book_source(
+            &lib.id,
+            &content_root,
+            Some(&sidecar_root),
+            lib.is_remote(),
+            book_id,
+            format,
+            content_root.join(book_format.relative_path),
+        )
+        .await
+    }
+
     pub fn write_epub_readium_manifest(
         dir_path: &str,
         manifest: &serde_json::Value,
@@ -40,7 +73,6 @@ impl ReaderService {
         book_id: i64,
         format: &str,
     ) -> Result<PreparedBookSource, AppError> {
-        cache::ensure_reader_cache_dirs()?;
         let file_path = my_reader_core::api::catalog::CatalogService::get_book_file_path(
             Path::new(lib_path),
             book_id,
@@ -53,8 +85,30 @@ impl ReaderService {
             ))
         })?;
 
+        Self::prepare_resolved_book_source(
+            lib_id,
+            Path::new(lib_path),
+            sidecar_root,
+            is_remote,
+            book_id,
+            format,
+            file_path,
+        )
+        .await
+    }
+
+    async fn prepare_resolved_book_source(
+        lib_id: &str,
+        lib_root: &Path,
+        sidecar_root: Option<&Path>,
+        is_remote: bool,
+        book_id: i64,
+        format: &str,
+        file_path: std::path::PathBuf,
+    ) -> Result<PreparedBookSource, AppError> {
+        cache::ensure_reader_cache_dirs()?;
         if is_remote {
-            let relative_path = compute_book_relative_path(&file_path, Path::new(lib_path))?;
+            let relative_path = compute_book_relative_path(&file_path, lib_root)?;
             if !Self::remote_book_file_available(&file_path, sidecar_root, &relative_path).await? {
                 return Err(AppError::NotFound(format!(
                     "BOOK_FORMAT_NOT_DOWNLOADED: book={book_id}, format={format}"
@@ -159,7 +213,7 @@ mod tests {
             "It.epub",
             FileStateUpdate {
                 local_state: "remote_only".into(),
-                local_blake3: None,
+                local_sha256: None,
                 local_size: None,
                 local_mtime: None,
             },
@@ -179,7 +233,7 @@ mod tests {
             "It.epub",
             FileStateUpdate {
                 local_state: "local_only".into(),
-                local_blake3: None,
+                local_sha256: None,
                 local_size: Some(7),
                 local_mtime: None,
             },

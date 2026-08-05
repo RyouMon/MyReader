@@ -10,6 +10,7 @@ use crate::common::calibre::seed_minimal_calibre_library;
 
 fn local_library(id: &str, path: &Path) -> LibraryConfig {
     LibraryConfig {
+        library_type: Default::default(),
         id: id.into(),
         name: "Local".into(),
         path: path.to_string_lossy().to_string(),
@@ -21,6 +22,7 @@ fn local_library(id: &str, path: &Path) -> LibraryConfig {
 
 fn webdav_library(id: &str) -> LibraryConfig {
     LibraryConfig {
+        library_type: Default::default(),
         id: id.into(),
         name: "WebDAV".into(),
         path: "/app-data/libraries/lib-webdav".into(),
@@ -37,6 +39,7 @@ fn remote_library(
     source_path: Option<&str>,
 ) -> LibraryConfig {
     LibraryConfig {
+        library_type: Default::default(),
         id: id.into(),
         name: "Remote".into(),
         path: format!("/app-data/libraries/{id}"),
@@ -85,6 +88,7 @@ fn start_webdav_file_server(metadata: Vec<u8>) -> std::net::SocketAddr {
 
 #[tokio::test]
 async fn list_libraries_should_include_book_count_and_source_fields() {
+    let app_data = tempfile::tempdir().unwrap();
     let lib_root = tempfile::tempdir().unwrap();
     seed_minimal_calibre_library(lib_root.path()).await;
     let missing_root = tempfile::tempdir().unwrap();
@@ -97,7 +101,7 @@ async fn list_libraries_should_include_book_count_and_source_fields() {
         ..Default::default()
     };
 
-    let infos = LibraryService::list_libraries(&config)
+    let infos = LibraryService::list_libraries(app_data.path(), &config)
         .await
         .expect("list should succeed");
 
@@ -341,6 +345,7 @@ async fn add_remote_library_should_return_not_found_when_data_source_is_unknown(
 
 #[tokio::test]
 async fn refresh_library_should_return_updated_info_and_reject_remote_or_missing_libraries() {
+    let app_data = tempfile::tempdir().unwrap();
     let lib_root = tempfile::tempdir().unwrap();
     seed_minimal_calibre_library(lib_root.path()).await;
     let mut config = AppConfig {
@@ -352,7 +357,7 @@ async fn refresh_library_should_return_updated_info_and_reject_remote_or_missing
         ..Default::default()
     };
 
-    let info = LibraryService::refresh_library("lib-local", &config)
+    let info = LibraryService::refresh_library(app_data.path(), "lib-local", &config)
         .await
         .expect("refresh should succeed");
     assert_eq!(info.id, "lib-local");
@@ -362,18 +367,18 @@ async fn refresh_library_should_return_updated_info_and_reject_remote_or_missing
         dunce::canonicalize(lib_root.path()).unwrap()
     );
 
-    let err = LibraryService::refresh_library("lib-webdav", &config)
+    let err = LibraryService::refresh_library(app_data.path(), "lib-webdav", &config)
         .await
         .expect_err("sync refresh should reject webdav");
     assert!(format!("{err}").contains("WEBDAV_LIBRARY_USE_ASYNC_REFRESH"));
 
     config.libraries[0].path = "/definitely/not/exists".into();
-    let err = LibraryService::refresh_library("lib-local", &config)
+    let err = LibraryService::refresh_library(app_data.path(), "lib-local", &config)
         .await
         .expect_err("invalid local path should fail");
     assert!(format!("{err}").contains("INVALID_LIBRARY_PATH"));
 
-    let err = LibraryService::refresh_library("ghost", &config)
+    let err = LibraryService::refresh_library(app_data.path(), "ghost", &config)
         .await
         .expect_err("unknown id should fail");
     assert!(format!("{err}").contains("LIBRARY_NOT_FOUND"));

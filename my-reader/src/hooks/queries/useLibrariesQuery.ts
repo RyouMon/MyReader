@@ -19,6 +19,7 @@ function mapLibraryFromBackendJson(raw: Record<string, unknown>): Library {
     name: raw.name as string,
     path: raw.path as string,
     bookCount: raw.bookCount as number,
+    libraryType: raw.libraryType === "myreader" ? "myreader" : "calibre",
     addedAt: raw.addedAt as number | undefined,
     dataSourceId: raw.dataSourceId as string | null | undefined,
     sourceType: raw.sourceType as string | null | undefined,
@@ -45,16 +46,78 @@ export function useLibrariesQuery() {
 export function useLibraryMutations() {
   const queryClient = useQueryClient()
 
+  async function handleLibraryAdded() {
+    resetBrokenCovers()
+    await syncActiveLibraryId()
+    void queryClient.invalidateQueries({ queryKey: libraryKeys.all })
+  }
+
   const addLibrary = useMutation({
     mutationFn: async (path: string) => {
       const info = await api.addLibrary(path, null)
       return mapLibraryFromBackendJson(info)
     },
-    onSuccess: async () => {
-      resetBrokenCovers()
-      await syncActiveLibraryId()
-      void queryClient.invalidateQueries({ queryKey: libraryKeys.all })
+    onSuccess: handleLibraryAdded,
+  })
+
+  const createLocalMyreaderLibrary = useMutation({
+    mutationFn: async (path: string) => {
+      const info = await api.createMyreaderLibrary(path, null)
+      return mapLibraryFromBackendJson(info)
     },
+    onSuccess: handleLibraryAdded,
+  })
+
+  const createDefaultMyreaderLibrary = useMutation({
+    mutationFn: async (name: string) => {
+      const info = await api.createDefaultMyreaderLibrary(name)
+      return mapLibraryFromBackendJson(info)
+    },
+    onSuccess: handleLibraryAdded,
+  })
+
+  const openLocalMyreaderLibrary = useMutation({
+    mutationFn: async (path: string) => {
+      const info = await api.openMyreaderLibrary(path, null)
+      return mapLibraryFromBackendJson(info)
+    },
+    onSuccess: handleLibraryAdded,
+  })
+
+  const createRemoteMyreaderLibrary = useMutation({
+    mutationFn: async ({
+      dataSourceId,
+      rootPath,
+    }: {
+      dataSourceId: string
+      rootPath: string
+    }) => {
+      const info = await api.createRemoteMyreaderLibrary(
+        dataSourceId,
+        rootPath,
+        null,
+      )
+      return mapLibraryFromBackendJson(info)
+    },
+    onSuccess: handleLibraryAdded,
+  })
+
+  const openRemoteMyreaderLibrary = useMutation({
+    mutationFn: async ({
+      dataSourceId,
+      rootPath,
+    }: {
+      dataSourceId: string
+      rootPath: string
+    }) => {
+      const info = await api.openRemoteMyreaderLibrary(
+        dataSourceId,
+        rootPath,
+        null,
+      )
+      return mapLibraryFromBackendJson(info)
+    },
+    onSuccess: handleLibraryAdded,
   })
 
   const addWebdavLibrary = useMutation({
@@ -74,11 +137,7 @@ export function useLibraryMutations() {
       )
       return mapLibraryFromBackendJson(info)
     },
-    onSuccess: async () => {
-      resetBrokenCovers()
-      await syncActiveLibraryId()
-      void queryClient.invalidateQueries({ queryKey: libraryKeys.all })
-    },
+    onSuccess: handleLibraryAdded,
   })
 
   const addOnedriveLibrary = useMutation({
@@ -98,11 +157,7 @@ export function useLibraryMutations() {
       )
       return mapLibraryFromBackendJson(info)
     },
-    onSuccess: async () => {
-      resetBrokenCovers()
-      await syncActiveLibraryId()
-      void queryClient.invalidateQueries({ queryKey: libraryKeys.all })
-    },
+    onSuccess: handleLibraryAdded,
   })
 
   const removeLibrary = useMutation({
@@ -135,11 +190,22 @@ export function useLibraryMutations() {
 
   return {
     addLibrary: addLibrary.mutateAsync,
+    createLocalMyreaderLibrary: createLocalMyreaderLibrary.mutateAsync,
+    createDefaultMyreaderLibrary: createDefaultMyreaderLibrary.mutateAsync,
+    openLocalMyreaderLibrary: openLocalMyreaderLibrary.mutateAsync,
+    createRemoteMyreaderLibrary: createRemoteMyreaderLibrary.mutateAsync,
+    openRemoteMyreaderLibrary: openRemoteMyreaderLibrary.mutateAsync,
     addWebdavLibrary: addWebdavLibrary.mutateAsync,
     addOnedriveLibrary: addOnedriveLibrary.mutateAsync,
     removeLibrary: removeLibrary.mutateAsync,
     refreshLibrary: refreshLibrary.mutateAsync,
-    isAdding: addLibrary.isPending,
+    isAdding:
+      addLibrary.isPending ||
+      createLocalMyreaderLibrary.isPending ||
+      createDefaultMyreaderLibrary.isPending ||
+      openLocalMyreaderLibrary.isPending ||
+      createRemoteMyreaderLibrary.isPending ||
+      openRemoteMyreaderLibrary.isPending,
     isAddingWebdav: addWebdavLibrary.isPending,
     isAddingOnedrive: addOnedriveLibrary.isPending,
     isRemoving: removeLibrary.isPending,

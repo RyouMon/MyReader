@@ -1,11 +1,197 @@
 use crate::error::AppError;
 use std::path::Path;
 
-use crate::models::{BookDetail, BookEntry, PaginatedBooks};
+use crate::models::{BookDetail, BookEntry, ImportBookOutcome, LibraryConfig, PaginatedBooks};
+use crate::utils::paths::{library_root_path, library_sidecar_path};
 
 pub struct BookService;
 
 impl BookService {
+    pub async fn get_library_books(
+        lib: &LibraryConfig,
+        app_data_dir: &Path,
+    ) -> Result<Vec<BookEntry>, AppError> {
+        let content_root = library_root_path(lib, app_data_dir);
+        let sidecar_root = library_sidecar_path(lib, app_data_dir);
+        Ok(
+            my_reader_core::api::catalog::CatalogService::list_library_books(
+                lib.library_type.into(),
+                &sidecar_root,
+                &content_root,
+            )
+            .await?
+            .into_iter()
+            .map(Into::into)
+            .collect(),
+        )
+    }
+
+    pub async fn get_library_books_page(
+        lib: &LibraryConfig,
+        app_data_dir: &Path,
+        offset: usize,
+        limit: usize,
+        sort_by: Option<&str>,
+        search: Option<&str>,
+    ) -> Result<PaginatedBooks, AppError> {
+        let content_root = library_root_path(lib, app_data_dir);
+        let sidecar_root = library_sidecar_path(lib, app_data_dir);
+        Ok(
+            my_reader_core::api::catalog::CatalogService::list_library_books_page(
+                lib.library_type.into(),
+                &sidecar_root,
+                &content_root,
+                offset,
+                limit,
+                sort_by,
+                search,
+            )
+            .await?
+            .into(),
+        )
+    }
+
+    pub async fn get_library_books_page_by_last_read(
+        lib: &LibraryConfig,
+        app_data_dir: &Path,
+        offset: usize,
+        limit: usize,
+        search: Option<&str>,
+    ) -> Result<PaginatedBooks, AppError> {
+        let content_root = library_root_path(lib, app_data_dir);
+        let sidecar_root = library_sidecar_path(lib, app_data_dir);
+        Ok(
+            my_reader_core::api::catalog::CatalogService::list_library_books_page_by_last_read(
+                lib.library_type.into(),
+                &sidecar_root,
+                &content_root,
+                offset,
+                limit,
+                search,
+            )
+            .await?
+            .into(),
+        )
+    }
+
+    pub async fn get_library_book_detail(
+        lib: &LibraryConfig,
+        app_data_dir: &Path,
+        book_id: i64,
+    ) -> Result<BookDetail, AppError> {
+        let content_root = library_root_path(lib, app_data_dir);
+        let sidecar_root = library_sidecar_path(lib, app_data_dir);
+        Ok(
+            my_reader_core::api::catalog::CatalogService::get_library_book_detail(
+                lib.library_type.into(),
+                &sidecar_root,
+                &content_root,
+                book_id,
+            )
+            .await?
+            .into(),
+        )
+    }
+
+    pub async fn get_library_series_books(
+        lib: &LibraryConfig,
+        app_data_dir: &Path,
+        series_name: &str,
+        exclude_book_id: Option<i64>,
+    ) -> Result<Vec<BookEntry>, AppError> {
+        let content_root = library_root_path(lib, app_data_dir);
+        let sidecar_root = library_sidecar_path(lib, app_data_dir);
+        Ok(
+            my_reader_core::api::catalog::CatalogService::list_library_series_books(
+                lib.library_type.into(),
+                &sidecar_root,
+                &content_root,
+                series_name,
+                exclude_book_id,
+            )
+            .await?
+            .into_iter()
+            .map(Into::into)
+            .collect(),
+        )
+    }
+
+    pub async fn import_book(
+        config_path: &Path,
+        lib: &LibraryConfig,
+        app_data_dir: &Path,
+        request: my_reader_core::models::ImportBookRequest,
+    ) -> Result<ImportBookOutcome, AppError> {
+        let content_root = library_root_path(lib, app_data_dir);
+        let sidecar_root = library_sidecar_path(lib, app_data_dir);
+        let book = if lib.is_remote() {
+            my_reader_core::api::catalog::CatalogService::stage_remote_book_import(
+                config_path,
+                &lib.id,
+                &sidecar_root,
+                &content_root,
+                request,
+            )
+            .await?
+        } else {
+            my_reader_core::api::catalog::CatalogService::import_local_book(
+                config_path,
+                &lib.id,
+                &sidecar_root,
+                &content_root,
+                request,
+            )
+            .await?
+        };
+        Ok(ImportBookOutcome {
+            queued: false,
+            book: Some(book.into()),
+        })
+    }
+
+    pub async fn update_local_book_metadata(
+        config_path: &Path,
+        lib: &LibraryConfig,
+        app_data_dir: &Path,
+        request: my_reader_core::models::UpdateBookMetadataRequest,
+    ) -> Result<BookEntry, AppError> {
+        let content_root = library_root_path(lib, app_data_dir);
+        let sidecar_root = library_sidecar_path(lib, app_data_dir);
+        Ok(
+            my_reader_core::api::catalog::CatalogService::update_local_book_metadata(
+                config_path,
+                &lib.id,
+                &sidecar_root,
+                &content_root,
+                request,
+            )
+            .await?
+            .into(),
+        )
+    }
+
+    pub async fn delete_local_book(
+        config_path: &Path,
+        lib: &LibraryConfig,
+        app_data_dir: &Path,
+        book_id: i64,
+        recorded_at_ms: i64,
+    ) -> Result<(), AppError> {
+        let content_root = library_root_path(lib, app_data_dir);
+        let sidecar_root = library_sidecar_path(lib, app_data_dir);
+        Ok(
+            my_reader_core::api::catalog::CatalogService::delete_local_book(
+                config_path,
+                &lib.id,
+                &sidecar_root,
+                &content_root,
+                book_id,
+                recorded_at_ms,
+            )
+            .await?,
+        )
+    }
+
     pub async fn get_books(lib_path: &str) -> Result<Vec<BookEntry>, AppError> {
         Ok(
             my_reader_core::api::catalog::CatalogService::list_books(Path::new(lib_path))

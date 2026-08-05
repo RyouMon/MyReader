@@ -1,4 +1,12 @@
-import { BookOpen, Download, Ellipsis, Loader2, Trash2, X } from "lucide-react"
+import {
+  BookOpen,
+  Download,
+  Ellipsis,
+  Loader2,
+  Pencil,
+  Trash2,
+  X,
+} from "lucide-react"
 import {
   cloneElement,
   type ElementType,
@@ -83,6 +91,8 @@ interface BookMoreMenuProps {
   fileActionsEnabled?: boolean
   triggerVariant: "card" | "row" | "detail"
   selectedFormat?: string
+  onEditMetadata?: () => void
+  onDeleteBook?: () => void
 }
 
 interface BookContextMenuProps
@@ -100,6 +110,8 @@ export function BookMoreMenu({
   fileActionsEnabled = true,
   triggerVariant,
   selectedFormat,
+  onEditMetadata,
+  onDeleteBook,
 }: BookMoreMenuProps) {
   const { t } = useTranslation()
   const TriggerIcon = Ellipsis
@@ -126,6 +138,8 @@ export function BookMoreMenu({
         libraryId={libraryId}
         fileActionsEnabled={fileActionsEnabled}
         selectedFormat={selectedFormat}
+        onEditMetadata={onEditMetadata}
+        onDeleteBook={onDeleteBook}
         parts={dropdownMenuParts}
       />
     </DropdownMenu>
@@ -138,6 +152,8 @@ export function BookContextMenu({
   libraryId,
   fileActionsEnabled = true,
   selectedFormat,
+  onEditMetadata,
+  onDeleteBook,
 }: BookContextMenuProps) {
   const triggerId = useId().replace(/[^a-zA-Z0-9_-]/g, "")
   const [menuResetKey, setMenuResetKey] = useState(0)
@@ -250,6 +266,8 @@ export function BookContextMenu({
           libraryId={libraryId}
           fileActionsEnabled={fileActionsEnabled}
           selectedFormat={selectedFormat}
+          onEditMetadata={onEditMetadata}
+          onDeleteBook={onDeleteBook}
           parts={contextMenuParts}
         />
       </ContextMenuContent>
@@ -263,6 +281,8 @@ function BookMoreMenuContent({
   fileActionsEnabled,
   parts,
   selectedFormat,
+  onEditMetadata,
+  onDeleteBook,
   align = "end",
 }: Omit<BookMoreMenuProps, "triggerVariant"> & {
   align?: "start" | "center" | "end"
@@ -279,6 +299,8 @@ function BookMoreMenuContent({
         libraryId={libraryId}
         fileActionsEnabled={fileActionsEnabled}
         selectedFormat={selectedFormat}
+        onEditMetadata={onEditMetadata}
+        onDeleteBook={onDeleteBook}
         parts={parts}
       />
     </DropdownMenuContent>
@@ -291,6 +313,8 @@ function BookMoreMenuItems({
   fileActionsEnabled,
   parts,
   selectedFormat,
+  onEditMetadata,
+  onDeleteBook,
 }: Omit<BookMoreMenuProps, "triggerVariant"> & {
   parts: MenuParts
 }) {
@@ -311,6 +335,18 @@ function BookMoreMenuItems({
 
   return (
     <>
+      {onEditMetadata ? (
+        <Item onSelect={onEditMetadata}>
+          <Pencil />
+          {t("bookMore.editMetadata")}
+        </Item>
+      ) : null}
+      {onDeleteBook ? (
+        <Item variant="destructive" onSelect={onDeleteBook}>
+          <Trash2 />
+          {t("bookMore.deleteBook")}
+        </Item>
+      ) : null}
       {sortedFormats.length > 1 ? (
         <DefaultFormatSubMenu
           activeFormat={activeFormat}

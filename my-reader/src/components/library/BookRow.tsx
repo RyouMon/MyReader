@@ -21,6 +21,7 @@ interface BookRowProps {
   onRead?: (book: CalibreBook) => void
   onOpenReader?: (book: CalibreBook) => void
   onMore?: (book: CalibreBook) => void
+  onDeleteBook?: (book: CalibreBook) => void
   progress?: BookProgressSnapshot
   fileActionsEnabled?: boolean
   selectedFormat?: string
@@ -36,6 +37,7 @@ const BookRow = memo(function BookRow({
   libraryId,
   onRead,
   onOpenReader,
+  onDeleteBook,
   progress,
   fileActionsEnabled = true,
   selectedFormat,
@@ -155,6 +157,7 @@ const BookRow = memo(function BookRow({
           fileActionsEnabled={fileActionsEnabled}
           selectedFormat={selectedFormat}
           triggerVariant="row"
+          onDeleteBook={onDeleteBook ? () => onDeleteBook(book) : undefined}
         />
       </div>
     </div>

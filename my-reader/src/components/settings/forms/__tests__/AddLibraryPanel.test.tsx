@@ -29,27 +29,32 @@ vi.mock("@/components/settings/WebdavFolderBrowser", () => ({
 describe("AddLibraryPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    Object.defineProperty(Element.prototype, "scrollIntoView", {
+      configurable: true,
+      value: vi.fn(),
+    })
   })
 
   it("should submit once when OneDrive form is submitted repeatedly while adding", async () => {
     const user = userEvent.setup()
     let finishAdding: (() => void) | undefined
-    const onAddOnedriveLibrary = vi.fn(
+    const onSubmitLibrary = vi.fn(
       () =>
         new Promise<void>((resolve) => {
           finishAdding = resolve
         }),
     )
 
-    render(
-      <AddLibraryPanel
-        onAddLibrary={vi.fn()}
-        onAddWebdavLibrary={vi.fn()}
-        onAddOnedriveLibrary={onAddOnedriveLibrary}
-      />,
-    )
+    render(<AddLibraryPanel onSubmitLibrary={onSubmitLibrary} />)
 
     await user.click(screen.getByRole("button", { name: "添加书库" }))
+    act(() => {
+      screen.getByRole("combobox", { name: "书库操作" }).focus()
+    })
+    await user.keyboard("{Enter}")
+    await user.click(
+      await screen.findByRole("option", { name: "连接 Calibre 书库" }),
+    )
     await user.click(screen.getByRole("button", { name: /OneDrive/ }))
     fireEvent.change(screen.getByLabelText("书库路径"), {
       target: { value: "Library/CalibreLibrary" },
@@ -61,12 +66,14 @@ describe("AddLibraryPanel", () => {
     fireEvent.submit(form!)
 
     await waitFor(() => {
-      expect(onAddOnedriveLibrary).toHaveBeenCalledTimes(1)
+      expect(onSubmitLibrary).toHaveBeenCalledTimes(1)
     })
-    expect(onAddOnedriveLibrary).toHaveBeenCalledWith(
-      "onedrive-1",
-      "Library/CalibreLibrary",
-    )
+    expect(onSubmitLibrary).toHaveBeenCalledWith({
+      operation: "connectCalibre",
+      sourceType: "onedrive",
+      dataSourceId: "onedrive-1",
+      path: "Library/CalibreLibrary",
+    })
 
     await act(async () => {
       finishAdding?.()

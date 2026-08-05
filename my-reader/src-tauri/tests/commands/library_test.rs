@@ -8,7 +8,7 @@ use serde_json::json;
 use std::fs;
 
 use my_reader_lib::models::{
-    AppConfig, DataSourceConfig, DataSourceDetail, LibraryConfig, LibraryInfo,
+    AppConfig, DataSourceConfig, DataSourceDetail, LibraryConfig, LibraryInfo, LibraryType,
 };
 
 use crate::common::app::TestApp;
@@ -17,6 +17,7 @@ use crate::common::ipc::{invoke_err, invoke_ok};
 
 fn library_fixture(id: &str, name: &str, path: &str) -> LibraryConfig {
     LibraryConfig {
+        library_type: Default::default(),
         id: id.into(),
         name: name.into(),
         path: path.into(),
@@ -214,6 +215,33 @@ async fn add_library_should_add_and_persist_when_calibre_dir_is_valid() {
     let persisted = read_persisted_config(&app).expect("config.json should be written");
     assert_eq!(persisted.libraries.len(), 1);
     assert_eq!(persisted.libraries[0].id, info.id);
+}
+
+#[tokio::test]
+async fn create_myreader_library_should_create_marker_and_persist_type() {
+    let app = TestApp::new();
+    let parent = tempfile::tempdir().unwrap();
+    let library_root = parent.path().join("My Library");
+
+    let info: LibraryInfo = invoke_ok(
+        &app,
+        "create_myreader_library",
+        json!({
+            "path": library_root.to_string_lossy(),
+            "name": "My Library",
+        }),
+    );
+
+    assert_eq!(info.library_type, LibraryType::MyReader);
+    assert!(library_root.join("Books").is_dir());
+    assert!(library_root.join(".myreader/library.json").is_file());
+    assert!(!library_root.join("metadata.db").exists());
+    let persisted = read_persisted_config(&app).expect("config should be persisted");
+    assert_eq!(persisted.libraries[0].library_type, LibraryType::MyReader);
+    assert_eq!(
+        persisted.active_library_id.as_deref(),
+        Some(info.id.as_str())
+    );
 }
 
 #[tokio::test]

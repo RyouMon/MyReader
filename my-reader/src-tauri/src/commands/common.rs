@@ -14,6 +14,7 @@
 //! command layer, not part of the crate's public API surface for integration tests.
 
 use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use tauri::{AppHandle, Manager, Runtime, State};
 
@@ -49,6 +50,14 @@ pub(crate) fn app_data_dir<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, Ap
     app.path()
         .app_data_dir()
         .map_err(|e| AppError::Config(format!("APP_DATA_DIR_ERROR: {e}")))
+}
+
+pub(crate) fn unix_epoch_millis() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        .min(i64::MAX as u128) as i64
 }
 
 /// Write `config` to `config.json` under the resolved `app_data_dir`. Routes through

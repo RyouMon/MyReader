@@ -8,6 +8,11 @@ export const commands = {
 	listDataSources: () => typedError<DataSourceDto[], ErrorKind>(__TAURI_INVOKE("list_data_sources")),
 	testWebdavConnection: (input: TestWebdavConnectionInput) => typedError<null, ErrorKind>(__TAURI_INVOKE("test_webdav_connection", { input })),
 	addLibrary: (path: string, name: string | null) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("add_library", { path, name })),
+	createMyreaderLibrary: (path: string, name: string | null) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("create_myreader_library", { path, name })),
+	createDefaultMyreaderLibrary: (name: string) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("create_default_myreader_library", { name })),
+	openMyreaderLibrary: (path: string, name: string | null) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("open_myreader_library", { path, name })),
+	createRemoteMyreaderLibrary: (dataSourceId: string, remotePath: string, name: string | null) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("create_remote_myreader_library", { dataSourceId, remotePath, name })),
+	openRemoteMyreaderLibrary: (dataSourceId: string, remotePath: string, name: string | null) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("open_remote_myreader_library", { dataSourceId, remotePath, name })),
 	addWebdavLibrary: (dataSourceId: string, remotePath: string, name: string | null) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("add_webdav_library", { dataSourceId, remotePath, name })),
 	addOnedriveLibrary: (dataSourceId: string, remotePath: string, name: string | null) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("add_onedrive_library", { dataSourceId, remotePath, name })),
 	refreshLibrary: (id: string) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("refresh_library", { id })),
@@ -27,6 +32,9 @@ export const commands = {
 	getBooksPage: (libraryId: string | null, offset: number, limit: number, sortBy: string | null, search: string | null) => typedError<PaginatedBooks, ErrorKind>(__TAURI_INVOKE("get_books_page", { libraryId, offset, limit, sortBy, search })),
 	getBookDetail: (libraryId: string | null, bookId: number) => typedError<BookDetail, ErrorKind>(__TAURI_INVOKE("get_book_detail", { libraryId, bookId })),
 	getSeriesBooks: (libraryId: string | null, seriesName: string, excludeBookId: number | null) => typedError<BookEntry[], ErrorKind>(__TAURI_INVOKE("get_series_books", { libraryId, seriesName, excludeBookId })),
+	importBook: (libraryId: string | null, sourceFilePath: string, title: string | null, authors: string[]) => typedError<ImportBookOutcome, ErrorKind>(__TAURI_INVOKE("import_book", { libraryId, sourceFilePath, title, authors })),
+	updateBookMetadata: (libraryId: string | null, bookId: number, title: string, authors: string[]) => typedError<BookEntry, ErrorKind>(__TAURI_INVOKE("update_book_metadata", { libraryId, bookId, title, authors })),
+	deleteBook: (libraryId: string | null, bookId: number) => typedError<null, ErrorKind>(__TAURI_INVOKE("delete_book", { libraryId, bookId })),
 	listBookReadingFormats: (libraryId: string) => typedError<{ [key in string]: string }, ErrorKind>(__TAURI_INVOKE("list_book_reading_formats", { libraryId })),
 	setBookReadingFormat: (libraryId: string, bookId: number, format: string | null) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_book_reading_format", { libraryId, bookId, format })),
 	listFavoriteBookIds: (libraryId: string | null) => typedError<number[], ErrorKind>(__TAURI_INVOKE("list_favorite_book_ids", { libraryId })),
@@ -162,15 +170,23 @@ export type FormatSize = {
 	sizeBytes: number,
 };
 
+export type ImportBookOutcome = {
+	queued: boolean,
+	book: BookEntry | null,
+};
+
 export type LibraryInfo = {
 	id: string,
 	name: string,
 	path: string,
+	libraryType: LibraryType,
 	bookCount: number,
 	sourceType: string | null,
 	dataSourceId: string | null,
 	sourcePath: string | null,
 };
+
+export type LibraryType = "calibre" | "myreader";
 
 export type NewLocalDataSourceInput = {
 	name: string,

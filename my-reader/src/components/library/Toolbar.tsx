@@ -1,9 +1,11 @@
 import {
   ArrowUpDown,
+  BookPlus,
   Check,
   ChevronDown,
   LayoutGrid,
   List,
+  Loader2,
   RefreshCw,
   Search,
   SlidersHorizontal,
@@ -41,6 +43,9 @@ interface ToolbarProps {
   sortBy: LibrarySortOption
   onSortChange: (sort: LibrarySortOption) => void
   onRefresh?: () => void
+  canImportBook?: boolean
+  importingBook?: boolean
+  onImportBook?: () => void
 }
 
 export default function Toolbar({
@@ -51,6 +56,9 @@ export default function Toolbar({
   sortBy,
   onSortChange,
   onRefresh,
+  canImportBook = false,
+  importingBook = false,
+  onImportBook,
 }: ToolbarProps) {
   const { t } = useTranslation()
   const sortLabels = useSortLabels()
@@ -78,6 +86,23 @@ export default function Toolbar({
       </div>
 
       <div className="ms-auto flex items-center gap-1">
+        {canImportBook && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            title={t("library.importBook")}
+            aria-label={t("library.importBook")}
+            disabled={importingBook}
+            onClick={onImportBook}
+          >
+            {importingBook ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <BookPlus />
+            )}
+          </Button>
+        )}
+
         {/* View toggle */}
         <Button
           variant="ghost"

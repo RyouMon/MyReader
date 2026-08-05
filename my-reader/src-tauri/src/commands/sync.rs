@@ -5,6 +5,7 @@ use tracing::{error, info};
 use crate::commands::common;
 use crate::commands::AppState;
 use crate::error::AppError;
+use crate::services::book_transfer_scheduler::BookTransferScheduler;
 use crate::services::sidecar_sync_scheduler::SidecarSyncScheduler;
 use crate::services::sync_service::{DbSyncReport, SidecarSyncCompletedPayload, SyncService};
 
@@ -62,6 +63,9 @@ pub async fn sync_db_for_library<R: tauri::Runtime>(
         err
     })?;
     let config = common::config_snapshot(&state);
+    if let Some(scheduler) = app.try_state::<BookTransferScheduler>() {
+        scheduler.request(library_id.clone());
+    }
     let observer = CommandSyncObserver {
         app: app.clone(),
         library_id: library_id.clone(),
@@ -107,7 +111,9 @@ pub async fn sync_db_for_library<R: tauri::Runtime>(
 #[specta::specta]
 pub fn notify_sidecar_network_reconnected(
     scheduler: State<'_, SidecarSyncScheduler>,
+    book_transfers: State<'_, BookTransferScheduler>,
 ) -> Result<(), AppError> {
     scheduler.network_reconnected();
+    book_transfers.request_all();
     Ok(())
 }

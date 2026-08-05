@@ -10,6 +10,7 @@ interface OnedriveFolderBrowserProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSelect: (path: string) => void
+  createSubdirectory?: boolean
 }
 
 export function OnedriveFolderBrowser({
@@ -17,6 +18,7 @@ export function OnedriveFolderBrowser({
   open,
   onOpenChange,
   onSelect,
+  createSubdirectory,
 }: OnedriveFolderBrowserProps) {
   const { t } = useTranslation()
   const [currentPath, setCurrentPath] = useState("/")
@@ -69,6 +71,7 @@ export function OnedriveFolderBrowser({
       onNavigate={navigateTo}
       onRefresh={() => fetchFolders(currentPath)}
       onSelect={onSelect}
+      createSubdirectory={createSubdirectory}
     />
   )
 }

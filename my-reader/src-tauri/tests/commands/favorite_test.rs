@@ -15,6 +15,7 @@ const LIBRARY_UUID: &str = "018f2f8d-980b-40ef-b72e-c6e86cb7cc28";
 
 fn library_fixture(id: &str, path: &str) -> LibraryConfig {
     LibraryConfig {
+        library_type: Default::default(),
         id: id.into(),
         name: "Library".into(),
         path: path.into(),

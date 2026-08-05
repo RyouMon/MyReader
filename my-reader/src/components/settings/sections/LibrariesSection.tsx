@@ -9,7 +9,10 @@ import {
   GroupListItem,
 } from "@/components/common/GroupList"
 import { StatusNotice } from "@/components/common/StatusNotice"
-import { AddLibraryPanel } from "@/components/settings/forms/AddLibraryPanel"
+import {
+  AddLibraryPanel,
+  type AddLibrarySubmission,
+} from "@/components/settings/forms/AddLibraryPanel"
 import { cn } from "@/lib/utils"
 import {
   useLibraryMutations,
@@ -20,8 +23,16 @@ import { useLibraryUiStore } from "@/stores/libraryUiStore"
 export default function LibrariesSection() {
   const { t } = useTranslation()
   const { data: libraries = [] } = useLibrariesQuery()
-  const { addLibrary, addWebdavLibrary, addOnedriveLibrary, removeLibrary } =
-    useLibraryMutations()
+  const {
+    addLibrary,
+    addWebdavLibrary,
+    addOnedriveLibrary,
+    createLocalMyreaderLibrary,
+    openLocalMyreaderLibrary,
+    createRemoteMyreaderLibrary,
+    openRemoteMyreaderLibrary,
+    removeLibrary,
+  } = useLibraryMutations()
   const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
 
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
@@ -39,6 +50,33 @@ export default function LibrariesSection() {
       if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current)
       setPendingDeleteId(id)
       deleteTimerRef.current = setTimeout(() => setPendingDeleteId(null), 3000)
+    }
+  }
+
+  async function handleSubmitLibrary(request: AddLibrarySubmission) {
+    const { operation, sourceType, dataSourceId, path } = request
+    if (operation === "createMyreader") {
+      if (sourceType === "local") {
+        await createLocalMyreaderLibrary(path)
+      } else {
+        await createRemoteMyreaderLibrary({ dataSourceId, rootPath: path })
+      }
+      return
+    }
+    if (operation === "openMyreader") {
+      if (sourceType === "local") {
+        await openLocalMyreaderLibrary(path)
+      } else {
+        await openRemoteMyreaderLibrary({ dataSourceId, rootPath: path })
+      }
+      return
+    }
+    if (sourceType === "webdav") {
+      await addWebdavLibrary({ dataSourceId, rootPath: path })
+    } else if (sourceType === "onedrive") {
+      await addOnedriveLibrary({ dataSourceId, rootPath: path })
+    } else {
+      await addLibrary(path)
     }
   }
 
@@ -79,15 +117,7 @@ export default function LibrariesSection() {
           )}
         </GroupList>
 
-        <AddLibraryPanel
-          onAddLibrary={addLibrary}
-          onAddWebdavLibrary={(dataSourceId, remotePath) =>
-            addWebdavLibrary({ dataSourceId, rootPath: remotePath })
-          }
-          onAddOnedriveLibrary={(dataSourceId, remotePath) =>
-            addOnedriveLibrary({ dataSourceId, rootPath: remotePath })
-          }
-        />
+        <AddLibraryPanel onSubmitLibrary={handleSubmitLibrary} />
 
         {/* Hint */}
         <StatusNotice className="mt-4">
@@ -156,6 +186,9 @@ function LibraryCard({
                 {t("settings.libraries.current")}
               </span>
             )}
+            <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-[0.05em] text-muted-foreground">
+              {lib.libraryType === "myreader" ? "MyReader" : "Calibre"}
+            </span>
             {isPendingDelete ? (
               <span className="whitespace-nowrap text-[11.5px] text-destructive animate-in fade-in-0 duration-150">
                 {t("settings.libraries.confirmDelete")}

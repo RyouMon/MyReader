@@ -173,7 +173,7 @@ async fn prepare_book_source_should_require_present_sidecar_row_for_remote_libra
         "It/It.pdf",
         FileStateUpdate {
             local_state: "present".into(),
-            local_blake3: None,
+            local_sha256: None,
             local_size: Some(7),
             local_mtime: None,
         },

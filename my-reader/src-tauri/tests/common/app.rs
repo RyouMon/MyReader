@@ -68,13 +68,14 @@ impl TestApp {
         let specta_builder = tauri_specta::Builder::<MockRuntime>::new()
             .dangerously_cast_bigints_to_number()
             .commands(tauri_specta::collect_commands![
-                my_reader_lib::commands::library::list_libraries,
+                my_reader_lib::commands::library::list_libraries::<MockRuntime>,
                 my_reader_lib::commands::source::list_data_sources,
                 my_reader_lib::commands::source::test_webdav_connection,
                 my_reader_lib::commands::library::add_library::<MockRuntime>,
+                my_reader_lib::commands::library::create_myreader_library::<MockRuntime>,
                 my_reader_lib::commands::library::add_webdav_library::<MockRuntime>,
                 my_reader_lib::commands::library::add_onedrive_library::<MockRuntime>,
-                my_reader_lib::commands::library::refresh_library,
+                my_reader_lib::commands::library::refresh_library::<MockRuntime>,
                 my_reader_lib::commands::library::refresh_webdav_library::<MockRuntime>,
                 my_reader_lib::commands::library::refresh_onedrive_library::<MockRuntime>,
                 my_reader_lib::commands::source::add_local_data_source::<MockRuntime>,
@@ -91,6 +92,9 @@ impl TestApp {
                 my_reader_lib::commands::book::get_books_page::<MockRuntime>,
                 my_reader_lib::commands::book::get_book_detail::<MockRuntime>,
                 my_reader_lib::commands::book::get_series_books::<MockRuntime>,
+                my_reader_lib::commands::book::import_book::<MockRuntime>,
+                my_reader_lib::commands::book::update_book_metadata::<MockRuntime>,
+                my_reader_lib::commands::book::delete_book::<MockRuntime>,
                 reading_format_commands::list_book_reading_formats::<MockRuntime>,
                 reading_format_commands::set_book_reading_format::<MockRuntime>,
                 my_reader_lib::commands::favorite::list_favorite_book_ids::<MockRuntime>,

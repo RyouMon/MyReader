@@ -402,8 +402,13 @@ impl DownloadService {
         format: &str,
     ) -> Result<PathBuf, AppError> {
         let lib_root = library_root_path(lib, app_data_dir);
-        let file_path = my_reader_core::api::catalog::CatalogService::get_book_file_path(
-            &lib_root, book_id, format,
+        let sidecar_root = library_sidecar_path(lib, app_data_dir);
+        let book_format = my_reader_core::api::catalog::CatalogService::get_library_book_format(
+            lib.library_type.into(),
+            &sidecar_root,
+            &lib_root,
+            book_id,
+            format,
         )
         .await?
         .ok_or_else(|| {
@@ -411,7 +416,7 @@ impl DownloadService {
                 "BOOK_FORMAT_NOT_FOUND: book={book_id}, format={format}"
             ))
         })?;
-        Ok(file_path)
+        Ok(lib_root.join(book_format.relative_path))
     }
 
     /// Build an OpenDAL operator for a remote library's data source.
@@ -451,7 +456,16 @@ impl DownloadService {
 
         let present = Self::is_book_file_present(&file_path).await
             && (!lib.is_remote() || row.as_ref().is_some_and(|r| r.is_locally_available()));
-        let local_state = if present { "present" } else { "remote_only" };
+        let local_state = if present {
+            "present"
+        } else if row
+            .as_ref()
+            .is_some_and(|state| state.local_state == "source_missing")
+        {
+            "source_missing"
+        } else {
+            "remote_only"
+        };
 
         Ok(FileStateDto {
             path: relative_path,
@@ -482,7 +496,10 @@ impl DownloadService {
             .iter()
             .map(|item| (item.book_id, Self::normalize_format(&item.format)))
             .collect();
-        let file_paths = my_reader_core::api::catalog::CatalogService::get_book_file_paths(
+        let sidecar_root = library_sidecar_path(&lib, app_data_dir);
+        let file_paths = my_reader_core::api::catalog::CatalogService::get_library_book_file_paths(
+            lib.library_type.into(),
+            &sidecar_root,
             &lib_root,
             &normalized_requests,
         )
@@ -523,7 +540,14 @@ impl DownloadService {
                 book_id,
                 format,
                 path: relative_path,
-                local_state: if present { "present" } else { "remote_only" }.to_string(),
+                local_state: if present {
+                    "present"
+                } else if row.is_some_and(|state| state.local_state == "source_missing") {
+                    "source_missing"
+                } else {
+                    "remote_only"
+                }
+                .to_string(),
                 local_size: if present {
                     row.and_then(|row| row.local_size)
                 } else {
@@ -585,6 +609,19 @@ impl DownloadService {
         let relative_path = compute_book_relative_path(&file_path, &lib_root)?;
         let sidecar_root = library_sidecar_path(&lib, app_data_dir);
         let op = Self::build_operator_for_library(&lib, config).await?;
+        let expected_content = if lib.is_myreader() {
+            Some(
+                my_reader_core::api::catalog::CatalogService::get_myreader_book_content(
+                    &sidecar_root,
+                    &lib_root,
+                    book_id,
+                    &format,
+                )
+                .await?,
+            )
+        } else {
+            None
+        };
 
         Self::download_book_file(
             app,
@@ -596,6 +633,7 @@ impl DownloadService {
             book_id,
             &format,
             &sidecar_root,
+            expected_content.as_ref(),
             Some(cancellation),
         )
         .await
@@ -615,6 +653,7 @@ impl DownloadService {
         book_id: i64,
         format: &str,
         sidecar_root: &Path,
+        expected_content: Option<&my_reader_core::models::BookContent>,
         cancellation: Option<DownloadCancellation>,
     ) -> Result<PathBuf, AppError> {
         let relative_local = book_relative_path.replace('\\', "/");
@@ -636,6 +675,7 @@ impl DownloadService {
             book_id,
             format,
             sidecar_root,
+            expected_content,
             cancellation,
         )
         .await;
@@ -665,6 +705,7 @@ impl DownloadService {
         book_id: i64,
         format: &str,
         sidecar_root: &Path,
+        expected_content: Option<&my_reader_core::models::BookContent>,
         cancellation: Option<DownloadCancellation>,
     ) -> Result<PathBuf, AppError> {
         let row = Self::get_stored_file_state(sidecar_root, book_relative_path).await?;
@@ -710,7 +751,28 @@ impl DownloadService {
 
         // Try to get total size for progress reporting.
         let total_bytes: Option<u64> = match op.stat(&remote_path).await {
-            Ok(meta) => Some(meta.content_length()),
+            Ok(meta) => {
+                if let Some(expected) = expected_content {
+                    if i64::try_from(meta.content_length()).ok() != Some(expected.size) {
+                        return Err(AppError::DataIntegrity(
+                            "REMOTE_BOOK_FILE_SIZE_MISMATCH".into(),
+                        ));
+                    }
+                }
+                Some(meta.content_length())
+            }
+            Err(error)
+                if expected_content.is_some() && error.kind() == opendal::ErrorKind::NotFound =>
+            {
+                my_reader_core::api::content::ContentService::mark_file_source_missing(
+                    sidecar_root,
+                    book_relative_path,
+                )
+                .await?;
+                return Err(AppError::NotFound(format!(
+                    "REMOTE_BOOK_FILE_NOT_FOUND: {remote_path}"
+                )));
+            }
             Err(e) => {
                 warn!("Failed to stat remote book file before download. remote: \"{remote_path}\", error: {e}");
                 None
@@ -744,9 +806,26 @@ impl DownloadService {
             None,
         );
 
-        let reader = op.reader(&remote_path).await.map_err(|e| {
-            AppError::Config(format!("REMOTE_BOOK_FILE_OPEN_FAILED: {e} ({remote_path})"))
-        })?;
+        let reader = match op.reader(&remote_path).await {
+            Ok(reader) => reader,
+            Err(error)
+                if expected_content.is_some() && error.kind() == opendal::ErrorKind::NotFound =>
+            {
+                my_reader_core::api::content::ContentService::mark_file_source_missing(
+                    sidecar_root,
+                    book_relative_path,
+                )
+                .await?;
+                return Err(AppError::NotFound(format!(
+                    "REMOTE_BOOK_FILE_NOT_FOUND: {remote_path}"
+                )));
+            }
+            Err(error) => {
+                return Err(AppError::Config(format!(
+                    "REMOTE_BOOK_FILE_OPEN_FAILED: {error} ({remote_path})"
+                )));
+            }
+        };
 
         if is_cancelled(&cancellation) {
             Self::handle_cancel(local_path, sidecar_root, book_relative_path, 0, total_bytes)
@@ -785,7 +864,8 @@ impl DownloadService {
             return Err(AppError::Config("BOOK_DOWNLOAD_CANCELLED".into()));
         }
 
-        let mut file = tokio::fs::File::create(local_path)
+        let partial_path = partial_download_path(local_path);
+        let mut file = tokio::fs::File::create(&partial_path)
             .await
             .map_err(|e| AppError::Config(format!("BOOK_FILE_CACHE_CREATE_FAILED: {e}")))?;
 
@@ -796,7 +876,7 @@ impl DownloadService {
             if is_cancelled(&cancellation) {
                 drop(file);
                 Self::handle_cancel(
-                    local_path,
+                    &partial_path,
                     sidecar_root,
                     book_relative_path,
                     bytes_written,
@@ -846,13 +926,30 @@ impl DownloadService {
         file.flush()
             .await
             .map_err(|e| AppError::Config(format!("BOOK_FILE_CACHE_FLUSH_FAILED: {e}")))?;
+        drop(file);
 
-        my_reader_core::api::content::ContentService::finalize_downloaded_file(
-            sidecar_root,
-            book_relative_path,
-            local_path,
-        )
-        .await?;
+        if let Some(expected) = expected_content {
+            my_reader_core::api::content::ContentService::install_verified_downloaded_file(
+                sidecar_root,
+                book_relative_path,
+                &partial_path,
+                local_path,
+                expected.size,
+                &expected.sha256,
+            )
+            .await?;
+        } else {
+            if local_path.exists() {
+                tokio::fs::remove_file(local_path).await?;
+            }
+            tokio::fs::rename(&partial_path, local_path).await?;
+            my_reader_core::api::content::ContentService::finalize_downloaded_file(
+                sidecar_root,
+                book_relative_path,
+                local_path,
+            )
+            .await?;
+        }
 
         emit_download_progress(
             app,
@@ -878,19 +975,26 @@ impl DownloadService {
         sidecar_root: &Path,
         book_relative_path: &str,
     ) -> Result<(), AppError> {
-        if tokio::fs::try_exists(local_path).await.unwrap_or(false) {
-            if let Err(e) = tokio::fs::remove_file(local_path).await {
-                warn!(
-                    "Failed to remove partial downloaded file after error. path: \"{}\", error: {e}",
-                    local_path.display()
-                );
+        for path in [local_path.to_path_buf(), partial_download_path(local_path)] {
+            if tokio::fs::try_exists(&path).await.unwrap_or(false) {
+                if let Err(e) = tokio::fs::remove_file(&path).await {
+                    warn!(
+                        "Failed to remove partial downloaded file after error. path: \"{}\", error: {e}",
+                        path.display()
+                    );
+                }
             }
         }
-        my_reader_core::api::content::ContentService::mark_file_remote_only(
-            sidecar_root,
-            book_relative_path,
-        )
-        .await?;
+        let source_missing = Self::get_stored_file_state(sidecar_root, book_relative_path)
+            .await?
+            .is_some_and(|state| state.local_state == "source_missing");
+        if !source_missing {
+            my_reader_core::api::content::ContentService::mark_file_remote_only(
+                sidecar_root,
+                book_relative_path,
+            )
+            .await?;
+        }
         Ok(())
     }
 
@@ -917,6 +1021,15 @@ impl DownloadService {
         .await?;
         Ok(())
     }
+}
+
+fn partial_download_path(local_path: &Path) -> PathBuf {
+    let extension = local_path
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| format!("{value}.part"))
+        .unwrap_or_else(|| "part".into());
+    local_path.with_extension(extension)
 }
 
 impl Default for DownloadService {

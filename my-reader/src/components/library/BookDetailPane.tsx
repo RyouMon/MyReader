@@ -33,12 +33,21 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
+import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
 import { Switch } from "@/components/ui/switch"
 import {
@@ -100,6 +109,8 @@ interface BookDetailPaneProps {
   detailFullScreen?: boolean
   onToggleDetailFullScreen?: () => void
   showSidebarToggle?: boolean
+  onLibraryChanged?: () => void
+  onDeleteBook?: (book: Pick<BookDetail, "id" | "title">) => void
 }
 
 const FORMAT_TONES: Record<string, string> = {
@@ -173,6 +184,8 @@ export default function BookDetailPane({
   detailFullScreen = false,
   onToggleDetailFullScreen,
   showSidebarToggle = false,
+  onLibraryChanged,
+  onDeleteBook,
 }: BookDetailPaneProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -201,6 +214,10 @@ export default function BookDetailPane({
   const [selectedFormat, setSelectedFormat] = useState<string | null>(null)
   const [isNarrowHero, setIsNarrowHero] = useState(false)
   const [showNarrowCoverBackdrop, setShowNarrowCoverBackdrop] = useState(false)
+  const [metadataDialogOpen, setMetadataDialogOpen] = useState(false)
+  const [draftTitle, setDraftTitle] = useState("")
+  const [draftAuthors, setDraftAuthors] = useState("")
+  const [savingMetadata, setSavingMetadata] = useState(false)
   const [detailHeroElement, setDetailHeroElement] =
     useState<HTMLDivElement | null>(null)
   const coverFailuresRevision = useSyncExternalStore(
@@ -383,6 +400,50 @@ export default function BookDetailPane({
     }
   }, [activeLibraryId, addFavoriteBook, bookId, isFavorite, removeFavoriteBook])
 
+  const handleOpenMetadataEditor = useCallback(() => {
+    if (!book) return
+    setDraftTitle(book.title)
+    setDraftAuthors(book.authors.join(", "))
+    setMetadataDialogOpen(true)
+  }, [book])
+
+  const handleSaveMetadata = useCallback(async () => {
+    if (!book || savingMetadata) return
+    const title = draftTitle.trim()
+    const authors = draftAuthors
+      .split(/[,，]/)
+      .map((author) => author.trim())
+      .filter(Boolean)
+    if (!title || authors.length === 0) return
+
+    setSavingMetadata(true)
+    try {
+      const updated = await api.updateBookMetadata(
+        activeLibraryId,
+        book.id,
+        title,
+        authors,
+      )
+      setBook((current) => (current ? { ...current, ...updated } : current))
+      setMetadataDialogOpen(false)
+      onLibraryChanged?.()
+    } catch (error) {
+      toast.error(t("bookDetail.updateMetadataFailed"), {
+        description: String(error),
+      })
+    } finally {
+      setSavingMetadata(false)
+    }
+  }, [
+    activeLibraryId,
+    book,
+    draftAuthors,
+    draftTitle,
+    onLibraryChanged,
+    savingMetadata,
+    t,
+  ])
+
   const navigateToRead = useCallback(
     async (id: number, fmt?: string) => {
       if (isTauri()) {
@@ -503,6 +564,7 @@ export default function BookDetailPane({
   )
   const isRemoteLibrary =
     activeLibrary?.sourceType != null && activeLibrary.sourceType !== "local"
+  const isManagedLibrary = activeLibrary?.libraryType === "myreader"
 
   const seriesLabel =
     book.series && book.seriesIndex
@@ -783,6 +845,16 @@ export default function BookDetailPane({
                         book={book}
                         libraryId={activeLibraryId}
                         fileActionsEnabled={isRemoteLibrary}
+                        onEditMetadata={
+                          isManagedLibrary
+                            ? handleOpenMetadataEditor
+                            : undefined
+                        }
+                        onDeleteBook={
+                          isManagedLibrary && onDeleteBook
+                            ? () => onDeleteBook(book)
+                            : undefined
+                        }
                         selectedFormat={activeSelectedFormat ?? undefined}
                         triggerVariant="detail"
                       />
@@ -984,6 +1056,16 @@ export default function BookDetailPane({
                             book={book}
                             libraryId={activeLibraryId}
                             fileActionsEnabled={isRemoteLibrary}
+                            onEditMetadata={
+                              isManagedLibrary
+                                ? handleOpenMetadataEditor
+                                : undefined
+                            }
+                            onDeleteBook={
+                              isManagedLibrary && onDeleteBook
+                                ? () => onDeleteBook(book)
+                                : undefined
+                            }
                             selectedFormat={activeSelectedFormat ?? undefined}
                             triggerVariant="detail"
                           />
@@ -1251,6 +1333,67 @@ export default function BookDetailPane({
           </div>
         </div>
       </div>
+
+      <Dialog open={metadataDialogOpen} onOpenChange={setMetadataDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("bookDetail.editMetadataTitle")}</DialogTitle>
+            <DialogDescription>{t("bookMore.editMetadata")}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <label
+              className="grid gap-2 text-sm font-medium"
+              htmlFor="book-title"
+            >
+              {t("bookDetail.titleLabel")}
+              <Input
+                id="book-title"
+                value={draftTitle}
+                disabled={savingMetadata}
+                onChange={(event) => setDraftTitle(event.target.value)}
+              />
+            </label>
+            <label
+              className="grid gap-2 text-sm font-medium"
+              htmlFor="book-authors"
+            >
+              {t("bookDetail.authorsLabel")}
+              <Input
+                id="book-authors"
+                value={draftAuthors}
+                placeholder={t("bookDetail.authorsPlaceholder")}
+                disabled={savingMetadata}
+                onChange={(event) => setDraftAuthors(event.target.value)}
+              />
+            </label>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={savingMetadata}
+              onClick={() => setMetadataDialogOpen(false)}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              type="button"
+              disabled={
+                savingMetadata ||
+                !draftTitle.trim() ||
+                !draftAuthors
+                  .split(/[,，]/)
+                  .some((author) => author.trim().length > 0)
+              }
+              onClick={() => void handleSaveMetadata()}
+            >
+              {savingMetadata
+                ? t("bookDetail.savingMetadata")
+                : t("bookDetail.saveMetadata")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   )
 }

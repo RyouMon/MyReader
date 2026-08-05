@@ -70,6 +70,7 @@ mod tests {
 
     fn local_library() -> LibraryConfig {
         LibraryConfig {
+            library_type: Default::default(),
             id: "lib-local".into(),
             name: "Local".into(),
             path: "/users/wen/books".into(),
@@ -81,6 +82,7 @@ mod tests {
 
     fn webdav_library() -> LibraryConfig {
         LibraryConfig {
+            library_type: Default::default(),
             id: "lib-webdav".into(),
             name: "WebDAV".into(),
             path: "/old/remote-cache/lib-webdav".into(),
@@ -92,6 +94,7 @@ mod tests {
 
     fn onedrive_library() -> LibraryConfig {
         LibraryConfig {
+            library_type: Default::default(),
             id: "lib-onedrive".into(),
             name: "OneDrive".into(),
             path: "/old/remote-cache/lib-onedrive".into(),

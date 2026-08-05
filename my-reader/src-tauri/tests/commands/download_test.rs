@@ -21,6 +21,7 @@ use crate::common::ipc::{invoke_err, invoke_ok};
 async fn check_book_file_state_should_return_not_found_when_library_id_is_unknown() {
     let app = TestApp::with_config(AppConfig {
         libraries: vec![LibraryConfig {
+            library_type: Default::default(),
             id: "lib-a".into(),
             name: "Lib".into(),
             path: "/path".into(),
@@ -52,6 +53,7 @@ async fn check_book_file_state_should_report_present_when_local_library_has_book
     let seeded = seed_minimal_calibre_library(dir.path()).await;
     let app = TestApp::with_config(AppConfig {
         libraries: vec![LibraryConfig {
+            library_type: Default::default(),
             id: "lib-a".into(),
             name: "Lib".into(),
             path: dir.path().to_string_lossy().to_string(),
@@ -78,6 +80,7 @@ async fn check_book_file_state_should_report_present_when_local_library_has_book
 async fn check_book_file_state_should_report_downloading_when_remote_file_is_active() {
     let app = TestApp::with_config(AppConfig {
         libraries: vec![LibraryConfig {
+            library_type: Default::default(),
             id: "lib-remote".into(),
             name: "Remote".into(),
             path: "/remote/library".into(),
@@ -118,6 +121,7 @@ async fn check_book_file_states_should_report_present_when_local_library_has_boo
     let seeded = seed_minimal_calibre_library(dir.path()).await;
     let app = TestApp::with_config(AppConfig {
         libraries: vec![LibraryConfig {
+            library_type: Default::default(),
             id: "lib-a".into(),
             name: "Lib".into(),
             path: dir.path().to_string_lossy().to_string(),
@@ -147,6 +151,7 @@ async fn check_book_file_states_should_report_present_when_local_library_has_boo
 async fn check_book_file_states_should_report_downloading_when_remote_file_is_active() {
     let app = TestApp::with_config(AppConfig {
         libraries: vec![LibraryConfig {
+            library_type: Default::default(),
             id: "lib-remote".into(),
             name: "Remote".into(),
             path: "/remote/library".into(),
@@ -203,6 +208,7 @@ async fn delete_local_book_file_should_reject_local_library() {
     let seeded = seed_minimal_calibre_library(dir.path()).await;
     let app = TestApp::with_config(AppConfig {
         libraries: vec![LibraryConfig {
+            library_type: Default::default(),
             id: "lib-local".into(),
             name: "Local".into(),
             path: dir.path().to_string_lossy().to_string(),
@@ -239,6 +245,7 @@ async fn download_book_file_should_reject_local_library() {
     let seeded = seed_minimal_calibre_library(dir.path()).await;
     let app = TestApp::with_config(AppConfig {
         libraries: vec![LibraryConfig {
+            library_type: Default::default(),
             id: "lib-local".into(),
             name: "Local".into(),
             path: dir.path().to_string_lossy().to_string(),
@@ -269,6 +276,7 @@ async fn download_book_file_should_reject_local_library() {
 async fn cancel_book_download_should_return_true_when_no_download_is_in_flight() {
     let app = TestApp::with_config(AppConfig {
         libraries: vec![LibraryConfig {
+            library_type: Default::default(),
             id: "lib-a".into(),
             name: "Remote".into(),
             path: "/app-data/libraries/lib-a".into(),
@@ -304,6 +312,7 @@ async fn cancel_then_start_should_signal_receiver_before_download_runs() {
     // and replayed into the next `start()` call.
     let app = TestApp::with_config(AppConfig {
         libraries: vec![LibraryConfig {
+            library_type: Default::default(),
             id: "lib-a".into(),
             name: "Remote".into(),
             path: "/app-data/libraries/lib-a".into(),
@@ -340,6 +349,7 @@ async fn cancel_then_start_should_signal_receiver_before_download_runs() {
 async fn cancel_book_download_should_reject_local_library() {
     let app = TestApp::with_config(AppConfig {
         libraries: vec![LibraryConfig {
+            library_type: Default::default(),
             id: "lib-local".into(),
             name: "Local".into(),
             path: "/books".into(),

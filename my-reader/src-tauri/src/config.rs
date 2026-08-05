@@ -162,6 +162,7 @@ mod tests {
             id: "library".into(),
             name: "Library".into(),
             path: "/library".into(),
+            library_type: my_reader_core::models::LibraryType::MyReader,
             book_count: 12,
             metadata_uri: Some("file:///library/metadata.db".into()),
             added_at: Some(43.0),
@@ -175,6 +176,10 @@ mod tests {
         my_reader_core::api::config::ConfigService::save(&path, core_config).unwrap();
 
         let desktop_config = load_config(&path).unwrap();
+        assert_eq!(
+            desktop_config.libraries[0].library_type,
+            crate::models::LibraryType::MyReader
+        );
         save_config(&path, &desktop_config).unwrap();
 
         let persisted =
@@ -186,6 +191,10 @@ mod tests {
         };
         assert_eq!(*created_at, Some(42.0));
         assert_eq!(persisted.libraries[0].book_count, 12);
+        assert_eq!(
+            persisted.libraries[0].library_type,
+            my_reader_core::models::LibraryType::MyReader
+        );
         assert_eq!(
             persisted.libraries[0].metadata_etag.as_deref(),
             Some("etag")

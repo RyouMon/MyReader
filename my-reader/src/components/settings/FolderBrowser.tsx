@@ -6,6 +6,8 @@ import {
   MoreHorizontal,
   RefreshCw,
 } from "lucide-react"
+import { appendRemotePathSegment } from "@my-reader/tools/remote-path"
+import { useEffect, useState } from "react"
 
 import {
   DropdownMenu,
@@ -32,6 +34,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { Input } from "@/components/ui/input"
 
 export interface FolderBrowserFolder {
   name: string
@@ -54,6 +57,7 @@ export interface FolderBrowserProps {
   onNavigate: (path: string) => void
   onRefresh?: () => void
   onSelect: (path: string) => void
+  createSubdirectory?: boolean
 }
 
 export function FolderBrowser({
@@ -72,8 +76,10 @@ export function FolderBrowser({
   onNavigate,
   onRefresh,
   onSelect,
+  createSubdirectory = false,
 }: FolderBrowserProps) {
   const { t } = useTranslation()
+  const [newDirectoryName, setNewDirectoryName] = useState("")
 
   const pathParts =
     currentPath === "/" ? [] : currentPath.split("/").filter(Boolean)
@@ -84,6 +90,16 @@ export function FolderBrowser({
   const tailCount = ITEMS_TO_DISPLAY - 1
   const tailSegments = shouldCollapse ? pathParts.slice(-tailCount) : pathParts
   const hiddenSegments = shouldCollapse ? pathParts.slice(0, -tailCount) : []
+  const trimmedDirectoryName = newDirectoryName.trim()
+  const selectedPath = trimmedDirectoryName
+    ? appendRemotePathSegment(currentPath, trimmedDirectoryName)
+    : currentPath
+  const newDirectoryNameInvalid =
+    trimmedDirectoryName.length > 0 && selectedPath === null
+
+  useEffect(() => {
+    setNewDirectoryName("")
+  }, [currentPath, open])
 
   function handleBreadcrumbClick(index: number) {
     if (currentPath === "/") return
@@ -101,7 +117,8 @@ export function FolderBrowser({
   }
 
   function handleConfirm() {
-    onSelect(currentPath)
+    if (!selectedPath) return
+    onSelect(selectedPath)
     onOpenChange(false)
   }
 
@@ -333,10 +350,41 @@ export function FolderBrowser({
           </ul>
         )}
 
+        {createSubdirectory && (
+          <div className="mt-3 space-y-1.5 rounded-md border border-border bg-bg-secondary p-3">
+            <label
+              htmlFor="remote-library-folder-name"
+              className="text-sm font-medium text-ink-1"
+            >
+              {t("addLibraryForm.newRemoteFolder")}
+            </label>
+            <Input
+              id="remote-library-folder-name"
+              data-testid="remote-library-folder-name"
+              value={newDirectoryName}
+              onChange={(event) => setNewDirectoryName(event.target.value)}
+              placeholder={t("library.defaultMyreaderName")}
+              className="h-9"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <p
+              className={cn(
+                "text-xs",
+                newDirectoryNameInvalid ? "text-danger" : "text-ink-2",
+              )}
+            >
+              {newDirectoryNameInvalid
+                ? t("addLibraryForm.newRemoteFolderInvalid")
+                : t("addLibraryForm.newRemoteFolderDetail")}
+            </p>
+          </div>
+        )}
+
         <DialogFooter className="mt-4 pt-3 border-t border-border flex-col-reverse sm:flex-row sm:justify-between sm:items-start gap-3">
           <span className="flex-1 min-w-0 text-[13px] text-ink-2 whitespace-normal break-words">
             {t("addLibraryForm.selectedPath", {
-              path: currentPath === "/" ? "/" : currentPath,
+              path: selectedPath ?? currentPath,
             })}
           </span>
           <div className="flex gap-2 shrink-0">
@@ -354,7 +402,7 @@ export function FolderBrowser({
             </button>
             <button
               type="button"
-              disabled={loading}
+              disabled={loading || newDirectoryNameInvalid}
               onClick={handleConfirm}
               className={cn(
                 "inline-flex items-center justify-center h-9 px-4 rounded-md text-sm font-medium",

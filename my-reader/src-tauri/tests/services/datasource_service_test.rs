@@ -299,13 +299,13 @@ async fn test_webdav_connection_should_validate_inputs_and_map_server_status() {
 }
 
 #[tokio::test]
-async fn list_webdav_folders_should_return_entries_and_map_unexpected_status() {
+async fn list_webdav_folders_should_decode_spaced_root_and_map_unexpected_status() {
     let _guard = credentials::use_test_backend(credentials::MemoryBackend::default());
     let state_dir = tempfile::tempdir().unwrap();
     let config_path = state_dir.path().join("config.json");
     let ok_addr = start_warp_server(|_method, depth, _body| {
         let body = if depth == "1" {
-            PROPFIND_LISTING_XML.to_string()
+            PROPFIND_SPACED_ROOT_LISTING_XML.to_string()
         } else {
             String::new()
         };
@@ -321,7 +321,7 @@ async fn list_webdav_folders_should_return_entries_and_map_unexpected_status() {
         &format!("http://{ok_addr}"),
         "user",
         "pass",
-        Some("/books"),
+        Some("/My Books"),
         &config_path,
         &mut config,
     )
@@ -429,6 +429,32 @@ const PROPFIND_LISTING_XML: &str = r#"<?xml version="1.0"?>
   </D:response>
   <D:response>
     <D:href>/books/Authors/</D:href>
+    <D:propstat>
+      <D:prop>
+        <D:resourcetype><D:collection/></D:resourcetype>
+        <D:displayname>Authors</D:displayname>
+        <D:getlastmodified>Sun, 01 May 2022 06:39:47 GMT</D:getlastmodified>
+      </D:prop>
+      <D:status>HTTP/1.1 200 OK</D:status>
+    </D:propstat>
+  </D:response>
+</D:multistatus>"#;
+
+const PROPFIND_SPACED_ROOT_LISTING_XML: &str = r#"<?xml version="1.0"?>
+<D:multistatus xmlns:D="DAV:">
+  <D:response>
+    <D:href>/My%20Books/</D:href>
+    <D:propstat>
+      <D:prop>
+        <D:displayname>My Books</D:displayname>
+        <D:getlastmodified>Sun, 01 May 2022 06:39:47 GMT</D:getlastmodified>
+        <D:resourcetype><D:collection/></D:resourcetype>
+      </D:prop>
+      <D:status>HTTP/1.1 200 OK</D:status>
+    </D:propstat>
+  </D:response>
+  <D:response>
+    <D:href>/My%20Books/Authors/</D:href>
     <D:propstat>
       <D:prop>
         <D:resourcetype><D:collection/></D:resourcetype>

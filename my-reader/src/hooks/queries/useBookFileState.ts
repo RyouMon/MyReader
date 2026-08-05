@@ -7,8 +7,10 @@ const BOOK_FILE_STATE_GC_TIME = 30 * 60 * 1000
 
 export const bookFileStateKeys = {
   all: ["bookFileState"] as const,
+  library: (libraryId: string) =>
+    [...bookFileStateKeys.all, libraryId] as const,
   detail: (libraryId: string, bookId: number, format: string) =>
-    [...bookFileStateKeys.all, libraryId, bookId, format] as const,
+    [...bookFileStateKeys.library(libraryId), bookId, format] as const,
 }
 
 export type BookFileState = {
@@ -96,9 +98,8 @@ export function useBookFileStates(
 
   return useQuery<BookFileStateDto[], Error>({
     queryKey: [
-      ...bookFileStateKeys.all,
+      ...bookFileStateKeys.library(libraryId ?? ""),
       "batch",
-      libraryId ?? "",
       ...missingSignature,
     ],
     queryFn: async () => {

@@ -1,6 +1,7 @@
 pub mod annotation_service;
 pub mod book_reading_format_service;
 pub mod book_service;
+pub mod book_transfer_scheduler;
 pub mod bookmark_service;
 pub mod datasource_service;
 pub mod download_service;

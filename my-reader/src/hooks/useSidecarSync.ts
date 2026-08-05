@@ -1,6 +1,7 @@
 import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { listen, type UnlistenFn } from "@tauri-apps/api/event"
 import { useEffect } from "react"
+import { bookFileStateKeys } from "@/hooks/queries/useBookFileState"
 import { invalidateFavoriteBookQueries } from "@/hooks/queries/useFavoriteBooksQuery"
 import { readingProgressKeys } from "@/hooks/queries/useReadingProgressQuery"
 import { api } from "@/lib/tauri-api"
@@ -24,6 +25,9 @@ export async function applySidecarSyncCompleted(
       queryKey: readingProgressKeys.list(event.libraryId),
     }),
     invalidateFavoriteBookQueries(queryClient, event.libraryId),
+    queryClient.invalidateQueries({
+      queryKey: bookFileStateKeys.library(event.libraryId),
+    }),
   ])
   window.dispatchEvent(
     new CustomEvent(SIDECAR_SYNC_COMPLETED_EVENT, { detail: event }),

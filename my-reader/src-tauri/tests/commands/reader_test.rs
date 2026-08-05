@@ -70,6 +70,7 @@ async fn prepare_book_source_should_return_not_found_when_no_active_library() {
 async fn prepare_book_source_should_return_not_found_when_library_id_is_unknown() {
     let app = TestApp::with_config(AppConfig {
         libraries: vec![LibraryConfig {
+            library_type: Default::default(),
             id: "lib-a".into(),
             name: "Lib".into(),
             path: "/path".into(),

@@ -28,6 +28,7 @@ use tokio::sync::RwLock;
 use tracing::{error, info};
 
 use commands::AppState;
+use services::book_transfer_scheduler::BookTransferScheduler;
 use services::download_service::DownloadService;
 use services::sidecar_sync_scheduler::{SidecarSyncReason, SidecarSyncScheduler};
 use streamer::StreamerState;
@@ -42,13 +43,18 @@ pub fn run() -> Result<(), tauri::Error> {
     let specta_builder = tauri_specta::Builder::<tauri::Wry>::new()
         .dangerously_cast_bigints_to_number()
         .commands(tauri_specta::collect_commands![
-            commands::library::list_libraries,
+            commands::library::list_libraries::<tauri::Wry>,
             commands::source::list_data_sources,
             commands::source::test_webdav_connection,
             commands::library::add_library::<tauri::Wry>,
+            commands::library::create_myreader_library::<tauri::Wry>,
+            commands::library::create_default_myreader_library::<tauri::Wry>,
+            commands::library::open_myreader_library::<tauri::Wry>,
+            commands::library::create_remote_myreader_library::<tauri::Wry>,
+            commands::library::open_remote_myreader_library::<tauri::Wry>,
             commands::library::add_webdav_library::<tauri::Wry>,
             commands::library::add_onedrive_library::<tauri::Wry>,
-            commands::library::refresh_library,
+            commands::library::refresh_library::<tauri::Wry>,
             commands::library::refresh_webdav_library::<tauri::Wry>,
             commands::library::refresh_onedrive_library::<tauri::Wry>,
             commands::source::add_local_data_source::<tauri::Wry>,
@@ -65,6 +71,9 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::book::get_books_page::<tauri::Wry>,
             commands::book::get_book_detail::<tauri::Wry>,
             commands::book::get_series_books::<tauri::Wry>,
+            commands::book::import_book::<tauri::Wry>,
+            commands::book::update_book_metadata::<tauri::Wry>,
+            commands::book::delete_book::<tauri::Wry>,
             commands::book_reading_format::list_book_reading_formats::<tauri::Wry>,
             commands::book_reading_format::set_book_reading_format::<tauri::Wry>,
             commands::favorite::list_favorite_book_ids::<tauri::Wry>,
@@ -157,8 +166,12 @@ pub fn run() -> Result<(), tauri::Error> {
             }
             let scheduler =
                 SidecarSyncScheduler::start(app.handle().clone(), app.path().app_data_dir()?);
+            app.manage(scheduler.clone());
             scheduler.recover_pending_work();
-            app.manage(scheduler);
+            let book_transfers =
+                BookTransferScheduler::start(app.handle().clone(), app.path().app_data_dir()?);
+            app.manage(book_transfers.clone());
+            book_transfers.request_all();
             info!("Success to initialize application.");
             Ok(())
         })
@@ -166,6 +179,9 @@ pub fn run() -> Result<(), tauri::Error> {
             if matches!(event, tauri::WindowEvent::Focused(true)) {
                 if let Some(scheduler) = window.app_handle().try_state::<SidecarSyncScheduler>() {
                     scheduler.schedule_active_pull(SidecarSyncReason::AppFocused);
+                }
+                if let Some(scheduler) = window.app_handle().try_state::<BookTransferScheduler>() {
+                    scheduler.request_all();
                 }
             }
         })

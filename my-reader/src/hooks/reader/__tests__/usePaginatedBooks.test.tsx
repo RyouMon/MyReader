@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import type { ReactNode } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { SIDECAR_SYNC_COMPLETED_EVENT } from "@/hooks/useSidecarSync"
 import { api } from "@/lib/tauri-api"
 import { usePaginatedBooks } from "../usePaginatedBooks"
 
@@ -117,6 +118,33 @@ describe("usePaginatedBooks", () => {
     await waitFor(() => expect(second.result.current.total).toBe(250))
     await act(async () => {
       second.result.current.ensureRange(120, 150)
+    })
+
+    await waitFor(() => {
+      expect(vi.mocked(api.getBooksPage)).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  it("should refresh a managed catalog when its full sidecar sync completes", async () => {
+    const wrapper = createWrapper(makeClient())
+    const hook = renderHook(
+      () => usePaginatedBooks("library-1", "recent", "", true),
+      { wrapper },
+    )
+
+    await waitFor(() => expect(hook.result.current.total).toBe(250))
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent(SIDECAR_SYNC_COMPLETED_EVENT, {
+          detail: {
+            libraryId: "library-1",
+            mode: "full",
+            pushed: 0,
+            pulled: 1,
+          },
+        }),
+      )
     })
 
     await waitFor(() => {

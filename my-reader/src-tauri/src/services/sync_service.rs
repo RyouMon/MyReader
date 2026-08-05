@@ -241,6 +241,7 @@ mod tests {
 
     fn local_library(id: &str, original_path: &str) -> LibraryConfig {
         LibraryConfig {
+            library_type: Default::default(),
             id: id.to_owned(),
             name: "Local".to_owned(),
             path: original_path.to_owned(),

@@ -3,12 +3,40 @@ use specta::Type;
 
 use crate::reader_ui_prefs::ReaderUiPreferences;
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "lowercase")]
+pub enum LibraryType {
+    #[default]
+    Calibre,
+    MyReader,
+}
+
+impl From<LibraryType> for my_reader_core::models::LibraryType {
+    fn from(value: LibraryType) -> Self {
+        match value {
+            LibraryType::Calibre => Self::Calibre,
+            LibraryType::MyReader => Self::MyReader,
+        }
+    }
+}
+
+impl From<my_reader_core::models::LibraryType> for LibraryType {
+    fn from(value: my_reader_core::models::LibraryType) -> Self {
+        match value {
+            my_reader_core::models::LibraryType::Calibre => Self::Calibre,
+            my_reader_core::models::LibraryType::MyReader => Self::MyReader,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LibraryConfig {
     pub id: String,
     pub name: String,
     pub path: String,
+    #[serde(default)]
+    pub library_type: LibraryType,
     #[serde(default)]
     pub source_type: Option<String>,
     #[serde(default)]
@@ -25,6 +53,10 @@ impl LibraryConfig {
     pub fn is_remote(&self) -> bool {
         my_reader_core::models::is_remote_library_source_type(self.source_type.as_deref())
     }
+
+    pub fn is_myreader(&self) -> bool {
+        self.library_type == LibraryType::MyReader
+    }
 }
 
 impl From<&LibraryConfig> for my_reader_core::models::Library {
@@ -33,6 +65,7 @@ impl From<&LibraryConfig> for my_reader_core::models::Library {
             id: value.id.clone(),
             name: value.name.clone(),
             path: value.path.clone(),
+            library_type: value.library_type.into(),
             book_count: 0,
             metadata_uri: None,
             added_at: None,
@@ -51,6 +84,7 @@ impl From<&my_reader_core::models::Library> for LibraryConfig {
             id: value.id.clone(),
             name: value.name.clone(),
             path: value.path.clone(),
+            library_type: value.library_type.into(),
             source_type: value.source_type.clone(),
             data_source_id: value.data_source_id.clone(),
             source_path: value.source_path.clone(),
@@ -392,6 +426,13 @@ pub struct BookEntry {
     pub uuid: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportBookOutcome {
+    pub queued: bool,
+    pub book: Option<BookEntry>,
+}
+
 /// Extended book detail with format sizes and identifiers pre-loaded.
 #[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -483,6 +524,7 @@ pub struct LibraryInfo {
     pub id: String,
     pub name: String,
     pub path: String,
+    pub library_type: LibraryType,
     pub book_count: usize,
     pub source_type: Option<String>,
     pub data_source_id: Option<String>,

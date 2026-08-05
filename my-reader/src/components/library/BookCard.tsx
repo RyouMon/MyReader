@@ -17,6 +17,7 @@ interface BookCardProps {
   onRead?: (book: CalibreBook) => void
   onOpenReader?: (book: CalibreBook) => void
   onMore?: (book: CalibreBook) => void
+  onDeleteBook?: (book: CalibreBook) => void
   progress?: BookProgressSnapshot
   fileActionsEnabled?: boolean
   selectedFormat?: string
@@ -31,6 +32,7 @@ const BookCard = memo(function BookCard({
   book,
   libraryId,
   onRead,
+  onDeleteBook,
   progress,
   fileActionsEnabled = true,
   selectedFormat,
@@ -60,6 +62,7 @@ const BookCard = memo(function BookCard({
       libraryId={libraryId}
       fileActionsEnabled={fileActionsEnabled}
       selectedFormat={selectedFormat}
+      onDeleteBook={onDeleteBook ? () => onDeleteBook(book) : undefined}
     >
       {/* biome-ignore lint/a11y/useSemanticElements: The card is a composite clickable target used as a Radix context menu trigger. */}
       <div

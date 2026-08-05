@@ -12,6 +12,7 @@ use crate::common::ipc::{invoke_err, invoke_ok};
 
 fn library_fixture(id: &str) -> LibraryConfig {
     LibraryConfig {
+        library_type: Default::default(),
         id: id.into(),
         name: "Library".into(),
         path: "/path".into(),

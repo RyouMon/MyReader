@@ -44,22 +44,8 @@ pub async fn prepare_book_source<R: tauri::Runtime>(
     let app_data_dir = common::app_data_dir(&app)?;
     let config = common::config_snapshot(&state);
     let lib = LibraryService::resolve_library(library_id.as_deref(), &config)?;
-    let lib_id = lib.id.clone();
-    let lib_path = crate::utils::paths::library_root_path(&lib, &app_data_dir)
-        .to_string_lossy()
-        .to_string();
-    let sidecar_root = crate::utils::paths::library_sidecar_path(&lib, &app_data_dir);
-    let is_remote = lib.is_remote();
-
-    let result = ReaderService::prepare_book_source(
-        &lib_id,
-        &lib_path,
-        Some(&sidecar_root),
-        is_remote,
-        book_id,
-        &format,
-    )
-    .await;
+    let result =
+        ReaderService::prepare_library_book_source(&lib, &app_data_dir, book_id, &format).await;
 
     match &result {
         Ok(src) => info!(

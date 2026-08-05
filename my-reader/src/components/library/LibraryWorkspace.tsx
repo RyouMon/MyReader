@@ -1,12 +1,22 @@
 import type { CalibreBook } from "@my-reader/tools/types/book"
 import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
+import { open } from "@tauri-apps/plugin-dialog"
 import { AlertCircle, BookOpen, Library } from "lucide-react"
-import { useCallback, useMemo } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import BookGrid, { LibrarySkeletonGrid } from "@/components/library/BookGrid"
 import Toolbar from "@/components/library/Toolbar"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Empty,
   EmptyContent,
@@ -27,6 +37,7 @@ import {
 import {
   libraryKeys,
   useLibrariesQuery,
+  useLibraryMutations,
 } from "@/hooks/queries/useLibrariesQuery"
 import {
   readingProgressKeys,
@@ -48,6 +59,7 @@ interface LibraryWorkspaceProps {
 }
 
 const EMPTY_SELECTED_FORMATS: Record<string, string> = {}
+type DeletableBook = Pick<CalibreBook, "id" | "title">
 
 export default function LibraryWorkspace({
   activeBookId,
@@ -68,9 +80,14 @@ export default function LibraryWorkspace({
   const { data: progressByBookId = {} } =
     useBookReadingProgress(activeLibraryId)
   const queryClient = useQueryClient()
+  const { createDefaultMyreaderLibrary } = useLibraryMutations()
   const navigate = useNavigate()
   const openReader = useOpenReader()
   const windowSizeClass = useWindowSizeClass()
+  const [importingBook, setImportingBook] = useState(false)
+  const [bookPendingDeletion, setBookPendingDeletion] =
+    useState<DeletableBook | null>(null)
+  const [deletingBook, setDeletingBook] = useState(false)
 
   const viewMode = useAppUiStore((s) => s.libraryViewMode)
   const setViewMode = useAppUiStore((s) => s.setLibraryViewMode)
@@ -92,7 +109,12 @@ export default function LibraryWorkspace({
   const booksSortBy = activeView === "recent" ? "lastRead" : sortBy
 
   const { books, total, initialLoading, error, ensureRange, refresh } =
-    usePaginatedBooks(activeLibraryId, booksSortBy, debouncedSearch)
+    usePaginatedBooks(
+      activeLibraryId,
+      booksSortBy,
+      debouncedSearch,
+      activeLibrary?.libraryType === "myreader",
+    )
   const favoriteBooksQuery = useFavoriteBooks(
     activeLibraryId,
     sortBy,
@@ -140,6 +162,15 @@ export default function LibraryWorkspace({
     fileActionsEnabled && !loading && !displayedError && displayedTotal > 0,
   )
 
+  const handleCatalogChanged = useCallback(() => {
+    resetBrokenCovers()
+    void queryClient.invalidateQueries({ queryKey: libraryKeys.all })
+    if (activeLibraryId) {
+      void invalidateFavoriteBookQueries(queryClient, activeLibraryId)
+    }
+    refresh()
+  }, [activeLibraryId, queryClient, refresh])
+
   const handleRefresh = async () => {
     if (!activeLibraryId) return
     try {
@@ -154,11 +185,58 @@ export default function LibraryWorkspace({
         }),
         invalidateFavoriteBookQueries(queryClient, activeLibraryId),
       ])
-      refresh()
+      if (activeLibrary?.libraryType !== "myreader") refresh()
     } catch (e) {
       console.error(
         `Failed to sync db. library id: "${activeLibraryId}", error: ${formatApiError(e)}`,
       )
+    }
+  }
+
+  const handleImportBook = async () => {
+    if (importingBook) return
+    try {
+      const selected = await open({
+        directory: false,
+        multiple: false,
+        title: t("library.importBook"),
+        filters: [
+          {
+            name: t("library.importBook"),
+            extensions: ["epub", "pdf", "cbz"],
+          },
+        ],
+      })
+      if (!selected) return
+
+      setImportingBook(true)
+      let libraryId = activeLibraryId
+      if (!libraryId) {
+        const created = await createDefaultMyreaderLibrary(
+          t("library.defaultMyreaderName"),
+        )
+        libraryId = created.id
+      }
+      const outcome = await api.importBook(
+        libraryId,
+        selected as string,
+        null,
+        [t("bookDetail.unknownAuthor")],
+      )
+      if (outcome.queued) {
+        toast.info(t("library.importQueued"))
+        return
+      }
+      resetBrokenCovers()
+      await queryClient.invalidateQueries({ queryKey: libraryKeys.all })
+      await invalidateFavoriteBookQueries(queryClient, libraryId)
+      refresh()
+    } catch (error) {
+      toast.error(t("library.importFailed"), {
+        description: formatApiError(error),
+      })
+    } finally {
+      setImportingBook(false)
     }
   }
 
@@ -187,6 +265,34 @@ export default function LibraryWorkspace({
   const handleBackToList = useCallback(() => {
     navigate({ to: "/" })
   }, [navigate])
+
+  const handleDeleteBook = useCallback(async () => {
+    if (!bookPendingDeletion || deletingBook) return
+
+    setDeletingBook(true)
+    try {
+      await api.deleteBook(activeLibraryId, bookPendingDeletion.id)
+      setBookPendingDeletion(null)
+      if (String(bookPendingDeletion.id) === activeBookId) {
+        handleBackToList()
+      }
+      handleCatalogChanged()
+    } catch (error) {
+      toast.error(t("bookDetail.deleteBookFailed"), {
+        description: formatApiError(error),
+      })
+    } finally {
+      setDeletingBook(false)
+    }
+  }, [
+    activeBookId,
+    activeLibraryId,
+    bookPendingDeletion,
+    deletingBook,
+    handleBackToList,
+    handleCatalogChanged,
+    t,
+  ])
 
   const hasNoLibrary = libraries.length === 0
 
@@ -230,6 +336,9 @@ export default function LibraryWorkspace({
             sortBy={sortBy}
             onSortChange={setSortBy}
             onRefresh={handleRefresh}
+            canImportBook={activeLibrary?.libraryType === "myreader"}
+            importingBook={importingBook}
+            onImportBook={() => void handleImportBook()}
           />
 
           {loading && !displayedError && (
@@ -264,9 +373,22 @@ export default function LibraryWorkspace({
                   {t("library.empty.noLibraryDesc")}
                 </EmptyDescription>
               </EmptyHeader>
-              <EmptyContent>
-                <Button size="sm" onClick={() => navigate({ to: "/settings" })}>
-                  {t("library.empty.goToSettings")}
+              <EmptyContent className="flex-row">
+                <Button
+                  size="sm"
+                  disabled={importingBook}
+                  onClick={() => void handleImportBook()}
+                >
+                  {importingBook
+                    ? t("library.importingBook")
+                    : t("library.empty.importBook")}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate({ to: "/settings" })}
+                >
+                  {t("library.empty.addLibrary")}
                 </Button>
               </EmptyContent>
             </Empty>
@@ -283,6 +405,11 @@ export default function LibraryWorkspace({
                   libraryId={activeLibraryId}
                   onRead={handleOpenDetail}
                   onOpenReader={handleOpenReader}
+                  onDeleteBook={
+                    activeLibrary?.libraryType === "myreader"
+                      ? setBookPendingDeletion
+                      : undefined
+                  }
                   ensureRange={displayedEnsureRange}
                   header={gridHeader}
                   viewMode={viewMode}
@@ -310,6 +437,21 @@ export default function LibraryWorkspace({
                       : t("library.empty.noBooksInLibrary")}
                   </EmptyDescription>
                 </EmptyHeader>
+                {activeLibrary?.libraryType === "myreader" &&
+                  activeView === "all" &&
+                  !searchQuery && (
+                    <EmptyContent>
+                      <Button
+                        size="sm"
+                        disabled={importingBook}
+                        onClick={() => void handleImportBook()}
+                      >
+                        {importingBook
+                          ? t("library.importingBook")
+                          : t("library.empty.importBook")}
+                      </Button>
+                    </EmptyContent>
+                  )}
               </Empty>
             )}
         </div>
@@ -335,12 +477,54 @@ export default function LibraryWorkspace({
                 setDetailFullScreen(!detailFullScreen)
               }
               showSidebarToggle={!showListPane}
+              onLibraryChanged={handleCatalogChanged}
+              onDeleteBook={setBookPendingDeletion}
             />
           </aside>
         ) : null}
       </div>
 
       <LibraryStatusBar activeLibrary={activeLibrary} />
+
+      <Dialog
+        open={bookPendingDeletion != null}
+        onOpenChange={(open) => {
+          if (!open && !deletingBook) setBookPendingDeletion(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {t("bookDetail.deleteBookTitle", {
+                title: bookPendingDeletion?.title ?? "",
+              })}
+            </DialogTitle>
+            <DialogDescription>
+              {t("bookDetail.deleteBookDescription")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deletingBook}
+              onClick={() => setBookPendingDeletion(null)}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deletingBook}
+              onClick={() => void handleDeleteBook()}
+            >
+              {deletingBook
+                ? t("bookDetail.deletingBook")
+                : t("bookDetail.confirmDeleteBook")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   )
 }

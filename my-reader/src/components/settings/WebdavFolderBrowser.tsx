@@ -10,6 +10,7 @@ interface WebdavFolderBrowserProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSelect: (path: string) => void
+  createSubdirectory?: boolean
 }
 
 export function WebdavFolderBrowser({
@@ -17,6 +18,7 @@ export function WebdavFolderBrowser({
   open,
   onOpenChange,
   onSelect,
+  createSubdirectory,
 }: WebdavFolderBrowserProps) {
   const { t } = useTranslation()
   const [currentPath, setCurrentPath] = useState("/")
@@ -69,6 +71,7 @@ export function WebdavFolderBrowser({
       onNavigate={navigateTo}
       onRefresh={() => fetchFolders(currentPath)}
       onSelect={onSelect}
+      createSubdirectory={createSubdirectory}
     />
   )
 }

@@ -31,23 +31,23 @@ import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "@/constants/local-library-data-sou
 import { cn } from "@/lib/utils"
 import { useDataSourcesQuery } from "@/hooks/queries/useDataSourcesQuery"
 
-interface AddLibraryPanelProps {
-  onAddLibrary: (path: string) => Promise<unknown>
-  onAddWebdavLibrary: (
-    dataSourceId: string,
-    remotePath: string,
-  ) => Promise<unknown>
-  onAddOnedriveLibrary: (
-    dataSourceId: string,
-    remotePath: string,
-  ) => Promise<unknown>
+export type AddLibraryOperation =
+  | "createMyreader"
+  | "openMyreader"
+  | "connectCalibre"
+
+export interface AddLibrarySubmission {
+  operation: AddLibraryOperation
+  sourceType: DataSourceType
+  dataSourceId: string
+  path: string
 }
 
-export function AddLibraryPanel({
-  onAddLibrary,
-  onAddWebdavLibrary,
-  onAddOnedriveLibrary,
-}: AddLibraryPanelProps) {
+interface AddLibraryPanelProps {
+  onSubmitLibrary: (request: AddLibrarySubmission) => Promise<unknown>
+}
+
+export function AddLibraryPanel({ onSubmitLibrary }: AddLibraryPanelProps) {
   const { t } = useTranslation()
   const { data: dataSources = [], isLoading: loadingDataSources } =
     useDataSourcesQuery()
@@ -55,6 +55,8 @@ export function AddLibraryPanel({
   const [addPanelOpen, setAddPanelOpen] = useState(false)
   const [adding, setAdding] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [operation, setOperation] =
+    useState<AddLibraryOperation>("createMyreader")
   const [selectedType, setSelectedType] = useState<DataSourceType>("local")
   const [webdavBrowserOpen, setWebdavBrowserOpen] = useState(false)
   const [onedriveBrowserOpen, setOnedriveBrowserOpen] = useState(false)
@@ -96,13 +98,12 @@ export function AddLibraryPanel({
       setAdding(true)
       setSubmitError(null)
       try {
-        if (selectedType === "webdav") {
-          await onAddWebdavLibrary(value.dataSourceId, value.path.trim())
-        } else if (selectedType === "onedrive") {
-          await onAddOnedriveLibrary(value.dataSourceId, value.path.trim())
-        } else {
-          await onAddLibrary(value.path.trim())
-        }
+        await onSubmitLibrary({
+          operation,
+          sourceType: selectedType,
+          dataSourceId: value.dataSourceId,
+          path: value.path.trim(),
+        })
         handleClosePanel()
       } catch (error) {
         setSubmitError(String(error))
@@ -116,6 +117,7 @@ export function AddLibraryPanel({
   function handleOpenPanel() {
     setAddPanelOpen(true)
     setSubmitError(null)
+    setOperation("createMyreader")
     setSelectedType("local")
     addLibraryForm.setFieldValue("dataSourceId", LOCAL_LIBRARY_DATA_SOURCE_ID)
     setTimeout(() => pathInputRef.current?.focus(), 50)
@@ -125,6 +127,7 @@ export function AddLibraryPanel({
     setAddPanelOpen(false)
     setSubmitError(null)
     addLibraryForm.reset()
+    setOperation("createMyreader")
     setSelectedType("local")
   }
 
@@ -150,7 +153,7 @@ export function AddLibraryPanel({
       const selected = await open({
         directory: true,
         multiple: false,
-        title: t("addLibraryForm.selectDirTitle"),
+        title: t(`addLibraryForm.operations.${operation}.pickerTitle`),
       })
       if (!selected) return
       const path = selected as string
@@ -207,6 +210,41 @@ export function AddLibraryPanel({
             }}
           >
             <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="library-operation">
+                  {t("addLibraryForm.operationLabel")}
+                </FieldLabel>
+                <Select
+                  value={operation}
+                  onValueChange={(value) => {
+                    setOperation(value as AddLibraryOperation)
+                    addLibraryForm.setFieldValue("path", "")
+                    setSubmitError(null)
+                  }}
+                  disabled={adding}
+                >
+                  <SelectTrigger id="library-operation" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="createMyreader">
+                        {t("addLibraryForm.operations.createMyreader.label")}
+                      </SelectItem>
+                      <SelectItem value="openMyreader">
+                        {t("addLibraryForm.operations.openMyreader.label")}
+                      </SelectItem>
+                      <SelectItem value="connectCalibre">
+                        {t("addLibraryForm.operations.connectCalibre.label")}
+                      </SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {t(`addLibraryForm.operations.${operation}.description`)}
+                </p>
+              </Field>
+
               {/* Type selector */}
               <Field>
                 <FieldLabel>{t("addLibraryForm.typeLabel")}</FieldLabel>
@@ -240,7 +278,9 @@ export function AddLibraryPanel({
                               pathField.handleChange(event.target.value)
                               setSubmitError(null)
                             }}
-                            placeholder={t("addLibraryForm.pathPlaceholder")}
+                            placeholder={t(
+                              `addLibraryForm.operations.${operation}.pathPlaceholder`,
+                            )}
                             className="h-9 flex-1 font-mono text-xs"
                             spellCheck={false}
                             autoComplete="off"
@@ -344,7 +384,9 @@ export function AddLibraryPanel({
                                 pathField.handleChange(event.target.value)
                                 setSubmitError(null)
                               }}
-                              placeholder="Browse or enter a folder path on WebDAV"
+                              placeholder={t(
+                                `addLibraryForm.operations.${operation}.remotePathPlaceholder`,
+                              )}
                               className="h-9 flex-1 font-mono text-xs"
                               spellCheck={false}
                               autoComplete="off"
@@ -377,6 +419,7 @@ export function AddLibraryPanel({
                       open={webdavBrowserOpen}
                       onOpenChange={setWebdavBrowserOpen}
                       onSelect={handleWebdavFolderSelect}
+                      createSubdirectory={operation === "createMyreader"}
                     />
                   )}
                 </>
@@ -458,7 +501,9 @@ export function AddLibraryPanel({
                                 pathField.handleChange(event.target.value)
                                 setSubmitError(null)
                               }}
-                              placeholder="Browse or enter a folder path on OneDrive"
+                              placeholder={t(
+                                `addLibraryForm.operations.${operation}.remotePathPlaceholder`,
+                              )}
                               className="h-9 flex-1 font-mono text-xs"
                               spellCheck={false}
                               autoComplete="off"
@@ -491,6 +536,7 @@ export function AddLibraryPanel({
                       open={onedriveBrowserOpen}
                       onOpenChange={setOnedriveBrowserOpen}
                       onSelect={handleOnedriveFolderSelect}
+                      createSubdirectory={operation === "createMyreader"}
                     />
                   )}
                 </>
@@ -524,7 +570,7 @@ export function AddLibraryPanel({
                   )}
                   {adding
                     ? t("addLibraryForm.adding")
-                    : t("addLibraryForm.confirm")}
+                    : t(`addLibraryForm.operations.${operation}.confirm`)}
                 </Button>
               </div>
             </FieldGroup>

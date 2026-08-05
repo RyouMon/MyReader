@@ -1,27 +1,37 @@
 use std::path::Path;
 
 use tauri::AppHandle;
+use uuid::Uuid;
 
 use crate::asset_scope;
 use crate::cache;
 use crate::error::AppError;
 use crate::models::{AppConfig, LibraryConfig, LibraryInfo};
-use crate::utils::paths::{library_container_dir, library_root_path};
+use crate::utils::paths::{library_container_dir, library_root_path, library_sidecar_path};
 
 pub struct LibraryService;
 
 impl LibraryService {
-    pub async fn list_libraries(config: &AppConfig) -> Result<Vec<LibraryInfo>, AppError> {
+    pub async fn list_libraries(
+        app_data_dir: &Path,
+        config: &AppConfig,
+    ) -> Result<Vec<LibraryInfo>, AppError> {
         let mut infos = Vec::new();
         for lib in &config.libraries {
-            let book_count =
-                my_reader_core::api::catalog::CatalogService::count_books(Path::new(&lib.path))
-                    .await
-                    .unwrap_or(0);
+            let content_root = library_root_path(lib, app_data_dir);
+            let sidecar_root = library_sidecar_path(lib, app_data_dir);
+            let book_count = my_reader_core::api::catalog::CatalogService::count_library_books(
+                lib.library_type.into(),
+                &sidecar_root,
+                &content_root,
+            )
+            .await
+            .unwrap_or(0);
             infos.push(LibraryInfo {
                 id: lib.id.clone(),
                 name: lib.name.clone(),
                 path: lib.path.clone(),
+                library_type: lib.library_type,
                 book_count,
                 source_type: lib.source_type.clone(),
                 data_source_id: lib.data_source_id.clone(),
@@ -43,6 +53,7 @@ impl LibraryService {
             my_reader_core::models::LocalLibraryRequest {
                 library_root_path: path.to_owned(),
                 path: path.to_owned(),
+                source_path: None,
                 sidecar_container_parent_path: Some(
                     app_data_dir
                         .join("libraries")
@@ -58,6 +69,171 @@ impl LibraryService {
         .await?;
         config.apply_core_config(&core_config);
         Ok(library_info_from_core(library))
+    }
+
+    pub async fn create_myreader_library(
+        app_data_dir: &Path,
+        path: &str,
+        name: Option<&str>,
+        recorded_at_ms: i64,
+        config: &mut AppConfig,
+    ) -> Result<LibraryInfo, AppError> {
+        ensure_config(app_data_dir, config)?;
+        let (core_config, library) =
+            my_reader_core::api::library::LibraryService::create_local_myreader(
+                &crate::config::config_path(app_data_dir),
+                my_reader_core::models::LocalLibraryRequest {
+                    library_root_path: path.to_owned(),
+                    path: path.to_owned(),
+                    source_path: None,
+                    sidecar_container_parent_path: Some(
+                        app_data_dir
+                            .join("libraries")
+                            .to_string_lossy()
+                            .into_owned(),
+                    ),
+                    name: name.map(ToOwned::to_owned),
+                    metadata_uri: None,
+                    added_at: None,
+                    security_scoped_bookmark: None,
+                },
+                recorded_at_ms,
+            )
+            .await?;
+        config.apply_core_config(&core_config);
+        Ok(library_info_from_core(library))
+    }
+
+    pub async fn create_myreader_library_with_scope_sync<R: tauri::Runtime>(
+        app: &AppHandle<R>,
+        app_data_dir: &Path,
+        path: &str,
+        name: Option<&str>,
+        recorded_at_ms: i64,
+        config: &mut AppConfig,
+    ) -> Result<LibraryInfo, AppError> {
+        let info =
+            Self::create_myreader_library(app_data_dir, path, name, recorded_at_ms, config).await?;
+        if let Err(error) = asset_scope::sync_for_reader_libraries(app, &config.libraries) {
+            tracing::error!(
+                "Failed to extend asset protocol scope after creating MyReader library. error: {error}"
+            );
+        }
+        Ok(info)
+    }
+
+    pub async fn create_default_myreader_library_with_scope_sync<R: tauri::Runtime>(
+        app: &AppHandle<R>,
+        app_data_dir: &Path,
+        name: &str,
+        recorded_at_ms: i64,
+        config: &mut AppConfig,
+    ) -> Result<LibraryInfo, AppError> {
+        let managed_libraries_root = app_data_dir.join("managed-libraries");
+        std::fs::create_dir_all(&managed_libraries_root)?;
+        let library_root = managed_libraries_root.join(Uuid::new_v4().to_string());
+        Self::create_myreader_library_with_scope_sync(
+            app,
+            app_data_dir,
+            &library_root.to_string_lossy(),
+            Some(name),
+            recorded_at_ms,
+            config,
+        )
+        .await
+    }
+
+    pub async fn open_myreader_library_with_scope_sync<R: tauri::Runtime>(
+        app: &AppHandle<R>,
+        app_data_dir: &Path,
+        path: &str,
+        name: Option<&str>,
+        recorded_at_ms: i64,
+        config: &mut AppConfig,
+    ) -> Result<LibraryInfo, AppError> {
+        ensure_config(app_data_dir, config)?;
+        let (core_config, library) =
+            my_reader_core::api::library::LibraryService::open_local_myreader(
+                &crate::config::config_path(app_data_dir),
+                my_reader_core::models::LocalLibraryRequest {
+                    library_root_path: path.to_owned(),
+                    path: path.to_owned(),
+                    source_path: None,
+                    sidecar_container_parent_path: Some(
+                        app_data_dir
+                            .join("libraries")
+                            .to_string_lossy()
+                            .into_owned(),
+                    ),
+                    name: name.map(ToOwned::to_owned),
+                    metadata_uri: None,
+                    added_at: None,
+                    security_scoped_bookmark: None,
+                },
+                recorded_at_ms,
+            )
+            .await?;
+        config.apply_core_config(&core_config);
+        if let Err(error) = asset_scope::sync_for_reader_libraries(app, &config.libraries) {
+            tracing::error!(
+                "Failed to extend asset protocol scope after opening MyReader library. error: {error}"
+            );
+        }
+        Ok(library_info_from_core(library))
+    }
+
+    pub async fn create_remote_myreader_library_with_scope_sync<R: tauri::Runtime>(
+        app: &AppHandle<R>,
+        app_data_dir: &Path,
+        data_source_id: &str,
+        remote_path: &str,
+        name: Option<&str>,
+        recorded_at_ms: i64,
+        config: &mut AppConfig,
+    ) -> Result<LibraryInfo, AppError> {
+        let info = remote_myreader_library(
+            app_data_dir,
+            data_source_id,
+            remote_path,
+            name,
+            recorded_at_ms,
+            config,
+            true,
+        )
+        .await?;
+        if let Err(error) = asset_scope::sync_for_reader_libraries(app, &config.libraries) {
+            tracing::error!(
+                "Failed to extend asset protocol scope after creating remote MyReader library. error: {error}"
+            );
+        }
+        Ok(info)
+    }
+
+    pub async fn open_remote_myreader_library_with_scope_sync<R: tauri::Runtime>(
+        app: &AppHandle<R>,
+        app_data_dir: &Path,
+        data_source_id: &str,
+        remote_path: &str,
+        name: Option<&str>,
+        recorded_at_ms: i64,
+        config: &mut AppConfig,
+    ) -> Result<LibraryInfo, AppError> {
+        let info = remote_myreader_library(
+            app_data_dir,
+            data_source_id,
+            remote_path,
+            name,
+            recorded_at_ms,
+            config,
+            false,
+        )
+        .await?;
+        if let Err(error) = asset_scope::sync_for_reader_libraries(app, &config.libraries) {
+            tracing::error!(
+                "Failed to extend asset protocol scope after opening remote MyReader library. error: {error}"
+            );
+        }
+        Ok(info)
     }
 
     /// Add a local library and refresh the asset protocol scope so the reader can fetch files.
@@ -157,7 +333,11 @@ impl LibraryService {
         refresh_remote_library(app_data_dir, id, config).await
     }
 
-    pub async fn refresh_library(id: &str, config: &AppConfig) -> Result<LibraryInfo, AppError> {
+    pub async fn refresh_library(
+        app_data_dir: &Path,
+        id: &str,
+        config: &AppConfig,
+    ) -> Result<LibraryInfo, AppError> {
         let lib = config
             .libraries
             .iter()
@@ -166,6 +346,29 @@ impl LibraryService {
 
         if lib.source_type.as_deref() == Some("webdav") {
             return Err(AppError::Config("WEBDAV_LIBRARY_USE_ASYNC_REFRESH".into()));
+        }
+
+        if lib.is_myreader() {
+            let content_root = library_root_path(lib, app_data_dir);
+            let sidecar_root = library_sidecar_path(lib, app_data_dir);
+            let books = my_reader_core::api::catalog::CatalogService::list_library_book_summaries(
+                lib.library_type.into(),
+                &sidecar_root,
+                &content_root,
+            )
+            .await?;
+            let book_ids = books.iter().map(|book| book.id).collect::<Vec<_>>();
+            cache::clear_orphaned_library_cache_files(id, &book_ids)?;
+            return Ok(LibraryInfo {
+                id: lib.id.clone(),
+                name: lib.name.clone(),
+                path: lib.path.clone(),
+                library_type: lib.library_type,
+                book_count: books.len(),
+                source_type: lib.source_type.clone(),
+                data_source_id: lib.data_source_id.clone(),
+                source_path: lib.source_path.clone(),
+            });
         }
 
         let (lib_path_canon, books) =
@@ -187,6 +390,7 @@ impl LibraryService {
             id: id.to_string(),
             name: lib_name,
             path: lib_path_str,
+            library_type: lib.library_type,
             book_count,
             source_type: lib.source_type.clone(),
             data_source_id: lib.data_source_id.clone(),
@@ -299,6 +503,56 @@ async fn add_remote_library(
     Ok(library_info_from_core(library))
 }
 
+#[allow(clippy::too_many_arguments)]
+async fn remote_myreader_library(
+    app_data_dir: &Path,
+    data_source_id: &str,
+    remote_path: &str,
+    name: Option<&str>,
+    recorded_at_ms: i64,
+    config: &mut AppConfig,
+    create: bool,
+) -> Result<LibraryInfo, AppError> {
+    ensure_config(app_data_dir, config)?;
+    let source = config
+        .data_sources
+        .iter()
+        .find(|source| source.id == data_source_id)
+        .cloned()
+        .ok_or_else(|| AppError::NotFound(format!("DATASOURCE_NOT_FOUND: {data_source_id}")))?;
+    let credential = crate::storage::core_remote_credential(&source).await?;
+    let request = my_reader_core::models::RemoteLibraryRequest {
+        data_source_id: data_source_id.to_owned(),
+        source_path: remote_path.to_owned(),
+        libraries_root_path: app_data_dir
+            .join("libraries")
+            .to_string_lossy()
+            .into_owned(),
+        libraries_root_uri: None,
+        name: name.map(ToOwned::to_owned),
+        added_at: None,
+    };
+    let (core_config, library) = if create {
+        my_reader_core::api::library::LibraryService::create_remote_myreader(
+            &crate::config::config_path(app_data_dir),
+            request,
+            &credential,
+            recorded_at_ms,
+        )
+        .await?
+    } else {
+        my_reader_core::api::library::LibraryService::open_remote_myreader(
+            &crate::config::config_path(app_data_dir),
+            request,
+            &credential,
+            recorded_at_ms,
+        )
+        .await?
+    };
+    config.apply_core_config(&core_config);
+    Ok(library_info_from_core(library))
+}
+
 async fn refresh_remote_library(
     app_data_dir: &Path,
     id: &str,
@@ -345,6 +599,7 @@ fn library_info_from_core(library: my_reader_core::models::Library) -> LibraryIn
         id: library.id,
         name: library.name,
         path: library.path,
+        library_type: library.library_type.into(),
         book_count: usize::try_from(library.book_count).unwrap_or(usize::MAX),
         source_type: library.source_type,
         data_source_id: library.data_source_id,

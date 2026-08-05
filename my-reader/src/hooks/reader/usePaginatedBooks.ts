@@ -3,6 +3,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { listen, type UnlistenFn } from "@tauri-apps/api/event"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { ReadingProgressChangedEvent } from "@/hooks/queries/useReadingProgressQuery"
+import {
+  SIDECAR_SYNC_COMPLETED_EVENT,
+  type SidecarSyncCompletedEvent,
+} from "@/hooks/useSidecarSync"
 import { api } from "@/lib/tauri-api"
 
 const PAGE_SIZE = 100
@@ -67,6 +71,7 @@ export function usePaginatedBooks(
   libraryId: string | null,
   sortBy: string,
   search: string,
+  refreshOnSidecarSync = false,
 ) {
   const queryClient = useQueryClient()
   const normalizedSearch = useMemo(() => normalizeSearch(search), [search])
@@ -140,6 +145,23 @@ export function usePaginatedBooks(
     })
     setRefreshEpoch((k) => k + 1)
   }, [libraryId, normalizedSearch, queryClient, sortBy])
+
+  useEffect(() => {
+    if (!libraryId || !refreshOnSidecarSync) return
+
+    const handleSidecarSync = (event: Event) => {
+      const detail = (event as CustomEvent<SidecarSyncCompletedEvent>).detail
+      if (detail.libraryId === libraryId) refresh()
+    }
+
+    window.addEventListener(SIDECAR_SYNC_COMPLETED_EVENT, handleSidecarSync)
+    return () => {
+      window.removeEventListener(
+        SIDECAR_SYNC_COMPLETED_EVENT,
+        handleSidecarSync,
+      )
+    }
+  }, [libraryId, refresh, refreshOnSidecarSync])
 
   useEffect(() => {
     if (!libraryId || sortBy !== "lastRead") return

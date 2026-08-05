@@ -9,7 +9,7 @@ use crate::commands::AppState;
 use crate::error::AppError;
 use crate::models::{AppConfig, DataSourceConfig, LibraryConfig};
 use crate::storage::from_data_source;
-use crate::utils::paths::{library_book_file_path, library_root_path};
+use crate::utils::paths::{library_book_file_path, library_root_path, library_sidecar_path};
 
 fn build_response(status: u16, headers: Vec<(&str, &str)>, body: Vec<u8>) -> Response<Vec<u8>> {
     let mut builder = Response::builder().status(status);
@@ -150,6 +150,7 @@ mod tests {
 
     fn remote_library(id: &str) -> LibraryConfig {
         LibraryConfig {
+            library_type: Default::default(),
             id: id.to_string(),
             name: "Remote".to_string(),
             path: String::new(),
@@ -356,14 +357,17 @@ async fn serve_local_book_file(
     let lib_path_str = lib_path
         .to_str()
         .ok_or_else(|| AppError::Config("LIB_PATH_INVALID_UTF8".into()))?;
-
-    let file_path = my_reader_core::api::catalog::CatalogService::get_book_file_path(
+    let sidecar_root = library_sidecar_path(lib, app_data_dir);
+    let book_format = my_reader_core::api::catalog::CatalogService::get_library_book_format(
+        lib.library_type.into(),
+        &sidecar_root,
         Path::new(lib_path_str),
         book_id,
         format,
     )
     .await?
     .ok_or_else(|| AppError::NotFound(format!("BOOK_FILE_NOT_FOUND: {book_id}")))?;
+    let file_path = lib_path.join(book_format.relative_path);
 
     let file_path = dunce::canonicalize(&file_path)
         .map_err(|e| AppError::Config(format!("BOOK_FILE_CANONICALIZE_FAILED: {e}")))?;

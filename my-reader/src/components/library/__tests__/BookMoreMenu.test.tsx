@@ -201,4 +201,35 @@ describe("BookMoreMenu", () => {
     const epubItem = await screen.findByRole("menuitem", { name: "EPUB" })
     expect(epubItem.querySelector(".lucide-trash-2")).toBeNull()
   })
+
+  it("should expose catalog edit and delete only when managed callbacks are provided", async () => {
+    const user = userEvent.setup()
+    const onEditMetadata = vi.fn()
+    const onDeleteBook = vi.fn()
+
+    renderWithClient(
+      <BookMoreMenu
+        book={{
+          id: 42,
+          title: "可写书库测试书",
+          formats: ["EPUB"],
+          readableFormats: ["EPUB"],
+          preferredFormat: "EPUB",
+        }}
+        fileActionsEnabled={false}
+        libraryId="lib-1"
+        onEditMetadata={onEditMetadata}
+        onDeleteBook={onDeleteBook}
+        triggerVariant="row"
+      />,
+    )
+
+    await user.click(screen.getByRole("button", { name: "更多操作" }))
+    await user.click(screen.getByRole("menuitem", { name: "修改书名与作者" }))
+    expect(onEditMetadata).toHaveBeenCalledTimes(1)
+
+    await user.click(screen.getByRole("button", { name: "更多操作" }))
+    await user.click(screen.getByRole("menuitem", { name: "从书库删除图书" }))
+    expect(onDeleteBook).toHaveBeenCalledTimes(1)
+  })
 })

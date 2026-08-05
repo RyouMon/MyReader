@@ -34,7 +34,7 @@ impl TestFileStateRepository {
             path,
             FileStateUpdate {
                 local_state: local_state.into(),
-                local_blake3: None,
+                local_sha256: None,
                 local_size,
                 local_mtime,
             },
@@ -45,6 +45,7 @@ impl TestFileStateRepository {
 
 fn local_test_library(id: &str, root: &std::path::Path) -> LibraryConfig {
     LibraryConfig {
+        library_type: Default::default(),
         id: id.into(),
         name: "Test".into(),
         path: root.to_string_lossy().to_string(),
@@ -56,6 +57,7 @@ fn local_test_library(id: &str, root: &std::path::Path) -> LibraryConfig {
 
 fn remote_test_library(id: &str) -> LibraryConfig {
     LibraryConfig {
+        library_type: Default::default(),
         id: id.into(),
         name: "Remote".into(),
         path: "".into(),
@@ -128,6 +130,7 @@ async fn build_operator_for_library_should_build_local_operator_or_report_missin
         ..Default::default()
     };
     let lib = LibraryConfig {
+        library_type: Default::default(),
         id: "lib".into(),
         name: "Test".into(),
         path: "".into(),
@@ -702,6 +705,7 @@ async fn download_book_file_should_copy_remote_content_and_reset_state_on_error(
         "EPUB",
         sidecar_root.path(),
         None,
+        None,
     )
     .await
     .expect("download should succeed");
@@ -730,6 +734,7 @@ async fn download_book_file_should_copy_remote_content_and_reset_state_on_error(
         43,
         "EPUB",
         sidecar_root.path(),
+        None,
         None,
     )
     .await
@@ -777,6 +782,7 @@ async fn download_book_file_should_skip_remote_read_when_sidecar_and_file_are_pr
         "EPUB",
         sidecar_root.path(),
         None,
+        None,
     )
     .await
     .expect("present file should skip download");
@@ -808,6 +814,7 @@ async fn download_book_file_should_cancel_before_open_and_mark_remote_only() {
         42,
         "EPUB",
         sidecar_root.path(),
+        None,
         Some(cancellation),
     )
     .await

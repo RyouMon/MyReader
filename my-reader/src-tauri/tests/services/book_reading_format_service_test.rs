@@ -69,6 +69,7 @@ async fn seed_format_library(root: &std::path::Path) -> SeededBook {
 fn config_for(lib_root: &std::path::Path) -> AppConfig {
     AppConfig {
         libraries: vec![LibraryConfig {
+            library_type: Default::default(),
             id: "lib-format".into(),
             name: "Format Library".into(),
             path: lib_root.to_string_lossy().to_string(),
