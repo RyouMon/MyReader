@@ -3,10 +3,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use sea_orm::{
     sea_query::OnConflict, ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait,
-    QueryFilter, QueryOrder, Set,
+    QueryFilter, QueryOrder, Set, TransactionTrait,
 };
 
-use crate::entities::app::{book_cover_thumbnail_cache, book_reading_format, file_state};
+use crate::entities::app::{
+    book_cover_thumbnail_cache, book_reading_format, file_state, pending_book_imports,
+};
 use crate::models::{
     BookCoverThumbnailCache, BookCoverThumbnailCachePatch, FileState, FileStateUpdate,
 };
@@ -14,6 +16,19 @@ use crate::CoreError;
 
 pub(crate) struct ContentRepository<'a> {
     db: &'a DatabaseConnection,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct PendingBookImport {
+    pub book_uuid: String,
+    pub book_id: i64,
+    pub title: String,
+    pub authors: Vec<String>,
+    pub format: String,
+    pub size: i64,
+    pub sha256: String,
+    pub relative_path: String,
+    pub recorded_at_ms: i64,
 }
 
 impl<'a> ContentRepository<'a> {
@@ -115,7 +130,7 @@ impl<'a> ContentRepository<'a> {
         if let Some(model) = existing {
             let mut active: file_state::ActiveModel = model.into();
             active.local_state = Set(update.local_state);
-            active.local_blake3 = Set(update.local_blake3);
+            active.local_sha256 = Set(update.local_sha256);
             active.local_size = Set(update.local_size);
             active.local_mtime = Set(update.local_mtime);
             active.updated_at = Set(updated_at);
@@ -125,7 +140,7 @@ impl<'a> ContentRepository<'a> {
                 id: Set(uuid::Uuid::new_v4().as_simple().to_string()),
                 path: Set(path.to_owned()),
                 local_state: Set(update.local_state),
-                local_blake3: Set(update.local_blake3),
+                local_sha256: Set(update.local_sha256),
                 local_size: Set(update.local_size),
                 local_mtime: Set(update.local_mtime),
                 updated_at: Set(updated_at),
@@ -136,12 +151,181 @@ impl<'a> ContentRepository<'a> {
         Ok(())
     }
 
+    pub(crate) async fn upsert_reconciled_file_state(
+        &self,
+        path: &str,
+        update: FileStateUpdate,
+    ) -> Result<(), CoreError> {
+        let updated_at = now_seconds();
+        let updated = file_state::Entity::update_many()
+            .set(file_state::ActiveModel {
+                local_state: Set(update.local_state.clone()),
+                local_sha256: Set(update.local_sha256.clone()),
+                local_size: Set(update.local_size),
+                local_mtime: Set(update.local_mtime),
+                updated_at: Set(updated_at),
+                ..Default::default()
+            })
+            .filter(file_state::Column::Path.eq(path))
+            .filter(
+                file_state::Column::LocalState.is_not_in(["dirty_push", "remote_delete_pending"]),
+            )
+            .exec(self.db)
+            .await?;
+        if updated.rows_affected > 0 {
+            return Ok(());
+        }
+
+        file_state::Entity::insert(file_state::ActiveModel {
+            id: Set(uuid::Uuid::new_v4().as_simple().to_string()),
+            path: Set(path.to_owned()),
+            local_state: Set(update.local_state),
+            local_sha256: Set(update.local_sha256),
+            local_size: Set(update.local_size),
+            local_mtime: Set(update.local_mtime),
+            updated_at: Set(updated_at),
+        })
+        .on_conflict(
+            OnConflict::column(file_state::Column::Path)
+                .do_nothing()
+                .to_owned(),
+        )
+        .exec_without_returning(self.db)
+        .await?;
+        Ok(())
+    }
+
     pub(crate) async fn delete_file_state(&self, path: &str) -> Result<(), CoreError> {
         file_state::Entity::delete_many()
             .filter(file_state::Column::Path.eq(path))
             .exec(self.db)
             .await?;
         Ok(())
+    }
+
+    pub(crate) async fn list_pending_book_imports(
+        &self,
+    ) -> Result<Vec<PendingBookImport>, CoreError> {
+        pending_book_imports::Entity::find()
+            .order_by_asc(pending_book_imports::Column::CreatedAt)
+            .all(self.db)
+            .await?
+            .into_iter()
+            .map(PendingBookImport::try_from)
+            .collect()
+    }
+
+    #[cfg(test)]
+    pub(crate) async fn has_pending_book_imports(&self) -> Result<bool, CoreError> {
+        Ok(pending_book_imports::Entity::find()
+            .one(self.db)
+            .await?
+            .is_some())
+    }
+
+    pub(crate) async fn stage_pending_book_import(
+        &self,
+        pending: &PendingBookImport,
+        local_mtime: i64,
+    ) -> Result<(), CoreError> {
+        let transaction = self.db.begin().await?;
+        let now = now_milliseconds();
+        pending_book_imports::ActiveModel {
+            book_uuid: Set(pending.book_uuid.clone()),
+            book_id: Set(pending.book_id),
+            title: Set(pending.title.clone()),
+            authors_json: Set(serde_json::to_string(&pending.authors)?),
+            format: Set(pending.format.clone()),
+            size: Set(pending.size),
+            sha256: Set(pending.sha256.clone()),
+            relative_path: Set(pending.relative_path.clone()),
+            recorded_at_ms: Set(pending.recorded_at_ms),
+            created_at: Set(now),
+            attempt_count: Set(0),
+            last_error: Set(None),
+        }
+        .insert(&transaction)
+        .await?;
+        file_state::Entity::insert(file_state::ActiveModel {
+            id: Set(uuid::Uuid::new_v4().as_simple().to_string()),
+            path: Set(pending.relative_path.clone()),
+            local_state: Set("dirty_push".into()),
+            local_sha256: Set(Some(pending.sha256.clone())),
+            local_size: Set(Some(pending.size)),
+            local_mtime: Set(Some(local_mtime)),
+            updated_at: Set(now_seconds()),
+        })
+        .on_conflict(
+            OnConflict::column(file_state::Column::Path)
+                .update_columns([
+                    file_state::Column::LocalState,
+                    file_state::Column::LocalSha256,
+                    file_state::Column::LocalSize,
+                    file_state::Column::LocalMtime,
+                    file_state::Column::UpdatedAt,
+                ])
+                .to_owned(),
+        )
+        .exec(&transaction)
+        .await?;
+        transaction.commit().await?;
+        Ok(())
+    }
+
+    pub(crate) async fn discard_pending_book_import(
+        &self,
+        book_uuid: &str,
+        relative_path: &str,
+    ) -> Result<(), CoreError> {
+        let transaction = self.db.begin().await?;
+        pending_book_imports::Entity::delete_by_id(book_uuid)
+            .exec(&transaction)
+            .await?;
+        file_state::Entity::delete_many()
+            .filter(file_state::Column::Path.eq(relative_path))
+            .exec(&transaction)
+            .await?;
+        transaction.commit().await?;
+        Ok(())
+    }
+
+    pub(crate) async fn record_pending_book_import_failure(
+        &self,
+        book_uuid: &str,
+        error: &str,
+    ) -> Result<(), CoreError> {
+        let Some(model) = pending_book_imports::Entity::find_by_id(book_uuid)
+            .one(self.db)
+            .await?
+        else {
+            return Ok(());
+        };
+        let attempt_count = model.attempt_count.saturating_add(1);
+        let mut active: pending_book_imports::ActiveModel = model.into();
+        active.attempt_count = Set(attempt_count);
+        active.last_error = Set(Some(error.to_owned()));
+        active.update(self.db).await?;
+        Ok(())
+    }
+
+    pub(crate) async fn delete_pending_book_import(
+        &self,
+        book_uuid: &str,
+    ) -> Result<(), CoreError> {
+        pending_book_imports::Entity::delete_by_id(book_uuid)
+            .exec(self.db)
+            .await?;
+        Ok(())
+    }
+
+    pub(crate) async fn pending_book_import_exists(
+        &self,
+        book_uuid: &str,
+    ) -> Result<bool, CoreError> {
+        Ok(pending_book_imports::Entity::find_by_id(book_uuid)
+            .one(self.db)
+            .await?
+            .is_some())
     }
 
     pub(crate) async fn list_cover_thumbnail_cache(
@@ -224,13 +408,31 @@ impl<'a> ContentRepository<'a> {
     }
 }
 
+impl TryFrom<pending_book_imports::Model> for PendingBookImport {
+    type Error = CoreError;
+
+    fn try_from(value: pending_book_imports::Model) -> Result<Self, Self::Error> {
+        Ok(Self {
+            book_uuid: value.book_uuid,
+            book_id: value.book_id,
+            title: value.title,
+            authors: serde_json::from_str(&value.authors_json)?,
+            format: value.format,
+            size: value.size,
+            sha256: value.sha256,
+            relative_path: value.relative_path,
+            recorded_at_ms: value.recorded_at_ms,
+        })
+    }
+}
+
 impl From<file_state::Model> for FileState {
     fn from(value: file_state::Model) -> Self {
         Self {
             id: value.id,
             path: value.path,
             local_state: value.local_state,
-            local_blake3: value.local_blake3,
+            local_sha256: value.local_sha256,
             local_size: value.local_size,
             local_mtime: value.local_mtime,
             updated_at: value.updated_at,

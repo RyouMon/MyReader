@@ -388,6 +388,7 @@ fn merge_libraries(next_libraries: Vec<Library>, existing_libraries: Vec<Library
                 .iter()
                 .find(|existing| existing.id == next.id)
             {
+                next.library_type = existing.library_type;
                 next.book_count = existing.book_count;
                 next.metadata_uri.clone_from(&existing.metadata_uri);
                 next.added_at = existing.added_at;
@@ -602,6 +603,7 @@ fn ensure_data_source_can_upsert_in(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::LibraryType;
     use std::sync::{Arc, Barrier};
 
     fn local_library(id: &str, path: &str) -> Library {
@@ -609,6 +611,7 @@ mod tests {
             id: id.into(),
             name: id.into(),
             path: path.into(),
+            library_type: LibraryType::Calibre,
             book_count: 0,
             metadata_uri: None,
             added_at: None,

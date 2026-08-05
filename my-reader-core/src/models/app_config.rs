@@ -186,9 +186,26 @@ pub fn is_remote_library_source_type(source_type: Option<&str>) -> bool {
     matches!(source_type, Some("webdav") | Some("onedrive"))
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LibraryType {
+    #[default]
+    Calibre,
+    MyReader,
+}
+
+impl LibraryType {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Calibre => "calibre",
+            Self::MyReader => "myreader",
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{is_remote_library_source_type, DataSource};
+    use super::{is_remote_library_source_type, DataSource, Library, LibraryType};
 
     #[test]
     fn should_read_legacy_snake_case_when_data_source_is_deserialized() {
@@ -242,6 +259,39 @@ mod tests {
         assert!(!is_remote_library_source_type(Some("local")));
         assert!(!is_remote_library_source_type(None));
     }
+
+    #[test]
+    fn should_default_legacy_library_to_calibre_when_type_is_missing() {
+        let library = serde_json::from_value::<Library>(serde_json::json!({
+            "id": "library",
+            "name": "Library",
+            "path": "/library"
+        }))
+        .unwrap();
+
+        assert_eq!(library.library_type, LibraryType::Calibre);
+        assert_eq!(
+            serde_json::to_value(library).unwrap()["libraryType"],
+            "calibre"
+        );
+    }
+
+    #[test]
+    fn should_round_trip_myreader_library_type() {
+        let library = serde_json::from_value::<Library>(serde_json::json!({
+            "id": "library",
+            "name": "Library",
+            "path": "/library",
+            "libraryType": "myreader"
+        }))
+        .unwrap();
+
+        assert_eq!(library.library_type, LibraryType::MyReader);
+        assert_eq!(
+            serde_json::to_value(library).unwrap()["libraryType"],
+            "myreader"
+        );
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -250,6 +300,8 @@ pub struct Library {
     pub id: String,
     pub name: String,
     pub path: String,
+    #[serde(default)]
+    pub library_type: LibraryType,
     #[serde(default)]
     pub book_count: u64,
     #[serde(default)]

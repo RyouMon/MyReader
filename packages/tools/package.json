@@ -15,6 +15,7 @@
     "./reader-search": "./src/reader-search.ts",
     "./reader-themes": "./src/reader-themes.ts",
     "./reader-toc": "./src/reader-toc.ts",
+    "./remote-path": "./src/remote-path.ts",
     "./utils": "./src/utils/index.ts",
     "./types": "./src/types/index.ts",
     "./types/*": "./src/types/*.ts",

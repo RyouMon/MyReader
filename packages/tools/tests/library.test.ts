@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   isRemoteLibrarySourceType,
+  libraryTypeOf,
   LOCAL_LIBRARY_DATA_SOURCE_ID,
 } from "../src/types/library"
 
@@ -19,5 +20,15 @@ describe("library source type", () => {
     expect(isRemoteLibrarySourceType("local")).toBe(false)
     expect(isRemoteLibrarySourceType(undefined)).toBe(false)
     expect(isRemoteLibrarySourceType(null)).toBe(false)
+  })
+})
+
+describe("library type", () => {
+  it("should treat legacy persisted libraries as Calibre libraries", () => {
+    expect(libraryTypeOf({})).toBe("calibre")
+  })
+
+  it("should preserve an explicit MyReader library type", () => {
+    expect(libraryTypeOf({ libraryType: "myreader" })).toBe("myreader")
   })
 })

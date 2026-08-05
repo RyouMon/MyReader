@@ -108,11 +108,63 @@ pub async fn content_finalize_downloaded_file(
 }
 
 #[uniffi::export(async_runtime = "tokio")]
+pub async fn content_finalize_verified_downloaded_file(
+    sidecar_root_path: String,
+    relative_path: String,
+    local_path: String,
+    expected_size: f64,
+    expected_sha256: String,
+) -> Result<DownloadedFile, CoreFfiError> {
+    Ok(ContentService::finalize_verified_downloaded_file(
+        Path::new(&sidecar_root_path),
+        &relative_path,
+        Path::new(&local_path),
+        required_i64(expected_size, "expectedSize")?,
+        &expected_sha256,
+    )
+    .await
+    .map_err(CoreFfiError::from_core)?
+    .into())
+}
+
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn content_install_verified_downloaded_file(
+    sidecar_root_path: String,
+    relative_path: String,
+    partial_path: String,
+    final_path: String,
+    expected_size: f64,
+    expected_sha256: String,
+) -> Result<DownloadedFile, CoreFfiError> {
+    Ok(ContentService::install_verified_downloaded_file(
+        Path::new(&sidecar_root_path),
+        &relative_path,
+        Path::new(&partial_path),
+        Path::new(&final_path),
+        required_i64(expected_size, "expectedSize")?,
+        &expected_sha256,
+    )
+    .await
+    .map_err(CoreFfiError::from_core)?
+    .into())
+}
+
+#[uniffi::export(async_runtime = "tokio")]
 pub async fn content_mark_file_remote_only(
     sidecar_root_path: String,
     relative_path: String,
 ) -> Result<(), CoreFfiError> {
     ContentService::mark_file_remote_only(Path::new(&sidecar_root_path), &relative_path)
+        .await
+        .map_err(CoreFfiError::from_core)
+}
+
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn content_mark_file_source_missing(
+    sidecar_root_path: String,
+    relative_path: String,
+) -> Result<(), CoreFfiError> {
+    ContentService::mark_file_source_missing(Path::new(&sidecar_root_path), &relative_path)
         .await
         .map_err(CoreFfiError::from_core)
 }

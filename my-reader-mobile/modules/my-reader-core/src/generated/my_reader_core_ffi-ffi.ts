@@ -177,8 +177,36 @@ interface NativeModuleInterface {
     preferences: Uint8Array,
     mobileJson: Uint8Array,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_book_transfer_read_task_progress(
+    taskId: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_book_transfer_release_task(
+    taskId: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): number;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_book_transfer_run_pending_uploads(
+    taskId: Uint8Array,
+    sidecarRootPath: Uint8Array,
+    libraryRootPath: Uint8Array,
+    storage: Uint8Array,
+  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_count_books(
     libraryRootPath: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_count_library_books(
+    configPath: Uint8Array,
+    libraryId: Uint8Array,
+    sidecarRootPath: Uint8Array,
+    contentRootPath: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_delete_local_book(
+    configPath: Uint8Array,
+    libraryId: Uint8Array,
+    sidecarRootPath: Uint8Array,
+    contentRootPath: Uint8Array,
+    bookId: number,
+    recordedAtMs: number,
   ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_get_book_detail(
     libraryRootPath: Uint8Array,
@@ -189,8 +217,42 @@ interface NativeModuleInterface {
     bookId: number,
     format: Uint8Array,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_get_library_book_detail(
+    configPath: Uint8Array,
+    libraryId: Uint8Array,
+    sidecarRootPath: Uint8Array,
+    contentRootPath: Uint8Array,
+    bookId: number,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_get_library_book_format(
+    configPath: Uint8Array,
+    libraryId: Uint8Array,
+    sidecarRootPath: Uint8Array,
+    contentRootPath: Uint8Array,
+    bookId: number,
+    format: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_get_library_identity(
+    configPath: Uint8Array,
+    libraryId: Uint8Array,
+    sidecarRootPath: Uint8Array,
+    contentRootPath: Uint8Array,
+  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_get_library_uuid(
     libraryRootPath: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_get_myreader_book_content(
+    sidecarRootPath: Uint8Array,
+    contentRootPath: Uint8Array,
+    bookId: number,
+    format: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_import_local_book(
+    configPath: Uint8Array,
+    libraryId: Uint8Array,
+    sidecarRootPath: Uint8Array,
+    contentRootPath: Uint8Array,
+    request: Uint8Array,
   ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_list_book_formats(
     libraryRootPath: Uint8Array,
@@ -216,10 +278,70 @@ interface NativeModuleInterface {
     limit: number,
     search: Uint8Array,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_list_library_book_formats(
+    configPath: Uint8Array,
+    libraryId: Uint8Array,
+    sidecarRootPath: Uint8Array,
+    contentRootPath: Uint8Array,
+    bookId: number,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_list_library_book_summaries(
+    configPath: Uint8Array,
+    libraryId: Uint8Array,
+    sidecarRootPath: Uint8Array,
+    contentRootPath: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_list_library_books(
+    configPath: Uint8Array,
+    libraryId: Uint8Array,
+    sidecarRootPath: Uint8Array,
+    contentRootPath: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_list_library_books_page(
+    configPath: Uint8Array,
+    libraryId: Uint8Array,
+    sidecarRootPath: Uint8Array,
+    contentRootPath: Uint8Array,
+    offset: number,
+    limit: number,
+    sortBy: Uint8Array,
+    search: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_list_library_books_page_by_last_read(
+    configPath: Uint8Array,
+    libraryId: Uint8Array,
+    sidecarRootPath: Uint8Array,
+    contentRootPath: Uint8Array,
+    offset: number,
+    limit: number,
+    search: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_list_library_series_books(
+    configPath: Uint8Array,
+    libraryId: Uint8Array,
+    sidecarRootPath: Uint8Array,
+    contentRootPath: Uint8Array,
+    seriesName: Uint8Array,
+    excludeBookId: Uint8Array,
+  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_list_series_books(
     libraryRootPath: Uint8Array,
     seriesName: Uint8Array,
     excludeBookId: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_stage_remote_book_import(
+    configPath: Uint8Array,
+    libraryId: Uint8Array,
+    sidecarRootPath: Uint8Array,
+    contentRootPath: Uint8Array,
+    request: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_update_local_book_metadata(
+    configPath: Uint8Array,
+    libraryId: Uint8Array,
+    sidecarRootPath: Uint8Array,
+    contentRootPath: Uint8Array,
+    request: Uint8Array,
   ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_validate_library(
     libraryRootPath: Uint8Array,
@@ -244,9 +366,24 @@ interface NativeModuleInterface {
     relativePath: Uint8Array,
     localPath: Uint8Array,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_content_finalize_verified_downloaded_file(
+    sidecarRootPath: Uint8Array,
+    relativePath: Uint8Array,
+    localPath: Uint8Array,
+    expectedSize: number,
+    expectedSha256: Uint8Array,
+  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_content_get_file_state(
     sidecarRootPath: Uint8Array,
     path: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_content_install_verified_downloaded_file(
+    sidecarRootPath: Uint8Array,
+    relativePath: Uint8Array,
+    partialPath: Uint8Array,
+    finalPath: Uint8Array,
+    expectedSize: number,
+    expectedSha256: Uint8Array,
   ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_content_list_cover_thumbnail_cache(
     sidecarRootPath: Uint8Array,
@@ -262,6 +399,10 @@ interface NativeModuleInterface {
     libraryRootPath: Uint8Array,
   ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_content_mark_file_remote_only(
+    sidecarRootPath: Uint8Array,
+    relativePath: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_content_mark_file_source_missing(
     sidecarRootPath: Uint8Array,
     relativePath: Uint8Array,
   ): bigint;
@@ -364,6 +505,28 @@ interface NativeModuleInterface {
     configPath: Uint8Array,
     request: Uint8Array,
     credential: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_library_create_local_myreader(
+    configPath: Uint8Array,
+    request: Uint8Array,
+    recordedAtMs: number,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_library_create_remote_myreader(
+    configPath: Uint8Array,
+    request: Uint8Array,
+    credential: Uint8Array,
+    recordedAtMs: number,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_library_open_local_myreader(
+    configPath: Uint8Array,
+    request: Uint8Array,
+    recordedAtMs: number,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_library_open_remote_myreader(
+    configPath: Uint8Array,
+    request: Uint8Array,
+    credential: Uint8Array,
+    recordedAtMs: number,
   ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_library_refresh_remote(
     configPath: Uint8Array,
@@ -617,26 +780,47 @@ interface NativeModuleInterface {
   ubrn_ffi_my_reader_core_ffi_uniffi_contract_version(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_app_config_initialize(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_app_config_write_mobile(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_book_transfer_read_task_progress(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_book_transfer_release_task(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_book_transfer_run_pending_uploads(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_count_books(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_count_library_books(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_delete_local_book(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_get_book_detail(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_get_book_format(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_get_library_book_detail(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_get_library_book_format(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_get_library_identity(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_get_library_uuid(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_get_myreader_book_content(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_import_local_book(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_book_formats(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_book_summaries(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_books(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_books_page(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_books_page_by_last_read(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_library_book_formats(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_library_book_summaries(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_library_books(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_library_books_page(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_library_books_page_by_last_read(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_library_series_books(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_series_books(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_stage_remote_book_import(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_update_local_book_metadata(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_validate_library(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_content_clear_cover_thumbnail_cache(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_content_delete_cover_thumbnail_cache(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_content_delete_file_state(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_content_finalize_downloaded_file(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_content_finalize_verified_downloaded_file(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_content_get_file_state(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_content_install_verified_downloaded_file(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_content_list_cover_thumbnail_cache(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_content_list_file_states(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_content_list_reading_formats(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_content_mark_file_remote_only(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_content_mark_file_source_missing(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_content_set_reading_format(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_content_upsert_cover_thumbnail_cache(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_content_upsert_file_state(): number;
@@ -659,6 +843,10 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_download_report_progress(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_add_local(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_add_remote(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_library_create_local_myreader(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_library_create_remote_myreader(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_library_open_local_myreader(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_library_open_remote_myreader(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_refresh_remote(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_remove(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_replace(): number;

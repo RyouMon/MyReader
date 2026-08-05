@@ -1,10 +1,11 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "genesisActor": "00000000000000000000000000000000",
   "genesisHeads": [
-    "ac137b1318ef97f275852452df5c683406ec657e68e1b51d3656ac5f684ce1f2"
+    "151e8b8bb93a601542f1d818dd51bd946a754d96966f4e78dc5a3b056f9d6231"
   ],
   "roots": [
+    "catalog",
     "favorites",
     "positions",
     "bookmarks",
@@ -13,6 +14,12 @@
     "completions"
   ],
   "libraryUuid": "11111111-2222-4333-8444-555555555555",
+  "schemaMigration": {
+    "from": 1,
+    "to": 2,
+    "actor": "01010101010101010101010101010101",
+    "sha256": "04f7933d91deb54c092c54a18f1c8e68846bdd6f8bac86d9245f8fdc92e08c2f"
+  },
   "typescriptPosition": {
     "replicaId": "a1b2c3d4-e5f6-4890-abcd-ef1234567890",
     "heads": [

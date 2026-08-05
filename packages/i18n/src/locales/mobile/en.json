@@ -1,4 +1,11 @@
 {
+  "incomingShare": {
+    "importingTitle": "Importing shared book",
+    "importingDetail": "MyReader is adding the book to your library.",
+    "failedTitle": "Couldn’t import shared item",
+    "failedDetail": "Share one EPUB, PDF, or CBZ file to MyReader.",
+    "openLibrary": "Open library"
+  },
   "back": "Back",
   "tabs": {
     "home": "Home",
@@ -36,7 +43,7 @@
     },
     "noLibrary": {
       "title": "No library added yet",
-      "detail": "Add a local Calibre library in Settings, then your reading progress and recently added books will appear here."
+      "detail": "Create a new library or open an existing one."
     },
     "noReadingHistory": {
       "title": "No reading history yet",
@@ -47,6 +54,18 @@
   "library": {
     "title": "Library",
     "addLibrary": "Add Library",
+    "importingBook": "Importing…",
+    "importFailed": {
+      "title": "Unable to Import Book"
+    },
+    "importQueued": {
+      "title": "Book saved on this device",
+      "detail": "It will upload to the remote library when the connection returns."
+    },
+    "importUnsupported": {
+      "title": "Unsupported Book Format",
+      "detail": "Choose an EPUB, PDF, or CBZ file."
+    },
     "switchLibrary": "Switch Library",
     "syncCurrentLibrary": "Sync Current Library",
     "searchPlaceholder": "Search title, author",
@@ -92,12 +111,12 @@
       "detail": "It may have been removed or the link parameters are no longer valid."
     },
     "noLibrary": {
-      "title": "No library added yet",
-      "detail": "Add a Calibre library first, then browse books in the Library tab."
+      "title": "No library yet",
+      "detail": "Import a book directly, or add a MyReader or Calibre library."
     },
     "unselected": {
       "title": "No library selected",
-      "detail": "Select a library to browse, or add a new Calibre library."
+      "detail": "Select a library to browse, or add a new library."
     },
     "loadError": {
       "title": "Load Failed"
@@ -129,13 +148,14 @@
     "typeWebdav": "WebDAV",
     "typeOnedrive": "OneDrive",
     "calibreLibrary": "Calibre Library",
-    "delete": {
-      "title": "Delete this library?",
-      "message": "The library will be removed from the app. Original files remain in place — delete them manually if needed.",
+    "myreaderLibrary": "MyReader library",
+    "remove": {
+      "title": "Remove this library?",
+      "message": "The library will be removed from the app. Its files will not be deleted.",
       "cancel": "Cancel",
-      "confirm": "Delete"
+      "confirm": "Remove"
     },
-    "deleteLibrary": "Delete Library",
+    "removeLibrary": "Remove library",
     "notFound": {
       "title": "Library not found",
       "detail": "It may have been removed or the link parameters are no longer valid."
@@ -144,6 +164,9 @@
     "refreshing": "Refreshing...",
     "refresh": "Refresh Library",
     "libraryType": "Library Type",
+    "storageLocation": "Storage location",
+    "folderName": "Folder",
+    "remotePath": "Path",
     "sourceType": "Source Type",
     "libraryPath": "Library Path",
     "bookCountLabel": "Book Count",
@@ -151,6 +174,7 @@
   },
   "settings": {
     "libraryDetail": "Library Details",
+    "manageLibrary": "Manage library: {{name}}",
     "addLibrary": "Add Library",
     "librarySection": "Library",
     "currentInUse": "In use",
@@ -441,12 +465,31 @@
     "finished": "Finished"
   },
   "addLibrary": {
-    "existingSources": "Existing Sources",
-    "addSources": "Add Sources",
-    "noSources": {
-      "title": "No data sources yet",
-      "detail": "Add a data source to browse and select a library."
-    }
+    "createNew": "Create New Library",
+    "openExisting": "Open Existing Library",
+    "selectSaveLocation": "Choose Save Location",
+    "selectLibraryLocation": "Choose Library Location",
+    "existingDataSources": "Existing Data Sources",
+    "addDataSource": "Add Data Source",
+    "addWebdav": "Add WebDAV",
+    "addOnedrive": "Add OneDrive",
+    "name": "Name",
+    "invalidName": "Name cannot contain / or \\",
+    "create": "Create",
+    "creating": "Creating",
+    "open": "Open",
+    "continue": "Continue",
+    "path": "Path: {{path}}",
+    "unrecognized": {
+      "title": "Library Not Recognized",
+      "detail": "Choose a MyReader or Calibre library folder."
+    },
+    "folderExists": {
+      "title": "Name Already Exists",
+      "detail": "Choose another library name."
+    },
+    "operationFailed": "Library Operation Failed",
+    "operationFailedDetail": "Please try again later."
   },
   "webdav": {
     "sourcesTitle": "WebDAV Sources",
@@ -632,6 +675,7 @@
     "localStorage": "Local Storage",
     "unnamedBook": "Unnamed Book",
     "unknownAuthor": "Unknown Author",
+    "myLibrary": "My Library",
     "unnamedLibrary": "Unnamed Library",
     "selected": "Selected",
     "unselected": "Unselected"
@@ -649,9 +693,34 @@
     "download": "Download",
     "downloadFormat": "Download ({{format}})",
     "cancelDownload": "Cancel Download",
+    "uploadFile": "Upload File",
+    "uploadFailed": "Upload Failed",
+    "uploadFailedDetail": "Could not upload to “{{library}}”.\n{{reason}}",
     "defaultFormat": "Default reading format: {{format}}",
     "deleteDownload": "Delete downloaded file",
-    "share": "Share"
+    "share": "Share",
+    "editMetadata": "Edit Title and Authors",
+    "deleteBook": "Delete Book",
+    "deleteConfirmTitle": "Delete Book",
+    "deleteConfirmDetail": "Delete “{{title}}” and its book file from this library?",
+    "deleteFailed": "Unable to Delete Book"
+  },
+  "bookEdit": {
+    "title": "Edit Book Info",
+    "bookTitle": "Title",
+    "authors": "Authors",
+    "authorsPlaceholder": "Separate multiple authors with commas",
+    "save": "Save",
+    "saving": "Saving",
+    "saveFailed": "Unable to Save Book Info",
+    "incomplete": {
+      "title": "Missing Information",
+      "detail": "Title and authors are required."
+    },
+    "unavailable": {
+      "title": "This Book Cannot Be Edited",
+      "detail": "Only books in MyReader libraries can be edited."
+    }
   },
   "bookLoader": {
     "loadingBook": "Loading book…",
@@ -677,6 +746,7 @@
     "onedriveSourceNotFound": "The OneDrive source associated with this library does not exist.",
     "onedriveRefreshTokenMissing": "The current OneDrive source is missing authentication. Please re-authenticate the source.",
     "onedriveGetFailed": "OneDrive GET failed: {{status}} {{path}}",
+    "onedriveDownloadUrlMissing": "OneDrive did not return a download URL: {{path}}",
     "onedrivePutFailed": "OneDrive PUT failed: {{status}} {{path}}",
     "onedriveDeleteFailed": "OneDrive DELETE failed: {{status}} {{path}}",
     "onedriveListFailed": "OneDrive list failed: {{status}} {{path}}",
@@ -685,7 +755,7 @@
     "downloadCancelled": "Download cancelled",
     "downloadFailed": "Background download failed: {{code}}",
     "downloadStalled": "Native download has transferred bytes but stalled. Check network, WebDAV Range support, or system background restrictions.",
-    "downloadNotStarted": "Native download task created but no transfer started. Check WebDAV URL, auth, or native downloader config.",
+    "downloadNotStarted": "Native download task created but no transfer started. Check the data source, authentication, network, or native downloader configuration.",
     "uploadCancelled": "Upload cancelled",
     "uploadFailed": "Background upload failed: HTTP {{status}} {{body}}",
     "uploadFailedCode": "Background upload failed: {{code}}",

@@ -15,6 +15,7 @@ export const sharedEn = {
     save: "Save",
   },
   library: {
+    importBook: "Import book",
     sort: {
       author: "Author",
       title: "Title",

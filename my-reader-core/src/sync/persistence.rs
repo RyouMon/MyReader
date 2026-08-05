@@ -1,4 +1,5 @@
 use std::{
+    collections::{BTreeMap, BTreeSet},
     sync::{Mutex, OnceLock},
     time::Duration,
 };
@@ -9,16 +10,16 @@ use sha2::{Digest, Sha256};
 use uuid::{Uuid, Variant, Version};
 
 use super::{
-    document::LIBRARY_SIDECAR_SCHEMA_VERSION,
+    document::{library_sidecar_snapshot_heads, CatalogBookValue, LIBRARY_SIDECAR_SCHEMA_VERSION},
     document_engine::{
         execute_document_command, execute_document_mutation, DocumentCommand,
-        DocumentCommandRequest, DocumentCommandResult, DocumentProjection,
+        DocumentCommandRequest, DocumentCommandResult,
     },
     storage::{incremental_key, StorageKey},
     SyncError,
 };
 
-const PROJECTION_VERSION: i64 = 1;
+const PROJECTION_VERSION: i64 = 2;
 const SIDECAR_PROTOCOL: &str = "library-sidecar-automerge-repo";
 
 static WRITER: OnceLock<Mutex<()>> = OnceLock::new();
@@ -66,18 +67,11 @@ pub struct ApplyRemoteDatabaseResult {
     pub applied_objects: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SyncDatabaseDiagnostics {
-    pub schema_version: Option<i64>,
-    pub heads: Vec<String>,
-    pub pending_outbox: i64,
-    pub projection_version: Option<i64>,
-}
-
 #[derive(Debug)]
 struct PersistedState {
     snapshot_bytes: Vec<u8>,
     heads: Vec<String>,
+    migration: Option<DocumentCommandResult>,
 }
 
 fn sync_error(message: impl Into<String>) -> SyncError {
@@ -352,26 +346,35 @@ fn read_state(
     let Some((schema_version, snapshot_bytes, heads_json)) = row else {
         return Ok(None);
     };
-    if schema_version != LIBRARY_SIDECAR_SCHEMA_VERSION as i64 {
+    if schema_version != 1 && schema_version != LIBRARY_SIDECAR_SCHEMA_VERSION as i64 {
         return Err(sync_error(format!(
             "Unsupported persisted Automerge schema {schema_version}"
         )));
     }
     let heads = serde_json::from_str::<Vec<String>>(&heads_json)
         .map_err(|error| sync_error(format!("Persisted Automerge heads are invalid: {error}")))?;
-    let inspected = execute_document_command(
-        Some(&snapshot_bytes),
-        request(identity, Vec::new(), DocumentCommand::Inspect),
-        None,
-    )?;
-    if inspected.heads != heads {
+    if library_sidecar_snapshot_heads(&snapshot_bytes)? != heads {
         return Err(sync_error(
             "Persisted Automerge heads do not match its snapshot",
         ));
     }
+    let inspected = execute_document_command(
+        Some(&snapshot_bytes),
+        request(identity, heads.clone(), DocumentCommand::Inspect),
+        None,
+    )?;
+    if schema_version == LIBRARY_SIDECAR_SCHEMA_VERSION as i64
+        && (inspected.heads != heads || !inspected.changes.is_empty())
+    {
+        return Err(sync_error(
+            "Persisted Automerge heads do not match its snapshot",
+        ));
+    }
+    let migration = (schema_version == 1).then(|| inspected.clone());
     Ok(Some(PersistedState {
-        snapshot_bytes,
-        heads,
+        snapshot_bytes: inspected.snapshot_bytes,
+        heads: inspected.heads,
+        migration,
     }))
 }
 
@@ -449,8 +452,14 @@ fn insert_outbox(
 
 fn project_document(
     transaction: &Transaction<'_>,
-    projection: &DocumentProjection,
+    result: &DocumentCommandResult,
 ) -> Result<(), SyncError> {
+    let projection = &result.projection;
+    let library_uuid = result
+        .library_uuid
+        .as_deref()
+        .ok_or_else(|| sync_error("Cannot project a document without a library identity"))?;
+    project_catalog(transaction, library_uuid, &projection.catalog_books)?;
     for position in &projection.reading_positions {
         let conflict_count = i64::try_from(position.conflict_count)
             .map_err(|_| sync_error("Too many reading position conflicts"))?;
@@ -610,6 +619,108 @@ fn project_document(
     Ok(())
 }
 
+fn project_catalog(
+    transaction: &Transaction<'_>,
+    library_uuid: &str,
+    books: &[CatalogBookValue],
+) -> Result<(), SyncError> {
+    transaction
+        .execute_batch(
+            "DELETE FROM books_authors_link;
+             DELETE FROM books_tags_link;
+             DELETE FROM books_series_link;
+             DELETE FROM books_publishers_link;
+             DELETE FROM books_languages_link;
+             DELETE FROM books_ratings_link;
+             DELETE FROM comments;
+             DELETE FROM identifiers;
+             DELETE FROM data;
+             DELETE FROM authors;
+             DELETE FROM tags;
+             DELETE FROM series;
+             DELETE FROM publishers;
+             DELETE FROM languages;
+             DELETE FROM ratings;
+             DELETE FROM books;
+             DELETE FROM library_id;",
+        )
+        .map_err(database_error)?;
+    transaction
+        .execute(
+            "INSERT INTO library_id (id, uuid) VALUES (1, ?1)",
+            [library_uuid],
+        )
+        .map_err(database_error)?;
+
+    let mut author_ids = BTreeMap::<String, i64>::new();
+    let mut next_author_id = 1_i64;
+    let mut next_author_link_id = 1_i64;
+    let mut next_data_id = 1_i64;
+    for book in books.iter().filter(|book| !book.deleted) {
+        let author_sort = book.authors.join(" & ");
+        transaction
+            .execute(
+                "INSERT INTO books
+                 (id, title, sort, timestamp, pubdate, series_index, author_sort,
+                  isbn, lccn, path, flags, uuid, has_cover, last_modified)
+                 VALUES (?1, ?2, ?3, ?4, NULL, NULL, ?5,
+                         NULL, NULL, ?6, 1, ?7, ?8, ?9)",
+                params![
+                    book.book_id,
+                    book.title,
+                    book.title,
+                    book.timestamp,
+                    author_sort,
+                    format!("Books/{}", book.uuid),
+                    book.uuid,
+                    book.has_cover,
+                    book.last_modified
+                ],
+            )
+            .map_err(database_error)?;
+
+        let mut linked_author_ids = BTreeSet::new();
+        for author in &book.authors {
+            let author_id = match author_ids.get(author) {
+                Some(id) => *id,
+                None => {
+                    let id = next_author_id;
+                    next_author_id += 1;
+                    transaction
+                        .execute(
+                            "INSERT INTO authors (id, name, sort, link)
+                             VALUES (?1, ?2, ?2, NULL)",
+                            params![id, author],
+                        )
+                        .map_err(database_error)?;
+                    author_ids.insert(author.clone(), id);
+                    id
+                }
+            };
+            if !linked_author_ids.insert(author_id) {
+                continue;
+            }
+            transaction
+                .execute(
+                    "INSERT INTO books_authors_link (id, book, author)
+                     VALUES (?1, ?2, ?3)",
+                    params![next_author_link_id, book.book_id, author_id],
+                )
+                .map_err(database_error)?;
+            next_author_link_id += 1;
+        }
+        transaction
+            .execute(
+                "INSERT INTO data (id, book, format, uncompressed_size, name)
+                 VALUES (?1, ?2, ?3, ?4, 'book')",
+                params![next_data_id, book.book_id, book.format, book.size],
+            )
+            .map_err(database_error)?;
+        next_data_id += 1;
+    }
+    Ok(())
+}
+
 fn write_projection_meta(
     transaction: &Transaction<'_>,
     heads_json: &str,
@@ -662,7 +773,7 @@ fn rebuild_projection(
     }
     let heads_json = serde_json::to_string(&result.heads)
         .map_err(|error| sync_error(format!("Failed to encode Automerge heads: {error}")))?;
-    project_document(transaction, &result.projection)?;
+    project_document(transaction, result)?;
     write_projection_meta(transaction, &heads_json, Some(now_ms))
 }
 
@@ -675,7 +786,7 @@ fn persist_local_result(
 ) -> Result<(), SyncError> {
     let heads_json = write_state(transaction, result, now_ms)?;
     insert_outbox(transaction, &identity.library_uuid, result)?;
-    project_document(transaction, &result.projection)?;
+    project_document(transaction, result)?;
     write_projection_meta(transaction, &heads_json, rebuilt_at)
 }
 
@@ -691,7 +802,7 @@ fn persist_remote_result(
         .execute("DELETE FROM sync_automerge_outbox", [])
         .map_err(database_error)?;
     insert_outbox(transaction, &identity.library_uuid, local_delta)?;
-    project_document(transaction, &result.projection)?;
+    project_document(transaction, result)?;
     write_projection_meta(transaction, &heads_json, None)
 }
 
@@ -747,9 +858,13 @@ pub fn execute_local_database_command(
             PersistedState {
                 snapshot_bytes: initialized.snapshot_bytes,
                 heads: initialized.heads,
+                migration: None,
             }
         }
     };
+    if let Some(migration) = current.migration.as_ref() {
+        persist_local_result(&transaction, identity, migration, now_ms, Some(now_ms))?;
+    }
     let result = execute_document_command(
         Some(&current.snapshot_bytes),
         request(identity, current.heads, command.command),
@@ -787,9 +902,13 @@ where
             PersistedState {
                 snapshot_bytes: initialized.snapshot_bytes,
                 heads: initialized.heads,
+                migration: None,
             }
         }
     };
+    if let Some(migration) = current.migration.as_ref() {
+        persist_local_result(&transaction, identity, migration, now_ms, Some(now_ms))?;
+    }
     let result = execute_document_mutation(
         &current.snapshot_bytes,
         &identity.replica_id,
@@ -821,8 +940,41 @@ pub fn ensure_database_document(
     )
 }
 
+#[cfg(test)]
 pub fn list_pending_outbox(database_path: &str) -> Result<Vec<SyncOutboxEntry>, SyncError> {
     let connection = open_connection(database_path)?;
+    read_pending_outbox(&connection)
+}
+
+pub fn list_publishable_outbox(
+    database_path: &str,
+) -> Result<Option<Vec<SyncOutboxEntry>>, SyncError> {
+    let mut connection = open_connection(database_path)?;
+    let transaction = connection
+        .transaction_with_behavior(TransactionBehavior::Deferred)
+        .map_err(database_error)?;
+    let blocked = transaction
+        .query_row(
+            "SELECT EXISTS (
+               SELECT 1
+               FROM pending_book_imports AS pending
+               LEFT JOIN file_state AS file ON file.path = pending.relative_path
+               WHERE file.id IS NULL OR file.local_state <> 'present'
+             )",
+            [],
+            |row| row.get::<_, bool>(0),
+        )
+        .map_err(database_error)?;
+    let pending = if blocked {
+        None
+    } else {
+        Some(read_pending_outbox(&transaction)?)
+    };
+    transaction.commit().map_err(database_error)?;
+    Ok(pending)
+}
+
+fn read_pending_outbox(connection: &Connection) -> Result<Vec<SyncOutboxEntry>, SyncError> {
     let mut statement = connection
         .prepare(
             "SELECT storage_key_json, bytes, sha256, change_count
@@ -905,9 +1057,13 @@ pub fn apply_remote_database_objects(
             PersistedState {
                 snapshot_bytes: initialized.snapshot_bytes,
                 heads: initialized.heads,
+                migration: None,
             }
         }
     };
+    if let Some(migration) = current.migration.as_ref() {
+        persist_local_result(&transaction, identity, migration, now_ms, Some(now_ms))?;
+    }
     if objects.is_empty() {
         let document = execute_document_command(
             Some(&current.snapshot_bytes),
@@ -988,43 +1144,4 @@ pub fn apply_remote_database_objects(
         document: result,
         applied_objects: applied_changes,
     })
-}
-
-pub fn read_database_diagnostics(
-    database_path: &str,
-) -> Result<SyncDatabaseDiagnostics, SyncError> {
-    let connection = open_connection(database_path)?;
-    connection
-        .query_row(
-            "SELECT
-               (SELECT schema_version FROM sync_automerge_state WHERE id = 'local'),
-               (SELECT heads_json FROM sync_automerge_state WHERE id = 'local'),
-               (SELECT COUNT(*) FROM sync_automerge_outbox),
-               (SELECT projection_version
-                FROM sync_automerge_projection_meta
-                WHERE id = 'local')",
-            [],
-            |row| {
-                let heads_json = row.get::<_, Option<String>>(1)?;
-                let heads = heads_json
-                    .as_deref()
-                    .map(serde_json::from_str::<Vec<String>>)
-                    .transpose()
-                    .map_err(|error| {
-                        rusqlite::Error::FromSqlConversionFailure(
-                            1,
-                            rusqlite::types::Type::Text,
-                            Box::new(error),
-                        )
-                    })?
-                    .unwrap_or_default();
-                Ok(SyncDatabaseDiagnostics {
-                    schema_version: row.get(0)?,
-                    heads,
-                    pending_outbox: row.get(2)?,
-                    projection_version: row.get(3)?,
-                })
-            },
-        )
-        .map_err(database_error)
 }

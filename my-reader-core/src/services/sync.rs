@@ -263,6 +263,10 @@ fn sync_lock(database_path: &str) -> Arc<AsyncMutex<()>> {
     lock
 }
 
+pub(crate) fn library_sync_lock(sidecar_root: &Path) -> Result<Arc<AsyncMutex<()>>, CoreError> {
+    Ok(sync_lock(&database_path(sidecar_root)?))
+}
+
 fn database_path(sidecar_root: &Path) -> Result<String, CoreError> {
     database::library_db_path(&sidecar_root.to_string_lossy())
         .map(|path| path.to_string_lossy().into_owned())
@@ -414,7 +418,28 @@ impl SyncService {
             now_ms,
             mode,
             &operator,
+            is_remote_storage(storage),
             observer,
+        )
+        .await
+    }
+
+    pub(crate) async fn sync_sidecar_with_operator(
+        sidecar_root: &Path,
+        library_root: &Path,
+        now_ms: i64,
+        mode: SidecarSyncMode,
+        operator: &Operator,
+        remote_content: bool,
+    ) -> Result<SidecarSyncReport, CoreError> {
+        Self::sync_sidecar_with_operator_observed(
+            sidecar_root,
+            library_root,
+            now_ms,
+            mode,
+            operator,
+            remote_content,
+            &NoopObserver,
         )
         .await
     }
@@ -425,14 +450,18 @@ impl SyncService {
         now_ms: i64,
         mode: SidecarSyncMode,
         operator: &Operator,
+        remote_content: bool,
         observer: &dyn SyncObserver,
     ) -> Result<SidecarSyncReport, CoreError> {
         database::open_db(&sidecar_root.to_string_lossy()).await?;
         let database_path = database_path(sidecar_root)?;
-        let lock = sync_lock(&database_path);
+        let lock = library_sync_lock(sidecar_root)?;
         let _guard = lock.lock().await;
-        let library_uuid = super::catalog::CatalogService::get_library_uuid(library_root).await?;
+        let library_uuid =
+            super::catalog::CatalogService::get_source_library_uuid(library_root).await?;
         let identity = persistence::ensure_database_identity(&database_path, &library_uuid)?;
+        let remote_myreader = remote_content
+            && super::library::LibraryService::read_myreader_marker(library_root).is_ok();
         let report = exchange::sync_database_with_operator_observed(
             &database_path,
             operator,
@@ -442,6 +471,17 @@ impl SyncService {
             observer,
         )
         .await?;
+        if remote_myreader {
+            super::content::ContentService::retry_remote_deletes(sidecar_root, operator).await?;
+            let document =
+                persistence::ensure_database_document(&database_path, &identity, now_ms)?;
+            super::content::ContentService::reconcile_myreader_catalog(
+                sidecar_root,
+                library_root,
+                &document.projection.catalog_books,
+            )
+            .await?;
+        }
         persistence::mark_schedule_succeeded(
             &database_path,
             (mode == SidecarSyncMode::Full).then_some(now_ms),
@@ -488,7 +528,7 @@ impl SyncService {
         let started_at = Instant::now();
         let config = super::config::ConfigService::load(config_path)?
             .ok_or_else(|| CoreError::NotFound("APP_CONFIG_NOT_FOUND".into()))?;
-        let library = config
+        let mut library = config
             .libraries
             .iter()
             .find(|library| library.id == library_id)
@@ -503,6 +543,7 @@ impl SyncService {
                 now_ms,
                 options.sidecar_mode,
                 &operator,
+                is_remote_storage(storage),
                 observer,
             )
             .await
@@ -549,7 +590,24 @@ impl SyncService {
             }
         };
 
-        let (calibre, calibre_failure_kind) = if scope_has_calibre(options.scope) {
+        if library.library_type == crate::models::LibraryType::MyReader && !myreader.skipped {
+            let book_count = super::catalog::CatalogService::count_library_books(
+                library.library_type,
+                sidecar_root,
+                library_root,
+            )
+            .await?;
+            let book_count = u64::try_from(book_count).unwrap_or(u64::MAX);
+            if library.book_count != book_count {
+                library.book_count = book_count;
+                super::config::ConfigService::replace_library(config_path, library.clone())?;
+            }
+        }
+
+        let (calibre, calibre_failure_kind) = if library.library_type
+            == crate::models::LibraryType::Calibre
+            && scope_has_calibre(options.scope)
+        {
             observer.on_progress(exchange::SyncProgress {
                 stage: exchange::SyncStage::Calibre,
                 completed: 1,
@@ -616,9 +674,7 @@ impl SyncService {
 
     pub async fn has_pending_work(sidecar_root: &Path) -> Result<bool, CoreError> {
         database::open_db(&sidecar_root.to_string_lossy()).await?;
-        Ok(exchange::has_pending_database_work(&database_path(
-            sidecar_root,
-        )?)?)
+        exchange::has_publishable_database_work(&database_path(sidecar_root)?).map_err(Into::into)
     }
 
     pub async fn effective_mode(
@@ -640,7 +696,7 @@ impl SyncService {
         if !is_fresh {
             return Ok(Some(SidecarSyncMode::Full));
         }
-        if exchange::has_pending_database_work(&path)? {
+        if exchange::has_publishable_database_work(&path)? {
             return Ok(Some(SidecarSyncMode::PushOnly));
         }
         Ok(None)
@@ -808,6 +864,13 @@ fn is_remote_library(library: &Library) -> bool {
     )
 }
 
+fn is_remote_storage(storage: &LibraryStorageConfig) -> bool {
+    matches!(
+        storage,
+        LibraryStorageConfig::Webdav { .. } | LibraryStorageConfig::Onedrive { .. }
+    )
+}
+
 async fn evict_stale_book_files(
     sidecar_root: &Path,
     library_root: &Path,
@@ -956,6 +1019,7 @@ mod tests {
             id: "library-1".into(),
             name: "Library".into(),
             path: "remote://library".into(),
+            library_type: crate::models::LibraryType::Calibre,
             book_count: 1,
             metadata_uri: Some("file:///cache/metadata.db".into()),
             added_at: None,
@@ -1013,6 +1077,7 @@ mod tests {
             id: "library-1".into(),
             name: "Library".into(),
             path: "file:///cached/library".into(),
+            library_type: crate::models::LibraryType::Calibre,
             book_count: 0,
             metadata_uri: None,
             added_at: None,
@@ -1065,6 +1130,7 @@ mod tests {
             id: "library-1".into(),
             name: "Library".into(),
             path: "file:///cached/library".into(),
+            library_type: crate::models::LibraryType::Calibre,
             book_count: 0,
             metadata_uri: None,
             added_at: None,
@@ -1101,6 +1167,7 @@ mod tests {
             id: "library-1".into(),
             name: "Library".into(),
             path: "file:///stale/sandbox/library".into(),
+            library_type: crate::models::LibraryType::Calibre,
             book_count: 0,
             metadata_uri: None,
             added_at: None,
@@ -1164,6 +1231,154 @@ mod tests {
         assert_eq!(count_calibre_books(local_library.path()), 2);
         assert!(report.calibre.changed);
         assert_eq!(report.myreader.error, None);
+    }
+
+    #[tokio::test]
+    async fn should_sync_myreader_document_and_skip_calibre_stage_for_owned_library() {
+        let directory = tempfile::tempdir().unwrap();
+        let config_path = directory.path().join("config.json");
+        let library_root = directory.path().join("My Library");
+        let sidecars = directory.path().join("sidecars");
+        let (_, library) = crate::services::library::LibraryService::create_local_myreader(
+            &config_path,
+            crate::models::LocalLibraryRequest {
+                library_root_path: library_root.to_string_lossy().into_owned(),
+                path: library_root.to_string_lossy().into_owned(),
+                source_path: None,
+                sidecar_container_parent_path: Some(sidecars.to_string_lossy().into_owned()),
+                name: None,
+                metadata_uri: None,
+                added_at: None,
+                security_scoped_bookmark: None,
+            },
+            100,
+        )
+        .await
+        .unwrap();
+        let marker =
+            crate::services::library::LibraryService::read_myreader_marker(&library_root).unwrap();
+        let sidecar_root = sidecars.join(&library.id);
+
+        let report = SyncService::sync_library(
+            &config_path,
+            &sidecar_root,
+            &library_root,
+            &library.id,
+            200,
+            all_sync_options(),
+            &LibraryStorageConfig::LocalDirect {
+                root: library_root.to_string_lossy().into_owned(),
+            },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(report.myreader.error, None);
+        assert!(report.myreader.pushed > 0);
+        assert!(report.calibre.skipped);
+        assert_eq!(
+            report.calibre.skip_reason.as_deref(),
+            Some("not_applicable")
+        );
+        assert!(library_root
+            .join(".myreader/automerge")
+            .join(marker.library_uuid)
+            .is_dir());
+        assert!(!library_root.join("metadata.db").exists());
+    }
+
+    #[tokio::test]
+    async fn should_update_myreader_book_count_when_sidecar_sync_completes() {
+        let directory = tempfile::tempdir().unwrap();
+        let config_path = directory.path().join("config.json");
+        let library_root = directory.path().join("My Library");
+        let sidecars = directory.path().join("sidecars");
+        let (_, library) = crate::services::library::LibraryService::create_local_myreader(
+            &config_path,
+            crate::models::LocalLibraryRequest {
+                library_root_path: library_root.to_string_lossy().into_owned(),
+                path: library_root.to_string_lossy().into_owned(),
+                source_path: None,
+                sidecar_container_parent_path: Some(sidecars.to_string_lossy().into_owned()),
+                name: None,
+                metadata_uri: None,
+                added_at: None,
+                security_scoped_bookmark: None,
+            },
+            100,
+        )
+        .await
+        .unwrap();
+        let sidecar_root = sidecars.join(&library.id);
+        let source_file = directory.path().join("Book.epub");
+        tokio::fs::write(&source_file, b"epub-content")
+            .await
+            .unwrap();
+        let imported = crate::services::catalog::CatalogService::import_local_book(
+            &config_path,
+            &library.id,
+            &sidecar_root,
+            &library_root,
+            crate::models::ImportBookRequest {
+                source_file_path: source_file.to_string_lossy().into_owned(),
+                title: Some("Book".into()),
+                authors: vec!["Author".into()],
+                recorded_at_ms: 200,
+                consume_source_file: false,
+            },
+        )
+        .await
+        .unwrap();
+        let storage = LibraryStorageConfig::LocalDirect {
+            root: library_root.to_string_lossy().into_owned(),
+        };
+
+        let imported_report = SyncService::sync_library(
+            &config_path,
+            &sidecar_root,
+            &library_root,
+            &library.id,
+            300,
+            all_sync_options(),
+            &storage,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(imported_report.calibre.library.book_count, 1);
+        let imported_config = crate::services::config::ConfigService::load(&config_path)
+            .unwrap()
+            .unwrap();
+        assert_eq!(imported_config.libraries[0].book_count, 1);
+
+        crate::services::catalog::CatalogService::delete_local_book(
+            &config_path,
+            &library.id,
+            &sidecar_root,
+            &library_root,
+            imported.id,
+            400,
+        )
+        .await
+        .unwrap();
+
+        let deleted_report = SyncService::sync_library(
+            &config_path,
+            &sidecar_root,
+            &library_root,
+            &library.id,
+            500,
+            all_sync_options(),
+            &storage,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(deleted_report.calibre.library.book_count, 0);
+        let deleted_config = crate::services::config::ConfigService::load(&config_path)
+            .unwrap()
+            .unwrap();
+        assert_eq!(deleted_config.libraries[0].book_count, 0);
     }
 
     #[tokio::test]

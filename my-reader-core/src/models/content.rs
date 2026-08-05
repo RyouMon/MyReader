@@ -1,5 +1,12 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileDigest {
+    pub size: i64,
+    pub sha256: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileState {
@@ -7,7 +14,7 @@ pub struct FileState {
     pub path: String,
 
     pub local_state: String,
-    pub local_blake3: Option<String>,
+    pub local_sha256: Option<String>,
     pub local_size: Option<i64>,
     pub local_mtime: Option<i64>,
     pub updated_at: f64,
@@ -26,7 +33,7 @@ impl FileState {
 #[serde(rename_all = "camelCase")]
 pub struct FileStateUpdate {
     pub local_state: String,
-    pub local_blake3: Option<String>,
+    pub local_sha256: Option<String>,
     pub local_size: Option<i64>,
     pub local_mtime: Option<i64>,
 }
@@ -35,6 +42,7 @@ pub struct FileStateUpdate {
 #[serde(rename_all = "camelCase")]
 pub struct DownloadedFile {
     pub size: i64,
+    pub sha256: String,
     pub mtime_ms: i64,
 }
 
@@ -74,7 +82,7 @@ mod tests {
             id: "state-1".into(),
             path: "Author/Book/Book.epub".into(),
             local_state: local_state.into(),
-            local_blake3: None,
+            local_sha256: None,
             local_size: None,
             local_mtime: None,
             updated_at: 0.0,

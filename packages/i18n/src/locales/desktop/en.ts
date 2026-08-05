@@ -61,14 +61,22 @@ export const desktopEn = {
       listView: "List view",
       filter: "Filter",
       syncLibrary: "Sync current library",
+      importingBook: "Importing…",
+      importFailed: "Failed to import book",
+      importQueued:
+        "Book saved on this device. It will upload when the connection returns.",
+      defaultMyreaderName: "My Library",
       sort: {
         recent: "Recently added",
         progress: "Progress",
       },
       empty: {
         noLibraryTitle: "No library added",
-        noLibraryDesc: "Go to Settings → Libraries to add a Calibre library",
+        noLibraryDesc:
+          "Import a book to create a MyReader library, or add an existing library",
         goToSettings: "Go to Settings",
+        addLibrary: "Add library",
+        importBook: "Import book",
         noBooks: "No matching books",
         tryOtherKeywords: "Try different keywords",
         noBooksInLibrary: "Library is empty",
@@ -104,6 +112,8 @@ export const desktopEn = {
       localLibrary: "Local library file",
       defaultFormat: "Default format: {{format}}",
       setDefaultFormat: "Default reading format",
+      editMetadata: "Edit title and author",
+      deleteBook: "Delete book from library",
     },
     bookDetail: {
       loading: "Loading book detail…",
@@ -179,6 +189,19 @@ export const desktopEn = {
       setDefaultFormat: "Set default",
       setAsDefaultReadingFormat: "Set as default reading format",
       setDefaultFormatFor: "Set {{format}} as default reading format",
+      editMetadataTitle: "Edit book information",
+      titleLabel: "Title",
+      authorsLabel: "Authors",
+      authorsPlaceholder: "Separate multiple authors with commas",
+      saveMetadata: "Save",
+      savingMetadata: "Saving…",
+      updateMetadataFailed: "Failed to update book information",
+      deleteBookTitle: "Delete {{title}} from the library?",
+      deleteBookDescription:
+        "The book file and catalog record will be deleted. Other devices will follow after syncing. This cannot be undone.",
+      confirmDeleteBook: "Delete book",
+      deletingBook: "Deleting…",
+      deleteBookFailed: "Failed to delete book",
     },
     settings: {
       nav: {
@@ -190,7 +213,7 @@ export const desktopEn = {
       libraries: {
         title: "Libraries",
         description:
-          "Manage Calibre library directories, add multiple local libraries and switch freely",
+          "Create or open MyReader libraries, or connect existing Calibre libraries",
         added: "Added libraries",
         empty: "No libraries yet, add one below",
         current: "Current",
@@ -198,7 +221,7 @@ export const desktopEn = {
         bookCount: "{{count}} books",
         deleteTitle: "Delete library",
         addPrompt:
-          "Select the root directory of a Calibre library containing metadata.db. Book metadata and covers will be read automatically. Deleting a library only removes the reference and does not affect files on disk.",
+          "MyReader libraries support adding, deleting, and editing books. Calibre libraries remain read-only. Removing a library only removes its reference on this device.",
       },
       dataSources: {
         title: "Data Sources",
@@ -241,6 +264,37 @@ export const desktopEn = {
     },
     addLibraryForm: {
       label: "Add library",
+      operationLabel: "Library action",
+      operations: {
+        createMyreader: {
+          label: "Create MyReader library",
+          description:
+            "Create a writable, syncable MyReader library in an empty folder.",
+          pickerTitle: "Select an empty library folder",
+          pathPlaceholder: "Select or enter an empty folder",
+          remotePathPlaceholder: "Select or enter an empty remote folder",
+          confirm: "Create library",
+        },
+        openMyreader: {
+          label: "Open existing MyReader library",
+          description:
+            "Open a library containing a MyReader marker and Automerge catalog.",
+          pickerTitle: "Select a MyReader library folder",
+          pathPlaceholder: "Select or enter a MyReader library folder",
+          remotePathPlaceholder: "Select or enter a remote MyReader folder",
+          confirm: "Open library",
+        },
+        connectCalibre: {
+          label: "Connect Calibre library",
+          description:
+            "Connect an existing Calibre library containing metadata.db as read-only.",
+          pickerTitle: "Select a Calibre library folder",
+          pathPlaceholder:
+            "Enter a Calibre library path, e.g. D:\\CalibreLibrary",
+          remotePathPlaceholder: "Select or enter a remote Calibre folder",
+          confirm: "Connect library",
+        },
+      },
       typeLabel: "Data source type",
       typeLocal: "Local",
       typeLocalDesc: "Local file system",
@@ -264,6 +318,10 @@ export const desktopEn = {
       webdavBrowserLoading: "Loading…",
       webdavBrowserError: "Failed to load",
       selectedPath: "Selected: {{path}}",
+      newRemoteFolder: "New library folder",
+      newRemoteFolderDetail:
+        "Optional. Enter a name to create it inside the current directory, or leave blank to use the current directory.",
+      newRemoteFolderInvalid: "Enter one folder name without / or \\",
       validation: {
         selectDataSource: "Please select a data source",
         pathRequired: "Please enter a library path",

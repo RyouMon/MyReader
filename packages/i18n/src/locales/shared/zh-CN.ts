@@ -15,6 +15,7 @@ export const sharedZhCN = {
     save: "保存",
   },
   library: {
+    importBook: "导入图书",
     sort: {
       author: "作者",
       title: "书名",

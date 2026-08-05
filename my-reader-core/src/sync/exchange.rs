@@ -3,11 +3,12 @@ use sha2::{Digest, Sha256};
 
 use super::{
     document::{
-        library_sidecar_heads, load_library_sidecar_document_bytes, validate_library_identity,
+        library_sidecar_snapshot_heads, load_library_sidecar_document_bytes,
+        validate_library_identity,
     },
     persistence::{
         apply_remote_database_objects, delete_outbox_entry, ensure_database_document,
-        list_pending_outbox, read_database_diagnostics, DatabaseIdentity, SyncRemoteObject,
+        list_publishable_outbox, DatabaseIdentity, SyncOutboxEntry, SyncRemoteObject,
     },
     storage::{
         incremental_prefix, snapshot_key, snapshot_prefix, storage_key_to_path, StorageAdapter,
@@ -124,7 +125,21 @@ async fn load_document_chunks(
             }
             Some("snapshot") => {
                 let object_path = storage_key_to_path(&chunk.key)?;
-                let mut document =
+                let snapshot_heads =
+                    library_sidecar_snapshot_heads(&chunk.data).map_err(|error| {
+                        SyncError::InvalidRemoteObject {
+                            object_path: object_path.clone(),
+                            reason: error.to_string(),
+                        }
+                    })?;
+                let snapshot_heads_hash = heads_hash(&snapshot_heads);
+                if chunk.key.last() != Some(&snapshot_heads_hash) {
+                    return Err(SyncError::InvalidRemoteObject {
+                        object_path,
+                        reason: "the heads hash does not match its storage key".to_owned(),
+                    });
+                }
+                let document =
                     load_library_sidecar_document_bytes(&chunk.data, &identity.replica_id)
                         .map_err(|error| SyncError::InvalidRemoteObject {
                             object_path: object_path.clone(),
@@ -136,13 +151,6 @@ async fn load_document_chunks(
                         reason: error.to_string(),
                     }
                 })?;
-                let snapshot_heads_hash = heads_hash(&library_sidecar_heads(&mut document));
-                if chunk.key.last() != Some(&snapshot_heads_hash) {
-                    return Err(SyncError::InvalidRemoteObject {
-                        object_path,
-                        reason: "the heads hash does not match its storage key".to_owned(),
-                    });
-                }
             }
             _ => {}
         }
@@ -162,11 +170,11 @@ fn remote_objects(chunks: &[StorageChunk]) -> Vec<SyncRemoteObject> {
 }
 
 async fn publish_pending(
+    pending: Vec<SyncOutboxEntry>,
     database_path: &str,
     adapter: &StorageAdapter<'_>,
     observer: &dyn SyncObserver,
 ) -> Result<(usize, Vec<StorageChunk>), SyncError> {
-    let pending = list_pending_outbox(database_path)?;
     observer.on_progress(SyncProgress {
         stage: SyncStage::Pushing,
         completed: 0,
@@ -194,12 +202,12 @@ async fn publish_pending(
 }
 
 async fn save_total(
+    pending: Vec<SyncOutboxEntry>,
     database_path: &str,
     adapter: &StorageAdapter<'_>,
     document_id: &str,
     document: &super::document_engine::DocumentCommandResult,
 ) -> Result<(StorageChunk, usize), SyncError> {
-    let pending = list_pending_outbox(database_path)?;
     let change_count = pending.iter().map(|row| row.change_count).sum();
     let key = snapshot_key(document_id, &heads_hash(&document.heads));
     adapter.save(&key, &document.snapshot_bytes).await?;
@@ -238,7 +246,10 @@ async fn compact(
     if !should_compact(chunks) {
         return Ok(());
     }
-    let (snapshot, _) = save_total(database_path, adapter, document_id, document).await?;
+    let Some(pending) = list_publishable_outbox(database_path)? else {
+        return Ok(());
+    };
+    let (snapshot, _) = save_total(pending, database_path, adapter, document_id, document).await?;
     for chunk in chunks {
         if chunk.key.get(2) != snapshot.key.get(2) {
             adapter.remove(&chunk.key).await?;
@@ -321,14 +332,28 @@ pub async fn sync_database_with_operator_observed(
     };
 
     let mut covered_chunks = initial_chunks.clone();
-    let pushed = if initial_chunks.is_empty() {
+    let publishable = list_publishable_outbox(database_path)?;
+    let pushed = if publishable.is_none() {
+        observer.on_progress(SyncProgress {
+            stage: SyncStage::Pushing,
+            completed: 0,
+            total: 0,
+        });
+        0
+    } else if initial_chunks.is_empty() {
         observer.on_progress(SyncProgress {
             stage: SyncStage::Pushing,
             completed: 0,
             total: 1,
         });
-        let (snapshot, change_count) =
-            save_total(database_path, &adapter, &identity.library_uuid, &document).await?;
+        let (snapshot, change_count) = save_total(
+            publishable.unwrap_or_default(),
+            database_path,
+            &adapter,
+            &identity.library_uuid,
+            &document,
+        )
+        .await?;
         covered_chunks.push(snapshot);
         observer.on_progress(SyncProgress {
             stage: SyncStage::Pushing,
@@ -337,7 +362,13 @@ pub async fn sync_database_with_operator_observed(
         });
         change_count
     } else {
-        let (change_count, published) = publish_pending(database_path, &adapter, observer).await?;
+        let (change_count, published) = publish_pending(
+            publishable.unwrap_or_default(),
+            database_path,
+            &adapter,
+            observer,
+        )
+        .await?;
         covered_chunks.extend(published);
         change_count
     };
@@ -362,8 +393,9 @@ pub async fn sync_database_with_operator_observed(
     Ok(SyncReport { pushed, pulled })
 }
 
-pub fn has_pending_database_work(database_path: &str) -> Result<bool, SyncError> {
-    read_database_diagnostics(database_path).map(|diagnostics| diagnostics.pending_outbox > 0)
+pub fn has_publishable_database_work(database_path: &str) -> Result<bool, SyncError> {
+    Ok(super::persistence::list_publishable_outbox(database_path)?
+        .is_some_and(|pending| !pending.is_empty()))
 }
 
 #[cfg(test)]
@@ -604,6 +636,33 @@ mod tests {
             .unwrap_err();
 
         assert!(matches!(error, SyncError::InvalidRemoteObject { .. }));
+    }
+
+    #[tokio::test]
+    async fn should_accept_schema_one_snapshot_when_storage_key_matches_original_heads() {
+        let (_directory, path) = database();
+        let identity = identity("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+        let snapshot =
+            include_bytes!("../../../fixtures/library-sidecar-automerge/genesis.automerge");
+        let snapshot_heads = library_sidecar_snapshot_heads(snapshot).unwrap();
+        let remote = tempfile::tempdir().unwrap();
+        let operator = operator(&remote);
+        let adapter = StorageAdapter::new(&operator);
+        adapter
+            .save(
+                &snapshot_key(LIBRARY_UUID, &heads_hash(&snapshot_heads)),
+                snapshot,
+            )
+            .await
+            .unwrap();
+
+        let result =
+            sync_database_with_operator(&path, &operator, &identity, 10, SyncMode::Full).await;
+
+        assert!(
+            result.is_ok(),
+            "schema-one snapshot keyed by its original heads should be accepted: {result:?}"
+        );
     }
 
     #[tokio::test]

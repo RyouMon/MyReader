@@ -143,6 +143,100 @@ export async function appConfigWriteMobile(
   }
 }
 
+export function bookTransferReadTaskProgress(
+  taskId: string,
+): BookUploadTaskProgress | undefined {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterOptionalTypeBookUploadTaskProgress.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCall(
+      /*caller:*/ (callStatus) => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_book_transfer_read_task_progress(
+          FfiConverterString.lower(taskId, nativeModule().rustbuffer_alloc),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
+
+export function bookTransferReleaseTask(taskId: string): boolean {
+  return FfiConverterBool.lift(
+    uniffiCaller.rustCall(
+      /*caller:*/ (callStatus) => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_book_transfer_release_task(
+          FfiConverterString.lower(taskId, nativeModule().rustbuffer_alloc),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
+
+export async function bookTransferRunPendingUploads(
+  taskId: string,
+  sidecarRootPath: string,
+  libraryRootPath: string,
+  storage: LibraryStorageConfig,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<Array<string>> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_book_transfer_run_pending_uploads(
+          FfiConverterString.lower(taskId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            sidecarRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            libraryRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterTypeLibraryStorageConfig.lower(
+            storage,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterSequenceString.lift.bind(
+        FfiConverterSequenceString,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
 export async function catalogCountBooks(
   libraryRootPath: string,
   asyncOpts_?: { signal: AbortSignal },
@@ -173,6 +267,114 @@ export async function catalogCountBooks(
       // export. The bytes the runtime hands back must be deserialized
       // here using the per-callable return-type converter.
       /*liftFunc:*/ FfiConverterFloat64.lift.bind(FfiConverterFloat64),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function catalogCountLibraryBooks(
+  configPath: string,
+  libraryId: string,
+  sidecarRootPath: string,
+  contentRootPath: string,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<number> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_count_library_books(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(libraryId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            sidecarRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            contentRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_f64,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_f64,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_f64,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_f64,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterFloat64.lift.bind(FfiConverterFloat64),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function catalogDeleteLocalBook(
+  configPath: string,
+  libraryId: string,
+  sidecarRootPath: string,
+  contentRootPath: string,
+  bookId: number,
+  recordedAtMs: number,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<void> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_delete_local_book(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(libraryId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            sidecarRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            contentRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterFloat64.lower(bookId, nativeModule().rustbuffer_alloc),
+          FfiConverterFloat64.lower(
+            recordedAtMs,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_void,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_void,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_void,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_void,
+      /*liftFunc:*/ (_v) => {},
       /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
       /*asyncOpts:*/ asyncOpts_,
       /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
@@ -285,6 +487,175 @@ export async function catalogGetBookFormat(
   }
 }
 
+export async function catalogGetLibraryBookDetail(
+  configPath: string,
+  libraryId: string,
+  sidecarRootPath: string,
+  contentRootPath: string,
+  bookId: number,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<BookDetail> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_get_library_book_detail(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(libraryId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            sidecarRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            contentRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterFloat64.lower(bookId, nativeModule().rustbuffer_alloc),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeBookDetail.lift.bind(
+        FfiConverterTypeBookDetail,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function catalogGetLibraryBookFormat(
+  configPath: string,
+  libraryId: string,
+  sidecarRootPath: string,
+  contentRootPath: string,
+  bookId: number,
+  format: string,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<BookFormat | undefined> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_get_library_book_format(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(libraryId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            sidecarRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            contentRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterFloat64.lower(bookId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(format, nativeModule().rustbuffer_alloc),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterOptionalTypeBookFormat.lift.bind(
+        FfiConverterOptionalTypeBookFormat,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function catalogGetLibraryIdentity(
+  configPath: string,
+  libraryId: string,
+  sidecarRootPath: string,
+  contentRootPath: string,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<string> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_get_library_identity(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(libraryId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            sidecarRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            contentRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
 export async function catalogGetLibraryUuid(
   libraryRootPath: string,
   asyncOpts_?: { signal: AbortSignal },
@@ -315,6 +686,121 @@ export async function catalogGetLibraryUuid(
       // export. The bytes the runtime hands back must be deserialized
       // here using the per-callable return-type converter.
       /*liftFunc:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function catalogGetMyreaderBookContent(
+  sidecarRootPath: string,
+  contentRootPath: string,
+  bookId: number,
+  format: string,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<BookContent> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_get_myreader_book_content(
+          FfiConverterString.lower(
+            sidecarRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            contentRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterFloat64.lower(bookId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(format, nativeModule().rustbuffer_alloc),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeBookContent.lift.bind(
+        FfiConverterTypeBookContent,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function catalogImportLocalBook(
+  configPath: string,
+  libraryId: string,
+  sidecarRootPath: string,
+  contentRootPath: string,
+  request: ImportBookRequest,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<BookEntry> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_import_local_book(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(libraryId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            sidecarRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            contentRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterTypeImportBookRequest.lower(
+            request,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeBookEntry.lift.bind(
+        FfiConverterTypeBookEntry,
+      ),
       /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
       /*asyncOpts:*/ asyncOpts_,
       /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
@@ -589,6 +1075,368 @@ export async function catalogListBooksPageByLastRead(
   }
 }
 
+export async function catalogListLibraryBookFormats(
+  configPath: string,
+  libraryId: string,
+  sidecarRootPath: string,
+  contentRootPath: string,
+  bookId: number,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<Array<BookFormat>> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_list_library_book_formats(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(libraryId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            sidecarRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            contentRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterFloat64.lower(bookId, nativeModule().rustbuffer_alloc),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterSequenceTypeBookFormat.lift.bind(
+        FfiConverterSequenceTypeBookFormat,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function catalogListLibraryBookSummaries(
+  configPath: string,
+  libraryId: string,
+  sidecarRootPath: string,
+  contentRootPath: string,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<Array<BookSummary>> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_list_library_book_summaries(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(libraryId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            sidecarRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            contentRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterSequenceTypeBookSummary.lift.bind(
+        FfiConverterSequenceTypeBookSummary,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function catalogListLibraryBooks(
+  configPath: string,
+  libraryId: string,
+  sidecarRootPath: string,
+  contentRootPath: string,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<Array<BookEntry>> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_list_library_books(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(libraryId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            sidecarRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            contentRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterSequenceTypeBookEntry.lift.bind(
+        FfiConverterSequenceTypeBookEntry,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function catalogListLibraryBooksPage(
+  configPath: string,
+  libraryId: string,
+  sidecarRootPath: string,
+  contentRootPath: string,
+  offset: number,
+  limit: number,
+  sortBy: string | undefined,
+  search: string | undefined,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<PaginatedBooks> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_list_library_books_page(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(libraryId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            sidecarRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            contentRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterFloat64.lower(offset, nativeModule().rustbuffer_alloc),
+          FfiConverterFloat64.lower(limit, nativeModule().rustbuffer_alloc),
+          FfiConverterOptionalString.lower(
+            sortBy,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterOptionalString.lower(
+            search,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypePaginatedBooks.lift.bind(
+        FfiConverterTypePaginatedBooks,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function catalogListLibraryBooksPageByLastRead(
+  configPath: string,
+  libraryId: string,
+  sidecarRootPath: string,
+  contentRootPath: string,
+  offset: number,
+  limit: number,
+  search: string | undefined,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<PaginatedBooks> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_list_library_books_page_by_last_read(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(libraryId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            sidecarRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            contentRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterFloat64.lower(offset, nativeModule().rustbuffer_alloc),
+          FfiConverterFloat64.lower(limit, nativeModule().rustbuffer_alloc),
+          FfiConverterOptionalString.lower(
+            search,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypePaginatedBooks.lift.bind(
+        FfiConverterTypePaginatedBooks,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function catalogListLibrarySeriesBooks(
+  configPath: string,
+  libraryId: string,
+  sidecarRootPath: string,
+  contentRootPath: string,
+  seriesName: string,
+  excludeBookId: number | undefined,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<Array<BookEntry>> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_list_library_series_books(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(libraryId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            sidecarRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            contentRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(seriesName, nativeModule().rustbuffer_alloc),
+          FfiConverterOptionalFloat64.lower(
+            excludeBookId,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterSequenceTypeBookEntry.lift.bind(
+        FfiConverterSequenceTypeBookEntry,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
 export async function catalogListSeriesBooks(
   libraryRootPath: string,
   seriesName: string,
@@ -627,6 +1475,126 @@ export async function catalogListSeriesBooks(
       // here using the per-callable return-type converter.
       /*liftFunc:*/ FfiConverterSequenceTypeBookEntry.lift.bind(
         FfiConverterSequenceTypeBookEntry,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function catalogStageRemoteBookImport(
+  configPath: string,
+  libraryId: string,
+  sidecarRootPath: string,
+  contentRootPath: string,
+  request: ImportBookRequest,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<BookEntry> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_stage_remote_book_import(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(libraryId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            sidecarRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            contentRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterTypeImportBookRequest.lower(
+            request,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeBookEntry.lift.bind(
+        FfiConverterTypeBookEntry,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function catalogUpdateLocalBookMetadata(
+  configPath: string,
+  libraryId: string,
+  sidecarRootPath: string,
+  contentRootPath: string,
+  request: UpdateBookMetadataRequest,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<BookEntry> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_update_local_book_metadata(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(libraryId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            sidecarRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            contentRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterTypeUpdateBookMetadataRequest.lower(
+            request,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeBookEntry.lift.bind(
+        FfiConverterTypeBookEntry,
       ),
       /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
       /*asyncOpts:*/ asyncOpts_,
@@ -842,6 +1810,69 @@ export async function contentFinalizeDownloadedFile(
   }
 }
 
+export async function contentFinalizeVerifiedDownloadedFile(
+  sidecarRootPath: string,
+  relativePath: string,
+  localPath: string,
+  expectedSize: number,
+  expectedSha256: string,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<DownloadedFile> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_content_finalize_verified_downloaded_file(
+          FfiConverterString.lower(
+            sidecarRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            relativePath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(localPath, nativeModule().rustbuffer_alloc),
+          FfiConverterFloat64.lower(
+            expectedSize,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            expectedSha256,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeDownloadedFile.lift.bind(
+        FfiConverterTypeDownloadedFile,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
 export async function contentGetFileState(
   sidecarRootPath: string,
   path: string,
@@ -875,6 +1906,74 @@ export async function contentGetFileState(
       // here using the per-callable return-type converter.
       /*liftFunc:*/ FfiConverterOptionalTypeFileState.lift.bind(
         FfiConverterOptionalTypeFileState,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function contentInstallVerifiedDownloadedFile(
+  sidecarRootPath: string,
+  relativePath: string,
+  partialPath: string,
+  finalPath: string,
+  expectedSize: number,
+  expectedSha256: string,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<DownloadedFile> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_content_install_verified_downloaded_file(
+          FfiConverterString.lower(
+            sidecarRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            relativePath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            partialPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(finalPath, nativeModule().rustbuffer_alloc),
+          FfiConverterFloat64.lower(
+            expectedSize,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            expectedSha256,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeDownloadedFile.lift.bind(
+        FfiConverterTypeDownloadedFile,
       ),
       /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
       /*asyncOpts:*/ asyncOpts_,
@@ -1053,6 +2152,50 @@ export async function contentMarkFileRemoteOnly(
       /*rustCaller:*/ uniffiCaller,
       /*rustFutureFunc:*/ () => {
         return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_content_mark_file_remote_only(
+          FfiConverterString.lower(
+            sidecarRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            relativePath,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_void,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_void,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_void,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_void,
+      /*liftFunc:*/ (_v) => {},
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function contentMarkFileSourceMissing(
+  sidecarRootPath: string,
+  relativePath: string,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<void> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_content_mark_file_source_missing(
           FfiConverterString.lower(
             sidecarRootPath,
             nativeModule().rustbuffer_alloc,
@@ -1798,6 +2941,228 @@ export async function libraryAddRemote(
           ),
           FfiConverterTypeRemoteCredential.lower(
             credential,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeLibraryResult.lift.bind(
+        FfiConverterTypeLibraryResult,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function libraryCreateLocalMyreader(
+  configPath: string,
+  request: LocalLibraryRequest,
+  recordedAtMs: number,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<LibraryResult> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_library_create_local_myreader(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterTypeLocalLibraryRequest.lower(
+            request,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterFloat64.lower(
+            recordedAtMs,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeLibraryResult.lift.bind(
+        FfiConverterTypeLibraryResult,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function libraryCreateRemoteMyreader(
+  configPath: string,
+  request: RemoteLibraryRequest,
+  credential: RemoteCredential,
+  recordedAtMs: number,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<LibraryResult> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_library_create_remote_myreader(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterTypeRemoteLibraryRequest.lower(
+            request,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterTypeRemoteCredential.lower(
+            credential,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterFloat64.lower(
+            recordedAtMs,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeLibraryResult.lift.bind(
+        FfiConverterTypeLibraryResult,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function libraryOpenLocalMyreader(
+  configPath: string,
+  request: LocalLibraryRequest,
+  recordedAtMs: number,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<LibraryResult> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_library_open_local_myreader(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterTypeLocalLibraryRequest.lower(
+            request,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterFloat64.lower(
+            recordedAtMs,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeLibraryResult.lift.bind(
+        FfiConverterTypeLibraryResult,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function libraryOpenRemoteMyreader(
+  configPath: string,
+  request: RemoteLibraryRequest,
+  credential: RemoteCredential,
+  recordedAtMs: number,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<LibraryResult> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_library_open_remote_myreader(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterTypeRemoteLibraryRequest.lower(
+            request,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterTypeRemoteCredential.lower(
+            credential,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterFloat64.lower(
+            recordedAtMs,
             nativeModule().rustbuffer_alloc,
           ),
         );
@@ -3909,6 +5274,7 @@ export type Library = {
   id: string;
   name: string;
   path: string;
+  libraryType: string;
   bookCount: number;
   metadataUri?: string;
   addedAt?: number;
@@ -3942,6 +5308,7 @@ const FfiConverterTypeLibrary = (() => {
         id: FfiConverterString.read(from),
         name: FfiConverterString.read(from),
         path: FfiConverterString.read(from),
+        libraryType: FfiConverterString.read(from),
         bookCount: FfiConverterFloat64.read(from),
         metadataUri: FfiConverterOptionalString.read(from),
         addedAt: FfiConverterOptionalFloat64.read(from),
@@ -3957,6 +5324,7 @@ const FfiConverterTypeLibrary = (() => {
       FfiConverterString.write(value.id, into);
       FfiConverterString.write(value.name, into);
       FfiConverterString.write(value.path, into);
+      FfiConverterString.write(value.libraryType, into);
       FfiConverterFloat64.write(value.bookCount, into);
       FfiConverterOptionalString.write(value.metadataUri, into);
       FfiConverterOptionalFloat64.write(value.addedAt, into);
@@ -3974,6 +5342,7 @@ const FfiConverterTypeLibrary = (() => {
         FfiConverterString.allocationSize(value.id) +
         FfiConverterString.allocationSize(value.name) +
         FfiConverterString.allocationSize(value.path) +
+        FfiConverterString.allocationSize(value.libraryType) +
         FfiConverterFloat64.allocationSize(value.bookCount) +
         FfiConverterOptionalString.allocationSize(value.metadataUri) +
         FfiConverterOptionalFloat64.allocationSize(value.addedAt) +
@@ -4047,6 +5416,63 @@ const FfiConverterTypeAppConfig = (() => {
         FfiConverterSequenceTypeLibrary.allocationSize(value.libraries) +
         FfiConverterOptionalString.allocationSize(value.activeLibraryId) +
         FfiConverterOptionalString.allocationSize(value.mobileJson)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type BookContent = {
+  bookId: number;
+  format: string;
+  relativePath: string;
+  size: number;
+  sha256: string;
+};
+
+/**
+ * Generated factory for {@link BookContent} record objects.
+ */
+export const BookContent = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<BookContent, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<BookContent>,
+  });
+})();
+
+const FfiConverterTypeBookContent = (() => {
+  type TypeName = BookContent;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        bookId: FfiConverterFloat64.read(from),
+        format: FfiConverterString.read(from),
+        relativePath: FfiConverterString.read(from),
+        size: FfiConverterFloat64.read(from),
+        sha256: FfiConverterString.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterFloat64.write(value.bookId, into);
+      FfiConverterString.write(value.format, into);
+      FfiConverterString.write(value.relativePath, into);
+      FfiConverterFloat64.write(value.size, into);
+      FfiConverterString.write(value.sha256, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterFloat64.allocationSize(value.bookId) +
+        FfiConverterString.allocationSize(value.format) +
+        FfiConverterString.allocationSize(value.relativePath) +
+        FfiConverterFloat64.allocationSize(value.size) +
+        FfiConverterString.allocationSize(value.sha256)
       );
     }
   }
@@ -4655,6 +6081,61 @@ const FfiConverterTypeBookSummary = (() => {
   return new FFIConverter();
 })();
 
+export type BookUploadTaskProgress = {
+  taskId: string;
+  bookUuid: string;
+  completed: number;
+  total: number;
+};
+
+/**
+ * Generated factory for {@link BookUploadTaskProgress} record objects.
+ */
+export const BookUploadTaskProgress = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<
+      BookUploadTaskProgress,
+      ReturnType<typeof defaults>
+    >(defaults);
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () =>
+      Object.freeze(defaults()) as Partial<BookUploadTaskProgress>,
+  });
+})();
+
+const FfiConverterTypeBookUploadTaskProgress = (() => {
+  type TypeName = BookUploadTaskProgress;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        taskId: FfiConverterString.read(from),
+        bookUuid: FfiConverterString.read(from),
+        completed: FfiConverterFloat64.read(from),
+        total: FfiConverterFloat64.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.taskId, into);
+      FfiConverterString.write(value.bookUuid, into);
+      FfiConverterFloat64.write(value.completed, into);
+      FfiConverterFloat64.write(value.total, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.taskId) +
+        FfiConverterString.allocationSize(value.bookUuid) +
+        FfiConverterFloat64.allocationSize(value.completed) +
+        FfiConverterFloat64.allocationSize(value.total)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
 export type CalibreSyncReport = {
   skipped: boolean;
   skipReason?: string;
@@ -4842,6 +6323,7 @@ const FfiConverterTypeDownloadTask = (() => {
 
 export type DownloadedFile = {
   size: number;
+  sha256: string;
   mtimeMs: number;
 };
 
@@ -4868,16 +6350,19 @@ const FfiConverterTypeDownloadedFile = (() => {
     read(from: RustBuffer): TypeName {
       return {
         size: FfiConverterFloat64.read(from),
+        sha256: FfiConverterString.read(from),
         mtimeMs: FfiConverterFloat64.read(from),
       };
     }
     write(value: TypeName, into: RustBuffer): void {
       FfiConverterFloat64.write(value.size, into);
+      FfiConverterString.write(value.sha256, into);
       FfiConverterFloat64.write(value.mtimeMs, into);
     }
     allocationSize(value: TypeName): number {
       return (
         FfiConverterFloat64.allocationSize(value.size) +
+        FfiConverterString.allocationSize(value.sha256) +
         FfiConverterFloat64.allocationSize(value.mtimeMs)
       );
     }
@@ -4938,6 +6423,8 @@ const FfiConverterTypeEnqueuedDownloadTask = (() => {
 export type FileLocalState =
   | "present"
   | "remote_only"
+  | "source_missing"
+  | "remote_delete_pending"
   | "local_only"
   | "dirty_push";
 
@@ -4952,6 +6439,8 @@ const FfiConverterTypeFileLocalState = (() => {
       return intermediate as
         | "present"
         | "remote_only"
+        | "source_missing"
+        | "remote_delete_pending"
         | "local_only"
         | "dirty_push";
     }
@@ -4964,6 +6453,8 @@ const FfiConverterTypeFileLocalState = (() => {
       return intermediate as
         | "present"
         | "remote_only"
+        | "source_missing"
+        | "remote_delete_pending"
         | "local_only"
         | "dirty_push";
     }
@@ -4985,7 +6476,7 @@ export type FileState = {
   path: string;
   localState: FileLocalState;
   isLocallyAvailable: boolean;
-  localBlake3?: string;
+  localSha256?: string;
   localSize?: number;
   localMtime?: number;
   updatedAt: number;
@@ -5015,7 +6506,7 @@ const FfiConverterTypeFileState = (() => {
         path: FfiConverterString.read(from),
         localState: FfiConverterTypeFileLocalState.read(from),
         isLocallyAvailable: FfiConverterBool.read(from),
-        localBlake3: FfiConverterOptionalString.read(from),
+        localSha256: FfiConverterOptionalString.read(from),
         localSize: FfiConverterOptionalFloat64.read(from),
         localMtime: FfiConverterOptionalFloat64.read(from),
         updatedAt: FfiConverterFloat64.read(from),
@@ -5026,7 +6517,7 @@ const FfiConverterTypeFileState = (() => {
       FfiConverterString.write(value.path, into);
       FfiConverterTypeFileLocalState.write(value.localState, into);
       FfiConverterBool.write(value.isLocallyAvailable, into);
-      FfiConverterOptionalString.write(value.localBlake3, into);
+      FfiConverterOptionalString.write(value.localSha256, into);
       FfiConverterOptionalFloat64.write(value.localSize, into);
       FfiConverterOptionalFloat64.write(value.localMtime, into);
       FfiConverterFloat64.write(value.updatedAt, into);
@@ -5037,7 +6528,7 @@ const FfiConverterTypeFileState = (() => {
         FfiConverterString.allocationSize(value.path) +
         FfiConverterTypeFileLocalState.allocationSize(value.localState) +
         FfiConverterBool.allocationSize(value.isLocallyAvailable) +
-        FfiConverterOptionalString.allocationSize(value.localBlake3) +
+        FfiConverterOptionalString.allocationSize(value.localSha256) +
         FfiConverterOptionalFloat64.allocationSize(value.localSize) +
         FfiConverterOptionalFloat64.allocationSize(value.localMtime) +
         FfiConverterFloat64.allocationSize(value.updatedAt)
@@ -5049,7 +6540,7 @@ const FfiConverterTypeFileState = (() => {
 
 export type FileStateUpdate = {
   localState: FileLocalState;
-  localBlake3?: string;
+  localSha256?: string;
   localSize?: number;
   localMtime?: number;
 };
@@ -5077,23 +6568,80 @@ const FfiConverterTypeFileStateUpdate = (() => {
     read(from: RustBuffer): TypeName {
       return {
         localState: FfiConverterTypeFileLocalState.read(from),
-        localBlake3: FfiConverterOptionalString.read(from),
+        localSha256: FfiConverterOptionalString.read(from),
         localSize: FfiConverterOptionalFloat64.read(from),
         localMtime: FfiConverterOptionalFloat64.read(from),
       };
     }
     write(value: TypeName, into: RustBuffer): void {
       FfiConverterTypeFileLocalState.write(value.localState, into);
-      FfiConverterOptionalString.write(value.localBlake3, into);
+      FfiConverterOptionalString.write(value.localSha256, into);
       FfiConverterOptionalFloat64.write(value.localSize, into);
       FfiConverterOptionalFloat64.write(value.localMtime, into);
     }
     allocationSize(value: TypeName): number {
       return (
         FfiConverterTypeFileLocalState.allocationSize(value.localState) +
-        FfiConverterOptionalString.allocationSize(value.localBlake3) +
+        FfiConverterOptionalString.allocationSize(value.localSha256) +
         FfiConverterOptionalFloat64.allocationSize(value.localSize) +
         FfiConverterOptionalFloat64.allocationSize(value.localMtime)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type ImportBookRequest = {
+  sourceFilePath: string;
+  title?: string;
+  authors: Array<string>;
+  recordedAtMs: number;
+  consumeSourceFile: boolean;
+};
+
+/**
+ * Generated factory for {@link ImportBookRequest} record objects.
+ */
+export const ImportBookRequest = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<ImportBookRequest, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<ImportBookRequest>,
+  });
+})();
+
+const FfiConverterTypeImportBookRequest = (() => {
+  type TypeName = ImportBookRequest;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        sourceFilePath: FfiConverterString.read(from),
+        title: FfiConverterOptionalString.read(from),
+        authors: FfiConverterSequenceString.read(from),
+        recordedAtMs: FfiConverterFloat64.read(from),
+        consumeSourceFile: FfiConverterBool.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.sourceFilePath, into);
+      FfiConverterOptionalString.write(value.title, into);
+      FfiConverterSequenceString.write(value.authors, into);
+      FfiConverterFloat64.write(value.recordedAtMs, into);
+      FfiConverterBool.write(value.consumeSourceFile, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.sourceFilePath) +
+        FfiConverterOptionalString.allocationSize(value.title) +
+        FfiConverterSequenceString.allocationSize(value.authors) +
+        FfiConverterFloat64.allocationSize(value.recordedAtMs) +
+        FfiConverterBool.allocationSize(value.consumeSourceFile)
       );
     }
   }
@@ -5433,6 +6981,7 @@ const FfiConverterTypeLibrarySyncReport = (() => {
 export type LocalLibraryRequest = {
   libraryRootPath: string;
   path: string;
+  sourcePath?: string;
   sidecarContainerParentPath?: string;
   name?: string;
   metadataUri?: string;
@@ -5464,6 +7013,7 @@ const FfiConverterTypeLocalLibraryRequest = (() => {
       return {
         libraryRootPath: FfiConverterString.read(from),
         path: FfiConverterString.read(from),
+        sourcePath: FfiConverterOptionalString.read(from),
         sidecarContainerParentPath: FfiConverterOptionalString.read(from),
         name: FfiConverterOptionalString.read(from),
         metadataUri: FfiConverterOptionalString.read(from),
@@ -5475,6 +7025,7 @@ const FfiConverterTypeLocalLibraryRequest = (() => {
     write(value: TypeName, into: RustBuffer): void {
       FfiConverterString.write(value.libraryRootPath, into);
       FfiConverterString.write(value.path, into);
+      FfiConverterOptionalString.write(value.sourcePath, into);
       FfiConverterOptionalString.write(value.sidecarContainerParentPath, into);
       FfiConverterOptionalString.write(value.name, into);
       FfiConverterOptionalString.write(value.metadataUri, into);
@@ -5488,6 +7039,7 @@ const FfiConverterTypeLocalLibraryRequest = (() => {
       return (
         FfiConverterString.allocationSize(value.libraryRootPath) +
         FfiConverterString.allocationSize(value.path) +
+        FfiConverterOptionalString.allocationSize(value.sourcePath) +
         FfiConverterOptionalString.allocationSize(
           value.sidecarContainerParentPath,
         ) +
@@ -6446,6 +7998,61 @@ const FfiConverterTypeSyncTaskProgress = (() => {
   return new FFIConverter();
 })();
 
+export type UpdateBookMetadataRequest = {
+  bookId: number;
+  title: string;
+  authors: Array<string>;
+  recordedAtMs: number;
+};
+
+/**
+ * Generated factory for {@link UpdateBookMetadataRequest} record objects.
+ */
+export const UpdateBookMetadataRequest = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<
+      UpdateBookMetadataRequest,
+      ReturnType<typeof defaults>
+    >(defaults);
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () =>
+      Object.freeze(defaults()) as Partial<UpdateBookMetadataRequest>,
+  });
+})();
+
+const FfiConverterTypeUpdateBookMetadataRequest = (() => {
+  type TypeName = UpdateBookMetadataRequest;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        bookId: FfiConverterFloat64.read(from),
+        title: FfiConverterString.read(from),
+        authors: FfiConverterSequenceString.read(from),
+        recordedAtMs: FfiConverterFloat64.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterFloat64.write(value.bookId, into);
+      FfiConverterString.write(value.title, into);
+      FfiConverterSequenceString.write(value.authors, into);
+      FfiConverterFloat64.write(value.recordedAtMs, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterFloat64.allocationSize(value.bookId) +
+        FfiConverterString.allocationSize(value.title) +
+        FfiConverterSequenceString.allocationSize(value.authors) +
+        FfiConverterFloat64.allocationSize(value.recordedAtMs)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
 // Flat error type: CoreFfiError
 export enum CoreFfiError_Tags {
   Core = "Core",
@@ -6719,6 +8326,11 @@ const FfiConverterOptionalTypeAppConfig = new FfiConverterOptional(
   FfiConverterTypeAppConfig,
 );
 
+// FfiConverter for BookUploadTaskProgress | undefined
+const FfiConverterOptionalTypeBookUploadTaskProgress = new FfiConverterOptional(
+  FfiConverterTypeBookUploadTaskProgress,
+);
+
 // FfiConverter for BookFormat | undefined
 const FfiConverterOptionalTypeBookFormat = new FfiConverterOptional(
   FfiConverterTypeBookFormat,
@@ -6851,11 +8463,51 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_book_transfer_read_task_progress() !==
+    27216
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_book_transfer_read_task_progress",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_book_transfer_release_task() !==
+    3787
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_book_transfer_release_task",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_book_transfer_run_pending_uploads() !==
+    12774
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_book_transfer_run_pending_uploads",
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_count_books() !==
     58292
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_catalog_count_books",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_count_library_books() !==
+    165
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_catalog_count_library_books",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_delete_local_book() !==
+    36271
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_catalog_delete_local_book",
     );
   }
   if (
@@ -6875,11 +8527,51 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_get_library_book_detail() !==
+    34797
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_catalog_get_library_book_detail",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_get_library_book_format() !==
+    59922
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_catalog_get_library_book_format",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_get_library_identity() !==
+    60755
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_catalog_get_library_identity",
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_get_library_uuid() !==
     52441
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_catalog_get_library_uuid",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_get_myreader_book_content() !==
+    58406
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_catalog_get_myreader_book_content",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_import_local_book() !==
+    42780
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_catalog_import_local_book",
     );
   }
   if (
@@ -6923,11 +8615,75 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_library_book_formats() !==
+    51657
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_catalog_list_library_book_formats",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_library_book_summaries() !==
+    38552
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_catalog_list_library_book_summaries",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_library_books() !==
+    10386
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_catalog_list_library_books",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_library_books_page() !==
+    54699
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_catalog_list_library_books_page",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_library_books_page_by_last_read() !==
+    1432
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_catalog_list_library_books_page_by_last_read",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_library_series_books() !==
+    58898
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_catalog_list_library_series_books",
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_series_books() !==
     46313
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_catalog_list_series_books",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_stage_remote_book_import() !==
+    26864
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_catalog_stage_remote_book_import",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_update_local_book_metadata() !==
+    23809
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_catalog_update_local_book_metadata",
     );
   }
   if (
@@ -6971,11 +8727,27 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_content_finalize_verified_downloaded_file() !==
+    36675
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_content_finalize_verified_downloaded_file",
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_content_get_file_state() !==
     1265
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_content_get_file_state",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_content_install_verified_downloaded_file() !==
+    32373
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_content_install_verified_downloaded_file",
     );
   }
   if (
@@ -7008,6 +8780,14 @@ function uniffiEnsureInitialized() {
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_content_mark_file_remote_only",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_content_mark_file_source_missing() !==
+    50165
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_content_mark_file_source_missing",
     );
   }
   if (
@@ -7184,6 +8964,38 @@ function uniffiEnsureInitialized() {
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_library_add_remote",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_library_create_local_myreader() !==
+    54578
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_library_create_local_myreader",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_library_create_remote_myreader() !==
+    13111
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_library_create_remote_myreader",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_library_open_local_myreader() !==
+    60071
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_library_open_local_myreader",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_library_open_remote_myreader() !==
+    28906
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_library_open_remote_myreader",
     );
   }
   if (
@@ -7505,6 +9317,7 @@ export default Object.freeze({
   converters: {
     FfiConverterTypeAppConfig,
     FfiConverterTypeAppPreferences,
+    FfiConverterTypeBookContent,
     FfiConverterTypeBookCoverThumbnailCache,
     FfiConverterTypeBookCoverThumbnailCachePatch,
     FfiConverterTypeBookDetail,
@@ -7512,6 +9325,7 @@ export default Object.freeze({
     FfiConverterTypeBookFormat,
     FfiConverterTypeBookIdentifier,
     FfiConverterTypeBookSummary,
+    FfiConverterTypeBookUploadTaskProgress,
     FfiConverterTypeCalibreSyncReport,
     FfiConverterTypeCoreFfiError,
     FfiConverterTypeDataSource,
@@ -7523,6 +9337,7 @@ export default Object.freeze({
     FfiConverterTypeFileState,
     FfiConverterTypeFileStateUpdate,
     FfiConverterTypeFormatSize,
+    FfiConverterTypeImportBookRequest,
     FfiConverterTypeLibrary,
     FfiConverterTypeLibraryResult,
     FfiConverterTypeLibraryStorageConfig,
@@ -7552,5 +9367,6 @@ export default Object.freeze({
     FfiConverterTypeSyncFailureKind,
     FfiConverterTypeSyncTaskProgress,
     FfiConverterTypeSyncTiming,
+    FfiConverterTypeUpdateBookMetadataRequest,
   },
 });

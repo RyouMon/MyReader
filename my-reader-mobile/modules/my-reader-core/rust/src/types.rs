@@ -131,6 +131,15 @@ pub struct BookFormat {
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
+pub struct BookContent {
+    pub book_id: f64,
+    pub format: String,
+    pub relative_path: String,
+    pub size: f64,
+    pub sha256: String,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
 pub struct ReadingFormat {
     pub book_id: String,
     pub format: String,
@@ -142,7 +151,7 @@ pub struct FileState {
     pub path: String,
     pub local_state: FileLocalState,
     pub is_locally_available: bool,
-    pub local_blake3: Option<String>,
+    pub local_sha256: Option<String>,
     pub local_size: Option<f64>,
     pub local_mtime: Option<f64>,
     pub updated_at: f64,
@@ -151,7 +160,7 @@ pub struct FileState {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct FileStateUpdate {
     pub local_state: FileLocalState,
-    pub local_blake3: Option<String>,
+    pub local_sha256: Option<String>,
     pub local_size: Option<f64>,
     pub local_mtime: Option<f64>,
 }
@@ -159,6 +168,7 @@ pub struct FileStateUpdate {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct DownloadedFile {
     pub size: f64,
+    pub sha256: String,
     pub mtime_ms: f64,
 }
 
@@ -305,6 +315,7 @@ pub struct Library {
     pub id: String,
     pub name: String,
     pub path: String,
+    pub library_type: String,
     pub book_count: f64,
     pub metadata_uri: Option<String>,
     pub added_at: Option<f64>,
@@ -329,9 +340,27 @@ pub struct LibraryResult {
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
+pub struct ImportBookRequest {
+    pub source_file_path: String,
+    pub title: Option<String>,
+    pub authors: Vec<String>,
+    pub recorded_at_ms: f64,
+    pub consume_source_file: bool,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct UpdateBookMetadataRequest {
+    pub book_id: f64,
+    pub title: String,
+    pub authors: Vec<String>,
+    pub recorded_at_ms: f64,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
 pub struct LocalLibraryRequest {
     pub library_root_path: String,
     pub path: String,
+    pub source_path: Option<String>,
     pub sidecar_container_parent_path: Option<String>,
     pub name: Option<String>,
     pub metadata_uri: Option<String>,
@@ -444,6 +473,14 @@ pub struct SyncTaskProgress {
     pub stage: String,
     pub completed: u32,
     pub total: u32,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BookUploadTaskProgress {
+    pub task_id: String,
+    pub book_uuid: String,
+    pub completed: f64,
+    pub total: f64,
 }
 
 impl From<models::PaginatedBooks> for PaginatedBooks {
@@ -560,6 +597,18 @@ impl From<models::BookFormat> for BookFormat {
     }
 }
 
+impl From<models::BookContent> for BookContent {
+    fn from(value: models::BookContent) -> Self {
+        Self {
+            book_id: value.book_id as f64,
+            format: value.format,
+            relative_path: value.relative_path,
+            size: value.size as f64,
+            sha256: value.sha256,
+        }
+    }
+}
+
 impl From<models::FileState> for FileState {
     fn from(value: models::FileState) -> Self {
         let is_locally_available = value.is_locally_available();
@@ -568,7 +617,7 @@ impl From<models::FileState> for FileState {
             path: value.path,
             local_state: FileLocalState(value.local_state),
             is_locally_available,
-            local_blake3: value.local_blake3,
+            local_sha256: value.local_sha256,
             local_size: value.local_size.map(|value| value as f64),
             local_mtime: value.local_mtime.map(|value| value as f64),
             updated_at: value.updated_at,
@@ -582,7 +631,7 @@ impl TryFrom<FileStateUpdate> for models::FileStateUpdate {
     fn try_from(value: FileStateUpdate) -> Result<Self, Self::Error> {
         Ok(Self {
             local_state: value.local_state.0,
-            local_blake3: value.local_blake3,
+            local_sha256: value.local_sha256,
             local_size: optional_i64(value.local_size, "localSize")?,
             local_mtime: optional_i64(value.local_mtime, "localMtime")?,
         })
@@ -593,6 +642,7 @@ impl From<models::DownloadedFile> for DownloadedFile {
     fn from(value: models::DownloadedFile) -> Self {
         Self {
             size: value.size as f64,
+            sha256: value.sha256,
             mtime_ms: value.mtime_ms as f64,
         }
     }
@@ -940,6 +990,7 @@ impl From<models::Library> for Library {
             id: value.id,
             name: value.name,
             path: value.path,
+            library_type: value.library_type.as_str().into(),
             book_count: value.book_count as f64,
             metadata_uri: value.metadata_uri,
             added_at: value.added_at,
@@ -960,6 +1011,7 @@ impl TryFrom<Library> for models::Library {
             id: value.id,
             name: value.name,
             path: value.path,
+            library_type: parse_library_type(&value.library_type)?,
             book_count: required_u64(value.book_count, "bookCount")?,
             metadata_uri: value.metadata_uri,
             added_at: value.added_at,
@@ -969,6 +1021,43 @@ impl TryFrom<Library> for models::Library {
             metadata_etag: value.metadata_etag,
             security_scoped_bookmark: value.security_scoped_bookmark.map(Into::into),
         })
+    }
+}
+
+impl TryFrom<ImportBookRequest> for models::ImportBookRequest {
+    type Error = CoreFfiError;
+
+    fn try_from(value: ImportBookRequest) -> Result<Self, Self::Error> {
+        Ok(Self {
+            source_file_path: value.source_file_path,
+            title: value.title,
+            authors: value.authors,
+            recorded_at_ms: required_i64(value.recorded_at_ms, "recordedAtMs")?,
+            consume_source_file: value.consume_source_file,
+        })
+    }
+}
+
+impl TryFrom<UpdateBookMetadataRequest> for models::UpdateBookMetadataRequest {
+    type Error = CoreFfiError;
+
+    fn try_from(value: UpdateBookMetadataRequest) -> Result<Self, Self::Error> {
+        Ok(Self {
+            book_id: required_i64(value.book_id, "bookId")?,
+            title: value.title,
+            authors: value.authors,
+            recorded_at_ms: required_i64(value.recorded_at_ms, "recordedAtMs")?,
+        })
+    }
+}
+
+pub(crate) fn parse_library_type(value: &str) -> Result<models::LibraryType, CoreFfiError> {
+    match value {
+        "calibre" => Ok(models::LibraryType::Calibre),
+        "myreader" => Ok(models::LibraryType::MyReader),
+        value => Err(CoreFfiError::core(format!(
+            "Unsupported library type: {value}"
+        ))),
     }
 }
 
@@ -999,6 +1088,7 @@ impl TryFrom<LocalLibraryRequest> for models::LocalLibraryRequest {
         Ok(Self {
             library_root_path: value.library_root_path,
             path: value.path,
+            source_path: value.source_path,
             sidecar_container_parent_path: value.sidecar_container_parent_path,
             name: value.name,
             metadata_uri: value.metadata_uri,
@@ -1362,7 +1452,7 @@ pub fn required_string(value: Option<String>, field: &str) -> Result<String, Cor
 
 #[cfg(test)]
 mod tests {
-    use super::{required_i64, required_u64, JS_SAFE_INTEGER_MAX};
+    use super::{parse_library_type, required_i64, required_u64, JS_SAFE_INTEGER_MAX};
     use crate::CoreFfiError;
 
     #[test]
@@ -1396,6 +1486,22 @@ mod tests {
             error,
             CoreFfiError::Core(message)
                 if message == "nowMs must be a non-negative safe integer number"
+        ));
+    }
+
+    #[test]
+    fn should_preserve_supported_library_types_and_reject_unknown_values() {
+        assert_eq!(
+            parse_library_type("calibre").unwrap(),
+            my_reader_core::models::LibraryType::Calibre
+        );
+        assert_eq!(
+            parse_library_type("myreader").unwrap(),
+            my_reader_core::models::LibraryType::MyReader
+        );
+        assert!(matches!(
+            parse_library_type("other").unwrap_err(),
+            CoreFfiError::Core(message) if message == "Unsupported library type: other"
         ));
     }
 }

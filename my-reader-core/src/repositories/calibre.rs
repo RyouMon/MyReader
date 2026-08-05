@@ -16,13 +16,16 @@ use crate::models::catalog::BookFilePathRequest;
 use crate::models::{BookEntry, BookFormat, BookSummary};
 use crate::CoreError;
 
-/// Read-only Calibre metadata.db repository using SeaORM.
-pub struct CalibreBookRepository {
+/// Shared catalog queries over either an external Calibre database or a
+/// MyReader-owned local projection.
+pub struct CatalogRepository {
     db: DatabaseConnection,
-    library_path: String,
+    content_root: PathBuf,
 }
 
-impl CalibreBookRepository {
+pub type CalibreBookRepository = CatalogRepository;
+
+impl CatalogRepository {
     pub async fn open(library_path: &str) -> Result<Self, CoreError> {
         info!("Start to open Calibre database. library path: \"{library_path}\"");
         let db_path = Path::new(library_path).join("metadata.db");
@@ -39,10 +42,25 @@ impl CalibreBookRepository {
             "Success to open Calibre database. db path: \"{}\"",
             db_path.display()
         );
-        Ok(Self {
+        Ok(Self::from_connection(db, Path::new(library_path)))
+    }
+
+    pub async fn open_myreader(
+        sidecar_root: &Path,
+        content_root: &Path,
+    ) -> Result<Self, CoreError> {
+        let sidecar_root = sidecar_root
+            .to_str()
+            .ok_or_else(|| CoreError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?;
+        let db = crate::database::open_db(sidecar_root).await?;
+        Ok(Self::from_connection(db, content_root))
+    }
+
+    pub(crate) fn from_connection(db: DatabaseConnection, content_root: &Path) -> Self {
+        Self {
             db,
-            library_path: library_path.to_string(),
-        })
+            content_root: content_root.to_path_buf(),
+        }
     }
 
     pub fn validate_library(library_path: &str) -> bool {
@@ -146,7 +164,6 @@ impl CalibreBookRepository {
 
     pub async fn get_book_file_paths(
         &self,
-        library_path: &str,
         requests: &[BookFilePathRequest],
     ) -> Result<HashMap<(i64, String), PathBuf>, CoreError> {
         if requests.is_empty() {
@@ -191,7 +208,7 @@ impl CalibreBookRepository {
                 &format_row.name,
                 &format_row.format,
             );
-            let path = Path::new(library_path).join(relative_path);
+            let path = self.content_root.join(relative_path);
             result.insert((request.book_id, request.format.to_uppercase()), path);
         }
         Ok(result)
@@ -434,7 +451,7 @@ async fn assemble_book_entries(
         .collect())
 }
 
-impl CalibreBookRepository {
+impl CatalogRepository {
     pub(crate) async fn get_all_books(&self) -> Result<Vec<BookEntry>, CoreError> {
         info!("Start to load all books from Calibre.");
         let book_models = books::Entity::find()
@@ -731,7 +748,7 @@ impl CalibreBookRepository {
     ) -> Result<Option<PathBuf>, CoreError> {
         debug!(
             "Start to resolve book cover path. library path: \"{}\", book path: \"{book_path}\"",
-            self.library_path
+            self.content_root.display()
         );
         let book_path_buf = Path::new(book_path);
         if book_path_buf
@@ -740,17 +757,15 @@ impl CalibreBookRepository {
         {
             debug!(
                 "Blocked path traversal in book cover path. library path: \"{}\", book path: \"{book_path}\"",
-                self.library_path
+                self.content_root.display()
             );
             return Ok(None);
         }
-        let cover = Path::new(&self.library_path)
-            .join(book_path)
-            .join("cover.jpg");
+        let cover = self.content_root.join(book_path).join("cover.jpg");
         let result = cover.exists().then_some(cover);
         debug!(
             "Success to resolve book cover path. library path: \"{}\", book path: \"{book_path}\", found: {}",
-            self.library_path,
+            self.content_root.display(),
             result.is_some()
         );
         Ok(result)
@@ -771,5 +786,104 @@ fn book_format_from_row(book_path: &str, row: data::Model) -> BookFormat {
         name: row.name,
         size_bytes: row.uncompressed_size,
         relative_path,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use sea_orm::{ConnectionTrait, Database};
+
+    use super::CatalogRepository;
+    use crate::models::catalog::BookFilePathRequest;
+
+    #[tokio::test]
+    async fn should_keep_external_calibre_database_read_only() {
+        let library = tempfile::tempdir().expect("create library");
+        let database_path = library.path().join("metadata.db");
+        let database = Database::connect(format!(
+            "sqlite://{}?mode=rwc",
+            database_path.to_string_lossy()
+        ))
+        .await
+        .expect("open fixture database");
+        database
+            .execute_unprepared("CREATE TABLE fixture (id INTEGER PRIMARY KEY);")
+            .await
+            .expect("create fixture table");
+        database.close().await.expect("close fixture database");
+
+        let repository = CatalogRepository::open(&library.path().to_string_lossy())
+            .await
+            .expect("open external Calibre database");
+
+        assert!(repository
+            .db
+            .execute_unprepared("CREATE TABLE forbidden (id INTEGER PRIMARY KEY);")
+            .await
+            .is_err());
+    }
+
+    #[tokio::test]
+    async fn should_query_myreader_projection_with_shared_catalog_repository() {
+        let sidecar = tempfile::tempdir().expect("create sidecar");
+        let content = tempfile::tempdir().expect("create content root");
+        let database = crate::database::open_db(&sidecar.path().to_string_lossy())
+            .await
+            .expect("open sidecar database");
+        database
+            .execute_unprepared(
+                "INSERT INTO library_id (id, uuid)
+                 VALUES (1, '018f2f8d-980b-40ef-b72e-c6e86cb7cc28');
+                 INSERT INTO books
+                   (id, title, sort, author_sort, path, uuid, has_cover)
+                 VALUES
+                   (42, 'The Left Hand of Darkness', 'Left Hand of Darkness, The',
+                    'Le Guin, Ursula K.',
+                    'Books/018f2f8d-980b-40ef-b72e-c6e86cb7cc29',
+                    '018f2f8d-980b-40ef-b72e-c6e86cb7cc29', 1);
+                 INSERT INTO authors (id, name, sort)
+                 VALUES (7, 'Ursula K. Le Guin', 'Le Guin, Ursula K.');
+                 INSERT INTO books_authors_link (id, book, author)
+                 VALUES (1, 42, 7);
+                 INSERT INTO data (id, book, format, uncompressed_size, name)
+                 VALUES (1, 42, 'EPUB', 1024, 'book');",
+            )
+            .await
+            .expect("seed projected catalog");
+        drop(database);
+
+        let repository = CatalogRepository::open_myreader(sidecar.path(), content.path())
+            .await
+            .expect("open MyReader projection");
+        let books = repository.get_all_books().await.expect("list books");
+        let (page, total) = repository
+            .get_books_page(0, 20, "title", Some("Ursula"))
+            .await
+            .expect("query books page");
+        let formats = repository.get_book_formats(42).await.expect("list formats");
+        let paths = repository
+            .get_book_file_paths(&[BookFilePathRequest {
+                book_id: 42,
+                format: "epub".into(),
+            }])
+            .await
+            .expect("resolve file path");
+
+        assert_eq!(books.len(), 1);
+        assert_eq!(books[0].authors, ["Ursula K. Le Guin"]);
+        assert_eq!(total, 1);
+        assert_eq!(page[0].id, 42);
+        assert_eq!(
+            formats[0].relative_path,
+            "Books/018f2f8d-980b-40ef-b72e-c6e86cb7cc29/book.epub"
+        );
+        assert_eq!(
+            paths.get(&(42, "EPUB".into())),
+            Some(
+                &content
+                    .path()
+                    .join("Books/018f2f8d-980b-40ef-b72e-c6e86cb7cc29/book.epub")
+            )
+        );
     }
 }

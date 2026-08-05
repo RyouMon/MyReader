@@ -9,11 +9,12 @@ use crate::models::ReadingFormatPolicy;
 
 use super::SyncError;
 
-pub const LIBRARY_SIDECAR_SCHEMA_VERSION: u64 = 1;
+pub const LIBRARY_SIDECAR_SCHEMA_VERSION: u64 = 2;
 #[cfg(test)]
 pub const LIBRARY_SIDECAR_GENESIS_HEAD: &str =
-    "ac137b1318ef97f275852452df5c683406ec657e68e1b51d3656ac5f684ce1f2";
-pub const LIBRARY_SIDECAR_ROOTS: [&str; 6] = [
+    "151e8b8bb93a601542f1d818dd51bd946a754d96966f4e78dc5a3b056f9d6231";
+pub const LIBRARY_SIDECAR_ROOTS: [&str; 7] = [
+    "catalog",
     "favorites",
     "positions",
     "bookmarks",
@@ -24,6 +25,8 @@ pub const LIBRARY_SIDECAR_ROOTS: [&str; 6] = [
 
 const GENESIS_BYTES: &[u8] =
     include_bytes!("../../../fixtures/library-sidecar-automerge/genesis.automerge");
+const SCHEMA_V1_TO_V2_INCREMENTAL: &[u8] =
+    include_bytes!("../../../fixtures/library-sidecar-automerge/schema-v1-to-v2.incremental");
 #[cfg(test)]
 const TYPESCRIPT_POSITION_INCREMENTAL: &[u8] =
     include_bytes!("../../../fixtures/library-sidecar-automerge/typescript-position.incremental");
@@ -104,6 +107,22 @@ pub struct ReadingCompletionValue {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct CatalogBookValue {
+    pub uuid: String,
+    pub book_id: i64,
+    pub title: String,
+    pub authors: Vec<String>,
+    pub format: String,
+    pub size: i64,
+    pub sha256: String,
+    pub has_cover: bool,
+    pub timestamp: String,
+    pub last_modified: String,
+    pub deleted: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ReadingPositionCandidate {
     pub operation_id: String,
     pub value: ReadingPositionValue,
@@ -159,18 +178,51 @@ fn map_object_id(doc: &AutoCommit, key: &str) -> Result<automerge::ObjId, SyncEr
     Ok(object_id)
 }
 
-pub fn validate_library_sidecar_document(doc: &AutoCommit) -> Result<(), SyncError> {
-    let schema = doc
-        .get(ROOT, "schema")
+fn catalog_books_object(doc: &AutoCommit) -> Result<automerge::ObjId, SyncError> {
+    let catalog = map_object_id(doc, "catalog")?;
+    let Some((value, object_id)) = doc
+        .get(&catalog, "books")
+        .map_err(|error| sync_error(format!("Failed to read Automerge catalog books: {error}")))?
+    else {
+        return Err(sync_error("Canonical Automerge catalog is missing books"));
+    };
+    if value != Value::Object(ObjType::Map) {
+        return Err(sync_error("Canonical Automerge catalog books is not a map"));
+    }
+    Ok(object_id)
+}
+
+fn document_schema(doc: &AutoCommit) -> Result<u64, SyncError> {
+    doc.get(ROOT, "schema")
         .map_err(|error| sync_error(format!("Failed to read Automerge schema: {error}")))?
         .and_then(|(value, _)| value.to_u64())
-        .ok_or_else(|| sync_error("Canonical Automerge schema is missing or invalid"))?;
+        .ok_or_else(|| sync_error("Canonical Automerge schema is missing or invalid"))
+}
+
+fn migrate_library_sidecar_document(doc: &mut AutoCommit) -> Result<(), SyncError> {
+    match document_schema(doc)? {
+        LIBRARY_SIDECAR_SCHEMA_VERSION => Ok(()),
+        1 => doc
+            .load_incremental(SCHEMA_V1_TO_V2_INCREMENTAL)
+            .map(|_| ())
+            .map_err(|error| {
+                sync_error(format!(
+                    "Failed to migrate Automerge document to schema 2: {error}"
+                ))
+            }),
+        schema => Err(sync_error(format!("Unsupported Automerge schema {schema}"))),
+    }
+}
+
+pub fn validate_library_sidecar_document(doc: &AutoCommit) -> Result<(), SyncError> {
+    let schema = document_schema(doc)?;
     if schema != LIBRARY_SIDECAR_SCHEMA_VERSION {
         return Err(sync_error(format!("Unsupported Automerge schema {schema}")));
     }
     for root in LIBRARY_SIDECAR_ROOTS {
         map_object_id(doc, root)?;
     }
+    catalog_books_object(doc)?;
     Ok(())
 }
 
@@ -184,9 +236,16 @@ pub fn load_library_sidecar_document_bytes(
 ) -> Result<AutoCommit, SyncError> {
     let mut doc = AutoCommit::load(bytes)
         .map_err(|error| sync_error(format!("Failed to load Automerge document: {error}")))?;
+    migrate_library_sidecar_document(&mut doc)?;
     validate_library_sidecar_document(&doc)?;
     doc.set_actor(parse_replica_actor(replica_id)?);
     Ok(doc)
+}
+
+pub fn library_sidecar_snapshot_heads(bytes: &[u8]) -> Result<Vec<String>, SyncError> {
+    let mut doc = AutoCommit::load(bytes)
+        .map_err(|error| sync_error(format!("Failed to load Automerge document: {error}")))?;
+    Ok(library_sidecar_heads(&mut doc))
 }
 
 pub fn library_sidecar_heads(doc: &mut AutoCommit) -> Vec<String> {
@@ -268,8 +327,9 @@ pub fn apply_library_sidecar_incremental(
     bytes: &[u8],
 ) -> Result<(), SyncError> {
     doc.load_incremental(bytes)
-        .map(|_| ())
-        .map_err(|error| sync_error(format!("Failed to load Automerge incremental: {error}")))
+        .map_err(|error| sync_error(format!("Failed to load Automerge incremental: {error}")))?;
+    migrate_library_sidecar_document(doc)?;
+    validate_library_sidecar_document(doc)
 }
 
 pub fn save_library_sidecar_document(doc: &mut AutoCommit) -> Vec<u8> {
@@ -288,6 +348,281 @@ pub fn library_sidecar_missing_dependencies(
         .into_iter()
         .map(|hash| hash.to_string())
         .collect()
+}
+
+fn validate_catalog_book_uuid(uuid: &str) -> Result<(), SyncError> {
+    let parsed = Uuid::parse_str(uuid).map_err(|_| sync_error("Catalog book UUID is invalid"))?;
+    if parsed.get_variant() != Variant::RFC4122
+        || !(1..=8).contains(&parsed.get_version_num())
+        || parsed.hyphenated().to_string() != uuid
+    {
+        return Err(sync_error("Catalog book UUID is invalid"));
+    }
+    Ok(())
+}
+
+fn validate_catalog_book(value: &CatalogBookValue) -> Result<(), SyncError> {
+    validate_catalog_book_uuid(&value.uuid)?;
+    if value.book_id < 1 {
+        return Err(sync_error("Catalog book ID must be positive"));
+    }
+    if value.title.trim().is_empty() {
+        return Err(sync_error("Catalog book title is required"));
+    }
+    if value.authors.is_empty() || value.authors.iter().any(|author| author.trim().is_empty()) {
+        return Err(sync_error("Catalog book authors are invalid"));
+    }
+    if !ReadingFormatPolicy::is_canonical(&value.format) {
+        return Err(sync_error("Catalog book format is unsupported"));
+    }
+    if value.size < 0 {
+        return Err(sync_error("Catalog book size is invalid"));
+    }
+    if value.sha256.len() != 64
+        || !value
+            .sha256
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    {
+        return Err(sync_error("Catalog book SHA-256 is invalid"));
+    }
+    if value.timestamp.is_empty() || value.last_modified.is_empty() {
+        return Err(sync_error("Catalog book timestamps are invalid"));
+    }
+    Ok(())
+}
+
+fn catalog_book_object(doc: &AutoCommit, uuid: &str) -> Result<automerge::ObjId, SyncError> {
+    let books = catalog_books_object(doc)?;
+    doc.get(&books, uuid)
+        .map_err(|error| sync_error(format!("Failed to read catalog book: {error}")))?
+        .filter(|(value, _)| *value == Value::Object(ObjType::Map))
+        .map(|(_, object)| object)
+        .ok_or_else(|| sync_error("Catalog book does not exist"))
+}
+
+fn catalog_book_string(
+    doc: &AutoCommit,
+    object: &automerge::ObjId,
+    key: &str,
+) -> Result<String, SyncError> {
+    doc.get(object, key)
+        .map_err(|error| sync_error(format!("Failed to read catalog book {key}: {error}")))?
+        .and_then(|(value, _)| value.to_str().map(str::to_owned))
+        .ok_or_else(|| sync_error(format!("Catalog book {key} is invalid")))
+}
+
+fn catalog_book_i64(
+    doc: &AutoCommit,
+    object: &automerge::ObjId,
+    key: &str,
+) -> Result<i64, SyncError> {
+    doc.get(object, key)
+        .map_err(|error| sync_error(format!("Failed to read catalog book {key}: {error}")))?
+        .and_then(|(value, _)| value.to_i64())
+        .ok_or_else(|| sync_error(format!("Catalog book {key} is invalid")))
+}
+
+fn catalog_book_bool(
+    doc: &AutoCommit,
+    object: &automerge::ObjId,
+    key: &str,
+) -> Result<bool, SyncError> {
+    doc.get(object, key)
+        .map_err(|error| sync_error(format!("Failed to read catalog book {key}: {error}")))?
+        .and_then(|(value, _)| value.to_bool())
+        .ok_or_else(|| sync_error(format!("Catalog book {key} is invalid")))
+}
+
+fn catalog_book_authors(
+    doc: &AutoCommit,
+    object: &automerge::ObjId,
+) -> Result<Vec<String>, SyncError> {
+    let Some((value, authors)) = doc
+        .get(object, "authors")
+        .map_err(|error| sync_error(format!("Failed to read catalog book authors: {error}")))?
+    else {
+        return Err(sync_error("Catalog book authors are missing"));
+    };
+    if value != Value::Object(ObjType::List) {
+        return Err(sync_error("Catalog book authors is not a list"));
+    }
+    (0..doc.length(&authors))
+        .map(|index| {
+            doc.get(&authors, index)
+                .map_err(|error| {
+                    sync_error(format!("Failed to read catalog book author: {error}"))
+                })?
+                .and_then(|(value, _)| value.to_str().map(str::to_owned))
+                .ok_or_else(|| sync_error("Catalog book author is invalid"))
+        })
+        .collect()
+}
+
+fn replace_catalog_book_authors(
+    doc: &mut AutoCommit,
+    object: &automerge::ObjId,
+    authors: &[String],
+) -> Result<(), SyncError> {
+    let Some((value, authors_object)) = doc
+        .get(object, "authors")
+        .map_err(|error| sync_error(format!("Failed to read catalog book authors: {error}")))?
+    else {
+        return Err(sync_error("Catalog book authors are missing"));
+    };
+    if value != Value::Object(ObjType::List) {
+        return Err(sync_error("Catalog book authors is not a list"));
+    }
+    for _ in 0..doc.length(&authors_object) {
+        doc.delete(&authors_object, 0)
+            .map_err(|error| sync_error(format!("Failed to remove catalog author: {error}")))?;
+    }
+    for (index, author) in authors.iter().enumerate() {
+        doc.insert(&authors_object, index, author.as_str())
+            .map_err(|error| sync_error(format!("Failed to add catalog author: {error}")))?;
+    }
+    Ok(())
+}
+
+pub fn create_catalog_book(
+    doc: &mut AutoCommit,
+    value: &CatalogBookValue,
+    recorded_at: i64,
+) -> Result<ChangeHash, SyncError> {
+    validate_catalog_book(value)?;
+    if value.deleted {
+        return Err(sync_error("New catalog book cannot be deleted"));
+    }
+    let books = catalog_books_object(doc)?;
+    if doc
+        .get(&books, &value.uuid)
+        .map_err(|error| sync_error(format!("Failed to read catalog book: {error}")))?
+        .is_some()
+    {
+        return Err(sync_error("Catalog book already exists"));
+    }
+    let object = doc
+        .put_object(&books, &value.uuid, ObjType::Map)
+        .map_err(|error| sync_error(format!("Failed to create catalog book: {error}")))?;
+    doc.put(&object, "bookId", value.book_id)
+        .and_then(|_| doc.put(&object, "title", value.title.as_str()))
+        .and_then(|_| doc.put(&object, "format", value.format.as_str()))
+        .and_then(|_| doc.put(&object, "size", value.size))
+        .and_then(|_| doc.put(&object, "sha256", value.sha256.as_str()))
+        .and_then(|_| doc.put(&object, "hasCover", value.has_cover))
+        .and_then(|_| doc.put(&object, "timestamp", value.timestamp.as_str()))
+        .and_then(|_| doc.put(&object, "lastModified", value.last_modified.as_str()))
+        .and_then(|_| doc.put(&object, "deleted", false))
+        .map_err(|error| sync_error(format!("Failed to write catalog book: {error}")))?;
+    let authors = doc
+        .put_object(&object, "authors", ObjType::List)
+        .map_err(|error| sync_error(format!("Failed to create catalog authors: {error}")))?;
+    for (index, author) in value.authors.iter().enumerate() {
+        doc.insert(&authors, index, author.as_str())
+            .map_err(|error| sync_error(format!("Failed to write catalog author: {error}")))?;
+    }
+    doc.commit_with(
+        CommitOptions::default()
+            .with_message("myreader:create-catalog-book")
+            .with_time(recorded_at),
+    )
+    .ok_or_else(|| sync_error("Catalog book creation was empty"))
+}
+
+pub fn update_catalog_book_metadata(
+    doc: &mut AutoCommit,
+    uuid: &str,
+    title: &str,
+    authors: &[String],
+    last_modified: &str,
+    recorded_at: i64,
+) -> Result<ChangeHash, SyncError> {
+    validate_catalog_book_uuid(uuid)?;
+    if title.trim().is_empty()
+        || authors.is_empty()
+        || authors.iter().any(|author| author.trim().is_empty())
+        || last_modified.is_empty()
+    {
+        return Err(sync_error("Catalog book metadata is invalid"));
+    }
+    let object = catalog_book_object(doc, uuid)?;
+    if catalog_book_string(doc, &object, "title")? != title {
+        doc.put(&object, "title", title)
+            .map_err(|error| sync_error(format!("Failed to update catalog title: {error}")))?;
+    }
+    if catalog_book_authors(doc, &object)? != authors {
+        replace_catalog_book_authors(doc, &object, authors)?;
+    }
+    doc.put(&object, "lastModified", last_modified)
+        .map_err(|error| sync_error(format!("Failed to update catalog book: {error}")))?;
+    doc.commit_with(
+        CommitOptions::default()
+            .with_message("myreader:update-catalog-book-metadata")
+            .with_time(recorded_at),
+    )
+    .ok_or_else(|| sync_error("Catalog book metadata update was empty"))
+}
+
+pub fn delete_catalog_book(
+    doc: &mut AutoCommit,
+    uuid: &str,
+    last_modified: &str,
+    recorded_at: i64,
+) -> Result<Option<ChangeHash>, SyncError> {
+    validate_catalog_book_uuid(uuid)?;
+    if last_modified.is_empty() {
+        return Err(sync_error("Catalog book last-modified value is invalid"));
+    }
+    let object = catalog_book_object(doc, uuid)?;
+    let deleted = doc
+        .get_all(&object, "deleted")
+        .map_err(|error| sync_error(format!("Failed to read catalog tombstone: {error}")))?
+        .iter()
+        .any(|(value, _)| value.to_bool() == Some(true));
+    if deleted {
+        return Ok(None);
+    }
+    doc.put(&object, "deleted", true)
+        .and_then(|_| doc.put(&object, "lastModified", last_modified))
+        .map_err(|error| sync_error(format!("Failed to delete catalog book: {error}")))?;
+    Ok(doc.commit_with(
+        CommitOptions::default()
+            .with_message("myreader:delete-catalog-book")
+            .with_time(recorded_at),
+    ))
+}
+
+pub fn catalog_book_projections(doc: &AutoCommit) -> Result<Vec<CatalogBookValue>, SyncError> {
+    let books = catalog_books_object(doc)?;
+    let mut values = doc
+        .keys(&books)
+        .map(|uuid| {
+            validate_catalog_book_uuid(&uuid)?;
+            let object = catalog_book_object(doc, &uuid)?;
+            let deleted = doc
+                .get_all(&object, "deleted")
+                .map_err(|error| sync_error(format!("Failed to read catalog tombstone: {error}")))?
+                .iter()
+                .any(|(value, _)| value.to_bool() == Some(true));
+            let value = CatalogBookValue {
+                uuid,
+                book_id: catalog_book_i64(doc, &object, "bookId")?,
+                title: catalog_book_string(doc, &object, "title")?,
+                authors: catalog_book_authors(doc, &object)?,
+                format: catalog_book_string(doc, &object, "format")?,
+                size: catalog_book_i64(doc, &object, "size")?,
+                sha256: catalog_book_string(doc, &object, "sha256")?,
+                has_cover: catalog_book_bool(doc, &object, "hasCover")?,
+                timestamp: catalog_book_string(doc, &object, "timestamp")?,
+                last_modified: catalog_book_string(doc, &object, "lastModified")?,
+                deleted,
+            };
+            validate_catalog_book(&value)?;
+            Ok(value)
+        })
+        .collect::<Result<Vec<_>, SyncError>>()?;
+    values.sort_by(|left, right| left.uuid.cmp(&right.uuid));
+    Ok(values)
 }
 
 pub fn set_reading_position(
@@ -934,6 +1269,22 @@ mod tests {
         }
     }
 
+    fn catalog_book() -> CatalogBookValue {
+        CatalogBookValue {
+            uuid: "22222222-3333-4444-8555-666666666666".into(),
+            book_id: 42,
+            title: "The Left Hand of Darkness".into(),
+            authors: vec!["Ursula K. Le Guin".into()],
+            format: "EPUB".into(),
+            size: 1024,
+            sha256: "ab".repeat(32),
+            has_cover: true,
+            timestamp: "2026-08-02T00:00:00Z".into(),
+            last_modified: "2026-08-02T00:00:00Z".into(),
+            deleted: false,
+        }
+    }
+
     #[test]
     fn should_load_canonical_schema_when_replica_opens_document() {
         let mut doc = load_library_sidecar_document(REPLICA_A).unwrap();
@@ -944,6 +1295,87 @@ mod tests {
         );
         assert_eq!(doc.get_actor().to_string(), REPLICA_A.replace('-', ""));
         validate_library_sidecar_document(&doc).unwrap();
+    }
+
+    #[test]
+    fn should_migrate_schema_one_genesis_to_the_canonical_catalog_root() {
+        let schema_one = AutoCommit::load(GENESIS_BYTES).unwrap();
+        assert_eq!(document_schema(&schema_one).unwrap(), 1);
+
+        let mut first = load_library_sidecar_document_bytes(GENESIS_BYTES, REPLICA_A).unwrap();
+        let mut second = load_library_sidecar_document_bytes(GENESIS_BYTES, REPLICA_B).unwrap();
+
+        assert_eq!(document_schema(&first).unwrap(), 2);
+        assert_eq!(catalog_book_projections(&first).unwrap(), []);
+        assert_eq!(
+            library_sidecar_heads(&mut first),
+            vec![LIBRARY_SIDECAR_GENESIS_HEAD]
+        );
+        assert_eq!(
+            library_sidecar_heads(&mut first),
+            library_sidecar_heads(&mut second)
+        );
+    }
+
+    #[test]
+    fn should_merge_independent_catalog_fields_and_keep_concurrent_delete() {
+        let mut seed = load_library_sidecar_document(REPLICA_A).unwrap();
+        set_library_identity(&mut seed, LIBRARY_UUID, 1).unwrap();
+        create_catalog_book(&mut seed, &catalog_book(), 2).unwrap();
+        let bytes = seed.save();
+        let mut title_replica = load_library_sidecar_document_bytes(&bytes, REPLICA_A).unwrap();
+        let mut author_replica = load_library_sidecar_document_bytes(&bytes, REPLICA_B).unwrap();
+        update_catalog_book_metadata(
+            &mut title_replica,
+            &catalog_book().uuid,
+            "Left Hand of Darkness",
+            &catalog_book().authors,
+            "2026-08-02T00:01:00Z",
+            3,
+        )
+        .unwrap();
+        update_catalog_book_metadata(
+            &mut author_replica,
+            &catalog_book().uuid,
+            &catalog_book().title,
+            &["Ursula Le Guin".into()],
+            "2026-08-02T00:02:00Z",
+            4,
+        )
+        .unwrap();
+
+        title_replica.merge(&mut author_replica).unwrap();
+
+        let merged = catalog_book_projections(&title_replica).unwrap();
+        assert_eq!(merged[0].title, "Left Hand of Darkness");
+        assert_eq!(merged[0].authors, ["Ursula Le Guin"]);
+        assert_eq!(merged[0].sha256, catalog_book().sha256);
+
+        let merged_bytes = title_replica.save();
+        let mut delete_replica =
+            load_library_sidecar_document_bytes(&merged_bytes, REPLICA_A).unwrap();
+        let mut edit_replica =
+            load_library_sidecar_document_bytes(&merged_bytes, REPLICA_B).unwrap();
+        delete_catalog_book(
+            &mut delete_replica,
+            &catalog_book().uuid,
+            "2026-08-02T00:03:00Z",
+            5,
+        )
+        .unwrap();
+        update_catalog_book_metadata(
+            &mut edit_replica,
+            &catalog_book().uuid,
+            "The Left Hand of Darkness",
+            &["Ursula Le Guin".into()],
+            "2026-08-02T00:04:00Z",
+            6,
+        )
+        .unwrap();
+
+        delete_replica.merge(&mut edit_replica).unwrap();
+
+        assert!(catalog_book_projections(&delete_replica).unwrap()[0].deleted);
     }
 
     #[test]

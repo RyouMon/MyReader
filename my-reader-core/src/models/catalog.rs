@@ -122,6 +122,37 @@ pub struct BookFormat {
     pub relative_path: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BookContent {
+    pub book_id: i64,
+    pub format: String,
+    pub relative_path: String,
+    pub size: i64,
+    pub sha256: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportBookRequest {
+    pub source_file_path: String,
+    #[serde(default)]
+    pub title: Option<String>,
+    pub authors: Vec<String>,
+    pub recorded_at_ms: i64,
+    #[serde(default)]
+    pub consume_source_file: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateBookMetadataRequest {
+    pub book_id: i64,
+    pub title: String,
+    pub authors: Vec<String>,
+    pub recorded_at_ms: i64,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct BookFilePathRequest {
     pub book_id: i64,

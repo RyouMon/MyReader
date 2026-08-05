@@ -1,4 +1,11 @@
 {
+  "incomingShare": {
+    "importingTitle": "正在导入分享的图书",
+    "importingDetail": "MyReader 正在将图书添加到书库。",
+    "failedTitle": "无法导入分享内容",
+    "failedDetail": "请向 MyReader 分享一个 EPUB、PDF 或 CBZ 文件。",
+    "openLibrary": "打开书库"
+  },
   "back": "返回",
   "tabs": {
     "home": "主页",
@@ -36,7 +43,7 @@
     },
     "noLibrary": {
       "title": "还没有添加书库",
-      "detail": "在设置里添加本地 Calibre 书库后，这里会显示继续阅读和最近添加的图书。"
+      "detail": "创建新书库或打开已有书库。"
     },
     "noReadingHistory": {
       "title": "还没有阅读记录",
@@ -47,6 +54,18 @@
   "library": {
     "title": "书库",
     "addLibrary": "添加书库",
+    "importingBook": "导入中…",
+    "importFailed": {
+      "title": "无法导入图书"
+    },
+    "importQueued": {
+      "title": "图书已保存在此设备",
+      "detail": "恢复联网后会自动上传到远程书库。"
+    },
+    "importUnsupported": {
+      "title": "不支持的图书格式",
+      "detail": "请选择 EPUB、PDF 或 CBZ 文件。"
+    },
     "switchLibrary": "切换书库",
     "syncCurrentLibrary": "同步当前书库",
     "searchPlaceholder": "搜索书名、作者",
@@ -92,12 +111,12 @@
       "detail": "它可能已被移除，或链接参数已经失效。"
     },
     "noLibrary": {
-      "title": "还没有添加书库",
-      "detail": "先添加一个 Calibre 书库，之后即可在书库标签中浏览图书。"
+      "title": "还没有书库",
+      "detail": "可以直接导入一本图书，或添加 MyReader / Calibre 书库。"
     },
     "unselected": {
       "title": "未选择书库",
-      "detail": "请选择要浏览的书库，或添加新的 Calibre 书库。"
+      "detail": "请选择要浏览的书库，或添加一个新书库。"
     },
     "loadError": {
       "title": "读取失败"
@@ -129,13 +148,14 @@
     "typeWebdav": "WebDAV",
     "typeOnedrive": "OneDrive",
     "calibreLibrary": "Calibre 书库",
-    "delete": {
-      "title": "删除这个书库？",
-      "message": "将从应用中移除该书库，但原始书库文件仍保留在原位置，如不再需要请手工删除。",
+    "myreaderLibrary": "MyReader 书库",
+    "remove": {
+      "title": "移除这个书库？",
+      "message": "仅从应用中移除，文件不会删除。",
       "cancel": "取消",
-      "confirm": "删除"
+      "confirm": "移除"
     },
-    "deleteLibrary": "删除书库",
+    "removeLibrary": "移除书库",
     "notFound": {
       "title": "没有找到这个书库",
       "detail": "它可能已经被移除，或者当前链接参数已经失效。"
@@ -144,6 +164,9 @@
     "refreshing": "更新中...",
     "refresh": "更新书库",
     "libraryType": "书库类型",
+    "storageLocation": "存储位置",
+    "folderName": "文件夹",
+    "remotePath": "路径",
     "sourceType": "数据源类型",
     "libraryPath": "书库路径",
     "bookCountLabel": "收录图书数量",
@@ -151,6 +174,7 @@
   },
   "settings": {
     "libraryDetail": "书库详情",
+    "manageLibrary": "管理书库：{{name}}",
     "addLibrary": "添加书库",
     "librarySection": "书库",
     "currentInUse": "当前使用",
@@ -441,12 +465,31 @@
     "finished": "已读"
   },
   "addLibrary": {
-    "existingSources": "已有数据源",
-    "addSources": "添加数据源",
-    "noSources": {
-      "title": "还没有数据源",
-      "detail": "添加数据源后，即可选择书库。"
-    }
+    "createNew": "创建新书库",
+    "openExisting": "打开已有书库",
+    "selectSaveLocation": "选择保存位置",
+    "selectLibraryLocation": "选择书库位置",
+    "existingDataSources": "已有数据源",
+    "addDataSource": "添加数据源",
+    "addWebdav": "添加 WebDAV",
+    "addOnedrive": "添加 OneDrive",
+    "name": "名称",
+    "invalidName": "名称不能包含 / 或 \\",
+    "create": "创建",
+    "creating": "正在创建",
+    "open": "打开",
+    "continue": "继续",
+    "path": "路径：{{path}}",
+    "unrecognized": {
+      "title": "未识别书库",
+      "detail": "请选择 MyReader 或 Calibre 书库文件夹。"
+    },
+    "folderExists": {
+      "title": "名称已存在",
+      "detail": "请更换书库名。"
+    },
+    "operationFailed": "书库操作失败",
+    "operationFailedDetail": "请稍后重试。"
   },
   "webdav": {
     "sourcesTitle": "WebDAV 数据源",
@@ -632,6 +675,7 @@
     "localStorage": "本地存储",
     "unnamedBook": "未命名书籍",
     "unknownAuthor": "未知作者",
+    "myLibrary": "我的书库",
     "unnamedLibrary": "未命名书库",
     "selected": "已选择",
     "unselected": "未选择"
@@ -649,9 +693,34 @@
     "download": "下载",
     "downloadFormat": "下载（{{format}}）",
     "cancelDownload": "取消下载",
+    "uploadFile": "上传文件",
+    "uploadFailed": "上传失败",
+    "uploadFailedDetail": "无法上传到“{{library}}”。\n{{reason}}",
     "defaultFormat": "默认阅读格式：{{format}}",
     "deleteDownload": "删除下载文件",
-    "share": "分享"
+    "share": "分享",
+    "editMetadata": "修改书名与作者",
+    "deleteBook": "删除图书",
+    "deleteConfirmTitle": "删除图书",
+    "deleteConfirmDetail": "确认从书库中删除《{{title}}》及其图书文件？",
+    "deleteFailed": "无法删除图书"
+  },
+  "bookEdit": {
+    "title": "编辑图书信息",
+    "bookTitle": "书名",
+    "authors": "作者",
+    "authorsPlaceholder": "多个作者用逗号分隔",
+    "save": "保存",
+    "saving": "正在保存",
+    "saveFailed": "无法保存图书信息",
+    "incomplete": {
+      "title": "信息不完整",
+      "detail": "书名和作者不能为空。"
+    },
+    "unavailable": {
+      "title": "无法编辑这本书",
+      "detail": "只有 MyReader 书库中的图书可以修改。"
+    }
   },
   "bookLoader": {
     "loadingBook": "正在加载书籍…",
@@ -677,6 +746,7 @@
     "onedriveSourceNotFound": "当前书库关联的 OneDrive 数据源不存在。",
     "onedriveRefreshTokenMissing": "当前 OneDrive 数据源缺少认证信息，请重新认证该数据源。",
     "onedriveGetFailed": "OneDrive GET 失败: {{status}} {{path}}",
+    "onedriveDownloadUrlMissing": "OneDrive 未返回下载地址: {{path}}",
     "onedrivePutFailed": "OneDrive PUT 失败: {{status}} {{path}}",
     "onedriveDeleteFailed": "OneDrive DELETE 失败: {{status}} {{path}}",
     "onedriveListFailed": "OneDrive 列目录失败: {{status}} {{path}}",
@@ -685,7 +755,7 @@
     "downloadCancelled": "下载已取消",
     "downloadFailed": "后台下载失败: {{code}}",
     "downloadStalled": "原生下载已有字节传输，但长时间没有进度更新。请检查网络、WebDAV Range 支持或系统后台限制。",
-    "downloadNotStarted": "原生下载任务已创建，但没有开始传输。请检查 WebDAV URL、认证或原生下载器配置。",
+    "downloadNotStarted": "原生下载任务已创建，但没有开始传输。请检查数据源、认证、网络或原生下载器配置。",
     "uploadCancelled": "上传已取消",
     "uploadFailed": "后台上传失败: HTTP {{status}} {{body}}",
     "uploadFailedCode": "后台上传失败: {{code}}",

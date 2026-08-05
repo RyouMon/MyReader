@@ -13,7 +13,7 @@ pub struct Model {
     #[sea_orm(column_type = "Text")]
     pub local_state: String,
     #[sea_orm(column_type = "Text", nullable)]
-    pub local_blake3: Option<String>,
+    pub local_sha256: Option<String>,
     pub local_size: Option<i64>,
     pub local_mtime: Option<i64>,
     #[sea_orm(column_type = "Double")]

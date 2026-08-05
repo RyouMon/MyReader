@@ -47,6 +47,12 @@ pub(crate) const LEGACY_MIGRATIONS: &[LegacyMigrationSpec] = &[
     legacy_migration!("0017_square_toro", 1_785_046_521_990),
     legacy_migration!("0018_add_automerge_recovery", 1_785_304_000_000),
     legacy_migration!("0019_adopt_automerge_repo_storage", 1_785_344_400_000),
+    legacy_migration!("0020_add_catalog_projection", 1_785_700_000_000),
+    legacy_migration!(
+        "0021_replace_file_state_blake3_with_sha256",
+        1_785_772_800_000
+    ),
+    legacy_migration!("0022_add_pending_book_imports", 1_785_859_200_000),
 ];
 
 pub struct LibraryMigrator;
@@ -124,6 +130,63 @@ mod tests {
         LibraryMigrator::up(&db, None).await.unwrap();
 
         assert_eq!(applied_versions(&db).await, migration_names());
+    }
+
+    #[tokio::test]
+    async fn sha256_migration_should_discard_obsolete_blake3_values() {
+        let db = Database::connect("sqlite::memory:").await.unwrap();
+        let migration_index = LEGACY_MIGRATIONS
+            .iter()
+            .position(|migration| migration.name == "0021_replace_file_state_blake3_with_sha256")
+            .unwrap();
+        for migration in &LEGACY_MIGRATIONS[..migration_index] {
+            for statement in migration.sql.split("--> statement-breakpoint") {
+                let statement = statement.trim();
+                if !statement.is_empty() {
+                    db.execute_unprepared(statement).await.unwrap();
+                }
+            }
+        }
+        db.execute_unprepared(
+            "INSERT INTO file_state
+                (id, path, local_state, local_blake3, updated_at)
+             VALUES ('state', 'Books/book.epub', 'present', 'obsolete', 0)",
+        )
+        .await
+        .unwrap();
+
+        let migration = &LEGACY_MIGRATIONS[migration_index];
+        for statement in migration.sql.split("--> statement-breakpoint") {
+            let statement = statement.trim();
+            if !statement.is_empty() {
+                db.execute_unprepared(statement).await.unwrap();
+            }
+        }
+
+        let columns = db
+            .query_all_raw(Statement::from_string(
+                DbBackend::Sqlite,
+                "PRAGMA table_info('file_state')",
+            ))
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|row| row.try_get::<String>("", "name").unwrap())
+            .collect::<Vec<_>>();
+        let sha256 = db
+            .query_one_raw(Statement::from_string(
+                DbBackend::Sqlite,
+                "SELECT local_sha256 FROM file_state WHERE id = 'state'",
+            ))
+            .await
+            .unwrap()
+            .unwrap()
+            .try_get::<Option<String>>("", "local_sha256")
+            .unwrap();
+
+        assert!(columns.contains(&"local_sha256".to_owned()));
+        assert!(!columns.contains(&"local_blake3".to_owned()));
+        assert_eq!(sha256, None);
     }
 
     #[tokio::test]

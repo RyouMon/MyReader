@@ -22,7 +22,6 @@ use crate::models::{
     LegacyFinishedReading, ReaderAnnotation, ReaderBookmark, ReadingFormatPolicy, ReadingPosition,
     ReadingPositionCandidate, ReadingStatistics,
 };
-use crate::repositories::calibre::CalibreBookRepository;
 use crate::repositories::reading::ReadingRepository;
 use crate::CoreError;
 
@@ -51,10 +50,8 @@ impl ReadingService {
         }
 
         database::open_db(&sidecar_root.to_string_lossy()).await?;
-        let library_uuid = CalibreBookRepository::open(&library_root.to_string_lossy())
-            .await?
-            .get_library_uuid()
-            .await?;
+        let library_uuid =
+            crate::services::catalog::CatalogService::get_source_library_uuid(library_root).await?;
         let database_path = database::library_db_path(&sidecar_root.to_string_lossy())?;
         let database_path = database_path
             .to_str()
@@ -742,10 +739,8 @@ async fn sync_context(
     library_root: &Path,
 ) -> Result<(String, DatabaseIdentity), CoreError> {
     database::open_db(&sidecar_root.to_string_lossy()).await?;
-    let library_uuid = CalibreBookRepository::open(&library_root.to_string_lossy())
-        .await?
-        .get_library_uuid()
-        .await?;
+    let library_uuid =
+        crate::services::catalog::CatalogService::get_source_library_uuid(library_root).await?;
     let database_path = database::library_db_path(&sidecar_root.to_string_lossy())?;
     let database_path = database_path
         .to_str()

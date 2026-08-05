@@ -105,6 +105,7 @@ impl<'a> StorageAdapter<'a> {
         self.operator
             .write(&path, data.to_vec())
             .await
+            .map(|_| ())
             .map_err(|error| {
                 sync_error(format!(
                     "Save Automerge storage key {key:?} failed: {error}"

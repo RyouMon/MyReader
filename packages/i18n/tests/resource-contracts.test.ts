@@ -22,6 +22,7 @@ const INTENTIONAL_PLATFORM_VARIANTS = [
   "bookDetail.series",
   "bookRow.finished",
   "common.confirm",
+  "library.importingBook",
   "library.searchPlaceholder",
   "library.title",
   "reader.column",

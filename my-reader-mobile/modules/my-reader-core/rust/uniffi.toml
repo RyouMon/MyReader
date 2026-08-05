@@ -16,8 +16,8 @@ lift = '{} as "queued" | "starting" | "downloading" | "done" | "error" | "cancel
 lower = "{}"
 
 [bindings.typescript.customTypes.FileLocalState]
-typeName = '"present" | "remote_only" | "local_only" | "dirty_push"'
-lift = '{} as "present" | "remote_only" | "local_only" | "dirty_push"'
+typeName = '"present" | "remote_only" | "source_missing" | "remote_delete_pending" | "local_only" | "dirty_push"'
+lift = '{} as "present" | "remote_only" | "source_missing" | "remote_delete_pending" | "local_only" | "dirty_push"'
 lower = "{}"
 
 [bindings.typescript.customTypes.SidecarSyncMode]

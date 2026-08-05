@@ -5,16 +5,18 @@ use serde::{Deserialize, Serialize};
 
 use super::document::{
     add_reading_completion, add_reading_session_duration, annotation_projections,
-    apply_library_sidecar_incremental, bookmark_projections, create_annotation, delete_annotation,
+    apply_library_sidecar_incremental, bookmark_projections, catalog_book_projections,
+    create_annotation, create_catalog_book, delete_annotation, delete_catalog_book,
     favorite_projections, library_identity, library_sidecar_changes_since, library_sidecar_heads,
     library_sidecar_missing_dependencies, load_library_sidecar_document,
     load_library_sidecar_document_bytes, reading_completion_projections,
     reading_completion_records, reading_position_candidates, reading_position_projections,
     reading_session_projections, resolve_reading_position, save_library_sidecar_document,
     save_library_sidecar_incremental, set_bookmark, set_favorite, set_library_identity,
-    set_reading_position, update_annotation, validate_library_identity, AnnotationValue,
-    BookmarkValue, FavoriteValue, LibrarySidecarAutomergeChange, ReadingCompletionValue,
-    ReadingPositionCandidate, ReadingPositionProjection, ReadingPositionValue, ReadingSessionValue,
+    set_reading_position, update_annotation, update_catalog_book_metadata,
+    validate_library_identity, AnnotationValue, BookmarkValue, CatalogBookValue, FavoriteValue,
+    LibrarySidecarAutomergeChange, ReadingCompletionValue, ReadingPositionCandidate,
+    ReadingPositionProjection, ReadingPositionValue, ReadingSessionValue,
     LIBRARY_SIDECAR_SCHEMA_VERSION,
 };
 use super::SyncError;
@@ -38,6 +40,7 @@ pub struct ReadingPositionCandidateProjection {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DocumentProjection {
+    pub catalog_books: Vec<CatalogBookValue>,
     pub reading_positions: Vec<ReadingPositionProjection>,
     pub reading_position_candidates: Vec<ReadingPositionCandidateProjection>,
     pub favorites: Vec<FavoriteProjection>,
@@ -82,6 +85,22 @@ pub enum DocumentCommand {
     },
     SetLibraryIdentity {
         library_uuid: String,
+        recorded_at: i64,
+    },
+    CreateCatalogBook {
+        value: CatalogBookValue,
+        recorded_at: i64,
+    },
+    UpdateCatalogBookMetadata {
+        uuid: String,
+        title: String,
+        authors: Vec<String>,
+        last_modified: String,
+        recorded_at: i64,
+    },
+    DeleteCatalogBook {
+        uuid: String,
+        last_modified: String,
         recorded_at: i64,
     },
     SetReadingPosition {
@@ -155,6 +174,7 @@ fn project_document(doc: &automerge::AutoCommit) -> Result<DocumentProjection, S
         }
     }
     Ok(DocumentProjection {
+        catalog_books: catalog_book_projections(doc)?,
         reading_positions,
         reading_position_candidates: position_candidates,
         favorites: favorite_projections(doc)?
@@ -190,6 +210,38 @@ pub fn execute_document_command(
             recorded_at,
         } => {
             set_library_identity(&mut document, library_uuid, recorded_at)?;
+            Vec::new()
+        }
+        DocumentCommand::CreateCatalogBook {
+            ref value,
+            recorded_at,
+        } => {
+            create_catalog_book(&mut document, value, recorded_at)?;
+            Vec::new()
+        }
+        DocumentCommand::UpdateCatalogBookMetadata {
+            ref uuid,
+            ref title,
+            ref authors,
+            ref last_modified,
+            recorded_at,
+        } => {
+            update_catalog_book_metadata(
+                &mut document,
+                uuid,
+                title,
+                authors,
+                last_modified,
+                recorded_at,
+            )?;
+            Vec::new()
+        }
+        DocumentCommand::DeleteCatalogBook {
+            ref uuid,
+            ref last_modified,
+            recorded_at,
+        } => {
+            delete_catalog_book(&mut document, uuid, last_modified, recorded_at)?;
             Vec::new()
         }
         DocumentCommand::SetReadingPosition { book_id, ref value } => {

@@ -1,4 +1,6 @@
-use crate::sync::document::{FavoriteValue, LIBRARY_SIDECAR_SCHEMA_VERSION};
+use crate::sync::document::{
+    set_library_identity, CatalogBookValue, FavoriteValue, LIBRARY_SIDECAR_SCHEMA_VERSION,
+};
 use crate::sync::document_engine::DocumentCommand;
 use crate::sync::persistence::{
     apply_remote_database_objects, delete_outbox_entry, ensure_database_document,
@@ -110,6 +112,11 @@ fn create_database() -> (tempfile::TempDir, String) {
             "#,
         )
         .unwrap();
+    connection
+        .execute_batch(include_str!(
+            "../../../migrations/legacy/0020_add_catalog_projection.sql"
+        ))
+        .unwrap();
     (directory, path.to_string_lossy().into_owned())
 }
 
@@ -184,6 +191,128 @@ fn favorite_command() -> SyncDatabaseCommand {
             },
         },
     }
+}
+
+fn catalog_book() -> CatalogBookValue {
+    CatalogBookValue {
+        uuid: "22222222-3333-4444-8555-666666666666".into(),
+        book_id: 42,
+        title: "The Left Hand of Darkness".into(),
+        authors: vec!["Ursula K. Le Guin".into()],
+        format: "EPUB".into(),
+        size: 1024,
+        sha256: "ab".repeat(32),
+        has_cover: true,
+        timestamp: "2026-08-02T00:00:00Z".into(),
+        last_modified: "2026-08-02T00:00:00Z".into(),
+        deleted: false,
+    }
+}
+
+#[test]
+fn should_project_catalog_into_calibre_shaped_tables_when_book_is_created() {
+    let (_directory, path) = create_database();
+
+    execute_local_database_command(
+        &path,
+        &identity(),
+        100,
+        SyncDatabaseCommand {
+            command: DocumentCommand::CreateCatalogBook {
+                value: catalog_book(),
+                recorded_at: 100,
+            },
+        },
+    )
+    .unwrap();
+
+    let connection = Connection::open(path).unwrap();
+    let projected: (String, i64, String, String, String, i64) = connection
+        .query_row(
+            "SELECT library_id.uuid, books.id, books.uuid, books.path, data.name,
+                    data.uncompressed_size
+             FROM library_id, books
+             JOIN data ON data.book = books.id",
+            [],
+            |row| {
+                Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                    row.get(5)?,
+                ))
+            },
+        )
+        .unwrap();
+    assert_eq!(projected.0, LIBRARY_UUID);
+    assert_eq!(projected.1, 42);
+    assert_eq!(projected.2, catalog_book().uuid);
+    assert_eq!(projected.3, format!("Books/{}", catalog_book().uuid));
+    assert_eq!(projected.4, "book");
+    assert_eq!(projected.5, 1024);
+    assert_eq!(
+        connection
+            .query_row("SELECT name FROM authors", [], |row| row
+                .get::<_, String>(0))
+            .unwrap(),
+        "Ursula K. Le Guin"
+    );
+}
+
+#[test]
+fn should_migrate_persisted_schema_one_document_when_database_is_opened() {
+    use automerge::{ActorId, AutoCommit};
+
+    let (_directory, path) = create_database();
+    let mut document = AutoCommit::load(include_bytes!(
+        "../../../../fixtures/library-sidecar-automerge/genesis.automerge"
+    ))
+    .unwrap();
+    document.set_actor(ActorId::from(
+        *uuid::Uuid::parse_str(REPLICA_ID).unwrap().as_bytes(),
+    ));
+    set_library_identity(&mut document, LIBRARY_UUID, 1).unwrap();
+    let mut heads = document
+        .get_heads()
+        .into_iter()
+        .map(|head| head.to_string())
+        .collect::<Vec<_>>();
+    heads.sort();
+    let snapshot = document.save();
+    let connection = Connection::open(&path).unwrap();
+    connection
+        .execute(
+            "INSERT INTO sync_automerge_state
+             (id, schema_version, snapshot_bytes, heads_json, updated_at)
+             VALUES ('local', 1, ?1, ?2, 1)",
+            rusqlite::params![snapshot, serde_json::to_string(&heads).unwrap()],
+        )
+        .unwrap();
+    drop(connection);
+
+    let result = ensure_database_document(&path, &identity(), 200).unwrap();
+
+    assert_eq!(result.schema_version, LIBRARY_SIDECAR_SCHEMA_VERSION);
+    let connection = Connection::open(path).unwrap();
+    assert_eq!(
+        connection
+            .query_row(
+                "SELECT schema_version FROM sync_automerge_state WHERE id = 'local'",
+                [],
+                |row| row.get::<_, i64>(0)
+            )
+            .unwrap(),
+        LIBRARY_SIDECAR_SCHEMA_VERSION as i64
+    );
+    assert_eq!(
+        connection
+            .query_row("SELECT uuid FROM library_id", [], |row| row
+                .get::<_, String>(0))
+            .unwrap(),
+        LIBRARY_UUID
+    );
 }
 
 #[test]

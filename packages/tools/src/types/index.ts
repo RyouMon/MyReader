@@ -14,4 +14,4 @@ export type {
   DataSourceWebdav,
 } from "./data-source"
 
-export type { Library } from "./library"
+export type { Library, LibraryType } from "./library"

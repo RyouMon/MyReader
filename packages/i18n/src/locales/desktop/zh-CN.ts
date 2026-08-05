@@ -60,14 +60,20 @@ export const desktopZhCN = {
       listView: "列表视图",
       filter: "筛选",
       syncLibrary: "同步当前书库",
+      importingBook: "正在导入…",
+      importFailed: "导入图书失败",
+      importQueued: "图书已保存在此设备，恢复联网后会自动上传到远程书库。",
+      defaultMyreaderName: "我的书库",
       sort: {
         recent: "最近添加",
         progress: "进度",
       },
       empty: {
         noLibraryTitle: "尚未添加书库",
-        noLibraryDesc: "请前往设置 → 书库管理添加 Calibre 书库目录",
+        noLibraryDesc: "导入一本图书并自动创建 MyReader 书库，或添加已有书库",
         goToSettings: "前往设置",
+        addLibrary: "添加书库",
+        importBook: "导入图书",
         noBooks: "没有找到匹配的书籍",
         tryOtherKeywords: "试试其他关键词",
         noBooksInLibrary: "书库中暂无书籍",
@@ -103,6 +109,8 @@ export const desktopZhCN = {
       localLibrary: "本地书库文件",
       defaultFormat: "默认格式：{{format}}",
       setDefaultFormat: "默认阅读格式",
+      editMetadata: "修改书名与作者",
+      deleteBook: "从书库删除图书",
     },
     bookDetail: {
       loading: "加载书籍详情…",
@@ -178,6 +186,19 @@ export const desktopZhCN = {
       setDefaultFormat: "设为默认",
       setAsDefaultReadingFormat: "设置为默认阅读格式",
       setDefaultFormatFor: "将 {{format}} 设为默认阅读格式",
+      editMetadataTitle: "修改图书信息",
+      titleLabel: "书名",
+      authorsLabel: "作者",
+      authorsPlaceholder: "多位作者用逗号分隔",
+      saveMetadata: "保存",
+      savingMetadata: "正在保存…",
+      updateMetadataFailed: "修改图书信息失败",
+      deleteBookTitle: "从书库删除《{{title}}》？",
+      deleteBookDescription:
+        "图书文件和书库记录将被删除；同步后其他设备也会跟进删除。此操作无法撤销。",
+      confirmDeleteBook: "删除图书",
+      deletingBook: "正在删除…",
+      deleteBookFailed: "删除图书失败",
     },
     settings: {
       nav: {
@@ -188,7 +209,7 @@ export const desktopZhCN = {
       },
       libraries: {
         title: "书库管理",
-        description: "管理 Calibre 书库目录，支持添加多个本地书库并自由切换",
+        description: "创建或打开 MyReader 书库，也可连接现有 Calibre 书库",
         added: "已添加的书库",
         empty: "暂无书库，请点击下方按钮添加",
         current: "当前",
@@ -196,7 +217,7 @@ export const desktopZhCN = {
         bookCount: "{{count}} 本",
         deleteTitle: "删除书库",
         addPrompt:
-          "请选择包含 metadata.db 的 Calibre 书库根目录。添加后将自动读取数据库中的书籍信息和封面。删除书库仅移除引用，不会影响磁盘文件。",
+          "MyReader 书库支持增删图书与修改书名、作者；Calibre 书库保持只读。删除书库仅移除本设备上的引用。",
       },
       dataSources: {
         title: "数据源管理",
@@ -236,6 +257,33 @@ export const desktopZhCN = {
     },
     addLibraryForm: {
       label: "添加书库",
+      operationLabel: "书库操作",
+      operations: {
+        createMyreader: {
+          label: "创建 MyReader 书库",
+          description: "在空白目录中创建可写、可同步的 MyReader 书库。",
+          pickerTitle: "选择空白书库目录",
+          pathPlaceholder: "选择或输入空白目录",
+          remotePathPlaceholder: "选择或输入远程空白目录",
+          confirm: "创建书库",
+        },
+        openMyreader: {
+          label: "打开已有 MyReader 书库",
+          description: "打开包含 MyReader 标记和 Automerge catalog 的书库。",
+          pickerTitle: "选择 MyReader 书库目录",
+          pathPlaceholder: "选择或输入 MyReader 书库目录",
+          remotePathPlaceholder: "选择或输入远程 MyReader 书库目录",
+          confirm: "打开书库",
+        },
+        connectCalibre: {
+          label: "连接 Calibre 书库",
+          description: "只读连接包含 metadata.db 的现有 Calibre 书库。",
+          pickerTitle: "选择 Calibre 书库目录",
+          pathPlaceholder: "输入 Calibre 书库路径，例如 D:\\CalibreLibrary",
+          remotePathPlaceholder: "选择或输入远程 Calibre 书库目录",
+          confirm: "连接书库",
+        },
+      },
       typeLabel: "数据源类型",
       typeLocal: "本地",
       typeLocalDesc: "本机文件系统",
@@ -257,6 +305,10 @@ export const desktopZhCN = {
       webdavBrowserLoading: "加载中…",
       webdavBrowserError: "加载失败",
       selectedPath: "已选择：{{path}}",
+      newRemoteFolder: "新书库文件夹",
+      newRemoteFolderDetail:
+        "可选。填写后将在当前目录下创建此文件夹；留空则直接使用当前目录。",
+      newRemoteFolderInvalid: "请输入单个文件夹名称，不能包含 / 或 \\",
       validation: {
         selectDataSource: "请先选择数据源",
         pathRequired: "请输入书库路径",
