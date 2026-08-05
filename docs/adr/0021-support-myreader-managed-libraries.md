@@ -2,7 +2,8 @@
 adr: ADR-0021
 proposal_date: 2026-07-31
 decision_date: 2026-08-02
-status: 已接受
+implementation_date: 2026-08-02
+status: 已实施
 name: 复用 Calibre 书目结构支持独立的 MyReader 可写书库
 overview: 在统一的 Library、Book、DataSource、内容传输、Reader 和 sidecar 领域模型下，新增由 MyReader 拥有并可写的书库类型。MyReader 书库使用现有每书库 Automerge document 作为书目与阅读数据的跨设备逻辑权威，在本地 myreader.db 中投影当前 Calibre 查询所需的同形表，从而复用 SeaORM entities、查询与路径解析，但不生成、同步或维护 Calibre metadata.db，也不承诺 Calibre 兼容或书库互相转换。第一版只开放单格式图书的导入、删除、书名与作者修改，并复用现有数据源、StorageKey、outbox、同步调度和 Reader 基础设施。
 isProject: true
@@ -12,11 +13,38 @@ isProject: true
 
 ## 状态说明
 
-本决策已于 2026-08-02 接受，并进入分阶段实施。各阶段完成前，本文描述的 MyReader 可写书库
-能力不能整体视为当前版本已经支持；具体实施状态以代码、测试和后续状态更新为准。
+本决策已于 2026-08-02 接受并完成主体实施。正文保留接受时的完整设计和实施顺序；当前事实已同步到
+[`ARCHITECTURE.md`](../../ARCHITECTURE.md)。
 
-在相应阶段实施前，[`ARCHITECTURE.md`](../../ARCHITECTURE.md) 中 Calibre `metadata.db` 外部只读、
-Automerge document 只包含六个阅读数据 domain 的描述仍是当前事实。
+### 实施记录
+
+| 阶段 | 状态 | 实施结果 |
+|---|---|---|
+| Phase 1 | 完成 | `libraryType`、marker、catalog document schema、Calibre-shaped projection 与共用 catalog 查询已落地（`baa7f807`、`d2ec4e01`、`bdc4d97f`） |
+| Phase 2 | 完成 | 本地 MyReader 书库创建/打开、单格式导入、编辑、删除及 desktop/mobile adapter 已落地（`a9204e05`、`dea82e1f`、`b645bd1f`、`17579e4f`） |
+| Phase 3 | 完成 | WebDAV/OneDrive 创建与打开、正文上传/按需下载、SHA-256 校验和 tombstone 删除收敛已落地（`71caa7c8`、`7b0d60f6`、`be3c50bb`） |
+| Phase 4 | 完成 | 首次导入创建流程、多个书库、远程目录入口和仅 MyReader 可见的增删改操作已接入 desktop/mobile（`9e92d3c8`、`86d2f7ee`、`fb32712f`、`4bd70c64`） |
+| Phase 5 | 完成 | 系统分享入口、Android SAF 外部书库、离线远程导入队列及远程子目录创建已落地（`54ea1b96`、`d27d11e7`、`8f171d16`、`94e7f5ca`）；首次分享在没有 MyReader 书库时复用普通创建流程 |
+
+### 首版补充实现
+
+- iOS/Android 的系统“分享到 MyReader”和文件选择器统一进入同一移动导入用例，再调用 core
+  catalog command；若首次分享时没有 MyReader 书库，平台先暂存文件，让用户按普通流程选择
+  数据源或目录并填写书库名，创建成功后继续导入。分享入口不拥有第二套书目模型。
+- 本地 MyReader 书库的源文件始终位于用户通过系统选择器授权的父目录下。创建时以书库名新建
+  同名子目录；同名文件或目录已存在时拒绝创建。应用容器只保存活动 SQLite、缓存和 Android
+  SAF 工作数据等设备侧派生数据，不再作为可选的书库源位置。
+- “移除书库”只移除应用注册，并可清理应用拥有的设备侧派生数据；不得删除本地授权目录、
+  远程目录或其中的图书文件。
+- Android SAF 外部 MyReader 书库把 `content://` 保存为 `Library.sourcePath`，把应用私有镜像保存
+  为 `Library.path`。正文和 control plane 在 SAF 与镜像间按文件合并，不把活动 SQLite 写入 SAF。
+- 远程上传因连接失败时，正文保留在设备容器，`pending_book_imports` 记录设备本地传输意图，
+  `file_state` 标记为 `dirty_push`。本地 catalog projection 可立即显示并阅读该书，但 Automerge
+  outbox 在正文上传并确认远端 size 前保持不可发布。独立的后台 `BookTransferService` 消费原有队列，
+  不占用 sidecar 同步任务或其 UI 状态；上传完成后解除发布门禁并调度一次短 push。该表不是第二个
+  catalog，也不参与冲突解决。
+- 远程目录选择器允许为新书库输入一个子目录名。平台只组合目标路径；marker、`Books` 和
+  Automerge genesis 仍由同一个 core 创建书库用例初始化，不增加独立 mkdir 业务协议。
 
 ## 结论
 
@@ -38,13 +66,16 @@ Automerge document 只包含六个阅读数据 domain 的描述仍是当前事�
    不承诺能被 Calibre 打开、修改、往返保存或转换。
 7. **外部 Calibre 书库永远只读。** 它继续从外部 `metadata.db` 读取书目；任何 MyReader marker、
    registry 字段或数据源写能力都不能把它升级为可写书库。
-8. **第一版只开放最小图书管理。** 一本书只有一种格式；支持导入、删除、修改书名和作者，不
+8. **书库源文件不由注册生命周期托管。** 本地 MyReader 书库只创建在用户选定的父目录下；移除任意
+   本地或远程书库只删除应用注册及设备侧派生数据，不删除源目录或源文件。
+   创建书库时所选目录是父目录，实际根目录固定为 `<所选目录>/<书库名>`；目标名称必须尚不存在。
+9. **第一版只开放最小图书管理。** 一本书只有一种格式；支持导入、删除、修改书名和作者，不
    引入完整 Calibre 元数据管理。
-9. **正文传输与 Automerge 状态交换职责分离，但复用同一 DataSource。** Automerge 同步正文的
+10. **正文传输与 Automerge 状态交换职责分离，但复用同一 DataSource。** Automerge 同步正文的
    `size + sha256` 描述和删除 tombstone；正文 bytes 继续通过现有 local、WebDAV 和 OneDrive
    内容传输能力上传、下载。两者复用同一 DataSource 和现有 Content/传输调度基础设施，但只有
    Automerge change 进入 durable outbox，正文传输状态继续由设备本地 `file_state`/传输任务维护。
-10. **两类书库不互相转换。** 连接 Calibre 书库和打开 MyReader 书库都是注册已有数据源；产品
+11. **两类书库不互相转换。** 打开 Calibre 或 MyReader 书库都只是注册已有数据源；产品
     不提供 Calibre ↔ MyReader 转换、升级或降级。
 
 一句话概括本决策：
@@ -132,8 +163,10 @@ document ID。Automerge document 中现有 `libraryUuid` 继续用于内容校�
 不得自动改写任一侧。
 
 每本新书生成一次 `books.uuid` 和稳定正整数 `book_id`，并把两者写入同一个 Automerge book
-record。`book_id` 不使用设备本地 `MAX(id) + 1`；实现应使用跨副本低碰撞的正 63 位随机 ID，并在
-本地提交前检查已占用值。书目 map 以完整 `books.uuid` 为 key，ID 生成不承担任何合并或胜负选择。
+record。`book_id` 不使用设备本地 `MAX(id) + 1`；实现应使用跨副本低碰撞、且不超过
+`Number.MAX_SAFE_INTEGER` 的正 53 位随机 ID，并在本地提交前检查已占用值。这样同一 ID 可由
+Rust、SQLite、Tauri 和 React Native 的 JavaScript `number` 无损传递。书目 map 以完整
+`books.uuid` 为 key，ID 生成不承担任何合并或胜负选择。
 
 ## 存储结构
 
@@ -398,7 +431,8 @@ catalog projection 可从 Automerge snapshot 完整重建。projection 失败时
 ### 第一版包含
 
 1. 首次启动可以：
-   - 导入图书；若尚无 MyReader 书库，自动创建本地“我的书库”；
+   - 导入或分享图书；若尚无 MyReader 书库，进入与普通创建相同的数据源或目录及名称选择流程，
+     创建成功后继续导入；
    - 进入添加书库流程。
 2. 添加书库流程支持：
    - 创建空白 MyReader 书库；
@@ -411,19 +445,18 @@ catalog projection 可从 Automerge snapshot 完整重建。projection 失败时
 7. 支持远程正文上传和按需下载。
 8. 复用当前格式的 Reader 能力。
 9. 复用现有 sidecar 阅读数据，包括收藏、阅读位置、书签、批注、阅读 session 和完成记录。
+10. 移除书库只移除应用注册，不删除本地或远程书库文件。
 
-系统“分享到 MyReader”与文件选择器都是 `import_book` 的平台入口，不改变 catalog 领域模型；
-可以在核心导入流程稳定后接入。
+系统“分享到 MyReader”与文件选择器都是同一导入用例的平台入口，不改变 catalog 领域模型。
 
 ### 产品术语
 
 产品使用：
 
-- “创建 MyReader 书库”
-- “打开已有 MyReader 书库”
-- “连接 Calibre 书库”
+- “创建新书库”
+- “打开已有书库”
 
-“导入 Calibre 书库”若用于 UI，必须仅表示注册或连接现有目录，不能暗示复制、迁移或转换。
+“打开已有书库”对 MyReader 和 Calibre 都只表示注册现有目录，不能暗示复制、迁移或转换。
 
 ## 不支持转换
 
@@ -489,6 +522,9 @@ incremental 或单独的每书 document。
 因此其他设备只会在书目变更可见后下载已经存在的正文。上传成功但 catalog command 未提交时，
 最多留下不可见孤立对象，不会产生指向缺失正文的已合并书目。远端不可用时，第一版只保留设备
 本地待上传任务并重试，不提前发布 catalog record；它不是可离线完成并立即跨设备可见的导入。
+该任务由设备本地 `pending_book_imports` 与 `file_state = dirty_push` 表达；任务完成时才产生原有
+Automerge catalog command。它不进入 Automerge document，不复制 catalog，也不定义新的合并或
+冲突策略。
 上传失败同样不发布 record。
 
 `cover.jpg` 是可选的展示派生物，不是第二种图书格式；`hasCover = true` 时也必须在 catalog add
@@ -557,7 +593,8 @@ MyReader 的图书大小上限。
 - catalog、六个阅读 root、Automerge state、projection 和 durable outbox 在同一数据库事务中
   持久化；
 - ADR-0020 的 StorageKey、snapshot/incremental、内容寻址、加载、压缩和故障恢复规则不变；
-- ADR-0017 的事件驱动调度继续以同一个 outbox 为待发送事实源，catalog change 不建第二个队列；
+- ADR-0017 的事件驱动调度继续以同一个 outbox 为待发送的 Automerge 事实源；离线正文只使用设备
+  本地 `pending_book_imports` 传输队列，正文上传完成前不产生 catalog change；
 - 数据源 registry、书库 registry 和凭据仍不进入 Automerge document。
 
 ADR-0012 的 sync scope 按书库类型解释：
@@ -626,7 +663,8 @@ ADR-0012 的 sync scope 按书库类型解释：
 
 ### Phase 2：本地最小闭环
 
-- 创建空白本地 MyReader 书库；
+- 在用户通过系统选择器授权的父目录下，以书库名创建同名子目录作为空白 MyReader 书库；
+- 拒绝同名目标；
 - 通过 Automerge command 导入 EPUB、PDF、CBZ；
 - 在 shared core 中提供桌面和移动共用的流式 SHA-256 文件摘要；
 - 在同一事务中持久化 state、outbox 与 catalog projection；
@@ -647,10 +685,17 @@ ADR-0012 的 sync scope 按书库类型解释：
 
 ### Phase 4：入口收敛
 
-- 首次启动“导入图书”和“添加书库”；
+- 首次导入或分享在没有 MyReader 书库时复用普通创建流程，创建后继续导入；
 - 多 MyReader 书库管理；
 - 文件选择器和系统分享统一调用 `import_book`；
 - UI 只在 MyReader 书库显示新增、删除和编辑动作。
+
+### Phase 5：平台文件入口与离线传输补齐
+
+- iOS/Android 接收系统分享的 EPUB、PDF、CBZ，并复用文件导入用例；
+- Android 使用 SAF 打开或创建外部 MyReader 书库，以应用私有镜像承载 SQLite 与 Reader 路径；
+- 远程导入连接失败时保留设备本地正文与传输意图，恢复后按“正文先上传、catalog 后发布”重试；
+- 远程创建流程允许在当前目录下指定一个新子目录，不另建目录管理后端。
 
 ## 验收约束
 
@@ -679,6 +724,18 @@ ADR-0012 的 sync scope 按书库类型解释：
 15. Calibre 与 MyReader 书库返回相同 DTO，并复用同一分页、搜索、详情和 Reader 查询实现。
 16. 收藏和阅读数据继续只依赖 `library UUID + book_id`，不因 `libraryType` 复制 schema。
 17. 产品中不存在书库转换、升级或降级入口。
+18. 系统分享和文件选择器进入同一导入用例，格式校验、目标书库选择和 catalog command 不分叉；
+    没有 MyReader 书库时必须先完成普通创建流程，不能静默创建应用容器书库。
+19. Android SAF 书库不会把活动 `myreader.db`、WAL 或 SHM 放进用户授权目录；control 文件按对象
+    合并，不能用整目录覆盖破坏其他设备写入。
+20. 离线远程导入在正文上传并校验成功前不投影可见书目；恢复联网后使用预分配的稳定
+    `book_id + books.uuid` 幂等完成，且 catalog 冲突仍只由 Automerge 处理。
+21. 在远程浏览器输入子目录名只改变创建用例的目标路径；打开已有 MyReader 或 Calibre 书库的
+    路径语义不变。
+22. 移除任意书库只删除应用注册及应用拥有的设备侧派生数据；本地授权目录、远程目录和源图书
+    文件必须保留。
+23. 创建 MyReader 书库时，用户选择的是父目录，书库根固定为 `<父目录>/<书库名>`；同名文件或
+    目录已存在时，创建必须失败且不得改写已有内容。
 
 针对本决策新增的测试只保护所有权、身份、单格式、事务、projection 重建、Automerge 收敛和正文
 发布/校验/删除时序等持久合同，不锁定 UI 间距、文案排版或内部函数拆分。

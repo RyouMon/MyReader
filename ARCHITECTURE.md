@@ -1,15 +1,18 @@
 # MyReader 架构现状
 
-> 文档日期：2026-07-28
+> 文档日期：2026-08-02
 >
 > 本文件只描述当前已落地实现。历史方案和后续决策见 `docs/adr/`。
 
 ## 1. 架构摘要
 
-MyReader 是一个面向 Calibre 书库的 Local-First 跨平台阅读器：
+MyReader 是一个同时支持 Calibre 与 MyReader 自有书库的 Local-First 跨平台阅读器：
 
-- Calibre 拥有 `metadata.db`、封面和书籍文件；MyReader 只读查询 Calibre 数据。
-- 每个书库拥有独立的 MyReader SQLite sidecar 和 Automerge document。
+- Calibre 拥有外部 `metadata.db`、封面和书籍文件；MyReader 对 Calibre 书库始终只读。
+- MyReader 自有书库以 marker 标识所有权，以 Automerge catalog 为书目逻辑权威，并把 catalog
+  投影到设备本地的 Calibre-shaped 查询表；它不生成或维护 `metadata.db`。
+- 每个书库拥有独立的设备本地 SQLite sidecar 和 Automerge document。Calibre document 包含六个
+  阅读数据 root；MyReader document 还包含 catalog root。
 - desktop、iOS 和 Android 共同使用 Rust `my-reader-core` 处理数据库、书库、书目、阅读数据与
   sidecar 同步业务。
 - Tauri Commands 与移动 UniFFI/JSI binding 是平台 adapter，不再维护第二套数据库或业务规则。
@@ -19,6 +22,7 @@ MyReader 是一个面向 Calibre 书库的 Local-First 跨平台阅读器：
 ```mermaid
 flowchart TB
     Calibre["Calibre 书库<br/>metadata.db · 封面 · 书籍文件 · .myreader"]
+    Managed["MyReader 书库源<br/>marker · Books · Automerge StorageKey"]
 
     subgraph Desktop["桌面端 my-reader"]
         DesktopUI["React UI<br/>Router · Query · Zustand"]
@@ -45,6 +49,7 @@ flowchart TB
     MobileUI --> NativeReader
     Core --> Sidecar
     Core --> Calibre
+    Core --> Managed
 ```
 
 ## 2. Monorepo 与所有权
@@ -63,7 +68,7 @@ Cargo workspace 中与共享后端相关的 crate：
 
 | Crate | 所有权 |
 |---|---|
-| `my-reader-core` | 跨端业务 API、SeaORM 数据访问、Calibre 查询、Automerge 与同步规则 |
+| `my-reader-core` | 跨端业务 API、SeaORM 数据访问、统一书目查询、Automerge 与同步规则 |
 | `my-reader-core-ffi`（位于 `my-reader-mobile/modules/my-reader-core/rust`） | typed UniFFI 导出、FFI 数据转换和移动原生产物 |
 
 移动端另有应用内原生模块：
@@ -84,7 +89,7 @@ api/                跨端粗粒度 use-case API
     ↓
 services/           业务校验、事务和用例编排
     ↓
-repositories/       MyReader SQLite 与 Calibre 只读访问
+repositories/       MyReader catalog projection 与 Calibre 只读访问
     ↓
 database.rs
 entities/
@@ -103,10 +108,12 @@ models/             跨层稳定业务 DTO
 `my-reader-core` 已拥有：
 
 - 设备本地的数据源与书库 registry。
-- 本地、WebDAV 和 OneDrive 数据源校验、远程目录、远程书库添加与刷新。
-- Calibre 书目数量、分页、搜索、详情、系列、格式和文件相对路径查询。
+- `calibre` / `myreader` 书库所有权、marker 身份校验与向后兼容的只读默认值。
+- 本地、WebDAV 和 OneDrive 数据源校验、远程目录、两类书库添加/打开与刷新。
+- Calibre 与 MyReader 共用的书目数量、分页、搜索、详情、系列、格式和文件相对路径查询。
+- MyReader 单格式图书导入、删除、书名/作者修改及 catalog projection。
 - 阅读格式选择、文件状态和封面缩略图 manifest。
-- 下载任务去重、并发限制、取消和状态转换。
+- 下载任务去重、并发限制、取消、状态转换及 MyReader 正文 SHA-256 校验。
 - 收藏、阅读位置与冲突候选、书签、高亮和笔记。
 - 阅读 session、完成记录和当前书库统计。
 - Automerge change、projection、outbox、远端交换、pull freshness、retry/suspend 和
@@ -177,6 +184,8 @@ FFI 门面，不实现 SQL、合并策略或第二套业务规则。
 
 - Expo Router、React Query、Zustand 和 UI 状态。
 - 文件 URI、security-scoped bookmark、移动下载和缓存文件操作。
+- iOS/Android 系统分享入口；分享文件与文件选择器进入同一导入用例。
+- Android SAF `content://` 授权、外部 MyReader 目录与应用私有镜像间的逐文件复制。
 - SecureStore、OAuth token 刷新和短期凭据注入。
 - 网络、前后台、当前书库和阅读器关闭等同步 trigger。
 - Readium View、选择菜单、Decoration、手势和系统交互。
@@ -200,7 +209,23 @@ Calibre `metadata.db` 是外部只读数据库：
 - MyReader 不迁移、不增加字段、不写入 Calibre 表。
 - `my-reader-core/src/entities/calibre` 是受支持 Calibre 表的只读 SeaORM 映射。
 
-### 6.2 每书库 sidecar
+### 6.2 MyReader 自有书库
+
+MyReader 自有书库源包含 `.myreader/library.json`、`Books/<book-uuid>/book.<format>` 和按
+[ADR-0020](./docs/adr/0020-adopt-automerge-repo-storage-model.md) 存放的 Automerge StorageKey
+对象。marker、Automerge document 和设备本地 `library_id` projection 使用同一个稳定
+`libraryUuid`。
+
+Automerge catalog 是规范书目；`myreader.db` 中的 `library_id`、`books`、`authors`、
+`books_authors_link` 和 `data` 只是可重建的 Calibre-shaped projection。每本书只有一个 EPUB、
+PDF 或 CBZ 正文，稳定 `book_id` 和 `books.uuid` 同时供统一查询、Reader 与现有阅读数据引用。
+MyReader 不生成、同步或写入 `metadata.db`，也不与 Calibre 书库互相转换。
+
+Android SAF 外部书库将用户授权的 `content://` 目录记录为源位置，并在应用私有容器保留可供 Rust、
+SQLite 和 Reader 使用的镜像。marker、Automerge StorageKey 和正文按文件在两端收敛；活动
+`myreader.db`、WAL 与 SHM 始终只存在于应用私有容器。
+
+### 6.3 每书库 sidecar
 
 每个书库拥有逻辑独立的 `.myreader/myreader.db`。远程书库在设备容器中维护本地 sidecar，
 多设备通过 Automerge StorageKey 对象交换数据，不直接共享活动 SQLite/WAL/SHM。
@@ -209,6 +234,7 @@ Calibre `metadata.db` 是外部只读数据库：
 
 | 表 | 用途 |
 |---|---|
+| `library_id`、`books`、`authors`、`books_authors_link`、`data` | MyReader catalog 的本地查询 projection；Calibre 书库继续查询外部 `metadata.db` |
 | `reading_progress` | Locator、展示进度、冲突投影和更新时间 |
 | `favorite_books` | 收藏状态 |
 | `bookmarks` | 书签 Locator、稳定位置键和 tombstone |
@@ -217,6 +243,7 @@ Calibre `metadata.db` 是外部只读数据库：
 | `reading_completions` | 阅读完成记录 |
 | `book_reading_format` | 设备选择的阅读格式 |
 | `file_state` | 书籍/封面文件本地缓存状态 |
+| `pending_book_imports` | 设备本地的远程正文待上传意图；上传成功后才允许对应 catalog outbox 发布 |
 | `book_cover_thumbnail_cache` | 移动封面缩略图 manifest |
 
 同步表：
@@ -232,7 +259,11 @@ Calibre `metadata.db` 是外部只读数据库：
 
 设备设置、Reader 偏好、凭据、下载临时任务和书库 registry 不进入 sidecar 同步。
 
-### 6.3 Schema 权威
+MyReader 自有书库的 Automerge document 同时承载 catalog 与以上六个阅读数据 domain；Calibre
+书库的 document 只承载六个阅读数据 domain。两类书库共用同一 state、outbox、projection 和
+调度实现。
+
+### 6.4 Schema 权威
 
 MyReader 自有数据库由 `my-reader-core` 的有序 SeaORM Migrator 唯一拥有：
 
@@ -259,23 +290,43 @@ my-reader-core/src/entities/app
 
 ### 7.1 数据源与文件
 
-当前数据源为 Local、WebDAV 和 OneDrive。远程书库流程为：
+当前数据源为 Local、WebDAV 和 OneDrive。书库所有权与存储位置正交：`libraryType` 决定 catalog
+权威和可用 command，`sourceType` / `dataSourceId` 决定对象所在后端。
 
-1. core 校验数据源并刷新本地 `metadata.db`。
-2. UI 从本地 Calibre 缓存查询书目。
-3. 平台下载能力按需获取封面和书籍文件。
-4. core 持久化 `file_state` 与封面 manifest。
-5. React Query 在写入或同步完成后失效相关查询。
+远程 Calibre 书库继续先把外部只读 `metadata.db` 刷新到设备缓存，再查询书目并按需取得封面和
+正文。远程 MyReader 书库不传输 `metadata.db`：创建或打开时读取 marker，并通过 Automerge
+StorageKey 交换 catalog 与阅读数据。
 
-对象存储、Calibre 本体同步与 MyReader sidecar 同步是不同语义；手动“全部同步”可以编排两者，
-自动阅读数据同步只处理 sidecar。
+MyReader 正文与 Automerge 是同一 DataSource 上的 content plane 与 control plane：
+
+1. 导入先复制到设备暂存文件并由 core 计算 `size + sha256`。
+2. 远程导入把正文和 catalog projection 先落到设备本地，`pending_book_imports` 保存稳定
+   `book_id + books.uuid`，`file_state` 标记为 `dirty_push`；只要正文尚未上传并确认远端 size，
+   既有 Automerge outbox 就保持不可发布。
+3. 独立的 core `BookTransferService` 在后台重试正文上传，不占用 sidecar 同步任务。上传与 stat
+   成功后将文件标记为 `present`、移除待上传意图，再调度一次短 push 发布原有 catalog change；
+   待上传表不参与合并，也不是第二个 catalog。缺失的本地待上传文件只进入 `source_missing`，
+   不会使 sidecar/Automerge 同步失败。
+4. 其他设备合并 catalog 后将正文标记为 `remote_only`，打开或显式下载时写入同目录 `.part`，
+   只有 size 与 SHA-256 都匹配后才原子安装并标记为 `present`。
+5. 删除先把 Automerge tombstone 持久化到共享 DataSource，再幂等清理远端正文与各设备缓存。
+6. 外部手动删文件只产生 `source_missing`，不会自动生成 catalog tombstone。
+
+OneDrive 大文件写入由 OpenDAL OneDrive backend 使用 upload session 分块完成。设备本地
+`file_state` 记录 `dirty_push`、`remote_only`、`present`、`source_missing` 和已验证的
+`local_sha256`；正文 bytes 和传输中间状态不进入 Automerge document。
+
+对象存储、Calibre 本体刷新与 Automerge 同步是不同语义；手动“全部同步”按书库类型编排实际需要
+的 control-plane 阶段，自动同步由 durable outbox 和事件调度器驱动，正文传输由独立后台任务消费
+设备本地传输队列。
 
 ### 7.2 Automerge sidecar
 
 [ADR-0016](./docs/adr/0016-adopt-automerge-for-library-sidecar-sync.md) 已落地：
 
 - 每个书库一个 Automerge document。
-- 同步范围固定为收藏、阅读位置、书签、批注、阅读 session 和完成记录六个现有 domain。
+- Calibre 书库同步收藏、阅读位置、书签、批注、阅读 session 和完成记录六个 domain；MyReader
+  书库在同一 document 中再同步 catalog root。
 - core 负责 change 因果关系、去重、冲突候选、SQLite projection、outbox 和收敛。
 - 阅读位置真并发时保留候选；用户选择后写入因果上更新的 change。
 - 同步完成后平台只负责刷新可见查询。
@@ -283,8 +334,8 @@ my-reader-core/src/entities/app
 [ADR-0020](./docs/adr/0020-adopt-automerge-repo-storage-model.md) 进一步规定：
 
 - 远端采用 automerge-repo `StorageSubsystem` 的 snapshot/incremental `StorageKey`，直接映射到
-  `.myreader/automerge/<document_id>/<kind>/<hash>`；当前 `document_id` 就是 Calibre
-  `library_uuid`。
+  `.myreader/automerge/<document_id>/<kind>/<hash>`；`document_id` 是 Calibre `library_id.uuid`
+  或 MyReader marker 中的 `libraryUuid`。
 - core 负责 snapshot-first 加载、内容寻址增量和只删除 covered chunks 的并发安全压缩。
 
 自动同步遵循 [ADR-0017](./docs/adr/0017-event-driven-library-sidecar-sync-scheduling.md)：业务写入通知
@@ -309,14 +360,16 @@ Navigator/格式显式判断，不能假设三种格式完全相同。
 
 ## 9. 关键约束
 
-1. **Calibre 只读**：不把 MyReader 字段写进 `metadata.db`。
-2. **每书库数据域**：业务数据随书库隔离，不建立中央 Profile 数据库。
-3. **共享业务，不共享渲染**：core 统一后端；UI、Navigator 和系统能力归平台。
-4. **单一数据库 writer**：desktop/mobile 通过 core 访问 MyReader SQLite。
-5. **Rust migration 权威**：不恢复 TypeScript/Drizzle schema 链或 Entity-First schema sync。
-6. **凭据设备本地化**：secret 不进入 sidecar、Automerge 或可持久前端 DTO。
-7. **远端交换 change，不共享 SQLite**。
-8. **不预想功能**：评分、书架、账户、中心 Profile、跨书库统计等不存在的能力不进入当前架构。
+1. **Calibre 只读**：不把 MyReader 字段写进 `metadata.db`，不把 Calibre 书库升级为可写书库。
+2. **MyReader 独立所有权**：marker + Automerge catalog 定义 MyReader 书库；复用表形状不等于
+   Calibre 兼容，也不提供两类书库转换。
+3. **每书库数据域**：业务数据随书库隔离，不建立中央 Profile 数据库。
+4. **共享业务，不共享渲染**：core 统一后端；UI、Navigator 和系统能力归平台。
+5. **单一数据库 writer**：desktop/mobile 通过 core 访问 MyReader SQLite。
+6. **Rust migration 权威**：不恢复 TypeScript/Drizzle schema 链或 Entity-First schema sync。
+7. **凭据设备本地化**：secret 不进入 sidecar、Automerge 或可持久前端 DTO。
+8. **远端交换 change，不共享 SQLite**。
+9. **不预想功能**：评分、书架、账户、中心 Profile、跨书库统计等不存在的能力不进入当前架构。
 
 ## 10. 验证入口
 
@@ -362,3 +415,4 @@ pnpm db:generate
 | [ADR-0018](./docs/adr/0018-shared-rust-components.md) | 共享 Rust/UniFFI 试点，crate 组织由 ADR-0019 部分取代 |
 | [ADR-0019](./docs/adr/0019-adopt-modular-my-reader-core.md) | 当前共享后端和数据库权威 |
 | [ADR-0020](./docs/adr/0020-adopt-automerge-repo-storage-model.md) | 当前 Automerge 远端存储、压缩和故障恢复模型 |
+| [ADR-0021](./docs/adr/0021-support-myreader-managed-libraries.md) | 当前 MyReader 自有书库、catalog projection 与正文同步模型 |
