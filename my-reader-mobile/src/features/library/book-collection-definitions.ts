@@ -1,7 +1,9 @@
 import CloudOffIcon from "@expo/material-symbols/cloud_off.xml"
 import DownloadIcon from "@expo/material-symbols/download.xml"
+import DownloadingIcon from "@expo/material-symbols/downloading.xml"
 import HistoryIcon from "@expo/material-symbols/history.xml"
 import StarIcon from "@expo/material-symbols/star.xml"
+import UploadIcon from "@expo/material-symbols/upload.xml"
 import type { MobileTranslationKey } from "@my-reader/i18n/mobile"
 import type { BuiltInBookCollectionId } from "@my-reader/tools/types/book-collection"
 
@@ -61,10 +63,41 @@ export const STORAGE_BOOK_COLLECTIONS: BookCollectionDefinition[] = [
   },
 ]
 
+export const TRANSFER_BOOK_COLLECTIONS: BookCollectionDefinition[] = [
+  {
+    id: "downloading",
+    titleKey: "library.collections.downloading",
+    icon: {
+      ios: "arrow.down.to.line",
+      android: "downloading",
+      androidSource: DownloadingIcon,
+    },
+  },
+  {
+    id: "uploading",
+    titleKey: "library.collections.uploading",
+    icon: {
+      ios: "arrow.up.to.line",
+      android: "upload",
+      androidSource: UploadIcon,
+    },
+  },
+]
+
+export function getActiveTransferBookCollections(
+  counts: Readonly<Record<BuiltInBookCollectionId, number>>,
+): BookCollectionDefinition[] {
+  return TRANSFER_BOOK_COLLECTIONS.filter(
+    (collection) => counts[collection.id] > 0,
+  )
+}
+
 const BOOK_COLLECTION_BY_ID = new Map(
-  [...PRIMARY_BOOK_COLLECTIONS, ...STORAGE_BOOK_COLLECTIONS].map(
-    (collection) => [collection.id, collection],
-  ),
+  [
+    ...PRIMARY_BOOK_COLLECTIONS,
+    ...TRANSFER_BOOK_COLLECTIONS,
+    ...STORAGE_BOOK_COLLECTIONS,
+  ].map((collection) => [collection.id, collection]),
 )
 
 export function getBookCollectionDefinition(

@@ -3,6 +3,8 @@ export const BUILT_IN_BOOK_COLLECTION_IDS = [
   "recentlyRead",
   "favorites",
   "downloaded",
+  "downloading",
+  "uploading",
   "localOnly",
 ] as const
 

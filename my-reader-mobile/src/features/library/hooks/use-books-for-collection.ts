@@ -11,7 +11,9 @@ type SelectBooksForCollectionInput = {
   collectionId: BuiltInBookCollectionId
   query: string
   sortBy: SortOption
+  bookActiveFormatsById: ReadonlyMap<string, string>
   bookDownloadStatusById: Record<string, string>
+  bookUploadStatusById: Record<string, string>
   bookLocalOnlyById: Record<string, boolean>
   favoriteBookIds: Set<string>
 }
@@ -45,7 +47,9 @@ export function selectBooksForCollection({
   collectionId,
   query,
   sortBy,
+  bookActiveFormatsById,
   bookDownloadStatusById,
+  bookUploadStatusById,
   bookLocalOnlyById,
   favoriteBookIds,
 }: SelectBooksForCollectionInput): BookItem[] {
@@ -60,6 +64,16 @@ export function selectBooksForCollection({
     case "downloaded":
       collectionBooks = books.filter(
         (book) => bookDownloadStatusById[book.id] === "downloaded",
+      )
+      break
+    case "downloading":
+      collectionBooks = books.filter((book) =>
+        bookActiveFormatsById.has(book.id),
+      )
+      break
+    case "uploading":
+      collectionBooks = books.filter((book) =>
+        Boolean(bookUploadStatusById[book.id]),
       )
       break
     case "localOnly":
@@ -97,6 +111,7 @@ export function selectBooksForCollection({
       case "title":
         return left.title.localeCompare(right.title, "zh-CN")
     }
+    return 0
   })
 }
 
@@ -106,7 +121,9 @@ export function useBooksForCollection({
   collectionId,
   query,
   sortBy,
+  bookActiveFormatsById,
   bookDownloadStatusById,
+  bookUploadStatusById,
   bookLocalOnlyById,
   favoriteBookIds,
 }: SelectBooksForCollectionInput) {
@@ -118,7 +135,9 @@ export function useBooksForCollection({
         collectionId,
         query,
         sortBy,
+        bookActiveFormatsById,
         bookDownloadStatusById,
+        bookUploadStatusById,
         bookLocalOnlyById,
         favoriteBookIds,
       }),
@@ -128,7 +147,9 @@ export function useBooksForCollection({
       collectionId,
       query,
       sortBy,
+      bookActiveFormatsById,
       bookDownloadStatusById,
+      bookUploadStatusById,
       bookLocalOnlyById,
       favoriteBookIds,
     ],

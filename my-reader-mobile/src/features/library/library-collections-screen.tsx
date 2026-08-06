@@ -29,6 +29,7 @@ import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library"
 import { isRemoteSourceType } from "@/src/domain/types"
 import {
   type BookCollectionDefinition,
+  getActiveTransferBookCollections,
   PRIMARY_BOOK_COLLECTIONS,
   STORAGE_BOOK_COLLECTIONS,
 } from "@/src/features/library/book-collection-definitions"
@@ -129,11 +130,12 @@ export default function LibraryCollectionsScreen() {
   const { selectedFormatById } = useBookReadingFormat(selectedLibrary)
   const { favoriteSet } = useFavoriteBooks(selectedLibrary, books)
   const recentlyReadBooks = useRecentlyReadBooks(selectedLibrary, books)
-  const { bookDownloadStatusById, bookLocalOnlyById } = useLibraryBookMeta(
-    selectedLibrary,
-    books,
-    selectedFormatById,
-  )
+  const {
+    bookActiveFormatsById,
+    bookDownloadStatusById,
+    bookLocalOnlyById,
+    bookUploadStatusById,
+  } = useLibraryBookMeta(selectedLibrary, books, selectedFormatById)
   const { syncNow } = useSyncLibrary()
   const variant = resolveLibraryScreenVariant({
     storeReady,
@@ -154,16 +156,25 @@ export default function LibraryCollectionsScreen() {
       downloaded: books.filter(
         (book) => bookDownloadStatusById[book.id] === "downloaded",
       ).length,
+      downloading: books.filter((book) => bookActiveFormatsById.has(book.id))
+        .length,
+      uploading: books.filter((book) => bookUploadStatusById[book.id]).length,
       localOnly: books.filter((book) => bookLocalOnlyById[book.id]).length,
     }),
     [
+      bookActiveFormatsById,
       bookDownloadStatusById,
       bookLocalOnlyById,
+      bookUploadStatusById,
       books,
       favoriteSet,
       pendingBookImports.length,
       recentlyReadBooks.length,
     ],
+  )
+  const activeTransferCollections = useMemo(
+    () => getActiveTransferBookCollections(counts),
+    [counts],
   )
 
   const applyLibrarySelection = useCallback(
@@ -303,6 +314,19 @@ export default function LibraryCollectionsScreen() {
             />
           </SectionCard>
         </View>
+        {activeTransferCollections.length > 0 ? (
+          <View className="gap-3">
+            <SectionLabel>
+              {t("library.collections.transferSection")}
+            </SectionLabel>
+            <SectionCard>
+              <CollectionRows
+                collections={activeTransferCollections}
+                counts={counts}
+              />
+            </SectionCard>
+          </View>
+        ) : null}
         {showStorageCollections ? (
           <View className="gap-3">
             <SectionLabel>

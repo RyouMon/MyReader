@@ -73,12 +73,15 @@
     "bookCountRatio": "{{visible}} / {{total}} 本",
     "collections": {
       "primarySection": "图书集合",
+      "transferSection": "传输",
       "storageSection": "存储与同步",
       "currentLibrary": "当前书库：{{name}}",
       "all": "全部图书",
       "recentlyRead": "最近阅读",
       "favorites": "收藏",
       "downloaded": "已下载",
+      "downloading": "正在下载",
+      "uploading": "正在上传",
       "localOnly": "仅本机",
       "bookCount": "{{count}} 本"
     },
@@ -139,6 +142,14 @@
       "downloaded": {
         "title": "还没有已下载图书",
         "detail": "下载后的图书会显示在这里，可供离线阅读。"
+      },
+      "downloading": {
+        "title": "没有下载任务",
+        "detail": "待下载和正在下载的图书会显示在这里。"
+      },
+      "uploading": {
+        "title": "没有上传任务",
+        "detail": "待上传和正在上传的图书会显示在这里。"
       },
       "localOnly": {
         "title": "没有仅存于本机的图书",

@@ -73,12 +73,15 @@
     "bookCountRatio": "{{visible}} / {{total}} books",
     "collections": {
       "primarySection": "Book collections",
+      "transferSection": "Transfers",
       "storageSection": "Storage and sync",
       "currentLibrary": "Current library: {{name}}",
       "all": "All books",
       "recentlyRead": "Recently read",
       "favorites": "Favorites",
       "downloaded": "Downloaded",
+      "downloading": "Downloading",
+      "uploading": "Uploading",
       "localOnly": "Local only",
       "bookCount": "{{count}} books"
     },
@@ -139,6 +142,14 @@
       "downloaded": {
         "title": "No downloaded books yet",
         "detail": "Downloaded books appear here for offline reading."
+      },
+      "downloading": {
+        "title": "No download tasks",
+        "detail": "Queued and active downloads appear here."
+      },
+      "uploading": {
+        "title": "No upload tasks",
+        "detail": "Queued and active uploads appear here."
       },
       "localOnly": {
         "title": "No local-only books",

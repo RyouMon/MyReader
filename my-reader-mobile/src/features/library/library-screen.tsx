@@ -281,6 +281,7 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
     bookCanDeleteDownloadById,
     bookDownloadStatusById,
     bookTransferStatusById,
+    bookUploadStatusById,
     bookLocalOnlyById,
     bookActiveFormatsById,
   } = useLibraryBookMeta(selectedLibrary, books, selectedFormatById)
@@ -291,7 +292,9 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
     collectionId,
     query: debouncedQuery,
     sortBy,
+    bookActiveFormatsById,
     bookDownloadStatusById,
+    bookUploadStatusById,
     bookLocalOnlyById,
     favoriteBookIds: favoriteSet,
   })
@@ -770,6 +773,18 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
             ios: "arrow.down.circle.fill",
             android: "download",
           } as const,
+        }
+      case "downloading":
+        return {
+          title: t("library.noMatch.downloading.title"),
+          detail: t("library.noMatch.downloading.detail"),
+          icon: { ios: "arrow.down.to.line", android: "downloading" } as const,
+        }
+      case "uploading":
+        return {
+          title: t("library.noMatch.uploading.title"),
+          detail: t("library.noMatch.uploading.detail"),
+          icon: { ios: "arrow.up.to.line", android: "upload" } as const,
         }
       case "localOnly":
         return {

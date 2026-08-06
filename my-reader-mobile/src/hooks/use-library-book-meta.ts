@@ -24,6 +24,10 @@ import { queryKeys } from "@/src/services/query/query-keys"
 
 type BookFileStateMap = Record<string, BookDownloadStatus>
 type BookTransferStateMap = Record<string, BookTransferStatus>
+type BookUploadStateMap = Record<
+  string,
+  Extract<BookTransferStatus, "uploadPending" | "uploading">
+>
 type BookFileStateRowMap = Record<string, FileStateRow[]>
 type BookFileStateBundle = {
   statuses: BookFileStateMap
@@ -184,12 +188,11 @@ export function useLibraryBookMeta(
     return next
   }, [bookFormatMetaById, books, fileStateBundle, isRemote, tasksByBookId])
 
-  const bookTransferStatusById = useMemo(() => {
-    const next: BookTransferStateMap = { ...bookDownloadStatusById }
+  const bookUploadStatusById = useMemo(() => {
+    const next: BookUploadStateMap = {}
     if (!isRemote) return next
 
     for (const book of books) {
-      if (next[book.id] === "downloading") continue
       const isUploading =
         !!activeUploadBookUuid && book.uuid === activeUploadBookUuid
       const isNotAvailableRemotely = (fileStateBundle.rows[book.id] ?? []).some(
@@ -202,13 +205,17 @@ export function useLibraryBookMeta(
       next[book.id] = isUploading ? "uploading" : "uploadPending"
     }
     return next
-  }, [
-    activeUploadBookUuid,
-    bookDownloadStatusById,
-    books,
-    fileStateBundle.rows,
-    isRemote,
-  ])
+  }, [activeUploadBookUuid, books, fileStateBundle.rows, isRemote])
+
+  const bookTransferStatusById = useMemo(() => {
+    const next: BookTransferStateMap = { ...bookDownloadStatusById }
+    for (const book of books) {
+      if (next[book.id] === "downloading") continue
+      const uploadStatus = bookUploadStatusById[book.id]
+      if (uploadStatus) next[book.id] = uploadStatus
+    }
+    return next
+  }, [bookDownloadStatusById, bookUploadStatusById, books])
 
   const bookLocalOnlyById = useMemo(() => {
     const next: Record<string, boolean> = {}
@@ -280,6 +287,7 @@ export function useLibraryBookMeta(
     bookFormatMetaById,
     fileStateBundle,
     bookDownloadStatusById,
+    bookUploadStatusById,
     bookTransferStatusById,
     bookLocalOnlyById,
     bookCanUploadById,

@@ -269,6 +269,9 @@ describe("useLibraryBookMeta", () => {
       expect(result.current.bookTransferStatusById).toEqual({
         "1": "uploadPending",
       })
+      expect(result.current.bookUploadStatusById).toEqual({
+        "1": "uploadPending",
+      })
       expect(result.current.bookLocalOnlyById).toEqual({ "1": true })
       expect(result.current.bookCanUploadById).toEqual({ "1": true })
       expect(result.current.bookCanDeleteDownloadById).toEqual({ "1": false })
@@ -368,6 +371,9 @@ describe("useLibraryBookMeta", () => {
 
     await waitFor(() => {
       expect(result.current.bookTransferStatusById).toEqual({
+        "1": "uploading",
+      })
+      expect(result.current.bookUploadStatusById).toEqual({
         "1": "uploading",
       })
       expect(result.current.bookCanUploadById).toEqual({ "1": false })
@@ -500,6 +506,49 @@ describe("useLibraryBookMeta", () => {
         "1": "downloading",
       })
       expect(result.current.bookActiveFormatsById.get("1")).toBe("EPUB")
+    })
+
+    unmount()
+  })
+
+  it("should keep queued downloads and pending uploads in their respective queue states", async () => {
+    jest.mocked(useDownloadStatusTasks).mockReturnValue([
+      {
+        id: "task-1",
+        libraryId: "lib-remote",
+        bookId: "1",
+        format: "EPUB",
+        relativePath: "Author/Test Book/Test Book.epub",
+        status: "queued",
+      },
+    ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
+    jest.mocked(useFileStates).mockReturnValue({
+      data: [
+        {
+          path: "Author/Test Book/Test Book.pdf",
+          localState: "dirty_push",
+          isLocallyAvailable: true,
+        },
+      ],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useFileStates>)
+
+    const books = [makeBookWithFormatPolicy(["EPUB", "PDF"])]
+    const { result, unmount } = renderHook(
+      () => useLibraryBookMeta(remoteLibrary, books, { "1": "epub" }),
+      { wrapper },
+    )
+
+    await waitFor(() => {
+      expect(result.current.bookDownloadStatusById).toEqual({
+        "1": "downloading",
+      })
+      expect(result.current.bookUploadStatusById).toEqual({
+        "1": "uploadPending",
+      })
+      expect(result.current.bookTransferStatusById).toEqual({
+        "1": "downloading",
+      })
     })
 
     unmount()

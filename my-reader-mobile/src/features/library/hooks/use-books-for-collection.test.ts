@@ -12,7 +12,12 @@ const commonInput = {
   books,
   recentlyReadBooks: [books[2]!, books[0]!],
   query: "",
+  bookActiveFormatsById: new Map([["2", "EPUB"]]),
   bookDownloadStatusById: { "1": "downloaded", "2": "notDownloaded" },
+  bookUploadStatusById: {
+    "1": "uploadPending",
+    "3": "uploading",
+  },
   bookLocalOnlyById: { "1": true },
   favoriteBookIds: new Set(["1", "2"]),
 }
@@ -53,5 +58,21 @@ describe("selectBooksForCollection", () => {
     })
 
     expect(result).toEqual([])
+  })
+
+  it("should include queued and active transfers in their respective collections", () => {
+    const downloading = selectBooksForCollection({
+      ...commonInput,
+      collectionId: "downloading",
+      sortBy: "title",
+    })
+    const uploading = selectBooksForCollection({
+      ...commonInput,
+      collectionId: "uploading",
+      sortBy: "title",
+    })
+
+    expect(downloading.map((book) => book.id)).toEqual(["2"])
+    expect(uploading.map((book) => book.id)).toEqual(["1", "3"])
   })
 })
