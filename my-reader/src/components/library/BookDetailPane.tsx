@@ -1540,7 +1540,7 @@ function BookMetadataSection({
     <DetailSection title={t("bookDetail.libraryInfo")}>
       <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
         {activeLibraryName && (
-          <FactRow label={t("library.title")} value={activeLibraryName} />
+          <FactRow label={t("library.label")} value={activeLibraryName} />
         )}
         <FactRow
           label={t("bookDetail.fileFormats")}

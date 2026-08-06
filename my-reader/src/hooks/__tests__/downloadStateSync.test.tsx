@@ -4,6 +4,8 @@ import type { ReactNode } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { useBookDownloadState } from "@/hooks/queries/useBookDownloadState"
 import { bookFileStateKeys } from "@/hooks/queries/useBookFileState"
+import { localOnlyBookKeys } from "@/hooks/queries/useLocalOnlyBooksQuery"
+import { pendingBookUploadKeys } from "@/hooks/queries/usePendingBookUploadsQuery"
 import {
   type BookUploadProgressEvent,
   bookUploadProgressKeys,
@@ -173,6 +175,42 @@ describe("download state synchronization", () => {
         downloadProgressKeys.detail(libraryId, bookId, format),
       ),
     ).toMatchObject({ status: "done" })
+  })
+
+  it("should keep active downloads in the collection queue until completion", async () => {
+    const client = makeClient()
+    renderWithClient(client, <DownloadEventsBridge />)
+
+    await waitFor(() => {
+      expect(tauriEventMock.listen).toHaveBeenCalledWith(
+        "download_progress",
+        expect.any(Function),
+      )
+    })
+    await emitGlobalProgress({
+      libraryId,
+      bookId,
+      format,
+      status: "starting",
+      bytesWritten: 0,
+    })
+
+    expect(client.getQueryData(downloadProgressKeys.queue(libraryId))).toEqual([
+      { bookId, format, status: "starting" },
+    ])
+
+    await emitGlobalProgress({
+      libraryId,
+      bookId,
+      format,
+      status: "done",
+      bytesWritten: 1024,
+      totalBytes: 1024,
+    })
+
+    expect(client.getQueryData(downloadProgressKeys.queue(libraryId))).toEqual(
+      [],
+    )
   })
 
   it("should clear stale terminal progress when remote file state resets", async () => {
@@ -474,6 +512,10 @@ describe("download state synchronization", () => {
         bookUploadProgressKeys.detail(libraryId, "book-uuid"),
       ),
     ).toEqual({ progress: 50 })
+    expect(client.getQueryData(pendingBookUploadKeys.list(libraryId))).toEqual([
+      "book-uuid",
+    ])
+    expect(client.getQueryData(localOnlyBookKeys.status(libraryId))).toBe(true)
   })
 
   it("should refresh remote presence when a pending upload completes", async () => {
@@ -528,6 +570,41 @@ describe("download state synchronization", () => {
         bookUploadProgressKeys.detail(libraryId, "book-uuid"),
       ),
     ).toBeNull()
+    expect(client.getQueryData(pendingBookUploadKeys.list(libraryId))).toEqual(
+      [],
+    )
+  })
+
+  it("should retain failed book uploads in the pending collection queue", async () => {
+    const client = makeClient()
+    renderWithClient(client, <UploadEventsBridge />)
+
+    await waitFor(() => {
+      expect(tauriEventMock.listen).toHaveBeenCalledWith(
+        "book_upload_progress",
+        expect.any(Function),
+      )
+    })
+    await emitUploadProgress({
+      libraryId,
+      bookUuid: "book-uuid",
+      status: "uploading",
+      completed: 0,
+      total: 0,
+    })
+    await emitUploadProgress({
+      libraryId,
+      bookUuid: "book-uuid",
+      status: "error",
+      completed: 0,
+      total: 0,
+      error: "offline",
+    })
+
+    expect(client.getQueryData(pendingBookUploadKeys.list(libraryId))).toEqual([
+      "book-uuid",
+    ])
+    expect(client.getQueryData(localOnlyBookKeys.status(libraryId))).toBe(true)
   })
 
   it("should clear pending upload state when library upload fails before a book starts", async () => {

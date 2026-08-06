@@ -29,9 +29,9 @@ import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library"
 import { isRemoteSourceType } from "@/src/domain/types"
 import {
   type BookCollectionDefinition,
+  getActiveStorageBookCollections,
   getActiveTransferBookCollections,
   PRIMARY_BOOK_COLLECTIONS,
-  STORAGE_BOOK_COLLECTIONS,
 } from "@/src/features/library/book-collection-definitions"
 import { NoLibraryEmptyState } from "@/src/features/library/components/no-library-empty-state"
 import { useLibraryCollectionsHeader } from "@/src/features/library/hooks/use-library-collections-header"
@@ -145,8 +145,6 @@ export default function LibraryCollectionsScreen() {
   })
   const isManagedLibrary =
     selectedLibrary !== null && libraryTypeOf(selectedLibrary) === "myreader"
-  const showStorageCollections =
-    isManagedLibrary && isRemoteSourceType(selectedLibrary?.sourceType)
 
   const counts = useMemo<Record<BuiltInBookCollectionId, number>>(
     () => ({
@@ -176,6 +174,14 @@ export default function LibraryCollectionsScreen() {
     () => getActiveTransferBookCollections(counts),
     [counts],
   )
+  const activeStorageCollections = useMemo(
+    () => getActiveStorageBookCollections(counts),
+    [counts],
+  )
+  const showStorageCollections =
+    isManagedLibrary &&
+    isRemoteSourceType(selectedLibrary?.sourceType) &&
+    activeStorageCollections.length > 0
 
   const applyLibrarySelection = useCallback(
     (nextLibraryId: string) => {
@@ -305,15 +311,12 @@ export default function LibraryCollectionsScreen() {
     <>
       {header}
       <Screen>
-        <View className="gap-3">
-          <SectionLabel>{t("library.collections.primarySection")}</SectionLabel>
-          <SectionCard>
-            <CollectionRows
-              collections={PRIMARY_BOOK_COLLECTIONS}
-              counts={counts}
-            />
-          </SectionCard>
-        </View>
+        <SectionCard>
+          <CollectionRows
+            collections={PRIMARY_BOOK_COLLECTIONS}
+            counts={counts}
+          />
+        </SectionCard>
         {activeTransferCollections.length > 0 ? (
           <View className="gap-3">
             <SectionLabel>
@@ -334,7 +337,7 @@ export default function LibraryCollectionsScreen() {
             </SectionLabel>
             <SectionCard>
               <CollectionRows
-                collections={STORAGE_BOOK_COLLECTIONS}
+                collections={activeStorageCollections}
                 counts={counts}
               />
             </SectionCard>

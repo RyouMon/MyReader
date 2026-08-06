@@ -1,9 +1,14 @@
+import type { BuiltInBookCollectionId } from "@my-reader/tools/types/book-collection"
 import type { CalibreBook } from "@my-reader/tools/types/book"
 import type { Library as LibraryRecord } from "@my-reader/tools/types/library"
+import {
+  isRemoteLibrarySourceType,
+  libraryTypeOf,
+} from "@my-reader/tools/types/library"
 import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { open } from "@tauri-apps/plugin-dialog"
-import { AlertCircle, BookOpen, Library } from "lucide-react"
+import { AlertCircle, Library } from "lucide-react"
 import { useCallback, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
@@ -28,6 +33,7 @@ import {
 } from "@/components/ui/empty"
 import {
   type BookFileStateLookup,
+  bookFileStateKeys,
   useBookFileStates,
 } from "@/hooks/queries/useBookFileState"
 import { useBookReadingFormats } from "@/hooks/queries/useBookReadingFormatsQuery"
@@ -40,20 +46,28 @@ import {
   useLibrariesQuery,
   useLibraryMutations,
 } from "@/hooks/queries/useLibrariesQuery"
+import { localOnlyBookKeys } from "@/hooks/queries/useLocalOnlyBooksQuery"
+import { pendingBookUploadKeys } from "@/hooks/queries/usePendingBookUploadsQuery"
 import {
   readingProgressKeys,
   useBookReadingProgress,
 } from "@/hooks/queries/useReadingProgressQuery"
+import {
+  specialBookCollectionKeys,
+  useSpecialBookCollection,
+} from "@/hooks/queries/useSpecialBookCollectionQuery"
 import { useOpenReader } from "@/hooks/reader/useOpenReader"
 import { usePaginatedBooks } from "@/hooks/reader/usePaginatedBooks"
 import { useWindowSizeClass } from "@/hooks/use-window-size-class"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
+import { isSpecialBookCollectionId } from "@/lib/bookCollections"
 import { resetBrokenCovers } from "@/lib/coverFailureCache"
 import { api, formatApiError } from "@/lib/tauri-api"
 import { cn } from "@/lib/utils"
 import { useAppUiStore } from "@/stores/appUiStore"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 import BookDetailPane from "./BookDetailPane"
+import { getDesktopBookCollectionDefinition } from "./bookCollectionDefinitions"
 
 interface LibraryWorkspaceProps {
   activeBookId: string | null
@@ -68,14 +82,14 @@ export default function LibraryWorkspace({
   const { t } = useTranslation()
   const { data: libraries = [], isLoading: libLoading } = useLibrariesQuery()
   const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
-  const activeView = useLibraryUiStore((s) => s.activeView)
+  const activeCollectionId = useLibraryUiStore((s) => s.activeCollectionId)
   const searchQuery = useLibraryUiStore((s) => s.librarySearchQuery)
   const setSearchQuery = useLibraryUiStore((s) => s.setLibrarySearchQuery)
   const sortBy = useLibraryUiStore((s) => s.librarySortBy)
   const setSortBy = useLibraryUiStore((s) => s.setLibrarySortBy)
   const activeLibrary = libraries.find((l) => l.id === activeLibraryId) ?? null
-  const fileActionsEnabled =
-    activeLibrary?.sourceType != null && activeLibrary.sourceType !== "local"
+  const isRemoteLibrary = isRemoteLibrarySourceType(activeLibrary?.sourceType)
+  const fileActionsEnabled = isRemoteLibrary
   const { data: selectedFormatById = EMPTY_SELECTED_FORMATS } =
     useBookReadingFormats(activeLibraryId)
   const { data: progressByBookId = {} } =
@@ -107,17 +121,20 @@ export default function LibraryWorkspace({
   const canToggleDetailFullScreen = Boolean(activeBookId && !isSmallWindow)
 
   const debouncedSearch = useDebouncedValue(searchQuery, 300)
-  const booksSortBy = activeView === "recent" ? "lastRead" : sortBy
+  const isPaginatedCollection =
+    activeCollectionId === "all" || activeCollectionId === "recentlyRead"
+  const booksSortBy =
+    activeCollectionId === "recentlyRead" ? "lastRead" : sortBy
 
   const { books, total, initialLoading, error, ensureRange, refresh } =
     usePaginatedBooks(
-      activeLibraryId,
+      isPaginatedCollection ? activeLibraryId : null,
       booksSortBy,
       debouncedSearch,
-      activeLibrary?.libraryType === "myreader",
+      Boolean(activeLibrary && libraryTypeOf(activeLibrary) === "myreader"),
     )
   const favoriteBooksQuery = useFavoriteBooks(
-    activeLibraryId,
+    activeCollectionId === "favorites" ? activeLibraryId : null,
     sortBy,
     debouncedSearch,
   )
@@ -130,24 +147,54 @@ export default function LibraryWorkspace({
     }
     return m
   }, [favoriteBooksQuery.data?.items])
+  const specialCollection = useSpecialBookCollection({
+    libraryId: activeLibraryId,
+    collectionId: activeCollectionId,
+    sortBy,
+    search: debouncedSearch,
+    selectedFormatById,
+    isRemoteLibrary,
+  })
+  const isSpecialCollection = isSpecialBookCollectionId(activeCollectionId)
 
-  const displayedBooks = activeView === "favorites" ? favoriteBooks : books
+  const displayedBooks =
+    activeCollectionId === "favorites"
+      ? favoriteBooks
+      : isSpecialCollection
+        ? specialCollection.books
+        : books
   const displayedTotal =
-    activeView === "favorites" ? (favoriteBooksQuery.data?.total ?? 0) : total
+    activeCollectionId === "favorites"
+      ? (favoriteBooksQuery.data?.total ?? 0)
+      : isSpecialCollection
+        ? specialCollection.total
+        : total
   const displayedLoading =
-    activeView === "favorites" ? favoriteBooksQuery.isLoading : initialLoading
+    activeCollectionId === "favorites"
+      ? favoriteBooksQuery.isLoading
+      : isSpecialCollection
+        ? specialCollection.initialLoading
+        : initialLoading
   const displayedError =
-    activeView === "favorites"
+    activeCollectionId === "favorites"
       ? favoriteBooksQuery.error
         ? String(favoriteBooksQuery.error)
         : null
-      : error
+      : isSpecialCollection
+        ? specialCollection.error
+        : error
   const displayedEnsureRange =
-    activeView === "favorites" ? () => undefined : ensureRange
+    activeCollectionId === "favorites"
+      ? () => undefined
+      : isSpecialCollection
+        ? specialCollection.ensureRange
+        : ensureRange
   const displayedRefresh =
-    activeView === "favorites"
+    activeCollectionId === "favorites"
       ? () => void favoriteBooksQuery.refetch()
-      : refresh
+      : isSpecialCollection
+        ? specialCollection.refresh
+        : refresh
   const loading = libLoading || displayedLoading
   const fileStateLookups = useMemo<BookFileStateLookup[]>(() => {
     if (!activeLibraryId || !fileActionsEnabled) return []
@@ -168,9 +215,15 @@ export default function LibraryWorkspace({
     void queryClient.invalidateQueries({ queryKey: libraryKeys.all })
     if (activeLibraryId) {
       void invalidateFavoriteBookQueries(queryClient, activeLibraryId)
+      void queryClient.invalidateQueries({
+        queryKey: specialBookCollectionKeys.catalog(activeLibraryId),
+      })
+      void queryClient.invalidateQueries({
+        queryKey: localOnlyBookKeys.status(activeLibraryId),
+      })
     }
-    refresh()
-  }, [activeLibraryId, queryClient, refresh])
+    if (isPaginatedCollection) refresh()
+  }, [activeLibraryId, isPaginatedCollection, queryClient, refresh])
 
   const handleRefresh = async () => {
     if (!activeLibraryId) return
@@ -185,8 +238,22 @@ export default function LibraryWorkspace({
           queryKey: readingProgressKeys.list(activeLibraryId),
         }),
         invalidateFavoriteBookQueries(queryClient, activeLibraryId),
+        queryClient.invalidateQueries({
+          queryKey: specialBookCollectionKeys.catalog(activeLibraryId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: bookFileStateKeys.library(activeLibraryId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: pendingBookUploadKeys.list(activeLibraryId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: localOnlyBookKeys.status(activeLibraryId),
+        }),
       ])
-      if (activeLibrary?.libraryType !== "myreader") refresh()
+      if (activeLibrary && libraryTypeOf(activeLibrary) !== "myreader") {
+        refresh()
+      }
     } catch (e) {
       console.error(
         `Failed to sync db. library id: "${activeLibraryId}", error: ${formatApiError(e)}`,
@@ -218,6 +285,15 @@ export default function LibraryWorkspace({
         null,
         [t("bookDetail.unknownAuthor")],
       )
+      void queryClient.invalidateQueries({
+        queryKey: pendingBookUploadKeys.list(libraryId),
+      })
+      void queryClient.invalidateQueries({
+        queryKey: specialBookCollectionKeys.catalog(libraryId),
+      })
+      void queryClient.invalidateQueries({
+        queryKey: localOnlyBookKeys.status(libraryId),
+      })
       if (outcome.queued) {
         toast.info(t("library.importQueued"))
         return
@@ -240,12 +316,9 @@ export default function LibraryWorkspace({
     }
   }
 
-  const sectionLabel =
-    activeView === "favorites"
-      ? t("library.favoritesTitle")
-      : activeView === "recent"
-        ? t("library.recentTitle")
-        : t("library.title")
+  const collectionDefinition =
+    getDesktopBookCollectionDefinition(activeCollectionId)
+  const sectionLabel = t(collectionDefinition.titleKey)
 
   function handleOpenReader(book: CalibreBook) {
     void openReader({
@@ -295,12 +368,61 @@ export default function LibraryWorkspace({
   ])
 
   const hasNoLibrary = libraries.length === 0
+  const emptyState = (() => {
+    if (searchQuery) {
+      return {
+        title: t("library.noMatch.search.title"),
+        detail: t("library.noMatch.search.detail"),
+      }
+    }
+
+    const key: Exclude<BuiltInBookCollectionId, "all"> | "empty" =
+      activeCollectionId === "all" ? "empty" : activeCollectionId
+    switch (key) {
+      case "recentlyRead":
+        return {
+          title: t("library.noMatch.recentlyRead.title"),
+          detail: t("library.noMatch.recentlyRead.detail"),
+        }
+      case "favorites":
+        return {
+          title: t("library.noMatch.favorites.title"),
+          detail: t("library.noMatch.favorites.detail"),
+        }
+      case "downloaded":
+        return {
+          title: t("library.noMatch.downloaded.title"),
+          detail: t("library.noMatch.downloaded.detail"),
+        }
+      case "downloading":
+        return {
+          title: t("library.noMatch.downloading.title"),
+          detail: t("library.noMatch.downloading.detail"),
+        }
+      case "uploading":
+        return {
+          title: t("library.noMatch.uploading.title"),
+          detail: t("library.noMatch.uploading.detail"),
+        }
+      case "localOnly":
+        return {
+          title: t("library.noMatch.localOnly.title"),
+          detail: t("library.noMatch.localOnly.detail"),
+        }
+      case "empty":
+        return {
+          title: t("library.noMatch.empty.title"),
+          detail: t("library.noMatch.empty.detail"),
+        }
+    }
+  })()
+  const EmptyCollectionIcon = collectionDefinition.icon
 
   const gridHeader = (
     <div className="flex items-baseline gap-2.5 mb-4 pt-5">
       <h2 className="text-xl font-semibold">{sectionLabel}</h2>
       <span className="text-sm text-muted-foreground font-normal">
-        {t("library.booksCount", { count: displayedTotal })}
+        {t("library.collections.bookCount", { count: displayedTotal })}
       </span>
     </div>
   )
@@ -428,17 +550,13 @@ export default function LibraryWorkspace({
               <Empty className="min-h-0 flex-1">
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
-                    <BookOpen />
+                    <EmptyCollectionIcon />
                   </EmptyMedia>
-                  <EmptyTitle>{t("library.empty.noBooks")}</EmptyTitle>
-                  <EmptyDescription>
-                    {searchQuery
-                      ? t("library.empty.tryOtherKeywords")
-                      : t("library.empty.noBooksInLibrary")}
-                  </EmptyDescription>
+                  <EmptyTitle>{emptyState.title}</EmptyTitle>
+                  <EmptyDescription>{emptyState.detail}</EmptyDescription>
                 </EmptyHeader>
                 {activeLibrary?.libraryType === "myreader" &&
-                  activeView === "all" &&
+                  activeCollectionId === "all" &&
                   !searchQuery && (
                     <EmptyContent>
                       <Button
@@ -540,7 +658,7 @@ function LibraryStatusBar({
     <footer className="flex h-8 shrink-0 items-center justify-between border-t border-border bg-background px-6 text-xs text-muted-foreground">
       <span>
         {activeLibrary?.name ?? t("sidebar.noLibrary")} /{" "}
-        {t("sidebar.booksCount", {
+        {t("library.collections.bookCount", {
           count: activeLibrary?.bookCount ?? 0,
         })}
       </span>

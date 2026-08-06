@@ -24,7 +24,6 @@ const INTENTIONAL_PLATFORM_VARIANTS = [
   "common.confirm",
   "library.importingBook",
   "library.searchPlaceholder",
-  "library.title",
   "reader.column",
   "reader.fontOptions.defaultChinese",
   "reader.fontOptions.humanist",

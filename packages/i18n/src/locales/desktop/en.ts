@@ -27,9 +27,6 @@ export const desktopEn = {
       WEBDAV_LIBRARY_MISSING_SOURCE_PATH: "WebDAV library missing remote path",
     },
     sidebar: {
-      all: "All",
-      recent: "Recent",
-      favorites: "Favorites",
       tags: "Tags",
       series: "Series",
       authors: "Authors",
@@ -42,7 +39,6 @@ export const desktopEn = {
       switchLibrary: "Switch library",
       expand: "Expand sidebar",
       collapse: "Collapse sidebar",
-      booksCount: "{{count}} books",
       browse: "Browse",
     },
     theme: {
@@ -52,10 +48,6 @@ export const desktopEn = {
       system: "System",
     },
     library: {
-      title: "All Books",
-      favoritesTitle: "Favorites",
-      recentTitle: "Recent",
-      booksCount: "{{count}} books",
       searchPlaceholder: "Search title, author, tags…",
       gridView: "Grid view",
       listView: "List view",
@@ -77,9 +69,6 @@ export const desktopEn = {
         goToSettings: "Go to Settings",
         addLibrary: "Add library",
         importBook: "Import book",
-        noBooks: "No matching books",
-        tryOtherKeywords: "Try different keywords",
-        noBooksInLibrary: "Library is empty",
       },
       loadingFailed: "Failed to load",
       loading: "Loading…",

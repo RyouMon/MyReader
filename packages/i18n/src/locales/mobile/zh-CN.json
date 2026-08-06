@@ -52,7 +52,6 @@
     }
   },
   "library": {
-    "title": "书库",
     "allLibraries": "所有书库",
     "addLibrary": "添加书库",
     "importingBook": "导入中…",
@@ -72,18 +71,7 @@
     "searchPlaceholder": "搜索书名、作者",
     "bookCountRatio": "{{visible}} / {{total}} 本",
     "collections": {
-      "primarySection": "图书集合",
-      "transferSection": "传输",
-      "storageSection": "存储与同步",
-      "currentLibrary": "当前书库：{{name}}",
-      "all": "全部图书",
-      "recentlyRead": "最近阅读",
-      "favorites": "收藏",
-      "downloaded": "已下载",
-      "downloading": "正在下载",
-      "uploading": "正在上传",
-      "localOnly": "仅本机",
-      "bookCount": "{{count}} 本"
+      "currentLibrary": "当前书库：{{name}}"
     },
     "sort": {
       "recentlyRead": "最近阅读",
@@ -121,44 +109,9 @@
     },
     "loadError": {
       "title": "读取失败"
-    },
-    "noMatch": {
-      "search": {
-        "title": "搜索无结果",
-        "detail": "未找到与搜索词匹配的图书，请尝试其他关键词。"
-      },
-      "empty": {
-        "title": "书库为空",
-        "detail": "当前书库中还没有图书。"
-      },
-      "favorites": {
-        "title": "还没有收藏书籍",
-        "detail": "在任意书籍详情页点击星标即可添加到收藏。"
-      },
-      "recentlyRead": {
-        "title": "还没有阅读记录",
-        "detail": "打开一本图书后会显示在这里。"
-      },
-      "downloaded": {
-        "title": "还没有已下载图书",
-        "detail": "下载后的图书会显示在这里，可供离线阅读。"
-      },
-      "downloading": {
-        "title": "没有下载任务",
-        "detail": "待下载和正在下载的图书会显示在这里。"
-      },
-      "uploading": {
-        "title": "没有上传任务",
-        "detail": "待上传和正在上传的图书会显示在这里。"
-      },
-      "localOnly": {
-        "title": "没有仅存于本机的图书",
-        "detail": "尚未上传到云端的图书会显示在这里。"
-      }
     }
   },
   "libraryDetail": {
-    "libraryLabel": "书库",
     "currentlyUsed": " · 当前使用",
     "bookCount": "{{count}} 本",
     "typeLocal": "本地",

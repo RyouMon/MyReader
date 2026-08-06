@@ -65,8 +65,24 @@ enum PendingCatalogState {
 pub struct BookTransferService;
 
 impl BookTransferService {
-    pub async fn has_pending_books(sidecar_root: &Path) -> Result<bool, CoreError> {
+    pub async fn has_local_only_books(sidecar_root: &Path) -> Result<bool, CoreError> {
+        super::content::ContentService::list_file_states(sidecar_root)
+            .await
+            .map(|states| {
+                states
+                    .iter()
+                    .any(|state| matches!(state.local_state.as_str(), "local_only" | "dirty_push"))
+            })
+    }
+
+    pub async fn pending_book_uuids(sidecar_root: &Path) -> Result<Vec<String>, CoreError> {
         super::content::ContentService::list_pending_book_imports(sidecar_root)
+            .await
+            .map(|pending| pending.into_iter().map(|book| book.book_uuid).collect())
+    }
+
+    pub async fn has_pending_books(sidecar_root: &Path) -> Result<bool, CoreError> {
+        Self::pending_book_uuids(sidecar_root)
             .await
             .map(|pending| !pending.is_empty())
     }

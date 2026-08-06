@@ -7,8 +7,10 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event"
 import { useEffect } from "react"
 import { toast } from "sonner"
 import i18n from "@/i18n"
+import { localOnlyBookKeys } from "./queries/useLocalOnlyBooksQuery"
 import { queryClient as defaultQueryClient } from "./queries/queryClient"
 import { bookFileStateKeys } from "./queries/useBookFileState"
+import { pendingBookUploadKeys } from "./queries/usePendingBookUploadsQuery"
 
 export type BookUploadProgressEvent = {
   libraryId: string
@@ -29,11 +31,28 @@ export const bookUploadProgressKeys = {
     [...bookUploadProgressKeys.all, libraryId, bookUuid] as const,
 }
 
+function updatePendingBookUpload(
+  libraryId: string,
+  bookUuid: string,
+  pending: boolean,
+  client: QueryClient = defaultQueryClient,
+) {
+  client.setQueryData<string[]>(
+    pendingBookUploadKeys.list(libraryId),
+    (current = []) => {
+      const next = current.filter((uuid) => uuid !== bookUuid)
+      return pending ? [...next, bookUuid] : next
+    },
+  )
+}
+
 export function applyBookUploadProgressEvent(
   event: BookUploadProgressEvent,
   client: QueryClient = defaultQueryClient,
 ) {
   if (event.status === "uploading" && event.bookUuid) {
+    updatePendingBookUpload(event.libraryId, event.bookUuid, true, client)
+    client.setQueryData(localOnlyBookKeys.status(event.libraryId), true)
     const progress =
       event.completed > 0 && event.total > 0
         ? Math.max(0, Math.min(100, (event.completed / event.total) * 100))
@@ -50,11 +69,26 @@ export function applyBookUploadProgressEvent(
       queryKey: bookUploadProgressKeys.detail(event.libraryId, event.bookUuid),
       exact: true,
     })
+    updatePendingBookUpload(
+      event.libraryId,
+      event.bookUuid,
+      event.status === "error",
+      client,
+    )
   } else {
     client.removeQueries({
       queryKey: [...bookUploadProgressKeys.all, event.libraryId],
     })
+    if (event.status === "done") {
+      client.setQueryData(pendingBookUploadKeys.list(event.libraryId), [])
+    }
   }
+  void client.invalidateQueries({
+    queryKey: pendingBookUploadKeys.list(event.libraryId),
+  })
+  void client.invalidateQueries({
+    queryKey: localOnlyBookKeys.status(event.libraryId),
+  })
   void client.invalidateQueries({
     queryKey: bookFileStateKeys.library(event.libraryId),
   })
@@ -70,6 +104,8 @@ export function setBookUploadStarting(
   bookUuid: string,
   client: QueryClient = defaultQueryClient,
 ) {
+  updatePendingBookUpload(libraryId, bookUuid, true, client)
+  client.setQueryData(localOnlyBookKeys.status(libraryId), true)
   client.setQueryData<BookUploadProgressSnapshot>(
     bookUploadProgressKeys.detail(libraryId, bookUuid),
     { progress: null },

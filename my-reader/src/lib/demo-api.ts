@@ -381,6 +381,8 @@ export const demoCommands = {
       },
     ]),
   getBooks: () => ok<BookEntry[]>(demoBooks),
+  listPendingBookUploads: () => ok<string[]>([]),
+  hasLocalOnlyBooks: () => ok(false),
   getBooksPage: (
     _libraryId: string | null,
     offset: number,

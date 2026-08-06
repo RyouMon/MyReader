@@ -77,7 +77,7 @@ export function useLibraryCollectionsHeader({
     [handleAddLibrary, onImportBook, onSyncCurrentLibrary],
   )
   const { options: baseOptions, toolbar: baseToolbar } = useScreenHeader({
-    title: selectedLibraryName ?? t("library.title"),
+    title: selectedLibraryName ?? t("library.label"),
     headerLargeTitle: true,
   })
 

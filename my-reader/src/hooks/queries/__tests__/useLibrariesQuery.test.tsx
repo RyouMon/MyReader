@@ -52,7 +52,7 @@ beforeEach(() => {
   resetBrokenCovers()
   useLibraryUiStore.setState({
     activeLibraryId: null,
-    activeView: "all",
+    activeCollectionId: "all",
     librarySearchQuery: "",
     librarySortBy: "recent",
   })

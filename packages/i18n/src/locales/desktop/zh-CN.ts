@@ -26,9 +26,6 @@ export const desktopZhCN = {
       WEBDAV_LIBRARY_MISSING_SOURCE_PATH: "WebDAV 书库缺少远程路径",
     },
     sidebar: {
-      all: "全部",
-      recent: "最近阅读",
-      favorites: "收藏",
       tags: "标签",
       series: "丛书",
       authors: "作者",
@@ -41,7 +38,6 @@ export const desktopZhCN = {
       switchLibrary: "切换书库",
       expand: "展开侧边栏",
       collapse: "收起侧边栏",
-      booksCount: "{{count}} 本",
       browse: "分类浏览",
     },
     theme: {
@@ -51,10 +47,6 @@ export const desktopZhCN = {
       system: "跟随系统",
     },
     library: {
-      title: "全部书籍",
-      favoritesTitle: "收藏书籍",
-      recentTitle: "最近阅读",
-      booksCount: "{{count}} 本",
       searchPlaceholder: "搜索书名、作者、标签…",
       gridView: "网格视图",
       listView: "列表视图",
@@ -74,9 +66,6 @@ export const desktopZhCN = {
         goToSettings: "前往设置",
         addLibrary: "添加书库",
         importBook: "导入图书",
-        noBooks: "没有找到匹配的书籍",
-        tryOtherKeywords: "试试其他关键词",
-        noBooksInLibrary: "书库中暂无书籍",
       },
       loadingFailed: "加载失败",
       loading: "加载中…",

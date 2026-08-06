@@ -33,6 +33,8 @@ fn export_tauri_specta_typescript_bindings() {
             my_reader_lib::commands::source::add_onedrive_data_source::<tauri::Wry>,
             my_reader_lib::commands::source::onedrive_list_folders::<tauri::Wry>,
             my_reader_lib::commands::book::get_books::<tauri::Wry>,
+            my_reader_lib::commands::book::list_pending_book_uploads::<tauri::Wry>,
+            my_reader_lib::commands::book::has_local_only_books::<tauri::Wry>,
             my_reader_lib::commands::book::get_books_page::<tauri::Wry>,
             my_reader_lib::commands::book::get_book_detail::<tauri::Wry>,
             my_reader_lib::commands::book::get_series_books::<tauri::Wry>,

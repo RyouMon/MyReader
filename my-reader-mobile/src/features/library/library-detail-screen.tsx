@@ -111,10 +111,10 @@ function DetailHero({
         }}
       >
         <SymbolView
-          accessibilityLabel={t("libraryDetail.libraryLabel")}
+          accessibilityLabel={t("library.label")}
           fallback={
             <MaterialIcons
-              accessibilityLabel={t("libraryDetail.libraryLabel")}
+              accessibilityLabel={t("library.label")}
               name="auto-stories"
               size={80}
               color={accent}

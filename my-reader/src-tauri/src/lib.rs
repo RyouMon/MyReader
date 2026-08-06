@@ -68,6 +68,8 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::source::add_onedrive_data_source::<tauri::Wry>,
             commands::source::onedrive_list_folders::<tauri::Wry>,
             commands::book::get_books::<tauri::Wry>,
+            commands::book::list_pending_book_uploads::<tauri::Wry>,
+            commands::book::has_local_only_books::<tauri::Wry>,
             commands::book::get_books_page::<tauri::Wry>,
             commands::book::get_book_detail::<tauri::Wry>,
             commands::book::get_series_books::<tauri::Wry>,

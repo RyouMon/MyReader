@@ -1,21 +1,25 @@
 import type { DesktopTranslationKey } from "@my-reader/i18n/desktop"
+import type { BuiltInBookCollectionId } from "@my-reader/tools/types/book-collection"
+import {
+  isRemoteLibrarySourceType,
+  libraryTypeOf,
+} from "@my-reader/tools/types/library"
 import { Link, useLocation, useNavigate } from "@tanstack/react-router"
 import {
   BookCopy,
   Check,
   ChevronsUpDown,
-  Clock,
   Library,
   Monitor,
   Moon,
   Palette,
   PlusCircle,
   Settings,
-  Star,
   Sun,
   Tags,
   User,
 } from "lucide-react"
+import { useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import { useTheme } from "@/components/AppThemeProvider"
 import {
@@ -44,10 +48,17 @@ import {
 } from "@/components/ui/sidebar"
 import { useFavoriteBookIds } from "@/hooks/queries/useFavoriteBooksQuery"
 import { useLibrariesQuery } from "@/hooks/queries/useLibrariesQuery"
+import { useHasLocalOnlyBooks } from "@/hooks/queries/useLocalOnlyBooksQuery"
+import { usePendingBookUploads } from "@/hooks/queries/usePendingBookUploadsQuery"
+import { useDownloadQueue } from "@/hooks/useDownloadProgress"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 import type { AppThemeMode } from "@/types/readerUiPreferences"
-
-export type SidebarView = "all" | "recent" | "favorites"
+import {
+  type DesktopBookCollectionDefinition,
+  getVisibleStorageBookCollections,
+  getVisibleTransferBookCollections,
+  PRIMARY_BOOK_COLLECTIONS,
+} from "./bookCollectionDefinitions"
 
 const THEME_OPTIONS: Array<{
   value: AppThemeMode
@@ -63,21 +74,93 @@ export default function AppSidebar() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { data: libraries = [] } = useLibrariesQuery()
-  const { activeLibraryId, activeView, setActiveView, switchLibrary } =
-    useLibraryUiStore()
+  const {
+    activeLibraryId,
+    activeCollectionId,
+    setActiveCollectionId,
+    switchLibrary,
+  } = useLibraryUiStore()
   const { theme, setTheme } = useTheme()
   const activeLibrary = libraries.find((l) => l.id === activeLibraryId) ?? null
   const { data: favoriteIds = [] } = useFavoriteBookIds(activeLibraryId)
+  const downloadQueue = useDownloadQueue(activeLibraryId)
+  const isRemoteManagedLibrary = Boolean(
+    activeLibrary &&
+      libraryTypeOf(activeLibrary) === "myreader" &&
+      isRemoteLibrarySourceType(activeLibrary.sourceType),
+  )
+  const {
+    data: pendingUploadBookUuids = [],
+    isLoading: pendingUploadsLoading,
+  } = usePendingBookUploads(activeLibraryId, isRemoteManagedLibrary)
+  const { data: hasLocalOnlyBooks = false, isLoading: localOnlyBooksLoading } =
+    useHasLocalOnlyBooks(activeLibraryId, isRemoteManagedLibrary)
   const location = useLocation()
 
   const isSettingsActive = location.pathname === "/settings"
   const isLibraryWorkspace =
     location.pathname === "/" || location.pathname.startsWith("/book/")
-  const isLibraryActive = isLibraryWorkspace && activeView === "all"
-  const isRecentActive = isLibraryWorkspace && activeView === "recent"
-  const isFavoritesActive = isLibraryWorkspace && activeView === "favorites"
   const totalCount = activeLibrary?.bookCount ?? 0
   const libraryLabel = activeLibrary?.name ?? t("sidebar.noLibrary")
+  const collectionCounts: Partial<Record<BuiltInBookCollectionId, number>> = {
+    all: totalCount,
+    favorites: favoriteIds.length,
+    downloading: new Set(downloadQueue.map((entry) => entry.bookId)).size,
+    uploading: pendingUploadBookUuids.length,
+  }
+  const visibleTransferCollections =
+    getVisibleTransferBookCollections(collectionCounts)
+  const visibleStorageCollections =
+    getVisibleStorageBookCollections(hasLocalOnlyBooks)
+
+  useEffect(() => {
+    const activeConditionalCollectionIsEmpty =
+      (activeCollectionId === "downloading" &&
+        collectionCounts.downloading === 0) ||
+      (activeCollectionId === "uploading" &&
+        !pendingUploadsLoading &&
+        collectionCounts.uploading === 0) ||
+      (activeCollectionId === "localOnly" &&
+        !localOnlyBooksLoading &&
+        !hasLocalOnlyBooks)
+    if (activeConditionalCollectionIsEmpty) {
+      setActiveCollectionId("all")
+    }
+  }, [
+    activeCollectionId,
+    collectionCounts.downloading,
+    collectionCounts.uploading,
+    hasLocalOnlyBooks,
+    localOnlyBooksLoading,
+    pendingUploadsLoading,
+    setActiveCollectionId,
+  ])
+
+  function renderBookCollection(collection: DesktopBookCollectionDefinition) {
+    const Icon = collection.icon
+    const count = collectionCounts[collection.id]
+    const title = t(collection.titleKey)
+    return (
+      <SidebarMenuItem key={collection.id}>
+        <SidebarMenuButton
+          isActive={isLibraryWorkspace && activeCollectionId === collection.id}
+          tooltip={title}
+          onClick={() => {
+            setActiveCollectionId(collection.id)
+            navigate({ to: "/" })
+          }}
+        >
+          <Icon />
+          <span>{title}</span>
+        </SidebarMenuButton>
+        {typeof count === "number" ? (
+          <SidebarMenuBadge className="group-data-[collapsible=icon]:hidden">
+            {count.toLocaleString()}
+          </SidebarMenuBadge>
+        ) : null}
+      </SidebarMenuItem>
+    )
+  }
 
   return (
     <Sidebar
@@ -167,56 +250,42 @@ export default function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={isLibraryActive}
-                  tooltip={t("sidebar.all")}
-                  onClick={() => {
-                    setActiveView("all")
-                    navigate({ to: "/" })
-                  }}
-                >
-                  <Library />
-                  <span>{t("sidebar.all")}</span>
-                </SidebarMenuButton>
-                <SidebarMenuBadge className="group-data-[collapsible=icon]:hidden">
-                  {totalCount.toLocaleString()}
-                </SidebarMenuBadge>
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={isRecentActive}
-                  tooltip={t("sidebar.recent")}
-                  onClick={() => {
-                    setActiveView("recent")
-                    navigate({ to: "/" })
-                  }}
-                >
-                  <Clock />
-                  <span>{t("sidebar.recent")}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={isFavoritesActive}
-                  tooltip={t("sidebar.favorites")}
-                  onClick={() => {
-                    setActiveView("favorites")
-                    navigate({ to: "/" })
-                  }}
-                >
-                  <Star />
-                  <span>{t("sidebar.favorites")}</span>
-                </SidebarMenuButton>
-                <SidebarMenuBadge className="group-data-[collapsible=icon]:hidden">
-                  {favoriteIds.length.toLocaleString()}
-                </SidebarMenuBadge>
-              </SidebarMenuItem>
+              {PRIMARY_BOOK_COLLECTIONS.map(renderBookCollection)}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {visibleTransferCollections.length > 0 ? (
+          <>
+            <SidebarSeparator />
+            <SidebarGroup>
+              <SidebarGroupLabel>
+                {t("library.collections.transferSection")}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {visibleTransferCollections.map(renderBookCollection)}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        ) : null}
+
+        {visibleStorageCollections.length > 0 ? (
+          <>
+            <SidebarSeparator />
+            <SidebarGroup>
+              <SidebarGroupLabel>
+                {t("library.collections.storageSection")}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {visibleStorageCollections.map(renderBookCollection)}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        ) : null}
 
         <SidebarSeparator />
 

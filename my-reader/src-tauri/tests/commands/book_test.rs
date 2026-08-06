@@ -1,7 +1,7 @@
 //! Command-layer integration tests for `src/commands/book.rs`.
 //!
-//! All four read commands resolve a `lib_path` (via `LibraryService::resolve_library_path`)
-//! then defer to `BookService`. Tests assert wire-up: the same `LIBRARY_NOT_FOUND`
+//! Read commands resolve a library then defer to `BookService`. Tests assert wire-up:
+//! the same `LIBRARY_NOT_FOUND`
 //! propagates uniformly, and one happy-path test per command goes through a seeded
 //! minimal Calibre library.
 
@@ -57,6 +57,32 @@ async fn get_books_should_return_seeded_book_when_calibre_library_has_one_entry(
     assert_eq!(arr.len(), 1);
     assert_eq!(arr[0]["id"], json!(book_id));
     assert_eq!(arr[0]["formats"], json!([format]));
+}
+
+#[tokio::test]
+async fn list_pending_book_uploads_should_be_empty_for_local_library() {
+    let (app, _dir, _book_id, _format) = app_with_seeded_library().await;
+
+    let pending: Value = invoke_ok(
+        &app,
+        "list_pending_book_uploads",
+        json!({ "libraryId": "lib-a" }),
+    );
+
+    assert_eq!(pending, json!([]));
+}
+
+#[tokio::test]
+async fn has_local_only_books_should_be_false_for_local_library() {
+    let (app, _dir, _book_id, _format) = app_with_seeded_library().await;
+
+    let has_local_only_books: Value = invoke_ok(
+        &app,
+        "has_local_only_books",
+        json!({ "libraryId": "lib-a" }),
+    );
+
+    assert_eq!(has_local_only_books, json!(false));
 }
 
 #[tokio::test]

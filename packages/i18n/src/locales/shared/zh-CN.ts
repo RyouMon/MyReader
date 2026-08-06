@@ -16,6 +16,53 @@ export const sharedZhCN = {
   },
   library: {
     importBook: "导入图书",
+    label: "书库",
+    collections: {
+      transferSection: "传输",
+      storageSection: "存储与同步",
+      all: "全部图书",
+      recentlyRead: "最近阅读",
+      favorites: "收藏",
+      downloaded: "已下载",
+      downloading: "正在下载",
+      uploading: "正在上传",
+      localOnly: "仅本机",
+      bookCount: "{{count}} 本",
+    },
+    noMatch: {
+      search: {
+        title: "搜索无结果",
+        detail: "未找到与搜索词匹配的图书，请尝试其他关键词。",
+      },
+      empty: {
+        title: "书库为空",
+        detail: "当前书库中还没有图书。",
+      },
+      favorites: {
+        title: "还没有收藏书籍",
+        detail: "将图书设为收藏后会显示在这里。",
+      },
+      recentlyRead: {
+        title: "还没有阅读记录",
+        detail: "打开一本图书后会显示在这里。",
+      },
+      downloaded: {
+        title: "还没有已下载图书",
+        detail: "下载后的图书会显示在这里，可供离线阅读。",
+      },
+      downloading: {
+        title: "没有下载任务",
+        detail: "待下载和正在下载的图书会显示在这里。",
+      },
+      uploading: {
+        title: "没有上传任务",
+        detail: "待上传和正在上传的图书会显示在这里。",
+      },
+      localOnly: {
+        title: "没有仅存于本机的图书",
+        detail: "尚未上传到云端的图书会显示在这里。",
+      },
+    },
     sort: {
       author: "作者",
       title: "书名",

@@ -1,4 +1,7 @@
-import { getActiveTransferBookCollections } from "./book-collection-definitions"
+import {
+  getActiveStorageBookCollections,
+  getActiveTransferBookCollections,
+} from "./book-collection-definitions"
 
 jest.mock("@expo/material-symbols/cloud_off.xml", () => ({ uri: "cloud-off" }))
 jest.mock("@expo/material-symbols/download.xml", () => ({ uri: "download" }))
@@ -23,5 +26,28 @@ describe("getActiveTransferBookCollections", () => {
     })
 
     expect(result.map((collection) => collection.id)).toEqual(["downloading"])
+  })
+})
+
+describe("getActiveStorageBookCollections", () => {
+  it("should return local-only only when books still await cloud upload", () => {
+    const counts = {
+      all: 4,
+      recentlyRead: 0,
+      favorites: 0,
+      downloaded: 1,
+      downloading: 0,
+      uploading: 0,
+      localOnly: 1,
+    }
+
+    expect(
+      getActiveStorageBookCollections(counts).map(
+        (collection) => collection.id,
+      ),
+    ).toEqual(["localOnly"])
+    expect(
+      getActiveStorageBookCollections({ ...counts, localOnly: 0 }),
+    ).toEqual([])
   })
 })

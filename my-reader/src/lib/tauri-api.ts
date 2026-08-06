@@ -63,6 +63,8 @@ export const api = {
   switchLibrary: wrap(commands.switchLibrary),
   getActiveLibraryId: wrap(commands.getActiveLibraryId),
   getBooks: wrap(commands.getBooks),
+  listPendingBookUploads: wrap(commands.listPendingBookUploads),
+  hasLocalOnlyBooks: wrap(commands.hasLocalOnlyBooks),
   getBooksPage: wrap(commands.getBooksPage),
   getBookDetail: wrap(commands.getBookDetail),
   getSeriesBooks: wrap(commands.getSeriesBooks),

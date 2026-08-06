@@ -1,0 +1,90 @@
+import type { DesktopTranslationKey } from "@my-reader/i18n/desktop"
+import type { BuiltInBookCollectionId } from "@my-reader/tools/types/book-collection"
+import {
+  BookOpen,
+  CloudDownload,
+  CloudOff,
+  CloudUpload,
+  Download,
+  type LucideIcon,
+  Clock,
+  Star,
+} from "lucide-react"
+
+export type DesktopBookCollectionDefinition = {
+  id: BuiltInBookCollectionId
+  titleKey: DesktopTranslationKey
+  icon: LucideIcon
+}
+
+export const PRIMARY_BOOK_COLLECTIONS: DesktopBookCollectionDefinition[] = [
+  {
+    id: "all",
+    titleKey: "library.collections.all",
+    icon: BookOpen,
+  },
+  {
+    id: "recentlyRead",
+    titleKey: "library.collections.recentlyRead",
+    icon: Clock,
+  },
+  {
+    id: "favorites",
+    titleKey: "library.collections.favorites",
+    icon: Star,
+  },
+  {
+    id: "downloaded",
+    titleKey: "library.collections.downloaded",
+    icon: Download,
+  },
+]
+
+export const TRANSFER_BOOK_COLLECTIONS: DesktopBookCollectionDefinition[] = [
+  {
+    id: "downloading",
+    titleKey: "library.collections.downloading",
+    icon: CloudDownload,
+  },
+  {
+    id: "uploading",
+    titleKey: "library.collections.uploading",
+    icon: CloudUpload,
+  },
+]
+
+export const STORAGE_BOOK_COLLECTIONS: DesktopBookCollectionDefinition[] = [
+  {
+    id: "localOnly",
+    titleKey: "library.collections.localOnly",
+    icon: CloudOff,
+  },
+]
+
+const BOOK_COLLECTION_BY_ID = new Map(
+  [
+    ...PRIMARY_BOOK_COLLECTIONS,
+    ...TRANSFER_BOOK_COLLECTIONS,
+    ...STORAGE_BOOK_COLLECTIONS,
+  ].map((collection) => [collection.id, collection]),
+)
+
+export function getDesktopBookCollectionDefinition(
+  collectionId: BuiltInBookCollectionId,
+): DesktopBookCollectionDefinition {
+  return BOOK_COLLECTION_BY_ID.get(collectionId) ?? PRIMARY_BOOK_COLLECTIONS[0]!
+}
+
+export function getVisibleTransferBookCollections(
+  counts: Readonly<Partial<Record<BuiltInBookCollectionId, number>>>,
+): DesktopBookCollectionDefinition[] {
+  return TRANSFER_BOOK_COLLECTIONS.filter(
+    (collection) => (counts[collection.id] ?? 0) > 0,
+  )
+}
+
+export function getVisibleStorageBookCollections(
+  hasLocalOnlyBooks: boolean,
+): DesktopBookCollectionDefinition[] {
+  return hasLocalOnlyBooks ? STORAGE_BOOK_COLLECTIONS : []
+}

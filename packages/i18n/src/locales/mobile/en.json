@@ -52,7 +52,6 @@
     }
   },
   "library": {
-    "title": "Library",
     "allLibraries": "All libraries",
     "addLibrary": "Add Library",
     "importingBook": "Importing…",
@@ -72,18 +71,7 @@
     "searchPlaceholder": "Search title, author",
     "bookCountRatio": "{{visible}} / {{total}} books",
     "collections": {
-      "primarySection": "Book collections",
-      "transferSection": "Transfers",
-      "storageSection": "Storage and sync",
-      "currentLibrary": "Current library: {{name}}",
-      "all": "All books",
-      "recentlyRead": "Recently read",
-      "favorites": "Favorites",
-      "downloaded": "Downloaded",
-      "downloading": "Downloading",
-      "uploading": "Uploading",
-      "localOnly": "Local only",
-      "bookCount": "{{count}} books"
+      "currentLibrary": "Current library: {{name}}"
     },
     "sort": {
       "recentlyRead": "Recently read",
@@ -121,44 +109,9 @@
     },
     "loadError": {
       "title": "Load Failed"
-    },
-    "noMatch": {
-      "search": {
-        "title": "No search results",
-        "detail": "No books match your search. Try different keywords."
-      },
-      "empty": {
-        "title": "Library is empty",
-        "detail": "There are no books in this library yet."
-      },
-      "favorites": {
-        "title": "No favorites yet",
-        "detail": "Tap the star icon on any book to add it to your favorites."
-      },
-      "recentlyRead": {
-        "title": "No reading history yet",
-        "detail": "Books appear here after you open them."
-      },
-      "downloaded": {
-        "title": "No downloaded books yet",
-        "detail": "Downloaded books appear here for offline reading."
-      },
-      "downloading": {
-        "title": "No download tasks",
-        "detail": "Queued and active downloads appear here."
-      },
-      "uploading": {
-        "title": "No upload tasks",
-        "detail": "Queued and active uploads appear here."
-      },
-      "localOnly": {
-        "title": "No local-only books",
-        "detail": "Books not yet uploaded to remote storage appear here."
-      }
     }
   },
   "libraryDetail": {
-    "libraryLabel": "Library",
     "currentlyUsed": " · In use",
     "bookCount": "{{count}} books",
     "typeLocal": "Local",

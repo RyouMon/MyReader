@@ -36,15 +36,24 @@ export type DownloadProgress = {
   error?: string
 }
 
+export type DownloadQueueEntry = {
+  bookId: number
+  format: string
+  status: "starting" | "downloading"
+}
+
 export const downloadProgressKeys = {
   all: ["downloadProgress"] as const,
+  library: (libraryId: string) =>
+    [...downloadProgressKeys.all, libraryId] as const,
   detail: (libraryId: string, bookId: number, format: string) =>
     [
-      ...downloadProgressKeys.all,
-      libraryId,
+      ...downloadProgressKeys.library(libraryId),
       bookId,
       format.toUpperCase(),
     ] as const,
+  queue: (libraryId: string) =>
+    [...downloadProgressKeys.library(libraryId), "queue"] as const,
 }
 
 function normalizeFormat(format: string) {
@@ -55,6 +64,25 @@ function notifyDownloadError(error?: string) {
   toast.error(i18n.t("bookDetail.downloadFailed"), {
     description: error,
   })
+}
+
+function updateDownloadQueue(
+  libraryId: string,
+  bookId: number,
+  format: string,
+  status: DownloadQueueEntry["status"] | null,
+  client: QueryClient = defaultQueryClient,
+) {
+  const fmt = normalizeFormat(format)
+  client.setQueryData<DownloadQueueEntry[]>(
+    downloadProgressKeys.queue(libraryId),
+    (current = []) => {
+      const next = current.filter(
+        (entry) => entry.bookId !== bookId || entry.format !== fmt,
+      )
+      return status ? [...next, { bookId, format: fmt, status }] : next
+    },
+  )
 }
 
 export function setDownloadProgressSnapshot(
@@ -92,11 +120,29 @@ function updateBookFileState(
   })
 }
 
+function invalidateBookFileStates(
+  libraryId: string,
+  client: QueryClient = defaultQueryClient,
+) {
+  void client.invalidateQueries({
+    queryKey: bookFileStateKeys.library(libraryId),
+  })
+}
+
 export function applyDownloadProgressEvent(
   event: DownloadProgressEvent,
   client: QueryClient = defaultQueryClient,
 ) {
   const fmt = normalizeFormat(event.format)
+  updateDownloadQueue(
+    event.libraryId,
+    event.bookId,
+    fmt,
+    event.status === "starting" || event.status === "downloading"
+      ? event.status
+      : null,
+    client,
+  )
   if (event.status === "remote_only") {
     clearDownloadProgress(event.libraryId, event.bookId, fmt, client)
     updateBookFileState(
@@ -160,9 +206,7 @@ export function applyDownloadProgressEvent(
     event.status === "error" ||
     event.status === "cancelled"
   ) {
-    void client.invalidateQueries({
-      queryKey: bookFileStateKeys.detail(event.libraryId, event.bookId, fmt),
-    })
+    invalidateBookFileStates(event.libraryId, client)
   }
 }
 
@@ -172,6 +216,7 @@ export function setDownloadStarting(
   format: string,
   client?: QueryClient,
 ) {
+  updateDownloadQueue(libraryId, bookId, format, "starting", client)
   updateBookFileState(
     libraryId,
     bookId,
@@ -196,6 +241,7 @@ export function setDownloadError(
   error: string,
   client?: QueryClient,
 ) {
+  updateDownloadQueue(libraryId, bookId, format, null, client)
   updateBookFileState(libraryId, bookId, format, "remote_only", null, client)
   setDownloadProgressSnapshot(
     libraryId,
@@ -204,6 +250,7 @@ export function setDownloadError(
     { status: "error", bytesWritten: 0, error },
     client,
   )
+  invalidateBookFileStates(libraryId, client)
   notifyDownloadError(error)
 }
 
@@ -213,6 +260,7 @@ export function setDownloadCancelled(
   format: string,
   client?: QueryClient,
 ) {
+  updateDownloadQueue(libraryId, bookId, format, null, client)
   updateBookFileState(libraryId, bookId, format, "remote_only", null, client)
   setDownloadProgressSnapshot(
     libraryId,
@@ -221,6 +269,7 @@ export function setDownloadCancelled(
     { status: "cancelled", bytesWritten: 0 },
     client,
   )
+  invalidateBookFileStates(libraryId, client)
 }
 
 export function clearDownloadProgress(
@@ -229,11 +278,13 @@ export function clearDownloadProgress(
   format: string,
   client: QueryClient = defaultQueryClient,
 ) {
+  updateDownloadQueue(libraryId, bookId, format, null, client)
   updateBookFileState(libraryId, bookId, format, "remote_only", null, client)
   client.removeQueries({
     queryKey: downloadProgressKeys.detail(libraryId, bookId, format),
     exact: true,
   })
+  invalidateBookFileStates(libraryId, client)
 }
 
 export function useDownloadProgressEvents() {
@@ -283,4 +334,18 @@ export function useDownloadProgress(
   })
 
   return data ?? null
+}
+
+export function useDownloadQueue(libraryId: string | null | undefined) {
+  const queryClient = useQueryClient()
+  const queryKey = downloadProgressKeys.queue(libraryId ?? "")
+  const { data = [] } = useQuery<DownloadQueueEntry[]>({
+    queryKey,
+    queryFn: () =>
+      queryClient.getQueryData<DownloadQueueEntry[]>(queryKey) ?? [],
+    enabled: Boolean(libraryId),
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 30 * 60 * 1000,
+  })
+  return data
 }

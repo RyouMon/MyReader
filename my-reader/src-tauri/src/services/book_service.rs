@@ -30,6 +30,36 @@ impl BookService {
         )
     }
 
+    pub async fn pending_book_upload_uuids(
+        lib: &LibraryConfig,
+        app_data_dir: &Path,
+    ) -> Result<Vec<String>, AppError> {
+        if !lib.is_remote() || !lib.is_myreader() {
+            return Ok(Vec::new());
+        }
+        Ok(
+            my_reader_core::api::content::BookTransferService::pending_book_uuids(
+                &library_sidecar_path(lib, app_data_dir),
+            )
+            .await?,
+        )
+    }
+
+    pub async fn has_local_only_books(
+        lib: &LibraryConfig,
+        app_data_dir: &Path,
+    ) -> Result<bool, AppError> {
+        if !lib.is_remote() || !lib.is_myreader() {
+            return Ok(false);
+        }
+        Ok(
+            my_reader_core::api::content::BookTransferService::has_local_only_books(
+                &library_sidecar_path(lib, app_data_dir),
+            )
+            .await?,
+        )
+    }
+
     pub async fn get_library_books_page(
         lib: &LibraryConfig,
         app_data_dir: &Path,

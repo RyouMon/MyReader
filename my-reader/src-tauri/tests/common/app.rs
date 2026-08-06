@@ -89,6 +89,8 @@ impl TestApp {
                 my_reader_lib::commands::source::add_onedrive_data_source::<MockRuntime>,
                 my_reader_lib::commands::source::onedrive_list_folders::<MockRuntime>,
                 my_reader_lib::commands::book::get_books::<MockRuntime>,
+                my_reader_lib::commands::book::list_pending_book_uploads::<MockRuntime>,
+                my_reader_lib::commands::book::has_local_only_books::<MockRuntime>,
                 my_reader_lib::commands::book::get_books_page::<MockRuntime>,
                 my_reader_lib::commands::book::get_book_detail::<MockRuntime>,
                 my_reader_lib::commands::book::get_series_books::<MockRuntime>,

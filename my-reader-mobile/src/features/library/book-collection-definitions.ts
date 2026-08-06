@@ -92,6 +92,14 @@ export function getActiveTransferBookCollections(
   )
 }
 
+export function getActiveStorageBookCollections(
+  counts: Readonly<Record<BuiltInBookCollectionId, number>>,
+): BookCollectionDefinition[] {
+  return STORAGE_BOOK_COLLECTIONS.filter(
+    (collection) => counts[collection.id] > 0,
+  )
+}
+
 const BOOK_COLLECTION_BY_ID = new Map(
   [
     ...PRIMARY_BOOK_COLLECTIONS,

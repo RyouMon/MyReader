@@ -43,6 +43,28 @@ pub async fn get_books<R: tauri::Runtime>(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn list_pending_book_uploads<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    library_id: String,
+) -> Result<Vec<String>, AppError> {
+    let (app_data_dir, library) = resolve_library(&app, &state, Some(&library_id))?;
+    BookService::pending_book_upload_uuids(&library, &app_data_dir).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn has_local_only_books<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    library_id: String,
+) -> Result<bool, AppError> {
+    let (app_data_dir, library) = resolve_library(&app, &state, Some(&library_id))?;
+    BookService::has_local_only_books(&library, &app_data_dir).await
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn get_books_page<R: tauri::Runtime>(
     app: AppHandle<R>,
     state: State<'_, AppState>,

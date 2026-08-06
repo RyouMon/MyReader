@@ -1,13 +1,14 @@
+import type { BuiltInBookCollectionId } from "@my-reader/tools/types/book-collection"
 import { create } from "zustand"
 import { api } from "@/lib/tauri-api"
 import type { LibrarySortOption } from "@/types/libraryUi"
 
 type LibraryUiState = {
   activeLibraryId: string | null
-  activeView: "all" | "recent" | "favorites"
+  activeCollectionId: BuiltInBookCollectionId
   librarySearchQuery: string
   librarySortBy: LibrarySortOption
-  setActiveView: (view: "all" | "recent" | "favorites") => void
+  setActiveCollectionId: (collectionId: BuiltInBookCollectionId) => void
   setLibrarySearchQuery: (query: string) => void
   setLibrarySortBy: (sortBy: LibrarySortOption) => void
   switchLibrary: (id: string) => Promise<void>
@@ -16,11 +17,11 @@ type LibraryUiState = {
 
 export const useLibraryUiStore = create<LibraryUiState>()((set) => ({
   activeLibraryId: null,
-  activeView: "all",
+  activeCollectionId: "all",
   librarySearchQuery: "",
   librarySortBy: "recent",
 
-  setActiveView: (view) => set({ activeView: view }),
+  setActiveCollectionId: (activeCollectionId) => set({ activeCollectionId }),
 
   setLibrarySearchQuery: (query) => set({ librarySearchQuery: query }),
 
@@ -28,7 +29,7 @@ export const useLibraryUiStore = create<LibraryUiState>()((set) => ({
 
   switchLibrary: async (id) => {
     await api.switchLibrary(id)
-    set({ activeLibraryId: id })
+    set({ activeLibraryId: id, activeCollectionId: "all" })
   },
 
   hydrateActiveLibraryId: async () => {

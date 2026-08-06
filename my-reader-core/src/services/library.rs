@@ -1510,6 +1510,17 @@ mod tests {
                 .await
                 .unwrap()
         );
+        assert_eq!(
+            crate::services::book_transfer::BookTransferService::pending_book_uuids(&local_root)
+                .await
+                .unwrap(),
+            vec![imported.uuid.clone().expect("imported book UUID")]
+        );
+        assert!(
+            crate::services::book_transfer::BookTransferService::has_local_only_books(&local_root)
+                .await
+                .unwrap()
+        );
         let queued_state = crate::services::content::ContentService::list_file_states(&local_root)
             .await
             .unwrap()
@@ -1674,6 +1685,11 @@ mod tests {
         );
         assert!(
             !crate::services::content::ContentService::has_pending_book_imports(&local_root)
+                .await
+                .unwrap()
+        );
+        assert!(
+            !crate::services::book_transfer::BookTransferService::has_local_only_books(&local_root)
                 .await
                 .unwrap()
         );
