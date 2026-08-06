@@ -211,10 +211,12 @@ Calibre `metadata.db` 是外部只读数据库：
 
 ### 6.2 MyReader 自有书库
 
-MyReader 自有书库源包含 `.myreader/library.json`、`Books/<book-uuid>/book.<format>` 和按
+MyReader 自有书库源包含 `.myreader/library.json`、
+`Books/<storage-name> (<book-uuid 前 6 位>)/<storage-name>.<format>` 和按
 [ADR-0020](./docs/adr/0020-adopt-automerge-repo-storage-model.md) 存放的 Automerge StorageKey
-对象。marker、Automerge document 和设备本地 `library_id` projection 使用同一个稳定
-`libraryUuid`。
+对象。正文路径在导入时确定，后续修改书名或作者不会移动文件；旧版
+`Books/<book-uuid>/book.<format>` 路径继续原样使用。marker、Automerge document 和设备本地
+`library_id` projection 使用同一个稳定 `libraryUuid`。
 
 Automerge catalog 是规范书目；`myreader.db` 中的 `library_id`、`books`、`authors`、
 `books_authors_link` 和 `data` 只是可重建的 Calibre-shaped projection。每本书只有一个 EPUB、

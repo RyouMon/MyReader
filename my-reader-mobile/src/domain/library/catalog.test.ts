@@ -183,6 +183,7 @@ describe("importBookIntoLibrary", () => {
     await expect(
       importBookIntoLibrary(library, {
         sourceFileUri: "file:///inbox/Earthsea.epub",
+        sourceFileName: "Earthsea.epub",
         authors: ["Ursula K. Le Guin"],
         consumeSourceFile: true,
       }),
@@ -194,6 +195,7 @@ describe("importBookIntoLibrary", () => {
       "file:///documents/libraries/library-1",
       {
         sourceFileUri: "file:///inbox/Earthsea.epub",
+        sourceFileName: "Earthsea.epub",
         authors: ["Ursula K. Le Guin"],
         consumeSourceFile: true,
       },

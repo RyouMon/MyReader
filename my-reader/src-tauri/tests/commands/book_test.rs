@@ -163,7 +163,10 @@ async fn myreader_commands_should_import_edit_favorite_and_delete_one_file() {
     assert_eq!(book["title"], json!("A Wizard of Earthsea"));
     assert!(book_id <= 9_007_199_254_740_991);
     let book_path = book["path"].as_str().expect("book path");
-    assert!(library_root.join(book_path).join("book.epub").is_file());
+    assert!(library_root
+        .join(book_path)
+        .join("A Wizard of Earthsea.epub")
+        .is_file());
 
     let updated: Value = invoke_ok(
         &app,

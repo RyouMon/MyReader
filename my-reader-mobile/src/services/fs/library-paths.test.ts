@@ -233,11 +233,17 @@ describe("library path helpers", () => {
 })
 
 describe("resolveCoverUri", () => {
-  test("should use backend cover URL when library source is remote", () => {
+  beforeEach(() => {
+    __mockFileSystem.File.nextExists = true
+    __mockFileSystem.File.nextSize = 100
+  })
+
+  test("should use backend cover URL when remote cover is not cached", () => {
     const library = localLibrary({
       sourceType: "webdav",
       path: "https://example.com/lib",
     })
+    __mockFileSystem.File.nextExists = false
     const backend = {
       contentUrl: (relative: string) => `https://example.com/lib/${relative}`,
       getCachedAuthHeaders: () => ({ Authorization: "Bearer token" }),
@@ -250,6 +256,17 @@ describe("resolveCoverUri", () => {
       uri: "https://example.com/lib/Author/Book/cover.jpg",
       headers: { Authorization: "Bearer token" },
     })
+  })
+
+  test("should prefer on-disk cover when remote import created one", () => {
+    const library = localLibrary({
+      sourceType: "onedrive",
+      path: "https://example.com/lib",
+    })
+
+    expect(resolveCoverUri(library, "Books/Earthsea", true)).toBe(
+      "file:///documents/libraries/lib-1/Books/Earthsea/cover.jpg",
+    )
   })
 
   test("should prefer on-disk cover when local cover exists", () => {
@@ -280,6 +297,7 @@ describe("resolveCoverUri", () => {
       sourceType: "onedrive",
       path: "https://example.com/lib",
     })
+    __mockFileSystem.File.nextExists = false
     const backend = {
       contentUrl: (relative: string) => `https://example.com/lib/${relative}`,
       getCachedAuthHeaders: () => null,

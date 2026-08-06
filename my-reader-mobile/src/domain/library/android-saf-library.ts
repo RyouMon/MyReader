@@ -75,11 +75,35 @@ export async function pushAndroidSafControl(library: Library): Promise<void> {
 export async function publishAndroidSafBook(
   library: Library,
   relativePath: string,
+  coverRelativePath?: string,
 ): Promise<void> {
   if (!isAndroidSafLibrary(library) || !library.sourcePath) return
   const source = new File(libraryBookFileUri(library, relativePath))
   if (!source.exists) throw new Error("ANDROID_SAF_BOOK_SOURCE_NOT_FOUND")
   await copyFileIntoTree(source, library.sourcePath, relativePath)
+  if (!coverRelativePath) return
+  const cover = new File(libraryBookFileUri(library, coverRelativePath))
+  if (!cover.exists) throw new Error("ANDROID_SAF_BOOK_COVER_SOURCE_NOT_FOUND")
+  await copyFileIntoTree(cover, library.sourcePath, coverRelativePath)
+}
+
+export async function cacheAndroidSafBookCovers(
+  library: Library,
+  relativePaths: string[],
+): Promise<void> {
+  if (!isAndroidSafLibrary(library) || !library.sourcePath) return
+  for (const relativePath of relativePaths) {
+    const destination = new File(libraryBookFileUri(library, relativePath))
+    if (destination.exists && (destination.size ?? 0) > 0) continue
+    if (!destination.parentDirectory.exists) {
+      destination.parentDirectory.create({ intermediates: true })
+    }
+    try {
+      await copyFileFromTree(library.sourcePath, relativePath, destination)
+    } catch {
+      // Covers are optional derived assets; retry on the next reconciliation.
+    }
+  }
 }
 
 export async function installAndroidSafBookForRead(
@@ -132,7 +156,10 @@ export async function installAndroidSafBookForRead(
   }
 }
 
-export { managedBookRelativePaths } from "./android-saf-paths"
+export {
+  managedBookCoverRelativePaths,
+  managedBookRelativePaths,
+} from "./android-saf-paths"
 
 export async function reconcileAndroidSafBooks(
   library: Library,

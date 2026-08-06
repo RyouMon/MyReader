@@ -199,6 +199,8 @@ fn catalog_book() -> CatalogBookValue {
         book_id: 42,
         title: "The Left Hand of Darkness".into(),
         authors: vec!["Ursula K. Le Guin".into()],
+        path: "Books/The Left Hand of Darkness (222222)".into(),
+        name: "The Left Hand of Darkness".into(),
         format: "EPUB".into(),
         size: 1024,
         sha256: "ab".repeat(32),
@@ -249,8 +251,8 @@ fn should_project_catalog_into_calibre_shaped_tables_when_book_is_created() {
     assert_eq!(projected.0, LIBRARY_UUID);
     assert_eq!(projected.1, 42);
     assert_eq!(projected.2, catalog_book().uuid);
-    assert_eq!(projected.3, format!("Books/{}", catalog_book().uuid));
-    assert_eq!(projected.4, "book");
+    assert_eq!(projected.3, catalog_book().path);
+    assert_eq!(projected.4, catalog_book().name);
     assert_eq!(projected.5, 1024);
     assert_eq!(
         connection

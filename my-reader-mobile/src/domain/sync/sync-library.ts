@@ -9,10 +9,10 @@ import {
 } from "../../services/query/invalidate-table"
 import { describeError } from "../../utils/common"
 import { withLocalLibraryContentRoot } from "../../services/fs/local-library-content"
-import { fetchBooks } from "../library/catalog"
+import { fetchBooks, getManagedBookAssetPaths } from "../library/catalog"
 import {
+  cacheAndroidSafBookCovers,
   isAndroidSafLibrary,
-  managedBookRelativePaths,
   pullAndroidSafControl,
   pushAndroidSafControl,
   reconcileAndroidSafBooks,
@@ -159,11 +159,10 @@ export async function syncLibrary(
         : await syncCore(ctx.libraryRootUri)
     if (isAndroidSafLibrary(library) && !coreReport.error) {
       await pushAndroidSafControl(library)
+      const assetPaths = await getManagedBookAssetPaths(library)
+      await cacheAndroidSafBookCovers(library, assetPaths.coverPaths)
+      await reconcileAndroidSafBooks(library, assetPaths.bookPaths)
       safBooks = await fetchBooks(coreReport.calibre.library, dataSources)
-      await reconcileAndroidSafBooks(
-        library,
-        managedBookRelativePaths(safBooks),
-      )
     }
   } catch (err) {
     const message = describeError(err)

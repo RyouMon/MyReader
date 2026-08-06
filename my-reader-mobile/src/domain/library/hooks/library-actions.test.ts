@@ -14,7 +14,9 @@ const mockDirectoryCreate = jest.fn()
 const mockFileCopy = jest.fn()
 const mockFileDelete = jest.fn()
 const mockPickFile = jest.fn()
+const mockDeleteBookFromLibrary = jest.fn()
 const mockImportBookIntoLibrary = jest.fn()
+const mockCancelQueries = jest.fn(() => Promise.resolve())
 const mockInvalidateQueries = jest.fn()
 const mockSetQueryData = jest.fn()
 const mockRemoveAppLibrary = jest.fn()
@@ -92,6 +94,8 @@ jest.mock("@/src/services/fs/library-directory", () => ({
 }))
 
 jest.mock("@/src/domain/library/catalog", () => ({
+  deleteBookFromLibrary: (...args: unknown[]) =>
+    mockDeleteBookFromLibrary(...args),
   ensureLibraryMetadataCached: jest.fn(),
   importBookIntoLibrary: (...args: unknown[]) =>
     mockImportBookIntoLibrary(...args),
@@ -142,6 +146,7 @@ jest.mock("@/src/services/fs/bookmarks", () => ({
 
 jest.mock("@/src/services/query/query-client", () => ({
   queryClient: {
+    cancelQueries: (...args: unknown[]) => mockCancelQueries(...args),
     invalidateQueries: (...args: unknown[]) => mockInvalidateQueries(...args),
     removeQueries: (...args: unknown[]) => mockRemoveQueries(...args),
     setQueryData: (...args: unknown[]) => mockSetQueryData(...args),
@@ -175,12 +180,62 @@ import {
   addLibraryFromPicker,
   addRemoteLibraryFromSource,
   createFolderMyReaderLibrary,
+  deleteManagedBook,
   importBookFromFile,
   importBookFromPicker,
   openExistingLocalLibraryFromPicker,
   openRemoteExistingLibrary,
   removeLibrary,
 } from "./library-actions"
+
+describe("managed book deletion", () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    mockDeleteBookFromLibrary.mockResolvedValue(undefined)
+    mockReplaceAppLibrary.mockReset()
+  })
+
+  it("should remove the cached book before persisting the library count", async () => {
+    const library = {
+      id: "library-1",
+      name: "My Library",
+      path: "file:///Library/My Library",
+      libraryType: "myreader",
+      sourceType: "local",
+      bookCount: 2,
+    } as Library
+    let finishCountUpdate: (() => void) | undefined
+    mockReplaceAppLibrary.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishCountUpdate = () =>
+          resolve({ libraries: [library], activeLibraryId: library.id })
+      }),
+    )
+
+    const deletion = deleteManagedBook(library, 1)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    const cacheUpdater = mockSetQueryData.mock.calls.find(
+      ([queryKey]) =>
+        JSON.stringify(queryKey) === JSON.stringify(["books", library.id]),
+    )?.[1] as ((books: { id: string }[]) => { id: string }[]) | undefined
+    expect(cacheUpdater).toBeDefined()
+    expect(cacheUpdater?.([{ id: "1" }, { id: "2" }])).toEqual([{ id: "2" }])
+    expect(mockInvalidateQueries).not.toHaveBeenCalled()
+
+    finishCountUpdate?.()
+    await deletion
+
+    expect(mockCancelQueries).toHaveBeenCalledWith({
+      queryKey: ["books", library.id],
+      exact: true,
+    })
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["books", library.id],
+    })
+  })
+})
 
 describe("folder library creation", () => {
   beforeEach(() => {
@@ -313,6 +368,14 @@ describe("book import", () => {
     })
   })
 
+  it("should let the app validate extensions after the system picker returns", async () => {
+    mockPickFile.mockResolvedValue({ canceled: true })
+
+    await expect(importBookFromPicker()).resolves.toBeNull()
+
+    expect(mockPickFile).toHaveBeenCalledWith({ mimeTypes: "*/*" })
+  })
+
   it("should require a registered MyReader library", async () => {
     const sharedFile = {
       copy: mockFileCopy,
@@ -360,7 +423,9 @@ describe("book import", () => {
 
     expect(mockImportBookIntoLibrary).toHaveBeenCalledWith(
       library,
-      expect.objectContaining({ title: "Moby-Dick - Herman Melville" }),
+      expect.objectContaining({
+        sourceFileName: "Moby-Dick - Herman Melville.epub",
+      }),
     )
   })
 
@@ -482,6 +547,7 @@ describe("book import", () => {
       library,
       expect.objectContaining({
         consumeSourceFile: true,
+        sourceFileName: "Document.pdf",
         sourceFileUri: "file:///cache/book-imports/generated-id.pdf",
       }),
     )

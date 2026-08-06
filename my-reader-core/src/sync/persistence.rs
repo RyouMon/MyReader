@@ -346,7 +346,7 @@ fn read_state(
     let Some((schema_version, snapshot_bytes, heads_json)) = row else {
         return Ok(None);
     };
-    if schema_version != 1 && schema_version != LIBRARY_SIDECAR_SCHEMA_VERSION as i64 {
+    if !(1..=LIBRARY_SIDECAR_SCHEMA_VERSION as i64).contains(&schema_version) {
         return Err(sync_error(format!(
             "Unsupported persisted Automerge schema {schema_version}"
         )));
@@ -370,7 +370,8 @@ fn read_state(
             "Persisted Automerge heads do not match its snapshot",
         ));
     }
-    let migration = (schema_version == 1).then(|| inspected.clone());
+    let migration =
+        (schema_version != LIBRARY_SIDECAR_SCHEMA_VERSION as i64).then(|| inspected.clone());
     Ok(Some(PersistedState {
         snapshot_bytes: inspected.snapshot_bytes,
         heads: inspected.heads,
@@ -671,7 +672,7 @@ fn project_catalog(
                     book.title,
                     book.timestamp,
                     author_sort,
-                    format!("Books/{}", book.uuid),
+                    book.path,
                     book.uuid,
                     book.has_cover,
                     book.last_modified
@@ -712,8 +713,14 @@ fn project_catalog(
         transaction
             .execute(
                 "INSERT INTO data (id, book, format, uncompressed_size, name)
-                 VALUES (?1, ?2, ?3, ?4, 'book')",
-                params![next_data_id, book.book_id, book.format, book.size],
+                 VALUES (?1, ?2, ?3, ?4, ?5)",
+                params![
+                    next_data_id,
+                    book.book_id,
+                    book.format,
+                    book.size,
+                    book.name
+                ],
             )
             .map_err(database_error)?;
         next_data_id += 1;

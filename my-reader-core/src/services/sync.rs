@@ -1321,6 +1321,7 @@ mod tests {
             &library_root,
             crate::models::ImportBookRequest {
                 source_file_path: source_file.to_string_lossy().into_owned(),
+                source_file_name: None,
                 title: Some("Book".into()),
                 authors: vec!["Author".into()],
                 recorded_at_ms: 200,

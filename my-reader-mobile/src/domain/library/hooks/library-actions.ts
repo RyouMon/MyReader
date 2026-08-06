@@ -482,7 +482,7 @@ export async function importBookFromFile(
     }
     const book = await importBookIntoLibrary(targetLibrary, {
       sourceFileUri: importSource.uri,
-      title: title || undefined,
+      sourceFileName: originalName?.trim() || sourceFile.name,
       authors: [i18n.t("common.unknownAuthor")],
       consumeSourceFile: true,
     })
@@ -507,12 +507,7 @@ export async function importBookFromPicker(library?: Library | null): Promise<{
   bookId: number
 } | null> {
   const picked = await File.pickFileAsync({
-    mimeTypes: [
-      "application/epub+zip",
-      "application/pdf",
-      "application/vnd.comicbook+zip",
-      "application/zip",
-    ],
+    mimeTypes: "*/*",
   })
   if (picked.canceled) return null
 
@@ -543,10 +538,16 @@ export async function deleteManagedBook(
   bookId: number,
 ): Promise<void> {
   await deleteBookFromLibrary(library, bookId)
-  await persistLibraryBookCount(library, library.bookCount - 1)
-  await queryClient.invalidateQueries({
-    queryKey: libraryQueryKeys.books(library.id),
-  })
+  const queryKey = libraryQueryKeys.books(library.id)
+  await queryClient.cancelQueries({ queryKey, exact: true })
+  queryClient.setQueryData<BookItem[]>(queryKey, (current) =>
+    current?.filter((book) => book.id !== String(bookId)),
+  )
+  try {
+    await persistLibraryBookCount(library, library.bookCount - 1)
+  } finally {
+    await queryClient.invalidateQueries({ queryKey })
+  }
 }
 
 function scheduleLibraryContainerRemoval(

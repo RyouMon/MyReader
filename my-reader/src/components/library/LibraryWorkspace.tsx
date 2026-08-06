@@ -200,12 +200,6 @@ export default function LibraryWorkspace({
         directory: false,
         multiple: false,
         title: t("library.importBook"),
-        filters: [
-          {
-            name: t("library.importBook"),
-            extensions: ["epub", "pdf", "cbz"],
-          },
-        ],
       })
       if (!selected) return
 

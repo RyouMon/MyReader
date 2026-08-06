@@ -465,7 +465,7 @@ impl ContentService {
                 .get(&relative_path)
                 .map(|state| state.local_state.as_str());
             if book.deleted {
-                match tokio::fs::remove_dir_all(content_root.join("Books").join(&book.uuid)).await {
+                match tokio::fs::remove_dir_all(content_root.join(&book.path)).await {
                     Ok(()) => {}
                     Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
                     Err(error) => return Err(error.into()),
@@ -600,11 +600,7 @@ impl ContentService {
 }
 
 fn catalog_book_relative_path(book: &CatalogBookValue) -> String {
-    format!(
-        "Books/{}/book.{}",
-        book.uuid,
-        book.format.to_ascii_lowercase()
-    )
+    crate::models::catalog::myreader_book_relative_path(&book.path, &book.name, &book.format)
 }
 
 fn is_sha256(value: &str) -> bool {
@@ -833,7 +829,7 @@ mod tests {
     async fn should_preserve_remote_delete_when_stale_catalog_still_contains_book() {
         let library = tempfile::tempdir().unwrap();
         let book_uuid = "22222222-3333-4444-8555-666666666666";
-        let relative_path = format!("Books/{book_uuid}/book.epub");
+        let relative_path = format!("Books/{book_uuid}/The Dispossessed.epub");
         let local_path = library.path().join(&relative_path);
         tokio::fs::create_dir_all(local_path.parent().unwrap())
             .await
@@ -854,6 +850,8 @@ mod tests {
                 book_id: 42,
                 title: "The Dispossessed".into(),
                 authors: vec!["Ursula K. Le Guin".into()],
+                path: format!("Books/{book_uuid}"),
+                name: "The Dispossessed".into(),
                 format: "EPUB".into(),
                 size: digest.size,
                 sha256: digest.sha256.clone(),

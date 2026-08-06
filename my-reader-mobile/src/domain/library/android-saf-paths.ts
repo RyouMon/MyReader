@@ -1,23 +1,36 @@
 import {
+  canonicalRelativePath,
   canonicalRelativePathSegments,
   joinRelativePath,
 } from "@/src/services/fs/path"
 
-const MANAGED_BOOK_DIRECTORY =
+const LEGACY_MANAGED_BOOK_DIRECTORY =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+const READABLE_MANAGED_BOOK_DIRECTORY = /^.+ \([0-9a-f]{6}\)$/
 
 export function managedBookRelativePaths(
-  books: { path?: string | null; formats?: string[] }[],
+  books: { formatPaths?: string[] }[],
 ): string[] {
   return books.flatMap((book) =>
-    (book.formats ?? []).map((format) =>
-      joinRelativePath(book.path, `book.${format.toLowerCase()}`),
-    ),
+    (book.formatPaths ?? []).map(canonicalRelativePath),
+  )
+}
+
+export function managedBookCoverRelativePaths(
+  books: { path?: string | null; hasCover?: boolean }[],
+): string[] {
+  return books.flatMap((book) =>
+    book.hasCover && book.path
+      ? [joinRelativePath(book.path, "cover.jpg")]
+      : [],
   )
 }
 
 export function isManagedBookDirectoryName(name: string): boolean {
-  return MANAGED_BOOK_DIRECTORY.test(name)
+  return (
+    LEGACY_MANAGED_BOOK_DIRECTORY.test(name) ||
+    READABLE_MANAGED_BOOK_DIRECTORY.test(name)
+  )
 }
 
 export function managedBookDirectory(relativePath: string): string | null {

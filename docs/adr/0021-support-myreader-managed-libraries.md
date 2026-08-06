@@ -150,7 +150,7 @@ AND data source is writable
 | `Library.id` | 单设备 registry | 路由、缓存、设备本地配置 |
 | `libraryUuid` / `library_id.uuid` | 书库内、跨设备稳定 | Automerge document ID、书库身份校验 |
 | `books.id` / `book_id` | 单书库稳定正整数 | catalog 查询和阅读数据关联 |
-| `books.uuid` | 单书库稳定 UUID | Automerge book key、正文目录和未来扩展 |
+| `books.uuid` | 单书库稳定 UUID | Automerge book key、存储目录短码来源和未来扩展 |
 
 两类书库的 UUID 启动来源不同：
 
@@ -177,8 +177,8 @@ local、WebDAV 和 OneDrive 上的 MyReader 书库源使用：
 ```text
 <library-source-root>/
   Books/
-    <book-uuid>/
-      book.<format>
+    <storage-name> (<book-uuid-first-6-hex>)/
+      <storage-name>.<format>
       cover.jpg
   .myreader/
     library.json
@@ -200,14 +200,19 @@ local、WebDAV 和 OneDrive 上的 MyReader 书库源使用：
 }
 ```
 
-共享源中不存在 MyReader `metadata.db` 或 `myreader.db`。书名和作者变化不重命名或移动正文，
-现有相对路径解析固定映射为：
+共享源中不存在 MyReader `metadata.db` 或 `myreader.db`。导入时以解析出的书名生成一次
+`storage-name`；无法解析书名时回退到导入文件名，并统一替换各数据源不允许的路径字符。目录使用
+完整 `books.uuid` 的前 6 位小写十六进制作为短码；若当前 catalog、待上传任务或本地目录已经占用
+候选路径，则重新生成 UUID。书名和作者变化不重命名或移动正文，固定映射为：
 
 ```text
-books.path = Books/<book-uuid>
-data.name = book
+books.path = Books/<storage-name> (<book-uuid-first-6-hex>)
+data.name = <storage-name>
 data.format = <大写格式名>
 ```
+
+该结构直接属于最终 schema v2。功能尚未发布，不兼容开发期缺少 `path`、`name` 的 catalog
+record；开发者删除旧书库后使用新建书库测试。
 
 ### 每设备容器
 
@@ -252,11 +257,12 @@ Automerge 中的规范书目不是上述关系表的逐行镜像，而是“每�
 projection 规则如下：
 
 - `library_id.uuid = document.libraryUuid`；
-- `books.id = bookId`，`books.uuid = catalog.books` 的 map key，`books.path = Books/<book-uuid>`；
+- `books.id = bookId`，`books.uuid = catalog.books` 的 map key，`books.path` 来自 record 的不可变
+  `path`；
 - `books.title`、`books.timestamp`、`books.last_modified` 和 `books.has_cover` 来自 record，
   `books.sort` 与 `books.author_sort` 由 projector 从书名和作者确定性派生；
 - 每个可见 record 生成一条 `data`，其中 `book = bookId`、`format` 为大写格式名、
-  `uncompressed_size = size`、`name = book`；
+  `uncompressed_size = size`、`name` 来自 record 的不可变 `name`；
 - `authors` 是 record 内的有序作者名列表。projector 按完全相同的作者名复用本地 `authors` 行，
   并生成 `books_authors_link`；这只是满足现有查询形状，不建立跨书、跨设备的作者实体身份。
 
@@ -321,24 +327,28 @@ ROOT
 不得把整本书编码成一个 JSON string 或单个 scalar register。`update_book_metadata` 只改目标字段，
 不能重写整个 record，因此书名和作者等不同字段的并发修改可以独立合并。
 
-catalog record 只表达第一版已有概念：`size` 是正文准确字节数，`sha256` 是正文准确字节的
+catalog record 只表达第一版已有概念：`path` 对应 Calibre `books.path`，`name` 对应 Calibre
+`data.name`，两者在创建后不可修改；`size` 是正文准确字节数，`sha256` 是正文准确字节的
 SHA-256 32-byte 摘要的小写十六进制编码，`format` 是 EPUB、PDF 或 CBZ 的大写格式名；这些值在
 record 创建后不可由 metadata command 修改。`timestamp` 和 `lastModified` 只服务于现有列表、
-详情和 projection，不能用于冲突胜负。Calibre 表中的 `path`、`data.name`、排序字段和关系行由
-deterministic projector 生成，不作为第二份可编辑状态。
+详情和 projection，不能用于冲突胜负。排序字段和关系行仍由 deterministic projector 生成；
+`path` 和 `name` 是正文定位合同，不是第二套可编辑书名。
 
-删除不移除 `<books.uuid>` map，而是把 `deleted` 单调写为 `true`。缺失 `deleted` 的旧 record 按
-`false` 解释；第一版没有把它写回 `false` 的 undelete command。projector 与现有 annotation
-tombstone 一样读取该字段的 Automerge 并发候选，只要任一可见候选为 `true` 就不再投影该 record。
-该约束复用已有删除语义，不增加另一套删除冲突协议。
+删除不移除 `<books.uuid>` map，而是把创建时写入的 `deleted = false` 单调写为 `true`。第一版没有
+把它写回 `false` 的 undelete command。projector 与现有 annotation tombstone 一样读取该字段的
+Automerge 并发候选，只要任一可见候选为 `true` 就不再投影该 record。该约束复用已有删除语义，
+不增加另一套删除冲突协议。
 
-这次扩展需要提升 document schema version，并提供从当前 schema 的明确 migration：
+catalog 扩展直接并入最终 document schema v2，并保留 v1→v2 的单一 migration：
 
 - 为已有 document 增加空 `catalog.books`；
 - 保留六个现有 root、change history、library UUID 和业务 projection；
 - Calibre 书库的 catalog root 始终为空；
-- MyReader 新书库从新 schema genesis 开始；
+- MyReader 新书库从 schema v2 genesis 开始；
 - 不创建第二个 document、第二个远端目录或双写期。
+
+`path` 和 `name` 是 schema v2 catalog record 的必填字段。开发期旧书库由开发者删除并重新创建，
+测试只使用新书库。
 
 ### 唯一冲突语义
 
@@ -496,40 +506,45 @@ OneDrive backend 的 stat、read、write、list、download、upload 和 delete �
 
 ### 导入、下载与删除
 
-正文路径由稳定 `books.uuid` 决定，正文对象在第一版创建后不可变；替换正文等价于删除旧书后
-重新导入，不在原路径原地覆盖。Automerge 是包含文件描述和删除 tombstone 的 control plane，
+正文路径由 catalog record 中不可变的 `path + name + format` 决定，目录短码取自稳定
+`books.uuid`。正文对象在第一版创建后不可变；替换正文等价于删除旧书后重新导入，不在原路径
+原地覆盖。Automerge 是包含文件描述和删除 tombstone 的 control plane，
 DataSource 是传输 EPUB、PDF、CBZ 正文字节的 content plane。正文不写入 Automerge snapshot、
 incremental 或单独的每书 document。
 
-本地与远程导入都先把输入复制到设备容器的暂存文件，计算准确 `size + sha256`，再安装到
-`Books/<uuid>/book.<format>`。本地书库在正文安装成功后即可提交 catalog add；远程书库使用以下
-发布顺序：
+本地与远程导入先解析 EPUB、PDF 或 CBZ：EPUB 读取出版物元数据并优先使用声明封面，否则尝试
+首个线性阅读页中的图片；PDF 读取文档标题、作者并渲染第一页；CBZ 读取 `ComicInfo.xml` 并按
+自然顺序使用第一张图片。解析失败不阻塞导入，书名回退为导入文件名，作者使用调用方提供的
+“未知作者”，封面保持为空。
+
+随后把输入复制到设备容器的暂存文件，计算准确 `size + sha256`，再安装到
+`Books/<storage-name> (<short-uuid>)/<storage-name>.<format>`。本地书库在正文安装成功后即可提交
+并发布 catalog add；远程书库先在本地提交 catalog add，使图书可立即显示和阅读，但在正文与
+封面上传完成前不允许对应 outbox 发布：
 
 ```text
 暂存正文并计算 size + SHA-256
           ↓
-记录设备本地待上传状态
+同一设备提交 catalog add 和待上传状态
           ↓
-上传 Books/<uuid>/book.<format>
+上传 Books/<storage-name> (<short-uuid>)/<storage-name>.<format>
           ↓
-确认上传完成且远端 stat 的 size 一致
+上传可选 cover.jpg，并确认远端 stat 的 size 一致
           ↓
-提交 Automerge catalog add change
+清除待上传状态，解除 outbox 发布门禁
           ↓
 由现有 outbox 上传 Automerge incremental
 ```
 
-因此其他设备只会在书目变更可见后下载已经存在的正文。上传成功但 catalog command 未提交时，
-最多留下不可见孤立对象，不会产生指向缺失正文的已合并书目。远端不可用时，第一版只保留设备
-本地待上传任务并重试，不提前发布 catalog record；它不是可离线完成并立即跨设备可见的导入。
-该任务由设备本地 `pending_book_imports` 与 `file_state = dirty_push` 表达；任务完成时才产生原有
-Automerge catalog command。它不进入 Automerge document，不复制 catalog，也不定义新的合并或
-冲突策略。
-上传失败同样不发布 record。
+因此发起设备可离线完成导入并立即阅读，其他设备只会在书目变更可见后下载已经存在的正文。
+上传完成但 outbox 尚未发布时，最多留下暂时不可见的远端对象，不会产生指向缺失正文的已合并
+书目。设备本地 `pending_book_imports` 与 `file_state = dirty_push` 只表达传输意图；它们不进入
+Automerge document，不复制 catalog，也不定义新的合并或冲突策略。上传失败时保留本地 catalog
+和待上传任务，但仍不向其他设备发布 record。
 
-`cover.jpg` 是可选的展示派生物，不是第二种图书格式；`hasCover = true` 时也必须在 catalog add
-发布前完成封面上传，否则以 `hasCover = false` 发布。正文的 `size + sha256` 校验合同不因封面
-缺失或损坏而降级。
+`cover.jpg` 是可选的展示派生物，不是第二种图书格式；`hasCover = true` 时必须在远端 catalog
+发布前完成封面上传，失败时保留待上传任务并重试。正文的 `size + sha256` 校验合同不因封面缺失
+或损坏而降级。
 
 OneDrive 小文件可以继续使用单次 PUT，但不能把它作为所有正文的唯一上传路径。正文大于
 10 MiB 时使用 Microsoft Graph upload session，按顺序上传可恢复的 byte range，非末尾 chunk
@@ -580,8 +595,9 @@ MyReader 的图书大小上限。
 下次校验时重新计算。正文 SHA-256 在共享 `my-reader-core` 中流式计算，桌面和移动端不得各自实现
 不同算法。
 
-正常 `delete_book` 的路径已由稳定 UUID 精确确定，因此不需要等待所有副本确认即可在 tombstone
-持久化后删除该正文。它与全局 orphan GC 是两件事：上传完成但 catalog 未发布、或异常竞态留下的
+正常 `delete_book` 的路径已由 catalog 中不可变的 `path + name + format` 精确确定，因此不需要等待
+所有副本确认即可在 tombstone 持久化后删除该正文。它与全局 orphan GC 是两件事：上传完成但
+catalog 未发布、或异常竞态留下的
 “没有可见 catalog record 指向”的对象，仍由后续独立的保守清理决策处理，第一版不扫描并猜测
 删除这些未知对象。
 
@@ -594,7 +610,7 @@ MyReader 的图书大小上限。
   持久化；
 - ADR-0020 的 StorageKey、snapshot/incremental、内容寻址、加载、压缩和故障恢复规则不变；
 - ADR-0017 的事件驱动调度继续以同一个 outbox 为待发送的 Automerge 事实源；离线正文只使用设备
-  本地 `pending_book_imports` 传输队列，正文上传完成前不产生 catalog change；
+  本地 `pending_book_imports` 传输队列，正文上传完成前 catalog change 仅在本地生效且不可发布；
 - 数据源 registry、书库 registry 和凭据仍不进入 Automerge document。
 
 ADR-0012 的 sync scope 按书库类型解释：

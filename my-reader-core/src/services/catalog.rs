@@ -4,7 +4,9 @@ use std::path::{Path, PathBuf};
 use chrono::{SecondsFormat, TimeZone, Utc};
 use uuid::Uuid;
 
-use crate::models::catalog::BookFilePathRequest;
+use crate::models::catalog::{
+    myreader_book_relative_path, myreader_cover_relative_path, BookFilePathRequest,
+};
 use crate::models::{
     is_remote_library_source_type, BookContent, BookDetail, BookEntry, BookFormat, BookIdentifier,
     BookSummary, FormatSize, ImportBookRequest, LibraryType, PaginatedBooks, ReadingFormatPolicy,
@@ -512,11 +514,7 @@ impl CatalogService {
         Ok(BookContent {
             book_id,
             format,
-            relative_path: format!(
-                "Books/{}/book.{}",
-                book.uuid,
-                book.format.to_ascii_lowercase()
-            ),
+            relative_path: myreader_book_relative_path(&book.path, &book.name, &book.format),
             size: book.size,
             sha256: book.sha256,
         })
@@ -580,22 +578,35 @@ impl CatalogService {
             .and_then(|value| value.to_str())
             .and_then(ReadingFormatPolicy::normalize)
             .ok_or_else(|| CoreError::Config("BOOK_FORMAT_UNSUPPORTED".into()))?;
+        let imported_file_name = request
+            .source_file_name
+            .as_deref()
+            .and_then(imported_file_basename)
+            .or_else(|| source_path.file_name().and_then(|value| value.to_str()))
+            .ok_or_else(|| CoreError::Config("BOOK_FILE_NAME_REQUIRED".into()))?;
+        let original_stem = imported_file_stem(imported_file_name, &format)
+            .ok_or_else(|| CoreError::Config("BOOK_FILE_NAME_REQUIRED".into()))?;
+        let analysis =
+            crate::services::publication_analysis::analyze_publication(&source_path, &format).await;
+        let crate::services::publication_analysis::PublicationAnalysis {
+            title: analyzed_title,
+            authors: analyzed_authors,
+            cover_jpeg,
+        } = analysis;
         let title = request
             .title
             .as_deref()
             .map(str::trim)
             .filter(|value| !value.is_empty())
             .map(ToOwned::to_owned)
-            .or_else(|| {
-                source_path
-                    .file_stem()
-                    .and_then(|value| value.to_str())
-                    .map(str::trim)
-                    .filter(|value| !value.is_empty())
-                    .map(ToOwned::to_owned)
-            })
-            .ok_or_else(|| CoreError::Config("BOOK_TITLE_REQUIRED".into()))?;
-        let authors = normalize_authors(request.authors)?;
+            .or(analyzed_title)
+            .unwrap_or_else(|| original_stem.clone());
+        let name = sanitize_book_storage_name(&title);
+        let authors = normalize_authors(if analyzed_authors.is_empty() {
+            request.authors
+        } else {
+            analyzed_authors
+        })?;
         let timestamp = catalog_timestamp(request.recorded_at_ms)?;
         let (library, _, database_path, identity) =
             crate::services::library::LibraryService::writable_myreader_identity(
@@ -636,11 +647,26 @@ impl CatalogService {
                 .iter()
                 .map(|pending| pending.book_uuid.clone()),
         );
+        let mut used_book_paths = current
+            .projection
+            .catalog_books
+            .iter()
+            .map(|book| book.path.clone())
+            .collect::<HashSet<_>>();
+        used_book_paths.extend(
+            pending_imports
+                .iter()
+                .filter_map(|pending| pending_book_path(&pending.relative_path)),
+        );
         let book_id = new_book_id(&used_book_ids);
-        let book_uuid = new_book_uuid(&used_book_uuids);
-        let book_directory = content_root.join("Books").join(&book_uuid);
-        let final_path = book_directory.join(format!("book.{}", format.to_lowercase()));
-        let temporary_path = book_directory.join(format!("book.{}.part", format.to_lowercase()));
+        let (book_uuid, book_path) =
+            new_book_storage(&used_book_uuids, &used_book_paths, content_root, &name);
+        let book_directory = content_root.join(&book_path);
+        let file_name = format!("{name}.{}", format.to_ascii_lowercase());
+        let final_path = book_directory.join(&file_name);
+        let temporary_path = book_directory.join(format!("{file_name}.part"));
+        let cover_path = book_directory.join("cover.jpg");
+        let cover_temporary_path = book_directory.join("cover.jpg.part");
         tokio::fs::create_dir_all(&book_directory).await?;
 
         let prepared = async {
@@ -655,6 +681,10 @@ impl CatalogService {
                 return Err(CoreError::DataIntegrity("BOOK_FILE_EMPTY".into()));
             }
             tokio::fs::rename(&temporary_path, &final_path).await?;
+            if let Some(cover) = cover_jpeg.as_deref() {
+                tokio::fs::write(&cover_temporary_path, cover).await?;
+                tokio::fs::rename(&cover_temporary_path, &cover_path).await?;
+            }
             Ok(digest)
         }
         .await;
@@ -665,7 +695,8 @@ impl CatalogService {
                 return Err(error);
             }
         };
-        let relative_path = format!("Books/{book_uuid}/book.{}", format.to_lowercase());
+        let has_cover = cover_jpeg.is_some();
+        let relative_path = myreader_book_relative_path(&book_path, &name, &format);
         let pending = PendingBookImport {
             book_uuid: book_uuid.clone(),
             book_id,
@@ -687,8 +718,8 @@ impl CatalogService {
             series: None,
             series_index: None,
             formats: vec![format.clone()],
-            has_cover: false,
-            path: format!("Books/{book_uuid}"),
+            has_cover,
+            path: book_path.clone(),
             timestamp: Some(timestamp.clone()),
             pubdate: None,
             last_modified: Some(timestamp.clone()),
@@ -728,10 +759,12 @@ impl CatalogService {
                         book_id,
                         title: title.clone(),
                         authors: authors.clone(),
+                        path: book_path.clone(),
+                        name: name.clone(),
                         format: format.clone(),
                         size: digest.size,
                         sha256: digest.sha256.clone(),
-                        has_cover: false,
+                        has_cover,
                         timestamp: timestamp.clone(),
                         last_modified: timestamp,
                         deleted: false,
@@ -847,11 +880,7 @@ impl CatalogService {
             .find(|book| book.book_id == book_id)
             .ok_or_else(|| CoreError::NotFound(format!("BOOK_NOT_FOUND: {book_id}")))?;
         let book_uuid = book.uuid.clone();
-        let relative_path = format!(
-            "Books/{}/book.{}",
-            book_uuid,
-            book.format.to_ascii_lowercase()
-        );
+        let relative_path = myreader_book_relative_path(&book.path, &book.name, &book.format);
         execute_local_database_command(
             &database_path,
             &identity,
@@ -877,15 +906,29 @@ impl CatalogService {
                 &relative_path,
             )
             .await?;
+            if book.has_cover {
+                crate::services::content::ContentService::mark_file_remote_delete_pending(
+                    sidecar_root,
+                    &myreader_cover_relative_path(&book.path),
+                )
+                .await?;
+            }
         } else {
             crate::services::content::ContentService::delete_file_state(
                 sidecar_root,
                 &relative_path,
             )
             .await?;
+            if book.has_cover {
+                crate::services::content::ContentService::delete_file_state(
+                    sidecar_root,
+                    &myreader_cover_relative_path(&book.path),
+                )
+                .await?;
+            }
         }
 
-        let directory = content_root.join("Books").join(book_uuid);
+        let directory = content_root.join(&book.path);
         match tokio::fs::remove_dir_all(directory).await {
             Ok(()) => Ok(()),
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
@@ -1049,6 +1092,73 @@ impl CatalogService {
     }
 }
 
+fn imported_file_basename(value: &str) -> Option<&str> {
+    value
+        .trim()
+        .rsplit(['/', '\\'])
+        .next()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+}
+
+fn imported_file_stem(file_name: &str, format: &str) -> Option<String> {
+    let file_name = imported_file_basename(file_name)?;
+    let expected_extension = format!(".{format}");
+    let stem = if file_name
+        .to_ascii_lowercase()
+        .ends_with(&expected_extension.to_ascii_lowercase())
+    {
+        &file_name[..file_name.len() - expected_extension.len()]
+    } else {
+        Path::new(file_name)
+            .file_stem()
+            .and_then(|value| value.to_str())?
+    };
+    let stem = stem.trim();
+    (!stem.is_empty()).then(|| stem.to_owned())
+}
+
+fn sanitize_book_storage_name(value: &str) -> String {
+    let mut name = value
+        .chars()
+        .map(|character| {
+            if character.is_control()
+                || matches!(
+                    character,
+                    '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*'
+                )
+            {
+                '_'
+            } else {
+                character
+            }
+        })
+        .collect::<String>();
+    name = name
+        .trim_matches(|character: char| character.is_whitespace() || character == '.')
+        .to_owned();
+    while name.len() > 180 {
+        name.pop();
+    }
+    name = name
+        .trim_end_matches(|character: char| character.is_whitespace() || character == '.')
+        .to_owned();
+    let upper = name.to_ascii_uppercase();
+    let reserved = matches!(upper.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+        || (upper.len() == 4
+            && (upper.starts_with("COM") || upper.starts_with("LPT"))
+            && upper.as_bytes()[3].is_ascii_digit()
+            && upper.as_bytes()[3] != b'0');
+    if reserved {
+        name.insert(0, '_');
+    }
+    if name.is_empty() {
+        "book".to_owned()
+    } else {
+        name
+    }
+}
+
 fn normalize_authors(authors: Vec<String>) -> Result<Vec<String>, CoreError> {
     let mut normalized = Vec::new();
     for author in authors {
@@ -1093,19 +1203,37 @@ fn new_book_id(used: &HashSet<i64>) -> i64 {
     }
 }
 
-fn new_book_uuid(used: &HashSet<String>) -> String {
+fn pending_book_path(relative_path: &str) -> Option<String> {
+    relative_path
+        .rsplit_once('/')
+        .map(|(path, _)| path.to_owned())
+        .filter(|path| !path.is_empty())
+}
+
+fn new_book_storage(
+    used_uuids: &HashSet<String>,
+    used_paths: &HashSet<String>,
+    content_root: &Path,
+    name: &str,
+) -> (String, String) {
     loop {
         let candidate = Uuid::new_v4().to_string();
-        if !used.contains(candidate.as_str()) {
-            return candidate;
+        let path = format!("Books/{name} ({})", &candidate[..6]);
+        if !used_uuids.contains(candidate.as_str())
+            && !used_paths.contains(&path)
+            && !content_root.join(&path).exists()
+        {
+            return (candidate, path);
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::io::{Cursor, Write};
     use std::path::Path;
 
+    use image::{DynamicImage, ImageFormat, Rgb, RgbImage};
     use sea_orm::{
         ActiveModelTrait, ConnectionTrait, Database, DatabaseConnection, EntityTrait, Schema, Set,
     };
@@ -1118,6 +1246,54 @@ mod tests {
     use crate::models::{
         ImportBookRequest, LibraryType, LocalLibraryRequest, UpdateBookMetadataRequest,
     };
+
+    #[test]
+    fn should_replace_provider_invalid_characters_when_storage_name_is_created() {
+        let stem =
+            super::imported_file_stem(r#"C:\Shared\A Wizard: Earthsea?.EPUB"#, "EPUB").unwrap();
+
+        assert_eq!(stem, "A Wizard: Earthsea?");
+        assert_eq!(
+            super::sanitize_book_storage_name(&stem),
+            "A Wizard_ Earthsea_"
+        );
+    }
+
+    fn write_epub_fixture(path: &Path) {
+        let mut cover = Cursor::new(Vec::new());
+        DynamicImage::ImageRgb8(RgbImage::from_pixel(8, 12, Rgb([190, 60, 30])))
+            .write_to(&mut cover, ImageFormat::Png)
+            .unwrap();
+        let file = std::fs::File::create(path).unwrap();
+        let mut archive = zip::ZipWriter::new(file);
+        let stored = zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Stored);
+        let compressed = zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Deflated);
+        for (name, bytes, options) in [
+            ("mimetype", b"application/epub+zip".as_slice(), stored),
+            (
+                "META-INF/container.xml",
+                br#"<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>"#,
+                compressed,
+            ),
+            (
+                "OEBPS/content.opf",
+                br#"<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="id">urn:uuid:test</dc:identifier><dc:title>The Dispossessed</dc:title><dc:creator>Ursula K. Le Guin</dc:creator><dc:language>en</dc:language><meta property="dcterms:modified">2026-08-05T00:00:00Z</meta></metadata><manifest><item id="page" href="cover.xhtml" media-type="application/xhtml+xml"/><item id="cover" href="cover.png" media-type="image/png" properties="cover-image"/></manifest><spine><itemref idref="page"/></spine></package>"#,
+                compressed,
+            ),
+            (
+                "OEBPS/cover.xhtml",
+                br#"<html xmlns="http://www.w3.org/1999/xhtml"><body><img src="cover.png"/></body></html>"#,
+                compressed,
+            ),
+            ("OEBPS/cover.png", cover.get_ref().as_slice(), compressed),
+        ] {
+            archive.start_file(name, options).unwrap();
+            archive.write_all(bytes).unwrap();
+        }
+        archive.finish().unwrap();
+    }
 
     async fn create_table<E>(db: &DatabaseConnection, schema: &Schema, entity: E)
     where
@@ -1381,10 +1557,8 @@ mod tests {
         let config_path = directory.path().join("config.json");
         let library_root = directory.path().join("My Library");
         let sidecars = directory.path().join("sidecars");
-        let source_file = directory.path().join("The Dispossessed.epub");
-        tokio::fs::write(&source_file, b"epub-content")
-            .await
-            .unwrap();
+        let source_file = directory.path().join("temporary-import.epub");
+        write_epub_fixture(&source_file);
         let (_, library) = crate::services::library::LibraryService::create_local_myreader(
             &config_path,
             LocalLibraryRequest {
@@ -1411,8 +1585,9 @@ mod tests {
             &library_root,
             ImportBookRequest {
                 source_file_path: source_file.to_string_lossy().into_owned(),
+                source_file_name: Some("Original Download.epub".into()),
                 title: None,
-                authors: vec![" Ursula K. Le Guin ".into()],
+                authors: vec!["Unknown author".into()],
                 recorded_at_ms: 200,
                 consume_source_file: false,
             },
@@ -1441,7 +1616,10 @@ mod tests {
             .find(|book| book.book_id == imported.id)
             .unwrap()
             .clone();
-        let installed = library_root.join(&imported.path).join("book.epub");
+        let installed = library_root
+            .join(&imported.path)
+            .join("The Dispossessed.epub");
+        let cover = library_root.join(&imported.path).join("cover.jpg");
         let page = super::CatalogService::list_registered_library_books_page(
             &config_path,
             &library.id,
@@ -1477,13 +1655,24 @@ mod tests {
         assert_eq!(imported.title, "The Dispossessed");
         assert_eq!(imported.authors, ["Ursula K. Le Guin"]);
         assert_eq!(imported.formats, ["EPUB"]);
+        assert!(imported.has_cover);
+        assert_eq!(
+            imported.path,
+            format!("Books/The Dispossessed ({})", &original.uuid[..6])
+        );
+        assert_eq!(original.path, imported.path);
+        assert_eq!(original.name, "The Dispossessed");
         assert_eq!(page.total, 1);
         assert_eq!(page.items[0], imported);
         assert_eq!(detail.book, imported);
         assert_eq!(detail.format_sizes[0].size_bytes, original.size);
         assert!(detail.identifiers.is_empty());
         assert_eq!(paths.get(&(imported.id, "EPUB".into())), Some(&installed));
-        assert_eq!(tokio::fs::read(&installed).await.unwrap(), b"epub-content");
+        assert_eq!(
+            tokio::fs::read(&installed).await.unwrap(),
+            tokio::fs::read(&source_file).await.unwrap()
+        );
+        assert!(image::load_from_memory(&tokio::fs::read(&cover).await.unwrap()).is_ok());
         assert_eq!(
             crate::services::content::ContentService::sha256_file(&installed)
                 .await
@@ -1523,6 +1712,8 @@ mod tests {
         assert_eq!(updated.path, imported.path);
         assert_eq!(after_update.uuid, original.uuid);
         assert_eq!(after_update.book_id, original.book_id);
+        assert_eq!(after_update.path, original.path);
+        assert_eq!(after_update.name, original.name);
         assert_eq!(after_update.format, original.format);
         assert_eq!(after_update.size, original.size);
         assert_eq!(after_update.sha256, original.sha256);
@@ -1622,6 +1813,7 @@ mod tests {
             &library_root,
             ImportBookRequest {
                 source_file_path: source_file.to_string_lossy().into_owned(),
+                source_file_name: None,
                 title: None,
                 authors: vec!["Author".into()],
                 recorded_at_ms: 100,

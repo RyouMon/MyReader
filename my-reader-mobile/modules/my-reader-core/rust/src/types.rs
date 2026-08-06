@@ -342,6 +342,7 @@ pub struct LibraryResult {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct ImportBookRequest {
     pub source_file_path: String,
+    pub source_file_name: Option<String>,
     pub title: Option<String>,
     pub authors: Vec<String>,
     pub recorded_at_ms: f64,
@@ -1030,6 +1031,7 @@ impl TryFrom<ImportBookRequest> for models::ImportBookRequest {
     fn try_from(value: ImportBookRequest) -> Result<Self, Self::Error> {
         Ok(Self {
             source_file_path: value.source_file_path,
+            source_file_name: value.source_file_name,
             title: value.title,
             authors: value.authors,
             recorded_at_ms: required_i64(value.recorded_at_ms, "recordedAtMs")?,

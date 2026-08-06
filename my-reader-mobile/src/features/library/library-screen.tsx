@@ -650,6 +650,10 @@ export default function LibraryScreen({
     )
   }, [gridColumns, isGridView, visibleBooks])
 
+  useEffect(() => {
+    seedInitialCoverThumbnails()
+  }, [seedInitialCoverThumbnails])
+
   const handleFlashListLoad = useCallback<
     NonNullable<ComponentProps<typeof FlashList<BookItem>>["onLoad"]>
   >(

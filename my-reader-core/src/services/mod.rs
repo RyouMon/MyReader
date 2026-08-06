@@ -5,5 +5,6 @@ pub(crate) mod content;
 pub(crate) mod datasource;
 pub(crate) mod download;
 pub(crate) mod library;
+pub(crate) mod publication_analysis;
 pub(crate) mod reading;
 pub(crate) mod sync;

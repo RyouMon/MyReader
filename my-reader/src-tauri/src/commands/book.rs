@@ -175,6 +175,7 @@ pub async fn import_book<R: tauri::Runtime>(
         &app_data_dir,
         my_reader_core::models::ImportBookRequest {
             source_file_path,
+            source_file_name: None,
             title,
             authors,
             recorded_at_ms: common::unix_epoch_millis(),

@@ -357,6 +357,7 @@ export async function importLocalBook(
   sidecarRootUri: string,
   input: {
     sourceFileUri: string
+    sourceFileName?: string
     title?: string
     authors: string[]
     consumeSourceFile: boolean
@@ -370,6 +371,7 @@ export async function importLocalBook(
     nativePath(contentRootUri),
     {
       sourceFilePath: nativePath(input.sourceFileUri),
+      sourceFileName: input.sourceFileName,
       title: input.title,
       authors: input.authors,
       recordedAtMs: Date.now(),
@@ -386,6 +388,7 @@ export async function importRemoteBook(
   sidecarRootUri: string,
   input: {
     sourceFileUri: string
+    sourceFileName?: string
     title?: string
     authors: string[]
     consumeSourceFile: boolean
@@ -398,6 +401,7 @@ export async function importRemoteBook(
     nativePath(contentRootUri),
     {
       sourceFilePath: nativePath(input.sourceFileUri),
+      sourceFileName: input.sourceFileName,
       title: input.title,
       authors: input.authors,
       recordedAtMs: Date.now(),
@@ -406,11 +410,20 @@ export async function importRemoteBook(
   )
   const format = book.formats[0]
   if (format) {
-    const relativePath = `${book.path}/book.${format.toLowerCase()}`
-    const state = await contentGetFileState(
+    const importedFormat = await catalogGetLibraryBookFormat(
+      appConfigPath,
+      library.id,
       nativePath(sidecarRootUri),
-      relativePath,
+      nativePath(contentRootUri),
+      book.id,
+      format,
     )
+    const state = importedFormat
+      ? await contentGetFileState(
+          nativePath(sidecarRootUri),
+          importedFormat.relativePath,
+        )
+      : undefined
     if (state) {
       const cachedState: FileState = {
         ...state,

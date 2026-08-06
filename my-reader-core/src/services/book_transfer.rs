@@ -58,7 +58,7 @@ enum UploadOutcome {
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum PendingCatalogState {
     Missing,
-    Active,
+    Active { has_cover: bool },
     Deleted,
 }
 
@@ -209,14 +209,36 @@ impl BookTransferService {
             .await?;
             return Ok(UploadOutcome::Cancelled);
         }
+        let cover_relative_path =
+            crate::models::catalog::myreader_cover_relative_path(&pending_book_path(pending)?);
+        let cover_path = content_root.join(&cover_relative_path);
+        let has_cover = match catalog_state {
+            PendingCatalogState::Active { has_cover } => has_cover,
+            PendingCatalogState::Missing => cover_path.is_file(),
+            PendingCatalogState::Deleted => false,
+        };
         let final_path = content_root.join(&pending.relative_path);
         if remote_file_has_expected_size(operator, pending).await? {
+            if !ensure_remote_cover(
+                sidecar_root,
+                operator,
+                pending,
+                &cover_relative_path,
+                &cover_path,
+                has_cover,
+            )
+            .await?
+            {
+                remove_cancelled_remote_book(operator, pending).await;
+                return Ok(UploadOutcome::Cancelled);
+            }
             return finalize_pending_upload(
                 sidecar_root,
                 database_path,
                 identity,
                 pending,
-                catalog_state == PendingCatalogState::Active,
+                matches!(catalog_state, PendingCatalogState::Active { .. }),
+                has_cover,
                 &final_path,
                 operator,
                 observer,
@@ -263,13 +285,27 @@ impl BookTransferService {
                 "REMOTE_BOOK_FILE_SIZE_MISMATCH".into(),
             ));
         }
+        if !ensure_remote_cover(
+            sidecar_root,
+            operator,
+            pending,
+            &cover_relative_path,
+            &cover_path,
+            has_cover,
+        )
+        .await?
+        {
+            remove_cancelled_remote_book(operator, pending).await;
+            return Ok(UploadOutcome::Cancelled);
+        }
 
         finalize_pending_upload(
             sidecar_root,
             database_path,
             identity,
             pending,
-            catalog_state == PendingCatalogState::Active,
+            matches!(catalog_state, PendingCatalogState::Active { .. }),
+            has_cover,
             &final_path,
             operator,
             observer,
@@ -303,8 +339,12 @@ fn pending_catalog_state(
         .iter()
         .find(|book| book.uuid == pending.book_uuid || book.book_id == pending.book_id);
     if let Some(existing) = existing {
+        let pending_path = pending_book_path(pending)?;
+        let pending_name = pending_file_name(pending)?;
         if existing.uuid != pending.book_uuid
             || existing.book_id != pending.book_id
+            || existing.path != pending_path
+            || existing.name != pending_name
             || existing.format != pending.format
             || existing.size != pending.size
             || existing.sha256 != pending.sha256
@@ -316,7 +356,9 @@ fn pending_catalog_state(
         return Ok(if existing.deleted {
             PendingCatalogState::Deleted
         } else {
-            PendingCatalogState::Active
+            PendingCatalogState::Active {
+                has_cover: existing.has_cover,
+            }
         });
     }
     Ok(PendingCatalogState::Missing)
@@ -329,6 +371,7 @@ async fn finalize_pending_upload(
     identity: &DatabaseIdentity,
     pending: &PendingBookImport,
     catalog_exists: bool,
+    has_cover: bool,
     final_path: &Path,
     operator: &Operator,
     observer: &dyn BookUploadObserver,
@@ -357,6 +400,7 @@ async fn finalize_pending_upload(
         identity,
         pending,
         catalog_exists,
+        has_cover,
         final_path,
     )
     .await?;
@@ -381,6 +425,11 @@ async fn finalize_pending_upload(
 
 async fn remove_cancelled_remote_book(operator: &Operator, pending: &PendingBookImport) {
     let _ = operator.delete(&pending.relative_path).await;
+    if let Ok(path) = pending_book_path(pending) {
+        let _ = operator
+            .delete(&crate::models::catalog::myreader_cover_relative_path(&path))
+            .await;
+    }
 }
 
 async fn remote_file_has_expected_size(
@@ -393,6 +442,94 @@ async fn remote_file_has_expected_size(
         Err(error) if error.kind() == ErrorKind::NotFound => Ok(false),
         Err(error) => Err(crate::infrastructure::storage::storage_error(error)),
     }
+}
+
+fn pending_file_name(pending: &PendingBookImport) -> Result<String, CoreError> {
+    let file_name = pending
+        .relative_path
+        .rsplit('/')
+        .next()
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| CoreError::DataIntegrity("PENDING_BOOK_FILE_NAME_INVALID".into()))?;
+    let extension = format!(".{}", pending.format.to_ascii_lowercase());
+    if !file_name.to_ascii_lowercase().ends_with(extension.as_str())
+        || file_name.len() <= extension.len()
+    {
+        return Err(CoreError::DataIntegrity(
+            "PENDING_BOOK_FILE_NAME_INVALID".into(),
+        ));
+    }
+    Ok(file_name[..file_name.len() - extension.len()].to_owned())
+}
+
+fn pending_book_path(pending: &PendingBookImport) -> Result<String, CoreError> {
+    pending
+        .relative_path
+        .rsplit_once('/')
+        .map(|(path, _)| path.to_owned())
+        .filter(|path| !path.is_empty())
+        .ok_or_else(|| CoreError::DataIntegrity("PENDING_BOOK_PATH_INVALID".into()))
+}
+
+async fn ensure_remote_cover(
+    sidecar_root: &Path,
+    operator: &Operator,
+    pending: &PendingBookImport,
+    relative_path: &str,
+    local_path: &Path,
+    has_cover: bool,
+) -> Result<bool, CoreError> {
+    if !has_cover {
+        return Ok(true);
+    }
+    if !super::content::ContentService::pending_book_import_exists(sidecar_root, &pending.book_uuid)
+        .await?
+    {
+        return Ok(false);
+    }
+    let metadata = tokio::fs::metadata(local_path).await.map_err(|error| {
+        CoreError::DataIntegrity(format!("PENDING_BOOK_COVER_UNAVAILABLE: {error}"))
+    })?;
+    let expected_size = i64::try_from(metadata.len())
+        .map_err(|error| CoreError::DataIntegrity(format!("BOOK_COVER_TOO_LARGE: {error}")))?;
+    if !metadata.is_file() || expected_size < 1 {
+        return Err(CoreError::DataIntegrity(
+            "PENDING_BOOK_COVER_UNAVAILABLE".into(),
+        ));
+    }
+    match operator.stat(relative_path).await {
+        Ok(remote)
+            if remote.is_file()
+                && i64::try_from(remote.content_length()).ok() == Some(expected_size) =>
+        {
+            return Ok(true);
+        }
+        Ok(_) => {}
+        Err(error) if error.kind() == ErrorKind::NotFound => {}
+        Err(error) => return Err(crate::infrastructure::storage::storage_error(error)),
+    }
+
+    let bytes = tokio::fs::read(local_path).await?;
+    operator
+        .write(relative_path, bytes)
+        .await
+        .map_err(crate::infrastructure::storage::storage_error)?;
+    if !super::content::ContentService::pending_book_import_exists(sidecar_root, &pending.book_uuid)
+        .await?
+    {
+        let _ = operator.delete(relative_path).await;
+        return Ok(false);
+    }
+    let remote = operator
+        .stat(relative_path)
+        .await
+        .map_err(crate::infrastructure::storage::storage_error)?;
+    if !remote.is_file() || i64::try_from(remote.content_length()).ok() != Some(expected_size) {
+        return Err(CoreError::DataIntegrity(
+            "REMOTE_BOOK_COVER_SIZE_MISMATCH".into(),
+        ));
+    }
+    Ok(true)
 }
 
 async fn mark_pending_source_unavailable(
@@ -416,6 +553,7 @@ async fn complete_pending_upload(
     identity: &DatabaseIdentity,
     pending: &PendingBookImport,
     catalog_exists: bool,
+    has_cover: bool,
     final_path: &Path,
 ) -> Result<(), CoreError> {
     if !catalog_exists {
@@ -431,10 +569,12 @@ async fn complete_pending_upload(
                         book_id: pending.book_id,
                         title: pending.title.clone(),
                         authors: pending.authors.clone(),
+                        path: pending_book_path(pending)?,
+                        name: pending_file_name(pending)?,
                         format: pending.format.clone(),
                         size: pending.size,
                         sha256: pending.sha256.clone(),
-                        has_cover: false,
+                        has_cover,
                         timestamp: timestamp.clone(),
                         last_modified: timestamp,
                         deleted: false,

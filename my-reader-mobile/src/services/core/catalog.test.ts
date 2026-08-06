@@ -15,6 +15,7 @@ jest.mock("my-reader-core", () => ({
   catalogImportLocalBook: jest.fn(),
   catalogStageRemoteBookImport: jest.fn(),
   catalogGetBookFormat: jest.fn(),
+  catalogGetLibraryBookFormat: jest.fn(),
   catalogGetBookDetail: jest.fn(),
   catalogListLibraryBooks: jest.fn(),
   catalogListBookFormats: jest.fn(),
@@ -28,6 +29,7 @@ import {
   catalogStageRemoteBookImport,
   catalogGetBookDetail,
   catalogGetBookFormat,
+  catalogGetLibraryBookFormat,
   catalogListBookFormats,
   catalogListBookSummaries,
   catalogListBooksPageByLastRead,
@@ -209,6 +211,7 @@ describe("core catalog adapter", () => {
       "file:///documents/libraries/library-1",
       {
         sourceFileUri: "file:///inbox/Earthsea.epub",
+        sourceFileName: "Earthsea.epub",
         authors: ["Ursula K. Le Guin"],
         consumeSourceFile: true,
       },
@@ -221,6 +224,7 @@ describe("core catalog adapter", () => {
       "/library",
       {
         sourceFilePath: "/inbox/Earthsea.epub",
+        sourceFileName: "Earthsea.epub",
         title: undefined,
         authors: ["Ursula K. Le Guin"],
         recordedAtMs: 123,
@@ -245,9 +249,15 @@ describe("core catalog adapter", () => {
       languages: [],
     }
     jest.mocked(catalogStageRemoteBookImport).mockResolvedValue(book)
+    jest.mocked(catalogGetLibraryBookFormat).mockResolvedValue({
+      format: "EPUB",
+      name: "Earthsea",
+      sizeBytes: 1024,
+      relativePath: "Books/Earthsea (018f2f)/Earthsea.epub",
+    })
     jest.mocked(contentGetFileState).mockResolvedValue({
       id: "state-1",
-      path: "Books/uuid/book.epub",
+      path: "Books/Earthsea (018f2f)/Earthsea.epub",
       localState: "dirty_push",
       isLocallyAvailable: true,
       updatedAt: 123,
@@ -268,6 +278,7 @@ describe("core catalog adapter", () => {
         "file:///documents/libraries/library-1",
         {
           sourceFileUri: "file:///inbox/Earthsea.epub",
+          sourceFileName: "Earthsea.epub",
           authors: ["Ursula K. Le Guin"],
           consumeSourceFile: true,
         },
@@ -281,6 +292,7 @@ describe("core catalog adapter", () => {
       "/library",
       {
         sourceFilePath: "/inbox/Earthsea.epub",
+        sourceFileName: "Earthsea.epub",
         title: undefined,
         authors: ["Ursula K. Le Guin"],
         recordedAtMs: 123,
@@ -289,14 +301,14 @@ describe("core catalog adapter", () => {
     )
     expect(contentGetFileState).toHaveBeenCalledWith(
       "/documents/libraries/library-1",
-      "Books/uuid/book.epub",
+      "Books/Earthsea (018f2f)/Earthsea.epub",
     )
     expect(cacheFileState).toHaveBeenCalledWith(
       "library-1",
       expect.objectContaining({
         isLocallyAvailable: true,
         localState: "dirty_push",
-        path: "Books/uuid/book.epub",
+        path: "Books/Earthsea (018f2f)/Earthsea.epub",
       }),
     )
     expect(announceLocalSidecarWork).not.toHaveBeenCalled()

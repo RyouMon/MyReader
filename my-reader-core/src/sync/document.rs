@@ -112,6 +112,8 @@ pub struct CatalogBookValue {
     pub book_id: i64,
     pub title: String,
     pub authors: Vec<String>,
+    pub path: String,
+    pub name: String,
     pub format: String,
     pub size: i64,
     pub sha256: String,
@@ -372,6 +374,15 @@ fn validate_catalog_book(value: &CatalogBookValue) -> Result<(), SyncError> {
     if value.authors.is_empty() || value.authors.iter().any(|author| author.trim().is_empty()) {
         return Err(sync_error("Catalog book authors are invalid"));
     }
+    let Some(directory_name) = value.path.strip_prefix("Books/") else {
+        return Err(sync_error("Catalog book path is invalid"));
+    };
+    if directory_name.contains('/') || !is_valid_book_storage_component(directory_name) {
+        return Err(sync_error("Catalog book path is invalid"));
+    }
+    if !is_valid_book_storage_component(&value.name) {
+        return Err(sync_error("Catalog book file name is invalid"));
+    }
     if !ReadingFormatPolicy::is_canonical(&value.format) {
         return Err(sync_error("Catalog book format is unsupported"));
     }
@@ -390,6 +401,18 @@ fn validate_catalog_book(value: &CatalogBookValue) -> Result<(), SyncError> {
         return Err(sync_error("Catalog book timestamps are invalid"));
     }
     Ok(())
+}
+
+fn is_valid_book_storage_component(value: &str) -> bool {
+    !value.trim().is_empty()
+        && !value.chars().any(|character| {
+            character.is_control()
+                || matches!(
+                    character,
+                    '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*'
+                )
+        })
+        && !value.ends_with([' ', '.'])
 }
 
 fn catalog_book_object(doc: &AutoCommit, uuid: &str) -> Result<automerge::ObjId, SyncError> {
@@ -506,6 +529,8 @@ pub fn create_catalog_book(
         .map_err(|error| sync_error(format!("Failed to create catalog book: {error}")))?;
     doc.put(&object, "bookId", value.book_id)
         .and_then(|_| doc.put(&object, "title", value.title.as_str()))
+        .and_then(|_| doc.put(&object, "path", value.path.as_str()))
+        .and_then(|_| doc.put(&object, "name", value.name.as_str()))
         .and_then(|_| doc.put(&object, "format", value.format.as_str()))
         .and_then(|_| doc.put(&object, "size", value.size))
         .and_then(|_| doc.put(&object, "sha256", value.sha256.as_str()))
@@ -609,6 +634,8 @@ pub fn catalog_book_projections(doc: &AutoCommit) -> Result<Vec<CatalogBookValue
                 book_id: catalog_book_i64(doc, &object, "bookId")?,
                 title: catalog_book_string(doc, &object, "title")?,
                 authors: catalog_book_authors(doc, &object)?,
+                path: catalog_book_string(doc, &object, "path")?,
+                name: catalog_book_string(doc, &object, "name")?,
                 format: catalog_book_string(doc, &object, "format")?,
                 size: catalog_book_i64(doc, &object, "size")?,
                 sha256: catalog_book_string(doc, &object, "sha256")?,
@@ -1275,6 +1302,8 @@ mod tests {
             book_id: 42,
             title: "The Left Hand of Darkness".into(),
             authors: vec!["Ursula K. Le Guin".into()],
+            path: "Books/The Left Hand of Darkness (222222)".into(),
+            name: "The Left Hand of Darkness".into(),
             format: "EPUB".into(),
             size: 1024,
             sha256: "ab".repeat(32),
@@ -1298,7 +1327,7 @@ mod tests {
     }
 
     #[test]
-    fn should_migrate_schema_one_genesis_to_the_canonical_catalog_root() {
+    fn should_migrate_schema_one_genesis_to_the_current_schema() {
         let schema_one = AutoCommit::load(GENESIS_BYTES).unwrap();
         assert_eq!(document_schema(&schema_one).unwrap(), 1);
 

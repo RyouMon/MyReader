@@ -1125,7 +1125,11 @@ fn validate_request(request: &RemoteLibraryRequest) -> Result<(), CoreError> {
 
 #[cfg(test)]
 mod tests {
+    use std::io::{Cursor, Write};
+
+    use image::{DynamicImage, ImageFormat, Rgb, RgbImage};
     use opendal::services::Fs;
+    use zip::{write::SimpleFileOptions, CompressionMethod, ZipWriter};
 
     use super::*;
 
@@ -1143,6 +1147,25 @@ mod tests {
                 [],
             )
             .unwrap();
+    }
+
+    fn write_cbz_fixture(path: &Path) {
+        let mut cover = Cursor::new(Vec::new());
+        DynamicImage::ImageRgb8(RgbImage::from_pixel(8, 12, Rgb([190, 60, 30])))
+            .write_to(&mut cover, ImageFormat::Png)
+            .unwrap();
+        let file = std::fs::File::create(path).unwrap();
+        let mut archive = ZipWriter::new(file);
+        let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+        archive.start_file("ComicInfo.xml", options).unwrap();
+        archive
+            .write_all(
+                br#"<ComicInfo><Title>The Dispossessed</Title><Writer>Ursula K. Le Guin</Writer></ComicInfo>"#,
+            )
+            .unwrap();
+        archive.start_file("page1.png", options).unwrap();
+        archive.write_all(cover.get_ref()).unwrap();
+        archive.finish().unwrap();
     }
 
     #[tokio::test]
@@ -1334,6 +1357,7 @@ mod tests {
             &library_root,
             crate::models::ImportBookRequest {
                 source_file_path: source_file.to_string_lossy().into_owned(),
+                source_file_name: None,
                 title: Some("Book".into()),
                 authors: vec!["Author".into()],
                 recorded_at_ms: 200,
@@ -1448,10 +1472,8 @@ mod tests {
         .await
         .unwrap();
         let local_root = libraries_root.join(&library.id);
-        let source_file = directory.path().join("The Dispossessed.epub");
-        tokio::fs::write(&source_file, b"epub-content")
-            .await
-            .unwrap();
+        let source_file = directory.path().join("The Dispossessed.cbz");
+        write_cbz_fixture(&source_file);
         let sync_lock = crate::services::sync::library_sync_lock(&local_root).unwrap();
         let sync_guard = sync_lock.lock().await;
         let imported = tokio::time::timeout(
@@ -1463,6 +1485,7 @@ mod tests {
                 &local_root,
                 crate::models::ImportBookRequest {
                     source_file_path: source_file.to_string_lossy().into_owned(),
+                    source_file_name: None,
                     title: None,
                     authors: vec!["Ursula K. Le Guin".into()],
                     recorded_at_ms: 200,
@@ -1495,7 +1518,10 @@ mod tests {
             .unwrap();
         assert!(queued_state.is_locally_available());
         assert!(local_root.join(&queued_state.path).is_file());
+        let cover_path = format!("{}/cover.jpg", imported.path);
+        assert!(local_root.join(&cover_path).is_file());
         assert!(!scoped_operator.exists(&queued_state.path).await.unwrap());
+        assert!(!scoped_operator.exists(&cover_path).await.unwrap());
         assert!(
             !crate::services::sync::SyncService::has_pending_work(&local_root)
                 .await
@@ -1634,6 +1660,7 @@ mod tests {
         assert_eq!(books[0].title, "The Dispossessed: An Ambiguous Utopia");
         assert_eq!(books[0].authors, ["Ursula Le Guin"]);
         assert!(scoped_operator.exists(&queued_state.path).await.unwrap());
+        assert!(scoped_operator.exists(&cover_path).await.unwrap());
         assert_eq!(
             crate::services::content::ContentService::get_file_state(
                 &local_root,
@@ -1734,6 +1761,7 @@ mod tests {
             &local_root,
             crate::models::ImportBookRequest {
                 source_file_path: source_file.to_string_lossy().into_owned(),
+                source_file_name: Some("Readable Book.epub".into()),
                 title: None,
                 authors: vec!["Author".into()],
                 recorded_at_ms: 200,
@@ -1742,7 +1770,8 @@ mod tests {
         )
         .await
         .unwrap();
-        let relative_path = format!("{}/book.epub", imported.path);
+        assert_eq!(imported.title, "Readable Book");
+        let relative_path = format!("{}/Readable Book.epub", imported.path);
 
         crate::services::catalog::CatalogService::delete_local_book(
             &config_path,
@@ -1941,10 +1970,8 @@ mod tests {
         .await
         .unwrap();
         let local_one = device_one_root.join(&library_one.id);
-        let source_file = directory.path().join("The Dispossessed.epub");
-        tokio::fs::write(&source_file, b"epub-content")
-            .await
-            .unwrap();
+        let source_file = directory.path().join("The Dispossessed.cbz");
+        write_cbz_fixture(&source_file);
         let imported = crate::services::catalog::CatalogService::stage_remote_book_import(
             &config_path_one,
             &library_one.id,
@@ -1952,6 +1979,7 @@ mod tests {
             &local_one,
             crate::models::ImportBookRequest {
                 source_file_path: source_file.to_string_lossy().into_owned(),
+                source_file_name: None,
                 title: None,
                 authors: vec!["Ursula K. Le Guin".into()],
                 recorded_at_ms: 200,
@@ -2005,20 +2033,22 @@ mod tests {
                 .unwrap();
         assert_eq!(books.len(), 1);
         assert_eq!(books[0].id, imported.id);
-        let relative_path = format!("{}/book.epub", imported.path);
+        let relative_path = format!("{}/The Dispossessed.cbz", imported.path);
+        let cover_path = format!("{}/cover.jpg", imported.path);
         let state =
             crate::services::content::ContentService::get_file_state(&local_two, &relative_path)
                 .await
                 .unwrap()
                 .unwrap();
         assert_eq!(state.local_state, "remote_only");
+        assert!(scoped_operator.exists(&cover_path).await.unwrap());
 
         let remote_bytes = scoped_operator.read(&relative_path).await.unwrap();
         let local_file = local_two.join(&relative_path);
         tokio::fs::create_dir_all(local_file.parent().unwrap())
             .await
             .unwrap();
-        let partial = local_file.with_extension("epub.part");
+        let partial = local_file.with_extension("cbz.part");
         tokio::fs::write(&partial, remote_bytes.to_vec())
             .await
             .unwrap();
@@ -2068,6 +2098,7 @@ mod tests {
         .await
         .unwrap();
         assert!(!scoped_operator.exists(&relative_path).await.unwrap());
+        assert!(!scoped_operator.exists(&cover_path).await.unwrap());
 
         crate::services::sync::SyncService::sync_sidecar_with_operator(
             &local_two,

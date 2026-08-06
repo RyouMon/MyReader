@@ -6593,6 +6593,7 @@ const FfiConverterTypeFileStateUpdate = (() => {
 
 export type ImportBookRequest = {
   sourceFilePath: string;
+  sourceFileName?: string;
   title?: string;
   authors: Array<string>;
   recordedAtMs: number;
@@ -6622,6 +6623,7 @@ const FfiConverterTypeImportBookRequest = (() => {
     read(from: RustBuffer): TypeName {
       return {
         sourceFilePath: FfiConverterString.read(from),
+        sourceFileName: FfiConverterOptionalString.read(from),
         title: FfiConverterOptionalString.read(from),
         authors: FfiConverterSequenceString.read(from),
         recordedAtMs: FfiConverterFloat64.read(from),
@@ -6630,6 +6632,7 @@ const FfiConverterTypeImportBookRequest = (() => {
     }
     write(value: TypeName, into: RustBuffer): void {
       FfiConverterString.write(value.sourceFilePath, into);
+      FfiConverterOptionalString.write(value.sourceFileName, into);
       FfiConverterOptionalString.write(value.title, into);
       FfiConverterSequenceString.write(value.authors, into);
       FfiConverterFloat64.write(value.recordedAtMs, into);
@@ -6638,6 +6641,7 @@ const FfiConverterTypeImportBookRequest = (() => {
     allocationSize(value: TypeName): number {
       return (
         FfiConverterString.allocationSize(value.sourceFilePath) +
+        FfiConverterOptionalString.allocationSize(value.sourceFileName) +
         FfiConverterOptionalString.allocationSize(value.title) +
         FfiConverterSequenceString.allocationSize(value.authors) +
         FfiConverterFloat64.allocationSize(value.recordedAtMs) +

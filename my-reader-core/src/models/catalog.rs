@@ -137,6 +137,8 @@ pub struct BookContent {
 pub struct ImportBookRequest {
     pub source_file_path: String,
     #[serde(default)]
+    pub source_file_name: Option<String>,
+    #[serde(default)]
     pub title: Option<String>,
     pub authors: Vec<String>,
     pub recorded_at_ms: i64,
@@ -157,6 +159,14 @@ pub struct UpdateBookMetadataRequest {
 pub(crate) struct BookFilePathRequest {
     pub book_id: i64,
     pub format: String,
+}
+
+pub(crate) fn myreader_book_relative_path(path: &str, name: &str, format: &str) -> String {
+    format!("{path}/{name}.{}", format.to_ascii_lowercase())
+}
+
+pub(crate) fn myreader_cover_relative_path(path: &str) -> String {
+    format!("{path}/cover.jpg")
 }
 
 #[cfg(test)]

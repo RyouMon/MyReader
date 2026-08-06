@@ -130,10 +130,7 @@ function hasLocalCoverFile(library: Library, bookPath: string): boolean {
   return file.exists && (file.size ?? 0) > 0
 }
 
-/**
- * Local libraries read cover.jpg from the Calibre tree; remote libraries use the backend URL
- * (expo-image caches HTTP responses — no sync-time cover download).
- */
+/** Uses an available local cover first, then falls back to the remote backend URL. */
 export function resolveCoverUri(
   library: Library,
   bookPath: string | null,
@@ -142,10 +139,7 @@ export function resolveCoverUri(
 ): string | { uri: string; headers?: Record<string, string> } | undefined {
   if (!bookPath || !hasCover) return undefined
 
-  if (
-    !isRemoteLibrarySourceType(library.sourceType) &&
-    hasLocalCoverFile(library, bookPath)
-  ) {
+  if (hasLocalCoverFile(library, bookPath)) {
     return libraryBookFileUri(
       library,
       joinRelativePath(bookPath, COVER_FILE_NAME),

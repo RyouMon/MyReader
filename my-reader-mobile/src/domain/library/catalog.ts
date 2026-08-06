@@ -34,6 +34,7 @@ import {
   deleteAndroidSafBook,
   installAndroidSafBookForRead,
   isAndroidSafLibrary,
+  managedBookCoverRelativePaths,
   managedBookRelativePaths,
   publishAndroidSafBook,
   pushAndroidSafControl,
@@ -234,6 +235,27 @@ export async function getAllBookFormats(
   )
 }
 
+export async function getManagedBookAssetPaths(
+  library: Library,
+): Promise<{ bookPaths: string[]; coverPaths: string[] }> {
+  if (!(await catalogIsAvailable(library))) {
+    return { bookPaths: [], coverPaths: [] }
+  }
+  const summaries = await withLocalLibraryContentRoot(
+    library,
+    (contentRootUri) =>
+      listLibraryBookSummaries(
+        library,
+        contentRootUri,
+        librarySidecarRootUri(library),
+      ),
+  )
+  return {
+    bookPaths: managedBookRelativePaths(summaries),
+    coverPaths: managedBookCoverRelativePaths(summaries),
+  }
+}
+
 function createBookFile(rootUri: string, relativePath: string) {
   return new FSFile(fileUriFor(rootUri, relativePath))
 }
@@ -380,6 +402,7 @@ export async function importBookIntoLibrary(
   library: Library,
   input: {
     sourceFileUri: string
+    sourceFileName?: string
     title?: string
     authors: string[]
     consumeSourceFile: boolean
@@ -415,9 +438,11 @@ export async function importBookIntoLibrary(
     if (!safBacked) return book
 
     try {
-      const [relativePath] = managedBookRelativePaths([book])
+      const [formatPath] = await getBookFormatPaths(library, book.id)
+      const relativePath = formatPath?.relativePath
       if (!relativePath) throw new Error("MYREADER_BOOK_FILE_PATH_MISSING")
-      await publishAndroidSafBook(library, relativePath)
+      const [coverRelativePath] = managedBookCoverRelativePaths([book])
+      await publishAndroidSafBook(library, relativePath, coverRelativePath)
       await pushAndroidSafControl(library)
       announceLocalSidecarWork(library.id)
       return book
