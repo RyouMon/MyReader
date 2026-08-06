@@ -53,6 +53,7 @@
   },
   "library": {
     "title": "Library",
+    "allLibraries": "All libraries",
     "addLibrary": "Add Library",
     "importingBook": "Importing…",
     "importFailed": {
@@ -70,28 +71,25 @@
     "syncCurrentLibrary": "Sync Current Library",
     "searchPlaceholder": "Search title, author",
     "bookCountRatio": "{{visible}} / {{total}} books",
-    "filter": {
-      "all": "All",
+    "collections": {
+      "primarySection": "Book collections",
+      "storageSection": "Storage and sync",
+      "currentLibrary": "Current library: {{name}}",
+      "all": "All books",
+      "recentlyRead": "Recently read",
+      "favorites": "Favorites",
       "downloaded": "Downloaded",
-      "notDownloaded": "Not Downloaded",
-      "downloading": "Downloading",
-      "favorites": "Favorites"
-    },
-    "filterTitle": {
-      "all": "All Books",
-      "downloaded": "Downloaded",
-      "notDownloaded": "Not Downloaded",
-      "downloading": "Downloading",
-      "favorites": "Favorites"
+      "localOnly": "Local only",
+      "bookCount": "{{count}} books"
     },
     "sort": {
+      "recentlyRead": "Recently read",
       "recentlyAdded": "Recently Added"
     },
     "view": {
       "grid": "Grid View",
       "list": "List View"
     },
-    "filterLabel": "Filter",
     "sortLabel": "Sort",
     "viewLabel": "View",
     "libraryActions": "Library Actions",
@@ -130,13 +128,21 @@
         "title": "Library is empty",
         "detail": "There are no books in this library yet."
       },
-      "filter": {
-        "title": "No filtered results",
-        "detail": "No books match the current filter. Try a different filter."
-      },
       "favorites": {
         "title": "No favorites yet",
         "detail": "Tap the star icon on any book to add it to your favorites."
+      },
+      "recentlyRead": {
+        "title": "No reading history yet",
+        "detail": "Books appear here after you open them."
+      },
+      "downloaded": {
+        "title": "No downloaded books yet",
+        "detail": "Downloaded books appear here for offline reading."
+      },
+      "localOnly": {
+        "title": "No local-only books",
+        "detail": "Books not yet uploaded to remote storage appear here."
       }
     }
   },

@@ -10,6 +10,7 @@ import {
 import { Stack } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { useEffect, useRef, type ComponentProps } from "react"
+import { useTranslation } from "react-i18next"
 import { Platform, View as RNView } from "react-native"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { NotifierWrapper } from "react-native-notifier"
@@ -66,6 +67,7 @@ if (sentryDsn) {
 
 function RootNavigator() {
   const { colorScheme, palette } = useTheme()
+  const { t } = useTranslation()
   const statusBarStyle = colorScheme === "dark" ? "light" : "dark"
   const storeReady = useAppStore((s) => s.storeReady)
   const hydrateDataSources = useDataSourceActions().hydrateFromBackend
@@ -121,6 +123,19 @@ function RootNavigator() {
         <StatusBar style={statusBarStyle} />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen
+            name="switch-library"
+            options={{
+              contentStyle: { backgroundColor: palette.background },
+              headerBackVisible: false,
+              headerLargeTitle: false,
+              headerShown: Platform.OS === "ios",
+              presentation: "formSheet",
+              sheetAllowedDetents: [1],
+              sheetGrabberVisible: true,
+              title: t("library.allLibraries"),
+            }}
+          />
           <Stack.Screen
             name="handle-share"
             options={{ presentation: "fullScreenModal" }}

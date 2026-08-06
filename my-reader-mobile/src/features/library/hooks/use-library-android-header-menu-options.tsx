@@ -1,96 +1,52 @@
-import { type MenuComponentRef } from "@react-native-menu/menu"
+import TuneIcon from "@expo/material-symbols/tune.xml"
+import type { BuiltInBookCollectionId } from "@my-reader/tools/types/book-collection"
+import type { MenuComponentRef } from "@react-native-menu/menu"
 import type { NativeStackNavigationOptions } from "expo-router"
-import { useCallback, useMemo, type RefObject } from "react"
+import { type RefObject, useCallback, useMemo } from "react"
 import { useTranslation } from "react-i18next"
 
-import MoreVertIcon from "@expo/material-symbols/more_vert.xml"
-import TuneIcon from "@expo/material-symbols/tune.xml"
-
 import { AndroidHeaderMenuButton } from "@/src/components/ui/android-header-menu-button"
-import type { Library } from "@/src/domain/types"
-import type {
-  LibraryFilterOption,
-  SortOption,
-} from "@/src/features/library/hooks/use-book-filter"
+import type { SortOption } from "@/src/features/library/hooks/use-books-for-collection"
 import type { LibraryViewMode } from "@/src/store/app-store.types"
 
 import {
-  libraryFilterOptions,
-  librarySortOptions,
+  getLibrarySortOptions,
   libraryViewOptions,
 } from "../utils/library-header-config"
 
 type UseLibraryAndroidHeaderMenuOptionsParams = {
-  leftMenuRef: RefObject<MenuComponentRef | null>
   rightMenuRef: RefObject<MenuComponentRef | null>
-  libraries: Library[]
-  effectiveLibraryId?: string
-  filter: LibraryFilterOption
+  collectionId: BuiltInBookCollectionId
   sortBy: SortOption
   viewMode: LibraryViewMode
-  onSyncCurrentLibrary: () => void
-  canImportBook: boolean
-  onImportBook: () => void
-  onSelectLibrary: (libraryId: string) => void
-  onSetFilter: (value: LibraryFilterOption) => void
   onSetSortBy: (value: SortOption) => void
   onSetViewMode: (value: LibraryViewMode) => void
 }
 
-/** Builds Android native-stack header slots for library filter/switch menus. */
+/** Builds the Android book-list menu without replacing the stack back button. */
 export function useLibraryAndroidHeaderMenuOptions({
-  leftMenuRef,
   rightMenuRef,
-  libraries,
-  effectiveLibraryId,
-  filter,
+  collectionId,
   sortBy,
   viewMode,
-  onSyncCurrentLibrary,
-  canImportBook,
-  onImportBook,
-  onSelectLibrary,
-  onSetFilter,
   onSetSortBy,
   onSetViewMode,
 }: UseLibraryAndroidHeaderMenuOptionsParams): Pick<
   NativeStackNavigationOptions,
-  "headerBackVisible" | "headerLeft" | "headerRight"
+  "headerRight"
 > {
   const { t } = useTranslation()
-
-  const leftActions = useMemo(
-    () => [
-      ...(canImportBook
-        ? [{ id: "importBook", title: t("library.importBook") }]
-        : []),
-      { id: "refreshLibrary", title: t("library.syncCurrentLibrary") },
-      {
-        id: "switchLibrary",
-        title: t("library.switchLibrary"),
-        subactions: libraries.map((library) => ({
-          id: `switchLibrary:${library.id}`,
-          title: `${effectiveLibraryId === library.id ? "✓ " : ""}${library.name}`,
-        })),
-      },
-    ],
-    [canImportBook, effectiveLibraryId, libraries, t],
+  const sortOptions = useMemo(
+    () => getLibrarySortOptions(collectionId),
+    [collectionId],
   )
 
   const rightActions = useMemo(
     () => [
       {
-        id: "filter",
-        title: t("library.filterLabel"),
-        subactions: libraryFilterOptions.map((option) => ({
-          id: `filter:${option.value}`,
-          title: `${filter === option.value ? "✓ " : ""}${t(option.labelKey)}`,
-        })),
-      },
-      {
         id: "sort",
         title: t("library.sortLabel"),
-        subactions: librarySortOptions.map((option) => ({
+        subactions: sortOptions.map((option) => ({
           id: `sort:${option.value}`,
           title: `${sortBy === option.value ? "✓ " : ""}${t(option.labelKey)}`,
         })),
@@ -104,34 +60,11 @@ export function useLibraryAndroidHeaderMenuOptions({
         })),
       },
     ],
-    [filter, sortBy, viewMode, t],
-  )
-
-  const handleLeftMenuAction = useCallback(
-    (event: string) => {
-      if (event === "importBook") {
-        onImportBook()
-        return
-      }
-      if (event === "refreshLibrary") {
-        onSyncCurrentLibrary()
-        return
-      }
-
-      if (event.startsWith("switchLibrary:")) {
-        onSelectLibrary(event.slice("switchLibrary:".length))
-      }
-    },
-    [onImportBook, onSelectLibrary, onSyncCurrentLibrary],
+    [sortBy, sortOptions, viewMode, t],
   )
 
   const handleRightMenuAction = useCallback(
     (event: string) => {
-      if (event.startsWith("filter:")) {
-        onSetFilter(event.slice("filter:".length) as LibraryFilterOption)
-        return
-      }
-
       if (event.startsWith("sort:")) {
         onSetSortBy(event.slice("sort:".length) as SortOption)
         return
@@ -141,22 +74,11 @@ export function useLibraryAndroidHeaderMenuOptions({
         onSetViewMode(event.slice("view:".length) as LibraryViewMode)
       }
     },
-    [onSetFilter, onSetSortBy, onSetViewMode],
+    [onSetSortBy, onSetViewMode],
   )
 
   return useMemo(
     () => ({
-      headerBackVisible: false,
-      headerLeft: () => (
-        <AndroidHeaderMenuButton
-          menuRef={leftMenuRef}
-          actions={leftActions}
-          onPressAction={handleLeftMenuAction}
-          icon={MoreVertIcon}
-          accessibilityLabel={t("library.libraryActions")}
-          side="left"
-        />
-      ),
       headerRight: () => (
         <AndroidHeaderMenuButton
           menuRef={rightMenuRef}
@@ -169,14 +91,6 @@ export function useLibraryAndroidHeaderMenuOptions({
         />
       ),
     }),
-    [
-      leftActions,
-      leftMenuRef,
-      rightActions,
-      rightMenuRef,
-      t,
-      handleLeftMenuAction,
-      handleRightMenuAction,
-    ],
+    [rightActions, rightMenuRef, t, handleRightMenuAction],
   )
 }

@@ -4,14 +4,11 @@ import { useMemo } from "react"
 import { mapListRowsToBookItems } from "@/src/domain/library/catalog"
 import type { BookItem, Library } from "@/src/domain/types"
 import { listLibraryBooksPageByLastRead } from "@/src/services/core/catalog"
-import { withLocalLibraryContentRoot } from "@/src/services/fs/local-library-content"
 import { librarySidecarRootUri } from "@/src/services/fs/library-paths"
+import { withLocalLibraryContentRoot } from "@/src/services/fs/local-library-content"
 import { queryKeys } from "@/src/services/query/query-keys"
 
-/**
- * Returns books with reading progress for the given library, sorted by most
- * recent read time in descending order.
- */
+/** Returns books with reading history, ordered from most to least recently read. */
 export function useRecentlyReadBooks(
   library: Library | null,
   books: BookItem[],

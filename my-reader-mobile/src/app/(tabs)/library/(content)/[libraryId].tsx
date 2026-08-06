@@ -5,7 +5,7 @@ import { switchActiveLibrary } from "@/src/domain/library/hooks/library-actions"
 import { useAppStore } from "@/src/store/app-store"
 
 /**
- * 兼容旧链接 /library/[libraryId]：同步当前书库后统一到根路由 /library。
+ * 兼容旧链接 /library/[libraryId]：同步当前书库后打开默认的“全部图书”。
  */
 export default function LibraryIdBridgeRoute() {
   const { libraryId } = useLocalSearchParams<{ libraryId?: string }>()
@@ -18,5 +18,5 @@ export default function LibraryIdBridgeRoute() {
     }
   }, [libraryId])
 
-  return <Redirect href="/library" />
+  return <Redirect href="/library/collection/all" />
 }

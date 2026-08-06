@@ -121,7 +121,7 @@ jest.mock("@/src/store/app-store", () => ({
   ),
 }))
 
-jest.mock("./hooks/use-recently-read-books", () => ({
+jest.mock("@/src/domain/library/hooks/use-recently-read-books", () => ({
   useRecentlyReadBooks: jest.fn(() => []),
 }))
 
@@ -153,7 +153,7 @@ describe("HomeScreen", () => {
       "@/src/features/library/hooks/useLibraryQuery",
     )
     const { useRecentlyReadBooks } = jest.requireMock(
-      "./hooks/use-recently-read-books",
+      "@/src/domain/library/hooks/use-recently-read-books",
     )
     const { ContinueReadingCard, ReadingShelf } = jest.requireMock(
       "@/src/features/home/components",

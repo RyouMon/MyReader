@@ -122,7 +122,7 @@ function DetailHero({
           }
           name={{
             ios: "books.vertical.fill",
-            android: "library_books",
+            android: "newsstand",
           }}
           resizeMode="scaleAspectFit"
           size={80}

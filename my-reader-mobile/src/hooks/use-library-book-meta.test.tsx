@@ -269,6 +269,7 @@ describe("useLibraryBookMeta", () => {
       expect(result.current.bookTransferStatusById).toEqual({
         "1": "uploadPending",
       })
+      expect(result.current.bookLocalOnlyById).toEqual({ "1": true })
       expect(result.current.bookCanUploadById).toEqual({ "1": true })
       expect(result.current.bookCanDeleteDownloadById).toEqual({ "1": false })
     })
@@ -301,6 +302,7 @@ describe("useLibraryBookMeta", () => {
       expect(result.current.bookTransferStatusById).toEqual({
         "1": "uploadPending",
       })
+      expect(result.current.bookLocalOnlyById).toEqual({ "1": true })
       expect(result.current.bookCanUploadById).toEqual({ "1": true })
       expect(result.current.bookCanDeleteDownloadById).toEqual({ "1": false })
     })
@@ -333,6 +335,7 @@ describe("useLibraryBookMeta", () => {
       expect(result.current.bookTransferStatusById).toEqual({
         "1": "uploadPending",
       })
+      expect(result.current.bookLocalOnlyById).toEqual({ "1": false })
       expect(result.current.bookCanUploadById).toEqual({ "1": false })
       expect(result.current.bookCanDeleteDownloadById).toEqual({ "1": false })
     })

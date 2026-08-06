@@ -26,6 +26,7 @@ import { NoLibraryEmptyState } from "@/src/features/library/components/no-librar
 import { useBookActions } from "@/src/features/library/hooks/use-book-actions"
 import { useCoverThumbnails } from "@/src/features/library/hooks/use-cover-thumbnails"
 import { useBookReadingProgress } from "@/src/domain/library/hooks/use-book-reading-progress"
+import { useRecentlyReadBooks } from "@/src/domain/library/hooks/use-recently-read-books"
 import { useBooks } from "@/src/features/library/hooks/useLibraryQuery"
 import { buildBookMenuActions } from "@/src/features/library/utils/book-menu"
 import { resolveFullscreenGridCoverThumbnailSizes } from "@/src/features/library/utils/cover-thumbnail-profiles"
@@ -34,7 +35,6 @@ import { useAppStore } from "@/src/store/app-store"
 
 import type { BookItem } from "@/src/domain/types"
 import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover"
-import { useRecentlyReadBooks } from "./hooks/use-recently-read-books"
 
 export default function HomeScreen() {
   const { t } = useTranslation()

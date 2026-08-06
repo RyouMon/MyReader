@@ -210,6 +210,21 @@ export function useLibraryBookMeta(
     isRemote,
   ])
 
+  const bookLocalOnlyById = useMemo(() => {
+    const next: Record<string, boolean> = {}
+    for (const book of books) {
+      next[book.id] =
+        isRemote &&
+        (fileStateBundle.rows[book.id] ?? []).some(
+          (row) =>
+            row.isLocallyAvailable &&
+            (row.localState === "local_only" ||
+              row.localState === "dirty_push"),
+        )
+    }
+    return next
+  }, [books, fileStateBundle.rows, isRemote])
+
   const bookCanUploadById = useMemo(() => {
     const next: Record<string, boolean> = {}
     for (const book of books) {
@@ -266,6 +281,7 @@ export function useLibraryBookMeta(
     fileStateBundle,
     bookDownloadStatusById,
     bookTransferStatusById,
+    bookLocalOnlyById,
     bookCanUploadById,
     bookCanDeleteDownloadById,
     bookActiveFormatsById,

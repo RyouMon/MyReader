@@ -1,3 +1,4 @@
+import NewsstandIcon from "@expo/material-symbols/newsstand.xml"
 import { router } from "expo-router"
 import { useTranslation } from "react-i18next"
 
@@ -16,7 +17,7 @@ export function NoLibraryEmptyState() {
           onPress={() => router.push("/settings/add-library")}
         />
       }
-      icon={{ ios: "books.vertical.fill", android: "library-books" }}
+      icon={{ ios: "books.vertical.fill", android: NewsstandIcon }}
     />
   )
 }

@@ -11,8 +11,3 @@ export type LibraryScreenVariantInput = {
   hasSelectedLibrary: boolean
   librariesCount: number
 }
-
-export type LibraryHeaderChromeMode =
-  | "default"
-  | "toolbar-right"
-  | "platform-menus"

@@ -5,10 +5,12 @@ import {
   Pressable as RNPressable,
   StyleSheet,
   TouchableNativeFeedback,
+  type ImageSourcePropType,
   type ViewStyle,
 } from "react-native"
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
+import { Host, Icon as MaterialSymbolIcon } from "@expo/ui/jetpack-compose"
 import {
   MenuView,
   type MenuAction,
@@ -39,6 +41,7 @@ const HIDDEN_MENU_ANCHOR_STYLE: ViewStyle = {
 export type ListRowIcon = {
   ios: string
   android: string
+  androidSource?: ImageSourcePropType
 }
 
 function listRowTextStyle(color: string) {
@@ -108,16 +111,26 @@ function ListRowIconView({
   icon: ListRowIcon
   palette: ThemePalette
 }) {
-  const tintColor = palette.textMuted
+  const tintColor = palette.primary
 
   return (
     <View style={styles.iconSlot}>
       {Platform.OS === "android" ? (
-        <MaterialIcons
-          name={icon.android as never}
-          size={ROW_ICON_SIZE}
-          color={tintColor}
-        />
+        icon.androidSource ? (
+          <Host matchContents pointerEvents="none">
+            <MaterialSymbolIcon
+              source={icon.androidSource}
+              size={ROW_ICON_SIZE}
+              tint={tintColor}
+            />
+          </Host>
+        ) : (
+          <MaterialIcons
+            name={icon.android as never}
+            size={ROW_ICON_SIZE}
+            color={tintColor}
+          />
+        )
       ) : (
         <SymbolView
           name={{ ios: icon.ios, android: icon.android } as never}

@@ -35,14 +35,7 @@ export default function TabsLayout() {
       >
         <Trigger.Icon
           sf={{ default: "books.vertical", selected: "books.vertical.fill" }}
-          src={{
-            default: (
-              <Trigger.VectorIcon family={MaterialIcons} name="library-books" />
-            ),
-            selected: (
-              <Trigger.VectorIcon family={MaterialIcons} name="library-books" />
-            ),
-          }}
+          md="newsstand"
         />
         <Trigger.Label>{t("tabs.library")}</Trigger.Label>
       </Trigger>

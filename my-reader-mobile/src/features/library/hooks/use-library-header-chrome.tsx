@@ -1,41 +1,24 @@
-import { router } from "expo-router"
+import type { BuiltInBookCollectionId } from "@my-reader/tools/types/book-collection"
 import type { NativeStackNavigationOptions } from "expo-router"
-import { useCallback, useMemo, useRef, useState, type ReactNode } from "react"
+import { type ReactNode, useCallback, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Platform } from "react-native"
 
 import { useThemePalette } from "@/src/design/tokens"
-import {
-  useScreenHeader,
-  type ScreenHeaderAction,
-} from "@/src/navigation/hooks/use-screen-header"
-import type { Library } from "@/src/domain/types"
-import type {
-  LibraryFilterOption,
-  SortOption,
-} from "@/src/features/library/hooks/use-book-filter"
-import { getLibraryFilterTitle } from "@/src/features/library/utils/library-header-config"
+import { getBookCollectionDefinition } from "@/src/features/library/book-collection-definitions"
+import type { SortOption } from "@/src/features/library/hooks/use-books-for-collection"
+import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 import type { LibraryViewMode } from "@/src/store/app-store.types"
 
 import { LibraryIosHeaderToolbar } from "../components/library-header/ios-header-toolbar"
 import type { LibraryScreenVariant } from "../types/library-header"
-import { resolveLibraryHeaderChromeMode } from "../utils/resolve-library-header-chrome-mode"
 import { useLibraryAndroidHeaderMenuOptions } from "./use-library-android-header-menu-options"
 
 type UseLibraryHeaderChromeParams = {
   variant: LibraryScreenVariant
-  selectedLibrary: Library | null
-  libraries: Library[]
-  effectiveLibraryId?: string
-  filter: LibraryFilterOption
+  collectionId: BuiltInBookCollectionId
   sortBy: SortOption
   viewMode: LibraryViewMode
-  onSyncCurrentLibrary: () => void
-  canImportBook: boolean
-  onImportBook: () => void
-  onSelectLibrary: (libraryId: string) => void
-  onOpenLibrarySwitchMenu: () => void
-  onSetFilter: (value: LibraryFilterOption) => void
   onSetSortBy: (value: SortOption) => void
   onSetViewMode: (value: LibraryViewMode) => void
   onQueryChange: (query: string) => void
@@ -47,21 +30,12 @@ type UseLibraryHeaderChromeResult = {
   toolbar: ReactNode
 }
 
-/** Composes library index header chrome for the active screen variant. */
+/** Composes collection book-list header chrome for the active screen variant. */
 export function useLibraryHeaderChrome({
   variant,
-  selectedLibrary,
-  libraries,
-  effectiveLibraryId,
-  filter,
+  collectionId,
   sortBy,
   viewMode,
-  onSyncCurrentLibrary,
-  canImportBook,
-  onImportBook,
-  onSelectLibrary,
-  onOpenLibrarySwitchMenu,
-  onSetFilter,
   onSetSortBy,
   onSetViewMode,
   onQueryChange,
@@ -69,13 +43,8 @@ export function useLibraryHeaderChrome({
 }: UseLibraryHeaderChromeParams): UseLibraryHeaderChromeResult {
   const { t } = useTranslation()
   const palette = useThemePalette()
-  const leftMenuRef = useRef(null)
   const rightMenuRef = useRef(null)
-  const chromeMode = resolveLibraryHeaderChromeMode(variant)
-  const title =
-    variant === "loaded" && selectedLibrary
-      ? getLibraryFilterTitle(t, filter)
-      : t("library.title")
+  const title = t(getBookCollectionDefinition(collectionId).titleKey)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
 
   const handleSearchOpen = useCallback(() => setIsSearchOpen(true), [])
@@ -85,45 +54,17 @@ export function useLibraryHeaderChrome({
   }, [onSearchCancel])
 
   const androidMenuOptions = useLibraryAndroidHeaderMenuOptions({
-    leftMenuRef,
     rightMenuRef,
-    libraries,
-    effectiveLibraryId,
-    filter,
+    collectionId,
     sortBy,
     viewMode,
-    onSyncCurrentLibrary,
-    canImportBook,
-    onImportBook,
-    onSelectLibrary,
-    onSetFilter,
     onSetSortBy,
     onSetViewMode,
   })
 
-  const rightActions = useMemo((): ScreenHeaderAction[] | undefined => {
-    if (chromeMode !== "toolbar-right") {
-      return undefined
-    }
-
-    return [
-      {
-        label: t("library.switchLibrary"),
-        onPress: onOpenLibrarySwitchMenu,
-        iosSfSymbol: "arrow.left.arrow.right",
-      },
-      {
-        label: t("library.addLibrary"),
-        onPress: () => router.push("/settings/add-library"),
-        iosSfSymbol: "plus",
-      },
-    ]
-  }, [chromeMode, onOpenLibrarySwitchMenu, t])
-
   const { options: baseOptions, toolbar: baseToolbar } = useScreenHeader({
     title,
     headerLargeTitle: true,
-    right: rightActions,
   })
 
   const options = useMemo((): NativeStackNavigationOptions => {
@@ -133,9 +74,8 @@ export function useLibraryHeaderChrome({
       merged.headerLargeTitleShadowVisible = false
     }
 
-    if (chromeMode === "platform-menus" && Platform.OS === "android") {
-      if (isSearchOpen && variant === "loaded") {
-        merged.headerLeft = undefined
+    if (variant === "loaded" && Platform.OS === "android") {
+      if (isSearchOpen) {
         merged.headerRight = undefined
       } else {
         Object.assign(merged, androidMenuOptions)
@@ -164,7 +104,6 @@ export function useLibraryHeaderChrome({
   }, [
     baseOptions,
     androidMenuOptions,
-    chromeMode,
     variant,
     t,
     onQueryChange,
@@ -177,19 +116,12 @@ export function useLibraryHeaderChrome({
   ])
 
   const toolbar = useMemo((): ReactNode => {
-    if (chromeMode === "platform-menus" && Platform.OS === "ios") {
+    if (variant === "loaded" && Platform.OS === "ios") {
       return (
         <LibraryIosHeaderToolbar
-          libraries={libraries}
-          effectiveLibraryId={effectiveLibraryId}
-          filter={filter}
+          collectionId={collectionId}
           sortBy={sortBy}
           viewMode={viewMode}
-          onSyncCurrentLibrary={onSyncCurrentLibrary}
-          canImportBook={canImportBook}
-          onImportBook={onImportBook}
-          onSelectLibrary={onSelectLibrary}
-          onSetFilter={onSetFilter}
           onSetSortBy={onSetSortBy}
           onSetViewMode={onSetViewMode}
         />
@@ -198,19 +130,12 @@ export function useLibraryHeaderChrome({
     return baseToolbar
   }, [
     baseToolbar,
-    chromeMode,
-    libraries,
-    effectiveLibraryId,
-    filter,
+    collectionId,
     sortBy,
     viewMode,
-    onSyncCurrentLibrary,
-    canImportBook,
-    onImportBook,
-    onSelectLibrary,
-    onSetFilter,
     onSetSortBy,
     onSetViewMode,
+    variant,
   ])
 
   return { options, toolbar }
