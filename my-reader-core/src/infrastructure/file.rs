@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use sha2::{Digest, Sha256};
+use ring::digest::{Context, SHA256};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use crate::{models::FileDigest, CoreError};
@@ -45,7 +45,7 @@ where
     R: AsyncRead + Unpin,
     W: AsyncWrite + Unpin,
 {
-    let mut hasher = Sha256::new();
+    let mut hasher = Context::new(&SHA256);
     let mut size = 0_u64;
     let mut buffer = vec![0; BUFFER_SIZE];
     loop {
@@ -63,8 +63,18 @@ where
     Ok(FileDigest {
         size: i64::try_from(size)
             .map_err(|_| CoreError::DataIntegrity("BOOK_FILE_TOO_LARGE".into()))?,
-        sha256: format!("{:x}", hasher.finalize()),
+        sha256: hex_digest(hasher.finish().as_ref()),
     })
+}
+
+fn hex_digest(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut output = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        output.push(HEX[usize::from(byte >> 4)] as char);
+        output.push(HEX[usize::from(byte & 0x0f)] as char);
+    }
+    output
 }
 
 #[cfg(test)]

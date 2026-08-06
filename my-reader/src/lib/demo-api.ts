@@ -408,6 +408,7 @@ export const demoCommands = {
     ),
   importBook: () =>
     ok<ImportBookOutcome>({ queued: false, book: demoBooks[0] }),
+  requestBookUpload: () => ok<null>(null),
   updateBookMetadata: () => ok<BookEntry>(demoBooks[0]),
   deleteBook: () => ok<null>(null),
   listBookReadingFormats: () => ok<Record<string, string>>(readingFormats),

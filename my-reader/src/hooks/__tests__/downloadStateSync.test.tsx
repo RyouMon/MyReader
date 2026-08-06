@@ -5,6 +5,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { useBookDownloadState } from "@/hooks/queries/useBookDownloadState"
 import { bookFileStateKeys } from "@/hooks/queries/useBookFileState"
 import {
+  type BookUploadProgressEvent,
+  bookUploadProgressKeys,
+  useBookUploadProgressEvents,
+} from "@/hooks/useBookUploadProgress"
+import {
   type DownloadProgressEvent,
   downloadProgressKeys,
   useDownloadProgressEvents,
@@ -83,14 +88,33 @@ function DownloadEventsBridge() {
   return null
 }
 
-function DownloadStatus({ testId }: { testId: string }) {
-  const state = useBookDownloadState(libraryId, bookId, [format], format)
+function UploadEventsBridge() {
+  useBookUploadProgressEvents()
+  return null
+}
+
+function DownloadStatus({
+  testId,
+  bookUuid,
+}: {
+  testId: string
+  bookUuid?: string
+}) {
+  const state = useBookDownloadState(libraryId, bookId, [format], format, {
+    bookUuid,
+  })
   return <span data-testid={testId}>{state?.status ?? "none"}</span>
 }
 
 async function emitGlobalProgress(payload: DownloadProgressEvent) {
   await act(async () => {
     tauriEventMock.listeners.get("download_progress")?.({ payload })
+  })
+}
+
+async function emitUploadProgress(payload: BookUploadProgressEvent) {
+  await act(async () => {
+    tauriEventMock.listeners.get("book_upload_progress")?.({ payload })
   })
 }
 
@@ -388,5 +412,170 @@ describe("download state synchronization", () => {
     })
 
     expect(screen.getByTestId("home-status")).toHaveTextContent("remote_only")
+  })
+
+  it("should report local-only when a remote copy is pending", async () => {
+    tauriApiMock.checkBookFileState.mockResolvedValue({
+      path: "book.epub",
+      localState: "dirty_push",
+      localSize: 1024,
+    })
+    const client = makeClient()
+
+    renderWithClient(
+      client,
+      <DownloadStatus testId="local-status" bookUuid="book-uuid" />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId("local-status")).toHaveTextContent("local_only")
+    })
+  })
+
+  it("should show upload progress when a pending local book starts uploading", async () => {
+    tauriApiMock.checkBookFileState.mockResolvedValue({
+      path: "book.epub",
+      localState: "dirty_push",
+      localSize: 1024,
+    })
+    const client = makeClient()
+
+    renderWithClient(
+      client,
+      <>
+        <UploadEventsBridge />
+        <DownloadStatus testId="upload-status" bookUuid="book-uuid" />
+      </>,
+    )
+
+    await waitFor(() => {
+      expect(tauriEventMock.listen).toHaveBeenCalledWith(
+        "book_upload_progress",
+        expect.any(Function),
+      )
+      expect(screen.getByTestId("upload-status")).toHaveTextContent(
+        "local_only",
+      )
+    })
+
+    await emitUploadProgress({
+      libraryId,
+      bookUuid: "book-uuid",
+      status: "uploading",
+      completed: 512,
+      total: 1024,
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId("upload-status")).toHaveTextContent("uploading")
+    })
+    expect(
+      client.getQueryData(
+        bookUploadProgressKeys.detail(libraryId, "book-uuid"),
+      ),
+    ).toEqual({ progress: 50 })
+  })
+
+  it("should refresh remote presence when a pending upload completes", async () => {
+    tauriApiMock.checkBookFileState.mockResolvedValue({
+      path: "book.epub",
+      localState: "dirty_push",
+      localSize: 1024,
+    })
+    const client = makeClient()
+
+    renderWithClient(
+      client,
+      <>
+        <UploadEventsBridge />
+        <DownloadStatus testId="completed-status" bookUuid="book-uuid" />
+      </>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId("completed-status")).toHaveTextContent(
+        "local_only",
+      )
+    })
+    await emitUploadProgress({
+      libraryId,
+      bookUuid: "book-uuid",
+      status: "uploading",
+      completed: 512,
+      total: 1024,
+    })
+    tauriApiMock.checkBookFileState.mockResolvedValue({
+      path: "book.epub",
+      localState: "present",
+      localSize: 1024,
+    })
+
+    await emitUploadProgress({
+      libraryId,
+      bookUuid: "book-uuid",
+      status: "done",
+      completed: 1024,
+      total: 1024,
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId("completed-status")).toHaveTextContent(
+        "present",
+      )
+    })
+    expect(
+      client.getQueryData(
+        bookUploadProgressKeys.detail(libraryId, "book-uuid"),
+      ),
+    ).toBeNull()
+  })
+
+  it("should clear pending upload state when library upload fails before a book starts", async () => {
+    tauriApiMock.checkBookFileState.mockResolvedValue({
+      path: "book.epub",
+      localState: "dirty_push",
+      localSize: 1024,
+    })
+    const client = makeClient()
+
+    renderWithClient(
+      client,
+      <>
+        <UploadEventsBridge />
+        <DownloadStatus testId="failed-upload-status" bookUuid="book-uuid" />
+      </>,
+    )
+
+    await emitUploadProgress({
+      libraryId,
+      bookUuid: "book-uuid",
+      status: "uploading",
+      completed: 0,
+      total: 0,
+    })
+    await emitUploadProgress({
+      libraryId,
+      status: "error",
+      completed: 0,
+      total: 0,
+      error: "STORAGE_ERROR: token expired",
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId("failed-upload-status")).toHaveTextContent(
+        "local_only",
+      )
+    })
+    expect(
+      client.getQueryData(
+        bookUploadProgressKeys.detail(libraryId, "book-uuid"),
+      ),
+    ).toBeNull()
+    expect(toastMock.error).toHaveBeenCalledWith(
+      "上传失败",
+      expect.objectContaining({
+        description: "STORAGE_ERROR: token expired",
+      }),
+    )
   })
 })

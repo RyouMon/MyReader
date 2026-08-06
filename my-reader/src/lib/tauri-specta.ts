@@ -33,6 +33,7 @@ export const commands = {
 	getBookDetail: (libraryId: string | null, bookId: number) => typedError<BookDetail, ErrorKind>(__TAURI_INVOKE("get_book_detail", { libraryId, bookId })),
 	getSeriesBooks: (libraryId: string | null, seriesName: string, excludeBookId: number | null) => typedError<BookEntry[], ErrorKind>(__TAURI_INVOKE("get_series_books", { libraryId, seriesName, excludeBookId })),
 	importBook: (libraryId: string | null, sourceFilePath: string, title: string | null, authors: string[]) => typedError<ImportBookOutcome, ErrorKind>(__TAURI_INVOKE("import_book", { libraryId, sourceFilePath, title, authors })),
+	requestBookUpload: (libraryId: string, bookUuid: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("request_book_upload", { libraryId, bookUuid })),
 	updateBookMetadata: (libraryId: string | null, bookId: number, title: string, authors: string[]) => typedError<BookEntry, ErrorKind>(__TAURI_INVOKE("update_book_metadata", { libraryId, bookId, title, authors })),
 	deleteBook: (libraryId: string | null, bookId: number) => typedError<null, ErrorKind>(__TAURI_INVOKE("delete_book", { libraryId, bookId })),
 	listBookReadingFormats: (libraryId: string) => typedError<{ [key in string]: string }, ErrorKind>(__TAURI_INVOKE("list_book_reading_formats", { libraryId })),

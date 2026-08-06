@@ -168,6 +168,8 @@ pub async fn import_book<R: tauri::Runtime>(
     title: Option<String>,
     authors: Vec<String>,
 ) -> Result<ImportBookOutcome, AppError> {
+    let started_at = std::time::Instant::now();
+    info!("Start to import book. library id: {library_id:?}");
     let (app_data_dir, library) = resolve_library(&app, &state, library_id.as_deref())?;
     let result = BookService::import_book(
         &crate::config::config_path(&app_data_dir),
@@ -183,14 +185,35 @@ pub async fn import_book<R: tauri::Runtime>(
         },
     )
     .await?;
+    info!(
+        "Success to import book. library id: \"{}\", duration: {} ms",
+        library.id,
+        started_at.elapsed().as_millis()
+    );
     if library.is_remote() {
         if let Some(scheduler) = app.try_state::<BookTransferScheduler>() {
-            scheduler.request(library.id);
+            if let Some(book_uuid) = result.book.as_ref().and_then(|book| book.uuid.as_deref()) {
+                scheduler.request_book(library.id, book_uuid);
+            } else {
+                scheduler.request(library.id);
+            }
         }
     } else {
         common::schedule_sidecar_push(&app, &library.id);
     }
     Ok(result)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn request_book_upload(
+    state: State<'_, AppState>,
+    scheduler: State<'_, BookTransferScheduler>,
+    library_id: String,
+    book_uuid: String,
+) -> Result<(), AppError> {
+    let config = common::config_snapshot(&state);
+    BookService::request_book_upload(&config, &scheduler, &library_id, &book_uuid)
 }
 
 #[tauri::command]

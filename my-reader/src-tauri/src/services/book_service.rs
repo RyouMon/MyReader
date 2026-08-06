@@ -1,7 +1,11 @@
 use crate::error::AppError;
 use std::path::Path;
 
-use crate::models::{BookDetail, BookEntry, ImportBookOutcome, LibraryConfig, PaginatedBooks};
+use crate::models::{
+    AppConfig, BookDetail, BookEntry, ImportBookOutcome, LibraryConfig, PaginatedBooks,
+};
+use crate::services::book_transfer_scheduler::BookTransferScheduler;
+use crate::services::library_service::LibraryService;
 use crate::utils::paths::{library_root_path, library_sidecar_path};
 
 pub struct BookService;
@@ -147,6 +151,24 @@ impl BookService {
             queued: false,
             book: Some(book.into()),
         })
+    }
+
+    pub fn request_book_upload(
+        config: &AppConfig,
+        scheduler: &BookTransferScheduler,
+        library_id: &str,
+        book_uuid: &str,
+    ) -> Result<(), AppError> {
+        let library = LibraryService::resolve_library(Some(library_id), config)?;
+        if !library.is_remote() || !library.is_myreader() {
+            return Err(AppError::Config("REMOTE_MYREADER_LIBRARY_REQUIRED".into()));
+        }
+        let book_uuid = book_uuid.trim();
+        if book_uuid.is_empty() {
+            return Err(AppError::Config("BOOK_UUID_REQUIRED".into()));
+        }
+        scheduler.request_book(library.id, book_uuid);
+        Ok(())
     }
 
     pub async fn update_local_book_metadata(

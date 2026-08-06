@@ -54,7 +54,11 @@ const BookRow = memo(function BookRow({
     book.id,
     book.readableFormats,
     selectedFormat,
-    { fileStateSource, preferredFormat: book.preferredFormat },
+    {
+      bookUuid: book.uuid,
+      fileStateSource,
+      preferredFormat: book.preferredFormat,
+    },
   )
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -112,11 +116,7 @@ const BookRow = memo(function BookRow({
               {primaryFormat}
             </span>
           ) : null}
-          <BookDownloadIndicator
-            state={downloadState}
-            variant="icon"
-            remoteOnly
-          />
+          <BookDownloadIndicator state={downloadState} variant="icon" />
           {progress?.syncedLabel ? (
             <span className="text-[10px] text-muted-foreground">
               {progress.syncedLabel}

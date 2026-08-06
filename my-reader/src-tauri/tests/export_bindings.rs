@@ -37,6 +37,7 @@ fn export_tauri_specta_typescript_bindings() {
             my_reader_lib::commands::book::get_book_detail::<tauri::Wry>,
             my_reader_lib::commands::book::get_series_books::<tauri::Wry>,
             my_reader_lib::commands::book::import_book::<tauri::Wry>,
+            my_reader_lib::commands::book::request_book_upload,
             my_reader_lib::commands::book::update_book_metadata::<tauri::Wry>,
             my_reader_lib::commands::book::delete_book::<tauri::Wry>,
             my_reader_lib::commands::book_reading_format::list_book_reading_formats::<tauri::Wry>,

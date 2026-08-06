@@ -45,7 +45,11 @@ const BookCard = memo(function BookCard({
     book.id,
     book.readableFormats,
     selectedFormat,
-    { fileStateSource, preferredFormat: book.preferredFormat },
+    {
+      bookUuid: book.uuid,
+      fileStateSource,
+      preferredFormat: book.preferredFormat,
+    },
   )
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {

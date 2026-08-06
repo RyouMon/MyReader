@@ -75,6 +75,10 @@ pub struct DownloadService {
 }
 
 impl DownloadService {
+    fn locally_available_state(local_state: &str) -> bool {
+        matches!(local_state, "present" | "local_only" | "dirty_push")
+    }
+
     pub fn new() -> Self {
         Self {
             coordinator: Arc::new(
@@ -257,7 +261,7 @@ impl DownloadService {
         let fmt = Self::normalize_format(format);
         let mut dto =
             Self::check_file_state(app_data_dir, config, library_id, book_id, &fmt).await?;
-        if dto.local_state != "present"
+        if !Self::locally_available_state(&dto.local_state)
             && self
                 .coordinator
                 .is_active(library_id, &Self::book_download_key(book_id, &fmt))
@@ -277,7 +281,7 @@ impl DownloadService {
     ) -> Result<Vec<BookFileStateDto>, AppError> {
         let mut rows = Self::check_file_states(app_data_dir, config, library_id, requests).await?;
         for row in &mut rows {
-            if row.local_state != "present"
+            if !Self::locally_available_state(&row.local_state)
                 && self.coordinator.is_active(
                     library_id,
                     &Self::book_download_key(row.book_id, &row.format),
@@ -457,7 +461,9 @@ impl DownloadService {
         let present = Self::is_book_file_present(&file_path).await
             && (!lib.is_remote() || row.as_ref().is_some_and(|r| r.is_locally_available()));
         let local_state = if present {
-            "present"
+            row.as_ref()
+                .map(|state| state.local_state.as_str())
+                .unwrap_or("present")
         } else if row
             .as_ref()
             .is_some_and(|state| state.local_state == "source_missing")
@@ -541,7 +547,8 @@ impl DownloadService {
                 format,
                 path: relative_path,
                 local_state: if present {
-                    "present"
+                    row.map(|state| state.local_state.as_str())
+                        .unwrap_or("present")
                 } else if row.is_some_and(|state| state.local_state == "source_missing") {
                     "source_missing"
                 } else {

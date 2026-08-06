@@ -224,6 +224,11 @@ impl BookTransferService {
             PendingCatalogState::Missing => cover_path.is_file(),
             PendingCatalogState::Deleted => false,
         };
+        observer.on_progress(BookUploadProgress {
+            book_uuid: pending.book_uuid.clone(),
+            completed: 0,
+            total: u64::try_from(pending.size).unwrap_or(u64::MAX),
+        });
         let final_path = content_root.join(&pending.relative_path);
         if remote_file_has_expected_size(operator, pending).await? {
             if !ensure_remote_cover(
@@ -636,11 +641,6 @@ async fn upload_remote_book(
     observer: &dyn BookUploadObserver,
 ) -> Result<bool, CoreError> {
     let bytes_total = u64::try_from(pending.size).unwrap_or(u64::MAX);
-    observer.on_progress(BookUploadProgress {
-        book_uuid: pending.book_uuid.clone(),
-        completed: 0,
-        total: bytes_total,
-    });
     if let Some(upload_progress) = upload_progress {
         upload_progress.reset();
     }

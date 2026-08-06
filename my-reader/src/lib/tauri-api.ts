@@ -67,6 +67,7 @@ export const api = {
   getBookDetail: wrap(commands.getBookDetail),
   getSeriesBooks: wrap(commands.getSeriesBooks),
   importBook: wrap(commands.importBook),
+  requestBookUpload: wrap(commands.requestBookUpload),
   updateBookMetadata: wrap(commands.updateBookMetadata),
   deleteBook: wrap(commands.deleteBook),
   listBookReadingFormats: wrap(commands.listBookReadingFormats),

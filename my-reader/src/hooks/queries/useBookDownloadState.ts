@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useMemo } from "react"
 import { resolveReadFormat } from "@/lib/readFormats"
+import { useBookUploadProgress } from "../useBookUploadProgress"
 import { useDownloadProgress } from "../useDownloadProgress"
 import { bookFileStateKeys, useBookFileState } from "./useBookFileState"
 
@@ -8,6 +9,8 @@ export type BookDownloadStatus =
   | "remote_only"
   | "starting"
   | "downloading"
+  | "local_only"
+  | "uploading"
   | "present"
 
 export type BookDownloadSnapshot = {
@@ -17,6 +20,7 @@ export type BookDownloadSnapshot = {
 }
 
 export type BookDownloadStateOptions = {
+  bookUuid?: string | null
   fileStateSource?: "query" | "prefetched"
   preferredFormat?: string | null
 }
@@ -47,6 +51,7 @@ export function useBookDownloadState(
     Boolean(fmt && queryFileState),
   )
   const progress = useDownloadProgress(libraryId, bookId, fmt)
+  const uploadProgress = useBookUploadProgress(libraryId, options.bookUuid)
 
   useEffect(() => {
     if (
@@ -91,6 +96,19 @@ export function useBookDownloadState(
 
   if (fileState?.localState === "present") {
     return { status: "present", format: fmt }
+  }
+
+  if (
+    fileState?.localState === "local_only" ||
+    fileState?.localState === "dirty_push"
+  ) {
+    return uploadProgress !== undefined
+      ? {
+          status: "uploading",
+          format: fmt,
+          percent: uploadProgress ?? undefined,
+        }
+      : { status: "local_only", format: fmt }
   }
 
   if (

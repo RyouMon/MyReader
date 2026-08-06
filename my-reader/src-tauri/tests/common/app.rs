@@ -93,6 +93,7 @@ impl TestApp {
                 my_reader_lib::commands::book::get_book_detail::<MockRuntime>,
                 my_reader_lib::commands::book::get_series_books::<MockRuntime>,
                 my_reader_lib::commands::book::import_book::<MockRuntime>,
+                my_reader_lib::commands::book::request_book_upload,
                 my_reader_lib::commands::book::update_book_metadata::<MockRuntime>,
                 my_reader_lib::commands::book::delete_book::<MockRuntime>,
                 reading_format_commands::list_book_reading_formats::<MockRuntime>,

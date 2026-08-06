@@ -101,9 +101,16 @@ export const desktopZhCN = {
       present: "已下载",
       cancelled: "下载已取消",
     },
+    bookUpload: {
+      localOnly: "仅本地",
+      uploading: "正在上传",
+      uploadingPercent: "已上传 {{percent}}%",
+      failed: "上传失败",
+    },
     bookMore: {
       download: "下载文件",
       cancel: "取消下载",
+      upload: "上传文件",
       delete: "删除本地文件",
       noReadableFormat: "无可读格式",
       localLibrary: "本地书库文件",

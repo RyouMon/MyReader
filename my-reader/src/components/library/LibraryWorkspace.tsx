@@ -1,4 +1,5 @@
 import type { CalibreBook } from "@my-reader/tools/types/book"
+import type { Library as LibraryRecord } from "@my-reader/tools/types/library"
 import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { open } from "@tauri-apps/plugin-dialog"
@@ -222,8 +223,13 @@ export default function LibraryWorkspace({
         return
       }
       resetBrokenCovers()
-      await queryClient.invalidateQueries({ queryKey: libraryKeys.all })
-      await invalidateFavoriteBookQueries(queryClient, libraryId)
+      queryClient.setQueryData<LibraryRecord[]>(libraryKeys.all, (current) =>
+        current?.map((library) =>
+          library.id === libraryId
+            ? { ...library, bookCount: library.bookCount + 1 }
+            : library,
+        ),
+      )
       refresh()
     } catch (error) {
       toast.error(t("library.importFailed"), {

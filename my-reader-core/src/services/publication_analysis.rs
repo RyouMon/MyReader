@@ -23,6 +23,8 @@ const MAX_XHTML_BYTES: usize = 2 * 1024 * 1024;
 const MAX_PDF_BYTES: u64 = 512 * 1024 * 1024;
 const COVER_MAX_WIDTH: u32 = 1200;
 const COVER_MAX_HEIGHT: u32 = 1600;
+const PDF_COVER_MAX_WIDTH: u32 = 600;
+const PDF_COVER_MAX_HEIGHT: u32 = 800;
 
 #[derive(Debug, Default)]
 pub(crate) struct PublicationAnalysis {
@@ -31,12 +33,36 @@ pub(crate) struct PublicationAnalysis {
     pub cover_jpeg: Option<Vec<u8>>,
 }
 
-pub(crate) async fn analyze_publication(source_path: &Path, format: &str) -> PublicationAnalysis {
+pub(crate) async fn analyze_publication_metadata(
+    source_path: &Path,
+    format: &str,
+) -> PublicationAnalysis {
+    analyze_publication_part(source_path, format, false).await
+}
+
+pub(crate) async fn generate_publication_cover(
+    source_path: &Path,
+    format: &str,
+) -> Option<Vec<u8>> {
+    analyze_publication_part(source_path, format, true)
+        .await
+        .cover_jpeg
+}
+
+async fn analyze_publication_part(
+    source_path: &Path,
+    format: &str,
+    include_cover: bool,
+) -> PublicationAnalysis {
     let source_path = source_path.to_path_buf();
     let format = format.to_owned();
     let task_path = source_path.clone();
     let task_format = format.clone();
-    match tokio::task::spawn_blocking(move || analyze_sync(&task_path, &task_format)).await {
+    match tokio::task::spawn_blocking(move || {
+        analyze_format(&task_path, &task_format, include_cover)
+    })
+    .await
+    {
         Ok(Ok(analysis)) => analysis,
         Ok(Err(error)) => {
             warn!(path = %source_path.display(), format, error, "Unable to analyze imported publication");
@@ -49,16 +75,27 @@ pub(crate) async fn analyze_publication(source_path: &Path, format: &str) -> Pub
     }
 }
 
+#[cfg(test)]
 fn analyze_sync(source_path: &Path, format: &str) -> Result<PublicationAnalysis, String> {
+    let mut analysis = analyze_format(source_path, format, false)?;
+    analysis.cover_jpeg = analyze_format(source_path, format, true)?.cover_jpeg;
+    Ok(analysis)
+}
+
+fn analyze_format(
+    source_path: &Path,
+    format: &str,
+    include_cover: bool,
+) -> Result<PublicationAnalysis, String> {
     match format {
-        "EPUB" => analyze_epub(source_path),
-        "CBZ" => analyze_cbz(source_path),
-        "PDF" => analyze_pdf(source_path),
+        "EPUB" => analyze_epub(source_path, include_cover),
+        "CBZ" => analyze_cbz(source_path, include_cover),
+        "PDF" => analyze_pdf(source_path, include_cover),
         _ => Ok(PublicationAnalysis::default()),
     }
 }
 
-fn analyze_epub(source_path: &Path) -> Result<PublicationAnalysis, String> {
+fn analyze_epub(source_path: &Path, include_cover: bool) -> Result<PublicationAnalysis, String> {
     let epub = Epub::open(source_path).map_err(|error| error.to_string())?;
     let metadata = epub.metadata();
     let title = metadata.title().and_then(|title| cleaned(title.value()));
@@ -66,7 +103,7 @@ fn analyze_epub(source_path: &Path) -> Result<PublicationAnalysis, String> {
         .creators()
         .filter_map(|creator| cleaned(creator.value()))
         .collect();
-    let cover_jpeg = epub_cover_jpeg(&epub);
+    let cover_jpeg = include_cover.then(|| epub_cover_jpeg(&epub)).flatten();
     Ok(PublicationAnalysis {
         title,
         authors,
@@ -188,7 +225,7 @@ struct ComicInfo {
     writer: Option<String>,
 }
 
-fn analyze_cbz(source_path: &Path) -> Result<PublicationAnalysis, String> {
+fn analyze_cbz(source_path: &Path, include_cover: bool) -> Result<PublicationAnalysis, String> {
     let file = File::open(source_path).map_err(|error| error.to_string())?;
     let mut archive = ZipArchive::new(file).map_err(|error| error.to_string())?;
     let mut comic_info_index = None;
@@ -215,10 +252,16 @@ fn analyze_cbz(source_path: &Path) -> Result<PublicationAnalysis, String> {
         .and_then(|bytes| quick_xml::de::from_reader::<_, ComicInfo>(bytes.as_slice()).ok())
         .unwrap_or_default();
     images.sort_by(|left, right| natural_cmp(&left.0, &right.0));
-    let cover_jpeg = images
-        .first()
-        .and_then(|(_, index)| read_zip_entry(&mut archive, *index, MAX_ARCHIVE_RESOURCE_BYTES))
-        .and_then(normalize_cover);
+    let cover_jpeg = include_cover
+        .then(|| {
+            images
+                .first()
+                .and_then(|(_, index)| {
+                    read_zip_entry(&mut archive, *index, MAX_ARCHIVE_RESOURCE_BYTES)
+                })
+                .and_then(normalize_cover)
+        })
+        .flatten();
     Ok(PublicationAnalysis {
         title: comic_info.title.as_deref().and_then(cleaned),
         authors: comic_info
@@ -300,7 +343,7 @@ fn take_number(iter: &mut std::iter::Peekable<impl Iterator<Item = u8>>) -> Stri
     value
 }
 
-fn analyze_pdf(source_path: &Path) -> Result<PublicationAnalysis, String> {
+fn analyze_pdf(source_path: &Path, include_cover: bool) -> Result<PublicationAnalysis, String> {
     let metadata = std::fs::metadata(source_path).map_err(|error| error.to_string())?;
     if metadata.len() > MAX_PDF_BYTES {
         return Err("PDF is too large for import-time analysis".into());
@@ -315,24 +358,36 @@ fn analyze_pdf(source_path: &Path) -> Result<PublicationAnalysis, String> {
         .and_then(decode_pdf_string)
         .into_iter()
         .collect();
-    let cover_jpeg = pdf.pages().iter().next().and_then(|page| {
-        let (width, height) = page.render_dimensions();
-        let scale = (COVER_MAX_WIDTH as f32 / width)
-            .min(COVER_MAX_HEIGHT as f32 / height)
-            .max(0.01);
-        let pixmap = render(
-            page,
-            &RenderCache::new(),
-            &InterpreterSettings::default(),
-            &RenderSettings {
-                x_scale: scale,
-                y_scale: scale,
-                bg_color: WHITE,
-                ..RenderSettings::default()
-            },
-        );
-        pixmap.into_png().ok().and_then(normalize_cover)
-    });
+    let cover_jpeg = include_cover
+        .then(|| {
+            pdf.pages().iter().next().and_then(|page| {
+                let (width, height) = page.render_dimensions();
+                let scale = (PDF_COVER_MAX_WIDTH as f32 / width)
+                    .min(PDF_COVER_MAX_HEIGHT as f32 / height)
+                    .max(0.01);
+                let pixmap = render(
+                    page,
+                    &RenderCache::new(),
+                    &InterpreterSettings::default(),
+                    &RenderSettings {
+                        x_scale: scale,
+                        y_scale: scale,
+                        bg_color: WHITE,
+                        ..RenderSettings::default()
+                    },
+                );
+                let mut image =
+                    RgbImage::new(u32::from(pixmap.width()), u32::from(pixmap.height()));
+                for (source, target) in pixmap.data().iter().zip(image.pixels_mut()) {
+                    let background = 255 - source.a;
+                    target[0] = source.r.saturating_add(background);
+                    target[1] = source.g.saturating_add(background);
+                    target[2] = source.b.saturating_add(background);
+                }
+                encode_rgb_jpeg(image)
+            })
+        })
+        .flatten();
     Ok(PublicationAnalysis {
         title,
         authors,
@@ -392,9 +447,13 @@ fn encode_jpeg_on_white(image: DynamicImage) -> Option<Vec<u8>> {
             target[channel] = value as u8;
         }
     }
+    encode_rgb_jpeg(rgb)
+}
+
+fn encode_rgb_jpeg(image: RgbImage) -> Option<Vec<u8>> {
     let mut jpeg = Vec::new();
     image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg, 85)
-        .encode_image(&DynamicImage::ImageRgb8(rgb))
+        .encode_image(&DynamicImage::ImageRgb8(image))
         .ok()?;
     Some(jpeg)
 }

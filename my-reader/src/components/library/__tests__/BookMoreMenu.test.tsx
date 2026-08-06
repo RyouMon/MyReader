@@ -11,6 +11,7 @@ const tauriApiMock = vi.hoisted(() => ({
   downloadBookFile: vi.fn(),
   cancelBookDownload: vi.fn(),
   deleteLocalBookFile: vi.fn(),
+  requestBookUpload: vi.fn(),
   setBookReadingFormat: vi.fn(),
 }))
 
@@ -49,6 +50,7 @@ describe("BookMoreMenu", () => {
       localSize: null,
     })
     tauriApiMock.downloadBookFile.mockRejectedValue(new Error("network failed"))
+    tauriApiMock.requestBookUpload.mockResolvedValue(null)
     tauriApiMock.setBookReadingFormat.mockResolvedValue(null)
     vi.spyOn(console, "error").mockImplementation(() => {})
   })
@@ -60,6 +62,7 @@ describe("BookMoreMenu", () => {
     tauriApiMock.downloadBookFile.mockReset()
     tauriApiMock.cancelBookDownload.mockReset()
     tauriApiMock.deleteLocalBookFile.mockReset()
+    tauriApiMock.requestBookUpload.mockReset()
     tauriApiMock.setBookReadingFormat.mockReset()
   })
 
@@ -156,6 +159,50 @@ describe("BookMoreMenu", () => {
 
     expect(
       screen.queryByRole("menuitem", { name: "默认阅读格式" }),
+    ).not.toBeInTheDocument()
+  })
+
+  it("should request upload when the remote copy is still pending", async () => {
+    const user = userEvent.setup()
+    tauriApiMock.checkBookFileState.mockResolvedValue({
+      path: "book.epub",
+      localState: "dirty_push",
+      localSize: 1024,
+    })
+
+    renderWithClient(
+      <BookMoreMenu
+        book={{
+          id: 42,
+          title: "待上传测试书",
+          formats: ["EPUB"],
+          readableFormats: ["EPUB"],
+          preferredFormat: "EPUB",
+          uuid: "book-uuid",
+        }}
+        fileActionsEnabled
+        libraryId="lib-1"
+        triggerVariant="row"
+      />,
+    )
+
+    await user.click(screen.getByRole("button", { name: "更多操作" }))
+    const uploadItem = await screen.findByRole("menuitem", {
+      name: "上传文件",
+    })
+    await user.click(uploadItem)
+
+    await waitFor(() => {
+      expect(tauriApiMock.requestBookUpload).toHaveBeenCalledWith(
+        "lib-1",
+        "book-uuid",
+      )
+    })
+    expect(
+      screen.queryByRole("menuitem", { name: "删除本地文件" }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("menuitem", { name: "下载文件" }),
     ).not.toBeInTheDocument()
   })
 

@@ -28,6 +28,7 @@ import {
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import AppSidebarToggle from "@/components/library/AppSidebarToggle"
+import { BookDownloadIndicator } from "@/components/library/BookDownloadIndicator"
 import { CircularDownloadProgress } from "@/components/library/CircularDownloadProgress"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -70,6 +71,7 @@ import {
 import { useLibrariesQuery } from "@/hooks/queries/useLibrariesQuery"
 import { useBookReadingProgress } from "@/hooks/queries/useReadingProgressQuery"
 import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar"
+import { useBookUploadProgress } from "@/hooks/useBookUploadProgress"
 import { useCoverObjectUrl } from "@/hooks/useCoverObjectUrl"
 import {
   clearDownloadProgress,
@@ -1260,6 +1262,7 @@ export default function BookDetailPane({
                                           <FormatActionCell
                                             libraryId={activeLibraryId}
                                             bookId={book.id}
+                                            bookUuid={book.uuid}
                                             format={fmt}
                                           />
                                         ) : null}
@@ -1597,23 +1600,32 @@ function FactRow({
 function FormatActionCell({
   libraryId,
   bookId,
+  bookUuid,
   format,
 }: {
   libraryId: string
   bookId: number
+  bookUuid?: string | null
   format: string
 }) {
   return (
-    <FormatActionCellV2 libraryId={libraryId} bookId={bookId} format={format} />
+    <FormatActionCellV2
+      libraryId={libraryId}
+      bookId={bookId}
+      bookUuid={bookUuid}
+      format={format}
+    />
   )
 }
 function FormatActionCellV2({
   libraryId,
   bookId,
+  bookUuid,
   format,
 }: {
   libraryId: string
   bookId: number
+  bookUuid?: string | null
   format: string
 }) {
   const { t } = useTranslation()
@@ -1628,6 +1640,7 @@ function FormatActionCellV2({
     fmt,
   )
   const progress = useDownloadProgress(libraryId, bookId, fmt)
+  const uploadProgress = useBookUploadProgress(libraryId, bookUuid)
 
   useEffect(() => {
     if (
@@ -1654,6 +1667,8 @@ function FormatActionCellV2({
     progress?.status === "starting" || progress?.status === "downloading"
   const isPreparing = pending && !isDownloading
   const isPresent = state?.localState === "present"
+  const isLocalOnly =
+    state?.localState === "local_only" || state?.localState === "dirty_push"
   const totalBytes = progress?.totalBytes ?? 0
   const bytesWritten = progress?.bytesWritten ?? 0
   const percent =
@@ -1798,6 +1813,23 @@ function FormatActionCellV2({
       >
         <Trash2 />
       </Button>
+    )
+  }
+
+  if (isLocalOnly) {
+    return (
+      <BookDownloadIndicator
+        state={
+          uploadProgress !== undefined
+            ? {
+                status: "uploading",
+                format: fmt,
+                percent: uploadProgress ?? undefined,
+              }
+            : { status: "local_only", format: fmt }
+        }
+        variant="icon"
+      />
     )
   }
 

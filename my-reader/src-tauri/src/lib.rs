@@ -72,6 +72,7 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::book::get_book_detail::<tauri::Wry>,
             commands::book::get_series_books::<tauri::Wry>,
             commands::book::import_book::<tauri::Wry>,
+            commands::book::request_book_upload,
             commands::book::update_book_metadata::<tauri::Wry>,
             commands::book::delete_book::<tauri::Wry>,
             commands::book_reading_format::list_book_reading_formats::<tauri::Wry>,
@@ -123,6 +124,16 @@ pub fn run() -> Result<(), tauri::Error> {
                 } else {
                     LevelFilter::Info
                 })
+                .level_for("automerge", LevelFilter::Warn)
+                .level_for("hyper", LevelFilter::Warn)
+                .level_for("hyper_util", LevelFilter::Warn)
+                .level_for("keyring", LevelFilter::Warn)
+                .level_for("opendal", LevelFilter::Warn)
+                .level_for("reqwest", LevelFilter::Warn)
+                .level_for("rustls", LevelFilter::Warn)
+                .level_for("sea_orm_migration", LevelFilter::Warn)
+                .level_for("sqlx", LevelFilter::Warn)
+                .level_for("tungstenite", LevelFilter::Warn)
                 .format(|out, message, record| {
                     let ts = OffsetDateTime::now_local()
                         .unwrap_or_else(|_| OffsetDateTime::now_utc())

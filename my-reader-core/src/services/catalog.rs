@@ -586,12 +586,15 @@ impl CatalogService {
             .ok_or_else(|| CoreError::Config("BOOK_FILE_NAME_REQUIRED".into()))?;
         let original_stem = imported_file_stem(imported_file_name, &format)
             .ok_or_else(|| CoreError::Config("BOOK_FILE_NAME_REQUIRED".into()))?;
-        let analysis =
-            crate::services::publication_analysis::analyze_publication(&source_path, &format).await;
+        let analysis = crate::services::publication_analysis::analyze_publication_metadata(
+            &source_path,
+            &format,
+        )
+        .await;
         let crate::services::publication_analysis::PublicationAnalysis {
             title: analyzed_title,
             authors: analyzed_authors,
-            cover_jpeg,
+            ..
         } = analysis;
         let title = request
             .title
@@ -670,12 +673,30 @@ impl CatalogService {
         tokio::fs::create_dir_all(&book_directory).await?;
 
         let prepared = async {
-            let digest = if request.consume_source_file {
-                crate::infrastructure::file::consume_file_with_sha256(&source_path, &temporary_path)
-                    .await?
+            let (digest, cover_jpeg) = if request.consume_source_file {
+                let cover_jpeg = crate::services::publication_analysis::generate_publication_cover(
+                    &source_path,
+                    &format,
+                )
+                .await;
+                let digest = crate::infrastructure::file::consume_file_with_sha256(
+                    &source_path,
+                    &temporary_path,
+                )
+                .await?;
+                (digest, cover_jpeg)
             } else {
-                crate::infrastructure::file::copy_file_with_sha256(&source_path, &temporary_path)
-                    .await?
+                let (digest, cover_jpeg) = tokio::join!(
+                    crate::infrastructure::file::copy_file_with_sha256(
+                        &source_path,
+                        &temporary_path,
+                    ),
+                    crate::services::publication_analysis::generate_publication_cover(
+                        &source_path,
+                        &format,
+                    ),
+                );
+                (digest?, cover_jpeg)
             };
             if digest.size < 1 {
                 return Err(CoreError::DataIntegrity("BOOK_FILE_EMPTY".into()));
@@ -685,11 +706,11 @@ impl CatalogService {
                 tokio::fs::write(&cover_temporary_path, cover).await?;
                 tokio::fs::rename(&cover_temporary_path, &cover_path).await?;
             }
-            Ok(digest)
+            Ok((digest, cover_jpeg))
         }
         .await;
-        let digest = match prepared {
-            Ok(digest) => digest,
+        let (digest, cover_jpeg) = match prepared {
+            Ok(prepared) => prepared,
             Err(error) => {
                 let _ = tokio::fs::remove_dir_all(&book_directory).await;
                 return Err(error);
@@ -785,12 +806,11 @@ impl CatalogService {
             return Err(error.into());
         }
         if delivery == ImportDelivery::Local {
-            crate::services::content::ContentService::finalize_verified_downloaded_file(
+            crate::services::content::ContentService::finalize_imported_file(
                 sidecar_root,
                 &relative_path,
                 &final_path,
-                digest.size,
-                &digest.sha256,
+                digest,
             )
             .await?;
         }

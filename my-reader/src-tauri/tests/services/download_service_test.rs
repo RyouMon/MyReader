@@ -1,5 +1,7 @@
 use my_reader_core::models::FileStateUpdate;
-use my_reader_lib::models::{AppConfig, DataSourceConfig, DataSourceDetail, LibraryConfig};
+use my_reader_lib::models::{
+    AppConfig, DataSourceConfig, DataSourceDetail, FileStateRequestDto, LibraryConfig,
+};
 use my_reader_lib::services::download_service::DownloadService;
 use opendal::services::Fs;
 use opendal::Operator;
@@ -302,6 +304,53 @@ async fn check_file_state_should_require_present_sidecar_row_for_remote_librarie
     .await
     .expect("check should succeed");
     assert_eq!(dto.local_state, "remote_only");
+}
+
+#[tokio::test]
+async fn should_preserve_local_only_state_when_remote_file_exists() {
+    let app_data = tempfile::tempdir().unwrap();
+    let lib = remote_test_library("lib-local-only-state");
+    let lib_root = library_container_dir(app_data.path(), &lib.id);
+    tokio::fs::create_dir_all(&lib_root).await.unwrap();
+    let seeded = seed_minimal_calibre_library(&lib_root).await;
+    let config = AppConfig {
+        libraries: vec![lib.clone()],
+        ..Default::default()
+    };
+    let db = TestFileStateRepository::open(&lib_root.to_string_lossy())
+        .await
+        .expect("open sidecar db");
+
+    for local_state in ["local_only", "dirty_push"] {
+        TestFileStateRepository::upsert(&db, "It/It.epub", local_state, Some(12), None)
+            .await
+            .expect("upsert state");
+
+        let detail = DownloadService::check_file_state(
+            app_data.path(),
+            &config,
+            &lib.id,
+            seeded.book_id,
+            &seeded.format,
+        )
+        .await
+        .expect("check detail state");
+        assert_eq!(detail.local_state, local_state);
+
+        let rows = DownloadService::check_file_states(
+            app_data.path(),
+            &config,
+            &lib.id,
+            &[FileStateRequestDto {
+                book_id: seeded.book_id,
+                format: seeded.format.clone(),
+            }],
+        )
+        .await
+        .expect("check list state");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].local_state, local_state);
+    }
 }
 
 #[tokio::test]

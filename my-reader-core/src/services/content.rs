@@ -246,6 +246,23 @@ impl ContentService {
         .map_err(Self::downloaded_file_error)
     }
 
+    pub(crate) async fn finalize_imported_file(
+        sidecar_root: &Path,
+        relative_path: &str,
+        local_path: &Path,
+        digest: FileDigest,
+    ) -> Result<DownloadedFile, CoreError> {
+        Self::finalize_downloaded_file_with_digest(
+            sidecar_root,
+            relative_path,
+            local_path,
+            digest,
+            false,
+        )
+        .await
+        .map_err(Self::downloaded_file_error)
+    }
+
     pub async fn install_verified_downloaded_file(
         sidecar_root: &Path,
         relative_path: &str,

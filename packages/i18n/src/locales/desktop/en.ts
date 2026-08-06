@@ -104,9 +104,16 @@ export const desktopEn = {
       present: "Downloaded",
       cancelled: "Download cancelled",
     },
+    bookUpload: {
+      localOnly: "Local only",
+      uploading: "Uploading",
+      uploadingPercent: "{{percent}}% uploaded",
+      failed: "Upload failed",
+    },
     bookMore: {
       download: "Download file",
       cancel: "Cancel download",
+      upload: "Upload file",
       delete: "Delete local file",
       noReadableFormat: "No readable format",
       localLibrary: "Local library file",

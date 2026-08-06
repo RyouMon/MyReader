@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query"
 import {
   BookOpen,
   Download,
@@ -5,6 +6,7 @@ import {
   Loader2,
   Pencil,
   Trash2,
+  Upload,
   X,
 } from "lucide-react"
 import {
@@ -20,7 +22,7 @@ import {
   useState,
 } from "react"
 import { useTranslation } from "react-i18next"
-import { useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 import {
   ContextMenu,
   ContextMenuContent,
@@ -31,12 +33,6 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
 import {
-  clearDownloadProgress,
-  setDownloadCancelled,
-  setDownloadError,
-  setDownloadStarting,
-} from "@/hooks/useDownloadProgress"
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -45,17 +41,27 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { bookFileStateKeys } from "@/hooks/queries/useBookFileState"
 import {
   type BookDownloadSnapshot,
   useBookDownloadState,
 } from "@/hooks/queries/useBookDownloadState"
+import { bookFileStateKeys } from "@/hooks/queries/useBookFileState"
 import { useSetBookReadingFormat } from "@/hooks/queries/useBookReadingFormatsQuery"
+import {
+  clearBookUploadProgress,
+  setBookUploadStarting,
+} from "@/hooks/useBookUploadProgress"
+import {
+  clearDownloadProgress,
+  setDownloadCancelled,
+  setDownloadError,
+  setDownloadStarting,
+} from "@/hooks/useDownloadProgress"
 import { resolveReadFormat } from "@/lib/readFormats"
-import { api } from "@/lib/tauri-api"
+import { api, formatApiError } from "@/lib/tauri-api"
 import { cn } from "@/lib/utils"
 
-type FileAction = "download" | "cancel" | "delete"
+type FileAction = "download" | "cancel" | "upload" | "delete"
 const BOOK_MORE_MENU_WIDTH_CLASS = "w-52"
 
 interface MenuParts {
@@ -86,6 +92,7 @@ interface BookMoreMenuProps {
     formats: string[]
     readableFormats: string[]
     preferredFormat: string | null
+    uuid?: string | null
   }
   libraryId: string | null
   fileActionsEnabled?: boolean
@@ -370,6 +377,7 @@ function BookMoreMenuItems({
         <BookFormatActionMenuItem
           libraryId={libraryId}
           bookId={book.id}
+          bookUuid={book.uuid}
           format={sortedFormats[0]}
           parts={parts}
         />
@@ -378,6 +386,7 @@ function BookMoreMenuItems({
           <FormatActionSubMenu
             action="download"
             bookId={book.id}
+            bookUuid={book.uuid}
             formats={sortedFormats}
             hideNonMatchingItems
             hideWhenNoMatchingAction
@@ -387,6 +396,17 @@ function BookMoreMenuItems({
           <FormatActionSubMenu
             action="cancel"
             bookId={book.id}
+            bookUuid={book.uuid}
+            formats={sortedFormats}
+            hideNonMatchingItems
+            hideWhenNoMatchingAction
+            libraryId={libraryId}
+            parts={parts}
+          />
+          <FormatActionSubMenu
+            action="upload"
+            bookId={book.id}
+            bookUuid={book.uuid}
             formats={sortedFormats}
             hideNonMatchingItems
             hideWhenNoMatchingAction
@@ -396,6 +416,7 @@ function BookMoreMenuItems({
           <FormatActionSubMenu
             action="delete"
             bookId={book.id}
+            bookUuid={book.uuid}
             formats={sortedFormats}
             hideNonMatchingItems
             hideWhenNoMatchingAction
@@ -474,6 +495,7 @@ function DefaultFormatSubMenu({
 function FormatActionSubMenu({
   action,
   bookId,
+  bookUuid,
   formats,
   hideNonMatchingItems = false,
   hideWhenNoMatchingAction = false,
@@ -482,6 +504,7 @@ function FormatActionSubMenu({
 }: {
   action: FileAction
   bookId: number
+  bookUuid?: string | null
   formats: string[]
   hideNonMatchingItems?: boolean
   hideWhenNoMatchingAction?: boolean
@@ -511,6 +534,7 @@ function FormatActionSubMenu({
         <FormatActionProbe
           key={`${action}-${format}-probe`}
           bookId={bookId}
+          bookUuid={bookUuid}
           format={format}
           libraryId={libraryId}
           onActionChange={(nextAction) => {
@@ -539,6 +563,7 @@ function FormatActionSubMenu({
                 key={`${action}-${format}`}
                 action={action}
                 bookId={bookId}
+                bookUuid={bookUuid}
                 format={format}
                 hidden={
                   hideNonMatchingItems && actionByFormat[format] !== action
@@ -562,17 +587,21 @@ function FormatActionSubMenu({
 
 function FormatActionProbe({
   bookId,
+  bookUuid,
   format,
   libraryId,
   onActionChange,
 }: {
   bookId: number
+  bookUuid?: string | null
   format: string
   libraryId: string | null
   onActionChange: (action: FileAction | null) => void
 }) {
   const fmt = format.toUpperCase()
-  const downloadState = useBookDownloadState(libraryId, bookId, [fmt], fmt)
+  const downloadState = useBookDownloadState(libraryId, bookId, [fmt], fmt, {
+    bookUuid,
+  })
   const action = getFileAction(downloadState)
 
   useEffect(() => {
@@ -585,6 +614,7 @@ function FormatActionProbe({
 function BookFormatActionMenuItem({
   action: requestedAction,
   bookId,
+  bookUuid,
   format,
   hidden = false,
   libraryId,
@@ -593,6 +623,7 @@ function BookFormatActionMenuItem({
 }: {
   action?: FileAction
   bookId: number
+  bookUuid?: string | null
   format: string
   hidden?: boolean
   libraryId: string | null
@@ -604,7 +635,9 @@ function BookFormatActionMenuItem({
   const queryClient = useQueryClient()
   const [pending, setPending] = useState(false)
   const fmt = format.toUpperCase()
-  const downloadState = useBookDownloadState(libraryId, bookId, [fmt], fmt)
+  const downloadState = useBookDownloadState(libraryId, bookId, [fmt], fmt, {
+    bookUuid,
+  })
   const action = getFileAction(downloadState)
   const resolvedAction = requestedAction ?? action
   const disabled =
@@ -612,6 +645,7 @@ function BookFormatActionMenuItem({
     pending ||
     !action ||
     !resolvedAction ||
+    (resolvedAction === "upload" && !bookUuid) ||
     (requestedAction != null && action !== requestedAction)
   const Icon = pending ? Loader2 : actionIcon(resolvedAction ?? "download")
 
@@ -620,6 +654,15 @@ function BookFormatActionMenuItem({
   }, [action, onActionChange])
 
   if (hidden) return null
+
+  if (downloadState?.status === "uploading") {
+    return (
+      <Item disabled>
+        <Loader2 className="animate-spin" />
+        {t("bookUpload.uploading")}
+      </Item>
+    )
+  }
 
   async function invalidateFileState() {
     if (!libraryId) return
@@ -639,6 +682,9 @@ function BookFormatActionMenuItem({
         setDownloadCancelled(libraryId, bookId, fmt, queryClient)
         await api.cancelBookDownload(libraryId, bookId, fmt)
         await invalidateFileState()
+      } else if (resolvedAction === "upload" && bookUuid) {
+        setBookUploadStarting(libraryId, bookUuid, queryClient)
+        await api.requestBookUpload(libraryId, bookUuid)
       } else {
         await api.deleteLocalBookFile(libraryId, bookId, fmt)
         clearDownloadProgress(libraryId, bookId, fmt, queryClient)
@@ -647,6 +693,11 @@ function BookFormatActionMenuItem({
     } catch (err) {
       if (resolvedAction === "download") {
         setDownloadError(libraryId, bookId, fmt, String(err), queryClient)
+      } else if (resolvedAction === "upload" && bookUuid) {
+        clearBookUploadProgress(libraryId, bookUuid, queryClient)
+        toast.error(t("bookUpload.failed"), {
+          description: formatApiError(err),
+        })
       } else {
         await invalidateFileState()
       }
@@ -681,12 +732,15 @@ function getFileAction(state: BookDownloadSnapshot | null): FileAction | null {
   if (state.status === "starting" || state.status === "downloading") {
     return "cancel"
   }
+  if (state.status === "local_only") return "upload"
+  if (state.status === "uploading") return null
   if (state.status === "present") return "delete"
   return "download"
 }
 
 function actionIcon(action: FileAction) {
   if (action === "cancel") return X
+  if (action === "upload") return Upload
   if (action === "delete") return Trash2
   return Download
 }
