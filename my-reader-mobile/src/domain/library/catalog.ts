@@ -417,7 +417,7 @@ export async function importBookIntoLibrary(
         librarySidecarRootUri(library),
         input,
       )
-      requestPendingBookUploads(library.id)
+      requestPendingBookUploads(library.id, book.uuid ?? undefined)
       return book
     }
     const safBacked = isAndroidSafLibrary(library)

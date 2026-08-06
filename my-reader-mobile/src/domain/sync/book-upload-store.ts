@@ -14,6 +14,8 @@ type UploadRequestListener = (libraryId: string) => void
 let states: Record<string, BookUploadState> = {}
 const listeners = new Set<Listener>()
 const uploadRequestListeners = new Set<UploadRequestListener>()
+const pendingUploadRequests = new Set<string>()
+let nextRequestSequence = 0
 
 function publish(next: Record<string, BookUploadState>): void {
   states = next
@@ -67,14 +69,39 @@ export function clearBookUploadTaskProgress(
   publish(next)
 }
 
-export function requestPendingBookUploads(libraryId: string): void {
-  for (const listener of uploadRequestListeners) listener(libraryId)
+function deliverPendingUploadRequests(): void {
+  if (uploadRequestListeners.size === 0) return
+  const requests = [...pendingUploadRequests]
+  pendingUploadRequests.clear()
+  for (const libraryId of requests) {
+    for (const listener of uploadRequestListeners) listener(libraryId)
+  }
+}
+
+export function requestPendingBookUploads(
+  libraryId: string,
+  bookUuid?: string,
+): void {
+  if (bookUuid && !states[libraryId]) {
+    nextRequestSequence += 1
+    publish({
+      ...states,
+      [libraryId]: {
+        taskId: `book-upload-request:${libraryId}:${nextRequestSequence}`,
+        bookUuid,
+        progress: null,
+      },
+    })
+  }
+  pendingUploadRequests.add(libraryId)
+  deliverPendingUploadRequests()
 }
 
 export function subscribePendingBookUploads(
   listener: UploadRequestListener,
 ): () => void {
   uploadRequestListeners.add(listener)
+  deliverPendingUploadRequests()
   return () => uploadRequestListeners.delete(listener)
 }
 

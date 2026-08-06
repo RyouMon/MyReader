@@ -91,6 +91,7 @@ const remoteManagedLibrary: Library = {
 
 const baseBook: BookItem = {
   id: "1",
+  uuid: "book-uuid",
   calibreId: 1,
   title: "Test Book",
   author: "Author",
@@ -366,6 +367,7 @@ describe("useBookActions", () => {
 
       expect(requestPendingBookUploads).toHaveBeenCalledWith(
         "lib-managed-remote",
+        "book-uuid",
       )
     })
 

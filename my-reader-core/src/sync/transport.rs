@@ -10,13 +10,15 @@ use opendal::{
     layers::RetryLayer,
     raw::{percent_encode_path, HttpBody, HttpClient, HttpFetch},
     services::{Fs, Onedrive, Webdav},
-    Buffer, Error, ErrorKind, Operator,
+    Buffer, Error, ErrorKind, Operator, Scheme,
 };
 
 const REMOTE_CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 const REMOTE_READ_TIMEOUT: Duration = Duration::from_secs(60);
 const REMOTE_REQUEST_TIMEOUT: Duration = Duration::from_secs(15 * 60);
 const ONEDRIVE_UPLOAD_SESSION_SUFFIX: &str = ":/createUploadSession";
+const ONEDRIVE_SIMPLE_UPLOAD_MAX: i64 = 4 * 1024 * 1024;
+const ONEDRIVE_UPLOAD_ATTEMPTS: usize = 3;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct RemoteUploadByteProgress {
@@ -121,6 +123,28 @@ pub(crate) fn build_storage_operator_with_upload_progress(
     Ok((operator, upload_progress))
 }
 
+pub(crate) fn build_book_upload_operator(
+    config: &LibraryStorageConfig,
+    upload_progress: Option<RemoteUploadProgress>,
+) -> Result<Option<Operator>, SyncError> {
+    let LibraryStorageConfig::Onedrive { access_token, root } = config else {
+        return Ok(None);
+    };
+    let client = remote_http_client(
+        REMOTE_CONNECT_TIMEOUT,
+        REMOTE_READ_TIMEOUT,
+        REMOTE_REQUEST_TIMEOUT,
+    )?;
+    build_onedrive_operator(
+        access_token,
+        root.as_deref(),
+        client,
+        upload_progress,
+        false,
+    )
+    .map(Some)
+}
+
 fn build_storage_operator_with_timeouts(
     config: &LibraryStorageConfig,
     connect_timeout: Duration,
@@ -175,33 +199,133 @@ fn build_storage_operator_with_timeouts_and_progress(
         }
         LibraryStorageConfig::Onedrive { access_token, root } => {
             let client = remote_http_client(connect_timeout, read_timeout, request_timeout)?;
-            let mut builder = Onedrive::default()
-                .access_token(&non_empty(access_token, "OneDrive access token")?);
-            if let Some(root) = root.as_deref().filter(|value| !value.trim().is_empty()) {
-                builder = builder.root(root);
-            }
-            Operator::new(builder)
-                .map_err(|error| sync_error(format!("Initialize OneDrive storage failed: {error}")))
-                .map(|operator| {
-                    let operator = operator
-                        .layer(
-                            RetryLayer::new()
-                                .with_min_delay(Duration::from_millis(500))
-                                .with_max_delay(Duration::from_secs(2))
-                                .with_max_times(3)
-                                .with_jitter(),
-                        )
-                        .finish();
-                    operator.update_http_client(|_| {
-                        HttpClient::with(OneDriveHttpClient {
-                            inner: client,
-                            upload_progress,
-                        })
-                    });
-                    operator
-                })
+            build_onedrive_operator(access_token, root.as_deref(), client, upload_progress, true)
         }
     }
+}
+
+fn build_onedrive_operator(
+    access_token: &str,
+    root: Option<&str>,
+    client: HttpClient,
+    upload_progress: Option<RemoteUploadProgress>,
+    retry_operations: bool,
+) -> Result<Operator, SyncError> {
+    let mut builder =
+        Onedrive::default().access_token(&non_empty(access_token, "OneDrive access token")?);
+    if let Some(root) = root.filter(|value| !value.trim().is_empty()) {
+        builder = builder.root(root);
+    }
+    let operator = Operator::new(builder)
+        .map_err(|error| sync_error(format!("Initialize OneDrive storage failed: {error}")))?;
+    let operator = if retry_operations {
+        operator
+            .layer(
+                RetryLayer::new()
+                    .with_min_delay(Duration::from_millis(500))
+                    .with_max_delay(Duration::from_secs(2))
+                    .with_max_times(3)
+                    .with_jitter(),
+            )
+            .finish()
+    } else {
+        // Retrying OpenDAL's one-shot writer recreates a large-file upload
+        // session instead of resuming the existing session. OneDrive keeps the
+        // original target reserved and rejects the retry with nameAlreadyExists.
+        operator.finish()
+    };
+    operator.update_http_client(|_| {
+        HttpClient::with(OneDriveHttpClient {
+            inner: client,
+            upload_progress,
+        })
+    });
+    Ok(operator)
+}
+
+pub(crate) async fn upload_book_file(
+    operator: &Operator,
+    book_upload_operator: &Operator,
+    relative_path: &str,
+    size: i64,
+    bytes: Vec<u8>,
+    upload_progress: Option<&RemoteUploadProgress>,
+) -> opendal::Result<()> {
+    let bytes = Buffer::from(bytes);
+    if book_upload_operator.info().scheme() != Scheme::Onedrive
+        || size <= ONEDRIVE_SIMPLE_UPLOAD_MAX
+    {
+        operator.write(relative_path, bytes).await?;
+        return Ok(());
+    }
+    upload_staged_book_file(
+        operator,
+        book_upload_operator,
+        relative_path,
+        size,
+        bytes,
+        upload_progress,
+    )
+    .await
+}
+
+async fn upload_staged_book_file(
+    operator: &Operator,
+    book_upload_operator: &Operator,
+    relative_path: &str,
+    size: i64,
+    bytes: Buffer,
+    upload_progress: Option<&RemoteUploadProgress>,
+) -> opendal::Result<()> {
+    let mut last_error = None;
+    for attempt in 0..ONEDRIVE_UPLOAD_ATTEMPTS {
+        if let Some(upload_progress) = upload_progress {
+            upload_progress.reset();
+        }
+        let staging_path = onedrive_upload_staging_path(relative_path);
+        match book_upload_operator
+            .write(&staging_path, bytes.clone())
+            .await
+        {
+            Ok(_) => match operator.rename(&staging_path, relative_path).await {
+                Ok(()) => return Ok(()),
+                Err(error) => {
+                    if remote_file_has_size(operator, relative_path, size).await {
+                        let _ = operator.delete(&staging_path).await;
+                        return Ok(());
+                    }
+                    let _ = operator.delete(&staging_path).await;
+                    return Err(error);
+                }
+            },
+            Err(error) => {
+                let temporary = error.is_temporary();
+                let _ = operator.delete(&staging_path).await;
+                if !temporary || attempt + 1 == ONEDRIVE_UPLOAD_ATTEMPTS {
+                    return Err(error);
+                }
+                last_error = Some(error);
+                tokio::time::sleep(Duration::from_millis(500 * (attempt as u64 + 1))).await;
+            }
+        }
+    }
+    Err(last_error
+        .unwrap_or_else(|| Error::new(ErrorKind::Unexpected, "OneDrive book upload did not run")))
+}
+
+fn onedrive_upload_staging_path(relative_path: &str) -> String {
+    let parent = relative_path
+        .rsplit_once('/')
+        .map(|(parent, _)| parent)
+        .unwrap_or_default();
+    let attempt = uuid::Uuid::new_v4().as_simple().to_string();
+    format!("{parent}/.myreader-upload-{}.tmp", &attempt[..12])
+}
+
+async fn remote_file_has_size(operator: &Operator, relative_path: &str, size: i64) -> bool {
+    operator.stat(relative_path).await.is_ok_and(|metadata| {
+        metadata.is_file() && i64::try_from(metadata.content_length()).ok() == Some(size)
+    })
 }
 
 fn onedrive_upload_request_progress(request: &Request<Buffer>) -> Option<RemoteUploadByteProgress> {
@@ -310,12 +434,18 @@ mod tests {
 
     use futures::stream;
     use http::{header, StatusCode};
+    use opendal::services::Fs;
 
     use super::*;
 
     #[derive(Clone, Default)]
     struct CapturingOneDriveClient {
         requests: Arc<Mutex<Vec<CapturedRequest>>>,
+    }
+
+    #[derive(Clone, Default)]
+    struct InterruptedOneDriveClient {
+        requests: Arc<Mutex<Vec<(Method, String)>>>,
     }
 
     struct CapturedRequest {
@@ -389,6 +519,25 @@ mod tests {
             }
 
             Self::response(StatusCode::ACCEPTED, Vec::new())
+        }
+    }
+
+    impl HttpFetch for InterruptedOneDriveClient {
+        async fn fetch(&self, request: Request<Buffer>) -> opendal::Result<Response<HttpBody>> {
+            let method = request.method().clone();
+            let uri = request.uri().to_string();
+            self.requests.lock().unwrap().push((method.clone(), uri));
+
+            if method == Method::POST {
+                return CapturingOneDriveClient::response(
+                    StatusCode::OK,
+                    br#"{"uploadUrl":"https://upload.example/interrupted","expirationDateTime":"2026-08-06T08:00:00Z"}"#.to_vec(),
+                );
+            }
+            CapturingOneDriveClient::response(
+                StatusCode::SERVICE_UNAVAILABLE,
+                br#"{"error":{"code":"serviceUnavailable","message":"try again"}}"#.to_vec(),
+            )
         }
     }
 
@@ -486,6 +635,69 @@ mod tests {
                 .all(|request| request.authorization.is_none()),
             "preauthenticated upload-session PUT requests must not include Authorization",
         );
+    }
+
+    #[tokio::test]
+    async fn should_not_restart_upload_session_when_onedrive_chunk_fails() {
+        const LARGE_FILE_SIZE: usize = 4 * 1024 * 1024 + 1;
+
+        let client = InterruptedOneDriveClient::default();
+        let operator = build_onedrive_operator(
+            "token",
+            Some("/Library/MyReaderTest2"),
+            HttpClient::with(client.clone()),
+            None,
+            false,
+        )
+        .unwrap();
+
+        let error = operator
+            .write("Books/Book (123456)/Book.pdf", vec![0; LARGE_FILE_SIZE])
+            .await
+            .unwrap_err();
+        let requests = client.requests.lock().unwrap();
+        let session_count = requests
+            .iter()
+            .filter(|(method, _)| method == Method::POST)
+            .count();
+
+        assert!(error.is_temporary(), "unexpected upload error: {error:?}");
+        assert_eq!(
+            session_count, 1,
+            "a failed chunk must not recreate a session for the same target"
+        );
+    }
+
+    #[tokio::test]
+    async fn should_publish_only_final_path_when_staged_book_upload_completes() {
+        let directory = tempfile::tempdir().unwrap();
+        let operator = Operator::new(
+            Fs::default().root(directory.path().to_str().expect("temporary path is UTF-8")),
+        )
+        .unwrap()
+        .finish();
+        let relative_path = "Books/Book (123456)/Book.pdf";
+
+        upload_staged_book_file(
+            &operator,
+            &operator,
+            relative_path,
+            5,
+            Buffer::from(b"book!".to_vec()),
+            None,
+        )
+        .await
+        .unwrap();
+        let entries = operator
+            .list("Books/Book (123456)/")
+            .await
+            .unwrap()
+            .into_iter()
+            .filter(|entry| entry.metadata().is_file())
+            .map(|entry| entry.path().to_owned())
+            .collect::<Vec<_>>();
+
+        assert_eq!(entries, [relative_path]);
     }
 
     #[tokio::test]

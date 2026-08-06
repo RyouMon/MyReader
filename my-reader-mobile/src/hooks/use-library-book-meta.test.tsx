@@ -345,7 +345,7 @@ describe("useLibraryBookMeta", () => {
     jest.mocked(useFileStates).mockReturnValue({
       data: [
         {
-          path: "Books/book-uuid/book.epub",
+          path: "Books/The Dispossessed (222222)/The Dispossessed.epub",
           localState: "dirty_push",
           isLocallyAvailable: true,
         },
@@ -354,7 +354,7 @@ describe("useLibraryBookMeta", () => {
     } as unknown as ReturnType<typeof useFileStates>)
     const book = {
       ...makeBookWithFormatPolicy(["EPUB"]),
-      path: "Books/book-uuid",
+      path: "Books/The Dispossessed (222222)",
       uuid: "book-uuid",
     }
 

@@ -1,6 +1,8 @@
 import {
   applyBookUploadTaskProgress,
   getBookUploadState,
+  requestPendingBookUploads,
+  subscribePendingBookUploads,
 } from "./book-upload-store"
 
 describe("book upload store", () => {
@@ -17,5 +19,19 @@ describe("book upload store", () => {
       bookUuid: "book-uuid",
       progress: 0.25,
     })
+  })
+
+  it("should deliver an upload request when the runtime subscribes after the action", () => {
+    requestPendingBookUploads("library-before-runtime", "book-before-runtime")
+    const listener = jest.fn()
+
+    const unsubscribe = subscribePendingBookUploads(listener)
+
+    expect(listener).toHaveBeenCalledWith("library-before-runtime")
+    expect(getBookUploadState("library-before-runtime")).toMatchObject({
+      bookUuid: "book-before-runtime",
+      progress: null,
+    })
+    unsubscribe()
   })
 })

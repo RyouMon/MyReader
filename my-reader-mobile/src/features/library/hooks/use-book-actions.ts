@@ -286,7 +286,7 @@ export function useBookActions(
         ) {
           return
         }
-        requestPendingBookUploads(lib.id)
+        requestPendingBookUploads(lib.id, book.uuid)
         return
       }
       if (actionId === "detail") {

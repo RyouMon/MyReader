@@ -6,6 +6,10 @@ jest.mock("./core-sync", () => ({
   runCoreLibrarySync: jest.fn(),
 }))
 
+jest.mock("./book-upload-store", () => ({
+  requestPendingBookUploads: jest.fn(),
+}))
+
 jest.mock("../library/catalog", () => ({
   fetchBooks: jest.fn(),
 }))
@@ -39,6 +43,7 @@ import { DataIntegrityError, SyncConnectivityError } from "@/src/errors"
 import { withLocalLibraryContentRoot } from "../../services/fs/local-library-content"
 import { fetchBooks } from "../library/catalog"
 import type { DataSource, Library } from "../types"
+import { requestPendingBookUploads } from "./book-upload-store"
 import { openSyncContext, type SyncTargetContext } from "./context"
 import { runCoreLibrarySync } from "./core-sync"
 import { DEFAULT_SYNC_POLICY } from "./policy"
@@ -195,6 +200,25 @@ describe("syncLibrary", () => {
       }),
     )
     expect(fetchBooks).not.toHaveBeenCalled()
+  })
+
+  it("should request pending uploads when a remote MyReader library finishes syncing", async () => {
+    const remoteManagedLibrary: Library = {
+      ...library,
+      libraryType: "myreader",
+      sourceType: "webdav",
+      dataSourceId: "source",
+    }
+    mockOpenSyncContext.mockResolvedValue({
+      ...remoteContext,
+      library: remoteManagedLibrary,
+    })
+
+    await syncLibrary(remoteManagedLibrary, dataSources)
+
+    expect(requestPendingBookUploads).toHaveBeenCalledWith(
+      remoteManagedLibrary.id,
+    )
   })
 
   it("should refresh sidecar queries when Core reports pulled changes", async () => {

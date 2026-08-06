@@ -1772,6 +1772,64 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn should_allocate_distinct_identity_and_path_when_same_book_is_imported_twice() {
+        let directory = tempfile::tempdir().unwrap();
+        let config_path = directory.path().join("config.json");
+        let library_root = directory.path().join("My Library");
+        let sidecars = directory.path().join("sidecars");
+        let source_file = directory.path().join("same-book.epub");
+        write_epub_fixture(&source_file);
+        let (_, library) = crate::services::library::LibraryService::create_local_myreader(
+            &config_path,
+            LocalLibraryRequest {
+                library_root_path: library_root.to_string_lossy().into_owned(),
+                path: library_root.to_string_lossy().into_owned(),
+                source_path: None,
+                sidecar_container_parent_path: Some(sidecars.to_string_lossy().into_owned()),
+                name: None,
+                metadata_uri: None,
+                added_at: None,
+                security_scoped_bookmark: None,
+            },
+            100,
+        )
+        .await
+        .unwrap();
+        let sidecar_root = sidecars.join(&library.id);
+        let import = |recorded_at_ms| {
+            super::CatalogService::import_local_book(
+                &config_path,
+                &library.id,
+                &sidecar_root,
+                &library_root,
+                ImportBookRequest {
+                    source_file_path: source_file.to_string_lossy().into_owned(),
+                    source_file_name: Some("Same Book.epub".into()),
+                    title: None,
+                    authors: vec!["Unknown author".into()],
+                    recorded_at_ms,
+                    consume_source_file: false,
+                },
+            )
+        };
+
+        let first = import(200).await.unwrap();
+        let second = import(201).await.unwrap();
+
+        assert_ne!(first.id, second.id);
+        assert_ne!(first.uuid, second.uuid);
+        assert_ne!(first.path, second.path);
+        assert!(library_root
+            .join(&first.path)
+            .join("The Dispossessed.epub")
+            .is_file());
+        assert!(library_root
+            .join(&second.path)
+            .join("The Dispossessed.epub")
+            .is_file());
+    }
+
+    #[tokio::test]
     async fn should_read_but_reject_mutation_when_registered_library_is_calibre() {
         let directory = tempfile::tempdir().unwrap();
         let config_path = directory.path().join("config.json");

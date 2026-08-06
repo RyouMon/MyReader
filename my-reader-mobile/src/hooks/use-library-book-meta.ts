@@ -190,6 +190,8 @@ export function useLibraryBookMeta(
 
     for (const book of books) {
       if (next[book.id] === "downloading") continue
+      const isUploading =
+        !!activeUploadBookUuid && book.uuid === activeUploadBookUuid
       const isNotAvailableRemotely = (fileStateBundle.rows[book.id] ?? []).some(
         (row) =>
           row.localState === "dirty_push" ||
@@ -197,11 +199,7 @@ export function useLibraryBookMeta(
           row.localState === "source_missing",
       )
       if (!isNotAvailableRemotely) continue
-      next[book.id] =
-        activeUploadBookUuid &&
-        pathBelongsToBook(`Books/${activeUploadBookUuid}/book`, book.path)
-          ? "uploading"
-          : "uploadPending"
+      next[book.id] = isUploading ? "uploading" : "uploadPending"
     }
     return next
   }, [
@@ -216,8 +214,7 @@ export function useLibraryBookMeta(
     const next: Record<string, boolean> = {}
     for (const book of books) {
       const isUploading =
-        !!activeUploadBookUuid &&
-        pathBelongsToBook(`Books/${activeUploadBookUuid}/book`, book.path)
+        !!activeUploadBookUuid && book.uuid === activeUploadBookUuid
       next[book.id] =
         isRemote &&
         !isUploading &&

@@ -94,10 +94,13 @@ impl BookTransferService {
         }
         let (operator, upload_progress) =
             transport::build_storage_operator_with_upload_progress(storage)?;
+        let book_upload_operator =
+            transport::build_book_upload_operator(storage, upload_progress.clone())?;
         Self::upload_pending_books_with_operator_observed(
             sidecar_root,
             content_root,
             &operator,
+            book_upload_operator.as_ref().unwrap_or(&operator),
             upload_progress.as_ref(),
             observer,
         )
@@ -114,6 +117,7 @@ impl BookTransferService {
             sidecar_root,
             content_root,
             operator,
+            operator,
             None,
             &NoopObserver,
         )
@@ -124,6 +128,7 @@ impl BookTransferService {
         sidecar_root: &Path,
         content_root: &Path,
         operator: &Operator,
+        book_upload_operator: &Operator,
         upload_progress: Option<&RemoteUploadProgress>,
         observer: &dyn BookUploadObserver,
     ) -> Result<BookUploadReport, CoreError> {
@@ -157,6 +162,7 @@ impl BookTransferService {
                 &identity,
                 &pending,
                 operator,
+                book_upload_operator,
                 upload_progress,
                 observer,
             )
@@ -189,6 +195,7 @@ impl BookTransferService {
         identity: &DatabaseIdentity,
         pending: &PendingBookImport,
         operator: &Operator,
+        book_upload_operator: &Operator,
         upload_progress: Option<&RemoteUploadProgress>,
         observer: &dyn BookUploadObserver,
     ) -> Result<UploadOutcome, CoreError> {
@@ -266,6 +273,7 @@ impl BookTransferService {
         if !upload_remote_book(
             sidecar_root,
             operator,
+            book_upload_operator,
             pending,
             bytes,
             upload_progress,
@@ -621,6 +629,7 @@ async fn complete_pending_upload(
 async fn upload_remote_book(
     sidecar_root: &Path,
     operator: &Operator,
+    book_upload_operator: &Operator,
     pending: &PendingBookImport,
     bytes: Vec<u8>,
     upload_progress: Option<&RemoteUploadProgress>,
@@ -635,7 +644,14 @@ async fn upload_remote_book(
     if let Some(upload_progress) = upload_progress {
         upload_progress.reset();
     }
-    let upload = operator.write(&pending.relative_path, bytes);
+    let upload = transport::upload_book_file(
+        operator,
+        book_upload_operator,
+        &pending.relative_path,
+        pending.size,
+        bytes,
+        upload_progress,
+    );
     tokio::pin!(upload);
     let mut last_reported = 0;
     let mut tick_count = 0_u8;

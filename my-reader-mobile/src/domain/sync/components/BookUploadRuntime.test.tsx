@@ -1,4 +1,5 @@
-import { render, waitFor } from "@testing-library/react-native"
+import { act, render, waitFor } from "@testing-library/react-native"
+import { requestPendingBookUploads } from "@/src/domain/sync/book-upload-store"
 import i18n from "@/src/i18n"
 
 import { BookUploadRuntime } from "./BookUploadRuntime"
@@ -124,6 +125,25 @@ describe("BookUploadRuntime", () => {
           library: mockLibrary.name,
           reason: "PENDING_BOOK_CATALOG_IDENTITY_CONFLICT",
         }),
+      )
+    })
+  })
+
+  it("should run uploads again when the book menu requests an upload", async () => {
+    mockRunPendingBookUploads.mockResolvedValue([])
+    render(<BookUploadRuntime />)
+    await waitFor(() => {
+      expect(mockInvalidateFileStates).toHaveBeenCalledWith("library-1")
+    })
+    mockRunPendingBookUploads.mockClear()
+
+    act(() => {
+      requestPendingBookUploads("library-1", "book-uuid")
+    })
+
+    await waitFor(() => {
+      expect(mockRunPendingBookUploads).toHaveBeenCalledWith(
+        expect.objectContaining({ library: mockLibrary }),
       )
     })
   })

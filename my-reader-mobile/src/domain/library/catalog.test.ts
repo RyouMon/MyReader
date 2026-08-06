@@ -178,7 +178,7 @@ describe("importBookIntoLibrary", () => {
       sourceType: "onedrive",
       sourcePath: "/Library/MyReaderTest",
     }
-    mockImportRemoteBook.mockResolvedValue({ id: 42 })
+    mockImportRemoteBook.mockResolvedValue({ id: 42, uuid: "book-uuid" })
 
     await expect(
       importBookIntoLibrary(library, {
@@ -187,7 +187,7 @@ describe("importBookIntoLibrary", () => {
         authors: ["Ursula K. Le Guin"],
         consumeSourceFile: true,
       }),
-    ).resolves.toEqual({ id: 42 })
+    ).resolves.toEqual({ id: 42, uuid: "book-uuid" })
 
     expect(mockImportRemoteBook).toHaveBeenCalledWith(
       library,
@@ -200,6 +200,9 @@ describe("importBookIntoLibrary", () => {
         consumeSourceFile: true,
       },
     )
-    expect(mockRequestPendingBookUploads).toHaveBeenCalledWith("library-1")
+    expect(mockRequestPendingBookUploads).toHaveBeenCalledWith(
+      "library-1",
+      "book-uuid",
+    )
   })
 })

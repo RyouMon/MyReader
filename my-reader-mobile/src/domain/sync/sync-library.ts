@@ -1,3 +1,5 @@
+import { libraryTypeOf } from "@my-reader/tools/types/library"
+
 import { DataIntegrityError, SyncConnectivityError } from "../../errors"
 import {
   invalidateFavoriteBooks,
@@ -17,7 +19,8 @@ import {
   pushAndroidSafControl,
   reconcileAndroidSafBooks,
 } from "../library/android-saf-library"
-import type { DataSource, Library } from "../types"
+import { isRemoteSourceType, type DataSource, type Library } from "../types"
+import { requestPendingBookUploads } from "./book-upload-store"
 import { openSyncContext } from "./context"
 import { runCoreLibrarySync } from "./core-sync"
 import { DEFAULT_SYNC_POLICY, resolveSyncOptions } from "./policy"
@@ -174,6 +177,14 @@ export async function syncLibrary(
       startedAt,
       err instanceof DataIntegrityError ? "data_integrity" : undefined,
     )
+  }
+
+  if (
+    !coreReport.error &&
+    libraryTypeOf(library) === "myreader" &&
+    isRemoteSourceType(library.sourceType)
+  ) {
+    requestPendingBookUploads(library.id)
   }
 
   let books = safBooks
