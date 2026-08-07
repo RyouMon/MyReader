@@ -13,7 +13,7 @@ const mockDirectoryDelete = jest.fn()
 const mockDirectoryCreate = jest.fn()
 const mockFileCopy = jest.fn()
 const mockFileDelete = jest.fn()
-const mockPickFile = jest.fn()
+const mockGetDocument = jest.fn()
 const mockDeleteBookFromLibrary = jest.fn()
 const mockImportBookIntoLibrary = jest.fn()
 const mockCancelQueries = jest.fn((..._args: unknown[]) => Promise.resolve())
@@ -60,18 +60,25 @@ jest.mock("expo-file-system", () => ({
       uri,
     }
   }),
-  File: Object.assign(
-    jest.fn((parent: { uri: string }, name: string) => ({
+  File: jest.fn((parent: string | { uri: string }, name?: string) => {
+    const parentUri = typeof parent === "string" ? parent : parent.uri
+    const uri = name ? `${parentUri}/${name}` : parentUri
+    return {
       delete: mockFileDelete,
       exists: true,
-      uri: `${parent.uri}/${name}`,
-    })),
-    { pickFileAsync: (...args: unknown[]) => mockPickFile(...args) },
-  ),
+      extension: `.${uri.split(".").at(-1) ?? ""}`,
+      name: uri.split("/").at(-1) ?? "",
+      uri,
+    }
+  }),
   Paths: {
     cache: "file:///cache",
     document: "file:///documents",
   },
+}))
+
+jest.mock("expo-document-picker", () => ({
+  getDocumentAsync: (...args: unknown[]) => mockGetDocument(...args),
 }))
 
 jest.mock("@/src/services/core/remote", () => ({
@@ -375,11 +382,15 @@ describe("book import", () => {
   })
 
   it("should let the app validate extensions after the system picker returns", async () => {
-    mockPickFile.mockResolvedValue({ canceled: true })
+    mockGetDocument.mockResolvedValue({ assets: null, canceled: true })
 
     await expect(importBookFromPicker()).resolves.toBeNull()
 
-    expect(mockPickFile).toHaveBeenCalledWith({ mimeTypes: "*/*" })
+    expect(mockGetDocument).toHaveBeenCalledWith({
+      copyToCacheDirectory: true,
+      multiple: false,
+      type: "*/*",
+    })
   })
 
   it("should require a registered MyReader library", async () => {
@@ -435,13 +446,12 @@ describe("book import", () => {
     )
   })
 
-  it("should expose a remote import immediately while its upload runs in the background", async () => {
-    const pickedFile = {
-      copy: mockFileCopy,
-      extension: ".epub",
-      name: "Queued Book.epub",
-      uri: "file:///tmp/Queued Book.epub",
-    }
+  it.each([
+    ["EPUB", "Queued Book.epub"],
+    ["PDF", "Queued Book.pdf"],
+    ["CBZ", "Queued Book.cbz"],
+  ])("should import %s using the original Android picker filename", async (_format, originalName) => {
+    const pickedUri = "file:///cache/DocumentPicker/generated-id"
     const library = {
       id: "library-1",
       name: "Remote Library",
@@ -452,7 +462,10 @@ describe("book import", () => {
     } as Library
     mockLibraries = [library]
     mockActiveLibraryId = library.id
-    mockPickFile.mockResolvedValue({ canceled: false, result: pickedFile })
+    mockGetDocument.mockResolvedValue({
+      assets: [{ name: originalName, uri: pickedUri }],
+      canceled: false,
+    })
     mockImportBookIntoLibrary.mockResolvedValue({ id: 42 })
     mockReplaceAppLibrary.mockResolvedValue({
       libraries: [{ ...library, bookCount: 4 }],
@@ -461,6 +474,13 @@ describe("book import", () => {
 
     const result = await importBookFromPicker(library)
 
+    expect(mockImportBookIntoLibrary).toHaveBeenCalledWith(
+      library,
+      expect.objectContaining({
+        sourceFileName: originalName,
+        sourceFileUri: pickedUri,
+      }),
+    )
     expect(mockReplaceAppLibrary).toHaveBeenCalledWith({
       ...library,
       bookCount: 4,
@@ -468,6 +488,34 @@ describe("book import", () => {
     expect(mockFileCopy).not.toHaveBeenCalled()
     expect(mockShowAlert).not.toHaveBeenCalled()
     expect(result).toEqual({ library, bookId: 42 })
+  })
+
+  it("should reject a picker asset with an unsupported original filename", async () => {
+    const library = {
+      id: "library-1",
+      name: "Remote Library",
+      path: "file:///documents/libraries/library-1",
+      libraryType: "myreader",
+      sourceType: "webdav",
+      bookCount: 3,
+    } as Library
+    mockLibraries = [library]
+    mockActiveLibraryId = library.id
+    mockGetDocument.mockResolvedValue({
+      assets: [
+        {
+          name: "Notes.txt",
+          uri: "file:///cache/DocumentPicker/generated-id",
+        },
+      ],
+      canceled: false,
+    })
+
+    const result = await importBookFromPicker(library)
+
+    expect(mockShowAlert).toHaveBeenCalledTimes(1)
+    expect(mockImportBookIntoLibrary).not.toHaveBeenCalled()
+    expect(result).toBeNull()
   })
 
   it("should publish an importing placeholder before file work completes", async () => {

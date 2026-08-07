@@ -72,11 +72,7 @@ export async function mergeDirectoryTree(
     }
 
     if (destinationEntry instanceof Directory) destinationEntry.delete()
-    if (destinationEntry instanceof File) {
-      await sourceEntry.copy(destinationEntry, { overwrite: true })
-    } else {
-      await sourceEntry.copy(destination, { overwrite: true })
-    }
+    await sourceEntry.copy(destination, { overwrite: true })
   }
 }
 
@@ -118,11 +114,7 @@ export async function copyFileIntoTree(
   const parent = ensureDirectoryPath(rootUri, segments.join("/"))
   const existing = findChild(parent, fileName)
   if (existing instanceof Directory) existing.delete()
-  if (existing instanceof File) {
-    await source.copy(existing, { overwrite: true })
-  } else {
-    await source.copy(parent, { overwrite: true })
-  }
+  await source.copy(parent, { overwrite: true })
 }
 
 export function deleteDirectoryAtPath(

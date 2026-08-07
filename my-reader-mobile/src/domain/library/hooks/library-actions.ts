@@ -1,6 +1,7 @@
 import type { DataSource } from "@my-reader/tools/types/data-source"
 import type { CalibreBook } from "@my-reader/tools/types/book"
 import { type Library, libraryTypeOf } from "@my-reader/tools/types/library"
+import * as DocumentPicker from "expo-document-picker"
 import { Directory, File, Paths } from "expo-file-system"
 import { Platform } from "react-native"
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
@@ -507,12 +508,17 @@ export async function importBookFromPicker(library?: Library | null): Promise<{
   library: Library
   bookId: number
 } | null> {
-  const picked = await File.pickFileAsync({
-    mimeTypes: "*/*",
+  const picked = await DocumentPicker.getDocumentAsync({
+    copyToCacheDirectory: true,
+    multiple: false,
+    type: "*/*",
   })
   if (picked.canceled) return null
 
-  if (!supportedBookExtension(picked.result)) {
+  const [asset] = picked.assets
+  if (!asset) return null
+  const sourceFile = new File(asset.uri)
+  if (!supportedBookExtension(sourceFile, asset.name)) {
     showAlertWithStatusBarRestore(
       i18n.t("library.importUnsupported.title"),
       i18n.t("library.importUnsupported.detail"),
@@ -521,7 +527,7 @@ export async function importBookFromPicker(library?: Library | null): Promise<{
     return null
   }
 
-  return importBookFromFile(picked.result, library)
+  return importBookFromFile(sourceFile, library, asset.name)
 }
 
 export async function updateManagedBookMetadata(
