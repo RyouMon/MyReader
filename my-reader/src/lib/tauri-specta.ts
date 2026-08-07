@@ -135,6 +135,7 @@ export type DataSourceDto = {
 export type DbSyncReport = {
 	pushed: number,
 	pulled: number,
+	changed: boolean,
 };
 
 export type ErrorKind = { kind: "Io"; message: string } | { kind: "Database"; message: string } | { kind: "NotFound"; message: string } | { kind: "Config"; message: string } | { kind: "Serialize"; message: string } | { kind: "Request"; message: string } | { kind: "Zip"; message: string } | { kind: "Task"; message: string } | { kind: "Auth"; message: string } | { kind: "Credential"; message: string } | { kind: "Storage"; message: string } | { kind: "Sync"; message: string } | { kind: "DataIntegrity"; message: string };

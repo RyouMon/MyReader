@@ -1,5 +1,5 @@
-import type { BuiltInBookCollectionId } from "@my-reader/tools/types/book-collection"
 import type { CalibreBook } from "@my-reader/tools/types/book"
+import type { BuiltInBookCollectionId } from "@my-reader/tools/types/book-collection"
 import type { Library as LibraryRecord } from "@my-reader/tools/types/library"
 import {
   isRemoteLibrarySourceType,
@@ -13,6 +13,7 @@ import { useCallback, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import BookGrid, { LibrarySkeletonGrid } from "@/components/library/BookGrid"
+import LibrarySyncStatus from "@/components/library/LibrarySyncStatus"
 import Toolbar from "@/components/library/Toolbar"
 import { Button } from "@/components/ui/button"
 import {
@@ -457,7 +458,6 @@ export default function LibraryWorkspace({
             onViewModeChange={setViewMode}
             sortBy={sortBy}
             onSortChange={setSortBy}
-            onRefresh={handleRefresh}
             canImportBook={activeLibrary?.libraryType === "myreader"}
             importingBook={importingBook}
             onImportBook={() => void handleImportBook()}
@@ -602,7 +602,7 @@ export default function LibraryWorkspace({
         ) : null}
       </div>
 
-      <LibraryStatusBar activeLibrary={activeLibrary} />
+      <LibraryStatusBar activeLibrary={activeLibrary} onSync={handleRefresh} />
 
       <Dialog
         open={bookPendingDeletion != null}
@@ -649,30 +649,22 @@ export default function LibraryWorkspace({
 
 function LibraryStatusBar({
   activeLibrary,
+  onSync,
 }: {
-  activeLibrary: { name: string; bookCount?: number } | null
+  activeLibrary: LibraryRecord | null
+  onSync: () => Promise<void>
 }) {
   const { t } = useTranslation()
 
   return (
-    <footer className="flex h-8 shrink-0 items-center justify-between border-t border-border bg-background px-6 text-xs text-muted-foreground">
+    <footer className="flex h-8 shrink-0 items-center justify-between border-t border-border bg-background px-2 pb-px text-xs text-muted-foreground">
       <span>
         {activeLibrary?.name ?? t("sidebar.noLibrary")} /{" "}
         {t("library.collections.bookCount", {
           count: activeLibrary?.bookCount ?? 0,
         })}
       </span>
-      <div className="flex items-center gap-1.5">
-        <span
-          className={cn(
-            "inline-block size-1.5 rounded-full",
-            activeLibrary
-              ? "bg-library-indicator-on"
-              : "bg-library-indicator-off",
-          )}
-        />
-        {activeLibrary ? t("sidebar.connected") : t("sidebar.disconnected")}
-      </div>
+      <LibrarySyncStatus library={activeLibrary} onSync={onSync} />
     </footer>
   )
 }

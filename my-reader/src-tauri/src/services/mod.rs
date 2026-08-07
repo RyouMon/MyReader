@@ -12,4 +12,5 @@ pub mod reader_service;
 pub mod reader_window_service;
 pub mod reading_statistics_service;
 pub mod sidecar_sync_scheduler;
+pub mod sync_orchestration_service;
 pub mod sync_service;

@@ -802,53 +802,6 @@
     "libraryRefreshing": "书库更新中",
     "librarySyncing": "书库同步中"
   },
-  "syncStatus": {
-    "title": "同步状态",
-    "details": "同步详情",
-    "accessibilityLabel": "同步状态：{{status}}",
-    "currentLibrary": "当前书库",
-    "currentStatus": "当前状态",
-    "currentStage": "当前阶段",
-    "currentReason": "同步原因",
-    "lastReason": "上次同步原因",
-    "lastSync": "上次同步",
-    "lastAttempt": "上次尝试",
-    "noHistory": "暂无同步记录",
-    "failureReason": "失败原因",
-    "failureStage": "失败阶段",
-    "progress": "{{completed}} / {{total}}",
-    "manualSync": "立即同步",
-    "syncingAction": "正在同步",
-    "waitingForNetwork": "等待网络",
-    "offlineDetail": "当前书库的传输方式需要网络，恢复连接后可继续同步。",
-    "noActiveLibrary": "尚未选择书库",
-    "noActiveLibraryDetail": "选择一个书库后，可在这里查看并手动触发它的同步。",
-    "activeLibraryChanged": "当前书库已改变，请重试。",
-    "reason": {
-      "manual": "手动触发",
-      "localChange": "本地数据更新",
-      "automaticCheck": "自动检查书库更新"
-    },
-    "state": {
-      "idle": "空闲",
-      "offline": "等待网络",
-      "recentSuccess": "刚刚已同步",
-      "unchanged": "无需同步",
-      "syncing": "同步中",
-      "pushing": "正在推送",
-      "pulling": "正在拉取",
-      "failed": "同步失败"
-    },
-    "stage": {
-      "preparing": "正在准备",
-      "pushing": "正在推送更改",
-      "pulling": "正在拉取更改",
-      "applying": "正在应用更改",
-      "sidecarComplete": "正在整理同步结果",
-      "calibre": "正在更新书库",
-      "complete": "正在完成"
-    }
-  },
   "errors": {
     "sourceUnreachable": "数据源无法连接",
     "sourceUnreachableDetail": "无法访问 WebDAV 数据源，下载已取消。\n\n可能的原因：\n• 当前网络连接不可用或不稳定\n• WebDAV 服务器未运行或无法访问\n• 服务器地址、端口或认证配置有误",

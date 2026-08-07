@@ -4,8 +4,8 @@ import { formatHumanReadableTime } from "../src/human-readable-time"
 const NOW = new Date(2026, 6, 10, 12, 0).getTime()
 
 describe("human-readable time formatting", () => {
-  it("should show now when the timestamp is recent", () => {
-    expect(formatHumanReadableTime(NOW - 30_000, "zh-CN", NOW)).toBe("现在")
+  it("should show just now when the timestamp is recent", () => {
+    expect(formatHumanReadableTime(NOW - 30_000, "zh-CN", NOW)).toBe("刚刚")
   })
 
   it("should show minutes when the timestamp is within an hour", () => {
@@ -41,7 +41,7 @@ describe("human-readable time formatting", () => {
   })
 
   it("should localize relative and absolute times when the locale is English", () => {
-    expect(formatHumanReadableTime(NOW - 30_000, "en-US", NOW)).toBe("now")
+    expect(formatHumanReadableTime(NOW - 30_000, "en-US", NOW)).toBe("just now")
     expect(formatHumanReadableTime(NOW - 5 * 60_000, "en-US", NOW)).toBe(
       "5 minutes ago",
     )

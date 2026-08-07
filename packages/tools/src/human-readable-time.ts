@@ -35,7 +35,7 @@ export function formatHumanReadableTime(
   if (date.isSame(currentDate, "day")) {
     const elapsed = Math.max(0, now - timestamp)
     if (elapsed < MINUTE_MS) {
-      return resolvedLocale === CHINESE_LOCALE ? "现在" : "now"
+      return resolvedLocale === CHINESE_LOCALE ? "刚刚" : "just now"
     }
     if (elapsed < HOUR_MS) {
       const minutes = Math.floor(elapsed / MINUTE_MS)

@@ -6,7 +6,6 @@ import {
   LayoutGrid,
   List,
   Loader2,
-  RefreshCw,
   Search,
   SlidersHorizontal,
 } from "lucide-react"
@@ -42,7 +41,6 @@ interface ToolbarProps {
   onViewModeChange: (mode: "grid" | "list") => void
   sortBy: LibrarySortOption
   onSortChange: (sort: LibrarySortOption) => void
-  onRefresh?: () => void
   canImportBook?: boolean
   importingBook?: boolean
   onImportBook?: () => void
@@ -55,7 +53,6 @@ export default function Toolbar({
   onViewModeChange,
   sortBy,
   onSortChange,
-  onRefresh,
   canImportBook = false,
   importingBook = false,
   onImportBook,
@@ -170,18 +167,6 @@ export default function Toolbar({
         {/* Filter */}
         <Button variant="ghost" size="icon-sm" title={t("library.filter")}>
           <SlidersHorizontal />
-        </Button>
-
-        <Separator orientation="vertical" className="h-4 mx-1" />
-
-        {/* Refresh */}
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          title={t("library.syncLibrary")}
-          onClick={onRefresh}
-        >
-          <RefreshCw className="size-4" />
         </Button>
       </div>
     </header>

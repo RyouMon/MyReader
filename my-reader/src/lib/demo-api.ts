@@ -536,7 +536,8 @@ export const demoCommands = {
     _reposition: boolean,
   ) => ok<null>(null),
   closeBookStreamer: () => ok<null>(null),
-  syncDbForLibrary: () => ok<DbSyncReport>({ pushed: 0, pulled: 0 }),
+  syncDbForLibrary: () =>
+    ok<DbSyncReport>({ pushed: 0, pulled: 0, changed: false }),
   checkBookFileState: (_libraryId: string, bookId: number, format: string) =>
     ok<FileStateDto>(cachedFileState(bookId, format)),
   checkBookFileStates: (_libraryId: string, requests: FileStateRequestDto[]) =>

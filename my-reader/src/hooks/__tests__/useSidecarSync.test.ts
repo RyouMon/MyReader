@@ -5,8 +5,10 @@ import { favoriteBookKeys } from "@/hooks/queries/useFavoriteBooksQuery"
 import { readingProgressKeys } from "@/hooks/queries/useReadingProgressQuery"
 import {
   applySidecarSyncCompleted,
+  applySyncStatusObservation,
   SIDECAR_SYNC_COMPLETED_EVENT,
 } from "@/hooks/useSidecarSync"
+import { useSyncStatusStore } from "@/stores/syncStatusStore"
 
 describe("sidecar sync events", () => {
   it("should invalidate synced library data when a full pull completes", async () => {
@@ -48,5 +50,39 @@ describe("sidecar sync events", () => {
     )
     expect(onCompleted).toHaveBeenCalledTimes(1)
     window.removeEventListener(SIDECAR_SYNC_COMPLETED_EVENT, onCompleted)
+  })
+
+  it("should write backend sync observations to the matching library status", () => {
+    useSyncStatusStore.setState({
+      librarySyncActivityById: {},
+      librarySyncHistoryById: {},
+      librarySyncTransientResultById: {},
+    })
+
+    applySyncStatusObservation({
+      type: "started",
+      libraryId: "library-1",
+      taskId: "task-1",
+      startedAt: 100,
+      reason: "local_change",
+    })
+    applySyncStatusObservation({
+      type: "progress",
+      libraryId: "library-1",
+      taskId: "task-1",
+      stage: "pushing",
+      completed: 1,
+      total: 3,
+    })
+
+    expect(
+      useSyncStatusStore.getState().librarySyncActivityById["library-1"],
+    ).toMatchObject({
+      taskId: "task-1",
+      stage: "pushing",
+      completed: 1,
+      total: 3,
+      reason: "local_change",
+    })
   })
 })

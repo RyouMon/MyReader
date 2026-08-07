@@ -6,13 +6,16 @@ use my_reader_core::api::sync::{
     SchedulerTransition, SyncCoordinator, SyncExecution, SyncMode, SyncTiming,
 };
 use my_reader_core::models::SyncFailureKind;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 use tokio::sync::Semaphore;
 use tracing::{error, info};
 
 use crate::commands::AppState;
+use crate::events::sync_status::{
+    emit_sidecar_sync_completed, SyncStatusEmitter, SyncStatusReason,
+};
 use crate::services::library_service::LibraryService;
-use crate::services::sync_service::{SidecarSyncCompletedPayload, SidecarSyncMode, SyncService};
+use crate::services::sync_service::{SidecarSyncMode, SyncService};
 use crate::utils::paths::library_sidecar_path;
 
 const MAX_CONCURRENT_SYNCS: usize = 2;
@@ -194,10 +197,17 @@ impl SidecarSyncScheduler {
             Ok(permit) => permit,
             Err(_) => return,
         };
+        let status = SyncStatusEmitter::new(
+            self.app.clone(),
+            library_id.clone(),
+            status_reason(&execution),
+            false,
+        );
         let config = self.config_snapshot();
         let library = match LibraryService::resolve_library(Some(&library_id), &config) {
             Ok(library) => library,
             Err(error) => {
+                status.failed(SyncService::failure_kind(&error), &error);
                 self.fail_execution(&config, execution, error).await;
                 return;
             }
@@ -215,7 +225,9 @@ impl SidecarSyncScheduler {
                 return;
             }
             Err(error) => {
-                self.fail_execution(&config, execution, error.into()).await;
+                let error = error.into();
+                status.failed(SyncService::failure_kind(&error), &error);
+                self.fail_execution(&config, execution, error).await;
                 return;
             }
         };
@@ -223,9 +235,15 @@ impl SidecarSyncScheduler {
             SyncMode::PushOnly => SidecarSyncMode::PushOnly,
             SyncMode::Full => SidecarSyncMode::Full,
         };
-        let result =
-            SyncService::sync_sidecar_for_library(&self.app_data_dir, &config, &library_id, mode)
-                .await;
+        status.started();
+        let result = SyncService::sync_sidecar_for_library_observed(
+            &self.app_data_dir,
+            &config,
+            &library_id,
+            mode,
+            &status,
+        )
+        .await;
 
         match result {
             Ok(report) => {
@@ -239,20 +257,21 @@ impl SidecarSyncScheduler {
                     "Completed scheduled sidecar sync"
                 );
                 if mode == SidecarSyncMode::Full {
-                    let _ = self.app.emit(
-                        "sidecar_sync_completed",
-                        SidecarSyncCompletedPayload {
-                            library_id: library_id.clone(),
-                            mode: "full",
-                            pushed: report.pushed,
-                            pulled: report.pulled,
-                        },
+                    emit_sidecar_sync_completed(
+                        &self.app,
+                        &library_id,
+                        report.pushed,
+                        report.pulled,
                     );
                 }
+                status.finished(report.changed);
                 let transition = self.coordinator.complete(&library_id, unix_epoch_millis());
                 self.spawn_transition(transition);
             }
-            Err(error) => self.fail_execution(&config, execution, error).await,
+            Err(error) => {
+                status.failed(SyncService::failure_kind(&error), &error);
+                self.fail_execution(&config, execution, error).await;
+            }
         }
     }
 
@@ -330,6 +349,14 @@ impl SidecarSyncScheduler {
     }
 }
 
+fn status_reason(execution: &SyncExecution) -> SyncStatusReason {
+    if execution.reasons.contains("local_change") {
+        SyncStatusReason::LocalChange
+    } else {
+        SyncStatusReason::AutomaticCheck
+    }
+}
+
 fn unix_epoch_millis() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -341,4 +368,31 @@ fn jitter_fraction() -> f64 {
         .duration_since(UNIX_EPOCH)
         .map_or(0, |duration| duration.subsec_nanos());
     f64::from(nanos % 10_000) / 10_000.0
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn execution_with_reasons(reasons: &[&str]) -> SyncExecution {
+        SyncExecution {
+            library_id: "library-1".to_owned(),
+            mode: SyncMode::Full,
+            reasons: reasons.iter().map(|reason| (*reason).to_owned()).collect(),
+        }
+    }
+
+    #[test]
+    fn should_report_local_change_when_coalesced_sync_contains_local_work() {
+        let execution = execution_with_reasons(&["app_focused", "local_change"]);
+
+        assert_eq!(status_reason(&execution), SyncStatusReason::LocalChange);
+    }
+
+    #[test]
+    fn should_report_automatic_check_when_sync_has_no_local_change() {
+        let execution = execution_with_reasons(&["network_reconnected"]);
+
+        assert_eq!(status_reason(&execution), SyncStatusReason::AutomaticCheck);
+    }
 }

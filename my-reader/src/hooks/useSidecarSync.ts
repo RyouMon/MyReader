@@ -5,9 +5,14 @@ import { bookFileStateKeys } from "@/hooks/queries/useBookFileState"
 import { invalidateFavoriteBookQueries } from "@/hooks/queries/useFavoriteBooksQuery"
 import { readingProgressKeys } from "@/hooks/queries/useReadingProgressQuery"
 import { api } from "@/lib/tauri-api"
+import {
+  type SyncStatusObservation,
+  useSyncStatusStore,
+} from "@/stores/syncStatusStore"
 
 export const SIDECAR_SYNC_COMPLETED_EVENT =
   "myreader:sidecar-sync-completed" as const
+export const SYNC_STATUS_OBSERVATION_EVENT = "sync_status_observation" as const
 
 export type SidecarSyncCompletedEvent = {
   libraryId: string
@@ -34,31 +39,55 @@ export async function applySidecarSyncCompleted(
   )
 }
 
+export function applySyncStatusObservation(observation: SyncStatusObservation) {
+  useSyncStatusStore.getState().observeLibrarySync(observation)
+}
+
 export function useSidecarSync() {
   const queryClient = useQueryClient()
 
   useEffect(() => {
     let active = true
-    let unlisten: UnlistenFn | undefined
+    const unlisteners: UnlistenFn[] = []
     const handleOnline = () => {
+      useSyncStatusStore.getState().setNetworkOnline(true)
       void api.notifySidecarNetworkReconnected()
     }
+    const handleOffline = () => {
+      useSyncStatusStore.getState().setNetworkOnline(false)
+    }
+    const register = <T>(eventName: string, handler: (payload: T) => void) => {
+      void listen<T>(eventName, (event) => handler(event.payload))
+        .then((unlisten) => {
+          if (active) {
+            unlisteners.push(unlisten)
+          } else {
+            unlisten()
+          }
+        })
+        .catch((error) => {
+          console.error(`Failed to listen for ${eventName}.`, error)
+        })
+    }
 
+    useSyncStatusStore.getState().setNetworkOnline(navigator.onLine)
     window.addEventListener("online", handleOnline)
-    listen<SidecarSyncCompletedEvent>("sidecar_sync_completed", (event) => {
-      void applySidecarSyncCompleted(event.payload, queryClient)
-    }).then((nextUnlisten) => {
-      if (active) {
-        unlisten = nextUnlisten
-      } else {
-        nextUnlisten()
-      }
+    window.addEventListener("offline", handleOffline)
+    register<SidecarSyncCompletedEvent>("sidecar_sync_completed", (payload) => {
+      void applySidecarSyncCompleted(payload, queryClient)
     })
+    register<SyncStatusObservation>(
+      SYNC_STATUS_OBSERVATION_EVENT,
+      applySyncStatusObservation,
+    )
 
     return () => {
       active = false
       window.removeEventListener("online", handleOnline)
-      unlisten?.()
+      window.removeEventListener("offline", handleOffline)
+      for (const unlisten of unlisteners) {
+        unlisten()
+      }
     }
   }, [queryClient])
 }

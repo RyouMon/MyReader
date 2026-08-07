@@ -6,6 +6,7 @@ pub mod commands;
 mod config;
 mod constants;
 mod error;
+mod events;
 pub mod models;
 mod protocols;
 mod reader_ui_prefs;

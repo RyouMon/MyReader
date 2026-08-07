@@ -183,10 +183,7 @@ export default function AppSidebar() {
                   <div className="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                     <span className="truncate font-semibold">MyReader</span>
                     <span className="truncate text-xs text-muted-foreground">
-                      {libraryLabel} ·{" "}
-                      {activeLibrary
-                        ? t("sidebar.connected")
-                        : t("sidebar.disconnected")}
+                      {libraryLabel}
                     </span>
                   </div>
                   <ChevronsUpDown className="ml-auto size-4 shrink-0 text-muted-foreground group-data-[collapsible=icon]:hidden" />

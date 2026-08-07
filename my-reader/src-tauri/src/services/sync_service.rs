@@ -20,15 +20,7 @@ pub struct SyncService;
 pub struct DbSyncReport {
     pub pushed: usize,
     pub pulled: usize,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct SidecarSyncCompletedPayload {
-    pub library_id: String,
-    pub mode: &'static str,
-    pub pushed: usize,
-    pub pulled: usize,
+    pub changed: bool,
 }
 
 struct NoopObserver;
@@ -127,6 +119,9 @@ impl SyncService {
         Ok(DbSyncReport {
             pushed: report.myreader.pushed,
             pulled: report.myreader.pulled,
+            changed: report.myreader.pushed > 0
+                || report.myreader.pulled > 0
+                || report.calibre.changed,
         })
     }
 
@@ -135,6 +130,23 @@ impl SyncService {
         config: &AppConfig,
         library_id: &str,
         mode: SidecarSyncMode,
+    ) -> Result<DbSyncReport, AppError> {
+        Self::sync_sidecar_for_library_observed(
+            app_data_dir,
+            config,
+            library_id,
+            mode,
+            &NoopObserver,
+        )
+        .await
+    }
+
+    pub async fn sync_sidecar_for_library_observed(
+        app_data_dir: &Path,
+        config: &AppConfig,
+        library_id: &str,
+        mode: SidecarSyncMode,
+        observer: &dyn SyncObserver,
     ) -> Result<DbSyncReport, AppError> {
         info!(
             target: "myreader_sync",
@@ -151,12 +163,13 @@ impl SyncService {
         let storage = storage::core_library_storage(config, &library)
             .await
             .map_err(|err| Self::log_stage_error(library_id, "resolve_storage", err))?;
-        let report = my_reader_core::api::sync::SyncService::sync_sidecar(
+        let report = my_reader_core::api::sync::SyncService::sync_sidecar_observed(
             &sidecar_path,
             &library_root,
             Self::sqlite_timestamp(Self::unix_epoch_millis())?,
             mode,
             &storage,
+            observer,
         )
         .await
         .map_err(AppError::from)
@@ -177,6 +190,7 @@ impl SyncService {
         Ok(DbSyncReport {
             pushed: report.pushed,
             pulled: report.pulled,
+            changed: report.pushed > 0 || report.pulled > 0,
         })
     }
 
@@ -335,6 +349,30 @@ mod tests {
             .unwrap();
         assert_eq!(library.book_count, 1);
         assert!(library.metadata_etag.is_some());
+    }
+
+    #[tokio::test]
+    async fn should_report_unchanged_when_repeated_sync_has_no_new_data() {
+        let app_data = tempfile::tempdir().unwrap();
+        let library_root = tempfile::tempdir().unwrap();
+        create_calibre_metadata(library_root.path()).await;
+        let config = AppConfig {
+            libraries: vec![local_library(
+                "library-1",
+                library_root.path().to_str().unwrap(),
+            )],
+            ..Default::default()
+        };
+
+        let first = SyncService::sync_db_for_library(app_data.path(), &config, "library-1")
+            .await
+            .unwrap();
+        let second = SyncService::sync_db_for_library(app_data.path(), &config, "library-1")
+            .await
+            .unwrap();
+
+        assert!(first.changed, "initial catalog sync should apply data");
+        assert!(!second.changed, "unchanged checks must not record a sync");
     }
 
     #[tokio::test]
