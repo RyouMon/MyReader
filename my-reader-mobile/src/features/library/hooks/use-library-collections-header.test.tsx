@@ -1,6 +1,6 @@
 import { fireEvent, render, renderHook } from "@testing-library/react-native"
 import type { ReactNode } from "react"
-import { Platform } from "react-native"
+import { Platform, View } from "react-native"
 
 import { useLibraryCollectionsHeader } from "./use-library-collections-header"
 
@@ -9,7 +9,7 @@ const mockSyncPress = jest.fn()
 jest.mock("@expo/material-symbols/cards_stack.xml", () => ({
   uri: "cards-stack",
 }))
-jest.mock("@expo/material-symbols/more_vert.xml", () => ({ uri: "more" }))
+jest.mock("@expo/material-symbols/download.xml", () => ({ uri: "download" }))
 
 jest.mock("expo-router", () => {
   const React = jest.requireActual<typeof import("react")>("react")
@@ -59,22 +59,12 @@ jest.mock("expo-router", () => {
     )
   }
 
-  function ToolbarMenu({ children }: { children: ReactNode }) {
-    return React.createElement(ReactNative.View, null, children)
-  }
-
-  function ToolbarMenuAction({ children }: { children: ReactNode }) {
-    return React.createElement(ReactNative.Text, null, children)
-  }
-
   function ToolbarIcon() {
     return null
   }
 
   Toolbar.Button = ToolbarButton
   Toolbar.Icon = ToolbarIcon
-  Toolbar.Menu = ToolbarMenu
-  Toolbar.MenuAction = ToolbarMenuAction
 
   return {
     router: {
@@ -116,10 +106,6 @@ jest.mock("@/src/components/ui/android-header-layout", () => ({
   AndroidHeaderSlot: ({ children }: { children: ReactNode }) => children,
 }))
 
-jest.mock("@/src/components/ui/android-header-menu-button", () => ({
-  AndroidHeaderMenuButton: () => null,
-}))
-
 jest.mock("@/src/components/ui/header-toolbar.android", () => ({
   renderHeaderToolbarActions: () => null,
 }))
@@ -156,14 +142,15 @@ describe("useLibraryCollectionsHeader", () => {
       value: "ios",
     })
 
+    const onImportBook = jest.fn()
     const { result } = renderHook(() =>
       useLibraryCollectionsHeader({
         selectedLibraryName: "My Library",
         canImportBook: true,
-        onImportBook: jest.fn(),
+        onImportBook,
       }),
     )
-    const screen = render(<>{result.current.toolbar}</>)
+    const screen = render(<View>{result.current.toolbar}</View>)
 
     expect(screen.getByTestId("toolbar-left")).toBeTruthy()
     const switcherButton = screen.getByLabelText("library.allLibraries")
@@ -179,6 +166,10 @@ describe("useLibraryCollectionsHeader", () => {
     const syncButton = screen.getByLabelText("syncStatus.accessibilityLabel")
     fireEvent.press(syncButton)
     expect(mockSyncPress).toHaveBeenCalledTimes(1)
+
+    fireEvent.press(screen.getByLabelText("library.importBook"))
+    expect(onImportBook).toHaveBeenCalledTimes(1)
+    expect(screen.queryByLabelText("library.addLibrary")).toBeNull()
   })
 
   it("should open the library switcher sheet from the Android left header", () => {
@@ -187,11 +178,12 @@ describe("useLibraryCollectionsHeader", () => {
       value: "android",
     })
 
+    const onImportBook = jest.fn()
     const { result } = renderHook(() =>
       useLibraryCollectionsHeader({
         selectedLibraryName: "My Library",
         canImportBook: true,
-        onImportBook: jest.fn(),
+        onImportBook,
       }),
     )
     expect(result.current.options.headerTitleAlign).toBe("center")
@@ -199,7 +191,16 @@ describe("useLibraryCollectionsHeader", () => {
       canGoBack: false,
       tintColor: undefined,
     })
-    const screen = render(<>{headerLeft}</>)
+    const headerRight = result.current.options.headerRight?.({
+      canGoBack: false,
+      tintColor: undefined,
+    })
+    const screen = render(
+      <>
+        {headerLeft}
+        {headerRight}
+      </>,
+    )
 
     const switcherButton = screen.getByLabelText("library.allLibraries")
     expect(screen.queryByText("library.allLibraries")).toBeNull()
@@ -208,5 +209,28 @@ describe("useLibraryCollectionsHeader", () => {
 
     const { router } = jest.requireMock("expo-router")
     expect(router.push).toHaveBeenCalledWith("/switch-library")
+
+    fireEvent.press(screen.getByLabelText("library.importBook"))
+    expect(onImportBook).toHaveBeenCalledTimes(1)
+    expect(screen.queryByLabelText("library.addLibrary")).toBeNull()
+  })
+
+  it("should omit library-management actions for a Calibre library", () => {
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: "ios",
+    })
+
+    const { result } = renderHook(() =>
+      useLibraryCollectionsHeader({
+        selectedLibraryName: "Calibre Library",
+        canImportBook: false,
+        onImportBook: jest.fn(),
+      }),
+    )
+    const screen = render(<View>{result.current.toolbar}</View>)
+
+    expect(screen.queryByLabelText("library.importBook")).toBeNull()
+    expect(screen.queryByLabelText("library.addLibrary")).toBeNull()
   })
 })

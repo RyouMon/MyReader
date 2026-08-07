@@ -11,6 +11,7 @@ import { ScrollView, Text, View } from "@/tw"
 import { SyncStatusIcon } from "./components/sync-status-icon"
 import { useSyncStatusPresentation } from "./hooks/use-sync-status-presentation"
 import {
+  NO_SYNC_LIBRARY_EMPTY_STATE_ICON,
   SYNC_INDICATOR_LABEL_KEYS,
   SYNC_REASON_LABEL_KEYS,
   SYNC_STAGE_LABEL_KEYS,
@@ -108,31 +109,20 @@ export default function SyncStatusScreen() {
 
   if (!library || !activeLibraryId) {
     return (
-      <ScrollView
-        className="h-full"
-        contentContainerClassName="min-h-full"
-        contentInsetAdjustmentBehavior="never"
-        style={{ backgroundColor: palette.background }}
-        stickyHeaderIndices={[0]}
-      >
-        <View
-          collapsable={false}
-          style={{ backgroundColor: palette.background }}
-        >
-          <SyncStatusSheetTitle
-            color={palette.text}
-            title={t("syncStatus.title")}
-          />
-        </View>
+      <View className="flex-1" style={{ backgroundColor: palette.background }}>
+        <SyncStatusSheetTitle
+          color={palette.text}
+          title={t("syncStatus.title")}
+        />
         <View className="flex-1 px-4 pb-10 pt-4">
           <EmptyState
             title={t("syncStatus.noActiveLibrary")}
             detail={t("syncStatus.noActiveLibraryDetail")}
-            icon={{ ios: "books.vertical", android: "local-library" }}
-            titleClassName="text-base"
+            icon={NO_SYNC_LIBRARY_EMPTY_STATE_ICON}
+            layout="container"
           />
         </View>
-      </ScrollView>
+      </View>
     )
   }
 

@@ -6,11 +6,12 @@ import { useCallback } from "react"
 import { useTranslation } from "react-i18next"
 import { Platform, StyleSheet } from "react-native"
 
-import { ListRow } from "@/src/components"
+import { EmptyState, ListRow } from "@/src/components"
+import { LIBRARY_EMPTY_STATE_ICON } from "@/src/components/ui/library-empty-state-icon"
 import { useThemePalette } from "@/src/design/tokens"
 import { switchActiveLibrary } from "@/src/domain/library/hooks/library-actions"
 import { useAppStore } from "@/src/store/app-store"
-import { Text, View } from "@/tw"
+import { View } from "@/tw"
 
 type LibrarySwitcherListProps = {
   onDismiss: () => void
@@ -54,6 +55,17 @@ export function LibrarySwitcherList({ onDismiss }: LibrarySwitcherListProps) {
     [activeLibraryId, onDismiss],
   )
 
+  if (libraries.length === 0) {
+    return (
+      <EmptyState
+        title={t("home.noLibrary.title")}
+        detail={t("home.noLibrary.detail")}
+        icon={LIBRARY_EMPTY_STATE_ICON}
+        layout="container"
+      />
+    )
+  }
+
   const renderLibrary = (item: Library, index: number) => {
     const bookCountLabel = t("library.collections.bookCount", {
       count: item.bookCount,
@@ -83,20 +95,13 @@ export function LibrarySwitcherList({ onDismiss }: LibrarySwitcherListProps) {
     <View
       style={[
         styles.libraryList,
-        libraries.length === 0 ? styles.emptyContent : undefined,
         {
           backgroundColor: palette.surface,
           borderColor: palette.border,
         },
       ]}
     >
-      {libraries.length === 0 ? (
-        <Text className="px-4 text-base" style={{ color: palette.textMuted }}>
-          {t("library.noLibrary.title")}
-        </Text>
-      ) : (
-        libraries.map(renderLibrary)
-      )}
+      {libraries.map(renderLibrary)}
     </View>
   )
 }
@@ -106,8 +111,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: "hidden",
-  },
-  emptyContent: {
-    paddingVertical: 16,
   },
 })

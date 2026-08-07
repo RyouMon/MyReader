@@ -13,7 +13,7 @@ import {
 } from "react-native"
 
 import type { DataSource } from "@/src/domain/types"
-import {
+import AddLibraryScreen, {
   AddLibraryLocationScreen,
   CreateLibraryScreen,
 } from "./add-library-screen"
@@ -33,7 +33,12 @@ let mockPendingImport: { originalName?: string; uri: string } | null = null
 let mockDataSources: DataSource[] = []
 const mockCreateFolderMyReaderLibrary = jest.fn()
 const mockCreateRemoteMyReaderLibrary = jest.fn()
+const mockDismissAddLibrary = jest.fn()
 const mockNotifyLibraryAdded = jest.fn()
+const mockUseScreenHeader = jest.fn((_options: unknown) => ({
+  options: {},
+  toolbar: null,
+}))
 const mockSetLocalFolder = jest.fn((folder) => {
   mockLocalFolder = folder
 })
@@ -120,6 +125,7 @@ jest.mock("@/src/domain/library/hooks/library-actions", () => ({
 
 jest.mock("./add-library-flow-context", () => ({
   useAddLibraryFlow: () => ({
+    dismiss: mockDismissAddLibrary,
     localFolder: mockLocalFolder,
     pendingImport: mockPendingImport,
     setLocalFolder: mockSetLocalFolder,
@@ -144,7 +150,7 @@ jest.mock("@/src/features/onedrive/onedrive-adding-empty-state", () => ({
 }))
 
 jest.mock("@/src/navigation/hooks/use-screen-header", () => ({
-  useScreenHeader: () => ({ options: {}, toolbar: null }),
+  useScreenHeader: (options: unknown) => mockUseScreenHeader(options),
 }))
 
 jest.mock("@/src/navigation/toolbar-action-helpers", () => ({
@@ -160,6 +166,25 @@ jest.mock("@/tw", () => ({
   TextInput: mockTextInput,
   View: mockView,
 }))
+
+describe("AddLibraryScreen", () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it("should close through the modal flow owner", () => {
+    render(<AddLibraryScreen />)
+
+    const headerOptions = mockUseScreenHeader.mock.calls[0]?.[0] as {
+      left?: { onPress: () => void }[]
+    }
+    expect(headerOptions.left).toHaveLength(1)
+
+    headerOptions.left?.[0]?.onPress()
+
+    expect(mockDismissAddLibrary).toHaveBeenCalledTimes(1)
+  })
+})
 
 describe("AddLibraryLocationScreen", () => {
   beforeEach(() => {
@@ -214,7 +239,7 @@ describe("CreateLibraryScreen", () => {
         "My Library",
       )
     })
-    expect(router.dismissTo).toHaveBeenCalledWith("/settings")
+    expect(mockDismissAddLibrary).toHaveBeenCalledTimes(1)
     expect(mockNotifyLibraryAdded).toHaveBeenCalledWith("My Library")
   })
 
@@ -283,7 +308,7 @@ describe("CreateLibraryScreen", () => {
       })
     })
     expect(mockTakePendingImport).toHaveBeenCalledTimes(1)
-    expect(router.dismissTo).not.toHaveBeenCalled()
+    expect(mockDismissAddLibrary).not.toHaveBeenCalled()
     expect(mockNotifyLibraryAdded).not.toHaveBeenCalled()
   })
 })

@@ -55,7 +55,7 @@ describe("useSyncStatusHeaderAction", () => {
   it("should keep the global sync action mounted before library hydration", () => {
     const { result } = renderHook(() => useSyncStatusHeaderAction())
 
-    expect(result.current.iosSfSymbol).toBe("icloud")
+    expect(result.current.iosSfSymbol).toBe("icloud.slash")
 
     act(() => result.current.onPress())
 

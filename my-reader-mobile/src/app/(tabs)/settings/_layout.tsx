@@ -18,13 +18,6 @@ export default function SettingsStackLayout() {
         }}
       />
       <Stack.Screen
-        name="add-library"
-        options={{
-          headerShown: false,
-          presentation: "modal",
-        }}
-      />
-      <Stack.Screen
         name="webdav"
         options={{
           presentation: "modal",

@@ -6,7 +6,7 @@ const mockOpenRemoteExistingLibrary = jest.fn()
 const mockListRemoteDirectories = jest.fn()
 const mockShowAlert = jest.fn()
 const mockNotifyLibraryAdded = jest.fn()
-const mockDismissTo = jest.fn()
+const mockOnLibraryOpened = jest.fn()
 const mockDataSource = {
   id: "source-1",
   type: "onedrive",
@@ -15,12 +15,6 @@ const mockDataSource = {
 const mockStoreState = {
   dataSources: [mockDataSource],
 }
-
-jest.mock("expo-router", () => ({
-  router: {
-    dismissTo: (...args: unknown[]) => mockDismissTo(...args),
-  },
-}))
 
 jest.mock("@/src/domain/library/hooks/library-actions", () => ({
   openRemoteExistingLibrary: (...args: unknown[]) =>
@@ -78,6 +72,7 @@ describe("useRemoteDirectoryBrowser", () => {
         dataSourceId: "source-1",
         currentPathParam: "/Library/CalibreLibrary",
         libraryAction: "open",
+        onLibraryOpened: mockOnLibraryOpened,
         sourceType: "onedrive",
       }),
     )
@@ -92,11 +87,11 @@ describe("useRemoteDirectoryBrowser", () => {
       errorMessages.duplicateMessage,
     )
     expect(result.current.error).toBeNull()
-    expect(mockDismissTo).not.toHaveBeenCalled()
+    expect(mockOnLibraryOpened).not.toHaveBeenCalled()
     expect(mockNotifyLibraryAdded).not.toHaveBeenCalled()
   })
 
-  it("should open the selected library and dismiss the add flow", async () => {
+  it("should open the selected library and notify the caller", async () => {
     const library = { id: "library-1", name: "Library" }
     mockOpenRemoteExistingLibrary.mockResolvedValue(library)
     const { result } = renderHook(() =>
@@ -104,6 +99,7 @@ describe("useRemoteDirectoryBrowser", () => {
         dataSourceId: "source-1",
         currentPathParam: "/Books",
         libraryAction: "open",
+        onLibraryOpened: mockOnLibraryOpened,
         sourceType: "onedrive",
       }),
     )
@@ -117,7 +113,7 @@ describe("useRemoteDirectoryBrowser", () => {
       mockDataSource,
       "/Books/Library",
     )
-    expect(mockDismissTo).toHaveBeenCalledWith("/settings")
+    expect(mockOnLibraryOpened).toHaveBeenCalledTimes(1)
     expect(mockNotifyLibraryAdded).toHaveBeenCalledWith(library.name)
   })
 
@@ -130,6 +126,7 @@ describe("useRemoteDirectoryBrowser", () => {
         dataSourceId: "source-1",
         currentPathParam: "/Books",
         libraryAction: "open",
+        onLibraryOpened: mockOnLibraryOpened,
         sourceType: "onedrive",
       }),
     )

@@ -101,6 +101,29 @@ describe("LibrarySyncStatus", () => {
     expect(within(details).queryByText("Waiting for network")).toBeNull()
   })
 
+  it("should use the standard empty state when no library can sync", async () => {
+    render(<LibrarySyncStatus library={null} onSync={vi.fn()} />)
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Sync status: No library to sync",
+      }),
+    )
+
+    const details = await screen.findByRole("dialog", {
+      name: "Sync details",
+    })
+    expect(details.querySelector('[data-slot="empty"]')).toBeInTheDocument()
+    expect(details.querySelector(".lucide-cloud-off")).toBeInTheDocument()
+    expect(within(details).getByText("No library to sync")).toBeInTheDocument()
+    expect(
+      within(details).getByText("Add or select a library to start syncing."),
+    ).toBeInTheDocument()
+    expect(
+      within(details).queryByRole("button", { name: "Sync now" }),
+    ).toBeNull()
+    expect(within(details).queryByText("Current status")).toBeNull()
+  })
+
   it("should show the last successful sync time in the idle status bar", () => {
     observe({
       type: "succeeded",

@@ -25,7 +25,9 @@ export function useSyncStatusHeaderAction(): ScreenHeaderAction {
     return {
       label: t("syncStatus.accessibilityLabel", { status: stateLabel }),
       onPress: handlePress,
-      iosSfSymbol: SYNC_STATUS_IOS_SYMBOLS[indicator],
+      iosSfSymbol: library
+        ? SYNC_STATUS_IOS_SYMBOLS[indicator]
+        : SYNC_STATUS_IOS_SYMBOLS.offline,
       color: palette.text,
       iconOnly: true,
     }

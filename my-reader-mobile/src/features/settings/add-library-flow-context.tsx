@@ -16,6 +16,7 @@ import {
 } from "@/src/services/fs/staged-book-import"
 
 type AddLibraryFlowValue = {
+  dismiss: () => void
   localFolder: PickedLocalLibrary | null
   setLocalFolder: (folder: PickedLocalLibrary | null) => void
   pendingImport: StagedBookImport | null
@@ -24,6 +25,7 @@ type AddLibraryFlowValue = {
 }
 
 const AddLibraryFlowContext = createContext<AddLibraryFlowValue>({
+  dismiss: () => undefined,
   localFolder: null,
   setLocalFolder: () => undefined,
   pendingImport: null,
@@ -31,7 +33,10 @@ const AddLibraryFlowContext = createContext<AddLibraryFlowValue>({
   takePendingImport: () => null,
 })
 
-export function AddLibraryFlowProvider({ children }: PropsWithChildren) {
+export function AddLibraryFlowProvider({
+  children,
+  onDismiss,
+}: PropsWithChildren<{ onDismiss: () => void }>) {
   const [localFolder, setLocalFolder] = useState<PickedLocalLibrary | null>(
     null,
   )
@@ -65,13 +70,20 @@ export function AddLibraryFlowProvider({ children }: PropsWithChildren) {
 
   const value = useMemo(
     () => ({
+      dismiss: onDismiss,
       localFolder,
       setLocalFolder,
       pendingImport,
       setPendingImport,
       takePendingImport,
     }),
-    [localFolder, pendingImport, setPendingImport, takePendingImport],
+    [
+      localFolder,
+      onDismiss,
+      pendingImport,
+      setPendingImport,
+      takePendingImport,
+    ],
   )
 
   return (

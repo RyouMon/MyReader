@@ -111,8 +111,8 @@ export const sharedZhCN = {
     syncingAction: "正在同步",
     waitingForNetwork: "等待网络",
     offlineDetail: "当前书库的传输方式需要网络，恢复连接后可继续同步。",
-    noActiveLibrary: "尚未选择书库",
-    noActiveLibraryDetail: "选择一个书库后，可在这里查看并手动触发它的同步。",
+    noActiveLibrary: "暂无可同步书库",
+    noActiveLibraryDetail: "添加或选择书库后即可同步。",
     activeLibraryChanged: "当前书库已改变，请重试。",
     reason: {
       manual: "手动触发",

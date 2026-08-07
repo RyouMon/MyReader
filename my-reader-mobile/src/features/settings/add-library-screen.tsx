@@ -57,8 +57,8 @@ function sourceBrowserPath(source: DataSource, operation: LibraryOperation) {
   }
 }
 
-function finishAddingLibrary(name: string): void {
-  router.dismissTo("/settings")
+function finishAddingLibrary(name: string, dismiss: () => void): void {
+  dismiss()
   notifyLibraryAdded(name)
 }
 
@@ -102,8 +102,17 @@ function showOperationError(t: (key: string) => string, error: unknown): void {
 
 export default function AddLibraryScreen() {
   const { t } = useTranslation()
+  const { dismiss } = useAddLibraryFlow()
   const { options, toolbar } = useScreenHeader({
-    close: { target: "/settings", dismissTo: true, variant: "layout" },
+    back: "hidden",
+    left: [
+      {
+        label: t("common.close"),
+        onPress: dismiss,
+        iosSfSymbol: "xmark",
+        iconOnly: true,
+      },
+    ],
   })
 
   return (
@@ -152,7 +161,7 @@ export function AddLibraryLocationScreen() {
   }>()
   const operation = libraryOperation(libraryActionParam)
   const sources = remoteSources(useAppStore((state) => state.dataSources))
-  const { setLocalFolder, setPendingImport } = useAddLibraryFlow()
+  const { dismiss, setLocalFolder, setPendingImport } = useAddLibraryFlow()
   const { addOneDriveDataSource, busy: addingOneDrive } =
     useAddOneDriveDataSource()
 
@@ -174,7 +183,7 @@ export function AddLibraryLocationScreen() {
         return
       }
       const library = await openExistingLocalLibraryFromPicker(picked)
-      if (library) finishAddingLibrary(library.name)
+      if (library) finishAddingLibrary(library.name, dismiss)
     } catch (error) {
       showOperationError(t, error)
     }
@@ -269,7 +278,8 @@ export function CreateLibraryScreen() {
     dataSourceId?: string
     sourcePath?: string
   }>()
-  const { localFolder, setLocalFolder, takePendingImport } = useAddLibraryFlow()
+  const { dismiss, localFolder, setLocalFolder, takePendingImport } =
+    useAddLibraryFlow()
   const source = useAppStore((state) =>
     state.dataSources.find((candidate) => candidate.id === dataSourceId),
   )
@@ -322,7 +332,7 @@ export function CreateLibraryScreen() {
         })
         return
       }
-      finishAddingLibrary(library.name)
+      finishAddingLibrary(library.name, dismiss)
     } catch (error) {
       showOperationError(t, error)
     } finally {

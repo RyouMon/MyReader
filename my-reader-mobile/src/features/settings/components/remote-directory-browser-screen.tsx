@@ -1,5 +1,6 @@
 import type { MobileTranslationKey } from "@my-reader/i18n/mobile"
 import { router, Stack, useLocalSearchParams } from "expo-router"
+import { useCallback } from "react"
 import { useTranslation } from "react-i18next"
 import {
   EmptyState,
@@ -11,6 +12,7 @@ import {
 import { ErrorBoundary } from "@/src/components/error-boundary"
 import { useThemePalette } from "@/src/design/tokens"
 import { normalizeCurrentPath } from "@/src/domain/library/remote-library"
+import { useAddLibraryFlow } from "@/src/features/settings/add-library-flow-context"
 import { useRemoteDirectoryBrowser } from "@/src/features/settings/hooks/use-remote-directory-browser"
 import type { RemoteLibraryAction } from "@/src/features/settings/hooks/use-remote-directory-browser"
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
@@ -52,6 +54,15 @@ export function RemoteDirectoryBrowserScreen({
   }>()
   const libraryAction: RemoteLibraryAction =
     libraryActionParam === "create" ? "create" : "open"
+  const isAddLibraryBrowser = browserRoute === "/settings/add-library/browser"
+  const { dismiss: dismissAddLibrary } = useAddLibraryFlow()
+  const handleLibraryOpened = useCallback(() => {
+    if (isAddLibraryBrowser) {
+      dismissAddLibrary()
+      return
+    }
+    router.dismissTo("/settings")
+  }, [dismissAddLibrary, isAddLibraryBrowser])
 
   const label = (key: string, options?: Record<string, unknown>) =>
     t(`${translationNamespace}.${key}` as RemoteBrowserTranslationKey, options)
@@ -71,6 +82,7 @@ export function RemoteDirectoryBrowserScreen({
     dataSourceId,
     currentPathParam,
     libraryAction,
+    onLibraryOpened: handleLibraryOpened,
     sourceType,
   })
 
@@ -106,7 +118,6 @@ export function RemoteDirectoryBrowserScreen({
   const isAddLibraryFlow = from === "add-library" && currentPath === "/"
   const closeTarget = isAddLibraryFlow ? "/settings/add-library" : "/settings"
   const isRootBrowser = currentPath === "/"
-  const isAddLibraryBrowser = browserRoute === "/settings/add-library/browser"
 
   const chooseErrorMessages = {
     notValidTitle: t("addLibrary.unrecognized.title"),

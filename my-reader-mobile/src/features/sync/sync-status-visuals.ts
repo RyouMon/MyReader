@@ -16,6 +16,11 @@ export const SYNC_STATUS_IOS_SYMBOLS: Record<SyncIndicatorState, SFSymbol> = {
   failed: "exclamationmark.icloud",
 }
 
+export const NO_SYNC_LIBRARY_EMPTY_STATE_ICON = {
+  ios: SYNC_STATUS_IOS_SYMBOLS.offline,
+  android: "cloud-off",
+} as const
+
 export const SYNC_INDICATOR_LABEL_KEYS = {
   idle: "syncStatus.state.idle",
   offline: "syncStatus.state.offline",

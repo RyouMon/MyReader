@@ -2,8 +2,8 @@ import {
   fireEvent,
   render,
   screen,
-  within,
   waitFor,
+  within,
 } from "@testing-library/react-native"
 
 import SyncStatusScreen from "./sync-status-screen"
@@ -54,7 +54,10 @@ let mockPresentation = {
     | "pulling"
     | "failed",
   isOffline: false,
-  library: { id: "library-1", name: "Current Library" },
+  library: { id: "library-1", name: "Current Library" } as {
+    id: string
+    name: string
+  } | null,
 }
 
 jest.mock("expo-haptics", () => ({
@@ -135,13 +138,23 @@ jest.mock("@/src/components/ui", () => {
         },
         React.createElement(Text, { className: textClassName }, title),
       ),
-    EmptyState: ({ detail, title }: { detail: string; title: string }) =>
-      React.createElement(
-        View,
-        null,
-        React.createElement(Text, null, title),
-        React.createElement(Text, null, detail),
-      ),
+    EmptyState: jest.fn(
+      ({
+        detail,
+        layout,
+        title,
+      }: {
+        detail: string
+        layout?: string
+        title: string
+      }) =>
+        React.createElement(
+          View,
+          { testID: `empty-state-${layout ?? "screen"}` },
+          React.createElement(Text, null, title),
+          React.createElement(Text, null, detail),
+        ),
+    ),
     ListRow: ({ title, value }: { title: string; value?: string }) =>
       React.createElement(
         View,
@@ -279,6 +292,28 @@ describe("SyncStatusScreen", () => {
 
     const title = screen.getByRole("header", { name: "syncStatus.title" })
     expect(title).toBeTruthy()
+  })
+
+  it("should show a non-scrolling standard empty state without a library", () => {
+    mockPresentation = {
+      ...mockPresentation,
+      activeLibraryId: null,
+      library: null,
+    }
+
+    render(<SyncStatusScreen />)
+
+    expect(screen.getByTestId("empty-state-container")).toBeTruthy()
+    expect(screen.getByText("syncStatus.noActiveLibrary")).toBeTruthy()
+    expect(screen.getByText("syncStatus.noActiveLibraryDetail")).toBeTruthy()
+    expect(screen.queryByTestId("sync-status-details-scroll")).toBeNull()
+    expect(screen.queryByTestId("sync-status-action-footer")).toBeNull()
+
+    const { EmptyState } = jest.requireMock("@/src/components/ui")
+    expect(EmptyState.mock.calls.at(-1)?.[0].icon).toEqual({
+      ios: "icloud.slash",
+      android: "cloud-off",
+    })
   })
 
   it("should keep the summary sticky and the action outside the details", () => {

@@ -112,9 +112,8 @@ export const sharedEn = {
     waitingForNetwork: "Waiting for network",
     offlineDetail:
       "This library's transport requires a network connection. Sync can continue after connectivity returns.",
-    noActiveLibrary: "No library selected",
-    noActiveLibraryDetail:
-      "Select a library to view its status and start its sync here.",
+    noActiveLibrary: "No library to sync",
+    noActiveLibraryDetail: "Add or select a library to start syncing.",
     activeLibraryChanged: "The current library changed. Please try again.",
     reason: {
       manual: "Started manually",

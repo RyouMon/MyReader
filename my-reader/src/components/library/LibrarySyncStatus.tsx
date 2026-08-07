@@ -21,6 +21,13 @@ import { Popover } from "radix-ui"
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
 import { useSyncStatusPresentation } from "@/hooks/useSyncStatusPresentation"
 import { cn } from "@/lib/utils"
 
@@ -240,132 +247,136 @@ export default function LibrarySyncStatus({
             {t("syncStatus.title")}
           </h2>
 
-          <div
-            className="flex min-h-36 shrink-0 flex-col items-center justify-center px-5 py-3"
-            aria-live="polite"
-          >
-            {library ? (
-              <StatusIcon
-                className={cn(
-                  "size-10 stroke-[1.75]",
-                  statusColorClass(displayIndicator),
-                )}
-                indicator={displayIndicator}
-              />
-            ) : (
-              <CloudOff className="size-10 stroke-[1.75] text-muted-foreground" />
-            )}
-            <div
-              className={cn(
-                "mt-2 text-base font-semibold",
-                library
-                  ? statusColorClass(displayIndicator)
-                  : "text-muted-foreground",
-              )}
-            >
-              {summaryLabel}
-            </div>
-            <SyncProgress
-              completed={activity?.completed ?? 0}
-              running={activity != null}
-              total={activity?.total ?? 0}
-            />
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
-            {library ? (
-              <div className="space-y-3">
-                <dl className="space-y-2.5 rounded-lg bg-muted/50 p-3">
-                  <DetailRow
-                    label={t("syncStatus.currentLibrary")}
-                    value={library.name}
-                  />
-                  <DetailRow
-                    label={t("syncStatus.currentStatus")}
-                    value={statusLabel}
-                  />
-                  {stageLabel ? (
-                    <DetailRow
-                      label={t("syncStatus.currentStage")}
-                      value={stageLabel}
-                    />
-                  ) : null}
-                  {reasonLabel ? (
-                    <DetailRow
-                      label={t(
-                        activity || transientResult
-                          ? "syncStatus.currentReason"
-                          : "syncStatus.lastReason",
-                      )}
-                      value={reasonLabel}
-                    />
-                  ) : null}
-                  {!activity && history?.lastFailure?.failureStage ? (
-                    <DetailRow
-                      label={t("syncStatus.failureStage")}
-                      value={t(
-                        STAGE_LABEL_KEYS[history.lastFailure.failureStage],
-                      )}
-                    />
-                  ) : null}
-                  {lastAttemptLabel ? (
-                    <DetailRow
-                      label={t("syncStatus.lastAttempt")}
-                      value={lastAttemptLabel}
-                    />
-                  ) : null}
-                  <DetailRow
-                    label={t("syncStatus.lastSync")}
-                    value={lastSyncLabel}
-                  />
-                </dl>
-
-                {isOffline ? (
-                  <div className="space-y-1.5 rounded-lg bg-warning-soft p-3 text-sm">
-                    <div className="font-semibold text-warning">
-                      {t("syncStatus.waitingForNetwork")}
-                    </div>
-                    <p className="text-foreground">
-                      {t("syncStatus.offlineDetail")}
-                    </p>
-                  </div>
-                ) : null}
-
-                {history?.lastFailure?.message ? (
-                  <div className="space-y-1.5 rounded-lg bg-danger-soft p-3 text-sm">
-                    <div className="font-semibold text-danger">
-                      {t("syncStatus.failureReason")}
-                    </div>
-                    <p className="break-words text-foreground">
-                      {history.lastFailure.message}
-                    </p>
-                  </div>
-                ) : null}
+          {library ? (
+            <>
+              <div
+                className="flex min-h-36 shrink-0 flex-col items-center justify-center px-5 py-3"
+                aria-live="polite"
+              >
+                <StatusIcon
+                  className={cn(
+                    "size-10 stroke-[1.75]",
+                    statusColorClass(displayIndicator),
+                  )}
+                  indicator={displayIndicator}
+                />
+                <div
+                  className={cn(
+                    "mt-2 text-base font-semibold",
+                    statusColorClass(displayIndicator),
+                  )}
+                >
+                  {summaryLabel}
+                </div>
+                <SyncProgress
+                  completed={activity?.completed ?? 0}
+                  running={activity != null}
+                  total={activity?.total ?? 0}
+                />
               </div>
-            ) : (
-              <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
-                {t("syncStatus.noActiveLibraryDetail")}
-              </p>
-            )}
-          </div>
 
-          <div className="shrink-0 px-4 pb-4 pt-2">
-            <Button
-              type="button"
-              className="w-full"
-              disabled={!canSync}
-              onClick={() => void handleSync()}
-            >
-              {isRunning ? (
-                <LoaderCircle className="animate-spin motion-reduce:animate-none" />
-              ) : null}
-              {isRunning
-                ? t("syncStatus.syncingAction")
-                : isOffline
-                  ? t("syncStatus.waitingForNetwork")
-                  : t("syncStatus.manualSync")}
-            </Button>
-          </div>
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
+                <div className="space-y-3">
+                  <dl className="space-y-2.5 rounded-lg bg-muted/50 p-3">
+                    <DetailRow
+                      label={t("syncStatus.currentLibrary")}
+                      value={library.name}
+                    />
+                    <DetailRow
+                      label={t("syncStatus.currentStatus")}
+                      value={statusLabel}
+                    />
+                    {stageLabel ? (
+                      <DetailRow
+                        label={t("syncStatus.currentStage")}
+                        value={stageLabel}
+                      />
+                    ) : null}
+                    {reasonLabel ? (
+                      <DetailRow
+                        label={t(
+                          activity || transientResult
+                            ? "syncStatus.currentReason"
+                            : "syncStatus.lastReason",
+                        )}
+                        value={reasonLabel}
+                      />
+                    ) : null}
+                    {!activity && history?.lastFailure?.failureStage ? (
+                      <DetailRow
+                        label={t("syncStatus.failureStage")}
+                        value={t(
+                          STAGE_LABEL_KEYS[history.lastFailure.failureStage],
+                        )}
+                      />
+                    ) : null}
+                    {lastAttemptLabel ? (
+                      <DetailRow
+                        label={t("syncStatus.lastAttempt")}
+                        value={lastAttemptLabel}
+                      />
+                    ) : null}
+                    <DetailRow
+                      label={t("syncStatus.lastSync")}
+                      value={lastSyncLabel}
+                    />
+                  </dl>
+
+                  {isOffline ? (
+                    <div className="space-y-1.5 rounded-lg bg-warning-soft p-3 text-sm">
+                      <div className="font-semibold text-warning">
+                        {t("syncStatus.waitingForNetwork")}
+                      </div>
+                      <p className="text-foreground">
+                        {t("syncStatus.offlineDetail")}
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {history?.lastFailure?.message ? (
+                    <div className="space-y-1.5 rounded-lg bg-danger-soft p-3 text-sm">
+                      <div className="font-semibold text-danger">
+                        {t("syncStatus.failureReason")}
+                      </div>
+                      <p className="break-words text-foreground">
+                        {history.lastFailure.message}
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="shrink-0 px-4 pb-4 pt-2">
+                <Button
+                  type="button"
+                  className="w-full"
+                  disabled={!canSync}
+                  onClick={() => void handleSync()}
+                >
+                  {isRunning ? (
+                    <LoaderCircle className="animate-spin motion-reduce:animate-none" />
+                  ) : null}
+                  {isRunning
+                    ? t("syncStatus.syncingAction")
+                    : isOffline
+                      ? t("syncStatus.waitingForNetwork")
+                      : t("syncStatus.manualSync")}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <Empty className="flex-none rounded-none border-0 px-4 py-8 md:p-8">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <CloudOff />
+                </EmptyMedia>
+                <EmptyTitle>{t("syncStatus.noActiveLibrary")}</EmptyTitle>
+                <EmptyDescription>
+                  {t("syncStatus.noActiveLibraryDetail")}
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )}
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>

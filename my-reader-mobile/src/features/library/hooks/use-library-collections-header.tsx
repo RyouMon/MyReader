@@ -1,14 +1,12 @@
 import CardsStackIcon from "@expo/material-symbols/cards_stack.xml"
-import MoreVertIcon from "@expo/material-symbols/more_vert.xml"
-import type { MenuComponentRef } from "@react-native-menu/menu"
+import DownloadIcon from "@expo/material-symbols/download.xml"
 import { type NativeStackNavigationOptions, router, Stack } from "expo-router"
-import { type ReactNode, useCallback, useMemo, useRef } from "react"
+import { type ReactNode, useCallback, useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { Platform, View } from "react-native"
 
 import { AndroidHeaderIconButton } from "@/src/components/ui/android-header-icon-button"
 import { AndroidHeaderSlot } from "@/src/components/ui/android-header-layout"
-import { AndroidHeaderMenuButton } from "@/src/components/ui/android-header-menu-button"
 import { renderHeaderToolbarActions } from "@/src/components/ui/header-toolbar.android"
 import { useSyncStatusHeaderAction } from "@/src/features/sync/hooks/use-sync-status-header-action"
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
@@ -24,7 +22,7 @@ type UseLibraryCollectionsHeaderResult = {
   toolbar: ReactNode
 }
 
-/** Keeps library-level actions on the collection root instead of book lists. */
+/** Keeps library-level actions visible on the collection root. */
 export function useLibraryCollectionsHeader({
   selectedLibraryName,
   canImportBook,
@@ -32,36 +30,9 @@ export function useLibraryCollectionsHeader({
 }: UseLibraryCollectionsHeaderParams): UseLibraryCollectionsHeaderResult {
   const { t } = useTranslation()
   const syncAction = useSyncStatusHeaderAction()
-  const menuRef = useRef<MenuComponentRef>(null)
-  const handleAddLibrary = useCallback(
-    () => router.push("/settings/add-library"),
-    [],
-  )
   const handleOpenLibrarySwitcher = useCallback(
     () => router.push("/switch-library"),
     [],
-  )
-  const androidActions = useMemo(
-    () => [
-      ...(canImportBook
-        ? [{ id: "importBook", title: t("library.importBook") }]
-        : []),
-      { id: "addLibrary", title: t("library.addLibrary") },
-    ],
-    [canImportBook, t],
-  )
-  const handleAndroidMenuAction = useCallback(
-    (event: string) => {
-      if (event === "importBook") {
-        onImportBook()
-        return
-      }
-      if (event === "addLibrary") {
-        handleAddLibrary()
-        return
-      }
-    },
-    [handleAddLibrary, onImportBook],
   )
   const { options: baseOptions, toolbar: baseToolbar } = useScreenHeader({
     title: selectedLibraryName ?? t("library.label"),
@@ -86,23 +57,22 @@ export function useLibraryCollectionsHeader({
       headerRight: () => (
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           {renderHeaderToolbarActions([syncAction])}
-          <AndroidHeaderMenuButton
-            menuRef={menuRef}
-            actions={androidActions}
-            onPressAction={handleAndroidMenuAction}
-            icon={MoreVertIcon}
-            accessibilityLabel={t("library.libraryActions")}
-            side="right"
-            anchoredToRight
-          />
+          {canImportBook ? (
+            <AndroidHeaderIconButton
+              accessibilityLabel={t("library.importBook")}
+              icon={DownloadIcon}
+              onPress={onImportBook}
+              testID="library-import-book-button"
+            />
+          ) : null}
         </View>
       ),
     }
   }, [
-    androidActions,
     baseOptions,
-    handleAndroidMenuAction,
+    canImportBook,
     handleOpenLibrarySwitcher,
+    onImportBook,
     syncAction,
     t,
   ])
@@ -129,26 +99,20 @@ export function useLibraryCollectionsHeader({
               <Stack.Toolbar.Icon sf={syncAction.iosSfSymbol} />
             </Stack.Toolbar.Button>
           ) : null}
-          <Stack.Toolbar.Menu icon="ellipsis">
-            {canImportBook ? (
-              <Stack.Toolbar.MenuAction
-                icon="square.and.arrow.down"
-                onPress={onImportBook}
-              >
-                {t("library.importBook")}
-              </Stack.Toolbar.MenuAction>
-            ) : null}
-            <Stack.Toolbar.MenuAction icon="plus" onPress={handleAddLibrary}>
-              {t("library.addLibrary")}
-            </Stack.Toolbar.MenuAction>
-          </Stack.Toolbar.Menu>
+          {canImportBook ? (
+            <Stack.Toolbar.Button
+              accessibilityLabel={t("library.importBook")}
+              onPress={onImportBook}
+            >
+              <Stack.Toolbar.Icon sf="square.and.arrow.down" />
+            </Stack.Toolbar.Button>
+          ) : null}
         </Stack.Toolbar>
       </>
     )
   }, [
     baseToolbar,
     canImportBook,
-    handleAddLibrary,
     handleOpenLibrarySwitcher,
     onImportBook,
     syncAction,

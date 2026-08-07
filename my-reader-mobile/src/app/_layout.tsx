@@ -123,6 +123,10 @@ function RootNavigator() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen
+            name="(add-library)"
+            options={{ headerShown: false, presentation: "modal" }}
+          />
+          <Stack.Screen
             name="switch-library"
             options={{
               contentStyle: { backgroundColor: palette.background },

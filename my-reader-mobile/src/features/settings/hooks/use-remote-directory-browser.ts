@@ -1,4 +1,3 @@
-import { router } from "expo-router"
 import { useEffect, useMemo, useState } from "react"
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
@@ -18,6 +17,7 @@ export type UseRemoteDirectoryBrowserOpts = {
   dataSourceId: string | undefined
   currentPathParam: string | undefined
   libraryAction: RemoteLibraryAction
+  onLibraryOpened: () => void
   sourceType: "webdav" | "onedrive"
 }
 
@@ -56,6 +56,7 @@ export function useRemoteDirectoryBrowser({
   dataSourceId,
   currentPathParam,
   libraryAction,
+  onLibraryOpened,
   sourceType,
 }: UseRemoteDirectoryBrowserOpts): RemoteDirectoryBrowserState {
   const currentPath = useMemo(
@@ -142,7 +143,7 @@ export function useRemoteDirectoryBrowser({
       const sourcePath = selectedPath || "/"
       if (libraryAction !== "open") return
       const library = await openRemoteExistingLibrary(candidate, sourcePath)
-      router.dismissTo("/settings")
+      onLibraryOpened()
       notifyLibraryAdded(library.name)
     } catch (caught) {
       const message = String(caught)
