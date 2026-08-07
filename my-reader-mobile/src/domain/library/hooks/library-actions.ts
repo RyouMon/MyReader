@@ -78,6 +78,7 @@ function applyLibraryConfig(config: {
 }
 
 function startInitialLibrarySync(libraryId: string, context: string): void {
+  if (useAppStore.getState().activeLibraryId !== libraryId) return
   void runLibrarySync({
     libraryId,
     trigger: "add",
@@ -583,6 +584,7 @@ export async function removeLibrary(id: string): Promise<void> {
 
   useAppStore.getState().setLibraries(appConfig.libraries)
   useAppStore.getState().setActiveLibraryId(appConfig.activeLibraryId)
+  useAppStore.getState().removeLibrarySyncStatus(id)
 
   queryClient.removeQueries({
     queryKey: libraryQueryKeys.books(id),

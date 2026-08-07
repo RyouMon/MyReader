@@ -41,6 +41,7 @@ export function EmptyState({
   icon = DEFAULT_ICON,
   layout = "screen",
   colors,
+  titleClassName = "text-lg",
 }: {
   title: string
   detail: string
@@ -48,6 +49,7 @@ export function EmptyState({
   icon?: EmptyStateIcon
   layout?: EmptyStateLayout
   colors?: EmptyStateColors
+  titleClassName?: string
 }) {
   const palette = useThemePalette()
   const { height: windowHeight } = useWindowDimensions()
@@ -88,7 +90,7 @@ export function EmptyState({
 
       <View className="items-center" style={{ gap: 8 }}>
         <Text
-          className="text-center text-lg"
+          className={`text-center ${titleClassName}`}
           style={{ color: colors?.title ?? palette.text, fontWeight: "600" }}
         >
           {title}

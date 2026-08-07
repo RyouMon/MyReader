@@ -3,6 +3,7 @@ jest.mock("./context", () => ({
 }))
 
 jest.mock("./core-sync", () => ({
+  createLibrarySyncTaskId: jest.fn(() => "generated-task"),
   runCoreLibrarySync: jest.fn(),
 }))
 
@@ -158,7 +159,8 @@ describe("syncLibrary", () => {
       forceCalibre: true,
       mode: "full",
       storage: localContext.libraryStorage,
-      taskId: undefined,
+      taskId: "generated-task",
+      onProgress: expect.any(Function),
       onSidecarComplete: expect.any(Function),
     })
     expect(withLocalLibraryContentRoot).toHaveBeenCalledWith(
@@ -239,6 +241,89 @@ describe("syncLibrary", () => {
     ]) {
       expect(invalidate).toHaveBeenCalledWith(library.id)
     }
+  })
+
+  it("should report the sequential Core stage and final outcome", async () => {
+    const observer = jest.fn()
+    mockRunCoreLibrarySync.mockImplementation(async (input) => {
+      input.onProgress?.({
+        taskId: "generated-task",
+        stage: "pushing",
+        completed: 1,
+        total: 3,
+      })
+      return coreReport()
+    })
+
+    await syncLibrary(
+      library,
+      dataSources,
+      { reason: "local_change" },
+      observer,
+    )
+
+    expect(observer).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        type: "started",
+        libraryId: library.id,
+        taskId: "generated-task",
+        reason: "local_change",
+      }),
+    )
+    expect(observer).toHaveBeenNthCalledWith(2, {
+      type: "progress",
+      libraryId: library.id,
+      taskId: "generated-task",
+      stage: "pushing",
+      completed: 1,
+      total: 3,
+    })
+    expect(observer).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        type: "succeeded",
+        libraryId: library.id,
+        taskId: "generated-task",
+        reason: "local_change",
+      }),
+    )
+  })
+
+  it("should report unchanged when no data was pushed, pulled, or applied", async () => {
+    const observer = jest.fn()
+    mockRunCoreLibrarySync.mockResolvedValue(
+      coreReport({
+        calibre: {
+          skipped: true,
+          skipReason: "unchanged",
+          changed: false,
+          library: coreLibrary,
+        },
+        myreader: {
+          skipped: false,
+          mode: "full",
+          pushed: 0,
+          pulled: 0,
+        },
+      }),
+    )
+
+    await syncLibrary(
+      library,
+      dataSources,
+      { reason: "automatic_check" },
+      observer,
+    )
+
+    expect(observer).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        type: "unchanged",
+        libraryId: library.id,
+        taskId: "generated-task",
+        reason: "automatic_check",
+      }),
+    )
   })
 
   it("should return a skipped report when the platform context cannot open", async () => {
@@ -379,5 +464,24 @@ describe("syncLibraries", () => {
         mode: "push_only",
       }),
     )
+  })
+
+  it("should target only the active library during startup sync", async () => {
+    const otherLibrary: Library = { ...library, id: "lib-2", name: "Other" }
+
+    const report = await syncLibraries(
+      {
+        libraries: [otherLibrary, library],
+        dataSources,
+        activeLibraryId: library.id,
+        syncOnStartup: true,
+        enableAutoSync: true,
+      },
+      "startup",
+    )
+
+    expect(report.results).toHaveLength(1)
+    expect(openSyncContext).toHaveBeenCalledTimes(1)
+    expect(openSyncContext).toHaveBeenCalledWith(library, dataSources)
   })
 })

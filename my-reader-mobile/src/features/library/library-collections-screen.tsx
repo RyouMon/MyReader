@@ -24,8 +24,6 @@ import {
 import { useBookReadingFormat } from "@/src/domain/library/hooks/use-book-reading-format"
 import { useFavoriteBooks } from "@/src/domain/library/hooks/use-favorite-books"
 import { useRecentlyReadBooks } from "@/src/domain/library/hooks/use-recently-read-books"
-import { notifyLibraryRefresh } from "@/src/domain/notifications/download-notifications"
-import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library"
 import { isRemoteSourceType } from "@/src/domain/types"
 import {
   type BookCollectionDefinition,
@@ -136,7 +134,6 @@ export default function LibraryCollectionsScreen() {
     bookLocalOnlyById,
     bookUploadStatusById,
   } = useLibraryBookMeta(selectedLibrary, books, selectedFormatById)
-  const { syncNow } = useSyncLibrary()
   const variant = resolveLibraryScreenVariant({
     storeReady,
     effectiveLibraryId: activeLibraryId ?? undefined,
@@ -206,21 +203,6 @@ export default function LibraryCollectionsScreen() {
       ],
     )
   }, [activeLibraryId, applyLibrarySelection, libraries, selectedLibrary, t])
-  const handleSyncCurrentLibrary = useCallback(() => {
-    if (!selectedLibrary) return
-    void (async () => {
-      try {
-        await syncNow(selectedLibrary.id)
-        notifyLibraryRefresh("done")
-      } catch (error) {
-        console.error("[library-collections] sync library failed:", error)
-        notifyLibraryRefresh(
-          "error",
-          error instanceof Error ? error.message : undefined,
-        )
-      }
-    })()
-  }, [selectedLibrary, syncNow])
   const handleImportBook = useCallback(() => {
     void importBookFromPicker(isManagedLibrary ? selectedLibrary : null).catch(
       (error) => {
@@ -233,10 +215,8 @@ export default function LibraryCollectionsScreen() {
   }, [isManagedLibrary, selectedLibrary, t])
   const { options, toolbar } = useLibraryCollectionsHeader({
     selectedLibraryName: selectedLibrary?.name,
-    hasSelectedLibrary: selectedLibrary !== null,
     canImportBook: isManagedLibrary,
     onImportBook: handleImportBook,
-    onSyncCurrentLibrary: handleSyncCurrentLibrary,
   })
   const header = (
     <>

@@ -10,6 +10,10 @@ import { defaultSettings } from "./app-store.constants"
 import { createDataSourceSlice } from "./data-source-slice"
 import { createLibrarySlice } from "./library-slice"
 import { createProgramSlice, createSettingsSlice } from "./settings-slice"
+import {
+  coerceLibrarySyncHistory,
+  createSyncStatusSlice,
+} from "./sync-status-slice"
 
 type SliceHarness<TSlice> = {
   slice: TSlice
@@ -163,5 +167,224 @@ describe("program slice", () => {
     harness.slice.setLibraryViewMode("list")
 
     expect(harness.state.libraryViewMode).toBe("list")
+  })
+})
+
+describe("sync status slice", () => {
+  it("should restore only recognized persisted sync reasons", () => {
+    expect(
+      coerceLibrarySyncHistory({
+        one: { result: "success", completedAt: 100, reason: "manual" },
+        two: { result: "success", completedAt: 200, reason: "legacy" },
+        three: {
+          result: "failure",
+          completedAt: 300,
+          message: "Offline",
+          reason: "automatic_check",
+        },
+        four: {
+          lastSync: { completedAt: 400, reason: "manual" },
+          lastFailure: {
+            completedAt: 500,
+            failureStage: "pulling",
+            message: "Unavailable",
+          },
+        },
+      }),
+    ).toEqual({
+      one: { lastSync: { completedAt: 100, reason: "manual" } },
+      two: { lastSync: { completedAt: 200 } },
+      three: {
+        lastFailure: {
+          completedAt: 300,
+          message: "Offline",
+          reason: "automatic_check",
+        },
+      },
+      four: {
+        lastSync: { completedAt: 400, reason: "manual" },
+        lastFailure: {
+          completedAt: 500,
+          failureStage: "pulling",
+          message: "Unavailable",
+        },
+      },
+    })
+  })
+
+  it("should retain only the newest task progress for a library", () => {
+    const harness = createHarness(createSyncStatusSlice)
+
+    harness.slice.startLibrarySync({
+      libraryId: "one",
+      taskId: "older",
+      startedAt: 100,
+      reason: "automatic_check",
+    })
+    harness.slice.startLibrarySync({
+      libraryId: "one",
+      taskId: "newer",
+      startedAt: 200,
+      reason: "manual",
+    })
+    harness.slice.updateLibrarySyncProgress({
+      libraryId: "one",
+      taskId: "older",
+      stage: "pushing",
+      completed: 1,
+      total: 1,
+    })
+
+    expect(harness.state.librarySyncActivityById.one).toMatchObject({
+      taskId: "newer",
+      stage: "preparing",
+      reason: "manual",
+    })
+  })
+
+  it("should persist the last failure stage after an operation finishes", () => {
+    const harness = createHarness(createSyncStatusSlice)
+
+    harness.slice.startLibrarySync({
+      libraryId: "one",
+      taskId: "task",
+      startedAt: 100,
+      reason: "local_change",
+    })
+    harness.slice.updateLibrarySyncProgress({
+      libraryId: "one",
+      taskId: "task",
+      stage: "applying",
+      completed: 1,
+      total: 2,
+    })
+    harness.slice.failLibrarySync({
+      libraryId: "one",
+      taskId: "task",
+      completedAt: 200,
+      failureKind: "data_integrity",
+      message: "Damaged history",
+      reason: "local_change",
+    })
+
+    expect(harness.state.librarySyncActivityById.one).toBeUndefined()
+    expect(harness.state.librarySyncHistoryById.one).toEqual({
+      lastFailure: {
+        completedAt: 200,
+        failureKind: "data_integrity",
+        failureStage: "applying",
+        message: "Damaged history",
+        reason: "local_change",
+      },
+    })
+  })
+
+  it("should replace a previous failure with a later success", () => {
+    const harness = createHarness(createSyncStatusSlice)
+
+    harness.slice.failLibrarySync({
+      libraryId: "one",
+      taskId: "failed",
+      completedAt: 100,
+      message: "Offline",
+      reason: "automatic_check",
+    })
+    harness.slice.succeedLibrarySync({
+      libraryId: "one",
+      taskId: "succeeded",
+      completedAt: 200,
+      reason: "manual",
+    })
+
+    expect(harness.state.librarySyncHistoryById.one).toEqual({
+      lastSync: {
+        completedAt: 200,
+        reason: "manual",
+      },
+    })
+  })
+
+  it("should clear a previous failure after unchanged without replacing the last sync", () => {
+    const harness = createHarness(createSyncStatusSlice)
+
+    harness.slice.succeedLibrarySync({
+      libraryId: "one",
+      taskId: "succeeded",
+      completedAt: 50,
+      reason: "manual",
+    })
+    harness.slice.failLibrarySync({
+      libraryId: "one",
+      taskId: "failed",
+      completedAt: 100,
+      message: "Offline",
+      reason: "local_change",
+    })
+    harness.slice.startLibrarySync({
+      libraryId: "one",
+      taskId: "check",
+      startedAt: 150,
+      reason: "automatic_check",
+    })
+    harness.slice.finishLibrarySyncUnchanged({
+      libraryId: "one",
+      taskId: "check",
+      completedAt: 200,
+      reason: "automatic_check",
+    })
+
+    expect(harness.state.librarySyncActivityById.one).toBeUndefined()
+    expect(harness.state.librarySyncTransientResultById.one).toEqual({
+      result: "unchanged",
+      completedAt: 200,
+      reason: "automatic_check",
+    })
+    expect(harness.state.librarySyncHistoryById.one).toEqual({
+      lastSync: {
+        completedAt: 50,
+        reason: "manual",
+      },
+    })
+  })
+
+  it("should remove failure-only history after unchanged", () => {
+    const harness = createHarness(createSyncStatusSlice)
+
+    harness.slice.failLibrarySync({
+      libraryId: "one",
+      taskId: "failed",
+      completedAt: 100,
+      message: "Offline",
+      reason: "local_change",
+    })
+    harness.slice.startLibrarySync({
+      libraryId: "one",
+      taskId: "check",
+      startedAt: 150,
+      reason: "automatic_check",
+    })
+    harness.slice.finishLibrarySyncUnchanged({
+      libraryId: "one",
+      taskId: "check",
+      completedAt: 200,
+      reason: "automatic_check",
+    })
+
+    expect(harness.state.librarySyncHistoryById.one).toBeUndefined()
+  })
+
+  it("should clear a cancelled current task without recording a failure", () => {
+    const harness = createHarness(createSyncStatusSlice)
+
+    harness.slice.startLibrarySync({
+      libraryId: "one",
+      taskId: "task",
+      startedAt: 100,
+      reason: "local_change",
+    })
+    harness.slice.cancelLibrarySync({ libraryId: "one", taskId: "task" })
+
+    expect(harness.state.librarySyncActivityById.one).toBeUndefined()
+    expect(harness.state.librarySyncHistoryById.one).toBeUndefined()
   })
 })

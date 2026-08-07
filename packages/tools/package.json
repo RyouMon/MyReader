@@ -16,6 +16,7 @@
     "./reader-themes": "./src/reader-themes.ts",
     "./reader-toc": "./src/reader-toc.ts",
     "./remote-path": "./src/remote-path.ts",
+    "./sync-status": "./src/sync-status.ts",
     "./utils": "./src/utils/index.ts",
     "./types": "./src/types/index.ts",
     "./types/*": "./src/types/*.ts",

@@ -21,6 +21,10 @@ import { createDataSourceSlice } from "./data-source-slice"
 import { createLibrarySlice } from "./library-slice"
 import { createProgramSlice, createSettingsSlice } from "./settings-slice"
 import { createStatusSlice } from "./status-slice"
+import {
+  coerceLibrarySyncHistory,
+  createSyncStatusSlice,
+} from "./sync-status-slice"
 import { createAppConfigStorage } from "./app-config-storage"
 
 const appConfigStorage = createAppConfigStorage()
@@ -34,6 +38,7 @@ export const useAppStore = create<AppState>()(
   persist(
     (...args) => ({
       ...createStatusSlice(...args),
+      ...createSyncStatusSlice(...args),
       ...createSettingsSlice(...args),
       ...createProgramSlice(...args),
       ...createDataSourceSlice(...args),
@@ -45,6 +50,7 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         settings: state.settings,
         libraryViewMode: state.libraryViewMode,
+        librarySyncHistoryById: state.librarySyncHistoryById,
       }),
       merge: (persistedState, currentState) => {
         const typedPersisted =
@@ -100,6 +106,9 @@ export const useAppStore = create<AppState>()(
           libraryViewMode: isLibraryViewMode(typedPersisted.libraryViewMode)
             ? typedPersisted.libraryViewMode
             : DEFAULT_LIBRARY_VIEW_MODE,
+          librarySyncHistoryById: coerceLibrarySyncHistory(
+            typedPersisted.librarySyncHistoryById,
+          ),
         } as AppState
       },
       onRehydrateStorage: () => (state) => {

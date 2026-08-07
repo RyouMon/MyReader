@@ -85,6 +85,7 @@ describe("createSidecarSyncRuntime", () => {
       libraries: [library],
       dataSources: [],
       enableAutoSync: true,
+      activeLibraryId: library.id,
     }))
 
     await expect(
@@ -112,6 +113,7 @@ describe("createSidecarSyncRuntime", () => {
       libraries: [library],
       dataSources: [],
       enableAutoSync: true,
+      activeLibraryId: library.id,
     }))
 
     await runtime.recover()
@@ -138,6 +140,7 @@ describe("createSidecarSyncRuntime", () => {
       libraries: [library],
       dataSources: [],
       enableAutoSync: true,
+      activeLibraryId: library.id,
     }))
 
     try {
@@ -185,6 +188,7 @@ describe("createSidecarSyncRuntime", () => {
       libraries: [library, secondLibrary],
       dataSources: [],
       enableAutoSync: true,
+      activeLibraryId: library.id,
     }))
 
     const recovery = runtime.recover()
@@ -231,6 +235,7 @@ describe("createSidecarSyncRuntime", () => {
       libraries: [library],
       dataSources: [],
       enableAutoSync: false,
+      activeLibraryId: library.id,
     }))
 
     try {
@@ -243,7 +248,9 @@ describe("createSidecarSyncRuntime", () => {
         expect.objectContaining({
           scope: "myreader",
           myreaderMode: "push_only",
+          reason: "local_change",
         }),
+        undefined,
       )
       expect(applySyncReport).toHaveBeenCalled()
     } finally {
@@ -279,6 +286,7 @@ describe("createSidecarSyncRuntime", () => {
       libraries: [library],
       dataSources: [],
       enableAutoSync: false,
+      activeLibraryId: library.id,
     }))
 
     try {
@@ -288,6 +296,51 @@ describe("createSidecarSyncRuntime", () => {
       expect(syncLibrary).not.toHaveBeenCalled()
       expect(effectiveCoordinatedSyncExecution).not.toHaveBeenCalled()
       expect(completeCoordinatedSync).toHaveBeenCalled()
+    } finally {
+      runtime.dispose()
+      jest.useRealTimers()
+    }
+  })
+
+  it("should not begin queued work after its library stops being active", async () => {
+    jest.useFakeTimers()
+    const emptyTransition: SchedulerTransition = {
+      schedules: [],
+      cancelTimersFor: [],
+      execution: null,
+      retry: null,
+    }
+    jest.mocked(requestCoordinatedSync).mockReturnValue({
+      ...emptyTransition,
+      schedules: [
+        { libraryId: "library-1", generation: 1, deadline: Date.now() },
+      ],
+    })
+    jest.mocked(beginCoordinatedSync).mockReturnValue({
+      ...emptyTransition,
+      execution: {
+        libraryId: "library-1",
+        mode: "push_only",
+        reasons: ["local_change"],
+      },
+    })
+    jest.mocked(completeCoordinatedSync).mockReturnValue(emptyTransition)
+    const runtime = createSidecarSyncRuntime(() => ({
+      libraries: [library],
+      dataSources: [],
+      enableAutoSync: true,
+      activeLibraryId: "library-2",
+    }))
+
+    try {
+      runtime.request("library-1", "push_only", "local_change", "immediate")
+      await jest.runAllTimersAsync()
+
+      expect(effectiveCoordinatedSyncExecution).not.toHaveBeenCalled()
+      expect(syncLibrary).not.toHaveBeenCalled()
+      expect(completeCoordinatedSync).toHaveBeenCalledWith(
+        expect.objectContaining({ libraryId: "library-1" }),
+      )
     } finally {
       runtime.dispose()
       jest.useRealTimers()

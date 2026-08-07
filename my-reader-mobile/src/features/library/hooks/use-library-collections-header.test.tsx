@@ -4,6 +4,8 @@ import { Platform } from "react-native"
 
 import { useLibraryCollectionsHeader } from "./use-library-collections-header"
 
+const mockSyncPress = jest.fn()
+
 jest.mock("@expo/material-symbols/cards_stack.xml", () => ({
   uri: "cards-stack",
 }))
@@ -65,7 +67,12 @@ jest.mock("expo-router", () => {
     return React.createElement(ReactNative.Text, null, children)
   }
 
+  function ToolbarIcon() {
+    return null
+  }
+
   Toolbar.Button = ToolbarButton
+  Toolbar.Icon = ToolbarIcon
   Toolbar.Menu = ToolbarMenu
   Toolbar.MenuAction = ToolbarMenuAction
 
@@ -113,8 +120,21 @@ jest.mock("@/src/components/ui/android-header-menu-button", () => ({
   AndroidHeaderMenuButton: () => null,
 }))
 
+jest.mock("@/src/components/ui/header-toolbar.android", () => ({
+  renderHeaderToolbarActions: () => null,
+}))
+
 jest.mock("@/src/navigation/hooks/use-screen-header", () => ({
   useScreenHeader: () => ({ options: {}, toolbar: null }),
+}))
+
+jest.mock("@/src/features/sync/hooks/use-sync-status-header-action", () => ({
+  useSyncStatusHeaderAction: () => ({
+    label: "syncStatus.accessibilityLabel",
+    onPress: mockSyncPress,
+    iosSfSymbol: "icloud",
+    iconOnly: true,
+  }),
 }))
 
 describe("useLibraryCollectionsHeader", () => {
@@ -123,6 +143,7 @@ describe("useLibraryCollectionsHeader", () => {
   afterEach(() => {
     const { router } = jest.requireMock("expo-router")
     router.push.mockClear()
+    mockSyncPress.mockClear()
     Object.defineProperty(Platform, "OS", {
       configurable: true,
       value: initialPlatform,
@@ -138,10 +159,8 @@ describe("useLibraryCollectionsHeader", () => {
     const { result } = renderHook(() =>
       useLibraryCollectionsHeader({
         selectedLibraryName: "My Library",
-        hasSelectedLibrary: true,
         canImportBook: true,
         onImportBook: jest.fn(),
-        onSyncCurrentLibrary: jest.fn(),
       }),
     )
     const screen = render(<>{result.current.toolbar}</>)
@@ -156,6 +175,10 @@ describe("useLibraryCollectionsHeader", () => {
     const { router } = jest.requireMock("expo-router")
     expect(router.push).toHaveBeenCalledWith("/switch-library")
     expect(screen.queryByText("library.switchLibrary")).toBeNull()
+
+    const syncButton = screen.getByLabelText("syncStatus.accessibilityLabel")
+    fireEvent.press(syncButton)
+    expect(mockSyncPress).toHaveBeenCalledTimes(1)
   })
 
   it("should open the library switcher sheet from the Android left header", () => {
@@ -167,10 +190,8 @@ describe("useLibraryCollectionsHeader", () => {
     const { result } = renderHook(() =>
       useLibraryCollectionsHeader({
         selectedLibraryName: "My Library",
-        hasSelectedLibrary: true,
         canImportBook: true,
         onImportBook: jest.fn(),
-        onSyncCurrentLibrary: jest.fn(),
       }),
     )
     expect(result.current.options.headerTitleAlign).toBe("center")

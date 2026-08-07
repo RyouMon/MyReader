@@ -2,7 +2,7 @@ import { useMutation, useMutationState } from "@tanstack/react-query"
 
 import type { LibrarySyncReport } from "@/src/domain/sync"
 
-import { runLibrarySync } from "./run-library-sync"
+import { runLibrarySync, type RunLibrarySyncInput } from "./run-library-sync"
 
 const librarySyncMutationKey = ["library", "sync"] as const
 
@@ -19,13 +19,17 @@ export function useIsLibrarySyncing(): boolean {
 export function useSyncLibrary() {
   const mutation = useMutation({
     mutationKey: librarySyncMutationKey,
-    mutationFn: (libraryId: string) =>
-      runLibrarySync({ libraryId, trigger: "manual" }),
+    mutationFn: (
+      input: Pick<RunLibrarySyncInput, "libraryId" | "showFailureAlert">,
+    ) => runLibrarySync({ ...input, trigger: "manual" }),
   })
   const isSyncing = useIsLibrarySyncing()
 
   return {
-    syncNow: (libraryId: string) => mutation.mutateAsync(libraryId),
+    syncNow: (
+      libraryId: string,
+      options?: Pick<RunLibrarySyncInput, "showFailureAlert">,
+    ) => mutation.mutateAsync({ libraryId, ...options }),
     isSyncing,
   }
 }

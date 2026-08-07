@@ -1,10 +1,4 @@
 import { applySyncReport } from "@/src/domain/sync/hooks/apply-sync-report"
-import {
-  DataIntegrityError,
-  NetworkError,
-  SyncConfigError,
-  SyncConnectivityError,
-} from "@/src/errors"
 import { librarySidecarRootUri } from "@/src/services/fs/library-paths"
 import { toNativeFilesystemPath } from "@/src/services/fs/path"
 import {
@@ -23,12 +17,13 @@ import {
   type ScheduledSync,
   type SchedulerTransition,
   type SyncExecution,
-  type SyncFailureKind,
 } from "@/src/services/core/sync"
 import type { DataSource, Library } from "../types"
 import { cancelLibrarySyncTask } from "./core-sync"
+import { classifySyncFailure, syncSuspensionReason } from "./failure"
 import { syncLibrary } from "./sync-library"
-import type { MyReaderSyncMode } from "./types"
+import { syncReasonForCoordinatorReasons } from "./sync-reason"
+import type { LibrarySyncObserver, MyReaderSyncMode } from "./types"
 
 export type SidecarSyncReason =
   | "local_change"
@@ -45,6 +40,7 @@ export type SidecarSyncRuntimeState = {
   libraries: Library[]
   dataSources: DataSource[]
   enableAutoSync: boolean
+  activeLibraryId: string | null
 }
 
 export type SidecarSyncRuntime = {
@@ -75,32 +71,10 @@ function sidecarRootPath(library: Library): string {
   return toNativeFilesystemPath(librarySidecarRootUri(library))
 }
 
-function failureKind(error: unknown): SyncFailureKind {
-  if (error instanceof SyncConfigError) return "configuration"
-  if (error instanceof DataIntegrityError) return "data_integrity"
-  if (error instanceof SyncConnectivityError || error instanceof NetworkError) {
-    return "connectivity"
-  }
-  const message = error instanceof Error ? error.message : String(error)
-  if (
-    /network|offline|timeout|timed out|connection|temporar|unavailable|rate.?limit|429|5\d\d/i.test(
-      message,
-    )
-  ) {
-    return "connectivity"
-  }
-  return "unexpected"
-}
-
-function suspendedReason(error: unknown): string {
-  if (error instanceof SyncConfigError) return "configuration"
-  if (error instanceof DataIntegrityError) return "data_integrity"
-  return "unexpected"
-}
-
 export function createSidecarSyncRuntime(
   getState: () => SidecarSyncRuntimeState,
   onError?: (error: unknown) => void,
+  observer?: LibrarySyncObserver,
 ): SidecarSyncRuntime {
   const timers = new Map<string, ReturnType<typeof setTimeout>>()
   const runningTasks = new Map<string, string>()
@@ -110,6 +84,12 @@ export function createSidecarSyncRuntime(
   coordinatorSequence += 1
   const coordinatorId = `mobile:${Date.now()}:${coordinatorSequence}`
   createSyncCoordinator(coordinatorId)
+  const runtimeObserver: LibrarySyncObserver | undefined = observer
+    ? (observation) => {
+        if (disposed || cancelledTasks.has(observation.taskId)) return
+        observer(observation)
+      }
+    : undefined
 
   const findLibrary = (libraryId: string) =>
     getState().libraries.find((library) => library.id === libraryId)
@@ -160,6 +140,16 @@ export function createSidecarSyncRuntime(
     if (disposed) return
     const state = getState()
     const required = execution.reasons.includes("content_ready")
+    if (state.activeLibraryId !== execution.libraryId) {
+      applyTransition(
+        completeCoordinatedSync({
+          coordinatorId,
+          libraryId: execution.libraryId,
+          nowMs: Date.now(),
+        }),
+      )
+      return
+    }
     if (!state.enableAutoSync && !required) {
       applyTransition(
         completeCoordinatedSync({
@@ -193,12 +183,18 @@ export function createSidecarSyncRuntime(
       })
       if (disposed || cancelledTasks.has(taskId)) return
       if (effectiveExecution) {
-        const report = await syncLibrary(library, state.dataSources, {
-          scope: "myreader",
-          myreaderMode: effectiveExecution.mode,
-          myreaderTaskId: taskId,
-          throwOnFailure: true,
-        })
+        const report = await syncLibrary(
+          library,
+          state.dataSources,
+          {
+            scope: "myreader",
+            myreaderMode: effectiveExecution.mode,
+            myreaderTaskId: taskId,
+            reason: syncReasonForCoordinatorReasons(effectiveExecution.reasons),
+            throwOnFailure: true,
+          },
+          runtimeObserver,
+        )
         if (disposed || cancelledTasks.has(taskId)) return
         await applySyncReport(report, { trigger: "scheduled" })
         if (disposed || cancelledTasks.has(taskId)) return
@@ -224,8 +220,8 @@ export function createSidecarSyncRuntime(
           coordinatorId,
           sidecarRootPath: sidecarRootPath(library),
           execution,
-          failureKind: failureKind(error),
-          reason: suspendedReason(error),
+          failureKind: classifySyncFailure(error),
+          reason: syncSuspensionReason(error),
           nowMs: Date.now(),
           randomFraction: Math.random(),
         }),
@@ -264,21 +260,23 @@ export function createSidecarSyncRuntime(
       )
     },
     async recover() {
-      for (const library of getState().libraries) {
+      const state = getState()
+      const library = state.libraries.find(
+        (candidate) => candidate.id === state.activeLibraryId,
+      )
+      if (!library || disposed) return
+      try {
+        const transition = await recoverCoordinatedSync({
+          coordinatorId,
+          sidecarRootPath: sidecarRootPath(library),
+          libraryId: library.id,
+          nowMs: Date.now(),
+        })
         if (disposed) return
-        try {
-          const transition = await recoverCoordinatedSync({
-            coordinatorId,
-            sidecarRootPath: sidecarRootPath(library),
-            libraryId: library.id,
-            nowMs: Date.now(),
-          })
-          if (disposed) return
-          applyTransition(transition)
-        } catch (error) {
-          if (disposed) return
-          throw error
-        }
+        applyTransition(transition)
+      } catch (error) {
+        if (disposed) return
+        throw error
       }
     },
     async requestContextualPull(libraryId, reason) {
@@ -343,8 +341,9 @@ export function createSidecarSyncRuntime(
     dispose() {
       if (disposed) return
       disposed = true
-      for (const taskId of runningTasks.values()) {
+      for (const [libraryId, taskId] of runningTasks) {
         cancelledTasks.add(taskId)
+        observer?.({ type: "cancelled", libraryId, taskId })
         cancelLibrarySyncTask(taskId)
       }
       runningTasks.clear()

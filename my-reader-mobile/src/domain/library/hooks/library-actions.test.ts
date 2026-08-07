@@ -16,16 +16,21 @@ const mockFileDelete = jest.fn()
 const mockPickFile = jest.fn()
 const mockDeleteBookFromLibrary = jest.fn()
 const mockImportBookIntoLibrary = jest.fn()
-const mockCancelQueries = jest.fn(() => Promise.resolve())
-const mockInvalidateQueries = jest.fn()
-const mockSetQueryData = jest.fn()
+const mockCancelQueries = jest.fn((..._args: unknown[]) => Promise.resolve())
+const mockInvalidateQueries = jest.fn((..._args: unknown[]) => undefined)
+const mockSetQueryData = jest.fn((..._args: unknown[]) => undefined)
 const mockRemoveAppLibrary = jest.fn()
-const mockRemoveQueries = jest.fn()
+const mockRemoveQueries = jest.fn((..._args: unknown[]) => undefined)
 const mockReplaceAppLibrary = jest.fn()
 const mockRunLibrarySync = jest.fn((_input: unknown) => Promise.resolve())
 const mockScheduleIdleWork = jest.fn()
-const mockSetLibraries = jest.fn()
-const mockSetActiveLibraryId = jest.fn()
+const mockSetLibraries = jest.fn((libraries: Library[]) => {
+  mockLibraries = libraries
+})
+const mockSetActiveLibraryId = jest.fn((id: string | null) => {
+  mockActiveLibraryId = id
+})
+const mockRemoveLibrarySyncStatus = jest.fn()
 const mockSwitchAppLibrary = jest.fn()
 const mockShowAlert = jest.fn()
 const mockPushAndroidSafControl = jest.fn((_library: unknown) =>
@@ -161,6 +166,7 @@ jest.mock("@/src/store/app-store", () => ({
       dataSources: mockDataSources,
       setLibraries: mockSetLibraries,
       setActiveLibraryId: mockSetActiveLibraryId,
+      removeLibrarySyncStatus: mockRemoveLibrarySyncStatus,
     }),
   },
 }))
@@ -588,6 +594,7 @@ describe("removeLibrary", () => {
 
     expect(mockSetLibraries).toHaveBeenCalledWith([remainingLibrary])
     expect(mockSetActiveLibraryId).toHaveBeenCalledWith(remainingLibrary.id)
+    expect(mockRemoveLibrarySyncStatus).toHaveBeenCalledWith(removedLibrary.id)
     expect(mockRemoveQueries).toHaveBeenCalledWith({
       queryKey: ["books", removedLibrary.id],
       exact: true,

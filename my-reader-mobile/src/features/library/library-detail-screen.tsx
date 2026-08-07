@@ -269,7 +269,7 @@ export default function LibraryDetailScreen() {
               />
               <Button
                 className="flex-1"
-                disabled={isSyncing}
+                disabled={!isActive || isSyncing}
                 onPress={() => {
                   void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
                   void (async () => {

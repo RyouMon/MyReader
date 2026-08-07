@@ -25,7 +25,6 @@ import { useAppStore } from "@/src/store/app-store"
 import { SyncRuntime } from "@/src/domain/sync/components/SyncRuntime"
 import { BookUploadRuntime } from "@/src/domain/sync/components/BookUploadRuntime"
 import { setupGlobalErrorHandler } from "@/src/errors/global-handler"
-import { LibrarySyncPill } from "@/src/features/library/components/library-sync-pill"
 import { setReaderTransitionRootNode } from "@/src/features/reader/reader-open-transition"
 import { ReaderOpenTransitionHost } from "@/src/features/reader/reader-open-transition-overlay"
 import { useDataSourceActions } from "@/src/hooks/use-data-source-actions"
@@ -137,6 +136,16 @@ function RootNavigator() {
             }}
           />
           <Stack.Screen
+            name="sync-status"
+            options={{
+              contentStyle: { backgroundColor: palette.background },
+              headerShown: false,
+              presentation: "formSheet",
+              sheetAllowedDetents: [0.85],
+              sheetGrabberVisible: false,
+            }}
+          />
+          <Stack.Screen
             name="handle-share"
             options={{ presentation: "fullScreenModal" }}
           />
@@ -160,7 +169,6 @@ function RootNavigator() {
       <ReaderOpenTransitionHost />
       <BookUploadRuntime />
       <SyncRuntime />
-      <LibrarySyncPill />
     </>
   )
 }

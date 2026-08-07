@@ -1,4 +1,5 @@
 import {
+  readSyncTaskProgress,
   readSyncTaskSidecarReport,
   releaseSyncTask,
   syncLibraryData,
@@ -12,6 +13,7 @@ jest.mock("@/src/services/core/app-config", () => ({
 
 jest.mock("@/src/services/core/sync", () => ({
   cancelSyncTask: jest.fn(),
+  readSyncTaskProgress: jest.fn(() => null),
   readSyncTaskSidecarReport: jest.fn(() => null),
   releaseSyncTask: jest.fn(),
   syncLibraryData: jest.fn(),
@@ -114,6 +116,49 @@ describe("runCoreLibrarySync", () => {
 
     expect(onSidecarComplete).toHaveBeenCalledWith({ pushed: 1, pulled: 2 })
     expect(finishSync).toBeDefined()
+    finishSync?.(report)
+    await pending
+    jest.useRealTimers()
+  })
+
+  it("should publish changed Core progress while the task is running", async () => {
+    jest.useFakeTimers()
+    let finishSync: ((value: LibrarySyncReport) => void) | undefined
+    jest.mocked(syncLibraryData).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishSync = resolve
+        }),
+    )
+    const onProgress = jest.fn()
+    const pending = runCoreLibrarySync({
+      library,
+      libraryRootUri: "file:///resolved-library",
+      nowMs: 100,
+      scope: "all",
+      forceCalibre: false,
+      mode: "full",
+      storage: { kind: "local-direct", root: "/library" },
+      taskId: "task-1",
+      onProgress,
+    })
+
+    jest.mocked(readSyncTaskProgress).mockReturnValue({
+      taskId: "task-1",
+      stage: "pulling",
+      completed: 2,
+      total: 5,
+    })
+    jest.advanceTimersByTime(100)
+    jest.advanceTimersByTime(100)
+
+    expect(onProgress).toHaveBeenCalledTimes(1)
+    expect(onProgress).toHaveBeenCalledWith({
+      taskId: "task-1",
+      stage: "pulling",
+      completed: 2,
+      total: 5,
+    })
     finishSync?.(report)
     await pending
     jest.useRealTimers()

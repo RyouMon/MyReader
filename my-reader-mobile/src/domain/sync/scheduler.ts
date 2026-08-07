@@ -2,6 +2,7 @@ import { DEFAULT_SYNC_POLICY } from "./policy"
 import { syncLibraries } from "./sync-library"
 import type {
   ScheduledSyncTarget,
+  LibrarySyncObserver,
   SyncLibrariesDeps,
   SyncRunReport,
   SyncTrigger,
@@ -19,6 +20,7 @@ export function runSyncLibraries(
   trigger: SyncTrigger,
   deps: SyncLibrariesDeps,
   scheduledTarget?: ScheduledSyncTarget,
+  observer?: LibrarySyncObserver,
 ): Promise<SyncRunReport> {
   if (inflight) return inflight
 
@@ -44,6 +46,8 @@ export function runSyncLibraries(
       trigger,
       DEFAULT_SYNC_POLICY,
       scheduledTarget,
+      undefined,
+      observer,
     )
     lastFinishedAt = Date.now()
     return report

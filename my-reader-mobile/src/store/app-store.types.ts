@@ -7,6 +7,7 @@ import type { DataSourceSlice } from "./data-source-slice"
 import type { LibrarySlice } from "./library-slice"
 import type { ProgramSlice, SettingsSlice } from "./settings-slice"
 import type { StatusSlice } from "./status-slice"
+import type { LibrarySyncHistory, SyncStatusSlice } from "./sync-status-slice"
 
 export type ReaderTheme = ReaderThemeKey
 export type FixedNavigationMode = "horizontal" | "vertical"
@@ -58,11 +59,13 @@ export type PersistedAppState = {
   libraries?: import("@my-reader/tools/types/library").Library[]
   activeLibraryId?: string | null
   libraryViewMode: LibraryViewMode
+  librarySyncHistoryById?: Record<string, LibrarySyncHistory>
 }
 
 export type AppState = StatusSlice &
   DataSourceSlice &
   LibrarySlice &
+  SyncStatusSlice &
   SettingsSlice &
   ProgramSlice
 

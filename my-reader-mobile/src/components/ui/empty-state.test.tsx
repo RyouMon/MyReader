@@ -88,6 +88,20 @@ describe("EmptyState", () => {
     )
   })
 
+  it("should allow a screen to use standard title text sizing", () => {
+    const screen = render(
+      <EmptyState
+        title="尚未选择书库"
+        detail="请选择书库"
+        titleClassName="text-base"
+      />,
+    )
+
+    expect(screen.getByText("尚未选择书库").props.className).toBe(
+      "text-center text-base",
+    )
+  })
+
   it("should render an Android XML icon directly inside a Compose Host", () => {
     const initialPlatform = Platform.OS
     Object.defineProperty(Platform, "OS", {

@@ -4,6 +4,7 @@ import { appConfigPath } from "@/src/services/core/app-config"
 import {
   cancelSyncTask,
   type LibraryStorageConfig,
+  readSyncTaskProgress,
   readSyncTaskSidecarReport,
   releaseSyncTask,
   syncLibraryData,
@@ -11,6 +12,7 @@ import {
   type LibrarySyncScope,
   type SidecarSyncMode,
   type SidecarSyncReport,
+  type SyncTaskProgress,
 } from "@/src/services/core/sync"
 import { librarySidecarRootUri } from "@/src/services/fs/library-paths"
 import { toNativeFilesystemPath } from "@/src/services/fs/path"
@@ -35,10 +37,20 @@ export async function runCoreLibrarySync(input: {
   mode: SidecarSyncMode
   storage: LibraryStorageConfig
   taskId?: string
+  onProgress?: (progress: SyncTaskProgress) => void
   onSidecarComplete?: (report: SidecarSyncReport) => void
 }): Promise<LibrarySyncReport> {
   const taskId = input.taskId ?? createLibrarySyncTaskId(input.library.id)
   let sidecarPublished = false
+  let lastProgressSignature: string | null = null
+  const publishProgress = () => {
+    const progress = readSyncTaskProgress(taskId)
+    if (!progress) return
+    const signature = `${progress.stage}:${progress.completed}:${progress.total}`
+    if (signature === lastProgressSignature) return
+    lastProgressSignature = signature
+    input.onProgress?.(progress)
+  }
   const publishSidecarResult = () => {
     if (sidecarPublished) return
     const report = readSyncTaskSidecarReport(taskId)
@@ -60,13 +72,18 @@ export async function runCoreLibrarySync(input: {
     mode: input.mode,
     storage: input.storage,
   })
-  const sidecarResultTimer = setInterval(publishSidecarResult, 100)
+  const resultTimer = setInterval(() => {
+    publishProgress()
+    publishSidecarResult()
+  }, 100)
   try {
     const report = await sync
+    publishProgress()
     publishSidecarResult()
     return report
   } finally {
-    clearInterval(sidecarResultTimer)
+    clearInterval(resultTimer)
+    publishProgress()
     releaseSyncTask(taskId)
   }
 }

@@ -7,6 +7,7 @@ import { Platform } from "react-native"
 import { useThemePalette } from "@/src/design/tokens"
 import { getBookCollectionDefinition } from "@/src/features/library/book-collection-definitions"
 import type { SortOption } from "@/src/features/library/hooks/use-books-for-collection"
+import { useSyncStatusHeaderAction } from "@/src/features/sync/hooks/use-sync-status-header-action"
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 import type { LibraryViewMode } from "@/src/store/app-store.types"
 
@@ -43,6 +44,7 @@ export function useLibraryHeaderChrome({
 }: UseLibraryHeaderChromeParams): UseLibraryHeaderChromeResult {
   const { t } = useTranslation()
   const palette = useThemePalette()
+  const syncAction = useSyncStatusHeaderAction()
   const rightMenuRef = useRef(null)
   const title = t(getBookCollectionDefinition(collectionId).titleKey)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
@@ -58,6 +60,7 @@ export function useLibraryHeaderChrome({
     collectionId,
     sortBy,
     viewMode,
+    syncAction,
     onSetSortBy,
     onSetViewMode,
   })
@@ -65,6 +68,7 @@ export function useLibraryHeaderChrome({
   const { options: baseOptions, toolbar: baseToolbar } = useScreenHeader({
     title,
     headerLargeTitle: true,
+    right: [syncAction],
   })
 
   const options = useMemo((): NativeStackNavigationOptions => {
@@ -122,6 +126,7 @@ export function useLibraryHeaderChrome({
           collectionId={collectionId}
           sortBy={sortBy}
           viewMode={viewMode}
+          syncAction={syncAction}
           onSetSortBy={onSetSortBy}
           onSetViewMode={onSetViewMode}
         />
@@ -132,6 +137,7 @@ export function useLibraryHeaderChrome({
     baseToolbar,
     collectionId,
     sortBy,
+    syncAction,
     viewMode,
     onSetSortBy,
     onSetViewMode,

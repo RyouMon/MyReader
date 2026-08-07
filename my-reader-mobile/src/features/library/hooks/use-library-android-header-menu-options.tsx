@@ -6,8 +6,11 @@ import { type RefObject, useCallback, useMemo } from "react"
 import { useTranslation } from "react-i18next"
 
 import { AndroidHeaderMenuButton } from "@/src/components/ui/android-header-menu-button"
+import { renderHeaderToolbarActions } from "@/src/components/ui/header-toolbar.android"
 import type { SortOption } from "@/src/features/library/hooks/use-books-for-collection"
+import type { ScreenHeaderAction } from "@/src/navigation/hooks/use-screen-header"
 import type { LibraryViewMode } from "@/src/store/app-store.types"
+import { View } from "@/tw"
 
 import {
   getLibrarySortOptions,
@@ -19,6 +22,7 @@ type UseLibraryAndroidHeaderMenuOptionsParams = {
   collectionId: BuiltInBookCollectionId
   sortBy: SortOption
   viewMode: LibraryViewMode
+  syncAction: ScreenHeaderAction
   onSetSortBy: (value: SortOption) => void
   onSetViewMode: (value: LibraryViewMode) => void
 }
@@ -29,6 +33,7 @@ export function useLibraryAndroidHeaderMenuOptions({
   collectionId,
   sortBy,
   viewMode,
+  syncAction,
   onSetSortBy,
   onSetViewMode,
 }: UseLibraryAndroidHeaderMenuOptionsParams): Pick<
@@ -80,17 +85,20 @@ export function useLibraryAndroidHeaderMenuOptions({
   return useMemo(
     () => ({
       headerRight: () => (
-        <AndroidHeaderMenuButton
-          menuRef={rightMenuRef}
-          actions={rightActions}
-          onPressAction={handleRightMenuAction}
-          icon={TuneIcon}
-          accessibilityLabel={t("library.viewConfig")}
-          side="right"
-          anchoredToRight
-        />
+        <View className="flex-row items-center">
+          {renderHeaderToolbarActions([syncAction])}
+          <AndroidHeaderMenuButton
+            menuRef={rightMenuRef}
+            actions={rightActions}
+            onPressAction={handleRightMenuAction}
+            icon={TuneIcon}
+            accessibilityLabel={t("library.viewConfig")}
+            side="right"
+            anchoredToRight
+          />
+        </View>
       ),
     }),
-    [rightActions, rightMenuRef, t, handleRightMenuAction],
+    [rightActions, rightMenuRef, syncAction, t, handleRightMenuAction],
   )
 }

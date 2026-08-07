@@ -1,3 +1,5 @@
+import type { SyncReason } from "@my-reader/tools/sync-status"
+
 import type { BookItem, DataSource, Library } from "../types"
 
 /** 同步范围 */
@@ -16,6 +18,53 @@ export type SyncFailureKind =
   | "data_integrity"
   | "unexpected"
 
+export type LibrarySyncObservation =
+  | {
+      type: "started"
+      libraryId: string
+      taskId: string
+      startedAt: number
+      reason: SyncReason
+    }
+  | {
+      type: "progress"
+      libraryId: string
+      taskId: string
+      stage: string
+      completed: number
+      total: number
+    }
+  | {
+      type: "succeeded"
+      libraryId: string
+      taskId: string
+      completedAt: number
+      reason: SyncReason
+    }
+  | {
+      type: "unchanged"
+      libraryId: string
+      taskId: string
+      completedAt: number
+      reason: SyncReason
+    }
+  | {
+      type: "failed"
+      libraryId: string
+      taskId: string
+      completedAt: number
+      failureKind?: SyncFailureKind
+      message: string
+      reason: SyncReason
+    }
+  | {
+      type: "cancelled"
+      libraryId: string
+      taskId: string
+    }
+
+export type LibrarySyncObserver = (observation: LibrarySyncObservation) => void
+
 /** 单库同步参数 */
 export type SyncLibraryOptions = {
   scope?: SyncScope
@@ -23,6 +72,7 @@ export type SyncLibraryOptions = {
   throwOnFailure?: boolean
   myreaderMode?: MyReaderSyncMode
   myreaderTaskId?: string
+  reason?: SyncReason
 }
 
 /** 某触发源下的策略条目 */

@@ -22,11 +22,14 @@ import {
 import { isRemoteSourceType, type DataSource, type Library } from "../types"
 import { requestPendingBookUploads } from "./book-upload-store"
 import { openSyncContext } from "./context"
-import { runCoreLibrarySync } from "./core-sync"
+import { createLibrarySyncTaskId, runCoreLibrarySync } from "./core-sync"
+import { classifySyncFailure } from "./failure"
 import { DEFAULT_SYNC_POLICY, resolveSyncOptions } from "./policy"
+import { syncReasonForTrigger } from "./sync-reason"
 import type {
   CalibreSyncResult,
   LibrarySyncReport,
+  LibrarySyncObserver,
   MyReaderSyncResult,
   ScheduledSyncTarget,
   SyncLibrariesDeps,
@@ -80,9 +83,44 @@ function failedReport(
       mode,
       providers: {},
       error: errorMessage,
+      failureKind,
     },
     failureKind,
   }
+}
+
+function observeSyncResult(
+  observer: LibrarySyncObserver | undefined,
+  taskId: string,
+  report: LibrarySyncReport,
+  reason: NonNullable<SyncLibraryOptions["reason"]>,
+): void {
+  const completedAt = Date.now()
+  if (report.error) {
+    observer?.({
+      type: "failed",
+      libraryId: report.libraryId,
+      taskId,
+      completedAt,
+      failureKind: report.failureKind,
+      message: report.error,
+      reason,
+    })
+    return
+  }
+
+  const changed =
+    report.calibre.changed ||
+    Object.values(report.myreader.providers).some(
+      (provider) => provider.pushed > 0 || provider.pulled > 0,
+    )
+  observer?.({
+    type: changed ? "succeeded" : "unchanged",
+    libraryId: report.libraryId,
+    taskId,
+    completedAt,
+    reason,
+  })
 }
 
 function calibreSkipReason(
@@ -122,16 +160,33 @@ export async function syncLibrary(
   library: Library,
   dataSources: DataSource[],
   options: SyncLibraryOptions = {},
+  observer?: LibrarySyncObserver,
 ): Promise<LibrarySyncReport> {
   const startedAt = Date.now()
   const throwOnFailure = options.throwOnFailure ?? false
+  const taskId = options.myreaderTaskId ?? createLibrarySyncTaskId(library.id)
+  const reason = options.reason ?? "automatic_check"
+  observer?.({
+    type: "started",
+    libraryId: library.id,
+    taskId,
+    startedAt,
+    reason,
+  })
 
   let ctx
   try {
     ctx = await openSyncContext(library, dataSources)
   } catch (err) {
     const message = describeError(err)
-    const report = failedReport(library, options, message, startedAt)
+    const report = failedReport(
+      library,
+      options,
+      message,
+      startedAt,
+      classifySyncFailure(err),
+    )
+    observeSyncResult(observer, taskId, report, reason)
     if (throwOnFailure) throw err instanceof Error ? err : new Error(message)
     return report
   }
@@ -145,7 +200,16 @@ export async function syncLibrary(
       forceCalibre: options.forceCalibre ?? false,
       mode: options.myreaderMode ?? "full",
       storage: ctx.libraryStorage,
-      taskId: options.myreaderTaskId,
+      taskId,
+      onProgress: (progress) =>
+        observer?.({
+          type: "progress",
+          libraryId: library.id,
+          taskId,
+          stage: progress.stage,
+          completed: progress.completed,
+          total: progress.total,
+        }),
       onSidecarComplete: ({ pulled }) =>
         invalidatePulledSidecar(library.id, pulled),
     })
@@ -169,14 +233,17 @@ export async function syncLibrary(
     }
   } catch (err) {
     const message = describeError(err)
-    if (throwOnFailure) throw err instanceof Error ? err : new Error(message)
-    return failedReport(
+    const failureKind = classifySyncFailure(err)
+    const report = failedReport(
       library,
       options,
       message,
       startedAt,
-      err instanceof DataIntegrityError ? "data_integrity" : undefined,
+      failureKind,
     )
+    observeSyncResult(observer, taskId, report, reason)
+    if (throwOnFailure) throw err instanceof Error ? err : new Error(message)
+    return report
   }
 
   if (
@@ -230,6 +297,8 @@ export async function syncLibrary(
     },
   }
 
+  observeSyncResult(observer, taskId, report, reason)
+
   if (report.error && throwOnFailure) {
     if (report.failureKind === "connectivity") {
       throw new SyncConnectivityError(report.error, report)
@@ -250,6 +319,7 @@ export async function syncLibraries(
   policy: SyncTriggerPolicy = DEFAULT_SYNC_POLICY,
   scheduledTarget?: ScheduledSyncTarget,
   overrides?: Partial<SyncLibraryOptions>,
+  observer?: LibrarySyncObserver,
 ): Promise<SyncRunReport> {
   const startedAt = Date.now()
 
@@ -275,7 +345,10 @@ export async function syncLibraries(
     }
   }
 
-  const options = mergeOptions(trigger, policy, scheduledTarget, overrides)
+  const options = {
+    ...mergeOptions(trigger, policy, scheduledTarget, overrides),
+    reason: syncReasonForTrigger(trigger, scheduledTarget),
+  }
   const entry = resolveSyncOptions(trigger, policy, scheduledTarget)
   if (!entry) {
     return {
@@ -288,21 +361,18 @@ export async function syncLibraries(
     }
   }
 
-  const libraries =
-    trigger === "scheduled" && scheduledTarget === "reading"
-      ? deps.libraries.filter((library) => library.id === deps.activeLibraryId)
-      : deps.libraries
+  const libraries = deps.activeLibraryId
+    ? deps.libraries.filter((library) => library.id === deps.activeLibraryId)
+    : []
 
   const results: LibrarySyncReport[] = []
   for (const library of libraries) {
-    if (
-      trigger === "scheduled" &&
-      scheduledTarget === "reading" &&
-      !deps.activeLibraryId
-    ) {
-      continue
-    }
-    const report = await syncLibrary(library, deps.dataSources, options)
+    const report = await syncLibrary(
+      library,
+      deps.dataSources,
+      options,
+      observer,
+    )
     results.push(report)
   }
 

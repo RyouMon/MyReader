@@ -17,6 +17,7 @@ import { getValidAccessToken } from "@/src/services/auth/onedrive"
 import { subscribeLocalSidecarWork } from "@/src/services/core/sync-events"
 import { setCachedAuth } from "@/src/services/remote/auth-cache"
 import { useAppStore } from "@/src/store/app-store"
+import { observeLibrarySync } from "@/src/store/sync-status-observer"
 import { cancelIdleWork, scheduleIdleWork } from "@/src/utils/common"
 
 function notifySyncError(title: string, message: string): void {
@@ -88,7 +89,12 @@ export function SyncRuntime(): null {
     }
 
     const startupHandle = scheduleIdleWork(() => {
-      void runSyncLibraries("startup", getSyncDeps())
+      void runSyncLibraries(
+        "startup",
+        getSyncDeps(),
+        undefined,
+        observeLibrarySync,
+      )
         .then(async (report) => {
           await applySyncRunReports(report.results, { trigger: "startup" })
         })
@@ -108,12 +114,15 @@ export function SyncRuntime(): null {
           libraries: state.libraries,
           dataSources: state.dataSources,
           enableAutoSync: state.settings.enableAutoSync,
+          activeLibraryId: state.activeLibraryId,
         }
       },
       (error) => handleSyncError(error, "automatic"),
+      observeLibrarySync,
     )
     sidecarRuntime.current = runtime
     const unsubscribeWork = subscribeLocalSidecarWork((work) => {
+      if (work.libraryId !== useAppStore.getState().activeLibraryId) return
       runtime.request(
         work.libraryId,
         "push_only",
@@ -176,6 +185,7 @@ export function SyncRuntime(): null {
       for (const library of current.libraries) {
         if (isRemoteSourceType(library.sourceType)) {
           runtime.setLibraryOnline(library.id, reachable)
+          current.setLibrarySyncOnline(library.id, reachable)
         }
       }
       if (reachable && lastNetworkReachable === false) {
