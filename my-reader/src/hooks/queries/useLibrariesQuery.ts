@@ -1,5 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import type { Library } from "@my-reader/tools/types/library"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { resetBrokenCovers } from "@/lib/coverFailureCache"
 import { api } from "@/lib/tauri-api"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
@@ -63,14 +63,6 @@ export function useLibraryMutations() {
   const createLocalMyreaderLibrary = useMutation({
     mutationFn: async (path: string) => {
       const info = await api.createMyreaderLibrary(path, null)
-      return mapLibraryFromBackendJson(info)
-    },
-    onSuccess: handleLibraryAdded,
-  })
-
-  const createDefaultMyreaderLibrary = useMutation({
-    mutationFn: async (name: string) => {
-      const info = await api.createDefaultMyreaderLibrary(name)
       return mapLibraryFromBackendJson(info)
     },
     onSuccess: handleLibraryAdded,
@@ -160,6 +152,37 @@ export function useLibraryMutations() {
     onSuccess: handleLibraryAdded,
   })
 
+  async function openExistingLocalLibrary(path: string) {
+    try {
+      return await openLocalMyreaderLibrary.mutateAsync(path)
+    } catch (error) {
+      if (!shouldTryCalibreLibrary(error)) throw error
+      return addLibrary.mutateAsync(path)
+    }
+  }
+
+  async function openExistingRemoteLibrary({
+    dataSourceId,
+    rootPath,
+    sourceType,
+  }: {
+    dataSourceId: string
+    rootPath: string
+    sourceType: "webdav" | "onedrive"
+  }) {
+    try {
+      return await openRemoteMyreaderLibrary.mutateAsync({
+        dataSourceId,
+        rootPath,
+      })
+    } catch (error) {
+      if (!shouldTryCalibreLibrary(error)) throw error
+      return sourceType === "webdav"
+        ? addWebdavLibrary.mutateAsync({ dataSourceId, rootPath })
+        : addOnedriveLibrary.mutateAsync({ dataSourceId, rootPath })
+    }
+  }
+
   const removeLibrary = useMutation({
     mutationFn: async (id: string) => {
       await api.removeLibrary(id)
@@ -191,10 +214,11 @@ export function useLibraryMutations() {
   return {
     addLibrary: addLibrary.mutateAsync,
     createLocalMyreaderLibrary: createLocalMyreaderLibrary.mutateAsync,
-    createDefaultMyreaderLibrary: createDefaultMyreaderLibrary.mutateAsync,
     openLocalMyreaderLibrary: openLocalMyreaderLibrary.mutateAsync,
+    openExistingLocalLibrary,
     createRemoteMyreaderLibrary: createRemoteMyreaderLibrary.mutateAsync,
     openRemoteMyreaderLibrary: openRemoteMyreaderLibrary.mutateAsync,
+    openExistingRemoteLibrary,
     addWebdavLibrary: addWebdavLibrary.mutateAsync,
     addOnedriveLibrary: addOnedriveLibrary.mutateAsync,
     removeLibrary: removeLibrary.mutateAsync,
@@ -202,7 +226,6 @@ export function useLibraryMutations() {
     isAdding:
       addLibrary.isPending ||
       createLocalMyreaderLibrary.isPending ||
-      createDefaultMyreaderLibrary.isPending ||
       openLocalMyreaderLibrary.isPending ||
       createRemoteMyreaderLibrary.isPending ||
       openRemoteMyreaderLibrary.isPending,
@@ -211,4 +234,13 @@ export function useLibraryMutations() {
     isRemoving: removeLibrary.isPending,
     isRefreshing: refreshLibrary.isPending,
   }
+}
+
+function shouldTryCalibreLibrary(error: unknown): boolean {
+  const message = String(error)
+  return (
+    message.includes("MYREADER_LIBRARY_MARKER_NOT_FOUND") ||
+    message.includes("REMOTE_MYREADER_LIBRARY_MARKER_NOT_FOUND") ||
+    message.includes("MYREADER_LIBRARY_CONTAINS_METADATA_DB")
+  )
 }

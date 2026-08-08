@@ -24,6 +24,96 @@ use crate::error::AppError;
 
 const DEFAULT_CLIENT_ID: &str = "9750fea8-e428-4d4d-8956-7738561e14ac";
 const DEFAULT_TENANT_ID: &str = "consumers";
+const AUTH_SUCCESS_PAGE_STYLES: &str = r#"
+:root {
+  color-scheme: light dark;
+  --page-background: #f5efe6;
+  --surface: #f0e8db;
+  --ink-primary: #3b2f2f;
+  --ink-muted: #7a6b5d;
+  --success: #3a7d5a;
+  --border: #ddd2c0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page-background: #1f1b17;
+    --surface: #2a2520;
+    --ink-primary: #f5efe6;
+    --ink-muted: #b8afa6;
+    --success: #5aad7e;
+    --border: rgba(245, 239, 230, 0.12);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  padding: 24px;
+  display: grid;
+  place-items: center;
+  background: var(--page-background);
+  color: var(--ink-primary);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+main {
+  width: min(100%, 460px);
+  text-align: center;
+}
+
+.status-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 20px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--success);
+}
+
+.status-icon svg {
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.75;
+}
+
+h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+p {
+  margin: 12px 0 0;
+  color: var(--ink-muted);
+  font-size: 16px;
+  line-height: 1.65;
+}
+"#;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AuthPageLocale {
+    En,
+    ZhCn,
+}
+
+struct AuthPageCopy {
+    lang: &'static str,
+    title: &'static str,
+    instruction: &'static str,
+}
 
 /// Extra token fields returned by Microsoft's OIDC token endpoint.
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -495,6 +585,70 @@ fn parse_id_token_claims(id_token: &str) -> Result<IdTokenClaims, AppError> {
         .map_err(|e| AppError::Auth(format!("Failed to parse id_token claims: {e}")))
 }
 
+fn preferred_auth_page_locale(accept_language: Option<&str>) -> AuthPageLocale {
+    let primary_language = accept_language
+        .and_then(|languages| languages.split(',').next())
+        .and_then(|language| language.split(';').next())
+        .map(str::trim)
+        .unwrap_or_default();
+
+    if primary_language.eq_ignore_ascii_case("zh")
+        || primary_language
+            .get(..3)
+            .is_some_and(|prefix| prefix.eq_ignore_ascii_case("zh-"))
+    {
+        AuthPageLocale::ZhCn
+    } else {
+        AuthPageLocale::En
+    }
+}
+
+fn auth_page_copy(locale: AuthPageLocale) -> AuthPageCopy {
+    match locale {
+        AuthPageLocale::En => AuthPageCopy {
+            lang: "en",
+            title: "OneDrive sign-in complete",
+            instruction: "Close this page and return to MyReader.",
+        },
+        AuthPageLocale::ZhCn => AuthPageCopy {
+            lang: "zh-CN",
+            title: "OneDrive 登录完成",
+            instruction: "请关闭此页面并返回 MyReader。",
+        },
+    }
+}
+
+fn onedrive_auth_success_response(accept_language: Option<&str>) -> String {
+    let copy = auth_page_copy(preferred_auth_page_locale(accept_language));
+    let body = format!(
+        r#"<!doctype html>
+<html lang="{}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>{} | MyReader</title>
+  <style>{AUTH_SUCCESS_PAGE_STYLES}</style>
+</head>
+<body>
+  <main>
+    <div class="status-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
+    </div>
+    <h1>{}</h1>
+    <p>{}</p>
+  </main>
+</body>
+</html>"#,
+        copy.lang, copy.title, copy.title, copy.instruction
+    );
+
+    format!(
+        "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n{body}",
+        body.len()
+    )
+}
+
 /// Listen on the loopback for the OAuth2 redirect callback, extract the authorization code.
 fn wait_for_callback(listener: TcpListener) -> Result<(String, String), AppError> {
     let (mut stream, _) = listener
@@ -506,6 +660,23 @@ fn wait_for_callback(listener: TcpListener) -> Result<(String, String), AppError
     reader
         .read_line(&mut request_line)
         .map_err(|e| AppError::Auth(format!("Failed to read callback: {e}")))?;
+
+    let mut accept_language = None;
+    loop {
+        let mut header_line = String::new();
+        let bytes_read = reader
+            .read_line(&mut header_line)
+            .map_err(|e| AppError::Auth(format!("Failed to read callback headers: {e}")))?;
+        if bytes_read == 0 || header_line.trim_end().is_empty() {
+            break;
+        }
+        if let Some((name, value)) = header_line.split_once(':') {
+            if name.eq_ignore_ascii_case("Accept-Language") {
+                accept_language = Some(value.trim().to_string());
+            }
+        }
+    }
+    drop(reader);
 
     let url = request_line
         .split_whitespace()
@@ -533,10 +704,8 @@ fn wait_for_callback(listener: TcpListener) -> Result<(String, String), AppError
         .map(|s| s.to_string())
         .unwrap_or_default();
 
-    // Send a success response to the browser
-    let response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n\
-        <html><body><h2>Authorization successful!</h2>\
-        <p>You can close this tab and return to MyReader.</p></body></html>";
+    // Send a localized success response to the browser.
+    let response = onedrive_auth_success_response(accept_language.as_deref());
     stream
         .write_all(response.as_bytes())
         .map_err(|e| AppError::Auth(format!("Failed to send callback response: {e}")))?;
@@ -629,23 +798,35 @@ mod tests {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let port = listener.local_addr().unwrap().port();
 
-        let request =
-            format!("GET /?code=abc123&state=xyz HTTP/1.1\r\nHost: localhost:{port}\r\n\r\n");
+        let request = format!(
+            "GET /?code=abc123&state=xyz HTTP/1.1\r\nHost: localhost:{port}\r\nAccept-Language: zh-CN,zh;q=0.9,en;q=0.8\r\n\r\n"
+        );
 
-        thread::spawn(move || {
+        let client = thread::spawn(move || {
             let mut stream = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
             stream.write_all(request.as_bytes()).unwrap();
             stream.flush().unwrap();
 
-            let mut buf = [0u8; 1024];
-            let n = stream.read(&mut buf).unwrap();
-            let response = String::from_utf8_lossy(&buf[..n]);
-            assert!(response.contains("Authorization successful"));
+            let mut response = String::new();
+            stream.read_to_string(&mut response).unwrap();
+            response
         });
 
         let (code, state) = wait_for_callback(listener).unwrap();
         assert_eq!(code, "abc123");
         assert_eq!(state, "xyz");
+
+        let response = client.join().unwrap();
+        assert!(response.contains(r#"<html lang="zh-CN">"#));
+        assert!(response.contains("请关闭此页面并返回 MyReader。"));
+    }
+
+    #[test]
+    fn auth_success_response_should_fall_back_to_english_when_language_is_unsupported() {
+        let response = onedrive_auth_success_response(Some("fr-FR,fr;q=0.9"));
+
+        assert!(response.contains(r#"<html lang="en">"#));
+        assert!(response.contains("Close this page and return to MyReader."));
     }
 
     #[test]

@@ -36,8 +36,11 @@ interface AppRowProps {
   tail?: ReactNode
   actions?: ReactNode
   className?: string
+  headClassName?: string
   bodyClassName?: string
   detailClassName?: string
+  tailClassName?: string
+  actionsClassName?: string
 }
 
 /**
@@ -51,8 +54,11 @@ export function AppRow({
   tail,
   actions,
   className,
+  headClassName,
   bodyClassName,
   detailClassName,
+  tailClassName,
+  actionsClassName,
 }: AppRowProps) {
   const Component = as ?? "div"
   const Icon = icon ? (ROW_ICONS[icon] as LucideIcon) : null
@@ -60,7 +66,10 @@ export function AppRow({
   return (
     <Component className={cn("flex min-w-0 items-start gap-3", className)}>
       {Icon && (
-        <div className="mt-0.5 shrink-0" data-slot="row-head">
+        <div
+          className={cn("mt-0.5 shrink-0", headClassName)}
+          data-slot="row-head"
+        >
           <div className="flex size-8 items-center justify-center rounded-md bg-accent text-accent-foreground">
             <Icon className="size-4" />
           </div>
@@ -79,13 +88,19 @@ export function AppRow({
       </div>
 
       {tail && (
-        <div className="shrink-0 self-center" data-slot="row-tail">
+        <div
+          className={cn("shrink-0 self-center", tailClassName)}
+          data-slot="row-tail"
+        >
           {tail}
         </div>
       )}
 
       {actions && (
-        <div className="shrink-0 self-center" data-slot="row-actions">
+        <div
+          className={cn("shrink-0 self-center", actionsClassName)}
+          data-slot="row-actions"
+        >
           {actions}
         </div>
       )}

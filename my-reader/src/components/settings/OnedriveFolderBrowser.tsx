@@ -9,8 +9,14 @@ interface OnedriveFolderBrowserProps {
   dataSourceId: string
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSelect: (path: string) => void
+  onSelect: (path: string) => void | Promise<void>
+  onCancel?: () => void
+  cancelLabel?: string
+  selectLabel?: string
+  selectingLabel?: string
+  closeOnSelect?: boolean
   createSubdirectory?: boolean
+  embedded?: boolean
 }
 
 export function OnedriveFolderBrowser({
@@ -18,7 +24,13 @@ export function OnedriveFolderBrowser({
   open,
   onOpenChange,
   onSelect,
+  onCancel,
+  cancelLabel,
+  selectLabel,
+  selectingLabel,
+  closeOnSelect,
   createSubdirectory,
+  embedded,
 }: OnedriveFolderBrowserProps) {
   const { t } = useTranslation()
   const [currentPath, setCurrentPath] = useState("/")
@@ -67,11 +79,16 @@ export function OnedriveFolderBrowser({
       loadingMessage={t("addDataSourceForm.onedriveBrowserLoading")}
       emptyMessage={t("addDataSourceForm.onedriveBrowserEmpty")}
       errorMessage={t("addDataSourceForm.onedriveBrowserError")}
-      selectLabel={t("addDataSourceForm.onedriveBrowserSelect")}
+      selectLabel={selectLabel ?? t("addDataSourceForm.onedriveBrowserSelect")}
       onNavigate={navigateTo}
       onRefresh={() => fetchFolders(currentPath)}
       onSelect={onSelect}
+      onCancel={onCancel}
+      cancelLabel={cancelLabel}
+      selectingLabel={selectingLabel}
+      closeOnSelect={closeOnSelect}
       createSubdirectory={createSubdirectory}
+      embedded={embedded}
     />
   )
 }

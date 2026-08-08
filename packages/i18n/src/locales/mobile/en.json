@@ -41,10 +41,6 @@
         "fri": "Fri"
       }
     },
-    "noLibrary": {
-      "title": "No library added yet",
-      "detail": "Create a new library or open an existing one."
-    },
     "noReadingHistory": {
       "title": "No reading history yet",
       "detail": "Choose a book from your library to start reading.",
@@ -53,7 +49,6 @@
   },
   "library": {
     "allLibraries": "All libraries",
-    "addLibrary": "Add Library",
     "importingBook": "Importing…",
     "importFailed": {
       "title": "Unable to Import Book"
@@ -435,14 +430,8 @@
     "finished": "Finished"
   },
   "addLibrary": {
-    "createNew": "Create New Library",
-    "openExisting": "Open Existing Library",
-    "selectSaveLocation": "Choose Save Location",
-    "selectLibraryLocation": "Choose Library Location",
-    "existingDataSources": "Existing Data Sources",
-    "addDataSource": "Add Data Source",
-    "addWebdav": "Add WebDAV",
-    "addOnedrive": "Add OneDrive",
+    "selectSaveLocation": "Choose save location",
+    "selectLibraryLocation": "Choose library location",
     "name": "Name",
     "invalidName": "Name cannot contain / or \\",
     "create": "Create",

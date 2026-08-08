@@ -169,7 +169,7 @@ describe("useLibraryCollectionsHeader", () => {
 
     fireEvent.press(screen.getByLabelText("library.importBook"))
     expect(onImportBook).toHaveBeenCalledTimes(1)
-    expect(screen.queryByLabelText("library.addLibrary")).toBeNull()
+    expect(screen.queryByLabelText("addLibraryFlow.title")).toBeNull()
   })
 
   it("should open the library switcher sheet from the Android left header", () => {
@@ -212,7 +212,7 @@ describe("useLibraryCollectionsHeader", () => {
 
     fireEvent.press(screen.getByLabelText("library.importBook"))
     expect(onImportBook).toHaveBeenCalledTimes(1)
-    expect(screen.queryByLabelText("library.addLibrary")).toBeNull()
+    expect(screen.queryByLabelText("addLibraryFlow.title")).toBeNull()
   })
 
   it("should omit library-management actions for a Calibre library", () => {
@@ -231,6 +231,6 @@ describe("useLibraryCollectionsHeader", () => {
     const screen = render(<View>{result.current.toolbar}</View>)
 
     expect(screen.queryByLabelText("library.importBook")).toBeNull()
-    expect(screen.queryByLabelText("library.addLibrary")).toBeNull()
+    expect(screen.queryByLabelText("addLibraryFlow.title")).toBeNull()
   })
 })

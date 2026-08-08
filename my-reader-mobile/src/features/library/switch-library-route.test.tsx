@@ -142,7 +142,7 @@ describe("LibrarySwitcherSheetRoute", () => {
     )
     const addButton = within(screen.getByTestId("toolbar-right")).getByRole(
       "button",
-      { name: "library.addLibrary" },
+      { name: "addLibraryFlow.title" },
     )
     fireEvent.press(closeButton)
     fireEvent.press(addButton)

@@ -1,3 +1,7 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { act, renderHook } from "@testing-library/react"
+import type { ReactNode } from "react"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   getCoverFailureKey,
   isBrokenCover,
@@ -6,17 +10,12 @@ import {
 } from "@/lib/coverFailureCache"
 import { api } from "@/lib/tauri-api"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { act, renderHook } from "@testing-library/react"
-import type { ReactNode } from "react"
-import { beforeEach, describe, expect, it, vi } from "vitest"
 import { useLibraryMutations } from "../useLibrariesQuery"
 
 vi.mock("@/lib/tauri-api", () => ({
   api: {
     addLibrary: vi.fn(),
     createMyreaderLibrary: vi.fn(),
-    createDefaultMyreaderLibrary: vi.fn(),
     openMyreaderLibrary: vi.fn(),
     createRemoteMyreaderLibrary: vi.fn(),
     openRemoteMyreaderLibrary: vi.fn(),
@@ -122,5 +121,87 @@ describe("useLibraryMutations", () => {
     })
 
     expect(isBrokenCover(key)).toBe(false)
+  })
+
+  it("should open a local Calibre library when no MyReader marker exists", async () => {
+    vi.mocked(api.openMyreaderLibrary).mockRejectedValue(
+      new Error("MYREADER_LIBRARY_MARKER_NOT_FOUND"),
+    )
+    vi.mocked(api.addLibrary).mockResolvedValue({
+      id: "calibre-1",
+      name: "Calibre Library",
+      path: "/Books/Calibre",
+      bookCount: 3,
+      libraryType: "calibre",
+      sourceType: "local",
+      dataSourceId: null,
+      sourcePath: null,
+    })
+    vi.mocked(api.getActiveLibraryId).mockResolvedValue("calibre-1")
+
+    const { result } = renderHook(() => useLibraryMutations(), {
+      wrapper: createWrapper(),
+    })
+
+    await act(async () => {
+      await result.current.openExistingLocalLibrary("/Books/Calibre")
+    })
+
+    expect(api.openMyreaderLibrary).toHaveBeenCalledWith("/Books/Calibre", null)
+    expect(api.addLibrary).toHaveBeenCalledWith("/Books/Calibre", null)
+  })
+
+  it("should not treat an unrelated local error as a Calibre library", async () => {
+    vi.mocked(api.openMyreaderLibrary).mockRejectedValue(
+      new Error("PERMISSION_DENIED"),
+    )
+
+    const { result } = renderHook(() => useLibraryMutations(), {
+      wrapper: createWrapper(),
+    })
+
+    await act(async () => {
+      await expect(
+        result.current.openExistingLocalLibrary("/Books/Private"),
+      ).rejects.toThrow("PERMISSION_DENIED")
+    })
+
+    expect(api.addLibrary).not.toHaveBeenCalled()
+  })
+
+  it("should open a remote OneDrive Calibre library after MyReader detection", async () => {
+    vi.mocked(api.openRemoteMyreaderLibrary).mockRejectedValue(
+      new Error("REMOTE_MYREADER_LIBRARY_MARKER_NOT_FOUND"),
+    )
+    vi.mocked(api.addOnedriveLibrary).mockResolvedValue({
+      id: "onedrive-library",
+      name: "Cloud Calibre",
+      path: "onedrive://Books",
+      bookCount: 5,
+      libraryType: "calibre",
+      sourceType: "onedrive",
+      dataSourceId: "onedrive-1",
+      sourcePath: "/Books/",
+    })
+    vi.mocked(api.getActiveLibraryId).mockResolvedValue("onedrive-library")
+
+    const { result } = renderHook(() => useLibraryMutations(), {
+      wrapper: createWrapper(),
+    })
+
+    await act(async () => {
+      await result.current.openExistingRemoteLibrary({
+        dataSourceId: "onedrive-1",
+        rootPath: "/Books/",
+        sourceType: "onedrive",
+      })
+    })
+
+    expect(api.addOnedriveLibrary).toHaveBeenCalledWith(
+      "onedrive-1",
+      "/Books/",
+      null,
+    )
+    expect(api.addWebdavLibrary).not.toHaveBeenCalled()
   })
 })

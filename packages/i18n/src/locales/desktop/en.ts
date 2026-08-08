@@ -63,11 +63,7 @@ export const desktopEn = {
         progress: "Progress",
       },
       empty: {
-        noLibraryTitle: "No library added",
-        noLibraryDesc:
-          "Import a book to create a MyReader library, or add an existing library",
         goToSettings: "Go to Settings",
-        addLibrary: "Add library",
         importBook: "Import book",
       },
       loadingFailed: "Failed to load",
@@ -208,27 +204,18 @@ export const desktopEn = {
       },
       libraries: {
         title: "Libraries",
-        description:
-          "Create or open MyReader libraries, or connect existing Calibre libraries",
+        description: "Manage your libraries or add a new one",
         added: "Added libraries",
-        empty: "No libraries yet, add one below",
         current: "Current",
         confirmDelete: "Click again to confirm delete",
         bookCount: "{{count}} books",
         deleteTitle: "Delete library",
-        addPrompt:
-          "MyReader libraries support adding, deleting, and editing books. Calibre libraries remain read-only. Removing a library only removes its reference on this device.",
       },
       dataSources: {
         title: "Data Sources",
-        description:
-          "Manage accessible data sources, currently supporting local storage and WebDAV",
+        description: "Manage your data sources or add a new one",
         configured: "Configured data sources",
-        loading: "Loading data sources…",
-        count: "{{count}} connections added",
         localDetail: "Current device local file system",
-        localLabel: "Local",
-        builtIn: "Built-in",
         confirmDelete: "Click again to confirm",
         deleteTitle: "Delete data source",
       },
@@ -256,6 +243,44 @@ export const desktopEn = {
         themeLightDescription: "Warm paper surfaces for daytime reading.",
         themeDarkDescription: "Low-glare dark surfaces for night reading.",
         themeSystemDescription: "Match the operating system setting.",
+      },
+    },
+    addLibraryFlow: {
+      description:
+        "Create a new MyReader library, or open an existing MyReader or Calibre library.",
+      create: {
+        action: "Create library",
+      },
+      location: {
+        title: "Library location",
+        createDescription: "Choose where to save the new library.",
+        openDescription: "Choose where the existing library is stored.",
+      },
+      local: {
+        title: "Local storage",
+        description: "A folder on this computer",
+        createPickerTitle: "Choose a parent folder for the new library",
+        openPickerTitle: "Choose the existing library root folder",
+      },
+      name: {
+        title: "Name the new library",
+        description: "A new folder will be created inside this location.",
+        label: "Library name",
+        invalid: "Enter one folder name without / or \\.",
+        parent: "Save in: {{path}}",
+      },
+      chooseParent: "Choose this location",
+      openHere: "Open this library",
+      opening: "Opening…",
+      creating: "Creating…",
+      created: "Library created",
+      opened: "Library opened",
+      errors: {
+        duplicate: "This library has already been added.",
+        unrecognized:
+          "The selected folder is not a recognized MyReader or Calibre library.",
+        create: "Unable to create library: {{detail}}",
+        open: "Unable to open library: {{detail}}",
       },
     },
     addLibraryForm: {
@@ -309,6 +334,7 @@ export const desktopEn = {
       confirm: "Add library",
       adding: "Adding…",
       webdavBrowserTitle: "Select folder",
+      folderBrowserUp: "Parent folder",
       webdavBrowserSelect: "Select this folder",
       webdavBrowserEmpty: "This folder is empty",
       webdavBrowserLoading: "Loading…",
@@ -351,6 +377,7 @@ export const desktopEn = {
       onedriveBrowserError: "Failed to load folders",
       onedriveAuthenticating: "Signing in with Microsoft…",
       onedriveAdding: "Adding OneDrive data source…",
+      changeAccount: "Use another account",
       retryAdd: "Retry add",
       addButton: "Add",
       browse: "Browse",

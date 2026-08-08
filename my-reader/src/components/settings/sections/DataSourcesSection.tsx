@@ -1,22 +1,24 @@
-import { Trash2, Unplug } from "lucide-react"
 import type { DataSource } from "@my-reader/tools/types/data-source"
-import { useMemo, useState } from "react"
+import { Trash2, Unplug } from "lucide-react"
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
-import { AppRow } from "@/components/common/AppRow"
+import { AddPanelButton } from "@/components/common/AddPanelButton"
 import type { AppRowIconName } from "@/components/common/AppRow"
+import { AppRow } from "@/components/common/AppRow"
 import { GroupList, GroupListItem } from "@/components/common/GroupList"
-import { AddDataSourcePanel } from "@/components/settings/forms/AddDataSourcePanel"
-import { cn } from "@/lib/utils"
+import { AddDataSourceDialog } from "@/components/settings/AddDataSourceDialog"
 import {
-  useDataSourcesQuery,
   useDataSourceMutations,
+  useDataSourcesQuery,
 } from "@/hooks/queries/useDataSourcesQuery"
+import { cn } from "@/lib/utils"
 
 export default function DataSourcesSection() {
   const { t } = useTranslation()
-  const { data: dataSources = [], isLoading: loading } = useDataSourcesQuery()
-  const { createDataSource, deleteDataSource } = useDataSourceMutations()
+  const { data: dataSources = [] } = useDataSourcesQuery()
+  const { deleteDataSource } = useDataSourceMutations()
 
+  const [addDataSourceOpen, setAddDataSourceOpen] = useState(false)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
 
@@ -38,13 +40,6 @@ export default function DataSourcesSection() {
     setPendingDeleteId(id)
   }
 
-  const listHint = useMemo(() => {
-    if (loading) return t("settings.dataSources.loading")
-    return t("settings.dataSources.count", {
-      count: dataSources.length + 1,
-    })
-  }, [dataSources.length, loading, t])
-
   return (
     <div className="flex h-full flex-col">
       <div className="shrink-0 border-b border-border px-7 py-5 pb-4">
@@ -58,31 +53,36 @@ export default function DataSourcesSection() {
 
       <div className="flex-1 overflow-y-auto px-7 py-5">
         <section className="mb-5">
-          <div className="mb-2.5 flex items-center justify-between gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
-              {t("settings.dataSources.configured")}
-            </p>
-            <p className="text-xs text-muted-foreground">{listHint}</p>
-          </div>
+          <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
+            {t("settings.dataSources.configured")}
+          </p>
 
           <GroupList>
             <LocalStorageStaticRow />
-            {dataSources.length === 0 && !loading
-              ? null
-              : dataSources.map((source) => (
-                  <DataSourceCard
-                    key={source.id}
-                    source={source}
-                    isPendingDelete={pendingDeleteId === source.id}
-                    isRemoving={removingId === source.id}
-                    onDelete={handleDelete}
-                  />
-                ))}
+            {dataSources.map((source) => (
+              <DataSourceCard
+                key={source.id}
+                source={source}
+                isPendingDelete={pendingDeleteId === source.id}
+                isRemoving={removingId === source.id}
+                onDelete={handleDelete}
+              />
+            ))}
           </GroupList>
         </section>
 
-        <AddDataSourcePanel onCreateDataSource={createDataSource} />
+        <div className="overflow-hidden rounded-lg border border-dashed border-border">
+          <AddPanelButton
+            label={t("addDataSourceForm.label")}
+            onClick={() => setAddDataSourceOpen(true)}
+          />
+        </div>
       </div>
+
+      <AddDataSourceDialog
+        open={addDataSourceOpen}
+        onOpenChange={setAddDataSourceOpen}
+      />
     </div>
   )
 }
@@ -96,21 +96,6 @@ function LocalStorageStaticRow() {
         body={t("constants.localDataSourceName")}
         detail={t("settings.dataSources.localDetail")}
         detailClassName="font-mono"
-        tail={
-          <div className="flex items-center gap-2">
-            <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-[0.05em] text-muted-foreground">
-              {t("settings.dataSources.localLabel")}
-            </span>
-            <span className="rounded-sm bg-accent px-1.5 py-0.5 text-[10px] text-accent-foreground">
-              {t("settings.dataSources.builtIn")}
-            </span>
-          </div>
-        }
-        actions={
-          <div className="flex size-[30px] items-center justify-center rounded-md text-muted-foreground">
-            <Unplug className="size-3.5" />
-          </div>
-        }
       />
     </GroupListItem>
   )

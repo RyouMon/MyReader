@@ -55,8 +55,8 @@ it("should use the standard empty state when there are no libraries", () => {
   render(<LibrarySwitcherList onDismiss={jest.fn()} />)
 
   expect(screen.getByTestId("standard-empty-state")).toBeTruthy()
-  expect(screen.getByText("home.noLibrary.title")).toBeTruthy()
-  expect(screen.getByText("home.noLibrary.detail")).toBeTruthy()
+  expect(screen.getByText("addLibraryFlow.noLibrary.title")).toBeTruthy()
+  expect(screen.getByText("addLibraryFlow.noLibrary.description")).toBeTruthy()
 
   const emptyStateProps = jest.mocked(EmptyState).mock.calls[0]?.[0]
   expect(emptyStateProps).toEqual(

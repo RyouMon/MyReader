@@ -71,6 +71,24 @@ jest.mock("@/src/components", () => ({
   FormLabeledFieldRow: jest.fn(({ children }) =>
     mockReact.createElement(mockView, null, children),
   ),
+  HelpSection: jest.fn(
+    ({
+      title,
+      items,
+    }: {
+      title: string
+      items: Array<{ title: string; body: string }>
+    }) =>
+      mockReact.createElement(
+        mockView,
+        null,
+        mockReact.createElement(mockText, null, title),
+        ...items.flatMap((item) => [
+          mockReact.createElement(mockText, { key: item.title }, item.title),
+          mockReact.createElement(mockText, { key: item.body }, item.body),
+        ]),
+      ),
+  ),
   ListRow: jest.fn(
     ({
       detail,
@@ -163,6 +181,7 @@ jest.mock("@/src/store/app-store", () => ({
 }))
 
 jest.mock("@/tw", () => ({
+  Text: mockText,
   TextInput: mockTextInput,
   View: mockView,
 }))
@@ -183,6 +202,33 @@ describe("AddLibraryScreen", () => {
     headerOptions.left?.[0]?.onPress()
 
     expect(mockDismissAddLibrary).toHaveBeenCalledTimes(1)
+  })
+
+  it("should explain library types, sync, and choice before continuing", () => {
+    render(<AddLibraryScreen />)
+
+    const helpSectionMock = jest.requireMock("@/src/components")
+      .HelpSection as jest.Mock
+    const helpItems = helpSectionMock.mock.calls[0]?.[0]?.items as Array<{
+      title: string
+    }>
+
+    expect(helpItems.map((item) => item.title)).toEqual([
+      "addLibraryFlow.help.myreader.title",
+      "addLibraryFlow.help.calibre.title",
+      "addLibraryFlow.help.sync.title",
+      "addLibraryFlow.help.choice.title",
+    ])
+    expect(screen.getByText("addLibraryFlow.create.description")).toBeTruthy()
+    expect(screen.getByText("addLibraryFlow.open.description")).toBeTruthy()
+    expect(screen.getByText("addLibraryFlow.help.myreader.title")).toBeTruthy()
+    expect(screen.getByText("addLibraryFlow.help.myreader.body")).toBeTruthy()
+    expect(screen.getByText("addLibraryFlow.help.calibre.title")).toBeTruthy()
+    expect(screen.getByText("addLibraryFlow.help.calibre.body")).toBeTruthy()
+    expect(screen.getByText("addLibraryFlow.help.sync.title")).toBeTruthy()
+    expect(screen.getByText("addLibraryFlow.help.sync.body")).toBeTruthy()
+    expect(screen.getByText("addLibraryFlow.help.choice.title")).toBeTruthy()
+    expect(screen.getByText("addLibraryFlow.help.choice.body")).toBeTruthy()
   })
 })
 
@@ -205,6 +251,21 @@ describe("AddLibraryLocationScreen", () => {
     expect(screen.getByText("common.localStorage")).toBeTruthy()
     expect(screen.queryByText("addLibrary.appStorage")).toBeNull()
     expect(screen.queryByText("addLibrary.folder")).toBeNull()
+  })
+
+  it("should show data source choices without descriptions", () => {
+    mockParams = { libraryAction: "open" }
+
+    render(<AddLibraryLocationScreen />)
+
+    expect(screen.getByText("addLibraryFlow.addWebdav.title")).toBeTruthy()
+    expect(screen.getByText("addLibraryFlow.addOnedrive.title")).toBeTruthy()
+    expect(
+      screen.queryByText("addLibraryFlow.addWebdav.description"),
+    ).toBeNull()
+    expect(
+      screen.queryByText("addLibraryFlow.addOnedrive.description"),
+    ).toBeNull()
   })
 })
 

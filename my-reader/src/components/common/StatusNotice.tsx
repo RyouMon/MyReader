@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 
 interface StatusNoticeProps {
   tone?: "info" | "success" | "error"
+  icon?: ReactNode
   className?: string
   children: ReactNode
 }
@@ -14,10 +15,11 @@ interface StatusNoticeProps {
  */
 export function StatusNotice({
   tone = "info",
+  icon: customIcon,
   className,
   children,
 }: StatusNoticeProps) {
-  const icon =
+  const defaultIcon =
     tone === "success" ? (
       <CheckCircle2 className="mt-[1px] size-3.5 shrink-0 text-success" />
     ) : tone === "error" ? (
@@ -41,7 +43,7 @@ export function StatusNotice({
         className,
       )}
     >
-      {icon}
+      {customIcon ?? defaultIcon}
       <div className="min-w-0 text-muted-foreground">{children}</div>
     </div>
   )

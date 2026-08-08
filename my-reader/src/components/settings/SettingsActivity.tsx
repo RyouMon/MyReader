@@ -8,9 +8,13 @@ import type { SettingsSection } from "@/types/settings"
 
 interface SettingsActivityProps {
   onClose: () => void
+  onAddLibrary: () => void
 }
 
-export default function SettingsActivity({ onClose }: SettingsActivityProps) {
+export default function SettingsActivity({
+  onClose,
+  onAddLibrary,
+}: SettingsActivityProps) {
   const [activeSection, setActiveSection] =
     useState<SettingsSection>("libraries")
 
@@ -26,7 +30,9 @@ export default function SettingsActivity({ onClose }: SettingsActivityProps) {
       />
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background">
-        {activeSection === "libraries" && <LibrariesSection />}
+        {activeSection === "libraries" && (
+          <LibrariesSection onAddLibrary={onAddLibrary} />
+        )}
         {activeSection === "dataSources" && <DataSourcesSection />}
         {activeSection === "appearance" && <AppearanceSection />}
         {activeSection === "about" && <AboutSection />}

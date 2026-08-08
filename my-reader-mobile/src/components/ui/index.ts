@@ -11,10 +11,11 @@ export { CloudIcon } from "./cloud-icon"
 export { EmptyState } from "./empty-state"
 export { FormFieldSwitch } from "./form-field-switch"
 export { FormLabeledFieldRow } from "./form-labeled-field-row"
-export {
-  type HeaderToolbarAction,
-  type HeaderToolbarProps,
+export type {
+  HeaderToolbarAction,
+  HeaderToolbarProps,
 } from "./header-toolbar"
+export { HelpSection, type HelpSectionItem } from "./help-section"
 export { HeroCard } from "./hero-card"
 export { ListMenuRow, ListRow, type ListRowIcon } from "./list-row"
 export { MoreActionsIcon } from "./more-actions-icon"

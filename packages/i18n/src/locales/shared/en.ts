@@ -1,4 +1,48 @@
 export const sharedEn = {
+  addLibraryFlow: {
+    title: "Add library",
+    noLibrary: {
+      title: "No library added yet",
+      description: "Create a new library or open an existing one.",
+    },
+    create: {
+      title: "Create new library",
+      description: "Create a MyReader library",
+    },
+    open: {
+      title: "Open existing library",
+      description: "Open an existing MyReader or Calibre library.",
+    },
+    help: {
+      label: "About libraries",
+      myreader: {
+        title: "What is a MyReader library?",
+        body: "Created and managed by MyReader. You can import and delete books, and edit titles and authors.",
+      },
+      calibre: {
+        title: "What is a Calibre library?",
+        body: "Created and managed by Calibre. MyReader opens it read-only and does not modify its books or metadata.",
+      },
+      sync: {
+        title: "About reading data sync",
+        body: "Both library types support syncing reading data across devices. Store the library in cloud storage, then open the same library from each device.",
+      },
+      choice: {
+        title: "Which should I choose?",
+        body: 'If you previously used Calibre to manage your library, we recommend choosing "Open existing library"; otherwise, choose "Create new library".',
+      },
+    },
+    storageLocations: "Available locations",
+    addStorage: "Add data source",
+    addWebdav: {
+      title: "Add WebDAV",
+      description: "Enter the server address and account details.",
+    },
+    addOnedrive: {
+      title: "Add OneDrive",
+      description: "Sign in with a Microsoft account.",
+    },
+  },
   bookDetail: {
     collapse: "Collapse",
     favorite: "Favorite",

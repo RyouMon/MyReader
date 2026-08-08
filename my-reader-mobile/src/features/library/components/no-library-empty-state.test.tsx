@@ -45,11 +45,11 @@ jest.mock("@/src/components", () => ({
 it("should show the shared no-library copy and only add a library", () => {
   render(<NoLibraryEmptyState />)
 
-  expect(screen.getByText("home.noLibrary.title")).toBeTruthy()
-  expect(screen.getByText("home.noLibrary.detail")).toBeTruthy()
+  expect(screen.getByText("addLibraryFlow.noLibrary.title")).toBeTruthy()
+  expect(screen.getByText("addLibraryFlow.noLibrary.description")).toBeTruthy()
   expect(screen.getAllByRole("button")).toHaveLength(1)
 
-  fireEvent.press(screen.getByText("library.addLibrary"))
+  fireEvent.press(screen.getByText("addLibraryFlow.title"))
 
   expect(router.push).toHaveBeenCalledWith("/settings/add-library")
 })

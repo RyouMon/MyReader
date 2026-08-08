@@ -41,10 +41,6 @@
         "fri": "五"
       }
     },
-    "noLibrary": {
-      "title": "还没有添加书库",
-      "detail": "创建新书库或打开已有书库。"
-    },
     "noReadingHistory": {
       "title": "还没有阅读记录",
       "detail": "从书库选一本书开始阅读。",
@@ -53,7 +49,6 @@
   },
   "library": {
     "allLibraries": "所有书库",
-    "addLibrary": "添加书库",
     "importingBook": "导入中…",
     "importFailed": {
       "title": "无法导入图书"
@@ -435,14 +430,8 @@
     "finished": "已读"
   },
   "addLibrary": {
-    "createNew": "创建新书库",
-    "openExisting": "打开已有书库",
     "selectSaveLocation": "选择保存位置",
     "selectLibraryLocation": "选择书库位置",
-    "existingDataSources": "已有数据源",
-    "addDataSource": "添加数据源",
-    "addWebdav": "添加 WebDAV",
-    "addOnedrive": "添加 OneDrive",
     "name": "名称",
     "invalidName": "名称不能包含 / 或 \\",
     "create": "创建",

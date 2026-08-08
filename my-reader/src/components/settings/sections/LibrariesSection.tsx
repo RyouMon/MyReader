@@ -1,38 +1,34 @@
-import { Trash2 } from "lucide-react"
 import type { Library } from "@my-reader/tools/types/library"
+import { Library as LibraryIcon, Trash2 } from "lucide-react"
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { AddPanelButton } from "@/components/common/AddPanelButton"
 import { AppRow } from "@/components/common/AppRow"
+import { GroupList, GroupListItem } from "@/components/common/GroupList"
 import {
-  GroupList,
-  GroupListEmpty,
-  GroupListItem,
-} from "@/components/common/GroupList"
-import { StatusNotice } from "@/components/common/StatusNotice"
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
 import {
-  AddLibraryPanel,
-  type AddLibrarySubmission,
-} from "@/components/settings/forms/AddLibraryPanel"
-import { cn } from "@/lib/utils"
-import {
-  useLibraryMutations,
   useLibrariesQuery,
+  useLibraryMutations,
 } from "@/hooks/queries/useLibrariesQuery"
+import { cn } from "@/lib/utils"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 
-export default function LibrariesSection() {
+interface LibrariesSectionProps {
+  onAddLibrary: () => void
+}
+
+export default function LibrariesSection({
+  onAddLibrary,
+}: LibrariesSectionProps) {
   const { t } = useTranslation()
   const { data: libraries = [] } = useLibrariesQuery()
-  const {
-    addLibrary,
-    addWebdavLibrary,
-    addOnedriveLibrary,
-    createLocalMyreaderLibrary,
-    openLocalMyreaderLibrary,
-    createRemoteMyreaderLibrary,
-    openRemoteMyreaderLibrary,
-    removeLibrary,
-  } = useLibraryMutations()
+  const { removeLibrary } = useLibraryMutations()
   const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
 
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
@@ -53,33 +49,6 @@ export default function LibrariesSection() {
     }
   }
 
-  async function handleSubmitLibrary(request: AddLibrarySubmission) {
-    const { operation, sourceType, dataSourceId, path } = request
-    if (operation === "createMyreader") {
-      if (sourceType === "local") {
-        await createLocalMyreaderLibrary(path)
-      } else {
-        await createRemoteMyreaderLibrary({ dataSourceId, rootPath: path })
-      }
-      return
-    }
-    if (operation === "openMyreader") {
-      if (sourceType === "local") {
-        await openLocalMyreaderLibrary(path)
-      } else {
-        await openRemoteMyreaderLibrary({ dataSourceId, rootPath: path })
-      }
-      return
-    }
-    if (sourceType === "webdav") {
-      await addWebdavLibrary({ dataSourceId, rootPath: path })
-    } else if (sourceType === "onedrive") {
-      await addOnedriveLibrary({ dataSourceId, rootPath: path })
-    } else {
-      await addLibrary(path)
-    }
-  }
-
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -94,14 +63,23 @@ export default function LibrariesSection() {
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto px-7 py-5">
-        <p className="text-[11px] font-semibold tracking-[0.07em] uppercase text-muted-foreground mb-2.5">
+        <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
           {t("settings.libraries.added")}
         </p>
 
-        {/* Library list */}
         <GroupList className="mb-3">
           {libraries.length === 0 ? (
-            <GroupListEmpty>{t("settings.libraries.empty")}</GroupListEmpty>
+            <Empty className="min-h-48 rounded-none border-0 p-6">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <LibraryIcon />
+                </EmptyMedia>
+                <EmptyTitle>{t("addLibraryFlow.noLibrary.title")}</EmptyTitle>
+                <EmptyDescription>
+                  {t("addLibraryFlow.noLibrary.description")}
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           ) : (
             libraries.map((lib, index) => (
               <LibraryCard
@@ -117,12 +95,12 @@ export default function LibrariesSection() {
           )}
         </GroupList>
 
-        <AddLibraryPanel onSubmitLibrary={handleSubmitLibrary} />
-
-        {/* Hint */}
-        <StatusNotice className="mt-4">
-          {t("settings.libraries.addPrompt")}
-        </StatusNotice>
+        <div className="overflow-hidden rounded-lg border border-dashed border-border">
+          <AddPanelButton
+            label={t("addLibraryForm.label")}
+            onClick={onAddLibrary}
+          />
+        </div>
       </div>
     </div>
   )
@@ -153,7 +131,7 @@ function LibraryCard({
   return (
     <GroupListItem
       className={cn(
-        "transition-[opacity,transform,background-color] hover:bg-accent",
+        "@container/library-row transition-[opacity,transform,background-color] hover:bg-accent",
         isRemoving &&
           "pointer-events-none ltr:translate-x-2 rtl:-translate-x-2 opacity-0",
       )}
@@ -162,10 +140,15 @@ function LibraryCard({
       <AppRow
         icon={rowIcon}
         body={lib.name}
-        detail={lib.path}
+        detail={lib.sourcePath ?? lib.path}
+        className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 @2xl/library-row:grid-cols-[auto_minmax(8rem,1fr)_auto_auto] @2xl/library-row:items-center @2xl/library-row:gap-y-0"
+        headClassName="row-span-2 row-start-1 mt-0 self-center @2xl/library-row:row-span-1"
+        bodyClassName="col-start-2 row-start-1"
         detailClassName="font-mono"
+        tailClassName="col-start-2 row-start-2 min-w-0 justify-self-start @2xl/library-row:col-start-3 @2xl/library-row:row-start-1"
+        actionsClassName="col-start-3 row-span-2 row-start-1 justify-self-end @2xl/library-row:col-start-4 @2xl/library-row:row-span-1"
         tail={
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             {isOnedrive && (
               <span className="rounded-sm bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.05em] text-blue-500">
                 OneDrive

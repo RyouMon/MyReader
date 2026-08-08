@@ -70,7 +70,11 @@ const THEME_OPTIONS: Array<{
   { value: "system", icon: Monitor, tKey: "theme.system" },
 ]
 
-export default function AppSidebar() {
+interface AppSidebarProps {
+  onAddLibrary: () => void
+}
+
+export default function AppSidebar({ onAddLibrary }: AppSidebarProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { data: libraries = [] } = useLibrariesQuery()
@@ -226,10 +230,7 @@ export default function AppSidebar() {
 
                 <DropdownMenuSeparator />
 
-                <DropdownMenuItem
-                  onClick={() => navigate({ to: "/settings" })}
-                  className="gap-2 p-2"
-                >
+                <DropdownMenuItem onClick={onAddLibrary} className="gap-2 p-2">
                   <PlusCircle className="size-4 shrink-0" />
                   <span className="font-medium text-muted-foreground">
                     {t("addLibraryForm.label")}

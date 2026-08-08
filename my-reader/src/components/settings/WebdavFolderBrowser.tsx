@@ -9,8 +9,14 @@ interface WebdavFolderBrowserProps {
   dataSourceId: string
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSelect: (path: string) => void
+  onSelect: (path: string) => void | Promise<void>
+  onCancel?: () => void
+  cancelLabel?: string
+  selectLabel?: string
+  selectingLabel?: string
+  closeOnSelect?: boolean
   createSubdirectory?: boolean
+  embedded?: boolean
 }
 
 export function WebdavFolderBrowser({
@@ -18,7 +24,13 @@ export function WebdavFolderBrowser({
   open,
   onOpenChange,
   onSelect,
+  onCancel,
+  cancelLabel,
+  selectLabel,
+  selectingLabel,
+  closeOnSelect,
   createSubdirectory,
+  embedded,
 }: WebdavFolderBrowserProps) {
   const { t } = useTranslation()
   const [currentPath, setCurrentPath] = useState("/")
@@ -67,11 +79,16 @@ export function WebdavFolderBrowser({
       loadingMessage={t("addLibraryForm.webdavBrowserLoading")}
       emptyMessage={t("addLibraryForm.webdavBrowserEmpty")}
       errorMessage={t("addLibraryForm.webdavBrowserError")}
-      selectLabel={t("addLibraryForm.webdavBrowserSelect")}
+      selectLabel={selectLabel ?? t("addLibraryForm.webdavBrowserSelect")}
       onNavigate={navigateTo}
       onRefresh={() => fetchFolders(currentPath)}
       onSelect={onSelect}
+      onCancel={onCancel}
+      cancelLabel={cancelLabel}
+      selectingLabel={selectingLabel}
+      closeOnSelect={closeOnSelect}
       createSubdirectory={createSubdirectory}
+      embedded={embedded}
     />
   )
 }

@@ -1,9 +1,21 @@
-import { useState } from "react"
+import { Cloud, Loader2, LogIn, RefreshCw } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Cloud, Loader2 } from "lucide-react"
 
+import { StatusNotice } from "@/components/common/StatusNotice"
+import { Button } from "@/components/ui/button"
+import { DialogFooter } from "@/components/ui/dialog"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
 import { api } from "@/lib/tauri-api"
 import type { OnedriveAuthResultDto } from "@/lib/tauri-specta"
+import { cn } from "@/lib/utils"
 
 interface OnedriveDataSourceFormProps {
   onSubmit: (data: {
@@ -14,21 +26,52 @@ interface OnedriveDataSourceFormProps {
     refreshToken?: string
   }) => Promise<unknown>
   loading: boolean
+  fillAvailableHeight?: boolean
+  autoStart?: boolean
 }
 
 export function OnedriveDataSourceForm({
   onSubmit,
   loading,
+  fillAvailableHeight = false,
+  autoStart = false,
 }: OnedriveDataSourceFormProps) {
   const { t } = useTranslation()
   const [authResult, setAuthResult] = useState<OnedriveAuthResultDto | null>(
     null,
   )
-  const [authLoading, setAuthLoading] = useState(false)
+  const [authLoading, setAuthLoading] = useState(autoStart)
   const [createLoading, setCreateLoading] = useState(false)
   const [error, setError] = useState("")
+  const autoStartedRef = useRef(false)
 
-  const handleAuth = async () => {
+  const autoCreate = useCallback(
+    async (result: OnedriveAuthResultDto) => {
+      setCreateLoading(true)
+      setError("")
+      try {
+        const name = result.userName || result.userEmail || "OneDrive"
+        await onSubmit({
+          name,
+          rootPath: null,
+          displayName: result.userName,
+          email: result.userEmail ?? undefined,
+          refreshToken: result.refreshToken,
+        })
+      } catch (err) {
+        const msg =
+          typeof err === "object" && err !== null && "message" in err
+            ? String((err as Record<string, unknown>).message)
+            : String(err)
+        setError(msg)
+      } finally {
+        setCreateLoading(false)
+      }
+    },
+    [onSubmit],
+  )
+
+  const handleAuth = useCallback(async () => {
     setAuthLoading(true)
     setError("")
     try {
@@ -48,103 +91,107 @@ export function OnedriveDataSourceForm({
     } finally {
       setAuthLoading(false)
     }
-  }
+  }, [autoCreate])
 
-  const autoCreate = async (result: OnedriveAuthResultDto) => {
-    setCreateLoading(true)
-    setError("")
-    try {
-      const name = result.userName || result.userEmail || "OneDrive"
-      await onSubmit({
-        name,
-        rootPath: null,
-        displayName: result.userName,
-        email: result.userEmail ?? undefined,
-        refreshToken: result.refreshToken,
-      })
-    } catch (err) {
-      const msg =
-        typeof err === "object" && err !== null && "message" in err
-          ? String((err as Record<string, unknown>).message)
-          : String(err)
-      setError(msg)
-    } finally {
-      setCreateLoading(false)
-    }
-  }
+  useEffect(() => {
+    if (!autoStart || autoStartedRef.current) return
+    autoStartedRef.current = true
+    void handleAuth()
+  }, [autoStart, handleAuth])
 
   const handleRetryCreate = () => {
     if (!authResult) return
     void autoCreate(authResult)
   }
 
+  const busy = authLoading || createLoading || loading
+  const emptyClassName = cn(
+    "rounded-none border-0",
+    fillAvailableHeight ? "min-h-0 flex-1 p-6 md:p-8" : "flex-none p-6",
+  )
+
   return (
-    <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
-      {(authLoading || createLoading || loading) && (
-        <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-[13px] text-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          <span>
-            {authLoading
-              ? t("addDataSourceForm.onedriveAuthenticating")
-              : t("addDataSourceForm.onedriveAdding")}
-          </span>
-        </div>
-      )}
-
-      {!authResult && !authLoading && !createLoading && !loading && (
-        <div className="space-y-3">
-          <button
-            type="button"
-            onClick={() => void handleAuth()}
-            disabled={authLoading}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-500 px-4 py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50 cursor-pointer"
-          >
-            <Cloud className="size-4" />
-            {t("addDataSourceForm.signInWithMicrosoft")}
-          </button>
-        </div>
-      )}
-
-      {authResult && !createLoading && !loading && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/5 px-3 py-2">
-            <Cloud className="size-4 text-green-600" />
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium text-foreground truncate">
-                {authResult.userName}
-              </p>
-              {authResult.userEmail && (
-                <p className="text-[11.5px] text-muted-foreground truncate">
-                  {authResult.userEmail}
-                </p>
-              )}
-            </div>
-          </div>
-
+    <form
+      onSubmit={(event) => event.preventDefault()}
+      className={cn("flex flex-col", fillAvailableHeight && "h-full min-h-0")}
+    >
+      {busy ? (
+        <Empty className={emptyClassName} role="status" aria-live="polite">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Loader2 className="animate-spin" />
+            </EmptyMedia>
+            <EmptyTitle>
+              {authLoading
+                ? t("addDataSourceForm.onedriveAuthenticating")
+                : t("addDataSourceForm.onedriveAdding")}
+            </EmptyTitle>
+          </EmptyHeader>
+        </Empty>
+      ) : !authResult ? (
+        <Empty className={emptyClassName}>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Cloud />
+            </EmptyMedia>
+            <EmptyTitle>{t("addDataSourceForm.typeOnedrive")}</EmptyTitle>
+          </EmptyHeader>
           {error ? (
-            <button
-              type="button"
-              onClick={handleRetryCreate}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 cursor-pointer"
-            >
-              {t("addDataSourceForm.retryAdd")}
-            </button>
+            <EmptyContent>
+              <StatusNotice tone="error">{error}</StatusNotice>
+            </EmptyContent>
           ) : null}
-
-          <button
-            type="button"
-            onClick={() => {
-              setAuthResult(null)
-              setError("")
-            }}
-            className="text-[12px] text-muted-foreground hover:text-foreground cursor-pointer"
-          >
-            {t("common.change")}
-          </button>
-        </div>
+        </Empty>
+      ) : (
+        <Empty className={emptyClassName}>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Cloud />
+            </EmptyMedia>
+            <EmptyTitle>
+              {authResult.userName || t("addDataSourceForm.typeOnedrive")}
+            </EmptyTitle>
+            {authResult.userEmail ? (
+              <EmptyDescription>{authResult.userEmail}</EmptyDescription>
+            ) : null}
+          </EmptyHeader>
+          {error ? (
+            <EmptyContent>
+              <StatusNotice tone="error">{error}</StatusNotice>
+            </EmptyContent>
+          ) : null}
+        </Empty>
       )}
 
-      {error && <p className="text-[12px] text-red-500">{error}</p>}
+      {!busy ? (
+        <DialogFooter className="mt-4 shrink-0 border-t border-border pt-3">
+          {authResult ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setAuthResult(null)
+                setError("")
+              }}
+            >
+              <LogIn data-icon="inline-start" />
+              {t("addDataSourceForm.changeAccount")}
+            </Button>
+          ) : (
+            <Button type="button" onClick={() => void handleAuth()}>
+              <Cloud data-icon="inline-start" />
+              {t("addDataSourceForm.signInWithMicrosoft")}
+            </Button>
+          )}
+          {authResult && error ? (
+            <Button type="button" onClick={handleRetryCreate}>
+              <RefreshCw data-icon="inline-start" />
+              {t("addDataSourceForm.retryAdd")}
+            </Button>
+          ) : null}
+        </DialogFooter>
+      ) : null}
     </form>
   )
 }

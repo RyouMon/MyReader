@@ -1,4 +1,48 @@
 export const sharedZhCN = {
+  addLibraryFlow: {
+    title: "添加书库",
+    noLibrary: {
+      title: "还没有添加书库",
+      description: "创建新书库或打开已有书库。",
+    },
+    create: {
+      title: "创建新书库",
+      description: "创建 MyReader 书库",
+    },
+    open: {
+      title: "打开已有书库",
+      description: "打开已创建的 MyReader 书库或 Calibre 书库。",
+    },
+    help: {
+      label: "关于书库",
+      myreader: {
+        title: "什么是 MyReader 书库？",
+        body: "由 MyReader 创建和管理，支持导入、删除图书，以及编辑书名和作者。",
+      },
+      calibre: {
+        title: "什么是 Calibre 书库？",
+        body: "由 Calibre 创建和管理。MyReader 以只读方式打开，不会修改其中的图书和元数据。",
+      },
+      sync: {
+        title: "关于阅读数据同步",
+        body: "两种书库都支持在设备间同步阅读数据。将书库存放在云存储中，再从不同设备打开同一个书库即可。",
+      },
+      choice: {
+        title: "我该选择哪一个？",
+        body: "如果你之前使用 Calibre 管理书库，推荐选择“打开已有书库”；否则，选择“创建新书库”。",
+      },
+    },
+    storageLocations: "可用位置",
+    addStorage: "添加数据源",
+    addWebdav: {
+      title: "添加 WebDAV",
+      description: "填写服务器地址和账号信息。",
+    },
+    addOnedrive: {
+      title: "添加 OneDrive",
+      description: "登录 Microsoft 账号。",
+    },
+  },
   bookDetail: {
     collapse: "收起",
     favorite: "收藏",

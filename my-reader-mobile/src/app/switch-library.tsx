@@ -3,7 +3,7 @@ import CloseIcon from "@expo/material-symbols/close.xml"
 import { router, Stack } from "expo-router"
 import { useCallback } from "react"
 import { useTranslation } from "react-i18next"
-import { Platform, ScrollView, View as NativeView } from "react-native"
+import { View as NativeView, Platform, ScrollView } from "react-native"
 
 import { AndroidHeaderIconButton } from "@/src/components/ui/android-header-icon-button"
 import { useThemePalette } from "@/src/design/tokens"
@@ -40,7 +40,7 @@ export default function LibrarySwitcherSheetRoute() {
           </Stack.Toolbar>
           <Stack.Toolbar placement="right">
             <Stack.Toolbar.Button
-              accessibilityLabel={t("library.addLibrary")}
+              accessibilityLabel={t("addLibraryFlow.title")}
               icon="plus"
               onPress={addLibrary}
             />
@@ -70,7 +70,7 @@ export default function LibrarySwitcherSheetRoute() {
             </Text>
             <View className="w-12 items-end">
               <AndroidHeaderIconButton
-                accessibilityLabel={t("library.addLibrary")}
+                accessibilityLabel={t("addLibraryFlow.title")}
                 icon={AddIcon}
                 onPress={addLibrary}
                 testID="library-switcher-add-button"

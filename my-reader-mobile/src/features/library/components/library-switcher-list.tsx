@@ -58,8 +58,8 @@ export function LibrarySwitcherList({ onDismiss }: LibrarySwitcherListProps) {
   if (libraries.length === 0) {
     return (
       <EmptyState
-        title={t("home.noLibrary.title")}
-        detail={t("home.noLibrary.detail")}
+        title={t("addLibraryFlow.noLibrary.title")}
+        detail={t("addLibraryFlow.noLibrary.description")}
         icon={LIBRARY_EMPTY_STATE_ICON}
         layout="container"
       />

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next"
 
 import {
   FormLabeledFieldRow,
+  HelpSection,
   ListRow,
   Screen,
   SectionCard,
@@ -12,13 +13,13 @@ import {
 } from "@/src/components"
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import { useThemePalette } from "@/src/design/tokens"
-import { pickLocalLibraryDirectory } from "@/src/domain/library/local-library-picker"
 import {
   createFolderMyReaderLibrary,
   createRemoteMyReaderLibrary,
   nextMyReaderLibraryName,
   openExistingLocalLibraryFromPicker,
 } from "@/src/domain/library/hooks/library-actions"
+import { pickLocalLibraryDirectory } from "@/src/domain/library/local-library-picker"
 import { notifyLibraryAdded } from "@/src/domain/notifications/library-notifications"
 import type { DataSource } from "@/src/domain/types"
 import { useAddOneDriveDataSource } from "@/src/features/onedrive/hooks/use-add-onedrive-data-source"
@@ -123,7 +124,8 @@ export default function AddLibraryScreen() {
         <SectionCard>
           <ListRow
             testID="add-library-create"
-            title={t("addLibrary.createNew")}
+            title={t("addLibraryFlow.create.title")}
+            detail={t("addLibraryFlow.create.description")}
             onPress={() =>
               router.push({
                 pathname: "/settings/add-library/location",
@@ -133,7 +135,8 @@ export default function AddLibraryScreen() {
           />
           <ListRow
             testID="add-library-open"
-            title={t("addLibrary.openExisting")}
+            title={t("addLibraryFlow.open.title")}
+            detail={t("addLibraryFlow.open.description")}
             onPress={() =>
               router.push({
                 pathname: "/settings/add-library/location",
@@ -143,6 +146,27 @@ export default function AddLibraryScreen() {
             isLast
           />
         </SectionCard>
+        <HelpSection
+          title={t("addLibraryFlow.help.label")}
+          items={[
+            {
+              title: t("addLibraryFlow.help.myreader.title"),
+              body: t("addLibraryFlow.help.myreader.body"),
+            },
+            {
+              title: t("addLibraryFlow.help.calibre.title"),
+              body: t("addLibraryFlow.help.calibre.body"),
+            },
+            {
+              title: t("addLibraryFlow.help.sync.title"),
+              body: t("addLibraryFlow.help.sync.body"),
+            },
+            {
+              title: t("addLibraryFlow.help.choice.title"),
+              body: t("addLibraryFlow.help.choice.body"),
+            },
+          ]}
+        />
       </Screen>
     </>
   )
@@ -220,7 +244,7 @@ export function AddLibraryLocationScreen() {
       {toolbar}
       <Screen>
         <View className="gap-3">
-          <SectionLabel>{t("addLibrary.existingDataSources")}</SectionLabel>
+          <SectionLabel>{t("addLibraryFlow.storageLocations")}</SectionLabel>
           <SectionCard>
             <ListRow
               testID="add-library-local-storage"
@@ -243,11 +267,11 @@ export function AddLibraryLocationScreen() {
           </SectionCard>
         </View>
         <View className="gap-3">
-          <SectionLabel>{t("addLibrary.addDataSource")}</SectionLabel>
+          <SectionLabel>{t("addLibraryFlow.addStorage")}</SectionLabel>
           <SectionCard>
             <ListRow
               testID="add-library-add-webdav"
-              title={t("addLibrary.addWebdav")}
+              title={t("addLibraryFlow.addWebdav.title")}
               onPress={() =>
                 router.push({
                   pathname: "/settings/add-library/webdav",
@@ -260,7 +284,7 @@ export function AddLibraryLocationScreen() {
             />
             <ListRow
               testID="add-library-add-onedrive"
-              title={t("addLibrary.addOnedrive")}
+              title={t("addLibraryFlow.addOnedrive.title")}
               onPress={() => void handleAddOneDrive()}
               isLast
             />
@@ -341,7 +365,7 @@ export function CreateLibraryScreen() {
   }
 
   const { options, toolbar } = useScreenHeader({
-    title: t("addLibrary.createNew"),
+    title: t("addLibraryFlow.create.title"),
     back: "hidden",
     left: [
       {

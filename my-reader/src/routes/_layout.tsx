@@ -5,6 +5,7 @@ import {
 } from "@tanstack/react-router"
 import { useCallback, useEffect, useRef, useState } from "react"
 
+import { AddLibraryDialog } from "@/components/library/AddLibraryDialog"
 import AppSidebar from "@/components/library/AppSidebar"
 import LibraryWorkspace from "@/components/library/LibraryWorkspace"
 import SettingsActivity from "@/components/settings/SettingsActivity"
@@ -23,6 +24,7 @@ function Layout() {
   const windowSizeClass = useWindowSizeClass()
   const isLargeWindow = windowSizeClass === "large"
   const [sidebarOpen, setSidebarOpen] = useState(isLargeWindow)
+  const [addLibraryOpen, setAddLibraryOpen] = useState(false)
   const settingsOpen = location.pathname === "/settings"
   const lastWorkspacePathRef = useRef("/")
   const wasLargeWindowRef = useRef<boolean | null>(null)
@@ -66,16 +68,27 @@ function Layout() {
       forceCollapsed={!isLargeWindow}
       className="relative h-svh min-h-0 overflow-hidden"
     >
-      <AppSidebar />
+      <AppSidebar onAddLibrary={() => setAddLibraryOpen(true)} />
       <SidebarInset className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <LibraryWorkspace activeBookId={activeBookId} />
+        <LibraryWorkspace
+          activeBookId={activeBookId}
+          onAddLibrary={() => setAddLibraryOpen(true)}
+        />
       </SidebarInset>
 
       {settingsOpen ? (
         <div className="absolute inset-0 z-50 bg-background animate-in fade-in-0 duration-150">
-          <SettingsActivity onClose={closeSettings} />
+          <SettingsActivity
+            onClose={closeSettings}
+            onAddLibrary={() => setAddLibraryOpen(true)}
+          />
         </div>
       ) : null}
+
+      <AddLibraryDialog
+        open={addLibraryOpen}
+        onOpenChange={setAddLibraryOpen}
+      />
     </SidebarProvider>
   )
 }

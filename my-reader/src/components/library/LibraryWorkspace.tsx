@@ -8,12 +8,13 @@ import {
 import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { open } from "@tauri-apps/plugin-dialog"
-import { AlertCircle, Library } from "lucide-react"
+import { AlertCircle } from "lucide-react"
 import { useCallback, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import BookGrid, { LibrarySkeletonGrid } from "@/components/library/BookGrid"
 import LibrarySyncStatus from "@/components/library/LibrarySyncStatus"
+import { NoLibraryEmptyState } from "@/components/library/NoLibraryEmptyState"
 import Toolbar from "@/components/library/Toolbar"
 import { Button } from "@/components/ui/button"
 import {
@@ -45,7 +46,6 @@ import {
 import {
   libraryKeys,
   useLibrariesQuery,
-  useLibraryMutations,
 } from "@/hooks/queries/useLibrariesQuery"
 import { localOnlyBookKeys } from "@/hooks/queries/useLocalOnlyBooksQuery"
 import { pendingBookUploadKeys } from "@/hooks/queries/usePendingBookUploadsQuery"
@@ -72,6 +72,7 @@ import { getDesktopBookCollectionDefinition } from "./bookCollectionDefinitions"
 
 interface LibraryWorkspaceProps {
   activeBookId: string | null
+  onAddLibrary: () => void
 }
 
 const EMPTY_SELECTED_FORMATS: Record<string, string> = {}
@@ -79,6 +80,7 @@ type DeletableBook = Pick<CalibreBook, "id" | "title">
 
 export default function LibraryWorkspace({
   activeBookId,
+  onAddLibrary,
 }: LibraryWorkspaceProps) {
   const { t } = useTranslation()
   const { data: libraries = [], isLoading: libLoading } = useLibrariesQuery()
@@ -96,7 +98,6 @@ export default function LibraryWorkspace({
   const { data: progressByBookId = {} } =
     useBookReadingProgress(activeLibraryId)
   const queryClient = useQueryClient()
-  const { createDefaultMyreaderLibrary } = useLibraryMutations()
   const navigate = useNavigate()
   const openReader = useOpenReader()
   const windowSizeClass = useWindowSizeClass()
@@ -263,7 +264,7 @@ export default function LibraryWorkspace({
   }
 
   const handleImportBook = async () => {
-    if (importingBook) return
+    if (importingBook || !activeLibraryId) return
     try {
       const selected = await open({
         directory: false,
@@ -273,13 +274,7 @@ export default function LibraryWorkspace({
       if (!selected) return
 
       setImportingBook(true)
-      let libraryId = activeLibraryId
-      if (!libraryId) {
-        const created = await createDefaultMyreaderLibrary(
-          t("library.defaultMyreaderName"),
-        )
-        libraryId = created.id
-      }
+      const libraryId = activeLibraryId
       const outcome = await api.importBook(
         libraryId,
         selected as string,
@@ -485,35 +480,7 @@ export default function LibraryWorkspace({
           )}
 
           {!loading && !displayedError && hasNoLibrary && (
-            <Empty className="min-h-0 flex-1">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <Library />
-                </EmptyMedia>
-                <EmptyTitle>{t("library.empty.noLibraryTitle")}</EmptyTitle>
-                <EmptyDescription>
-                  {t("library.empty.noLibraryDesc")}
-                </EmptyDescription>
-              </EmptyHeader>
-              <EmptyContent className="flex-row">
-                <Button
-                  size="sm"
-                  disabled={importingBook}
-                  onClick={() => void handleImportBook()}
-                >
-                  {importingBook
-                    ? t("library.importingBook")
-                    : t("library.empty.importBook")}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate({ to: "/settings" })}
-                >
-                  {t("library.empty.addLibrary")}
-                </Button>
-              </EmptyContent>
-            </Empty>
+            <NoLibraryEmptyState onAddLibrary={onAddLibrary} />
           )}
 
           {!loading &&

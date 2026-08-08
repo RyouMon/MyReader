@@ -8,16 +8,18 @@ interface DataSourceTypeSelectorProps {
   value: DataSourceType
   onChange: (type: DataSourceType) => void
   disabled?: boolean
+  types?: readonly DataSourceType[]
 }
 
 export function DataSourceTypeSelector({
   value,
   onChange,
   disabled,
+  types,
 }: DataSourceTypeSelectorProps) {
   const { t } = useTranslation()
 
-  const types: {
+  const options: {
     key: DataSourceType
     icon: React.ReactNode
     title: string
@@ -106,10 +108,18 @@ export function DataSourceTypeSelector({
       selectedIconColor: "text-blue-500",
     },
   ]
+  const visibleOptions = types
+    ? options.filter((option) => types.includes(option.key))
+    : options
 
   return (
-    <div className="grid grid-cols-3 gap-2.5">
-      {types.map((type) => {
+    <div
+      className={cn(
+        "grid gap-2.5",
+        visibleOptions.length === 2 ? "grid-cols-2" : "grid-cols-3",
+      )}
+    >
+      {visibleOptions.map((type) => {
         const isSelected = value === type.key
         return (
           <button

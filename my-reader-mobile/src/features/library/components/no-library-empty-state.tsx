@@ -9,11 +9,11 @@ export function NoLibraryEmptyState() {
 
   return (
     <EmptyState
-      title={t("home.noLibrary.title")}
-      detail={t("home.noLibrary.detail")}
+      title={t("addLibraryFlow.noLibrary.title")}
+      detail={t("addLibraryFlow.noLibrary.description")}
       action={
         <PrimaryButton
-          title={t("library.addLibrary")}
+          title={t("addLibraryFlow.title")}
           onPress={() => router.push("/settings/add-library")}
         />
       }
