@@ -1,10 +1,8 @@
 import {
   isRemoteLibrarySourceType,
   type Library,
-  libraryTypeOf,
 } from "@my-reader/tools/types/library"
 import { Directory, File } from "expo-file-system"
-import { Platform } from "react-native"
 import type { RemoteBackend } from "@/src/services/remote/backend"
 import {
   canonicalRelativePath,
@@ -19,26 +17,6 @@ export const LIBRARY_MYREADER_DIR = ".myreader"
 
 const LIBRARIES_DOCUMENT_DIR = "libraries"
 
-/** User-visible directory name for a local library. */
-export function localLibraryFolderName(library: Library): string | null {
-  if (isRemoteLibrarySourceType(library.sourceType)) return null
-
-  const uri =
-    library.securityScopedBookmark?.resolvedUri ??
-    library.sourcePath ??
-    library.path
-  try {
-    const name = new Directory(uri).name.trim()
-    if (!name) return null
-    if (!uri.startsWith("content://")) return name
-
-    const decoded = decodeURIComponent(name)
-    return decoded.split(/[/:]/).filter(Boolean).at(-1) ?? null
-  } catch {
-    return null
-  }
-}
-
 /** App container root for a library (`Documents/libraries/{id}/`). */
 export function libraryContainerRootUri(libraryId: string): string {
   return ensureDocumentSubdirUri(LIBRARIES_DOCUMENT_DIR, libraryId)
@@ -49,48 +27,20 @@ export function librariesContainerRootUri(): string {
   return ensureDocumentSubdirUri(LIBRARIES_DOCUMENT_DIR)
 }
 
-/** iOS local external libraries keep sidecar data in the app container. */
-export function usesIosContainerSidecar(library: Library): boolean {
-  return (
-    Platform.OS === "ios" &&
-    !isRemoteLibrarySourceType(library.sourceType) &&
-    Boolean(library.securityScopedBookmark)
-  )
-}
-
-export function usesLibraryContainerSidecar(library: Library): boolean {
-  return (
-    libraryTypeOf(library) === "myreader" ||
-    isRemoteLibrarySourceType(library.sourceType) ||
-    usesIosContainerSidecar(library)
-  )
-}
-
-/** User-selected Calibre library root (bookmark or filesystem path). */
-export function libraryLocalRootUri(library: Library): string {
-  return library.securityScopedBookmark?.resolvedUri ?? library.path
-}
-
-/**
- * Local content root for catalog files, books, and covers.
- * Remote → container; local → {@link libraryLocalRootUri}.
- */
+/** Content root: external iOS directory, or the current app container. */
 export function libraryRootUri(library: Library): string {
-  if (isRemoteLibrarySourceType(library.sourceType)) {
-    return libraryContainerRootUri(library.id)
+  if (
+    !isRemoteLibrarySourceType(library.sourceType) &&
+    library.securityScopedBookmark
+  ) {
+    return library.securityScopedBookmark.resolvedUri
   }
-  return libraryLocalRootUri(library)
+  return libraryContainerRootUri(library.id)
 }
 
-/**
- * Root whose `{root}/.myreader/` holds app sidecar data.
- * Remote / iOS external → container; other local → local root.
- */
+/** Root whose `{root}/.myreader/` holds app sidecar data. */
 export function librarySidecarRootUri(library: Library): string {
-  if (usesLibraryContainerSidecar(library)) {
-    return libraryContainerRootUri(library.id)
-  }
-  return libraryLocalRootUri(library)
+  return libraryContainerRootUri(library.id)
 }
 
 /** `{libraryRoot}/metadata.db`. */
@@ -111,12 +61,9 @@ export function libraryBookFileUri(
   return fileUriFor(libraryRootUri(library), relativePath)
 }
 
-/** Ensures `{sidecarRoot}/.myreader` exists for container-backed sidecars. */
+/** Ensures `{sidecarRoot}/.myreader` exists. */
 export function ensureLibrarySidecarDirectory(library: Library): string {
   const sidecarRoot = librarySidecarRootUri(library)
-  if (usesLibraryContainerSidecar(library)) {
-    libraryContainerRootUri(library.id)
-  }
   const dir = new Directory(fileUriFor(sidecarRoot, LIBRARY_MYREADER_DIR))
   if (!dir.exists) {
     dir.create({ idempotent: true, intermediates: true })

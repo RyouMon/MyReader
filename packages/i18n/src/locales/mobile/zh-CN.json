@@ -116,11 +116,18 @@
     "myreaderLibrary": "MyReader 书库",
     "remove": {
       "title": "移除这个书库？",
-      "message": "仅从应用中移除，文件不会删除。",
+      "message": "将从应用中移除书库并清除应用内数据，源文件不会删除。",
       "cancel": "取消",
       "confirm": "移除"
     },
+    "deleteLocal": {
+      "title": "删除这个内部书库？",
+      "message": "将删除书库中的图书和阅读数据，此操作无法撤销。",
+      "cancel": "取消",
+      "confirm": "删除"
+    },
     "removeLibrary": "移除书库",
+    "deleteLibrary": "删除书库",
     "notFound": {
       "title": "没有找到这个书库",
       "detail": "它可能已经被移除，或者当前链接参数已经失效。"
@@ -130,7 +137,6 @@
     "refresh": "更新书库",
     "libraryType": "书库类型",
     "storageLocation": "存储位置",
-    "folderName": "文件夹",
     "remotePath": "路径",
     "sourceType": "数据源类型",
     "libraryPath": "书库路径",
@@ -630,6 +636,7 @@
     "search": "搜索",
     "clear": "清除",
     "current": "当前",
+    "appInternalStorage": "应用内部存储",
     "localStorage": "本地存储",
     "unnamedBook": "未命名书籍",
     "unknownAuthor": "未知作者",

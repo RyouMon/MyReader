@@ -1,0 +1,21 @@
+appId: ${APP_ID}
+name: Open Add Library without the tab bar obscuring the row
+tags:
+  - skip
+---
+- runFlow: reset_settings_scroll.yaml
+- scrollUntilVisible:
+    element:
+      id: "settings-add-library-row"
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- tapOn:
+    id: "settings-add-library-row"
+    # Use the lower part of the row when a long library list leaves its top
+    # edge underneath the native sticky header.
+    point: "50%,85%"
+- extendedWaitUntil:
+    visible:
+      id: "add-library-create"
+    timeout: 15000

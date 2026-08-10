@@ -1,0 +1,104 @@
+appId: ${APP_ID}
+name: Import EPUB, PDF, and CBZ into a local MyReader library and read them
+tags:
+  - external-library
+  - ios
+---
+# Required env:
+#   E2E_ROOT_FOLDER, LOCAL_LIBRARY_NAME,
+#   EPUB_IMPORT_FILE_NAME, EPUB_BOOK_TITLE, EPUB_BOOK_AUTHOR,
+#   PDF_PICKER_FILE_NAME, PDF_BOOK_TITLE, PDF_BOOK_AUTHOR,
+#   CBZ_IMPORT_FILE_NAME, CBZ_BOOK_TITLE.
+- runFlow: ../../common/launch_preserving_data.yaml
+
+# Scenario: create a local MyReader library in the app container.
+- tapOn:
+    id: "tab-settings"
+- runFlow: ../../common/open_add_library.yaml
+- tapOn:
+    id: "add-library-create"
+- tapOn:
+    id: "add-library-app-internal-storage"
+- tapOn:
+    id: "new-library-name"
+- eraseText
+- inputText: ${LOCAL_LIBRARY_NAME}
+- tapOn: "^创建$|^Create$"
+- extendedWaitUntil:
+    visible: "成功添加书库：${LOCAL_LIBRARY_NAME}|Library added: ${LOCAL_LIBRARY_NAME}"
+    timeout: 30000
+- runFlow:
+    file: ../../common/activate_library.yaml
+    env:
+      LIBRARY_NAME: ${LOCAL_LIBRARY_NAME}
+- assertVisible: "书库为空|Library is empty"
+
+# Scenario: EPUB metadata and cover are available before opening the reader.
+- tapOn: "导入图书|Import Book"
+- runFlow:
+    file: ../../common/select_ios_e2e_fixture.yaml
+    env:
+      E2E_ROOT_FOLDER: ${E2E_ROOT_FOLDER}
+      IMPORT_FILE_NAME: ${EPUB_IMPORT_FILE_NAME}
+- extendedWaitUntil:
+    visible: ${EPUB_BOOK_TITLE}
+    timeout: 30000
+- tapOn: "更多操作：${EPUB_BOOK_TITLE}|More actions: ${EPUB_BOOK_TITLE}"
+- tapOn: "图书详情|Book Details"
+- extendedWaitUntil:
+    visible: ${EPUB_BOOK_AUTHOR}
+    timeout: 15000
+- runFlow: ../../common/tap_header_back_or_close.yaml
+- tapOn: '打开《${EPUB_BOOK_TITLE}》|Open "${EPUB_BOOK_TITLE}"'
+- extendedWaitUntil:
+    visible:
+      id: "reader-screen"
+    timeout: 30000
+- runFlow: ../../common/close_reader.yaml
+
+# Scenario: PDF metadata and first-page cover are available before reading.
+- runFlow: ../../common/tap_header_back.yaml
+- waitForAnimationToEnd
+- tapOn: "导入图书|Import Book"
+- runFlow:
+    file: ../../common/select_ios_e2e_fixture.yaml
+    env:
+      E2E_ROOT_FOLDER: ${E2E_ROOT_FOLDER}
+      IMPORT_FILE_NAME: ${PDF_PICKER_FILE_NAME}
+- tapOn: "全部图书.*|All Books.*"
+- extendedWaitUntil:
+    visible: ${PDF_BOOK_TITLE}
+    timeout: 30000
+- tapOn: "更多操作：${PDF_BOOK_TITLE}|More actions: ${PDF_BOOK_TITLE}"
+- tapOn: "图书详情|Book Details"
+- extendedWaitUntil:
+    visible: ${PDF_BOOK_AUTHOR}
+    timeout: 15000
+- runFlow: ../../common/tap_header_back_or_close.yaml
+- tapOn: '打开《${PDF_BOOK_TITLE}》|Open "${PDF_BOOK_TITLE}"'
+- extendedWaitUntil:
+    visible:
+      id: "reader-screen"
+    timeout: 30000
+- runFlow: ../../common/close_reader.yaml
+
+# Scenario: CBZ falls back to its filename, creates a first-page cover, and opens.
+- runFlow: ../../common/tap_header_back.yaml
+- waitForAnimationToEnd
+- tapOn: "导入图书|Import Book"
+- runFlow:
+    file: ../../common/select_ios_e2e_fixture.yaml
+    env:
+      E2E_ROOT_FOLDER: ${E2E_ROOT_FOLDER}
+      IMPORT_FILE_NAME: ${CBZ_IMPORT_FILE_NAME}
+- tapOn: "全部图书.*|All Books.*"
+- extendedWaitUntil:
+    visible: ${CBZ_BOOK_TITLE}
+    timeout: 30000
+- tapOn: '打开《${CBZ_BOOK_TITLE}》|Open "${CBZ_BOOK_TITLE}"'
+- extendedWaitUntil:
+    visible:
+      id: "reader-screen"
+    timeout: 30000
+- runFlow: ../../common/close_reader.yaml
+- takeScreenshot: local-supported-format-covers

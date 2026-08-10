@@ -16,28 +16,41 @@ isProject: true
 本决策已于 2026-08-02 接受并完成主体实施。正文保留接受时的完整设计和实施顺序；当前事实已同步到
 [`ARCHITECTURE.md`](../../ARCHITECTURE.md)。
 
+### 2026-08-11 移动端存储修订
+
+- “应用内部存储”是 iOS、Android 共用能力。MyReader 书库由 core 创建在应用容器
+  `Documents/libraries/<library-id>/`；删除注册时同时删除应用拥有的完整书库容器。
+- “本地存储”专指用户选择的外部目录，仅 iOS 支持。iOS 用 security-scoped bookmark 持久化
+  目录授权，书籍、封面、marker 和 Automerge StorageKey 留在所选目录，活动 `myreader.db` 位于
+  应用容器 sidecar；移除注册时保留外部源文件。
+- iOS 的“创建书库”同时提供应用内部存储和本地存储，“打开已有书库”可从本地存储打开 MyReader
+  或只读 Calibre 书库。Android 只提供应用内部存储，不显示创建或打开外部本地书库的入口。
+- Android SAF 外部书库及其私有镜像保持移除状态；在无需镜像即可可靠访问外部目录前，不支持
+  Android 本地存储。
+- Files、iCloud Drive 和系统分享仍可作为单本 EPUB、PDF、CBZ 的导入入口；它们不等于 Android
+  本地书库数据源。桌面端本地目录书库的创建与打开不受本修订影响。
+
+以下实施记录中的 Android SAF 描述仅记录最初实现，涉及移动端当前行为时以上述修订为准。
+
 ### 实施记录
 
 | 阶段 | 状态 | 实施结果 |
 |---|---|---|
 | Phase 1 | 完成 | `libraryType`、marker、catalog document schema、Calibre-shaped projection 与共用 catalog 查询已落地（`baa7f807`、`d2ec4e01`、`bdc4d97f`） |
-| Phase 2 | 完成 | 本地 MyReader 书库创建/打开、单格式导入、编辑、删除及 desktop/mobile adapter 已落地（`a9204e05`、`dea82e1f`、`b645bd1f`、`17579e4f`） |
+| Phase 2 | 完成 | 本地 MyReader 书库创建/打开、单格式导入、编辑、删除及 desktop/mobile adapter 的首版实现已落地（`a9204e05`、`dea82e1f`、`b645bd1f`、`17579e4f`）；移动端入口现按 2026-08-11 修订区分双端应用内部存储与 iOS 本地存储 |
 | Phase 3 | 完成 | WebDAV/OneDrive 创建与打开、正文上传/按需下载、SHA-256 校验和 tombstone 删除收敛已落地（`71caa7c8`、`7b0d60f6`、`be3c50bb`） |
 | Phase 4 | 完成 | 首次导入创建流程、多个书库、远程目录入口和仅 MyReader 可见的增删改操作已接入 desktop/mobile（`9e92d3c8`、`86d2f7ee`、`fb32712f`、`4bd70c64`） |
-| Phase 5 | 完成 | 系统分享入口、Android SAF 外部书库、离线远程导入队列及远程子目录创建已落地（`54ea1b96`、`d27d11e7`、`8f171d16`、`94e7f5ca`）；首次分享在没有 MyReader 书库时复用普通创建流程 |
+| Phase 5 | 完成 | 系统分享入口、Android SAF 外部书库、离线远程导入队列及远程子目录创建的首版实现已落地（`54ea1b96`、`d27d11e7`、`8f171d16`、`94e7f5ca`）；Android SAF 书库后来由 2026-08-10 修订移除 |
 
-### 首版补充实现
+### 当前补充实现
 
 - iOS/Android 的系统“分享到 MyReader”和文件选择器统一进入同一移动导入用例，再调用 core
-  catalog command；若首次分享时没有 MyReader 书库，平台先暂存文件，让用户按普通流程选择
-  数据源或目录并填写书库名，创建成功后继续导入。分享入口不拥有第二套书目模型。
-- 本地 MyReader 书库的源文件始终位于用户通过系统选择器授权的父目录下。创建时以书库名新建
-  同名子目录；同名文件或目录已存在时拒绝创建。应用容器只保存活动 SQLite、缓存和 Android
-  SAF 工作数据等设备侧派生数据，不再作为可选的书库源位置。
-- “移除书库”只移除应用注册，并可清理应用拥有的设备侧派生数据；不得删除本地授权目录、
-  远程目录或其中的图书文件。
-- Android SAF 外部 MyReader 书库把 `content://` 保存为 `Library.sourcePath`，把应用私有镜像保存
-  为 `Library.path`。正文和 control plane 在 SAF 与镜像间按文件合并，不把活动 SQLite 写入 SAF。
+  catalog command；若首次分享时没有 MyReader 书库，平台先暂存文件，让用户按普通创建流程选择
+  本地或远程存储并填写书库名，创建成功后继续导入。分享入口不拥有第二套书目模型。
+- 移动端内部 MyReader 书库由 core 在应用容器中创建和标识；iOS 外部 MyReader 书库通过
+  security-scoped bookmark 使用用户目录；Android 不暴露 SAF 或外部本地目录分支。
+- 删除内部书库会删除应用拥有的书库容器；移除 iOS 外部或远程书库只移除应用注册与设备侧
+  sidecar，不删除外部源目录、远程目录或其中的图书文件。
 - 远程上传因连接失败时，正文保留在设备容器，`pending_book_imports` 记录设备本地传输意图，
   `file_state` 标记为 `dirty_push`。本地 catalog projection 可立即显示并阅读该书，但 Automerge
   outbox 在正文上传并确认远端 size 前保持不可发布。独立的后台 `BookTransferService` 消费原有队列，
@@ -66,9 +79,9 @@ isProject: true
    不承诺能被 Calibre 打开、修改、往返保存或转换。
 7. **外部 Calibre 书库永远只读。** 它继续从外部 `metadata.db` 读取书目；任何 MyReader marker、
    registry 字段或数据源写能力都不能把它升级为可写书库。
-8. **书库源文件不由注册生命周期托管。** 本地 MyReader 书库只创建在用户选定的父目录下；移除任意
-   本地或远程书库只删除应用注册及设备侧派生数据，不删除源目录或源文件。
-   创建书库时所选目录是父目录，实际根目录固定为 `<所选目录>/<书库名>`；目标名称必须尚不存在。
+8. **书库源文件的生命周期由位置和所有权决定。** 移动端应用内部 MyReader 书库由应用托管，删除
+   注册时同时删除完整书库容器；iOS 外部本地书库、远程书库和桌面端外部目录不由移动端注册生命
+   周期托管，移除时保留外部或远端源文件。Android 当前不支持外部本地书库。
 9. **第一版只开放最小图书管理。** 一本书只有一种格式；支持导入、删除、修改书名和作者，不
    引入完整 Calibre 元数据管理。
 10. **正文传输与 Automerge 状态交换职责分离，但复用同一 DataSource。** Automerge 同步正文的
@@ -441,13 +454,13 @@ catalog projection 可从 Automerge snapshot 完整重建。projection 失败时
 ### 第一版包含
 
 1. 首次启动可以：
-   - 导入或分享图书；若尚无 MyReader 书库，进入与普通创建相同的数据源或目录及名称选择流程，
+   - 导入或分享图书；若尚无 MyReader 书库，进入与普通创建相同的存储类型及名称选择流程，
      创建成功后继续导入；
    - 进入添加书库流程。
 2. 添加书库流程支持：
    - 创建空白 MyReader 书库；
-   - 打开已有 MyReader 书库；
-   - 连接已有 Calibre 书库。
+   - 桌面端打开已有本地 MyReader 或 Calibre 书库；
+   - 桌面端和移动端从已配置的远程数据源打开已有 MyReader 或 Calibre 书库。
 3. 支持添加多个 MyReader 书库。
 4. 支持在 local、WebDAV 和 OneDrive 数据源创建 MyReader 书库。
 5. 支持向 MyReader 书库导入和删除 EPUB、PDF、CBZ。
@@ -455,7 +468,7 @@ catalog projection 可从 Automerge snapshot 完整重建。projection 失败时
 7. 支持远程正文上传和按需下载。
 8. 复用当前格式的 Reader 能力。
 9. 复用现有 sidecar 阅读数据，包括收藏、阅读位置、书签、批注、阅读 session 和完成记录。
-10. 移除书库只移除应用注册，不删除本地或远程书库文件。
+10. 移动端删除本地书库会删除应用拥有的完整容器；移除远程书库或桌面外部目录书库时保留源文件。
 
 系统“分享到 MyReader”与文件选择器都是同一导入用例的平台入口，不改变 catalog 领域模型。
 
@@ -466,7 +479,8 @@ catalog projection 可从 Automerge snapshot 完整重建。projection 失败时
 - “创建新书库”
 - “打开已有书库”
 
-“打开已有书库”对 MyReader 和 Calibre 都只表示注册现有目录，不能暗示复制、迁移或转换。
+“打开已有书库”只表示从桌面外部目录或已配置的远程数据源注册现有书库，不能暗示复制、迁移或
+转换；移动端本地存储不提供此入口。
 
 ## 不支持转换
 
@@ -677,9 +691,10 @@ ADR-0012 的 sync scope 按书库类型解释：
 - 把 catalog repository 拆为共享查询实现、数据库连接和 content root；
 - 证明旧配置及所有外部 Calibre `metadata.db` 永远只读。
 
-### Phase 2：本地最小闭环
+### Phase 2：本地最小闭环（原实施阶段）
 
-- 在用户通过系统选择器授权的父目录下，以书库名创建同名子目录作为空白 MyReader 书库；
+- 在用户通过系统选择器授权的父目录下，以书库名创建同名子目录作为空白 MyReader 书库；移动端
+  此实现后来由 2026-08-10 应用容器方案替代，桌面端继续保留；
 - 拒绝同名目标；
 - 通过 Automerge command 导入 EPUB、PDF、CBZ；
 - 在 shared core 中提供桌面和移动共用的流式 SHA-256 文件摘要；
@@ -706,10 +721,11 @@ ADR-0012 的 sync scope 按书库类型解释：
 - 文件选择器和系统分享统一调用 `import_book`；
 - UI 只在 MyReader 书库显示新增、删除和编辑动作。
 
-### Phase 5：平台文件入口与离线传输补齐
+### Phase 5：平台文件入口与离线传输补齐（原实施阶段）
 
 - iOS/Android 接收系统分享的 EPUB、PDF、CBZ，并复用文件导入用例；
 - Android 使用 SAF 打开或创建外部 MyReader 书库，以应用私有镜像承载 SQLite 与 Reader 路径；
+  此实现后来由 2026-08-10 修订移除；
 - 远程导入连接失败时保留设备本地正文与传输意图，恢复后按“正文先上传、catalog 后发布”重试；
 - 远程创建流程允许在当前目录下指定一个新子目录，不另建目录管理后端。
 
@@ -742,16 +758,17 @@ ADR-0012 的 sync scope 按书库类型解释：
 17. 产品中不存在书库转换、升级或降级入口。
 18. 系统分享和文件选择器进入同一导入用例，格式校验、目标书库选择和 catalog command 不分叉；
     没有 MyReader 书库时必须先完成普通创建流程，不能静默创建应用容器书库。
-19. Android SAF 书库不会把活动 `myreader.db`、WAL 或 SHM 放进用户授权目录；control 文件按对象
-    合并，不能用整目录覆盖破坏其他设备写入。
+19. 移动端本地 MyReader 书库的 `Books`、marker、Automerge StorageKey 和活动 `myreader.db`
+    必须位于同一个 `Documents/libraries/<library-id>/` 根目录；不得重新引入系统目录选择、
+    security-scoped bookmark、Android SAF 或私有镜像同步分支。
 20. 离线远程导入在正文上传并校验成功前不投影可见书目；恢复联网后使用预分配的稳定
     `book_id + books.uuid` 幂等完成，且 catalog 冲突仍只由 Automerge 处理。
 21. 在远程浏览器输入子目录名只改变创建用例的目标路径；打开已有 MyReader 或 Calibre 书库的
     路径语义不变。
-22. 移除任意书库只删除应用注册及应用拥有的设备侧派生数据；本地授权目录、远程目录和源图书
-    文件必须保留。
-23. 创建 MyReader 书库时，用户选择的是父目录，书库根固定为 `<父目录>/<书库名>`；同名文件或
-    目录已存在时，创建必须失败且不得改写已有内容。
+22. 移动端删除本地 MyReader 书库时必须删除其应用容器；移除远程书库或桌面外部目录书库时只删除
+    应用注册和应用拥有的设备侧派生数据，远端或外部源文件必须保留。
+23. 移动端创建本地 MyReader 书库时由 core 生成 registry ID 和书库 UUID，书库根固定为
+    `Documents/libraries/<library-id>/`，不得以用户输入名称推导目录，也不得要求用户先创建目录。
 
 针对本决策新增的测试只保护所有权、身份、单格式、事务、projection 重建、Automerge 收敛和正文
 发布/校验/删除时序等持久合同，不锁定 UI 间距、文案排版或内部函数拆分。

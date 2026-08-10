@@ -9,10 +9,10 @@ tags:
       platform: iOS
     commands:
       - assertVisible:
-          text: ${output.selectors.settings.header.iosNativeBack}
+          id: "BackButton"
           index: 0
       - assertNotVisible:
-          text: ${output.selectors.settings.header.iosNativeBack}
+          id: "BackButton"
           index: 1
 - runFlow:
     when:

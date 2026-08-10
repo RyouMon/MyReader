@@ -362,7 +362,6 @@ export async function importLocalBook(
     authors: string[]
     consumeSourceFile: boolean
   },
-  options?: { announce?: boolean },
 ): Promise<CalibreBook> {
   const book = await catalogImportLocalBook(
     appConfigPath,
@@ -378,7 +377,7 @@ export async function importLocalBook(
       consumeSourceFile: input.consumeSourceFile,
     },
   )
-  if (options?.announce !== false) announceLocalSidecarWork(library.id)
+  announceLocalSidecarWork(library.id)
   return bookFromCore(book)
 }
 
@@ -442,7 +441,6 @@ export async function updateLocalBookMetadata(
   contentRootUri: string,
   sidecarRootUri: string,
   input: { bookId: number; title: string; authors: string[] },
-  options?: { announce?: boolean },
 ): Promise<CalibreBook> {
   const book = await catalogUpdateLocalBookMetadata(
     appConfigPath,
@@ -456,7 +454,7 @@ export async function updateLocalBookMetadata(
       recordedAtMs: Date.now(),
     },
   )
-  if (options?.announce !== false) announceLocalSidecarWork(library.id)
+  announceLocalSidecarWork(library.id)
   return bookFromCore(book)
 }
 
@@ -465,7 +463,6 @@ export async function deleteLocalBook(
   contentRootUri: string,
   sidecarRootUri: string,
   bookId: number,
-  options?: { announce?: boolean },
 ): Promise<void> {
   await catalogDeleteLocalBook(
     appConfigPath,
@@ -475,5 +472,5 @@ export async function deleteLocalBook(
     bookId,
     Date.now(),
   )
-  if (options?.announce !== false) announceLocalSidecarWork(library.id)
+  announceLocalSidecarWork(library.id)
 }

@@ -1,14 +1,15 @@
 import type { DataSource } from "@my-reader/tools/types/data-source"
 import type { Library } from "@my-reader/tools/types/library"
+import { Platform } from "react-native"
 
 const mockAddRemoteLibrary = jest.fn()
-const mockCreateAndroidSafMirrorDirectory = jest.fn()
-const mockCreateExclusiveLibraryDirectory = jest.fn()
-const mockCreateSecurityScopedBookmark = jest.fn()
 const mockOpenRemoteMyReaderLibrary = jest.fn()
-const mockAddLocalAppLibrary = jest.fn()
+const mockCreateManagedLocalMyReaderLibrary = jest.fn()
 const mockCreateLocalMyReaderLibrary = jest.fn()
 const mockOpenLocalMyReaderLibrary = jest.fn()
+const mockAddLocalAppLibrary = jest.fn()
+const mockCreateSecurityScopedBookmark = jest.fn()
+const mockCreateExclusiveLibraryDirectory = jest.fn()
 const mockDirectoryDelete = jest.fn()
 const mockDirectoryCreate = jest.fn()
 const mockFileCopy = jest.fn()
@@ -33,21 +34,9 @@ const mockSetActiveLibraryId = jest.fn((id: string | null) => {
 const mockRemoveLibrarySyncStatus = jest.fn()
 const mockSwitchAppLibrary = jest.fn()
 const mockShowAlert = jest.fn()
-const mockPushAndroidSafControl = jest.fn((_library: unknown) =>
-  Promise.resolve(),
-)
 let mockLibraries: Library[] = []
 let mockActiveLibraryId: string | null = null
 let mockDataSources: DataSource[] = []
-let mockPlatform: "ios" | "android" = "ios"
-
-jest.mock("react-native", () => ({
-  Platform: {
-    get OS() {
-      return mockPlatform
-    },
-  },
-}))
 
 jest.mock("expo-file-system", () => ({
   Directory: jest.fn((parent: string | { uri: string }, name?: string) => {
@@ -91,20 +80,6 @@ jest.mock("@/src/domain/sync/hooks/run-library-sync", () => ({
   runLibrarySync: (input: unknown) => mockRunLibrarySync(input),
 }))
 
-jest.mock("@/src/domain/library/android-saf-library", () => ({
-  createAndroidSafMirrorDirectory: (...args: unknown[]) =>
-    mockCreateAndroidSafMirrorDirectory(...args),
-  deleteAndroidSafMirror: jest.fn(),
-  pullAndroidSafControl: jest.fn(),
-  pushAndroidSafControl: (library: unknown) =>
-    mockPushAndroidSafControl(library),
-}))
-
-jest.mock("@/src/services/fs/library-directory", () => ({
-  createExclusiveLibraryDirectory: (...args: unknown[]) =>
-    mockCreateExclusiveLibraryDirectory(...args),
-}))
-
 jest.mock("@/src/domain/library/catalog", () => ({
   deleteBookFromLibrary: (...args: unknown[]) =>
     mockDeleteBookFromLibrary(...args),
@@ -127,11 +102,13 @@ jest.mock("@/src/services/core/app-config", () => ({
   addLocalAppLibrary: (...args: unknown[]) => mockAddLocalAppLibrary(...args),
   createLocalMyReaderLibrary: (...args: unknown[]) =>
     mockCreateLocalMyReaderLibrary(...args),
-  openLocalMyReaderLibrary: (...args: unknown[]) =>
-    mockOpenLocalMyReaderLibrary(...args),
+  createManagedLocalMyReaderLibrary: (...args: unknown[]) =>
+    mockCreateManagedLocalMyReaderLibrary(...args),
   initializeAppConfig: jest.fn(),
   removeAppLibrary: (...args: unknown[]) => mockRemoveAppLibrary(...args),
   replaceAppLibrary: (...args: unknown[]) => mockReplaceAppLibrary(...args),
+  openLocalMyReaderLibrary: (...args: unknown[]) =>
+    mockOpenLocalMyReaderLibrary(...args),
   switchAppLibrary: (...args: unknown[]) => mockSwitchAppLibrary(...args),
 }))
 
@@ -139,21 +116,24 @@ jest.mock("@/src/services/fs/library-paths", () => ({
   libraryContainerRootUri: (id: string) => `file:///documents/libraries/${id}`,
   librariesContainerRootUri: () => "file:///documents/libraries",
   METADATA_DB_RELATIVE: "metadata.db",
-  usesLibraryContainerSidecar: (library: Library) =>
-    library.libraryType === "myreader" ||
-    library.sourceType === "webdav" ||
-    library.sourceType === "onedrive",
 }))
 
 jest.mock("@/src/services/fs/bookmarks", () => ({
   createSecurityScopedBookmark: (...args: unknown[]) =>
     mockCreateSecurityScopedBookmark(...args),
-  withSecurityScopedLibraryAccess: async (
+  withSecurityScopedLibraryAccess: (
     library: Library,
-    callback: (path: string) => Promise<unknown>,
-  ) => ({
-    result: await callback(library.path),
-  }),
+    operation: (uri: string) => unknown,
+  ) => operation(library.path),
+}))
+
+jest.mock("@/src/services/fs/library-directory", () => ({
+  createExclusiveLibraryDirectory: (...args: unknown[]) =>
+    mockCreateExclusiveLibraryDirectory(...args),
+}))
+
+jest.mock("@/src/services/fs/path", () => ({
+  fileUriFor: (root: string, path: string) => `${root}/${path}`,
 }))
 
 jest.mock("@/src/services/query/query-client", () => ({
@@ -190,13 +170,12 @@ jest.mock("@/src/constants/alert-with-status-bar", () => ({
 // Jest factories above must be registered before importing the module under test.
 // eslint-disable-next-line import/first
 import {
-  addLibraryFromPicker,
   addRemoteLibraryFromSource,
+  createAppInternalMyReaderLibrary,
   createFolderMyReaderLibrary,
   deleteManagedBook,
   importBookFromFile,
   importBookFromPicker,
-  openExistingLocalLibraryFromPicker,
   openRemoteExistingLibrary,
   removeLibrary,
 } from "./library-actions"
@@ -250,55 +229,75 @@ describe("managed book deletion", () => {
   })
 })
 
-describe("folder library creation", () => {
+describe("managed local library creation", () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    mockPlatform = "ios"
+  })
+
+  it("should create and register the library under the app container", async () => {
+    const library = {
+      id: "library-1",
+      name: "Travel",
+      path: "file:///documents/libraries/library-1",
+      libraryType: "myreader",
+      sourceType: "local",
+      bookCount: 0,
+    } as Library
     mockLibraries = []
-    mockCreateAndroidSafMirrorDirectory.mockReturnValue({
-      delete: mockDirectoryDelete,
+    mockActiveLibraryId = null
+    mockCreateManagedLocalMyReaderLibrary.mockResolvedValue({
+      library,
+      config: { libraries: [library], activeLibraryId: library.id },
+    })
+
+    await expect(createAppInternalMyReaderLibrary("Travel")).resolves.toBe(
+      library,
+    )
+
+    expect(mockCreateManagedLocalMyReaderLibrary).toHaveBeenCalledWith({
+      librariesRootUri: "file:///documents/libraries",
+      name: "Travel",
+      addedAt: expect.any(Number),
+    })
+    expect(mockSetLibraries).toHaveBeenCalledWith([library])
+    expect(mockSetActiveLibraryId).toHaveBeenCalledWith(library.id)
+    expect(mockRunLibrarySync).toHaveBeenCalledWith(
+      expect.objectContaining({ libraryId: library.id, trigger: "add" }),
+    )
+  })
+
+  it("should create an external library only through an iOS bookmark", async () => {
+    Object.defineProperty(Platform, "OS", { configurable: true, value: "ios" })
+    const picked = {
+      uri: "file:///external/Books",
+      name: "Books",
+      securityScopedBookmark: {
+        bookmarkBase64: "parent-bookmark",
+        resolvedUri: "file:///external/Books",
+        stale: false,
+      },
+    }
+    const directory = {
+      uri: "file:///external/Books/Travel",
       exists: true,
-      uri: "file:///documents/saf-library-mirrors/generated-id",
-    })
-    mockCreateExclusiveLibraryDirectory.mockImplementation(
-      (parentUri: string, name: string) => ({
-        delete: mockDirectoryDelete,
-        exists: true,
-        uri: `${parentUri}/${name}`,
-      }),
-    )
-    mockCreateSecurityScopedBookmark.mockImplementation((uri: string) =>
-      Promise.resolve({
-        bookmarkBase64: "child-bookmark-data",
-        resolvedUri: uri,
-        stale: false,
-      }),
-    )
-  })
-
-  it("should create an iOS library while security-scoped access is active", async () => {
-    const picked = {
-      name: "Selected Folder",
-      uri: "file:///external/Selected Folder",
-      securityScopedBookmark: {
-        bookmarkBase64: "bookmark-data",
-        resolvedUri: "file:///external/Selected Folder",
-        stale: false,
-      },
+      delete: jest.fn(),
+    }
+    const bookmark = {
+      bookmarkBase64: "library-bookmark",
+      resolvedUri: directory.uri,
+      stale: false,
     }
     const library = {
-      id: "library-1",
+      id: "external",
       name: "Travel",
-      path: "file:///external/Selected Folder/Travel",
+      path: directory.uri,
       libraryType: "myreader",
       sourceType: "local",
+      securityScopedBookmark: bookmark,
       bookCount: 0,
-      securityScopedBookmark: {
-        bookmarkBase64: "child-bookmark-data",
-        resolvedUri: "file:///external/Selected Folder/Travel",
-        stale: false,
-      },
     } as Library
+    mockCreateExclusiveLibraryDirectory.mockReturnValue(directory)
+    mockCreateSecurityScopedBookmark.mockResolvedValue(bookmark)
     mockCreateLocalMyReaderLibrary.mockResolvedValue({
       library,
       config: { libraries: [library], activeLibraryId: library.id },
@@ -312,58 +311,36 @@ describe("folder library creation", () => {
       picked.uri,
       "Travel",
     )
-    expect(mockCreateLocalMyReaderLibrary).toHaveBeenCalledWith(
-      expect.objectContaining({
-        libraryRootUri: "file:///external/Selected Folder/Travel",
-        name: "Travel",
-        path: "file:///external/Selected Folder/Travel",
-        securityScopedBookmark: library.securityScopedBookmark,
-      }),
-    )
-    expect(mockRunLibrarySync).toHaveBeenCalledWith(
-      expect.objectContaining({ libraryId: library.id, trigger: "add" }),
-    )
+    expect(mockCreateLocalMyReaderLibrary).toHaveBeenCalledWith({
+      libraryRootUri: directory.uri,
+      path: directory.uri,
+      sidecarContainerParentUri: "file:///documents/libraries",
+      name: "Travel",
+      addedAt: expect.any(Number),
+      securityScopedBookmark: bookmark,
+    })
   })
 
-  it("should create an Android library through its selected SAF tree", async () => {
-    mockPlatform = "android"
-    const picked = {
-      name: "Selected Folder",
-      uri: "content://tree/primary%3ABooks%2FSelected",
-    }
-    const library = {
-      id: "library-1",
-      name: "Travel",
-      path: "file:///documents/saf-library-mirrors/generated-id",
-      sourcePath: "content://tree/primary%3ABooks%2FSelected/Travel",
-      libraryType: "myreader",
-      sourceType: "local",
-      bookCount: 0,
-    } as Library
-    mockCreateLocalMyReaderLibrary.mockResolvedValue({
-      library,
-      config: { libraries: [library], activeLibraryId: library.id },
+  it("should reject external local storage on Android", async () => {
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: "android",
     })
 
-    await expect(createFolderMyReaderLibrary(picked, "Travel")).resolves.toBe(
-      library,
-    )
-
-    expect(mockCreateExclusiveLibraryDirectory).toHaveBeenCalledWith(
-      picked.uri,
-      "Travel",
-    )
-    expect(mockCreateLocalMyReaderLibrary).toHaveBeenCalledWith(
-      expect.objectContaining({
-        libraryRootUri: "file:///documents/saf-library-mirrors/generated-id",
-        name: "Travel",
-        sourcePath: "content://tree/primary%3ABooks%2FSelected/Travel",
-      }),
-    )
-    expect(mockPushAndroidSafControl).toHaveBeenCalledWith(library)
-    expect(mockRunLibrarySync).toHaveBeenCalledWith(
-      expect.objectContaining({ libraryId: library.id, trigger: "add" }),
-    )
+    await expect(
+      createFolderMyReaderLibrary(
+        {
+          uri: "content://tree/library",
+          securityScopedBookmark: {
+            bookmarkBase64: "bookmark",
+            resolvedUri: "content://tree/library",
+            stale: false,
+          },
+        },
+        "Travel",
+      ),
+    ).rejects.toThrow("LOCAL_STORAGE_UNSUPPORTED")
+    expect(mockCreateExclusiveLibraryDirectory).not.toHaveBeenCalled()
   })
 })
 
@@ -405,7 +382,7 @@ describe("book import", () => {
       importBookFromFile(sharedFile as never, undefined, "Moby-Dick.epub"),
     ).rejects.toThrow("MYREADER_LIBRARY_REQUIRED")
 
-    expect(mockCreateLocalMyReaderLibrary).not.toHaveBeenCalled()
+    expect(mockCreateManagedLocalMyReaderLibrary).not.toHaveBeenCalled()
     expect(mockFileCopy).not.toHaveBeenCalled()
     expect(mockImportBookIntoLibrary).not.toHaveBeenCalled()
   })
@@ -567,7 +544,6 @@ describe("book import", () => {
   })
 
   it("should stage an Android content URI before Core consumes it", async () => {
-    mockPlatform = "android"
     const pickedFile = {
       copy: mockFileCopy,
       extension: ".pdf",
@@ -655,11 +631,11 @@ describe("removeLibrary", () => {
     expect(mockDirectoryDelete).toHaveBeenCalledTimes(1)
   })
 
-  it("should preserve source files for a legacy app-stored library", async () => {
+  it("should delete the app-owned container when removing a local library", async () => {
     const removedLibrary = {
       id: "library-1",
       name: "My Library",
-      path: "file:///documents/managed-libraries/owned-root",
+      path: "file:///documents/libraries/library-1",
       libraryType: "myreader",
       sourceType: "local",
     } as Library
@@ -677,38 +653,7 @@ describe("removeLibrary", () => {
     await removeLibrary(removedLibrary.id)
     cleanup?.()
 
-    expect(mockDirectoryDelete).not.toHaveBeenCalledWith(removedLibrary.path)
-    expect(mockDirectoryDelete).toHaveBeenCalledWith(
-      "file:///documents/libraries/library-1",
-    )
-  })
-
-  it("should preserve the source folder when removing a folder-backed library", async () => {
-    const removedLibrary = {
-      id: "library-1",
-      name: "My Library",
-      path: "file:///external/My Library",
-      libraryType: "myreader",
-      sourceType: "local",
-    } as Library
-    let cleanup: (() => void) | undefined
-    mockLibraries = [removedLibrary]
-    mockRemoveAppLibrary.mockResolvedValue({
-      libraries: [],
-      activeLibraryId: null,
-    })
-    mockScheduleIdleWork.mockImplementation((callback: () => void) => {
-      cleanup = callback
-      return 1
-    })
-
-    await removeLibrary(removedLibrary.id)
-    cleanup?.()
-
-    expect(mockDirectoryDelete).not.toHaveBeenCalledWith(removedLibrary.path)
-    expect(mockDirectoryDelete).toHaveBeenCalledWith(
-      "file:///documents/libraries/library-1",
-    )
+    expect(mockDirectoryDelete).toHaveBeenCalledWith(removedLibrary.path)
   })
 })
 
@@ -800,82 +745,5 @@ describe("openRemoteExistingLibrary", () => {
     ).rejects.toBe(error)
 
     expect(mockAddRemoteLibrary).not.toHaveBeenCalled()
-  })
-})
-
-describe("openExistingLocalLibraryFromPicker", () => {
-  beforeEach(() => {
-    jest.clearAllMocks()
-  })
-
-  it("should fall back to Calibre only when the MyReader marker is absent", async () => {
-    const library = {
-      id: "library-1",
-      name: "Local Library",
-      path: "file:///Library/Local",
-    } as Library
-    const config = {
-      libraries: [library],
-      activeLibraryId: library.id,
-    }
-    mockOpenLocalMyReaderLibrary.mockRejectedValue(
-      new Error("MYREADER_LIBRARY_MARKER_NOT_FOUND"),
-    )
-    mockAddLocalAppLibrary.mockResolvedValue({ library, config })
-
-    await expect(
-      openExistingLocalLibraryFromPicker({
-        uri: library.path,
-        name: library.name,
-      }),
-    ).resolves.toBe(library)
-
-    expect(mockAddLocalAppLibrary).toHaveBeenCalledTimes(1)
-  })
-})
-
-describe("addLibraryFromPicker", () => {
-  beforeEach(() => {
-    jest.clearAllMocks()
-  })
-
-  it("should resolve when initial sync is still pending after local addition", async () => {
-    const library = {
-      id: "library-1",
-      name: "CalibreLibrary",
-      path: "file:///Library/CalibreLibrary",
-    } as Library
-    const config = {
-      libraries: [library],
-      activeLibraryId: library.id,
-    }
-    mockAddLocalAppLibrary.mockResolvedValue({ library, config })
-    let finishSync: (() => void) | undefined
-    mockRunLibrarySync.mockReturnValue(
-      new Promise<void>((resolve) => {
-        finishSync = resolve
-      }),
-    )
-
-    const result = await Promise.race([
-      addLibraryFromPicker({
-        uri: library.path,
-        name: library.name,
-      }),
-      new Promise<"timeout">((resolve) => {
-        setTimeout(() => resolve("timeout"), 50)
-      }),
-    ])
-
-    expect(result).toBe(library)
-    expect(mockRunLibrarySync).toHaveBeenCalledWith({
-      libraryId: library.id,
-      trigger: "add",
-      options: {
-        forceCalibre: false,
-        throwOnFailure: false,
-      },
-    })
-    finishSync?.()
   })
 })

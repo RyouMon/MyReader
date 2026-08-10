@@ -7,9 +7,11 @@ import {
 import { router } from "expo-router"
 import * as mockReact from "react"
 import {
+  Pressable as mockPressable,
   Text as mockText,
   TextInput as mockTextInput,
   View as mockView,
+  Platform,
 } from "react-native"
 
 import { ENTITY_LIST_ROW_ICONS } from "@/src/components/ui/entity-list-row-icons"
@@ -26,25 +28,33 @@ let mockParams: {
   pendingShareUri?: string
   sourcePath?: string
 } = { libraryAction: "create" }
-let mockLocalFolder: {
-  name: string
-  uri: string
-} | null = null
 let mockPendingImport: { originalName?: string; uri: string } | null = null
+let mockLocalFolder: {
+  uri: string
+  name?: string
+  securityScopedBookmark?: {
+    bookmarkBase64: string
+    resolvedUri: string
+    stale: boolean
+  }
+} | null = null
 let mockDataSources: DataSource[] = []
+const mockCreateAppInternalMyReaderLibrary = jest.fn()
 const mockCreateFolderMyReaderLibrary = jest.fn()
 const mockCreateRemoteMyReaderLibrary = jest.fn()
+const mockOpenExistingLocalLibraryFromPicker = jest.fn()
+const mockPickLocalLibraryDirectory = jest.fn()
 const mockDismissAddLibrary = jest.fn()
 const mockNotifyLibraryAdded = jest.fn()
 const mockUseScreenHeader = jest.fn((_options: unknown) => ({
   options: {},
   toolbar: null,
 }))
-const mockSetLocalFolder = jest.fn((folder) => {
-  mockLocalFolder = folder
-})
 const mockSetPendingImport = jest.fn((pendingImport) => {
   mockPendingImport = pendingImport
+})
+const mockSetLocalFolder = jest.fn((folder) => {
+  mockLocalFolder = folder
 })
 const mockTakePendingImport = jest.fn(() => {
   const pendingImport = mockPendingImport
@@ -93,18 +103,20 @@ jest.mock("@/src/components", () => ({
   ListRow: jest.fn(
     ({
       detail,
+      onPress,
       testID,
       title,
       value,
     }: {
       detail?: string
+      onPress?: () => void
       testID?: string
       title: string
       value?: string
     }) =>
       mockReact.createElement(
-        mockView,
-        { testID },
+        mockPressable,
+        { onPress, testID },
         mockReact.createElement(mockText, null, title),
         detail ? mockReact.createElement(mockText, null, detail) : null,
         value ? mockReact.createElement(mockText, null, value) : null,
@@ -131,17 +143,21 @@ jest.mock("@/src/design/tokens", () => ({
   }),
 }))
 
-jest.mock("@/src/domain/library/local-library-picker", () => ({
-  pickLocalLibraryDirectory: jest.fn(),
-}))
-
 jest.mock("@/src/domain/library/hooks/library-actions", () => ({
+  createAppInternalMyReaderLibrary: (...args: unknown[]) =>
+    mockCreateAppInternalMyReaderLibrary(...args),
   createFolderMyReaderLibrary: (...args: unknown[]) =>
     mockCreateFolderMyReaderLibrary(...args),
   createRemoteMyReaderLibrary: (...args: unknown[]) =>
     mockCreateRemoteMyReaderLibrary(...args),
   nextMyReaderLibraryName: () => "My Library",
-  openExistingLocalLibraryFromPicker: jest.fn(),
+  openExistingLocalLibraryFromPicker: (...args: unknown[]) =>
+    mockOpenExistingLocalLibraryFromPicker(...args),
+}))
+
+jest.mock("@/src/domain/library/local-library-picker", () => ({
+  pickLocalLibraryDirectory: (...args: unknown[]) =>
+    mockPickLocalLibraryDirectory(...args),
 }))
 
 jest.mock("./add-library-flow-context", () => ({
@@ -238,22 +254,88 @@ describe("AddLibraryScreen", () => {
 describe("AddLibraryLocationScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    Object.defineProperty(Platform, "OS", { configurable: true, value: "ios" })
     mockLocalFolder = null
     mockPendingImport = null
     mockDataSources = []
   })
 
-  it.each([
-    "create",
-    "open",
-  ])("should use local storage as the single local source when %s", (libraryAction) => {
-    mockParams = { libraryAction }
+  it("should offer internal and local storage when creating on iOS", () => {
+    mockParams = { libraryAction: "create" }
 
     render(<AddLibraryLocationScreen />)
 
+    expect(screen.getByText("common.appInternalStorage")).toBeTruthy()
     expect(screen.getByText("common.localStorage")).toBeTruthy()
-    expect(screen.queryByText("addLibrary.appStorage")).toBeNull()
-    expect(screen.queryByText("addLibrary.folder")).toBeNull()
+    fireEvent.press(screen.getByTestId("add-library-app-internal-storage"))
+    expect(mockSetLocalFolder).toHaveBeenCalledWith(null)
+    expect(mockPickLocalLibraryDirectory).not.toHaveBeenCalled()
+    expect(router.push).toHaveBeenCalledWith("/settings/add-library/create")
+  })
+
+  it("should pick an iOS directory for external local storage", async () => {
+    const picked = {
+      uri: "file:///external/Books",
+      name: "Books",
+      securityScopedBookmark: {
+        bookmarkBase64: "bookmark",
+        resolvedUri: "file:///external/Books",
+        stale: false,
+      },
+    }
+    mockParams = { libraryAction: "create" }
+    mockPickLocalLibraryDirectory.mockResolvedValue(picked)
+
+    render(<AddLibraryLocationScreen />)
+    fireEvent.press(screen.getByTestId("add-library-local-storage"))
+
+    await waitFor(() => expect(mockSetLocalFolder).toHaveBeenCalledWith(picked))
+    expect(router.push).toHaveBeenCalledWith("/settings/add-library/create")
+  })
+
+  it("should open an existing iOS local library from the directory picker", async () => {
+    const picked = {
+      uri: "file:///external/Library",
+      securityScopedBookmark: {
+        bookmarkBase64: "bookmark",
+        resolvedUri: "file:///external/Library",
+        stale: false,
+      },
+    }
+    mockParams = { libraryAction: "open" }
+    mockPickLocalLibraryDirectory.mockResolvedValue(picked)
+    mockOpenExistingLocalLibraryFromPicker.mockResolvedValue({
+      id: "external",
+      name: "External",
+    })
+
+    render(<AddLibraryLocationScreen />)
+    expect(screen.queryByText("common.appInternalStorage")).toBeNull()
+    fireEvent.press(screen.getByTestId("add-library-local-storage"))
+
+    await waitFor(() =>
+      expect(mockOpenExistingLocalLibraryFromPicker).toHaveBeenCalledWith(
+        picked,
+      ),
+    )
+    expect(mockDismissAddLibrary).toHaveBeenCalledTimes(1)
+  })
+
+  it("should hide external local storage on Android", () => {
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: "android",
+    })
+
+    mockParams = { libraryAction: "create" }
+    const { rerender } = render(<AddLibraryLocationScreen />)
+    expect(screen.getByText("common.appInternalStorage")).toBeTruthy()
+    expect(screen.queryByText("common.localStorage")).toBeNull()
+
+    mockParams = { libraryAction: "open" }
+    rerender(<AddLibraryLocationScreen />)
+    expect(screen.queryByText("common.appInternalStorage")).toBeNull()
+    expect(screen.queryByText("common.localStorage")).toBeNull()
   })
 
   it("should show data source choices without descriptions", () => {
@@ -295,9 +377,6 @@ describe("AddLibraryLocationScreen", () => {
     const rowProps = (title: string) =>
       listRowMock.mock.calls.find(([props]) => props.title === title)?.[0]
 
-    expect(rowProps("common.localStorage")?.icon).toBe(
-      ENTITY_LIST_ROW_ICONS.localDataSource,
-    )
     expect(rowProps("家庭存储")?.icon).toBe(
       ENTITY_LIST_ROW_ICONS.webdavDataSource,
     )
@@ -312,31 +391,26 @@ describe("AddLibraryLocationScreen", () => {
 describe("CreateLibraryScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    Object.defineProperty(Platform, "OS", { configurable: true, value: "ios" })
     mockParams = {}
-    mockLocalFolder = {
-      name: "Selected Folder",
-      uri: "file:///external/Selected Folder",
-    }
+    mockLocalFolder = null
     mockPendingImport = null
     mockDataSources = []
-    mockCreateFolderMyReaderLibrary.mockResolvedValue({
+    mockCreateAppInternalMyReaderLibrary.mockResolvedValue({
       id: "library-1",
       name: "My Library",
     })
   })
 
-  it("should create in the selected folder instead of app storage", async () => {
-    const selectedFolder = mockLocalFolder
+  it("should create a local library without asking for a folder", async () => {
     render(<CreateLibraryScreen />)
 
-    expect(screen.getByText("common.localStorage")).toBeTruthy()
-    expect(screen.getByText("Selected Folder")).toBeTruthy()
+    expect(screen.queryByText("common.localStorage")).toBeNull()
 
     fireEvent(screen.getByTestId("new-library-name"), "submitEditing")
 
     await waitFor(() => {
-      expect(mockCreateFolderMyReaderLibrary).toHaveBeenCalledWith(
-        selectedFolder,
+      expect(mockCreateAppInternalMyReaderLibrary).toHaveBeenCalledWith(
         "My Library",
       )
     })
@@ -386,7 +460,35 @@ describe("CreateLibraryScreen", () => {
     fireEvent.changeText(input, "Nested/Library")
     fireEvent(input, "submitEditing")
 
-    expect(mockCreateFolderMyReaderLibrary).not.toHaveBeenCalled()
+    expect(mockCreateAppInternalMyReaderLibrary).not.toHaveBeenCalled()
+  })
+
+  it("should create an external library in the selected iOS folder", async () => {
+    const picked = {
+      uri: "file:///external/Books",
+      name: "Books",
+      securityScopedBookmark: {
+        bookmarkBase64: "bookmark",
+        resolvedUri: "file:///external/Books",
+        stale: false,
+      },
+    }
+    mockLocalFolder = picked
+    mockCreateFolderMyReaderLibrary.mockResolvedValue({
+      id: "external-library",
+      name: "My Library",
+    })
+
+    render(<CreateLibraryScreen />)
+    fireEvent(screen.getByTestId("new-library-name"), "submitEditing")
+
+    await waitFor(() =>
+      expect(mockCreateFolderMyReaderLibrary).toHaveBeenCalledWith(
+        picked,
+        "My Library",
+      ),
+    )
+    expect(mockCreateAppInternalMyReaderLibrary).not.toHaveBeenCalled()
   })
 
   it("should continue a staged share after creating its library", async () => {

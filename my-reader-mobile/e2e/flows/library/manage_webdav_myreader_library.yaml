@@ -1,0 +1,173 @@
+appId: ${APP_ID}
+name: Manage a WebDAV MyReader library and its book files end to end
+tags:
+  - external-library
+  - ios
+---
+# Required env:
+#   E2E_ROOT_FOLDER, WEBDAV_SOURCE_NAME, WEBDAV_PARENT_FOLDER,
+#   WEBDAV_LIBRARY_NAME, REMOTE_IMPORT_FILE_NAME, REMOTE_BOOK_TITLE.
+# Use a large EPUB so upload remains observable while the sync scenario runs.
+- runFlow: ../../common/launch_preserving_data.yaml
+
+# Scenario: create and activate an empty MyReader library on WebDAV.
+- tapOn:
+    id: "tab-settings"
+- runFlow: ../../common/open_add_library.yaml
+- tapOn:
+    id: "add-library-create"
+- tapOn: ${WEBDAV_SOURCE_NAME}
+- extendedWaitUntil:
+    visible: ${WEBDAV_PARENT_FOLDER}
+    timeout: 30000
+- tapOn: ${WEBDAV_PARENT_FOLDER}
+- tapOn: "继续|Continue"
+- tapOn:
+    id: "new-library-name"
+- eraseText
+- inputText: ${WEBDAV_LIBRARY_NAME}
+- tapOn: "^创建$|^Create$"
+- extendedWaitUntil:
+    visible: "成功添加书库：${WEBDAV_LIBRARY_NAME}|Library added: ${WEBDAV_LIBRARY_NAME}"
+    timeout: 60000
+- runFlow:
+    file: ../../common/activate_library.yaml
+    env:
+      LIBRARY_NAME: ${WEBDAV_LIBRARY_NAME}
+- assertVisible: "书库为空|Library is empty"
+
+# Scenario: import is local-first: the card appears before upload ends.
+- tapOn: "导入图书|Import Book"
+- runFlow:
+    file: ../../common/select_ios_e2e_fixture.yaml
+    env:
+      E2E_ROOT_FOLDER: ${E2E_ROOT_FOLDER}
+      IMPORT_FILE_NAME: ${REMOTE_IMPORT_FILE_NAME}
+- extendedWaitUntil:
+    visible: ${REMOTE_BOOK_TITLE}
+    timeout: 120000
+- extendedWaitUntil:
+    visible:
+      id: "transfer-arrow-up"
+    timeout: 30000
+# Scenario: a local copy cannot be deleted until the cloud copy is confirmed.
+- tapOn: "更多操作：${REMOTE_BOOK_TITLE}|More actions: ${REMOTE_BOOK_TITLE}"
+- assertVisible: "删除下载文件|Delete Downloaded File"
+- tapOn: "删除下载文件|Delete Downloaded File"
+- assertNotVisible: "确定要删除《${REMOTE_BOOK_TITLE}》的本地下载文件吗？|Delete the local downloaded file.*${REMOTE_BOOK_TITLE}"
+- assertVisible: "删除下载文件|Delete Downloaded File"
+- tapOn: "加入收藏|Add to Favorites"
+
+# Scenario: deleting the book while upload is pending cancels the entity
+# transfer; catalog sync still completes and no deleted book returns.
+- tapOn: "更多操作：${REMOTE_BOOK_TITLE}|More actions: ${REMOTE_BOOK_TITLE}"
+- tapOn: "删除图书|Delete Book"
+- tapOn: "删除|Delete"
+- extendedWaitUntil:
+    visible: "书库为空|Library is empty"
+    timeout: 30000
+- tapOn: "More"
+- tapOn: "同步当前书库|Sync Current Library"
+- extendedWaitUntil:
+    visible: "书库已更新|Library updated"
+    timeout: 60000
+
+# Re-import the same fixture for upload completion and download coverage.
+- tapOn: "导入图书|Import Book"
+- runFlow:
+    file: ../../common/select_ios_e2e_fixture.yaml
+    env:
+      E2E_ROOT_FOLDER: ${E2E_ROOT_FOLDER}
+      IMPORT_FILE_NAME: ${REMOTE_IMPORT_FILE_NAME}
+- extendedWaitUntil:
+    visible: ${REMOTE_BOOK_TITLE}
+    timeout: 120000
+- extendedWaitUntil:
+    visible:
+      id: "transfer-arrow-up"
+    timeout: 30000
+- tapOn: "更多操作：${REMOTE_BOOK_TITLE}|More actions: ${REMOTE_BOOK_TITLE}"
+- tapOn: "加入收藏|Add to Favorites"
+
+# Scenario: metadata sync finishes while the large entity file keeps uploading.
+- tapOn: "More"
+- tapOn: "同步当前书库|Sync Current Library"
+- extendedWaitUntil:
+    visible: "书库已更新|Library updated"
+    timeout: 30000
+- assertVisible:
+    id: "transfer-arrow-up"
+
+# Scenario: the local-first copy opens for reading while upload is still active.
+- tapOn: '打开《${REMOTE_BOOK_TITLE}》|Open "${REMOTE_BOOK_TITLE}"'
+- extendedWaitUntil:
+    visible:
+      id: "reader-screen"
+    timeout: 30000
+- runFlow: ../../common/close_reader.yaml
+
+# Scenario: upload completion updates the menu without a manual sync.
+- extendedWaitUntil:
+    notVisible:
+      id: "transfer-arrow-up"
+    timeout: 900000
+- tapOn: "更多操作：${REMOTE_BOOK_TITLE}|More actions: ${REMOTE_BOOK_TITLE}"
+- tapOn: "删除下载文件|Delete Downloaded File"
+- assertVisible: "确定要删除《${REMOTE_BOOK_TITLE}》的本地下载文件吗？|Delete the local downloaded file.*${REMOTE_BOOK_TITLE}"
+- tapOn: "删除|Delete"
+
+# Scenario: the remote-only book downloads on demand and opens from one tap.
+- tapOn: "更多操作：${REMOTE_BOOK_TITLE}|More actions: ${REMOTE_BOOK_TITLE}"
+- assertVisible: "下载（EPUB）|Download .*EPUB.*"
+- assertNotVisible: "删除下载文件|Delete Downloaded File"
+- tapOn: "取消收藏|Remove from Favorites"
+- tapOn: '打开《${REMOTE_BOOK_TITLE}》|Open "${REMOTE_BOOK_TITLE}"'
+- extendedWaitUntil:
+    visible:
+      id: "reader-screen"
+    timeout: 300000
+- runFlow: ../../common/close_reader.yaml
+
+# Scenario: deleting the book and syncing removes the remote entity as well.
+- tapOn: "更多操作：${REMOTE_BOOK_TITLE}|More actions: ${REMOTE_BOOK_TITLE}"
+- tapOn: "删除图书|Delete Book"
+- tapOn: "删除|Delete"
+- extendedWaitUntil:
+    visible: "书库为空|Library is empty"
+    timeout: 30000
+- tapOn: "More"
+- tapOn: "同步当前书库|Sync Current Library"
+- extendedWaitUntil:
+    visible: "书库已更新|Library updated"
+    timeout: 60000
+
+# Scenario: unregistering and reopening the untouched library folder succeeds;
+# the deleted book does not reappear from WebDAV.
+- tapOn:
+    id: "tab-settings"
+- scrollUntilVisible:
+    element: "管理书库：${WEBDAV_LIBRARY_NAME}|Manage library: ${WEBDAV_LIBRARY_NAME}"
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- tapOn: "管理书库：${WEBDAV_LIBRARY_NAME}|Manage library: ${WEBDAV_LIBRARY_NAME}"
+- tapOn: "移除书库|Remove Library"
+- tapOn: "移除|Remove"
+- runFlow: ../../common/open_add_library.yaml
+- tapOn:
+    id: "add-library-open"
+- tapOn: ${WEBDAV_SOURCE_NAME}
+- tapOn: ${WEBDAV_PARENT_FOLDER}
+- extendedWaitUntil:
+    visible: ${WEBDAV_LIBRARY_NAME}
+    timeout: 30000
+- tapOn: ${WEBDAV_LIBRARY_NAME}
+- tapOn: "打开|Open"
+- extendedWaitUntil:
+    visible: "成功添加书库：${WEBDAV_LIBRARY_NAME}|Library added: ${WEBDAV_LIBRARY_NAME}"
+    timeout: 60000
+- runFlow:
+    file: ../../common/activate_library.yaml
+    env:
+      LIBRARY_NAME: ${WEBDAV_LIBRARY_NAME}
+- assertVisible: "书库为空|Library is empty"

@@ -6,12 +6,6 @@ import { Directory, File, Paths } from "expo-file-system"
 import { Platform } from "react-native"
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import {
-  createAndroidSafMirrorDirectory,
-  deleteAndroidSafMirror,
-  pullAndroidSafControl,
-  pushAndroidSafControl,
-} from "@/src/domain/library/android-saf-library"
-import {
   deleteBookFromLibrary,
   ensureLibraryMetadataCached,
   importBookIntoLibrary,
@@ -20,15 +14,13 @@ import {
   updateBookMetadataInLibrary,
 } from "@/src/domain/library/catalog"
 import type { BookItem } from "@/src/domain/types"
-import type {
-  PickedCalibreLibrary,
-  PickedLocalLibrary,
-} from "@/src/domain/library/local-library-picker"
+import type { PickedLocalLibrary } from "@/src/domain/library/local-library-picker"
 import { runLibrarySync } from "@/src/domain/sync/hooks/run-library-sync"
 import i18n from "@/src/i18n"
 import {
   addLocalAppLibrary,
   createLocalMyReaderLibrary as createLocalMyReaderLibraryInCore,
+  createManagedLocalMyReaderLibrary as createManagedLocalMyReaderLibraryInCore,
   openLocalMyReaderLibrary as openLocalMyReaderLibraryInCore,
   removeAppLibrary,
   replaceAppLibrary,
@@ -39,7 +31,6 @@ import {
   createRemoteMyreaderLibrary,
   openRemoteMyreaderLibrary,
 } from "@/src/services/core/remote"
-import { isAndroidSafUri } from "@/src/services/fs/android-saf"
 import {
   createSecurityScopedBookmark,
   withSecurityScopedLibraryAccess,
@@ -49,7 +40,6 @@ import {
   librariesContainerRootUri,
   libraryContainerRootUri,
   METADATA_DB_RELATIVE,
-  usesLibraryContainerSidecar,
 } from "@/src/services/fs/library-paths"
 import { fileUriFor } from "@/src/services/fs/path"
 import { queryClient } from "@/src/services/query/query-client"
@@ -155,62 +145,31 @@ export function nextMyReaderLibraryName(): string {
   return `${baseName} ${suffix}`
 }
 
-/** Creates a writable MyReader library in a user-authorized Android SAF tree. */
-export async function createAndroidSafMyReaderLibrary(
-  picked: PickedLocalLibrary | null,
+/** Creates a writable MyReader library in the app-owned library container. */
+export async function createAppInternalMyReaderLibrary(
   name = nextMyReaderLibraryName(),
-): Promise<Library | null> {
-  if (picked === null) return null
-  if (Platform.OS !== "android" || !isAndroidSafUri(picked.uri)) {
-    throw new Error("ANDROID_SAF_LIBRARY_URI_REQUIRED")
-  }
-
-  const sourceRoot = createExclusiveLibraryDirectory(picked.uri, name)
-  let mirror: Directory | null = null
-  let created: Library | null = null
-  try {
-    mirror = createAndroidSafMirrorDirectory()
-    const result = await createLocalMyReaderLibraryInCore({
-      libraryRootUri: mirror.uri,
-      path: mirror.uri,
-      sourcePath: sourceRoot.uri,
-      sidecarContainerParentUri: librariesContainerRootUri(),
-      name,
-      addedAt: Date.now(),
-    })
-    created = result.library
-    await pushAndroidSafControl(created)
-    applyLibraryConfig(result.config)
-    startInitialLibrarySync(created.id, "createAndroidSafMyReaderLibrary")
-    return created
-  } catch (error) {
-    if (created) {
-      try {
-        applyLibraryConfig(await removeAppLibrary(created.id))
-        scheduleLibraryContainerRemoval(created.id, created)
-      } catch {
-        // Preserve the original creation failure.
-      }
-    }
-    if (sourceRoot.exists) sourceRoot.delete()
-    if (mirror?.exists) mirror.delete()
-    throw error
-  }
+): Promise<Library> {
+  const result = await createManagedLocalMyReaderLibraryInCore({
+    librariesRootUri: librariesContainerRootUri(),
+    name,
+    addedAt: Date.now(),
+  })
+  applyLibraryConfig(result.config)
+  startInitialLibrarySync(result.library.id, "createAppInternalMyReaderLibrary")
+  return result.library
 }
 
-/** Creates a writable MyReader library in a user-selected local folder. */
+function assertIOSLocalStorageSupported(): void {
+  if (Platform.OS !== "ios") throw new Error("LOCAL_STORAGE_UNSUPPORTED")
+}
+
+/** Creates a MyReader library in an iOS user-selected directory. */
 export async function createFolderMyReaderLibrary(
   picked: PickedLocalLibrary | null,
   name = nextMyReaderLibraryName(),
 ): Promise<Library | null> {
   if (picked === null) return null
-
-  if (Platform.OS === "android" && isAndroidSafUri(picked.uri)) {
-    return createAndroidSafMyReaderLibrary(picked, name)
-  }
-  if (Platform.OS === "ios" && !picked.securityScopedBookmark) {
-    throw new Error("SECURITY_SCOPED_BOOKMARK_REQUIRED")
-  }
+  assertIOSLocalStorageSupported()
 
   const accessLibrary: Library = {
     id: "",
@@ -221,26 +180,20 @@ export async function createFolderMyReaderLibrary(
     sourceType: "local",
     securityScopedBookmark: picked.securityScopedBookmark,
   }
-  const access = await withSecurityScopedLibraryAccess(
+  const result = await withSecurityScopedLibraryAccess(
     accessLibrary,
     async (parentRootUri) => {
       const libraryRoot = createExclusiveLibraryDirectory(parentRootUri, name)
       try {
-        const securityScopedBookmark =
-          Platform.OS === "ios"
-            ? await createSecurityScopedBookmark(libraryRoot.uri)
-            : null
-        if (Platform.OS === "ios" && !securityScopedBookmark) {
-          throw new Error("SECURITY_SCOPED_BOOKMARK_REQUIRED")
-        }
-        const path = securityScopedBookmark?.resolvedUri ?? libraryRoot.uri
-        return await createLocalMyReaderLibraryInCore({
-          libraryRootUri: path,
-          path,
+        const bookmark = await createSecurityScopedBookmark(libraryRoot.uri)
+        if (!bookmark) throw new Error("SECURITY_SCOPED_BOOKMARK_REQUIRED")
+        return createLocalMyReaderLibraryInCore({
+          libraryRootUri: bookmark.resolvedUri,
+          path: bookmark.resolvedUri,
           sidecarContainerParentUri: librariesContainerRootUri(),
           name,
           addedAt: Date.now(),
-          securityScopedBookmark: securityScopedBookmark ?? undefined,
+          securityScopedBookmark: bookmark,
         })
       } catch (error) {
         if (libraryRoot.exists) libraryRoot.delete()
@@ -248,43 +201,17 @@ export async function createFolderMyReaderLibrary(
       }
     },
   )
-  applyLibraryConfig(access.result.config)
-  startInitialLibrarySync(
-    access.result.library.id,
-    "createFolderMyReaderLibrary",
-  )
-  return access.result.library
+  applyLibraryConfig(result.config)
+  startInitialLibrarySync(result.library.id, "createFolderMyReaderLibrary")
+  return result.library
 }
 
-/** Opens an existing local MyReader library through the platform directory picker. */
-export async function openLocalMyReaderLibraryFromPicker(
+/** Opens an existing MyReader library from an authorized iOS directory. */
+async function openLocalMyReaderLibraryFromPicker(
   picked: PickedLocalLibrary | null,
 ): Promise<Library | null> {
   if (picked === null) return null
-
-  if (Platform.OS === "android" && isAndroidSafUri(picked.uri)) {
-    const mirror = createAndroidSafMirrorDirectory()
-    try {
-      await pullAndroidSafControl(picked.uri, mirror.uri)
-      const result = await openLocalMyReaderLibraryInCore({
-        libraryRootUri: mirror.uri,
-        path: mirror.uri,
-        sourcePath: picked.uri,
-        sidecarContainerParentUri: librariesContainerRootUri(),
-        name: picked.name,
-        addedAt: Date.now(),
-      })
-      applyLibraryConfig(result.config)
-      startInitialLibrarySync(
-        result.library.id,
-        "openLocalMyReaderLibraryFromPicker",
-      )
-      return result.library
-    } catch (error) {
-      if (mirror.exists) mirror.delete()
-      throw error
-    }
-  }
+  assertIOSLocalStorageSupported()
 
   const accessLibrary: Library = {
     id: "",
@@ -292,11 +219,12 @@ export async function openLocalMyReaderLibraryFromPicker(
     path: picked.uri,
     bookCount: 0,
     libraryType: "myreader",
+    sourceType: "local",
     securityScopedBookmark: picked.securityScopedBookmark,
   }
-  const access = await withSecurityScopedLibraryAccess(
+  const result = await withSecurityScopedLibraryAccess(
     accessLibrary,
-    async (libraryRootUri) =>
+    (libraryRootUri) =>
       openLocalMyReaderLibraryInCore({
         libraryRootUri,
         path: picked.uri,
@@ -306,12 +234,66 @@ export async function openLocalMyReaderLibraryFromPicker(
         securityScopedBookmark: picked.securityScopedBookmark,
       }),
   )
-  applyLibraryConfig(access.result.config)
+  applyLibraryConfig(result.config)
   startInitialLibrarySync(
-    access.result.library.id,
+    result.library.id,
     "openLocalMyReaderLibraryFromPicker",
   )
-  return access.result.library
+  return result.library
+}
+
+async function registerCalibreLibraryFromPicker(
+  picked: PickedLocalLibrary,
+): Promise<Library> {
+  assertIOSLocalStorageSupported()
+  const accessLibrary: Library = {
+    id: "",
+    name: picked.name ?? "",
+    path: picked.uri,
+    bookCount: 0,
+    libraryType: "calibre",
+    sourceType: "local",
+    securityScopedBookmark: picked.securityScopedBookmark,
+  }
+  const result = await withSecurityScopedLibraryAccess(
+    accessLibrary,
+    (libraryRootUri) =>
+      addLocalAppLibrary({
+        libraryRootUri,
+        path: picked.uri,
+        sidecarContainerParentUri: librariesContainerRootUri(),
+        name: picked.name,
+        metadataUri: fileUriFor(libraryRootUri, METADATA_DB_RELATIVE),
+        addedAt: Date.now(),
+        securityScopedBookmark: picked.securityScopedBookmark,
+      }),
+  )
+  applyLibraryConfig(result.config)
+  startInitialLibrarySync(result.library.id, "registerCalibreLibraryFromPicker")
+  return result.library
+}
+
+/** Opens an existing iOS local MyReader or Calibre library. */
+export async function openExistingLocalLibraryFromPicker(
+  picked: PickedLocalLibrary | null,
+): Promise<Library | null> {
+  if (picked === null) return null
+  assertIOSLocalStorageSupported()
+
+  try {
+    return await openLocalMyReaderLibraryFromPicker(picked)
+  } catch (error) {
+    if (!isMissingMyReaderMarker(error)) throw error
+  }
+
+  try {
+    return await registerCalibreLibraryFromPicker(picked)
+  } catch (error) {
+    if (String(error).includes("METADATA_DB_NOT_FOUND")) {
+      throw new Error("LIBRARY_TYPE_NOT_RECOGNIZED")
+    }
+    throw error
+  }
 }
 
 async function addRemoteMyReaderLibrary(
@@ -561,9 +543,7 @@ function scheduleLibraryContainerRemoval(
   id: string,
   library: Library | undefined,
 ): void {
-  if (!library || !usesLibraryContainerSidecar(library)) {
-    return
-  }
+  if (!library) return
 
   scheduleIdleWork(() => {
     try {
@@ -574,15 +554,10 @@ function scheduleLibraryContainerRemoval(
     } catch (error) {
       console.warn(`[removeLibrary] container cleanup failed (${id}):`, error)
     }
-    try {
-      deleteAndroidSafMirror(library)
-    } catch (error) {
-      console.warn(`[removeLibrary] SAF mirror cleanup failed (${id}):`, error)
-    }
   })
 }
 
-/** Removes registration and app-owned derived data, never source files. */
+/** Removes registration and app-owned files. External source files remain untouched. */
 export async function removeLibrary(id: string): Promise<void> {
   const config = useAppStore.getState()
   const removed = config.libraries.find((library) => library.id === id)
@@ -603,92 +578,4 @@ export async function removeLibrary(id: string): Promise<void> {
 export async function switchActiveLibrary(id: string): Promise<void> {
   const appConfig = await switchAppLibrary(id)
   useAppStore.getState().setActiveLibraryId(appConfig.activeLibraryId)
-}
-
-async function registerCalibreLibraryFromPicker(
-  picked: PickedCalibreLibrary | null,
-): Promise<Library | null> {
-  if (picked === null) return null
-
-  const accessLibrary: Library = {
-    id: "",
-    name: picked.name ?? "",
-    path: picked.uri,
-    bookCount: 0,
-    securityScopedBookmark: picked.securityScopedBookmark,
-  }
-  const access = await withSecurityScopedLibraryAccess(
-    accessLibrary,
-    async (libraryRootUri) =>
-      addLocalAppLibrary({
-        libraryRootUri,
-        path: picked.uri,
-        sidecarContainerParentUri: picked.securityScopedBookmark
-          ? librariesContainerRootUri()
-          : undefined,
-        name: picked.name,
-        metadataUri: fileUriFor(libraryRootUri, METADATA_DB_RELATIVE),
-        addedAt: Date.now(),
-        securityScopedBookmark: picked.securityScopedBookmark,
-      }),
-  )
-  const result = access.result
-
-  applyLibraryConfig(result.config)
-
-  startInitialLibrarySync(result.library.id, "addLibraryFromPicker")
-
-  return result.library
-}
-
-export async function addLibraryFromPicker(
-  picked: PickedCalibreLibrary | null,
-): Promise<Library | null> {
-  try {
-    return await registerCalibreLibraryFromPicker(picked)
-  } catch (error) {
-    const message = String(error)
-    if (message.includes("LIBRARY_ALREADY_EXISTS")) {
-      showAlertWithStatusBarRestore(
-        i18n.t("sync.cannotAddDuplicate"),
-        i18n.t("sync.alreadyAdded"),
-        [{ text: i18n.t("common.gotIt") }],
-      )
-      return null
-    }
-    if (message.includes("METADATA_DB_NOT_FOUND")) {
-      showAlertWithStatusBarRestore(
-        i18n.t("sync.metadataNotFound"),
-        i18n.t("sync.metadataNotFoundDetail"),
-        [{ text: i18n.t("common.gotIt") }],
-      )
-      return null
-    }
-    throw error
-  }
-}
-
-/** Opens an existing local MyReader or Calibre library at the selected root. */
-export async function openExistingLocalLibraryFromPicker(
-  picked: PickedLocalLibrary | null,
-): Promise<Library | null> {
-  if (picked === null) return null
-
-  try {
-    return await openLocalMyReaderLibraryFromPicker(picked)
-  } catch (error) {
-    if (!isMissingMyReaderMarker(error)) throw error
-    if (Platform.OS === "android" && isAndroidSafUri(picked.uri)) {
-      throw new Error("LIBRARY_TYPE_NOT_RECOGNIZED")
-    }
-  }
-
-  try {
-    return await registerCalibreLibraryFromPicker(picked)
-  } catch (error) {
-    if (String(error).includes("METADATA_DB_NOT_FOUND")) {
-      throw new Error("LIBRARY_TYPE_NOT_RECOGNIZED")
-    }
-    throw error
-  }
 }

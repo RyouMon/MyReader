@@ -9,7 +9,6 @@ declare class MyReaderSecurityScopedBookmarksModule {
   createBookmarkForDirectoryAsync(
     uri: string,
   ): Promise<SecurityScopedBookmarkInfo>
-  resolveBookmarkAsync(bookmarkBase64: string): Promise<ResolveBookmarkResult>
   startAccessingBookmarkAsync(
     bookmarkBase64: string,
   ): Promise<ResolveBookmarkResult>

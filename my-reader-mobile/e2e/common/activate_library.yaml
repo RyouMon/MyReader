@@ -1,0 +1,38 @@
+appId: ${APP_ID}
+name: Activate a registered library and open the library tab
+tags:
+  - skip
+---
+# Required env: LIBRARY_NAME.
+- runFlow: reset_settings_scroll.yaml
+- scrollUntilVisible:
+    element: "管理书库：${LIBRARY_NAME}.*|Manage library: ${LIBRARY_NAME}.*"
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- waitForAnimationToEnd
+- tapOn:
+    text: "管理书库：${LIBRARY_NAME}.*|Manage library: ${LIBRARY_NAME}.*"
+    point: "50%,50%"
+- tapOn: "使用该书库|Use This Library"
+- runFlow:
+    when:
+      visible: "关闭|Close"
+    commands:
+      - tapOn: "关闭|Close"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: "tab-library"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: "书库|Library"
+- runFlow:
+    when:
+      visible: "全部图书.*|All Books.*"
+    commands:
+      - tapOn: "全部图书.*|All Books.*"

@@ -6,6 +6,7 @@ testOutputDir: e2e/.artifacts
 excludeTags:
   - skip
   - wip
+  - external-library
 
 platform:
   ios:

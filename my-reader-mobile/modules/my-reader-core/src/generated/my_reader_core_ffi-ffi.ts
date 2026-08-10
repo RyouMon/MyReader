@@ -511,6 +511,11 @@ interface NativeModuleInterface {
     request: Uint8Array,
     recordedAtMs: number,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_library_create_managed_local_myreader(
+    configPath: Uint8Array,
+    request: Uint8Array,
+    recordedAtMs: number,
+  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_library_create_remote_myreader(
     configPath: Uint8Array,
     request: Uint8Array,
@@ -844,6 +849,7 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_add_local(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_add_remote(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_create_local_myreader(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_library_create_managed_local_myreader(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_create_remote_myreader(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_open_local_myreader(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_open_remote_myreader(): number;

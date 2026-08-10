@@ -8,7 +8,8 @@ tags:
     when:
       platform: iOS
     commands:
-      - tapOn: ${output.selectors.settings.header.iosNativeBack}
+      - tapOn:
+          id: "BackButton"
 - runFlow:
     when:
       platform: Android

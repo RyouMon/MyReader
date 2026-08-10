@@ -24,8 +24,6 @@
       "predictiveBackGestureEnabled": false,
       "package": "ryoumon.myreadermobile",
       "permissions": [
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.DOWNLOAD_WITHOUT_NOTIFICATION",
         "android.permission.ACCESS_NETWORK_STATE"
       ]

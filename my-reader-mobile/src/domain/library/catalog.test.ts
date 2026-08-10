@@ -43,7 +43,6 @@ jest.mock("@/src/domain/sync/book-upload-store", () => ({
 }))
 
 jest.mock("../../services/fs/local-library-content", () => ({
-  resolveLocalLibraryMetadataUri: jest.fn(),
   withLocalLibraryContentRoot: (
     library: Library,
     operation: (libraryRootUri: string) => Promise<unknown>,

@@ -3028,6 +3028,59 @@ export async function libraryCreateLocalMyreader(
   }
 }
 
+export async function libraryCreateManagedLocalMyreader(
+  configPath: string,
+  request: ManagedLocalLibraryRequest,
+  recordedAtMs: number,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<LibraryResult> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_library_create_managed_local_myreader(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterTypeManagedLocalLibraryRequest.lower(
+            request,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterFloat64.lower(
+            recordedAtMs,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeLibraryResult.lift.bind(
+        FfiConverterTypeLibraryResult,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
 export async function libraryCreateRemoteMyreader(
   configPath: string,
   request: RemoteLibraryRequest,
@@ -7059,6 +7112,61 @@ const FfiConverterTypeLocalLibraryRequest = (() => {
   return new FFIConverter();
 })();
 
+export type ManagedLocalLibraryRequest = {
+  librariesRootPath: string;
+  librariesRootUri?: string;
+  name: string;
+  addedAt?: number;
+};
+
+/**
+ * Generated factory for {@link ManagedLocalLibraryRequest} record objects.
+ */
+export const ManagedLocalLibraryRequest = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<
+      ManagedLocalLibraryRequest,
+      ReturnType<typeof defaults>
+    >(defaults);
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () =>
+      Object.freeze(defaults()) as Partial<ManagedLocalLibraryRequest>,
+  });
+})();
+
+const FfiConverterTypeManagedLocalLibraryRequest = (() => {
+  type TypeName = ManagedLocalLibraryRequest;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        librariesRootPath: FfiConverterString.read(from),
+        librariesRootUri: FfiConverterOptionalString.read(from),
+        name: FfiConverterString.read(from),
+        addedAt: FfiConverterOptionalFloat64.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.librariesRootPath, into);
+      FfiConverterOptionalString.write(value.librariesRootUri, into);
+      FfiConverterString.write(value.name, into);
+      FfiConverterOptionalFloat64.write(value.addedAt, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.librariesRootPath) +
+        FfiConverterOptionalString.allocationSize(value.librariesRootUri) +
+        FfiConverterString.allocationSize(value.name) +
+        FfiConverterOptionalFloat64.allocationSize(value.addedAt)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
 export type PaginatedBooks = {
   items: Array<BookEntry>;
   total: number;
@@ -8979,6 +9087,14 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_library_create_managed_local_myreader() !==
+    33564
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_library_create_managed_local_myreader",
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_library_create_remote_myreader() !==
     13111
   ) {
@@ -9348,6 +9464,7 @@ export default Object.freeze({
     FfiConverterTypeLibrarySyncReport,
     FfiConverterTypeLibrarySyncScope,
     FfiConverterTypeLocalLibraryRequest,
+    FfiConverterTypeManagedLocalLibraryRequest,
     FfiConverterTypeMyReaderSyncReport,
     FfiConverterTypePaginatedBooks,
     FfiConverterTypeReaderAnnotation,

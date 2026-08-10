@@ -1,0 +1,45 @@
+appId: ${APP_ID}
+name: Select the prepared iOS E2E folder as a local-library parent
+tags:
+  - skip
+---
+# Required env: E2E_ROOT_FOLDER.
+- extendedWaitUntil:
+    visible: "Cancel|取消"
+    timeout: 30000
+- runFlow:
+    when:
+      visible: "浏览|Browse"
+    commands:
+      - tapOn: "浏览|Browse"
+- repeat:
+    times: 8
+    while:
+      visible:
+        id: "BackButton"
+    commands:
+      - tapOn:
+          id: "BackButton"
+      - waitForAnimationToEnd
+- runFlow:
+    when:
+      visible:
+        id: "DOC.sidebar.item.我的iPhone|DOC.sidebar.item.On My iPhone"
+    commands:
+      - tapOn:
+          id: "DOC.sidebar.item.我的iPhone|DOC.sidebar.item.On My iPhone"
+      - waitForAnimationToEnd
+- tapOn:
+    id: "DOC.sidebar.item.下载|DOC.sidebar.item.Downloads|下载|Downloads"
+    point: "50%,25%"
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: "${E2E_ROOT_FOLDER}, Folder"
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: "${E2E_ROOT_FOLDER}, Folder"
+    point: "50%,25%"
+- waitForAnimationToEnd
+- tapOn: "^打开$|^Open$"

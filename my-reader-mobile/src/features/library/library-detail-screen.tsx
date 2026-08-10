@@ -19,7 +19,6 @@ import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library"
 import type { DataSource, Library } from "@/src/domain/types"
 import { isRemoteSourceType } from "@/src/domain/types"
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
-import { localLibraryFolderName } from "@/src/services/fs/library-paths"
 import { useAppStore } from "@/src/store/app-store"
 import { Text, View } from "@/tw"
 
@@ -60,8 +59,20 @@ function getStorageLocationLabel(
   library: Library,
   dataSource?: DataSource | null,
 ) {
-  if (!isRemoteSourceType(library.sourceType)) return t("common.localStorage")
+  if (!isRemoteSourceType(library.sourceType)) {
+    return t(
+      library.securityScopedBookmark
+        ? "common.localStorage"
+        : "common.appInternalStorage",
+    )
+  }
   return dataSource?.name ?? getSourceTypeLabel(t, library)
+}
+
+function isAppInternalLibrary(library: Library): boolean {
+  return (
+    !isRemoteSourceType(library.sourceType) && !library.securityScopedBookmark
+  )
 }
 
 function getRemotePathDetail(
@@ -180,16 +191,19 @@ export default function LibraryDetailScreen() {
       return
     }
 
+    const copyKey = isAppInternalLibrary(library)
+      ? "libraryDetail.deleteLocal"
+      : "libraryDetail.remove"
     showAlertWithStatusBarRestore(
-      t("libraryDetail.remove.title"),
-      t("libraryDetail.remove.message"),
+      t(`${copyKey}.title`),
+      t(`${copyKey}.message`),
       [
         {
-          text: t("libraryDetail.remove.cancel"),
+          text: t(`${copyKey}.cancel`),
           style: "cancel",
         },
         {
-          text: t("libraryDetail.remove.confirm"),
+          text: t(`${copyKey}.confirm`),
           style: "destructive",
           onPress: () => {
             void (async () => {
@@ -208,7 +222,11 @@ export default function LibraryDetailScreen() {
     right: library
       ? [
           {
-            label: t("libraryDetail.removeLibrary"),
+            label: t(
+              isAppInternalLibrary(library)
+                ? "libraryDetail.deleteLibrary"
+                : "libraryDetail.removeLibrary",
+            ),
             onPress: confirmRemove,
             iosSfSymbol: "trash",
             color: palette.destructive,
@@ -235,7 +253,6 @@ export default function LibraryDetailScreen() {
     )
   }
 
-  const folderName = localLibraryFolderName(library)
   const remotePath = getRemotePathDetail(library, linkedDataSource)
 
   return (
@@ -299,12 +316,6 @@ export default function LibraryDetailScreen() {
                 title={t("libraryDetail.storageLocation")}
                 detail={getStorageLocationLabel(t, library, linkedDataSource)}
               />
-              {folderName ? (
-                <ListRow
-                  title={t("libraryDetail.folderName")}
-                  detail={folderName}
-                />
-              ) : null}
               {remotePath ? (
                 <ListRow
                   title={t("libraryDetail.remotePath")}

@@ -70,6 +70,17 @@ pub struct LocalLibraryRequest {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ManagedLocalLibraryRequest {
+    pub libraries_root_path: String,
+    #[serde(default)]
+    pub libraries_root_uri: Option<String>,
+    pub name: String,
+    #[serde(default)]
+    pub added_at: Option<f64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RemoteLibraryRequest {
     pub data_source_id: String,
     pub source_path: String,

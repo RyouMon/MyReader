@@ -76,6 +76,7 @@ Cargo workspace 中与共享后端相关的 crate：
 - `my-reader-mobile/modules/my-reader-core`：通过生成的 JSI/TurboModule 把 UniFFI 产物接入 React Native。
 - `my-reader-mobile/modules/readium`：应用自有 Readium Swift/Kotlin 集成。
 - `my-reader-mobile/modules/book-transition`：阅读器原生转场。
+- `my-reader-mobile/modules/security-scoped-bookmarks`：持久化并恢复 iOS 外部书库目录授权。
 
 React/React Native UI 和 Navigator Surface 不跨端共享。共享边界由稳定语义决定，不为了复用而
 建立空 package、crate 或抽象层。
@@ -183,9 +184,8 @@ FFI 门面，不实现 SQL、合并策略或第二套业务规则。
 保留在 TypeScript 的内容应当确实依赖移动平台，例如：
 
 - Expo Router、React Query、Zustand 和 UI 状态。
-- 文件 URI、security-scoped bookmark、移动下载和缓存文件操作。
+- 应用容器文件 URI、单文件选择、iOS 外部目录授权、移动下载和缓存文件操作。
 - iOS/Android 系统分享入口；分享文件与文件选择器进入同一导入用例。
-- Android SAF `content://` 授权、外部 MyReader 目录与应用私有镜像间的逐文件复制。
 - SecureStore、OAuth token 刷新和短期凭据注入。
 - 网络、前后台、当前书库和阅读器关闭等同步 trigger。
 - Readium View、选择菜单、Decoration、手势和系统交互。
@@ -204,7 +204,8 @@ Kotlin Toolkit。Reader bridge 与 `my-reader-core` 的业务 binding 是两个�
 
 Calibre `metadata.db` 是外部只读数据库：
 
-- 本地书库直接查询。
+- 桌面本地书库直接查询；iOS 移动端可通过授权外部目录或已配置远程数据源打开 Calibre 书库，
+  Android 移动端只支持远程 Calibre 书库。
 - 远程书库先下载到设备缓存，再由 core 查询。
 - MyReader 不迁移、不增加字段、不写入 Calibre 表。
 - `my-reader-core/src/entities/calibre` 是受支持 Calibre 表的只读 SeaORM 映射。
@@ -223,14 +224,17 @@ Automerge catalog 是规范书目；`myreader.db` 中的 `library_id`、`books`�
 PDF 或 CBZ 正文，稳定 `book_id` 和 `books.uuid` 同时供统一查询、Reader 与现有阅读数据引用。
 MyReader 不生成、同步或写入 `metadata.db`，也不与 Calibre 书库互相转换。
 
-Android SAF 外部书库将用户授权的 `content://` 目录记录为源位置，并在应用私有容器保留可供 Rust、
-SQLite 和 Reader 使用的镜像。marker、Automerge StorageKey 和正文按文件在两端收敛；活动
-`myreader.db`、WAL 与 SHM 始终只存在于应用私有容器。
+移动端“应用内部存储”在 iOS、Android 上都将 MyReader 书库创建到应用容器
+`Documents/libraries/<library-id>/`。iOS 另提供“本地存储”：通过系统目录选择器和
+security-scoped bookmark 在用户目录创建或打开 MyReader 书库，也可打开只读 Calibre 书库；外部
+源中的 `Books`、marker 和 Automerge StorageKey 保持原位，活动 `myreader.db` 留在应用容器
+sidecar。Android 不提供外部本地书库入口，也不使用 SAF 私有镜像。远程数据源与单本图书导入入口
+不受此平台差异影响；桌面本地目录书库继续使用桌面文件系统能力。
 
 ### 6.3 每书库 sidecar
 
-每个书库拥有逻辑独立的 `.myreader/myreader.db`。远程书库在设备容器中维护本地 sidecar，
-多设备通过 Automerge StorageKey 对象交换数据，不直接共享活动 SQLite/WAL/SHM。
+每个书库拥有逻辑独立的 `.myreader/myreader.db`。远程书库和 iOS 外部本地书库在设备容器中维护
+本地 sidecar，多设备通过 Automerge StorageKey 对象交换数据，不直接共享活动 SQLite/WAL/SHM。
 
 业务表：
 

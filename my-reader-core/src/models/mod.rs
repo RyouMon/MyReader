@@ -21,7 +21,7 @@ pub use content::{
 };
 pub use download::{DownloadTask, DownloadTaskRequest, DownloadTaskStatus, EnqueuedDownloadTask};
 pub use library::{
-    LocalLibraryRequest, MyReaderLibraryMarker, RemoteLibraryRequest,
+    LocalLibraryRequest, ManagedLocalLibraryRequest, MyReaderLibraryMarker, RemoteLibraryRequest,
     MYREADER_LIBRARY_MARKER_RELATIVE_PATH, MYREADER_LIBRARY_MARKER_TYPE,
     MYREADER_LIBRARY_MARKER_VERSION,
 };

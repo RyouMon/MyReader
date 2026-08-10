@@ -358,6 +358,14 @@ pub struct UpdateBookMetadataRequest {
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
+pub struct ManagedLocalLibraryRequest {
+    pub libraries_root_path: String,
+    pub libraries_root_uri: Option<String>,
+    pub name: String,
+    pub added_at: Option<f64>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
 pub struct LocalLibraryRequest {
     pub library_root_path: String,
     pub path: String,
@@ -1060,6 +1068,17 @@ pub(crate) fn parse_library_type(value: &str) -> Result<models::LibraryType, Cor
         value => Err(CoreFfiError::core(format!(
             "Unsupported library type: {value}"
         ))),
+    }
+}
+
+impl From<ManagedLocalLibraryRequest> for models::ManagedLocalLibraryRequest {
+    fn from(value: ManagedLocalLibraryRequest) -> Self {
+        Self {
+            libraries_root_path: value.libraries_root_path,
+            libraries_root_uri: value.libraries_root_uri,
+            name: value.name,
+            added_at: value.added_at,
+        }
     }
 }
 

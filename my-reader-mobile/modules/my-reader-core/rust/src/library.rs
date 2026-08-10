@@ -4,8 +4,8 @@ use my_reader_core::api::library::LibraryService;
 
 use crate::{
     types::{
-        required_i64, AppConfig, Library, LibraryResult, LocalLibraryRequest, RemoteCredential,
-        RemoteLibraryRequest,
+        required_i64, AppConfig, Library, LibraryResult, LocalLibraryRequest,
+        ManagedLocalLibraryRequest, RemoteCredential, RemoteLibraryRequest,
     },
     CoreFfiError,
 };
@@ -20,6 +20,25 @@ pub async fn library_replace(
             .map_err(CoreFfiError::from_core)?
             .into(),
     )
+}
+
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn library_create_managed_local_myreader(
+    config_path: String,
+    request: ManagedLocalLibraryRequest,
+    recorded_at_ms: f64,
+) -> Result<LibraryResult, CoreFfiError> {
+    let (config, library) = LibraryService::create_managed_local_myreader(
+        Path::new(&config_path),
+        request.into(),
+        required_i64(recorded_at_ms, "recordedAtMs")?,
+    )
+    .await
+    .map_err(CoreFfiError::from_core)?;
+    Ok(LibraryResult {
+        config: config.into(),
+        library: library.into(),
+    })
 }
 
 #[uniffi::export(async_runtime = "tokio")]

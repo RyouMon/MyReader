@@ -5,7 +5,6 @@ import i18n from "@/src/i18n"
 import {
   ensureLibrarySidecarDirectory,
   libraryMetadataUri,
-  libraryRootUri,
   librarySidecarRootUri,
   resolveCoverUri,
 } from "@/src/services/fs/library-paths"
@@ -22,7 +21,6 @@ import {
   listLibraryBooks,
   updateLocalBookMetadata as updateLocalBookMetadataThroughCore,
 } from "../../services/core/catalog"
-import { withSecurityScopedLibraryAccess } from "../../services/fs/bookmarks"
 import { queryClient } from "../../services/query/query-client"
 import type { BookItem, DataSource, Library } from "../types"
 import { isRemoteSourceType } from "../types"
@@ -30,16 +28,6 @@ import {
   resolveLocalLibraryMetadataUri,
   withLocalLibraryContentRoot,
 } from "../../services/fs/local-library-content"
-import {
-  deleteAndroidSafBook,
-  installAndroidSafBookForRead,
-  isAndroidSafLibrary,
-  managedBookCoverRelativePaths,
-  managedBookRelativePaths,
-  publishAndroidSafBook,
-  pushAndroidSafControl,
-} from "./android-saf-library"
-import { announceLocalSidecarWork } from "@/src/services/core/sync-events"
 import { requestPendingBookUploads } from "@/src/domain/sync/book-upload-store"
 import { refreshRemoteLibrary } from "@/src/services/core/remote"
 
@@ -93,21 +81,18 @@ export function mapListRowsToBookItems(
 export async function ensureLibraryMetadataCached(
   library: Library,
 ): Promise<Library> {
+  ensureLibrarySidecarDirectory(library)
   if (libraryTypeOf(library) === "myreader") {
-    ensureLibrarySidecarDirectory(library)
     return { ...library, metadataUri: undefined }
   }
-  if (isRemoteSourceType(library.sourceType)) {
-    ensureLibrarySidecarDirectory(library)
-    return { ...library, metadataUri: libraryMetadataUri(library) }
+  if (
+    !isRemoteSourceType(library.sourceType) &&
+    library.securityScopedBookmark
+  ) {
+    const metadataUri = await resolveLocalLibraryMetadataUri(library)
+    return { ...library, metadataUri: metadataUri ?? undefined }
   }
-
-  ensureLibrarySidecarDirectory(library)
-  const metadataUri = await resolveLocalLibraryMetadataUri(library)
-  return {
-    ...library,
-    metadataUri: metadataUri ?? libraryMetadataUri(library),
-  }
+  return { ...library, metadataUri: libraryMetadataUri(library) }
 }
 
 async function catalogIsAvailable(library: Library): Promise<boolean> {
@@ -120,26 +105,11 @@ async function catalogIsAvailable(library: Library): Promise<boolean> {
 async function resolveMetadataUriForRead(
   library: Library,
 ): Promise<string | null> {
-  if (isRemoteSourceType(library.sourceType)) {
-    const metadataUri = libraryMetadataUri(library)
-    const currentMetadata = new FSFile(metadataUri)
-    if (currentMetadata.exists && (currentMetadata.size ?? 0) > 0) {
-      return metadataUri
-    }
-    return null
-  }
-
-  try {
-    const metadataUri = await resolveLocalLibraryMetadataUri(library)
-    if (!metadataUri) {
-      showAlertWithStatusBarRestore(
-        i18n.t("sync.corruptedLibrary"),
-        i18n.t("sync.corruptedLibraryMessage"),
-        [{ text: i18n.t("common.gotIt") }],
-      )
-    }
-    return metadataUri
-  } catch {
+  const metadataUri =
+    !isRemoteSourceType(library.sourceType) && library.securityScopedBookmark
+      ? await resolveLocalLibraryMetadataUri(library)
+      : libraryMetadataUri(library)
+  if (!metadataUri) {
     showAlertWithStatusBarRestore(
       i18n.t("sync.corruptedLibrary"),
       i18n.t("sync.corruptedLibraryMessage"),
@@ -147,6 +117,16 @@ async function resolveMetadataUriForRead(
     )
     return null
   }
+  const currentMetadata = new FSFile(metadataUri)
+  if (currentMetadata.exists && (currentMetadata.size ?? 0) > 0) {
+    return metadataUri
+  }
+  showAlertWithStatusBarRestore(
+    i18n.t("sync.corruptedLibrary"),
+    i18n.t("sync.corruptedLibraryMessage"),
+    [{ text: i18n.t("common.gotIt") }],
+  )
+  return null
 }
 
 export async function readBookDetailFromMetadata(
@@ -235,27 +215,6 @@ export async function getAllBookFormats(
   )
 }
 
-export async function getManagedBookAssetPaths(
-  library: Library,
-): Promise<{ bookPaths: string[]; coverPaths: string[] }> {
-  if (!(await catalogIsAvailable(library))) {
-    return { bookPaths: [], coverPaths: [] }
-  }
-  const summaries = await withLocalLibraryContentRoot(
-    library,
-    (contentRootUri) =>
-      listLibraryBookSummaries(
-        library,
-        contentRootUri,
-        librarySidecarRootUri(library),
-      ),
-  )
-  return {
-    bookPaths: managedBookRelativePaths(summaries),
-    coverPaths: managedBookCoverRelativePaths(summaries),
-  }
-}
-
 function createBookFile(rootUri: string, relativePath: string) {
   return new FSFile(fileUriFor(rootUri, relativePath))
 }
@@ -276,7 +235,7 @@ function assertBookFileExists(
   }
 }
 
-/** Opens a Calibre book file from the content root (bookmark direct read on iOS). */
+/** Resolves a book file from the internal or authorized external content root. */
 export async function resolveBookFileForRead(
   library: Library,
   calibreBookId: number,
@@ -288,28 +247,11 @@ export async function resolveBookFileForRead(
     format,
   )
 
-  if (library.securityScopedBookmark) {
-    const { result: sourceFile } = await withSecurityScopedLibraryAccess(
-      library,
-      async (resolvedPath) => {
-        const file = createBookFile(resolvedPath, relativePath)
-        assertBookFileExists(file, resolvedPath, relativePath)
-        return file
-      },
-    )
+  return withLocalLibraryContentRoot(library, async (libraryRoot) => {
+    const sourceFile = createBookFile(libraryRoot, relativePath)
+    assertBookFileExists(sourceFile, libraryRoot, relativePath)
     return sourceFile
-  }
-
-  const libraryRoot = libraryRootUri(library)
-  await installAndroidSafBookForRead(
-    library,
-    calibreBookId,
-    format,
-    relativePath,
-  )
-  const sourceFile = createBookFile(libraryRoot, relativePath)
-  assertBookFileExists(sourceFile, libraryRoot, relativePath)
-  return sourceFile
+  })
 }
 
 export async function readBooksFromLibrary(
@@ -420,43 +362,12 @@ export async function importBookIntoLibrary(
       requestPendingBookUploads(library.id, book.uuid ?? undefined)
       return book
     }
-    const safBacked = isAndroidSafLibrary(library)
-    const book = await (safBacked
-      ? importLocalBookThroughCore(
-          library,
-          libraryRootUri,
-          librarySidecarRootUri(library),
-          input,
-          { announce: false },
-        )
-      : importLocalBookThroughCore(
-          library,
-          libraryRootUri,
-          librarySidecarRootUri(library),
-          input,
-        ))
-    if (!safBacked) return book
-
-    try {
-      const [formatPath] = await getBookFormatPaths(library, book.id)
-      const relativePath = formatPath?.relativePath
-      if (!relativePath) throw new Error("MYREADER_BOOK_FILE_PATH_MISSING")
-      const [coverRelativePath] = managedBookCoverRelativePaths([book])
-      await publishAndroidSafBook(library, relativePath, coverRelativePath)
-      await pushAndroidSafControl(library)
-      announceLocalSidecarWork(library.id)
-      return book
-    } catch (error) {
-      await deleteLocalBookFromCore(
-        library,
-        libraryRootUri,
-        librarySidecarRootUri(library),
-        book.id,
-        { announce: false },
-      )
-      void pushAndroidSafControl(library).catch(() => undefined)
-      throw error
-    }
+    return importLocalBookThroughCore(
+      library,
+      libraryRootUri,
+      librarySidecarRootUri(library),
+      input,
+    )
   })
 }
 
@@ -464,61 +375,26 @@ export async function updateBookMetadataInLibrary(
   library: Library,
   input: { bookId: number; title: string; authors: string[] },
 ): Promise<CalibreBook> {
-  return withLocalLibraryContentRoot(library, async (libraryRootUri) => {
-    const safBacked = isAndroidSafLibrary(library)
-    const book = await (safBacked
-      ? updateLocalBookMetadataThroughCore(
-          library,
-          libraryRootUri,
-          librarySidecarRootUri(library),
-          input,
-          { announce: false },
-        )
-      : updateLocalBookMetadataThroughCore(
-          library,
-          libraryRootUri,
-          librarySidecarRootUri(library),
-          input,
-        ))
-    if (safBacked) {
-      await pushAndroidSafControl(library)
-      announceLocalSidecarWork(library.id)
-    }
-    return book
-  })
+  return withLocalLibraryContentRoot(library, (libraryRootUri) =>
+    updateLocalBookMetadataThroughCore(
+      library,
+      libraryRootUri,
+      librarySidecarRootUri(library),
+      input,
+    ),
+  )
 }
 
 export async function deleteBookFromLibrary(
   library: Library,
   bookId: number,
 ): Promise<void> {
-  const safPaths = isAndroidSafLibrary(library)
-    ? await getBookFormatPaths(library, bookId)
-    : []
-  return withLocalLibraryContentRoot(library, async (libraryRootUri) => {
-    const safBacked = isAndroidSafLibrary(library)
-    if (safBacked) {
-      await deleteLocalBookFromCore(
-        library,
-        libraryRootUri,
-        librarySidecarRootUri(library),
-        bookId,
-        { announce: false },
-      )
-    } else {
-      await deleteLocalBookFromCore(
-        library,
-        libraryRootUri,
-        librarySidecarRootUri(library),
-        bookId,
-      )
-    }
-    if (safBacked) {
-      await pushAndroidSafControl(library)
-      for (const item of safPaths) {
-        deleteAndroidSafBook(library, item.relativePath)
-      }
-      announceLocalSidecarWork(library.id)
-    }
-  })
+  return withLocalLibraryContentRoot(library, (libraryRootUri) =>
+    deleteLocalBookFromCore(
+      library,
+      libraryRootUri,
+      librarySidecarRootUri(library),
+      bookId,
+    ),
+  )
 }

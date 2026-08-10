@@ -9,6 +9,7 @@ import {
   dataSourceUpsert,
   libraryAddLocal,
   libraryCreateLocalMyreader,
+  libraryCreateManagedLocalMyreader,
   libraryOpenLocalMyreader,
   libraryRemove,
   libraryReplace,
@@ -247,6 +248,25 @@ export async function switchAppLibrary(
   return appConfigFromCore(await librarySwitch(appConfigPath, libraryId))
 }
 
+export async function createManagedLocalMyReaderLibrary(request: {
+  librariesRootUri: string
+  name: string
+  addedAt?: number
+}): Promise<LocalLibraryResult> {
+  return libraryResultFromCore(
+    await libraryCreateManagedLocalMyreader(
+      appConfigPath,
+      {
+        librariesRootPath: toNativeFilesystemPath(request.librariesRootUri),
+        librariesRootUri: request.librariesRootUri,
+        name: request.name,
+        addedAt: request.addedAt,
+      },
+      Date.now(),
+    ),
+  )
+}
+
 export async function addLocalAppLibrary(request: {
   libraryRootUri: string
   path: string
@@ -274,7 +294,6 @@ export async function addLocalAppLibrary(request: {
 export async function createLocalMyReaderLibrary(request: {
   libraryRootUri: string
   path: string
-  sourcePath?: string
   sidecarContainerParentUri: string
   name?: string
   addedAt?: number
@@ -286,7 +305,7 @@ export async function createLocalMyReaderLibrary(request: {
       {
         libraryRootPath: toNativeFilesystemPath(request.libraryRootUri),
         path: request.path,
-        sourcePath: request.sourcePath,
+        sourcePath: undefined,
         sidecarContainerParentPath: toNativeFilesystemPath(
           request.sidecarContainerParentUri,
         ),
@@ -303,7 +322,6 @@ export async function createLocalMyReaderLibrary(request: {
 export async function openLocalMyReaderLibrary(request: {
   libraryRootUri: string
   path: string
-  sourcePath?: string
   sidecarContainerParentUri: string
   name?: string
   addedAt?: number
@@ -315,7 +333,7 @@ export async function openLocalMyReaderLibrary(request: {
       {
         libraryRootPath: toNativeFilesystemPath(request.libraryRootUri),
         path: request.path,
-        sourcePath: request.sourcePath,
+        sourcePath: undefined,
         sidecarContainerParentPath: toNativeFilesystemPath(
           request.sidecarContainerParentUri,
         ),

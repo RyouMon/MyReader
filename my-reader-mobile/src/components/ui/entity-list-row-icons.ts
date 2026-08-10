@@ -5,6 +5,7 @@ import type { ListRowIcon } from "./list-row"
 export type EntityIconKind =
   | "myreaderLibrary"
   | "calibreLibrary"
+  | "appStorage"
   | "localDataSource"
   | "webdavDataSource"
   | "onedriveDataSource"
@@ -21,6 +22,7 @@ const CALIBRE_LIBRARY_ICON =
 export const ENTITY_LIST_ROW_ICONS = {
   myreaderLibrary: { imageSource: MYREADER_LIBRARY_ICON },
   calibreLibrary: { imageSource: CALIBRE_LIBRARY_ICON },
+  appStorage: { ios: "internaldrive", android: "storage" },
   localDataSource: { ios: "externaldrive", android: "storage" },
   webdavDataSource: {
     ios: "dns",

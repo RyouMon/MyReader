@@ -295,6 +295,9 @@ uniffi_my_reader_core_ffi_fn_func_library_add_local(RustBuffer config_path,
 uniffi_my_reader_core_ffi_fn_func_library_create_local_myreader(
     RustBuffer config_path, RustBuffer request, double recorded_at_ms);
 /*handle*/ uint64_t
+uniffi_my_reader_core_ffi_fn_func_library_create_managed_local_myreader(
+    RustBuffer config_path, RustBuffer request, double recorded_at_ms);
+/*handle*/ uint64_t
 uniffi_my_reader_core_ffi_fn_func_library_create_remote_myreader(
     RustBuffer config_path, RustBuffer request, RustBuffer credential,
     double recorded_at_ms);
@@ -634,6 +637,8 @@ uint16_t uniffi_my_reader_core_ffi_checksum_func_library_add_local();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_library_add_remote();
 uint16_t
 uniffi_my_reader_core_ffi_checksum_func_library_create_local_myreader();
+uint16_t
+uniffi_my_reader_core_ffi_checksum_func_library_create_managed_local_myreader();
 uint16_t
 uniffi_my_reader_core_ffi_checksum_func_library_create_remote_myreader();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_library_open_local_myreader();
@@ -2888,6 +2893,20 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                 ->cpp_uniffi_my_reader_core_ffi_fn_func_library_create_local_myreader(
                     rt, thisVal, args, count);
           });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_library_create_managed_local_"
+        "myreader"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt,
+                                    "ubrn_uniffi_my_reader_core_ffi_fn_func_"
+                                    "library_create_managed_local_myreader"),
+          3,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_fn_func_library_create_managed_local_myreader(
+                    rt, thisVal, args, count);
+          });
   props["ubrn_uniffi_my_reader_core_ffi_fn_func_library_create_remote_"
         "myreader"] =
       jsi::Function::createFromHostFunction(
@@ -4829,6 +4848,20 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                 ->cpp_uniffi_my_reader_core_ffi_checksum_func_library_create_local_myreader(
                     rt, thisVal, args, count);
           });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_library_create_managed_"
+        "local_myreader"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt, "ubrn_uniffi_my_reader_core_ffi_checksum_func_"
+                  "library_create_managed_local_myreader"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_library_create_managed_local_myreader(
+                    rt, thisVal, args, count);
+          });
   props["ubrn_uniffi_my_reader_core_ffi_checksum_func_library_create_remote_"
         "myreader"] =
       jsi::Function::createFromHostFunction(
@@ -6587,6 +6620,21 @@ jsi::Value NativeMyReaderCoreFfi::
       uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
                                                                args[1]),
       uniffi_jsi::Bridging<double>::fromJs(rt, callInvoker, args[2]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_fn_func_library_create_managed_local_myreader(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value =
+      uniffi_my_reader_core_ffi_fn_func_library_create_managed_local_myreader(
+          uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(
+              rt, callInvoker, args[0]),
+          uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(
+              rt, callInvoker, args[1]),
+          uniffi_jsi::Bridging<double>::fromJs(rt, callInvoker, args[2]));
 
   return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
                                                          value);
@@ -8496,6 +8544,15 @@ jsi::Value NativeMyReaderCoreFfi::
         size_t count) {
   auto value =
       uniffi_my_reader_core_ffi_checksum_func_library_create_local_myreader();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_library_create_managed_local_myreader(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value =
+      uniffi_my_reader_core_ffi_checksum_func_library_create_managed_local_myreader();
 
   return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
 }

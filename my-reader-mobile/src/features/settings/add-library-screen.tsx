@@ -2,6 +2,7 @@ import { appendRemotePathSegment } from "@my-reader/tools/remote-path"
 import { router, Stack, useLocalSearchParams } from "expo-router"
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { Platform } from "react-native"
 
 import {
   FormLabeledFieldRow,
@@ -15,6 +16,7 @@ import { ENTITY_LIST_ROW_ICONS } from "@/src/components/ui/entity-list-row-icons
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import { useThemePalette } from "@/src/design/tokens"
 import {
+  createAppInternalMyReaderLibrary,
   createFolderMyReaderLibrary,
   createRemoteMyReaderLibrary,
   nextMyReaderLibraryName,
@@ -65,8 +67,7 @@ function showOperationError(t: (key: string) => string, error: unknown): void {
   if (
     message.includes("LIBRARY_FOLDER_ALREADY_EXISTS") ||
     message.includes("LIBRARY_ROOT_NOT_EMPTY") ||
-    message.includes("REMOTE_LIBRARY_ROOT_NOT_EMPTY") ||
-    message.includes("ANDROID_SAF_LIBRARY_TARGET_NOT_EMPTY")
+    message.includes("REMOTE_LIBRARY_ROOT_NOT_EMPTY")
   ) {
     showAlertWithStatusBarRestore(
       t("addLibrary.folderExists.title"),
@@ -194,11 +195,16 @@ export function AddLibraryLocationScreen() {
     })
   }, [pendingShareName, pendingShareUri, setPendingImport])
 
-  async function handleFolder() {
+  function handleAppInternalStorage() {
+    setLocalFolder(null)
+    router.push("/settings/add-library/create")
+  }
+
+  async function handleLocalStorage() {
     try {
       const picked = await pickLocalLibraryDirectory()
+      if (!picked) return
       if (operation === "create") {
-        if (!picked) return
         setLocalFolder(picked)
         router.push("/settings/add-library/create")
         return
@@ -240,36 +246,51 @@ export function AddLibraryLocationScreen() {
       <Stack.Screen options={options} />
       {toolbar}
       <Screen>
-        <View className="gap-3">
-          <SectionLabel>{t("addLibraryFlow.storageLocations")}</SectionLabel>
-          <SectionCard>
-            <ListRow
-              testID="add-library-local-storage"
-              title={t("common.localStorage")}
-              icon={ENTITY_LIST_ROW_ICONS.localDataSource}
-              onPress={() => void handleFolder()}
-              isLast={sources.length === 0}
-            />
-            {sources.map((source, index) => (
-              <ListRow
-                key={source.id}
-                testID={`add-library-data-source-${source.id}`}
-                title={source.name}
-                icon={
-                  ENTITY_LIST_ROW_ICONS[
-                    source.type === "onedrive"
-                      ? "onedriveDataSource"
-                      : "webdavDataSource"
-                  ]
-                }
-                onPress={() =>
-                  router.push(sourceBrowserPath(source, operation))
-                }
-                isLast={index === sources.length - 1}
-              />
-            ))}
-          </SectionCard>
-        </View>
+        {operation === "create" ||
+        Platform.OS === "ios" ||
+        sources.length > 0 ? (
+          <View className="gap-3">
+            <SectionLabel>{t("addLibraryFlow.storageLocations")}</SectionLabel>
+            <SectionCard>
+              {operation === "create" ? (
+                <ListRow
+                  testID="add-library-app-internal-storage"
+                  title={t("common.appInternalStorage")}
+                  icon={ENTITY_LIST_ROW_ICONS.appStorage}
+                  onPress={handleAppInternalStorage}
+                  isLast={Platform.OS !== "ios" && sources.length === 0}
+                />
+              ) : null}
+              {Platform.OS === "ios" ? (
+                <ListRow
+                  testID="add-library-local-storage"
+                  title={t("common.localStorage")}
+                  icon={ENTITY_LIST_ROW_ICONS.localDataSource}
+                  onPress={() => void handleLocalStorage()}
+                  isLast={sources.length === 0}
+                />
+              ) : null}
+              {sources.map((source, index) => (
+                <ListRow
+                  key={source.id}
+                  testID={`add-library-data-source-${source.id}`}
+                  title={source.name}
+                  icon={
+                    ENTITY_LIST_ROW_ICONS[
+                      source.type === "onedrive"
+                        ? "onedriveDataSource"
+                        : "webdavDataSource"
+                    ]
+                  }
+                  onPress={() =>
+                    router.push(sourceBrowserPath(source, operation))
+                  }
+                  isLast={index === sources.length - 1}
+                />
+              ))}
+            </SectionCard>
+          </View>
+        ) : null}
         <View className="gap-3">
           <SectionLabel>{t("addLibraryFlow.addStorage")}</SectionLabel>
           <SectionCard>
@@ -320,20 +341,8 @@ export function CreateLibraryScreen() {
   const remotePath = source
     ? appendRemotePathSegment(sourcePath ?? "/", trimmedName)
     : undefined
-  const usesLocalStorage = !source
   const nameInvalid =
-    !folderNameValid ||
-    (source !== undefined && remotePath === null) ||
-    (usesLocalStorage && localFolder === null)
-
-  async function chooseFolder() {
-    try {
-      const picked = await pickLocalLibraryDirectory()
-      if (picked) setLocalFolder(picked)
-    } catch (error) {
-      showOperationError(t, error)
-    }
-  }
+    !folderNameValid || (source !== undefined && remotePath === null)
 
   async function handleCreate() {
     if (nameInvalid || saving) return
@@ -345,7 +354,9 @@ export function CreateLibraryScreen() {
       }
       const library = source
         ? await createRemoteMyReaderLibrary(source, remotePath!, trimmedName)
-        : await createFolderMyReaderLibrary(localFolder, trimmedName)
+        : localFolder
+          ? await createFolderMyReaderLibrary(localFolder, trimmedName)
+          : await createAppInternalMyReaderLibrary(trimmedName)
       if (!library) return
       setLocalFolder(null)
       const pendingImport = takePendingImport()
@@ -430,16 +441,6 @@ export function CreateLibraryScreen() {
             />
           </FormLabeledFieldRow>
         </View>
-        {usesLocalStorage ? (
-          <SectionCard>
-            <ListRow
-              title={t("common.localStorage")}
-              detail={localFolder?.name ?? t("addLibrary.selectSaveLocation")}
-              onPress={() => void chooseFolder()}
-              isLast
-            />
-          </SectionCard>
-        ) : null}
       </Screen>
     </>
   )

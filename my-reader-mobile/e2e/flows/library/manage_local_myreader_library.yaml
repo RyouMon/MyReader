@@ -1,0 +1,115 @@
+appId: ${APP_ID}
+name: Manage a local MyReader library from creation through reading and deletion
+tags:
+  - external-library
+  - ios
+---
+# Required env:
+#   E2E_ROOT_FOLDER, LOCAL_LIBRARY_NAME, LOCAL_IMPORT_FILE_NAME,
+#   LOCAL_BOOK_TITLE, EDITED_BOOK_TITLE, EDITED_BOOK_AUTHOR.
+- runFlow: ../../common/launch_preserving_data.yaml
+
+# Scenario: create an empty library in an iOS user-selected directory.
+- tapOn:
+    id: "tab-settings"
+- runFlow: ../../common/open_add_library.yaml
+- tapOn:
+    id: "add-library-create"
+- tapOn:
+    id: "add-library-local-storage"
+- runFlow:
+    file: ../../common/select_ios_local_library_parent.yaml
+    env:
+      E2E_ROOT_FOLDER: ${E2E_ROOT_FOLDER}
+- tapOn:
+    id: "new-library-name"
+- eraseText
+- inputText: ${LOCAL_LIBRARY_NAME}
+- tapOn: "^创建$|^Create$"
+- extendedWaitUntil:
+    visible: "成功添加书库：${LOCAL_LIBRARY_NAME}|Library added: ${LOCAL_LIBRARY_NAME}"
+    timeout: 30000
+- runFlow:
+    file: ../../common/activate_library.yaml
+    env:
+      LIBRARY_NAME: ${LOCAL_LIBRARY_NAME}
+- assertVisible: "书库为空|Library is empty"
+- assertVisible: "请先导入一本图书。|Import a book to get started."
+
+# Scenario: import a supported file and open it immediately.
+- tapOn: "导入图书|Import Book"
+- runFlow:
+    file: ../../common/select_ios_e2e_fixture.yaml
+    env:
+      E2E_ROOT_FOLDER: ${E2E_ROOT_FOLDER}
+      IMPORT_FILE_NAME: ${LOCAL_IMPORT_FILE_NAME}
+- extendedWaitUntil:
+    visible: ${LOCAL_BOOK_TITLE}
+    timeout: 30000
+- tapOn: '打开《${LOCAL_BOOK_TITLE}》|Open "${LOCAL_BOOK_TITLE}"'
+- extendedWaitUntil:
+    visible:
+      id: "reader-screen"
+    timeout: 30000
+- runFlow: ../../common/close_reader.yaml
+
+# Scenario: favorite the book, then edit its title and author.
+- tapOn: "更多操作：${LOCAL_BOOK_TITLE}|More actions: ${LOCAL_BOOK_TITLE}"
+- tapOn: "加入收藏|Add to Favorites"
+- tapOn: "更多操作：${LOCAL_BOOK_TITLE}|More actions: ${LOCAL_BOOK_TITLE}"
+- assertVisible: "取消收藏|Remove from Favorites"
+- tapOn: "修改书名与作者|Edit Title and Author"
+- tapOn:
+    id: "book-edit-title"
+    point: "95%,50%"
+- eraseText: 100
+- inputText: ${EDITED_BOOK_TITLE}
+- tapOn:
+    id: "book-edit-authors"
+    point: "95%,50%"
+- eraseText: 100
+- inputText: ${EDITED_BOOK_AUTHOR}
+- tapOn: "保存|Save"
+- extendedWaitUntil:
+    visible: ${EDITED_BOOK_TITLE}
+    timeout: 30000
+
+# Scenario: the managed library and edited catalog survive a process restart.
+- runFlow: ../../common/launch_preserving_data.yaml
+- tapOn:
+    id: "tab-settings"
+- runFlow:
+    file: ../../common/activate_library.yaml
+    env:
+      LIBRARY_NAME: ${LOCAL_LIBRARY_NAME}
+- assertVisible: ${EDITED_BOOK_TITLE}
+- tapOn: '打开《${EDITED_BOOK_TITLE}》|Open "${EDITED_BOOK_TITLE}"'
+- extendedWaitUntil:
+    visible:
+      id: "reader-screen"
+    timeout: 30000
+- runFlow: ../../common/close_reader.yaml
+
+# Scenario: iOS exposes external local storage when opening an existing library.
+- tapOn:
+    id: "tab-settings"
+- runFlow: ../../common/open_add_library.yaml
+- tapOn:
+    id: "add-library-open"
+- assertVisible:
+    id: "add-library-local-storage"
+- runFlow: ../../common/tap_header_back.yaml
+- runFlow: ../../common/tap_header_back_or_close.yaml
+- runFlow:
+    file: ../../common/activate_library.yaml
+    env:
+      LIBRARY_NAME: ${LOCAL_LIBRARY_NAME}
+
+# Scenario: deleting a book removes it from the managed catalog and filesystem.
+- tapOn: "更多操作：${EDITED_BOOK_TITLE}|More actions: ${EDITED_BOOK_TITLE}"
+- tapOn: "删除图书|Delete Book"
+- assertVisible: "确认从书库中删除《${EDITED_BOOK_TITLE}》及其图书文件？|Delete.*${EDITED_BOOK_TITLE}"
+- tapOn: "删除|Delete"
+- extendedWaitUntil:
+    visible: "书库为空|Library is empty"
+    timeout: 30000

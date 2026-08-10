@@ -2,7 +2,7 @@
 
 验证 EPUB / CBZ / PDF 三种格式的阅读设置是否即时生效。Flow 按 `maestro-bdd-spec.md` 的 flow/subflow 结构组织；场景描述写在 flow 注释里。规约参考 `features/*.feature`（审核用 spec，非可执行）。
 
-当前依赖预置书库或预置远程数据源的 flow 已统一标记为 `wip`，等待新的外部 fixture 准备方案落地后再恢复默认执行。
+阅读设置中依赖旧预置书库的 flow 仍标记为 `wip`。MyReader 书库生命周期使用独立的外部环境配置和 fixture 准备脚本，见下文。
 
 ## 前置条件
 
@@ -56,6 +56,37 @@ maestro test --config=e2e/config.yaml e2e/flows/reader/change_cbz_settings.yaml 
 ```
 
 > 截图/AI 素材等测试产物默认输出到 `e2e/.artifacts/`，该目录已加入 `.gitignore`，不会进入版本控制。
+
+## MyReader 书库生命周期
+
+`flows/library/` 覆盖应用容器本地存储、WebDAV、OneDrive 的创建、导入、立即阅读、上传、同步、重启持久化、删除本地文件、按需下载、删除图书和移除注册。每段行为都以 `# Scenario:` 注释写在 Flow 中，可直接作为人工走查清单阅读。
+
+外部流程标记为 `external-library`，默认测试配置不会误跑真实远程数据源。运行前：
+
+1. 在应用中预先添加一个可写 WebDAV 数据源并完成 OneDrive 登录。OAuth token、WebDAV 密码不会传给 Maestro。
+2. 从 `.env.example` 复制书库测试变量到忽略提交的 `e2e/.env.library.local`。`*_SOURCE_NAME` 必须与应用中已有数据源名称一致；两个 EPUB 源路径必须是绝对路径。
+3. 远程 EPUB 建议使用约 512 MB 的有效文件，确保快速局域网中也能稳定观察“同步不等待上传”、上传中删除和“重启续传”。准备脚本会把 fixture 复制到模拟器“文件 > 下载 > MyReaderE2E > Fixtures”。
+4. 启动 Metro 和 development build，然后运行：
+
+```bash
+pnpm run test:e2e:libraries:ios
+```
+
+只验证本地 MyReader 书库的 EPUB、PDF、CBZ 元数据、封面、阅读和删除，可直接运行：
+
+```bash
+./e2e/scripts/run-local-supported-formats.sh
+```
+
+该脚本默认使用仓库内三种格式的 fixture，检查应用容器 `Documents/libraries/<id>/` 中的三个 `cover.jpg` 均为有效 JPEG，并验证重启持久化、图书删除及本地书库容器删除。
+
+脚本每次默认生成新的 `E2E_RUN_ID`，因此不会与上次 WebDAV 或 OneDrive 的测试目录同名。也可以显式设置 `E2E_RUN_ID` 复现某次运行；若重复使用同一个值，需先自行移除同名远程目录。远程流程只移除应用注册和本地缓存，不删除远程文件；本地流程删除书库时会删除对应的应用容器。
+
+三个可单独运行的 Flow：
+
+- `manage_local_myreader_library.yaml`：iOS 外部目录创建、导入阅读、收藏、元数据修改、重启持久化、验证“打开已有书库”的本地存储入口、删除图书。
+- `manage_webdav_myreader_library.yaml`：后台上传、上传前禁止删除本地文件、上传中删除、同步不等待上传、按需下载、远端删除与重开。
+- `manage_onedrive_myreader_library.yaml`：Graph 上传、进程重启续传、token 并发路径、远端-only 下载并自动阅读。
 
 ## Flow 清单
 

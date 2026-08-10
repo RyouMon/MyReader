@@ -9,8 +9,8 @@ use crate::{
     infrastructure::storage,
     models::{
         AppConfig, DataSource, Library, LibraryStorageConfig, LibraryType, LocalLibraryRequest,
-        MyReaderLibraryMarker, RemoteCredential, RemoteLibraryRequest, SidecarSyncMode,
-        MYREADER_LIBRARY_MARKER_RELATIVE_PATH,
+        ManagedLocalLibraryRequest, MyReaderLibraryMarker, RemoteCredential, RemoteLibraryRequest,
+        SidecarSyncMode, MYREADER_LIBRARY_MARKER_RELATIVE_PATH,
     },
     services::config,
     sync::persistence::{ensure_database_document, ensure_database_identity, DatabaseIdentity},
@@ -20,6 +20,63 @@ use crate::{
 pub struct LibraryService;
 
 impl LibraryService {
+    pub async fn create_managed_local_myreader(
+        config_path: &Path,
+        request: ManagedLocalLibraryRequest,
+        recorded_at_ms: i64,
+    ) -> Result<(AppConfig, Library), CoreError> {
+        if recorded_at_ms < 0 {
+            return Err(CoreError::Config("RECORDED_AT_INVALID".into()));
+        }
+        let libraries_root = resolve_managed_libraries_root(&request.libraries_root_path)?;
+        let name = request.name.trim();
+        if name.is_empty() {
+            return Err(CoreError::Config("LIBRARY_NAME_REQUIRED".into()));
+        }
+
+        let id = Uuid::new_v4().to_string();
+        let library_root = libraries_root.join(&id);
+        let public_root = request
+            .libraries_root_uri
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(|root| format!("{}/{}", root.trim_end_matches('/'), id))
+            .unwrap_or_else(|| library_root.to_string_lossy().into_owned());
+        let library = Library {
+            id,
+            name: name.to_owned(),
+            path: public_root,
+            library_type: LibraryType::MyReader,
+            book_count: 0,
+            metadata_uri: None,
+            added_at: request.added_at,
+            data_source_id: None,
+            source_type: Some("local".into()),
+            source_path: None,
+            metadata_etag: None,
+            security_scoped_bookmark: None,
+        };
+        config::ConfigService::ensure_library_can_add(config_path, &library)?;
+        if library_root.exists() {
+            return Err(CoreError::Config("LIBRARY_CONTAINER_ALREADY_EXISTS".into()));
+        }
+
+        let marker = MyReaderLibraryMarker::new(&Uuid::new_v4().to_string())
+            .map_err(CoreError::DataIntegrity)?;
+        let result = async {
+            initialize_local_myreader_cache(&library_root, &marker, recorded_at_ms).await?;
+            let state = config::ConfigService::add_library(config_path, library.clone())?;
+            Ok((state, library.clone()))
+        }
+        .await;
+
+        if result.is_err() {
+            let _ = std::fs::remove_dir_all(&library_root);
+        }
+        result
+    }
+
     pub async fn create_local_myreader(
         config_path: &Path,
         request: LocalLibraryRequest,
@@ -601,6 +658,26 @@ fn resolve_empty_library_root(value: &str) -> Result<(PathBuf, bool), CoreError>
         }
     }
     Ok((root, !existed))
+}
+
+fn resolve_managed_libraries_root(value: &str) -> Result<PathBuf, CoreError> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Err(CoreError::Config("LIBRARIES_ROOT_PATH_REQUIRED".into()));
+    }
+    let requested = PathBuf::from(value);
+    let requested = if requested.is_absolute() {
+        requested
+    } else {
+        std::env::current_dir()?.join(requested)
+    };
+    std::fs::create_dir_all(&requested)?;
+    let root = dunce::canonicalize(&requested)
+        .map_err(|error| CoreError::Config(format!("INVALID_LIBRARY_PATH: {error}")))?;
+    if !root.is_dir() {
+        return Err(CoreError::Config("LIBRARIES_ROOT_NOT_DIRECTORY".into()));
+    }
+    Ok(root)
 }
 
 fn resolve_existing_library_root(value: &str) -> Result<PathBuf, CoreError> {
@@ -1236,6 +1313,52 @@ mod tests {
             .unwrap_err();
 
         assert!(error.to_string().contains("LIBRARY_ALREADY_EXISTS"));
+    }
+
+    #[tokio::test]
+    async fn should_create_managed_local_myreader_inside_its_library_container() {
+        let directory = tempfile::tempdir().unwrap();
+        let config_path = directory.path().join("config.json");
+        let libraries_root = directory.path().join("libraries");
+
+        let (state, library) = LibraryService::create_managed_local_myreader(
+            &config_path,
+            ManagedLocalLibraryRequest {
+                libraries_root_path: libraries_root.to_string_lossy().into_owned(),
+                libraries_root_uri: Some("file:///documents/libraries".into()),
+                name: "Travel".into(),
+                added_at: Some(1.0),
+            },
+            100,
+        )
+        .await
+        .unwrap();
+
+        let library_root = libraries_root.join(&library.id);
+        let marker = LibraryService::read_myreader_marker(&library_root).unwrap();
+        let database_path =
+            crate::database::library_db_path(&library_root.to_string_lossy()).unwrap();
+        let identity = crate::sync::persistence::ensure_database_identity(
+            database_path.to_str().unwrap(),
+            &marker.library_uuid,
+        )
+        .unwrap();
+
+        assert_eq!(library.name, "Travel");
+        assert_eq!(
+            library.path,
+            format!("file:///documents/libraries/{}", library.id)
+        );
+        assert_eq!(library.library_type, LibraryType::MyReader);
+        assert_eq!(library.source_type.as_deref(), Some("local"));
+        assert_eq!(library.source_path, None);
+        assert_eq!(
+            state.active_library_id.as_deref(),
+            Some(library.id.as_str())
+        );
+        assert!(library_root.join("Books").is_dir());
+        assert!(database_path.is_file());
+        assert_eq!(identity.library_uuid, marker.library_uuid);
     }
 
     #[tokio::test]

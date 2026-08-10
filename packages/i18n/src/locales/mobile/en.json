@@ -116,11 +116,18 @@
     "myreaderLibrary": "MyReader library",
     "remove": {
       "title": "Remove this library?",
-      "message": "The library will be removed from the app. Its files will not be deleted.",
+      "message": "The library and its local data will be removed from the app. Source files will not be deleted.",
       "cancel": "Cancel",
       "confirm": "Remove"
     },
+    "deleteLocal": {
+      "title": "Delete this internal library?",
+      "message": "Books and reading data in this library will be deleted. This cannot be undone.",
+      "cancel": "Cancel",
+      "confirm": "Delete"
+    },
     "removeLibrary": "Remove library",
+    "deleteLibrary": "Delete library",
     "notFound": {
       "title": "Library not found",
       "detail": "It may have been removed or the link parameters are no longer valid."
@@ -130,7 +137,6 @@
     "refresh": "Refresh Library",
     "libraryType": "Library Type",
     "storageLocation": "Storage location",
-    "folderName": "Folder",
     "remotePath": "Path",
     "sourceType": "Source Type",
     "libraryPath": "Library Path",
@@ -630,6 +636,7 @@
     "search": "Search",
     "clear": "Clear",
     "current": "Current",
+    "appInternalStorage": "App Internal Storage",
     "localStorage": "Local Storage",
     "unnamedBook": "Unnamed Book",
     "unknownAuthor": "Unknown Author",

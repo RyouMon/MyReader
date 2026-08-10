@@ -11,8 +11,6 @@ public class MyReaderSecurityScopedBookmarksModule: Module {
         throw InvalidUriException(uriString)
       }
 
-      // expo-file-system 中获取目录URL时，已经调用了 startAccessingSecurityScopedResource 和 stopAccessingSecurityScopedResource
-      // 所以这里不需要再调用 startAccessingSecurityScopedResource 和 stopAccessingSecurityScopedResource，直接创建 bookmarkData
       let bookmarkData = try url.bookmarkData(
         options: .minimalBookmark,
         includingResourceValuesForKeys: nil,
@@ -23,14 +21,6 @@ public class MyReaderSecurityScopedBookmarksModule: Module {
         "bookmarkBase64": bookmarkData.base64EncodedString(),
         "resolvedUri": url.absoluteString,
         "stale": false
-      ]
-    }
-
-    AsyncFunction("resolveBookmarkAsync") { (bookmarkBase64: String) -> [String: Any] in
-      let resolved = try self.resolveBookmark(bookmarkBase64: bookmarkBase64)
-      return [
-        "uri": resolved.url.absoluteString,
-        "stale": resolved.stale
       ]
     }
 

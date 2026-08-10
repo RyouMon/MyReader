@@ -1,0 +1,104 @@
+appId: ${APP_ID}
+name: Delete EPUB, PDF, and CBZ without leaving stale mobile book cards
+tags:
+  - external-library
+  - ios
+  - android
+---
+# Required env: LOCAL_LIBRARY_NAME, EPUB_BOOK_TITLE, PDF_BOOK_TITLE, CBZ_BOOK_TITLE.
+- runFlow: ../../common/launch_preserving_data.yaml
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: "tab-library"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: "书库|Library"
+- runFlow:
+    when:
+      visible:
+        id: "library-collection-all"
+    commands:
+      - tapOn:
+          id: "library-collection-all"
+- extendedWaitUntil:
+    visible: ${CBZ_BOOK_TITLE}
+    timeout: 30000
+
+# Scenario: each successful deletion immediately removes its cached card.
+- tapOn: "更多操作：${CBZ_BOOK_TITLE}|More actions: ${CBZ_BOOK_TITLE}"
+- tapOn: "删除图书|Delete Book"
+- tapOn: "删除|Delete"
+- extendedWaitUntil:
+    notVisible: ${CBZ_BOOK_TITLE}
+    timeout: 5000
+
+- tapOn: "更多操作：${PDF_BOOK_TITLE}|More actions: ${PDF_BOOK_TITLE}"
+- tapOn: "删除图书|Delete Book"
+- tapOn: "删除|Delete"
+- extendedWaitUntil:
+    notVisible: ${PDF_BOOK_TITLE}
+    timeout: 5000
+
+- tapOn: "更多操作：${EPUB_BOOK_TITLE}|More actions: ${EPUB_BOOK_TITLE}"
+- tapOn: "删除图书|Delete Book"
+- tapOn: "删除|Delete"
+- extendedWaitUntil:
+    visible: "书库为空|Library is empty"
+    timeout: 5000
+
+# Scenario: persisted catalog state stays empty after a process restart.
+- runFlow: ../../common/launch_preserving_data.yaml
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: "tab-library"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: "书库|Library"
+- runFlow:
+    when:
+      visible:
+        id: "library-collection-all"
+    commands:
+      - tapOn:
+          id: "library-collection-all"
+- extendedWaitUntil:
+    visible: "书库为空|Library is empty"
+    timeout: 30000
+- assertNotVisible: ${EPUB_BOOK_TITLE}
+- assertNotVisible: ${PDF_BOOK_TITLE}
+- assertNotVisible: ${CBZ_BOOK_TITLE}
+
+# Scenario: deleting a local library removes its app-owned container.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: "tab-settings"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: "设置|Settings"
+- scrollUntilVisible:
+    element: "管理书库：${LOCAL_LIBRARY_NAME}.*|Manage library: ${LOCAL_LIBRARY_NAME}.*"
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- tapOn: "管理书库：${LOCAL_LIBRARY_NAME}.*|Manage library: ${LOCAL_LIBRARY_NAME}.*"
+- tapOn: "删除书库|Delete library"
+- assertVisible: "将删除书库中的图书和阅读数据，此操作无法撤销。|Books and reading data in this library will be deleted. This cannot be undone."
+- tapOn: "删除|Delete"
+- extendedWaitUntil:
+    notVisible: "管理书库：${LOCAL_LIBRARY_NAME}.*|Manage library: ${LOCAL_LIBRARY_NAME}.*"
+    timeout: 30000

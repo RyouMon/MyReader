@@ -74,7 +74,7 @@ tags:
 # Step 5: Close the Dev Menu / Tools sheet
 # ============================================================
 # Some dev builds open the dev menu automatically on launch (the "Reload" button
-# is visible). Scroll to the Tools button and close the sheet.
+# is visible). Close the sheet without enabling Android's floating Tools button.
 - runFlow:
     when:
       visible: "Reload"
@@ -93,12 +93,5 @@ tags:
                 index: 1
                 rightOf:
                   text: "Tools button"
-
-      # Android: tap the Tools button directly
-      - runFlow:
-          when:
-            platform: Android
-          commands:
-            - tapOn: "Tools button"
 
       - tapOn: "Close"

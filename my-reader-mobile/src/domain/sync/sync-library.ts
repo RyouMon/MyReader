@@ -11,14 +11,7 @@ import {
 } from "../../services/query/invalidate-table"
 import { describeError } from "../../utils/common"
 import { withLocalLibraryContentRoot } from "../../services/fs/local-library-content"
-import { fetchBooks, getManagedBookAssetPaths } from "../library/catalog"
-import {
-  cacheAndroidSafBookCovers,
-  isAndroidSafLibrary,
-  pullAndroidSafControl,
-  pushAndroidSafControl,
-  reconcileAndroidSafBooks,
-} from "../library/android-saf-library"
+import { fetchBooks } from "../library/catalog"
 import { isRemoteSourceType, type DataSource, type Library } from "../types"
 import { requestPendingBookUploads } from "./book-upload-store"
 import { openSyncContext } from "./context"
@@ -215,22 +208,11 @@ export async function syncLibrary(
     })
 
   let coreReport
-  let safBooks: Awaited<ReturnType<typeof fetchBooks>> | undefined
   try {
-    if (isAndroidSafLibrary(library) && library.sourcePath) {
-      await pullAndroidSafControl(library.sourcePath, library.path)
-    }
     coreReport =
       ctx.backend.kind === "local-direct"
         ? await withLocalLibraryContentRoot(library, syncCore)
         : await syncCore(ctx.libraryRootUri)
-    if (isAndroidSafLibrary(library) && !coreReport.error) {
-      await pushAndroidSafControl(library)
-      const assetPaths = await getManagedBookAssetPaths(library)
-      await cacheAndroidSafBookCovers(library, assetPaths.coverPaths)
-      await reconcileAndroidSafBooks(library, assetPaths.bookPaths)
-      safBooks = await fetchBooks(coreReport.calibre.library, dataSources)
-    }
   } catch (err) {
     const message = describeError(err)
     const failureKind = classifySyncFailure(err)
@@ -254,8 +236,8 @@ export async function syncLibrary(
     requestPendingBookUploads(library.id)
   }
 
-  let books = safBooks
-  if (!books && coreReport.calibre.changed && !coreReport.calibre.error) {
+  let books: Awaited<ReturnType<typeof fetchBooks>> | undefined
+  if (coreReport.calibre.changed && !coreReport.calibre.error) {
     try {
       books = await fetchBooks(coreReport.calibre.library, dataSources)
     } catch (error) {

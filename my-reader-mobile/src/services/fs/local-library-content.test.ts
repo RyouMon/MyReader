@@ -2,28 +2,18 @@ import type { Library } from "@my-reader/tools/types/library"
 
 import { withLocalLibraryContentRoot } from "./local-library-content"
 
-jest.mock("./bookmarks", () => ({
-  withSecurityScopedLibraryAccess: jest.fn(),
-}))
-
 jest.mock("./library-paths", () => ({
-  libraryLocalRootUri: (library: Library) => library.path,
   libraryRootUri: (library: Library) =>
     `file:///current/Documents/libraries/${library.id}`,
   METADATA_DB_RELATIVE: "metadata.db",
-  usesIosContainerSidecar: () => false,
 }))
 
-jest.mock("expo-file-system", () => ({
-  File: class {
-    exists = true
-    size = 1
-  },
+jest.mock("./bookmarks", () => ({
+  withSecurityScopedLibraryAccess: (
+    library: Library,
+    operation: (uri: string) => unknown,
+  ) => operation(library.securityScopedBookmark?.resolvedUri ?? library.path),
 }))
-
-const mockWithSecurityScopedLibraryAccess = jest.mocked(
-  jest.requireMock("./bookmarks").withSecurityScopedLibraryAccess,
-)
 
 function remoteLibrary(): Library {
   return {
@@ -47,6 +37,24 @@ describe("withLocalLibraryContentRoot", () => {
     expect(operation).toHaveBeenCalledWith(
       "file:///current/Documents/libraries/library-id",
     )
-    expect(mockWithSecurityScopedLibraryAccess).not.toHaveBeenCalled()
+  })
+
+  it("should use the authorized directory for an iOS external library", async () => {
+    const operation = jest.fn(async (rootUri: string) => rootUri)
+    const library = {
+      ...remoteLibrary(),
+      sourceType: "local",
+      path: "file:///external/Library",
+      securityScopedBookmark: {
+        bookmarkBase64: "bookmark",
+        resolvedUri: "file:///external/Library",
+        stale: false,
+      },
+    }
+
+    await expect(withLocalLibraryContentRoot(library, operation)).resolves.toBe(
+      "file:///external/Library",
+    )
+    expect(operation).toHaveBeenCalledWith("file:///external/Library")
   })
 })

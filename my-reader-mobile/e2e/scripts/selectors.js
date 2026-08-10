@@ -21,7 +21,6 @@ output.selectors = {
     header: {
       close: "关闭|Close",
       back: "返回|Back",
-      iosNativeBack: "返回|Back",
       titles: {
         libraryDetail: "书库详情|Library Details",
         addLibrary: "添加书库|Add Library",

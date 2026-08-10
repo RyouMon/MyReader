@@ -11,8 +11,10 @@ import LibraryDetailScreen from "./library-detail-screen"
 
 const mockLibrary: Library = {
   id: "library-1",
-  name: "Calibre Library",
-  path: "file:///Library/Calibre",
+  name: "MyReader Library",
+  path: "file:///documents/libraries/library-1",
+  libraryType: "myreader",
+  sourceType: "local",
   bookCount: 12,
 }
 
@@ -74,10 +76,6 @@ jest.mock("@/src/design/tokens", () => ({
 jest.mock("@/src/domain/library/hooks/library-actions", () => ({
   removeLibrary: jest.fn(),
   switchActiveLibrary: jest.fn(),
-}))
-
-jest.mock("@/src/services/fs/library-paths", () => ({
-  localLibraryFolderName: () => "Calibre",
 }))
 
 jest.mock("@/src/domain/notifications/download-notifications", () => ({
@@ -167,10 +165,10 @@ describe("LibraryDetailScreen", () => {
     act(() => {
       mockDeleteAction?.onPress()
     })
-    expect(mockDeleteAction?.label).toBe("libraryDetail.removeLibrary")
+    expect(mockDeleteAction?.label).toBe("libraryDetail.deleteLibrary")
     expect(showAlertWithStatusBarRestore).toHaveBeenCalledWith(
-      "libraryDetail.remove.title",
-      "libraryDetail.remove.message",
+      "libraryDetail.deleteLocal.title",
+      "libraryDetail.deleteLocal.message",
       expect.any(Array),
     )
     const alertButtons = jest.mocked(showAlertWithStatusBarRestore).mock
@@ -193,6 +191,7 @@ describe("LibraryDetailScreen", () => {
     expect(router.back).not.toHaveBeenCalled()
     expect(screen.queryByText("libraryDetail.notFound.title")).toBeNull()
     expect(screen.getByText(mockLibrary.name)).toBeTruthy()
+    expect(screen.getByText("common.appInternalStorage")).toBeTruthy()
 
     await act(async () => {
       finishRemoval?.()
@@ -203,12 +202,12 @@ describe("LibraryDetailScreen", () => {
     })
   })
 
-  it("should use the same removal semantics for a MyReader library", () => {
+  it("should preserve remote files when removing a remote library", () => {
     mockLibraries = [
       {
         ...mockLibrary,
-        libraryType: "myreader",
-        path: "file:///external/MyReader",
+        sourceType: "webdav",
+        dataSourceId: "webdav-1",
       },
     ]
 
@@ -225,6 +224,33 @@ describe("LibraryDetailScreen", () => {
       expect.any(Array),
     )
     expect(screen.getByText("libraryDetail.myreaderLibrary")).toBeTruthy()
+    expect(screen.getByText("libraryDetail.typeWebdav")).toBeTruthy()
+  })
+
+  it("should remove an iOS external library without deleting its source", () => {
+    mockLibraries = [
+      {
+        ...mockLibrary,
+        path: "file:///external/Library",
+        securityScopedBookmark: {
+          bookmarkBase64: "bookmark",
+          resolvedUri: "file:///external/Library",
+          stale: false,
+        },
+      },
+    ]
+
+    render(<LibraryDetailScreen />)
+    act(() => {
+      mockDeleteAction?.onPress()
+    })
+
+    expect(mockDeleteAction?.label).toBe("libraryDetail.removeLibrary")
+    expect(showAlertWithStatusBarRestore).toHaveBeenCalledWith(
+      "libraryDetail.remove.title",
+      "libraryDetail.remove.message",
+      expect.any(Array),
+    )
     expect(screen.getByText("common.localStorage")).toBeTruthy()
   })
 })
