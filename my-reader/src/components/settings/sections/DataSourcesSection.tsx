@@ -3,9 +3,10 @@ import { Trash2, Unplug } from "lucide-react"
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { AddPanelButton } from "@/components/common/AddPanelButton"
-import type { AppRowIconName } from "@/components/common/AppRow"
 import { AppRow } from "@/components/common/AppRow"
+import { EntityIcon, type EntityIconKind } from "@/components/common/EntityIcon"
 import { GroupList, GroupListItem } from "@/components/common/GroupList"
+import { SectionHeader } from "@/components/common/SectionHeader"
 import { AddDataSourceDialog } from "@/components/settings/AddDataSourceDialog"
 import {
   useDataSourceMutations,
@@ -53,9 +54,7 @@ export default function DataSourcesSection() {
 
       <div className="flex-1 overflow-y-auto px-7 py-5">
         <section className="mb-5">
-          <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
-            {t("settings.dataSources.configured")}
-          </p>
+          <SectionHeader title={t("settings.dataSources.configured")} />
 
           <GroupList>
             <LocalStorageStaticRow />
@@ -92,7 +91,12 @@ function LocalStorageStaticRow() {
   return (
     <GroupListItem className="transition-[opacity,transform,background-color] hover:bg-accent">
       <AppRow
-        icon="hardDrive"
+        head={
+          <EntityIcon
+            kind="localDataSource"
+            label={t("addLibraryForm.typeLocal")}
+          />
+        }
         body={t("constants.localDataSourceName")}
         detail={t("settings.dataSources.localDetail")}
         detailClassName="font-mono"
@@ -115,17 +119,18 @@ function DataSourceCard({
   onDelete,
 }: DataSourceCardProps) {
   const { t } = useTranslation()
-  const typeLabel = source.type
   let bodyText = source.name
   let secondaryText: string | undefined
-  let rowIcon: AppRowIconName = "database"
+  let iconKind: EntityIconKind = "webdavDataSource"
+  let iconLabel = t("addLibraryForm.typeWebdav")
 
   switch (source.type) {
     case "webdav":
       secondaryText = `${source.endpoint} · ${source.username}`
       break
     case "onedrive":
-      rowIcon = "cloud"
+      iconKind = "onedriveDataSource"
+      iconLabel = t("addDataSourceForm.typeOnedrive")
       bodyText = source.displayName || source.name || "OneDrive"
       secondaryText = source.email || undefined
       break
@@ -140,21 +145,16 @@ function DataSourceCard({
       )}
     >
       <AppRow
-        icon={rowIcon}
+        head={<EntityIcon kind={iconKind} label={iconLabel} />}
         body={bodyText}
         detail={secondaryText}
         detailClassName="font-mono"
         tail={
-          <div className="flex items-center gap-2">
-            <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-[0.05em] text-muted-foreground">
-              {typeLabel}
+          isPendingDelete && !source.readonly ? (
+            <span className="hidden text-[11px] text-destructive md:inline">
+              {t("settings.dataSources.confirmDelete")}
             </span>
-            {isPendingDelete && !source.readonly ? (
-              <span className="hidden text-[11px] text-destructive md:inline">
-                {t("settings.dataSources.confirmDelete")}
-              </span>
-            ) : null}
-          </div>
+          ) : undefined
         }
         actions={
           source.readonly ? (

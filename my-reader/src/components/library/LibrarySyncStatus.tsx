@@ -20,6 +20,7 @@ import {
 import { Popover } from "radix-ui"
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
+import { SectionHeader } from "@/components/common/SectionHeader"
 import { Button } from "@/components/ui/button"
 import {
   Empty,
@@ -243,9 +244,11 @@ export default function LibrarySyncStatus({
           collisionPadding={12}
           className="z-50 flex max-h-[calc(100vh-3rem)] w-80 flex-col overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-md outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
         >
-          <h2 className="shrink-0 px-4 pt-4 text-sm font-semibold text-foreground">
-            {t("syncStatus.title")}
-          </h2>
+          <SectionHeader
+            className="mb-0 shrink-0 px-4 pt-4"
+            title={t("syncStatus.title")}
+            titleClassName="font-semibold text-foreground"
+          />
 
           {library ? (
             <>

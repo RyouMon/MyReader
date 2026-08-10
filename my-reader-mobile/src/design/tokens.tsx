@@ -34,6 +34,8 @@ export type ThemePalette = {
   error: string
   danger: string
   dangerSoft: string
+  brandOnedrive: string
+  dataSourceWebdav: string
   destructive: ColorValue
   onDestructive: ColorValue
   overlay: string
@@ -61,7 +63,7 @@ const APP_BORDER = {
 const lightPaletteBase = {
   background: "#f5efe6",
   backgroundSecondary: "#f5efe6",
-  surface: "#faf5ef",
+  surface: "#f0e8db",
   text: "#3b2f2f",
   textMuted: "#7a6b5d",
   textOnPrimary: "#faf5ef",
@@ -78,6 +80,8 @@ const lightPaletteBase = {
   error: "#b44a3a",
   danger: "#b44a3a",
   dangerSoft: "rgba(180, 74, 58, 0.14)",
+  brandOnedrive: "#0078d4",
+  dataSourceWebdav: "#0f766e",
   overlay: "rgba(28,23,20,0.22)",
   overlayStrong: "rgba(28,23,20,0.50)",
 } as const
@@ -108,6 +112,8 @@ const darkPaletteBase = {
   error: "#d46a5a",
   danger: "#d46a5a",
   dangerSoft: "rgba(212, 106, 90, 0.18)",
+  brandOnedrive: "#0078d4",
+  dataSourceWebdav: "#5cc8be",
   overlay: "rgba(0,0,0,0.38)",
   overlayStrong: "rgba(0,0,0,0.65)",
 } as const

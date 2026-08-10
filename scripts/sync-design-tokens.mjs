@@ -147,7 +147,7 @@ function resolveCssVarReference(value, rootVars, darkVars, theme) {
  */
 function replaceObjectStringValue(source, objectName, key, value) {
   const objectRegex = new RegExp(
-    `(const\\s+${escapeRegExp(objectName)}\\s*=\\s*\\{)([\\s\\S]*?)(\\}\\s+as\\s+const;)`,
+    `(const\\s+${escapeRegExp(objectName)}\\s*=\\s*\\{)([\\s\\S]*?)(\\}\\s+as\\s+const;?)`,
     "m",
   )
   const match = source.match(objectRegex)
@@ -250,6 +250,9 @@ const COLOR_PAIRS = [
   ["danger", "--danger"],
   ["border", "--border"],
   ["border-strong", "--border-strong"],
+  ["brand-onedrive", "--brand-onedrive"],
+  ["data-source-local", "--data-source-local"],
+  ["data-source-webdav", "--data-source-webdav"],
 ]
 
 const REQUIRED_TOKENS = COLOR_PAIRS.map(([, tokenName]) => tokenName)
@@ -317,6 +320,9 @@ function syncDesktopTokens(desktopCss, rootVars, darkVars) {
     "--danger",
     "--border",
     "--border-strong",
+    "--brand-onedrive",
+    "--data-source-local",
+    "--data-source-webdav",
   ]
 
   for (const tokenName of lightTokenNames) {
@@ -337,6 +343,8 @@ function syncDesktopTokens(desktopCss, rootVars, darkVars) {
     "--danger",
     "--border",
     "--border-strong",
+    "--data-source-local",
+    "--data-source-webdav",
   ]
 
   for (const tokenName of darkTokenNames) {
@@ -411,6 +419,8 @@ $3`,
     ["warning", "--warning"],
     ["error", "--danger"],
     ["danger", "--danger"],
+    ["brandOnedrive", "--brand-onedrive"],
+    ["dataSourceWebdav", "--data-source-webdav"],
   ]
 
   for (const [key, tokenName] of lightMapping) {
@@ -467,6 +477,8 @@ $3`,
     ["warning", "--warning"],
     ["error", "--danger"],
     ["danger", "--danger"],
+    ["brandOnedrive", "--brand-onedrive"],
+    ["dataSourceWebdav", "--data-source-webdav"],
   ]
 
   for (const [key, tokenName] of darkMapping) {

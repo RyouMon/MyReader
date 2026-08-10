@@ -1,5 +1,4 @@
 import type { CalibreBook } from "@my-reader/tools/types/book"
-import type { BuiltInBookCollectionId } from "@my-reader/tools/types/book-collection"
 import type { Library as LibraryRecord } from "@my-reader/tools/types/library"
 import {
   isRemoteLibrarySourceType,
@@ -12,6 +11,7 @@ import { AlertCircle } from "lucide-react"
 import { useCallback, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
+import { SectionHeader } from "@/components/common/SectionHeader"
 import BookGrid, { LibrarySkeletonGrid } from "@/components/library/BookGrid"
 import LibrarySyncStatus from "@/components/library/LibrarySyncStatus"
 import { NoLibraryEmptyState } from "@/components/library/NoLibraryEmptyState"
@@ -86,11 +86,17 @@ export default function LibraryWorkspace({
   const { data: libraries = [], isLoading: libLoading } = useLibrariesQuery()
   const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
   const activeCollectionId = useLibraryUiStore((s) => s.activeCollectionId)
+  const setActiveCollectionId = useLibraryUiStore(
+    (s) => s.setActiveCollectionId,
+  )
   const searchQuery = useLibraryUiStore((s) => s.librarySearchQuery)
   const setSearchQuery = useLibraryUiStore((s) => s.setLibrarySearchQuery)
   const sortBy = useLibraryUiStore((s) => s.librarySortBy)
   const setSortBy = useLibraryUiStore((s) => s.setLibrarySortBy)
   const activeLibrary = libraries.find((l) => l.id === activeLibraryId) ?? null
+  const isManagedLibrary = Boolean(
+    activeLibrary && libraryTypeOf(activeLibrary) === "myreader",
+  )
   const isRemoteLibrary = isRemoteLibrarySourceType(activeLibrary?.sourceType)
   const fileActionsEnabled = isRemoteLibrary
   const { data: selectedFormatById = EMPTY_SELECTED_FORMATS } =
@@ -335,6 +341,11 @@ export default function LibraryWorkspace({
     navigate({ to: "/" })
   }, [navigate])
 
+  const handleBrowseAllBooks = useCallback(() => {
+    setActiveCollectionId("all")
+    navigate({ to: "/" })
+  }, [navigate, setActiveCollectionId])
+
   const handleDeleteBook = useCallback(async () => {
     if (!bookPendingDeletion || deletingBook) return
 
@@ -364,6 +375,14 @@ export default function LibraryWorkspace({
   ])
 
   const hasNoLibrary = libraries.length === 0
+  const emptyLibraryState = {
+    title: t("library.noMatch.empty.title"),
+    detail: t(
+      isManagedLibrary
+        ? "library.noMatch.empty.myreaderDetail"
+        : "library.noMatch.empty.calibreDetail",
+    ),
+  }
   const emptyState = (() => {
     if (searchQuery) {
       return {
@@ -372,9 +391,11 @@ export default function LibraryWorkspace({
       }
     }
 
-    const key: Exclude<BuiltInBookCollectionId, "all"> | "empty" =
-      activeCollectionId === "all" ? "empty" : activeCollectionId
-    switch (key) {
+    if (activeCollectionId === "all") {
+      return emptyLibraryState
+    }
+
+    switch (activeCollectionId) {
       case "recentlyRead":
         return {
           title: t("library.noMatch.recentlyRead.title"),
@@ -405,18 +426,26 @@ export default function LibraryWorkspace({
           title: t("library.noMatch.localOnly.title"),
           detail: t("library.noMatch.localOnly.detail"),
         }
-      case "empty":
-        return {
-          title: t("library.noMatch.empty.title"),
-          detail: t("library.noMatch.empty.detail"),
-        }
+      default:
+        return emptyLibraryState
     }
   })()
-  const EmptyCollectionIcon = collectionDefinition.icon
+  const showsEmptyLibraryState = !searchQuery && activeCollectionId === "all"
+  const showsBrowseAllBooksAction =
+    !searchQuery &&
+    !showsEmptyLibraryState &&
+    activeCollectionId !== "localOnly"
+  const EmptyCollectionIcon = showsEmptyLibraryState
+    ? getDesktopBookCollectionDefinition("all").icon
+    : collectionDefinition.icon
 
   const gridHeader = (
     <div className="flex items-baseline gap-2.5 mb-4 pt-5">
-      <h2 className="text-xl font-semibold">{sectionLabel}</h2>
+      <SectionHeader
+        className="mb-0"
+        title={sectionLabel}
+        titleClassName="text-xl font-semibold"
+      />
       <span className="text-sm text-muted-foreground font-normal">
         {t("library.collections.bookCount", { count: displayedTotal })}
       </span>
@@ -522,21 +551,25 @@ export default function LibraryWorkspace({
                   <EmptyTitle>{emptyState.title}</EmptyTitle>
                   <EmptyDescription>{emptyState.detail}</EmptyDescription>
                 </EmptyHeader>
-                {activeLibrary?.libraryType === "myreader" &&
-                  activeCollectionId === "all" &&
-                  !searchQuery && (
-                    <EmptyContent>
-                      <Button
-                        size="sm"
-                        disabled={importingBook}
-                        onClick={() => void handleImportBook()}
-                      >
-                        {importingBook
-                          ? t("library.importingBook")
-                          : t("library.empty.importBook")}
-                      </Button>
-                    </EmptyContent>
-                  )}
+                {isManagedLibrary && showsEmptyLibraryState ? (
+                  <EmptyContent>
+                    <Button
+                      size="sm"
+                      disabled={importingBook}
+                      onClick={() => void handleImportBook()}
+                    >
+                      {importingBook
+                        ? t("library.importingBook")
+                        : t("library.empty.importBook")}
+                    </Button>
+                  </EmptyContent>
+                ) : showsBrowseAllBooksAction ? (
+                  <EmptyContent>
+                    <Button size="sm" onClick={handleBrowseAllBooks}>
+                      {t("library.browseAllBooks")}
+                    </Button>
+                  </EmptyContent>
+                ) : null}
               </Empty>
             )}
         </div>

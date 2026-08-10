@@ -1,5 +1,7 @@
 import { Check } from "lucide-react"
 import { useTranslation } from "react-i18next"
+import { LocalStorageIcon } from "@/components/common/LocalStorageIcon"
+import { WebdavServerIcon } from "@/components/common/WebdavServerIcon"
 import { cn } from "@/lib/utils"
 
 export type DataSourceType = "local" | "webdav" | "onedrive"
@@ -31,55 +33,23 @@ export function DataSourceTypeSelector({
   }[] = [
     {
       key: "local",
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-          focusable="false"
-        >
-          <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
-        </svg>
-      ),
+      icon: <LocalStorageIcon size={20} aria-hidden="true" focusable="false" />,
       title: t("addLibraryForm.typeLocal"),
       desc: t("addLibraryForm.typeLocalDesc"),
       iconBg: "bg-muted",
-      iconColor: "text-muted-foreground",
+      iconColor: "text-data-source-local",
       selectedIconBg: "bg-accent",
-      selectedIconColor: "text-accent-foreground",
+      selectedIconColor: "text-data-source-local",
     },
     {
       key: "webdav",
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-          focusable="false"
-        >
-          <path d="M17.5 19H9a7 7 0 1 0 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
-        </svg>
-      ),
+      icon: <WebdavServerIcon size={20} aria-hidden="true" focusable="false" />,
       title: t("addLibraryForm.typeWebdav"),
       desc: t("addLibraryForm.typeWebdavDesc"),
       iconBg: "bg-card",
-      iconColor: "text-primary",
+      iconColor: "text-data-source-webdav",
       selectedIconBg: "bg-accent",
-      selectedIconColor: "text-accent-foreground",
+      selectedIconColor: "text-data-source-webdav",
     },
     {
       key: "onedrive",

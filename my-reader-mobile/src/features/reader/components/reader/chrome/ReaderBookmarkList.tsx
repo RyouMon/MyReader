@@ -356,8 +356,8 @@ export function ReaderBookmarkList({
         }
         ListEmptyComponent={
           <EmptyState
-            title={t("reader.bookmarks.empty")}
-            detail={t("reader.bookmarks.emptyDetail")}
+            title={t("reader.empty.bookmarks.title")}
+            detail={t("reader.empty.bookmarks.detail")}
             icon={BOOKMARK_EMPTY_ICON}
             layout="container"
             colors={{

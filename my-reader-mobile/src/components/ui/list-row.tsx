@@ -1,6 +1,7 @@
 import { useCallback, useRef, type ReactNode } from "react"
 import {
   ActionSheetIOS,
+  Image,
   Platform,
   Pressable as RNPressable,
   StyleSheet,
@@ -37,12 +38,24 @@ const HIDDEN_MENU_ANCHOR_STYLE: ViewStyle = {
   opacity: 0,
 }
 
-/** Cross-platform row icon — SF Symbol on iOS, Material Icons on Android (`expo-symbols`). */
-export type ListRowIcon = {
-  ios: string
-  android: string
-  androidSource?: ImageSourcePropType
-}
+/** Cross-platform row icon — native system symbol or bundled artwork. */
+export type ListRowIcon =
+  | {
+      ios: string
+      android: string
+      androidSource?: ImageSourcePropType
+      iconSet?: "material"
+      tone?: "onedrive" | "webdav"
+      imageSource?: never
+    }
+  | {
+      imageSource: ImageSourcePropType
+      ios?: never
+      android?: never
+      androidSource?: never
+      iconSet?: never
+      tone?: never
+    }
 
 function listRowTextStyle(color: string) {
   return Platform.OS === "android"
@@ -85,7 +98,7 @@ type ListRowProps = {
   title: string
   /** Overrides `accessibilityLabel`; defaults to `title` when omitted. */
   label?: string
-  /** Leading icon — SF Symbol (iOS) and Material Icons name (Android). */
+  /** Leading icon — platform symbol or bundled artwork. */
   icon?: ListRowIcon
   /** Muted secondary text shown below the title. */
   detail?: string
@@ -107,15 +120,34 @@ type ListMenuRowProps = Omit<ListRowProps, "onPress"> & {
 function ListRowIconView({
   icon,
   palette,
+  centered,
 }: {
   icon: ListRowIcon
   palette: ThemePalette
+  centered: boolean
 }) {
-  const tintColor = palette.primary
+  const tintColor =
+    icon.tone === "onedrive"
+      ? palette.brandOnedrive
+      : icon.tone === "webdav"
+        ? palette.dataSourceWebdav
+        : palette.primary
 
   return (
-    <View style={styles.iconSlot}>
-      {Platform.OS === "android" ? (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[styles.iconSlot, centered && styles.centeredIconSlot]}
+    >
+      {icon.imageSource ? (
+        <Image source={icon.imageSource} style={styles.brandIcon} />
+      ) : icon.iconSet === "material" ? (
+        <MaterialIcons
+          name={icon.android as never}
+          size={ROW_ICON_SIZE}
+          color={tintColor}
+        />
+      ) : Platform.OS === "android" ? (
         icon.androidSource ? (
           <Host matchContents pointerEvents="none">
             <MaterialSymbolIcon
@@ -157,7 +189,13 @@ function ListRowBody({
 
   return (
     <>
-      {icon ? <ListRowIconView icon={icon} palette={palette} /> : null}
+      {icon ? (
+        <ListRowIconView
+          icon={icon}
+          palette={palette}
+          centered={Boolean(detail)}
+        />
+      ) : null}
       <View className="flex-1 gap-1" style={{ minWidth: 96 }}>
         <Text
           className="text-base font-bold"
@@ -407,6 +445,14 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     alignItems: "center",
     justifyContent: "center",
+  },
+  centeredIconSlot: {
+    alignSelf: "center",
+  },
+  brandIcon: {
+    width: ROW_ICON_SIZE,
+    height: ROW_ICON_SIZE,
+    borderRadius: 5,
   },
   accessorySlot: {
     alignSelf: "center",

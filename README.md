@@ -108,3 +108,7 @@ pnpm --filter my-reader-mobile exec jest --runInBand
 - [架构决策](./docs/adr/README.md) — 已接受、已实施、已撤回和已取代的 ADR
 - [设计系统](./DESIGN.md) — 跨端视觉原则与颜色 token
 - [Roadmap](./ROADMAP.md) — 尚未落地的规划，不作为当前能力说明
+
+## 许可
+
+MyReader 自有代码与资产采用 [MIT License](./LICENSE)。项目中包含的产品名称、Logo 和商标归各自权利人所有。MyReader 未获得相关权利人的认可，图标的使用不代表与其存在关联或得到其背书。MyReader 会尽可能遵循官方品牌规范；如权利人或应用所有者不认可项目中使用的图标，请通过 [GitHub Issues](https://github.com/RyouMon/MyReader/issues) 联系。

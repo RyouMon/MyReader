@@ -17,7 +17,7 @@ import {
 import { getThemePalette, useTheme } from "@/src/design/tokens"
 import { View } from "@/tw"
 
-import { EmptyState } from "@/src/components"
+import { EmptyState, PrimaryButton } from "@/src/components"
 import { ErrorBoundary } from "@/src/components/error-boundary"
 import { readBookDetailFromMetadata } from "@/src/domain/library/catalog"
 import { useBookReadingFormat } from "@/src/domain/library/hooks/use-book-reading-format"
@@ -49,7 +49,7 @@ const COVER_HEADER_PALETTE = getThemePalette("dark")
 
 type DetailCacheEntry = {
   detail: import("@my-reader/tools/types/book").BookDetail | null
-  error: string | null
+  failure: "loadFailed" | "notFound" | null
   loading: boolean
 }
 
@@ -74,6 +74,7 @@ export default function BookDetailScreen() {
   const [detailCache, setDetailCache] = useState<
     Record<string, DetailCacheEntry>
   >({})
+  const [detailReloadIndex, setDetailReloadIndex] = useState(0)
   const detailCacheRef = useRef(detailCache)
   const loadingIdsRef = useRef(new Set<string>())
   const detailCoverRef = useRef<RNView>(null)
@@ -111,7 +112,7 @@ export default function BookDetailScreen() {
         ...prev,
         [currentId]: {
           detail: null,
-          error: t("bookDetail.invalidId"),
+          failure: "notFound",
           loading: false,
         },
       }))
@@ -123,7 +124,7 @@ export default function BookDetailScreen() {
       ...prev,
       [currentId]: {
         detail: null,
-        error: null,
+        failure: null,
         loading: true,
       },
     }))
@@ -135,7 +136,7 @@ export default function BookDetailScreen() {
           ...prev,
           [currentId]: {
             detail: next,
-            error: next ? null : t("bookDetail.notFoundInMeta"),
+            failure: next ? null : "notFound",
             loading: false,
           },
         }))
@@ -143,13 +144,13 @@ export default function BookDetailScreen() {
           // Format selection is loaded from persisted preferences; do not override on detail load.
         }
       })
-      .catch((e) => {
+      .catch(() => {
         if (cancelled) return
         setDetailCache((prev) => ({
           ...prev,
           [currentId]: {
             detail: null,
-            error: e instanceof Error ? e.message : String(e),
+            failure: "loadFailed",
             loading: false,
           },
         }))
@@ -161,7 +162,7 @@ export default function BookDetailScreen() {
     return () => {
       cancelled = true
     }
-  }, [activeLibrary, currentId, t])
+  }, [activeLibrary, currentId, detailReloadIndex])
 
   const currentEntry = currentId ? detailCache[currentId] : undefined
   const currentDetail = currentEntry?.detail ?? null
@@ -169,6 +170,21 @@ export default function BookDetailScreen() {
   const handleGoBack = useCallback(() => {
     router.back()
   }, [])
+
+  const handleReturnToLibrary = useCallback(() => {
+    router.replace("/library")
+  }, [])
+
+  const handleRetryDetail = useCallback(() => {
+    if (!currentId) return
+    loadingIdsRef.current.delete(currentId)
+    setDetailCache((prev) => {
+      const next = { ...prev }
+      delete next[currentId]
+      return next
+    })
+    setDetailReloadIndex((value) => value + 1)
+  }, [currentId])
 
   const detailColors = useMemo(
     () => getDetailColors(palette, colorScheme),
@@ -406,6 +422,12 @@ export default function BookDetailScreen() {
           <EmptyState
             title={t("bookDetail.missingParam.title")}
             detail={t("bookDetail.missingParam.detail")}
+            action={
+              <PrimaryButton
+                title={t("bookDetail.backToLibrary")}
+                onPress={handleReturnToLibrary}
+              />
+            }
             icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }}
           />
         </View>
@@ -423,8 +445,14 @@ export default function BookDetailScreen() {
           style={{ backgroundColor: palette.background }}
         >
           <EmptyState
-            title={t("bookDetail.noLibrary.title")}
-            detail={t("bookDetail.noLibrary.detail")}
+            title={t("bookDetail.libraryUnavailable.title")}
+            detail={t("bookDetail.libraryUnavailable.detail")}
+            action={
+              <PrimaryButton
+                title={t("bookDetail.backToLibrary")}
+                onPress={handleReturnToLibrary}
+              />
+            }
             icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }}
           />
         </View>
@@ -441,18 +469,9 @@ export default function BookDetailScreen() {
       <Stack.Screen options={options} />
       {toolbar}
       <ErrorBoundary
-        title={t("bookDetail.loadFailed")}
-        message={t("bookDetail.loadFailedMessage")}
-        onRetry={() => {
-          if (currentId) {
-            loadingIdsRef.current.delete(currentId)
-            setDetailCache((prev) => {
-              const next = { ...prev }
-              delete next[currentId]
-              return next
-            })
-          }
-        }}
+        title={t("bookDetail.loadFailed.title")}
+        message={t("bookDetail.loadFailed.detail")}
+        onRetry={handleRetryDetail}
       >
         <BookDetailContent
           activeLibrary={activeLibrary}
@@ -461,11 +480,13 @@ export default function BookDetailScreen() {
           colors={detailColors}
           contentTopInset={contentTopInset}
           detail={currentEntry?.detail ?? null}
-          detailError={currentEntry?.error ?? null}
+          detailFailure={currentEntry?.failure ?? null}
           detailCoverRef={detailCoverRef}
           listBook={getListBook(currentId)}
           loadingDetail={currentEntry?.loading ?? true}
           onOpenReader={openReader}
+          onReturnToLibrary={handleReturnToLibrary}
+          onRetryDetail={handleRetryDetail}
           onSelectFormat={handleSelectFormat}
           selectedFormat={selectedFormat}
           dataSources={dataSources}

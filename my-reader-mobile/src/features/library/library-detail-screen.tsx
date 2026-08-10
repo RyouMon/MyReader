@@ -1,13 +1,12 @@
-import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import { libraryTypeOf } from "@my-reader/tools/types/library"
 import * as Haptics from "expo-haptics"
 import { router, Stack, useLocalSearchParams } from "expo-router"
-import { SymbolView } from "expo-symbols"
 import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Platform } from "react-native"
+import { Image, Platform } from "react-native"
 import { EmptyState, ListRow, SectionCard } from "@/src/components"
 import { Button, ButtonGroup } from "@/src/components/ui"
+import { ENTITY_LIST_ROW_ICONS } from "@/src/components/ui/entity-list-row-icons"
 import { Screen } from "@/src/components/ui/screen"
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import { useThemePalette } from "@/src/design/tokens"
@@ -95,6 +94,7 @@ function DetailHero({
   t: (key: string, options?: Record<string, unknown>) => string
 }) {
   const palette = useThemePalette()
+  const isMyReaderLibrary = libraryTypeOf(library) === "myreader"
 
   return (
     <View className="items-center gap-5 pb-1 pt-2">
@@ -110,24 +110,22 @@ function DetailHero({
           elevation: Platform.OS === "android" ? 2 : 0,
         }}
       >
-        <SymbolView
-          accessibilityLabel={t("library.label")}
-          fallback={
-            <MaterialIcons
-              accessibilityLabel={t("library.label")}
-              name="auto-stories"
-              size={80}
-              color={accent}
-            />
+        <Image
+          accessibilityLabel={t(
+            isMyReaderLibrary
+              ? "libraryDetail.myreaderLibrary"
+              : "libraryDetail.calibreLibrary",
+          )}
+          source={
+            ENTITY_LIST_ROW_ICONS[
+              isMyReaderLibrary ? "myreaderLibrary" : "calibreLibrary"
+            ].imageSource
           }
-          name={{
-            ios: "books.vertical.fill",
-            android: "newsstand",
+          style={{
+            width: 80,
+            height: 80,
+            borderRadius: isMyReaderLibrary ? 18 : 0,
           }}
-          resizeMode="scaleAspectFit"
-          size={80}
-          tintColor={accent}
-          weight="medium"
         />
       </View>
 

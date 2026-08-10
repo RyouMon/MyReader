@@ -18,6 +18,9 @@ colors:
   danger: "#b44a3a"
   border: "#ddd2c0"
   border-strong: "#d9cebb"
+  brand-onedrive: "#0078d4"
+  data-source-local: "#64748b"
+  data-source-webdav: "#0f766e"
 
 ---
 

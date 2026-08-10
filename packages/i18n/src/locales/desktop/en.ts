@@ -109,8 +109,6 @@ export const desktopEn = {
     },
     bookDetail: {
       loading: "Loading book detail…",
-      loadFailed: "Failed to load",
-      backToLibrary: "Back to library",
       formats: {
         EPUB: "Reflowable",
         PDF: "Fixed layout",
@@ -444,7 +442,6 @@ export const desktopEn = {
       clearSearch: "Clear search",
       bookmark: "Bookmark",
       bookmarks: "Bookmarks",
-      noBookmarks: "No bookmarks yet",
       bookmarkNumber: "Bookmark {{number}}",
       bookmarkLocation: "Position {{position}}",
       bookmarkPage: "Page {{page}}",
@@ -460,7 +457,6 @@ export const desktopEn = {
       bookmarkLoadFailed: "Failed to load bookmarks",
       bookmarkSaveFailed: "Failed to update bookmark",
       annotations: "Highlights and notes",
-      noAnnotations: "No highlights or notes yet",
       highlight: "Highlight",
       addNote: "Add note",
       editNote: "Edit note",

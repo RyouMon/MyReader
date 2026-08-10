@@ -84,8 +84,8 @@ jest.mock("react-i18next", () => ({
         "common.delete": "删除",
         "reader.bookmarks.deleteSelected": "删除所选书签",
         "reader.bookmarks.deselect": "取消选择",
-        "reader.bookmarks.empty": "暂无书签",
-        "reader.bookmarks.emptyDetail": "阅读时添加的书签会显示在这里",
+        "reader.empty.bookmarks.title": "还没有书签",
+        "reader.empty.bookmarks.detail": "请在阅读时添加书签。",
         "reader.bookmarks.done": "完成",
         "reader.bookmarks.manage": "管理",
         "reader.bookmarks.select": "选择",
@@ -144,8 +144,8 @@ describe("ReaderBookmarkList", () => {
 
   it("should show the bookmark empty state", () => {
     const screen = render(<ReaderBookmarkList {...baseProps} />)
-    expect(screen.getByText("暂无书签")).toBeTruthy()
-    expect(screen.getByText("阅读时添加的书签会显示在这里")).toBeTruthy()
+    expect(screen.getByText("还没有书签")).toBeTruthy()
+    expect(screen.getByText("请在阅读时添加书签。")).toBeTruthy()
   })
 
   it("should navigate when a short bookmark tap succeeds", () => {

@@ -21,6 +21,8 @@ jest.mock("@react-native-menu/menu", () => ({
 jest.mock("@/src/design/tokens", () => {
   const palette = {
     borderStrong: "#d9cebb",
+    brandOnedrive: "#0078d4",
+    dataSourceWebdav: "#0f766e",
     primary: "#b5651d",
     surface: "#faf5ef",
     text: "#3b2f2f",
@@ -79,6 +81,49 @@ describe("ListRow", () => {
     const MaterialIcons = jest.requireMock("@expo/vector-icons/MaterialIcons")
     expect(MaterialIcons.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({ color: "#b5651d" }),
+    )
+  })
+
+  it("should use OneDrive blue when a row has a OneDrive icon", () => {
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: "ios",
+    })
+
+    render(
+      <ListRow
+        title="OneDrive"
+        icon={{ ios: "cloud.fill", android: "cloud", tone: "onedrive" }}
+      />,
+    )
+
+    const { SymbolView } = jest.requireMock("expo-symbols")
+    expect(SymbolView.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ tintColor: "#0078d4" }),
+    )
+  })
+
+  it("should use WebDAV teal for a filled server icon", () => {
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: "ios",
+    })
+
+    render(
+      <ListRow
+        title="WebDAV"
+        icon={{
+          ios: "dns",
+          android: "dns",
+          iconSet: "material",
+          tone: "webdav",
+        }}
+      />,
+    )
+
+    const MaterialIcons = jest.requireMock("@expo/vector-icons/MaterialIcons")
+    expect(MaterialIcons.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ name: "dns", color: "#0f766e" }),
     )
   })
 })

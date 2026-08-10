@@ -69,6 +69,26 @@ const shortContextAnnotation = {
 }
 
 describe("ReadiumAnnotationPanel", () => {
+  it("should explain how to add the first highlight or note", () => {
+    render(
+      <ReadiumAnnotationPanel
+        visible
+        annotations={[]}
+        loading={false}
+        mutating={false}
+        onRetry={vi.fn()}
+        onSelect={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText("还没有高亮或笔记")).toBeInTheDocument()
+    expect(
+      screen.getByText("请先选中文字，再添加高亮或笔记。"),
+    ).toBeInTheDocument()
+  })
+
   it("should expose highlights and notes from a dedicated panel", () => {
     const onSelect = vi.fn()
     render(

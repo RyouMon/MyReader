@@ -1,8 +1,9 @@
-import { Cloud, Loader2, LogIn, RefreshCw } from "lucide-react"
+import { Loader2, LogIn, RefreshCw } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import { StatusNotice } from "@/components/common/StatusNotice"
+import { OneDriveCloudIcon } from "@/components/common/OneDriveCloudIcon"
 import { Button } from "@/components/ui/button"
 import { DialogFooter } from "@/components/ui/dialog"
 import {
@@ -132,7 +133,7 @@ export function OnedriveDataSourceForm({
         <Empty className={emptyClassName}>
           <EmptyHeader>
             <EmptyMedia variant="icon">
-              <Cloud />
+              <OneDriveCloudIcon />
             </EmptyMedia>
             <EmptyTitle>{t("addDataSourceForm.typeOnedrive")}</EmptyTitle>
           </EmptyHeader>
@@ -146,7 +147,7 @@ export function OnedriveDataSourceForm({
         <Empty className={emptyClassName}>
           <EmptyHeader>
             <EmptyMedia variant="icon">
-              <Cloud />
+              <OneDriveCloudIcon />
             </EmptyMedia>
             <EmptyTitle>
               {authResult.userName || t("addDataSourceForm.typeOnedrive")}
@@ -180,7 +181,7 @@ export function OnedriveDataSourceForm({
             </Button>
           ) : (
             <Button type="button" onClick={() => void handleAuth()}>
-              <Cloud data-icon="inline-start" />
+              <OneDriveCloudIcon data-icon="inline-start" />
               {t("addDataSourceForm.signInWithMicrosoft")}
             </Button>
           )}

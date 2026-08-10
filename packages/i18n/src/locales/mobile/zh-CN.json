@@ -233,8 +233,6 @@
       "title": "书签",
       "addCurrent": "在当前位置添加书签",
       "removeCurrent": "移除当前位置的书签",
-      "empty": "暂无书签",
-      "emptyDetail": "阅读时添加的书签会显示在这里",
       "loading": "正在加载书签…",
       "error": "无法加载或更新书签",
       "retry": "重试",
@@ -261,8 +259,6 @@
       "removeAction": "移除",
       "copyAction": "复制",
       "selectionActions": "文本操作",
-      "empty": "暂无笔记",
-      "emptyDetail": "选中文字后，可以高亮或添加笔记",
       "loading": "正在加载笔记…",
       "error": "无法加载或更新笔记",
       "retry": "重试",
@@ -352,24 +348,11 @@
   },
   "bookDetail": {
     "title": "书籍详情",
-    "loadFailed": "书籍详情加载失败",
-    "loadFailedMessage": "书籍详情页面遇到了意外错误，请重试。",
     "missingParam": {
       "title": "缺少书籍参数",
       "detail": "请从书库重新进入书籍详情。"
     },
-    "noLibrary": {
-      "title": "没有当前书库",
-      "detail": "请先在设置或书库中选择要使用的 Calibre 书库。"
-    },
-    "invalidId": "无效的书籍 ID",
-    "notFoundInMeta": "在 metadata 中未找到该书",
-    "notFoundInLibrary": "在书库中未找到该书",
     "loadingDetail": "加载书籍详情…",
-    "notFound": {
-      "title": "没有找到这本书",
-      "detail": "它可能已从当前书库移除，或页面参数已经失效。"
-    },
     "seriesInfo": "{{series}} · 第 {{index}} 部",
     "series": "丛书",
     "seriesIndex": "丛书编号",
@@ -454,10 +437,11 @@
     "sourcesTitle": "WebDAV 数据源",
     "sourceDetail": "数据源详情",
     "addSource": "添加 WebDAV 数据源",
+    "reconfigureSource": "重新配置 WebDAV",
     "selectLibrary": "选择 WebDAV 书库",
     "noSources": {
       "title": "还没有 WebDAV 数据源",
-      "detail": "通过「添加 WebDAV」连接服务器后，即可浏览远程目录并选择 Calibre 书库。"
+      "detail": "请先点击下方按钮添加 WebDAV 数据源。"
     },
     "delete": {
       "title": "删除 WebDAV 数据源",
@@ -470,10 +454,6 @@
       "message": "删除数据源失败。"
     },
     "deleteSource": "删除数据源",
-    "notFound": {
-      "title": "没有找到这个数据源",
-      "detail": "它可能已经被移除，或者当前链接参数已经失效。"
-    },
     "type": "类型",
     "serverAddress": "服务器地址",
     "username": "用户名",
@@ -504,6 +484,10 @@
       "readFailed": {
         "title": "读取失败"
       },
+      "credentialsUnavailable": {
+        "title": "WebDAV 凭据不可用",
+        "detail": "请重新配置 WebDAV 数据源。"
+      },
       "noCredentials": "无法获取 WebDAV 凭据，请重新编辑数据源并设置密码。",
       "empty": {
         "title": "当前目录为空",
@@ -527,8 +511,12 @@
       "addAnyway": "仍然添加",
       "addFailed": "添加失败",
       "addFailedMessage": "操作失败，请重试。",
+      "updateFailed": "保存失败",
       "completing": "完成中",
       "complete": "完成",
+      "saving": "保存中",
+      "save": "保存",
+      "saveAnyway": "仍然保存",
       "serverAddressLabel": "服务器地址",
       "portLabel": "端口号",
       "basePathLabel": "基础路径",
@@ -536,6 +524,7 @@
       "usernamePlaceholder": "请输入用户名",
       "passwordLabel": "密码",
       "passwordPlaceholder": "请输入密码",
+      "passwordKeepPlaceholder": "留空则保留原密码",
       "useSSL": "使用 SSL"
     }
   },
@@ -543,10 +532,11 @@
     "sourcesTitle": "OneDrive 数据源",
     "sourceDetail": "数据源详情",
     "addSource": "添加 OneDrive 数据源",
+    "reauthenticate": "重新登录 OneDrive",
     "selectLibrary": "选择 OneDrive 书库",
     "noSources": {
       "title": "暂无 OneDrive 数据源",
-      "detail": "登录 Microsoft 账号后浏览 OneDrive，选择 Calibre 书库。"
+      "detail": "请先点击下方按钮添加 OneDrive 数据源。"
     },
     "delete": {
       "title": "删除 OneDrive 数据源",
@@ -559,10 +549,6 @@
       "message": "删除数据源失败。"
     },
     "deleteSource": "删除数据源",
-    "notFound": {
-      "title": "未找到数据源",
-      "detail": "数据源可能已被删除或链接参数无效。"
-    },
     "type": "类型",
     "displayName": "显示名称",
     "email": "邮箱",
@@ -590,6 +576,10 @@
       "readFailed": {
         "title": "读取失败"
       },
+      "credentialsUnavailable": {
+        "title": "OneDrive 登录状态已失效",
+        "detail": "请重新登录 OneDrive。"
+      },
       "noCredentials": "无法获取 OneDrive 凭据，请重新认证数据源。",
       "empty": {
         "title": "空目录",
@@ -604,13 +594,15 @@
     },
     "add": {
       "signInTitle": "登录 OneDrive",
-      "signInDetail": "连接 Microsoft 账号，浏览 OneDrive 并选择 Calibre 书库。",
+      "signInDetail": "登录 Microsoft 账号。",
       "signInWithMicrosoft": "使用 Microsoft 登录",
       "authenticating": "正在认证…",
       "addingTitle": "正在添加 OneDrive 数据源",
       "addingDetail": "正在完成连接，请勿关闭应用。",
       "authFailed": "认证失败",
       "authFailedMessage": "无法登录 OneDrive，请重试。",
+      "accountMismatch": "账号不一致",
+      "accountMismatchMessage": "请登录 {{email}}，或返回后添加新的 OneDrive 数据源。",
       "alreadyAdded": "账号已添加",
       "alreadyAddedMessage": "账号 {{email}} 已连接。"
     }
@@ -620,6 +612,13 @@
     "retry": "重试"
   },
   "dataSource": {
+    "backToList": "返回数据源列表",
+    "backToLocations": "返回可用位置",
+    "notFound": {
+      "title": "数据源不存在",
+      "detail": "它可能已被移除，请返回数据源列表。",
+      "addLibraryDetail": "它可能已被移除，请返回可用位置。"
+    },
     "deleteInUse": {
       "title": "无法删除",
       "message": "以下书库正在使用该数据源：{{names}}。请先移除这些书库后再删除数据源。"

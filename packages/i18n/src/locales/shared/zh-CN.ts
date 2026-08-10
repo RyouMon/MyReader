@@ -44,9 +44,23 @@ export const sharedZhCN = {
     },
   },
   bookDetail: {
+    backToLibrary: "返回书库",
     collapse: "收起",
     favorite: "收藏",
+    libraryUnavailable: {
+      title: "当前书库不可用",
+      detail: "它可能已被移除，请返回书库。",
+    },
+    loadFailed: {
+      title: "无法加载书籍详情",
+      detail: "读取书籍信息时出错，请重试。",
+    },
+    notFound: {
+      title: "没有找到这本书",
+      detail: "它可能已从当前书库中移除。",
+    },
     readingProgress: "阅读进度",
+    retry: "重试",
     synopsis: "简介",
   },
   bookRow: {
@@ -59,6 +73,7 @@ export const sharedZhCN = {
     save: "保存",
   },
   library: {
+    browseAllBooks: "浏览全部图书",
     importBook: "导入图书",
     label: "书库",
     collections: {
@@ -80,31 +95,32 @@ export const sharedZhCN = {
       },
       empty: {
         title: "书库为空",
-        detail: "当前书库中还没有图书。",
+        myreaderDetail: "请先导入一本图书。",
+        calibreDetail: "请通过 Calibre 向该书库添加图书。",
       },
       favorites: {
         title: "还没有收藏书籍",
-        detail: "将图书设为收藏后会显示在这里。",
+        detail: "请先将一本图书加入收藏。",
       },
       recentlyRead: {
         title: "还没有阅读记录",
-        detail: "打开一本图书后会显示在这里。",
+        detail: "请先打开一本图书开始阅读。",
       },
       downloaded: {
         title: "还没有已下载图书",
-        detail: "下载后的图书会显示在这里，可供离线阅读。",
+        detail: "请先下载一本图书。",
       },
       downloading: {
         title: "没有下载任务",
-        detail: "待下载和正在下载的图书会显示在这里。",
+        detail: "请先从书库中选择一本图书开始下载。",
       },
       uploading: {
         title: "没有上传任务",
-        detail: "待上传和正在上传的图书会显示在这里。",
+        detail: "请先从书库中选择一本仅存于本机的图书开始上传。",
       },
       localOnly: {
         title: "没有仅存于本机的图书",
-        detail: "尚未上传到云端的图书会显示在这里。",
+        detail: "无需操作，当前没有等待上传的图书。",
       },
     },
     sort: {
@@ -114,6 +130,16 @@ export const sharedZhCN = {
   },
   reader: {
     background: "背景",
+    empty: {
+      annotations: {
+        title: "还没有高亮或笔记",
+        detail: "请先选中文字，再添加高亮或笔记。",
+      },
+      bookmarks: {
+        title: "还没有书签",
+        detail: "请在阅读时添加书签。",
+      },
+    },
     fontOptions: {
       default: "默认",
       maru975Sc: "阿里妈妈方圆体",
@@ -156,7 +182,7 @@ export const sharedZhCN = {
     waitingForNetwork: "等待网络",
     offlineDetail: "当前书库的传输方式需要网络，恢复连接后可继续同步。",
     noActiveLibrary: "暂无可同步书库",
-    noActiveLibraryDetail: "添加或选择书库后即可同步。",
+    noActiveLibraryDetail: "请先添加书库。",
     activeLibraryChanged: "当前书库已改变，请重试。",
     reason: {
       manual: "手动触发",

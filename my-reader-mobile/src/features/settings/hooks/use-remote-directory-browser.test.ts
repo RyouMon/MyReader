@@ -142,4 +142,24 @@ describe("useRemoteDirectoryBrowser", () => {
     expect(mockListRemoteDirectories).toHaveBeenCalledTimes(2)
     expect(result.current.error).toBeNull()
   })
+
+  it("should offer account recovery when OneDrive rejects the stored credentials", async () => {
+    mockListRemoteDirectories.mockRejectedValue(
+      new Error("AUTH_ERROR: ONEDRIVE_UNAUTHORIZED"),
+    )
+    const { result } = renderHook(() =>
+      useRemoteDirectoryBrowser({
+        dataSourceId: "source-1",
+        currentPathParam: "/Books",
+        libraryAction: "open",
+        onLibraryOpened: mockOnLibraryOpened,
+        sourceType: "onedrive",
+      }),
+    )
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    expect(result.current.resolveFailed).toBe(true)
+    expect(result.current.error).toBeNull()
+  })
 })

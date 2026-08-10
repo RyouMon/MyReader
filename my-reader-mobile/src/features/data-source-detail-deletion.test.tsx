@@ -3,11 +3,21 @@ import type {
   DataSourceOnedrive,
   DataSourceWebdav,
 } from "@my-reader/tools/types/data-source"
-import { act, render, screen, waitFor } from "@testing-library/react-native"
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react-native"
 import { router } from "expo-router"
 import type { ComponentType, ReactNode } from "react"
 import * as mockReact from "react"
-import { Text as mockText, View as mockView } from "react-native"
+import {
+  Pressable as mockPressable,
+  Text as mockText,
+  View as mockView,
+} from "react-native"
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 
@@ -15,6 +25,7 @@ import OneDriveDataSourceDetailScreen from "./onedrive/onedrive-data-source-deta
 import WebDavDataSourceDetailScreen from "./webdav/webdav-data-source-detail-screen"
 
 const mockDeleteDataSource = jest.fn()
+const mockReauthenticateOneDriveDataSource = jest.fn()
 let mockDataSourceId = ""
 let mockDataSources: DataSource[] = []
 let mockDeleteAction: { onPress: () => void } | undefined
@@ -54,6 +65,7 @@ jest.mock("expo-router", () => ({
   router: {
     back: jest.fn(),
     canGoBack: jest.fn(() => true),
+    push: jest.fn(),
     replace: jest.fn(),
   },
   useLocalSearchParams: jest.fn(() => ({ dataSourceId: mockDataSourceId })),
@@ -71,6 +83,24 @@ jest.mock("react-i18next", () => ({
 }))
 
 jest.mock("@/src/components", () => ({
+  EmptyState: jest.fn(
+    ({
+      action,
+      detail,
+      title,
+    }: {
+      action?: ReactNode
+      detail: string
+      title: string
+    }) =>
+      mockReact.createElement(
+        mockView,
+        null,
+        mockReact.createElement(mockText, null, title),
+        mockReact.createElement(mockText, null, detail),
+        action,
+      ),
+  ),
   ListRow: jest.fn(({ detail, title }: { detail: string; title: string }) =>
     mockReact.createElement(
       mockView,
@@ -81,6 +111,14 @@ jest.mock("@/src/components", () => ({
   ),
   Screen: jest.fn(({ children }: { children: ReactNode }) =>
     mockReact.createElement(mockView, null, children),
+  ),
+  PrimaryButton: jest.fn(
+    ({ onPress, title }: { onPress: () => void; title: string }) =>
+      mockReact.createElement(
+        mockPressable,
+        { accessibilityRole: "button", onPress },
+        mockReact.createElement(mockText, null, title),
+      ),
   ),
   SectionCard: jest.fn(({ children }: { children: ReactNode }) =>
     mockReact.createElement(mockView, null, children),
@@ -109,10 +147,19 @@ jest.mock("@/src/hooks/use-data-source-actions", () => ({
   })),
 }))
 
+jest.mock("@/src/features/onedrive/hooks/use-add-onedrive-data-source", () => ({
+  useAddOneDriveDataSource: jest.fn(() => ({
+    busy: false,
+    reauthenticateOneDriveDataSource: mockReauthenticateOneDriveDataSource,
+  })),
+}))
+
 jest.mock("@/src/navigation/hooks/use-screen-header", () => ({
   useScreenHeader: jest.fn(
-    ({ right }: { right?: { onPress: () => void }[] }) => {
-      mockDeleteAction = right?.[0]
+    ({ right }: { right?: { label: string; onPress: () => void }[] }) => {
+      mockDeleteAction = right?.find((action) =>
+        action.label.endsWith("deleteSource"),
+      )
       return { options: {}, toolbar: null }
     },
   ),
@@ -134,16 +181,19 @@ jest.mock("@/tw", () => ({
 const detailCases: {
   DetailScreen: ComponentType
   notFoundTitle: string
+  sourceListRoute: "/settings/onedrive" | "/settings/webdav"
   source: DataSource
 }[] = [
   {
     DetailScreen: WebDavDataSourceDetailScreen,
-    notFoundTitle: "webdav.notFound.title",
+    notFoundTitle: "dataSource.notFound.title",
+    sourceListRoute: "/settings/webdav",
     source: mockWebDavSource,
   },
   {
     DetailScreen: OneDriveDataSourceDetailScreen,
-    notFoundTitle: "onedrive.notFound.title",
+    notFoundTitle: "dataSource.notFound.title",
+    sourceListRoute: "/settings/onedrive",
     source: mockOneDriveSource,
   },
 ]
@@ -151,6 +201,7 @@ const detailCases: {
 describe.each(detailCases)("$source.type data source detail", ({
   DetailScreen,
   notFoundTitle,
+  sourceListRoute,
   source,
 }) => {
   beforeEach(() => {
@@ -201,5 +252,17 @@ describe.each(detailCases)("$source.type data source detail", ({
     await waitFor(() => {
       expect(router.back).toHaveBeenCalledTimes(1)
     })
+  })
+
+  it("should return to the source list when the requested source no longer exists", () => {
+    mockDataSources = []
+
+    render(<DetailScreen />)
+
+    expect(screen.getByText(notFoundTitle)).toBeTruthy()
+    fireEvent.press(
+      screen.getByRole("button", { name: "dataSource.backToList" }),
+    )
+    expect(router.replace).toHaveBeenCalledWith(sourceListRoute)
   })
 })

@@ -27,6 +27,7 @@ import {
 } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
+import { SectionHeader } from "@/components/common/SectionHeader"
 import AppSidebarToggle from "@/components/library/AppSidebarToggle"
 import { BookDownloadIndicator } from "@/components/library/BookDownloadIndicator"
 import { CircularDownloadProgress } from "@/components/library/CircularDownloadProgress"
@@ -43,6 +44,7 @@ import {
 } from "@/components/ui/dialog"
 import {
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
@@ -176,6 +178,21 @@ const DETAIL_CARD_CLASS =
   "relative isolate flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-none bg-card shadow-none transition-colors duration-[340ms] ease-[cubic-bezier(0.25,0.1,0.25,1)] motion-reduce:transition-none"
 const MOBILE_HERO_BREAKPOINT = 559
 
+type BookDetailFailure = "libraryUnavailable" | "loadFailed" | "notFound"
+
+function classifyBookDetailFailure(error: unknown): BookDetailFailure {
+  const kind =
+    error instanceof Error
+      ? (error as Error & { kind?: unknown }).kind
+      : undefined
+  const message = String(error)
+  if (kind !== "NotFound") return "loadFailed"
+  return message.includes("NO_ACTIVE_LIBRARY") ||
+    message.includes("LIBRARY_NOT_FOUND")
+    ? "libraryUnavailable"
+    : "notFound"
+}
+
 export default function BookDetailPane({
   bookId,
   className,
@@ -192,7 +209,8 @@ export default function BookDetailPane({
   const { t } = useTranslation()
   const navigate = useNavigate()
   const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
-  const { data: libraries = [] } = useLibrariesQuery()
+  const { data: libraries = [], isLoading: librariesLoading } =
+    useLibrariesQuery()
   const { data: selectedFormatById = {} } =
     useBookReadingFormats(activeLibraryId)
   const { data: progressByBookId = {} } =
@@ -211,7 +229,8 @@ export default function BookDetailPane({
   const [book, setBook] = useState<BookDetail | null>(null)
   const [seriesBooks, setSeriesBooks] = useState<CalibreBook[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [failure, setFailure] = useState<BookDetailFailure | null>(null)
+  const [reloadIndex, setReloadIndex] = useState(0)
   const [synopsisExpanded, setSynopsisExpanded] = useState(false)
   const [selectedFormat, setSelectedFormat] = useState<string | null>(null)
   const [isNarrowHero, setIsNarrowHero] = useState(false)
@@ -232,7 +251,11 @@ export default function BookDetailPane({
   const bodyRef = useRef<HTMLDivElement>(null)
   const mobileCoverArtRef = useRef<HTMLDivElement>(null)
 
-  useOverlayScrollbar(bodyHostRef, bodyRef, !loading && !error && Boolean(book))
+  useOverlayScrollbar(
+    bodyHostRef,
+    bodyRef,
+    !loading && !failure && Boolean(book),
+  )
 
   const updateNarrowCoverBackdrop = useCallback(() => {
     const body = bodyRef.current
@@ -261,7 +284,14 @@ export default function BookDetailPane({
 
     async function load() {
       setLoading(true)
-      setError(null)
+      setFailure(null)
+      setBook(null)
+      if (librariesLoading) return
+      if (!activeLibraryId || !activeLibrary) {
+        setFailure("libraryUnavailable")
+        setLoading(false)
+        return
+      }
       console.info(
         `Start to load book detail page. book id: "${bookId}", library id: "${activeLibraryId ?? ""}"`,
       )
@@ -269,6 +299,7 @@ export default function BookDetailPane({
         const detail = await api.getBookDetail(activeLibraryId, Number(bookId))
         if (cancelled) return
         setBook(detail)
+        setFailure(null)
         setSeriesBooks([])
         setSelectedFormat(null)
         console.info(
@@ -294,7 +325,7 @@ export default function BookDetailPane({
           `Failed to load book detail page. book id: "${bookId}", library id: "${activeLibraryId ?? ""}", error:`,
           e,
         )
-        setError(String(e))
+        setFailure(classifyBookDetailFailure(e))
       } finally {
         if (!cancelled) {
           setLoading(false)
@@ -306,7 +337,7 @@ export default function BookDetailPane({
     return () => {
       cancelled = true
     }
-  }, [bookId, activeLibraryId])
+  }, [activeLibrary, activeLibraryId, bookId, librariesLoading, reloadIndex])
 
   useEffect(() => {
     if (!bookId) return
@@ -401,6 +432,14 @@ export default function BookDetailPane({
       void addFavoriteBook(id)
     }
   }, [activeLibraryId, addFavoriteBook, bookId, isFavorite, removeFavoriteBook])
+
+  const handleReturnToLibrary = useCallback(() => {
+    if (onBackToList) {
+      onBackToList()
+      return
+    }
+    navigate({ to: "/" })
+  }, [navigate, onBackToList])
 
   const handleOpenMetadataEditor = useCallback(() => {
     if (!book) return
@@ -530,7 +569,8 @@ export default function BookDetailPane({
     )
   }
 
-  if (error || !book) {
+  if (failure || !book) {
+    const resolvedFailure = failure ?? "notFound"
     return (
       <section
         className={cn(DETAIL_CARD_CLASS, className)}
@@ -548,9 +588,27 @@ export default function BookDetailPane({
             <EmptyMedia variant="icon">
               <AlertCircle className="text-destructive" />
             </EmptyMedia>
-            <EmptyTitle>{t("bookDetail.loadFailed")}</EmptyTitle>
-            <EmptyDescription>{error}</EmptyDescription>
+            <EmptyTitle>{t(`bookDetail.${resolvedFailure}.title`)}</EmptyTitle>
+            <EmptyDescription>
+              {t(`bookDetail.${resolvedFailure}.detail`)}
+            </EmptyDescription>
           </EmptyHeader>
+          <EmptyContent>
+            <Button
+              size="sm"
+              onClick={
+                resolvedFailure === "loadFailed"
+                  ? () => setReloadIndex((value) => value + 1)
+                  : handleReturnToLibrary
+              }
+            >
+              {t(
+                resolvedFailure === "loadFailed"
+                  ? "bookDetail.retry"
+                  : "bookDetail.backToLibrary",
+              )}
+            </Button>
+          </EmptyContent>
         </Empty>
       </section>
     )
@@ -590,9 +648,11 @@ export default function BookDetailPane({
     fadeHeightClass: string,
   ) => (
     <div className={cn("min-w-0", className)}>
-      <h2 className="mb-2 text-[19px] leading-none font-semibold text-[var(--detail-hero-fg)]">
-        {t("bookDetail.synopsis")}
-      </h2>
+      <SectionHeader
+        className="mb-2"
+        title={t("bookDetail.synopsis")}
+        titleClassName="text-[19px] leading-none font-semibold text-[var(--detail-hero-fg)]"
+      />
       <div
         className={cn(
           "detail-synopsis-wrap relative overflow-hidden transition-[max-height] duration-300 ease-in-out",
@@ -863,9 +923,11 @@ export default function BookDetailPane({
                     </div>
 
                     <div className="detail-anim-8 min-w-0">
-                      <h2 className="mb-2 text-[19px] leading-none font-semibold text-[var(--detail-hero-fg)]">
-                        {t("bookDetail.synopsis")}
-                      </h2>
+                      <SectionHeader
+                        className="mb-2"
+                        title={t("bookDetail.synopsis")}
+                        titleClassName="text-[19px] leading-none font-semibold text-[var(--detail-hero-fg)]"
+                      />
                       <div
                         className={cn(
                           "detail-synopsis-wrap relative overflow-hidden transition-[max-height] duration-300 ease-in-out",
@@ -1871,7 +1933,7 @@ function DetailSection({
 }) {
   return (
     <div className={cn(!flush && "mt-8", className)}>
-      <h2 className="mb-3 text-[15px] font-semibold">{title}</h2>
+      <SectionHeader title={title} />
       {children}
     </div>
   )

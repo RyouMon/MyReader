@@ -12,6 +12,7 @@ import {
 import { ErrorBoundary } from "@/src/components/error-boundary"
 import { useThemePalette } from "@/src/design/tokens"
 import { normalizeCurrentPath } from "@/src/domain/library/remote-library"
+import { useAddOneDriveDataSource } from "@/src/features/onedrive/hooks/use-add-onedrive-data-source"
 import { useAddLibraryFlow } from "@/src/features/settings/add-library-flow-context"
 import { useRemoteDirectoryBrowser } from "@/src/features/settings/hooks/use-remote-directory-browser"
 import type { RemoteLibraryAction } from "@/src/features/settings/hooks/use-remote-directory-browser"
@@ -56,6 +57,8 @@ export function RemoteDirectoryBrowserScreen({
     libraryActionParam === "create" ? "create" : "open"
   const isAddLibraryBrowser = browserRoute === "/settings/add-library/browser"
   const { dismiss: dismissAddLibrary } = useAddLibraryFlow()
+  const { busy: authenticating, reauthenticateOneDriveDataSource } =
+    useAddOneDriveDataSource()
   const handleLibraryOpened = useCallback(() => {
     if (isAddLibraryBrowser) {
       dismissAddLibrary()
@@ -70,6 +73,7 @@ export function RemoteDirectoryBrowserScreen({
   const {
     notFound,
     resolveFailed,
+    candidate,
     candidateId,
     entries,
     loading,
@@ -113,6 +117,46 @@ export function RemoteDirectoryBrowserScreen({
       return
     }
     void choosePath(currentPath, chooseErrorMessages)
+  }
+
+  function handleReturnToDataSources() {
+    if (isAddLibraryBrowser) {
+      router.replace("/settings/add-library")
+      return
+    }
+    if (sourceType === "webdav") {
+      router.replace("/settings/webdav")
+      return
+    }
+    router.replace("/settings/onedrive")
+  }
+
+  function handleRecoverCredentials() {
+    if (!candidateId) return
+
+    if (sourceType === "webdav") {
+      const params = {
+        dataSourceId: candidateId,
+        returnToBrowser: "true",
+        returnPath: currentPath,
+        libraryAction,
+        ...(from ? { from } : {}),
+      }
+      if (isAddLibraryBrowser) {
+        router.push({
+          pathname: "/settings/add-library/webdav",
+          params,
+        })
+      } else {
+        router.push({ pathname: "/settings/webdav/add", params })
+      }
+      return
+    }
+
+    if (candidate?.type !== "onedrive") return
+    void reauthenticateOneDriveDataSource(candidate).then((authenticated) => {
+      if (authenticated) retry()
+    })
   }
 
   const isAddLibraryFlow = from === "add-library" && currentPath === "/"
@@ -159,19 +203,38 @@ export function RemoteDirectoryBrowserScreen({
         onPress: handleChooseCurrentPath,
         loading: saving,
         color: palette.primary,
+        disabled: loading || resolveFailed,
       }),
     ],
   })
 
   if (notFound) {
     return (
-      <Screen>
-        <EmptyState
-          title={label("notFound.title")}
-          detail={label("notFound.detail")}
-          icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }}
-        />
-      </Screen>
+      <>
+        <Stack.Screen options={options} />
+        {toolbar}
+        <Screen>
+          <EmptyState
+            title={t("dataSource.notFound.title")}
+            detail={t(
+              isAddLibraryBrowser
+                ? "dataSource.notFound.addLibraryDetail"
+                : "dataSource.notFound.detail",
+            )}
+            action={
+              <PrimaryButton
+                title={t(
+                  isAddLibraryBrowser
+                    ? "dataSource.backToLocations"
+                    : "dataSource.backToList",
+                )}
+                onPress={handleReturnToDataSources}
+              />
+            }
+            icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }}
+          />
+        </Screen>
+      </>
     )
   }
 
@@ -202,8 +265,21 @@ export function RemoteDirectoryBrowserScreen({
               />
             ) : resolveFailed ? (
               <EmptyState
-                title={label("readFailed.title")}
-                detail={label("noCredentials")}
+                title={label("credentialsUnavailable.title")}
+                detail={label("credentialsUnavailable.detail")}
+                action={
+                  <PrimaryButton
+                    disabled={authenticating}
+                    title={
+                      authenticating && sourceType === "onedrive"
+                        ? t("onedrive.add.authenticating")
+                        : sourceType === "webdav"
+                          ? t("webdav.reconfigureSource")
+                          : t("onedrive.reauthenticate")
+                    }
+                    onPress={handleRecoverCredentials}
+                  />
+                }
                 icon={{
                   ios: "exclamationmark.triangle.fill",
                   android: "warning",

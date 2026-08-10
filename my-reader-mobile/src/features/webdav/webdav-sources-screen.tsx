@@ -13,6 +13,7 @@ import {
   SectionCard,
   ListRow,
 } from "@/src/components"
+import { ENTITY_LIST_ROW_ICONS } from "@/src/components/ui/entity-list-row-icons"
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 import { createAddAction } from "@/src/navigation/toolbar-action-helpers"
 import { useAppStore } from "@/src/store/app-store"
@@ -70,7 +71,7 @@ export default function WebDavSourcesScreen() {
                     onPress={handleAdd}
                   />
                 }
-                icon={{ ios: "externaldrive.fill", android: "storage" }}
+                icon={ENTITY_LIST_ROW_ICONS.webdavDataSource}
               />
             ) : (
               <SectionCard>
@@ -80,6 +81,7 @@ export default function WebDavSourcesScreen() {
                     testID={`data-source-row-${source.id}`}
                     title={source.name}
                     detail={`${source.endpoint}${source.rootPath ?? ""}`}
+                    icon={ENTITY_LIST_ROW_ICONS.webdavDataSource}
                     onPress={() => openSourceDetail(source.id)}
                     isLast={index === webdavSources.length - 1}
                   />

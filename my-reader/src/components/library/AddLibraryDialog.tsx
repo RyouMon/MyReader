@@ -2,15 +2,7 @@ import { appendRemotePathSegment } from "@my-reader/tools/remote-path"
 import type { DataSource } from "@my-reader/tools/types/data-source"
 import { join } from "@tauri-apps/api/path"
 import { open as openDirectory } from "@tauri-apps/plugin-dialog"
-import {
-  CircleHelp,
-  Cloud,
-  FolderOpen,
-  HardDrive,
-  Library,
-  Loader2,
-  Plus,
-} from "lucide-react"
+import { CircleHelp, FolderOpen, Library, Loader2, Plus } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
@@ -20,6 +12,10 @@ import {
   FlowDialogContent,
   FlowDialogHeader,
 } from "@/components/common/FlowDialog"
+import { LocalStorageIcon } from "@/components/common/LocalStorageIcon"
+import { OneDriveCloudIcon } from "@/components/common/OneDriveCloudIcon"
+import { SectionHeader } from "@/components/common/SectionHeader"
+import { WebdavServerIcon } from "@/components/common/WebdavServerIcon"
 import { StatusNotice } from "@/components/common/StatusNotice"
 import {
   AddDataSourceForm,
@@ -367,13 +363,11 @@ export function AddLibraryDialog({
 
           {step.kind === "location" ? (
             <div className="space-y-5">
-              <section className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">
-                  {t("addLibraryFlow.storageLocations")}
-                </p>
+              <section>
+                <SectionHeader title={t("addLibraryFlow.storageLocations")} />
                 <div className="grid gap-2">
                   <FlowDialogChoice
-                    icon={HardDrive}
+                    icon={LocalStorageIcon}
                     title={t("addLibraryFlow.local.title")}
                     description={t("addLibraryFlow.local.description")}
                     disabled={submitting}
@@ -392,7 +386,11 @@ export function AddLibraryDialog({
                     enabledDataSources.map((source) => (
                       <FlowDialogChoice
                         key={source.id}
-                        icon={Cloud}
+                        icon={
+                          source.type === "webdav"
+                            ? WebdavServerIcon
+                            : OneDriveCloudIcon
+                        }
                         title={
                           source.type === "onedrive"
                             ? source.displayName || source.name
@@ -400,8 +398,8 @@ export function AddLibraryDialog({
                         }
                         description={
                           source.type === "webdav"
-                            ? t("addLibraryForm.typeWebdav")
-                            : t("addDataSourceForm.typeOnedrive")
+                            ? source.endpoint
+                            : source.email || undefined
                         }
                         disabled={submitting}
                         onClick={() => {
@@ -418,14 +416,12 @@ export function AddLibraryDialog({
                 </div>
               </section>
 
-              <section className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">
-                  {t("addLibraryFlow.addStorage")}
-                </p>
+              <section>
+                <SectionHeader title={t("addLibraryFlow.addStorage")} />
                 <div className="grid grid-cols-2 gap-2">
                   <FlowDialogChoice
                     compact
-                    icon={Plus}
+                    icon={WebdavServerIcon}
                     title={t("addLibraryFlow.addWebdav.title")}
                     disabled={submitting}
                     onClick={() =>
@@ -438,7 +434,7 @@ export function AddLibraryDialog({
                   />
                   <FlowDialogChoice
                     compact
-                    icon={Plus}
+                    icon={OneDriveCloudIcon}
                     title={t("addLibraryFlow.addOnedrive.title")}
                     disabled={submitting}
                     onClick={() =>

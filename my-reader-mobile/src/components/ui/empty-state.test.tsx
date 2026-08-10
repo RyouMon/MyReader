@@ -47,6 +47,8 @@ jest.mock("react-native-safe-area-context", () => ({
 
 jest.mock("@/src/design/tokens", () => ({
   useThemePalette: () => ({
+    brandOnedrive: "#0078d4",
+    dataSourceWebdav: "#0f766e",
     border: "#333333",
     text: "#ffffff",
     textMuted: "#999999",
@@ -123,6 +125,70 @@ describe("EmptyState", () => {
       const { Icon } = jest.requireMock("@expo/ui")
       const icon = screen.UNSAFE_getByType(Icon)
       expect(host.children).toContain(icon)
+    } finally {
+      Object.defineProperty(Platform, "OS", {
+        configurable: true,
+        value: initialPlatform,
+      })
+    }
+  })
+
+  it("should use OneDrive blue for a branded cloud icon", () => {
+    const initialPlatform = Platform.OS
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: "ios",
+    })
+
+    try {
+      render(
+        <EmptyState
+          title="OneDrive"
+          detail="详情"
+          icon={{ ios: "cloud.fill", android: "cloud", tone: "onedrive" }}
+        />,
+      )
+
+      const { SymbolView } = jest.requireMock("expo-symbols")
+      expect(SymbolView.mock.calls.at(-1)?.[0]).toEqual(
+        expect.objectContaining({
+          name: "cloud.fill",
+          tintColor: "#0078d4",
+        }),
+      )
+    } finally {
+      Object.defineProperty(Platform, "OS", {
+        configurable: true,
+        value: initialPlatform,
+      })
+    }
+  })
+
+  it("should use WebDAV teal for a filled server icon", () => {
+    const initialPlatform = Platform.OS
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: "ios",
+    })
+
+    try {
+      render(
+        <EmptyState
+          title="WebDAV"
+          detail="详情"
+          icon={{
+            ios: "dns",
+            android: "dns",
+            iconSet: "material",
+            tone: "webdav",
+          }}
+        />,
+      )
+
+      const MaterialIcons = jest.requireMock("@expo/vector-icons/MaterialIcons")
+      expect(MaterialIcons.mock.calls.at(-1)?.[0]).toEqual(
+        expect.objectContaining({ name: "dns", color: "#0f766e" }),
+      )
     } finally {
       Object.defineProperty(Platform, "OS", {
         configurable: true,

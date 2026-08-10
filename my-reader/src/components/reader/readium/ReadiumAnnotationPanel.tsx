@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/context-menu"
 import {
   Empty,
+  EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
@@ -154,8 +155,11 @@ export function ReadiumAnnotationPanel({
                   <SquarePen />
                 </EmptyMedia>
                 <EmptyTitle className="text-sm font-semibold text-reader-chrome-fg">
-                  {t("reader.noAnnotations")}
+                  {t("reader.empty.annotations.title")}
                 </EmptyTitle>
+                <EmptyDescription className="text-xs text-reader-chrome-muted">
+                  {t("reader.empty.annotations.detail")}
+                </EmptyDescription>
               </EmptyHeader>
             </Empty>
           ) : (

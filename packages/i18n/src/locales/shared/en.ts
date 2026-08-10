@@ -44,9 +44,24 @@ export const sharedEn = {
     },
   },
   bookDetail: {
+    backToLibrary: "Back to library",
     collapse: "Collapse",
     favorite: "Favorite",
+    libraryUnavailable: {
+      title: "Current library unavailable",
+      detail: "It may have been removed. Return to the library.",
+    },
+    loadFailed: {
+      title: "Unable to load book details",
+      detail:
+        "An error occurred while reading the book information. Try again.",
+    },
+    notFound: {
+      title: "Book not found",
+      detail: "It may have been removed from the current library.",
+    },
     readingProgress: "Reading progress",
+    retry: "Retry",
     synopsis: "Synopsis",
   },
   bookRow: {
@@ -59,6 +74,7 @@ export const sharedEn = {
     save: "Save",
   },
   library: {
+    browseAllBooks: "Browse all books",
     importBook: "Import book",
     label: "Library",
     collections: {
@@ -80,31 +96,32 @@ export const sharedEn = {
       },
       empty: {
         title: "Library is empty",
-        detail: "There are no books in this library yet.",
+        myreaderDetail: "Import a book to get started.",
+        calibreDetail: "Add books to this library using Calibre.",
       },
       favorites: {
         title: "No favorites yet",
-        detail: "Books you mark as favorites appear here.",
+        detail: "Add a book to your favorites.",
       },
       recentlyRead: {
         title: "No reading history yet",
-        detail: "Books appear here after you open them.",
+        detail: "Open a book to start reading.",
       },
       downloaded: {
         title: "No downloaded books yet",
-        detail: "Downloaded books appear here for offline reading.",
+        detail: "Download a book for offline reading.",
       },
       downloading: {
         title: "No download tasks",
-        detail: "Queued and active downloads appear here.",
+        detail: "Start downloading a book from your library.",
       },
       uploading: {
         title: "No upload tasks",
-        detail: "Queued and active uploads appear here.",
+        detail: "Upload a book that is stored only on this device.",
       },
       localOnly: {
         title: "No local-only books",
-        detail: "Books not yet uploaded to remote storage appear here.",
+        detail: "No action is needed. There are no books waiting to upload.",
       },
     },
     sort: {
@@ -114,6 +131,16 @@ export const sharedEn = {
   },
   reader: {
     background: "Background",
+    empty: {
+      annotations: {
+        title: "No highlights or notes yet",
+        detail: "Select text first, then add a highlight or note.",
+      },
+      bookmarks: {
+        title: "No bookmarks yet",
+        detail: "Add a bookmark while reading.",
+      },
+    },
     fontOptions: {
       default: "Default",
       maru975Sc: "Alimama FangYuanTi",
@@ -157,7 +184,7 @@ export const sharedEn = {
     offlineDetail:
       "This library's transport requires a network connection. Sync can continue after connectivity returns.",
     noActiveLibrary: "No library to sync",
-    noActiveLibraryDetail: "Add or select a library to start syncing.",
+    noActiveLibraryDetail: "Add a library to start syncing.",
     activeLibraryChanged: "The current library changed. Please try again.",
     reason: {
       manual: "Started manually",

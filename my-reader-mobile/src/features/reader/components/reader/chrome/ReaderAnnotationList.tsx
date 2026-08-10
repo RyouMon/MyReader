@@ -415,8 +415,8 @@ export function ReaderAnnotationList({
         }
         ListEmptyComponent={
           <EmptyState
-            title={t("reader.annotations.empty")}
-            detail={t("reader.annotations.emptyDetail")}
+            title={t("reader.empty.annotations.title")}
+            detail={t("reader.empty.annotations.detail")}
             icon={{ ios: "square.and.pencil", android: EditSquareIcon }}
             layout="container"
             colors={{

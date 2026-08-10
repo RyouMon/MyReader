@@ -116,7 +116,7 @@ describe("LibrarySyncStatus", () => {
     expect(details.querySelector(".lucide-cloud-off")).toBeInTheDocument()
     expect(within(details).getByText("No library to sync")).toBeInTheDocument()
     expect(
-      within(details).getByText("Add or select a library to start syncing."),
+      within(details).getByText("Add a library to start syncing."),
     ).toBeInTheDocument()
     expect(
       within(details).queryByRole("button", { name: "Sync now" }),

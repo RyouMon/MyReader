@@ -11,6 +11,7 @@ import {
   SectionCard,
   SectionLabel,
 } from "@/src/components"
+import { ENTITY_LIST_ROW_ICONS } from "@/src/components/ui/entity-list-row-icons"
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import { useThemePalette } from "@/src/design/tokens"
 import {
@@ -34,10 +35,6 @@ export type LibraryOperation = "create" | "open"
 
 function libraryOperation(value: string | undefined): LibraryOperation {
   return value === "create" ? "create" : "open"
-}
-
-function sourceTypeLabel(source: DataSource): string {
-  return source.type === "onedrive" ? "OneDrive" : "WebDAV"
 }
 
 function remoteSources(dataSources: DataSource[]): DataSource[] {
@@ -249,6 +246,7 @@ export function AddLibraryLocationScreen() {
             <ListRow
               testID="add-library-local-storage"
               title={t("common.localStorage")}
+              icon={ENTITY_LIST_ROW_ICONS.localDataSource}
               onPress={() => void handleFolder()}
               isLast={sources.length === 0}
             />
@@ -257,7 +255,13 @@ export function AddLibraryLocationScreen() {
                 key={source.id}
                 testID={`add-library-data-source-${source.id}`}
                 title={source.name}
-                value={sourceTypeLabel(source)}
+                icon={
+                  ENTITY_LIST_ROW_ICONS[
+                    source.type === "onedrive"
+                      ? "onedriveDataSource"
+                      : "webdavDataSource"
+                  ]
+                }
                 onPress={() =>
                   router.push(sourceBrowserPath(source, operation))
                 }
@@ -272,6 +276,7 @@ export function AddLibraryLocationScreen() {
             <ListRow
               testID="add-library-add-webdav"
               title={t("addLibraryFlow.addWebdav.title")}
+              icon={ENTITY_LIST_ROW_ICONS.webdavDataSource}
               onPress={() =>
                 router.push({
                   pathname: "/settings/add-library/webdav",
@@ -285,6 +290,7 @@ export function AddLibraryLocationScreen() {
             <ListRow
               testID="add-library-add-onedrive"
               title={t("addLibraryFlow.addOnedrive.title")}
+              icon={ENTITY_LIST_ROW_ICONS.onedriveDataSource}
               onPress={() => void handleAddOneDrive()}
               isLast
             />

@@ -12,6 +12,7 @@ import {
   View as mockView,
 } from "react-native"
 
+import { ENTITY_LIST_ROW_ICONS } from "@/src/components/ui/entity-list-row-icons"
 import type { DataSource } from "@/src/domain/types"
 import AddLibraryScreen, {
   AddLibraryLocationScreen,
@@ -92,16 +93,18 @@ jest.mock("@/src/components", () => ({
   ListRow: jest.fn(
     ({
       detail,
+      testID,
       title,
       value,
     }: {
       detail?: string
+      testID?: string
       title: string
       value?: string
     }) =>
       mockReact.createElement(
         mockView,
-        null,
+        { testID },
         mockReact.createElement(mockText, null, title),
         detail ? mockReact.createElement(mockText, null, detail) : null,
         value ? mockReact.createElement(mockText, null, value) : null,
@@ -255,6 +258,26 @@ describe("AddLibraryLocationScreen", () => {
 
   it("should show data source choices without descriptions", () => {
     mockParams = { libraryAction: "open" }
+    mockDataSources = [
+      {
+        id: "webdav-1",
+        type: "webdav",
+        name: "家庭存储",
+        enabled: true,
+        endpoint: "https://dav.example.com",
+        username: "reader",
+        hasPassword: true,
+      },
+      {
+        id: "onedrive-1",
+        type: "onedrive",
+        name: "OneDrive",
+        enabled: true,
+        clientId: "client-id",
+        displayName: "个人云盘",
+        hasRefreshToken: true,
+      },
+    ]
 
     render(<AddLibraryLocationScreen />)
 
@@ -266,6 +289,23 @@ describe("AddLibraryLocationScreen", () => {
     expect(
       screen.queryByText("addLibraryFlow.addOnedrive.description"),
     ).toBeNull()
+
+    const listRowMock = jest.requireMock("@/src/components")
+      .ListRow as jest.Mock
+    const rowProps = (title: string) =>
+      listRowMock.mock.calls.find(([props]) => props.title === title)?.[0]
+
+    expect(rowProps("common.localStorage")?.icon).toBe(
+      ENTITY_LIST_ROW_ICONS.localDataSource,
+    )
+    expect(rowProps("家庭存储")?.icon).toBe(
+      ENTITY_LIST_ROW_ICONS.webdavDataSource,
+    )
+    expect(rowProps("OneDrive")?.icon).toBe(
+      ENTITY_LIST_ROW_ICONS.onedriveDataSource,
+    )
+    expect(rowProps("家庭存储")?.value).toBeUndefined()
+    expect(rowProps("OneDrive")?.value).toBeUndefined()
   })
 })
 

@@ -16,6 +16,8 @@ import { Text, View } from "@/tw"
 export type EmptyStateIcon = {
   ios: string
   android: string | ImageSourcePropType
+  iconSet?: "material"
+  tone?: "onedrive" | "webdav"
 }
 
 export type EmptyStateLayout = "screen" | "container"
@@ -60,31 +62,36 @@ export function EmptyState({
     windowHeight - insets.top - insets.bottom - headerHeight - TAB_BAR_ESTIMATE
   const minHeight =
     layout === "container" ? 0 : Math.max(availableHeight - SCREEN_PAD, 300)
+  const iconColor =
+    colors?.icon ??
+    (icon.tone === "onedrive"
+      ? palette.brandOnedrive
+      : icon.tone === "webdav"
+        ? palette.dataSourceWebdav
+        : palette.border)
 
   return (
     <View
       className="flex-1 items-center justify-center px-6"
       style={{ minHeight, gap: 24 }}
     >
-      {Platform.OS === "ios" ? (
-        <SymbolView
-          name={icon.ios as never}
+      {icon.iconSet === "material" ? (
+        <MaterialIcons
+          name={icon.android as never}
           size={80}
-          tintColor={colors?.icon ?? palette.border}
+          color={iconColor}
         />
+      ) : Platform.OS === "ios" ? (
+        <SymbolView name={icon.ios as never} size={80} tintColor={iconColor} />
       ) : typeof icon.android === "string" ? (
         <MaterialIcons
           name={icon.android as never}
           size={80}
-          color={colors?.icon ?? palette.border}
+          color={iconColor}
         />
       ) : (
         <Host matchContents pointerEvents="none">
-          <NativeIcon
-            name={icon.android}
-            size={80}
-            color={colors?.icon ?? palette.border}
-          />
+          <NativeIcon name={icon.android} size={80} color={iconColor} />
         </Host>
       )}
 

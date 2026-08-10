@@ -7,6 +7,7 @@ import {
   normalizeCurrentPath,
 } from "@/src/domain/library/remote-library"
 import { notifyLibraryAdded } from "@/src/domain/notifications/library-notifications"
+import type { DataSource } from "@/src/domain/types"
 import {
   listRemoteDirectories,
   type RemoteDirectoryEntry,
@@ -28,6 +29,7 @@ export type RemoteDirectoryBrowserState = {
   notFound: boolean
   /** Data source found but credentials could not be resolved. */
   resolveFailed: boolean
+  candidate: DataSource | null
   candidateId: string | undefined
   entries: RemoteDirectoryEntry[]
   loading: boolean
@@ -50,6 +52,19 @@ type RemoteDirectoryBrowserErrorMessages = {
   duplicateTitle: string
   duplicateMessage: string
   generic: string
+}
+
+function isCredentialFailure(
+  message: string,
+  sourceType: "webdav" | "onedrive",
+): boolean {
+  return sourceType === "webdav"
+    ? /PASSWORD_REQUIRED|WEBDAV_(?:UNAUTHORIZED|FORBIDDEN)|\b40[13]\b/i.test(
+        message,
+      )
+    : /REFRESH_TOKEN_REQUIRED|ONEDRIVE_UNAUTHORIZED|INVALID_GRANT|AUTH_ERROR/i.test(
+        message,
+      )
 }
 
 export function useRemoteDirectoryBrowser({
@@ -106,10 +121,7 @@ export function useRemoteDirectoryBrowser({
             caught instanceof Error
               ? caught.message
               : "Failed to read directory"
-          if (
-            message.includes("PASSWORD_REQUIRED") ||
-            message.includes("REFRESH_TOKEN_REQUIRED")
-          ) {
+          if (isCredentialFailure(message, sourceType)) {
             setResolveFailed(true)
           } else {
             setError(message)
@@ -180,6 +192,7 @@ export function useRemoteDirectoryBrowser({
   return {
     notFound: candidate === null,
     resolveFailed,
+    candidate,
     candidateId: candidate?.id,
     entries,
     loading,

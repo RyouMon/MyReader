@@ -72,6 +72,7 @@ jest.mock("../../../hooks/use-book-detail-read-state", () => ({
 
 jest.mock("@/src/components/ui", () => ({
   EmptyState: jest.fn(() => null),
+  PrimaryButton: jest.fn(() => null),
 }))
 
 jest.mock("./hero-section", () => ({
@@ -143,10 +144,12 @@ function renderContent(
       contentTopInset={0}
       dataSources={[]}
       detail={detail}
-      detailError={null}
+      detailFailure={null}
       listBook={null}
       loadingDetail={false}
       onOpenReader={jest.fn()}
+      onReturnToLibrary={jest.fn()}
+      onRetryDetail={jest.fn()}
       onSelectFormat={jest.fn()}
       selectedFormat={null}
       {...overrides}
@@ -196,22 +199,23 @@ describe("BookDetailContent", () => {
   it("should show empty state when detail is missing", () => {
     const { EmptyState } = jest.requireMock("@/src/components/ui")
 
-    renderContent({ detail: null })
+    renderContent({ detail: null, detailFailure: "notFound" })
 
     expect(EmptyState.mock.calls[0][0]).toMatchObject({
       title: "bookDetail.notFound.title",
     })
   })
 
-  it("should show error state when detailError is present", () => {
+  it("should show a retryable state when loading the detail fails", () => {
     const { EmptyState } = jest.requireMock("@/src/components/ui")
 
-    renderContent({ detail: null, detailError: "Load failed" })
+    renderContent({ detail: null, detailFailure: "loadFailed" })
 
     expect(
       EmptyState.mock.calls[EmptyState.mock.calls.length - 1][0],
     ).toMatchObject({
-      detail: "Load failed",
+      title: "bookDetail.loadFailed.title",
+      detail: "bookDetail.loadFailed.detail",
     })
   })
 

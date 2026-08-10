@@ -10,7 +10,7 @@ import {
   type View as RNView,
 } from "react-native"
 
-import { EmptyState } from "@/src/components/ui"
+import { EmptyState, PrimaryButton } from "@/src/components/ui"
 import { useBookReadingProgress } from "@/src/domain/library/hooks/use-book-reading-progress"
 import type { BookItem, DataSource, Library } from "@/src/domain/types"
 import { isRemoteSourceType } from "@/src/domain/types"
@@ -45,7 +45,7 @@ type BookDetailContentProps = {
   colors: DetailColors
   contentTopInset: number
   detail: BookDetail | null
-  detailError: string | null
+  detailFailure: "loadFailed" | "notFound" | null
   detailCoverRef?: Ref<RNView>
   listBook: BookItem | null
   loadingDetail: boolean
@@ -54,6 +54,8 @@ type BookDetailContentProps = {
     format: string | null,
     coverUri?: BookItem["coverUri"],
   ) => void
+  onReturnToLibrary: () => void
+  onRetryDetail: () => void
   onSelectFormat: (bookId: string, format: string | null) => void
   selectedFormat: string | null
   dataSources: DataSource[]
@@ -68,11 +70,13 @@ export function BookDetailContent({
   colors,
   contentTopInset,
   detail,
-  detailError,
+  detailFailure,
   detailCoverRef,
   listBook,
   loadingDetail,
   onOpenReader,
+  onReturnToLibrary,
+  onRetryDetail,
   onSelectFormat,
   selectedFormat,
   dataSources,
@@ -234,7 +238,28 @@ export function BookDetailContent({
     )
   }
 
-  if (detailError || !detail) {
+  if (detailFailure === "loadFailed") {
+    return (
+      <View
+        className="flex-1 px-4 pt-4"
+        style={{ backgroundColor: colors.background }}
+      >
+        <EmptyState
+          title={t("bookDetail.loadFailed.title")}
+          detail={t("bookDetail.loadFailed.detail")}
+          action={
+            <PrimaryButton
+              title={t("bookDetail.retry")}
+              onPress={onRetryDetail}
+            />
+          }
+          icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }}
+        />
+      </View>
+    )
+  }
+
+  if (detailFailure === "notFound" || !detail) {
     return (
       <View
         className="flex-1 px-4 pt-4"
@@ -242,7 +267,13 @@ export function BookDetailContent({
       >
         <EmptyState
           title={t("bookDetail.notFound.title")}
-          detail={detailError ?? t("bookDetail.notFound.detail")}
+          detail={t("bookDetail.notFound.detail")}
+          action={
+            <PrimaryButton
+              title={t("bookDetail.backToLibrary")}
+              onPress={onReturnToLibrary}
+            />
+          }
         />
       </View>
     )

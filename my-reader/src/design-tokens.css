@@ -18,6 +18,9 @@
   --danger: #b44a3a;
   --border: #ddd2c0;
   --border-strong: #d9cebb;
+  --brand-onedrive: #0078d4;
+  --data-source-local: #64748b;
+  --data-source-webdav: #0f766e;
 
   --overlay: rgba(59, 47, 47, 0.22);
   --overlay-strong: rgba(59, 47, 47, 0.5);
@@ -67,6 +70,8 @@
   --danger: #d46a5a;
   --border: rgba(245, 239, 230, 0.12);
   --border-strong: rgba(245, 239, 230, 0.22);
+  --data-source-local: #a8b3c1;
+  --data-source-webdav: #5cc8be;
 
   --overlay: rgba(0, 0, 0, 0.38);
   --overlay-strong: rgba(0, 0, 0, 0.65);

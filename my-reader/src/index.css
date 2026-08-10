@@ -18,6 +18,9 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
+  --color-brand-onedrive: var(--brand-onedrive);
+  --color-data-source-local: var(--data-source-local);
+  --color-data-source-webdav: var(--data-source-webdav);
   --color-overlay: var(--overlay);
   --color-overlay-strong: var(--overlay-strong);
 

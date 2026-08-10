@@ -132,6 +132,12 @@ describe("AddLibraryDialog", () => {
     )
     fireEvent.click(screen.getByRole("button", { name: /创建新书库/ }))
 
+    expect(
+      screen.getByRole("heading", { name: "可用位置", level: 2 }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("heading", { name: "添加数据源", level: 2 }),
+    ).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /本地存储/ })).toBeInTheDocument()
     expect(
       screen.getByRole("button", { name: /添加 WebDAV/ }),

@@ -13,6 +13,7 @@ import {
   SectionCard,
   ListRow,
 } from "@/src/components"
+import { ENTITY_LIST_ROW_ICONS } from "@/src/components/ui/entity-list-row-icons"
 import { useAddOneDriveDataSource } from "@/src/features/onedrive/hooks/use-add-onedrive-data-source"
 import { OneDriveAddingEmptyState } from "@/src/features/onedrive/onedrive-adding-empty-state"
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
@@ -76,7 +77,7 @@ export default function OneDriveSourcesScreen() {
                     onPress={handleAdd}
                   />
                 }
-                icon={{ ios: "externaldrive.fill", android: "storage" }}
+                icon={ENTITY_LIST_ROW_ICONS.onedriveDataSource}
               />
             ) : (
               <SectionCard>
@@ -86,6 +87,7 @@ export default function OneDriveSourcesScreen() {
                     testID={`data-source-row-${source.id}`}
                     title={source.displayName ?? source.name}
                     detail={source.email ?? source.rootPath ?? ""}
+                    icon={ENTITY_LIST_ROW_ICONS.onedriveDataSource}
                     onPress={() => openSourceDetail(source.id)}
                     isLast={index === onedriveSources.length - 1}
                   />

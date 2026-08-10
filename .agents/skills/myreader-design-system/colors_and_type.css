@@ -19,6 +19,14 @@
   --primary:   #b5651d;   /* warm terracotta — CTAs, links, highlights */
   --secondary: #A87E62;   /* warm taupe — softer accent, tags, hover tints */
 
+  /* ── DATA SOURCE IDENTITY COLORS ──────────────────────────
+     Provider brands stay fixed; protocol colors may shift by
+     theme to preserve contrast.
+  ───────────────────────────────────────────────────────── */
+  --brand-onedrive: #0078d4;
+  --data-source-local: #64748b;
+  --data-source-webdav: #0f766e;
+
   /* ── BACKGROUNDS ──────────────────────────────────────────
      Low-contrast paper-like surfaces. Quiet editorial.
      Cards sit slightly darker than the page so they read as
@@ -56,6 +64,8 @@
 [data-theme="dark"] {
   --primary:      #d4803a;   /* brightened terracotta for dark bg */
   --secondary:    #B8895A;   /* muted gold for dark bg */
+  --data-source-local: #a8b3c1;
+  --data-source-webdav: #5cc8be;
 
   --bg:           #1f1b17;
   --bg-secondary: #2a2520;
@@ -71,5 +81,3 @@
   --border:        rgba(245, 239, 230, 0.12);
   --border-strong: rgba(245, 239, 230, 0.22);
 }
-
-

@@ -14,7 +14,7 @@ import {
   type ListRenderItemInfo,
   type ViewToken,
 } from "@shopify/flash-list"
-import { Stack, useIsFocused } from "expo-router"
+import { router, Stack, useIsFocused } from "expo-router"
 import { useTranslation } from "react-i18next"
 import { Dimensions, PixelRatio, View, useWindowDimensions } from "react-native"
 import type { BuiltInBookCollectionId } from "@my-reader/tools/types/book-collection"
@@ -451,6 +451,10 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
     )
   }, [isManagedLibrary, selectedLibrary, t])
 
+  const handleBrowseAllBooks = useCallback(() => {
+    router.replace("/library/collection/all")
+  }, [])
+
   const { options, toolbar } = useLibraryHeaderChrome({
     variant,
     collectionId,
@@ -745,12 +749,25 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
   )
 
   const emptyState = useMemo(() => {
+    const emptyLibraryState = {
+      title: t("library.noMatch.empty.title"),
+      detail: t(
+        isManagedLibrary
+          ? "library.noMatch.empty.myreaderDetail"
+          : "library.noMatch.empty.calibreDetail",
+      ),
+      icon: { ios: "book.closed", android: Book2Icon } as const,
+    }
+
     if (query.length > 0) {
       return {
         title: t("library.noMatch.search.title"),
         detail: t("library.noMatch.search.detail"),
         icon: { ios: "magnifyingglass", android: "search" } as const,
       }
+    }
+    if (collectionId === "all") {
+      return emptyLibraryState
     }
     switch (collectionId) {
       case "recentlyRead":
@@ -792,14 +809,16 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
           detail: t("library.noMatch.localOnly.detail"),
           icon: { ios: "icloud.slash", android: "cloud-off" } as const,
         }
-      case "all":
-        return {
-          title: t("library.noMatch.empty.title"),
-          detail: t("library.noMatch.empty.detail"),
-          icon: { ios: "book.closed", android: Book2Icon } as const,
-        }
+      default:
+        return emptyLibraryState
     }
-  }, [collectionId, query.length, t])
+  }, [collectionId, isManagedLibrary, query.length, t])
+
+  const showsEmptyLibraryState = query.length === 0 && collectionId === "all"
+  const showsBrowseAllBooksAction =
+    query.length === 0 &&
+    !showsEmptyLibraryState &&
+    collectionId !== "localOnly"
 
   if (variant === "loading") {
     return (
@@ -910,13 +929,15 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
             detail={emptyState.detail}
             icon={emptyState.icon}
             action={
-              isManagedLibrary &&
-              books.length === 0 &&
-              collectionId === "all" &&
-              query.length === 0 ? (
+              isManagedLibrary && showsEmptyLibraryState ? (
                 <PrimaryButton
                   title={t("library.importBook")}
                   onPress={handleImportBook}
+                />
+              ) : showsBrowseAllBooksAction ? (
+                <PrimaryButton
+                  title={t("library.browseAllBooks")}
+                  onPress={handleBrowseAllBooks}
                 />
               ) : undefined
             }

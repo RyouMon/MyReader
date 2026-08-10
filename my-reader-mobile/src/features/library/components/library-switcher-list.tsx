@@ -1,12 +1,12 @@
-import NewsstandIcon from "@expo/material-symbols/newsstand.xml"
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
-import type { Library } from "@my-reader/tools/types/library"
+import { type Library, libraryTypeOf } from "@my-reader/tools/types/library"
 import { SymbolView } from "expo-symbols"
 import { useCallback } from "react"
 import { useTranslation } from "react-i18next"
 import { Platform, StyleSheet } from "react-native"
 
 import { EmptyState, ListRow } from "@/src/components"
+import { ENTITY_LIST_ROW_ICONS } from "@/src/components/ui/entity-list-row-icons"
 import { LIBRARY_EMPTY_STATE_ICON } from "@/src/components/ui/library-empty-state-icon"
 import { useThemePalette } from "@/src/design/tokens"
 import { switchActiveLibrary } from "@/src/domain/library/hooks/library-actions"
@@ -71,18 +71,24 @@ export function LibrarySwitcherList({ onDismiss }: LibrarySwitcherListProps) {
       count: item.bookCount,
     })
     const isActive = item.id === activeLibraryId
+    const libraryType = libraryTypeOf(item)
+    const libraryTypeLabel = t(
+      libraryType === "myreader"
+        ? "libraryDetail.myreaderLibrary"
+        : "libraryDetail.calibreLibrary",
+    )
 
     return (
       <ListRow
         key={item.id}
         title={item.name}
-        label={`${item.name}, ${bookCountLabel}${isActive ? `, ${t("settings.currentInUse")}` : ""}`}
+        label={`${item.name}, ${libraryTypeLabel}, ${bookCountLabel}${isActive ? `, ${t("settings.currentInUse")}` : ""}`}
         detail={bookCountLabel}
-        icon={{
-          ios: "books.vertical.fill",
-          android: "newsstand",
-          androidSource: NewsstandIcon,
-        }}
+        icon={
+          ENTITY_LIST_ROW_ICONS[
+            libraryType === "myreader" ? "myreaderLibrary" : "calibreLibrary"
+          ]
+        }
         accessory={isActive ? <ActiveLibraryIndicator /> : undefined}
         isLast={index === libraries.length - 1}
         onPress={() => handleSelectLibrary(item.id)}

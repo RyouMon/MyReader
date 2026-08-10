@@ -16,5 +16,11 @@ describe("DataSourceTypeSelector", () => {
       expect(icon).toHaveAttribute("aria-hidden", "true")
       expect(icon).toHaveAttribute("focusable", "false")
     }
+    expect(
+      container.querySelectorAll('[data-icon="local-storage"]'),
+    ).toHaveLength(1)
+    expect(
+      container.querySelectorAll('[data-icon="webdav-server"]'),
+    ).toHaveLength(1)
   })
 })

@@ -4,7 +4,9 @@ import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { AddPanelButton } from "@/components/common/AddPanelButton"
 import { AppRow } from "@/components/common/AppRow"
+import { EntityIcon, type EntityIconKind } from "@/components/common/EntityIcon"
 import { GroupList, GroupListItem } from "@/components/common/GroupList"
+import { SectionHeader } from "@/components/common/SectionHeader"
 import {
   Empty,
   EmptyDescription,
@@ -63,9 +65,7 @@ export default function LibrariesSection({
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto px-7 py-5">
-        <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
-          {t("settings.libraries.added")}
-        </p>
+        <SectionHeader title={t("settings.libraries.added")} />
 
         <GroupList className="mb-3">
           {libraries.length === 0 ? (
@@ -126,7 +126,19 @@ function LibraryCard({
   const { t } = useTranslation()
   const isWebdav = lib.sourceType === "webdav"
   const isOnedrive = lib.sourceType === "onedrive"
-  const rowIcon = isOnedrive ? "cloud" : isWebdav ? "cloud" : "folder"
+  const sourceIconKind: EntityIconKind = isOnedrive
+    ? "onedriveDataSource"
+    : isWebdav
+      ? "webdavDataSource"
+      : "localDataSource"
+  const sourceLabel = isOnedrive
+    ? t("addDataSourceForm.typeOnedrive")
+    : isWebdav
+      ? t("addLibraryForm.typeWebdav")
+      : t("addLibraryForm.typeLocal")
+  const libraryIconKind =
+    lib.libraryType === "myreader" ? "myreaderLibrary" : "calibreLibrary"
+  const libraryLabel = lib.libraryType === "myreader" ? "MyReader" : "Calibre"
 
   return (
     <GroupListItem
@@ -138,7 +150,7 @@ function LibraryCard({
       style={{ animationDelay: `${index * 60}ms` }}
     >
       <AppRow
-        icon={rowIcon}
+        head={<EntityIcon kind={libraryIconKind} label={libraryLabel} />}
         body={lib.name}
         detail={lib.sourcePath ?? lib.path}
         className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 @2xl/library-row:grid-cols-[auto_minmax(8rem,1fr)_auto_auto] @2xl/library-row:items-center @2xl/library-row:gap-y-0"
@@ -149,29 +161,16 @@ function LibraryCard({
         actionsClassName="col-start-3 row-span-2 row-start-1 justify-self-end @2xl/library-row:col-start-4 @2xl/library-row:row-span-1"
         tail={
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            {isOnedrive && (
-              <span className="rounded-sm bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.05em] text-blue-500">
-                OneDrive
-              </span>
-            )}
-            {isWebdav && (
-              <span className="rounded-sm bg-accent px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.05em] text-accent-foreground">
-                WebDAV
-              </span>
-            )}
-            {!isWebdav && !isOnedrive && (
-              <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-[0.05em] text-muted-foreground">
-                {t("addLibraryForm.typeLocal")}
-              </span>
-            )}
+            <EntityIcon
+              kind={sourceIconKind}
+              label={sourceLabel}
+              variant="inline"
+            />
             {isActive && (
               <span className="rounded-sm bg-accent px-1.5 py-0.5 text-[10px] font-medium text-accent-foreground">
                 {t("settings.libraries.current")}
               </span>
             )}
-            <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-[0.05em] text-muted-foreground">
-              {lib.libraryType === "myreader" ? "MyReader" : "Calibre"}
-            </span>
             {isPendingDelete ? (
               <span className="whitespace-nowrap text-[11.5px] text-destructive animate-in fade-in-0 duration-150">
                 {t("settings.libraries.confirmDelete")}

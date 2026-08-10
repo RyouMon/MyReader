@@ -107,8 +107,6 @@ export const desktopZhCN = {
     },
     bookDetail: {
       loading: "加载书籍详情…",
-      loadFailed: "加载失败",
-      backToLibrary: "返回书库",
       formats: {
         EPUB: "可重排版",
         PDF: "固定版式",
@@ -427,7 +425,6 @@ export const desktopZhCN = {
       clearSearch: "清除搜索",
       bookmark: "书签",
       bookmarks: "书签",
-      noBookmarks: "还没有书签",
       bookmarkNumber: "书签 {{number}}",
       bookmarkLocation: "位置 {{position}}",
       bookmarkPage: "第 {{page}} 页",
@@ -441,7 +438,6 @@ export const desktopZhCN = {
       bookmarkLoadFailed: "书签加载失败",
       bookmarkSaveFailed: "书签更新失败",
       annotations: "高亮和笔记",
-      noAnnotations: "还没有高亮或笔记",
       highlight: "高亮",
       addNote: "添加笔记",
       editNote: "编辑笔记",

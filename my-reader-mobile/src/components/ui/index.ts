@@ -9,6 +9,10 @@ export { ButtonGroup } from "./button-group"
 export { CircularProgress } from "./circular-progress"
 export { CloudIcon } from "./cloud-icon"
 export { EmptyState } from "./empty-state"
+export {
+  ENTITY_LIST_ROW_ICONS,
+  type EntityIconKind,
+} from "./entity-list-row-icons"
 export { FormFieldSwitch } from "./form-field-switch"
 export { FormLabeledFieldRow } from "./form-labeled-field-row"
 export type {

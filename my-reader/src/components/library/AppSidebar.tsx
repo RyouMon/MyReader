@@ -9,7 +9,6 @@ import {
   BookCopy,
   Check,
   ChevronsUpDown,
-  Library,
   Monitor,
   Moon,
   Palette,
@@ -22,6 +21,7 @@ import {
 import { useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import { useTheme } from "@/components/AppThemeProvider"
+import { EntityIcon } from "@/components/common/EntityIcon"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -86,11 +86,18 @@ export default function AppSidebar({ onAddLibrary }: AppSidebarProps) {
   } = useLibraryUiStore()
   const { theme, setTheme } = useTheme()
   const activeLibrary = libraries.find((l) => l.id === activeLibraryId) ?? null
+  const activeLibraryType = activeLibrary
+    ? libraryTypeOf(activeLibrary)
+    : "myreader"
+  const activeLibraryIconKind =
+    activeLibraryType === "myreader" ? "myreaderLibrary" : "calibreLibrary"
+  const activeLibraryIconLabel =
+    activeLibraryType === "myreader" ? "MyReader" : "Calibre"
   const { data: favoriteIds = [] } = useFavoriteBookIds(activeLibraryId)
   const downloadQueue = useDownloadQueue(activeLibraryId)
   const isRemoteManagedLibrary = Boolean(
     activeLibrary &&
-      libraryTypeOf(activeLibrary) === "myreader" &&
+      activeLibraryType === "myreader" &&
       isRemoteLibrarySourceType(activeLibrary.sourceType),
   )
   const {
@@ -181,9 +188,10 @@ export default function AppSidebar({ onAddLibrary }: AppSidebarProps) {
                   tooltip={t("sidebar.switchLibrary")}
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
-                  <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                    <Library className="size-4" />
-                  </div>
+                  <EntityIcon
+                    kind={activeLibraryIconKind}
+                    label={activeLibraryIconLabel}
+                  />
                   <div className="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                     <span className="truncate font-semibold">MyReader</span>
                     <span className="truncate text-xs text-muted-foreground">
@@ -208,24 +216,36 @@ export default function AppSidebar({ onAddLibrary }: AppSidebarProps) {
                     {t("sidebar.noLibraries")}
                   </div>
                 ) : (
-                  libraries.map((lib) => (
-                    <DropdownMenuItem
-                      key={lib.id}
-                      onClick={() => switchLibrary(lib.id)}
-                      className="gap-2 p-2"
-                    >
-                      <Library className="size-4 shrink-0 text-muted-foreground" />
-                      <span className="min-w-0 flex-1 truncate">
-                        {lib.name}
-                      </span>
-                      {lib.id === activeLibraryId && (
-                        <Check
-                          data-testid="active-library-check"
-                          className="ml-auto size-4 shrink-0 text-primary"
+                  libraries.map((lib) => {
+                    const isMyReaderLibrary = libraryTypeOf(lib) === "myreader"
+
+                    return (
+                      <DropdownMenuItem
+                        key={lib.id}
+                        onClick={() => switchLibrary(lib.id)}
+                        className="gap-2 p-2"
+                      >
+                        <EntityIcon
+                          kind={
+                            isMyReaderLibrary
+                              ? "myreaderLibrary"
+                              : "calibreLibrary"
+                          }
+                          label={isMyReaderLibrary ? "MyReader" : "Calibre"}
+                          variant="inline"
                         />
-                      )}
-                    </DropdownMenuItem>
-                  ))
+                        <span className="min-w-0 flex-1 truncate">
+                          {lib.name}
+                        </span>
+                        {lib.id === activeLibraryId && (
+                          <Check
+                            data-testid="active-library-check"
+                            className="ml-auto size-4 shrink-0 text-primary"
+                          />
+                        )}
+                      </DropdownMenuItem>
+                    )
+                  })
                 )}
 
                 <DropdownMenuSeparator />

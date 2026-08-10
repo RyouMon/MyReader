@@ -68,5 +68,6 @@ describe("ReadiumBookmarkList", () => {
   it("should show the bookmark empty state", () => {
     render(<ReadiumBookmarkList bookmarks={[]} />)
     expect(screen.getByText("还没有书签")).toBeInTheDocument()
+    expect(screen.getByText("请在阅读时添加书签。")).toBeInTheDocument()
   })
 })

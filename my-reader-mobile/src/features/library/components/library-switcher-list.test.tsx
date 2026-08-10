@@ -1,8 +1,10 @@
+import type { Library } from "@my-reader/tools/types/library"
 import { render, screen } from "@testing-library/react-native"
 import * as mockReact from "react"
 import { Text as mockText, View as mockView } from "react-native"
 
-import { EmptyState } from "@/src/components"
+import { EmptyState, ListRow } from "@/src/components"
+import { ENTITY_LIST_ROW_ICONS } from "@/src/components/ui/entity-list-row-icons"
 
 import { LibrarySwitcherList } from "./library-switcher-list"
 
@@ -26,6 +28,11 @@ jest.mock("@/src/components", () => ({
   ListRow: jest.fn(() => null),
 }))
 
+let mockLibraryState: {
+  activeLibraryId: string | null
+  libraries: Library[]
+} = { activeLibraryId: null, libraries: [] }
+
 jest.mock("@/src/design/tokens", () => ({
   useThemePalette: () => ({
     border: "#ddd",
@@ -46,10 +53,13 @@ jest.mock("@/src/components/ui/library-empty-state-icon", () => ({
 }))
 
 jest.mock("@/src/store/app-store", () => ({
-  useAppStore: jest.fn((selector) =>
-    selector({ activeLibraryId: null, libraries: [] }),
-  ),
+  useAppStore: jest.fn((selector) => selector(mockLibraryState)),
 }))
+
+beforeEach(() => {
+  jest.clearAllMocks()
+  mockLibraryState = { activeLibraryId: null, libraries: [] }
+})
 
 it("should use the standard empty state when there are no libraries", () => {
   render(<LibrarySwitcherList onDismiss={jest.fn()} />)
@@ -66,6 +76,44 @@ it("should use the standard empty state when there are no libraries", () => {
         ios: "books.vertical.fill",
         android: { uri: "newsstand" },
       },
+    }),
+  )
+})
+
+it("should identify MyReader and Calibre libraries with different icons", () => {
+  mockLibraryState = {
+    activeLibraryId: "myreader-library",
+    libraries: [
+      {
+        id: "myreader-library",
+        name: "阅读书库",
+        path: "/libraries/myreader",
+        bookCount: 12,
+        libraryType: "myreader",
+      },
+      {
+        id: "calibre-library",
+        name: "旧书库",
+        path: "/libraries/calibre",
+        bookCount: 34,
+        libraryType: "calibre",
+      },
+    ],
+  }
+
+  render(<LibrarySwitcherList onDismiss={jest.fn()} />)
+
+  const rowCalls = jest.mocked(ListRow).mock.calls
+  expect(rowCalls[0]?.[0]).toEqual(
+    expect.objectContaining({
+      icon: ENTITY_LIST_ROW_ICONS.myreaderLibrary,
+      label: expect.stringContaining("libraryDetail.myreaderLibrary"),
+    }),
+  )
+  expect(rowCalls[1]?.[0]).toEqual(
+    expect.objectContaining({
+      icon: ENTITY_LIST_ROW_ICONS.calibreLibrary,
+      label: expect.stringContaining("libraryDetail.calibreLibrary"),
     }),
   )
 })

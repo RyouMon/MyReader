@@ -4,7 +4,14 @@ import { SymbolView } from "expo-symbols"
 import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Platform } from "react-native"
-import { ListRow, Screen, SectionCard } from "@/src/components"
+import {
+  EmptyState,
+  ListRow,
+  PrimaryButton,
+  Screen,
+  SectionCard,
+} from "@/src/components"
+import { ENTITY_LIST_ROW_ICONS } from "@/src/components/ui/entity-list-row-icons"
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import { useThemePalette } from "@/src/design/tokens"
 import type { DataSourceWebdav } from "@/src/domain/types"
@@ -60,24 +67,11 @@ function WebDavDetailHero({
           elevation: Platform.OS === "android" ? 2 : 0,
         }}
       >
-        <SymbolView
+        <MaterialIcons
           accessibilityLabel={t("webdav.sourcesTitle")}
-          fallback={
-            <MaterialIcons
-              accessibilityLabel={t("webdav.sourcesTitle")}
-              name="cloud"
-              size={80}
-              color={accent}
-            />
-          }
-          name={{
-            ios: "cloud.fill",
-            android: "cloud",
-          }}
-          resizeMode="scaleAspectFit"
+          name={ENTITY_LIST_ROW_ICONS.webdavDataSource.android}
           size={80}
-          tintColor={accent}
-          weight="medium"
+          color={accent}
         />
       </View>
 
@@ -126,7 +120,7 @@ export default function WebDavDataSourceDetailScreen() {
   const [deletingSourceSnapshot, setDeletingSourceSnapshot] =
     useState<DataSourceWebdav | null>(null)
   const webdavSource = storedWebdavSource ?? deletingSourceSnapshot
-  const accent = palette.primary
+  const accent = palette.dataSourceWebdav
 
   function handleBack() {
     if (router.canGoBack()) {
@@ -205,9 +199,30 @@ export default function WebDavDataSourceDetailScreen() {
       }
     : undefined
 
+  const editAction: ScreenHeaderAction | undefined = storedWebdavSource
+    ? {
+        label: t("webdav.reconfigureSource"),
+        onPress: () =>
+          router.push({
+            pathname: "/settings/webdav/add",
+            params: { dataSourceId: storedWebdavSource.id },
+          }),
+        icon:
+          Platform.OS === "ios" ? (
+            <SymbolView name="pencil" size={16} tintColor={palette.text} />
+          ) : (
+            <MaterialIcons name="edit" size={22} color={palette.text} />
+          ),
+        iosSfSymbol: "pencil",
+        iconOnly: true,
+      }
+    : undefined
+
   const { options, toolbar } = useScreenHeader({
     backTitle: t("back"),
-    right: deleteAction ? [deleteAction] : [],
+    right: [editAction, deleteAction].filter(
+      (action): action is ScreenHeaderAction => action !== undefined,
+    ),
   })
 
   if (!webdavSource) {
@@ -215,17 +230,17 @@ export default function WebDavDataSourceDetailScreen() {
       <Screen>
         <Stack.Screen options={options} />
         {toolbar}
-        <View className="flex-1 items-center justify-center">
-          <Text className="text-2xl font-bold" style={{ color: palette.text }}>
-            {t("webdav.notFound.title")}
-          </Text>
-          <Text
-            className="mt-3 text-center text-sm"
-            style={{ color: palette.textMuted }}
-          >
-            {t("webdav.notFound.detail")}
-          </Text>
-        </View>
+        <EmptyState
+          title={t("dataSource.notFound.title")}
+          detail={t("dataSource.notFound.detail")}
+          action={
+            <PrimaryButton
+              title={t("dataSource.backToList")}
+              onPress={() => router.replace("/settings/webdav")}
+            />
+          }
+          icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }}
+        />
       </Screen>
     )
   }

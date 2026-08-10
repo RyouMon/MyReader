@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 
+import { SectionHeader } from "@/components/common/SectionHeader"
 import { Button } from "@/components/ui/button"
 import {
   Tooltip,
@@ -91,14 +92,11 @@ export default function SettingsNav({
           ) : (
             backButton
           )}
-          <h2
-            className={cn(
-              "text-[15px] font-semibold text-foreground",
-              isCompact && "sr-only",
-            )}
-          >
-            {t("settings.title")}
-          </h2>
+          <SectionHeader
+            className={cn("mb-0", isCompact && "sr-only")}
+            title={t("settings.title")}
+            titleClassName="text-[15px] font-semibold text-foreground"
+          />
         </div>
       </div>
 

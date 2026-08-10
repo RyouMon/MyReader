@@ -233,8 +233,6 @@
       "title": "Bookmarks",
       "addCurrent": "Add bookmark at current location",
       "removeCurrent": "Remove bookmark at current location",
-      "empty": "No bookmarks yet",
-      "emptyDetail": "Bookmarks you add while reading will appear here.",
       "loading": "Loading bookmarks…",
       "error": "Couldn't load or update bookmarks",
       "retry": "Try again",
@@ -261,8 +259,6 @@
       "removeAction": "Remove",
       "copyAction": "Copy",
       "selectionActions": "Text actions",
-      "empty": "No notes yet",
-      "emptyDetail": "Select text to highlight it or add a note.",
       "loading": "Loading notes…",
       "error": "Couldn't load or update notes",
       "retry": "Try again",
@@ -352,24 +348,11 @@
   },
   "bookDetail": {
     "title": "Book Details",
-    "loadFailed": "Book details load failed",
-    "loadFailedMessage": "The book details page encountered an unexpected error. Please retry.",
     "missingParam": {
       "title": "Missing book parameter",
       "detail": "Please re-enter book details from the library."
     },
-    "noLibrary": {
-      "title": "No current library",
-      "detail": "Please select a Calibre library in Settings or Library first."
-    },
-    "invalidId": "Invalid book ID",
-    "notFoundInMeta": "Book not found in metadata",
-    "notFoundInLibrary": "Book not found in library",
     "loadingDetail": "Loading book details…",
-    "notFound": {
-      "title": "Book not found",
-      "detail": "It may have been removed from the library or the page parameters are invalid."
-    },
     "seriesInfo": "{{series}} · #{{index}}",
     "series": "Series",
     "seriesIndex": "Series Index",
@@ -454,10 +437,11 @@
     "sourcesTitle": "WebDAV Sources",
     "sourceDetail": "Source Details",
     "addSource": "Add WebDAV Source",
+    "reconfigureSource": "Reconfigure WebDAV",
     "selectLibrary": "Select WebDAV Library",
     "noSources": {
       "title": "No WebDAV sources yet",
-      "detail": "Connect to a server via \"Add WebDAV\" to browse remote directories and select a Calibre library."
+      "detail": "Use the button below to add a WebDAV source."
     },
     "delete": {
       "title": "Delete WebDAV Source",
@@ -470,10 +454,6 @@
       "message": "Failed to delete the source."
     },
     "deleteSource": "Delete Source",
-    "notFound": {
-      "title": "Source not found",
-      "detail": "It may have been removed or the link parameters are invalid."
-    },
     "type": "Type",
     "serverAddress": "Server Address",
     "username": "Username",
@@ -504,6 +484,10 @@
       "readFailed": {
         "title": "Read Failed"
       },
+      "credentialsUnavailable": {
+        "title": "WebDAV credentials unavailable",
+        "detail": "Reconfigure the WebDAV source."
+      },
       "noCredentials": "WebDAV credentials unavailable. Please edit the data source and set a password.",
       "empty": {
         "title": "Empty directory",
@@ -527,8 +511,12 @@
       "addAnyway": "Add Anyway",
       "addFailed": "Add Failed",
       "addFailedMessage": "Operation failed. Please retry.",
+      "updateFailed": "Save Failed",
       "completing": "Completing",
       "complete": "Complete",
+      "saving": "Saving",
+      "save": "Save",
+      "saveAnyway": "Save Anyway",
       "serverAddressLabel": "Server Address",
       "portLabel": "Port",
       "basePathLabel": "Base Path",
@@ -536,6 +524,7 @@
       "usernamePlaceholder": "Enter username",
       "passwordLabel": "Password",
       "passwordPlaceholder": "Enter password",
+      "passwordKeepPlaceholder": "Leave blank to keep the current password",
       "useSSL": "Use SSL"
     }
   },
@@ -543,10 +532,11 @@
     "sourcesTitle": "OneDrive Sources",
     "sourceDetail": "Source Details",
     "addSource": "Add OneDrive Source",
+    "reauthenticate": "Sign in to OneDrive again",
     "selectLibrary": "Select OneDrive Library",
     "noSources": {
       "title": "No OneDrive sources yet",
-      "detail": "Sign in with Microsoft to browse your OneDrive and select a Calibre library."
+      "detail": "Use the button below to add a OneDrive source."
     },
     "delete": {
       "title": "Delete OneDrive Source",
@@ -559,10 +549,6 @@
       "message": "Failed to delete the source."
     },
     "deleteSource": "Delete Source",
-    "notFound": {
-      "title": "Source not found",
-      "detail": "It may have been removed or the link parameters are invalid."
-    },
     "type": "Type",
     "displayName": "Display Name",
     "email": "Email",
@@ -590,6 +576,10 @@
       "readFailed": {
         "title": "Read Failed"
       },
+      "credentialsUnavailable": {
+        "title": "OneDrive sign-in expired",
+        "detail": "Sign in to OneDrive again."
+      },
       "noCredentials": "OneDrive credentials unavailable. Please re-authenticate the data source.",
       "empty": {
         "title": "Empty directory",
@@ -604,13 +594,15 @@
     },
     "add": {
       "signInTitle": "Sign in to OneDrive",
-      "signInDetail": "Connect your Microsoft account to browse OneDrive and select a Calibre library.",
+      "signInDetail": "Sign in with a Microsoft account.",
       "signInWithMicrosoft": "Sign in with Microsoft",
       "authenticating": "Authenticating…",
       "addingTitle": "Adding OneDrive source",
       "addingDetail": "Finishing setup — please keep the app open.",
       "authFailed": "Authentication Failed",
       "authFailedMessage": "Could not sign in to OneDrive. Please retry.",
+      "accountMismatch": "Account Mismatch",
+      "accountMismatchMessage": "Sign in as {{email}}, or go back and add a new OneDrive source.",
       "alreadyAdded": "Account Already Added",
       "alreadyAddedMessage": "The account {{email}} is already connected."
     }
@@ -620,6 +612,13 @@
     "retry": "Retry"
   },
   "dataSource": {
+    "backToList": "Back to source list",
+    "backToLocations": "Back to available locations",
+    "notFound": {
+      "title": "Source no longer exists",
+      "detail": "It may have been removed. Return to the source list.",
+      "addLibraryDetail": "It may have been removed. Return to the available locations."
+    },
     "deleteInUse": {
       "title": "Cannot Delete",
       "message": "The following libraries are using this source: {{names}}. Please remove these libraries before deleting the source."

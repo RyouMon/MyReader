@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/context-menu"
 import {
   Empty,
+  EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
@@ -147,8 +148,11 @@ export function ReadiumBookmarkList({
                   <Bookmark />
                 </EmptyMedia>
                 <EmptyTitle className="text-sm font-semibold text-reader-chrome-fg">
-                  {t("reader.noBookmarks")}
+                  {t("reader.empty.bookmarks.title")}
                 </EmptyTitle>
+                <EmptyDescription className="text-xs text-reader-chrome-muted">
+                  {t("reader.empty.bookmarks.detail")}
+                </EmptyDescription>
               </EmptyHeader>
             </Empty>
           ) : (

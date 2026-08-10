@@ -17,7 +17,6 @@ const INTERPOLATION = /\{\{\s*([^},\s]+)[^}]*\}\}/g
 const INTENTIONAL_PLATFORM_VARIANTS = [
   "bookDetail.downloadFailed",
   "bookDetail.expand",
-  "bookDetail.loadFailed",
   "bookDetail.pubDate",
   "bookDetail.series",
   "bookRow.finished",

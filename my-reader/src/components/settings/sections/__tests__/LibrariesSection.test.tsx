@@ -25,7 +25,9 @@ describe("LibrariesSection", () => {
     render(<LibrariesSection onAddLibrary={onAddLibrary} />)
 
     expect(screen.getByText("还没有添加书库")).toBeInTheDocument()
-    expect(screen.getByText("已添加的书库")).toBeInTheDocument()
+    expect(
+      screen.getByRole("heading", { name: "已添加的书库", level: 2 }),
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole("button", { name: "添加书库" }))
     expect(onAddLibrary).toHaveBeenCalledOnce()
@@ -48,6 +50,14 @@ describe("LibrariesSection", () => {
     render(<LibrariesSection onAddLibrary={vi.fn()} />)
 
     expect(screen.getByText("/Attachments")).toBeInTheDocument()
+    expect(screen.getByRole("img", { name: "MyReader" })).toHaveAttribute(
+      "data-entity-icon",
+      "myreaderLibrary",
+    )
+    const sourceIcon = screen.getByRole("img", { name: "OneDrive" })
+    expect(sourceIcon).toHaveAttribute("data-entity-icon", "onedriveDataSource")
+    expect(sourceIcon.closest('[data-slot="row-tail"]')).not.toBeNull()
+    expect(sourceIcon.closest('[data-slot="row-detail"]')).toBeNull()
     expect(
       screen.queryByText(
         "/Users/wen/Library/Application Support/MyReader/libraries/cache",

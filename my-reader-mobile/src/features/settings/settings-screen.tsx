@@ -1,4 +1,5 @@
 import type { MenuAction } from "@react-native-menu/menu"
+import { libraryTypeOf } from "@my-reader/tools/types/library"
 import { Image as ExpoImage } from "expo-image"
 import { router, useNavigation } from "expo-router"
 import { useEffect, useMemo, useRef } from "react"
@@ -10,7 +11,9 @@ import {
   Screen,
   SectionCard,
   SectionLabel,
+  type ListRowIcon,
 } from "@/src/components"
+import { ENTITY_LIST_ROW_ICONS } from "@/src/components/ui/entity-list-row-icons"
 import {
   COVER_THUMBNAIL_GENERATION_CONCURRENCY_MAX,
   COVER_THUMBNAIL_GENERATION_CONCURRENCY_MIN,
@@ -25,6 +28,17 @@ import { useAppStore } from "@/src/store/app-store"
 import type { HomeCardStyle } from "@/src/store/app-store.types"
 import { View } from "@/tw"
 import { DeveloperConcurrencyControl } from "./components/developer-concurrency-control"
+
+const SETTINGS_ROW_ICONS = {
+  addLibrary: { ios: "plus.circle", android: "add-circle-outline" },
+  language: { ios: "globe", android: "language" },
+  darkMode: { ios: "circle.lefthalf.filled", android: "dark-mode" },
+  homeCardStyle: { ios: "rectangle.grid.1x2", android: "view-agenda" },
+  clearImageCache: { ios: "photo.on.rectangle", android: "image" },
+  libraryPerformanceProfiler: { ios: "speedometer", android: "speed" },
+  coverLoadingAnimation: { ios: "sparkles", android: "animation" },
+  coverThumbnailConcurrency: { ios: "cpu", android: "memory" },
+} as const satisfies Record<string, ListRowIcon>
 
 export default function SettingsScreen() {
   const { t } = useTranslation()
@@ -178,29 +192,46 @@ export default function SettingsScreen() {
       <Screen>
         <View className="gap-3">
           <SectionLabel>{t("settings.librarySection")}</SectionLabel>
+          {libraries.length > 0 ? (
+            <SectionCard>
+              {libraries.map((library, index) => (
+                <ListRow
+                  key={library.id}
+                  testID={`settings-library-row-${library.id}`}
+                  title={library.name}
+                  label={`${t("settings.manageLibrary", { name: library.name })}, ${t(
+                    libraryTypeOf(library) === "myreader"
+                      ? "libraryDetail.myreaderLibrary"
+                      : "libraryDetail.calibreLibrary",
+                  )}`}
+                  icon={
+                    ENTITY_LIST_ROW_ICONS[
+                      libraryTypeOf(library) === "myreader"
+                        ? "myreaderLibrary"
+                        : "calibreLibrary"
+                    ]
+                  }
+                  value={
+                    activeLibraryId === library.id
+                      ? t("settings.currentInUse")
+                      : undefined
+                  }
+                  isLast={index === libraries.length - 1}
+                  onPress={() =>
+                    navigateTo({
+                      pathname: "/settings/library/[libraryId]",
+                      params: { libraryId: library.id },
+                    })
+                  }
+                />
+              ))}
+            </SectionCard>
+          ) : null}
           <SectionCard>
-            {libraries.map((library) => (
-              <ListRow
-                key={library.id}
-                testID={`settings-library-row-${library.id}`}
-                title={library.name}
-                label={t("settings.manageLibrary", { name: library.name })}
-                value={
-                  activeLibraryId === library.id
-                    ? t("settings.currentInUse")
-                    : undefined
-                }
-                onPress={() =>
-                  navigateTo({
-                    pathname: "/settings/library/[libraryId]",
-                    params: { libraryId: library.id },
-                  })
-                }
-              />
-            ))}
             <ListRow
               testID="settings-add-library-row"
               title={t("settings.addLibrary")}
+              icon={SETTINGS_ROW_ICONS.addLibrary}
               isLast
               onPress={() => navigateTo("/settings/add-library")}
             />
@@ -212,12 +243,14 @@ export default function SettingsScreen() {
             <ListRow
               testID="settings-webdav-row"
               title="WebDAV"
+              icon={ENTITY_LIST_ROW_ICONS.webdavDataSource}
               detail={t("settings.webdavDetail")}
               onPress={() => navigateTo("/settings/webdav")}
             />
             <ListRow
               testID="settings-onedrive-row"
               title="OneDrive"
+              icon={ENTITY_LIST_ROW_ICONS.onedriveDataSource}
               detail={t("settings.onedriveDetail")}
               onPress={() => navigateTo("/settings/onedrive")}
               isLast
@@ -236,6 +269,7 @@ export default function SettingsScreen() {
                 void changeLanguage(resolveAppLanguage(lang))
               }}
               title={t("settings.language")}
+              icon={SETTINGS_ROW_ICONS.language}
               value={languageLabels[effectiveLanguage]}
             />
             <ListMenuRow
@@ -249,6 +283,7 @@ export default function SettingsScreen() {
                 setMode(nextMode)
               }}
               title={t("settings.darkMode")}
+              icon={SETTINGS_ROW_ICONS.darkMode}
               value={themeMode}
             />
             <ListMenuRow
@@ -262,6 +297,7 @@ export default function SettingsScreen() {
                 setHomeCardStyle(nextStyle)
               }}
               title={t("settings.homeCardStyle")}
+              icon={SETTINGS_ROW_ICONS.homeCardStyle}
               value={homeCardStyleValue}
               isLast
             />
@@ -274,12 +310,14 @@ export default function SettingsScreen() {
               <ListRow
                 testID="settings-clear-image-cache-row"
                 title={t("settings.developer.clearImageCache.title")}
+                icon={SETTINGS_ROW_ICONS.clearImageCache}
                 detail={t("settings.developer.clearImageCache.detail")}
                 onPress={handleClearImageCache}
               />
               <ListRow
                 testID="settings-library-performance-profiler-row"
                 title={t("settings.developer.libraryPerformanceProfiler.title")}
+                icon={SETTINGS_ROW_ICONS.libraryPerformanceProfiler}
                 detail={t(
                   "settings.developer.libraryPerformanceProfiler.detail",
                 )}
@@ -303,6 +341,7 @@ export default function SettingsScreen() {
               <ListRow
                 testID="settings-cover-loading-animation-row"
                 title={t("settings.developer.coverLoadingAnimation.title")}
+                icon={SETTINGS_ROW_ICONS.coverLoadingAnimation}
                 detail={t("settings.developer.coverLoadingAnimation.detail")}
                 accessory={
                   <Switch
@@ -324,6 +363,7 @@ export default function SettingsScreen() {
               <ListRow
                 testID="settings-cover-thumbnail-concurrency-row"
                 title={t("settings.developer.coverThumbnailConcurrency.title")}
+                icon={SETTINGS_ROW_ICONS.coverThumbnailConcurrency}
                 detail={t(
                   "settings.developer.coverThumbnailConcurrency.detail",
                 )}

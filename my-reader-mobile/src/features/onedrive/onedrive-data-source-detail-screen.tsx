@@ -4,11 +4,19 @@ import { SymbolView } from "expo-symbols"
 import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Platform } from "react-native"
-import { ListRow, Screen, SectionCard } from "@/src/components"
+import {
+  EmptyState,
+  ListRow,
+  PrimaryButton,
+  Screen,
+  SectionCard,
+} from "@/src/components"
+import { ENTITY_LIST_ROW_ICONS } from "@/src/components/ui/entity-list-row-icons"
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import { useThemePalette } from "@/src/design/tokens"
 import type { DataSourceOnedrive } from "@/src/domain/types"
 import { DataSourceInUseError } from "@/src/errors"
+import { useAddOneDriveDataSource } from "@/src/features/onedrive/hooks/use-add-onedrive-data-source"
 import { useDataSourceActions } from "@/src/hooks/use-data-source-actions"
 import {
   type ScreenHeaderAction,
@@ -64,7 +72,10 @@ function OneDriveDetailHero({
               color={accent}
             />
           }
-          name={{ ios: "cloud.fill", android: "cloud" }}
+          name={{
+            ios: ENTITY_LIST_ROW_ICONS.onedriveDataSource.ios,
+            android: "cloud",
+          }}
           resizeMode="scaleAspectFit"
           size={80}
           tintColor={accent}
@@ -102,6 +113,8 @@ export default function OneDriveDataSourceDetailScreen() {
   const palette = useThemePalette()
   const dataSources = useAppStore((state) => state.dataSources)
   const { deleteDataSource } = useDataSourceActions()
+  const { busy: authenticating, reauthenticateOneDriveDataSource } =
+    useAddOneDriveDataSource()
 
   const sourceIndex = useMemo(
     () =>
@@ -116,7 +129,7 @@ export default function OneDriveDataSourceDetailScreen() {
   const [deletingSourceSnapshot, setDeletingSourceSnapshot] =
     useState<DataSourceOnedrive | null>(null)
   const onedriveSource = storedOnedriveSource ?? deletingSourceSnapshot
-  const accent = palette.primary
+  const accent = palette.brandOnedrive
 
   function handleBack() {
     if (router.canGoBack()) {
@@ -192,9 +205,35 @@ export default function OneDriveDataSourceDetailScreen() {
       }
     : undefined
 
+  const reauthenticateAction: ScreenHeaderAction | undefined =
+    storedOnedriveSource
+      ? {
+          label: t("onedrive.reauthenticate"),
+          onPress: () => {
+            void reauthenticateOneDriveDataSource(storedOnedriveSource)
+          },
+          icon:
+            Platform.OS === "ios" ? (
+              <SymbolView
+                name="arrow.clockwise"
+                size={16}
+                tintColor={palette.text}
+              />
+            ) : (
+              <MaterialIcons name="login" size={22} color={palette.text} />
+            ),
+          iosSfSymbol: "arrow.clockwise",
+          iconOnly: true,
+          loading: authenticating,
+          disabled: authenticating,
+        }
+      : undefined
+
   const { options, toolbar } = useScreenHeader({
     backTitle: t("back"),
-    right: deleteAction ? [deleteAction] : [],
+    right: [reauthenticateAction, deleteAction].filter(
+      (action): action is ScreenHeaderAction => action !== undefined,
+    ),
   })
 
   if (!onedriveSource) {
@@ -202,17 +241,17 @@ export default function OneDriveDataSourceDetailScreen() {
       <Screen>
         <Stack.Screen options={options} />
         {toolbar}
-        <View className="flex-1 items-center justify-center">
-          <Text className="text-2xl font-bold" style={{ color: palette.text }}>
-            {t("onedrive.notFound.title")}
-          </Text>
-          <Text
-            className="mt-3 text-center text-sm"
-            style={{ color: palette.textMuted }}
-          >
-            {t("onedrive.notFound.detail")}
-          </Text>
-        </View>
+        <EmptyState
+          title={t("dataSource.notFound.title")}
+          detail={t("dataSource.notFound.detail")}
+          action={
+            <PrimaryButton
+              title={t("dataSource.backToList")}
+              onPress={() => router.replace("/settings/onedrive")}
+            />
+          }
+          icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }}
+        />
       </Screen>
     )
   }

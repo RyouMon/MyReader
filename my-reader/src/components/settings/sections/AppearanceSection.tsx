@@ -2,6 +2,7 @@ import type { DesktopTranslationKey } from "@my-reader/i18n/desktop"
 import { Check, type LucideIcon, Monitor, Moon, Sun } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useTheme } from "@/components/AppThemeProvider"
+import { SectionHeader } from "@/components/common/SectionHeader"
 import { cn } from "@/lib/utils"
 import { useAppUiStore } from "@/stores/appUiStore"
 import type { AppLanguageMode, AppThemeMode } from "@/types/readerUiPreferences"
@@ -79,14 +80,10 @@ export default function AppearanceSection() {
       </div>
       <div className="flex-1 overflow-y-auto px-7 py-6">
         <section className="max-w-3xl">
-          <div className="mb-3">
-            <h2 className="text-sm font-medium">
-              {t("settings.appearance.languageTitle")}
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("settings.appearance.languageDescription")}
-            </p>
-          </div>
+          <SectionHeader
+            title={t("settings.appearance.languageTitle")}
+            description={t("settings.appearance.languageDescription")}
+          />
 
           <div className="grid gap-3 sm:grid-cols-3">
             {LANGUAGE_OPTIONS.map(
@@ -130,14 +127,10 @@ export default function AppearanceSection() {
         </section>
 
         <section className="mt-8 max-w-3xl border-t border-border pt-6">
-          <div className="mb-3">
-            <h2 className="text-sm font-medium">
-              {t("settings.appearance.themeTitle")}
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("settings.appearance.themeDescription")}
-            </p>
-          </div>
+          <SectionHeader
+            title={t("settings.appearance.themeTitle")}
+            description={t("settings.appearance.themeDescription")}
+          />
 
           <div className="grid gap-3 sm:grid-cols-3">
             {THEME_OPTIONS.map(

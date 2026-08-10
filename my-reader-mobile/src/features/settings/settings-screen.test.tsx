@@ -267,12 +267,63 @@ describe("SettingsScreen library navigation", () => {
   it("should open library details when a library row is pressed", () => {
     render(<SettingsScreen />)
 
-    expect(screen.getByLabelText("manage-library:Remote Library")).toBeTruthy()
+    expect(
+      screen.getByLabelText(
+        "manage-library:Remote Library, libraryDetail.calibreLibrary",
+      ),
+    ).toBeTruthy()
     fireEvent.press(screen.getByTestId("settings-library-row-library-2"))
 
     expect(router.push).toHaveBeenCalledWith({
       pathname: "/settings/library/[libraryId]",
       params: { libraryId: "library-2" },
     })
+  })
+
+  it("should show semantic icons for every settings row", () => {
+    render(<SettingsScreen />)
+
+    const components = jest.requireMock("@/src/components") as {
+      ListMenuRow: jest.Mock
+      ListRow: jest.Mock
+    }
+    const rowProps = [
+      ...components.ListRow.mock.calls.map(([props]) => props),
+      ...components.ListMenuRow.mock.calls.map(([props]) => props),
+    ]
+
+    expect(rowProps.length).toBeGreaterThan(0)
+    for (const row of rowProps) {
+      expect(row.icon).toBeDefined()
+    }
+  })
+
+  it("should keep the add-library row separate from the library list", () => {
+    render(<SettingsScreen />)
+
+    const { SectionCard } = jest.requireMock("@/src/components") as {
+      SectionCard: jest.Mock
+    }
+    const sectionChildren = SectionCard.mock.calls.map(
+      ([props]) => props.children,
+    )
+    const libraryRows = mockReact.Children.toArray(sectionChildren[0])
+    const addLibraryRows = mockReact.Children.toArray(sectionChildren[1])
+
+    expect(
+      libraryRows.map(
+        (child) =>
+          (child as mockReact.ReactElement<{ testID?: string }>).props.testID,
+      ),
+    ).toEqual([
+      "settings-library-row-library-1",
+      "settings-library-row-library-2",
+    ])
+    expect(
+      addLibraryRows.map(
+        (child) =>
+          (child as mockReact.ReactElement<{ testID?: string }>).props.testID,
+      ),
+    ).toEqual(["settings-add-library-row"])
   })
 })

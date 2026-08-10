@@ -88,8 +88,8 @@ jest.mock("react-i18next", () => ({
         "reader.annotations.deselect": "取消选择",
         "reader.annotations.done": "完成",
         "reader.annotations.edit": "编辑",
-        "reader.annotations.empty": "暂无笔记",
-        "reader.annotations.emptyDetail": "选中文字后，可以高亮或添加笔记",
+        "reader.empty.annotations.title": "还没有高亮或笔记",
+        "reader.empty.annotations.detail": "请先选中文字，再添加高亮或笔记。",
         "reader.annotations.manage": "管理",
         "reader.annotations.select": "选择",
         "reader.annotations.selectedCount": `已选择 ${values?.count} 条高亮笔记`,
@@ -151,6 +151,13 @@ const baseProps = {
 
 describe("ReaderAnnotationList", () => {
   beforeEach(() => jest.clearAllMocks())
+
+  it("should explain how to add the first highlight or note", () => {
+    const screen = render(<ReaderAnnotationList {...baseProps} />)
+
+    expect(screen.getByText("还没有高亮或笔记")).toBeTruthy()
+    expect(screen.getByText("请先选中文字，再添加高亮或笔记。")).toBeTruthy()
+  })
 
   it("should show surrounding context and the annotation color on highlighted text", () => {
     const item = annotation(2)

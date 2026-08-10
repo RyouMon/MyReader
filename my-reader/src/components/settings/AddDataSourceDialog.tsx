@@ -1,4 +1,3 @@
-import { Cloud, Server } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 
@@ -7,6 +6,8 @@ import {
   FlowDialogContent,
   FlowDialogHeader,
 } from "@/components/common/FlowDialog"
+import { OneDriveCloudIcon } from "@/components/common/OneDriveCloudIcon"
+import { WebdavServerIcon } from "@/components/common/WebdavServerIcon"
 import {
   AddDataSourceForm,
   type CreatableDataSourceType,
@@ -71,12 +72,12 @@ export function AddDataSourceDialog({
           {step.kind === "chooseType" ? (
             <div className="grid gap-3">
               <FlowDialogChoice
-                icon={Server}
+                icon={WebdavServerIcon}
                 title={t("addLibraryFlow.addWebdav.title")}
                 onClick={() => setStep({ kind: "form", sourceType: "webdav" })}
               />
               <FlowDialogChoice
-                icon={Cloud}
+                icon={OneDriveCloudIcon}
                 title={t("addLibraryFlow.addOnedrive.title")}
                 onClick={() =>
                   setStep({ kind: "form", sourceType: "onedrive" })
