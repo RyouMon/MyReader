@@ -14,9 +14,11 @@ import { router } from "expo-router"
 import type { ComponentType, ReactNode } from "react"
 import * as mockReact from "react"
 import {
+  Platform,
   Pressable as mockPressable,
   Text as mockText,
   View as mockView,
+  type ColorValue,
 } from "react-native"
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
@@ -28,7 +30,7 @@ const mockDeleteDataSource = jest.fn()
 const mockReauthenticateOneDriveDataSource = jest.fn()
 let mockDataSourceId = ""
 let mockDataSources: DataSource[] = []
-let mockDeleteAction: { onPress: () => void } | undefined
+let mockDeleteAction: { color?: ColorValue; onPress: () => void } | undefined
 
 const mockWebDavSource: DataSourceWebdav = {
   id: "webdav-1",
@@ -133,6 +135,7 @@ jest.mock("@/src/design/tokens", () => ({
   useThemePalette: jest.fn(() => ({
     background: "#fff",
     border: "#ddd",
+    danger: "#b44a3a",
     destructive: "#c00",
     primary: "#c4622d",
     surface: "#fff",
@@ -209,6 +212,25 @@ describe.each(detailCases)("$source.type data source detail", ({
     mockDataSourceId = source.id
     mockDataSources = [source]
     mockDeleteAction = undefined
+  })
+
+  it("should pass a serializable danger color to the Android header", () => {
+    const initialPlatform = Platform.OS
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: "android",
+    })
+
+    try {
+      render(<DetailScreen />)
+
+      expect(mockDeleteAction?.color).toBe("#b44a3a")
+    } finally {
+      Object.defineProperty(Platform, "OS", {
+        configurable: true,
+        value: initialPlatform,
+      })
+    }
   })
 
   it("should preserve details until dismissal when deleting the current data source", async () => {

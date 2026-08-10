@@ -2,7 +2,12 @@ import type { Library } from "@my-reader/tools/types/library"
 import { act, render, screen, waitFor } from "@testing-library/react-native"
 import { router } from "expo-router"
 import * as mockReact from "react"
-import { Text as mockText, View as mockView } from "react-native"
+import {
+  Platform,
+  Text as mockText,
+  View as mockView,
+  type ColorValue,
+} from "react-native"
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import { removeLibrary } from "@/src/domain/library/hooks/library-actions"
@@ -19,7 +24,9 @@ const mockLibrary: Library = {
 }
 
 let mockLibraries: Library[] = [mockLibrary]
-let mockDeleteAction: { label: string; onPress: () => void } | undefined
+let mockDeleteAction:
+  | { color?: ColorValue; label: string; onPress: () => void }
+  | undefined
 
 jest.mock("@expo/vector-icons/MaterialIcons", () => ({
   __esModule: true,
@@ -65,6 +72,7 @@ jest.mock("@/src/design/tokens", () => ({
   useThemePalette: jest.fn(() => ({
     background: "#fff",
     border: "#ddd",
+    danger: "#b44a3a",
     destructive: "#c00",
     primary: "#c4622d",
     surface: "#fff",
@@ -150,6 +158,25 @@ describe("LibraryDetailScreen", () => {
     jest.clearAllMocks()
     mockDeleteAction = undefined
     mockLibraries = [mockLibrary]
+  })
+
+  it("should pass a serializable danger color to the Android header", () => {
+    const initialPlatform = Platform.OS
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: "android",
+    })
+
+    try {
+      render(<LibraryDetailScreen />)
+
+      expect(mockDeleteAction?.color).toBe("#b44a3a")
+    } finally {
+      Object.defineProperty(Platform, "OS", {
+        configurable: true,
+        value: initialPlatform,
+      })
+    }
   })
 
   it("should preserve details until dismissal when deleting the current library", async () => {

@@ -229,7 +229,8 @@ export default function LibraryDetailScreen() {
             ),
             onPress: confirmRemove,
             iosSfSymbol: "trash",
-            color: palette.destructive,
+            color:
+              Platform.OS === "android" ? palette.danger : palette.destructive,
             iconOnly: true,
             variant: "prominent",
           },

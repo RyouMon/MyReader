@@ -193,7 +193,7 @@ export default function WebDavDataSourceDetailScreen() {
             />
           ),
         iosSfSymbol: "trash",
-        color: palette.destructive,
+        color: Platform.OS === "android" ? palette.danger : palette.destructive,
         iconOnly: true,
         variant: "prominent" as const,
       }
