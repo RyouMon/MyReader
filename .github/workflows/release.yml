@@ -266,7 +266,7 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-      TESTFLIGHT_GROUP: ${{ inputs.testflight_group || vars.TESTFLIGHT_INTERNAL_GROUP }}
+      TESTFLIGHT_GROUP: ${{ inputs.testflight_group || vars.TESTFLIGHT_INTERNAL_GROUP || 'Team (Expo)' }}
       WHAT_TO_TEST: ${{ inputs.what_to_test }}
     steps:
       - name: Check release configuration
@@ -274,10 +274,6 @@ jobs:
         run: |
           if [ -z "$EXPO_TOKEN" ]; then
             echo "Add the EXPO_TOKEN repository secret before running mobile release jobs." >&2
-            exit 1
-          fi
-          if [ -z "$TESTFLIGHT_GROUP" ]; then
-            echo "Set the TESTFLIGHT_INTERNAL_GROUP repository variable or provide testflight_group manually." >&2
             exit 1
           fi
 
