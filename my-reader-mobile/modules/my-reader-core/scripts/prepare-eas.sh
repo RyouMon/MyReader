@@ -11,7 +11,7 @@ fi
 
 case "${EAS_BUILD_PLATFORM:-}" in
   ios)
-    rustup target add aarch64-apple-ios aarch64-apple-ios-sim
+    rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
     bash "$SCRIPT_DIR/build-bindings.sh" ios
     ;;
   android)
