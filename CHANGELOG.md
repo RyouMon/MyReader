@@ -4,7 +4,7 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
-## [0.12.0] - 2026-08-11
+## [0.12.0] - 2026-08-12
 
 ### Breaking Changes
 
@@ -58,7 +58,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Build
 
-- 新增 GitHub Actions 发布候选流水线：生成 macOS、Windows、Linux 安装包与 Android APK 产物
+- 新增 GitHub Actions 发布候选流水线：生成经 Developer ID 签名与 Apple 公证的 macOS DMG、
+  Windows、Linux 安装包与 Android APK 产物；版本标签通过全部门禁后自动发布 GitHub Release
 - iOS production 构建改由 EAS Build 签名，并通过 EAS Submit 分发到 TestFlight 内部测试组
 
 ## [0.11.0] - 2026-07-31
