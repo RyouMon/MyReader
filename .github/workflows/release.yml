@@ -106,16 +106,6 @@ jobs:
               target/release/bundle/deb/*.deb
               target/release/bundle/rpm/*.rpm
     runs-on: ${{ matrix.runner }}
-    env:
-      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-      KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-      APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-      APPLE_API_PRIVATE_KEY: ${{ secrets.APPLE_API_PRIVATE_KEY }}
-      APPLE_ID: ${{ secrets.APPLE_ID }}
-      APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     steps:
       - uses: actions/checkout@v7
 
@@ -149,6 +139,16 @@ jobs:
       - name: Configure macOS signing
         if: runner.os == 'macOS'
         shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_PRIVATE_KEY: ${{ secrets.APPLE_API_PRIVATE_KEY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           if [ -z "$APPLE_CERTIFICATE" ]; then
             echo "APPLE_SIGNING_IDENTITY=-" >> "$GITHUB_ENV"
@@ -185,10 +185,16 @@ jobs:
             fi
             api_key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY}.p8"
             printf '%s' "$APPLE_API_PRIVATE_KEY" > "$api_key_path"
-            echo "APPLE_API_KEY_PATH=$api_key_path" >> "$GITHUB_ENV"
+            printf 'APPLE_API_ISSUER=%s\n' "$APPLE_API_ISSUER" >> "$GITHUB_ENV"
+            printf 'APPLE_API_KEY=%s\n' "$APPLE_API_KEY" >> "$GITHUB_ENV"
+            printf 'APPLE_API_KEY_PATH=%s\n' "$api_key_path" >> "$GITHUB_ENV"
           elif [ -z "$APPLE_ID" ] || [ -z "$APPLE_PASSWORD" ] || [ -z "$APPLE_TEAM_ID" ]; then
             echo "Notarization credentials are required with a Developer ID certificate." >&2
             exit 1
+          else
+            printf 'APPLE_ID=%s\n' "$APPLE_ID" >> "$GITHUB_ENV"
+            printf 'APPLE_PASSWORD=%s\n' "$APPLE_PASSWORD" >> "$GITHUB_ENV"
+            printf 'APPLE_TEAM_ID=%s\n' "$APPLE_TEAM_ID" >> "$GITHUB_ENV"
           fi
 
       - name: Build desktop bundles
