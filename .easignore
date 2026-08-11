@@ -58,7 +58,8 @@ my-reader-mobile/report.xml
 my-reader-mobile/e2e/.artifacts/
 my-reader-mobile/e2e/.maestro/
 
-# The mobile build only needs the shared packages, Rust core, fixtures, and app.
+# The mobile build also needs the desktop Rust package metadata because it is a
+# member of the root Cargo workspace used by UniFFI's cargo metadata step.
 .git
 .agents/
 .codex/
@@ -70,6 +71,10 @@ my-reader-mobile/e2e/.maestro/
 assets/
 calibre-library/
 docs/
-my-reader/
+my-reader/*
+!my-reader/src-tauri
+!my-reader/src-tauri/**
+my-reader/src-tauri/target
+my-reader/src-tauri/target/**
 my-reader-mobile/docs/
 my-reader-mobile/e2e/
