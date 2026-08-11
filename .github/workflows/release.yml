@@ -200,6 +200,38 @@ jobs:
       - name: Build desktop bundles
         run: pnpm --filter my-reader tauri build ${{ matrix.args }}
 
+      - name: Notarize macOS disk image
+        if: runner.os == 'macOS' && env.APPLE_SIGNING_IDENTITY != '-'
+        shell: bash
+        env:
+          RUST_TARGET: ${{ matrix.rust_targets }}
+        run: |
+          shopt -s nullglob
+          dmg_paths=("target/$RUST_TARGET/release/bundle/dmg/"*.dmg)
+          if [ "${#dmg_paths[@]}" -ne 1 ]; then
+            echo "Expected exactly one macOS disk image, found ${#dmg_paths[@]}." >&2
+            exit 1
+          fi
+
+          if [ -n "${APPLE_API_KEY_PATH:-}" ]; then
+            xcrun notarytool submit "${dmg_paths[0]}" \
+              --key "$APPLE_API_KEY_PATH" \
+              --key-id "$APPLE_API_KEY" \
+              --issuer "$APPLE_API_ISSUER" \
+              --wait
+          else
+            xcrun notarytool submit "${dmg_paths[0]}" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_PASSWORD" \
+              --team-id "$APPLE_TEAM_ID" \
+              --wait
+          fi
+
+          xcrun stapler staple "${dmg_paths[0]}"
+          xcrun stapler validate "${dmg_paths[0]}"
+          spctl --assess --verbose=2 --type open \
+            --context context:primary-signature "${dmg_paths[0]}"
+
       - name: Upload desktop installers
         uses: actions/upload-artifact@v4
         with:
