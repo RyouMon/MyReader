@@ -68,7 +68,7 @@ my-reader-mobile/e2e/.maestro/
 .husky/
 .superdesign/
 .vscode/
-assets/
+/assets/
 calibre-library/
 docs/
 my-reader/*
