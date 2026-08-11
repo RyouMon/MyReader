@@ -7,7 +7,7 @@ load File.join(__dir__, "..", "scripts", "readium_post_install.rb") if File.exis
 
 Pod::Spec.new do |s|
   s.name           = 'Readium'
-  s.version        = '0.11.0'
+  s.version        = '0.12.0'
   s.summary        = 'Open-architecture Readium bridge for Expo (iOS + Android)'
   s.homepage       = 'https://github.com/RyouMon/MyReader'
   s.license        = 'MIT'

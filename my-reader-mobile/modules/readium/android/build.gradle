@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'com.myreader.readium'
-version = '0.11.0'
+version = '0.12.0'
 
 def readiumVersion = '3.1.2'
 
@@ -15,7 +15,7 @@ android {
   defaultConfig {
     minSdkVersion 24
     versionCode 1
-    versionName "0.11.0"
+    versionName "0.12.0"
   }
   sourceSets {
     main {

@@ -4,6 +4,63 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.12.0] - 2026-08-11
+
+### Breaking Changes
+
+- MyReader 受管书库改为由应用容器持有固定路径和文件名；早期开发版创建的受管书库需要重建
+- Android 不再保留或迁移 SAF 外部目录书库，改用应用内部受管书库；iOS 继续支持用户授权的本地目录
+
+### Mobile
+
+#### Added
+
+- 新增 MyReader 受管书库、书籍导入、元数据编辑、书集导航、书库切换与传输队列
+- 支持从系统分享入口导入 EPUB、PDF、CBZ 与 ZIP，并加入 iOS Share Extension
+- 新增书库同步状态页、上传进度与失败恢复提示
+
+#### Changed
+
+- 统一新增书库流程、数据源身份与恢复语义，并将本地文件访问收敛到平台服务层
+- Android 本地书库改为应用容器所有；iOS 本地书库继续使用 security-scoped bookmark
+- 应用显示名称统一为 `MyReader`
+
+#### Fixed
+
+- 修复 Android `content://` 导入、SAF 覆盖、删除操作颜色，以及移动端同步协调器生命周期
+- 修复后台上传排队、OneDrive 并发冲突与书库管理流程收敛
+
+### Desktop
+
+#### Added
+
+- 新增 MyReader 受管书库、本地优先导入、书集导航、传输状态与书库同步状态
+
+#### Changed
+
+- 统一新增书库、数据源身份和恢复流程；应用显示名称统一为 `MyReader`
+
+#### Fixed
+
+- 修复下载状态建模、表单引用转发、Dialog overlay 引用和状态图标可访问性
+
+### Shared
+
+#### Added
+
+- 共享 Rust Core 新增受管书库、出版物分析、书籍传输与 SHA-256 文件状态
+- 新增跨端书集模型、pending import 持久化和 v2 library sidecar schema
+- 更新 MyReader 应用图标与跨端品牌资源
+
+#### Changed
+
+- 统一跨端书籍导入、上传、冲突重试、集合与书库恢复合同
+
+### Build
+
+- 新增 GitHub Actions 发布候选流水线：生成 macOS、Windows、Linux 安装包与 Android APK 产物
+- iOS production 构建改由 EAS Build 签名，并通过 EAS Submit 分发到 TestFlight 内部测试组
+
 ## [0.11.0] - 2026-07-31
 
 ### Breaking Changes

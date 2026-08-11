@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name           = 'MyReaderSecurityScopedBookmarks'
-  s.version        = '0.11.0'
+  s.version        = '0.12.0'
   s.summary        = 'Security-scoped bookmarks for iOS'
   s.description    = 'A module for creating and resolving security-scoped bookmarks on iOS'
   s.author         = 'RyouMon'

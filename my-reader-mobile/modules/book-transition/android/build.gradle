@@ -5,14 +5,14 @@ plugins {
 }
 
 group = 'com.myreader.booktransition'
-version = '0.11.0'
+version = '0.12.0'
 
 android {
   namespace "com.myreader.booktransition"
   defaultConfig {
     minSdkVersion 24
     versionCode 1
-    versionName "0.11.0"
+    versionName "0.12.0"
   }
 }
 

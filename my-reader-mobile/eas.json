@@ -37,9 +37,20 @@
         "ENTRY_FILE": "node_modules/expo-router/entry.js",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
+    },
+    "release-apk": {
+      "extends": "production",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6786315376"
+      }
+    }
   }
 }
