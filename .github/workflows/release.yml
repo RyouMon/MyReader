@@ -60,6 +60,11 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run release unit suites
+        env:
+          CARGO_BUILD_JOBS: "1"
+          CARGO_INCREMENTAL: "0"
+          CARGO_PROFILE_DEV_DEBUG: "0"
+          CARGO_PROFILE_TEST_DEBUG: "0"
         run: |
           pnpm --filter @my-reader/fonts test
           pnpm --filter @my-reader/i18n test
