@@ -358,11 +358,33 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
+      - uses: actions/checkout@v7
+
       - uses: actions/download-artifact@v5
         with:
           pattern: MyReader-*
           path: release-assets
           merge-multiple: true
 
+      - name: Prepare release notes
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          heading="## [$version]"
+          awk -v heading="$heading" '
+            index($0, heading) == 1 { capture = 1; next }
+            capture && /^## \[/ { exit }
+            capture { print }
+          ' CHANGELOG.md > "$RUNNER_TEMP/release-notes.md"
+
+          if [ ! -s "$RUNNER_TEMP/release-notes.md" ]; then
+            echo "No CHANGELOG entry found for $GITHUB_REF_NAME." >&2
+            exit 1
+          fi
+
       - name: Publish installers
-        run: gh release create "$GITHUB_REF_NAME" release-assets/* --verify-tag --title "MyReader $GITHUB_REF_NAME" --generate-notes
+        run: |
+          gh release create "$GITHUB_REF_NAME" release-assets/* \
+            --verify-tag \
+            --title "MyReader $GITHUB_REF_NAME" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"
