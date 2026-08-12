@@ -23,7 +23,6 @@ import {
   openExistingLocalLibraryFromPicker,
 } from "@/src/domain/library/hooks/library-actions"
 import { pickLocalLibraryDirectory } from "@/src/domain/library/local-library-picker"
-import { notifyLibraryAdded } from "@/src/domain/notifications/library-notifications"
 import type { DataSource } from "@/src/domain/types"
 import { useAddOneDriveDataSource } from "@/src/features/onedrive/hooks/use-add-onedrive-data-source"
 import { OneDriveAddingEmptyState } from "@/src/features/onedrive/onedrive-adding-empty-state"
@@ -55,11 +54,6 @@ function sourceBrowserPath(source: DataSource, operation: LibraryOperation) {
       libraryAction: operation,
     },
   }
-}
-
-function finishAddingLibrary(name: string, dismiss: () => void): void {
-  dismiss()
-  notifyLibraryAdded(name)
 }
 
 function showOperationError(t: (key: string) => string, error: unknown): void {
@@ -183,7 +177,8 @@ export function AddLibraryLocationScreen() {
   }>()
   const operation = libraryOperation(libraryActionParam)
   const sources = remoteSources(useAppStore((state) => state.dataSources))
-  const { dismiss, setLocalFolder, setPendingImport } = useAddLibraryFlow()
+  const { finishAddingLibrary, setLocalFolder, setPendingImport } =
+    useAddLibraryFlow()
   const { addOneDriveDataSource, busy: addingOneDrive } =
     useAddOneDriveDataSource()
 
@@ -210,7 +205,7 @@ export function AddLibraryLocationScreen() {
         return
       }
       const library = await openExistingLocalLibraryFromPicker(picked)
-      if (library) finishAddingLibrary(library.name, dismiss)
+      if (library) finishAddingLibrary(library)
     } catch (error) {
       showOperationError(t, error)
     }
@@ -329,8 +324,12 @@ export function CreateLibraryScreen() {
     dataSourceId?: string
     sourcePath?: string
   }>()
-  const { dismiss, localFolder, setLocalFolder, takePendingImport } =
-    useAddLibraryFlow()
+  const {
+    finishAddingLibrary,
+    localFolder,
+    setLocalFolder,
+    takePendingImport,
+  } = useAddLibraryFlow()
   const source = useAppStore((state) =>
     state.dataSources.find((candidate) => candidate.id === dataSourceId),
   )
@@ -373,7 +372,7 @@ export function CreateLibraryScreen() {
         })
         return
       }
-      finishAddingLibrary(library.name, dismiss)
+      finishAddingLibrary(library)
     } catch (error) {
       showOperationError(t, error)
     } finally {
