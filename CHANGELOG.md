@@ -8,166 +8,57 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Highlights
 
-- 新增由 MyReader 创建、管理并同步的可写书库；不使用 Calibre 的用户现在也可以直接导入、阅读和
-  管理自己的图书
-- 打通里程碑版本的交付链路：iOS 内部 TestFlight、可直接安装的 Android APK，以及 macOS、
-  Windows、Linux 桌面安装包
+- 新增可编辑的 MyReader 书库，可在本地、WebDAV 或 OneDrive 导入、阅读和管理 EPUB、PDF、CBZ；
+  Calibre 书库继续保持只读
+- 完成跨平台正式交付：iOS 内部 TestFlight、Android 签名 APK，以及 macOS、Windows、Linux
+  桌面安装包
 
 ### Breaking Changes
 
-- MyReader 书库 catalog 升级为需要不可变 `path` 与 `name` 的 v2 schema；仅使用过 0.12.0 早期
-  开发构建的用户需要删除并重建当时创建的 MyReader 书库
-- Android 不再支持或迁移早期开发构建中的 SAF 外部目录书库；需手动移除旧注册，并在应用内部
-  存储中重建书库。iOS 仍支持通过 security-scoped bookmark 持久授权的外部本地目录
+- MyReader catalog 升级为 v2 schema；仅使用过 0.12.0 早期开发构建的用户需要删除并重建当时
+  创建的 MyReader 书库
+- Android 不再支持早期开发构建中的 SAF 外部目录书库，需改用应用内部存储；iOS 外部本地目录
+  继续通过 security-scoped bookmark 持久授权
 
-> 升级说明：正常从 0.11.0 升级的 Calibre 书库继续保持只读，不需要转换为 MyReader 书库。
+> 正常从 0.11.0 升级的 Calibre 书库不受影响，也无需转换为 MyReader 书库。
 
 ### Managed MyReader Libraries
 
-#### Added
-
-- 新增独立的 `myreader` 书库类型，与现有只读 `calibre` 书库共享 Library、Book、Reader、
-  DataSource 和同步模型，但不生成、同步或修改 Calibre `metadata.db`
-- 支持创建多个 MyReader 书库，并在本地、WebDAV 与 OneDrive 数据源创建或打开书库；打开已有
-  书库时自动识别 MyReader 与 Calibre 类型
-- 支持向 MyReader 书库导入、阅读和删除 EPUB、PDF、CBZ，并修改书名与作者；当前每本导入图书
-  只包含一种格式
-- 新增共享出版物分析：EPUB 读取内嵌元数据与声明封面，PDF 读取标题、作者并渲染第一页封面，
-  CBZ 读取 `ComicInfo.xml` 并使用首张图片；解析失败时回退到文件名和未知作者
-- 新增“全部图书”“最近阅读”“收藏”“已下载”书集，以及按需显示的“正在下载”“正在上传”
-  和“仅本机”书集，桌面端与移动端使用一致的名称和筛选语义
-- 新增远程图书按需下载、后台上传、上传进度、失败状态、手动重试和设备本地待上传队列
-
-#### Changed
-
-- MyReader catalog 与收藏、阅读位置、书签、批注、阅读会话和完成记录共用同一个 Automerge
-  document；v2 sidecar schema 增加 catalog root，并继续投影到设备本地的 Calibre-shaped 查询表
-- 导入后的正文使用稳定且不可变的目录与文件名；修改书名或作者不会移动正文，也不会改变图书身份
-- 文件完整性由旧的 BLAKE3 状态迁移为跨端统一的流式 SHA-256；下载先写入 `.part`，校验大小和
-  SHA-256 后再原子安装
-- 远程导入改为本地优先：正文在当前设备可立即阅读，只有正文与可选封面上传并确认后，catalog
-  变更才会发布给其他设备
-- 删除远程图书时先同步 Automerge tombstone，再清理远端正文和设备缓存；远端文件意外缺失不会
-  自动删除 catalog 记录
-- 删除应用内部书库会同时删除由 MyReader 拥有的完整容器；移除 iOS 外部目录、桌面外部目录或
-  远程书库时保留源文件
-
-#### Fixed
-
-- 上传请求会保留到运行时监听器就绪，并会在导入、手动同步和显式上传后启动，避免启动时漏掉任务
-- OneDrive 大文件上传改用可恢复 upload session 和唯一暂存对象，发布到最终路径后再校验，避免
-  并发或重试占用最终文件路径
-- 为并发导入分配独立的 catalog 身份与正文路径，避免重复导入发生覆盖或冲突
+- 支持在本地、WebDAV 和 OneDrive 创建或打开多个 MyReader 书库，并导入、编辑和删除
+  EPUB、PDF、CBZ
+- 自动提取图书元数据与封面；新增跨端一致的书集、远程下载、后台上传、进度和失败重试
+- catalog 与阅读数据统一通过 Automerge 同步；正文使用稳定路径和 SHA-256 校验，远程导入采用
+  本地优先和确认后发布
+- 删除远程图书时先同步 tombstone；删除应用内部书库会清理完整容器，移除外部或远程书库时
+  保留源文件
+- 修复上传漏调度、OneDrive 大文件重试冲突和并发导入覆盖
 
 ### Mobile
 
-#### Added
-
-- iOS 与 Android 均可在应用内部存储创建 MyReader 书库；iOS 还可在用户授权的外部目录创建或
-  打开本地 MyReader / Calibre 书库，Android 保持应用内部存储模式
-- 新增 iOS Share Extension 与 Android 系统分享入口，可将单个 EPUB、PDF 或 CBZ 文件直接导入
-  MyReader；没有可写书库时会先保留待导入文件，引导完成普通创建流程后继续导入
-- 新增文件选择器导入、图书元数据编辑、删除图书、书库切换页、书集导航和传输状态入口
-- 新增当前书库同步状态页，显示同步阶段、触发原因、进度、最近结果和失败原因，并支持手动同步
-- 新增 WebDAV 重新配置与 OneDrive 重新登录入口，以及凭据失效、数据源缺失和书库缺失的可操作
-  恢复状态
-
-#### Changed
-
-- “创建新书库”和“打开已有书库”改为连续流程，可在流程内选择应用内部、本地或远程位置、添加
-  数据源、浏览目录并为远程新书库指定子目录
-- 本地文件、目录选择和 security-scoped access 收敛到平台服务层，业务层不再直接操作文件系统
-- 统一 MyReader / Calibre 书库与本地 / WebDAV / OneDrive 数据源的身份图标、空状态和帮助文案
-
-#### Fixed
-
-- 修复 Android 文档选择器返回 `content://` URI 时丢失原始文件扩展名、导致 EPUB、PDF 或 CBZ
-  被误判为不支持格式的问题
-- 修复 Android 从系统文档提供程序复制并覆盖文件时使用失效句柄的问题
-- 修复同步协调器销毁后仍可能继续调度、应用结果或报告错误的问题，并稳定同步提示胶囊的进入和
-  退出动画
-- 修复 Expo Compose 标题栏无法序列化 React Native 平台颜色、导致删除操作未显示危险色的问题
-- 修复添加书库表单再次打开后已持久化书库可能不显示，以及根路由下添加/关闭操作不稳定的问题
+- iOS 和 Android 支持应用内部 MyReader 书库；iOS 还支持持久授权的外部 MyReader / Calibre
+  目录
+- 新增 iOS Share Extension、Android 系统分享和文件选择器导入，以及元数据编辑、删除、书集、
+  传输和同步状态
+- 新增手动同步与凭据恢复入口；修复 Android 文件导入与覆盖写入、同步生命周期和添加书库问题
 
 ### Desktop
 
-#### Added
+- 支持在本地、WebDAV 和 OneDrive 创建或打开书库，并进行本地优先导入、编辑、删除、上传与重试
+- 新增书集、传输状态和同步面板；完善路径与凭据恢复、下载状态、表单浮层和无障碍支持
 
-- 支持在本地目录、WebDAV 和 OneDrive 创建 MyReader 书库，或打开已有 MyReader / Calibre
-  书库；远程浏览器可在当前位置创建命名子目录
-- 新增本地优先导入：先提取元数据，再并行复制、计算摘要和生成封面；远程上传在后台继续时，图书
-  已可在当前设备阅读
-- 新增图书导入、书名与作者编辑、删除、上传、失败重试，以及“仅本机”和传输进度显示
-- 侧边栏新增跨端一致的主要书集、传输书集与存储状态书集；空的临时书集会自动隐藏
-- 新增当前书库同步状态面板，展示阶段、原因、最近结果、错误与手动同步操作
+### Branding and Shared Core
 
-#### Changed
-
-- 添加书库流程统一为“创建”或“打开”，并明确区分 MyReader 可写书库与 Calibre 只读书库
-- 书库、数据源、Reader 与同步状态使用共享文案和语义图标，并提供缺失路径、无效凭据和重新授权
-  等恢复入口
-
-#### Fixed
-
-- 明确下载任务认领、取消、失败和文件状态映射，避免缺失取消令牌或重复请求留下不一致状态
-- 修复输入框与 Dialog overlay 的 ref 转发，使表单、焦点和浮层组合可以正确连接底层元素
-- 仅图标显示的下载状态现在具有明确的无障碍角色和标签；装饰图标不再被屏幕阅读器重复朗读
-
-### Branding and Shared UX
-
-- 桌面端窗口、安装包和移动端显示名称由默认的 `my-reader` / `my-reader-mobile` 统一为 `MyReader`
-- 新增统一的 MyReader 应用图标、macOS/Windows 桌面图标、iOS 图标、Android adaptive / monochrome
-  图标与启动画面资源
-- 新增 MyReader 与 Calibre 书库图标，并为本地、WebDAV、OneDrive 数据源补充共享语义颜色
-- 统一跨端书库、书集、同步、Reader 空状态和错误恢复文案，补齐中英文资源合同
-
-### Shared Core and Data
-
-#### Added
-
-- 共享 Rust Core 新增 MyReader 书库身份校验、catalog command、Calibre-shaped projection、出版物
-  分析、内容传输、后台上传调度和本地文件状态服务
-- 新增 `pending_book_imports` 持久化队列、SHA-256 文件状态 migration、catalog projection migration
-  和 Automerge v1 → v2 互操作 fixture
-- 扩展 UniFFI / JSI / Tauri 接口及生成绑定，使桌面端和移动端调用同一套创建、打开、导入、编辑、
-  删除、上传、下载与同步合同
-
-#### Changed
-
-- Tauri Commands 与移动端适配器只负责平台路径、配置和 IPC，书库所有权校验、catalog 事务、
-  传输状态与同步调度统一由共享 Core 负责
-- 共享类型新增 `libraryType`、书集 ID、同步状态与传输状态，并统一 Reader locator、catalog DTO、
-  React Native CSS interop 和原生 bridge 的类型边界
+- 桌面端、移动端、安装包和窗口显示名称统一为 `MyReader`，并更新各平台图标与启动画面
+- 共享 Rust Core 统一管理书库校验、catalog、内容传输和同步调度，并扩展跨端合同与中英文文案
 
 ### Build and Distribution
 
-- 新增 GitHub Actions 发布候选流水线；先运行 fonts、i18n、tools、桌面端、移动端和 Rust workspace
-  的完整单元测试，全部通过后才并行构建各平台
-- macOS 同时生成 Apple Silicon 与 Intel DMG；应用和磁盘镜像使用 Developer ID 签名，并完成
-  Apple 公证、staple 与 Gatekeeper 校验
-- Windows x64 同时生成 MSI 与 NSIS `setup.exe`；Linux x64 同时生成 AppImage、DEB 与 RPM
-- Android 通过 EAS Build 生成可直接安装的签名 APK，并随 GitHub 产物提供 SHA-256 校验文件
-- iOS 通过 EAS Build 生成 App Store distribution 构建，再由 EAS Submit 自动上传到 App Store
-  Connect 的内部 TestFlight 测试组
-- 手动运行作为候选验证，不创建 GitHub Release；GitHub Actions 桌面端与 APK 产物保留 30 天。
-  仅 `v*` 标签在测试、桌面构建、APK 和 TestFlight 全部成功后创建 GitHub Release，并附加所有
-  桌面安装包、APK 与校验文件
-- 同一分支的新候选会取消旧候选，正式标签构建不会被后续运行取代；Apple 凭据仅注入 macOS
-  签名步骤，未配置签名时的手动候选仍可使用 ad-hoc 签名
-- 修复 EAS archive 遗漏 Cargo workspace metadata、Intel iOS simulator Rust target 和移动端图标资源
-  的问题，并降低 GitHub Runner 上 Rust 测试的磁盘占用
-- 修复 EAS Submit 内部 TestFlight 分组参数与 macOS DMG 二次公证流程
-
-### Engineering and Documentation
-
-- 补充本地 EPUB / PDF / CBZ 导入、重启持久化和删除，以及 WebDAV / OneDrive MyReader 书库的
-  Maestro E2E 流程与 fixture 准备脚本
-- 加强桌面下载、移动同步、书库管理、书集、共享文案、文件路径、传输队列和 Core migration 的
-  单元与合同测试
-- 收紧桌面 Reader locator 与 iframe callback、移动端 Reader / catalog / CSS interop、header
-  action 和 Zustand slice 测试工具的类型边界
-- 新增 ADR-0021 并更新架构文档，记录 MyReader 书库、Calibre 只读边界、平台存储所有权、远程
-  传输顺序与 Automerge catalog 设计
+- 新增 GitHub Actions 发布流水线：完整测试通过后并行构建；手动运行只验证候选，`v*` 标签才
+  创建 GitHub Release
+- macOS 生成已签名和公证的 Intel / Apple Silicon DMG；Windows 生成 MSI / NSIS；Linux 生成
+  AppImage、DEB 和 RPM
+- Android 通过 EAS 生成签名 APK 与 SHA-256 校验文件；iOS 通过 EAS Build / Submit 自动上传
+  内部 TestFlight
 
 ## [0.11.0] - 2026-07-31
 
