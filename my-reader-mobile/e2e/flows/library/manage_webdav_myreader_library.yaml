@@ -30,10 +30,7 @@ tags:
 - extendedWaitUntil:
     visible: "成功添加书库：${WEBDAV_LIBRARY_NAME}|Library added: ${WEBDAV_LIBRARY_NAME}"
     timeout: 60000
-- runFlow:
-    file: ../../common/activate_library.yaml
-    env:
-      LIBRARY_NAME: ${WEBDAV_LIBRARY_NAME}
+- tapOn: "切换并打开|Switch and Open"
 - assertVisible: "书库为空|Library is empty"
 
 # Scenario: import is local-first: the card appears before upload ends.
@@ -166,8 +163,5 @@ tags:
 - extendedWaitUntil:
     visible: "成功添加书库：${WEBDAV_LIBRARY_NAME}|Library added: ${WEBDAV_LIBRARY_NAME}"
     timeout: 60000
-- runFlow:
-    file: ../../common/activate_library.yaml
-    env:
-      LIBRARY_NAME: ${WEBDAV_LIBRARY_NAME}
+- tapOn: "切换并打开|Switch and Open"
 - assertVisible: "书库为空|Library is empty"

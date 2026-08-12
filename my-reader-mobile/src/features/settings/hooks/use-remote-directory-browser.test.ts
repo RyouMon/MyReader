@@ -5,7 +5,6 @@ import { useRemoteDirectoryBrowser } from "./use-remote-directory-browser"
 const mockOpenRemoteExistingLibrary = jest.fn()
 const mockListRemoteDirectories = jest.fn()
 const mockShowAlert = jest.fn()
-const mockNotifyLibraryAdded = jest.fn()
 const mockOnLibraryOpened = jest.fn()
 const mockDataSource = {
   id: "source-1",
@@ -38,10 +37,6 @@ jest.mock("@/src/services/core/remote", () => ({
 
 jest.mock("@/src/constants/alert-with-status-bar", () => ({
   showAlertWithStatusBarRestore: (...args: unknown[]) => mockShowAlert(...args),
-}))
-
-jest.mock("@/src/domain/notifications/library-notifications", () => ({
-  notifyLibraryAdded: (...args: unknown[]) => mockNotifyLibraryAdded(...args),
 }))
 
 jest.mock("@/src/store/app-store", () => ({
@@ -88,7 +83,6 @@ describe("useRemoteDirectoryBrowser", () => {
     )
     expect(result.current.error).toBeNull()
     expect(mockOnLibraryOpened).not.toHaveBeenCalled()
-    expect(mockNotifyLibraryAdded).not.toHaveBeenCalled()
   })
 
   it("should open the selected library and notify the caller", async () => {
@@ -113,8 +107,7 @@ describe("useRemoteDirectoryBrowser", () => {
       mockDataSource,
       "/Books/Library",
     )
-    expect(mockOnLibraryOpened).toHaveBeenCalledTimes(1)
-    expect(mockNotifyLibraryAdded).toHaveBeenCalledWith(library.name)
+    expect(mockOnLibraryOpened).toHaveBeenCalledWith(library)
   })
 
   it("should reload the directory when retry is requested", async () => {

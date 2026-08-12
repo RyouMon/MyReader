@@ -45,7 +45,7 @@ const mockCreateRemoteMyReaderLibrary = jest.fn()
 const mockOpenExistingLocalLibraryFromPicker = jest.fn()
 const mockPickLocalLibraryDirectory = jest.fn()
 const mockDismissAddLibrary = jest.fn()
-const mockNotifyLibraryAdded = jest.fn()
+const mockFinishAddingLibrary = jest.fn()
 const mockUseScreenHeader = jest.fn((_options: unknown) => ({
   options: {},
   toolbar: null,
@@ -163,16 +163,13 @@ jest.mock("@/src/domain/library/local-library-picker", () => ({
 jest.mock("./add-library-flow-context", () => ({
   useAddLibraryFlow: () => ({
     dismiss: mockDismissAddLibrary,
+    finishAddingLibrary: mockFinishAddingLibrary,
     localFolder: mockLocalFolder,
     pendingImport: mockPendingImport,
     setLocalFolder: mockSetLocalFolder,
     setPendingImport: mockSetPendingImport,
     takePendingImport: mockTakePendingImport,
   }),
-}))
-
-jest.mock("@/src/domain/notifications/library-notifications", () => ({
-  notifyLibraryAdded: (...args: unknown[]) => mockNotifyLibraryAdded(...args),
 }))
 
 jest.mock("@/src/features/onedrive/hooks/use-add-onedrive-data-source", () => ({
@@ -318,7 +315,10 @@ describe("AddLibraryLocationScreen", () => {
         picked,
       ),
     )
-    expect(mockDismissAddLibrary).toHaveBeenCalledTimes(1)
+    expect(mockFinishAddingLibrary).toHaveBeenCalledWith({
+      id: "external",
+      name: "External",
+    })
   })
 
   it("should hide external local storage on Android", () => {
@@ -414,8 +414,10 @@ describe("CreateLibraryScreen", () => {
         "My Library",
       )
     })
-    expect(mockDismissAddLibrary).toHaveBeenCalledTimes(1)
-    expect(mockNotifyLibraryAdded).toHaveBeenCalledWith("My Library")
+    expect(mockFinishAddingLibrary).toHaveBeenCalledWith({
+      id: "library-1",
+      name: "My Library",
+    })
   })
 
   it("should create inside the selected remote location without repeating it", async () => {
@@ -512,6 +514,6 @@ describe("CreateLibraryScreen", () => {
     })
     expect(mockTakePendingImport).toHaveBeenCalledTimes(1)
     expect(mockDismissAddLibrary).not.toHaveBeenCalled()
-    expect(mockNotifyLibraryAdded).not.toHaveBeenCalled()
+    expect(mockFinishAddingLibrary).not.toHaveBeenCalled()
   })
 })
