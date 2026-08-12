@@ -43,6 +43,23 @@ const READIUM_FONT_OVERRIDE_CSS = `
 }
 `.trim()
 
+const READIUM_THEME_OVERRIDE_CSS = `
+:root {
+  background-color: var(--USER__backgroundColor) !important;
+  color: var(--USER__textColor) !important;
+}
+
+body {
+  background-color: var(--USER__backgroundColor) !important;
+  color: var(--USER__textColor) !important;
+}
+
+:root *:not(a) {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+`.trim()
+
 let readerFontFaceManifestPromise: Promise<ReaderFontFaceManifest> | null = null
 const registeredReaderFontDocuments = new WeakMap<Document, Promise<void>>()
 const readerFontFacesByDocument = new WeakMap<
@@ -192,6 +209,15 @@ export function createReaderFontInjectables(): IInjectablesConfig {
       {
         resources: [/.*/],
         append: [
+          {
+            id: "myreader-reader-theme-overrides",
+            as: "link",
+            rel: "stylesheet",
+            target: "head",
+            blob: new Blob([READIUM_THEME_OVERRIDE_CSS], {
+              type: "text/css",
+            }),
+          },
           {
             id: "myreader-reader-font-overrides",
             as: "link",
