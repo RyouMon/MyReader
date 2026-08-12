@@ -1,3 +1,5 @@
+import type { Library } from "@my-reader/tools/types/library"
+import { router } from "expo-router"
 import type { PropsWithChildren } from "react"
 import {
   createContext,
@@ -10,6 +12,8 @@ import {
 } from "react"
 
 import type { PickedLocalLibrary } from "@/src/domain/library/local-library-picker"
+import { switchActiveLibrary } from "@/src/domain/library/hooks/library-actions"
+import { promptLibraryAdded } from "@/src/domain/notifications/library-notifications"
 import {
   deleteStagedBookImport,
   type StagedBookImport,
@@ -17,6 +21,7 @@ import {
 
 type AddLibraryFlowValue = {
   dismiss: () => void
+  finishAddingLibrary: (library: Pick<Library, "id" | "name">) => void
   localFolder: PickedLocalLibrary | null
   setLocalFolder: (folder: PickedLocalLibrary | null) => void
   pendingImport: StagedBookImport | null
@@ -26,6 +31,7 @@ type AddLibraryFlowValue = {
 
 const AddLibraryFlowContext = createContext<AddLibraryFlowValue>({
   dismiss: () => undefined,
+  finishAddingLibrary: () => undefined,
   localFolder: null,
   setLocalFolder: () => undefined,
   pendingImport: null,
@@ -60,6 +66,20 @@ export function AddLibraryFlowProvider({
     return pending
   }, [])
 
+  const finishAddingLibrary = useCallback(
+    (library: Pick<Library, "id" | "name">) => {
+      promptLibraryAdded(library.name, {
+        onStay: onDismiss,
+        onSwitch: () => {
+          void switchActiveLibrary(library.id).then(() => {
+            router.dismissTo("/library")
+          })
+        },
+      })
+    },
+    [onDismiss],
+  )
+
   useEffect(
     () => () => {
       const pending = pendingImportRef.current
@@ -71,6 +91,7 @@ export function AddLibraryFlowProvider({
   const value = useMemo(
     () => ({
       dismiss: onDismiss,
+      finishAddingLibrary,
       localFolder,
       setLocalFolder,
       pendingImport,
@@ -80,6 +101,7 @@ export function AddLibraryFlowProvider({
     [
       localFolder,
       onDismiss,
+      finishAddingLibrary,
       pendingImport,
       setPendingImport,
       takePendingImport,

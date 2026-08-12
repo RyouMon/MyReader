@@ -419,6 +419,11 @@
     "finished": "已读"
   },
   "addLibrary": {
+    "addedPrompt": {
+      "detail": "是否切换到“{{name}}”并打开书库？",
+      "stay": "留在当前页",
+      "switch": "切换并打开"
+    },
     "selectSaveLocation": "选择保存位置",
     "selectLibraryLocation": "选择书库位置",
     "name": "名称",

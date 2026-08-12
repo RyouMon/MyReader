@@ -6,8 +6,8 @@ import {
   isMissingMetadataDbError,
   normalizeCurrentPath,
 } from "@/src/domain/library/remote-library"
-import { notifyLibraryAdded } from "@/src/domain/notifications/library-notifications"
 import type { DataSource } from "@/src/domain/types"
+import type { Library } from "@my-reader/tools/types/library"
 import {
   listRemoteDirectories,
   type RemoteDirectoryEntry,
@@ -18,7 +18,7 @@ export type UseRemoteDirectoryBrowserOpts = {
   dataSourceId: string | undefined
   currentPathParam: string | undefined
   libraryAction: RemoteLibraryAction
-  onLibraryOpened: () => void
+  onLibraryOpened: (library: Library) => void
   sourceType: "webdav" | "onedrive"
 }
 
@@ -155,8 +155,7 @@ export function useRemoteDirectoryBrowser({
       const sourcePath = selectedPath || "/"
       if (libraryAction !== "open") return
       const library = await openRemoteExistingLibrary(candidate, sourcePath)
-      onLibraryOpened()
-      notifyLibraryAdded(library.name)
+      onLibraryOpened(library)
     } catch (caught) {
       const message = String(caught)
       if (
