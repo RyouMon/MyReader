@@ -22,4 +22,5 @@
 
 mod commands;
 mod common;
+mod configuration;
 mod services;
