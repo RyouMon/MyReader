@@ -1,4 +1,5 @@
 import type { MobileTranslationKey } from "@my-reader/i18n/mobile"
+import type { Library } from "@my-reader/tools/types/library"
 import { router, Stack, useLocalSearchParams } from "expo-router"
 import { useCallback } from "react"
 import { useTranslation } from "react-i18next"
@@ -11,7 +12,9 @@ import {
 } from "@/src/components"
 import { ErrorBoundary } from "@/src/components/error-boundary"
 import { useThemePalette } from "@/src/design/tokens"
+import { switchActiveLibrary } from "@/src/domain/library/hooks/library-actions"
 import { normalizeCurrentPath } from "@/src/domain/library/remote-library"
+import { promptLibraryAdded } from "@/src/domain/notifications/library-notifications"
 import { useAddOneDriveDataSource } from "@/src/features/onedrive/hooks/use-add-onedrive-data-source"
 import { useAddLibraryFlow } from "@/src/features/settings/add-library-flow-context"
 import { useRemoteDirectoryBrowser } from "@/src/features/settings/hooks/use-remote-directory-browser"
@@ -56,16 +59,26 @@ export function RemoteDirectoryBrowserScreen({
   const libraryAction: RemoteLibraryAction =
     libraryActionParam === "create" ? "create" : "open"
   const isAddLibraryBrowser = browserRoute === "/settings/add-library/browser"
-  const { dismiss: dismissAddLibrary } = useAddLibraryFlow()
+  const { finishAddingLibrary } = useAddLibraryFlow()
   const { busy: authenticating, reauthenticateOneDriveDataSource } =
     useAddOneDriveDataSource()
-  const handleLibraryOpened = useCallback(() => {
-    if (isAddLibraryBrowser) {
-      dismissAddLibrary()
-      return
-    }
-    router.dismissTo("/settings")
-  }, [dismissAddLibrary, isAddLibraryBrowser])
+  const handleLibraryOpened = useCallback(
+    (library: Library) => {
+      if (isAddLibraryBrowser) {
+        finishAddingLibrary(library)
+        return
+      }
+      promptLibraryAdded(library.name, {
+        onStay: () => router.dismissTo("/settings"),
+        onSwitch: () => {
+          void switchActiveLibrary(library.id).then(() => {
+            router.dismissTo("/library")
+          })
+        },
+      })
+    },
+    [finishAddingLibrary, isAddLibraryBrowser],
+  )
 
   const label = (key: string, options?: Record<string, unknown>) =>
     t(`${translationNamespace}.${key}` as RemoteBrowserTranslationKey, options)

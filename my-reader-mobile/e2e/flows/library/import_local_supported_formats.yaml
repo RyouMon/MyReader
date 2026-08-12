@@ -27,10 +27,7 @@ tags:
 - extendedWaitUntil:
     visible: "成功添加书库：${LOCAL_LIBRARY_NAME}|Library added: ${LOCAL_LIBRARY_NAME}"
     timeout: 30000
-- runFlow:
-    file: ../../common/activate_library.yaml
-    env:
-      LIBRARY_NAME: ${LOCAL_LIBRARY_NAME}
+- tapOn: "切换并打开|Switch and Open"
 - assertVisible: "书库为空|Library is empty"
 
 # Scenario: EPUB metadata and cover are available before opening the reader.
