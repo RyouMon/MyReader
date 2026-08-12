@@ -78,7 +78,7 @@ describe("readerFonts", () => {
     ).toBe("noto-sans-sc")
   })
 
-  it("should create appended Readium stylesheet injectables for content resources", () => {
+  it("should create appended Readium stylesheet injectables for content resources", async () => {
     const injectables = createReaderFontInjectables()
 
     expect(injectables.allowedDomains).toEqual([])
@@ -89,12 +89,29 @@ describe("readerFonts", () => {
     )
     expect(injectables.rules[0]?.prepend).toBeUndefined()
     expect(injectables.rules[0]?.append?.[0]).toMatchObject({
+      id: "myreader-reader-theme-overrides",
+      as: "link",
+      rel: "stylesheet",
+      target: "head",
+      blob: expect.any(Blob),
+    })
+    expect(injectables.rules[0]?.append?.[1]).toMatchObject({
       id: "myreader-reader-font-overrides",
       as: "link",
       rel: "stylesheet",
       target: "head",
       blob: expect.any(Blob),
     })
+
+    const themeInjectable = injectables.rules[0]?.append?.[0]
+    expect(themeInjectable && "blob" in themeInjectable).toBe(true)
+    if (!themeInjectable || !("blob" in themeInjectable)) return
+
+    const themeCss = await themeInjectable.blob.text()
+    expect(themeCss).toContain(
+      "background-color: var(--USER__backgroundColor) !important",
+    )
+    expect(themeCss).toContain("color: var(--USER__textColor) !important")
   })
 
   it("should register generated font faces into a content document", async () => {
