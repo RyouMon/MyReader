@@ -21,7 +21,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' asset: bookcover: bookfile: blob: data:; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: asset: bookcover: http://bookcover.localhost; script-src 'self'; font-src 'self'; frame-src blob:; media-src 'self' asset: bookcover: bookfile:",
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost bookcover: bookfile: blob: data:; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: asset: http://asset.localhost bookcover: http://bookcover.localhost; script-src 'self'; font-src 'self'; frame-src blob:; media-src 'self' asset: http://asset.localhost bookcover: bookfile:",
       "assetProtocol": {
         "enable": true,
         "scope": {
