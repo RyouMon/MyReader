@@ -42,6 +42,7 @@ export type FixedReaderSettings = {
 export type ReaderSettings = {
   themeMode: ThemeMode
   language: string
+  diagnosticsEnabled: boolean
   syncOnStartup: boolean
   enableAutoSync: boolean
   homeCardStyle: HomeCardStyle

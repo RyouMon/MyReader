@@ -166,6 +166,14 @@
     "homeCardStyle": "Home Card Style",
     "homeCardStyle.adaptive": "Adaptive",
     "homeCardStyle.coverBlur": "Blurred Cover",
+    "privacy": {
+      "title": "Privacy",
+      "diagnostics": {
+        "title": "Share diagnostic information",
+        "detail": "Send error stacks, app version, and device environment when something goes wrong. No user identity data, app logs, or screen recordings are added by default",
+        "unavailable": "Diagnostic reporting is not configured in this build"
+      }
+    },
     "developer": {
       "title": "Developer",
       "enabled": "On",

@@ -1,9 +1,9 @@
-import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../constants/local-library-data-source"
+import type { DataSource } from "@my-reader/tools/types/data-source"
 import {
   COVER_LOADING_SKELETON_PULSE_ENABLED,
   COVER_THUMBNAIL_GENERATION_CONCURRENCY,
 } from "../config/library-list-performance"
-import type { DataSource } from "@my-reader/tools/types/data-source"
+import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../constants/local-library-data-source"
 
 import type { ReaderSettings } from "./app-store.types"
 
@@ -12,6 +12,7 @@ export const MOBILE_CONFIG_KEY = "mobile"
 export const defaultSettings: ReaderSettings = {
   themeMode: "system",
   language: "",
+  diagnosticsEnabled: false,
   syncOnStartup: true,
   enableAutoSync: true,
   homeCardStyle: "adaptive",
@@ -34,6 +35,11 @@ export const defaultSettings: ReaderSettings = {
     readingProgression: "ltr",
     spread: "auto",
   },
+}
+
+/** Diagnostic sharing is opt-in; only a literal persisted true enables it. */
+export function coerceDiagnosticsEnabled(value: unknown): boolean {
+  return value === true
 }
 
 export const DEFAULT_LIBRARY_VIEW_MODE = "grid"

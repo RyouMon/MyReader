@@ -166,6 +166,14 @@
     "homeCardStyle": "主页卡片风格",
     "homeCardStyle.adaptive": "自适应",
     "homeCardStyle.coverBlur": "模糊封面",
+    "privacy": {
+      "title": "隐私",
+      "diagnostics": {
+        "title": "共享诊断信息",
+        "detail": "发生错误时发送错误堆栈、应用版本和设备环境；不主动附加用户身份信息，也不发送应用日志或屏幕录制",
+        "unavailable": "此构建未配置诊断服务"
+      }
+    },
     "developer": {
       "title": "开发者",
       "enabled": "已开启",

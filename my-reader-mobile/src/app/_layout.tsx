@@ -2,67 +2,35 @@ import "@/src/global.css"
 import "@/src/i18n"
 import "@/src/polyfills/reader-engine-globals"
 
+import { QueryClientProvider } from "@tanstack/react-query"
+import { Stack } from "expo-router"
 import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider as NavigationThemeProvider,
 } from "expo-router/react-navigation"
-import { Stack } from "expo-router"
 import { StatusBar } from "expo-status-bar"
-import { useEffect, useRef, type ComponentProps } from "react"
+import { type ComponentProps, useEffect, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { Platform, View as RNView } from "react-native"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { NotifierWrapper } from "react-native-notifier"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-
+import { DiagnosticsRuntime } from "@/src/components/diagnostics-runtime"
 import { ErrorBoundary } from "@/src/components/error-boundary"
 import { setAlertStatusBarPreferredStyle } from "@/src/constants/alert-with-status-bar"
 import { ThemeProvider, useTheme } from "@/src/design/tokens"
 import { hydrateLibraries } from "@/src/domain/library/hooks/library-actions"
 import { initializeDownloadNotifications } from "@/src/domain/notifications/download-notifications"
-import { useAppStore } from "@/src/store/app-store"
-import { SyncRuntime } from "@/src/domain/sync/components/SyncRuntime"
 import { BookUploadRuntime } from "@/src/domain/sync/components/BookUploadRuntime"
+import { SyncRuntime } from "@/src/domain/sync/components/SyncRuntime"
 import { setupGlobalErrorHandler } from "@/src/errors/global-handler"
 import { setReaderTransitionRootNode } from "@/src/features/reader/reader-open-transition"
 import { ReaderOpenTransitionHost } from "@/src/features/reader/reader-open-transition-overlay"
 import { useDataSourceActions } from "@/src/hooks/use-data-source-actions"
 import { AppLanguageProvider } from "@/src/i18n/app-language-provider"
 import { queryClient } from "@/src/services/query/query-client"
-import * as Sentry from "@sentry/react-native"
-import { QueryClientProvider } from "@tanstack/react-query"
-
-const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN
-if (sentryDsn) {
-  const sentryReplayEnabled =
-    process.env.EXPO_PUBLIC_SENTRY_REPLAY_ENABLED === "true"
-  // Session Replay captures native view snapshots, so keep it opt-in during
-  // list-performance profiling and normal development builds.
-  const sentryIntegrations = [
-    ...(sentryReplayEnabled ? [Sentry.mobileReplayIntegration()] : []),
-    Sentry.feedbackIntegration(),
-  ]
-
-  Sentry.init({
-    dsn: sentryDsn,
-
-    // Adds more context data to events (IP address, cookies, user, etc.)
-    // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
-    sendDefaultPii: true,
-
-    // Enable Logs
-    enableLogs: true,
-
-    // Configure Session Replay
-    replaysSessionSampleRate: sentryReplayEnabled ? 0.1 : 0,
-    replaysOnErrorSampleRate: sentryReplayEnabled ? 1 : 0,
-    integrations: sentryIntegrations,
-
-    // uncomment the line below to enable Spotlight (https://spotlightjs.com)
-    // spotlight: __DEV__,
-  })
-}
+import { useAppStore } from "@/src/store/app-store"
 
 function RootNavigator() {
   const { colorScheme, palette } = useTheme()
@@ -188,7 +156,7 @@ function NotifierWithSafeArea({ children }: { children: NotifierChildren }) {
   )
 }
 
-export default Sentry.wrap(function RootLayout() {
+export default function RootLayout() {
   // RN 运行时在首次渲染前已就绪，此处调用是最早的安全时机。
   // setupGlobalErrorHandler 内部有幂等保护，重渲染不会重复注册。
   setupGlobalErrorHandler()
@@ -205,6 +173,7 @@ export default Sentry.wrap(function RootLayout() {
         <ThemeProvider>
           <AppLanguageProvider>
             <ErrorBoundary>
+              <DiagnosticsRuntime />
               <NotifierWithSafeArea>
                 <RNView
                   ref={transitionRootRef}
@@ -220,4 +189,4 @@ export default Sentry.wrap(function RootLayout() {
       </QueryClientProvider>
     </GestureHandlerRootView>
   )
-})
+}

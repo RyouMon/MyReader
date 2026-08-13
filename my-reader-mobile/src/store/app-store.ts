@@ -5,7 +5,9 @@ import {
 import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
 import { clampCoverThumbnailGenerationConcurrency } from "../config/library-list-performance"
+import { createAppConfigStorage } from "./app-config-storage"
 import {
+  coerceDiagnosticsEnabled,
   DEFAULT_LIBRARY_VIEW_MODE,
   defaultSettings,
   excludeLocalLibrarySource,
@@ -25,7 +27,6 @@ import {
   coerceLibrarySyncHistory,
   createSyncStatusSlice,
 } from "./sync-status-slice"
-import { createAppConfigStorage } from "./app-config-storage"
 
 const appConfigStorage = createAppConfigStorage()
 
@@ -65,6 +66,9 @@ export const useAppStore = create<AppState>()(
           settings: {
             ...defaultSettings,
             ...persistedSettings,
+            diagnosticsEnabled: coerceDiagnosticsEnabled(
+              persistedSettings?.diagnosticsEnabled,
+            ),
             syncOnStartup:
               persistedSettings?.syncOnStartup ?? legacyAutoSync ?? true,
             enableAutoSync:

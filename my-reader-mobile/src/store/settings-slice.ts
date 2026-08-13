@@ -1,3 +1,9 @@
+import { clampCoverThumbnailGenerationConcurrency } from "../config/library-list-performance"
+import type { ThemeMode } from "../design/tokens"
+import {
+  DEFAULT_LIBRARY_VIEW_MODE,
+  defaultSettings,
+} from "./app-store.constants"
 import type {
   AppStateSlice,
   FixedReaderSettings,
@@ -6,18 +12,12 @@ import type {
   ReaderSettings,
   ReflowableReaderSettings,
 } from "./app-store.types"
-import type { ThemeMode } from "../design/tokens"
-import { clampCoverThumbnailGenerationConcurrency } from "../config/library-list-performance"
-
-import {
-  DEFAULT_LIBRARY_VIEW_MODE,
-  defaultSettings,
-} from "./app-store.constants"
 
 export type SettingsSlice = {
   settings: ReaderSettings
   setThemeMode: (mode: ThemeMode) => void
   setLanguage: (language: string) => void
+  setDiagnosticsEnabled: (enabled: boolean) => void
   setSyncOnStartup: (enabled: boolean) => void
   setEnableAutoSync: (enabled: boolean) => void
   setHomeCardStyle: (style: HomeCardStyle) => void
@@ -37,6 +37,11 @@ export const createSettingsSlice: AppStateSlice<SettingsSlice> = (set) => ({
   },
   setLanguage(language) {
     set((state) => ({ settings: { ...state.settings, language } }))
+  },
+  setDiagnosticsEnabled(enabled) {
+    set((state) => ({
+      settings: { ...state.settings, diagnosticsEnabled: enabled },
+    }))
   },
   setSyncOnStartup(enabled) {
     set((state) => ({

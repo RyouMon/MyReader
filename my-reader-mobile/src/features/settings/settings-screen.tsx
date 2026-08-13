@@ -1,5 +1,5 @@
-import type { MenuAction } from "@react-native-menu/menu"
 import { libraryTypeOf } from "@my-reader/tools/types/library"
+import type { MenuAction } from "@react-native-menu/menu"
 import { Image as ExpoImage } from "expo-image"
 import { router, useNavigation } from "expo-router"
 import { useEffect, useMemo, useRef } from "react"
@@ -8,12 +8,13 @@ import { Switch } from "react-native"
 import {
   ListMenuRow,
   ListRow,
+  type ListRowIcon,
   Screen,
   SectionCard,
   SectionLabel,
-  type ListRowIcon,
 } from "@/src/components"
 import { ENTITY_LIST_ROW_ICONS } from "@/src/components/ui/entity-list-row-icons"
+import { DIAGNOSTICS_AVAILABLE } from "@/src/config/diagnostics"
 import {
   COVER_THUMBNAIL_GENERATION_CONCURRENCY_MAX,
   COVER_THUMBNAIL_GENERATION_CONCURRENCY_MIN,
@@ -33,6 +34,7 @@ const SETTINGS_ROW_ICONS = {
   addLibrary: { ios: "plus.circle", android: "add-circle-outline" },
   language: { ios: "globe", android: "language" },
   darkMode: { ios: "circle.lefthalf.filled", android: "dark-mode" },
+  diagnostics: { ios: "shield.lefthalf.filled", android: "privacy-tip" },
   homeCardStyle: { ios: "rectangle.grid.1x2", android: "view-agenda" },
   clearImageCache: { ios: "photo.on.rectangle", android: "image" },
   libraryPerformanceProfiler: { ios: "speedometer", android: "speed" },
@@ -152,6 +154,8 @@ export default function SettingsScreen() {
 
   const homeCardStyle = useAppStore((s) => s.settings.homeCardStyle)
   const setHomeCardStyle = useAppStore((s) => s.setHomeCardStyle)
+  const diagnosticsEnabled = useAppStore((s) => s.settings.diagnosticsEnabled)
+  const setDiagnosticsEnabled = useAppStore((s) => s.setDiagnosticsEnabled)
   const libraryPerformanceProfilerEnabled = useAppStore(
     (s) => s.settings.libraryPerformanceProfilerEnabled,
   )
@@ -299,6 +303,37 @@ export default function SettingsScreen() {
               title={t("settings.homeCardStyle")}
               icon={SETTINGS_ROW_ICONS.homeCardStyle}
               value={homeCardStyleValue}
+              isLast
+            />
+          </SectionCard>
+        </View>
+        <View className="gap-3">
+          <SectionLabel>{t("settings.privacy.title")}</SectionLabel>
+          <SectionCard>
+            <ListRow
+              testID="settings-diagnostics-row"
+              title={t("settings.privacy.diagnostics.title")}
+              icon={SETTINGS_ROW_ICONS.diagnostics}
+              detail={t(
+                DIAGNOSTICS_AVAILABLE
+                  ? "settings.privacy.diagnostics.detail"
+                  : "settings.privacy.diagnostics.unavailable",
+              )}
+              accessory={
+                <Switch
+                  accessibilityLabel={t("settings.privacy.diagnostics.title")}
+                  disabled={!DIAGNOSTICS_AVAILABLE}
+                  testID="settings-diagnostics-switch"
+                  value={DIAGNOSTICS_AVAILABLE && diagnosticsEnabled}
+                  onValueChange={setDiagnosticsEnabled}
+                  trackColor={{
+                    false: palette.border,
+                    true: palette.primary,
+                  }}
+                  thumbColor={palette.surface}
+                  ios_backgroundColor={palette.backgroundSecondary}
+                />
+              }
               isLast
             />
           </SectionCard>

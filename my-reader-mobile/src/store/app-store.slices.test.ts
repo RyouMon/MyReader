@@ -1,12 +1,11 @@
 import type { DataSource } from "@my-reader/tools/types/data-source"
 import type { Library } from "@my-reader/tools/types/library"
-
-import type { AppState, AppStateSlice } from "./app-store.types"
 import {
   COVER_THUMBNAIL_GENERATION_CONCURRENCY_MAX,
   COVER_THUMBNAIL_GENERATION_CONCURRENCY_MIN,
 } from "../config/library-list-performance"
 import { defaultSettings } from "./app-store.constants"
+import type { AppState, AppStateSlice } from "./app-store.types"
 import { createDataSourceSlice } from "./data-source-slice"
 import { createLibrarySlice } from "./library-slice"
 import { createProgramSlice, createSettingsSlice } from "./settings-slice"
@@ -97,6 +96,7 @@ describe("settings slice", () => {
 
     harness.slice.setThemeMode("dark")
     harness.slice.setLanguage("en")
+    harness.slice.setDiagnosticsEnabled(true)
     harness.slice.setSyncOnStartup(false)
     harness.slice.setEnableAutoSync(false)
     harness.slice.setHomeCardStyle("coverBlur")
@@ -108,6 +108,7 @@ describe("settings slice", () => {
       ...defaultSettings,
       themeMode: "dark",
       language: "en",
+      diagnosticsEnabled: true,
       syncOnStartup: false,
       enableAutoSync: false,
       homeCardStyle: "coverBlur",

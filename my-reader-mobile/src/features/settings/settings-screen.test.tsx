@@ -22,6 +22,7 @@ import SettingsScreen from "./settings-screen"
 const mockSetMode = jest.fn()
 const mockSetLanguage = jest.fn()
 const mockSetHomeCardStyle = jest.fn()
+const mockSetDiagnosticsEnabled = jest.fn()
 const mockSetLibraryPerformanceProfilerEnabled = jest.fn()
 const mockSetCoverLoadingSkeletonPulseEnabled = jest.fn()
 const mockSetCoverThumbnailGenerationConcurrency = jest.fn()
@@ -79,6 +80,10 @@ jest.mock("expo-symbols", () => ({
 
 jest.mock("@/src/constants/alert-with-status-bar", () => ({
   showAlertWithStatusBarRestore: jest.fn(),
+}))
+
+jest.mock("@/src/config/diagnostics", () => ({
+  DIAGNOSTICS_AVAILABLE: true,
 }))
 
 jest.mock("@/src/services/core/content", () => ({
@@ -162,12 +167,14 @@ jest.mock("@/src/store/app-store", () => ({
       settings: {
         coverLoadingSkeletonPulseEnabled: true,
         coverThumbnailGenerationConcurrency: 4,
+        diagnosticsEnabled: false,
         homeCardStyle: "adaptive",
         language: "",
         libraryPerformanceProfilerEnabled: false,
       },
       setCoverLoadingSkeletonPulseEnabled:
         mockSetCoverLoadingSkeletonPulseEnabled,
+      setDiagnosticsEnabled: mockSetDiagnosticsEnabled,
       setCoverThumbnailGenerationConcurrency:
         mockSetCoverThumbnailGenerationConcurrency,
       setHomeCardStyle: mockSetHomeCardStyle,
@@ -256,6 +263,24 @@ describe("SettingsScreen developer tools", () => {
     )
 
     expect(mockSetCoverThumbnailGenerationConcurrency).toHaveBeenCalledWith(6)
+  })
+})
+
+describe("SettingsScreen privacy", () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it("should enable diagnostic sharing only when the user changes the switch", () => {
+    render(<SettingsScreen />)
+
+    fireEvent(
+      screen.getByTestId("settings-diagnostics-switch"),
+      "valueChange",
+      true,
+    )
+
+    expect(mockSetDiagnosticsEnabled).toHaveBeenCalledWith(true)
   })
 })
 

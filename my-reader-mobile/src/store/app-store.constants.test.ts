@@ -7,6 +7,7 @@ import type { DataSource } from "@/src/domain/types"
 import { buildPreferences } from "@/src/features/reader/components/reader/reflow/reader-reflow-preferences"
 
 import {
+  coerceDiagnosticsEnabled,
   defaultSettings,
   excludeLocalLibrarySource,
 } from "./app-store.constants"
@@ -23,6 +24,13 @@ describe("excludeLocalLibrarySource", () => {
 })
 
 describe("defaultSettings", () => {
+  test("diagnostic sharing is opt-in", () => {
+    expect(defaultSettings.diagnosticsEnabled).toBe(false)
+    expect(coerceDiagnosticsEnabled(true)).toBe(true)
+    expect(coerceDiagnosticsEnabled(undefined)).toBe(false)
+    expect(coerceDiagnosticsEnabled("true")).toBe(false)
+  })
+
   test("reflowable settings include fontFamily and drop brightness", () => {
     expect(defaultSettings.reflowable).toEqual(
       expect.objectContaining({

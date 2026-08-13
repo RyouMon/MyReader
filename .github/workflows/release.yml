@@ -246,6 +246,7 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_PUBLIC_SENTRY_DSN: ${{ vars.EXPO_PUBLIC_SENTRY_DSN }}
     steps:
       - name: Check Expo authentication
         run: |
@@ -255,6 +256,11 @@ jobs:
           fi
 
       - uses: actions/checkout@v7
+
+      - name: Prepare mobile build environment
+        if: env.EXPO_PUBLIC_SENTRY_DSN != ''
+        working-directory: my-reader-mobile
+        run: printf 'EXPO_PUBLIC_SENTRY_DSN=%s\n' "$EXPO_PUBLIC_SENTRY_DSN" > .env
 
       - uses: pnpm/action-setup@v4
         with:
@@ -303,6 +309,7 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_PUBLIC_SENTRY_DSN: ${{ vars.EXPO_PUBLIC_SENTRY_DSN }}
       TESTFLIGHT_GROUP: ${{ inputs.testflight_group || vars.TESTFLIGHT_INTERNAL_GROUP || 'Team (Expo)' }}
     steps:
       - name: Check release configuration
@@ -314,6 +321,11 @@ jobs:
           fi
 
       - uses: actions/checkout@v7
+
+      - name: Prepare mobile build environment
+        if: env.EXPO_PUBLIC_SENTRY_DSN != ''
+        working-directory: my-reader-mobile
+        run: printf 'EXPO_PUBLIC_SENTRY_DSN=%s\n' "$EXPO_PUBLIC_SENTRY_DSN" > .env
 
       - uses: pnpm/action-setup@v4
         with:
