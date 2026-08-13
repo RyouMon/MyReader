@@ -1,7 +1,14 @@
 {
   "name": "my-reader-monorepo",
   "version": "0.12.0",
+  "description": "Local-first cross-platform ebook reader for Calibre and MyReader-managed libraries.",
   "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RyouMon/MyReader.git"
+  },
+  "homepage": "https://ryoumon.github.io/projects/myreader/",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "scripts": {

@@ -61,7 +61,7 @@ describe("reader bookmark locator utilities", () => {
   })
 
   it("should strip a file origin when canonicalizing a standalone PDF locator", () => {
-    const input = locator("file:///Users/wen/Books/%E4%B9%A6%E5%90%8D.pdf", {
+    const input = locator("file:///Users/reader/Books/%E4%B9%A6%E5%90%8D.pdf", {
       position: 3,
     })
 
@@ -77,7 +77,7 @@ describe("reader bookmark locator utilities", () => {
       type: "application/pdf",
     }
     const mobile = {
-      ...locator("file:///Users/wen/Books/%E4%B9%A6%E5%90%8D.pdf", {
+      ...locator("file:///Users/reader/Books/%E4%B9%A6%E5%90%8D.pdf", {
         position: 8,
       }),
       type: "application/pdf",

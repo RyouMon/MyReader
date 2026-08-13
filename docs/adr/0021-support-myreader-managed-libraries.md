@@ -14,7 +14,7 @@ isProject: true
 ## 状态说明
 
 本决策已于 2026-08-02 接受并完成主体实施。正文保留接受时的完整设计和实施顺序；当前事实已同步到
-[`ARCHITECTURE.md`](../../ARCHITECTURE.md)。
+[`ARCHITECTURE.md`](../ARCHITECTURE.md)。
 
 ### 2026-08-11 移动端存储修订
 

@@ -1,50 +1,29 @@
-# Welcome to your Expo app 👋
+# MyReader Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+MyReader 的 iOS / Android 客户端，基于 Expo 56、React Native 0.85 与 Expo Router。应用通过自有 Expo Modules 接入 Readium Swift / Kotlin Toolkit，并通过 UniFFI / JSI 使用共享 Rust Core。
 
-## Get started
+本目录不是独立的 Create Expo App 模板。请先按仓库根目录的 [README](../README.md) 与 [开发指南](../docs/DEVELOPMENT.md) 安装整个 pnpm / Cargo workspace。
 
-1. Install dependencies
+> [!IMPORTANT]
+> MyReader 使用自定义原生模块，不能在 Expo Go 中运行。首次运行或原生依赖变化后需要重新构建 development client。
 
-   ```bash
-   npm install
-   ```
+## 常用命令
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+从仓库根目录运行：
 
 ```bash
-npm run reset-project
+# 启动 Metro
+pnpm dev:mobile
+
+# 构建并运行 development client
+pnpm --filter my-reader-mobile ios
+pnpm --filter my-reader-mobile android
+
+# 完整移动单元测试
+pnpm --filter my-reader-mobile exec jest --runInBand
+
+# 原生配置变化后重新生成工程
+pnpm --filter my-reader-mobile expo prebuild --clean
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+修改 Rust / FFI 接口时还需重新生成对应平台绑定，命令见 [开发指南](../docs/DEVELOPMENT.md)。移动端模块边界见 [架构文档](../docs/ARCHITECTURE.md) 和 [.agents/rules/mobile.md](../.agents/rules/mobile.md)。

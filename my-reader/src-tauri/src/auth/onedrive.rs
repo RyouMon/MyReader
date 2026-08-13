@@ -759,23 +759,23 @@ mod tests {
     fn parse_id_token_claims_should_extract_all_fields_when_token_contains_all_claims() {
         let token = encode_id_token_payload(serde_json::json!({
             "name": "Wen Liang",
-            "email": "wenslife@outlook.com",
-            "preferred_username": "wenslife@outlook.com",
+            "email": "reader@example.com",
+            "preferred_username": "reader@example.com",
         }));
 
         let claims = parse_id_token_claims(&token).unwrap();
         assert_eq!(claims.name, Some("Wen Liang".to_string()));
-        assert_eq!(claims.email, Some("wenslife@outlook.com".to_string()));
+        assert_eq!(claims.email, Some("reader@example.com".to_string()));
         assert_eq!(
             claims.preferred_username,
-            Some("wenslife@outlook.com".to_string())
+            Some("reader@example.com".to_string())
         );
     }
 
     #[test]
     fn parse_id_token_claims_should_leave_optional_fields_none_when_claims_are_missing() {
         let token = encode_id_token_payload(serde_json::json!({
-            "preferred_username": "wenslife@outlook.com",
+            "preferred_username": "reader@example.com",
         }));
 
         let claims = parse_id_token_claims(&token).unwrap();
@@ -783,7 +783,7 @@ mod tests {
         assert_eq!(claims.email, None);
         assert_eq!(
             claims.preferred_username,
-            Some("wenslife@outlook.com".to_string())
+            Some("reader@example.com".to_string())
         );
     }
 

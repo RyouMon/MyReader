@@ -98,7 +98,7 @@ describe("AddDataSourceForm", () => {
       accessToken: "access-token",
       refreshToken: "refresh-token",
       userName: "Wen Liang",
-      userEmail: "wenslife@outlook.com",
+      userEmail: "reader@example.com",
     })
 
     render(

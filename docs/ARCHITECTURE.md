@@ -1,3 +1,5 @@
+<div align="right"><a href="./ARCHITECTURE_EN.md">English</a></div>
+
 # MyReader 架构现状
 
 > 文档日期：2026-08-02
@@ -214,7 +216,7 @@ Calibre `metadata.db` 是外部只读数据库：
 
 MyReader 自有书库源包含 `.myreader/library.json`、
 `Books/<storage-name> (<book-uuid 前 6 位>)/<storage-name>.<format>` 和按
-[ADR-0020](./docs/adr/0020-adopt-automerge-repo-storage-model.md) 存放的 Automerge StorageKey
+[ADR-0020](./adr/0020-adopt-automerge-repo-storage-model.md) 存放的 Automerge StorageKey
 对象。正文路径在导入时确定，后续修改书名或作者不会移动文件；旧版
 `Books/<book-uuid>/book.<format>` 路径继续原样使用。marker、Automerge document 和设备本地
 `library_id` projection 使用同一个稳定 `libraryUuid`。
@@ -328,7 +330,7 @@ OneDrive 大文件写入由 OpenDAL OneDrive backend 使用 upload session 分�
 
 ### 7.2 Automerge sidecar
 
-[ADR-0016](./docs/adr/0016-adopt-automerge-for-library-sidecar-sync.md) 已落地：
+[ADR-0016](./adr/0016-adopt-automerge-for-library-sidecar-sync.md) 已落地：
 
 - 每个书库一个 Automerge document。
 - Calibre 书库同步收藏、阅读位置、书签、批注、阅读 session 和完成记录六个 domain；MyReader
@@ -337,14 +339,14 @@ OneDrive 大文件写入由 OpenDAL OneDrive backend 使用 upload session 分�
 - 阅读位置真并发时保留候选；用户选择后写入因果上更新的 change。
 - 同步完成后平台只负责刷新可见查询。
 
-[ADR-0020](./docs/adr/0020-adopt-automerge-repo-storage-model.md) 进一步规定：
+[ADR-0020](./adr/0020-adopt-automerge-repo-storage-model.md) 进一步规定：
 
 - 远端采用 automerge-repo `StorageSubsystem` 的 snapshot/incremental `StorageKey`，直接映射到
   `.myreader/automerge/<document_id>/<kind>/<hash>`；`document_id` 是 Calibre `library_id.uuid`
   或 MyReader marker 中的 `libraryUuid`。
 - core 负责 snapshot-first 加载、内容寻址增量和只删除 covered chunks 的并发安全压缩。
 
-自动同步遵循 [ADR-0017](./docs/adr/0017-event-driven-library-sidecar-sync-scheduling.md)：业务写入通知
+自动同步遵循 [ADR-0017](./adr/0017-event-driven-library-sidecar-sync-scheduling.md)：业务写入通知
 平台 trigger，core 负责 debounce/max-wait、single-flight、pull freshness、retry/backoff、
 suspend 和恢复规则；平台提供前后台、网络、书库切换、Reader 关闭和计时器事件。
 
@@ -405,20 +407,20 @@ pnpm db:generate
 ```
 
 本机构建、E2E 和平台测试见 [DEVELOPMENT.md](./DEVELOPMENT.md)。Core 的本机构建、原生产物和
-高频查询参考值见 [my-reader-core 运行基线](./docs/my-reader-core-runtime-baseline.md)。
+高频查询参考值见 [my-reader-core 运行基线](./my-reader-core-runtime-baseline.md)。
 
 ## 11. 相关 ADR
 
 | ADR | 当前关系 |
 |---|---|
-| [ADR-0005](./docs/adr/0005-adopt-readium-reader-architecture.md) | 当前 Reader 架构基础 |
-| [ADR-0006](./docs/adr/0006-desktop-typed-ipc-and-layered-backend.md) | 桌面类型 IPC 与后端分层基础 |
-| [ADR-0007](./docs/adr/0007-pnpm-monorepo-and-shared-code-ownership.md) | monorepo 与语义共享原则 |
-| [ADR-0008](./docs/adr/0008-shared-database-schema-authority.md) | 已由 ADR-0019 取代，保留历史 |
-| [ADR-0013](./docs/adr/0013-maintain-mobile-readium-integration.md) | 移动 Readium 集成所有权 |
-| [ADR-0016](./docs/adr/0016-adopt-automerge-for-library-sidecar-sync.md) | 当前 Automerge 同步内核 |
-| [ADR-0017](./docs/adr/0017-event-driven-library-sidecar-sync-scheduling.md) | 当前自动同步调度语义 |
-| [ADR-0018](./docs/adr/0018-shared-rust-components.md) | 共享 Rust/UniFFI 试点，crate 组织由 ADR-0019 部分取代 |
-| [ADR-0019](./docs/adr/0019-adopt-modular-my-reader-core.md) | 当前共享后端和数据库权威 |
-| [ADR-0020](./docs/adr/0020-adopt-automerge-repo-storage-model.md) | 当前 Automerge 远端存储、压缩和故障恢复模型 |
-| [ADR-0021](./docs/adr/0021-support-myreader-managed-libraries.md) | 当前 MyReader 自有书库、catalog projection 与正文同步模型 |
+| [ADR-0005](./adr/0005-adopt-readium-reader-architecture.md) | 当前 Reader 架构基础 |
+| [ADR-0006](./adr/0006-desktop-typed-ipc-and-layered-backend.md) | 桌面类型 IPC 与后端分层基础 |
+| [ADR-0007](./adr/0007-pnpm-monorepo-and-shared-code-ownership.md) | monorepo 与语义共享原则 |
+| [ADR-0008](./adr/0008-shared-database-schema-authority.md) | 已由 ADR-0019 取代，保留历史 |
+| [ADR-0013](./adr/0013-maintain-mobile-readium-integration.md) | 移动 Readium 集成所有权 |
+| [ADR-0016](./adr/0016-adopt-automerge-for-library-sidecar-sync.md) | 当前 Automerge 同步内核 |
+| [ADR-0017](./adr/0017-event-driven-library-sidecar-sync-scheduling.md) | 当前自动同步调度语义 |
+| [ADR-0018](./adr/0018-shared-rust-components.md) | 共享 Rust/UniFFI 试点，crate 组织由 ADR-0019 部分取代 |
+| [ADR-0019](./adr/0019-adopt-modular-my-reader-core.md) | 当前共享后端和数据库权威 |
+| [ADR-0020](./adr/0020-adopt-automerge-repo-storage-model.md) | 当前 Automerge 远端存储、压缩和故障恢复模型 |
+| [ADR-0021](./adr/0021-support-myreader-managed-libraries.md) | 当前 MyReader 自有书库、catalog projection 与正文同步模型 |

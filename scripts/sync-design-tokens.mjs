@@ -12,7 +12,7 @@ const sourceCssPath = path.join(
   repoRoot,
   ".agents/skills/myreader-design-system/colors_and_type.css",
 )
-const designDocPath = path.join(repoRoot, "DESIGN.md")
+const designDocPath = path.join(repoRoot, "docs", "DESIGN.md")
 const desktopTokenPath = path.join(repoRoot, "my-reader/src/design-tokens.css")
 const mobileTokenPath = path.join(
   repoRoot,
@@ -26,7 +26,7 @@ const readerTokenPath = path.join(
 /**
  * Syncs color tokens from the single source of truth
  * (.agents/skills/myreader-design-system/colors_and_type.css)
- * to DESIGN.md, the desktop CSS file, and the mobile theme palette.
+ * to docs/DESIGN.md, the desktop CSS file, and the mobile theme palette.
  *
  * Spacing, radius, fonts, and shadows are intentionally NOT synchronized;
  * they are handled by Tailwind / NativeWind default themes.
@@ -271,7 +271,7 @@ function assertRequiredTokens(rootVars) {
 }
 
 /**
- * Updates the color frontmatter section in DESIGN.md from CSS tokens.
+ * Updates the color frontmatter section in docs/DESIGN.md from CSS tokens.
  * @param {string} designDoc
  * @param {Map<string, string>} rootVars
  * @returns {string}
@@ -290,7 +290,7 @@ function syncDesignFrontmatterColors(designDoc, rootVars) {
   const replacement = `\ncolors:\n${colorLines.join("\n")}\n`
   const colorsSectionRegex = /\r?\ncolors:\r?\n[\s\S]*?(?=\r?\n---)/m
   if (!colorsSectionRegex.test(designDoc)) {
-    throw new Error("Cannot find frontmatter colors section in DESIGN.md")
+    throw new Error("Cannot find frontmatter colors section in docs/DESIGN.md")
   }
   return designDoc.replace(colorsSectionRegex, replacement)
 }

@@ -24,6 +24,8 @@ colors:
 
 ---
 
+<div align="right"><a href="./DESIGN.md">简体中文</a></div>
+
 # MyReader Design System
 
 ## Overview

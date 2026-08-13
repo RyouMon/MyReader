@@ -33,7 +33,7 @@ MyReader is a local-first, cross-platform e-book reader based on Calibre library
 - **Colors**: Warm neutral palette with terracotta accent (`#C4622D`). Use semantic tokens (`--ink-1`, `--accent-soft`, `--danger`) — never raw Tailwind palette classes.
 - **Design system scope**: The product design system controls **only colors**. Spacing, radius, fonts, and shadows are handled by Tailwind / NativeWind default utilities. Use `rounded-md`, `shadow-md`, `p-4`, `text-sm`, etc.
 - **Typography**: App UI uses the default sans-serif stack. Reading font inside the reader is configured by the reader theme and is separate from the app UI design system.
-- Shared brand rules and canonical design tokens live in `.agents/skills/myreader-design-system/colors_and_type.css`. Always read `DESIGN.md` before making shared visual decisions. Run `node scripts/sync-design-tokens.mjs` after color token changes to sync desktop/mobile implementations.
+- Shared brand rules and canonical design tokens live in `.agents/skills/myreader-design-system/colors_and_type.css`. Always read `docs/DESIGN.md` before making shared visual decisions. Run `node scripts/sync-design-tokens.mjs` after color token changes to sync desktop/mobile implementations.
 - Sync tokens across packages after token changes: Run `node scripts/sync-design-tokens.mjs` command.
 
 ---

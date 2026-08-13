@@ -1,3 +1,5 @@
+<div align="right"><a href="./DEVELOPMENT.md">简体中文</a></div>
+
 # Development Guide
 
 ## Prerequisites
@@ -36,7 +38,7 @@ MyReader/
 └── scripts/                        Code generation and design-token scripts
 ```
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for ownership and dependency boundaries.
+See [ARCHITECTURE_EN.md](./ARCHITECTURE_EN.md) for ownership and dependency boundaries.
 
 ## Desktop (Tauri)
 
@@ -215,7 +217,7 @@ At minimum, schema changes must cover:
 
 ## Design Tokens
 
-After changing `.agents/skills/myreader-design-system/colors_and_type.css` or `DESIGN.md`:
+After changing `../.agents/skills/myreader-design-system/colors_and_type.css` or [the design system](./DESIGN_EN.md):
 
 ```bash
 pnpm sync:design-tokens

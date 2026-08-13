@@ -1,114 +1,106 @@
-# MyReader
+<div align="right"><a href="./README_EN.md">English</a></div>
 
-> 一款面向 Calibre 书库的 Local-First 跨平台阅读器。桌面端与移动端分别使用适合各自平台的 Readium 实现，并共享数据契约、阅读位置语义和纯工具。
+<div align="center">
+  <img src="./assets/app-icon/c4-pilot-1024.png" width="112" alt="MyReader 图标" />
+  <h1>MyReader</h1>
+  <p>面向 Calibre 用户、兼顾轻量自管理书库的 Local-First 跨平台阅读器。</p>
+  <p>
+    <a href="https://github.com/RyouMon/MyReader/releases/latest">安装</a>
+    · <a href="./docs/ROADMAP.md">路线图</a>
+    · <a href="./docs/README.md">文档</a>
+    · <a href="./docs/DEVELOPMENT.md">开发指南</a>
+  </p>
+</div>
 
-## 当前能力
+## 功能
 
-- 添加并切换多个 Calibre 书库，始终以只读方式访问 Calibre 的 `metadata.db`。
-- 支持本地目录、WebDAV 和 OneDrive 数据源；远程书库在设备侧缓存元数据、封面和按需下载的书籍文件。
-- 桌面端与移动端当前可阅读 EPUB、PDF、CBZ。
-- 使用 Readium `Locator` 保存阅读进度、书签和批注位置，不把重排后的视觉页码当作持久化主键。
-- 支持收藏、阅读进度、书签、高亮与笔记；具体阅读能力按格式和平台分别实现。
-- 每个书库拥有独立的 MyReader SQLite sidecar，应用设置和凭据保留在设备本地。
-- 使用 Automerge 同步每个书库的收藏、阅读位置、书签、批注、阅读会话和完成记录。
-- 桌面端与移动端通过 `my-reader-core` 共享书库、书目、内容状态、阅读数据和 sidecar 同步业务。
+- Local-First，无中心服务器，无需账号
+- 支持移动端与桌面端
+- 支持多书库管理
+- 支持 Calibre 书库
+- 支持从 OneDrive、WebDAV 导入书库（更多平台接入中）
+- 支持 EPUB、PDF、CBZ 阅读格式（更多格式开发中）
+- 阅读数据跨设备同步
 
-MyReader 不再维护一套跨平台共享的自研渲染内核。桌面端使用 Web/JS 阅读适配，移动端通过应用自有 Expo Module 接入 Readium Swift/Kotlin Toolkit；两端共享的是 Publication、Link、Locator 等语义和产品规则，而不是渲染 UI。
+> [!WARNING]
+> MyReader 仍在快速开发中，可能出现破坏性数据迁移。请保留原始书库与远端存储的独立备份；不要把测试版当作唯一副本。
+>
+> 跨设备同步目前仍是试验性功能，尚不稳定，可能出现未知的同步、合并或恢复问题。
 
-## 仓库结构
+## 数据源支持
 
-```text
-MyReader/
-├── my-reader-core/                跨端共享 Rust 后端
-├── my-reader/                     桌面端：Tauri 2 + React 18
-├── my-reader-mobile/              移动端：Expo 56 + React Native 0.85
-│   └── modules/my-reader-core/    Core 的 UniFFI/JSI 移动适配器
-├── packages/
-│   ├── fonts/                     阅读字体目录与资产来源
-│   └── tools/                     跨端类型和 Reader 纯算法
-├── docs/                           ADR 与同步协议文档
-└── scripts/                        生成代码和设计 token 脚本
-```
+| 数据源 | 当前状态 | 平台范围与说明 |
+|---|---|---|
+| 本地目录 | 已支持，平台有差异 | 桌面端可使用本地目录；iOS / iPadOS 支持应用内部书库和持久授权的外部目录；Android 目前仅支持应用内部书库 |
+| WebDAV | 已支持 | 桌面端、iOS / iPadOS、Android |
+| OneDrive | 已支持 | 桌面端、iOS / iPadOS、Android |
+| Google Drive | 待规划 | 尚未实现，接入方案与平台范围未定 |
+| Dropbox | 待规划 | 尚未实现，接入方案与平台范围未定 |
+| S3 兼容对象存储 | 待规划 | 尚未实现，接入方案与平台范围未定 |
 
-完整的运行边界、分层和数据流见 [ARCHITECTURE.md](./ARCHITECTURE.md)。
+## 阅读格式支持
 
-## 快速开始
+| 格式 | 当前状态 | 平台范围与说明 |
+|---|---|---|
+| EPUB | 已支持 | 桌面端、iOS / iPadOS、Android |
+| PDF | 已支持 | 桌面端、iOS / iPadOS、Android |
+| CBZ | 已支持 | 桌面端、iOS / iPadOS、Android |
+| MOBI / AZW3 | 待规划 | 尚未实现，解析与阅读方案未定 |
+| FB2 | 待规划 | 尚未实现，解析与阅读方案未定 |
+| TXT / HTML | 待规划 | 尚未实现，导入与排版方案未定 |
+| CBR | 待规划 | 尚未实现，压缩包解析方案未定 |
 
-### 环境要求
+> [!NOTE]
+> “待规划”表示已纳入后续评估，不代表已确定实现方案、版本或交付日期。
 
-- Node.js 22 或更高版本
-- pnpm 11.7.0（仓库 `packageManager` 锁定版本）
-- Rust stable（桌面端和移动共享后端）
-- Xcode 16+（iOS）或 Android Studio / Android SDK（Android）
+更细的格式与平台支持矩阵见 [路线图](./docs/ROADMAP.md)，当前系统边界见 [架构文档](./docs/ARCHITECTURE.md)。
 
-### 安装与开发
+## 为什么做 MyReader
 
-```bash
-git clone https://github.com/RyouMon/MyReader.git
-cd MyReader
-corepack enable
-pnpm install
+MyReader 旨在解决 Calibre 用户在跨设备阅读中的体验断点。Calibre 适合管理书库，但从电脑切换到手机继续阅读时，往往仍需经历下载、导入、更换阅读器和重新定位阅读位置。Calibre-Web 是一种可行方案，但需要用户自行部署 Web 服务，浏览器中的阅读体验也不如原生桌面和移动应用流畅。MyReader 可以视为 Calibre Sync 的增强方案：除连接、浏览和下载 Calibre 书库外，还整合了 EPUB、PDF、CBZ 的原生阅读，以及跨设备进度、书签、高亮和笔记。
 
-# 启动 Tauri 桌面端
-pnpm dev:desktop
+MyReader 最初面向使用 Calibre 管理电子书的用户设计。Calibre 仍负责完整的书目与元数据管理；MyReader 复用既有书库，重点提供原生阅读与跨设备连续性。项目同时支持不依赖 Calibre 的自管理书库，用于直接导入和阅读电子书。该能力目前仅覆盖基础元数据管理，并非用于替代 Calibre。
 
-# 启动 Expo Metro
-pnpm dev:mobile
+## 技术架构
 
-# 构建并运行移动开发客户端
-pnpm --filter my-reader-mobile ios
-pnpm --filter my-reader-mobile android
-```
+| 范围 | 主要技术与框架 | 阅读与数据能力 |
+|---|---|---|
+| 桌面端 | Tauri 2、React 18、TypeScript、Vite 6、Tailwind CSS 4、Rust | Readium Web 与 PDF.js |
+| iOS / iPadOS | Expo 56、React Native 0.85、Expo Router、NativeWind 5、Swift 原生模块 | Readium Swift Toolkit |
+| Android | Expo 56、React Native 0.85、Expo Router、NativeWind 5、Kotlin 原生模块 | Readium Kotlin Toolkit |
+| 共享业务与数据层 | Rust `my-reader-core`、SeaORM、SQLite | 统一书目查询、阅读数据与同步规则 |
+| 同步与合并 | Automerge、WebDAV、OneDrive | Automerge 合并同一书库的并发变更；WebDAV / OneDrive 负责存储与交换同步对象 |
 
-### 构建
+## 未来开发方向
 
-```bash
-# 桌面前端
-pnpm --filter my-reader build
+- TTS
+- ComfyUI 集成
+- 更多数据源支持
+- 更多阅读格式支持
 
-# Tauri 安装包
-pnpm --filter my-reader tauri build
+明确的非目标：MyReader 不会写入或替代 Calibre 的 `metadata.db`，不会承诺在 Calibre 书库与 MyReader 书库之间转换或保持映射，自管理书库也不以复刻 Calibre 的完整元数据管理为目标。
 
-# 本地 EAS development build
-pnpm --filter my-reader-mobile build:dev:ios
-pnpm --filter my-reader-mobile build:dev:android
-```
+## 安装
 
-### 单元测试
+当前稳定版本与安装包见 [GitHub Releases](https://github.com/RyouMon/MyReader/releases/latest)：
 
-```bash
-pnpm --filter @my-reader/fonts test
-pnpm --filter @my-reader/i18n test
-pnpm --filter @my-reader/tools test
-pnpm --filter my-reader run test:unit
-pnpm --filter my-reader-mobile exec jest --runInBand
-(cd my-reader/src-tauri && cargo test)
-```
+| 平台 | 状态 | 获取方式 |
+|---|---|---|
+| Android | 可下载 | Release 中的签名 APK（同时提供 SHA-256） |
+| macOS | 可下载 | Apple Silicon / Intel DMG |
+| Windows | 可下载 | x64 EXE / MSI |
+| Linux | 可下载 | AppImage / DEB / RPM |
+| iOS / iPadOS | 准备审核中 | 外部 TestFlight 通过审核后开放 |
 
-桌面 Playwright/WebdriverIO 与移动 Maestro 的运行方式见 [DEVELOPMENT.md](./DEVELOPMENT.md)。
+> [!NOTE]
+> Release 文件名包含版本号。为避免网站链接随版本失效，请先进入最新 Release，再选择与你的平台和架构匹配的安装包。
 
-## 技术栈
+## 参与贡献
 
-| 范围 | 当前实现 |
-|---|---|
-| Monorepo | pnpm workspace |
-| 桌面 UI | React 18、TypeScript、Vite 6、Tailwind CSS 4、TanStack Router/Query、Zustand |
-| 桌面后端 | Tauri 2、Rust、SeaORM、SQLite、tauri-specta、OpenDAL |
-| 移动端 | Expo 56、React Native 0.85、Expo Router、NativeWind 5、TanStack Query、Zustand |
-| 共享后端 | `my-reader-core`、SeaORM、SQLite、Automerge |
-| 移动绑定 | UniFFI、JSI、React Native TurboModule |
-| 阅读器 | 桌面 `@readium/*` + PDF.js 适配；移动 Readium Swift/Kotlin Toolkit + 应用自有 Expo Module |
-| 远程数据源 | WebDAV、OneDrive |
-| 测试 | Vitest、Jest、Playwright BDD、WebdriverIO、Maestro、Cargo test |
+MyReader 由个人维护，欢迎边界清晰的 Issue 和 Pull Request。开始前请阅读 [贡献指南](./.github/CONTRIBUTING.md) 与 [社区行为准则](./.github/CODE_OF_CONDUCT.md)；本地环境、构建与验证命令见 [开发指南](./docs/DEVELOPMENT.md)。安全问题请按 [安全策略](./.github/SECURITY.md) 私下报告。
 
-## 项目文档
+## 许可与第三方声明
 
-- [架构现状](./ARCHITECTURE.md) — 当前系统边界、分层、数据与同步路径
-- [开发指南](./DEVELOPMENT.md) — 环境、命令、生成流程和测试入口
-- [架构决策](./docs/adr/README.md) — 已接受、已实施、已撤回和已取代的 ADR
-- [设计系统](./DESIGN.md) — 跨端视觉原则与颜色 token
-- [Roadmap](./ROADMAP.md) — 尚未落地的规划，不作为当前能力说明
+MyReader 自有代码与资产采用 [MIT License](./LICENSE)。移动 Readium 适配与随包字体的第三方声明见 [my-reader-mobile/modules/readium/NOTICE](./my-reader-mobile/modules/readium/NOTICE)。本地示例书库已从版本控制中移除，不属于仓库分发内容。
 
-## 许可
-
-MyReader 自有代码与资产采用 [MIT License](./LICENSE)。项目中包含的产品名称、Logo 和商标归各自权利人所有。MyReader 未获得相关权利人的认可，图标的使用不代表与其存在关联或得到其背书。MyReader 会尽可能遵循官方品牌规范；如权利人或应用所有者不认可项目中使用的图标，请通过 [GitHub Issues](https://github.com/RyouMon/MyReader/issues) 联系。
+Calibre、OneDrive 等产品名称与标识归各自权利人所有。MyReader 是独立项目，未获得相关项目或厂商的认可；兼容性描述不代表从属、合作或背书关系。

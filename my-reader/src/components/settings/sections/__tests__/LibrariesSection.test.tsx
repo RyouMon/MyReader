@@ -38,7 +38,7 @@ describe("LibrariesSection", () => {
       {
         id: "onedrive-library",
         name: "MyReader 资料书库",
-        path: "/Users/wen/Library/Application Support/MyReader/libraries/cache",
+        path: "/Users/reader/Library/Application Support/MyReader/libraries/cache",
         sourcePath: "/Attachments",
         sourceType: "onedrive",
         dataSourceId: "onedrive-source",
@@ -60,7 +60,7 @@ describe("LibrariesSection", () => {
     expect(sourceIcon.closest('[data-slot="row-detail"]')).toBeNull()
     expect(
       screen.queryByText(
-        "/Users/wen/Library/Application Support/MyReader/libraries/cache",
+        "/Users/reader/Library/Application Support/MyReader/libraries/cache",
       ),
     ).not.toBeInTheDocument()
   })

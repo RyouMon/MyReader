@@ -1,8 +1,9 @@
-# Changelog
+<div align="right"><a href="./CHANGELOG_EN.md">English</a></div>
 
-All notable changes to MyReader are documented here.
-Format based on [Keep a Changelog](https://keepachangelog.com/).
-Versioning follows [Semantic Versioning](https://semver.org/).
+# 更新日志
+
+MyReader 的重要变更均记录于此。
+格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
 ## [0.12.0] - 2026-08-12
 
