@@ -427,6 +427,11 @@
     "finished": "Finished"
   },
   "addLibrary": {
+    "addedPrompt": {
+      "detail": "Switch to “{{name}}” and open the library?",
+      "stay": "Stay Here",
+      "switch": "Switch and Open"
+    },
     "selectSaveLocation": "Choose save location",
     "selectLibraryLocation": "Choose library location",
     "name": "Name",

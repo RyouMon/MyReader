@@ -30,10 +30,7 @@ tags:
 - extendedWaitUntil:
     visible: "成功添加书库：${ONEDRIVE_LIBRARY_NAME}|Library added: ${ONEDRIVE_LIBRARY_NAME}"
     timeout: 60000
-- runFlow:
-    file: ../../common/activate_library.yaml
-    env:
-      LIBRARY_NAME: ${ONEDRIVE_LIBRARY_NAME}
+- tapOn: "切换并打开|Switch and Open"
 
 # Scenario: import appears immediately; explicit sync does not wait for upload.
 - tapOn: "导入图书|Import Book"
@@ -113,10 +110,7 @@ tags:
 - extendedWaitUntil:
     visible: "成功添加书库：${ONEDRIVE_LIBRARY_NAME}|Library added: ${ONEDRIVE_LIBRARY_NAME}"
     timeout: 90000
-- runFlow:
-    file: ../../common/activate_library.yaml
-    env:
-      LIBRARY_NAME: ${ONEDRIVE_LIBRARY_NAME}
+- tapOn: "切换并打开|Switch and Open"
 - extendedWaitUntil:
     visible: ${REMOTE_BOOK_TITLE}
     timeout: 60000
