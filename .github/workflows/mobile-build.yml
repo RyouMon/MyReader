@@ -1,0 +1,216 @@
+name: Mobile build candidate
+
+on:
+  workflow_call:
+    inputs:
+      build_android:
+        description: Build Android APK on a GitHub runner
+        required: false
+        default: true
+        type: boolean
+      build_ios:
+        description: Build iOS IPA on a GitHub runner
+        required: false
+        default: true
+        type: boolean
+  workflow_dispatch:
+    inputs:
+      build_android:
+        description: Build Android APK on a GitHub runner
+        required: true
+        default: true
+        type: boolean
+      build_ios:
+        description: Build iOS IPA on a GitHub runner
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: 22.22.0
+  PNPM_VERSION: 11.7.0
+
+jobs:
+  validate:
+    name: Validate mobile selection
+    runs-on: ubuntu-22.04
+    env:
+      BUILD_ANDROID: ${{ inputs.build_android }}
+      BUILD_IOS: ${{ inputs.build_ios }}
+    steps:
+      - name: Check build selection
+        shell: bash
+        run: |
+          if [ "$BUILD_ANDROID" != "true" ] && [ "$BUILD_IOS" != "true" ]; then
+            echo "Select at least one mobile platform." >&2
+            exit 1
+          fi
+
+  android:
+    name: Android APK (GitHub runner)
+    if: inputs.build_android
+    needs: validate
+    runs-on: ubuntu-22.04
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_PUBLIC_SENTRY_DSN: ${{ vars.EXPO_PUBLIC_SENTRY_DSN }}
+      GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.workers.max=2
+    steps:
+      - name: Check Expo authentication
+        shell: bash
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "Add the EXPO_TOKEN repository secret before running mobile build jobs." >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+
+      - name: Prepare mobile build environment
+        if: env.EXPO_PUBLIC_SENTRY_DSN != ''
+        working-directory: my-reader-mobile
+        run: printf 'EXPO_PUBLIC_SENTRY_DSN=%s\n' "$EXPO_PUBLIC_SENTRY_DSN" > .env
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install JavaScript dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build signed APK on GitHub runner
+        shell: bash
+        working-directory: my-reader-mobile
+        run: |
+          artifact_dir="$RUNNER_TEMP/android-local-build"
+          mkdir -p "$artifact_dir"
+          EAS_LOCAL_BUILD_ARTIFACTS_DIR="$artifact_dir" \
+            eas build --platform android --profile release-apk --local --non-interactive
+
+          mapfile -t apk_paths < <(find "$artifact_dir" -maxdepth 1 -type f -name '*.apk')
+          if [ "${#apk_paths[@]}" -ne 1 ]; then
+            echo "Expected exactly one APK, found ${#apk_paths[@]}." >&2
+            exit 1
+          fi
+
+          app_version="$(jq -er '.expo.version' app.json)"
+          apk_path="$RUNNER_TEMP/MyReader-${app_version}-android.apk"
+          mv "${apk_paths[0]}" "$apk_path"
+          printf 'APK_PATH=%s\n' "$apk_path" >> "$GITHUB_ENV"
+
+      - name: Create Android checksum
+        id: artifact
+        shell: bash
+        run: |
+          checksum_path="$APK_PATH.sha256"
+          (
+            cd "$(dirname "$APK_PATH")"
+            sha256sum "$(basename "$APK_PATH")"
+          ) > "$checksum_path"
+          printf 'apk_path=%s\n' "$APK_PATH" >> "$GITHUB_OUTPUT"
+          printf 'checksum_path=%s\n' "$checksum_path" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Android candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: MyReader-Android-APK
+          path: |
+            ${{ steps.artifact.outputs.apk_path }}
+            ${{ steps.artifact.outputs.checksum_path }}
+          if-no-files-found: error
+          retention-days: 30
+
+  ios:
+    name: iOS IPA (GitHub runner)
+    if: inputs.build_ios
+    needs: validate
+    runs-on: macos-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_PUBLIC_SENTRY_DSN: ${{ vars.EXPO_PUBLIC_SENTRY_DSN }}
+      TESTFLIGHT_GROUP: ${{ vars.TESTFLIGHT_INTERNAL_GROUP || 'Team (Expo)' }}
+    steps:
+      - name: Check Expo authentication
+        shell: bash
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "Add the EXPO_TOKEN repository secret before running mobile build jobs." >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+
+      - name: Prepare mobile build environment
+        if: env.EXPO_PUBLIC_SENTRY_DSN != ''
+        working-directory: my-reader-mobile
+        run: printf 'EXPO_PUBLIC_SENTRY_DSN=%s\n' "$EXPO_PUBLIC_SENTRY_DSN" > .env
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install JavaScript dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build iOS app on GitHub runner
+        id: artifact
+        shell: bash
+        working-directory: my-reader-mobile
+        run: |
+          artifact_dir="$RUNNER_TEMP/ios-local-build"
+          mkdir -p "$artifact_dir"
+          EAS_LOCAL_BUILD_ARTIFACTS_DIR="$artifact_dir" \
+            eas build --platform ios --profile production --local --non-interactive
+
+          ipa_paths=("$artifact_dir"/*.ipa)
+          if [ "${#ipa_paths[@]}" -ne 1 ] || [ ! -f "${ipa_paths[0]}" ]; then
+            echo "Expected exactly one IPA." >&2
+            exit 1
+          fi
+          printf 'IPA_PATH=%s\n' "${ipa_paths[0]}" >> "$GITHUB_ENV"
+          printf 'ipa_path=%s\n' "${ipa_paths[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload iOS candidate
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: MyReader-iOS-IPA
+          path: ${{ steps.artifact.outputs.ipa_path }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Submit release build to internal TestFlight
+        if: github.event_name != 'workflow_dispatch'
+        shell: bash
+        working-directory: my-reader-mobile
+        run: eas submit --platform ios --profile production --path "$IPA_PATH" --groups "$TESTFLIGHT_GROUP" --non-interactive --wait

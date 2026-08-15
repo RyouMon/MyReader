@@ -140,6 +140,46 @@ SENTRY_AUTH_TOKEN=<your Sentry auth token>
 
 Sentry is optional.
 
+## Release Builds
+
+Production releases and candidate builds are separate:
+
+- `Release` runs only after a `v*` tag is pushed. Once the complete release test gate passes, it calls the
+  desktop and mobile builds in parallel; Android and iOS both run `eas build --local` on GitHub runners. Each
+  platform archives its artifacts to the same draft GitHub Release as soon as that build completes, without
+  waiting for the other platform; iOS is submitted to the internal TestFlight group.
+- `Desktop build candidate` is manual-only. It builds all desktop installers for the selected ref and uploads
+  them as Actions artifacts without modifying a GitHub Release.
+- `Mobile build candidate` is manual-only and lets Android and iOS be selected independently. It uploads the
+  APK and checksum or the IPA as Actions artifacts without modifying a GitHub Release or submitting TestFlight.
+- Publish the draft manually in GitHub after reviewing all production artifacts. The workflows never make a
+  Release public automatically.
+
+The same local profiles can run on a development machine:
+
+```bash
+cd my-reader-mobile
+mkdir -p ../.tmp/release-artifacts/{android,ios}
+
+EAS_LOCAL_BUILD_ARTIFACTS_DIR=../.tmp/release-artifacts/android \
+  pnpm build:release:android:local
+
+EAS_LOCAL_BUILD_ARTIFACTS_DIR=../.tmp/release-artifacts/ios \
+  pnpm build:release:ios:local
+
+npx eas-cli@latest submit \
+  --platform ios \
+  --profile production \
+  --path ../.tmp/release-artifacts/ios/<artifact>.ipa \
+  --groups "Team (Expo)"
+```
+
+Local builds still authenticate with Expo to read remote versions and managed signing credentials; they only
+avoid the EAS cloud builders. Android local builds require a JDK and the Android SDK/NDK. iOS local builds
+require macOS, Xcode, CocoaPods, and Fastlane. Rename the Android result to
+`MyReader-<version>-android.apk`, create its SHA-256 checksum, and upload both files to the existing draft with
+`gh release upload <tag> <apk> <apk>.sha256 --clobber`.
+
 ## Shared Packages
 
 ```bash

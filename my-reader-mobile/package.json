@@ -24,7 +24,9 @@
     "test:e2e:ios": "maestro test --config=e2e/config.yaml e2e -e APP_ID=ryoumon.myreadermobile --platform ios",
     "test:e2e:android": "maestro test --config=e2e/config.yaml e2e -e APP_ID=ryoumon.myreadermobile --platform android",
     "build:dev:android": "npx eas-cli@latest build --platform android --profile development --local",
-    "build:dev:ios": "npx eas-cli@latest build --platform ios --profile development --local"
+    "build:dev:ios": "npx eas-cli@latest build --platform ios --profile development --local",
+    "build:release:android:local": "npx eas-cli@latest build --platform android --profile release-apk --local",
+    "build:release:ios:local": "npx eas-cli@latest build --platform ios --profile production --local"
   },
   "dependencies": {
     "@babel/runtime": "^7.29.2",

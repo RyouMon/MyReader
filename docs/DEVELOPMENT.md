@@ -136,6 +136,43 @@ SENTRY_AUTH_TOKEN=<your Sentry auth token>
 
 Sentry 为可选功能。
 
+## 发布构建
+
+正式发布与候选构建分开：
+
+- `Release` 仅在推送 `v*` 标签后运行。完整发布测试通过后，它会并行调用桌面和移动构建；
+  Android 与 iOS 均在 GitHub runner 上执行 `eas build --local`。桌面或移动构建完成后会立即将该端
+  产物独立写入同一 GitHub 草稿 Release，互不等待；iOS 会提交到内部 TestFlight。
+- `Desktop build candidate` 仅手动运行，为所选引用构建全部桌面安装包并上传 Actions 制品；它不修改
+  GitHub Release。
+- `Mobile build candidate` 仅手动运行，可分别勾选 Android 和 iOS。它会上传 APK、校验文件或 IPA
+  作为 Actions 制品，但不修改 GitHub Release，也不提交 TestFlight。
+- 所有正式产物确认完成后，在 GitHub 中手动发布草稿；流水线不会自动公开 Release。
+
+本机也可以使用相同的本地构建配置：
+
+```bash
+cd my-reader-mobile
+mkdir -p ../.tmp/release-artifacts/{android,ios}
+
+EAS_LOCAL_BUILD_ARTIFACTS_DIR=../.tmp/release-artifacts/android \
+  pnpm build:release:android:local
+
+EAS_LOCAL_BUILD_ARTIFACTS_DIR=../.tmp/release-artifacts/ios \
+  pnpm build:release:ios:local
+
+npx eas-cli@latest submit \
+  --platform ios \
+  --profile production \
+  --path ../.tmp/release-artifacts/ios/<artifact>.ipa \
+  --groups "Team (Expo)"
+```
+
+本地构建仍需登录 Expo，以读取远端版本和托管签名凭据；它只是不使用 EAS 的云构建机器。
+Android 本地构建需要 JDK、Android SDK/NDK，iOS 本地构建需要 macOS、Xcode、CocoaPods 和
+Fastlane。将生成的 Android APK 重命名为 `MyReader-<version>-android.apk`，生成 SHA-256 后可用
+`gh release upload <tag> <apk> <apk>.sha256 --clobber` 上传到现有草稿。
+
 ## 共享包
 
 ```bash

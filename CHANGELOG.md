@@ -5,6 +5,29 @@
 MyReader 的重要变更均记录于此。
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [0.12.1] - 2026-08-15
+
+### Fixed
+
+- 修复 Windows 从 OneDrive 书库打开图书时无法加载阅读资源
+  （[#49](https://github.com/RyouMon/MyReader/issues/49)、[#52](https://github.com/RyouMon/MyReader/pull/52)、
+  [#55](https://github.com/RyouMon/MyReader/pull/55)）
+- 修复 macOS EPUB 阅读样式未应用到正文
+  （[#51](https://github.com/RyouMon/MyReader/issues/51)、[#54](https://github.com/RyouMon/MyReader/pull/54)、
+  [#55](https://github.com/RyouMon/MyReader/pull/55)）
+- 修复移动端添加书库后的切换提示可能不出现，以及切换后未可靠跳转到新书库
+  （[#50](https://github.com/RyouMon/MyReader/issues/50)、[#58](https://github.com/RyouMon/MyReader/pull/58)）
+
+### Privacy
+
+- 移动端诊断上报改为默认关闭，仅在用户从设置中主动启用后开始收集新的错误诊断
+
+### Build and Distribution
+
+- 正式发布统一由 `v*` 标签工作流构建桌面与移动端；桌面、移动候选仍可手动独立构建，用于快速
+  验证单端产物；正式构建并行执行并在各端完成后独立归档，所有产物确认后再手动发布 GitHub 草稿
+  Release
+
 ## [0.12.0] - 2026-08-12
 
 ### Highlights
