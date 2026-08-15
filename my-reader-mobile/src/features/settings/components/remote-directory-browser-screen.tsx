@@ -14,7 +14,7 @@ import { ErrorBoundary } from "@/src/components/error-boundary"
 import { useThemePalette } from "@/src/design/tokens"
 import { switchActiveLibrary } from "@/src/domain/library/hooks/library-actions"
 import { normalizeCurrentPath } from "@/src/domain/library/remote-library"
-import { promptLibraryAdded } from "@/src/domain/notifications/library-notifications"
+import { promptLibraryAddedAfterNavigation } from "@/src/domain/notifications/library-notifications"
 import { useAddOneDriveDataSource } from "@/src/features/onedrive/hooks/use-add-onedrive-data-source"
 import { useAddLibraryFlow } from "@/src/features/settings/add-library-flow-context"
 import { useRemoteDirectoryBrowser } from "@/src/features/settings/hooks/use-remote-directory-browser"
@@ -68,14 +68,16 @@ export function RemoteDirectoryBrowserScreen({
         finishAddingLibrary(library)
         return
       }
-      promptLibraryAdded(library.name, {
-        onStay: () => router.dismissTo("/settings"),
+      const actions = {
+        onStay: () => undefined,
         onSwitch: () => {
           void switchActiveLibrary(library.id).then(() => {
-            router.dismissTo("/library")
+            router.replace("/library")
           })
         },
-      })
+      }
+      router.dismissTo("/settings")
+      promptLibraryAddedAfterNavigation(library.name, actions)
     },
     [finishAddingLibrary, isAddLibraryBrowser],
   )

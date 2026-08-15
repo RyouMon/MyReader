@@ -13,7 +13,7 @@ import {
 
 import type { PickedLocalLibrary } from "@/src/domain/library/local-library-picker"
 import { switchActiveLibrary } from "@/src/domain/library/hooks/library-actions"
-import { promptLibraryAdded } from "@/src/domain/notifications/library-notifications"
+import { promptLibraryAddedAfterNavigation } from "@/src/domain/notifications/library-notifications"
 import {
   deleteStagedBookImport,
   type StagedBookImport,
@@ -68,16 +68,18 @@ export function AddLibraryFlowProvider({
 
   const finishAddingLibrary = useCallback(
     (library: Pick<Library, "id" | "name">) => {
-      promptLibraryAdded(library.name, {
-        onStay: onDismiss,
+      const actions = {
+        onStay: () => undefined,
         onSwitch: () => {
           void switchActiveLibrary(library.id).then(() => {
-            router.dismissTo("/library")
+            router.replace("/library")
           })
         },
-      })
+      }
+      router.dismissTo("/settings")
+      promptLibraryAddedAfterNavigation(library.name, actions)
     },
-    [onDismiss],
+    [],
   )
 
   useEffect(
