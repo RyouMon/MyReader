@@ -1,5 +1,6 @@
  REF*.md
 .DS_Store
+/.codex/config.toml
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
 .cursor/plans/
