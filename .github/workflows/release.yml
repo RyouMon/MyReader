@@ -1,12 +1,6 @@
-name: Release candidate
+name: Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      testflight_group:
-        description: App Store Connect internal TestFlight group
-        required: false
-        type: string
   push:
     tags:
       - "v*"
@@ -16,7 +10,7 @@ permissions:
 
 concurrency:
   group: release-${{ github.ref }}
-  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+  cancel-in-progress: false
 
 env:
   NODE_VERSION: 22.22.0
@@ -28,6 +22,18 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v7
+
+      - name: Validate release metadata
+        shell: bash
+        run: |
+          release_version="${GITHUB_REF_NAME#v}"
+          desktop_version="$(jq -er '.version' my-reader/src-tauri/tauri.conf.json)"
+          mobile_version="$(jq -er '.expo.version' my-reader-mobile/app.json)"
+
+          if [ "$desktop_version" != "$release_version" ] || [ "$mobile_version" != "$release_version" ]; then
+            echo "$GITHUB_REF_NAME does not match desktop $desktop_version and mobile $mobile_version." >&2
+            exit 1
+          fi
 
       - name: Install Linux dependencies
         run: |
@@ -68,304 +74,25 @@ jobs:
           cargo test --workspace
 
   desktop:
-    name: Desktop (${{ matrix.name }})
+    name: Build desktop release artifacts
     needs: verify
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: macOS Apple Silicon
-            runner: macos-latest
-            args: --target aarch64-apple-darwin
-            rust_targets: aarch64-apple-darwin
-            artifact: MyReader-macOS-arm64
-            paths: |
-              target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
-          - name: macOS Intel
-            runner: macos-latest
-            args: --target x86_64-apple-darwin
-            rust_targets: x86_64-apple-darwin
-            artifact: MyReader-macOS-x64
-            paths: |
-              target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
-          - name: Windows x64
-            runner: windows-latest
-            args: ""
-            rust_targets: ""
-            artifact: MyReader-Windows-x64
-            paths: |
-              target/release/bundle/msi/*.msi
-              target/release/bundle/nsis/*-setup.exe
-          - name: Linux x64
-            runner: ubuntu-22.04
-            args: ""
-            rust_targets: ""
-            artifact: MyReader-Linux-x64
-            paths: |
-              target/release/bundle/appimage/*.AppImage
-              target/release/bundle/deb/*.deb
-              target/release/bundle/rpm/*.rpm
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - uses: actions/checkout@v7
+    uses: ./.github/workflows/desktop-build.yml
+    secrets: inherit
 
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf xdg-utils
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.rust_targets }}
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: ". -> target"
-
-      - name: Install JavaScript dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Configure macOS signing
-        if: runner.os == 'macOS'
-        shell: bash
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-          APPLE_API_PRIVATE_KEY: ${{ secrets.APPLE_API_PRIVATE_KEY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          if [ -z "$APPLE_CERTIFICATE" ]; then
-            echo "APPLE_SIGNING_IDENTITY=-" >> "$GITHUB_ENV"
-            echo "Using an ad-hoc signature; configure the Apple secrets before publishing a notarized release."
-            exit 0
-          fi
-
-          if [ -z "$APPLE_CERTIFICATE_PASSWORD" ] || [ -z "$KEYCHAIN_PASSWORD" ]; then
-            echo "APPLE_CERTIFICATE_PASSWORD and KEYCHAIN_PASSWORD are required with APPLE_CERTIFICATE." >&2
-            exit 1
-          fi
-
-          certificate_path="$RUNNER_TEMP/developer-id.p12"
-          keychain_path="$RUNNER_TEMP/myreader-signing.keychain-db"
-          printf '%s' "$APPLE_CERTIFICATE" | base64 --decode > "$certificate_path"
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
-          security set-keychain-settings -t 3600 -u "$keychain_path"
-          security import "$certificate_path" -k "$keychain_path" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
-          security list-keychains -d user -s "$keychain_path"
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$keychain_path"
-
-          signing_identity="$(security find-identity -v -p codesigning "$keychain_path" | awk -F'"' '/Developer ID Application:/ { print $2; exit }')"
-          if [ -z "$signing_identity" ]; then
-            echo "The imported certificate does not contain a Developer ID Application identity." >&2
-            exit 1
-          fi
-          echo "APPLE_SIGNING_IDENTITY=$signing_identity" >> "$GITHUB_ENV"
-
-          if [ -n "$APPLE_API_PRIVATE_KEY" ]; then
-            if [ -z "$APPLE_API_ISSUER" ] || [ -z "$APPLE_API_KEY" ]; then
-              echo "APPLE_API_ISSUER and APPLE_API_KEY are required with APPLE_API_PRIVATE_KEY." >&2
-              exit 1
-            fi
-            api_key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY}.p8"
-            printf '%s' "$APPLE_API_PRIVATE_KEY" > "$api_key_path"
-            printf 'APPLE_API_ISSUER=%s\n' "$APPLE_API_ISSUER" >> "$GITHUB_ENV"
-            printf 'APPLE_API_KEY=%s\n' "$APPLE_API_KEY" >> "$GITHUB_ENV"
-            printf 'APPLE_API_KEY_PATH=%s\n' "$api_key_path" >> "$GITHUB_ENV"
-          elif [ -z "$APPLE_ID" ] || [ -z "$APPLE_PASSWORD" ] || [ -z "$APPLE_TEAM_ID" ]; then
-            echo "Notarization credentials are required with a Developer ID certificate." >&2
-            exit 1
-          else
-            printf 'APPLE_ID=%s\n' "$APPLE_ID" >> "$GITHUB_ENV"
-            printf 'APPLE_PASSWORD=%s\n' "$APPLE_PASSWORD" >> "$GITHUB_ENV"
-            printf 'APPLE_TEAM_ID=%s\n' "$APPLE_TEAM_ID" >> "$GITHUB_ENV"
-          fi
-
-      - name: Build desktop bundles
-        run: pnpm --filter my-reader tauri build ${{ matrix.args }}
-
-      - name: Notarize macOS disk image
-        if: runner.os == 'macOS' && env.APPLE_SIGNING_IDENTITY != '-'
-        shell: bash
-        env:
-          RUST_TARGET: ${{ matrix.rust_targets }}
-        run: |
-          shopt -s nullglob
-          dmg_paths=("target/$RUST_TARGET/release/bundle/dmg/"*.dmg)
-          if [ "${#dmg_paths[@]}" -ne 1 ]; then
-            echo "Expected exactly one macOS disk image, found ${#dmg_paths[@]}." >&2
-            exit 1
-          fi
-
-          if [ -n "${APPLE_API_KEY_PATH:-}" ]; then
-            xcrun notarytool submit "${dmg_paths[0]}" \
-              --key "$APPLE_API_KEY_PATH" \
-              --key-id "$APPLE_API_KEY" \
-              --issuer "$APPLE_API_ISSUER" \
-              --wait
-          else
-            xcrun notarytool submit "${dmg_paths[0]}" \
-              --apple-id "$APPLE_ID" \
-              --password "$APPLE_PASSWORD" \
-              --team-id "$APPLE_TEAM_ID" \
-              --wait
-          fi
-
-          xcrun stapler staple "${dmg_paths[0]}"
-          xcrun stapler validate "${dmg_paths[0]}"
-          spctl --assess --verbose=2 --type open \
-            --context context:primary-signature "${dmg_paths[0]}"
-
-      - name: Upload desktop installers
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact }}
-          path: ${{ matrix.paths }}
-          if-no-files-found: error
-          retention-days: 30
-
-  android-apk:
-    name: Android APK
+  mobile:
+    name: Build mobile release artifacts
     needs: verify
-    runs-on: ubuntu-22.04
-    env:
-      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-      EXPO_PUBLIC_SENTRY_DSN: ${{ vars.EXPO_PUBLIC_SENTRY_DSN }}
-    steps:
-      - name: Check Expo authentication
-        run: |
-          if [ -z "$EXPO_TOKEN" ]; then
-            echo "Add the EXPO_TOKEN repository secret before running mobile release jobs." >&2
-            exit 1
-          fi
+    uses: ./.github/workflows/mobile-build.yml
+    with:
+      build_android: true
+      build_ios: true
+    secrets: inherit
 
-      - uses: actions/checkout@v7
-
-      - name: Prepare mobile build environment
-        if: env.EXPO_PUBLIC_SENTRY_DSN != ''
-        working-directory: my-reader-mobile
-        run: printf 'EXPO_PUBLIC_SENTRY_DSN=%s\n' "$EXPO_PUBLIC_SENTRY_DSN" > .env
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Install JavaScript dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build signed APK on EAS
-        id: build
-        shell: bash
-        working-directory: my-reader-mobile
-        run: |
-          eas build --platform android --profile release-apk --non-interactive --wait --json > "$RUNNER_TEMP/android-build.json"
-          build_url="$(jq -er '.[0].artifacts.buildUrl' "$RUNNER_TEMP/android-build.json")"
-          app_version="$(jq -r '.expo.version' app.json)"
-          apk_path="$RUNNER_TEMP/MyReader-${app_version}-android.apk"
-          curl --fail --location --retry 3 "$build_url" --output "$apk_path"
-          sha256sum "$apk_path" > "$apk_path.sha256"
-          echo "apk_path=$apk_path" >> "$GITHUB_OUTPUT"
-
-      - name: Upload Android APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: MyReader-Android-APK
-          path: |
-            ${{ steps.build.outputs.apk_path }}
-            ${{ steps.build.outputs.apk_path }}.sha256
-          if-no-files-found: error
-          retention-days: 30
-
-  ios-testflight:
-    name: iOS TestFlight
-    needs: verify
-    runs-on: ubuntu-22.04
-    env:
-      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-      EXPO_PUBLIC_SENTRY_DSN: ${{ vars.EXPO_PUBLIC_SENTRY_DSN }}
-      TESTFLIGHT_GROUP: ${{ inputs.testflight_group || vars.TESTFLIGHT_INTERNAL_GROUP || 'Team (Expo)' }}
-    steps:
-      - name: Check release configuration
-        shell: bash
-        run: |
-          if [ -z "$EXPO_TOKEN" ]; then
-            echo "Add the EXPO_TOKEN repository secret before running mobile release jobs." >&2
-            exit 1
-          fi
-
-      - uses: actions/checkout@v7
-
-      - name: Prepare mobile build environment
-        if: env.EXPO_PUBLIC_SENTRY_DSN != ''
-        working-directory: my-reader-mobile
-        run: printf 'EXPO_PUBLIC_SENTRY_DSN=%s\n' "$EXPO_PUBLIC_SENTRY_DSN" > .env
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Install JavaScript dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build iOS app on EAS
-        id: build
-        shell: bash
-        working-directory: my-reader-mobile
-        run: |
-          eas build --platform ios --profile production --non-interactive --wait --json > "$RUNNER_TEMP/ios-build.json"
-          build_id="$(jq -er '.[0].id' "$RUNNER_TEMP/ios-build.json")"
-          echo "build_id=$build_id" >> "$GITHUB_OUTPUT"
-
-      - name: Submit to internal TestFlight
-        shell: bash
-        working-directory: my-reader-mobile
-        run: eas submit --platform ios --profile production --id "${{ steps.build.outputs.build_id }}" --groups "$TESTFLIGHT_GROUP" --non-interactive --wait
-
-  publish-release:
-    name: Publish GitHub release
-    if: startsWith(github.ref, 'refs/tags/v')
+  draft-release:
+    name: Update draft GitHub release
     needs:
       - desktop
-      - android-apk
-      - ios-testflight
+      - mobile
     runs-on: ubuntu-22.04
     env:
       GH_TOKEN: ${{ github.token }}
@@ -394,9 +121,24 @@ jobs:
             exit 1
           fi
 
-      - name: Publish installers
+      - name: Update draft release
         run: |
-          gh release create "$GITHUB_REF_NAME" release-assets/* \
-            --verify-tag \
-            --title "MyReader $GITHUB_REF_NAME" \
-            --notes-file "$RUNNER_TEMP/release-notes.md"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            if [ "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq '.isDraft')" != "true" ]; then
+              echo "$GITHUB_REF_NAME already has a published release." >&2
+              exit 1
+            fi
+            gh release edit "$GITHUB_REF_NAME" \
+              --draft \
+              --verify-tag \
+              --title "MyReader $GITHUB_REF_NAME" \
+              --notes-file "$RUNNER_TEMP/release-notes.md"
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --draft \
+              --verify-tag \
+              --title "MyReader $GITHUB_REF_NAME" \
+              --notes-file "$RUNNER_TEMP/release-notes.md"
+          fi
+
+          gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber

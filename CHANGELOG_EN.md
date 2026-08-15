@@ -6,6 +6,31 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.12.1] - 2026-08-15
+
+### Fixed
+
+- Fixed reader assets failing to load when opening a OneDrive book on Windows
+  ([#49](https://github.com/RyouMon/MyReader/issues/49), [#52](https://github.com/RyouMon/MyReader/pull/52),
+  [#55](https://github.com/RyouMon/MyReader/pull/55))
+- Fixed the selected EPUB reading theme not being applied to book content on macOS
+  ([#51](https://github.com/RyouMon/MyReader/issues/51), [#54](https://github.com/RyouMon/MyReader/pull/54),
+  [#55](https://github.com/RyouMon/MyReader/pull/55))
+- Fixed the post-add library prompt sometimes not appearing on mobile and switching not reliably opening the
+  new library ([#50](https://github.com/RyouMon/MyReader/issues/50),
+  [#58](https://github.com/RyouMon/MyReader/pull/58))
+
+### Privacy
+
+- Mobile diagnostics are now off by default and collect new error diagnostics only after the user opts in from
+  Settings
+
+### Build and Distribution
+
+- A single `v*` tag workflow now builds desktop and mobile releases. Separate manual desktop and mobile
+  candidate workflows remain available for quick artifact validation, and the draft GitHub Release is
+  published manually after review
+
 ## [0.12.0] - 2026-08-12
 
 ### Highlights
