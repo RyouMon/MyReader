@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react-native"
 import type { PropsWithChildren } from "react"
 
 import { switchActiveLibrary } from "@/src/domain/library/hooks/library-actions"
-import { promptLibraryAdded } from "@/src/domain/notifications/library-notifications"
+import { promptLibraryAddedAfterNavigation } from "@/src/domain/notifications/library-notifications"
 import { deleteStagedBookImport } from "@/src/services/fs/staged-book-import"
 
 import {
@@ -17,10 +17,10 @@ jest.mock("@/src/domain/library/hooks/library-actions", () => ({
   switchActiveLibrary: jest.fn(),
 }))
 jest.mock("@/src/domain/notifications/library-notifications", () => ({
-  promptLibraryAdded: jest.fn(),
+  promptLibraryAddedAfterNavigation: jest.fn(),
 }))
 jest.mock("expo-router", () => ({
-  router: { dismissTo: jest.fn() },
+  router: { dismissTo: jest.fn(), replace: jest.fn() },
 }))
 
 const mockDismiss = jest.fn()
@@ -83,7 +83,10 @@ describe("AddLibraryFlowProvider", () => {
     expect(mockDismiss).toHaveBeenCalledTimes(1)
   })
 
-  it("should offer to stay on the current page after adding a library", () => {
+  it("should return to Settings before offering the added-library actions", () => {
+    const { router } = jest.requireMock("expo-router") as {
+      router: { dismissTo: jest.Mock; replace: jest.Mock }
+    }
     const { result } = renderHook(() => useAddLibraryFlow(), {
       wrapper: FlowWrapper,
     })
@@ -95,25 +98,31 @@ describe("AddLibraryFlowProvider", () => {
       }),
     )
 
-    expect(promptLibraryAdded).toHaveBeenCalledWith(
+    expect(promptLibraryAddedAfterNavigation).toHaveBeenCalledWith(
       "New Library",
       expect.objectContaining({
         onStay: expect.any(Function),
         onSwitch: expect.any(Function),
       }),
     )
+    expect(router.dismissTo).toHaveBeenCalledWith("/settings")
+    expect(router.dismissTo.mock.invocationCallOrder[0]).toBeLessThan(
+      jest.mocked(promptLibraryAddedAfterNavigation).mock
+        .invocationCallOrder[0]!,
+    )
     expect(mockDismiss).not.toHaveBeenCalled()
 
-    const actions = jest.mocked(promptLibraryAdded).mock.calls[0]?.[1]
+    const actions = jest.mocked(promptLibraryAddedAfterNavigation).mock
+      .calls[0]?.[1]
     act(() => actions?.onStay())
 
-    expect(mockDismiss).toHaveBeenCalledTimes(1)
+    expect(mockDismiss).not.toHaveBeenCalled()
     expect(switchActiveLibrary).not.toHaveBeenCalled()
   })
 
   it("should switch to the added library before opening it", async () => {
     const { router } = jest.requireMock("expo-router") as {
-      router: { dismissTo: jest.Mock }
+      router: { dismissTo: jest.Mock; replace: jest.Mock }
     }
     jest.mocked(switchActiveLibrary).mockResolvedValue()
     const { result } = renderHook(() => useAddLibraryFlow(), {
@@ -126,13 +135,14 @@ describe("AddLibraryFlowProvider", () => {
         name: "New Library",
       }),
     )
-    const actions = jest.mocked(promptLibraryAdded).mock.calls[0]?.[1]
+    const actions = jest.mocked(promptLibraryAddedAfterNavigation).mock
+      .calls[0]?.[1]
     act(() => actions?.onSwitch())
 
     await waitFor(() =>
       expect(switchActiveLibrary).toHaveBeenCalledWith("new-library"),
     )
-    expect(router.dismissTo).toHaveBeenCalledWith("/library")
+    expect(router.replace).toHaveBeenCalledWith("/library")
     expect(mockDismiss).not.toHaveBeenCalled()
   })
 })

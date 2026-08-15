@@ -22,8 +22,17 @@ export function promptLibraryAdded(
       },
       {
         text: i18n.t("addLibrary.addedPrompt.switch"),
+        isPreferred: true,
         onPress: onSwitch,
       },
     ],
   )
+}
+
+/** Lets the Settings navigation update commit before presenting the native prompt. */
+export function promptLibraryAddedAfterNavigation(
+  name: string,
+  actions: LibraryAddedPromptActions,
+): void {
+  setTimeout(() => promptLibraryAdded(name, actions), 0)
 }
