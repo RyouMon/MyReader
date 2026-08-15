@@ -88,22 +88,14 @@ jobs:
       build_ios: true
     secrets: inherit
 
-  draft-release:
-    name: Update draft GitHub release
-    needs:
-      - desktop
-      - mobile
+  prepare-release:
+    name: Prepare draft GitHub release
+    needs: verify
     runs-on: ubuntu-22.04
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
-
-      - uses: actions/download-artifact@v5
-        with:
-          pattern: MyReader-*
-          path: release-assets
-          merge-multiple: true
 
       - name: Prepare release notes
         shell: bash
@@ -141,4 +133,47 @@ jobs:
               --notes-file "$RUNNER_TEMP/release-notes.md"
           fi
 
-          gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber
+  archive-desktop:
+    name: Archive desktop release artifacts
+    needs:
+      - prepare-release
+      - desktop
+    runs-on: ubuntu-22.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: MyReader-macOS-*
+          path: release-assets
+          merge-multiple: true
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: MyReader-Windows-x64
+          path: release-assets
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: MyReader-Linux-x64
+          path: release-assets
+
+      - name: Upload desktop release artifacts
+        run: gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber
+
+  archive-mobile:
+    name: Archive mobile release artifacts
+    needs:
+      - prepare-release
+      - mobile
+    runs-on: ubuntu-22.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: MyReader-Android-APK
+          path: release-assets
+
+      - name: Upload mobile release artifacts
+        run: gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber

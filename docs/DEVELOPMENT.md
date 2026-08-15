@@ -141,8 +141,8 @@ Sentry 为可选功能。
 正式发布与候选构建分开：
 
 - `Release` 仅在推送 `v*` 标签后运行。完整发布测试通过后，它会并行调用桌面和移动构建；
-  Android 与 iOS 均在 GitHub runner 上执行 `eas build --local`。全部成功后，桌面安装包、Android
-  APK 与校验文件会写入同一 GitHub 草稿 Release，iOS 会提交到内部 TestFlight。
+  Android 与 iOS 均在 GitHub runner 上执行 `eas build --local`。桌面或移动构建完成后会立即将该端
+  产物独立写入同一 GitHub 草稿 Release，互不等待；iOS 会提交到内部 TestFlight。
 - `Desktop build candidate` 仅手动运行，为所选引用构建全部桌面安装包并上传 Actions 制品；它不修改
   GitHub Release。
 - `Mobile build candidate` 仅手动运行，可分别勾选 Android 和 iOS。它会上传 APK、校验文件或 IPA

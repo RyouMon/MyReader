@@ -57,6 +57,7 @@ jobs:
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       EXPO_PUBLIC_SENTRY_DSN: ${{ vars.EXPO_PUBLIC_SENTRY_DSN }}
+      GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.workers.max=2
     steps:
       - name: Check Expo authentication
         shell: bash
