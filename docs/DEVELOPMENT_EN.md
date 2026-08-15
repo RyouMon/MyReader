@@ -145,9 +145,9 @@ Sentry is optional.
 Production releases and candidate builds are separate:
 
 - `Release` runs only after a `v*` tag is pushed. Once the complete release test gate passes, it calls the
-  desktop and mobile builds in parallel; Android and iOS both run `eas build --local` on GitHub runners. After
-  every build succeeds, the desktop installers, Android APK, and checksum are attached to the same draft
-  GitHub Release, while iOS is submitted to the internal TestFlight group.
+  desktop and mobile builds in parallel; Android and iOS both run `eas build --local` on GitHub runners. Each
+  platform archives its artifacts to the same draft GitHub Release as soon as that build completes, without
+  waiting for the other platform; iOS is submitted to the internal TestFlight group.
 - `Desktop build candidate` is manual-only. It builds all desktop installers for the selected ref and uploads
   them as Actions artifacts without modifying a GitHub Release.
 - `Mobile build candidate` is manual-only and lets Android and iOS be selected independently. It uploads the

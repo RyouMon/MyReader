@@ -28,8 +28,9 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Build and Distribution
 
 - A single `v*` tag workflow now builds desktop and mobile releases. Separate manual desktop and mobile
-  candidate workflows remain available for quick artifact validation, and the draft GitHub Release is
-  published manually after review
+  candidate workflows remain available for quick artifact validation. Production builds run in parallel and
+  archive each platform independently as it completes; the draft GitHub Release is published manually after
+  review
 
 ## [0.12.0] - 2026-08-12
 
