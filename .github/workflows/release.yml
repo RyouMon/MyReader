@@ -2,8 +2,12 @@ name: Release
 
 on:
   push:
+    branches:
+      - codex/release-v0.12.1-workflows-ci-test
     tags:
       - "v*"
+    paths:
+      - .github/workflow-tests/release
 
 permissions:
   contents: write
@@ -29,6 +33,10 @@ jobs:
           release_version="${GITHUB_REF_NAME#v}"
           desktop_version="$(jq -er '.version' my-reader/src-tauri/tauri.conf.json)"
           mobile_version="$(jq -er '.expo.version' my-reader-mobile/app.json)"
+
+          if [ "$GITHUB_REF_TYPE" = "branch" ]; then
+            release_version="$desktop_version"
+          fi
 
           if [ "$desktop_version" != "$release_version" ] || [ "$mobile_version" != "$release_version" ]; then
             echo "$GITHUB_REF_NAME does not match desktop $desktop_version and mobile $mobile_version." >&2
@@ -90,6 +98,7 @@ jobs:
 
   draft-release:
     name: Update draft GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
     needs:
       - desktop
       - mobile

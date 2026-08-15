@@ -25,6 +25,11 @@ on:
         required: true
         default: true
         type: boolean
+  push:
+    branches:
+      - codex/release-v0.12.1-workflows-ci-test
+    paths:
+      - .github/workflow-tests/mobile
 
 permissions:
   contents: read
@@ -200,7 +205,7 @@ jobs:
           printf 'ipa_path=%s\n' "${ipa_paths[0]}" >> "$GITHUB_OUTPUT"
 
       - name: Upload iOS candidate
-        if: github.event_name == 'workflow_dispatch'
+        if: github.ref_type == 'branch'
         uses: actions/upload-artifact@v4
         with:
           name: MyReader-iOS-IPA
@@ -209,7 +214,7 @@ jobs:
           retention-days: 30
 
       - name: Submit release build to internal TestFlight
-        if: github.event_name != 'workflow_dispatch'
+        if: github.ref_type == 'tag'
         shell: bash
         working-directory: my-reader-mobile
         run: eas submit --platform ios --profile production --path "$IPA_PATH" --groups "$TESTFLIGHT_GROUP" --non-interactive --wait
