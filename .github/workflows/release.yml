@@ -159,7 +159,7 @@ jobs:
           path: release-assets
 
       - name: Upload desktop release artifacts
-        run: gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber
+        run: gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber --repo "$GITHUB_REPOSITORY"
 
   archive-mobile:
     name: Archive mobile release artifacts
@@ -176,4 +176,4 @@ jobs:
           path: release-assets
 
       - name: Upload mobile release artifacts
-        run: gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber
+        run: gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber --repo "$GITHUB_REPOSITORY"
