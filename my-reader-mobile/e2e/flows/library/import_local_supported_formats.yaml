@@ -121,5 +121,21 @@ tags:
     visible:
       id: "reader-screen"
     timeout: 30000
+- swipe:
+    direction: LEFT
+- extendedWaitUntil:
+    visible: "2 / 4"
+    timeout: 10000
+# Keep the reader mounted while the moved position is persisted for Recently Read.
+- tapOn:
+    point: "50%,50%"
+- extendedWaitUntil:
+    notVisible: "更多操作|More Actions|More actions"
+    timeout: 10000
+- tapOn:
+    point: "50%,50%"
+- extendedWaitUntil:
+    visible: "更多操作|More Actions|More actions"
+    timeout: 10000
 - runFlow: ../../common/close_reader.yaml
 - takeScreenshot: local-supported-format-covers
