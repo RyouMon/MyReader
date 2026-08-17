@@ -51,6 +51,25 @@ tags:
     visible:
       id: "reader-screen"
     timeout: 30000
+
+# Scenario: EPUB chrome remains tappable after rotating away and back.
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 3000
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: "更多操作|More Actions|More actions"
+- tapOn:
+    point: "50%,50%"
+- extendedWaitUntil:
+    visible: "更多操作|More Actions|More actions"
+    timeout: 10000
+- tapOn:
+    point: "50%,50%"
+- extendedWaitUntil:
+    notVisible: "更多操作|More Actions|More actions"
+    timeout: 10000
 - runFlow: ../../common/close_reader.yaml
 
 # Scenario: PDF metadata and first-page cover are available before reading.

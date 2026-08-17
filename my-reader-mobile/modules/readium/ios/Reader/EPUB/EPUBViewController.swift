@@ -19,6 +19,7 @@ class EPUBViewController: ReaderViewController, SelectionActionHandlerDelegate {
     var usesCustomSelectionMenu = false
     var onSelectionChange: ((ReadiumShared.Locator, String, CGRect?) -> Void)?
     var onSelectionMenuDismiss: (() -> Void)?
+    var onTap: ((CGPoint) -> Void)?
 
     init(
       publication: Publication,
@@ -131,6 +132,11 @@ class EPUBViewController: ReaderViewController, SelectionActionHandlerDelegate {
         selectionMenuPresenter = presenter
         presenter.update(selectionMenu)
       }
+
+      let tap = UITapGestureRecognizer(target: self, action: #selector(handleEpubTap(_:)))
+      tap.cancelsTouchesInView = false
+      tap.delegate = self
+      epubNavigator.view.addGestureRecognizer(tap)
     }
 
     func updateSelectionMenu(_ menu: SelectionMenuRecord?) {
@@ -189,6 +195,23 @@ class EPUBViewController: ReaderViewController, SelectionActionHandlerDelegate {
       selectionMenu = nil
       epubNavigator.clearSelection()
       onSelectionMenuDismiss?()
+    }
+
+    @objc private func handleEpubTap(_ gesture: UITapGestureRecognizer) {
+      guard epubNavigator.currentSelection == nil else { return }
+
+      let point = gesture.location(in: epubNavigator.view)
+      let bounds = epubNavigator.view.bounds
+      guard bounds.width > 0 && bounds.height > 0 else { return }
+
+      let xRatio = point.x / bounds.width
+      let yRatio = point.y / bounds.height
+      let inCenterRegion =
+        xRatio >= 0.25 && xRatio <= 0.75 &&
+        yRatio >= 0.25 && yRatio <= 0.75
+      guard inCenterRegion else { return }
+
+      onTap?(point)
     }
 
     internal func setUIColor(for theme: Theme) {
