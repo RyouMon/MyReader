@@ -29,10 +29,10 @@ tags:
       - runFlow:
           when:
             visible:
-              id: "DOC.sidebar.item.我的iPhone|DOC.sidebar.item.On My iPhone"
+              id: "DOC.sidebar.item.我的(iPhone|iPad)|DOC.sidebar.item.On My (iPhone|iPad)"
           commands:
             - tapOn:
-                id: "DOC.sidebar.item.我的iPhone|DOC.sidebar.item.On My iPhone"
+                id: "DOC.sidebar.item.我的(iPhone|iPad)|DOC.sidebar.item.On My (iPhone|iPad)"
             - waitForAnimationToEnd
       - tapOn:
           id: "DOC.sidebar.item.下载|DOC.sidebar.item.Downloads|下载|Downloads"
