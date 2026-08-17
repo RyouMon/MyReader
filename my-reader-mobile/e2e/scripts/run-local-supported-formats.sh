@@ -13,6 +13,7 @@ IOS_SIMULATOR_UDID=${IOS_SIMULATOR_UDID:-$(xcrun simctl list devices booted -j |
   [.devices[][] | select(.state == "Booted") | .udid] |
   if length == 1 then .[0] else empty end
 ')}
+IOS_FILE_PICKER_USE_COORDINATES=${IOS_FILE_PICKER_USE_COORDINATES:-false}
 
 if [[ -z "$IOS_SIMULATOR_UDID" ]]; then
   echo "Set IOS_SIMULATOR_UDID when zero or multiple simulators are booted." >&2
@@ -66,6 +67,7 @@ COMMON_ENV=(
   -e "EPUB_BOOK_TITLE=${EPUB_BOOK_TITLE}"
   -e "PDF_BOOK_TITLE=${PDF_BOOK_TITLE}"
   -e "CBZ_BOOK_TITLE=${CBZ_BOOK_TITLE}"
+  -e "IOS_FILE_PICKER_USE_COORDINATES=${IOS_FILE_PICKER_USE_COORDINATES}"
 )
 
 cd "$MOBILE_ROOT"

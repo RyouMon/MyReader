@@ -39,6 +39,7 @@ tags:
     env:
       E2E_ROOT_FOLDER: ${E2E_ROOT_FOLDER}
       IMPORT_FILE_NAME: ${EPUB_IMPORT_FILE_NAME}
+      IOS_FILE_POINT: "66%,36%"
 - extendedWaitUntil:
     visible: ${EPUB_BOOK_TITLE}
     timeout: 30000
@@ -83,6 +84,7 @@ tags:
     env:
       E2E_ROOT_FOLDER: ${E2E_ROOT_FOLDER}
       IMPORT_FILE_NAME: ${PDF_PICKER_FILE_NAME}
+      IOS_FILE_POINT: "80%,36%"
 - tapOn: "全部图书.*|All Books.*"
 - extendedWaitUntil:
     visible: ${PDF_BOOK_TITLE}
@@ -109,6 +111,7 @@ tags:
     env:
       E2E_ROOT_FOLDER: ${E2E_ROOT_FOLDER}
       IMPORT_FILE_NAME: ${CBZ_IMPORT_FILE_NAME}
+      IOS_FILE_POINT: "52%,36%"
 - tapOn: "全部图书.*|All Books.*"
 - extendedWaitUntil:
     visible: ${CBZ_BOOK_TITLE}
