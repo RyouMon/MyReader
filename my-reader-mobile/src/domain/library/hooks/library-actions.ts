@@ -43,6 +43,7 @@ import {
 } from "@/src/services/fs/library-paths"
 import { fileUriFor } from "@/src/services/fs/path"
 import { queryClient } from "@/src/services/query/query-client"
+import { queryKeys } from "@/src/services/query/query-keys"
 import { useAppStore } from "@/src/store/app-store"
 import { excludeLocalLibrarySource } from "@/src/store/app-store.constants"
 import { scheduleIdleWork, uuid } from "@/src/utils/common"
@@ -527,15 +528,23 @@ export async function deleteManagedBook(
   bookId: number,
 ): Promise<void> {
   await deleteBookFromLibrary(library, bookId)
-  const queryKey = libraryQueryKeys.books(library.id)
-  await queryClient.cancelQueries({ queryKey, exact: true })
-  queryClient.setQueryData<BookItem[]>(queryKey, (current) =>
-    current?.filter((book) => book.id !== String(bookId)),
-  )
+  const booksQueryKey = libraryQueryKeys.books(library.id)
+  const recentlyReadQueryKey = queryKeys.recentlyReadBooks(library.id)
+  await Promise.all([
+    queryClient.cancelQueries({ queryKey: booksQueryKey, exact: true }),
+    queryClient.cancelQueries({ queryKey: recentlyReadQueryKey, exact: true }),
+  ])
+  const removeDeletedBook = (current?: BookItem[]) =>
+    current?.filter((book) => book.id !== String(bookId))
+  queryClient.setQueryData<BookItem[]>(booksQueryKey, removeDeletedBook)
+  queryClient.setQueryData<BookItem[]>(recentlyReadQueryKey, removeDeletedBook)
   try {
     await persistLibraryBookCount(library, library.bookCount - 1)
   } finally {
-    await queryClient.invalidateQueries({ queryKey })
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: booksQueryKey }),
+      queryClient.invalidateQueries({ queryKey: recentlyReadQueryKey }),
+    ])
   }
 }
 

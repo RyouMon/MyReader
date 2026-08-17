@@ -187,7 +187,7 @@ describe("managed book deletion", () => {
     mockReplaceAppLibrary.mockReset()
   })
 
-  it("should remove the cached book before persisting the library count", async () => {
+  it("should remove the cached book and recent entry before persisting the library count", async () => {
     const library = {
       id: "library-1",
       name: "My Library",
@@ -197,23 +197,39 @@ describe("managed book deletion", () => {
       bookCount: 2,
     } as Library
     let finishCountUpdate: (() => void) | undefined
-    mockReplaceAppLibrary.mockReturnValueOnce(
-      new Promise((resolve) => {
-        finishCountUpdate = () =>
-          resolve({ libraries: [library], activeLibraryId: library.id })
-      }),
+    let markCountUpdateStarted: (() => void) | undefined
+    const countUpdateStarted = new Promise<void>((resolve) => {
+      markCountUpdateStarted = resolve
+    })
+    mockReplaceAppLibrary.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          markCountUpdateStarted?.()
+          finishCountUpdate = () =>
+            resolve({ libraries: [library], activeLibraryId: library.id })
+        }),
     )
 
     const deletion = deleteManagedBook(library, 1)
-    await Promise.resolve()
-    await Promise.resolve()
+    await countUpdateStarted
 
-    const cacheUpdater = mockSetQueryData.mock.calls.find(
+    const bookCacheUpdater = mockSetQueryData.mock.calls.find(
       ([queryKey]) =>
         JSON.stringify(queryKey) === JSON.stringify(["books", library.id]),
     )?.[1] as ((books: { id: string }[]) => { id: string }[]) | undefined
-    expect(cacheUpdater).toBeDefined()
-    expect(cacheUpdater?.([{ id: "1" }, { id: "2" }])).toEqual([{ id: "2" }])
+    const recentCacheUpdater = mockSetQueryData.mock.calls.find(
+      ([queryKey]) =>
+        JSON.stringify(queryKey) ===
+        JSON.stringify(["recently-read-books", library.id]),
+    )?.[1] as ((books: { id: string }[]) => { id: string }[]) | undefined
+    expect(bookCacheUpdater).toBeDefined()
+    expect(bookCacheUpdater?.([{ id: "1" }, { id: "2" }])).toEqual([
+      { id: "2" },
+    ])
+    expect(recentCacheUpdater).toBeDefined()
+    expect(recentCacheUpdater?.([{ id: "1" }, { id: "2" }])).toEqual([
+      { id: "2" },
+    ])
     expect(mockInvalidateQueries).not.toHaveBeenCalled()
 
     finishCountUpdate?.()
@@ -223,8 +239,15 @@ describe("managed book deletion", () => {
       queryKey: ["books", library.id],
       exact: true,
     })
+    expect(mockCancelQueries).toHaveBeenCalledWith({
+      queryKey: ["recently-read-books", library.id],
+      exact: true,
+    })
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
       queryKey: ["books", library.id],
+    })
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["recently-read-books", library.id],
     })
   })
 })
