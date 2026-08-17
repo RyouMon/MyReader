@@ -348,8 +348,6 @@ export const desktopZhCN = {
       usernamePlaceholder: "用户名",
       passwordLabel: "密码",
       passwordPlaceholder: "密码或应用专用密码",
-      rootPathLabel: "远程根路径（可选）",
-      rootPathPlaceholder: "/",
       testConnection: "测试连接",
       testing: "测试中…",
       testDesktopOnly: "仅桌面端支持测试连接",

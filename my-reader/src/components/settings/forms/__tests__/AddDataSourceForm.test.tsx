@@ -20,6 +20,51 @@ beforeEach(() => {
 })
 
 describe("AddDataSourceForm", () => {
+  it("should keep the WebDAV path in the server address", async () => {
+    const onCreateDataSource = vi.fn().mockResolvedValue({
+      id: "webdav-1",
+      type: "webdav",
+      name: "http://192.168.1.12:5244/dav/",
+      enabled: true,
+      endpoint: "http://192.168.1.12:5244/dav/",
+      username: "reader",
+      hasPassword: true,
+      rootPath: null,
+    })
+
+    render(
+      <AddDataSourceForm
+        type="webdav"
+        onCreateDataSource={onCreateDataSource}
+      />,
+    )
+
+    expect(
+      screen.queryByLabelText("远程根路径（可选）"),
+    ).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText("服务器地址"), {
+      target: { value: "http://192.168.1.12:5244/dav/" },
+    })
+    fireEvent.change(screen.getByLabelText("用户名"), {
+      target: { value: "reader" },
+    })
+    fireEvent.change(screen.getByLabelText("密码"), {
+      target: { value: "secret" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "添加" }))
+
+    await waitFor(() => {
+      expect(onCreateDataSource).toHaveBeenCalledWith(
+        expect.objectContaining({
+          endpoint: "http://192.168.1.12:5244/dav/",
+          name: "http://192.168.1.12:5244/dav/",
+          rootPath: null,
+        }),
+      )
+    })
+  })
+
   it("should keep WebDAV actions outside scrolling content when filling available height", () => {
     const { container } = render(
       <AddDataSourceForm
