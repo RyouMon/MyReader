@@ -359,8 +359,6 @@ export const desktopEn = {
       usernamePlaceholder: "Username",
       passwordLabel: "Password",
       passwordPlaceholder: "Password or app-specific password",
-      rootPathLabel: "Remote root path (optional)",
-      rootPathPlaceholder: "/",
       testConnection: "Test connection",
       testing: "Testing…",
       testDesktopOnly: "Connection test is only available on desktop",

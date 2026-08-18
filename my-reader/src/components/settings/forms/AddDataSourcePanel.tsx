@@ -169,12 +169,7 @@ interface WebdavDataSourceFormProps {
   ) => Promise<void>
 }
 
-type WebdavFieldName =
-  | "endpoint"
-  | "port"
-  | "username"
-  | "password"
-  | "rootPath"
+type WebdavFieldName = "endpoint" | "port" | "username" | "password"
 
 function WebdavDataSourceForm({
   loading,
@@ -208,28 +203,17 @@ function WebdavDataSourceForm({
           .trim()
           .min(1, t("addDataSourceForm.validation.username")),
         password: z.string().min(1, t("addDataSourceForm.validation.password")),
-        rootPath: z.string().trim(),
       }),
     [t],
   )
 
-  function normalizeRootPath(path: string): string {
-    const trimmed = path.trim()
-    if (!trimmed) return "/"
-    return trimmed.startsWith("/") ? trimmed : `/${trimmed}`
-  }
-
-  function buildWebdavName(
-    endpoint: string,
-    port: string,
-    rootPath: string,
-  ): string {
+  function buildWebdavName(endpoint: string, port: string): string {
     const parsed = new URL(endpoint.trim())
     const resolvedPort =
       port.trim() ||
       parsed.port ||
       (parsed.protocol === "https:" ? "443" : "80")
-    return `${parsed.protocol}//${parsed.hostname}:${resolvedPort}${normalizeRootPath(rootPath)}`
+    return `${parsed.protocol}//${parsed.hostname}:${resolvedPort}${parsed.pathname}`
   }
 
   function mergeEndpointWithPort(endpoint: string, port: string): string {
@@ -262,7 +246,6 @@ function WebdavDataSourceForm({
       port: "",
       username: "",
       password: "",
-      rootPath: "",
     },
     validators: {
       onSubmit: addWebdavSchema,
@@ -278,17 +261,16 @@ function WebdavDataSourceForm({
     value: z.infer<typeof addWebdavSchema>,
   ): DataSourceWebdav & { password?: string } {
     const endpoint = mergeEndpointWithPort(value.endpoint, value.port)
-    const trimmedRoot = value.rootPath.trim()
     return {
       id: "",
       type: "webdav",
-      name: buildWebdavName(value.endpoint, value.port, value.rootPath),
+      name: buildWebdavName(value.endpoint, value.port),
       enabled: true,
       endpoint,
       username: value.username.trim(),
       password: value.password,
       hasPassword: value.password.length > 0,
-      rootPath: trimmedRoot ? trimmedRoot : null,
+      rootPath: null,
     }
   }
 
@@ -308,8 +290,7 @@ function WebdavDataSourceForm({
           fieldName !== "endpoint" &&
           fieldName !== "port" &&
           fieldName !== "username" &&
-          fieldName !== "password" &&
-          fieldName !== "rootPath"
+          fieldName !== "password"
         ) {
           continue
         }
@@ -493,28 +474,6 @@ function WebdavDataSourceForm({
               }}
             </webdavForm.Field>
           </div>
-          <webdavForm.Field name="rootPath">
-            {(field) => (
-              <Field>
-                <FieldLabel htmlFor={field.name}>
-                  {t("addDataSourceForm.rootPathLabel")}
-                </FieldLabel>
-                <Input
-                  id={field.name}
-                  name={field.name}
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(event) => {
-                    field.handleChange(event.target.value)
-                    clearTestValidationErrors()
-                    onClearMessages()
-                  }}
-                  placeholder={t("addDataSourceForm.rootPathPlaceholder")}
-                  disabled={loading}
-                />
-              </Field>
-            )}
-          </webdavForm.Field>
         </FieldGroup>
         {feedback ? <div className="mt-3">{feedback}</div> : null}
       </div>
