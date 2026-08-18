@@ -29,6 +29,17 @@ tags:
     visible: ${CBZ_BOOK_TITLE}
     timeout: 30000
 
+# Scenario: the last opened book is present in Recently Read before deletion.
+- runFlow: ../../common/tap_header_back.yaml
+- tapOn:
+    id: "library-collection-recentlyRead"
+- extendedWaitUntil:
+    visible: ${CBZ_BOOK_TITLE}
+    timeout: 5000
+- runFlow: ../../common/tap_header_back.yaml
+- tapOn:
+    id: "library-collection-all"
+
 # Scenario: each successful deletion immediately removes its cached card.
 - tapOn: "更多操作：${CBZ_BOOK_TITLE}|More actions: ${CBZ_BOOK_TITLE}"
 - tapOn: "删除图书|Delete Book"
@@ -36,6 +47,17 @@ tags:
 - extendedWaitUntil:
     notVisible: ${CBZ_BOOK_TITLE}
     timeout: 5000
+
+# Scenario: deleting a read book also removes it from Recently Read.
+- runFlow: ../../common/tap_header_back.yaml
+- tapOn:
+    id: "library-collection-recentlyRead"
+- extendedWaitUntil:
+    notVisible: ${CBZ_BOOK_TITLE}
+    timeout: 5000
+- runFlow: ../../common/tap_header_back.yaml
+- tapOn:
+    id: "library-collection-all"
 
 - tapOn: "更多操作：${PDF_BOOK_TITLE}|More actions: ${PDF_BOOK_TITLE}"
 - tapOn: "删除图书|Delete Book"
