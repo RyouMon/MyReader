@@ -8,7 +8,8 @@ use super::{
     },
     persistence::{
         apply_remote_database_objects, delete_outbox_entry, ensure_database_document,
-        list_publishable_outbox, DatabaseIdentity, SyncOutboxEntry, SyncRemoteObject,
+        load_publishable_database_snapshot, DatabaseIdentity, PublishableDatabaseSnapshot,
+        RemoteStorageRepair, SyncOutboxEntry, SyncRemoteObject,
     },
     storage::{
         incremental_prefix, snapshot_key, snapshot_prefix, storage_key_to_path, StorageAdapter,
@@ -202,22 +203,21 @@ async fn publish_pending(
 }
 
 async fn save_total(
-    pending: Vec<SyncOutboxEntry>,
+    snapshot: PublishableDatabaseSnapshot,
     database_path: &str,
     adapter: &StorageAdapter<'_>,
     document_id: &str,
-    document: &super::document_engine::DocumentCommandResult,
 ) -> Result<(StorageChunk, usize), SyncError> {
-    let change_count = pending.iter().map(|row| row.change_count).sum();
-    let key = snapshot_key(document_id, &heads_hash(&document.heads));
-    adapter.save(&key, &document.snapshot_bytes).await?;
-    for row in pending {
+    let change_count = snapshot.pending.iter().map(|row| row.change_count).sum();
+    let key = snapshot_key(document_id, &heads_hash(&snapshot.heads));
+    adapter.save(&key, &snapshot.snapshot_bytes).await?;
+    for row in snapshot.pending {
         delete_outbox_entry(database_path, &row.storage_key)?;
     }
     Ok((
         StorageChunk {
             key,
-            data: document.snapshot_bytes.clone(),
+            data: snapshot.snapshot_bytes,
         },
         change_count,
     ))
@@ -239,17 +239,17 @@ fn should_compact(chunks: &[StorageChunk]) -> bool {
 async fn compact(
     database_path: &str,
     adapter: &StorageAdapter<'_>,
-    document_id: &str,
-    document: &super::document_engine::DocumentCommandResult,
+    identity: &DatabaseIdentity,
     chunks: &[StorageChunk],
 ) -> Result<(), SyncError> {
     if !should_compact(chunks) {
         return Ok(());
     }
-    let Some(pending) = list_publishable_outbox(database_path)? else {
+    let Some(publishable) = load_publishable_database_snapshot(database_path, identity)? else {
         return Ok(());
     };
-    let (snapshot, _) = save_total(pending, database_path, adapter, document_id, document).await?;
+    let (snapshot, _) =
+        save_total(publishable, database_path, adapter, &identity.library_uuid).await?;
     for chunk in chunks {
         if chunk.key.get(2) != snapshot.key.get(2) {
             adapter.remove(&chunk.key).await?;
@@ -291,7 +291,7 @@ pub async fn sync_database_with_operator_observed(
         completed: 0,
         total: 1,
     });
-    let mut document = ensure_database_document(database_path, identity, now_ms)?;
+    ensure_database_document(database_path, identity, now_ms)?;
     let adapter = StorageAdapter::new(operator);
     let initial_chunks = load_document_chunks(&adapter, identity).await?;
     observer.on_progress(SyncProgress {
@@ -300,6 +300,7 @@ pub async fn sync_database_with_operator_observed(
         total: 1,
     });
 
+    let mut remote_storage_repair = None;
     let pulled = match mode {
         SyncMode::PushOnly => 0,
         SyncMode::Full if initial_chunks.is_empty() => 0,
@@ -321,67 +322,63 @@ pub async fn sync_database_with_operator_observed(
                 now_ms,
                 remote_objects(&initial_chunks),
             )?;
-            document = applied.document;
             observer.on_progress(SyncProgress {
                 stage: SyncStage::Applying,
                 completed: initial_chunks.len(),
                 total: initial_chunks.len(),
             });
+            remote_storage_repair = applied.remote_storage_repair;
             applied.applied_objects
         }
     };
 
     let mut covered_chunks = initial_chunks.clone();
-    let publishable = list_publishable_outbox(database_path)?;
-    let pushed = if publishable.is_none() {
-        observer.on_progress(SyncProgress {
-            stage: SyncStage::Pushing,
-            completed: 0,
-            total: 0,
-        });
-        0
-    } else if initial_chunks.is_empty() {
-        observer.on_progress(SyncProgress {
-            stage: SyncStage::Pushing,
-            completed: 0,
-            total: 1,
-        });
-        let (snapshot, change_count) = save_total(
-            publishable.unwrap_or_default(),
-            database_path,
-            &adapter,
-            &identity.library_uuid,
-            &document,
-        )
-        .await?;
-        covered_chunks.push(snapshot);
-        observer.on_progress(SyncProgress {
-            stage: SyncStage::Pushing,
-            completed: 1,
-            total: 1,
-        });
-        change_count
-    } else {
-        let (change_count, published) = publish_pending(
-            publishable.unwrap_or_default(),
-            database_path,
-            &adapter,
-            observer,
-        )
-        .await?;
-        covered_chunks.extend(published);
-        change_count
+    let publishable = load_publishable_database_snapshot(database_path, identity)?;
+    let pushed = match publishable {
+        None => {
+            if let Some(RemoteStorageRepair {
+                change_hashes,
+                object_paths,
+            }) = remote_storage_repair
+            {
+                return Err(SyncError::MissingDependencies {
+                    change_hashes,
+                    object_paths,
+                });
+            }
+            observer.on_progress(SyncProgress {
+                stage: SyncStage::Pushing,
+                completed: 0,
+                total: 0,
+            });
+            0
+        }
+        Some(publishable) if initial_chunks.is_empty() || remote_storage_repair.is_some() => {
+            observer.on_progress(SyncProgress {
+                stage: SyncStage::Pushing,
+                completed: 0,
+                total: 1,
+            });
+            let (snapshot, change_count) =
+                save_total(publishable, database_path, &adapter, &identity.library_uuid).await?;
+            covered_chunks.push(snapshot);
+            observer.on_progress(SyncProgress {
+                stage: SyncStage::Pushing,
+                completed: 1,
+                total: 1,
+            });
+            change_count
+        }
+        Some(publishable) => {
+            let (change_count, published) =
+                publish_pending(publishable.pending, database_path, &adapter, observer).await?;
+            covered_chunks.extend(published);
+            change_count
+        }
     };
 
     if mode == SyncMode::Full && (pushed > 0 || pulled > 0) {
-        compact(
-            database_path,
-            &adapter,
-            &identity.library_uuid,
-            &document,
-            &covered_chunks,
-        )
-        .await?;
+        compact(database_path, &adapter, identity, &covered_chunks).await?;
     }
 
     check_cancelled(observer)?;
@@ -401,6 +398,7 @@ pub fn has_publishable_database_work(database_path: &str) -> Result<bool, SyncEr
 #[cfg(test)]
 mod tests {
     use rusqlite::Connection;
+    use std::sync::atomic::{AtomicBool, Ordering};
 
     use super::super::{
         document::{set_reading_position, ReadingPositionValue},
@@ -582,6 +580,152 @@ mod tests {
         }
     }
 
+    struct MutateAfterPendingPushObserver {
+        database_path: String,
+        identity: DatabaseIdentity,
+        mutated: AtomicBool,
+    }
+
+    impl SyncObserver for MutateAfterPendingPushObserver {
+        fn is_cancelled(&self) -> bool {
+            false
+        }
+
+        fn on_progress(&self, progress: SyncProgress) {
+            if progress.stage == SyncStage::Pushing
+                && progress.total > 0
+                && progress.completed == progress.total
+                && !self.mutated.swap(true, Ordering::SeqCst)
+            {
+                set_progress(&self.database_path, &self.identity, 9_999, 99);
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn should_keep_progress_saved_during_compaction_available_to_new_devices() {
+        let (_first_directory, first_path) = database();
+        let (_second_directory, second_path) = database();
+        let (_third_directory, third_path) = database();
+        let first = identity("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+        let second = identity("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+        let third = identity("cccccccc-cccc-4ccc-8ccc-cccccccccccc");
+        let remote = tempfile::tempdir().unwrap();
+        let operator = operator(&remote);
+
+        set_progress(&first_path, &first, 42, 7);
+        sync_database_with_operator(&first_path, &operator, &first, 10, SyncMode::Full)
+            .await
+            .unwrap();
+        sync_database_with_operator(&second_path, &operator, &second, 11, SyncMode::Full)
+            .await
+            .unwrap();
+
+        for book_id in 100..164 {
+            set_progress(&second_path, &second, book_id, book_id);
+        }
+        let observer = MutateAfterPendingPushObserver {
+            database_path: second_path.clone(),
+            identity: second.clone(),
+            mutated: AtomicBool::new(false),
+        };
+        sync_database_with_operator_observed(
+            &second_path,
+            &operator,
+            &second,
+            12,
+            SyncMode::Full,
+            &observer,
+        )
+        .await
+        .unwrap();
+        assert!(observer.mutated.load(Ordering::SeqCst));
+
+        set_progress(&second_path, &second, 10_000, 100);
+        sync_database_with_operator(&second_path, &operator, &second, 13, SyncMode::PushOnly)
+            .await
+            .unwrap();
+
+        let result =
+            sync_database_with_operator(&third_path, &operator, &third, 14, SyncMode::Full).await;
+
+        assert!(
+            result.is_ok(),
+            "a later incremental must not depend on a change discarded during compaction: {result:?}"
+        );
+        let third_database = Connection::open(third_path).unwrap();
+        for (book_id, page) in [(9_999, 99), (10_000, 100)] {
+            let locator: String = third_database
+                .query_row(
+                    "SELECT locator_json FROM reading_progress WHERE book_id = ?1",
+                    [book_id],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(locator, format!(r#"{{"href":"page={page}"}}"#));
+        }
+    }
+
+    #[tokio::test]
+    async fn should_repair_incomplete_remote_storage_from_a_complete_local_replica() {
+        let (_source_directory, source_path) = database();
+        let (_target_directory, target_path) = database();
+        let source = identity("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+        let target = identity("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+        let remote = tempfile::tempdir().unwrap();
+        let operator = operator(&remote);
+        let adapter = StorageAdapter::new(&operator);
+
+        set_progress(&source_path, &source, 42, 7);
+        sync_database_with_operator(&source_path, &operator, &source, 10, SyncMode::Full)
+            .await
+            .unwrap();
+
+        set_progress(&source_path, &source, 43, 8);
+        sync_database_with_operator(&source_path, &operator, &source, 11, SyncMode::PushOnly)
+            .await
+            .unwrap();
+        let missing_key = adapter
+            .load_range(&incremental_prefix(LIBRARY_UUID))
+            .await
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap()
+            .key;
+
+        set_progress(&source_path, &source, 44, 9);
+        sync_database_with_operator(&source_path, &operator, &source, 12, SyncMode::PushOnly)
+            .await
+            .unwrap();
+        adapter.remove(&missing_key).await.unwrap();
+
+        let error =
+            sync_database_with_operator(&target_path, &operator, &target, 13, SyncMode::Full)
+                .await
+                .unwrap_err();
+        assert!(matches!(error, SyncError::MissingDependencies { .. }));
+
+        sync_database_with_operator(&source_path, &operator, &source, 14, SyncMode::Full)
+            .await
+            .unwrap();
+        sync_database_with_operator(&target_path, &operator, &target, 15, SyncMode::Full)
+            .await
+            .unwrap();
+
+        let target_database = Connection::open(target_path).unwrap();
+        for (book_id, page) in [(43, 8), (44, 9)] {
+            let locator: String = target_database
+                .query_row(
+                    "SELECT locator_json FROM reading_progress WHERE book_id = ?1",
+                    [book_id],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(locator, format!(r#"{{"href":"page={page}"}}"#));
+        }
+    }
+
     #[test]
     fn should_compact_when_incrementals_are_larger_than_snapshot() {
         assert!(should_compact(&[
@@ -669,7 +813,7 @@ mod tests {
     async fn should_preserve_unloaded_chunk_when_compaction_deletes_covered_chunks() {
         let (_directory, path) = database();
         let identity = identity("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
-        let document = ensure_database_document(&path, &identity, 10).unwrap();
+        ensure_database_document(&path, &identity, 10).unwrap();
         let remote = tempfile::tempdir().unwrap();
         let operator = operator(&remote);
         let adapter = StorageAdapter::new(&operator);
@@ -681,15 +825,9 @@ mod tests {
         adapter.save(&covered.key, &covered.data).await.unwrap();
         adapter.save(&concurrent, b"concurrent").await.unwrap();
 
-        compact(
-            &path,
-            &adapter,
-            LIBRARY_UUID,
-            &document,
-            std::slice::from_ref(&covered),
-        )
-        .await
-        .unwrap();
+        compact(&path, &adapter, &identity, std::slice::from_ref(&covered))
+            .await
+            .unwrap();
 
         assert_eq!(
             adapter.load(&concurrent).await.unwrap(),
