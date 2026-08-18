@@ -6,6 +6,32 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.12.2] - 2026-08-19
+
+### Fixed
+
+- Fixed a sync-compaction race that could omit concurrent Automerge changes and leave devices repeatedly
+  reporting `DATA_INTEGRITY_ERROR`; a full sync can now publish a repair snapshot when one device still
+  retains the complete history ([#66](https://github.com/RyouMon/MyReader/issues/66),
+  [#67](https://github.com/RyouMon/MyReader/pull/67))
+- Fixed paths in desktop WebDAV server addresses being split into malformed URLs, preventing connections
+  to services hosted under a subpath ([#62](https://github.com/RyouMon/MyReader/issues/62),
+  [#65](https://github.com/RyouMon/MyReader/pull/65))
+- Fixed deleted books remaining in Recently Read on mobile
+  ([#57](https://github.com/RyouMon/MyReader/issues/57),
+  [#63](https://github.com/RyouMon/MyReader/pull/63))
+
+### Upgrade Notes
+
+- If an existing library already reports `DATA_INTEGRITY_ERROR`, first run a manual sync after upgrading
+  on the device most likely to retain the complete sync history, then retry on other devices. If every
+  device and backup lacks the required change, restore from a complete backup
+
+### Build and Distribution
+
+- Fixed GitHub Release asset uploads from artifact-only jobs without a repository checkout
+  ([#60](https://github.com/RyouMon/MyReader/pull/60))
+
 ## [0.12.1] - 2026-08-15
 
 ### Fixed

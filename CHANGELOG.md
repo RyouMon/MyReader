@@ -5,6 +5,31 @@
 MyReader 的重要变更均记录于此。
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [0.12.2] - 2026-08-19
+
+### Fixed
+
+- 修复同步压缩与并发写入竞态可能遗漏 Automerge 变更，导致多台设备持续出现
+  `DATA_INTEGRITY_ERROR`；当某台设备仍保留完整历史时，完整同步现在可发布修复快照
+  （[#66](https://github.com/RyouMon/MyReader/issues/66)、
+  [#67](https://github.com/RyouMon/MyReader/pull/67)）
+- 修复桌面端 WebDAV 服务器地址中的路径被错误拆分，导致带子路径的服务无法连接
+  （[#62](https://github.com/RyouMon/MyReader/issues/62)、
+  [#65](https://github.com/RyouMon/MyReader/pull/65)）
+- 修复移动端删除图书后，“最近阅读”仍显示已删除图书
+  （[#57](https://github.com/RyouMon/MyReader/issues/57)、
+  [#63](https://github.com/RyouMon/MyReader/pull/63)）
+
+### Upgrade Notes
+
+- 若现有书库已出现 `DATA_INTEGRITY_ERROR`，升级后请先在最可能仍保存完整同步历史的设备上
+  手动同步一次，再让其他设备重试。若所有设备和备份均已缺失相关变更，则仍需从完整备份恢复
+
+### Build and Distribution
+
+- 修复未检出仓库的归档任务无法上传桌面端和 Android Release 产物
+  （[#60](https://github.com/RyouMon/MyReader/pull/60)）
+
 ## [0.12.1] - 2026-08-15
 
 ### Fixed
