@@ -55,6 +55,13 @@ pub struct SyncOutboxEntry {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PublishableDatabaseSnapshot {
+    pub snapshot_bytes: Vec<u8>,
+    pub heads: Vec<String>,
+    pub pending: Vec<SyncOutboxEntry>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SyncRemoteObject {
     pub storage_key: StorageKey,
     pub bytes: Vec<u8>,
@@ -62,9 +69,16 @@ pub struct SyncRemoteObject {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RemoteStorageRepair {
+    pub change_hashes: String,
+    pub object_paths: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ApplyRemoteDatabaseResult {
     pub document: DocumentCommandResult,
     pub applied_objects: usize,
+    pub remote_storage_repair: Option<RemoteStorageRepair>,
 }
 
 #[derive(Debug)]
@@ -953,14 +967,8 @@ pub fn list_pending_outbox(database_path: &str) -> Result<Vec<SyncOutboxEntry>, 
     read_pending_outbox(&connection)
 }
 
-pub fn list_publishable_outbox(
-    database_path: &str,
-) -> Result<Option<Vec<SyncOutboxEntry>>, SyncError> {
-    let mut connection = open_connection(database_path)?;
-    let transaction = connection
-        .transaction_with_behavior(TransactionBehavior::Deferred)
-        .map_err(database_error)?;
-    let blocked = transaction
+fn publishable_outbox_is_blocked(connection: &Connection) -> Result<bool, SyncError> {
+    connection
         .query_row(
             "SELECT EXISTS (
                SELECT 1
@@ -971,7 +979,17 @@ pub fn list_publishable_outbox(
             [],
             |row| row.get::<_, bool>(0),
         )
+        .map_err(database_error)
+}
+
+pub fn list_publishable_outbox(
+    database_path: &str,
+) -> Result<Option<Vec<SyncOutboxEntry>>, SyncError> {
+    let mut connection = open_connection(database_path)?;
+    let transaction = connection
+        .transaction_with_behavior(TransactionBehavior::Deferred)
         .map_err(database_error)?;
+    let blocked = publishable_outbox_is_blocked(&transaction)?;
     let pending = if blocked {
         None
     } else {
@@ -979,6 +997,31 @@ pub fn list_publishable_outbox(
     };
     transaction.commit().map_err(database_error)?;
     Ok(pending)
+}
+
+/// Captures the document and the exact outbox rows it covers in one SQLite read snapshot.
+pub fn load_publishable_database_snapshot(
+    database_path: &str,
+    identity: &DatabaseIdentity,
+) -> Result<Option<PublishableDatabaseSnapshot>, SyncError> {
+    let mut connection = open_connection(database_path)?;
+    let transaction = connection
+        .transaction_with_behavior(TransactionBehavior::Deferred)
+        .map_err(database_error)?;
+    let blocked = publishable_outbox_is_blocked(&transaction)?;
+    let snapshot = if blocked {
+        None
+    } else {
+        let state = read_state(&transaction, identity)?
+            .ok_or_else(|| sync_error("Local Automerge state is missing"))?;
+        Some(PublishableDatabaseSnapshot {
+            snapshot_bytes: state.snapshot_bytes,
+            heads: state.heads,
+            pending: read_pending_outbox(&transaction)?,
+        })
+    };
+    transaction.commit().map_err(database_error)?;
+    Ok(snapshot)
 }
 
 fn read_pending_outbox(connection: &Connection) -> Result<Vec<SyncOutboxEntry>, SyncError> {
@@ -1081,6 +1124,7 @@ pub fn apply_remote_database_objects(
         return Ok(ApplyRemoteDatabaseResult {
             document,
             applied_objects: 0,
+            remote_storage_repair: None,
         });
     }
     validate_remote_objects(&objects)?;
@@ -1116,16 +1160,16 @@ pub fn apply_remote_database_objects(
         ),
         None,
     )?;
-    if !remote.missing_dependencies.is_empty() {
-        return Err(SyncError::MissingDependencies {
+    let object_paths = objects
+        .iter()
+        .map(|object| display_storage_key(&object.storage_key))
+        .collect::<Vec<_>>()
+        .join(",");
+    let remote_storage_repair =
+        (!remote.missing_dependencies.is_empty()).then(|| RemoteStorageRepair {
             change_hashes: remote.missing_dependencies.join(","),
-            object_paths: objects
-                .iter()
-                .map(|object| display_storage_key(&object.storage_key))
-                .collect::<Vec<_>>()
-                .join(","),
+            object_paths: object_paths.clone(),
         });
-    }
     let merged_bytes = objects
         .iter()
         .flat_map(|object| object.bytes.iter().copied())
@@ -1139,6 +1183,12 @@ pub fn apply_remote_database_objects(
         ),
         Some(&merged_bytes),
     )?;
+    if !result.missing_dependencies.is_empty() {
+        return Err(SyncError::MissingDependencies {
+            change_hashes: result.missing_dependencies.join(","),
+            object_paths,
+        });
+    }
     let applied_changes = result.changes.len();
     let local_delta = execute_document_command(
         Some(&result.snapshot_bytes),
@@ -1150,5 +1200,6 @@ pub fn apply_remote_database_objects(
     Ok(ApplyRemoteDatabaseResult {
         document: result,
         applied_objects: applied_changes,
+        remote_storage_repair,
     })
 }
