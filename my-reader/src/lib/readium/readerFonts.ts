@@ -60,6 +60,29 @@ body {
 }
 `.trim()
 
+const READIUM_INLINE_THEME_OVERRIDE_SCRIPT = `
+(() => {
+  const root = document.documentElement;
+  const body = document.body;
+  root.style.setProperty(
+    "background-color",
+    "var(--USER__backgroundColor)",
+    "important",
+  );
+  root.style.setProperty("color", "var(--USER__textColor)", "important");
+  body.style.setProperty(
+    "background-color",
+    "var(--USER__backgroundColor)",
+    "important",
+  );
+  body.style.setProperty("color", "var(--USER__textColor)", "important");
+  body.querySelectorAll("*:not(a)").forEach((element) => {
+    element.style.setProperty("background-color", "transparent", "important");
+    element.style.setProperty("color", "inherit", "important");
+  });
+})();
+`.trim()
+
 let readerFontFaceManifestPromise: Promise<ReaderFontFaceManifest> | null = null
 const registeredReaderFontDocuments = new WeakMap<Document, Promise<void>>()
 const readerFontFacesByDocument = new WeakMap<
@@ -225,6 +248,14 @@ export function createReaderFontInjectables(): IInjectablesConfig {
             target: "head",
             blob: new Blob([READIUM_FONT_OVERRIDE_CSS], {
               type: "text/css",
+            }),
+          },
+          {
+            id: "myreader-reader-inline-theme-overrides",
+            as: "script",
+            target: "body",
+            blob: new Blob([READIUM_INLINE_THEME_OVERRIDE_SCRIPT], {
+              type: "text/javascript",
             }),
           },
         ],
