@@ -1,10 +1,8 @@
-import { expect } from "@playwright/test"
-import { createBdd } from "playwright-bdd"
-import { test } from "../fixtures/test"
+import { expect, test } from "@playwright/test"
 
-const { Given, When, Then } = createBdd(test)
-
-Given("EPUB 正文声明了内联白底黑字样式", async ({ page }) => {
+test("applies Readium theme colors over EPUB inline important declarations", async ({
+  page,
+}) => {
   await page.goto("/")
   await page.setContent(`
     <!doctype html>
@@ -17,9 +15,7 @@ Given("EPUB 正文声明了内联白底黑字样式", async ({ page }) => {
       </body>
     </html>
   `)
-})
 
-When("阅读器对正文应用 Night 主题", async ({ page }) => {
   await page.evaluate(async () => {
     document.documentElement.style.setProperty(
       "--USER__backgroundColor",
@@ -46,9 +42,7 @@ When("阅读器对正文应用 Night 主题", async ({ page }) => {
       }
     }
   })
-})
 
-Then("EPUB 正文应显示 Night 主题的前景色和背景色", async ({ page }) => {
   const colors = await page.evaluate(() => {
     const paragraph = document.querySelector("p")
     if (!paragraph) throw new Error("Missing EPUB paragraph fixture")
