@@ -115,8 +115,13 @@ models/             Stable cross-layer business DTOs
 - favorites, reading positions and conflict candidates, bookmarks, highlights, and notes;
 - reading sessions, completion records, and current-library statistics;
 - Automerge changes, projection, outbox, remote exchange, pull freshness, retry/suspend, and single-flight rules.
+- device-local TTS provider profiles, the default engine, voice mappings, and OpenAI-compatible voice discovery, audio synthesis, caching, and normalized errors.
 
-Platform capabilities outside core include UI state, Readium navigators, windows, system directory authorization, secure storage, OAuth UI, notifications, timers, and app lifecycle.
+Platform capabilities outside core include UI state, Readium navigators, windows, system directory authorization, secure storage, system TTS, audio playback, OAuth UI, notifications, timers, and app lifecycle.
+
+### 3.3 TTS Ownership
+
+TTS follows [ADR-0022](./adr/0022-adopt-readium-tts-and-core-provider-architecture.md): Readium owns content segmentation, the current sentence, locators, and decorations; `my-reader-core` owns provider configuration, network inference, audio artifacts, and normalized errors; platform adapters own system voices, audio playback, and keyring/SecureStore. Core configuration stores only credential references, never secrets. The current product slice targets speakable text EPUBs and provides System and OpenAI-compatible engines for foreground sessions.
 
 ## 4. Desktop
 
@@ -188,6 +193,8 @@ TypeScript code retained on mobile must genuinely depend on the platform, for ex
 ### 5.2 Native Reader
 
 `my-reader-mobile/modules/readium` owns publication handles, streaming, search, locators, selections, decorations, and native view conversion. iOS uses Readium Swift Toolkit; Android uses Readium Kotlin Toolkit. The reader bridge and `my-reader-core` business binding are separate platform boundaries.
+
+TTS uses the same reader bridge to compose the Readium session with either the system engine or a Core-backed remote engine; this does not merge the two platform boundaries.
 
 ## 6. Data and Persistence
 
@@ -372,3 +379,4 @@ See the [Development Guide](./DEVELOPMENT_EN.md) for local builds, E2E, and plat
 | [ADR-0019](./adr/0019-adopt-modular-my-reader-core.md) | Current shared backend and database authority |
 | [ADR-0020](./adr/0020-adopt-automerge-repo-storage-model.md) | Current remote Automerge storage, compaction, and recovery model |
 | [ADR-0021](./adr/0021-support-myreader-managed-libraries.md) | Current MyReader library, catalog projection, and content sync model |
+| [ADR-0022](./adr/0022-adopt-readium-tts-and-core-provider-architecture.md) | Current Readium TTS session and Core provider ownership |
