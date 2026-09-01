@@ -23,6 +23,9 @@ import type {
   SelectionEvent,
   SelectionActionEvent,
   TapEvent,
+  TtsPlaybackState,
+  TtsSynthesisCancelEvent,
+  TtsSynthesisRequestEvent,
 } from "./types"
 import { buildLinkTree } from "./utils/buildLinkTree"
 import { ReadiumModule } from "./ReadiumModule"
@@ -40,12 +43,17 @@ type NativeReadiumViewProps = {
   selectionMenu?: SelectionMenuConfig
   customSelectionMenu?: boolean
   style?: any
-  onLocationChange?: (e: { nativeEvent: { locator: Locator } }) => void
+  onLocationChange?: (e: {
+    nativeEvent: { locator: Locator; source?: "tts" }
+  }) => void
   onPublicationReady?: (e: { nativeEvent: PublicationReadyEvent }) => void
   onDecorationActivated?: (e: { nativeEvent: DecorationActivatedEvent }) => void
   onSelectionChange?: (e: { nativeEvent: SelectionEvent }) => void
   onSelectionAction?: (e: { nativeEvent: SelectionActionEvent }) => void
   onTap?: (e: { nativeEvent: TapEvent }) => void
+  onTtsStateChange?: (e: { nativeEvent: TtsPlaybackState }) => void
+  onTtsSynthesisRequest?: (e: { nativeEvent: TtsSynthesisRequestEvent }) => void
+  onTtsSynthesisCancel?: (e: { nativeEvent: TtsSynthesisCancelEvent }) => void
 }
 
 // `requireNativeView` returns a forwardRef host component at runtime, but its
@@ -66,6 +74,9 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
       onSelectionChange,
       onSelectionAction,
       onTap,
+      onTtsStateChange,
+      onTtsSynthesisRequest,
+      onTtsSynthesisCancel,
       preferences,
       fontFamilyDeclarations,
       decorations,
@@ -138,6 +149,43 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
             ? Promise.resolve(false)
             : ReadiumModule.isBookmarkVisible(tag, locator)
         },
+        startTts: (config, fromLocator, options) => {
+          const tag = tagOf()
+          if (tag != null) {
+            void ReadiumModule.startTts(
+              tag,
+              config,
+              fromLocator,
+              options?.startAtViewportStart ?? false,
+            )
+          }
+        },
+        playTts: () => {
+          const tag = tagOf()
+          if (tag != null) void ReadiumModule.playTts(tag)
+        },
+        pauseTts: () => {
+          const tag = tagOf()
+          if (tag != null) void ReadiumModule.pauseTts(tag)
+        },
+        stopTts: () => {
+          const tag = tagOf()
+          if (tag != null) void ReadiumModule.stopTts(tag)
+        },
+        previousTts: () => {
+          const tag = tagOf()
+          if (tag != null) void ReadiumModule.previousTts(tag)
+        },
+        nextTts: () => {
+          const tag = tagOf()
+          if (tag != null) void ReadiumModule.nextTts(tag)
+        },
+        completeTtsSynthesis: (completion) => {
+          const tag = tagOf()
+          if (tag != null) {
+            void ReadiumModule.completeTtsSynthesis(tag, completion)
+          }
+        },
       }),
       [],
     )
@@ -161,7 +209,11 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
             customSelectionMenu={customSelectionMenu ?? false}
             onLocationChange={
               onLocationChange
-                ? (e) => onLocationChange(e.nativeEvent.locator)
+                ? (e) =>
+                    onLocationChange(
+                      e.nativeEvent.locator,
+                      e.nativeEvent.source,
+                    )
                 : undefined
             }
             onPublicationReady={
@@ -183,6 +235,21 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
                 : undefined
             }
             onTap={onTap ? (e) => onTap(e.nativeEvent) : undefined}
+            onTtsStateChange={
+              onTtsStateChange
+                ? (e) => onTtsStateChange(e.nativeEvent)
+                : undefined
+            }
+            onTtsSynthesisRequest={
+              onTtsSynthesisRequest
+                ? (e) => onTtsSynthesisRequest(e.nativeEvent)
+                : undefined
+            }
+            onTtsSynthesisCancel={
+              onTtsSynthesisCancel
+                ? (e) => onTtsSynthesisCancel(e.nativeEvent)
+                : undefined
+            }
           />
         )}
       </View>

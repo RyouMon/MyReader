@@ -10,6 +10,9 @@ import type {
   SearchOptions,
   SearchSession,
   SearchResultPage,
+  TtsEngineConfig,
+  TtsSynthesisCompletion,
+  TtsVoice,
 } from "./types"
 
 /**
@@ -28,6 +31,22 @@ export type ReadiumModuleMethods = {
   clearSelection: (tag: number) => void
   getBookmarkLocator: (tag: number) => Promise<Locator | null>
   isBookmarkVisible: (tag: number, locator: Locator) => Promise<boolean>
+  startTts: (
+    tag: number,
+    config: TtsEngineConfig,
+    fromLocator?: Locator,
+    startAtViewportStart?: boolean,
+  ) => Promise<void>
+  playTts: (tag: number) => Promise<void>
+  pauseTts: (tag: number) => Promise<void>
+  stopTts: (tag: number) => Promise<void>
+  previousTts: (tag: number) => Promise<void>
+  nextTts: (tag: number) => Promise<void>
+  completeTtsSynthesis: (
+    tag: number,
+    completion: TtsSynthesisCompletion,
+  ) => Promise<void>
+  getSystemTtsVoices: () => Promise<TtsVoice[]>
 
   // Streamer / opener configuration (REP-005/006)
   configure: (config: PublicationOpenerConfig) => void

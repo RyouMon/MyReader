@@ -14,6 +14,12 @@ const READER_CHROME_ICON_SOURCE = {
   manage: { ios: "checklist", android: "checklist" },
   search: { ios: "magnifyingglass", android: "search" },
   settings: { ios: "slider.horizontal.3", android: "tune" },
+  tts: { ios: "waveform", android: "record-voice-over" },
+  play: { ios: "play.fill", android: "play-arrow" },
+  pause: { ios: "pause.fill", android: "pause" },
+  previous: { ios: "backward.end.fill", android: "skip-previous" },
+  next: { ios: "forward.end.fill", android: "skip-next" },
+  stop: { ios: "stop.fill", android: "stop" },
   toc: { ios: "list.bullet", android: "list" },
   annotations: { ios: "square.and.pencil", android: EditSquareIcon },
 } as const

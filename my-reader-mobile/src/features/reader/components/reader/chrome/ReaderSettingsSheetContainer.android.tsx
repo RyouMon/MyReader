@@ -27,7 +27,7 @@ const ReaderSettingsSheetContainer = forwardRef<
   ReaderSettingsSheetRef,
   ReaderSettingsSheetContainerProps
 >(function ReaderSettingsSheetContainer(
-  { backgroundColor, children, onDismiss },
+  { backgroundColor, children, expanded = false, onDismiss },
   ref,
 ) {
   const { height: windowHeight } = useWindowDimensions()
@@ -35,8 +35,12 @@ const ReaderSettingsSheetContainer = forwardRef<
   const presentedRef = useRef(false)
   const sheetRef = useRef<ModalBottomSheetRef>(null)
   const heightModifiers = useMemo(
-    () => [heightModifier(windowHeight * READER_SETTINGS_SHEET_HEIGHT_RATIO)],
-    [windowHeight],
+    () => [
+      heightModifier(
+        windowHeight * (expanded ? 1 : READER_SETTINGS_SHEET_HEIGHT_RATIO),
+      ),
+    ],
+    [expanded, windowHeight],
   )
 
   const finishDismiss = useCallback(() => {
@@ -74,7 +78,7 @@ const ReaderSettingsSheetContainer = forwardRef<
       <ModalBottomSheet
         ref={sheetRef}
         containerColor={backgroundColor}
-        initialFullyExpanded={false}
+        initialFullyExpanded={expanded}
         onDismissRequest={finishDismiss}
         properties={{
           shouldDismissOnBackPress: true,

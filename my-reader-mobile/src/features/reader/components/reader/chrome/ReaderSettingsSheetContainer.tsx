@@ -8,12 +8,13 @@ import type {
 } from "./ReaderSettingsSheetContainer.types"
 
 const READER_SETTINGS_SHEET_SNAP_POINTS: (string | number)[] = ["50%"]
+const EXPANDED_READER_SETTINGS_SHEET_SNAP_POINTS: (string | number)[] = ["100%"]
 
 const ReaderSettingsSheetContainer = forwardRef<
   ReaderSettingsSheetRef,
   ReaderSettingsSheetContainerProps
 >(function ReaderSettingsSheetContainer(
-  { backgroundColor, children, onDismiss },
+  { backgroundColor, children, expanded = false, onDismiss },
   ref,
 ) {
   const sheetRef = useRef<BottomSheetModal>(null)
@@ -31,7 +32,11 @@ const ReaderSettingsSheetContainer = forwardRef<
     <BottomSheetModal
       ref={sheetRef}
       index={0}
-      snapPoints={READER_SETTINGS_SHEET_SNAP_POINTS}
+      snapPoints={
+        expanded
+          ? EXPANDED_READER_SETTINGS_SHEET_SNAP_POINTS
+          : READER_SETTINGS_SHEET_SNAP_POINTS
+      }
       enableDynamicSizing={false}
       enablePanDownToClose
       backgroundStyle={{ backgroundColor }}

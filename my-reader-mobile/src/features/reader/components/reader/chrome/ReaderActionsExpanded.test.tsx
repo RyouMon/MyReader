@@ -33,10 +33,12 @@ const baseProps = {
   palette,
   showSearchAction: false,
   showBookmarksAndNotesAction: false,
+  showTtsSettingsAction: false,
   onOpenToc: jest.fn(),
   onOpenBookmarksAndNotes: jest.fn(),
   onOpenSearch: jest.fn(),
   onOpenSettings: jest.fn(),
+  onOpenTtsSettings: jest.fn(),
   onPreviewPosition: jest.fn(() => ({ positionLabel: "1 / 10" })),
   onCommitPosition: jest.fn(),
 }
@@ -85,6 +87,23 @@ describe("ReaderActionsExpanded", () => {
     fireEvent.press(screen.getByLabelText("reader.settings"))
 
     expect(onOpenSettings).toHaveBeenCalledTimes(1)
+  })
+
+  it("should expose read-aloud settings from more actions when available", () => {
+    const onOpenTtsSettings = jest.fn()
+    const screen = render(
+      <ReaderActionsExpanded
+        {...baseProps}
+        showTtsSettingsAction
+        onOpenTtsSettings={onOpenTtsSettings}
+      />,
+    )
+
+    fireEvent.press(screen.getByLabelText("reader.tts.settingsAction"))
+    expect(onOpenTtsSettings).toHaveBeenCalledTimes(1)
+
+    screen.rerender(<ReaderActionsExpanded {...baseProps} />)
+    expect(screen.queryByLabelText("reader.tts.settingsAction")).toBeNull()
   })
 
   it("should show search only when the publication is searchable", () => {

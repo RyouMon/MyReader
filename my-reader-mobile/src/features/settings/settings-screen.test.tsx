@@ -305,6 +305,14 @@ describe("SettingsScreen library navigation", () => {
     })
   })
 
+  it("should open read-aloud settings from the settings list", () => {
+    render(<SettingsScreen />)
+
+    fireEvent.press(screen.getByTestId("settings-tts-row"))
+
+    expect(router.push).toHaveBeenCalledWith("/settings/tts")
+  })
+
   it("should show semantic icons for every settings row", () => {
     render(<SettingsScreen />)
 

@@ -1,34 +1,70 @@
+import type { Locator } from "./locator"
 import type { Utterance } from "./publication-handle"
 
-/**
- * TTS engine abstraction point — POSITION-NEUTRAL by design.
- *
- * The architecture does NOT predetermine whether a TTS engine lives in JS or
- * native. Three future paths must remain possible:
- *   (a) Unified JS engine (system TTS / network service / custom model)
- *   (b) iOS native: implement Readium Swift `TTSEngine` protocol, inject via
- *       `PublicationSpeechSynthesizer(engineFactory:)`
- *   (c) Android native: self-built engine + audio playback (toolkit has no TTS)
- *
- * Phase 1 lays only the path-agnostic foundation: `publication.content()`
- * utterance iteration + this interface shape. No coordinator/engine is
- * implemented. Reading highlight will reuse the Decoration API (REP-008).
- */
-export interface TTSEngine {
-  /**
-   * Synthesize `text`, invoking `onRange(start, end)` with character offsets
-   * as portions (e.g. words) are spoken — drives word-level highlight.
-   * Returns a handle to cancel playback.
-   */
-  speak(
-    text: string,
-    opts: {
-      voice?: string
-      rate?: number
-      onRange?: (start: number, end: number) => void
-    },
-  ): { cancel: () => void }
+export type TtsEngineKind = "system" | "provider"
+
+export type TtsEngineConfig = {
+  kind: TtsEngineKind
+  profileId?: string
+  voiceId?: string
+  language?: string
+  speed: number
+  pitch: number
+  highlightColor?: string
 }
 
-/** Re-exported for TTS consumers. */
+export type TtsPlaybackStatus =
+  | "stopped"
+  | "loading"
+  | "playing"
+  | "paused"
+  | "ended"
+  | "error"
+
+export type TtsPlaybackState = {
+  state: TtsPlaybackStatus
+  utterance?: string
+  locator?: Locator
+  error?: string
+  canGoPrevious?: boolean
+  canGoNext?: boolean
+}
+
+export type TtsSynthesisRequestEvent = {
+  requestId: string
+  text: string
+  language?: string
+  profileId: string
+  voiceId: string
+  speed: number
+  pitch: number
+}
+
+export type TtsSynthesisCancelEvent = {
+  requestIds: string[]
+}
+
+export type TtsTiming = {
+  startUtf16: number
+  endUtf16: number
+  startMs: number
+  endMs: number
+}
+
+export type TtsSynthesisCompletion = {
+  requestId: string
+  path?: string
+  mimeType?: string
+  timings?: TtsTiming[]
+  error?: string
+}
+
+export type TtsVoice = {
+  id: string
+  name: string
+  language: string
+  gender?: string
+}
+
+/** Re-exported for publication-content consumers. */
 export type { Utterance }

@@ -61,8 +61,6 @@ class ReaderViewModel(
             val locator: Locator,
             val selectedText: String
         ) : Event()
-        class Tap(
-            val point: PointF
-        ) : Event()
+        class Tap(val point: PointF) : Event()
     }
 }

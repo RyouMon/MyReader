@@ -72,7 +72,11 @@ import {
   ReaderPositionLabel,
   type ReaderProgressPreview,
   ReaderSearchSheet,
+  ReaderTtsControls,
+  ReaderTtsSettingsSheet,
+  type ReaderTtsSettingsSheetRef,
   readerBookmarkButtonVisible,
+  readerPositionLabelVisible,
 } from "@/src/features/reader/components/reader/chrome"
 import {
   ChromeState,
@@ -115,6 +119,8 @@ import {
   READER_BOOK_TRANSITION_MS,
   setReaderCloseTransition,
 } from "@/src/features/reader/reader-open-transition"
+import { classifyReaderTtsError } from "@/src/features/reader/tts/reader-tts"
+import { useReaderTtsSession } from "@/src/features/reader/tts/use-reader-tts-session"
 import {
   bookLoadRequestKey,
   isReadyBookLoadForRequest,
@@ -234,6 +240,8 @@ export default function ReaderScreen() {
   const annotationEditorSheetRef = useRef<ReaderAnnotationEditorSheetRef>(null)
   const searchSheetRef = useRef<BottomSheetModal>(null)
   const settingsSheetRef = useRef<ReaderSettingsSheetRef>(null)
+  const ttsSettingsSheetRef = useRef<ReaderTtsSettingsSheetRef>(null)
+  const [ttsPlayerExpanded, setTtsPlayerExpanded] = useState(false)
   const reflowReaderRef = useRef<ReadiumReflowReaderRef>(null)
   const fixedReaderRef = useRef<FixedReaderSurfaceRef>(null)
   const [searchDecoration, setSearchDecoration] = useState<{
@@ -269,6 +277,60 @@ export default function ReaderScreen() {
       ? loadState
       : null
   const isReflowReady = activeLoadState?.layoutMode === "reflowable"
+  const fallbackLanguages = activeLoadState?.languages ?? []
+  const readerLanguage = resolveReaderLanguage(
+    publicationLanguages,
+    fallbackLanguages,
+  )
+  const showTtsError = useCallback(
+    (error: string) => {
+      const presentation = classifyReaderTtsError(error)
+      let message: string
+      switch (presentation.kind) {
+        case "noReadableContent":
+          message = t("reader.tts.errors.noReadableContent")
+          break
+        case "noVoices":
+          message = t("reader.tts.errors.noVoices")
+          break
+        case "unknown":
+          message = t("reader.tts.errors.unknown")
+          break
+        case "providerUnavailable":
+          message = t("reader.tts.errors.providerUnavailable")
+          break
+        case "engine":
+          message = t("reader.tts.errors.engine", {
+            message: presentation.message,
+          })
+      }
+      Alert.alert(t("reader.tts.states.error"), message, [
+        { text: t("common.gotIt") },
+      ])
+    },
+    [t],
+  )
+  const {
+    state: ttsState,
+    remote: ttsRemote,
+    start: startTts,
+    seek: seekTts,
+    play: playTts,
+    pause: pauseTts,
+    previous: previousTts,
+    next: nextTts,
+    stop: stopTts,
+    handleStateChange: handleTtsStateChange,
+    handleSynthesisRequest: handleTtsSynthesisRequest,
+    handleSynthesisCancel: handleTtsSynthesisCancel,
+  } = useReaderTtsSession({
+    enabled: Boolean(isReflowReady && readerState?.ready),
+    publicationKey,
+    language: readerLanguage,
+    highlightColor: palette.primary,
+    readerRef: reflowReaderRef,
+    onError: showTtsError,
+  })
   const readerSearch = useReaderSearch(
     isReflowReady && readerState?.ready ? publicationId : null,
   )
@@ -350,9 +412,22 @@ export default function ReaderScreen() {
     [publicationKey],
   )
 
-  const handleUserLocationChange = useCallback(() => {
-    setSearchDecoration(null)
-  }, [])
+  const handleUserLocationChange = useCallback(
+    (locator: Locator) => {
+      setSearchDecoration(null)
+      if (
+        ttsState?.state === "loading" ||
+        ttsState?.state === "playing" ||
+        ttsState?.state === "paused"
+      ) {
+        seekTts(locator, {
+          pauseAfterStart: ttsState.state === "paused",
+          startAtViewportStart: true,
+        })
+      }
+    },
+    [seekTts, ttsState],
+  )
 
   const handlePositionsReady = useCallback(
     (positions: Locator[]) => {
@@ -422,6 +497,7 @@ export default function ReaderScreen() {
   }, [publicationKey])
 
   const closeReader = useCallback(() => {
+    stopTts()
     if (router.canGoBack()) {
       if (closeRouteTimeoutRef.current) {
         return
@@ -445,7 +521,7 @@ export default function ReaderScreen() {
       }
       router.back()
     }
-  }, [closeTransitionFormat, id])
+  }, [closeTransitionFormat, id, stopTts])
 
   useEffect(() => {
     return () => {
@@ -679,6 +755,10 @@ export default function ReaderScreen() {
       })),
       actions: [
         {
+          id: "readAloud",
+          label: t("reader.tts.readFromHere"),
+        },
+        {
           id: "addNote",
           label: t(
             selectionMenuState.annotation?.note?.trim()
@@ -711,12 +791,23 @@ export default function ReaderScreen() {
         case "addNote":
           handleSelectionAddNote()
           break
+        case "readAloud": {
+          dismissSelectionMenu()
+          seekTts(event.locator)
+          break
+        }
         case "remove":
           handleSelectionRemove()
           break
       }
     },
-    [handleSelectionAddNote, handleSelectionColorSelect, handleSelectionRemove],
+    [
+      dismissSelectionMenu,
+      handleSelectionAddNote,
+      handleSelectionColorSelect,
+      handleSelectionRemove,
+      seekTts,
+    ],
   )
 
   const handleAnnotationDelete = useCallback(
@@ -871,11 +962,6 @@ export default function ReaderScreen() {
 
   const reflowSettings = settings.reflowable
   const fixedSettings = settings.fixed
-  const fallbackLanguages = activeLoadState?.languages ?? []
-  const readerLanguage = resolveReaderLanguage(
-    publicationLanguages,
-    fallbackLanguages,
-  )
   const fontOptions = getReaderFontOptions(readerLanguage)
   const activeFontFamily = coerceReaderFontOption(
     resolveReaderFont(readerLanguage, reflowSettings),
@@ -931,6 +1017,41 @@ export default function ReaderScreen() {
   const handleOpenSettings = useCallback(() => {
     dispatch({ type: "settingsPillTap" })
   }, [])
+  const handleExpandTts = useCallback(() => {
+    setTtsPlayerExpanded(true)
+  }, [])
+  const handleOpenTtsSettings = useCallback(() => {
+    ttsSettingsSheetRef.current?.present()
+  }, [])
+  const handleOpenReaderMore = useCallback(() => {
+    dispatch({ type: "moreButtonTap" })
+  }, [])
+  const handleTtsConfigChange = useCallback(() => {
+    if (
+      ttsState?.state !== "loading" &&
+      ttsState?.state !== "playing" &&
+      ttsState?.state !== "paused"
+    )
+      return
+    void startTts(ttsState.locator ?? readerState?.locator, {
+      pauseAfterStart: ttsState.state === "paused",
+    })
+  }, [readerState?.locator, startTts, ttsState])
+  const handlePlayTts = useCallback(() => {
+    if (!ttsState) {
+      void startTts(readerState?.locator, { startAtViewportStart: true })
+      return
+    }
+    if (ttsState.state === "error" || ttsState.state === "ended") {
+      void startTts(ttsState.locator ?? readerState?.locator)
+      return
+    }
+    playTts()
+  }, [playTts, readerState?.locator, startTts, ttsState])
+  const handleStopTts = useCallback(() => {
+    setTtsPlayerExpanded(false)
+    stopTts()
+  }, [stopTts])
   const bookmarkItems = useMemo<ReaderBookmarkItem[]>(() => {
     return bookmarks.map((bookmark) => {
       const positionIndex = positionIndexForLocator(positions, bookmark.locator)
@@ -1275,10 +1396,14 @@ export default function ReaderScreen() {
     bookmarksLoading ||
     Boolean(bookmarkError) ||
     !readerState?.locator
-  const positionLabelVisible =
-    chromeActive &&
-    readerState?.totalPages != null &&
-    readerState.totalPages > 1
+  const ttsControlsExpanded = ttsPlayerExpanded || Boolean(ttsState)
+  const positionLabelVisible = readerPositionLabelVisible(
+    chromeActive,
+    readerState?.totalPages,
+    ttsControlsExpanded,
+  )
+  const ttsAvailable = isReflowSurface && Boolean(readerState?.ready)
+  const ttsPlayerVisible = ttsAvailable && moreButtonVisible
   const tocResolution = resolveReaderToc({
     toc,
     locator: readerState?.locator,
@@ -1360,6 +1485,9 @@ export default function ReaderScreen() {
                         onSelectionAction={handleSelectionAction}
                         onSelectionChange={handleSelectionChange}
                         onDecorationActivated={handleDecorationActivated}
+                        onTtsStateChange={handleTtsStateChange}
+                        onTtsSynthesisRequest={handleTtsSynthesisRequest}
+                        onTtsSynthesisCancel={handleTtsSynthesisCancel}
                       />
                     </Animated.View>
                   ) : null
@@ -1419,11 +1547,11 @@ export default function ReaderScreen() {
               onPress={handleRequestClose}
             />
 
-            {/* State 2/4/5: More button (bottom-right circle); hidden when expanded (3) */}
+            {/* Fixed-layout fallback; text EPUB renders both bottom anchors together below. */}
             <ReaderMoreButton
-              visible={moreButtonVisible}
+              visible={moreButtonVisible && !ttsAvailable}
               palette={chromePalette}
-              onPress={() => dispatch({ type: "moreButtonTap" })}
+              onPress={handleOpenReaderMore}
             />
 
             {/* Standalone bookmark button (top-left). */}
@@ -1449,12 +1577,29 @@ export default function ReaderScreen() {
               palette={chromePalette}
               showSearchAction={searchAvailable}
               showBookmarksAndNotesAction
+              showTtsSettingsAction={ttsAvailable}
               onOpenToc={handleOpenToc}
               onOpenBookmarksAndNotes={handleOpenBookmarksAndNotes}
               onOpenSearch={handleOpenSearch}
               onOpenSettings={handleOpenSettings}
+              onOpenTtsSettings={handleOpenTtsSettings}
               onPreviewPosition={previewReaderPosition}
               onCommitPosition={handleProgressCommit}
+            />
+
+            <ReaderTtsControls
+              visible={ttsPlayerVisible}
+              expanded={ttsControlsExpanded}
+              state={ttsState}
+              remote={ttsRemote}
+              palette={chromePalette}
+              onExpand={handleExpandTts}
+              onPlay={handlePlayTts}
+              onPause={pauseTts}
+              onPrevious={previousTts}
+              onNext={nextTts}
+              onStop={handleStopTts}
+              onMore={handleOpenReaderMore}
             />
 
             {/* State 4: table of contents sheet */}
@@ -1588,6 +1733,13 @@ export default function ReaderScreen() {
                     }
                   : undefined
               }
+            />
+
+            <ReaderTtsSettingsSheet
+              ref={ttsSettingsSheetRef}
+              language={readerLanguage}
+              palette={chromePalette}
+              onConfigChange={handleTtsConfigChange}
             />
           </Animated.View>
         </RNAnimated.View>

@@ -85,4 +85,29 @@ describe("ReaderSettingsSheetContainer on Android", () => {
     expect(onDismiss).toHaveBeenCalledTimes(1)
     expect(screen.queryByTestId("android-settings-native-sheet")).toBeNull()
   })
+
+  it("should start fully expanded when requested", () => {
+    const ref = createRef<ReaderSettingsSheetRef>()
+
+    render(
+      <ReaderSettingsSheetContainer
+        ref={ref}
+        backgroundColor="#F7F3EC"
+        expanded
+        onDismiss={jest.fn()}
+      >
+        <></>
+      </ReaderSettingsSheetContainer>,
+    )
+
+    act(() => ref.current?.present())
+
+    expect(screen.getByTestId("android-settings-native-sheet").props).toEqual(
+      expect.objectContaining({ initialFullyExpanded: true }),
+    )
+    expect(
+      screen.getByTestId("android-settings-height-container").props.modifiers[0]
+        .value,
+    ).toBeGreaterThan(0)
+  })
 })

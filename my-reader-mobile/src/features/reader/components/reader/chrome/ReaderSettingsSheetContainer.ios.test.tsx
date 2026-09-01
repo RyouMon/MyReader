@@ -152,6 +152,30 @@ describe("ReaderSettingsSheetContainer on iOS", () => {
     expect(onDismiss).toHaveBeenCalledTimes(1)
   })
 
+  it("should use the maximum detent when expanded on iPhone", () => {
+    const ReaderSettingsSheetContainer = loadContainer(false)
+    const ref = mockReact.createRef<ReaderSettingsSheetRef>()
+
+    render(
+      <ReaderSettingsSheetContainer
+        ref={ref}
+        backgroundColor="#F7F3EC"
+        expanded
+        onDismiss={jest.fn()}
+      >
+        <></>
+      </ReaderSettingsSheetContainer>,
+    )
+
+    expect(
+      screen.getByTestId("ios-settings-presentation-group").props.modifiers,
+    ).toEqual([
+      { type: "presentationDetents", value: [{ fraction: 1 }] },
+      { type: "presentationDragIndicator", value: "visible" },
+      { type: "presentationBackground", value: "#F7F3EC" },
+    ])
+  })
+
   it("should use navigation sized native sheet when running on iPad", () => {
     const ReaderSettingsSheetContainer = loadContainer(true)
     const ref = mockReact.createRef<ReaderSettingsSheetRef>()

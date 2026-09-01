@@ -19,11 +19,19 @@ export type { ReaderChapterLabelProps } from "./ReaderChapterLabel"
 export { ReaderChapterLabel } from "./ReaderChapterLabel"
 export { default as ReaderCloseButton } from "./ReaderCloseButton"
 export { default as ReaderMoreButton } from "./ReaderMoreButton"
+export { ReaderTtsControls } from "./ReaderTtsControls"
+export {
+  default as ReaderTtsSettingsSheet,
+  type ReaderTtsSettingsSheetRef,
+} from "./ReaderTtsSettingsSheet"
 export type { ReaderNavigationSheetProps } from "./ReaderNavigationSheet"
 
 export { default as ReaderNavigationSheet } from "./ReaderNavigationSheet"
 export type { ReaderPositionLabelProps } from "./ReaderPositionLabel"
-export { ReaderPositionLabel } from "./ReaderPositionLabel"
+export {
+  ReaderPositionLabel,
+  readerPositionLabelVisible,
+} from "./ReaderPositionLabel"
 export type { ReaderSearchSheetProps } from "./ReaderSearchSheet"
 export { default as ReaderSearchSheet } from "./ReaderSearchSheet"
 export type { ReaderSettingsSheetProps } from "./ReaderSettingsSheet"

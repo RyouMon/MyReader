@@ -73,6 +73,8 @@ dependencies {
     // No audio playback — drop exoplayer transitive deps to avoid collisions.
     exclude group: "com.google.android.exoplayer"
   }
+  implementation "org.readium.kotlin-toolkit:readium-navigator-media-tts:${readiumVersion}"
+  implementation "androidx.media3:media3-common-ktx:1.7.1"
   implementation("com.github.mhiew:android-pdf-viewer:3.2.0-beta.3") {
     // Avoid duplicate classes/native libs with Readium's transitive PdfiumAndroid.
     exclude group: "com.github.mhiew", module: "pdfium-android"

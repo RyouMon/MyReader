@@ -121,12 +121,16 @@ export function SegmentPicker<T extends string>({
   value,
   onChange,
   palette,
+  disableLabelScaling = false,
+  tallOptions = false,
 }: {
   label?: string
   options: readonly { key: T; label: string }[]
   value: T
   onChange: (key: T) => void
   palette: ReaderChromePalette
+  disableLabelScaling?: boolean
+  tallOptions?: boolean
 }) {
   const { t } = useTranslation()
   return (
@@ -142,7 +146,9 @@ export function SegmentPicker<T extends string>({
                 active ? palette.segmentActive : palette.segmentIdle,
                 palette.bg,
               )}
-              className="min-h-[44px] items-center justify-center rounded-2xl border px-2"
+              className={`${
+                tallOptions ? "min-h-14" : "min-h-[44px]"
+              } items-center justify-center rounded-2xl border px-2`}
               style={[
                 styles.segmentOption,
                 {
@@ -165,8 +171,8 @@ export function SegmentPicker<T extends string>({
                   color: active ? palette.accentText : palette.textMuted,
                 }}
                 numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.82}
+                adjustsFontSizeToFit={!disableLabelScaling}
+                minimumFontScale={disableLabelScaling ? 1 : 0.82}
               >
                 {opt.label}
               </Text>

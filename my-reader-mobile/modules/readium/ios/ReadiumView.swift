@@ -116,6 +116,12 @@ final class ReadiumView: ExpoView {
   private var pendingLocation: RLocator?
   private var pendingViewportReload: PendingViewportReload?
   private var viewportPresentationFrozen = false
+  private var ttsController: EPUBTtsController?
+  private var ttsGeneration = 0
+  private var ttsFollowTextNavigations: [UUID: AnyURL] = [:]
+  private var ttsFollowTextGraceHref: AnyURL?
+  private var ttsFollowTextDeadline: Date?
+  private var ttsUserNavigationDeadline: Date?
 
   private var viewController: UIViewController? {
     sequence(first: self, next: { $0.next }).first(where: { $0 is UIViewController }) as? UIViewController
@@ -497,10 +503,53 @@ final class ReadiumView: ExpoView {
   }
 
   private func dispatchLocation(_ locator: RLocator) {
+    var payload = ["locator": locatorToDict(locator)] as [String: Any]
+    let now = Date()
+    let isUserNavigation = ttsUserNavigationDeadline.map { $0 >= now } ?? false
+    let isActiveTtsNavigation = ttsFollowTextNavigations.values.contains(locator.href)
+    let isSettlingTtsNavigation = ttsFollowTextGraceHref == locator.href
+      && (ttsFollowTextDeadline.map { $0 >= now } ?? false)
+    if !isUserNavigation && (isActiveTtsNavigation || isSettlingTtsNavigation) {
+      payload["source"] = "tts"
+    } else if let deadline = ttsFollowTextDeadline, deadline < now {
+      ttsFollowTextGraceHref = nil
+      ttsFollowTextDeadline = nil
+    }
+    if let deadline = ttsUserNavigationDeadline, deadline < now {
+      ttsUserNavigationDeadline = nil
+    }
     dispatchEvent(
       "onLocationChange",
-      payload: ["locator": locatorToDict(locator)] as [String: Any]
+      payload: payload
     )
+  }
+
+  private func markTtsFollowTextNavigation(
+    id: UUID,
+    locator: RLocator,
+    active: Bool
+  ) {
+    if active {
+      ttsFollowTextNavigations[id] = locator.href
+      ttsFollowTextGraceHref = nil
+      ttsFollowTextDeadline = nil
+      return
+    }
+    guard ttsFollowTextNavigations.removeValue(forKey: id) != nil else { return }
+    ttsFollowTextGraceHref = locator.href
+    ttsFollowTextDeadline = Date().addingTimeInterval(0.25)
+  }
+
+  private func clearTtsFollowTextNavigation() {
+    ttsFollowTextNavigations.removeAll()
+    ttsFollowTextGraceHref = nil
+    ttsFollowTextDeadline = nil
+  }
+
+  private func beginUserNavigation() {
+    ttsUserNavigationDeadline = Date().addingTimeInterval(1)
+    clearTtsFollowTextNavigation()
+    ttsController?.prepareForUserNavigation()
   }
 
   // MARK: - Decorations
@@ -578,12 +627,21 @@ final class ReadiumView: ExpoView {
         let inCenterRegion =
           xRatio >= 0.25 && xRatio <= 0.75 &&
           yRatio >= 0.25 && yRatio <= 0.75
-        guard inCenterRegion else { return false }
+
+        guard inCenterRegion else {
+          self.beginUserNavigation()
+          return false
+        }
 
         self.dispatchTapEvent(at: event.location)
         return false
       })
       tapToken.store(in: &inputObserverTokens)
+      let dragToken = visualNavigator.addObserver(.drag(onStart: { [weak self] _ in
+        self?.beginUserNavigation()
+        return false
+      }))
+      dragToken.store(in: &inputObserverTokens)
     }
 
     // Apply pending state once the navigator exists.
@@ -644,9 +702,51 @@ final class ReadiumView: ExpoView {
   // MARK: - Tap forwarding
 
   private func dispatchTapEvent(at point: CGPoint) {
-    dispatchEvent("onTap", payload: [
+    let payload: [String: Any] = [
       "point": ["x": Double(point.x), "y": Double(point.y)] as [String: Any]
-    ] as [String: Any])
+    ]
+    dispatchEvent("onTap", payload: payload)
+  }
+
+  @MainActor
+  private func captureViewportStartLocator(
+    fallback: Locator?,
+    navigator: EPUBNavigatorViewController
+  ) async -> Locator? {
+    let currentLocation = navigator.currentLocation ?? fallback
+    guard let currentLocation,
+          case let .success(value) = await navigator.evaluateJavaScript(
+            captureReaderViewportStartAnchorScript
+          ),
+          let json = value as? String,
+          let data = json.data(using: .utf8),
+          let anchor = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    else { return currentLocation }
+
+    return locator(applying: anchor, to: currentLocation) ?? currentLocation
+  }
+
+  private func locator(
+    applying anchor: [String: Any],
+    to currentLocation: Locator
+  ) -> Locator? {
+    guard let cssSelector = anchor["cssSelector"] as? String,
+          let domRange = anchor["domRange"] as? [String: Any],
+          let domRangeValue = JSONValue(domRange),
+          let text = anchor["text"] as? [String: Any]
+    else { return nil }
+
+    return currentLocation.copy(
+      locations: { locations in
+        locations.otherLocations["cssSelector"] = .string(cssSelector)
+        locations.otherLocations["domRange"] = domRangeValue
+      },
+      text: { locatorText in
+        locatorText.before = text["before"] as? String
+        locatorText.highlight = text["highlight"] as? String
+        locatorText.after = text["after"] as? String
+      }
+    )
   }
 
   // MARK: - Imperative navigation (called by ReadiumModule via tag lookup)
@@ -656,6 +756,7 @@ final class ReadiumView: ExpoView {
       guard let self = self else { return }
       guard let navigator = self.readerViewController?.navigator,
             let readiumLocator = locatorRecordToReadium(locator) else { return }
+      self.beginUserNavigation()
       _ = await navigator.go(to: readiumLocator, options: .animated)
     }
   }
@@ -663,6 +764,7 @@ final class ReadiumView: ExpoView {
   func goForward() {
     Task { @MainActor [weak self] in
       guard let self = self, let navigator = self.readerViewController?.navigator else { return }
+      self.beginUserNavigation()
       _ = await navigator.goForward(options: .animated)
     }
   }
@@ -670,6 +772,7 @@ final class ReadiumView: ExpoView {
   func goBackward() {
     Task { @MainActor [weak self] in
       guard let self = self, let navigator = self.readerViewController?.navigator else { return }
+      self.beginUserNavigation()
       _ = await navigator.goBackward(options: .animated)
     }
   }
@@ -698,6 +801,121 @@ final class ReadiumView: ExpoView {
           let result = value as? String
     else { return false }
     return result == "true"
+  }
+
+  // MARK: - TTS
+
+  func startTts(
+    config: TtsEngineConfigRecord,
+    from locator: LocatorRecord?,
+    startAtViewportStart: Bool
+  ) {
+    Task { @MainActor [weak self] in
+      guard let self else { return }
+      guard let epub = self.readerViewController as? EPUBViewController else {
+        self.dispatchEvent(
+          "onTtsStateChange",
+          payload: ["state": "error", "error": "TTS is only available for EPUB publications."]
+        )
+        return
+      }
+
+      self.clearTtsFollowTextNavigation()
+      self.ttsGeneration += 1
+      let generation = self.ttsGeneration
+      self.ttsController?.stop(emitState: false)
+      self.ttsController = nil
+      let requestedLocator = locator.flatMap(locatorRecordToReadium)
+      let startLocator: RLocator?
+      if startAtViewportStart {
+        await self.waitForViewportLayoutStable(epub.epubNavigator)
+        guard self.ttsGeneration == generation else { return }
+        startLocator = await self.captureViewportStartLocator(
+          fallback: requestedLocator,
+          navigator: epub.epubNavigator
+        )
+      } else {
+        startLocator = requestedLocator
+      }
+      guard self.ttsGeneration == generation else { return }
+      self.ttsUserNavigationDeadline = nil
+
+      guard let controller = EPUBTtsController(
+        publication: epub.publication,
+        navigator: epub.epubNavigator,
+        config: config,
+        onStateChange: { [weak self] payload in
+          guard let self, self.ttsGeneration == generation else { return }
+          self.dispatchEvent("onTtsStateChange", payload: payload)
+        },
+        onSynthesisRequest: { [weak self] payload in
+          guard let self, self.ttsGeneration == generation else { return }
+          self.dispatchEvent("onTtsSynthesisRequest", payload: payload)
+        },
+        onSynthesisCancel: { [weak self] payload in
+          guard let self, self.ttsGeneration == generation else { return }
+          self.dispatchEvent("onTtsSynthesisCancel", payload: payload)
+        },
+        shouldFollowText: { [weak self] in
+          guard let self, self.ttsGeneration == generation else { return false }
+          return !(self.ttsUserNavigationDeadline.map { $0 >= Date() } ?? false)
+        },
+        onFollowTextNavigation: { [weak self] id, locator, active in
+          guard let self, self.ttsGeneration == generation else { return }
+          self.markTtsFollowTextNavigation(
+            id: id,
+            locator: locator,
+            active: active
+          )
+        }
+      ) else {
+        self.dispatchEvent(
+          "onTtsStateChange",
+          payload: ["state": "error", "error": "Unable to initialize the TTS engine."]
+        )
+        return
+      }
+      self.ttsController = controller
+      guard self.ttsGeneration == generation else {
+        controller.stop(emitState: false)
+        return
+      }
+      await controller.start(from: startLocator)
+    }
+  }
+
+  func playTts() {
+    Task { @MainActor [weak self] in self?.ttsController?.play() }
+  }
+
+  func pauseTts() {
+    Task { @MainActor [weak self] in self?.ttsController?.pause() }
+  }
+
+  func stopTts() {
+    Task { @MainActor [weak self] in
+      guard let self else { return }
+      self.ttsUserNavigationDeadline = nil
+      self.ttsGeneration += 1
+      self.clearTtsFollowTextNavigation()
+      self.ttsController?.stop(emitState: false)
+      self.ttsController = nil
+      self.dispatchEvent("onTtsStateChange", payload: ["state": "stopped"])
+    }
+  }
+
+  func previousTts() {
+    Task { @MainActor [weak self] in self?.ttsController?.previous() }
+  }
+
+  func nextTts() {
+    Task { @MainActor [weak self] in self?.ttsController?.next() }
+  }
+
+  func completeTtsSynthesis(_ completion: TtsSynthesisCompletionRecord) {
+    Task { @MainActor [weak self] in
+      self?.ttsController?.complete(completion)
+    }
   }
 
   // MARK: - Selection emission
@@ -736,6 +954,8 @@ final class ReadiumView: ExpoView {
       pendingViewportReload = nil
       viewportPresentationFrozen = false
     }
+    ttsController?.stop()
+    ttsController = nil
     guard let vc = readerViewController else { return }
     readerViewController = nil
     PublicationStore.shared.remove(vc.bookId, ifSameAs: vc.publication)

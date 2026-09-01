@@ -1,4 +1,5 @@
 import ExpoModulesCore
+import ReadiumNavigator
 import ReadiumShared
 import UIKit
 
@@ -20,7 +21,10 @@ public final class ReadiumModule: Module {
         "onDecorationActivated",
         "onSelectionChange",
         "onSelectionAction",
-        "onTap"
+        "onTap",
+        "onTtsStateChange",
+        "onTtsSynthesisRequest",
+        "onTtsSynthesisCancel"
       )
 
       Prop("file") { (view: ReadiumView, file: ReadiumFileRecord?) in
@@ -69,6 +73,46 @@ public final class ReadiumModule: Module {
       Task { @MainActor in
         let visible = await ReadiumView.registry[tag]?.isBookmarkVisible(locator: locator) ?? false
         promise.resolve(visible)
+      }
+    }
+    AsyncFunction("startTts") { (tag: Int, config: TtsEngineConfigRecord, locator: LocatorRecord?, startAtViewportStart: Bool) in
+      ReadiumView.registry[tag]?.startTts(
+        config: config,
+        from: locator,
+        startAtViewportStart: startAtViewportStart
+      )
+    }
+    AsyncFunction("playTts") { (tag: Int) in
+      ReadiumView.registry[tag]?.playTts()
+    }
+    AsyncFunction("pauseTts") { (tag: Int) in
+      ReadiumView.registry[tag]?.pauseTts()
+    }
+    AsyncFunction("stopTts") { (tag: Int) in
+      ReadiumView.registry[tag]?.stopTts()
+    }
+    AsyncFunction("previousTts") { (tag: Int) in
+      ReadiumView.registry[tag]?.previousTts()
+    }
+    AsyncFunction("nextTts") { (tag: Int) in
+      ReadiumView.registry[tag]?.nextTts()
+    }
+    AsyncFunction("completeTtsSynthesis") { (tag: Int, completion: TtsSynthesisCompletionRecord) in
+      ReadiumView.registry[tag]?.completeTtsSynthesis(completion)
+    }
+    AsyncFunction("getSystemTtsVoices") { () -> [[String: Any]] in
+      AVTTSEngine().availableVoices.map { voice in
+        var item: [String: Any] = [
+          "id": voice.identifier,
+          "name": voice.name,
+          "language": voice.language.code.bcp47,
+        ]
+        switch voice.gender {
+        case .female: item["gender"] = "female"
+        case .male: item["gender"] = "male"
+        case .unspecified: break
+        }
+        return item
       }
     }
 

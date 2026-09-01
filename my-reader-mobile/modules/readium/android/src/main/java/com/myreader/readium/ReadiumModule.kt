@@ -17,6 +17,9 @@ import com.myreader.readium.Types.ReadiumFileRecord
 import com.myreader.readium.Types.SearchOptionsRecord
 import com.myreader.readium.Types.SelectionActionRecord
 import com.myreader.readium.Types.SelectionMenuRecord
+import com.myreader.readium.Types.TtsEngineConfigRecord
+import com.myreader.readium.Types.TtsSynthesisCompletionRecord
+import com.myreader.readium.reader.systemTtsVoices
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
@@ -44,6 +47,7 @@ import org.readium.r2.shared.publication.services.search.searchOptions
 @OptIn(ExperimentalReadiumApi::class)
 class ReadiumModule : Module() {
   private val searchScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+  private val ttsScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
   override fun definition() = ModuleDefinition {
     Name("Readium")
@@ -57,7 +61,10 @@ class ReadiumModule : Module() {
         "onDecorationActivated",
         "onSelectionChange",
         "onSelectionAction",
-        "onTap"
+        "onTap",
+        "onTtsStateChange",
+        "onTtsSynthesisRequest",
+        "onTtsSynthesisCancel"
       )
 
       Prop("file") { view: ReadiumView, value: ReadiumFileRecord? ->
@@ -113,6 +120,31 @@ class ReadiumModule : Module() {
 
     AsyncFunction("isBookmarkVisible") Coroutine { tag: Int, locator: LocatorRecord ->
       ReadiumView.registry[tag]?.isBookmarkVisible(locator) ?: false
+    }
+
+    AsyncFunction("startTts") { tag: Int, config: TtsEngineConfigRecord, locator: LocatorRecord?, startAtViewportStart: Boolean ->
+      ReadiumView.registry[tag]?.startTts(config, locator, startAtViewportStart)
+    }
+
+    AsyncFunction("playTts") { tag: Int -> ReadiumView.registry[tag]?.playTts() }
+    AsyncFunction("pauseTts") { tag: Int -> ReadiumView.registry[tag]?.pauseTts() }
+    AsyncFunction("stopTts") { tag: Int -> ReadiumView.registry[tag]?.stopTts() }
+    AsyncFunction("previousTts") { tag: Int -> ReadiumView.registry[tag]?.previousTts() }
+    AsyncFunction("nextTts") { tag: Int -> ReadiumView.registry[tag]?.nextTts() }
+
+    AsyncFunction("completeTtsSynthesis") { tag: Int, completion: TtsSynthesisCompletionRecord ->
+      ReadiumView.registry[tag]?.completeTtsSynthesis(completion)
+    }
+
+    AsyncFunction("getSystemTtsVoices") { promise: Promise ->
+      val context = appContext.reactContext
+      if (context == null) {
+        promise.reject("ERR_REACT_CONTEXT_LOST", "React context lost", null)
+        return@AsyncFunction
+      }
+      ttsScope.launch {
+        promise.resolve(systemTtsVoices(context))
+      }
     }
 
     // MARK: - Streamer open-architecture config (REP-005/006)
@@ -309,6 +341,7 @@ class ReadiumModule : Module() {
     OnDestroy {
       SearchSessionStore.cancelAll()
       searchScope.cancel()
+      ttsScope.cancel()
     }
   }
 }
