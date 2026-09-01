@@ -1,0 +1,173 @@
+appId: ${APP_ID}
+name: Read an EPUB aloud and control narration
+tags:
+  - reader
+  - tts
+  - external-library
+env:
+  TTS_BOOK_TITLE: MyReader TTS E2E
+---
+# Prerequisite: import the EPUB built by prepare-tts-fixture.sh into the active
+# library. Run this flow once per selected engine (System and OpenAI-compatible).
+# The network engine can be checked with assert-tts-fixture-requests.mjs after
+# the flow finishes.
+- runFlow: ../../common/launch_preserving_data.yaml
+- tapOn: "Library|书库"
+- tapOn: "All Books.*|全部图书.*"
+- extendedWaitUntil:
+    visible: ${TTS_BOOK_TITLE}
+    timeout: 15000
+- tapOn: '打开《${TTS_BOOK_TITLE}》|Open "${TTS_BOOK_TITLE}"'
+- extendedWaitUntil:
+    visible:
+      id: "reader-screen"
+    timeout: 30000
+- runFlow:
+    when:
+      notVisible: "更多操作|More Actions|More actions"
+    commands:
+      - tapOn:
+          point: "50%,50%"
+- assertVisible: "更多操作|More Actions|More actions"
+- runFlow:
+    when:
+      visible: "朗读控制|Read-aloud controls"
+    commands:
+      - tapOn: "停止朗读|Stop narration"
+- tapOn: "更多操作|More Actions|More actions"
+- tapOn: "目录|Contents"
+- extendedWaitUntil:
+    visible: "TTS verification"
+    timeout: 10000
+- tapOn: "TTS verification"
+- extendedWaitUntil:
+    visible: "TTS verification"
+    timeout: 10000
+- runFlow:
+    when:
+      notVisible: "打开听书播放器|Open read-aloud controls"
+    commands:
+      - tapOn:
+          point: "50%,50%"
+- assertVisible: "打开听书播放器|Open read-aloud controls"
+- takeScreenshot: tts-idle-player
+- tapOn: "打开听书播放器|Open read-aloud controls"
+- assertVisible: "朗读控制|Read-aloud controls"
+- assertVisible: "继续朗读|Resume narration"
+- takeScreenshot: tts-expanded-idle-player
+- longPressOn:
+    # This point is inside the fixture's second sentence on the phone layout.
+    point: "20%,31%"
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: tts-read-from-here-menu
+# Android exposes the native selection action to UI automation. On iOS,
+# UIEditMenuInteraction is outside XCTest's app hierarchy: retain the menu-label
+# screenshot, dismiss it, and continue the rest of this flow with the player.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: "从这里朗读|Read from here"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          point: "50%,60%"
+      - tapOn: "继续朗读|Resume narration"
+- extendedWaitUntil:
+    visible: "暂停朗读|Pause narration|继续朗读|Resume narration"
+    timeout: 20000
+- assertVisible: "更多操作|More Actions|More actions"
+- assertVisible: "朗读控制|Read-aloud controls"
+- takeScreenshot: tts-playing-and-highlighted
+- swipe:
+    start: "45%,65%"
+    end: "55%,65%"
+    duration: 350
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "TTS verification"
+- assertVisible: "暂停朗读|Pause narration"
+- tapOn: "下一句|Next sentence"
+- extendedWaitUntil:
+    visible: "暂停朗读|Pause narration"
+    timeout: 10000
+- takeScreenshot: tts-cancelled-page-turn-keeps-playing
+- runFlow:
+    when:
+      visible: "暂停朗读|Pause narration"
+    commands:
+      - tapOn: "暂停朗读|Pause narration"
+- assertVisible: "继续朗读|Resume narration"
+- tapOn: "更多操作|More Actions|More actions"
+- extendedWaitUntil:
+    visible: "朗读设置|Read-aloud settings"
+    timeout: 10000
+- tapOn: "朗读设置|Read-aloud settings"
+- extendedWaitUntil:
+    visible: "朗读引擎: .*|Narration engine: .*"
+    timeout: 10000
+- takeScreenshot: tts-settings-sheet
+- swipe:
+    start: "50%,56%"
+    end: "50%,96%"
+    duration: 500
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn: "继续朗读|Resume narration"
+- extendedWaitUntil:
+    visible: "暂停朗读|Pause narration|继续朗读|Resume narration"
+    timeout: 10000
+- tapOn: "下一句|Next sentence"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: "暂停朗读|Pause narration|继续朗读|Resume narration"
+          timeout: 10000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertVisible: "继续朗读|Resume narration"
+      - tapOn: "继续朗读|Resume narration"
+      - extendedWaitUntil:
+          visible: "暂停朗读|Pause narration"
+          timeout: 10000
+- takeScreenshot: tts-next-sentence
+- swipe:
+    start: "85%,65%"
+    end: "15%,65%"
+    duration: 350
+- extendedWaitUntil:
+    visible: "Page turn target"
+    timeout: 10000
+- assertNotVisible: "TTS verification"
+- takeScreenshot: tts-page-turn-first-line
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "Page turn target"
+- assertNotVisible: "TTS verification"
+- tapOn: "更多操作|More Actions|More actions"
+- extendedWaitUntil:
+    visible: "目录|Contents"
+    timeout: 10000
+- swipe:
+    from:
+      text: "目录|Contents"
+    direction: RIGHT
+    duration: 1200
+- extendedWaitUntil:
+    visible: "Progress jump target"
+    timeout: 10000
+- assertNotVisible: "Page turn target"
+- takeScreenshot: tts-progress-jump-first-line
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "Progress jump target"
+- assertNotVisible: "Page turn target"
+- tapOn: "停止朗读|Stop narration"
+- assertNotVisible: "朗读控制|Read-aloud controls"

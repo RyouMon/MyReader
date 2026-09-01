@@ -88,6 +88,44 @@ pnpm run test:e2e:libraries:ios
 - `manage_webdav_myreader_library.yaml`：后台上传、上传前禁止删除本地文件、上传中删除、同步不等待上传、按需下载、远端删除与重开。
 - `manage_onedrive_myreader_library.yaml`：Graph 上传、进程重启续传、token 并发路径、远端-only 下载并自动阅读。
 
+## TTS 端到端验证
+
+仓库内置一个短文本 EPUB 和本地 HTTP 语音服务，用于验证系统朗读与 OpenAI-compatible
+两条首期链路，不会向真实推理服务发送正文。
+
+```bash
+cd my-reader-mobile
+./e2e/scripts/prepare-tts-fixture.sh
+node e2e/scripts/tts-fixture-server.mjs
+```
+
+将生成的 `e2e/.artifacts/MyReader-TTS.epub` 导入一个测试用本地 MyReader 书库。Android 还需执行
+`adb reverse tcp:5050 tcp:5050`。然后在「设置 > 朗读与语音」中依次选择以下引擎，并为每个引擎运行
+同一条控制流：
+
+```bash
+maestro test --config=e2e/config.yaml e2e/flows/reader/read_with_tts.yaml \
+  -e APP_ID=ryoumon.myreadermobile
+```
+
+- 系统朗读：无需额外配置。
+- OpenAI-compatible：地址 `http://127.0.0.1:5050/openai`，凭据 `fixture-openai-key`。
+
+验证网络引擎时，先用 `curl -X POST http://127.0.0.1:5050/reset` 清空请求记录，再选择供应商；
+随后运行阅读 flow，中间不要再次 reset。运行后用以下命令验证鉴权及合成请求合同：
+
+```bash
+node e2e/scripts/assert-tts-fixture-requests.mjs openai
+```
+
+Flow 会验证播放器展开但不自动起播、长按选文后通过“从这里朗读”起播、句子高亮、暂停/恢复、
+上一句/下一句、翻页和进度跳转后从当前页第一行开始且不回跳，以及停止。它不会删除测试书库或
+供应商，验证结束后应在应用中移除临时配置。
+
+iOS 的 `UIEditMenuInteraction` 位于 XCTest 应用可访问性树之外。Flow 会保存带“从这里朗读”的
+原生菜单截图，再用播放器继续其余自动化场景；菜单动作本身需在模拟器中手动点击验证。Android
+可直接按菜单文本完成自动点击。
+
 ## Flow 清单
 
 ### CBZ（book id 2，Bobby Make-Believe，4 页）
@@ -101,6 +139,7 @@ pnpm run test:e2e:libraries:ios
 ### EPUB（book id 1，卡拉马佐夫兄弟，898 页）
 - `change_epub_settings.yaml` — 用户改 EPUB 手机阅读设置：夜间主题 / 字体族(Sans) / 两端对齐 / 字号/行距/页边距滑块值变化 / 手机竖屏单栏，全部通过控件状态或数值标签断言（@phone @wip）
 - `change_epub_settings_on_pad.yaml` — iPad 栏数=auto 横屏双栏/竖屏单栏；强制单栏横屏→单栏（@visual @ipad @wip，dev-client 在 iPad 上锁定 portrait 导致横屏渲染异常，且栏数无结构代理，故保留 AI 断言，待 release build 验证）
+- `read_with_tts.yaml` — 使用专用 EPUB 验证系统或网络 TTS 的“从这里朗读”、翻页/进度跳转稳定性、暂停/恢复、上一句/下一句和停止（@external-library）
 
 ### 复用 subflow（`common/`，`@skip`）
 - `launch_and_prepare.yaml` — `clearState` 启动应用并关闭 dev launcher，回到首页
