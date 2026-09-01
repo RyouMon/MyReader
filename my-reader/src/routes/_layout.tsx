@@ -11,6 +11,7 @@ import LibraryWorkspace from "@/components/library/LibraryWorkspace"
 import SettingsActivity from "@/components/settings/SettingsActivity"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { useWindowSizeClass } from "@/hooks/use-window-size-class"
+import type { SettingsSection } from "@/types/settings"
 
 export const Route = createFileRoute("/_layout")({
   component: Layout,
@@ -26,6 +27,17 @@ function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(isLargeWindow)
   const [addLibraryOpen, setAddLibraryOpen] = useState(false)
   const settingsOpen = location.pathname === "/settings"
+  const settingsSearch = new URLSearchParams(window.location.search)
+  const requestedSection = settingsSearch.get("section")
+  const settingsSection: SettingsSection =
+    requestedSection === "dataSources" ||
+    requestedSection === "speech" ||
+    requestedSection === "appearance" ||
+    requestedSection === "about"
+      ? requestedSection
+      : "libraries"
+  const returnBookId = settingsSearch.get("returnBookId")?.trim() || null
+  const returnFormat = settingsSearch.get("returnFormat")?.trim() || undefined
   const lastWorkspacePathRef = useRef("/")
   const wasLargeWindowRef = useRef<boolean | null>(null)
 
@@ -51,13 +63,21 @@ function Layout() {
   const activeBookId = getBookIdFromPath(workspacePath)
 
   const closeSettings = useCallback(() => {
+    if (returnBookId) {
+      navigate({
+        to: "/read/$bookId",
+        params: { bookId: returnBookId },
+        search: returnFormat ? { format: returnFormat } : {},
+      })
+      return
+    }
     const bookId = getBookIdFromPath(lastWorkspacePathRef.current)
     if (bookId) {
       navigate({ to: "/book/$bookId", params: { bookId } })
       return
     }
     navigate({ to: "/" })
-  }, [navigate])
+  }, [navigate, returnBookId, returnFormat])
 
   return (
     <SidebarProvider
@@ -81,6 +101,7 @@ function Layout() {
           <SettingsActivity
             onClose={closeSettings}
             onAddLibrary={() => setAddLibraryOpen(true)}
+            initialSection={settingsSection}
           />
         </div>
       ) : null}

@@ -57,6 +57,8 @@ import {
   type ReaderAnnotationEditorDraft,
 } from "@/components/reader/readium/ReaderAnnotationEditorDialog"
 import { ReaderSelectionMenu } from "@/components/reader/readium/ReaderSelectionMenu"
+import { ReaderTtsControls } from "@/components/reader/readium/ReaderTtsControls"
+import { ReaderTtsSettingsPanel } from "@/components/reader/readium/ReaderTtsSettingsPanel"
 import {
   ReadiumAnnotationPanel,
   type ReadiumAnnotationRow,
@@ -89,6 +91,7 @@ import type {
   TextAlign,
 } from "@/components/reader/types"
 import { Label } from "@/components/ui/label"
+import { useEpubTtsSession } from "@/hooks/reader/useEpubTtsSession"
 import { useLocatorProgressSync } from "@/hooks/reader/useLocatorProgressSync"
 import {
   type ReaderAnnotation,
@@ -117,6 +120,7 @@ import {
 } from "@/lib/readium/epubAnnotations"
 import {
   captureEpubBookmarkLocator,
+  captureEpubViewportStartLocator,
   isEpubBookmarkVisible,
   type ReaderViewportAnchorOffset,
   readerViewportAnchorOffset,
@@ -140,6 +144,10 @@ import {
   applyEpubSearchHighlight,
   clearEpubSearchHighlight,
 } from "@/lib/readium/epubSearchHighlight"
+import {
+  connectEpubTtsPointReadBridge,
+  setEpubTtsPointReadEnabled,
+} from "@/lib/readium/epubTts"
 import {
   coerceReaderFontOption,
   createReaderFontInjectables,
@@ -659,11 +667,17 @@ function setupIframeWindow(
     isScrollMode: boolean
     paddingX: number
     getChromeVisible: () => boolean
+    getTtsPointReadEnabled: () => boolean
     getCurrentFontFamily: () => string | null | undefined
     getAnnotations: () => readonly ReaderAnnotation[]
     onAnnotationClick: (selection: EpubAnnotationSelection) => void
     onAnnotationNoteClick: (annotationId: string) => void
     onSelectionCleared: () => void
+    onTtsPointRead: (
+      iframe: HTMLIFrameElement,
+      document: Document,
+      point: { x: number; y: number },
+    ) => void
     noteMarkerAccessibilityLabel: string
   },
 ): (() => void) | undefined {
@@ -693,6 +707,7 @@ function setupIframeWindow(
     "reader-scrollbar-visible",
     opts.getChromeVisible(),
   )
+  setEpubTtsPointReadEnabled(doc, opts.getTtsPointReadEnabled())
 
   if (opts.isScrollMode) {
     injectScrollPadding([doc], opts.paddingX)
@@ -712,6 +727,10 @@ function setupIframeWindow(
       onOutsideClick: opts.onSelectionCleared,
       noteMarkerAccessibilityLabel: opts.noteMarkerAccessibilityLabel,
     })
+    const stopTtsPointReadBridge = connectEpubTtsPointReadBridge(doc, {
+      getEnabled: opts.getTtsPointReadEnabled,
+      onReadAtPoint: (point) => opts.onTtsPointRead(opts.iframe, doc, point),
+    })
     const stopTextSelectionChangeBridge = connectEpubTextSelectionChangeBridge(
       wnd,
       opts.onSelectionCleared,
@@ -727,6 +746,7 @@ function setupIframeWindow(
     return () => {
       stopSelectedTextContextMenu()
       stopAnnotationClickBridge()
+      stopTtsPointReadBridge()
       stopTextSelectionChangeBridge()
       wnd.removeEventListener("pointermove", onMove)
       setupIframeDocuments.delete(doc)
@@ -1160,13 +1180,20 @@ export function ReadiumEpubReader({
     annotationsOpen,
     searchOpen,
     settingsOpen,
+    ttsSettingsOpen,
     toggleToc,
     toggleBookmarks,
     toggleAnnotations,
     toggleSearch,
     toggleSettings,
+    toggleTtsSettings,
     closePanels,
   } = useReaderPanels()
+  const readerSettings = useAppUiStore((s) => s.reflowable.settings)
+  const isFixedLayout = useMemo(
+    () => EpubNavigator.determineLayout(publication, false) === Layout.fixed,
+    [publication],
+  )
   const {
     readerRootRef,
     chromeVisible,
@@ -1174,18 +1201,18 @@ export function ReadiumEpubReader({
     scheduleChromeHide,
     handlePointerPosition,
   } = useReadingChrome(
-    false,
-    tocOpen || bookmarksOpen || annotationsOpen || searchOpen || settingsOpen,
+    !isFixedLayout,
+    tocOpen ||
+      bookmarksOpen ||
+      annotationsOpen ||
+      searchOpen ||
+      settingsOpen ||
+      ttsSettingsOpen,
   )
   const [readiumNavReady, setReadiumNavReady] = useState(false)
   const [initError, setInitError] = useState<string | null>(null)
   const [chapterTitle, setChapterTitle] = useState("")
   const [currentLocator, setCurrentLocator] = useState<Locator | null>(null)
-  const readerSettings = useAppUiStore((s) => s.reflowable.settings)
-  const isFixedLayout = useMemo(
-    () => EpubNavigator.determineLayout(publication, false) === Layout.fixed,
-    [publication],
-  )
   const captureCurrentBookmarkLocator = useCallback(async () => {
     const navigator = navigatorRef.current
     if (!navigator || isFixedLayout) return null
@@ -1348,6 +1375,51 @@ export function ReadiumEpubReader({
   const readerPositions = useMemo(
     () => epubPositions.map(readiumLocatorToReaderLocator),
     [epubPositions],
+  )
+
+  const ttsSession = useEpubTtsSession({
+    enabled:
+      isTauri() &&
+      !isFixedLayout &&
+      readiumNavReady &&
+      epubTextResources.length > 0,
+    navigatorRef,
+    resources: epubTextResources,
+    positions: readerPositions,
+    currentLocator,
+    language: readerLanguage,
+    highlightTint: searchHighlightTint,
+  })
+  const ttsSessionRef = useRef(ttsSession)
+  const ttsPointReadEnabledRef = useRef(false)
+  const pendingTtsUserNavigationRef = useRef(false)
+  ttsSessionRef.current = ttsSession
+  const setTtsPointReadEnabled = useCallback((enabled: boolean) => {
+    ttsPointReadEnabledRef.current = enabled
+    getIframeDocs().forEach((document) =>
+      setEpubTtsPointReadEnabled(document, enabled),
+    )
+  }, [])
+  const readTtsAtIframePoint = useCallback(
+    (
+      iframe: HTMLIFrameElement,
+      document: Document,
+      point: { x: number; y: number },
+    ) => {
+      const navigator = navigatorRef.current
+      const currentFrame = navigator?._cframes.find(
+        (candidate) =>
+          candidate?.iframe === iframe ||
+          candidate?.iframe.contentDocument === document,
+      )
+      if (!navigator || !currentFrame) return
+      ttsSessionRef.current.readAtPoint(
+        navigator.currentLocator.href,
+        document,
+        point,
+      )
+    },
+    [],
   )
 
   const epubSearchService = useMemo(
@@ -1537,7 +1609,10 @@ export function ReadiumEpubReader({
   )
 
   const beginContentNavigation = useCallback(
-    (targetLocator?: Locator | null) => {
+    (targetLocator?: Locator | null, options?: { rebaseTts?: boolean }) => {
+      if (targetLocator && options?.rebaseTts !== false) {
+        ttsSessionRef.current.rebase(targetLocator)
+      }
       const sequence = navigationSequenceRef.current + 1
       navigationSequenceRef.current = sequence
       clearPendingProgressSeek()
@@ -1593,13 +1668,14 @@ export function ReadiumEpubReader({
       if (!targetHref) return null
       const targetLocator =
         epubPositions.find((position) => position.href === targetHref) ?? null
-      return beginContentNavigation(targetLocator)
+      return beginContentNavigation(targetLocator, { rebaseTts: false })
     },
     [beginContentNavigation, epubPositions, isFixedLayout, publication],
   )
 
   const beginContentSettlingForPageTurn = useCallback(
     (direction: "backward" | "forward") => {
+      pendingTtsUserNavigationRef.current = true
       return beginContentNavigationForPageTurn(direction)
     },
     [beginContentNavigationForPageTurn],
@@ -1607,6 +1683,7 @@ export function ReadiumEpubReader({
 
   const revealFailedContentNavigation = useCallback(
     (sequence: number | null) => {
+      pendingTtsUserNavigationRef.current = false
       if (sequence == null) return
       finishContentNavigation(sequence)
     },
@@ -1807,6 +1884,14 @@ export function ReadiumEpubReader({
     )
     setAnnotationSelection(null)
   }, [annotationSelection, selectedAnnotation])
+
+  const readSelectionAloud = useCallback(() => {
+    const selection = annotationSelection
+    if (!selection) return
+    clearEpubTextSelection(selection)
+    setAnnotationSelection(null)
+    ttsSession.readFrom(readerLocatorToReadiumLocator(selection.locator))
+  }, [annotationSelection, ttsSession.readFrom])
 
   const removeSelectionAnnotation = useCallback(async () => {
     const selection = annotationSelection
@@ -2122,11 +2207,13 @@ export function ReadiumEpubReader({
             isScrollMode,
             paddingX: readerSettings.paddingX,
             getChromeVisible: () => chromeVisibleRef.current,
+            getTtsPointReadEnabled: () => ttsPointReadEnabledRef.current,
             getCurrentFontFamily: getCurrentReflowableFontFamily,
             getAnnotations: () => annotationsRef.current,
             onAnnotationClick,
             onAnnotationNoteClick,
             onSelectionCleared: () => setAnnotationSelection(null),
+            onTtsPointRead: readTtsAtIframePoint,
             noteMarkerAccessibilityLabel,
           })
           if (cleanup) cleanups.push(cleanup)
@@ -2177,6 +2264,7 @@ export function ReadiumEpubReader({
     getCurrentReflowableFontFamily,
     onAnnotationClick,
     onAnnotationNoteClick,
+    readTtsAtIframePoint,
     noteMarkerAccessibilityLabel,
   ])
 
@@ -2287,11 +2375,13 @@ export function ReadiumEpubReader({
                     !isFixedLayout,
                   paddingX: ui.reflowable.settings.paddingX,
                   getChromeVisible: () => chromeVisibleRef.current,
+                  getTtsPointReadEnabled: () => ttsPointReadEnabledRef.current,
                   getCurrentFontFamily: getCurrentReflowableFontFamily,
                   getAnnotations: () => annotationsRef.current,
                   onAnnotationClick,
                   onAnnotationNoteClick,
                   onSelectionCleared: () => setAnnotationSelection(null),
+                  onTtsPointRead: readTtsAtIframePoint,
                   noteMarkerAccessibilityLabel,
                 })
               })
@@ -2328,6 +2418,23 @@ export function ReadiumEpubReader({
                   : locator
               setCurrentLocator(stableLocator)
               setChapterTitle(resolveChapterTitle(stableLocator, selected))
+              if (pendingTtsUserNavigationRef.current) {
+                pendingTtsUserNavigationRef.current = false
+                const navigator = navigatorRef.current
+                const viewportStart =
+                  navigator && !isFixedLayout
+                    ? captureEpubViewportStartLocator(
+                        navigator,
+                        readiumLocatorToReaderLocator(stableLocator),
+                      )
+                    : null
+                ttsSessionRef.current.rebase(
+                  viewportStart
+                    ? readerLocatorToReadiumLocator(viewportStart)
+                    : stableLocator,
+                  { forceRestart: true },
+                )
+              }
               finishContentNavigationForLocator(stableLocator)
             },
             // Consume page-area input so only explicit controls paginate.
@@ -2447,6 +2554,7 @@ export function ReadiumEpubReader({
       appliedReflowableLayoutKeyRef.current = null
       navigationSequenceRef.current += 1
       pendingNavigationHrefRef.current = null
+      pendingTtsUserNavigationRef.current = false
       clearPendingProgressSeek()
       clearContentNavigationTimers()
       setReadiumNavReady(false)
@@ -2473,6 +2581,7 @@ export function ReadiumEpubReader({
     getCurrentReflowableFontFamily,
     onAnnotationClick,
     onAnnotationNoteClick,
+    readTtsAtIframePoint,
     onTextSelected,
     noteMarkerAccessibilityLabel,
     revealFailedContentNavigation,
@@ -2572,7 +2681,8 @@ export function ReadiumEpubReader({
         bookmarksOpen ||
         annotationsOpen ||
         searchOpen ||
-        settingsOpen
+        settingsOpen ||
+        ttsSettingsOpen
       }
       onClosePanels={closePanels}
       theme={readerSettings.theme}
@@ -2661,13 +2771,20 @@ export function ReadiumEpubReader({
         ) : null
       }
       settingsPanel={
-        <EpubSettingsPanel
-          visible={settingsOpen}
-          isFixedLayout={isFixedLayout}
-          readerLanguage={readerLanguage}
-          onFontFamilyChange={onReaderFontFamilyChange}
-          onClose={closePanels}
-        />
+        <>
+          <EpubSettingsPanel
+            visible={settingsOpen}
+            isFixedLayout={isFixedLayout}
+            readerLanguage={readerLanguage}
+            onFontFamilyChange={onReaderFontFamilyChange}
+            onClose={closePanels}
+          />
+          <ReaderTtsSettingsPanel
+            visible={ttsSettingsOpen}
+            session={ttsSession}
+            theme={isFixedLayout ? undefined : readerSettings.theme}
+          />
+        </>
       }
       beforeMain={
         <style>{`
@@ -2703,6 +2820,15 @@ export function ReadiumEpubReader({
             nextLabel={t("reader.nextPage")}
           />
         ) : null
+      }
+      bottomChrome={
+        <ReaderTtsControls
+          session={ttsSession}
+          visible={chromeVisible}
+          settingsOpen={ttsSettingsOpen}
+          onToggleSettings={toggleTtsSettings}
+          onExpandedChange={setTtsPointReadEnabled}
+        />
       }
       bottomStatusBar={
         <ReaderBottomStatusBar
@@ -2751,6 +2877,7 @@ export function ReadiumEpubReader({
             hasNote={Boolean(selectedAnnotation?.note?.trim())}
             onColorSelect={(color) => void setSelectionHighlightColor(color)}
             onEditNote={openSelectionNoteEditor}
+            onReadAloud={ttsSession.available ? readSelectionAloud : undefined}
             onRemove={() => void removeSelectionAnnotation()}
             onOpenChange={handleSelectionMenuOpenChange}
           />

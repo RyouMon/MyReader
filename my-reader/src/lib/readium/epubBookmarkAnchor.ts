@@ -2,6 +2,7 @@ import type { ReaderLocator } from "@my-reader/tools/reader-toc"
 import type { EpubNavigator } from "@readium/navigator"
 import {
   captureReaderViewportAnchor,
+  captureReaderViewportStartAnchor,
   type ReaderViewportAnchorOffset,
   type ReaderViewportCapture,
   type ReaderViewportDomRange,
@@ -51,6 +52,26 @@ export function captureEpubBookmarkLocator(
   const window = currentFrameWindow(navigator)
   if (!window) return null
   const anchor = captureReaderBookmarkAnchor(window)
+  if (!anchor) return null
+  return {
+    ...currentLocator,
+    locations: {
+      ...currentLocator.locations,
+      progression: currentLocator.locations?.progression ?? 0,
+      cssSelector: anchor.cssSelector,
+      domRange: anchor.domRange,
+    },
+    text: anchor.text,
+  }
+}
+
+export function captureEpubViewportStartLocator(
+  navigator: EpubNavigator,
+  currentLocator: ReaderLocator,
+): ReaderLocator | null {
+  const window = currentFrameWindow(navigator)
+  if (!window) return null
+  const anchor = captureReaderViewportStartAnchor(window)
   if (!anchor) return null
   return {
     ...currentLocator,

@@ -71,7 +71,7 @@ export type ReaderChromeShellProps = {
 }
 
 type ReaderChromeStyle = CSSProperties &
-  Record<`--reader-${string}`, string> & {
+  Record<`--${string}`, string> & {
     "--viewer-bg"?: string
   }
 
@@ -88,6 +88,29 @@ export function readerChromeThemeStyle(
   )
 
   return {
+    color: palette.text,
+    "--bg": palette.sheetSurface,
+    "--bg-secondary": palette.segmentIdle,
+    "--ink-1": palette.text,
+    "--ink-2": palette.textMuted,
+    "--ink-inverse": palette.bg,
+    "--background": palette.sheetSurface,
+    "--foreground": palette.text,
+    "--card": palette.segmentIdle,
+    "--card-foreground": palette.text,
+    "--popover": palette.sheetSurface,
+    "--popover-foreground": palette.text,
+    "--primary": palette.accent,
+    "--primary-foreground": palette.bg,
+    "--secondary": palette.segmentIdle,
+    "--secondary-foreground": palette.text,
+    "--muted": palette.segmentIdle,
+    "--muted-foreground": palette.textMuted,
+    "--accent": palette.segmentActive,
+    "--accent-foreground": palette.text,
+    "--border": palette.border,
+    "--input": palette.border,
+    "--ring": palette.accent,
     "--reader-chrome-bg": palette.bg,
     "--reader-chrome-fg": palette.text,
     "--reader-chrome-muted": palette.textMuted,
@@ -212,7 +235,6 @@ export function ReaderChromeShell({
           ) : null}
           {beforeMain}
           {main}
-          {bottomChrome}
           {edgeTurnOverlays}
         </div>
         {bottomStatusBar ? (
@@ -223,6 +245,7 @@ export function ReaderChromeShell({
             {bottomStatusBar}
           </div>
         ) : null}
+        {bottomChrome}
         {tocPanel}
         {bookmarkPanel}
         {annotationsPanel}

@@ -14,6 +14,7 @@ type ReaderSelectionMenuProps = {
   hasNote?: boolean
   onColorSelect: (color: ReaderAnnotationColor) => void
   onEditNote: () => void
+  onReadAloud?: () => void
   onRemove: () => void
   onOpenChange: (open: boolean) => void
 }
@@ -28,6 +29,7 @@ export function ReaderSelectionMenu({
   hasNote = false,
   onColorSelect,
   onEditNote,
+  onReadAloud,
   onRemove,
   onOpenChange,
 }: ReaderSelectionMenuProps) {
@@ -87,6 +89,19 @@ export function ReaderSelectionMenu({
           >
             {t(hasNote ? "reader.editNote" : "reader.addNote")}
           </button>
+          {onReadAloud ? (
+            <>
+              <span className="mx-1 h-5 w-px bg-border" aria-hidden />
+              <button
+                type="button"
+                className="h-9 rounded-md px-3 font-medium outline-none transition-colors hover:bg-accent focus-visible:bg-accent disabled:pointer-events-none disabled:opacity-50"
+                disabled={disabled}
+                onClick={onReadAloud}
+              >
+                {t("reader.tts.readFromSelection")}
+              </button>
+            </>
+          ) : null}
           {existing ? (
             <>
               <span className="mx-1 h-5 w-px bg-border" aria-hidden />
