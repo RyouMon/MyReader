@@ -159,7 +159,17 @@ jobs:
           path: release-assets
 
       - name: Upload desktop release artifacts
-        run: gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber --repo "$GITHUB_REPOSITORY"
+        shell: bash
+        run: |
+          asset_paths=()
+          while IFS= read -r -d '' asset_path; do
+            asset_paths+=("$asset_path")
+          done < <(find release-assets -type f -print0)
+          if [ "${#asset_paths[@]}" -eq 0 ]; then
+            echo "No desktop release artifacts found." >&2
+            exit 1
+          fi
+          gh release upload "$GITHUB_REF_NAME" "${asset_paths[@]}" --clobber --repo "$GITHUB_REPOSITORY"
 
   archive-mobile:
     name: Archive mobile release artifacts
