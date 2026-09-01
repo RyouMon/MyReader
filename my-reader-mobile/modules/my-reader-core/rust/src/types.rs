@@ -823,6 +823,7 @@ impl TryFrom<AppConfig> for models::AppConfig {
                 .map(TryInto::try_into)
                 .collect::<Result<_, _>>()?,
             active_library_id: value.active_library_id,
+            tts: Default::default(),
             desktop: None,
             mobile: value
                 .mobile_json

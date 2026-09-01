@@ -6,6 +6,7 @@ mod library;
 mod reading;
 mod storage;
 mod sync;
+mod tts;
 
 pub use app_config::{
     is_remote_library_source_type, AppConfig, AppPreferences, DataSource, Library, LibraryType,
@@ -35,3 +36,9 @@ pub use sync::{
     SidecarSyncMode, SidecarSyncReport, SyncFailureKind,
 };
 pub(crate) use sync::{SyncFailureDisposition, SyncScheduleSnapshot};
+pub use tts::{
+    TtsAudioArtifact, TtsAudioFormat, TtsCachePolicy, TtsConfig, TtsEngineSelection,
+    TtsPlaybackPreferences, TtsProviderCapabilities, TtsProviderKind, TtsProviderOptions,
+    TtsProviderProfile, TtsSynthesisRequest, TtsTiming, TtsVoice, TtsVoiceRef,
+    TTS_CONFIG_SCHEMA_VERSION,
+};

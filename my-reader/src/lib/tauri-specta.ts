@@ -69,6 +69,18 @@ export const commands = {
 	writeEpubReadiumManifest: (dirPath: string, manifest: any) => typedError<null, ErrorKind>(__TAURI_INVOKE("write_epub_readium_manifest", { dirPath, manifest })),
 	setReaderTrafficLightsVisible: (visible: boolean, x: number, y: number, reposition: boolean) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reader_traffic_lights_visible", { visible, x, y, reposition })),
 	closeBookStreamer: (libraryId: string, bookId: number) => typedError<null, ErrorKind>(__TAURI_INVOKE("close_book_streamer", { libraryId, bookId })),
+	getTtsConfig: () => typedError<TtsConfigDto, ErrorKind>(__TAURI_INVOKE("get_tts_config")),
+	upsertTtsProfile: (input: UpsertTtsProviderInput) => typedError<TtsConfigDto, ErrorKind>(__TAURI_INVOKE("upsert_tts_profile", { input })),
+	removeTtsProfile: (profileId: string) => typedError<TtsConfigDto, ErrorKind>(__TAURI_INVOKE("remove_tts_profile", { profileId })),
+	setTtsDefaultEngine: (engine: TtsEngineSelectionDto) => typedError<TtsConfigDto, ErrorKind>(__TAURI_INVOKE("set_tts_default_engine", { engine })),
+	setTtsPlaybackPreferences: (playback: TtsPlaybackPreferencesDto) => typedError<TtsConfigDto, ErrorKind>(__TAURI_INVOKE("set_tts_playback_preferences", { playback })),
+	setTtsVoiceForLanguage: (language: string, voice: { engine: "system"; voiceId: string } | { engine: "provider"; profileId: string; voiceId: string } | null) => typedError<TtsConfigDto, ErrorKind>(__TAURI_INVOKE("set_tts_voice_for_language", { language, voice })),
+	getTtsProviderCapabilities: (profileId: string) => typedError<TtsProviderCapabilitiesDto, ErrorKind>(__TAURI_INVOKE("get_tts_provider_capabilities", { profileId })),
+	probeTtsProvider: (profileId: string) => typedError<TtsProviderCapabilitiesDto, ErrorKind>(__TAURI_INVOKE("probe_tts_provider", { profileId })),
+	listTtsVoices: (profileId: string) => typedError<TtsVoiceDto[], ErrorKind>(__TAURI_INVOKE("list_tts_voices", { profileId })),
+	synthesizeTts: (input: TtsSynthesisInput) => typedError<TtsAudioArtifactDto, ErrorKind>(__TAURI_INVOKE("synthesize_tts", { input })),
+	synthesizeTtsRequest: (requestId: string, input: TtsSynthesisInput) => typedError<TtsAudioArtifactDto, ErrorKind>(__TAURI_INVOKE("synthesize_tts_request", { requestId, input })),
+	cancelTtsSynthesis: (requestId: string) => __TAURI_INVOKE<boolean>("cancel_tts_synthesis", { requestId }),
 	syncDbForLibrary: (libraryId: string) => typedError<DbSyncReport, ErrorKind>(__TAURI_INVOKE("sync_db_for_library", { libraryId })),
 	notifySidecarNetworkReconnected: () => typedError<null, ErrorKind>(__TAURI_INVOKE("notify_sidecar_network_reconnected")),
 	checkBookFileState: (libraryId: string, bookId: number, format: string) => typedError<FileStateDto, ErrorKind>(__TAURI_INVOKE("check_book_file_state", { libraryId, bookId, format })),
@@ -138,7 +150,7 @@ export type DbSyncReport = {
 	changed: boolean,
 };
 
-export type ErrorKind = { kind: "Io"; message: string } | { kind: "Database"; message: string } | { kind: "NotFound"; message: string } | { kind: "Config"; message: string } | { kind: "Serialize"; message: string } | { kind: "Request"; message: string } | { kind: "Zip"; message: string } | { kind: "Task"; message: string } | { kind: "Auth"; message: string } | { kind: "Credential"; message: string } | { kind: "Storage"; message: string } | { kind: "Sync"; message: string } | { kind: "DataIntegrity"; message: string };
+export type ErrorKind = { kind: "Io"; message: string } | { kind: "Database"; message: string } | { kind: "NotFound"; message: string } | { kind: "Config"; message: string } | { kind: "Serialize"; message: string } | { kind: "Request"; message: string } | { kind: "Zip"; message: string } | { kind: "Task"; message: string } | { kind: "Auth"; message: string } | { kind: "Credential"; message: string } | { kind: "Storage"; message: string } | { kind: "Sync"; message: string } | { kind: "Tts"; message: string } | { kind: "DataIntegrity"; message: string };
 
 /**  Returned by `check_book_file_state`: describes whether a book file is cached locally. */
 export type FileStateDto = {
@@ -342,6 +354,108 @@ export type TestWebdavConnectionInput = {
 	username: string,
 	password: string,
 	rootPath: string | null,
+};
+
+export type TtsAudioArtifactDto = {
+	path: string,
+	mimeType: string,
+	durationMs: number | null,
+	timings: TtsTimingDto[],
+	cacheKey: string | null,
+};
+
+export type TtsAudioFormatDto = "mp3" | "opus" | "aac" | "flac" | "wav";
+
+export type TtsCachePolicyDto = "use" | "refresh" | "bypass";
+
+export type TtsConfigDto = {
+	schemaVersion: number,
+	defaultEngine: TtsEngineSelectionDto,
+	profiles: TtsProviderProfileDto[],
+	voiceByLanguage: { [key in string]: TtsVoiceRefDto },
+	playback: TtsPlaybackPreferencesDto,
+};
+
+export type TtsEngineSelectionDto = { kind: "system" } | { kind: "provider"; profileId: string };
+
+export type TtsPlaybackPreferencesDto = {
+	speed: number | null,
+	pitch: number | null,
+	skipPageBreaks: boolean,
+	skipFootnotes: boolean,
+	announceContext: boolean,
+};
+
+export type TtsProviderCapabilitiesDto = {
+	voiceDiscovery: boolean,
+	preview: boolean,
+	plainText: boolean,
+	ssml: boolean,
+	streaming: boolean,
+	wordTimings: boolean,
+	synthesisRate: boolean,
+	synthesisPitch: boolean,
+	maxInputChars: number | null,
+	outputMimeTypes: string[],
+};
+
+export type TtsProviderKindDto = "openAiCompatible";
+
+export type TtsProviderOptionsDto = { kind: "openAiCompatible"; responseFormat?: TtsAudioFormatDto; instructions?: string | null; voices?: string[]; defaultVoice?: string | null };
+
+export type TtsProviderProfileDto = {
+	id: string,
+	name: string,
+	kind: TtsProviderKindDto,
+	enabled: boolean,
+	endpoint: string,
+	model: string | null,
+	options: TtsProviderOptionsDto,
+	revision: number,
+	hasCredential: boolean,
+};
+
+export type TtsProviderProfileInput = {
+	id?: string,
+	name: string,
+	kind: TtsProviderKindDto,
+	enabled?: boolean,
+	endpoint: string,
+	model?: string | null,
+	options: TtsProviderOptionsDto,
+};
+
+export type TtsSynthesisInput = {
+	profileId: string,
+	text: string,
+	language?: string | null,
+	voiceId: string,
+	speed?: number | null,
+	pitch?: number | null,
+	acceptedMimeTypes?: string[],
+	cachePolicy?: TtsCachePolicyDto,
+};
+
+export type TtsTimingDto = {
+	startUtf16: number,
+	endUtf16: number,
+	startMs: number,
+	endMs: number,
+};
+
+export type TtsVoiceDto = {
+	id: string,
+	name: string,
+	language: string,
+	gender: string | null,
+};
+
+export type TtsVoiceRefDto = { engine: "system"; voiceId: string } | { engine: "provider"; profileId: string; voiceId: string };
+
+export type UpsertTtsProviderInput = {
+	profile: TtsProviderProfileInput,
+	credential?: string | null,
+	clearCredential?: boolean,
 };
 
 export type WebdavFolderEntry = {

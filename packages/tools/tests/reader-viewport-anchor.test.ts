@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
+  captureReaderPointAnchor,
   captureReaderViewportAnchor,
+  captureReaderViewportStartAnchor,
   createReaderViewportAnchorRuntime,
   isReaderViewportAnchorVisible,
   readerViewportAnchorOffset,
@@ -116,6 +118,63 @@ afterEach(() => {
 })
 
 describe("reader viewport anchor capture", () => {
+  it("should capture readable text without taking over interactive content", () => {
+    document.body.innerHTML =
+      '<p id="sentence">Read from this sentence.</p><a id="link">Open link</a>'
+    useViewport(200, 100)
+    const sentence = document.querySelector("#sentence")!.firstChild!
+    overrideProperty(document, "caretRangeFromPoint", () =>
+      rangeAt(sentence, 5),
+    )
+    overrideProperty(document, "elementFromPoint", () =>
+      document.querySelector("#sentence"),
+    )
+    useRangeRects([rect(90, 40)])
+
+    expect(captureReaderPointAnchor(window, 0.5, 0.5)).toMatchObject({
+      cssSelector: "#sentence",
+      text: { highlight: "f" },
+    })
+
+    overrideProperty(document, "elementFromPoint", () =>
+      document.querySelector("#link"),
+    )
+    expect(captureReaderPointAnchor(window, 0.5, 0.5)).toBeNull()
+  })
+
+  it("should not snap a blank-area tap to nearby readable text", () => {
+    document.body.innerHTML = '<p id="sentence">Read this sentence.</p>'
+    useViewport(200, 100)
+    const sentence = document.querySelector("#sentence")!.firstChild!
+    overrideProperty(document, "caretRangeFromPoint", () =>
+      rangeAt(sentence, 5),
+    )
+    overrideProperty(document, "elementFromPoint", () =>
+      document.querySelector("#sentence"),
+    )
+    useRangeRects([rect(40, 40)])
+
+    expect(captureReaderPointAnchor(window, 0.9, 0.5)).toBeNull()
+  })
+
+  it("should keep an inline tap on its nearest readable block", () => {
+    document.body.innerHTML =
+      '<p id="paragraph">Read <em id="inline">this sentence</em> aloud.</p>'
+    useViewport(200, 100)
+    const inline = document.querySelector("#inline")!
+    const text = inline.firstChild!
+    overrideProperty(document, "caretRangeFromPoint", () => rangeAt(text, 3))
+    overrideProperty(document, "elementFromPoint", () => inline)
+    useRangeRects([rect(90, 40)])
+
+    expect(captureReaderPointAnchor(window, 0.5, 0.5)).toMatchObject({
+      cssSelector: "#paragraph",
+      domRange: {
+        start: { cssSelector: "#inline", textNodeIndex: 0, charOffset: 3 },
+      },
+    })
+  })
+
   it("should bind native bridge methods when called without a window argument", () => {
     document.body.innerHTML = "<section><p>Mobile bookmark anchor</p></section>"
     const text = document.querySelector("p")?.firstChild
@@ -130,6 +189,8 @@ describe("reader viewport anchor capture", () => {
     const capture = runtime.captureReaderViewportAnchor()
 
     expect(capture).not.toBeNull()
+    expect(runtime.captureReaderViewportStartAnchor()).not.toBeNull()
+    expect(runtime.captureReaderPointAnchor(0.5, 0.5)).not.toBeNull()
     expect(runtime.isReaderViewportAnchorVisible(capture!.domRange)).toBe(true)
     expect(runtime.readerViewportLayoutState()).toMatchObject({
       clientHeight: expect.any(Number),
@@ -142,6 +203,51 @@ describe("reader viewport anchor capture", () => {
       ),
     ).toBe(true)
     expect(scrollBy).toHaveBeenCalledOnce()
+  })
+
+  it("should start with the first visible column in a paginated LTR viewport", () => {
+    document.body.innerHTML =
+      '<p id="first">First column text</p><p id="second">Second column text</p>'
+    useViewport(200, 100)
+    const first = document.querySelector("#first")!.firstChild!
+    const second = document.querySelector("#second")!.firstChild!
+    overrideProperty(document, "scrollingElement", document.documentElement)
+    overrideProperty(document.documentElement, "clientWidth", 200)
+    overrideProperty(document.documentElement, "clientHeight", 100)
+    overrideProperty(document.documentElement, "scrollWidth", 400)
+    overrideProperty(document.documentElement, "scrollHeight", 100)
+    overrideProperty(document, "caretRangeFromPoint", (x: number) =>
+      rangeAt(x < 100 ? first : second, 2),
+    )
+    useRangeRects((range) =>
+      range.startContainer === first ? [rect(10, 70, 80)] : [rect(110, 10, 80)],
+    )
+
+    expect(captureReaderViewportStartAnchor(window)).toMatchObject({
+      cssSelector: "#first",
+      text: { highlight: "r" },
+    })
+  })
+
+  it("should start with the top visible line in a scrolling viewport", () => {
+    document.body.innerHTML =
+      '<p id="top">Top text</p><p id="left">Lower text</p>'
+    useViewport(200, 100)
+    const top = document.querySelector("#top")!.firstChild!
+    const lower = document.querySelector("#left")!.firstChild!
+    overrideProperty(document, "scrollingElement", document.documentElement)
+    overrideProperty(document.documentElement, "clientWidth", 200)
+    overrideProperty(document.documentElement, "clientHeight", 100)
+    overrideProperty(document.documentElement, "scrollWidth", 200)
+    overrideProperty(document.documentElement, "scrollHeight", 300)
+    overrideProperty(document, "caretRangeFromPoint", (_x: number, y: number) =>
+      rangeAt(y < 30 ? top : lower, 0),
+    )
+    useRangeRects((range) =>
+      range.startContainer === top ? [rect(150, 5, 40)] : [rect(10, 40, 80)],
+    )
+
+    expect(captureReaderViewportStartAnchor(window)?.cssSelector).toBe("#top")
   })
 
   it("should use caret positions and CSS escaping when the element has a unique ID", () => {

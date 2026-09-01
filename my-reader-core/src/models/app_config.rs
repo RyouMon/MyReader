@@ -3,6 +3,8 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use super::TtsConfig;
+
 pub const APP_CONFIG_SCHEMA_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -20,6 +22,8 @@ pub struct AppConfig {
     pub libraries: Vec<Library>,
     #[serde(default)]
     pub active_library_id: Option<String>,
+    #[serde(default)]
+    pub tts: TtsConfig,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub desktop: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -37,6 +41,7 @@ impl AppConfig {
             data_sources: Vec::new(),
             libraries: Vec::new(),
             active_library_id: None,
+            tts: TtsConfig::default(),
             desktop: None,
             mobile: None,
             extensions: BTreeMap::new(),
@@ -205,7 +210,22 @@ impl LibraryType {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_remote_library_source_type, DataSource, Library, LibraryType};
+    use super::{is_remote_library_source_type, AppConfig, DataSource, Library, LibraryType};
+    use crate::models::TtsEngineSelection;
+
+    #[test]
+    fn should_default_legacy_config_to_system_tts() {
+        let config = serde_json::from_value::<AppConfig>(serde_json::json!({
+            "schemaVersion": 1,
+            "preferences": {},
+            "dataSources": [],
+            "libraries": []
+        }))
+        .unwrap();
+
+        assert_eq!(config.tts.default_engine, TtsEngineSelection::System);
+        assert!(config.tts.profiles.is_empty());
+    }
 
     #[test]
     fn should_read_legacy_snake_case_when_data_source_is_deserialized() {

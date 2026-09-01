@@ -13,6 +13,7 @@ import {
 } from "../../constants/onedrive"
 
 const WEB_DAV_PASSWORD_KEY_PREFIX = "ryoumon.myreader.webdav.password."
+const TTS_CREDENTIAL_KEY_PREFIX = "ryoumon.myreader.tts."
 
 /**
  * 为指定 WebDAV 数据源生成凭证键。
@@ -185,4 +186,33 @@ export function deriveCredentialFlags(
     case "onedrive":
       return { hasRefreshToken: Boolean(secrets.refreshToken) }
   }
+}
+
+export function ttsCredentialReference(profileId: string): string {
+  return `${TTS_CREDENTIAL_KEY_PREFIX}${profileId}`
+}
+
+export async function readTtsCredential(
+  reference: string,
+): Promise<string | null> {
+  if (!reference) return null
+  return SecureStore.getItemAsync(reference)
+}
+
+export async function writeTtsCredential(
+  reference: string,
+  credential: string,
+): Promise<void> {
+  if (!reference) return
+  const value = credential.trim()
+  if (!value) {
+    await SecureStore.deleteItemAsync(reference)
+    return
+  }
+  await SecureStore.setItemAsync(reference, value)
+}
+
+export async function deleteTtsCredential(reference: string): Promise<void> {
+  if (!reference) return
+  await SecureStore.deleteItemAsync(reference)
 }

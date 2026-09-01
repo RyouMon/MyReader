@@ -5064,6 +5064,491 @@ export function syncSetLibraryOnline(
   );
 }
 
+export async function ttsGetConfig(
+  configPath: string,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<TtsConfig> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_tts_get_config(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeTtsConfig.lift.bind(
+        FfiConverterTypeTtsConfig,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function ttsListVoices(
+  configPath: string,
+  profileId: string,
+  credential: string | undefined,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<Array<TtsVoice>> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_tts_list_voices(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(profileId, nativeModule().rustbuffer_alloc),
+          FfiConverterOptionalString.lower(
+            credential,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterSequenceTypeTtsVoice.lift.bind(
+        FfiConverterSequenceTypeTtsVoice,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function ttsProbeProvider(
+  configPath: string,
+  profileId: string,
+  credential: string | undefined,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<TtsProviderCapabilities> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_tts_probe_provider(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(profileId, nativeModule().rustbuffer_alloc),
+          FfiConverterOptionalString.lower(
+            credential,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeTtsProviderCapabilities.lift.bind(
+        FfiConverterTypeTtsProviderCapabilities,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function ttsProviderCapabilities(
+  configPath: string,
+  profileId: string,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<TtsProviderCapabilities> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_tts_provider_capabilities(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(profileId, nativeModule().rustbuffer_alloc),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeTtsProviderCapabilities.lift.bind(
+        FfiConverterTypeTtsProviderCapabilities,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function ttsRemoveProfile(
+  configPath: string,
+  profileId: string,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<TtsConfig> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_tts_remove_profile(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(profileId, nativeModule().rustbuffer_alloc),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeTtsConfig.lift.bind(
+        FfiConverterTypeTtsConfig,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function ttsSetDefaultEngine(
+  configPath: string,
+  engine: TtsEngine,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<TtsConfig> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_tts_set_default_engine(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterTypeTtsEngine.lower(
+            engine,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeTtsConfig.lift.bind(
+        FfiConverterTypeTtsConfig,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function ttsSetPlayback(
+  configPath: string,
+  playback: TtsPlayback,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<TtsConfig> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_tts_set_playback(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterTypeTtsPlayback.lower(
+            playback,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeTtsConfig.lift.bind(
+        FfiConverterTypeTtsConfig,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function ttsSetVoice(
+  configPath: string,
+  language: string,
+  voice: TtsLanguageVoice | undefined,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<TtsConfig> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_tts_set_voice(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(language, nativeModule().rustbuffer_alloc),
+          FfiConverterOptionalTypeTtsLanguageVoice.lower(
+            voice,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeTtsConfig.lift.bind(
+        FfiConverterTypeTtsConfig,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function ttsSynthesize(
+  configPath: string,
+  cacheDirectory: string,
+  request: TtsSynthesisRequest,
+  credential: string | undefined,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<TtsAudioArtifact> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_tts_synthesize(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            cacheDirectory,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterTypeTtsSynthesisRequest.lower(
+            request,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterOptionalString.lower(
+            credential,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeTtsAudioArtifact.lift.bind(
+        FfiConverterTypeTtsAudioArtifact,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function ttsUpsertProfile(
+  configPath: string,
+  profile: TtsProviderProfile,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<TtsConfig> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_tts_upsert_profile(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterTypeTtsProviderProfile.lower(
+            profile,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeTtsConfig.lift.bind(
+        FfiConverterTypeTtsConfig,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
 // Hermes (React Native ≥ 0.74) ships TextEncoder and encodeInto, but not
 // TextDecoder. For single-string decode (bytesToString), we polyfill via the
 // C++ string_from_buffer helper using a duck-typed object matching the
@@ -8110,6 +8595,608 @@ const FfiConverterTypeSyncTaskProgress = (() => {
   return new FFIConverter();
 })();
 
+export type TtsTiming = {
+  startUtf16: number;
+  endUtf16: number;
+  startMs: number;
+  endMs: number;
+};
+
+/**
+ * Generated factory for {@link TtsTiming} record objects.
+ */
+export const TtsTiming = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<TtsTiming, ReturnType<typeof defaults>>(defaults);
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<TtsTiming>,
+  });
+})();
+
+const FfiConverterTypeTtsTiming = (() => {
+  type TypeName = TtsTiming;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        startUtf16: FfiConverterUInt32.read(from),
+        endUtf16: FfiConverterUInt32.read(from),
+        startMs: FfiConverterFloat64.read(from),
+        endMs: FfiConverterFloat64.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterUInt32.write(value.startUtf16, into);
+      FfiConverterUInt32.write(value.endUtf16, into);
+      FfiConverterFloat64.write(value.startMs, into);
+      FfiConverterFloat64.write(value.endMs, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterUInt32.allocationSize(value.startUtf16) +
+        FfiConverterUInt32.allocationSize(value.endUtf16) +
+        FfiConverterFloat64.allocationSize(value.startMs) +
+        FfiConverterFloat64.allocationSize(value.endMs)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type TtsAudioArtifact = {
+  path: string;
+  mimeType: string;
+  durationMs?: number;
+  timings: Array<TtsTiming>;
+  cacheKey?: string;
+};
+
+/**
+ * Generated factory for {@link TtsAudioArtifact} record objects.
+ */
+export const TtsAudioArtifact = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<TtsAudioArtifact, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<TtsAudioArtifact>,
+  });
+})();
+
+const FfiConverterTypeTtsAudioArtifact = (() => {
+  type TypeName = TtsAudioArtifact;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        path: FfiConverterString.read(from),
+        mimeType: FfiConverterString.read(from),
+        durationMs: FfiConverterOptionalFloat64.read(from),
+        timings: FfiConverterSequenceTypeTtsTiming.read(from),
+        cacheKey: FfiConverterOptionalString.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.path, into);
+      FfiConverterString.write(value.mimeType, into);
+      FfiConverterOptionalFloat64.write(value.durationMs, into);
+      FfiConverterSequenceTypeTtsTiming.write(value.timings, into);
+      FfiConverterOptionalString.write(value.cacheKey, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.path) +
+        FfiConverterString.allocationSize(value.mimeType) +
+        FfiConverterOptionalFloat64.allocationSize(value.durationMs) +
+        FfiConverterSequenceTypeTtsTiming.allocationSize(value.timings) +
+        FfiConverterOptionalString.allocationSize(value.cacheKey)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type TtsEngine = {
+  kind: string;
+  profileId?: string;
+};
+
+/**
+ * Generated factory for {@link TtsEngine} record objects.
+ */
+export const TtsEngine = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<TtsEngine, ReturnType<typeof defaults>>(defaults);
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<TtsEngine>,
+  });
+})();
+
+const FfiConverterTypeTtsEngine = (() => {
+  type TypeName = TtsEngine;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        kind: FfiConverterString.read(from),
+        profileId: FfiConverterOptionalString.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.kind, into);
+      FfiConverterOptionalString.write(value.profileId, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.kind) +
+        FfiConverterOptionalString.allocationSize(value.profileId)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type TtsProviderProfile = {
+  id: string;
+  name: string;
+  kind: string;
+  enabled: boolean;
+  endpoint: string;
+  model?: string;
+  credentialReference?: string;
+  responseFormat?: string;
+  instructions?: string;
+  voices: Array<string>;
+  defaultVoice?: string;
+  revision: number;
+};
+
+/**
+ * Generated factory for {@link TtsProviderProfile} record objects.
+ */
+export const TtsProviderProfile = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<TtsProviderProfile, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<TtsProviderProfile>,
+  });
+})();
+
+const FfiConverterTypeTtsProviderProfile = (() => {
+  type TypeName = TtsProviderProfile;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        id: FfiConverterString.read(from),
+        name: FfiConverterString.read(from),
+        kind: FfiConverterString.read(from),
+        enabled: FfiConverterBool.read(from),
+        endpoint: FfiConverterString.read(from),
+        model: FfiConverterOptionalString.read(from),
+        credentialReference: FfiConverterOptionalString.read(from),
+        responseFormat: FfiConverterOptionalString.read(from),
+        instructions: FfiConverterOptionalString.read(from),
+        voices: FfiConverterSequenceString.read(from),
+        defaultVoice: FfiConverterOptionalString.read(from),
+        revision: FfiConverterFloat64.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.id, into);
+      FfiConverterString.write(value.name, into);
+      FfiConverterString.write(value.kind, into);
+      FfiConverterBool.write(value.enabled, into);
+      FfiConverterString.write(value.endpoint, into);
+      FfiConverterOptionalString.write(value.model, into);
+      FfiConverterOptionalString.write(value.credentialReference, into);
+      FfiConverterOptionalString.write(value.responseFormat, into);
+      FfiConverterOptionalString.write(value.instructions, into);
+      FfiConverterSequenceString.write(value.voices, into);
+      FfiConverterOptionalString.write(value.defaultVoice, into);
+      FfiConverterFloat64.write(value.revision, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.id) +
+        FfiConverterString.allocationSize(value.name) +
+        FfiConverterString.allocationSize(value.kind) +
+        FfiConverterBool.allocationSize(value.enabled) +
+        FfiConverterString.allocationSize(value.endpoint) +
+        FfiConverterOptionalString.allocationSize(value.model) +
+        FfiConverterOptionalString.allocationSize(value.credentialReference) +
+        FfiConverterOptionalString.allocationSize(value.responseFormat) +
+        FfiConverterOptionalString.allocationSize(value.instructions) +
+        FfiConverterSequenceString.allocationSize(value.voices) +
+        FfiConverterOptionalString.allocationSize(value.defaultVoice) +
+        FfiConverterFloat64.allocationSize(value.revision)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type TtsLanguageVoice = {
+  language: string;
+  engine: string;
+  profileId?: string;
+  voiceId: string;
+};
+
+/**
+ * Generated factory for {@link TtsLanguageVoice} record objects.
+ */
+export const TtsLanguageVoice = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<TtsLanguageVoice, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<TtsLanguageVoice>,
+  });
+})();
+
+const FfiConverterTypeTtsLanguageVoice = (() => {
+  type TypeName = TtsLanguageVoice;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        language: FfiConverterString.read(from),
+        engine: FfiConverterString.read(from),
+        profileId: FfiConverterOptionalString.read(from),
+        voiceId: FfiConverterString.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.language, into);
+      FfiConverterString.write(value.engine, into);
+      FfiConverterOptionalString.write(value.profileId, into);
+      FfiConverterString.write(value.voiceId, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.language) +
+        FfiConverterString.allocationSize(value.engine) +
+        FfiConverterOptionalString.allocationSize(value.profileId) +
+        FfiConverterString.allocationSize(value.voiceId)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type TtsPlayback = {
+  speed: number;
+  pitch: number;
+  skipPageBreaks: boolean;
+  skipFootnotes: boolean;
+  announceContext: boolean;
+};
+
+/**
+ * Generated factory for {@link TtsPlayback} record objects.
+ */
+export const TtsPlayback = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<TtsPlayback, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<TtsPlayback>,
+  });
+})();
+
+const FfiConverterTypeTtsPlayback = (() => {
+  type TypeName = TtsPlayback;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        speed: FfiConverterFloat64.read(from),
+        pitch: FfiConverterFloat64.read(from),
+        skipPageBreaks: FfiConverterBool.read(from),
+        skipFootnotes: FfiConverterBool.read(from),
+        announceContext: FfiConverterBool.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterFloat64.write(value.speed, into);
+      FfiConverterFloat64.write(value.pitch, into);
+      FfiConverterBool.write(value.skipPageBreaks, into);
+      FfiConverterBool.write(value.skipFootnotes, into);
+      FfiConverterBool.write(value.announceContext, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterFloat64.allocationSize(value.speed) +
+        FfiConverterFloat64.allocationSize(value.pitch) +
+        FfiConverterBool.allocationSize(value.skipPageBreaks) +
+        FfiConverterBool.allocationSize(value.skipFootnotes) +
+        FfiConverterBool.allocationSize(value.announceContext)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type TtsConfig = {
+  schemaVersion: number;
+  defaultEngine: TtsEngine;
+  profiles: Array<TtsProviderProfile>;
+  voices: Array<TtsLanguageVoice>;
+  playback: TtsPlayback;
+};
+
+/**
+ * Generated factory for {@link TtsConfig} record objects.
+ */
+export const TtsConfig = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<TtsConfig, ReturnType<typeof defaults>>(defaults);
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<TtsConfig>,
+  });
+})();
+
+const FfiConverterTypeTtsConfig = (() => {
+  type TypeName = TtsConfig;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        schemaVersion: FfiConverterUInt32.read(from),
+        defaultEngine: FfiConverterTypeTtsEngine.read(from),
+        profiles: FfiConverterSequenceTypeTtsProviderProfile.read(from),
+        voices: FfiConverterSequenceTypeTtsLanguageVoice.read(from),
+        playback: FfiConverterTypeTtsPlayback.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterUInt32.write(value.schemaVersion, into);
+      FfiConverterTypeTtsEngine.write(value.defaultEngine, into);
+      FfiConverterSequenceTypeTtsProviderProfile.write(value.profiles, into);
+      FfiConverterSequenceTypeTtsLanguageVoice.write(value.voices, into);
+      FfiConverterTypeTtsPlayback.write(value.playback, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterUInt32.allocationSize(value.schemaVersion) +
+        FfiConverterTypeTtsEngine.allocationSize(value.defaultEngine) +
+        FfiConverterSequenceTypeTtsProviderProfile.allocationSize(
+          value.profiles,
+        ) +
+        FfiConverterSequenceTypeTtsLanguageVoice.allocationSize(value.voices) +
+        FfiConverterTypeTtsPlayback.allocationSize(value.playback)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type TtsProviderCapabilities = {
+  voiceDiscovery: boolean;
+  preview: boolean;
+  plainText: boolean;
+  ssml: boolean;
+  streaming: boolean;
+  wordTimings: boolean;
+  synthesisRate: boolean;
+  synthesisPitch: boolean;
+  maxInputChars?: number;
+  outputMimeTypes: Array<string>;
+};
+
+/**
+ * Generated factory for {@link TtsProviderCapabilities} record objects.
+ */
+export const TtsProviderCapabilities = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<
+      TtsProviderCapabilities,
+      ReturnType<typeof defaults>
+    >(defaults);
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () =>
+      Object.freeze(defaults()) as Partial<TtsProviderCapabilities>,
+  });
+})();
+
+const FfiConverterTypeTtsProviderCapabilities = (() => {
+  type TypeName = TtsProviderCapabilities;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        voiceDiscovery: FfiConverterBool.read(from),
+        preview: FfiConverterBool.read(from),
+        plainText: FfiConverterBool.read(from),
+        ssml: FfiConverterBool.read(from),
+        streaming: FfiConverterBool.read(from),
+        wordTimings: FfiConverterBool.read(from),
+        synthesisRate: FfiConverterBool.read(from),
+        synthesisPitch: FfiConverterBool.read(from),
+        maxInputChars: FfiConverterOptionalUInt32.read(from),
+        outputMimeTypes: FfiConverterSequenceString.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterBool.write(value.voiceDiscovery, into);
+      FfiConverterBool.write(value.preview, into);
+      FfiConverterBool.write(value.plainText, into);
+      FfiConverterBool.write(value.ssml, into);
+      FfiConverterBool.write(value.streaming, into);
+      FfiConverterBool.write(value.wordTimings, into);
+      FfiConverterBool.write(value.synthesisRate, into);
+      FfiConverterBool.write(value.synthesisPitch, into);
+      FfiConverterOptionalUInt32.write(value.maxInputChars, into);
+      FfiConverterSequenceString.write(value.outputMimeTypes, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterBool.allocationSize(value.voiceDiscovery) +
+        FfiConverterBool.allocationSize(value.preview) +
+        FfiConverterBool.allocationSize(value.plainText) +
+        FfiConverterBool.allocationSize(value.ssml) +
+        FfiConverterBool.allocationSize(value.streaming) +
+        FfiConverterBool.allocationSize(value.wordTimings) +
+        FfiConverterBool.allocationSize(value.synthesisRate) +
+        FfiConverterBool.allocationSize(value.synthesisPitch) +
+        FfiConverterOptionalUInt32.allocationSize(value.maxInputChars) +
+        FfiConverterSequenceString.allocationSize(value.outputMimeTypes)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type TtsSynthesisRequest = {
+  profileId: string;
+  text: string;
+  language?: string;
+  voiceId: string;
+  speed?: number;
+  pitch?: number;
+  acceptedMimeTypes: Array<string>;
+  cachePolicy: string;
+};
+
+/**
+ * Generated factory for {@link TtsSynthesisRequest} record objects.
+ */
+export const TtsSynthesisRequest = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<TtsSynthesisRequest, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<TtsSynthesisRequest>,
+  });
+})();
+
+const FfiConverterTypeTtsSynthesisRequest = (() => {
+  type TypeName = TtsSynthesisRequest;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        profileId: FfiConverterString.read(from),
+        text: FfiConverterString.read(from),
+        language: FfiConverterOptionalString.read(from),
+        voiceId: FfiConverterString.read(from),
+        speed: FfiConverterOptionalFloat64.read(from),
+        pitch: FfiConverterOptionalFloat64.read(from),
+        acceptedMimeTypes: FfiConverterSequenceString.read(from),
+        cachePolicy: FfiConverterString.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.profileId, into);
+      FfiConverterString.write(value.text, into);
+      FfiConverterOptionalString.write(value.language, into);
+      FfiConverterString.write(value.voiceId, into);
+      FfiConverterOptionalFloat64.write(value.speed, into);
+      FfiConverterOptionalFloat64.write(value.pitch, into);
+      FfiConverterSequenceString.write(value.acceptedMimeTypes, into);
+      FfiConverterString.write(value.cachePolicy, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.profileId) +
+        FfiConverterString.allocationSize(value.text) +
+        FfiConverterOptionalString.allocationSize(value.language) +
+        FfiConverterString.allocationSize(value.voiceId) +
+        FfiConverterOptionalFloat64.allocationSize(value.speed) +
+        FfiConverterOptionalFloat64.allocationSize(value.pitch) +
+        FfiConverterSequenceString.allocationSize(value.acceptedMimeTypes) +
+        FfiConverterString.allocationSize(value.cachePolicy)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type TtsVoice = {
+  id: string;
+  name: string;
+  language: string;
+  gender?: string;
+};
+
+/**
+ * Generated factory for {@link TtsVoice} record objects.
+ */
+export const TtsVoice = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<TtsVoice, ReturnType<typeof defaults>>(defaults);
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<TtsVoice>,
+  });
+})();
+
+const FfiConverterTypeTtsVoice = (() => {
+  type TypeName = TtsVoice;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        id: FfiConverterString.read(from),
+        name: FfiConverterString.read(from),
+        language: FfiConverterString.read(from),
+        gender: FfiConverterOptionalString.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.id, into);
+      FfiConverterString.write(value.name, into);
+      FfiConverterString.write(value.language, into);
+      FfiConverterOptionalString.write(value.gender, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.id) +
+        FfiConverterString.allocationSize(value.name) +
+        FfiConverterString.allocationSize(value.language) +
+        FfiConverterOptionalString.allocationSize(value.gender)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
 export type UpdateBookMetadataRequest = {
   bookId: number;
   title: string;
@@ -8433,6 +9520,24 @@ const FfiConverterOptionalTypeRetrySchedule = new FfiConverterOptional(
   FfiConverterTypeRetrySchedule,
 );
 
+// FfiConverter for Array<TtsTiming>
+const FfiConverterSequenceTypeTtsTiming = new FfiConverterArray(
+  FfiConverterTypeTtsTiming,
+);
+
+// FfiConverter for Array<TtsProviderProfile>
+const FfiConverterSequenceTypeTtsProviderProfile = new FfiConverterArray(
+  FfiConverterTypeTtsProviderProfile,
+);
+
+// FfiConverter for Array<TtsLanguageVoice>
+const FfiConverterSequenceTypeTtsLanguageVoice = new FfiConverterArray(
+  FfiConverterTypeTtsLanguageVoice,
+);
+
+// FfiConverter for number | undefined
+const FfiConverterOptionalUInt32 = new FfiConverterOptional(FfiConverterUInt32);
+
 // FfiConverter for AppConfig | undefined
 const FfiConverterOptionalTypeAppConfig = new FfiConverterOptional(
   FfiConverterTypeAppConfig,
@@ -8534,6 +9639,16 @@ const FfiConverterOptionalTypeSidecarSyncReport = new FfiConverterOptional(
 // FfiConverter for RemoteCredential | undefined
 const FfiConverterOptionalTypeRemoteCredential = new FfiConverterOptional(
   FfiConverterTypeRemoteCredential,
+);
+
+// FfiConverter for Array<TtsVoice>
+const FfiConverterSequenceTypeTtsVoice = new FfiConverterArray(
+  FfiConverterTypeTtsVoice,
+);
+
+// FfiConverter for TtsLanguageVoice | undefined
+const FfiConverterOptionalTypeTtsLanguageVoice = new FfiConverterOptional(
+  FfiConverterTypeTtsLanguageVoice,
 );
 
 /**
@@ -9430,6 +10545,86 @@ function uniffiEnsureInitialized() {
       "uniffi_my_reader_core_ffi_checksum_func_sync_set_library_online",
     );
   }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_get_config() !==
+    44213
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_tts_get_config",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_list_voices() !==
+    35255
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_tts_list_voices",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_probe_provider() !==
+    15972
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_tts_probe_provider",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_provider_capabilities() !==
+    32860
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_tts_provider_capabilities",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_remove_profile() !==
+    20053
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_tts_remove_profile",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_set_default_engine() !==
+    34752
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_tts_set_default_engine",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_set_playback() !==
+    40215
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_tts_set_playback",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_set_voice() !==
+    14640
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_tts_set_voice",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_synthesize() !==
+    10692
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_tts_synthesize",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_upsert_profile() !==
+    33216
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_tts_upsert_profile",
+    );
+  }
 }
 
 export default Object.freeze({
@@ -9488,6 +10683,16 @@ export default Object.freeze({
     FfiConverterTypeSyncFailureKind,
     FfiConverterTypeSyncTaskProgress,
     FfiConverterTypeSyncTiming,
+    FfiConverterTypeTtsAudioArtifact,
+    FfiConverterTypeTtsConfig,
+    FfiConverterTypeTtsEngine,
+    FfiConverterTypeTtsLanguageVoice,
+    FfiConverterTypeTtsPlayback,
+    FfiConverterTypeTtsProviderCapabilities,
+    FfiConverterTypeTtsProviderProfile,
+    FfiConverterTypeTtsSynthesisRequest,
+    FfiConverterTypeTtsTiming,
+    FfiConverterTypeTtsVoice,
     FfiConverterTypeUpdateBookMetadataRequest,
   },
 });

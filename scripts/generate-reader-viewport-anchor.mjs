@@ -135,6 +135,19 @@ let captureReaderBookmarkAnchorScript = """
 JSON.stringify((\\(readerViewportAnchorRuntimeScript))(window).captureReaderViewportAnchor())
 """
 
+let captureReaderViewportStartAnchorScript = """
+JSON.stringify((\\(readerViewportAnchorRuntimeScript))(window).captureReaderViewportStartAnchor())
+"""
+
+func captureReaderPointAnchorScript(
+  xRatio: Double,
+  yRatio: Double
+) -> String {
+  return """
+JSON.stringify((\\(readerViewportAnchorRuntimeScript))(window).captureReaderPointAnchor(\\(xRatio), \\(yRatio)))
+"""
+}
+
 func readerViewportAnchorOffsetRestoreScript(
   domRangeJSON: String,
   yRatio: Double
@@ -167,6 +180,17 @@ ${indent(escapeKotlinTemplate(runtimeSource), 4)}
 
 internal val captureReaderBookmarkAnchorScript = """
 JSON.stringify(($readerViewportAnchorRuntimeScript)(window).captureReaderViewportAnchor())
+""".trimIndent()
+
+internal val captureReaderViewportStartAnchorScript = """
+JSON.stringify(($readerViewportAnchorRuntimeScript)(window).captureReaderViewportStartAnchor())
+""".trimIndent()
+
+internal fun captureReaderPointAnchorScript(
+  xRatio: Double,
+  yRatio: Double,
+): String = """
+JSON.stringify(($readerViewportAnchorRuntimeScript)(window).captureReaderPointAnchor($xRatio, $yRatio))
 """.trimIndent()
 
 internal fun readerViewportAnchorOffsetRestoreScript(

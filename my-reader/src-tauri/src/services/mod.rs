@@ -14,3 +14,4 @@ pub mod reading_statistics_service;
 pub mod sidecar_sync_scheduler;
 pub mod sync_orchestration_service;
 pub mod sync_service;
+pub mod tts_service;

@@ -35,6 +35,7 @@
     "@readium/navigator": "^2.5.1",
     "@readium/navigator-html-injectables": "^2.4.1",
     "@readium/shared": "^2.2.0",
+    "@readium/speech": "^0.7.0",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-form": "^1.29.0",
     "@tanstack/react-query": "^5.100.10",

@@ -10,12 +10,14 @@ use crate::error::AppError;
 
 const WEBDAV_KEYRING_SERVICE: &str = "com.myreader.webdav";
 const ONEDRIVE_KEYRING_SERVICE: &str = "com.myreader.onedrive";
+const TTS_KEYRING_SERVICE: &str = "com.myreader.tts";
 
 /// Credential type used to unify keyring operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Service {
     Webdav,
     Onedrive,
+    Tts,
 }
 
 impl Service {
@@ -23,6 +25,7 @@ impl Service {
         match self {
             Service::Webdav => WEBDAV_KEYRING_SERVICE,
             Service::Onedrive => ONEDRIVE_KEYRING_SERVICE,
+            Service::Tts => TTS_KEYRING_SERVICE,
         }
     }
 
@@ -30,6 +33,7 @@ impl Service {
         match self {
             Service::Webdav => "WebDAV 密码",
             Service::Onedrive => "OneDrive refresh token",
+            Service::Tts => "TTS 凭据",
         }
     }
 }
@@ -156,6 +160,22 @@ pub fn read_onedrive_refresh_token(data_source_id: &str) -> Result<Option<String
 pub fn delete_onedrive_refresh_token(data_source_id: &str) -> Result<(), AppError> {
     let account = onedrive_refresh_token_account(data_source_id);
     store().delete(Service::Onedrive, &account)
+}
+
+pub fn tts_credential_account(profile_id: &str) -> String {
+    format!("tts-provider-{profile_id}")
+}
+
+pub fn save_tts_credential(account: &str, credential: &str) -> Result<(), AppError> {
+    store().save(Service::Tts, account, credential)
+}
+
+pub fn read_tts_credential(account: &str) -> Result<Option<String>, AppError> {
+    store().read(Service::Tts, account)
+}
+
+pub fn delete_tts_credential(account: &str) -> Result<(), AppError> {
+    store().delete(Service::Tts, account)
 }
 
 #[cfg(any(test, debug_assertions))]

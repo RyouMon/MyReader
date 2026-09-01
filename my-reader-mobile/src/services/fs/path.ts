@@ -166,7 +166,7 @@ function isFileUri(value: string): boolean {
  * Normalize a native absolute path or bare path into a `file:` URI for use
  * with Expo `File` / `Directory` / legacy file-system.
  */
-function toFileUri(path: string): string {
+export function toFileUri(path: string): string {
   const nativePath = decodePathToPlainText(path.replace(/\\/g, "/").trim())
   const encodedPath = nativePath
     .split("/")

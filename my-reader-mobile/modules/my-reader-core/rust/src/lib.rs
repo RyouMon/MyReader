@@ -9,6 +9,7 @@ mod download;
 mod library;
 mod reading;
 mod sync;
+mod tts;
 mod types;
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]

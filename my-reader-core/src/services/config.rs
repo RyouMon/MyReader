@@ -31,6 +31,14 @@ impl ConfigService {
         Ok(config)
     }
 
+    pub(crate) fn mutate_config(
+        path: &Path,
+        mutation: impl FnOnce(&mut AppConfig) -> Result<(), CoreError>,
+    ) -> Result<AppConfig, CoreError> {
+        let _guard = lock_config();
+        mutate(path, mutation)
+    }
+
     pub fn load_or_initialize(
         path: &Path,
         initial_config: Option<AppConfig>,
@@ -421,6 +429,7 @@ fn validate_config(state: &AppConfig) -> Result<(), CoreError> {
             state.schema_version
         )));
     }
+    super::tts::validate_tts_config(&state.tts)?;
     for source in &state.data_sources {
         validate_data_source(source)?;
     }
@@ -864,6 +873,7 @@ mod tests {
         let mut config = AppConfig::empty();
         config.libraries.push(local_library("one", "/library"));
         config.active_library_id = Some("one".into());
+        config.tts.playback.speed = 1.25;
         config.desktop = Some(serde_json::json!({
             "readerUi": {
                 "libraryViewMode": "list"
@@ -888,9 +898,25 @@ mod tests {
             "list"
         );
         assert_eq!(config.preferences.theme, "dark");
+        assert_eq!(config.tts.playback.speed, 1.25);
         assert_eq!(
             config.mobile.as_ref().unwrap()["state"]["libraryViewMode"],
             "grid"
         );
+    }
+
+    #[test]
+    fn should_preserve_tts_config_when_desktop_state_changes() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("config.json");
+        let mut config = AppConfig::empty();
+        config.tts.playback.speed = 1.5;
+        ConfigService::save(&path, config).unwrap();
+
+        let mut desktop_state = AppConfig::empty();
+        desktop_state.desktop = Some(serde_json::json!({"readerUi": {"viewMode": "scroll"}}));
+        let config = ConfigService::write_desktop_state(&path, desktop_state).unwrap();
+
+        assert_eq!(config.tts.playback.speed, 1.5);
     }
 }
