@@ -78,10 +78,12 @@ describe("readerFonts", () => {
     ).toBe("noto-sans-sc")
   })
 
-  it("should create appended Readium stylesheet injectables for content resources", async () => {
+  it("should create appended Readium injectables for content resources", async () => {
     const injectables = createReaderFontInjectables()
 
-    expect(injectables.allowedDomains).toEqual([])
+    expect(injectables.allowedDomains).toEqual([
+      new URL("/", window.location.href).toString(),
+    ])
     expect(injectables.rules[0]?.resources).toHaveLength(1)
     expect(injectables.rules[0]?.resources[0]).toEqual(expect.any(RegExp))
     expect((injectables.rules[0]?.resources[0] as RegExp).test("chapter")).toBe(
@@ -101,6 +103,15 @@ describe("readerFonts", () => {
       rel: "stylesheet",
       target: "head",
       blob: expect.any(Blob),
+    })
+    expect(injectables.rules[0]?.append?.[2]).toMatchObject({
+      id: "myreader-reader-inline-theme-overrides",
+      as: "script",
+      target: "body",
+      url: new URL(
+        "reader-theme-overrides.js",
+        new URL("/", window.location.href),
+      ).toString(),
     })
 
     const themeInjectable = injectables.rules[0]?.append?.[0]
