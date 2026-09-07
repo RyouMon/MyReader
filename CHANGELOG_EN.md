@@ -6,6 +6,18 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.12.3] - 2026-09-07
+
+### Fixed
+
+- Fixed inline forced colors and backgrounds in some EPUBs overriding the selected reading theme and leaving
+  content black on white under dark themes ([#51](https://github.com/RyouMon/MyReader/issues/51),
+  [#71](https://github.com/RyouMon/MyReader/pull/71))
+
+### Build and Distribution
+
+- Fixed desktop Release uploads when downloaded Windows or Linux artifacts retain format subdirectories
+
 ## [0.12.2] - 2026-08-19
 
 ### Fixed

@@ -5,6 +5,18 @@
 MyReader 的重要变更均记录于此。
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [0.12.3] - 2026-09-07
+
+### Fixed
+
+- 修复部分 EPUB 的内联强制颜色与背景样式覆盖阅读主题，导致深色主题下正文仍显示白底黑字
+  （[#51](https://github.com/RyouMon/MyReader/issues/51)、
+  [#71](https://github.com/RyouMon/MyReader/pull/71)）
+
+### Build and Distribution
+
+- 修复下载的 Windows 或 Linux 产物保留格式子目录时，桌面端 Release 归档无法上传安装包
+
 ## [0.12.2] - 2026-08-19
 
 ### Fixed
