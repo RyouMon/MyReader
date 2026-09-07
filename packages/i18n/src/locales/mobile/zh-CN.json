@@ -374,6 +374,7 @@
       "previous": "上一句",
       "next": "下一句",
       "stop": "停止朗读",
+      "playFromCurrentPosition": "从当前位置播放",
       "states": {
         "stopped": "已停止",
         "loading": "正在准备朗读…",

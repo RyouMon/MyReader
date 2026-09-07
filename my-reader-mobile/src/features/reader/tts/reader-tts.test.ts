@@ -181,4 +181,10 @@ describe("reader TTS selection", () => {
       ),
     ).toEqual({ kind: "providerUnavailable" })
   })
+
+  it("should present a missing native reader as a normal startup failure", () => {
+    expect(classifyReaderTtsError("TTS_READER_VIEW_UNAVAILABLE")).toEqual({
+      kind: "unknown",
+    })
+  })
 })

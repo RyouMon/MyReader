@@ -183,6 +183,7 @@ data class TtsTimingRecord(
 
 @OptimizedRecord
 data class TtsSynthesisCompletionRecord(
+  @Field val sessionId: String = "",
   @Field val requestId: String = "",
   @Field val path: String? = null,
   @Field val mimeType: String? = null,

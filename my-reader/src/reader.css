@@ -476,6 +476,56 @@
     backdrop-filter: blur(16px) saturate(1.1);
   }
 
+  .reader-tts-mini-player[data-viewport-detached="true"]
+    .reader-tts-mini-status {
+    bottom: calc(100% + 3.25rem);
+  }
+
+  .reader-tts-play-from-current {
+    position: absolute;
+    inset-inline-end: 0;
+    bottom: calc(100% + 0.5rem);
+    width: max-content;
+    min-height: 2.25rem;
+    padding: 0.5rem 0.75rem;
+    border: 0;
+    border-radius: 0.75rem;
+    background: color-mix(
+      in srgb,
+      var(--reader-chrome-action-surface) 88%,
+      transparent
+    );
+    color: var(--reader-chrome-action-text);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    box-shadow: 0 6px 18px
+      color-mix(in srgb, var(--reader-chrome-fg) 9%, transparent);
+    -webkit-backdrop-filter: blur(16px) saturate(1.1);
+    backdrop-filter: blur(16px) saturate(1.1);
+    transition:
+      color 120ms ease,
+      background-color 120ms ease,
+      transform 120ms ease;
+  }
+
+  .reader-tts-play-from-current:hover {
+    background: color-mix(
+      in srgb,
+      var(--reader-chrome-action-text) 9%,
+      var(--reader-chrome-action-surface)
+    );
+  }
+
+  .reader-tts-play-from-current:active {
+    transform: scale(0.97);
+  }
+
+  .reader-tts-play-from-current:focus-visible {
+    outline: 2px solid var(--reader-chrome-active);
+    outline-offset: 2px;
+  }
+
   .reader-tts-mini-control {
     position: relative;
     display: grid;
@@ -1090,7 +1140,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .reader-tts-mini-player,
-  .reader-tts-mini-control {
+  .reader-tts-mini-control,
+  .reader-tts-play-from-current {
     transition-duration: 0.01ms;
   }
 

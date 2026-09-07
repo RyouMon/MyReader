@@ -2,8 +2,9 @@ import { Locator, LocatorLocations, LocatorText } from "@readium/shared"
 import { describe, expect, it, vi } from "vitest"
 import {
   connectEpubTtsPointReadBridge,
-  epubTtsUtteranceIndexAtLocator,
+  epubTtsCompleteUtteranceIndexAtViewportStart,
   epubTtsUtteranceAtPoint,
+  epubTtsUtteranceIndexAtLocator,
   extractEpubTtsUtterances,
   setEpubTtsPointReadEnabled,
 } from "@/lib/readium/epubTts"
@@ -98,6 +99,47 @@ describe("EPUB TTS extraction", () => {
     })
 
     expect(epubTtsUtteranceIndexAtLocator(utterances, viewportStart)).toBe(1)
+  })
+
+  it("skips a sentence clipped by the viewport but keeps a complete first sentence", () => {
+    const utterances = extractEpubTtsUtterances(
+      [
+        {
+          href: "chapter.xhtml",
+          type: "application/xhtml+xml",
+          html: "<html><body><p>A sentence begins on the previous page and continues here. Next complete sentence.</p></body></html>",
+        },
+      ],
+      [],
+      { fallbackLanguage: "en" },
+    )
+    const clippedStart = new Locator({
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: new LocatorLocations({ progression: 0.3 }),
+      text: new LocatorText({
+        before: "the previous page and ",
+        highlight: "c",
+        after: "ontinues here. Next complete",
+      }),
+    })
+    const completeStart = new Locator({
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: new LocatorLocations({ progression: 0.5 }),
+      text: new LocatorText({
+        before: "continues here. ",
+        highlight: "N",
+        after: "ext complete sentence.",
+      }),
+    })
+
+    expect(
+      epubTtsCompleteUtteranceIndexAtViewportStart(utterances, clippedStart),
+    ).toBe(1)
+    expect(
+      epubTtsCompleteUtteranceIndexAtViewportStart(utterances, completeStart),
+    ).toBe(1)
   })
 
   it("does not fall back to the first sentence for an unmatched resource", () => {

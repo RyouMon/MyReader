@@ -23,12 +23,13 @@ isProject: true
 - 播放、暂停、停止、上一句、下一句，以及从当前位置或 Selection Locator 起播。
 - System 与 OpenAI-compatible 两种第一阶段引擎；网络引擎使用同一 Core profile、voice
   discovery、合成、缓存、错误和凭据引用合同。
-- 网络引擎为当前句显示生成/缓冲状态，并预取后续两句；停止、选文跳转、翻页及切换 provider/voice
+- 网络引擎为当前句显示生成/缓冲状态，并预取后续两句；停止、选文跳转及切换 provider/voice
   会取消旧请求并切换 generation，晚到结果不得改变当前播放位置。
 - 移动端预取窗口由 Readium 当前 utterance Locator 锚定的一次性内容投影生成；不维护按文本或语言
   自行推进的第二个 utterance 游标。
-- 用户成功翻页后，从新页视口内第一句重新起播；边界翻页未发生位置变化时保留原会话，不把上一页
-  末句、Navigator 尾部 Locator 或无效翻页当作新起点。
+- 朗读自然推进到下一页时，Readium 按当前 utterance Locator 自动翻页；用户主动翻页只让视口暂时
+  脱离朗读位置，原朗读会话继续运行。用户翻回朗读页或朗读推进到当前页面后，视口自动恢复跟随；
+  用户点击“从当前位置播放”时，才从新页第一句完整可见句子重新起播。
 - 桌面 keyring 与移动 SecureStore 保存密钥，Core 配置和日志不持有 secret。
 
 当前尚未完成：
@@ -262,7 +263,7 @@ interface TtsSession {
 | 点击朗读队列句子 | seek 该句完整 Locator；默认立即播放 |
 | 选择“从这里朗读” | 使用 Selection 返回的完整 Locator 起播 |
 | 目录/搜索/书签/批注跳转 | 暂停并 rebase 到目标 Locator；不继续播放旧位置 |
-| 手动翻页 | 翻页成功后捕获新页视口首个可见文字 Locator，强制从其所在第一句起播；翻页失败则保持原会话 |
+| 手动翻页 | 翻页成功后只让视口脱离，原会话继续；当前 utterance Locator 再次可见时自动恢复跟随，翻页失败保持附着 |
 | 链接、脚注、批注点击 | 原有交互优先，不改变朗读位置 |
 | 音频中断 | 来电/其他音频焦点丢失时暂停；按平台规则决定是否允许恢复 |
 
@@ -336,45 +337,63 @@ system TTS or audio file    cloud / LAN / local TTS service
 | 当前 TTS 会话状态 | 产生平台事件 | 否 | 是，内存 |
 | 阅读进度与统计业务 | 产生 Locator/播放事件 | 是 | 编排 |
 
+桌面端和移动端产品层共同使用 `@my-reader/tools/reader-tts-session` 的纯会话状态机。平台 hook 只把
+Readium/原生事件转换为 `begin`、`playback`、`stop`，再执行状态机返回的暂停或错误反馈效果。该状态机
+只持有 `sessionId`、`generation`、播放状态和导航事务去重信息，不持有 Locator、utterance 或音频队列；
+Swift/Kotlin/Web Readium adapter 仍负责产生导航来源和执行真实媒体命令。
+
 `Publication.getContent()` 继续可用于诊断、预览或桌面抽取适配，但不能演变成绕过 Readium
 `PublicationSpeechSynthesizer` / `TtsNavigator` 的第二套移动会话编排。
 
 ### 会话导航与生成拓扑
 
 视觉 Navigator 的位置变化不能直接驱动 speech seek，否则 TTS 自己的 follow-text 回调会再次
-触发 seek，形成复读或回跳。只有明确的用户意图可以 rebase；翻页还必须等视觉导航确认成功并捕获
-新视口首个可见文字 Locator，再增加 generation、取消当前与预取请求并建立新播放队列。边界翻页
-没有产生位置变化时不改变朗读会话。
+触发 seek，形成复读或回跳。朗读自然推进时，当前 utterance Locator 在视口仍附着时驱动 Readium
+自动跟页，跨页也不建立新朗读会话。用户主动翻页只在视觉导航确认成功后把视口标记为脱离，并显示
+“从当前位置播放”；原 session、generation、当前音频与预取保持不变。用户翻回朗读所在页面，或朗读
+自然推进到用户停留的页面，使当前 utterance 的完整 Locator 再次可见时，视口自动恢复附着并隐藏该按钮，
+不建立新会话。只有用户点击该按钮、从选文
+起播或执行其他明确的朗读跳转时，才捕获目标 Locator、增加 generation 并建立新播放队列。边界翻页
+没有产生位置变化时不脱离视口。
 
 ```mermaid
 flowchart LR
-  U["用户意图：从这里朗读、翻页、目录、书签"] --> C["产品协调器：begin navigation"]
-  C --> V["Visual Navigator 跳转"]
-  V -->|"成功"| L["稳定后捕获视口首个可见文字 Locator"]
-  V -->|"边界/失败"| K["保持原会话"]
-  C -->|"Selection 已有完整 Locator"| G["generation + 1；取消 current/prefetch"]
-  L --> G
-  G --> S["TtsSession rebase/seek；翻页强制重启该句"]
-  S --> R["Readium utterance + sentence Locator"]
-  R --> P["系统 TTS 或 Core 合成"]
+  R["Readium 当前 utterance + Locator"] --> P["系统 TTS 或 Core 合成"]
   R --> W["以当前 Locator 投影后续两句；不推进会话"]
   W --> Q["有界缓存队列"]
   Q -->|"仅远端 provider"| P
   P --> B["preparing / buffering / playing"]
   B --> H["Decoration 高亮 + follow-text"]
-  H -->|"source = tts；只更新视觉位置"| V
+  H -->|"视口附着；source = tts"| V["Visual Navigator 自动跟页"]
+  V -->|"只更新视觉位置"| R
+  U["用户主动翻页"] --> N["Visual Navigator 跳转"]
+  N -->|"成功"| D["viewportDetached = true；显示从当前位置播放"]
+  N -->|"边界/失败"| K["保持视口附着状态"]
+  D -->|"不 seek、不换 generation"| B
+  D -->|"翻回朗读页或朗读抵达当前页；完整 Locator 可见"| M["viewportDetached = false；隐藏从当前位置播放"]
+  M --> H
+  A["从当前位置播放 / 从选文朗读 / 明确朗读跳转"] --> L["捕获目标完整 Locator"]
+  L --> G["generation + 1；取消 current/prefetch"]
+  G --> S["TtsSession rebase/seek"]
+  S --> R
   G -.->|"AbortSignal / cancel requestId"| P
   P -.->|"仅 generation 仍匹配时接收"| B
-  X["旧请求、旧 Locator、旧播放回调"] -->|"generation 不匹配：丢弃"| D["无状态变化"]
+  X["旧请求、旧 Locator、旧播放回调"] -->|"generation 不匹配：丢弃"| Z["无状态变化"]
 ```
 
 必须保持以下不变量：
 
+- 每次起播、seek、显式 rebase 或引擎替换建立新的 `sessionId`；旧 session 的播放、合成和导航回调
+  必须被共享状态机拒绝，同一个 `navigationId` 只能建立一次替换会话。
 - `source = tts` 的视觉跟随只更新页面和阅读进度，绝不反向调用 speech seek。
-- “从这里朗读”以 Selection Locator 立即作废旧 generation；拖动、边缘翻页和命令式导航仅在位置确实
-  改变后作废旧 generation，边界翻页不得中断当前会话。
-- 成功翻页必须使用新视口首个可见文字 Locator，并强制从其所在句起播；不得沿用上一页末句或
-  Navigator 报告的尾部 Locator。
+- 朗读自然推进时，只要视口没有脱离，当前 utterance Locator 就必须继续驱动页内滚动和跨页导航。
+- 用户主动翻页仅在位置确实改变后标记视口脱离，不得 seek、切换 generation、取消当前音频或预取；
+  边界翻页不得改变视口附着状态。
+- 脱离后必须使用 Readium 当前 utterance 的完整 Locator 判断可见性；用户翻回朗读页或朗读抵达当前页时
+  自动恢复附着；异步检查还必须匹配最新一次翻页的 `navigationId`，不得让旧结果覆盖新视口，不得按 href
+  或文本猜测页面，也不得重建 session、generation 或音频队列。
+- “从当前位置播放”以新视口第一句完整可见句子的 Locator 作废旧 generation；若页首只显示上一页
+  被截断句子的后半段，则跳过该残句。“从这里朗读”使用 Selection Locator 立即作废旧 generation。
 - Locator 未匹配到当前 Publication resource 时返回“不可定位”，绝不回退到全书 utterance 0。
 - 预取候选必须匹配 Readium 当前 utterance 的完整 Locator；匹配失败时放弃该窗口，不得按
   `text + language` 猜测位置或让缓存迭代器自行消费句子。
@@ -764,7 +783,8 @@ TTS 不创建独立的“音频进度”表：
 - CJK、拉丁文、多语言 `lang` 切换、跨 spine 长句、RTL 与 FXL textual content。
 - 搜索/目录/书签/链接/脚注/批注与长按选文菜单的手势优先级。
 - 自动跟随、前翻/后翻、边界翻页、切书、Reader 销毁、app background/foreground 和音频中断。
-- 前翻/后翻成功后从新页视口第一句起播；边界翻页保持当前句和播放/暂停意图。
+- 朗读自然跨页时自动跟随到新页；用户前翻/后翻成功后保持当前句和播放/暂停意图，并显示
+  “从当前位置播放”；翻回朗读页或朗读抵达用户停留页时自动隐藏；边界翻页保持视口附着状态。
 - TTS follow-text 的延迟 Locator 不能反向 seek；无法匹配 resource 的 Locator 不能回退到第一句。
 - 连续跨多段/跨页播放后仍保持单调向前；选文跳转、翻页、provider/voice 切换后旧 generation 的音频、
   Locator 和播放状态回调全部被丢弃。

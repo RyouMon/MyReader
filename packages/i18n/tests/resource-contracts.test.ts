@@ -46,6 +46,7 @@ const INTENTIONAL_PLATFORM_VARIANTS = [
   "reader.tts.openControls",
   "reader.tts.pause",
   "reader.tts.play",
+  "reader.tts.playFromCurrentPosition",
   "reader.tts.settings",
   "reader.tts.stop",
 ] as const

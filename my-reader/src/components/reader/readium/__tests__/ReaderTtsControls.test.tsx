@@ -12,6 +12,7 @@ function session(overrides: Partial<EpubTtsSession> = {}): EpubTtsSession {
     available: true,
     loading: false,
     state: "ready",
+    viewportDetached: false,
     remote: false,
     engineName: "system",
     utteranceCount: 3,
@@ -28,6 +29,7 @@ function session(overrides: Partial<EpubTtsSession> = {}): EpubTtsSession {
     readFrom: vi.fn(),
     readAtPoint: vi.fn(),
     rebase: vi.fn(),
+    markViewportMoved: vi.fn(),
     goToCurrent: vi.fn(),
     setVoice: vi.fn(),
     setSpeed: vi.fn(),
@@ -44,6 +46,7 @@ describe("ReaderTtsControls", () => {
         session={ttsSession}
         visible
         settingsOpen={false}
+        onPlayFromCurrentPosition={vi.fn()}
         onToggleSettings={vi.fn()}
         onExpandedChange={onExpandedChange}
       />,
@@ -67,6 +70,7 @@ describe("ReaderTtsControls", () => {
         session={ttsSession}
         visible
         settingsOpen={false}
+        onPlayFromCurrentPosition={vi.fn()}
         onToggleSettings={vi.fn()}
         onExpandedChange={vi.fn()}
       />,
@@ -102,6 +106,7 @@ describe("ReaderTtsControls", () => {
         session={ttsSession}
         visible={false}
         settingsOpen={false}
+        onPlayFromCurrentPosition={vi.fn()}
         onToggleSettings={vi.fn()}
         onExpandedChange={vi.fn()}
       />,
@@ -118,6 +123,7 @@ describe("ReaderTtsControls", () => {
         session={session({ state: "playing", remote: true })}
         visible
         settingsOpen={false}
+        onPlayFromCurrentPosition={vi.fn()}
         onToggleSettings={vi.fn()}
         onExpandedChange={vi.fn()}
       />,
@@ -128,6 +134,7 @@ describe("ReaderTtsControls", () => {
         session={session({ state: "loading", remote: true })}
         visible
         settingsOpen={false}
+        onPlayFromCurrentPosition={vi.fn()}
         onToggleSettings={vi.fn()}
         onExpandedChange={vi.fn()}
       />,
@@ -136,5 +143,27 @@ describe("ReaderTtsControls", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "reader.tts.generating",
     )
+  })
+
+  it("offers to play from the visible page after the viewport moves", () => {
+    const onPlayFromCurrentPosition = vi.fn()
+    render(
+      <ReaderTtsControls
+        session={session({ state: "playing", viewportDetached: true })}
+        visible
+        settingsOpen={false}
+        onPlayFromCurrentPosition={onPlayFromCurrentPosition}
+        onToggleSettings={vi.fn()}
+        onExpandedChange={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "reader.tts.playFromCurrentPosition",
+      }),
+    )
+
+    expect(onPlayFromCurrentPosition).toHaveBeenCalledOnce()
   })
 })

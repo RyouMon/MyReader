@@ -162,6 +162,7 @@ struct TtsTimingRecord: Record {
 }
 
 struct TtsSynthesisCompletionRecord: Record {
+  @Field var sessionId: String = ""
   @Field var requestId: String = ""
   @Field var path: String? = nil
   @Field var mimeType: String? = nil

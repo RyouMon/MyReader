@@ -89,6 +89,7 @@ class EpubReaderFragment : VisualReaderFragment() {
     private var fontFamilyDeclarations: List<FontFamilyDeclarationRecord> = emptyList()
     private var ttsController: EpubTtsController? = null
     private var ttsGeneration = 0L
+    private var ttsSessionId: String? = null
     var onTtsStateChange: ((Map<String, Any?>) -> Unit)? = null
     var onTtsSynthesisRequest: ((Map<String, Any?>) -> Unit)? = null
     var onTtsSynthesisCancel: ((Map<String, Any?>) -> Unit)? = null
@@ -280,18 +281,26 @@ class EpubReaderFragment : VisualReaderFragment() {
     }
 
     fun startTts(
+      sessionId: String,
       config: TtsEngineConfigRecord,
       from: Locator?,
       startAtViewportStart: Boolean,
+      skipPartialViewportSentence: Boolean,
+      shouldFollowText: () -> Boolean,
       onStartReady: () -> Unit,
     ) {
       if (!this::navigatorFragment.isInitialized) {
         onTtsStateChange?.invoke(
-          mapOf("state" to "error", "error" to "The EPUB navigator is not ready.")
+          mapOf(
+            "sessionId" to sessionId,
+            "state" to "error",
+            "error" to "The EPUB navigator is not ready.",
+          )
         )
         return
       }
       val generation = ++ttsGeneration
+      ttsSessionId = sessionId
       ttsController?.close(emitState = false)
       val controller = EpubTtsController(
         application = requireActivity().application,
@@ -300,14 +309,32 @@ class EpubReaderFragment : VisualReaderFragment() {
         scope = viewLifecycleOwner.lifecycleScope,
         config = config,
         onStateChange = {
-          if (generation == ttsGeneration) onTtsStateChange?.invoke(it)
+          if (generation == ttsGeneration) {
+            onTtsStateChange?.invoke(it + ("sessionId" to sessionId))
+          }
         },
         onSynthesisRequest = {
-          if (generation == ttsGeneration) onTtsSynthesisRequest?.invoke(it)
+          if (generation == ttsGeneration) {
+            onTtsSynthesisRequest?.invoke(it + ("sessionId" to sessionId))
+          }
         },
         onSynthesisCancel = {
-          if (generation == ttsGeneration) onTtsSynthesisCancel?.invoke(it)
+          if (generation == ttsGeneration) {
+            onTtsSynthesisCancel?.invoke(it + ("sessionId" to sessionId))
+          }
         },
+        navigateForFollow = { locator ->
+          val currentHref = navigatorFragment.currentLocator.value.href.toString()
+          if (ttsFollowStaysInCurrentResource(currentHref, locator.href.toString())) {
+            val json = JSONObject(readiumLocatorToMap(locator)).toString()
+            navigatorFragment.evaluateJavascript(
+              "readium.scrollToLocator($json, false);"
+            )
+          } else {
+            navigatorFragment.go(locator, animated = false)
+          }
+        },
+        shouldFollowText = shouldFollowText,
         onFollowTextNavigation = { id, locator, active ->
           if (generation == ttsGeneration) {
             onTtsFollowTextNavigation?.invoke(id, locator, active)
@@ -324,7 +351,10 @@ class EpubReaderFragment : VisualReaderFragment() {
         }
         if (generation == ttsGeneration) {
           onStartReady()
-          controller.start(startLocator)
+          controller.start(
+            startLocator,
+            skipPartialSentence = skipPartialViewportSentence,
+          )
         }
       }
     }
@@ -332,16 +362,24 @@ class EpubReaderFragment : VisualReaderFragment() {
     fun playTts() = ttsController?.play()
     fun pauseTts() = ttsController?.pause()
     fun stopTts() {
+      val sessionId = ttsSessionId
       ttsGeneration += 1
+      ttsSessionId = null
       ttsController?.close(emitState = false)
       ttsController = null
-      onTtsStateChange?.invoke(mapOf("state" to "stopped"))
+      if (sessionId != null) {
+        onTtsStateChange?.invoke(
+          mapOf("sessionId" to sessionId, "state" to "stopped")
+        )
+      }
     }
     fun prepareTtsForUserNavigation() = ttsController?.prepareForUserNavigation()
+    fun hasTtsSession(sessionId: String) = ttsSessionId == sessionId
     fun previousTts() = ttsController?.previous()
     fun nextTts() = ttsController?.next()
-    fun completeTtsSynthesis(completion: TtsSynthesisCompletionRecord) =
-      ttsController?.complete(completion)
+    fun completeTtsSynthesis(completion: TtsSynthesisCompletionRecord) {
+      if (completion.sessionId == ttsSessionId) ttsController?.complete(completion)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
       check(::navigatorFactory.isInitialized) { "EpubReaderFragment factory was not initialized" }
@@ -434,6 +472,7 @@ class EpubReaderFragment : VisualReaderFragment() {
 
     override fun onDestroyView() {
         ttsGeneration += 1
+        ttsSessionId = null
         ttsController?.close(emitState = false)
         ttsController = null
         dismissSelectionPopup()

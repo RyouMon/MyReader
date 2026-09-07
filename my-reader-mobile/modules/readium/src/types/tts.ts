@@ -22,6 +22,7 @@ export type TtsPlaybackStatus =
   | "error"
 
 export type TtsPlaybackState = {
+  sessionId: string
   state: TtsPlaybackStatus
   utterance?: string
   locator?: Locator
@@ -31,6 +32,7 @@ export type TtsPlaybackState = {
 }
 
 export type TtsSynthesisRequestEvent = {
+  sessionId: string
   requestId: string
   text: string
   language?: string
@@ -41,6 +43,7 @@ export type TtsSynthesisRequestEvent = {
 }
 
 export type TtsSynthesisCancelEvent = {
+  sessionId: string
   requestIds: string[]
 }
 
@@ -52,6 +55,7 @@ export type TtsTiming = {
 }
 
 export type TtsSynthesisCompletion = {
+  sessionId: string
   requestId: string
   path?: string
   mimeType?: string

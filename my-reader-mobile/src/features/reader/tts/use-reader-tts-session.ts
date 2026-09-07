@@ -4,7 +4,18 @@ import type {
   TtsSynthesisCancelEvent,
   TtsSynthesisRequestEvent,
 } from "@my-reader/readium"
-import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
+import {
+  createReaderTtsSessionMachine,
+  type ReaderTtsSessionTransition,
+} from "@my-reader/tools/reader-tts-session"
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { Platform } from "react-native"
 
 import type { ReadiumReflowReaderRef } from "@/src/features/reader/components/reader/reflow/ReadiumReflowReader"
@@ -43,9 +54,10 @@ type UseReaderTtsSessionOptions = {
   onError?: (error: string) => void
 }
 
-export const READER_TTS_NO_READABLE_CONTENT_ERROR =
-  "TTS_NO_READABLE_CONTENT_FROM_POSITION"
-export const READER_TTS_UNKNOWN_ERROR = "TTS_UNKNOWN_ERROR"
+export {
+  READER_TTS_NO_READABLE_CONTENT_ERROR,
+  READER_TTS_UNKNOWN_ERROR,
+} from "@my-reader/tools/reader-tts-session"
 export const READER_TTS_VOICES_EMPTY_ERROR = "TTS_VOICES_EMPTY"
 
 export function useReaderTtsSession({
@@ -62,15 +74,29 @@ export function useReaderTtsSession({
   }>({ publicationKey, state: null })
   const state =
     sessionState.publicationKey === publicationKey ? sessionState.state : null
+  const [viewportState, setViewportState] = useState({
+    publicationKey,
+    detached: false,
+  })
+  const viewportDetached =
+    viewportState.publicationKey === publicationKey
+      ? viewportState.detached
+      : false
   const [remote, setRemote] = useState(false)
-  const generationRef = useRef(0)
+  const viewportRevisionRef = useRef(0)
+  const viewportNavigationIdRef = useRef<string | null>(null)
+  const sessionMachine = useMemo(
+    () => createReaderTtsSessionMachine(publicationKey),
+    [publicationKey],
+  )
   const activeEngineConfigRef = useRef<ReturnType<
     typeof buildReaderTtsEngineConfig
   > | null>(null)
+  const activeLocatorRef = useRef<{
+    sessionId: string
+    locator: Locator
+  } | null>(null)
   const synthesisControllersRef = useRef(new Map<string, AbortController>())
-  const pauseAfterStartRef = useRef(false)
-  const terminalErrorRef = useRef(false)
-  const playbackStartedRef = useRef(false)
 
   const abortOutstandingSynthesis = useCallback(() => {
     synthesisControllersRef.current.forEach((controller) => {
@@ -79,65 +105,96 @@ export function useReaderTtsSession({
     synthesisControllersRef.current.clear()
   }, [])
 
+  const syncViewportState = useCallback(
+    (transition: ReaderTtsSessionTransition) => {
+      if (!transition.accepted) return
+      setViewportState({
+        publicationKey,
+        detached: transition.snapshot.viewportDetached,
+      })
+    },
+    [publicationKey],
+  )
+
   const stop = useCallback(() => {
-    generationRef.current += 1
+    const transition = sessionMachine.send({ type: "stop" })
+    syncViewportState(transition)
     activeEngineConfigRef.current = null
-    pauseAfterStartRef.current = false
-    terminalErrorRef.current = false
-    playbackStartedRef.current = false
+    activeLocatorRef.current = null
+    viewportRevisionRef.current += 1
+    viewportNavigationIdRef.current = null
     abortOutstandingSynthesis()
     readerRef.current?.stopTts()
     setRemote(false)
     setSessionState({ publicationKey, state: null })
-  }, [abortOutstandingSynthesis, publicationKey, readerRef])
+  }, [
+    abortOutstandingSynthesis,
+    publicationKey,
+    readerRef,
+    sessionMachine,
+    syncViewportState,
+  ])
 
   useEffect(() => {
     const activeReader = readerRef.current
     return () => {
-      generationRef.current += 1
+      sessionMachine.send({ type: "stop" })
       activeEngineConfigRef.current = null
-      pauseAfterStartRef.current = false
-      terminalErrorRef.current = false
-      playbackStartedRef.current = false
+      activeLocatorRef.current = null
+      viewportRevisionRef.current += 1
+      viewportNavigationIdRef.current = null
       abortOutstandingSynthesis()
       activeReader?.stopTts()
     }
-  }, [abortOutstandingSynthesis, publicationKey, readerRef])
+  }, [abortOutstandingSynthesis, readerRef, sessionMachine])
 
-  const reportError = useCallback(
-    (error?: string) => {
-      if (terminalErrorRef.current) return
-      const message = error?.trim() || READER_TTS_UNKNOWN_ERROR
-      terminalErrorRef.current = true
-      pauseAfterStartRef.current = false
+  const presentTransitionError = useCallback(
+    (sessionId: string, transition: ReaderTtsSessionTransition) => {
+      if (transition.effect?.type !== "report-error") return
+      syncViewportState(transition)
       abortOutstandingSynthesis()
+      viewportNavigationIdRef.current = null
       setSessionState({
         publicationKey,
-        state: { state: "error", error: message },
+        state: {
+          sessionId,
+          state: "error",
+          error: transition.effect.error,
+        },
       })
-      onError?.(message)
+      onError?.(transition.effect.error)
     },
-    [abortOutstandingSynthesis, onError, publicationKey],
+    [abortOutstandingSynthesis, onError, publicationKey, syncViewportState],
   )
 
   const start = useCallback(
     async (
       fromLocator?: Locator,
       options?: {
+        navigationId?: string
         pauseAfterStart?: boolean
         startAtViewportStart?: boolean
+        skipPartialViewportSentence?: boolean
       },
     ) => {
       if (!enabled) return
-      const generation = generationRef.current + 1
-      generationRef.current = generation
+      const transition = sessionMachine.send({
+        type: "begin",
+        navigationId: options?.navigationId,
+        pauseAfterStart: options?.pauseAfterStart,
+      })
+      if (!transition.accepted || !transition.snapshot.sessionId) return
+      syncViewportState(transition)
+      viewportNavigationIdRef.current = null
+      const { generation, sessionId } = transition.snapshot
       activeEngineConfigRef.current = null
-      pauseAfterStartRef.current = options?.pauseAfterStart === true
-      terminalErrorRef.current = false
-      playbackStartedRef.current = false
+      activeLocatorRef.current = null
       abortOutstandingSynthesis()
       setRemote(false)
-      setSessionState({ publicationKey, state: { state: "loading" } })
+      setSessionState({
+        publicationKey,
+        state: { sessionId, state: "loading" },
+      })
 
       try {
         let config = await getTtsConfig()
@@ -156,7 +213,12 @@ export function useReaderTtsSession({
           selection = resolveReaderTtsSelection(config, language)
         }
 
-        if (generationRef.current !== generation) return
+        const current = sessionMachine.snapshot
+        if (
+          current.generation !== generation ||
+          current.sessionId !== sessionId
+        )
+          return
         setRemote(selection.kind === "provider")
         const engineConfig = buildReaderTtsEngineConfig(
           config,
@@ -165,16 +227,38 @@ export function useReaderTtsSession({
           highlightColor,
         )
         activeEngineConfigRef.current = engineConfig
-        if (options?.startAtViewportStart) {
-          readerRef.current?.startTts(engineConfig, fromLocator, {
-            startAtViewportStart: true,
-          })
-        } else {
-          readerRef.current?.startTts(engineConfig, fromLocator)
-        }
+        const viewportDetached = current.viewportDetached
+        const viewportNavigationId = viewportNavigationIdRef.current
+        const reader = readerRef.current
+        if (!reader) throw new Error("TTS_READER_VIEW_UNAVAILABLE")
+        await reader.startTts(engineConfig, fromLocator, {
+          sessionId,
+          startAtViewportStart:
+            options?.startAtViewportStart === true && !viewportDetached,
+          ...(viewportDetached
+            ? {
+                viewportDetached: true,
+                ...(viewportNavigationId ? { viewportNavigationId } : {}),
+              }
+            : {}),
+          ...(options?.skipPartialViewportSentence
+            ? { skipPartialViewportSentence: true }
+            : {}),
+        })
       } catch (error) {
-        if (generationRef.current !== generation) return
-        reportError(describeError(error))
+        const current = sessionMachine.snapshot
+        if (
+          current.generation !== generation ||
+          current.sessionId !== sessionId
+        )
+          return
+        const failed = sessionMachine.send({
+          type: "playback",
+          sessionId,
+          status: "error",
+          error: describeError(error),
+        })
+        presentTransitionError(sessionId, failed)
       }
     },
     [
@@ -184,16 +268,20 @@ export function useReaderTtsSession({
       language,
       publicationKey,
       readerRef,
-      reportError,
+      presentTransitionError,
+      sessionMachine,
+      syncViewportState,
     ],
   )
 
   const seek = useCallback(
-    (
+    async (
       fromLocator: Locator,
       options?: {
+        navigationId?: string
         pauseAfterStart?: boolean
         startAtViewportStart?: boolean
+        skipPartialViewportSentence?: boolean
       },
     ) => {
       const engineConfig = activeEngineConfigRef.current
@@ -202,57 +290,188 @@ export function useReaderTtsSession({
         return
       }
 
-      generationRef.current += 1
-      pauseAfterStartRef.current = options?.pauseAfterStart === true
-      terminalErrorRef.current = false
-      playbackStartedRef.current = false
+      const transition = sessionMachine.send({
+        type: "begin",
+        navigationId: options?.navigationId,
+        pauseAfterStart: options?.pauseAfterStart,
+      })
+      if (!transition.accepted || !transition.snapshot.sessionId) return
+      syncViewportState(transition)
+      viewportNavigationIdRef.current = null
+      const { sessionId } = transition.snapshot
+      activeLocatorRef.current = null
       abortOutstandingSynthesis()
       setRemote(engineConfig.kind === "provider")
-      setSessionState({ publicationKey, state: { state: "loading" } })
-      if (options?.startAtViewportStart) {
-        readerRef.current?.startTts(engineConfig, fromLocator, {
-          startAtViewportStart: true,
+      setSessionState({
+        publicationKey,
+        state: { sessionId, state: "loading" },
+      })
+      try {
+        const reader = readerRef.current
+        if (!reader) throw new Error("TTS_READER_VIEW_UNAVAILABLE")
+        await reader.startTts(engineConfig, fromLocator, {
+          sessionId,
+          startAtViewportStart: options?.startAtViewportStart === true,
+          ...(options?.skipPartialViewportSentence
+            ? { skipPartialViewportSentence: true }
+            : {}),
         })
-      } else {
-        readerRef.current?.startTts(engineConfig, fromLocator)
+      } catch (error) {
+        const current = sessionMachine.snapshot
+        if (current.sessionId !== sessionId) return
+        const failed = sessionMachine.send({
+          type: "playback",
+          sessionId,
+          status: "error",
+          error: describeError(error),
+        })
+        presentTransitionError(sessionId, failed)
       }
     },
-    [abortOutstandingSynthesis, publicationKey, readerRef, start],
+    [
+      abortOutstandingSynthesis,
+      publicationKey,
+      readerRef,
+      presentTransitionError,
+      sessionMachine,
+      start,
+      syncViewportState,
+    ],
+  )
+
+  const reattachViewportIfVisible = useCallback(
+    async (
+      sessionId: string,
+      locator: Locator,
+      viewportNavigationId: string,
+      viewportRevision: number,
+    ) => {
+      const active = sessionMachine.snapshot
+      if (
+        active.sessionId !== sessionId ||
+        !active.viewportDetached ||
+        viewportNavigationIdRef.current !== viewportNavigationId ||
+        viewportRevisionRef.current !== viewportRevision
+      )
+        return
+
+      let reattached = false
+      try {
+        reattached =
+          (await readerRef.current?.reattachTtsViewport(
+            sessionId,
+            locator,
+            viewportNavigationId,
+          )) ?? false
+      } catch {
+        return
+      }
+      const current = sessionMachine.snapshot
+      if (
+        !reattached ||
+        current.sessionId !== sessionId ||
+        !current.viewportDetached ||
+        viewportNavigationIdRef.current !== viewportNavigationId ||
+        viewportRevisionRef.current !== viewportRevision
+      )
+        return
+
+      viewportNavigationIdRef.current = null
+      syncViewportState(
+        sessionMachine.send({
+          type: "viewport-matched",
+          sessionId,
+        }),
+      )
+    },
+    [readerRef, sessionMachine, syncViewportState],
+  )
+
+  const markViewportMoved = useCallback(
+    (navigationId: string) => {
+      const viewportRevision = ++viewportRevisionRef.current
+      const transition = sessionMachine.send({
+        type: "viewport-moved",
+        navigationId,
+      })
+      syncViewportState(transition)
+      if (transition.accepted) viewportNavigationIdRef.current = navigationId
+      const activeLocator = activeLocatorRef.current
+      if (
+        transition.accepted &&
+        activeLocator?.sessionId === transition.snapshot.sessionId
+      ) {
+        void reattachViewportIfVisible(
+          activeLocator.sessionId,
+          activeLocator.locator,
+          navigationId,
+          viewportRevision,
+        )
+      }
+    },
+    [reattachViewportIfVisible, sessionMachine, syncViewportState],
   )
 
   const handleStateChange = useCallback(
     (next: TtsPlaybackState) => {
-      if (terminalErrorRef.current) return
-      if (next.state === "error") {
-        reportError(next.error)
+      const transition = sessionMachine.send({
+        type: "playback",
+        sessionId: next.sessionId,
+        status: next.state,
+        error: next.error,
+      })
+      if (!transition.accepted) return
+      syncViewportState(transition)
+      if (transition.effect?.type === "report-error") {
+        activeLocatorRef.current = null
+        viewportNavigationIdRef.current = null
+        presentTransitionError(next.sessionId, transition)
         return
-      }
-      if (next.state === "ended" && !playbackStartedRef.current) {
-        reportError(READER_TTS_NO_READABLE_CONTENT_ERROR)
-        return
-      }
-      if (next.state === "playing" || next.state === "paused") {
-        playbackStartedRef.current = true
       }
       if (next.state === "stopped" || next.state === "ended") {
-        pauseAfterStartRef.current = false
+        activeLocatorRef.current = null
+        viewportNavigationIdRef.current = null
         abortOutstandingSynthesis()
+      } else if (next.locator) {
+        activeLocatorRef.current = {
+          sessionId: next.sessionId,
+          locator: next.locator,
+        }
       }
       setSessionState({
         publicationKey,
         state: next.state === "stopped" ? null : next,
       })
-      if (next.state === "playing" && pauseAfterStartRef.current) {
-        pauseAfterStartRef.current = false
+      if (transition.effect?.type === "pause") {
         readerRef.current?.pauseTts()
       }
+      if (transition.snapshot.viewportDetached && next.locator) {
+        const viewportNavigationId = viewportNavigationIdRef.current
+        if (!viewportNavigationId) return
+        void reattachViewportIfVisible(
+          next.sessionId,
+          next.locator,
+          viewportNavigationId,
+          viewportRevisionRef.current,
+        )
+      }
     },
-    [abortOutstandingSynthesis, publicationKey, readerRef, reportError],
+    [
+      abortOutstandingSynthesis,
+      presentTransitionError,
+      publicationKey,
+      reattachViewportIfVisible,
+      readerRef,
+      sessionMachine,
+      syncViewportState,
+    ],
   )
 
   const handleSynthesisRequest = useCallback(
     async (request: TtsSynthesisRequestEvent) => {
-      const generation = generationRef.current
+      const active = sessionMachine.snapshot
+      if (request.sessionId !== active.sessionId) return
+      const { generation } = active
       synthesisControllersRef.current.get(request.requestId)?.abort()
       const controller = new AbortController()
       synthesisControllersRef.current.set(request.requestId, controller)
@@ -261,9 +480,15 @@ export function useReaderTtsSession({
           buildReaderTtsSynthesisRequest(request, REMOTE_AUDIO_MIME_TYPES),
           { signal: controller.signal },
         )
-        if (generationRef.current !== generation || controller.signal.aborted)
+        const current = sessionMachine.snapshot
+        if (
+          current.generation !== generation ||
+          current.sessionId !== request.sessionId ||
+          controller.signal.aborted
+        )
           return
         readerRef.current?.completeTtsSynthesis({
+          sessionId: request.sessionId,
           requestId: request.requestId,
           path: artifact.path,
           mimeType: artifact.mimeType,
@@ -271,12 +496,14 @@ export function useReaderTtsSession({
         })
       } catch (error) {
         if (
-          generationRef.current !== generation ||
+          sessionMachine.snapshot.generation !== generation ||
+          sessionMachine.snapshot.sessionId !== request.sessionId ||
           controller.signal.aborted ||
           (error instanceof Error && error.name === "AbortError")
         )
           return
         readerRef.current?.completeTtsSynthesis({
+          sessionId: request.sessionId,
           requestId: request.requestId,
           error: describeError(error),
         })
@@ -288,18 +515,19 @@ export function useReaderTtsSession({
         }
       }
     },
-    [readerRef],
+    [readerRef, sessionMachine],
   )
 
   const handleSynthesisCancel = useCallback(
-    ({ requestIds }: TtsSynthesisCancelEvent) => {
+    ({ sessionId, requestIds }: TtsSynthesisCancelEvent) => {
+      if (sessionId !== sessionMachine.snapshot.sessionId) return
       requestIds.forEach((requestId) => {
         const controller = synthesisControllersRef.current.get(requestId)
         controller?.abort()
         synthesisControllersRef.current.delete(requestId)
       })
     },
-    [],
+    [sessionMachine],
   )
 
   const play = useCallback(() => readerRef.current?.playTts(), [readerRef])
@@ -313,8 +541,10 @@ export function useReaderTtsSession({
   return {
     state,
     remote,
+    viewportDetached,
     start,
     seek,
+    markViewportMoved,
     play,
     pause,
     previous,

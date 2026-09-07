@@ -121,7 +121,7 @@ Platform capabilities outside core include UI state, Readium navigators, windows
 
 ### 3.3 TTS Ownership
 
-TTS follows [ADR-0022](./adr/0022-adopt-readium-tts-and-core-provider-architecture.md): Readium owns content segmentation, the current sentence, locators, and decorations; `my-reader-core` owns provider configuration, network inference, audio artifacts, and normalized errors; platform adapters own system voices, audio playback, and keyring/SecureStore. Core configuration stores only credential references, never secrets. The current product slice targets speakable text EPUBs and provides System and OpenAI-compatible engines for foreground sessions.
+TTS follows [ADR-0022](./adr/0022-adopt-readium-tts-and-core-provider-architecture.md): Readium owns content segmentation, the current sentence, locators, and decorations; `my-reader-core` owns provider configuration, network inference, audio artifacts, and normalized errors; platform adapters own system voices, audio playback, and keyring/SecureStore. Core configuration stores only credential references, never secrets. The current product slice targets speakable text EPUBs and provides System and OpenAI-compatible engines for foreground sessions. Desktop and mobile share session/generation isolation, navigation deduplication, terminal-state handling, and pause restoration through `@my-reader/tools/reader-tts-session`, while platform adapters continue to own Readium locators and actual playback.
 
 ## 4. Desktop
 

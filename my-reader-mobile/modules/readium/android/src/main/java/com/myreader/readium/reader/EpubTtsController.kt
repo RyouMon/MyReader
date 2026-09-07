@@ -28,32 +28,53 @@ import org.readium.r2.shared.util.tokenizer.DefaultTextContentTokenizer
 import org.readium.r2.shared.util.tokenizer.TextUnit
 import org.readium.r2.shared.util.tokenizer.Tokenizer
 
+private data class TtsUtteranceStartAlignment(
+  val index: Int,
+  val startsInsideCandidate: Boolean,
+)
+
+private fun ttsUtteranceStartAlignment(
+  target: Locator.Text,
+  candidates: List<Locator.Text>,
+): TtsUtteranceStartAlignment? {
+  val targetContext = normalizedTtsLocatorContext(target) ?: return null
+  candidates.forEachIndexed { index, candidate ->
+    val candidateContext = normalizedTtsLocatorContext(candidate)
+      ?: return@forEachIndexed
+    targetContext.occurrencesIn(candidateContext.characters).forEach { occurrence ->
+      val targetStart = occurrence + targetContext.highlight.first
+      val targetEnd = occurrence + targetContext.highlight.last
+      if (
+        targetStart <= candidateContext.highlight.last &&
+        candidateContext.highlight.first <= targetEnd
+      ) {
+        return TtsUtteranceStartAlignment(
+          index = index,
+          startsInsideCandidate = targetStart > candidateContext.highlight.first,
+        )
+      }
+    }
+    candidateContext.occurrencesIn(targetContext.characters).forEach { occurrence ->
+      val candidateStart = occurrence + candidateContext.highlight.first
+      val candidateEnd = occurrence + candidateContext.highlight.last
+      if (
+        candidateStart <= targetContext.highlight.last &&
+        targetContext.highlight.first <= candidateEnd
+      ) {
+        return TtsUtteranceStartAlignment(
+          index = index,
+          startsInsideCandidate = targetContext.highlight.first > candidateStart,
+        )
+      }
+    }
+  }
+  return null
+}
+
 internal fun ttsUtteranceStartIndex(
   target: Locator.Text,
   candidates: List<Locator.Text>,
-): Int? {
-  val targetContext = normalizedTtsLocatorContext(target) ?: return null
-  return candidates.indexOfFirst { candidate ->
-    val candidateContext = normalizedTtsLocatorContext(candidate)
-      ?: return@indexOfFirst false
-    val targetInsideCandidate = targetContext
-      .occurrencesIn(candidateContext.characters)
-      .any { occurrence ->
-        val targetStart = occurrence + targetContext.highlight.first
-        val targetEnd = occurrence + targetContext.highlight.last
-        targetStart <= candidateContext.highlight.last &&
-          candidateContext.highlight.first <= targetEnd
-      }
-    if (targetInsideCandidate) return@indexOfFirst true
-
-    candidateContext.occurrencesIn(targetContext.characters).any { occurrence ->
-      val candidateStart = occurrence + candidateContext.highlight.first
-      val candidateEnd = occurrence + candidateContext.highlight.last
-      candidateStart <= targetContext.highlight.last &&
-        targetContext.highlight.first <= candidateEnd
-    }
-  }.takeIf { it >= 0 }
-}
+): Int? = ttsUtteranceStartAlignment(target, candidates)?.index
 
 private data class NormalizedTtsLocatorContext(
   val characters: String,
@@ -98,6 +119,11 @@ private fun collapseTtsWhitespace(value: String): String = buildString {
   }
 }
 
+internal fun ttsFollowStaysInCurrentResource(
+  currentHref: String?,
+  targetHref: String,
+): Boolean = currentHref == targetHref
+
 internal sealed interface TtsStartLocatorMatch {
   data object Passthrough : TtsStartLocatorMatch
   data object Skip : TtsStartLocatorMatch
@@ -106,27 +132,31 @@ internal sealed interface TtsStartLocatorMatch {
 
 internal class TtsStartLocatorMatcher {
   private var target: Locator.Text? = null
+  private var skipPartialSentence = false
 
   @Synchronized
-  fun reset(target: Locator.Text?) {
+  fun reset(target: Locator.Text?, skipPartialSentence: Boolean = false) {
     this.target = target?.takeIf { !it.highlight.isNullOrEmpty() }
+    this.skipPartialSentence = skipPartialSentence
   }
 
   @Synchronized
   fun match(candidates: List<Locator.Text>): TtsStartLocatorMatch {
     val target = target ?: return TtsStartLocatorMatch.Passthrough
-    val index = ttsUtteranceStartIndex(target, candidates)
+    val alignment = ttsUtteranceStartAlignment(target, candidates)
       ?: return TtsStartLocatorMatch.Skip
     this.target = null
-    return TtsStartLocatorMatch.Start(index)
+    return TtsStartLocatorMatch.Start(
+      alignment.index + if (skipPartialSentence && alignment.startsInsideCandidate) 1 else 0
+    )
   }
 }
 
 private class StartLocatorTextTokenizer {
   private val startLocatorMatcher = TtsStartLocatorMatcher()
 
-  fun reset(target: Locator.Text?) {
-    startLocatorMatcher.reset(target)
+  fun reset(target: Locator.Text?, skipPartialSentence: Boolean) {
+    startLocatorMatcher.reset(target, skipPartialSentence)
   }
 
   fun make(language: Language?): Tokenizer<String, IntRange> {
@@ -170,6 +200,8 @@ class EpubTtsController(
   private val onStateChange: (Map<String, Any?>) -> Unit,
   private val onSynthesisRequest: (Map<String, Any?>) -> Unit,
   private val onSynthesisCancel: (Map<String, Any?>) -> Unit,
+  private val navigateForFollow: suspend (Locator) -> Unit,
+  private val shouldFollowText: () -> Boolean,
   private val onFollowTextNavigation: (String, Locator, Boolean) -> Unit,
 ) : TtsNavigator.Listener {
   companion object {
@@ -187,14 +219,14 @@ class EpubTtsController(
   private var remoteBufferingKey: RemoteTtsSpeechKey? = null
   private var highlightedLocator: Locator? = null
   private var followedLocator: Locator? = null
-  private var followTextSuspendedUntil = 0L
+  private var followNavigationJob: Job? = null
   private val startLocatorTokenizer = StartLocatorTextTokenizer()
 
-  suspend fun start(from: Locator?) {
+  suspend fun start(from: Locator?, skipPartialSentence: Boolean = false) {
     close(emitState = false)
     onStateChange(mapOf("state" to "loading"))
     val initialLocator = from ?: visualNavigator.firstVisibleElementLocator()
-    startLocatorTokenizer.reset(initialLocator?.text)
+    startLocatorTokenizer.reset(initialLocator?.text, skipPartialSentence)
 
     if (config.kind == "provider") {
       startRemote(initialLocator)
@@ -353,7 +385,9 @@ class EpubTtsController(
   }
 
   fun prepareForUserNavigation() {
-    followTextSuspendedUntil = android.os.SystemClock.uptimeMillis() + 1_000L
+    followNavigationJob?.cancel()
+    followNavigationJob = null
+    followedLocator = null
   }
 
   fun previous() {
@@ -371,6 +405,8 @@ class EpubTtsController(
   fun close(emitState: Boolean = true) {
     observationJobs.forEach { it.cancel() }
     observationJobs.clear()
+    followNavigationJob?.cancel()
+    followNavigationJob = null
     invalidateRemotePrefetch()
     remoteProvider?.engine?.cancelAll()
     navigator?.close()
@@ -435,20 +471,26 @@ class EpubTtsController(
   }
 
   private fun followCurrentLocation() {
-    if (android.os.SystemClock.uptimeMillis() <= followTextSuspendedUntil) return
+    if (!shouldFollowText()) return
     val locator = currentLocation?.utteranceLocator ?: return
     if (followedLocator == locator) return
     followedLocator = locator
-    val navigationId = UUID.randomUUID().toString()
-    onFollowTextNavigation(navigationId, locator, true)
-    try {
-      visualNavigator.go(locator, animated = false)
-    } finally {
-      onFollowTextNavigation(navigationId, locator, false)
+    followNavigationJob?.cancel()
+    followNavigationJob = scope.launch {
+      if (!shouldFollowText() || followedLocator != locator) return@launch
+      val navigationId = UUID.randomUUID().toString()
+      onFollowTextNavigation(navigationId, locator, true)
+      try {
+        if (shouldFollowText()) navigateForFollow(locator)
+      } finally {
+        onFollowTextNavigation(navigationId, locator, false)
+      }
     }
   }
 
   private fun clearHighlight() {
+    followNavigationJob?.cancel()
+    followNavigationJob = null
     highlightedLocator = null
     followedLocator = null
     scope.launch {

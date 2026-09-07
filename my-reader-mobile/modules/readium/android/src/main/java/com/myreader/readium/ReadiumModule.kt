@@ -94,6 +94,32 @@ class ReadiumModule : Module() {
       Prop("customSelectionMenu") { view: ReadiumView, value: Boolean ->
         view.customSelectionMenu = value
       }
+
+      AsyncFunction("reattachTtsViewport") Coroutine { view: ReadiumView, sessionId: String, locator: LocatorRecord, viewportNavigationId: String ->
+        view.reattachTtsViewport(sessionId, locator, viewportNavigationId)
+      }
+
+      AsyncFunction("startTts") { view: ReadiumView, sessionId: String, config: TtsEngineConfigRecord, locator: LocatorRecord?, startAtViewportStart: Boolean, skipPartialViewportSentence: Boolean, viewportDetached: Boolean, viewportNavigationId: String? ->
+        view.startTts(
+          sessionId,
+          config,
+          locator,
+          startAtViewportStart,
+          skipPartialViewportSentence,
+          viewportDetached,
+          viewportNavigationId,
+        )
+      }
+
+      AsyncFunction("playTts") { view: ReadiumView -> view.playTts() }
+      AsyncFunction("pauseTts") { view: ReadiumView -> view.pauseTts() }
+      AsyncFunction("stopTts") { view: ReadiumView -> view.stopTts() }
+      AsyncFunction("previousTts") { view: ReadiumView -> view.previousTts() }
+      AsyncFunction("nextTts") { view: ReadiumView -> view.nextTts() }
+
+      AsyncFunction("completeTtsSynthesis") { view: ReadiumView, completion: TtsSynthesisCompletionRecord ->
+        view.completeTtsSynthesis(completion)
+      }
     }
 
     // MARK: - Imperative navigation (view resolved from react tag)
@@ -120,20 +146,6 @@ class ReadiumModule : Module() {
 
     AsyncFunction("isBookmarkVisible") Coroutine { tag: Int, locator: LocatorRecord ->
       ReadiumView.registry[tag]?.isBookmarkVisible(locator) ?: false
-    }
-
-    AsyncFunction("startTts") { tag: Int, config: TtsEngineConfigRecord, locator: LocatorRecord?, startAtViewportStart: Boolean ->
-      ReadiumView.registry[tag]?.startTts(config, locator, startAtViewportStart)
-    }
-
-    AsyncFunction("playTts") { tag: Int -> ReadiumView.registry[tag]?.playTts() }
-    AsyncFunction("pauseTts") { tag: Int -> ReadiumView.registry[tag]?.pauseTts() }
-    AsyncFunction("stopTts") { tag: Int -> ReadiumView.registry[tag]?.stopTts() }
-    AsyncFunction("previousTts") { tag: Int -> ReadiumView.registry[tag]?.previousTts() }
-    AsyncFunction("nextTts") { tag: Int -> ReadiumView.registry[tag]?.nextTts() }
-
-    AsyncFunction("completeTtsSynthesis") { tag: Int, completion: TtsSynthesisCompletionRecord ->
-      ReadiumView.registry[tag]?.completeTtsSynthesis(completion)
     }
 
     AsyncFunction("getSystemTtsVoices") { promise: Promise ->

@@ -78,6 +78,57 @@ class RemoteTtsPrefetchWindowTest {
   }
 
   @Test
+  fun should_skip_a_sentence_clipped_by_the_viewport_start() {
+    val target = Locator.Text(
+      before = "the previous page and ",
+      highlight = "c",
+      after = "ontinues here. Next complete",
+    )
+    val matcher = TtsStartLocatorMatcher()
+    matcher.reset(target, skipPartialSentence = true)
+
+    assertEquals(
+      TtsStartLocatorMatch.Start(1),
+      matcher.match(
+        listOf(
+          Locator.Text(
+            highlight = "A sentence begins on the previous page and continues here.",
+            after = " Next complete sentence.",
+          ),
+          Locator.Text(
+            before = "continues here. ",
+            highlight = "Next complete sentence.",
+          ),
+        ),
+      ),
+    )
+  }
+
+  @Test
+  fun should_keep_a_complete_sentence_at_the_viewport_start() {
+    val target = Locator.Text(
+      before = "continues here. ",
+      highlight = "N",
+      after = "ext complete sentence.",
+    )
+    val matcher = TtsStartLocatorMatcher()
+    matcher.reset(target, skipPartialSentence = true)
+
+    assertEquals(
+      TtsStartLocatorMatch.Start(1),
+      matcher.match(
+        listOf(
+          Locator.Text(highlight = "A sentence continues here."),
+          Locator.Text(
+            before = "continues here. ",
+            highlight = "Next complete sentence.",
+          ),
+        ),
+      ),
+    )
+  }
+
+  @Test
   fun should_keep_looking_after_an_earlier_content_block_misses_the_start_locator() {
     val target = Locator.Text(
       before = "first sentence aloud. ",

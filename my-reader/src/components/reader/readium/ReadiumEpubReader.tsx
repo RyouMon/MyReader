@@ -1392,7 +1392,8 @@ export function ReadiumEpubReader({
   })
   const ttsSessionRef = useRef(ttsSession)
   const ttsPointReadEnabledRef = useRef(false)
-  const pendingTtsUserNavigationRef = useRef(false)
+  const pendingTtsUserNavigationRef = useRef<string | null>(null)
+  const ttsUserNavigationSequenceRef = useRef(0)
   ttsSessionRef.current = ttsSession
   const setTtsPointReadEnabled = useCallback((enabled: boolean) => {
     ttsPointReadEnabledRef.current = enabled
@@ -1421,6 +1422,25 @@ export function ReadiumEpubReader({
     },
     [],
   )
+  const playTtsFromCurrentPosition = useCallback(() => {
+    const navigator = navigatorRef.current
+    const locator = navigator?.currentLocator ?? currentLocator
+    if (!navigator || !locator) return
+    const viewportStart = !isFixedLayout
+      ? captureEpubViewportStartLocator(
+          navigator,
+          readiumLocatorToReaderLocator(locator),
+        )
+      : null
+    ttsSessionRef.current.rebase(
+      viewportStart ? readerLocatorToReadiumLocator(viewportStart) : locator,
+      {
+        autoplay: true,
+        forceRestart: true,
+        skipPartialViewportSentence: true,
+      },
+    )
+  }, [currentLocator, isFixedLayout])
 
   const epubSearchService = useMemo(
     () =>
@@ -1610,8 +1630,9 @@ export function ReadiumEpubReader({
 
   const beginContentNavigation = useCallback(
     (targetLocator?: Locator | null, options?: { rebaseTts?: boolean }) => {
-      if (targetLocator && options?.rebaseTts !== false) {
-        ttsSessionRef.current.rebase(targetLocator)
+      if (options?.rebaseTts !== false) {
+        pendingTtsUserNavigationRef.current = null
+        if (targetLocator) ttsSessionRef.current.rebase(targetLocator)
       }
       const sequence = navigationSequenceRef.current + 1
       navigationSequenceRef.current = sequence
@@ -1675,17 +1696,23 @@ export function ReadiumEpubReader({
 
   const beginContentSettlingForPageTurn = useCallback(
     (direction: "backward" | "forward") => {
-      pendingTtsUserNavigationRef.current = true
-      return beginContentNavigationForPageTurn(direction)
+      const navigationId = `desktop-navigation-${++ttsUserNavigationSequenceRef.current}`
+      pendingTtsUserNavigationRef.current = navigationId
+      return {
+        contentSequence: beginContentNavigationForPageTurn(direction),
+        navigationId,
+      }
     },
     [beginContentNavigationForPageTurn],
   )
 
   const revealFailedContentNavigation = useCallback(
-    (sequence: number | null) => {
-      pendingTtsUserNavigationRef.current = false
-      if (sequence == null) return
-      finishContentNavigation(sequence)
+    (navigation: { contentSequence: number | null; navigationId: string }) => {
+      if (pendingTtsUserNavigationRef.current === navigation.navigationId) {
+        pendingTtsUserNavigationRef.current = null
+      }
+      if (navigation.contentSequence == null) return
+      finishContentNavigation(navigation.contentSequence)
     },
     [finishContentNavigation],
   )
@@ -2418,22 +2445,10 @@ export function ReadiumEpubReader({
                   : locator
               setCurrentLocator(stableLocator)
               setChapterTitle(resolveChapterTitle(stableLocator, selected))
-              if (pendingTtsUserNavigationRef.current) {
-                pendingTtsUserNavigationRef.current = false
-                const navigator = navigatorRef.current
-                const viewportStart =
-                  navigator && !isFixedLayout
-                    ? captureEpubViewportStartLocator(
-                        navigator,
-                        readiumLocatorToReaderLocator(stableLocator),
-                      )
-                    : null
-                ttsSessionRef.current.rebase(
-                  viewportStart
-                    ? readerLocatorToReadiumLocator(viewportStart)
-                    : stableLocator,
-                  { forceRestart: true },
-                )
+              const ttsNavigationId = pendingTtsUserNavigationRef.current
+              if (ttsNavigationId) {
+                pendingTtsUserNavigationRef.current = null
+                ttsSessionRef.current.markViewportMoved(ttsNavigationId)
               }
               finishContentNavigationForLocator(stableLocator)
             },
@@ -2554,7 +2569,7 @@ export function ReadiumEpubReader({
       appliedReflowableLayoutKeyRef.current = null
       navigationSequenceRef.current += 1
       pendingNavigationHrefRef.current = null
-      pendingTtsUserNavigationRef.current = false
+      pendingTtsUserNavigationRef.current = null
       clearPendingProgressSeek()
       clearContentNavigationTimers()
       setReadiumNavReady(false)
@@ -2826,6 +2841,7 @@ export function ReadiumEpubReader({
           session={ttsSession}
           visible={chromeVisible}
           settingsOpen={ttsSettingsOpen}
+          onPlayFromCurrentPosition={playTtsFromCurrentPosition}
           onToggleSettings={toggleTtsSettings}
           onExpandedChange={setTtsPointReadEnabled}
         />

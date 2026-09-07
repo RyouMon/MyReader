@@ -22,6 +22,7 @@ const callbacks = {
   onNext: jest.fn(),
   onStop: jest.fn(),
   onMore: jest.fn(),
+  onPlayFromCurrentPosition: jest.fn(),
 }
 
 function renderPlayer(
@@ -35,6 +36,7 @@ function renderPlayer(
       expanded={expanded}
       state={state}
       remote={remote}
+      playFromCurrentPosition={false}
       palette={palette}
       {...callbacks}
     />,
@@ -63,6 +65,7 @@ describe("ReaderTtsControls", () => {
         expanded
         state={null}
         remote={false}
+        playFromCurrentPosition={false}
         palette={palette}
         {...callbacks}
       />,
@@ -73,6 +76,7 @@ describe("ReaderTtsControls", () => {
 
   it("exposes five playback and more controls when expanded", () => {
     const screen = renderPlayer({
+      sessionId: "session-1",
       state: "playing",
       utterance: "This text is represented by the reader highlight.",
       canGoPrevious: true,
@@ -101,12 +105,37 @@ describe("ReaderTtsControls", () => {
   })
 
   it("shows generation only as the playback-button spinner", () => {
-    const screen = renderPlayer({ state: "loading" }, true)
+    const screen = renderPlayer(
+      { sessionId: "session-1", state: "loading" },
+      true,
+    )
 
     expect(
       screen.getByLabelText("reader.tts.states.generating").props
         .accessibilityRole,
     ).toBe("progressbar")
     expect(screen.queryByText("reader.tts.states.generating")).toBeNull()
+  })
+
+  it("offers to play from the visible page after the viewport moves", () => {
+    const screen = render(
+      <ReaderTtsControls
+        visible
+        expanded
+        state={{ sessionId: "session-1", state: "playing" }}
+        remote={false}
+        playFromCurrentPosition
+        palette={palette}
+        {...callbacks}
+      />,
+    )
+
+    fireEvent.press(
+      screen.getByRole("button", {
+        name: "reader.tts.playFromCurrentPosition",
+      }),
+    )
+
+    expect(callbacks.onPlayFromCurrentPosition).toHaveBeenCalledTimes(1)
   })
 })

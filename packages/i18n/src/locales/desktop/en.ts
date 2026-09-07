@@ -561,6 +561,7 @@ export const desktopEn = {
         play: "Start reading",
         pause: "Pause reading",
         stop: "Stop reading",
+        playFromCurrentPosition: "Play from current position",
         previousSentence: "Previous sentence",
         nextSentence: "Next sentence",
         voice: "Voice",

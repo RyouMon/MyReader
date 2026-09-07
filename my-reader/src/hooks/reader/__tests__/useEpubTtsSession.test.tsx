@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { useEpubTtsSession } from "@/hooks/reader/useEpubTtsSession"
 import type { EpubTextResource } from "@/lib/readium/epubContentLocators"
 import {
+  epubTtsCompleteUtteranceIndexAtViewportStart,
   epubTtsUtteranceIndexAtLocator,
   extractEpubTtsUtterances,
 } from "@/lib/readium/epubTts"
@@ -76,10 +77,10 @@ vi.mock("@readium/speech", () => {
       this.emit("start")
     })
 
-    pause() {
+    pause = vi.fn(() => {
       this.state = "paused"
       this.emit("pause")
-    }
+    })
 
     stop = vi.fn(() => {
       this.state = "idle"
@@ -111,6 +112,12 @@ vi.mock("@readium/speech", () => {
       this.emit("start")
     }
 
+    emitEnd(index: number, state: "idle" | "playing") {
+      this.currentIndex = index
+      this.state = state
+      this.emit("end")
+    }
+
     destroy() {
       return Promise.resolve()
     }
@@ -138,6 +145,7 @@ vi.mock("@tauri-apps/api/event", () => ({
 
 vi.mock("@/lib/readium/epubTts", () => ({
   extractEpubTtsUtterances: vi.fn(),
+  epubTtsCompleteUtteranceIndexAtViewportStart: vi.fn().mockReturnValue(0),
   epubTtsUtteranceIndexAtLocator: vi.fn().mockReturnValue(0),
   epubTtsUtteranceAtPoint: vi.fn().mockReturnValue(null),
 }))
@@ -162,6 +170,7 @@ beforeEach(() => {
   speechVoices.length = 0
   configChangeListeners.length = 0
   vi.mocked(epubTtsUtteranceIndexAtLocator).mockReturnValue(0)
+  vi.mocked(epubTtsCompleteUtteranceIndexAtViewportStart).mockReturnValue(0)
   vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
     callback(0)
     return 1
@@ -302,7 +311,233 @@ describe("useEpubTtsSession", () => {
     expect(speech.play).toHaveBeenCalledOnce()
   })
 
-  it("restarts the first visible sentence after an explicit page turn", async () => {
+  it("automatically follows narration when the next sentence is on another page", async () => {
+    const firstLocator = new Locator({
+      href: "chapter-1.xhtml",
+      type: "application/xhtml+xml",
+      locations: new LocatorLocations({ progression: 0.9 }),
+    })
+    const nextPageLocator = new Locator({
+      href: "chapter-2.xhtml",
+      type: "application/xhtml+xml",
+      locations: new LocatorLocations({ progression: 0 }),
+    })
+    vi.mocked(extractEpubTtsUtterances).mockReturnValue([
+      {
+        id: "sentence-1",
+        plain: "End of the first page.",
+        locator: firstLocator,
+      },
+      {
+        id: "sentence-2",
+        plain: "Start of the next page.",
+        locator: nextPageLocator,
+      },
+    ])
+    const navigatorRef = {
+      current: {
+        currentLocator: firstLocator,
+        go: vi.fn(),
+      } as unknown as EpubNavigator,
+    } as RefObject<EpubNavigator>
+    const { result } = renderHook(() =>
+      useEpubTtsSession({
+        enabled: true,
+        navigatorRef,
+        resources: [{} as EpubTextResource],
+        positions: [{} as ReaderLocator],
+        currentLocator: firstLocator,
+        language: "en",
+        highlightTint: "#ff00aa",
+      }),
+    )
+
+    await waitFor(() => expect(speechInstances).toHaveLength(1))
+    const speech = speechInstances[0] as {
+      emitStart: (index: number) => void
+    }
+    const navigator = navigatorRef.current as EpubNavigator & {
+      go: ReturnType<typeof vi.fn>
+    }
+    act(() => result.current.play())
+    navigator.go.mockClear()
+
+    act(() => speech.emitStart(1))
+
+    expect(result.current.state).toBe("playing")
+    expect(result.current.viewportDetached).toBe(false)
+    expect(navigator.go).toHaveBeenCalledOnce()
+    expect(navigator.go).toHaveBeenCalledWith(
+      nextPageLocator,
+      false,
+      expect.any(Function),
+    )
+  })
+
+  it("keeps the active session running when the viewport moves", async () => {
+    const locator = new Locator({
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: new LocatorLocations({ progression: 0.2 }),
+    })
+    const nextLocator = new Locator({
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: new LocatorLocations({ progression: 0.4 }),
+    })
+    vi.mocked(extractEpubTtsUtterances).mockReturnValue([
+      { id: "sentence-1", plain: "Keep reading.", locator },
+      { id: "sentence-2", plain: "Still reading.", locator: nextLocator },
+    ])
+    const navigatorRef = {
+      current: {
+        currentLocator: locator,
+        go: vi.fn(),
+      } as unknown as EpubNavigator,
+    } as RefObject<EpubNavigator>
+    const { result } = renderHook(() =>
+      useEpubTtsSession({
+        enabled: true,
+        navigatorRef,
+        resources: [{} as EpubTextResource],
+        positions: [{} as ReaderLocator],
+        currentLocator: locator,
+        language: "en",
+        highlightTint: "#ff00aa",
+      }),
+    )
+
+    await waitFor(() => expect(speechInstances).toHaveLength(1))
+    const speech = speechInstances[0] as {
+      jumpTo: ReturnType<typeof vi.fn>
+      stop: ReturnType<typeof vi.fn>
+      emitStart: (index: number) => void
+    }
+    const navigator = navigatorRef.current as EpubNavigator & {
+      go: ReturnType<typeof vi.fn>
+    }
+    act(() => result.current.play())
+    act(() => speech.emitStart(0))
+    speech.jumpTo.mockClear()
+    speech.stop.mockClear()
+    navigator.go.mockClear()
+
+    act(() => {
+      result.current.markViewportMoved("navigation-1")
+      speech.emitStart(1)
+    })
+
+    expect(result.current.state).toBe("playing")
+    expect(result.current.viewportDetached).toBe(true)
+    expect(speech.jumpTo).not.toHaveBeenCalled()
+    expect(speech.stop).not.toHaveBeenCalled()
+    expect(navigator.go).not.toHaveBeenCalled()
+  })
+
+  it("reattaches when the user turns back to the page being narrated", async () => {
+    const locator = new Locator({
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: new LocatorLocations({ progression: 0.2 }),
+    })
+    vi.mocked(extractEpubTtsUtterances).mockReturnValue([
+      { id: "sentence-1", plain: "Current sentence.", locator },
+    ])
+    const progressions = new Map([["chapter.xhtml", { start: 0.6, end: 0.8 }]])
+    const navigatorRef = {
+      current: {
+        currentLocator: locator,
+        go: vi.fn(),
+        viewport: {
+          readingOrder: ["chapter.xhtml"],
+          progressions,
+          positions: null,
+        },
+      } as unknown as EpubNavigator,
+    } as RefObject<EpubNavigator>
+    const { result } = renderHook(() =>
+      useEpubTtsSession({
+        enabled: true,
+        navigatorRef,
+        resources: [{} as EpubTextResource],
+        positions: [{} as ReaderLocator],
+        currentLocator: locator,
+        language: "en",
+        highlightTint: "#ff00aa",
+      }),
+    )
+
+    await waitFor(() => expect(speechInstances).toHaveLength(1))
+    act(() => result.current.play())
+    act(() => result.current.markViewportMoved("navigation-away"))
+    expect(result.current.viewportDetached).toBe(true)
+
+    progressions.set("chapter.xhtml", { start: 0.1, end: 0.3 })
+    act(() => result.current.markViewportMoved("navigation-back"))
+
+    expect(result.current.viewportDetached).toBe(false)
+  })
+
+  it("reattaches when narration reaches the page left open by the user", async () => {
+    const firstLocator = new Locator({
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: new LocatorLocations({ progression: 0.2 }),
+    })
+    const visibleLocator = new Locator({
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: new LocatorLocations({ progression: 0.7 }),
+    })
+    vi.mocked(extractEpubTtsUtterances).mockReturnValue([
+      { id: "sentence-1", plain: "Earlier sentence.", locator: firstLocator },
+      { id: "sentence-2", plain: "Visible sentence.", locator: visibleLocator },
+    ])
+    const progressions = new Map([["chapter.xhtml", { start: 0.4, end: 0.5 }]])
+    const navigatorRef = {
+      current: {
+        currentLocator: firstLocator,
+        go: vi.fn(),
+        viewport: {
+          readingOrder: ["chapter.xhtml"],
+          progressions,
+          positions: null,
+        },
+      } as unknown as EpubNavigator,
+    } as RefObject<EpubNavigator>
+    const { result } = renderHook(() =>
+      useEpubTtsSession({
+        enabled: true,
+        navigatorRef,
+        resources: [{} as EpubTextResource],
+        positions: [{} as ReaderLocator],
+        currentLocator: firstLocator,
+        language: "en",
+        highlightTint: "#ff00aa",
+      }),
+    )
+
+    await waitFor(() => expect(speechInstances).toHaveLength(1))
+    const speech = speechInstances[0] as {
+      emitStart: (index: number) => void
+    }
+    const navigator = navigatorRef.current as EpubNavigator & {
+      go: ReturnType<typeof vi.fn>
+    }
+    act(() => result.current.play())
+    act(() => result.current.markViewportMoved("navigation-away"))
+    expect(result.current.viewportDetached).toBe(true)
+    navigator.go.mockClear()
+
+    progressions.set("chapter.xhtml", { start: 0.65, end: 0.8 })
+    act(() => speech.emitStart(1))
+
+    expect(result.current.currentUtterance?.id).toBe("sentence-2")
+    expect(result.current.viewportDetached).toBe(false)
+    expect(navigator.go).not.toHaveBeenCalled()
+  })
+
+  it("restarts the first complete visible sentence after an explicit request", async () => {
     const locator = new Locator({
       href: "chapter.xhtml",
       type: "application/xhtml+xml",
@@ -331,14 +566,102 @@ describe("useEpubTtsSession", () => {
 
     await waitFor(() => expect(speechInstances).toHaveLength(1))
     const speech = speechInstances[0] as {
+      pause: ReturnType<typeof vi.fn>
       jumpTo: ReturnType<typeof vi.fn>
     }
     act(() => result.current.play())
+    act(() => result.current.pause())
+    expect(result.current.state).toBe("paused")
     speech.jumpTo.mockClear()
+    speech.pause.mockClear()
+    act(() => result.current.markViewportMoved("navigation-1"))
+    expect(result.current.viewportDetached).toBe(true)
 
-    act(() => result.current.rebase(locator, { forceRestart: true }))
+    act(() =>
+      result.current.rebase(locator, {
+        autoplay: true,
+        forceRestart: true,
+        skipPartialViewportSentence: true,
+      }),
+    )
 
+    expect(epubTtsCompleteUtteranceIndexAtViewportStart).toHaveBeenCalledWith(
+      expect.any(Array),
+      locator,
+    )
     expect(speech.jumpTo).toHaveBeenCalledWith(0, true)
+    expect(speech.pause).not.toHaveBeenCalled()
+    expect(result.current.state).toBe("playing")
+    expect(result.current.viewportDetached).toBe(false)
+  })
+
+  it("preserves pause across a page rebase and ignores its duplicate navigation", async () => {
+    const firstLocator = new Locator({
+      href: "chapter-1.xhtml",
+      type: "application/xhtml+xml",
+      locations: new LocatorLocations({ progression: 0.2 }),
+    })
+    const secondLocator = new Locator({
+      href: "chapter-2.xhtml",
+      type: "application/xhtml+xml",
+      locations: new LocatorLocations({ progression: 0.1 }),
+    })
+    vi.mocked(extractEpubTtsUtterances).mockReturnValue([
+      { id: "sentence-1", plain: "First page.", locator: firstLocator },
+      { id: "sentence-2", plain: "Second page.", locator: secondLocator },
+    ])
+    vi.mocked(epubTtsUtteranceIndexAtLocator).mockImplementation(
+      (_utterances, locator) => (locator.href === secondLocator.href ? 1 : 0),
+    )
+    const navigatorRef = {
+      current: {
+        currentLocator: firstLocator,
+        go: vi.fn(),
+      } as unknown as EpubNavigator,
+    } as RefObject<EpubNavigator>
+    const { result } = renderHook(() =>
+      useEpubTtsSession({
+        enabled: true,
+        navigatorRef,
+        resources: [{} as EpubTextResource],
+        positions: [{} as ReaderLocator],
+        currentLocator: firstLocator,
+        language: "en",
+        highlightTint: "#ff00aa",
+      }),
+    )
+
+    await waitFor(() => expect(speechInstances).toHaveLength(1))
+    const speech = speechInstances[0] as {
+      pause: ReturnType<typeof vi.fn>
+      stop: ReturnType<typeof vi.fn>
+      jumpTo: ReturnType<typeof vi.fn>
+      emitStart: (index: number) => void
+    }
+    act(() => result.current.play())
+    act(() => result.current.pause())
+    expect(result.current.state).toBe("paused")
+
+    act(() =>
+      result.current.rebase(secondLocator, {
+        navigationId: "navigation-1",
+      }),
+    )
+    act(() => speech.emitStart(1))
+    expect(result.current.state).toBe("paused")
+    expect(speech.pause).toHaveBeenCalledTimes(2)
+
+    speech.stop.mockClear()
+    speech.jumpTo.mockClear()
+    act(() =>
+      result.current.rebase(secondLocator, {
+        forceRestart: true,
+        navigationId: "navigation-1",
+      }),
+    )
+    expect(speech.stop).not.toHaveBeenCalled()
+    expect(speech.jumpTo).not.toHaveBeenCalled()
+    expect(result.current.state).toBe("paused")
   })
 
   it("does not treat delayed follow-text locators as user navigation", async () => {
@@ -481,6 +804,58 @@ describe("useEpubTtsSession", () => {
 
     expect(result.current.currentUtterance?.id).toBe("sentence-23")
     expect(speech.jumpTo).not.toHaveBeenCalled()
+  })
+
+  it("keeps the session active between utterances and rejects callbacks after the final end", async () => {
+    const firstLocator = new Locator({
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: new LocatorLocations({ progression: 0.1 }),
+    })
+    const secondLocator = new Locator({
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: new LocatorLocations({ progression: 0.6 }),
+    })
+    vi.mocked(extractEpubTtsUtterances).mockReturnValue([
+      { id: "sentence-1", plain: "First sentence.", locator: firstLocator },
+      { id: "sentence-2", plain: "Second sentence.", locator: secondLocator },
+    ])
+    const navigatorRef = {
+      current: {
+        currentLocator: firstLocator,
+        go: vi.fn(),
+      } as unknown as EpubNavigator,
+    } as RefObject<EpubNavigator>
+    const { result } = renderHook(() =>
+      useEpubTtsSession({
+        enabled: true,
+        navigatorRef,
+        resources: [{} as EpubTextResource],
+        positions: [{} as ReaderLocator],
+        currentLocator: firstLocator,
+        language: "en",
+        highlightTint: "#ff00aa",
+      }),
+    )
+
+    await waitFor(() => expect(speechInstances).toHaveLength(1))
+    const speech = speechInstances[0] as {
+      emitStart: (index: number) => void
+      emitEnd: (index: number, state: "idle" | "playing") => void
+    }
+    act(() => result.current.play())
+    act(() => speech.emitEnd(0, "playing"))
+    expect(result.current.state).toBe("playing")
+
+    act(() => speech.emitStart(1))
+    expect(result.current.currentUtterance?.id).toBe("sentence-2")
+    act(() => speech.emitEnd(1, "idle"))
+    expect(result.current.state).toBe("ended")
+
+    act(() => speech.emitStart(0))
+    expect(result.current.state).toBe("ended")
+    expect(result.current.currentUtterance?.id).toBe("sentence-2")
   })
 
   it("rebuilds active narration immediately after a provider change", async () => {

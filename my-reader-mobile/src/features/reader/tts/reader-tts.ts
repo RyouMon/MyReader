@@ -38,7 +38,12 @@ export function classifyReaderTtsError(
     return { kind: "noReadableContent" }
   }
   if (error === "TTS_VOICES_EMPTY") return { kind: "noVoices" }
-  if (error === "TTS_UNKNOWN_ERROR") return { kind: "unknown" }
+  if (
+    error === "TTS_UNKNOWN_ERROR" ||
+    error === "TTS_READER_VIEW_UNAVAILABLE"
+  ) {
+    return { kind: "unknown" }
+  }
   if (
     error.includes("TTS_PROVIDER_UNAVAILABLE") ||
     error.includes("TTS_NETWORK_ERROR") ||

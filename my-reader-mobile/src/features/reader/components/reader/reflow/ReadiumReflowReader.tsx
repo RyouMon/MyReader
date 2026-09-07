@@ -10,8 +10,8 @@ import type {
   ReadiumViewRef,
   SelectionAction,
   SelectionActionEvent,
-  SelectionMenuConfig,
   SelectionEvent,
+  SelectionMenuConfig,
   TtsEngineConfig,
   TtsPlaybackState,
   TtsSynthesisCancelEvent,
@@ -65,11 +65,22 @@ export type ReadiumReflowReaderRef = {
   clearSelection: () => void
   getBookmarkLocator: () => Promise<Locator | null>
   isBookmarkVisible: (locator: Locator) => Promise<boolean>
+  reattachTtsViewport: (
+    sessionId: string,
+    locator: Locator,
+    viewportNavigationId: string,
+  ) => Promise<boolean>
   startTts: (
     config: TtsEngineConfig,
-    fromLocator?: Locator,
-    options?: { startAtViewportStart?: boolean },
-  ) => void
+    fromLocator: Locator | undefined,
+    options: {
+      sessionId: string
+      startAtViewportStart?: boolean
+      skipPartialViewportSentence?: boolean
+      viewportDetached?: boolean
+      viewportNavigationId?: string
+    },
+  ) => Promise<void>
   playTts: () => void
   pauseTts: () => void
   stopTts: () => void
@@ -96,7 +107,11 @@ export type ReadiumReflowReaderProps = {
   onTtsSynthesisRequest?: (event: TtsSynthesisRequestEvent) => void
   onTtsSynthesisCancel?: (event: TtsSynthesisCancelEvent) => void
   onTocReady: (items: ReaderTocItem[]) => void
-  onUserLocationChange?: (locator: Locator) => void
+  onUserLocationChange?: (
+    locator: Locator,
+    navigationId: string,
+    navigationKind: "pageTurn" | "programmatic",
+  ) => void
   onRequestClose: () => void
   onToggleChrome?: () => void
   theme?: ReaderTheme
@@ -174,8 +189,23 @@ const ReadiumReflowReader = forwardRef<
       isBookmarkVisible: (locator: Locator) =>
         readiumRef.current?.isBookmarkVisible(locator) ??
         Promise.resolve(false),
-      startTts: (config, fromLocator, options) =>
-        readiumRef.current?.startTts(config, fromLocator, options),
+      reattachTtsViewport: (
+        sessionId: string,
+        locator: Locator,
+        viewportNavigationId: string,
+      ) =>
+        readiumRef.current?.reattachTtsViewport(
+          sessionId,
+          locator,
+          viewportNavigationId,
+        ) ?? Promise.resolve(false),
+      startTts: (config, fromLocator, options) => {
+        const reader = readiumRef.current
+        if (!reader) {
+          return Promise.reject(new Error("TTS_READER_VIEW_UNAVAILABLE"))
+        }
+        return reader.startTts(config, fromLocator, options)
+      },
       playTts: () => readiumRef.current?.playTts(),
       pauseTts: () => readiumRef.current?.pauseTts(),
       stopTts: () => readiumRef.current?.stopTts(),
@@ -419,15 +449,24 @@ const ReadiumReflowReader = forwardRef<
   )
 
   const handleLocationChange = useCallback(
-    (locator: Locator, source?: "tts") => {
+    (
+      locator: Locator,
+      source?: "tts" | "user",
+      navigationId?: string,
+      navigationKind?: "pageTurn" | "programmatic",
+    ) => {
       const programmaticNavigationPending =
         programmaticNavigationPendingRef.current
       programmaticNavigationPendingRef.current = false
       const selectedToc = selectedTocItemRef.current
       selectedTocItemRef.current = null
       emitLocationState(locator, selectedToc)
-      if (!programmaticNavigationPending && source !== "tts") {
-        onUserLocationChange?.(locator)
+      if (!programmaticNavigationPending && source === "user" && navigationId) {
+        onUserLocationChange?.(
+          locator,
+          navigationId,
+          navigationKind ?? "pageTurn",
+        )
       }
     },
     [emitLocationState, onUserLocationChange],

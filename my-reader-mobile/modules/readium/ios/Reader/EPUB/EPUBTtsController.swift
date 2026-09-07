@@ -23,38 +23,57 @@ private final class SystemTtsUtteranceDelegate: AVTTSEngineDelegate {
   }
 }
 
+private struct TtsUtteranceStartAlignment {
+  let index: Int
+  let startsInsideCandidate: Bool
+}
+
+private func ttsUtteranceStartAlignment(
+  target: Locator.Text,
+  candidates: [Locator.Text]
+) -> TtsUtteranceStartAlignment? {
+  guard let targetContext = normalizedTtsLocatorContext(target) else {
+    return nil
+  }
+  for (index, candidate) in candidates.enumerated() {
+    guard let candidateContext = normalizedTtsLocatorContext(candidate) else {
+      continue
+    }
+    for occurrence in targetContext.occurrences(in: candidateContext.characters) {
+      let targetHighlight = (
+        occurrence + targetContext.highlight.lowerBound
+      ) ..< (
+        occurrence + targetContext.highlight.upperBound
+      )
+      if targetHighlight.overlaps(candidateContext.highlight) {
+        return TtsUtteranceStartAlignment(
+          index: index,
+          startsInsideCandidate: targetHighlight.lowerBound > candidateContext.highlight.lowerBound
+        )
+      }
+    }
+    for occurrence in candidateContext.occurrences(in: targetContext.characters) {
+      let candidateHighlight = (
+        occurrence + candidateContext.highlight.lowerBound
+      ) ..< (
+        occurrence + candidateContext.highlight.upperBound
+      )
+      if candidateHighlight.overlaps(targetContext.highlight) {
+        return TtsUtteranceStartAlignment(
+          index: index,
+          startsInsideCandidate: targetContext.highlight.lowerBound > candidateHighlight.lowerBound
+        )
+      }
+    }
+  }
+  return nil
+}
+
 func ttsUtteranceStartIndex(
   target: Locator.Text,
   candidates: [Locator.Text]
 ) -> Int? {
-  guard let targetContext = normalizedTtsLocatorContext(target) else {
-    return nil
-  }
-  return candidates.firstIndex { candidate in
-    guard let candidateContext = normalizedTtsLocatorContext(candidate) else {
-      return false
-    }
-    let targetInsideCandidate = targetContext
-      .occurrences(in: candidateContext.characters)
-      .contains {
-        let targetHighlight = (
-          $0 + targetContext.highlight.lowerBound
-        ) ..< (
-          $0 + targetContext.highlight.upperBound
-        )
-        return targetHighlight.overlaps(candidateContext.highlight)
-      }
-    if targetInsideCandidate { return true }
-
-    return candidateContext.occurrences(in: targetContext.characters).contains {
-      let candidateHighlight = (
-        $0 + candidateContext.highlight.lowerBound
-      ) ..< (
-        $0 + candidateContext.highlight.upperBound
-      )
-      return candidateHighlight.overlaps(targetContext.highlight)
-    }
-  }
+  ttsUtteranceStartAlignment(target: target, candidates: candidates)?.index
 }
 
 private struct NormalizedTtsLocatorContext {
@@ -106,27 +125,34 @@ enum TtsStartLocatorMatch: Equatable {
 
 final class TtsStartLocatorMatcher {
   private var target: Locator.Text?
+  private var skipPartialSentence = false
 
-  func reset(target: Locator.Text?) {
+  func reset(target: Locator.Text?, skipPartialSentence: Bool = false) {
     self.target = target?.highlight?.isEmpty == false ? target : nil
+    self.skipPartialSentence = skipPartialSentence
   }
 
   func match(in candidates: [Locator.Text]) -> TtsStartLocatorMatch {
     guard let target else { return .passthrough }
-    guard let index = ttsUtteranceStartIndex(
+    guard let alignment = ttsUtteranceStartAlignment(
       target: target,
       candidates: candidates
     ) else { return .skip }
     self.target = nil
-    return .start(index)
+    return .start(
+      alignment.index + (skipPartialSentence && alignment.startsInsideCandidate ? 1 : 0)
+    )
   }
 }
 
 private final class StartLocatorContentTokenizer {
   private let startLocatorMatcher = TtsStartLocatorMatcher()
 
-  func reset(target: Locator.Text?) {
-    startLocatorMatcher.reset(target: target)
+  func reset(target: Locator.Text?, skipPartialSentence: Bool) {
+    startLocatorMatcher.reset(
+      target: target,
+      skipPartialSentence: skipPartialSentence
+    )
   }
 
   func make(defaultLanguage: Language?) -> ContentTokenizer {
@@ -156,6 +182,9 @@ private final class StartLocatorContentTokenizer {
       case .skip:
         continue
       case let .start(startIndex):
+        guard startIndex < textElement.segments.count else {
+          return Array(elements.dropFirst(index + 1))
+        }
         textElement.segments = Array(textElement.segments[startIndex...])
         var result = Array(elements[index...])
         result[0] = textElement
@@ -265,7 +294,10 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
     }
   }
 
-  func start(from locator: Locator?) async {
+  func start(
+    from locator: Locator?,
+    skipPartialSentence: Bool = false
+  ) async {
     stopRequested = false
     onStateChange(["state": "loading"])
     let startLocator: Locator?
@@ -276,7 +308,10 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
     }
     invalidateRemotePrefetch()
     remoteEngine?.cancelAll()
-    startLocatorTokenizer.reset(target: startLocator?.text)
+    startLocatorTokenizer.reset(
+      target: startLocator?.text,
+      skipPartialSentence: skipPartialSentence
+    )
     synthesizer.start(from: startLocator)
   }
 
@@ -420,11 +455,25 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
         self.onFollowTextNavigation(navigationId, utterance.locator, false)
       }
       guard !Task.isCancelled, self.shouldFollowText() else { return }
-      _ = await self.navigator.go(
-        to: utterance.locator,
-        options: NavigatorGoOptions(animated: false)
-      )
+      await self.follow(utterance.locator)
     }
+  }
+
+  private func follow(_ locator: Locator) async {
+    if ttsFollowStaysInCurrentResource(
+      currentHref: navigator.currentLocation?.href.string,
+      targetHref: locator.href.string
+    ), let json = try? locator.jsonString() {
+      _ = await navigator.evaluateJavaScript(
+        "readium.scrollToLocator(\(json), false);"
+      )
+      return
+    }
+
+    _ = await navigator.go(
+      to: locator,
+      options: NavigatorGoOptions(animated: false)
+    )
   }
 
   private func remoteBufferingChanged(

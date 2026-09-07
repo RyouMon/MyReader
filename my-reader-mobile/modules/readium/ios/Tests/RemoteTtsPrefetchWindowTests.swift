@@ -1,6 +1,21 @@
+import ExpoModulesCore
 import ReadiumShared
 import Testing
 @testable import Readium
+
+@Test
+@MainActor
+func should_expose_dispatchers_for_reader_lifecycle_events() {
+  let view = ReadiumView(appContext: nil)
+  let dispatchers = Set(
+    Mirror(reflecting: view).children.compactMap { child in
+      child.value is EventDispatcher ? child.label : nil
+    }
+  )
+
+  #expect(dispatchers.contains("onPublicationReady"))
+  #expect(dispatchers.contains("onTtsStateChange"))
+}
 
 @Test
 func should_anchor_repeated_text_to_the_readium_locator() {
@@ -73,6 +88,51 @@ func should_start_with_the_sentence_containing_the_selected_locator_context() {
   ]
 
   #expect(ttsUtteranceStartIndex(target: target, candidates: sentences) == 1)
+}
+
+@Test
+func should_skip_a_sentence_clipped_by_the_viewport_start() {
+  let target = Locator.Text(
+    after: "ontinues here. Next complete",
+    before: "the previous page and ",
+    highlight: "c"
+  )
+  let matcher = TtsStartLocatorMatcher()
+  matcher.reset(target: target, skipPartialSentence: true)
+
+  #expect(
+    matcher.match(in: [
+      Locator.Text(
+        after: " Next complete sentence.",
+        highlight: "A sentence begins on the previous page and continues here."
+      ),
+      Locator.Text(
+        before: "continues here. ",
+        highlight: "Next complete sentence."
+      ),
+    ]) == .start(1)
+  )
+}
+
+@Test
+func should_keep_a_complete_sentence_at_the_viewport_start() {
+  let target = Locator.Text(
+    after: "ext complete sentence.",
+    before: "continues here. ",
+    highlight: "N"
+  )
+  let matcher = TtsStartLocatorMatcher()
+  matcher.reset(target: target, skipPartialSentence: true)
+
+  #expect(
+    matcher.match(in: [
+      Locator.Text(highlight: "A sentence continues here."),
+      Locator.Text(
+        before: "continues here. ",
+        highlight: "Next complete sentence."
+      ),
+    ]) == .start(1)
+  )
 }
 
 @Test

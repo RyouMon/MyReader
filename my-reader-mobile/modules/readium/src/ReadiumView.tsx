@@ -23,7 +23,9 @@ import type {
   SelectionEvent,
   SelectionActionEvent,
   TapEvent,
+  TtsEngineConfig,
   TtsPlaybackState,
+  TtsSynthesisCompletion,
   TtsSynthesisCancelEvent,
   TtsSynthesisRequestEvent,
 } from "./types"
@@ -44,7 +46,12 @@ type NativeReadiumViewProps = {
   customSelectionMenu?: boolean
   style?: any
   onLocationChange?: (e: {
-    nativeEvent: { locator: Locator; source?: "tts" }
+    nativeEvent: {
+      locator: Locator
+      source?: "tts" | "user"
+      navigationId?: string
+      navigationKind?: "pageTurn" | "programmatic"
+    }
   }) => void
   onPublicationReady?: (e: { nativeEvent: PublicationReadyEvent }) => void
   onDecorationActivated?: (e: { nativeEvent: DecorationActivatedEvent }) => void
@@ -56,13 +63,36 @@ type NativeReadiumViewProps = {
   onTtsSynthesisCancel?: (e: { nativeEvent: TtsSynthesisCancelEvent }) => void
 }
 
+type NativeReadiumViewRef = React.Component & {
+  reattachTtsViewport: (
+    sessionId: string,
+    locator: Locator,
+    viewportNavigationId: string,
+  ) => Promise<boolean>
+  startTts: (
+    sessionId: string,
+    config: TtsEngineConfig,
+    fromLocator: Locator | undefined,
+    startAtViewportStart: boolean,
+    skipPartialViewportSentence: boolean,
+    viewportDetached: boolean,
+    viewportNavigationId: string | undefined,
+  ) => Promise<void>
+  playTts: () => Promise<void>
+  pauseTts: () => Promise<void>
+  stopTts: () => Promise<void>
+  previousTts: () => Promise<void>
+  nextTts: () => Promise<void>
+  completeTtsSynthesis: (completion: TtsSynthesisCompletion) => Promise<void>
+}
+
 // `requireNativeView` returns a forwardRef host component at runtime, but its
 // declared type omits `ref`. Re-declare it so we can grab the native tag via
 // `findNodeHandle` for imperative navigation (matches ReadiumView.registry[id]).
 const NativeReadiumView = requireNativeView<NativeReadiumViewProps>(
   "Readium",
 ) as React.ForwardRefExoticComponent<
-  NativeReadiumViewProps & React.RefAttributes<unknown>
+  NativeReadiumViewProps & React.RefAttributes<NativeReadiumViewRef>
 >
 
 export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
@@ -87,7 +117,7 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
     },
     forwardedRef,
   ) => {
-    const nativeRef = useRef<any>(null)
+    const nativeRef = useRef<NativeReadiumViewRef>(null)
     const [{ height, width }, setDimensions] = useState<Dimensions>({
       width: 0,
       height: 0,
@@ -149,42 +179,47 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
             ? Promise.resolve(false)
             : ReadiumModule.isBookmarkVisible(tag, locator)
         },
-        startTts: (config, fromLocator, options) => {
-          const tag = tagOf()
-          if (tag != null) {
-            void ReadiumModule.startTts(
-              tag,
-              config,
-              fromLocator,
-              options?.startAtViewportStart ?? false,
-            )
+        reattachTtsViewport: (sessionId, locator, viewportNavigationId) => {
+          return (
+            nativeRef.current?.reattachTtsViewport(
+              sessionId,
+              locator,
+              viewportNavigationId,
+            ) ?? Promise.resolve(false)
+          )
+        },
+        startTts: async (config, fromLocator, options) => {
+          const view = nativeRef.current
+          if (!view) {
+            throw new Error("TTS_READER_VIEW_UNAVAILABLE")
           }
+          await view.startTts(
+            options.sessionId,
+            config,
+            fromLocator,
+            options.startAtViewportStart ?? false,
+            options.skipPartialViewportSentence ?? false,
+            options.viewportDetached ?? false,
+            options.viewportNavigationId,
+          )
         },
         playTts: () => {
-          const tag = tagOf()
-          if (tag != null) void ReadiumModule.playTts(tag)
+          void nativeRef.current?.playTts()
         },
         pauseTts: () => {
-          const tag = tagOf()
-          if (tag != null) void ReadiumModule.pauseTts(tag)
+          void nativeRef.current?.pauseTts()
         },
         stopTts: () => {
-          const tag = tagOf()
-          if (tag != null) void ReadiumModule.stopTts(tag)
+          void nativeRef.current?.stopTts()
         },
         previousTts: () => {
-          const tag = tagOf()
-          if (tag != null) void ReadiumModule.previousTts(tag)
+          void nativeRef.current?.previousTts()
         },
         nextTts: () => {
-          const tag = tagOf()
-          if (tag != null) void ReadiumModule.nextTts(tag)
+          void nativeRef.current?.nextTts()
         },
         completeTtsSynthesis: (completion) => {
-          const tag = tagOf()
-          if (tag != null) {
-            void ReadiumModule.completeTtsSynthesis(tag, completion)
-          }
+          void nativeRef.current?.completeTtsSynthesis(completion)
         },
       }),
       [],
@@ -213,6 +248,8 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
                     onLocationChange(
                       e.nativeEvent.locator,
                       e.nativeEvent.source,
+                      e.nativeEvent.navigationId,
+                      e.nativeEvent.navigationKind,
                     )
                 : undefined
             }

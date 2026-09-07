@@ -107,9 +107,9 @@ export function setEpubTtsPointReadEnabled(
     style.textContent = `[${POINT_READ_HOVER_ATTRIBUTE}] { cursor: pointer !important; }`
     document.head.appendChild(style)
   }
-  contentTextBlocks(document).forEach((element) =>
-    element.setAttribute(POINT_READ_ATTRIBUTE, ""),
-  )
+  contentTextBlocks(document).forEach((element) => {
+    element.setAttribute(POINT_READ_ATTRIBUTE, "")
+  })
 }
 
 function pointReadTarget(event: Event): Element | null {
@@ -509,23 +509,28 @@ export function extractEpubTtsUtterances(
   return result
 }
 
-export function epubTtsUtteranceIndexAtLocator(
+type EpubTtsLocatorMatch = {
+  index: number
+  highlightOffset: number | null
+}
+
+function epubTtsUtteranceMatchAtLocator(
   utterances: EpubTtsUtterance[],
   locator: Locator,
-): number {
-  if (utterances.length === 0) return -1
+): EpubTtsLocatorMatch | null {
+  if (utterances.length === 0) return null
   const highlight = locator.text?.highlight?.trim()
   const resourceIndexes = utterances
     .map((utterance, index) => ({ utterance, index }))
     .filter(({ utterance }) =>
       hrefRoughlyMatches(utterance.locator.href, locator.href),
     )
-  if (resourceIndexes.length === 0) return -1
+  if (resourceIndexes.length === 0) return null
   if (highlight) {
     const targetBefore = normalizedText(locator.text?.before)
     const targetAfter = normalizedText(locator.text?.after)
     if (targetBefore || targetAfter) {
-      const contextual = resourceIndexes.find(({ utterance }) => {
+      for (const { utterance, index } of resourceIndexes) {
         const sentence = utterance.locator.text?.highlight ?? ""
         let offset = sentence.indexOf(highlight)
         while (offset >= 0) {
@@ -539,32 +544,52 @@ export function epubTtsUtteranceIndexAtLocator(
             (!targetBefore || before.endsWith(targetBefore)) &&
             (!targetAfter || after.startsWith(targetAfter))
           ) {
-            return true
+            return { index, highlightOffset: offset }
           }
           offset = sentence.indexOf(highlight, offset + highlight.length)
         }
-        return false
-      })
-      if (contextual) return contextual.index
+      }
     }
     const allowPartialHighlight = Array.from(highlight).length > 1
-    const exact = resourceIndexes.find(({ utterance }) => {
+    for (const { utterance, index } of resourceIndexes) {
       const sentence = utterance.locator.text?.highlight?.trim()
-      return (
-        sentence === highlight ||
-        highlight.includes(sentence ?? "") ||
-        (allowPartialHighlight && Boolean(sentence?.includes(highlight)))
-      )
-    })
-    if (exact) return exact.index
+      if (!sentence) continue
+      if (sentence === highlight || highlight.includes(sentence)) {
+        return { index, highlightOffset: 0 }
+      }
+      if (allowPartialHighlight && sentence.includes(highlight)) {
+        return { index, highlightOffset: sentence.indexOf(highlight) }
+      }
+    }
   }
   const progression = locator.locations.progression ?? 0
-  return (
+  const match =
     resourceIndexes.find(
       ({ utterance }) =>
         (utterance.locator.locations.progression ?? 0) >= progression,
-    )?.index ?? resourceIndexes[resourceIndexes.length - 1]!.index
-  )
+    ) ?? resourceIndexes[resourceIndexes.length - 1]!
+  return { index: match.index, highlightOffset: null }
+}
+
+export function epubTtsUtteranceIndexAtLocator(
+  utterances: EpubTtsUtterance[],
+  locator: Locator,
+): number {
+  return epubTtsUtteranceMatchAtLocator(utterances, locator)?.index ?? -1
+}
+
+export function epubTtsCompleteUtteranceIndexAtViewportStart(
+  utterances: EpubTtsUtterance[],
+  locator: Locator,
+): number {
+  const match = epubTtsUtteranceMatchAtLocator(utterances, locator)
+  if (!match) return -1
+  const sentence = utterances[match.index]?.locator.text?.highlight ?? ""
+  const clipped =
+    match.highlightOffset !== null &&
+    normalizedText(sentence.slice(0, match.highlightOffset)).length > 0
+  if (!clipped) return match.index
+  return match.index + 1 < utterances.length ? match.index + 1 : -1
 }
 
 function liveRangeForUtterance(

@@ -5,6 +5,7 @@ import { StyleSheet, useWindowDimensions, View } from "react-native"
 import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
 
 import { ReaderFloatingIconButton } from "./ReaderFloatingIconButton"
+import { ReaderFloatingTextButton } from "./ReaderFloatingTextButton"
 import {
   READER_FLOATING_BUTTON_BOTTOM,
   READER_FLOATING_BUTTON_LEFT,
@@ -17,6 +18,7 @@ type Props = {
   expanded: boolean
   state: TtsPlaybackState | null
   remote: boolean
+  playFromCurrentPosition: boolean
   palette: ReaderChromePalette
   onExpand: () => void
   onPlay: () => void
@@ -25,6 +27,7 @@ type Props = {
   onNext: () => void
   onStop: () => void
   onMore: () => void
+  onPlayFromCurrentPosition: () => void
 }
 
 export function ReaderTtsControls({
@@ -32,6 +35,7 @@ export function ReaderTtsControls({
   expanded,
   state,
   remote,
+  playFromCurrentPosition,
   palette,
   onExpand,
   onPlay,
@@ -40,6 +44,7 @@ export function ReaderTtsControls({
   onNext,
   onStop,
   onMore,
+  onPlayFromCurrentPosition,
 }: Props) {
   const { t } = useTranslation()
   const { width: windowWidth } = useWindowDimensions()
@@ -49,6 +54,8 @@ export function ReaderTtsControls({
     remote ? "reader.tts.states.generating" : "reader.tts.states.loading",
   )
   const playbackControlsVisible = visible && expanded
+  const playFromCurrentPositionVisible =
+    playbackControlsVisible && playFromCurrentPosition
   const anchorStep =
     (windowWidth -
       READER_FLOATING_BUTTON_LEFT -
@@ -66,6 +73,15 @@ export function ReaderTtsControls({
       pointerEvents="box-none"
       style={styles.controls}
     >
+      <ReaderFloatingTextButton
+        accessibilityLabel={t("reader.tts.playFromCurrentPosition")}
+        bottom={READER_FLOATING_BUTTON_SIZE + 12}
+        label={t("reader.tts.playFromCurrentPosition")}
+        onPress={onPlayFromCurrentPosition}
+        palette={palette}
+        visible={playFromCurrentPositionVisible}
+      />
+
       <ReaderFloatingIconButton
         accessibilityLabel={t(
           expanded ? "reader.tts.stop" : "reader.tts.openControls",

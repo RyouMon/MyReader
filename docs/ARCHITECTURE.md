@@ -133,7 +133,9 @@ TTS 遵循 [ADR-0022](./adr/0022-adopt-readium-tts-and-core-provider-architectur
 正文切分、当前句、Locator 和 Decoration；`my-reader-core` 负责 provider 配置、网络推理、音频
 artifact 与统一错误；平台 adapter 负责系统语音、音频播放和 keyring/SecureStore。Core 配置只
 保存 credential reference，不保存密钥。当前产品切片只面向可朗读的文本 EPUB，并以前台会话
-提供 System 和 OpenAI-compatible 引擎。
+提供 System 和 OpenAI-compatible 引擎。桌面与移动产品层通过 `@my-reader/tools/reader-tts-session`
+共享 session/generation、终态隔离、导航去重和暂停恢复状态机；Readium Locator 与实际播放继续由
+平台 adapter 持有。
 
 ## 4. 桌面端
 

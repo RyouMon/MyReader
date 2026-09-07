@@ -313,6 +313,7 @@ export default function ReaderScreen() {
   const {
     state: ttsState,
     remote: ttsRemote,
+    viewportDetached: ttsViewportDetached,
     start: startTts,
     seek: seekTts,
     play: playTts,
@@ -320,6 +321,7 @@ export default function ReaderScreen() {
     previous: previousTts,
     next: nextTts,
     stop: stopTts,
+    markViewportMoved: markTtsViewportMoved,
     handleStateChange: handleTtsStateChange,
     handleSynthesisRequest: handleTtsSynthesisRequest,
     handleSynthesisCancel: handleTtsSynthesisCancel,
@@ -413,20 +415,29 @@ export default function ReaderScreen() {
   )
 
   const handleUserLocationChange = useCallback(
-    (locator: Locator) => {
+    (
+      locator: Locator,
+      navigationId: string,
+      navigationKind: "pageTurn" | "programmatic",
+    ) => {
       setSearchDecoration(null)
-      if (
-        ttsState?.state === "loading" ||
-        ttsState?.state === "playing" ||
-        ttsState?.state === "paused"
-      ) {
-        seekTts(locator, {
-          pauseAfterStart: ttsState.state === "paused",
-          startAtViewportStart: true,
-        })
+      if (navigationKind === "programmatic") {
+        if (
+          ttsState?.state === "loading" ||
+          ttsState?.state === "playing" ||
+          ttsState?.state === "paused"
+        ) {
+          seekTts(locator, {
+            navigationId,
+            pauseAfterStart: ttsState.state === "paused",
+            startAtViewportStart: true,
+          })
+        }
+        return
       }
+      markTtsViewportMoved(navigationId)
     },
-    [seekTts, ttsState],
+    [markTtsViewportMoved, seekTts, ttsState],
   )
 
   const handlePositionsReady = useCallback(
@@ -1048,6 +1059,14 @@ export default function ReaderScreen() {
     }
     playTts()
   }, [playTts, readerState?.locator, startTts, ttsState])
+  const handlePlayTtsFromCurrentPosition = useCallback(() => {
+    const locator = readerState?.locator
+    if (!locator) return
+    seekTts(locator, {
+      startAtViewportStart: true,
+      skipPartialViewportSentence: true,
+    })
+  }, [readerState?.locator, seekTts])
   const handleStopTts = useCallback(() => {
     setTtsPlayerExpanded(false)
     stopTts()
@@ -1592,6 +1611,7 @@ export default function ReaderScreen() {
               expanded={ttsControlsExpanded}
               state={ttsState}
               remote={ttsRemote}
+              playFromCurrentPosition={ttsViewportDetached}
               palette={chromePalette}
               onExpand={handleExpandTts}
               onPlay={handlePlayTts}
@@ -1600,6 +1620,7 @@ export default function ReaderScreen() {
               onNext={nextTts}
               onStop={handleStopTts}
               onMore={handleOpenReaderMore}
+              onPlayFromCurrentPosition={handlePlayTtsFromCurrentPosition}
             />
 
             {/* State 4: table of contents sheet */}

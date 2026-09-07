@@ -26,11 +26,22 @@ export type ReadiumViewRef = {
   clearSelection: () => void
   getBookmarkLocator: () => Promise<Locator | null>
   isBookmarkVisible: (locator: Locator) => Promise<boolean>
+  reattachTtsViewport: (
+    sessionId: string,
+    locator: Locator,
+    viewportNavigationId: string,
+  ) => Promise<boolean>
   startTts: (
     config: TtsEngineConfig,
-    fromLocator?: Locator,
-    options?: { startAtViewportStart?: boolean },
-  ) => void
+    fromLocator: Locator | undefined,
+    options: {
+      sessionId: string
+      startAtViewportStart?: boolean
+      skipPartialViewportSentence?: boolean
+      viewportDetached?: boolean
+      viewportNavigationId?: string
+    },
+  ) => Promise<void>
   playTts: () => void
   pauseTts: () => void
   stopTts: () => void
@@ -49,7 +60,12 @@ export type ReadiumProps = {
   selectionMenu?: SelectionMenuConfig
   customSelectionMenu?: boolean
   style?: any
-  onLocationChange?: (locator: Locator, source?: "tts") => void
+  onLocationChange?: (
+    locator: Locator,
+    source?: "tts" | "user",
+    navigationId?: string,
+    navigationKind?: "pageTurn" | "programmatic",
+  ) => void
   onPublicationReady?: (event: PublicationReadyEvent) => void
   onDecorationActivated?: (event: DecorationActivatedEvent) => void
   onSelectionChange?: (event: SelectionEvent) => void

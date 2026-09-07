@@ -20,12 +20,17 @@ const mockStartTts = jest.fn()
 const mockCompleteTtsSynthesis = jest.fn()
 let mockReadiumProps: {
   onPublicationReady?: (event: PublicationReadyEvent) => void
-  onLocationChange?: (locator: Locator, source?: "tts") => void
+  onLocationChange?: (
+    locator: Locator,
+    source?: "tts" | "user",
+    navigationId?: string,
+    navigationKind?: "pageTurn" | "programmatic",
+  ) => void
   decorations?: DecorationGroup[]
   selectionMenu?: SelectionMenuConfig
   customSelectionMenu?: boolean
   onTap?: () => void
-  onTtsStateChange?: (event: { state: "playing" }) => void
+  onTtsStateChange?: (event: { sessionId: string; state: "playing" }) => void
 } | null = null
 
 jest.mock("@my-reader/readium", () => {
@@ -37,12 +42,20 @@ jest.mock("@my-reader/readium", () => {
     ReadiumView: mockReact.forwardRef(function ReadiumViewMock(
       props: {
         onPublicationReady?: (event: PublicationReadyEvent) => void
-        onLocationChange?: (locator: Locator, source?: "tts") => void
+        onLocationChange?: (
+          locator: Locator,
+          source?: "tts" | "user",
+          navigationId?: string,
+          navigationKind?: "pageTurn" | "programmatic",
+        ) => void
         decorations?: DecorationGroup[]
         selectionMenu?: SelectionMenuConfig
         customSelectionMenu?: boolean
         onTap?: () => void
-        onTtsStateChange?: (event: { state: "playing" }) => void
+        onTtsStateChange?: (event: {
+          sessionId: string
+          state: "playing"
+        }) => void
       },
       ref: React.Ref<unknown>,
     ) {
@@ -347,17 +360,25 @@ describe("ReadiumReflowReader", () => {
       speed: 1,
       pitch: 1,
     }
-    const startOptions = { startAtViewportStart: true }
+    const startOptions = {
+      sessionId: "session-1",
+      startAtViewportStart: true,
+      skipPartialViewportSentence: true,
+    }
     readerElement({ onTtsStateChange }, readerRef)
 
     act(() => {
       readerRef.current?.startTts(engine, startLocator, startOptions)
       readerRef.current?.completeTtsSynthesis({
+        sessionId: "session-1",
         requestId: "request-1",
         path: "/tmp/speech.mp3",
         mimeType: "audio/mpeg",
       })
-      mockReadiumProps?.onTtsStateChange?.({ state: "playing" })
+      mockReadiumProps?.onTtsStateChange?.({
+        sessionId: "session-1",
+        state: "playing",
+      })
     })
 
     expect(mockStartTts).toHaveBeenCalledWith(
@@ -366,11 +387,15 @@ describe("ReadiumReflowReader", () => {
       startOptions,
     )
     expect(mockCompleteTtsSynthesis).toHaveBeenCalledWith({
+      sessionId: "session-1",
       requestId: "request-1",
       path: "/tmp/speech.mp3",
       mimeType: "audio/mpeg",
     })
-    expect(onTtsStateChange).toHaveBeenCalledWith({ state: "playing" })
+    expect(onTtsStateChange).toHaveBeenCalledWith({
+      sessionId: "session-1",
+      state: "playing",
+    })
   })
 
   it("should expose the publication id when Readium reports readiness", () => {
@@ -435,7 +460,7 @@ describe("ReadiumReflowReader", () => {
     )
   })
 
-  it("should notify TTS when the product navigates to another locator", () => {
+  it("should notify TTS only for an explicit user navigation transaction", () => {
     const readerRef = React.createRef<ReadiumReflowReaderRef>()
     const onUserLocationChange = jest.fn()
     const target = locator("OEBPS/chapter.xhtml", {
@@ -450,14 +475,49 @@ describe("ReadiumReflowReader", () => {
     readerElement({ onUserLocationChange }, readerRef)
 
     act(() => readerRef.current?.goTo(target))
-    act(() => mockReadiumProps?.onLocationChange?.(target))
+    act(() =>
+      mockReadiumProps?.onLocationChange?.(
+        target,
+        "user",
+        "navigation-1",
+        "programmatic",
+      ),
+    )
 
-    expect(onUserLocationChange).toHaveBeenCalledWith(target)
+    expect(onUserLocationChange).toHaveBeenCalledWith(
+      target,
+      "navigation-1",
+      "programmatic",
+    )
 
-    act(() => mockReadiumProps?.onLocationChange?.(nextPage))
+    act(() =>
+      mockReadiumProps?.onLocationChange?.(
+        nextPage,
+        "user",
+        "navigation-2",
+        "pageTurn",
+      ),
+    )
 
     expect(onUserLocationChange).toHaveBeenCalledTimes(2)
-    expect(onUserLocationChange).toHaveBeenCalledWith(nextPage)
+    expect(onUserLocationChange).toHaveBeenCalledWith(
+      nextPage,
+      "navigation-2",
+      "pageTurn",
+    )
+  })
+
+  it("should never turn an unowned native locator update into a TTS seek", () => {
+    const onUserLocationChange = jest.fn()
+    const internalPage = locator("OEBPS/chapter.xhtml", {
+      position: 3,
+      progression: 0.3,
+    })
+    readerElement({ onUserLocationChange })
+
+    act(() => mockReadiumProps?.onLocationChange?.(internalPage))
+
+    expect(onUserLocationChange).not.toHaveBeenCalled()
   })
 
   it("should not classify TTS follow-text navigation as a user page turn", () => {

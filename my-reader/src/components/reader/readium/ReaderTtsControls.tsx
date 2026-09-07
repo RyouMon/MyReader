@@ -17,6 +17,7 @@ type ReaderTtsControlsProps = {
   session: EpubTtsSession
   visible: boolean
   settingsOpen: boolean
+  onPlayFromCurrentPosition: () => void
   onToggleSettings: () => void
   onExpandedChange: (expanded: boolean) => void
 }
@@ -25,6 +26,7 @@ export function ReaderTtsControls({
   session,
   visible,
   settingsOpen,
+  onPlayFromCurrentPosition,
   onToggleSettings,
   onExpandedChange,
 }: ReaderTtsControlsProps) {
@@ -73,9 +75,19 @@ export function ReaderTtsControls({
       aria-label={t("reader.tts.controls")}
       data-active={expanded ? "true" : "false"}
       data-visible={shown ? "true" : "false"}
+      data-viewport-detached={session.viewportDetached ? "true" : "false"}
       data-testid="reader-tts-controls"
       className="reader-tts-mini-player"
     >
+      {expanded && session.viewportDetached ? (
+        <button
+          type="button"
+          className="reader-tts-play-from-current"
+          onClick={onPlayFromCurrentPosition}
+        >
+          {t("reader.tts.playFromCurrentPosition")}
+        </button>
+      ) : null}
       {expanded && preparing ? (
         <div
           className="reader-tts-mini-status"
