@@ -5,6 +5,12 @@
 MyReader 的重要变更均记录于此。
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [0.12.4] - 2026-09-08
+
+### Fixed
+
+- 修复生产构建中字体、字号、页边距和行高设置无法应用到 EPUB 阅读正文的问题（[#51](https://github.com/RyouMon/MyReader/issues/51)、[#74](https://github.com/RyouMon/MyReader/pull/74)）
+
 ## [0.12.3] - 2026-09-07
 
 ### Fixed

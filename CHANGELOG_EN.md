@@ -6,6 +6,12 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.12.4] - 2026-09-08
+
+### Fixed
+
+- Fixed EPUB font, font size, page margin, and line-height settings not applying to reading content in production builds ([#51](https://github.com/RyouMon/MyReader/issues/51), [#74](https://github.com/RyouMon/MyReader/pull/74))
+
 ## [0.12.3] - 2026-09-07
 
 ### Fixed
