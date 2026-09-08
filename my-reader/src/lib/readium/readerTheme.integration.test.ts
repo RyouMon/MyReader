@@ -1,4 +1,13 @@
+import { readFileSync } from "node:fs"
 import { expect, test } from "@playwright/test"
+
+const tauriConfig = JSON.parse(
+  readFileSync(
+    new URL("../../../src-tauri/tauri.conf.json", import.meta.url),
+    "utf8",
+  ),
+) as { app: { security: { csp: string } } }
+const productionCsp = tauriConfig.app.security.csp
 
 test("applies Readium theme colors under the production CSP", async ({
   page,
@@ -10,7 +19,7 @@ test("applies Readium theme colors under the production CSP", async ({
       <head>
         <meta
           http-equiv="Content-Security-Policy"
-          content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'"
+          content="${productionCsp}"
         >
         <title>Theme regression fixture</title>
       </head>
@@ -94,4 +103,41 @@ test("applies Readium theme colors under the production CSP", async ({
       color: "rgb(255, 255, 255)",
     },
   })
+})
+
+test("applies EPUB typography preferences under the production CSP", async ({
+  page,
+}) => {
+  await page.goto("/")
+  await page.setContent(`
+    <!doctype html>
+    <html>
+      <head>
+        <meta http-equiv="Content-Security-Policy" content="${productionCsp}">
+        <style>
+          html, body { margin: 0; }
+          #reader-fixture { position: relative; width: 1000px; height: 600px; }
+          .readium-navigator-iframe { border: 0; width: 100%; height: 100%; }
+        </style>
+      </head>
+      <body><div id="reader-fixture"></div></body>
+    </html>
+  `)
+
+  const result = await page.evaluate(async () => {
+    const fixturePath = "/integration-frontend/readerPreferencesFixture.ts"
+    const { exerciseReaderPreferences } = await import(fixturePath)
+    return exerciseReaderPreferences()
+  })
+
+  expect.soft(result.fontFamily.fontFamily).not.toBe(result.baseline.fontFamily)
+  expect
+    .soft(result.fontSize.fontProbeWidth)
+    .toBeGreaterThan(result.fontFamily.fontProbeWidth * 1.5)
+  expect
+    .soft(result.lineHeight.lineHeight)
+    .toBeGreaterThan(result.fontSize.lineHeight * 1.5)
+  expect
+    .soft(result.pageMargin.contentLeft)
+    .toBeGreaterThan(result.lineHeight.contentLeft + 20)
 })
