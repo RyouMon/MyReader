@@ -1,9 +1,29 @@
 package com.myreader.readium.reader
 
+import org.readium.r2.shared.publication.Locator
+
 internal data class TtsPlaybackNavigationEvent(
   val source: String?,
   val navigationId: String?,
   val navigationKind: String?,
+)
+
+internal fun ttsViewportStartLocator(
+  current: Locator,
+  cssSelector: String,
+  domRange: Map<String, Any?>,
+  text: Locator.Text,
+): Locator = current.copy(
+  locations = current.locations.copy(
+    // The DOM text anchor is more precise than a page-level progression.
+    // In particular, Readium treats 1.0 as the resource's final text block.
+    progression = null,
+    otherLocations = current.locations.otherLocations + mapOf(
+      "cssSelector" to cssSelector,
+      "domRange" to domRange,
+    ),
+  ),
+  text = text,
 )
 
 internal class TtsPlaybackNavigationState {
@@ -26,6 +46,10 @@ internal class TtsPlaybackNavigationState {
   private var nextNavigationId = 0L
   private var viewportDetached = false
   private var viewportNavigationId: String? = null
+  private var returnNavigationId: String? = null
+
+  val isReturningToPlaybackPosition: Boolean
+    get() = returnNavigationId != null
 
   val allowsTtsFollow: Boolean
     get() = !viewportDetached && owner !is Owner.User
@@ -37,6 +61,7 @@ internal class TtsPlaybackNavigationState {
   fun endTtsFollow() = Unit
 
   fun beginUserNavigation(detachViewport: Boolean = true): String {
+    returnNavigationId = null
     val previousViewportDetached = viewportDetached
     val previousViewportNavigationId = viewportNavigationId
     val previous = when (val current = owner) {
@@ -119,9 +144,26 @@ internal class TtsPlaybackNavigationState {
     return true
   }
 
+  fun returnToPlaybackPosition(navigationId: String): Boolean {
+    if (!reattachViewport(navigationId)) return false
+    owner = Owner.Tts
+    returnNavigationId = navigationId
+    return true
+  }
+
+  fun completeReturnToPlaybackPosition(
+    navigationId: String,
+    succeeded: Boolean,
+  ) {
+    if (returnNavigationId != navigationId) return
+    returnNavigationId = null
+    if (!succeeded) detachViewportForSession(navigationId)
+  }
+
   fun resetForSession() {
     owner = Owner.None
     viewportDetached = false
     viewportNavigationId = null
+    returnNavigationId = null
   }
 }

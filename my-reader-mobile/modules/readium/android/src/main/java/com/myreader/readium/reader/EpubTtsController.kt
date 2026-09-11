@@ -216,6 +216,8 @@ class EpubTtsController(
   private val observationJobs = mutableListOf<Job>()
   private var currentLocation: TtsNavigator.Location? = null
   private var currentPlayback: TtsNavigator.Playback? = null
+
+  fun currentPlaybackLocator(): Locator? = currentLocation?.utteranceLocator
   private var remoteBufferingKey: RemoteTtsSpeechKey? = null
   private var highlightedLocator: Locator? = null
   private var followedLocator: Locator? = null
@@ -366,9 +368,7 @@ class EpubTtsController(
       "canGoNext" to value.hasNextUtterance(),
     )
     currentLocation?.let { location ->
-      payload["locator"] = readiumLocatorToMap(
-        location.tokenLocator ?: location.utteranceLocator
-      )
+      payload["locator"] = readiumLocatorToMap(location.utteranceLocator)
     }
     (playback.state as? TtsNavigator.State.Failure)?.let { failure ->
       payload["error"] = failure.error.message

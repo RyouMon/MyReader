@@ -122,19 +122,16 @@ class EpubReaderFragment : VisualReaderFragment() {
       val domRange = anchor.optJSONObject("domRange")?.toMap() ?: return null
       val text = anchor.optJSONObject("text") ?: return null
       val current = navigatorFragment.currentLocator.value
-      return current.copy(
-          locations = current.locations.copy(
-            otherLocations = current.locations.otherLocations + mapOf(
-              "cssSelector" to cssSelector,
-              "domRange" to domRange
-            )
-          ),
-          text = Locator.Text(
-            before = text.optString("before").takeIf { it.isNotEmpty() },
-            highlight = text.optString("highlight").takeIf { it.isNotEmpty() },
-            after = text.optString("after").takeIf { it.isNotEmpty() }
-          )
+      return ttsViewportStartLocator(
+        current = current,
+        cssSelector = cssSelector,
+        domRange = domRange,
+        text = Locator.Text(
+          before = text.optString("before").takeIf { it.isNotEmpty() },
+          highlight = text.optString("highlight").takeIf { it.isNotEmpty() },
+          after = text.optString("after").takeIf { it.isNotEmpty() },
         )
+      )
     }
 
     suspend fun restoreViewportAnchorOffset(anchor: ViewportAnchor): Boolean {
@@ -203,6 +200,36 @@ class EpubReaderFragment : VisualReaderFragment() {
         readerBookmarkVisibilityScript(JSONObject(domRange).toString())
       )
       return decodeJavascriptValue(raw) == true
+    }
+
+    suspend fun isTtsLocatorVisible(locator: Locator): Boolean {
+      if (!this::navigatorFragment.isInitialized) return false
+      val raw = navigatorFragment.evaluateJavascript(
+        readerTextLocatorVisibilityScript(
+          JSONObject(readiumLocatorToMap(locator)).toString()
+        )
+      )
+      return decodeJavascriptValue(raw) == true
+    }
+
+    fun currentViewportHref(): String? =
+      if (this::navigatorFragment.isInitialized) {
+        navigatorFragment.currentLocator.value.href.toString()
+      } else {
+        null
+      }
+
+    suspend fun navigateToTtsLocator(locator: Locator, animated: Boolean): Boolean {
+      if (!this::navigatorFragment.isInitialized) return false
+      val currentHref = navigatorFragment.currentLocator.value.href.toString()
+      if (ttsFollowStaysInCurrentResource(currentHref, locator.href.toString())) {
+        val json = JSONObject(readiumLocatorToMap(locator)).toString()
+        val raw = navigatorFragment.evaluateJavascript(
+          "readium.scrollToLocator($json, $animated);"
+        )
+        return decodeJavascriptValue(raw) == true
+      }
+      return navigatorFragment.go(locator, animated)
     }
 
     private fun decodeJavascriptValue(raw: String?): Any? {
@@ -324,15 +351,7 @@ class EpubReaderFragment : VisualReaderFragment() {
           }
         },
         navigateForFollow = { locator ->
-          val currentHref = navigatorFragment.currentLocator.value.href.toString()
-          if (ttsFollowStaysInCurrentResource(currentHref, locator.href.toString())) {
-            val json = JSONObject(readiumLocatorToMap(locator)).toString()
-            navigatorFragment.evaluateJavascript(
-              "readium.scrollToLocator($json, false);"
-            )
-          } else {
-            navigatorFragment.go(locator, animated = false)
-          }
+          navigateToTtsLocator(locator, animated = false)
         },
         shouldFollowText = shouldFollowText,
         onFollowTextNavigation = { id, locator, active ->
@@ -375,6 +394,8 @@ class EpubReaderFragment : VisualReaderFragment() {
     }
     fun prepareTtsForUserNavigation() = ttsController?.prepareForUserNavigation()
     fun hasTtsSession(sessionId: String) = ttsSessionId == sessionId
+    fun currentTtsPlaybackLocator(): Locator? =
+      ttsController?.currentPlaybackLocator()
     fun previousTts() = ttsController?.previous()
     fun nextTts() = ttsController?.next()
     fun completeTtsSynthesis(completion: TtsSynthesisCompletionRecord) {

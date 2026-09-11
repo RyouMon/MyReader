@@ -166,6 +166,12 @@ func readerBookmarkVisibilityScript(domRangeJSON: String) -> String {
 JSON.stringify((\\(readerViewportAnchorRuntimeScript))(window).isReaderViewportAnchorVisible(\\(domRangeJSON)))
 """
 }
+
+func readerTextLocatorVisibilityScript(locatorJSON: String) -> String {
+  return """
+JSON.stringify((\\(readerViewportAnchorRuntimeScript))(window).isReaderTextLocatorVisible(\\(locatorJSON)))
+"""
+}
 `
 }
 
@@ -206,6 +212,10 @@ JSON.stringify(($readerViewportAnchorRuntimeScript)(window).readerViewportLayout
 
 internal fun readerBookmarkVisibilityScript(domRangeJson: String): String = """
 JSON.stringify(($readerViewportAnchorRuntimeScript)(window).isReaderViewportAnchorVisible($domRangeJson))
+""".trimIndent()
+
+internal fun readerTextLocatorVisibilityScript(locatorJson: String): String = """
+JSON.stringify(($readerViewportAnchorRuntimeScript)(window).isReaderTextLocatorVisible($locatorJson))
 """.trimIndent()
 `
 }

@@ -49,11 +49,18 @@ public final class ReadiumModule: Module {
         view.customSelectionMenu = enabled
       }
 
-      AsyncFunction("reattachTtsViewport") { (view: ReadiumView, sessionId: String, locator: LocatorRecord, viewportNavigationId: String, promise: Promise) in
+      AsyncFunction("reattachTtsViewport") { (view: ReadiumView, sessionId: String, viewportNavigationId: String, promise: Promise) in
         Task { @MainActor in
           promise.resolve(await view.reattachTtsViewport(
             sessionId: sessionId,
-            locator: locator,
+            viewportNavigationId: viewportNavigationId
+          ))
+        }
+      }
+      AsyncFunction("returnToTtsPosition") { (view: ReadiumView, sessionId: String, viewportNavigationId: String, promise: Promise) in
+        Task { @MainActor in
+          promise.resolve(await view.returnToTtsPosition(
+            sessionId: sessionId,
             viewportNavigationId: viewportNavigationId
           ))
         }

@@ -106,6 +106,10 @@ node e2e/scripts/tts-fixture-server.mjs
 ```bash
 maestro test --config=e2e/config.yaml e2e/flows/reader/read_with_tts.yaml \
   -e APP_ID=ryoumon.myreadermobile
+maestro test --config=e2e/config.yaml e2e/flows/reader/tts_playback_lifecycle.yaml \
+  -e APP_ID=ryoumon.myreadermobile
+maestro test --config=e2e/config.yaml e2e/flows/reader/tts_playback_position_authority.yaml \
+  -e APP_ID=ryoumon.myreadermobile
 ```
 
 - 系统朗读：无需额外配置。
@@ -118,9 +122,13 @@ maestro test --config=e2e/config.yaml e2e/flows/reader/read_with_tts.yaml \
 node e2e/scripts/assert-tts-fixture-requests.mjs openai
 ```
 
-Flow 会验证播放器展开但不自动起播、长按选文后通过“从这里朗读”起播、句子高亮、暂停/恢复、
-上一句/下一句、翻页和进度跳转后从当前页第一行开始且不回跳，以及停止。它不会删除测试书库或
-供应商，验证结束后应在应用中移除临时配置。
+`read_with_tts.yaml` 验证播放器展开但不自动起播、长按选文后通过“从这里朗读”起播、句子高亮、
+暂停/恢复、上一句/下一句、进度跳转后从当前页第一行开始且不回跳，以及停止。
+`tts_playback_lifecycle.yaml` 独立覆盖播放与暂停两种状态下的上一句、下一句、手动翻页、返回播放
+位置、从当前位置播放及停止，确保手动翻页不会改变朗读游标或被立即拉回。Flow 不会删除测试书库
+或供应商，验证结束后应在应用中移除临时配置。
+`tts_playback_position_authority.yaml` 验证手动翻页后始终返回最新朗读句、朗读追上可见页时立即
+收起位置操作，以及停止后重新播放会从当前可见页开始。
 
 iOS 的 `UIEditMenuInteraction` 位于 XCTest 应用可访问性树之外。Flow 会保存带“从这里朗读”的
 原生菜单截图，再用播放器继续其余自动化场景；菜单动作本身需在模拟器中手动点击验证。Android
@@ -139,7 +147,9 @@ iOS 的 `UIEditMenuInteraction` 位于 XCTest 应用可访问性树之外。Flow
 ### EPUB（book id 1，卡拉马佐夫兄弟，898 页）
 - `change_epub_settings.yaml` — 用户改 EPUB 手机阅读设置：夜间主题 / 字体族(Sans) / 两端对齐 / 字号/行距/页边距滑块值变化 / 手机竖屏单栏，全部通过控件状态或数值标签断言（@phone @wip）
 - `change_epub_settings_on_pad.yaml` — iPad 栏数=auto 横屏双栏/竖屏单栏；强制单栏横屏→单栏（@visual @ipad @wip，dev-client 在 iPad 上锁定 portrait 导致横屏渲染异常，且栏数无结构代理，故保留 AI 断言，待 release build 验证）
-- `read_with_tts.yaml` — 使用专用 EPUB 验证系统或网络 TTS 的“从这里朗读”、翻页/进度跳转稳定性、暂停/恢复、上一句/下一句和停止（@external-library）
+- `read_with_tts.yaml` — 使用专用 EPUB 验证系统或网络 TTS 的“从这里朗读”、进度跳转稳定性、暂停/恢复、上一句/下一句和停止（@external-library）
+- `tts_playback_lifecycle.yaml` — 使用专用 EPUB 覆盖播放与暂停状态下的完整朗读控制及手动翻页生命周期（@external-library）
+- `tts_playback_position_authority.yaml` — 验证最新朗读位置、可见页追平和停止后从当前页重新播放（@external-library）
 
 ### 复用 subflow（`common/`，`@skip`）
 - `launch_and_prepare.yaml` — `clearState` 启动应用并关闭 dev launcher，回到首页

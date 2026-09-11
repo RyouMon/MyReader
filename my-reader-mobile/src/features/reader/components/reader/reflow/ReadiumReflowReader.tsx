@@ -67,7 +67,10 @@ export type ReadiumReflowReaderRef = {
   isBookmarkVisible: (locator: Locator) => Promise<boolean>
   reattachTtsViewport: (
     sessionId: string,
-    locator: Locator,
+    viewportNavigationId: string,
+  ) => Promise<boolean>
+  returnToTtsPosition: (
+    sessionId: string,
     viewportNavigationId: string,
   ) => Promise<boolean>
   startTts: (
@@ -189,14 +192,14 @@ const ReadiumReflowReader = forwardRef<
       isBookmarkVisible: (locator: Locator) =>
         readiumRef.current?.isBookmarkVisible(locator) ??
         Promise.resolve(false),
-      reattachTtsViewport: (
-        sessionId: string,
-        locator: Locator,
-        viewportNavigationId: string,
-      ) =>
+      reattachTtsViewport: (sessionId: string, viewportNavigationId: string) =>
         readiumRef.current?.reattachTtsViewport(
           sessionId,
-          locator,
+          viewportNavigationId,
+        ) ?? Promise.resolve(false),
+      returnToTtsPosition: (sessionId: string, viewportNavigationId: string) =>
+        readiumRef.current?.returnToTtsPosition(
+          sessionId,
           viewportNavigationId,
         ) ?? Promise.resolve(false),
       startTts: (config, fromLocator, options) => {

@@ -47,6 +47,7 @@ describe("ReaderTtsControls", () => {
         visible
         settingsOpen={false}
         onPlayFromCurrentPosition={vi.fn()}
+        onReturnToPlaybackPosition={vi.fn()}
         onToggleSettings={vi.fn()}
         onExpandedChange={onExpandedChange}
       />,
@@ -71,6 +72,7 @@ describe("ReaderTtsControls", () => {
         visible
         settingsOpen={false}
         onPlayFromCurrentPosition={vi.fn()}
+        onReturnToPlaybackPosition={vi.fn()}
         onToggleSettings={vi.fn()}
         onExpandedChange={vi.fn()}
       />,
@@ -107,6 +109,7 @@ describe("ReaderTtsControls", () => {
         visible={false}
         settingsOpen={false}
         onPlayFromCurrentPosition={vi.fn()}
+        onReturnToPlaybackPosition={vi.fn()}
         onToggleSettings={vi.fn()}
         onExpandedChange={vi.fn()}
       />,
@@ -124,6 +127,7 @@ describe("ReaderTtsControls", () => {
         visible
         settingsOpen={false}
         onPlayFromCurrentPosition={vi.fn()}
+        onReturnToPlaybackPosition={vi.fn()}
         onToggleSettings={vi.fn()}
         onExpandedChange={vi.fn()}
       />,
@@ -135,6 +139,7 @@ describe("ReaderTtsControls", () => {
         visible
         settingsOpen={false}
         onPlayFromCurrentPosition={vi.fn()}
+        onReturnToPlaybackPosition={vi.fn()}
         onToggleSettings={vi.fn()}
         onExpandedChange={vi.fn()}
       />,
@@ -147,12 +152,14 @@ describe("ReaderTtsControls", () => {
 
   it("offers to play from the visible page after the viewport moves", () => {
     const onPlayFromCurrentPosition = vi.fn()
+    const onReturnToPlaybackPosition = vi.fn()
     render(
       <ReaderTtsControls
         session={session({ state: "playing", viewportDetached: true })}
         visible
         settingsOpen={false}
         onPlayFromCurrentPosition={onPlayFromCurrentPosition}
+        onReturnToPlaybackPosition={onReturnToPlaybackPosition}
         onToggleSettings={vi.fn()}
         onExpandedChange={vi.fn()}
       />,
@@ -165,5 +172,13 @@ describe("ReaderTtsControls", () => {
     )
 
     expect(onPlayFromCurrentPosition).toHaveBeenCalledOnce()
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "reader.tts.returnToPlaybackPosition",
+      }),
+    )
+
+    expect(onReturnToPlaybackPosition).toHaveBeenCalledOnce()
   })
 })

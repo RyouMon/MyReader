@@ -37,6 +37,8 @@ abstract class BaseReaderFragment : Fragment() {
   protected abstract val model: ReaderViewModel
   protected abstract val navigator: Navigator
   var onUserNavigationIntent: (() -> Unit)? = null
+  var onUserNavigationGestureStart: (() -> Unit)? = null
+  var onUserNavigationGestureEnd: (() -> Unit)? = null
 
   /**
    * Navigators whose reading-direction semantics are not handled by Readium
@@ -71,7 +73,11 @@ abstract class BaseReaderFragment : Fragment() {
   // Listen to taps in the navigator to toggle chrome from JS
   private val tapInputListener = object : InputListener {
     override fun onDrag(event: DragEvent): Boolean {
-      if (event.type == DragEvent.Type.Start) onUserNavigationIntent?.invoke()
+      when (event.type) {
+        DragEvent.Type.Start -> onUserNavigationGestureStart?.invoke()
+        DragEvent.Type.End -> onUserNavigationGestureEnd?.invoke()
+        DragEvent.Type.Move -> Unit
+      }
       return false
     }
 

@@ -1397,9 +1397,9 @@ export function ReadiumEpubReader({
   ttsSessionRef.current = ttsSession
   const setTtsPointReadEnabled = useCallback((enabled: boolean) => {
     ttsPointReadEnabledRef.current = enabled
-    getIframeDocs().forEach((document) =>
-      setEpubTtsPointReadEnabled(document, enabled),
-    )
+    getIframeDocs().forEach((document) => {
+      setEpubTtsPointReadEnabled(document, enabled)
+    })
   }, [])
   const readTtsAtIframePoint = useCallback(
     (
@@ -2842,6 +2842,7 @@ export function ReadiumEpubReader({
           visible={chromeVisible}
           settingsOpen={ttsSettingsOpen}
           onPlayFromCurrentPosition={playTtsFromCurrentPosition}
+          onReturnToPlaybackPosition={ttsSession.goToCurrent}
           onToggleSettings={toggleTtsSettings}
           onExpandedChange={setTtsPointReadEnabled}
         />

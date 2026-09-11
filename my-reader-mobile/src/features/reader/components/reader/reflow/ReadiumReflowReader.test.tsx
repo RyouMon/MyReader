@@ -18,6 +18,7 @@ const mockGoTo = jest.fn()
 const mockClearSelection = jest.fn()
 const mockStartTts = jest.fn()
 const mockCompleteTtsSynthesis = jest.fn()
+const mockReturnToTtsPosition = jest.fn()
 let mockReadiumProps: {
   onPublicationReady?: (event: PublicationReadyEvent) => void
   onLocationChange?: (
@@ -63,6 +64,7 @@ jest.mock("@my-reader/readium", () => {
       mockReact.useImperativeHandle(ref, () => ({
         goTo: mockGoTo,
         clearSelection: mockClearSelection,
+        returnToTtsPosition: mockReturnToTtsPosition,
         startTts: mockStartTts,
         playTts: jest.fn(),
         pauseTts: jest.fn(),
@@ -120,6 +122,7 @@ describe("ReadiumReflowReader", () => {
     mockClearSelection.mockClear()
     mockStartTts.mockClear()
     mockCompleteTtsSynthesis.mockClear()
+    mockReturnToTtsPosition.mockClear()
     mockGetContent.mockReset()
     mockGetContent.mockResolvedValue({ utterances: [] })
     mockReadiumProps = null

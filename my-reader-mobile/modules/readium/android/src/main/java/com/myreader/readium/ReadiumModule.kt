@@ -95,8 +95,12 @@ class ReadiumModule : Module() {
         view.customSelectionMenu = value
       }
 
-      AsyncFunction("reattachTtsViewport") Coroutine { view: ReadiumView, sessionId: String, locator: LocatorRecord, viewportNavigationId: String ->
-        view.reattachTtsViewport(sessionId, locator, viewportNavigationId)
+      AsyncFunction("reattachTtsViewport") Coroutine { view: ReadiumView, sessionId: String, viewportNavigationId: String ->
+        view.reattachTtsViewport(sessionId, viewportNavigationId)
+      }
+
+      AsyncFunction("returnToTtsPosition") Coroutine { view: ReadiumView, sessionId: String, viewportNavigationId: String ->
+        view.returnToTtsPosition(sessionId, viewportNavigationId)
       }
 
       AsyncFunction("startTts") { view: ReadiumView, sessionId: String, config: TtsEngineConfigRecord, locator: LocatorRecord?, startAtViewportStart: Boolean, skipPartialViewportSentence: Boolean, viewportDetached: Boolean, viewportNavigationId: String? ->

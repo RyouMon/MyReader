@@ -1,0 +1,187 @@
+appId: ${APP_ID}
+name: Keep the latest narration and visible reading positions authoritative
+tags:
+  - reader
+  - tts
+  - external-library
+env:
+  TTS_BOOK_TITLE: MyReader TTS E2E
+---
+- runFlow: ../../common/launch_preserving_data.yaml
+- tapOn: "Library|书库"
+- waitForAnimationToEnd:
+    timeout: 3000
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: "All Books.*|全部图书.*"
+      - extendedWaitUntil:
+          visible: ${TTS_BOOK_TITLE}
+          timeout: 5000
+- tapOn: '打开《${TTS_BOOK_TITLE}》|Open "${TTS_BOOK_TITLE}"'
+- extendedWaitUntil:
+    visible:
+      id: "reader-screen"
+    timeout: 30000
+- retry:
+    maxRetries: 2
+    commands:
+      - runFlow:
+          when:
+            notVisible: "更多操作|More Actions|More actions"
+          commands:
+            - tapOn:
+                point: "50%,50%"
+      - extendedWaitUntil:
+          visible: "更多操作|More Actions|More actions"
+          timeout: 5000
+- runFlow:
+    when:
+      visible: "打开听书播放器|Open read-aloud controls"
+    commands:
+      - tapOn: "打开听书播放器|Open read-aloud controls"
+      - extendedWaitUntil:
+          visible: "朗读控制|Read-aloud controls"
+          timeout: 10000
+- runFlow:
+    when:
+      visible: "朗读控制|Read-aloud controls"
+    commands:
+      - tapOn: "停止朗读|Stop narration"
+- extendedWaitUntil:
+    visible: "更多操作|More Actions|More actions"
+    timeout: 10000
+- tapOn: "更多操作|More Actions|More actions"
+- extendedWaitUntil:
+    visible: "目录|Contents"
+    timeout: 10000
+- tapOn: "目录|Contents"
+- extendedWaitUntil:
+    visible: "Playback position authority"
+    timeout: 10000
+- tapOn: "Playback position authority"
+- extendedWaitUntil:
+    visible: "Playback position first page.*"
+    timeout: 10000
+
+# A manual page turn leaves narration on its own cursor. Moving narration to
+# page two must make Return target page two, never the position captured when
+# the viewport first detached.
+- runFlow:
+    when:
+      notVisible: "打开听书播放器|Open read-aloud controls"
+    commands:
+      - tapOn:
+          point: "50%,50%"
+- tapOn: "打开听书播放器|Open read-aloud controls"
+- tapOn: "继续朗读|Resume narration"
+- extendedWaitUntil:
+    visible: "暂停朗读|Pause narration"
+    timeout: 30000
+- tapOn: "暂停朗读|Pause narration"
+- assertVisible: "继续朗读|Resume narration"
+- swipe:
+    start: "85%,50%"
+    end: "15%,50%"
+    duration: 300
+- swipe:
+    start: "85%,50%"
+    end: "15%,50%"
+    duration: 300
+- extendedWaitUntil:
+    visible: "User viewport third page.*"
+    timeout: 10000
+- extendedWaitUntil:
+    visible: "返回播放位置|Return to narration"
+    timeout: 10000
+- tapOn: "下一句|Next sentence"
+- extendedWaitUntil:
+    visible: "返回播放位置|Return to narration"
+    timeout: 10000
+- tapOn: "返回播放位置|Return to narration"
+- extendedWaitUntil:
+    visible: "Latest narration second page.*"
+    timeout: 10000
+- assertNotVisible: "从当前位置播放|Play from here"
+- assertNotVisible: "返回播放位置|Return to narration"
+- assertVisible: "继续朗读|Resume narration"
+
+# When narration advances onto the page the user is viewing, the detached
+# actions disappear immediately without another page turn.
+- swipe:
+    start: "85%,50%"
+    end: "15%,50%"
+    duration: 300
+- extendedWaitUntil:
+    visible: "User viewport third page.*"
+    timeout: 10000
+- extendedWaitUntil:
+    visible: "返回播放位置|Return to narration"
+    timeout: 10000
+- tapOn: "继续朗读|Resume narration"
+- extendedWaitUntil:
+    visible: "暂停朗读|Pause narration"
+    timeout: 10000
+- tapOn: "下一句|Next sentence"
+- extendedWaitUntil:
+    notVisible: "返回播放位置|Return to narration"
+    timeout: 3000
+- assertNotVisible: "从当前位置播放|Play from here"
+- assertVisible: "User viewport third page.*"
+
+# Stop clears the narration cursor. After the user reads elsewhere, a fresh
+# Play begins at the first visible sentence instead of the stopped position.
+- tapOn: "暂停朗读|Pause narration"
+- extendedWaitUntil:
+    visible: "继续朗读|Resume narration"
+    timeout: 10000
+- swipe:
+    start: "15%,50%"
+    end: "85%,50%"
+    duration: 300
+- extendedWaitUntil:
+    visible: "Latest narration second page.*"
+    timeout: 10000
+- extendedWaitUntil:
+    visible: "返回播放位置|Return to narration"
+    timeout: 10000
+- tapOn: "上一句|Previous sentence"
+- extendedWaitUntil:
+    notVisible: "返回播放位置|Return to narration"
+    timeout: 3000
+- tapOn: "停止朗读|Stop narration"
+- swipe:
+    start: "85%,50%"
+    end: "15%,50%"
+    duration: 300
+- extendedWaitUntil:
+    visible: "User viewport third page.*"
+    timeout: 10000
+- runFlow:
+    when:
+      notVisible: "打开听书播放器|Open read-aloud controls"
+    commands:
+      - tapOn:
+          point: "50%,50%"
+- tapOn: "打开听书播放器|Open read-aloud controls"
+- tapOn: "继续朗读|Resume narration"
+- extendedWaitUntil:
+    visible: "暂停朗读|Pause narration"
+    timeout: 30000
+- tapOn: "暂停朗读|Pause narration"
+- swipe:
+    start: "15%,50%"
+    end: "85%,50%"
+    duration: 300
+- extendedWaitUntil:
+    visible: "Latest narration second page.*"
+    timeout: 10000
+- extendedWaitUntil:
+    visible: "返回播放位置|Return to narration"
+    timeout: 10000
+- tapOn: "返回播放位置|Return to narration"
+- extendedWaitUntil:
+    visible: "User viewport third page.*"
+    timeout: 10000
+- assertNotVisible: "返回播放位置|Return to narration"
+- tapOn: "停止朗读|Stop narration"

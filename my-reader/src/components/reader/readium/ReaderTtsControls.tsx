@@ -18,6 +18,7 @@ type ReaderTtsControlsProps = {
   visible: boolean
   settingsOpen: boolean
   onPlayFromCurrentPosition: () => void
+  onReturnToPlaybackPosition: () => void
   onToggleSettings: () => void
   onExpandedChange: (expanded: boolean) => void
 }
@@ -27,6 +28,7 @@ export function ReaderTtsControls({
   visible,
   settingsOpen,
   onPlayFromCurrentPosition,
+  onReturnToPlaybackPosition,
   onToggleSettings,
   onExpandedChange,
 }: ReaderTtsControlsProps) {
@@ -80,13 +82,22 @@ export function ReaderTtsControls({
       className="reader-tts-mini-player"
     >
       {expanded && session.viewportDetached ? (
-        <button
-          type="button"
-          className="reader-tts-play-from-current"
-          onClick={onPlayFromCurrentPosition}
-        >
-          {t("reader.tts.playFromCurrentPosition")}
-        </button>
+        <div className="reader-tts-detached-actions">
+          <button
+            type="button"
+            className="reader-tts-detached-action"
+            onClick={onPlayFromCurrentPosition}
+          >
+            {t("reader.tts.playFromCurrentPosition")}
+          </button>
+          <button
+            type="button"
+            className="reader-tts-detached-action"
+            onClick={onReturnToPlaybackPosition}
+          >
+            {t("reader.tts.returnToPlaybackPosition")}
+          </button>
+        </div>
       ) : null}
       {expanded && preparing ? (
         <div

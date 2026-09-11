@@ -588,6 +588,8 @@ export function useEpubTtsSession({
 
   const markViewportMoved = useCallback(
     (navigationId: string) => {
+      const wasViewportDetached =
+        sessionMachineRef.current!.snapshot.viewportDetached
       const transition = sessionMachineRef.current!.send({
         type: "viewport-moved",
         navigationId,
@@ -600,7 +602,9 @@ export function useEpubTtsSession({
               (utterance) => utterance.id === currentId,
             )?.locator
           : undefined
-        if (locator) reattachViewportIfVisible(locator)
+        if (wasViewportDetached && locator) {
+          reattachViewportIfVisible(locator)
+        }
       }
     },
     [reattachViewportIfVisible],
@@ -694,10 +698,18 @@ export function useEpubTtsSession({
     if (!utterance) return
     navigatorRef.current?.go(utterance.locator, false, () => {
       const navigator = navigatorRef.current
-      if (navigator)
+      if (navigator) {
         applyEpubTtsHighlight(navigator, utterance.locator, highlightTint)
+        reattachViewportIfVisible(utterance.locator)
+      }
     })
-  }, [currentIndex, highlightTint, navigatorRef, utterances])
+  }, [
+    currentIndex,
+    highlightTint,
+    navigatorRef,
+    reattachViewportIfVisible,
+    utterances,
+  ])
 
   const setVoice = useCallback(
     (nextVoiceId: string) => {

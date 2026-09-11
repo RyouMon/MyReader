@@ -531,6 +531,7 @@ export const desktopZhCN = {
         pause: "暂停朗读",
         stop: "停止朗读",
         playFromCurrentPosition: "从当前位置播放",
+        returnToPlaybackPosition: "返回播放位置",
         previousSentence: "上一句",
         nextSentence: "下一句",
         voice: "声音",

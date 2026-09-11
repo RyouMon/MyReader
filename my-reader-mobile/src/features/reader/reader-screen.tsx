@@ -322,6 +322,7 @@ export default function ReaderScreen() {
     next: nextTts,
     stop: stopTts,
     markViewportMoved: markTtsViewportMoved,
+    returnToPlaybackPosition: returnToTtsPlaybackPosition,
     handleStateChange: handleTtsStateChange,
     handleSynthesisRequest: handleTtsSynthesisRequest,
     handleSynthesisCancel: handleTtsSynthesisCancel,
@@ -1050,15 +1051,15 @@ export default function ReaderScreen() {
   }, [readerState?.locator, startTts, ttsState])
   const handlePlayTts = useCallback(() => {
     if (!ttsState) {
-      void startTts(readerState?.locator, { startAtViewportStart: true })
+      void startTts(undefined, { startAtViewportStart: true })
       return
     }
     if (ttsState.state === "error" || ttsState.state === "ended") {
-      void startTts(ttsState.locator ?? readerState?.locator)
+      void startTts(undefined, { startAtViewportStart: true })
       return
     }
     playTts()
-  }, [playTts, readerState?.locator, startTts, ttsState])
+  }, [playTts, startTts, ttsState])
   const handlePlayTtsFromCurrentPosition = useCallback(() => {
     const locator = readerState?.locator
     if (!locator) return
@@ -1067,6 +1068,9 @@ export default function ReaderScreen() {
       skipPartialViewportSentence: true,
     })
   }, [readerState?.locator, seekTts])
+  const handleReturnToTtsPlaybackPosition = useCallback(() => {
+    void returnToTtsPlaybackPosition()
+  }, [returnToTtsPlaybackPosition])
   const handleStopTts = useCallback(() => {
     setTtsPlayerExpanded(false)
     stopTts()
@@ -1568,7 +1572,7 @@ export default function ReaderScreen() {
 
             {/* Fixed-layout fallback; text EPUB renders both bottom anchors together below. */}
             <ReaderMoreButton
-              visible={moreButtonVisible && !ttsAvailable}
+              visible={moreButtonVisible}
               palette={chromePalette}
               onPress={handleOpenReaderMore}
             />
@@ -1619,8 +1623,8 @@ export default function ReaderScreen() {
               onPrevious={previousTts}
               onNext={nextTts}
               onStop={handleStopTts}
-              onMore={handleOpenReaderMore}
               onPlayFromCurrentPosition={handlePlayTtsFromCurrentPosition}
+              onReturnToPlaybackPosition={handleReturnToTtsPlaybackPosition}
             />
 
             {/* State 4: table of contents sheet */}

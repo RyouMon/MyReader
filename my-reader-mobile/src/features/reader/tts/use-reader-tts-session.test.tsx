@@ -36,14 +36,18 @@ const systemConfig: MobileTtsConfig = {
 
 function readerRef() {
   const reader: ReadiumReflowReaderRef & {
-    reattachTtsViewport: jest.Mock<Promise<boolean>, [string, Locator, string]>
+    reattachTtsViewport: jest.Mock<Promise<boolean>, [string, string]>
+    returnToTtsPosition: jest.Mock<Promise<boolean>, [string, string]>
   } = {
     goTo: jest.fn(),
     clearSelection: jest.fn(),
     getBookmarkLocator: jest.fn(() => Promise.resolve(null)),
     isBookmarkVisible: jest.fn(() => Promise.resolve(false)),
-    reattachTtsViewport: jest.fn<Promise<boolean>, [string, Locator, string]>(
-      () => Promise.resolve(false),
+    reattachTtsViewport: jest.fn<Promise<boolean>, [string, string]>(() =>
+      Promise.resolve(false),
+    ),
+    returnToTtsPosition: jest.fn<Promise<boolean>, [string, string]>(() =>
+      Promise.resolve(true),
     ),
     startTts: jest.fn(),
     playTts: jest.fn(),
@@ -164,8 +168,295 @@ describe("useReaderTtsSession", () => {
 
     expect(result.current.state).toMatchObject({ sessionId, state: "playing" })
     expect(result.current.viewportDetached).toBe(true)
+    expect(ref.current.reattachTtsViewport).not.toHaveBeenCalled()
     expect(ref.current.startTts).toHaveBeenCalledTimes(1)
     expect(ref.current.stopTts).not.toHaveBeenCalled()
+  })
+
+  it("should preserve playing and paused controls across viewport navigation", async () => {
+    jest.mocked(getTtsConfig).mockResolvedValue(systemConfig)
+    const ref = readerRef()
+    const narratedLocator = {
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: { progression: 0.2 },
+    } as Locator
+    const viewportLocator = {
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: { progression: 0.7 },
+    } as Locator
+    const { result } = renderHook(() =>
+      useReaderTtsSession({
+        enabled: true,
+        publicationKey: "book-a",
+        language: "zh-CN",
+        highlightColor: "#C4622D",
+        readerRef: ref,
+      }),
+    )
+
+    await act(async () => result.current.start(narratedLocator))
+    const firstSessionId = lastSessionId(ref)
+    act(() => {
+      result.current.handleStateChange({
+        sessionId: firstSessionId,
+        state: "playing",
+        locator: narratedLocator,
+      })
+      result.current.next()
+      result.current.previous()
+      result.current.markViewportMoved("playing-navigation")
+      result.current.next()
+      result.current.previous()
+    })
+
+    expect(result.current.state?.state).toBe("playing")
+    expect(result.current.viewportDetached).toBe(true)
+    expect(ref.current.nextTts).toHaveBeenCalledTimes(2)
+    expect(ref.current.previousTts).toHaveBeenCalledTimes(2)
+
+    await act(async () => result.current.returnToPlaybackPosition())
+    expect(result.current.state?.state).toBe("playing")
+    expect(result.current.viewportDetached).toBe(false)
+    expect(ref.current.startTts).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      result.current.pause()
+      result.current.handleStateChange({
+        sessionId: firstSessionId,
+        state: "paused",
+        locator: narratedLocator,
+      })
+      result.current.next()
+      result.current.previous()
+      result.current.markViewportMoved("paused-navigation")
+      result.current.next()
+      result.current.previous()
+    })
+
+    expect(ref.current.pauseTts).toHaveBeenCalledTimes(1)
+    expect(result.current.state?.state).toBe("paused")
+    expect(result.current.viewportDetached).toBe(true)
+    expect(ref.current.nextTts).toHaveBeenCalledTimes(4)
+    expect(ref.current.previousTts).toHaveBeenCalledTimes(4)
+
+    await act(async () => result.current.returnToPlaybackPosition())
+    expect(result.current.state?.state).toBe("paused")
+    expect(result.current.viewportDetached).toBe(false)
+
+    act(() => result.current.play())
+    expect(ref.current.playTts).toHaveBeenCalledTimes(1)
+    act(() => {
+      result.current.handleStateChange({
+        sessionId: firstSessionId,
+        state: "playing",
+        locator: narratedLocator,
+      })
+    })
+
+    await act(async () => {
+      await result.current.seek(viewportLocator, {
+        startAtViewportStart: true,
+      })
+    })
+    const secondSessionId = lastSessionId(ref)
+    act(() => {
+      result.current.handleStateChange({
+        sessionId: secondSessionId,
+        state: "playing",
+        locator: viewportLocator,
+      })
+    })
+    expect(result.current.state?.state).toBe("playing")
+    expect(result.current.viewportDetached).toBe(false)
+    expect(ref.current.startTts).toHaveBeenCalledTimes(2)
+
+    act(() => result.current.stop())
+    expect(ref.current.stopTts).toHaveBeenCalledTimes(1)
+    expect(result.current.state).toBeNull()
+    expect(result.current.viewportDetached).toBe(false)
+  })
+
+  it("should return to the narrated locator without restarting playback", async () => {
+    jest.mocked(getTtsConfig).mockResolvedValue(systemConfig)
+    const ref = readerRef()
+    const narratedLocator = {
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: {
+        progression: 0.2,
+        domRange: {
+          start: { cssSelector: "p:nth-of-type(1)", textNodeIndex: 0 },
+        },
+      },
+    } as Locator
+    const { result } = renderHook(() =>
+      useReaderTtsSession({
+        enabled: true,
+        publicationKey: "book-a",
+        language: "zh-CN",
+        highlightColor: "#C4622D",
+        readerRef: ref,
+      }),
+    )
+
+    await act(async () => result.current.start(narratedLocator))
+    const sessionId = lastSessionId(ref)
+    act(() => {
+      result.current.handleStateChange({
+        sessionId,
+        state: "playing",
+        locator: narratedLocator,
+      })
+      result.current.markViewportMoved("navigation-away")
+    })
+    expect(result.current.viewportDetached).toBe(true)
+
+    await act(async () => result.current.returnToPlaybackPosition())
+
+    expect(ref.current.returnToTtsPosition).toHaveBeenCalledWith(
+      sessionId,
+      "navigation-away",
+    )
+    expect(result.current.viewportDetached).toBe(false)
+    expect(result.current.state).toMatchObject({ sessionId, state: "playing" })
+    expect(ref.current.startTts).toHaveBeenCalledTimes(1)
+    expect(ref.current.stopTts).not.toHaveBeenCalled()
+  })
+
+  it("should hide detached actions immediately after one return tap", async () => {
+    jest.mocked(getTtsConfig).mockResolvedValue(systemConfig)
+    let resolveReturn!: (returned: boolean) => void
+    const ref = readerRef()
+    jest.mocked(ref.current.returnToTtsPosition).mockReturnValue(
+      new Promise((resolve) => {
+        resolveReturn = resolve
+      }),
+    )
+    const narratedLocator = {
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: { progression: 0.2 },
+    } as Locator
+    const { result } = renderHook(() =>
+      useReaderTtsSession({
+        enabled: true,
+        publicationKey: "book-a",
+        language: "zh-CN",
+        highlightColor: "#C4622D",
+        readerRef: ref,
+      }),
+    )
+
+    await act(async () => result.current.start(narratedLocator))
+    const sessionId = lastSessionId(ref)
+    act(() => {
+      result.current.handleStateChange({
+        sessionId,
+        state: "playing",
+        locator: narratedLocator,
+      })
+      result.current.markViewportMoved("navigation-away")
+    })
+
+    let pendingReturn!: Promise<void>
+    act(() => {
+      pendingReturn = result.current.returnToPlaybackPosition()
+    })
+
+    expect(result.current.viewportDetached).toBe(false)
+
+    await act(async () => {
+      resolveReturn(true)
+      await pendingReturn
+    })
+  })
+
+  it("should restore detached actions when native return fails", async () => {
+    jest.mocked(getTtsConfig).mockResolvedValue(systemConfig)
+    const ref = readerRef()
+    jest.mocked(ref.current.returnToTtsPosition).mockResolvedValue(false)
+    const narratedLocator = {
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: { progression: 0.2 },
+    } as Locator
+    const { result } = renderHook(() =>
+      useReaderTtsSession({
+        enabled: true,
+        publicationKey: "book-a",
+        language: "zh-CN",
+        highlightColor: "#C4622D",
+        readerRef: ref,
+      }),
+    )
+
+    await act(async () => result.current.start(narratedLocator))
+    const sessionId = lastSessionId(ref)
+    act(() => {
+      result.current.handleStateChange({
+        sessionId,
+        state: "playing",
+        locator: narratedLocator,
+      })
+      result.current.markViewportMoved("navigation-away")
+    })
+
+    await act(async () => result.current.returnToPlaybackPosition())
+
+    expect(result.current.viewportDetached).toBe(true)
+  })
+
+  it("should ignore a return completed after a newer viewport move", async () => {
+    jest.mocked(getTtsConfig).mockResolvedValue(systemConfig)
+    let resolveReturn!: (returned: boolean) => void
+    const ref = readerRef()
+    jest.mocked(ref.current.returnToTtsPosition).mockReturnValue(
+      new Promise((resolve) => {
+        resolveReturn = resolve
+      }),
+    )
+    const narratedLocator = {
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: { progression: 0.2 },
+    } as Locator
+    const { result } = renderHook(() =>
+      useReaderTtsSession({
+        enabled: true,
+        publicationKey: "book-a",
+        language: "zh-CN",
+        highlightColor: "#C4622D",
+        readerRef: ref,
+      }),
+    )
+
+    await act(async () => result.current.start(narratedLocator))
+    const sessionId = lastSessionId(ref)
+    act(() => {
+      result.current.handleStateChange({
+        sessionId,
+        state: "playing",
+        locator: narratedLocator,
+      })
+      result.current.markViewportMoved("navigation-1")
+    })
+
+    let pendingReturn!: Promise<void>
+    act(() => {
+      pendingReturn = result.current.returnToPlaybackPosition()
+    })
+    await waitFor(() =>
+      expect(ref.current.returnToTtsPosition).toHaveBeenCalledTimes(1),
+    )
+    act(() => result.current.markViewportMoved("navigation-2"))
+    await act(async () => {
+      resolveReturn(true)
+      await pendingReturn
+    })
+
+    expect(result.current.viewportDetached).toBe(true)
   })
 
   it("should hide the restart action when the user returns to the narrated page", async () => {
@@ -201,21 +492,187 @@ describe("useReaderTtsSession", () => {
       })
       result.current.markViewportMoved("navigation-away")
     })
-    await waitFor(() =>
-      expect(ref.current.reattachTtsViewport).toHaveBeenCalledTimes(1),
-    )
     expect(result.current.viewportDetached).toBe(true)
+    expect(ref.current.reattachTtsViewport).not.toHaveBeenCalled()
 
     jest.mocked(ref.current.reattachTtsViewport).mockResolvedValue(true)
     act(() => result.current.markViewportMoved("navigation-back"))
 
     await waitFor(() => expect(result.current.viewportDetached).toBe(false))
+    expect(ref.current.reattachTtsViewport).toHaveBeenCalledTimes(1)
     expect(ref.current.reattachTtsViewport).toHaveBeenLastCalledWith(
       sessionId,
-      narratedLocator,
       "navigation-back",
     )
     expect(ref.current.startTts).toHaveBeenCalledTimes(1)
+  })
+
+  it("should reattach once when a page turn reports the same location twice", async () => {
+    jest.mocked(getTtsConfig).mockResolvedValue(systemConfig)
+    let resolveReattach!: (reattached: boolean) => void
+    const ref = readerRef()
+    jest.mocked(ref.current.reattachTtsViewport).mockReturnValue(
+      new Promise((resolve) => {
+        resolveReattach = resolve
+      }),
+    )
+    const narratedLocator = {
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: { progression: 0.2 },
+    } as Locator
+    const { result } = renderHook(() =>
+      useReaderTtsSession({
+        enabled: true,
+        publicationKey: "book-a",
+        language: "zh-CN",
+        highlightColor: "#C4622D",
+        readerRef: ref,
+      }),
+    )
+
+    await act(async () => result.current.start(narratedLocator))
+    const sessionId = lastSessionId(ref)
+    act(() => {
+      result.current.handleStateChange({
+        sessionId,
+        state: "playing",
+        locator: narratedLocator,
+      })
+      result.current.markViewportMoved("navigation-away")
+      result.current.markViewportMoved("navigation-back")
+      result.current.markViewportMoved("navigation-back")
+    })
+
+    expect(ref.current.reattachTtsViewport).toHaveBeenCalledTimes(1)
+
+    await act(async () => resolveReattach(true))
+
+    expect(result.current.viewportDetached).toBe(false)
+  })
+
+  it("should retry a duplicate page-turn location after the first visibility check misses", async () => {
+    jest.mocked(getTtsConfig).mockResolvedValue(systemConfig)
+    let resolveFirstMatch!: (reattached: boolean) => void
+    const ref = readerRef()
+    jest
+      .mocked(ref.current.reattachTtsViewport)
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFirstMatch = resolve
+        }),
+      )
+      .mockResolvedValueOnce(true)
+    const narratedLocator = {
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: { progression: 0.2 },
+    } as Locator
+    const { result } = renderHook(() =>
+      useReaderTtsSession({
+        enabled: true,
+        publicationKey: "book-a",
+        language: "zh-CN",
+        highlightColor: "#C4622D",
+        readerRef: ref,
+      }),
+    )
+
+    await act(async () => result.current.start(narratedLocator))
+    const sessionId = lastSessionId(ref)
+    act(() => {
+      result.current.handleStateChange({
+        sessionId,
+        state: "playing",
+        locator: narratedLocator,
+      })
+      result.current.markViewportMoved("navigation-away")
+      result.current.markViewportMoved("navigation-back")
+      result.current.markViewportMoved("navigation-back")
+    })
+
+    expect(ref.current.reattachTtsViewport).toHaveBeenCalledTimes(1)
+    await act(async () => resolveFirstMatch(false))
+
+    await waitFor(() =>
+      expect(ref.current.reattachTtsViewport).toHaveBeenCalledTimes(2),
+    )
+    await waitFor(() => expect(result.current.viewportDetached).toBe(false))
+    expect(ref.current.reattachTtsViewport).toHaveBeenLastCalledWith(
+      sessionId,
+      "navigation-back",
+    )
+  })
+
+  it("should retry native playback visibility after narration advances", async () => {
+    jest.mocked(getTtsConfig).mockResolvedValue(systemConfig)
+    let resolveFirstMatch!: (reattached: boolean) => void
+    const ref = readerRef()
+    jest
+      .mocked(ref.current.reattachTtsViewport)
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFirstMatch = resolve
+        }),
+      )
+      .mockResolvedValueOnce(true)
+    const firstLocator = {
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: { progression: 0.2 },
+    } as Locator
+    const secondLocator = {
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: { progression: 0.4 },
+    } as Locator
+    const latestLocator = {
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: { progression: 0.7 },
+    } as Locator
+    const { result } = renderHook(() =>
+      useReaderTtsSession({
+        enabled: true,
+        publicationKey: "book-a",
+        language: "zh-CN",
+        highlightColor: "#C4622D",
+        readerRef: ref,
+      }),
+    )
+
+    await act(async () => result.current.start(firstLocator))
+    const sessionId = lastSessionId(ref)
+    act(() => {
+      result.current.handleStateChange({
+        sessionId,
+        state: "playing",
+        locator: firstLocator,
+      })
+      result.current.markViewportMoved("navigation-ahead")
+      result.current.handleStateChange({
+        sessionId,
+        state: "playing",
+        locator: secondLocator,
+      })
+      result.current.handleStateChange({
+        sessionId,
+        state: "playing",
+        locator: latestLocator,
+      })
+    })
+
+    expect(ref.current.reattachTtsViewport).toHaveBeenCalledTimes(1)
+    await act(async () => resolveFirstMatch(false))
+
+    await waitFor(() =>
+      expect(ref.current.reattachTtsViewport).toHaveBeenCalledTimes(2),
+    )
+    expect(ref.current.reattachTtsViewport).toHaveBeenLastCalledWith(
+      sessionId,
+      "navigation-ahead",
+    )
+    await waitFor(() => expect(result.current.viewportDetached).toBe(false))
   })
 
   it("should hide the restart action when narration reaches the open page", async () => {
@@ -261,10 +718,8 @@ describe("useReaderTtsSession", () => {
       })
       result.current.markViewportMoved("navigation-ahead")
     })
-    await waitFor(() =>
-      expect(ref.current.reattachTtsViewport).toHaveBeenCalledTimes(1),
-    )
     expect(result.current.viewportDetached).toBe(true)
+    expect(ref.current.reattachTtsViewport).not.toHaveBeenCalled()
 
     jest.mocked(ref.current.reattachTtsViewport).mockResolvedValue(true)
     act(() => {
@@ -276,9 +731,9 @@ describe("useReaderTtsSession", () => {
     })
 
     await waitFor(() => expect(result.current.viewportDetached).toBe(false))
+    expect(ref.current.reattachTtsViewport).toHaveBeenCalledTimes(1)
     expect(ref.current.reattachTtsViewport).toHaveBeenLastCalledWith(
       sessionId,
-      openPageLocator,
       "navigation-ahead",
     )
     expect(ref.current.startTts).toHaveBeenCalledTimes(1)
@@ -326,11 +781,11 @@ describe("useReaderTtsSession", () => {
       })
       result.current.markViewportMoved("navigation-1")
     })
+    act(() => result.current.markViewportMoved("navigation-2"))
     await waitFor(() =>
       expect(ref.current.reattachTtsViewport).toHaveBeenCalledTimes(1),
     )
-
-    act(() => result.current.markViewportMoved("navigation-2"))
+    act(() => result.current.markViewportMoved("navigation-3"))
     await waitFor(() =>
       expect(ref.current.reattachTtsViewport).toHaveBeenCalledTimes(2),
     )

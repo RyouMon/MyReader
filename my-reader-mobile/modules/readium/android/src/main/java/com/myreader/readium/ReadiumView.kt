@@ -37,6 +37,7 @@ import com.myreader.readium.reader.ReaderViewModel
 import com.myreader.readium.reader.SelectionAction as FragmentSelectionAction
 import com.myreader.readium.reader.TtsPlaybackNavigationState
 import com.myreader.readium.reader.ViewportAnchor
+import com.myreader.readium.reader.ttsFollowStaysInCurrentResource
 import com.myreader.readium.utils.LinkOrLocator
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.exception.Exceptions
@@ -47,6 +48,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.readium.r2.navigator.Decoration as ReadiumDecoration
@@ -86,6 +88,8 @@ class ReadiumView(
   private var viewportPresentationFrozen = false
   private val ttsNavigationState = TtsPlaybackNavigationState()
   private var userNavigationResetRunnable: Runnable? = null
+  private var activeDragNavigationId: String? = null
+  private var lastDispatchedHref: String? = null
 
   // MARK: - Events
 
@@ -295,6 +299,7 @@ class ReadiumView(
   }
 
   private fun dispatchLocation(locator: Locator) {
+    lastDispatchedHref = locator.href.toString()
     val payload = mutableMapOf<String, Any?>("locator" to readiumLocatorToMap(locator))
     val navigation = ttsNavigationState.locationEvent()
     navigation.source?.let { payload["source"] = it }
@@ -303,6 +308,9 @@ class ReadiumView(
     if (navigation.source == "user") {
       userNavigationResetRunnable?.let(mainHandler::removeCallbacks)
       userNavigationResetRunnable = null
+      if (activeDragNavigationId == navigation.navigationId) {
+        activeDragNavigationId = null
+      }
     }
     onLocationChange(
       payload
@@ -321,19 +329,35 @@ class ReadiumView(
   private fun clearTtsFollowTextNavigation() {
     userNavigationResetRunnable?.let(mainHandler::removeCallbacks)
     userNavigationResetRunnable = null
+    activeDragNavigationId = null
     ttsNavigationState.resetForSession()
   }
 
-  private fun beginUserNavigation(detachViewport: Boolean = true) {
+  private fun beginUserNavigation(
+    detachViewport: Boolean = true,
+    scheduleReset: Boolean = true,
+  ): String {
     userNavigationResetRunnable?.let(mainHandler::removeCallbacks)
     val navigationId = ttsNavigationState.beginUserNavigation(detachViewport)
+    if (scheduleReset) scheduleUserNavigationReset(navigationId)
+    (fragment as? EpubReaderFragment)?.prepareTtsForUserNavigation()
+    return navigationId
+  }
+
+  private fun scheduleUserNavigationReset(navigationId: String) {
+    userNavigationResetRunnable?.let(mainHandler::removeCallbacks)
     val reset = Runnable {
       ttsNavigationState.cancelUserNavigationIfUnchanged(navigationId)
       userNavigationResetRunnable = null
     }
     userNavigationResetRunnable = reset
     mainHandler.postDelayed(reset, USER_NAVIGATION_SETTLE_MS)
-    (fragment as? EpubReaderFragment)?.prepareTtsForUserNavigation()
+  }
+
+  private fun finishUserNavigationGesture() {
+    val navigationId = activeDragNavigationId ?: return
+    activeDragNavigationId = null
+    scheduleUserNavigationReset(navigationId)
   }
 
   // MARK: - Decorations
@@ -404,22 +428,133 @@ class ReadiumView(
 
   suspend fun isBookmarkVisible(locator: LocatorRecord): Boolean =
     withContext(Dispatchers.Main.immediate) {
-      (fragment as? EpubReaderFragment)?.isBookmarkVisible(locator) ?: false
+      val epub = fragment as? EpubReaderFragment ?: return@withContext false
+      val currentHref = lastDispatchedHref ?: epub.currentViewportHref()
+      if (!ttsFollowStaysInCurrentResource(currentHref, locator.href)) {
+        return@withContext false
+      }
+      epub.isBookmarkVisible(locator)
     }
+
+  private suspend fun isTtsLocatorVisible(
+    epub: EpubReaderFragment,
+    locator: Locator,
+  ): Boolean {
+    val currentHref = lastDispatchedHref ?: epub.currentViewportHref()
+    if (!ttsFollowStaysInCurrentResource(currentHref, locator.href.toString())) {
+      return false
+    }
+    return epub.isTtsLocatorVisible(locator)
+  }
 
   suspend fun reattachTtsViewport(
     sessionId: String,
-    locator: LocatorRecord,
     viewportNavigationId: String,
   ): Boolean =
     withContext(Dispatchers.Main.immediate) {
       val epub = fragment as? EpubReaderFragment
       if (epub?.hasTtsSession(sessionId) != true) return@withContext false
-      if (!epub.isBookmarkVisible(locator)) return@withContext false
-      if (fragment !== epub || !epub.hasTtsSession(sessionId)) {
-        return@withContext false
+      repeat(4) { attempt ->
+        if (fragment !== epub || !epub.hasTtsSession(sessionId)) {
+          return@withContext false
+        }
+        val playbackLocator = epub.currentTtsPlaybackLocator()
+          ?: return@withContext false
+        val visible = isTtsLocatorVisible(epub, playbackLocator)
+        if (fragment !== epub || !epub.hasTtsSession(sessionId)) {
+          return@withContext false
+        }
+        if (epub.currentTtsPlaybackLocator() != playbackLocator) {
+          return@repeat
+        }
+        if (visible) {
+          if (fragment !== epub || !epub.hasTtsSession(sessionId)) {
+            return@withContext false
+          }
+          return@withContext ttsNavigationState.reattachViewport(
+            viewportNavigationId
+          )
+        }
+        if (attempt < 3) delay(16)
       }
-      ttsNavigationState.reattachViewport(viewportNavigationId)
+      false
+    }
+
+  suspend fun returnToTtsPosition(
+    sessionId: String,
+    viewportNavigationId: String,
+  ): Boolean =
+    withContext(Dispatchers.Main.immediate) {
+      val epub = fragment as? EpubReaderFragment
+      if (
+        epub?.hasTtsSession(sessionId) != true ||
+        !ttsNavigationState.returnToPlaybackPosition(viewportNavigationId)
+      ) return@withContext false
+
+      var returned = false
+      try {
+        for (attempt in 0 until 4) {
+          if (
+            fragment !== epub ||
+            !epub.hasTtsSession(sessionId) ||
+            !ttsNavigationState.allowsTtsFollow
+          ) return@withContext false
+          val playbackLocator = epub.currentTtsPlaybackLocator()
+            ?: return@withContext false
+          val alreadyVisible = isTtsLocatorVisible(epub, playbackLocator)
+          if (
+            fragment !== epub ||
+            !epub.hasTtsSession(sessionId) ||
+            !ttsNavigationState.allowsTtsFollow
+          ) return@withContext false
+          if (epub.currentTtsPlaybackLocator() != playbackLocator) {
+            continue
+          }
+          if (alreadyVisible) {
+            returned = true
+            return@withContext true
+          }
+
+          val moved = epub.navigateToTtsLocator(
+            playbackLocator,
+            animated = false,
+          )
+          if (
+            !epub.hasTtsSession(sessionId) ||
+            !ttsNavigationState.allowsTtsFollow
+          ) return@withContext false
+          if (epub.currentTtsPlaybackLocator() != playbackLocator) {
+            continue
+          }
+          if (!moved) return@withContext false
+
+          var playbackAdvanced = false
+          for (settleAttempt in 0 until 12) {
+            if (
+              fragment !== epub ||
+              !epub.hasTtsSession(sessionId) ||
+              !ttsNavigationState.allowsTtsFollow
+            ) return@withContext false
+            if (epub.currentTtsPlaybackLocator() != playbackLocator) {
+              playbackAdvanced = true
+              break
+            }
+            if (isTtsLocatorVisible(epub, playbackLocator)) {
+              returned = true
+              return@withContext true
+            }
+            if (settleAttempt < 11) delay(50)
+          }
+          if (playbackAdvanced) continue
+          return@withContext false
+        }
+        false
+      } finally {
+        ttsNavigationState.completeReturnToPlaybackPosition(
+          viewportNavigationId,
+          returned,
+        )
+      }
     }
 
   // MARK: - TTS
@@ -499,6 +634,7 @@ class ReadiumView(
     suppressLocationEvents = false
     pendingLocation = null
     viewportPresentationFrozen = false
+    lastDispatchedHref = null
     clearTtsFollowTextNavigation()
 
     fragment?.let { frag ->
@@ -571,6 +707,10 @@ class ReadiumView(
 
     fragment = frag
     frag.onUserNavigationIntent = { beginUserNavigation() }
+    frag.onUserNavigationGestureStart = {
+      activeDragNavigationId = beginUserNavigation(scheduleReset = false)
+    }
+    frag.onUserNavigationGestureEnd = { finishUserNavigationGesture() }
     isFragmentAdded = true
     setupLayout()
 

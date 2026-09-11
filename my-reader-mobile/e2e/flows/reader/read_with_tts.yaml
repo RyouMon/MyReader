@@ -14,6 +14,11 @@ env:
 - runFlow: ../../common/launch_preserving_data.yaml
 - tapOn: "Library|书库"
 - tapOn: "All Books.*|全部图书.*"
+- runFlow:
+    when:
+      notVisible: ${TTS_BOOK_TITLE}
+    commands:
+      - tapOn: "All Books.*|全部图书.*"
 - extendedWaitUntil:
     visible: ${TTS_BOOK_TITLE}
     timeout: 15000
@@ -75,6 +80,12 @@ env:
     commands:
       - tapOn:
           point: "50%,60%"
+      - runFlow:
+          when:
+            notVisible: "继续朗读|Resume narration"
+          commands:
+            - tapOn:
+                point: "50%,50%"
       - tapOn: "继续朗读|Resume narration"
 - extendedWaitUntil:
     visible: "暂停朗读|Pause narration|继续朗读|Resume narration"
@@ -146,50 +157,6 @@ env:
           visible: "暂停朗读|Pause narration"
           timeout: 10000
 - takeScreenshot: tts-next-sentence
-- swipe:
-    start: "85%,50%"
-    end: "15%,50%"
-    duration: 500
-- extendedWaitUntil:
-    visible: "Page turn target"
-    timeout: 10000
-- assertNotVisible: "TTS verification"
-- assertVisible: "从当前位置播放|Play from current position"
-- assertVisible: "暂停朗读|Pause narration"
-- takeScreenshot: tts-page-turn-keeps-narration-position
-- tapOn: "暂停朗读|Pause narration"
-- swipe:
-    start: "15%,50%"
-    end: "85%,50%"
-    duration: 500
-- extendedWaitUntil:
-    visible: "TTS verification"
-    timeout: 10000
-- extendedWaitUntil:
-    notVisible: "从当前位置播放|Play from current position"
-    timeout: 10000
-- takeScreenshot: tts-return-to-narrated-page-reattaches
-- swipe:
-    start: "85%,50%"
-    end: "15%,50%"
-    duration: 500
-- extendedWaitUntil:
-    visible: "Page turn target"
-    timeout: 10000
-- extendedWaitUntil:
-    visible: "从当前位置播放|Play from current position"
-    timeout: 10000
-- waitForAnimationToEnd:
-    timeout: 3000
-- assertVisible: "Page turn target"
-- assertNotVisible: "TTS verification"
-- assertVisible: "从当前位置播放|Play from current position"
-- tapOn: "从当前位置播放|Play from current position"
-- assertNotVisible: "从当前位置播放|Play from current position"
-- extendedWaitUntil:
-    visible: "暂停朗读|Pause narration|继续朗读|Resume narration"
-    timeout: 10000
-- takeScreenshot: tts-play-from-current-position
 - tapOn: "更多操作|More Actions|More actions"
 - extendedWaitUntil:
     visible: "目录|Contents"

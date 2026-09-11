@@ -1,4 +1,6 @@
-import React, {
+import { requireNativeView } from "expo"
+import type React from "react"
+import {
   forwardRef,
   useCallback,
   useEffect,
@@ -7,33 +9,31 @@ import React, {
   useState,
 } from "react"
 import { findNodeHandle, StyleSheet, View } from "react-native"
-import { requireNativeView } from "expo"
-
+import { ReadiumModule } from "./ReadiumModule"
+import type { ReadiumProps, ReadiumViewRef } from "./ReadiumView.types"
 import type {
+  DecorationActivatedEvent,
+  DecorationGroup,
   Dimensions,
+  FontFamilyDeclaration,
   Locator,
   Preferences,
-  ReadiumFile,
-  FontFamilyDeclaration,
-  DecorationGroup,
-  SelectionAction,
-  SelectionMenuConfig,
   PublicationReadyEvent,
-  DecorationActivatedEvent,
-  SelectionEvent,
+  ReadiumFile,
+  SelectionAction,
   SelectionActionEvent,
+  SelectionEvent,
+  SelectionMenuConfig,
   TapEvent,
   TtsEngineConfig,
   TtsPlaybackState,
-  TtsSynthesisCompletion,
   TtsSynthesisCancelEvent,
+  TtsSynthesisCompletion,
   TtsSynthesisRequestEvent,
 } from "./types"
 import { buildLinkTree } from "./utils/buildLinkTree"
-import { ReadiumModule } from "./ReadiumModule"
-import type { ReadiumViewRef, ReadiumProps } from "./ReadiumView.types"
 
-export type { ReadiumViewRef, ReadiumProps } from "./ReadiumView.types"
+export type { ReadiumProps, ReadiumViewRef } from "./ReadiumView.types"
 
 /** Props the native Expo View accepts (props + onXxx event handlers). */
 type NativeReadiumViewProps = {
@@ -66,7 +66,10 @@ type NativeReadiumViewProps = {
 type NativeReadiumViewRef = React.Component & {
   reattachTtsViewport: (
     sessionId: string,
-    locator: Locator,
+    viewportNavigationId: string,
+  ) => Promise<boolean>
+  returnToTtsPosition: (
+    sessionId: string,
     viewportNavigationId: string,
   ) => Promise<boolean>
   startTts: (
@@ -146,7 +149,7 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
       [onPublicationReady],
     )
 
-    const tagOf = () => findNodeHandle(nativeRef.current)
+    const tagOf = useCallback(() => findNodeHandle(nativeRef.current), [])
 
     useImperativeHandle(
       forwardedRef,
@@ -179,11 +182,18 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
             ? Promise.resolve(false)
             : ReadiumModule.isBookmarkVisible(tag, locator)
         },
-        reattachTtsViewport: (sessionId, locator, viewportNavigationId) => {
+        reattachTtsViewport: (sessionId, viewportNavigationId) => {
           return (
             nativeRef.current?.reattachTtsViewport(
               sessionId,
-              locator,
+              viewportNavigationId,
+            ) ?? Promise.resolve(false)
+          )
+        },
+        returnToTtsPosition: (sessionId, viewportNavigationId) => {
+          return (
+            nativeRef.current?.returnToTtsPosition(
+              sessionId,
               viewportNavigationId,
             ) ?? Promise.resolve(false)
           )
@@ -222,7 +232,7 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
           void nativeRef.current?.completeTtsSynthesis(completion)
         },
       }),
-      [],
+      [tagOf],
     )
 
     // Native side cleans up the navigator on view removal; no JS destroy call needed.

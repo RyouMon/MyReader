@@ -27,6 +27,33 @@ describe("reader TTS session machine", () => {
     })
   })
 
+  it("keeps narration paused when the reader viewport moves and returns", () => {
+    const machine = createReaderTtsSessionMachine("book-a")
+    const started = machine.send({ type: "begin" })
+    const sessionId = started.snapshot.sessionId!
+    machine.send({ type: "playback", sessionId, status: "paused" })
+
+    const moved = machine.send({
+      type: "viewport-moved",
+      navigationId: "navigation-1",
+    })
+    const returned = machine.send({
+      type: "viewport-matched",
+      sessionId,
+    })
+
+    expect(moved.snapshot).toMatchObject({
+      sessionId,
+      status: "paused",
+      viewportDetached: true,
+    })
+    expect(returned.snapshot).toMatchObject({
+      sessionId,
+      status: "paused",
+      viewportDetached: false,
+    })
+  })
+
   it("reattaches the viewport without replacing the narration session", () => {
     const machine = createReaderTtsSessionMachine("book-a")
     const started = machine.send({ type: "begin" })

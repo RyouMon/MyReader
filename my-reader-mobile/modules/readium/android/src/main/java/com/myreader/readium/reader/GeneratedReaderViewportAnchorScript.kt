@@ -337,6 +337,91 @@ private val readerViewportAnchorRuntimeScript = """
           range.setEnd(node, Math.min(node.data.length, offset + length));
           return range;
       }
+      function matchingPrefixLength(first, second) {
+          const limit = Math.min(first.length, second.length);
+          let length = 0;
+          while (length < limit && first[length] === second[length])
+              length += 1;
+          return length;
+      }
+      function matchingSuffixLength(first, second) {
+          const limit = Math.min(first.length, second.length);
+          let length = 0;
+          while (length < limit &&
+              first[first.length - length - 1] === second[second.length - length - 1]) {
+              length += 1;
+          }
+          return length;
+      }
+      function textPointForOffset(window, root, offset, preferPreviousNode) {
+          const walker = window.document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+          const nodes = [];
+          let current = walker.nextNode();
+          while (current) {
+              nodes.push(current);
+              current = walker.nextNode();
+          }
+          let consumed = 0;
+          let last = null;
+          for (const [index, node] of nodes.entries()) {
+              const end = consumed + node.data.length;
+              if (offset < end ||
+                  (offset === end && (preferPreviousNode || index === nodes.length - 1))) {
+                  return {
+                      node,
+                      offset: Math.max(0, Math.min(node.data.length, offset - consumed)),
+                  };
+              }
+              last = node;
+              consumed = end;
+          }
+          return last && offset === consumed
+              ? { node: last, offset: last.data.length }
+              : null;
+      }
+      /** Resolves a Readium text-quote locator to its DOM range. */
+      function rangeForReaderTextLocator(window, locator) {
+          var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+          const highlight = (_a = locator.text) === null || _a === void 0 ? void 0 : _a.highlight;
+          if (!highlight)
+              return null;
+          let root = (_b = window.document.body) !== null && _b !== void 0 ? _b : window.document.documentElement;
+          const cssSelector = (_c = locator.locations) === null || _c === void 0 ? void 0 : _c.cssSelector;
+          if (cssSelector) {
+              try {
+                  root = (_d = window.document.querySelector(cssSelector)) !== null && _d !== void 0 ? _d : root;
+              }
+              catch {
+                  return null;
+              }
+          }
+          const content = (_e = root.textContent) !== null && _e !== void 0 ? _e : "";
+          let bestStart = -1;
+          let bestScore = -1;
+          let searchFrom = 0;
+          while (searchFrom <= content.length - highlight.length) {
+              const start = content.indexOf(highlight, searchFrom);
+              if (start < 0)
+                  break;
+              const end = start + highlight.length;
+              const score = matchingSuffixLength(content.slice(0, start), (_g = (_f = locator.text) === null || _f === void 0 ? void 0 : _f.before) !== null && _g !== void 0 ? _g : "") + matchingPrefixLength(content.slice(end), (_j = (_h = locator.text) === null || _h === void 0 ? void 0 : _h.after) !== null && _j !== void 0 ? _j : "");
+              if (score > bestScore) {
+                  bestStart = start;
+                  bestScore = score;
+              }
+              searchFrom = start + Math.max(1, highlight.length);
+          }
+          if (bestStart < 0)
+              return null;
+          const start = textPointForOffset(window, root, bestStart, false);
+          const end = textPointForOffset(window, root, bestStart + highlight.length, true);
+          if (!start || !end)
+              return null;
+          const range = window.document.createRange();
+          range.setStart(start.node, start.offset);
+          range.setEnd(end.node, end.offset);
+          return range;
+      }
       /**
        * Samples around the viewport center and captures the closest rendered glyph.
        * Nearby samples handle centers that land in whitespace or between columns.
@@ -369,6 +454,16 @@ private val readerViewportAnchorRuntimeScript = """
           var _a, _b;
           return [
               ...((_b = (_a = rangeForReaderViewportDomRange(window, domRange)) === null || _a === void 0 ? void 0 : _a.getClientRects()) !== null && _b !== void 0 ? _b : []),
+          ].some((rect) => rect.right > 0 &&
+              rect.bottom > 0 &&
+              rect.left < window.innerWidth &&
+              rect.top < window.innerHeight);
+      }
+      /** Returns whether a Readium sentence locator intersects the viewport. */
+      function isReaderTextLocatorVisible(window, locator) {
+          var _a, _b;
+          return [
+              ...((_b = (_a = rangeForReaderTextLocator(window, locator)) === null || _a === void 0 ? void 0 : _a.getClientRects()) !== null && _b !== void 0 ? _b : []),
           ].some((rect) => rect.right > 0 &&
               rect.bottom > 0 &&
               rect.left < window.innerWidth &&
@@ -426,6 +521,7 @@ private val readerViewportAnchorRuntimeScript = """
               captureReaderViewportStartAnchor: () => captureReaderViewportStartAnchor(window),
               captureReaderPointAnchor: (xRatio, yRatio) => captureReaderPointAnchor(window, xRatio, yRatio),
               isReaderViewportAnchorVisible: (domRange) => isReaderViewportAnchorVisible(window, domRange),
+              isReaderTextLocatorVisible: (locator) => isReaderTextLocatorVisible(window, locator),
               readerViewportLayoutState: () => readerViewportLayoutState(window),
               restoreReaderViewportAnchorOffset: (domRange, yRatio) => restoreReaderViewportAnchorOffset(window, domRange, yRatio),
           };
@@ -462,4 +558,8 @@ JSON.stringify(($readerViewportAnchorRuntimeScript)(window).readerViewportLayout
 
 internal fun readerBookmarkVisibilityScript(domRangeJson: String): String = """
 JSON.stringify(($readerViewportAnchorRuntimeScript)(window).isReaderViewportAnchorVisible($domRangeJson))
+""".trimIndent()
+
+internal fun readerTextLocatorVisibilityScript(locatorJson: String): String = """
+JSON.stringify(($readerViewportAnchorRuntimeScript)(window).isReaderTextLocatorVisible($locatorJson))
 """.trimIndent()

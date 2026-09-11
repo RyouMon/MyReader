@@ -374,7 +374,8 @@
       "previous": "Previous sentence",
       "next": "Next sentence",
       "stop": "Stop narration",
-      "playFromCurrentPosition": "Play from current position",
+      "playFromCurrentPosition": "Play from here",
+      "returnToPlaybackPosition": "Return to narration",
       "states": {
         "stopped": "Stopped",
         "loading": "Preparing narration…",

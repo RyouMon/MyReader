@@ -216,8 +216,9 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
   private var followedUtterance: PublicationSpeechSynthesizer.Utterance?
   private var currentUtterance: PublicationSpeechSynthesizer.Utterance?
   private var currentLocator: Locator?
+  var playbackLocator: Locator? { currentUtterance?.locator }
   private var remoteBufferingKey: RemoteTtsSpeechKey?
-  private var paused = false
+  private var sentenceNavigationPlaybackState = TtsSentenceNavigationPlaybackState()
   private var followTextTask: Task<Void, Never>?
   private var remotePrefetchTask: Task<Void, Never>?
   private var remotePrefetchAnchor: Locator?
@@ -345,10 +346,12 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
   }
 
   func previous() {
+    sentenceNavigationPlaybackState.beginSentenceNavigation()
     synthesizer.previous()
   }
 
   func next() {
+    sentenceNavigationPlaybackState.beginSentenceNavigation()
     synthesizer.next()
   }
 
@@ -370,7 +373,7 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
       currentUtterance = nil
       currentLocator = nil
       remoteBufferingKey = nil
-      paused = false
+      sentenceNavigationPlaybackState.didStop()
       if shouldClearHighlight { clearHighlight() }
       if shouldEmitState {
         onStateChange(["state": stopRequested ? "stopped" : "ended"])
@@ -379,15 +382,18 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
     case let .paused(utterance):
       currentUtterance = utterance
       currentLocator = utterance.locator
-      paused = true
+      sentenceNavigationPlaybackState.didPause()
       updateHighlight(for: utterance)
       scheduleRemotePrefetch(from: utterance.locator)
       onStateChange(statePayload("paused", utterance: utterance, locator: utterance.locator))
 
-    case let .playing(utterance, range):
+    case let .playing(utterance, _):
+      if sentenceNavigationPlaybackState.didStartPlaying() {
+        synthesizer.pause()
+        return
+      }
       currentUtterance = utterance
-      currentLocator = range ?? utterance.locator
-      paused = false
+      currentLocator = utterance.locator
       updateHighlight(for: utterance)
       scheduleRemotePrefetch(from: utterance.locator)
       let buffering = remoteBufferingKey == speechKey(for: utterance)
@@ -396,7 +402,7 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
         statePayload(
           buffering ? "loading" : "playing",
           utterance: utterance,
-          locator: range ?? utterance.locator
+          locator: utterance.locator
         )
       )
     }
@@ -455,24 +461,34 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
         self.onFollowTextNavigation(navigationId, utterance.locator, false)
       }
       guard !Task.isCancelled, self.shouldFollowText() else { return }
-      await self.follow(utterance.locator)
+      _ = await self.navigateToPlaybackLocator(
+        utterance.locator,
+        animated: false
+      )
     }
   }
 
-  private func follow(_ locator: Locator) async {
+  func navigateToPlaybackLocator(
+    _ locator: Locator,
+    animated: Bool
+  ) async -> Bool {
     if ttsFollowStaysInCurrentResource(
       currentHref: navigator.currentLocation?.href.string,
       targetHref: locator.href.string
     ), let json = try? locator.jsonString() {
-      _ = await navigator.evaluateJavaScript(
-        "readium.scrollToLocator(\(json), false);"
-      )
-      return
+      switch await navigator.evaluateJavaScript(
+        "readium.scrollToLocator(\(json), \(animated));"
+      ) {
+      case let .success(value):
+        return (value as? Bool) ?? false
+      case .failure:
+        return false
+      }
     }
 
-    _ = await navigator.go(
+    return await navigator.go(
       to: locator,
-      options: NavigatorGoOptions(animated: false)
+      options: NavigatorGoOptions(animated: animated)
     )
   }
 
@@ -491,7 +507,9 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
     if !buffering { followText(for: utterance) }
     onStateChange(
       statePayload(
-        buffering ? "loading" : (paused ? "paused" : "playing"),
+        buffering
+          ? "loading"
+          : (sentenceNavigationPlaybackState.isPaused ? "paused" : "playing"),
         utterance: utterance,
         locator: locator
       )

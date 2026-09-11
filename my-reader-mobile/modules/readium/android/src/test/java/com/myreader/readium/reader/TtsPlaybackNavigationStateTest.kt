@@ -71,6 +71,56 @@ class TtsPlaybackNavigationStateTest {
   }
 
   @Test
+  fun explicit_return_to_playback_position_is_owned_by_tts() {
+    val state = TtsPlaybackNavigationState()
+    state.beginTtsFollow()
+    val navigationId = state.beginUserNavigation()
+    state.locationEvent()
+
+    assertTrue(state.returnToPlaybackPosition(navigationId))
+    assertTrue(state.isReturningToPlaybackPosition)
+    assertTrue(state.allowsTtsFollow)
+    assertEquals("tts", state.locationEvent().source)
+    state.completeReturnToPlaybackPosition(navigationId, succeeded = true)
+    assertFalse(state.isReturningToPlaybackPosition)
+    assertFalse(state.returnToPlaybackPosition(navigationId))
+  }
+
+  @Test
+  fun failed_explicit_return_restores_the_detached_viewport() {
+    val state = TtsPlaybackNavigationState()
+    state.beginTtsFollow()
+    val navigationId = state.beginUserNavigation()
+    state.locationEvent()
+
+    assertTrue(state.returnToPlaybackPosition(navigationId))
+    state.completeReturnToPlaybackPosition(navigationId, succeeded = false)
+
+    assertFalse(state.isReturningToPlaybackPosition)
+    assertFalse(state.allowsTtsFollow)
+    assertTrue(state.returnToPlaybackPosition(navigationId))
+  }
+
+  @Test
+  fun manual_navigation_cancels_an_explicit_return_in_progress() {
+    val state = TtsPlaybackNavigationState()
+    state.beginTtsFollow()
+    val returnNavigationId = state.beginUserNavigation()
+    state.locationEvent()
+    assertTrue(state.returnToPlaybackPosition(returnNavigationId))
+
+    val currentNavigationId = state.beginUserNavigation()
+    state.completeReturnToPlaybackPosition(
+      returnNavigationId,
+      succeeded = true,
+    )
+
+    assertFalse(state.isReturningToPlaybackPosition)
+    assertFalse(state.allowsTtsFollow)
+    assertEquals(currentNavigationId, state.locationEvent().navigationId)
+  }
+
+  @Test
   fun stale_visibility_result_cannot_reattach_a_newer_viewport() {
     val state = TtsPlaybackNavigationState()
     state.beginTtsFollow()

@@ -16,6 +16,8 @@ import {
   READER_FLOATING_BUTTON_EXIT_DURATION_MS,
   READER_FLOATING_BUTTON_HIDDEN_SCALE,
   READER_FLOATING_BUTTON_HIT_SLOP,
+  READER_FLOATING_BUTTON_LEFT,
+  READER_FLOATING_BUTTON_RIGHT,
   READER_FLOATING_BUTTON_SHADOW_COLOR,
   READER_FLOATING_BUTTON_SHADOW_OFFSET_X,
   READER_FLOATING_BUTTON_SHADOW_OFFSET_Y,
@@ -34,7 +36,9 @@ type Props = {
   label: string
   onPress: () => void
   palette: ReaderChromePalette
+  placement?: "center" | "leading" | "trailing"
   visible: boolean
+  width: number
 }
 
 export function ReaderFloatingTextButton({
@@ -43,7 +47,9 @@ export function ReaderFloatingTextButton({
   label,
   onPress,
   palette,
+  placement = "center",
   visible,
+  width,
 }: Props) {
   const visibleScale = useSharedValue(READER_FLOATING_BUTTON_HIDDEN_SCALE)
   const visibleOpacity = useSharedValue(0)
@@ -80,7 +86,15 @@ export function ReaderFloatingTextButton({
   }))
 
   return (
-    <View pointerEvents="box-none" style={[styles.anchor, { bottom }]}>
+    <View
+      pointerEvents="box-none"
+      style={[
+        styles.anchor,
+        placement === "leading" && styles.leadingAnchor,
+        placement === "trailing" && styles.trailingAnchor,
+        { bottom },
+      ]}
+    >
       <Animated.View
         pointerEvents={visible ? "auto" : "none"}
         accessibilityElementsHidden={!visible}
@@ -95,7 +109,10 @@ export function ReaderFloatingTextButton({
           onPress={onPress}
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
-          style={[styles.button, { backgroundColor: palette.actionSurface }]}
+          style={[
+            styles.button,
+            { width, backgroundColor: palette.actionSurface },
+          ]}
         >
           <Text style={[styles.label, { color: palette.actionText }]}>
             {label}
@@ -113,11 +130,20 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: "center",
   },
+  leadingAnchor: {
+    alignItems: "flex-start",
+    paddingLeft: READER_FLOATING_BUTTON_LEFT,
+  },
+  trailingAnchor: {
+    alignItems: "flex-end",
+    paddingRight: READER_FLOATING_BUTTON_RIGHT,
+  },
   button: {
     minHeight: 44,
+    alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 999,
     shadowColor: READER_FLOATING_BUTTON_SHADOW_COLOR,
     shadowOpacity: READER_FLOATING_BUTTON_SHADOW_OPACITY,
     shadowRadius: READER_FLOATING_BUTTON_SHADOW_RADIUS,

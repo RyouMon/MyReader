@@ -1,0 +1,254 @@
+appId: ${APP_ID}
+name: Keep TTS playback lifecycle stable across reader navigation
+tags:
+  - reader
+  - tts
+  - external-library
+env:
+  TTS_BOOK_TITLE: MyReader TTS E2E
+---
+- runFlow: ../../common/launch_preserving_data.yaml
+- tapOn: "Library|书库"
+- waitForAnimationToEnd:
+    timeout: 3000
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: "All Books.*|全部图书.*"
+      - extendedWaitUntil:
+          visible: ${TTS_BOOK_TITLE}
+          timeout: 5000
+- tapOn: '打开《${TTS_BOOK_TITLE}》|Open "${TTS_BOOK_TITLE}"'
+- extendedWaitUntil:
+    visible:
+      id: "reader-screen"
+    timeout: 30000
+- retry:
+    maxRetries: 2
+    commands:
+      - runFlow:
+          when:
+            notVisible: "更多操作|More Actions|More actions"
+          commands:
+            - tapOn:
+                point: "50%,50%"
+      - extendedWaitUntil:
+          visible: "更多操作|More Actions|More actions"
+          timeout: 5000
+- runFlow:
+    when:
+      visible: "打开听书播放器|Open read-aloud controls"
+    commands:
+      - tapOn: "打开听书播放器|Open read-aloud controls"
+      - extendedWaitUntil:
+          visible: "朗读控制|Read-aloud controls"
+          timeout: 10000
+- runFlow:
+    when:
+      visible: "朗读控制|Read-aloud controls"
+    commands:
+      - tapOn: "停止朗读|Stop narration"
+- extendedWaitUntil:
+    visible: "更多操作|More Actions|More actions"
+    timeout: 10000
+- tapOn: "更多操作|More Actions|More actions"
+- extendedWaitUntil:
+    visible: "目录|Contents"
+    timeout: 10000
+- tapOn: "目录|Contents"
+- extendedWaitUntil:
+    visible: "Playback lifecycle"
+    timeout: 10000
+- tapOn: "Playback lifecycle"
+- extendedWaitUntil:
+    visible: "Playback lifecycle anchor.*"
+    timeout: 10000
+
+# Playing: previous/next preserve playback. Manual page navigation detaches only
+# the viewport until the user returns or explicitly starts from the visible page.
+- runFlow:
+    when:
+      notVisible: "打开听书播放器|Open read-aloud controls"
+    commands:
+      - tapOn:
+          point: "50%,50%"
+- tapOn: "打开听书播放器|Open read-aloud controls"
+- extendedWaitUntil:
+    visible: "继续朗读|Resume narration"
+    timeout: 10000
+- tapOn: "继续朗读|Resume narration"
+- extendedWaitUntil:
+    visible: "暂停朗读|Pause narration"
+    timeout: 30000
+- tapOn: "下一句|Next sentence"
+- extendedWaitUntil:
+    visible: "暂停朗读|Pause narration"
+    timeout: 10000
+- tapOn: "上一句|Previous sentence"
+- extendedWaitUntil:
+    visible: "暂停朗读|Pause narration"
+    timeout: 10000
+- swipe:
+    start: "85%,50%"
+    end: "15%,50%"
+    duration: 500
+- extendedWaitUntil:
+    visible: "Manual viewport target"
+    timeout: 10000
+- extendedWaitUntil:
+    visible: "从当前位置播放|Play from here"
+    timeout: 10000
+- assertVisible: "返回播放位置|Return to narration"
+- assertVisible: "暂停朗读|Pause narration"
+- takeScreenshot: tts-playing-page-turn-stays-detached
+- swipe:
+    start: "15%,50%"
+    end: "85%,50%"
+    duration: 500
+- extendedWaitUntil:
+    visible: "Playback lifecycle anchor.*"
+    timeout: 10000
+- assertNotVisible: "从当前位置播放|Play from here"
+- assertNotVisible: "返回播放位置|Return to narration"
+- assertVisible: "暂停朗读|Pause narration"
+- swipe:
+    start: "85%,50%"
+    end: "15%,50%"
+    duration: 500
+- extendedWaitUntil:
+    visible: "Manual viewport target"
+    timeout: 10000
+- extendedWaitUntil:
+    visible: "返回播放位置|Return to narration"
+    timeout: 10000
+- tapOn: "返回播放位置|Return to narration"
+- assertNotVisible: "从当前位置播放|Play from here"
+- assertNotVisible: "返回播放位置|Return to narration"
+- extendedWaitUntil:
+    visible: "Playback lifecycle anchor.*"
+    timeout: 10000
+- assertVisible: "暂停朗读|Pause narration"
+- assertNotVisible: "返回播放位置|Return to narration"
+- swipe:
+    start: "85%,50%"
+    end: "15%,50%"
+    duration: 500
+- extendedWaitUntil:
+    visible: "Manual viewport target"
+    timeout: 10000
+- extendedWaitUntil:
+    visible: "从当前位置播放|Play from here"
+    timeout: 10000
+- tapOn: "从当前位置播放|Play from here"
+- extendedWaitUntil:
+    visible: "暂停朗读|Pause narration"
+    timeout: 30000
+- assertVisible: "Manual viewport target"
+- assertNotVisible: "从当前位置播放|Play from here"
+- takeScreenshot: tts-playing-position-actions
+- tapOn: "停止朗读|Stop narration"
+- assertNotVisible: "朗读控制|Read-aloud controls"
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Paused: previous/next, manual page navigation and return all preserve pause.
+# Explicitly playing from the visible page starts playback; stop also works paused.
+- runFlow:
+    when:
+      notVisible: "更多操作|More Actions|More actions"
+    commands:
+      - tapOn:
+          point: "50%,50%"
+- runFlow:
+    when:
+      notVisible: "更多操作|More Actions|More actions"
+    commands:
+      - tapOn:
+          point: "50%,50%"
+- extendedWaitUntil:
+    visible: "更多操作|More Actions|More actions"
+    timeout: 10000
+- tapOn: "更多操作|More Actions|More actions"
+- extendedWaitUntil:
+    visible: "目录|Contents"
+    timeout: 10000
+- tapOn: "目录|Contents"
+- extendedWaitUntil:
+    visible: "Playback lifecycle"
+    timeout: 10000
+- tapOn: "Playback lifecycle"
+- extendedWaitUntil:
+    visible: "Playback lifecycle anchor.*"
+    timeout: 10000
+- runFlow:
+    when:
+      notVisible: "打开听书播放器|Open read-aloud controls"
+    commands:
+      - tapOn:
+          point: "50%,50%"
+- tapOn: "打开听书播放器|Open read-aloud controls"
+- extendedWaitUntil:
+    visible: "继续朗读|Resume narration"
+    timeout: 10000
+- tapOn: "继续朗读|Resume narration"
+- extendedWaitUntil:
+    visible: "暂停朗读|Pause narration"
+    timeout: 30000
+- tapOn: "暂停朗读|Pause narration"
+- assertVisible: "继续朗读|Resume narration"
+- tapOn: "继续朗读|Resume narration"
+- extendedWaitUntil:
+    visible: "暂停朗读|Pause narration"
+    timeout: 10000
+- tapOn: "暂停朗读|Pause narration"
+- assertVisible: "继续朗读|Resume narration"
+- tapOn: "下一句|Next sentence"
+- extendedWaitUntil:
+    visible: "继续朗读|Resume narration"
+    timeout: 10000
+- tapOn: "上一句|Previous sentence"
+- extendedWaitUntil:
+    visible: "继续朗读|Resume narration"
+    timeout: 10000
+- swipe:
+    start: "85%,50%"
+    end: "15%,50%"
+    duration: 500
+- extendedWaitUntil:
+    visible: "Manual viewport target"
+    timeout: 10000
+- extendedWaitUntil:
+    visible: "从当前位置播放|Play from here"
+    timeout: 10000
+- assertVisible: "返回播放位置|Return to narration"
+- assertVisible: "继续朗读|Resume narration"
+- takeScreenshot: tts-paused-page-turn-stays-detached
+- tapOn: "返回播放位置|Return to narration"
+- assertNotVisible: "从当前位置播放|Play from here"
+- assertNotVisible: "返回播放位置|Return to narration"
+- extendedWaitUntil:
+    visible: "Playback lifecycle anchor.*"
+    timeout: 10000
+- assertVisible: "继续朗读|Resume narration"
+- assertNotVisible: "返回播放位置|Return to narration"
+- swipe:
+    start: "85%,50%"
+    end: "15%,50%"
+    duration: 500
+- extendedWaitUntil:
+    visible: "Manual viewport target"
+    timeout: 10000
+- extendedWaitUntil:
+    visible: "从当前位置播放|Play from here"
+    timeout: 10000
+- assertVisible: "继续朗读|Resume narration"
+- tapOn: "从当前位置播放|Play from here"
+- extendedWaitUntil:
+    visible: "暂停朗读|Pause narration"
+    timeout: 30000
+- assertVisible: "Manual viewport target"
+- tapOn: "暂停朗读|Pause narration"
+- assertVisible: "继续朗读|Resume narration"
+- takeScreenshot: tts-paused-position-actions
+- tapOn: "停止朗读|Stop narration"
+- assertNotVisible: "朗读控制|Read-aloud controls"

@@ -1,20 +1,20 @@
 import type {
-  Preferences,
-  Locator,
-  ReadiumFile,
-  FontFamilyDeclaration,
-  DecorationGroup,
-  SelectionAction,
-  SelectionMenuConfig,
-  PublicationReadyEvent,
   DecorationActivatedEvent,
-  SelectionEvent,
+  DecorationGroup,
+  FontFamilyDeclaration,
+  Locator,
+  Preferences,
+  PublicationReadyEvent,
+  ReadiumFile,
+  SelectionAction,
   SelectionActionEvent,
+  SelectionEvent,
+  SelectionMenuConfig,
   TapEvent,
   TtsEngineConfig,
   TtsPlaybackState,
-  TtsSynthesisCompletion,
   TtsSynthesisCancelEvent,
+  TtsSynthesisCompletion,
   TtsSynthesisRequestEvent,
 } from "./types"
 
@@ -28,7 +28,10 @@ export type ReadiumViewRef = {
   isBookmarkVisible: (locator: Locator) => Promise<boolean>
   reattachTtsViewport: (
     sessionId: string,
-    locator: Locator,
+    viewportNavigationId: string,
+  ) => Promise<boolean>
+  returnToTtsPosition: (
+    sessionId: string,
     viewportNavigationId: string,
   ) => Promise<boolean>
   startTts: (

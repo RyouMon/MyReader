@@ -85,6 +85,10 @@ export function useReaderTtsSession({
   const [remote, setRemote] = useState(false)
   const viewportRevisionRef = useRef(0)
   const viewportNavigationIdRef = useRef<string | null>(null)
+  const viewportReattachAttemptRef = useRef<{
+    navigationId: string
+    retryRequested: boolean
+  } | null>(null)
   const sessionMachine = useMemo(
     () => createReaderTtsSessionMachine(publicationKey),
     [publicationKey],
@@ -123,6 +127,7 @@ export function useReaderTtsSession({
     activeLocatorRef.current = null
     viewportRevisionRef.current += 1
     viewportNavigationIdRef.current = null
+    viewportReattachAttemptRef.current = null
     abortOutstandingSynthesis()
     readerRef.current?.stopTts()
     setRemote(false)
@@ -143,6 +148,7 @@ export function useReaderTtsSession({
       activeLocatorRef.current = null
       viewportRevisionRef.current += 1
       viewportNavigationIdRef.current = null
+      viewportReattachAttemptRef.current = null
       abortOutstandingSynthesis()
       activeReader?.stopTts()
     }
@@ -154,6 +160,7 @@ export function useReaderTtsSession({
       syncViewportState(transition)
       abortOutstandingSynthesis()
       viewportNavigationIdRef.current = null
+      viewportReattachAttemptRef.current = null
       setSessionState({
         publicationKey,
         state: {
@@ -186,6 +193,7 @@ export function useReaderTtsSession({
       if (!transition.accepted || !transition.snapshot.sessionId) return
       syncViewportState(transition)
       viewportNavigationIdRef.current = null
+      viewportReattachAttemptRef.current = null
       const { generation, sessionId } = transition.snapshot
       activeEngineConfigRef.current = null
       activeLocatorRef.current = null
@@ -298,6 +306,7 @@ export function useReaderTtsSession({
       if (!transition.accepted || !transition.snapshot.sessionId) return
       syncViewportState(transition)
       viewportNavigationIdRef.current = null
+      viewportReattachAttemptRef.current = null
       const { sessionId } = transition.snapshot
       activeLocatorRef.current = null
       abortOutstandingSynthesis()
@@ -342,7 +351,6 @@ export function useReaderTtsSession({
   const reattachViewportIfVisible = useCallback(
     async (
       sessionId: string,
-      locator: Locator,
       viewportNavigationId: string,
       viewportRevision: number,
     ) => {
@@ -355,41 +363,76 @@ export function useReaderTtsSession({
       )
         return
 
-      let reattached = false
-      try {
-        reattached =
-          (await readerRef.current?.reattachTtsViewport(
-            sessionId,
-            locator,
-            viewportNavigationId,
-          )) ?? false
-      } catch {
+      const pendingAttempt = viewportReattachAttemptRef.current
+      if (pendingAttempt?.navigationId === viewportNavigationId) {
+        pendingAttempt.retryRequested = true
         return
       }
-      const current = sessionMachine.snapshot
-      if (
-        !reattached ||
-        current.sessionId !== sessionId ||
-        !current.viewportDetached ||
-        viewportNavigationIdRef.current !== viewportNavigationId ||
-        viewportRevisionRef.current !== viewportRevision
-      )
-        return
 
-      viewportNavigationIdRef.current = null
-      syncViewportState(
-        sessionMachine.send({
-          type: "viewport-matched",
-          sessionId,
-        }),
-      )
+      const attempt = {
+        navigationId: viewportNavigationId,
+        retryRequested: false,
+      }
+      viewportReattachAttemptRef.current = attempt
+      try {
+        do {
+          attempt.retryRequested = false
+          let reattached = false
+          try {
+            reattached =
+              (await readerRef.current?.reattachTtsViewport(
+                sessionId,
+                viewportNavigationId,
+              )) ?? false
+          } catch {
+            return
+          }
+          const current = sessionMachine.snapshot
+          if (
+            current.sessionId !== sessionId ||
+            !current.viewportDetached ||
+            viewportNavigationIdRef.current !== viewportNavigationId ||
+            viewportRevisionRef.current !== viewportRevision
+          )
+            return
+          if (reattached) {
+            viewportNavigationIdRef.current = null
+            const transition = sessionMachine.send({
+              type: "viewport-matched",
+              sessionId,
+            })
+            syncViewportState(transition)
+            return
+          }
+        } while (attempt.retryRequested)
+      } finally {
+        if (viewportReattachAttemptRef.current === attempt) {
+          viewportReattachAttemptRef.current = null
+        }
+      }
     },
     [readerRef, sessionMachine, syncViewportState],
   )
 
   const markViewportMoved = useCallback(
     (navigationId: string) => {
+      if (
+        sessionMachine.snapshot.viewportDetached &&
+        viewportNavigationIdRef.current === navigationId
+      ) {
+        const activeLocator = activeLocatorRef.current
+        if (activeLocator?.sessionId === sessionMachine.snapshot.sessionId) {
+          void reattachViewportIfVisible(
+            activeLocator.sessionId,
+            navigationId,
+            viewportRevisionRef.current,
+          )
+        }
+        return
+      }
+
       const viewportRevision = ++viewportRevisionRef.current
+      const wasViewportDetached = sessionMachine.snapshot.viewportDetached
       const transition = sessionMachine.send({
         type: "viewport-moved",
         navigationId,
@@ -399,11 +442,11 @@ export function useReaderTtsSession({
       const activeLocator = activeLocatorRef.current
       if (
         transition.accepted &&
+        wasViewportDetached &&
         activeLocator?.sessionId === transition.snapshot.sessionId
       ) {
         void reattachViewportIfVisible(
           activeLocator.sessionId,
-          activeLocator.locator,
           navigationId,
           viewportRevision,
         )
@@ -411,6 +454,57 @@ export function useReaderTtsSession({
     },
     [reattachViewportIfVisible, sessionMachine, syncViewportState],
   )
+
+  const returnToPlaybackPosition = useCallback(async () => {
+    const active = sessionMachine.snapshot
+    const activeLocator = activeLocatorRef.current
+    const viewportNavigationId = viewportNavigationIdRef.current
+    if (
+      !active.sessionId ||
+      !active.viewportDetached ||
+      activeLocator?.sessionId !== active.sessionId ||
+      !viewportNavigationId
+    )
+      return
+
+    const viewportRevision = ++viewportRevisionRef.current
+    const matched = sessionMachine.send({
+      type: "viewport-matched",
+      sessionId: active.sessionId,
+    })
+    if (!matched.accepted) return
+    viewportNavigationIdRef.current = null
+    syncViewportState(matched)
+
+    let returned = false
+    try {
+      returned =
+        (await readerRef.current?.returnToTtsPosition(
+          active.sessionId,
+          viewportNavigationId,
+        )) ?? false
+    } catch {
+      returned = false
+    }
+
+    const current = sessionMachine.snapshot
+    if (
+      returned ||
+      current.sessionId !== active.sessionId ||
+      current.viewportDetached ||
+      viewportRevisionRef.current !== viewportRevision
+    )
+      return
+
+    const restored = sessionMachine.send({
+      type: "viewport-moved",
+      navigationId: viewportNavigationId,
+    })
+    if (restored.accepted) {
+      viewportNavigationIdRef.current = viewportNavigationId
+      syncViewportState(restored)
+    }
+  }, [readerRef, sessionMachine, syncViewportState])
 
   const handleStateChange = useCallback(
     (next: TtsPlaybackState) => {
@@ -450,7 +544,6 @@ export function useReaderTtsSession({
         if (!viewportNavigationId) return
         void reattachViewportIfVisible(
           next.sessionId,
-          next.locator,
           viewportNavigationId,
           viewportRevisionRef.current,
         )
@@ -545,6 +638,7 @@ export function useReaderTtsSession({
     start,
     seek,
     markViewportMoved,
+    returnToPlaybackPosition,
     play,
     pause,
     previous,

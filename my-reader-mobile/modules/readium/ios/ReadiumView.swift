@@ -131,6 +131,9 @@ final class ReadiumView: ExpoView {
   private var ttsSessionId: String?
   private let ttsNavigationState = TtsPlaybackNavigationState()
   private var userNavigationResetTask: Task<Void, Never>?
+  private var activeDragNavigationId: String?
+  private var viewportLocationTask: Task<Void, Never>?
+  private var lastDispatchedHref: String?
 
   private var viewController: UIViewController? {
     sequence(first: self, next: { $0.next }).first(where: { $0 is UIViewController }) as? UIViewController
@@ -222,6 +225,9 @@ final class ReadiumView: ExpoView {
             }
             epubVC.onSelectionMenuDismiss = { [weak self] in
               self?.dispatchEvent("onSelectionChange", payload: [:])
+            }
+            epubVC.onViewportChange = { [weak self] viewport in
+              self?.handleViewportChange(viewport)
             }
           } else if let pdfVC = vc as? PDFViewController {
             pdfVC.selectionActionDelegate = self
@@ -512,6 +518,7 @@ final class ReadiumView: ExpoView {
   }
 
   private func dispatchLocation(_ locator: RLocator) {
+    lastDispatchedHref = locator.href.string
     var payload = ["locator": locatorToDict(locator)] as [String: Any]
     let navigation = ttsNavigationState.locationEvent()
     if let source = navigation.source { payload["source"] = source }
@@ -519,6 +526,9 @@ final class ReadiumView: ExpoView {
       payload["navigationId"] = navigationId
       userNavigationResetTask?.cancel()
       userNavigationResetTask = nil
+      if activeDragNavigationId == navigationId {
+        activeDragNavigationId = nil
+      }
     }
     if let navigationKind = navigation.navigationKind {
       payload["navigationKind"] = navigationKind
@@ -527,6 +537,47 @@ final class ReadiumView: ExpoView {
       "onLocationChange",
       payload: payload
     )
+  }
+
+  @MainActor
+  private func handleViewportChange(_ viewport: NavigatorViewport?) {
+    guard ttsSessionId != nil,
+          !suppressLocationEvents,
+          let viewport,
+          let navigator = readerViewController?.navigator
+            as? EPUBNavigatorViewController else { return }
+
+    ttsNavigationState.viewportDidChange()
+    let shouldDetectViewportDeparture =
+      ttsNavigationState.allowsTtsFollow &&
+      !ttsNavigationState.isReturningToPlaybackPosition
+    let playbackLocator = ttsController?.playbackLocator
+
+    viewportLocationTask?.cancel()
+    viewportLocationTask = Task { @MainActor [weak self, weak navigator] in
+      guard let self, let navigator else { return }
+      let locator = await self.captureViewportStartLocator(
+        fallback: navigator.currentLocation,
+        navigator: navigator
+      )
+      guard !Task.isCancelled,
+            navigator.viewport == viewport,
+            let locator else { return }
+      if shouldDetectViewportDeparture,
+         self.ttsNavigationState.allowsTtsFollow,
+         let playbackLocator {
+        let playbackIsVisible = await self.isTtsLocatorVisible(
+          playbackLocator,
+          currentHref: locator.href.string,
+          navigator: navigator
+        )
+        if !playbackIsVisible {
+          self.beginUserNavigation()
+        }
+      }
+      self.dispatchLocation(locator)
+      self.viewportLocationTask = nil
+    }
   }
 
   private func markTtsFollowTextNavigation(
@@ -541,21 +592,50 @@ final class ReadiumView: ExpoView {
   private func clearTtsFollowTextNavigation() {
     userNavigationResetTask?.cancel()
     userNavigationResetTask = nil
+    activeDragNavigationId = nil
+    viewportLocationTask?.cancel()
+    viewportLocationTask = nil
     ttsNavigationState.resetForSession()
   }
 
-  private func beginUserNavigation(detachViewport: Bool = true) {
+  @discardableResult
+  private func beginUserNavigation(
+    detachViewport: Bool = true,
+    scheduleReset: Bool = true
+  ) -> String {
     userNavigationResetTask?.cancel()
     let navigationId = ttsNavigationState.beginUserNavigation(
       detachViewport: detachViewport
     )
+    if scheduleReset {
+      scheduleUserNavigationReset(navigationId)
+    }
+    ttsController?.prepareForUserNavigation()
+    return navigationId
+  }
+
+  private func scheduleUserNavigationReset(_ navigationId: String) {
+    userNavigationResetTask?.cancel()
     userNavigationResetTask = Task { @MainActor [weak self] in
-      try? await Task.sleep(nanoseconds: 1_000_000_000)
+      try? await Task.sleep(nanoseconds: 3_000_000_000)
       guard let self, !Task.isCancelled else { return }
       _ = self.ttsNavigationState.cancelUserNavigationIfUnchanged(navigationId)
       self.userNavigationResetTask = nil
     }
-    ttsController?.prepareForUserNavigation()
+  }
+
+  private func finishUserNavigationGesture() {
+    guard let navigationId = activeDragNavigationId else { return }
+    activeDragNavigationId = nil
+    scheduleUserNavigationReset(navigationId)
+  }
+
+  private func cancelUserNavigationGesture() {
+    guard let navigationId = activeDragNavigationId else { return }
+    activeDragNavigationId = nil
+    // Readium cancels this observer when its pagination recognizer takes over,
+    // including for a successful page turn. Let the viewport event settle it.
+    scheduleUserNavigationReset(navigationId)
   }
 
   // MARK: - Decorations
@@ -643,10 +723,23 @@ final class ReadiumView: ExpoView {
         return false
       })
       tapToken.store(in: &inputObserverTokens)
-      let dragToken = visualNavigator.addObserver(.drag(onStart: { [weak self] _ in
-        self?.beginUserNavigation()
-        return false
-      }))
+      let dragToken = visualNavigator.addObserver(.drag(
+        onStart: { [weak self] _ in
+          guard let self else { return false }
+          self.activeDragNavigationId = self.beginUserNavigation(
+            scheduleReset: false
+          )
+          return false
+        },
+        onEnd: { [weak self] _ in
+          self?.finishUserNavigationGesture()
+          return false
+        },
+        onCancel: { [weak self] _ in
+          self?.cancelUserNavigationGesture()
+          return false
+        }
+      ))
       dragToken.store(in: &inputObserverTokens)
     }
 
@@ -719,9 +812,31 @@ final class ReadiumView: ExpoView {
     fallback: Locator?,
     navigator: EPUBNavigatorViewController
   ) async -> Locator? {
-    let currentLocation = navigator.currentLocation ?? fallback
-    guard let currentLocation,
-          case let .success(value) = await navigator.evaluateJavaScript(
+    let navigatorLocation = navigator.currentLocation
+    guard var currentLocation = navigatorLocation ?? fallback else { return nil }
+
+    let visibleResources = navigator.viewport?.resources ?? []
+    let href = ttsViewportStartHref(
+      currentHref: navigatorLocation?.href.string,
+      fallbackHref: fallback?.href.string,
+      visibleHrefs: visibleResources.map { $0.href.string }
+    ) ?? currentLocation.href.string
+    if currentLocation.href.string != href,
+       let visibleResource = visibleResources.first(where: { $0.href.string == href }) {
+      currentLocation = currentLocation.copy(
+        href: visibleResource.href,
+        locations: { locations in
+          locations = Locator.Locations(
+            progression: visibleResource.progression.lowerBound
+          )
+        },
+        text: { text in
+          text = Locator.Text()
+        }
+      )
+    }
+
+    guard case let .success(value) = await navigator.evaluateJavaScript(
             captureReaderViewportStartAnchorScript
           ),
           let json = value as? String,
@@ -742,16 +857,15 @@ final class ReadiumView: ExpoView {
           let text = anchor["text"] as? [String: Any]
     else { return nil }
 
-    return currentLocation.copy(
-      locations: { locations in
-        locations.otherLocations["cssSelector"] = .string(cssSelector)
-        locations.otherLocations["domRange"] = domRangeValue
-      },
-      text: { locatorText in
-        locatorText.before = text["before"] as? String
-        locatorText.highlight = text["highlight"] as? String
-        locatorText.after = text["after"] as? String
-      }
+    return ttsViewportStartLocator(
+      current: currentLocation,
+      cssSelector: cssSelector,
+      domRange: domRangeValue,
+      text: Locator.Text(
+        after: text["after"] as? String,
+        before: text["before"] as? String,
+        highlight: text["highlight"] as? String
+      )
     )
   }
 
@@ -795,32 +909,199 @@ final class ReadiumView: ExpoView {
   }
 
   @MainActor
+  private func isTtsLocatorVisible(
+    href: String,
+    progression: Double?,
+    domRange: [String: Any]?,
+    currentHref: String?,
+    navigator: EPUBNavigatorViewController
+  ) async -> Bool {
+    let visibleProgressions = Dictionary(
+      navigator.viewport?.resources.map {
+        ($0.href.string, $0.progression)
+      } ?? [],
+      uniquingKeysWith: { _, latest in latest }
+    )
+    let progressionVisibility = ttsProgressionIsVisible(
+      targetHref: href,
+      targetProgression: progression,
+      visibleProgressions: visibleProgressions
+    )
+
+    var domRangeVisibility: Bool?
+    if ttsFollowStaysInCurrentResource(
+      currentHref: currentHref,
+      targetHref: href
+    ),
+       let domRange,
+       JSONSerialization.isValidJSONObject(domRange),
+       let data = try? JSONSerialization.data(withJSONObject: domRange),
+       let json = String(data: data, encoding: .utf8),
+       case let .success(value) = await navigator.evaluateJavaScript(
+         readerBookmarkVisibilityScript(domRangeJSON: json)
+       ),
+       let result = value as? String {
+      domRangeVisibility = result == "true"
+    }
+
+    return ttsLocatorIsVisible(
+      progressionVisibility: progressionVisibility,
+      domRangeVisibility: domRangeVisibility
+    )
+  }
+
+  @MainActor
+  private func isTtsLocatorVisible(
+    _ locator: RLocator,
+    currentHref: String? = nil,
+    navigator: EPUBNavigatorViewController
+  ) async -> Bool {
+    let href = locator.href.string
+    let visibleProgressions = Dictionary(
+      navigator.viewport?.resources.map {
+        ($0.href.string, $0.progression)
+      } ?? [],
+      uniquingKeysWith: { _, latest in latest }
+    )
+    let progressionVisibility = ttsProgressionIsVisible(
+      targetHref: href,
+      targetProgression: locator.locations.progression,
+      visibleProgressions: visibleProgressions
+    )
+
+    var textVisibility: Bool?
+    if ttsFollowStaysInCurrentResource(
+      currentHref: currentHref ?? lastDispatchedHref
+        ?? navigator.currentLocation?.href.string,
+      targetHref: href
+    ),
+       let json = try? locator.jsonString(),
+       case let .success(value) = await navigator.evaluateJavaScript(
+         readerTextLocatorVisibilityScript(locatorJSON: json)
+       ),
+       let result = value as? String {
+      textVisibility = result == "true"
+    }
+
+    return ttsLocatorIsVisible(
+      progressionVisibility: progressionVisibility,
+      domRangeVisibility: textVisibility
+    )
+  }
+
+  @MainActor
   func isBookmarkVisible(locator: LocatorRecord) async -> Bool {
-    guard let navigator = readerViewController?.navigator as? EPUBNavigatorViewController,
-          let domRange = locator.locations?.domRange,
-          JSONSerialization.isValidJSONObject(domRange),
-          let data = try? JSONSerialization.data(withJSONObject: domRange),
-          let json = String(data: data, encoding: .utf8),
-          case let .success(value) = await navigator.evaluateJavaScript(
-            readerBookmarkVisibilityScript(domRangeJSON: json)
-          ),
-          let result = value as? String
-    else { return false }
-    return result == "true"
+    guard let navigator = readerViewController?.navigator as? EPUBNavigatorViewController else {
+      return false
+    }
+    return await isTtsLocatorVisible(
+      href: locator.href,
+      progression: locator.locations?.progression,
+      domRange: locator.locations?.domRange,
+      currentHref: lastDispatchedHref ?? navigator.currentLocation?.href.string,
+      navigator: navigator
+    )
   }
 
   @MainActor
   func reattachTtsViewport(
     sessionId: String,
-    locator: LocatorRecord,
     viewportNavigationId: String
   ) async -> Bool {
-    guard sessionId == ttsSessionId else { return false }
-    guard await isBookmarkVisible(locator: locator) else { return false }
-    guard sessionId == ttsSessionId else { return false }
-    return ttsNavigationState.reattachViewport(
-      navigationId: viewportNavigationId
-    )
+    guard let navigator = readerViewController?.navigator
+            as? EPUBNavigatorViewController,
+          let controller = ttsController else { return false }
+    for attempt in 0..<4 {
+      guard sessionId == ttsSessionId,
+            let playbackLocator = controller.playbackLocator else { return false }
+      let visible = await isTtsLocatorVisible(
+        playbackLocator,
+        navigator: navigator
+      )
+      guard sessionId == ttsSessionId else { return false }
+      if controller.playbackLocator != playbackLocator {
+        continue
+      }
+      if visible {
+        return ttsNavigationState.reattachViewport(
+          navigationId: viewportNavigationId
+        )
+      }
+      if attempt < 3 {
+        try? await Task.sleep(nanoseconds: 16_000_000)
+      }
+    }
+    return false
+  }
+
+  @MainActor
+  func returnToTtsPosition(
+    sessionId: String,
+    viewportNavigationId: String
+  ) async -> Bool {
+    guard sessionId == ttsSessionId,
+          let controller = ttsController,
+          let navigator = readerViewController?.navigator
+            as? EPUBNavigatorViewController,
+          ttsNavigationState.returnToPlaybackPosition(
+            navigationId: viewportNavigationId
+          ) else { return false }
+
+    var returned = false
+    defer {
+      ttsNavigationState.completeReturnToPlaybackPosition(
+        navigationId: viewportNavigationId,
+        succeeded: returned
+      )
+    }
+
+    navigationAttempts: for _ in 0..<4 {
+      guard sessionId == ttsSessionId,
+            ttsNavigationState.allowsTtsFollow,
+            let playbackLocator = controller.playbackLocator else { return false }
+
+      let alreadyVisible = await isTtsLocatorVisible(
+        playbackLocator,
+        navigator: navigator
+      )
+      guard sessionId == ttsSessionId,
+            ttsNavigationState.allowsTtsFollow else { return false }
+      if controller.playbackLocator != playbackLocator {
+        continue
+      }
+      if alreadyVisible {
+        returned = true
+        return true
+      }
+
+      let moved = await controller.navigateToPlaybackLocator(
+        playbackLocator,
+        animated: false
+      )
+      guard sessionId == ttsSessionId,
+            ttsNavigationState.allowsTtsFollow else { return false }
+      if controller.playbackLocator != playbackLocator {
+        continue
+      }
+      guard moved else { return false }
+
+      for settleAttempt in 0..<12 {
+        guard sessionId == ttsSessionId,
+              ttsNavigationState.allowsTtsFollow else { return false }
+        if controller.playbackLocator != playbackLocator {
+          continue navigationAttempts
+        }
+        if await isTtsLocatorVisible(playbackLocator, navigator: navigator) {
+          returned = true
+          return true
+        }
+        if settleAttempt < 11 {
+          try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+      }
+      return false
+    }
+    return false
   }
 
   // MARK: - TTS
@@ -1001,11 +1282,14 @@ final class ReadiumView: ExpoView {
       preferenceApplyGeneration += 1
       preferenceApplyTask?.cancel()
       preferenceApplyTask = nil
+      viewportLocationTask?.cancel()
+      viewportLocationTask = nil
       viewportAnchor = nil
       pendingLocation = nil
       suppressLocationEvents = false
       pendingViewportReload = nil
       viewportPresentationFrozen = false
+      lastDispatchedHref = nil
     }
     ttsController?.stop()
     ttsController = nil

@@ -9,8 +9,8 @@ import { ReaderFloatingTextButton } from "./ReaderFloatingTextButton"
 import {
   READER_FLOATING_BUTTON_BOTTOM,
   READER_FLOATING_BUTTON_LEFT,
-  READER_FLOATING_BUTTON_RIGHT,
   READER_FLOATING_BUTTON_SIZE,
+  readerTtsControlLayout,
 } from "./readerChromeConstants"
 
 type Props = {
@@ -26,8 +26,8 @@ type Props = {
   onPrevious: () => void
   onNext: () => void
   onStop: () => void
-  onMore: () => void
   onPlayFromCurrentPosition: () => void
+  onReturnToPlaybackPosition: () => void
 }
 
 export function ReaderTtsControls({
@@ -43,8 +43,8 @@ export function ReaderTtsControls({
   onPrevious,
   onNext,
   onStop,
-  onMore,
   onPlayFromCurrentPosition,
+  onReturnToPlaybackPosition,
 }: Props) {
   const { t } = useTranslation()
   const { width: windowWidth } = useWindowDimensions()
@@ -56,12 +56,8 @@ export function ReaderTtsControls({
   const playbackControlsVisible = visible && expanded
   const playFromCurrentPositionVisible =
     playbackControlsVisible && playFromCurrentPosition
-  const anchorStep =
-    (windowWidth -
-      READER_FLOATING_BUTTON_LEFT -
-      READER_FLOATING_BUTTON_RIGHT -
-      READER_FLOATING_BUTTON_SIZE) /
-    4
+  const { anchorStep, detachedActionWidth } =
+    readerTtsControlLayout(windowWidth)
 
   return (
     <View
@@ -79,7 +75,19 @@ export function ReaderTtsControls({
         label={t("reader.tts.playFromCurrentPosition")}
         onPress={onPlayFromCurrentPosition}
         palette={palette}
+        placement="leading"
         visible={playFromCurrentPositionVisible}
+        width={detachedActionWidth}
+      />
+      <ReaderFloatingTextButton
+        accessibilityLabel={t("reader.tts.returnToPlaybackPosition")}
+        bottom={READER_FLOATING_BUTTON_SIZE + 12}
+        label={t("reader.tts.returnToPlaybackPosition")}
+        onPress={onReturnToPlaybackPosition}
+        palette={palette}
+        placement="trailing"
+        visible={playFromCurrentPositionVisible}
+        width={detachedActionWidth}
       />
 
       <ReaderFloatingIconButton
@@ -131,15 +139,6 @@ export function ReaderTtsControls({
           top: 0,
         }}
         visible={playbackControlsVisible}
-      />
-
-      <ReaderFloatingIconButton
-        accessibilityLabel={t("reader.chrome.moreActions")}
-        icon="more"
-        onPress={onMore}
-        palette={palette}
-        position={{ right: READER_FLOATING_BUTTON_RIGHT, top: 0 }}
-        visible={visible}
       />
     </View>
   )

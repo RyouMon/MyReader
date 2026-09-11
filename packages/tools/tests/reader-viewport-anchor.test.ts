@@ -5,6 +5,7 @@ import {
   captureReaderViewportStartAnchor,
   createReaderViewportAnchorRuntime,
   isReaderViewportAnchorVisible,
+  isReaderTextLocatorVisible,
   readerViewportAnchorOffset,
   readerViewportLayoutState,
   restoreReaderViewportAnchorOffset,
@@ -412,6 +413,29 @@ describe("reader viewport anchor capture", () => {
 })
 
 describe("reader viewport DOM ranges", () => {
+  it("should resolve a TTS locator by its text quote instead of a stale DOM range", () => {
+    document.body.innerHTML = `
+      <p id="stale">Playback position first page.</p>
+      <p id="current">Latest narration second page.</p>
+    `
+    useViewport(100, 100)
+    useRangeRects((range) =>
+      range.startContainer.parentElement?.id === "current"
+        ? [rect(10, 10)]
+        : [rect(110, 10)],
+    )
+
+    expect(
+      isReaderTextLocatorVisible(window, {
+        locations: {
+          cssSelector: "body",
+          domRange: domRange("#stale"),
+        },
+        text: { highlight: "Latest narration second page." },
+      }),
+    ).toBe(true)
+  })
+
   it("should return false when a persisted DOM range cannot resolve text", () => {
     document.body.innerHTML =
       '<p id="nested"><span>Nested</span></p><p id="empty"></p>'

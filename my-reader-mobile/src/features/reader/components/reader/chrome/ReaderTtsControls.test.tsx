@@ -3,6 +3,12 @@ import { fireEvent, render } from "@testing-library/react-native"
 
 import { readerChromePalette } from "@/src/design/reader-chrome-palette"
 import { ReaderTtsControls } from "./ReaderTtsControls"
+import {
+  READER_FLOATING_BUTTON_LEFT,
+  READER_FLOATING_BUTTON_RIGHT,
+  READER_FLOATING_BUTTON_SIZE,
+  readerTtsControlLayout,
+} from "./readerChromeConstants"
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -21,8 +27,8 @@ const callbacks = {
   onPrevious: jest.fn(),
   onNext: jest.fn(),
   onStop: jest.fn(),
-  onMore: jest.fn(),
   onPlayFromCurrentPosition: jest.fn(),
+  onReturnToPlaybackPosition: jest.fn(),
 }
 
 function renderPlayer(
@@ -51,9 +57,6 @@ describe("ReaderTtsControls", () => {
   it("opens the player without starting narration", () => {
     const screen = renderPlayer(null)
 
-    fireEvent.press(screen.getByLabelText("reader.chrome.moreActions"))
-    expect(callbacks.onMore).toHaveBeenCalledTimes(1)
-
     fireEvent.press(screen.getByLabelText("reader.tts.openControls"))
 
     expect(callbacks.onExpand).toHaveBeenCalledTimes(1)
@@ -74,7 +77,7 @@ describe("ReaderTtsControls", () => {
     expect(callbacks.onPlay).toHaveBeenCalledTimes(1)
   })
 
-  it("exposes five playback and more controls when expanded", () => {
+  it("exposes four playback controls when expanded", () => {
     const screen = renderPlayer({
       sessionId: "session-1",
       state: "playing",
@@ -92,16 +95,13 @@ describe("ReaderTtsControls", () => {
       "reader.tts.previous",
       "reader.tts.pause",
       "reader.tts.next",
-      "reader.chrome.moreActions",
     ])
     expect(
       screen.queryByText("This text is represented by the reader highlight."),
     ).toBeNull()
 
     fireEvent.press(screen.getByLabelText("reader.tts.stop"))
-    fireEvent.press(screen.getByLabelText("reader.chrome.moreActions"))
     expect(callbacks.onStop).toHaveBeenCalledTimes(1)
-    expect(callbacks.onMore).toHaveBeenCalledTimes(1)
   })
 
   it("shows generation only as the playback-button spinner", () => {
@@ -137,5 +137,24 @@ describe("ReaderTtsControls", () => {
     )
 
     expect(callbacks.onPlayFromCurrentPosition).toHaveBeenCalledTimes(1)
+
+    fireEvent.press(
+      screen.getByRole("button", {
+        name: "reader.tts.returnToPlaybackPosition",
+      }),
+    )
+
+    expect(callbacks.onReturnToPlaybackPosition).toHaveBeenCalledTimes(1)
+  })
+
+  it("uses the circular-control gap between detached actions", () => {
+    const windowWidth = 393
+    const layout = readerTtsControlLayout(windowWidth)
+    const circularControlGap = layout.anchorStep - READER_FLOATING_BUTTON_SIZE
+
+    expect(layout.detachedActionGap).toBe(circularControlGap)
+    expect(layout.detachedActionWidth * 2 + layout.detachedActionGap).toBe(
+      windowWidth - READER_FLOATING_BUTTON_LEFT - READER_FLOATING_BUTTON_RIGHT,
+    )
   })
 })

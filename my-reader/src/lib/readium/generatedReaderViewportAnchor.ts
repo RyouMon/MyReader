@@ -31,6 +31,19 @@ export type ReaderViewportCapture = {
   yRatio: number
 }
 
+/** The text-quote fields Readium uses to resolve a sentence locator. */
+export type ReaderTextLocator = {
+  locations?: {
+    cssSelector?: string
+    [key: string]: unknown
+  }
+  text?: {
+    before?: string
+    highlight?: string
+    after?: string
+  }
+}
+
 /** The anchor's normalized position in the current viewport. */
 export type ReaderViewportAnchorOffset = {
   xRatio: number
@@ -449,6 +462,109 @@ function rangeForReaderViewportDomRange(
   return range
 }
 
+function matchingPrefixLength(first: string, second: string): number {
+  const limit = Math.min(first.length, second.length)
+  let length = 0
+  while (length < limit && first[length] === second[length]) length += 1
+  return length
+}
+
+function matchingSuffixLength(first: string, second: string): number {
+  const limit = Math.min(first.length, second.length)
+  let length = 0
+  while (
+    length < limit &&
+    first[first.length - length - 1] === second[second.length - length - 1]
+  ) {
+    length += 1
+  }
+  return length
+}
+
+function textPointForOffset(
+  window: Window,
+  root: Element,
+  offset: number,
+  preferPreviousNode: boolean,
+): TextPoint | null {
+  const walker = window.document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  const nodes: Text[] = []
+  let current = walker.nextNode()
+  while (current) {
+    nodes.push(current as Text)
+    current = walker.nextNode()
+  }
+  let consumed = 0
+  let last: Text | null = null
+  for (const [index, node] of nodes.entries()) {
+    const end = consumed + node.data.length
+    if (
+      offset < end ||
+      (offset === end && (preferPreviousNode || index === nodes.length - 1))
+    ) {
+      return {
+        node,
+        offset: Math.max(0, Math.min(node.data.length, offset - consumed)),
+      }
+    }
+    last = node
+    consumed = end
+  }
+  return last && offset === consumed
+    ? { node: last, offset: last.data.length }
+    : null
+}
+
+/** Resolves a Readium text-quote locator to its DOM range. */
+function rangeForReaderTextLocator(
+  window: Window,
+  locator: ReaderTextLocator,
+): Range | null {
+  const highlight = locator.text?.highlight
+  if (!highlight) return null
+  let root: Element = window.document.body ?? window.document.documentElement
+  const cssSelector = locator.locations?.cssSelector
+  if (cssSelector) {
+    try {
+      root = window.document.querySelector(cssSelector) ?? root
+    } catch {
+      return null
+    }
+  }
+  const content = root.textContent ?? ""
+  let bestStart = -1
+  let bestScore = -1
+  let searchFrom = 0
+  while (searchFrom <= content.length - highlight.length) {
+    const start = content.indexOf(highlight, searchFrom)
+    if (start < 0) break
+    const end = start + highlight.length
+    const score =
+      matchingSuffixLength(
+        content.slice(0, start),
+        locator.text?.before ?? "",
+      ) + matchingPrefixLength(content.slice(end), locator.text?.after ?? "")
+    if (score > bestScore) {
+      bestStart = start
+      bestScore = score
+    }
+    searchFrom = start + Math.max(1, highlight.length)
+  }
+  if (bestStart < 0) return null
+  const start = textPointForOffset(window, root, bestStart, false)
+  const end = textPointForOffset(
+    window,
+    root,
+    bestStart + highlight.length,
+    true,
+  )
+  if (!start || !end) return null
+  const range = window.document.createRange()
+  range.setStart(start.node, start.offset)
+  range.setEnd(end.node, end.offset)
+  return range
+}
+
 /**
  * Samples around the viewport center and captures the closest rendered glyph.
  * Nearby samples handle centers that land in whitespace or between columns.
@@ -492,6 +608,22 @@ export function isReaderViewportAnchorVisible(
   return [
     ...(rangeForReaderViewportDomRange(window, domRange)?.getClientRects() ??
       []),
+  ].some(
+    (rect) =>
+      rect.right > 0 &&
+      rect.bottom > 0 &&
+      rect.left < window.innerWidth &&
+      rect.top < window.innerHeight,
+  )
+}
+
+/** Returns whether a Readium sentence locator intersects the viewport. */
+export function isReaderTextLocatorVisible(
+  window: Window,
+  locator: ReaderTextLocator,
+): boolean {
+  return [
+    ...(rangeForReaderTextLocator(window, locator)?.getClientRects() ?? []),
   ].some(
     (rect) =>
       rect.right > 0 &&
@@ -576,6 +708,8 @@ export function createReaderViewportAnchorRuntime(window: Window) {
       captureReaderPointAnchor(window, xRatio, yRatio),
     isReaderViewportAnchorVisible: (domRange: ReaderViewportDomRange) =>
       isReaderViewportAnchorVisible(window, domRange),
+    isReaderTextLocatorVisible: (locator: ReaderTextLocator) =>
+      isReaderTextLocatorVisible(window, locator),
     readerViewportLayoutState: () => readerViewportLayoutState(window),
     restoreReaderViewportAnchorOffset: (
       domRange: ReaderViewportDomRange,
