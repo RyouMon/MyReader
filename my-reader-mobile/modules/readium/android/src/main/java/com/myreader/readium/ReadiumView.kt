@@ -564,7 +564,6 @@ class ReadiumView(
     config: TtsEngineConfigRecord,
     from: LocatorRecord?,
     startAtViewportStart: Boolean,
-    skipPartialViewportSentence: Boolean,
     viewportDetached: Boolean,
     viewportNavigationId: String?,
   ) {
@@ -590,7 +589,6 @@ class ReadiumView(
         config,
         from?.let { locatorRecordToReadium(it) },
         startAtViewportStart,
-        skipPartialViewportSentence,
         shouldFollowText = { ttsNavigationState.allowsTtsFollow },
         onStartReady = {
           if (!viewportDetached) clearTtsFollowTextNavigation()

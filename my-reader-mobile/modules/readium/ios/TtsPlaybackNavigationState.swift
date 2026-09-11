@@ -62,6 +62,15 @@ func ttsLocatorIsVisible(
   return progressionVisibility == true
 }
 
+@MainActor
+func navigateToTtsLocatorIfNeeded(
+  isVisible: () async -> Bool,
+  navigate: () async -> Bool
+) async -> Bool {
+  if await isVisible() { return true }
+  return await navigate()
+}
+
 struct TtsSentenceNavigationPlaybackState {
   private(set) var isPaused = false
   private var preservePauseOnNextPlayback = false

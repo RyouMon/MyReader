@@ -222,14 +222,26 @@ class EpubReaderFragment : VisualReaderFragment() {
     suspend fun navigateToTtsLocator(locator: Locator, animated: Boolean): Boolean {
       if (!this::navigatorFragment.isInitialized) return false
       val currentHref = navigatorFragment.currentLocator.value.href.toString()
-      if (ttsFollowStaysInCurrentResource(currentHref, locator.href.toString())) {
-        val json = JSONObject(readiumLocatorToMap(locator)).toString()
-        val raw = navigatorFragment.evaluateJavascript(
-          "readium.scrollToLocator($json, $animated);"
-        )
-        return decodeJavascriptValue(raw) == true
-      }
-      return navigatorFragment.go(locator, animated)
+      val staysInCurrentResource = ttsFollowStaysInCurrentResource(
+        currentHref,
+        locator.href.toString(),
+      )
+      return navigateToTtsLocatorIfNeeded(
+        isVisible = {
+          staysInCurrentResource && isTtsLocatorVisible(locator)
+        },
+        navigate = {
+          if (staysInCurrentResource) {
+            val json = JSONObject(readiumLocatorToMap(locator)).toString()
+            val raw = navigatorFragment.evaluateJavascript(
+              "readium.scrollToLocator($json, $animated);"
+            )
+            decodeJavascriptValue(raw) == true
+          } else {
+            navigatorFragment.go(locator, animated)
+          }
+        },
+      )
     }
 
     private fun decodeJavascriptValue(raw: String?): Any? {
@@ -312,7 +324,6 @@ class EpubReaderFragment : VisualReaderFragment() {
       config: TtsEngineConfigRecord,
       from: Locator?,
       startAtViewportStart: Boolean,
-      skipPartialViewportSentence: Boolean,
       shouldFollowText: () -> Boolean,
       onStartReady: () -> Unit,
     ) {
@@ -370,10 +381,7 @@ class EpubReaderFragment : VisualReaderFragment() {
         }
         if (generation == ttsGeneration) {
           onStartReady()
-          controller.start(
-            startLocator,
-            skipPartialSentence = skipPartialViewportSentence,
-          )
+          controller.start(startLocator)
         }
       }
     }

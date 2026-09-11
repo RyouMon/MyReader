@@ -181,7 +181,6 @@ export function useReaderTtsSession({
         navigationId?: string
         pauseAfterStart?: boolean
         startAtViewportStart?: boolean
-        skipPartialViewportSentence?: boolean
       },
     ) => {
       if (!enabled) return
@@ -249,9 +248,6 @@ export function useReaderTtsSession({
                 ...(viewportNavigationId ? { viewportNavigationId } : {}),
               }
             : {}),
-          ...(options?.skipPartialViewportSentence
-            ? { skipPartialViewportSentence: true }
-            : {}),
         })
       } catch (error) {
         const current = sessionMachine.snapshot
@@ -289,7 +285,6 @@ export function useReaderTtsSession({
         navigationId?: string
         pauseAfterStart?: boolean
         startAtViewportStart?: boolean
-        skipPartialViewportSentence?: boolean
       },
     ) => {
       const engineConfig = activeEngineConfigRef.current
@@ -321,9 +316,6 @@ export function useReaderTtsSession({
         await reader.startTts(engineConfig, fromLocator, {
           sessionId,
           startAtViewportStart: options?.startAtViewportStart === true,
-          ...(options?.skipPartialViewportSentence
-            ? { skipPartialViewportSentence: true }
-            : {}),
         })
       } catch (error) {
         const current = sessionMachine.snapshot

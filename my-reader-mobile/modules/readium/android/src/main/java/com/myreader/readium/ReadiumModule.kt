@@ -103,13 +103,12 @@ class ReadiumModule : Module() {
         view.returnToTtsPosition(sessionId, viewportNavigationId)
       }
 
-      AsyncFunction("startTts") { view: ReadiumView, sessionId: String, config: TtsEngineConfigRecord, locator: LocatorRecord?, startAtViewportStart: Boolean, skipPartialViewportSentence: Boolean, viewportDetached: Boolean, viewportNavigationId: String? ->
+      AsyncFunction("startTts") { view: ReadiumView, sessionId: String, config: TtsEngineConfigRecord, locator: LocatorRecord?, startAtViewportStart: Boolean, viewportDetached: Boolean, viewportNavigationId: String? ->
         view.startTts(
           sessionId,
           config,
           locator,
           startAtViewportStart,
-          skipPartialViewportSentence,
           viewportDetached,
           viewportNavigationId,
         )

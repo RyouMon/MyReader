@@ -1065,7 +1065,6 @@ export default function ReaderScreen() {
     if (!locator) return
     seekTts(locator, {
       startAtViewportStart: true,
-      skipPartialViewportSentence: true,
     })
   }, [readerState?.locator, seekTts])
   const handleReturnToTtsPlaybackPosition = useCallback(() => {

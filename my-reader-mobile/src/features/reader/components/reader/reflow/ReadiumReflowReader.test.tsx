@@ -366,7 +366,6 @@ describe("ReadiumReflowReader", () => {
     const startOptions = {
       sessionId: "session-1",
       startAtViewportStart: true,
-      skipPartialViewportSentence: true,
     }
     readerElement({ onTtsStateChange }, readerRef)
 

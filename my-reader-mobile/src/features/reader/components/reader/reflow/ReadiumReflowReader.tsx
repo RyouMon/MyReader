@@ -79,7 +79,6 @@ export type ReadiumReflowReaderRef = {
     options: {
       sessionId: string
       startAtViewportStart?: boolean
-      skipPartialViewportSentence?: boolean
       viewportDetached?: boolean
       viewportNavigationId?: string
     },

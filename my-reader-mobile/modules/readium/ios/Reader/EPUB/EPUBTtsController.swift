@@ -25,7 +25,7 @@ private final class SystemTtsUtteranceDelegate: AVTTSEngineDelegate {
 
 private struct TtsUtteranceStartAlignment {
   let index: Int
-  let startsInsideCandidate: Bool
+  let characterOffset: Int
 }
 
 private func ttsUtteranceStartAlignment(
@@ -48,7 +48,10 @@ private func ttsUtteranceStartAlignment(
       if targetHighlight.overlaps(candidateContext.highlight) {
         return TtsUtteranceStartAlignment(
           index: index,
-          startsInsideCandidate: targetHighlight.lowerBound > candidateContext.highlight.lowerBound
+          characterOffset: max(
+            0,
+            targetHighlight.lowerBound - candidateContext.highlight.lowerBound
+          )
         )
       }
     }
@@ -61,7 +64,10 @@ private func ttsUtteranceStartAlignment(
       if candidateHighlight.overlaps(targetContext.highlight) {
         return TtsUtteranceStartAlignment(
           index: index,
-          startsInsideCandidate: targetContext.highlight.lowerBound > candidateHighlight.lowerBound
+          characterOffset: max(
+            0,
+            targetContext.highlight.lowerBound - candidateHighlight.lowerBound
+          )
         )
       }
     }
@@ -120,16 +126,14 @@ private func normalizedTtsLocatorContext(
 enum TtsStartLocatorMatch: Equatable {
   case passthrough
   case skip
-  case start(Int)
+  case start(index: Int, characterOffset: Int)
 }
 
 final class TtsStartLocatorMatcher {
   private var target: Locator.Text?
-  private var skipPartialSentence = false
 
-  func reset(target: Locator.Text?, skipPartialSentence: Bool = false) {
+  func reset(target: Locator.Text?) {
     self.target = target?.highlight?.isEmpty == false ? target : nil
-    self.skipPartialSentence = skipPartialSentence
   }
 
   func match(in candidates: [Locator.Text]) -> TtsStartLocatorMatch {
@@ -140,19 +144,19 @@ final class TtsStartLocatorMatcher {
     ) else { return .skip }
     self.target = nil
     return .start(
-      alignment.index + (skipPartialSentence && alignment.startsInsideCandidate ? 1 : 0)
+      index: alignment.index,
+      characterOffset: alignment.characterOffset
     )
   }
 }
 
-private final class StartLocatorContentTokenizer {
+final class StartLocatorContentTokenizer {
   private let startLocatorMatcher = TtsStartLocatorMatcher()
+  private var target: Locator?
 
-  func reset(target: Locator.Text?, skipPartialSentence: Bool) {
-    startLocatorMatcher.reset(
-      target: target,
-      skipPartialSentence: skipPartialSentence
-    )
+  func reset(target: Locator?) {
+    self.target = target
+    startLocatorMatcher.reset(target: target?.text)
   }
 
   func make(defaultLanguage: Language?) -> ContentTokenizer {
@@ -165,7 +169,7 @@ private final class StartLocatorContentTokenizer {
     }
   }
 
-  private func trimToStartLocator(
+  func trimToStartLocator(
     _ elements: [ContentElement]
   ) -> [ContentElement] {
     guard startLocatorMatcher.match(in: []) != .passthrough else {
@@ -181,11 +185,29 @@ private final class StartLocatorContentTokenizer {
         return elements
       case .skip:
         continue
-      case let .start(startIndex):
+      case let .start(startIndex, characterOffset):
         guard startIndex < textElement.segments.count else {
           return Array(elements.dropFirst(index + 1))
         }
         textElement.segments = Array(textElement.segments[startIndex...])
+        if characterOffset > 0, let target {
+          guard let clipped = clipTtsSegment(
+            textElement.segments[0],
+            at: characterOffset,
+            anchoredAt: target
+          ) else {
+            self.target = nil
+            textElement.segments.removeFirst()
+            guard !textElement.segments.isEmpty else {
+              return Array(elements.dropFirst(index + 1))
+            }
+            var result = Array(elements[index...])
+            result[0] = textElement
+            return result
+          }
+          textElement.segments[0] = clipped
+        }
+        self.target = nil
         var result = Array(elements[index...])
         result[0] = textElement
         return result
@@ -193,6 +215,55 @@ private final class StartLocatorContentTokenizer {
     }
     return []
   }
+}
+
+private func clipTtsSegment(
+  _ segment: TextContentElement.Segment,
+  at normalizedCharacterOffset: Int,
+  anchoredAt target: Locator
+) -> TextContentElement.Segment? {
+  let normalizedCharacters = normalizedTtsSourceCharacters(segment.text)
+  guard normalizedCharacterOffset < normalizedCharacters.count else { return nil }
+  let start = normalizedCharacters[normalizedCharacterOffset].sourceIndex
+  let text = String(segment.text[start...])
+  guard text.contains(where: { $0.isLetter || $0.isNumber }) else { return nil }
+
+  var locator = target
+  locator.locations.progression = nil
+  locator.locations.otherLocations.removeValue(forKey: "domRange")
+  locator.text = Locator.Text(
+    after: segment.locator.text.after,
+    before: target.text.before,
+    highlight: text
+  )
+  return TextContentElement.Segment(
+    locator: locator,
+    text: text,
+    attributes: segment.attributes
+  )
+}
+
+private func normalizedTtsSourceCharacters(
+  _ value: String
+) -> [(character: Character, sourceIndex: String.Index)] {
+  var result: [(character: Character, sourceIndex: String.Index)] = []
+  var pendingWhitespace: String.Index?
+
+  for index in value.indices {
+    let character = value[index]
+    if character.isWhitespace {
+      if !result.isEmpty, pendingWhitespace == nil {
+        pendingWhitespace = index
+      }
+      continue
+    }
+    if let whitespaceIndex = pendingWhitespace {
+      result.append((" ", whitespaceIndex))
+      pendingWhitespace = nil
+    }
+    result.append((character, index))
+  }
+  return result
 }
 
 @MainActor
@@ -296,8 +367,7 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
   }
 
   func start(
-    from locator: Locator?,
-    skipPartialSentence: Bool = false
+    from locator: Locator?
   ) async {
     stopRequested = false
     onStateChange(["state": "loading"])
@@ -309,10 +379,7 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
     }
     invalidateRemotePrefetch()
     remoteEngine?.cancelAll()
-    startLocatorTokenizer.reset(
-      target: startLocator?.text,
-      skipPartialSentence: skipPartialSentence
-    )
+    startLocatorTokenizer.reset(target: startLocator)
     synthesizer.start(from: startLocator)
   }
 
@@ -476,14 +543,24 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
       currentHref: navigator.currentLocation?.href.string,
       targetHref: locator.href.string
     ), let json = try? locator.jsonString() {
-      switch await navigator.evaluateJavaScript(
-        "readium.scrollToLocator(\(json), \(animated));"
-      ) {
-      case let .success(value):
-        return (value as? Bool) ?? false
-      case .failure:
-        return false
-      }
+      return await navigateToTtsLocatorIfNeeded(
+        isVisible: {
+          guard case let .success(value) = await self.navigator.evaluateJavaScript(
+            readerTextLocatorVisibilityScript(locatorJSON: json)
+          ), let result = value as? String else { return false }
+          return result == "true"
+        },
+        navigate: {
+          switch await self.navigator.evaluateJavaScript(
+            "readium.scrollToLocator(\(json), \(animated));"
+          ) {
+          case let .success(value):
+            return (value as? Bool) ?? false
+          case .failure:
+            return false
+          }
+        }
+      )
     }
 
     return await navigator.go(

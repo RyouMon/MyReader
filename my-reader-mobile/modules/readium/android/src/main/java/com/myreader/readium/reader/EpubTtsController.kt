@@ -30,7 +30,7 @@ import org.readium.r2.shared.util.tokenizer.Tokenizer
 
 private data class TtsUtteranceStartAlignment(
   val index: Int,
-  val startsInsideCandidate: Boolean,
+  val characterOffset: Int,
 )
 
 private fun ttsUtteranceStartAlignment(
@@ -50,7 +50,7 @@ private fun ttsUtteranceStartAlignment(
       ) {
         return TtsUtteranceStartAlignment(
           index = index,
-          startsInsideCandidate = targetStart > candidateContext.highlight.first,
+          characterOffset = maxOf(0, targetStart - candidateContext.highlight.first),
         )
       }
     }
@@ -63,7 +63,7 @@ private fun ttsUtteranceStartAlignment(
       ) {
         return TtsUtteranceStartAlignment(
           index = index,
-          startsInsideCandidate = targetContext.highlight.first > candidateStart,
+          characterOffset = maxOf(0, targetContext.highlight.first - candidateStart),
         )
       }
     }
@@ -127,17 +127,15 @@ internal fun ttsFollowStaysInCurrentResource(
 internal sealed interface TtsStartLocatorMatch {
   data object Passthrough : TtsStartLocatorMatch
   data object Skip : TtsStartLocatorMatch
-  data class Start(val index: Int) : TtsStartLocatorMatch
+  data class Start(val index: Int, val characterOffset: Int) : TtsStartLocatorMatch
 }
 
 internal class TtsStartLocatorMatcher {
   private var target: Locator.Text? = null
-  private var skipPartialSentence = false
 
   @Synchronized
-  fun reset(target: Locator.Text?, skipPartialSentence: Boolean = false) {
+  fun reset(target: Locator.Text?) {
     this.target = target?.takeIf { !it.highlight.isNullOrEmpty() }
-    this.skipPartialSentence = skipPartialSentence
   }
 
   @Synchronized
@@ -147,16 +145,17 @@ internal class TtsStartLocatorMatcher {
       ?: return TtsStartLocatorMatch.Skip
     this.target = null
     return TtsStartLocatorMatch.Start(
-      alignment.index + if (skipPartialSentence && alignment.startsInsideCandidate) 1 else 0
+      index = alignment.index,
+      characterOffset = alignment.characterOffset,
     )
   }
 }
 
-private class StartLocatorTextTokenizer {
+internal class StartLocatorTextTokenizer {
   private val startLocatorMatcher = TtsStartLocatorMatcher()
 
-  fun reset(target: Locator.Text?, skipPartialSentence: Boolean) {
-    startLocatorMatcher.reset(target, skipPartialSentence)
+  fun reset(target: Locator.Text?) {
+    startLocatorMatcher.reset(target)
   }
 
   fun make(language: Language?): Tokenizer<String, IntRange> {
@@ -168,7 +167,7 @@ private class StartLocatorTextTokenizer {
   }
 
   @Synchronized
-  private fun trimToStartLocator(
+  internal fun trimToStartLocator(
     text: String,
     ranges: List<IntRange>,
   ): List<IntRange> {
@@ -185,7 +184,34 @@ private class StartLocatorTextTokenizer {
     return when (val match = startLocatorMatcher.match(candidates)) {
       TtsStartLocatorMatch.Passthrough -> ranges
       TtsStartLocatorMatch.Skip -> emptyList()
-      is TtsStartLocatorMatch.Start -> ranges.drop(match.index)
+      is TtsStartLocatorMatch.Start -> {
+        val remaining = ranges.drop(match.index)
+        val first = remaining.firstOrNull() ?: return emptyList()
+        val sentence = text.substring(first)
+        val sourceOffset = normalizedTtsSourceOffsets(sentence)
+          .getOrNull(match.characterOffset)
+          ?: return remaining.drop(1)
+        val clippedStart = first.first + sourceOffset
+        val clipped = clippedStart..first.last
+        if (text.substring(clipped).none { it.isLetterOrDigit() }) {
+          remaining.drop(1)
+        } else {
+          listOf(clipped) + remaining.drop(1)
+        }
+      }
+    }
+  }
+}
+
+private fun normalizedTtsSourceOffsets(value: String): List<Int> = buildList {
+  var pendingWhitespace: Int? = null
+  value.forEachIndexed { index, character ->
+    if (character.isWhitespace()) {
+      if (isNotEmpty() && pendingWhitespace == null) pendingWhitespace = index
+    } else {
+      pendingWhitespace?.let(::add)
+      pendingWhitespace = null
+      add(index)
     }
   }
 }
@@ -224,11 +250,11 @@ class EpubTtsController(
   private var followNavigationJob: Job? = null
   private val startLocatorTokenizer = StartLocatorTextTokenizer()
 
-  suspend fun start(from: Locator?, skipPartialSentence: Boolean = false) {
+  suspend fun start(from: Locator?) {
     close(emitState = false)
     onStateChange(mapOf("state" to "loading"))
     val initialLocator = from ?: visualNavigator.firstVisibleElementLocator()
-    startLocatorTokenizer.reset(initialLocator?.text, skipPartialSentence)
+    startLocatorTokenizer.reset(initialLocator?.text)
 
     if (config.kind == "provider") {
       startRemote(initialLocator)

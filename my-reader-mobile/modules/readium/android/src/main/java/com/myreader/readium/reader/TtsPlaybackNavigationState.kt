@@ -26,6 +26,14 @@ internal fun ttsViewportStartLocator(
   text = text,
 )
 
+internal suspend fun navigateToTtsLocatorIfNeeded(
+  isVisible: suspend () -> Boolean,
+  navigate: suspend () -> Boolean,
+): Boolean {
+  if (isVisible()) return true
+  return navigate()
+}
+
 internal class TtsPlaybackNavigationState {
   private enum class NonUserOwner { None, Tts }
 

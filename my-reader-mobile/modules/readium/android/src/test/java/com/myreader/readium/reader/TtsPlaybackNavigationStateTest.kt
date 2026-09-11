@@ -1,5 +1,6 @@
 package com.myreader.readium.reader
 
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -7,6 +8,38 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TtsPlaybackNavigationStateTest {
+  @Test
+  fun visible_tts_locator_does_not_issue_a_follow_navigation() = runBlocking {
+    var navigationCount = 0
+
+    val moved = navigateToTtsLocatorIfNeeded(
+      isVisible = { true },
+      navigate = {
+        navigationCount += 1
+        true
+      },
+    )
+
+    assertTrue(moved)
+    assertEquals(0, navigationCount)
+  }
+
+  @Test
+  fun offscreen_tts_locator_still_issues_a_follow_navigation() = runBlocking {
+    var navigationCount = 0
+
+    val moved = navigateToTtsLocatorIfNeeded(
+      isVisible = { false },
+      navigate = {
+        navigationCount += 1
+        true
+      },
+    )
+
+    assertTrue(moved)
+    assertEquals(1, navigationCount)
+  }
+
   @Test
   fun tts_follow_scrolls_without_locking_navigation_inside_the_current_resource() {
     assertTrue(ttsFollowStaysInCurrentResource("chapter.xhtml", "chapter.xhtml"))

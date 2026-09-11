@@ -88,17 +88,22 @@ func should_start_with_the_sentence_containing_the_selected_locator_context() {
   ]
 
   #expect(ttsUtteranceStartIndex(target: target, candidates: sentences) == 1)
+  let matcher = TtsStartLocatorMatcher()
+  matcher.reset(target: target)
+  #expect(
+    matcher.match(in: sentences) == .start(index: 1, characterOffset: 9)
+  )
 }
 
 @Test
-func should_skip_a_sentence_clipped_by_the_viewport_start() {
+func should_clip_a_sentence_to_the_viewport_start() {
   let target = Locator.Text(
     after: "ontinues here. Next complete",
     before: "the previous page and ",
     highlight: "c"
   )
   let matcher = TtsStartLocatorMatcher()
-  matcher.reset(target: target, skipPartialSentence: true)
+  matcher.reset(target: target)
 
   #expect(
     matcher.match(in: [
@@ -110,8 +115,48 @@ func should_skip_a_sentence_clipped_by_the_viewport_start() {
         before: "continues here. ",
         highlight: "Next complete sentence."
       ),
-    ]) == .start(1)
+    ]) == .start(index: 0, characterOffset: 43)
   )
+}
+
+@Test
+func should_speak_and_locate_only_the_visible_sentence_suffix() {
+  let targetText = Locator.Text(
+    after: "ontinues here. Next complete",
+    before: "the previous page and ",
+    highlight: "c"
+  )
+  var target = locator(position: 2, text: "c")
+  target.locations.progression = nil
+  target.locations.otherLocations["cssSelector"] = .string("p")
+  target.locations.otherLocations["domRange"] = [
+    "start": ["cssSelector": "p", "textNodeIndex": 0, "charOffset": 43],
+  ]
+  target.text = targetText
+
+  let sentence = "A sentence begins on the previous page and continues here."
+  var sentenceLocator = locator(position: 1, text: sentence)
+  sentenceLocator.text.after = " Next complete sentence."
+  let segment = TextContentElement.Segment(
+    locator: sentenceLocator,
+    text: sentence
+  )
+  let tokenizer = StartLocatorContentTokenizer()
+  tokenizer.reset(target: target)
+
+  let elements = tokenizer.trimToStartLocator([
+    TextContentElement(
+      locator: segment.locator,
+      role: .body,
+      segments: [segment]
+    ),
+  ])
+  let clipped = (elements.first as? TextContentElement)?.segments.first
+
+  #expect(clipped?.text == "continues here.")
+  #expect(clipped?.locator.locations.position == 2)
+  #expect(clipped?.locator.locations.otherLocations["domRange"] == nil)
+  #expect(clipped?.locator.text.highlight == "continues here.")
 }
 
 @Test
@@ -122,7 +167,7 @@ func should_keep_a_complete_sentence_at_the_viewport_start() {
     highlight: "N"
   )
   let matcher = TtsStartLocatorMatcher()
-  matcher.reset(target: target, skipPartialSentence: true)
+  matcher.reset(target: target)
 
   #expect(
     matcher.match(in: [
@@ -131,7 +176,7 @@ func should_keep_a_complete_sentence_at_the_viewport_start() {
         before: "continues here. ",
         highlight: "Next complete sentence."
       ),
-    ]) == .start(1)
+    ]) == .start(index: 1, characterOffset: 0)
   )
 }
 
@@ -153,7 +198,7 @@ func should_keep_looking_after_an_earlier_content_block_misses_the_start_locator
         before: "MyReader reads this first sentence aloud. ",
         highlight: "Tap this second sentence to move the highlight immediately."
       ),
-    ]) == .start(1)
+    ]) == .start(index: 1, characterOffset: 0)
   )
   #expect(matcher.match(in: [Locator.Text(highlight: "After.")]) == .passthrough)
 }

@@ -839,7 +839,7 @@ describe("useReaderTtsSession", () => {
     )
   })
 
-  it("should explicitly restart after the first clipped viewport sentence", async () => {
+  it("should let native narration restart at the exact viewport character", async () => {
     jest.mocked(getTtsConfig).mockResolvedValue(systemConfig)
     const ref = readerRef()
     const pageLocator = {
@@ -860,7 +860,6 @@ describe("useReaderTtsSession", () => {
     await act(async () => {
       await result.current.start(pageLocator, {
         startAtViewportStart: true,
-        skipPartialViewportSentence: true,
       })
     })
 
@@ -870,7 +869,6 @@ describe("useReaderTtsSession", () => {
       {
         sessionId: expect.any(String),
         startAtViewportStart: true,
-        skipPartialViewportSentence: true,
       },
     )
   })

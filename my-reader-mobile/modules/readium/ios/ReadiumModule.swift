@@ -65,13 +65,12 @@ public final class ReadiumModule: Module {
           ))
         }
       }
-      AsyncFunction("startTts") { (view: ReadiumView, sessionId: String, config: TtsEngineConfigRecord, locator: LocatorRecord?, startAtViewportStart: Bool, skipPartialViewportSentence: Bool, viewportDetached: Bool, viewportNavigationId: String?) in
+      AsyncFunction("startTts") { (view: ReadiumView, sessionId: String, config: TtsEngineConfigRecord, locator: LocatorRecord?, startAtViewportStart: Bool, viewportDetached: Bool, viewportNavigationId: String?) in
         view.startTts(
           sessionId: sessionId,
           config: config,
           from: locator,
           startAtViewportStart: startAtViewportStart,
-          skipPartialViewportSentence: skipPartialViewportSentence,
           viewportDetached: viewportDetached,
           viewportNavigationId: viewportNavigationId
         )

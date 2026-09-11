@@ -61,6 +61,38 @@ func precise_dom_visibility_overrides_approximate_progression() {
 }
 
 @Test
+func visible_tts_locator_does_not_issue_a_follow_navigation() async {
+  var navigationCount = 0
+
+  let moved = await navigateToTtsLocatorIfNeeded(
+    isVisible: { true },
+    navigate: {
+      navigationCount += 1
+      return true
+    }
+  )
+
+  #expect(moved)
+  #expect(navigationCount == 0)
+}
+
+@Test
+func offscreen_tts_locator_still_issues_a_follow_navigation() async {
+  var navigationCount = 0
+
+  let moved = await navigateToTtsLocatorIfNeeded(
+    isVisible: { false },
+    navigate: {
+      navigationCount += 1
+      return true
+    }
+  )
+
+  #expect(moved)
+  #expect(navigationCount == 1)
+}
+
+@Test
 func viewport_start_prefers_the_visible_resource_over_a_stale_locator() {
   #expect(ttsViewportStartHref(
     currentHref: "progress.xhtml",

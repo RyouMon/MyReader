@@ -58,9 +58,9 @@ class RemoteTtsPrefetchWindowTest {
   @Test
   fun should_start_with_the_sentence_containing_the_selected_locator_context() {
     val target = Locator.Text(
-      before = "reads this first sentence aloud. ",
-      highlight = "T",
-      after = "ap this second sentence to move",
+      before = "first sentence aloud. Tap this ",
+      highlight = "s",
+      after = "econd sentence to move the highlight",
     )
     val sentences = listOf(
       Locator.Text(
@@ -75,20 +75,26 @@ class RemoteTtsPrefetchWindowTest {
     )
 
     assertEquals(1, ttsUtteranceStartIndex(target, sentences))
+    val matcher = TtsStartLocatorMatcher()
+    matcher.reset(target)
+    assertEquals(
+      TtsStartLocatorMatch.Start(index = 1, characterOffset = 9),
+      matcher.match(sentences),
+    )
   }
 
   @Test
-  fun should_skip_a_sentence_clipped_by_the_viewport_start() {
+  fun should_clip_a_sentence_to_the_viewport_start() {
     val target = Locator.Text(
       before = "the previous page and ",
       highlight = "c",
       after = "ontinues here. Next complete",
     )
     val matcher = TtsStartLocatorMatcher()
-    matcher.reset(target, skipPartialSentence = true)
+    matcher.reset(target)
 
     assertEquals(
-      TtsStartLocatorMatch.Start(1),
+      TtsStartLocatorMatch.Start(index = 0, characterOffset = 43),
       matcher.match(
         listOf(
           Locator.Text(
@@ -105,6 +111,26 @@ class RemoteTtsPrefetchWindowTest {
   }
 
   @Test
+  fun should_speak_only_the_visible_sentence_suffix() {
+    val target = Locator.Text(
+      before = "the previous page and ",
+      highlight = "c",
+      after = "ontinues here. Next complete",
+    )
+    val sentence = "A sentence begins on the previous page and continues here."
+    val text = "$sentence Next complete sentence."
+    val tokenizer = StartLocatorTextTokenizer()
+    tokenizer.reset(target)
+
+    val ranges = tokenizer.trimToStartLocator(
+      text,
+      listOf(sentence.indices, sentence.length + 1 until text.length),
+    )
+
+    assertEquals("continues here.", text.substring(ranges.first()))
+  }
+
+  @Test
   fun should_keep_a_complete_sentence_at_the_viewport_start() {
     val target = Locator.Text(
       before = "continues here. ",
@@ -112,10 +138,10 @@ class RemoteTtsPrefetchWindowTest {
       after = "ext complete sentence.",
     )
     val matcher = TtsStartLocatorMatcher()
-    matcher.reset(target, skipPartialSentence = true)
+    matcher.reset(target)
 
     assertEquals(
-      TtsStartLocatorMatch.Start(1),
+      TtsStartLocatorMatch.Start(index = 1, characterOffset = 0),
       matcher.match(
         listOf(
           Locator.Text(highlight = "A sentence continues here."),
@@ -143,7 +169,7 @@ class RemoteTtsPrefetchWindowTest {
       matcher.match(listOf(Locator.Text(highlight = "TTS verification"))),
     )
     assertEquals(
-      TtsStartLocatorMatch.Start(1),
+      TtsStartLocatorMatch.Start(index = 1, characterOffset = 0),
       matcher.match(
         listOf(
           Locator.Text(highlight = "MyReader reads this first sentence aloud."),

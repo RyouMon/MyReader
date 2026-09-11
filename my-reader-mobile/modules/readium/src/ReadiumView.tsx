@@ -77,7 +77,6 @@ type NativeReadiumViewRef = React.Component & {
     config: TtsEngineConfig,
     fromLocator: Locator | undefined,
     startAtViewportStart: boolean,
-    skipPartialViewportSentence: boolean,
     viewportDetached: boolean,
     viewportNavigationId: string | undefined,
   ) => Promise<void>
@@ -208,7 +207,6 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
             config,
             fromLocator,
             options.startAtViewportStart ?? false,
-            options.skipPartialViewportSentence ?? false,
             options.viewportDetached ?? false,
             options.viewportNavigationId,
           )

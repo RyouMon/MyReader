@@ -1111,7 +1111,6 @@ final class ReadiumView: ExpoView {
     config: TtsEngineConfigRecord,
     from locator: LocatorRecord?,
     startAtViewportStart: Bool,
-    skipPartialViewportSentence: Bool,
     viewportDetached: Bool,
     viewportNavigationId: String?
   ) {
@@ -1204,10 +1203,7 @@ final class ReadiumView: ExpoView {
         controller.stop(emitState: false)
         return
       }
-      await controller.start(
-        from: startLocator,
-        skipPartialSentence: skipPartialViewportSentence
-      )
+      await controller.start(from: startLocator)
     }
   }
 
