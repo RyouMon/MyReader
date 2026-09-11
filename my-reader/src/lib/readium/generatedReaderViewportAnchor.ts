@@ -335,6 +335,10 @@ function visibleRect(window: Window, rect: DOMRect): DOMRect | null {
 function isHorizontallyPaginated(window: Window): boolean {
   const scrollingElement = window.document.scrollingElement
   if (!scrollingElement) return false
+  const columnCount = Number.parseInt(
+    window.getComputedStyle(window.document.documentElement).columnCount,
+    10,
+  )
   const viewportWidth = Math.max(
     window.innerWidth,
     scrollingElement.clientWidth,
@@ -344,8 +348,8 @@ function isHorizontallyPaginated(window: Window): boolean {
     scrollingElement.clientHeight,
   )
   return (
-    scrollingElement.scrollWidth > viewportWidth + 1 &&
-    scrollingElement.scrollHeight <= viewportHeight + 1
+    scrollingElement.scrollHeight <= viewportHeight + 1 &&
+    (scrollingElement.scrollWidth > viewportWidth + 1 || columnCount > 1)
   )
 }
 

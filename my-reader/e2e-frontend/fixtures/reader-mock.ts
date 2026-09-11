@@ -5,6 +5,7 @@ export interface ReaderMockOptions {
   bookId?: number
   hangPrepareBookSource?: boolean
   format?: "EPUB" | "PDF" | "CBZ"
+  extractedDirPath?: string
 }
 
 /**
@@ -16,7 +17,12 @@ export async function setupReaderMocks(
   page: Page,
   options: ReaderMockOptions = {},
 ) {
-  const { bookId = 1, hangPrepareBookSource = false, format = "EPUB" } = options
+  const {
+    bookId = 1,
+    hangPrepareBookSource = false,
+    format = "EPUB",
+    extractedDirPath,
+  } = options
 
   const libraryId = TEST_LIBRARY_ID
 
@@ -39,8 +45,9 @@ export async function setupReaderMocks(
       bookId: number
       hangPrepare: boolean
       fmt: string
+      extractedDirPath?: string
     }) => {
-      const { libId, bookId: bid, hangPrepare, fmt } = arg
+      const { bookId: bid, hangPrepare, fmt, extractedDirPath } = arg
 
       const existingHandlers =
         (
@@ -63,7 +70,8 @@ export async function setupReaderMocks(
           tags: [],
           series: null,
           seriesIndex: null,
-          formats: [fmt],
+          readableFormats: [fmt],
+          preferredFormat: null,
           hasCover: false,
           path: `books/test_book.${fmt.toLowerCase()}`,
           timestamp: new Date().toISOString(),
@@ -85,7 +93,9 @@ export async function setupReaderMocks(
           return {
             filePath: `/mock/books/test_book.${fmt.toLowerCase()}`,
             extractedDirPath:
-              fmt === "EPUB" ? `/mock/books/test_book` : undefined,
+              fmt === "EPUB"
+                ? (extractedDirPath ?? `/mock/books/test_book`)
+                : undefined,
             extractedEntries: [],
           }
         },
@@ -100,6 +110,7 @@ export async function setupReaderMocks(
       bookId,
       hangPrepare: hangPrepareBookSource,
       fmt: format,
+      extractedDirPath,
     },
   )
 }

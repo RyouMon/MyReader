@@ -63,6 +63,7 @@ describe("ReaderSelectionMenu", () => {
       />,
     )
 
+    expect(screen.getByRole("button", { name: "添加笔记" })).toBeVisible()
     fireEvent.click(screen.getByRole("button", { name: "从此处朗读" }))
 
     expect(onReadAloud).toHaveBeenCalledTimes(1)

@@ -240,10 +240,11 @@ private let readerViewportAnchorRuntimeScript = #"""
       const scrollingElement = window.document.scrollingElement;
       if (!scrollingElement)
           return false;
+      const columnCount = Number.parseInt(window.getComputedStyle(window.document.documentElement).columnCount, 10);
       const viewportWidth = Math.max(window.innerWidth, scrollingElement.clientWidth);
       const viewportHeight = Math.max(window.innerHeight, scrollingElement.clientHeight);
-      return (scrollingElement.scrollWidth > viewportWidth + 1 &&
-          scrollingElement.scrollHeight <= viewportHeight + 1);
+      return (scrollingElement.scrollHeight <= viewportHeight + 1 &&
+          (scrollingElement.scrollWidth > viewportWidth + 1 || columnCount > 1));
   }
   function visibleTextOrder(window, rect, direction, writingMode) {
       const vertical = /^(?:vertical|sideways)-/u.test(writingMode);

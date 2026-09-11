@@ -1,10 +1,15 @@
 import { fireEvent, render, screen } from "@testing-library/react"
+import { toast } from "sonner"
 import { describe, expect, it, vi } from "vitest"
 import { ReaderTtsControls } from "@/components/reader/readium/ReaderTtsControls"
 import type { EpubTtsSession } from "@/hooks/reader/useEpubTtsSession"
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
+}))
+
+vi.mock("sonner", () => ({
+  toast: { error: vi.fn() },
 }))
 
 function session(overrides: Partial<EpubTtsSession> = {}): EpubTtsSession {
@@ -27,7 +32,6 @@ function session(overrides: Partial<EpubTtsSession> = {}): EpubTtsSession {
     previous: vi.fn(),
     next: vi.fn(),
     readFrom: vi.fn(),
-    readAtPoint: vi.fn(),
     rebase: vi.fn(),
     markViewportMoved: vi.fn(),
     goToCurrent: vi.fn(),
@@ -40,16 +44,16 @@ function session(overrides: Partial<EpubTtsSession> = {}): EpubTtsSession {
 describe("ReaderTtsControls", () => {
   it("opens the player without starting narration", () => {
     const ttsSession = session()
-    const onExpandedChange = vi.fn()
+    const onPlay = vi.fn()
     render(
       <ReaderTtsControls
         session={ttsSession}
         visible
         settingsOpen={false}
+        onPlay={onPlay}
         onPlayFromCurrentPosition={vi.fn()}
         onReturnToPlaybackPosition={vi.fn()}
         onToggleSettings={vi.fn()}
-        onExpandedChange={onExpandedChange}
       />,
     )
 
@@ -59,9 +63,9 @@ describe("ReaderTtsControls", () => {
     )
 
     expect(ttsSession.play).not.toHaveBeenCalled()
-    expect(onExpandedChange).toHaveBeenLastCalledWith(true)
     fireEvent.click(screen.getByRole("button", { name: "reader.tts.play" }))
-    expect(ttsSession.play).toHaveBeenCalledOnce()
+    expect(onPlay).toHaveBeenCalledOnce()
+    expect(ttsSession.play).not.toHaveBeenCalled()
   })
 
   it("expands left with settings, sentence controls, and stop at the right edge", () => {
@@ -74,7 +78,6 @@ describe("ReaderTtsControls", () => {
         onPlayFromCurrentPosition={vi.fn()}
         onReturnToPlaybackPosition={vi.fn()}
         onToggleSettings={vi.fn()}
-        onExpandedChange={vi.fn()}
       />,
     )
 
@@ -111,7 +114,6 @@ describe("ReaderTtsControls", () => {
         onPlayFromCurrentPosition={vi.fn()}
         onReturnToPlaybackPosition={vi.fn()}
         onToggleSettings={vi.fn()}
-        onExpandedChange={vi.fn()}
       />,
     )
 
@@ -129,7 +131,6 @@ describe("ReaderTtsControls", () => {
         onPlayFromCurrentPosition={vi.fn()}
         onReturnToPlaybackPosition={vi.fn()}
         onToggleSettings={vi.fn()}
-        onExpandedChange={vi.fn()}
       />,
     )
 
@@ -141,13 +142,41 @@ describe("ReaderTtsControls", () => {
         onPlayFromCurrentPosition={vi.fn()}
         onReturnToPlaybackPosition={vi.fn()}
         onToggleSettings={vi.fn()}
-        onExpandedChange={vi.fn()}
       />,
     )
 
     expect(screen.getByRole("status")).toHaveTextContent(
       "reader.tts.generating",
     )
+  })
+
+  it("reports speech engine failures to the user", () => {
+    vi.mocked(toast.error).mockClear()
+    const { rerender } = render(
+      <ReaderTtsControls
+        session={session()}
+        visible
+        settingsOpen={false}
+        onPlayFromCurrentPosition={vi.fn()}
+        onReturnToPlaybackPosition={vi.fn()}
+        onToggleSettings={vi.fn()}
+      />,
+    )
+
+    rerender(
+      <ReaderTtsControls
+        session={session({ error: "speech engine failed" })}
+        visible
+        settingsOpen={false}
+        onPlayFromCurrentPosition={vi.fn()}
+        onReturnToPlaybackPosition={vi.fn()}
+        onToggleSettings={vi.fn()}
+      />,
+    )
+
+    expect(toast.error).toHaveBeenCalledWith("reader.tts.error", {
+      description: "speech engine failed",
+    })
   })
 
   it("offers to play from the visible page after the viewport moves", () => {
@@ -161,7 +190,6 @@ describe("ReaderTtsControls", () => {
         onPlayFromCurrentPosition={onPlayFromCurrentPosition}
         onReturnToPlaybackPosition={onReturnToPlaybackPosition}
         onToggleSettings={vi.fn()}
-        onExpandedChange={vi.fn()}
       />,
     )
 

@@ -37,23 +37,6 @@ const TEXT_BLOCK_SELECTOR = [
   '[role="heading"]',
 ].join(",")
 const CONTEXT_LENGTH = 32
-const POINT_READ_ATTRIBUTE = "data-myreader-tts-point-read"
-const POINT_READ_HOVER_ATTRIBUTE = "data-myreader-tts-point-read-hover"
-const POINT_READ_STYLE_ID = "myreader-tts-point-read-style"
-const POINT_READ_INTERACTIVE_SELECTOR = [
-  "a",
-  "button",
-  "input",
-  "textarea",
-  "select",
-  "option",
-  "summary",
-  "audio",
-  "video",
-  '[role="button"]',
-  '[role="link"]',
-  '[contenteditable]:not([contenteditable="false"])',
-].join(",")
 
 export type EpubTtsUtterance = ReadiumSpeechUtterance & {
   id: string
@@ -80,164 +63,6 @@ function contentTextBlocks(doc: Document): Element[] {
           Boolean(normalizedText(child.textContent)),
       ),
   )
-}
-
-export function setEpubTtsPointReadEnabled(
-  document: Document,
-  enabled: boolean,
-): void {
-  document
-    .querySelectorAll(
-      `[${POINT_READ_ATTRIBUTE}], [${POINT_READ_HOVER_ATTRIBUTE}]`,
-    )
-    .forEach((element) => {
-      element.removeAttribute(POINT_READ_ATTRIBUTE)
-      element.removeAttribute(POINT_READ_HOVER_ATTRIBUTE)
-    })
-
-  const existingStyle = document.getElementById(POINT_READ_STYLE_ID)
-  if (!enabled) {
-    existingStyle?.remove()
-    return
-  }
-
-  if (!existingStyle) {
-    const style = document.createElement("style")
-    style.id = POINT_READ_STYLE_ID
-    style.textContent = `[${POINT_READ_HOVER_ATTRIBUTE}] { cursor: pointer !important; }`
-    document.head.appendChild(style)
-  }
-  contentTextBlocks(document).forEach((element) => {
-    element.setAttribute(POINT_READ_ATTRIBUTE, "")
-  })
-}
-
-function pointReadTarget(event: Event): Element | null {
-  const target = event.target as Element | null
-  if (!target || target.nodeType !== Node.ELEMENT_NODE) return null
-  if (target.closest(POINT_READ_INTERACTIVE_SELECTOR)) return null
-  return target.closest(`[${POINT_READ_ATTRIBUTE}]`)
-}
-
-function pointIntersectsText(
-  document: Document,
-  element: Element,
-  point: { x: number; y: number },
-): boolean {
-  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
-  const range = document.createRange()
-
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    if (!normalizedText(node.textContent)) continue
-    range.selectNodeContents(node)
-    if (
-      Array.from(range.getClientRects()).some(
-        (rect) =>
-          point.x >= rect.left &&
-          point.x <= rect.right &&
-          point.y >= rect.top &&
-          point.y <= rect.bottom,
-      )
-    )
-      return true
-  }
-  return false
-}
-
-function hasTextSelection(document: Document): boolean {
-  const selection = document.getSelection()
-  return Boolean(
-    selection && !selection.isCollapsed && selection.toString().trim(),
-  )
-}
-
-export function connectEpubTtsPointReadBridge(
-  document: Document,
-  options: {
-    getEnabled: () => boolean
-    onReadAtPoint: (point: { x: number; y: number }) => void
-  },
-): () => void {
-  let hoveredTarget: Element | null = null
-
-  const setHoveredTarget = (target: Element | null) => {
-    if (target === hoveredTarget) return
-    hoveredTarget?.removeAttribute(POINT_READ_HOVER_ATTRIBUTE)
-    target?.setAttribute(POINT_READ_HOVER_ATTRIBUTE, "")
-    hoveredTarget = target
-  }
-
-  const handlePointerMove = (event: PointerEvent) => {
-    if (!options.getEnabled()) {
-      setHoveredTarget(null)
-      return
-    }
-    const target = pointReadTarget(event)
-    setHoveredTarget(
-      target &&
-        pointIntersectsText(document, target, {
-          x: event.clientX,
-          y: event.clientY,
-        })
-        ? target
-        : null,
-    )
-  }
-
-  const handlePointerOut = (event: PointerEvent) => {
-    if (!event.relatedTarget) setHoveredTarget(null)
-  }
-
-  const handlePointerUp = (event: PointerEvent) => {
-    if (
-      !options.getEnabled() ||
-      !event.isPrimary ||
-      event.button !== 0 ||
-      hasTextSelection(document) ||
-      !pointReadTarget(event)
-    )
-      return
-
-    // Point reading owns marked text-block clicks; avoid dispatching a second
-    // click through Readium's peripheral bridge.
-    event.stopImmediatePropagation()
-  }
-
-  const handleClick = (event: MouseEvent) => {
-    if (
-      !options.getEnabled() ||
-      event.button !== 0 ||
-      hasTextSelection(document)
-    )
-      return
-
-    const target = pointReadTarget(event)
-    if (!target) return
-
-    event.stopImmediatePropagation()
-    if (
-      !pointIntersectsText(document, target, {
-        x: event.clientX,
-        y: event.clientY,
-      })
-    )
-      return
-
-    event.preventDefault()
-    options.onReadAtPoint({ x: event.clientX, y: event.clientY })
-  }
-
-  document.addEventListener("pointermove", handlePointerMove, true)
-  document.addEventListener("pointerout", handlePointerOut, true)
-  document.addEventListener("pointerup", handlePointerUp, true)
-  document.addEventListener("click", handleClick, true)
-  return () => {
-    setHoveredTarget(null)
-    document.removeEventListener("pointermove", handlePointerMove, true)
-    document.removeEventListener("pointerout", handlePointerOut, true)
-    document.removeEventListener("pointerup", handlePointerUp, true)
-    document.removeEventListener("click", handleClick, true)
-  }
 }
 
 function cssSelector(element: Element): string {
@@ -514,6 +339,11 @@ type EpubTtsLocatorMatch = {
   highlightOffset: number | null
 }
 
+export type EpubTtsPlaybackPlan = {
+  index: number
+  utterances: EpubTtsUtterance[]
+}
+
 function epubTtsUtteranceMatchAtLocator(
   utterances: EpubTtsUtterance[],
   locator: Locator,
@@ -578,111 +408,97 @@ export function epubTtsUtteranceIndexAtLocator(
   return epubTtsUtteranceMatchAtLocator(utterances, locator)?.index ?? -1
 }
 
-export function epubTtsCompleteUtteranceIndexAtViewportStart(
+export function epubTtsPlaybackPlanAtLocator(
   utterances: EpubTtsUtterance[],
   locator: Locator,
-): number {
+): EpubTtsPlaybackPlan | null {
   const match = epubTtsUtteranceMatchAtLocator(utterances, locator)
-  if (!match) return -1
-  const sentence = utterances[match.index]?.locator.text?.highlight ?? ""
-  const clipped =
-    match.highlightOffset !== null &&
-    normalizedText(sentence.slice(0, match.highlightOffset)).length > 0
-  if (!clipped) return match.index
-  return match.index + 1 < utterances.length ? match.index + 1 : -1
-}
-
-function liveRangeForUtterance(
-  document: Document,
-  utterance: EpubTtsUtterance,
-): Range | null {
-  const highlight = utterance.locator.text?.highlight
-  if (!highlight) return null
-  const selector =
-    utterance.locator.locations.otherLocations?.get("cssSelector")
-  let root = document.body
-  if (typeof selector === "string") {
-    try {
-      root = document.querySelector(selector) ?? document.body
-    } catch {
-      root = document.body
-    }
+  if (!match) return null
+  const utterance = utterances[match.index]
+  const sentence = utterance?.locator.text?.highlight ?? ""
+  const offset = match.highlightOffset
+  if (
+    !utterance ||
+    offset === null ||
+    normalizedText(sentence.slice(0, offset)).length === 0
+  ) {
+    return { index: match.index, utterances }
   }
-  const walker = document.createTreeWalker(
-    root,
-    document.defaultView?.NodeFilter.SHOW_TEXT ?? 4,
+
+  const utterancePlain = utterance.plain ?? sentence
+  const plainOffset = plainOffsetAtLocatorOffset(
+    sentence,
+    utterancePlain,
+    offset,
   )
-  const nodes: Text[] = []
-  let node = walker.nextNode()
-  while (node) {
-    nodes.push(node as Text)
-    node = walker.nextNode()
+  const plain = utterancePlain.slice(plainOffset).trimStart()
+  const highlight = sentence.slice(offset).trimStart()
+  if (!/[\p{L}\p{N}]/u.test(plain) || !highlight) {
+    const index = match.index + 1
+    return index < utterances.length ? { index, utterances } : null
   }
-  const content = nodes.map((item) => item.data).join("")
-  if (!content) return null
 
-  const before = utterance.locator.text?.before?.trim()
-  const after = utterance.locator.text?.after?.trim()
-  const candidates: number[] = []
-  let searchFrom = 0
-  while (searchFrom <= content.length - highlight.length) {
-    const index = content.indexOf(highlight, searchFrom)
-    if (index < 0) break
-    candidates.push(index)
-    searchFrom = index + Math.max(1, highlight.length)
+  const otherLocations = new Map(
+    utterance.locator.locations.otherLocations ?? [],
+  )
+  locator.locations.otherLocations?.forEach((value, key) => {
+    otherLocations.set(key, value)
+  })
+  otherLocations.delete("domRange")
+  const clipped: EpubTtsUtterance = {
+    ...utterance,
+    plain,
+    locator: new Locator({
+      href: utterance.locator.href,
+      type: utterance.locator.type,
+      title: utterance.locator.title,
+      locations: new LocatorLocations({
+        fragments:
+          locator.locations.fragments.length > 0
+            ? locator.locations.fragments
+            : utterance.locator.locations.fragments,
+        progression: locator.locations.progression,
+        totalProgression:
+          locator.locations.totalProgression ??
+          utterance.locator.locations.totalProgression,
+        position:
+          locator.locations.position ?? utterance.locator.locations.position,
+        otherLocations,
+      }),
+      text: new LocatorText({
+        before: locator.text?.before,
+        highlight,
+        after: utterance.locator.text?.after,
+      }),
+    }),
   }
-  const startOffset =
-    candidates.find((index) => {
-      const beforeMatches =
-        !before || content.slice(0, index).trimEnd().endsWith(before)
-      const afterMatches =
-        !after ||
-        content
-          .slice(index + highlight.length)
-          .trimStart()
-          .startsWith(after)
-      return beforeMatches && afterMatches
-    }) ?? candidates[0]
-  if (startOffset === undefined) return null
-
-  const positionAt = (
-    offset: number,
-  ): { node: Text; offset: number } | null => {
-    let cursor = 0
-    for (const textNode of nodes) {
-      const next = cursor + textNode.data.length
-      if (offset <= next) return { node: textNode, offset: offset - cursor }
-      cursor = next
-    }
-    return null
-  }
-  const start = positionAt(startOffset)
-  const end = positionAt(startOffset + highlight.length)
-  if (!start || !end) return null
-  const range = document.createRange()
-  range.setStart(start.node, start.offset)
-  range.setEnd(end.node, end.offset)
-  return range
+  const queue = [...utterances]
+  queue[match.index] = clipped
+  return { index: match.index, utterances: queue }
 }
 
-export function epubTtsUtteranceAtPoint(
-  utterances: EpubTtsUtterance[],
-  resourceHref: string,
-  document: Document,
-  point: { x: number; y: number },
-): EpubTtsUtterance | null {
-  for (const utterance of utterances) {
-    if (!hrefRoughlyMatches(utterance.locator.href, resourceHref)) continue
-    const range = liveRangeForUtterance(document, utterance)
-    if (!range) continue
-    const hit = Array.from(range.getClientRects()).some(
-      (rect) =>
-        point.x >= rect.left &&
-        point.x <= rect.right &&
-        point.y >= rect.top &&
-        point.y <= rect.bottom,
-    )
-    if (hit) return utterance
+function plainOffsetAtLocatorOffset(
+  locatorText: string,
+  plainText: string,
+  locatorOffset: number,
+): number {
+  const locatorIndex = normalizedTextIndex(locatorText)
+  const plainIndex = normalizedTextIndex(plainText)
+  let locatorCursor = 0
+
+  for (
+    let plainCursor = 0;
+    plainCursor < plainIndex.text.length;
+    plainCursor += 1
+  ) {
+    const character = plainIndex.text[plainCursor]!
+    const match = locatorIndex.text.indexOf(character, locatorCursor)
+    if (match < 0) break
+    if ((locatorIndex.rawStarts[match] ?? 0) >= locatorOffset) {
+      return plainIndex.rawStarts[plainCursor] ?? plainText.length
+    }
+    locatorCursor = match + 1
   }
-  return null
+
+  return plainText.length
 }

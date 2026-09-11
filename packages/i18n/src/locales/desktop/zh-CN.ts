@@ -525,6 +525,7 @@ export const desktopZhCN = {
         systemEngine: "系统朗读",
         loading: "正在准备朗读…",
         generating: "正在生成下一句语音…",
+        error: "朗读失败",
         ready: "{{engine}} 已就绪",
         loadingVoices: "正在载入声音…",
         play: "开始朗读",

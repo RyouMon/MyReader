@@ -1,19 +1,19 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+import type {
+  ReaderViewportDomRange,
+  ReaderViewportLayoutState,
+} from "../src/reader-viewport-anchor"
 import {
   captureReaderPointAnchor,
   captureReaderViewportAnchor,
   captureReaderViewportStartAnchor,
   createReaderViewportAnchorRuntime,
-  isReaderViewportAnchorVisible,
   isReaderTextLocatorVisible,
+  isReaderViewportAnchorVisible,
   readerViewportAnchorOffset,
   readerViewportLayoutState,
   restoreReaderViewportAnchorOffset,
   sameReaderViewportLayout,
-} from "../src/reader-viewport-anchor"
-import type {
-  ReaderViewportDomRange,
-  ReaderViewportLayoutState,
 } from "../src/reader-viewport-anchor"
 
 const restoreProperties: Array<() => void> = []
@@ -228,6 +228,38 @@ describe("reader viewport anchor capture", () => {
       cssSelector: "#first",
       text: { highlight: "r" },
     })
+  })
+
+  it("should preserve column reading order when a spread fits in one viewport", () => {
+    document.body.innerHTML =
+      '<p id="first">First column text</p><p id="second">Second column text</p>'
+    useViewport(200, 100)
+    const first = document.querySelector("#first")!.firstChild!
+    const second = document.querySelector("#second")!.firstChild!
+    overrideProperty(document, "scrollingElement", document.documentElement)
+    overrideProperty(document.documentElement, "clientWidth", 200)
+    overrideProperty(document.documentElement, "clientHeight", 100)
+    overrideProperty(document.documentElement, "scrollWidth", 200)
+    overrideProperty(document.documentElement, "scrollHeight", 100)
+    const getComputedStyle = window.getComputedStyle.bind(window)
+    overrideProperty(window, "getComputedStyle", (element: Element) => {
+      const style = getComputedStyle(element)
+      if (element !== document.documentElement) return style
+      return new Proxy(style, {
+        get: (target, property) =>
+          property === "columnCount"
+            ? "2"
+            : Reflect.get(target, property, target),
+      })
+    })
+    overrideProperty(document, "caretRangeFromPoint", (x: number) =>
+      rangeAt(x < 100 ? first : second, 2),
+    )
+    useRangeRects((range) =>
+      range.startContainer === first ? [rect(10, 70, 80)] : [rect(110, 10, 80)],
+    )
+
+    expect(captureReaderViewportStartAnchor(window)?.cssSelector).toBe("#first")
   })
 
   it("should start with the top visible line in a scrolling viewport", () => {

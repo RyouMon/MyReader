@@ -1,12 +1,9 @@
 import { Locator, LocatorLocations, LocatorText } from "@readium/shared"
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it } from "vitest"
 import {
-  connectEpubTtsPointReadBridge,
-  epubTtsCompleteUtteranceIndexAtViewportStart,
-  epubTtsUtteranceAtPoint,
+  epubTtsPlaybackPlanAtLocator,
   epubTtsUtteranceIndexAtLocator,
   extractEpubTtsUtterances,
-  setEpubTtsPointReadEnabled,
 } from "@/lib/readium/epubTts"
 
 describe("EPUB TTS extraction", () => {
@@ -101,7 +98,7 @@ describe("EPUB TTS extraction", () => {
     expect(epubTtsUtteranceIndexAtLocator(utterances, viewportStart)).toBe(1)
   })
 
-  it("skips a sentence clipped by the viewport but keeps a complete first sentence", () => {
+  it("clips a sentence to the first visible character", () => {
     const utterances = extractEpubTtsUtterances(
       [
         {
@@ -116,7 +113,13 @@ describe("EPUB TTS extraction", () => {
     const clippedStart = new Locator({
       href: "chapter.xhtml",
       type: "application/xhtml+xml",
-      locations: new LocatorLocations({ progression: 0.3 }),
+      locations: new LocatorLocations({
+        progression: 0.3,
+        otherLocations: new Map<string, unknown>([
+          ["cssSelector", "body > p:nth-of-type(1)"],
+          ["domRange", { start: { charOffset: 43 } }],
+        ]),
+      }),
       text: new LocatorText({
         before: "the previous page and ",
         highlight: "c",
@@ -134,12 +137,20 @@ describe("EPUB TTS extraction", () => {
       }),
     })
 
+    const clipped = epubTtsPlaybackPlanAtLocator(utterances, clippedStart)
+    const complete = epubTtsPlaybackPlanAtLocator(utterances, completeStart)
+
+    expect(clipped?.index).toBe(0)
+    expect(clipped?.utterances[0]?.plain).toBe("continues here.")
+    expect(clipped?.utterances[0]?.locator.text?.highlight).toBe(
+      "continues here.",
+    )
+    expect(clipped?.utterances[0]?.locator.locations.progression).toBe(0.3)
     expect(
-      epubTtsCompleteUtteranceIndexAtViewportStart(utterances, clippedStart),
-    ).toBe(1)
-    expect(
-      epubTtsCompleteUtteranceIndexAtViewportStart(utterances, completeStart),
-    ).toBe(1)
+      clipped?.utterances[0]?.locator.locations.otherLocations?.has("domRange"),
+    ).toBe(false)
+    expect(complete?.index).toBe(1)
+    expect(complete?.utterances).toBe(utterances)
   })
 
   it("does not fall back to the first sentence for an unmatched resource", () => {
@@ -163,153 +174,6 @@ describe("EPUB TTS extraction", () => {
     expect(epubTtsUtteranceIndexAtLocator(utterances, transientLocator)).toBe(
       -1,
     )
-  })
-
-  it("resolves a clicked glyph to its sentence locator", () => {
-    const html =
-      '<html><body><p id="line">First sentence. Second sentence.</p></body></html>'
-    const utterances = extractEpubTtsUtterances(
-      [{ href: "chapter.xhtml", type: "application/xhtml+xml", html }],
-      [],
-      { fallbackLanguage: "en" },
-    )
-    const document = new DOMParser().parseFromString(html, "text/html")
-    const getClientRects = vi.fn(function (this: Range) {
-      const left = this.toString().startsWith("Second") ? 120 : 0
-      return [
-        {
-          left,
-          right: left + 100,
-          top: 0,
-          bottom: 30,
-        } as DOMRect,
-      ] as unknown as DOMRectList
-    })
-    Object.defineProperty(Range.prototype, "getClientRects", {
-      configurable: true,
-      value: getClientRects,
-    })
-
-    expect(
-      epubTtsUtteranceAtPoint(utterances, "OPS/chapter.xhtml", document, {
-        x: 150,
-        y: 15,
-      })?.plain,
-    ).toBe("Second sentence.")
-
-    Reflect.deleteProperty(Range.prototype, "getClientRects")
-  })
-
-  it("marks readable text blocks without making their empty space clickable", () => {
-    const document = new DOMParser().parseFromString(
-      "<html><body><section><p>Readable paragraph.</p></section><div>Decoration</div></body></html>",
-      "text/html",
-    )
-    const paragraph = document.querySelector("p")
-    const section = document.querySelector("section")
-
-    setEpubTtsPointReadEnabled(document, true)
-
-    expect(paragraph?.hasAttribute("data-myreader-tts-point-read")).toBe(true)
-    expect(section?.hasAttribute("data-myreader-tts-point-read")).toBe(false)
-    expect(
-      document.getElementById("myreader-tts-point-read-style")?.textContent,
-    ).toContain("data-myreader-tts-point-read-hover")
-    expect(
-      document.getElementById("myreader-tts-point-read-style")?.textContent,
-    ).not.toContain("[data-myreader-tts-point-read] {")
-
-    setEpubTtsPointReadEnabled(document, false)
-
-    expect(paragraph?.hasAttribute("data-myreader-tts-point-read")).toBe(false)
-    expect(document.getElementById("myreader-tts-point-read-style")).toBeNull()
-  })
-
-  it("shows a pointer and reads only when the pointer intersects rendered text", () => {
-    document.body.innerHTML =
-      '<p><span id="sentence">Readable sentence.</span></p><button id="action">Action</button>'
-    const getClientRects = vi.fn(
-      () =>
-        [
-          {
-            left: 100,
-            right: 200,
-            top: 0,
-            bottom: 30,
-          } as DOMRect,
-        ] as unknown as DOMRectList,
-    )
-    Object.defineProperty(Range.prototype, "getClientRects", {
-      configurable: true,
-      value: getClientRects,
-    })
-    const onReadAtPoint = vi.fn()
-    const disconnect = connectEpubTtsPointReadBridge(document, {
-      getEnabled: () => true,
-      onReadAtPoint,
-    })
-    setEpubTtsPointReadEnabled(document, true)
-
-    const sentence = document.getElementById("sentence")
-    const paragraph = document.querySelector("p")
-    sentence?.dispatchEvent(
-      new MouseEvent("pointermove", {
-        bubbles: true,
-        clientX: 150,
-        clientY: 15,
-      }),
-    )
-    expect(paragraph?.hasAttribute("data-myreader-tts-point-read-hover")).toBe(
-      true,
-    )
-
-    sentence?.dispatchEvent(
-      new MouseEvent("pointermove", {
-        bubbles: true,
-        clientX: 250,
-        clientY: 15,
-      }),
-    )
-    expect(paragraph?.hasAttribute("data-myreader-tts-point-read-hover")).toBe(
-      false,
-    )
-
-    sentence?.dispatchEvent(
-      new MouseEvent("click", {
-        bubbles: true,
-        cancelable: true,
-        button: 0,
-        clientX: 250,
-        clientY: 15,
-      }),
-    )
-
-    sentence?.dispatchEvent(
-      new MouseEvent("click", {
-        bubbles: true,
-        cancelable: true,
-        button: 0,
-        clientX: 150,
-        clientY: 15,
-      }),
-    )
-    document.getElementById("action")?.dispatchEvent(
-      new MouseEvent("click", {
-        bubbles: true,
-        cancelable: true,
-        button: 0,
-        clientX: 20,
-        clientY: 20,
-      }),
-    )
-
-    expect(onReadAtPoint).toHaveBeenCalledOnce()
-    expect(onReadAtPoint).toHaveBeenCalledWith({ x: 150, y: 15 })
-
-    disconnect()
-    setEpubTtsPointReadEnabled(document, false)
-    Reflect.deleteProperty(Range.prototype, "getClientRects")
-    document.body.replaceChildren()
   })
 
   it("preserves authored sentence languages for mixed-language narration", () => {

@@ -8,8 +8,9 @@ import {
   SkipForward,
   Square,
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import type { EpubTtsSession } from "@/hooks/reader/useEpubTtsSession"
 import { cn } from "@/lib/utils"
 
@@ -17,40 +18,40 @@ type ReaderTtsControlsProps = {
   session: EpubTtsSession
   visible: boolean
   settingsOpen: boolean
+  onPlay?: () => void
   onPlayFromCurrentPosition: () => void
   onReturnToPlaybackPosition: () => void
   onToggleSettings: () => void
-  onExpandedChange: (expanded: boolean) => void
 }
 
 export function ReaderTtsControls({
   session,
   visible,
   settingsOpen,
+  onPlay,
   onPlayFromCurrentPosition,
   onReturnToPlaybackPosition,
   onToggleSettings,
-  onExpandedChange,
 }: ReaderTtsControlsProps) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
+  const reportedErrorRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!session.error) {
+      reportedErrorRef.current = null
+      return
+    }
+    if (reportedErrorRef.current === session.error) return
+    reportedErrorRef.current = session.error
+    toast.error(t("reader.tts.error"), { description: session.error })
+  }, [session.error, t])
 
   useEffect(() => {
     if (session.state === "playing" || session.state === "paused") {
       setExpanded(true)
     }
   }, [session.state])
-
-  useEffect(() => {
-    onExpandedChange(expanded)
-  }, [expanded, onExpandedChange])
-
-  useEffect(
-    () => () => {
-      onExpandedChange(false)
-    },
-    [onExpandedChange],
-  )
 
   if (!session.available && !session.loading) return null
 
@@ -141,7 +142,7 @@ export function ReaderTtsControls({
           aria-hidden={!expanded}
           tabIndex={controlTabIndex}
           data-role="playback"
-          onClick={playing ? session.pause : session.play}
+          onClick={playing ? session.pause : () => (onPlay ?? session.play)()}
           disabled={!session.available}
         >
           {preparing ? (

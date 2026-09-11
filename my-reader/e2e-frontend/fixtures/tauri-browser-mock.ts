@@ -46,6 +46,7 @@ export async function injectTauriInternals(target: Page | BrowserContext) {
 
     // @ts-expect-error - __TAURI_INTERNALS__ is not defined in the window object
     window.__TAURI_INTERNALS__ = {
+      convertFileSrc: (filePath: string) => filePath,
       invoke: async (cmd: string, args: Record<string, unknown>) => {
         calls[cmd] = (calls[cmd] ?? 0) + 1
         if (cmd === "plugin:event|listen") {

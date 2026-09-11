@@ -115,7 +115,6 @@ function session(): EpubTtsSession {
     previous: vi.fn(),
     next: vi.fn(),
     readFrom: vi.fn(),
-    readAtPoint: vi.fn(),
     rebase: vi.fn(),
     markViewportMoved: vi.fn(),
     goToCurrent: vi.fn(),

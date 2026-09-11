@@ -556,6 +556,7 @@ export const desktopEn = {
         systemEngine: "System voice",
         loading: "Preparing read aloud…",
         generating: "Generating the next sentence…",
+        error: "Read aloud failed",
         ready: "{{engine}} is ready",
         loadingVoices: "Loading voices…",
         play: "Start reading",

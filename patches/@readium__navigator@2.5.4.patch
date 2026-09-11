@@ -1,0 +1,121 @@
+diff --git a/dist/index.js b/dist/index.js
+index f2ca8e78d860af4a9739400f957d0dcecf5e6366..e3aa9c007cf87cd507fc37a5929bb86b22ac7575 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -6784,9 +6784,11 @@ class Cn {
+     if (!this.destroyed) {
+       if (this.frame.style.visibility = "hidden", this.frame.style.setProperty("aria-hidden", "true"), this.frame.style.opacity = "0", this.frame.style.pointerEvents = "none", this.hidden = !0, this.frame.parentElement)
+         return this.comms === void 0 || !this.comms.ready ? void 0 : new Promise((t, e) => {
+-          this.comms?.send("unfocus", void 0, (i) => {
+-            this.comms?.halt(), t();
+-          });
++          let i = !1, n;
++          const s = () => {
++            i || (i = !0, n !== void 0 && clearTimeout(n), this.comms?.halt(), t());
++          };
++          n = setTimeout(s, 250), this.comms?.send("unfocus", void 0, s);
+         });
+       this.comms?.halt();
+     }
+@@ -6795,13 +6797,15 @@ class Cn {
+     if (this.destroyed) throw Error("Trying to show frame when it doesn't exist");
+     if (!this.frame.parentElement) throw Error("Trying to show frame that is not attached to the DOM");
+     return this.comms ? this.comms.resume() : this.comms = new Nt(this.frame.contentWindow, this.source), new Promise((e, i) => {
++      let n = !1, s;
++      const o = () => {
++        n || (n = !0, s !== void 0 && clearTimeout(s), this.frame.style.removeProperty("visibility"), this.frame.style.removeProperty("aria-hidden"), this.frame.style.removeProperty("opacity"), this.frame.style.removeProperty("pointer-events"), this.hidden = !1, J.UA.WebKit && this.comms?.send("force_webkit_recalc", void 0), e());
++      };
++      s = setTimeout(o, 250);
+       this.comms?.send("activate", void 0, () => {
+         this.comms?.send("focus", void 0, () => {
+           this.applyContentProtection();
+-          const n = () => {
+-            this.frame.style.removeProperty("visibility"), this.frame.style.removeProperty("aria-hidden"), this.frame.style.removeProperty("opacity"), this.frame.style.removeProperty("pointer-events"), this.hidden = !1, J.UA.WebKit && this.comms?.send("force_webkit_recalc", void 0), e();
+-          };
+-          t !== void 0 ? this.comms?.send("go_progression", t, n) : n();
++          t !== void 0 ? this.comms?.send("go_progression", t, o) : o();
+         });
+       });
+     });
+diff --git a/src/epub/frame/FrameManager.ts b/src/epub/frame/FrameManager.ts
+index 3485634409f66d4f13409784c11afe646352a72d..12a22e0c2981f3f11a12b63bf825476bc3ef7243 100644
+--- a/src/epub/frame/FrameManager.ts
++++ b/src/epub/frame/FrameManager.ts
+@@ -5,6 +5,7 @@ import { sML } from "../../helpers/index.ts";
+ import type { IContentProtectionConfig, IKeyboardPeripheralsConfig } from "../../Navigator.ts";
+ import { KeyboardConditionBridge } from "../../peripherals/KeyboardConditionBridge.ts";
+
++const SHOW_ACK_TIMEOUT_MS = 250;
+
+ export class FrameManager {
+     private frame: HTMLIFrameElement;
+@@ -118,10 +119,17 @@ export class FrameManager {
+         if(this.frame.parentElement) {
+             if(this.comms === undefined || !this.comms.ready) return;
+             return new Promise((res, _) => {
+-                this.comms?.send("unfocus", undefined, (_: boolean) => {
++                let completed = false;
++                let fallback: ReturnType<typeof setTimeout> | undefined;
++                const complete = () => {
++                    if(completed) return;
++                    completed = true;
++                    if(fallback !== undefined) clearTimeout(fallback);
+                     this.comms?.halt();
+                     res();
+-                });
++                }
++                fallback = setTimeout(complete, SHOW_ACK_TIMEOUT_MS);
++                this.comms?.send("unfocus", undefined, complete);
+             });
+         } else
+             this.comms?.halt();
+@@ -133,28 +141,33 @@ export class FrameManager {
+         if(this.comms) this.comms.resume();
+         else this.comms = new FrameComms(this.frame.contentWindow!, this.source);
+         return new Promise((res, _) => {
++            let revealed = false;
++            let fallback: ReturnType<typeof setTimeout> | undefined;
++            const reveal = () => {
++                if(revealed) return;
++                revealed = true;
++                if(fallback !== undefined) clearTimeout(fallback);
++                this.frame.style.removeProperty("visibility");
++                this.frame.style.removeProperty("aria-hidden");
++                this.frame.style.removeProperty("opacity");
++                this.frame.style.removeProperty("pointer-events");
++                this.hidden = false;
++
++                if (sML.UA.WebKit) {
++                    this.comms?.send("force_webkit_recalc", undefined);
++                }
++
++                res();
++            }
++            fallback = setTimeout(reveal, SHOW_ACK_TIMEOUT_MS);
+             this.comms?.send("activate", undefined, () => {
+                 this.comms?.send("focus", undefined, () => {
+                     // Apply content protection synchronously
+                     this.applyContentProtection();
+-
+-                    const remove = () => {
+-                        this.frame.style.removeProperty("visibility");
+-                        this.frame.style.removeProperty("aria-hidden");
+-                        this.frame.style.removeProperty("opacity");
+-                        this.frame.style.removeProperty("pointer-events");
+-                        this.hidden = false;
+-
+-                        if (sML.UA.WebKit) {
+-                            this.comms?.send("force_webkit_recalc", undefined);
+-                        }
+-
+-                        res();
+-                    }
+                     if(atProgress !== undefined) {
+-                        this.comms?.send("go_progression", atProgress, remove);
++                        this.comms?.send("go_progression", atProgress, reveal);
+                     } else {
+-                        remove();
++                        reveal();
+                     }
+                 });
+             });

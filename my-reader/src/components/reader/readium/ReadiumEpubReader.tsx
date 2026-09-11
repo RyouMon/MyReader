@@ -132,6 +132,7 @@ import {
   extractEpubContentLocators,
 } from "@/lib/readium/epubContentLocators"
 import { patchEpubNavigatorFixedLayoutGoNav } from "@/lib/readium/epubFixedLayoutNavPatch"
+import { patchEpubNavigatorNavigationQueue } from "@/lib/readium/epubNavigationQueue"
 import {
   applySpreadPreference,
   epubNavigatorDefaultsForLayout,
@@ -144,10 +145,6 @@ import {
   applyEpubSearchHighlight,
   clearEpubSearchHighlight,
 } from "@/lib/readium/epubSearchHighlight"
-import {
-  connectEpubTtsPointReadBridge,
-  setEpubTtsPointReadEnabled,
-} from "@/lib/readium/epubTts"
 import {
   coerceReaderFontOption,
   createReaderFontInjectables,
@@ -667,17 +664,11 @@ function setupIframeWindow(
     isScrollMode: boolean
     paddingX: number
     getChromeVisible: () => boolean
-    getTtsPointReadEnabled: () => boolean
     getCurrentFontFamily: () => string | null | undefined
     getAnnotations: () => readonly ReaderAnnotation[]
     onAnnotationClick: (selection: EpubAnnotationSelection) => void
     onAnnotationNoteClick: (annotationId: string) => void
     onSelectionCleared: () => void
-    onTtsPointRead: (
-      iframe: HTMLIFrameElement,
-      document: Document,
-      point: { x: number; y: number },
-    ) => void
     noteMarkerAccessibilityLabel: string
   },
 ): (() => void) | undefined {
@@ -707,8 +698,6 @@ function setupIframeWindow(
     "reader-scrollbar-visible",
     opts.getChromeVisible(),
   )
-  setEpubTtsPointReadEnabled(doc, opts.getTtsPointReadEnabled())
-
   if (opts.isScrollMode) {
     injectScrollPadding([doc], opts.paddingX)
   } else {
@@ -727,10 +716,6 @@ function setupIframeWindow(
       onOutsideClick: opts.onSelectionCleared,
       noteMarkerAccessibilityLabel: opts.noteMarkerAccessibilityLabel,
     })
-    const stopTtsPointReadBridge = connectEpubTtsPointReadBridge(doc, {
-      getEnabled: opts.getTtsPointReadEnabled,
-      onReadAtPoint: (point) => opts.onTtsPointRead(opts.iframe, doc, point),
-    })
     const stopTextSelectionChangeBridge = connectEpubTextSelectionChangeBridge(
       wnd,
       opts.onSelectionCleared,
@@ -746,7 +731,6 @@ function setupIframeWindow(
     return () => {
       stopSelectedTextContextMenu()
       stopAnnotationClickBridge()
-      stopTtsPointReadBridge()
       stopTextSelectionChangeBridge()
       wnd.removeEventListener("pointermove", onMove)
       setupIframeDocuments.delete(doc)
@@ -1391,37 +1375,9 @@ export function ReadiumEpubReader({
     highlightTint: searchHighlightTint,
   })
   const ttsSessionRef = useRef(ttsSession)
-  const ttsPointReadEnabledRef = useRef(false)
   const pendingTtsUserNavigationRef = useRef<string | null>(null)
   const ttsUserNavigationSequenceRef = useRef(0)
   ttsSessionRef.current = ttsSession
-  const setTtsPointReadEnabled = useCallback((enabled: boolean) => {
-    ttsPointReadEnabledRef.current = enabled
-    getIframeDocs().forEach((document) => {
-      setEpubTtsPointReadEnabled(document, enabled)
-    })
-  }, [])
-  const readTtsAtIframePoint = useCallback(
-    (
-      iframe: HTMLIFrameElement,
-      document: Document,
-      point: { x: number; y: number },
-    ) => {
-      const navigator = navigatorRef.current
-      const currentFrame = navigator?._cframes.find(
-        (candidate) =>
-          candidate?.iframe === iframe ||
-          candidate?.iframe.contentDocument === document,
-      )
-      if (!navigator || !currentFrame) return
-      ttsSessionRef.current.readAtPoint(
-        navigator.currentLocator.href,
-        document,
-        point,
-      )
-    },
-    [],
-  )
   const playTtsFromCurrentPosition = useCallback(() => {
     const navigator = navigatorRef.current
     const locator = navigator?.currentLocator ?? currentLocator
@@ -1437,8 +1393,29 @@ export function ReadiumEpubReader({
       {
         autoplay: true,
         forceRestart: true,
-        skipPartialViewportSentence: true,
       },
+    )
+  }, [currentLocator, isFixedLayout])
+  const playTts = useCallback(() => {
+    const session = ttsSessionRef.current
+    if (session.state === "paused" || session.state === "loading") {
+      session.play()
+      return
+    }
+    const navigator = navigatorRef.current
+    const locator = navigator?.currentLocator ?? currentLocator
+    if (!navigator || !locator) {
+      session.play()
+      return
+    }
+    const viewportStart = !isFixedLayout
+      ? captureEpubViewportStartLocator(
+          navigator,
+          readiumLocatorToReaderLocator(locator),
+        )
+      : null
+    session.play(
+      viewportStart ? readerLocatorToReadiumLocator(viewportStart) : locator,
     )
   }, [currentLocator, isFixedLayout])
 
@@ -1629,10 +1606,22 @@ export function ReadiumEpubReader({
   )
 
   const beginContentNavigation = useCallback(
-    (targetLocator?: Locator | null, options?: { rebaseTts?: boolean }) => {
-      if (options?.rebaseTts !== false) {
+    (
+      targetLocator?: Locator | null,
+      options?: { trackTtsViewport?: boolean },
+    ) => {
+      const ttsState = ttsSessionRef.current.state
+      if (
+        options?.trackTtsViewport !== false &&
+        (ttsState === "loading" ||
+          ttsState === "playing" ||
+          ttsState === "paused")
+      ) {
+        const navigationId = `desktop-navigation-${++ttsUserNavigationSequenceRef.current}`
+        pendingTtsUserNavigationRef.current = navigationId
+        ttsSessionRef.current.markViewportMoved(navigationId, "begin")
+      } else if (options?.trackTtsViewport !== false) {
         pendingTtsUserNavigationRef.current = null
-        if (targetLocator) ttsSessionRef.current.rebase(targetLocator)
       }
       const sequence = navigationSequenceRef.current + 1
       navigationSequenceRef.current = sequence
@@ -1689,7 +1678,9 @@ export function ReadiumEpubReader({
       if (!targetHref) return null
       const targetLocator =
         epubPositions.find((position) => position.href === targetHref) ?? null
-      return beginContentNavigation(targetLocator, { rebaseTts: false })
+      return beginContentNavigation(targetLocator, {
+        trackTtsViewport: false,
+      })
     },
     [beginContentNavigation, epubPositions, isFixedLayout, publication],
   )
@@ -1697,7 +1688,17 @@ export function ReadiumEpubReader({
   const beginContentSettlingForPageTurn = useCallback(
     (direction: "backward" | "forward") => {
       const navigationId = `desktop-navigation-${++ttsUserNavigationSequenceRef.current}`
-      pendingTtsUserNavigationRef.current = navigationId
+      const ttsState = ttsSessionRef.current.state
+      if (
+        ttsState === "loading" ||
+        ttsState === "playing" ||
+        ttsState === "paused"
+      ) {
+        pendingTtsUserNavigationRef.current = navigationId
+        ttsSessionRef.current.markViewportMoved(navigationId, "begin")
+      } else {
+        pendingTtsUserNavigationRef.current = null
+      }
       return {
         contentSequence: beginContentNavigationForPageTurn(direction),
         navigationId,
@@ -1706,15 +1707,39 @@ export function ReadiumEpubReader({
     [beginContentNavigationForPageTurn],
   )
 
+  const completeTtsUserNavigation = useCallback(
+    (navigationId: string | null) => {
+      if (
+        !navigationId ||
+        pendingTtsUserNavigationRef.current !== navigationId
+      ) {
+        return
+      }
+      pendingTtsUserNavigationRef.current = null
+      ttsSessionRef.current.markViewportMoved(navigationId, "complete")
+    },
+    [],
+  )
+
+  const scheduleTtsUserNavigationCompletion = useCallback(
+    (navigationId: string | null) => {
+      if (!navigationId) return
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          completeTtsUserNavigation(navigationId)
+        })
+      })
+    },
+    [completeTtsUserNavigation],
+  )
+
   const revealFailedContentNavigation = useCallback(
     (navigation: { contentSequence: number | null; navigationId: string }) => {
-      if (pendingTtsUserNavigationRef.current === navigation.navigationId) {
-        pendingTtsUserNavigationRef.current = null
-      }
+      completeTtsUserNavigation(navigation.navigationId)
       if (navigation.contentSequence == null) return
       finishContentNavigation(navigation.contentSequence)
     },
-    [finishContentNavigation],
+    [completeTtsUserNavigation, finishContentNavigation],
   )
 
   const selectTocItemForNavigation = useCallback(
@@ -1738,7 +1763,9 @@ export function ReadiumEpubReader({
           const sequence = beginContentNavigation(
             epubPositions[targetIndex] ?? null,
           )
+          const ttsNavigationId = pendingTtsUserNavigationRef.current
           await goToReadingOrderPositionBySteps(nav, targetIndex + 1)
+          scheduleTtsUserNavigationCompletion(ttsNavigationId)
           finishContentNavigation(sequence)
           closePanels()
           return
@@ -1750,7 +1777,9 @@ export function ReadiumEpubReader({
           : tocTargetToLocator(publication, row)
       if (!locator) return
       const sequence = beginContentNavigation(locator)
+      const ttsNavigationId = pendingTtsUserNavigationRef.current
       nav.go(locator, false, () => {
+        scheduleTtsUserNavigationCompletion(ttsNavigationId)
         finishContentNavigation(sequence)
       })
       closePanels()
@@ -1762,6 +1791,7 @@ export function ReadiumEpubReader({
       finishContentNavigation,
       isFixedLayout,
       publication,
+      scheduleTtsUserNavigationCompletion,
       selectTocItemForNavigation,
     ],
   )
@@ -1773,6 +1803,7 @@ export function ReadiumEpubReader({
       if (!nav || !locator) return
 
       const sequence = beginContentNavigation(locator)
+      const ttsNavigationId = pendingTtsUserNavigationRef.current
       const position = locator.locations.position
       if (
         isFixedLayout &&
@@ -1785,9 +1816,13 @@ export function ReadiumEpubReader({
           Math.floor(position),
         )
         await goToReadingOrderPositionBySteps(nav, targetPosition)
+        scheduleTtsUserNavigationCompletion(ttsNavigationId)
         finishContentNavigation(sequence)
       } else {
-        nav.go(locator, false, () => finishContentNavigation(sequence))
+        nav.go(locator, false, () => {
+          scheduleTtsUserNavigationCompletion(ttsNavigationId)
+          finishContentNavigation(sequence)
+        })
       }
       closePanels()
     },
@@ -1797,6 +1832,7 @@ export function ReadiumEpubReader({
       finishContentNavigation,
       isFixedLayout,
       publication.readingOrder.items.length,
+      scheduleTtsUserNavigationCompletion,
     ],
   )
 
@@ -1806,6 +1842,7 @@ export function ReadiumEpubReader({
       if (!navigator) return
       const locator = readerLocatorToReadiumLocator(annotation.locator)
       const sequence = beginContentNavigation(locator)
+      const ttsNavigationId = pendingTtsUserNavigationRef.current
       const position = locator.locations.position
       if (
         isFixedLayout &&
@@ -1817,9 +1854,13 @@ export function ReadiumEpubReader({
           navigator,
           Math.min(publication.readingOrder.items.length, Math.floor(position)),
         )
+        scheduleTtsUserNavigationCompletion(ttsNavigationId)
         finishContentNavigation(sequence)
       } else {
-        navigator.go(locator, false, () => finishContentNavigation(sequence))
+        navigator.go(locator, false, () => {
+          scheduleTtsUserNavigationCompletion(ttsNavigationId)
+          finishContentNavigation(sequence)
+        })
       }
       closePanels()
     },
@@ -1829,6 +1870,7 @@ export function ReadiumEpubReader({
       finishContentNavigation,
       isFixedLayout,
       publication.readingOrder.items.length,
+      scheduleTtsUserNavigationCompletion,
     ],
   )
 
@@ -1984,9 +2026,11 @@ export function ReadiumEpubReader({
 
       const locator = readerLocatorToReadiumLocator(readerLocator)
       const sequence = beginContentNavigation(locator)
+      const ttsNavigationId = pendingTtsUserNavigationRef.current
       clearEpubSearchHighlight(nav)
       selectSearchLocator(readerLocator)
       nav.go(locator, false, (ok) => {
+        scheduleTtsUserNavigationCompletion(ttsNavigationId)
         finishContentNavigation(sequence)
         if (sequence !== navigationSequenceRef.current) return
         if (!ok) return
@@ -2003,6 +2047,7 @@ export function ReadiumEpubReader({
       beginContentNavigation,
       closePanels,
       finishContentNavigation,
+      scheduleTtsUserNavigationCompletion,
       searchHighlightTint,
       selectSearchLocator,
     ],
@@ -2141,16 +2186,26 @@ export function ReadiumEpubReader({
   const onReadiumEdgePrev = useCallback(() => {
     const sequence = beginContentSettlingForPageTurn("backward")
     navigatorRef.current?.goBackward(false, (ok) => {
-      if (!ok) revealFailedContentNavigation(sequence)
+      if (ok) scheduleTtsUserNavigationCompletion(sequence.navigationId)
+      else revealFailedContentNavigation(sequence)
     })
-  }, [beginContentSettlingForPageTurn, revealFailedContentNavigation])
+  }, [
+    beginContentSettlingForPageTurn,
+    revealFailedContentNavigation,
+    scheduleTtsUserNavigationCompletion,
+  ])
 
   const onReadiumEdgeNext = useCallback(() => {
     const sequence = beginContentSettlingForPageTurn("forward")
     navigatorRef.current?.goForward(false, (ok) => {
-      if (!ok) revealFailedContentNavigation(sequence)
+      if (ok) scheduleTtsUserNavigationCompletion(sequence.navigationId)
+      else revealFailedContentNavigation(sequence)
     })
-  }, [beginContentSettlingForPageTurn, revealFailedContentNavigation])
+  }, [
+    beginContentSettlingForPageTurn,
+    revealFailedContentNavigation,
+    scheduleTtsUserNavigationCompletion,
+  ])
 
   const onProgressSeek = useCallback(
     (progress: number) => {
@@ -2167,12 +2222,14 @@ export function ReadiumEpubReader({
         : createEpubProgressSeekLocator(epubPositions, targetIndex)
       if (!targetLocator) return
       const sequence = beginContentNavigation(targetLocator)
+      const ttsNavigationId = pendingTtsUserNavigationRef.current
       pendingProgressSeekRef.current = { sequence, locator: targetLocator }
       progressSeekClearTimerRef.current = window.setTimeout(() => {
         if (pendingProgressSeekRef.current?.sequence !== sequence) return
         clearPendingProgressSeek()
       }, 3000)
       nav.go(targetLocator, false, () => {
+        scheduleTtsUserNavigationCompletion(ttsNavigationId)
         finishContentNavigation(sequence)
       })
     },
@@ -2182,6 +2239,7 @@ export function ReadiumEpubReader({
       epubPositions,
       finishContentNavigation,
       isFixedLayout,
+      scheduleTtsUserNavigationCompletion,
     ],
   )
   const resolveProgressCommit = useCallback(
@@ -2234,13 +2292,11 @@ export function ReadiumEpubReader({
             isScrollMode,
             paddingX: readerSettings.paddingX,
             getChromeVisible: () => chromeVisibleRef.current,
-            getTtsPointReadEnabled: () => ttsPointReadEnabledRef.current,
             getCurrentFontFamily: getCurrentReflowableFontFamily,
             getAnnotations: () => annotationsRef.current,
             onAnnotationClick,
             onAnnotationNoteClick,
             onSelectionCleared: () => setAnnotationSelection(null),
-            onTtsPointRead: readTtsAtIframePoint,
             noteMarkerAccessibilityLabel,
           })
           if (cleanup) cleanups.push(cleanup)
@@ -2291,7 +2347,6 @@ export function ReadiumEpubReader({
     getCurrentReflowableFontFamily,
     onAnnotationClick,
     onAnnotationNoteClick,
-    readTtsAtIframePoint,
     noteMarkerAccessibilityLabel,
   ])
 
@@ -2402,13 +2457,11 @@ export function ReadiumEpubReader({
                     !isFixedLayout,
                   paddingX: ui.reflowable.settings.paddingX,
                   getChromeVisible: () => chromeVisibleRef.current,
-                  getTtsPointReadEnabled: () => ttsPointReadEnabledRef.current,
                   getCurrentFontFamily: getCurrentReflowableFontFamily,
                   getAnnotations: () => annotationsRef.current,
                   onAnnotationClick,
                   onAnnotationNoteClick,
                   onSelectionCleared: () => setAnnotationSelection(null),
-                  onTtsPointRead: readTtsAtIframePoint,
                   noteMarkerAccessibilityLabel,
                 })
               })
@@ -2445,11 +2498,6 @@ export function ReadiumEpubReader({
                   : locator
               setCurrentLocator(stableLocator)
               setChapterTitle(resolveChapterTitle(stableLocator, selected))
-              const ttsNavigationId = pendingTtsUserNavigationRef.current
-              if (ttsNavigationId) {
-                pendingTtsUserNavigationRef.current = null
-                ttsSessionRef.current.markViewportMoved(ttsNavigationId)
-              }
               finishContentNavigationForLocator(stableLocator)
             },
             // Consume page-area input so only explicit controls paginate.
@@ -2483,12 +2531,16 @@ export function ReadiumEpubReader({
                 if (isRtl) {
                   const sequence = beginContentSettlingForPageTurn("backward")
                   nav2.goBackward(false, (ok) => {
-                    if (!ok) revealFailedContentNavigation(sequence)
+                    if (ok)
+                      scheduleTtsUserNavigationCompletion(sequence.navigationId)
+                    else revealFailedContentNavigation(sequence)
                   })
                 } else {
                   const sequence = beginContentSettlingForPageTurn("forward")
                   nav2.goForward(false, (ok) => {
-                    if (!ok) revealFailedContentNavigation(sequence)
+                    if (ok)
+                      scheduleTtsUserNavigationCompletion(sequence.navigationId)
+                    else revealFailedContentNavigation(sequence)
                   })
                 }
               } else if (
@@ -2499,12 +2551,16 @@ export function ReadiumEpubReader({
                 if (isRtl) {
                   const sequence = beginContentSettlingForPageTurn("forward")
                   nav2.goForward(false, (ok) => {
-                    if (!ok) revealFailedContentNavigation(sequence)
+                    if (ok)
+                      scheduleTtsUserNavigationCompletion(sequence.navigationId)
+                    else revealFailedContentNavigation(sequence)
                   })
                 } else {
                   const sequence = beginContentSettlingForPageTurn("backward")
                   nav2.goBackward(false, (ok) => {
-                    if (!ok) revealFailedContentNavigation(sequence)
+                    if (ok)
+                      scheduleTtsUserNavigationCompletion(sequence.navigationId)
+                    else revealFailedContentNavigation(sequence)
                   })
                 }
               }
@@ -2517,9 +2573,12 @@ export function ReadiumEpubReader({
         if (isFixedLayout) {
           patchEpubNavigatorFixedLayoutGoNav(nav)
         }
+        patchEpubNavigatorNavigationQueue(nav)
         const activeNav = nav
         navigatorRef.current = activeNav
-        const initialSequence = beginContentNavigation(initialPosition)
+        const initialSequence = beginContentNavigation(initialPosition, {
+          trackTtsViewport: false,
+        })
         await activeNav.load()
         if (cancelled) return
         requestAnimationFrame(() => {
@@ -2596,11 +2655,11 @@ export function ReadiumEpubReader({
     getCurrentReflowableFontFamily,
     onAnnotationClick,
     onAnnotationNoteClick,
-    readTtsAtIframePoint,
     onTextSelected,
     noteMarkerAccessibilityLabel,
     revealFailedContentNavigation,
     resolveChapterTitle,
+    scheduleTtsUserNavigationCompletion,
   ])
 
   const bottomPositionTotal = isFixedLayout
@@ -2841,10 +2900,10 @@ export function ReadiumEpubReader({
           session={ttsSession}
           visible={chromeVisible}
           settingsOpen={ttsSettingsOpen}
+          onPlay={playTts}
           onPlayFromCurrentPosition={playTtsFromCurrentPosition}
           onReturnToPlaybackPosition={ttsSession.goToCurrent}
           onToggleSettings={toggleTtsSettings}
-          onExpandedChange={setTtsPointReadEnabled}
         />
       }
       bottomStatusBar={
