@@ -166,6 +166,15 @@ env:
       text: "目录|Contents"
     direction: RIGHT
     duration: 1200
+- runFlow:
+    when:
+      notVisible: "Progress jump target"
+    commands:
+      - swipe:
+          from:
+            text: "目录|Contents"
+          direction: RIGHT
+          duration: 1200
 - extendedWaitUntil:
     visible: "Progress jump target"
     timeout: 10000

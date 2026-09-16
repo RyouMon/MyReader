@@ -1,9 +1,13 @@
-import type { TtsEngineConfig } from "@my-reader/readium"
+import type { Locator, TtsEngineConfig } from "@my-reader/readium"
 import {
   chooseTtsVoiceForLanguage,
   filterTtsVoicesForLanguage,
   normalizeTtsLanguage,
 } from "@my-reader/tools/reader-tts-language"
+import {
+  hrefRoughlyMatches,
+  positionIndexForLocator,
+} from "@my-reader/tools/reader-toc"
 
 import type {
   MobileTtsConfig,
@@ -30,6 +34,84 @@ export type ReaderTtsErrorPresentation =
   | { kind: "unknown" }
   | { kind: "providerUnavailable" }
   | { kind: "engine"; message: string }
+
+export type ReaderTtsViewportRelation = "before" | "after" | null
+
+type ReaderTtsViewportRelationInput = {
+  viewportDetached: boolean
+  viewportLocator?: Locator
+  viewportOriginLocator?: Locator
+  playbackLocator?: Locator
+  positions: readonly Locator[]
+}
+
+function compareLocationNumbers(
+  viewportValue: number | undefined,
+  playbackValue: number | undefined,
+): ReaderTtsViewportRelation {
+  if (
+    viewportValue == null ||
+    playbackValue == null ||
+    !Number.isFinite(viewportValue) ||
+    !Number.isFinite(playbackValue) ||
+    viewportValue === playbackValue
+  ) {
+    return null
+  }
+  return viewportValue < playbackValue ? "before" : "after"
+}
+
+export function resolveReaderTtsViewportRelation({
+  viewportDetached,
+  viewportLocator,
+  viewportOriginLocator,
+  playbackLocator,
+  positions,
+}: ReaderTtsViewportRelationInput): ReaderTtsViewportRelation {
+  if (!viewportDetached || !viewportLocator || !playbackLocator) return null
+
+  const originRelation = viewportOriginLocator
+    ? compareReaderTtsLocators(
+        viewportLocator,
+        viewportOriginLocator,
+        positions,
+      )
+    : null
+  if (originRelation) return originRelation
+
+  return compareReaderTtsLocators(viewportLocator, playbackLocator, positions)
+}
+
+function compareReaderTtsLocators(
+  viewportLocator: Locator,
+  playbackLocator: Locator,
+  positions: readonly Locator[],
+): ReaderTtsViewportRelation {
+  const totalProgressionRelation = compareLocationNumbers(
+    viewportLocator.locations?.totalProgression,
+    playbackLocator.locations?.totalProgression,
+  )
+  if (totalProgressionRelation) return totalProgressionRelation
+
+  const positionRelation = compareLocationNumbers(
+    viewportLocator.locations?.position,
+    playbackLocator.locations?.position,
+  )
+  if (positionRelation) return positionRelation
+
+  if (hrefRoughlyMatches(viewportLocator.href, playbackLocator.href)) {
+    const progressionRelation = compareLocationNumbers(
+      viewportLocator.locations?.progression,
+      playbackLocator.locations?.progression,
+    )
+    if (progressionRelation) return progressionRelation
+  }
+
+  return compareLocationNumbers(
+    positionIndexForLocator(positions, viewportLocator),
+    positionIndexForLocator(positions, playbackLocator),
+  )
+}
 
 export function classifyReaderTtsError(
   error: string,

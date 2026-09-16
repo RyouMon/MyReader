@@ -74,7 +74,11 @@ export function useReaderTtsSession({
   }>({ publicationKey, state: null })
   const state =
     sessionState.publicationKey === publicationKey ? sessionState.state : null
-  const [viewportState, setViewportState] = useState({
+  const [viewportState, setViewportState] = useState<{
+    publicationKey: string
+    detached: boolean
+    originLocator?: Locator
+  }>({
     publicationKey,
     detached: false,
   })
@@ -82,6 +86,10 @@ export function useReaderTtsSession({
     viewportState.publicationKey === publicationKey
       ? viewportState.detached
       : false
+  const viewportOriginLocator =
+    viewportState.publicationKey === publicationKey && viewportState.detached
+      ? viewportState.originLocator
+      : undefined
   const [remote, setRemote] = useState(false)
   const viewportRevisionRef = useRef(0)
   const viewportNavigationIdRef = useRef<string | null>(null)
@@ -110,11 +118,19 @@ export function useReaderTtsSession({
   }, [])
 
   const syncViewportState = useCallback(
-    (transition: ReaderTtsSessionTransition) => {
+    (transition: ReaderTtsSessionTransition, originLocator?: Locator) => {
       if (!transition.accepted) return
-      setViewportState({
-        publicationKey,
-        detached: transition.snapshot.viewportDetached,
+      setViewportState((current) => {
+        const detached = transition.snapshot.viewportDetached
+        return {
+          publicationKey,
+          detached,
+          originLocator: detached
+            ? current.publicationKey === publicationKey && current.detached
+              ? current.originLocator
+              : originLocator
+            : undefined,
+        }
       })
     },
     [publicationKey],
@@ -407,7 +423,7 @@ export function useReaderTtsSession({
   )
 
   const markViewportMoved = useCallback(
-    (navigationId: string) => {
+    (navigationId: string, originLocator?: Locator) => {
       if (
         sessionMachine.snapshot.viewportDetached &&
         viewportNavigationIdRef.current === navigationId
@@ -429,7 +445,7 @@ export function useReaderTtsSession({
         type: "viewport-moved",
         navigationId,
       })
-      syncViewportState(transition)
+      syncViewportState(transition, originLocator)
       if (transition.accepted) viewportNavigationIdRef.current = navigationId
       const activeLocator = activeLocatorRef.current
       if (
@@ -627,6 +643,7 @@ export function useReaderTtsSession({
     state,
     remote,
     viewportDetached,
+    viewportOriginLocator,
     start,
     seek,
     markViewportMoved,

@@ -452,6 +452,8 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
       sentenceNavigationPlaybackState.didPause()
       updateHighlight(for: utterance)
       scheduleRemotePrefetch(from: utterance.locator)
+      let buffering = remoteBufferingKey == speechKey(for: utterance)
+      if !buffering { followText(for: utterance) }
       onStateChange(statePayload("paused", utterance: utterance, locator: utterance.locator))
 
     case let .playing(utterance, _):

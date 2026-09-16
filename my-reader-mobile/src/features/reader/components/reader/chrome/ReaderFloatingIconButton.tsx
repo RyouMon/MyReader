@@ -6,6 +6,8 @@ import {
   type ViewStyle,
 } from "react-native"
 import Animated, {
+  FadeIn,
+  FadeOut,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -45,6 +47,7 @@ type ReaderFloatingIconButtonProps = {
   onPress: () => void
   palette: ReaderChromePalette
   position?: Pick<ViewStyle, "bottom" | "left" | "right" | "top">
+  testID?: string
   visible: boolean
 }
 
@@ -56,6 +59,7 @@ export function ReaderFloatingIconButton({
   onPress,
   palette,
   position,
+  testID,
   visible,
 }: ReaderFloatingIconButtonProps) {
   const visibleScale = useSharedValue(READER_FLOATING_BUTTON_HIDDEN_SCALE)
@@ -96,6 +100,7 @@ export function ReaderFloatingIconButton({
     [disabledOpacity],
   )
   const interactive = visible && !disabled && !loading
+  const contentKey = loading ? "loading" : icon
 
   return (
     <Animated.View
@@ -111,6 +116,7 @@ export function ReaderFloatingIconButton({
       importantForAccessibility={visible ? "auto" : "no-hide-descendants"}
     >
       <Pressable
+        testID={testID}
         accessibilityRole={loading ? "progressbar" : "button"}
         accessibilityLabel={accessibilityLabel}
         accessibilityState={
@@ -123,15 +129,24 @@ export function ReaderFloatingIconButton({
         onPressOut={handlePressOut}
         style={styles.pressable}
       >
-        {loading ? (
-          <ActivityIndicator size="small" color={palette.actionText} />
-        ) : (
-          <ReaderChromeIcon
-            name={icon}
-            size={READER_FLOATING_BUTTON_ICON_SIZE}
-            color={palette.actionText}
-          />
-        )}
+        <Animated.View
+          key={contentKey}
+          testID="reader-floating-icon-transition"
+          entering={FadeIn.duration(READER_FLOATING_BUTTON_ENTER_DURATION_MS)}
+          exiting={FadeOut.duration(READER_FLOATING_BUTTON_EXIT_DURATION_MS)}
+          pointerEvents="none"
+          style={styles.iconContent}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color={palette.actionText} />
+          ) : (
+            <ReaderChromeIcon
+              name={icon}
+              size={READER_FLOATING_BUTTON_ICON_SIZE}
+              color={palette.actionText}
+            />
+          )}
+        </Animated.View>
       </Pressable>
     </Animated.View>
   )
@@ -159,6 +174,15 @@ const styles = StyleSheet.create({
   pressable: {
     width: READER_FLOATING_BUTTON_SIZE,
     height: READER_FLOATING_BUTTON_SIZE,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconContent: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     alignItems: "center",
     justifyContent: "center",
   },

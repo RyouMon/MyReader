@@ -1,9 +1,11 @@
+import type { Locator } from "@my-reader/readium"
 import type { MobileTtsConfig } from "@/src/services/core/tts"
 import {
   buildReaderTtsEngineConfig,
   buildReaderTtsSynthesisRequest,
   chooseReaderTtsVoice,
   classifyReaderTtsError,
+  resolveReaderTtsViewportRelation,
   resolveReaderTtsSelection,
 } from "./reader-tts"
 
@@ -186,5 +188,81 @@ describe("reader TTS selection", () => {
     expect(classifyReaderTtsError("TTS_READER_VIEW_UNAVAILABLE")).toEqual({
       kind: "unknown",
     })
+  })
+})
+
+describe("reader TTS viewport relation", () => {
+  const locator = (totalProgression: number): Locator => ({
+    href: "chapter.xhtml",
+    type: "application/xhtml+xml",
+    locations: { progression: totalProgression, totalProgression },
+  })
+
+  it("orders a detached viewport against the current playback locator", () => {
+    const playbackLocator = locator(0.5)
+
+    expect(
+      resolveReaderTtsViewportRelation({
+        viewportDetached: true,
+        viewportLocator: locator(0.7),
+        playbackLocator,
+        positions: [],
+      }),
+    ).toBe("after")
+    expect(
+      resolveReaderTtsViewportRelation({
+        viewportDetached: true,
+        viewportLocator: locator(0.3),
+        playbackLocator,
+        positions: [],
+      }),
+    ).toBe("before")
+  })
+
+  it("keeps the first page after a cross-page sentence ordered after playback", () => {
+    expect(
+      resolveReaderTtsViewportRelation({
+        viewportDetached: true,
+        viewportLocator: locator(0.5),
+        viewportOriginLocator: locator(0.4),
+        playbackLocator: locator(0.6),
+        positions: [],
+      }),
+    ).toBe("after")
+  })
+
+  it("keeps normal sentence controls while the viewport is attached", () => {
+    expect(
+      resolveReaderTtsViewportRelation({
+        viewportDetached: false,
+        viewportLocator: locator(0.7),
+        playbackLocator: locator(0.5),
+        positions: [],
+      }),
+    ).toBeNull()
+  })
+
+  it("falls back to publication positions when global progression is absent", () => {
+    const positions: Locator[] = [
+      {
+        href: "chapter-1.xhtml",
+        type: "application/xhtml+xml",
+        locations: { progression: 0, position: 1 },
+      },
+      {
+        href: "chapter-2.xhtml",
+        type: "application/xhtml+xml",
+        locations: { progression: 0, position: 2 },
+      },
+    ]
+
+    expect(
+      resolveReaderTtsViewportRelation({
+        viewportDetached: true,
+        viewportLocator: positions[1]!,
+        playbackLocator: positions[0]!,
+        positions,
+      }),
+    ).toBe("after")
   })
 })

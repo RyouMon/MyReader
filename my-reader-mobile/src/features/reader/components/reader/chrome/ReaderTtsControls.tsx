@@ -3,9 +3,9 @@ import { useTranslation } from "react-i18next"
 import { StyleSheet, useWindowDimensions, View } from "react-native"
 
 import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
+import type { ReaderTtsViewportRelation } from "@/src/features/reader/tts/reader-tts"
 
 import { ReaderFloatingIconButton } from "./ReaderFloatingIconButton"
-import { ReaderFloatingTextButton } from "./ReaderFloatingTextButton"
 import {
   READER_FLOATING_BUTTON_BOTTOM,
   READER_FLOATING_BUTTON_LEFT,
@@ -18,7 +18,7 @@ type Props = {
   expanded: boolean
   state: TtsPlaybackState | null
   remote: boolean
-  playFromCurrentPosition: boolean
+  viewportRelation: ReaderTtsViewportRelation
   palette: ReaderChromePalette
   onExpand: () => void
   onPlay: () => void
@@ -35,7 +35,7 @@ export function ReaderTtsControls({
   expanded,
   state,
   remote,
-  playFromCurrentPosition,
+  viewportRelation,
   palette,
   onExpand,
   onPlay,
@@ -54,10 +54,7 @@ export function ReaderTtsControls({
     remote ? "reader.tts.states.generating" : "reader.tts.states.loading",
   )
   const playbackControlsVisible = visible && expanded
-  const playFromCurrentPositionVisible =
-    playbackControlsVisible && playFromCurrentPosition
-  const { anchorStep, detachedActionWidth } =
-    readerTtsControlLayout(windowWidth)
+  const { anchorStep } = readerTtsControlLayout(windowWidth)
 
   return (
     <View
@@ -69,27 +66,6 @@ export function ReaderTtsControls({
       pointerEvents="box-none"
       style={styles.controls}
     >
-      <ReaderFloatingTextButton
-        accessibilityLabel={t("reader.tts.playFromCurrentPosition")}
-        bottom={READER_FLOATING_BUTTON_SIZE + 12}
-        label={t("reader.tts.playFromCurrentPosition")}
-        onPress={onPlayFromCurrentPosition}
-        palette={palette}
-        placement="leading"
-        visible={playFromCurrentPositionVisible}
-        width={detachedActionWidth}
-      />
-      <ReaderFloatingTextButton
-        accessibilityLabel={t("reader.tts.returnToPlaybackPosition")}
-        bottom={READER_FLOATING_BUTTON_SIZE + 12}
-        label={t("reader.tts.returnToPlaybackPosition")}
-        onPress={onReturnToPlaybackPosition}
-        palette={palette}
-        placement="trailing"
-        visible={playFromCurrentPositionVisible}
-        width={detachedActionWidth}
-      />
-
       <ReaderFloatingIconButton
         accessibilityLabel={t(
           expanded ? "reader.tts.stop" : "reader.tts.openControls",
@@ -102,10 +78,33 @@ export function ReaderTtsControls({
       />
 
       <ReaderFloatingIconButton
-        accessibilityLabel={t("reader.tts.previous")}
-        disabled={busy || !state || state.canGoPrevious === false}
-        icon="previous"
-        onPress={onPrevious}
+        testID="reader-tts-left-action"
+        accessibilityLabel={t(
+          viewportRelation === "after"
+            ? "reader.tts.returnToPlaybackPosition"
+            : viewportRelation === "before"
+              ? "reader.tts.playFromCurrentPosition"
+              : "reader.tts.previous",
+        )}
+        disabled={
+          busy ||
+          !state ||
+          (viewportRelation === null && state.canGoPrevious === false)
+        }
+        icon={
+          viewportRelation === "after"
+            ? "returnBackward"
+            : viewportRelation === "before"
+              ? "rewind"
+              : "previous"
+        }
+        onPress={
+          viewportRelation === "after"
+            ? onReturnToPlaybackPosition
+            : viewportRelation === "before"
+              ? onPlayFromCurrentPosition
+              : onPrevious
+        }
         palette={palette}
         position={{ left: READER_FLOATING_BUTTON_LEFT + anchorStep, top: 0 }}
         visible={playbackControlsVisible}
@@ -129,10 +128,33 @@ export function ReaderTtsControls({
       />
 
       <ReaderFloatingIconButton
-        accessibilityLabel={t("reader.tts.next")}
-        disabled={busy || !state || state.canGoNext === false}
-        icon="next"
-        onPress={onNext}
+        testID="reader-tts-right-action"
+        accessibilityLabel={t(
+          viewportRelation === "before"
+            ? "reader.tts.returnToPlaybackPosition"
+            : viewportRelation === "after"
+              ? "reader.tts.playFromCurrentPosition"
+              : "reader.tts.next",
+        )}
+        disabled={
+          busy ||
+          !state ||
+          (viewportRelation === null && state.canGoNext === false)
+        }
+        icon={
+          viewportRelation === "before"
+            ? "returnForward"
+            : viewportRelation === "after"
+              ? "fastForward"
+              : "next"
+        }
+        onPress={
+          viewportRelation === "before"
+            ? onReturnToPlaybackPosition
+            : viewportRelation === "after"
+              ? onPlayFromCurrentPosition
+              : onNext
+        }
         palette={palette}
         position={{
           left: READER_FLOATING_BUTTON_LEFT + anchorStep * 3,

@@ -119,7 +119,10 @@ import {
   READER_BOOK_TRANSITION_MS,
   setReaderCloseTransition,
 } from "@/src/features/reader/reader-open-transition"
-import { classifyReaderTtsError } from "@/src/features/reader/tts/reader-tts"
+import {
+  classifyReaderTtsError,
+  resolveReaderTtsViewportRelation,
+} from "@/src/features/reader/tts/reader-tts"
 import { useReaderTtsSession } from "@/src/features/reader/tts/use-reader-tts-session"
 import {
   bookLoadRequestKey,
@@ -314,6 +317,7 @@ export default function ReaderScreen() {
     state: ttsState,
     remote: ttsRemote,
     viewportDetached: ttsViewportDetached,
+    viewportOriginLocator: ttsViewportOriginLocator,
     start: startTts,
     seek: seekTts,
     play: playTts,
@@ -333,6 +337,13 @@ export default function ReaderScreen() {
     highlightColor: palette.primary,
     readerRef: reflowReaderRef,
     onError: showTtsError,
+  })
+  const ttsViewportRelation = resolveReaderTtsViewportRelation({
+    viewportDetached: ttsViewportDetached,
+    viewportLocator: readerState?.locator,
+    viewportOriginLocator: ttsViewportOriginLocator,
+    playbackLocator: ttsState?.locator,
+    positions,
   })
   const readerSearch = useReaderSearch(
     isReflowReady && readerState?.ready ? publicationId : null,
@@ -436,9 +447,12 @@ export default function ReaderScreen() {
         }
         return
       }
-      markTtsViewportMoved(navigationId)
+      markTtsViewportMoved(
+        navigationId,
+        readerState?.locator ?? ttsState?.locator,
+      )
     },
-    [markTtsViewportMoved, seekTts, ttsState],
+    [markTtsViewportMoved, readerState?.locator, seekTts, ttsState],
   )
 
   const handlePositionsReady = useCallback(
@@ -1614,7 +1628,7 @@ export default function ReaderScreen() {
               expanded={ttsControlsExpanded}
               state={ttsState}
               remote={ttsRemote}
-              playFromCurrentPosition={ttsViewportDetached}
+              viewportRelation={ttsViewportRelation}
               palette={chromePalette}
               onExpand={handleExpandTts}
               onPlay={handlePlayTts}

@@ -3,20 +3,20 @@ import { fireEvent, render } from "@testing-library/react-native"
 
 import { readerChromePalette } from "@/src/design/reader-chrome-palette"
 import { ReaderTtsControls } from "./ReaderTtsControls"
-import {
-  READER_FLOATING_BUTTON_LEFT,
-  READER_FLOATING_BUTTON_RIGHT,
-  READER_FLOATING_BUTTON_SIZE,
-  readerTtsControlLayout,
-} from "./readerChromeConstants"
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }))
 
-jest.mock("./ReaderChromeIcon", () => ({
-  ReaderChromeIcon: () => null,
-}))
+jest.mock("./ReaderChromeIcon", () => {
+  const React = jest.requireActual("react")
+  const { Text } = jest.requireActual("react-native")
+
+  return {
+    ReaderChromeIcon: ({ name }: { name: string }) =>
+      React.createElement(Text, null, name),
+  }
+})
 
 const palette = readerChromePalette("#FFFFFF", "#181842")
 
@@ -42,7 +42,7 @@ function renderPlayer(
       expanded={expanded}
       state={state}
       remote={remote}
-      playFromCurrentPosition={false}
+      viewportRelation={null}
       palette={palette}
       {...callbacks}
     />,
@@ -68,7 +68,7 @@ describe("ReaderTtsControls", () => {
         expanded
         state={null}
         remote={false}
-        playFromCurrentPosition={false}
+        viewportRelation={null}
         palette={palette}
         {...callbacks}
       />,
@@ -101,7 +101,12 @@ describe("ReaderTtsControls", () => {
     ).toBeNull()
 
     fireEvent.press(screen.getByLabelText("reader.tts.stop"))
+    fireEvent.press(screen.getByLabelText("reader.tts.previous"))
+    fireEvent.press(screen.getByLabelText("reader.tts.next"))
+
     expect(callbacks.onStop).toHaveBeenCalledTimes(1)
+    expect(callbacks.onPrevious).toHaveBeenCalledTimes(1)
+    expect(callbacks.onNext).toHaveBeenCalledTimes(1)
   })
 
   it("shows generation only as the playback-button spinner", () => {
@@ -117,26 +122,42 @@ describe("ReaderTtsControls", () => {
     expect(screen.queryByText("reader.tts.states.generating")).toBeNull()
   })
 
-  it("offers to play from the visible page after the viewport moves", () => {
+  it("returns on the left and fast-forwards from a viewport after playback", () => {
     const screen = render(
       <ReaderTtsControls
         visible
         expanded
-        state={{ sessionId: "session-1", state: "playing" }}
+        state={{
+          sessionId: "session-1",
+          state: "playing",
+          canGoPrevious: false,
+          canGoNext: false,
+        }}
         remote={false}
-        playFromCurrentPosition
+        viewportRelation="after"
         palette={palette}
         {...callbacks}
       />,
     )
 
-    fireEvent.press(
-      screen.getByRole("button", {
-        name: "reader.tts.playFromCurrentPosition",
-      }),
-    )
-
-    expect(callbacks.onPlayFromCurrentPosition).toHaveBeenCalledTimes(1)
+    expect(screen.getByText("returnBackward")).toBeTruthy()
+    expect(screen.getByText("fastForward")).toBeTruthy()
+    expect(
+      screen
+        .getAllByRole("button")
+        .map((button) => button.props.accessibilityLabel),
+    ).toEqual([
+      "reader.tts.stop",
+      "reader.tts.returnToPlaybackPosition",
+      "reader.tts.pause",
+      "reader.tts.playFromCurrentPosition",
+    ])
+    expect(
+      screen.getByTestId("reader-tts-left-action").props.accessibilityLabel,
+    ).toBe("reader.tts.returnToPlaybackPosition")
+    expect(
+      screen.getByTestId("reader-tts-right-action").props.accessibilityLabel,
+    ).toBe("reader.tts.playFromCurrentPosition")
 
     fireEvent.press(
       screen.getByRole("button", {
@@ -145,16 +166,60 @@ describe("ReaderTtsControls", () => {
     )
 
     expect(callbacks.onReturnToPlaybackPosition).toHaveBeenCalledTimes(1)
+
+    fireEvent.press(
+      screen.getByRole("button", {
+        name: "reader.tts.playFromCurrentPosition",
+      }),
+    )
+
+    expect(callbacks.onPlayFromCurrentPosition).toHaveBeenCalledTimes(1)
   })
 
-  it("uses the circular-control gap between detached actions", () => {
-    const windowWidth = 393
-    const layout = readerTtsControlLayout(windowWidth)
-    const circularControlGap = layout.anchorStep - READER_FLOATING_BUTTON_SIZE
-
-    expect(layout.detachedActionGap).toBe(circularControlGap)
-    expect(layout.detachedActionWidth * 2 + layout.detachedActionGap).toBe(
-      windowWidth - READER_FLOATING_BUTTON_LEFT - READER_FLOATING_BUTTON_RIGHT,
+  it("rewinds from the left and returns on the right from a viewport before playback", () => {
+    const screen = render(
+      <ReaderTtsControls
+        visible
+        expanded
+        state={{ sessionId: "session-1", state: "paused" }}
+        remote={false}
+        viewportRelation="before"
+        palette={palette}
+        {...callbacks}
+      />,
     )
+
+    expect(screen.getByText("rewind")).toBeTruthy()
+    expect(screen.getByText("returnForward")).toBeTruthy()
+    expect(
+      screen
+        .getAllByRole("button")
+        .map((button) => button.props.accessibilityLabel),
+    ).toEqual([
+      "reader.tts.stop",
+      "reader.tts.playFromCurrentPosition",
+      "reader.tts.play",
+      "reader.tts.returnToPlaybackPosition",
+    ])
+    expect(
+      screen.getByTestId("reader-tts-left-action").props.accessibilityLabel,
+    ).toBe("reader.tts.playFromCurrentPosition")
+    expect(
+      screen.getByTestId("reader-tts-right-action").props.accessibilityLabel,
+    ).toBe("reader.tts.returnToPlaybackPosition")
+
+    fireEvent.press(
+      screen.getByRole("button", {
+        name: "reader.tts.playFromCurrentPosition",
+      }),
+    )
+    fireEvent.press(
+      screen.getByRole("button", {
+        name: "reader.tts.returnToPlaybackPosition",
+      }),
+    )
+
+    expect(callbacks.onPlayFromCurrentPosition).toHaveBeenCalledTimes(1)
+    expect(callbacks.onReturnToPlaybackPosition).toHaveBeenCalledTimes(1)
   })
 })

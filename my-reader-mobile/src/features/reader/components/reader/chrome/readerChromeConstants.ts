@@ -67,13 +67,8 @@ export function readerTtsControlLayout(windowWidth: number) {
   const availableWidth =
     windowWidth - READER_FLOATING_BUTTON_LEFT - READER_FLOATING_BUTTON_RIGHT
   const anchorStep = (availableWidth - READER_FLOATING_BUTTON_SIZE) / 4
-  const detachedActionGap = anchorStep - READER_FLOATING_BUTTON_SIZE
 
-  return {
-    anchorStep,
-    detachedActionGap,
-    detachedActionWidth: (availableWidth - detachedActionGap) / 2,
-  }
+  return { anchorStep }
 }
 
 export const READER_THEME_OPTIONS: ThemeOption[] = READER_THEME_PRESETS.map(

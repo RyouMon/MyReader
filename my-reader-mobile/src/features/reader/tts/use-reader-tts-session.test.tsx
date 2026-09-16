@@ -173,6 +173,59 @@ describe("useReaderTtsSession", () => {
     expect(ref.current.stopTts).not.toHaveBeenCalled()
   })
 
+  it("should preserve the page where the viewport first left playback", async () => {
+    jest.mocked(getTtsConfig).mockResolvedValue(systemConfig)
+    const ref = readerRef()
+    const narratedLocator = {
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: { progression: 0.6, totalProgression: 0.6 },
+    } as Locator
+    const originLocator = {
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: { progression: 0.4, totalProgression: 0.4 },
+    } as Locator
+    const nextPageLocator = {
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: { progression: 0.5, totalProgression: 0.5 },
+    } as Locator
+    const { result } = renderHook(() =>
+      useReaderTtsSession({
+        enabled: true,
+        publicationKey: "book-a",
+        language: "zh-CN",
+        highlightColor: "#C4622D",
+        readerRef: ref,
+      }),
+    )
+
+    await act(async () => result.current.start(narratedLocator))
+    const sessionId = lastSessionId(ref)
+    act(() => {
+      result.current.handleStateChange({
+        sessionId,
+        state: "playing",
+        locator: narratedLocator,
+      })
+      result.current.markViewportMoved("navigation-1", originLocator)
+    })
+
+    expect(result.current.viewportOriginLocator).toEqual(originLocator)
+
+    act(() => {
+      result.current.markViewportMoved("navigation-2", nextPageLocator)
+    })
+
+    expect(result.current.viewportOriginLocator).toEqual(originLocator)
+
+    await act(async () => result.current.returnToPlaybackPosition())
+
+    expect(result.current.viewportDetached).toBe(false)
+    expect(result.current.viewportOriginLocator).toBeUndefined()
+  })
+
   it("should preserve playing and paused controls across viewport navigation", async () => {
     jest.mocked(getTtsConfig).mockResolvedValue(systemConfig)
     const ref = readerRef()

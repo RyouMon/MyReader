@@ -99,6 +99,12 @@ env:
     visible: "从当前位置播放|Play from here"
     timeout: 10000
 - assertVisible: "返回播放位置|Return to narration"
+- assertVisible:
+    id: "reader-tts-left-action"
+    text: "返回播放位置|Return to narration"
+- assertVisible:
+    id: "reader-tts-right-action"
+    text: "从当前位置播放|Play from here"
 - assertVisible: "暂停朗读|Pause narration"
 - takeScreenshot: tts-playing-page-turn-stays-detached
 - swipe:
