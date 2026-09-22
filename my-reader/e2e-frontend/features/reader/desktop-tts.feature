@@ -1,53 +1,140 @@
 @regression @reader @tts
-Feature: 桌面端 EPUB 听书
-  作为桌面端阅读用户
-  我希望朗读控制与视觉阅读位置彼此协调
-  这样播放、翻页和位置跳转不会互相抢夺状态
+Feature: 桌面阅读时协调朗读位置和可视页面
+  作为一边看书一边听书的读者
+  我希望浏览页面不会抢走朗读位置
+  以便自由查看正文，也能准确选择新的朗读起点
 
   Background:
-    Given 用户已打开桌面端 TTS 测试书籍
+    Given 小文已打开支持跨页句子的测试书籍
 
-  Scenario: 播放控制保持一致的生命周期
-    When 用户展开听书控制
-    Then 听书不会自动开始
-    When 用户开始朗读
-    Then 当前页第一段文字开始朗读
-    When 用户暂停再继续朗读
-    Then 朗读恢复且不会重新选择句子
-    When 用户切换到下一句再返回上一句
-    Then 朗读位置按句子切换且页面保持可见
-    When 用户停止朗读
-    Then 朗读停止并收起控制
+  Rule: 朗读只响应明确的播放操作
+    Scenario: 展开听书控制不自动播放
+      When 小文展开听书控制
+      Then 朗读未开始且可以手动播放
 
-  Scenario: 普通点击保留文本选择和标注入口
-    When 用户展开听书控制
-    And 用户普通点击正文中的第二句话
-    Then 普通点击不会开始朗读
-    When 用户选择正文中的第二句话
-    Then 正文保持选中且朗读仍未开始
+    Scenario: 播放从当前页的第一条可见文字开始
+      Given 小文已展开听书控制
+      When 小文开始朗读
+      Then 正在朗读 "TTS verification"
 
-  Scenario: 视觉翻页不打断朗读且可双向定位
-    Given 用户正在朗读第一页
-    When 用户通过目录翻到播放生命周期章节
-    Then 朗读继续并显示位置操作
-    When 用户在分离状态切换上一句和下一句
-    Then 视觉页面仍停留在播放生命周期章节
-    When 用户返回播放位置
-    Then 阅读器回到当前朗读位置并隐藏位置操作
-    When 用户再次翻到播放生命周期章节并从当前位置播放
-    Then 朗读改从当前章节开始且页面不回跳
+    Scenario: 暂停保留当前语句
+      Given 小文正在朗读 "TTS verification"
+      When 小文暂停朗读
+      Then 朗读暂停且保留当前语句
 
-  Scenario: 朗读到下一资源时自动翻页
-    Given 用户从播放生命周期章节开始朗读
-    When 当前章节的语句依次播放完毕
-    Then 阅读器自动进入播放位置章节且只有一个页面可见
+    Scenario: 继续播放不重新请求语句
+      Given 小文已暂停朗读 "TTS verification"
+      When 小文继续朗读
+      Then 朗读恢复且语句未重新播放
 
-  Scenario: 用户导航与语句结束同时发生时保持用户页面
-    Given 用户正在朗读第一页
-    When 用户翻到播放生命周期章节时当前语句恰好结束
-    Then 阅读器留在播放生命周期章节且朗读继续
+    Scenario: 下一句只前进一条语句
+      Given 小文正在朗读 "TTS verification"
+      When 小文播放下一句
+      Then 正在朗读 "MyReader reads this first sentence aloud."
 
-  Scenario: 语音引擎失败时给出可见反馈
-    Given 用户正在朗读第一页
-    When 系统语音引擎报告错误
-    Then 阅读器显示朗读失败提示并退出播放状态
+    Scenario: 上一句只后退一条语句
+      Given 小文正在朗读 "MyReader reads this first sentence aloud."
+      When 小文播放上一句
+      Then 正在朗读 "TTS verification"
+
+    Scenario: 停止朗读收起控制
+      Given 小文正在朗读 "TTS verification"
+      When 小文停止朗读
+      Then 朗读已停止且听书控制收起
+
+    Scenario: 普通点击正文不改变朗读位置
+      Given 小文正在朗读 "TTS verification"
+      When 小文点击正文中的第二句话
+      Then 朗读继续原来的语句
+
+    Scenario: 选择正文不自动开始朗读
+      When 小文选择正文中的第二句话
+      Then 正文保持选中且朗读未开始
+
+    Scenario: 通过选择菜单从选中文字开始朗读
+      Given 小文已选择正文中的第二句话
+      When 小文选择从此处朗读
+      Then 正在朗读 "Long-press this second sentence and choose Read from here."
+
+  Rule: 浏览页面不改变朗读位置
+    Scenario: 浏览到朗读位置之后
+      Given 小文正在朗读 "TTS verification"
+      When 小文浏览到 "Playback lifecycle"
+      Then 朗读继续原来的语句
+      And 左侧可以返回朗读位置，右侧可以从当前页朗读
+
+    Scenario: 同一章节的第一页后方也属于向前浏览
+      Given 小文正在朗读 "Playback position first page"
+      When 小文向后翻一页
+      Then 左侧可以返回朗读位置，右侧可以从当前页朗读
+
+    Scenario: 浏览到朗读位置之前
+      Given 小文正在朗读 "Playback position first page"
+      When 小文浏览到 "TTS verification"
+      Then 朗读继续原来的语句
+      And 左侧可以从当前页朗读，右侧可以返回朗读位置
+
+    Scenario: 返回朗读位置只改变可视页面
+      Given 小文正在朗读 "TTS verification"，但正在查看 "Playback lifecycle"
+      When 小文返回朗读位置
+      Then 当前页显示 "TTS verification"
+      And 朗读继续原来的语句且恢复上一句和下一句
+
+    Scenario: 选择当前页作为新的朗读起点
+      Given 小文正在朗读 "TTS verification"，但正在查看 "Playback lifecycle"
+      When 小文从当前页朗读
+      Then 正在朗读以 "Playback lifecycle anchor" 开头的语句
+      And 当前页显示 "Playback lifecycle"
+
+    Scenario: 暂停后也能选择新的朗读起点
+      Given 小文已暂停朗读 "TTS verification"，但正在查看 "Playback lifecycle"
+      When 小文从当前页朗读
+      Then 正在朗读以 "Playback lifecycle anchor" 开头的语句
+
+    Scenario: 当前页重启后的下一句不回到书首
+      Given 小文已从 "Playback lifecycle" 重启朗读
+      When 当前语句朗读结束
+      Then 正在朗读以 "Playback lifecycle second anchor" 开头的语句
+      And 当前页显示 "Playback lifecycle"
+
+    Scenario: 停止后重新播放使用新浏览的页面
+      Given 小文已停止朗读，并正在查看 "Playback lifecycle"
+      When 小文重新打开听书并开始朗读
+      Then 正在朗读以 "Playback lifecycle anchor" 开头的语句
+
+    Scenario: 导航与语句结束同时发生时仍保留浏览页面
+      Given 小文正在朗读 "TTS verification"
+      When 小文浏览到 "Playback lifecycle" 时当前语句恰好结束
+      Then 当前页显示 "Playback lifecycle"
+      And 朗读继续到下一句且仍可返回朗读位置
+
+    Scenario: 没有手动浏览时朗读自动进入下一章节
+      Given 小文正在朗读 "Playback lifecycle"
+      When 当前章节朗读完毕
+      Then 当前页显示 "Playback position first page"
+      And 恢复上一句和下一句
+
+  Rule: 跨页句子的可见片段属于当前页
+    Scenario: 浏览到正在朗读的句子的后半段
+      Given 小文正在朗读跨页句子
+      When 小文浏览到该句的下一页片段
+      Then 恢复上一句和下一句
+
+    Scenario: 当前页的起点是跨页句子的可见片段
+      Given 小文正在朗读 "TTS verification"，但正在查看 "Sentence boundary visible page"
+      When 小文从当前页朗读
+      Then 正在朗读 "Visible fragment completes the first sentence."
+      And 当前页显示 "Visible fragment completes the first sentence."
+
+  Rule: 无法播放时提供明确反馈而不是错误推进位置
+    Scenario: 语音服务报告播放失败
+      Given 小文正在朗读 "TTS verification"
+      When 语音服务报告播放失败
+      Then 显示朗读失败提示且可以重新播放
+
+    Scenario: 新语音未开始就结束时不回到书首
+      Given 小文正在朗读 "TTS verification"，但正在查看 "Playback lifecycle"
+      And 语音服务会在新语句开始前错误地报告结束
+      When 小文从当前页朗读
+      Then 显示朗读失败提示且可以重新播放
+      And 当前页显示 "Playback lifecycle"

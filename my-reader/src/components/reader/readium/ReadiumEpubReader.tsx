@@ -145,6 +145,7 @@ import {
   applyEpubSearchHighlight,
   clearEpubSearchHighlight,
 } from "@/lib/readium/epubSearchHighlight"
+import { resolveEpubTtsViewportRelation } from "@/lib/readium/epubTtsViewport"
 import {
   coerceReaderFontOption,
   createReaderFontInjectables,
@@ -1374,6 +1375,29 @@ export function ReadiumEpubReader({
     language: readerLanguage,
     highlightTint: searchHighlightTint,
   })
+  const ttsViewportRelation = useMemo(
+    () =>
+      resolveEpubTtsViewportRelation({
+        viewportDetached: ttsSession.viewportDetached,
+        viewportLocator: currentLocator
+          ? readiumLocatorToReaderLocator(currentLocator)
+          : undefined,
+        viewportOriginLocator: ttsSession.viewportOriginLocator
+          ? readiumLocatorToReaderLocator(ttsSession.viewportOriginLocator)
+          : undefined,
+        playbackLocator: ttsSession.currentUtterance
+          ? readiumLocatorToReaderLocator(ttsSession.currentUtterance.locator)
+          : undefined,
+        positions: readerPositions,
+      }),
+    [
+      currentLocator,
+      readerPositions,
+      ttsSession.currentUtterance,
+      ttsSession.viewportDetached,
+      ttsSession.viewportOriginLocator,
+    ],
+  )
   const ttsSessionRef = useRef(ttsSession)
   const pendingTtsUserNavigationRef = useRef<string | null>(null)
   const ttsUserNavigationSequenceRef = useRef(0)
@@ -1619,7 +1643,11 @@ export function ReadiumEpubReader({
       ) {
         const navigationId = `desktop-navigation-${++ttsUserNavigationSequenceRef.current}`
         pendingTtsUserNavigationRef.current = navigationId
-        ttsSessionRef.current.markViewportMoved(navigationId, "begin")
+        ttsSessionRef.current.markViewportMoved(
+          navigationId,
+          "begin",
+          navigatorRef.current?.currentLocator,
+        )
       } else if (options?.trackTtsViewport !== false) {
         pendingTtsUserNavigationRef.current = null
       }
@@ -1695,7 +1723,11 @@ export function ReadiumEpubReader({
         ttsState === "paused"
       ) {
         pendingTtsUserNavigationRef.current = navigationId
-        ttsSessionRef.current.markViewportMoved(navigationId, "begin")
+        ttsSessionRef.current.markViewportMoved(
+          navigationId,
+          "begin",
+          navigatorRef.current?.currentLocator,
+        )
       } else {
         pendingTtsUserNavigationRef.current = null
       }
@@ -1735,11 +1767,17 @@ export function ReadiumEpubReader({
 
   const revealFailedContentNavigation = useCallback(
     (navigation: { contentSequence: number | null; navigationId: string }) => {
-      completeTtsUserNavigation(navigation.navigationId)
+      if (pendingTtsUserNavigationRef.current === navigation.navigationId) {
+        pendingTtsUserNavigationRef.current = null
+        ttsSessionRef.current.markViewportMoved(
+          navigation.navigationId,
+          "cancel",
+        )
+      }
       if (navigation.contentSequence == null) return
       finishContentNavigation(navigation.contentSequence)
     },
-    [completeTtsUserNavigation, finishContentNavigation],
+    [finishContentNavigation],
   )
 
   const selectTocItemForNavigation = useCallback(
@@ -2900,6 +2938,7 @@ export function ReadiumEpubReader({
           session={ttsSession}
           visible={chromeVisible}
           settingsOpen={ttsSettingsOpen}
+          viewportRelation={ttsViewportRelation}
           onPlay={playTts}
           onPlayFromCurrentPosition={playTtsFromCurrentPosition}
           onReturnToPlaybackPosition={ttsSession.goToCurrent}

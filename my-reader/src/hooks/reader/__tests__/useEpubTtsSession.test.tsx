@@ -1,6 +1,6 @@
 import type { ReaderLocator } from "@my-reader/tools/reader-toc"
 import type { EpubNavigator } from "@readium/navigator"
-import { Locator, LocatorLocations } from "@readium/shared"
+import { Locator, LocatorLocations, LocatorText } from "@readium/shared"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import type { RefObject } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -207,6 +207,8 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  document.body.replaceChildren()
+  Reflect.deleteProperty(Range.prototype, "getClientRects")
   vi.restoreAllMocks()
 })
 
@@ -579,12 +581,20 @@ describe("useEpubTtsSession", () => {
       type: "application/xhtml+xml",
       locations: new LocatorLocations({ progression: 0.2 }),
     })
+    const nextPageLocator = new Locator({
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: new LocatorLocations({ progression: 0.5 }),
+    })
     vi.mocked(extractEpubTtsUtterances).mockReturnValue([
       { id: "sentence-1", plain: "Keep reading.", locator },
     ])
+    let navigatorCurrentLocator = locator
     const navigatorRef = {
       current: {
-        currentLocator: locator,
+        get currentLocator() {
+          return navigatorCurrentLocator
+        },
         go: vi.fn(),
         viewport: {
           readingOrder: ["chapter.xhtml"],
@@ -606,8 +616,14 @@ describe("useEpubTtsSession", () => {
     )
 
     await waitFor(() => expect(speechInstances).toHaveLength(1))
+    const speech = speechInstances[0] as {
+      emitStart: (index: number) => void
+    }
     act(() => result.current.play())
-    act(() => result.current.markViewportMoved("navigation-1"))
+    act(() => result.current.markViewportMoved("navigation-1", "begin"))
+    navigatorCurrentLocator = nextPageLocator
+    act(() => result.current.markViewportMoved("navigation-1", "complete"))
+    act(() => speech.emitStart(0))
 
     expect(result.current.state).toBe("playing")
     expect(result.current.viewportDetached).toBe(true)
@@ -733,12 +749,14 @@ describe("useEpubTtsSession", () => {
     })
     expect(result.current.state).toBe("playing")
     expect(result.current.viewportDetached).toBe(true)
+    expect(result.current.viewportOriginLocator).toBe(locator)
     expect(speech.next).toHaveBeenCalledTimes(2)
     expect(speech.previous).toHaveBeenCalledTimes(2)
 
     act(() => result.current.goToCurrent())
     expect(result.current.state).toBe("playing")
     expect(result.current.viewportDetached).toBe(false)
+    expect(result.current.viewportOriginLocator).toBeNull()
 
     act(() => result.current.pause())
     act(() => {
@@ -751,12 +769,14 @@ describe("useEpubTtsSession", () => {
     })
     expect(result.current.state).toBe("paused")
     expect(result.current.viewportDetached).toBe(true)
+    expect(result.current.viewportOriginLocator).toBe(locator)
     expect(speech.next).toHaveBeenCalledTimes(4)
     expect(speech.previous).toHaveBeenCalledTimes(4)
 
     act(() => result.current.goToCurrent())
     expect(result.current.state).toBe("paused")
     expect(result.current.viewportDetached).toBe(false)
+    expect(result.current.viewportOriginLocator).toBeNull()
 
     act(() => result.current.play())
     expect(result.current.state).toBe("playing")
@@ -939,6 +959,166 @@ describe("useEpubTtsSession", () => {
     expect(result.current.currentUtterance?.id).toBe("sentence-2")
     expect(result.current.viewportDetached).toBe(false)
     expect(navigator.go).not.toHaveBeenCalled()
+  })
+
+  it("reattaches on the visible tail of a sentence that began on the previous page", async () => {
+    document.body.innerHTML =
+      '<p id="cross-page">Hidden sentence prefix continues on this page.</p>'
+    Object.defineProperty(Range.prototype, "getClientRects", {
+      configurable: true,
+      value: () =>
+        [
+          {
+            left: 10,
+            top: 10,
+            right: 110,
+            bottom: 30,
+          },
+        ] as unknown as DOMRectList,
+    })
+    const firstLocator = new Locator({
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: new LocatorLocations({ progression: 0.1 }),
+    })
+    const crossPageLocator = new Locator({
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: new LocatorLocations({
+        progression: 0.3,
+        otherLocations: new Map<string, unknown>([
+          ["cssSelector", "#cross-page"],
+        ]),
+      }),
+      text: new LocatorText({
+        highlight: "Hidden sentence prefix continues on this page.",
+      }),
+    })
+    vi.mocked(extractEpubTtsUtterances).mockReturnValue([
+      { id: "sentence-1", plain: "Earlier sentence.", locator: firstLocator },
+      {
+        id: "sentence-2",
+        plain: "Hidden sentence prefix continues on this page.",
+        locator: crossPageLocator,
+      },
+    ])
+    const progressions = new Map([["chapter.xhtml", { start: 0.5, end: 0.7 }]])
+    const navigatorRef = {
+      current: {
+        currentLocator: new Locator({
+          href: "chapter.xhtml",
+          type: "application/xhtml+xml",
+          locations: new LocatorLocations({ progression: 0.5 }),
+        }),
+        go: vi.fn(),
+        viewport: {
+          readingOrder: ["chapter.xhtml"],
+          progressions,
+          positions: null,
+        },
+        _cframes: [{ iframe: { contentWindow: window } }],
+      } as unknown as EpubNavigator,
+    } as RefObject<EpubNavigator>
+    const { result } = renderHook(() =>
+      useEpubTtsSession({
+        enabled: true,
+        navigatorRef,
+        resources: [{} as EpubTextResource],
+        positions: [{} as ReaderLocator],
+        currentLocator: firstLocator,
+        language: "en",
+        highlightTint: "#ff00aa",
+      }),
+    )
+
+    await waitFor(() => expect(speechInstances).toHaveLength(1))
+    const speech = speechInstances[0] as {
+      emitStart: (index: number) => void
+    }
+    act(() => result.current.play())
+    act(() => result.current.markViewportMoved("navigation-away"))
+    expect(result.current.viewportDetached).toBe(true)
+
+    act(() => speech.emitStart(1))
+
+    expect(result.current.currentUtterance?.id).toBe("sentence-2")
+    expect(result.current.viewportDetached).toBe(false)
+  })
+
+  it("stays attached when a manual page turn reveals the active sentence tail", async () => {
+    document.body.innerHTML =
+      '<p id="cross-page">Previous-page prefix continues on this page.</p>'
+    Object.defineProperty(Range.prototype, "getClientRects", {
+      configurable: true,
+      value: () =>
+        [
+          {
+            left: 10,
+            top: 10,
+            right: 110,
+            bottom: 30,
+          },
+        ] as unknown as DOMRectList,
+    })
+    const crossPageLocator = new Locator({
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: new LocatorLocations({
+        progression: 0.3,
+        otherLocations: new Map<string, unknown>([
+          ["cssSelector", "#cross-page"],
+        ]),
+      }),
+      text: new LocatorText({
+        highlight: "Previous-page prefix continues on this page.",
+      }),
+    })
+    const nextPageLocator = new Locator({
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: new LocatorLocations({ progression: 0.5 }),
+    })
+    vi.mocked(extractEpubTtsUtterances).mockReturnValue([
+      {
+        id: "sentence-1",
+        plain: "Previous-page prefix continues on this page.",
+        locator: crossPageLocator,
+      },
+    ])
+    let navigatorCurrentLocator = crossPageLocator
+    const navigatorRef = {
+      current: {
+        get currentLocator() {
+          return navigatorCurrentLocator
+        },
+        go: vi.fn(),
+        viewport: {
+          readingOrder: ["chapter.xhtml"],
+          progressions: new Map([["chapter.xhtml", { start: 0.5, end: 0.7 }]]),
+          positions: null,
+        },
+        _cframes: [{ iframe: { contentWindow: window } }],
+      } as unknown as EpubNavigator,
+    } as RefObject<EpubNavigator>
+    const { result } = renderHook(() =>
+      useEpubTtsSession({
+        enabled: true,
+        navigatorRef,
+        resources: [{} as EpubTextResource],
+        positions: [{} as ReaderLocator],
+        currentLocator: crossPageLocator,
+        language: "en",
+        highlightTint: "#ff00aa",
+      }),
+    )
+
+    await waitFor(() => expect(speechInstances).toHaveLength(1))
+    act(() => result.current.play())
+    act(() => result.current.markViewportMoved("navigation-1", "begin"))
+    navigatorCurrentLocator = nextPageLocator
+    act(() => result.current.markViewportMoved("navigation-1", "complete"))
+
+    expect(result.current.viewportDetached).toBe(false)
   })
 
   it("restarts at the exact visible character after an explicit request", async () => {

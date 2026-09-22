@@ -1,31 +1,78 @@
-import type { ReaderLocator } from "@my-reader/tools/reader-toc"
+import {
+  hrefRoughlyMatches,
+  type ReaderLocator,
+} from "@my-reader/tools/reader-toc"
 import type { EpubNavigator } from "@readium/navigator"
+import type { Locator } from "@readium/shared"
 import {
   captureReaderViewportAnchor,
   captureReaderViewportStartAnchor,
+  isReaderTextLocatorVisible,
+  isReaderViewportAnchorVisible,
   type ReaderViewportAnchorOffset,
   type ReaderViewportCapture,
   type ReaderViewportDomRange,
   type ReaderViewportLayoutState,
-  isReaderViewportAnchorVisible,
-  readerViewportAnchorOffset as viewportAnchorOffset,
   readerViewportLayoutState,
   restoreReaderViewportAnchorOffset as restoreViewportAnchorOffset,
   sameReaderViewportLayout,
+  readerViewportAnchorOffset as viewportAnchorOffset,
 } from "./generatedReaderViewportAnchor"
 
 export type { ReaderViewportAnchorOffset }
 
 type BookmarkAnchor = Omit<ReaderViewportCapture, "yRatio">
+const TEXT_CONTEXT_LENGTH = 32
 
 function currentFrameWindow(navigator: EpubNavigator): Window | null {
-  return navigator._cframes[0]?.iframe.contentWindow ?? null
+  return navigator._cframes?.[0]?.iframe.contentWindow ?? null
 }
 
 function domRangeForLocator(
   locator: ReaderLocator,
 ): ReaderViewportDomRange | null {
   return locator.locations?.domRange ?? null
+}
+
+function withBlockTextContext(
+  window: Window,
+  anchor: ReaderViewportCapture,
+): ReaderViewportCapture {
+  const point = anchor.domRange.start
+  const pointElement = window.document.querySelector(point.cssSelector)
+  const block = window.document.querySelector(anchor.cssSelector)
+  const textNode = pointElement
+    ? Array.from(pointElement.childNodes).filter(
+        (node): node is Text => node.nodeType === Node.TEXT_NODE,
+      )[point.textNodeIndex]
+    : undefined
+  if (!block || !textNode || !block.contains(textNode)) return anchor
+
+  const content = block.textContent ?? ""
+  const prefix = window.document.createRange()
+  prefix.selectNodeContents(block)
+  prefix.setEnd(textNode, Math.min(point.charOffset ?? 0, textNode.data.length))
+  const offset = prefix.toString().length
+  const codePoint = content.codePointAt(offset)
+  if (codePoint == null) return anchor
+
+  const highlight = String.fromCodePoint(codePoint)
+  const before = content.slice(
+    Math.max(0, offset - TEXT_CONTEXT_LENGTH),
+    offset,
+  )
+  const after = content.slice(
+    offset + highlight.length,
+    offset + highlight.length + TEXT_CONTEXT_LENGTH,
+  )
+  return {
+    ...anchor,
+    text: {
+      ...(before ? { before } : {}),
+      highlight,
+      ...(after ? { after } : {}),
+    },
+  }
 }
 
 export function captureReaderBookmarkAnchor(
@@ -71,7 +118,8 @@ export function captureEpubViewportStartLocator(
 ): ReaderLocator | null {
   const window = currentFrameWindow(navigator)
   if (!window) return null
-  const anchor = captureReaderViewportStartAnchor(window)
+  const captured = captureReaderViewportStartAnchor(window)
+  const anchor = captured ? withBlockTextContext(window, captured) : null
   if (!anchor) return null
   return {
     ...currentLocator,
@@ -144,4 +192,26 @@ export function isEpubBookmarkVisible(
 ): boolean {
   const window = currentFrameWindow(navigator)
   return window ? isReaderBookmarkAnchorVisible(window, locator) : false
+}
+
+export function isEpubTextLocatorVisible(
+  navigator: EpubNavigator,
+  locator: Locator,
+): boolean {
+  if (!hrefRoughlyMatches(navigator.currentLocator.href, locator.href)) {
+    return false
+  }
+  const window = currentFrameWindow(navigator)
+  if (!window) return false
+  const cssSelector = locator.locations.otherLocations?.get("cssSelector")
+  return isReaderTextLocatorVisible(window, {
+    locations: typeof cssSelector === "string" ? { cssSelector } : undefined,
+    text: locator.text
+      ? {
+          before: locator.text.before,
+          highlight: locator.text.highlight,
+          after: locator.text.after,
+        }
+      : undefined,
+  })
 }

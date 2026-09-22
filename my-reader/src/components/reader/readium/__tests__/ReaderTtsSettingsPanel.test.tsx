@@ -84,6 +84,7 @@ function session(): EpubTtsSession {
     loading: false,
     state: "ready",
     viewportDetached: false,
+    viewportOriginLocator: null,
     remote: false,
     engineName: "system",
     utteranceCount: 2,

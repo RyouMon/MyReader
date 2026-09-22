@@ -5,7 +5,7 @@ import { setupReaderMocks } from "./reader-mock"
 const fixtureDirectory = fileURLToPath(
   new URL("../../../my-reader-mobile/e2e/fixtures/tts-book", import.meta.url),
 )
-const fixtureUrl = `/@fs${fixtureDirectory.replaceAll("\\", "/")}`
+const fixtureUrl = `http://localhost:1420/@fs${fixtureDirectory.replaceAll("\\", "/")}`
 
 export async function setupDesktopTtsMocks(page: Page) {
   await page.addInitScript(() => {
@@ -68,6 +68,7 @@ export async function setupDesktopTtsMocks(page: Page) {
     let current: FakeUtterance | null = null
     let speaking = false
     let paused = false
+    let endBeforeStart = false
     const spoken: string[] = []
 
     const speechSynthesis = {
@@ -77,6 +78,7 @@ export async function setupDesktopTtsMocks(page: Page) {
       get paused() {
         return paused
       },
+      pending: false,
       onvoiceschanged: null,
       getVoices: () => voices,
       speak: (utterance: FakeUtterance) => {
@@ -85,15 +87,23 @@ export async function setupDesktopTtsMocks(page: Page) {
         paused = false
         spoken.push(utterance.text)
         queueMicrotask(() => {
+          if (current === utterance && endBeforeStart) {
+            endBeforeStart = false
+            current = null
+            speaking = false
+            utterance.onend?.({ type: "end" })
+            return
+          }
           if (current === utterance && speaking && !paused) {
             utterance.onstart?.({ type: "start" })
           }
         })
       },
       cancel: () => {
+        const cancelled = current
         current = null
         speaking = false
-        paused = false
+        queueMicrotask(() => cancelled?.onerror?.({ error: "canceled" }))
       },
       pause: () => {
         if (!current || paused) return
@@ -101,9 +111,9 @@ export async function setupDesktopTtsMocks(page: Page) {
         current.onpause?.({ type: "pause" })
       },
       resume: () => {
-        if (!current || !paused) return
+        if (!paused) return
         paused = false
-        current.onresume?.({ type: "resume" })
+        current?.onresume?.({ type: "resume" })
       },
     }
 
@@ -118,6 +128,9 @@ export async function setupDesktopTtsMocks(page: Page) {
 
     ;(window as unknown as Record<string, unknown>).__MYREADER_TTS_E2E__ = {
       spoken,
+      endNextBeforeStart: () => {
+        endBeforeStart = true
+      },
       currentText: () => current?.text ?? null,
       finishCurrent: () => {
         const utterance = current

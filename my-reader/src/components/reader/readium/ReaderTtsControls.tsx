@@ -1,23 +1,29 @@
 import {
   AudioLines,
+  FastForward,
   Loader2,
   Pause,
   Play,
+  Redo2,
+  Rewind,
   Settings2,
   SkipBack,
   SkipForward,
   Square,
+  Undo2,
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import type { EpubTtsSession } from "@/hooks/reader/useEpubTtsSession"
+import type { EpubTtsViewportRelation } from "@/lib/readium/epubTtsViewport"
 import { cn } from "@/lib/utils"
 
 type ReaderTtsControlsProps = {
   session: EpubTtsSession
   visible: boolean
   settingsOpen: boolean
+  viewportRelation: EpubTtsViewportRelation
   onPlay?: () => void
   onPlayFromCurrentPosition: () => void
   onReturnToPlaybackPosition: () => void
@@ -28,6 +34,7 @@ export function ReaderTtsControls({
   session,
   visible,
   settingsOpen,
+  viewportRelation,
   onPlay,
   onPlayFromCurrentPosition,
   onReturnToPlaybackPosition,
@@ -62,6 +69,44 @@ export function ReaderTtsControls({
   )
   const shown = visible || expanded || settingsOpen
   const controlTabIndex = expanded && shown ? 0 : -1
+  const LeftActionIcon =
+    viewportRelation === "after"
+      ? Undo2
+      : viewportRelation === "before"
+        ? Rewind
+        : SkipBack
+  const RightActionIcon =
+    viewportRelation === "before"
+      ? Redo2
+      : viewportRelation === "after"
+        ? FastForward
+        : SkipForward
+  const leftActionLabel = t(
+    viewportRelation === "after"
+      ? "reader.tts.returnToPlaybackPosition"
+      : viewportRelation === "before"
+        ? "reader.tts.playFromCurrentPosition"
+        : "reader.tts.previousSentence",
+  )
+  const rightActionLabel = t(
+    viewportRelation === "before"
+      ? "reader.tts.returnToPlaybackPosition"
+      : viewportRelation === "after"
+        ? "reader.tts.playFromCurrentPosition"
+        : "reader.tts.nextSentence",
+  )
+  const handleLeftAction =
+    viewportRelation === "after"
+      ? onReturnToPlaybackPosition
+      : viewportRelation === "before"
+        ? onPlayFromCurrentPosition
+        : session.previous
+  const handleRightAction =
+    viewportRelation === "before"
+      ? onReturnToPlaybackPosition
+      : viewportRelation === "after"
+        ? onPlayFromCurrentPosition
+        : session.next
 
   const startOrStop = () => {
     if (expanded) {
@@ -79,27 +124,10 @@ export function ReaderTtsControls({
       data-active={expanded ? "true" : "false"}
       data-visible={shown ? "true" : "false"}
       data-viewport-detached={session.viewportDetached ? "true" : "false"}
+      data-viewport-relation={viewportRelation ?? "attached"}
       data-testid="reader-tts-controls"
       className="reader-tts-mini-player"
     >
-      {expanded && session.viewportDetached ? (
-        <div className="reader-tts-detached-actions">
-          <button
-            type="button"
-            className="reader-tts-detached-action"
-            onClick={onPlayFromCurrentPosition}
-          >
-            {t("reader.tts.playFromCurrentPosition")}
-          </button>
-          <button
-            type="button"
-            className="reader-tts-detached-action"
-            onClick={onReturnToPlaybackPosition}
-          >
-            {t("reader.tts.returnToPlaybackPosition")}
-          </button>
-        </div>
-      ) : null}
       {expanded && preparing ? (
         <div
           className="reader-tts-mini-status"
@@ -127,13 +155,19 @@ export function ReaderTtsControls({
         <button
           type="button"
           className="reader-tts-mini-control"
-          aria-label={t("reader.tts.previousSentence")}
+          aria-label={leftActionLabel}
           aria-hidden={!expanded}
           tabIndex={controlTabIndex}
-          onClick={session.previous}
+          data-testid="reader-tts-left-action"
+          onClick={handleLeftAction}
           disabled={!session.available}
         >
-          <SkipBack className="size-[17px]" aria-hidden />
+          <span
+            key={`left-${viewportRelation ?? "attached"}`}
+            className="reader-tts-mini-control-icon"
+          >
+            <LeftActionIcon className="size-[17px]" aria-hidden />
+          </span>
         </button>
         <button
           type="button"
@@ -156,13 +190,19 @@ export function ReaderTtsControls({
         <button
           type="button"
           className="reader-tts-mini-control"
-          aria-label={t("reader.tts.nextSentence")}
+          aria-label={rightActionLabel}
           aria-hidden={!expanded}
           tabIndex={controlTabIndex}
-          onClick={session.next}
+          data-testid="reader-tts-right-action"
+          onClick={handleRightAction}
           disabled={!session.available}
         >
-          <SkipForward className="size-[17px]" aria-hidden />
+          <span
+            key={`right-${viewportRelation ?? "attached"}`}
+            className="reader-tts-mini-control-icon"
+          >
+            <RightActionIcon className="size-[17px]" aria-hidden />
+          </span>
         </button>
         <button
           type="button"

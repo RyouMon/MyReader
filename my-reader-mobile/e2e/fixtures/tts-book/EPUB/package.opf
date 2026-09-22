@@ -12,6 +12,7 @@
     <item id="chapter" href="chapter.xhtml" media-type="application/xhtml+xml" />
     <item id="lifecycle" href="lifecycle.xhtml" media-type="application/xhtml+xml" />
     <item id="playback-position" href="playback-position.xhtml" media-type="application/xhtml+xml" />
+    <item id="sentence-boundary" href="sentence-boundary.xhtml" media-type="application/xhtml+xml" />
     <item id="chapter-2" href="chapter-2.xhtml" media-type="application/xhtml+xml" />
     <item id="chapter-3" href="chapter-3.xhtml" media-type="application/xhtml+xml" />
   </manifest>
@@ -19,6 +20,7 @@
     <itemref idref="chapter" />
     <itemref idref="lifecycle" />
     <itemref idref="playback-position" />
+    <itemref idref="sentence-boundary" />
     <itemref idref="chapter-2" />
     <itemref idref="chapter-3" />
   </spine>

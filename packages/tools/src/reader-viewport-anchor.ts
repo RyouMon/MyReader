@@ -307,7 +307,7 @@ type VisibleTextCandidate = {
   rect: DOMRect
   direction: string
   writingMode: string
-  order: [number, number]
+  order: [number, number, number]
 }
 
 function visibleRect(window: Window, rect: DOMRect): DOMRect | null {
@@ -355,15 +355,49 @@ function visibleTextOrder(
   rect: DOMRect,
   direction: string,
   writingMode: string,
-): [number, number] {
+): [number, number, number] {
   const vertical = /^(?:vertical|sideways)-/u.test(writingMode)
   if (vertical) {
-    return [writingMode.endsWith("-rl") ? -rect.right : rect.left, rect.top]
+    return [writingMode.endsWith("-rl") ? -rect.right : rect.left, rect.top, 0]
   }
-  if (isHorizontallyPaginated(window)) {
-    return [direction === "rtl" ? -rect.right : rect.left, rect.top]
+  const columnCount = Number.parseInt(
+    window.getComputedStyle(window.document.documentElement).columnCount,
+    10,
+  )
+  if (isHorizontallyPaginated(window) && columnCount > 1) {
+    const viewportWidth = Math.max(
+      1,
+      window.innerWidth,
+      window.document.scrollingElement?.clientWidth ?? 0,
+    )
+    const columnWidth = viewportWidth / columnCount
+    const visualColumn = Math.max(
+      0,
+      Math.min(
+        columnCount - 1,
+        Math.floor((rect.left + rect.right) / 2 / columnWidth),
+      ),
+    )
+    const readingColumn =
+      direction === "rtl" ? columnCount - visualColumn - 1 : visualColumn
+    return [
+      readingColumn,
+      rect.top,
+      direction === "rtl" ? -rect.right : rect.left,
+    ]
   }
-  return [rect.top, direction === "rtl" ? -rect.right : rect.left]
+  return [rect.top, direction === "rtl" ? -rect.right : rect.left, 0]
+}
+
+function precedesVisibleTextOrder(
+  candidate: VisibleTextCandidate["order"],
+  current: VisibleTextCandidate["order"],
+): boolean {
+  for (let index = 0; index < candidate.length; index += 1) {
+    if (candidate[index] === current[index]) continue
+    return candidate[index]! < current[index]!
+  }
+  return false
 }
 
 function pointInsideLeadingEdge(candidate: VisibleTextCandidate): {
@@ -417,12 +451,7 @@ export function captureReaderViewportStartAnchor(
             writingMode,
             order: visibleTextOrder(window, rect, direction, writingMode),
           }
-          if (
-            !best ||
-            candidate.order[0] < best.order[0] ||
-            (candidate.order[0] === best.order[0] &&
-              candidate.order[1] < best.order[1])
-          ) {
+          if (!best || precedesVisibleTextOrder(candidate.order, best.order)) {
             best = candidate
           }
         }

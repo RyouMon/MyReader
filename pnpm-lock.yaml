@@ -11,6 +11,7 @@ patchedDependencies:
   '@kesha-antonov/react-native-background-downloader@4.5.4': 81b2791631172bc3fe1dd36c417783c5c9b687472b5520c1683becc1469b1c47
   '@react-native-menu/menu@2.0.0': 10a3f512a6501be9c28096044efef2014b8f3c3ec5efbe3017c77d75d4cf4e02
   '@readium/navigator@2.5.4': e183eb1df143cc687aba11902a179bcc05045d300aa5fac8cf8414012caad59a
+  '@readium/speech@0.7.0': 1c4134e10e8de69821d0c9050402540fd167d83c6099cccf804a25c27d44a7ff
   expo-sharing@56.0.18: 166addbf93d796e8f44347e9f9896260f63a2bd73add20b4caa323f00cd677a4
   react-native-css@3.0.7: 84b0a43e5b79ecff96a437135adc90aaac139f76b9da3220162ed6a7e19203b5
   uniffi-bindgen-react-native@0.31.0-3: 34b621394e36076002fd7e7247e0483172cfad56e505e4bb8937e4071aae6993
@@ -69,7 +70,7 @@ importers:
         version: 2.2.0
       '@readium/speech':
         specifier: ^0.7.0
-        version: 0.7.0
+        version: 0.7.0(patch_hash=1c4134e10e8de69821d0c9050402540fd167d83c6099cccf804a25c27d44a7ff)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.3.0(vite@6.4.2(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.22.0)(yaml@2.9.0))
@@ -12861,7 +12862,7 @@ snapshots:
 
   '@readium/shared@2.4.0': {}
 
-  '@readium/speech@0.7.0':
+  '@readium/speech@0.7.0(patch_hash=1c4134e10e8de69821d0c9050402540fd167d83c6099cccf804a25c27d44a7ff)':
     dependencies:
       '@readium/decorator': 1.0.2
       '@readium/shared': 2.4.0

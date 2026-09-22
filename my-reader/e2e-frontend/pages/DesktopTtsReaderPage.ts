@@ -1,11 +1,47 @@
-import { expect, type Page } from "@playwright/test"
+import type { Page } from "@playwright/test"
 
 type TtsHarnessState = {
   currentText: () => string | null
   failCurrent: (error?: string) => boolean
   finishCurrent: () => boolean
+  endNextBeforeStart: () => void
   spoken: string[]
   state: () => { paused: boolean; speaking: boolean }
+}
+
+function readVisibleText(expected?: string): string | boolean {
+  const text: string[] = []
+  for (const frame of document.querySelectorAll<HTMLIFrameElement>("iframe")) {
+    const style = getComputedStyle(frame)
+    if (style.visibility === "hidden" || style.opacity === "0") continue
+    const doc = frame.contentDocument
+    const wnd = frame.contentWindow
+    if (!doc?.body || !wnd) continue
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT)
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const value = node.textContent ?? ""
+      const range = doc.createRange()
+      for (let offset = 0; offset < value.length; offset += 1) {
+        range.setStart(node, offset)
+        range.setEnd(node, offset + 1)
+        if (
+          [...range.getClientRects()].some(
+            (rect) =>
+              rect.width > 0 &&
+              rect.height > 0 &&
+              rect.right > 0 &&
+              rect.bottom > 0 &&
+              rect.left < wnd.innerWidth &&
+              rect.top < wnd.innerHeight,
+          )
+        )
+          text.push(value[offset])
+      }
+      text.push(" ")
+    }
+  }
+  const visible = text.join("").replace(/\s+/g, " ").trim()
+  return expected === undefined ? visible : visible.includes(expected)
 }
 
 export class DesktopTtsReaderPage {
@@ -13,19 +49,43 @@ export class DesktopTtsReaderPage {
 
   async goto() {
     await this.page.goto("/read/1?format=EPUB")
-    await expect(this.controls()).toBeAttached({ timeout: 10_000 })
-    await this.expectVisibleReaderText("TTS verification")
+    await this.controls().waitFor({ state: "attached", timeout: 10_000 })
+    await this.waitForVisibleText("TTS verification")
   }
 
   controls() {
     return this.page.getByTestId("reader-tts-controls")
   }
 
+  startButton() {
+    return this.page.getByRole("button", { name: "开始朗读" })
+  }
+  pauseButton() {
+    return this.page.getByRole("button", { name: "暂停朗读" })
+  }
+  openButton() {
+    return this.page.getByRole("button", { name: "打开听书播放器" })
+  }
+  failureNotice() {
+    return this.page.getByText("朗读失败", { exact: true })
+  }
+  leftAction() {
+    return this.page.getByTestId("reader-tts-left-action")
+  }
+  rightAction() {
+    return this.page.getByTestId("reader-tts-right-action")
+  }
+
   async revealBottomChrome() {
     const viewport = this.page.viewportSize()
     if (!viewport) throw new Error("Reader viewport is unavailable")
     await this.page.mouse.move(viewport.width - 24, viewport.height - 8)
-    await expect(this.controls()).toHaveAttribute("data-visible", "true")
+    await this.page.waitForFunction(
+      () =>
+        document
+          .querySelector("[data-testid='reader-tts-controls']")
+          ?.getAttribute("data-visible") === "true",
+    )
   }
 
   async openControls() {
@@ -34,24 +94,18 @@ export class DesktopTtsReaderPage {
   }
 
   async play() {
-    await this.page.getByRole("button", { name: "开始朗读" }).click()
-    await expect(
-      this.page.getByRole("button", { name: "暂停朗读" }),
-    ).toBeVisible()
+    await this.revealBottomChrome()
+    await this.startButton().click()
   }
 
   async pause() {
-    await this.page.getByRole("button", { name: "暂停朗读" }).click()
-    await expect(
-      this.page.getByRole("button", { name: "开始朗读" }),
-    ).toBeVisible()
+    await this.revealBottomChrome()
+    await this.pauseButton().click()
   }
 
   async stop() {
+    await this.revealBottomChrome()
     await this.page.getByRole("button", { name: "停止朗读" }).click()
-    await expect(
-      this.page.getByRole("button", { name: "打开听书播放器" }),
-    ).toBeVisible()
   }
 
   async clickReaderText(text: string) {
@@ -75,16 +129,26 @@ export class DesktopTtsReaderPage {
   }
 
   async nextSentence() {
+    await this.revealBottomChrome()
     await this.page.getByRole("button", { name: "下一句" }).click()
   }
 
   async previousSentence() {
+    await this.revealBottomChrome()
     await this.page.getByRole("button", { name: "上一句" }).click()
   }
 
-  async goToChapter(title: string) {
+  async nextPage() {
+    const viewport = this.page.viewportSize()
+    if (!viewport) throw new Error("Reader viewport is unavailable")
+    await this.page.mouse.move(viewport.width - 2, viewport.height / 2)
+    const nextPage = this.page.getByTitle("下一页", { exact: true })
+    await nextPage.click()
+  }
+
+  async goToChapter(title: string, expectedText = title) {
     await this.beginChapterNavigation(title)
-    await this.expectVisibleReaderText(title)
+    await this.waitForVisibleText(expectedText)
   }
 
   async beginChapterNavigation(title: string) {
@@ -122,22 +186,18 @@ export class DesktopTtsReaderPage {
       ).__MYREADER_TTS_E2E__.finishCurrent()
       return { detachedBeforeCompletion, finished }
     }, title)
-    expect(result).toEqual({ detachedBeforeCompletion: true, finished: true })
-    await expect
-      .poll(async () => (await this.spokenTexts()).length)
-      .toBeGreaterThan(before)
+    await this.waitForSpeechCount(before + 1)
+    return result
   }
 
   async returnToPlaybackPosition() {
+    await this.revealBottomChrome()
     await this.page.getByRole("button", { name: "返回播放位置" }).click()
   }
 
   async playFromCurrentPosition() {
+    await this.revealBottomChrome()
     await this.page.getByRole("button", { name: "从当前位置播放" }).click()
-  }
-
-  detachedActions() {
-    return this.page.locator(".reader-tts-detached-actions")
   }
 
   async currentSpeechText(): Promise<string | null> {
@@ -170,10 +230,8 @@ export class DesktopTtsReaderPage {
         window as unknown as { __MYREADER_TTS_E2E__: TtsHarnessState }
       ).__MYREADER_TTS_E2E__.finishCurrent(),
     )
-    expect(finished).toBe(true)
-    await expect
-      .poll(async () => (await this.spokenTexts()).length)
-      .toBeGreaterThan(before)
+    if (!finished) throw new Error("No active narration to finish")
+    await this.waitForSpeechCount(before + 1)
   }
 
   async failCurrentSentence(error = "synthesis-unavailable") {
@@ -184,25 +242,11 @@ export class DesktopTtsReaderPage {
         ).__MYREADER_TTS_E2E__.failCurrent(nextError),
       error,
     )
-    expect(failed).toBe(true)
+    if (!failed) throw new Error("No active narration to fail")
   }
 
   async visibleReaderText(): Promise<string> {
-    return this.page.locator("iframe").evaluateAll((iframes) => {
-      const visible = iframes.filter((iframe) => {
-        const style = getComputedStyle(iframe)
-        return style.visibility !== "hidden" && style.opacity !== "0"
-      })
-      return visible
-        .map((iframe) => {
-          try {
-            return (iframe as HTMLIFrameElement).contentDocument?.body.innerText
-          } catch {
-            return ""
-          }
-        })
-        .join("\n")
-    })
+    return this.page.evaluate(readVisibleText) as Promise<string>
   }
 
   async visibleReaderFrameCount(): Promise<number> {
@@ -215,9 +259,76 @@ export class DesktopTtsReaderPage {
     )
   }
 
-  async expectVisibleReaderText(text: string) {
-    await expect.poll(() => this.visibleReaderText()).toContain(text)
-    await expect.poll(() => this.visibleReaderFrameCount()).toBe(1)
+  async waitForVisibleText(text: string) {
+    await this.page.waitForFunction(readVisibleText, text)
+    await this.visibleReaderIframe().evaluate(async (iframe) => {
+      const frame = iframe as HTMLIFrameElement
+      const wnd = frame.contentWindow
+      const doc = frame.contentDocument
+      if (!wnd || !doc) throw new Error("Reader document is unavailable")
+      await doc.fonts.ready
+      let previous = ""
+      let stableFrames = 0
+      for (let attempt = 0; attempt < 30; attempt += 1) {
+        await new Promise<void>((resolve) =>
+          wnd.requestAnimationFrame(() => resolve()),
+        )
+        const metrics = JSON.stringify([
+          wnd.innerWidth,
+          wnd.innerHeight,
+          wnd.scrollX,
+          wnd.scrollY,
+          doc.documentElement.scrollWidth,
+          doc.documentElement.scrollHeight,
+          wnd.getComputedStyle(doc.body).width,
+        ])
+        stableFrames = metrics === previous ? stableFrames + 1 : 0
+        if (stableFrames >= 3) return
+        previous = metrics
+      }
+      throw new Error("Reader pagination did not settle")
+    })
+  }
+
+  async waitForSpeechText(text: string) {
+    await this.page.waitForFunction(
+      (expected) =>
+        (
+          window as unknown as { __MYREADER_TTS_E2E__: TtsHarnessState }
+        ).__MYREADER_TTS_E2E__
+          .currentText()
+          ?.includes(expected),
+      text,
+    )
+  }
+
+  async waitForSpeechCount(count: number) {
+    await this.page.waitForFunction(
+      (minimum) =>
+        (window as unknown as { __MYREADER_TTS_E2E__: TtsHarnessState })
+          .__MYREADER_TTS_E2E__.spoken.length >= minimum,
+      count,
+    )
+  }
+
+  async finishChapter(nextChapter: string) {
+    for (let index = 0; index < 8; index += 1) {
+      if ((await this.currentSpeechText())?.includes(nextChapter)) return
+      await this.finishCurrentSentence()
+    }
+    throw new Error(`Narration did not reach ${nextChapter}`)
+  }
+
+  async endNextBeforeStart() {
+    await this.page.evaluate(() =>
+      (
+        window as unknown as { __MYREADER_TTS_E2E__: TtsHarnessState }
+      ).__MYREADER_TTS_E2E__.endNextBeforeStart(),
+    )
+  }
+
+  async readSelectionAloud() {
+    await this.page.getByRole("button", { name: "从此处朗读" }).click()
   }
 
   private visibleReaderIframe() {

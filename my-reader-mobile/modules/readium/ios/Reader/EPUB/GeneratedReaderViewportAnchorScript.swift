@@ -247,14 +247,32 @@ private let readerViewportAnchorRuntimeScript = #"""
           (scrollingElement.scrollWidth > viewportWidth + 1 || columnCount > 1));
   }
   function visibleTextOrder(window, rect, direction, writingMode) {
+      var _a, _b;
       const vertical = /^(?:vertical|sideways)-/u.test(writingMode);
       if (vertical) {
-          return [writingMode.endsWith("-rl") ? -rect.right : rect.left, rect.top];
+          return [writingMode.endsWith("-rl") ? -rect.right : rect.left, rect.top, 0];
       }
-      if (isHorizontallyPaginated(window)) {
-          return [direction === "rtl" ? -rect.right : rect.left, rect.top];
+      const columnCount = Number.parseInt(window.getComputedStyle(window.document.documentElement).columnCount, 10);
+      if (isHorizontallyPaginated(window) && columnCount > 1) {
+          const viewportWidth = Math.max(1, window.innerWidth, (_b = (_a = window.document.scrollingElement) === null || _a === void 0 ? void 0 : _a.clientWidth) !== null && _b !== void 0 ? _b : 0);
+          const columnWidth = viewportWidth / columnCount;
+          const visualColumn = Math.max(0, Math.min(columnCount - 1, Math.floor((rect.left + rect.right) / 2 / columnWidth)));
+          const readingColumn = direction === "rtl" ? columnCount - visualColumn - 1 : visualColumn;
+          return [
+              readingColumn,
+              rect.top,
+              direction === "rtl" ? -rect.right : rect.left,
+          ];
       }
-      return [rect.top, direction === "rtl" ? -rect.right : rect.left];
+      return [rect.top, direction === "rtl" ? -rect.right : rect.left, 0];
+  }
+  function precedesVisibleTextOrder(candidate, current) {
+      for (let index = 0; index < candidate.length; index += 1) {
+          if (candidate[index] === current[index])
+              continue;
+          return candidate[index] < current[index];
+      }
+      return false;
   }
   function pointInsideLeadingEdge(candidate) {
       const { direction, rect, writingMode } = candidate;
@@ -301,10 +319,7 @@ private let readerViewportAnchorRuntimeScript = #"""
                           writingMode,
                           order: visibleTextOrder(window, rect, direction, writingMode),
                       };
-                      if (!best ||
-                          candidate.order[0] < best.order[0] ||
-                          (candidate.order[0] === best.order[0] &&
-                              candidate.order[1] < best.order[1])) {
+                      if (!best || precedesVisibleTextOrder(candidate.order, best.order)) {
                           best = candidate;
                       }
                   }

@@ -27,6 +27,7 @@ import {
   useState,
 } from "react"
 import type { EpubTextResource } from "@/lib/readium/epubContentLocators"
+import { isEpubTextLocatorVisible } from "@/lib/readium/epubBookmarkAnchor"
 import {
   type EpubTtsUtterance,
   epubTtsPlaybackPlanAtLocator,
@@ -36,6 +37,7 @@ import {
   applyEpubTtsHighlight,
   clearEpubTtsHighlight,
 } from "@/lib/readium/epubTtsHighlight"
+import { resolveEpubTtsViewportRelation } from "@/lib/readium/epubTtsViewport"
 import { api, formatApiError } from "@/lib/tauri-api"
 import type {
   TtsConfigDto,
@@ -64,6 +66,7 @@ export type EpubTtsSession = {
   loading: boolean
   state: ReaderTtsSessionStatus
   viewportDetached: boolean
+  viewportOriginLocator: Locator | null
   remote: boolean
   engineName: string
   utteranceCount: number
@@ -88,7 +91,8 @@ export type EpubTtsSession = {
   ) => void
   markViewportMoved: (
     navigationId: string,
-    phase?: "begin" | "complete",
+    phase?: "begin" | "complete" | "cancel",
+    originLocator?: Locator,
   ) => void
   goToCurrent: () => void
   setVoice: (voiceId: string) => void
@@ -107,6 +111,7 @@ function isLocatorVisibleInViewport(
   navigator: EpubNavigator,
   locator: Locator,
 ): boolean {
+  if (isEpubTextLocatorVisible(navigator, locator)) return true
   const href = locator.href.split("#")[0]
   const range = navigator.viewport?.progressions.get(href)
   const progression = locator.locations.progression
@@ -116,6 +121,21 @@ function isLocatorVisibleInViewport(
       progression >= range.start - 0.0001 &&
       progression <= range.end + 0.0001,
   )
+}
+
+function readerLocatorForTtsRelation(locator: Locator): ReaderLocator {
+  return {
+    href: locator.href,
+    type: locator.type,
+    locations: {
+      progression:
+        locator.locations.progression ??
+        locator.locations.totalProgression ??
+        0,
+      position: locator.locations.position,
+      totalProgression: locator.locations.totalProgression,
+    },
+  }
 }
 
 function configuredVoice(
@@ -150,6 +170,8 @@ export function useEpubTtsSession({
   const [loading, setLoading] = useState(enabled)
   const [state, setState] = useState<ReaderTtsSessionStatus>("idle")
   const [viewportDetached, setViewportDetached] = useState(false)
+  const [viewportOriginLocator, setViewportOriginLocator] =
+    useState<Locator | null>(null)
   const [currentIndex, setCurrentIndex] = useState<number | null>(null)
   const [voices, setVoices] = useState<ReadiumSpeechVoice[]>([])
   const [currentVoiceId, setCurrentVoiceId] = useState("")
@@ -159,6 +181,7 @@ export function useEpubTtsSession({
   const configRef = useRef<TtsConfigDto | null>(null)
   const playbackUtterancesRef = useRef<EpubTtsUtterance[]>([])
   const currentLocatorRef = useRef<Locator | null>(currentLocator)
+  const positionsRef = useRef(positions)
   const restartAfterConfigRef = useRef<{
     locator: Locator
     autoplay: boolean
@@ -167,6 +190,8 @@ export function useEpubTtsSession({
   const highlightRevisionRef = useRef(0)
   const suppressNextFollowRef = useRef(false)
   const pendingViewportNavigationRef = useRef<string | null>(null)
+  const pendingViewportStartedDetachedRef = useRef(false)
+  const pendingViewportPlaybackIdRef = useRef<string | null>(null)
   const sourceRef = useRef(
     `reader-${globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36)}`,
   )
@@ -190,6 +215,21 @@ export function useEpubTtsSession({
     [config, enabled, language, positions, resources],
   )
   currentLocatorRef.current = currentLocator
+  positionsRef.current = positions
+
+  const syncViewportState = useCallback(
+    (transition: ReaderTtsSessionTransition, originLocator?: Locator) => {
+      if (!transition.accepted) return
+      const detached = transition.snapshot.viewportDetached
+      setViewportDetached(detached)
+      setViewportOriginLocator((current) =>
+        detached
+          ? (current ?? originLocator ?? currentLocatorRef.current)
+          : null,
+      )
+    },
+    [],
+  )
 
   const beginSession = useCallback(
     (options?: { navigationId?: string; pauseAfterStart?: boolean }) => {
@@ -202,12 +242,14 @@ export function useEpubTtsSession({
       })
       if (!transition.accepted || !transition.snapshot.sessionId) return null
       pendingViewportNavigationRef.current = null
+      pendingViewportStartedDetachedRef.current = false
+      pendingViewportPlaybackIdRef.current = null
       speechSessionsRef.current.set(speech, transition.snapshot.sessionId)
       setState("loading")
-      setViewportDetached(transition.snapshot.viewportDetached)
+      syncViewportState(transition)
       return transition.snapshot.sessionId
     },
-    [],
+    [syncViewportState],
   )
 
   const reattachViewport = useCallback(() => {
@@ -219,17 +261,28 @@ export function useEpubTtsSession({
       sessionId,
     })
     if (transition.accepted) {
-      setViewportDetached(transition.snapshot.viewportDetached)
+      syncViewportState(transition)
     }
     return transition.accepted
-  }, [])
+  }, [syncViewportState])
 
   const reattachViewportIfVisible = useCallback(
     (locator: Locator) => {
       const navigator = navigatorRef.current
-      if (!navigator || !isLocatorVisibleInViewport(navigator, locator)) {
+      if (!navigator) {
         return false
       }
+      if (isEpubTextLocatorVisible(navigator, locator)) {
+        return reattachViewport()
+      }
+      if (!isLocatorVisibleInViewport(navigator, locator)) return false
+      const relation = resolveEpubTtsViewportRelation({
+        viewportDetached: true,
+        viewportLocator: readerLocatorForTtsRelation(navigator.currentLocator),
+        playbackLocator: readerLocatorForTtsRelation(locator),
+        positions: positionsRef.current,
+      })
+      if (relation === "after") return false
       return reattachViewport()
     },
     [navigatorRef, reattachViewport],
@@ -442,7 +495,7 @@ export function useEpubTtsSession({
         error,
       })
       if (!transition.accepted) return null
-      setViewportDetached(transition.snapshot.viewportDetached)
+      syncViewportState(transition)
       if (transition.effect?.type === "report-error") {
         setError(transition.effect.error)
       }
@@ -558,6 +611,7 @@ export function useEpubTtsSession({
     preparePlaybackPlan,
     reattachViewportIfVisible,
     showUtterance,
+    syncViewportState,
     utterances,
   ])
 
@@ -611,12 +665,14 @@ export function useEpubTtsSession({
     restartAfterConfigRef.current = null
     suppressNextFollowRef.current = false
     pendingViewportNavigationRef.current = null
+    pendingViewportStartedDetachedRef.current = false
+    pendingViewportPlaybackIdRef.current = null
     const transition = sessionMachineRef.current!.send({ type: "stop" })
     const speech = speechRef.current
     if (speech) speechSessionsRef.current.delete(speech)
     speech?.stop()
     setState("idle")
-    setViewportDetached(transition.snapshot.viewportDetached)
+    syncViewportState(transition)
     setCurrentIndex(null)
     const navigator = navigatorRef.current
     if (navigator) {
@@ -633,7 +689,7 @@ export function useEpubTtsSession({
         })
       })
     }
-  }, [navigatorRef])
+  }, [navigatorRef, syncViewportState])
 
   const previous = useCallback(() => {
     speechRef.current?.previous()
@@ -644,39 +700,81 @@ export function useEpubTtsSession({
   }, [])
 
   const markViewportMoved = useCallback(
-    (navigationId: string, phase: "begin" | "complete" = "complete") => {
+    (
+      navigationId: string,
+      phase: "begin" | "complete" | "cancel" = "complete",
+      originLocator?: Locator,
+    ) => {
       if (
-        phase === "complete" &&
+        phase !== "begin" &&
         pendingViewportNavigationRef.current &&
         pendingViewportNavigationRef.current !== navigationId
       ) {
         return
       }
+      const machine = sessionMachineRef.current!
+      const startedDetached =
+        phase === "begin"
+          ? machine.snapshot.viewportDetached
+          : pendingViewportNavigationRef.current === navigationId
+            ? pendingViewportStartedDetachedRef.current
+            : machine.snapshot.viewportDetached
+      const playbackIdAtStart =
+        phase === "begin"
+          ? (speechRef.current?.getCurrentContent()?.id ?? null)
+          : pendingViewportNavigationRef.current === navigationId
+            ? pendingViewportPlaybackIdRef.current
+            : (speechRef.current?.getCurrentContent()?.id ?? null)
       if (phase === "begin") {
         pendingViewportNavigationRef.current = navigationId
+        pendingViewportStartedDetachedRef.current = startedDetached
+        pendingViewportPlaybackIdRef.current = playbackIdAtStart
       } else if (pendingViewportNavigationRef.current === navigationId) {
         pendingViewportNavigationRef.current = null
+        pendingViewportStartedDetachedRef.current = false
+        pendingViewportPlaybackIdRef.current = null
       }
-      const wasViewportDetached =
-        sessionMachineRef.current!.snapshot.viewportDetached
-      const transition = sessionMachineRef.current!.send({
+      if (phase === "cancel") {
+        if (!startedDetached) reattachViewport()
+        return
+      }
+      const transition = machine.send({
         type: "viewport-moved",
         navigationId,
       })
       if (transition.accepted) {
-        setViewportDetached(transition.snapshot.viewportDetached)
+        syncViewportState(
+          transition,
+          originLocator ?? currentLocatorRef.current ?? undefined,
+        )
         const currentId = speechRef.current?.getCurrentContent()?.id
         const locator = currentId
           ? playbackUtterancesRef.current.find(
               (utterance) => utterance.id === currentId,
             )?.locator
           : undefined
-        if (phase === "complete" && wasViewportDetached && locator) {
+        const playbackAdvanced = currentId !== playbackIdAtStart
+        const activeSentenceVisible = Boolean(
+          phase === "complete" &&
+            locator &&
+            navigatorRef.current &&
+            isEpubTextLocatorVisible(navigatorRef.current, locator),
+        )
+        if (
+          phase === "complete" &&
+          (activeSentenceVisible || startedDetached || playbackAdvanced) &&
+          locator
+        ) {
           reattachViewportIfVisible(locator)
         }
       }
     },
-    [reattachViewportIfVisible],
+    [
+      navigatorRef,
+      reattachViewport,
+      reattachViewportIfVisible,
+      syncViewportState,
+    ],
   )
 
   const readFrom = useCallback(
@@ -827,6 +925,7 @@ export function useEpubTtsSession({
     loading,
     state,
     viewportDetached,
+    viewportOriginLocator,
     remote: selectedEngine?.kind === "provider",
     engineName: providerName ?? "system",
     utteranceCount: utterances.length,

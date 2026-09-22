@@ -217,6 +217,17 @@ describe("reader viewport anchor capture", () => {
     overrideProperty(document.documentElement, "clientHeight", 100)
     overrideProperty(document.documentElement, "scrollWidth", 400)
     overrideProperty(document.documentElement, "scrollHeight", 100)
+    const getComputedStyle = window.getComputedStyle.bind(window)
+    overrideProperty(window, "getComputedStyle", (element: Element) => {
+      const style = getComputedStyle(element)
+      if (element !== document.documentElement) return style
+      return new Proxy(style, {
+        get: (target, property) =>
+          property === "columnCount"
+            ? "2"
+            : Reflect.get(target, property, target),
+      })
+    })
     overrideProperty(document, "caretRangeFromPoint", (x: number) =>
       rangeAt(x < 100 ? first : second, 2),
     )
@@ -228,6 +239,42 @@ describe("reader viewport anchor capture", () => {
       cssSelector: "#first",
       text: { highlight: "r" },
     })
+  })
+
+  it("should start with the top visible fragment in a single paginated column", () => {
+    document.body.innerHTML =
+      '<p id="fragment">Indented fragment</p><p id="second">Second sentence</p>'
+    useViewport(200, 100)
+    const fragment = document.querySelector("#fragment")!.firstChild!
+    const second = document.querySelector("#second")!.firstChild!
+    overrideProperty(document, "scrollingElement", document.documentElement)
+    overrideProperty(document.documentElement, "clientWidth", 200)
+    overrideProperty(document.documentElement, "clientHeight", 100)
+    overrideProperty(document.documentElement, "scrollWidth", 400)
+    overrideProperty(document.documentElement, "scrollHeight", 100)
+    const getComputedStyle = window.getComputedStyle.bind(window)
+    overrideProperty(window, "getComputedStyle", (element: Element) => {
+      const style = getComputedStyle(element)
+      if (element !== document.documentElement) return style
+      return new Proxy(style, {
+        get: (target, property) =>
+          property === "columnCount"
+            ? "1"
+            : Reflect.get(target, property, target),
+      })
+    })
+    overrideProperty(document, "caretRangeFromPoint", (_x: number, y: number) =>
+      rangeAt(y < 30 ? fragment : second, 0),
+    )
+    useRangeRects((range) =>
+      range.startContainer === fragment
+        ? [rect(30, 5, 100)]
+        : [rect(10, 40, 100)],
+    )
+
+    expect(captureReaderViewportStartAnchor(window)?.cssSelector).toBe(
+      "#fragment",
+    )
   })
 
   it("should preserve column reading order when a spread fits in one viewport", () => {
@@ -260,6 +307,46 @@ describe("reader viewport anchor capture", () => {
     )
 
     expect(captureReaderViewportStartAnchor(window)?.cssSelector).toBe("#first")
+  })
+
+  it("should use top-to-bottom order within the first column of a spread", () => {
+    document.body.innerHTML = `
+      <p id="fragment">Indented fragment</p>
+      <p id="second">Second sentence</p>
+      <p id="right">Right column text</p>
+    `
+    useViewport(200, 100)
+    const fragment = document.querySelector("#fragment")!.firstChild!
+    const second = document.querySelector("#second")!.firstChild!
+    const right = document.querySelector("#right")!.firstChild!
+    overrideProperty(document, "scrollingElement", document.documentElement)
+    overrideProperty(document.documentElement, "clientWidth", 200)
+    overrideProperty(document.documentElement, "clientHeight", 100)
+    overrideProperty(document.documentElement, "scrollWidth", 200)
+    overrideProperty(document.documentElement, "scrollHeight", 100)
+    const getComputedStyle = window.getComputedStyle.bind(window)
+    overrideProperty(window, "getComputedStyle", (element: Element) => {
+      const style = getComputedStyle(element)
+      if (element !== document.documentElement) return style
+      return new Proxy(style, {
+        get: (target, property) =>
+          property === "columnCount"
+            ? "2"
+            : Reflect.get(target, property, target),
+      })
+    })
+    overrideProperty(document, "caretRangeFromPoint", (x: number, y: number) =>
+      rangeAt(x >= 100 ? right : y < 30 ? fragment : second, 0),
+    )
+    useRangeRects((range) => {
+      if (range.startContainer === fragment) return [rect(30, 5, 60)]
+      if (range.startContainer === second) return [rect(10, 40, 80)]
+      return [rect(110, 5, 80)]
+    })
+
+    expect(captureReaderViewportStartAnchor(window)?.cssSelector).toBe(
+      "#fragment",
+    )
   })
 
   it("should start with the top visible line in a scrolling viewport", () => {

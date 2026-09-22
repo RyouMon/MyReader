@@ -1,220 +1,353 @@
-import { expect, type Page } from "@playwright/test"
+import { expect } from "@playwright/test"
 import { createBdd } from "playwright-bdd"
-import { setupDesktopTtsMocks } from "../fixtures/desktop-tts-mock"
-import { setupLibraryMocks } from "../fixtures/library-mock"
-import { test } from "../fixtures/test"
-import { DesktopTtsReaderPage } from "../pages/DesktopTtsReaderPage"
+import { test } from "../fixtures/reader-tts"
+import type { DesktopTtsReaderPage } from "../pages/DesktopTtsReaderPage"
 
 const { Given, When, Then } = createBdd(test)
 
-const firstResource = "TTS verification"
-const lifecycleResource = "Playback lifecycle"
-const playbackPositionResource = "Playback position first page"
+const firstSpeech = "TTS verification"
 const selectedSpeech =
   "Long-press this second sentence and choose Read from here."
-const initialSpeech = new WeakMap<Page, string>()
+const boundaryPrefix = "Previous-page prefix remains behind"
+const boundaryTail = "Visible fragment completes the first sentence."
+const chapters: Record<string, { title: string; visible: string }> = {
+  "TTS verification": {
+    title: "TTS verification",
+    visible: "TTS verification",
+  },
+  "Playback lifecycle": {
+    title: "Playback lifecycle",
+    visible: "Playback lifecycle",
+  },
+  "Playback position first page": {
+    title: "Playback position authority",
+    visible: "Playback position first page",
+  },
+  "Sentence boundary visible page": {
+    title: "Sentence boundary visible page",
+    visible: boundaryTail,
+  },
+}
 
-Given("用户已打开桌面端 TTS 测试书籍", async ({ page }) => {
-  await setupLibraryMocks(page, 1)
-  await setupDesktopTtsMocks(page)
-  await new DesktopTtsReaderPage(page).goto()
-})
+async function browseChapter(reader: DesktopTtsReaderPage, chapter: string) {
+  const destination = chapters[chapter]
+  if (!destination) throw new Error(`Unknown fixture chapter: ${chapter}`)
+  await reader.goToChapter(destination.title, destination.visible)
+}
 
-When("用户展开听书控制", async ({ page }) => {
-  await new DesktopTtsReaderPage(page).openControls()
-})
-
-Then("听书不会自动开始", async ({ page }) => {
-  const reader = new DesktopTtsReaderPage(page)
-  expect(await reader.spokenTexts()).toEqual([])
-  await expect(page.getByRole("button", { name: "开始朗读" })).toBeVisible()
-})
-
-When("用户开始朗读", async ({ page }) => {
-  await new DesktopTtsReaderPage(page).play()
-})
-
-Then("当前页第一段文字开始朗读", async ({ page }) => {
-  const reader = new DesktopTtsReaderPage(page)
-  await expect.poll(() => reader.currentSpeechText()).toContain(firstResource)
-  initialSpeech.set(page, (await reader.currentSpeechText()) ?? "")
-})
-
-When("用户暂停再继续朗读", async ({ page }) => {
-  const reader = new DesktopTtsReaderPage(page)
-  const text = await reader.currentSpeechText()
-  const count = (await reader.spokenTexts()).length
-  await reader.pause()
-  expect(await reader.speechState()).toEqual({ paused: true, speaking: true })
-  await reader.play()
-  expect(await reader.speechState()).toEqual({ paused: false, speaking: true })
-  expect(await reader.currentSpeechText()).toBe(text)
-  expect(await reader.spokenTexts()).toHaveLength(count)
-})
-
-Then("朗读恢复且不会重新选择句子", async ({ page }) => {
-  const reader = new DesktopTtsReaderPage(page)
-  expect((await reader.speechState()).speaking).toBe(true)
-  await reader.expectVisibleReaderText(firstResource)
-})
-
-When("用户切换到下一句再返回上一句", async ({ page }) => {
-  const reader = new DesktopTtsReaderPage(page)
-  const first = await reader.currentSpeechText()
-  await reader.nextSentence()
-  await expect.poll(() => reader.currentSpeechText()).not.toBe(first)
-  await reader.previousSentence()
-  await expect.poll(() => reader.currentSpeechText()).toBe(first)
-})
-
-Then("朗读位置按句子切换且页面保持可见", async ({ page }) => {
-  const reader = new DesktopTtsReaderPage(page)
-  await reader.expectVisibleReaderText(firstResource)
-  expect(await reader.currentSpeechText()).toBeTruthy()
-})
-
-When("用户停止朗读", async ({ page }) => {
-  await new DesktopTtsReaderPage(page).stop()
-})
-
-Then("朗读停止并收起控制", async ({ page }) => {
-  const reader = new DesktopTtsReaderPage(page)
-  expect(await reader.speechState()).toEqual({ paused: false, speaking: false })
-  await expect(reader.controls()).toHaveAttribute("data-active", "false")
-})
-
-When("用户普通点击正文中的第二句话", async ({ page }) => {
-  await new DesktopTtsReaderPage(page).clickReaderText(selectedSpeech)
-})
-
-Then("普通点击不会开始朗读", async ({ page }) => {
-  const reader = new DesktopTtsReaderPage(page)
-  expect(await reader.spokenTexts()).toEqual([])
-  await expect(page.getByRole("button", { name: "开始朗读" })).toBeVisible()
-})
-
-When("用户选择正文中的第二句话", async ({ page }) => {
-  await new DesktopTtsReaderPage(page).selectReaderText(selectedSpeech)
-})
-
-Then("正文保持选中且朗读仍未开始", async ({ page }) => {
-  const reader = new DesktopTtsReaderPage(page)
-  await expect.poll(() => reader.selectedReaderText()).toBe(selectedSpeech)
-  expect(await reader.spokenTexts()).toEqual([])
-})
-
-Given("用户正在朗读第一页", async ({ page }) => {
-  const reader = new DesktopTtsReaderPage(page)
+async function startSpeech(reader: DesktopTtsReaderPage, text: string) {
+  if (chapters[text] && text !== firstSpeech) await browseChapter(reader, text)
   await reader.openControls()
   await reader.play()
-  await expect.poll(() => reader.currentSpeechText()).toContain(firstResource)
-  initialSpeech.set(page, (await reader.currentSpeechText()) ?? "")
-})
-
-When("用户通过目录翻到播放生命周期章节", async ({ page }) => {
-  await new DesktopTtsReaderPage(page).goToChapter(lifecycleResource)
-})
-
-Then("朗读继续并显示位置操作", async ({ page }) => {
-  const reader = new DesktopTtsReaderPage(page)
-  expect((await reader.speechState()).speaking).toBe(true)
-  expect(await reader.currentSpeechText()).toBe(initialSpeech.get(page))
-  await expect(reader.detachedActions()).toBeVisible()
-})
-
-When("用户在分离状态切换上一句和下一句", async ({ page }) => {
-  const reader = new DesktopTtsReaderPage(page)
-  await reader.nextSentence()
-  await expect
-    .poll(() => reader.currentSpeechText())
-    .not.toBe(initialSpeech.get(page))
-  await reader.previousSentence()
-  await expect
-    .poll(() => reader.currentSpeechText())
-    .toBe(initialSpeech.get(page))
-})
-
-Then("视觉页面仍停留在播放生命周期章节", async ({ page }) => {
-  await new DesktopTtsReaderPage(page).expectVisibleReaderText(
-    lifecycleResource,
-  )
-})
-
-When("用户返回播放位置", async ({ page }) => {
-  await new DesktopTtsReaderPage(page).returnToPlaybackPosition()
-})
-
-Then("阅读器回到当前朗读位置并隐藏位置操作", async ({ page }) => {
-  const reader = new DesktopTtsReaderPage(page)
-  await reader.expectVisibleReaderText(firstResource)
-  await expect(reader.detachedActions()).not.toBeAttached()
-  expect(await reader.currentSpeechText()).toBe(initialSpeech.get(page))
-})
-
-When("用户再次翻到播放生命周期章节并从当前位置播放", async ({ page }) => {
-  const reader = new DesktopTtsReaderPage(page)
-  await reader.goToChapter(lifecycleResource)
-  await expect(reader.detachedActions()).toBeVisible()
-  await reader.playFromCurrentPosition()
-})
-
-Then("朗读改从当前章节开始且页面不回跳", async ({ page }) => {
-  const reader = new DesktopTtsReaderPage(page)
-  await expect
-    .poll(() => reader.currentSpeechText())
-    .toContain(lifecycleResource)
-  await reader.expectVisibleReaderText(lifecycleResource)
-  await expect(reader.detachedActions()).not.toBeAttached()
-})
-
-Given("用户从播放生命周期章节开始朗读", async ({ page }) => {
-  const reader = new DesktopTtsReaderPage(page)
-  await reader.goToChapter(lifecycleResource)
-  await reader.openControls()
-  await reader.play()
-  await expect
-    .poll(() => reader.currentSpeechText())
-    .toContain(lifecycleResource)
-})
-
-When("当前章节的语句依次播放完毕", async ({ page }) => {
-  const reader = new DesktopTtsReaderPage(page)
-  for (let index = 0; index < 8; index += 1) {
-    if (
-      (await reader.currentSpeechText())?.includes(playbackPositionResource)
-    ) {
-      return
-    }
-    await reader.finishCurrentSentence()
+  await reader.waitForSpeechText(chapters[text] ? text : firstSpeech)
+  if (!chapters[text]) {
+    await reader.nextSentence()
+    await reader.waitForSpeechText(text)
   }
-  throw new Error("Narration did not advance to the next EPUB resource")
-})
+}
 
-Then("阅读器自动进入播放位置章节且只有一个页面可见", async ({ page }) => {
-  await new DesktopTtsReaderPage(page).expectVisibleReaderText(
-    playbackPositionResource,
+async function assertSentenceActions(reader: DesktopTtsReaderPage) {
+  await expect(reader.controls()).toHaveAttribute(
+    "data-viewport-relation",
+    "attached",
   )
-})
+  await expect(reader.leftAction()).toHaveAttribute("aria-label", "上一句")
+  await expect(reader.rightAction()).toHaveAttribute("aria-label", "下一句")
+}
 
-When("用户翻到播放生命周期章节时当前语句恰好结束", async ({ page }) => {
-  const reader = new DesktopTtsReaderPage(page)
-  await reader.finishCurrentSentenceWhileBeginningChapterNavigation(
-    lifecycleResource,
+async function assertViewportActions(
+  reader: DesktopTtsReaderPage,
+  relation: "before" | "after",
+) {
+  await expect(reader.controls()).toHaveAttribute(
+    "data-viewport-relation",
+    relation,
   )
+  await expect(reader.leftAction()).toHaveAttribute(
+    "aria-label",
+    relation === "after" ? "返回播放位置" : "从当前位置播放",
+  )
+  await expect(reader.rightAction()).toHaveAttribute(
+    "aria-label",
+    relation === "after" ? "从当前位置播放" : "返回播放位置",
+  )
+}
+
+Given("小文已打开支持跨页句子的测试书籍", async ({ ttsReader }) => {
+  await ttsReader.goto()
 })
 
-Then("阅读器留在播放生命周期章节且朗读继续", async ({ page }) => {
-  const reader = new DesktopTtsReaderPage(page)
-  await reader.expectVisibleReaderText(lifecycleResource)
-  expect((await reader.speechState()).speaking).toBe(true)
-  await expect(reader.detachedActions()).toBeVisible()
+Given("小文已展开听书控制", async ({ ttsReader }) => {
+  await ttsReader.openControls()
 })
 
-When("系统语音引擎报告错误", async ({ page }) => {
-  await new DesktopTtsReaderPage(page).failCurrentSentence()
+Given(
+  "小文正在朗读 {string}",
+  async ({ ttsReader, ttsContext }, text: string) => {
+    await startSpeech(ttsReader, text)
+    ttsContext.initialText = await ttsReader.currentSpeechText()
+    ttsContext.initialCount = (await ttsReader.spokenTexts()).length
+  },
+)
+
+Given(
+  "小文已暂停朗读 {string}",
+  async ({ ttsReader, ttsContext }, text: string) => {
+    await startSpeech(ttsReader, text)
+    ttsContext.initialText = await ttsReader.currentSpeechText()
+    ttsContext.initialCount = (await ttsReader.spokenTexts()).length
+    await ttsReader.pause()
+  },
+)
+
+Given(
+  "小文正在朗读 {string}，但正在查看 {string}",
+  async ({ ttsReader, ttsContext }, text: string, chapter: string) => {
+    await startSpeech(ttsReader, text)
+    ttsContext.initialText = await ttsReader.currentSpeechText()
+    ttsContext.initialCount = (await ttsReader.spokenTexts()).length
+    await browseChapter(ttsReader, chapter)
+  },
+)
+
+Given(
+  "小文已暂停朗读 {string}，但正在查看 {string}",
+  async ({ ttsReader, ttsContext }, text: string, chapter: string) => {
+    await startSpeech(ttsReader, text)
+    ttsContext.initialText = await ttsReader.currentSpeechText()
+    ttsContext.initialCount = (await ttsReader.spokenTexts()).length
+    await ttsReader.pause()
+    await browseChapter(ttsReader, chapter)
+  },
+)
+
+Given("小文已从 {string} 重启朗读", async ({ ttsReader }, chapter: string) => {
+  await startSpeech(ttsReader, firstSpeech)
+  await browseChapter(ttsReader, chapter)
+  await ttsReader.playFromCurrentPosition()
+  await ttsReader.waitForSpeechText(chapter)
 })
 
-Then("阅读器显示朗读失败提示并退出播放状态", async ({ page }) => {
-  await expect(page.getByText("朗读失败", { exact: true })).toBeVisible()
-  await expect(page.getByRole("button", { name: "开始朗读" })).toBeVisible()
+Given(
+  "小文已停止朗读，并正在查看 {string}",
+  async ({ ttsReader }, chapter: string) => {
+    await startSpeech(ttsReader, firstSpeech)
+    await ttsReader.stop()
+    await browseChapter(ttsReader, chapter)
+  },
+)
+
+Given("小文已选择正文中的第二句话", async ({ ttsReader }) => {
+  await ttsReader.selectReaderText(selectedSpeech)
+})
+
+Given("小文正在朗读跨页句子", async ({ ttsReader }) => {
+  await ttsReader.goToChapter("Sentence boundary start", boundaryPrefix)
+  await ttsReader.openControls()
+  await ttsReader.play()
+  await ttsReader.waitForSpeechText(boundaryPrefix)
+})
+
+Given("语音服务会在新语句开始前错误地报告结束", async ({ ttsReader }) => {
+  await ttsReader.endNextBeforeStart()
+})
+
+When("小文展开听书控制", async ({ ttsReader }) => {
+  await ttsReader.openControls()
+})
+
+When("小文开始朗读", async ({ ttsReader }) => {
+  await ttsReader.play()
+})
+
+When("小文暂停朗读", async ({ ttsReader }) => {
+  await ttsReader.pause()
+})
+
+When("小文继续朗读", async ({ ttsReader }) => {
+  await ttsReader.play()
+})
+
+When("小文播放下一句", async ({ ttsReader }) => {
+  await ttsReader.nextSentence()
+})
+
+When("小文播放上一句", async ({ ttsReader }) => {
+  await ttsReader.previousSentence()
+})
+
+When("小文停止朗读", async ({ ttsReader }) => {
+  await ttsReader.stop()
+})
+
+When("小文点击正文中的第二句话", async ({ ttsReader }) => {
+  await ttsReader.clickReaderText(selectedSpeech)
+})
+
+When("小文选择正文中的第二句话", async ({ ttsReader }) => {
+  await ttsReader.selectReaderText(selectedSpeech)
+})
+
+When("小文选择从此处朗读", async ({ ttsReader }) => {
+  await ttsReader.readSelectionAloud()
+})
+
+When("小文浏览到 {string}", async ({ ttsReader }, chapter: string) => {
+  await browseChapter(ttsReader, chapter)
+})
+
+When("小文向后翻一页", async ({ ttsReader }) => {
+  await ttsReader.nextPage()
+})
+
+When("小文返回朗读位置", async ({ ttsReader }) => {
+  await ttsReader.returnToPlaybackPosition()
+})
+
+When("小文从当前页朗读", async ({ ttsReader }) => {
+  await ttsReader.playFromCurrentPosition()
+})
+
+When("小文重新打开听书并开始朗读", async ({ ttsReader }) => {
+  await ttsReader.openControls()
+  await ttsReader.play()
+})
+
+When("当前语句朗读结束", async ({ ttsReader }) => {
+  await ttsReader.finishCurrentSentence()
+})
+
+When(
+  "小文浏览到 {string} 时当前语句恰好结束",
+  async ({ ttsReader, ttsContext }, chapter: string) => {
+    ttsContext.concurrentNavigation =
+      await ttsReader.finishCurrentSentenceWhileBeginningChapterNavigation(
+        chapters[chapter].title,
+      )
+  },
+)
+
+When("当前章节朗读完毕", async ({ ttsReader }) => {
+  await ttsReader.finishChapter("Playback position first page")
+})
+
+When("小文浏览到该句的下一页片段", async ({ ttsReader }) => {
+  await ttsReader.nextPage()
+})
+
+When("语音服务报告播放失败", async ({ ttsReader }) => {
+  await ttsReader.failCurrentSentence()
+})
+
+Then("朗读未开始且可以手动播放", async ({ ttsReader }) => {
+  expect(await ttsReader.spokenTexts()).toEqual([])
+  await expect(ttsReader.startButton()).toBeVisible()
+})
+
+Then("正在朗读 {string}", async ({ ttsReader }, text: string) => {
+  await expect.poll(() => ttsReader.currentSpeechText()).toBe(text)
+  await expect
+    .poll(() => ttsReader.speechState())
+    .toEqual({ paused: false, speaking: true })
+  await expect(ttsReader.pauseButton()).toBeVisible()
+})
+
+Then("正在朗读以 {string} 开头的语句", async ({ ttsReader }, text: string) => {
+  await expect
+    .poll(async () =>
+      (await ttsReader.currentSpeechText())?.startsWith(`${text} `),
+    )
+    .toBe(true)
+  await expect
+    .poll(() => ttsReader.speechState())
+    .toEqual({ paused: false, speaking: true })
+  await expect(ttsReader.pauseButton()).toBeVisible()
+})
+
+Then("朗读暂停且保留当前语句", async ({ ttsReader, ttsContext }) => {
+  await expect
+    .poll(() => ttsReader.speechState())
+    .toEqual({ paused: true, speaking: true })
+  expect(await ttsReader.currentSpeechText()).toBe(ttsContext.initialText)
+  await expect(ttsReader.startButton()).toBeVisible()
+})
+
+Then("朗读恢复且语句未重新播放", async ({ ttsReader, ttsContext }) => {
+  await expect
+    .poll(() => ttsReader.speechState())
+    .toEqual({ paused: false, speaking: true })
+  expect(await ttsReader.currentSpeechText()).toBe(ttsContext.initialText)
+  expect(await ttsReader.spokenTexts()).toHaveLength(ttsContext.initialCount)
+})
+
+Then("朗读已停止且听书控制收起", async ({ ttsReader }) => {
+  await expect
+    .poll(() => ttsReader.speechState())
+    .toEqual({ paused: false, speaking: false })
+  await expect(ttsReader.controls()).toHaveAttribute("data-active", "false")
+  await expect(ttsReader.openButton()).toBeVisible()
+})
+
+Then("朗读继续原来的语句", async ({ ttsReader, ttsContext }) => {
+  expect(await ttsReader.currentSpeechText()).toBe(ttsContext.initialText)
+  expect(await ttsReader.spokenTexts()).toHaveLength(ttsContext.initialCount)
+  expect(await ttsReader.speechState()).toEqual({
+    paused: false,
+    speaking: true,
+  })
+})
+
+Then("正文保持选中且朗读未开始", async ({ ttsReader }) => {
+  await expect.poll(() => ttsReader.selectedReaderText()).toBe(selectedSpeech)
+  expect(await ttsReader.spokenTexts()).toEqual([])
+})
+
+Then("左侧可以返回朗读位置，右侧可以从当前页朗读", async ({ ttsReader }) => {
+  await assertViewportActions(ttsReader, "after")
+})
+
+Then("左侧可以从当前页朗读，右侧可以返回朗读位置", async ({ ttsReader }) => {
+  await assertViewportActions(ttsReader, "before")
+})
+
+Then("当前页显示 {string}", async ({ ttsReader }, text: string) => {
+  await expect.poll(() => ttsReader.visibleReaderText()).toContain(text)
+  await expect.poll(() => ttsReader.visibleReaderFrameCount()).toBe(1)
+})
+
+Then(
+  "朗读继续原来的语句且恢复上一句和下一句",
+  async ({ ttsReader, ttsContext }) => {
+    expect(await ttsReader.currentSpeechText()).toBe(ttsContext.initialText)
+    expect(await ttsReader.spokenTexts()).toHaveLength(ttsContext.initialCount)
+    await assertSentenceActions(ttsReader)
+  },
+)
+
+Then(
+  "朗读继续到下一句且仍可返回朗读位置",
+  async ({ ttsReader, ttsContext }) => {
+    expect(ttsContext.concurrentNavigation).toEqual({
+      detachedBeforeCompletion: true,
+      finished: true,
+    })
+    expect(await ttsReader.currentSpeechText()).not.toBe(ttsContext.initialText)
+    expect(await ttsReader.speechState()).toEqual({
+      paused: false,
+      speaking: true,
+    })
+    await assertViewportActions(ttsReader, "after")
+  },
+)
+
+Then("恢复上一句和下一句", async ({ ttsReader }) => {
+  await assertSentenceActions(ttsReader)
+})
+
+Then("显示朗读失败提示且可以重新播放", async ({ ttsReader }) => {
+  await expect(ttsReader.failureNotice()).toBeVisible()
+  await expect(ttsReader.startButton()).toBeVisible()
+  await expect
+    .poll(() => ttsReader.speechState())
+    .toEqual({ paused: false, speaking: false })
 })

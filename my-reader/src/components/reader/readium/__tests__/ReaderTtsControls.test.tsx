@@ -18,6 +18,7 @@ function session(overrides: Partial<EpubTtsSession> = {}): EpubTtsSession {
     loading: false,
     state: "ready",
     viewportDetached: false,
+    viewportOriginLocator: null,
     remote: false,
     engineName: "system",
     utteranceCount: 3,
@@ -50,6 +51,7 @@ describe("ReaderTtsControls", () => {
         session={ttsSession}
         visible
         settingsOpen={false}
+        viewportRelation={null}
         onPlay={onPlay}
         onPlayFromCurrentPosition={vi.fn()}
         onReturnToPlaybackPosition={vi.fn()}
@@ -75,6 +77,7 @@ describe("ReaderTtsControls", () => {
         session={ttsSession}
         visible
         settingsOpen={false}
+        viewportRelation={null}
         onPlayFromCurrentPosition={vi.fn()}
         onReturnToPlaybackPosition={vi.fn()}
         onToggleSettings={vi.fn()}
@@ -111,6 +114,7 @@ describe("ReaderTtsControls", () => {
         session={ttsSession}
         visible={false}
         settingsOpen={false}
+        viewportRelation={null}
         onPlayFromCurrentPosition={vi.fn()}
         onReturnToPlaybackPosition={vi.fn()}
         onToggleSettings={vi.fn()}
@@ -128,6 +132,7 @@ describe("ReaderTtsControls", () => {
         session={session({ state: "playing", remote: true })}
         visible
         settingsOpen={false}
+        viewportRelation={null}
         onPlayFromCurrentPosition={vi.fn()}
         onReturnToPlaybackPosition={vi.fn()}
         onToggleSettings={vi.fn()}
@@ -139,6 +144,7 @@ describe("ReaderTtsControls", () => {
         session={session({ state: "loading", remote: true })}
         visible
         settingsOpen={false}
+        viewportRelation={null}
         onPlayFromCurrentPosition={vi.fn()}
         onReturnToPlaybackPosition={vi.fn()}
         onToggleSettings={vi.fn()}
@@ -157,6 +163,7 @@ describe("ReaderTtsControls", () => {
         session={session()}
         visible
         settingsOpen={false}
+        viewportRelation={null}
         onPlayFromCurrentPosition={vi.fn()}
         onReturnToPlaybackPosition={vi.fn()}
         onToggleSettings={vi.fn()}
@@ -168,6 +175,7 @@ describe("ReaderTtsControls", () => {
         session={session({ error: "speech engine failed" })}
         visible
         settingsOpen={false}
+        viewportRelation={null}
         onPlayFromCurrentPosition={vi.fn()}
         onReturnToPlaybackPosition={vi.fn()}
         onToggleSettings={vi.fn()}
@@ -179,7 +187,7 @@ describe("ReaderTtsControls", () => {
     })
   })
 
-  it("offers to play from the visible page after the viewport moves", () => {
+  it("returns on the left and plays forward on the right after the viewport moves ahead", () => {
     const onPlayFromCurrentPosition = vi.fn()
     const onReturnToPlaybackPosition = vi.fn()
     render(
@@ -187,26 +195,54 @@ describe("ReaderTtsControls", () => {
         session={session({ state: "playing", viewportDetached: true })}
         visible
         settingsOpen={false}
+        viewportRelation="after"
         onPlayFromCurrentPosition={onPlayFromCurrentPosition}
         onReturnToPlaybackPosition={onReturnToPlaybackPosition}
         onToggleSettings={vi.fn()}
       />,
     )
 
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "reader.tts.playFromCurrentPosition",
-      }),
+    expect(screen.queryByText("reader.tts.playFromCurrentPosition")).toBeNull()
+    expect(screen.queryByText("reader.tts.returnToPlaybackPosition")).toBeNull()
+    expect(screen.getByTestId("reader-tts-left-action")).toHaveAccessibleName(
+      "reader.tts.returnToPlaybackPosition",
+    )
+    expect(screen.getByTestId("reader-tts-right-action")).toHaveAccessibleName(
+      "reader.tts.playFromCurrentPosition",
     )
 
+    fireEvent.click(screen.getByTestId("reader-tts-left-action"))
+
+    expect(onReturnToPlaybackPosition).toHaveBeenCalledOnce()
+    fireEvent.click(screen.getByTestId("reader-tts-right-action"))
     expect(onPlayFromCurrentPosition).toHaveBeenCalledOnce()
+  })
 
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "reader.tts.returnToPlaybackPosition",
-      }),
+  it("plays backward on the left and returns on the right after the viewport moves behind", () => {
+    const onPlayFromCurrentPosition = vi.fn()
+    const onReturnToPlaybackPosition = vi.fn()
+    render(
+      <ReaderTtsControls
+        session={session({ state: "paused", viewportDetached: true })}
+        visible
+        settingsOpen={false}
+        viewportRelation="before"
+        onPlayFromCurrentPosition={onPlayFromCurrentPosition}
+        onReturnToPlaybackPosition={onReturnToPlaybackPosition}
+        onToggleSettings={vi.fn()}
+      />,
     )
 
+    expect(screen.getByTestId("reader-tts-left-action")).toHaveAccessibleName(
+      "reader.tts.playFromCurrentPosition",
+    )
+    expect(screen.getByTestId("reader-tts-right-action")).toHaveAccessibleName(
+      "reader.tts.returnToPlaybackPosition",
+    )
+
+    fireEvent.click(screen.getByTestId("reader-tts-left-action"))
+    expect(onPlayFromCurrentPosition).toHaveBeenCalledOnce()
+    fireEvent.click(screen.getByTestId("reader-tts-right-action"))
     expect(onReturnToPlaybackPosition).toHaveBeenCalledOnce()
   })
 })
