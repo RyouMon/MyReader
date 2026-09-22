@@ -107,9 +107,9 @@ describe("ReaderTtsControls", () => {
     expect(screen.getAllByRole("button")).toHaveLength(1)
   })
 
-  it("uses pause as the center action while speech is playing", () => {
+  it("hides active controls with the title bar and restores the pause action when shown", () => {
     const ttsSession = session({ state: "playing" })
-    render(
+    const { rerender } = render(
       <ReaderTtsControls
         session={ttsSession}
         visible={false}
@@ -121,6 +121,27 @@ describe("ReaderTtsControls", () => {
       />,
     )
 
+    expect(screen.getByTestId("reader-tts-controls")).toHaveAttribute(
+      "data-visible",
+      "false",
+    )
+
+    rerender(
+      <ReaderTtsControls
+        session={ttsSession}
+        visible
+        settingsOpen={false}
+        viewportRelation={null}
+        onPlayFromCurrentPosition={vi.fn()}
+        onReturnToPlaybackPosition={vi.fn()}
+        onToggleSettings={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByTestId("reader-tts-controls")).toHaveAttribute(
+      "data-visible",
+      "true",
+    )
     fireEvent.click(screen.getByRole("button", { name: "reader.tts.pause" }))
 
     expect(ttsSession.pause).toHaveBeenCalledOnce()

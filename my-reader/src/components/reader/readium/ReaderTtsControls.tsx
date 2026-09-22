@@ -66,7 +66,7 @@ export function ReaderTtsControls({
   const preparationLabel = t(
     session.remote ? "reader.tts.generating" : "reader.tts.loading",
   )
-  const shown = visible || expanded || settingsOpen
+  const shown = visible
   const controlTabIndex = expanded && shown ? 0 : -1
   const LeftActionIcon =
     viewportRelation === "after"
