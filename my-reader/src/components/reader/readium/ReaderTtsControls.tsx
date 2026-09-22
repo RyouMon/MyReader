@@ -1,6 +1,6 @@
 import {
-  AudioLines,
   FastForward,
+  Headphones,
   Loader2,
   Pause,
   Play,
@@ -223,7 +223,7 @@ export function ReaderTtsControls({
           ) : expanded ? (
             <Square className="size-[15px]" aria-hidden />
           ) : (
-            <AudioLines className="size-[18px]" aria-hidden />
+            <Headphones className="size-[18px]" aria-hidden />
           )}
         </button>
       </div>

@@ -6,6 +6,9 @@ import { ReaderChromeIcon } from "./ReaderChromeIcon"
 jest.mock("@expo/material-symbols/edit_square.xml", () => ({
   uri: "edit-square-outline",
 }))
+jest.mock("@expo/material-symbols/headphones.xml", () => ({
+  uri: "headphones",
+}))
 
 jest.mock("@expo/ui", () => {
   const React = jest.requireActual<typeof import("react")>("react")
@@ -74,6 +77,7 @@ describe("ReaderChromeIcon", () => {
 
     render(
       <>
+        <ReaderChromeIcon name="tts" size={24} color="#123456" />
         <ReaderChromeIcon name="previous" size={24} color="#123456" />
         <ReaderChromeIcon name="next" size={24} color="#123456" />
         <ReaderChromeIcon name="rewind" size={24} color="#123456" />
@@ -86,6 +90,7 @@ describe("ReaderChromeIcon", () => {
     expect(
       SymbolView.mock.calls.map(([props]: [{ name: string }]) => props.name),
     ).toEqual([
+      "headphones",
       "backward.frame.fill",
       "forward.frame.fill",
       "backward.end.fill",
@@ -93,6 +98,16 @@ describe("ReaderChromeIcon", () => {
       "arrowshape.turn.up.backward.fill",
       "arrowshape.turn.up.forward.fill",
     ])
+  })
+
+  it("should use the Material Symbols headphones icon for the TTS launcher", () => {
+    const screen = render(
+      <ReaderChromeIcon name="tts" size={24} color="#123456" />,
+    )
+
+    expect(
+      screen.getByLabelText(JSON.stringify({ uri: "headphones" })),
+    ).toBeTruthy()
   })
 
   it("should use equivalent Material Icons for TTS navigation states", () => {
