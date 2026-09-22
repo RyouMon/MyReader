@@ -26,6 +26,7 @@ export type ReaderChromeTopBarConfig = {
   annotationsOpen?: boolean
   searchOpen?: boolean
   settingsOpen?: boolean
+  rightActionsStart?: ReactNode
   showReaderActions?: boolean
   previewNativeMacFullscreen?: boolean
   onToggleToc: () => void
@@ -211,6 +212,7 @@ export function ReaderChromeShell({
           annotationsOpen={topBar.annotationsOpen}
           searchOpen={topBar.searchOpen}
           settingsOpen={topBar.settingsOpen}
+          rightActionsStart={topBar.rightActionsStart}
           showReaderActions={topBar.showReaderActions}
           previewNativeMacFullscreen={topBar.previewNativeMacFullscreen}
           onToggleToc={topBar.onToggleToc}

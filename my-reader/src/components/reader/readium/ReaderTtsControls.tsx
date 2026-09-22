@@ -17,7 +17,6 @@ import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import type { EpubTtsSession } from "@/hooks/reader/useEpubTtsSession"
 import type { EpubTtsViewportRelation } from "@/lib/readium/epubTtsViewport"
-import { cn } from "@/lib/utils"
 
 type ReaderTtsControlsProps = {
   session: EpubTtsSession
@@ -141,24 +140,26 @@ export function ReaderTtsControls({
       <div className="reader-tts-mini-controls">
         <button
           type="button"
-          className="reader-tts-mini-control"
+          className="reader-chrome-icon-btn reader-tts-mini-control"
           aria-label={t("reader.tts.settings")}
           aria-expanded={settingsOpen}
           aria-haspopup="dialog"
           aria-hidden={!expanded}
           tabIndex={controlTabIndex}
           data-active={settingsOpen ? "true" : "false"}
+          data-shape="circle"
           onClick={onToggleSettings}
         >
           <Settings2 className="size-[17px]" aria-hidden />
         </button>
         <button
           type="button"
-          className="reader-tts-mini-control"
+          className="reader-chrome-icon-btn reader-tts-mini-control"
           aria-label={leftActionLabel}
           aria-hidden={!expanded}
           tabIndex={controlTabIndex}
           data-testid="reader-tts-left-action"
+          data-shape="circle"
           onClick={handleLeftAction}
           disabled={!session.available}
         >
@@ -171,11 +172,12 @@ export function ReaderTtsControls({
         </button>
         <button
           type="button"
-          className="reader-tts-mini-control"
+          className="reader-chrome-icon-btn reader-tts-mini-control"
           aria-label={t(playing ? "reader.tts.pause" : "reader.tts.play")}
           aria-hidden={!expanded}
           tabIndex={controlTabIndex}
-          data-role="playback"
+          data-active={playing ? "true" : undefined}
+          data-shape="circle"
           onClick={playing ? session.pause : () => (onPlay ?? session.play)()}
           disabled={!session.available}
         >
@@ -189,11 +191,12 @@ export function ReaderTtsControls({
         </button>
         <button
           type="button"
-          className="reader-tts-mini-control"
+          className="reader-chrome-icon-btn reader-tts-mini-control"
           aria-label={rightActionLabel}
           aria-hidden={!expanded}
           tabIndex={controlTabIndex}
           data-testid="reader-tts-right-action"
+          data-shape="circle"
           onClick={handleRightAction}
           disabled={!session.available}
         >
@@ -206,14 +209,12 @@ export function ReaderTtsControls({
         </button>
         <button
           type="button"
-          className={cn(
-            "reader-tts-mini-control",
-            !expanded && "reader-tts-mini-trigger",
-          )}
+          className="reader-chrome-icon-btn reader-tts-mini-control"
           aria-label={t(
             expanded ? "reader.tts.stop" : "reader.tts.openControls",
           )}
           tabIndex={shown ? 0 : -1}
+          data-shape="circle"
           onClick={startOrStop}
           disabled={!session.available || (!expanded && preparing)}
         >

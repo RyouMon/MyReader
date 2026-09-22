@@ -76,6 +76,30 @@ describe("ReaderTopBar", () => {
     expect(onToggleSettings).toHaveBeenCalledOnce()
   })
 
+  it("should place leading right actions before search and reader settings", () => {
+    render(
+      <ReaderTopBar
+        {...defaultProps}
+        chapterTitle=""
+        rightActionsStart={<div data-testid="right-actions-start" />}
+        onToggleSearch={vi.fn()}
+      />,
+    )
+
+    const rightActionsStart = screen.getByTestId("right-actions-start")
+    const searchButton = screen.getByTitle("reader.search")
+    const settingsButton = screen.getByTitle("reader.settings")
+
+    expect(
+      rightActionsStart.compareDocumentPosition(searchButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      searchButton.compareDocumentPosition(settingsButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
   it("should expose highlights and notes as a separate reader action", () => {
     const onToggleAnnotations = vi.fn()
     render(

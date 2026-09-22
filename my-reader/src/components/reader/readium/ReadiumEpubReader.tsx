@@ -2809,6 +2809,18 @@ export function ReadiumEpubReader({
         annotationsOpen,
         searchOpen,
         settingsOpen,
+        rightActionsStart: (
+          <ReaderTtsControls
+            session={ttsSession}
+            visible={chromeVisible}
+            settingsOpen={ttsSettingsOpen}
+            viewportRelation={ttsViewportRelation}
+            onPlay={playTts}
+            onPlayFromCurrentPosition={playTtsFromCurrentPosition}
+            onReturnToPlaybackPosition={ttsSession.goToCurrent}
+            onToggleSettings={toggleTtsSettings}
+          />
+        ),
         onToggleToc: toggleToc,
         onToggleBookmarks: toggleBookmarks,
         onToggleAnnotations: annotationsAvailable
@@ -2932,18 +2944,6 @@ export function ReadiumEpubReader({
             nextLabel={t("reader.nextPage")}
           />
         ) : null
-      }
-      bottomChrome={
-        <ReaderTtsControls
-          session={ttsSession}
-          visible={chromeVisible}
-          settingsOpen={ttsSettingsOpen}
-          viewportRelation={ttsViewportRelation}
-          onPlay={playTts}
-          onPlayFromCurrentPosition={playTtsFromCurrentPosition}
-          onReturnToPlaybackPosition={ttsSession.goToCurrent}
-          onToggleSettings={toggleTtsSettings}
-        />
       }
       bottomStatusBar={
         <ReaderBottomStatusBar
