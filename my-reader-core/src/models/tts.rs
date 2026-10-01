@@ -53,6 +53,7 @@ pub enum TtsEngineSelection {
 #[serde(rename_all = "camelCase")]
 pub enum TtsProviderKind {
     OpenAiCompatible,
+    Qwen,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -98,14 +99,59 @@ pub enum TtsProviderOptions {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         default_voice: Option<String>,
     },
+    Qwen {
+        #[serde(default)]
+        response_format: TtsAudioFormat,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        instructions: Option<String>,
+        #[serde(default)]
+        voices: Vec<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        default_voice: Option<String>,
+    },
 }
 
 impl TtsProviderOptions {
     pub fn kind(&self) -> TtsProviderKind {
         match self {
             Self::OpenAiCompatible { .. } => TtsProviderKind::OpenAiCompatible,
+            Self::Qwen { .. } => TtsProviderKind::Qwen,
         }
     }
+
+    pub fn voices(&self) -> &[String] {
+        match self {
+            Self::OpenAiCompatible { voices, .. } | Self::Qwen { voices, .. } => voices,
+        }
+    }
+
+    pub fn default_voice(&self) -> Option<&str> {
+        match self {
+            Self::OpenAiCompatible { default_voice, .. } | Self::Qwen { default_voice, .. } => {
+                default_voice.as_deref()
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QwenTtsModel {
+    pub id: String,
+    pub name: String,
+    pub supports_instructions: bool,
+    pub voice_discovery: bool,
+    pub audio_formats: Vec<TtsAudioFormat>,
+    pub voices: Vec<TtsVoice>,
+}
+
+/// Creation defaults, not a separate provider implementation or persisted kind.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QwenTtsPreset {
+    pub id: String,
+    pub endpoint: String,
+    pub default_model: QwenTtsModel,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -218,7 +264,7 @@ pub struct TtsSynthesisRequest {
     pub cache_policy: TtsCachePolicy,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TtsAudioArtifact {
     pub path: String,
@@ -229,6 +275,8 @@ pub struct TtsAudioArtifact {
     pub timings: Vec<TtsTiming>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cache_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub playback_rate: Option<f64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

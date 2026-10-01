@@ -16,6 +16,8 @@ isProject: true
 
 2026-08-23 范围修订：第一阶段产品入口只开放 System 与 OpenAI-compatible。
 
+2026-09-29 扩展：增加 Qwen 原生 DashScope adapter；三端共享 Core 的模型能力、音色发现与合成协议。
+
 当前已实施：
 
 - 桌面、iOS 和 Android 的文本 EPUB Readium 朗读会话、句子 Decoration、Locator 跟随与
@@ -23,6 +25,7 @@ isProject: true
 - 播放、暂停、停止、上一句、下一句，以及从当前位置或 Selection Locator 起播。
 - System 与 OpenAI-compatible 两种第一阶段引擎；网络引擎使用同一 Core profile、voice
   discovery、合成、缓存、错误和凭据引用合同。
+- Qwen-Audio-TTS Plus、Qwen3-TTS Flash / Instruct、Qwen3-TTS VC / VD 的 HTTP 合成与已有音色选择。
 - 网络引擎为当前句显示生成/缓冲状态，并预取后续两句；停止、选文跳转及切换 provider/voice
   会取消旧请求并切换 generation，晚到结果不得改变当前播放位置。
 - 移动端预取窗口由 Readium 当前 utterance Locator 锚定的一次性内容投影生成；不维护按文本或语言
@@ -675,6 +678,59 @@ CosyVoice、AllTalk、XTTS、TTS-WebUI 等。MyReader 借鉴的是能力拆分�
 Kokoro、Silero、StyleTTS 等可以在有真实用户需求且存在稳定服务协议时增加。Coqui Extras 的旧
 路径、Google Translate 非官方接口、依赖特定订阅应用的 Novel provider、任意公共代理和上传
 声纹的 voice cloning 不进入首批计划。
+
+### Qwen 原生接入
+
+沿用既有 provider flow：桌面 Dialog、移动设置页与阅读器 Sheet 均提供模型、音色、默认音色、
+端点与密钥；格式和指令字段由 Core 返回的模型能力决定，不伪装成 OpenAI-compatible。
+
+创建入口区分三种来源，选择后直接进入预填好的表单：
+
+| 创建预设 | 默认地址 | 凭据 |
+|---|---|---|
+| Qwen · Token Plan | `wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference` | 千问套餐专用 Key |
+| Qwen · 按需计费 | `https://maas.qianwenaiapi.com/api/v1` | 千问 AI 平台 API Key |
+| Qwen · DashScope（百炼） | `https://dashscope.aliyuncs.com/api/v1` | 阿里云百炼对应地域的 API Key，默认北京 |
+
+三者是 **Core 管理的创建预设，不是三套供应商实现**。`qwen_presets` 提供来源 ID、默认端点与
+默认模型的完整能力；两端只负责来源名称、说明和凭据提示的本地化。保存后仍是独立的 `kind: qwen`
+profile，持久化实际端点、模型、声音、格式及独立凭据引用，不额外保存会与端点冲突的来源或协议标记。
+现有配置不改写；编辑时按已保存的端点恢复配置。返回来源选择页会丢弃未保存草稿，避免串用凭据。
+传输层按实际端点复用 HTTP 或 WebSocket；鉴权、模型校验、缓存、取消和错误处理不按计费来源复制，
+不引入继承关系，不自动切换来源、密钥或计费方式。
+
+| 模型 | 合成协议 | 音色来源 |
+|---|---|---|
+| Token Plan：`qwen-audio-3.0-tts-plus`（默认） | `wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference`，MP3 / WAV / Opus，可指定朗读指令与语速 | 官方示例与音色目录 + 手动音色 ID；套餐入口不调用账户音色查询 |
+| 普通 API：`qwen-audio-3.0-tts-plus` | `/services/audio/tts/SpeechSynthesizer`，MP3 / WAV / Opus | 官方内置目录 + `voice-enrollment` 的 `list_voice`，仅保留匹配模型且状态为 `OK` 的账户音色 |
+| `qwen3-tts-flash`、`qwen3-tts-instruct-flash` | `/services/aigc/multimodal-generation/generation`，WAV；仅 Instruct 开放指令 | 官方内置目录 + 手动音色 ID |
+| `qwen3-tts-vc-2026-01-22`、`qwen3-tts-vd-2026-01-26` | 同上，WAV | `qwen-voice-enrollment` / `qwen-voice-design` 的 `list`，按 `target_model` 精确筛选 |
+
+- Token Plan 预设按千问套餐文档接入，使用套餐 `sk-sp-` Key 与专用 WebSocket 入口。
+  模型目录由 Core 按服务地址返回；套餐只展示当前文档明确支持的 Audio Plus。
+  按需计费与 DashScope 预设自动填入各自 HTTP 地址，不将套餐 Key 发送到普通 HTTP 语音接口。
+- WebSocket 沿用官方 DashScope `tts_v2` SDK 协议：`run-task` → `task-started` →
+  `continue-task` / `finish-task` → 二进制音频帧 → `task-finished`。每条句子独立任务与连接，
+  收到成功结束事件后才校验并发布完整音频 artifact。失败、断连、超时、取消均不缓存半成品；
+  取消释放连接，不留后台接收任务。沿用 45 秒总超时、32 MiB 音频上限及格式校验。
+- **普通 API 的动态获取范围是账户复刻 / 设计音色**，调用 `/services/audio/tts/customization` 并遍历分页。
+  切换模型、端点或凭据后重新获取，旧响应不能覆盖新选择；失败时展示反馈并保留手动输入入口。
+  Token Plan 的同名查询接口实测返回 404，因此其模型能力明确关闭账户查询，仍支持指定音色 ID。
+- 截至本次核验，官方没有公开内置音色目录查询 API。内置目录由 Core 统一提供，但不是请求
+  allowlist：新增音色可直接填写 ID，用户无需等待应用更新；有效性最终由供应商校验。
+- 本阶段只选择已有音色，不上传录音或创建复刻 / 设计音色；这些操作在所选来源的平台中完成。
+- 普通 HTTP 合成先获得签名音频 URL，再不带 API Key 下载为本地 artifact；两种协议均复用既有缓存、取消和 generation
+  防护。Qwen3 使用 `language_type: Auto` 支持混合语言，每次最多 600 字符，超长明确报错。
+- Qwen3 没有合成语速参数，使用平台音频播放速率；移动端按播放器能力限制在 0.5–2×，
+  不改变其他引擎已保存的语速偏好。不增加 PCM 封装、SSE 或独立播放状态机。
+
+协议参考：[Token Plan 多模态接入（语音合成示例）](https://platform.qianwenai.com/docs/token-plan/best-practices/multimodal-generation)、
+[千问平台普通 API](https://platform.qianwenai.com/docs/developer-guides/speech/tts)、
+[官方 DashScope tts_v2 SDK](https://github.com/dashscope/dashscope-sdk-python/blob/main/dashscope/audio/tts_v2/speech_synthesizer.py)、
+[Qwen Audio HTTP API](https://help.aliyun.com/zh/model-studio/qwen-audio-tts-http-api)、
+[Qwen3 HTTP API](https://help.aliyun.com/zh/model-studio/qwen-tts-api)、
+[复刻音色管理](https://help.aliyun.com/zh/model-studio/voice-clone-design-http-api)、
+[设计音色管理](https://help.aliyun.com/zh/model-studio/voice-design-api-references)。
 
 ### Custom endpoint 约束
 

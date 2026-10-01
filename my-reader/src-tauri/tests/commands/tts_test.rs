@@ -51,6 +51,14 @@ fn tts_test_server() -> (
                             body,
                         });
 
+                        if path.ends_with("/services/audio/tts/customization") {
+                            return warp::http::Response::builder().header("content-type", "application/json")
+                                .body(Bytes::from(serde_json::to_vec(&json!({"output": {"voice_list": [
+                                    {"voice": "account-voice", "target_model": "qwen3-tts-vc-2026-01-22", "language": "zh"},
+                                    {"voice": "realtime-voice", "target_model": "qwen3-tts-vc-realtime"}
+                                ]}})).unwrap())).unwrap();
+                        }
+
                         warp::http::Response::builder()
                             .header("content-type", "audio/mpeg")
                             .body(Bytes::from_static(b"ID3\x04\x00\x00"))
@@ -67,6 +75,78 @@ fn tts_test_server() -> (
     });
     let address = address_rx.recv().unwrap();
     (format!("http://{address}"), requests, shutdown_tx, thread)
+}
+
+#[tokio::test]
+async fn qwen_commands_should_offer_three_source_presets_from_core() {
+    let app = TestApp::new();
+    let presets: Value = invoke_ok(&app, "list_qwen_tts_presets", json!({}));
+    assert_eq!(presets.as_array().unwrap().len(), 3);
+    assert_eq!(presets[0]["id"], "tokenPlan");
+    assert_eq!(
+        presets[0]["defaultModel"]["voices"][0]["id"],
+        "longanhuan_v3.6"
+    );
+    assert_eq!(
+        presets[1]["endpoint"],
+        "https://maas.qianwenaiapi.com/api/v1"
+    );
+    assert_eq!(
+        presets[2]["endpoint"],
+        "https://dashscope.aliyuncs.com/api/v1"
+    );
+}
+
+#[tokio::test]
+async fn qwen_commands_should_default_to_token_plan_models_without_account_voice_discovery() {
+    let app = TestApp::new();
+    let models: Value = invoke_ok(&app, "list_qwen_tts_models", json!({}));
+    assert_eq!(models.as_array().unwrap().len(), 1);
+    assert_eq!(models[0]["id"], "qwen-audio-3.0-tts-plus");
+    assert_eq!(models[0]["voiceDiscovery"], false);
+    assert_eq!(models[0]["voices"][0]["id"], "longanhuan_v3.6");
+    assert_eq!(models[0]["audioFormats"], json!(["mp3", "wav", "opus"]));
+}
+
+#[tokio::test]
+async fn qwen_commands_should_discover_matching_account_voices_using_stored_credentials() {
+    let _guard = use_test_backend(MemoryBackend::default());
+    let app = TestApp::new();
+    let (server, requests, shutdown, thread) = tts_test_server();
+    let models: Value = invoke_ok(&app, "list_qwen_tts_models", json!({"endpoint": server}));
+    assert!(models
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|model| model["id"] == "qwen3-tts-vc-2026-01-22"));
+    let config: Value = invoke_ok(
+        &app,
+        "upsert_tts_profile",
+        json!({"input": {
+            "profile": {"id": "qwen-e2e", "name": "Qwen", "kind": "qwen", "endpoint": server,
+                "model": "qwen3-tts-vc-2026-01-22", "options": {"kind": "qwen", "responseFormat": "wav", "instructions": null, "voices": ["account-voice"], "defaultVoice": "account-voice"}},
+            "credential": "qwen-private-key", "clearCredential": false
+        }}),
+    );
+    assert_eq!(config["profiles"][0]["hasCredential"], true);
+    let voices: Value = invoke_ok(
+        &app,
+        "discover_qwen_tts_voices",
+        json!({"input": {"endpoint": server, "model": "qwen3-tts-vc-2026-01-22", "profileId": "qwen-e2e", "credential": null}}),
+    );
+    assert_eq!(voices.as_array().unwrap().len(), 1);
+    assert_eq!(voices[0]["id"], "account-voice");
+    assert_eq!(
+        requests.lock().unwrap()[0].authorization.as_deref(),
+        Some("Bearer qwen-private-key")
+    );
+    assert!(
+        !serde_json::to_string(&read_persisted_config(&app).unwrap())
+            .unwrap()
+            .contains("qwen-private-key")
+    );
+    shutdown.send(()).unwrap();
+    thread.join().unwrap();
 }
 
 #[tokio::test]

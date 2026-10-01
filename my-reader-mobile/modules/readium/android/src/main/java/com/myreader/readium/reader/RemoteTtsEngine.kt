@@ -250,6 +250,14 @@ class RemoteTtsEngine(
     )
     player.setOnPreparedListener {
       if (active !== request) return@setOnPreparedListener
+      try {
+        completion.playbackRate?.let { rate ->
+          it.playbackParams = it.playbackParams.setSpeed(rate.toFloat())
+        }
+      } catch (error: Exception) {
+        fail(request, RemoteTtsError(error.message ?: "Unable to set speech playback rate."))
+        return@setOnPreparedListener
+      }
       request.started = true
       onBuffering(request.key, false)
       listener?.onStart(request.id)

@@ -167,6 +167,7 @@ struct TtsSynthesisCompletionRecord: Record {
   @Field var path: String? = nil
   @Field var mimeType: String? = nil
   @Field var timings: [TtsTimingRecord]? = nil
+  @Field var playbackRate: Double? = nil
   @Field var error: String? = nil
 }
 

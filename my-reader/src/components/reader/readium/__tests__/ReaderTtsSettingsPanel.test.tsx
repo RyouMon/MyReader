@@ -34,6 +34,8 @@ vi.mock("@/hooks/use-overlay-scrollbar", () => ({
 
 vi.mock("@/lib/tauri-api", () => ({
   api: {
+    listQwenTtsModels: vi.fn().mockResolvedValue([]),
+    listQwenTtsPresets: vi.fn().mockResolvedValue([]),
     getTtsConfig: mocks.getTtsConfig,
     setTtsDefaultEngine: mocks.setTtsDefaultEngine,
     setTtsPlaybackPreferences: mocks.setTtsPlaybackPreferences,

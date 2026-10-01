@@ -1,4 +1,5 @@
 import type { Locator, TtsEngineConfig } from "@my-reader/readium"
+import { ttsMaximumPlaybackSpeed } from "@/src/constants/tts"
 import {
   chooseTtsVoiceForLanguage,
   filterTtsVoicesForLanguage,
@@ -180,7 +181,8 @@ export function resolveReaderTtsSelection(
     kind: "provider",
     profile,
     voiceId:
-      (mappedVoiceId && profile.voices.includes(mappedVoiceId)
+      (mappedVoiceId &&
+      (profile.kind === "qwen" || profile.voices.includes(mappedVoiceId))
         ? mappedVoiceId
         : undefined) ??
       profile.defaultVoice ??
@@ -203,7 +205,12 @@ export function buildReaderTtsEngineConfig(
 ): TtsEngineConfig {
   const engineConfig: TtsEngineConfig = {
     kind: selection.kind,
-    speed: config.playback.speed,
+    speed: Math.min(
+      config.playback.speed,
+      ttsMaximumPlaybackSpeed(
+        selection.kind === "provider" ? selection.profile : undefined,
+      ),
+    ),
     pitch: config.playback.pitch,
     highlightColor,
   }

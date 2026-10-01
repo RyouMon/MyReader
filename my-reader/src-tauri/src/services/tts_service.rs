@@ -33,6 +33,7 @@ pub enum TtsEngineSelectionDto {
 #[serde(rename_all = "camelCase")]
 pub enum TtsProviderKindDto {
     OpenAiCompatible,
+    Qwen,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -63,6 +64,53 @@ pub enum TtsProviderOptionsDto {
         #[serde(default)]
         default_voice: Option<String>,
     },
+    Qwen {
+        response_format: TtsAudioFormatDto,
+        instructions: Option<String>,
+        voices: Vec<String>,
+        default_voice: Option<String>,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct QwenTtsModelDto {
+    pub id: String,
+    pub name: String,
+    pub supports_instructions: bool,
+    pub voice_discovery: bool,
+    pub audio_formats: Vec<TtsAudioFormatDto>,
+    pub voices: Vec<TtsVoiceDto>,
+}
+
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct QwenTtsPresetDto {
+    pub id: String,
+    pub endpoint: String,
+    pub default_model: QwenTtsModelDto,
+}
+
+impl From<my_reader_core::models::QwenTtsModel> for QwenTtsModelDto {
+    fn from(model: my_reader_core::models::QwenTtsModel) -> Self {
+        Self {
+            id: model.id,
+            name: model.name,
+            supports_instructions: model.supports_instructions,
+            voice_discovery: model.voice_discovery,
+            audio_formats: model.audio_formats.into_iter().map(Into::into).collect(),
+            voices: model.voices.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscoverQwenTtsVoicesInput {
+    pub endpoint: String,
+    pub model: String,
+    pub profile_id: Option<String>,
+    pub credential: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Type)]
@@ -181,7 +229,7 @@ pub struct TtsSynthesisInput {
     pub cache_policy: TtsCachePolicyDto,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct TtsAudioArtifactDto {
     pub path: String,
@@ -189,6 +237,8 @@ pub struct TtsAudioArtifactDto {
     pub duration_ms: Option<u64>,
     pub timings: Vec<TtsTimingDto>,
     pub cache_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub playback_rate: Option<f64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
@@ -203,6 +253,47 @@ pub struct TtsTimingDto {
 pub struct DesktopTtsService;
 
 impl DesktopTtsService {
+    pub fn qwen_presets() -> Vec<QwenTtsPresetDto> {
+        CoreTtsService::qwen_presets()
+            .into_iter()
+            .map(|preset| QwenTtsPresetDto {
+                id: preset.id,
+                endpoint: preset.endpoint,
+                default_model: preset.default_model.into(),
+            })
+            .collect()
+    }
+
+    pub fn qwen_models(endpoint: Option<&str>) -> Vec<QwenTtsModelDto> {
+        CoreTtsService::qwen_models(endpoint)
+            .into_iter()
+            .map(Into::into)
+            .collect()
+    }
+
+    pub async fn discover_qwen_voices(
+        config_path: &Path,
+        input: DiscoverQwenTtsVoicesInput,
+    ) -> Result<Vec<TtsVoiceDto>, AppError> {
+        let credential = match input.credential.filter(|key| !key.trim().is_empty()) {
+            Some(key) => Some(key),
+            None => input
+                .profile_id
+                .as_deref()
+                .map(|id| resolve_credential(config_path, id))
+                .transpose()?
+                .flatten(),
+        };
+        Ok(CoreTtsService::discover_qwen_voices(
+            &input.endpoint,
+            &input.model,
+            credential.as_deref(),
+        )
+        .await?
+        .into_iter()
+        .map(Into::into)
+        .collect())
+    }
     pub fn get_config(config_path: &Path) -> Result<TtsConfigDto, AppError> {
         config_dto(CoreTtsService::get_config(config_path)?)
     }
@@ -458,6 +549,7 @@ impl From<TtsProviderKindDto> for my_reader_core::models::TtsProviderKind {
     fn from(value: TtsProviderKindDto) -> Self {
         match value {
             TtsProviderKindDto::OpenAiCompatible => Self::OpenAiCompatible,
+            TtsProviderKindDto::Qwen => Self::Qwen,
         }
     }
 }
@@ -466,6 +558,7 @@ impl From<my_reader_core::models::TtsProviderKind> for TtsProviderKindDto {
     fn from(value: my_reader_core::models::TtsProviderKind) -> Self {
         match value {
             my_reader_core::models::TtsProviderKind::OpenAiCompatible => Self::OpenAiCompatible,
+            my_reader_core::models::TtsProviderKind::Qwen => Self::Qwen,
         }
     }
 }
@@ -497,6 +590,17 @@ impl From<my_reader_core::models::TtsAudioFormat> for TtsAudioFormatDto {
 impl From<TtsProviderOptionsDto> for my_reader_core::models::TtsProviderOptions {
     fn from(value: TtsProviderOptionsDto) -> Self {
         match value {
+            TtsProviderOptionsDto::Qwen {
+                response_format,
+                instructions,
+                voices,
+                default_voice,
+            } => Self::Qwen {
+                response_format: response_format.into(),
+                instructions,
+                voices,
+                default_voice,
+            },
             TtsProviderOptionsDto::OpenAiCompatible {
                 response_format,
                 instructions,
@@ -515,6 +619,17 @@ impl From<TtsProviderOptionsDto> for my_reader_core::models::TtsProviderOptions 
 impl From<my_reader_core::models::TtsProviderOptions> for TtsProviderOptionsDto {
     fn from(value: my_reader_core::models::TtsProviderOptions) -> Self {
         match value {
+            my_reader_core::models::TtsProviderOptions::Qwen {
+                response_format,
+                instructions,
+                voices,
+                default_voice,
+            } => Self::Qwen {
+                response_format: response_format.into(),
+                instructions,
+                voices,
+                default_voice,
+            },
             my_reader_core::models::TtsProviderOptions::OpenAiCompatible {
                 response_format,
                 instructions,
@@ -645,6 +760,7 @@ impl From<my_reader_core::models::TtsAudioArtifact> for TtsAudioArtifactDto {
             duration_ms: value.duration_ms,
             timings: value.timings.into_iter().map(Into::into).collect(),
             cache_key: value.cache_key,
+            playback_rate: value.playback_rate,
         }
     }
 }

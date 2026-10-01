@@ -1,6 +1,7 @@
 import { normalizeTtsLanguage } from "@my-reader/tools/reader-tts-language"
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio"
 import * as Speech from "expo-speech"
+import { ttsMaximumPlaybackSpeed } from "@/src/constants/tts"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { type MobileTtsConfig, synthesizeTts } from "@/src/services/core/tts"
@@ -48,6 +49,7 @@ export function useReaderTtsPreview({
   const status = useAudioPlayerStatus(player)
   const abortRef = useRef<AbortController | null>(null)
   const generationRef = useRef(0)
+  const playbackRateRef = useRef(1)
 
   const stop = useCallback(() => {
     generationRef.current += 1
@@ -81,6 +83,7 @@ export function useReaderTtsPreview({
     if (state === "loading" && source && status.isLoaded) {
       const timeout = setTimeout(() => {
         try {
+          player.setPlaybackRate(playbackRateRef.current)
           player.play()
           setState("playing")
         } catch (error) {
@@ -148,7 +151,10 @@ export function useReaderTtsPreview({
           text,
           language: previewLanguage,
           voiceId,
-          speed: config.playback.speed,
+          speed: Math.min(
+            config.playback.speed,
+            ttsMaximumPlaybackSpeed(selectedProfile),
+          ),
           acceptedMimeTypes: PREVIEW_MIME_TYPES,
           cachePolicy: "bypass",
         },
@@ -158,6 +164,7 @@ export function useReaderTtsPreview({
         return
       }
       abortRef.current = null
+      playbackRateRef.current = artifact.playbackRate ?? 1
       setSource(toFileUri(artifact.path))
       setState("loading")
     } catch (error) {

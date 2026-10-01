@@ -594,6 +594,7 @@ export function useReaderTtsSession({
           path: artifact.path,
           mimeType: artifact.mimeType,
           timings: artifact.timings,
+          playbackRate: artifact.playbackRate,
         })
       } catch (error) {
         if (

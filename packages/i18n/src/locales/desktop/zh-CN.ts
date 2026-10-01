@@ -241,7 +241,7 @@ export const desktopZhCN = {
       },
       speech: {
         title: "朗读与语音",
-        description: "选择系统朗读，或管理 OpenAI 兼容的语音服务",
+        description: "选择系统朗读，或管理网络语音服务",
         previewTitle: "试听",
         previewDescription: "使用当前选择的朗读引擎、声音和播放参数。",
         previewAction: "试听",

@@ -18,9 +18,11 @@ import {
   SectionLabel,
 } from "@/src/components"
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import { ttsMaximumPlaybackSpeed } from "@/src/constants/tts"
 import { useThemePalette } from "@/src/design/tokens"
 import {
   getTtsConfig,
+  listTtsVoices,
   type MobileTtsConfig,
   setTtsDefaultEngine,
   setTtsPlayback,
@@ -125,6 +127,7 @@ export default function TtsSettingsScreen() {
   const previewStatus = useAudioPlayerStatus(previewPlayer)
   const previewAbortRef = useRef<AbortController | null>(null)
   const previewGenerationRef = useRef(0)
+  const previewRateRef = useRef(1)
   const systemVoicesLoadedRef = useRef(false)
 
   const stopPreview = useCallback((updateState = true) => {
@@ -164,6 +167,28 @@ export default function TtsSettingsScreen() {
         )
       : undefined
   const selectedEngineKey = config ? engineKey(config) : "system"
+  const [qwenVoices, setQwenVoices] = useState<{
+    profileId: string
+    voices: TtsVoice[]
+  } | null>(null)
+  const qwenProfileId =
+    selectedProfile?.kind === "qwen" ? selectedProfile.id : undefined
+  const qwenRevision = selectedProfile?.revision
+  useEffect(() => {
+    if (!qwenProfileId) return
+    setQwenVoices(null)
+    let active = true
+    void listTtsVoices(qwenProfileId)
+      .then((voices) => {
+        if (active) setQwenVoices({ profileId: qwenProfileId, voices })
+      })
+      .catch(() => {
+        if (active) setQwenVoices(null)
+      })
+    return () => {
+      active = false
+    }
+  }, [qwenProfileId, qwenRevision])
   const selectedEngineLabel =
     selectedProfile?.name ?? t("settings.tts.systemEngine")
   const selectedVoice = config?.voices.find((voice) => {
@@ -179,13 +204,15 @@ export default function TtsSettingsScreen() {
   const availableVoices = useMemo(
     () =>
       selectedProfile
-        ? selectedProfile.voices.map((id) => ({
-            id,
-            name: id,
-            language: "mul",
-          }))
+        ? qwenVoices?.profileId === selectedProfile.id
+          ? qwenVoices.voices
+          : selectedProfile.voices.map((id) => ({
+              id,
+              name: id,
+              language: "mul",
+            }))
         : voices,
-    [selectedProfile, voices],
+    [selectedProfile, voices, qwenVoices],
   )
   const selectedVoiceLabel =
     availableVoices.find((voice) => voice.id === selectedVoiceId)?.name ??
@@ -272,6 +299,7 @@ export default function TtsSettingsScreen() {
     if (previewState === "loading" && previewSource && previewStatus.isLoaded) {
       const timeout = setTimeout(() => {
         try {
+          previewPlayer.setPlaybackRate(previewRateRef.current)
           previewPlayer.play()
           setPreviewState("playing")
         } catch (error) {
@@ -414,7 +442,10 @@ export default function TtsSettingsScreen() {
           text: previewText,
           language: previewLanguage,
           voiceId: selectedVoiceId,
-          speed: config.playback.speed,
+          speed: Math.min(
+            config.playback.speed,
+            ttsMaximumPlaybackSpeed(selectedProfile),
+          ),
           acceptedMimeTypes: PREVIEW_MIME_TYPES,
           cachePolicy: "bypass",
         },
@@ -427,6 +458,7 @@ export default function TtsSettingsScreen() {
         return
       }
       previewAbortRef.current = null
+      previewRateRef.current = artifact.playbackRate ?? 1
       setPreviewSource(toFileUri(artifact.path))
       setPreviewState("loading")
     } catch (error) {
@@ -561,9 +593,12 @@ export default function TtsSettingsScreen() {
         <SectionCard>
           <PlaybackSliderRow
             title={t("settings.tts.speed")}
-            value={config.playback.speed}
+            value={Math.min(
+              config.playback.speed,
+              ttsMaximumPlaybackSpeed(selectedProfile),
+            )}
             minimumValue={0.5}
-            maximumValue={3}
+            maximumValue={ttsMaximumPlaybackSpeed(selectedProfile)}
             step={0.1}
             suffix="×"
             onValueChange={(speed) => updatePlaybackLocally({ speed })}
@@ -593,7 +628,7 @@ export default function TtsSettingsScreen() {
               <ListRow
                 key={profile.id}
                 title={profile.name}
-                detail={`${t("settings.tts.providerKinds.openAiCompatible")} · ${profile.endpoint}`}
+                detail={`${profile.kind === "qwen" ? "Qwen" : t("settings.tts.providerKinds.openAiCompatible")} · ${profile.endpoint}`}
                 value={profile.enabled ? undefined : t("settings.tts.disabled")}
                 isLast={index === config.profiles.length - 1}
                 onPress={() =>

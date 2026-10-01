@@ -60,6 +60,7 @@ export type TtsSynthesisCompletion = {
   path?: string
   mimeType?: string
   timings?: TtsTiming[]
+  playbackRate?: number
   error?: string
 }
 

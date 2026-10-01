@@ -188,6 +188,7 @@ data class TtsSynthesisCompletionRecord(
   @Field val path: String? = null,
   @Field val mimeType: String? = null,
   @Field val timings: List<TtsTimingRecord>? = null,
+  @Field val playbackRate: Double? = null,
   @Field val error: String? = null,
 ) : Record
 

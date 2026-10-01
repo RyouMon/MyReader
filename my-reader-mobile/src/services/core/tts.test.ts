@@ -1,5 +1,8 @@
 import {
   ttsGetConfig,
+  ttsDiscoverQwenVoices,
+  ttsQwenModels,
+  ttsQwenPresets,
   ttsRemoveProfile,
   ttsSynthesize,
   ttsUpsertProfile,
@@ -11,6 +14,9 @@ import {
 } from "../storage/credentials"
 import {
   getTtsConfig,
+  discoverQwenTtsVoices,
+  getQwenTtsModels,
+  getQwenTtsPresets,
   removeTtsProfile,
   synthesizeTts,
   type TtsConfig,
@@ -45,6 +51,9 @@ jest.mock("my-reader-core", () => ({
   libraryReplace: jest.fn(),
   librarySwitch: jest.fn(),
   ttsGetConfig: jest.fn(),
+  ttsDiscoverQwenVoices: jest.fn(),
+  ttsQwenModels: jest.fn(),
+  ttsQwenPresets: jest.fn(),
   ttsListVoices: jest.fn(),
   ttsProbeProvider: jest.fn(),
   ttsProviderCapabilities: jest.fn(),
@@ -86,6 +95,68 @@ const openAiProfile = {
 describe("mobile core TTS", () => {
   beforeEach(() => {
     jest.clearAllMocks()
+  })
+
+  it("uses the shared Core creation presets without duplicating endpoints", () => {
+    jest.mocked(ttsQwenPresets).mockReturnValue([])
+    expect(getQwenTtsPresets()).toEqual([])
+    expect(ttsQwenPresets).toHaveBeenCalledWith()
+  })
+
+  it("delegates endpoint-specific model availability to shared Core", () => {
+    jest.mocked(ttsQwenModels).mockReturnValue([])
+    const endpoint =
+      "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference"
+    expect(getQwenTtsModels(endpoint)).toEqual([])
+    expect(ttsQwenModels).toHaveBeenCalledWith(endpoint)
+  })
+
+  it("discovers Qwen voices using draft credentials without saving a provider", async () => {
+    const controller = new AbortController()
+    jest
+      .mocked(ttsDiscoverQwenVoices)
+      .mockResolvedValue([
+        { id: "account-voice", name: "account-voice", language: "zh" },
+      ])
+    await expect(
+      discoverQwenTtsVoices(
+        {
+          endpoint: "https://dashscope.aliyuncs.com/api/v1",
+          model: "qwen3-tts-vc-2026-01-22",
+          credential: " draft-secret ",
+        },
+        controller.signal,
+      ),
+    ).resolves.toEqual([
+      { id: "account-voice", name: "account-voice", language: "zh" },
+    ])
+    expect(ttsDiscoverQwenVoices).toHaveBeenCalledWith(
+      "https://dashscope.aliyuncs.com/api/v1",
+      "qwen3-tts-vc-2026-01-22",
+      "draft-secret",
+      { signal: controller.signal },
+    )
+    expect(ttsUpsertProfile).not.toHaveBeenCalled()
+    expect(writeTtsCredential).not.toHaveBeenCalled()
+  })
+
+  it("resolves an existing provider credential for voice discovery", async () => {
+    jest.mocked(ttsGetConfig).mockResolvedValue({
+      ...systemConfig,
+      profiles: [{ ...openAiProfile, id: "qwen", kind: "qwen" }],
+    })
+    jest.mocked(readTtsCredential).mockResolvedValue("stored-secret")
+    await discoverQwenTtsVoices({
+      endpoint: "https://dashscope.aliyuncs.com/api/v1",
+      model: "qwen3-tts-vc-2026-01-22",
+      profileId: "qwen",
+    })
+    expect(ttsDiscoverQwenVoices).toHaveBeenCalledWith(
+      "https://dashscope.aliyuncs.com/api/v1",
+      "qwen3-tts-vc-2026-01-22",
+      "stored-secret",
+      undefined,
+    )
   })
 
   it("hydrates only a credential presence flag", async () => {

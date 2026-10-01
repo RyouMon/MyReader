@@ -245,8 +245,7 @@ export const desktopEn = {
       },
       speech: {
         title: "Read Aloud",
-        description:
-          "Use system speech or manage OpenAI-compatible voice services",
+        description: "Use system speech or manage online voice services",
         previewTitle: "Preview",
         previewDescription:
           "Use the currently selected engine, voice, and playback settings.",

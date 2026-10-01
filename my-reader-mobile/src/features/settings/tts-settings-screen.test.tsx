@@ -20,10 +20,23 @@ import {
 } from "@/src/services/core/tts"
 import TtsSettingsScreen from "./tts-settings-screen"
 
+let mockPlaybackRate = 1
 const mockAudioPlayer = {
   pause: jest.fn(),
-  play: jest.fn(),
+  play: jest.fn(() => mockPlaybackRate),
   replace: jest.fn(),
+  // Reject assignment like the native getter-only property, even outside strict mode.
+  get playbackRate() {
+    return mockPlaybackRate
+  },
+  set playbackRate(_rate: number) {
+    throw new TypeError(
+      "Cannot assign to property 'playbackRate' which has only a getter",
+    )
+  },
+  setPlaybackRate: jest.fn((rate: number) => {
+    mockPlaybackRate = rate
+  }),
 }
 const mockUseAudioPlayer = jest.fn((_source: string | null) => mockAudioPlayer)
 const mockSpeechStop = jest.fn().mockResolvedValue(undefined)
@@ -197,6 +210,7 @@ jest.mock("@/tw", () => ({
 describe("TtsSettingsScreen preview", () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockPlaybackRate = 1
     jest.mocked(getTtsConfig).mockResolvedValue(mockProviderConfig)
     jest.mocked(synthesizeTts).mockResolvedValue({
       path: "/tmp/preview.mp3",
@@ -205,7 +219,16 @@ describe("TtsSettingsScreen preview", () => {
     })
   })
 
-  it("previews with the selected provider and default voice", async () => {
+  it.each([
+    undefined,
+    1.5,
+  ])("previews with the selected provider, voice and artifact playback rate %s", async (playbackRate) => {
+    jest.mocked(synthesizeTts).mockResolvedValue({
+      path: "/tmp/preview.mp3",
+      mimeType: "audio/mpeg",
+      timings: [],
+      playbackRate,
+    })
     render(<TtsSettingsScreen />)
     await act(async () => {
       await Promise.resolve()
@@ -235,7 +258,11 @@ describe("TtsSettingsScreen preview", () => {
       ),
     )
     expect(mockAudioPlayer.replace).not.toHaveBeenCalled()
-    await waitFor(() => expect(mockAudioPlayer.play).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(showAlertWithStatusBarRestore).not.toHaveBeenCalled()
+      expect(mockAudioPlayer.play).toHaveBeenCalledTimes(1)
+    })
+    expect(mockAudioPlayer.play).toHaveReturnedWith(playbackRate ?? 1)
     expect(screen.queryByText("settings.tts.volume")).toBeNull()
     expect(screen.queryByText("settings.tts.followText")).toBeNull()
   })

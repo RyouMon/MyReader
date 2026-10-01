@@ -2,6 +2,11 @@ import { Directory, Paths } from "expo-file-system"
 import { randomUUID } from "expo-crypto"
 import {
   ttsGetConfig,
+  ttsQwenModels,
+  ttsQwenPresets,
+  ttsDiscoverQwenVoices,
+  type QwenTtsModel,
+  type QwenTtsPreset,
   ttsListVoices,
   ttsProbeProvider,
   ttsProviderCapabilities,
@@ -80,10 +85,41 @@ export async function getTtsConfig(): Promise<MobileTtsConfig> {
   return hydrateConfig(await ttsGetConfig(appConfigPath))
 }
 
+export function getQwenTtsModels(endpoint?: string): QwenTtsModel[] {
+  return ttsQwenModels(endpoint)
+}
+
+export function getQwenTtsPresets(): QwenTtsPreset[] {
+  return ttsQwenPresets()
+}
+
+export async function discoverQwenTtsVoices(
+  input: {
+    endpoint: string
+    model: string
+    profileId?: string
+    credential?: string
+  },
+  signal?: AbortSignal,
+): Promise<TtsVoice[]> {
+  const credential =
+    input.credential?.trim() ||
+    (input.profileId ? await resolveCredential(input.profileId) : undefined)
+  return ttsDiscoverQwenVoices(
+    input.endpoint,
+    input.model,
+    credential,
+    signal ? { signal } : undefined,
+  )
+}
+
 export async function upsertTtsProfile(
   input: UpsertMobileTtsProfileInput,
 ): Promise<MobileTtsConfig> {
-  if (input.profile.kind !== "openAiCompatible") {
+  if (
+    input.profile.kind !== "openAiCompatible" &&
+    input.profile.kind !== "qwen"
+  ) {
     throw new Error(`TTS_PROVIDER_KIND_UNSUPPORTED: ${input.profile.kind}`)
   }
   const current = await ttsGetConfig(appConfigPath)
@@ -182,6 +218,8 @@ export async function synthesizeTts(
 }
 
 export type {
+  QwenTtsModel,
+  QwenTtsPreset,
   TtsAudioArtifact,
   TtsConfig,
   TtsEngine,

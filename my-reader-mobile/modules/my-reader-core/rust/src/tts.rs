@@ -86,6 +86,76 @@ pub struct TtsVoice {
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
+pub struct QwenTtsModel {
+    pub id: String,
+    pub name: String,
+    pub supports_instructions: bool,
+    pub voice_discovery: bool,
+    pub audio_formats: Vec<String>,
+    pub voices: Vec<TtsVoice>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct QwenTtsPreset {
+    pub id: String,
+    pub endpoint: String,
+    pub default_model: QwenTtsModel,
+}
+
+impl From<my_reader_core::models::QwenTtsModel> for QwenTtsModel {
+    fn from(model: my_reader_core::models::QwenTtsModel) -> Self {
+        Self {
+            id: model.id,
+            name: model.name,
+            supports_instructions: model.supports_instructions,
+            voice_discovery: model.voice_discovery,
+            audio_formats: model
+                .audio_formats
+                .into_iter()
+                .map(|format| format.as_str().into())
+                .collect(),
+            voices: model.voices.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+#[uniffi::export]
+pub fn tts_qwen_presets() -> Vec<QwenTtsPreset> {
+    TtsService::qwen_presets()
+        .into_iter()
+        .map(|preset| QwenTtsPreset {
+            id: preset.id,
+            endpoint: preset.endpoint,
+            default_model: preset.default_model.into(),
+        })
+        .collect()
+}
+
+#[uniffi::export]
+pub fn tts_qwen_models(endpoint: Option<String>) -> Vec<QwenTtsModel> {
+    TtsService::qwen_models(endpoint.as_deref())
+        .into_iter()
+        .map(Into::into)
+        .collect()
+}
+
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn tts_discover_qwen_voices(
+    endpoint: String,
+    model: String,
+    credential: Option<String>,
+) -> Result<Vec<TtsVoice>, CoreFfiError> {
+    Ok(
+        TtsService::discover_qwen_voices(&endpoint, &model, credential.as_deref())
+            .await
+            .map_err(CoreFfiError::from_core)?
+            .into_iter()
+            .map(Into::into)
+            .collect(),
+    )
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
 pub struct TtsSynthesisRequest {
     pub profile_id: String,
     pub text: String,
@@ -104,6 +174,7 @@ pub struct TtsAudioArtifact {
     pub duration_ms: Option<f64>,
     pub timings: Vec<TtsTiming>,
     pub cache_key: Option<String>,
+    pub playback_rate: Option<f64>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -290,12 +361,18 @@ impl TryFrom<TtsEngine> for TtsEngineSelection {
 
 impl From<CoreProviderProfile> for TtsProviderProfile {
     fn from(value: CoreProviderProfile) -> Self {
-        let TtsProviderOptions::OpenAiCompatible {
+        let (TtsProviderOptions::OpenAiCompatible {
             response_format,
             instructions,
             voices,
             default_voice,
-        } = value.options;
+        }
+        | TtsProviderOptions::Qwen {
+            response_format,
+            instructions,
+            voices,
+            default_voice,
+        }) = value.options;
         Self {
             id: value.id,
             name: value.name,
@@ -318,11 +395,23 @@ impl TryFrom<TtsProviderProfile> for CoreProviderProfile {
 
     fn try_from(value: TtsProviderProfile) -> Result<Self, Self::Error> {
         let kind = parse_provider_kind(&value.kind)?;
-        let options = TtsProviderOptions::OpenAiCompatible {
-            response_format: parse_audio_format(value.response_format.as_deref().unwrap_or("mp3"))?,
-            instructions: value.instructions,
-            voices: value.voices,
-            default_voice: value.default_voice,
+        let options = match kind {
+            TtsProviderKind::Qwen => TtsProviderOptions::Qwen {
+                response_format: parse_audio_format(
+                    value.response_format.as_deref().unwrap_or("wav"),
+                )?,
+                instructions: value.instructions,
+                voices: value.voices,
+                default_voice: value.default_voice,
+            },
+            TtsProviderKind::OpenAiCompatible => TtsProviderOptions::OpenAiCompatible {
+                response_format: parse_audio_format(
+                    value.response_format.as_deref().unwrap_or("mp3"),
+                )?,
+                instructions: value.instructions,
+                voices: value.voices,
+                default_voice: value.default_voice,
+            },
         };
         Ok(Self {
             id: value.id,
@@ -463,6 +552,7 @@ impl From<CoreAudioArtifact> for TtsAudioArtifact {
                 })
                 .collect(),
             cache_key: value.cache_key,
+            playback_rate: value.playback_rate,
         }
     }
 }
@@ -470,12 +560,14 @@ impl From<CoreAudioArtifact> for TtsAudioArtifact {
 fn provider_kind(kind: TtsProviderKind) -> &'static str {
     match kind {
         TtsProviderKind::OpenAiCompatible => "openAiCompatible",
+        TtsProviderKind::Qwen => "qwen",
     }
 }
 
 fn parse_provider_kind(value: &str) -> Result<TtsProviderKind, CoreFfiError> {
     match value {
         "openAiCompatible" => Ok(TtsProviderKind::OpenAiCompatible),
+        "qwen" => Ok(TtsProviderKind::Qwen),
         value => Err(invalid(format!("Unsupported TTS provider: {value}"))),
     }
 }

@@ -14,7 +14,10 @@ import {
   View as mockView,
 } from "react-native"
 
-import { upsertTtsProfile } from "@/src/services/core/tts"
+import {
+  upsertTtsProfile,
+  discoverQwenTtsVoices,
+} from "@/src/services/core/tts"
 import TtsProviderProfileScreen from "./tts-provider-profile-screen"
 
 const mockRouterBack = jest.fn()
@@ -102,6 +105,8 @@ jest.mock("@/src/navigation/toolbar-action-helpers", () => ({
 }))
 
 jest.mock("@/src/services/core/tts", () => ({
+  ...jest.requireActual("@/test/fixtures/qwen-tts"),
+  discoverQwenTtsVoices: jest.fn(),
   getTtsConfig: jest.fn(),
   removeTtsProfile: jest.fn(),
   upsertTtsProfile: jest.fn(),
@@ -117,6 +122,124 @@ describe("TtsProviderProfileScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks()
     jest.mocked(upsertTtsProfile).mockResolvedValue({} as never)
+    jest.mocked(discoverQwenTtsVoices).mockResolvedValue([])
+  })
+
+  it.each([
+    [
+      "tokenPlan",
+      "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference",
+      "longanhuan_v3.6",
+    ],
+    ["qianwen", "https://maas.qianwenaiapi.com/api/v1", "longanlingxin"],
+    ["dashscope", "https://dashscope.aliyuncs.com/api/v1", "longanlingxin"],
+  ])("creates the %s source with its own defaults and credential hint", async (id, endpoint, voice) => {
+    render(<TtsProviderProfileScreen />)
+    fireEvent.press(
+      screen.getByRole("button", { name: `qwenTts.sources.${id}.title` }),
+    )
+    expect(screen.getByTestId("tts-provider-endpoint").props.value).toBe(
+      endpoint,
+    )
+    expect(
+      screen.getByTestId("tts-provider-credential").props.placeholder,
+    ).toBe(`qwenTts.sources.${id}.credential`)
+    const header = mockUseScreenHeader.mock.calls.at(-1)?.[0] as {
+      right?: { onPress: () => void }[]
+    }
+    act(() => header.right?.[0]?.onPress())
+    await waitFor(() =>
+      expect(upsertTtsProfile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          profile: expect.objectContaining({
+            kind: "qwen",
+            name: `qwenTts.sources.${id}.title`,
+            endpoint,
+            defaultVoice: voice,
+            model: "qwen-audio-3.0-tts-plus",
+          }),
+        }),
+      ),
+    )
+  })
+
+  it("does not reuse credentials or manual voices when selecting a different source", () => {
+    render(<TtsProviderProfileScreen />)
+    fireEvent.press(
+      screen.getByRole("button", { name: "qwenTts.sources.tokenPlan.title" }),
+    )
+    fireEvent.changeText(
+      screen.getByTestId("tts-provider-credential"),
+      "sk-sp-fixture",
+    )
+    fireEvent.changeText(
+      screen.getByTestId("tts-provider-voices"),
+      "subscription-voice",
+    )
+    const header = mockUseScreenHeader.mock.calls.at(-1)?.[0] as {
+      left?: { onPress: () => void }[]
+    }
+    act(() => header.left?.[0]?.onPress())
+    fireEvent.press(
+      screen.getByRole("button", { name: "qwenTts.sources.qianwen.title" }),
+    )
+    expect(screen.getByTestId("tts-provider-credential").props.value).toBe("")
+    expect(screen.getByTestId("tts-provider-voices").props.value).toBe("")
+    expect(screen.getByText("龙安灵心")).toBeTruthy()
+  })
+
+  it("loads account voices for the selected Qwen model and saves the chosen voice", async () => {
+    jest
+      .mocked(discoverQwenTtsVoices)
+      .mockResolvedValue([
+        { id: "my-cloned-voice", name: "my-cloned-voice", language: "zh" },
+      ])
+    const choose = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions")
+    render(<TtsProviderProfileScreen />)
+    fireEvent.press(
+      screen.getByRole("button", { name: "qwenTts.sources.tokenPlan.title" }),
+    )
+    expect(screen.getByText("龙安欢")).toBeTruthy()
+    expect(screen.getByTestId("tts-provider-endpoint").props.value).toBe(
+      "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference",
+    )
+    fireEvent.changeText(
+      screen.getByTestId("tts-provider-endpoint"),
+      "https://dashscope.aliyuncs.com/api/v1",
+    )
+    choose.mockImplementationOnce((_options, callback) => callback(2))
+    fireEvent.press(screen.getByTestId("tts-provider-model"))
+    expect(screen.queryByText("龙安欢")).toBeNull()
+    fireEvent.changeText(screen.getByTestId("tts-provider-credential"), "key")
+    await waitFor(() =>
+      expect(discoverQwenTtsVoices).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: "qwen3-tts-vc-2026-01-22",
+          credential: "key",
+        }),
+        expect.any(AbortSignal),
+      ),
+    )
+    choose.mockImplementationOnce((_options, callback) => callback(0))
+    fireEvent.press(screen.getByTestId("tts-provider-default-voice"))
+    expect(screen.getByText("my-cloned-voice")).toBeTruthy()
+    const header = mockUseScreenHeader.mock.calls.at(-1)?.[0] as {
+      right?: { onPress: () => void }[]
+    }
+    act(() => header.right?.[0]?.onPress())
+    await waitFor(() =>
+      expect(upsertTtsProfile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          profile: expect.objectContaining({
+            kind: "qwen",
+            model: "qwen3-tts-vc-2026-01-22",
+            responseFormat: "wav",
+            defaultVoice: "my-cloned-voice",
+            voices: ["my-cloned-voice"],
+          }),
+        }),
+      ),
+    )
   })
 
   it("adds a provider through type selection and a dedicated form step", () => {

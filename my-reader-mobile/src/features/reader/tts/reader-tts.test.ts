@@ -27,6 +27,46 @@ function config(overrides: Partial<MobileTtsConfig> = {}): MobileTtsConfig {
 }
 
 describe("reader TTS selection", () => {
+  it("keeps Qwen3 playback within the mobile player's speed range without changing other engines", () => {
+    const fastConfig = config()
+    fastConfig.playback.speed = 3
+    const provider = {
+      id: "qwen",
+      name: "Qwen",
+      kind: "qwen",
+      enabled: true,
+      endpoint: "https://dashscope.aliyuncs.com/api/v1",
+      model: "qwen3-tts-flash",
+      voices: ["Cherry"],
+      revision: 1,
+      hasCredential: true,
+    }
+    expect(
+      buildReaderTtsEngineConfig(
+        fastConfig,
+        { kind: "provider", profile: provider },
+        "zh",
+        "#fff",
+      ).speed,
+    ).toBe(2)
+    expect(
+      buildReaderTtsEngineConfig(
+        fastConfig,
+        {
+          kind: "provider",
+          profile: { ...provider, model: "qwen-audio-3.0-tts-plus" },
+        },
+        "zh",
+        "#fff",
+      ).speed,
+    ).toBe(3)
+    expect(
+      buildReaderTtsEngineConfig(fastConfig, { kind: "system" }, "zh", "#fff")
+        .speed,
+    ).toBe(3)
+    expect(fastConfig.playback.speed).toBe(3)
+  })
+
   it("should prefer an exact language voice and then the global fallback", () => {
     const systemConfig = config({
       voices: [

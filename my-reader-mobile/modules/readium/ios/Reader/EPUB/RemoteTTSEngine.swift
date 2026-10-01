@@ -232,6 +232,10 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
         : URL(fileURLWithPath: path)
       let player = try AVAudioPlayer(contentsOf: url)
       player.delegate = self
+      if let rate = completion.playbackRate {
+        player.enableRate = true
+        player.rate = Float(rate)
+      }
       guard player.prepareToPlay(), player.play() else {
         throw PlaybackError(message: "Unable to start synthesized audio playback.")
       }

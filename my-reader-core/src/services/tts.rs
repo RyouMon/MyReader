@@ -12,9 +12,10 @@ use uuid::Uuid;
 use crate::{
     infrastructure::tts,
     models::{
-        TtsAudioArtifact, TtsCachePolicy, TtsConfig, TtsEngineSelection, TtsPlaybackPreferences,
-        TtsProviderCapabilities, TtsProviderOptions, TtsProviderProfile, TtsSynthesisRequest,
-        TtsVoice, TtsVoiceRef, TTS_CONFIG_SCHEMA_VERSION,
+        QwenTtsModel, QwenTtsPreset, TtsAudioArtifact, TtsCachePolicy, TtsConfig,
+        TtsEngineSelection, TtsPlaybackPreferences, TtsProviderCapabilities, TtsProviderKind,
+        TtsProviderOptions, TtsProviderProfile, TtsSynthesisRequest, TtsVoice, TtsVoiceRef,
+        TTS_CONFIG_SCHEMA_VERSION,
     },
     CoreError,
 };
@@ -35,6 +36,22 @@ static SYNTHESIS_LOCKS: OnceLock<Mutex<HashMap<String, Weak<Mutex<()>>>>> = Once
 pub struct TtsService;
 
 impl TtsService {
+    pub fn qwen_presets() -> Vec<QwenTtsPreset> {
+        tts::qwen::presets()
+    }
+
+    pub fn qwen_models(endpoint: Option<&str>) -> Vec<QwenTtsModel> {
+        tts::qwen::models_for_endpoint(endpoint)
+    }
+
+    pub async fn discover_qwen_voices(
+        endpoint: &str,
+        model: &str,
+        credential: Option<&str>,
+    ) -> Result<Vec<TtsVoice>, CoreError> {
+        tts::qwen::discover_voices(endpoint, model, credential).await
+    }
+
     pub fn get_config(config_path: &Path) -> Result<TtsConfig, CoreError> {
         Ok(ConfigService::load_or_initialize(config_path, None)?.tts)
     }
@@ -47,6 +64,12 @@ impl TtsService {
         let profile_id = profile.id.clone();
         let configured_voice_ids = configured_voice_ids(&profile);
         let state = ConfigService::mutate_config(config_path, move |state| {
+            let retains_discovered_voices = profile.kind == TtsProviderKind::Qwen
+                && state.tts.profiles.iter().any(|existing| {
+                    existing.id == profile_id
+                        && existing.kind == profile.kind
+                        && existing.model == profile.model
+                });
             if let Some(existing) = state
                 .tts
                 .profiles
@@ -64,14 +87,15 @@ impl TtsService {
                 state.tts.profiles.push(profile);
             }
             state.tts.voice_by_language.retain(|_, voice| {
-                !matches!(
-                    voice,
-                    TtsVoiceRef::Provider {
-                        profile_id: selected_profile_id,
-                        voice_id,
-                    } if selected_profile_id == &profile_id
-                        && !configured_voice_ids.contains(voice_id)
-                )
+                retains_discovered_voices
+                    || !matches!(
+                        voice,
+                        TtsVoiceRef::Provider {
+                            profile_id: selected_profile_id,
+                            voice_id,
+                        } if selected_profile_id == &profile_id
+                            && !configured_voice_ids.contains(voice_id)
+                    )
             });
             if matches!(
                 &state.tts.default_engine,
@@ -202,6 +226,29 @@ impl TtsService {
         let config = Self::get_config(config_path)?;
         let profile = find_enabled_profile(&config, &request.profile_id)?;
         validate_request_for_profile(profile, &request)?;
+        let rate = if profile.kind == TtsProviderKind::Qwen {
+            let requested = request.speed.unwrap_or(1.0);
+            let synthesized = if tts::capabilities(profile).synthesis_rate {
+                requested.clamp(0.5, 2.0)
+            } else {
+                1.0
+            };
+            Some(requested / synthesized)
+        } else {
+            None
+        };
+        let mut artifact =
+            Self::synthesize_part(profile, cache_directory, request, credential).await?;
+        artifact.playback_rate = rate;
+        Ok(artifact)
+    }
+
+    async fn synthesize_part(
+        profile: &TtsProviderProfile,
+        cache_directory: &Path,
+        request: TtsSynthesisRequest,
+        credential: Option<&str>,
+    ) -> Result<TtsAudioArtifact, CoreError> {
         let cache_key = synthesis_cache_key(profile, &request)?;
 
         if request.cache_policy == TtsCachePolicy::Use {
@@ -237,6 +284,7 @@ impl TtsService {
             duration_ms: None,
             timings: Vec::new(),
             cache_key: artifact_cache_key,
+            playback_rate: None,
         })
     }
 }
@@ -297,6 +345,7 @@ pub(crate) fn validate_tts_config(config: &TtsConfig) -> Result<(), CoreError> {
 }
 
 fn normalize_profile(profile: &mut TtsProviderProfile) -> Result<(), CoreError> {
+    let qwen = profile.kind == TtsProviderKind::Qwen;
     profile.id = if profile.id.trim().is_empty() {
         Uuid::new_v4().to_string()
     } else {
@@ -304,26 +353,42 @@ fn normalize_profile(profile: &mut TtsProviderProfile) -> Result<(), CoreError> 
     };
     profile.name = profile.name.trim().to_owned();
     if profile.name.is_empty() {
-        profile.name = "OpenAI".into();
+        profile.name = if qwen { "Qwen" } else { "OpenAI" }.into();
     }
     profile.endpoint = profile.endpoint.trim().trim_end_matches('/').to_owned();
     if profile.endpoint.is_empty() {
-        profile.endpoint = "https://api.openai.com/v1".into();
+        profile.endpoint = if qwen {
+            tts::qwen::DEFAULT_ENDPOINT
+        } else {
+            "https://api.openai.com/v1"
+        }
+        .into();
     }
     profile.model = normalize_optional(profile.model.take());
     profile.credential_reference = normalize_optional(profile.credential_reference.take());
-    profile
-        .model
-        .get_or_insert_with(|| "gpt-4o-mini-tts".into());
+    profile.model.get_or_insert_with(|| {
+        if qwen {
+            tts::qwen::DEFAULT_MODEL
+        } else {
+            "gpt-4o-mini-tts"
+        }
+        .into()
+    });
     profile
         .credential_reference
         .get_or_insert_with(|| format!("tts:{}:api-key", profile.id));
-    let TtsProviderOptions::OpenAiCompatible {
+    let (TtsProviderOptions::OpenAiCompatible {
         instructions,
         voices,
         default_voice,
         ..
-    } = &mut profile.options;
+    }
+    | TtsProviderOptions::Qwen {
+        instructions,
+        voices,
+        default_voice,
+        ..
+    }) = &mut profile.options;
     *instructions = normalize_optional(instructions.take());
     let mut normalized_voices = Vec::new();
     for voice in std::mem::take(voices) {
@@ -334,23 +399,33 @@ fn normalize_profile(profile: &mut TtsProviderProfile) -> Result<(), CoreError> 
     }
     *voices = normalized_voices;
     *default_voice = normalize_optional(default_voice.take());
+    if qwen {
+        let model = tts::qwen::model(
+            profile.model.as_deref().unwrap_or_default(),
+            &profile.endpoint,
+        )?;
+        for voice in model.voices {
+            if !voices.contains(&voice.id) {
+                voices.push(voice.id);
+            }
+        }
+        if default_voice.is_none() {
+            *default_voice = voices.first().cloned();
+        }
+    }
     profile.revision = profile.revision.max(1);
     validate_profile(profile)?;
     validate_configured_voices(profile)
 }
 
 fn validate_configured_voices(profile: &TtsProviderProfile) -> Result<(), CoreError> {
-    let TtsProviderOptions::OpenAiCompatible {
-        voices,
-        default_voice,
-        ..
-    } = &profile.options;
+    let voices = profile.options.voices();
+    let default_voice = profile.options.default_voice();
     if voices.is_empty() {
         return Err(tts_error("configuration", "TTS_VOICES_REQUIRED"));
     }
-    let default_voice = default_voice
-        .as_deref()
-        .ok_or_else(|| tts_error("configuration", "TTS_DEFAULT_VOICE_REQUIRED"))?;
+    let default_voice =
+        default_voice.ok_or_else(|| tts_error("configuration", "TTS_DEFAULT_VOICE_REQUIRED"))?;
     if !voices.iter().any(|voice| voice == default_voice) {
         return Err(tts_error(
             "configuration",
@@ -361,8 +436,7 @@ fn validate_configured_voices(profile: &TtsProviderProfile) -> Result<(), CoreEr
 }
 
 fn configured_voice_ids(profile: &TtsProviderProfile) -> HashSet<String> {
-    let TtsProviderOptions::OpenAiCompatible { voices, .. } = &profile.options;
-    voices.iter().cloned().collect()
+    profile.options.voices().iter().cloned().collect()
 }
 
 fn validate_profile(profile: &TtsProviderProfile) -> Result<(), CoreError> {
@@ -377,7 +451,9 @@ fn validate_profile(profile: &TtsProviderProfile) -> Result<(), CoreError> {
     }
     let endpoint = Url::parse(profile.endpoint.trim())
         .map_err(|_| tts_error("configuration", "INVALID_TTS_ENDPOINT"))?;
-    if endpoint.scheme() != "http" && endpoint.scheme() != "https" {
+    if !matches!(endpoint.scheme(), "http" | "https")
+        && !(profile.kind == TtsProviderKind::Qwen && matches!(endpoint.scheme(), "ws" | "wss"))
+    {
         return Err(tts_error("configuration", "INVALID_TTS_ENDPOINT_SCHEME"));
     }
     if endpoint.host_str().is_none()
@@ -388,6 +464,9 @@ fn validate_profile(profile: &TtsProviderProfile) -> Result<(), CoreError> {
     }
     if profile.model.as_deref().is_none_or(str::is_empty) {
         return Err(tts_error("configuration", "TTS_MODEL_REQUIRED"));
+    }
+    if profile.kind == TtsProviderKind::Qwen {
+        tts::qwen::validate_profile(profile)?;
     }
     Ok(())
 }
@@ -431,7 +510,9 @@ fn validate_request_for_profile(
     profile: &TtsProviderProfile,
     request: &TtsSynthesisRequest,
 ) -> Result<(), CoreError> {
-    if !configured_voice_ids(profile).contains(&request.voice_id) {
+    if profile.kind != TtsProviderKind::Qwen
+        && !configured_voice_ids(profile).contains(&request.voice_id)
+    {
         return Err(tts_error("invalid_request", "TTS_VOICE_NOT_CONFIGURED"));
     }
     let capabilities = tts::capabilities(profile);
@@ -528,6 +609,7 @@ async fn cached_artifact(
                 duration_ms: None,
                 timings: Vec::new(),
                 cache_key: Some(cache_key.into()),
+                playback_rate: None,
             }));
         }
     }
@@ -681,6 +763,601 @@ mod tests {
 
     fn request_text(request: &[u8]) -> String {
         String::from_utf8_lossy(request).into_owned()
+    }
+
+    fn qwen_profile(endpoint: String, model: &str, voice: &str) -> TtsProviderProfile {
+        TtsProviderProfile {
+            id: "qwen".into(),
+            name: "Qwen".into(),
+            kind: TtsProviderKind::Qwen,
+            enabled: true,
+            endpoint,
+            model: Some(model.into()),
+            credential_reference: Some("tts:qwen:api-key".into()),
+            options: TtsProviderOptions::Qwen {
+                response_format: TtsAudioFormat::Wav,
+                instructions: None,
+                voices: vec![voice.into()],
+                default_voice: Some(voice.into()),
+            },
+            revision: 1,
+        }
+    }
+
+    #[tokio::test]
+    async fn qwen_websocket_synthesis_returns_completed_audio_and_reuses_cache() {
+        use futures_util::{SinkExt, StreamExt};
+        use tokio_tungstenite::tungstenite::{
+            handshake::server::{Request, Response},
+            Message,
+        };
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let endpoint = format!(
+            "ws://{}/api-ws/v1/inference",
+            listener.local_addr().unwrap()
+        );
+        let audio = b"RIFF\x10\x00\x00\x00WAVEfmt test";
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut socket =
+                tokio_tungstenite::accept_hdr_async(stream, |req: &Request, res: Response| {
+                    assert_eq!(req.uri().path(), "/api-ws/v1/inference");
+                    assert_eq!(req.headers()["authorization"], "Bearer private-key");
+                    Ok(res)
+                })
+                .await
+                .unwrap();
+            let start: Value =
+                serde_json::from_str(socket.next().await.unwrap().unwrap().to_text().unwrap())
+                    .unwrap();
+            assert_eq!(start["header"]["action"], "run-task");
+            assert_eq!(start["header"]["streaming"], "duplex");
+            assert_eq!(start["payload"]["model"], "qwen-audio-3.0-tts-plus");
+            assert_eq!(start["payload"]["parameters"]["voice"], "longanhuan_v3.6");
+            assert_eq!(start["payload"]["parameters"]["format"], "wav");
+            assert_eq!(start["payload"]["parameters"]["rate"], 1.5);
+            assert_eq!(
+                start["payload"]["parameters"]["instruction"],
+                "Speak calmly"
+            );
+            let task_id = &start["header"]["task_id"];
+            socket.send(Message::text(serde_json::json!({"header":{"event":"task-started","task_id":task_id},"payload":{}}).to_string())).await.unwrap();
+            let text: Value =
+                serde_json::from_str(socket.next().await.unwrap().unwrap().to_text().unwrap())
+                    .unwrap();
+            assert_eq!(text["header"]["action"], "continue-task");
+            assert_eq!(text["header"]["task_id"], *task_id);
+            assert_eq!(text["payload"]["input"]["text"], "你好，Hello.");
+            let finish: Value =
+                serde_json::from_str(socket.next().await.unwrap().unwrap().to_text().unwrap())
+                    .unwrap();
+            assert_eq!(finish["header"]["action"], "finish-task");
+            assert_eq!(finish["header"]["task_id"], *task_id);
+            socket
+                .send(Message::binary(audio[..7].to_vec()))
+                .await
+                .unwrap();
+            socket
+                .send(Message::binary(audio[7..].to_vec()))
+                .await
+                .unwrap();
+            socket.send(Message::text(serde_json::json!({"header":{"event":"task-finished","task_id":task_id},"payload":{}}).to_string())).await.unwrap();
+        });
+        let dir = tempfile::tempdir().unwrap();
+        let config_path = dir.path().join("config.json");
+        let mut profile = qwen_profile(endpoint, "qwen-audio-3.0-tts-plus", "longanhuan_v3.6");
+        if let TtsProviderOptions::Qwen { instructions, .. } = &mut profile.options {
+            *instructions = Some("Speak calmly".into());
+        }
+        TtsService::upsert_profile(&config_path, profile).unwrap();
+        let mut input = request("qwen", "audio/wav");
+        input.text = "你好，Hello.".into();
+        input.voice_id = "longanhuan_v3.6".into();
+        input.speed = Some(1.5);
+        let artifact =
+            TtsService::synthesize(&config_path, dir.path(), input.clone(), Some("private-key"))
+                .await
+                .unwrap();
+        assert_eq!(std::fs::read(&artifact.path).unwrap(), audio);
+        assert_eq!(artifact.mime_type, "audio/wav");
+        server.await.unwrap();
+        assert_eq!(
+            artifact,
+            TtsService::synthesize(&config_path, dir.path(), input, Some("private-key"))
+                .await
+                .unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn qwen_websocket_does_not_cache_failed_or_incomplete_audio() {
+        use futures_util::{SinkExt, StreamExt};
+        use tokio_tungstenite::tungstenite::Message;
+
+        for fail in [true, false] {
+            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let endpoint = format!(
+                "ws://{}/api-ws/v1/inference",
+                listener.local_addr().unwrap()
+            );
+            let server = tokio::spawn(async move {
+                let (stream, _) = listener.accept().await.unwrap();
+                let mut socket = tokio_tungstenite::accept_async(stream).await.unwrap();
+                let start: Value =
+                    serde_json::from_str(socket.next().await.unwrap().unwrap().to_text().unwrap())
+                        .unwrap();
+                let id = &start["header"]["task_id"];
+                socket
+                    .send(Message::text(
+                        serde_json::json!({"header":{"event":"task-started","task_id":id}})
+                            .to_string(),
+                    ))
+                    .await
+                    .unwrap();
+                socket.next().await.unwrap().unwrap();
+                socket.next().await.unwrap().unwrap();
+                socket
+                    .send(Message::binary(
+                        b"RIFF\x10\x00\x00\x00WAVEfmt partial".to_vec(),
+                    ))
+                    .await
+                    .unwrap();
+                if fail {
+                    socket.send(Message::text(serde_json::json!({"header":{"event":"task-failed","task_id":id,
+                        "error_code":"InvalidParameter","error_message":"private-key and private book text"}}).to_string())).await.unwrap();
+                } else {
+                    socket.close(None).await.unwrap();
+                }
+            });
+            let dir = tempfile::tempdir().unwrap();
+            let config_path = dir.path().join("config.json");
+            let cache = dir.path().join("audio");
+            TtsService::upsert_profile(
+                &config_path,
+                qwen_profile(endpoint, "qwen-audio-3.0-tts-plus", "reader-voice"),
+            )
+            .unwrap();
+            let error = TtsService::synthesize(
+                &config_path,
+                &cache,
+                request("qwen", "audio/wav"),
+                Some("private-key"),
+            )
+            .await
+            .unwrap_err()
+            .to_string();
+            assert!(error.contains(if fail {
+                "QWEN_InvalidParameter"
+            } else {
+                "QWEN_TASK_INTERRUPTED"
+            }));
+            assert!(!error.contains("private-key"));
+            assert!(!error.contains("private book text"));
+            assert!(!cache.exists());
+            server.await.unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn qwen_websocket_cancellation_closes_connection_without_publishing_audio() {
+        use futures_util::{SinkExt, StreamExt};
+        use tokio_tungstenite::tungstenite::Message;
+
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let endpoint = format!(
+            "ws://{}/api-ws/v1/inference",
+            listener.local_addr().unwrap()
+        );
+        let (ready, waiting) = tokio::sync::oneshot::channel();
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut socket = tokio_tungstenite::accept_async(stream).await.unwrap();
+            let start: Value =
+                serde_json::from_str(socket.next().await.unwrap().unwrap().to_text().unwrap())
+                    .unwrap();
+            socket.send(Message::text(serde_json::json!({"header":{"event":"task-started","task_id":start["header"]["task_id"]}}).to_string())).await.unwrap();
+            socket.next().await.unwrap().unwrap();
+            socket.next().await.unwrap().unwrap();
+            socket
+                .send(Message::binary(
+                    b"RIFF\x10\x00\x00\x00WAVEfmt partial".to_vec(),
+                ))
+                .await
+                .unwrap();
+            ready.send(()).unwrap();
+            let closed = tokio::time::timeout(std::time::Duration::from_secs(2), socket.next())
+                .await
+                .unwrap();
+            assert!(!matches!(
+                closed,
+                Some(Ok(Message::Text(_) | Message::Binary(_)))
+            ));
+        });
+        let dir = tempfile::tempdir().unwrap();
+        let config_path = dir.path().join("config.json");
+        let cache = dir.path().join("audio");
+        TtsService::upsert_profile(
+            &config_path,
+            qwen_profile(endpoint, "qwen-audio-3.0-tts-plus", "reader-voice"),
+        )
+        .unwrap();
+        let audio_path = cache.clone();
+        let client = tokio::spawn(async move {
+            TtsService::synthesize(
+                &config_path,
+                &audio_path,
+                request("qwen", "audio/wav"),
+                Some("private-key"),
+            )
+            .await
+        });
+        waiting.await.unwrap();
+        client.abort();
+        assert!(client.await.unwrap_err().is_cancelled());
+        server.await.unwrap();
+        assert!(!cache.exists());
+    }
+
+    #[test]
+    fn qwen_creation_presets_provide_valid_independent_source_defaults() {
+        let presets = TtsService::qwen_presets();
+        let expected = [
+            (
+                "tokenPlan",
+                "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference",
+                "longanhuan_v3.6",
+            ),
+            (
+                "qianwen",
+                "https://maas.qianwenaiapi.com/api/v1",
+                "longanlingxin",
+            ),
+            (
+                "dashscope",
+                "https://dashscope.aliyuncs.com/api/v1",
+                "longanlingxin",
+            ),
+        ];
+        assert_eq!(presets.len(), expected.len());
+        let dir = tempfile::tempdir().unwrap();
+        let config_path = dir.path().join("config.json");
+        for (preset, (id, endpoint, voice)) in presets.into_iter().zip(expected) {
+            assert_eq!(
+                (preset.id.as_str(), preset.endpoint.as_str()),
+                (id, endpoint)
+            );
+            assert_eq!(preset.default_model.voices[0].id, voice);
+            assert_eq!(preset.default_model.voice_discovery, id != "tokenPlan");
+            let mut profile = qwen_profile(preset.endpoint, &preset.default_model.id, voice);
+            profile.id = id.into();
+            profile.credential_reference = None;
+            TtsService::upsert_profile(&config_path, profile).unwrap();
+        }
+        let config = TtsService::get_config(&config_path).unwrap();
+        assert_eq!(config.profiles.len(), 3);
+        for profile in config.profiles {
+            assert_eq!(profile.kind, TtsProviderKind::Qwen);
+            assert_eq!(
+                profile.credential_reference,
+                Some(format!("tts:{}:api-key", profile.id))
+            );
+        }
+    }
+
+    #[test]
+    fn qwen_defaults_use_the_token_plan_catalog_and_documented_endpoint() {
+        let models = TtsService::qwen_models(None);
+        assert_eq!(models.len(), 1);
+        assert_eq!(models[0].id, "qwen-audio-3.0-tts-plus");
+        assert!(!models[0].voice_discovery);
+        assert_eq!(models[0].voices[0].id, "longanhuan_v3.6");
+        let dir = tempfile::tempdir().unwrap();
+        let config = TtsService::upsert_profile(
+            &dir.path().join("config.json"),
+            qwen_profile("".into(), "qwen-audio-3.0-tts-plus", "longanhuan_v3.6"),
+        )
+        .unwrap();
+        assert_eq!(
+            config.profiles[0].endpoint,
+            "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference"
+        );
+    }
+
+    #[tokio::test]
+    async fn qwen_websocket_timeout_closes_the_request_without_caching_partial_audio() {
+        use futures_util::{SinkExt, StreamExt};
+        use tokio_tungstenite::tungstenite::Message;
+
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let endpoint = format!(
+            "ws://{}/api-ws/v1/inference",
+            listener.local_addr().unwrap()
+        );
+        let (ready, waiting) = tokio::sync::oneshot::channel();
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut socket = tokio_tungstenite::accept_async(stream).await.unwrap();
+            let start: Value =
+                serde_json::from_str(socket.next().await.unwrap().unwrap().to_text().unwrap())
+                    .unwrap();
+            socket.send(Message::text(serde_json::json!({"header":{"event":"task-started","task_id":start["header"]["task_id"]}}).to_string())).await.unwrap();
+            socket.next().await.unwrap().unwrap();
+            socket.next().await.unwrap().unwrap();
+            ready.send(()).unwrap();
+            let closed = socket.next().await;
+            assert!(!matches!(
+                closed,
+                Some(Ok(Message::Text(_) | Message::Binary(_)))
+            ));
+        });
+        let dir = tempfile::tempdir().unwrap();
+        let config_path = dir.path().join("config.json");
+        let cache = dir.path().join("audio");
+        TtsService::upsert_profile(
+            &config_path,
+            qwen_profile(endpoint, "qwen-audio-3.0-tts-plus", "reader-voice"),
+        )
+        .unwrap();
+        let audio_path = cache.clone();
+        let client = tokio::spawn(async move {
+            TtsService::synthesize(
+                &config_path,
+                &audio_path,
+                request("qwen", "audio/wav"),
+                Some("private-key"),
+            )
+            .await
+        });
+        waiting.await.unwrap();
+        tokio::time::pause();
+        tokio::time::advance(std::time::Duration::from_secs(46)).await;
+        assert!(client
+            .await
+            .unwrap()
+            .unwrap_err()
+            .to_string()
+            .contains("timeout:TTS_REQUEST_TIMEOUT"));
+        server.await.unwrap();
+        assert!(!cache.exists());
+    }
+
+    #[tokio::test]
+    async fn qwen_token_plan_does_not_send_subscription_credentials_to_standard_http_apis() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.json");
+        let profile = qwen_profile(
+            "http://127.0.0.1:9/api/v1".into(),
+            "qwen-audio-3.0-tts-plus",
+            "reader-voice",
+        );
+        TtsService::upsert_profile(&path, profile.clone()).unwrap();
+        let error = TtsService::synthesize(
+            &path,
+            dir.path(),
+            request("qwen", "audio/wav"),
+            Some("sk-sp-fixture"),
+        )
+        .await
+        .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("QWEN_TOKEN_PLAN_WEBSOCKET_REQUIRED"));
+        let error = TtsService::discover_qwen_voices(
+            &profile.endpoint,
+            profile.model.as_deref().unwrap(),
+            Some("sk-sp-fixture"),
+        )
+        .await
+        .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("QWEN_TOKEN_PLAN_WEBSOCKET_REQUIRED"));
+        let voices = TtsService::discover_qwen_voices(
+            tts::qwen::DEFAULT_ENDPOINT,
+            "qwen-audio-3.0-tts-plus",
+            Some("sk-sp-fixture"),
+        )
+        .await
+        .unwrap();
+        assert_eq!(voices[0].id, "longanhuan_v3.6");
+    }
+
+    #[tokio::test]
+    async fn qwen_models_use_native_protocol_and_download_audio_without_credentials() {
+        for model in TtsService::qwen_models(Some("https://dashscope.aliyuncs.com/api/v1")) {
+            let voice = model
+                .voices
+                .first()
+                .map(|v| v.id.as_str())
+                .unwrap_or("my-account-voice");
+            let (audio_endpoint, audio_server) = test_server(vec![response(
+                "audio/wav",
+                b"RIFF\x10\x00\x00\x00WAVEfmt test",
+            )])
+            .await;
+            let json = serde_json::json!({"output": {"audio": {"url": format!("{audio_endpoint}/signed.wav")}}});
+            let (endpoint, server) = test_server(vec![response(
+                "application/json",
+                &serde_json::to_vec(&json).unwrap(),
+            )])
+            .await;
+            let dir = tempfile::tempdir().unwrap();
+            let config_path = dir.path().join("config.json");
+            let mut profile = qwen_profile(endpoint, &model.id, voice);
+            if model.supports_instructions {
+                if let TtsProviderOptions::Qwen { instructions, .. } = &mut profile.options {
+                    *instructions = Some("Speak calmly".into());
+                }
+            }
+            TtsService::upsert_profile(&config_path, profile).unwrap();
+            let mut input = request("qwen", "audio/wav");
+            input.text = "你好，Hello.".into();
+            input.voice_id = voice.into();
+            input.speed = Some(3.0);
+            let artifact = TtsService::synthesize(
+                &config_path,
+                dir.path(),
+                input.clone(),
+                Some("private-key"),
+            )
+            .await
+            .unwrap();
+            assert_eq!(
+                artifact,
+                TtsService::synthesize(&config_path, dir.path(), input, Some("private-key"))
+                    .await
+                    .unwrap()
+            );
+            let requests = server.await.unwrap();
+            let body = request_body(&requests[0]);
+            assert_eq!(body["model"], model.id);
+            assert_eq!(body["input"]["voice"], voice);
+            assert_eq!(body["input"]["text"], "你好，Hello.");
+            let audio_plus = model.id == tts::qwen::DEFAULT_MODEL;
+            let path = if audio_plus {
+                "/api/v1/services/audio/tts/SpeechSynthesizer"
+            } else {
+                "/api/v1/services/aigc/multimodal-generation/generation"
+            };
+            assert!(request_text(&requests[0]).starts_with(&format!("POST {path} HTTP/1.1")));
+            if audio_plus {
+                assert_eq!(body["input"]["format"], "wav");
+                assert_eq!(body["input"]["rate"], 2.0);
+                assert_eq!(artifact.playback_rate, Some(1.5));
+            } else {
+                assert_eq!(body["input"]["language_type"], "Auto");
+                assert!(body["input"].get("rate").is_none());
+                assert_eq!(artifact.playback_rate, Some(3.0));
+            }
+            if model.supports_instructions {
+                assert_eq!(
+                    body["input"][if audio_plus {
+                        "instruction"
+                    } else {
+                        "instructions"
+                    }],
+                    "Speak calmly"
+                );
+            }
+            let downloads = audio_server.await.unwrap();
+            assert!(!request_text(&downloads[0])
+                .to_lowercase()
+                .contains("authorization"));
+            assert!(Path::new(&artifact.path).is_file());
+            assert!(!std::fs::read_to_string(config_path)
+                .unwrap()
+                .contains("private-key"));
+        }
+    }
+
+    #[tokio::test]
+    async fn qwen_discovers_all_account_pages_and_filters_by_exact_target_model() {
+        for (model, api_model) in [
+            ("qwen3-tts-vc-2026-01-22", "qwen-voice-enrollment"),
+            ("qwen3-tts-vd-2026-01-26", "qwen-voice-design"),
+        ] {
+            let mut entries = (0..99).map(|index| serde_json::json!({"voice": format!("voice-{index}"), "target_model": model, "language": "zh"})).collect::<Vec<_>>();
+            entries.push(serde_json::json!({"voice": "realtime-only", "target_model": "qwen3-tts-vc-realtime"}));
+            let pages = [
+                serde_json::json!({"output": {"voice_list": entries, "total_count": 101}}),
+                serde_json::json!({"output": {"voice_list": [{"voice": "new-voice", "target_model": model}], "total_count": 101}}),
+            ];
+            let (endpoint, server) = test_server(
+                pages
+                    .iter()
+                    .map(|page| response("application/json", &serde_json::to_vec(page).unwrap()))
+                    .collect(),
+            )
+            .await;
+            let voices = TtsService::discover_qwen_voices(&endpoint, model, Some("key"))
+                .await
+                .unwrap();
+            assert_eq!(voices.len(), 100);
+            assert_eq!(voices.last().unwrap().id, "new-voice");
+            assert!(!voices.iter().any(|voice| voice.id == "realtime-only"));
+            for (page, request) in server.await.unwrap().iter().enumerate() {
+                assert!(request_text(request)
+                    .starts_with("POST /api/v1/services/audio/tts/customization HTTP/1.1"));
+                let body = request_body(request);
+                assert_eq!(body["model"], api_model);
+                assert_eq!(body["input"]["action"], "list");
+                assert_eq!(body["input"]["page_index"], page);
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn qwen_audio_discovery_includes_only_ready_voices_for_selected_model() {
+        let model = tts::qwen::DEFAULT_MODEL;
+        let id = format!("{model}-reader-1234");
+        let body = serde_json::json!({"output": {"voice_list": [
+            {"voice_id": id, "status": "OK"},
+            {"voice_id": format!("{model}-pending"), "status": "DEPLOYING"},
+            {"voice_id": "qwen-audio-3.0-tts-flash-other", "status": "OK"}
+        ]}});
+        let (endpoint, server) = test_server(vec![response(
+            "application/json",
+            &serde_json::to_vec(&body).unwrap(),
+        )])
+        .await;
+        let voices = TtsService::discover_qwen_voices(&endpoint, model, Some("key"))
+            .await
+            .unwrap();
+        assert_eq!(voices.len(), 3);
+        assert_eq!(voices.last().unwrap().id, id);
+        let body = request_body(&server.await.unwrap()[0]);
+        assert_eq!(body["model"], "voice-enrollment");
+        assert_eq!(body["input"]["action"], "list_voice");
+    }
+
+    #[tokio::test]
+    async fn qwen_discovery_surfaces_provider_errors_without_echoing_secrets_or_text() {
+        let body = br#"{"code":"InvalidApiKey","message":"private text and secret","request_id":"request-1"}"#;
+        let (endpoint, server) = test_server(vec![response("application/json", body)]).await;
+        let error =
+            TtsService::discover_qwen_voices(&endpoint, "qwen3-tts-vc-2026-01-22", Some("key"))
+                .await
+                .unwrap_err()
+                .to_string();
+        assert!(error.contains("InvalidApiKey"));
+        assert!(error.contains("request-1"));
+        assert!(!error.contains("private"));
+        server.await.unwrap();
+    }
+
+    #[test]
+    fn qwen_accepts_new_voice_ids_without_a_catalog_update_and_rejects_incompatible_settings() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.json");
+        let mut profile = qwen_profile(
+            "https://dashscope.aliyuncs.com/api/v1".into(),
+            "qwen3-tts-flash",
+            "future-official-voice",
+        );
+        let config = TtsService::upsert_profile(&path, profile.clone()).unwrap();
+        assert_eq!(
+            config.profiles[0].options.default_voice(),
+            Some("future-official-voice")
+        );
+        let mut input = request("qwen", "audio/wav");
+        input.voice_id = "freshly-discovered-account-voice".into();
+        assert!(validate_request_for_profile(&profile, &input).is_ok());
+        input.text = "中".repeat(601);
+        assert!(validate_request_for_profile(&profile, &input)
+            .unwrap_err()
+            .to_string()
+            .contains("TTS_TEXT_TOO_LONG"));
+        if let TtsProviderOptions::Qwen {
+            response_format, ..
+        } = &mut profile.options
+        {
+            *response_format = TtsAudioFormat::Mp3;
+        }
+        assert!(TtsService::upsert_profile(&path, profile)
+            .unwrap_err()
+            .to_string()
+            .contains("QWEN_AUDIO_FORMAT_UNSUPPORTED"));
     }
 
     #[tokio::test]

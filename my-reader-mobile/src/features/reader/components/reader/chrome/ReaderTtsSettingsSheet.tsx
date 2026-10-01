@@ -3,6 +3,7 @@ import {
   BottomSheetTextInput,
 } from "@expo/ui/community/bottom-sheet"
 import { tts as readiumTts } from "@my-reader/readium"
+import { qwenTtsSourceKeys } from "@my-reader/i18n/mobile"
 import {
   filterTtsVoicesForLanguage,
   formatTtsLanguageName,
@@ -46,13 +47,21 @@ import { SymbolView } from "expo-symbols"
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import {
+  ttsMaximumPlaybackSpeed,
   normalizeTtsAudioFormat,
   TTS_AUDIO_FORMATS,
   type TtsAudioFormat,
 } from "@/src/constants/tts"
 import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
 import {
+  newQwenProviderFields,
+  qwenModelFields,
+  useQwenTtsForm,
+} from "@/src/domain/tts/use-qwen-tts-form"
+import {
   getTtsConfig,
+  getQwenTtsPresets,
+  listTtsVoices,
   type MobileTtsConfig,
   type MobileTtsProviderProfile,
   removeTtsProfile,
@@ -81,7 +90,7 @@ type ReaderTtsSettingsSheetProps = {
 
 type ProviderDraft = {
   id?: string
-  kind: "openAiCompatible"
+  kind: "openAiCompatible" | "qwen"
   name: string
   endpoint: string
   model: string
@@ -124,7 +133,7 @@ function existingProviderDraft(
 ): ProviderDraft {
   return {
     id: profile.id,
-    kind: "openAiCompatible",
+    kind: profile.kind as ProviderDraft["kind"],
     name: profile.name,
     endpoint: profile.endpoint,
     model: profile.model ?? "",
@@ -331,6 +340,15 @@ const ReaderTtsSettingsSheet = forwardRef<
   const [error, setError] = useState<string | null>(null)
   const [presented, setPresented] = useState(false)
   const [providerDraft, setProviderDraft] = useState<ProviderDraft | null>(null)
+  const qwen = useQwenTtsForm(providerDraft)
+  const qwenPresets = useMemo(getQwenTtsPresets, [])
+  const qwenPreset =
+    providerDraft?.kind === "qwen"
+      ? qwenPresets.find(
+          (item) =>
+            item.endpoint === providerDraft.endpoint.trim().replace(/\/+$/, ""),
+        )
+      : undefined
   const containerRef = useRef<ReaderSettingsSheetRef>(null)
   const {
     canGoBack,
@@ -367,6 +385,7 @@ const ReaderTtsSettingsSheet = forwardRef<
         setVoices(
           orderedVoiceIds.map((id) => ({ id, name: id, language: "mul" })),
         )
+        if (profile.kind === "qwen") setVoices(await listTtsVoices(profile.id))
       } else {
         setVoices(await readiumTts.getSystemVoices())
       }
@@ -546,12 +565,12 @@ const ReaderTtsSettingsSheet = forwardRef<
   )
   const audioFormatActions = useMemo<MenuAction[]>(
     () =>
-      TTS_AUDIO_FORMATS.map((format) => ({
+      (qwen.selectedModel?.audioFormats ?? TTS_AUDIO_FORMATS).map((format) => ({
         id: format,
         title: format.toUpperCase(),
         state: providerDraft?.responseFormat === format ? "on" : "off",
       })),
-    [providerDraft?.responseFormat],
+    [providerDraft?.responseFormat, qwen.selectedModel],
   )
 
   const selectVoice = useCallback(
@@ -601,7 +620,10 @@ const ReaderTtsSettingsSheet = forwardRef<
     [config, loadConfig, onConfigChange, saving, stopPreview],
   )
 
-  const voiceIds = parseVoiceIds(providerDraft?.voices ?? "")
+  const voiceIds = parseVoiceIds(
+    (providerDraft?.voices ?? "") +
+      (providerDraft?.kind === "qwen" ? `\n${providerDraft.defaultVoice}` : ""),
+  )
   const canSaveProvider = Boolean(
     providerDraft?.name.trim() &&
       providerDraft.endpoint.trim() &&
@@ -643,7 +665,12 @@ const ReaderTtsSettingsSheet = forwardRef<
           model: providerDraft.model.trim(),
           responseFormat: providerDraft.responseFormat,
           instructions: providerDraft.instructions.trim() || undefined,
-          voices: parseVoiceIds(providerDraft.voices),
+          voices: parseVoiceIds(
+            providerDraft.voices +
+              (providerDraft.kind === "qwen"
+                ? `\n${providerDraft.defaultVoice}`
+                : ""),
+          ),
           defaultVoice: providerDraft.defaultVoice.trim(),
         },
         credential: providerDraft.credential.trim() || undefined,
@@ -772,7 +799,13 @@ const ReaderTtsSettingsSheet = forwardRef<
         : view === "providerForm"
           ? providerDraft?.id
             ? t("settings.tts.editProvider")
-            : t("settings.tts.addOpenAi")
+            : providerDraft?.kind === "qwen"
+              ? t("qwenTts.add", {
+                  name: qwenPreset
+                    ? t(qwenTtsSourceKeys(qwenPreset.id).title)
+                    : "Qwen",
+                })
+              : t("settings.tts.addOpenAi")
           : t("reader.tts.settings")
 
   const handleDismiss = useCallback(() => {
@@ -914,7 +947,11 @@ const ReaderTtsSettingsSheet = forwardRef<
                               style={{ color: palette.textMuted }}
                               numberOfLines={1}
                             >
-                              {t("settings.tts.providerKinds.openAiCompatible")}{" "}
+                              {profile.kind === "qwen"
+                                ? "Qwen"
+                                : t(
+                                    "settings.tts.providerKinds.openAiCompatible",
+                                  )}{" "}
                               · {profile.endpoint}
                             </Text>
                           </RNView>
@@ -965,53 +1002,109 @@ const ReaderTtsSettingsSheet = forwardRef<
                   </Pressable>
                 </>
               ) : view === "providerType" ? (
-                <Pressable
-                  accessibilityLabel={t(
-                    "settings.tts.providerKinds.openAiCompatible",
-                  )}
-                  accessibilityRole="button"
-                  onPress={() => {
-                    setError(null)
-                    setProviderDraft(newProviderDraft())
-                    push("providerForm")
-                  }}
-                  style={({ pressed }) => [
-                    styles.providerTypeButton,
-                    {
-                      backgroundColor: palette.segmentIdle,
-                      borderColor: palette.border,
-                      opacity: pressed ? 0.68 : 1,
-                    },
-                  ]}
-                >
-                  <RNView style={styles.providerCopy}>
-                    <Text
-                      className="text-base font-semibold"
-                      style={{ color: palette.text }}
+                <>
+                  <Pressable
+                    accessibilityLabel={t(
+                      "settings.tts.providerKinds.openAiCompatible",
+                    )}
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setError(null)
+                      setProviderDraft(newProviderDraft())
+                      push("providerForm")
+                    }}
+                    style={({ pressed }) => [
+                      styles.providerTypeButton,
+                      {
+                        backgroundColor: palette.segmentIdle,
+                        borderColor: palette.border,
+                        opacity: pressed ? 0.68 : 1,
+                      },
+                    ]}
+                  >
+                    <RNView style={styles.providerCopy}>
+                      <Text
+                        className="text-base font-semibold"
+                        style={{ color: palette.text }}
+                      >
+                        {t("settings.tts.providerKinds.openAiCompatible")}
+                      </Text>
+                      <Text
+                        className="mt-1 text-base"
+                        style={{ color: palette.textMuted }}
+                      >
+                        {t("settings.tts.openAiProviderTypeDetail")}
+                      </Text>
+                    </RNView>
+                    {Platform.OS === "ios" ? (
+                      <SymbolView
+                        name="chevron.right"
+                        size={16}
+                        tintColor={palette.textMuted}
+                      />
+                    ) : (
+                      <MaterialIcons
+                        name="chevron-right"
+                        size={22}
+                        color={palette.textMuted}
+                      />
+                    )}
+                  </Pressable>
+                  {qwenPresets.map((preset) => (
+                    <Pressable
+                      key={preset.id}
+                      accessibilityLabel={t(qwenTtsSourceKeys(preset.id).title)}
+                      accessibilityRole="button"
+                      onPress={() => {
+                        setError(null)
+                        setProviderDraft({
+                          ...newProviderDraft(),
+                          ...newQwenProviderFields(
+                            preset,
+                            t(qwenTtsSourceKeys(preset.id).title),
+                          ),
+                        })
+                        push("providerForm")
+                      }}
+                      style={({ pressed }) => [
+                        styles.providerTypeButton,
+                        {
+                          backgroundColor: palette.segmentIdle,
+                          borderColor: palette.border,
+                          opacity: pressed ? 0.68 : 1,
+                        },
+                      ]}
                     >
-                      {t("settings.tts.providerKinds.openAiCompatible")}
-                    </Text>
-                    <Text
-                      className="mt-1 text-base"
-                      style={{ color: palette.textMuted }}
-                    >
-                      {t("settings.tts.openAiProviderTypeDetail")}
-                    </Text>
-                  </RNView>
-                  {Platform.OS === "ios" ? (
-                    <SymbolView
-                      name="chevron.right"
-                      size={16}
-                      tintColor={palette.textMuted}
-                    />
-                  ) : (
-                    <MaterialIcons
-                      name="chevron-right"
-                      size={22}
-                      color={palette.textMuted}
-                    />
-                  )}
-                </Pressable>
+                      <RNView style={styles.providerCopy}>
+                        <Text
+                          className="text-base font-semibold"
+                          style={{ color: palette.text }}
+                        >
+                          {t(qwenTtsSourceKeys(preset.id).title)}
+                        </Text>
+                        <Text
+                          className="mt-1 text-base"
+                          style={{ color: palette.textMuted }}
+                        >
+                          {t(qwenTtsSourceKeys(preset.id).description)}
+                        </Text>
+                      </RNView>
+                      {Platform.OS === "ios" ? (
+                        <SymbolView
+                          name="chevron.right"
+                          size={16}
+                          tintColor={palette.textMuted}
+                        />
+                      ) : (
+                        <MaterialIcons
+                          name="chevron-right"
+                          size={22}
+                          color={palette.textMuted}
+                        />
+                      )}
+                    </Pressable>
+                  ))}
+                </>
               ) : view === "providerForm" && providerDraft ? (
                 <>
                   <ProviderTextField
@@ -1034,15 +1127,34 @@ const ReaderTtsSettingsSheet = forwardRef<
                     testID="reader-tts-provider-endpoint"
                     value={providerDraft.endpoint}
                   />
-                  <ProviderTextField
-                    label={t("settings.tts.model")}
-                    onChangeText={(model) => patchProviderDraft({ model })}
-                    palette={palette}
-                    placeholder="gpt-4o-mini-tts"
-                    required
-                    testID="reader-tts-provider-model"
-                    value={providerDraft.model}
-                  />
+                  {providerDraft.kind === "qwen" ? (
+                    <ReaderTtsMenuRow
+                      title={t("settings.tts.model")}
+                      value={qwen.selectedModel?.name ?? providerDraft.model}
+                      palette={palette}
+                      actions={qwen.models.map((model) => ({
+                        id: model.id,
+                        title: model.name,
+                        state: providerDraft.model === model.id ? "on" : "off",
+                      }))}
+                      onSelect={(id) => {
+                        const model = qwen.models.find(
+                          (model) => model.id === id,
+                        )
+                        if (model) patchProviderDraft(qwenModelFields(model))
+                      }}
+                    />
+                  ) : (
+                    <ProviderTextField
+                      label={t("settings.tts.model")}
+                      onChangeText={(model) => patchProviderDraft({ model })}
+                      palette={palette}
+                      placeholder="gpt-4o-mini-tts"
+                      required
+                      testID="reader-tts-provider-model"
+                      value={providerDraft.model}
+                    />
+                  )}
                   <ReaderTtsMenuRow
                     title={t("settings.tts.audioFormat")}
                     value={providerDraft.responseFormat.toUpperCase()}
@@ -1066,60 +1178,115 @@ const ReaderTtsSettingsSheet = forwardRef<
                     placeholder={
                       providerDraft.hasCredential
                         ? t("settings.tts.credentialSaved")
-                        : t("settings.tts.openAiCredentialPlaceholder")
+                        : providerDraft.kind === "qwen"
+                          ? t(
+                              qwenTtsSourceKeys(qwenPreset?.id ?? "")
+                                .credential,
+                            )
+                          : t("settings.tts.openAiCredentialPlaceholder")
                     }
                     secureTextEntry
                     testID="reader-tts-provider-credential"
                     value={providerDraft.credential}
                   />
                   <ProviderTextField
-                    label={t("settings.tts.voices")}
+                    label={
+                      providerDraft.kind === "qwen"
+                        ? t("qwenTts.manualVoices")
+                        : t("settings.tts.voices")
+                    }
                     multiline
                     onChangeText={(voices) => {
                       const nextVoiceIds = parseVoiceIds(voices)
                       patchProviderDraft({
                         voices,
-                        defaultVoice: nextVoiceIds.includes(
-                          providerDraft.defaultVoice,
-                        )
-                          ? providerDraft.defaultVoice
-                          : (nextVoiceIds[0] ?? ""),
+                        defaultVoice:
+                          providerDraft.kind === "qwen" ||
+                          nextVoiceIds.includes(providerDraft.defaultVoice)
+                            ? providerDraft.defaultVoice
+                            : (nextVoiceIds[0] ?? ""),
                       })
                     }}
                     palette={palette}
                     placeholder={t("settings.tts.voicesPlaceholder")}
-                    required
+                    required={providerDraft.kind !== "qwen"}
                     testID="reader-tts-provider-voices"
-                    value={providerDraft.voices}
+                    value={
+                      providerDraft.kind === "qwen"
+                        ? qwen.manualVoices
+                        : providerDraft.voices
+                    }
                   />
                   <Text
                     className="-mt-2 mb-4 px-1 text-base"
                     style={{ color: palette.textMuted }}
                   >
-                    {t("settings.tts.voicesDetail")}
+                    {providerDraft.kind === "qwen"
+                      ? t(
+                          qwen.selectedModel?.voiceDiscovery
+                            ? "qwenTts.voiceHint"
+                            : "qwenTts.builtinHint",
+                        )
+                      : t("settings.tts.voicesDetail")}
                   </Text>
-                  <ProviderTextField
-                    label={t("settings.tts.defaultVoice")}
-                    onChangeText={(defaultVoice) =>
-                      patchProviderDraft({ defaultVoice })
-                    }
-                    palette={palette}
-                    placeholder={t("settings.tts.defaultVoicePlaceholder")}
-                    required
-                    testID="reader-tts-provider-default-voice"
-                    value={providerDraft.defaultVoice}
-                  />
-                  <ProviderTextField
-                    label={t("settings.tts.instructions")}
-                    multiline
-                    onChangeText={(instructions) =>
-                      patchProviderDraft({ instructions })
-                    }
-                    palette={palette}
-                    placeholder={t("settings.tts.instructionsPlaceholder")}
-                    testID="reader-tts-provider-instructions"
-                    value={providerDraft.instructions}
-                  />
+                  {qwen.loading ? (
+                    <Text style={{ color: palette.textMuted }}>
+                      {t("qwenTts.loadingVoices")}
+                    </Text>
+                  ) : null}
+                  {qwen.error ? (
+                    <Text style={{ color: palette.text }}>
+                      {t("qwenTts.voicesFailed")} {qwen.error}
+                    </Text>
+                  ) : null}
+                  {providerDraft.kind === "qwen" ? (
+                    <ReaderTtsMenuRow
+                      title={t("settings.tts.defaultVoice")}
+                      value={
+                        qwen.voices.find(
+                          (voice) => voice.id === providerDraft.defaultVoice,
+                        )?.name || t("settings.tts.defaultVoicePlaceholder")
+                      }
+                      palette={palette}
+                      actions={qwen.voices.map((voice) => ({
+                        id: voice.id,
+                        title: voice.name,
+                        state:
+                          providerDraft.defaultVoice === voice.id
+                            ? "on"
+                            : "off",
+                      }))}
+                      onSelect={(defaultVoice) =>
+                        patchProviderDraft({ defaultVoice })
+                      }
+                    />
+                  ) : (
+                    <ProviderTextField
+                      label={t("settings.tts.defaultVoice")}
+                      onChangeText={(defaultVoice) =>
+                        patchProviderDraft({ defaultVoice })
+                      }
+                      palette={palette}
+                      placeholder={t("settings.tts.defaultVoicePlaceholder")}
+                      required
+                      testID="reader-tts-provider-default-voice"
+                      value={providerDraft.defaultVoice}
+                    />
+                  )}
+                  {(!qwen.selectedModel ||
+                    qwen.selectedModel.supportsInstructions) && (
+                    <ProviderTextField
+                      label={t("settings.tts.instructions")}
+                      multiline
+                      onChangeText={(instructions) =>
+                        patchProviderDraft({ instructions })
+                      }
+                      palette={palette}
+                      placeholder={t("settings.tts.instructionsPlaceholder")}
+                      testID="reader-tts-provider-instructions"
+                      value={providerDraft.instructions}
+                    />
+                  )}
                   <RNView
                     style={[
                       styles.providerSwitchRow,
@@ -1284,10 +1451,13 @@ const ReaderTtsSettingsSheet = forwardRef<
                   />
                   <SliderControl
                     label={t("settings.tts.speed")}
-                    value={config.playback.speed}
+                    value={Math.min(
+                      config.playback.speed,
+                      ttsMaximumPlaybackSpeed(selectedProfile),
+                    )}
                     onChange={(speed) => void updatePlayback({ speed })}
                     min={0.5}
-                    max={3}
+                    max={ttsMaximumPlaybackSpeed(selectedProfile)}
                     step={0.1}
                     formatValue={(value) => `${value.toFixed(1)}×`}
                     palette={palette}

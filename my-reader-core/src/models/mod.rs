@@ -37,8 +37,8 @@ pub use sync::{
 };
 pub(crate) use sync::{SyncFailureDisposition, SyncScheduleSnapshot};
 pub use tts::{
-    TtsAudioArtifact, TtsAudioFormat, TtsCachePolicy, TtsConfig, TtsEngineSelection,
-    TtsPlaybackPreferences, TtsProviderCapabilities, TtsProviderKind, TtsProviderOptions,
-    TtsProviderProfile, TtsSynthesisRequest, TtsTiming, TtsVoice, TtsVoiceRef,
+    QwenTtsModel, QwenTtsPreset, TtsAudioArtifact, TtsAudioFormat, TtsCachePolicy, TtsConfig,
+    TtsEngineSelection, TtsPlaybackPreferences, TtsProviderCapabilities, TtsProviderKind,
+    TtsProviderOptions, TtsProviderProfile, TtsSynthesisRequest, TtsTiming, TtsVoice, TtsVoiceRef,
     TTS_CONFIG_SCHEMA_VERSION,
 };

@@ -782,6 +782,11 @@ interface NativeModuleInterface {
     nowMs: number,
     uniffi_out_err: UniffiRustCallStatus,
   ): Uint8Array;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_tts_discover_qwen_voices(
+    endpoint: Uint8Array,
+    model: Uint8Array,
+    credential: Uint8Array,
+  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_tts_get_config(
     configPath: Uint8Array,
   ): bigint;
@@ -799,6 +804,13 @@ interface NativeModuleInterface {
     configPath: Uint8Array,
     profileId: Uint8Array,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_tts_qwen_models(
+    endpoint: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_tts_qwen_presets(
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
   ubrn_uniffi_my_reader_core_ffi_fn_func_tts_remove_profile(
     configPath: Uint8Array,
     profileId: Uint8Array,
@@ -936,10 +948,13 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_run_library(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_safety_sweep_delay_ms(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_set_library_online(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_discover_qwen_voices(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_get_config(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_list_voices(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_probe_provider(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_provider_capabilities(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_qwen_models(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_qwen_presets(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_remove_profile(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_set_default_engine(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_set_playback(): number;

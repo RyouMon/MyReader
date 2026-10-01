@@ -10,13 +10,36 @@ use crate::{
     commands::common,
     error::AppError,
     services::tts_service::{
-        DesktopTtsService, TtsAudioArtifactDto, TtsConfigDto, TtsEngineSelectionDto,
-        TtsPlaybackPreferencesDto, TtsProviderCapabilitiesDto, TtsSynthesisInput, TtsVoiceDto,
-        TtsVoiceRefDto, UpsertTtsProviderInput,
+        DesktopTtsService, DiscoverQwenTtsVoicesInput, QwenTtsModelDto, QwenTtsPresetDto,
+        TtsAudioArtifactDto, TtsConfigDto, TtsEngineSelectionDto, TtsPlaybackPreferencesDto,
+        TtsProviderCapabilitiesDto, TtsSynthesisInput, TtsVoiceDto, TtsVoiceRefDto,
+        UpsertTtsProviderInput,
     },
 };
 
 const MAX_PENDING_TTS_CANCELLATIONS: usize = 128;
+
+#[tauri::command]
+#[specta::specta]
+pub fn list_qwen_tts_presets() -> Vec<QwenTtsPresetDto> {
+    DesktopTtsService::qwen_presets()
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn list_qwen_tts_models(endpoint: Option<String>) -> Vec<QwenTtsModelDto> {
+    DesktopTtsService::qwen_models(endpoint.as_deref())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn discover_qwen_tts_voices<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    input: DiscoverQwenTtsVoicesInput,
+) -> Result<Vec<TtsVoiceDto>, AppError> {
+    let app_data_dir = common::app_data_dir(&app)?;
+    DesktopTtsService::discover_qwen_voices(&crate::config::config_path(&app_data_dir), input).await
+}
 
 #[derive(Default)]
 struct TtsSynthesisState {

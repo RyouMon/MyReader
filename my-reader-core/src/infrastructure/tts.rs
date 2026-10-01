@@ -15,6 +15,8 @@ use crate::{
     CoreError,
 };
 
+pub(crate) mod qwen;
+
 const MAX_AUDIO_BYTES: u64 = 32 * 1024 * 1024;
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(45);
 
@@ -51,14 +53,58 @@ pub(crate) fn capabilities(profile: &TtsProviderProfile) -> TtsProviderCapabilit
                 "audio/wav".into(),
             ],
         },
+        TtsProviderKind::Qwen => {
+            let audio = profile.model.as_deref() == Some(qwen::DEFAULT_MODEL);
+            TtsProviderCapabilities {
+                voice_discovery: qwen::model(
+                    profile.model.as_deref().unwrap_or_default(),
+                    &profile.endpoint,
+                )
+                .is_ok_and(|model| model.voice_discovery),
+                preview: true,
+                plain_text: true,
+                ssml: false,
+                streaming: false,
+                word_timings: false,
+                synthesis_rate: audio,
+                synthesis_pitch: audio,
+                max_input_chars: if audio { None } else { Some(600) },
+                output_mime_types: if audio {
+                    vec!["audio/mpeg".into(), "audio/wav".into(), "audio/ogg".into()]
+                } else {
+                    vec!["audio/wav".into()]
+                },
+            }
+        }
     }
 }
 
 pub(crate) async fn list_voices(
     profile: &TtsProviderProfile,
-    _credential: Option<&str>,
+    credential: Option<&str>,
 ) -> Result<Vec<TtsVoice>, CoreError> {
-    Ok(configured_openai_voices(profile))
+    let mut voices = configured_voices(profile);
+    if profile.kind == TtsProviderKind::Qwen {
+        let model = qwen::model(
+            profile.model.as_deref().unwrap_or_default(),
+            &profile.endpoint,
+        )?;
+        for voice in &mut voices {
+            if let Some(builtin) = model.voices.iter().find(|builtin| builtin.id == voice.id) {
+                *voice = builtin.clone();
+            }
+        }
+        if let Ok(discovered) =
+            qwen::discover_voices(&profile.endpoint, &model.id, credential).await
+        {
+            for voice in discovered {
+                if !voices.iter().any(|existing| existing.id == voice.id) {
+                    voices.push(voice);
+                }
+            }
+        }
+    }
+    Ok(voices)
 }
 
 pub(crate) async fn synthesize(
@@ -68,6 +114,7 @@ pub(crate) async fn synthesize(
 ) -> Result<SynthesizedAudio, CoreError> {
     match profile.kind {
         TtsProviderKind::OpenAiCompatible => synthesize_openai(profile, request, credential).await,
+        TtsProviderKind::Qwen => qwen::synthesize(profile, request, credential).await,
     }
 }
 
@@ -80,7 +127,10 @@ async fn synthesize_openai(
         response_format,
         instructions,
         ..
-    } = &profile.options;
+    } = &profile.options
+    else {
+        return Err(tts_error("configuration", "TTS_PROVIDER_OPTIONS_MISMATCH"));
+    };
     let credential = credential
         .filter(|value| !value.trim().is_empty())
         .ok_or_else(|| tts_error("unauthorized", "TTS_CREDENTIAL_REQUIRED"))?;
@@ -115,7 +165,13 @@ async fn audio_response(
 ) -> Result<SynthesizedAudio, CoreError> {
     let response = successful(response).await?;
     let bytes = response_bytes(response, "TTS_AUDIO_TOO_LARGE").await?;
+    audio_from_bytes(bytes, expected_format)
+}
 
+fn audio_from_bytes(
+    bytes: Vec<u8>,
+    expected_format: Option<TtsAudioFormat>,
+) -> Result<SynthesizedAudio, CoreError> {
     let (sniffed_mime, extension) =
         sniff_audio(&bytes).ok_or_else(|| tts_error("invalid_audio", "INVALID_TTS_AUDIO"))?;
     if expected_format.is_some_and(|format| format.mime_type() != sniffed_mime) {
@@ -198,16 +254,12 @@ fn openai_speech_endpoint(profile: &TtsProviderProfile) -> Result<Url, CoreError
     Ok(url)
 }
 
-fn configured_openai_voices(profile: &TtsProviderProfile) -> Vec<TtsVoice> {
-    let TtsProviderOptions::OpenAiCompatible {
-        voices,
-        default_voice,
-        ..
-    } = &profile.options;
+fn configured_voices(profile: &TtsProviderProfile) -> Vec<TtsVoice> {
+    let voices = profile.options.voices();
+    let default_voice = profile.options.default_voice();
     let mut ordered_ids = Vec::new();
-    if let Some(default_voice) = default_voice
-        .as_deref()
-        .filter(|default_voice| voices.iter().any(|voice| voice == default_voice))
+    if let Some(default_voice) =
+        default_voice.filter(|default_voice| voices.iter().any(|voice| voice == default_voice))
     {
         ordered_ids.push(default_voice);
     }

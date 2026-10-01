@@ -5064,6 +5064,56 @@ export function syncSetLibraryOnline(
   );
 }
 
+export async function ttsDiscoverQwenVoices(
+  endpoint: string,
+  model: string,
+  credential: string | undefined,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<Array<TtsVoice>> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_tts_discover_qwen_voices(
+          FfiConverterString.lower(endpoint, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(model, nativeModule().rustbuffer_alloc),
+          FfiConverterOptionalString.lower(
+            credential,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterSequenceTypeTtsVoice.lift.bind(
+        FfiConverterSequenceTypeTtsVoice,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
 export async function ttsGetConfig(
   configPath: string,
   asyncOpts_?: { signal: AbortSignal },
@@ -5250,6 +5300,50 @@ export async function ttsProviderCapabilities(
     }
     throw __error;
   }
+}
+
+export function ttsQwenModels(
+  endpoint: string | undefined,
+): Array<QwenTtsModel> {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterSequenceTypeQwenTtsModel.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCall(
+      /*caller:*/ (callStatus) => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_tts_qwen_models(
+          FfiConverterOptionalString.lower(
+            endpoint,
+            nativeModule().rustbuffer_alloc,
+          ),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
+
+export function ttsQwenPresets(): Array<QwenTtsPreset> {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterSequenceTypeQwenTtsPreset.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCall(
+      /*caller:*/ (callStatus) => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_tts_qwen_presets(
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
 }
 
 export async function ttsRemoveProfile(
@@ -7697,6 +7791,167 @@ const FfiConverterTypePaginatedBooks = (() => {
   return new FFIConverter();
 })();
 
+export type TtsVoice = {
+  id: string;
+  name: string;
+  language: string;
+  gender?: string;
+};
+
+/**
+ * Generated factory for {@link TtsVoice} record objects.
+ */
+export const TtsVoice = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<TtsVoice, ReturnType<typeof defaults>>(defaults);
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<TtsVoice>,
+  });
+})();
+
+const FfiConverterTypeTtsVoice = (() => {
+  type TypeName = TtsVoice;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        id: FfiConverterString.read(from),
+        name: FfiConverterString.read(from),
+        language: FfiConverterString.read(from),
+        gender: FfiConverterOptionalString.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.id, into);
+      FfiConverterString.write(value.name, into);
+      FfiConverterString.write(value.language, into);
+      FfiConverterOptionalString.write(value.gender, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.id) +
+        FfiConverterString.allocationSize(value.name) +
+        FfiConverterString.allocationSize(value.language) +
+        FfiConverterOptionalString.allocationSize(value.gender)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type QwenTtsModel = {
+  id: string;
+  name: string;
+  supportsInstructions: boolean;
+  voiceDiscovery: boolean;
+  audioFormats: Array<string>;
+  voices: Array<TtsVoice>;
+};
+
+/**
+ * Generated factory for {@link QwenTtsModel} record objects.
+ */
+export const QwenTtsModel = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<QwenTtsModel, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<QwenTtsModel>,
+  });
+})();
+
+const FfiConverterTypeQwenTtsModel = (() => {
+  type TypeName = QwenTtsModel;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        id: FfiConverterString.read(from),
+        name: FfiConverterString.read(from),
+        supportsInstructions: FfiConverterBool.read(from),
+        voiceDiscovery: FfiConverterBool.read(from),
+        audioFormats: FfiConverterSequenceString.read(from),
+        voices: FfiConverterSequenceTypeTtsVoice.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.id, into);
+      FfiConverterString.write(value.name, into);
+      FfiConverterBool.write(value.supportsInstructions, into);
+      FfiConverterBool.write(value.voiceDiscovery, into);
+      FfiConverterSequenceString.write(value.audioFormats, into);
+      FfiConverterSequenceTypeTtsVoice.write(value.voices, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.id) +
+        FfiConverterString.allocationSize(value.name) +
+        FfiConverterBool.allocationSize(value.supportsInstructions) +
+        FfiConverterBool.allocationSize(value.voiceDiscovery) +
+        FfiConverterSequenceString.allocationSize(value.audioFormats) +
+        FfiConverterSequenceTypeTtsVoice.allocationSize(value.voices)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type QwenTtsPreset = {
+  id: string;
+  endpoint: string;
+  defaultModel: QwenTtsModel;
+};
+
+/**
+ * Generated factory for {@link QwenTtsPreset} record objects.
+ */
+export const QwenTtsPreset = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<QwenTtsPreset, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<QwenTtsPreset>,
+  });
+})();
+
+const FfiConverterTypeQwenTtsPreset = (() => {
+  type TypeName = QwenTtsPreset;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        id: FfiConverterString.read(from),
+        endpoint: FfiConverterString.read(from),
+        defaultModel: FfiConverterTypeQwenTtsModel.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.id, into);
+      FfiConverterString.write(value.endpoint, into);
+      FfiConverterTypeQwenTtsModel.write(value.defaultModel, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.id) +
+        FfiConverterString.allocationSize(value.endpoint) +
+        FfiConverterTypeQwenTtsModel.allocationSize(value.defaultModel)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
 /**
  * Typealias from the type name used in the UDL file to the custom type.  This
  * is needed because the UDL type name is used in function/method signatures.
@@ -8652,6 +8907,7 @@ export type TtsAudioArtifact = {
   durationMs?: number;
   timings: Array<TtsTiming>;
   cacheKey?: string;
+  playbackRate?: number;
 };
 
 /**
@@ -8681,6 +8937,7 @@ const FfiConverterTypeTtsAudioArtifact = (() => {
         durationMs: FfiConverterOptionalFloat64.read(from),
         timings: FfiConverterSequenceTypeTtsTiming.read(from),
         cacheKey: FfiConverterOptionalString.read(from),
+        playbackRate: FfiConverterOptionalFloat64.read(from),
       };
     }
     write(value: TypeName, into: RustBuffer): void {
@@ -8689,6 +8946,7 @@ const FfiConverterTypeTtsAudioArtifact = (() => {
       FfiConverterOptionalFloat64.write(value.durationMs, into);
       FfiConverterSequenceTypeTtsTiming.write(value.timings, into);
       FfiConverterOptionalString.write(value.cacheKey, into);
+      FfiConverterOptionalFloat64.write(value.playbackRate, into);
     }
     allocationSize(value: TypeName): number {
       return (
@@ -8696,7 +8954,8 @@ const FfiConverterTypeTtsAudioArtifact = (() => {
         FfiConverterString.allocationSize(value.mimeType) +
         FfiConverterOptionalFloat64.allocationSize(value.durationMs) +
         FfiConverterSequenceTypeTtsTiming.allocationSize(value.timings) +
-        FfiConverterOptionalString.allocationSize(value.cacheKey)
+        FfiConverterOptionalString.allocationSize(value.cacheKey) +
+        FfiConverterOptionalFloat64.allocationSize(value.playbackRate)
       );
     }
   }
@@ -9146,57 +9405,6 @@ const FfiConverterTypeTtsSynthesisRequest = (() => {
   return new FFIConverter();
 })();
 
-export type TtsVoice = {
-  id: string;
-  name: string;
-  language: string;
-  gender?: string;
-};
-
-/**
- * Generated factory for {@link TtsVoice} record objects.
- */
-export const TtsVoice = (() => {
-  const defaults = () => ({});
-  const create = (() => {
-    return uniffiCreateRecord<TtsVoice, ReturnType<typeof defaults>>(defaults);
-  })();
-  return Object.freeze({
-    create,
-    new: create,
-    defaults: () => Object.freeze(defaults()) as Partial<TtsVoice>,
-  });
-})();
-
-const FfiConverterTypeTtsVoice = (() => {
-  type TypeName = TtsVoice;
-  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
-      return {
-        id: FfiConverterString.read(from),
-        name: FfiConverterString.read(from),
-        language: FfiConverterString.read(from),
-        gender: FfiConverterOptionalString.read(from),
-      };
-    }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterString.write(value.id, into);
-      FfiConverterString.write(value.name, into);
-      FfiConverterString.write(value.language, into);
-      FfiConverterOptionalString.write(value.gender, into);
-    }
-    allocationSize(value: TypeName): number {
-      return (
-        FfiConverterString.allocationSize(value.id) +
-        FfiConverterString.allocationSize(value.name) +
-        FfiConverterString.allocationSize(value.language) +
-        FfiConverterOptionalString.allocationSize(value.gender)
-      );
-    }
-  }
-  return new FFIConverter();
-})();
-
 export type UpdateBookMetadataRequest = {
   bookId: number;
   title: string;
@@ -9500,6 +9708,11 @@ const FfiConverterSequenceTypeBookEntry = new FfiConverterArray(
   FfiConverterTypeBookEntry,
 );
 
+// FfiConverter for Array<TtsVoice>
+const FfiConverterSequenceTypeTtsVoice = new FfiConverterArray(
+  FfiConverterTypeTtsVoice,
+);
+
 // FfiConverter for Array<ReadingDay>
 const FfiConverterSequenceTypeReadingDay = new FfiConverterArray(
   FfiConverterTypeReadingDay,
@@ -9641,9 +9854,14 @@ const FfiConverterOptionalTypeRemoteCredential = new FfiConverterOptional(
   FfiConverterTypeRemoteCredential,
 );
 
-// FfiConverter for Array<TtsVoice>
-const FfiConverterSequenceTypeTtsVoice = new FfiConverterArray(
-  FfiConverterTypeTtsVoice,
+// FfiConverter for Array<QwenTtsModel>
+const FfiConverterSequenceTypeQwenTtsModel = new FfiConverterArray(
+  FfiConverterTypeQwenTtsModel,
+);
+
+// FfiConverter for Array<QwenTtsPreset>
+const FfiConverterSequenceTypeQwenTtsPreset = new FfiConverterArray(
+  FfiConverterTypeQwenTtsPreset,
 );
 
 // FfiConverter for TtsLanguageVoice | undefined
@@ -10546,6 +10764,14 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_discover_qwen_voices() !==
+    7599
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_tts_discover_qwen_voices",
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_get_config() !==
     44213
   ) {
@@ -10575,6 +10801,22 @@ function uniffiEnsureInitialized() {
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_tts_provider_capabilities",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_qwen_models() !==
+    42189
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_tts_qwen_models",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_qwen_presets() !==
+    43950
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_tts_qwen_presets",
     );
   }
   if (
@@ -10662,6 +10904,8 @@ export default Object.freeze({
     FfiConverterTypeManagedLocalLibraryRequest,
     FfiConverterTypeMyReaderSyncReport,
     FfiConverterTypePaginatedBooks,
+    FfiConverterTypeQwenTtsModel,
+    FfiConverterTypeQwenTtsPreset,
     FfiConverterTypeReaderAnnotation,
     FfiConverterTypeReaderBookmark,
     FfiConverterTypeReaderLocatorJson,

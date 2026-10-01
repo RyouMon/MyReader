@@ -14,6 +14,7 @@ import {
   View as mockView,
 } from "react-native"
 
+import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
 import {
   getTtsConfig,
@@ -23,8 +24,21 @@ import {
 } from "@/src/services/core/tts"
 import ReaderTtsSettingsSheet from "./ReaderTtsSettingsSheet"
 
+let mockPlaybackRate = 1
 const mockAudioPlayer = {
-  play: jest.fn(),
+  play: jest.fn(() => mockPlaybackRate),
+  // Reject assignment like the native getter-only property, even outside strict mode.
+  get playbackRate() {
+    return mockPlaybackRate
+  },
+  set playbackRate(_rate: number) {
+    throw new TypeError(
+      "Cannot assign to property 'playbackRate' which has only a getter",
+    )
+  },
+  setPlaybackRate: jest.fn((rate: number) => {
+    mockPlaybackRate = rate
+  }),
 }
 const mockUseAudioPlayer = jest.fn((_source: string | null) => mockAudioPlayer)
 const mockSpeechSpeak = jest.fn()
@@ -142,6 +156,8 @@ jest.mock("react-i18next", () => ({
 }))
 
 jest.mock("@/src/services/core/tts", () => ({
+  ...jest.requireActual("@/test/fixtures/qwen-tts"),
+  discoverQwenTtsVoices: jest.fn().mockResolvedValue([]),
   getTtsConfig: jest.fn().mockResolvedValue(mockConfig),
   removeTtsProfile: jest.fn(),
   setTtsDefaultEngine: jest.fn().mockImplementation(async (engine) => ({
@@ -242,6 +258,7 @@ describe("ReaderTtsSettingsSheet", () => {
   beforeEach(() => {
     jest.restoreAllMocks()
     jest.clearAllMocks()
+    mockPlaybackRate = 1
     mockBackGestureOnEnd = undefined
     jest.mocked(getTtsConfig).mockResolvedValue(mockConfig)
     jest.mocked(synthesizeTts).mockResolvedValue({
@@ -251,10 +268,19 @@ describe("ReaderTtsSettingsSheet", () => {
     })
   })
 
-  it("opens expanded and previews with the active provider", async () => {
+  it.each([
+    undefined,
+    1.5,
+  ])("opens expanded and previews with the active provider and artifact playback rate %s", async (playbackRate) => {
     jest.mocked(getTtsConfig).mockResolvedValue({
       ...mockConfig,
       defaultEngine: { kind: "provider", profileId: "openai" },
+    })
+    jest.mocked(synthesizeTts).mockResolvedValue({
+      path: "/tmp/reader-preview.mp3",
+      mimeType: "audio/mpeg",
+      timings: [],
+      playbackRate,
     })
 
     render(<ReaderTtsSettingsSheet language="en" palette={palette} />)
@@ -287,7 +313,11 @@ describe("ReaderTtsSettingsSheet", () => {
         "file:///tmp/reader-preview.mp3",
       ),
     )
-    await waitFor(() => expect(mockAudioPlayer.play).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(showAlertWithStatusBarRestore).not.toHaveBeenCalled()
+      expect(mockAudioPlayer.play).toHaveBeenCalledTimes(1)
+    })
+    expect(mockAudioPlayer.play).toHaveReturnedWith(playbackRate ?? 1)
   })
 
   it("previews with the selected system voice", async () => {
@@ -385,6 +415,30 @@ describe("ReaderTtsSettingsSheet", () => {
       screen.getByRole("button", {
         name: "settings.tts.providerKinds.openAiCompatible",
       }),
+    ).toBeTruthy()
+  })
+
+  it.each([
+    ["tokenPlan", "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference"],
+    ["qianwen", "https://maas.qianwenaiapi.com/api/v1"],
+    ["dashscope", "https://dashscope.aliyuncs.com/api/v1"],
+  ])("offers %s inside the reader sheet without leaving the reader", async (id, endpoint) => {
+    render(<ReaderTtsSettingsSheet language="en" palette={palette} />)
+    fireEvent.press(
+      await screen.findByRole("button", { name: "reader.tts.manageProviders" }),
+    )
+    fireEvent.press(
+      screen.getByRole("button", { name: "settings.tts.addProvider" }),
+    )
+    fireEvent.press(
+      screen.getByRole("button", { name: `qwenTts.sources.${id}.title` }),
+    )
+    expect(screen.getByTestId("reader-tts-provider-endpoint").props.value).toBe(
+      endpoint,
+    )
+    fireEvent.press(screen.getByRole("button", { name: "back" }))
+    expect(
+      screen.getByRole("button", { name: `qwenTts.sources.${id}.title` }),
     ).toBeTruthy()
   })
 
