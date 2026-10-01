@@ -23,6 +23,7 @@ import type {
 } from "./ReaderSettingsSheetContainer.types"
 
 const PHONE_DETENT: PresentationDetent = { fraction: 0.5 }
+const EXPANDED_PHONE_DETENT: PresentationDetent = { fraction: 1 }
 const IPAD_SNAP_POINTS: (string | number)[] = ["100%"]
 const IS_IPAD = Platform.OS === "ios" && Platform.isPad
 
@@ -30,7 +31,7 @@ const ReaderSettingsSheetContainer = forwardRef<
   ReaderSettingsSheetRef,
   ReaderSettingsSheetContainerProps
 >(function ReaderSettingsSheetContainer(
-  { backgroundColor, children, onDismiss },
+  { backgroundColor, children, expanded = false, onDismiss },
   ref,
 ) {
   const [presented, setPresented] = useState(false)
@@ -38,11 +39,11 @@ const ReaderSettingsSheetContainer = forwardRef<
   const ipadSheetRef = useRef<BottomSheetModal>(null)
   const modifiers = useMemo<ModifierConfig[]>(
     () => [
-      presentationDetents([PHONE_DETENT]),
+      presentationDetents([expanded ? EXPANDED_PHONE_DETENT : PHONE_DETENT]),
       presentationDragIndicator("visible"),
       presentationBackground(backgroundColor),
     ],
-    [backgroundColor],
+    [backgroundColor, expanded],
   )
 
   const finishPhoneDismiss = useCallback(() => {

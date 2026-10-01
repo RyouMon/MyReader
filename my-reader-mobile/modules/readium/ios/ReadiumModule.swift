@@ -1,4 +1,5 @@
 import ExpoModulesCore
+import ReadiumNavigator
 import ReadiumShared
 import UIKit
 
@@ -20,7 +21,10 @@ public final class ReadiumModule: Module {
         "onDecorationActivated",
         "onSelectionChange",
         "onSelectionAction",
-        "onTap"
+        "onTap",
+        "onTtsStateChange",
+        "onTtsSynthesisRequest",
+        "onTtsSynthesisCancel"
       )
 
       Prop("file") { (view: ReadiumView, file: ReadiumFileRecord?) in
@@ -43,6 +47,51 @@ public final class ReadiumModule: Module {
       }
       Prop("customSelectionMenu") { (view: ReadiumView, enabled: Bool) in
         view.customSelectionMenu = enabled
+      }
+
+      AsyncFunction("reattachTtsViewport") { (view: ReadiumView, sessionId: String, viewportNavigationId: String, promise: Promise) in
+        Task { @MainActor in
+          promise.resolve(await view.reattachTtsViewport(
+            sessionId: sessionId,
+            viewportNavigationId: viewportNavigationId
+          ))
+        }
+      }
+      AsyncFunction("returnToTtsPosition") { (view: ReadiumView, sessionId: String, viewportNavigationId: String, promise: Promise) in
+        Task { @MainActor in
+          promise.resolve(await view.returnToTtsPosition(
+            sessionId: sessionId,
+            viewportNavigationId: viewportNavigationId
+          ))
+        }
+      }
+      AsyncFunction("startTts") { (view: ReadiumView, sessionId: String, config: TtsEngineConfigRecord, locator: LocatorRecord?, startAtViewportStart: Bool, viewportDetached: Bool, viewportNavigationId: String?) in
+        view.startTts(
+          sessionId: sessionId,
+          config: config,
+          from: locator,
+          startAtViewportStart: startAtViewportStart,
+          viewportDetached: viewportDetached,
+          viewportNavigationId: viewportNavigationId
+        )
+      }
+      AsyncFunction("playTts") { (view: ReadiumView) in
+        view.playTts()
+      }
+      AsyncFunction("pauseTts") { (view: ReadiumView) in
+        view.pauseTts()
+      }
+      AsyncFunction("stopTts") { (view: ReadiumView) in
+        view.stopTts()
+      }
+      AsyncFunction("previousTts") { (view: ReadiumView) in
+        view.previousTts()
+      }
+      AsyncFunction("nextTts") { (view: ReadiumView) in
+        view.nextTts()
+      }
+      AsyncFunction("completeTtsSynthesis") { (view: ReadiumView, completion: TtsSynthesisCompletionRecord) in
+        view.completeTtsSynthesis(completion)
       }
     }
 
@@ -69,6 +118,21 @@ public final class ReadiumModule: Module {
       Task { @MainActor in
         let visible = await ReadiumView.registry[tag]?.isBookmarkVisible(locator: locator) ?? false
         promise.resolve(visible)
+      }
+    }
+    AsyncFunction("getSystemTtsVoices") { () -> [[String: Any]] in
+      AVTTSEngine().availableVoices.map { voice in
+        var item: [String: Any] = [
+          "id": voice.identifier,
+          "name": voice.name,
+          "language": voice.language.code.bcp47,
+        ]
+        switch voice.gender {
+        case .female: item["gender"] = "female"
+        case .male: item["gender"] = "male"
+        case .unspecified: break
+        }
+        return item
       }
     }
 

@@ -1,0 +1,2140 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MyReader TTS 迷你播放器</title>
+    <link rel="icon" href="data:," />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <link rel="stylesheet" href="tts_mini_player_theme_1.css" />
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-height: 100%;
+      }
+
+      body {
+        margin: 0 !important;
+        color: #1c1714 !important;
+        background: #ede7de !important;
+        font-family:
+          ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          "Noto Sans SC", sans-serif !important;
+      }
+
+      button,
+      input,
+      select {
+        font: inherit !important;
+      }
+
+      button {
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .prototype-shell {
+        min-height: 100vh !important;
+      }
+
+      .prototype-toolbar {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 200 !important;
+        display: flex !important;
+        min-height: 64px !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 20px !important;
+        padding: 12px 20px !important;
+        color: #1c1714 !important;
+        background: rgb(247 243 236 / 92%) !important;
+        border-bottom: 1px solid rgb(28 23 20 / 9%) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
+        backdrop-filter: blur(16px) !important;
+      }
+
+      .prototype-title {
+        min-width: 0 !important;
+      }
+
+      .prototype-title strong {
+        display: block !important;
+        font-family: Georgia, "Noto Serif SC", serif !important;
+        font-size: 15px !important;
+        line-height: 20px !important;
+      }
+
+      .prototype-title span {
+        display: block !important;
+        color: #6d6259 !important;
+        font-size: 11px !important;
+        line-height: 16px !important;
+      }
+
+      .prototype-switches {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        gap: 10px !important;
+      }
+
+      .segmented-control {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 2px !important;
+        padding: 3px !important;
+        background: #e9e2d9 !important;
+        border: 1px solid rgb(28 23 20 / 8%) !important;
+        border-radius: 10px !important;
+      }
+
+      .segment-button {
+        display: inline-flex !important;
+        height: 32px !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        padding: 0 11px !important;
+        color: #6d6259 !important;
+        background: transparent !important;
+        border: 0 !important;
+        border-radius: 7px !important;
+        font-size: 12px !important;
+        font-weight: 650 !important;
+        cursor: pointer !important;
+      }
+
+      .segment-button[aria-pressed="true"] {
+        color: #1c1714 !important;
+        background: #fff !important;
+        box-shadow: 0 1px 3px rgb(28 23 20 / 10%) !important;
+      }
+
+      .segment-button:focus-visible {
+        outline: 2px solid #b5651d !important;
+        outline-offset: 2px !important;
+      }
+
+      .prototype-stage {
+        display: grid !important;
+        min-height: calc(100vh - 64px) !important;
+        place-items: center !important;
+        padding: 32px !important;
+      }
+
+      .prototype-view[hidden] {
+        display: none !important;
+      }
+
+      .reader-surface {
+        --reader-bg: #e9ddc8;
+        --reader-fg: #1a1a1a;
+        --reader-chrome-bg: #f0e6d0;
+        --reader-chrome-fg: #2b2118;
+        --reader-chrome-muted: #7a6e5e;
+        --reader-chrome-border: #d8cbb2;
+        --reader-chrome-hover: #e5d8be;
+        --reader-chrome-active: #a65e2e;
+        --reader-chrome-action-surface: #fffaf0;
+        --reader-chrome-action-text: #2b2118;
+        --reader-chrome-segment-idle: #e5d8be;
+        --reader-chrome-segment-active: #ead4c0;
+        --reader-panel-bg: #ebe0cb;
+        --reader-tts-hl-bg: rgb(196 98 45 / 24%);
+        --reader-tts-hl-border: rgb(166 94 46 / 52%);
+
+        color: var(--reader-fg) !important;
+        background: var(--reader-bg) !important;
+      }
+
+      .reader-surface[data-reader-theme="ocean"] {
+        --reader-bg: #181842;
+        --reader-fg: #f7f6ff;
+        --reader-chrome-bg: #202050;
+        --reader-chrome-fg: #eceaf8;
+        --reader-chrome-muted: #aaa6ca;
+        --reader-chrome-border: #39386c;
+        --reader-chrome-hover: #302f65;
+        --reader-chrome-active: #b0adff;
+        --reader-chrome-action-surface: #8c84bd;
+        --reader-chrome-action-text: #17173e;
+        --reader-chrome-segment-idle: #302f65;
+        --reader-chrome-segment-active: #3a3978;
+        --reader-panel-bg: #222251;
+        --reader-tts-hl-bg: rgb(176 173 255 / 22%);
+        --reader-tts-hl-border: rgb(176 173 255 / 54%);
+      }
+
+      .reader-surface[data-reader-theme="night"] {
+        --reader-bg: #121212;
+        --reader-fg: #eaeaea;
+        --reader-chrome-bg: #1a1a1a;
+        --reader-chrome-fg: #e6e1d8;
+        --reader-chrome-muted: #aaa39a;
+        --reader-chrome-border: #36332f;
+        --reader-chrome-hover: #292724;
+        --reader-chrome-active: #d4703a;
+        --reader-chrome-action-surface: #38332e;
+        --reader-chrome-action-text: #f0ebe1;
+        --reader-chrome-segment-idle: #292724;
+        --reader-chrome-segment-active: #3b2b22;
+        --reader-panel-bg: #1c1a18;
+        --reader-tts-hl-bg: rgb(212 112 58 / 28%);
+        --reader-tts-hl-border: rgb(212 112 58 / 56%);
+      }
+
+      .phone-frame {
+        position: relative !important;
+        width: 393px !important;
+        height: 852px !important;
+        overflow: hidden !important;
+        background: #111 !important;
+        border: 7px solid #171411 !important;
+        border-radius: 48px !important;
+        box-shadow:
+          0 0 0 1px rgb(255 255 255 / 16%),
+          0 30px 70px rgb(37 28 22 / 24%) !important;
+      }
+
+      .mobile-reader {
+        position: absolute !important;
+        inset: 0 !important;
+        overflow: clip !important;
+        border-radius: 40px !important;
+      }
+
+      .mobile-status-bar {
+        position: absolute !important;
+        inset: 0 0 auto !important;
+        z-index: 20 !important;
+        display: grid !important;
+        height: 56px !important;
+        grid-template-columns: 1fr auto 1fr !important;
+        align-items: center !important;
+        padding: 0 24px !important;
+        color: var(--reader-chrome-fg) !important;
+        font-size: 14px !important;
+        font-weight: 750 !important;
+      }
+
+      .mobile-status-time {
+        justify-self: start !important;
+      }
+
+      .mobile-status-icons {
+        display: flex !important;
+        align-items: center !important;
+        justify-self: end !important;
+        gap: 6px !important;
+      }
+
+      .dynamic-island {
+        width: 126px !important;
+        height: 36px !important;
+        background: #050505 !important;
+        border-radius: 20px !important;
+      }
+
+      .mobile-top-chrome {
+        position: absolute !important;
+        top: 68px !important;
+        right: 18px !important;
+        left: 18px !important;
+        z-index: 30 !important;
+        display: grid !important;
+        grid-template-columns: 52px minmax(0, 1fr) 52px !important;
+        align-items: center !important;
+        gap: 12px !important;
+      }
+
+      .chapter-label {
+        overflow: hidden !important;
+        color: var(--reader-chrome-muted) !important;
+        font-size: 15px !important;
+        font-weight: 700 !important;
+        text-align: center !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+      }
+
+      .chrome-circle {
+        display: grid !important;
+        width: 52px !important;
+        height: 52px !important;
+        place-items: center !important;
+        padding: 0 !important;
+        color: var(--reader-chrome-action-text) !important;
+        background: color-mix(
+          in srgb,
+          var(--reader-chrome-action-surface) 82%,
+          transparent
+        ) !important;
+        border: 1px solid
+          color-mix(in srgb, var(--reader-chrome-fg) 10%, transparent) !important;
+        border-radius: 999px !important;
+        box-shadow:
+          0 10px 28px rgb(0 0 0 / 14%),
+          inset 0 0 0 1px rgb(255 255 255 / 14%) !important;
+        -webkit-backdrop-filter: blur(18px) saturate(1.15) !important;
+        backdrop-filter: blur(18px) saturate(1.15) !important;
+        cursor: pointer !important;
+      }
+
+      .chrome-circle:hover {
+        filter: brightness(1.06) !important;
+      }
+
+      .chrome-circle:active {
+        transform: scale(0.94) !important;
+      }
+
+      .chrome-circle:focus-visible {
+        outline: 2px solid var(--reader-chrome-active) !important;
+        outline-offset: 3px !important;
+      }
+
+      .bookmark-button[aria-pressed="true"] svg {
+        fill: currentColor !important;
+      }
+
+      .mobile-book-content {
+        position: absolute !important;
+        inset: 138px 0 140px !important;
+        overflow: auto !important;
+        padding: 72px 38px 120px !important;
+        scrollbar-width: none !important;
+      }
+
+      .mobile-book-content::-webkit-scrollbar {
+        display: none !important;
+      }
+
+      .mobile-book-content h1 {
+        margin: 56px 0 58px !important;
+        color: var(--reader-fg) !important;
+        font-family: Georgia, "Noto Serif SC", serif !important;
+        font-size: 34px !important;
+        font-weight: 650 !important;
+        line-height: 1.38 !important;
+        text-align: center !important;
+      }
+
+      .mobile-book-content h1 span {
+        display: block !important;
+        font-family: Georgia, serif !important;
+        font-size: 27px !important;
+        font-weight: 500 !important;
+      }
+
+      .mobile-book-content p {
+        margin: 0 0 34px !important;
+        color: var(--reader-fg) !important;
+        font-family: Georgia, "Noto Serif SC", serif !important;
+        font-size: 20px !important;
+        line-height: 2 !important;
+        text-align: justify !important;
+      }
+
+      .tts-sentence {
+        padding: 2px 1px !important;
+        border-radius: 4px !important;
+        cursor: pointer !important;
+        -webkit-box-decoration-break: clone !important;
+        box-decoration-break: clone !important;
+        transition:
+          background-color 160ms ease,
+          box-shadow 160ms ease !important;
+      }
+
+      .tts-sentence:hover {
+        background: color-mix(
+          in srgb,
+          var(--reader-chrome-fg) 8%,
+          transparent
+        ) !important;
+      }
+
+      .tts-sentence.is-speaking {
+        background: var(--reader-tts-hl-bg) !important;
+        box-shadow: 0 0 0 1px var(--reader-tts-hl-border) !important;
+      }
+
+      .mobile-position {
+        position: absolute !important;
+        right: 100px !important;
+        bottom: 39px !important;
+        left: 100px !important;
+        z-index: 25 !important;
+        color: var(--reader-chrome-muted) !important;
+        font-size: 14px !important;
+        font-variant-numeric: tabular-nums !important;
+        font-weight: 700 !important;
+        text-align: center !important;
+        transition: transform 220ms cubic-bezier(0.25, 0.1, 0.25, 1) !important;
+      }
+
+      .mobile-reader[data-tts-active="true"] .mobile-position {
+        transform: translateY(-64px) !important;
+      }
+
+      .mobile-more {
+        position: absolute !important;
+        right: 18px !important;
+        bottom: 24px !important;
+        z-index: 70 !important;
+      }
+
+      .mobile-more-menu {
+        position: absolute !important;
+        right: 18px !important;
+        bottom: 88px !important;
+        z-index: 69 !important;
+        width: 190px !important;
+        padding: 8px !important;
+        color: var(--reader-chrome-fg) !important;
+        background: color-mix(
+          in srgb,
+          var(--reader-panel-bg) 94%,
+          transparent
+        ) !important;
+        border: 1px solid var(--reader-chrome-border) !important;
+        border-radius: 16px !important;
+        box-shadow: 0 18px 44px rgb(0 0 0 / 22%) !important;
+        opacity: 0 !important;
+        transform: translateY(8px) scale(0.98) !important;
+        pointer-events: none !important;
+        -webkit-backdrop-filter: blur(18px) !important;
+        backdrop-filter: blur(18px) !important;
+        transition:
+          opacity 160ms ease,
+          transform 180ms ease !important;
+      }
+
+      .mobile-more-menu.is-open {
+        opacity: 1 !important;
+        transform: translateY(0) scale(1) !important;
+        pointer-events: auto !important;
+      }
+
+      .mobile-more-menu button {
+        display: flex !important;
+        width: 100% !important;
+        height: 40px !important;
+        align-items: center !important;
+        gap: 10px !important;
+        padding: 0 10px !important;
+        color: inherit !important;
+        background: transparent !important;
+        border: 0 !important;
+        border-radius: 9px !important;
+        font-size: 13px !important;
+        font-weight: 650 !important;
+        cursor: pointer !important;
+      }
+
+      .mobile-more-menu button:hover {
+        background: var(--reader-chrome-hover) !important;
+      }
+
+      .mobile-tts-player {
+        position: absolute !important;
+        bottom: 22px !important;
+        left: 18px !important;
+        z-index: 68 !important;
+        width: 283px !important;
+        height: 56px !important;
+        pointer-events: none !important;
+      }
+
+      .mobile-player-glass {
+        position: absolute !important;
+        inset: 0 !important;
+        clip-path: inset(2px calc(100% - 54px) 2px 0 round 999px) !important;
+        transition: clip-path 260ms cubic-bezier(0.25, 0.1, 0.25, 1) !important;
+      }
+
+      .mobile-tts-player.is-active .mobile-player-glass {
+        clip-path: inset(0 0 0 0 round 999px) !important;
+      }
+
+      .mobile-player-controls {
+        position: absolute !important;
+        inset: 0 !important;
+        display: grid !important;
+        grid-template-columns: repeat(5, 48px) !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 4px !important;
+      }
+
+      .mobile-player-controls .tts-control {
+        position: relative !important;
+        display: grid !important;
+        width: 48px !important;
+        height: 48px !important;
+        place-items: center !important;
+        justify-self: center !important;
+        padding: 0 !important;
+        cursor: pointer !important;
+        pointer-events: none !important;
+        opacity: 0 !important;
+        transform: translateX(-6px) !important;
+        transition:
+          opacity 160ms ease,
+          transform 160ms ease,
+          background-color 120ms ease,
+          border-color 120ms ease !important;
+      }
+
+      .mobile-player-controls .tts-control:first-child {
+        pointer-events: auto !important;
+        opacity: 1 !important;
+        transform: none !important;
+      }
+
+      .mobile-tts-player.is-active .tts-control {
+        pointer-events: auto !important;
+        opacity: 1 !important;
+        transform: translateX(0) !important;
+      }
+
+      .mobile-tts-player.is-active .tts-control:nth-child(2) {
+        transition-delay: 20ms !important;
+      }
+
+      .mobile-tts-player.is-active .tts-control:nth-child(3) {
+        transition-delay: 40ms !important;
+      }
+
+      .mobile-tts-player.is-active .tts-control:nth-child(4) {
+        transition-delay: 60ms !important;
+      }
+
+      .mobile-tts-player.is-active .tts-control:nth-child(5) {
+        transition-delay: 80ms !important;
+      }
+
+      .tts-icon-stop,
+      .icon-play,
+      .icon-pause,
+      .icon-loader,
+      .icon-retry {
+        display: none !important;
+      }
+
+      .is-active .tts-icon-idle {
+        display: none !important;
+      }
+
+      .is-active .tts-icon-stop {
+        display: block !important;
+      }
+
+      [data-play-state="playing"] .icon-pause,
+      [data-play-state="paused"] .icon-play,
+      [data-play-state="loading"] .icon-loader,
+      [data-play-state="error"] .icon-retry {
+        display: block !important;
+      }
+
+      .icon-loader {
+        animation: tts-spin 800ms linear infinite !important;
+      }
+
+      @keyframes tts-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .tts-settings-button[data-error="true"]::after {
+        position: absolute !important;
+        top: 8px !important;
+        right: 8px !important;
+        width: 6px !important;
+        height: 6px !important;
+        background: var(--tts-theme-danger) !important;
+        border-radius: 999px !important;
+        content: "" !important;
+      }
+
+      .mobile-sheet-layer {
+        position: absolute !important;
+        inset: 0 !important;
+        z-index: 120 !important;
+        pointer-events: none !important;
+      }
+
+      .mobile-sheet-layer.is-open {
+        pointer-events: auto !important;
+      }
+
+      .mobile-sheet-scrim {
+        position: absolute !important;
+        inset: 0 !important;
+        background: rgb(8 7 18 / 46%) !important;
+        opacity: 0 !important;
+        transition: opacity 220ms ease !important;
+      }
+
+      .mobile-sheet-layer.is-open .mobile-sheet-scrim {
+        opacity: 1 !important;
+      }
+
+      .mobile-settings-sheet {
+        position: absolute !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        display: flex !important;
+        height: 61% !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+        border-bottom-right-radius: 40px !important;
+        border-bottom-left-radius: 40px !important;
+        border-top-left-radius: 24px !important;
+        border-top-right-radius: 24px !important;
+        transform: translateY(101%) !important;
+        transition: transform 340ms cubic-bezier(0.32, 0.72, 0, 1) !important;
+      }
+
+      .mobile-sheet-layer.is-open .mobile-settings-sheet {
+        transform: translateY(0) !important;
+      }
+
+      .sheet-handle {
+        width: 36px !important;
+        height: 5px !important;
+        flex: 0 0 auto !important;
+        margin: 9px auto 0 !important;
+        background: color-mix(
+          in srgb,
+          var(--reader-chrome-fg) 25%,
+          transparent
+        ) !important;
+        border-radius: 999px !important;
+      }
+
+      .settings-heading {
+        display: flex !important;
+        min-height: 48px !important;
+        flex: 0 0 auto !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 8px 20px 10px !important;
+        border-bottom: 1px solid var(--tts-settings-divider) !important;
+      }
+
+      .settings-heading h2,
+      .settings-heading h3 {
+        margin: 0 !important;
+        color: var(--tts-settings-value) !important;
+        font-size: 17px !important;
+        font-weight: 760 !important;
+      }
+
+      .settings-close {
+        display: grid !important;
+        width: 36px !important;
+        height: 36px !important;
+        place-items: center !important;
+        color: var(--tts-settings-label) !important;
+        background: transparent !important;
+        border: 0 !important;
+        border-radius: 10px !important;
+        cursor: pointer !important;
+      }
+
+      .settings-close:hover {
+        background: var(--tts-settings-row) !important;
+      }
+
+      .settings-scroll {
+        min-height: 0 !important;
+        flex: 1 !important;
+        overflow-y: auto !important;
+        padding: 16px 20px 34px !important;
+      }
+
+      .settings-group {
+        margin-bottom: 22px !important;
+      }
+
+      .settings-group-title {
+        margin: 0 0 8px !important;
+        color: var(--tts-settings-label) !important;
+        font-size: 11px !important;
+        font-weight: 750 !important;
+        letter-spacing: 0.04em !important;
+      }
+
+      .settings-row {
+        display: flex !important;
+        min-height: 48px !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 16px !important;
+        padding: 8px 12px !important;
+        color: var(--tts-settings-value) !important;
+        background: var(--tts-settings-row) !important;
+        border-bottom: 1px solid var(--tts-settings-divider) !important;
+      }
+
+      .settings-row:first-of-type {
+        border-top-left-radius: 12px !important;
+        border-top-right-radius: 12px !important;
+      }
+
+      .settings-row:last-of-type {
+        border-bottom: 0 !important;
+        border-bottom-right-radius: 12px !important;
+        border-bottom-left-radius: 12px !important;
+      }
+
+      .settings-row label,
+      .settings-row > span:first-child {
+        color: var(--tts-settings-value) !important;
+        font-size: 13px !important;
+        font-weight: 650 !important;
+      }
+
+      .settings-value {
+        color: var(--tts-settings-label) !important;
+        font-size: 12px !important;
+        font-variant-numeric: tabular-nums !important;
+      }
+
+      .settings-select {
+        max-width: 165px !important;
+        height: 34px !important;
+        padding: 0 30px 0 10px !important;
+        color: var(--tts-settings-value) !important;
+        background-color: transparent !important;
+        border: 1px solid var(--tts-settings-divider) !important;
+        border-radius: 8px !important;
+        font-size: 12px !important;
+      }
+
+      .settings-row[hidden] {
+        display: none !important;
+      }
+
+      .settings-row-stack {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 6px !important;
+      }
+
+      .settings-input,
+      .settings-textarea {
+        width: 100% !important;
+        padding: 8px 10px !important;
+        color: var(--tts-settings-value) !important;
+        background: transparent !important;
+        border: 1px solid var(--tts-settings-divider) !important;
+        border-radius: 8px !important;
+        font: inherit !important;
+        font-size: 12px !important;
+      }
+
+      .settings-textarea {
+        min-height: 68px !important;
+        resize: vertical !important;
+      }
+
+      .settings-help {
+        margin: 0 !important;
+        color: var(--tts-settings-label) !important;
+        font-size: 10px !important;
+        line-height: 1.45 !important;
+      }
+
+      .provider-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 6px !important;
+      }
+
+      .provider-button {
+        min-height: 44px !important;
+        padding: 6px 5px !important;
+        color: var(--tts-settings-label) !important;
+        background: var(--tts-settings-row) !important;
+        border: 1px solid transparent !important;
+        border-radius: 9px !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        cursor: pointer !important;
+      }
+
+      .provider-button[aria-pressed="true"] {
+        color: var(--tts-settings-accent) !important;
+        background: var(--tts-settings-row-active) !important;
+        border-color: var(--tts-settings-divider) !important;
+      }
+
+      .settings-range-wrap {
+        display: flex !important;
+        min-width: 158px !important;
+        align-items: center !important;
+        gap: 9px !important;
+      }
+
+      .settings-range {
+        width: 116px !important;
+        accent-color: var(--tts-settings-accent) !important;
+      }
+
+      .settings-range-value {
+        width: 34px !important;
+        color: var(--tts-settings-label) !important;
+        font-size: 11px !important;
+        font-variant-numeric: tabular-nums !important;
+        text-align: right !important;
+      }
+
+      .settings-switch {
+        position: relative !important;
+        width: 42px !important;
+        height: 24px !important;
+        padding: 0 !important;
+        background: color-mix(
+          in srgb,
+          var(--tts-settings-label) 24%,
+          transparent
+        ) !important;
+        border: 0 !important;
+        border-radius: 999px !important;
+        cursor: pointer !important;
+      }
+
+      .settings-switch::after {
+        position: absolute !important;
+        top: 3px !important;
+        left: 3px !important;
+        width: 18px !important;
+        height: 18px !important;
+        background: #fff !important;
+        border-radius: 999px !important;
+        box-shadow: 0 1px 4px rgb(0 0 0 / 18%) !important;
+        content: "" !important;
+        transition: transform 160ms ease !important;
+      }
+
+      .settings-switch[aria-checked="true"] {
+        background: var(--tts-settings-accent) !important;
+      }
+
+      .settings-switch[aria-checked="true"]::after {
+        transform: translateX(18px) !important;
+      }
+
+      .settings-link {
+        display: flex !important;
+        width: 100% !important;
+        min-height: 46px !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 0 12px !important;
+        color: var(--tts-settings-value) !important;
+        background: var(--tts-settings-row) !important;
+        border: 0 !important;
+        border-radius: 12px !important;
+        font-size: 13px !important;
+        font-weight: 650 !important;
+        cursor: pointer !important;
+      }
+
+      .settings-footnote {
+        margin: 8px 2px 0 !important;
+        color: var(--tts-settings-label) !important;
+        font-size: 11px !important;
+        line-height: 1.5 !important;
+      }
+
+      .desktop-frame {
+        position: relative !important;
+        width: min(1120px, calc(100vw - 64px)) !important;
+        height: min(720px, calc(100vh - 128px)) !important;
+        min-height: 620px !important;
+        overflow: hidden !important;
+        border: 1px solid rgb(28 23 20 / 16%) !important;
+        border-radius: 18px !important;
+        box-shadow: 0 28px 72px rgb(37 28 22 / 20%) !important;
+      }
+
+      .desktop-reader {
+        position: absolute !important;
+        inset: 0 !important;
+        overflow: hidden !important;
+      }
+
+      .desktop-topbar {
+        position: relative !important;
+        z-index: 40 !important;
+        display: grid !important;
+        height: 52px !important;
+        grid-template-columns: 1fr minmax(240px, 500px) 1fr !important;
+        align-items: center !important;
+        gap: 12px !important;
+        padding: 0 12px !important;
+        background: color-mix(
+          in srgb,
+          var(--reader-chrome-bg) 72%,
+          transparent
+        ) !important;
+        border-bottom: 1px solid var(--reader-chrome-border) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(1.2) !important;
+        backdrop-filter: blur(20px) saturate(1.2) !important;
+      }
+
+      .desktop-left,
+      .desktop-right {
+        display: flex !important;
+        min-width: 0 !important;
+        align-items: center !important;
+        gap: 9px !important;
+      }
+
+      .desktop-right {
+        justify-content: flex-end !important;
+      }
+
+      .traffic-lights {
+        display: flex !important;
+        align-items: center !important;
+        gap: 7px !important;
+        margin-right: 8px !important;
+      }
+
+      .traffic-light {
+        width: 12px !important;
+        height: 12px !important;
+        border-radius: 999px !important;
+      }
+
+      .traffic-light:nth-child(1) {
+        background: #ff5f57 !important;
+      }
+
+      .traffic-light:nth-child(2) {
+        background: #febc2e !important;
+      }
+
+      .traffic-light:nth-child(3) {
+        background: #28c840 !important;
+      }
+
+      .desktop-icon-button {
+        display: grid !important;
+        width: 34px !important;
+        height: 34px !important;
+        flex: 0 0 34px !important;
+        place-items: center !important;
+        padding: 0 !important;
+        color: var(--reader-chrome-action-text) !important;
+        background: color-mix(
+          in srgb,
+          var(--reader-chrome-action-surface) 76%,
+          transparent
+        ) !important;
+        border: 0 !important;
+        border-radius: 999px !important;
+        box-shadow:
+          0 10px 28px rgb(0 0 0 / 10%),
+          inset 0 0 0 1px rgb(255 255 255 / 14%) !important;
+        -webkit-backdrop-filter: blur(18px) !important;
+        backdrop-filter: blur(18px) !important;
+        cursor: pointer !important;
+      }
+
+      .desktop-icon-button:hover {
+        filter: brightness(1.06) !important;
+      }
+
+      .desktop-title {
+        min-width: 0 !important;
+        color: var(--reader-chrome-fg) !important;
+        text-align: center !important;
+      }
+
+      .desktop-title strong,
+      .desktop-title span {
+        display: block !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+      }
+
+      .desktop-title strong {
+        font-size: 13px !important;
+        line-height: 17px !important;
+      }
+
+      .desktop-title span {
+        color: var(--reader-chrome-muted) !important;
+        font-size: 10px !important;
+        line-height: 14px !important;
+      }
+
+      .desktop-tts-player {
+        position: absolute !important;
+        right: 16px !important;
+        bottom: 16px !important;
+        z-index: 70 !important;
+        width: 44px !important;
+        height: 44px !important;
+        overflow: hidden !important;
+        transition: width 220ms cubic-bezier(0.25, 0.1, 0.25, 1) !important;
+      }
+
+      .desktop-tts-player.is-active {
+        width: 204px !important;
+      }
+
+      .desktop-player-glass {
+        position: absolute !important;
+        inset: 0 !important;
+      }
+
+      .desktop-player-controls {
+        position: absolute !important;
+        top: 4px !important;
+        right: 4px !important;
+        display: grid !important;
+        width: 196px !important;
+        height: 36px !important;
+        grid-template-columns: repeat(5, 36px) !important;
+        align-items: center !important;
+        gap: 4px !important;
+      }
+
+      .desktop-player-controls .tts-control {
+        position: relative !important;
+        display: grid !important;
+        width: 36px !important;
+        height: 36px !important;
+        place-items: center !important;
+        padding: 0 !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transform: translateX(6px) !important;
+        transition:
+          opacity 160ms ease,
+          transform 160ms ease,
+          background-color 120ms ease,
+          border-color 120ms ease !important;
+      }
+
+      .desktop-player-controls .tts-control:last-child,
+      .desktop-tts-player.is-active .tts-control {
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        transform: translateX(0) !important;
+      }
+
+      .desktop-player-controls .tts-control:nth-child(1) {
+        transition-delay: 80ms !important;
+      }
+
+      .desktop-player-controls .tts-control:nth-child(2) {
+        transition-delay: 60ms !important;
+      }
+
+      .desktop-player-controls .tts-control:nth-child(3) {
+        transition-delay: 40ms !important;
+      }
+
+      .desktop-player-controls .tts-control:nth-child(4) {
+        transition-delay: 20ms !important;
+      }
+
+      .desktop-content {
+        position: absolute !important;
+        inset: 52px 0 30px !important;
+        overflow: auto !important;
+        padding: 74px clamp(70px, 14vw, 190px) 100px !important;
+      }
+
+      .desktop-prose {
+        max-width: 720px !important;
+        margin: 0 auto !important;
+      }
+
+      .desktop-prose h1 {
+        margin: 0 0 54px !important;
+        color: var(--reader-fg) !important;
+        font-family: Georgia, "Noto Serif SC", serif !important;
+        font-size: 32px !important;
+        font-weight: 650 !important;
+        line-height: 1.3 !important;
+        text-align: center !important;
+      }
+
+      .desktop-prose p {
+        margin: 0 0 24px !important;
+        color: var(--reader-fg) !important;
+        font-family: Georgia, "Noto Serif SC", serif !important;
+        font-size: 18px !important;
+        line-height: 1.9 !important;
+        text-align: justify !important;
+      }
+
+      .desktop-footer {
+        position: absolute !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        display: flex !important;
+        height: 30px !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: var(--reader-chrome-muted) !important;
+        font-size: 11px !important;
+        font-weight: 650 !important;
+      }
+
+      .desktop-settings-panel {
+        position: absolute !important;
+        top: 61px !important;
+        right: 9px !important;
+        bottom: 22px !important;
+        z-index: 80 !important;
+        display: flex !important;
+        width: min(336px, calc(100% - 76px)) !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+        border: 1px solid var(--tts-settings-divider) !important;
+        box-shadow: -12px 18px 42px rgb(0 0 0 / 18%) !important;
+        opacity: 0 !important;
+        transform: translateX(calc(100% + 18px)) !important;
+        pointer-events: none !important;
+        transition:
+          opacity 180ms ease,
+          transform 260ms cubic-bezier(0.25, 0.1, 0.25, 1) !important;
+      }
+
+      .desktop-settings-panel.is-open {
+        opacity: 1 !important;
+        transform: translateX(0) !important;
+        pointer-events: auto !important;
+      }
+
+      .desktop-settings-panel .settings-scroll {
+        padding-bottom: 20px !important;
+      }
+
+      .live-region {
+        position: fixed !important;
+        width: 1px !important;
+        height: 1px !important;
+        overflow: hidden !important;
+        clip: rect(0 0 0 0) !important;
+        white-space: nowrap !important;
+      }
+
+      @media (max-width: 760px) {
+        .prototype-toolbar {
+          align-items: flex-start !important;
+          flex-direction: column !important;
+        }
+
+        .prototype-switches {
+          width: 100% !important;
+          justify-content: flex-start !important;
+        }
+
+        .prototype-stage {
+          padding: 20px 8px 36px !important;
+        }
+
+        .phone-frame {
+          transform: scale(0.88) !important;
+          transform-origin: top center !important;
+          margin-bottom: -102px !important;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          animation-duration: 1ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 1ms !important;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <main class="prototype-shell">
+      <header class="prototype-toolbar">
+        <div class="prototype-title">
+          <strong>MyReader · TTS 迷你播放器</strong>
+          <span>交互原型：移动左下与桌面右下 TTS、前后句、设置及“更多”</span>
+        </div>
+
+        <div class="prototype-switches" aria-label="原型控制">
+          <div class="segmented-control" aria-label="平台">
+            <button
+              class="segment-button platform-button"
+              type="button"
+              data-platform-target="mobile"
+              aria-pressed="true"
+            >
+              <i data-lucide="smartphone" class="size-4"></i>
+              移动端
+            </button>
+            <button
+              class="segment-button platform-button"
+              type="button"
+              data-platform-target="desktop"
+              aria-pressed="false"
+            >
+              <i data-lucide="monitor" class="size-4"></i>
+              桌面端
+            </button>
+          </div>
+
+          <div class="segmented-control" aria-label="阅读主题">
+            <button
+              class="segment-button theme-button"
+              type="button"
+              data-theme-target="paper"
+              aria-pressed="false"
+            >
+              Paper
+            </button>
+            <button
+              class="segment-button theme-button"
+              type="button"
+              data-theme-target="ocean"
+              aria-pressed="true"
+            >
+              Ocean
+            </button>
+            <button
+              class="segment-button theme-button"
+              type="button"
+              data-theme-target="night"
+              aria-pressed="false"
+            >
+              Night
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <section class="prototype-stage">
+        <div id="mobileView" class="prototype-view">
+          <div class="phone-frame">
+            <article
+              id="mobileReader"
+              class="mobile-reader reader-surface"
+              data-reader-theme="ocean"
+              data-tts-active="false"
+            >
+              <div class="mobile-status-bar" aria-hidden="true">
+                <span class="mobile-status-time">22:40</span>
+                <span class="dynamic-island"></span>
+                <span class="mobile-status-icons">
+                  <i data-lucide="signal" class="size-[17px]"></i>
+                  <i data-lucide="wifi" class="size-[17px]"></i>
+                  <i data-lucide="battery-medium" class="size-[20px]"></i>
+                </span>
+              </div>
+
+              <div class="mobile-top-chrome">
+                <button
+                  class="chrome-circle bookmark-button"
+                  type="button"
+                  aria-label="添加书签"
+                  aria-pressed="false"
+                >
+                  <i data-lucide="bookmark" class="size-7"></i>
+                </button>
+                <div class="chapter-label">Chapter 07 这电影出了什么问题？</div>
+                <button class="chrome-circle" type="button" aria-label="关闭阅读器">
+                  <i data-lucide="x" class="size-8"></i>
+                </button>
+              </div>
+
+              <div class="mobile-book-content">
+                <h1>转折，转折，转折<span>Turn, Turn, Turn</span></h1>
+                <p>
+                  <span class="tts-sentence" data-tts-scope="mobile" data-sentence-index="0"
+                    >这句口号也被我写在了一张褪色的草稿纸上，在桌子上方贴了 20 年。</span
+                  >
+                  <span class="tts-sentence" data-tts-scope="mobile" data-sentence-index="1"
+                    >这是我职业生涯中听到的第一句关于剧作的诀窍，但我实在是想不起来到底是谁告诉我的了。</span
+                  >
+                </p>
+                <p>
+                  <span class="tts-sentence" data-tts-scope="mobile" data-sentence-index="2"
+                    >这条匿名的建议从那时起便一直为我指明方向。</span
+                  >
+                </p>
+              </div>
+
+              <div class="mobile-position">位置 229 / 292</div>
+
+              <div
+                id="mobileTtsPlayer"
+                class="mobile-tts-player"
+                data-play-state="paused"
+                aria-label="听书控制"
+              >
+                <div
+                  class="mobile-player-glass tts-mini-player"
+                  data-platform="mobile"
+                  aria-hidden="true"
+                ></div>
+                <div class="mobile-player-controls">
+                  <button
+                    class="tts-control mobile-start-stop"
+                    data-action="start-stop"
+                    type="button"
+                    aria-label="开始听书"
+                  >
+                    <i data-lucide="audio-lines" class="tts-icon-idle size-6"></i>
+                    <i data-lucide="square" class="tts-icon-stop size-5"></i>
+                  </button>
+                  <button
+                    class="tts-control"
+                    data-action="previous"
+                    type="button"
+                    aria-label="上一句"
+                  >
+                    <i data-lucide="skip-back" class="size-5"></i>
+                  </button>
+                  <button
+                    class="tts-control"
+                    data-action="playback"
+                    data-role="playback"
+                    type="button"
+                    aria-label="播放"
+                  >
+                    <i data-lucide="play" class="icon-play size-5"></i>
+                    <i data-lucide="pause" class="icon-pause size-5"></i>
+                    <i data-lucide="loader-circle" class="icon-loader size-5"></i>
+                    <i data-lucide="rotate-cw" class="icon-retry size-5"></i>
+                  </button>
+                  <button
+                    class="tts-control"
+                    data-action="next"
+                    type="button"
+                    aria-label="下一句"
+                  >
+                    <i data-lucide="skip-forward" class="size-5"></i>
+                  </button>
+                  <button
+                    class="tts-control tts-settings-button"
+                    data-action="settings"
+                    type="button"
+                    aria-label="听书设置"
+                    aria-haspopup="dialog"
+                    aria-expanded="false"
+                  >
+                    <i data-lucide="settings-2" class="size-5"></i>
+                  </button>
+                </div>
+              </div>
+
+              <button
+                id="mobileMoreButton"
+                class="mobile-more chrome-circle"
+                type="button"
+                aria-label="更多阅读操作"
+                aria-expanded="false"
+              >
+                <i data-lucide="ellipsis" class="size-7"></i>
+              </button>
+
+              <nav id="mobileMoreMenu" class="mobile-more-menu" aria-label="更多阅读操作">
+                <button type="button">
+                  <i data-lucide="list" class="size-4"></i>
+                  目录与进度
+                </button>
+                <button type="button">
+                  <i data-lucide="notebook-pen" class="size-4"></i>
+                  书签与笔记
+                </button>
+                <button type="button">
+                  <i data-lucide="search" class="size-4"></i>
+                  搜索
+                </button>
+                <button type="button">
+                  <i data-lucide="type" class="size-4"></i>
+                  阅读设置
+                </button>
+              </nav>
+
+              <div id="mobileSheetLayer" class="mobile-sheet-layer">
+                <button
+                  class="mobile-sheet-scrim"
+                  type="button"
+                  aria-label="关闭听书设置"
+                ></button>
+                <section
+                  class="mobile-settings-sheet tts-settings-surface"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="mobileSettingsTitle"
+                >
+                  <div class="sheet-handle" aria-hidden="true"></div>
+                  <div class="settings-heading tts-settings-header">
+                    <h2 id="mobileSettingsTitle">听书设置</h2>
+                    <button class="settings-close" type="button" aria-label="关闭">
+                      <i data-lucide="x" class="size-5"></i>
+                    </button>
+                  </div>
+                  <div class="settings-scroll">
+                    <div class="settings-group">
+                      <p class="settings-group-title">朗读引擎</p>
+                      <div class="provider-grid" data-provider-group="mobile">
+                        <button
+                          class="provider-button"
+                          type="button"
+                          data-provider="system"
+                          aria-pressed="true"
+                        >
+                          系统朗读
+                        </button>
+                        <button
+                          class="provider-button"
+                          type="button"
+                          data-provider="openai"
+                          aria-pressed="false"
+                        >
+                          OpenAI 兼容
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="settings-group">
+                      <p class="settings-group-title">声音与参数</p>
+                      <div
+                        class="settings-row"
+                        data-voice-scope="mobile"
+                        data-voice-provider="system"
+                      >
+                        <label for="mobileVoice">声音</label>
+                        <select id="mobileVoice" class="settings-select">
+                          <option>Ting-Ting · zh-CN</option>
+                          <option>Mei-Jia · zh-TW</option>
+                          <option>Samantha · en-US</option>
+                        </select>
+                      </div>
+                      <div
+                        class="settings-row settings-row-stack"
+                        data-voice-scope="mobile"
+                        data-voice-provider="openai"
+                        hidden
+                      >
+                        <label for="mobileProviderVoices">声音 ID</label>
+                        <textarea
+                          id="mobileProviderVoices"
+                          class="settings-textarea"
+                          placeholder="每行填写一个供应商支持的声音 ID"
+                        ></textarea>
+                        <p class="settings-help">
+                          MyReader 不预设兼容服务的声音名，请按供应商文档填写。
+                        </p>
+                      </div>
+                      <div
+                        class="settings-row settings-row-stack"
+                        data-voice-scope="mobile"
+                        data-voice-provider="openai"
+                        hidden
+                      >
+                        <label for="mobileDefaultVoice">默认声音</label>
+                        <input
+                          id="mobileDefaultVoice"
+                          class="settings-input"
+                          placeholder="填写上方列表中的一个声音 ID"
+                        />
+                      </div>
+                      <div class="settings-row">
+                        <span>速度</span>
+                        <div class="settings-range-wrap">
+                          <input
+                            class="settings-range"
+                            type="range"
+                            min="0.5"
+                            max="2"
+                            step="0.05"
+                            value="1"
+                            data-range-output="mobileSpeed"
+                          />
+                          <span id="mobileSpeed" class="settings-range-value">1.0×</span>
+                        </div>
+                      </div>
+                      <div class="settings-row">
+                        <span>音高</span>
+                        <div class="settings-range-wrap">
+                          <input
+                            class="settings-range"
+                            type="range"
+                            min="-20"
+                            max="20"
+                            step="1"
+                            value="0"
+                            data-range-output="mobilePitch"
+                          />
+                          <span id="mobilePitch" class="settings-range-value">0%</span>
+                        </div>
+                      </div>
+                      <div class="settings-row">
+                        <span>音量</span>
+                        <div class="settings-range-wrap">
+                          <input
+                            class="settings-range"
+                            type="range"
+                            min="0"
+                            max="100"
+                            step="1"
+                            value="100"
+                            data-range-output="mobileVolume"
+                          />
+                          <span id="mobileVolume" class="settings-range-value">100%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="settings-group">
+                      <p class="settings-group-title">阅读行为</p>
+                      <div class="settings-row">
+                        <span>当前句高亮</span>
+                        <button
+                          class="settings-switch"
+                          type="button"
+                          role="switch"
+                          aria-label="当前句高亮"
+                          aria-checked="true"
+                        ></button>
+                      </div>
+                      <div class="settings-row">
+                        <span>自动跟随朗读位置</span>
+                        <button
+                          class="settings-switch"
+                          type="button"
+                          role="switch"
+                          aria-label="自动跟随朗读位置"
+                          aria-checked="true"
+                        ></button>
+                      </div>
+                    </div>
+
+                    <button class="settings-link" type="button">
+                      <span>管理供应商</span>
+                      <i data-lucide="chevron-right" class="size-4"></i>
+                    </button>
+                    <p class="settings-footnote">仅显示当前引擎实际支持的朗读参数。</p>
+                  </div>
+                </section>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <div id="desktopView" class="prototype-view" hidden>
+          <div class="desktop-frame">
+            <article
+              id="desktopReader"
+              class="desktop-reader reader-surface"
+              data-reader-theme="ocean"
+              data-tts-active="false"
+            >
+              <header class="desktop-topbar">
+                <div class="desktop-left">
+                  <div class="traffic-lights" aria-hidden="true">
+                    <span class="traffic-light"></span>
+                    <span class="traffic-light"></span>
+                    <span class="traffic-light"></span>
+                  </div>
+                  <button class="desktop-icon-button" type="button" aria-label="目录">
+                    <i data-lucide="list" class="size-[17px]"></i>
+                  </button>
+                  <button class="desktop-icon-button" type="button" aria-label="书签列表">
+                    <i data-lucide="folder-bookmark" class="size-[17px]"></i>
+                  </button>
+                  <button class="desktop-icon-button" type="button" aria-label="批注">
+                    <i data-lucide="square-pen" class="size-[17px]"></i>
+                  </button>
+                </div>
+
+                <div class="desktop-title">
+                  <strong>这电影出了什么问题？</strong>
+                  <span>Chapter 07 · 转折，转折，转折</span>
+                </div>
+
+                <div class="desktop-right">
+                  <button class="desktop-icon-button" type="button" aria-label="搜索">
+                    <i data-lucide="search" class="size-[17px]"></i>
+                  </button>
+                  <button class="desktop-icon-button" type="button" aria-label="阅读设置">
+                    <i data-lucide="settings" class="size-[17px]"></i>
+                  </button>
+                  <button
+                    class="desktop-icon-button bookmark-button"
+                    type="button"
+                    aria-label="添加书签"
+                    aria-pressed="false"
+                  >
+                    <i data-lucide="bookmark" class="size-[17px]"></i>
+                  </button>
+                </div>
+              </header>
+
+              <div class="desktop-content">
+                <div class="desktop-prose">
+                  <h1>转折，转折，转折<br />Turn, Turn, Turn</h1>
+                  <p>
+                    <span class="tts-sentence" data-tts-scope="desktop" data-sentence-index="0"
+                      >这句口号也被我写在了一张褪色的草稿纸上，在桌子上方贴了 20 年。</span
+                    >
+                    <span class="tts-sentence" data-tts-scope="desktop" data-sentence-index="1"
+                      >这是我职业生涯中听到的第一句关于剧作的诀窍，但我实在是想不起来到底是谁告诉我的了。</span
+                    >
+                  </p>
+                  <p>
+                    <span class="tts-sentence" data-tts-scope="desktop" data-sentence-index="2"
+                      >这条匿名的建议从那时起便一直为我指明方向。</span
+                    >
+                    <span class="tts-sentence" data-tts-scope="desktop" data-sentence-index="3"
+                      >故事真正前进的时刻，往往发生在我们以为一切已经确定之后。</span
+                    >
+                  </p>
+                </div>
+              </div>
+
+              <footer class="desktop-footer">位置 229 / 292</footer>
+
+              <div
+                id="desktopTtsPlayer"
+                class="desktop-tts-player"
+                data-play-state="paused"
+                aria-label="听书控制"
+              >
+                <div
+                  class="desktop-player-glass tts-mini-player"
+                  data-platform="desktop"
+                  aria-hidden="true"
+                ></div>
+                <div class="desktop-player-controls">
+                  <button
+                    class="tts-control tts-settings-button"
+                    data-action="settings"
+                    type="button"
+                    aria-label="听书设置"
+                    aria-haspopup="dialog"
+                    aria-expanded="false"
+                  >
+                    <i data-lucide="settings-2" class="size-[17px]"></i>
+                  </button>
+                  <button
+                    class="tts-control"
+                    data-action="previous"
+                    type="button"
+                    aria-label="上一句"
+                  >
+                    <i data-lucide="skip-back" class="size-[17px]"></i>
+                  </button>
+                  <button
+                    class="tts-control"
+                    data-action="playback"
+                    data-role="playback"
+                    type="button"
+                    aria-label="播放"
+                  >
+                    <i data-lucide="play" class="icon-play size-[17px]"></i>
+                    <i data-lucide="pause" class="icon-pause size-[17px]"></i>
+                    <i data-lucide="loader-circle" class="icon-loader size-[17px]"></i>
+                    <i data-lucide="rotate-cw" class="icon-retry size-[17px]"></i>
+                  </button>
+                  <button
+                    class="tts-control"
+                    data-action="next"
+                    type="button"
+                    aria-label="下一句"
+                  >
+                    <i data-lucide="skip-forward" class="size-[17px]"></i>
+                  </button>
+                  <button
+                    class="tts-control desktop-start-stop"
+                    data-action="start-stop"
+                    type="button"
+                    aria-label="开始听书"
+                  >
+                    <i data-lucide="audio-lines" class="tts-icon-idle size-[17px]"></i>
+                    <i data-lucide="square" class="tts-icon-stop size-[17px]"></i>
+                  </button>
+                </div>
+              </div>
+
+              <aside
+                id="desktopSettingsPanel"
+                class="desktop-settings-panel tts-settings-surface"
+                role="dialog"
+                aria-labelledby="desktopSettingsTitle"
+              >
+                <div class="settings-heading tts-settings-header">
+                  <h3 id="desktopSettingsTitle">听书设置</h3>
+                  <button class="settings-close" type="button" aria-label="关闭">
+                    <i data-lucide="x" class="size-5"></i>
+                  </button>
+                </div>
+                <div class="settings-scroll">
+                  <div class="settings-group">
+                    <p class="settings-group-title">朗读引擎</p>
+                    <div class="provider-grid" data-provider-group="desktop">
+                      <button
+                        class="provider-button"
+                        type="button"
+                        data-provider="system"
+                        aria-pressed="true"
+                      >
+                        系统朗读
+                      </button>
+                      <button
+                        class="provider-button"
+                        type="button"
+                        data-provider="openai"
+                        aria-pressed="false"
+                      >
+                        OpenAI 兼容
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="settings-group">
+                    <p class="settings-group-title">声音与参数</p>
+                    <div
+                      class="settings-row"
+                      data-voice-scope="desktop"
+                      data-voice-provider="system"
+                    >
+                      <label for="desktopVoice">声音</label>
+                      <select id="desktopVoice" class="settings-select">
+                        <option>Ting-Ting · zh-CN</option>
+                        <option>Mei-Jia · zh-TW</option>
+                        <option>Samantha · en-US</option>
+                      </select>
+                    </div>
+                    <div
+                      class="settings-row settings-row-stack"
+                      data-voice-scope="desktop"
+                      data-voice-provider="openai"
+                      hidden
+                    >
+                      <label for="desktopProviderVoices">声音 ID</label>
+                      <textarea
+                        id="desktopProviderVoices"
+                        class="settings-textarea"
+                        placeholder="每行填写一个供应商支持的声音 ID"
+                      ></textarea>
+                      <p class="settings-help">
+                        MyReader 不预设兼容服务的声音名，请按供应商文档填写。
+                      </p>
+                    </div>
+                    <div
+                      class="settings-row settings-row-stack"
+                      data-voice-scope="desktop"
+                      data-voice-provider="openai"
+                      hidden
+                    >
+                      <label for="desktopDefaultVoice">默认声音</label>
+                      <input
+                        id="desktopDefaultVoice"
+                        class="settings-input"
+                        placeholder="填写上方列表中的一个声音 ID"
+                      />
+                    </div>
+                    <div class="settings-row">
+                      <span>速度</span>
+                      <div class="settings-range-wrap">
+                        <input
+                          class="settings-range"
+                          type="range"
+                          min="0.5"
+                          max="2"
+                          step="0.05"
+                          value="1"
+                          data-range-output="desktopSpeed"
+                        />
+                        <span id="desktopSpeed" class="settings-range-value">1.0×</span>
+                      </div>
+                    </div>
+                    <div class="settings-row">
+                      <span>音高</span>
+                      <div class="settings-range-wrap">
+                        <input
+                          class="settings-range"
+                          type="range"
+                          min="-20"
+                          max="20"
+                          step="1"
+                          value="0"
+                          data-range-output="desktopPitch"
+                        />
+                        <span id="desktopPitch" class="settings-range-value">0%</span>
+                      </div>
+                    </div>
+                    <div class="settings-row">
+                      <span>音量</span>
+                      <div class="settings-range-wrap">
+                        <input
+                          class="settings-range"
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="1"
+                          value="100"
+                          data-range-output="desktopVolume"
+                        />
+                        <span id="desktopVolume" class="settings-range-value">100%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="settings-group">
+                    <p class="settings-group-title">阅读行为</p>
+                    <div class="settings-row">
+                      <span>当前句高亮</span>
+                      <button
+                        class="settings-switch"
+                        type="button"
+                        role="switch"
+                        aria-label="当前句高亮"
+                        aria-checked="true"
+                      ></button>
+                    </div>
+                    <div class="settings-row">
+                      <span>自动跟随朗读位置</span>
+                      <button
+                        class="settings-switch"
+                        type="button"
+                        role="switch"
+                        aria-label="自动跟随朗读位置"
+                        aria-checked="true"
+                      ></button>
+                    </div>
+                  </div>
+
+                  <button class="settings-link" type="button">
+                    <span>管理供应商</span>
+                    <i data-lucide="chevron-right" class="size-4"></i>
+                  </button>
+                  <p class="settings-footnote">仅显示当前引擎实际支持的朗读参数。</p>
+                </div>
+              </aside>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <div id="liveRegion" class="live-region" aria-live="polite"></div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.js"></script>
+    <script>
+      const state = {
+        mobile: { active: false, playback: "paused", sentence: 0, timer: null },
+        desktop: { active: false, playback: "paused", sentence: 0, timer: null },
+      }
+
+      const scopeElements = {
+        mobile: {
+          reader: document.getElementById("mobileReader"),
+          player: document.getElementById("mobileTtsPlayer"),
+          sheet: document.getElementById("mobileSheetLayer"),
+        },
+        desktop: {
+          reader: document.getElementById("desktopReader"),
+          player: document.getElementById("desktopTtsPlayer"),
+          sheet: document.getElementById("desktopSettingsPanel"),
+        },
+      }
+
+      const liveRegion = document.getElementById("liveRegion")
+
+      function announce(message) {
+        liveRegion.textContent = ""
+        window.setTimeout(() => {
+          liveRegion.textContent = message
+        }, 20)
+      }
+
+      function sentenceElements(scope) {
+        return Array.from(
+          document.querySelectorAll(`[data-tts-scope="${scope}"]`),
+        )
+      }
+
+      function render(scope) {
+        const current = state[scope]
+        const elements = scopeElements[scope]
+        elements.reader.dataset.ttsActive = String(current.active)
+        elements.player.classList.toggle("is-active", current.active)
+        elements.player.dataset.playState = current.playback
+
+        const startStop = elements.player.querySelector(
+          scope === "mobile" ? ".mobile-start-stop" : ".desktop-start-stop",
+        )
+        startStop.setAttribute(
+          "aria-label",
+          current.active ? "停止听书" : "开始听书",
+        )
+
+        const playbackButton = elements.player.querySelector(
+          '[data-role="playback"]',
+        )
+        const playbackLabel =
+          current.playback === "playing"
+            ? "暂停"
+            : current.playback === "loading"
+              ? "正在载入"
+              : current.playback === "error"
+                ? "重试"
+                : "播放"
+        playbackButton.setAttribute("aria-label", playbackLabel)
+
+        sentenceElements(scope).forEach((sentence, index) => {
+          sentence.classList.toggle(
+            "is-speaking",
+            current.active && index === current.sentence,
+          )
+        })
+      }
+
+      function settleToPlaying(scope, delay = 520) {
+        window.clearTimeout(state[scope].timer)
+        state[scope].timer = window.setTimeout(() => {
+          if (!state[scope].active) return
+          state[scope].playback = "playing"
+          render(scope)
+          announce("正在播放")
+        }, delay)
+      }
+
+      function start(scope) {
+        state[scope].active = true
+        state[scope].playback = "loading"
+        render(scope)
+        announce("正在载入")
+        settleToPlaying(scope)
+      }
+
+      function stop(scope) {
+        window.clearTimeout(state[scope].timer)
+        state[scope].active = false
+        state[scope].playback = "paused"
+        render(scope)
+        announce("已停止")
+      }
+
+      function toggleStartStop(scope) {
+        if (state[scope].active) stop(scope)
+        else start(scope)
+      }
+
+      function togglePlayback(scope) {
+        if (!state[scope].active) {
+          start(scope)
+          return
+        }
+        if (state[scope].playback === "loading") return
+        if (state[scope].playback === "error") {
+          state[scope].playback = "loading"
+          render(scope)
+          settleToPlaying(scope)
+          return
+        }
+        state[scope].playback =
+          state[scope].playback === "playing" ? "paused" : "playing"
+        render(scope)
+        announce(state[scope].playback === "playing" ? "正在播放" : "已暂停")
+      }
+
+      function moveSentence(scope, direction) {
+        const sentences = sentenceElements(scope)
+        state[scope].sentence = Math.min(
+          sentences.length - 1,
+          Math.max(0, state[scope].sentence + direction),
+        )
+        state[scope].playback = "loading"
+        render(scope)
+        settleToPlaying(scope, 280)
+        sentences[state[scope].sentence].scrollIntoView({
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+            ? "auto"
+            : "smooth",
+          block: "center",
+        })
+      }
+
+      function wirePlayer(scope) {
+        const player = scopeElements[scope].player
+        player
+          .querySelector('[data-action="start-stop"]')
+          .addEventListener("click", () => toggleStartStop(scope))
+        player
+          .querySelector('[data-action="previous"]')
+          .addEventListener("click", () => moveSentence(scope, -1))
+        player
+          .querySelector('[data-action="playback"]')
+          .addEventListener("click", () => togglePlayback(scope))
+        player
+          .querySelector('[data-action="next"]')
+          .addEventListener("click", () => moveSentence(scope, 1))
+        player
+          .querySelector('[data-action="settings"]')
+          .addEventListener("click", () => openSettings(scope))
+      }
+
+      function openSettings(scope) {
+        const sheet = scopeElements[scope].sheet
+        sheet.classList.add("is-open")
+        const settingsButton = scopeElements[scope].player.querySelector(
+          ".tts-settings-button",
+        )
+        settingsButton.setAttribute("aria-expanded", "true")
+        window.setTimeout(() => sheet.querySelector("select")?.focus(), 360)
+      }
+
+      function closeSettings(scope) {
+        const sheet = scopeElements[scope].sheet
+        sheet.classList.remove("is-open")
+        const settingsButton = scopeElements[scope].player.querySelector(
+          ".tts-settings-button",
+        )
+        settingsButton.setAttribute("aria-expanded", "false")
+        settingsButton.focus()
+      }
+
+      wirePlayer("mobile")
+      wirePlayer("desktop")
+
+      document.querySelectorAll(".tts-sentence").forEach((sentence) => {
+        sentence.addEventListener("click", () => {
+          const scope = sentence.dataset.ttsScope
+          state[scope].sentence = Number(sentence.dataset.sentenceIndex)
+          start(scope)
+          sentence.scrollIntoView({ behavior: "smooth", block: "center" })
+        })
+      })
+
+      document
+        .querySelector("#mobileSheetLayer .mobile-sheet-scrim")
+        .addEventListener("click", () => closeSettings("mobile"))
+      document
+        .querySelector("#mobileSheetLayer .settings-close")
+        .addEventListener("click", () => closeSettings("mobile"))
+      document
+        .querySelector("#desktopSettingsPanel .settings-close")
+        .addEventListener("click", () => closeSettings("desktop"))
+
+      const mobileMoreButton = document.getElementById("mobileMoreButton")
+      const mobileMoreMenu = document.getElementById("mobileMoreMenu")
+      mobileMoreButton.addEventListener("click", () => {
+        const open = !mobileMoreMenu.classList.contains("is-open")
+        mobileMoreMenu.classList.toggle("is-open", open)
+        mobileMoreButton.setAttribute("aria-expanded", String(open))
+      })
+
+      document.querySelectorAll(".bookmark-button").forEach((button) => {
+        button.addEventListener("click", () => {
+          const pressed = button.getAttribute("aria-pressed") !== "true"
+          button.setAttribute("aria-pressed", String(pressed))
+          button.setAttribute("aria-label", pressed ? "移除书签" : "添加书签")
+        })
+      })
+
+      document.querySelectorAll(".settings-switch").forEach((button) => {
+        button.addEventListener("click", () => {
+          button.setAttribute(
+            "aria-checked",
+            String(button.getAttribute("aria-checked") !== "true"),
+          )
+        })
+      })
+
+      document.querySelectorAll("[data-provider-group]").forEach((group) => {
+        group.querySelectorAll(".provider-button").forEach((button) => {
+          button.addEventListener("click", () => {
+            group.querySelectorAll(".provider-button").forEach((option) => {
+              option.setAttribute(
+                "aria-pressed",
+                String(option === button),
+              )
+            })
+            document
+              .querySelectorAll(
+                `[data-voice-scope="${group.dataset.providerGroup}"]`,
+              )
+              .forEach((voiceConfig) => {
+                voiceConfig.hidden =
+                  voiceConfig.dataset.voiceProvider !== button.dataset.provider
+              })
+          })
+        })
+      })
+
+      document.querySelectorAll(".settings-range").forEach((range) => {
+        range.addEventListener("input", () => {
+          const output = document.getElementById(range.dataset.rangeOutput)
+          if (!output) return
+          if (range.dataset.rangeOutput.toLowerCase().includes("speed")) {
+            output.textContent = `${Number(range.value).toFixed(1)}×`
+          } else {
+            output.textContent = `${range.value}%`
+          }
+        })
+      })
+
+      document.querySelectorAll(".platform-button").forEach((button) => {
+        button.addEventListener("click", () => {
+          const platform = button.dataset.platformTarget
+          document.querySelectorAll(".platform-button").forEach((option) => {
+            option.setAttribute(
+              "aria-pressed",
+              String(option === button),
+            )
+          })
+          document.getElementById("mobileView").hidden = platform !== "mobile"
+          document.getElementById("desktopView").hidden = platform !== "desktop"
+        })
+      })
+
+      document.querySelectorAll(".theme-button").forEach((button) => {
+        button.addEventListener("click", () => {
+          const theme = button.dataset.themeTarget
+          document.querySelectorAll(".theme-button").forEach((option) => {
+            option.setAttribute("aria-pressed", String(option === button))
+          })
+          document.querySelectorAll(".reader-surface").forEach((reader) => {
+            reader.dataset.readerTheme = theme
+          })
+        })
+      })
+
+      render("mobile")
+      render("desktop")
+      lucide.createIcons({ attrs: { "stroke-width": 1.7 } })
+    </script>
+  </body>
+</html>

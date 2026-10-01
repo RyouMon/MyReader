@@ -10,6 +10,8 @@ overrides:
 patchedDependencies:
   '@kesha-antonov/react-native-background-downloader@4.5.4': 81b2791631172bc3fe1dd36c417783c5c9b687472b5520c1683becc1469b1c47
   '@react-native-menu/menu@2.0.0': 10a3f512a6501be9c28096044efef2014b8f3c3ec5efbe3017c77d75d4cf4e02
+  '@readium/navigator@2.5.4': e183eb1df143cc687aba11902a179bcc05045d300aa5fac8cf8414012caad59a
+  '@readium/speech@0.7.0': 1c4134e10e8de69821d0c9050402540fd167d83c6099cccf804a25c27d44a7ff
   expo-sharing@56.0.18: 166addbf93d796e8f44347e9f9896260f63a2bd73add20b4caa323f00cd677a4
   react-native-css@3.0.7: 84b0a43e5b79ecff96a437135adc90aaac139f76b9da3220162ed6a7e19203b5
   uniffi-bindgen-react-native@0.31.0-3: 34b621394e36076002fd7e7247e0483172cfad56e505e4bb8937e4071aae6993
@@ -59,13 +61,16 @@ importers:
         version: 2.0.5
       '@readium/navigator':
         specifier: ^2.5.1
-        version: 2.5.4
+        version: 2.5.4(patch_hash=e183eb1df143cc687aba11902a179bcc05045d300aa5fac8cf8414012caad59a)
       '@readium/navigator-html-injectables':
         specifier: ^2.4.1
         version: 2.4.2
       '@readium/shared':
         specifier: ^2.2.0
         version: 2.2.0
+      '@readium/speech':
+        specifier: ^0.7.0
+        version: 0.7.0(patch_hash=1c4134e10e8de69821d0c9050402540fd167d83c6099cccf804a25c27d44a7ff)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.3.0(vite@6.4.2(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.22.0)(yaml@2.9.0))
@@ -316,6 +321,9 @@ importers:
       expo-asset:
         specifier: ~56.0.15
         version: 56.0.15(expo@56.0.8)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)(typescript@6.0.3)
+      expo-audio:
+        specifier: ~56.0.13
+        version: 56.0.13(expo-asset@56.0.15(expo@56.0.8)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)(typescript@6.0.3))(expo@56.0.8)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
       expo-auth-session:
         specifier: ~56.0.13
         version: 56.0.13(expo@56.0.8)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
@@ -376,6 +384,9 @@ importers:
       expo-sharing:
         specifier: ~56.0.18
         version: 56.0.18(patch_hash=166addbf93d796e8f44347e9f9896260f63a2bd73add20b4caa323f00cd677a4)(expo@56.0.8)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)(typescript@6.0.3)
+      expo-speech:
+        specifier: ~56.0.3
+        version: 56.0.3(expo@56.0.8)
       expo-splash-screen:
         specifier: ~56.0.10
         version: 56.0.10(expo@56.0.8)(typescript@6.0.3)
@@ -3245,8 +3256,20 @@ packages:
   '@readium/css@2.0.5':
     resolution: {integrity: sha512-rQWeDFSS9UfRTFFdWIhlko0jtkL9dOfNTqFjgMumlguromsyHC9/lGmbWDde7deEeE5ns+yBOSGKixMU0wqZ4A==}
 
+  '@readium/decorator@1.0.2':
+    resolution: {integrity: sha512-bod7LemtcZR+rANs8hmpxG5bTxFn9Dqa3gJ4XS5oV0tB23NatVDyFa3DZhELwvW6JUhmduZd8EGxhGkU1NZ0mw==}
+    engines: {node: '>=18'}
+
+  '@readium/helpers@1.0.0':
+    resolution: {integrity: sha512-7q1ZZhY6/drlSyJvcNweWZlbqv4yfr5fLgM+UF4sf1qa7EJJ+yPmVcuhui1ntPbiS3Wae0mh0kL4AFsyOXyrbQ==}
+    engines: {node: '>=18'}
+
   '@readium/navigator-html-injectables@2.4.2':
     resolution: {integrity: sha512-C08vjzYek19VU9JnCvhTorO8xVsR8hcCzSCD0IondBYOtcRbBzu18Ezp3WQR47/a/9tQMGicOS9knmmll1fZuw==}
+    engines: {node: '>=18'}
+
+  '@readium/navigator-html-injectables@2.6.3':
+    resolution: {integrity: sha512-9txUqqQ2pJ6UJvnVFFrCsxCf9qujAi99sP6DeyCGBF3WIKVP2UGC63El35A8im68aDMbFOmeGLY+HXCOaxvviw==}
     engines: {node: '>=18'}
 
   '@readium/navigator@2.5.4':
@@ -3256,6 +3279,13 @@ packages:
   '@readium/shared@2.2.0':
     resolution: {integrity: sha512-nfrMlF0/rgFvv3FNOsUehKDKHRHv6FKvakpnIs4aeDZS5TujCNlwWbuSCogSTQwJe+GMplWR5/T9B+bb6SZetA==}
     engines: {node: '>=18'}
+
+  '@readium/shared@2.4.0':
+    resolution: {integrity: sha512-j3N2dqCuFja5ToksYr+G4uKg5vnzNVSLlZy9C071jSkQeRUSIIdREPYo5Gx/XOptkvPwip9O28oaG/JXCW4Z1g==}
+    engines: {node: '>=18'}
+
+  '@readium/speech@0.7.0':
+    resolution: {integrity: sha512-wPVePBkNUvvq2IN2yh5On/uBjjpmMt2zV6By0KlBlmtBp4mMVnLJHt8zAgXSyCvYKmqvzy/y19JaqqyCmNWLoQ==}
 
   '@rolldown/pluginutils@1.0.0-beta.27':
     resolution: {integrity: sha512-+d0F4MKMCbeVUJwG96uQ4SgAznZNSq93I3V+9NHA4OpvqG8mRCpGdKmK8l/dl02h2CCDHwW2FqilnTyDcAnqjA==}
@@ -4361,10 +4391,12 @@ packages:
   '@xmldom/xmldom@0.8.13':
     resolution: {integrity: sha512-KRYzxepc14G/CEpEGc3Yn+JKaAeT63smlDr+vjB8jRfgTBBI9wRj/nkQEO+ucV8p8I9bfKLWp37uHgFrbntPvw==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@xmldom/xmldom@0.9.10':
     resolution: {integrity: sha512-A9gOqLdi6cV4ibazAjcQufGj0B1y/vDqYrcuP6d/6x8P27gRS8643Dj9o1dEKtB6O7fwxb2FgBmJS2mX7gpvdw==}
     engines: {node: '>=14.6'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@zip.js/zip.js@2.8.26':
     resolution: {integrity: sha512-RQ4h9F6DOiHxpdocUDrOl6xBM+yOtz+LkUol47AVWcfebGBDpZ7w7Xvz9PS24JgXvLGiXXzSAfdCdVy1tPlaFA==}
@@ -4943,6 +4975,10 @@ packages:
   co@4.6.0:
     resolution: {integrity: sha512-QVb0dM5HvG+uaxitm8wONl7jltx8dqhfU33DcqtOZcLSVIKSDDLDi7+0LbAKiyI8hD9u42m2YxXSkMGWThaecQ==}
     engines: {iojs: '>= 1.0.0', node: '>= 0.12.0'}
+
+  codsen-utils@1.8.0:
+    resolution: {integrity: sha512-y2aaSqHOk4VBtot1oO6haBgtfc9Lf8mwQBPFePlsMdKORifG/eeRpiIJEkz6m755eErWyu5dqF/U9FffjH9uTA==}
+    engines: {node: '>=18.20.8'}
 
   collect-v8-coverage@1.0.3:
     resolution: {integrity: sha512-1L5aqIkwPfiodaMgQunkF1zRhNqifHBmtbbbxcr6yVxxBnliw4TDOW6NxpO8DJLgJ16OT+Y4ztZqP6p/FtXnAw==}
@@ -5533,6 +5569,7 @@ packages:
   eslint@9.39.4:
     resolution: {integrity: sha512-XoMjdBOwe/esVgEvLmNsD3IRHkm7fbKIUGvrleloJXUZgDHig2IPWNniv+GwjyJXzuNqVjlr5+4yVUZjycJwfQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
     peerDependencies:
       jiti: '*'
@@ -5638,6 +5675,14 @@ packages:
     resolution: {integrity: sha512-BHGi2IAOPQTcOelkUdcz1WIknfCTRjkcpYHX1azjMwgYenrVC+J5qcqJGaC8eUOWLCRtkRJWGnmFQRYtLU1nUQ==}
     peerDependencies:
       expo: '*'
+      react: '*'
+      react-native: '*'
+
+  expo-audio@56.0.13:
+    resolution: {integrity: sha512-pfBmT/8OYbhrb37ECk+fC1EstLBFxMTioF4uZrAEeOj3uCgjproj1qYmkpsQLJIoEOMPSIw1iSfBEMl10v1DDA==}
+    peerDependencies:
+      expo: '*'
+      expo-asset: '*'
       react: '*'
       react-native: '*'
 
@@ -5848,6 +5893,11 @@ packages:
       expo: '*'
       react: '*'
       react-native: '*'
+
+  expo-speech@56.0.3:
+    resolution: {integrity: sha512-NkO7RX+BgJCALrjL/6C9AsyenkmJD9EBDIKAQmSN6BLrcXxwZnyQ9TSo/ZTSDSY9Y28aStXHfEBQogt2qUrP9w==}
+    peerDependencies:
+      expo: '*'
 
   expo-splash-screen@56.0.10:
     resolution: {integrity: sha512-vDIlo8hzt9HlCZQ0kSY66v83D1WEXOJbVMeyPDfXDu9tbDdPMNUyDpi4WGJXikAjxnAKfbt5Mv5NnEbxINy+VA==}
@@ -6281,6 +6331,9 @@ packages:
   html-encoding-sniffer@6.0.0:
     resolution: {integrity: sha512-CV9TW3Y3f8/wT0BRFc1/KAVQ3TUHiXmaAb6VW9vtiMFf7SLoMd1PdAc4W3KFOFETBJUb90KatHqlsZMWV+R9Gg==}
     engines: {node: ^20.19.0 || ^22.12.0 || >=24.0.0}
+
+  html-entities@2.6.0:
+    resolution: {integrity: sha512-kig+rMn/QOVRvr7c86gQ8lWXq+Hkv6CbAH1hLu+RG338StTpE8Z0b44SDVaqVu7HGKf27frdmUYEs9hTUX/cLQ==}
 
   html-escaper@2.0.2:
     resolution: {integrity: sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==}
@@ -7069,6 +7122,9 @@ packages:
   locate-path@7.2.0:
     resolution: {integrity: sha512-gvVijfZvn7R+2qyPX8mAuKcFGDf6Nc61GdvGafQsHL0sBIxfKzA+usWn4GFC/bk+QdwPUD4kWFJLhElipq+0VA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+
+  lodash-es@4.18.1:
+    resolution: {integrity: sha512-J8xewKD/Gk22OZbhpOVSwcs60zhd95ESDwezOFuA3/099925PdHJ7OFHNTGtajL3AlZkykD32HykiMo+BIBI8A==}
 
   lodash.clonedeep@4.5.0:
     resolution: {integrity: sha512-H5ZhCF25riFd9uB5UCkVKo61m3S/xZk1x4wA6yp/L3RFP6Z/eHH1ymQcGLo7J3GMPfm0V/7m1tryHuGVxpqEBQ==}
@@ -7911,6 +7967,22 @@ packages:
     resolution: {integrity: sha512-Hrgsx+orqoygnmhFbKaHE6c296J+HTAQXoxEF6gNupROmmGJRoyzfG3ccAveqCBrwr/2yxQ5BVd/GTl5agOwSg==}
     engines: {node: '>= 0.6'}
 
+  ranges-apply@7.2.1:
+    resolution: {integrity: sha512-+rCkAyDWKD9oq9SHu9qNHzZbEmVciQi9v4npSLjmSgjG0sAzxlEDZ4qer7wMX04TO+zyJrxXzq6W/Z92Mkt2gQ==}
+    engines: {node: '>=18.20.8'}
+
+  ranges-merge@9.2.1:
+    resolution: {integrity: sha512-pmeookLPO30YlpXq5M7uMLXu44dKpvrBLVJP1a0w/wSjP6PfKB15C7DwV0PWrFGZWwgKPwn0Yr1Xbg6IIZjvrA==}
+    engines: {node: '>=18.20.8'}
+
+  ranges-push@7.2.0:
+    resolution: {integrity: sha512-b0OeZoYJvCcSBghn+FPIeZtQGqCb/dlF0ahN11EFc0OiQ/BYJ7O0k+gQfZJsjsRCeVKDP/B98XKC0XVzgVFEHA==}
+    engines: {node: '>=18.20.8'}
+
+  ranges-sort@6.2.0:
+    resolution: {integrity: sha512-02GYH06KjfECxvZD9ah42Ddc7nDMANwJSINB0cHUemT+jyjRJ3CmLKyqWTUmk2pDZaoSEBla65yUMj5s9OMUbw==}
+    engines: {node: '>=18.20.8'}
+
   react-devtools-core@6.1.5:
     resolution: {integrity: sha512-ePrwPfxAnB+7hgnEr8vpKxL9cmnp7F322t8oqcPshbIQQhDKgFDW4tjhF2wjVbdXF9O/nyuy3sQWd9JGpiLPvA==}
 
@@ -8633,6 +8705,14 @@ packages:
     resolution: {integrity: sha512-aqD2Q0144Z+/RqG52NeHEkZauTAUWJO8c6yTftGJKO3Tja5tUgIfmIl6kExvhtxSDP7fXB6DvzkfMpCd/F3G+Q==}
     engines: {node: '>=0.6.19'}
 
+  string-collapse-leading-whitespace@7.2.0:
+    resolution: {integrity: sha512-c6r2y/R1auNBF2Ce2H6n/5LBaYlZYWGLB09E2D7tgUQI7ORIUi9IjoxTtVOwMTPzhu4dd0aFTxiR9VKTPfeFWQ==}
+    engines: {node: '>=18.20.8'}
+
+  string-left-right@6.2.0:
+    resolution: {integrity: sha512-2sWutu+S0NYpq9YIZSAQTGxSisfW+J9cWlpMOdGyXuQaDllQ5PqQaGGu6kKv8kBXYd2xRQR1noV220drkrhXGQ==}
+    engines: {node: '>=18.20.8'}
+
   string-length@4.0.2:
     resolution: {integrity: sha512-+l6rNN5fYHNhZZy41RXsYptCjA2Igmq4EG7kZAYFQI1E1VTXarr6ZPXBg6eq7Y6eK4FEhY6AJlyuFIb/v/S0VQ==}
     engines: {node: '>=10'}
@@ -8640,6 +8720,10 @@ packages:
   string-length@5.0.1:
     resolution: {integrity: sha512-9Ep08KAMUn0OadnVaBuRdE2l615CQ508kr0XMadjClfYpdCyvrbFp6Taebo8yyxokQ4viUd/xPPUA4FGgUa0ow==}
     engines: {node: '>=12.20'}
+
+  string-strip-html@13.6.1:
+    resolution: {integrity: sha512-31tKlvpM23yDrxAvj8c5jEYe8DcYlsPe8SNUuaQUwiCWfj5oNriyy3MjEN4+KRKI56+sOLUaL5av4VZxctqevw==}
+    engines: {node: '>=18.20.8'}
 
   string-width@4.2.3:
     resolution: {integrity: sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==}
@@ -8806,8 +8890,8 @@ packages:
   thenify@3.3.1:
     resolution: {integrity: sha512-RVZSIV5IG10Hk3enotrhvz0T9em6cyHBLkH/YAZuKqd8hRkKhSfCGIcP2KUY0EPxndzANBmNllzWPwak+bheSw==}
 
-  thorium-locales@https://codeload.github.com/edrlab/thorium-locales/tar.gz/48ffea8428edf44b64082874d150f17688b3e1d7:
-    resolution: {gitHosted: true, tarball: https://codeload.github.com/edrlab/thorium-locales/tar.gz/48ffea8428edf44b64082874d150f17688b3e1d7}
+  thorium-locales@https://codeload.github.com/edrlab/thorium-locales/tar.gz/3ffb95a16a13269a6f2af4e08a23556aa114f701:
+    resolution: {gitHosted: true, integrity: sha512-VwLADKyLb4zwsFCVjQ0SU/bs4UzIsXGXZL15HsWt7sZrtT63EE7x1/EBJhci533qWeHZ+3lrhji4lfPWbZYQ9g==, tarball: https://codeload.github.com/edrlab/thorium-locales/tar.gz/3ffb95a16a13269a6f2af4e08a23556aa114f701}
     version: 1.0.0
 
   throat@5.0.0:
@@ -9093,6 +9177,9 @@ packages:
     resolution: {integrity: sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w==}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  user-agent-data-types@0.4.3:
+    resolution: {integrity: sha512-Dn3fjwVgeM363mx1sEgOpOp9NNqHBj6Gn68dFbV1WoTr3s05CijKdxfH6A3Q5uzXnYNB6vdAfs/1HWFpObc7EQ==}
 
   userhome@1.0.1:
     resolution: {integrity: sha512-5cnLm4gseXjAclKowC4IjByaGsjtAoV6PrOQOljplNB54ReUYJP8HdAFq2muHinSDAh09PPX/uXDPfdxRHvuSA==}
@@ -12751,13 +12838,35 @@ snapshots:
 
   '@readium/css@2.0.5': {}
 
+  '@readium/decorator@1.0.2':
+    dependencies:
+      '@readium/navigator-html-injectables': 2.6.3
+      '@readium/shared': 2.4.0
+
+  '@readium/helpers@1.0.0':
+    dependencies:
+      user-agent-data-types: 0.4.3
+
   '@readium/navigator-html-injectables@2.4.2': {}
 
-  '@readium/navigator@2.5.4': {}
+  '@readium/navigator-html-injectables@2.6.3':
+    dependencies:
+      '@readium/helpers': 1.0.0
+      '@readium/shared': 2.4.0
+
+  '@readium/navigator@2.5.4(patch_hash=e183eb1df143cc687aba11902a179bcc05045d300aa5fac8cf8414012caad59a)': {}
 
   '@readium/shared@2.2.0':
     dependencies:
-      '@edrlab/thorium-locales': thorium-locales@https://codeload.github.com/edrlab/thorium-locales/tar.gz/48ffea8428edf44b64082874d150f17688b3e1d7
+      '@edrlab/thorium-locales': thorium-locales@https://codeload.github.com/edrlab/thorium-locales/tar.gz/3ffb95a16a13269a6f2af4e08a23556aa114f701
+
+  '@readium/shared@2.4.0': {}
+
+  '@readium/speech@0.7.0(patch_hash=1c4134e10e8de69821d0c9050402540fd167d83c6099cccf804a25c27d44a7ff)':
+    dependencies:
+      '@readium/decorator': 1.0.2
+      '@readium/shared': 2.4.0
+      string-strip-html: 13.6.1
 
   '@rolldown/pluginutils@1.0.0-beta.27': {}
 
@@ -14688,6 +14797,8 @@ snapshots:
 
   co@4.6.0: {}
 
+  codsen-utils@1.8.0: {}
+
   collect-v8-coverage@1.0.3: {}
 
   color-convert@1.9.3:
@@ -15585,6 +15696,13 @@ snapshots:
       - supports-color
       - typescript
 
+  expo-audio@56.0.13(expo-asset@56.0.15(expo@56.0.8)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)(typescript@6.0.3))(expo@56.0.8)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3):
+    dependencies:
+      expo: 56.0.8(499b165cd6ed5fccb412109914389210)
+      expo-asset: 56.0.15(expo@56.0.8)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)(typescript@6.0.3)
+      react: 19.2.3
+      react-native: 0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1)
+
   expo-auth-session@56.0.13(expo@56.0.8)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3):
     dependencies:
       expo-application: 56.0.3(expo@56.0.8)
@@ -15828,6 +15946,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
       - typescript
+
+  expo-speech@56.0.3(expo@56.0.8):
+    dependencies:
+      expo: 56.0.8(499b165cd6ed5fccb412109914389210)
 
   expo-splash-screen@56.0.10(expo@56.0.8)(typescript@6.0.3):
     dependencies:
@@ -16309,6 +16431,8 @@ snapshots:
       '@exodus/bytes': 1.15.0(@noble/hashes@2.2.0)
     transitivePeerDependencies:
       - '@noble/hashes'
+
+  html-entities@2.6.0: {}
 
   html-escaper@2.0.2: {}
 
@@ -17362,6 +17486,8 @@ snapshots:
     dependencies:
       p-locate: 6.0.0
 
+  lodash-es@4.18.1: {}
+
   lodash.clonedeep@4.5.0: {}
 
   lodash.debounce@4.0.8: {}
@@ -18329,6 +18455,26 @@ snapshots:
 
   range-parser@1.2.1: {}
 
+  ranges-apply@7.2.1:
+    dependencies:
+      codsen-utils: 1.8.0
+      ranges-merge: 9.2.1
+
+  ranges-merge@9.2.1:
+    dependencies:
+      codsen-utils: 1.8.0
+      ranges-sort: 6.2.0
+
+  ranges-push@7.2.0:
+    dependencies:
+      codsen-utils: 1.8.0
+      ranges-sort: 6.2.0
+      string-collapse-leading-whitespace: 7.2.0
+
+  ranges-sort@6.2.0:
+    dependencies:
+      codsen-utils: 1.8.0
+
   react-devtools-core@6.1.5:
     dependencies:
       shell-quote: 1.8.3
@@ -19190,6 +19336,12 @@ snapshots:
 
   string-argv@0.3.2: {}
 
+  string-collapse-leading-whitespace@7.2.0: {}
+
+  string-left-right@6.2.0:
+    dependencies:
+      codsen-utils: 1.8.0
+
   string-length@4.0.2:
     dependencies:
       char-regex: 1.0.2
@@ -19199,6 +19351,15 @@ snapshots:
     dependencies:
       char-regex: 2.0.2
       strip-ansi: 7.2.0
+
+  string-strip-html@13.6.1:
+    dependencies:
+      codsen-utils: 1.8.0
+      html-entities: 2.6.0
+      lodash-es: 4.18.1
+      ranges-apply: 7.2.1
+      ranges-push: 7.2.0
+      string-left-right: 6.2.0
 
   string-width@4.2.3:
     dependencies:
@@ -19407,7 +19568,7 @@ snapshots:
     dependencies:
       any-promise: 1.3.0
 
-  thorium-locales@https://codeload.github.com/edrlab/thorium-locales/tar.gz/48ffea8428edf44b64082874d150f17688b3e1d7: {}
+  thorium-locales@https://codeload.github.com/edrlab/thorium-locales/tar.gz/3ffb95a16a13269a6f2af4e08a23556aa114f701: {}
 
   throat@5.0.0: {}
 
@@ -19688,6 +19849,8 @@ snapshots:
   use-sync-external-store@1.6.0(react@19.2.3):
     dependencies:
       react: 19.2.3
+
+  user-agent-data-types@0.4.3: {}
 
   userhome@1.0.1: {}
 

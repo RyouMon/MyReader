@@ -8,3 +8,4 @@ pub(crate) mod library;
 pub(crate) mod publication_analysis;
 pub(crate) mod reading;
 pub(crate) mod sync;
+pub(crate) mod tts;

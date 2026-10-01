@@ -121,9 +121,21 @@ models/             跨层稳定业务 DTO
 - 阅读 session、完成记录和当前书库统计。
 - Automerge change、projection、outbox、远端交换、pull freshness、retry/suspend 和
   single-flight 规则。
+- 设备本地 TTS provider profile、默认引擎、voice mapping，以及 OpenAI-compatible 的语音发现、
+  音频合成、缓存和错误归一化。
 
 不进入 core 的平台能力包括 UI 状态、Readium Navigator、窗口、系统目录授权、secure storage、
-OAuth UI、通知、计时器和应用生命周期。
+系统 TTS、音频播放、OAuth UI、通知、计时器和应用生命周期。
+
+### 3.3 TTS 所有权
+
+TTS 遵循 [ADR-0022](./adr/0022-adopt-readium-tts-and-core-provider-architecture.md)：Readium 负责
+正文切分、当前句、Locator 和 Decoration；`my-reader-core` 负责 provider 配置、网络推理、音频
+artifact 与统一错误；平台 adapter 负责系统语音、音频播放和 keyring/SecureStore。Core 配置只
+保存 credential reference，不保存密钥。当前产品切片只面向可朗读的文本 EPUB，并以前台会话
+提供 System 和 OpenAI-compatible 引擎。桌面与移动产品层通过 `@my-reader/tools/reader-tts-session`
+共享 session/generation、终态隔离、导航去重和暂停恢复状态机；Readium Locator 与实际播放继续由
+平台 adapter 持有。
 
 ## 4. 桌面端
 
@@ -198,7 +210,8 @@ FFI 门面，不实现 SQL、合并策略或第二套业务规则。
 
 `my-reader-mobile/modules/readium` 负责 Publication handle、Streamer、Search、Locator、
 Selection、Decoration 和原生 View 转换。iOS 使用 Readium Swift Toolkit，Android 使用 Readium
-Kotlin Toolkit。Reader bridge 与 `my-reader-core` 的业务 binding 是两个独立平台边界。
+Kotlin Toolkit。TTS 同样由该 bridge 组合 Readium 会话与系统或 Core 远端引擎；Reader bridge 与
+`my-reader-core` 的业务 binding 是两个独立平台边界。
 
 ## 6. 数据与持久化
 
@@ -424,3 +437,4 @@ pnpm db:generate
 | [ADR-0019](./adr/0019-adopt-modular-my-reader-core.md) | 当前共享后端和数据库权威 |
 | [ADR-0020](./adr/0020-adopt-automerge-repo-storage-model.md) | 当前 Automerge 远端存储、压缩和故障恢复模型 |
 | [ADR-0021](./adr/0021-support-myreader-managed-libraries.md) | 当前 MyReader 自有书库、catalog projection 与正文同步模型 |
+| [ADR-0022](./adr/0022-adopt-readium-tts-and-core-provider-architecture.md) | 当前 Readium TTS 会话与 Core provider 所有权 |

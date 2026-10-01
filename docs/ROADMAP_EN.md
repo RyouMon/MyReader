@@ -212,5 +212,5 @@ See the current library-scoped data and sync architecture in
 
 | Capability | Status | Current boundary |
 |---|---|---|
-| TTS and read/listen continuity | ❌ | No built-in narration or selectable TTS engine |
+| TTS and read/listen continuity | ⚠️ | Text EPUB supports System and OpenAI-compatible narration, sentence highlighting, and Locator navigation; remote background playback and more formats remain pending |
 | ComfyUI creative generation | ❌ | No selection-to-image, image-to-image, comic-reference, or video-generation workflow |

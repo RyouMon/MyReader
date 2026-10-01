@@ -1,8 +1,9 @@
 import type { LucideIcon } from "lucide-react"
-import { X } from "lucide-react"
+import { ArrowLeft, X } from "lucide-react"
 import type { ScrollbarsAutoHideBehavior } from "overlayscrollbars"
 import { type CSSProperties, type ReactNode, useRef } from "react"
 import { useTranslation } from "react-i18next"
+import { Button } from "@/components/ui/button"
 import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar"
 import { cn } from "@/lib/utils"
 
@@ -65,6 +66,8 @@ export function ReaderSidePanelFrame({
 type ReaderSidePanelHeaderProps = {
   title: string
   icon: LucideIcon
+  onBack?: () => void
+  backLabel?: string
   onClose?: () => void
   showCloseButton?: boolean
 }
@@ -72,6 +75,8 @@ type ReaderSidePanelHeaderProps = {
 export function ReaderSidePanelHeader({
   title,
   icon: Icon,
+  onBack,
+  backLabel,
   onClose,
   showCloseButton = false,
 }: ReaderSidePanelHeaderProps) {
@@ -79,7 +84,21 @@ export function ReaderSidePanelHeader({
   return (
     <div className="flex min-h-[52px] shrink-0 items-center justify-between gap-2 border-b border-reader-chrome-border px-4 py-3 text-sm font-semibold text-reader-chrome-fg">
       <div className="flex min-w-0 items-center gap-2.5">
-        <Icon className="size-4 shrink-0 opacity-60" />
+        {onBack ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="shrink-0"
+            title={backLabel}
+            aria-label={backLabel}
+            onClick={onBack}
+          >
+            <ArrowLeft aria-hidden />
+          </Button>
+        ) : (
+          <Icon className="size-4 shrink-0 opacity-60" />
+        )}
         <span className="truncate">{title}</span>
       </div>
       {showCloseButton && onClose ? (

@@ -160,6 +160,38 @@ data class ReadiumFileRecord(
   @Field val initialLocation: LocatorRecord? = null
 ) : Record
 
+// MARK: - TTS
+
+@OptimizedRecord
+data class TtsEngineConfigRecord(
+  @Field val kind: String = "system",
+  @Field val profileId: String? = null,
+  @Field val voiceId: String? = null,
+  @Field val language: String? = null,
+  @Field val speed: Double = 1.0,
+  @Field val pitch: Double = 1.0,
+  @Field val highlightColor: String? = null,
+) : Record
+
+@OptimizedRecord
+data class TtsTimingRecord(
+  @Field val startUtf16: Int = 0,
+  @Field val endUtf16: Int = 0,
+  @Field val startMs: Double = 0.0,
+  @Field val endMs: Double = 0.0,
+) : Record
+
+@OptimizedRecord
+data class TtsSynthesisCompletionRecord(
+  @Field val sessionId: String = "",
+  @Field val requestId: String = "",
+  @Field val path: String? = null,
+  @Field val mimeType: String? = null,
+  @Field val timings: List<TtsTimingRecord>? = null,
+  @Field val playbackRate: Double? = null,
+  @Field val error: String? = null,
+) : Record
+
 // MARK: - Streamer / open-architecture config (REP-005/006)
 
 @OptimizedRecord

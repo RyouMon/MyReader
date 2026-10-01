@@ -102,6 +102,21 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::reader::write_epub_readium_manifest,
             commands::reader::set_reader_traffic_lights_visible::<tauri::Wry>,
             commands::reader::close_book_streamer,
+            commands::tts::get_tts_config::<tauri::Wry>,
+            commands::tts::list_qwen_tts_models,
+            commands::tts::list_qwen_tts_presets,
+            commands::tts::discover_qwen_tts_voices::<tauri::Wry>,
+            commands::tts::upsert_tts_profile::<tauri::Wry>,
+            commands::tts::remove_tts_profile::<tauri::Wry>,
+            commands::tts::set_tts_default_engine::<tauri::Wry>,
+            commands::tts::set_tts_playback_preferences::<tauri::Wry>,
+            commands::tts::set_tts_voice_for_language::<tauri::Wry>,
+            commands::tts::get_tts_provider_capabilities::<tauri::Wry>,
+            commands::tts::probe_tts_provider::<tauri::Wry>,
+            commands::tts::list_tts_voices::<tauri::Wry>,
+            commands::tts::synthesize_tts::<tauri::Wry>,
+            commands::tts::synthesize_tts_request::<tauri::Wry>,
+            commands::tts::cancel_tts_synthesis,
             commands::sync::sync_db_for_library::<tauri::Wry>,
             commands::sync::notify_sidecar_network_reconnected,
             commands::download::check_book_file_state::<tauri::Wry>,
@@ -164,6 +179,7 @@ pub fn run() -> Result<(), tauri::Error> {
         .manage(std::sync::Mutex::new(models::AppConfig::default()))
         .manage(StreamerState::new(RwLock::new(HashMap::new())))
         .manage(DownloadService::new())
+        .manage(commands::tts::TtsSynthesisCoordinator::default())
         .setup(|app| {
             info!("Start to initialize application.");
             let config_path = config::config_path(&app.path().app_data_dir()?);

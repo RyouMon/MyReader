@@ -8,5 +8,6 @@ export type ReaderSettingsSheetRef = {
 export type ReaderSettingsSheetContainerProps = {
   backgroundColor: string
   children: ReactNode
+  expanded?: boolean
   onDismiss: () => void
 }

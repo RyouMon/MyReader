@@ -1,0 +1,293 @@
+/* ============================================================
+   MyReader TTS mini player theme — Stage 2
+   Mobile floating player + desktop lower-right player + TTS settings.
+   Colors inherit from the active Reader Chrome palette.
+   ============================================================ */
+
+:root {
+  /* Semantic source colors. The reader runtime supplies these values. */
+  --tts-theme-bg: var(--reader-bg, #f5efe6) !important;
+  --tts-theme-fg: var(--reader-fg, #3b2f2f) !important;
+  --tts-theme-chrome-bg: var(--reader-chrome-bg, #f0e8db) !important;
+  --tts-theme-chrome-fg: var(--reader-chrome-fg, #3b2f2f) !important;
+  --tts-theme-muted: var(--reader-chrome-muted, #7a6b5d) !important;
+  --tts-theme-accent: var(--reader-chrome-active, #b5651d) !important;
+  --tts-theme-danger: var(--danger, #b44a3a) !important;
+
+  /* Glass material: warm, quiet, and derived from the reading theme. */
+  --tts-glass-surface: color-mix(
+    in srgb,
+    var(--reader-chrome-action-surface, var(--tts-theme-chrome-bg)) 72%,
+    transparent
+  ) !important;
+  --tts-glass-surface-hover: color-mix(
+    in srgb,
+    var(--tts-theme-chrome-bg) 76%,
+    white 24%
+  ) !important;
+  --tts-glass-border: color-mix(
+    in srgb,
+    var(--tts-theme-chrome-fg) 12%,
+    transparent
+  ) !important;
+  --tts-glass-inner-border: color-mix(
+    in srgb,
+    var(--tts-theme-chrome-bg) 78%,
+    white 22%
+  ) !important;
+  --tts-glass-shadow: 0 10px 28px rgb(0 0 0 / 10%),
+    inset 0 0 0 1px var(--tts-glass-inner-border) !important;
+  --tts-glass-blur: 18px !important;
+  --tts-glass-saturation: 1.15 !important;
+
+  /* Controls. Every action has a circular outline; play/pause stays emphasized. */
+  --tts-control-fg: var(--reader-chrome-action-text, var(--tts-theme-chrome-fg)) !important;
+  --tts-control-muted: color-mix(
+    in srgb,
+    var(--tts-control-fg) 72%,
+    transparent
+  ) !important;
+  --tts-control-hover: color-mix(
+    in srgb,
+    var(--tts-theme-chrome-fg) 9%,
+    transparent
+  ) !important;
+  --tts-control-pressed: color-mix(
+    in srgb,
+    var(--tts-theme-chrome-fg) 15%,
+    transparent
+  ) !important;
+  --tts-control-surface: color-mix(
+    in srgb,
+    var(--tts-theme-chrome-fg) 4%,
+    transparent
+  ) !important;
+  --tts-control-outline: color-mix(
+    in srgb,
+    var(--tts-theme-chrome-fg) 18%,
+    transparent
+  ) !important;
+  --tts-control-emphasis-bg: color-mix(
+    in srgb,
+    var(--tts-theme-accent) 16%,
+    transparent
+  ) !important;
+  --tts-control-emphasis-fg: var(--tts-theme-accent) !important;
+  --tts-control-focus: var(--tts-theme-accent) !important;
+  --tts-control-disabled-opacity: 0.4 !important;
+
+  /* Settings inherit the existing Reader Settings visual language. */
+  --tts-settings-surface: var(--reader-panel-bg, var(--tts-theme-chrome-bg)) !important;
+  --tts-settings-row: var(
+    --reader-chrome-segment-idle,
+    color-mix(in srgb, var(--tts-theme-chrome-fg) 8%, var(--tts-settings-surface))
+  ) !important;
+  --tts-settings-row-active: var(
+    --reader-chrome-segment-active,
+    color-mix(in srgb, var(--tts-theme-accent) 12%, var(--tts-settings-surface))
+  ) !important;
+  --tts-settings-divider: var(--reader-chrome-border, var(--tts-glass-border)) !important;
+  --tts-settings-label: var(--tts-theme-muted) !important;
+  --tts-settings-value: var(--tts-theme-chrome-fg) !important;
+  --tts-settings-accent: var(--tts-theme-accent) !important;
+
+  /* Apple mini-player geometry: circular controls inside a fully rounded shell. */
+  --tts-mobile-trigger-size: 52px !important;
+  --tts-mobile-player-height: 56px !important;
+  --tts-mobile-control-size: 48px !important;
+  --tts-mobile-player-radius: 999px !important;
+  --tts-desktop-player-height: 44px !important;
+  --tts-desktop-control-size: 36px !important;
+  --tts-desktop-player-radius: 999px !important;
+  --tts-settings-radius: 16px !important;
+}
+
+/* Ocean matches the user's reference screenshot without introducing a new palette. */
+[data-reader-theme="ocean"] {
+  --tts-glass-surface: color-mix(
+    in srgb,
+    var(--reader-chrome-action-surface, #303060) 68%,
+    transparent
+  ) !important;
+  --tts-glass-surface-hover: color-mix(
+    in srgb,
+    var(--reader-chrome-bg, #202050) 72%,
+    white 12%
+  ) !important;
+  --tts-glass-inner-border: rgb(232 232 240 / 14%) !important;
+  --tts-glass-shadow: 0 12px 30px rgb(0 0 0 / 22%),
+    inset 0 0 0 1px var(--tts-glass-inner-border) !important;
+}
+
+[data-reader-theme="night"],
+[data-reader-theme="contrast1"],
+[data-reader-theme="contrast2"] {
+  --tts-glass-surface: color-mix(
+    in srgb,
+    var(--reader-chrome-action-surface, var(--tts-theme-chrome-bg)) 66%,
+    transparent
+  ) !important;
+  --tts-glass-surface-hover: color-mix(
+    in srgb,
+    var(--tts-theme-chrome-bg) 76%,
+    white 9%
+  ) !important;
+  --tts-glass-inner-border: rgb(255 255 255 / 12%) !important;
+  --tts-glass-shadow: 0 12px 30px rgb(0 0 0 / 28%),
+    inset 0 0 0 1px var(--tts-glass-inner-border) !important;
+}
+
+/* Shared glass shell. The separate More button remains outside this element. */
+.tts-mini-player,
+.tts-trigger {
+  color: var(--tts-control-fg) !important;
+  background: var(--tts-glass-surface) !important;
+  border: 1px solid var(--tts-glass-border) !important;
+  box-shadow: var(--tts-glass-shadow) !important;
+  -webkit-backdrop-filter: blur(var(--tts-glass-blur))
+    saturate(var(--tts-glass-saturation)) !important;
+  backdrop-filter: blur(var(--tts-glass-blur))
+    saturate(var(--tts-glass-saturation)) !important;
+}
+
+.tts-trigger {
+  width: var(--tts-mobile-trigger-size) !important;
+  height: var(--tts-mobile-trigger-size) !important;
+  border-radius: 999px !important;
+}
+
+.tts-mini-player[data-platform="mobile"] {
+  height: var(--tts-mobile-player-height) !important;
+  border-radius: var(--tts-mobile-player-radius) !important;
+}
+
+.tts-mini-player[data-platform="desktop"] {
+  height: var(--tts-desktop-player-height) !important;
+  border-radius: var(--tts-desktop-player-radius) !important;
+}
+
+.tts-control {
+  border: 1px solid var(--tts-control-outline) !important;
+  border-radius: 999px !important;
+  color: var(--tts-control-muted) !important;
+  background: var(--tts-control-surface) !important;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 5%) !important;
+}
+
+.tts-mini-player[data-platform="mobile"] .tts-control {
+  width: var(--tts-mobile-control-size) !important;
+  height: var(--tts-mobile-control-size) !important;
+  border-radius: 999px !important;
+}
+
+.tts-mini-player[data-platform="desktop"] .tts-control {
+  width: var(--tts-desktop-control-size) !important;
+  height: var(--tts-desktop-control-size) !important;
+  border-radius: 999px !important;
+}
+
+.tts-control:hover {
+  color: var(--tts-control-fg) !important;
+  background: var(--tts-control-hover) !important;
+}
+
+.tts-control:active {
+  background: var(--tts-control-pressed) !important;
+}
+
+.tts-control[data-role="playback"] {
+  color: var(--tts-control-emphasis-fg) !important;
+  background: var(--tts-control-emphasis-bg) !important;
+}
+
+.tts-control[data-state="error"] {
+  color: var(--tts-theme-danger) !important;
+}
+
+.tts-control:disabled,
+.tts-control[aria-disabled="true"] {
+  opacity: var(--tts-control-disabled-opacity) !important;
+}
+
+.tts-control:focus-visible,
+.tts-trigger:focus-visible {
+  outline: 2px solid var(--tts-control-focus) !important;
+  outline-offset: 2px !important;
+}
+
+/* Dedicated TTS settings: same material hierarchy as Reader Settings. */
+.tts-settings-surface {
+  color: var(--tts-settings-value) !important;
+  background: var(--tts-settings-surface) !important;
+  border-color: var(--tts-settings-divider) !important;
+  border-radius: var(--tts-settings-radius) !important;
+}
+
+.tts-settings-header {
+  color: var(--tts-settings-value) !important;
+  border-color: var(--tts-settings-divider) !important;
+}
+
+.tts-settings-label {
+  color: var(--tts-settings-label) !important;
+}
+
+.tts-settings-control {
+  color: var(--tts-settings-value) !important;
+  background: var(--tts-settings-row) !important;
+  border-color: transparent !important;
+}
+
+.tts-settings-control[data-active="true"] {
+  color: var(--tts-settings-accent) !important;
+  background: var(--tts-settings-row-active) !important;
+  border-color: var(--tts-settings-divider) !important;
+}
+
+.tts-settings-control:focus-visible {
+  outline: 2px solid var(--tts-settings-accent) !important;
+  outline-offset: 2px !important;
+}
+
+/* Blur is decorative. Readability must survive without it. */
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .tts-mini-player,
+  .tts-trigger {
+    background: color-mix(
+      in srgb,
+      var(--tts-theme-chrome-bg) 94%,
+      transparent
+    ) !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .tts-mini-player,
+  .tts-trigger,
+  .tts-settings-surface {
+    border-width: 2px !important;
+    border-color: currentColor !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .tts-mini-player,
+  .tts-trigger,
+  .tts-settings-surface,
+  .tts-control,
+  .tts-settings-control {
+    color: ButtonText !important;
+    background: Canvas !important;
+    border-color: ButtonText !important;
+    box-shadow: none !important;
+    forced-color-adjust: auto !important;
+  }
+
+  .tts-control[data-role="playback"],
+  .tts-settings-control[data-active="true"] {
+    color: HighlightText !important;
+    background: Highlight !important;
+  }
+}

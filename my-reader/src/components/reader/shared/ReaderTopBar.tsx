@@ -1,9 +1,3 @@
-import { isMacPlatform } from "@/lib/platform"
-import {
-  releaseReaderTrafficLightsToSystemChrome,
-  setReaderTrafficLightsVisible,
-} from "@/lib/readerTrafficLights"
-import { cn } from "@/lib/utils"
 import { isTauri } from "@tauri-apps/api/core"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import {
@@ -17,6 +11,12 @@ import {
 import type { ReactNode, PointerEvent as ReactPointerEvent } from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { isMacPlatform } from "@/lib/platform"
+import {
+  releaseReaderTrafficLightsToSystemChrome,
+  setReaderTrafficLightsVisible,
+} from "@/lib/readerTrafficLights"
+import { cn } from "@/lib/utils"
 
 interface ReaderTopBarProps {
   visible: boolean
@@ -29,6 +29,7 @@ interface ReaderTopBarProps {
   annotationsOpen?: boolean
   searchOpen?: boolean
   settingsOpen?: boolean
+  rightActionsStart?: ReactNode
   showReaderActions?: boolean
   previewNativeMacFullscreen?: boolean
   onToggleToc: () => void
@@ -52,6 +53,7 @@ export function ReaderTopBar({
   annotationsOpen,
   searchOpen,
   settingsOpen,
+  rightActionsStart,
   showReaderActions = true,
   previewNativeMacFullscreen = false,
   onToggleToc,
@@ -250,7 +252,7 @@ export function ReaderTopBar({
   return (
     <header
       className={cn(
-        "reader-window-header z-50 grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3 pr-[9px]",
+        "reader-window-header z-50 grid w-full grid-cols-[max-content_minmax(0,1fr)_max-content] items-center gap-3 pr-[9px]",
         useMacWindowSpacing ? "pl-[9px]" : "pl-5",
         !visible && "pointer-events-none",
       )}
@@ -319,7 +321,7 @@ export function ReaderTopBar({
 
       <div
         className={cn(
-          "relative z-10 h-full w-[min(42rem,calc(100vw-35rem))] min-w-0 overflow-hidden text-center",
+          "relative z-10 h-full w-full max-w-[42rem] min-w-0 justify-self-center overflow-hidden text-center",
           chromeVisibilityClass,
         )}
       >
@@ -336,6 +338,7 @@ export function ReaderTopBar({
       <div className="relative z-10 flex items-center justify-end gap-[9px]">
         {showReaderActions ? (
           <>
+            {rightActionsStart}
             {onToggleSearch ? (
               <TopBarButton
                 title={t("reader.search")}

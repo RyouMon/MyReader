@@ -780,6 +780,7 @@ fn failure_kind(error: &CoreError) -> Option<SyncFailureKind> {
         CoreError::Io(_)
         | CoreError::Database(_)
         | CoreError::Serialize(_)
+        | CoreError::Tts(_)
         | CoreError::Sync(_) => SyncFailureKind::Unexpected,
     })
 }

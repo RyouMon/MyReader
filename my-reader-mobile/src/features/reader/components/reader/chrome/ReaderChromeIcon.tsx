@@ -1,4 +1,5 @@
 import EditSquareIcon from "@expo/material-symbols/edit_square.xml"
+import HeadphonesIcon from "@expo/material-symbols/headphones.xml"
 import { Host, Icon as NativeIcon } from "@expo/ui"
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import { SymbolView } from "expo-symbols"
@@ -14,6 +15,19 @@ const READER_CHROME_ICON_SOURCE = {
   manage: { ios: "checklist", android: "checklist" },
   search: { ios: "magnifyingglass", android: "search" },
   settings: { ios: "slider.horizontal.3", android: "tune" },
+  tts: { ios: "headphones", android: HeadphonesIcon },
+  play: { ios: "play.fill", android: "play-arrow" },
+  pause: { ios: "pause.fill", android: "pause" },
+  previous: { ios: "backward.frame.fill", android: "skip-previous" },
+  next: { ios: "forward.frame.fill", android: "skip-next" },
+  rewind: { ios: "backward.end.fill", android: "fast-rewind" },
+  fastForward: { ios: "forward.end.fill", android: "fast-forward" },
+  returnBackward: {
+    ios: "arrowshape.turn.up.backward.fill",
+    android: "undo",
+  },
+  returnForward: { ios: "arrowshape.turn.up.forward.fill", android: "redo" },
+  stop: { ios: "stop.fill", android: "stop" },
   toc: { ios: "list.bullet", android: "list" },
   annotations: { ios: "square.and.pencil", android: EditSquareIcon },
 } as const

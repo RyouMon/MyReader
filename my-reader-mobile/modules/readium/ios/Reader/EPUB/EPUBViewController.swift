@@ -19,6 +19,7 @@ class EPUBViewController: ReaderViewController, SelectionActionHandlerDelegate {
     var usesCustomSelectionMenu = false
     var onSelectionChange: ((ReadiumShared.Locator, String, CGRect?) -> Void)?
     var onSelectionMenuDismiss: (() -> Void)?
+    var onViewportChange: ((NavigatorViewport?) -> Void)?
 
     init(
       publication: Publication,
@@ -206,6 +207,13 @@ class EPUBViewController: ReaderViewController, SelectionActionHandlerDelegate {
 }
 
 extension EPUBViewController: EPUBNavigatorDelegate {
+  func navigator(
+    _ navigator: any ViewportObservingNavigator,
+    viewportDidChange viewport: NavigatorViewport?
+  ) {
+    onViewportChange?(viewport)
+  }
+
   func navigator(
     _ navigator: SelectableNavigator,
     shouldShowMenuForSelection selection: Selection

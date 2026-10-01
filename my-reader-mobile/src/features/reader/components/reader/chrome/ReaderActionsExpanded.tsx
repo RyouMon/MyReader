@@ -53,10 +53,12 @@ type Props = {
   palette: ReaderChromePalette
   showSearchAction: boolean
   showBookmarksAndNotesAction: boolean
+  showTtsSettingsAction: boolean
   onOpenToc: () => void
   onOpenBookmarksAndNotes: () => void
   onOpenSearch: () => void
   onOpenSettings: () => void
+  onOpenTtsSettings: () => void
   onPreviewPosition: (positionIndex: number) => ReaderProgressPreview
   onCommitPosition: (positionIndex: number) => void
 }
@@ -117,10 +119,12 @@ export default function ReaderActionsExpanded({
   palette,
   showSearchAction,
   showBookmarksAndNotesAction,
+  showTtsSettingsAction,
   onOpenToc,
   onOpenBookmarksAndNotes,
   onOpenSearch,
   onOpenSettings,
+  onOpenTtsSettings,
   onPreviewPosition,
   onCommitPosition,
 }: Props) {
@@ -233,6 +237,36 @@ export default function ReaderActionsExpanded({
               <RNView style={styles.pillIcon}>
                 <ReaderChromeIcon
                   name="search"
+                  size={READER_EXPANDED_ACTION_ICON_SIZE}
+                  color={palette.actionText}
+                />
+              </RNView>
+            </RNView>
+          </ExpandedActionButton>
+        ) : null}
+
+        {showTtsSettingsAction ? (
+          <ExpandedActionButton
+            accessibilityLabel={t("reader.tts.settingsAction")}
+            actionPillWidth={actionPillWidth}
+            palette={palette}
+            onPress={onOpenTtsSettings}
+          >
+            <RNView
+              style={[styles.pillInner, styles.pillContent]}
+              accessibilityElementsHidden={true}
+            >
+              <Text
+                className="min-w-0 flex-1 text-lg font-semibold"
+                style={{ color: palette.actionText }}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {t("reader.tts.settingsAction")}
+              </Text>
+              <RNView style={styles.pillIcon}>
+                <ReaderChromeIcon
+                  name="tts"
                   size={READER_EXPANDED_ACTION_ICON_SIZE}
                   color={palette.actionText}
                 />

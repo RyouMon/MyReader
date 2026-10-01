@@ -1,4 +1,6 @@
-import React, {
+import { requireNativeView } from "expo"
+import type React from "react"
+import {
   forwardRef,
   useCallback,
   useEffect,
@@ -7,28 +9,31 @@ import React, {
   useState,
 } from "react"
 import { findNodeHandle, StyleSheet, View } from "react-native"
-import { requireNativeView } from "expo"
-
+import { ReadiumModule } from "./ReadiumModule"
+import type { ReadiumProps, ReadiumViewRef } from "./ReadiumView.types"
 import type {
+  DecorationActivatedEvent,
+  DecorationGroup,
   Dimensions,
+  FontFamilyDeclaration,
   Locator,
   Preferences,
-  ReadiumFile,
-  FontFamilyDeclaration,
-  DecorationGroup,
-  SelectionAction,
-  SelectionMenuConfig,
   PublicationReadyEvent,
-  DecorationActivatedEvent,
-  SelectionEvent,
+  ReadiumFile,
+  SelectionAction,
   SelectionActionEvent,
+  SelectionEvent,
+  SelectionMenuConfig,
   TapEvent,
+  TtsEngineConfig,
+  TtsPlaybackState,
+  TtsSynthesisCancelEvent,
+  TtsSynthesisCompletion,
+  TtsSynthesisRequestEvent,
 } from "./types"
 import { buildLinkTree } from "./utils/buildLinkTree"
-import { ReadiumModule } from "./ReadiumModule"
-import type { ReadiumViewRef, ReadiumProps } from "./ReadiumView.types"
 
-export type { ReadiumViewRef, ReadiumProps } from "./ReadiumView.types"
+export type { ReadiumProps, ReadiumViewRef } from "./ReadiumView.types"
 
 /** Props the native Expo View accepts (props + onXxx event handlers). */
 type NativeReadiumViewProps = {
@@ -40,12 +45,47 @@ type NativeReadiumViewProps = {
   selectionMenu?: SelectionMenuConfig
   customSelectionMenu?: boolean
   style?: any
-  onLocationChange?: (e: { nativeEvent: { locator: Locator } }) => void
+  onLocationChange?: (e: {
+    nativeEvent: {
+      locator: Locator
+      source?: "tts" | "user"
+      navigationId?: string
+      navigationKind?: "pageTurn" | "programmatic"
+    }
+  }) => void
   onPublicationReady?: (e: { nativeEvent: PublicationReadyEvent }) => void
   onDecorationActivated?: (e: { nativeEvent: DecorationActivatedEvent }) => void
   onSelectionChange?: (e: { nativeEvent: SelectionEvent }) => void
   onSelectionAction?: (e: { nativeEvent: SelectionActionEvent }) => void
   onTap?: (e: { nativeEvent: TapEvent }) => void
+  onTtsStateChange?: (e: { nativeEvent: TtsPlaybackState }) => void
+  onTtsSynthesisRequest?: (e: { nativeEvent: TtsSynthesisRequestEvent }) => void
+  onTtsSynthesisCancel?: (e: { nativeEvent: TtsSynthesisCancelEvent }) => void
+}
+
+type NativeReadiumViewRef = React.Component & {
+  reattachTtsViewport: (
+    sessionId: string,
+    viewportNavigationId: string,
+  ) => Promise<boolean>
+  returnToTtsPosition: (
+    sessionId: string,
+    viewportNavigationId: string,
+  ) => Promise<boolean>
+  startTts: (
+    sessionId: string,
+    config: TtsEngineConfig,
+    fromLocator: Locator | undefined,
+    startAtViewportStart: boolean,
+    viewportDetached: boolean,
+    viewportNavigationId: string | undefined,
+  ) => Promise<void>
+  playTts: () => Promise<void>
+  pauseTts: () => Promise<void>
+  stopTts: () => Promise<void>
+  previousTts: () => Promise<void>
+  nextTts: () => Promise<void>
+  completeTtsSynthesis: (completion: TtsSynthesisCompletion) => Promise<void>
 }
 
 // `requireNativeView` returns a forwardRef host component at runtime, but its
@@ -54,7 +94,7 @@ type NativeReadiumViewProps = {
 const NativeReadiumView = requireNativeView<NativeReadiumViewProps>(
   "Readium",
 ) as React.ForwardRefExoticComponent<
-  NativeReadiumViewProps & React.RefAttributes<unknown>
+  NativeReadiumViewProps & React.RefAttributes<NativeReadiumViewRef>
 >
 
 export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
@@ -66,6 +106,9 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
       onSelectionChange,
       onSelectionAction,
       onTap,
+      onTtsStateChange,
+      onTtsSynthesisRequest,
+      onTtsSynthesisCancel,
       preferences,
       fontFamilyDeclarations,
       decorations,
@@ -76,7 +119,7 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
     },
     forwardedRef,
   ) => {
-    const nativeRef = useRef<any>(null)
+    const nativeRef = useRef<NativeReadiumViewRef>(null)
     const [{ height, width }, setDimensions] = useState<Dimensions>({
       width: 0,
       height: 0,
@@ -105,7 +148,7 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
       [onPublicationReady],
     )
 
-    const tagOf = () => findNodeHandle(nativeRef.current)
+    const tagOf = useCallback(() => findNodeHandle(nativeRef.current), [])
 
     useImperativeHandle(
       forwardedRef,
@@ -138,8 +181,56 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
             ? Promise.resolve(false)
             : ReadiumModule.isBookmarkVisible(tag, locator)
         },
+        reattachTtsViewport: (sessionId, viewportNavigationId) => {
+          return (
+            nativeRef.current?.reattachTtsViewport(
+              sessionId,
+              viewportNavigationId,
+            ) ?? Promise.resolve(false)
+          )
+        },
+        returnToTtsPosition: (sessionId, viewportNavigationId) => {
+          return (
+            nativeRef.current?.returnToTtsPosition(
+              sessionId,
+              viewportNavigationId,
+            ) ?? Promise.resolve(false)
+          )
+        },
+        startTts: async (config, fromLocator, options) => {
+          const view = nativeRef.current
+          if (!view) {
+            throw new Error("TTS_READER_VIEW_UNAVAILABLE")
+          }
+          await view.startTts(
+            options.sessionId,
+            config,
+            fromLocator,
+            options.startAtViewportStart ?? false,
+            options.viewportDetached ?? false,
+            options.viewportNavigationId,
+          )
+        },
+        playTts: () => {
+          void nativeRef.current?.playTts()
+        },
+        pauseTts: () => {
+          void nativeRef.current?.pauseTts()
+        },
+        stopTts: () => {
+          void nativeRef.current?.stopTts()
+        },
+        previousTts: () => {
+          void nativeRef.current?.previousTts()
+        },
+        nextTts: () => {
+          void nativeRef.current?.nextTts()
+        },
+        completeTtsSynthesis: (completion) => {
+          void nativeRef.current?.completeTtsSynthesis(completion)
+        },
       }),
-      [],
+      [tagOf],
     )
 
     // Native side cleans up the navigator on view removal; no JS destroy call needed.
@@ -161,7 +252,13 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
             customSelectionMenu={customSelectionMenu ?? false}
             onLocationChange={
               onLocationChange
-                ? (e) => onLocationChange(e.nativeEvent.locator)
+                ? (e) =>
+                    onLocationChange(
+                      e.nativeEvent.locator,
+                      e.nativeEvent.source,
+                      e.nativeEvent.navigationId,
+                      e.nativeEvent.navigationKind,
+                    )
                 : undefined
             }
             onPublicationReady={
@@ -183,6 +280,21 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
                 : undefined
             }
             onTap={onTap ? (e) => onTap(e.nativeEvent) : undefined}
+            onTtsStateChange={
+              onTtsStateChange
+                ? (e) => onTtsStateChange(e.nativeEvent)
+                : undefined
+            }
+            onTtsSynthesisRequest={
+              onTtsSynthesisRequest
+                ? (e) => onTtsSynthesisRequest(e.nativeEvent)
+                : undefined
+            }
+            onTtsSynthesisCancel={
+              onTtsSynthesisCancel
+                ? (e) => onTtsSynthesisCancel(e.nativeEvent)
+                : undefined
+            }
           />
         )}
       </View>

@@ -35,6 +35,7 @@ import {
   fileUriToNativeDirAndName,
   joinRelativePath,
   parentDirectoryUriForFileUri,
+  toFileUri,
   toNativeFilesystemPath,
 } from "./path"
 
@@ -107,6 +108,12 @@ describe("path helpers", () => {
     )
     expect(toNativeFilesystemPath("/tmp/Author%2520Name/book.epub")).toBe(
       "/tmp/Author Name/book.epub",
+    )
+  })
+
+  it("should convert a native audio artifact path to a local file uri", () => {
+    expect(toFileUri("/tmp/My Reader/preview.mp3")).toBe(
+      "file:///tmp/My%20Reader/preview.mp3",
     )
   })
 

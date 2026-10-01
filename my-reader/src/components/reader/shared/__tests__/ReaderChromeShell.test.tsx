@@ -31,6 +31,14 @@ describe("ReaderChromeShell", () => {
     const palette = readerChromePalette("#000000", "#C5E7CD")
 
     expect(style).toMatchObject({
+      color: palette.text,
+      "--background": palette.sheetSurface,
+      "--foreground": palette.text,
+      "--card": palette.segmentIdle,
+      "--popover": palette.sheetSurface,
+      "--primary": palette.accent,
+      "--muted-foreground": palette.textMuted,
+      "--border": palette.border,
       "--reader-chrome-bg": palette.bg,
       "--reader-panel-bg": palette.sheetSurface,
       "--reader-chrome-segment-idle": palette.segmentIdle,
@@ -69,6 +77,30 @@ describe("ReaderChromeShell", () => {
     expect(content).not.toContainElement(bottomRegion)
     expect(footer).toContainElement(bottomRegion)
     expect(footer?.previousElementSibling).toBe(content)
+  })
+
+  it("should mount floating reader controls outside the clipped content region", () => {
+    const { container } = render(
+      <ReaderChromeShell
+        readerRootRef={{ current: null }}
+        chromeVisible
+        showChrome={vi.fn()}
+        scheduleChromeHide={vi.fn()}
+        topBar={topBar}
+        tocPanel={null}
+        settingsPanel={null}
+        main={<main />}
+        bottomChrome={<div data-testid="floating-controls" />}
+      />,
+    )
+
+    const content = container.querySelector(".reader-window-content")
+    const controls = screen.getByTestId("floating-controls")
+
+    expect(content).not.toContainElement(controls)
+    expect(container.querySelector(".reader-window-paper")).toContainElement(
+      controls,
+    )
   })
 
   it("should mark fixed-layout content for overlay chrome when rendering PDF or CBZ", () => {

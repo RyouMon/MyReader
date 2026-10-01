@@ -1,4 +1,43 @@
 export const sharedEn = {
+  qwenTts: {
+    title: "Qwen",
+    add: "Add {{name}}",
+    description: "Use credentials for this endpoint and choose your voice.",
+    sources: {
+      tokenPlan: {
+        title: "Qwen · Token Plan",
+        description:
+          "Use your Qwen subscription credits and plan-specific key.",
+        credential: "Token Plan subscription key (starts with sk-sp-)",
+      },
+      qianwen: {
+        title: "Qwen · Pay as you go",
+        description:
+          "Use the Qianwen AI Platform API with usage-based billing.",
+        credential: "Qianwen AI Platform API key (not a subscription key)",
+      },
+      dashscope: {
+        title: "Qwen · DashScope (Model Studio)",
+        description:
+          "Use Alibaba Cloud Model Studio, Beijing region by default.",
+        credential: "Alibaba Cloud Model Studio API key for this region",
+      },
+    },
+    voiceHint:
+      "Account voices load automatically for the selected model. You can also enter one voice ID per line, including new voices not in the app catalog.",
+    builtinHint:
+      "Built-in voices come from the official catalog. Enter a new voice ID directly without waiting for an app update.",
+    manualVoices: "Additional voice IDs (optional)",
+    loadingVoices: "Loading account voices…",
+    voicesFailed:
+      "Could not load account voices. Saved voices and manually entered IDs are still available.",
+    voicesEmpty:
+      "No account voices for this model. Create a voice on the corresponding platform or enter an existing voice ID.",
+    credentialRequired:
+      "API key matching this endpoint; Token Plan requires an sk-sp- subscription key",
+    modelHint:
+      "Defaults follow the selected source. Models follow the endpoint; keys and voices must belong to the matching platform and region.",
+  },
   addLibraryFlow: {
     title: "Add library",
     noLibrary: {

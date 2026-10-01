@@ -23,3 +23,4 @@ export const desktopResources = {
 } as const
 
 export type DesktopTranslationKey = TranslationKey<typeof desktopEnTranslation>
+export { qwenTtsSourceKeys } from "./qwen-tts"

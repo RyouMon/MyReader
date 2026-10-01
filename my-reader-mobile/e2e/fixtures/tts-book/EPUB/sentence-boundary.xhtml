@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <title>Sentence boundary</title>
+    <style>
+      body { line-height: 1.65; }
+      section { margin-block: 1em; }
+      .previous-page {
+        display: block;
+        min-block-size: calc(200vh - 4rem);
+      }
+      .visible-tail {
+        display: block;
+        -webkit-column-break-before: always;
+        break-before: column;
+        page-break-before: always;
+        padding-inline-start: 3rem;
+      }
+    </style>
+  </head>
+  <body>
+    <section><span class="previous-page">Previous-page prefix remains behind the reader while the same sentence </span><span id="visible-tail" class="visible-tail">Visible fragment completes the first sentence.</span> Second sentence must never be selected as the page start.</section>
+  </body>
+</html>

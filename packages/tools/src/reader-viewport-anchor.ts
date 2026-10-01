@@ -28,6 +28,19 @@ export type ReaderViewportCapture = {
   yRatio: number
 }
 
+/** The text-quote fields Readium uses to resolve a sentence locator. */
+export type ReaderTextLocator = {
+  locations?: {
+    cssSelector?: string
+    [key: string]: unknown
+  }
+  text?: {
+    before?: string
+    highlight?: string
+    after?: string
+  }
+}
+
 /** The anchor's normalized position in the current viewport. */
 export type ReaderViewportAnchorOffset = {
   xRatio: number
@@ -176,6 +189,285 @@ function pointRect(document: Document, point: TextPoint): DOMRect | null {
   return range.getClientRects()[0] ?? range.getBoundingClientRect()
 }
 
+function pointHitsTextRect(x: number, y: number, rect: DOMRect): boolean {
+  const tolerance = 2
+  return (
+    x >= rect.left - tolerance &&
+    x <= rect.right + tolerance &&
+    y >= rect.top - tolerance &&
+    y <= rect.bottom + tolerance
+  )
+}
+
+const READABLE_BLOCK_SELECTOR = [
+  "address",
+  "article",
+  "aside",
+  "blockquote",
+  "body",
+  "dd",
+  "details",
+  "dialog",
+  "div",
+  "dl",
+  "dt",
+  "fieldset",
+  "figcaption",
+  "figure",
+  "footer",
+  "form",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "header",
+  "hgroup",
+  "li",
+  "main",
+  "nav",
+  "ol",
+  "p",
+  "pre",
+  "section",
+  "table",
+  "tbody",
+  "td",
+  "tfoot",
+  "th",
+  "thead",
+  "tr",
+  "ul",
+].join(",")
+
+function captureTextPoint(
+  window: Window,
+  point: TextPoint,
+  rect: DOMRect,
+): ReaderViewportCapture | null {
+  const parent = point.node.parentElement
+  if (!parent) return null
+  const cssSelector = stableCssSelector(
+    window,
+    parent.closest(READABLE_BLOCK_SELECTOR) ?? parent,
+  )
+  const pointSelector = stableCssSelector(window, parent)
+  const textNodes = [...parent.childNodes].filter(
+    (node): node is Text => node.nodeType === Node.TEXT_NODE,
+  )
+  const textNodeIndex = textNodes.indexOf(point.node)
+  if (textNodeIndex < 0) return null
+
+  const content = point.node.data
+  const charOffset = anchorCharacterOffset(content, point.offset)
+  const highlight = String.fromCodePoint(content.codePointAt(charOffset)!)
+  const before = content.slice(Math.max(0, charOffset - 32), charOffset)
+  const after = content.slice(charOffset + highlight.length, charOffset + 33)
+
+  return {
+    cssSelector,
+    domRange: {
+      start: { cssSelector: pointSelector, textNodeIndex, charOffset },
+    },
+    text: {
+      ...(before ? { before } : {}),
+      highlight,
+      ...(after ? { after } : {}),
+    },
+    yRatio: (rect.top + rect.height / 2) / window.innerHeight,
+  }
+}
+
+const INTERACTIVE_POINT_SELECTOR =
+  "a, button, input, select, textarea, summary, [contenteditable], [role='button'], [role='link']"
+
+/** Captures readable text at a normalized viewport point. */
+export function captureReaderPointAnchor(
+  window: Window,
+  xRatio: number,
+  yRatio: number,
+): ReaderViewportCapture | null {
+  const selection = window.getSelection()
+  if (selection && !selection.isCollapsed) return null
+  const x = Math.min(1, Math.max(0, xRatio)) * window.innerWidth
+  const y = Math.min(1, Math.max(0, yRatio)) * window.innerHeight
+  const target = window.document.elementFromPoint?.(x, y)
+  if (target?.closest(INTERACTIVE_POINT_SELECTOR)) return null
+  const point = textPointAt(window, x, y)
+  if (!point?.node.data.trim()) return null
+  const rect = pointRect(window.document, point)
+  return rect && pointHitsTextRect(x, y, rect)
+    ? captureTextPoint(window, point, rect)
+    : null
+}
+
+type VisibleTextCandidate = {
+  node: Text
+  rect: DOMRect
+  direction: string
+  writingMode: string
+  order: [number, number, number]
+}
+
+function visibleRect(window: Window, rect: DOMRect): DOMRect | null {
+  const left = Math.max(0, rect.left)
+  const right = Math.min(window.innerWidth, rect.right)
+  const top = Math.max(0, rect.top)
+  const bottom = Math.min(window.innerHeight, rect.bottom)
+  if (right <= left || bottom <= top) return null
+  return {
+    x: left,
+    y: top,
+    left,
+    right,
+    top,
+    bottom,
+    width: right - left,
+    height: bottom - top,
+    toJSON: () => ({}),
+  } as DOMRect
+}
+
+function isHorizontallyPaginated(window: Window): boolean {
+  const scrollingElement = window.document.scrollingElement
+  if (!scrollingElement) return false
+  const columnCount = Number.parseInt(
+    window.getComputedStyle(window.document.documentElement).columnCount,
+    10,
+  )
+  const viewportWidth = Math.max(
+    window.innerWidth,
+    scrollingElement.clientWidth,
+  )
+  const viewportHeight = Math.max(
+    window.innerHeight,
+    scrollingElement.clientHeight,
+  )
+  return (
+    scrollingElement.scrollHeight <= viewportHeight + 1 &&
+    (scrollingElement.scrollWidth > viewportWidth + 1 || columnCount > 1)
+  )
+}
+
+function visibleTextOrder(
+  window: Window,
+  rect: DOMRect,
+  direction: string,
+  writingMode: string,
+): [number, number, number] {
+  const vertical = /^(?:vertical|sideways)-/u.test(writingMode)
+  if (vertical) {
+    return [writingMode.endsWith("-rl") ? -rect.right : rect.left, rect.top, 0]
+  }
+  const columnCount = Number.parseInt(
+    window.getComputedStyle(window.document.documentElement).columnCount,
+    10,
+  )
+  if (isHorizontallyPaginated(window) && columnCount > 1) {
+    const viewportWidth = Math.max(
+      1,
+      window.innerWidth,
+      window.document.scrollingElement?.clientWidth ?? 0,
+    )
+    const columnWidth = viewportWidth / columnCount
+    const visualColumn = Math.max(
+      0,
+      Math.min(
+        columnCount - 1,
+        Math.floor((rect.left + rect.right) / 2 / columnWidth),
+      ),
+    )
+    const readingColumn =
+      direction === "rtl" ? columnCount - visualColumn - 1 : visualColumn
+    return [
+      readingColumn,
+      rect.top,
+      direction === "rtl" ? -rect.right : rect.left,
+    ]
+  }
+  return [rect.top, direction === "rtl" ? -rect.right : rect.left, 0]
+}
+
+function precedesVisibleTextOrder(
+  candidate: VisibleTextCandidate["order"],
+  current: VisibleTextCandidate["order"],
+): boolean {
+  for (let index = 0; index < candidate.length; index += 1) {
+    if (candidate[index] === current[index]) continue
+    return candidate[index]! < current[index]!
+  }
+  return false
+}
+
+function pointInsideLeadingEdge(candidate: VisibleTextCandidate): {
+  x: number
+  y: number
+} {
+  const { direction, rect, writingMode } = candidate
+  const vertical = /^(?:vertical|sideways)-/u.test(writingMode)
+  if (vertical) {
+    return {
+      x: rect.left + rect.width / 2,
+      y: rect.top + Math.min(1, rect.height / 2),
+    }
+  }
+  return {
+    x:
+      direction === "rtl"
+        ? rect.right - Math.min(1, rect.width / 2)
+        : rect.left + Math.min(1, rect.width / 2),
+    y: rect.top + rect.height / 2,
+  }
+}
+
+/** Captures the first rendered text position in the current page or viewport. */
+export function captureReaderViewportStartAnchor(
+  window: Window,
+): ReaderViewportCapture | null {
+  const { document } = window
+  const root = document.body ?? document.documentElement
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  let best: VisibleTextCandidate | null = null
+  let current = walker.nextNode()
+
+  while (current) {
+    const node = current as Text
+    const parent = node.parentElement
+    if (node.data.trim() && parent) {
+      const style = window.getComputedStyle(parent)
+      if (style.display !== "none" && style.visibility !== "hidden") {
+        const range = document.createRange()
+        range.selectNodeContents(node)
+        for (const sourceRect of Array.from(range.getClientRects())) {
+          const rect = visibleRect(window, sourceRect)
+          if (!rect) continue
+          const direction = style.direction || "ltr"
+          const writingMode = style.writingMode || "horizontal-tb"
+          const candidate: VisibleTextCandidate = {
+            node,
+            rect,
+            direction,
+            writingMode,
+            order: visibleTextOrder(window, rect, direction, writingMode),
+          }
+          if (!best || precedesVisibleTextOrder(candidate.order, best.order)) {
+            best = candidate
+          }
+        }
+      }
+    }
+    current = walker.nextNode()
+  }
+
+  if (!best) return null
+  const point = pointInsideLeadingEdge(best)
+  const textPoint = textPointAt(window, point.x, point.y)
+  if (!textPoint?.node.data.trim()) return null
+  const rect = pointRect(document, textPoint)
+  return rect ? captureTextPoint(window, textPoint, rect) : null
+}
+
 /** Resolves a persisted DOM point to the single character used as its anchor. */
 function rangeForReaderViewportDomRange(
   window: Window,
@@ -197,6 +489,109 @@ function rangeForReaderViewportDomRange(
   const range = window.document.createRange()
   range.setStart(node, offset)
   range.setEnd(node, Math.min(node.data.length, offset + length))
+  return range
+}
+
+function matchingPrefixLength(first: string, second: string): number {
+  const limit = Math.min(first.length, second.length)
+  let length = 0
+  while (length < limit && first[length] === second[length]) length += 1
+  return length
+}
+
+function matchingSuffixLength(first: string, second: string): number {
+  const limit = Math.min(first.length, second.length)
+  let length = 0
+  while (
+    length < limit &&
+    first[first.length - length - 1] === second[second.length - length - 1]
+  ) {
+    length += 1
+  }
+  return length
+}
+
+function textPointForOffset(
+  window: Window,
+  root: Element,
+  offset: number,
+  preferPreviousNode: boolean,
+): TextPoint | null {
+  const walker = window.document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  const nodes: Text[] = []
+  let current = walker.nextNode()
+  while (current) {
+    nodes.push(current as Text)
+    current = walker.nextNode()
+  }
+  let consumed = 0
+  let last: Text | null = null
+  for (const [index, node] of nodes.entries()) {
+    const end = consumed + node.data.length
+    if (
+      offset < end ||
+      (offset === end && (preferPreviousNode || index === nodes.length - 1))
+    ) {
+      return {
+        node,
+        offset: Math.max(0, Math.min(node.data.length, offset - consumed)),
+      }
+    }
+    last = node
+    consumed = end
+  }
+  return last && offset === consumed
+    ? { node: last, offset: last.data.length }
+    : null
+}
+
+/** Resolves a Readium text-quote locator to its DOM range. */
+function rangeForReaderTextLocator(
+  window: Window,
+  locator: ReaderTextLocator,
+): Range | null {
+  const highlight = locator.text?.highlight
+  if (!highlight) return null
+  let root: Element = window.document.body ?? window.document.documentElement
+  const cssSelector = locator.locations?.cssSelector
+  if (cssSelector) {
+    try {
+      root = window.document.querySelector(cssSelector) ?? root
+    } catch {
+      return null
+    }
+  }
+  const content = root.textContent ?? ""
+  let bestStart = -1
+  let bestScore = -1
+  let searchFrom = 0
+  while (searchFrom <= content.length - highlight.length) {
+    const start = content.indexOf(highlight, searchFrom)
+    if (start < 0) break
+    const end = start + highlight.length
+    const score =
+      matchingSuffixLength(
+        content.slice(0, start),
+        locator.text?.before ?? "",
+      ) + matchingPrefixLength(content.slice(end), locator.text?.after ?? "")
+    if (score > bestScore) {
+      bestStart = start
+      bestScore = score
+    }
+    searchFrom = start + Math.max(1, highlight.length)
+  }
+  if (bestStart < 0) return null
+  const start = textPointForOffset(window, root, bestStart, false)
+  const end = textPointForOffset(
+    window,
+    root,
+    bestStart + highlight.length,
+    true,
+  )
+  if (!start || !end) return null
+  const range = window.document.createRange()
+  range.setStart(start.node, start.offset)
+  range.setEnd(end.node, end.offset)
   return range
 }
 
@@ -232,33 +627,7 @@ export function captureReaderViewportAnchor(
   }
 
   if (!best) return null
-  const parent = best.point.node.parentElement
-  if (!parent) return null
-  const cssSelector = stableCssSelector(window, parent)
-  const textNodes = [...parent.childNodes].filter(
-    (node): node is Text => node.nodeType === Node.TEXT_NODE,
-  )
-  const textNodeIndex = textNodes.indexOf(best.point.node)
-  if (textNodeIndex < 0) return null
-
-  const content = best.point.node.data
-  const charOffset = anchorCharacterOffset(content, best.point.offset)
-  const highlight = String.fromCodePoint(content.codePointAt(charOffset)!)
-  const before = content.slice(Math.max(0, charOffset - 32), charOffset)
-  const after = content.slice(charOffset + highlight.length, charOffset + 33)
-
-  return {
-    cssSelector,
-    domRange: {
-      start: { cssSelector, textNodeIndex, charOffset },
-    },
-    text: {
-      ...(before ? { before } : {}),
-      highlight,
-      ...(after ? { after } : {}),
-    },
-    yRatio: (best.rect.top + best.rect.height / 2) / window.innerHeight,
-  }
+  return captureTextPoint(window, best.point, best.rect)
 }
 
 /** Returns whether the persisted anchor character intersects the viewport. */
@@ -269,6 +638,22 @@ export function isReaderViewportAnchorVisible(
   return [
     ...(rangeForReaderViewportDomRange(window, domRange)?.getClientRects() ??
       []),
+  ].some(
+    (rect) =>
+      rect.right > 0 &&
+      rect.bottom > 0 &&
+      rect.left < window.innerWidth &&
+      rect.top < window.innerHeight,
+  )
+}
+
+/** Returns whether a Readium sentence locator intersects the viewport. */
+export function isReaderTextLocatorVisible(
+  window: Window,
+  locator: ReaderTextLocator,
+): boolean {
+  return [
+    ...(rangeForReaderTextLocator(window, locator)?.getClientRects() ?? []),
   ].some(
     (rect) =>
       rect.right > 0 &&
@@ -347,8 +732,14 @@ export function sameReaderViewportLayout(
 export function createReaderViewportAnchorRuntime(window: Window) {
   return {
     captureReaderViewportAnchor: () => captureReaderViewportAnchor(window),
+    captureReaderViewportStartAnchor: () =>
+      captureReaderViewportStartAnchor(window),
+    captureReaderPointAnchor: (xRatio: number, yRatio: number) =>
+      captureReaderPointAnchor(window, xRatio, yRatio),
     isReaderViewportAnchorVisible: (domRange: ReaderViewportDomRange) =>
       isReaderViewportAnchorVisible(window, domRange),
+    isReaderTextLocatorVisible: (locator: ReaderTextLocator) =>
+      isReaderTextLocatorVisible(window, locator),
     readerViewportLayoutState: () => readerViewportLayoutState(window),
     restoreReaderViewportAnchorOffset: (
       domRange: ReaderViewportDomRange,

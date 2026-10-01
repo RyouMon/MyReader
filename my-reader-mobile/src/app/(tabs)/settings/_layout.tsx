@@ -18,6 +18,19 @@ export default function SettingsStackLayout() {
         }}
       />
       <Stack.Screen
+        name="tts"
+        options={{
+          title: t("settings.tts.title"),
+          presentation: "modal",
+        }}
+      />
+      <Stack.Screen
+        name="tts-provider"
+        options={{
+          presentation: "modal",
+        }}
+      />
+      <Stack.Screen
         name="webdav"
         options={{
           presentation: "modal",

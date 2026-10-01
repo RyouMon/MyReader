@@ -4,19 +4,22 @@ import AboutSection from "@/components/settings/sections/AboutSection"
 import AppearanceSection from "@/components/settings/sections/AppearanceSection"
 import DataSourcesSection from "@/components/settings/sections/DataSourcesSection"
 import LibrariesSection from "@/components/settings/sections/LibrariesSection"
+import SpeechSection from "@/components/settings/sections/SpeechSection"
 import type { SettingsSection } from "@/types/settings"
 
 interface SettingsActivityProps {
   onClose: () => void
   onAddLibrary: () => void
+  initialSection?: SettingsSection
 }
 
 export default function SettingsActivity({
   onClose,
   onAddLibrary,
+  initialSection = "libraries",
 }: SettingsActivityProps) {
   const [activeSection, setActiveSection] =
-    useState<SettingsSection>("libraries")
+    useState<SettingsSection>(initialSection)
 
   return (
     <section
@@ -34,6 +37,7 @@ export default function SettingsActivity({
           <LibrariesSection onAddLibrary={onAddLibrary} />
         )}
         {activeSection === "dataSources" && <DataSourcesSection />}
+        {activeSection === "speech" && <SpeechSection />}
         {activeSection === "appearance" && <AppearanceSection />}
         {activeSection === "about" && <AboutSection />}
       </div>

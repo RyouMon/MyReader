@@ -1,0 +1,123 @@
+diff --git a/build/index.js b/build/index.js
+index e5bde25aa3e0f47490aa499456eaa79f23cb7b8d..9deb980c3a93ad6a2a06dc4f88b11485a386bd60 100644
+--- a/build/index.js
++++ b/build/index.js
+@@ -1259,7 +1259,7 @@ const wi = ["webKit", "moz", "ms", "o"], Si = [
+     t[r] = e && t.speechSynthesisUtterance ? be(t.speechSynthesisUtterance.prototype, r) : !1;
+   }), t;
+ }, Ai = () => {
+-  const e = typeof window < "u" && (window.navigator || {}).userAgent || "", n = () => /android/i.test(e), r = () => /kaios/i.test(e), i = () => typeof window.InstallTrigger < "u" ? !0 : /firefox/i.test(e), s = () => typeof window.GestureEvent < "u" || /safari/i.test(e);
++  const e = typeof window < "u" && (window.navigator || {}).userAgent || "", n = () => /android/i.test(e), r = () => /kaios/i.test(e), i = () => typeof window.InstallTrigger < "u" ? !0 : /firefox/i.test(e), s = () => typeof window.GestureEvent < "u" || /safari/i.test(e) || /applewebkit/i.test(e) && !/(chrome|chromium|crios|edg|opr)/i.test(e);
+   return {
+     isAndroid: n(),
+     isFirefox: i() || r(),
+@@ -2557,27 +2557,29 @@ class Dn {
+     if (e !== void 0) {
+       if (e < 0 || e >= this.currentUtterances.length)
+         throw new Error("Invalid utterance index");
+-      this.currentUtteranceIndex = e;
+     }
+     if (this.currentUtterances.length === 0) {
+       console.warn("No utterances loaded");
+       return;
+     }
+-    this.cancelCurrentSpeech();
+     const n = ++this.speakGeneration;
+-    this.isSpeakingInternal = !0, this.isPausedInternal = !1, this.setState("playing"), this.emitEvent({ type: "start" }), this.stopResumeInfinity(), this.currentUtteranceIndex = e ?? 0, this.currentUtteranceIndex >= this.currentUtterances.length && (this.currentUtteranceIndex = 0), this.speakCurrentUtterance(n);
++    (this.speechSynthesis.speaking || this.speechSynthesis.pending) && this.cancelCurrentSpeech();
++    this.speechSynthesis.paused && this.speechSynthesis.resume();
++    let r = e ?? 0;
++    this.isSpeakingInternal = !0, this.isPausedInternal = !1, this.setState("playing"), this.stopResumeInfinity(), r >= this.currentUtterances.length && (r = 0), this.speakCurrentUtterance(n, r);
+   }
+   cancelCurrentSpeech() {
++    this.patches.isSafari && (this.speechSynthesis.speaking || this.speechSynthesis.pending) && (this.speakAfterCancellation = Date.now() + 100);
+     this.patches.isFirefox && this.speechSynthesis.speaking && (this.utterancesBeingCancelled = !0, setTimeout(() => {
+       this.utterancesBeingCancelled = !1;
+     }, 100)), this.speechSynthesis.cancel();
+   }
+-  async speakCurrentUtterance(e) {
+-    if (this.currentUtteranceIndex >= this.currentUtterances.length) {
++  async speakCurrentUtterance(e, t = this.currentUtteranceIndex) {
++    if (t >= this.currentUtterances.length) {
+       this.setState("idle"), this.emitEvent({ type: "end" });
+       return;
+     }
+-    const n = this.currentUtterances[this.currentUtteranceIndex], r = n.plain ?? "";
++    const n = this.currentUtterances[t], r = n.plain ?? "";
+     this.validateText(r);
+     const i = this.createUtterance(r), s = await this.voiceForUtterance(n);
+     if (e === this.speakGeneration) {
+@@ -2586,14 +2586,25 @@ class Dn {
+         o && (i.voice = o, i.lang = o.lang);
+       }
++      let a = !1;
+       n.language && (i.lang = n.language), i.rate = this.rate, i.pitch = this.pitch, i.volume = this.volume, i.onstart = () => {
++        if (e !== this.speakGeneration)
++          return;
+-        this.isSpeakingInternal = !0, this.isPausedInternal = !1, this.setState("playing"), this.emitEvent({ type: "start" }), this.patches.isAndroid && this.isAndroidPaused && (this.isAndroidPaused = !1), this.shouldUseResumeInfinity() && this.startResumeInfinity(i);
++        a = !0, this.currentUtteranceIndex = t, this.isSpeakingInternal = !0, this.isPausedInternal = !1, this.setState("playing"), this.emitEvent({ type: "start" }), this.patches.isAndroid && this.isAndroidPaused && (this.isAndroidPaused = !1), this.shouldUseResumeInfinity() && this.startResumeInfinity(i);
+       }, i.onend = () => {
++        if (e !== this.speakGeneration)
++          return;
++        if (!a) {
++          this.speakGeneration++, this.isSpeakingInternal = !1, this.isPausedInternal = !1, this.stopResumeInfinity(), this.setState("idle"), this.emitEvent({ type: "error", detail: { message: "Speech synthesis ended before playback started" } });
++          return;
++        }
+         if (this.utterancesBeingCancelled) {
+           this.utterancesBeingCancelled = !1;
+           return;
+         }
+         this.playbackState !== "idle" && (this.isSpeakingInternal = !1, this.isPausedInternal = !1, this.stopResumeInfinity(), this.currentUtteranceIndex >= this.currentUtterances.length - 1 && this.setState("idle"), this.emitEvent({ type: "end" }));
+       }, i.onerror = (o) => {
++        if (e !== this.speakGeneration)
++          return;
+         if (o.error === "interrupted" && this.patches.isAndroid && this.isAndroidPaused)
+           return;
+         this.isSpeakingInternal = !1, this.isPausedInternal = !1, this.stopResumeInfinity(), this.setState("idle"), ["synthesis-unavailable", "audio-hardware", "voice-unavailable"].includes(o.error) && (console.log("[ENGINE] fatal error detected, resetting index to 0"), this.currentUtteranceIndex = 0), o.error === "interrupted" || o.error === "canceled" ? this.emitEvent({ type: "stop" }) : this.emitEvent({
+@@ -2605,10 +2611,16 @@ class Dn {
+           }
+         });
+       }, i.onpause = () => {
++        if (e !== this.speakGeneration)
++          return;
+         this.isPausedInternal = !0, this.isSpeakingInternal = !1, this.emitEvent({ type: "pause" });
+       }, i.onresume = () => {
++        if (e !== this.speakGeneration)
++          return;
+         this.isPausedInternal = !1, this.isSpeakingInternal = !0, this.emitEvent({ type: "resume" });
+       }, i.onboundary = (o) => {
++        if (e !== this.speakGeneration)
++          return;
+         this.emitEvent({
+           type: "boundary",
+           detail: {
+@@ -2619,13 +2631,19 @@ class Dn {
+           }
+         });
+       }, i.onmark = (o) => {
++        if (e !== this.speakGeneration)
++          return;
+         this.emitEvent({
+           type: "mark",
+           detail: {
+             name: o.name
+           }
+         });
+-      }, this.speechSynthesis.speak(i);
++      };
++      const o = () => {
++        e === this.speakGeneration && this.speechSynthesis.speak(i);
++      };
++      this.patches.isSafari ? window.setTimeout(o, Math.max(0, (this.speakAfterCancellation ?? 0) - Date.now())) : o();
+     }
+   }
+   startResumeInfinity(e) {
+@@ -2663,7 +2695,7 @@ class Dn {
+   }
+   stop() {
+-    this.speechSynthesis.cancel(), this.speakGeneration++, this.currentUtteranceIndex = 0, this.patches.isAndroid && (this.isAndroidPaused = !1), this.setState("idle"), this.emitEvent({ type: "stop" });
++    this.speakGeneration++, this.cancelCurrentSpeech(), this.currentUtteranceIndex = 0, this.patches.isAndroid && (this.isAndroidPaused = !1), this.setState("idle"), this.emitEvent({ type: "stop" });
+   }
+   // Playback Parameters
+   setRate(e) {
+     this.rate = Math.max(0.1, Math.min(10, e));

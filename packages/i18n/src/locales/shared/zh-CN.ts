@@ -1,4 +1,39 @@
 export const sharedZhCN = {
+  qwenTts: {
+    title: "Qwen（通义千问）",
+    add: "添加 {{name}}",
+    description: "使用与服务地址对应的凭据，支持指定音色。",
+    sources: {
+      tokenPlan: {
+        title: "Qwen · Token Plan",
+        description: "使用千问套餐额度和套餐专用密钥。",
+        credential: "Token Plan 套餐密钥（sk-sp- 开头）",
+      },
+      qianwen: {
+        title: "Qwen · 按需计费",
+        description: "使用千问 AI 平台 API，按实际用量计费。",
+        credential: "千问 AI 平台 API Key（非套餐密钥）",
+      },
+      dashscope: {
+        title: "Qwen · DashScope（百炼）",
+        description: "使用阿里云百炼 API，默认北京地域。",
+        credential: "阿里云百炼 API Key（与服务地域一致）",
+      },
+    },
+    voiceHint:
+      "账户音色会按当前模型自动获取。也可每行输入一个音色 ID；新音色无需等待应用更新。",
+    builtinHint:
+      "内置音色来自官方目录。新增音色可直接输入 ID，目录不会限制可用声音。",
+    manualVoices: "补充音色 ID（可选）",
+    loadingVoices: "正在获取账户音色…",
+    voicesFailed: "账户音色获取失败，可继续使用已有音色或手动输入。",
+    voicesEmpty:
+      "当前模型暂无账户音色，请先在对应平台创建音色，或输入已有音色 ID。",
+    credentialRequired:
+      "填写与服务地址对应的 API Key；Token Plan 使用 sk-sp- 开头的套餐密钥",
+    modelHint:
+      "已按所选来源填入默认配置。可选模型随服务地址变化；密钥、音色需属于对应平台与地域。",
+  },
   addLibraryFlow: {
     title: "添加书库",
     noLibrary: {

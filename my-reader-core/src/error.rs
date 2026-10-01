@@ -21,6 +21,9 @@ pub enum CoreError {
     #[error("SYNC_ERROR: {0}")]
     Sync(String),
 
+    #[error("TTS_ERROR: {0}")]
+    Tts(String),
+
     #[error("DATA_INTEGRITY_ERROR: {0}")]
     DataIntegrity(String),
 }

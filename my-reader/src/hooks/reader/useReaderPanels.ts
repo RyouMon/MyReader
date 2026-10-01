@@ -9,6 +9,7 @@ export function useReaderPanels() {
   const [annotationsOpen, setAnnotationsOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [ttsSettingsOpen, setTtsSettingsOpen] = useState(false)
 
   const toggleToc = useCallback(() => {
     setTocOpen((prev) => {
@@ -17,6 +18,7 @@ export function useReaderPanels() {
         setAnnotationsOpen(false)
         setSearchOpen(false)
         setSettingsOpen(false)
+        setTtsSettingsOpen(false)
       }
       return !prev
     })
@@ -29,6 +31,7 @@ export function useReaderPanels() {
         setAnnotationsOpen(false)
         setSearchOpen(false)
         setSettingsOpen(false)
+        setTtsSettingsOpen(false)
       }
       return !prev
     })
@@ -41,6 +44,7 @@ export function useReaderPanels() {
         setBookmarksOpen(false)
         setSearchOpen(false)
         setSettingsOpen(false)
+        setTtsSettingsOpen(false)
       }
       return !prev
     })
@@ -53,6 +57,7 @@ export function useReaderPanels() {
         setBookmarksOpen(false)
         setAnnotationsOpen(false)
         setSettingsOpen(false)
+        setTtsSettingsOpen(false)
       }
       return !prev
     })
@@ -65,6 +70,20 @@ export function useReaderPanels() {
         setBookmarksOpen(false)
         setAnnotationsOpen(false)
         setSearchOpen(false)
+        setTtsSettingsOpen(false)
+      }
+      return !prev
+    })
+  }, [])
+
+  const toggleTtsSettings = useCallback(() => {
+    setTtsSettingsOpen((prev) => {
+      if (!prev) {
+        setTocOpen(false)
+        setBookmarksOpen(false)
+        setAnnotationsOpen(false)
+        setSearchOpen(false)
+        setSettingsOpen(false)
       }
       return !prev
     })
@@ -76,6 +95,7 @@ export function useReaderPanels() {
     setAnnotationsOpen(false)
     setSearchOpen(false)
     setSettingsOpen(false)
+    setTtsSettingsOpen(false)
   }, [])
 
   return {
@@ -84,11 +104,13 @@ export function useReaderPanels() {
     annotationsOpen,
     searchOpen,
     settingsOpen,
+    ttsSettingsOpen,
     toggleToc,
     toggleBookmarks,
     toggleAnnotations,
     toggleSearch,
     toggleSettings,
+    toggleTtsSettings,
     closePanels,
   }
 }

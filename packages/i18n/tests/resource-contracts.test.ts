@@ -41,6 +41,15 @@ const INTENTIONAL_PLATFORM_VARIANTS = [
   "reader.themes.contrast1",
   "reader.themes.contrast2",
   "reader.toc",
+  "reader.tts.controls",
+  "reader.tts.manageProviders",
+  "reader.tts.openControls",
+  "reader.tts.pause",
+  "reader.tts.play",
+  "reader.tts.playFromCurrentPosition",
+  "reader.tts.returnToPlaybackPosition",
+  "reader.tts.settings",
+  "reader.tts.stop",
 ] as const
 
 function flatten(
@@ -120,6 +129,16 @@ describe("i18n resource contracts", () => {
 
   it("should keep mobile locale keys and interpolation parameters aligned when copy changes", () => {
     expectLocaleContract(mobileEn, mobileZhCN)
+  })
+
+  it("should label the mobile selection action as reading from the selected position", () => {
+    expect(mobileEn.reader.tts.readFromHere).toBe("Read from here")
+    expect(mobileZhCN.reader.tts.readFromHere).toBe("从这里朗读")
+  })
+
+  it("should label the mobile more-menu entry as read-aloud settings", () => {
+    expect(mobileEn.reader.tts.settingsAction).toBe("Read-aloud settings")
+    expect(mobileZhCN.reader.tts.settingsAction).toBe("朗读设置")
   })
 
   it("should reject desktop overrides when a key belongs to shared copy", () => {

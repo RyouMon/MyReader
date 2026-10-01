@@ -17,6 +17,7 @@ import org.readium.r2.navigator.Navigator
 import org.readium.r2.navigator.OverflowableNavigator
 import org.readium.r2.navigator.SelectableNavigator
 import org.readium.r2.navigator.VisualNavigator
+import org.readium.r2.navigator.input.DragEvent
 import org.readium.r2.navigator.input.InputListener
 import org.readium.r2.navigator.input.TapEvent
 import org.readium.r2.shared.publication.Locator
@@ -35,6 +36,9 @@ abstract class BaseReaderFragment : Fragment() {
 
   protected abstract val model: ReaderViewModel
   protected abstract val navigator: Navigator
+  var onUserNavigationIntent: (() -> Unit)? = null
+  var onUserNavigationGestureStart: (() -> Unit)? = null
+  var onUserNavigationGestureEnd: (() -> Unit)? = null
 
   /**
    * Navigators whose reading-direction semantics are not handled by Readium
@@ -68,6 +72,15 @@ abstract class BaseReaderFragment : Fragment() {
 
   // Listen to taps in the navigator to toggle chrome from JS
   private val tapInputListener = object : InputListener {
+    override fun onDrag(event: DragEvent): Boolean {
+      when (event.type) {
+        DragEvent.Type.Start -> onUserNavigationGestureStart?.invoke()
+        DragEvent.Type.End -> onUserNavigationGestureEnd?.invoke()
+        DragEvent.Type.Move -> Unit
+      }
+      return false
+    }
+
     override fun onTap(event: TapEvent): Boolean {
       val visualNavigator = navigator as? VisualNavigator ?: return false
       val publicationView = visualNavigator.publicationView
@@ -93,6 +106,7 @@ abstract class BaseReaderFragment : Fragment() {
       // The image navigator ignores readingProgression, so we reverse the edge
       // mapping ourselves when the user selected RTL.
       val overflowNav = navigator as? OverflowableNavigator ?: return false
+      onUserNavigationIntent?.invoke()
       val reverseEdges = shouldReverseEdgeNavigation()
       return when {
         xRatio < CENTER_TAP_START_RATIO -> if (reverseEdges) overflowNav.goForward(animated = true) else overflowNav.goBackward(animated = true)

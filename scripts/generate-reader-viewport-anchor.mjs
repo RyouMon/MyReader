@@ -135,6 +135,19 @@ let captureReaderBookmarkAnchorScript = """
 JSON.stringify((\\(readerViewportAnchorRuntimeScript))(window).captureReaderViewportAnchor())
 """
 
+let captureReaderViewportStartAnchorScript = """
+JSON.stringify((\\(readerViewportAnchorRuntimeScript))(window).captureReaderViewportStartAnchor())
+"""
+
+func captureReaderPointAnchorScript(
+  xRatio: Double,
+  yRatio: Double
+) -> String {
+  return """
+JSON.stringify((\\(readerViewportAnchorRuntimeScript))(window).captureReaderPointAnchor(\\(xRatio), \\(yRatio)))
+"""
+}
+
 func readerViewportAnchorOffsetRestoreScript(
   domRangeJSON: String,
   yRatio: Double
@@ -153,6 +166,12 @@ func readerBookmarkVisibilityScript(domRangeJSON: String) -> String {
 JSON.stringify((\\(readerViewportAnchorRuntimeScript))(window).isReaderViewportAnchorVisible(\\(domRangeJSON)))
 """
 }
+
+func readerTextLocatorVisibilityScript(locatorJSON: String) -> String {
+  return """
+JSON.stringify((\\(readerViewportAnchorRuntimeScript))(window).isReaderTextLocatorVisible(\\(locatorJSON)))
+"""
+}
 `
 }
 
@@ -169,6 +188,17 @@ internal val captureReaderBookmarkAnchorScript = """
 JSON.stringify(($readerViewportAnchorRuntimeScript)(window).captureReaderViewportAnchor())
 """.trimIndent()
 
+internal val captureReaderViewportStartAnchorScript = """
+JSON.stringify(($readerViewportAnchorRuntimeScript)(window).captureReaderViewportStartAnchor())
+""".trimIndent()
+
+internal fun captureReaderPointAnchorScript(
+  xRatio: Double,
+  yRatio: Double,
+): String = """
+JSON.stringify(($readerViewportAnchorRuntimeScript)(window).captureReaderPointAnchor($xRatio, $yRatio))
+""".trimIndent()
+
 internal fun readerViewportAnchorOffsetRestoreScript(
   domRangeJson: String,
   yRatio: Double
@@ -182,6 +212,10 @@ JSON.stringify(($readerViewportAnchorRuntimeScript)(window).readerViewportLayout
 
 internal fun readerBookmarkVisibilityScript(domRangeJson: String): String = """
 JSON.stringify(($readerViewportAnchorRuntimeScript)(window).isReaderViewportAnchorVisible($domRangeJson))
+""".trimIndent()
+
+internal fun readerTextLocatorVisibilityScript(locatorJson: String): String = """
+JSON.stringify(($readerViewportAnchorRuntimeScript)(window).isReaderTextLocatorVisible($locatorJson))
 """.trimIndent()
 `
 }

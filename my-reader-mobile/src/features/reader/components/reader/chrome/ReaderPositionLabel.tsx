@@ -13,6 +13,16 @@ export type ReaderPositionLabelProps = {
   palette: ReaderChromePalette
 }
 
+export function readerPositionLabelVisible(
+  chromeActive: boolean,
+  totalPages: number | null | undefined,
+  ttsPlayerActive: boolean,
+): boolean {
+  return (
+    chromeActive && totalPages != null && totalPages > 1 && !ttsPlayerActive
+  )
+}
+
 export function ReaderPositionLabel({
   visible,
   currentPage,

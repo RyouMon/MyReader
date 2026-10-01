@@ -49,4 +49,23 @@ describe("ReaderSelectionMenu", () => {
     fireEvent.click(screen.getByRole("button", { name: "雾霾蓝" }))
     expect(onColorSelect).toHaveBeenCalledWith("blue")
   })
+
+  it("starts read aloud from the selected text when available", () => {
+    const onReadAloud = vi.fn()
+    render(
+      <ReaderSelectionMenu
+        anchor={{ x: 200, y: 240 }}
+        onColorSelect={vi.fn()}
+        onEditNote={vi.fn()}
+        onReadAloud={onReadAloud}
+        onRemove={vi.fn()}
+        onOpenChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole("button", { name: "添加笔记" })).toBeVisible()
+    fireEvent.click(screen.getByRole("button", { name: "从此处朗读" }))
+
+    expect(onReadAloud).toHaveBeenCalledTimes(1)
+  })
 })

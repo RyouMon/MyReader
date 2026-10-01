@@ -782,6 +782,62 @@ interface NativeModuleInterface {
     nowMs: number,
     uniffi_out_err: UniffiRustCallStatus,
   ): Uint8Array;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_tts_discover_qwen_voices(
+    endpoint: Uint8Array,
+    model: Uint8Array,
+    credential: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_tts_get_config(
+    configPath: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_tts_list_voices(
+    configPath: Uint8Array,
+    profileId: Uint8Array,
+    credential: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_tts_probe_provider(
+    configPath: Uint8Array,
+    profileId: Uint8Array,
+    credential: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_tts_provider_capabilities(
+    configPath: Uint8Array,
+    profileId: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_tts_qwen_models(
+    endpoint: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_tts_qwen_presets(
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_tts_remove_profile(
+    configPath: Uint8Array,
+    profileId: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_tts_set_default_engine(
+    configPath: Uint8Array,
+    engine: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_tts_set_playback(
+    configPath: Uint8Array,
+    playback: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_tts_set_voice(
+    configPath: Uint8Array,
+    language: Uint8Array,
+    voice: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_tts_synthesize(
+    configPath: Uint8Array,
+    cacheDirectory: Uint8Array,
+    request: Uint8Array,
+    credential: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_tts_upsert_profile(
+    configPath: Uint8Array,
+    profile: Uint8Array,
+  ): bigint;
   ubrn_ffi_my_reader_core_ffi_uniffi_contract_version(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_app_config_initialize(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_app_config_write_mobile(): number;
@@ -892,6 +948,19 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_run_library(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_safety_sweep_delay_ms(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_set_library_online(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_discover_qwen_voices(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_get_config(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_list_voices(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_probe_provider(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_provider_capabilities(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_qwen_models(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_qwen_presets(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_remove_profile(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_set_default_engine(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_set_playback(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_set_voice(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_synthesize(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_upsert_profile(): number;
   // Codegen call sites use these via `nativeModule().rustbuffer_alloc(...)`
   // and `nativeModule().rustbuffer_free(...)`. The JSI host object exposes
   // them as properties; see `props["rustbuffer_alloc"]` / `props["rustbuffer_free"]`

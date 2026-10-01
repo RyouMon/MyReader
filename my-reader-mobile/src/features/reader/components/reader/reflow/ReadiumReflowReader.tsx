@@ -10,8 +10,13 @@ import type {
   ReadiumViewRef,
   SelectionAction,
   SelectionActionEvent,
-  SelectionMenuConfig,
   SelectionEvent,
+  SelectionMenuConfig,
+  TtsEngineConfig,
+  TtsPlaybackState,
+  TtsSynthesisCancelEvent,
+  TtsSynthesisCompletion,
+  TtsSynthesisRequestEvent,
 } from "@my-reader/readium"
 import {
   ReadiumView,
@@ -60,6 +65,30 @@ export type ReadiumReflowReaderRef = {
   clearSelection: () => void
   getBookmarkLocator: () => Promise<Locator | null>
   isBookmarkVisible: (locator: Locator) => Promise<boolean>
+  reattachTtsViewport: (
+    sessionId: string,
+    viewportNavigationId: string,
+  ) => Promise<boolean>
+  returnToTtsPosition: (
+    sessionId: string,
+    viewportNavigationId: string,
+  ) => Promise<boolean>
+  startTts: (
+    config: TtsEngineConfig,
+    fromLocator: Locator | undefined,
+    options: {
+      sessionId: string
+      startAtViewportStart?: boolean
+      viewportDetached?: boolean
+      viewportNavigationId?: string
+    },
+  ) => Promise<void>
+  playTts: () => void
+  pauseTts: () => void
+  stopTts: () => void
+  previousTts: () => void
+  nextTts: () => void
+  completeTtsSynthesis: (completion: TtsSynthesisCompletion) => void
 }
 
 export type ReadiumReflowReaderProps = {
@@ -76,8 +105,15 @@ export type ReadiumReflowReaderProps = {
   onDecorationActivated?: (event: DecorationActivatedEvent) => void
   onSelectionAction?: (event: SelectionActionEvent) => void
   onSelectionChange?: (event: SelectionEvent) => void
+  onTtsStateChange?: (event: TtsPlaybackState) => void
+  onTtsSynthesisRequest?: (event: TtsSynthesisRequestEvent) => void
+  onTtsSynthesisCancel?: (event: TtsSynthesisCancelEvent) => void
   onTocReady: (items: ReaderTocItem[]) => void
-  onUserLocationChange?: () => void
+  onUserLocationChange?: (
+    locator: Locator,
+    navigationId: string,
+    navigationKind: "pageTurn" | "programmatic",
+  ) => void
   onRequestClose: () => void
   onToggleChrome?: () => void
   theme?: ReaderTheme
@@ -111,6 +147,9 @@ const ReadiumReflowReader = forwardRef<
     onDecorationActivated,
     onSelectionAction,
     onSelectionChange,
+    onTtsStateChange,
+    onTtsSynthesisRequest,
+    onTtsSynthesisCancel,
     onTocReady,
     onUserLocationChange,
     onToggleChrome,
@@ -144,7 +183,6 @@ const ReadiumReflowReader = forwardRef<
     () => ({
       goTo: (locator: Locator, tocItem?: ReaderTocItem) => {
         selectedTocItemRef.current = tocItem ?? null
-        programmaticNavigationPendingRef.current = true
         readiumRef.current?.goTo(locator)
       },
       clearSelection: () => readiumRef.current?.clearSelection(),
@@ -153,6 +191,30 @@ const ReadiumReflowReader = forwardRef<
       isBookmarkVisible: (locator: Locator) =>
         readiumRef.current?.isBookmarkVisible(locator) ??
         Promise.resolve(false),
+      reattachTtsViewport: (sessionId: string, viewportNavigationId: string) =>
+        readiumRef.current?.reattachTtsViewport(
+          sessionId,
+          viewportNavigationId,
+        ) ?? Promise.resolve(false),
+      returnToTtsPosition: (sessionId: string, viewportNavigationId: string) =>
+        readiumRef.current?.returnToTtsPosition(
+          sessionId,
+          viewportNavigationId,
+        ) ?? Promise.resolve(false),
+      startTts: (config, fromLocator, options) => {
+        const reader = readiumRef.current
+        if (!reader) {
+          return Promise.reject(new Error("TTS_READER_VIEW_UNAVAILABLE"))
+        }
+        return reader.startTts(config, fromLocator, options)
+      },
+      playTts: () => readiumRef.current?.playTts(),
+      pauseTts: () => readiumRef.current?.pauseTts(),
+      stopTts: () => readiumRef.current?.stopTts(),
+      previousTts: () => readiumRef.current?.previousTts(),
+      nextTts: () => readiumRef.current?.nextTts(),
+      completeTtsSynthesis: (completion) =>
+        readiumRef.current?.completeTtsSynthesis(completion),
     }),
     [],
   )
@@ -389,14 +451,25 @@ const ReadiumReflowReader = forwardRef<
   )
 
   const handleLocationChange = useCallback(
-    (locator: Locator) => {
+    (
+      locator: Locator,
+      source?: "tts" | "user",
+      navigationId?: string,
+      navigationKind?: "pageTurn" | "programmatic",
+    ) => {
       const programmaticNavigationPending =
         programmaticNavigationPendingRef.current
       programmaticNavigationPendingRef.current = false
       const selectedToc = selectedTocItemRef.current
       selectedTocItemRef.current = null
       emitLocationState(locator, selectedToc)
-      if (!programmaticNavigationPending) onUserLocationChange?.()
+      if (!programmaticNavigationPending && source === "user" && navigationId) {
+        onUserLocationChange?.(
+          locator,
+          navigationId,
+          navigationKind ?? "pageTurn",
+        )
+      }
     },
     [emitLocationState, onUserLocationChange],
   )
@@ -418,6 +491,9 @@ const ReadiumReflowReader = forwardRef<
         onDecorationActivated={onDecorationActivated}
         onSelectionAction={onSelectionAction}
         onSelectionChange={onSelectionChange}
+        onTtsStateChange={onTtsStateChange}
+        onTtsSynthesisRequest={onTtsSynthesisRequest}
+        onTtsSynthesisCancel={onTtsSynthesisCancel}
         // onTap is emitted by the native navigator; the wrapping View's
         // touch handlers don't receive events on Android because the native
         // reader view consumes them.

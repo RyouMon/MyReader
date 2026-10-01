@@ -142,6 +142,35 @@ struct ReadiumFileRecord: Record {
   @Field var initialLocation: LocatorRecord? = nil
 }
 
+// MARK: - TTS
+
+struct TtsEngineConfigRecord: Record {
+  @Field var kind: String = "system"
+  @Field var profileId: String? = nil
+  @Field var voiceId: String? = nil
+  @Field var language: String? = nil
+  @Field var speed: Double = 1
+  @Field var pitch: Double = 1
+  @Field var highlightColor: String? = nil
+}
+
+struct TtsTimingRecord: Record {
+  @Field var startUtf16: Int = 0
+  @Field var endUtf16: Int = 0
+  @Field var startMs: Double = 0
+  @Field var endMs: Double = 0
+}
+
+struct TtsSynthesisCompletionRecord: Record {
+  @Field var sessionId: String = ""
+  @Field var requestId: String = ""
+  @Field var path: String? = nil
+  @Field var mimeType: String? = nil
+  @Field var timings: [TtsTimingRecord]? = nil
+  @Field var playbackRate: Double? = nil
+  @Field var error: String? = nil
+}
+
 // MARK: - Streamer / open-architecture config (REP-005/006)
 
 struct FormatRegistrationRecord: Record {

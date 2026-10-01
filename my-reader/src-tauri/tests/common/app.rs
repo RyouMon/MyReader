@@ -122,6 +122,21 @@ impl TestApp {
                 my_reader_lib::commands::reader::write_epub_readium_manifest,
                 my_reader_lib::commands::reader::set_reader_traffic_lights_visible::<MockRuntime>,
                 my_reader_lib::commands::reader::close_book_streamer,
+                my_reader_lib::commands::tts::get_tts_config::<MockRuntime>,
+                my_reader_lib::commands::tts::list_qwen_tts_models,
+                my_reader_lib::commands::tts::list_qwen_tts_presets,
+                my_reader_lib::commands::tts::discover_qwen_tts_voices::<MockRuntime>,
+                my_reader_lib::commands::tts::upsert_tts_profile::<MockRuntime>,
+                my_reader_lib::commands::tts::remove_tts_profile::<MockRuntime>,
+                my_reader_lib::commands::tts::set_tts_default_engine::<MockRuntime>,
+                my_reader_lib::commands::tts::set_tts_playback_preferences::<MockRuntime>,
+                my_reader_lib::commands::tts::set_tts_voice_for_language::<MockRuntime>,
+                my_reader_lib::commands::tts::get_tts_provider_capabilities::<MockRuntime>,
+                my_reader_lib::commands::tts::probe_tts_provider::<MockRuntime>,
+                my_reader_lib::commands::tts::list_tts_voices::<MockRuntime>,
+                my_reader_lib::commands::tts::synthesize_tts::<MockRuntime>,
+                my_reader_lib::commands::tts::synthesize_tts_request::<MockRuntime>,
+                my_reader_lib::commands::tts::cancel_tts_synthesis,
                 my_reader_lib::commands::sync::sync_db_for_library::<MockRuntime>,
                 my_reader_lib::commands::download::check_book_file_state::<MockRuntime>,
                 my_reader_lib::commands::download::check_book_file_states::<MockRuntime>,
@@ -161,6 +176,7 @@ impl TestApp {
         app.manage::<AppState>(Mutex::new(config));
         app.manage(StreamerState::new(RwLock::new(HashMap::new())));
         app.manage(DownloadService::new());
+        app.manage(my_reader_lib::commands::tts::TtsSynthesisCoordinator::default());
 
         Self {
             app,

@@ -17,6 +17,9 @@ import com.myreader.readium.Types.ReadiumFileRecord
 import com.myreader.readium.Types.SearchOptionsRecord
 import com.myreader.readium.Types.SelectionActionRecord
 import com.myreader.readium.Types.SelectionMenuRecord
+import com.myreader.readium.Types.TtsEngineConfigRecord
+import com.myreader.readium.Types.TtsSynthesisCompletionRecord
+import com.myreader.readium.reader.systemTtsVoices
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
@@ -44,6 +47,7 @@ import org.readium.r2.shared.publication.services.search.searchOptions
 @OptIn(ExperimentalReadiumApi::class)
 class ReadiumModule : Module() {
   private val searchScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+  private val ttsScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
   override fun definition() = ModuleDefinition {
     Name("Readium")
@@ -57,7 +61,10 @@ class ReadiumModule : Module() {
         "onDecorationActivated",
         "onSelectionChange",
         "onSelectionAction",
-        "onTap"
+        "onTap",
+        "onTtsStateChange",
+        "onTtsSynthesisRequest",
+        "onTtsSynthesisCancel"
       )
 
       Prop("file") { view: ReadiumView, value: ReadiumFileRecord? ->
@@ -87,6 +94,35 @@ class ReadiumModule : Module() {
       Prop("customSelectionMenu") { view: ReadiumView, value: Boolean ->
         view.customSelectionMenu = value
       }
+
+      AsyncFunction("reattachTtsViewport") Coroutine { view: ReadiumView, sessionId: String, viewportNavigationId: String ->
+        view.reattachTtsViewport(sessionId, viewportNavigationId)
+      }
+
+      AsyncFunction("returnToTtsPosition") Coroutine { view: ReadiumView, sessionId: String, viewportNavigationId: String ->
+        view.returnToTtsPosition(sessionId, viewportNavigationId)
+      }
+
+      AsyncFunction("startTts") { view: ReadiumView, sessionId: String, config: TtsEngineConfigRecord, locator: LocatorRecord?, startAtViewportStart: Boolean, viewportDetached: Boolean, viewportNavigationId: String? ->
+        view.startTts(
+          sessionId,
+          config,
+          locator,
+          startAtViewportStart,
+          viewportDetached,
+          viewportNavigationId,
+        )
+      }
+
+      AsyncFunction("playTts") { view: ReadiumView -> view.playTts() }
+      AsyncFunction("pauseTts") { view: ReadiumView -> view.pauseTts() }
+      AsyncFunction("stopTts") { view: ReadiumView -> view.stopTts() }
+      AsyncFunction("previousTts") { view: ReadiumView -> view.previousTts() }
+      AsyncFunction("nextTts") { view: ReadiumView -> view.nextTts() }
+
+      AsyncFunction("completeTtsSynthesis") { view: ReadiumView, completion: TtsSynthesisCompletionRecord ->
+        view.completeTtsSynthesis(completion)
+      }
     }
 
     // MARK: - Imperative navigation (view resolved from react tag)
@@ -113,6 +149,17 @@ class ReadiumModule : Module() {
 
     AsyncFunction("isBookmarkVisible") Coroutine { tag: Int, locator: LocatorRecord ->
       ReadiumView.registry[tag]?.isBookmarkVisible(locator) ?: false
+    }
+
+    AsyncFunction("getSystemTtsVoices") { promise: Promise ->
+      val context = appContext.reactContext
+      if (context == null) {
+        promise.reject("ERR_REACT_CONTEXT_LOST", "React context lost", null)
+        return@AsyncFunction
+      }
+      ttsScope.launch {
+        promise.resolve(systemTtsVoices(context))
+      }
     }
 
     // MARK: - Streamer open-architecture config (REP-005/006)
@@ -309,6 +356,7 @@ class ReadiumModule : Module() {
     OnDestroy {
       SearchSessionStore.cancelAll()
       searchScope.cancel()
+      ttsScope.cancel()
     }
   }
 }

@@ -17,3 +17,4 @@ export const mobileResources = {
 } as const
 
 export type MobileTranslationKey = TranslationKey<typeof mobileEnTranslation>
+export { qwenTtsSourceKeys } from "./qwen-tts"

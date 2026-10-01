@@ -33,6 +33,7 @@ import { DeveloperConcurrencyControl } from "./components/developer-concurrency-
 const SETTINGS_ROW_ICONS = {
   addLibrary: { ios: "plus.circle", android: "add-circle-outline" },
   language: { ios: "globe", android: "language" },
+  tts: { ios: "waveform", android: "record-voice-over" },
   darkMode: { ios: "circle.lefthalf.filled", android: "dark-mode" },
   diagnostics: { ios: "shield.lefthalf.filled", android: "privacy-tip" },
   homeCardStyle: { ios: "rectangle.grid.1x2", android: "view-agenda" },
@@ -304,6 +305,19 @@ export default function SettingsScreen() {
               icon={SETTINGS_ROW_ICONS.homeCardStyle}
               value={homeCardStyleValue}
               isLast
+            />
+          </SectionCard>
+        </View>
+        <View className="gap-3">
+          <SectionLabel>{t("settings.tts.sectionTitle")}</SectionLabel>
+          <SectionCard>
+            <ListRow
+              testID="settings-tts-row"
+              title={t("settings.tts.title")}
+              icon={SETTINGS_ROW_ICONS.tts}
+              detail={t("settings.tts.detail")}
+              isLast
+              onPress={() => navigateTo("/settings/tts")}
             />
           </SectionCard>
         </View>
