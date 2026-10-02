@@ -261,6 +261,7 @@ describe("ReaderTtsSettingsSheet", () => {
     mockPlaybackRate = 1
     mockBackGestureOnEnd = undefined
     jest.mocked(getTtsConfig).mockResolvedValue(mockConfig)
+    jest.mocked(upsertTtsProfile).mockResolvedValue(mockConfig)
     jest.mocked(synthesizeTts).mockResolvedValue({
       path: "/tmp/reader-preview.mp3",
       mimeType: "audio/mpeg",
@@ -425,7 +426,9 @@ describe("ReaderTtsSettingsSheet", () => {
   ])("offers %s inside the reader sheet without leaving the reader", async (id, endpoint) => {
     render(<ReaderTtsSettingsSheet language="en" palette={palette} />)
     fireEvent.press(
-      await screen.findByRole("button", { name: "reader.tts.manageProviders" }),
+      await screen.findByRole("button", {
+        name: "reader.tts.manageProviders",
+      }),
     )
     fireEvent.press(
       screen.getByRole("button", { name: "settings.tts.addProvider" }),
@@ -436,7 +439,40 @@ describe("ReaderTtsSettingsSheet", () => {
     expect(screen.getByTestId("reader-tts-provider-endpoint").props.value).toBe(
       endpoint,
     )
-    fireEvent.press(screen.getByRole("button", { name: "back" }))
+    expect(
+      screen.queryByRole("button", { name: "settings.tts.audioFormat" }),
+    ).toBeNull()
+    expect(screen.queryByTestId("reader-tts-provider-voices")).toBeNull()
+    fireEvent.press(
+      screen.getByRole("button", { name: "qwenTts.manualVoicesAction" }),
+    )
+    fireEvent.changeText(
+      screen.getByTestId("reader-tts-provider-voices"),
+      "future-voice",
+    )
+    jest
+      .spyOn(ActionSheetIOS, "showActionSheetWithOptions")
+      .mockImplementationOnce((options, callback) =>
+        callback(options.options.indexOf("future-voice")),
+      )
+    fireEvent.press(
+      screen.getByRole("button", { name: "settings.tts.defaultVoice" }),
+    )
+    fireEvent.press(screen.getByRole("button", { name: "settings.tts.save" }))
+    await waitFor(() =>
+      expect(upsertTtsProfile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          profile: expect.objectContaining({
+            endpoint,
+            responseFormat: "mp3",
+            defaultVoice: "future-voice",
+          }),
+        }),
+      ),
+    )
+    fireEvent.press(
+      screen.getByRole("button", { name: "settings.tts.addProvider" }),
+    )
     expect(
       screen.getByRole("button", { name: `qwenTts.sources.${id}.title` }),
     ).toBeTruthy()
@@ -460,9 +496,6 @@ describe("ReaderTtsSettingsSheet", () => {
   })
 
   it("creates a provider without leaving the reader sheet", async () => {
-    jest
-      .spyOn(ActionSheetIOS, "showActionSheetWithOptions")
-      .mockImplementation((_options, callback) => callback(3))
     render(<ReaderTtsSettingsSheet language="en" palette={palette} />)
 
     fireEvent.press(
@@ -478,9 +511,9 @@ describe("ReaderTtsSettingsSheet", () => {
         name: "settings.tts.providerKinds.openAiCompatible",
       }),
     )
-    fireEvent.press(
-      screen.getByRole("button", { name: "settings.tts.audioFormat" }),
-    )
+    expect(
+      screen.queryByRole("button", { name: "settings.tts.audioFormat" }),
+    ).toBeNull()
     fireEvent.changeText(
       screen.getByTestId("reader-tts-provider-voices"),
       "custom-voice",
@@ -496,7 +529,7 @@ describe("ReaderTtsSettingsSheet", () => {
           enabled: true,
           endpoint: "https://api.openai.com/v1",
           model: "gpt-4o-mini-tts",
-          responseFormat: "flac",
+          responseFormat: "mp3",
           instructions: undefined,
           voices: ["custom-voice"],
           defaultVoice: "custom-voice",

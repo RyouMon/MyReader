@@ -276,7 +276,6 @@ export const desktopEn = {
         name: "Name",
         endpoint: "Server address",
         model: "Model",
-        audioFormat: "Audio format",
         voices: "Voice IDs",
         voicesPlaceholder: "Enter one provider-supported voice ID per line",
         voicesDescription:

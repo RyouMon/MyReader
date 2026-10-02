@@ -27,7 +27,6 @@ import {
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import {
   normalizeTtsAudioFormat,
-  TTS_AUDIO_FORMATS,
   type TtsAudioFormat,
 } from "@/src/constants/tts"
 import { useThemePalette } from "@/src/design/tokens"
@@ -199,6 +198,7 @@ export default function TtsProviderProfileScreen() {
     providerId?: string
   }>()
   const [draft, setDraft] = useState<ProviderDraft | null>(null)
+  const [showManualVoices, setShowManualVoices] = useState(false)
   const [loading, setLoading] = useState(Boolean(providerId))
   const [saving, setSaving] = useState(false)
   const qwen = useQwenTtsForm(draft)
@@ -332,7 +332,12 @@ export default function TtsProviderProfileScreen() {
       ? [
           {
             label: choosingType ? t("settings.tts.cancel") : t("back"),
-            onPress: choosingType ? () => router.back() : () => setDraft(null),
+            onPress: choosingType
+              ? () => router.back()
+              : () => {
+                  setShowManualVoices(false)
+                  setDraft(null)
+                },
             iosSfSymbol: choosingType ? "xmark" : "chevron.left",
             iconOnly: true,
           },
@@ -342,6 +347,7 @@ export default function TtsProviderProfileScreen() {
       ? [
           createSaveAction({
             label: t("settings.tts.save"),
+            color: palette.primary,
             onPress: () => void save(),
             loading: saving,
             disabled: !canSave,
@@ -485,80 +491,81 @@ export default function TtsProviderProfileScreen() {
                     options={qwen.models}
                     onChange={(id) => {
                       const model = qwen.models.find((model) => model.id === id)
-                      if (model)
+                      if (model) {
+                        setShowManualVoices(false)
                         setDraft({ ...draft, ...qwenModelFields(model) })
+                      }
                     }}
                   />
                 ) : null}
-                <ProviderMenuField
-                  label={t("settings.tts.audioFormat")}
-                  testID="tts-provider-audio-format"
-                  options={(
-                    qwen.selectedModel?.audioFormats ?? TTS_AUDIO_FORMATS
-                  ).map((id) => ({ id, name: id.toUpperCase() }))}
-                  value={draft.responseFormat}
-                  onChange={(responseFormat) =>
-                    setDraft((current) =>
-                      current
-                        ? {
-                            ...current,
-                            responseFormat:
-                              normalizeTtsAudioFormat(responseFormat),
-                          }
-                        : current,
-                    )
-                  }
-                />
-                <FormLabeledFieldRow
-                  label={
-                    draft.kind === "qwen"
-                      ? t("qwenTts.manualVoices")
-                      : t("settings.tts.voices")
-                  }
-                  required={draft.kind !== "qwen"}
-                >
-                  <TextInput
-                    testID="tts-provider-voices"
-                    value={
-                      draft.kind === "qwen" ? qwen.manualVoices : draft.voices
-                    }
-                    placeholder={t("settings.tts.voicesPlaceholder")}
-                    placeholderTextColor={palette.textMuted}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    multiline
-                    className="min-h-24 border-0 bg-transparent py-2 text-base"
-                    style={{ color: palette.text }}
-                    onChangeText={(voices) => {
-                      const nextVoiceIds = parseVoiceIds(voices)
-                      setDraft((current) =>
-                        current
-                          ? {
-                              ...current,
-                              voices,
-                              defaultVoice:
-                                current.kind === "qwen" ||
-                                nextVoiceIds.includes(current.defaultVoice)
-                                  ? current.defaultVoice
-                                  : (nextVoiceIds[0] ?? ""),
-                            }
-                          : current,
-                      )
-                    }}
-                  />
-                </FormLabeledFieldRow>
-                <Text
-                  className="px-1 text-xs"
-                  style={{ color: palette.textMuted }}
-                >
-                  {draft.kind === "qwen"
-                    ? t(
-                        qwen.selectedModel?.voiceDiscovery
-                          ? "qwenTts.voiceHint"
-                          : "qwenTts.builtinHint",
-                      )
-                    : t("settings.tts.voicesDetail")}
-                </Text>
+                {draft.kind === "qwen" ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: showManualVoices }}
+                    onPress={() => setShowManualVoices((current) => !current)}
+                    className="min-h-11 justify-center"
+                    style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+                  >
+                    <Text
+                      className="text-base"
+                      style={{ color: palette.primary }}
+                    >
+                      {t("qwenTts.manualVoicesAction")}
+                    </Text>
+                  </Pressable>
+                ) : null}
+                {draft.kind !== "qwen" || showManualVoices ? (
+                  <>
+                    <FormLabeledFieldRow
+                      label={
+                        draft.kind === "qwen"
+                          ? t("qwenTts.manualVoices")
+                          : t("settings.tts.voices")
+                      }
+                      required={draft.kind !== "qwen"}
+                    >
+                      <TextInput
+                        testID="tts-provider-voices"
+                        value={
+                          draft.kind === "qwen"
+                            ? qwen.manualVoices
+                            : draft.voices
+                        }
+                        placeholder={t("settings.tts.voicesPlaceholder")}
+                        placeholderTextColor={palette.textMuted}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        multiline
+                        className="min-h-24 border-0 bg-transparent py-2 text-base"
+                        style={{ color: palette.text }}
+                        onChangeText={(voices) => {
+                          const nextVoiceIds = parseVoiceIds(voices)
+                          setDraft((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  voices,
+                                  defaultVoice:
+                                    current.kind === "qwen" ||
+                                    nextVoiceIds.includes(current.defaultVoice)
+                                      ? current.defaultVoice
+                                      : (nextVoiceIds[0] ?? ""),
+                                }
+                              : current,
+                          )
+                        }}
+                      />
+                    </FormLabeledFieldRow>
+                    <Text
+                      className="px-1 text-xs"
+                      style={{ color: palette.textMuted }}
+                    >
+                      {draft.kind === "qwen"
+                        ? t("qwenTts.manualVoicesHint")
+                        : t("settings.tts.voicesDetail")}
+                    </Text>
+                  </>
+                ) : null}
                 {qwen.loading ? (
                   <Text
                     accessibilityRole="progressbar"
@@ -652,11 +659,14 @@ export default function TtsProviderProfileScreen() {
                 ) : null}
               </View>
             </SectionCard>
-            <Text className="px-1 text-xs" style={{ color: palette.textMuted }}>
-              {draft.kind === "qwen"
-                ? t("qwenTts.modelHint")
-                : t("settings.tts.openAiDetail")}
-            </Text>
+            {draft.kind !== "qwen" ? (
+              <Text
+                className="px-1 text-xs"
+                style={{ color: palette.textMuted }}
+              >
+                {t("settings.tts.openAiDetail")}
+              </Text>
+            ) : null}
           </View>
 
           {draft.id ? (

@@ -23,11 +23,10 @@ export const sharedEn = {
         credential: "Alibaba Cloud Model Studio API key for this region",
       },
     },
-    voiceHint:
-      "Account voices load automatically for the selected model. You can also enter one voice ID per line, including new voices not in the app catalog.",
-    builtinHint:
-      "Built-in voices come from the official catalog. Enter a new voice ID directly without waiting for an app update.",
-    manualVoices: "Additional voice IDs (optional)",
+    manualVoicesAction: "Enter voice IDs manually",
+    manualVoices: "Voice IDs",
+    manualVoicesHint:
+      "For official or custom voices missing from the list. Enter one ID per line.",
     loadingVoices: "Loading account voices…",
     voicesFailed:
       "Could not load account voices. Saved voices and manually entered IDs are still available.",
@@ -35,8 +34,6 @@ export const sharedEn = {
       "No account voices for this model. Create a voice on the corresponding platform or enter an existing voice ID.",
     credentialRequired:
       "API key matching this endpoint; Token Plan requires an sk-sp- subscription key",
-    modelHint:
-      "Defaults follow the selected source. Models follow the endpoint; keys and voices must belong to the matching platform and region.",
   },
   addLibraryFlow: {
     title: "Add library",

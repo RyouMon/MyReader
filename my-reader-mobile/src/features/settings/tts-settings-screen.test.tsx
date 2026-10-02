@@ -6,6 +6,7 @@ import {
   waitFor,
 } from "@testing-library/react-native"
 import * as mockReact from "react"
+import { router } from "expo-router"
 import {
   Pressable as mockPressable,
   Text as mockText,
@@ -41,6 +42,7 @@ const mockAudioPlayer = {
 const mockUseAudioPlayer = jest.fn((_source: string | null) => mockAudioPlayer)
 const mockSpeechStop = jest.fn().mockResolvedValue(undefined)
 const mockT = (key: string) => key
+jest.mock("@expo/vector-icons/MaterialIcons", () => jest.fn(() => null))
 const mockProviderConfig = {
   schemaVersion: 1,
   defaultEngine: { kind: "provider" as const, profileId: "openai" },
@@ -314,5 +316,13 @@ describe("TtsSettingsScreen preview", () => {
     )
     expect(showAlertWithStatusBarRestore).not.toHaveBeenCalled()
     expect(screen.queryByText("settings.tts.refreshVoices")).toBeNull()
+  })
+
+  it("opens the provider flow from the add button", async () => {
+    render(<TtsSettingsScreen />)
+    fireEvent.press(
+      await screen.findByRole("button", { name: "settings.tts.addProvider" }),
+    )
+    expect(router.push).toHaveBeenCalledWith("/settings/tts-provider")
   })
 })

@@ -198,7 +198,6 @@
       "profileName": "名称",
       "endpoint": "服务地址",
       "model": "模型",
-      "audioFormat": "音频格式",
       "voices": "声音 ID",
       "voicesPlaceholder": "每行填写一个供应商支持的声音 ID",
       "voicesDetail": "OpenAI-compatible 没有统一的声音发现接口；MyReader 不预设声音名，请按供应商文档填写。",

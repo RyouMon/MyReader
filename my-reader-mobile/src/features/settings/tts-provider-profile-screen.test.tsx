@@ -144,6 +144,9 @@ describe("TtsProviderProfileScreen", () => {
     expect(
       screen.getByTestId("tts-provider-credential").props.placeholder,
     ).toBe(`qwenTts.sources.${id}.credential`)
+    expect(screen.queryByTestId("tts-provider-audio-format")).toBeNull()
+    expect(screen.queryByTestId("tts-provider-voices")).toBeNull()
+    expect(screen.queryByText("qwenTts.modelHint")).toBeNull()
     const header = mockUseScreenHeader.mock.calls.at(-1)?.[0] as {
       right?: { onPress: () => void }[]
     }
@@ -157,6 +160,7 @@ describe("TtsProviderProfileScreen", () => {
             endpoint,
             defaultVoice: voice,
             model: "qwen-audio-3.0-tts-plus",
+            responseFormat: "mp3",
           }),
         }),
       ),
@@ -172,6 +176,9 @@ describe("TtsProviderProfileScreen", () => {
       screen.getByTestId("tts-provider-credential"),
       "sk-sp-fixture",
     )
+    fireEvent.press(
+      screen.getByRole("button", { name: "qwenTts.manualVoicesAction" }),
+    )
     fireEvent.changeText(
       screen.getByTestId("tts-provider-voices"),
       "subscription-voice",
@@ -184,6 +191,10 @@ describe("TtsProviderProfileScreen", () => {
       screen.getByRole("button", { name: "qwenTts.sources.qianwen.title" }),
     )
     expect(screen.getByTestId("tts-provider-credential").props.value).toBe("")
+    expect(screen.queryByTestId("tts-provider-voices")).toBeNull()
+    fireEvent.press(
+      screen.getByRole("button", { name: "qwenTts.manualVoicesAction" }),
+    )
     expect(screen.getByTestId("tts-provider-voices").props.value).toBe("")
     expect(screen.getByText("龙安灵心")).toBeTruthy()
   })
@@ -274,10 +285,7 @@ describe("TtsProviderProfileScreen", () => {
     expect(mockRouterBack).not.toHaveBeenCalled()
   })
 
-  it("saves the selected OpenAI-compatible audio format", async () => {
-    jest
-      .spyOn(ActionSheetIOS, "showActionSheetWithOptions")
-      .mockImplementation((_options, callback) => callback(3))
+  it("saves OpenAI-compatible providers as MP3 without asking for an audio format", async () => {
     render(<TtsProviderProfileScreen />)
 
     fireEvent.press(
@@ -285,9 +293,9 @@ describe("TtsProviderProfileScreen", () => {
         name: "settings.tts.providerKinds.openAiCompatible",
       }),
     )
-    fireEvent.press(
-      screen.getByRole("button", { name: "settings.tts.audioFormat" }),
-    )
+    expect(
+      screen.queryByRole("button", { name: "settings.tts.audioFormat" }),
+    ).toBeNull()
     fireEvent.changeText(
       screen.getByTestId("tts-provider-voices"),
       "custom-voice",
@@ -301,7 +309,7 @@ describe("TtsProviderProfileScreen", () => {
     await waitFor(() =>
       expect(upsertTtsProfile).toHaveBeenCalledWith(
         expect.objectContaining({
-          profile: expect.objectContaining({ responseFormat: "flac" }),
+          profile: expect.objectContaining({ responseFormat: "mp3" }),
         }),
       ),
     )

@@ -198,7 +198,6 @@
       "profileName": "Name",
       "endpoint": "Endpoint",
       "model": "Model",
-      "audioFormat": "Audio format",
       "voices": "Voice IDs",
       "voicesPlaceholder": "Enter one provider-supported voice ID per line",
       "voicesDetail": "OpenAI-compatible APIs have no shared voice discovery contract. MyReader assumes no voice names; use the provider documentation.",
