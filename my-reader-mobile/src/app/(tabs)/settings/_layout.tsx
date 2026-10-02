@@ -28,6 +28,7 @@ export default function SettingsStackLayout() {
         name="tts-provider"
         options={{
           presentation: "modal",
+          headerShown: false,
         }}
       />
       <Stack.Screen

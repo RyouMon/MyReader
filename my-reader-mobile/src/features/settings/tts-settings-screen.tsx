@@ -120,7 +120,6 @@ export default function TtsSettingsScreen() {
   const palette = useThemePalette()
   const [config, setConfig] = useState<MobileTtsConfig | null>(null)
   const [voices, setVoices] = useState<TtsVoice[]>([])
-  const [loading, setLoading] = useState(true)
   const [voicesLoading, setVoicesLoading] = useState(false)
   const [previewState, setPreviewState] = useState<PreviewState>("idle")
   const [previewSource, setPreviewSource] = useState<string | null>(null)
@@ -141,7 +140,6 @@ export default function TtsSettingsScreen() {
   }, [])
 
   const loadConfig = useCallback(async () => {
-    setLoading(true)
     try {
       setConfig(await getTtsConfig())
     } catch (error) {
@@ -149,8 +147,6 @@ export default function TtsSettingsScreen() {
         t("settings.tts.loadFailed"),
         describeError(error),
       )
-    } finally {
-      setLoading(false)
     }
   }, [t])
 
@@ -510,7 +506,7 @@ export default function TtsSettingsScreen() {
     [config, loadConfig, t],
   )
 
-  if (loading || !config) {
+  if (!config) {
     return (
       <Screen scrollEnabled={false}>
         <View className="flex-1 items-center justify-center py-20">

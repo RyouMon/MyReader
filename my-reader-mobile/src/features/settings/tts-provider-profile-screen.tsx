@@ -194,15 +194,29 @@ function ProviderMenuField({
 export default function TtsProviderProfileScreen() {
   const { t } = useTranslation()
   const palette = useThemePalette()
-  const { providerId } = useLocalSearchParams<{
+  const { providerId, kind, sourceId } = useLocalSearchParams<{
     providerId?: string
+    kind?: ProviderDraft["kind"]
+    sourceId?: string
   }>()
-  const [draft, setDraft] = useState<ProviderDraft | null>(null)
+  const qwenPresets = useMemo(getQwenTtsPresets, [])
+  const [draft, setDraft] = useState<ProviderDraft | null>(() => {
+    if (providerId || !kind) return null
+    const preset = qwenPresets.find((item) => item.id === sourceId)
+    return kind === "qwen" && preset
+      ? {
+          ...newDraft(),
+          ...newQwenProviderFields(
+            preset,
+            t(qwenTtsSourceKeys(preset.id).title),
+          ),
+        }
+      : newDraft()
+  })
   const [showManualVoices, setShowManualVoices] = useState(false)
   const [loading, setLoading] = useState(Boolean(providerId))
   const [saving, setSaving] = useState(false)
   const qwen = useQwenTtsForm(draft)
-  const qwenPresets = useMemo(getQwenTtsPresets, [])
   const qwenPreset =
     draft?.kind === "qwen"
       ? qwenPresets.find(
@@ -242,7 +256,7 @@ export default function TtsProviderProfileScreen() {
     (draft?.voices ?? "") +
       (draft?.kind === "qwen" ? `\n${draft.defaultVoice}` : ""),
   )
-  const choosingType = !providerId && !draft && !loading
+  const choosingType = !providerId && !kind
   const defaultVoice = draft?.defaultVoice.trim() ?? ""
   const canSave = Boolean(
     draft?.name.trim() &&
@@ -276,7 +290,7 @@ export default function TtsProviderProfileScreen() {
         credential: draft.credential.trim() || undefined,
         clearCredential: draft.clearCredential,
       })
-      router.back()
+      router.dismissTo("/settings/tts")
     } catch (error) {
       showAlertWithStatusBarRestore(
         t("settings.tts.saveFailed"),
@@ -301,7 +315,7 @@ export default function TtsProviderProfileScreen() {
           onPress: () => {
             setSaving(true)
             void removeTtsProfile(profileId)
-              .then(() => router.back())
+              .then(() => router.dismissTo("/settings/tts"))
               .catch((error) =>
                 showAlertWithStatusBarRestore(
                   t("settings.tts.removeFailed"),
@@ -327,18 +341,16 @@ export default function TtsProviderProfileScreen() {
                 : "Qwen",
             })
           : t("settings.tts.addOpenAi"),
-    back: !providerId ? "hidden" : "auto",
-    left: !providerId
+    back: choosingType || providerId ? "hidden" : "auto",
+    close: providerId
+      ? { target: "/settings/tts", dismissTo: true }
+      : undefined,
+    left: choosingType
       ? [
           {
-            label: choosingType ? t("settings.tts.cancel") : t("back"),
-            onPress: choosingType
-              ? () => router.back()
-              : () => {
-                  setShowManualVoices(false)
-                  setDraft(null)
-                },
-            iosSfSymbol: choosingType ? "xmark" : "chevron.left",
+            label: t("settings.tts.cancel"),
+            onPress: () => router.dismissTo("/settings/tts"),
+            iosSfSymbol: "xmark",
             iconOnly: true,
           },
         ]
@@ -419,7 +431,12 @@ export default function TtsProviderProfileScreen() {
               <ListRow
                 title={t("settings.tts.providerKinds.openAiCompatible")}
                 detail={t("settings.tts.openAiProviderTypeDetail")}
-                onPress={() => setDraft(newDraft())}
+                onPress={() =>
+                  router.push({
+                    pathname: "/settings/tts-provider/form",
+                    params: { kind: "openAiCompatible" },
+                  })
+                }
               />
               {qwenPresets.map((preset, index) => (
                 <ListRow
@@ -428,12 +445,9 @@ export default function TtsProviderProfileScreen() {
                   detail={t(qwenTtsSourceKeys(preset.id).description)}
                   isLast={index === qwenPresets.length - 1}
                   onPress={() =>
-                    setDraft({
-                      ...newDraft(),
-                      ...newQwenProviderFields(
-                        preset,
-                        t(qwenTtsSourceKeys(preset.id).title),
-                      ),
+                    router.push({
+                      pathname: "/settings/tts-provider/form",
+                      params: { kind: "qwen", sourceId: preset.id },
                     })
                   }
                 />

@@ -15,12 +15,15 @@ import {
 } from "react-native"
 
 import {
-  upsertTtsProfile,
   discoverQwenTtsVoices,
+  upsertTtsProfile,
 } from "@/src/services/core/tts"
 import TtsProviderProfileScreen from "./tts-provider-profile-screen"
 
 const mockRouterBack = jest.fn()
+const mockRouterPush = jest.fn()
+const mockRouterDismissTo = jest.fn()
+let mockRouteParams: { kind?: string; sourceId?: string } = {}
 const mockUseScreenHeader = jest.fn((options: unknown) => ({
   options,
   toolbar: null,
@@ -28,8 +31,12 @@ const mockUseScreenHeader = jest.fn((options: unknown) => ({
 
 jest.mock("expo-router", () => ({
   Stack: { Screen: jest.fn(() => null) },
-  router: { back: mockRouterBack },
-  useLocalSearchParams: () => ({}),
+  router: {
+    back: () => mockRouterBack(),
+    push: (href: unknown) => mockRouterPush(href),
+    dismissTo: (href: unknown) => mockRouterDismissTo(href),
+  },
+  useLocalSearchParams: () => mockRouteParams,
 }))
 
 jest.mock("react-i18next", () => ({
@@ -119,8 +126,16 @@ jest.mock("@/tw", () => ({
 }))
 
 describe("TtsProviderProfileScreen", () => {
+  function renderForm(sourceId?: string) {
+    mockRouteParams = sourceId
+      ? { kind: "qwen", sourceId }
+      : { kind: "openAiCompatible" }
+    return render(<TtsProviderProfileScreen />)
+  }
+
   beforeEach(() => {
     jest.clearAllMocks()
+    mockRouteParams = {}
     jest.mocked(upsertTtsProfile).mockResolvedValue({} as never)
     jest.mocked(discoverQwenTtsVoices).mockResolvedValue([])
   })
@@ -134,10 +149,7 @@ describe("TtsProviderProfileScreen", () => {
     ["qianwen", "https://maas.qianwenaiapi.com/api/v1", "longanlingxin"],
     ["dashscope", "https://dashscope.aliyuncs.com/api/v1", "longanlingxin"],
   ])("creates the %s source with its own defaults and credential hint", async (id, endpoint, voice) => {
-    render(<TtsProviderProfileScreen />)
-    fireEvent.press(
-      screen.getByRole("button", { name: `qwenTts.sources.${id}.title` }),
-    )
+    renderForm(id)
     expect(screen.getByTestId("tts-provider-endpoint").props.value).toBe(
       endpoint,
     )
@@ -165,13 +177,11 @@ describe("TtsProviderProfileScreen", () => {
         }),
       ),
     )
+    expect(mockRouterDismissTo).toHaveBeenCalledWith("/settings/tts")
   })
 
   it("does not reuse credentials or manual voices when selecting a different source", () => {
-    render(<TtsProviderProfileScreen />)
-    fireEvent.press(
-      screen.getByRole("button", { name: "qwenTts.sources.tokenPlan.title" }),
-    )
+    const firstForm = renderForm("tokenPlan")
     fireEvent.changeText(
       screen.getByTestId("tts-provider-credential"),
       "sk-sp-fixture",
@@ -183,13 +193,8 @@ describe("TtsProviderProfileScreen", () => {
       screen.getByTestId("tts-provider-voices"),
       "subscription-voice",
     )
-    const header = mockUseScreenHeader.mock.calls.at(-1)?.[0] as {
-      left?: { onPress: () => void }[]
-    }
-    act(() => header.left?.[0]?.onPress())
-    fireEvent.press(
-      screen.getByRole("button", { name: "qwenTts.sources.qianwen.title" }),
-    )
+    firstForm.unmount()
+    renderForm("qianwen")
     expect(screen.getByTestId("tts-provider-credential").props.value).toBe("")
     expect(screen.queryByTestId("tts-provider-voices")).toBeNull()
     fireEvent.press(
@@ -206,10 +211,7 @@ describe("TtsProviderProfileScreen", () => {
         { id: "my-cloned-voice", name: "my-cloned-voice", language: "zh" },
       ])
     const choose = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions")
-    render(<TtsProviderProfileScreen />)
-    fireEvent.press(
-      screen.getByRole("button", { name: "qwenTts.sources.tokenPlan.title" }),
-    )
+    renderForm("tokenPlan")
     expect(screen.getByText("龙安欢")).toBeTruthy()
     expect(screen.getByTestId("tts-provider-endpoint").props.value).toBe(
       "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference",
@@ -253,46 +255,36 @@ describe("TtsProviderProfileScreen", () => {
     )
   })
 
-  it("adds a provider through type selection and a dedicated form step", () => {
+  it.each([
+    [
+      "settings.tts.providerKinds.openAiCompatible",
+      { kind: "openAiCompatible" },
+    ],
+    [
+      "qwenTts.sources.tokenPlan.title",
+      { kind: "qwen", sourceId: "tokenPlan" },
+    ],
+    ["qwenTts.sources.qianwen.title", { kind: "qwen", sourceId: "qianwen" }],
+    [
+      "qwenTts.sources.dashscope.title",
+      { kind: "qwen", sourceId: "dashscope" },
+    ],
+  ])("opens %s as a separate form route", (title, params) => {
     render(<TtsProviderProfileScreen />)
 
     expect(screen.getByText("settings.tts.providerTypeSection")).toBeTruthy()
-    expect(
-      screen.getByRole("button", {
-        name: "settings.tts.providerKinds.openAiCompatible",
-      }),
-    ).toBeTruthy()
     expect(screen.queryByTestId("tts-provider-endpoint")).toBeNull()
-
-    fireEvent.press(
-      screen.getByRole("button", {
-        name: "settings.tts.providerKinds.openAiCompatible",
-      }),
-    )
-
-    expect(screen.getByTestId("tts-provider-endpoint")).toBeTruthy()
-    expect(screen.getByTestId("tts-provider-model")).toBeTruthy()
-    const formHeader = mockUseScreenHeader.mock.calls.at(-1)?.[0] as {
-      left?: { onPress: () => void }[]
-      title?: string
-    }
-    expect(formHeader.title).toBe("settings.tts.addOpenAi")
-
-    act(() => formHeader.left?.[0]?.onPress())
-
+    fireEvent.press(screen.getByRole("button", { name: title }))
+    expect(mockRouterPush).toHaveBeenCalledWith({
+      pathname: "/settings/tts-provider/form",
+      params,
+    })
     expect(screen.getByText("settings.tts.providerTypeSection")).toBeTruthy()
     expect(screen.queryByTestId("tts-provider-endpoint")).toBeNull()
-    expect(mockRouterBack).not.toHaveBeenCalled()
   })
 
   it("saves OpenAI-compatible providers as MP3 without asking for an audio format", async () => {
-    render(<TtsProviderProfileScreen />)
-
-    fireEvent.press(
-      screen.getByRole("button", {
-        name: "settings.tts.providerKinds.openAiCompatible",
-      }),
-    )
+    renderForm()
     expect(
       screen.queryByRole("button", { name: "settings.tts.audioFormat" }),
     ).toBeNull()
