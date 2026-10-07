@@ -6,6 +6,16 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.13.0] - 2026-10-07
+
+### Added
+
+- EPUB narration on desktop and mobile with system voices, OpenAI-compatible services, and Qwen TTS, including Token Plan, Qianwen pay-as-you-go, and Alibaba Cloud DashScope
+- Spoken-sentence highlighting, playback controls, sentence navigation, speech-rate adjustment, and Read from Here for selected text
+- Independent page browsing during narration, with contextual controls to return to playback or start from the first visible text, including sentences continued from the previous page
+- Speech preferences, in-reader narration settings, and unified previews with provider management, voice selection, and custom OpenAI-compatible voice IDs
+- Remote-speech prefetching, audio caching, cancellation of obsolete requests, generation indicators, and error feedback
+
 ## [0.12.4] - 2026-09-08
 
 ### Fixed
