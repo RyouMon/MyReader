@@ -642,12 +642,12 @@ describe("download state synchronization", () => {
       expect(screen.getByTestId("failed-upload-status")).toHaveTextContent(
         "local_only",
       )
+      expect(
+        client.getQueryData(
+          bookUploadProgressKeys.detail(libraryId, "book-uuid"),
+        ),
+      ).toBeNull()
     })
-    expect(
-      client.getQueryData(
-        bookUploadProgressKeys.detail(libraryId, "book-uuid"),
-      ),
-    ).toBeNull()
     expect(toastMock.error).toHaveBeenCalledWith(
       "上传失败",
       expect.objectContaining({
