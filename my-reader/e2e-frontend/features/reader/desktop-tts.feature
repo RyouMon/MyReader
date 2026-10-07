@@ -66,7 +66,8 @@ Feature: 桌面阅读时协调朗读位置和可视页面
     Scenario: 同一章节的第一页后方也属于向前浏览
       Given 小文正在朗读 "Playback position first page"
       When 小文向后翻一页
-      Then 左侧可以返回朗读位置，右侧可以从当前页朗读
+      Then 阅读画布保持在窗口内
+      And 左侧可以返回朗读位置，右侧可以从当前页朗读
 
     Scenario: 浏览到朗读位置之前
       Given 小文正在朗读 "Playback position first page"

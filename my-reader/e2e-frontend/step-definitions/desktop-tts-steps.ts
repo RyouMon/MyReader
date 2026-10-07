@@ -306,6 +306,21 @@ Then("左侧可以返回朗读位置，右侧可以从当前页朗读", async ({
   await assertViewportActions(ttsReader, "after")
 })
 
+Then("阅读画布保持在窗口内", async ({ page }) => {
+  await expect
+    .poll(async () => {
+      const viewport = page.viewportSize()
+      const canvas = await page.locator(".readium-epub-host").boundingBox()
+      return Boolean(
+        viewport &&
+          canvas &&
+          canvas.x >= 0 &&
+          canvas.x + canvas.width <= viewport.width,
+      )
+    })
+    .toBe(true)
+})
+
 Then("左侧可以从当前页朗读，右侧可以返回朗读位置", async ({ ttsReader }) => {
   await assertViewportActions(ttsReader, "before")
 })
