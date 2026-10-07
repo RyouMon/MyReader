@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react-native"
+import { router } from "expo-router"
 import * as mockReact from "react"
 import {
   Pressable as mockPressable,
@@ -21,6 +22,7 @@ import {
 import TtsSettingsScreen from "./tts-settings-screen"
 
 let mockPlaybackRate = 1
+let mockFocus: (() => undefined | (() => void)) | undefined
 const mockAudioPlayer = {
   pause: jest.fn(),
   play: jest.fn(() => mockPlaybackRate),
@@ -41,6 +43,7 @@ const mockAudioPlayer = {
 const mockUseAudioPlayer = jest.fn((_source: string | null) => mockAudioPlayer)
 const mockSpeechStop = jest.fn().mockResolvedValue(undefined)
 const mockT = (key: string) => key
+jest.mock("@expo/vector-icons/MaterialIcons", () => jest.fn(() => null))
 const mockProviderConfig = {
   schemaVersion: 1,
   defaultEngine: { kind: "provider" as const, profileId: "openai" },
@@ -85,8 +88,10 @@ jest.mock("expo-speech", () => ({
 
 jest.mock("expo-router", () => ({
   router: { push: jest.fn() },
-  useFocusEffect: (callback: () => undefined | (() => void)) =>
-    mockReact.useEffect(callback, [callback]),
+  useFocusEffect: (callback: () => undefined | (() => void)) => {
+    mockFocus = callback
+    mockReact.useEffect(callback, [callback])
+  },
 }))
 
 jest.mock("@my-reader/readium", () => ({
@@ -314,5 +319,44 @@ describe("TtsSettingsScreen preview", () => {
     )
     expect(showAlertWithStatusBarRestore).not.toHaveBeenCalled()
     expect(screen.queryByText("settings.tts.refreshVoices")).toBeNull()
+  })
+
+  it("opens the provider flow from the add button", async () => {
+    render(<TtsSettingsScreen />)
+    fireEvent.press(
+      await screen.findByRole("button", { name: "settings.tts.addProvider" }),
+    )
+    expect(router.push).toHaveBeenCalledWith("/settings/tts-provider")
+  })
+
+  it("keeps the settings content visible while refreshing after a child sheet closes", async () => {
+    render(<TtsSettingsScreen />)
+    await screen.findByRole("button", { name: "settings.tts.addProvider" })
+    let finishRefresh!: (config: typeof mockProviderConfig) => void
+    jest.mocked(getTtsConfig).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishRefresh = resolve
+        }),
+    )
+
+    act(() => {
+      mockFocus?.()
+    })
+
+    expect(
+      screen.getByRole("button", { name: "settings.tts.addProvider" }),
+    ).toBeTruthy()
+    expect(screen.getByText("settings.tts.playbackSection")).toBeTruthy()
+    await act(async () => {
+      finishRefresh({
+        ...mockProviderConfig,
+        profiles: mockProviderConfig.profiles.map((profile) => ({
+          ...profile,
+          name: "Updated provider",
+        })),
+      })
+    })
+    expect(screen.getAllByText("Updated provider").length).toBeGreaterThan(0)
   })
 })

@@ -1,4 +1,5 @@
 import { tts as readiumTts } from "@my-reader/readium"
+import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import { formatTtsLanguageName } from "@my-reader/tools/reader-tts-language"
 import Slider from "@react-native-community/slider"
 import type { MenuAction } from "@react-native-menu/menu"
@@ -119,7 +120,6 @@ export default function TtsSettingsScreen() {
   const palette = useThemePalette()
   const [config, setConfig] = useState<MobileTtsConfig | null>(null)
   const [voices, setVoices] = useState<TtsVoice[]>([])
-  const [loading, setLoading] = useState(true)
   const [voicesLoading, setVoicesLoading] = useState(false)
   const [previewState, setPreviewState] = useState<PreviewState>("idle")
   const [previewSource, setPreviewSource] = useState<string | null>(null)
@@ -140,7 +140,6 @@ export default function TtsSettingsScreen() {
   }, [])
 
   const loadConfig = useCallback(async () => {
-    setLoading(true)
     try {
       setConfig(await getTtsConfig())
     } catch (error) {
@@ -148,8 +147,6 @@ export default function TtsSettingsScreen() {
         t("settings.tts.loadFailed"),
         describeError(error),
       )
-    } finally {
-      setLoading(false)
     }
   }, [t])
 
@@ -509,7 +506,7 @@ export default function TtsSettingsScreen() {
     [config, loadConfig, t],
   )
 
-  if (loading || !config) {
+  if (!config) {
     return (
       <Screen scrollEnabled={false}>
         <View className="flex-1 items-center justify-center py-20">
@@ -530,33 +527,33 @@ export default function TtsSettingsScreen() {
     <Screen>
       <View className="gap-3">
         <SectionLabel>{t("settings.tts.previewSection")}</SectionLabel>
-        <SectionCard>
-          <View className="gap-4 p-4">
-            <Text className="text-base" style={{ color: palette.text }}>
-              {t("settings.tts.previewText")}
-            </Text>
-            <Button
-              accessibilityLabel={previewActionLabel}
-              size="md"
-              variant="secondary"
-              onPress={
-                previewState === "idle"
-                  ? () => void preview()
-                  : () => stopPreview()
-              }
-            >
-              {previewState === "generating" || previewState === "loading" ? (
-                <ActivityIndicator color={palette.text} size="small" />
-              ) : null}
-              <Text
-                className="text-base font-bold"
-                style={{ color: palette.text }}
-              >
-                {previewActionLabel}
-              </Text>
-            </Button>
-          </View>
-        </SectionCard>
+        <Text className="px-1 text-base" style={{ color: palette.textMuted }}>
+          {t("settings.tts.previewText")}
+        </Text>
+        <Button
+          accessibilityLabel={previewActionLabel}
+          size="md"
+          variant="primary"
+          onPress={
+            previewState === "idle" ? () => void preview() : () => stopPreview()
+          }
+        >
+          {previewState === "generating" || previewState === "loading" ? (
+            <ActivityIndicator color={palette.primaryForeground} size="small" />
+          ) : (
+            <MaterialIcons
+              name={previewState === "playing" ? "stop" : "play-arrow"}
+              size={20}
+              color={palette.primaryForeground}
+            />
+          )}
+          <Text
+            className="text-base font-bold"
+            style={{ color: palette.primaryForeground }}
+          >
+            {previewActionLabel}
+          </Text>
+        </Button>
       </View>
 
       <View className="gap-3">
@@ -641,14 +638,24 @@ export default function TtsSettingsScreen() {
             ))}
           </SectionCard>
         ) : null}
-        <View>
-          <Button
-            size="md"
-            variant="secondary"
-            title={t("settings.tts.addProvider")}
-            onPress={() => router.push("/settings/tts-provider")}
+        <Button
+          size="md"
+          variant="primary"
+          accessibilityLabel={t("settings.tts.addProvider")}
+          onPress={() => router.push("/settings/tts-provider")}
+        >
+          <MaterialIcons
+            name="add"
+            size={20}
+            color={palette.primaryForeground}
           />
-        </View>
+          <Text
+            className="text-base font-bold"
+            style={{ color: palette.primaryForeground }}
+          >
+            {t("settings.tts.addProvider")}
+          </Text>
+        </Button>
         <Text className="px-1 text-xs" style={{ color: palette.textMuted }}>
           {t("settings.tts.providerPrivacy")}
         </Text>

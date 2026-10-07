@@ -115,6 +115,7 @@ afterEach(() => {
   restoreProperties.reverse().forEach((restore) => restore())
   restoreProperties.length = 0
   document.body.replaceChildren()
+  document.body.removeAttribute("id")
   vi.restoreAllMocks()
 })
 
@@ -206,7 +207,7 @@ describe("reader viewport anchor capture", () => {
     expect(scrollBy).toHaveBeenCalledOnce()
   })
 
-  it("should start with the first visible column in a paginated LTR viewport", () => {
+  it("should start at the first visible text in the first paginated LTR column", () => {
     document.body.innerHTML =
       '<p id="first">First column text</p><p id="second">Second column text</p>'
     useViewport(200, 100)
@@ -237,7 +238,7 @@ describe("reader viewport anchor capture", () => {
 
     expect(captureReaderViewportStartAnchor(window)).toMatchObject({
       cssSelector: "#first",
-      text: { highlight: "r" },
+      text: { highlight: "F" },
     })
   })
 
@@ -275,6 +276,80 @@ describe("reader viewport anchor capture", () => {
     expect(captureReaderViewportStartAnchor(window)?.cssSelector).toBe(
       "#fragment",
     )
+  })
+
+  it("should start at a visible chapter heading when the caret snaps to later body text", () => {
+    document.body.innerHTML =
+      '<section><h1 id="chapter">Chapter Four</h1><p id="body">First sentence. Second sentence.</p></section>'
+    useViewport(200, 100)
+    const heading = document.querySelector("#chapter")!.firstChild!
+    const body = document.querySelector("#body")!.firstChild!
+    overrideProperty(document, "caretRangeFromPoint", () =>
+      rangeAt(body, "First sentence. ".length),
+    )
+    useRangeRects((range) =>
+      range.startContainer === heading
+        ? [rect(45, 5, 100)]
+        : [rect(10, 40, 150)],
+    )
+
+    expect(captureReaderViewportStartAnchor(window)).toMatchObject({
+      cssSelector: "#chapter",
+      text: { highlight: "C" },
+    })
+  })
+
+  it("should use a native-readable selector when the EPUB body ID starts with a digit", () => {
+    document.body.id = "8IL20-chapter"
+    document.body.innerHTML =
+      '<div class="container"><h1 id="chapter">Chapter</h1><p>Readable paragraph</p></div>'
+    useViewport(200, 100)
+    const paragraph = document.querySelector("p")!.firstChild!
+    overrideProperty(window, "CSS", {
+      escape: (value: string) =>
+        value.startsWith("8") ? `\\38 ${value.slice(1)}` : value,
+    })
+    overrideProperty(document, "caretRangeFromPoint", () =>
+      rangeAt(paragraph, 0),
+    )
+    useRangeRects((range) =>
+      range.startContainer === paragraph ? [rect(10, 5, 140)] : [rect(10, 150)],
+    )
+
+    expect(captureReaderViewportStartAnchor(window)).toMatchObject({
+      cssSelector: "html > body > div > p",
+      domRange: {
+        start: { cssSelector: "html > body > div > p", charOffset: 0 },
+      },
+      text: { highlight: "R" },
+    })
+  })
+
+  it("should keep a clipped sentence on the current page at its first visible character", () => {
+    document.body.innerHTML = '<p id="fragment">Before next page</p>'
+    useViewport(200, 100)
+    const fragment = document.querySelector("#fragment")!.firstChild!
+    overrideProperty(document, "caretRangeFromPoint", () =>
+      rangeAt(fragment, 10),
+    )
+    useRangeRects((range) => {
+      if (
+        range.startOffset === 0 &&
+        range.endOffset === fragment.textContent!.length
+      ) {
+        return [rect(-80, 5, 70), rect(10, 5, 100)]
+      }
+      return [
+        range.startOffset < 7
+          ? rect(-80, 5, 10)
+          : rect(10 + range.startOffset, 5),
+      ]
+    })
+
+    expect(captureReaderViewportStartAnchor(window)).toMatchObject({
+      cssSelector: "#fragment",
+      text: { highlight: "n", before: "Before " },
+    })
   })
 
   it("should preserve column reading order when a spread fits in one viewport", () => {
@@ -409,7 +484,7 @@ describe("reader viewport anchor capture", () => {
     const capture = captureReaderViewportAnchor(window)
 
     expect(capture).toMatchObject({
-      cssSelector: "#root\\3a id > p:nth-of-type(2)",
+      cssSelector: "html > body > main > p:nth-of-type(2)",
       text: { highlight: "." },
     })
     expect(capture?.text.before).toHaveLength(32)

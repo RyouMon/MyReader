@@ -27,7 +27,6 @@ import {
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import {
   normalizeTtsAudioFormat,
-  TTS_AUDIO_FORMATS,
   type TtsAudioFormat,
 } from "@/src/constants/tts"
 import { useThemePalette } from "@/src/design/tokens"
@@ -195,14 +194,29 @@ function ProviderMenuField({
 export default function TtsProviderProfileScreen() {
   const { t } = useTranslation()
   const palette = useThemePalette()
-  const { providerId } = useLocalSearchParams<{
+  const { providerId, kind, sourceId } = useLocalSearchParams<{
     providerId?: string
+    kind?: ProviderDraft["kind"]
+    sourceId?: string
   }>()
-  const [draft, setDraft] = useState<ProviderDraft | null>(null)
+  const qwenPresets = useMemo(getQwenTtsPresets, [])
+  const [draft, setDraft] = useState<ProviderDraft | null>(() => {
+    if (providerId || !kind) return null
+    const preset = qwenPresets.find((item) => item.id === sourceId)
+    return kind === "qwen" && preset
+      ? {
+          ...newDraft(),
+          ...newQwenProviderFields(
+            preset,
+            t(qwenTtsSourceKeys(preset.id).title),
+          ),
+        }
+      : newDraft()
+  })
+  const [showManualVoices, setShowManualVoices] = useState(false)
   const [loading, setLoading] = useState(Boolean(providerId))
   const [saving, setSaving] = useState(false)
   const qwen = useQwenTtsForm(draft)
-  const qwenPresets = useMemo(getQwenTtsPresets, [])
   const qwenPreset =
     draft?.kind === "qwen"
       ? qwenPresets.find(
@@ -242,7 +256,7 @@ export default function TtsProviderProfileScreen() {
     (draft?.voices ?? "") +
       (draft?.kind === "qwen" ? `\n${draft.defaultVoice}` : ""),
   )
-  const choosingType = !providerId && !draft && !loading
+  const choosingType = !providerId && !kind
   const defaultVoice = draft?.defaultVoice.trim() ?? ""
   const canSave = Boolean(
     draft?.name.trim() &&
@@ -276,7 +290,7 @@ export default function TtsProviderProfileScreen() {
         credential: draft.credential.trim() || undefined,
         clearCredential: draft.clearCredential,
       })
-      router.back()
+      router.dismissTo("/settings/tts")
     } catch (error) {
       showAlertWithStatusBarRestore(
         t("settings.tts.saveFailed"),
@@ -301,7 +315,7 @@ export default function TtsProviderProfileScreen() {
           onPress: () => {
             setSaving(true)
             void removeTtsProfile(profileId)
-              .then(() => router.back())
+              .then(() => router.dismissTo("/settings/tts"))
               .catch((error) =>
                 showAlertWithStatusBarRestore(
                   t("settings.tts.removeFailed"),
@@ -327,13 +341,16 @@ export default function TtsProviderProfileScreen() {
                 : "Qwen",
             })
           : t("settings.tts.addOpenAi"),
-    back: !providerId ? "hidden" : "auto",
-    left: !providerId
+    back: choosingType || providerId ? "hidden" : "auto",
+    close: providerId
+      ? { target: "/settings/tts", dismissTo: true }
+      : undefined,
+    left: choosingType
       ? [
           {
-            label: choosingType ? t("settings.tts.cancel") : t("back"),
-            onPress: choosingType ? () => router.back() : () => setDraft(null),
-            iosSfSymbol: choosingType ? "xmark" : "chevron.left",
+            label: t("settings.tts.cancel"),
+            onPress: () => router.dismissTo("/settings/tts"),
+            iosSfSymbol: "xmark",
             iconOnly: true,
           },
         ]
@@ -342,6 +359,7 @@ export default function TtsProviderProfileScreen() {
       ? [
           createSaveAction({
             label: t("settings.tts.save"),
+            color: palette.primary,
             onPress: () => void save(),
             loading: saving,
             disabled: !canSave,
@@ -413,7 +431,12 @@ export default function TtsProviderProfileScreen() {
               <ListRow
                 title={t("settings.tts.providerKinds.openAiCompatible")}
                 detail={t("settings.tts.openAiProviderTypeDetail")}
-                onPress={() => setDraft(newDraft())}
+                onPress={() =>
+                  router.push({
+                    pathname: "/settings/tts-provider/form",
+                    params: { kind: "openAiCompatible" },
+                  })
+                }
               />
               {qwenPresets.map((preset, index) => (
                 <ListRow
@@ -422,12 +445,9 @@ export default function TtsProviderProfileScreen() {
                   detail={t(qwenTtsSourceKeys(preset.id).description)}
                   isLast={index === qwenPresets.length - 1}
                   onPress={() =>
-                    setDraft({
-                      ...newDraft(),
-                      ...newQwenProviderFields(
-                        preset,
-                        t(qwenTtsSourceKeys(preset.id).title),
-                      ),
+                    router.push({
+                      pathname: "/settings/tts-provider/form",
+                      params: { kind: "qwen", sourceId: preset.id },
                     })
                   }
                 />
@@ -485,80 +505,81 @@ export default function TtsProviderProfileScreen() {
                     options={qwen.models}
                     onChange={(id) => {
                       const model = qwen.models.find((model) => model.id === id)
-                      if (model)
+                      if (model) {
+                        setShowManualVoices(false)
                         setDraft({ ...draft, ...qwenModelFields(model) })
+                      }
                     }}
                   />
                 ) : null}
-                <ProviderMenuField
-                  label={t("settings.tts.audioFormat")}
-                  testID="tts-provider-audio-format"
-                  options={(
-                    qwen.selectedModel?.audioFormats ?? TTS_AUDIO_FORMATS
-                  ).map((id) => ({ id, name: id.toUpperCase() }))}
-                  value={draft.responseFormat}
-                  onChange={(responseFormat) =>
-                    setDraft((current) =>
-                      current
-                        ? {
-                            ...current,
-                            responseFormat:
-                              normalizeTtsAudioFormat(responseFormat),
-                          }
-                        : current,
-                    )
-                  }
-                />
-                <FormLabeledFieldRow
-                  label={
-                    draft.kind === "qwen"
-                      ? t("qwenTts.manualVoices")
-                      : t("settings.tts.voices")
-                  }
-                  required={draft.kind !== "qwen"}
-                >
-                  <TextInput
-                    testID="tts-provider-voices"
-                    value={
-                      draft.kind === "qwen" ? qwen.manualVoices : draft.voices
-                    }
-                    placeholder={t("settings.tts.voicesPlaceholder")}
-                    placeholderTextColor={palette.textMuted}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    multiline
-                    className="min-h-24 border-0 bg-transparent py-2 text-base"
-                    style={{ color: palette.text }}
-                    onChangeText={(voices) => {
-                      const nextVoiceIds = parseVoiceIds(voices)
-                      setDraft((current) =>
-                        current
-                          ? {
-                              ...current,
-                              voices,
-                              defaultVoice:
-                                current.kind === "qwen" ||
-                                nextVoiceIds.includes(current.defaultVoice)
-                                  ? current.defaultVoice
-                                  : (nextVoiceIds[0] ?? ""),
-                            }
-                          : current,
-                      )
-                    }}
-                  />
-                </FormLabeledFieldRow>
-                <Text
-                  className="px-1 text-xs"
-                  style={{ color: palette.textMuted }}
-                >
-                  {draft.kind === "qwen"
-                    ? t(
-                        qwen.selectedModel?.voiceDiscovery
-                          ? "qwenTts.voiceHint"
-                          : "qwenTts.builtinHint",
-                      )
-                    : t("settings.tts.voicesDetail")}
-                </Text>
+                {draft.kind === "qwen" ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: showManualVoices }}
+                    onPress={() => setShowManualVoices((current) => !current)}
+                    className="min-h-11 justify-center"
+                    style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+                  >
+                    <Text
+                      className="text-base"
+                      style={{ color: palette.primary }}
+                    >
+                      {t("qwenTts.manualVoicesAction")}
+                    </Text>
+                  </Pressable>
+                ) : null}
+                {draft.kind !== "qwen" || showManualVoices ? (
+                  <>
+                    <FormLabeledFieldRow
+                      label={
+                        draft.kind === "qwen"
+                          ? t("qwenTts.manualVoices")
+                          : t("settings.tts.voices")
+                      }
+                      required={draft.kind !== "qwen"}
+                    >
+                      <TextInput
+                        testID="tts-provider-voices"
+                        value={
+                          draft.kind === "qwen"
+                            ? qwen.manualVoices
+                            : draft.voices
+                        }
+                        placeholder={t("settings.tts.voicesPlaceholder")}
+                        placeholderTextColor={palette.textMuted}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        multiline
+                        className="min-h-24 border-0 bg-transparent py-2 text-base"
+                        style={{ color: palette.text }}
+                        onChangeText={(voices) => {
+                          const nextVoiceIds = parseVoiceIds(voices)
+                          setDraft((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  voices,
+                                  defaultVoice:
+                                    current.kind === "qwen" ||
+                                    nextVoiceIds.includes(current.defaultVoice)
+                                      ? current.defaultVoice
+                                      : (nextVoiceIds[0] ?? ""),
+                                }
+                              : current,
+                          )
+                        }}
+                      />
+                    </FormLabeledFieldRow>
+                    <Text
+                      className="px-1 text-xs"
+                      style={{ color: palette.textMuted }}
+                    >
+                      {draft.kind === "qwen"
+                        ? t("qwenTts.manualVoicesHint")
+                        : t("settings.tts.voicesDetail")}
+                    </Text>
+                  </>
+                ) : null}
                 {qwen.loading ? (
                   <Text
                     accessibilityRole="progressbar"
@@ -652,11 +673,14 @@ export default function TtsProviderProfileScreen() {
                 ) : null}
               </View>
             </SectionCard>
-            <Text className="px-1 text-xs" style={{ color: palette.textMuted }}>
-              {draft.kind === "qwen"
-                ? t("qwenTts.modelHint")
-                : t("settings.tts.openAiDetail")}
-            </Text>
+            {draft.kind !== "qwen" ? (
+              <Text
+                className="px-1 text-xs"
+                style={{ color: palette.textMuted }}
+              >
+                {t("settings.tts.openAiDetail")}
+              </Text>
+            ) : null}
           </View>
 
           {draft.id ? (

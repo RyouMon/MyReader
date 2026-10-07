@@ -18,6 +18,20 @@ output.selectors = {
   },
 
   settings: {
+    tts: {
+      title: "朗读与语音|Read aloud and voices",
+      addProvider: "添加 TTS 供应商|Add TTS provider",
+      previewText:
+        "欢迎使用 MyReader 朗读功能。|Welcome to MyReader read aloud\\.",
+      providerType: "选择供应商类型|Choose provider type",
+      providerForm: "供应商配置|Provider configuration",
+      cancel: "取消|Cancel",
+      openAi: "OpenAI 兼容|OpenAI-compatible",
+      tokenPlan: "Qwen · Token Plan",
+      qianwen: "Qwen · 按需计费|Qwen · Pay as you go",
+      save: "保存|Save",
+      remove: "删除供应商|Delete provider",
+    },
     header: {
       close: "关闭|Close",
       back: "返回|Back",

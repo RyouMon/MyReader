@@ -124,9 +124,12 @@ describe("EPUB bookmark content anchors", () => {
     Object.defineProperty(Range.prototype, "getClientRects", {
       configurable: true,
       value(this: Range) {
-        if (this.startOffset === fragmentOffset) return [rect(30, 5)]
-        if (this.startOffset === secondOffset) return [rect(10, 40)]
-        return [rect(30, 5), rect(10, 40)]
+        if (this.startOffset === 0 && this.endOffset === text.length) {
+          return [rect(-100, 5), rect(30, 5), rect(10, 40)]
+        }
+        if (this.startOffset < fragmentOffset) return [rect(-100, 5)]
+        if (this.startOffset < secondOffset) return [rect(30, 5)]
+        return [rect(10, 40)]
       },
     })
     const currentLocator = {

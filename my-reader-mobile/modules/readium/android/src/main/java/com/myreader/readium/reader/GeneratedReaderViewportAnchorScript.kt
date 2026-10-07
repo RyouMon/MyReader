@@ -23,10 +23,14 @@ private val readerViewportAnchorRuntimeScript = """
               return `\\${'$'}{(_a = character.codePointAt(0)) === null || _a === void 0 ? void 0 : _a.toString(16)} `;
           });
       }
+      function isNativeCompatibleId(value) {
+          // Readium's native HTML parser cannot resolve CSS.escape() sequences.
+          return /^[a-zA-Z_][a-zA-Z0-9_-]*${'$'}/u.test(value);
+      }
       /** Prefers a unique ID, then falls back to a deterministic element path. */
       function stableCssSelector(window, element) {
           const document = element.ownerDocument;
-          if (element.id) {
+          if (isNativeCompatibleId(element.id)) {
               const selector = `#${'$'}{cssEscape(window, element.id)}`;
               if (document.querySelectorAll(selector).length === 1)
                   return selector;
@@ -44,7 +48,7 @@ private val readerViewportAnchorRuntimeScript = """
                   }
               }
               parts.unshift(part);
-              if (current.id) {
+              if (isNativeCompatibleId(current.id)) {
                   const idSelector = `#${'$'}{cssEscape(window, current.id)}`;
                   if (document.querySelectorAll(idSelector).length === 1) {
                       parts[0] = idSelector;
@@ -289,6 +293,38 @@ private val readerViewportAnchorRuntimeScript = """
               y: rect.top + rect.height / 2,
           };
       }
+      function pointInVisibleCandidate(document, candidate, offset) {
+          const rect = pointRect(document, { node: candidate.node, offset });
+          return (!!rect &&
+              rect.left < candidate.rect.right &&
+              rect.right > candidate.rect.left &&
+              rect.top < candidate.rect.bottom &&
+              rect.bottom > candidate.rect.top);
+      }
+      function firstTextPointInVisibleCandidate(document, candidate, caret) {
+          const { node } = candidate;
+          const content = node.data;
+          if ((caret === null || caret === void 0 ? void 0 : caret.node) === node &&
+              pointInVisibleCandidate(document, candidate, caret.offset)) {
+              let offset = anchorCharacterOffset(content, caret.offset);
+              for (let previous = offset - 1; previous >= 0; previous -= 1) {
+                  if (/\s/u.test(content[previous]))
+                      continue;
+                  if (!pointInVisibleCandidate(document, candidate, previous))
+                      break;
+                  offset = anchorCharacterOffset(content, previous);
+              }
+              return { node, offset };
+          }
+          for (let offset = 0; offset < content.length; offset += 1) {
+              if (/\s/u.test(content[offset]))
+                  continue;
+              if (pointInVisibleCandidate(document, candidate, offset)) {
+                  return { node, offset: anchorCharacterOffset(content, offset) };
+              }
+          }
+          return null;
+      }
       /** Captures the first rendered text position in the current page or viewport. */
       function captureReaderViewportStartAnchor(window) {
           var _a;
@@ -329,8 +365,8 @@ private val readerViewportAnchorRuntimeScript = """
           if (!best)
               return null;
           const point = pointInsideLeadingEdge(best);
-          const textPoint = textPointAt(window, point.x, point.y);
-          if (!(textPoint === null || textPoint === void 0 ? void 0 : textPoint.node.data.trim()))
+          const textPoint = firstTextPointInVisibleCandidate(document, best, textPointAt(window, point.x, point.y));
+          if (!textPoint)
               return null;
           const rect = pointRect(document, textPoint);
           return rect ? captureTextPoint(window, textPoint, rect) : null;

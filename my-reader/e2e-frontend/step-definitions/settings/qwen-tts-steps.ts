@@ -199,8 +199,9 @@ Then("声音列表仅包含该模型的账户音色“我的设计音色”", as
 
 When("用户手动填写新音色“future-voice”", async ({ page }) => {
   await page
-    .getByLabel("补充音色 ID（可选）", { exact: true })
-    .fill("future-voice")
+    .getByRole("button", { name: "手动输入音色 ID", exact: true })
+    .click()
+  await page.getByLabel("音色 ID", { exact: true }).fill("future-voice")
 })
 
 When("用户将该音色设为默认声音并保存", async ({ page }) => {

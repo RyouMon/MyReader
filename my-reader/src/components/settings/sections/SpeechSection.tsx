@@ -3,6 +3,7 @@ import { qwenTtsSourceKeys } from "@my-reader/i18n/desktop"
 import { convertFileSrc, isTauri } from "@tauri-apps/api/core"
 import {
   Check,
+  ChevronDown,
   KeyRound,
   Loader2,
   Pencil,
@@ -47,11 +48,7 @@ import {
   useQwenTtsPresets,
   useQwenTtsVoices,
 } from "@/hooks/useQwenTts"
-import {
-  TTS_AUDIO_FORMATS,
-  TTS_PITCH_OPTIONS,
-  TTS_SPEED_OPTIONS,
-} from "@/constants/tts"
+import { TTS_PITCH_OPTIONS, TTS_SPEED_OPTIONS } from "@/constants/tts"
 import { api, formatApiError } from "@/lib/tauri-api"
 import type {
   TtsAudioFormatDto,
@@ -1256,6 +1253,7 @@ function ProfileEditor({
   onSave: () => void
 }) {
   const { t } = useTranslation()
+  const [showManualVoices, setShowManualVoices] = useState(false)
   const update = (patch: Partial<ProfileDraft>) =>
     onChange({ ...draft, ...patch })
   const qwenModel =
@@ -1323,13 +1321,20 @@ function ProfileEditor({
               onChange={(event) => update({ endpoint: event.target.value })}
             />
           </Field>
-          <Field label={t("settings.speech.model")} htmlFor="tts-profile-model">
+          <Field
+            label={t("settings.speech.model")}
+            htmlFor="tts-profile-model"
+            className="sm:col-span-2"
+          >
             {draft.kind === "qwen" ? (
               <Select
                 value={draft.model}
                 onValueChange={(id) => {
                   const model = qwenModels.find((model) => model.id === id)
-                  if (model) update(qwenModelDraft(model))
+                  if (model) {
+                    setShowManualVoices(false)
+                    update(qwenModelDraft(model))
+                  }
                 }}
               >
                 <SelectTrigger id="tts-profile-model" className="w-full">
@@ -1354,70 +1359,60 @@ function ProfileEditor({
               />
             )}
           </Field>
-          <Field
-            label={t("settings.speech.audioFormat")}
-            htmlFor="tts-profile-audio-format"
-          >
-            <Select
-              value={draft.responseFormat}
-              onValueChange={(value) =>
-                update({
-                  responseFormat: value as TtsAudioFormatDto,
-                })
-              }
-            >
-              <SelectTrigger id="tts-profile-audio-format" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent style={themeStyle}>
-                <SelectGroup>
-                  {(qwenModel?.audioFormats ?? TTS_AUDIO_FORMATS).map(
-                    (format) => (
-                      <SelectItem key={format} value={format}>
-                        {format.toUpperCase()}
-                      </SelectItem>
-                    ),
-                  )}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field
-            label={
-              draft.kind === "qwen"
-                ? t("qwenTts.manualVoices")
-                : t("settings.speech.voices")
-            }
-            htmlFor="tts-profile-voices"
-            className="sm:col-span-2"
-          >
-            <textarea
-              id="tts-profile-voices"
-              className="min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
-              value={manualVoices}
-              placeholder={t("settings.speech.voicesPlaceholder")}
-              onChange={(event) => {
-                const voices = event.target.value
-                const nextVoices = parseVoiceIds(voices)
-                update({
-                  voices,
-                  defaultVoice:
-                    draft.kind === "qwen" ||
-                    nextVoices.includes(draft.defaultVoice)
-                      ? draft.defaultVoice
-                      : (nextVoices[0] ?? ""),
-                })
-              }}
-            />
-            <span className="text-xs leading-5 text-muted-foreground">
-              {draft.kind === "qwen"
-                ? t(
-                    qwenModel?.voiceDiscovery
-                      ? "qwenTts.voiceHint"
-                      : "qwenTts.builtinHint",
-                  )
-                : t("settings.speech.voicesDescription")}
-            </span>
+          <div className="grid gap-2 sm:col-span-2">
+            {draft.kind === "qwen" ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="justify-self-start"
+                aria-expanded={showManualVoices}
+                aria-controls="tts-profile-manual-voices"
+                onClick={() => setShowManualVoices((current) => !current)}
+              >
+                <ChevronDown
+                  data-icon="inline-start"
+                  className={cn(showManualVoices && "rotate-180")}
+                />
+                {t("qwenTts.manualVoicesAction")}
+              </Button>
+            ) : null}
+            {draft.kind !== "qwen" || showManualVoices ? (
+              <div id="tts-profile-manual-voices">
+                <Field
+                  label={
+                    draft.kind === "qwen"
+                      ? t("qwenTts.manualVoices")
+                      : t("settings.speech.voices")
+                  }
+                  htmlFor="tts-profile-voices"
+                >
+                  <textarea
+                    id="tts-profile-voices"
+                    className="min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+                    value={manualVoices}
+                    placeholder={t("settings.speech.voicesPlaceholder")}
+                    onChange={(event) => {
+                      const voices = event.target.value
+                      const nextVoices = parseVoiceIds(voices)
+                      update({
+                        voices,
+                        defaultVoice:
+                          draft.kind === "qwen" ||
+                          nextVoices.includes(draft.defaultVoice)
+                            ? draft.defaultVoice
+                            : (nextVoices[0] ?? ""),
+                      })
+                    }}
+                  />
+                  <span className="text-xs leading-5 text-muted-foreground">
+                    {draft.kind === "qwen"
+                      ? t("qwenTts.manualVoicesHint")
+                      : t("settings.speech.voicesDescription")}
+                  </span>
+                </Field>
+              </div>
+            ) : null}
             {discovered.loading ? (
               <span role="status" className="text-sm text-muted-foreground">
                 {t("qwenTts.loadingVoices")}
@@ -1438,7 +1433,7 @@ function ProfileEditor({
                 {t("qwenTts.voicesEmpty")}
               </span>
             ) : null}
-          </Field>
+          </div>
           <Field
             label={t("settings.speech.defaultVoice")}
             htmlFor="tts-profile-default-voice"
@@ -1447,7 +1442,9 @@ function ProfileEditor({
             {draft.kind === "qwen" ? (
               <Select
                 value={draft.defaultVoice}
-                onValueChange={(defaultVoice) => update({ defaultVoice })}
+                onValueChange={(defaultVoice) => {
+                  if (defaultVoice) update({ defaultVoice })
+                }}
               >
                 <SelectTrigger
                   id="tts-profile-default-voice"

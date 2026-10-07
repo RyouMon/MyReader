@@ -269,7 +269,6 @@ export const desktopZhCN = {
         name: "名称",
         endpoint: "服务器地址",
         model: "模型",
-        audioFormat: "音频格式",
         voices: "声音 ID",
         voicesPlaceholder: "每行填写一个供应商支持的声音 ID",
         voicesDescription:

@@ -1,0 +1,100 @@
+appId: ${APP_ID}
+tags:
+  - settings
+  - navigation
+  - tts
+  - phone
+---
+- runScript: ../../scripts/selectors.js
+- runFlow: ../../common/launch_preserving_data.yaml
+- setOrientation: PORTRAIT
+- openLink: myreadermobile://settings/tts
+- assertVisible: ${output.selectors.settings.tts.addProvider}
+
+# Scenario: 完成添加后直接返回朗读设置，不滞留在供应商类型页
+# 创建无凭据的临时配置，仅用于产生可滚动的列表；不发起语音请求，末尾逐个删除。
+- evalScript: '${output.ttsNavigation = { runId: Date.now(), names: [], index: 0 }}'
+- repeat:
+    times: 3
+    commands:
+      - evalScript: ${output.ttsNavigation.name = "TTS Nav " + output.ttsNavigation.runId + " " + output.ttsNavigation.index++}
+      - evalScript: ${output.ttsNavigation.names.push(output.ttsNavigation.name)}
+      - scrollUntilVisible:
+          element: ${output.selectors.settings.tts.addProvider}
+          direction: DOWN
+      - tapOn: ${output.selectors.settings.tts.addProvider}
+      - tapOn: ${output.selectors.settings.tts.tokenPlan}
+      - tapOn:
+          id: tts-provider-name
+      - eraseText
+      - inputText: ${output.ttsNavigation.name}
+      - hideKeyboard
+      - tapOn: ${output.selectors.settings.tts.save}
+      - assertVisible: ${output.selectors.settings.tts.title}
+
+# Scenario: 关闭添加供应商 Sheet 后仍停留在原来的滚动位置
+- scrollUntilVisible:
+    element: ${output.selectors.settings.tts.addProvider}
+    direction: DOWN
+    centerElement: true
+- assertNotVisible: ${output.selectors.settings.tts.previewText}
+- tapOn: ${output.selectors.settings.tts.addProvider}
+- assertVisible: ${output.selectors.settings.tts.providerType}
+- tapOn: ${output.selectors.settings.tts.cancel}
+- assertVisible: ${output.selectors.settings.tts.addProvider}
+- assertNotVisible: ${output.selectors.settings.tts.previewText}
+
+# Scenario: 表单侧滑返回供应商类型页，不关闭整个 Sheet
+- scrollUntilVisible:
+    element: ${output.selectors.settings.tts.addProvider}
+    direction: DOWN
+- tapOn: ${output.selectors.settings.tts.addProvider}
+- tapOn: ${output.selectors.settings.tts.tokenPlan}
+- assertVisible: ${output.selectors.settings.tts.providerForm}
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - swipe:
+          start: 1%, 45%
+          end: 90%, 45%
+          duration: 600
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- assertVisible: ${output.selectors.settings.tts.providerType}
+
+# Scenario: 重新选择其他来源或 OpenAI，可以正常进入表单及逐层返回
+- tapOn: ${output.selectors.settings.tts.qianwen}
+- assertVisible: ${output.selectors.settings.tts.providerForm}
+- runFlow: ../../common/tap_header_back.yaml
+- assertVisible: ${output.selectors.settings.tts.providerType}
+- tapOn: ${output.selectors.settings.tts.openAi}
+- assertVisible: ${output.selectors.settings.tts.providerForm}
+- runFlow: ../../common/tap_header_back.yaml
+- assertVisible: ${output.selectors.settings.tts.providerType}
+- tapOn: ${output.selectors.settings.tts.cancel}
+- assertVisible: ${output.selectors.settings.tts.addProvider}
+
+# Scenario: 编辑已有供应商直接显示表单，删除后返回朗读设置并清理本次配置
+- evalScript: ${output.ttsNavigation.index = 0}
+- repeat:
+    times: 3
+    commands:
+      - scrollUntilVisible:
+          element: ${output.ttsNavigation.names[output.ttsNavigation.index]}
+          direction: UP
+      - tapOn: ${output.ttsNavigation.names[output.ttsNavigation.index]}
+      - assertVisible: ${output.selectors.settings.tts.providerForm}
+      - scrollUntilVisible:
+          element: ${output.selectors.settings.tts.remove}
+          direction: DOWN
+      - tapOn: ${output.selectors.settings.tts.remove}
+      - tapOn:
+          text: ${output.selectors.settings.tts.remove}
+          rightOf: ${output.selectors.settings.tts.cancel}
+      - assertVisible: ${output.selectors.settings.tts.title}
+      - evalScript: ${output.ttsNavigation.index++}
+- assertNotVisible: ${"TTS Nav " + output.ttsNavigation.runId + ".*"}

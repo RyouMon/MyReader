@@ -1,3 +1,4 @@
+import HeadphonesIcon from "@expo/material-symbols/headphones.xml"
 import { libraryTypeOf } from "@my-reader/tools/types/library"
 import type { MenuAction } from "@react-native-menu/menu"
 import { Image as ExpoImage } from "expo-image"
@@ -33,7 +34,11 @@ import { DeveloperConcurrencyControl } from "./components/developer-concurrency-
 const SETTINGS_ROW_ICONS = {
   addLibrary: { ios: "plus.circle", android: "add-circle-outline" },
   language: { ios: "globe", android: "language" },
-  tts: { ios: "waveform", android: "record-voice-over" },
+  tts: {
+    ios: "headphones",
+    android: "headphones",
+    androidSource: HeadphonesIcon,
+  },
   darkMode: { ios: "circle.lefthalf.filled", android: "dark-mode" },
   diagnostics: { ios: "shield.lefthalf.filled", android: "privacy-tip" },
   homeCardStyle: { ios: "rectangle.grid.1x2", android: "view-agenda" },

@@ -9,7 +9,6 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import userEvent from "@testing-library/user-event"
 
-import { TTS_AUDIO_FORMATS } from "@/constants/tts"
 import type { QwenTtsPresetDto, TtsConfigDto } from "@/lib/tauri-specta"
 import SpeechSection from "../SpeechSection"
 
@@ -133,6 +132,7 @@ describe("SpeechSection", () => {
             endpoint: preset.endpoint,
             model: preset.defaultModel.id,
             options: expect.objectContaining({
+              responseFormat: "mp3",
               defaultVoice: preset.defaultModel.voices[0].id,
             }),
           }),
@@ -160,14 +160,14 @@ describe("SpeechSection", () => {
       screen.getByLabelText("API 密钥或访问令牌"),
       "sk-sp-fixture",
     )
-    await user.type(
-      screen.getByLabelText("补充音色 ID（可选）"),
-      "subscription-voice",
-    )
+    await user.click(screen.getByRole("button", { name: "手动输入音色 ID" }))
+    await user.type(screen.getByLabelText("音色 ID"), "subscription-voice")
     await user.click(screen.getByRole("button", { name: "返回" }))
     await user.click(screen.getByRole("button", { name: /^Qwen · 按需计费/ }))
     expect(screen.getByLabelText("API 密钥或访问令牌")).toHaveValue("")
-    expect(screen.getByLabelText("补充音色 ID（可选）")).toHaveValue("")
+    expect(screen.queryByLabelText("音色 ID")).not.toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "手动输入音色 ID" }))
+    expect(screen.getByLabelText("音色 ID")).toHaveValue("")
     expect(screen.getByLabelText("服务器地址")).toHaveValue(presets[1].endpoint)
   })
 
@@ -184,9 +184,10 @@ describe("SpeechSection", () => {
     expect(form.getByRole("combobox", { name: "模型" })).toHaveTextContent(
       "Qwen-Audio-TTS Plus",
     )
-    expect(form.getByRole("combobox", { name: "音频格式" })).toHaveTextContent(
-      "MP3",
-    )
+    expect(
+      form.queryByRole("combobox", { name: "音频格式" }),
+    ).not.toBeInTheDocument()
+    expect(form.queryByLabelText("音色 ID")).not.toBeInTheDocument()
     expect(form.getByRole("combobox", { name: "默认声音" })).toHaveTextContent(
       "龙安欢",
     )
@@ -198,7 +199,8 @@ describe("SpeechSection", () => {
       target: { value: "sk-sp-fixture" },
     })
     expect(mocks.discoverQwenTtsVoices).not.toHaveBeenCalled()
-    fireEvent.change(form.getByLabelText("补充音色 ID（可选）"), {
+    fireEvent.click(form.getByRole("button", { name: "手动输入音色 ID" }))
+    fireEvent.change(form.getByLabelText("音色 ID"), {
       target: { value: "future-voice" },
     })
     fireEvent.keyDown(form.getByRole("combobox", { name: "默认声音" }), {
@@ -219,6 +221,52 @@ describe("SpeechSection", () => {
               responseFormat: "mp3",
               defaultVoice: "future-voice",
               voices: ["future-voice"],
+            }),
+          }),
+        }),
+      ),
+    )
+  })
+
+  it("automatically uses WAV when the selected Qwen model only supports WAV", async () => {
+    mocks.listQwenTtsModels.mockResolvedValue([
+      presets[2].defaultModel,
+      {
+        id: "qwen3-tts-flash",
+        name: "Qwen3-TTS Flash",
+        audioFormats: ["wav"],
+        supportsInstructions: false,
+        voiceDiscovery: false,
+        voices: [{ id: "Cherry", name: "芊悦", language: "mul" }],
+      },
+    ])
+    render(<SpeechSection />)
+    fireEvent.click(await screen.findByRole("button", { name: "添加语音服务" }))
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^Qwen · DashScope/ }),
+    )
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "模型" }), {
+      key: "ArrowDown",
+    })
+    fireEvent.click(
+      await screen.findByRole("option", { name: "Qwen3-TTS Flash" }),
+    )
+    const form = within(screen.getByRole("dialog"))
+    expect(form.getByRole("combobox", { name: "默认声音" })).toHaveTextContent(
+      "芊悦",
+    )
+    expect(
+      form.queryByRole("combobox", { name: "音频格式" }),
+    ).not.toBeInTheDocument()
+    fireEvent.click(form.getByRole("button", { name: "添加语音服务" }))
+    await waitFor(() =>
+      expect(mocks.upsertTtsProfile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          profile: expect.objectContaining({
+            model: "qwen3-tts-flash",
+            options: expect.objectContaining({
+              responseFormat: "wav",
+              defaultVoice: "Cherry",
             }),
           }),
         }),
@@ -322,10 +370,9 @@ describe("SpeechSection", () => {
     expect(flow.getByLabelText("服务器地址")).toHaveValue(
       "https://api.openai.com/v1",
     )
-    const audioFormat = flow.getByRole("combobox", { name: "音频格式" })
-    expect(audioFormat).toHaveAttribute("data-slot", "select-trigger")
-    expect(audioFormat).toHaveTextContent("MP3")
-    expect(TTS_AUDIO_FORMATS).toEqual(["mp3", "opus", "aac", "flac", "wav"])
+    expect(
+      flow.queryByRole("combobox", { name: "音频格式" }),
+    ).not.toBeInTheDocument()
     expect(
       dialog.querySelector('[data-slot="tts-provider-form-content"]'),
     ).toHaveClass("min-h-0", "flex-1", "overflow-y-auto")
