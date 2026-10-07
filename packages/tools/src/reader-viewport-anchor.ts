@@ -83,10 +83,15 @@ function cssEscape(window: Window, value: string): string {
   })
 }
 
+function isNativeCompatibleId(value: string): boolean {
+  // Readium's native HTML parser cannot resolve CSS.escape() sequences.
+  return /^[a-zA-Z_][a-zA-Z0-9_-]*$/u.test(value)
+}
+
 /** Prefers a unique ID, then falls back to a deterministic element path. */
 function stableCssSelector(window: Window, element: Element): string {
   const document = element.ownerDocument
-  if (element.id) {
+  if (isNativeCompatibleId(element.id)) {
     const selector = `#${cssEscape(window, element.id)}`
     if (document.querySelectorAll(selector).length === 1) return selector
   }
@@ -106,7 +111,7 @@ function stableCssSelector(window: Window, element: Element): string {
       }
     }
     parts.unshift(part)
-    if (current.id) {
+    if (isNativeCompatibleId(current.id)) {
       const idSelector = `#${cssEscape(window, current.id)}`
       if (document.querySelectorAll(idSelector).length === 1) {
         parts[0] = idSelector
@@ -421,6 +426,50 @@ function pointInsideLeadingEdge(candidate: VisibleTextCandidate): {
   }
 }
 
+function pointInVisibleCandidate(
+  document: Document,
+  candidate: VisibleTextCandidate,
+  offset: number,
+): boolean {
+  const rect = pointRect(document, { node: candidate.node, offset })
+  return (
+    !!rect &&
+    rect.left < candidate.rect.right &&
+    rect.right > candidate.rect.left &&
+    rect.top < candidate.rect.bottom &&
+    rect.bottom > candidate.rect.top
+  )
+}
+
+function firstTextPointInVisibleCandidate(
+  document: Document,
+  candidate: VisibleTextCandidate,
+  caret: TextPoint | null,
+): TextPoint | null {
+  const { node } = candidate
+  const content = node.data
+  if (
+    caret?.node === node &&
+    pointInVisibleCandidate(document, candidate, caret.offset)
+  ) {
+    let offset = anchorCharacterOffset(content, caret.offset)
+    for (let previous = offset - 1; previous >= 0; previous -= 1) {
+      if (/\s/u.test(content[previous]!)) continue
+      if (!pointInVisibleCandidate(document, candidate, previous)) break
+      offset = anchorCharacterOffset(content, previous)
+    }
+    return { node, offset }
+  }
+
+  for (let offset = 0; offset < content.length; offset += 1) {
+    if (/\s/u.test(content[offset]!)) continue
+    if (pointInVisibleCandidate(document, candidate, offset)) {
+      return { node, offset: anchorCharacterOffset(content, offset) }
+    }
+  }
+  return null
+}
+
 /** Captures the first rendered text position in the current page or viewport. */
 export function captureReaderViewportStartAnchor(
   window: Window,
@@ -462,8 +511,12 @@ export function captureReaderViewportStartAnchor(
 
   if (!best) return null
   const point = pointInsideLeadingEdge(best)
-  const textPoint = textPointAt(window, point.x, point.y)
-  if (!textPoint?.node.data.trim()) return null
+  const textPoint = firstTextPointInVisibleCandidate(
+    document,
+    best,
+    textPointAt(window, point.x, point.y),
+  )
+  if (!textPoint) return null
   const rect = pointRect(document, textPoint)
   return rect ? captureTextPoint(window, textPoint, rect) : null
 }
