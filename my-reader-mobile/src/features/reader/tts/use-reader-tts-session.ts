@@ -60,6 +60,28 @@ export {
 } from "@my-reader/tools/reader-tts-session"
 export const READER_TTS_VOICES_EMPTY_ERROR = "TTS_VOICES_EMPTY"
 
+async function loadSessionConfig(language: string, isCurrent: () => boolean) {
+  let config = await getTtsConfig()
+  if (!isCurrent()) return null
+  let selection = resolveReaderTtsSelection(config, language)
+
+  if (selection.kind === "provider" && !selection.voiceId) {
+    const voices = await listTtsVoices(selection.profile.id)
+    if (!isCurrent()) return null
+    const voice = chooseReaderTtsVoice(voices, language)
+    if (!voice) throw new Error(READER_TTS_VOICES_EMPTY_ERROR)
+    config = await setTtsVoice(language || "und", {
+      language: language || "und",
+      engine: "provider",
+      profileId: selection.profile.id,
+      voiceId: voice.id,
+    })
+    selection = resolveReaderTtsSelection(config, language)
+  }
+
+  return isCurrent() ? { config, selection } : null
+}
+
 export function useReaderTtsSession({
   enabled,
   publicationKey,
@@ -210,6 +232,9 @@ export function useReaderTtsSession({
       viewportNavigationIdRef.current = null
       viewportReattachAttemptRef.current = null
       const { generation, sessionId } = transition.snapshot
+      const isCurrentSession = () =>
+        sessionMachine.snapshot.generation === generation &&
+        sessionMachine.snapshot.sessionId === sessionId
       activeEngineConfigRef.current = null
       activeLocatorRef.current = null
       abortOutstandingSynthesis()
@@ -220,28 +245,11 @@ export function useReaderTtsSession({
       })
 
       try {
-        let config = await getTtsConfig()
-        let selection = resolveReaderTtsSelection(config, language)
-
-        if (selection.kind === "provider" && !selection.voiceId) {
-          const voices = await listTtsVoices(selection.profile.id)
-          const voice = chooseReaderTtsVoice(voices, language)
-          if (!voice) throw new Error(READER_TTS_VOICES_EMPTY_ERROR)
-          config = await setTtsVoice(language || "und", {
-            language: language || "und",
-            engine: "provider",
-            profileId: selection.profile.id,
-            voiceId: voice.id,
-          })
-          selection = resolveReaderTtsSelection(config, language)
-        }
-
+        const resolved = await loadSessionConfig(language, isCurrentSession)
+        if (!resolved) return
+        if (!isCurrentSession()) return
+        const { config, selection } = resolved
         const current = sessionMachine.snapshot
-        if (
-          current.generation !== generation ||
-          current.sessionId !== sessionId
-        )
-          return
         setRemote(selection.kind === "provider")
         const engineConfig = buildReaderTtsEngineConfig(
           config,
@@ -266,12 +274,7 @@ export function useReaderTtsSession({
             : {}),
         })
       } catch (error) {
-        const current = sessionMachine.snapshot
-        if (
-          current.generation !== generation ||
-          current.sessionId !== sessionId
-        )
-          return
+        if (!isCurrentSession()) return
         const failed = sessionMachine.send({
           type: "playback",
           sessionId,

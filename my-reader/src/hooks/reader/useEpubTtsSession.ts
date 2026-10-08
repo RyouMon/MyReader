@@ -405,6 +405,8 @@ export function useEpubTtsSession({
   useEffect(() => {
     const activeConfig = config
     if (!enabled || !activeConfig || utterances.length === 0) return
+    const navigator = navigatorRef.current
+    const speechSessions = speechSessionsRef.current
 
     const configuredEngine = activeConfig.defaultEngine
     const provider =
@@ -442,7 +444,7 @@ export function useEpubTtsSession({
         : -1
     }
     const syncCurrent = () => {
-      const sessionId = speechSessionsRef.current.get(speech)
+      const sessionId = speechSessions.get(speech)
       if (
         !sessionId ||
         sessionId !== sessionMachineRef.current!.snapshot.sessionId
@@ -479,7 +481,7 @@ export function useEpubTtsSession({
         | "stopped",
       error?: string,
     ): ReaderTtsSessionTransition | null => {
-      const sessionId = speechSessionsRef.current.get(speech)
+      const sessionId = speechSessions.get(speech)
       if (!sessionId) {
         if (status === "loading" || status === "ready") setState(status)
         if (status === "error") {
@@ -596,10 +598,9 @@ export function useEpubTtsSession({
       })
       highlightRevisionRef.current += 1
       suppressNextFollowRef.current = false
-      speechSessionsRef.current.delete(speech)
+      speechSessions.delete(speech)
       if (speechRef.current === speech) speechRef.current = null
       void speech.destroy()
-      const navigator = navigatorRef.current
       if (navigator) clearEpubTtsHighlight(navigator)
     }
   }, [
@@ -669,7 +670,7 @@ export function useEpubTtsSession({
     pendingViewportPlaybackIdRef.current = null
     const transition = sessionMachineRef.current!.send({ type: "stop" })
     const speech = speechRef.current
-    if (speech) speechSessionsRef.current.delete(speech)
+    // Keep the old session ID so late engine events are rejected by the machine.
     speech?.stop()
     setState("idle")
     syncViewportState(transition)

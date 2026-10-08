@@ -158,14 +158,14 @@ export default function BookGrid({
     overscan: 3,
   })
 
-  function getVirtualListTop() {
+  const getVirtualListTop = useCallback(() => {
     const listEl = virtualListRef.current
     const contentEl = scrollContentRef.current
     if (!listEl || !contentEl) return 0
     return Math.max(0, listEl.offsetTop - contentEl.offsetTop)
-  }
+  }, [])
 
-  function readCurrentScrollAnchor(): ScrollAnchor | null {
+  const readCurrentScrollAnchor = useCallback((): ScrollAnchor | null => {
     const el = scrollRef.current
     if (!el || total === 0 || rowCount === 0) return null
 
@@ -193,45 +193,49 @@ export default function BookGrid({
       bookIndex: Math.min(total - 1, Math.max(0, bookIndex)),
       offsetWithinRow: Math.max(0, listScrollTop - rowStart),
     }
-  }
+  }, [cols, getVirtualListTop, isList, rowCount, rowHeight, total, virtualizer])
 
-  function getBookIndex(bookId: string | number | null | undefined) {
-    if (bookId == null) return null
+  const getBookIndex = useCallback(
+    (bookId: string | number | null | undefined) => {
+      if (bookId == null) return null
 
-    for (const [index, book] of books) {
-      if (String(book.id) === String(bookId)) {
-        return index
+      for (const [index, book] of books) {
+        if (String(book.id) === String(bookId)) {
+          return index
+        }
       }
-    }
 
-    return null
-  }
+      return null
+    },
+    [books],
+  )
 
-  function readBookVisualAnchor(
-    bookId: string | number | null | undefined,
-  ): ScrollAnchor | null {
-    const el = scrollRef.current
-    const bookIndex = getBookIndex(bookId)
-    if (!el || bookIndex == null || total === 0 || rowCount === 0) return null
+  const readBookVisualAnchor = useCallback(
+    (bookId: string | number | null | undefined): ScrollAnchor | null => {
+      const el = scrollRef.current
+      const bookIndex = getBookIndex(bookId)
+      if (!el || bookIndex == null || total === 0 || rowCount === 0) return null
 
-    const rowIndex = Math.min(
-      rowCount - 1,
-      Math.max(0, isList ? bookIndex : Math.floor(bookIndex / cols)),
-    )
-    const listScrollTop = Math.max(0, el.scrollTop - getVirtualListTop())
-    const rowCenter = rowIndex * rowHeight + rowHeight / 2
-    const visualPercent =
-      ((rowCenter - listScrollTop) / Math.max(el.clientHeight, 1)) * 100
+      const rowIndex = Math.min(
+        rowCount - 1,
+        Math.max(0, isList ? bookIndex : Math.floor(bookIndex / cols)),
+      )
+      const listScrollTop = Math.max(0, el.scrollTop - getVirtualListTop())
+      const rowCenter = rowIndex * rowHeight + rowHeight / 2
+      const visualPercent =
+        ((rowCenter - listScrollTop) / Math.max(el.clientHeight, 1)) * 100
 
-    if (visualPercent < 0 || visualPercent > 100) return null
+      if (visualPercent < 0 || visualPercent > 100) return null
 
-    return {
-      bookIndex: Math.min(total - 1, Math.max(0, bookIndex)),
-      visualPercent,
-    }
-  }
+      return {
+        bookIndex: Math.min(total - 1, Math.max(0, bookIndex)),
+        visualPercent,
+      }
+    },
+    [cols, getBookIndex, getVirtualListTop, isList, rowCount, rowHeight, total],
+  )
 
-  function rememberScrollAnchor() {
+  const rememberScrollAnchor = useCallback(() => {
     if (layoutChangePendingRef.current) return
 
     const anchor =
@@ -239,50 +243,55 @@ export default function BookGrid({
     if (anchor) {
       scrollAnchorRef.current = anchor
     }
-  }
+  }, [activeBookId, readBookVisualAnchor, readCurrentScrollAnchor])
 
-  function restoreScrollAnchor(anchor: ScrollAnchor) {
-    const el = scrollRef.current
-    if (!el || rowCount === 0) return
+  const restoreScrollAnchor = useCallback(
+    (anchor: ScrollAnchor) => {
+      const el = scrollRef.current
+      if (!el || rowCount === 0) return
 
-    const rowIndex = Math.min(
-      rowCount - 1,
-      Math.max(
-        0,
-        isList ? anchor.bookIndex : Math.floor(anchor.bookIndex / cols),
-      ),
-    )
-    const offsetWithinRow = Math.min(
-      anchor.offsetWithinRow ?? 0,
-      Math.max(rowHeight - 1, 0),
-    )
-    const rowOffset = rowIndex * rowHeight
-    const listScrollTop =
-      typeof anchor.visualPercent === "number"
-        ? rowOffset +
-          rowHeight / 2 -
-          el.clientHeight * (anchor.visualPercent / 100)
-        : rowOffset + offsetWithinRow
-    const scrollTop = Math.max(0, getVirtualListTop() + listScrollTop)
+      const rowIndex = Math.min(
+        rowCount - 1,
+        Math.max(
+          0,
+          isList ? anchor.bookIndex : Math.floor(anchor.bookIndex / cols),
+        ),
+      )
+      const offsetWithinRow = Math.min(
+        anchor.offsetWithinRow ?? 0,
+        Math.max(rowHeight - 1, 0),
+      )
+      const rowOffset = rowIndex * rowHeight
+      const listScrollTop =
+        typeof anchor.visualPercent === "number"
+          ? rowOffset +
+            rowHeight / 2 -
+            el.clientHeight * (anchor.visualPercent / 100)
+          : rowOffset + offsetWithinRow
+      const scrollTop = Math.max(0, getVirtualListTop() + listScrollTop)
 
-    virtualizer.scrollToOffset(scrollTop, { align: "start" })
-    el.scrollTop = scrollTop
-    scrollAnchorRef.current = {
-      bookIndex: anchor.bookIndex,
-      offsetWithinRow,
-      visualPercent: anchor.visualPercent,
-    }
-  }
+      virtualizer.scrollToOffset(scrollTop, { align: "start" })
+      el.scrollTop = scrollTop
+      scrollAnchorRef.current = {
+        bookIndex: anchor.bookIndex,
+        offsetWithinRow,
+        visualPercent: anchor.visualPercent,
+      }
+    },
+    [cols, getVirtualListTop, isList, rowCount, rowHeight, virtualizer],
+  )
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Row height changes must remeasure virtualized rows.
   useLayoutEffect(() => {
     virtualizer.measure()
   }, [rowHeight, virtualizer])
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Column changes must restore the transient scroll anchor before paint.
   useLayoutEffect(() => {
     const previousSignature = layoutSignatureRef.current
     layoutSignatureRef.current = layoutSignature
+
+    // Data updates must not cancel a pending layout restoration frame.
+    if (previousSignature === layoutSignature) return
 
     if (restoreFrameRef.current !== null) {
       window.cancelAnimationFrame(restoreFrameRef.current)
@@ -292,11 +301,6 @@ export default function BookGrid({
     if (previousSignature === null) {
       layoutChangePendingRef.current = false
       rememberScrollAnchor()
-      return
-    }
-
-    if (previousSignature === layoutSignature) {
-      layoutChangePendingRef.current = false
       return
     }
 
@@ -312,7 +316,12 @@ export default function BookGrid({
       layoutChangePendingRef.current = false
       restoreFrameRef.current = null
     })
-  }, [layoutSignature, rowCount, virtualizer])
+  }, [
+    layoutSignature,
+    readCurrentScrollAnchor,
+    rememberScrollAnchor,
+    restoreScrollAnchor,
+  ])
 
   useEffect(() => {
     return () => {

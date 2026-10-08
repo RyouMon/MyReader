@@ -155,7 +155,11 @@ export function useCoverThumbnails({
 }: UseCoverThumbnailsInput): string {
   const displaySize = resolveCoverThumbnailPixelSize(width, height)
   const sizes = useMemo(
-    () => createThumbnailSizes(displaySize, thumbnailSizes),
+    () =>
+      createThumbnailSizes(
+        { heightPx: displaySize.heightPx, widthPx: displaySize.widthPx },
+        thumbnailSizes,
+      ),
     [displaySize.heightPx, displaySize.widthPx, thumbnailSizes],
   )
   const size = sizes[0] ?? displaySize

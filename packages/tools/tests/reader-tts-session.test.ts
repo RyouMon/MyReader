@@ -2,10 +2,42 @@ import { describe, expect, it } from "vitest"
 import {
   createReaderTtsSessionMachine,
   READER_TTS_NO_READABLE_CONTENT_ERROR,
-  READER_TTS_UNKNOWN_ERROR,
 } from "../src/reader-tts-session"
 
 describe("reader TTS session machine", () => {
+  it("starts idle and accepts viewport movement only during a session", () => {
+    const machine = createReaderTtsSessionMachine("book-a")
+    expect(machine.snapshot).toEqual({
+      sessionId: null,
+      generation: 0,
+      status: "idle",
+      viewportDetached: false,
+    })
+    expect(
+      machine.send({ type: "viewport-moved", navigationId: "idle" }),
+    ).toEqual({
+      accepted: false,
+      snapshot: machine.snapshot,
+    })
+
+    const first = machine.send({ type: "begin" })
+    expect(first.accepted).toBe(true)
+    expect(first.snapshot).toEqual({
+      sessionId: expect.any(String),
+      generation: 1,
+      status: "loading",
+      viewportDetached: false,
+    })
+    machine.send({ type: "viewport-moved", navigationId: "page-1" })
+    const second = machine.send({ type: "begin" })
+    expect(second.snapshot).toMatchObject({
+      generation: 2,
+      status: "loading",
+      viewportDetached: false,
+    })
+    expect(second.snapshot.sessionId).not.toBe(first.snapshot.sessionId)
+  })
+
   it("keeps narration running when the reader viewport moves", () => {
     const machine = createReaderTtsSessionMachine("book-a")
     const started = machine.send({ type: "begin" })
@@ -25,6 +57,14 @@ describe("reader TTS session machine", () => {
       status: "playing",
       viewportDetached: true,
     })
+    const continuing = machine.send({
+      type: "playback",
+      sessionId,
+      status: "playing",
+    })
+    expect(continuing.accepted).toBe(true)
+    expect(continuing.snapshot).toEqual(moved.snapshot)
+    expect(continuing.effect).toBeUndefined()
   })
 
   it("keeps narration paused when the reader viewport moves and returns", () => {
@@ -177,6 +217,15 @@ describe("reader TTS session machine", () => {
       pauseAfterStart: true,
     })
 
+    const ready = machine.send({
+      type: "playback",
+      sessionId: started.snapshot.sessionId!,
+      status: "ready",
+    })
+    expect(ready.accepted).toBe(true)
+    expect(ready.snapshot.status).toBe("ready")
+    expect(ready.effect).toBeUndefined()
+
     const playing = machine.send({
       type: "playback",
       sessionId: started.snapshot.sessionId!,
@@ -198,6 +247,7 @@ describe("reader TTS session machine", () => {
     const machine = createReaderTtsSessionMachine("book-a")
     const started = machine.send({ type: "begin" })
     const sessionId = started.snapshot.sessionId!
+    machine.send({ type: "viewport-moved", navigationId: "page-1" })
 
     const ended = machine.send({
       type: "playback",
@@ -210,24 +260,36 @@ describe("reader TTS session machine", () => {
       status: "playing",
     })
 
-    expect(ended.snapshot.status).toBe("error")
+    expect(ended.accepted).toBe(true)
+    expect(ended.snapshot).toEqual({
+      sessionId: null,
+      generation: started.snapshot.generation,
+      status: "error",
+      viewportDetached: false,
+    })
     expect(ended.effect).toEqual({
       type: "report-error",
-      error: READER_TTS_NO_READABLE_CONTENT_ERROR,
+      error: "TTS_NO_READABLE_CONTENT_FROM_POSITION",
     })
     expect(late.accepted).toBe(false)
     expect(machine.snapshot).toEqual(ended.snapshot)
   })
 
-  it("reports a playback error once and ignores later terminal events", () => {
+  it.each([
+    [undefined, "TTS_UNKNOWN_ERROR"],
+    [" \n ", "TTS_UNKNOWN_ERROR"],
+    ["  Provider unavailable  ", "Provider unavailable"],
+  ])("reports error %j once and ignores later terminal events", (error, expected) => {
     const machine = createReaderTtsSessionMachine("book-a")
     const started = machine.send({ type: "begin" })
     const sessionId = started.snapshot.sessionId!
+    machine.send({ type: "viewport-moved", navigationId: "page-1" })
 
     const failed = machine.send({
       type: "playback",
       sessionId,
       status: "error",
+      error,
     })
     const ended = machine.send({
       type: "playback",
@@ -235,10 +297,16 @@ describe("reader TTS session machine", () => {
       status: "ended",
     })
 
-    expect(failed.snapshot.status).toBe("error")
+    expect(failed.accepted).toBe(true)
+    expect(failed.snapshot).toEqual({
+      sessionId: null,
+      generation: started.snapshot.generation,
+      status: "error",
+      viewportDetached: false,
+    })
     expect(failed.effect).toEqual({
       type: "report-error",
-      error: READER_TTS_UNKNOWN_ERROR,
+      error: expected,
     })
     expect(ended.accepted).toBe(false)
   })
@@ -247,6 +315,7 @@ describe("reader TTS session machine", () => {
     const machine = createReaderTtsSessionMachine("book-a")
     const started = machine.send({ type: "begin" })
     const sessionId = started.snapshot.sessionId!
+    machine.send({ type: "viewport-moved", navigationId: "page-1" })
 
     const stopped = machine.send({ type: "stop" })
     const late = machine.send({
@@ -255,12 +324,83 @@ describe("reader TTS session machine", () => {
       status: "playing",
     })
 
-    expect(stopped.snapshot).toMatchObject({
+    expect(stopped.accepted).toBe(true)
+    expect(stopped.snapshot).toEqual({
       sessionId: null,
       generation: started.snapshot.generation + 1,
       status: "idle",
+      viewportDetached: false,
     })
     expect(late.accepted).toBe(false)
+  })
+
+  it("handles a native stopped event without reporting an empty narration", () => {
+    const machine = createReaderTtsSessionMachine("book-a")
+    const started = machine.send({ type: "begin" })
+    const sessionId = started.snapshot.sessionId!
+    machine.send({ type: "viewport-moved", navigationId: "page-1" })
+
+    const stopped = machine.send({
+      type: "playback",
+      sessionId,
+      status: "stopped",
+    })
+    expect(stopped.accepted).toBe(true)
+    expect(stopped.effect).toBeUndefined()
+    expect(stopped.snapshot).toEqual({
+      sessionId: null,
+      generation: started.snapshot.generation,
+      status: "idle",
+      viewportDetached: false,
+    })
+    expect(
+      machine.send({ type: "playback", sessionId, status: "playing" }).accepted,
+    ).toBe(false)
+  })
+
+  it.each([
+    "stop",
+    "error",
+    "ended",
+  ] as const)("starts a fresh attempt after %s without inheriting successful playback", (terminal) => {
+    const machine = createReaderTtsSessionMachine("book-a")
+    const first = machine.send({ type: "begin" })
+    const sessionId = first.snapshot.sessionId!
+    machine.send({ type: "playback", sessionId, status: "playing" })
+    if (terminal === "stop") machine.send({ type: "stop" })
+    else machine.send({ type: "playback", sessionId, status: terminal })
+    const generation = machine.snapshot.generation
+
+    const restarted = machine.send({ type: "begin" })
+    expect(restarted.snapshot).toMatchObject({
+      generation: generation + 1,
+      status: "loading",
+      viewportDetached: false,
+    })
+    expect(restarted.snapshot.sessionId).not.toBe(sessionId)
+    const empty = machine.send({
+      type: "playback",
+      sessionId: restarted.snapshot.sessionId!,
+      status: "ended",
+    })
+    expect(empty.effect).toEqual({
+      type: "report-error",
+      error: READER_TTS_NO_READABLE_CONTENT_ERROR,
+    })
+  })
+
+  it("does not inherit pending pause intent when a loading session is replaced", () => {
+    const machine = createReaderTtsSessionMachine("book-a")
+    machine.send({ type: "begin", pauseAfterStart: true })
+    const replacement = machine.send({ type: "begin" })
+    const playing = machine.send({
+      type: "playback",
+      sessionId: replacement.snapshot.sessionId!,
+      status: "playing",
+    })
+    expect(playing.accepted).toBe(true)
+    expect(playing.effect).toBeUndefined()
+    expect(playing.snapshot.status).toBe("playing")
   })
 
   it("does not revive a stopped session from a delayed navigation callback", () => {
@@ -277,11 +417,14 @@ describe("reader TTS session machine", () => {
     expect(machine.snapshot).toEqual(stopped.snapshot)
   })
 
-  it("keeps a completed narration terminal after playback has started", () => {
+  it.each([
+    "playing",
+    "paused",
+  ] as const)("keeps narration terminal after ending from %s", (status) => {
     const machine = createReaderTtsSessionMachine("book-a")
     const started = machine.send({ type: "begin" })
     const sessionId = started.snapshot.sessionId!
-    machine.send({ type: "playback", sessionId, status: "playing" })
+    machine.send({ type: "playback", sessionId, status })
 
     const ended = machine.send({
       type: "playback",

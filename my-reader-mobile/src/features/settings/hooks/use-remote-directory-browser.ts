@@ -138,7 +138,7 @@ export function useRemoteDirectoryBrowser({
     return () => {
       active = false
     }
-  }, [candidate, currentPath, reloadIndex])
+  }, [candidate, currentPath, reloadIndex, sourceType])
 
   async function choosePath(
     selectedPath: string,

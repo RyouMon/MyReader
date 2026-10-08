@@ -45,17 +45,7 @@ export function HorizontalBookShelf({
       textColor: palette.text,
       textMutedColor: palette.textMuted,
     }),
-    [
-      coverLoadingSkeletonPulseEnabled,
-      palette.backgroundSecondary,
-      palette.primary,
-      palette.success,
-      palette.successSoft,
-      palette.surface,
-      palette.text,
-      palette.textMuted,
-      t,
-    ],
+    [coverLoadingSkeletonPulseEnabled, palette, t],
   )
   const handleBookPress = useCallback(
     (bookId: string) => {

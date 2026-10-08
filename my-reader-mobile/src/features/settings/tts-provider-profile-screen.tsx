@@ -410,7 +410,7 @@ export default function TtsProviderProfileScreen() {
             },
           ] as const)
         : [],
-    [draft, t],
+    [draft, qwenPreset?.id, t],
   )
 
   return (

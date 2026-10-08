@@ -107,7 +107,7 @@ function BookRowImpl({
   const coverRef = useRef<RNView>(null)
   const coverSkeletonColor = useMemo(
     () => coverLoadingSkeletonColor(palette),
-    [palette.backgroundSecondary, palette.textMuted],
+    [palette],
   )
 
   const displayedTransferStatus = transferStatus ?? downloadStatus

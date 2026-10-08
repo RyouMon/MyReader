@@ -409,17 +409,7 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
       textColor: palette.text,
       textMutedColor: palette.textMuted,
     }),
-    [
-      coverLoadingSkeletonPulseEnabled,
-      palette.backgroundSecondary,
-      palette.primary,
-      palette.success,
-      palette.successSoft,
-      palette.surface,
-      palette.text,
-      palette.textMuted,
-      t,
-    ],
+    [coverLoadingSkeletonPulseEnabled, palette, t],
   )
   const isLibraryProfilerEnabled =
     DEVELOPER_TOOLS_ENABLED && libraryPerformanceProfilerEnabled

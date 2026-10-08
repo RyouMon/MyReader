@@ -1992,13 +1992,14 @@ export function ReadiumEpubReader({
     setAnnotationSelection(null)
   }, [annotationSelection, selectedAnnotation])
 
+  const { readFrom } = ttsSession
   const readSelectionAloud = useCallback(() => {
     const selection = annotationSelection
     if (!selection) return
     clearEpubTextSelection(selection)
     setAnnotationSelection(null)
-    ttsSession.readFrom(readerLocatorToReadiumLocator(selection.locator))
-  }, [annotationSelection, ttsSession.readFrom])
+    readFrom(readerLocatorToReadiumLocator(selection.locator))
+  }, [annotationSelection, readFrom])
 
   const removeSelectionAnnotation = useCallback(async () => {
     const selection = annotationSelection

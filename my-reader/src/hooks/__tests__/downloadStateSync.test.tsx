@@ -518,6 +518,43 @@ describe("download state synchronization", () => {
     expect(client.getQueryData(localOnlyBookKeys.status(libraryId))).toBe(true)
   })
 
+  it("preserves upload events received while the initial file state is loading", async () => {
+    let completeFileState!: () => void
+    tauriApiMock.checkBookFileState.mockReturnValueOnce(
+      new Promise((resolve) => {
+        completeFileState = () =>
+          resolve({
+            path: "book.epub",
+            localState: "dirty_push",
+            localSize: 1024,
+          })
+      }),
+    )
+    const client = makeClient()
+    renderWithClient(
+      client,
+      <>
+        <UploadEventsBridge />
+        <DownloadStatus testId="early-upload-status" bookUuid="book-uuid" />
+      </>,
+    )
+
+    await emitUploadProgress({
+      libraryId,
+      bookUuid: "book-uuid",
+      status: "uploading",
+      completed: 0,
+      total: 0,
+    })
+    await act(async () => completeFileState())
+
+    await waitFor(() =>
+      expect(screen.getByTestId("early-upload-status")).toHaveTextContent(
+        "uploading",
+      ),
+    )
+  })
+
   it("should refresh remote presence when a pending upload completes", async () => {
     tauriApiMock.checkBookFileState.mockResolvedValue({
       path: "book.epub",
@@ -607,7 +644,10 @@ describe("download state synchronization", () => {
     expect(client.getQueryData(localOnlyBookKeys.status(libraryId))).toBe(true)
   })
 
-  it("should clear pending upload state when library upload fails before a book starts", async () => {
+  it.each([
+    "library",
+    "book",
+  ])("should clear visible upload progress after a %s upload failure", async (scope) => {
     tauriApiMock.checkBookFileState.mockResolvedValue({
       path: "book.epub",
       localState: "dirty_push",
@@ -623,6 +663,11 @@ describe("download state synchronization", () => {
       </>,
     )
 
+    await waitFor(() => {
+      expect(screen.getByTestId("failed-upload-status")).toHaveTextContent(
+        "local_only",
+      )
+    })
     await emitUploadProgress({
       libraryId,
       bookUuid: "book-uuid",
@@ -630,8 +675,14 @@ describe("download state synchronization", () => {
       completed: 0,
       total: 0,
     })
+    await waitFor(() => {
+      expect(screen.getByTestId("failed-upload-status")).toHaveTextContent(
+        "uploading",
+      )
+    })
     await emitUploadProgress({
       libraryId,
+      ...(scope === "book" ? { bookUuid: "book-uuid" } : {}),
       status: "error",
       completed: 0,
       total: 0,
@@ -642,11 +693,6 @@ describe("download state synchronization", () => {
       expect(screen.getByTestId("failed-upload-status")).toHaveTextContent(
         "local_only",
       )
-      expect(
-        client.getQueryData(
-          bookUploadProgressKeys.detail(libraryId, "book-uuid"),
-        ),
-      ).toBeNull()
     })
     expect(toastMock.error).toHaveBeenCalledWith(
       "上传失败",

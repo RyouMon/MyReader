@@ -68,6 +68,16 @@ function lastSessionId(ref: ReturnType<typeof readerRef>): string {
   return sessionId
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (error: Error) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, resolve, reject }
+}
+
 describe("useReaderTtsSession", () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -1013,6 +1023,190 @@ describe("useReaderTtsSession", () => {
       path: "/cache/tts/speech.mp3",
       mimeType: "audio/mpeg",
       timings: [],
+    })
+  })
+
+  it("should not persist a voice discovered after the start was cancelled", async () => {
+    const voices = deferred<Awaited<ReturnType<typeof listTtsVoices>>>()
+    jest.mocked(getTtsConfig).mockResolvedValue({
+      ...systemConfig,
+      defaultEngine: { kind: "provider", profileId: "openai" },
+      profiles: [
+        {
+          id: "openai",
+          name: "OpenAI",
+          kind: "openAiCompatible",
+          enabled: true,
+          endpoint: "https://example.com/v1",
+          model: "tts-model",
+          voices: [],
+          revision: 1,
+          hasCredential: true,
+        },
+      ],
+    })
+    jest.mocked(listTtsVoices).mockReturnValueOnce(voices.promise)
+    const ref = readerRef()
+    const onError = jest.fn()
+    const { result } = renderHook(() =>
+      useReaderTtsSession({
+        enabled: true,
+        publicationKey: "book-a",
+        language: "en",
+        highlightColor: "#C4622D",
+        readerRef: ref,
+        onError,
+      }),
+    )
+    let pending!: Promise<void>
+    act(() => {
+      pending = result.current.start()
+    })
+    await waitFor(() => expect(listTtsVoices).toHaveBeenCalledWith("openai"))
+    act(() => result.current.stop())
+    await act(async () => {
+      voices.resolve([{ id: "reader", name: "Reader", language: "en" }])
+      await pending
+    })
+
+    expect(setTtsVoice).not.toHaveBeenCalled()
+    expect(ref.current.startTts).not.toHaveBeenCalled()
+    expect(onError).not.toHaveBeenCalled()
+    expect(result.current.state).toBeNull()
+  })
+
+  it("should not query voices when configuration arrives after stop", async () => {
+    const config = deferred<MobileTtsConfig>()
+    jest.mocked(getTtsConfig).mockReturnValueOnce(config.promise)
+    const ref = readerRef()
+    const { result } = renderHook(() =>
+      useReaderTtsSession({
+        enabled: true,
+        publicationKey: "book-a",
+        language: "en",
+        highlightColor: "#C4622D",
+        readerRef: ref,
+      }),
+    )
+    let pending!: Promise<void>
+    act(() => {
+      pending = result.current.start()
+    })
+    act(() => result.current.stop())
+    await act(async () => {
+      config.resolve({
+        ...systemConfig,
+        defaultEngine: { kind: "provider", profileId: "openai" },
+        profiles: [
+          {
+            id: "openai",
+            name: "OpenAI",
+            kind: "openAiCompatible",
+            enabled: true,
+            endpoint: "https://example.com/v1",
+            model: "tts-model",
+            voices: [],
+            revision: 1,
+            hasCredential: true,
+          },
+        ],
+      })
+      await pending
+    })
+    expect(listTtsVoices).not.toHaveBeenCalled()
+    expect(ref.current.startTts).not.toHaveBeenCalled()
+    expect(result.current.state).toBeNull()
+  })
+
+  describe.each([
+    "resolve",
+    "reject",
+  ] as const)("late synthesis %s", (outcome) => {
+    it.each([
+      "cancel",
+      "stop",
+      "ended",
+      "error",
+      "restart",
+      "unmount",
+    ] as const)("does not deliver audio or errors after %s", async (termination) => {
+      jest.mocked(getTtsConfig).mockResolvedValue({
+        ...systemConfig,
+        defaultEngine: { kind: "provider", profileId: "openai" },
+        profiles: [
+          {
+            id: "openai",
+            name: "OpenAI",
+            kind: "openAiCompatible",
+            enabled: true,
+            endpoint: "https://example.com/v1",
+            model: "tts-model",
+            voices: ["reader"],
+            defaultVoice: "reader",
+            revision: 1,
+            hasCredential: true,
+          },
+        ],
+      })
+      const synthesis = deferred<Awaited<ReturnType<typeof synthesizeTts>>>()
+      jest.mocked(synthesizeTts).mockReturnValueOnce(synthesis.promise)
+      const ref = readerRef()
+      const onError = jest.fn()
+      const { result, unmount } = renderHook(() =>
+        useReaderTtsSession({
+          enabled: true,
+          publicationKey: "book-a",
+          language: "en",
+          highlightColor: "#C4622D",
+          readerRef: ref,
+          onError,
+        }),
+      )
+      await act(async () => result.current.start())
+      const sessionId = lastSessionId(ref)
+      act(() =>
+        result.current.handleStateChange({ sessionId, state: "playing" }),
+      )
+      let pending!: Promise<void>
+      act(() => {
+        pending = result.current.handleSynthesisRequest({
+          sessionId,
+          requestId: "request-1",
+          text: "Read me.",
+          language: "en",
+          profileId: "openai",
+          voiceId: "reader",
+          speed: 1,
+          pitch: 1,
+        })
+      })
+      const signal = jest.mocked(synthesizeTts).mock.calls[0]?.[1]?.signal
+      await act(async () => {
+        if (termination === "cancel") {
+          result.current.handleSynthesisCancel({
+            sessionId,
+            requestIds: ["request-1"],
+          })
+        } else if (termination === "stop") result.current.stop()
+        else if (termination === "restart") await result.current.start()
+        else if (termination === "unmount") unmount()
+        else result.current.handleStateChange({ sessionId, state: termination })
+      })
+      const errorCount = onError.mock.calls.length
+      expect(signal?.aborted).toBe(true)
+
+      await act(async () => {
+        if (outcome === "resolve")
+          synthesis.resolve({
+            path: "/cache/tts/late.mp3",
+            mimeType: "audio/mpeg",
+            timings: [],
+          })
+        else synthesis.reject(new Error("Late provider failure"))
+        await pending
+      })
+      expect(ref.current.completeTtsSynthesis).not.toHaveBeenCalled()
+      expect(onError).toHaveBeenCalledTimes(errorCount)
     })
   })
 

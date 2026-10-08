@@ -84,16 +84,6 @@
       "count": 1
     }
   },
-  "my-reader-mobile/src/features/library/components/books/book-row.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
-  "my-reader-mobile/src/features/library/components/books/horizontal-book-shelf.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
   "my-reader-mobile/src/features/library/cover-thumbnail-generation-queue.ts": {
     "prefer-const": {
       "count": 1
@@ -111,9 +101,6 @@
     "complexity": {
       "count": 1
     },
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
@@ -121,9 +108,6 @@
   "my-reader-mobile/src/features/library/library-screen.tsx": {
     "complexity": {
       "count": 2
-    },
-    "react-hooks/exhaustive-deps": {
-      "count": 1
     },
     "sonarjs/cognitive-complexity": {
       "count": 2
@@ -196,11 +180,6 @@
       "count": 1
     }
   },
-  "my-reader-mobile/src/features/reader/tts/use-reader-tts-session.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
   "my-reader-mobile/src/features/settings/components/remote-directory-browser-screen.tsx": {
     "complexity": {
       "count": 1
@@ -209,16 +188,8 @@
       "count": 1
     }
   },
-  "my-reader-mobile/src/features/settings/hooks/use-remote-directory-browser.ts": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
   "my-reader-mobile/src/features/settings/tts-provider-profile-screen.tsx": {
     "complexity": {
-      "count": 1
-    },
-    "react-hooks/exhaustive-deps": {
       "count": 1
     },
     "sonarjs/cognitive-complexity": {
@@ -331,11 +302,6 @@
       "count": 1
     }
   },
-  "my-reader/src/components/library/BookGrid.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
   "my-reader/src/components/library/LibrarySyncStatus.tsx": {
     "complexity": {
       "count": 1
@@ -384,9 +350,6 @@
   "my-reader/src/components/reader/readium/ReadiumEpubReader.tsx": {
     "complexity": {
       "count": 2
-    },
-    "react-hooks/exhaustive-deps": {
-      "count": 1
     },
     "sonarjs/cognitive-complexity": {
       "count": 3
@@ -449,9 +412,6 @@
   },
   "my-reader/src/hooks/reader/useEpubTtsSession.ts": {
     "complexity": {
-      "count": 2
-    },
-    "react-hooks/exhaustive-deps": {
       "count": 2
     },
     "sonarjs/cognitive-complexity": {

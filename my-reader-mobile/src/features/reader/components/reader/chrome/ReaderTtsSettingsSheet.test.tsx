@@ -471,7 +471,7 @@ describe("ReaderTtsSettingsSheet", () => {
       ),
     )
     fireEvent.press(
-      screen.getByRole("button", { name: "settings.tts.addProvider" }),
+      await screen.findByRole("button", { name: "settings.tts.addProvider" }),
     )
     expect(
       screen.getByRole("button", { name: `qwenTts.sources.${id}.title` }),

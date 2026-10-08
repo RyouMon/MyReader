@@ -121,6 +121,11 @@ vi.mock("@readium/speech", () => {
       this.emit("start")
     }
 
+    emitError() {
+      this.state = "error"
+      this.emit("error")
+    }
+
     emitEnd(index: number, state: "idle" | "playing") {
       this.currentIndex = index
       this.state = state
@@ -213,6 +218,52 @@ afterEach(() => {
 })
 
 describe("useEpubTtsSession", () => {
+  it.each([
+    "cleared",
+    "replaced",
+  ])("cleans up the original navigator after its ref is %s", async (refChange) => {
+    const locator = new Locator({
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: new LocatorLocations({ progression: 0.2 }),
+    })
+    vi.mocked(extractEpubTtsUtterances).mockReturnValue([
+      { id: "sentence-1", plain: "Read this sentence.", locator },
+    ])
+    const navigator = {
+      currentLocator: locator,
+      go: vi.fn(),
+    } as unknown as EpubNavigator
+    const replacement = { ...navigator } as EpubNavigator
+    const navigatorRef = { current: navigator as EpubNavigator | null }
+    const resources = [{} as EpubTextResource]
+    const positions = [{} as ReaderLocator]
+    const { result, unmount } = renderHook(() =>
+      useEpubTtsSession({
+        enabled: true,
+        navigatorRef,
+        resources,
+        positions,
+        currentLocator: locator,
+        language: "en",
+        highlightTint: "#ff00aa",
+      }),
+    )
+    await waitFor(() => expect(result.current.available).toBe(true))
+    act(() => result.current.play())
+    expect(applyEpubTtsHighlight).toHaveBeenCalledWith(
+      navigator,
+      locator,
+      "#ff00aa",
+    )
+
+    navigatorRef.current = refChange === "cleared" ? null : replacement
+    unmount()
+
+    expect(clearEpubTtsHighlight).toHaveBeenCalledOnce()
+    expect(vi.mocked(clearEpubTtsHighlight).mock.calls[0]?.[0]).toBe(navigator)
+  })
+
   it("uses the exact locator plan for play and read-from entry points", async () => {
     const sentenceLocator = new Locator({
       href: "chapter.xhtml",
@@ -1571,6 +1622,48 @@ describe("useEpubTtsSession", () => {
     }
     await waitFor(() => expect(replacement.play).toHaveBeenCalledOnce())
     expect(replacement.jumpTo).not.toHaveBeenCalled()
+  })
+
+  it("ignores a playback failure after stop and allows a fresh start", async () => {
+    const locator = new Locator({
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: new LocatorLocations({ progression: 0.2 }),
+    })
+    vi.mocked(extractEpubTtsUtterances).mockReturnValue([
+      { id: "sentence-1", plain: "Read again.", locator },
+    ])
+    const navigatorRef = {
+      current: {
+        currentLocator: locator,
+        go: vi.fn(),
+      } as unknown as EpubNavigator,
+    }
+    const resources = [{} as EpubTextResource]
+    const positions = [{} as ReaderLocator]
+    const { result } = renderHook(() =>
+      useEpubTtsSession({
+        enabled: true,
+        navigatorRef,
+        resources,
+        positions,
+        currentLocator: locator,
+        language: "en",
+        highlightTint: "#ff00aa",
+      }),
+    )
+    await waitFor(() => expect(result.current.available).toBe(true))
+    act(() => result.current.play())
+    act(() => result.current.stop())
+
+    const speech = speechInstances[0] as { emitError: () => void }
+    act(() => speech.emitError())
+    expect(result.current.state).toBe("idle")
+    expect(result.current.error).toBeNull()
+
+    act(() => result.current.play())
+    expect(result.current.state).toBe("playing")
+    expect(result.current.error).toBeNull()
   })
 
   it("does not restore a stale follow-text highlight after stop", async () => {

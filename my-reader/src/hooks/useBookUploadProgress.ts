@@ -1,5 +1,6 @@
 import {
   type QueryClient,
+  skipToken,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query"
@@ -65,10 +66,7 @@ export function applyBookUploadProgressEvent(
   }
 
   if (event.bookUuid) {
-    client.removeQueries({
-      queryKey: bookUploadProgressKeys.detail(event.libraryId, event.bookUuid),
-      exact: true,
-    })
+    clearBookUploadProgress(event.libraryId, event.bookUuid, client)
     updatePendingBookUpload(
       event.libraryId,
       event.bookUuid,
@@ -76,9 +74,10 @@ export function applyBookUploadProgressEvent(
       client,
     )
   } else {
-    client.removeQueries({
-      queryKey: [...bookUploadProgressKeys.all, event.libraryId],
-    })
+    client.setQueriesData<BookUploadProgressSnapshot | null>(
+      { queryKey: [...bookUploadProgressKeys.all, event.libraryId] },
+      null,
+    )
     if (event.status === "done") {
       client.setQueryData(pendingBookUploadKeys.list(event.libraryId), [])
     }
@@ -117,10 +116,13 @@ export function clearBookUploadProgress(
   bookUuid: string,
   client: QueryClient = defaultQueryClient,
 ) {
-  client.removeQueries({
-    queryKey: bookUploadProgressKeys.detail(libraryId, bookUuid),
-    exact: true,
-  })
+  client.setQueriesData<BookUploadProgressSnapshot | null>(
+    {
+      queryKey: bookUploadProgressKeys.detail(libraryId, bookUuid),
+      exact: true,
+    },
+    null,
+  )
 }
 
 export function useBookUploadProgressEvents() {
@@ -151,17 +153,15 @@ export function useBookUploadProgress(
   libraryId: string | null | undefined,
   bookUuid: string | null | undefined,
 ): number | null | undefined {
-  const queryClient = useQueryClient()
-  const enabled = Boolean(libraryId && bookUuid)
   const queryKey = bookUploadProgressKeys.detail(
     libraryId ?? "",
     bookUuid ?? "",
   )
   const { data } = useQuery<BookUploadProgressSnapshot | null>({
     queryKey,
-    queryFn: () =>
-      queryClient.getQueryData<BookUploadProgressSnapshot>(queryKey) ?? null,
-    enabled,
+    // Native events own this cache; an initial fetch can overwrite a newer event.
+    queryFn: skipToken,
+    initialData: null,
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: 30 * 60 * 1000,
   })
