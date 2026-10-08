@@ -32,6 +32,7 @@ MyReader/
 ├── my-reader-mobile/              Expo 56 + React Native 0.85 应用
 │   └── modules/my-reader-core/    Core 的 UniFFI/JSI 移动适配器
 ├── packages/
+│   ├── i18n/                      共享本地化资源
 │   ├── fonts/                     共享阅读字体目录
 │   └── tools/                     共享 TypeScript 类型与 Reader 算法
 ├── docs/                           ADR 与协议文档
@@ -67,7 +68,7 @@ pnpm --filter my-reader run test:e2e:desktop
 ### 格式化
 
 ```bash
-pnpm --filter my-reader exec biome check --write .
+pnpm format
 cargo fmt --all
 ```
 
@@ -93,7 +94,8 @@ pnpm --filter my-reader-mobile expo prebuild --clean
 
 ```bash
 pnpm --filter my-reader-mobile exec jest --runInBand
-pnpm --filter my-reader-mobile test:e2e
+pnpm --filter my-reader-mobile test:e2e:ios
+pnpm --filter my-reader-mobile test:e2e:android
 ```
 
 Maestro E2E 需要安装 Maestro CLI，并运行开发客户端。
@@ -268,3 +270,7 @@ pnpm sync:design-tokens
 - Expo Tools（`expo.vscode-expo-tools`）
 
 仓库的 VS Code 设置已配置 Biome 格式化和 import 整理。
+
+## 质量自动化
+
+静态门禁、覆盖率、变异测试与质量债务策略见 [QUALITY.md](./QUALITY.md)。

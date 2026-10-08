@@ -53,6 +53,8 @@ pub async fn catalog_list_library_books(
 }
 
 #[uniffi::export(async_runtime = "tokio")]
+// Keep the existing platform contract; group parameters only in a deliberate API migration.
+#[allow(clippy::too_many_arguments)]
 pub async fn catalog_list_library_books_page(
     config_path: String,
     library_id: String,

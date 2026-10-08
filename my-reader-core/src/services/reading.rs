@@ -843,10 +843,10 @@ fn validate_locator_json(locator_json: &str) -> Result<String, CoreError> {
         return Err(CoreError::Config("Reading locator is invalid".into()));
     };
     for key in ["href", "type"] {
-        if !object
+        if object
             .get(key)
             .and_then(serde_json::Value::as_str)
-            .is_some_and(|value| !value.trim().is_empty())
+            .is_none_or(|value| value.trim().is_empty())
         {
             return Err(CoreError::Config("Reading locator is invalid".into()));
         }

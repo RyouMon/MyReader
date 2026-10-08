@@ -1,0 +1,46 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/*.{mjs,sh}", "scripts/quality/*.mjs"],
+      "project": ["scripts/**/*.{mjs,js,ts}"]
+    },
+    "my-reader": {
+      "entry": [
+        "src/main.tsx",
+        "src/routes/**/*.{ts,tsx}",
+        "src/routeTree.gen.ts",
+        "scripts/*.mjs"
+      ],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "my-reader-mobile": {
+      "entry": [
+        "src/app/**/*.{ts,tsx}",
+        "modules/*/src/index.{ts,tsx}",
+        "plugins/*.{js,ts}",
+        "scripts/*.mjs"
+      ],
+      "project": ["src/**/*.{ts,tsx}", "modules/*/src/**/*.{ts,tsx}"]
+    },
+    "packages/*": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts", "tests/**/*.ts"]
+    }
+  },
+  "ignore": [
+    "**/src/generated/**",
+    "**/tauri-specta.ts",
+    "**/routeTree.gen.ts"
+  ],
+  "ignoreBinaries": [
+    "cargo",
+    "rustfmt",
+    "maestro",
+    "pod",
+    "xcodebuild",
+    "adb",
+    "python3",
+    "actionlint"
+  ]
+}

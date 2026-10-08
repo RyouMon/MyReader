@@ -21,6 +21,11 @@ describe("reader TTS languages", () => {
     expect(normalizeTtsLanguage("eng")).toBe("en")
     expect(normalizeTtsLanguage("zho")).toBe("zh")
     expect(normalizeTtsLanguage("zh_CN")).toBe("zh-cn")
+    expect(normalizeTtsLanguage("  EN_us  ")).toBe("en-us")
+    expect(normalizeTtsLanguage(null)).toBe("")
+    expect(normalizeTtsLanguage(undefined)).toBe("")
+    expect(normalizeTtsLanguage(" ")).toBe("")
+    expect(normalizeTtsLanguage("NOT A TAG")).toBe("not a tag")
   })
 
   it("filters and ranks voices for the publication language", () => {
@@ -38,6 +43,44 @@ describe("reader TTS languages", () => {
     expect(chooseTtsVoiceForLanguage(voices.slice(0, 1), "fr")?.id).toBe(
       "english",
     )
+    expect(chooseTtsVoiceForLanguage([], "fr")).toBeUndefined()
+    expect(chooseTtsVoiceForLanguage(voices, "zh-CN")?.id).toBe("chinese-cn")
+  })
+
+  it.each([
+    null,
+    undefined,
+    "",
+    "und",
+  ])("ranks unspecified content (%s) without excluding installed voices", (language) => {
+    expect(
+      filterTtsVoicesForLanguage(voices, language).map((voice) => voice.id),
+    ).toEqual([
+      "unknown",
+      "multilingual",
+      "english",
+      "chinese-hk",
+      "chinese-cn",
+    ])
+  })
+
+  it("prefers multilingual voices for multilingual content and preserves ties and input order", () => {
+    const original = [...voices]
+    expect(
+      filterTtsVoicesForLanguage(voices, "mul").map((voice) => voice.id),
+    ).toEqual([
+      "multilingual",
+      "unknown",
+      "english",
+      "chinese-hk",
+      "chinese-cn",
+    ])
+    expect(voices).toEqual(original)
+    const regional = [
+      { id: "gb", language: "en-GB" },
+      { id: "us", language: "en-US" },
+    ]
+    expect(filterTtsVoicesForLanguage(regional, "en")).toEqual(regional)
   })
 
   it("formats voice languages for the current interface language", () => {
@@ -47,5 +90,10 @@ describe("reader TTS languages", () => {
     expect(formatTtsLanguageName("und", "en")).toBe("Unspecified language")
     expect(formatTtsLanguageName("eng", "zh-CN")).not.toBe("eng")
     expect(formatTtsLanguageName("ja-JP", "en")).not.toBe("ja-JP")
+    expect(formatTtsLanguageName(null, "en")).toBe("")
+    expect(formatTtsLanguageName("mul", undefined)).toBe("Multilingual")
+    expect(formatTtsLanguageName("fr", "en")).toBe("French")
+    expect(formatTtsLanguageName("invalid tag", "en")).toBe("invalid tag")
+    expect(formatTtsLanguageName("en", "invalid locale")).toBe("en")
   })
 })

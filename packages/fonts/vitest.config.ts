@@ -17,5 +17,12 @@ export default defineConfig({
   test: {
     include: [path.resolve(__dirname, "tests/**/*.test.ts")],
     reporters: ["default"],
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.ts"],
+      exclude: ["src/**/*.d.ts", "src/index.ts"],
+      reporter: ["text-summary", "json-summary", "html", "lcov"],
+      thresholds: { lines: 96, statements: 91, functions: 87, branches: 75 },
+    },
   },
 })

@@ -14,3 +14,5 @@
 - [贡献指南](../.github/CONTRIBUTING.md)
 - [社区行为准则](../.github/CODE_OF_CONDUCT.md)
 - [安全策略](../.github/SECURITY.md)
+
+- [质量工程](./QUALITY.md)：可执行门禁、验证范围和质量债务。

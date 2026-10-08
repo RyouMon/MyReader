@@ -325,7 +325,7 @@ mod tests {
         let app_data = tempfile::tempdir().unwrap();
         let library_root = tempfile::tempdir().unwrap();
         create_calibre_metadata(library_root.path()).await;
-        let mut config = AppConfig {
+        let config = AppConfig {
             libraries: vec![local_library(
                 "library-1",
                 library_root.path().to_str().unwrap(),
@@ -333,7 +333,7 @@ mod tests {
             ..Default::default()
         };
 
-        SyncService::sync_db_for_library(app_data.path(), &mut config, "library-1")
+        SyncService::sync_db_for_library(app_data.path(), &config, "library-1")
             .await
             .unwrap();
 
@@ -380,7 +380,7 @@ mod tests {
         let app_data = tempfile::tempdir().unwrap();
         let library_root = tempfile::tempdir().unwrap();
         create_calibre_metadata(library_root.path()).await;
-        let mut config = AppConfig {
+        let config = AppConfig {
             libraries: vec![local_library(
                 "library-1",
                 library_root.path().to_str().unwrap(),
@@ -402,7 +402,7 @@ mod tests {
         .await
         .unwrap();
 
-        let report = SyncService::sync_db_for_library(app_data.path(), &mut config, "library-1")
+        let report = SyncService::sync_db_for_library(app_data.path(), &config, "library-1")
             .await
             .unwrap();
 
@@ -423,14 +423,14 @@ mod tests {
         let second_app_data = tempfile::tempdir().unwrap();
         let library_root = tempfile::tempdir().unwrap();
         create_calibre_metadata(library_root.path()).await;
-        let mut first_config = AppConfig {
+        let first_config = AppConfig {
             libraries: vec![local_library(
                 "first",
                 library_root.path().to_str().unwrap(),
             )],
             ..Default::default()
         };
-        let mut second_config = AppConfig {
+        let second_config = AppConfig {
             libraries: vec![local_library(
                 "second",
                 library_root.path().to_str().unwrap(),
@@ -451,12 +451,12 @@ mod tests {
         )
         .await
         .unwrap();
-        SyncService::sync_db_for_library(first_app_data.path(), &mut first_config, "first")
+        SyncService::sync_db_for_library(first_app_data.path(), &first_config, "first")
             .await
             .unwrap();
 
         let report =
-            SyncService::sync_db_for_library(second_app_data.path(), &mut second_config, "second")
+            SyncService::sync_db_for_library(second_app_data.path(), &second_config, "second")
                 .await
                 .unwrap();
         let progress = ProgressService::get_reading_progress_for_library(
@@ -481,14 +481,14 @@ mod tests {
         let second_app_data = tempfile::tempdir().unwrap();
         let library_root = tempfile::tempdir().unwrap();
         create_calibre_metadata(library_root.path()).await;
-        let mut first_config = AppConfig {
+        let first_config = AppConfig {
             libraries: vec![local_library(
                 "first",
                 library_root.path().to_str().unwrap(),
             )],
             ..Default::default()
         };
-        let mut second_config = AppConfig {
+        let second_config = AppConfig {
             libraries: vec![local_library(
                 "second",
                 library_root.path().to_str().unwrap(),
@@ -513,11 +513,11 @@ mod tests {
         .unwrap();
 
         let first_report =
-            SyncService::sync_db_for_library(first_app_data.path(), &mut first_config, "first")
+            SyncService::sync_db_for_library(first_app_data.path(), &first_config, "first")
                 .await
                 .unwrap();
         let second_report =
-            SyncService::sync_db_for_library(second_app_data.path(), &mut second_config, "second")
+            SyncService::sync_db_for_library(second_app_data.path(), &second_config, "second")
                 .await
                 .unwrap();
         let bookmarks = BookmarkService::list_for_library(
@@ -546,10 +546,10 @@ mod tests {
         )
         .await
         .unwrap();
-        SyncService::sync_db_for_library(second_app_data.path(), &mut second_config, "second")
+        SyncService::sync_db_for_library(second_app_data.path(), &second_config, "second")
             .await
             .unwrap();
-        SyncService::sync_db_for_library(first_app_data.path(), &mut first_config, "first")
+        SyncService::sync_db_for_library(first_app_data.path(), &first_config, "first")
             .await
             .unwrap();
         assert!(BookmarkService::list_for_library(
@@ -574,10 +574,10 @@ mod tests {
         )
         .await
         .unwrap();
-        SyncService::sync_db_for_library(first_app_data.path(), &mut first_config, "first")
+        SyncService::sync_db_for_library(first_app_data.path(), &first_config, "first")
             .await
             .unwrap();
-        SyncService::sync_db_for_library(second_app_data.path(), &mut second_config, "second")
+        SyncService::sync_db_for_library(second_app_data.path(), &second_config, "second")
             .await
             .unwrap();
         assert_eq!(
@@ -601,14 +601,14 @@ mod tests {
         let second_app_data = tempfile::tempdir().unwrap();
         let library_root = tempfile::tempdir().unwrap();
         create_calibre_metadata(library_root.path()).await;
-        let mut first_config = AppConfig {
+        let first_config = AppConfig {
             libraries: vec![local_library(
                 "first",
                 library_root.path().to_str().unwrap(),
             )],
             ..Default::default()
         };
-        let mut second_config = AppConfig {
+        let second_config = AppConfig {
             libraries: vec![local_library(
                 "second",
                 library_root.path().to_str().unwrap(),
@@ -638,10 +638,10 @@ mod tests {
         )
         .await
         .unwrap();
-        SyncService::sync_db_for_library(first_app_data.path(), &mut first_config, "first")
+        SyncService::sync_db_for_library(first_app_data.path(), &first_config, "first")
             .await
             .unwrap();
-        SyncService::sync_db_for_library(second_app_data.path(), &mut second_config, "second")
+        SyncService::sync_db_for_library(second_app_data.path(), &second_config, "second")
             .await
             .unwrap();
 
@@ -678,10 +678,10 @@ mod tests {
         )
         .await
         .unwrap();
-        SyncService::sync_db_for_library(second_app_data.path(), &mut second_config, "second")
+        SyncService::sync_db_for_library(second_app_data.path(), &second_config, "second")
             .await
             .unwrap();
-        SyncService::sync_db_for_library(first_app_data.path(), &mut first_config, "first")
+        SyncService::sync_db_for_library(first_app_data.path(), &first_config, "first")
             .await
             .unwrap();
 

@@ -31,6 +31,7 @@
 至少运行所有被改动 package 的完整单元测试。跨端或共享 core 修改通常应运行：
 
 ```bash
+pnpm qa
 pnpm --filter @my-reader/fonts test
 pnpm --filter @my-reader/i18n test
 pnpm --filter @my-reader/tools test
@@ -54,3 +55,5 @@ cargo test --workspace
 提交信息使用 Conventional Commits 风格，例如 `fix(mobile): preserve imported filename` 或 `docs: clarify release channels`。
 
 提交贡献即表示你有权提交相关内容，并同意它按本仓库的 [MIT License](../LICENSE) 分发。
+
+质量门禁与基线策略见 [QUALITY.md](../docs/QUALITY.md)。

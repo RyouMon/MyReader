@@ -1,0 +1,43 @@
+{
+  "path": [
+    "my-reader/src",
+    "my-reader/src-tauri/src",
+    "my-reader-core/src",
+    "my-reader-mobile/src",
+    "my-reader-mobile/modules",
+    "packages"
+  ],
+  "format": ["typescript", "tsx", "javascript", "rust", "swift", "kotlin"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/target/**",
+    "**/build/**",
+    "**/generated/**",
+    "**/tests/**",
+    "**/__tests__/**",
+    "**/__mocks__/**",
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/routeTree.gen.ts",
+    "**/tauri-specta.ts",
+    "**/entities/**",
+    "**/locales/**",
+    "**/src/components/ui/**",
+    "**/NativeMyReaderCore.ts",
+    "**/*Generated*",
+    "**/*Template.swift",
+    "**/*Template.kt",
+    "**/ios/MyReaderCore.*",
+    "**/android/src/main/java/com/myreader/core/**",
+    "**/generatedReader*.ts",
+    "**/modules/my-reader-core/src/index.ts"
+  ],
+  "minLines": 10,
+  "minTokens": 80,
+  "mode": "mild",
+  "reporters": ["console", "json", "html"],
+  "output": "reports/duplication",
+  "threshold": 1.5,
+  "absolute": false,
+  "gitignore": true
+}

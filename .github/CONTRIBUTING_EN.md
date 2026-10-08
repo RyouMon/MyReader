@@ -31,6 +31,7 @@ Complete the first-time setup in the [Development Guide](../docs/DEVELOPMENT_EN.
 Run at least the complete unit test suite for every changed package. Cross-platform or shared-core changes will usually require:
 
 ```bash
+pnpm qa
 pnpm --filter @my-reader/fonts test
 pnpm --filter @my-reader/i18n test
 pnpm --filter @my-reader/tools test
@@ -54,3 +55,5 @@ Include the following in the description:
 Use Conventional Commits, such as `fix(mobile): preserve imported filename` or `docs: clarify release channels`.
 
 By submitting a contribution, you confirm that you have the right to submit it and agree that it may be distributed under this repository's [MIT License](../LICENSE).
+
+Quality gates and baseline policy: [QUALITY.md](../docs/QUALITY.md).

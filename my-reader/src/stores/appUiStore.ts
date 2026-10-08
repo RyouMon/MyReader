@@ -5,7 +5,7 @@ import {
   DEFAULT_SETTINGS,
   type FixedLayoutSettings,
   type ReaderSettings,
-} from "@/components/reader/types"
+} from "@/types/reader"
 import { normalizeAppLanguageMode } from "@/lib/appLanguage"
 import { normalizeSpreadPreference } from "@/lib/readium/epubReaderPrefs"
 import {

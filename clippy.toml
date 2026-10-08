@@ -1,0 +1,2 @@
+# Rust's cognitive_complexity lint is a review signal, not a correctness score.
+cognitive-complexity-threshold = 25

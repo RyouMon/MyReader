@@ -91,7 +91,7 @@ flowchart TB
   Context --> Resolve
 ```
 
-**依赖规则**（沿用 [`.agents/rules/mobile.md`](.agents/rules/mobile.md)）：
+**依赖规则**（沿用 [`.agents/rules/mobile.md`](../../.agents/rules/mobile.md)）：
 - UI → `domain/sync` → `repos` | `services` | `domain/library`
 - `domain/sync` 不 import `hooks/`、`features/`、`stores/`（书列表缓存写入通过 **回调接口** 或 **返回值** 交给 hook 层）
 
@@ -677,7 +677,7 @@ iOS 带 `securityScopedBookmark` 的本地库：provider 内复用 [`withSecurit
 - `scheduler.ts` 旧 `SyncDeps` / `runSync` 对外 export（若已完全被 `syncLibraries` 替代）
 - `transfer.ts` 中 `downloadFile`, `downloadFileManifest`, `pushFile`
 - i18n `manifestNotRegistered`（若无引用）
-- 更新 [`mobile.md`](.agents/rules/mobile.md) domain/sync 目录说明
+- 更新 [`mobile.md`](../../.agents/rules/mobile.md) domain/sync 目录说明
 
 **验证**：`rg "manifest|refresh-library|reconcileFileStates|refreshBooks|useRefreshLibraryMutation" my-reader-mobile` 无业务引用（Android debug manifest plugin 除外）。
 

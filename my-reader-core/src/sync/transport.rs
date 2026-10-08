@@ -191,9 +191,8 @@ fn build_storage_operator_with_timeouts_and_progress(
                 );
             Operator::new(builder)
                 .map(|operator| operator.finish())
-                .map(|operator| {
+                .inspect(|operator| {
                     operator.update_http_client(|_| client);
-                    operator
                 })
                 .map_err(|error| sync_error(format!("Initialize WebDAV storage failed: {error}")))
         }

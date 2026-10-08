@@ -2,7 +2,5 @@
   "*.{ts,tsx,js,mjs,cjs,json,css}": [
     "biome format --write --no-errors-on-unmatched"
   ],
-  "*.rs": [
-    "cargo fmt --manifest-path my-reader/src-tauri/Cargo.toml --"
-  ]
+  "*.rs": ["rustfmt --edition 2021 --config skip_children=true"]
 }

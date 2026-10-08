@@ -2,7 +2,7 @@
 
 # Current MyReader Architecture
 
-> Document date: 2026-08-02
+> Reviewed: 2026-10-08
 >
 > This document describes only the current implementation. See `docs/adr/` for historical proposals and later decisions.
 
@@ -115,13 +115,13 @@ models/             Stable cross-layer business DTOs
 - favorites, reading positions and conflict candidates, bookmarks, highlights, and notes;
 - reading sessions, completion records, and current-library statistics;
 - Automerge changes, projection, outbox, remote exchange, pull freshness, retry/suspend, and single-flight rules.
-- device-local TTS provider profiles, the default engine, voice mappings, and OpenAI-compatible voice discovery, audio synthesis, caching, and normalized errors.
+- device-local TTS provider profiles, the default engine, voice mappings, and OpenAI-compatible / Qwen voice discovery, audio synthesis, caching, and normalized errors.
 
 Platform capabilities outside core include UI state, Readium navigators, windows, system directory authorization, secure storage, system TTS, audio playback, OAuth UI, notifications, timers, and app lifecycle.
 
 ### 3.3 TTS Ownership
 
-TTS follows [ADR-0022](./adr/0022-adopt-readium-tts-and-core-provider-architecture.md): Readium owns content segmentation, the current sentence, locators, and decorations; `my-reader-core` owns provider configuration, network inference, audio artifacts, and normalized errors; platform adapters own system voices, audio playback, and keyring/SecureStore. Core configuration stores only credential references, never secrets. The current product slice targets speakable text EPUBs and provides System and OpenAI-compatible engines for foreground sessions. Desktop and mobile share session/generation isolation, navigation deduplication, terminal-state handling, and pause restoration through `@my-reader/tools/reader-tts-session`, while platform adapters continue to own Readium locators and actual playback.
+TTS follows [ADR-0022](./adr/0022-adopt-readium-tts-and-core-provider-architecture.md): Readium owns content segmentation, the current sentence, locators, and decorations; `my-reader-core` owns provider configuration, network inference, audio artifacts, and normalized errors; platform adapters own system voices, audio playback, and keyring/SecureStore. Core configuration stores only credential references, never secrets. The current product slice targets speakable text EPUBs and provides System, OpenAI-compatible and Qwen engines for foreground sessions. Desktop and mobile share session/generation isolation, navigation deduplication, terminal-state handling, and pause restoration through `@my-reader/tools/reader-tts-session`, while platform adapters continue to own Readium locators and actual playback.
 
 ## 4. Desktop
 

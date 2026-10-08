@@ -32,6 +32,7 @@ MyReader/
 ├── my-reader-mobile/              Expo 56 + React Native 0.85 app
 │   └── modules/my-reader-core/    Core UniFFI/JSI mobile adapter
 ├── packages/
+│   ├── i18n/                      Shared localization resources
 │   ├── fonts/                     Shared reading font catalog
 │   └── tools/                     Shared TypeScript types and reader algorithms
 ├── docs/                           ADR and protocol documentation
@@ -67,7 +68,7 @@ pnpm --filter my-reader run test:e2e:desktop
 ### Formatting
 
 ```bash
-pnpm --filter my-reader exec biome check --write .
+pnpm format
 cargo fmt --all
 ```
 
@@ -94,7 +95,8 @@ pnpm --filter my-reader-mobile expo prebuild --clean
 
 ```bash
 pnpm --filter my-reader-mobile exec jest --runInBand
-pnpm --filter my-reader-mobile test:e2e
+pnpm --filter my-reader-mobile test:e2e:ios
+pnpm --filter my-reader-mobile test:e2e:android
 ```
 
 Maestro E2E requires the Maestro CLI and a running development client.
@@ -282,3 +284,7 @@ Recommended extensions:
 - Expo Tools (`expo.vscode-expo-tools`)
 
 Repository VS Code settings configure Biome formatting and import organization.
+
+## Quality automation
+
+See [QUALITY.md](./QUALITY.md) for static gates, coverage, mutation testing and debt policy.

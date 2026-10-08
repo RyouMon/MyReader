@@ -207,10 +207,16 @@ describe("reader bookmark locator utilities", () => {
   it("should keep identity stable when extension object keys are reordered", () => {
     const first = locator("OPS/chapter.xhtml", {
       position: 2,
-      domRange: { start: 4, end: 9 },
+      domRange: {
+        start: { cssSelector: "#p1", textNodeIndex: 4 },
+        end: { cssSelector: "#p2", textNodeIndex: 9 },
+      },
     })
     const second = locator("OPS/chapter.xhtml", {
-      domRange: { end: 9, start: 4 },
+      domRange: {
+        end: { textNodeIndex: 9, cssSelector: "#p2" },
+        start: { textNodeIndex: 4, cssSelector: "#p1" },
+      },
       position: 2,
     })
 

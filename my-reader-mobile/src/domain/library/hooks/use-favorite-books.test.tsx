@@ -11,7 +11,6 @@ import { addFavoriteBook, removeFavoriteBook } from "../favorite-books"
 import { fetchFavoriteBookIds, useFavoriteBooks } from "./use-favorite-books"
 
 jest.mock("@/src/services/query/query-client", () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { QueryClient } = require("@tanstack/react-query")
   return {
     queryClient: new QueryClient({

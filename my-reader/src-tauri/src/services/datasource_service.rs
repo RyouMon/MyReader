@@ -196,6 +196,8 @@ impl DataSourceService {
         )
     }
 
+    // Keep the existing platform contract; group parameters only in a deliberate API migration.
+    #[allow(clippy::too_many_arguments)]
     pub fn add_onedrive_data_source(
         name: &str,
         client_id: Option<&str>,

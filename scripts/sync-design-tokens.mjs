@@ -609,23 +609,32 @@ async function main() {
       /Dark values live in `\.agents\/skills\/myreader-design-system\/colors_and_type\.css` `themes\.dark`\./g,
       'Dark values are defined in `.agents/skills/myreader-design-system/colors_and_type.css` under `[data-theme="dark"]`.',
     )
-  const nextDesktopCss = syncDesktopTokens(
-    desktopCss,
-    rootVars,
-    darkVars,
-  ).replace(
-    /Synced from .*colors_and_type\.css\./,
-    "Synced from .agents/skills/myreader-design-system/colors_and_type.css.",
-  )
+  const nextDesktopCss = syncDesktopTokens(desktopCss, rootVars, darkVars)
+    .replace(
+      /Synced from .*colors_and_type\.css\./,
+      "Synced from .agents/skills/myreader-design-system/colors_and_type.css.",
+    )
+    .replace(/#[\da-f]{3,8}\b/gi, (color) => color.toLowerCase())
   const nextMobileTokens = syncMobileTokens(mobileTokens, rootVars, darkVars)
   const nextReaderTokens = syncReaderTokens(readerTokens, rootVars, darkVars)
 
-  await Promise.all([
-    writeFile(designDocPath, nextDesignDoc),
-    writeFile(desktopTokenPath, nextDesktopCss),
-    writeFile(mobileTokenPath, nextMobileTokens),
-    writeFile(readerTokenPath, nextReaderTokens),
-  ])
+  const outputs = [
+    [designDocPath, nextDesignDoc, designDoc],
+    [desktopTokenPath, nextDesktopCss, desktopCss],
+    [mobileTokenPath, nextMobileTokens, mobileTokens],
+    [readerTokenPath, nextReaderTokens, readerTokens],
+  ]
+  if (process.argv.includes("--check")) {
+    const stale = outputs.filter(([, next, current]) => next !== current)
+    if (stale.length) {
+      throw new Error(
+        `Stale design tokens: ${stale.map(([file]) => path.relative(repoRoot, file)).join(", ")}. Run pnpm sync:design-tokens.`,
+      )
+    }
+    console.log("Design tokens are current.")
+    return
+  }
+  await Promise.all(outputs.map(([file, content]) => writeFile(file, content)))
 
   console.log("Synced design tokens from colors_and_type.css:")
   console.log(`- ${path.relative(repoRoot, designDocPath)}`)

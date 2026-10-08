@@ -451,8 +451,8 @@ fn validate_profile(profile: &TtsProviderProfile) -> Result<(), CoreError> {
     }
     let endpoint = Url::parse(profile.endpoint.trim())
         .map_err(|_| tts_error("configuration", "INVALID_TTS_ENDPOINT"))?;
-    if !matches!(endpoint.scheme(), "http" | "https")
-        && !(profile.kind == TtsProviderKind::Qwen && matches!(endpoint.scheme(), "ws" | "wss"))
+    if !(matches!(endpoint.scheme(), "http" | "https")
+        || profile.kind == TtsProviderKind::Qwen && matches!(endpoint.scheme(), "ws" | "wss"))
     {
         return Err(tts_error("configuration", "INVALID_TTS_ENDPOINT_SCHEME"));
     }
@@ -785,6 +785,8 @@ mod tests {
     }
 
     #[tokio::test]
+    // Tungstenite fixes the handshake callback's error type to an HTTP response.
+    #[allow(clippy::result_large_err)]
     async fn qwen_websocket_synthesis_returns_completed_audio_and_reuses_cache() {
         use futures_util::{SinkExt, StreamExt};
         use tokio_tungstenite::tungstenite::{

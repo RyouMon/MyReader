@@ -168,7 +168,6 @@ jest.mock("@/src/constants/alert-with-status-bar", () => ({
 }))
 
 // Jest factories above must be registered before importing the module under test.
-// eslint-disable-next-line import/first
 import {
   addRemoteLibraryFromSource,
   createAppInternalMyReaderLibrary,

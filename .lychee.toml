@@ -1,0 +1,7 @@
+# Local checks are deterministic and never make network requests.
+offline = true
+include_fragments = "anchor-only"
+no_progress = true
+hidden = true
+default_extension = "md"
+extensions = ["md", "mdc"]

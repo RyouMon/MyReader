@@ -369,7 +369,7 @@ pub async fn sync_run_library(
     report
         .map(Into::into)
         .map_err(CoreFfiError::from_core)
-        .map_err(|error| {
+        .inspect_err(|_error| {
             let mut progress = task
                 .progress
                 .lock()
@@ -379,7 +379,6 @@ pub async fn sync_run_library(
             } else {
                 format!("{}_failed", progress.stage)
             };
-            error
         })
 }
 

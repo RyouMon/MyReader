@@ -3,6 +3,9 @@
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "files": {
     "includes": [
+      "*.json",
+      "*.jsonc",
+      "*.cjs",
       "my-reader/**/*.ts",
       "my-reader/**/*.tsx",
       "my-reader/**/*.js",

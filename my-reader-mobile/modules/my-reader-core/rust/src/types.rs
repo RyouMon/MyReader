@@ -1437,8 +1437,7 @@ impl From<my_reader_core::api::sync::RetrySchedule> for RetrySchedule {
 pub fn required_i64(value: f64, field: &str) -> Result<i64, CoreFfiError> {
     if value.is_finite()
         && value.fract() == 0.0
-        && value >= -JS_SAFE_INTEGER_MAX
-        && value <= JS_SAFE_INTEGER_MAX
+        && (-JS_SAFE_INTEGER_MAX..=JS_SAFE_INTEGER_MAX).contains(&value)
     {
         Ok(value as i64)
     } else {
@@ -1449,7 +1448,7 @@ pub fn required_i64(value: f64, field: &str) -> Result<i64, CoreFfiError> {
 }
 
 pub fn required_u64(value: f64, field: &str) -> Result<u64, CoreFfiError> {
-    if value.is_finite() && value.fract() == 0.0 && value >= 0.0 && value <= JS_SAFE_INTEGER_MAX {
+    if value.is_finite() && value.fract() == 0.0 && (0.0..=JS_SAFE_INTEGER_MAX).contains(&value) {
         Ok(value as u64)
     } else {
         Err(CoreFfiError::core(format!(

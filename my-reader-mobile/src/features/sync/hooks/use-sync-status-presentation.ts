@@ -19,7 +19,6 @@ export function useSyncStatusPresentation() {
   const [clockNow, refreshClock] = useReducer(
     (_current: number, next: number) => next,
     // Capture the clock as state so the compiled projection has an explicit dependency.
-    // eslint-disable-next-line react-hooks/purity
     Date.now(),
   )
 

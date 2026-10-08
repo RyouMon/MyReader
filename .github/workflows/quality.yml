@@ -1,0 +1,185 @@
+name: Quality
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      deep:
+        description: Also run Rust coverage and online dependency audits
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 22.22.2
+
+jobs:
+  static:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate workflow syntax and expressions
+        uses: docker://rhysd/actionlint:1.7.12
+        with:
+          args: -color -shellcheck= -pyflakes=
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Lychee 0.24.2
+        run: |
+          mkdir -p "$RUNNER_TEMP/docs-qa"
+          cd "$RUNNER_TEMP/docs-qa"
+          curl --fail --location --retry 3 -o lychee.tar.gz https://github.com/lycheeverse/lychee/releases/download/lychee-v0.24.2/lychee-x86_64-unknown-linux-musl.tar.gz
+          sha256sum --check <<'CHECKSUMS'
+          73657a111819a30c47c08352896796f23d64e4eb2b3ed39b6d32149241566fc5  lychee.tar.gz
+          CHECKSUMS
+          tar -xzf lychee.tar.gz --strip-components=1
+          sudo install -m 755 lychee /usr/local/bin/
+      - run: pnpm qa
+      - name: Full lint debt report
+        if: always()
+        continue-on-error: true
+        run: pnpm lint:report
+      - name: Unused code report (requires human triage)
+        if: always()
+        continue-on-error: true
+        run: |
+          mkdir -p reports
+          pnpm exec knip --reporter json > reports/knip.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: static-quality-reports
+          path: reports/
+          retention-days: 14
+
+  javascript:
+    name: Coverage / ${{ matrix.package }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - package: "@my-reader/fonts"
+            command: test:coverage
+            directory: packages/fonts
+          - package: "@my-reader/i18n"
+            command: test:coverage
+            directory: packages/i18n
+          - package: "@my-reader/tools"
+            command: test:coverage
+            directory: packages/tools
+          - package: my-reader
+            command: test:unit:coverage
+            directory: my-reader
+          - package: my-reader-mobile
+            command: test:coverage
+            directory: my-reader-mobile
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter '${{ matrix.package }}' '${{ matrix.command }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-${{ strategy.job-index }}
+          path: ${{ matrix.directory }}/coverage/
+          retention-days: 14
+
+  mutation:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm qa:mutation
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-report
+          path: reports/mutation/
+          retention-days: 14
+
+  rust:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: "2"
+      CARGO_INCREMENTAL: "0"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.95.0
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Tauri build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf xdg-utils
+      - run: cargo fmt --all --check
+      - run: cargo clippy --locked --workspace --all-targets -- -D warnings
+      - run: cargo test --locked --workspace
+
+  deep:
+    if: github.event_name == 'workflow_dispatch' && inputs.deep
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: "2"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: dtolnay/rust-toolchain@1.95.0
+        with:
+          components: llvm-tools-preview
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov@0.9.1,cargo-audit@0.22.2
+      - run: mkdir -p reports/rust
+        if: always()
+      - run: pnpm qa:rust:coverage
+      - name: npm production dependency audit
+        if: always()
+        timeout-minutes: 5
+        run: pnpm audit --prod --audit-level high --json > reports/npm-audit.json
+      - name: Cargo dependency audit
+        if: always()
+        timeout-minutes: 5
+        run: cargo audit --json > reports/cargo-audit.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deep-quality-reports
+          path: reports/
+          retention-days: 14

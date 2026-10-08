@@ -31,7 +31,10 @@
   "scripts": {
     "check:generated": "node ../../scripts/generate-reader-viewport-anchor.mjs --check",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "test:mutation": "stryker run"
   },
   "devDependencies": {
     "@types/chroma-js": "^3.1.0",

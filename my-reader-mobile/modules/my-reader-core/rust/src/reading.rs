@@ -221,6 +221,8 @@ pub async fn reading_list_annotations(
 }
 
 #[uniffi::export(async_runtime = "tokio")]
+// Keep the existing platform contract; group parameters only in a deliberate API migration.
+#[allow(clippy::too_many_arguments)]
 pub async fn reading_add_annotation(
     sidecar_root_path: String,
     library_root_path: String,
@@ -247,6 +249,8 @@ pub async fn reading_add_annotation(
 }
 
 #[uniffi::export(async_runtime = "tokio")]
+// Keep the existing platform contract; group parameters only in a deliberate API migration.
+#[allow(clippy::too_many_arguments)]
 pub async fn reading_update_annotation(
     sidecar_root_path: String,
     library_root_path: String,
@@ -294,6 +298,8 @@ pub async fn reading_remove_annotation(
 }
 
 #[uniffi::export(async_runtime = "tokio")]
+// Keep the existing platform contract; group parameters only in a deliberate API migration.
+#[allow(clippy::too_many_arguments)]
 pub async fn reading_add_session_interval(
     sidecar_root_path: String,
     library_root_path: String,

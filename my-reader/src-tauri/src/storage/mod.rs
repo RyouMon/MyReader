@@ -159,12 +159,10 @@ pub async fn from_data_source_at_path(
     match &mut backend {
         StorageBackend::Webdav {
             inline_password,
-            credential_account,
+            credential_account: Some(account),
             ..
         } => {
-            if let Some(account) = credential_account {
-                *inline_password = credentials::read_webdav_password(account)?;
-            }
+            *inline_password = credentials::read_webdav_password(account)?;
         }
         StorageBackend::Onedrive {
             inline_access_token,

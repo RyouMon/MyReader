@@ -679,7 +679,7 @@ async fn upload_remote_book(
             }
             _ = tokio::time::sleep(Duration::from_millis(100)) => {
                 tick_count = tick_count.wrapping_add(1);
-                if tick_count % 5 == 0
+                if tick_count.is_multiple_of(5)
                     && !super::content::ContentService::pending_book_import_exists(
                         sidecar_root,
                         &pending.book_uuid,

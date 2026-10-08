@@ -34,7 +34,7 @@ async fn should_initialize_automerge_replica_when_local_library_syncs() {
     let app_data = tempfile::tempdir().unwrap();
     let original = tempfile::tempdir().unwrap();
     create_calibre_db(original.path()).await;
-    let mut config = AppConfig {
+    let config = AppConfig {
         libraries: vec![local_library(
             "lib-local",
             original.path().to_str().unwrap(),
@@ -42,7 +42,7 @@ async fn should_initialize_automerge_replica_when_local_library_syncs() {
         ..Default::default()
     };
 
-    let report = SyncService::sync_db_for_library(app_data.path(), &mut config, "lib-local")
+    let report = SyncService::sync_db_for_library(app_data.path(), &config, "lib-local")
         .await
         .expect("local sync should succeed");
     let sidecar = app_data.path().join("libraries").join("lib-local");
@@ -73,12 +73,12 @@ async fn should_return_not_found_when_remote_library_data_source_is_missing() {
     let cached_root = app_data.path().join("libraries").join("lib-remote");
     std::fs::create_dir_all(&cached_root).unwrap();
     create_calibre_db(&cached_root).await;
-    let mut config = AppConfig {
+    let config = AppConfig {
         libraries: vec![remote_library("lib-remote")],
         ..Default::default()
     };
 
-    let error = SyncService::sync_db_for_library(app_data.path(), &mut config, "lib-remote")
+    let error = SyncService::sync_db_for_library(app_data.path(), &config, "lib-remote")
         .await
         .expect_err("missing data source should fail");
 
@@ -88,9 +88,9 @@ async fn should_return_not_found_when_remote_library_data_source_is_missing() {
 #[tokio::test]
 async fn should_return_not_found_when_library_is_unknown() {
     let app_data = tempfile::tempdir().unwrap();
-    let mut config = AppConfig::default();
+    let config = AppConfig::default();
 
-    let error = SyncService::sync_db_for_library(app_data.path(), &mut config, "ghost")
+    let error = SyncService::sync_db_for_library(app_data.path(), &config, "ghost")
         .await
         .expect_err("unknown library should fail");
 

@@ -156,6 +156,12 @@ pub struct OnedriveTokenManager {
     refresh_lock: Mutex<()>,
 }
 
+impl Default for OnedriveTokenManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OnedriveTokenManager {
     pub fn new() -> Self {
         Self {
@@ -253,7 +259,7 @@ impl OnedriveTokenManager {
         let token_response = exchange_code_for_tokens(
             auth_url,
             token_url,
-            &cid,
+            cid,
             &redirect_uri,
             &code,
             pkce_verifier,
@@ -383,7 +389,7 @@ impl OnedriveTokenManager {
             stored.ok_or_else(|| AppError::Auth("No refresh token found".to_string()))?;
 
         let token_response =
-            request_token_refresh(auth_url, token_url, &cid, &refresh_token).await?;
+            request_token_refresh(auth_url, token_url, cid, &refresh_token).await?;
 
         let access_token = token_response.access_token().secret().to_string();
 
@@ -1365,7 +1371,7 @@ mod tests {
     ) -> Result<(), AppError> {
         let port = redirect_uri
             .split(':')
-            .last()
+            .next_back()
             .and_then(|s| s.parse::<u16>().ok())
             .ok_or_else(|| AppError::Auth("Invalid redirect URI port".to_string()))?;
 

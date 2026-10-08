@@ -1,0 +1,5 @@
+# Numbered ADRs preserve historical source locations. Check their document links;
+# source paths may describe code that has since moved or been deleted.
+# Lychee's include takes precedence over exclude.
+exclude = ['^file://']
+include = ['\.md(?:[?#].*)?$']

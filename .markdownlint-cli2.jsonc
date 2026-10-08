@@ -1,0 +1,26 @@
+{
+  "globs": [
+    "AGENTS.md",
+    "README*.md",
+    "docs/**/*.md",
+    ".github/*.md",
+    ".agents/rules/*.md",
+    "my-reader/README.md",
+    "my-reader-mobile/README.md"
+  ],
+  "ignores": ["docs/adr/[0-9]*.md", "docs/sync/**"],
+  "config": {
+    "default": false,
+    "MD001": true,
+    "MD009": true,
+    "MD010": true,
+    "MD011": true,
+    "MD014": true,
+    "MD018": true,
+    "MD019": true,
+    "MD023": true,
+    "MD027": true,
+    "MD039": true,
+    "MD042": true
+  }
+}

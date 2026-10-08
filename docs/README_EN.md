@@ -14,3 +14,5 @@ Community and security documents:
 - [Contributing Guide](../.github/CONTRIBUTING_EN.md)
 - [Code of Conduct](../.github/CODE_OF_CONDUCT_EN.md)
 - [Security Policy](../.github/SECURITY_EN.md)
+
+- [Quality engineering / 质量工程](./QUALITY.md): runnable checks, test scope and quality debt.

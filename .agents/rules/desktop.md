@@ -3,144 +3,19 @@ paths:
   - "my-reader/**/*"
 ---
 
-## Architecture
+# Desktop boundaries
 
-Desktop is a two-process app: **Tauri (Rust) backend** + **React frontend**, communicating via typed IPC.
+Read [current architecture](../../docs/ARCHITECTURE.md) for ownership and
+[quality checks](../../docs/QUALITY.md) for commands and test selection.
 
-### Shared Rust Backend — Layered Model
-
-```
-Tauri commands/        — typed IPC entry points
- ↓
-Tauri services/        — thin platform orchestration and DTO mapping
- ↓
-my-reader-core api/     — stable use-case boundary
- ↓
-services/              — shared business rules and use-case orchestration
- ↓
-repositories/ + infrastructure/ — SeaORM, SQLite, storage and registry adapters
-```
-
-**Rules**:
-- Tauri `commands/` calls thin Tauri `services/`; commands do not implement business rules.
-- Tauri `services/` may resolve platform paths, credentials, windows, events and DTOs, then call
-  `my_reader_core::api`; they must not reimplement filtering, sorting, validation, state transitions,
-  persistence or other cross-platform business behavior.
-- Shared business dependencies flow `api → services → repositories/infrastructure` inside
-  `my-reader-core`.
-- Tauri storage, Keychain/keyring, asset scope, protocol, streamer and lifecycle code remain platform
-  adapters. They do not become a second business backend.
-
-### React Frontend — Layered Model
-
-```
-routes/ + components/   — UI (TanStack Router pages, React components)
- ↓
-hooks/                  — React hooks (queries, reader, sync)
- ↓
-lib/                    — pure logic & Tauri IPC bridge (tauri-api, cover, readium, readFormats)
- ↓
-stores/                 — Zustand stores (appUiStore, libraryUiStore)
-```
-
-**Rules**:
-- UI calls `hooks/` and `stores/`; never calls `lib/` directly.
-- `hooks/` may call `lib/` and `stores/`.
-- `lib/` is framework-free pure logic + IPC bindings; no React, no Zustand.
-
-### Directory Map
-
-```
-my-reader/
-├── src/                          React frontend
-│   ├── routes/                   TanStack Router file-based routes (routeTree.gen.ts is auto-generated — do not hand-edit)
-│   ├── components/
-│   │   ├── library/              AppSidebar, BookCard, BookGrid, Toolbar
-│   │   ├── reader/               ReadBookPage, readium/ (Epub, Pdf, Divina), shared/ (chrome, panels)
-│   │   ├── settings/             forms/, sections/, WebdavFolderBrowser
-│   │   ├── common/               AppRow, GroupList, StatusNotice
-│   │   └── ui/                   shadcn/ui primitives (badge, button, dialog, input, select, sidebar, sheet…)
-│   ├── hooks/
-│   │   ├── queries/              React Query hooks (useLibrariesQuery, useDataSourcesQuery)
-│   │   ├── reader/               useLocatorProgressSync, usePaginatedBooks, useReadiumPublication…
-│   │   └── sync/                 useSyncActions
-│   ├── lib/                      Pure logic & IPC bridge — no React
-│   │   ├── tauri-api.ts          Typed IPC bindings (auto-generated from tauri-specta)
-│   │   ├── tauri-specta.ts       Specta-generated types (auto-generated — do not hand-edit)
-│   │   ├── type-contract.ts      Compile-time IPC ↔ DB type alignment assertions
-│   │   ├── cover.ts              Custom URI scheme cover URL builder
-│   │   ├── readFormats.ts        Format priority & picking logic
-│   │   ├── readerWindow.ts       Reader window management
-│   │   ├── pdfWorker.ts          PDF worker setup
-│   │   ├── a11y.ts               Accessibility helpers
-│   │   ├── utils.ts              General utilities
-│   │   └── readium/              Readium adapter layer (locator, fetcher, toc, settings bridge…)
-│   ├── stores/                   Zustand stores (appUiStore, libraryUiStore)
-│   ├── types/                    Shared TypeScript types
-│   ├── constants/                App constants
-│   ├── i18n/                     Internationalization (en, zh-CN)
-│   └── main.tsx                  Frontend entrypoint
-│
-├── src-tauri/src/                Rust backend
-│   ├── main.rs → lib.rs          Tauri app bootstrap
-│   ├── commands/                 IPC entry points (book, library, progress, reader, source)
-│   ├── services/                 Thin platform orchestration and Core adapters
-│   ├── auth/                     OAuth and platform credential storage
-│   ├── storage/                  Platform credential-to-Core storage adapters
-│   ├── cache.rs                  Cover cache management
-│   ├── config.rs                 App config
-│   ├── error.rs                  Error types
-│   ├── models.rs                 Shared DTOs
-│   ├── protocols.rs              URI scheme registration
-│   ├── streamer.rs               HTTP streamer for reader assets
-│   ├── reader_ui_prefs.rs        Reader UI preferences
-│   ├── storage_paths.rs          Path constants
-│   └── utils/                    HTTP client, IO helpers
-│
-├── ../my-reader-core/             Shared Rust business backend used by desktop and mobile
-│   └── src/                      api/, services/, repositories/, infrastructure/, models/
-│
-└── src-tauri/                    Tauri config (tauri.conf.json, Cargo.toml, icons/)
-```
-
-### Key Conventions
-
-- **Frontend ↔ Backend**: all communication through typed IPC in `lib/tauri-api.ts` (generated by tauri-specta). Never use raw `invoke()`.
-- **Custom URI schemes**: `bookcover://` and `bookfile://` registered in `lib.rs` for serving book assets to the reader WebView.
-- **Import alias**: `@/*` maps to `src/*`.
-- **Frontend entrypoint**: `src/main.tsx`; **backend entrypoint**: `src-tauri/src/main.rs` → `my_reader_lib::run()`.
-- **Rust version**: stable >= 1.85 required.
-
-## Commands
-
-```bash
-cd my-reader
-npm install          # Install dependencies
-npm run dev          # Vite dev server (port 1420)
-npm run tauri dev    # Full Tauri desktop app (first compile ~90s)
-npm run build        # Production build (tsc + vite build)
-npm run tauri build  # Build Tauri app bundle
-npm run preview      # Preview production build
-```
-
-## Testing
-
-> Full **desktop testing strategy** (five-layer architecture, tech choices, BDD/Gherkin conventions, coding standards, run commands): see `.agents/rules/tauri-testing-strategy.md`.
-
-### Required Post-Change Verification
-
-When modifying desktop frontend files under `my-reader/src/`, run the full desktop frontend unit test suite before final response:
-
-```bash
-pnpm --filter my-reader run test:unit
-```
-
-When modifying desktop Rust/Tauri files under `my-reader/src-tauri/`, run the full desktop Rust unit test suite before final response:
-
-```bash
-cd my-reader/src-tauri && cargo test
-```
-
-On Windows, `cargo test` may fail to run lib tests correctly in the native shell. If that happens, rerun the same command from WSL before treating the suite as failed.
-
-If both frontend and Rust/Tauri code are touched, run both suites. All tests must pass. Targeted test runs are allowed during development, but they are not a substitute for the final full relevant unit test run.
+- Tauri commands/services adapt platform state, credentials and DTOs to `my_reader_core::api`.
+  SQL, validation, filtering, CRDT and shared business transactions belong in Core.
+- React routes/components consume hooks and UI stores. Pure `lib/` helpers may be used directly;
+  backend operations use query/action hooks and the typed `lib/tauri-api.ts` facade.
+- `lib/` must not depend on React, hooks, components or stores at runtime. Shared reader contracts
+  live in `src/types/reader.ts`; `components/reader/types.ts` is a compatibility re-export.
+- Zustand stores own UI/device state; TanStack Query owns backend state.
+- Do not hand-edit `routeTree.gen.ts`, `tauri-specta.ts` or generated Reader scripts.
+- Run `pnpm test:desktop` after frontend changes; run `cargo test -p my-reader` after
+  Tauri changes. See Cargo.toml for the crate name if it changes.
+- Playwright with IPC mocks proves frontend behavior. It does not prove native Tauri behavior.

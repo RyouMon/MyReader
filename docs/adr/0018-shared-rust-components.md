@@ -2,7 +2,7 @@
 adr: ADR-0018
 proposal_date: 2026-07-27
 decision_date: 2026-07-27
-status: 已接受
+status: 部分实施、部分已由 ADR-0019 取代
 name: 使用分域 Rust Components 和聚合原生产物统一桌面与移动后端
 overview: 将跨端稳定的业务规则、数据访问和同步实现按 domain 收敛为平台无关的 Rust components，并为每个平台聚合成一个原生产物；桌面端通过薄 Tauri Commands 适配，移动端通过薄 Expo Native Module 与 UniFFI 适配。先以 sync domain 作为纵向试点验证组件边界、构建、契约、SQLite、异步任务、事件和真实跨端运行，试点通过后再按 domain 逐个迁移，不创建一个巨型 crate，也不进行一次性重写。
 isProject: true

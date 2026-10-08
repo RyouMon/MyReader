@@ -131,106 +131,6 @@ async fn serve_remote_cover(
     ))
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::models::DataSourceDetail;
-    use std::fs;
-
-    fn local_source(root: &Path) -> DataSourceConfig {
-        DataSourceConfig {
-            id: "ds-local".to_string(),
-            name: "Local".to_string(),
-            enabled: true,
-            detail: DataSourceDetail::Local {
-                root_path: root.to_string_lossy().to_string(),
-            },
-        }
-    }
-
-    fn remote_library(id: &str) -> LibraryConfig {
-        LibraryConfig {
-            library_type: Default::default(),
-            id: id.to_string(),
-            name: "Remote".to_string(),
-            path: String::new(),
-            source_type: Some("webdav".to_string()),
-            data_source_id: Some("ds-local".to_string()),
-            source_path: Some("Remote Library".to_string()),
-        }
-    }
-
-    #[tokio::test]
-    async fn serve_remote_cover_should_cache_not_found_and_skip_until_marker_is_cleared() {
-        let app_data = tempfile::tempdir().unwrap();
-        let remote_root = tempfile::tempdir().unwrap();
-        let lib = remote_library("lib-remote");
-        let source = local_source(remote_root.path());
-        let book_path = "Author/Missing Book";
-        let local_book_dir = library_book_file_path(&lib, app_data.path(), book_path);
-        let remote_path = remote_cover_path(&lib, book_path);
-        let marker = cache::missing_cover_marker_path(app_data.path(), &lib.id, &remote_path);
-        let local_cover = local_book_dir.join("cover.jpg");
-
-        let missing = serve_remote_cover(&lib, app_data.path(), source.clone(), book_path)
-            .await
-            .unwrap();
-        assert_eq!(missing.status().as_u16(), 404);
-        assert!(marker.exists());
-        assert!(!local_book_dir.join("cover.missing").exists());
-        let marker_store = cache::library_missing_cover_markers_dir(app_data.path(), &lib.id);
-        assert_eq!(marker.parent(), Some(marker_store.as_path()));
-
-        let remote_cover = remote_root
-            .path()
-            .join("Remote Library")
-            .join(book_path)
-            .join("cover.jpg");
-        fs::create_dir_all(remote_cover.parent().unwrap()).unwrap();
-        fs::write(&remote_cover, b"new-cover").unwrap();
-
-        let still_missing = serve_remote_cover(&lib, app_data.path(), source.clone(), book_path)
-            .await
-            .unwrap();
-        assert_eq!(still_missing.status().as_u16(), 404);
-        assert!(!local_cover.exists());
-
-        cache::clear_library_missing_cover_markers(app_data.path(), &lib.id).unwrap();
-        assert!(!marker.exists());
-
-        let loaded = serve_remote_cover(&lib, app_data.path(), source, book_path)
-            .await
-            .unwrap();
-        assert_eq!(loaded.status().as_u16(), 200);
-        assert_eq!(loaded.into_body(), b"new-cover".to_vec());
-        assert!(local_cover.exists());
-    }
-
-    #[tokio::test]
-    async fn serve_remote_cover_should_not_cache_non_not_found_errors() {
-        let app_data = tempfile::tempdir().unwrap();
-        let remote_root = tempfile::tempdir().unwrap();
-        let lib = remote_library("lib-remote");
-        let source = local_source(remote_root.path());
-        let book_path = "Author/Directory Cover";
-        let remote_path = remote_cover_path(&lib, book_path);
-        let marker = cache::missing_cover_marker_path(app_data.path(), &lib.id, &remote_path);
-        let remote_cover_dir = remote_root
-            .path()
-            .join("Remote Library")
-            .join(book_path)
-            .join("cover.jpg");
-        fs::create_dir_all(&remote_cover_dir).unwrap();
-
-        let err = serve_remote_cover(&lib, app_data.path(), source, book_path)
-            .await
-            .expect_err("directory read should fail without writing a missing-cover marker");
-
-        assert!(format!("{err}").contains("REMOTE_COVER_READ_FAILED"));
-        assert!(!marker.exists());
-    }
-}
-
 async fn serve_local_cover(
     lib: &LibraryConfig,
     app_data_dir: &Path,
@@ -441,4 +341,104 @@ pub fn bookfile_handler<R: tauri::Runtime>(
             .unwrap_or_else(|_| not_found_file());
         responder.respond(response);
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::DataSourceDetail;
+    use std::fs;
+
+    fn local_source(root: &Path) -> DataSourceConfig {
+        DataSourceConfig {
+            id: "ds-local".to_string(),
+            name: "Local".to_string(),
+            enabled: true,
+            detail: DataSourceDetail::Local {
+                root_path: root.to_string_lossy().to_string(),
+            },
+        }
+    }
+
+    fn remote_library(id: &str) -> LibraryConfig {
+        LibraryConfig {
+            library_type: Default::default(),
+            id: id.to_string(),
+            name: "Remote".to_string(),
+            path: String::new(),
+            source_type: Some("webdav".to_string()),
+            data_source_id: Some("ds-local".to_string()),
+            source_path: Some("Remote Library".to_string()),
+        }
+    }
+
+    #[tokio::test]
+    async fn serve_remote_cover_should_cache_not_found_and_skip_until_marker_is_cleared() {
+        let app_data = tempfile::tempdir().unwrap();
+        let remote_root = tempfile::tempdir().unwrap();
+        let lib = remote_library("lib-remote");
+        let source = local_source(remote_root.path());
+        let book_path = "Author/Missing Book";
+        let local_book_dir = library_book_file_path(&lib, app_data.path(), book_path);
+        let remote_path = remote_cover_path(&lib, book_path);
+        let marker = cache::missing_cover_marker_path(app_data.path(), &lib.id, &remote_path);
+        let local_cover = local_book_dir.join("cover.jpg");
+
+        let missing = serve_remote_cover(&lib, app_data.path(), source.clone(), book_path)
+            .await
+            .unwrap();
+        assert_eq!(missing.status().as_u16(), 404);
+        assert!(marker.exists());
+        assert!(!local_book_dir.join("cover.missing").exists());
+        let marker_store = cache::library_missing_cover_markers_dir(app_data.path(), &lib.id);
+        assert_eq!(marker.parent(), Some(marker_store.as_path()));
+
+        let remote_cover = remote_root
+            .path()
+            .join("Remote Library")
+            .join(book_path)
+            .join("cover.jpg");
+        fs::create_dir_all(remote_cover.parent().unwrap()).unwrap();
+        fs::write(&remote_cover, b"new-cover").unwrap();
+
+        let still_missing = serve_remote_cover(&lib, app_data.path(), source.clone(), book_path)
+            .await
+            .unwrap();
+        assert_eq!(still_missing.status().as_u16(), 404);
+        assert!(!local_cover.exists());
+
+        cache::clear_library_missing_cover_markers(app_data.path(), &lib.id).unwrap();
+        assert!(!marker.exists());
+
+        let loaded = serve_remote_cover(&lib, app_data.path(), source, book_path)
+            .await
+            .unwrap();
+        assert_eq!(loaded.status().as_u16(), 200);
+        assert_eq!(loaded.into_body(), b"new-cover".to_vec());
+        assert!(local_cover.exists());
+    }
+
+    #[tokio::test]
+    async fn serve_remote_cover_should_not_cache_non_not_found_errors() {
+        let app_data = tempfile::tempdir().unwrap();
+        let remote_root = tempfile::tempdir().unwrap();
+        let lib = remote_library("lib-remote");
+        let source = local_source(remote_root.path());
+        let book_path = "Author/Directory Cover";
+        let remote_path = remote_cover_path(&lib, book_path);
+        let marker = cache::missing_cover_marker_path(app_data.path(), &lib.id, &remote_path);
+        let remote_cover_dir = remote_root
+            .path()
+            .join("Remote Library")
+            .join(book_path)
+            .join("cover.jpg");
+        fs::create_dir_all(&remote_cover_dir).unwrap();
+
+        let err = serve_remote_cover(&lib, app_data.path(), source, book_path)
+            .await
+            .expect_err("directory read should fail without writing a missing-cover marker");
+
+        assert!(format!("{err}").contains("REMOTE_COVER_READ_FAILED"));
+        assert!(!marker.exists());
+    }
 }

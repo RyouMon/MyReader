@@ -1,0 +1,6 @@
+{
+  "extends": "../../my-reader-mobile/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "../../my-reader-mobile"
+  }
+}

@@ -20,12 +20,14 @@ struct CapturedRequest {
     body: Value,
 }
 
-fn tts_test_server() -> (
+type TtsTestServer = (
     String,
     Arc<Mutex<Vec<CapturedRequest>>>,
     tokio::sync::oneshot::Sender<()>,
     std::thread::JoinHandle<()>,
-) {
+);
+
+fn tts_test_server() -> TtsTestServer {
     let requests = Arc::new(Mutex::new(Vec::new()));
     let captured = requests.clone();
     let (address_tx, address_rx) = std::sync::mpsc::sync_channel(1);

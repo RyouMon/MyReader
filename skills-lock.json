@@ -86,11 +86,6 @@
       "sourceType": "github",
       "computedHash": "77faba608ea949351d1757e29e6cb726f6ec5937f7595be0593038a7d2d76bb9"
     },
-    "superdesign": {
-      "source": "superdesigndev/superdesign-skill",
-      "sourceType": "github",
-      "computedHash": "1b40558de735457eaaa3e94f5bd2f5004492922b6b1a7c7301773888633ba464"
-    },
     "tailwind-design-system": {
       "source": "wshobson/agents",
       "sourceType": "github",

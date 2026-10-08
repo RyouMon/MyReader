@@ -46,13 +46,12 @@ async fn main() {
 
     let cached_open_started = Instant::now();
     for _ in 0..iterations {
-        black_box(
-            my_reader_core::api::migrate_library_database(
-                &sidecar.path().join(".myreader/myreader.db"),
-            )
-            .await
-            .expect("open cached library database"),
-        );
+        let _: () = my_reader_core::api::migrate_library_database(
+            &sidecar.path().join(".myreader/myreader.db"),
+        )
+        .await
+        .expect("open cached library database");
+        black_box(());
     }
     print_measurement("cached_database_open", iterations, cached_open_started);
 

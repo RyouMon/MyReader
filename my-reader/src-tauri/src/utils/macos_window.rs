@@ -52,7 +52,7 @@ pub fn sync_standard_window_buttons<R: tauri::Runtime>(
 
     let space_between = NSView::frame(miniaturize).origin.x - close_rect.origin.x;
     for (index, button) in buttons.iter().flatten().enumerate() {
-        let mut rect = NSView::frame(&button);
+        let mut rect = NSView::frame(button);
         rect.origin.x = x + (index as f64 * space_between);
         button.setFrameOrigin(rect.origin);
     }

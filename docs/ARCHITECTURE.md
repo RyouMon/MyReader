@@ -2,7 +2,7 @@
 
 # MyReader 架构现状
 
-> 文档日期：2026-08-02
+> 审视日期：2026-10-08
 >
 > 本文件只描述当前已落地实现。历史方案和后续决策见 `docs/adr/`。
 
@@ -121,7 +121,7 @@ models/             跨层稳定业务 DTO
 - 阅读 session、完成记录和当前书库统计。
 - Automerge change、projection、outbox、远端交换、pull freshness、retry/suspend 和
   single-flight 规则。
-- 设备本地 TTS provider profile、默认引擎、voice mapping，以及 OpenAI-compatible 的语音发现、
+- 设备本地 TTS provider profile、默认引擎、voice mapping，以及 OpenAI-compatible / Qwen 的语音发现、
   音频合成、缓存和错误归一化。
 
 不进入 core 的平台能力包括 UI 状态、Readium Navigator、窗口、系统目录授权、secure storage、
@@ -133,7 +133,7 @@ TTS 遵循 [ADR-0022](./adr/0022-adopt-readium-tts-and-core-provider-architectur
 正文切分、当前句、Locator 和 Decoration；`my-reader-core` 负责 provider 配置、网络推理、音频
 artifact 与统一错误；平台 adapter 负责系统语音、音频播放和 keyring/SecureStore。Core 配置只
 保存 credential reference，不保存密钥。当前产品切片只面向可朗读的文本 EPUB，并以前台会话
-提供 System 和 OpenAI-compatible 引擎。桌面与移动产品层通过 `@my-reader/tools/reader-tts-session`
+提供 System、OpenAI-compatible 和 Qwen 引擎。桌面与移动产品层通过 `@my-reader/tools/reader-tts-session`
 共享 session/generation、终态隔离、导航去重和暂停恢复状态机；Readium Locator 与实际播放继续由
 平台 adapter 持有。
 
