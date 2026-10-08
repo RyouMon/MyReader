@@ -640,14 +640,17 @@ function BookFormatActionMenuItem({
   })
   const action = getFileAction(downloadState)
   const resolvedAction = requestedAction ?? action
+  const actionPending = pending && resolvedAction !== "cancel"
   const disabled =
     !libraryId ||
-    pending ||
+    actionPending ||
     !action ||
     !resolvedAction ||
     (resolvedAction === "upload" && !bookUuid) ||
-    (requestedAction != null && action !== requestedAction)
-  const Icon = pending ? Loader2 : actionIcon(resolvedAction ?? "download")
+    resolvedAction !== action
+  const Icon = actionPending
+    ? Loader2
+    : actionIcon(resolvedAction ?? "download")
 
   useEffect(() => {
     onActionChange?.(action)
@@ -700,6 +703,14 @@ function BookFormatActionMenuItem({
         })
       } else {
         await invalidateFileState()
+        toast.error(
+          t(
+            resolvedAction === "cancel"
+              ? "bookDetail.cancelDownloadFailed"
+              : "bookDetail.deleteFileFailed",
+          ),
+          { description: formatApiError(err) },
+        )
       }
       console.error(
         `Failed to run book file action "${resolvedAction}". library id: "${libraryId}", book id: ${bookId}, format: "${fmt}", error:`,
@@ -720,7 +731,7 @@ function BookFormatActionMenuItem({
       }}
     >
       {requestedAction == null ? (
-        <Icon className={pending ? "animate-spin" : undefined} />
+        <Icon className={actionPending ? "animate-spin" : undefined} />
       ) : null}
       {requestedAction == null && action ? t(`bookMore.${action}`) : fmt}
     </Item>

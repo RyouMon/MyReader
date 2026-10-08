@@ -101,10 +101,11 @@ export async function injectTauriInternals(target: Page | BrowserContext) {
           if (once) callbacks.delete(id)
           return cb?.(data)
         })
-        // @ts-expect-error - __TAURI_INTERNALS__ is not defined in the window object
         ;(
-          window.__TAURI_INTERNALS__ as unknown as Record<string, unknown>
-        ).callbacks = callbacks
+          window as unknown as {
+            __TAURI_INTERNALS__: { callbacks: typeof callbacks }
+          }
+        ).__TAURI_INTERNALS__.callbacks = callbacks
         return id
       },
       metadata: {

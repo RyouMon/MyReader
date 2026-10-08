@@ -34,7 +34,15 @@ class FakeSpeechSynthesis {
   ) {}
 
   getVoices() {
-    return []
+    return [
+      {
+        default: true,
+        lang: "en-US",
+        localService: true,
+        name: "Test Voice",
+        voiceURI: "test-voice",
+      },
+    ]
   }
 
   addEventListener() {}

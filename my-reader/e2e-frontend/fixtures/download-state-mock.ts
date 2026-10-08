@@ -1,6 +1,7 @@
+import { fileURLToPath } from "node:url"
 import type { BookDetail } from "@/lib/tauri-api"
 import type { Page } from "@playwright/test"
-import { TEST_LIBRARY_ID } from "./library-mock"
+import { setupLibraryMocks, TEST_LIBRARY_ID } from "./library-mock"
 
 export type FileStatus =
   | "未下载"
@@ -21,9 +22,18 @@ type DownloadProgressStatus =
   | "cancelled"
 
 export async function setupDownloadStateMocks(page: Page) {
+  await setupLibraryMocks(page, 1)
+  const extractedDirPath = `http://localhost:1420/@fs${fileURLToPath(
+    new URL("../../../my-reader-mobile/e2e/fixtures/tts-book", import.meta.url),
+  )}`
   await page.addInitScript(
-    (arg: { libraryId: string; bookId: number; formats: string[] }) => {
-      const { libraryId, bookId, formats } = arg
+    (arg: {
+      libraryId: string
+      bookId: number
+      formats: string[]
+      extractedDirPath: string
+    }) => {
+      const { libraryId, bookId, formats, extractedDirPath } = arg
       const state = {
         librarySourceType: "webdav",
         selectedFormat: "EPUB",
@@ -31,7 +41,14 @@ export async function setupDownloadStateMocks(page: Page) {
         fileStates: Object.fromEntries(
           formats.map((format) => [format, "remote_only"]),
         ) as Record<string, string>,
-        progress: {} as Record<string, unknown>,
+        progress: {} as Record<string, DownloadProgressStatus>,
+        failures: {} as Record<string, string>,
+        holdStart: false,
+        rejectStart: null as ((reason: Error) => void) | null,
+        commands: [] as Array<{
+          command: string
+          args: Record<string, unknown>
+        }>,
         calls: {
           cancel_book_download: 0,
           delete_local_book_file: 0,
@@ -91,7 +108,11 @@ export async function setupDownloadStateMocks(page: Page) {
         return null
       }
 
-      function emit(format: string, status: DownloadProgressStatus) {
+      function emit(
+        format: string,
+        status: DownloadProgressStatus,
+        bytesWritten = 512,
+      ) {
         const testApi = (
           window as unknown as {
             __TAURI_TEST__?: {
@@ -104,7 +125,7 @@ export async function setupDownloadStateMocks(page: Page) {
           bookId,
           format,
           status,
-          bytesWritten: status === "downloading" ? 512 : 0,
+          bytesWritten: status === "downloading" ? bytesWritten : 0,
           totalBytes: 1024,
           error: status === "error" ? "网络错误" : undefined,
         }
@@ -176,18 +197,29 @@ export async function setupDownloadStateMocks(page: Page) {
             },
           ),
         download_book_file: (args) => {
+          state.commands.push({ command: "download_book_file", args })
           state.calls.download_book_file += 1
           const format = String(args.format).toUpperCase()
           setStatus(format, "准备下载")
+          if (state.holdStart) {
+            return new Promise((_resolve, reject) => {
+              state.rejectStart = reject
+            })
+          }
           return null
         },
         cancel_book_download: (args) => {
+          state.commands.push({ command: "cancel_book_download", args })
           state.calls.cancel_book_download += 1
           const format = String(args.format).toUpperCase()
           setStatus(format, "已取消")
           return null
         },
         delete_local_book_file: (args) => {
+          state.commands.push({ command: "delete_local_book_file", args })
+          if (state.failures.delete_local_book_file) {
+            throw new Error(state.failures.delete_local_book_file)
+          }
           state.calls.delete_local_book_file += 1
           const format = String(args.format).toUpperCase()
           state.fileStates[format] = "remote_only"
@@ -205,8 +237,7 @@ export async function setupDownloadStateMocks(page: Page) {
           }
           return {
             filePath: `/mock/books/${bookId}.${format.toLowerCase()}`,
-            extractedDirPath:
-              format === "EPUB" ? `/mock/books/${bookId}` : undefined,
+            extractedDirPath: format === "EPUB" ? extractedDirPath : undefined,
             extractedEntries: [],
           }
         },
@@ -247,6 +278,21 @@ export async function setupDownloadStateMocks(page: Page) {
             state.librarySourceType = sourceType
           },
           emit,
+          replay: () => {
+            for (const [format, status] of Object.entries(state.progress))
+              emit(format, status)
+          },
+          holdStart: () => {
+            state.holdStart = true
+          },
+          rejectStart: () => {
+            state.holdStart = false
+            state.rejectStart?.(new Error("网络错误"))
+          },
+          failDelete: () => {
+            state.failures.delete_local_book_file = "删除失败"
+          },
+          commands: state.commands,
           calls: state.calls,
         }
       ;(window as unknown as Record<string, unknown>).__TAURI_IPC_HANDLERS__ =
@@ -256,6 +302,7 @@ export async function setupDownloadStateMocks(page: Page) {
       libraryId: TEST_LIBRARY_ID,
       bookId: TEST_BOOK_ID,
       formats: [...TEST_FORMATS],
+      extractedDirPath,
     },
   )
   await page.goto("about:blank")
@@ -386,4 +433,39 @@ export async function setMockWindowKind(page: Page, kind: "main" | "reader") {
       currentWebview: { windowLabel: label, label },
     }
   }, kind)
+}
+
+interface DownloadStateMock {
+  setStatus: (format: string, status: FileStatus) => void
+  emit: (
+    format: string,
+    status: DownloadProgressStatus,
+    bytesWritten?: number,
+  ) => void
+  replay: () => void
+  holdStart: () => void
+  rejectStart: () => void
+  failDelete: () => void
+  commands: Array<{ command: string; args: Record<string, unknown> }>
+}
+
+declare global {
+  interface Window {
+    __DOWNLOAD_STATE_MOCK__: DownloadStateMock
+  }
+}
+
+export async function emitMockDownloadStatus(page: Page, status: FileStatus) {
+  await page.evaluate(
+    (status) => window.__DOWNLOAD_STATE_MOCK__.setStatus("EPUB", status),
+    status,
+  )
+}
+
+export async function replayMockDownloadProgress(page: Page) {
+  await page.evaluate(() => window.__DOWNLOAD_STATE_MOCK__.replay())
+}
+
+export async function mockDownloadCommands(page: Page) {
+  return page.evaluate(() => window.__DOWNLOAD_STATE_MOCK__.commands)
 }
