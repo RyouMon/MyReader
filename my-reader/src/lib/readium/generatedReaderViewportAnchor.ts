@@ -678,7 +678,7 @@ export function captureReaderViewportAnchor(
       )
       if (!point?.node.data.trim()) continue
       const rect = pointRect(document, point)
-      if (!rect) continue
+      if (!rect || !visibleRect(window, rect)) continue
       const distance = Math.hypot(
         rect.left + rect.width / 2 - centerX,
         rect.top + rect.height / 2 - centerY,
@@ -687,7 +687,7 @@ export function captureReaderViewportAnchor(
     }
   }
 
-  if (!best) return null
+  if (!best) return captureReaderViewportStartAnchor(window)
   return captureTextPoint(window, best.point, best.rect)
 }
 

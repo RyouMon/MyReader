@@ -537,6 +537,32 @@ describe("reader viewport anchor capture", () => {
     expect(captureReaderViewportAnchor(window)?.cssSelector).toBe("#anchor")
   })
 
+  it("ignores a neighboring page returned by caret hit testing in whitespace", () => {
+    document.body.innerHTML = '<p id="offscreen">Next page</p>'
+    useViewport(100, 100)
+    const text = document.querySelector("p")!.firstChild!
+    overrideProperty(document, "caretRangeFromPoint", () => rangeAt(text, 0))
+    useRangeRects([rect(110, 10)])
+
+    expect(captureReaderViewportAnchor(window)).toBeNull()
+  })
+
+  it("anchors visible text when center samples all resolve to another page", () => {
+    document.body.innerHTML =
+      '<p id="visible">Current page</p><p id="offscreen">Next page</p>'
+    useViewport(100, 100)
+    const visible = document.querySelector("#visible")!.firstChild!
+    const offscreen = document.querySelector("#offscreen")!.firstChild!
+    overrideProperty(document, "caretRangeFromPoint", () =>
+      rangeAt(offscreen, 0),
+    )
+    useRangeRects((range) => [
+      range.startContainer === visible ? rect(10, 10) : rect(110, 10),
+    ])
+
+    expect(captureReaderViewportAnchor(window)?.cssSelector).toBe("#visible")
+  })
+
   it("should return null when no caret API resolves visible text", () => {
     overrideProperty(document, "caretPositionFromPoint", undefined)
     overrideProperty(document, "caretRangeFromPoint", undefined)
