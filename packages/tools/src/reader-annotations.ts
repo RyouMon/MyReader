@@ -92,6 +92,32 @@ function publicationPositionIndex(
   return canResolve ? positionIndexForLocator(positions, locator) : undefined
 }
 
+function compareOptionalNumbers(
+  left: number | undefined,
+  right: number | undefined,
+): number {
+  const a = finiteNumber(left)
+  const b = finiteNumber(right)
+  return a == null || b == null ? 0 : a - b
+}
+
+function compareLocatorProgress(left: ReaderLocator, right: ReaderLocator) {
+  if (hrefRoughlyMatches(left.href, right.href)) {
+    const progression = compareOptionalNumbers(
+      left.locations?.progression,
+      right.locations?.progression,
+    )
+    if (progression !== 0) return progression
+  }
+  return (
+    compareOptionalNumbers(
+      left.locations?.totalProgression,
+      right.locations?.totalProgression,
+    ) ||
+    compareOptionalNumbers(left.locations?.position, right.locations?.position)
+  )
+}
+
 export function sortReaderAnnotations<T extends ReaderAnnotationLike>(
   annotations: readonly T[],
   positions: readonly ReaderLocator[] = [],
@@ -112,45 +138,8 @@ export function sortReaderAnnotations<T extends ReaderAnnotationLike>(
         return leftPositionIndex - rightPositionIndex
       }
 
-      if (hrefRoughlyMatches(left.locator.href, right.locator.href)) {
-        const leftProgression = finiteNumber(
-          left.locator.locations?.progression,
-        )
-        const rightProgression = finiteNumber(
-          right.locator.locations?.progression,
-        )
-        if (
-          leftProgression != null &&
-          rightProgression != null &&
-          leftProgression !== rightProgression
-        ) {
-          return leftProgression - rightProgression
-        }
-      }
-
-      const leftTotalProgression = finiteNumber(
-        left.locator.locations?.totalProgression,
-      )
-      const rightTotalProgression = finiteNumber(
-        right.locator.locations?.totalProgression,
-      )
-      if (
-        leftTotalProgression != null &&
-        rightTotalProgression != null &&
-        leftTotalProgression !== rightTotalProgression
-      ) {
-        return leftTotalProgression - rightTotalProgression
-      }
-
-      const leftPosition = finiteNumber(left.locator.locations?.position)
-      const rightPosition = finiteNumber(right.locator.locations?.position)
-      if (
-        leftPosition != null &&
-        rightPosition != null &&
-        leftPosition !== rightPosition
-      ) {
-        return leftPosition - rightPosition
-      }
+      const progressOrder = compareLocatorProgress(left.locator, right.locator)
+      if (progressOrder !== 0) return progressOrder
 
       if (left.createdAt !== right.createdAt) {
         return left.createdAt - right.createdAt

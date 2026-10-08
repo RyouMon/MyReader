@@ -470,6 +470,35 @@ function firstTextPointInVisibleCandidate(
   return null
 }
 
+function leadingVisibleTextCandidate(
+  window: Window,
+  node: Text,
+  best: VisibleTextCandidate | null,
+): VisibleTextCandidate | null {
+  const parent = node.parentElement
+  if (!node.data.trim() || !parent) return best
+  const style = window.getComputedStyle(parent)
+  if (style.display === "none" || style.visibility === "hidden") return best
+  const range = window.document.createRange()
+  range.selectNodeContents(node)
+  for (const sourceRect of Array.from(range.getClientRects())) {
+    const rect = visibleRect(window, sourceRect)
+    if (!rect) continue
+    const direction = style.direction || "ltr"
+    const writingMode = style.writingMode || "horizontal-tb"
+    const candidate: VisibleTextCandidate = {
+      node,
+      rect,
+      direction,
+      writingMode,
+      order: visibleTextOrder(window, rect, direction, writingMode),
+    }
+    if (!best || precedesVisibleTextOrder(candidate.order, best.order))
+      best = candidate
+  }
+  return best
+}
+
 /** Captures the first rendered text position in the current page or viewport. */
 export function captureReaderViewportStartAnchor(
   window: Window,
@@ -481,31 +510,7 @@ export function captureReaderViewportStartAnchor(
   let current = walker.nextNode()
 
   while (current) {
-    const node = current as Text
-    const parent = node.parentElement
-    if (node.data.trim() && parent) {
-      const style = window.getComputedStyle(parent)
-      if (style.display !== "none" && style.visibility !== "hidden") {
-        const range = document.createRange()
-        range.selectNodeContents(node)
-        for (const sourceRect of Array.from(range.getClientRects())) {
-          const rect = visibleRect(window, sourceRect)
-          if (!rect) continue
-          const direction = style.direction || "ltr"
-          const writingMode = style.writingMode || "horizontal-tb"
-          const candidate: VisibleTextCandidate = {
-            node,
-            rect,
-            direction,
-            writingMode,
-            order: visibleTextOrder(window, rect, direction, writingMode),
-          }
-          if (!best || precedesVisibleTextOrder(candidate.order, best.order)) {
-            best = candidate
-          }
-        }
-      }
-    }
+    best = leadingVisibleTextCandidate(window, current as Text, best)
     current = walker.nextNode()
   }
 

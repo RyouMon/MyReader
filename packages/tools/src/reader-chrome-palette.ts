@@ -17,6 +17,19 @@ export function readerChromeUnderlay(
   return mixReaderChromeColor(surface, background, 12)
 }
 
+function actionTextColor(
+  surface: string,
+  ink: string,
+  inkTone: number,
+  toneHex: (tone: number) => string,
+): string {
+  if (chroma.contrast(surface, ink) >= 4.5) return ink
+  for (let tone = inkTone; tone >= 0; tone -= 1) {
+    if (chroma.contrast(surface, toneHex(tone)) >= 4.5) return toneHex(tone)
+  }
+  return ink
+}
+
 /** Derives accessible reader chrome colors from the reading foreground/background. */
 export function readerChromePalette(ink: string, background: string) {
   const [backgroundTone, backgroundChroma, backgroundHue] =
@@ -65,15 +78,7 @@ export function readerChromePalette(ink: string, background: string) {
   }
 
   const actionSurface = toneHex(actionTone)
-  let actionText = ink
-  if (chroma.contrast(actionSurface, ink) < 4.5) {
-    for (let tone = inkTone; tone >= 0; tone -= 1) {
-      if (chroma.contrast(actionSurface, toneHex(tone)) >= 4.5) {
-        actionText = toneHex(tone)
-        break
-      }
-    }
-  }
+  const actionText = actionTextColor(actionSurface, ink, inkTone, toneHex)
 
   return {
     bg: background,

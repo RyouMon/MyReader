@@ -152,7 +152,11 @@ export function positionIndexForLocator(
   positions: readonly ReaderLocator[] | undefined,
   locator: ReaderLocator,
 ): number {
-  const position = locator.locations?.position
+  const {
+    position,
+    progression: localProgression,
+    totalProgression,
+  } = locator.locations ?? {}
   if (typeof position === "number" && position >= 1) {
     const matchingPosition = positions?.findIndex(
       (candidate) => candidate.locations?.position === position,
@@ -168,7 +172,6 @@ export function positionIndexForLocator(
   const matchingResource = positions
     .map((candidate, index) => ({ candidate, index }))
     .filter(({ candidate }) => hrefRoughlyMatches(candidate.href, locator.href))
-  const localProgression = locator.locations?.progression
   if (
     matchingResource.length > 0 &&
     typeof localProgression === "number" &&
@@ -188,8 +191,7 @@ export function positionIndexForLocator(
   }
   if (matchingResource.length > 0) return matchingResource[0]!.index
 
-  const progression =
-    locator.locations?.totalProgression ?? locator.locations?.progression
+  const progression = totalProgression ?? localProgression
   if (progression != null && Number.isFinite(progression)) {
     return clampPositionIndex(
       Math.round(progression * (positions.length - 1)),
@@ -432,16 +434,166 @@ export function enhanceTocItemsWithContentLocators(
   return changed ? enhanced : tocItems
 }
 
-export function resolveReaderToc({
-  toc,
+function hasNestedTocPosition(
+  toc: ReaderTocItem[],
+  positions: ReaderLocator[] | undefined,
+  exactItem: ReaderTocItem,
+  href: string,
+  page: number,
+): boolean {
+  return toc.some((item) => {
+    if (item === exactItem || !item.href || !hasFragment(item.href))
+      return false
+    if (!hrefRoughlyMatches(href, item.href)) return false
+    const position = tocItemPositionIndex(item, positions)
+    return position != null && position <= page
+  })
+}
+
+function resolveResourcePosition(
+  toc: ReaderTocItem[],
+  positions: ReaderLocator[] | undefined,
+  href: string,
+  page: number,
+  progression: number | undefined,
+): ReaderTocResolution | null {
+  const exactIndex = exactHrefIndex(toc, href)
+  const exactItem = exactIndex >= 0 ? toc[exactIndex] : undefined
+  const positionItemIndex = positionHrefIndex(toc, positions, page)
+  const closestBeforeIndex = closestBeforePositionIndex(toc, positions, page)
+  if (
+    positionItemIndex >= 0 &&
+    exactIndex >= 0 &&
+    positionItemIndex > exactIndex
+  ) {
+    return itemResolution(toc, positionItemIndex, page, "resource-position")
+  }
+
+  if (exactItem && tocItemPositionIndex(exactItem, positions) === page) {
+    return itemResolution(toc, exactIndex, page, "exact-position")
+  }
+
+  if (
+    exactItem &&
+    (closestBeforeIndex < 0 || closestBeforeIndex <= exactIndex) &&
+    progression != null &&
+    !hasStartedNestedTocItem(toc, positions, exactItem, href, progression)
+  ) {
+    return itemResolution(toc, exactIndex, page, "resource-start")
+  }
+
+  if (exactItem && progression == null) {
+    const nestedStarted = hasNestedTocPosition(
+      toc,
+      positions,
+      exactItem,
+      href,
+      page,
+    )
+    if (
+      !nestedStarted &&
+      (closestBeforeIndex < 0 || closestBeforeIndex <= exactIndex)
+    ) {
+      return itemResolution(toc, exactIndex, page, "resource-start")
+    }
+  }
+  return null
+}
+
+function hasContentProgressions(
+  toc: ReaderTocItem[],
+  positions: ReaderLocator[] | undefined,
+  href: string,
+): boolean {
+  const sameResourceProgressions =
+    href == null
+      ? []
+      : toc
+          .filter(
+            (item) => item.href != null && hrefRoughlyMatches(href, item.href),
+          )
+          .map((item) => locatorProgression(tocItemLocator(item, positions)))
+          .filter((value): value is number => value != null)
+  return (
+    href != null &&
+    toc.some(
+      (item) =>
+        item.locatorSource === "content" &&
+        item.href != null &&
+        hrefRoughlyMatches(href, item.href),
+    ) &&
+    new Set(sameResourceProgressions).size > 1
+  )
+}
+
+function resolveTocByHref(
+  toc: ReaderTocItem[],
+  positions: ReaderLocator[] | undefined,
+  href: string,
+  page: number | null,
+  progression: number | undefined,
+): ReaderTocResolution | null {
+  if (hasFragment(href) || page == null) {
+    const exactIndex = exactHrefIndex(toc, href)
+    if (
+      exactIndex >= 0 &&
+      tocItemHasStarted(toc[exactIndex]!, positions, page)
+    ) {
+      return itemResolution(toc, exactIndex, page, "exact-fragment")
+    }
+  }
+
+  if (
+    progression != null &&
+    !hasFragment(href) &&
+    hasContentProgressions(toc, positions, href)
+  ) {
+    const closestByProgression = closestProgressionIndex(
+      toc,
+      positions,
+      href,
+      progression,
+    )
+    if (closestByProgression >= 0) {
+      return itemResolution(toc, closestByProgression, page, "progression")
+    }
+  }
+
+  if (!hasFragment(href) && page != null) {
+    const resource = resolveResourcePosition(
+      toc,
+      positions,
+      href,
+      page,
+      progression,
+    )
+    if (resource) return resource
+  }
+
+  if (progression != null && !hasFragment(href)) {
+    const closestByProgression = closestProgressionIndex(
+      toc,
+      positions,
+      href,
+      progression,
+    )
+    if (closestByProgression >= 0) {
+      return itemResolution(toc, closestByProgression, page, "progression")
+    }
+  }
+
+  return null
+}
+
+function tocLocation({
   positions,
   locator,
   currentHref,
   currentPage,
-  currentTitle,
-  selectedTocItem,
-  fallbackTitle,
-}: ResolveReaderTocInput): ReaderTocResolution {
+}: Pick<
+  ResolveReaderTocInput,
+  "positions" | "locator" | "currentHref" | "currentPage"
+>) {
   const locatorWithFragments = locator
     ? locatorWithHrefFragments(locator)
     : undefined
@@ -453,6 +605,25 @@ export function resolveReaderToc({
         ? positionIndexForLocator(positions, locatorWithFragments)
         : null
   const progression = locatorProgression(locatorWithFragments)
+  return { href, page, progression }
+}
+
+export function resolveReaderToc({
+  toc,
+  positions,
+  locator,
+  currentHref,
+  currentPage,
+  currentTitle,
+  selectedTocItem,
+  fallbackTitle,
+}: ResolveReaderTocInput): ReaderTocResolution {
+  const { href, page, progression } = tocLocation({
+    positions,
+    locator,
+    currentHref,
+    currentPage,
+  })
 
   if (toc.length === 0) {
     return emptyResolution(page, fallbackTitle ?? currentTitle ?? null)
@@ -468,106 +639,11 @@ export function resolveReaderToc({
     return itemResolution(toc, selectedIndex, page, "selected")
   }
 
-  if (href != null && (hasFragment(href) || page == null)) {
-    const exactIndex = exactHrefIndex(toc, href)
-    if (
-      exactIndex >= 0 &&
-      tocItemHasStarted(toc[exactIndex]!, positions, page)
-    ) {
-      return itemResolution(toc, exactIndex, page, "exact-fragment")
-    }
-  }
-
-  const sameResourceProgressions =
+  const byHref =
     href == null
-      ? []
-      : toc
-          .filter(
-            (item) => item.href != null && hrefRoughlyMatches(href, item.href),
-          )
-          .map((item) => locatorProgression(tocItemLocator(item, positions)))
-          .filter((value): value is number => value != null)
-  const hasEnhancedSameResourceProgression =
-    href != null &&
-    toc.some(
-      (item) =>
-        item.locatorSource === "content" &&
-        item.href != null &&
-        hrefRoughlyMatches(href, item.href),
-    ) &&
-    new Set(sameResourceProgressions).size > 1
-  if (
-    href != null &&
-    progression != null &&
-    !hasFragment(href) &&
-    hasEnhancedSameResourceProgression
-  ) {
-    const closestByProgression = closestProgressionIndex(
-      toc,
-      positions,
-      href,
-      progression,
-    )
-    if (closestByProgression >= 0) {
-      return itemResolution(toc, closestByProgression, page, "progression")
-    }
-  }
-
-  if (href != null && !hasFragment(href) && page != null) {
-    const exactIndex = exactHrefIndex(toc, href)
-    const exactItem = exactIndex >= 0 ? toc[exactIndex] : undefined
-    const positionItemIndex = positionHrefIndex(toc, positions, page)
-    const closestBeforeIndex = closestBeforePositionIndex(toc, positions, page)
-    if (
-      positionItemIndex >= 0 &&
-      exactIndex >= 0 &&
-      positionItemIndex > exactIndex
-    ) {
-      return itemResolution(toc, positionItemIndex, page, "resource-position")
-    }
-
-    if (exactItem && tocItemPositionIndex(exactItem, positions) === page) {
-      return itemResolution(toc, exactIndex, page, "exact-position")
-    }
-
-    if (
-      exactItem &&
-      (closestBeforeIndex < 0 || closestBeforeIndex <= exactIndex) &&
-      progression != null &&
-      !hasStartedNestedTocItem(toc, positions, exactItem, href, progression)
-    ) {
-      return itemResolution(toc, exactIndex, page, "resource-start")
-    }
-
-    if (exactItem && progression == null) {
-      const nestedStarted = toc.some(
-        (item) =>
-          item !== exactItem &&
-          item.href != null &&
-          hasFragment(item.href) &&
-          hrefRoughlyMatches(href, item.href) &&
-          tocItemPositionIndex(item, positions) != null &&
-          tocItemPositionIndex(item, positions)! <= page,
-      )
-      if (!nestedStarted) {
-        if (closestBeforeIndex < 0 || closestBeforeIndex <= exactIndex) {
-          return itemResolution(toc, exactIndex, page, "resource-start")
-        }
-      }
-    }
-  }
-
-  if (href != null && progression != null && !hasFragment(href)) {
-    const closestByProgression = closestProgressionIndex(
-      toc,
-      positions,
-      href,
-      progression,
-    )
-    if (closestByProgression >= 0) {
-      return itemResolution(toc, closestByProgression, page, "progression")
-    }
-  }
+      ? null
+      : resolveTocByHref(toc, positions, href, page, progression)
+  if (byHref) return byHref
 
   const closestBeforeIndex =
     page == null ? -1 : closestBeforePositionIndex(toc, positions, page)
