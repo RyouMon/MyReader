@@ -130,8 +130,7 @@ class CoverThumbnailGenerationQueue {
       this.activeKeys.size + this.cancelScheduledIdleCallbacks.size <
         this.concurrency()
     ) {
-      let cancelScheduledIdle: () => void
-      cancelScheduledIdle = requestThumbnailIdleCallback(() => {
+      const cancelScheduledIdle = requestThumbnailIdleCallback(() => {
         this.cancelScheduledIdleCallbacks.delete(cancelScheduledIdle)
         void this.runNext()
       })

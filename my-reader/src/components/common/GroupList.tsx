@@ -23,7 +23,7 @@ export function GroupList({ className, children }: GroupListProps) {
   )
 }
 
-interface GroupListItemProps extends ComponentProps<"div"> {}
+type GroupListItemProps = ComponentProps<"div">
 
 /**
  * 承载分组列表中的单条记录，统一分隔线、内边距与状态动效基线。

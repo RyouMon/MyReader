@@ -7,18 +7,18 @@ jest.mock("expo-file-system", () => {
 
     constructor(base: string, ...segments: string[]) {
       this.uri = [base, ...segments].join("/")
-      lastDirectory = this
+      directoryState.lastCreated = this
     }
   }
 
-  let lastDirectory: MockDirectory | undefined
+  const directoryState: { lastCreated?: MockDirectory } = {}
 
   return {
     Directory: MockDirectory,
     Paths: { document: "file:///documents" },
     __mockFileSystem: {
       Directory: MockDirectory,
-      getLastDirectory: () => lastDirectory,
+      getLastDirectory: () => directoryState.lastCreated,
     },
   }
 })

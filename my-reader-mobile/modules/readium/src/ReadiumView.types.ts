@@ -1,3 +1,5 @@
+import type { ViewProps } from "react-native"
+
 import type {
   DecorationActivatedEvent,
   DecorationGroup,
@@ -61,7 +63,7 @@ export type ReadiumProps = {
   selectionActions?: SelectionAction[]
   selectionMenu?: SelectionMenuConfig
   customSelectionMenu?: boolean
-  style?: any
+  style?: ViewProps["style"]
   onLocationChange?: (
     locator: Locator,
     source?: "tts" | "user",

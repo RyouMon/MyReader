@@ -9,6 +9,7 @@ import {
   useState,
 } from "react"
 import { findNodeHandle, StyleSheet, View } from "react-native"
+import type { LayoutChangeEvent, ViewProps } from "react-native"
 import { ReadiumModule } from "./ReadiumModule"
 import type { ReadiumProps, ReadiumViewRef } from "./ReadiumView.types"
 import type {
@@ -44,7 +45,7 @@ type NativeReadiumViewProps = {
   selectionActions?: SelectionAction[]
   selectionMenu?: SelectionMenuConfig
   customSelectionMenu?: boolean
-  style?: any
+  style?: ViewProps["style"]
   onLocationChange?: (e: {
     nativeEvent: {
       locator: Locator
@@ -130,7 +131,7 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
         nativeEvent: {
           layout: { width: layoutWidth, height: layoutHeight },
         },
-      }: any) => {
+      }: LayoutChangeEvent) => {
         setDimensions({ width: layoutWidth, height: layoutHeight })
       },
       [],

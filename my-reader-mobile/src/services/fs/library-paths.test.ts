@@ -10,7 +10,7 @@ jest.mock("@/src/services/fs/path", () => ({
 }))
 
 jest.mock("expo-file-system", () => {
-  let lastDirectory: MockDirectory | undefined
+  const directoryState: { lastCreated?: MockDirectory } = {}
 
   class MockDirectory {
     static nextExists = true
@@ -26,7 +26,7 @@ jest.mock("expo-file-system", () => {
       this.name = decodeURIComponent(
         this.uri.split("/").filter(Boolean).at(-1) ?? "",
       )
-      lastDirectory = this
+      directoryState.lastCreated = this
     }
   }
 
@@ -47,7 +47,7 @@ jest.mock("expo-file-system", () => {
     __mockFileSystem: {
       Directory: MockDirectory,
       File: MockFile,
-      getLastDirectory: () => lastDirectory,
+      getLastDirectory: () => directoryState.lastCreated,
     },
   }
 })

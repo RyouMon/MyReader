@@ -1,20 +1,7 @@
 {
   "my-reader-mobile/modules/readium/src/ReadiumView.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 2
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
-    }
-  },
-  "my-reader-mobile/modules/readium/src/ReadiumView.types.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "my-reader-mobile/src/components/ui/entity-list-row-icons.ts": {
-    "@typescript-eslint/no-require-imports": {
-      "count": 2
     }
   },
   "my-reader-mobile/src/domain/download/download-store.ts": {
@@ -81,11 +68,6 @@
   },
   "my-reader-mobile/src/features/library/components/books/book-detail/hero-section.tsx": {
     "sonarjs/cognitive-complexity": {
-      "count": 1
-    }
-  },
-  "my-reader-mobile/src/features/library/cover-thumbnail-generation-queue.ts": {
-    "prefer-const": {
       "count": 1
     }
   },
@@ -235,16 +217,6 @@
       "count": 2
     }
   },
-  "my-reader-mobile/src/services/fs/library-paths.test.ts": {
-    "@typescript-eslint/no-this-alias": {
-      "count": 1
-    }
-  },
-  "my-reader-mobile/src/services/fs/path.test.ts": {
-    "@typescript-eslint/no-this-alias": {
-      "count": 1
-    }
-  },
   "my-reader-mobile/src/services/remote/onedrive/backend.ts": {
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -262,11 +234,6 @@
   },
   "my-reader/src/components/common/EntityIcon.tsx": {
     "sonarjs/cognitive-complexity": {
-      "count": 1
-    }
-  },
-  "my-reader/src/components/common/GroupList.tsx": {
-    "@typescript-eslint/no-empty-object-type": {
       "count": 1
     }
   },
@@ -340,9 +307,6 @@
     }
   },
   "my-reader/src/components/reader/readium/ReadiumDivinaReader.tsx": {
-    "@typescript-eslint/no-unused-expressions": {
-      "count": 2
-    },
     "complexity": {
       "count": 1
     }
@@ -356,9 +320,6 @@
     }
   },
   "my-reader/src/components/reader/readium/ReadiumPdfReader.tsx": {
-    "@typescript-eslint/no-unused-expressions": {
-      "count": 2
-    },
     "complexity": {
       "count": 1
     }
@@ -429,9 +390,6 @@
     }
   },
   "my-reader/src/lib/readium/PdfNavigator.ts": {
-    "prefer-const": {
-      "count": 1
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
@@ -496,11 +454,6 @@
   },
   "packages/tools/src/reader-viewport-anchor.ts": {
     "sonarjs/cognitive-complexity": {
-      "count": 1
-    }
-  },
-  "scripts/sync-design-tokens.mjs": {
-    "no-regex-spaces": {
       "count": 1
     }
   }

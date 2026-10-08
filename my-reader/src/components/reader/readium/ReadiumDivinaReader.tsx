@@ -289,9 +289,9 @@ export function ReadiumDivinaReader({
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "ArrowRight" || event.key === "PageDown") {
-        direction === "rtl" ? onPrevious() : onNext()
+        ;(direction === "rtl" ? onPrevious : onNext)()
       } else if (event.key === "ArrowLeft" || event.key === "PageUp") {
-        direction === "rtl" ? onNext() : onPrevious()
+        ;(direction === "rtl" ? onNext : onPrevious)()
       }
     }
     window.addEventListener("keydown", onKey)

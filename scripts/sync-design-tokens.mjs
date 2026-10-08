@@ -387,7 +387,7 @@ function syncMobileTokens(mobileTokens, rootVars, darkVars) {
   )
 
   output = output.replace(
-    /(const APP_BORDER = \{\n  light: \{)[\s\S]*?(  \},\n  dark: \{)[\s\S]*(\n  \},\n\} as const;)/m,
+    /(const APP_BORDER = \{\n {2}light: \{)[\s\S]*?( {2}\},\n {2}dark: \{)[\s\S]*(\n {2}\},\n\} as const;)/m,
     `$1
     default: "${borderValueLight}",
     strong: "${borderStrongLight}",

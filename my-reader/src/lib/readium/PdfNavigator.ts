@@ -327,11 +327,10 @@ export class PdfNavigator {
     const cached = this.canvasRenderCache.get(canvas)
     if (cached?.key === key) return cached.promise
 
-    let entry: { key: string; promise: Promise<void> }
     const promise = this.queueCanvasRender(canvas, () =>
       render(() => this.canvasRenderCache.get(canvas) === entry),
     )
-    entry = { key, promise }
+    const entry: { key: string; promise: Promise<void> } = { key, promise }
     this.canvasRenderCache.set(canvas, entry)
     void promise.catch(() => {
       if (this.canvasRenderCache.get(canvas) === entry) {

@@ -1,4 +1,5 @@
-import type { ImageSourcePropType } from "react-native"
+import CALIBRE_LIBRARY_ICON from "../../../assets/images/calibre-library-icon.png"
+import MYREADER_LIBRARY_ICON from "../../../assets/images/myreader-library-icon.png"
 
 import type { ListRowIcon } from "./list-row"
 
@@ -9,11 +10,6 @@ export type EntityIconKind =
   | "localDataSource"
   | "webdavDataSource"
   | "onedriveDataSource"
-
-const MYREADER_LIBRARY_ICON =
-  require("../../../assets/images/myreader-library-icon.png") as ImageSourcePropType
-const CALIBRE_LIBRARY_ICON =
-  require("../../../assets/images/calibre-library-icon.png") as ImageSourcePropType
 
 /**
  * Shared entity icons for list rows. Libraries use their respective artwork;
