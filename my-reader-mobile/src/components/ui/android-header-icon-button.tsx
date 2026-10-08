@@ -7,6 +7,7 @@ import {
 import { size } from "@expo/ui/jetpack-compose/modifiers"
 import {
   Pressable,
+  View,
   type ColorValue,
   type ImageSourcePropType,
 } from "react-native"
@@ -72,29 +73,30 @@ export function AndroidHeaderIconButton({
             }
       }
     >
-      <Host matchContents pointerEvents="none" style={{ overflow: "visible" }}>
-        <IconButton
-          colors={{
-            contentColor,
-            disabledContentColor: palette.textMuted,
-          }}
-          enabled={enabled}
-        >
-          {loading ? (
-            <CircularProgressIndicator
-              color={palette.text}
-              modifiers={[size(20, 20)]}
-              strokeWidth={2}
-            />
-          ) : (
-            <Icon
-              source={icon}
-              size={24}
-              contentDescription={accessibilityLabel}
-            />
-          )}
-        </IconButton>
-      </Host>
+      <View
+        pointerEvents="none"
+        importantForAccessibility="no-hide-descendants"
+      >
+        <Host matchContents style={{ overflow: "visible" }}>
+          <IconButton
+            colors={{
+              contentColor,
+              disabledContentColor: palette.textMuted,
+            }}
+            enabled={enabled}
+          >
+            {loading ? (
+              <CircularProgressIndicator
+                color={palette.text}
+                modifiers={[size(20, 20)]}
+                strokeWidth={2}
+              />
+            ) : (
+              <Icon source={icon} size={24} />
+            )}
+          </IconButton>
+        </Host>
+      </View>
     </Pressable>
   )
 }

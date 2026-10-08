@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react-native"
+import { fireEvent, render, screen } from "@testing-library/react-native"
 import { Platform, processColor } from "react-native"
 
 import { AndroidHeaderIconButton } from "./android-header-icon-button"
@@ -14,7 +14,11 @@ jest.mock("@expo/ui/jetpack-compose", () => {
       React.createElement(View, props, children),
     Icon: () => React.createElement(View),
     IconButton: ({ children }: { children: React.ReactNode }) =>
-      React.createElement(View, null, children),
+      React.createElement(
+        View,
+        { accessible: true, accessibilityRole: "button" },
+        children,
+      ),
   }
 })
 
@@ -47,6 +51,39 @@ describe("AndroidHeaderIconButton", () => {
       configurable: true,
       value: initialPlatform,
     })
+  })
+
+  it("exposes one accessible action and invokes it once", () => {
+    const onPress = jest.fn()
+    render(
+      <AndroidHeaderIconButton
+        accessibilityLabel="Create"
+        icon={{ uri: "check" }}
+        onPress={onPress}
+      />,
+    )
+
+    expect(screen.getAllByRole("button")).toHaveLength(1)
+    fireEvent.press(screen.getByRole("button", { name: "Create" }))
+    expect(onPress).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    { disabled: true },
+    { loading: true },
+  ])("blocks the action when unavailable: %p", (state) => {
+    const onPress = jest.fn()
+    render(
+      <AndroidHeaderIconButton
+        accessibilityLabel="Create"
+        icon={{ uri: "check" }}
+        onPress={onPress}
+        {...state}
+      />,
+    )
+
+    fireEvent.press(screen.getByRole("button", { name: "Create" }))
+    expect(onPress).not.toHaveBeenCalled()
   })
 
   it("should show a bounded ripple over the requested background", () => {
