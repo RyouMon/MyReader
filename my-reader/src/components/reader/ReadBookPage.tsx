@@ -1,20 +1,8 @@
+import { useReaderBookSource } from "@/hooks/reader/useReaderBookSource"
 import { formatFileSize } from "@my-reader/tools/book-metadata"
-import type { Locator } from "@readium/shared"
-import { useQueryClient } from "@tanstack/react-query"
-import { useNavigate } from "@tanstack/react-router"
-import { convertFileSrc, isTauri } from "@tauri-apps/api/core"
-import { WebviewWindow } from "@tauri-apps/api/webviewWindow"
-import { getCurrentWindow } from "@tauri-apps/api/window"
+import { isTauri } from "@tauri-apps/api/core"
 import { AlertCircle, List, Loader2, Type } from "lucide-react"
-import pTimeout from "p-timeout"
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react"
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { ReadiumDivinaReader } from "@/components/reader/readium/ReadiumDivinaReader"
 import { ReadiumEpubReader } from "@/components/reader/readium/ReadiumEpubReader"
@@ -49,27 +37,11 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
-import type { ReadingProgressDto } from "@/hooks/reader/useLocatorProgressSync"
 import { useReaderPaginateEdgeHover } from "@/hooks/reader/useReaderPaginateEdgeHover"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
 import { useReadiumDivinaPublication } from "@/hooks/reader/useReadiumDivinaPublication"
 import { useReadiumPublication } from "@/hooks/reader/useReadiumPublication"
-import {
-  setDownloadCancelled,
-  setDownloadStarting,
-  setDownloadError as setGlobalDownloadError,
-  useDownloadProgress,
-} from "@/hooks/useDownloadProgress"
-import { isMainWebviewWindow, openReaderInNewWindow } from "@/lib/readerWindow"
-import { resolveReadFormat } from "@/lib/readFormats"
-import { parseSavedLocator } from "@/lib/readium/locator"
-import { api, type ReadingPositionCandidateDto } from "@/lib/tauri-api"
 import { useAppUiStore } from "@/stores/appUiStore"
-import { useLibraryUiStore } from "@/stores/libraryUiStore"
-
-function toReaderAssetSrc(path: string): string {
-  return isTauri() ? convertFileSrc(path) : path
-}
 
 const READER_STATE_ACTION_CLASS =
   "h-9 w-full rounded-md border border-reader-chrome-border bg-[var(--reader-chrome-action-surface)] px-4 text-sm font-medium text-[var(--reader-chrome-action-text)] transition-colors hover:bg-[var(--reader-chrome-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--reader-chrome-active)]"
@@ -94,367 +66,11 @@ export type ReadBookPageProps = {
 }
 
 export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const { t } = useTranslation()
-  const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
   const readerTheme = useAppUiStore((s) => s.reflowable.settings.theme)
-
-  const [bookTitle, setBookTitle] = useState("")
-  const [format, setFormat] = useState("")
-  const [bookPayload, setBookPayload] = useState<{
-    source: {
-      filePath: string
-      extractedDirPath?: string
-      extractedEntries: string[]
-    }
-    initialSavedLocator: Locator | null
-  } | null>(null)
-  const [positionConflict, setPositionConflict] = useState<
-    ReadingPositionCandidateDto[] | null
-  >(null)
-  const [resolvingPositionConflict, setResolvingPositionConflict] =
-    useState(false)
-  const [fetchError, setFetchError] = useState<string | null>(null)
-  const [downloadState, setDownloadState] = useState<
-    "idle" | "downloading" | "error" | "cancelled" | "done"
-  >("idle")
-  const [downloadError, setDownloadError] = useState<string | null>(null)
-  const closingRef = useRef(false)
   const readerStateRootRef = useRef<HTMLDivElement>(null)
-
-  const mainHandoff = useMemo(() => isMainWebviewWindow(), [])
-
-  const progressSyncEnabled =
-    isTauri() && !mainHandoff && Boolean(activeLibraryId && format)
-
-  const downloadProgress = useDownloadProgress(
-    activeLibraryId,
-    bookId ? Number(bookId) : null,
-    format || null,
-  )
-
-  useEffect(() => {
-    if (!mainHandoff) return
-    let cancelled = false
-    void (async () => {
-      try {
-        await openReaderInNewWindow(bookId, formatFromSearch)
-        if (cancelled) return
-        navigate({ to: "/book/$bookId", params: { bookId } })
-      } catch (e) {
-        console.error(`Failed to open reader window. book id: "${bookId}":`, e)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [mainHandoff, bookId, formatFromSearch, navigate])
-
-  useEffect(() => {
-    if (!downloadProgress) return
-    if (downloadProgress.status === "done") {
-      setDownloadState("done")
-      setDownloadError(null)
-    } else if (downloadProgress.status === "error") {
-      setDownloadState("error")
-      setDownloadError(downloadProgress.error ?? t("reader.downloadFailed"))
-    } else if (downloadProgress.status === "cancelled") {
-      setDownloadState("cancelled")
-      if (closingRef.current && isTauri()) {
-        void getCurrentWindow().close()
-      }
-    }
-  }, [downloadProgress, t])
-
-  useEffect(() => {
-    if (!isTauri()) return
-    if (!activeLibraryId || !format) return
-
-    const unlisten = getCurrentWindow().onCloseRequested(async (event) => {
-      if (closingRef.current) return
-      closingRef.current = true
-      event.preventDefault()
-
-      if (downloadState === "downloading") {
-        try {
-          setDownloadCancelled(
-            activeLibraryId,
-            Number(bookId),
-            format,
-            queryClient,
-          )
-          await api.cancelBookDownload(activeLibraryId, Number(bookId), format)
-        } catch (e) {
-          console.error(
-            `Failed to cancel download on reader close. library id: "${activeLibraryId}", book id: ${bookId}, format: "${format}", error:`,
-            e,
-          )
-        }
-      }
-
-      await getCurrentWindow().close()
-    })
-
-    return () => {
-      unlisten.then((fn) => fn()).catch(() => {})
-    }
-  }, [downloadState, activeLibraryId, bookId, format, queryClient])
-
-  useEffect(() => {
-    if (mainHandoff) return
-    let cancelled = false
-
-    async function load() {
-      if (!activeLibraryId) {
-        if (!cancelled) {
-          setFetchError(t("reader.noActiveLibrary"))
-        }
-        return
-      }
-      setBookPayload(null)
-      setPositionConflict(null)
-      setFetchError(null)
-      setDownloadState("idle")
-      setDownloadError(null)
-      let fmt: string | null = null
-      try {
-        const detail = await api.getBookDetail(activeLibraryId, Number(bookId))
-        if (cancelled) return
-
-        setBookTitle(detail.title)
-        if (isTauri()) {
-          void WebviewWindow.getCurrent().setTitle(detail.title)
-        }
-
-        fmt = resolveReadFormat(
-          detail.readableFormats,
-          detail.preferredFormat,
-          formatFromSearch,
-        )
-        if (!fmt) {
-          setFetchError(t("reader.noReadableFormat"))
-          return
-        }
-        setFormat(fmt)
-
-        const progressP: Promise<ReadingProgressDto | null> =
-          isTauri() && activeLibraryId
-            ? api
-                .getReadingProgress(activeLibraryId, Number(bookId), fmt)
-                .catch(() => null)
-            : Promise.resolve(null)
-        const candidatesP =
-          isTauri() && activeLibraryId
-            ? api
-                .listReadingPositionCandidates(
-                  activeLibraryId,
-                  Number(bookId),
-                  fmt,
-                )
-                .catch(() => [])
-            : Promise.resolve([])
-
-        const [row, candidates, preparedSource] = await Promise.all([
-          progressP,
-          candidatesP,
-          pTimeout(
-            api.prepareBookSource(activeLibraryId, Number(bookId), fmt),
-            {
-              milliseconds: 10000,
-              message: t("reader.loadTimeout"),
-            },
-          ),
-        ])
-        if (cancelled) return
-
-        const source = {
-          filePath: toReaderAssetSrc(preparedSource.filePath),
-          extractedDirPath: preparedSource.extractedDirPath
-            ? toReaderAssetSrc(preparedSource.extractedDirPath)
-            : undefined,
-          extractedEntries: preparedSource.extractedEntries ?? [],
-        }
-
-        const initialSavedLocator = parseSavedLocator(row?.locator ?? null)
-
-        setBookPayload({
-          source,
-          initialSavedLocator,
-        })
-        if (candidates.length > 1) {
-          setPositionConflict(candidates)
-        }
-      } catch (e) {
-        if (cancelled) return
-        const msg = String(e)
-        if (msg.includes("BOOK_FORMAT_NOT_DOWNLOADED") && fmt) {
-          setDownloadState("downloading")
-          setFetchError(null)
-          setDownloadStarting(activeLibraryId, Number(bookId), fmt, queryClient)
-          try {
-            await api.downloadBookFile(activeLibraryId, Number(bookId), fmt)
-          } catch (downloadErr) {
-            setDownloadState("error")
-            setDownloadError(String(downloadErr))
-            setGlobalDownloadError(
-              activeLibraryId,
-              Number(bookId),
-              fmt,
-              String(downloadErr),
-              queryClient,
-            )
-          }
-          return
-        }
-        setFetchError(msg)
-      }
-    }
-
-    load()
-    return () => {
-      cancelled = true
-      if (activeLibraryId) {
-        void api.closeBookStreamer(activeLibraryId, Number(bookId))
-      }
-    }
-  }, [bookId, activeLibraryId, formatFromSearch, mainHandoff, queryClient, t])
-
-  useEffect(() => {
-    if (downloadState !== "done") return
-    let cancelled = false
-
-    async function retryPrepare() {
-      if (!activeLibraryId || !format) return
-      try {
-        const preparedSource = await pTimeout(
-          api.prepareBookSource(activeLibraryId, Number(bookId), format),
-          {
-            milliseconds: 10000,
-            message: t("reader.loadTimeout"),
-          },
-        )
-        if (cancelled) return
-
-        const source = {
-          filePath: toReaderAssetSrc(preparedSource.filePath),
-          extractedDirPath: preparedSource.extractedDirPath
-            ? toReaderAssetSrc(preparedSource.extractedDirPath)
-            : undefined,
-          extractedEntries: preparedSource.extractedEntries ?? [],
-        }
-
-        const [row, candidates] = await Promise.all([
-          api
-            .getReadingProgress(activeLibraryId, Number(bookId), format)
-            .catch(() => null),
-          api
-            .listReadingPositionCandidates(
-              activeLibraryId,
-              Number(bookId),
-              format,
-            )
-            .catch(() => []),
-        ])
-        if (cancelled) return
-        const initialSavedLocator = parseSavedLocator(row?.locator ?? null)
-
-        setBookPayload({
-          source,
-          initialSavedLocator,
-        })
-        if (candidates.length > 1) {
-          setPositionConflict(candidates)
-        }
-      } catch (e) {
-        if (!cancelled) setFetchError(String(e))
-      }
-    }
-
-    retryPrepare()
-    return () => {
-      cancelled = true
-    }
-  }, [downloadState, activeLibraryId, bookId, format, t])
-
-  const handleErrorClose = useCallback(() => {
-    if (isTauri()) {
-      void getCurrentWindow().close()
-    } else {
-      navigate({ to: "/book/$bookId", params: { bookId } })
-    }
-  }, [navigate, bookId])
-
-  const handlePositionConflict = useCallback(
-    async (candidate: ReadingPositionCandidateDto | null) => {
-      if (!candidate) {
-        setPositionConflict(null)
-        return
-      }
-      if (!activeLibraryId || !format) return
-
-      setResolvingPositionConflict(true)
-      try {
-        await api.selectReadingPositionCandidate(
-          activeLibraryId,
-          Number(bookId),
-          format,
-          candidate.operationId,
-        )
-        setBookPayload((current) =>
-          current
-            ? {
-                ...current,
-                initialSavedLocator: parseSavedLocator(candidate.locator),
-              }
-            : current,
-        )
-        setPositionConflict(null)
-      } catch (error) {
-        setFetchError(String(error))
-      } finally {
-        setResolvingPositionConflict(false)
-      }
-    },
-    [activeLibraryId, bookId, format],
-  )
-
-  const handleRetryDownload = useCallback(() => {
-    if (!activeLibraryId || !format) return
-    setDownloadState("downloading")
-    setDownloadError(null)
-    setDownloadStarting(activeLibraryId, Number(bookId), format, queryClient)
-    api
-      .downloadBookFile(activeLibraryId, Number(bookId), format)
-      .catch((err) => {
-        setDownloadState("error")
-        setDownloadError(String(err))
-        setGlobalDownloadError(
-          activeLibraryId,
-          Number(bookId),
-          format,
-          String(err),
-          queryClient,
-        )
-      })
-  }, [activeLibraryId, bookId, format, queryClient])
-
-  const handleCancelDownload = useCallback(async () => {
-    if (!activeLibraryId || !format) return
-    closingRef.current = true
-    setDownloadCancelled(activeLibraryId, Number(bookId), format, queryClient)
-    try {
-      await api.cancelBookDownload(activeLibraryId, Number(bookId), format)
-    } catch (e) {
-      console.error(
-        `Failed to cancel download from reader. library id: "${activeLibraryId}", book id: ${bookId}, format: "${format}", error:`,
-        e,
-      )
-    }
-    if (isTauri()) {
-      await getCurrentWindow().close()
-    }
-  }, [activeLibraryId, bookId, format, queryClient])
+  const bookSource = useReaderBookSource({ bookId, formatFromSearch })
+  const { bookTitle, format, bookPayload, mainHandoff } = bookSource
 
   const readiumPub = useReadiumPublication({
     assetBaseUrl:
@@ -504,6 +120,50 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
     )
   }
 
+  const windowContent = getReadBookWindowContent(
+    bookSource,
+    renderWindowState,
+    t,
+  )
+  if (windowContent) return windowContent
+
+  if (isBrowserDemoReader()) {
+    return (
+      <DemoReaderPreview
+        bookTitle={bookTitle || "MyReader"}
+        format={format || "EPUB"}
+      />
+    )
+  }
+
+  return (
+    <ReadBookContent
+      source={bookSource}
+      readiumPub={readiumPub}
+      divinaPub={divinaPub}
+      renderWindowState={renderWindowState}
+    />
+  )
+}
+
+function getReadBookWindowContent(
+  source: ReturnType<typeof useReaderBookSource>,
+  renderWindowState: (content: ReactNode) => ReactNode,
+  t: ReturnType<typeof useTranslation>["t"],
+) {
+  const {
+    fetchError,
+    downloadState,
+    downloadError,
+    downloadProgress,
+    bookPayload,
+    positionConflict,
+    resolvingPositionConflict,
+    handleErrorClose,
+    handleRetryDownload,
+    handleCancelDownload,
+    handlePositionConflict,
+  } = source
   if (fetchError) {
     return renderWindowState(
       <ReadBookError
@@ -517,20 +177,9 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   }
 
   if (downloadState === "downloading") {
-    const percent =
-      downloadProgress?.totalBytes && downloadProgress.totalBytes > 0
-        ? Math.min(
-            100,
-            Math.round(
-              (downloadProgress.bytesWritten / downloadProgress.totalBytes) *
-                100,
-            ),
-          )
-        : undefined
     return renderWindowState(
       <ReadBookDownloading
         downloadingLabel={t("reader.downloading")}
-        percent={percent}
         bytesWritten={downloadProgress?.bytesWritten ?? 0}
         totalBytes={downloadProgress?.totalBytes}
         cancelLabel={t("common.cancel")}
@@ -567,158 +216,150 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
 
   if (positionConflict) {
     return renderWindowState(
-      <>
-        <ReadBookLoading message={t("reader.loadingBook")} />
-        <Dialog open>
-          <DialogContent showCloseButton={false}>
-            <DialogHeader>
-              <DialogTitle>{t("reader.positionConflictTitle")}</DialogTitle>
-              <DialogDescription>
-                {t("reader.positionConflictDescription")}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-2">
-              {positionConflict.map((candidate) => (
-                <Button
-                  key={candidate.operationId}
-                  variant="outline"
-                  className="h-auto justify-between px-4 py-3"
-                  disabled={resolvingPositionConflict}
-                  onClick={() => void handlePositionConflict(candidate)}
-                >
-                  <span>
-                    {candidate.displayProgression == null
-                      ? t("reader.positionUnknown")
-                      : t("reader.positionPercentage", {
-                          percentage: Math.round(
-                            candidate.displayProgression * 100,
-                          ),
-                        })}
-                  </span>
-                  <span className="text-xs font-normal text-muted-foreground">
-                    {new Date(candidate.recordedAt).toLocaleString()}
-                  </span>
-                </Button>
-              ))}
-            </div>
-            <DialogFooter>
+      <ReadBookPositionConflict
+        candidates={positionConflict}
+        resolving={resolvingPositionConflict}
+        onSelect={handlePositionConflict}
+      />,
+    )
+  }
+
+  return null
+}
+
+function ReadBookPositionConflict({
+  candidates,
+  resolving,
+  onSelect,
+}: {
+  candidates: NonNullable<
+    ReturnType<typeof useReaderBookSource>["positionConflict"]
+  >
+  resolving: boolean
+  onSelect: ReturnType<typeof useReaderBookSource>["handlePositionConflict"]
+}) {
+  const { t } = useTranslation()
+  return (
+    <>
+      <ReadBookLoading message={t("reader.loadingBook")} />
+      <Dialog open>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>{t("reader.positionConflictTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("reader.positionConflictDescription")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2">
+            {candidates.map((candidate) => (
               <Button
-                variant="ghost"
-                disabled={resolvingPositionConflict}
-                onClick={() => void handlePositionConflict(null)}
+                key={candidate.operationId}
+                variant="outline"
+                className="h-auto justify-between px-4 py-3"
+                disabled={resolving}
+                onClick={() => void onSelect(candidate)}
               >
-                {t("reader.positionConflictKeepDefault")}
+                <span>
+                  {candidate.displayProgression == null
+                    ? t("reader.positionUnknown")
+                    : t("reader.positionPercentage", {
+                        percentage: Math.round(
+                          candidate.displayProgression * 100,
+                        ),
+                      })}
+                </span>
+                <span className="text-xs font-normal text-muted-foreground">
+                  {new Date(candidate.recordedAt).toLocaleString()}
+                </span>
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </>,
-    )
-  }
+            ))}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              disabled={resolving}
+              onClick={() => void onSelect(null)}
+            >
+              {t("reader.positionConflictKeepDefault")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
 
-  if (isBrowserDemoReader()) {
-    return (
-      <DemoReaderPreview
-        bookTitle={bookTitle || "MyReader"}
-        format={format || "EPUB"}
-      />
+function ReadBookContent({
+  source,
+  readiumPub,
+  divinaPub,
+  renderWindowState,
+}: {
+  source: ReturnType<typeof useReaderBookSource>
+  readiumPub: ReturnType<typeof useReadiumPublication>
+  divinaPub: ReturnType<typeof useReadiumDivinaPublication>
+  renderWindowState: (content: ReactNode) => ReactNode
+}) {
+  const { t } = useTranslation()
+  const {
+    bookTitle,
+    format,
+    bookPayload,
+    activeLibraryId,
+    progressSyncEnabled,
+    handleErrorClose,
+  } = source
+  if (!bookPayload) return null
+  const actionLabel = isTauri()
+    ? t("reader.closeWindow")
+    : t("reader.backToDetail")
+  const showError = (message: string) =>
+    renderWindowState(
+      <ReadBookError
+        message={message}
+        actionLabel={actionLabel}
+        onAction={handleErrorClose}
+      />,
     )
+  const readerProps = {
+    bookTitle,
+    initialSavedLocator: bookPayload.initialSavedLocator,
+    libraryId: activeLibraryId,
+    bookId: source.bookId,
+    format,
+    progressSyncEnabled,
   }
-
-  if (format === "EPUB") {
-    if (readiumPub.loading) {
-      return renderWindowState(
-        <ReadBookLoading message={t("reader.loadingReadium")} />,
-      )
-    }
-    if (readiumPub.error || !readiumPub.publication) {
-      return renderWindowState(
-        <ReadBookError
-          message={readiumPub.error ?? t("reader.loadEpubFailed")}
-          actionLabel={
-            isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")
-          }
-          onAction={handleErrorClose}
-        />,
-      )
-    }
-    return (
-      <ReadiumEpubReader
-        bookTitle={bookTitle}
-        publication={readiumPub.publication}
-        initialSavedLocator={bookPayload.initialSavedLocator}
-        libraryId={activeLibraryId}
-        bookId={Number(bookId)}
-        format={format}
-        progressSyncEnabled={progressSyncEnabled}
-      />
-    )
-  }
-
-  if (format === "CBZ") {
-    if (!bookPayload.source.extractedDirPath) {
-      return renderWindowState(
-        <ReadBookError
-          message={t("reader.comicDirUnavailable")}
-          actionLabel={
-            isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")
-          }
-          onAction={handleErrorClose}
-        />,
-      )
-    }
-    if (divinaPub.loading) {
-      return renderWindowState(
-        <ReadBookLoading message={t("reader.loadingComic")} />,
-      )
-    }
-    if (divinaPub.error || !divinaPub.publication) {
-      return renderWindowState(
-        <ReadBookError
-          message={divinaPub.error ?? t("reader.loadComicFailed")}
-          actionLabel={
-            isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")
-          }
-          onAction={handleErrorClose}
-        />,
-      )
-    }
-    return (
-      <ReadiumDivinaReader
-        bookTitle={bookTitle}
-        publication={divinaPub.publication}
-        initialSavedLocator={bookPayload.initialSavedLocator}
-        libraryId={activeLibraryId}
-        bookId={Number(bookId)}
-        format={format}
-        progressSyncEnabled={progressSyncEnabled}
-      />
-    )
-  }
-
   if (format === "PDF") {
     return (
       <ReadiumPdfReader
-        bookTitle={bookTitle}
+        {...readerProps}
         fileUrl={bookPayload.source.filePath}
-        initialSavedLocator={bookPayload.initialSavedLocator}
-        libraryId={activeLibraryId}
-        bookId={Number(bookId)}
-        format={format}
-        progressSyncEnabled={progressSyncEnabled}
       />
     )
   }
-
-  return renderWindowState(
-    <ReadBookError
-      message={t("reader.unsupportedFormat")}
-      actionLabel={
-        isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")
-      }
-      onAction={handleErrorClose}
-    />,
-  )
+  if (format === "CBZ" && !bookPayload.source.extractedDirPath) {
+    return showError(t("reader.comicDirUnavailable"))
+  }
+  if (format !== "EPUB" && format !== "CBZ") {
+    return showError(t("reader.unsupportedFormat"))
+  }
+  const isEpub = format === "EPUB"
+  const result = isEpub ? readiumPub : divinaPub
+  const Reader = isEpub ? ReadiumEpubReader : ReadiumDivinaReader
+  if (result.loading) {
+    return renderWindowState(
+      <ReadBookLoading
+        message={t(isEpub ? "reader.loadingReadium" : "reader.loadingComic")}
+      />,
+    )
+  }
+  if (result.error || !result.publication) {
+    return showError(
+      result.error ??
+        t(isEpub ? "reader.loadEpubFailed" : "reader.loadComicFailed"),
+    )
+  }
+  return <Reader {...readerProps} publication={result.publication} />
 }
 
 function DemoReaderPreview({
@@ -1020,20 +661,22 @@ function ReadBookLoading({ message }: { message: string }) {
 }
 
 function ReadBookDownloading({
-  percent,
   bytesWritten,
   totalBytes,
   downloadingLabel,
   cancelLabel,
   onCancel,
 }: {
-  percent?: number
   bytesWritten: number
   totalBytes?: number
   downloadingLabel: string
   cancelLabel: string
   onCancel: () => void
 }) {
+  const percent =
+    totalBytes && totalBytes > 0
+      ? Math.min(100, Math.round((bytesWritten / totalBytes) * 100))
+      : undefined
   return (
     <div
       className="flex min-h-0 w-full flex-1 items-center justify-center bg-reader-bg p-6 text-reader-fg"

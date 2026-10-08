@@ -31,7 +31,7 @@ When("用户打开该书进行阅读", async ({ page }) => {
 
 Then("阅读器应显示{string}", async ({ page }, text: string) => {
   const readerPage = new ReaderPage(page)
-  await expect(readerPage.getInitialLoading()).toContainText(text)
+  await expect(readerPage.getInitialLoading()).toHaveAccessibleName(text)
 })
 
 Then(
@@ -43,9 +43,8 @@ Then(
 )
 
 Then("阅读器不再显示{string}", async ({ page }, text: string) => {
-  const readerPage = new ReaderPage(page)
   await expect(
-    page.locator("role=status").filter({ hasText: text }),
+    page.getByRole("status", { name: text, exact: true }),
   ).not.toBeVisible()
 })
 

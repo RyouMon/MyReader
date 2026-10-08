@@ -11,3 +11,15 @@ export function locatorToJson(locator: Locator): ReaderLocator {
   const raw = locator.serialize() as unknown as ReaderLocator
   return canonicalizeReaderLocatorForStorage(raw)
 }
+
+export function locatorDisplayPosition(
+  locator: Locator | null,
+  positionCount: number,
+): number {
+  const locations = locator?.locations
+  if (locations?.position != null) return locations.position
+  if (locations?.totalProgression != null && positionCount > 1) {
+    return Math.round(locations.totalProgression * (positionCount - 1)) + 1
+  }
+  return 1
+}

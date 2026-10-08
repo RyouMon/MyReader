@@ -248,25 +248,9 @@
       "count": 1
     }
   },
-  "my-reader/src/components/reader/ReadBookPage.tsx": {
-    "complexity": {
-      "count": 2
-    },
-    "sonarjs/cognitive-complexity": {
-      "count": 2
-    }
-  },
   "my-reader/src/components/reader/readium/ReadiumDivinaReader.tsx": {
     "complexity": {
       "count": 1
-    }
-  },
-  "my-reader/src/components/reader/readium/ReadiumEpubReader.tsx": {
-    "complexity": {
-      "count": 2
-    },
-    "sonarjs/cognitive-complexity": {
-      "count": 3
     }
   },
   "my-reader/src/components/reader/readium/ReadiumPdfReader.tsx": {

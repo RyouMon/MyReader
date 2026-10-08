@@ -9,11 +9,11 @@ export class ReaderPage {
   }
 
   getInitialLoading() {
-    return this.page.locator("role=status").filter({ hasText: /正在加载书籍/ })
+    return this.page.getByRole("status", { name: /正在加载书籍/ })
   }
 
   getReadiumLoading() {
-    return this.page.locator("role=status").filter({ hasText: /正在加载/ })
+    return this.page.getByRole("status", { name: /正在加载/ })
   }
 
   getErrorMessage() {
