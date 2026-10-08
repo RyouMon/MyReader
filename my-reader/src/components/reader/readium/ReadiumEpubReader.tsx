@@ -1,5 +1,3 @@
-import { locatorDisplayPosition } from "@/lib/readium/locator"
-import { EpubReaderView } from "./EpubReaderView"
 import {
   type ReaderAnnotationColor,
   readerAnnotationExcerpt,
@@ -30,10 +28,10 @@ import {
 import { isTauri } from "@tauri-apps/api/core"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { type ReaderAnnotationEditorDraft } from "@/components/reader/readium/ReaderAnnotationEditorDialog"
-import { type ReadiumAnnotationRow } from "@/components/reader/readium/ReadiumAnnotationPanel"
+import type { ReaderAnnotationEditorDraft } from "@/components/reader/readium/ReaderAnnotationEditorDialog"
+import type { ReadiumAnnotationRow } from "@/components/reader/readium/ReadiumAnnotationPanel"
 import type { ReadiumBookmarkRow } from "@/components/reader/readium/ReadiumBookmarkList"
-import { type ReadiumTocRow } from "@/components/reader/readium/ReadiumTocPanel"
+import type { ReadiumTocRow } from "@/components/reader/readium/ReadiumTocPanel"
 import type { ReaderSettings } from "@/components/reader/types"
 import { useEpubTtsSession } from "@/hooks/reader/useEpubTtsSession"
 import { useLocatorProgressSync } from "@/hooks/reader/useLocatorProgressSync"
@@ -89,6 +87,10 @@ import {
 } from "@/lib/readium/epubSearchHighlight"
 import { resolveEpubTtsViewportRelation } from "@/lib/readium/epubTtsViewport"
 import {
+  locatorDisplayPosition,
+  resolveInitialEpubPosition,
+} from "@/lib/readium/locator"
+import {
   createReaderFontInjectables,
   loadReaderFontFamily,
   preloadReaderFontFamilies,
@@ -110,6 +112,7 @@ import {
 import { api } from "@/lib/tauri-api"
 import { useAppUiStore } from "@/stores/appUiStore"
 import type { ReaderUiPreferencesPayload } from "@/types/readerUiPreferences"
+import { EpubReaderView } from "./EpubReaderView"
 
 const EPUB_POSITION_CHARACTER_UNIT = 1024
 const epubResourceTextCache = new WeakMap<
@@ -457,21 +460,6 @@ async function resolveEpubNavigationData(
   }
 }
 
-function clampProgression(value: number): number {
-  return Math.max(0, Math.min(1, value))
-}
-
-function locatorAtTotalProgression(
-  positions: Locator[],
-  totalProgression: number,
-): Locator | null {
-  if (positions.length === 0) return null
-  const index = Math.round(
-    clampProgression(totalProgression) * (positions.length - 1),
-  )
-  return positions[index] ?? null
-}
-
 function locatorHref(locator: Locator): string {
   return locator.href.split("#")[0]
 }
@@ -510,53 +498,6 @@ function isLocatorVisibleInViewport(
     range &&
       progression >= range.start - 0.0001 &&
       progression <= range.end + 0.0001,
-  )
-}
-
-function locatorForSavedProgression(
-  positions: Locator[],
-  savedLocator: Locator,
-): Locator | null {
-  const href = locatorHref(savedLocator)
-  const hrefPositions = positions.filter(
-    (position) => locatorHref(position) === href,
-  )
-  if (hrefPositions.length === 0) return null
-
-  const savedProgression = savedLocator.locations.progression
-  if (typeof savedProgression !== "number") return hrefPositions[0] ?? null
-
-  return hrefPositions.reduce((best, position) => {
-    const bestDistance = Math.abs(
-      (best.locations.progression ?? 0) - savedProgression,
-    )
-    const nextDistance = Math.abs(
-      (position.locations.progression ?? 0) - savedProgression,
-    )
-    return nextDistance < bestDistance ? position : best
-  }, hrefPositions[0])
-}
-
-function resolveInitialEpubPosition(
-  positions: Locator[],
-  initialSavedLocator: Locator | null,
-): Locator | null {
-  if (positions.length === 0) return null
-  if (!initialSavedLocator) return positions[0]
-
-  const savedTotalProgression = initialSavedLocator.locations.totalProgression
-  if (typeof savedTotalProgression === "number") {
-    return locatorAtTotalProgression(positions, savedTotalProgression)
-  }
-
-  const savedPosition = initialSavedLocator.locations.position
-  if (typeof savedPosition === "number") {
-    const position = positions[savedPosition - 1]
-    if (position) return position
-  }
-
-  return (
-    locatorForSavedProgression(positions, initialSavedLocator) ?? positions[0]
   )
 }
 
