@@ -17,6 +17,10 @@ class ReaderViewController: UIViewController, Loggable {
 
   private(set) var stackView: UIStackView!
   private var subscriptions = Set<AnyCancellable>()
+  private let directionalNavigation = DirectionalNavigationAdapter(
+    pointerPolicy: .init(edges: .all),
+    animatedTransition: true
+  )
   private var subject = PassthroughSubject<ReadiumShared.Locator, Never>()
   lazy var publisher = subject.eraseToAnyPublisher()
 
@@ -171,10 +175,7 @@ class ReaderViewController: UIViewController, Loggable {
 
     // React Native owns reader chrome; ReadiumView forwards center taps to JS.
     // Keep only native edge navigation here so it cannot consume those taps.
-    DirectionalNavigationAdapter(
-      pointerPolicy: .init(edges: .all),
-      animatedTransition: true
-    ).bind(to: visualNavigator)
+    directionalNavigation.bind(to: visualNavigator)
   }
 
   @objc private func goBackward() {
