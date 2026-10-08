@@ -54,6 +54,8 @@ export async function runLibrarySync(
     }),
     reason: syncReasonForTrigger(input.trigger),
   }
+  const showFailureAlert =
+    options.throwOnFailure && input.showFailureAlert !== false
 
   try {
     const report = await syncLibrary(
@@ -67,10 +69,10 @@ export async function runLibrarySync(
   } catch (err) {
     if (err instanceof SyncConnectivityError) {
       await applySyncReport(err.report, { trigger: input.trigger })
-      if (options.throwOnFailure && input.showFailureAlert !== false) {
+      if (showFailureAlert) {
         showSyncFailureAlert(i18n.t("sync.sourceUnreachable"), err.message)
       }
-    } else if (options.throwOnFailure && input.showFailureAlert !== false) {
+    } else if (showFailureAlert) {
       const message = err instanceof Error ? err.message : String(err)
       showSyncFailureAlert(
         i18n.t(

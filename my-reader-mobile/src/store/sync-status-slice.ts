@@ -199,6 +199,31 @@ function coerceLastFailure(value: unknown): LibrarySyncFailure | undefined {
   }
 }
 
+function coerceLegacyHistory(candidate: {
+  completedAt?: unknown
+  result?: unknown
+  reason?: unknown
+}): LibrarySyncHistory | undefined {
+  const legacyCompletedAt = coerceCompletedAt(candidate.completedAt)
+  if (legacyCompletedAt == null) return undefined
+  if (candidate.result === "success") {
+    const reason = coerceReason(candidate.reason)
+    return {
+      lastSync: {
+        completedAt: legacyCompletedAt,
+        ...(reason ? { reason } : {}),
+      },
+    }
+  } else if (candidate.result === "failure") {
+    return {
+      lastFailure: coerceLastFailure(candidate) ?? {
+        completedAt: legacyCompletedAt,
+      },
+    }
+  }
+  return undefined
+}
+
 export function coerceLibrarySyncHistory(
   value: unknown,
 ): Record<string, LibrarySyncHistory> {
@@ -222,23 +247,8 @@ export function coerceLibrarySyncHistory(
       continue
     }
 
-    const legacyCompletedAt = coerceCompletedAt(candidate.completedAt)
-    if (legacyCompletedAt == null) continue
-    if (candidate.result === "success") {
-      const reason = coerceReason(candidate.reason)
-      result[libraryId] = {
-        lastSync: {
-          completedAt: legacyCompletedAt,
-          ...(reason ? { reason } : {}),
-        },
-      }
-    } else if (candidate.result === "failure") {
-      result[libraryId] = {
-        lastFailure: coerceLastFailure(candidate) ?? {
-          completedAt: legacyCompletedAt,
-        },
-      }
-    }
+    const legacy = coerceLegacyHistory(candidate)
+    if (legacy) result[libraryId] = legacy
   }
   return result
 }

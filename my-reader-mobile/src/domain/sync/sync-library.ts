@@ -148,6 +148,38 @@ function invalidatePulledSidecar(libraryId: string, pulled: number): void {
   ])
 }
 
+async function refreshSyncedBooks(
+  libraryId: string,
+  calibre: Awaited<ReturnType<typeof runCoreLibrarySync>>["calibre"],
+  dataSources: DataSource[],
+) {
+  let books: Awaited<ReturnType<typeof fetchBooks>> | undefined
+  if (calibre.changed && !calibre.error) {
+    try {
+      books = await fetchBooks(calibre.library, dataSources)
+    } catch (error) {
+      console.warn("[reading-sync] books:refresh-failed", {
+        libraryId,
+        error: describeError(error),
+      })
+    }
+  }
+
+  return books
+}
+
+function throwSyncFailure(report: LibrarySyncReport): void {
+  if (report.error) {
+    if (report.failureKind === "connectivity") {
+      throw new SyncConnectivityError(report.error, report)
+    }
+    if (report.failureKind === "data_integrity") {
+      throw new DataIntegrityError(report.error)
+    }
+    throw new Error(report.error)
+  }
+}
+
 /** 同步单个书库 — 所有业务路径的唯一 domain 入口。 */
 export async function syncLibrary(
   library: Library,
@@ -167,9 +199,37 @@ export async function syncLibrary(
     reason,
   })
 
-  let ctx
+  let coreReport
   try {
-    ctx = await openSyncContext(library, dataSources)
+    const ctx = await openSyncContext(library, dataSources)
+
+    const syncCore = (libraryRootUri: string) =>
+      runCoreLibrarySync({
+        library,
+        libraryRootUri,
+        nowMs: Date.now(),
+        scope: options.scope ?? "all",
+        forceCalibre: options.forceCalibre ?? false,
+        mode: options.myreaderMode ?? "full",
+        storage: ctx.libraryStorage,
+        taskId,
+        onProgress: (progress) =>
+          observer?.({
+            type: "progress",
+            libraryId: library.id,
+            taskId,
+            stage: progress.stage,
+            completed: progress.completed,
+            total: progress.total,
+          }),
+        onSidecarComplete: ({ pulled }) =>
+          invalidatePulledSidecar(library.id, pulled),
+      })
+
+    coreReport =
+      ctx.backend.kind === "local-direct"
+        ? await withLocalLibraryContentRoot(library, syncCore)
+        : await syncCore(ctx.libraryRootUri)
   } catch (err) {
     const message = describeError(err)
     const report = failedReport(
@@ -184,50 +244,6 @@ export async function syncLibrary(
     return report
   }
 
-  const syncCore = (libraryRootUri: string) =>
-    runCoreLibrarySync({
-      library,
-      libraryRootUri,
-      nowMs: Date.now(),
-      scope: options.scope ?? "all",
-      forceCalibre: options.forceCalibre ?? false,
-      mode: options.myreaderMode ?? "full",
-      storage: ctx.libraryStorage,
-      taskId,
-      onProgress: (progress) =>
-        observer?.({
-          type: "progress",
-          libraryId: library.id,
-          taskId,
-          stage: progress.stage,
-          completed: progress.completed,
-          total: progress.total,
-        }),
-      onSidecarComplete: ({ pulled }) =>
-        invalidatePulledSidecar(library.id, pulled),
-    })
-
-  let coreReport
-  try {
-    coreReport =
-      ctx.backend.kind === "local-direct"
-        ? await withLocalLibraryContentRoot(library, syncCore)
-        : await syncCore(ctx.libraryRootUri)
-  } catch (err) {
-    const message = describeError(err)
-    const failureKind = classifySyncFailure(err)
-    const report = failedReport(
-      library,
-      options,
-      message,
-      startedAt,
-      failureKind,
-    )
-    observeSyncResult(observer, taskId, report, reason)
-    if (throwOnFailure) throw err instanceof Error ? err : new Error(message)
-    return report
-  }
-
   if (
     !coreReport.error &&
     libraryTypeOf(library) === "myreader" &&
@@ -236,17 +252,11 @@ export async function syncLibrary(
     requestPendingBookUploads(library.id)
   }
 
-  let books: Awaited<ReturnType<typeof fetchBooks>> | undefined
-  if (coreReport.calibre.changed && !coreReport.calibre.error) {
-    try {
-      books = await fetchBooks(coreReport.calibre.library, dataSources)
-    } catch (error) {
-      console.warn("[reading-sync] books:refresh-failed", {
-        libraryId: library.id,
-        error: describeError(error),
-      })
-    }
-  }
+  const books = await refreshSyncedBooks(
+    library.id,
+    coreReport.calibre,
+    dataSources,
+  )
 
   const report: LibrarySyncReport = {
     libraryId: coreReport.libraryId,
@@ -281,15 +291,7 @@ export async function syncLibrary(
 
   observeSyncResult(observer, taskId, report, reason)
 
-  if (report.error && throwOnFailure) {
-    if (report.failureKind === "connectivity") {
-      throw new SyncConnectivityError(report.error, report)
-    }
-    if (report.failureKind === "data_integrity") {
-      throw new DataIntegrityError(report.error)
-    }
-    throw new Error(report.error)
-  }
+  if (throwOnFailure) throwSyncFailure(report)
 
   return report
 }

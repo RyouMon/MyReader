@@ -92,8 +92,148 @@ function SyncStatusSheetTitle({
   )
 }
 
-export default function SyncStatusScreen() {
+type SyncPresentation = ReturnType<typeof useSyncStatusPresentation>
+
+function SyncStatusSummary({
+  activity,
+  indicator,
+}: Pick<SyncPresentation, "activity" | "indicator">) {
+  const { t } = useTranslation()
+  const palette = useThemePalette()
+  const statusLabel = t(SYNC_INDICATOR_LABEL_KEYS[indicator])
+  const stageLabel = activity ? t(SYNC_STAGE_LABEL_KEYS[activity.stage]) : null
+  const statusColor =
+    indicator === "failed"
+      ? palette.danger
+      : indicator === "recent_success" || indicator === "unchanged"
+        ? palette.success
+        : indicator === "offline"
+          ? palette.textMuted
+          : indicator === "idle"
+            ? palette.text
+            : palette.primary
+  const progressLabel =
+    activity && activity.total > 0
+      ? t("syncStatus.progress", {
+          completed: activity.completed,
+          total: activity.total,
+        })
+      : null
+
+  return (
+    <View
+      accessibilityLabel={t("syncStatus.accessibilityLabel", {
+        status: stageLabel ?? statusLabel,
+      })}
+      className="items-center py-4"
+      testID="sync-status-summary"
+    >
+      <View className="h-12" />
+      <View className="h-24 w-24 items-center justify-center">
+        <SyncStatusIcon indicator={indicator} color={statusColor} size={60} />
+      </View>
+      <Text
+        accessibilityLiveRegion="polite"
+        numberOfLines={1}
+        selectable
+        className="-mt-3 h-8 text-center text-xl font-bold"
+        style={{ color: statusColor }}
+      >
+        {stageLabel ?? statusLabel}
+      </Text>
+
+      <SyncProgressSlot
+        active={activity != null}
+        color={palette.primary}
+        completed={activity?.completed ?? 0}
+        label={progressLabel}
+        textColor={palette.textMuted}
+        total={activity?.total ?? 0}
+        trackColor={palette.border}
+      />
+    </View>
+  )
+}
+
+function SyncHistoryDetails({
+  libraryName,
+  activity,
+  indicator,
+  transientResult,
+  history,
+}: Pick<
+  SyncPresentation,
+  "activity" | "indicator" | "transientResult" | "history"
+> & { libraryName: string }) {
   const { t, i18n } = useTranslation()
+  const statusLabel = t(SYNC_INDICATOR_LABEL_KEYS[indicator])
+  const stageLabel = activity ? t(SYNC_STAGE_LABEL_KEYS[activity.stage]) : null
+  const lastFailure = history?.lastFailure
+  const lastSync = history?.lastSync
+  const reason =
+    activity?.reason ??
+    transientResult?.reason ??
+    lastFailure?.reason ??
+    lastSync?.reason
+  const reasonLabel = reason ? t(SYNC_REASON_LABEL_KEYS[reason]) : null
+  const lastSyncTime = lastSync
+    ? formatHumanReadableTime(lastSync.completedAt, i18n.language)
+    : t("syncStatus.noHistory")
+  const lastAttemptTime = lastFailure
+    ? formatHumanReadableTime(lastFailure.completedAt, i18n.language)
+    : null
+
+  return (
+    <SectionCard>
+      <ListRow
+        isLast
+        title={t("syncStatus.currentLibrary")}
+        value={libraryName}
+      />
+      <ListRow
+        isLast
+        title={t("syncStatus.currentStatus")}
+        value={statusLabel}
+      />
+      {stageLabel ? (
+        <ListRow
+          isLast
+          title={t("syncStatus.currentStage")}
+          value={stageLabel}
+        />
+      ) : null}
+      {reasonLabel ? (
+        <ListRow
+          isLast
+          title={t(
+            activity || transientResult
+              ? "syncStatus.currentReason"
+              : "syncStatus.lastReason",
+          )}
+          value={reasonLabel}
+        />
+      ) : null}
+      {!activity && lastFailure?.failureStage ? (
+        <ListRow
+          isLast
+          title={t("syncStatus.failureStage")}
+          value={t(SYNC_STAGE_LABEL_KEYS[lastFailure.failureStage])}
+        />
+      ) : null}
+      {lastAttemptTime ? (
+        <ListRow
+          isLast
+          title={t("syncStatus.lastAttempt")}
+          value={lastAttemptTime}
+        />
+      ) : null}
+      <ListRow isLast title={t("syncStatus.lastSync")} value={lastSyncTime} />
+    </SectionCard>
+  )
+}
+
+export default function SyncStatusScreen() {
+  const { t } = useTranslation()
   const palette = useThemePalette()
   const insets = useSafeAreaInsets()
   const {
@@ -126,39 +266,8 @@ export default function SyncStatusScreen() {
     )
   }
 
-  const statusLabel = t(SYNC_INDICATOR_LABEL_KEYS[indicator])
-  const stageLabel = activity ? t(SYNC_STAGE_LABEL_KEYS[activity.stage]) : null
-  const reason =
-    activity?.reason ??
-    transientResult?.reason ??
-    history?.lastFailure?.reason ??
-    history?.lastSync?.reason
-  const reasonLabel = reason ? t(SYNC_REASON_LABEL_KEYS[reason]) : null
-  const lastSyncTime = history?.lastSync
-    ? formatHumanReadableTime(history.lastSync.completedAt, i18n.language)
-    : t("syncStatus.noHistory")
-  const lastAttemptTime = history?.lastFailure
-    ? formatHumanReadableTime(history.lastFailure.completedAt, i18n.language)
-    : null
-  const statusColor =
-    indicator === "failed"
-      ? palette.danger
-      : indicator === "recent_success" || indicator === "unchanged"
-        ? palette.success
-        : indicator === "offline"
-          ? palette.textMuted
-          : indicator === "idle"
-            ? palette.text
-            : palette.primary
   const isRunning = activity != null || isManualSyncing
   const canSync = !isRunning && !isOffline
-  const progressLabel =
-    activity && activity.total > 0
-      ? t("syncStatus.progress", {
-          completed: activity.completed,
-          total: activity.total,
-        })
-      : null
 
   const handleSync = () => {
     if (!canSync) return
@@ -188,95 +297,17 @@ export default function SyncStatusScreen() {
             title={t("syncStatus.title")}
           />
 
-          <View
-            accessibilityLabel={t("syncStatus.accessibilityLabel", {
-              status: stageLabel ?? statusLabel,
-            })}
-            className="items-center py-4"
-            testID="sync-status-summary"
-          >
-            <View className="h-12" />
-            <View className="h-24 w-24 items-center justify-center">
-              <SyncStatusIcon
-                indicator={indicator}
-                color={statusColor}
-                size={60}
-              />
-            </View>
-            <Text
-              accessibilityLiveRegion="polite"
-              numberOfLines={1}
-              selectable
-              className="-mt-3 h-8 text-center text-xl font-bold"
-              style={{ color: statusColor }}
-            >
-              {stageLabel ?? statusLabel}
-            </Text>
-
-            <SyncProgressSlot
-              active={activity != null}
-              color={palette.primary}
-              completed={activity?.completed ?? 0}
-              label={progressLabel}
-              textColor={palette.textMuted}
-              total={activity?.total ?? 0}
-              trackColor={palette.border}
-            />
-          </View>
+          <SyncStatusSummary activity={activity} indicator={indicator} />
         </View>
 
         <View className="gap-5 px-4 py-4 pb-6">
-          <SectionCard>
-            <ListRow
-              isLast
-              title={t("syncStatus.currentLibrary")}
-              value={library.name}
-            />
-            <ListRow
-              isLast
-              title={t("syncStatus.currentStatus")}
-              value={statusLabel}
-            />
-            {stageLabel ? (
-              <ListRow
-                isLast
-                title={t("syncStatus.currentStage")}
-                value={stageLabel}
-              />
-            ) : null}
-            {reasonLabel ? (
-              <ListRow
-                isLast
-                title={t(
-                  activity || transientResult
-                    ? "syncStatus.currentReason"
-                    : "syncStatus.lastReason",
-                )}
-                value={reasonLabel}
-              />
-            ) : null}
-            {!activity && history?.lastFailure?.failureStage ? (
-              <ListRow
-                isLast
-                title={t("syncStatus.failureStage")}
-                value={t(
-                  SYNC_STAGE_LABEL_KEYS[history.lastFailure.failureStage],
-                )}
-              />
-            ) : null}
-            {lastAttemptTime ? (
-              <ListRow
-                isLast
-                title={t("syncStatus.lastAttempt")}
-                value={lastAttemptTime}
-              />
-            ) : null}
-            <ListRow
-              isLast
-              title={t("syncStatus.lastSync")}
-              value={lastSyncTime}
-            />
-          </SectionCard>
+          <SyncHistoryDetails
+            libraryName={library.name}
+            activity={activity}
+            indicator={indicator}
+            transientResult={transientResult}
+            history={history}
+          />
 
           {isOffline ? (
             <View

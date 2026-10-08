@@ -37,6 +37,34 @@ function pinchDistance(evt: GestureResponderEvent): number | null {
   return Math.sqrt(dx * dx + dy * dy)
 }
 
+function handleEdgeTap(
+  x: number,
+  options: UseFixedReaderGesturesOptions,
+): boolean {
+  const {
+    zoomScale,
+    navigationMode,
+    screenWidth,
+    currentPage,
+    totalPages,
+    goToPage,
+  } = options
+
+  if (navigationMode === "horizontal" && zoomScale <= EDGE_TAP_MAX_ZOOM) {
+    const tapSideWidth = Math.max(48, screenWidth * 0.28)
+    if (x <= tapSideWidth) {
+      if (currentPage > 0) goToPage(currentPage - 1)
+      return true
+    }
+    if (x >= screenWidth - tapSideWidth) {
+      if (currentPage < totalPages - 1) goToPage(currentPage + 1)
+      return true
+    }
+  }
+
+  return false
+}
+
 /**
  * 固定版式阅读器手势：双指缩放走 PanResponder + 捕获阶段（见 RN Gesture Responder System），
  * 单指滑动/点按仍在子级 FlatList 的 Touch 回调中处理，避免 PanResponder 抢占单指导致无法横向翻页。
@@ -126,27 +154,7 @@ export function useFixedReaderGestures(options: UseFixedReaderGesturesOptions) {
       durationMs <= TAP_MAX_DURATION_MS
     if (!isTapGesture) return
 
-    const o = optsRef.current
-    const {
-      zoomScale,
-      navigationMode,
-      screenWidth,
-      currentPage,
-      totalPages,
-      goToPage,
-    } = o
-
-    if (navigationMode === "horizontal" && zoomScale <= EDGE_TAP_MAX_ZOOM) {
-      const tapSideWidth = Math.max(48, screenWidth * 0.28)
-      if (start.x <= tapSideWidth) {
-        if (currentPage > 0) goToPage(currentPage - 1)
-        return
-      }
-      if (start.x >= screenWidth - tapSideWidth) {
-        if (currentPage < totalPages - 1) goToPage(currentPage + 1)
-        return
-      }
-    }
+    if (handleEdgeTap(start.x, optsRef.current)) return
 
     onToggleChromeRef.current?.()
   }, [])

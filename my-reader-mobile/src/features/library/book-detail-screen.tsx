@@ -53,6 +53,39 @@ type DetailCacheEntry = {
   loading: boolean
 }
 
+function detailScreenLayout(
+  detailAvailableWidth: number,
+  headerHeight: number,
+  palette: ReturnType<typeof useTheme>["palette"],
+) {
+  const detailHeroMode = resolveBookDetailHeroMode(detailAvailableWidth)
+  const detailCoverBorderRadius =
+    detailHeroMode === "wide" ? DETAIL_COVER_BORDER_RADIUS : 0
+  const headerForeground =
+    detailHeroMode === "narrow" ? COVER_HEADER_PALETTE.text : palette.text
+  const showAndroidHeaderButtonBackground =
+    Platform.OS === "android" && detailHeroMode === "narrow"
+  const headerButtonBackground = showAndroidHeaderButtonBackground
+    ? COVER_HEADER_PALETTE.overlay
+    : undefined
+  const headerButtonRipple = showAndroidHeaderButtonBackground
+    ? COVER_HEADER_PALETTE.borderStrong
+    : undefined
+  const contentTopInset = resolveBookDetailContentTopInset(
+    Platform.OS,
+    detailHeroMode,
+    headerHeight,
+  )
+  return {
+    detailHeroMode,
+    detailCoverBorderRadius,
+    headerForeground,
+    headerButtonBackground,
+    headerButtonRipple,
+    contentTopInset,
+  }
+}
+
 export default function BookDetailScreen() {
   const { t } = useTranslation()
   const { id } = useLocalSearchParams<{ id?: string }>()
@@ -198,24 +231,14 @@ export default function BookDetailScreen() {
 
   const isCurrentFavorite = currentId ? isFavorite(currentId) : false
   const detailAvailableWidth = detailLayoutWidth ?? windowWidth
-  const detailHeroMode = resolveBookDetailHeroMode(detailAvailableWidth)
-  const detailCoverBorderRadius =
-    detailHeroMode === "wide" ? DETAIL_COVER_BORDER_RADIUS : 0
-  const headerForeground =
-    detailHeroMode === "narrow" ? COVER_HEADER_PALETTE.text : palette.text
-  const showAndroidHeaderButtonBackground =
-    Platform.OS === "android" && detailHeroMode === "narrow"
-  const headerButtonBackground = showAndroidHeaderButtonBackground
-    ? COVER_HEADER_PALETTE.overlay
-    : undefined
-  const headerButtonRipple = showAndroidHeaderButtonBackground
-    ? COVER_HEADER_PALETTE.borderStrong
-    : undefined
-  const contentTopInset = resolveBookDetailContentTopInset(
-    Platform.OS,
+  const {
     detailHeroMode,
-    headerHeight,
-  )
+    detailCoverBorderRadius,
+    headerForeground,
+    headerButtonBackground,
+    headerButtonRipple,
+    contentTopInset,
+  } = detailScreenLayout(detailAvailableWidth, headerHeight, palette)
 
   const leftActions = useMemo<ScreenHeaderAction[] | undefined>(
     () =>
@@ -405,9 +428,7 @@ export default function BookDetailScreen() {
   )
 
   const selectedFormat = currentId
-    ? (selectedFormatById[currentId] ??
-      currentEntry?.detail?.preferredFormat ??
-      null)
+    ? (selectedFormatById[currentId] ?? currentDetail?.preferredFormat ?? null)
     : null
 
   if (!currentId) {
@@ -479,7 +500,7 @@ export default function BookDetailScreen() {
           bookId={currentId}
           colors={detailColors}
           contentTopInset={contentTopInset}
-          detail={currentEntry?.detail ?? null}
+          detail={currentDetail}
           detailFailure={currentEntry?.failure ?? null}
           detailCoverRef={detailCoverRef}
           listBook={getListBook(currentId)}

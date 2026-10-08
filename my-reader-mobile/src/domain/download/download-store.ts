@@ -441,6 +441,38 @@ function _runNext(): void {
   }
 }
 
+function handleDownloadFailure(task: DownloadTask, err: unknown): void {
+  const taskId = task.id
+  if (state.tasks.find((t) => t.id === taskId)?.status === "cancelled") {
+    return
+  }
+  cancelNativeDownload(taskId)
+  const isAbort =
+    err instanceof Error &&
+    (err.name === "AbortError" || err.message.toLowerCase().includes("abort"))
+  console.error("Failed to finish download task:", {
+    taskId,
+    relativePath: task.relativePath,
+    isAbort,
+    isConfigError: err instanceof SyncConfigError,
+    error:
+      err instanceof NetworkError
+        ? {
+            message: err.message,
+            statusCode: (err as NetworkError).statusCode,
+          }
+        : err,
+  })
+  if (isAbort) {
+    transitionTask(taskId, { type: "cancel" })
+  } else {
+    transitionTask(taskId, {
+      type: "error",
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
+}
+
 async function _startTask(taskId: string): Promise<void> {
   const task = state.tasks.find((t) => t.id === taskId)
   if (!task || task.status !== "starting") return
@@ -487,34 +519,7 @@ async function _startTask(taskId: string): Promise<void> {
       transitionTask(taskId, { type: "done" })
     }
   } catch (err) {
-    if (state.tasks.find((t) => t.id === taskId)?.status === "cancelled") {
-      return
-    }
-    cancelNativeDownload(taskId)
-    const isAbort =
-      err instanceof Error &&
-      (err.name === "AbortError" || err.message.toLowerCase().includes("abort"))
-    console.error("Failed to finish download task:", {
-      taskId,
-      relativePath: task.relativePath,
-      isAbort,
-      isConfigError: err instanceof SyncConfigError,
-      error:
-        err instanceof NetworkError
-          ? {
-              message: err.message,
-              statusCode: (err as NetworkError).statusCode,
-            }
-          : err,
-    })
-    if (isAbort) {
-      transitionTask(taskId, { type: "cancel" })
-    } else {
-      transitionTask(taskId, {
-        type: "error",
-        error: err instanceof Error ? err.message : String(err),
-      })
-    }
+    handleDownloadFailure(task, err)
   } finally {
     nativeStopHandlers.delete(taskId)
     lastProgressNotifications.delete(taskId)

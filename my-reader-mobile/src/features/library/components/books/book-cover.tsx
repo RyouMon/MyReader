@@ -436,6 +436,35 @@ function DefaultBookCoverImpl({
 
 const DefaultBookCover = memo(DefaultBookCoverImpl)
 
+function resolveCoverSources(
+  {
+    book,
+    displayCoverUri,
+    deferCoverUntilDisplayUri,
+    thumbnailUsage,
+  }: Pick<
+    BookCoverBaseProps,
+    "book" | "displayCoverUri" | "deferCoverUntilDisplayUri" | "thumbnailUsage"
+  >,
+  thumbnailCoverUri: BookItem["coverUri"],
+) {
+  const thumbnailSourceUri =
+    thumbnailUsage === "source" ? thumbnailCoverUri : undefined
+  const thumbnailPlaceholderUri =
+    thumbnailUsage === "placeholder" ? thumbnailCoverUri : undefined
+  const hasExpectedCover = !!(
+    displayCoverUri ??
+    thumbnailSourceUri ??
+    thumbnailPlaceholderUri ??
+    book.coverUri
+  )
+  const effectiveCoverUri =
+    displayCoverUri ??
+    thumbnailSourceUri ??
+    (deferCoverUntilDisplayUri ? undefined : book.coverUri)
+  return { hasExpectedCover, effectiveCoverUri, thumbnailPlaceholderUri }
+}
+
 function BookCoverBaseImpl({
   book,
   width,
@@ -455,20 +484,11 @@ function BookCoverBaseImpl({
   // RN primitives + StyleSheet and receive colors from the parent so cells avoid
   // NativeWind class resolution and theme context subscriptions.
   const thumbnailCoverUri = useCoverThumbnailSessionUri(thumbnailScopeKey, book)
-  const thumbnailSourceUri =
-    thumbnailUsage === "source" ? thumbnailCoverUri : undefined
-  const thumbnailPlaceholderUri =
-    thumbnailUsage === "placeholder" ? thumbnailCoverUri : undefined
-  const hasExpectedCover = !!(
-    displayCoverUri ??
-    thumbnailSourceUri ??
-    thumbnailPlaceholderUri ??
-    book.coverUri
-  )
-  const effectiveCoverUri =
-    displayCoverUri ??
-    thumbnailSourceUri ??
-    (deferCoverUntilDisplayUri ? undefined : book.coverUri)
+  const { hasExpectedCover, effectiveCoverUri, thumbnailPlaceholderUri } =
+    resolveCoverSources(
+      { book, displayCoverUri, deferCoverUntilDisplayUri, thumbnailUsage },
+      thumbnailCoverUri,
+    )
   const coverKey = getCoverStateKey(effectiveCoverUri)
   const [failureState, setFailureState] = useState<CoverLoadFailureState>()
   const activeFailureState =

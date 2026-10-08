@@ -60,6 +60,7 @@ export const useAppStore = create<AppState>()(
           | (Partial<ReaderSettings> & { syncEnabled?: boolean })
           | undefined
         const legacyAutoSync = persistedSettings?.syncEnabled
+        const persistedReflowable = persistedSettings?.reflowable
 
         return {
           ...currentState,
@@ -83,13 +84,13 @@ export const useAppStore = create<AppState>()(
               ),
             reflowable: {
               ...defaultSettings.reflowable,
-              ...persistedSettings?.reflowable,
+              ...persistedReflowable,
               fontFamily: coerceReaderFontFamily(
-                persistedSettings?.reflowable?.fontFamily,
+                persistedReflowable?.fontFamily,
                 "mobile",
               ),
               fontFamiliesByLanguage: normalizeReaderFontFamiliesByLanguage(
-                persistedSettings?.reflowable?.fontFamiliesByLanguage,
+                persistedReflowable?.fontFamiliesByLanguage,
                 "mobile",
               ),
             },

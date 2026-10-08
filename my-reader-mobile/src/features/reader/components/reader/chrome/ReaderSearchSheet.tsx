@@ -424,20 +424,12 @@ const ReaderSearchSheet = forwardRef<BottomSheetModal, ReaderSearchSheetProps>(
                 onEndReached={handleEndReached}
                 onEndReachedThreshold={0.4}
                 ListHeaderComponent={
-                  <View style={styles.resultsHeader}>
-                    <Text
-                      className="text-sm"
-                      style={{ color: palette.textMuted }}
-                    >
-                      {!done || resultCount == null
-                        ? t("reader.search.loadedCount", {
-                            count: locators.length,
-                          })
-                        : t("reader.search.resultCount", {
-                            count: resultCount,
-                          })}
-                    </Text>
-                  </View>
+                  <SearchResultsHeader
+                    palette={palette}
+                    done={done}
+                    resultCount={resultCount}
+                    loadedCount={locators.length}
+                  />
                 }
                 ListFooterComponent={
                   <SearchResultsFooter
@@ -507,6 +499,33 @@ const ReaderSearchSheet = forwardRef<BottomSheetModal, ReaderSearchSheetProps>(
     )
   },
 )
+
+function SearchResultsHeader({
+  palette,
+  done,
+  resultCount,
+  loadedCount,
+}: {
+  palette: ReaderChromePalette
+  done: boolean
+  resultCount?: number
+  loadedCount: number
+}) {
+  const { t } = useTranslation()
+  return (
+    <View style={styles.resultsHeader}>
+      <Text className="text-sm" style={{ color: palette.textMuted }}>
+        {!done || resultCount == null
+          ? t("reader.search.loadedCount", {
+              count: loadedCount,
+            })
+          : t("reader.search.resultCount", {
+              count: resultCount,
+            })}
+      </Text>
+    </View>
+  )
+}
 
 function SearchLoading({ palette }: { palette: ReaderChromePalette }) {
   const { t } = useTranslation()

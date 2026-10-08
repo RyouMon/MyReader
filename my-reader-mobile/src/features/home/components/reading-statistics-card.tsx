@@ -149,6 +149,112 @@ const HeatmapCells = memo(function HeatmapCells({
   )
 })
 
+function popoverPosition(popover: DayPopover | null, windowWidth: number) {
+  const showPopoverAbove = Boolean(
+    popover &&
+      popover.cellTopY >=
+        POPOVER_HEIGHT + POPOVER_ARROW_SIZE + POPOVER_CELL_GAP + POPOVER_MARGIN,
+  )
+  const popoverLeft = popover
+    ? Math.max(
+        POPOVER_MARGIN,
+        Math.min(
+          windowWidth - POPOVER_WIDTH - POPOVER_MARGIN,
+          popover.anchorX - POPOVER_WIDTH / 2,
+        ),
+      )
+    : 0
+  const popoverTop = popover
+    ? showPopoverAbove
+      ? popover.cellTopY -
+        POPOVER_HEIGHT -
+        POPOVER_ARROW_SIZE -
+        POPOVER_CELL_GAP
+      : popover.cellBottomY + POPOVER_ARROW_SIZE + POPOVER_CELL_GAP
+    : 0
+  const popoverArrowLeft = popover
+    ? Math.max(
+        POPOVER_MARGIN,
+        Math.min(
+          POPOVER_WIDTH - POPOVER_MARGIN - POPOVER_ARROW_SIZE * 2,
+          popover.anchorX - popoverLeft - POPOVER_ARROW_SIZE,
+        ),
+      )
+    : 0
+
+  return { showPopoverAbove, popoverLeft, popoverTop, popoverArrowLeft }
+}
+
+function ReadingDayPopover({
+  popover,
+  windowWidth,
+  palette,
+  feedback,
+  hidePopover,
+}: {
+  popover: DayPopover | null
+  windowWidth: number
+  palette: ReturnType<typeof useThemePalette>
+  feedback: string
+  hidePopover: () => void
+}) {
+  const { showPopoverAbove, popoverLeft, popoverTop, popoverArrowLeft } =
+    popoverPosition(popover, windowWidth)
+
+  return (
+    <Modal
+      transparent
+      visible={popover !== null}
+      animationType="none"
+      presentationStyle="overFullScreen"
+      statusBarTranslucent
+      onRequestClose={hidePopover}
+    >
+      <View pointerEvents="none" className="absolute inset-0">
+        {popover ? (
+          <View
+            testID="reading-statistics-popover"
+            className="absolute items-center justify-center rounded-md px-3 shadow-md"
+            style={{
+              backgroundColor: palette.text,
+              height: POPOVER_HEIGHT,
+              left: popoverLeft,
+              top: popoverTop,
+              width: POPOVER_WIDTH,
+            }}
+          >
+            <Text
+              accessibilityLiveRegion="polite"
+              className="text-base"
+              numberOfLines={1}
+              style={{ color: palette.background }}
+            >
+              {feedback}
+            </Text>
+            <View
+              className="absolute"
+              style={{
+                borderLeftColor: "transparent",
+                borderLeftWidth: POPOVER_ARROW_SIZE,
+                borderRightColor: "transparent",
+                borderRightWidth: POPOVER_ARROW_SIZE,
+                borderTopColor: showPopoverAbove ? palette.text : "transparent",
+                borderTopWidth: showPopoverAbove ? POPOVER_ARROW_SIZE : 0,
+                borderBottomColor: showPopoverAbove
+                  ? "transparent"
+                  : palette.text,
+                borderBottomWidth: showPopoverAbove ? 0 : POPOVER_ARROW_SIZE,
+                left: popoverArrowLeft,
+                top: showPopoverAbove ? POPOVER_HEIGHT : -POPOVER_ARROW_SIZE,
+              }}
+            />
+          </View>
+        ) : null}
+      </View>
+    </Modal>
+  )
+}
+
 export function ReadingStatisticsCard({
   library,
   onInspectingChange,
@@ -350,38 +456,6 @@ export function ReadingStatisticsCard({
     [scrollToTargetDay],
   )
 
-  const showPopoverAbove = Boolean(
-    popover &&
-      popover.cellTopY >=
-        POPOVER_HEIGHT + POPOVER_ARROW_SIZE + POPOVER_CELL_GAP + POPOVER_MARGIN,
-  )
-  const popoverLeft = popover
-    ? Math.max(
-        POPOVER_MARGIN,
-        Math.min(
-          windowWidth - POPOVER_WIDTH - POPOVER_MARGIN,
-          popover.anchorX - POPOVER_WIDTH / 2,
-        ),
-      )
-    : 0
-  const popoverTop = popover
-    ? showPopoverAbove
-      ? popover.cellTopY -
-        POPOVER_HEIGHT -
-        POPOVER_ARROW_SIZE -
-        POPOVER_CELL_GAP
-      : popover.cellBottomY + POPOVER_ARROW_SIZE + POPOVER_CELL_GAP
-    : 0
-  const popoverArrowLeft = popover
-    ? Math.max(
-        POPOVER_MARGIN,
-        Math.min(
-          POPOVER_WIDTH - POPOVER_MARGIN - POPOVER_ARROW_SIZE * 2,
-          popover.anchorX - popoverLeft - POPOVER_ARROW_SIZE,
-        ),
-      )
-    : 0
-
   const metrics = [
     {
       value: `${longestStreakDays}${t("home.readingStats.dayUnit")}`,
@@ -565,58 +639,13 @@ export function ReadingStatisticsCard({
         </ScrollView>
       </View>
 
-      <Modal
-        transparent
-        visible={popover !== null}
-        animationType="none"
-        presentationStyle="overFullScreen"
-        statusBarTranslucent
-        onRequestClose={hidePopover}
-      >
-        <View pointerEvents="none" className="absolute inset-0">
-          {popover ? (
-            <View
-              testID="reading-statistics-popover"
-              className="absolute items-center justify-center rounded-md px-3 shadow-md"
-              style={{
-                backgroundColor: palette.text,
-                height: POPOVER_HEIGHT,
-                left: popoverLeft,
-                top: popoverTop,
-                width: POPOVER_WIDTH,
-              }}
-            >
-              <Text
-                accessibilityLiveRegion="polite"
-                className="text-base"
-                numberOfLines={1}
-                style={{ color: palette.background }}
-              >
-                {feedback}
-              </Text>
-              <View
-                className="absolute"
-                style={{
-                  borderLeftColor: "transparent",
-                  borderLeftWidth: POPOVER_ARROW_SIZE,
-                  borderRightColor: "transparent",
-                  borderRightWidth: POPOVER_ARROW_SIZE,
-                  borderTopColor: showPopoverAbove
-                    ? palette.text
-                    : "transparent",
-                  borderTopWidth: showPopoverAbove ? POPOVER_ARROW_SIZE : 0,
-                  borderBottomColor: showPopoverAbove
-                    ? "transparent"
-                    : palette.text,
-                  borderBottomWidth: showPopoverAbove ? 0 : POPOVER_ARROW_SIZE,
-                  left: popoverArrowLeft,
-                  top: showPopoverAbove ? POPOVER_HEIGHT : -POPOVER_ARROW_SIZE,
-                }}
-              />
-            </View>
-          ) : null}
-        </View>
-      </Modal>
+      <ReadingDayPopover
+        popover={popover}
+        windowWidth={windowWidth}
+        palette={palette}
+        feedback={feedback}
+        hidePopover={hidePopover}
+      />
     </View>
   )
 }

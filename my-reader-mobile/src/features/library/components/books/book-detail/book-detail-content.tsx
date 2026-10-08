@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next"
 import { useCallback, useMemo, type Ref } from "react"
 
 import { Image as ExpoImage } from "expo-image"
@@ -62,6 +63,105 @@ type BookDetailContentProps = {
 }
 
 const BOOK_DETAIL_MAX_CONTENT_WIDTH = 1120
+
+function LoadingBookDetail({
+  bookId,
+  colors,
+  contentWidth,
+  fontScale,
+  heroMode,
+  loadingCoverUri,
+}: {
+  bookId: string
+  colors: DetailColors
+  contentWidth: number
+  fontScale: number
+  heroMode: ReturnType<typeof resolveBookDetailHeroMode>
+  loadingCoverUri: BookItem["coverUri"]
+}) {
+  const { t } = useTranslation()
+  const loadingCoverWidth = Math.round(
+    heroMode === "narrow"
+      ? contentWidth
+      : Math.min(280, Math.max(152, (contentWidth - 48) * 0.33)),
+  )
+  const loadingCoverHeight = Math.round(
+    heroMode === "narrow"
+      ? resolveNarrowBookDetailCoverHeight(contentWidth, fontScale)
+      : loadingCoverWidth * 1.5,
+  )
+  return (
+    <View
+      className={
+        heroMode === "wide" ? "flex-1 items-start px-4" : "flex-1 items-center"
+      }
+      style={{ backgroundColor: colors.background }}
+    >
+      {loadingCoverUri ? (
+        <ExpoImage
+          cachePolicy="memory-disk"
+          contentFit="cover"
+          recyclingKey={`book-detail-loading-${bookId}`}
+          source={loadingCoverUri}
+          style={{
+            borderRadius: heroMode === "wide" ? 8 : 0,
+            height: loadingCoverHeight,
+            marginTop: heroMode === "wide" ? 16 : 0,
+            width: loadingCoverWidth,
+          }}
+          testID="book-detail-loading-cover"
+        />
+      ) : null}
+      <Text
+        className={loadingCoverUri ? "mt-4 text-base" : "my-auto text-base"}
+        style={{ color: colors.palette.textMuted }}
+      >
+        {t("bookDetail.loadingDetail")}
+      </Text>
+    </View>
+  )
+}
+
+function bookInfoRows(book: BookDetail, t: TFunction): InfoCardItem[] {
+  const authorsText = book.authors.filter(Boolean).join(", ") || "—"
+  const tagsText = book.tags.filter(Boolean).join(", ") || "—"
+  const identifierValue = book.identifiers
+    .filter((ident) => ident.value.length > 0)
+    .map(
+      (ident) =>
+        `${IDENTIFIER_LABELS[ident.idType] ?? ident.idType}: ${ident.value}`,
+    )
+    .join("\n")
+  const langDisplay = book.languages.map(formatLanguage).join(", ")
+  const ratingStars = book.rating ? Math.round(book.rating / 2) : 0
+  const ratingValue = book.rating ? (book.rating / 2).toFixed(1) : null
+
+  return [
+    { label: t("bookDetail.bookTitle"), value: book.title },
+    { label: t("bookDetail.titleSort"), value: book.titleSort || "—" },
+    { label: t("bookDetail.authors"), value: authorsText },
+    { label: t("bookDetail.authorSort"), value: book.authorSort || "—" },
+    { label: t("bookDetail.series"), value: book.series || "—" },
+    {
+      label: t("bookDetail.seriesIndex"),
+      value: book.seriesIndex !== null ? String(book.seriesIndex) : "—",
+    },
+    ...(ratingValue
+      ? [
+          {
+            label: t("bookDetail.rating"),
+            value: `${"★".repeat(ratingStars)}${"☆".repeat(5 - ratingStars)} ${ratingValue}`,
+          },
+        ]
+      : []),
+    { label: t("bookDetail.tags"), value: tagsText },
+    { label: t("bookDetail.identifiers"), value: identifierValue || "—" },
+    { label: t("bookDetail.createdAt"), value: formatDate(book.timestamp) },
+    { label: t("bookDetail.pubDate"), value: formatDate(book.pubdate) },
+    { label: t("bookDetail.publisher"), value: book.publisher || "—" },
+    { label: t("bookDetail.language"), value: langDisplay || "—" },
+  ]
+}
 
 export function BookDetailContent({
   activeLibrary,
@@ -143,16 +243,6 @@ export function BookDetailContent({
     coverBook,
   )
   const loadingCoverUri = thumbnailCoverUri ?? coverUri ?? coverBook.coverUri
-  const loadingCoverWidth = Math.round(
-    heroMode === "narrow"
-      ? contentWidth
-      : Math.min(280, Math.max(152, (contentWidth - 48) * 0.33)),
-  )
-  const loadingCoverHeight = Math.round(
-    heroMode === "narrow"
-      ? resolveNarrowBookDetailCoverHeight(contentWidth, fontScale)
-      : loadingCoverWidth * 1.5,
-  )
 
   const {
     formatInfoMap,
@@ -205,36 +295,14 @@ export function BookDetailContent({
 
   if (loadingDetail) {
     return (
-      <View
-        className={
-          heroMode === "wide"
-            ? "flex-1 items-start px-4"
-            : "flex-1 items-center"
-        }
-        style={{ backgroundColor: colors.background }}
-      >
-        {loadingCoverUri ? (
-          <ExpoImage
-            cachePolicy="memory-disk"
-            contentFit="cover"
-            recyclingKey={`book-detail-loading-${bookId}`}
-            source={loadingCoverUri}
-            style={{
-              borderRadius: heroMode === "wide" ? 8 : 0,
-              height: loadingCoverHeight,
-              marginTop: heroMode === "wide" ? 16 : 0,
-              width: loadingCoverWidth,
-            }}
-            testID="book-detail-loading-cover"
-          />
-        ) : null}
-        <Text
-          className={loadingCoverUri ? "mt-4 text-base" : "my-auto text-base"}
-          style={{ color: colors.palette.textMuted }}
-        >
-          {t("bookDetail.loadingDetail")}
-        </Text>
-      </View>
+      <LoadingBookDetail
+        bookId={bookId}
+        colors={colors}
+        contentWidth={contentWidth}
+        fontScale={fontScale}
+        heroMode={heroMode}
+        loadingCoverUri={loadingCoverUri}
+      />
     )
   }
 
@@ -280,48 +348,10 @@ export function BookDetailContent({
   }
 
   const book = detail
-  const authorsText = book.authors.filter(Boolean).join(", ") || "—"
-  const tagsText = book.tags.filter(Boolean).join(", ") || "—"
-  const identifierValue = book.identifiers
-    .filter((ident) => ident.value.length > 0)
-    .map(
-      (ident) =>
-        `${IDENTIFIER_LABELS[ident.idType] ?? ident.idType}: ${ident.value}`,
-    )
-    .join("\n")
-  const langDisplay = book.languages.map(formatLanguage).join(", ")
-  const ratingStars = book.rating ? Math.round(book.rating / 2) : 0
-  const ratingValue = book.rating ? (book.rating / 2).toFixed(1) : null
   const synopsisText = book.comment ? stripHtml(book.comment) : ""
   const readingProgress = readableSelectedFormat
     ? (progressByFormat?.[readableSelectedFormat.toUpperCase()] ?? 0)
     : 0
-
-  const bookInfoRows: InfoCardItem[] = [
-    { label: t("bookDetail.bookTitle"), value: book.title },
-    { label: t("bookDetail.titleSort"), value: book.titleSort || "—" },
-    { label: t("bookDetail.authors"), value: authorsText },
-    { label: t("bookDetail.authorSort"), value: book.authorSort || "—" },
-    { label: t("bookDetail.series"), value: book.series || "—" },
-    {
-      label: t("bookDetail.seriesIndex"),
-      value: book.seriesIndex !== null ? String(book.seriesIndex) : "—",
-    },
-    ...(ratingValue
-      ? [
-          {
-            label: t("bookDetail.rating"),
-            value: `${"★".repeat(ratingStars)}${"☆".repeat(5 - ratingStars)} ${ratingValue}`,
-          },
-        ]
-      : []),
-    { label: t("bookDetail.tags"), value: tagsText },
-    { label: t("bookDetail.identifiers"), value: identifierValue || "—" },
-    { label: t("bookDetail.createdAt"), value: formatDate(book.timestamp) },
-    { label: t("bookDetail.pubDate"), value: formatDate(book.pubdate) },
-    { label: t("bookDetail.publisher"), value: book.publisher || "—" },
-    { label: t("bookDetail.language"), value: langDisplay || "—" },
-  ]
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
@@ -392,7 +422,7 @@ export function BookDetailContent({
           ) : null}
 
           <InfoRowSection
-            items={bookInfoRows}
+            items={bookInfoRows(book, t)}
             title={t("bookDetail.infoSection")}
           />
         </View>

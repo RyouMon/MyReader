@@ -34,75 +34,59 @@ export type ChromeAction =
   | { type: "searchSelect" }
   | { type: "searchDismiss" }
 
+const PILL_SHEETS = {
+  navigationPillTap: ChromeState.NavigationSheet,
+  annotationsPillTap: ChromeState.AnnotationsSheet,
+  settingsPillTap: ChromeState.SettingsSheet,
+  searchPillTap: ChromeState.SearchSheet,
+} as const
+
+const DISMISSED_SHEETS = {
+  navigationDismiss: ChromeState.NavigationSheet,
+  annotationsDismiss: ChromeState.AnnotationsSheet,
+  settingsDismiss: ChromeState.SettingsSheet,
+  searchDismiss: ChromeState.SearchSheet,
+} as const
+
+function isSheet(state: ChromeState) {
+  return (
+    state === ChromeState.NavigationSheet ||
+    state === ChromeState.AnnotationsSheet ||
+    state === ChromeState.SettingsSheet ||
+    state === ChromeState.SearchSheet
+  )
+}
+
 export function chromeReducer(
   state: ChromeState,
   action: ChromeAction,
 ): ChromeState {
   switch (action.type) {
     case "contentTap":
-      if (
-        state === ChromeState.NavigationSheet ||
-        state === ChromeState.AnnotationsSheet ||
-        state === ChromeState.SettingsSheet ||
-        state === ChromeState.SearchSheet
-      )
-        return ChromeState.Chrome
-      if (state === ChromeState.Reading) return ChromeState.Chrome
-      return ChromeState.Reading
-
+      return isSheet(state) || state === ChromeState.Reading
+        ? ChromeState.Chrome
+        : ChromeState.Reading
     case "moreButtonTap":
-      if (
-        state === ChromeState.Chrome ||
-        state === ChromeState.NavigationSheet ||
-        state === ChromeState.AnnotationsSheet ||
-        state === ChromeState.SettingsSheet ||
-        state === ChromeState.SearchSheet
-      )
-        return ChromeState.Expanded
-      return state
-
+      return isSheet(state) || state === ChromeState.Chrome
+        ? ChromeState.Expanded
+        : state
     case "navigationPillTap":
-      if (state === ChromeState.Expanded) return ChromeState.NavigationSheet
-      return state
-
     case "annotationsPillTap":
-      if (state === ChromeState.Expanded) return ChromeState.AnnotationsSheet
-      return state
-
     case "settingsPillTap":
-      if (state === ChromeState.Expanded) return ChromeState.SettingsSheet
-      return state
-
     case "searchPillTap":
-      if (state === ChromeState.Expanded) return ChromeState.SearchSheet
-      return state
-
-    case "closeButtonTap":
-      return state
-
-    case "navigationSelect":
-      return ChromeState.Reading
-
+      return state === ChromeState.Expanded ? PILL_SHEETS[action.type] : state
     case "navigationDismiss":
-      if (state === ChromeState.NavigationSheet) return ChromeState.Chrome
-      return state
-
-    case "annotationSelect":
-      return ChromeState.Reading
-
     case "annotationsDismiss":
-      if (state === ChromeState.AnnotationsSheet) return ChromeState.Chrome
-      return state
-
     case "settingsDismiss":
-      if (state === ChromeState.SettingsSheet) return ChromeState.Chrome
-      return state
-
+    case "searchDismiss":
+      return state === DISMISSED_SHEETS[action.type]
+        ? ChromeState.Chrome
+        : state
+    case "navigationSelect":
+    case "annotationSelect":
     case "searchSelect":
       return ChromeState.Reading
-
-    case "searchDismiss":
-      if (state === ChromeState.SearchSheet) return ChromeState.Chrome
+    case "closeButtonTap":
       return state
   }
 }

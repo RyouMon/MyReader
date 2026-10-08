@@ -140,6 +140,109 @@ function numericBookId(bookId: string): number | null {
   return Number.isFinite(value) && value > 0 ? value : null
 }
 
+type ThumbnailCacheContext = {
+  library: Library
+  manifestReady: boolean
+  manifestBySizeAndBookId: Map<string, BookCoverThumbnailCache>
+  staleManifestRows: Array<{ bookId: number; input: CoverThumbnailCacheInput }>
+}
+
+function cachedThumbnail(
+  cache: ThumbnailCacheContext,
+  input: CoverThumbnailCacheInput,
+) {
+  const { library, manifestReady, manifestBySizeAndBookId, staleManifestRows } =
+    cache
+  const row = manifestReady
+    ? manifestBySizeAndBookId.get(manifestEntryKey(input.bookId, input))
+    : null
+  const bookId = numericBookId(input.bookId)
+  if (row?.coverIdentity === input.coverIdentity) {
+    const file = getCachedCoverThumbnailFileByName({
+      fileName: row.fileName,
+      heightPx: input.heightPx,
+      libraryId: library.id,
+      widthPx: input.widthPx,
+    })
+    if (file) return file
+    if (bookId !== null) staleManifestRows.push({ bookId, input })
+  }
+  const file = getCachedCoverThumbnailFile(input)
+  if (
+    file &&
+    bookId !== null &&
+    (!row || row.coverIdentity !== input.coverIdentity)
+  ) {
+    void upsertBookCoverThumbnailCache(library, {
+      bookId,
+      coverIdentity: input.coverIdentity,
+      fileName: file.fileName,
+      fileSizeBytes: file.fileSizeBytes,
+      heightPx: input.heightPx,
+      thumbnailVersion: COVER_THUMBNAIL_CACHE_VERSION,
+      widthPx: input.widthPx,
+    })
+  }
+  return file
+}
+
+function missingCompanionThumbnails(
+  cache: ThumbnailCacheContext,
+  book: BookItem,
+  sizes: CoverThumbnailSize[],
+) {
+  const missing: NonNullable<
+    CoverThumbnailGenerationRequest["companionThumbnails"]
+  > = []
+  for (const size of sizes) {
+    const input = createThumbnailInput(cache.library.id, book, size)
+    if (!input) continue
+    const scopeKey = createThumbnailScopeKey(cache.library.id, size)
+    const identity = createThumbnailIdentity(scopeKey, input)
+    if (!cachedThumbnail(cache, input))
+      missing.push({ identity, input, scopeKey })
+  }
+  return missing
+}
+
+function prepareThumbnailRequest(
+  cache: ThumbnailCacheContext,
+  book: BookItem,
+  size: CoverThumbnailSize,
+  scopeKey: string,
+  companionSizes: CoverThumbnailSize[],
+  activeEntries: ReturnType<typeof getCoverThumbnailSessionEntries>,
+  visibleEntries: CoverThumbnailSessionEntry[],
+) {
+  const input = createThumbnailInput(cache.library.id, book, size)
+  if (!input) return null
+  const identity = createThumbnailIdentity(scopeKey, input)
+  let activeReady = activeEntries.get(book.id)?.identity === identity
+  if (!activeReady) {
+    const file = cachedThumbnail(cache, input)
+    if (file) {
+      visibleEntries.push({ bookId: book.id, identity, uri: file.uri })
+      activeReady = true
+    }
+  }
+  const companionThumbnails = missingCompanionThumbnails(
+    cache,
+    book,
+    companionSizes,
+  )
+  if (activeReady && companionThumbnails.length === 0) return null
+  return {
+    activeReady,
+    request: {
+      bookId: book.id,
+      companionThumbnails,
+      identity,
+      input,
+      scopeKey,
+    },
+  }
+}
+
 export function useCoverThumbnails({
   backgroundGenerationBookIds,
   enabled,
@@ -355,180 +458,31 @@ export function useCoverThumbnails({
       input: CoverThumbnailCacheInput
     }> = []
 
+    const cache: ThumbnailCacheContext = {
+      library: activeLibrary,
+      manifestReady,
+      manifestBySizeAndBookId,
+      staleManifestRows,
+    }
     for (const book of books) {
-      const input = createThumbnailInput(libraryId, book, size)
-      if (!input) {
-        continue
-      }
-
-      const identity = createThumbnailIdentity(scopeKey, input)
-      const sessionEntry = activeThumbnailEntries.get(book.id)
-      const manifestRow = manifestReady
-        ? manifestBySizeAndBookId.get(manifestEntryKey(book.id, size))
-        : null
-      let activeReady = sessionEntry?.identity === identity
-
-      if (!activeReady && manifestRow?.coverIdentity === input.coverIdentity) {
-        const manifestFile = getCachedCoverThumbnailFileByName({
-          fileName: manifestRow.fileName,
-          heightPx: input.heightPx,
-          libraryId,
-          widthPx: input.widthPx,
-        })
-
-        if (manifestFile) {
-          visibleEntries.push({
-            bookId: book.id,
-            identity,
-            uri: manifestFile.uri,
-          })
-          activeReady = true
-        } else {
-          const id = numericBookId(book.id)
-          if (id !== null) {
-            staleManifestRows.push({ bookId: id, input })
-          }
-        }
-      }
-
-      if (!activeReady) {
-        const cachedFile = getCachedCoverThumbnailFile(input)
-        if (cachedFile) {
-          visibleEntries.push({
-            bookId: book.id,
-            identity,
-            uri: cachedFile.uri,
-          })
-          activeReady = true
-          const id = numericBookId(book.id)
-          if (
-            id !== null &&
-            (!manifestRow || manifestRow.coverIdentity !== input.coverIdentity)
-          ) {
-            void upsertBookCoverThumbnailCache(activeLibrary, {
-              bookId: id,
-              coverIdentity: input.coverIdentity,
-              fileName: cachedFile.fileName,
-              fileSizeBytes: cachedFile.fileSizeBytes,
-              heightPx: input.heightPx,
-              thumbnailVersion: COVER_THUMBNAIL_CACHE_VERSION,
-              widthPx: input.widthPx,
-            })
-          }
-        }
-      }
-
-      const companionThumbnails: CoverThumbnailGenerationRequest["companionThumbnails"] =
-        []
-      for (const companionSize of companionSizes) {
-        const companionInput = createThumbnailInput(
-          libraryId,
-          book,
-          companionSize,
-        )
-        if (!companionInput) continue
-
-        const companionScopeKey = createThumbnailScopeKey(
-          libraryId,
-          companionSize,
-        )
-        const companionIdentity = createThumbnailIdentity(
-          companionScopeKey,
-          companionInput,
-        )
-        const companionManifestRow = manifestReady
-          ? manifestBySizeAndBookId.get(
-              manifestEntryKey(book.id, companionSize),
-            )
-          : null
-        let companionReady = false
-
-        if (
-          companionManifestRow?.coverIdentity === companionInput.coverIdentity
-        ) {
-          const companionManifestFile = getCachedCoverThumbnailFileByName({
-            fileName: companionManifestRow.fileName,
-            heightPx: companionInput.heightPx,
-            libraryId,
-            widthPx: companionInput.widthPx,
-          })
-          if (companionManifestFile) {
-            companionReady = true
-          } else {
-            const id = numericBookId(book.id)
-            if (id !== null) {
-              staleManifestRows.push({ bookId: id, input: companionInput })
-            }
-          }
-        }
-
-        if (!companionReady) {
-          const companionCachedFile =
-            getCachedCoverThumbnailFile(companionInput)
-          if (companionCachedFile) {
-            companionReady = true
-            const id = numericBookId(book.id)
-            if (
-              id !== null &&
-              (!companionManifestRow ||
-                companionManifestRow.coverIdentity !==
-                  companionInput.coverIdentity)
-            ) {
-              void upsertBookCoverThumbnailCache(activeLibrary, {
-                bookId: id,
-                coverIdentity: companionInput.coverIdentity,
-                fileName: companionCachedFile.fileName,
-                fileSizeBytes: companionCachedFile.fileSizeBytes,
-                heightPx: companionInput.heightPx,
-                thumbnailVersion: COVER_THUMBNAIL_CACHE_VERSION,
-                widthPx: companionInput.widthPx,
-              })
-            }
-          }
-        }
-
-        if (!companionReady) {
-          companionThumbnails.push({
-            identity: companionIdentity,
-            input: companionInput,
-            scopeKey: companionScopeKey,
-          })
-        }
-      }
-
+      const plan = prepareThumbnailRequest(
+        cache,
+        book,
+        size,
+        scopeKey,
+        companionSizes,
+        activeThumbnailEntries,
+        visibleEntries,
+      )
+      if (!plan || !manifestReady || paused) continue
       const shouldGenerateBook =
         !generationBookIds || generationBookIds.has(book.id)
       const shouldGenerateBackgroundBook =
         backgroundGenerationBookIds?.has(book.id) ?? false
-      const shouldGenerateCompanionBook =
-        shouldGenerateBook || shouldGenerateBackgroundBook
-      const request =
-        !activeReady || companionThumbnails.length > 0
-          ? {
-              bookId: book.id,
-              companionThumbnails,
-              identity,
-              input,
-              scopeKey,
-            }
-          : null
-
-      if (!request) {
-        continue
-      }
-
-      if (activeReady) {
-        if (manifestReady && !paused && shouldGenerateCompanionBook) {
-          backgroundMissing.push(request)
-        }
-      } else {
-        if (manifestReady && !paused) {
-          if (shouldGenerateBook) {
-            priorityMissing.push(request)
-          } else if (shouldGenerateBackgroundBook) {
-            backgroundMissing.push(request)
-          }
-        }
+      if (!plan.activeReady && shouldGenerateBook) {
+        priorityMissing.push(plan.request)
+      } else if (shouldGenerateBook || shouldGenerateBackgroundBook) {
+        backgroundMissing.push(plan.request)
       }
     }
 

@@ -98,6 +98,12 @@ const NativeReadiumView = requireNativeView<NativeReadiumViewProps>(
   NativeReadiumViewProps & React.RefAttributes<NativeReadiumViewRef>
 >
 
+function forwardNativeEvent<T>(handler: ((event: T) => void) | undefined) {
+  return handler
+    ? (event: { nativeEvent: T }) => handler(event.nativeEvent)
+    : undefined
+}
+
 export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
   (
     {
@@ -265,37 +271,13 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
             onPublicationReady={
               onPublicationReady ? handlePublicationReady : undefined
             }
-            onDecorationActivated={
-              onDecorationActivated
-                ? (e) => onDecorationActivated(e.nativeEvent)
-                : undefined
-            }
-            onSelectionChange={
-              onSelectionChange
-                ? (e) => onSelectionChange(e.nativeEvent)
-                : undefined
-            }
-            onSelectionAction={
-              onSelectionAction
-                ? (e) => onSelectionAction(e.nativeEvent)
-                : undefined
-            }
-            onTap={onTap ? (e) => onTap(e.nativeEvent) : undefined}
-            onTtsStateChange={
-              onTtsStateChange
-                ? (e) => onTtsStateChange(e.nativeEvent)
-                : undefined
-            }
-            onTtsSynthesisRequest={
-              onTtsSynthesisRequest
-                ? (e) => onTtsSynthesisRequest(e.nativeEvent)
-                : undefined
-            }
-            onTtsSynthesisCancel={
-              onTtsSynthesisCancel
-                ? (e) => onTtsSynthesisCancel(e.nativeEvent)
-                : undefined
-            }
+            onDecorationActivated={forwardNativeEvent(onDecorationActivated)}
+            onSelectionChange={forwardNativeEvent(onSelectionChange)}
+            onSelectionAction={forwardNativeEvent(onSelectionAction)}
+            onTap={forwardNativeEvent(onTap)}
+            onTtsStateChange={forwardNativeEvent(onTtsStateChange)}
+            onTtsSynthesisRequest={forwardNativeEvent(onTtsSynthesisRequest)}
+            onTtsSynthesisCancel={forwardNativeEvent(onTtsSynthesisCancel)}
           />
         )}
       </View>

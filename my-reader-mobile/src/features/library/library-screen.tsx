@@ -162,6 +162,144 @@ const SeparatorList = memo(function SeparatorList() {
   return null
 }) as LibraryItemSeparator
 
+function LibraryEmptyContent({
+  isLoadingNewContent,
+  viewMode,
+  cardWidth,
+  gridColumns,
+  booksError,
+  refetchBooks,
+  emptyState,
+  isManagedLibrary,
+  showsEmptyLibraryState,
+  showsBrowseAllBooksAction,
+  handleImportBook,
+  handleBrowseAllBooks,
+}: {
+  isLoadingNewContent: boolean
+  viewMode: ComponentProps<typeof LibrarySkeletonContent>["viewMode"]
+  cardWidth: number
+  gridColumns: number
+  booksError: Error | null
+  refetchBooks: () => unknown
+  emptyState: ComponentProps<typeof EmptyState>
+  isManagedLibrary: boolean
+  showsEmptyLibraryState: boolean
+  showsBrowseAllBooksAction: boolean
+  handleImportBook: () => void
+  handleBrowseAllBooks: () => void
+}) {
+  const { t } = useTranslation()
+  if (isLoadingNewContent)
+    return (
+      <LibrarySkeletonContent
+        viewMode={viewMode}
+        cardWidth={cardWidth}
+        gridColumns={gridColumns}
+        gridGap={LIBRARY_GRID_CARD_GAP}
+        listPaddingX={LIBRARY_LIST_PADDING_X}
+      />
+    )
+  if (booksError)
+    return (
+      <EmptyState
+        title={t("library.loadError.title")}
+        detail={booksError.message}
+        action={
+          <PrimaryButton
+            title={t("errorBoundary.retry")}
+            onPress={() => void refetchBooks()}
+          />
+        }
+        icon={{
+          ios: "exclamationmark.triangle.fill",
+          android: "warning",
+        }}
+      />
+    )
+  return (
+    <EmptyState
+      title={emptyState.title}
+      detail={emptyState.detail}
+      icon={emptyState.icon}
+      action={
+        isManagedLibrary && showsEmptyLibraryState ? (
+          <PrimaryButton
+            title={t("library.importBook")}
+            onPress={handleImportBook}
+          />
+        ) : showsBrowseAllBooksAction ? (
+          <PrimaryButton
+            title={t("library.browseAllBooks")}
+            onPress={handleBrowseAllBooks}
+          />
+        ) : undefined
+      }
+    />
+  )
+}
+
+function LibraryUnavailableContent({
+  variant,
+}: {
+  variant: Exclude<ReturnType<typeof resolveLibraryScreenVariant>, "loaded">
+}) {
+  const { t } = useTranslation()
+  if (variant === "loading") {
+    return (
+      <>
+        <Screen>
+          <EmptyState
+            title={t("library.loading.title")}
+            detail={t("library.loading.detail")}
+            icon={{ ios: "hourglass", android: "hourglass-empty" }}
+          />
+        </Screen>
+      </>
+    )
+  }
+
+  if (variant === "invalid") {
+    return (
+      <>
+        <Screen>
+          <EmptyState
+            title={t("library.notFound.title")}
+            detail={t("library.notFound.detail")}
+            icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }}
+          />
+        </Screen>
+      </>
+    )
+  }
+
+  if (variant === "empty") {
+    return (
+      <>
+        <Screen>
+          <NoLibraryEmptyState />
+        </Screen>
+      </>
+    )
+  }
+
+  if (variant === "unselected") {
+    return (
+      <>
+        <Screen>
+          <EmptyState
+            title={t("library.unselected.title")}
+            detail={t("library.unselected.detail")}
+            icon={{ ios: "list.bullet.rectangle", android: "list" }}
+          />
+        </Screen>
+      </>
+    )
+  }
+
+  return null
+}
+
 export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
   const { t } = useTranslation()
   const palette = useThemePalette()
@@ -613,14 +751,20 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
       const progress = isImporting
         ? { statusLabel: t("library.importingBook") }
         : cellMeta?.progress
-      const subscriptionLibraryId = isImporting
-        ? undefined
-        : cellMeta?.subscriptionLibraryId
-      const subscriptionFormat = isImporting
-        ? undefined
-        : cellMeta?.subscriptionFormat
-      const menuActions = isImporting ? undefined : cellMeta?.menuActions
       const deferCoverUntilDisplayUri = !!item.coverUri
+
+      const interactionProps = isImporting
+        ? {}
+        : {
+            onPress: handleBookPress,
+            menuIsRemote: isRemote,
+            onMenuAction: handleBookMenuAction,
+            onMenuOpen: handleMenuOpen,
+            onMenuClose: handleMenuClose,
+            menuActions: cellMeta?.menuActions,
+            subscriptionLibraryId: cellMeta?.subscriptionLibraryId,
+            subscriptionFormat: cellMeta?.subscriptionFormat,
+          }
 
       if (isGridView) {
         const bookCard = (
@@ -633,14 +777,7 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
             width={cardWidth}
             readerFormat={readerFormat}
             isAnyMenuOpen={isMenuOpen}
-            onPress={isImporting ? undefined : handleBookPress}
-            menuIsRemote={isImporting ? undefined : isRemote}
-            menuActions={menuActions}
-            onMenuAction={isImporting ? undefined : handleBookMenuAction}
-            onMenuOpen={isImporting ? undefined : handleMenuOpen}
-            onMenuClose={isImporting ? undefined : handleMenuClose}
-            subscriptionLibraryId={subscriptionLibraryId}
-            subscriptionFormat={subscriptionFormat}
+            {...interactionProps}
             progress={progress}
             profilerOnRender={cardSegmentProfilerOnRender}
             chrome={bookCardChrome}
@@ -676,15 +813,8 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
           transferStatus={transferStatus}
           readerFormat={readerFormat}
           isAnyMenuOpen={isMenuOpen}
-          onPress={isImporting ? undefined : handleBookPress}
-          menuIsRemote={isImporting ? undefined : isRemote}
-          menuActions={menuActions}
-          onMenuAction={isImporting ? undefined : handleBookMenuAction}
-          onMenuOpen={isImporting ? undefined : handleMenuOpen}
-          onMenuClose={isImporting ? undefined : handleMenuClose}
+          {...interactionProps}
           horizontalPadding={LIBRARY_LIST_PADDING_X}
-          subscriptionLibraryId={subscriptionLibraryId}
-          subscriptionFormat={subscriptionFormat}
           progress={progress}
           loadingSkeletonPulseEnabled={coverLoadingSkeletonPulseEnabled}
         />
@@ -810,58 +940,11 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
     !showsEmptyLibraryState &&
     collectionId !== "localOnly"
 
-  if (variant === "loading") {
+  if (variant !== "loaded") {
     return (
       <>
         {header}
-        <Screen>
-          <EmptyState
-            title={t("library.loading.title")}
-            detail={t("library.loading.detail")}
-            icon={{ ios: "hourglass", android: "hourglass-empty" }}
-          />
-        </Screen>
-      </>
-    )
-  }
-
-  if (variant === "invalid") {
-    return (
-      <>
-        {header}
-        <Screen>
-          <EmptyState
-            title={t("library.notFound.title")}
-            detail={t("library.notFound.detail")}
-            icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }}
-          />
-        </Screen>
-      </>
-    )
-  }
-
-  if (variant === "empty") {
-    return (
-      <>
-        {header}
-        <Screen>
-          <NoLibraryEmptyState />
-        </Screen>
-      </>
-    )
-  }
-
-  if (variant === "unselected") {
-    return (
-      <>
-        {header}
-        <Screen>
-          <EmptyState
-            title={t("library.unselected.title")}
-            detail={t("library.unselected.detail")}
-            icon={{ ios: "list.bullet.rectangle", android: "list" }}
-          />
-        </Screen>
+        <LibraryUnavailableContent variant={variant} />
       </>
     )
   }
@@ -890,49 +973,20 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
         LIBRARY_LIST_MAINTAIN_VISIBLE_CONTENT_POSITION
       }
       ListEmptyComponent={
-        isLoadingNewContent ? (
-          <LibrarySkeletonContent
-            viewMode={viewMode}
-            cardWidth={cardWidth}
-            gridColumns={gridColumns}
-            gridGap={LIBRARY_GRID_CARD_GAP}
-            listPaddingX={LIBRARY_LIST_PADDING_X}
-          />
-        ) : booksError ? (
-          <EmptyState
-            title={t("library.loadError.title")}
-            detail={booksError.message}
-            action={
-              <PrimaryButton
-                title={t("errorBoundary.retry")}
-                onPress={() => void refetchBooks()}
-              />
-            }
-            icon={{
-              ios: "exclamationmark.triangle.fill",
-              android: "warning",
-            }}
-          />
-        ) : (
-          <EmptyState
-            title={emptyState.title}
-            detail={emptyState.detail}
-            icon={emptyState.icon}
-            action={
-              isManagedLibrary && showsEmptyLibraryState ? (
-                <PrimaryButton
-                  title={t("library.importBook")}
-                  onPress={handleImportBook}
-                />
-              ) : showsBrowseAllBooksAction ? (
-                <PrimaryButton
-                  title={t("library.browseAllBooks")}
-                  onPress={handleBrowseAllBooks}
-                />
-              ) : undefined
-            }
-          />
-        )
+        <LibraryEmptyContent
+          isLoadingNewContent={isLoadingNewContent}
+          viewMode={viewMode}
+          cardWidth={cardWidth}
+          gridColumns={gridColumns}
+          booksError={booksError}
+          refetchBooks={refetchBooks}
+          emptyState={emptyState}
+          isManagedLibrary={isManagedLibrary}
+          showsEmptyLibraryState={showsEmptyLibraryState}
+          showsBrowseAllBooksAction={showsBrowseAllBooksAction}
+          handleImportBook={handleImportBook}
+          handleBrowseAllBooks={handleBrowseAllBooks}
+        />
       }
       onCommitLayoutEffect={onCommitLayoutEffect}
       onMomentumScrollBegin={handleScrollActive}

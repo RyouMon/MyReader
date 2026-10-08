@@ -53,10 +53,12 @@ export function useSyncStatusPresentation() {
     return () => clearTimeout(timer)
   }, [clockNow, history, storedTransientResult])
 
+  const lastSync = history?.lastSync
+  const lastFailure = history?.lastFailure
   const projectionNow = Math.max(
     clockNow,
-    history?.lastSync?.completedAt ?? 0,
-    history?.lastFailure?.completedAt ?? 0,
+    lastSync?.completedAt ?? 0,
+    lastFailure?.completedAt ?? 0,
     storedTransientResult?.completedAt ?? 0,
   )
 
@@ -64,13 +66,8 @@ export function useSyncStatusPresentation() {
     {
       isRunning: activity != null,
       stage: activity?.stage,
-      lastResult: history?.lastFailure
-        ? "failure"
-        : history?.lastSync
-          ? "success"
-          : undefined,
-      lastCompletedAt:
-        history?.lastFailure?.completedAt ?? history?.lastSync?.completedAt,
+      lastResult: lastFailure ? "failure" : lastSync ? "success" : undefined,
+      lastCompletedAt: (lastFailure ?? lastSync)?.completedAt,
       unchangedCompletedAt: storedTransientResult?.completedAt,
       isOffline,
     },

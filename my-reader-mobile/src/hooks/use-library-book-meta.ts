@@ -38,6 +38,55 @@ const EMPTY_FILE_STATE_BUNDLE: BookFileStateBundle = { statuses: {}, rows: {} }
 
 type BookFormatMeta = { readableFormats: string[]; effectiveFormat?: string }
 
+function applyDownloadTasks(
+  next: BookFileStateMap,
+  bookId: string,
+  tasks: DownloadStatusTask[],
+  effectiveFormat: string | undefined,
+) {
+  for (const task of tasks) {
+    const taskFormat =
+      task.format?.toUpperCase() ?? getFormatFromPath(task.relativePath)
+    if (effectiveFormat && taskFormat !== effectiveFormat) continue
+    if (task.status === "done") {
+      next[bookId] = "downloaded"
+    } else if (next[bookId] !== "downloaded") {
+      next[bookId] = "downloading"
+    }
+  }
+}
+
+function indexDownloadTasks(
+  statusTasks: readonly DownloadStatusTask[],
+  books: readonly BookItem[],
+  libraryId: string | undefined,
+) {
+  const map = new Map<string, DownloadStatusTask[]>()
+  if (!libraryId) return map
+  const tasks = statusTasks.filter(
+    (task) =>
+      task.libraryId === libraryId &&
+      ["queued", "starting", "downloading", "done"].includes(task.status),
+  )
+  const append = (bookId: string, task: DownloadStatusTask) => {
+    const existing = map.get(bookId)
+    if (existing) existing.push(task)
+    else map.set(bookId, [task])
+  }
+  // Explicit book IDs take precedence over older path-only tasks.
+  for (const task of tasks) {
+    if (task.bookId) append(task.bookId, task)
+  }
+  for (const task of tasks) {
+    if (task.bookId) continue
+    const book = books.find((candidate) =>
+      pathBelongsToBook(task.relativePath, candidate.path),
+    )
+    if (book) append(book.id, task)
+  }
+  return map
+}
+
 export function useLibraryBookMeta(
   selectedLibrary: Library | null,
   books: BookItem[],
@@ -99,52 +148,10 @@ export function useLibraryBookMeta(
 
   const selectedLibraryId = selectedLibrary?.id
 
-  const tasksByBookId = useMemo(() => {
-    const map = new Map<string, DownloadStatusTask[]>()
-    if (!selectedLibraryId) return map
-
-    let needPathLookup = false
-    for (const task of statusTasks) {
-      if (task.libraryId !== selectedLibraryId) continue
-      if (
-        task.status !== "queued" &&
-        task.status !== "starting" &&
-        task.status !== "downloading" &&
-        task.status !== "done"
-      )
-        continue
-      if (!task.bookId) {
-        needPathLookup = true
-        continue
-      }
-      const existing = map.get(task.bookId)
-      if (existing) existing.push(task)
-      else map.set(task.bookId, [task])
-    }
-
-    if (needPathLookup) {
-      for (const task of statusTasks) {
-        if (task.bookId) continue
-        if (task.libraryId !== selectedLibraryId) continue
-        if (
-          task.status !== "queued" &&
-          task.status !== "starting" &&
-          task.status !== "downloading" &&
-          task.status !== "done"
-        )
-          continue
-        const book = books.find((candidate) =>
-          pathBelongsToBook(task.relativePath, candidate.path),
-        )
-        if (!book) continue
-        const existing = map.get(book.id)
-        if (existing) existing.push(task)
-        else map.set(book.id, [task])
-      }
-    }
-
-    return map
-  }, [statusTasks, books, selectedLibraryId])
+  const tasksByBookId = useMemo(
+    () => indexDownloadTasks(statusTasks, books, selectedLibraryId),
+    [statusTasks, books, selectedLibraryId],
+  )
 
   const bookDownloadStatusById = useMemo(() => {
     const next: BookFileStateMap = {}
@@ -173,16 +180,7 @@ export function useLibraryBookMeta(
     for (const [bookId, tasks] of tasksByBookId) {
       const meta = bookFormatMetaById.get(bookId)
       const effectiveFormat = meta?.effectiveFormat
-      for (const task of tasks) {
-        const taskFormat =
-          task.format?.toUpperCase() ?? getFormatFromPath(task.relativePath)
-        if (effectiveFormat && taskFormat !== effectiveFormat) continue
-        if (task.status === "done") {
-          next[bookId] = "downloaded"
-        } else if (next[bookId] !== "downloaded") {
-          next[bookId] = "downloading"
-        }
-      }
+      applyDownloadTasks(next, bookId, tasks, effectiveFormat)
     }
 
     return next

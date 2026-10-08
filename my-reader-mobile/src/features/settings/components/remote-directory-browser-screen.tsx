@@ -37,6 +37,97 @@ type RemoteBrowserTranslationKey = Extract<
   `${RemoteDirectoryBrowserScreenProps["translationNamespace"]}.${string}`
 >
 
+function DirectoryBrowserEntries({
+  loading,
+  resolveFailed,
+  error,
+  entries,
+  authenticating,
+  sourceType,
+  label,
+  handleRecoverCredentials,
+  retry,
+  handleOpenDirectory,
+}: Pick<
+  ReturnType<typeof useRemoteDirectoryBrowser>,
+  "loading" | "resolveFailed" | "error" | "entries" | "retry"
+> & {
+  authenticating: boolean
+  sourceType: RemoteDirectoryBrowserScreenProps["sourceType"]
+  label: (key: string, options?: Record<string, unknown>) => string
+  handleRecoverCredentials: () => void
+  handleOpenDirectory: (path: string) => void
+}) {
+  const { t } = useTranslation()
+  if (loading)
+    return (
+      <EmptyState
+        title={label("reading.title")}
+        detail={label("reading.detail")}
+        icon={{ ios: "hourglass", android: "hourglass-empty" }}
+      />
+    )
+  if (resolveFailed)
+    return (
+      <EmptyState
+        title={label("credentialsUnavailable.title")}
+        detail={label("credentialsUnavailable.detail")}
+        action={
+          <PrimaryButton
+            disabled={authenticating}
+            title={
+              authenticating && sourceType === "onedrive"
+                ? t("onedrive.add.authenticating")
+                : sourceType === "webdav"
+                  ? t("webdav.reconfigureSource")
+                  : t("onedrive.reauthenticate")
+            }
+            onPress={handleRecoverCredentials}
+          />
+        }
+        icon={{
+          ios: "exclamationmark.triangle.fill",
+          android: "warning",
+        }}
+      />
+    )
+  if (error)
+    return (
+      <EmptyState
+        title={label("readFailed.title")}
+        detail={error}
+        action={
+          <PrimaryButton title={t("errorBoundary.retry")} onPress={retry} />
+        }
+        icon={{
+          ios: "exclamationmark.triangle.fill",
+          android: "warning",
+        }}
+      />
+    )
+  if (entries.length === 0)
+    return (
+      <EmptyState
+        title={label("empty.title")}
+        detail={label("empty.detail")}
+        icon={{ ios: "folder", android: "folder-open" }}
+      />
+    )
+  return (
+    <SectionCard>
+      {entries.map((entry, index) => (
+        <ListRow
+          key={entry.path}
+          title={entry.name}
+          icon={{ ios: "folder.fill", android: "folder" }}
+          onPress={() => handleOpenDirectory(entry.path)}
+          isLast={index === entries.length - 1}
+        />
+      ))}
+    </SectionCard>
+  )
+}
+
 /** Shared directory browser for remote data sources (WebDAV, OneDrive). */
 export function RemoteDirectoryBrowserScreen({
   sourceType,
@@ -272,68 +363,18 @@ export function RemoteDirectoryBrowserScreen({
               {t("addLibrary.path", { path: currentPath })}
             </Text>
 
-            {loading ? (
-              <EmptyState
-                title={label("reading.title")}
-                detail={label("reading.detail")}
-                icon={{ ios: "hourglass", android: "hourglass-empty" }}
-              />
-            ) : resolveFailed ? (
-              <EmptyState
-                title={label("credentialsUnavailable.title")}
-                detail={label("credentialsUnavailable.detail")}
-                action={
-                  <PrimaryButton
-                    disabled={authenticating}
-                    title={
-                      authenticating && sourceType === "onedrive"
-                        ? t("onedrive.add.authenticating")
-                        : sourceType === "webdav"
-                          ? t("webdav.reconfigureSource")
-                          : t("onedrive.reauthenticate")
-                    }
-                    onPress={handleRecoverCredentials}
-                  />
-                }
-                icon={{
-                  ios: "exclamationmark.triangle.fill",
-                  android: "warning",
-                }}
-              />
-            ) : error ? (
-              <EmptyState
-                title={label("readFailed.title")}
-                detail={error}
-                action={
-                  <PrimaryButton
-                    title={t("errorBoundary.retry")}
-                    onPress={retry}
-                  />
-                }
-                icon={{
-                  ios: "exclamationmark.triangle.fill",
-                  android: "warning",
-                }}
-              />
-            ) : entries.length === 0 ? (
-              <EmptyState
-                title={label("empty.title")}
-                detail={label("empty.detail")}
-                icon={{ ios: "folder", android: "folder-open" }}
-              />
-            ) : (
-              <SectionCard>
-                {entries.map((entry, index) => (
-                  <ListRow
-                    key={entry.path}
-                    title={entry.name}
-                    icon={{ ios: "folder.fill", android: "folder" }}
-                    onPress={() => handleOpenDirectory(entry.path)}
-                    isLast={index === entries.length - 1}
-                  />
-                ))}
-              </SectionCard>
-            )}
+            <DirectoryBrowserEntries
+              loading={loading}
+              resolveFailed={resolveFailed}
+              error={error}
+              entries={entries}
+              authenticating={authenticating}
+              sourceType={sourceType}
+              label={label}
+              handleRecoverCredentials={handleRecoverCredentials}
+              retry={retry}
+              handleOpenDirectory={handleOpenDirectory}
+            />
           </View>
         </ErrorBoundary>
       </Screen>

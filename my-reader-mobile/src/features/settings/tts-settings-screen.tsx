@@ -113,6 +113,120 @@ function PlaybackSliderRow({
   )
 }
 
+function TtsPreviewControls({
+  previewState,
+  preview,
+  stopPreview,
+}: {
+  previewState: PreviewState
+  preview: () => Promise<void>
+  stopPreview: () => void
+}) {
+  const { t } = useTranslation()
+  const palette = useThemePalette()
+  const previewActionLabel =
+    previewState === "generating" || previewState === "loading"
+      ? t("settings.tts.previewGenerating")
+      : previewState === "playing"
+        ? t("settings.tts.previewPlaying")
+        : t("settings.tts.previewAction")
+
+  return (
+    <View className="gap-3">
+      <SectionLabel>{t("settings.tts.previewSection")}</SectionLabel>
+      <Text className="px-1 text-base" style={{ color: palette.textMuted }}>
+        {t("settings.tts.previewText")}
+      </Text>
+      <Button
+        accessibilityLabel={previewActionLabel}
+        size="md"
+        variant="primary"
+        onPress={
+          previewState === "idle" ? () => void preview() : () => stopPreview()
+        }
+      >
+        {previewState === "generating" || previewState === "loading" ? (
+          <ActivityIndicator color={palette.primaryForeground} size="small" />
+        ) : (
+          <MaterialIcons
+            name={previewState === "playing" ? "stop" : "play-arrow"}
+            size={20}
+            color={palette.primaryForeground}
+          />
+        )}
+        <Text
+          className="text-base font-bold"
+          style={{ color: palette.primaryForeground }}
+        >
+          {previewActionLabel}
+        </Text>
+      </Button>
+    </View>
+  )
+}
+
+function TtsProviderList({
+  profiles,
+}: {
+  profiles: MobileTtsConfig["profiles"]
+}) {
+  const { t } = useTranslation()
+  const palette = useThemePalette()
+  return (
+    <View className="gap-3">
+      <SectionLabel>{t("settings.tts.providersSection")}</SectionLabel>
+      {profiles.length > 0 ? (
+        <SectionCard>
+          {profiles.map((profile, index) => (
+            <ListRow
+              key={profile.id}
+              title={profile.name}
+              detail={`${profile.kind === "qwen" ? "Qwen" : t("settings.tts.providerKinds.openAiCompatible")} · ${profile.endpoint}`}
+              value={profile.enabled ? undefined : t("settings.tts.disabled")}
+              isLast={index === profiles.length - 1}
+              onPress={() =>
+                router.push({
+                  pathname: "/settings/tts-provider",
+                  params: { providerId: profile.id },
+                })
+              }
+            />
+          ))}
+        </SectionCard>
+      ) : null}
+      <Button
+        size="md"
+        variant="primary"
+        accessibilityLabel={t("settings.tts.addProvider")}
+        onPress={() => router.push("/settings/tts-provider")}
+      >
+        <MaterialIcons name="add" size={20} color={palette.primaryForeground} />
+        <Text
+          className="text-base font-bold"
+          style={{ color: palette.primaryForeground }}
+        >
+          {t("settings.tts.addProvider")}
+        </Text>
+      </Button>
+      <Text className="px-1 text-xs" style={{ color: palette.textMuted }}>
+        {t("settings.tts.providerPrivacy")}
+      </Text>
+    </View>
+  )
+}
+
+function voiceLabel(
+  availableVoices: TtsVoice[],
+  selectedVoiceId: string | undefined,
+  automaticLabel: string,
+) {
+  return (
+    availableVoices.find((voice) => voice.id === selectedVoiceId)?.name ??
+    selectedVoiceId ??
+    automaticLabel
+  )
+}
+
 export default function TtsSettingsScreen() {
   const { t, i18n } = useTranslation()
   const previewLanguage =
@@ -211,10 +325,11 @@ export default function TtsSettingsScreen() {
         : voices,
     [selectedProfile, voices, qwenVoices],
   )
-  const selectedVoiceLabel =
-    availableVoices.find((voice) => voice.id === selectedVoiceId)?.name ??
-    selectedVoiceId ??
-    t("settings.tts.automaticVoice")
+  const selectedVoiceLabel = voiceLabel(
+    availableVoices,
+    selectedVoiceId,
+    t("settings.tts.automaticVoice"),
+  )
 
   const engineActions = useMemo<MenuAction[]>(() => {
     if (!config) return []
@@ -516,45 +631,13 @@ export default function TtsSettingsScreen() {
     )
   }
 
-  const previewActionLabel =
-    previewState === "generating" || previewState === "loading"
-      ? t("settings.tts.previewGenerating")
-      : previewState === "playing"
-        ? t("settings.tts.previewPlaying")
-        : t("settings.tts.previewAction")
-
   return (
     <Screen>
-      <View className="gap-3">
-        <SectionLabel>{t("settings.tts.previewSection")}</SectionLabel>
-        <Text className="px-1 text-base" style={{ color: palette.textMuted }}>
-          {t("settings.tts.previewText")}
-        </Text>
-        <Button
-          accessibilityLabel={previewActionLabel}
-          size="md"
-          variant="primary"
-          onPress={
-            previewState === "idle" ? () => void preview() : () => stopPreview()
-          }
-        >
-          {previewState === "generating" || previewState === "loading" ? (
-            <ActivityIndicator color={palette.primaryForeground} size="small" />
-          ) : (
-            <MaterialIcons
-              name={previewState === "playing" ? "stop" : "play-arrow"}
-              size={20}
-              color={palette.primaryForeground}
-            />
-          )}
-          <Text
-            className="text-base font-bold"
-            style={{ color: palette.primaryForeground }}
-          >
-            {previewActionLabel}
-          </Text>
-        </Button>
-      </View>
+      <TtsPreviewControls
+        previewState={previewState}
+        preview={preview}
+        stopPreview={stopPreview}
+      />
 
       <View className="gap-3">
         <SectionLabel>{t("settings.tts.engineSection")}</SectionLabel>
@@ -617,49 +700,7 @@ export default function TtsSettingsScreen() {
         </Text>
       </View>
 
-      <View className="gap-3">
-        <SectionLabel>{t("settings.tts.providersSection")}</SectionLabel>
-        {config.profiles.length > 0 ? (
-          <SectionCard>
-            {config.profiles.map((profile, index) => (
-              <ListRow
-                key={profile.id}
-                title={profile.name}
-                detail={`${profile.kind === "qwen" ? "Qwen" : t("settings.tts.providerKinds.openAiCompatible")} · ${profile.endpoint}`}
-                value={profile.enabled ? undefined : t("settings.tts.disabled")}
-                isLast={index === config.profiles.length - 1}
-                onPress={() =>
-                  router.push({
-                    pathname: "/settings/tts-provider",
-                    params: { providerId: profile.id },
-                  })
-                }
-              />
-            ))}
-          </SectionCard>
-        ) : null}
-        <Button
-          size="md"
-          variant="primary"
-          accessibilityLabel={t("settings.tts.addProvider")}
-          onPress={() => router.push("/settings/tts-provider")}
-        >
-          <MaterialIcons
-            name="add"
-            size={20}
-            color={palette.primaryForeground}
-          />
-          <Text
-            className="text-base font-bold"
-            style={{ color: palette.primaryForeground }}
-          >
-            {t("settings.tts.addProvider")}
-          </Text>
-        </Button>
-        <Text className="px-1 text-xs" style={{ color: palette.textMuted }}>
-          {t("settings.tts.providerPrivacy")}
-        </Text>
-      </View>
+      <TtsProviderList profiles={config.profiles} />
     </Screen>
   )
 }

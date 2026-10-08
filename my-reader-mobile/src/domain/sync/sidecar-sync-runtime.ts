@@ -182,23 +182,31 @@ export function createSidecarSyncRuntime(
         nowMs: Date.now(),
       })
       if (disposed || cancelledTasks.has(taskId)) return
-      if (effectiveExecution) {
-        const report = await syncLibrary(
-          library,
-          state.dataSources,
-          {
-            scope: "myreader",
-            myreaderMode: effectiveExecution.mode,
-            myreaderTaskId: taskId,
-            reason: syncReasonForCoordinatorReasons(effectiveExecution.reasons),
-            throwOnFailure: true,
-          },
-          runtimeObserver,
+      if (!effectiveExecution) {
+        applyTransition(
+          completeCoordinatedSync({
+            coordinatorId,
+            libraryId: execution.libraryId,
+            nowMs: Date.now(),
+          }),
         )
-        if (disposed || cancelledTasks.has(taskId)) return
-        await applySyncReport(report, { trigger: "scheduled" })
-        if (disposed || cancelledTasks.has(taskId)) return
+        return
       }
+      const report = await syncLibrary(
+        library,
+        state.dataSources,
+        {
+          scope: "myreader",
+          myreaderMode: effectiveExecution.mode,
+          myreaderTaskId: taskId,
+          reason: syncReasonForCoordinatorReasons(effectiveExecution.reasons),
+          throwOnFailure: true,
+        },
+        runtimeObserver,
+      )
+      if (disposed || cancelledTasks.has(taskId)) return
+      await applySyncReport(report, { trigger: "scheduled" })
+      if (disposed || cancelledTasks.has(taskId)) return
       applyTransition(
         completeCoordinatedSync({
           coordinatorId,

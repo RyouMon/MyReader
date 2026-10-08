@@ -312,58 +312,62 @@ export class OneDriveRemoteBackend implements RemoteBackend {
     for (let i = 0; i < parts.length - 1; i += 1) {
       cursor = cursor ? `${cursor}/${parts[i]}` : parts[i]!
 
-      const statRes = await this.fetchWithAuth(this.itemUrl(cursor), {
-        method: "GET",
-      })
-      if (statRes.ok) continue
-      if (statRes.status !== 404) {
-        throw new NetworkError(
-          i18n.t("sync.onedriveGetFailed", {
-            status: statRes.status,
-            path: cursor,
-          }),
-          statRes.status,
-        )
-      }
+      await this.ensureDirectory(cursor)
+    }
+  }
 
-      const parentParts = cursor.split("/")
-      const folderName = parentParts.pop()!
-      const parentPath = parentParts.join("/")
-
-      const createRes = await this.fetchWithAuth(this.childrenUrl(parentPath), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: folderName,
-          folder: {},
-          "@microsoft.graph.conflictBehavior": "fail",
-        }),
-      })
-
-      if (createRes.ok) continue
-      if (createRes.status === 409) {
-        const conflictStatRes = await this.fetchWithAuth(this.itemUrl(cursor), {
-          method: "GET",
-        })
-        if (conflictStatRes.ok) continue
-        if (conflictStatRes.status !== 404) {
-          throw new NetworkError(
-            i18n.t("sync.onedriveGetFailed", {
-              status: conflictStatRes.status,
-              path: cursor,
-            }),
-            conflictStatRes.status,
-          )
-        }
-      }
-
+  private async ensureDirectory(cursor: string): Promise<void> {
+    const statRes = await this.fetchWithAuth(this.itemUrl(cursor), {
+      method: "GET",
+    })
+    if (statRes.ok) return
+    if (statRes.status !== 404) {
       throw new NetworkError(
-        i18n.t("sync.onedriveMkdirFailed", {
-          status: createRes.status,
+        i18n.t("sync.onedriveGetFailed", {
+          status: statRes.status,
           path: cursor,
         }),
-        createRes.status,
+        statRes.status,
       )
     }
+
+    const parentParts = cursor.split("/")
+    const folderName = parentParts.pop()!
+    const parentPath = parentParts.join("/")
+
+    const createRes = await this.fetchWithAuth(this.childrenUrl(parentPath), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: folderName,
+        folder: {},
+        "@microsoft.graph.conflictBehavior": "fail",
+      }),
+    })
+
+    if (createRes.ok) return
+    if (createRes.status === 409) {
+      const conflictStatRes = await this.fetchWithAuth(this.itemUrl(cursor), {
+        method: "GET",
+      })
+      if (conflictStatRes.ok) return
+      if (conflictStatRes.status !== 404) {
+        throw new NetworkError(
+          i18n.t("sync.onedriveGetFailed", {
+            status: conflictStatRes.status,
+            path: cursor,
+          }),
+          conflictStatRes.status,
+        )
+      }
+    }
+
+    throw new NetworkError(
+      i18n.t("sync.onedriveMkdirFailed", {
+        status: createRes.status,
+        path: cursor,
+      }),
+      createRes.status,
+    )
   }
 }

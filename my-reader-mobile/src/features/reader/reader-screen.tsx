@@ -1,3 +1,18 @@
+import { ReaderScreenSettings } from "./components/ReaderScreenSettings"
+import { ReaderPublicationSurface } from "./components/ReaderPublicationSurface"
+import {
+  ReaderLoadState,
+  ReaderLoadingSurface,
+  DomReaderFallback,
+} from "./components/ReaderLoadState"
+import {
+  readerChromeState,
+  readerBookContext,
+  readerSearchState,
+  readingSessionLocation,
+  supportsReaderAnnotations,
+} from "./reader-screen-state"
+import { useReaderTheme } from "./hooks/use-reader-theme"
 import {
   type BottomSheetModal,
   BottomSheetModalProvider,
@@ -23,8 +38,6 @@ import {
 import type { ReaderLocator } from "@my-reader/tools/reader-toc"
 import { router, useLocalSearchParams } from "expo-router"
 import {
-  lazy,
-  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -34,26 +47,14 @@ import {
 } from "react"
 import { useTranslation } from "react-i18next"
 import {
-  ActivityIndicator,
   Alert,
   Animated as RNAnimated,
   StatusBar,
   StyleSheet,
 } from "react-native"
-import {
-  FadeIn,
-  FadeOut,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated"
+import { FadeIn, FadeOut } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { ErrorBoundary } from "@/src/components/error-boundary"
-import {
-  type ReaderChromePalette,
-  readerChromePalette,
-} from "@/src/design/reader-chrome-palette"
-import { READER_CHROME, READER_THEMES } from "@/src/design/reader-tokens"
 import { useTheme } from "@/src/design/tokens"
 import { useReadingSessionTracker } from "@/src/domain/reading-statistics/hooks/use-reading-session-tracker"
 import {
@@ -75,17 +76,12 @@ import {
   ReaderTtsControls,
   ReaderTtsSettingsSheet,
   type ReaderTtsSettingsSheetRef,
-  readerBookmarkButtonVisible,
-  readerPositionLabelVisible,
 } from "@/src/features/reader/components/reader/chrome"
 import {
   ChromeState,
   chromeReducer,
 } from "@/src/features/reader/components/reader/chrome/chrome-state"
-import ReaderSettingsSheet, {
-  type ReaderSettingsSheetRef,
-} from "@/src/features/reader/components/reader/chrome/ReaderSettingsSheet"
-import { READER_THEME_OPTIONS } from "@/src/features/reader/components/reader/chrome/readerChromeConstants"
+import { type ReaderSettingsSheetRef } from "@/src/features/reader/components/reader/chrome/ReaderSettingsSheet"
 import type { FixedReaderSurfaceRef } from "@/src/features/reader/components/reader/fixed/FixedReaderSurface"
 import { resolveReaderBookmarkNavigationLocator } from "@/src/features/reader/components/reader/reader-bookmark-navigation"
 import {
@@ -124,32 +120,15 @@ import {
   resolveReaderTtsViewportRelation,
 } from "@/src/features/reader/tts/reader-tts"
 import { useReaderTtsSession } from "@/src/features/reader/tts/use-reader-tts-session"
-import {
-  bookLoadRequestKey,
-  isReadyBookLoadForRequest,
-} from "@/src/hooks/book-load-identity"
+import { bookLoadRequestKey } from "@/src/hooks/book-load-identity"
 import { useBookLoader } from "@/src/hooks/use-book-loader"
 import { useReaderProgressSaver } from "@/src/hooks/use-reader-progress-saver"
-import { toNativeFilesystemPath } from "@/src/services/fs/path"
 import { useAppStore } from "@/src/store/app-store"
-import type { ReaderTheme } from "@/src/store/app-store.types"
 import { describeError } from "@/src/utils/common"
-import { Animated, Pressable, Text, View } from "@/tw"
-
-const FixedReaderSurface = lazy(
-  async () =>
-    import("@/src/features/reader/components/reader/fixed/FixedReaderSurface"),
-)
-const ReadiumReflowReader = lazy(
-  async () =>
-    import(
-      "@/src/features/reader/components/reader/reflow/ReadiumReflowReader"
-    ),
-)
+import { Animated, View } from "@/tw"
 
 const READER_CONTENT_FADE_MS = 220
 const CLOSE_ROUTE_BACK_LEAD_MS = 180
-const ERROR_BACK_BUTTON_BORDER_COLOR = READER_CHROME.border
 const SELECTION_COLOR_ACTION_PREFIX = "color:"
 const READER_ANNOTATION_COLOR_ORDER = [
   "yellow",
@@ -229,14 +208,14 @@ export default function ReaderScreen() {
     toc,
     capabilities: readerCapabilities,
   } = activeReaderRuntime
+  const {
+    ready: readerReady,
+    locator: currentLocator,
+    currentPage,
+    totalPages,
+  } = readerState ?? {}
   const [chromeState, dispatch] = useReducer(chromeReducer, ChromeState.Reading)
   const settings = useAppStore((s) => s.settings)
-  const patchReflowableReaderSettings = useAppStore(
-    (s) => s.patchReflowableReaderSettings,
-  )
-  const patchFixedReaderSettings = useAppStore(
-    (s) => s.patchFixedReaderSettings,
-  )
 
   const navigationSheetRef = useRef<BottomSheetModal>(null)
   const annotationsSheetRef = useRef<BottomSheetModal>(null)
@@ -274,13 +253,14 @@ export default function ReaderScreen() {
     formatParam,
     activeLibraryId,
   )
-  const activeLoadState =
-    loadState.status === "ready" &&
-    isReadyBookLoadForRequest(loadState, activeLibraryId, id, formatParam)
-      ? loadState
-      : null
-  const isReflowReady = activeLoadState?.layoutMode === "reflowable"
-  const fallbackLanguages = activeLoadState?.languages ?? []
+  const {
+    activeLoadState,
+    isReflowReady,
+    fallbackLanguages,
+    bookId: loadedBookId,
+    format: loadedFormat,
+    closeTransitionFormat,
+  } = readerBookContext(loadState, activeLibraryId, id, formatParam)
   const readerLanguage = resolveReaderLanguage(
     publicationLanguages,
     fallbackLanguages,
@@ -331,7 +311,7 @@ export default function ReaderScreen() {
     handleSynthesisRequest: handleTtsSynthesisRequest,
     handleSynthesisCancel: handleTtsSynthesisCancel,
   } = useReaderTtsSession({
-    enabled: Boolean(isReflowReady && readerState?.ready),
+    enabled: Boolean(isReflowReady && readerReady),
     publicationKey,
     language: readerLanguage,
     highlightColor: palette.primary,
@@ -340,25 +320,23 @@ export default function ReaderScreen() {
   })
   const ttsViewportRelation = resolveReaderTtsViewportRelation({
     viewportDetached: ttsViewportDetached,
-    viewportLocator: readerState?.locator,
+    viewportLocator: currentLocator,
     viewportOriginLocator: ttsViewportOriginLocator,
     playbackLocator: ttsState?.locator,
     positions,
   })
   const readerSearch = useReaderSearch(
-    isReflowReady && readerState?.ready ? publicationId : null,
+    isReflowReady && readerReady ? publicationId : null,
   )
   const runReaderSearch = readerSearch.runSearch
   const resetReaderSearch = readerSearch.reset
-  const searchAvailable = Boolean(
-    readerState?.ready && readerSearch.capabilities?.searchable,
+  const { searchAvailable, activeSearchLocator } = readerSearchState(
+    readerReady,
+    readerSearch,
+    searchDecoration,
+    publicationKey,
   )
-  const readingLocationKey = readerState?.locator
-    ? JSON.stringify([
-        readerState.locator.href,
-        readerState.locator.locations ?? null,
-      ])
-    : (readerState?.currentPage ?? null)
+  const readingLocationKey = readingSessionLocation(currentLocator, currentPage)
   useReaderProgressSaver(activeLibraryId, activeLoadState, readerState)
   useReadingSessionTracker(
     activeLibrary,
@@ -405,17 +383,16 @@ export default function ReaderScreen() {
     removeBookmark,
   } = useReaderBookmarks(
     activeLibrary,
-    activeLoadState?.bookId ?? null,
-    activeLoadState?.format ?? null,
-    readerState?.locator,
+    loadedBookId,
+    loadedFormat,
+    currentLocator,
     bookmarkLocationResolver,
   )
   const readerAnnotations = useReaderAnnotations(
     activeLibrary,
-    activeLoadState?.bookId ?? null,
-    activeLoadState?.format ?? null,
+    loadedBookId,
+    loadedFormat,
   )
-  const closeTransitionFormat = activeLoadState?.format ?? formatParam
 
   const handleStateChange = useCallback(
     async (state: ReaderState) => {
@@ -447,12 +424,9 @@ export default function ReaderScreen() {
         }
         return
       }
-      markTtsViewportMoved(
-        navigationId,
-        readerState?.locator ?? ttsState?.locator,
-      )
+      markTtsViewportMoved(navigationId, currentLocator ?? ttsState?.locator)
     },
-    [markTtsViewportMoved, readerState?.locator, seekTts, ttsState],
+    [markTtsViewportMoved, currentLocator, seekTts, ttsState],
   )
 
   const handlePositionsReady = useCallback(
@@ -997,7 +971,7 @@ export default function ReaderScreen() {
 
   const previewReaderPosition = useCallback(
     (positionIndex: number): ReaderProgressPreview => {
-      const positionCount = Math.max(1, readerState?.totalPages ?? 1)
+      const positionCount = Math.max(1, totalPages ?? 1)
       const targetPositionIndex = Math.max(
         0,
         Math.min(positionCount - 1, Math.round(positionIndex)),
@@ -1021,7 +995,7 @@ export default function ReaderScreen() {
             }),
       }
     },
-    [getReaderPositions, isReflowReady, readerState?.totalPages, t, toc],
+    [getReaderPositions, isReflowReady, totalPages, t, toc],
   )
 
   const handleProgressCommit = useCallback(
@@ -1059,10 +1033,10 @@ export default function ReaderScreen() {
       ttsState?.state !== "paused"
     )
       return
-    void startTts(ttsState.locator ?? readerState?.locator, {
+    void startTts(ttsState.locator ?? currentLocator, {
       pauseAfterStart: ttsState.state === "paused",
     })
-  }, [readerState?.locator, startTts, ttsState])
+  }, [currentLocator, startTts, ttsState])
   const handlePlayTts = useCallback(() => {
     if (!ttsState) {
       void startTts(undefined, { startAtViewportStart: true })
@@ -1075,12 +1049,12 @@ export default function ReaderScreen() {
     playTts()
   }, [playTts, startTts, ttsState])
   const handlePlayTtsFromCurrentPosition = useCallback(() => {
-    const locator = readerState?.locator
+    const locator = currentLocator
     if (!locator) return
     seekTts(locator, {
       startAtViewportStart: true,
     })
-  }, [readerState?.locator, seekTts])
+  }, [currentLocator, seekTts])
   const handleReturnToTtsPlaybackPosition = useCallback(() => {
     void returnToTtsPlaybackPosition()
   }, [returnToTtsPlaybackPosition])
@@ -1154,63 +1128,22 @@ export default function ReaderScreen() {
         existing: annotation !== null,
       }
     }, [annotationEditorState, t])
-  const isReflowFormatHint = formatParam?.toUpperCase() === "EPUB"
-  const shouldUseReflowTheme =
-    isReflowReady || (loadState.status === "loading" && isReflowFormatHint)
-  const fixedBgColor =
-    fixedSettings.background === "black"
-      ? "#000000"
-      : fixedSettings.background === "white"
-        ? "#FFFFFF"
-        : colorScheme === "dark"
-          ? "#000000"
-          : "#FFFFFF"
-  const activeTheme: ReaderTheme = shouldUseReflowTheme
-    ? reflowSettings.theme
-    : fixedBgColor === "#000000"
-      ? "night"
-      : "neutral"
-  const themeBgColor = shouldUseReflowTheme
-    ? (READER_THEMES[activeTheme] ?? READER_THEMES.neutral).bg
-    : fixedBgColor
-  const themeFgColor = shouldUseReflowTheme
-    ? (READER_THEMES[activeTheme] ?? READER_THEMES.neutral).fg
-    : fixedBgColor === "#000000"
-      ? "#D4CBC3"
-      : "#2C2420"
-  const isDarkTheme = activeTheme === "night" || activeTheme === "contrast2"
-  const statusBarStyle = isDarkTheme ? "light-content" : "dark-content"
-  const themeBg = useSharedValue(themeBgColor)
-  const themeOverlayOpacity = useSharedValue(0)
-  const prevThemeBgRef = useRef(themeBgColor)
-  useEffect(() => {
-    if (prevThemeBgRef.current !== themeBgColor) {
-      themeBg.value = prevThemeBgRef.current
-      themeOverlayOpacity.value = 1
-      themeOverlayOpacity.value = withTiming(0, { duration: 350 })
-      themeBg.value = withTiming(themeBgColor, { duration: 350 })
-      prevThemeBgRef.current = themeBgColor
-    }
-  }, [themeBgColor, themeBg, themeOverlayOpacity])
-  const themeBgStyle = useAnimatedStyle(() => ({
-    backgroundColor: themeBg.value,
-  }))
-  const themeOverlayStyle = useAnimatedStyle(() => ({
-    backgroundColor: themeBg.value,
-    opacity: themeOverlayOpacity.value,
-  }))
-
-  const chromePalette = useMemo<ReaderChromePalette>(() => {
-    const option =
-      READER_THEME_OPTIONS.find((o) => o.key === activeTheme) ??
-      READER_THEME_OPTIONS[0]!
-    return readerChromePalette(option.fg, option.swatch)
-  }, [activeTheme])
-  const activeSearchLocator =
-    searchDecoration?.publicationKey === publicationKey &&
-    readerSearch.locators.includes(searchDecoration.locator)
-      ? searchDecoration.locator
-      : null
+  const {
+    fixedBgColor,
+    themeBgColor,
+    themeFgColor,
+    statusBarStyle,
+    themeBgStyle,
+    themeOverlayStyle,
+    chromePalette,
+  } = useReaderTheme({
+    formatParam,
+    isReflowReady,
+    loading: loadState.status === "loading",
+    fixedSettings,
+    reflowSettings,
+    colorScheme,
+  })
   const readerDecorations = useMemo<DecorationGroup[]>(
     () => [
       {
@@ -1241,11 +1174,10 @@ export default function ReaderScreen() {
       t,
     ],
   )
-  const annotationsAvailable =
-    isReflowReady &&
-    readerCapabilities.canSelectText &&
-    readerCapabilities.canDecorate &&
-    readerCapabilities.supportedDecorationStyles.includes("highlight")
+  const annotationsAvailable = supportsReaderAnnotations(
+    isReflowReady,
+    readerCapabilities,
+  )
   const domFallback = useMemo(
     () => (
       <DomReaderFallback
@@ -1271,188 +1203,46 @@ export default function ReaderScreen() {
     ),
     [themeBgColor, themeFgColor],
   )
-  if (loadState.status === "position-conflict") {
+  if (loadState.status !== "ready" || !activeLoadState) {
     return (
-      <View
-        className="flex-1 justify-center px-5"
-        style={{ backgroundColor: palette.background }}
-      >
-        <StatusBar hidden={false} barStyle={statusBarStyle} />
-        <View
-          className="rounded-2xl border p-5"
-          style={{
-            backgroundColor: palette.surface,
-            borderColor: palette.border,
-          }}
-        >
-          <Text
-            className="text-lg font-semibold"
-            style={{ color: palette.text }}
-          >
-            {t("reader.positionConflictTitle")}
-          </Text>
-          <Text className="mt-2 text-sm" style={{ color: palette.textMuted }}>
-            {t("reader.positionConflictDescription")}
-          </Text>
-          <View className="mt-4 gap-2">
-            {loadState.candidates.map((candidate) => {
-              const progression = candidate.displayProgression
-              return (
-                <Pressable
-                  key={candidate.operationId}
-                  accessibilityRole="button"
-                  className="rounded-xl border px-4 py-3"
-                  style={{ borderColor: palette.border }}
-                  onPress={() => {
-                    void resolveReadingPositionConflict(candidate.operationId)
-                  }}
-                >
-                  <Text
-                    className="text-base font-medium"
-                    style={{ color: palette.text }}
-                  >
-                    {progression === null
-                      ? t("reader.positionConflictUnknownProgress")
-                      : `${Math.round(progression * 100)}%`}
-                  </Text>
-                  <Text
-                    className="mt-1 text-sm"
-                    style={{ color: palette.textMuted }}
-                  >
-                    {new Date(candidate.recordedAt).toLocaleString()}
-                    {" · "}
-                    {candidate.replicaId.slice(0, 8)}
-                  </Text>
-                </Pressable>
-              )
-            })}
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            className="mt-3 items-center py-3"
-            onPress={() => {
-              void resolveReadingPositionConflict(null)
-            }}
-          >
-            <Text
-              className="text-sm font-medium"
-              style={{ color: palette.textMuted }}
-            >
-              {t("reader.positionConflictLater")}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-    )
-  }
-  if (
-    loadState.status === "loading" ||
-    (loadState.status === "ready" && !activeLoadState)
-  ) {
-    return (
-      <View className="flex-1" style={{ backgroundColor: themeBgColor }}>
-        <StatusBar hidden={false} barStyle={statusBarStyle} />
-        <ReaderLoadingSurface
-          backgroundColor={themeBgColor}
-          foregroundColor={themeFgColor}
-        />
-      </View>
-    )
-  }
-
-  if (loadState.status === "error") {
-    return (
-      <View
-        className="flex-1 w-full items-center justify-center px-7"
-        style={{ backgroundColor: palette.background }}
-      >
-        <StatusBar
-          hidden={false}
-          barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
-        />
-        <View
-          className="w-full max-w-[400px] items-center py-7 px-[22px] rounded-2xl border"
-          style={{
-            backgroundColor: READER_CHROME.errorCardBg,
-            borderColor: READER_CHROME.errorCardBorder,
-          }}
-        >
-          <Text
-            className="text-center text-lg font-bold mb-3"
-            style={{ color: READER_CHROME.textStrong }}
-          >
-            {t("reader.cannotOpen")}
-          </Text>
-          <Text
-            className="text-center text-base"
-            style={{ color: READER_CHROME.textSecondary }}
-          >
-            {loadState.message}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("reader.back")}
-            className="mt-[22px] py-3 px-7 rounded-full border"
-            style={{
-              backgroundColor: READER_CHROME.surfaceIdle,
-              borderColor: ERROR_BACK_BUTTON_BORDER_COLOR,
-            }}
-            onPress={handleBack}
-          >
-            <Text
-              className="text-base font-semibold"
-              style={{ color: READER_CHROME.textStrong }}
-            >
-              {t("reader.back")}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
+      <ReaderLoadState
+        loadState={loadState}
+        resolveReadingPositionConflict={resolveReadingPositionConflict}
+        statusBarStyle={statusBarStyle}
+        themeBgColor={themeBgColor}
+        themeFgColor={themeFgColor}
+        handleBack={handleBack}
+      />
     )
   }
 
   const isReflowSurface = loadState.layoutMode === "reflowable"
   const isFixedSurface = loadState.layoutMode === "fixedLayout"
-  // CBZ renders through Readium's FXL EPUB navigator, whose paginator is
-  // horizontal-only and ignores `scroll` — so 上下翻页 can't apply to CBZ.
-  const isCbzFixed = isFixedSurface && loadState.format.toUpperCase() === "CBZ"
-  const chromeActive = chromeState >= ChromeState.Chrome
-  const moreButtonVisible =
-    chromeState === ChromeState.Chrome ||
-    chromeState === ChromeState.NavigationSheet ||
-    chromeState === ChromeState.AnnotationsSheet ||
-    chromeState === ChromeState.SettingsSheet ||
-    chromeState === ChromeState.SearchSheet
-  const bookmarkButtonVisible = readerBookmarkButtonVisible(
-    chromeState,
-    isCurrentLocationBookmarked,
-  )
-  const bookmarkActionDisabled =
-    bookmarkPending ||
-    bookmarksLoading ||
-    Boolean(bookmarkError) ||
-    !readerState?.locator
-  const ttsControlsExpanded = ttsPlayerExpanded || Boolean(ttsState)
-  const positionLabelVisible = readerPositionLabelVisible(
-    chromeActive,
-    readerState?.totalPages,
+
+  const {
+    moreButtonVisible,
+    bookmarkButtonVisible,
+    bookmarkActionDisabled,
     ttsControlsExpanded,
-  )
-  const ttsAvailable = isReflowSurface && Boolean(readerState?.ready)
-  const ttsPlayerVisible = ttsAvailable && moreButtonVisible
-  const tocResolution = resolveReaderToc({
+    positionLabelVisible,
+    ttsAvailable,
+    ttsPlayerVisible,
+    activeTocIndex,
+    chapterLabelTitle,
+    showChapterLabel,
+  } = readerChromeState({
+    chromeState,
+    readerState,
+    isReflowSurface,
+    isFixedSurface,
+    isCurrentLocationBookmarked,
+    bookmarkPending,
+    bookmarksLoading,
+    bookmarkError: Boolean(bookmarkError),
+    ttsPlayerExpanded,
+    hasTtsState: Boolean(ttsState),
     toc,
-    locator: readerState?.locator,
-    currentPage: readerState?.currentPage,
-    currentTitle: readerState?.chapterTitle,
   })
-  const activeTocIndex = tocResolution.index
-  const chapterLabelTitle =
-    tocResolution.title?.trim() || readerState?.chapterTitle?.trim() || null
-  const showChapterLabel =
-    Boolean(chapterLabelTitle) &&
-    chromeActive &&
-    (isReflowSurface || isFixedSurface)
 
   return (
     <View style={styles.readerRouteFrame}>
@@ -1478,84 +1268,69 @@ export default function ReaderScreen() {
               onRetry={handleBack}
             >
               <View className="absolute inset-0">
-                {isReflowSurface ? (
-                  loadState.epubFileUri ? (
-                    <Animated.View
-                      style={[
-                        {
-                          paddingTop: insets.top - 8,
-                          paddingBottom: insets.bottom,
-                          flex: 1,
-                        },
-                        themeBgStyle,
-                      ]}
-                    >
-                      <ReadiumReflowReader
-                        ref={reflowReaderRef}
-                        epubPath={toNativeFilesystemPath(loadState.epubFileUri)}
-                        initialLocator={loadState.initialLocator ?? undefined}
-                        onStateChange={handleStateChange}
-                        onPositionsReady={handlePositionsReady}
-                        onPublicationLanguagesReady={
-                          handlePublicationLanguagesReady
-                        }
-                        onPublicationReady={handlePublicationReady}
-                        onPublicationLayoutReady={handlePublicationLayoutReady}
-                        onCapabilitiesReady={handleCapabilitiesReady}
-                        onTocReady={handleTocReady}
-                        onUserLocationChange={handleUserLocationChange}
-                        onRequestClose={handleRequestClose}
-                        onToggleChrome={handleReaderTap}
-                        theme={reflowSettings.theme}
-                        fontFamily={activeFontFamily}
-                        fontFamilyDeclarations={READER_FONT_DECLARATIONS}
-                        fontSize={reflowSettings.fontSize}
-                        lineHeight={reflowSettings.lineHeight}
-                        paddingX={reflowSettings.paddingX}
-                        textAlign={reflowSettings.textAlign}
-                        columnCount={reflowSettings.columnCount}
-                        language={readerLanguage}
-                        decorations={readerDecorations}
-                        selectionMenu={selectionMenu}
-                        customSelectionMenu
-                        onSelectionAction={handleSelectionAction}
-                        onSelectionChange={handleSelectionChange}
-                        onDecorationActivated={handleDecorationActivated}
-                        onTtsStateChange={handleTtsStateChange}
-                        onTtsSynthesisRequest={handleTtsSynthesisRequest}
-                        onTtsSynthesisCancel={handleTtsSynthesisCancel}
-                      />
-                    </Animated.View>
-                  ) : null
-                ) : isFixedSurface ? (
-                  <FixedReaderSurface
-                    ref={fixedReaderRef}
-                    archiveUri={loadState.bookArchiveUri}
-                    pdfLocalUri={loadState.pdfLocalUri}
-                    format={loadState.format}
-                    initialPage={loadState.initialPage}
-                    initialLocator={loadState.initialLocator ?? undefined}
-                    onStateChange={handleStateChange}
-                    onPositionsReady={handlePositionsReady}
-                    onTocReady={handleTocReady}
-                    onRequestClose={handleRequestClose}
-                    onToggleChrome={toggleChrome}
-                    fallback={domFallback}
-                    backgroundColor={fixedBgColor}
-                    navigationMode={fixedSettings.navigationMode}
-                    readingProgression={fixedSettings.readingProgression}
-                    spread={fixedSettings.spread}
-                  />
-                ) : null}
+                <ReaderPublicationSurface
+                  loadState={loadState}
+                  reflowStyle={[
+                    {
+                      paddingTop: insets.top - 8,
+                      paddingBottom: insets.bottom,
+                      flex: 1,
+                    },
+                    themeBgStyle,
+                  ]}
+                  reflow={{
+                    ref: reflowReaderRef,
+                    onStateChange: handleStateChange,
+                    onPositionsReady: handlePositionsReady,
+                    onPublicationLanguagesReady:
+                      handlePublicationLanguagesReady,
+                    onPublicationReady: handlePublicationReady,
+                    onPublicationLayoutReady: handlePublicationLayoutReady,
+                    onCapabilitiesReady: handleCapabilitiesReady,
+                    onTocReady: handleTocReady,
+                    onUserLocationChange: handleUserLocationChange,
+                    onRequestClose: handleRequestClose,
+                    onToggleChrome: handleReaderTap,
+                    theme: reflowSettings.theme,
+                    fontFamily: activeFontFamily,
+                    fontFamilyDeclarations: READER_FONT_DECLARATIONS,
+                    fontSize: reflowSettings.fontSize,
+                    lineHeight: reflowSettings.lineHeight,
+                    paddingX: reflowSettings.paddingX,
+                    textAlign: reflowSettings.textAlign,
+                    columnCount: reflowSettings.columnCount,
+                    language: readerLanguage,
+                    decorations: readerDecorations,
+                    selectionMenu: selectionMenu,
+                    onSelectionAction: handleSelectionAction,
+                    onSelectionChange: handleSelectionChange,
+                    onDecorationActivated: handleDecorationActivated,
+                    onTtsStateChange: handleTtsStateChange,
+                    onTtsSynthesisRequest: handleTtsSynthesisRequest,
+                    onTtsSynthesisCancel: handleTtsSynthesisCancel,
+                    customSelectionMenu: true,
+                  }}
+                  fixed={{
+                    ref: fixedReaderRef,
+                    onStateChange: handleStateChange,
+                    onPositionsReady: handlePositionsReady,
+                    onTocReady: handleTocReady,
+                    onRequestClose: handleRequestClose,
+                    onToggleChrome: toggleChrome,
+                    fallback: domFallback,
+                    backgroundColor: fixedBgColor,
+                    navigationMode: fixedSettings.navigationMode,
+                    readingProgression: fixedSettings.readingProgression,
+                    spread: fixedSettings.spread,
+                  }}
+                />
 
                 <Animated.View
                   pointerEvents="none"
                   style={[StyleSheet.absoluteFill, themeOverlayStyle]}
                 />
 
-                {loadState.status === "ready" &&
-                  !readerState?.ready &&
-                  readerLoadingOverlay}
+                {!readerReady && readerLoadingOverlay}
               </View>
             </ErrorBoundary>
 
@@ -1569,8 +1344,8 @@ export default function ReaderScreen() {
 
             <ReaderPositionLabel
               visible={positionLabelVisible}
-              currentPage={readerState?.currentPage}
-              totalPages={readerState?.totalPages}
+              currentPage={currentPage}
+              totalPages={totalPages}
               label={isReflowSurface ? t("reader.positionLabel") : undefined}
               palette={chromePalette}
             />
@@ -1605,8 +1380,8 @@ export default function ReaderScreen() {
             <ReaderActionsExpanded
               insetsBottom={insets.bottom}
               visible={chromeState === ChromeState.Expanded}
-              currentPositionIndex={readerState?.currentPage ?? 0}
-              positionCount={readerState?.totalPages ?? 1}
+              currentPositionIndex={currentPage ?? 0}
+              positionCount={totalPages ?? 1}
               readingProgression={
                 isFixedSurface ? fixedSettings.readingProgression : "ltr"
               }
@@ -1708,69 +1483,17 @@ export default function ReaderScreen() {
             />
 
             {/* State 5: Settings bottom sheet */}
-            <ReaderSettingsSheet
-              ref={settingsSheetRef}
-              palette={chromePalette}
+            <ReaderScreenSettings
+              sheetRef={settingsSheetRef}
+              chromePalette={chromePalette}
               onDismiss={handleSettingsDismiss}
-              layout={isReflowSurface ? "reflowable" : "fixed"}
-              reflow={
-                isReflowSurface
-                  ? {
-                      theme: reflowSettings.theme,
-                      onThemeChange: (key) =>
-                        patchReflowableReaderSettings({ theme: key }),
-                      fontFamily: activeFontFamily,
-                      fontOptions,
-                      onFontFamilyChange: (v) =>
-                        patchReflowableReaderSettings({
-                          fontFamiliesByLanguage: {
-                            ...reflowSettings.fontFamiliesByLanguage,
-                            [activeFontLanguageKey]: v,
-                          },
-                        }),
-                      fontSize: reflowSettings.fontSize,
-                      onFontSizeChange: (v) =>
-                        patchReflowableReaderSettings({ fontSize: v }),
-                      fontSizeMin: 14,
-                      fontSizeMax: 28,
-                      lineHeight: reflowSettings.lineHeight,
-                      onLineHeightChange: (v) =>
-                        patchReflowableReaderSettings({ lineHeight: v }),
-                      lineHeightMin: 1.4,
-                      lineHeightMax: 2.4,
-                      margin: reflowSettings.paddingX,
-                      onMarginChange: (v) =>
-                        patchReflowableReaderSettings({ paddingX: v }),
-                      marginMin: 12,
-                      marginMax: 36,
-                      textAlign: reflowSettings.textAlign,
-                      onTextAlignChange: (v) =>
-                        patchReflowableReaderSettings({ textAlign: v }),
-                      columnCount: reflowSettings.columnCount,
-                      onColumnCountChange: (v) =>
-                        patchReflowableReaderSettings({ columnCount: v }),
-                    }
-                  : undefined
-              }
-              fixed={
-                !isReflowSurface
-                  ? {
-                      background: fixedSettings.background,
-                      onBackgroundChange: (v) =>
-                        patchFixedReaderSettings({ background: v }),
-                      navigationMode: fixedSettings.navigationMode,
-                      onNavigationModeChange: (v) =>
-                        patchFixedReaderSettings({ navigationMode: v }),
-                      showPageDirection: !isCbzFixed,
-                      readingProgression: fixedSettings.readingProgression,
-                      onReadingProgressionChange: (v) =>
-                        patchFixedReaderSettings({ readingProgression: v }),
-                      spread: fixedSettings.spread,
-                      onSpreadChange: (v) =>
-                        patchFixedReaderSettings({ spread: v }),
-                    }
-                  : undefined
-              }
+              layoutMode={loadState.layoutMode}
+              format={loadState.format}
+              reflowSettings={reflowSettings}
+              fixedSettings={fixedSettings}
+              activeFontFamily={activeFontFamily}
+              fontOptions={fontOptions}
+              activeFontLanguageKey={activeFontLanguageKey}
             />
 
             <ReaderTtsSettingsSheet
@@ -1784,47 +1507,6 @@ export default function ReaderScreen() {
       </BottomSheetModalProvider>
     </View>
   )
-}
-
-const DomReaderFallback = memo(function DomReaderFallback({
-  backgroundColor,
-  foregroundColor,
-}: {
-  backgroundColor: string
-  foregroundColor: string
-}) {
-  return (
-    <ReaderLoadingSurface
-      backgroundColor={backgroundColor}
-      foregroundColor={foregroundColor}
-    />
-  )
-})
-
-const ReaderLoadingSurface = memo(function ReaderLoadingSurface({
-  backgroundColor,
-  foregroundColor,
-}: {
-  backgroundColor: string
-  foregroundColor: string
-}) {
-  const mutedColor = alphaColor(foregroundColor, 0.34)
-
-  return (
-    <View className="flex-1" style={{ backgroundColor }}>
-      <View className="absolute inset-0 items-center justify-center px-10">
-        <ActivityIndicator size="small" color={mutedColor} />
-      </View>
-    </View>
-  )
-})
-
-function alphaColor(hex: string, alpha: number) {
-  const value = hex.replace("#", "")
-  if (value.length !== 6) return `rgba(244,238,230,${alpha})`
-  const rgb = Number.parseInt(value, 16)
-  if (!Number.isFinite(rgb)) return `rgba(244,238,230,${alpha})`
-  return `rgba(${(rgb >> 16) & 255},${(rgb >> 8) & 255},${rgb & 255},${alpha})`
 }
 
 const styles = StyleSheet.create({

@@ -1,3 +1,8 @@
+import {
+  resolveReaderStart,
+  readerProgress,
+  logReaderStart,
+} from "../reader-publication-state"
 import type {
   ContentResult,
   DecorationActivatedEvent,
@@ -271,48 +276,26 @@ const ReadiumReflowReader = forwardRef<
 
       // Resolve initial position using position/progression from stored locator,
       // then find the matching native locator from positions list.
-      let startLocator: Locator | undefined = event.positions[0]
-      let startSource = "publication-start"
-      if (publicationSeq === 1 && initialLocator) {
-        const resolved = resolveNativeLocator(event.positions, initialLocator)
-        if (resolved) {
-          startLocator = resolved
-          startSource = "stored-progress"
-        }
-      } else if (currentLocatorRef.current) {
-        const resolved = resolveNativeLocator(
-          event.positions,
-          currentLocatorRef.current,
-        )
-        if (resolved) {
-          startLocator = resolved
-          startSource = "current-location"
-        }
-      }
+      const { locator: startLocator, source: startSource } = resolveReaderStart(
+        event.positions,
+        publicationSeq === 1 ? initialLocator : undefined,
+        currentLocatorRef.current,
+        resolveNativeLocator,
+      )
       currentLocatorRef.current = startLocator ?? null
-      console.info("[reading-sync] reader:position-resolved", {
+      logReaderStart({
         format: "EPUB",
         publicationSeq,
         source: startSource,
         positions: event.positions.length,
-        storedHref: initialLocator?.href ?? null,
-        storedPosition: initialLocator?.locations?.position ?? null,
-        storedTotalProgression:
-          initialLocator?.locations?.totalProgression ?? null,
-        resolvedHref: startLocator?.href ?? null,
-        resolvedPosition: startLocator?.locations?.position ?? null,
-        resolvedTotalProgression:
-          startLocator?.locations?.totalProgression ?? null,
+        stored: initialLocator,
+        resolved: startLocator,
       })
 
       const currentPage = startLocator
         ? positionIndexForLocator(event.positions, startLocator)
         : 0
-      const progression =
-        startLocator?.locations?.totalProgression ??
-        startLocator?.locations?.progression ??
-        0
-      const progress = Math.round(progression * PROGRESS_PERCENT_MULTIPLIER)
+      const progress = readerProgress(startLocator)
       const chapterTitle =
         ((startLocator
           ? resolveReaderToc({

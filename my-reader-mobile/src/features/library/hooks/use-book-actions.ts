@@ -23,6 +23,105 @@ import i18n from "@/src/i18n"
 import type { FileState as FileStateRow } from "@/src/services/core/content"
 import { confirmDeleteLocalDownload } from "../utils/delete-download"
 
+function confirmManagedBookDeletion(lib: Library | null, book: BookItem) {
+  const calibreId = Number(book.id)
+  if (
+    !lib ||
+    libraryTypeOf(lib) !== "myreader" ||
+    !Number.isFinite(calibreId) ||
+    calibreId <= 0
+  ) {
+    return
+  }
+  showAlertWithStatusBarRestore(
+    i18n.t("bookMenu.deleteConfirmTitle"),
+    i18n.t("bookMenu.deleteConfirmDetail", { title: book.title }),
+    [
+      { text: i18n.t("common.cancel"), style: "cancel" },
+      {
+        text: i18n.t("common.delete"),
+        style: "destructive",
+        onPress: () => {
+          void deleteManagedBook(lib, calibreId).catch((error) => {
+            showAlertWithStatusBarRestore(
+              i18n.t("bookMenu.deleteFailed"),
+              error instanceof Error ? error.message : String(error),
+            )
+          })
+        },
+      },
+    ],
+  )
+}
+
+function uploadBookFile(lib: Library | null, book: BookItem) {
+  if (
+    !lib ||
+    libraryTypeOf(lib) !== "myreader" ||
+    !isRemoteSourceType(lib.sourceType)
+  ) {
+    return
+  }
+  requestPendingBookUploads(lib.id, book.uuid)
+}
+
+function handleBookMetadataAction(
+  actionId: string,
+  book: BookItem,
+  lib: Library | null,
+  toggleFavorite: ((bookId: string) => Promise<void> | void) | undefined,
+): boolean {
+  switch (actionId) {
+    case "detail":
+      router.push({ pathname: "/library-book/[id]", params: { id: book.id } })
+      return true
+    case "editMetadata":
+      if (lib && libraryTypeOf(lib) === "myreader") {
+        router.push({ pathname: "/library-book/edit", params: { id: book.id } })
+      }
+      return true
+    case "deleteBook":
+      confirmManagedBookDeletion(lib, book)
+      return true
+    case "favorite":
+      void toggleFavorite?.(book.id)
+      return true
+    default:
+      return false
+  }
+}
+
+function cancelBookDownloads(
+  bookId: string,
+  tasks: ReturnType<typeof useDownloadStatusTasks>,
+) {
+  const activeTasks = tasks.filter(
+    (task) =>
+      task.bookId === bookId &&
+      (task.status === "queued" ||
+        task.status === "starting" ||
+        task.status === "downloading"),
+  )
+  for (const task of activeTasks) {
+    cancelDownload(task.id)
+  }
+}
+
+function deleteBookDownload(
+  book: BookItem,
+  lib: Library | null,
+  rows: FileStateRow[],
+) {
+  const downloadedRows = rows.filter((row) => row.isLocallyAvailable)
+  if (downloadedRows.length === 0) return
+  if (!lib) return
+  confirmDeleteLocalDownload(
+    book.title,
+    lib.id,
+    downloadedRows.map((row) => row.path),
+  )
+}
+
 export function useBookActions(
   books: BookItem[],
   bookDownloadStatusById: Record<string, string>,
@@ -250,6 +349,65 @@ export function useBookActions(
     [downloadBook, openReader],
   )
 
+  const shareBook = useCallback(
+    async (book: BookItem, targetFormat?: string) => {
+      const latest = stateRef.current
+      const lib = latest.selectedLibrary
+      if (!lib) return
+
+      try {
+        const calibreId = Number(book.id)
+        if (!Number.isFinite(calibreId) || calibreId <= 0) return
+        let resolved: {
+          format: string
+          relativePath: string
+          fileUri: string
+          isLocal: boolean
+        } | null = null
+        if (targetFormat) {
+          resolved = await resolveShareableFormat(lib, calibreId, targetFormat)
+        } else {
+          const formatMeta = latest.bookFormatMetaById.get(book.id)
+          const readableFormats =
+            formatMeta?.readableFormats ?? book.readableFormats ?? []
+          const defaultFormat = resolveEffectiveFormat(
+            readableFormats,
+            latest.selectedFormatById[book.id],
+            book.preferredFormat,
+          )
+          const pick = formatMeta?.effectiveFormat ?? defaultFormat
+          if (pick) {
+            resolved = await resolveShareableFormat(lib, calibreId, pick)
+          }
+        }
+        if (!resolved) {
+          showAlertWithStatusBarRestore(
+            i18n.t("share.shareFailed"),
+            i18n.t("sync.noReadableFormatForDownload"),
+          )
+          return
+        }
+        if (!resolved.isLocal) {
+          showAlertWithStatusBarRestore(
+            i18n.t("share.fileNotDownloadedTitle"),
+            i18n.t("share.fileNotDownloadedMessage", {
+              title: book.title,
+              format: resolved.format,
+            }),
+          )
+          return
+        }
+        await shareBookFile(resolved.fileUri, resolved.format)
+      } catch (e) {
+        showAlertWithStatusBarRestore(
+          i18n.t("share.shareFailed"),
+          e instanceof Error ? e.message : String(e),
+        )
+      }
+    },
+    [],
+  )
+
   const handleBookMenuAction = useCallback(
     (bookId: string, actionId: string) => {
       const latest = stateRef.current
@@ -265,91 +423,26 @@ export function useBookActions(
         return
       }
       if (actionId === "cancelDownload") {
-        const activeTasks = latest.tasks.filter(
-          (task) =>
-            task.bookId === bookId &&
-            (task.status === "queued" ||
-              task.status === "starting" ||
-              task.status === "downloading"),
-        )
-        for (const task of activeTasks) {
-          cancelDownload(task.id)
-        }
+        cancelBookDownloads(bookId, latest.tasks)
         return
       }
       if (actionId === "uploadFile") {
-        const lib = latest.selectedLibrary
-        if (
-          !lib ||
-          libraryTypeOf(lib) !== "myreader" ||
-          !isRemoteSourceType(lib.sourceType)
-        ) {
-          return
-        }
-        requestPendingBookUploads(lib.id, book.uuid)
+        uploadBookFile(latest.selectedLibrary, book)
         return
       }
-      if (actionId === "detail") {
-        router.push({ pathname: "/library-book/[id]", params: { id: bookId } })
-        return
-      }
-      if (actionId === "editMetadata") {
-        const lib = latest.selectedLibrary
-        if (!lib || libraryTypeOf(lib) !== "myreader") return
-        router.push({
-          pathname: "/library-book/edit",
-          params: { id: bookId },
-        })
-        return
-      }
-      if (actionId === "deleteBook") {
-        const lib = latest.selectedLibrary
-        const calibreId = Number(book.id)
-        if (
-          !lib ||
-          libraryTypeOf(lib) !== "myreader" ||
-          !Number.isFinite(calibreId) ||
-          calibreId <= 0
-        ) {
-          return
-        }
-        showAlertWithStatusBarRestore(
-          i18n.t("bookMenu.deleteConfirmTitle"),
-          i18n.t("bookMenu.deleteConfirmDetail", { title: book.title }),
-          [
-            { text: i18n.t("common.cancel"), style: "cancel" },
-            {
-              text: i18n.t("common.delete"),
-              style: "destructive",
-              onPress: () => {
-                void deleteManagedBook(lib, calibreId).catch((error) => {
-                  showAlertWithStatusBarRestore(
-                    i18n.t("bookMenu.deleteFailed"),
-                    error instanceof Error ? error.message : String(error),
-                  )
-                })
-              },
-            },
-          ],
+      if (
+        handleBookMetadataAction(
+          actionId,
+          book,
+          latest.selectedLibrary,
+          latest.toggleFavorite,
         )
+      )
         return
-      }
-      if (actionId === "favorite") {
-        const toggle = latest.toggleFavorite
-        if (toggle) {
-          void toggle(bookId)
-        }
-        return
-      }
       if (actionId.startsWith("setDefaultFormat:")) {
         const format = actionId.slice("setDefaultFormat:".length)
         const setFormat = latest.setBookReadingFormat
-        if (!setFormat) return
-        if (format === "auto") {
-          void setFormat(bookId, null)
-        } else {
-          void setFormat(bookId, format)
-        }
+        void setFormat?.(bookId, format === "auto" ? null : format)
         return
       }
       if (actionId === "setDefaultFormat") {
@@ -357,82 +450,21 @@ export function useBookActions(
         return
       }
       if (actionId === "deleteDownload") {
-        const rows = latest.fileStateBundle.rows[bookId] ?? []
-        const downloadedRows = rows.filter((row) => row.isLocallyAvailable)
-        if (downloadedRows.length === 0) return
-        const lib = latest.selectedLibrary
-        if (!lib) return
-        confirmDeleteLocalDownload(
-          book.title,
-          lib.id,
-          downloadedRows.map((row) => row.path),
+        deleteBookDownload(
+          book,
+          latest.selectedLibrary,
+          latest.fileStateBundle.rows[bookId] ?? [],
         )
         return
       }
       if (actionId === "share" || actionId.startsWith("share:")) {
         const targetFormat =
           actionId === "share" ? undefined : actionId.slice("share:".length)
-        const lib = latest.selectedLibrary
-        if (!lib) return
-        void (async () => {
-          try {
-            const calibreId = Number(book.id)
-            if (!Number.isFinite(calibreId) || calibreId <= 0) return
-            let resolved: {
-              format: string
-              relativePath: string
-              fileUri: string
-              isLocal: boolean
-            } | null = null
-            if (targetFormat) {
-              resolved = await resolveShareableFormat(
-                lib,
-                calibreId,
-                targetFormat,
-              )
-            } else {
-              const formatMeta = latest.bookFormatMetaById.get(book.id)
-              const readableFormats =
-                formatMeta?.readableFormats ?? book.readableFormats ?? []
-              const defaultFormat = resolveEffectiveFormat(
-                readableFormats,
-                latest.selectedFormatById[book.id],
-                book.preferredFormat,
-              )
-              const pick = formatMeta?.effectiveFormat ?? defaultFormat
-              if (pick) {
-                resolved = await resolveShareableFormat(lib, calibreId, pick)
-              }
-            }
-            if (!resolved) {
-              showAlertWithStatusBarRestore(
-                i18n.t("share.shareFailed"),
-                i18n.t("sync.noReadableFormatForDownload"),
-              )
-              return
-            }
-            if (!resolved.isLocal) {
-              showAlertWithStatusBarRestore(
-                i18n.t("share.fileNotDownloadedTitle"),
-                i18n.t("share.fileNotDownloadedMessage", {
-                  title: book.title,
-                  format: resolved.format,
-                }),
-              )
-              return
-            }
-            await shareBookFile(resolved.fileUri, resolved.format)
-          } catch (e) {
-            showAlertWithStatusBarRestore(
-              i18n.t("share.shareFailed"),
-              e instanceof Error ? e.message : String(e),
-            )
-          }
-        })()
+        void shareBook(book, targetFormat)
         return
       }
     },
-    [downloadBook, promptSetDefaultFormat],
+    [downloadBook, promptSetDefaultFormat, shareBook],
   )
 
   return {

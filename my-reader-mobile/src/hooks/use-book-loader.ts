@@ -122,6 +122,79 @@ export type LoadState =
       candidates: ReadingPositionCandidate[]
     }
 
+async function resolveBookCoverUri(
+  library: Library,
+  dataSources: DataSource[],
+  path: string,
+  hasCover: boolean,
+) {
+  const cover = isRemoteSourceType(library.sourceType)
+    ? await resolveRemoteCoverUri(library, dataSources, path, hasCover)
+    : buildLocalCoverUri(library, path, hasCover)
+  return typeof cover === "string" ? cover : cover?.uri
+}
+
+function readerLayoutMode(format: string): ReadyBookLoad["layoutMode"] {
+  if (format === "EPUB") return "reflowable"
+  if (format === "PDF" || format === "CBZ") return "fixedLayout"
+  return "unknown"
+}
+
+function archiveFingerprint(bookId: number, format: string, file: File | null) {
+  const hash = file ? (file.md5 ?? `sz${file.size ?? 0}`) : "nohash"
+  return `${bookId}-${format}-${hash}`
+}
+
+async function resolveReaderFiles(
+  library: Library,
+  bookId: number,
+  format: string,
+) {
+  const upper = format.toUpperCase()
+  const remote = isRemoteSourceType(library.sourceType)
+  const needsFile = ["EPUB", "PDF", "CBZ"].includes(upper)
+  const file = remote
+    ? await resolveDownloadedWebDavBookFile({
+        library,
+        calibreBookId: bookId,
+        format,
+      })
+    : needsFile
+      ? await resolveBookFileForRead(library, bookId, format)
+      : null
+  if (remote && needsFile && !file) return null
+  const epubFile = upper === "EPUB" ? file : null
+  const archiveFile = upper === "PDF" || upper === "CBZ" ? file : null
+  return {
+    epubFileUri: epubFile?.uri ?? null,
+    pdfLocalUri: upper === "PDF" ? (file?.uri ?? null) : null,
+    bookArchiveUri: archiveFile?.uri ?? null,
+    bookArchiveFingerprint: archiveFingerprint(
+      bookId,
+      upper,
+      archiveFile ?? epubFile,
+    ),
+    bookArchiveOwned: !remote && Boolean(archiveFile),
+  }
+}
+
+function logInitialReadingProgress(
+  libraryId: string,
+  bookId: number,
+  format: string,
+  initialLocator: Locator | null,
+) {
+  console.info("[reading-sync] reader:initial-progress-loaded", {
+    libraryId,
+    bookId,
+    format,
+    found: initialLocator !== null,
+    href: initialLocator?.href ?? null,
+    position: initialLocator?.locations?.position ?? null,
+    totalProgression: initialLocator?.locations?.totalProgression ?? null,
+  })
+}
+
 export function useBookLoader(
   id: string | undefined,
   formatParam: string | undefined,
@@ -177,6 +250,42 @@ export function useBookLoader(
 
     let cancelled = false
 
+    function showCachedBookInfo() {
+      // 优先从已有的 books 列表中获取封面和标题，减少等待感
+      const books =
+        queryClient.getQueryData<BookItem[]>(
+          libraryQueryKeys.books(activeLibraryId),
+        ) ?? []
+      const bookItem = books.find((b) => b.id === id)
+      if (bookItem?.coverUri) {
+        const cover = bookItem.coverUri
+        setCoverUri(typeof cover === "string" ? cover : cover?.uri)
+      }
+      if (bookItem?.title) {
+        setBookTitle(bookItem.title)
+      }
+
+      return bookItem
+    }
+
+    async function showBookDetail(
+      bookItem: BookItem | undefined,
+      detail: NonNullable<
+        Awaited<ReturnType<typeof readBookDetailFromMetadata>>
+      >,
+    ) {
+      if (!bookItem?.coverUri && detail.hasCover && detail.path) {
+        const cover = await resolveBookCoverUri(
+          lib,
+          state.dataSources,
+          detail.path,
+          detail.hasCover,
+        )
+        if (cover) setCoverUri(cover)
+      }
+      setBookTitle(detail.title)
+    }
+
     async function load() {
       try {
         setLoadState({
@@ -184,19 +293,7 @@ export function useBookLoader(
           message: i18n.t("bookLoader.readingBookInfo"),
         })
 
-        // 优先从已有的 books 列表中获取封面和标题，减少等待感
-        const books =
-          queryClient.getQueryData<BookItem[]>(
-            libraryQueryKeys.books(activeLibraryId),
-          ) ?? []
-        const bookItem = books.find((b) => b.id === id)
-        if (bookItem?.coverUri) {
-          const cover = bookItem.coverUri
-          setCoverUri(typeof cover === "string" ? cover : cover?.uri)
-        }
-        if (bookItem?.title) {
-          setBookTitle(bookItem.title)
-        }
+        const bookItem = showCachedBookInfo()
 
         const calibreId = Number(id)
         if (!Number.isFinite(calibreId) || calibreId <= 0) {
@@ -217,28 +314,7 @@ export function useBookLoader(
           return
         }
 
-        // 如果 books 列表中没有封面，用 detail 构建封面 URI
-        if (!bookItem?.coverUri && detail.hasCover && detail.path) {
-          let builtCover:
-            | string
-            | { uri: string; headers?: Record<string, string> }
-            | undefined
-          if (isRemoteSource) {
-            builtCover = await resolveRemoteCoverUri(
-              lib,
-              state.dataSources,
-              detail.path,
-              detail.hasCover,
-            )
-          } else {
-            builtCover = buildLocalCoverUri(lib, detail.path, detail.hasCover)
-          }
-          if (builtCover)
-            setCoverUri(
-              typeof builtCover === "string" ? builtCover : builtCover.uri,
-            )
-        }
-        setBookTitle(detail.title)
+        await showBookDetail(bookItem, detail)
 
         const fmt = resolveReadFormat(
           detail.readableFormats,
@@ -262,83 +338,20 @@ export function useBookLoader(
             : i18n.t("bookLoader.loadingBookFile"),
         })
 
-        const detailLayoutMode =
-          fmtUpper === "EPUB"
-            ? "reflowable"
-            : fmtUpper === "PDF" || fmtUpper === "CBZ"
-              ? "fixedLayout"
-              : "unknown"
-
-        const needsNativeComicPath = fmtUpper === "CBZ"
-        const needsPdfNativePath = fmtUpper === "PDF"
-        const needsEpubExtract = fmtUpper === "EPUB"
-
-        const downloadedWebDavBookFile = isRemoteSource
-          ? await resolveDownloadedWebDavBookFile({
-              library: lib,
-              calibreBookId: calibreId,
-              format: fmt,
-            })
-          : null
-
-        const localBookFile =
-          !isRemoteSource && needsNativeComicPath
-            ? await resolveBookFileForRead(lib, calibreId, fmt)
-            : null
-        const localEpubFile =
-          needsEpubExtract && !isRemoteSource
-            ? await resolveBookFileForRead(lib, calibreId, fmt)
-            : null
-        const webDavEpubFile =
-          needsEpubExtract && isRemoteSource ? downloadedWebDavBookFile : null
-        const webDavBookFile =
-          isRemoteSource && needsNativeComicPath
-            ? downloadedWebDavBookFile
-            : null
-
-        const pdfLocalFile = needsPdfNativePath
-          ? isRemoteSource
-            ? downloadedWebDavBookFile
-            : await resolveBookFileForRead(lib, calibreId, fmt)
-          : null
-
-        const epubArchiveFile = localEpubFile ?? webDavEpubFile
-        const requiredWebDavFile =
-          isRemoteSource &&
-          (needsEpubExtract || needsNativeComicPath || needsPdfNativePath)
-        if (requiredWebDavFile && !downloadedWebDavBookFile) {
+        const detailLayoutMode = readerLayoutMode(fmtUpper)
+        const files = await resolveReaderFiles(lib, calibreId, fmt)
+        if (!files) {
           setLoadState({
             status: "error",
             message: i18n.t("bookLoader.downloadFirst"),
           })
           return
         }
-
         if (cancelled) return
-
-        const archiveFile = needsPdfNativePath
-          ? pdfLocalFile
-          : (localBookFile ?? webDavBookFile)
-        const bookArchiveFingerprint = archiveFile
-          ? `${calibreId}-${fmtUpper}-${archiveFile.md5 ?? `sz${archiveFile.size ?? 0}`}`
-          : epubArchiveFile
-            ? `${calibreId}-${fmtUpper}-${epubArchiveFile.md5 ?? `sz${epubArchiveFile.size ?? 0}`}`
-            : `${calibreId}-${fmtUpper}-nohash`
-        const bookArchiveOwned =
-          Boolean(localBookFile) ||
-          Boolean(needsPdfNativePath && !isRemoteSource && pdfLocalFile)
 
         const initialLocator = await getReadingProgress(lib, calibreId, fmt)
         if (cancelled) return
-        console.info("[reading-sync] reader:initial-progress-loaded", {
-          libraryId: lib.id,
-          bookId: calibreId,
-          format: fmtUpper,
-          found: initialLocator !== null,
-          href: initialLocator?.href ?? null,
-          position: initialLocator?.locations?.position ?? null,
-          totalProgression: initialLocator?.locations?.totalProgression ?? null,
-        })
+        logInitialReadingProgress(lib.id, calibreId, fmtUpper, initialLocator)
 
         const initialPage =
           detailLayoutMode === "fixedLayout"
@@ -347,13 +360,7 @@ export function useBookLoader(
 
         const ready: ReadyBookLoad = {
           libraryId: lib.id,
-          epubFileUri:
-            needsEpubExtract && epubArchiveFile ? epubArchiveFile.uri : null,
-          pdfLocalUri:
-            needsPdfNativePath && pdfLocalFile ? pdfLocalFile.uri : null,
-          bookArchiveUri: archiveFile?.uri ?? null,
-          bookArchiveFingerprint,
-          bookArchiveOwned,
+          ...files,
           bookId: calibreId,
           format: fmt,
           title: detail.title,

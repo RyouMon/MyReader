@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next"
 import type { BookDetail } from "@my-reader/tools/types/book"
 import type { MenuAction } from "@react-native-menu/menu"
 import { MenuView } from "@react-native-menu/menu"
@@ -40,6 +41,20 @@ type HeroSectionProps = {
 const WIDE_COVER_MIN_WIDTH = 152
 const WIDE_COVER_MAX_WIDTH = 280
 
+function bookSeriesLabel(book: BookDetail, t: TFunction) {
+  const seriesIndex =
+    book.seriesIndex !== null
+      ? Number.isInteger(book.seriesIndex)
+        ? String(book.seriesIndex)
+        : book.seriesIndex.toFixed(1)
+      : null
+  return book.series
+    ? seriesIndex
+      ? t("bookDetail.seriesInfo", { series: book.series, index: seriesIndex })
+      : book.series
+    : null
+}
+
 export function HeroSection({
   availableWidth,
   book,
@@ -79,17 +94,7 @@ export function HeroSection({
   const publicationDate = book.pubdate ? formatDate(book.pubdate) : null
   const languages = book.languages.map(formatLanguage).join(", ")
   const metadata = [publicationDate, book.publisher, languages].filter(Boolean)
-  const seriesIndex =
-    book.seriesIndex !== null
-      ? Number.isInteger(book.seriesIndex)
-        ? String(book.seriesIndex)
-        : book.seriesIndex.toFixed(1)
-      : null
-  const seriesLabel = book.series
-    ? seriesIndex
-      ? t("bookDetail.seriesInfo", { series: book.series, index: seriesIndex })
-      : book.series
-    : null
+  const seriesLabel = bookSeriesLabel(book, t)
   const progressPercent = Math.round(
     Math.min(100, Math.max(0, readingProgress)),
   )

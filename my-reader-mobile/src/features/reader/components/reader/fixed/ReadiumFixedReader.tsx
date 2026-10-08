@@ -1,4 +1,9 @@
 import {
+  resolveReaderStart,
+  readerProgress,
+  logReaderStart,
+} from "../reader-publication-state"
+import {
   forwardRef,
   useCallback,
   useImperativeHandle,
@@ -144,47 +149,25 @@ const ReadiumFixedReader = forwardRef<
       // Resolve initial position using position/progression from stored locator,
       // then find the matching native locator from positions list.
       // This ensures the href matches the platform-native format.
-      let startLocator: Locator | undefined = event.positions[0]
-      let startSource = "publication-start"
-      if (initialLocator) {
-        const resolved = resolveNativeLocator(event.positions, initialLocator)
-        if (resolved) {
-          startLocator = resolved
-          startSource = "stored-progress"
-        }
-      } else if (currentLocatorRef.current) {
-        const resolved = resolveNativeLocator(
-          event.positions,
-          currentLocatorRef.current,
-        )
-        if (resolved) {
-          startLocator = resolved
-          startSource = "current-location"
-        }
-      }
+      const { locator: startLocator, source: startSource } = resolveReaderStart(
+        event.positions,
+        initialLocator,
+        currentLocatorRef.current,
+        resolveNativeLocator,
+      )
       currentLocatorRef.current = startLocator ?? null
-      console.info("[reading-sync] reader:position-resolved", {
+      logReaderStart({
         format: "FIXED",
         source: startSource,
         positions: event.positions.length,
-        storedHref: initialLocator?.href ?? null,
-        storedPosition: initialLocator?.locations?.position ?? null,
-        storedTotalProgression:
-          initialLocator?.locations?.totalProgression ?? null,
-        resolvedHref: startLocator?.href ?? null,
-        resolvedPosition: startLocator?.locations?.position ?? null,
-        resolvedTotalProgression:
-          startLocator?.locations?.totalProgression ?? null,
+        stored: initialLocator,
+        resolved: startLocator,
       })
 
       const currentPage = startLocator
         ? positionIndexForLocator(event.positions, startLocator)
         : 0
-      const progression =
-        startLocator?.locations?.totalProgression ??
-        startLocator?.locations?.progression ??
-        0
-      const progress = Math.round(progression * PROGRESS_PERCENT_MULTIPLIER)
+      const progress = readerProgress(startLocator)
       const chapterTitle =
         showChapterTitle && hasPublicationTocRef.current && startLocator
           ? (startLocator.title ??

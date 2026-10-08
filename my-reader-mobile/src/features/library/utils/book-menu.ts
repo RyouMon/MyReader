@@ -16,6 +16,39 @@ export type BookMenuConfig = {
   selectedFormat?: string
 }
 
+function downloadMenuActions(
+  downloadStatus: BookDownloadStatus | undefined,
+  readableFormats: string[],
+): MenuAction[] {
+  const actions: MenuAction[] = []
+  if (downloadStatus === "downloading") {
+    actions.push({
+      id: "cancelDownload",
+      title: i18n.t("bookMenu.cancelDownload"),
+      attributes: { destructive: true },
+    })
+  } else if (downloadStatus !== "downloaded") {
+    if (readableFormats.length === 1) {
+      actions.push({
+        id: `download:${readableFormats[0]}`,
+        title: i18n.t("bookMenu.downloadFormat", {
+          format: readableFormats[0],
+        }),
+      })
+    } else if (readableFormats.length > 1) {
+      actions.push({
+        id: "download",
+        title: i18n.t("bookMenu.download"),
+        subactions: readableFormats.map((fmt) => ({
+          id: `download:${fmt}`,
+          title: fmt,
+        })),
+      })
+    }
+  }
+  return actions
+}
+
 /**
  * Builds the per-book menu actions from primitive inputs so cells can recompute
  * only when their own inputs change.
@@ -69,33 +102,8 @@ export function buildBookMenuActions(
     })
   }
 
-  if (isRemote) {
-    if (downloadStatus === "downloading") {
-      actions.push({
-        id: "cancelDownload",
-        title: i18n.t("bookMenu.cancelDownload"),
-        attributes: { destructive: true },
-      })
-    } else if (downloadStatus !== "downloaded") {
-      if (readableFormats.length === 1) {
-        actions.push({
-          id: `download:${readableFormats[0]}`,
-          title: i18n.t("bookMenu.downloadFormat", {
-            format: readableFormats[0],
-          }),
-        })
-      } else if (readableFormats.length > 1) {
-        actions.push({
-          id: "download",
-          title: i18n.t("bookMenu.download"),
-          subactions: readableFormats.map((fmt) => ({
-            id: `download:${fmt}`,
-            title: fmt,
-          })),
-        })
-      }
-    }
-  }
+  if (isRemote)
+    actions.push(...downloadMenuActions(downloadStatus, readableFormats))
 
   if (readableFormats.length > 1) {
     actions.push({

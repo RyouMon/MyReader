@@ -24,7 +24,10 @@ import {
   underlayFromSurface,
 } from "@/src/design/reader-chrome-palette"
 import { Pressable, Text, View } from "@/tw"
-import { ReaderChromeIcon } from "./ReaderChromeIcon"
+import {
+  ReaderListManagementBar,
+  ReaderListSelectionIndicator,
+} from "./ReaderListSelectionControls"
 
 const ANNOTATION_PREVIEW_TARGET_LENGTH = 38
 const ANNOTATION_MIN_CONTEXT_LENGTH = 6
@@ -197,21 +200,11 @@ const AnnotationRow = memo(function AnnotationRow({
     >
       <View className="flex-1 flex-row items-start px-5 py-2">
         {selectionMode ? (
-          <View
+          <ReaderListSelectionIndicator
+            selected={selected}
+            palette={palette}
             className="mr-3 mt-0.5 h-6 w-6 items-center justify-center rounded-full border"
-            style={{
-              borderColor: selected ? palette.accentText : palette.textMuted,
-              backgroundColor: selected ? palette.accentText : "transparent",
-            }}
-          >
-            {selected ? (
-              <ReaderChromeIcon
-                name="check"
-                size={16}
-                color={palette.sheetSurface}
-              />
-            ) : null}
-          </View>
+          />
         ) : null}
 
         <View className="min-w-0 flex-1">
@@ -429,66 +422,16 @@ export function ReaderAnnotationList({
       />
 
       {annotations.length > 0 ? (
-        <View
-          className="flex-row items-center px-5 py-2"
-          style={{
-            borderTopWidth: StyleSheet.hairlineWidth,
-            borderColor: palette.border,
-          }}
-        >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t(
-              managing
-                ? "reader.annotations.done"
-                : "reader.annotations.manage",
-            )}
-            accessibilityState={{ disabled: mutationDisabled }}
-            className="h-11 w-11 items-center justify-center rounded-md"
-            hitSlop={2}
-            disabled={mutationDisabled}
-            onPress={toggleManagement}
-          >
-            <ReaderChromeIcon
-              name={managing ? "check" : "manage"}
-              size={24}
-              color={mutationDisabled ? palette.textFaint : palette.accentText}
-            />
-          </Pressable>
-          {managing ? (
-            <Text
-              className="flex-1 text-center text-base font-semibold"
-              style={{ color: palette.textMuted }}
-            >
-              {t("reader.annotations.selectedCount", {
-                count: selectedAnnotations.length,
-              })}
-            </Text>
-          ) : (
-            <View className="flex-1" />
-          )}
-          {managing ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("reader.annotations.deleteSelected")}
-              accessibilityState={{ disabled: deletionDisabled }}
-              className="h-11 w-11 items-center justify-center rounded-md"
-              hitSlop={2}
-              disabled={deletionDisabled}
-              onPress={() => void deleteSelected()}
-            >
-              <ReaderChromeIcon
-                name="delete"
-                size={24}
-                color={
-                  deletionDisabled ? palette.textFaint : palette.accentText
-                }
-              />
-            </Pressable>
-          ) : (
-            <View className="h-11 w-11" />
-          )}
-        </View>
+        <ReaderListManagementBar
+          kind="annotations"
+          palette={palette}
+          managing={managing}
+          mutationDisabled={mutationDisabled}
+          deletionDisabled={deletionDisabled}
+          selectedCount={selectedAnnotations.length}
+          toggleManagement={toggleManagement}
+          deleteSelected={deleteSelected}
+        />
       ) : null}
     </RNView>
   )

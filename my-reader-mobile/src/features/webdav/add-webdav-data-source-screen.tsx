@@ -227,9 +227,7 @@ export default function AddWebDavDataSourceScreen() {
     }
   }
 
-  async function handleSave() {
-    if (saving) return
-
+  function validateForm() {
     const parseResult = addWebDavMobileSchema.safeParse(form.store.state.values)
     if (!parseResult.success) {
       const errors: Partial<Record<string, WebDavValidationKey>> = {}
@@ -240,9 +238,17 @@ export default function AddWebDavDataSourceScreen() {
         }
       }
       setFieldErrors(errors)
-      return
+      return false
     }
     setFieldErrors({})
+
+    return true
+  }
+
+  async function handleSave() {
+    if (saving) return
+
+    if (!validateForm()) return
 
     setSaving(true)
     try {

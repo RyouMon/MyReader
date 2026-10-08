@@ -98,6 +98,35 @@ export function FormatSection({
   )
 }
 
+function FormatStatusIcon({
+  isDownloading,
+  downloadProgress,
+  isRemote,
+  colors,
+}: {
+  isDownloading: boolean
+  downloadProgress: number
+  isRemote: boolean
+  colors: DetailColors
+}) {
+  const iconTint = colors.muted
+  return isDownloading ? (
+    <CircularProgress
+      color={colors.accent}
+      indeterminate={downloadProgress === 0}
+      progress={downloadProgress}
+      size={14}
+      trackColor={colors.progressTrack}
+    />
+  ) : isRemote ? (
+    Platform.OS === "ios" ? (
+      <SymbolView name="cloud.fill" size={14} tintColor={iconTint} />
+    ) : (
+      <MaterialIcons name="cloud" size={14} color={iconTint} />
+    )
+  ) : null
+}
+
 function FormatRow({
   bookId,
   colors,
@@ -137,16 +166,12 @@ function FormatRow({
   const taskByPath = useDownloadTaskForPath(libraryId, relativePath ?? "")
   const taskByFormat = useDownloadTaskForBookFormat(libraryId, bookId, format)
   const candidateTask = taskByPath ?? taskByFormat
-  const activeTask =
-    candidateTask?.status === "queued" ||
-    candidateTask?.status === "starting" ||
-    candidateTask?.status === "downloading"
-      ? candidateTask
-      : undefined
+  const taskStatus = candidateTask?.status
   const isDownloading =
-    activeTask?.status === "starting" ||
-    activeTask?.status === "downloading" ||
-    activeTask?.status === "queued"
+    taskStatus === "queued" ||
+    taskStatus === "starting" ||
+    taskStatus === "downloading"
+  const activeTask = isDownloading ? candidateTask : undefined
   const downloadProgress = activeTask?.progress ?? 0
   const isPresent = fileLocalState === "present"
   const isLocallyAvailable =
@@ -240,22 +265,6 @@ function FormatRow({
 
   const iconTint = colors.muted
 
-  const statusIcon = isDownloading ? (
-    <CircularProgress
-      color={colors.accent}
-      indeterminate={downloadProgress === 0}
-      progress={downloadProgress}
-      size={14}
-      trackColor={colors.progressTrack}
-    />
-  ) : isRemote ? (
-    Platform.OS === "ios" ? (
-      <SymbolView name="cloud.fill" size={14} tintColor={iconTint} />
-    ) : (
-      <MaterialIcons name="cloud" size={14} color={iconTint} />
-    )
-  ) : null
-
   const menuTriggerWidth = Platform.OS === "ios" ? 44 : "100%"
   const menuHitSlop =
     Platform.OS === "ios"
@@ -273,7 +282,12 @@ function FormatRow({
             <Text className="text-base" style={{ color: colors.text }}>
               {format}
             </Text>
-            {statusIcon}
+            <FormatStatusIcon
+              isDownloading={isDownloading}
+              downloadProgress={downloadProgress}
+              isRemote={isRemote}
+              colors={colors}
+            />
           </View>
           <Text
             className="mt-0.5 text-base"
