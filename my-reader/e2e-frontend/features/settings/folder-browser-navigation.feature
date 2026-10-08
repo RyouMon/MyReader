@@ -38,25 +38,25 @@ Feature: 文件夹浏览器导航与操作
 
   @cancel
   Scenario: 取消选择关闭浏览器
-    When 用户点击取消按钮
+    When 用户按下 Escape 取消选择
     Then 文件夹浏览器关闭
-    And 书库路径输入框保持原有内容不变
+    And 没有提交远程书库打开请求
 
   @close
   Scenario: 关闭按钮关闭浏览器
     When 用户点击关闭按钮
     Then 文件夹浏览器关闭
-    And 书库路径输入框保持原有内容不变
+    And 没有提交远程书库打开请求
 
   @select
-  Scenario: 选择当前文件夹并回填路径
+  Scenario: 选择当前文件夹并打开书库
     Given 用户已进入某个子目录
     When 用户点击选择此文件夹按钮
     Then 文件夹浏览器关闭
-    And 书库路径输入框显示该子目录路径
+    And 使用该子目录路径打开远程书库
 
   @select @root
-  Scenario: 选择根目录并回填路径
+  Scenario: 选择根目录并打开书库
     When 用户点击选择此文件夹按钮
     Then 文件夹浏览器关闭
-    And 书库路径输入框显示根目录路径
+    And 使用根目录路径打开远程书库

@@ -28,7 +28,6 @@ Given("用户已打开添加书库面板", async ({ page }) => {
 
 Given("已选择远程数据源", async ({ page }) => {
   const settingsPage = new SettingsPage(page)
-  await settingsPage.selectRemoteDataSourceType("webdav")
   await settingsPage.selectDataSource("Test WebDAV")
 })
 
@@ -93,9 +92,8 @@ When("用户点击返回按钮", async ({ page }) => {
   await settingsPage.clickBackButton()
 })
 
-When("用户点击取消按钮", async ({ page }) => {
-  const settingsPage = new SettingsPage(page)
-  await settingsPage.clickCancelButton()
+When("用户按下 Escape 取消选择", async ({ page }) => {
+  await page.keyboard.press("Escape")
 })
 
 When("用户点击关闭按钮", async ({ page }) => {
@@ -296,20 +294,17 @@ Then("文件夹浏览器关闭", async ({ page }) => {
   await settingsPage.assertFolderBrowserClosed()
 })
 
-Then("书库路径输入框保持原有内容不变", async ({ page }) => {
+Then("没有提交远程书库打开请求", async ({ page }) => {
   const settingsPage = new SettingsPage(page)
-  const value = await settingsPage.getPathInputValue()
-  expect(value.trim()).toBe("")
+  expect(await settingsPage.getOpenedPath()).toBeNull()
 })
 
-Then("书库路径输入框显示该子目录路径", async ({ page }) => {
+Then("使用该子目录路径打开远程书库", async ({ page }) => {
   const settingsPage = new SettingsPage(page)
-  const value = await settingsPage.getPathInputValue()
-  expect(value).toContain("CalibreLibrary")
+  expect(await settingsPage.getOpenedPath()).toBe("/CalibreLibrary/Books/")
 })
 
-Then("书库路径输入框显示根目录路径", async ({ page }) => {
+Then("使用根目录路径打开远程书库", async ({ page }) => {
   const settingsPage = new SettingsPage(page)
-  const value = await settingsPage.getPathInputValue()
-  expect(value).toBe("/")
+  expect(await settingsPage.getOpenedPath()).toBe("/")
 })

@@ -28,6 +28,7 @@ export default defineConfig({
     ["json", { outputFile: "reports/report.json" }],
   ],
   use: {
+    locale: "zh-CN",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     baseURL: "http://localhost:1420",

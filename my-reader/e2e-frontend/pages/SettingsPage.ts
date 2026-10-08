@@ -16,50 +16,36 @@ export class SettingsPage {
 
   // --- Add library panel ---
   getAddLibraryPanelButton() {
-    return this.page.getByRole("button", { name: "添加书库" })
+    return this.page
+      .getByTestId("settings-activity")
+      .getByRole("button", { name: "添加书库", exact: true })
   }
 
   async openAddLibraryPanel() {
     await this.getAddLibraryPanelButton().click()
-  }
-
-  async selectRemoteDataSourceType(type: "webdav" | "onedrive") {
-    const label = type === "onedrive" ? "OneDrive" : "WebDAV"
-    await this.page.getByRole("button", { name: label }).click()
-  }
-
-  getDataSourceSelectTrigger() {
-    return this.page.locator('[data-slot="select-trigger"]')
+    await this.page
+      .getByRole("dialog", { name: "添加书库" })
+      .getByRole("button", { name: /^打开已有书库/ })
+      .click()
   }
 
   async selectDataSource(name: string) {
-    await this.getDataSourceSelectTrigger().click()
-    const option = this.page.getByRole("option", { name })
-    await option.waitFor({ state: "visible" })
-    await option.click()
-    // Wait for the selection to be reflected in the trigger
-    await expect(this.getDataSourceSelectTrigger()).toContainText(name)
-    // Wait for the browse button to become enabled
-    await expect(this.getBrowseButton()).toBeEnabled()
-  }
-
-  getBrowseButton() {
-    return this.page.getByRole("button", { name: "浏览" })
+    await this.page
+      .getByRole("dialog")
+      .getByRole("button", { name: new RegExp(`^${name}`) })
+      .click()
   }
 
   async openFolderBrowser() {
-    await this.getBrowseButton().click()
     await this.assertFolderBrowserOpen()
   }
 
-  getPathInput() {
-    return this.page.locator(
-      'input[name="path"], input[placeholder*="Calibre"]',
+  async getOpenedPath(): Promise<string | null> {
+    return this.page.evaluate(
+      () =>
+        (window as unknown as { __FOLDER_BROWSER_OPENED_PATH__?: string })
+          .__FOLDER_BROWSER_OPENED_PATH__ ?? null,
     )
-  }
-
-  async getPathInputValue(): Promise<string> {
-    return this.getPathInput().inputValue()
   }
 
   // --- Folder browser dialog ---
@@ -69,6 +55,7 @@ export class SettingsPage {
 
   async assertFolderBrowserOpen() {
     await expect(this.getFolderBrowserDialog()).toBeVisible()
+    await expect(this.getFolderList()).toBeVisible()
   }
 
   async assertFolderBrowserClosed() {
@@ -134,7 +121,10 @@ export class SettingsPage {
   }
 
   getBackButton() {
-    return this.getFolderBrowserDialog().locator('button[aria-label="返回"]')
+    return this.getFolderBrowserDialog().getByRole("button", {
+      name: "上一级文件夹",
+      exact: true,
+    })
   }
 
   async clickBackButton() {
@@ -149,16 +139,11 @@ export class SettingsPage {
     await this.getRefreshButton().click()
   }
 
-  getCancelButton() {
-    return this.getFolderBrowserDialog().getByRole("button", { name: "取消" })
-  }
-
-  async clickCancelButton() {
-    await this.getCancelButton().click()
-  }
-
   getCloseButton() {
-    return this.getFolderBrowserDialog().locator('[data-slot="dialog-close"]')
+    return this.getFolderBrowserDialog().getByRole("button", {
+      name: "关闭",
+      exact: true,
+    })
   }
 
   async clickCloseButton() {

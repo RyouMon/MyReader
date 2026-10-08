@@ -19,7 +19,6 @@ Given("已配置多个书库", async ({ page }) => {
 
 Given("系统只配置了一个书库", async ({ page }) => {
   await setupLibrariesMock(page, [LIBRARIES[0]])
-  await page.reload()
 })
 
 Given("系统没有配置任何书库", async ({ page }) => {
@@ -105,8 +104,15 @@ Then('书库切换菜单中应该显示"添加书库"按钮', async ({ page }) =
   await expect(mainPage.getLibrarySwitcherAddButton()).toBeVisible()
 })
 
-Then("页面应该跳转到设置页", async ({ page }) => {
-  await expect(page).toHaveURL(/\/settings$/)
+Then("应该打开添加书库对话框", async ({ page }) => {
+  const dialog = page.getByRole("dialog", { name: "添加书库", exact: true })
+  await expect(dialog).toBeVisible()
+  await expect(
+    dialog.getByRole("button", { name: /^创建新书库/ }),
+  ).toBeVisible()
+  await expect(
+    dialog.getByRole("button", { name: /^打开已有书库/ }),
+  ).toBeVisible()
 })
 
 Then("菜单中应该只显示一个书库", async ({ page }) => {

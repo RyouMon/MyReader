@@ -154,6 +154,20 @@ export async function setupFolderBrowserMocks(page: Page) {
       ]
 
       handlers.list_libraries = () => []
+      handlers.open_remote_myreader_library = ({ remotePath }) => {
+        ;(
+          window as unknown as { __FOLDER_BROWSER_OPENED_PATH__: string }
+        ).__FOLDER_BROWSER_OPENED_PATH__ = String(remotePath)
+        return {
+          id: "opened-library",
+          name: "Test Library",
+          path: remotePath,
+          bookCount: 0,
+          sourceType: "webdav",
+          dataSourceId: webdavId,
+          sourcePath: remotePath,
+        }
+      }
 
       handlers.webdav_list_folders = (args: {
         dataSourceId: string
@@ -208,4 +222,4 @@ export async function setupFolderBrowserMocks(page: Page) {
   )
 }
 
-export { LONG_FOLDER_NAME, DEEP_PATH_ROOT }
+export { DEEP_PATH_ROOT, LONG_FOLDER_NAME }

@@ -71,3 +71,11 @@ Then("侧边栏叠加层应该关闭", async ({ page }) => {
   const mainPage = new MainPage(page)
   await mainPage.assertMobileSheetClosed()
 })
+
+When("用户点击侧边栏叠加层关闭按钮", async ({ page }) => {
+  const mainPage = new MainPage(page)
+  await mainPage
+    .getMobileSheet()
+    .getByRole("button", { name: "Close", exact: true })
+    .click()
+})
