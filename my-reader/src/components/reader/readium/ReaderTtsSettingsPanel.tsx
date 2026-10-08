@@ -179,53 +179,12 @@ export function ReaderTtsSettingsPanel({
 
         {!loading && config && view === "settings" ? (
           <>
-            <section className="flex flex-col gap-2">
-              <Label
-                className={READER_SETTINGS_LABEL_CLASS}
-                htmlFor="reader-tts-engine"
-              >
-                {t("reader.tts.engine")}
-              </Label>
-              <Select
-                value={
-                  config.defaultEngine.kind === "provider"
-                    ? config.defaultEngine.profileId
-                    : "system"
-                }
-                disabled={saving}
-                onValueChange={(value) =>
-                  void selectEngine(value === "system" ? undefined : value)
-                }
-              >
-                <SelectTrigger
-                  id="reader-tts-engine"
-                  aria-label={t("reader.tts.engine")}
-                  className="reader-tts-themed-trigger w-full"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent
-                  position="popper"
-                  align="start"
-                  style={themeStyle}
-                >
-                  <SelectGroup>
-                    <SelectItem value="system">
-                      {t("reader.tts.systemEngine")}
-                    </SelectItem>
-                    {config.profiles.map((profile) => (
-                      <SelectItem
-                        key={profile.id}
-                        value={profile.id}
-                        disabled={!profile.enabled}
-                      >
-                        {profile.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </section>
+            <ReaderTtsEngineSelect
+              config={config}
+              saving={saving}
+              themeStyle={themeStyle}
+              selectEngine={selectEngine}
+            />
 
             <section className="flex flex-col gap-2">
               <Label
@@ -370,6 +329,65 @@ function ReaderPlaybackSwitch({
         disabled={disabled}
         onCheckedChange={onCheckedChange}
       />
+    </section>
+  )
+}
+
+function ReaderTtsEngineSelect({
+  config,
+  saving,
+  themeStyle,
+  selectEngine,
+}: {
+  config: Awaited<ReturnType<typeof api.getTtsConfig>>
+  saving: boolean
+  themeStyle: CSSProperties | undefined
+  selectEngine: (profileId?: string) => Promise<void>
+}) {
+  const { t } = useTranslation()
+  return (
+    <section className="flex flex-col gap-2">
+      <Label
+        className={READER_SETTINGS_LABEL_CLASS}
+        htmlFor="reader-tts-engine"
+      >
+        {t("reader.tts.engine")}
+      </Label>
+      <Select
+        value={
+          config.defaultEngine.kind === "provider"
+            ? config.defaultEngine.profileId
+            : "system"
+        }
+        disabled={saving}
+        onValueChange={(value) =>
+          void selectEngine(value === "system" ? undefined : value)
+        }
+      >
+        <SelectTrigger
+          id="reader-tts-engine"
+          aria-label={t("reader.tts.engine")}
+          className="reader-tts-themed-trigger w-full"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent position="popper" align="start" style={themeStyle}>
+          <SelectGroup>
+            <SelectItem value="system">
+              {t("reader.tts.systemEngine")}
+            </SelectItem>
+            {config.profiles.map((profile) => (
+              <SelectItem
+                key={profile.id}
+                value={profile.id}
+                disabled={!profile.enabled}
+              >
+                {profile.name}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
     </section>
   )
 }

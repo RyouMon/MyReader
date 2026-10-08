@@ -1,25 +1,7 @@
+import type { CalibreBook } from "@my-reader/tools/types/book"
 import type { Page } from "@playwright/test"
 
-export interface MockBook {
-  id: number
-  title: string
-  authorSort: string
-  authors: string[]
-  tags: string[]
-  series: string | null
-  seriesIndex: number | null
-  formats: string[]
-  hasCover: boolean
-  path: string
-  timestamp: string | null
-  pubdate: string | null
-  lastModified: string | null
-  comment: string | null
-  publisher: string | null
-  languages: string[]
-  rating: number | null
-  uuid: string | null
-}
+export type MockBook = CalibreBook
 
 export interface MockLibrary {
   id: string
@@ -43,6 +25,8 @@ export function generateBooks(count: number): MockBook[] {
     series: i % 5 === 0 ? `系列 ${Math.floor(i / 5) + 1}` : null,
     seriesIndex: i % 5 === 0 ? (i % 5) + 1 : null,
     formats: ["EPUB"],
+    readableFormats: ["EPUB"],
+    preferredFormat: "EPUB",
     hasCover: true,
     path: `books/book_${i + 1}.epub`,
     timestamp: new Date().toISOString(),
@@ -154,6 +138,7 @@ export async function setupLibrariesMock(
         },
         get_reader_ui_preferences: () => ({
           version: 4,
+          appLanguage: "zh-CN",
           libraryViewMode: "grid",
           fixedLayout: {},
           reflowable: {

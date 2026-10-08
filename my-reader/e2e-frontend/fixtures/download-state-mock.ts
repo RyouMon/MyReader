@@ -1,3 +1,4 @@
+import type { BookDetail } from "@/lib/tauri-api"
 import type { Page } from "@playwright/test"
 import { TEST_LIBRARY_ID } from "./library-mock"
 
@@ -38,7 +39,7 @@ export async function setupDownloadStateMocks(page: Page) {
         },
       }
 
-      function book() {
+      function book(): BookDetail {
         return {
           id: bookId,
           title: "下载状态测试书",
@@ -48,6 +49,8 @@ export async function setupDownloadStateMocks(page: Page) {
           series: null,
           seriesIndex: null,
           formats: state.formats,
+          readableFormats: state.formats,
+          preferredFormat: state.formats[0] ?? null,
           hasCover: false,
           path: "books/download-state-test.epub",
           timestamp: new Date().toISOString(),
@@ -68,6 +71,16 @@ export async function setupDownloadStateMocks(page: Page) {
 
       function eventName(format: string) {
         return `download_progress/${libraryId}/${bookId}/${format}`
+      }
+
+      function fileState(format: string) {
+        const localState = state.fileStates[format] ?? "remote_only"
+        return {
+          path: `/mock/books/${bookId}.${format.toLowerCase()}`,
+          localState:
+            state.librarySourceType === "local" ? "present" : localState,
+          localSize: localState === "present" ? 1024 : null,
+        }
       }
 
       function progressFromStatus(status: string) {
@@ -153,16 +166,15 @@ export async function setupDownloadStateMocks(page: Page) {
           state.selectedFormat = String(args.format).toUpperCase()
           return null
         },
-        check_book_file_state: (args) => {
-          const format = String(args.format).toUpperCase()
-          const localState = state.fileStates[format] ?? "remote_only"
-          return {
-            path: `/mock/books/${bookId}.${format.toLowerCase()}`,
-            localState:
-              state.librarySourceType === "local" ? "present" : localState,
-            localSize: localState === "present" ? 1024 : null,
-          }
-        },
+        check_book_file_state: (args) =>
+          fileState(String(args.format).toUpperCase()),
+        check_book_file_states: (args) =>
+          (args.requests as Array<{ bookId: number; format: string }>).map(
+            (request) => {
+              const format = request.format.toUpperCase()
+              return { bookId: request.bookId, format, ...fileState(format) }
+            },
+          ),
         download_book_file: (args) => {
           state.calls.download_book_file += 1
           const format = String(args.format).toUpperCase()
@@ -201,6 +213,7 @@ export async function setupDownloadStateMocks(page: Page) {
         close_book_streamer: () => null,
         get_reader_ui_preferences: () => ({
           version: 4,
+          appLanguage: "zh-CN",
           libraryViewMode: "grid",
           fixedLayout: {},
           reflowable: {

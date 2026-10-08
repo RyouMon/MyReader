@@ -2,7 +2,6 @@
 
 本文是测试策略、QA 命令和债务管理的维护入口。包的 `package.json`、各工具配置和
 `.github/workflows/quality.yml` 是执行权威；Agent 规则只负责引导，不另存一套配置示例。
-审视记录见 [2026-10-08 审计](./audits/2026-10-08-quality.md)。
 
 Quality 仅在 PR 和手动执行时运行，普通推送不触发。手动执行默认运行常规门禁；
 选中 `deep` 才额外运行 Rust 覆盖率与联网依赖审计。
@@ -77,7 +76,7 @@ SonarCloud、Codecov 或 Stryker Dashboard。Knip 报告不能直接用作删除
 源码仍计入分母。i18n 的翻译完整性另有单元测试，100% 覆盖率不表示翻译质量已经验证。
 Rust LCOV 当前覆盖 Core/FFI 两个 crate，没有为尚未测量的 Tauri 原生 UI 设置覆盖率门槛。
 actionlint 当前仅校验工作流本身，显式关闭其可选 ShellCheck / Pyflakes 集成，以保持本地与 CI 范围一致。
-手动 deep 任务当前会因已知 Cargo 漏洞记录失败，清单见审计报告；没有设置忽略通告来让它通过。
+手动 deep 任务当前会因已知 Cargo 漏洞记录失败；没有设置忽略通告来让它通过。
 若 registry 撤包查询超时，可在已刷新漏洞库后使用 `cargo audit --no-fetch --no-yanked` 单独检查
 已知漏洞，并明确记录没有检查撤包状态，不能将其称为完整的联网安全检查。
 

@@ -30,11 +30,6 @@
       "count": 1
     }
   },
-  "my-reader-mobile/src/domain/tts/use-qwen-tts-form.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
   "my-reader-mobile/src/features/home/components/reading-statistics-card.tsx": {
     "complexity": {
       "count": 1
@@ -111,22 +106,6 @@
     }
   },
   "my-reader-mobile/src/features/reader/components/reader/chrome/ReaderSearchSheet.tsx": {
-    "sonarjs/cognitive-complexity": {
-      "count": 1
-    }
-  },
-  "my-reader-mobile/src/features/reader/components/reader/chrome/ReaderTtsControls.tsx": {
-    "complexity": {
-      "count": 1
-    },
-    "sonarjs/cognitive-complexity": {
-      "count": 1
-    }
-  },
-  "my-reader-mobile/src/features/reader/components/reader/chrome/ReaderTtsSettingsSheet.tsx": {
-    "complexity": {
-      "count": 1
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
@@ -253,14 +232,6 @@
       "count": 1
     }
   },
-  "my-reader/src/components/library/BookDetailPane.tsx": {
-    "complexity": {
-      "count": 2
-    },
-    "sonarjs/cognitive-complexity": {
-      "count": 1
-    }
-  },
   "my-reader/src/components/library/BookDownloadIndicator.tsx": {
     "complexity": {
       "count": 1
@@ -277,33 +248,12 @@
       "count": 1
     }
   },
-  "my-reader/src/components/library/LibraryWorkspace.tsx": {
-    "complexity": {
-      "count": 1
-    },
-    "sonarjs/cognitive-complexity": {
-      "count": 1
-    }
-  },
   "my-reader/src/components/reader/ReadBookPage.tsx": {
     "complexity": {
       "count": 2
     },
     "sonarjs/cognitive-complexity": {
       "count": 2
-    }
-  },
-  "my-reader/src/components/reader/readium/ReaderTtsControls.tsx": {
-    "complexity": {
-      "count": 1
-    },
-    "sonarjs/cognitive-complexity": {
-      "count": 1
-    }
-  },
-  "my-reader/src/components/reader/readium/ReaderTtsSettingsPanel.tsx": {
-    "sonarjs/cognitive-complexity": {
-      "count": 1
     }
   },
   "my-reader/src/components/reader/readium/ReadiumDivinaReader.tsx": {
@@ -371,14 +321,6 @@
       "count": 1
     }
   },
-  "my-reader/src/hooks/reader/useEpubTtsSession.ts": {
-    "complexity": {
-      "count": 2
-    },
-    "sonarjs/cognitive-complexity": {
-      "count": 2
-    }
-  },
   "my-reader/src/hooks/reader/useFixedLayoutPanzoom.ts": {
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -400,14 +342,6 @@
     }
   },
   "my-reader/src/lib/readium/epubManifest.ts": {
-    "complexity": {
-      "count": 1
-    },
-    "sonarjs/cognitive-complexity": {
-      "count": 1
-    }
-  },
-  "my-reader/src/lib/readium/epubTts.ts": {
     "complexity": {
       "count": 1
     },
@@ -439,14 +373,6 @@
   "packages/tools/src/reader-toc.ts": {
     "complexity": {
       "count": 2
-    },
-    "sonarjs/cognitive-complexity": {
-      "count": 1
-    }
-  },
-  "packages/tools/src/reader-tts-session.ts": {
-    "complexity": {
-      "count": 1
     },
     "sonarjs/cognitive-complexity": {
       "count": 1

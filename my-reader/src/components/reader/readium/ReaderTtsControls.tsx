@@ -68,44 +68,14 @@ export function ReaderTtsControls({
   )
   const shown = visible
   const controlTabIndex = expanded && shown ? 0 : -1
-  const LeftActionIcon =
-    viewportRelation === "after"
-      ? Undo2
-      : viewportRelation === "before"
-        ? Rewind
-        : SkipBack
-  const RightActionIcon =
-    viewportRelation === "before"
-      ? Redo2
-      : viewportRelation === "after"
-        ? FastForward
-        : SkipForward
-  const leftActionLabel = t(
-    viewportRelation === "after"
-      ? "reader.tts.returnToPlaybackPosition"
-      : viewportRelation === "before"
-        ? "reader.tts.playFromCurrentPosition"
-        : "reader.tts.previousSentence",
-  )
-  const rightActionLabel = t(
-    viewportRelation === "before"
-      ? "reader.tts.returnToPlaybackPosition"
-      : viewportRelation === "after"
-        ? "reader.tts.playFromCurrentPosition"
-        : "reader.tts.nextSentence",
-  )
-  const handleLeftAction =
-    viewportRelation === "after"
-      ? onReturnToPlaybackPosition
-      : viewportRelation === "before"
-        ? onPlayFromCurrentPosition
-        : session.previous
-  const handleRightAction =
-    viewportRelation === "before"
-      ? onReturnToPlaybackPosition
-      : viewportRelation === "after"
-        ? onPlayFromCurrentPosition
-        : session.next
+  const { left, right } = navigationActions({
+    session,
+    viewportRelation,
+    onPlayFromCurrentPosition,
+    onReturnToPlaybackPosition,
+  })
+  const LeftActionIcon = left.icon
+  const RightActionIcon = right.icon
 
   const startOrStop = () => {
     if (expanded) {
@@ -120,9 +90,9 @@ export function ReaderTtsControls({
   return (
     <section
       aria-label={t("reader.tts.controls")}
-      data-active={expanded ? "true" : "false"}
-      data-visible={shown ? "true" : "false"}
-      data-viewport-detached={session.viewportDetached ? "true" : "false"}
+      data-active={expanded}
+      data-visible={shown}
+      data-viewport-detached={session.viewportDetached}
       data-viewport-relation={viewportRelation ?? "attached"}
       data-testid="reader-tts-controls"
       className="reader-tts-mini-player"
@@ -146,7 +116,7 @@ export function ReaderTtsControls({
           aria-haspopup="dialog"
           aria-hidden={!expanded}
           tabIndex={controlTabIndex}
-          data-active={settingsOpen ? "true" : "false"}
+          data-active={settingsOpen}
           data-shape="circle"
           onClick={onToggleSettings}
         >
@@ -155,12 +125,12 @@ export function ReaderTtsControls({
         <button
           type="button"
           className="reader-chrome-icon-btn reader-tts-mini-control"
-          aria-label={leftActionLabel}
+          aria-label={t(left.label)}
           aria-hidden={!expanded}
           tabIndex={controlTabIndex}
           data-testid="reader-tts-left-action"
           data-shape="circle"
-          onClick={handleLeftAction}
+          onClick={left.onClick}
           disabled={!session.available}
         >
           <span
@@ -181,23 +151,17 @@ export function ReaderTtsControls({
           onClick={playing ? session.pause : () => (onPlay ?? session.play)()}
           disabled={!session.available}
         >
-          {preparing ? (
-            <Loader2 className="size-[17px] animate-spin" aria-hidden />
-          ) : playing ? (
-            <Pause className="size-[17px]" aria-hidden />
-          ) : (
-            <Play className="size-[17px]" aria-hidden />
-          )}
+          <PlaybackIcon preparing={preparing} playing={playing} />
         </button>
         <button
           type="button"
           className="reader-chrome-icon-btn reader-tts-mini-control"
-          aria-label={rightActionLabel}
+          aria-label={t(right.label)}
           aria-hidden={!expanded}
           tabIndex={controlTabIndex}
           data-testid="reader-tts-right-action"
           data-shape="circle"
-          onClick={handleRightAction}
+          onClick={right.onClick}
           disabled={!session.available}
         >
           <span
@@ -218,15 +182,89 @@ export function ReaderTtsControls({
           onClick={startOrStop}
           disabled={!session.available || (!expanded && preparing)}
         >
-          {!expanded && preparing ? (
-            <Loader2 className="size-[17px] animate-spin" aria-hidden />
-          ) : expanded ? (
-            <Square className="size-[15px]" aria-hidden />
-          ) : (
-            <Headphones className="size-[18px]" aria-hidden />
-          )}
+          <ExpandIcon preparing={preparing} expanded={expanded} />
         </button>
       </div>
     </section>
   )
+}
+
+function navigationActions({
+  session,
+  viewportRelation,
+  onPlayFromCurrentPosition,
+  onReturnToPlaybackPosition,
+}: Pick<
+  ReaderTtsControlsProps,
+  | "session"
+  | "viewportRelation"
+  | "onPlayFromCurrentPosition"
+  | "onReturnToPlaybackPosition"
+>) {
+  if (viewportRelation === "after") {
+    return {
+      left: {
+        icon: Undo2,
+        label: "reader.tts.returnToPlaybackPosition",
+        onClick: onReturnToPlaybackPosition,
+      },
+      right: {
+        icon: FastForward,
+        label: "reader.tts.playFromCurrentPosition",
+        onClick: onPlayFromCurrentPosition,
+      },
+    } as const
+  }
+  if (viewportRelation === "before") {
+    return {
+      left: {
+        icon: Rewind,
+        label: "reader.tts.playFromCurrentPosition",
+        onClick: onPlayFromCurrentPosition,
+      },
+      right: {
+        icon: Redo2,
+        label: "reader.tts.returnToPlaybackPosition",
+        onClick: onReturnToPlaybackPosition,
+      },
+    } as const
+  }
+  return {
+    left: {
+      icon: SkipBack,
+      label: "reader.tts.previousSentence",
+      onClick: session.previous,
+    },
+    right: {
+      icon: SkipForward,
+      label: "reader.tts.nextSentence",
+      onClick: session.next,
+    },
+  } as const
+}
+
+function PlaybackIcon({
+  preparing,
+  playing,
+}: {
+  preparing: boolean
+  playing: boolean
+}) {
+  if (preparing)
+    return <Loader2 className="size-[17px] animate-spin" aria-hidden />
+  if (playing) return <Pause className="size-[17px]" aria-hidden />
+  return <Play className="size-[17px]" aria-hidden />
+}
+
+function ExpandIcon({
+  preparing,
+  expanded,
+}: {
+  preparing: boolean
+  expanded: boolean
+}) {
+  if (!expanded && preparing)
+    return <Loader2 className="size-[17px] animate-spin" aria-hidden />
+  if (expanded) return <Square className="size-[15px]" aria-hidden />
+  return <Headphones className="size-[18px]" aria-hidden />
 }

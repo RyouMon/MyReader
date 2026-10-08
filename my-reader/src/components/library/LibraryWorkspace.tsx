@@ -7,14 +7,11 @@ import {
 import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { open } from "@tauri-apps/plugin-dialog"
-import { AlertCircle } from "lucide-react"
 import { useCallback, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { SectionHeader } from "@/components/common/SectionHeader"
-import BookGrid, { LibrarySkeletonGrid } from "@/components/library/BookGrid"
 import LibrarySyncStatus from "@/components/library/LibrarySyncStatus"
-import { NoLibraryEmptyState } from "@/components/library/NoLibraryEmptyState"
 import Toolbar from "@/components/library/Toolbar"
 import { Button } from "@/components/ui/button"
 import {
@@ -26,23 +23,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty"
-import {
   type BookFileStateLookup,
   bookFileStateKeys,
   useBookFileStates,
 } from "@/hooks/queries/useBookFileState"
 import { useBookReadingFormats } from "@/hooks/queries/useBookReadingFormatsQuery"
-import {
-  invalidateFavoriteBookQueries,
-  useFavoriteBooks,
-} from "@/hooks/queries/useFavoriteBooksQuery"
+import { invalidateFavoriteBookQueries } from "@/hooks/queries/useFavoriteBooksQuery"
 import {
   libraryKeys,
   useLibrariesQuery,
@@ -53,21 +39,21 @@ import {
   readingProgressKeys,
   useBookReadingProgress,
 } from "@/hooks/queries/useReadingProgressQuery"
-import {
-  specialBookCollectionKeys,
-  useSpecialBookCollection,
-} from "@/hooks/queries/useSpecialBookCollectionQuery"
+import { specialBookCollectionKeys } from "@/hooks/queries/useSpecialBookCollectionQuery"
 import { useOpenReader } from "@/hooks/reader/useOpenReader"
-import { usePaginatedBooks } from "@/hooks/reader/usePaginatedBooks"
+import { useLibraryCollectionBooks } from "@/hooks/queries/useLibraryCollectionBooks"
 import { useWindowSizeClass } from "@/hooks/use-window-size-class"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
-import { isSpecialBookCollectionId } from "@/lib/bookCollections"
 import { resetBrokenCovers } from "@/lib/coverFailureCache"
 import { api, formatApiError } from "@/lib/tauri-api"
 import { cn } from "@/lib/utils"
 import { useAppUiStore } from "@/stores/appUiStore"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 import BookDetailPane from "./BookDetailPane"
+import {
+  LibraryCollectionContent,
+  LibraryCollectionEmpty,
+} from "./LibraryCollectionContent"
 import { getDesktopBookCollectionDefinition } from "./bookCollectionDefinitions"
 
 interface LibraryWorkspaceProps {
@@ -116,93 +102,36 @@ export default function LibraryWorkspace({
   const setViewMode = useAppUiStore((s) => s.setLibraryViewMode)
   const detailFullScreen = useAppUiStore((s) => s.detailFullScreen)
   const setDetailFullScreen = useAppUiStore((s) => s.setDetailFullScreen)
-  const isSmallWindow = windowSizeClass === "small"
-  const isMediumWindow = windowSizeClass === "medium"
-  const isSplitMode = Boolean(
-    activeBookId && !isSmallWindow && !detailFullScreen,
-  )
-  const showListPane = !activeBookId || isSplitMode
-  const keepsListSplitGeometry = Boolean(activeBookId && !isSmallWindow)
-  const isDetailOverlay = Boolean(activeBookId && !showListPane)
-  const showDetailPane = Boolean(activeBookId)
-  const forceNarrowDetailHero = isSmallWindow || (isSplitMode && isMediumWindow)
-  const canToggleDetailFullScreen = Boolean(activeBookId && !isSmallWindow)
+  const {
+    isSplitMode,
+    showListPane,
+    keepsListSplitGeometry,
+    isDetailOverlay,
+    showDetailPane,
+    forceNarrowDetailHero,
+    canToggleDetailFullScreen,
+  } = getWorkspaceLayout(activeBookId, windowSizeClass, detailFullScreen)
 
   const debouncedSearch = useDebouncedValue(searchQuery, 300)
-  const isPaginatedCollection =
-    activeCollectionId === "all" || activeCollectionId === "recentlyRead"
-  const booksSortBy =
-    activeCollectionId === "recentlyRead" ? "lastRead" : sortBy
-
-  const { books, total, initialLoading, error, ensureRange, refresh } =
-    usePaginatedBooks(
-      isPaginatedCollection ? activeLibraryId : null,
-      booksSortBy,
-      debouncedSearch,
-      Boolean(activeLibrary && libraryTypeOf(activeLibrary) === "myreader"),
-    )
-  const favoriteBooksQuery = useFavoriteBooks(
-    activeCollectionId === "favorites" ? activeLibraryId : null,
-    sortBy,
-    debouncedSearch,
-  )
-  const favoriteBooks = useMemo(() => {
-    const m = new Map<number, CalibreBook>()
-    for (const [index, book] of (
-      favoriteBooksQuery.data?.items ?? []
-    ).entries()) {
-      m.set(index, book)
-    }
-    return m
-  }, [favoriteBooksQuery.data?.items])
-  const specialCollection = useSpecialBookCollection({
+  const {
+    collection,
+    isPaginatedCollection,
+    refreshCatalog: refresh,
+  } = useLibraryCollectionBooks({
     libraryId: activeLibraryId,
     collectionId: activeCollectionId,
     sortBy,
     search: debouncedSearch,
     selectedFormatById,
+    isManagedLibrary,
     isRemoteLibrary,
   })
-  const isSpecialCollection = isSpecialBookCollectionId(activeCollectionId)
-
-  const displayedBooks =
-    activeCollectionId === "favorites"
-      ? favoriteBooks
-      : isSpecialCollection
-        ? specialCollection.books
-        : books
-  const displayedTotal =
-    activeCollectionId === "favorites"
-      ? (favoriteBooksQuery.data?.total ?? 0)
-      : isSpecialCollection
-        ? specialCollection.total
-        : total
-  const displayedLoading =
-    activeCollectionId === "favorites"
-      ? favoriteBooksQuery.isLoading
-      : isSpecialCollection
-        ? specialCollection.initialLoading
-        : initialLoading
-  const displayedError =
-    activeCollectionId === "favorites"
-      ? favoriteBooksQuery.error
-        ? String(favoriteBooksQuery.error)
-        : null
-      : isSpecialCollection
-        ? specialCollection.error
-        : error
-  const displayedEnsureRange =
-    activeCollectionId === "favorites"
-      ? () => undefined
-      : isSpecialCollection
-        ? specialCollection.ensureRange
-        : ensureRange
-  const displayedRefresh =
-    activeCollectionId === "favorites"
-      ? () => void favoriteBooksQuery.refetch()
-      : isSpecialCollection
-        ? specialCollection.refresh
-        : refresh
+  const {
+    books: displayedBooks,
+    total: displayedTotal,
+    initialLoading: displayedLoading,
+    error: displayedError,
+  } = collection
   const loading = libLoading || displayedLoading
   const fileStateLookups = useMemo<BookFileStateLookup[]>(() => {
     if (!activeLibraryId || !fileActionsEnabled) return []
@@ -374,71 +303,6 @@ export default function LibraryWorkspace({
     t,
   ])
 
-  const hasNoLibrary = libraries.length === 0
-  const emptyLibraryState = {
-    title: t("library.noMatch.empty.title"),
-    detail: t(
-      isManagedLibrary
-        ? "library.noMatch.empty.myreaderDetail"
-        : "library.noMatch.empty.calibreDetail",
-    ),
-  }
-  const emptyState = (() => {
-    if (searchQuery) {
-      return {
-        title: t("library.noMatch.search.title"),
-        detail: t("library.noMatch.search.detail"),
-      }
-    }
-
-    if (activeCollectionId === "all") {
-      return emptyLibraryState
-    }
-
-    switch (activeCollectionId) {
-      case "recentlyRead":
-        return {
-          title: t("library.noMatch.recentlyRead.title"),
-          detail: t("library.noMatch.recentlyRead.detail"),
-        }
-      case "favorites":
-        return {
-          title: t("library.noMatch.favorites.title"),
-          detail: t("library.noMatch.favorites.detail"),
-        }
-      case "downloaded":
-        return {
-          title: t("library.noMatch.downloaded.title"),
-          detail: t("library.noMatch.downloaded.detail"),
-        }
-      case "downloading":
-        return {
-          title: t("library.noMatch.downloading.title"),
-          detail: t("library.noMatch.downloading.detail"),
-        }
-      case "uploading":
-        return {
-          title: t("library.noMatch.uploading.title"),
-          detail: t("library.noMatch.uploading.detail"),
-        }
-      case "localOnly":
-        return {
-          title: t("library.noMatch.localOnly.title"),
-          detail: t("library.noMatch.localOnly.detail"),
-        }
-      default:
-        return emptyLibraryState
-    }
-  })()
-  const showsEmptyLibraryState = !searchQuery && activeCollectionId === "all"
-  const showsBrowseAllBooksAction =
-    !searchQuery &&
-    !showsEmptyLibraryState &&
-    activeCollectionId !== "localOnly"
-  const EmptyCollectionIcon = showsEmptyLibraryState
-    ? getDesktopBookCollectionDefinition("all").icon
-    : collectionDefinition.icon
-
   const gridHeader = (
     <div className="flex items-baseline gap-2.5 mb-4 pt-5">
       <SectionHeader
@@ -482,96 +346,45 @@ export default function LibraryWorkspace({
             onViewModeChange={setViewMode}
             sortBy={sortBy}
             onSortChange={setSortBy}
-            canImportBook={activeLibrary?.libraryType === "myreader"}
+            canImportBook={isManagedLibrary}
             importingBook={importingBook}
             onImportBook={() => void handleImportBook()}
           />
 
-          {loading && !displayedError && (
-            <LibrarySkeletonGrid viewMode={viewMode} />
-          )}
-
-          {!loading && displayedError && (
-            <Empty className="min-h-0 flex-1">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <AlertCircle className="text-destructive" />
-                </EmptyMedia>
-                <EmptyTitle>{t("library.loadingFailed")}</EmptyTitle>
-                <EmptyDescription>{displayedError}</EmptyDescription>
-              </EmptyHeader>
-              <EmptyContent>
-                <Button variant="outline" size="sm" onClick={displayedRefresh}>
-                  {t("common.retry")}
-                </Button>
-              </EmptyContent>
-            </Empty>
-          )}
-
-          {!loading && !displayedError && hasNoLibrary && (
-            <NoLibraryEmptyState onAddLibrary={onAddLibrary} />
-          )}
-
-          {!loading &&
-            !displayedError &&
-            !hasNoLibrary &&
-            displayedTotal > 0 && (
-              <div className="flex min-h-0 flex-1">
-                <BookGrid
-                  books={displayedBooks}
-                  total={displayedTotal}
-                  libraryId={activeLibraryId}
-                  onRead={handleOpenDetail}
-                  onOpenReader={handleOpenReader}
-                  onDeleteBook={
-                    activeLibrary?.libraryType === "myreader"
-                      ? setBookPendingDeletion
-                      : undefined
-                  }
-                  ensureRange={displayedEnsureRange}
-                  header={gridHeader}
-                  viewMode={viewMode}
-                  fileActionsEnabled={fileActionsEnabled}
-                  selectedFormatById={selectedFormatById}
-                  progressByBookId={progressByBookId}
-                  activeBookId={activeBookId}
-                />
-              </div>
-            )}
-
-          {!loading &&
-            !displayedError &&
-            !hasNoLibrary &&
-            displayedTotal === 0 && (
-              <Empty className="min-h-0 flex-1">
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <EmptyCollectionIcon />
-                  </EmptyMedia>
-                  <EmptyTitle>{emptyState.title}</EmptyTitle>
-                  <EmptyDescription>{emptyState.detail}</EmptyDescription>
-                </EmptyHeader>
-                {isManagedLibrary && showsEmptyLibraryState ? (
-                  <EmptyContent>
-                    <Button
-                      size="sm"
-                      disabled={importingBook}
-                      onClick={() => void handleImportBook()}
-                    >
-                      {importingBook
-                        ? t("library.importingBook")
-                        : t("library.empty.importBook")}
-                    </Button>
-                  </EmptyContent>
-                ) : showsBrowseAllBooksAction ? (
-                  <EmptyContent>
-                    <Button size="sm" onClick={handleBrowseAllBooks}>
-                      {t("library.browseAllBooks")}
-                    </Button>
-                  </EmptyContent>
-                ) : null}
-              </Empty>
-            )}
+          <LibraryCollectionContent
+            loading={loading}
+            error={displayedError}
+            hasNoLibrary={libraries.length === 0}
+            onAddLibrary={onAddLibrary}
+            onRetry={collection.refresh}
+            emptyState={
+              <LibraryCollectionEmpty
+                activeCollectionId={activeCollectionId}
+                searchQuery={searchQuery}
+                isManagedLibrary={isManagedLibrary}
+                importingBook={importingBook}
+                onImportBook={handleImportBook}
+                onBrowseAllBooks={handleBrowseAllBooks}
+              />
+            }
+            gridProps={{
+              books: displayedBooks,
+              total: displayedTotal,
+              libraryId: activeLibraryId,
+              onRead: handleOpenDetail,
+              onOpenReader: handleOpenReader,
+              onDeleteBook: isManagedLibrary
+                ? setBookPendingDeletion
+                : undefined,
+              ensureRange: collection.ensureRange,
+              header: gridHeader,
+              viewMode,
+              fileActionsEnabled,
+              selectedFormatById,
+              progressByBookId,
+              activeBookId,
+            }}
+          />
         </div>
 
         {showDetailPane ? (
@@ -604,45 +417,12 @@ export default function LibraryWorkspace({
 
       <LibraryStatusBar activeLibrary={activeLibrary} onSync={handleRefresh} />
 
-      <Dialog
-        open={bookPendingDeletion != null}
-        onOpenChange={(open) => {
-          if (!open && !deletingBook) setBookPendingDeletion(null)
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {t("bookDetail.deleteBookTitle", {
-                title: bookPendingDeletion?.title ?? "",
-              })}
-            </DialogTitle>
-            <DialogDescription>
-              {t("bookDetail.deleteBookDescription")}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={deletingBook}
-              onClick={() => setBookPendingDeletion(null)}
-            >
-              {t("common.cancel")}
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={deletingBook}
-              onClick={() => void handleDeleteBook()}
-            >
-              {deletingBook
-                ? t("bookDetail.deletingBook")
-                : t("bookDetail.confirmDeleteBook")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteBookDialog
+        book={bookPendingDeletion}
+        deleting={deletingBook}
+        onDismiss={() => setBookPendingDeletion(null)}
+        onConfirm={handleDeleteBook}
+      />
     </section>
   )
 }
@@ -666,5 +446,88 @@ function LibraryStatusBar({
       </span>
       <LibrarySyncStatus library={activeLibrary} onSync={onSync} />
     </footer>
+  )
+}
+
+function getWorkspaceLayout(
+  activeBookId: string | null,
+  windowSizeClass: ReturnType<typeof useWindowSizeClass>,
+  detailFullScreen: boolean,
+) {
+  const isSmallWindow = windowSizeClass === "small"
+  const isMediumWindow = windowSizeClass === "medium"
+  const isSplitMode = Boolean(
+    activeBookId && !isSmallWindow && !detailFullScreen,
+  )
+  const showListPane = !activeBookId || isSplitMode
+  const keepsListSplitGeometry = Boolean(activeBookId && !isSmallWindow)
+  const isDetailOverlay = Boolean(activeBookId && !showListPane)
+  const showDetailPane = Boolean(activeBookId)
+  const forceNarrowDetailHero = isSmallWindow || (isSplitMode && isMediumWindow)
+  const canToggleDetailFullScreen = Boolean(activeBookId && !isSmallWindow)
+
+  return {
+    isSplitMode,
+    showListPane,
+    keepsListSplitGeometry,
+    isDetailOverlay,
+    showDetailPane,
+    forceNarrowDetailHero,
+    canToggleDetailFullScreen,
+  }
+}
+
+function DeleteBookDialog({
+  book,
+  deleting,
+  onDismiss,
+  onConfirm,
+}: {
+  book: DeletableBook | null
+  deleting: boolean
+  onDismiss: () => void
+  onConfirm: () => Promise<void>
+}) {
+  const { t } = useTranslation()
+  return (
+    <Dialog
+      open={book != null}
+      onOpenChange={(open) => {
+        if (!open && !deleting) onDismiss()
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            {t("bookDetail.deleteBookTitle", {
+              title: book?.title ?? "",
+            })}
+          </DialogTitle>
+          <DialogDescription>
+            {t("bookDetail.deleteBookDescription")}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={deleting}
+            onClick={() => onDismiss()}
+          >
+            {t("common.cancel")}
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={deleting}
+            onClick={() => void onConfirm()}
+          >
+            {deleting
+              ? t("bookDetail.deletingBook")
+              : t("bookDetail.confirmDeleteBook")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

@@ -357,40 +357,10 @@ function epubTtsUtteranceMatchAtLocator(
     )
   if (resourceIndexes.length === 0) return null
   if (highlight) {
-    const targetBefore = normalizedText(locator.text?.before)
-    const targetAfter = normalizedText(locator.text?.after)
-    if (targetBefore || targetAfter) {
-      for (const { utterance, index } of resourceIndexes) {
-        const sentence = utterance.locator.text?.highlight ?? ""
-        let offset = sentence.indexOf(highlight)
-        while (offset >= 0) {
-          const before = normalizedText(
-            `${utterance.locator.text?.before ?? ""}${sentence.slice(0, offset)}`,
-          )
-          const after = normalizedText(
-            `${sentence.slice(offset + highlight.length)}${utterance.locator.text?.after ?? ""}`,
-          )
-          if (
-            (!targetBefore || before.endsWith(targetBefore)) &&
-            (!targetAfter || after.startsWith(targetAfter))
-          ) {
-            return { index, highlightOffset: offset }
-          }
-          offset = sentence.indexOf(highlight, offset + highlight.length)
-        }
-      }
-    }
-    const allowPartialHighlight = Array.from(highlight).length > 1
-    for (const { utterance, index } of resourceIndexes) {
-      const sentence = utterance.locator.text?.highlight?.trim()
-      if (!sentence) continue
-      if (sentence === highlight || highlight.includes(sentence)) {
-        return { index, highlightOffset: 0 }
-      }
-      if (allowPartialHighlight && sentence.includes(highlight)) {
-        return { index, highlightOffset: sentence.indexOf(highlight) }
-      }
-    }
+    const match =
+      matchTtsHighlightContext(resourceIndexes, locator, highlight) ??
+      matchTtsHighlightText(resourceIndexes, highlight)
+    if (match) return match
   }
   const progression = locator.locations.progression ?? 0
   const match =
@@ -399,6 +369,71 @@ function epubTtsUtteranceMatchAtLocator(
         (utterance.locator.locations.progression ?? 0) >= progression,
     ) ?? resourceIndexes[resourceIndexes.length - 1]!
   return { index: match.index, highlightOffset: null }
+}
+
+type IndexedTtsUtterance = { utterance: EpubTtsUtterance; index: number }
+
+function ttsHighlightContextOffset(
+  utterance: EpubTtsUtterance,
+  highlight: string,
+  targetBefore: string,
+  targetAfter: string,
+): number | null {
+  const sentence = utterance.locator.text?.highlight ?? ""
+  let offset = sentence.indexOf(highlight)
+  while (offset >= 0) {
+    const before = normalizedText(
+      `${utterance.locator.text?.before ?? ""}${sentence.slice(0, offset)}`,
+    )
+    const after = normalizedText(
+      `${sentence.slice(offset + highlight.length)}${utterance.locator.text?.after ?? ""}`,
+    )
+    if (
+      (!targetBefore || before.endsWith(targetBefore)) &&
+      (!targetAfter || after.startsWith(targetAfter))
+    )
+      return offset
+    offset = sentence.indexOf(highlight, offset + highlight.length)
+  }
+  return null
+}
+
+function matchTtsHighlightContext(
+  resourceIndexes: IndexedTtsUtterance[],
+  locator: Locator,
+  highlight: string,
+): EpubTtsLocatorMatch | null {
+  const targetBefore = normalizedText(locator.text?.before)
+  const targetAfter = normalizedText(locator.text?.after)
+  if (!targetBefore && !targetAfter) return null
+  for (const { utterance, index } of resourceIndexes) {
+    const offset = ttsHighlightContextOffset(
+      utterance,
+      highlight,
+      targetBefore,
+      targetAfter,
+    )
+    if (offset !== null) return { index, highlightOffset: offset }
+  }
+  return null
+}
+
+function matchTtsHighlightText(
+  resourceIndexes: IndexedTtsUtterance[],
+  highlight: string,
+): EpubTtsLocatorMatch | null {
+  const allowPartialHighlight = Array.from(highlight).length > 1
+  for (const { utterance, index } of resourceIndexes) {
+    const sentence = utterance.locator.text?.highlight?.trim()
+    if (!sentence) continue
+    if (sentence === highlight || highlight.includes(sentence)) {
+      return { index, highlightOffset: 0 }
+    }
+    if (allowPartialHighlight && sentence.includes(highlight)) {
+      return { index, highlightOffset: sentence.indexOf(highlight) }
+    }
+  }
+  return null
 }
 
 export function epubTtsUtteranceIndexAtLocator(

@@ -28,19 +28,19 @@ export function newQwenProviderFields(preset: QwenTtsPreset, name: string) {
   }
 }
 
-export function useQwenTtsForm(
-  draft: {
-    id?: string
-    kind: string
-    model: string
-    endpoint: string
-    credential: string
-    hasCredential: boolean
-    clearCredential: boolean
-    voices: string
-    defaultVoice: string
-  } | null,
-) {
+type QwenTtsFormDraft = {
+  id?: string
+  kind: string
+  model: string
+  endpoint: string
+  credential: string
+  hasCredential: boolean
+  clearCredential: boolean
+  voices: string
+  defaultVoice: string
+} | null
+
+export function useQwenTtsForm(draft: QwenTtsFormDraft) {
   const enabled = draft?.kind === "qwen"
   const endpoint = draft?.endpoint ?? ""
   const models = useMemo(
@@ -89,6 +89,20 @@ export function useQwenTtsForm(
     }
   }, [enabled, canDiscover, endpoint, model, profileId, credential])
 
+  return {
+    models,
+    selectedModel,
+    loading: enabled && loading,
+    error: enabled ? error : null,
+    ...qwenVoiceOptions(draft, selectedModel, discovered),
+  }
+}
+
+function qwenVoiceOptions(
+  draft: QwenTtsFormDraft,
+  selectedModel: QwenTtsModel | undefined,
+  discovered: TtsVoice[],
+) {
   const knownVoices = [...(selectedModel?.voices ?? []), ...discovered]
   const ids = [
     ...new Set(
@@ -103,10 +117,6 @@ export function useQwenTtsForm(
     ),
   ]
   return {
-    models,
-    selectedModel,
-    loading: enabled && loading,
-    error: enabled ? error : null,
     voices: ids.map((id) => ({
       id,
       name: knownVoices.find((voice) => voice.id === id)?.name ?? id,

@@ -63,30 +63,72 @@ export function createReaderTtsSessionMachine(
     viewportDetached: false,
   }
 
+  function beginSession(
+    event: Extract<ReaderTtsSessionEvent, { type: "begin" }>,
+  ): ReaderTtsSessionTransition {
+    if (event.navigationId && handledNavigationIds.has(event.navigationId)) {
+      return { accepted: false, snapshot }
+    }
+    if (event.navigationId) handledNavigationIds.add(event.navigationId)
+    pauseAfterStart = event.pauseAfterStart === true
+    playbackStarted = false
+    nextSessionNumber += 1
+    snapshot = {
+      sessionId: `${sessionPrefix}:${nextSessionNumber}`,
+      generation: snapshot.generation + 1,
+      status: "loading",
+      viewportDetached: false,
+    }
+    return { accepted: true, snapshot }
+  }
+
+  function reportPlaybackError(error: string): ReaderTtsSessionTransition {
+    snapshot = {
+      ...snapshot,
+      sessionId: null,
+      status: "error",
+      viewportDetached: false,
+    }
+    return { accepted: true, snapshot, effect: { type: "report-error", error } }
+  }
+
+  function applyPlayback(
+    event: Extract<ReaderTtsSessionEvent, { type: "playback" }>,
+  ): ReaderTtsSessionTransition {
+    if (event.sessionId !== snapshot.sessionId) {
+      return { accepted: false, snapshot }
+    }
+    if (event.status === "playing" || event.status === "paused") {
+      playbackStarted = true
+    }
+    if (event.status === "error") {
+      return reportPlaybackError(
+        event.error?.trim() || READER_TTS_UNKNOWN_ERROR,
+      )
+    }
+    if (event.status === "ended" && !playbackStarted) {
+      return reportPlaybackError(READER_TTS_NO_READABLE_CONTENT_ERROR)
+    }
+    const terminal = event.status === "ended" || event.status === "stopped"
+    snapshot = {
+      ...snapshot,
+      sessionId: terminal ? null : snapshot.sessionId,
+      status: event.status === "stopped" ? "idle" : event.status,
+      viewportDetached: terminal ? false : snapshot.viewportDetached,
+    }
+    if (event.status === "playing" && pauseAfterStart) {
+      pauseAfterStart = false
+      return { accepted: true, snapshot, effect: { type: "pause" } }
+    }
+    return { accepted: true, snapshot }
+  }
+
   const machine: ReaderTtsSessionMachine = {
     get snapshot() {
       return snapshot
     },
     send(event) {
-      if (event.type === "begin") {
-        if (
-          event.navigationId &&
-          handledNavigationIds.has(event.navigationId)
-        ) {
-          return { accepted: false, snapshot }
-        }
-        if (event.navigationId) handledNavigationIds.add(event.navigationId)
-        pauseAfterStart = event.pauseAfterStart === true
-        playbackStarted = false
-        nextSessionNumber += 1
-        snapshot = {
-          sessionId: `${sessionPrefix}:${nextSessionNumber}`,
-          generation: snapshot.generation + 1,
-          status: "loading",
-          viewportDetached: false,
-        }
-        return { accepted: true, snapshot }
-      }
+      if (event.type === "begin") return beginSession(event)
 
       if (event.type === "viewport-moved") {
         if (!snapshot.sessionId) return { accepted: false, snapshot }
@@ -105,61 +147,7 @@ export function createReaderTtsSessionMachine(
         return { accepted: true, snapshot }
       }
 
-      if (event.type === "playback") {
-        if (event.sessionId !== snapshot.sessionId) {
-          return { accepted: false, snapshot }
-        }
-        if (event.status === "playing" || event.status === "paused") {
-          playbackStarted = true
-        }
-        if (event.status === "error") {
-          const error = event.error?.trim() || READER_TTS_UNKNOWN_ERROR
-          snapshot = {
-            ...snapshot,
-            sessionId: null,
-            status: "error",
-            viewportDetached: false,
-          }
-          return {
-            accepted: true,
-            snapshot,
-            effect: { type: "report-error", error },
-          }
-        }
-        if (event.status === "ended" && !playbackStarted) {
-          snapshot = {
-            ...snapshot,
-            sessionId: null,
-            status: "error",
-            viewportDetached: false,
-          }
-          return {
-            accepted: true,
-            snapshot,
-            effect: {
-              type: "report-error",
-              error: READER_TTS_NO_READABLE_CONTENT_ERROR,
-            },
-          }
-        }
-        snapshot = {
-          ...snapshot,
-          sessionId:
-            event.status === "ended" || event.status === "stopped"
-              ? null
-              : snapshot.sessionId,
-          status: event.status === "stopped" ? "idle" : event.status,
-          viewportDetached:
-            event.status === "ended" || event.status === "stopped"
-              ? false
-              : snapshot.viewportDetached,
-        }
-        if (event.status === "playing" && pauseAfterStart) {
-          pauseAfterStart = false
-          return { accepted: true, snapshot, effect: { type: "pause" } }
-        }
-        return { accepted: true, snapshot }
-      }
+      if (event.type === "playback") return applyPlayback(event)
 
       if (event.type === "stop") {
         pauseAfterStart = false

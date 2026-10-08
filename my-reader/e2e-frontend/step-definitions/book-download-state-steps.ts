@@ -93,6 +93,9 @@ When(
   async ({ page }, format: string) => {
     await setMockSelectedFormat(page, format)
     await page.goto(`/book/${TEST_BOOK_ID}`)
+    await expect(
+      page.getByRole("switch", { name: `将 ${format} 设为默认阅读格式` }),
+    ).toBeChecked()
   },
 )
 

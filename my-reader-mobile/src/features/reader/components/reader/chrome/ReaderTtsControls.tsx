@@ -48,6 +48,13 @@ export function ReaderTtsControls({
 }: Props) {
   const { t } = useTranslation()
   const { width: windowWidth } = useWindowDimensions()
+  const { left, right } = navigationActions({
+    viewportRelation,
+    onPrevious,
+    onNext,
+    onPlayFromCurrentPosition,
+    onReturnToPlaybackPosition,
+  })
   const busy = state?.state === "loading"
   const playing = state?.state === "playing"
   const loadingLabel = t(
@@ -79,32 +86,14 @@ export function ReaderTtsControls({
 
       <ReaderFloatingIconButton
         testID="reader-tts-left-action"
-        accessibilityLabel={t(
-          viewportRelation === "after"
-            ? "reader.tts.returnToPlaybackPosition"
-            : viewportRelation === "before"
-              ? "reader.tts.playFromCurrentPosition"
-              : "reader.tts.previous",
-        )}
+        accessibilityLabel={t(left.label)}
         disabled={
           busy ||
           !state ||
           (viewportRelation === null && state.canGoPrevious === false)
         }
-        icon={
-          viewportRelation === "after"
-            ? "returnBackward"
-            : viewportRelation === "before"
-              ? "rewind"
-              : "previous"
-        }
-        onPress={
-          viewportRelation === "after"
-            ? onReturnToPlaybackPosition
-            : viewportRelation === "before"
-              ? onPlayFromCurrentPosition
-              : onPrevious
-        }
+        icon={left.icon}
+        onPress={left.onPress}
         palette={palette}
         position={{ left: READER_FLOATING_BUTTON_LEFT + anchorStep, top: 0 }}
         visible={playbackControlsVisible}
@@ -129,32 +118,14 @@ export function ReaderTtsControls({
 
       <ReaderFloatingIconButton
         testID="reader-tts-right-action"
-        accessibilityLabel={t(
-          viewportRelation === "before"
-            ? "reader.tts.returnToPlaybackPosition"
-            : viewportRelation === "after"
-              ? "reader.tts.playFromCurrentPosition"
-              : "reader.tts.next",
-        )}
+        accessibilityLabel={t(right.label)}
         disabled={
           busy ||
           !state ||
           (viewportRelation === null && state.canGoNext === false)
         }
-        icon={
-          viewportRelation === "before"
-            ? "returnForward"
-            : viewportRelation === "after"
-              ? "fastForward"
-              : "next"
-        }
-        onPress={
-          viewportRelation === "before"
-            ? onReturnToPlaybackPosition
-            : viewportRelation === "after"
-              ? onPlayFromCurrentPosition
-              : onNext
-        }
+        icon={right.icon}
+        onPress={right.onPress}
         palette={palette}
         position={{
           left: READER_FLOATING_BUTTON_LEFT + anchorStep * 3,
@@ -175,3 +146,55 @@ const styles = StyleSheet.create({
     height: READER_FLOATING_BUTTON_SIZE,
   },
 })
+
+function navigationActions({
+  viewportRelation,
+  onPrevious,
+  onNext,
+  onPlayFromCurrentPosition,
+  onReturnToPlaybackPosition,
+}: Pick<
+  Props,
+  | "viewportRelation"
+  | "onPrevious"
+  | "onNext"
+  | "onPlayFromCurrentPosition"
+  | "onReturnToPlaybackPosition"
+>) {
+  if (viewportRelation === "after") {
+    return {
+      left: {
+        icon: "returnBackward",
+        label: "reader.tts.returnToPlaybackPosition",
+        onPress: onReturnToPlaybackPosition,
+      },
+      right: {
+        icon: "fastForward",
+        label: "reader.tts.playFromCurrentPosition",
+        onPress: onPlayFromCurrentPosition,
+      },
+    } as const
+  }
+  if (viewportRelation === "before") {
+    return {
+      left: {
+        icon: "rewind",
+        label: "reader.tts.playFromCurrentPosition",
+        onPress: onPlayFromCurrentPosition,
+      },
+      right: {
+        icon: "returnForward",
+        label: "reader.tts.returnToPlaybackPosition",
+        onPress: onReturnToPlaybackPosition,
+      },
+    } as const
+  }
+  return {
+    left: {
+      icon: "previous",
+      label: "reader.tts.previous",
+      onPress: onPrevious,
+    },
+    right: { icon: "next", label: "reader.tts.next", onPress: onNext },
+  } as const
+}

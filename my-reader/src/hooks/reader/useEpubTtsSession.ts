@@ -29,6 +29,7 @@ import {
 import type { EpubTextResource } from "@/lib/readium/epubContentLocators"
 import { isEpubTextLocatorVisible } from "@/lib/readium/epubBookmarkAnchor"
 import {
+  type EpubTtsPlaybackPlan,
   type EpubTtsUtterance,
   epubTtsPlaybackPlanAtLocator,
   extractEpubTtsUtterances,
@@ -157,6 +158,23 @@ function configuredVoice(
   )?.[1]
 }
 
+type ViewportNavigation = {
+  navigationId: string
+  startedDetached: boolean
+  playbackIdAtStart: string | null
+}
+
+function playPreparedUtterance(
+  speech: ReadiumSpeechNavigator,
+  plan: EpubTtsPlaybackPlan,
+) {
+  if (speech.getCurrentContent()?.id === plan.utterances[plan.index]?.id) {
+    speech.play()
+  } else if (!speech.jumpTo(plan.index, true)) {
+    speech.play()
+  }
+}
+
 export function useEpubTtsSession({
   enabled,
   navigatorRef,
@@ -189,9 +207,7 @@ export function useEpubTtsSession({
   const configRefreshRevisionRef = useRef(0)
   const highlightRevisionRef = useRef(0)
   const suppressNextFollowRef = useRef(false)
-  const pendingViewportNavigationRef = useRef<string | null>(null)
-  const pendingViewportStartedDetachedRef = useRef(false)
-  const pendingViewportPlaybackIdRef = useRef<string | null>(null)
+  const pendingViewportNavigationRef = useRef<ViewportNavigation | null>(null)
   const sourceRef = useRef(
     `reader-${globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36)}`,
   )
@@ -242,8 +258,6 @@ export function useEpubTtsSession({
       })
       if (!transition.accepted || !transition.snapshot.sessionId) return null
       pendingViewportNavigationRef.current = null
-      pendingViewportStartedDetachedRef.current = false
-      pendingViewportPlaybackIdRef.current = null
       speechSessionsRef.current.set(speech, transition.snapshot.sessionId)
       setState("loading")
       syncViewportState(transition)
@@ -516,11 +530,7 @@ export function useEpubTtsSession({
       })
       if (!sessionId) return
       showUtterance(plan.index)
-      if (speech.getCurrentContent()?.id === plan.utterances[plan.index]?.id) {
-        speech.play()
-      } else if (!speech.jumpTo(plan.index, true)) {
-        speech.play()
-      }
+      playPreparedUtterance(speech, plan)
     }
     const unsubscribers = [
       speech.on("loading", () => applyPlayback("loading")),
@@ -629,26 +639,19 @@ export function useEpubTtsSession({
         requestedLocator ??
         currentLocator ??
         navigatorRef.current?.currentLocator
-      if (locator) {
-        const plan = preparePlaybackPlan(speech, locator)
-        if (plan) {
-          if (!beginSession()) return
-          const currentId = speech.getCurrentContent()?.id
-          const targetId = plan.utterances[plan.index]?.id
-          if (requestedLocator || currentId !== targetId) {
-            showUtterance(plan.index, false)
-            suppressNextFollowRef.current = true
-          }
-          if (speech.getCurrentContent()?.id === targetId) {
-            speech.play()
-          } else if (!speech.jumpTo(plan.index, true)) {
-            speech.play()
-          }
-          return
-        }
-      }
+      const plan = locator ? preparePlaybackPlan(speech, locator) : null
       if (!beginSession()) return
-      speech.play()
+      if (!plan) {
+        speech.play()
+        return
+      }
+      const currentId = speech.getCurrentContent()?.id
+      const targetId = plan.utterances[plan.index]?.id
+      if (requestedLocator || currentId !== targetId) {
+        showUtterance(plan.index, false)
+        suppressNextFollowRef.current = true
+      }
+      playPreparedUtterance(speech, plan)
     },
     [
       beginSession,
@@ -666,8 +669,6 @@ export function useEpubTtsSession({
     restartAfterConfigRef.current = null
     suppressNextFollowRef.current = false
     pendingViewportNavigationRef.current = null
-    pendingViewportStartedDetachedRef.current = false
-    pendingViewportPlaybackIdRef.current = null
     const transition = sessionMachineRef.current!.send({ type: "stop" })
     const speech = speechRef.current
     // Keep the old session ID so late engine events are rejected by the machine.
@@ -700,82 +701,60 @@ export function useEpubTtsSession({
     speechRef.current?.next()
   }, [])
 
+  const completeViewportNavigation = useCallback(
+    ({ startedDetached, playbackIdAtStart }: ViewportNavigation) => {
+      const currentId = speechRef.current?.getCurrentContent()?.id
+      const locator = currentId
+        ? playbackUtterancesRef.current.find(
+            (utterance) => utterance.id === currentId,
+          )?.locator
+        : undefined
+      if (!locator) return
+      const navigator = navigatorRef.current
+      const activeSentenceVisible =
+        navigator && isEpubTextLocatorVisible(navigator, locator)
+      const playbackAdvanced = currentId !== playbackIdAtStart
+      if (activeSentenceVisible || startedDetached || playbackAdvanced) {
+        reattachViewportIfVisible(locator)
+      }
+    },
+    [navigatorRef, reattachViewportIfVisible],
+  )
+
   const markViewportMoved = useCallback(
     (
       navigationId: string,
       phase: "begin" | "complete" | "cancel" = "complete",
       originLocator?: Locator,
     ) => {
-      if (
-        phase !== "begin" &&
-        pendingViewportNavigationRef.current &&
-        pendingViewportNavigationRef.current !== navigationId
-      ) {
+      const pending = pendingViewportNavigationRef.current
+      if (phase !== "begin" && pending && pending.navigationId !== navigationId)
         return
-      }
       const machine = sessionMachineRef.current!
-      const startedDetached =
-        phase === "begin"
-          ? machine.snapshot.viewportDetached
-          : pendingViewportNavigationRef.current === navigationId
-            ? pendingViewportStartedDetachedRef.current
-            : machine.snapshot.viewportDetached
-      const playbackIdAtStart =
-        phase === "begin"
-          ? (speechRef.current?.getCurrentContent()?.id ?? null)
-          : pendingViewportNavigationRef.current === navigationId
-            ? pendingViewportPlaybackIdRef.current
-            : (speechRef.current?.getCurrentContent()?.id ?? null)
-      if (phase === "begin") {
-        pendingViewportNavigationRef.current = navigationId
-        pendingViewportStartedDetachedRef.current = startedDetached
-        pendingViewportPlaybackIdRef.current = playbackIdAtStart
-      } else if (pendingViewportNavigationRef.current === navigationId) {
-        pendingViewportNavigationRef.current = null
-        pendingViewportStartedDetachedRef.current = false
-        pendingViewportPlaybackIdRef.current = null
-      }
+      const navigation =
+        phase !== "begin" && pending
+          ? pending
+          : {
+              navigationId,
+              startedDetached: machine.snapshot.viewportDetached,
+              playbackIdAtStart:
+                speechRef.current?.getCurrentContent()?.id ?? null,
+            }
+      pendingViewportNavigationRef.current =
+        phase === "begin" ? navigation : null
       if (phase === "cancel") {
-        if (!startedDetached) reattachViewport()
+        if (!navigation.startedDetached) reattachViewport()
         return
       }
-      const transition = machine.send({
-        type: "viewport-moved",
-        navigationId,
-      })
-      if (transition.accepted) {
-        syncViewportState(
-          transition,
-          originLocator ?? currentLocatorRef.current ?? undefined,
-        )
-        const currentId = speechRef.current?.getCurrentContent()?.id
-        const locator = currentId
-          ? playbackUtterancesRef.current.find(
-              (utterance) => utterance.id === currentId,
-            )?.locator
-          : undefined
-        const playbackAdvanced = currentId !== playbackIdAtStart
-        const activeSentenceVisible = Boolean(
-          phase === "complete" &&
-            locator &&
-            navigatorRef.current &&
-            isEpubTextLocatorVisible(navigatorRef.current, locator),
-        )
-        if (
-          phase === "complete" &&
-          (activeSentenceVisible || startedDetached || playbackAdvanced) &&
-          locator
-        ) {
-          reattachViewportIfVisible(locator)
-        }
-      }
+      const transition = machine.send({ type: "viewport-moved", navigationId })
+      if (!transition.accepted) return
+      syncViewportState(
+        transition,
+        originLocator ?? currentLocatorRef.current ?? undefined,
+      )
+      if (phase === "complete") completeViewportNavigation(navigation)
     },
-    [
-      navigatorRef,
-      reattachViewport,
-      reattachViewportIfVisible,
-      syncViewportState,
-    ],
+    [completeViewportNavigation, reattachViewport, syncViewportState],
   )
 
   const readFrom = useCallback(
@@ -788,11 +767,7 @@ export function useEpubTtsSession({
       if (!sessionId) return
       showUtterance(plan.index, false)
       suppressNextFollowRef.current = true
-      if (speech.getCurrentContent()?.id === plan.utterances[plan.index]?.id) {
-        speech.play()
-      } else if (!speech.jumpTo(plan.index, true)) {
-        speech.play()
-      }
+      playPreparedUtterance(speech, plan)
     },
     [beginSession, preparePlaybackPlan, showUtterance],
   )
@@ -838,14 +813,7 @@ export function useEpubTtsSession({
       speechSessionsRef.current.set(speech, sessionId)
       showUtterance(prepared.index, false)
       suppressNextFollowRef.current = true
-      if (
-        speech.getCurrentContent()?.id ===
-        prepared.utterances[prepared.index]?.id
-      ) {
-        speech.play()
-      } else if (!speech.jumpTo(prepared.index, true)) {
-        speech.play()
-      }
+      playPreparedUtterance(speech, prepared)
     },
     [beginSession, preparePlaybackPlan, showUtterance, utterances],
   )
