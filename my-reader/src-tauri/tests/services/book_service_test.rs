@@ -5,13 +5,11 @@ use my_reader_core::test_support::entities::calibre::{
 };
 use my_reader_lib::models::BookEntry;
 use my_reader_lib::services::book_service::BookService;
-use sea_orm::{ActiveModelTrait, Set};
+use sea_orm::{ActiveModelTrait, DatabaseConnection, Set};
 
 use crate::common::calibre::create_calibre_db;
 
-async fn seed_catalog_calibre_library(root: &std::path::Path) {
-    let db = create_calibre_db(root).await;
-
+async fn seed_books_and_authors(db: &DatabaseConnection) {
     for active in [
         books::ActiveModel {
             id: Set(1),
@@ -58,7 +56,7 @@ async fn seed_catalog_calibre_library(root: &std::path::Path) {
             ..Default::default()
         },
     ] {
-        active.insert(&db).await.expect("insert book");
+        active.insert(db).await.expect("insert book");
     }
 
     for active in [
@@ -81,7 +79,7 @@ async fn seed_catalog_calibre_library(root: &std::path::Path) {
             ..Default::default()
         },
     ] {
-        active.insert(&db).await.expect("insert author");
+        active.insert(db).await.expect("insert author");
     }
 
     for active in [
@@ -101,9 +99,11 @@ async fn seed_catalog_calibre_library(root: &std::path::Path) {
             author: Set(3),
         },
     ] {
-        active.insert(&db).await.expect("insert author link");
+        active.insert(db).await.expect("insert author link");
     }
+}
 
+async fn seed_book_tags(db: &DatabaseConnection) {
     for active in [
         tags::ActiveModel {
             id: Set(1),
@@ -121,7 +121,7 @@ async fn seed_catalog_calibre_library(root: &std::path::Path) {
             ..Default::default()
         },
     ] {
-        active.insert(&db).await.expect("insert tag");
+        active.insert(db).await.expect("insert tag");
     }
 
     for active in [
@@ -141,8 +141,16 @@ async fn seed_catalog_calibre_library(root: &std::path::Path) {
             tag: Set(3),
         },
     ] {
-        active.insert(&db).await.expect("insert tag link");
+        active.insert(db).await.expect("insert tag link");
     }
+}
+
+async fn seed_catalog_calibre_library(root: &std::path::Path) {
+    let db = create_calibre_db(root).await;
+
+    seed_books_and_authors(&db).await;
+
+    seed_book_tags(&db).await;
 
     series::ActiveModel {
         id: Set(1),

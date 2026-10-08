@@ -215,20 +215,13 @@ impl CatalogRepository {
     }
 }
 
-/// Fetch all related data for a list of book IDs and assemble BookEntry objects.
-async fn assemble_book_entries(
+async fn load_book_authors(
     db: &DatabaseConnection,
-    book_models: Vec<books::Model>,
-) -> Result<Vec<BookEntry>, CoreError> {
-    if book_models.is_empty() {
-        return Ok(Vec::new());
-    }
-
-    let book_ids: Vec<i64> = book_models.iter().map(|b| b.id).collect();
-
+    book_ids: &[i64],
+) -> Result<HashMap<i64, Vec<String>>, CoreError> {
     // Authors: books_authors_link JOIN authors
     let author_links = books_authors_link::Entity::find()
-        .filter(books_authors_link::Column::Book.is_in(book_ids.clone()))
+        .filter(books_authors_link::Column::Book.is_in(book_ids.iter().copied()))
         .all(db)
         .await
         .map_err(|e| CoreError::Database(e.to_string()))?;
@@ -256,9 +249,16 @@ async fn assemble_book_entries(
         }
     }
 
+    Ok(book_authors_map)
+}
+
+async fn load_book_tags(
+    db: &DatabaseConnection,
+    book_ids: &[i64],
+) -> Result<HashMap<i64, Vec<String>>, CoreError> {
     // Tags: books_tags_link JOIN tags
     let tag_links = books_tags_link::Entity::find()
-        .filter(books_tags_link::Column::Book.is_in(book_ids.clone()))
+        .filter(books_tags_link::Column::Book.is_in(book_ids.iter().copied()))
         .all(db)
         .await
         .map_err(|e| CoreError::Database(e.to_string()))?;
@@ -284,6 +284,110 @@ async fn assemble_book_entries(
                 .push(name.clone());
         }
     }
+
+    Ok(book_tags_map)
+}
+
+async fn matching_book_ids(
+    db: &DatabaseConnection,
+    keyword: &str,
+) -> Result<std::collections::HashSet<i64>, CoreError> {
+    // Split-query search: find matching author/tag IDs first, then filter books in code.
+
+    // 1. Find author IDs whose name matches (case-insensitive)
+    let matching_author_ids: Vec<i64> = authors::Entity::find()
+        .filter(authors::Column::Name.contains(keyword))
+        .all(db)
+        .await
+        .map_err(|e| CoreError::Database(e.to_string()))?
+        .into_iter()
+        .map(|a| a.id)
+        .collect();
+
+    // 2. Find book IDs linked to those authors
+    let author_book_ids: Vec<i64> = if matching_author_ids.is_empty() {
+        Vec::new()
+    } else {
+        books_authors_link::Entity::find()
+            .filter(books_authors_link::Column::Author.is_in(matching_author_ids))
+            .all(db)
+            .await
+            .map_err(|e| CoreError::Database(e.to_string()))?
+            .into_iter()
+            .map(|l| l.book)
+            .collect()
+    };
+
+    // 3. Find tag IDs whose name matches (case-insensitive)
+    let matching_tag_ids: Vec<i64> = tags::Entity::find()
+        .filter(tags::Column::Name.contains(keyword))
+        .all(db)
+        .await
+        .map_err(|e| CoreError::Database(e.to_string()))?
+        .into_iter()
+        .map(|t| t.id)
+        .collect();
+
+    // 4. Find book IDs linked to those tags
+    let tag_book_ids: Vec<i64> = if matching_tag_ids.is_empty() {
+        Vec::new()
+    } else {
+        books_tags_link::Entity::find()
+            .filter(books_tags_link::Column::Tag.is_in(matching_tag_ids))
+            .all(db)
+            .await
+            .map_err(|e| CoreError::Database(e.to_string()))?
+            .into_iter()
+            .map(|l| l.book)
+            .collect()
+    };
+
+    // 5. Combine: books where sort/title/author_sort contains keyword OR book is in author/tag match sets
+    let all_books = books::Entity::find()
+        .filter(
+            books::Column::Sort
+                .contains(keyword)
+                .or(books::Column::Title.contains(keyword))
+                .or(books::Column::AuthorSort.contains(keyword)),
+        )
+        .all(db)
+        .await
+        .map_err(|e| CoreError::Database(e.to_string()))?;
+
+    let mut matched_ids: std::collections::HashSet<i64> =
+        all_books.into_iter().map(|b| b.id).collect();
+    for id in author_book_ids {
+        matched_ids.insert(id);
+    }
+    for id in tag_book_ids {
+        matched_ids.insert(id);
+    }
+
+    Ok(matched_ids)
+}
+
+fn book_page_order(sort_by: &str) -> (&'static str, sea_orm::Order) {
+    match sort_by {
+        "author" => ("author_sort COLLATE NOCASE", sea_orm::Order::Asc),
+        "recent" | "progress" => ("timestamp", sea_orm::Order::Desc),
+        _ => ("sort COLLATE NOCASE", sea_orm::Order::Asc),
+    }
+}
+
+/// Fetch all related data for a list of book IDs and assemble BookEntry objects.
+async fn assemble_book_entries(
+    db: &DatabaseConnection,
+    book_models: Vec<books::Model>,
+) -> Result<Vec<BookEntry>, CoreError> {
+    if book_models.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let book_ids: Vec<i64> = book_models.iter().map(|b| b.id).collect();
+
+    let mut book_authors_map = load_book_authors(db, &book_ids).await?;
+
+    let mut book_tags_map = load_book_tags(db, &book_ids).await?;
 
     // Series: books_series_link JOIN series
     let series_links = books_series_link::Entity::find()
@@ -477,126 +581,27 @@ impl CatalogRepository {
             "Start to query books page. offset: {offset}, limit: {limit}, sort by: {sort_by}, search: {search:?}"
         );
 
-        let search_filter = search.filter(|s| !s.is_empty());
-
-        if let Some(keyword) = search_filter {
-            // Split-query search: find matching author/tag IDs first, then filter books in code.
-            let keyword: &str = keyword;
-
-            // 1. Find author IDs whose name matches (case-insensitive)
-            let matching_author_ids: Vec<i64> = authors::Entity::find()
-                .filter(authors::Column::Name.contains(keyword))
-                .all(&self.db)
-                .await
-                .map_err(|e| CoreError::Database(e.to_string()))?
-                .into_iter()
-                .map(|a| a.id)
-                .collect();
-
-            // 2. Find book IDs linked to those authors
-            let author_book_ids: Vec<i64> = if matching_author_ids.is_empty() {
-                Vec::new()
-            } else {
-                books_authors_link::Entity::find()
-                    .filter(books_authors_link::Column::Author.is_in(matching_author_ids))
-                    .all(&self.db)
-                    .await
-                    .map_err(|e| CoreError::Database(e.to_string()))?
-                    .into_iter()
-                    .map(|l| l.book)
-                    .collect()
-            };
-
-            // 3. Find tag IDs whose name matches (case-insensitive)
-            let matching_tag_ids: Vec<i64> = tags::Entity::find()
-                .filter(tags::Column::Name.contains(keyword))
-                .all(&self.db)
-                .await
-                .map_err(|e| CoreError::Database(e.to_string()))?
-                .into_iter()
-                .map(|t| t.id)
-                .collect();
-
-            // 4. Find book IDs linked to those tags
-            let tag_book_ids: Vec<i64> = if matching_tag_ids.is_empty() {
-                Vec::new()
-            } else {
-                books_tags_link::Entity::find()
-                    .filter(books_tags_link::Column::Tag.is_in(matching_tag_ids))
-                    .all(&self.db)
-                    .await
-                    .map_err(|e| CoreError::Database(e.to_string()))?
-                    .into_iter()
-                    .map(|l| l.book)
-                    .collect()
-            };
-
-            // 5. Combine: books where sort/title/author_sort contains keyword OR book is in author/tag match sets
-            let all_books = books::Entity::find()
-                .filter(
-                    books::Column::Sort
-                        .contains(keyword)
-                        .or(books::Column::Title.contains(keyword))
-                        .or(books::Column::AuthorSort.contains(keyword)),
-                )
-                .all(&self.db)
-                .await
-                .map_err(|e| CoreError::Database(e.to_string()))?;
-
-            let mut matched_ids: std::collections::HashSet<i64> =
-                all_books.into_iter().map(|b| b.id).collect();
-            for id in author_book_ids {
-                matched_ids.insert(id);
-            }
-            for id in tag_book_ids {
-                matched_ids.insert(id);
-            }
-
+        let (query, total) = if let Some(keyword) = search.filter(|s| !s.is_empty()) {
+            let matched_ids = matching_book_ids(&self.db, keyword).await?;
             let total = matched_ids.len();
-
-            // 6. Fetch matched books with ordering and pagination
-            let matched_ids_vec: Vec<i64> = matched_ids.into_iter().collect();
-
-            if matched_ids_vec.is_empty() {
+            if matched_ids.is_empty() {
                 info!("Success to query books page. returned count: 0, total: 0");
                 return Ok((Vec::new(), 0));
             }
-
-            let (order_expr, order_dir) = match sort_by {
-                "author" => ("author_sort COLLATE NOCASE", sea_orm::Order::Asc),
-                "recent" | "progress" => ("timestamp", sea_orm::Order::Desc),
-                _ => ("sort COLLATE NOCASE", sea_orm::Order::Asc),
-            };
-            let book_models = books::Entity::find()
-                .filter(books::Column::Id.is_in(matched_ids_vec))
-                .order_by(sea_orm::sea_query::Expr::cust(order_expr), order_dir)
-                .offset(offset as u64)
-                .limit(limit as u64)
-                .all(&self.db)
+            (
+                books::Entity::find().filter(books::Column::Id.is_in(matched_ids)),
+                total,
+            )
+        } else {
+            let total = books::Entity::find()
+                .count(&self.db)
                 .await
                 .map_err(|e| CoreError::Database(e.to_string()))?;
-
-            let result = assemble_book_entries(&self.db, book_models).await?;
-            info!(
-                "Success to query books page. returned count: {}, total: {}",
-                result.len(),
-                total
-            );
-            return Ok((result, total));
-        }
-
-        // Non-search path: use SeaORM query builder directly
-        let total = books::Entity::find()
-            .count(&self.db)
-            .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
-
-        let (order_expr, order_dir) = match sort_by {
-            "author" => ("author_sort COLLATE NOCASE", sea_orm::Order::Asc),
-            "recent" | "progress" => ("timestamp", sea_orm::Order::Desc),
-            _ => ("sort COLLATE NOCASE", sea_orm::Order::Asc),
+            (books::Entity::find(), total as usize)
         };
-        let book_models = books::Entity::find()
+
+        let (order_expr, order_dir) = book_page_order(sort_by);
+        let book_models = query
             .order_by(sea_orm::sea_query::Expr::cust(order_expr), order_dir)
             .offset(offset as u64)
             .limit(limit as u64)
@@ -610,7 +615,7 @@ impl CatalogRepository {
             result.len(),
             total
         );
-        Ok((result, total as usize))
+        Ok((result, total))
     }
 
     pub(crate) async fn get_book_by_id(

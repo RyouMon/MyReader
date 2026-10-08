@@ -527,28 +527,7 @@ async fn fetch_user_info(
 
     // Fallback to id_token claims if Graph did not provide usable values.
     if display_name.is_empty() || email.is_empty() {
-        if let Some(id_token) = id_token {
-            match parse_id_token_claims(id_token) {
-                Ok(claims) => {
-                    info!(
-                        "OneDrive id_token claims: name={:?} email={:?} preferred_username={:?}",
-                        claims.name, claims.email, claims.preferred_username
-                    );
-                    if display_name.is_empty() {
-                        display_name = claims.name.unwrap_or_default();
-                    }
-                    if email.is_empty() {
-                        email = claims
-                            .email
-                            .or(claims.preferred_username)
-                            .unwrap_or_default();
-                    }
-                }
-                Err(e) => warn!("OneDrive id_token parse failed: {e}"),
-            }
-        } else {
-            warn!("OneDrive id_token not available for fallback");
-        }
+        fill_user_info_from_id_token(&mut display_name, &mut email, id_token);
     }
 
     if display_name.is_empty() {
@@ -564,6 +543,37 @@ async fn fetch_user_info(
         display_name,
         email: if email.is_empty() { None } else { Some(email) },
     })
+}
+
+fn fill_user_info_from_id_token(
+    display_name: &mut String,
+    email: &mut String,
+    id_token: Option<&str>,
+) {
+    let Some(id_token) = id_token else {
+        warn!("OneDrive id_token not available for fallback");
+        return;
+    };
+    let claims = match parse_id_token_claims(id_token) {
+        Ok(claims) => claims,
+        Err(e) => {
+            warn!("OneDrive id_token parse failed: {e}");
+            return;
+        }
+    };
+    info!(
+        "OneDrive id_token claims: name={:?} email={:?} preferred_username={:?}",
+        claims.name, claims.email, claims.preferred_username
+    );
+    if display_name.is_empty() {
+        *display_name = claims.name.unwrap_or_default();
+    }
+    if email.is_empty() {
+        *email = claims
+            .email
+            .or(claims.preferred_username)
+            .unwrap_or_default();
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]

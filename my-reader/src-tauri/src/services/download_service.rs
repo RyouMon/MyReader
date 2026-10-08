@@ -68,6 +68,12 @@ fn is_cancelled(cancellation: &Option<DownloadCancellation>) -> bool {
         .is_some_and(DownloadCancellation::is_cancelled)
 }
 
+struct BookDownloadTarget<'a> {
+    local_path: &'a Path,
+    sidecar_root: &'a Path,
+    book_relative_path: &'a str,
+}
+
 /// Adapts the shared download coordinator to Tauri events and background tasks.
 #[derive(Clone)]
 pub struct DownloadService {
@@ -715,18 +721,13 @@ impl DownloadService {
         expected_content: Option<&my_reader_core::models::BookContent>,
         cancellation: Option<DownloadCancellation>,
     ) -> Result<PathBuf, AppError> {
-        let row = Self::get_stored_file_state(sidecar_root, book_relative_path).await?;
-        let sidecar_present = row.as_ref().is_some_and(|r| r.is_locally_available());
-
-        if sidecar_present && Self::is_book_file_present(local_path).await {
+        if let Some(local_size) =
+            Self::cached_book_file_size(local_path, sidecar_root, book_relative_path).await?
+        {
             info!(
                 "Book file already present locally, skip download. library id: \"{}\", book id: {}, format: \"{}\"",
                 library_id, book_id, format
             );
-            let local_size = tokio::fs::metadata(local_path)
-                .await
-                .map(|m| m.len())
-                .unwrap_or(0);
             emit_download_progress(
                 app,
                 library_id,
@@ -749,6 +750,95 @@ impl DownloadService {
             library_id, book_id, format, remote_path
         );
 
+        let target = BookDownloadTarget {
+            local_path,
+            sidecar_root,
+            book_relative_path,
+        };
+        let (async_reader, total_bytes) = Self::prepare_book_stream(
+            op,
+            &remote_path,
+            &target,
+            expected_content,
+            &cancellation,
+            |status, bytes, total| {
+                emit_download_progress(app, library_id, book_id, format, status, bytes, total, None)
+            },
+        )
+        .await?;
+
+        let partial_path = partial_download_path(local_path);
+        let bytes_written = Self::stream_book_file(
+            async_reader,
+            &partial_path,
+            sidecar_root,
+            book_relative_path,
+            &cancellation,
+            total_bytes,
+            |status, bytes, total| {
+                emit_download_progress(app, library_id, book_id, format, status, bytes, total, None)
+            },
+        )
+        .await?;
+
+        Self::install_book_download(
+            &partial_path,
+            local_path,
+            sidecar_root,
+            book_relative_path,
+            expected_content,
+        )
+        .await?;
+
+        emit_download_progress(
+            app,
+            library_id,
+            book_id,
+            format,
+            "done",
+            bytes_written,
+            total_bytes,
+            None,
+        );
+
+        info!(
+            "Success to download book file. library id: \"{}\", book id: {}, format: \"{}\", bytes: {}",
+            library_id, book_id, format, bytes_written
+        );
+
+        Ok(local_path.to_path_buf())
+    }
+
+    async fn cached_book_file_size(
+        local_path: &Path,
+        sidecar_root: &Path,
+        book_relative_path: &str,
+    ) -> Result<Option<u64>, AppError> {
+        let row = Self::get_stored_file_state(sidecar_root, book_relative_path).await?;
+        let sidecar_present = row.as_ref().is_some_and(|r| r.is_locally_available());
+        if !sidecar_present || !Self::is_book_file_present(local_path).await {
+            return Ok(None);
+        }
+        let local_size = tokio::fs::metadata(local_path)
+            .await
+            .map(|m| m.len())
+            .unwrap_or(0);
+        Ok(Some(local_size))
+    }
+
+    async fn prepare_book_stream(
+        op: &opendal::Operator,
+        remote_path: &str,
+        target: &BookDownloadTarget<'_>,
+        expected_content: Option<&my_reader_core::models::BookContent>,
+        cancellation: &Option<DownloadCancellation>,
+        on_progress: impl Fn(&str, u64, Option<u64>),
+    ) -> Result<(opendal::FuturesAsyncReader, Option<u64>), AppError> {
+        let BookDownloadTarget {
+            local_path,
+            sidecar_root,
+            book_relative_path,
+        } = *target;
         // Ensure parent directory exists.
         if let Some(parent) = local_path.parent() {
             tokio::fs::create_dir_all(parent)
@@ -757,7 +847,88 @@ impl DownloadService {
         }
 
         // Try to get total size for progress reporting.
-        let total_bytes: Option<u64> = match op.stat(&remote_path).await {
+        let total_bytes = Self::remote_book_size(
+            op,
+            remote_path,
+            sidecar_root,
+            book_relative_path,
+            expected_content,
+        )
+        .await?;
+
+        Self::check_cancelled_before_transfer(
+            cancellation,
+            local_path,
+            sidecar_root,
+            book_relative_path,
+            total_bytes,
+            || on_progress("cancelled", 0, total_bytes),
+        )
+        .await?;
+
+        on_progress("starting", 0, total_bytes);
+
+        let reader = Self::open_remote_book(
+            op,
+            remote_path,
+            sidecar_root,
+            book_relative_path,
+            expected_content,
+        )
+        .await?;
+
+        Self::check_cancelled_before_transfer(
+            cancellation,
+            local_path,
+            sidecar_root,
+            book_relative_path,
+            total_bytes,
+            || on_progress("cancelled", 0, total_bytes),
+        )
+        .await?;
+
+        let async_reader = reader
+            .into_futures_async_read(..)
+            .await
+            .map_err(|e| AppError::Config(format!("REMOTE_BOOK_FILE_READER_FAILED: {e}")))?;
+
+        Self::check_cancelled_before_transfer(
+            cancellation,
+            local_path,
+            sidecar_root,
+            book_relative_path,
+            total_bytes,
+            || on_progress("cancelled", 0, total_bytes),
+        )
+        .await?;
+
+        Ok((async_reader, total_bytes))
+    }
+
+    async fn check_cancelled_before_transfer(
+        cancellation: &Option<DownloadCancellation>,
+        local_path: &Path,
+        sidecar_root: &Path,
+        book_relative_path: &str,
+        total_bytes: Option<u64>,
+        on_cancel: impl FnOnce(),
+    ) -> Result<(), AppError> {
+        if !is_cancelled(cancellation) {
+            return Ok(());
+        }
+        Self::handle_cancel(local_path, sidecar_root, book_relative_path, 0, total_bytes).await?;
+        on_cancel();
+        Err(AppError::Config("BOOK_DOWNLOAD_CANCELLED".into()))
+    }
+
+    async fn remote_book_size(
+        op: &opendal::Operator,
+        remote_path: &str,
+        sidecar_root: &Path,
+        book_relative_path: &str,
+        expected_content: Option<&my_reader_core::models::BookContent>,
+    ) -> Result<Option<u64>, AppError> {
+        let total_bytes = match op.stat(remote_path).await {
             Ok(meta) => {
                 if let Some(expected) = expected_content {
                     if i64::try_from(meta.content_length()).ok() != Some(expected.size) {
@@ -785,35 +956,17 @@ impl DownloadService {
                 None
             }
         };
+        Ok(total_bytes)
+    }
 
-        if is_cancelled(&cancellation) {
-            Self::handle_cancel(local_path, sidecar_root, book_relative_path, 0, total_bytes)
-                .await?;
-            emit_download_progress(
-                app,
-                library_id,
-                book_id,
-                format,
-                "cancelled",
-                0,
-                total_bytes,
-                None,
-            );
-            return Err(AppError::Config("BOOK_DOWNLOAD_CANCELLED".into()));
-        }
-
-        emit_download_progress(
-            app,
-            library_id,
-            book_id,
-            format,
-            "starting",
-            0,
-            total_bytes,
-            None,
-        );
-
-        let reader = match op.reader(&remote_path).await {
+    async fn open_remote_book(
+        op: &opendal::Operator,
+        remote_path: &str,
+        sidecar_root: &Path,
+        book_relative_path: &str,
+        expected_content: Option<&my_reader_core::models::BookContent>,
+    ) -> Result<opendal::Reader, AppError> {
+        let reader = match op.reader(remote_path).await {
             Ok(reader) => reader,
             Err(error)
                 if expected_content.is_some() && error.kind() == opendal::ErrorKind::NotFound =>
@@ -833,46 +986,19 @@ impl DownloadService {
                 )));
             }
         };
+        Ok(reader)
+    }
 
-        if is_cancelled(&cancellation) {
-            Self::handle_cancel(local_path, sidecar_root, book_relative_path, 0, total_bytes)
-                .await?;
-            emit_download_progress(
-                app,
-                library_id,
-                book_id,
-                format,
-                "cancelled",
-                0,
-                total_bytes,
-                None,
-            );
-            return Err(AppError::Config("BOOK_DOWNLOAD_CANCELLED".into()));
-        }
-
-        let mut async_reader = reader
-            .into_futures_async_read(..)
-            .await
-            .map_err(|e| AppError::Config(format!("REMOTE_BOOK_FILE_READER_FAILED: {e}")))?;
-
-        if is_cancelled(&cancellation) {
-            Self::handle_cancel(local_path, sidecar_root, book_relative_path, 0, total_bytes)
-                .await?;
-            emit_download_progress(
-                app,
-                library_id,
-                book_id,
-                format,
-                "cancelled",
-                0,
-                total_bytes,
-                None,
-            );
-            return Err(AppError::Config("BOOK_DOWNLOAD_CANCELLED".into()));
-        }
-
-        let partial_path = partial_download_path(local_path);
-        let mut file = tokio::fs::File::create(&partial_path)
+    async fn stream_book_file(
+        mut async_reader: impl futures::AsyncRead + Unpin,
+        partial_path: &Path,
+        sidecar_root: &Path,
+        book_relative_path: &str,
+        cancellation: &Option<DownloadCancellation>,
+        total_bytes: Option<u64>,
+        on_progress: impl Fn(&str, u64, Option<u64>),
+    ) -> Result<u64, AppError> {
+        let mut file = tokio::fs::File::create(partial_path)
             .await
             .map_err(|e| AppError::Config(format!("BOOK_FILE_CACHE_CREATE_FAILED: {e}")))?;
 
@@ -880,26 +1006,17 @@ impl DownloadService {
         let mut bytes_written: u64 = 0;
         let mut last_reported: u64 = 0;
         loop {
-            if is_cancelled(&cancellation) {
+            if is_cancelled(cancellation) {
                 drop(file);
                 Self::handle_cancel(
-                    &partial_path,
+                    partial_path,
                     sidecar_root,
                     book_relative_path,
                     bytes_written,
                     total_bytes,
                 )
                 .await?;
-                emit_download_progress(
-                    app,
-                    library_id,
-                    book_id,
-                    format,
-                    "cancelled",
-                    bytes_written,
-                    total_bytes,
-                    None,
-                );
+                on_progress("cancelled", bytes_written, total_bytes);
                 return Err(AppError::Config("BOOK_DOWNLOAD_CANCELLED".into()));
             }
 
@@ -916,16 +1033,7 @@ impl DownloadService {
             bytes_written += n as u64;
 
             if bytes_written - last_reported >= DOWNLOAD_EVENT_THROTTLE_BYTES {
-                emit_download_progress(
-                    app,
-                    library_id,
-                    book_id,
-                    format,
-                    "downloading",
-                    bytes_written,
-                    total_bytes,
-                    None,
-                );
+                on_progress("downloading", bytes_written, total_bytes);
                 last_reported = bytes_written;
             }
         }
@@ -935,11 +1043,21 @@ impl DownloadService {
             .map_err(|e| AppError::Config(format!("BOOK_FILE_CACHE_FLUSH_FAILED: {e}")))?;
         drop(file);
 
+        Ok(bytes_written)
+    }
+
+    async fn install_book_download(
+        partial_path: &Path,
+        local_path: &Path,
+        sidecar_root: &Path,
+        book_relative_path: &str,
+        expected_content: Option<&my_reader_core::models::BookContent>,
+    ) -> Result<(), AppError> {
         if let Some(expected) = expected_content {
             my_reader_core::api::content::ContentService::install_verified_downloaded_file(
                 sidecar_root,
                 book_relative_path,
-                &partial_path,
+                partial_path,
                 local_path,
                 expected.size,
                 &expected.sha256,
@@ -949,7 +1067,7 @@ impl DownloadService {
             if local_path.exists() {
                 tokio::fs::remove_file(local_path).await?;
             }
-            tokio::fs::rename(&partial_path, local_path).await?;
+            tokio::fs::rename(partial_path, local_path).await?;
             my_reader_core::api::content::ContentService::finalize_downloaded_file(
                 sidecar_root,
                 book_relative_path,
@@ -957,24 +1075,7 @@ impl DownloadService {
             )
             .await?;
         }
-
-        emit_download_progress(
-            app,
-            library_id,
-            book_id,
-            format,
-            "done",
-            bytes_written,
-            total_bytes,
-            None,
-        );
-
-        info!(
-            "Success to download book file. library id: \"{}\", book id: {}, format: \"{}\", bytes: {}",
-            library_id, book_id, format, bytes_written
-        );
-
-        Ok(local_path.to_path_buf())
+        Ok(())
     }
 
     async fn reset_failed_download(
