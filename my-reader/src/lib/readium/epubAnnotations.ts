@@ -607,18 +607,12 @@ function positionForSelection(
   return started[started.length - 1] ?? matching[0]
 }
 
-export function createEpubAnnotationSelection(
+function selectionFrame(
   navigator: EpubNavigator,
   selection: BasicTextSelection,
-  container: HTMLElement,
-  contextPoint: { x: number; y: number } = {
-    x: selection.x + selection.width / 2,
-    y: selection.y,
-  },
   selectionWindow?: Window,
-  positions: readonly ReaderLocator[] = [],
-): EpubAnnotationSelection | null {
-  const frame =
+) {
+  return (
     navigator._cframes.find(
       (candidate) => candidate?.iframe.contentWindow === selectionWindow,
     ) ??
@@ -630,6 +624,48 @@ export function createEpubAnnotationSelection(
           selection.targetFrameSrc
       )
     })
+  )
+}
+
+function selectionLocations(
+  positions: readonly ReaderLocator[],
+  resourceHref: string,
+  progression: number,
+  current: Locator,
+  cssSelector: string,
+): ReaderLocator["locations"] {
+  const sameAsCurrent = resourceMatches(current.href, resourceHref)
+  const selected = positionForSelection(
+    positions,
+    resourceHref,
+    progression,
+  )?.locations
+  return {
+    progression,
+    position:
+      selected?.position ??
+      (sameAsCurrent && current.locations.position
+        ? current.locations.position
+        : undefined),
+    totalProgression:
+      selected?.totalProgression ??
+      (sameAsCurrent ? current.locations.totalProgression : undefined),
+    cssSelector,
+  }
+}
+
+export function createEpubAnnotationSelection(
+  navigator: EpubNavigator,
+  selection: BasicTextSelection,
+  container: HTMLElement,
+  contextPoint: { x: number; y: number } = {
+    x: selection.x + selection.width / 2,
+    y: selection.y,
+  },
+  selectionWindow?: Window,
+  positions: readonly ReaderLocator[] = [],
+): EpubAnnotationSelection | null {
+  const frame = selectionFrame(navigator, selection, selectionWindow)
   const wnd = frame?.iframe.contentWindow as CssSelectorWindow | null
   const domSelection = wnd?.getSelection()
   if (!frame || !wnd || !domSelection || domSelection.rangeCount === 0) {
@@ -655,30 +691,19 @@ export function createEpubAnnotationSelection(
   const resource = navigator.publication.readingOrder.items[resourceIndex]
   if (!resource) return null
   const current = navigator.currentLocator
-  const sameAsCurrent = resourceMatches(current.href, resource.href)
   const context = selectionContext(range, anchor)
   const progression = selectionProgression(range, wnd.document) ?? 0
-  const selectionPosition = positionForSelection(
-    positions,
-    resource.href,
-    progression,
-  )
   const locator: ReaderLocator = {
     href: resource.href,
     type: resource.type ?? "application/xhtml+xml",
     title: current.title ?? resource.title,
-    locations: {
+    locations: selectionLocations(
+      positions,
+      resource.href,
       progression,
-      position:
-        selectionPosition?.locations?.position ??
-        (sameAsCurrent && current.locations.position
-          ? current.locations.position
-          : undefined),
-      totalProgression:
-        selectionPosition?.locations?.totalProgression ??
-        (sameAsCurrent ? current.locations.totalProgression : undefined),
+      current,
       cssSelector,
-    },
+    ),
     text: {
       highlight: selectedText,
       ...context,

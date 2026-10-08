@@ -46,25 +46,11 @@ interface BookCoverProps {
   probeCoverWhenUnknown?: boolean
 }
 
-/**
- * Renders a real or generated book cover for desktop library views.
- */
-export const BookCover = memo(function BookCover({
-  book,
-  libraryId,
-  className,
-  imageClassName,
-  fallbackClassName,
-  titleClassName,
-  spineClassName,
-  progress,
-  showProgress = true,
-  cornerIndicator,
-  showSpine = true,
-  showFallbackMeta = true,
-  deferFallbackMetaUntilError = false,
-  probeCoverWhenUnknown = false,
-}: BookCoverProps) {
+function useBookCoverImage(
+  book: CalibreBook,
+  libraryId: string | null,
+  probeCoverWhenUnknown: boolean,
+) {
   const coverFailureKey = getCoverFailureKey({
     libraryId,
     bookPath: book.path,
@@ -92,15 +78,6 @@ export const BookCover = memo(function BookCover({
     (coverLoading || (!!coverSrc && !imgLoaded)) && !imgFailed
   const showFallbackCover =
     (!hasExpectedCover && !shouldProbeCover) || imgFailed
-  const showFallbackMetaContent =
-    showFallbackCover &&
-    showFallbackMeta &&
-    (!deferFallbackMetaUntilError || imgFailed || !hasExpectedCover)
-  const progressPercent =
-    typeof progress?.percent === "number"
-      ? Math.max(0, Math.min(100, progress.percent))
-      : undefined
-
   const handleImgLoad = useCallback(() => {
     if (coverSrc) {
       setLoadedCoverSrc(coverSrc)
@@ -120,6 +97,54 @@ export const BookCover = memo(function BookCover({
       markBrokenCover(coverFailureKey)
     }
   }, [coverFailureKey, coverLoadError])
+
+  return {
+    coverSrc,
+    imgFailed,
+    hasExpectedCover,
+    showLoadingSkeleton,
+    showFallbackCover,
+    handleImgLoad,
+    handleImgError,
+  }
+}
+
+/**
+ * Renders a real or generated book cover for desktop library views.
+ */
+export const BookCover = memo(function BookCover({
+  book,
+  libraryId,
+  className,
+  imageClassName,
+  fallbackClassName,
+  titleClassName,
+  spineClassName,
+  progress,
+  showProgress = true,
+  cornerIndicator,
+  showSpine = true,
+  showFallbackMeta = true,
+  deferFallbackMetaUntilError = false,
+  probeCoverWhenUnknown = false,
+}: BookCoverProps) {
+  const {
+    coverSrc,
+    imgFailed,
+    hasExpectedCover,
+    showLoadingSkeleton,
+    showFallbackCover,
+    handleImgLoad,
+    handleImgError,
+  } = useBookCoverImage(book, libraryId, probeCoverWhenUnknown)
+  const showFallbackMetaContent =
+    showFallbackCover &&
+    showFallbackMeta &&
+    (!deferFallbackMetaUntilError || imgFailed || !hasExpectedCover)
+  const progressPercent =
+    typeof progress?.percent === "number"
+      ? Math.max(0, Math.min(100, progress.percent))
+      : undefined
 
   return (
     <div

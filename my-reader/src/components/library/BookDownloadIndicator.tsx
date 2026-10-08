@@ -25,15 +25,6 @@ export function BookDownloadIndicator({
 
   const label = getDownloadLabel(state, t)
   const iconClassName = variant === "cover" ? "size-3.5" : "size-3"
-  const isDownloadActive =
-    state.status === "starting" || state.status === "downloading"
-  const isUploadActive = state.status === "uploading"
-  const Icon =
-    state.status === "remote_only"
-      ? Cloud
-      : state.status === "present"
-        ? CheckCircle2
-        : Cloud
 
   if (variant === "inline") {
     return (
@@ -46,21 +37,11 @@ export function BookDownloadIndicator({
         data-download-status={state.status}
         title={label}
       >
-        {isDownloadActive || isUploadActive ? (
-          <CircularTransferProgress
-            className="size-3 shrink-0"
-            direction={isUploadActive ? "up" : "down"}
-            percent={state.percent}
-          />
-        ) : state.status === "local_only" ? (
-          <Cloud
-            className={cn(iconClassName, "shrink-0")}
-            strokeDasharray="2 2"
-            aria-hidden="true"
-          />
-        ) : (
-          <Icon className={cn(iconClassName, "shrink-0")} aria-hidden="true" />
-        )}
+        <DownloadStatusIcon
+          state={state}
+          progressClassName="size-3 shrink-0"
+          iconClassName={cn(iconClassName, "shrink-0")}
+        />
         <span className="truncate">{label}</span>
       </span>
     )
@@ -79,21 +60,11 @@ export function BookDownloadIndicator({
         role="img"
         aria-label={label}
       >
-        {isDownloadActive || isUploadActive ? (
-          <CircularTransferProgress
-            className="size-3"
-            direction={isUploadActive ? "up" : "down"}
-            percent={state.percent}
-          />
-        ) : state.status === "local_only" ? (
-          <Cloud
-            className={iconClassName}
-            strokeDasharray="2 2"
-            aria-hidden="true"
-          />
-        ) : (
-          <Icon className={iconClassName} aria-hidden="true" />
-        )}
+        <DownloadStatusIcon
+          state={state}
+          progressClassName="size-3"
+          iconClassName={iconClassName}
+        />
       </span>
     )
   }
@@ -110,27 +81,57 @@ export function BookDownloadIndicator({
       role="img"
       aria-label={label}
     >
-      {isDownloadActive || isUploadActive ? (
-        <CircularTransferProgress
-          className="size-4"
-          direction={isUploadActive ? "up" : "down"}
-          percent={state.percent}
-        />
-      ) : state.status === "local_only" ? (
-        <Cloud
-          className={iconClassName}
-          strokeDasharray="2 2"
-          aria-hidden="true"
-        />
-      ) : (
-        <Icon className={iconClassName} aria-hidden="true" />
-      )}
+      <DownloadStatusIcon
+        state={state}
+        progressClassName="size-4"
+        iconClassName={iconClassName}
+      />
       {(state.status === "downloading" || state.status === "uploading") &&
       state.percent != null ? (
         <span className="sr-only">{Math.round(state.percent)}%</span>
       ) : null}
     </span>
   )
+}
+
+function DownloadStatusIcon({
+  state,
+  progressClassName,
+  iconClassName,
+}: {
+  state: BookDownloadSnapshot
+  progressClassName: string
+  iconClassName: string
+}) {
+  const isDownloadActive =
+    state.status === "starting" || state.status === "downloading"
+  const isUploadActive = state.status === "uploading"
+  const Icon =
+    state.status === "remote_only"
+      ? Cloud
+      : state.status === "present"
+        ? CheckCircle2
+        : Cloud
+
+  if (isDownloadActive || isUploadActive) {
+    return (
+      <CircularTransferProgress
+        className={progressClassName}
+        direction={isUploadActive ? "up" : "down"}
+        percent={state.percent}
+      />
+    )
+  }
+  if (state.status === "local_only") {
+    return (
+      <Cloud
+        className={iconClassName}
+        strokeDasharray="2 2"
+        aria-hidden="true"
+      />
+    )
+  }
+  return <Icon className={iconClassName} aria-hidden="true" />
 }
 
 function getDownloadLabel(

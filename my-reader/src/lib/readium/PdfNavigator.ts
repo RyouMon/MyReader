@@ -20,14 +20,11 @@ export function parsePdfStartPage(
   numPages: number,
 ): number | null {
   if (!loc || numPages < 1) return null
-  const frags = loc.locations?.fragments
-  if (frags?.length) {
-    for (const f of frags) {
-      const m = /^page=(\d+)$/i.exec(String(f).trim())
-      if (m) {
-        const n = Number(m[1])
-        if (n >= 1 && n <= numPages) return n
-      }
+  for (const f of loc.locations?.fragments ?? []) {
+    const m = /^page=(\d+)$/i.exec(String(f).trim())
+    if (m) {
+      const n = Number(m[1])
+      if (n >= 1 && n <= numPages) return n
     }
   }
   const pos = loc.locations?.position

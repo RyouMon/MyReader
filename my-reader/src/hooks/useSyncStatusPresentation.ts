@@ -66,23 +66,20 @@ export function useSyncStatusPresentation(library: Library | null) {
   const isOffline = Boolean(
     library && isRemoteLibrarySourceType(library.sourceType) && !networkOnline,
   )
+  const lastSync = history?.lastSync
+  const lastFailure = history?.lastFailure
   const projectionNow = Math.max(
     clockNow,
-    history?.lastSync?.completedAt ?? 0,
-    history?.lastFailure?.completedAt ?? 0,
+    lastSync?.completedAt ?? 0,
+    lastFailure?.completedAt ?? 0,
     unchangedCompletedAt ?? 0,
   )
   const indicator = deriveSyncIndicatorState(
     {
       isRunning: activity != null,
       stage: activity?.stage,
-      lastResult: history?.lastFailure
-        ? "failure"
-        : history?.lastSync
-          ? "success"
-          : undefined,
-      lastCompletedAt:
-        history?.lastFailure?.completedAt ?? history?.lastSync?.completedAt,
+      lastResult: lastFailure ? "failure" : lastSync ? "success" : undefined,
+      lastCompletedAt: lastFailure?.completedAt ?? lastSync?.completedAt,
       unchangedCompletedAt,
       isOffline,
     },

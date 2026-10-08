@@ -165,60 +165,52 @@ function failureKind(value: unknown): SyncFailureKind | undefined {
   }
 }
 
+function historyRecord(value: unknown): Record<string, unknown> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    return undefined
+  return value as Record<string, unknown>
+}
+
+function coerceLastSync(value: unknown): LibrarySyncHistory["lastSync"] {
+  const raw = historyRecord(value)
+  if (!raw) return undefined
+  const completedAt = finiteTimestamp(raw.completedAt)
+  const reason =
+    typeof raw.reason === "string" ? parseSyncReason(raw.reason) : null
+  if (completedAt == null) return undefined
+  return { completedAt, ...(reason ? { reason } : {}) }
+}
+
+function coerceLastFailure(value: unknown): LibrarySyncHistory["lastFailure"] {
+  const raw = historyRecord(value)
+  if (!raw) return undefined
+  const completedAt = finiteTimestamp(raw.completedAt)
+  const reason =
+    typeof raw.reason === "string" ? parseSyncReason(raw.reason) : null
+  const stage =
+    typeof raw.failureStage === "string"
+      ? parseSyncStage(raw.failureStage)
+      : null
+  const kind = failureKind(raw.failureKind)
+  if (completedAt == null) return undefined
+  return {
+    completedAt,
+    ...(kind ? { failureKind: kind } : {}),
+    ...(stage ? { failureStage: stage } : {}),
+    ...(typeof raw.message === "string" ? { message: raw.message } : {}),
+    ...(reason ? { reason } : {}),
+  }
+}
+
 function coerceHistoryById(value: unknown): Record<string, LibrarySyncHistory> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {}
-
+  const entries = historyRecord(value)
+  if (!entries) return {}
   const result: Record<string, LibrarySyncHistory> = {}
-  for (const [libraryId, entry] of Object.entries(value)) {
-    if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue
-    const candidate = entry as Record<string, unknown>
-    const rawLastSync = candidate.lastSync
-    const rawLastFailure = candidate.lastFailure
-    let lastSync: LibrarySyncHistory["lastSync"]
-    let lastFailure: LibrarySyncHistory["lastFailure"]
-
-    if (
-      rawLastSync &&
-      typeof rawLastSync === "object" &&
-      !Array.isArray(rawLastSync)
-    ) {
-      const raw = rawLastSync as Record<string, unknown>
-      const completedAt = finiteTimestamp(raw.completedAt)
-      const reason =
-        typeof raw.reason === "string" ? parseSyncReason(raw.reason) : null
-      if (completedAt != null) {
-        lastSync = {
-          completedAt,
-          ...(reason ? { reason } : {}),
-        }
-      }
-    }
-
-    if (
-      rawLastFailure &&
-      typeof rawLastFailure === "object" &&
-      !Array.isArray(rawLastFailure)
-    ) {
-      const raw = rawLastFailure as Record<string, unknown>
-      const completedAt = finiteTimestamp(raw.completedAt)
-      const reason =
-        typeof raw.reason === "string" ? parseSyncReason(raw.reason) : null
-      const stage =
-        typeof raw.failureStage === "string"
-          ? parseSyncStage(raw.failureStage)
-          : null
-      const kind = failureKind(raw.failureKind)
-      if (completedAt != null) {
-        lastFailure = {
-          completedAt,
-          ...(kind ? { failureKind: kind } : {}),
-          ...(stage ? { failureStage: stage } : {}),
-          ...(typeof raw.message === "string" ? { message: raw.message } : {}),
-          ...(reason ? { reason } : {}),
-        }
-      }
-    }
-
+  for (const [libraryId, entry] of Object.entries(entries)) {
+    const candidate = historyRecord(entry)
+    if (!candidate) continue
+    const lastSync = coerceLastSync(candidate.lastSync)
+    let lastFailure = coerceLastFailure(candidate.lastFailure)
     if (
       lastSync &&
       lastFailure &&
@@ -234,6 +226,36 @@ function coerceHistoryById(value: unknown): Record<string, LibrarySyncHistory> {
     }
   }
   return result
+}
+
+function failedObservation(
+  state: SyncStatusStore,
+  observation: Extract<SyncStatusObservation, { type: "failed" }>,
+): Partial<SyncStatusStore> {
+  const libraryId = observation.libraryId
+  const current = state.librarySyncActivityById[libraryId]
+  const ownsActivity = current?.taskId === observation.taskId
+  const observedFailureStage = observation.failureStage ?? undefined
+  return {
+    librarySyncActivityById: ownsActivity
+      ? withoutKey(state.librarySyncActivityById, libraryId)
+      : state.librarySyncActivityById,
+    librarySyncTransientResultById: ownsActivity
+      ? withoutKey(state.librarySyncTransientResultById, libraryId)
+      : state.librarySyncTransientResultById,
+    librarySyncHistoryById: withHistory(
+      state.librarySyncHistoryById,
+      libraryId,
+      nextFailedHistory(state.librarySyncHistoryById[libraryId], {
+        completedAt: observation.completedAt,
+        failureKind: observation.failureKind,
+        failureStage:
+          observedFailureStage ?? (ownsActivity ? current.stage : undefined),
+        message: observation.message,
+        reason: observation.reason,
+      }),
+    ),
+  }
 }
 
 const initialNetworkOnline =
@@ -271,7 +293,7 @@ export const useSyncStatusStore = create<SyncStatusStore>()(
               }
             case "progress": {
               const current = state.librarySyncActivityById[libraryId]
-              if (!current || current.taskId !== observation.taskId) {
+              if (current?.taskId !== observation.taskId) {
                 return state
               }
               return {
@@ -339,30 +361,7 @@ export const useSyncStatusStore = create<SyncStatusStore>()(
               }
             }
             case "failed": {
-              const current = state.librarySyncActivityById[libraryId]
-              const ownsActivity = current?.taskId === observation.taskId
-              const observedFailureStage = observation.failureStage ?? undefined
-              return {
-                librarySyncActivityById: ownsActivity
-                  ? withoutKey(state.librarySyncActivityById, libraryId)
-                  : state.librarySyncActivityById,
-                librarySyncTransientResultById: ownsActivity
-                  ? withoutKey(state.librarySyncTransientResultById, libraryId)
-                  : state.librarySyncTransientResultById,
-                librarySyncHistoryById: withHistory(
-                  state.librarySyncHistoryById,
-                  libraryId,
-                  nextFailedHistory(state.librarySyncHistoryById[libraryId], {
-                    completedAt: observation.completedAt,
-                    failureKind: observation.failureKind,
-                    failureStage:
-                      observedFailureStage ??
-                      (ownsActivity ? current.stage : undefined),
-                    message: observation.message,
-                    reason: observation.reason,
-                  }),
-                ),
-              }
+              return failedObservation(state, observation)
             }
           }
         })

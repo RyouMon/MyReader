@@ -64,7 +64,6 @@ export function ReaderTopBar({
   onToggleSettings,
   scheduleChromeHide,
 }: ReaderTopBarProps) {
-  const { t } = useTranslation()
   const [useNativeMacWindowControls, setUseNativeMacWindowControls] =
     useState(false)
   const [isNativeMacFullscreen, setIsNativeMacFullscreen] = useState(false)
@@ -272,50 +271,23 @@ export function ReaderTopBar({
           chromeVisibilityClass,
         )}
       >
-        {effectiveUseNativeMacWindowControls &&
-        !effectiveNativeMacFullscreen ? (
-          <div aria-hidden className="h-3 w-[4.625rem] shrink-0" />
-        ) : !effectiveUseNativeMacWindowControls ? (
-          <MacWindowControls
-            closeLabel={t("reader.close")}
-            minimizeLabel={t("reader.minimize")}
-            zoomLabel={t("reader.maximize")}
-            onClose={closeWindow}
-            onMinimize={minimizeWindow}
-            onZoom={toggleMaximizeWindow}
-          />
-        ) : null}
+        <ReaderWindowButtons
+          native={effectiveUseNativeMacWindowControls}
+          fullscreen={effectiveNativeMacFullscreen}
+          onClose={closeWindow}
+          onMinimize={minimizeWindow}
+          onZoom={toggleMaximizeWindow}
+        />
         {showReaderActions ? (
-          <div className="flex items-center gap-[9px]">
-            <TopBarButton
-              title={t("reader.navigation")}
-              onClick={onToggleToc}
-              active={tocOpen}
-              chromeVisible={visible}
-            >
-              <List className="size-[17px]" />
-            </TopBarButton>
-            {onToggleBookmarks ? (
-              <TopBarButton
-                title={t("reader.bookmarks")}
-                onClick={onToggleBookmarks}
-                active={bookmarksOpen}
-                chromeVisible={visible}
-              >
-                <FolderBookmark className="size-[17px]" />
-              </TopBarButton>
-            ) : null}
-            {onToggleAnnotations ? (
-              <TopBarButton
-                title={t("reader.annotations")}
-                onClick={onToggleAnnotations}
-                active={annotationsOpen}
-                chromeVisible={visible}
-              >
-                <SquarePen className="size-[17px]" />
-              </TopBarButton>
-            ) : null}
-          </div>
+          <ReaderNavigationActions
+            visible={visible}
+            tocOpen={tocOpen}
+            bookmarksOpen={bookmarksOpen}
+            annotationsOpen={annotationsOpen}
+            onToggleToc={onToggleToc}
+            onToggleBookmarks={onToggleBookmarks}
+            onToggleAnnotations={onToggleAnnotations}
+          />
         ) : null}
       </div>
 
@@ -337,44 +309,165 @@ export function ReaderTopBar({
 
       <div className="relative z-10 flex items-center justify-end gap-[9px]">
         {showReaderActions ? (
-          <>
-            {rightActionsStart}
-            {onToggleSearch ? (
-              <TopBarButton
-                title={t("reader.search")}
-                onClick={onToggleSearch}
-                active={searchOpen}
-                chromeVisible={visible}
-              >
-                <Search className="size-[17px]" />
-              </TopBarButton>
-            ) : null}
-            <TopBarButton
-              title={t("reader.settings")}
-              onClick={onToggleSettings}
-              active={settingsOpen}
-              chromeVisible={visible}
-            >
-              <Settings className="size-[17px]" />
-            </TopBarButton>
-            <TopBarButton
-              title={t("reader.bookmark")}
-              onClick={onToggleBookmark}
-              active={bookmarked}
-              pressed={bookmarked}
-              disabled={bookmarkDisabled}
-              chromeVisible={visible}
-              keepActiveIconVisible
-            >
-              <Bookmark
-                className="size-[17px]"
-                fill={bookmarked ? "currentColor" : "none"}
-              />
-            </TopBarButton>
-          </>
+          <ReaderUtilityActions
+            visible={visible}
+            rightActionsStart={rightActionsStart}
+            onToggleSearch={onToggleSearch}
+            searchOpen={searchOpen}
+            onToggleSettings={onToggleSettings}
+            settingsOpen={settingsOpen}
+            onToggleBookmark={onToggleBookmark}
+            bookmarked={bookmarked}
+            bookmarkDisabled={bookmarkDisabled}
+          />
         ) : null}
       </div>
     </header>
+  )
+}
+
+function ReaderNavigationActions({
+  visible,
+  tocOpen,
+  bookmarksOpen,
+  annotationsOpen,
+  onToggleToc,
+  onToggleBookmarks,
+  onToggleAnnotations,
+}: Pick<
+  ReaderTopBarProps,
+  | "visible"
+  | "tocOpen"
+  | "bookmarksOpen"
+  | "annotationsOpen"
+  | "onToggleToc"
+  | "onToggleBookmarks"
+  | "onToggleAnnotations"
+>) {
+  const { t } = useTranslation()
+  return (
+    <div className="flex items-center gap-[9px]">
+      <TopBarButton
+        title={t("reader.navigation")}
+        onClick={onToggleToc}
+        active={tocOpen}
+        chromeVisible={visible}
+      >
+        <List className="size-[17px]" />
+      </TopBarButton>
+      {onToggleBookmarks ? (
+        <TopBarButton
+          title={t("reader.bookmarks")}
+          onClick={onToggleBookmarks}
+          active={bookmarksOpen}
+          chromeVisible={visible}
+        >
+          <FolderBookmark className="size-[17px]" />
+        </TopBarButton>
+      ) : null}
+      {onToggleAnnotations ? (
+        <TopBarButton
+          title={t("reader.annotations")}
+          onClick={onToggleAnnotations}
+          active={annotationsOpen}
+          chromeVisible={visible}
+        >
+          <SquarePen className="size-[17px]" />
+        </TopBarButton>
+      ) : null}
+    </div>
+  )
+}
+
+function ReaderUtilityActions({
+  visible,
+  rightActionsStart,
+  onToggleSearch,
+  searchOpen,
+  onToggleSettings,
+  settingsOpen,
+  onToggleBookmark,
+  bookmarked,
+  bookmarkDisabled,
+}: Pick<
+  ReaderTopBarProps,
+  | "visible"
+  | "rightActionsStart"
+  | "onToggleSearch"
+  | "searchOpen"
+  | "onToggleSettings"
+  | "settingsOpen"
+  | "onToggleBookmark"
+  | "bookmarked"
+  | "bookmarkDisabled"
+>) {
+  const { t } = useTranslation()
+  return (
+    <>
+      {rightActionsStart}
+      {onToggleSearch ? (
+        <TopBarButton
+          title={t("reader.search")}
+          onClick={onToggleSearch}
+          active={searchOpen}
+          chromeVisible={visible}
+        >
+          <Search className="size-[17px]" />
+        </TopBarButton>
+      ) : null}
+      <TopBarButton
+        title={t("reader.settings")}
+        onClick={onToggleSettings}
+        active={settingsOpen}
+        chromeVisible={visible}
+      >
+        <Settings className="size-[17px]" />
+      </TopBarButton>
+      <TopBarButton
+        title={t("reader.bookmark")}
+        onClick={onToggleBookmark}
+        active={bookmarked}
+        pressed={bookmarked}
+        disabled={bookmarkDisabled}
+        chromeVisible={visible}
+        keepActiveIconVisible
+      >
+        <Bookmark
+          className="size-[17px]"
+          fill={bookmarked ? "currentColor" : "none"}
+        />
+      </TopBarButton>
+    </>
+  )
+}
+
+function ReaderWindowButtons({
+  native,
+  fullscreen,
+  onClose,
+  onMinimize,
+  onZoom,
+}: {
+  native: boolean
+  fullscreen: boolean
+  onClose: () => void
+  onMinimize: () => void
+  onZoom: () => void
+}) {
+  const { t } = useTranslation()
+  if (native)
+    return fullscreen ? null : (
+      <div aria-hidden className="h-3 w-[4.625rem] shrink-0" />
+    )
+  return (
+    <MacWindowControls
+      closeLabel={t("reader.close")}
+      minimizeLabel={t("reader.minimize")}
+      zoomLabel={t("reader.maximize")}
+      onClose={onClose}
+      onMinimize={onMinimize}
+      onZoom={onZoom}
+    />
   )
 }
 

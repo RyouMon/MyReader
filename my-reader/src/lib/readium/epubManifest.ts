@@ -208,6 +208,59 @@ async function parseNavDoc(navPath: string): Promise<EpubTocItem[]> {
   }
 }
 
+function parsePackageManifest(opf: Document): Map<string, EpubManifestItem> {
+  const manifestEl = opf.querySelector("manifest")
+  const manifestItems: Map<string, EpubManifestItem> = new Map()
+  for (const item of childElements(manifestEl, "item")) {
+    const id = getAttr(item, "id")
+    const href = getAttr(item, "href")
+    const mediaType = getAttr(item, "media-type")
+    if (id && href && mediaType) {
+      manifestItems.set(id, {
+        id,
+        href,
+        "media-type": mediaType,
+        properties: getAttr(item, "properties") || undefined,
+      })
+    }
+  }
+
+  return manifestItems
+}
+
+async function parsePackageToc(
+  manifestItems: Map<string, EpubManifestItem>,
+  opfDir: string,
+  publicationOpfDir: string,
+): Promise<EpubTocItem[]> {
+  // --- Parse TOC ---
+  let toc: EpubTocItem[] = []
+
+  // Try NavDoc first (EPUB 3)
+  const navItem = Array.from(manifestItems.values()).find((item) =>
+    item.properties?.includes("nav"),
+  )
+  if (navItem) {
+    const navPath = resolveHref(opfDir, navItem.href)
+    const tocBasePath = resolveHref(publicationOpfDir, navItem.href)
+    toc = resolveTocHrefs(await parseNavDoc(navPath), tocBasePath)
+  }
+
+  // Fallback to NCX (EPUB 2)
+  if (toc.length === 0) {
+    const ncxItem = Array.from(manifestItems.values()).find(
+      (item) => item["media-type"] === "application/x-dtbncx+xml",
+    )
+    if (ncxItem) {
+      const ncxPath = resolveHref(opfDir, ncxItem.href)
+      const tocBasePath = resolveHref(publicationOpfDir, ncxItem.href)
+      toc = resolveTocHrefs(await parseNcx(ncxPath), tocBasePath)
+    }
+  }
+
+  return toc
+}
+
 /**
  * Build a Readium Web Publication Manifest from an extracted EPUB directory.
  */
@@ -223,22 +276,7 @@ export async function buildReadiumManifest(
     const opfText = await fetchText(opfPath)
     const opf = await parseXml(opfText)
 
-    // --- Parse package manifest ---
-    const manifestEl = opf.querySelector("manifest")
-    const manifestItems: Map<string, EpubManifestItem> = new Map()
-    for (const item of childElements(manifestEl, "item")) {
-      const id = getAttr(item, "id")
-      const href = getAttr(item, "href")
-      const mediaType = getAttr(item, "media-type")
-      if (id && href && mediaType) {
-        manifestItems.set(id, {
-          id,
-          href,
-          "media-type": mediaType,
-          properties: getAttr(item, "properties") || undefined,
-        })
-      }
-    }
+    const manifestItems = parsePackageManifest(opf)
 
     // --- Parse spine ---
     const spineEl = opf.querySelector("spine")
@@ -313,30 +351,7 @@ export async function buildReadiumManifest(
       .map((el) => getElementText(el))
       .filter(Boolean) as string[]
 
-    // --- Parse TOC ---
-    let toc: EpubTocItem[] = []
-
-    // Try NavDoc first (EPUB 3)
-    const navItem = Array.from(manifestItems.values()).find((item) =>
-      item.properties?.includes("nav"),
-    )
-    if (navItem) {
-      const navPath = resolveHref(opfDir, navItem.href)
-      const tocBasePath = resolveHref(publicationOpfDir, navItem.href)
-      toc = resolveTocHrefs(await parseNavDoc(navPath), tocBasePath)
-    }
-
-    // Fallback to NCX (EPUB 2)
-    if (toc.length === 0) {
-      const ncxItem = Array.from(manifestItems.values()).find(
-        (item) => item["media-type"] === "application/x-dtbncx+xml",
-      )
-      if (ncxItem) {
-        const ncxPath = resolveHref(opfDir, ncxItem.href)
-        const tocBasePath = resolveHref(publicationOpfDir, ncxItem.href)
-        toc = resolveTocHrefs(await parseNcx(ncxPath), tocBasePath)
-      }
-    }
+    const toc = await parsePackageToc(manifestItems, opfDir, publicationOpfDir)
 
     // --- Build manifest JSON ---
     const manifestJson: Record<string, unknown> = {

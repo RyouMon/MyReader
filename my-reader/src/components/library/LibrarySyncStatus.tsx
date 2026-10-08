@@ -163,47 +163,154 @@ function SyncProgress({
   )
 }
 
-export default function LibrarySyncStatus({
-  library,
-  onSync,
-}: LibrarySyncStatusProps) {
+type SyncPresentation = ReturnType<typeof useSyncStatusPresentation>
+
+function useSyncStatusLabels(
+  library: Library | null,
+  displayIndicator: SyncIndicatorState,
+  { activity, history, transientResult }: SyncPresentation,
+) {
   const { t, i18n } = useTranslation()
-  const { activity, history, indicator, isOffline, transientResult } =
-    useSyncStatusPresentation(library)
-  const [open, setOpen] = useState(false)
-  const [manualSyncPending, setManualSyncPending] = useState(false)
-  const displayIndicator =
-    manualSyncPending && !activity ? "syncing" : indicator
+  const lastSync = history?.lastSync
+  const lastFailure = history?.lastFailure
   const statusLabel = t(STATUS_LABEL_KEYS[displayIndicator])
   const stageLabel = activity ? t(STAGE_LABEL_KEYS[activity.stage]) : null
   const reason =
     activity?.reason ??
     transientResult?.reason ??
-    history?.lastFailure?.reason ??
-    history?.lastSync?.reason
+    lastFailure?.reason ??
+    lastSync?.reason
   const reasonLabel = reason ? t(REASON_LABEL_KEYS[reason]) : null
-  const lastSyncLabel = history?.lastSync
+  const lastSyncLabel = lastSync
     ? formatHumanReadableTime(
-        history.lastSync.completedAt,
+        lastSync.completedAt,
         i18n.resolvedLanguage ?? i18n.language,
       )
     : t("syncStatus.noHistory")
-  const lastAttemptLabel = history?.lastFailure
+  const lastAttemptLabel = lastFailure
     ? formatHumanReadableTime(
-        history.lastFailure.completedAt,
+        lastFailure.completedAt,
         i18n.resolvedLanguage ?? i18n.language,
       )
     : null
-  const isRunning = activity != null || manualSyncPending
-  const canSync = Boolean(library && onSync && !isRunning && !isOffline)
   const idleTriggerLabel =
-    displayIndicator === "idle" && history?.lastSync && lastSyncLabel
+    displayIndicator === "idle" && lastSync && lastSyncLabel
       ? lastSyncLabel
       : statusLabel
   const triggerLabel = library
     ? idleTriggerLabel
     : t("syncStatus.noActiveLibrary")
   const summaryLabel = library ? (stageLabel ?? statusLabel) : triggerLabel
+  return {
+    statusLabel,
+    stageLabel,
+    reasonLabel,
+    lastSyncLabel,
+    lastAttemptLabel,
+    triggerLabel,
+    summaryLabel,
+  }
+}
+
+function SyncHistoryDetails({
+  library,
+  presentation,
+  labels,
+}: {
+  library: Library
+  presentation: SyncPresentation
+  labels: ReturnType<typeof useSyncStatusLabels>
+}) {
+  const { t } = useTranslation()
+  const { activity, history, transientResult, isOffline } = presentation
+  const lastFailure = history?.lastFailure
+  const {
+    statusLabel,
+    stageLabel,
+    reasonLabel,
+    lastSyncLabel,
+    lastAttemptLabel,
+  } = labels
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
+      <div className="space-y-3">
+        <dl className="space-y-2.5 rounded-lg bg-muted/50 p-3">
+          <DetailRow
+            label={t("syncStatus.currentLibrary")}
+            value={library.name}
+          />
+          <DetailRow
+            label={t("syncStatus.currentStatus")}
+            value={statusLabel}
+          />
+          {stageLabel ? (
+            <DetailRow
+              label={t("syncStatus.currentStage")}
+              value={stageLabel}
+            />
+          ) : null}
+          {reasonLabel ? (
+            <DetailRow
+              label={t(
+                activity || transientResult
+                  ? "syncStatus.currentReason"
+                  : "syncStatus.lastReason",
+              )}
+              value={reasonLabel}
+            />
+          ) : null}
+          {!activity && lastFailure?.failureStage ? (
+            <DetailRow
+              label={t("syncStatus.failureStage")}
+              value={t(STAGE_LABEL_KEYS[lastFailure.failureStage])}
+            />
+          ) : null}
+          {lastAttemptLabel ? (
+            <DetailRow
+              label={t("syncStatus.lastAttempt")}
+              value={lastAttemptLabel}
+            />
+          ) : null}
+          <DetailRow label={t("syncStatus.lastSync")} value={lastSyncLabel} />
+        </dl>
+
+        {isOffline ? (
+          <div className="space-y-1.5 rounded-lg bg-warning-soft p-3 text-sm">
+            <div className="font-semibold text-warning">
+              {t("syncStatus.waitingForNetwork")}
+            </div>
+            <p className="text-foreground">{t("syncStatus.offlineDetail")}</p>
+          </div>
+        ) : null}
+
+        {lastFailure?.message ? (
+          <div className="space-y-1.5 rounded-lg bg-danger-soft p-3 text-sm">
+            <div className="font-semibold text-danger">
+              {t("syncStatus.failureReason")}
+            </div>
+            <p className="break-words text-foreground">{lastFailure.message}</p>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+export default function LibrarySyncStatus({
+  library,
+  onSync,
+}: LibrarySyncStatusProps) {
+  const { t } = useTranslation()
+  const presentation = useSyncStatusPresentation(library)
+  const { activity, indicator, isOffline } = presentation
+  const [open, setOpen] = useState(false)
+  const [manualSyncPending, setManualSyncPending] = useState(false)
+  const displayIndicator =
+    manualSyncPending && !activity ? "syncing" : indicator
+  const isRunning = activity != null || manualSyncPending
+  const canSync = Boolean(library && onSync && !isRunning && !isOffline)
+  const labels = useSyncStatusLabels(library, displayIndicator, presentation)
+  const { triggerLabel, summaryLabel } = labels
 
   const handleSync = async () => {
     if (!canSync || !onSync) return
@@ -278,76 +385,11 @@ export default function LibrarySyncStatus({
                 />
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
-                <div className="space-y-3">
-                  <dl className="space-y-2.5 rounded-lg bg-muted/50 p-3">
-                    <DetailRow
-                      label={t("syncStatus.currentLibrary")}
-                      value={library.name}
-                    />
-                    <DetailRow
-                      label={t("syncStatus.currentStatus")}
-                      value={statusLabel}
-                    />
-                    {stageLabel ? (
-                      <DetailRow
-                        label={t("syncStatus.currentStage")}
-                        value={stageLabel}
-                      />
-                    ) : null}
-                    {reasonLabel ? (
-                      <DetailRow
-                        label={t(
-                          activity || transientResult
-                            ? "syncStatus.currentReason"
-                            : "syncStatus.lastReason",
-                        )}
-                        value={reasonLabel}
-                      />
-                    ) : null}
-                    {!activity && history?.lastFailure?.failureStage ? (
-                      <DetailRow
-                        label={t("syncStatus.failureStage")}
-                        value={t(
-                          STAGE_LABEL_KEYS[history.lastFailure.failureStage],
-                        )}
-                      />
-                    ) : null}
-                    {lastAttemptLabel ? (
-                      <DetailRow
-                        label={t("syncStatus.lastAttempt")}
-                        value={lastAttemptLabel}
-                      />
-                    ) : null}
-                    <DetailRow
-                      label={t("syncStatus.lastSync")}
-                      value={lastSyncLabel}
-                    />
-                  </dl>
-
-                  {isOffline ? (
-                    <div className="space-y-1.5 rounded-lg bg-warning-soft p-3 text-sm">
-                      <div className="font-semibold text-warning">
-                        {t("syncStatus.waitingForNetwork")}
-                      </div>
-                      <p className="text-foreground">
-                        {t("syncStatus.offlineDetail")}
-                      </p>
-                    </div>
-                  ) : null}
-
-                  {history?.lastFailure?.message ? (
-                    <div className="space-y-1.5 rounded-lg bg-danger-soft p-3 text-sm">
-                      <div className="font-semibold text-danger">
-                        {t("syncStatus.failureReason")}
-                      </div>
-                      <p className="break-words text-foreground">
-                        {history.lastFailure.message}
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
+              <SyncHistoryDetails
+                library={library}
+                presentation={presentation}
+                labels={labels}
+              />
 
               <div className="shrink-0 px-4 pb-4 pt-2">
                 <Button

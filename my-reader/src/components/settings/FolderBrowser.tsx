@@ -98,25 +98,12 @@ export function FolderBrowser({
     currentPath === "/" ? [] : currentPath.split("/").filter(Boolean)
   const canGoBack = currentPath !== "/"
 
-  const ITEMS_TO_DISPLAY = 3
-  const shouldCollapse = pathParts.length + 1 > ITEMS_TO_DISPLAY
-  const tailCount = ITEMS_TO_DISPLAY - 1
-  const tailSegments = shouldCollapse ? pathParts.slice(-tailCount) : pathParts
-  const hiddenSegments = shouldCollapse ? pathParts.slice(0, -tailCount) : []
   const trimmedDirectoryName = newDirectoryName.trim()
   const selectedPath = trimmedDirectoryName
     ? appendRemotePathSegment(currentPath, trimmedDirectoryName)
     : currentPath
   const newDirectoryNameInvalid =
     trimmedDirectoryName.length > 0 && selectedPath === null
-  const folderListClassName = cn(
-    "overflow-y-auto rounded-xl border border-border bg-bg-secondary p-1.5",
-    embedded ? "min-h-0 flex-1" : "min-h-[220px] max-h-[320px]",
-  )
-  const folderListStateClassName = cn(
-    folderListClassName,
-    !embedded && "h-[220px]",
-  )
 
   useEffect(() => {
     if (open) {
@@ -183,199 +170,28 @@ export function FolderBrowser({
         </DialogHeader>
       ) : null}
 
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 mb-3">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          disabled={!canGoBack || loading}
-          onClick={handleGoBack}
-          aria-label={t("addLibraryForm.folderBrowserUp")}
-          title={t("addLibraryForm.folderBrowserUp")}
-        >
-          <ArrowUp />
-        </Button>
+      <FolderBrowserToolbar
+        pathParts={pathParts}
+        canGoBack={canGoBack}
+        loading={loading}
+        onRefresh={onRefresh}
+        navigateTo={navigateTo}
+        handleGoBack={handleGoBack}
+        handleBreadcrumbClick={handleBreadcrumbClick}
+      />
 
-        <Breadcrumb
-          aria-label="Breadcrumb"
-          className="flex-1 min-w-0 text-[13px] font-medium overflow-hidden"
-        >
-          <BreadcrumbList className="flex-nowrap overflow-hidden">
-            <BreadcrumbItem>
-              {pathParts.length === 0 ? (
-                <BreadcrumbPage dir="ltr" className="text-ink-1">
-                  /
-                </BreadcrumbPage>
-              ) : (
-                <BreadcrumbLink
-                  asChild
-                  dir="ltr"
-                  className="inline-flex shrink-0 items-center text-ink-2 transition-colors hover:text-primary"
-                >
-                  <button type="button" onClick={() => navigateTo("/")}>
-                    /
-                  </button>
-                </BreadcrumbLink>
-              )}
-            </BreadcrumbItem>
-
-            {pathParts.length > 0 && <BreadcrumbSeparator />}
-
-            {shouldCollapse && (
-              <>
-                <BreadcrumbItem>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        data-testid="breadcrumb-ellipsis"
-                        aria-label={t("common.more")}
-                        className="inline-flex items-center justify-center rounded-sm text-ink-2 transition-colors hover:text-ink-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                      >
-                        <MoreHorizontal className="size-3.5" />
-                        <span className="sr-only">More</span>
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      {hiddenSegments.map((part, index) => (
-                        <DropdownMenuItem
-                          key={index}
-                          onSelect={() => handleBreadcrumbClick(index)}
-                          className="cursor-pointer"
-                        >
-                          {part}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-              </>
-            )}
-
-            {tailSegments.map((part, localIndex) => {
-              const actualIndex = shouldCollapse
-                ? pathParts.length - tailCount + localIndex
-                : localIndex
-              const isLast = actualIndex === pathParts.length - 1
-
-              return (
-                <>
-                  <BreadcrumbItem
-                    key={actualIndex}
-                    className="min-w-0 overflow-hidden"
-                  >
-                    {isLast ? (
-                      <BreadcrumbPage dir="ltr" className="truncate text-ink-1">
-                        {part}
-                      </BreadcrumbPage>
-                    ) : (
-                      <BreadcrumbLink
-                        asChild
-                        dir="ltr"
-                        className="inline-flex shrink-0 items-center truncate text-ink-2 transition-colors hover:text-primary"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => handleBreadcrumbClick(actualIndex)}
-                        >
-                          {part}
-                        </button>
-                      </BreadcrumbLink>
-                    )}
-                  </BreadcrumbItem>
-                  {!isLast && (
-                    <BreadcrumbSeparator key={`sep-${actualIndex}`} />
-                  )}
-                </>
-              )
-            })}
-          </BreadcrumbList>
-        </Breadcrumb>
-
-        {onRefresh && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            disabled={loading}
-            onClick={onRefresh}
-            aria-label={t("common.refresh")}
-            title={t("common.refresh")}
-          >
-            <RefreshCw className={cn(loading && "animate-spin")} />
-          </Button>
-        )}
-      </div>
-
-      {/* Folder list */}
-      {loading ? (
-        <div
-          className={cn(
-            folderListStateClassName,
-            "flex flex-col items-center justify-center gap-2 text-sm text-ink-2",
-          )}
-          role="status"
-          aria-live="polite"
-        >
-          <Loader2 className="size-5 animate-spin" />
-          <span>{loadingMessage}</span>
-        </div>
-      ) : error ? (
-        <div
-          className={cn(
-            folderListStateClassName,
-            "flex flex-col items-center justify-center gap-2 px-4 text-center text-sm text-danger",
-          )}
-          role="alert"
-        >
-          <span>{error || errorMessage}</span>
-          {onRefresh && (
-            <button
-              type="button"
-              onClick={onRefresh}
-              className="inline-flex items-center gap-1.5 text-ink-2 hover:text-ink-1 transition-colors"
-            >
-              <RefreshCw className="size-3.5" />
-              {t("common.retry")}
-            </button>
-          )}
-        </div>
-      ) : folders.length === 0 ? (
-        <div
-          className={cn(
-            folderListStateClassName,
-            "flex flex-col items-center justify-center gap-2 text-sm text-ink-2",
-          )}
-        >
-          <Folder className="size-8 opacity-40" />
-          <span>{emptyMessage}</span>
-        </div>
-      ) : (
-        <ul className={folderListClassName} aria-label={title}>
-          {folders.map((folder, index) => (
-            <li key={folder.path} className="list-none">
-              <button
-                type="button"
-                onClick={() => navigateTo(folder.path)}
-                style={{ animationDelay: `${index * 20}ms` }}
-                className={cn(
-                  "folder-browser-row flex items-center gap-3 w-full h-11 px-3 rounded-md text-left",
-                  "text-sm text-ink-1 bg-transparent",
-                  "hover:bg-accent hover:text-accent-foreground",
-                  "active:scale-[0.995] transition-all",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-                )}
-              >
-                <Folder className="size-[18px] shrink-0 text-primary" />
-                <span className="flex-1 truncate">{folder.name}</span>
-                <ChevronRight className="size-4 shrink-0 text-ink-2" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <FolderBrowserList
+        title={title}
+        folders={folders}
+        loading={loading}
+        error={error}
+        loadingMessage={loadingMessage}
+        emptyMessage={emptyMessage}
+        errorMessage={errorMessage}
+        onRefresh={onRefresh}
+        embedded={embedded}
+        navigateTo={navigateTo}
+      />
 
       {createSubdirectory && (
         <div className="mt-3 space-y-1.5 rounded-md border border-border bg-bg-secondary p-3">
@@ -483,5 +299,258 @@ export function FolderBrowser({
         {content}
       </DialogContent>
     </Dialog>
+  )
+}
+
+function FolderBrowserToolbar({
+  pathParts,
+  canGoBack,
+  loading,
+  onRefresh,
+  navigateTo,
+  handleGoBack,
+  handleBreadcrumbClick,
+}: {
+  pathParts: string[]
+  canGoBack: boolean
+  loading: boolean
+  onRefresh?: () => void
+  navigateTo: (path: string) => void
+  handleGoBack: () => void
+  handleBreadcrumbClick: (index: number) => void
+}) {
+  const { t } = useTranslation()
+  const ITEMS_TO_DISPLAY = 3
+  const shouldCollapse = pathParts.length + 1 > ITEMS_TO_DISPLAY
+  const tailCount = ITEMS_TO_DISPLAY - 1
+  const tailSegments = shouldCollapse ? pathParts.slice(-tailCount) : pathParts
+  const hiddenSegments = shouldCollapse ? pathParts.slice(0, -tailCount) : []
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        disabled={!canGoBack || loading}
+        onClick={handleGoBack}
+        aria-label={t("addLibraryForm.folderBrowserUp")}
+        title={t("addLibraryForm.folderBrowserUp")}
+      >
+        <ArrowUp />
+      </Button>
+
+      <Breadcrumb
+        aria-label="Breadcrumb"
+        className="flex-1 min-w-0 text-[13px] font-medium overflow-hidden"
+      >
+        <BreadcrumbList className="flex-nowrap overflow-hidden">
+          <BreadcrumbItem>
+            {pathParts.length === 0 ? (
+              <BreadcrumbPage dir="ltr" className="text-ink-1">
+                /
+              </BreadcrumbPage>
+            ) : (
+              <BreadcrumbLink
+                asChild
+                dir="ltr"
+                className="inline-flex shrink-0 items-center text-ink-2 transition-colors hover:text-primary"
+              >
+                <button type="button" onClick={() => navigateTo("/")}>
+                  /
+                </button>
+              </BreadcrumbLink>
+            )}
+          </BreadcrumbItem>
+
+          {pathParts.length > 0 && <BreadcrumbSeparator />}
+
+          {shouldCollapse && (
+            <>
+              <BreadcrumbItem>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      data-testid="breadcrumb-ellipsis"
+                      aria-label={t("common.more")}
+                      className="inline-flex items-center justify-center rounded-sm text-ink-2 transition-colors hover:text-ink-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                    >
+                      <MoreHorizontal className="size-3.5" />
+                      <span className="sr-only">More</span>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {hiddenSegments.map((part, index) => (
+                      <DropdownMenuItem
+                        key={index}
+                        onSelect={() => handleBreadcrumbClick(index)}
+                        className="cursor-pointer"
+                      >
+                        {part}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+            </>
+          )}
+
+          {tailSegments.map((part, localIndex) => {
+            const actualIndex = shouldCollapse
+              ? pathParts.length - tailCount + localIndex
+              : localIndex
+            const isLast = actualIndex === pathParts.length - 1
+
+            return (
+              <>
+                <BreadcrumbItem
+                  key={actualIndex}
+                  className="min-w-0 overflow-hidden"
+                >
+                  {isLast ? (
+                    <BreadcrumbPage dir="ltr" className="truncate text-ink-1">
+                      {part}
+                    </BreadcrumbPage>
+                  ) : (
+                    <BreadcrumbLink
+                      asChild
+                      dir="ltr"
+                      className="inline-flex shrink-0 items-center truncate text-ink-2 transition-colors hover:text-primary"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleBreadcrumbClick(actualIndex)}
+                      >
+                        {part}
+                      </button>
+                    </BreadcrumbLink>
+                  )}
+                </BreadcrumbItem>
+                {!isLast && <BreadcrumbSeparator key={`sep-${actualIndex}`} />}
+              </>
+            )
+          })}
+        </BreadcrumbList>
+      </Breadcrumb>
+
+      {onRefresh && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          disabled={loading}
+          onClick={onRefresh}
+          aria-label={t("common.refresh")}
+          title={t("common.refresh")}
+        >
+          <RefreshCw className={cn(loading && "animate-spin")} />
+        </Button>
+      )}
+    </div>
+  )
+}
+
+function FolderBrowserList({
+  title,
+  folders,
+  loading,
+  error,
+  loadingMessage,
+  emptyMessage,
+  errorMessage,
+  onRefresh,
+  embedded,
+  navigateTo,
+}: Pick<
+  FolderBrowserProps,
+  | "title"
+  | "folders"
+  | "loading"
+  | "error"
+  | "loadingMessage"
+  | "emptyMessage"
+  | "errorMessage"
+  | "onRefresh"
+  | "embedded"
+> & { navigateTo: (path: string) => void }) {
+  const { t } = useTranslation()
+  const folderListClassName = cn(
+    "overflow-y-auto rounded-xl border border-border bg-bg-secondary p-1.5",
+    embedded ? "min-h-0 flex-1" : "min-h-[220px] max-h-[320px]",
+  )
+  const folderListStateClassName = cn(
+    folderListClassName,
+    !embedded && "h-[220px]",
+  )
+  return (
+    <>
+      {loading ? (
+        <div
+          className={cn(
+            folderListStateClassName,
+            "flex flex-col items-center justify-center gap-2 text-sm text-ink-2",
+          )}
+          role="status"
+          aria-live="polite"
+        >
+          <Loader2 className="size-5 animate-spin" />
+          <span>{loadingMessage}</span>
+        </div>
+      ) : error ? (
+        <div
+          className={cn(
+            folderListStateClassName,
+            "flex flex-col items-center justify-center gap-2 px-4 text-center text-sm text-danger",
+          )}
+          role="alert"
+        >
+          <span>{error || errorMessage}</span>
+          {onRefresh && (
+            <button
+              type="button"
+              onClick={onRefresh}
+              className="inline-flex items-center gap-1.5 text-ink-2 hover:text-ink-1 transition-colors"
+            >
+              <RefreshCw className="size-3.5" />
+              {t("common.retry")}
+            </button>
+          )}
+        </div>
+      ) : folders.length === 0 ? (
+        <div
+          className={cn(
+            folderListStateClassName,
+            "flex flex-col items-center justify-center gap-2 text-sm text-ink-2",
+          )}
+        >
+          <Folder className="size-8 opacity-40" />
+          <span>{emptyMessage}</span>
+        </div>
+      ) : (
+        <ul className={folderListClassName} aria-label={title}>
+          {folders.map((folder, index) => (
+            <li key={folder.path} className="list-none">
+              <button
+                type="button"
+                onClick={() => navigateTo(folder.path)}
+                style={{ animationDelay: `${index * 20}ms` }}
+                className={cn(
+                  "folder-browser-row flex items-center gap-3 w-full h-11 px-3 rounded-md text-left",
+                  "text-sm text-ink-1 bg-transparent",
+                  "hover:bg-accent hover:text-accent-foreground",
+                  "active:scale-[0.995] transition-all",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+                )}
+              >
+                <Folder className="size-[18px] shrink-0 text-primary" />
+                <span className="flex-1 truncate">{folder.name}</span>
+                <ChevronRight className="size-4 shrink-0 text-ink-2" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   )
 }

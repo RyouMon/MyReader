@@ -2,7 +2,10 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useMemo } from "react"
 import { resolveReadFormat } from "@/lib/readFormats"
 import { useBookUploadProgress } from "../useBookUploadProgress"
-import { useDownloadProgress } from "../useDownloadProgress"
+import {
+  type DownloadProgress,
+  useDownloadProgress,
+} from "../useDownloadProgress"
 import { bookFileStateKeys, useBookFileState } from "./useBookFileState"
 
 export type BookDownloadStatus =
@@ -71,6 +74,54 @@ export function useBookDownloadState(
 
   if (!fmt || isLoading) return null
 
+  const activeSnapshot = snapshotFromProgress(fmt, progress)
+  if (activeSnapshot) return activeSnapshot
+
+  const savedSnapshot = snapshotFromFileState(
+    fmt,
+    fileState?.localState,
+    uploadProgress,
+  )
+  if (savedSnapshot) return savedSnapshot
+  return progress?.status === "remote_only"
+    ? { status: "remote_only", format: fmt }
+    : null
+}
+
+function snapshotFromFileState(
+  fmt: string,
+  localState: string | undefined,
+  uploadProgress: number | null | undefined,
+): BookDownloadSnapshot | null {
+  if (localState === "present") {
+    return { status: "present", format: fmt }
+  }
+
+  if (localState === "local_only" || localState === "dirty_push") {
+    return uploadProgress !== undefined
+      ? {
+          status: "uploading",
+          format: fmt,
+          percent: uploadProgress ?? undefined,
+        }
+      : { status: "local_only", format: fmt }
+  }
+
+  if (localState === "starting" || localState === "downloading") {
+    return { status: "starting", format: fmt }
+  }
+
+  if (localState === "remote_only") {
+    return { status: "remote_only", format: fmt }
+  }
+
+  return null
+}
+
+function snapshotFromProgress(
+  fmt: string,
+  progress: DownloadProgress | null,
+): BookDownloadSnapshot | null {
   if (progress?.status === "starting") {
     return { status: "starting", format: fmt }
   }
@@ -92,38 +143,6 @@ export function useBookDownloadState(
 
   if (progress?.status === "done") {
     return { status: "present", format: fmt }
-  }
-
-  if (fileState?.localState === "present") {
-    return { status: "present", format: fmt }
-  }
-
-  if (
-    fileState?.localState === "local_only" ||
-    fileState?.localState === "dirty_push"
-  ) {
-    return uploadProgress !== undefined
-      ? {
-          status: "uploading",
-          format: fmt,
-          percent: uploadProgress ?? undefined,
-        }
-      : { status: "local_only", format: fmt }
-  }
-
-  if (
-    fileState?.localState === "starting" ||
-    fileState?.localState === "downloading"
-  ) {
-    return { status: "starting", format: fmt }
-  }
-
-  if (fileState?.localState === "remote_only") {
-    return { status: "remote_only", format: fmt }
-  }
-
-  if (progress?.status === "remote_only") {
-    return { status: "remote_only", format: fmt }
   }
 
   return null

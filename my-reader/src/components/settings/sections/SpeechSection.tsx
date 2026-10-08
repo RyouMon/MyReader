@@ -343,17 +343,12 @@ export default function SpeechSection() {
           (profile) => profile.id === selectedEngine.profileId,
         )
       : undefined
-  const configuredDefaultVoice = config?.voiceByLanguage[DEFAULT_VOICE_LANGUAGE]
   const providerVoices = useProviderTtsVoices(selectedProfile)
-  const selectedDefaultVoiceId =
-    selectedEngine?.kind === "provider"
-      ? configuredDefaultVoice?.engine === "provider" &&
-        configuredDefaultVoice.profileId === selectedEngine.profileId
-        ? configuredDefaultVoice.voiceId
-        : (selectedProfile?.options.defaultVoice ?? "")
-      : configuredDefaultVoice?.engine === "system"
-        ? configuredDefaultVoice.voiceId
-        : ""
+  const selectedDefaultVoiceId = configuredVoiceId(
+    config,
+    selectedEngine,
+    selectedProfile,
+  )
   const { preview, previewing, stopPreview } = useTtsPreviewPlayer({
     config,
     engineId:
@@ -496,103 +491,16 @@ export default function SpeechSection() {
         ) : null}
 
         {config ? (
-          <section className="mt-8 max-w-3xl border-t border-border pt-6">
-            <SectionHeader
-              title={t("settings.speech.engineTitle")}
-              description={t("settings.speech.engineDescription")}
-            />
-            <div className="divide-y divide-border overflow-hidden rounded-md border border-border bg-card">
-              <div className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
-                <Label htmlFor="tts-default-engine" className="font-medium">
-                  {t("settings.speech.defaultEngine")}
-                </Label>
-                <Select
-                  value={
-                    config.defaultEngine.kind === "provider"
-                      ? config.defaultEngine.profileId
-                      : "system"
-                  }
-                  disabled={saving}
-                  onValueChange={(value) =>
-                    void selectEngine(value === "system" ? undefined : value)
-                  }
-                >
-                  <SelectTrigger
-                    id="tts-default-engine"
-                    aria-label={t("settings.speech.defaultEngine")}
-                    className="min-w-52"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="system">
-                        {t("settings.speech.systemTitle")}
-                      </SelectItem>
-                      {config.profiles
-                        .filter((profile) => profile.enabled)
-                        .map((profile) => (
-                          <SelectItem key={profile.id} value={profile.id}>
-                            {profile.name}
-                          </SelectItem>
-                        ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
-                <Label htmlFor="tts-default-voice" className="font-medium">
-                  {t("settings.speech.defaultVoice")}
-                </Label>
-                <Select
-                  value={selectedDefaultVoiceId || AUTOMATIC_VOICE_VALUE}
-                  disabled={saving}
-                  onValueChange={(value) =>
-                    void selectVoice(
-                      value === AUTOMATIC_VOICE_VALUE ? "" : value,
-                    )
-                  }
-                >
-                  <SelectTrigger
-                    id="tts-default-voice"
-                    aria-label={t("settings.speech.defaultVoice")}
-                    className="min-w-52"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {config.defaultEngine.kind === "system" ? (
-                        <>
-                          <SelectItem value={AUTOMATIC_VOICE_VALUE}>
-                            {t("settings.speech.automaticVoice")}
-                          </SelectItem>
-                          {systemVoices.map((voice) => (
-                            <SelectItem
-                              key={systemVoiceId(voice)}
-                              value={systemVoiceId(voice)}
-                            >
-                              {voice.name} ·{" "}
-                              {formatTtsLanguageName(
-                                voice.lang,
-                                previewLanguage,
-                              )}
-                            </SelectItem>
-                          ))}
-                        </>
-                      ) : (
-                        providerVoices.map((voice) => (
-                          <SelectItem key={voice.id} value={voice.id}>
-                            {voice.name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </section>
+          <DefaultEngineSettings
+            config={config}
+            saving={saving}
+            selectedDefaultVoiceId={selectedDefaultVoiceId}
+            systemVoices={systemVoices}
+            providerVoices={providerVoices}
+            previewLanguage={previewLanguage}
+            selectEngine={selectEngine}
+            selectVoice={selectVoice}
+          />
         ) : null}
 
         <section className="mt-8 max-w-3xl border-t border-border pt-6">
@@ -744,16 +652,13 @@ function TtsProviderPreview({
           id: voice.id,
           label: voice.name,
         }))
-  const configuredVoice = config.voiceByLanguage[DEFAULT_VOICE_LANGUAGE]
-  const preferredVoiceId =
+  const preferredVoiceId = configuredVoiceId(
+    config,
     engineId === "system"
-      ? configuredVoice?.engine === "system"
-        ? configuredVoice.voiceId
-        : ""
-      : configuredVoice?.engine === "provider" &&
-          configuredVoice.profileId === engineId
-        ? configuredVoice.voiceId
-        : (selectedProfile?.options.defaultVoice ?? "")
+      ? { kind: "system" }
+      : { kind: "provider", profileId: engineId },
+    selectedProfile,
+  )
   const voiceId = voiceOptions.some((voice) => voice.id === requestedVoiceId)
     ? requestedVoiceId
     : voiceOptions.some((voice) => voice.id === preferredVoiceId)
@@ -1162,28 +1067,14 @@ function ProviderDialog({
           (item) => item.endpoint === draft.endpoint.trim().replace(/\/+$/, ""),
         )
       : undefined
-  const title = choosingType
-    ? t("settings.speech.addProvider")
-    : editing
-      ? t("settings.speech.editProvider")
-      : draft?.kind === "qwen"
-        ? t("qwenTts.add", {
-            name: preset ? t(qwenTtsSourceKeys(preset.id).title) : "Qwen",
-          })
-        : t("settings.speech.addOpenAi")
+  const { title, description } = useProviderDialogCopy(draft, preset)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <FlowDialogContent aria-describedby={undefined} style={themeStyle}>
         <FlowDialogHeader
           title={title}
-          description={
-            choosingType
-              ? undefined
-              : draft.kind === "qwen"
-                ? t(qwenTtsSourceKeys(preset?.id ?? "").description)
-                : t("settings.speech.openAiContract")
-          }
+          description={description}
           onBack={!choosingType && !editing ? onBack : undefined}
           backLabel={t("common.back")}
           closeLabel={t("common.close")}
@@ -1260,30 +1151,6 @@ function ProfileEditor({
     draft.kind === "qwen"
       ? qwenModels.find((model) => model.id === draft.model)
       : undefined
-  const discovered = useQwenTtsVoices({
-    enabled: Boolean(
-      qwenModel?.voiceDiscovery &&
-        !draft.clearCredential &&
-        (draft.credential.trim() || draft.hasCredential),
-    ),
-    endpoint: draft.endpoint,
-    model: draft.model,
-    profileId: draft.hasCredential ? draft.id : undefined,
-    credential: draft.credential,
-  })
-  const knownVoices = [...(qwenModel?.voices ?? []), ...discovered.voices]
-  const configuredVoices = parseVoiceIds(
-    [
-      draft.voices,
-      ...knownVoices.map((voice) => voice.id),
-      draft.kind === "qwen" ? draft.defaultVoice : "",
-    ].join("\n"),
-  )
-  const manualVoices = qwenModel
-    ? parseVoiceIds(draft.voices)
-        .filter((id) => !qwenModel.voices.some((voice) => voice.id === id))
-        .join("\n")
-    : draft.voices
 
   return (
     <form
@@ -1359,135 +1226,16 @@ function ProfileEditor({
               />
             )}
           </Field>
-          <div className="grid gap-2 sm:col-span-2">
-            {draft.kind === "qwen" ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="justify-self-start"
-                aria-expanded={showManualVoices}
-                aria-controls="tts-profile-manual-voices"
-                onClick={() => setShowManualVoices((current) => !current)}
-              >
-                <ChevronDown
-                  data-icon="inline-start"
-                  className={cn(showManualVoices && "rotate-180")}
-                />
-                {t("qwenTts.manualVoicesAction")}
-              </Button>
-            ) : null}
-            {draft.kind !== "qwen" || showManualVoices ? (
-              <div id="tts-profile-manual-voices">
-                <Field
-                  label={
-                    draft.kind === "qwen"
-                      ? t("qwenTts.manualVoices")
-                      : t("settings.speech.voices")
-                  }
-                  htmlFor="tts-profile-voices"
-                >
-                  <textarea
-                    id="tts-profile-voices"
-                    className="min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
-                    value={manualVoices}
-                    placeholder={t("settings.speech.voicesPlaceholder")}
-                    onChange={(event) => {
-                      const voices = event.target.value
-                      const nextVoices = parseVoiceIds(voices)
-                      update({
-                        voices,
-                        defaultVoice:
-                          draft.kind === "qwen" ||
-                          nextVoices.includes(draft.defaultVoice)
-                            ? draft.defaultVoice
-                            : (nextVoices[0] ?? ""),
-                      })
-                    }}
-                  />
-                  <span className="text-xs leading-5 text-muted-foreground">
-                    {draft.kind === "qwen"
-                      ? t("qwenTts.manualVoicesHint")
-                      : t("settings.speech.voicesDescription")}
-                  </span>
-                </Field>
-              </div>
-            ) : null}
-            {discovered.loading ? (
-              <span role="status" className="text-sm text-muted-foreground">
-                {t("qwenTts.loadingVoices")}
-              </span>
-            ) : null}
-            {discovered.error ? (
-              <StatusNotice tone="error">
-                {t("qwenTts.voicesFailed")} {discovered.error}
-              </StatusNotice>
-            ) : null}
-            {qwenModel?.voiceDiscovery &&
-            (draft.credential.trim() || draft.hasCredential) &&
-            !draft.clearCredential &&
-            !discovered.loading &&
-            !discovered.error &&
-            configuredVoices.length === 0 ? (
-              <span className="text-sm text-muted-foreground">
-                {t("qwenTts.voicesEmpty")}
-              </span>
-            ) : null}
-          </div>
-          <Field
-            label={t("settings.speech.defaultVoice")}
-            htmlFor="tts-profile-default-voice"
-            className="sm:col-span-2"
-          >
-            {draft.kind === "qwen" ? (
-              <Select
-                value={draft.defaultVoice}
-                onValueChange={(defaultVoice) => {
-                  if (defaultVoice) update({ defaultVoice })
-                }}
-              >
-                <SelectTrigger
-                  id="tts-profile-default-voice"
-                  className="w-full"
-                >
-                  <SelectValue
-                    placeholder={t("settings.speech.selectDefaultVoice")}
-                  />
-                </SelectTrigger>
-                <SelectContent style={themeStyle}>
-                  <SelectGroup>
-                    {configuredVoices.map((id) => (
-                      <SelectItem key={id} value={id}>
-                        {knownVoices.find((voice) => voice.id === id)?.name ??
-                          id}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            ) : (
-              <select
-                id="tts-profile-default-voice"
-                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                value={draft.defaultVoice}
-                disabled={configuredVoices.length === 0}
-                onChange={(event) =>
-                  update({ defaultVoice: event.target.value })
-                }
-              >
-                {configuredVoices.length === 0 ? (
-                  <option value="">
-                    {t("settings.speech.selectDefaultVoice")}
-                  </option>
-                ) : null}
-                {configuredVoices.map((voice) => (
-                  <option key={voice} value={voice}>
-                    {voice}
-                  </option>
-                ))}
-              </select>
-            )}
-          </Field>
+          <ProfileVoiceFields
+            draft={draft}
+            qwenModel={qwenModel}
+            themeStyle={themeStyle}
+            showManualVoices={showManualVoices}
+            onToggleManualVoices={() =>
+              setShowManualVoices((current) => !current)
+            }
+            update={update}
+          />
           {(!qwenModel || qwenModel.supportsInstructions) && (
             <Field
               label={t("settings.speech.instructions")}
@@ -1575,6 +1323,349 @@ function ProfileEditor({
         </Button>
       </DialogFooter>
     </form>
+  )
+}
+
+function configuredVoiceId(
+  config: TtsConfigDto | null,
+  engine: TtsConfigDto["defaultEngine"] | undefined,
+  profile: TtsProviderProfileDto | undefined,
+) {
+  const voice = config?.voiceByLanguage[DEFAULT_VOICE_LANGUAGE]
+  if (engine?.kind !== "provider")
+    return voice?.engine === "system" ? voice.voiceId : ""
+  if (voice?.engine === "provider" && voice.profileId === engine.profileId)
+    return voice.voiceId
+  return profile?.options.defaultVoice ?? ""
+}
+
+function DefaultEngineSettings({
+  config,
+  saving,
+  selectedDefaultVoiceId,
+  systemVoices,
+  providerVoices,
+  previewLanguage,
+  selectEngine,
+  selectVoice,
+}: {
+  config: TtsConfigDto
+  saving: boolean
+  selectedDefaultVoiceId: string
+  systemVoices: ReturnType<typeof useSystemSpeechVoices>
+  providerVoices: ReturnType<typeof useProviderTtsVoices>
+  previewLanguage: string
+  selectEngine: (id?: string) => Promise<void>
+  selectVoice: (id: string) => Promise<void>
+}) {
+  const { t } = useTranslation()
+  return (
+    <section className="mt-8 max-w-3xl border-t border-border pt-6">
+      <SectionHeader
+        title={t("settings.speech.engineTitle")}
+        description={t("settings.speech.engineDescription")}
+      />
+      <div className="divide-y divide-border overflow-hidden rounded-md border border-border bg-card">
+        <div className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
+          <Label htmlFor="tts-default-engine" className="font-medium">
+            {t("settings.speech.defaultEngine")}
+          </Label>
+          <Select
+            value={
+              config.defaultEngine.kind === "provider"
+                ? config.defaultEngine.profileId
+                : "system"
+            }
+            disabled={saving}
+            onValueChange={(value) =>
+              void selectEngine(value === "system" ? undefined : value)
+            }
+          >
+            <SelectTrigger
+              id="tts-default-engine"
+              aria-label={t("settings.speech.defaultEngine")}
+              className="min-w-52"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="system">
+                  {t("settings.speech.systemTitle")}
+                </SelectItem>
+                {config.profiles
+                  .filter((profile) => profile.enabled)
+                  .map((profile) => (
+                    <SelectItem key={profile.id} value={profile.id}>
+                      {profile.name}
+                    </SelectItem>
+                  ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
+          <Label htmlFor="tts-default-voice" className="font-medium">
+            {t("settings.speech.defaultVoice")}
+          </Label>
+          <Select
+            value={selectedDefaultVoiceId || AUTOMATIC_VOICE_VALUE}
+            disabled={saving}
+            onValueChange={(value) =>
+              void selectVoice(value === AUTOMATIC_VOICE_VALUE ? "" : value)
+            }
+          >
+            <SelectTrigger
+              id="tts-default-voice"
+              aria-label={t("settings.speech.defaultVoice")}
+              className="min-w-52"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {config.defaultEngine.kind === "system" ? (
+                  <>
+                    <SelectItem value={AUTOMATIC_VOICE_VALUE}>
+                      {t("settings.speech.automaticVoice")}
+                    </SelectItem>
+                    {systemVoices.map((voice) => (
+                      <SelectItem
+                        key={systemVoiceId(voice)}
+                        value={systemVoiceId(voice)}
+                      >
+                        {voice.name} ·{" "}
+                        {formatTtsLanguageName(voice.lang, previewLanguage)}
+                      </SelectItem>
+                    ))}
+                  </>
+                ) : (
+                  providerVoices.map((voice) => (
+                    <SelectItem key={voice.id} value={voice.id}>
+                      {voice.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function useProviderDialogCopy(
+  draft: ProfileDraft | null,
+  preset: QwenTtsPresetDto | undefined,
+) {
+  const { t } = useTranslation()
+  if (!draft)
+    return { title: t("settings.speech.addProvider"), description: undefined }
+  const description =
+    draft.kind === "qwen"
+      ? t(qwenTtsSourceKeys(preset?.id ?? "").description)
+      : t("settings.speech.openAiContract")
+  if (draft.id) return { title: t("settings.speech.editProvider"), description }
+  const title =
+    draft.kind === "qwen"
+      ? t("qwenTts.add", {
+          name: preset ? t(qwenTtsSourceKeys(preset.id).title) : "Qwen",
+        })
+      : t("settings.speech.addOpenAi")
+  return { title, description }
+}
+
+type ProfileVoiceControls = {
+  draft: ProfileDraft
+  showManualVoices: boolean
+  onToggleManualVoices: () => void
+  update: (patch: Partial<ProfileDraft>) => void
+}
+
+function ProfileVoiceFields({
+  draft,
+  qwenModel,
+  themeStyle,
+  showManualVoices,
+  onToggleManualVoices,
+  update,
+}: ProfileVoiceControls & {
+  qwenModel: QwenTtsModelDto | undefined
+  themeStyle?: CSSProperties
+}) {
+  const { t } = useTranslation()
+  const canDiscoverVoices = Boolean(
+    qwenModel?.voiceDiscovery &&
+      !draft.clearCredential &&
+      (draft.credential.trim() || draft.hasCredential),
+  )
+  const discovered = useQwenTtsVoices({
+    enabled: canDiscoverVoices,
+    endpoint: draft.endpoint,
+    model: draft.model,
+    profileId: draft.hasCredential ? draft.id : undefined,
+    credential: draft.credential,
+  })
+  const knownVoices = [...(qwenModel?.voices ?? []), ...discovered.voices]
+  const configuredVoices = parseVoiceIds(
+    [
+      draft.voices,
+      ...knownVoices.map((voice) => voice.id),
+      draft.kind === "qwen" ? draft.defaultVoice : "",
+    ].join("\n"),
+  )
+  const manualVoices = qwenModel
+    ? parseVoiceIds(draft.voices)
+        .filter((id) => !qwenModel.voices.some((voice) => voice.id === id))
+        .join("\n")
+    : draft.voices
+
+  return (
+    <>
+      <div className="grid gap-2 sm:col-span-2">
+        <ManualVoiceInput
+          draft={draft}
+          manualVoices={manualVoices}
+          showManualVoices={showManualVoices}
+          onToggleManualVoices={onToggleManualVoices}
+          update={update}
+        />
+        {discovered.loading ? (
+          <span role="status" className="text-sm text-muted-foreground">
+            {t("qwenTts.loadingVoices")}
+          </span>
+        ) : null}
+        {discovered.error ? (
+          <StatusNotice tone="error">
+            {t("qwenTts.voicesFailed")} {discovered.error}
+          </StatusNotice>
+        ) : null}
+        {canDiscoverVoices &&
+        !discovered.loading &&
+        !discovered.error &&
+        configuredVoices.length === 0 ? (
+          <span className="text-sm text-muted-foreground">
+            {t("qwenTts.voicesEmpty")}
+          </span>
+        ) : null}
+      </div>
+      <Field
+        label={t("settings.speech.defaultVoice")}
+        htmlFor="tts-profile-default-voice"
+        className="sm:col-span-2"
+      >
+        {draft.kind === "qwen" ? (
+          <Select
+            value={draft.defaultVoice}
+            onValueChange={(defaultVoice) => {
+              if (defaultVoice) update({ defaultVoice })
+            }}
+          >
+            <SelectTrigger id="tts-profile-default-voice" className="w-full">
+              <SelectValue
+                placeholder={t("settings.speech.selectDefaultVoice")}
+              />
+            </SelectTrigger>
+            <SelectContent style={themeStyle}>
+              <SelectGroup>
+                {configuredVoices.map((id) => (
+                  <SelectItem key={id} value={id}>
+                    {knownVoices.find((voice) => voice.id === id)?.name ?? id}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        ) : (
+          <select
+            id="tts-profile-default-voice"
+            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+            value={draft.defaultVoice}
+            disabled={configuredVoices.length === 0}
+            onChange={(event) => update({ defaultVoice: event.target.value })}
+          >
+            {configuredVoices.length === 0 ? (
+              <option value="">
+                {t("settings.speech.selectDefaultVoice")}
+              </option>
+            ) : null}
+            {configuredVoices.map((voice) => (
+              <option key={voice} value={voice}>
+                {voice}
+              </option>
+            ))}
+          </select>
+        )}
+      </Field>
+    </>
+  )
+}
+
+function ManualVoiceInput({
+  draft,
+  manualVoices,
+  showManualVoices,
+  onToggleManualVoices,
+  update,
+}: ProfileVoiceControls & { manualVoices: string }) {
+  const { t } = useTranslation()
+  return (
+    <>
+      {draft.kind === "qwen" ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="justify-self-start"
+          aria-expanded={showManualVoices}
+          aria-controls="tts-profile-manual-voices"
+          onClick={onToggleManualVoices}
+        >
+          <ChevronDown
+            data-icon="inline-start"
+            className={cn(showManualVoices && "rotate-180")}
+          />
+          {t("qwenTts.manualVoicesAction")}
+        </Button>
+      ) : null}
+      {draft.kind !== "qwen" || showManualVoices ? (
+        <div id="tts-profile-manual-voices">
+          <Field
+            label={
+              draft.kind === "qwen"
+                ? t("qwenTts.manualVoices")
+                : t("settings.speech.voices")
+            }
+            htmlFor="tts-profile-voices"
+          >
+            <textarea
+              id="tts-profile-voices"
+              className="min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+              value={manualVoices}
+              placeholder={t("settings.speech.voicesPlaceholder")}
+              onChange={(event) => {
+                const voices = event.target.value
+                const nextVoices = parseVoiceIds(voices)
+                update({
+                  voices,
+                  defaultVoice:
+                    draft.kind === "qwen" ||
+                    nextVoices.includes(draft.defaultVoice)
+                      ? draft.defaultVoice
+                      : (nextVoices[0] ?? ""),
+                })
+              }}
+            />
+            <span className="text-xs leading-5 text-muted-foreground">
+              {draft.kind === "qwen"
+                ? t("qwenTts.manualVoicesHint")
+                : t("settings.speech.voicesDescription")}
+            </span>
+          </Field>
+        </div>
+      ) : null}
+    </>
   )
 }
 

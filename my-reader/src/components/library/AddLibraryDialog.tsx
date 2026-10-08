@@ -1,3 +1,4 @@
+import type { DesktopTranslationKey } from "@my-reader/i18n/desktop"
 import { appendRemotePathSegment } from "@my-reader/tools/remote-path"
 import type { DataSource } from "@my-reader/tools/types/data-source"
 import { join } from "@tauri-apps/api/path"
@@ -245,53 +246,25 @@ export function AddLibraryDialog({
     )
   }
 
-  const name = libraryName.trim()
-  const nameInvalid = libraryName.length > 0 && !isValidLibraryName(name)
+  const copy = flowStepCopy(step)
+  function handleBack() {
+    if (step.kind === "location") {
+      setError(null)
+      setStep({ kind: "action" })
+    } else if (step.kind === "addDataSource" || step.kind === "remoteBrowser") {
+      goToLocation(step.operation)
+    } else {
+      goToLocation("create")
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <FlowDialogContent>
         <FlowDialogHeader
-          title={
-            step.kind === "action"
-              ? t("addLibraryFlow.title")
-              : step.kind === "location"
-                ? t("addLibraryFlow.location.title")
-                : step.kind === "addDataSource"
-                  ? step.sourceType === "webdav"
-                    ? t("addLibraryFlow.addWebdav.title")
-                    : t("addLibraryFlow.addOnedrive.title")
-                  : step.kind === "remoteBrowser"
-                    ? step.source.type === "webdav"
-                      ? t("addLibraryForm.webdavBrowserTitle")
-                      : t("addDataSourceForm.onedriveBrowserTitle")
-                    : t("addLibraryFlow.name.title")
-          }
-          description={
-            step.kind === "action"
-              ? t("addLibraryFlow.description")
-              : step.kind === "location"
-                ? step.operation === "create"
-                  ? t("addLibraryFlow.location.createDescription")
-                  : t("addLibraryFlow.location.openDescription")
-                : step.kind === "addDataSource"
-                  ? undefined
-                  : step.kind === "remoteBrowser"
-                    ? undefined
-                    : t("addLibraryFlow.name.description")
-          }
-          onBack={
-            submitting || step.kind === "action"
-              ? undefined
-              : step.kind === "location"
-                ? () => {
-                    setError(null)
-                    setStep({ kind: "action" })
-                  }
-                : step.kind === "addDataSource" || step.kind === "remoteBrowser"
-                  ? () => goToLocation(step.operation)
-                  : () => goToLocation("create")
-          }
+          title={t(copy.title)}
+          description={copy.description ? t(copy.description) : undefined}
+          onBack={submitting || step.kind === "action" ? undefined : handleBack}
           backLabel={t("common.back")}
           closeLabel={t("common.close")}
           showCloseButton={!submitting}
@@ -362,94 +335,28 @@ export function AddLibraryDialog({
           ) : null}
 
           {step.kind === "location" ? (
-            <div className="space-y-5">
-              <section>
-                <SectionHeader title={t("addLibraryFlow.storageLocations")} />
-                <div className="grid gap-2">
-                  <FlowDialogChoice
-                    icon={LocalStorageIcon}
-                    title={t("addLibraryFlow.local.title")}
-                    description={t("addLibraryFlow.local.description")}
-                    disabled={submitting}
-                    loading={submitting}
-                    onClick={() => void handleChooseLocal(step.operation)}
-                  />
-                  {loadingDataSources ? (
-                    <div
-                      className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground"
-                      role="status"
-                    >
-                      <Loader2 className="size-4 animate-spin" />
-                      {t("common.loading")}
-                    </div>
-                  ) : (
-                    enabledDataSources.map((source) => (
-                      <FlowDialogChoice
-                        key={source.id}
-                        icon={
-                          source.type === "webdav"
-                            ? WebdavServerIcon
-                            : OneDriveCloudIcon
-                        }
-                        title={
-                          source.type === "onedrive"
-                            ? source.displayName || source.name
-                            : source.name
-                        }
-                        description={
-                          source.type === "webdav"
-                            ? source.endpoint
-                            : source.email || undefined
-                        }
-                        disabled={submitting}
-                        onClick={() => {
-                          setError(null)
-                          setStep({
-                            kind: "remoteBrowser",
-                            operation: step.operation,
-                            source,
-                          })
-                        }}
-                      />
-                    ))
-                  )}
-                </div>
-              </section>
-
-              <section>
-                <SectionHeader title={t("addLibraryFlow.addStorage")} />
-                <div className="grid grid-cols-2 gap-2">
-                  <FlowDialogChoice
-                    compact
-                    icon={WebdavServerIcon}
-                    title={t("addLibraryFlow.addWebdav.title")}
-                    disabled={submitting}
-                    onClick={() =>
-                      setStep({
-                        kind: "addDataSource",
-                        operation: step.operation,
-                        sourceType: "webdav",
-                      })
-                    }
-                  />
-                  <FlowDialogChoice
-                    compact
-                    icon={OneDriveCloudIcon}
-                    title={t("addLibraryFlow.addOnedrive.title")}
-                    disabled={submitting}
-                    onClick={() =>
-                      setStep({
-                        kind: "addDataSource",
-                        operation: step.operation,
-                        sourceType: "onedrive",
-                      })
-                    }
-                  />
-                </div>
-              </section>
-
-              {error ? <StatusNotice tone="error">{error}</StatusNotice> : null}
-            </div>
+            <LibraryLocationChoices
+              enabledDataSources={enabledDataSources}
+              loadingDataSources={loadingDataSources}
+              submitting={submitting}
+              error={error}
+              onChooseLocal={() => void handleChooseLocal(step.operation)}
+              onChooseRemote={(source) => {
+                setError(null)
+                setStep({
+                  kind: "remoteBrowser",
+                  operation: step.operation,
+                  source,
+                })
+              }}
+              onAddSource={(sourceType) =>
+                setStep({
+                  kind: "addDataSource",
+                  operation: step.operation,
+                  sourceType,
+                })
+              }
+            />
           ) : null}
 
           {step.kind === "addDataSource" ? (
@@ -472,67 +379,222 @@ export function AddLibraryDialog({
           {step.kind === "remoteBrowser" ? renderRemoteBrowser(step) : null}
 
           {step.kind === "nameLibrary" ? (
-            <form
-              className="flex h-full min-h-0 flex-col"
-              onSubmit={(event) => {
-                event.preventDefault()
-                void handleCreateLibrary()
+            <NewLibraryNameForm
+              libraryName={libraryName}
+              submitting={submitting}
+              error={error}
+              parentPath={step.location.parentPath}
+              onNameChange={(name) => {
+                setLibraryName(name)
+                setError(null)
               }}
-            >
-              <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto">
-                <Field data-invalid={nameInvalid}>
-                  <FieldLabel htmlFor="new-library-name">
-                    {t("addLibraryFlow.name.label")}
-                  </FieldLabel>
-                  <Input
-                    id="new-library-name"
-                    value={libraryName}
-                    onChange={(event) => {
-                      setLibraryName(event.target.value)
-                      setError(null)
-                    }}
-                    disabled={submitting}
-                    aria-invalid={nameInvalid}
-                    autoFocus
-                    autoComplete="off"
-                  />
-                  <FieldDescription>
-                    {nameInvalid
-                      ? t("addLibraryFlow.name.invalid")
-                      : t("addLibraryFlow.name.parent", {
-                          path: step.location.parentPath,
-                        })}
-                  </FieldDescription>
-                </Field>
-
-                {error ? (
-                  <StatusNotice tone="error">{error}</StatusNotice>
-                ) : null}
-              </div>
-
-              <DialogFooter className="mt-4 shrink-0 border-t border-border pt-3">
-                <Button
-                  type="submit"
-                  disabled={submitting || !name || nameInvalid}
-                >
-                  {submitting ? (
-                    <Loader2
-                      data-icon="inline-start"
-                      className="animate-spin"
-                    />
-                  ) : (
-                    <Library data-icon="inline-start" />
-                  )}
-                  {submitting
-                    ? t("addLibraryFlow.creating")
-                    : t("addLibraryFlow.create.action")}
-                </Button>
-              </DialogFooter>
-            </form>
+              onSubmit={handleCreateLibrary}
+            />
           ) : null}
         </div>
       </FlowDialogContent>
     </Dialog>
+  )
+}
+
+function flowStepCopy(step: FlowStep): {
+  title: DesktopTranslationKey
+  description?: DesktopTranslationKey
+} {
+  switch (step.kind) {
+    case "action":
+      return {
+        title: "addLibraryFlow.title",
+        description: "addLibraryFlow.description",
+      }
+    case "location":
+      return {
+        title: "addLibraryFlow.location.title",
+        description:
+          step.operation === "create"
+            ? "addLibraryFlow.location.createDescription"
+            : "addLibraryFlow.location.openDescription",
+      }
+    case "addDataSource":
+      return {
+        title:
+          step.sourceType === "webdav"
+            ? "addLibraryFlow.addWebdav.title"
+            : "addLibraryFlow.addOnedrive.title",
+      }
+    case "remoteBrowser":
+      return {
+        title:
+          step.source.type === "webdav"
+            ? "addLibraryForm.webdavBrowserTitle"
+            : "addDataSourceForm.onedriveBrowserTitle",
+      }
+    case "nameLibrary":
+      return {
+        title: "addLibraryFlow.name.title",
+        description: "addLibraryFlow.name.description",
+      }
+  }
+}
+
+function NewLibraryNameForm({
+  libraryName,
+  submitting,
+  error,
+  parentPath,
+  onNameChange,
+  onSubmit,
+}: {
+  libraryName: string
+  submitting: boolean
+  error: string | null
+  parentPath: string
+  onNameChange: (name: string) => void
+  onSubmit: () => Promise<void>
+}) {
+  const { t } = useTranslation()
+  const name = libraryName.trim()
+  const nameInvalid = libraryName.length > 0 && !isValidLibraryName(name)
+  return (
+    <form
+      className="flex h-full min-h-0 flex-col"
+      onSubmit={(event) => {
+        event.preventDefault()
+        void onSubmit()
+      }}
+    >
+      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto">
+        <Field data-invalid={nameInvalid}>
+          <FieldLabel htmlFor="new-library-name">
+            {t("addLibraryFlow.name.label")}
+          </FieldLabel>
+          <Input
+            id="new-library-name"
+            value={libraryName}
+            onChange={(event) => {
+              onNameChange(event.target.value)
+            }}
+            disabled={submitting}
+            aria-invalid={nameInvalid}
+            autoFocus
+            autoComplete="off"
+          />
+          <FieldDescription>
+            {nameInvalid
+              ? t("addLibraryFlow.name.invalid")
+              : t("addLibraryFlow.name.parent", {
+                  path: parentPath,
+                })}
+          </FieldDescription>
+        </Field>
+
+        {error ? <StatusNotice tone="error">{error}</StatusNotice> : null}
+      </div>
+
+      <DialogFooter className="mt-4 shrink-0 border-t border-border pt-3">
+        <Button type="submit" disabled={submitting || !name || nameInvalid}>
+          {submitting ? (
+            <Loader2 data-icon="inline-start" className="animate-spin" />
+          ) : (
+            <Library data-icon="inline-start" />
+          )}
+          {submitting
+            ? t("addLibraryFlow.creating")
+            : t("addLibraryFlow.create.action")}
+        </Button>
+      </DialogFooter>
+    </form>
+  )
+}
+
+function LibraryLocationChoices({
+  enabledDataSources,
+  loadingDataSources,
+  submitting,
+  error,
+  onChooseLocal,
+  onChooseRemote,
+  onAddSource,
+}: {
+  enabledDataSources: DataSource[]
+  loadingDataSources: boolean
+  submitting: boolean
+  error: string | null
+  onChooseLocal: () => void
+  onChooseRemote: (source: DataSource) => void
+  onAddSource: (sourceType: CreatableDataSourceType) => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-5">
+      <section>
+        <SectionHeader title={t("addLibraryFlow.storageLocations")} />
+        <div className="grid gap-2">
+          <FlowDialogChoice
+            icon={LocalStorageIcon}
+            title={t("addLibraryFlow.local.title")}
+            description={t("addLibraryFlow.local.description")}
+            disabled={submitting}
+            loading={submitting}
+            onClick={onChooseLocal}
+          />
+          {loadingDataSources ? (
+            <div
+              className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground"
+              role="status"
+            >
+              <Loader2 className="size-4 animate-spin" />
+              {t("common.loading")}
+            </div>
+          ) : (
+            enabledDataSources.map((source) => (
+              <FlowDialogChoice
+                key={source.id}
+                icon={
+                  source.type === "webdav"
+                    ? WebdavServerIcon
+                    : OneDriveCloudIcon
+                }
+                title={
+                  source.type === "onedrive"
+                    ? source.displayName || source.name
+                    : source.name
+                }
+                description={
+                  source.type === "webdav"
+                    ? source.endpoint
+                    : source.email || undefined
+                }
+                disabled={submitting}
+                onClick={() => onChooseRemote(source)}
+              />
+            ))
+          )}
+        </div>
+      </section>
+
+      <section>
+        <SectionHeader title={t("addLibraryFlow.addStorage")} />
+        <div className="grid grid-cols-2 gap-2">
+          <FlowDialogChoice
+            compact
+            icon={WebdavServerIcon}
+            title={t("addLibraryFlow.addWebdav.title")}
+            disabled={submitting}
+            onClick={() => onAddSource("webdav")}
+          />
+          <FlowDialogChoice
+            compact
+            icon={OneDriveCloudIcon}
+            title={t("addLibraryFlow.addOnedrive.title")}
+            disabled={submitting}
+            onClick={() => onAddSource("onedrive")}
+          />
+        </div>
+      </section>
+
+      {error ? <StatusNotice tone="error">{error}</StatusNotice> : null}
+    </div>
   )
 }
 

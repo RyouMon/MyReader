@@ -58,6 +58,21 @@ export type ReadiumPdfReaderProps = {
   progressSyncEnabled: boolean
 }
 
+function usePdfLayout(landscape: boolean) {
+  const { resolvedTheme } = useTheme()
+  const background = useAppUiStore((state) => state.fixedLayout.background)
+  const navigationMode = useAppUiStore(
+    (state) => state.fixedLayout.navigationMode,
+  )
+  const spreadMode = useAppUiStore((state) => state.fixedLayout.spreadMode)
+  const direction = useAppUiStore((state) => state.fixedLayout.direction)
+  const backgroundColor = resolveFixedBackgroundColor(background, resolvedTheme)
+  const doublePage =
+    navigationMode === "horizontal" &&
+    (spreadMode === "double" || (spreadMode === "auto" && landscape))
+  return { navigationMode, direction, backgroundColor, doublePage }
+}
+
 export function ReadiumPdfReader({
   bookTitle,
   fileUrl,
@@ -68,7 +83,6 @@ export function ReadiumPdfReader({
   progressSyncEnabled,
 }: ReadiumPdfReaderProps) {
   const { t } = useTranslation()
-  const { resolvedTheme } = useTheme()
   const containerRef = useRef<HTMLDivElement>(null)
   const horizontalScrollerRef = useRef<HTMLDivElement>(null)
   const verticalScrollRef = useRef<HTMLDivElement>(null)
@@ -85,8 +99,9 @@ export function ReadiumPdfReader({
     toggleSettings,
     closePanels,
   } = useReaderPanels()
+  const panelsOpen = tocOpen || bookmarksOpen || settingsOpen
   const { readerRootRef, chromeVisible, showChrome, scheduleChromeHide } =
-    useReadingChrome(false, tocOpen || bookmarksOpen || settingsOpen)
+    useReadingChrome(false, panelsOpen)
   const [initError, setInitError] = useState<string | null>(null)
   const [readiumNavReady, setReadiumNavReady] = useState(false)
   const [currentLocator, setCurrentLocator] = useState<Locator | null>(null)
@@ -98,17 +113,9 @@ export function ReadiumPdfReader({
   })
   const [totalPages, setTotalPages] = useState(0)
   const [landscape, setLandscape] = useState(true)
-  const background = useAppUiStore((state) => state.fixedLayout.background)
-  const navigationMode = useAppUiStore(
-    (state) => state.fixedLayout.navigationMode,
-  )
-  const spreadMode = useAppUiStore((state) => state.fixedLayout.spreadMode)
-  const direction = useAppUiStore((state) => state.fixedLayout.direction)
-  const backgroundColor = resolveFixedBackgroundColor(background, resolvedTheme)
+  const { navigationMode, direction, backgroundColor, doublePage } =
+    usePdfLayout(landscape)
   const pageNum = currentLocator?.locations?.position ?? 1
-  const doublePage =
-    navigationMode === "horizontal" &&
-    (spreadMode === "double" || (spreadMode === "auto" && landscape))
   const spreads = useMemo(
     () => buildFixedLayoutSpreads(totalPages, doublePage),
     [doublePage, totalPages],
@@ -539,11 +546,7 @@ export function ReadiumPdfReader({
 
   const isRtl = direction === "rtl"
   const edgeTurnActive =
-    navigationMode === "horizontal" &&
-    readiumNavReady &&
-    !tocOpen &&
-    !bookmarksOpen &&
-    !settingsOpen
+    navigationMode === "horizontal" && readiumNavReady && !panelsOpen
   const { nearLeft, nearRight } = useReaderPaginateEdgeHover(
     edgeTurnActive,
     readerRootRef,
@@ -568,7 +571,7 @@ export function ReadiumPdfReader({
       chromeVisible={chromeVisible}
       showChrome={showChrome}
       scheduleChromeHide={scheduleChromeHide}
-      panelsOpen={tocOpen || bookmarksOpen || settingsOpen}
+      panelsOpen={panelsOpen}
       onClosePanels={closePanels}
       readerMode="fixed-layout"
       readerBackgroundColor={backgroundColor}

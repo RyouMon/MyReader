@@ -116,6 +116,63 @@ export function OnedriveDataSourceForm({
       onSubmit={(event) => event.preventDefault()}
       className={cn("flex flex-col", fillAvailableHeight && "h-full min-h-0")}
     >
+      <OnedriveAuthStatus
+        busy={busy}
+        authLoading={authLoading}
+        authResult={authResult}
+        error={error}
+        emptyClassName={emptyClassName}
+      />
+
+      {!busy ? (
+        <DialogFooter className="mt-4 shrink-0 border-t border-border pt-3">
+          {authResult ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setAuthResult(null)
+                setError("")
+              }}
+            >
+              <LogIn data-icon="inline-start" />
+              {t("addDataSourceForm.changeAccount")}
+            </Button>
+          ) : (
+            <Button type="button" onClick={() => void handleAuth()}>
+              <OneDriveCloudIcon data-icon="inline-start" />
+              {t("addDataSourceForm.signInWithMicrosoft")}
+            </Button>
+          )}
+          {authResult && error ? (
+            <Button type="button" onClick={handleRetryCreate}>
+              <RefreshCw data-icon="inline-start" />
+              {t("addDataSourceForm.retryAdd")}
+            </Button>
+          ) : null}
+        </DialogFooter>
+      ) : null}
+    </form>
+  )
+}
+
+function OnedriveAuthStatus({
+  busy,
+  authLoading,
+  authResult,
+  error,
+  emptyClassName,
+}: {
+  busy: boolean
+  authLoading: boolean
+  authResult: OnedriveAuthResultDto | null
+  error: string
+  emptyClassName: string
+}) {
+  const { t } = useTranslation()
+  return (
+    <>
       {busy ? (
         <Empty className={emptyClassName} role="status" aria-live="polite">
           <EmptyHeader>
@@ -163,36 +220,6 @@ export function OnedriveDataSourceForm({
           ) : null}
         </Empty>
       )}
-
-      {!busy ? (
-        <DialogFooter className="mt-4 shrink-0 border-t border-border pt-3">
-          {authResult ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setAuthResult(null)
-                setError("")
-              }}
-            >
-              <LogIn data-icon="inline-start" />
-              {t("addDataSourceForm.changeAccount")}
-            </Button>
-          ) : (
-            <Button type="button" onClick={() => void handleAuth()}>
-              <OneDriveCloudIcon data-icon="inline-start" />
-              {t("addDataSourceForm.signInWithMicrosoft")}
-            </Button>
-          )}
-          {authResult && error ? (
-            <Button type="button" onClick={handleRetryCreate}>
-              <RefreshCw data-icon="inline-start" />
-              {t("addDataSourceForm.retryAdd")}
-            </Button>
-          ) : null}
-        </DialogFooter>
-      ) : null}
-    </form>
+    </>
   )
 }

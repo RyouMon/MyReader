@@ -4,7 +4,13 @@ import {
 } from "@my-reader/tools/reader-search"
 import type { ReaderLocator, ReaderTocItem } from "@my-reader/tools/reader-toc"
 import { AlertCircle, Loader2, Search, SearchX, X } from "lucide-react"
-import { type FormEvent, useEffect, useMemo, useRef } from "react"
+import {
+  type FormEvent,
+  type RefObject,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react"
 import { useTranslation } from "react-i18next"
 import {
   ReaderSidePanelFrame,
@@ -219,81 +225,116 @@ export function ReadiumSearchPanel({
           </Empty>
         ) : null}
         {results.length > 0 ? (
-          <>
-            <p className="px-4 pb-2 pt-1 text-[11px] tabular-nums text-reader-chrome-muted">
-              {t(
-                done
-                  ? "reader.searchResultCount"
-                  : "reader.searchResultCountPartial",
-                {
-                  count: done
-                    ? (resultCount ?? locators.length)
-                    : locators.length,
-                },
-              )}
-            </p>
-            <ol className="space-y-0.5 px-4">
-              {results.map((result, index) => {
-                const { locator } = result
-                const { before, highlight, after } = result.snippet
-                const active = activeLocator === locator
-                return (
-                  <li key={`${locator.href}-${index}`}>
-                    <button
-                      type="button"
-                      className={cn(
-                        "w-full rounded-md px-2 py-3 text-start transition-colors",
-                        active
-                          ? "bg-[var(--reader-chrome-toc-row-active)]"
-                          : "hover:bg-[var(--reader-chrome-toc-row-hover)]",
-                      )}
-                      aria-pressed={active}
-                      onClick={() => onSelect(locator)}
-                    >
-                      <span className="mb-1 flex items-start gap-3">
-                        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-reader-chrome-fg">
-                          {result.title}
-                        </span>
-                        {result.position != null ? (
-                          <span className="w-10 shrink-0 text-end text-sm tabular-nums text-reader-chrome-muted">
-                            <span className="sr-only">
-                              {t("reader.searchResultPosition", {
-                                position: result.position,
-                              })}
-                            </span>
-                            <span aria-hidden>{result.position}</span>
-                          </span>
-                        ) : null}
-                      </span>
-                      <span className="line-clamp-2 text-sm leading-5 text-reader-chrome-muted">
-                        {before}
-                        <mark className="bg-transparent font-bold text-reader-chrome-active">
-                          {highlight}
-                        </mark>
-                        {after}
-                      </span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ol>
-            {!done ? (
-              <div
-                ref={loadMoreSentinelRef}
-                data-testid="reader-search-load-sentinel"
-                className="flex min-h-10 items-center justify-center px-4 py-2 text-xs text-reader-chrome-muted"
-                role={loading ? "status" : undefined}
-              >
-                {loading ? (
-                  <Loader2 className="size-4 animate-spin" aria-hidden />
-                ) : error ? (
-                  t("reader.searchInBookFailed")
-                ) : null}
-              </div>
-            ) : null}
-          </>
+          <SearchResults
+            locators={locators}
+            done={done}
+            resultCount={resultCount}
+            loading={loading}
+            error={error}
+            activeLocator={activeLocator}
+            onSelect={onSelect}
+            results={results}
+            loadMoreSentinelRef={loadMoreSentinelRef}
+          />
         ) : null}
       </ReaderSidePanelScrollArea>
     </ReaderSidePanelFrame>
+  )
+}
+
+function SearchResults({
+  locators,
+  done,
+  resultCount,
+  loading,
+  error,
+  activeLocator,
+  onSelect,
+  results,
+  loadMoreSentinelRef,
+}: Pick<
+  ReadiumSearchPanelProps,
+  | "locators"
+  | "done"
+  | "resultCount"
+  | "loading"
+  | "error"
+  | "activeLocator"
+  | "onSelect"
+> & {
+  results: ReaderSearchResultItem[]
+  loadMoreSentinelRef: RefObject<HTMLDivElement>
+}) {
+  const { t } = useTranslation()
+  return (
+    <>
+      <p className="px-4 pb-2 pt-1 text-[11px] tabular-nums text-reader-chrome-muted">
+        {t(
+          done ? "reader.searchResultCount" : "reader.searchResultCountPartial",
+          {
+            count: done ? (resultCount ?? locators.length) : locators.length,
+          },
+        )}
+      </p>
+      <ol className="space-y-0.5 px-4">
+        {results.map((result, index) => {
+          const { locator } = result
+          const { before, highlight, after } = result.snippet
+          const active = activeLocator === locator
+          return (
+            <li key={`${locator.href}-${index}`}>
+              <button
+                type="button"
+                className={cn(
+                  "w-full rounded-md px-2 py-3 text-start transition-colors",
+                  active
+                    ? "bg-[var(--reader-chrome-toc-row-active)]"
+                    : "hover:bg-[var(--reader-chrome-toc-row-hover)]",
+                )}
+                aria-pressed={active}
+                onClick={() => onSelect(locator)}
+              >
+                <span className="mb-1 flex items-start gap-3">
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-reader-chrome-fg">
+                    {result.title}
+                  </span>
+                  {result.position != null ? (
+                    <span className="w-10 shrink-0 text-end text-sm tabular-nums text-reader-chrome-muted">
+                      <span className="sr-only">
+                        {t("reader.searchResultPosition", {
+                          position: result.position,
+                        })}
+                      </span>
+                      <span aria-hidden>{result.position}</span>
+                    </span>
+                  ) : null}
+                </span>
+                <span className="line-clamp-2 text-sm leading-5 text-reader-chrome-muted">
+                  {before}
+                  <mark className="bg-transparent font-bold text-reader-chrome-active">
+                    {highlight}
+                  </mark>
+                  {after}
+                </span>
+              </button>
+            </li>
+          )
+        })}
+      </ol>
+      {!done ? (
+        <div
+          ref={loadMoreSentinelRef}
+          data-testid="reader-search-load-sentinel"
+          className="flex min-h-10 items-center justify-center px-4 py-2 text-xs text-reader-chrome-muted"
+          role={loading ? "status" : undefined}
+        >
+          {loading ? (
+            <Loader2 className="size-4 animate-spin" aria-hidden />
+          ) : error ? (
+            t("reader.searchInBookFailed")
+          ) : null}
+        </div>
+      ) : null}
+    </>
   )
 }
