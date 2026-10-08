@@ -2,6 +2,7 @@ import type {
   DecorationGroup,
   Link,
   Locator,
+  Preferences,
   PublicationReadyEvent,
   SelectionMenuConfig,
 } from "@my-reader/readium"
@@ -20,6 +21,7 @@ const mockStartTts = jest.fn()
 const mockCompleteTtsSynthesis = jest.fn()
 const mockReturnToTtsPosition = jest.fn()
 let mockReadiumProps: {
+  preferences?: Preferences
   onPublicationReady?: (event: PublicationReadyEvent) => void
   onLocationChange?: (
     locator: Locator,
@@ -42,6 +44,7 @@ jest.mock("@my-reader/readium", () => {
   return {
     ReadiumView: mockReact.forwardRef(function ReadiumViewMock(
       props: {
+        preferences?: Preferences
         onPublicationReady?: (event: PublicationReadyEvent) => void
         onLocationChange?: (
           locator: Locator,
@@ -118,7 +121,7 @@ function readerElement(
 
 describe("ReadiumReflowReader", () => {
   beforeEach(() => {
-    mockGoTo.mockClear()
+    mockGoTo.mockReset()
     mockClearSelection.mockClear()
     mockStartTts.mockClear()
     mockCompleteTtsSynthesis.mockClear()
@@ -126,6 +129,47 @@ describe("ReadiumReflowReader", () => {
     mockGetContent.mockReset()
     mockGetContent.mockResolvedValue({ utterances: [] })
     mockReadiumProps = null
+  })
+
+  it("applies the publication font before restoring its saved location", () => {
+    const saved = locator("chapter.xhtml", { progression: 0.5 })
+    const preferencesAtNavigation: Array<Preferences | undefined> = []
+    mockGoTo.mockImplementation(() => {
+      preferencesAtNavigation.push(mockReadiumProps?.preferences)
+    })
+    function Reader() {
+      const [language, setLanguage] = React.useState("")
+      return (
+        <ReadiumReflowReader
+          epubPath="/tmp/book.epub"
+          initialLocator={saved}
+          language={language}
+          fontFamily={language ? "readium-humanist" : "default"}
+          onPublicationLanguagesReady={(languages) =>
+            setLanguage(languages[0] ?? "")
+          }
+          onRequestClose={jest.fn()}
+          onStateChange={jest.fn()}
+          onTocReady={jest.fn()}
+        />
+      )
+    }
+    render(<Reader />)
+    act(() => {
+      mockReadiumProps?.onPublicationReady?.({
+        metadata: { language: ["en"], title: "Book" },
+        positions: [locator("chapter.xhtml")],
+        publicationId: "publication",
+        tableOfContents: [],
+      } as PublicationReadyEvent)
+    })
+    expect(preferencesAtNavigation).toEqual([
+      expect.objectContaining({ language: "en", fontFamily: "Seravek" }),
+    ])
+    expect(mockGoTo).toHaveBeenCalledWith(
+      saved,
+      expect.objectContaining({ language: "en", fontFamily: "Seravek" }),
+    )
   })
 
   it("should enhance shared-resource toc items from native content locators", async () => {
@@ -453,7 +497,7 @@ describe("ReadiumReflowReader", () => {
       } as PublicationReadyEvent)
     })
 
-    expect(mockGoTo).toHaveBeenCalledWith(positions[2])
+    expect(mockGoTo).toHaveBeenCalledWith(positions[2], expect.any(Object))
     expect(onStateChange).toHaveBeenLastCalledWith(
       expect.objectContaining({
         currentPage: 2,

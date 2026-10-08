@@ -148,6 +148,7 @@ class ReadiumView(
   var preferences: PreferencesRecord? = null
     set(value) {
       val previous = field
+      if (previous == value) return
       field = value
       updatePreferences(preferencesRequireViewportPreservation(previous, value))
     }
@@ -389,11 +390,18 @@ class ReadiumView(
 
   // MARK: - Imperative navigation
 
-  fun goTo(locator: LocatorRecord) {
+  fun goTo(locator: LocatorRecord, requestedPreferences: PreferencesRecord? = null) {
     val action = Runnable {
       val readiumLocator = locatorRecordToReadium(locator) ?: return@Runnable
-      beginUserNavigation(detachViewport = false)
-      fragment?.go(LinkOrLocator.Locator(readiumLocator), true)
+      if (requestedPreferences != null) preferences = requestedPreferences
+      scope.launch {
+        // A font/layout transaction must not restore its old anchor after this jump.
+        while (preferenceApplyJob?.isActive == true) {
+          preferenceApplyJob?.join()
+        }
+        beginUserNavigation(detachViewport = false)
+        fragment?.go(LinkOrLocator.Locator(readiumLocator), true)
+      }
     }
     if (Looper.myLooper() == Looper.getMainLooper()) {
       action.run()

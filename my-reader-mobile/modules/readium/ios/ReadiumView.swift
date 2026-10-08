@@ -65,6 +65,9 @@ final class ReadiumView: ExpoView {
       )
       preferencesReceived = true
       tryLoadBook()
+      guard oldValue.map(preferencesRecordToEPUB) != preferences.map(preferencesRecordToEPUB) else {
+        return
+      }
       if preserveViewport || viewportAnchor != nil {
         applyPreferencesPreservingViewport(reloadForFontFamily: reloadForFontFamily)
       } else {
@@ -871,10 +874,19 @@ final class ReadiumView: ExpoView {
 
   // MARK: - Imperative navigation (called by ReadiumModule via tag lookup)
 
-  func goTo(locator: LocatorRecord) {
+  func goTo(locator: LocatorRecord, preferences: PreferencesRecord? = nil) {
     Task { @MainActor [weak self] in
       guard let self = self else { return }
-      guard let navigator = self.readerViewController?.navigator,
+      let requestedFileURL = self.file?.url
+      if let preferences { self.preferences = preferences }
+      // Wait for layout restoration before applying the requested destination.
+      var generation: Int
+      repeat {
+        generation = self.preferenceApplyGeneration
+        await self.preferenceApplyTask?.value
+      } while generation != self.preferenceApplyGeneration
+      guard self.file?.url == requestedFileURL,
+            let navigator = self.readerViewController?.navigator,
             let readiumLocator = locatorRecordToReadium(locator) else { return }
       self.beginUserNavigation(detachViewport: false)
       _ = await navigator.go(to: readiumLocator, options: .animated)

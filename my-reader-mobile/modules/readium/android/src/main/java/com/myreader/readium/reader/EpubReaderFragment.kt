@@ -34,6 +34,7 @@ import com.myreader.readium.Types.SelectionMenuRecord
 import com.myreader.readium.Types.TtsEngineConfigRecord
 import com.myreader.readium.Types.TtsSynthesisCompletionRecord
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.readium.r2.navigator.DecorableNavigator
 import org.readium.r2.navigator.Selection
@@ -72,6 +73,11 @@ class EpubReaderFragment : VisualReaderFragment() {
     private lateinit var factory: ReaderViewModel.Factory
     private lateinit var navigatorFactory: EpubNavigatorFactory
     private var pendingPreferences: EpubPreferences? = null
+    private var firstPageLoaded = CompletableDeferred<Unit>()
+
+    override suspend fun awaitNavigatorReady() {
+      firstPageLoaded.await()
+    }
 
     private lateinit var userPreferences: EpubPreferences
 
@@ -425,6 +431,11 @@ class EpubReaderFragment : VisualReaderFragment() {
             navigatorFactory.createFragmentFactory(
               initialLocator = model.initialLocation,
               initialPreferences = userPreferences,
+              paginationListener = object : EpubNavigatorFragment.PaginationListener {
+                override fun onPageLoaded() {
+                  firstPageLoaded.complete(Unit)
+                }
+              },
               configuration = EpubNavigatorFragment.Configuration {
                 decorationTemplates = readerDecorationTemplates()
                 val assetPatterns = fontFamilyDeclarations
@@ -500,6 +511,7 @@ class EpubReaderFragment : VisualReaderFragment() {
     }
 
     override fun onDestroyView() {
+        firstPageLoaded = CompletableDeferred()
         ttsGeneration += 1
         ttsSessionId = null
         ttsController?.close(emitState = false)

@@ -158,9 +158,11 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
     useImperativeHandle(
       forwardedRef,
       () => ({
-        goTo: (locator) => {
+        goTo: (locator, requestedPreferences) => {
           const tag = tagOf()
-          if (tag != null) ReadiumModule.goTo(tag, locator)
+          if (tag != null) {
+            ReadiumModule.goTo(tag, locator, requestedPreferences ?? null)
+          }
         },
         goForward: () => {
           const tag = tagOf()

@@ -2,6 +2,7 @@ import { requireNativeModule } from "expo"
 
 import type {
   Locator,
+  Preferences,
   PublicationOpenerConfig,
   FormatRegistration,
   PublicationSnapshot,
@@ -23,7 +24,11 @@ import type {
  */
 export type ReadiumModuleMethods = {
   // Imperative navigation (view-tag based)
-  goTo: (tag: number, locator: Locator) => void
+  goTo: (
+    tag: number,
+    locator: Locator,
+    preferences?: Preferences | null,
+  ) => void
   goForward: (tag: number) => void
   goBackward: (tag: number) => void
   clearSelection: (tag: number) => void

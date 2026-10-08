@@ -97,8 +97,8 @@ public final class ReadiumModule: Module {
 
     // MARK: - Imperative navigation (view-tag based)
 
-    AsyncFunction("goTo") { (tag: Int, locator: LocatorRecord) in
-      ReadiumView.registry[tag]?.goTo(locator: locator)
+    AsyncFunction("goTo") { (tag: Int, locator: LocatorRecord, preferences: PreferencesRecord?) in
+      ReadiumView.registry[tag]?.goTo(locator: locator, preferences: preferences)
     }
     AsyncFunction("goForward") { (tag: Int) in
       ReadiumView.registry[tag]?.goForward()

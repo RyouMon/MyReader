@@ -133,6 +133,8 @@ abstract class BaseReaderFragment : Fragment() {
     super.onCreate(savedInstanceState)
   }
 
+  protected open suspend fun awaitNavigatorReady() {}
+
   override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
     super.onViewCreated(view, savedInstanceState)
 
@@ -146,6 +148,8 @@ abstract class BaseReaderFragment : Fragment() {
       } catch (e: Exception) {
         emptyList<Locator>()
       }
+
+      awaitNavigatorReady()
 
       channel.send(
         ReaderViewModel.Event.PublicationReady(

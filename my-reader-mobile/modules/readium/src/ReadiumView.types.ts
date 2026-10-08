@@ -20,9 +20,9 @@ import type {
   TtsSynthesisRequestEvent,
 } from "./types"
 
-/** Imperative ref contract — kept identical to the fork for drop-in migration. */
+/** Imperative navigation and reading controls. */
 export type ReadiumViewRef = {
-  goTo: (locator: Locator) => void
+  goTo: (locator: Locator, preferences?: Preferences) => void
   goForward: () => void
   goBackward: () => void
   clearSelection: () => void

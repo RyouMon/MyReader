@@ -34,9 +34,11 @@ import {
 import {
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
+  useState,
 } from "react"
 import { StyleSheet, View } from "react-native"
 
@@ -182,6 +184,8 @@ const ReadiumReflowReader = forwardRef<
   const chapterTitleRef = useRef("")
   const publicationReadySeqRef = useRef(0)
   const programmaticNavigationPendingRef = useRef(false)
+  const [startLocation, setStartLocation] = useState<Locator | null>(null)
+  const restoredStartRef = useRef<Locator | null>(null)
 
   useImperativeHandle(
     ref,
@@ -257,6 +261,14 @@ const ReadiumReflowReader = forwardRef<
     ],
   )
 
+  useEffect(() => {
+    if (!startLocation || restoredStartRef.current === startLocation) return
+    restoredStartRef.current = startLocation
+    programmaticNavigationPendingRef.current = true
+    // Send the final preferences with the jump; native prop updates are asynchronous.
+    readiumRef.current?.goTo(startLocation, preferences)
+  }, [startLocation, preferences])
+
   const handlePublicationReady = useCallback(
     (event: PublicationReadyEvent) => {
       const publicationSeq = publicationReadySeqRef.current + 1
@@ -320,10 +332,8 @@ const ReadiumReflowReader = forwardRef<
         locator: startLocator,
       })
 
-      // Navigate to the resolved position after the view is ready
       if (startLocator && startLocator !== event.positions[0]) {
-        programmaticNavigationPendingRef.current = true
-        readiumRef.current?.goTo(startLocator)
+        setStartLocation(startLocator)
       }
 
       void readiumPublication

@@ -1,4 +1,5 @@
 import type { Locator } from "@my-reader/readium"
+import { hrefRoughlyMatches } from "@my-reader/tools/reader-toc"
 
 /** Resolve restoration before falling back to the publication's first position. */
 export function resolveReaderStart(
@@ -15,8 +16,25 @@ export function resolveReaderStart(
     ? resolveNativeLocator(positions, candidate)
     : undefined
   if (resolved) {
+    const locator: Locator =
+      candidate && hrefRoughlyMatches(candidate.href, resolved.href)
+        ? {
+            ...resolved,
+            ...candidate,
+            href: resolved.href,
+            locations: {
+              ...resolved.locations,
+              ...candidate.locations,
+              position: resolved.locations?.position,
+              progression:
+                candidate.locations?.progression ??
+                resolved.locations?.progression ??
+                0,
+            },
+          }
+        : resolved
     return {
-      locator: resolved,
+      locator,
       source: stored ? "stored-progress" : "current-location",
     }
   }
