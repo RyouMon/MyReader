@@ -60,10 +60,12 @@ pnpm --filter my-reader run test:unit:coverage
 
 pnpm --filter my-reader run test:e2e:frontend
 pnpm --filter my-reader run test:e2e:frontend:ui
-pnpm --filter my-reader run test:e2e:desktop
 
 (cd my-reader/src-tauri && cargo test)
 ```
+
+Playwright 验证浏览器前端及 IPC mock。macOS 原生阅读、窗口和文件对话框需启动实际 Tauri
+应用单独验证；调试构建已接入 Tauri MCP Bridge。旧 WebDriver 浏览器启动示例已移除。
 
 ### 格式化
 

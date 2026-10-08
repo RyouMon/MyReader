@@ -3,7 +3,6 @@ import { withLocalLibraryContentRoot } from "../fs/local-library-content"
 import {
   contentClearCoverThumbnailCache,
   contentDeleteCoverThumbnailCache,
-  contentDeleteFileState,
   contentFinalizeDownloadedFile,
   contentInstallVerifiedDownloadedFile,
   contentGetFileState,
@@ -118,14 +117,6 @@ export async function upsertFileState(
     localSize: update.localSize ?? undefined,
     localMtime: update.localMtime ?? undefined,
   })
-  await invalidateFileStates(library.id)
-}
-
-export async function deleteFileState(
-  library: Library,
-  path: string,
-): Promise<void> {
-  await contentDeleteFileState(sidecarRootPath(library), path)
   await invalidateFileStates(library.id)
 }
 

@@ -186,8 +186,3 @@ export function useTheme() {
 export function useThemePalette() {
   return useTheme().palette
 }
-
-export {
-  getSemanticDestructiveColor,
-  getSemanticOnDestructiveColor,
-} from "./semantic-colors"

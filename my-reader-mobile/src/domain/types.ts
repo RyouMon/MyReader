@@ -28,15 +28,7 @@ export type BookCoverUri =
   | string
   | { uri: string; headers?: Record<string, string> }
 
-export type DataSourceType = "local" | "webdav" | "onedrive"
-
 export type { DataSource, DataSourceWebdav, DataSourceOnedrive, Library }
-
-/** WebDAV API layer: requires configured password */
-export type WebDavDataSource = DataSourceWebdav & { password: string }
-
-/** OneDrive API layer: requires valid access token */
-export type OneDriveDataSource = DataSourceOnedrive & { accessToken: string }
 
 export type LocalState =
   | "present"
@@ -45,9 +37,3 @@ export type LocalState =
   | "remote_delete_pending"
   | "local_only"
   | "dirty_push"
-
-export type MobileLibrariesConfig = {
-  libraries: Library[]
-  activeLibraryId: string | null
-  dataSources: DataSource[]
-}

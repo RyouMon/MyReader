@@ -29,13 +29,6 @@ export function readFileStat(fileUri: string): LocalFileStat {
   return statFromFile(file)
 }
 
-/** Returns file stat when the path exists; otherwise null. */
-export function readFileStatIfExists(fileUri: string): LocalFileStat | null {
-  const file = fileAtUri(fileUri)
-  if (!file.exists) return null
-  return statFromFile(file)
-}
-
 /** True when the file exists and has a non-zero size. */
 export function fileHasNonEmptyBytes(fileUri: string): boolean {
   const file = fileAtUri(fileUri)

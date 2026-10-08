@@ -9,32 +9,22 @@ import {
   type BookContent,
   type BookSummary,
   type BookEntry as CoreBookEntry,
-  catalogCountBooks,
-  catalogCountLibraryBooks,
   catalogDeleteLocalBook,
   catalogGetBookDetail,
   catalogGetBookFormat,
   catalogGetLibraryBookDetail,
   catalogGetLibraryBookFormat,
-  catalogGetLibraryIdentity,
-  catalogGetLibraryUuid,
   catalogGetMyreaderBookContent,
   catalogImportLocalBook,
   catalogStageRemoteBookImport,
   catalogListBookFormats,
   catalogListBookSummaries,
-  catalogListBooks,
-  catalogListBooksPage,
   catalogListBooksPageByLastRead,
   catalogListLibraryBookFormats,
   catalogListLibraryBookSummaries,
   catalogListLibraryBooks,
-  catalogListLibraryBooksPage,
   catalogListLibraryBooksPageByLastRead,
-  catalogListLibrarySeriesBooks,
-  catalogListSeriesBooks,
   catalogUpdateLocalBookMetadata,
-  catalogValidateLibrary,
   contentGetFileState,
 } from "my-reader-core"
 import { appConfigPath } from "./app-config"
@@ -67,37 +57,6 @@ function bookFromCore(book: CoreBookEntry): CalibreBook {
   }
 }
 
-export function validateCalibreLibrary(libraryRootUri: string): boolean {
-  return catalogValidateLibrary(nativePath(libraryRootUri))
-}
-
-export function countCalibreBooks(libraryRootUri: string): Promise<number> {
-  return catalogCountBooks(nativePath(libraryRootUri))
-}
-
-export async function listCalibreBooks(
-  libraryRootUri: string,
-): Promise<CalibreBook[]> {
-  return (await catalogListBooks(nativePath(libraryRootUri))).map(bookFromCore)
-}
-
-export async function listCalibreBooksPage(
-  libraryRootUri: string,
-  offset: number,
-  limit: number,
-  sortBy?: string,
-  search?: string,
-): Promise<PaginatedBooks> {
-  const page = await catalogListBooksPage(
-    nativePath(libraryRootUri),
-    offset,
-    limit,
-    sortBy,
-    search,
-  )
-  return { items: page.items.map(bookFromCore), total: page.total }
-}
-
 export async function listCalibreBooksPageByLastRead(
   libraryRootUri: string,
   sidecarRootUri: string,
@@ -128,24 +87,6 @@ export async function getCalibreBookDetail(
   }
 }
 
-export async function listCalibreSeriesBooks(
-  libraryRootUri: string,
-  seriesName: string,
-  excludeBookId?: number,
-): Promise<CalibreBook[]> {
-  return (
-    await catalogListSeriesBooks(
-      nativePath(libraryRootUri),
-      seriesName,
-      excludeBookId,
-    )
-  ).map(bookFromCore)
-}
-
-export function getCalibreLibraryUuid(libraryRootUri: string): Promise<string> {
-  return catalogGetLibraryUuid(nativePath(libraryRootUri))
-}
-
 export async function listCalibreBookSummaries(
   libraryRootUri: string,
 ): Promise<CalibreBookSummary[]> {
@@ -169,19 +110,6 @@ export async function getCalibreBookFormat(
 
 type CatalogLibrary = Pick<Library, "id">
 
-export function countLibraryBooks(
-  library: CatalogLibrary,
-  contentRootUri: string,
-  sidecarRootUri: string,
-): Promise<number> {
-  return catalogCountLibraryBooks(
-    appConfigPath,
-    library.id,
-    nativePath(sidecarRootUri),
-    nativePath(contentRootUri),
-  )
-}
-
 export async function listLibraryBooks(
   library: CatalogLibrary,
   contentRootUri: string,
@@ -195,28 +123,6 @@ export async function listLibraryBooks(
       nativePath(contentRootUri),
     )
   ).map(bookFromCore)
-}
-
-export async function listLibraryBooksPage(
-  library: CatalogLibrary,
-  contentRootUri: string,
-  sidecarRootUri: string,
-  offset: number,
-  limit: number,
-  sortBy?: string,
-  search?: string,
-): Promise<PaginatedBooks> {
-  const page = await catalogListLibraryBooksPage(
-    appConfigPath,
-    library.id,
-    nativePath(sidecarRootUri),
-    nativePath(contentRootUri),
-    offset,
-    limit,
-    sortBy,
-    search,
-  )
-  return { items: page.items.map(bookFromCore), total: page.total }
 }
 
 export async function listLibraryBooksPageByLastRead(
@@ -258,38 +164,6 @@ export async function getLibraryBookDetail(
     formatSizes: book.formatSizes,
     identifiers: book.identifiers,
   }
-}
-
-export async function listLibrarySeriesBooks(
-  library: CatalogLibrary,
-  contentRootUri: string,
-  sidecarRootUri: string,
-  seriesName: string,
-  excludeBookId?: number,
-): Promise<CalibreBook[]> {
-  return (
-    await catalogListLibrarySeriesBooks(
-      appConfigPath,
-      library.id,
-      nativePath(sidecarRootUri),
-      nativePath(contentRootUri),
-      seriesName,
-      excludeBookId,
-    )
-  ).map(bookFromCore)
-}
-
-export function getLibraryIdentity(
-  library: CatalogLibrary,
-  contentRootUri: string,
-  sidecarRootUri: string,
-): Promise<string> {
-  return catalogGetLibraryIdentity(
-    appConfigPath,
-    library.id,
-    nativePath(sidecarRootUri),
-    nativePath(contentRootUri),
-  )
 }
 
 export function listLibraryBookSummaries(

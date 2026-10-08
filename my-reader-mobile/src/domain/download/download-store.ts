@@ -12,7 +12,6 @@ import {
   cancelDownloadTask,
   claimDownloadTask,
   claimDownloadTasks,
-  clearFinishedDownloadTasks,
   completeDownloadTask,
   enqueueDownloadTask,
   failDownloadTask,
@@ -378,27 +377,6 @@ export function cancel(taskId: string): void {
   } else if (task.status === "queued") {
     transitionTask(taskId, { type: "cancel" })
   }
-}
-
-export function clearFinished(): void {
-  for (const t of state.tasks) {
-    if (
-      t.status === "done" ||
-      t.status === "error" ||
-      t.status === "cancelled"
-    ) {
-      alertedErrorTaskIds.delete(t.id)
-      notifiedDoneTaskIds.delete(t.id)
-      notifiedErrorTaskIds.delete(t.id)
-    }
-  }
-  clearFinishedDownloadTasks()
-  setState({
-    tasks: state.tasks.filter(
-      (t) =>
-        t.status !== "done" && t.status !== "error" && t.status !== "cancelled",
-    ),
-  })
 }
 
 export function isTaskErrorAlerted(taskId: string): boolean {

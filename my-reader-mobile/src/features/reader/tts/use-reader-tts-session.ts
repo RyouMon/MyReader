@@ -54,10 +54,6 @@ type UseReaderTtsSessionOptions = {
   onError?: (error: string) => void
 }
 
-export {
-  READER_TTS_NO_READABLE_CONTENT_ERROR,
-  READER_TTS_UNKNOWN_ERROR,
-} from "@my-reader/tools/reader-tts-session"
 export const READER_TTS_VOICES_EMPTY_ERROR = "TTS_VOICES_EMPTY"
 
 async function loadSessionConfig(language: string, isCurrent: () => boolean) {

@@ -32,7 +32,7 @@
     "typecheck": "pnpm --filter my-reader exec tsc --noEmit && pnpm --filter my-reader-mobile exec tsc --noEmit && pnpm --filter @my-reader/fonts typecheck && pnpm --filter @my-reader/tools typecheck && pnpm --filter @my-reader/i18n typecheck",
     "test:qa": "node --test scripts/quality/*.test.mjs",
     "test:unit": "pnpm test:qa && pnpm test:fonts && pnpm test:i18n && pnpm test:tools && pnpm test:desktop && pnpm test:mobile",
-    "qa": "pnpm lint && pnpm typecheck && pnpm qa:architecture && pnpm qa:duplicates && pnpm qa:docs && pnpm qa:generated && pnpm test:qa",
+    "qa": "pnpm lint && pnpm typecheck && pnpm qa:architecture && pnpm qa:unused && pnpm qa:duplicates && pnpm qa:docs && pnpm qa:generated && pnpm test:qa",
     "qa:architecture": "node scripts/quality/architecture.mjs",
     "qa:duplicates": "jscpd --config .jscpd.json",
     "qa:unused": "knip",

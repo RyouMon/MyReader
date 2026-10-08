@@ -2,9 +2,7 @@ import {
   coerceReaderFontOption,
   getReaderFontFamilyDeclarations,
   getReaderFontOptions as getSharedReaderFontOptions,
-  isChineseReaderLanguage,
   normalizeReaderLanguage,
-  primaryReaderLanguage,
   type ReaderFontFamilyKey,
   type ReaderFontOption,
   type ReaderFontSettings,
@@ -22,9 +20,7 @@ export const READER_FONT_DECLARATIONS: FontFamilyDeclaration[] =
 
 export {
   coerceReaderFontOption,
-  isChineseReaderLanguage,
   normalizeReaderLanguage,
-  primaryReaderLanguage,
   readerFontLanguageKey,
   resolveReaderLanguage,
 }

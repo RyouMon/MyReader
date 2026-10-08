@@ -1,46 +1,67 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
+  // An exported declaration used in its own module is not dead code.
+  "ignoreExportsUsedInFile": true,
   "workspaces": {
     ".": {
       "entry": ["scripts/*.{mjs,sh}", "scripts/quality/*.mjs"],
       "project": ["scripts/**/*.{mjs,js,ts}"]
     },
     "my-reader": {
-      "entry": [
-        "src/main.tsx",
-        "src/routes/**/*.{ts,tsx}",
-        "src/routeTree.gen.ts",
-        "scripts/*.mjs"
-      ],
-      "project": ["src/**/*.{ts,tsx}"]
+      "entry": ["src/routes/**/*.{ts,tsx}", "scripts/*.mjs"],
+      "project": ["src/**/*.{ts,tsx,css}"]
     },
     "my-reader-mobile": {
       "entry": [
         "src/app/**/*.{ts,tsx}",
+        "modules/*/index.{ts,tsx}",
         "modules/*/src/index.{ts,tsx}",
         "plugins/*.{js,ts}",
         "scripts/*.mjs"
       ],
-      "project": ["src/**/*.{ts,tsx}", "modules/*/src/**/*.{ts,tsx}"]
+      "project": ["src/**/*.{ts,tsx,css}", "modules/*/src/**/*.{ts,tsx}"],
+      // Native build scripts load these CLIs by their installed file paths.
+      "ignoreDependencies": [
+        "@sentry/cli",
+        "prettier",
+        "uniffi-bindgen-react-native"
+      ]
     },
     "packages/*": {
       "entry": ["src/index.ts"],
       "project": ["src/**/*.ts", "tests/**/*.ts"]
+    },
+    "packages/fonts": {
+      "entry": ["scripts/*.mjs"],
+      "project": ["src/**/*.ts", "tests/**/*.ts", "scripts/*.mjs"],
+      // Font files are resolved from reader-font-catalog.json during native/web builds.
+      "ignoreDependencies": [
+        "@expo-google-fonts/noto-sans-sc",
+        "@expo-google-fonts/noto-serif-sc",
+        "@fontpkg/alimama-fang-yuan-ti-vf",
+        "@fontsource/lxgw-wenkai",
+        "lxgw-wenkai-gb-web"
+      ]
+    },
+    "packages/i18n": {
+      "entry": [],
+      "project": ["src/**/*.ts", "tests/**/*.ts"]
     }
   },
-  "ignore": [
-    "**/src/generated/**",
-    "**/tauri-specta.ts",
-    "**/routeTree.gen.ts"
-  ],
-  "ignoreBinaries": [
-    "cargo",
-    "rustfmt",
-    "maestro",
-    "pod",
-    "xcodebuild",
-    "adb",
-    "python3",
-    "actionlint"
-  ]
+  "ignore": ["**/tauri-specta.ts", "**/generatedReaderViewportAnchor.ts"],
+  "ignoreIssues": {
+    // Installed shadcn primitives retain their upstream API; unused files are still checked.
+    "my-reader/src/components/ui/**": ["exports", "types"],
+    // Shared mobile UI and CSS adapters retain their component/prop API.
+    "my-reader-mobile/src/components/ui/**": ["exports", "types"],
+    "my-reader-mobile/src/tw/**": ["exports", "types"],
+    // These aliases name distinct roles that intentionally share an implementation/value.
+    "my-reader-mobile/src/config/library-list-performance.ts": ["duplicates"],
+    "my-reader-mobile/src/services/download/native.ts": ["duplicates"],
+    "my-reader-mobile/src/features/reader/components/reader/chrome/readerChromeConstants.ts": [
+      "duplicates"
+    ],
+    "packages/tools/src/sync-status.ts": ["duplicates"]
+  },
+  "ignoreBinaries": ["rustfmt", "maestro", "actionlint", "lychee"]
 }

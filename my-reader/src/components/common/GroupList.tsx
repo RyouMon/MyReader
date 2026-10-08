@@ -39,24 +39,3 @@ export function GroupListItem({ className, ...props }: GroupListItemProps) {
     />
   )
 }
-
-interface GroupListEmptyProps {
-  className?: string
-  children: ReactNode
-}
-
-/**
- * 统一分组列表空态文案，避免不同模块出现视觉语义漂移。
- */
-export function GroupListEmpty({ className, children }: GroupListEmptyProps) {
-  return (
-    <div
-      className={cn(
-        "flex min-h-24 items-center justify-center px-4 py-5 text-sm text-muted-foreground",
-        className,
-      )}
-    >
-      {children}
-    </div>
-  )
-}

@@ -2,7 +2,6 @@ import {
   downloadCancel,
   downloadClaim,
   downloadClaimReady,
-  downloadClearFinished,
   downloadComplete,
   downloadEnqueue,
   downloadFail,
@@ -112,8 +111,4 @@ export function listDownloadTasks(): CoreDownloadTask[] {
 
 export function releaseDownloadTask(taskId: string): boolean {
   return downloadRelease(taskId)
-}
-
-export function clearFinishedDownloadTasks(): void {
-  downloadClearFinished()
 }

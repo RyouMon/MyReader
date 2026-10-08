@@ -34,8 +34,6 @@ import type {
 } from "./types"
 import { buildLinkTree } from "./utils/buildLinkTree"
 
-export type { ReadiumProps, ReadiumViewRef } from "./ReadiumView.types"
-
 /** Props the native Expo View accepts (props + onXxx event handlers). */
 type NativeReadiumViewProps = {
   file: ReadiumFile

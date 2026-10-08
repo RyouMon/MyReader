@@ -21,7 +21,6 @@ import {
   listLibraryBooks,
   updateLocalBookMetadata as updateLocalBookMetadataThroughCore,
 } from "../../services/core/catalog"
-import { queryClient } from "../../services/query/query-client"
 import type { BookItem, DataSource, Library } from "../types"
 import { isRemoteSourceType } from "../types"
 import {
@@ -279,13 +278,6 @@ export const libraryQueryKeys = {
   books: (libraryId: string | null) => ["books", libraryId] as const,
   pendingImports: (libraryId: string | null) =>
     ["pending-book-imports", libraryId] as const,
-}
-
-export function getBooksForLibrary(libraryId: string): BookItem[] {
-  return (
-    queryClient.getQueryData<BookItem[]>(libraryQueryKeys.books(libraryId)) ??
-    []
-  )
 }
 
 async function ensureRemoteCalibreMetadata(

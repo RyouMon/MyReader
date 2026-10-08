@@ -15,16 +15,6 @@ type BackgroundDownloadOptions = NativeDownloadOptions
 
 export type DownloadProgressHandler = (received: number, total: number) => void
 
-export type LibraryDownloadRequest = {
-  libraryId: string
-  relativePath: string
-  libraries: Library[]
-  dataSources: DataSource[]
-  onProgress?: DownloadProgressHandler
-  options?: BackgroundDownloadOptions
-  identity?: BookDownloadIdentity
-}
-
 /**
  * Opens a sync context for a library by looking it up from the provided lists.
  */
@@ -39,26 +29,6 @@ export async function openDownloadContextForLibrary(
       i18n.t("sync.libraryNotFound", { id: libraryId }),
     )
   return openSyncContext(library, dataSources)
-}
-
-/**
- * Downloads a cache file and commits the local `present` state in one place.
- */
-export async function downloadLibraryFile({
-  libraryId,
-  relativePath,
-  libraries,
-  dataSources,
-  onProgress,
-  options,
-  identity,
-}: LibraryDownloadRequest): Promise<DownloadOutcome> {
-  const ctx = await openDownloadContextForLibrary(
-    libraryId,
-    libraries,
-    dataSources,
-  )
-  return downloadContextFile(ctx, relativePath, onProgress, options, identity)
 }
 
 /**

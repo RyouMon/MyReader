@@ -3,10 +3,7 @@ import {
   type ReadingProgressByBook,
 } from "@my-reader/tools/reading-progress"
 
-export type {
-  ReadingProgressByBook,
-  ReadingProgressRowLike,
-} from "@my-reader/tools/reading-progress"
+export type { ReadingProgressByBook } from "@my-reader/tools/reading-progress"
 export { readingProgressRowsToMap } from "@my-reader/tools/reading-progress"
 
 export type BookProgressSnapshot = {

@@ -1,4 +1,4 @@
-import { authorize, refresh, revoke } from "react-native-app-auth"
+import { authorize, refresh } from "react-native-app-auth"
 
 import {
   ONEDRIVE_CLIENT_ID,
@@ -7,8 +7,6 @@ import {
   ONEDRIVE_SCOPES,
 } from "../../constants/onedrive"
 import {
-  deleteOneDriveAccessToken,
-  deleteOneDriveRefreshToken,
   readOneDriveAccessToken,
   readOneDriveRefreshToken,
   writeOneDriveAccessToken,
@@ -195,18 +193,4 @@ export async function getValidAccessToken(
 ): Promise<{ accessToken: string; expiresAt: number }> {
   const { accessToken, expiresAt } = await refreshAccessToken(dataSourceId)
   return { accessToken, expiresAt }
-}
-
-export async function revokeAuth(dataSourceId: string): Promise<void> {
-  invalidateOneDriveAccessToken(dataSourceId)
-  const token = await readOneDriveAccessToken(dataSourceId)
-  if (token) {
-    try {
-      await revoke(authConfig, { tokenToRevoke: token })
-    } catch {
-      // Revocation may fail if token already expired — ignore
-    }
-  }
-  await deleteOneDriveAccessToken(dataSourceId)
-  await deleteOneDriveRefreshToken(dataSourceId)
 }

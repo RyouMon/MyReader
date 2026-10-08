@@ -28,7 +28,6 @@ import {
   syncResolveLibraryStorage,
   syncRequest,
   syncRequestContextualPull,
-  syncResume,
   syncRunLibrary,
   syncSafetySweepDelayMs,
   syncSetLibraryOnline,
@@ -283,16 +282,6 @@ export function completeCoordinatedSync(input: {
 }): SchedulerTransition {
   return transitionFromCore(
     syncComplete(input.coordinatorId, input.libraryId, input.nowMs),
-  )
-}
-
-export function resumeCoordinatedSync(input: {
-  coordinatorId: string
-  libraryId: string
-  nowMs: number
-}): SchedulerTransition {
-  return transitionFromCore(
-    syncResume(input.coordinatorId, input.libraryId, input.nowMs),
   )
 }
 

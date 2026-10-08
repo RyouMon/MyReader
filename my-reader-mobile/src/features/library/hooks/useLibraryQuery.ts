@@ -1,16 +1,12 @@
 import { useQuery } from "@tanstack/react-query"
 
-import {
-  fetchBooks,
-  getBooksForLibrary,
-  libraryQueryKeys,
-} from "@/src/domain/library/catalog"
+import { fetchBooks, libraryQueryKeys } from "@/src/domain/library/catalog"
 import type { BookItem } from "@/src/domain/types"
 import { useAppStore } from "@/src/store/app-store"
 
 import { getCachedAuth } from "@/src/services/remote/auth-cache"
 
-export { fetchBooks, getBooksForLibrary, libraryQueryKeys }
+export { fetchBooks, libraryQueryKeys }
 
 export function useBooks(activeLibraryId: string | null) {
   return useQuery({

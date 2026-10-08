@@ -12,7 +12,7 @@ Quality 仅在 PR 和手动执行时运行，普通推送不触发。手动执�
 
 | 命令 | 用途 | 定位 |
 |---|---|---|
-| `pnpm qa` | Lint、五个 JS 包类型检查、依赖边界、重复率、文档、生成漂移、QA 脚本测试 | PR 静态门禁 |
+| `pnpm qa` | Lint、五个 JS 包类型检查、依赖边界、未使用代码、重复率、文档、生成漂移、QA 脚本测试 | PR 静态门禁 |
 | `pnpm qa:docs` | markdownlint 格式与 Lychee 本地链接、图片引用、标题锚点 | 离线门禁；需安装 Lychee |
 | `pnpm test:unit` | 五个 JS 包的完整单元测试及 QA 脚本测试 | 回归门禁 |
 | `pnpm qa:coverage` | 五包完整测试及显式源码范围的 Vitest/Jest 覆盖率 | 按包基线门禁 |
@@ -20,7 +20,7 @@ Quality 仅在 PR 和手动执行时运行，普通推送不触发。手动执�
 | `pnpm qa:rust` | rustfmt、Clippy、Cargo workspace 完整测试 | Rust 门禁 |
 | `pnpm qa:rust:complexity` | Rust 认知复杂度检查 | 超限返回非零；同时纳入 Rust 门禁 |
 | `pnpm qa:rust:coverage` | Core 与移动 FFI 的 cargo-llvm-cov LCOV | 需安装工具及 llvm-tools-preview |
-| `pnpm qa:unused` | Knip 扫描未使用文件、依赖、导出与未解析引用 | 待人工确认的债务报告 |
+| `pnpm qa:unused` | Knip 扫描未使用文件、依赖、导出与未解析引用 | PR 门禁；新增发现需核实用途 |
 | `pnpm lint:report` | 输出原始 ESLint JSON | 有发现时返回非零 |
 | `pnpm qa:security` | npm 生产依赖漏洞审计 | 联网检查；中危及以上返回非零 |
 | `pnpm qa:rust:security` | Cargo 锁文件通告与撤包状态审计 | 需安装 cargo-audit 和联网；漏洞返回非零 |
@@ -30,6 +30,11 @@ Quality 仅在 PR 和手动执行时运行，普通推送不触发。手动执�
 `reports/` 和包内 `coverage/` 是忽略的本地报告。GitHub Actions 上传报告制品，不上传源码到
 SonarCloud、Codecov 或 Stryker Dashboard。Knip 报告不能直接用作删除原生模块、动态路由、
 生成绑定或对外契约的依据；隐藏 UI 控件也不意味着后端能力可以删除。
+
+Knip 的入口包含 Expo 路由、原生模块和字体准备脚本；动态加载的字体资源、原生构建 CLI
+在配置中说明保留原因。模块内部仍在使用的导出、共享 UI/CSS 适配器接口和明确的语义别名
+不作为死代码删除。单纯去掉 `export` 不代表性能或安全提升；确认无人使用的实现应连同
+失去用途的导入一起移除，再经过类型检查、全包测试及适用的平台构建。
 
 文档门禁与 `pnpm test:qa` 使用真实的 Lychee CLI。当前验证版本为 **0.24.2**；macOS 可用
 `brew install lychee`，其他平台使用 [官方安装方式](https://lychee.cli.rs/guides/getting-started/)
@@ -91,7 +96,8 @@ dependency-cruiser 使用独立的 `scripts/quality/tsconfig.mobile.json` 适配
 ## 按风险选择验证
 
 - 桌面 React：完整 `pnpm test:desktop`；交互流程使用现有 Playwright + IPC mock。
-  Tauri 窗口、系统对话框和原生权限需要受支持宿主上的 WebdriverIO/tauri-driver 或原生验证。
+  这不验证 Tauri 原生窗口、系统对话框或原生权限；macOS 需另行启动实际应用，通过调试构建的
+  Tauri MCP Bridge 或原生界面完成验证。
 - 移动 React Native：完整 `pnpm test:mobile`；原生模块用模拟器验证。测试放在路由目录之外。
   [Maestro runbook](../my-reader-mobile/e2e/README.md) 维护 fixture、选择器、平台差异和已知限制。
 - Rust / FFI：`cargo test --locked --workspace`。Swift/Kotlin 改动还需原生单元测试及消费端编译；

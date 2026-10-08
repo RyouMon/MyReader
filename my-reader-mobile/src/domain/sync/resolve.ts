@@ -91,12 +91,6 @@ export async function resolveSyncTarget(
   }
 }
 
-export function isLocalDirect(
-  backend: SyncBackend,
-): backend is LocalDirectBackend {
-  return backend.kind === "local-direct"
-}
-
 export function isRemoteBackend(
   backend: SyncBackend,
 ): backend is RemoteBackend {

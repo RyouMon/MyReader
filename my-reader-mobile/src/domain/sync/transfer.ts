@@ -1,9 +1,7 @@
 import i18n from "@/src/i18n"
 import { libraryTypeOf } from "@my-reader/tools/types/library"
-import { libraryContainerRootUri } from "@/src/services/fs/library-paths"
 import { AppInvariantError, DataIntegrityError } from "../../errors"
 import {
-  deleteFileState,
   finalizeDownloadedFile,
   installVerifiedDownloadedFile,
   markFileRemoteOnly,
@@ -14,8 +12,6 @@ import type { NativeDownloadOptions } from "../../services/download/native"
 import { downloadRemoteToLocalUri } from "../../services/download/remote-to-local"
 import { deleteFileAtUri } from "../../services/fs/file-io"
 import { assertSafeRelativePath, fileUriFor } from "../../services/fs/path"
-import type { Library } from "../types"
-import { isRemoteSourceType } from "../types"
 import type { SyncTargetContext } from "./context"
 import { isRemoteBackend } from "./resolve"
 
@@ -178,25 +174,4 @@ export async function evictLocalFile(
 ): Promise<void> {
   await removeLocalFile(localFileUri(ctx, relativePath))
   await markFileRemoteOnly(ctx.library, relativePath)
-}
-
-export async function evictLocalFileOfflineSafe(
-  library: Library,
-  relativePath: string,
-): Promise<void> {
-  if (!isRemoteSourceType(library.sourceType)) return
-  assertSafeRelativePath(relativePath)
-  const fileUri = fileUriFor(libraryContainerRootUri(library.id), relativePath)
-  await removeLocalFile(fileUri)
-  await markFileRemoteOnly(library, relativePath)
-}
-
-export async function deleteFileEverywhere(
-  ctx: SyncTargetContext,
-  relativePath: string,
-): Promise<void> {
-  assertSafeRelativePath(relativePath)
-  await removeLocalFile(localFileUri(ctx, relativePath))
-  await ctx.backend.deleteRemote(relativePath)
-  await deleteFileState(ctx.library, relativePath)
 }

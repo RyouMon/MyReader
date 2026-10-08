@@ -36,8 +36,4 @@ export function changeLanguage(language: string) {
   return i18n.changeLanguage(language)
 }
 
-export function getCurrentLanguage(): string {
-  return i18n.language
-}
-
 export default i18n

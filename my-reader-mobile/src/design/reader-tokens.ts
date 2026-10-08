@@ -26,8 +26,6 @@ export const READER_THEMES = Object.fromEntries(
   ]),
 ) as Record<ReaderThemeKey, ReaderThemeColors>
 
-export type ReaderThemeName = ReaderThemeKey
-
 const READER_CHROME_BORDER = {
   subtle: "rgba(255,255,255,0.05)",
   active: "rgba(245, 239, 230, 0.22)",
@@ -72,16 +70,6 @@ export const READER_CHROME = {
   errorCardBg: "rgba(255,255,255,0.08)",
   /** Error card border. */
   errorCardBorder: READER_CHROME_BORDER.error,
-} as const
-
-/** Fixed-layout viewer background (CBZ, PDF, fixed EPUB). Always dark/neutral. */
-export const READER_FIXED = {
-  /** Page canvas background — near-black neutral. */
-  canvasBg: "#111111",
-  /** Theme-mapped backgrounds (for PDF/fixed with light content). */
-  themeBg: Object.fromEntries(
-    READER_THEME_PRESETS.map((theme) => [theme.key, theme.backgroundColor]),
-  ) as Record<ReaderThemeKey, string>,
 } as const
 
 /**

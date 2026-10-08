@@ -3,7 +3,7 @@ export {
   resolveSyncOptions,
 } from "./policy"
 export { runSyncLibraries } from "./scheduler"
-export { syncLibraries, syncLibrary } from "./sync-library"
+export { syncLibrary } from "./sync-library"
 export type {
   LibrarySyncReport,
   SyncLibrariesDeps,

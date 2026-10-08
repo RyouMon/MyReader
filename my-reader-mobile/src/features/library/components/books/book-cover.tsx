@@ -161,13 +161,6 @@ function getFallbackCoverTheme(title: string): FallbackCoverTheme {
   )
 }
 
-/**
- * Returns a stable fallback color for books without cover art.
- */
-export function getFallbackCoverColor(title: string) {
-  return getFallbackCoverTheme(title).base
-}
-
 function getFallbackCoverStyles(
   title: string,
   width: number,

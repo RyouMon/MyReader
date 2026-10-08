@@ -60,10 +60,13 @@ pnpm --filter my-reader run test:unit:coverage
 
 pnpm --filter my-reader run test:e2e:frontend
 pnpm --filter my-reader run test:e2e:frontend:ui
-pnpm --filter my-reader run test:e2e:desktop
 
 (cd my-reader/src-tauri && cargo test)
 ```
+
+Playwright covers the browser frontend with IPC mocks. Validate native reading, windows, and file
+dialogs separately in the running Tauri app; debug builds include Tauri MCP Bridge. The obsolete
+WebDriver browser-launch example has been removed.
 
 ### Formatting
 

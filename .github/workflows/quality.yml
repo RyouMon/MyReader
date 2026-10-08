@@ -49,9 +49,8 @@ jobs:
       - name: Raw ESLint report
         if: always()
         run: pnpm lint:report
-      - name: Unused code report (requires human triage)
+      - name: Unused code report
         if: always()
-        continue-on-error: true
         run: |
           mkdir -p reports
           pnpm exec knip --reporter json > reports/knip.json

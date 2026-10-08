@@ -23,15 +23,6 @@ function compactUuid(): string {
   return crypto.randomUUID().replace(/-/g, "")
 }
 
-export interface ReadingProgressDto {
-  libraryId: string
-  bookId: number
-  format: string
-  locator: Record<string, unknown>
-  displayProgression: number | null
-  updatedAt: number | null
-}
-
 export function useLocatorProgressSync(params: {
   enabled: boolean
   libraryId: string | null

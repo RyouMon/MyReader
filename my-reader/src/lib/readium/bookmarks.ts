@@ -1,7 +1,4 @@
-import {
-  canonicalizeReaderLocatorForStorage,
-  sameReaderBookmarkLocation,
-} from "@my-reader/tools/reader-bookmarks"
+import { canonicalizeReaderLocatorForStorage } from "@my-reader/tools/reader-bookmarks"
 import type { ReaderLocator } from "@my-reader/tools/reader-toc"
 import { Locator } from "@readium/shared"
 
@@ -25,17 +22,6 @@ export function deserializeReaderBookmarkLocator(
   locator: ReaderLocator,
 ): Locator | null {
   return Locator.deserialize(locator) ?? null
-}
-
-export function readerBookmarkMatchesLocator(
-  bookmark: ReaderLocator,
-  locator: Locator,
-  format: string,
-): boolean {
-  return sameReaderBookmarkLocation(
-    bookmark,
-    serializeReaderBookmarkLocator(locator, format),
-  )
 }
 
 export function pdfPageForBookmark(

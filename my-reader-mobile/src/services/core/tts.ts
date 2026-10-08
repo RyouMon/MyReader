@@ -8,8 +8,6 @@ import {
   type QwenTtsModel,
   type QwenTtsPreset,
   ttsListVoices,
-  ttsProbeProvider,
-  ttsProviderCapabilities,
   ttsRemoveProfile,
   ttsSetDefaultEngine,
   ttsSetPlayback,
@@ -21,7 +19,6 @@ import {
   type TtsEngine,
   type TtsLanguageVoice,
   type TtsPlayback,
-  type TtsProviderCapabilities,
   type TtsProviderProfile,
   type TtsSynthesisRequest,
   type TtsVoice,
@@ -179,22 +176,6 @@ export async function setTtsVoice(
   return hydrateConfig(await ttsSetVoice(appConfigPath, language, voice))
 }
 
-export function getTtsProviderCapabilities(
-  profileId: string,
-): Promise<TtsProviderCapabilities> {
-  return ttsProviderCapabilities(appConfigPath, profileId)
-}
-
-export async function probeTtsProvider(
-  profileId: string,
-): Promise<TtsProviderCapabilities> {
-  return ttsProbeProvider(
-    appConfigPath,
-    profileId,
-    await resolveCredential(profileId),
-  )
-}
-
 export async function listTtsVoices(profileId: string): Promise<TtsVoice[]> {
   return ttsListVoices(
     appConfigPath,
@@ -225,7 +206,6 @@ export type {
   TtsEngine,
   TtsLanguageVoice,
   TtsPlayback,
-  TtsProviderCapabilities,
   TtsProviderProfile,
   TtsSynthesisRequest,
   TtsVoice,

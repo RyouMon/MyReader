@@ -15,10 +15,3 @@ export const ICON_SIZE = {
   "4xl": 30,
   "5xl": 32,
 } as const
-
-export const TOUCH = {
-  min: 44,
-  btn: 48,
-  row: 60,
-  tab: 56,
-} as const

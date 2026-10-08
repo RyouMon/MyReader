@@ -1,7 +1,5 @@
 import { useMutation, useMutationState } from "@tanstack/react-query"
 
-import type { LibrarySyncReport } from "@/src/domain/sync"
-
 import { runLibrarySync, type RunLibrarySyncInput } from "./run-library-sync"
 
 const librarySyncMutationKey = ["library", "sync"] as const
@@ -35,5 +33,3 @@ export function useSyncLibrary() {
 }
 
 export { librarySyncMutationKey }
-
-export type { LibrarySyncReport }
