@@ -141,6 +141,28 @@ describe("reader annotations", () => {
     ])
   })
 
+  it("should order annotations at the same location by time and then id without mutating input", () => {
+    const locator = {
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: { progression: 0.5, position: 1 },
+    }
+    const annotations = [
+      { id: "b", createdAt: 2, locator },
+      { id: "a", createdAt: 2, locator },
+      { id: "older", createdAt: 1, locator },
+    ]
+
+    for (const input of [annotations, [...annotations].reverse()]) {
+      expect(sortReaderAnnotations(input).map(({ id }) => id)).toEqual([
+        "older",
+        "a",
+        "b",
+      ])
+    }
+    expect(annotations.map(({ id }) => id)).toEqual(["b", "a", "older"])
+  })
+
   it("should match the same selected passage after locator canonicalization", () => {
     const saved = {
       href: "OEBPS/chapter.xhtml",

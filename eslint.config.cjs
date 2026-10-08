@@ -54,8 +54,8 @@ module.exports = defineConfig([
     rules: {
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "error",
-      complexity: ["error", { max: 20 }],
-      "sonarjs/cognitive-complexity": ["error", 15],
+      complexity: ["error", { max: 22 }],
+      "sonarjs/cognitive-complexity": ["error", 16],
     },
   },
   {

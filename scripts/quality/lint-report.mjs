@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs"
 import { ESLint } from "eslint"
 
-// The API reports raw findings; CLI bulk suppressions only apply to `pnpm lint`.
+// Report the official ESLint findings without a suppression baseline.
 const eslint = new ESLint()
 const results = await eslint.lintFiles([
   "eslint.config.cjs",

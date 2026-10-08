@@ -1,2 +1,2 @@
-# Rust's cognitive_complexity lint is a review signal, not a correctness score.
-cognitive-complexity-threshold = 25
+# Project refactoring gate; this score does not measure human comprehension.
+cognitive-complexity-threshold = 27

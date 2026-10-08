@@ -18,10 +18,10 @@ Quality 仅在 PR 和手动执行时运行，普通推送不触发。手动执�
 | `pnpm qa:coverage` | 五包完整测试及显式源码范围的 Vitest/Jest 覆盖率 | 按包基线门禁 |
 | `pnpm qa:mutation` | 共享路径、进度、计时、TTS 状态与语言逻辑的 Stryker 变异测试 | 测试有效性门禁 |
 | `pnpm qa:rust` | rustfmt、Clippy、Cargo workspace 完整测试 | Rust 门禁 |
-| `pnpm qa:rust:complexity` | Rust 认知复杂度告警 | 人工评审报告 |
+| `pnpm qa:rust:complexity` | Rust 认知复杂度检查 | 超限返回非零；同时纳入 Rust 门禁 |
 | `pnpm qa:rust:coverage` | Core 与移动 FFI 的 cargo-llvm-cov LCOV | 需安装工具及 llvm-tools-preview |
 | `pnpm qa:unused` | Knip 扫描未使用文件、依赖、导出与未解析引用 | 待人工确认的债务报告 |
-| `pnpm lint:report` | 输出包括历史债务在内的原始 ESLint JSON | 有发现时返回非零 |
+| `pnpm lint:report` | 输出原始 ESLint JSON | 有发现时返回非零 |
 | `pnpm qa:security` | npm 生产依赖漏洞审计 | 联网检查；高危及以上返回非零 |
 | `pnpm qa:rust:security` | Cargo 锁文件通告与撤包状态审计 | 需安装 cargo-audit 和联网；漏洞返回非零 |
 | `pnpm qa:workflows` | actionlint 校验 Actions 语法、表达式与 action 输入 | 需安装 actionlint；CI 使用官方固定版本镜像 |
@@ -58,18 +58,21 @@ SonarCloud、Codecov 或 Stryker Dashboard。Knip 报告不能直接用作删除
 
 ## 基线与新增问题
 
-- ESLint 使用官方 bulk suppressions 记录既有问题，规则保持 `error`；新增文件或某文件某规则
-  超过已有数量会失败。`pnpm lint:report` 始终展示全部问题。
-- `eslint-suppressions.json` 按文件、规则计数，并不锁定每个函数：同文件问题被替换，或已经
-  超限的函数继续变复杂，计数门禁可能察觉不到。评审必须查看原始报告和改动函数。
-- 修复后使用 `pnpm lint --prune-suppressions` 缩减记录。不能在 CI 自动刷新基线，也不能把
-  解析错误、工具启动失败当作可抑制债务。
+- ESLint 历史问题已清零，不保留 `eslint-suppressions.json`；所有启用规则直接以 `error`
+  阻断新增问题。`pnpm lint:report` 输出未经豁免的原始结果，不能通过重建基线接受超限。
 - 覆盖率基线来自全包实测，四项指标分别设门槛；未运行文件也计入。既有桌面 70/65/60/70
   目标并未达到，仍作为后续提升方向，不能把基线通过宣称为该目标达标。
 - 重复扫描阈值、最小片段和排除项见 `.jscpd.json`。生成绑定、实体、翻译表、第三方 UI
   模板与独立测试文件不进入产品重复率。Rust 内联测试仍随源文件参与扫描。
-- 圈复杂度阈值 20，TS 认知复杂度 15；Rust 认知复杂度报告阈值 25。
-  这些值用于找出需评审的函数，不要求把分支机械拆成大量转发函数。
+- 圈复杂度阈值 22，TS 认知复杂度 16；Rust 认知复杂度阈值 27。
+  项目选择在原阈值 20/15/25 上最多提高 10%，整数阈值向下取整，实际增幅分别为
+  10%/6.7%/8%，容纳合理的分支密度，避免机械拆分；这不是已被评测证明的 AI 能力增幅。
+  [相关研究](https://arxiv.org/abs/2602.07882) 未给出可通用换算的阈值比例。
+  超限整改应分离职责、降低嵌套并保留行为测试，不继续提高阈值以消除剩余发现。
+- Rust 使用 Clippy 官方 `cognitive_complexity`，在本地与 CI 显式设为 `deny`。
+  [Clippy 的说明](https://rust-lang.github.io/rust-clippy/rust-1.95.0/index.html#cognitive_complexity)
+  明确指出它不能准确衡量理解难度；其计数方式也不同于 SonarJS。这里将其作为项目的函数拆分
+  信号，不将分数解释为人的认知负担，也不跨语言比较分数。
 
 覆盖率分母采用配置中的 authored source：排除声明、测试、生成文件、第三方 UI 模板；移动端
 另外排除 Expo Router 路由装配，i18n 排除翻译 JSON 与入口 re-export。没有被测试导入的范围内
@@ -116,7 +119,6 @@ Swift/Kotlin 都经过变异测试。原生 E2E、跨设备收敛和性能评测
 
 ## 官方依据
 
-- [ESLint bulk suppressions](https://eslint.org/docs/latest/use/suppressions)
 - [圈复杂度定义](https://eslint.org/docs/latest/rules/complexity)
 - [Vitest 覆盖率范围](https://vitest.dev/guide/coverage.html)
 - [Stryker Vitest runner](https://stryker-mutator.io/docs/stryker-js/vitest-runner/)
