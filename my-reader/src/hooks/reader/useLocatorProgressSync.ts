@@ -8,9 +8,8 @@ import {
 import { isTauri } from "@tauri-apps/api/core"
 import { useCallback, useEffect, useRef } from "react"
 import { locatorToJson } from "@/lib/readium/locator"
+import { scheduleReaderProgressSave } from "@/lib/readerProgressPersistence"
 import { api } from "@/lib/tauri-api"
-
-const SAVE_DEBOUNCE_MS = 1600
 
 type ReadingSessionContext = {
   libraryId: string
@@ -39,7 +38,6 @@ export function useLocatorProgressSync(params: {
     currentLocator,
     displayProgression,
   } = params
-  const saveSeqRef = useRef(0)
   const locatorRef = useRef(currentLocator)
   const readingCounterRef = useRef<ReadingTimeAccumulator | null>(null)
   const readingContextRef = useRef<ReadingSessionContext | null>(null)
@@ -131,24 +129,14 @@ export function useLocatorProgressSync(params: {
   useEffect(() => {
     if (!isTauri() || !enabled || !libraryId || !locatorKey) return
 
-    const seq = ++saveSeqRef.current
-    const t = window.setTimeout(() => {
-      if (saveSeqRef.current !== seq) return
-      const loc = locatorRef.current
-      if (!loc) return
-      api
-        .setReadingProgress(
-          libraryId,
-          bookId,
-          format,
-          locatorToJson(loc),
-          displayProgression,
-        )
-        .catch((e: unknown) => {
-          console.error("[useLocatorProgressSync] save failed:", e)
-        })
-    }, SAVE_DEBOUNCE_MS)
-
-    return () => window.clearTimeout(t)
+    const loc = locatorRef.current
+    if (!loc) return
+    return scheduleReaderProgressSave(
+      libraryId,
+      bookId,
+      format,
+      locatorToJson(loc),
+      displayProgression,
+    )
   }, [enabled, libraryId, bookId, format, locatorKey, displayProgression])
 }

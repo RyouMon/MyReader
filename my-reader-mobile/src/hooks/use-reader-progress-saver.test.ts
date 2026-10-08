@@ -77,6 +77,52 @@ describe("useReaderProgressSaver", () => {
     jest.useRealTimers()
   })
 
+  it("saves the latest page when the reader closes before the debounce", async () => {
+    const { rerender, unmount } = renderHook(
+      ({ state }: { state: ReaderState }) =>
+        useReaderProgressSaver(library.id, loadState, state),
+      { initialProps: { state: readerState(1) } },
+    )
+    rerender({ state: readerState(2) })
+    rerender({ state: readerState(3) })
+
+    await act(async () => unmount())
+
+    expect(setReadingProgress).toHaveBeenCalledTimes(1)
+    expect(setReadingProgress).toHaveBeenCalledWith(
+      library,
+      7,
+      "EPUB",
+      readerState(3).locator,
+      { displayProgression: 0.3, invalidate: false },
+    )
+  })
+
+  it("saves movement within the same publication position", () => {
+    const initial = readerState(1)
+    const next = {
+      ...initial,
+      locator: {
+        ...initial.locator!,
+        locations: { ...initial.locator!.locations, progression: 0.5 },
+      },
+    }
+    const { rerender } = renderHook(
+      ({ state }: { state: ReaderState }) =>
+        useReaderProgressSaver(library.id, loadState, state),
+      { initialProps: { state: initial } },
+    )
+    rerender({ state: next })
+    act(() => jest.advanceTimersByTime(1600))
+    expect(setReadingProgress).toHaveBeenCalledWith(
+      library,
+      7,
+      "EPUB",
+      next.locator,
+      { displayProgression: 0.1, invalidate: false },
+    )
+  })
+
   it("should not overwrite initial progress when a book opens", () => {
     const { rerender, unmount } = renderHook(
       ({ state }: { state: ReaderState }) =>

@@ -4,6 +4,7 @@ import { act, cleanup, renderHook, waitFor } from "@testing-library/react"
 import type { ReactNode } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { ReadingPositionCandidateDto } from "@/lib/tauri-api"
+import { scheduleReaderProgressSave } from "@/lib/readerProgressPersistence"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 import { useReaderBookSource } from "../useReaderBookSource"
 
@@ -21,6 +22,7 @@ const mocks = vi.hoisted(() => ({
     selectReadingPositionCandidate: vi.fn(),
     downloadBookFile: vi.fn(),
     cancelBookDownload: vi.fn(),
+    setReadingProgress: vi.fn(),
   },
 }))
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => mocks.navigate }))
@@ -95,6 +97,41 @@ afterEach(() => {
 })
 
 describe("useReaderBookSource", () => {
+  it("persists the latest pending page before closing the reader window", async () => {
+    const { result } = renderHook(
+      () => useReaderBookSource({ bookId: "4", formatFromSearch: "PDF" }),
+      { wrapper },
+    )
+    await waitFor(() => expect(result.current.bookPayload).not.toBeNull())
+    let finishSave!: () => void
+    mocks.api.setReadingProgress.mockReturnValue(
+      new Promise<void>((resolve) => {
+        finishSave = resolve
+      }),
+    )
+    scheduleReaderProgressSave("library", 4, "PDF", savedLocator, 0.3)
+    const latest = { ...savedLocator, locations: { position: 4 } }
+    scheduleReaderProgressSave("library", 4, "PDF", latest, 0.4)
+    const calls = mocks.onCloseRequested.mock.calls
+    const closeRequested = calls[calls.length - 1][0]
+    const event = { preventDefault: vi.fn() }
+    const closing = closeRequested(event)
+
+    await waitFor(() => expect(mocks.api.setReadingProgress).toHaveBeenCalled())
+    expect(event.preventDefault).toHaveBeenCalledOnce()
+    expect(mocks.close).not.toHaveBeenCalled()
+    expect(mocks.api.setReadingProgress).toHaveBeenCalledExactlyOnceWith(
+      "library",
+      4,
+      "PDF",
+      latest,
+      0.4,
+    )
+    finishSave()
+    await closing
+    expect(mocks.close).toHaveBeenCalledOnce()
+  })
+
   it("loads the requested format and saved position with native asset URLs", async () => {
     const { result } = renderHook(
       () => useReaderBookSource({ bookId: "4", formatFromSearch: "PDF" }),

@@ -16,6 +16,7 @@ import {
 import { isMainWebviewWindow, openReaderInNewWindow } from "@/lib/readerWindow"
 import { resolveReadFormat } from "@/lib/readFormats"
 import { parseSavedLocator } from "@/lib/readium/locator"
+import { flushReaderProgress } from "@/lib/readerProgressPersistence"
 import { api, type ReadingPositionCandidateDto } from "@/lib/tauri-api"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 
@@ -166,6 +167,7 @@ export function useReaderBookSource({
         }
       }
 
+      await flushReaderProgress()
       await getCurrentWindow().close()
     })
 

@@ -46,29 +46,18 @@ function isSameReaderPosition(
   locator: Locator,
   currentPage: number,
 ): boolean {
-  if (initial.currentPage !== currentPage) return false
+  if (
+    initial.currentPage !== currentPage ||
+    !hrefRoughlyMatches(initial.href, locator.href)
+  )
+    return false
 
-  const locations = locator.locations
-  if (
-    typeof initial.position === "number" &&
-    typeof locations?.position === "number"
-  ) {
-    return initial.position === locations.position
-  }
-  if (!hrefRoughlyMatches(initial.href, locator.href)) return false
-  if (
-    typeof initial.totalProgression === "number" &&
-    typeof locations?.totalProgression === "number"
-  ) {
-    return isSameNumber(initial.totalProgression, locations.totalProgression)
-  }
-  if (
-    typeof initial.progression === "number" &&
-    typeof locations?.progression === "number"
-  ) {
-    return isSameNumber(initial.progression, locations.progression)
-  }
-  return true
+  return (["position", "progression", "totalProgression"] as const).every(
+    (key) =>
+      initial[key] == null ||
+      locator.locations?.[key] == null ||
+      isSameNumber(initial[key], locator.locations[key]),
+  )
 }
 
 export function useReaderProgressSaver(
@@ -87,6 +76,7 @@ export function useReaderProgressSaver(
     initial: ReaderPositionSnapshot | null
     moved: boolean
   } | null>(null)
+  const pendingSaveRef = useRef<(() => Promise<void>) | null>(null)
 
   useEffect(() => {
     if (
@@ -105,6 +95,7 @@ export function useReaderProgressSaver(
           key,
         }
         if (trackedPositionRef.current?.bookKey !== key) {
+          void pendingSaveRef.current?.()
           trackedPositionRef.current = {
             bookKey: key,
             initial: null,
@@ -145,41 +136,43 @@ export function useReaderProgressSaver(
     }
 
     const seq = ++saveSeqRef.current
+    const save = async () => {
+      if (pendingSaveRef.current === save) pendingSaveRef.current = null
+      try {
+        await setReadingProgress(
+          ctx.library,
+          ctx.bookId,
+          ctx.format,
+          readerState.locator!,
+          {
+            displayProgression: displayProgressionForPosition(
+              readerState.currentPage,
+              readerState.totalPages,
+            ),
+            invalidate: false,
+          },
+        )
+        console.info("[reading-sync] reader:progress-saved", {
+          libraryId: ctx.library.id,
+          bookId: ctx.bookId,
+          format: ctx.format.toUpperCase(),
+          href: readerState.locator?.href ?? null,
+          position: readerState.locator?.locations?.position ?? null,
+          totalProgression:
+            readerState.locator?.locations?.totalProgression ?? null,
+        })
+      } catch (e) {
+        console.error("[reading-sync] reader:progress-save-failed", {
+          libraryId: ctx.library.id,
+          bookId: ctx.bookId,
+          format: ctx.format.toUpperCase(),
+          error: e,
+        })
+      }
+    }
+    pendingSaveRef.current = save
     const t = setTimeout(() => {
-      if (saveSeqRef.current !== seq) return
-      void (async () => {
-        try {
-          await setReadingProgress(
-            ctx.library,
-            ctx.bookId,
-            ctx.format,
-            readerState.locator!,
-            {
-              displayProgression: displayProgressionForPosition(
-                readerState.currentPage,
-                readerState.totalPages,
-              ),
-              invalidate: false,
-            },
-          )
-          console.info("[reading-sync] reader:progress-saved", {
-            libraryId: ctx.library.id,
-            bookId: ctx.bookId,
-            format: ctx.format.toUpperCase(),
-            href: readerState.locator?.href ?? null,
-            position: readerState.locator?.locations?.position ?? null,
-            totalProgression:
-              readerState.locator?.locations?.totalProgression ?? null,
-          })
-        } catch (e) {
-          console.error("[reading-sync] reader:progress-save-failed", {
-            libraryId: ctx.library.id,
-            bookId: ctx.bookId,
-            format: ctx.format.toUpperCase(),
-            error: e,
-          })
-        }
-      })()
+      if (saveSeqRef.current === seq) void save()
     }, SAVE_DEBOUNCE_MS)
 
     return () => clearTimeout(t)
@@ -192,17 +185,20 @@ export function useReaderProgressSaver(
 
   useEffect(() => {
     return () => {
+      const saving = pendingSaveRef.current?.() ?? Promise.resolve()
       const ctx = bookContextRef.current
       if (ctx) {
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.readingProgress(ctx.library.id),
+        void saving.then(() => {
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.readingProgress(ctx.library.id),
+          })
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.recentlyReadBooks(ctx.library.id),
+          })
+          console.info(
+            "[mobile-reader] Invalidated queryKey: reading-progress, recently-read-books.",
+          )
         })
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.recentlyReadBooks(ctx.library.id),
-        })
-        console.info(
-          "[mobile-reader] Invalidated queryKey: reading-progress, recently-read-books.",
-        )
       }
     }
   }, [])
