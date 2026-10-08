@@ -279,7 +279,7 @@ mod tests {
 
         let source = webdav_source(Some(account));
         let op = from_data_source(&source).await.unwrap();
-        assert_eq!(op.info().scheme(), opendal::Scheme::Webdav);
+        assert_eq!(op.info().scheme(), opendal::services::WEBDAV_SCHEME);
     }
 
     #[tokio::test]

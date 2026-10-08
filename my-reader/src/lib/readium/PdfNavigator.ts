@@ -93,7 +93,7 @@ export class PdfNavigator {
     })
     const pdf = await task.promise
     if (this._destroyed) {
-      await pdf.destroy()
+      await pdf.loadingTask.destroy()
       return
     }
     this.pdf = pdf
@@ -105,7 +105,7 @@ export class PdfNavigator {
   async destroy(): Promise<void> {
     this._destroyed = true
     this.pageCache.clear()
-    await this.pdf?.destroy()
+    await this.pdf?.loadingTask.destroy()
     this.pdf = null
   }
 

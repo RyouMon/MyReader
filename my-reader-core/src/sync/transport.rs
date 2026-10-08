@@ -8,9 +8,9 @@ use crate::models::LibraryStorageConfig;
 use http::{header, Method, Request, Response, StatusCode};
 use opendal::{
     layers::RetryLayer,
-    raw::{percent_encode_path, HttpBody, HttpClient, HttpFetch},
+    raw::percent_encode_path,
     services::{Fs, Onedrive, Webdav},
-    Buffer, Error, ErrorKind, Operator, Scheme,
+    Buffer, Error, ErrorKind, HttpBody, HttpTransport, HttpTransporter, OperationContext, Operator,
 };
 
 const REMOTE_CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
@@ -62,11 +62,11 @@ impl RemoteUploadProgress {
 
 #[derive(Clone)]
 struct OneDriveHttpClient {
-    inner: HttpClient,
+    inner: HttpTransporter,
     upload_progress: Option<RemoteUploadProgress>,
 }
 
-impl HttpFetch for OneDriveHttpClient {
+impl HttpTransport for OneDriveHttpClient {
     async fn fetch(&self, mut request: Request<Buffer>) -> opendal::Result<Response<HttpBody>> {
         fix_onedrive_upload_session_url(&mut request)?;
         let progress = onedrive_upload_request_progress(&request);
@@ -75,7 +75,7 @@ impl HttpFetch for OneDriveHttpClient {
         let mut response = self.inner.fetch(request).await?;
         if completes_upload_session && response.status() == StatusCode::OK {
             // Graph returns 200 when a session replaces an existing file, but
-            // OpenDAL 0.53.3 recognizes only 201 as the final chunk response.
+            // OpenDAL 0.58.2 recognizes only 201 as the final chunk response.
             *response.status_mut() = StatusCode::CREATED;
         }
         if response.status().is_success() {
@@ -170,7 +170,6 @@ fn build_storage_operator_with_timeouts_and_progress(
     match config {
         LibraryStorageConfig::LocalDirect { root } => {
             Operator::new(Fs::default().root(&non_empty(root, "Local storage root")?))
-                .map(|operator| operator.finish())
                 .map_err(|error| sync_error(format!("Initialize local storage failed: {error}")))
         }
         LibraryStorageConfig::Webdav {
@@ -190,9 +189,8 @@ fn build_storage_operator_with_timeouts_and_progress(
                         .unwrap_or("/"),
                 );
             Operator::new(builder)
-                .map(|operator| operator.finish())
-                .inspect(|operator| {
-                    operator.update_http_client(|_| client);
+                .map(|operator| {
+                    operator.with_context(OperationContext::new().with_http_transport(client))
                 })
                 .map_err(|error| sync_error(format!("Initialize WebDAV storage failed: {error}")))
         }
@@ -206,7 +204,7 @@ fn build_storage_operator_with_timeouts_and_progress(
 fn build_onedrive_operator(
     access_token: &str,
     root: Option<&str>,
-    client: HttpClient,
+    client: HttpTransporter,
     upload_progress: Option<RemoteUploadProgress>,
     retry_operations: bool,
 ) -> Result<Operator, SyncError> {
@@ -218,28 +216,24 @@ fn build_onedrive_operator(
     let operator = Operator::new(builder)
         .map_err(|error| sync_error(format!("Initialize OneDrive storage failed: {error}")))?;
     let operator = if retry_operations {
-        operator
-            .layer(
-                RetryLayer::new()
-                    .with_min_delay(Duration::from_millis(500))
-                    .with_max_delay(Duration::from_secs(2))
-                    .with_max_times(3)
-                    .with_jitter(),
-            )
-            .finish()
+        operator.layer(
+            RetryLayer::new()
+                .with_min_delay(Duration::from_millis(500))
+                .with_max_delay(Duration::from_secs(2))
+                .with_max_times(3)
+                .with_jitter(),
+        )
     } else {
         // Retrying OpenDAL's one-shot writer recreates a large-file upload
         // session instead of resuming the existing session. OneDrive keeps the
         // original target reserved and rejects the retry with nameAlreadyExists.
-        operator.finish()
+        operator
     };
-    operator.update_http_client(|_| {
-        HttpClient::with(OneDriveHttpClient {
-            inner: client,
-            upload_progress,
-        })
+    let transport = HttpTransporter::new(OneDriveHttpClient {
+        inner: client,
+        upload_progress,
     });
-    Ok(operator)
+    Ok(operator.with_context(OperationContext::new().with_http_transport(transport)))
 }
 
 pub(crate) async fn upload_book_file(
@@ -251,7 +245,7 @@ pub(crate) async fn upload_book_file(
     upload_progress: Option<&RemoteUploadProgress>,
 ) -> opendal::Result<()> {
     let bytes = Buffer::from(bytes);
-    if book_upload_operator.info().scheme() != Scheme::Onedrive
+    if book_upload_operator.info().scheme() != opendal::services::ONEDRIVE_SCHEME
         || size <= ONEDRIVE_SIMPLE_UPLOAD_MAX
     {
         operator.write(relative_path, bytes).await?;
@@ -417,13 +411,17 @@ fn remote_http_client(
     connect_timeout: Duration,
     read_timeout: Duration,
     request_timeout: Duration,
-) -> Result<HttpClient, SyncError> {
-    reqwest::Client::builder()
+) -> Result<HttpTransporter, SyncError> {
+    crate::infrastructure::http::client_builder()
         .connect_timeout(connect_timeout)
         .read_timeout(read_timeout)
         .timeout(request_timeout)
         .build()
-        .map(HttpClient::with)
+        .map(|client| {
+            HttpTransporter::new(opendal_http_transport_reqwest::ReqwestTransport::new(
+                client,
+            ))
+        })
         .map_err(|error| sync_error(format!("Initialize remote HTTP client failed: {error}")))
 }
 
@@ -474,7 +472,7 @@ mod tests {
         }
     }
 
-    impl HttpFetch for CapturingOneDriveClient {
+    impl HttpTransport for CapturingOneDriveClient {
         async fn fetch(&self, request: Request<Buffer>) -> opendal::Result<Response<HttpBody>> {
             let (parts, body) = request.into_parts();
             let authorization = parts
@@ -521,7 +519,7 @@ mod tests {
         }
     }
 
-    impl HttpFetch for InterruptedOneDriveClient {
+    impl HttpTransport for InterruptedOneDriveClient {
         async fn fetch(&self, request: Request<Buffer>) -> opendal::Result<Response<HttpBody>> {
             let method = request.method().clone();
             let uri = request.uri().to_string();
@@ -547,7 +545,7 @@ mod tests {
             root: local.path().to_string_lossy().into_owned(),
         })
         .unwrap();
-        assert_eq!(local_operator.info().scheme(), opendal::Scheme::Fs);
+        assert_eq!(local_operator.info().scheme(), opendal::services::FS_SCHEME);
 
         let webdav_operator = build_storage_operator(&LibraryStorageConfig::Webdav {
             endpoint: "https://example.com/dav".to_owned(),
@@ -556,14 +554,20 @@ mod tests {
             root: Some("/books".to_owned()),
         })
         .unwrap();
-        assert_eq!(webdav_operator.info().scheme(), opendal::Scheme::Webdav);
+        assert_eq!(
+            webdav_operator.info().scheme(),
+            opendal::services::WEBDAV_SCHEME
+        );
 
         let onedrive_operator = build_storage_operator(&LibraryStorageConfig::Onedrive {
             access_token: "token".to_owned(),
             root: Some("/books".to_owned()),
         })
         .unwrap();
-        assert_eq!(onedrive_operator.info().scheme(), opendal::Scheme::Onedrive);
+        assert_eq!(
+            onedrive_operator.info().scheme(),
+            opendal::services::ONEDRIVE_SCHEME
+        );
     }
 
     #[test]
@@ -588,14 +592,13 @@ mod tests {
                 .access_token("token")
                 .root("/Library/MyReaderTest2"),
         )
-        .unwrap()
-        .finish();
-        operator.update_http_client(|_| {
-            HttpClient::with(OneDriveHttpClient {
-                inner: HttpClient::with(client.clone()),
-                upload_progress: None,
-            })
+        .unwrap();
+        let transport = HttpTransporter::new(OneDriveHttpClient {
+            inner: HttpTransporter::new(client.clone()),
+            upload_progress: None,
         });
+        let operator =
+            operator.with_context(OperationContext::new().with_http_transport(transport));
 
         operator
             .write(
@@ -644,7 +647,7 @@ mod tests {
         let operator = build_onedrive_operator(
             "token",
             Some("/Library/MyReaderTest2"),
-            HttpClient::with(client.clone()),
+            HttpTransporter::new(client.clone()),
             None,
             false,
         )
@@ -673,8 +676,7 @@ mod tests {
         let operator = Operator::new(
             Fs::default().root(directory.path().to_str().expect("temporary path is UTF-8")),
         )
-        .unwrap()
-        .finish();
+        .unwrap();
         let relative_path = "Books/Book (123456)/Book.pdf";
 
         upload_staged_book_file(
@@ -703,7 +705,7 @@ mod tests {
     async fn should_report_uploaded_bytes_when_onedrive_accepts_a_session_chunk() {
         let progress = RemoteUploadProgress::default();
         let client = OneDriveHttpClient {
-            inner: HttpClient::with(CapturingOneDriveClient::default()),
+            inner: HttpTransporter::new(CapturingOneDriveClient::default()),
             upload_progress: Some(progress.clone()),
         };
         let request = Request::builder()

@@ -22,10 +22,9 @@ impl EpubStreamer {
     /// Start serving the given directory over HTTP on a random available port.
     /// Returns the streamer instance and the base URL (e.g., "http://127.0.0.1:12345").
     pub async fn serve_dir(dir: PathBuf) -> Result<(Self, String), AppError> {
-        let port = portpicker::pick_unused_port()
-            .ok_or_else(|| AppError::Config("NO_AVAILABLE_PORT".into()))?;
-        let addr: SocketAddr = ([127, 0, 0, 1], port).into();
-        let base_url = format!("http://127.0.0.1:{}", port);
+        let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0)).await?;
+        let addr = listener.local_addr()?;
+        let base_url = format!("http://{addr}");
 
         let dir = Arc::new(RwLock::new(dir));
 
@@ -85,11 +84,11 @@ impl EpubStreamer {
 
         let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
 
-        let (_, server) = warp::serve(route).bind_with_graceful_shutdown(addr, async move {
+        let server = warp::serve(route).incoming(listener).graceful(async move {
             let _ = shutdown_rx.await;
         });
 
-        tokio::spawn(server);
+        tokio::spawn(server.run());
 
         Ok((
             Self {
@@ -136,5 +135,66 @@ fn guess_mime_type(path: &std::path::Path) -> &'static str {
         Some("ncx") => "application/x-dtbncx+xml",
         Some("opf") => "application/oebps-package+xml",
         _ => "application/octet-stream",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn serves_epub_resources_and_releases_the_listener_on_shutdown() {
+        let directory = tempfile::tempdir().unwrap();
+        std::fs::write(directory.path().join("chapter.xhtml"), "<p>Chapter</p>").unwrap();
+        let (mut streamer, url) = EpubStreamer::serve_dir(directory.path().to_owned())
+            .await
+            .unwrap();
+        assert!(streamer.addr().ip().is_loopback());
+        let client = reqwest::Client::new();
+        let response = client
+            .get(format!("{url}/chapter.xhtml"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), reqwest::StatusCode::OK);
+        assert_eq!(response.headers()["content-type"], "application/xhtml+xml");
+        assert_eq!(response.headers()["access-control-allow-origin"], "*");
+        assert_eq!(response.text().await.unwrap(), "<p>Chapter</p>");
+        assert_eq!(
+            client
+                .get(format!("{url}/missing.xhtml"))
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            reqwest::StatusCode::NOT_FOUND
+        );
+        drop(client);
+        streamer.shutdown();
+        tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            loop {
+                if let Ok(listener) = tokio::net::TcpListener::bind(streamer.addr()).await {
+                    drop(listener);
+                    break;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("shutdown should release the listening socket");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn rejects_symlinks_that_escape_the_epub_directory() {
+        let directory = tempfile::tempdir().unwrap();
+        let outside = tempfile::NamedTempFile::new().unwrap();
+        std::os::unix::fs::symlink(outside.path(), directory.path().join("outside.xhtml")).unwrap();
+        let (mut streamer, url) = EpubStreamer::serve_dir(directory.path().to_owned())
+            .await
+            .unwrap();
+        let response = reqwest::get(format!("{url}/outside.xhtml")).await.unwrap();
+        assert_eq!(response.status(), reqwest::StatusCode::FORBIDDEN);
+        streamer.shutdown();
     }
 }

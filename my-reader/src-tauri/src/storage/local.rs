@@ -10,6 +10,5 @@ pub fn build_operator(root: &str) -> Result<Operator, AppError> {
     let builder = services::Fs::default().root(root);
     Operator::new(builder)
         .map_err(|err| AppError::Config(format!("初始化本地 Operator 失败: {err}")))?
-        .finish()
         .pipe(Ok)
 }

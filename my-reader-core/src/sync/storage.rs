@@ -168,7 +168,8 @@ impl<'a> StorageAdapter<'a> {
     pub async fn remove_range(&self, prefix: &[String]) -> Result<(), SyncError> {
         let path = storage_key_to_path(prefix)?;
         self.operator
-            .remove_all(&format!("{path}/"))
+            .delete_with(&format!("{path}/"))
+            .recursive(true)
             .await
             .map_err(|error| {
                 sync_error(format!(
@@ -228,8 +229,7 @@ mod tests {
         let operator = Operator::new(
             opendal::services::Fs::default().root(directory.path().to_str().unwrap()),
         )
-        .unwrap()
-        .finish();
+        .unwrap();
         let adapter = StorageAdapter::new(&operator);
         let first = incremental_key("abcdef", "1111");
         let second = incremental_key("abcdef", "2222");

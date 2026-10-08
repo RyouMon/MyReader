@@ -228,7 +228,7 @@ async fn successful(response: Response) -> Result<Response, CoreError> {
 }
 
 fn client() -> Result<Client, CoreError> {
-    Client::builder()
+    super::http::client_builder()
         .timeout(REQUEST_TIMEOUT)
         .redirect(reqwest::redirect::Policy::none())
         .user_agent("MyReader/0.12.0")

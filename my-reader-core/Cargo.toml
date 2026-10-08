@@ -15,10 +15,12 @@ http = "1"
 hayro = "0.7.1"
 image = { version = "0.25.10", default-features = false, features = ["gif", "jpeg", "png", "webp"] }
 opendal.workspace = true
+opendal-http-transport-reqwest = { version = "0.58.2", default-features = false, features = ["rustls-no-provider"] }
 quick-xml = { version = "0.41", features = ["serialize"] }
 reqwest.workspace = true
 rbook = { version = "0.7.10", default-features = false }
 ring.workspace = true
+rustls = { version = "0.23.45", default-features = false, features = ["ring", "std", "tls12"] }
 rusqlite.workspace = true
 sea-orm.workspace = true
 sea-orm-migration.workspace = true
@@ -32,6 +34,7 @@ tokio-tungstenite = { version = "0.28", features = ["rustls-tls-webpki-roots"] }
 tracing.workspace = true
 url.workspace = true
 uuid.workspace = true
+webpki-roots = "1.0.6"
 zip = { version = "8.6", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
 [dev-dependencies]

@@ -454,7 +454,6 @@ mod tests {
     fn operator(directory: &tempfile::TempDir) -> Operator {
         Operator::new(opendal::services::Fs::default().root(directory.path().to_str().unwrap()))
             .unwrap()
-            .finish()
     }
 
     #[tokio::test]

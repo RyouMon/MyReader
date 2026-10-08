@@ -67,12 +67,17 @@ fn tts_test_server() -> TtsTestServer {
                             .unwrap()
                     },
                 );
-            let (address, server) =
-                warp::serve(route).bind_with_graceful_shutdown(([127, 0, 0, 1], 0), async move {
+            let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))
+                .await
+                .unwrap();
+            let address = listener.local_addr().unwrap();
+            let server = warp::serve(route)
+                .incoming(listener)
+                .graceful(async move {
                     let _ = shutdown_rx.await;
                 });
             address_tx.send(address).unwrap();
-            server.await;
+            server.run().await;
         });
     });
     let address = address_rx.recv().unwrap();

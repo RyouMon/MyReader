@@ -7,8 +7,7 @@ use oauth2::basic::{
     BasicErrorResponse, BasicRevocationErrorResponse, BasicTokenIntrospectionResponse,
     BasicTokenType,
 };
-use oauth2::reqwest::async_http_client;
-use oauth2::revocation::StandardRevocableToken;
+use oauth2::StandardRevocableToken;
 use oauth2::{
     AuthUrl, AuthorizationCode, Client, ClientId, CsrfToken, ExtraTokenFields, PkceCodeChallenge,
     PkceCodeVerifier, RedirectUrl, RefreshToken, Scope, StandardTokenResponse, TokenResponse,
@@ -127,7 +126,6 @@ type OnedriveTokenResponse = StandardTokenResponse<OnedriveExtraTokenFields, Bas
 type OnedriveClient = Client<
     BasicErrorResponse,
     OnedriveTokenResponse,
-    BasicTokenType,
     BasicTokenIntrospectionResponse,
     StandardRevocableToken,
     BasicRevocationErrorResponse,
@@ -223,20 +221,19 @@ impl OnedriveTokenManager {
 
         let redirect_uri = format!("http://localhost:{local_port}");
 
-        let client = OnedriveClient::new(
-            ClientId::new(cid.to_string()),
-            None,
-            AuthUrl::new(auth_url.to_string())
-                .map_err(|e| AppError::Auth(format!("Invalid auth URL: {e}")))?,
-            Some(
+        let client = OnedriveClient::new(ClientId::new(cid.to_string()))
+            .set_auth_uri(
+                AuthUrl::new(auth_url.to_string())
+                    .map_err(|e| AppError::Auth(format!("Invalid auth URL: {e}")))?,
+            )
+            .set_token_uri(
                 TokenUrl::new(token_url.to_string())
                     .map_err(|e| AppError::Auth(format!("Invalid token URL: {e}")))?,
-            ),
-        )
-        .set_redirect_uri(
-            RedirectUrl::new(redirect_uri.clone())
-                .map_err(|e| AppError::Auth(format!("Invalid redirect URI: {e}")))?,
-        );
+            )
+            .set_redirect_uri(
+                RedirectUrl::new(redirect_uri.clone())
+                    .map_err(|e| AppError::Auth(format!("Invalid redirect URI: {e}")))?,
+            );
 
         let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
@@ -426,6 +423,13 @@ pub fn onedrive_token_manager() -> &'static OnedriveTokenManager {
     MANAGER.get_or_init(OnedriveTokenManager::new)
 }
 
+fn oauth_http_client() -> Result<reqwest::Client, AppError> {
+    reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .map_err(|e| AppError::Auth(format!("Failed to create OAuth HTTP client: {e}")))
+}
+
 async fn exchange_code_for_tokens(
     auth_url: &str,
     token_url: &str,
@@ -434,25 +438,24 @@ async fn exchange_code_for_tokens(
     code: &str,
     verifier: PkceCodeVerifier,
 ) -> Result<OnedriveTokenResponse, AppError> {
-    let client = OnedriveClient::new(
-        ClientId::new(client_id.to_string()),
-        None,
-        AuthUrl::new(auth_url.to_string())
-            .map_err(|e| AppError::Auth(format!("Invalid auth URL: {e}")))?,
-        Some(
+    let client = OnedriveClient::new(ClientId::new(client_id.to_string()))
+        .set_auth_uri(
+            AuthUrl::new(auth_url.to_string())
+                .map_err(|e| AppError::Auth(format!("Invalid auth URL: {e}")))?,
+        )
+        .set_token_uri(
             TokenUrl::new(token_url.to_string())
                 .map_err(|e| AppError::Auth(format!("Invalid token URL: {e}")))?,
-        ),
-    )
-    .set_redirect_uri(
-        RedirectUrl::new(redirect_uri.to_string())
-            .map_err(|e| AppError::Auth(format!("Invalid redirect URI: {e}")))?,
-    );
+        )
+        .set_redirect_uri(
+            RedirectUrl::new(redirect_uri.to_string())
+                .map_err(|e| AppError::Auth(format!("Invalid redirect URI: {e}")))?,
+        );
 
     client
         .exchange_code(AuthorizationCode::new(code.to_string()))
         .set_pkce_verifier(verifier)
-        .request_async(async_http_client)
+        .request_async(&oauth_http_client()?)
         .await
         .map_err(|e| AppError::Auth(format!("Token exchange failed: {e}")))
 }
@@ -463,20 +466,19 @@ async fn request_token_refresh(
     client_id: &str,
     refresh_token: &str,
 ) -> Result<OnedriveTokenResponse, AppError> {
-    let client = OnedriveClient::new(
-        ClientId::new(client_id.to_string()),
-        None,
-        AuthUrl::new(auth_url.to_string())
-            .map_err(|e| AppError::Auth(format!("Invalid auth URL: {e}")))?,
-        Some(
+    let client = OnedriveClient::new(ClientId::new(client_id.to_string()))
+        .set_auth_uri(
+            AuthUrl::new(auth_url.to_string())
+                .map_err(|e| AppError::Auth(format!("Invalid auth URL: {e}")))?,
+        )
+        .set_token_uri(
             TokenUrl::new(token_url.to_string())
                 .map_err(|e| AppError::Auth(format!("Invalid token URL: {e}")))?,
-        ),
-    );
+        );
 
     client
         .exchange_refresh_token(&RefreshToken::new(refresh_token.to_string()))
-        .request_async(async_http_client)
+        .request_async(&oauth_http_client()?)
         .await
         .map_err(|e| {
             let detail = match &e {
@@ -1122,8 +1124,12 @@ mod tests {
                     }
                 });
 
-        let (addr, server) = warp::serve(route).bind_ephemeral(([127, 0, 0, 1], 0));
-        tokio::spawn(server);
+        let listener = std::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0)).unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let addr = listener.local_addr().unwrap();
+        let listener = tokio::net::TcpListener::from_std(listener).unwrap();
+        let server = warp::serve(route).incoming(listener);
+        tokio::spawn(server.run());
         addr
     }
 
@@ -1157,9 +1163,63 @@ mod tests {
                     }
                 });
 
-        let (addr, server) = warp::serve(route).bind_ephemeral(([127, 0, 0, 1], 0));
-        tokio::spawn(server);
+        let listener = std::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0)).unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let addr = listener.local_addr().unwrap();
+        let listener = tokio::net::TcpListener::from_std(listener).unwrap();
+        let server = warp::serve(route).incoming(listener);
+        tokio::spawn(server.run());
         (addr, request_count)
+    }
+
+    #[tokio::test]
+    async fn token_requests_should_not_follow_redirects() {
+        let redirected_requests = Arc::new(AtomicUsize::new(0));
+        let captured = redirected_requests.clone();
+        let redirect = warp::path("token").map(|| {
+            warp::http::Response::builder()
+                .status(307)
+                .header("location", "/redirect-target")
+                .body(String::new())
+                .unwrap()
+        });
+        let destination = warp::path("redirect-target").map(move || {
+            captured.fetch_add(1, Ordering::SeqCst);
+            warp::reply::json(&serde_json::json!({
+                "access_token": "unexpected",
+                "token_type": "Bearer"
+            }))
+        });
+        let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))
+            .await
+            .unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(
+            warp::serve(redirect.or(destination))
+                .incoming(listener)
+                .run(),
+        );
+        let auth_url = format!("http://{address}/auth");
+        let token_url = format!("http://{address}/token");
+
+        assert!(
+            request_token_refresh(&auth_url, &token_url, "client-id", "refresh")
+                .await
+                .is_err()
+        );
+        let (_, verifier) = PkceCodeChallenge::new_random_sha256();
+        assert!(exchange_code_for_tokens(
+            &auth_url,
+            &token_url,
+            "client-id",
+            "http://localhost",
+            "code",
+            verifier,
+        )
+        .await
+        .is_err());
+        assert_eq!(redirected_requests.load(Ordering::SeqCst), 0);
+        server.abort();
     }
 
     #[tokio::test]
@@ -1257,8 +1317,12 @@ mod tests {
                         .unwrap()
                 });
 
-        let (addr, server) = warp::serve(route).bind_ephemeral(([127, 0, 0, 1], 0));
-        tokio::spawn(server);
+        let listener = std::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0)).unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let addr = listener.local_addr().unwrap();
+        let listener = tokio::net::TcpListener::from_std(listener).unwrap();
+        let server = warp::serve(route).incoming(listener);
+        tokio::spawn(server.run());
         addr
     }
 

@@ -81,8 +81,12 @@ fn start_webdav_file_server(metadata: Vec<u8>) -> std::net::SocketAddr {
             }
         },
     );
-    let (address, server) = warp::serve(route).bind_ephemeral(([127, 0, 0, 1], 0));
-    tokio::spawn(server);
+    let listener = std::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0)).unwrap();
+    listener.set_nonblocking(true).unwrap();
+    let address = listener.local_addr().unwrap();
+    let listener = tokio::net::TcpListener::from_std(listener).unwrap();
+    let server = warp::serve(route).incoming(listener);
+    tokio::spawn(server.run());
     address
 }
 

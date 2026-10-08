@@ -10,7 +10,7 @@
   },
   "homepage": "https://ryoumon.github.io/projects/myreader/",
   "type": "module",
-  "packageManager": "pnpm@11.7.0",
+  "packageManager": "pnpm@11.28.5",
   "scripts": {
     "dev:desktop": "pnpm --filter my-reader tauri dev",
     "dev:mobile": "pnpm --filter my-reader-mobile start",

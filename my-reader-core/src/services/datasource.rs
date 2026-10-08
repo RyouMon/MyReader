@@ -93,7 +93,9 @@ async fn list_onedrive_directories(
     let relative_parent = storage::normalize_remote_path(path)?;
     let source_root = storage::normalize_remote_path(root_path.unwrap_or_default())?;
     let api_path = storage::join_remote_path(&source_root, &relative_parent)?;
-    let client = reqwest::Client::new();
+    let client = crate::infrastructure::http::client_builder()
+        .build()
+        .map_err(|error| CoreError::Storage(format!("ONEDRIVE_STORAGE_FAILED: {error}")))?;
     let mut next_link = Some(onedrive_children_url(&api_path).to_string());
     let mut entries = Vec::new();
 
@@ -259,8 +261,7 @@ mod tests {
         let operator = Operator::new(
             Fs::default().root(remote.path().to_str().expect("temporary path is UTF-8")),
         )
-        .unwrap()
-        .finish();
+        .unwrap();
 
         let entries = list_directories_with_operator(&operator, "/Books", None)
             .await

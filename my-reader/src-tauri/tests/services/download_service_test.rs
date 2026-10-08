@@ -883,5 +883,5 @@ async fn download_book_file_should_cancel_before_open_and_mark_remote_only() {
 
 fn fs_operator(root: &std::path::Path) -> Operator {
     let builder = Fs::default().root(root.to_string_lossy().as_ref());
-    Operator::new(builder).unwrap().finish()
+    Operator::new(builder).unwrap()
 }

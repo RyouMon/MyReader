@@ -14,6 +14,7 @@ pub fn build_operator(
     inline_password: &Option<String>,
     root_path: &Option<String>,
 ) -> Result<Operator, AppError> {
+    opendal::install_default();
     let password = resolve_webdav_password(inline_password, credential_account)?;
     let mut builder = services::Webdav::default()
         .endpoint(endpoint.trim())
@@ -26,7 +27,6 @@ pub fn build_operator(
     }
     Operator::new(builder)
         .map_err(|err| AppError::Config(format!("初始化 WebDAV Operator 失败: {err}")))?
-        .finish()
         .pipe(Ok)
 }
 

@@ -3,7 +3,7 @@ use std::time::Duration;
 use opendal::{
     layers::RetryLayer,
     services::{Onedrive, Webdav},
-    Operator,
+    HttpTransporter, OperationContext, Operator,
 };
 
 use crate::{
@@ -15,7 +15,7 @@ pub(crate) fn build_remote_operator(
     source: &DataSource,
     credential: &RemoteCredential,
 ) -> Result<Operator, CoreError> {
-    match (source, credential) {
+    let operator = match (source, credential) {
         (
             DataSource::Webdav {
                 endpoint,
@@ -33,9 +33,7 @@ pub(crate) fn build_remote_operator(
                 .username(username)
                 .password(password)
                 .root(non_empty_root(root_path.as_deref()));
-            Operator::new(builder)
-                .map(|operator| operator.finish())
-                .map_err(storage_error)
+            Operator::new(builder).map_err(storage_error)
         }
         (DataSource::Onedrive { root_path, .. }, RemoteCredential::Onedrive { access_token }) => {
             let access_token = required(access_token, "ONEDRIVE_ACCESS_TOKEN_REQUIRED")?;
@@ -49,15 +47,13 @@ pub(crate) fn build_remote_operator(
             Operator::new(builder)
                 .map_err(storage_error)
                 .map(|operator| {
-                    operator
-                        .layer(
-                            RetryLayer::new()
-                                .with_min_delay(Duration::from_millis(500))
-                                .with_max_delay(Duration::from_secs(2))
-                                .with_max_times(3)
-                                .with_jitter(),
-                        )
-                        .finish()
+                    operator.layer(
+                        RetryLayer::new()
+                            .with_min_delay(Duration::from_millis(500))
+                            .with_max_delay(Duration::from_secs(2))
+                            .with_max_times(3)
+                            .with_jitter(),
+                    )
                 })
         }
         (DataSource::Webdav { .. }, RemoteCredential::Onedrive { .. })
@@ -65,7 +61,14 @@ pub(crate) fn build_remote_operator(
             "DATASOURCE_CREDENTIAL_TYPE_MISMATCH".into(),
         )),
         (DataSource::Local { .. }, _) => Err(CoreError::Config("DATASOURCE_NOT_REMOTE".into())),
-    }
+    }?;
+    let client = super::http::client_builder()
+        .build()
+        .map_err(|error| CoreError::Storage(error.to_string()))?;
+    let transport = HttpTransporter::new(opendal_http_transport_reqwest::ReqwestTransport::new(
+        client,
+    ));
+    Ok(operator.with_context(OperationContext::new().with_http_transport(transport)))
 }
 
 pub(crate) fn normalize_remote_path(path: &str) -> Result<String, CoreError> {

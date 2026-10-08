@@ -190,9 +190,7 @@ impl LibraryService {
         let root = library_root
             .to_str()
             .ok_or_else(|| CoreError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?;
-        let operator = Operator::new(Fs::default().root(root))
-            .map_err(storage::storage_error)?
-            .finish();
+        let operator = Operator::new(Fs::default().root(root)).map_err(storage::storage_error)?;
         let snapshots = crate::sync::storage::StorageAdapter::new(&operator)
             .load_range(&crate::sync::storage::snapshot_prefix(&marker.library_uuid))
             .await?;
@@ -1001,7 +999,10 @@ async fn rollback_remote_myreader_creation(operator: &Operator, source_path: &st
     if source_path.is_empty() {
         return;
     }
-    let _ = operator.remove_all(&format!("{source_path}/")).await;
+    let _ = operator
+        .delete_with(&format!("{source_path}/"))
+        .recursive(true)
+        .await;
 }
 
 async fn add_remote_library_with_operator(
@@ -1492,8 +1493,7 @@ mod tests {
         let operator = Operator::new(
             Fs::default().root(library_root.to_str().expect("temporary path is UTF-8")),
         )
-        .unwrap()
-        .finish();
+        .unwrap();
         crate::services::sync::SyncService::sync_sidecar_with_operator(
             &sidecars_one.join(&created.id),
             &library_root,
@@ -1545,13 +1545,11 @@ mod tests {
         let base_operator = Operator::new(
             Fs::default().root(remote_root.to_str().expect("temporary path is UTF-8")),
         )
-        .unwrap()
-        .finish();
+        .unwrap();
         let scoped_operator = Operator::new(
             Fs::default().root(remote_library.to_str().expect("temporary path is UTF-8")),
         )
-        .unwrap()
-        .finish();
+        .unwrap();
         let config_path = directory.path().join("config.json");
         crate::services::config::ConfigService::load_or_initialize(
             &config_path,
@@ -1839,13 +1837,11 @@ mod tests {
         let base_operator = Operator::new(
             Fs::default().root(remote_root.to_str().expect("temporary path is UTF-8")),
         )
-        .unwrap()
-        .finish();
+        .unwrap();
         let scoped_operator = Operator::new(
             Fs::default().root(remote_library.to_str().expect("temporary path is UTF-8")),
         )
-        .unwrap()
-        .finish();
+        .unwrap();
         let config_path = directory.path().join("config.json");
         crate::services::config::ConfigService::load_or_initialize(
             &config_path,
@@ -1960,8 +1956,7 @@ mod tests {
                     .expect("temporary path is UTF-8"),
             ),
         )
-        .unwrap()
-        .finish();
+        .unwrap();
 
         ensure_remote_myreader_create_target(&operator, "Books/Available")
             .await
@@ -1986,13 +1981,11 @@ mod tests {
         let base_operator = Operator::new(
             Fs::default().root(remote_root.to_str().expect("temporary path is UTF-8")),
         )
-        .unwrap()
-        .finish();
+        .unwrap();
         let scoped_operator = Operator::new(
             Fs::default().root(remote_library.to_str().expect("temporary path is UTF-8")),
         )
-        .unwrap()
-        .finish();
+        .unwrap();
         let config_path = directory.path().join("config.json");
         crate::services::config::ConfigService::load_or_initialize(
             &config_path,
@@ -2054,13 +2047,11 @@ mod tests {
         let base_operator = Operator::new(
             Fs::default().root(remote_root.to_str().expect("temporary path is UTF-8")),
         )
-        .unwrap()
-        .finish();
+        .unwrap();
         let scoped_operator = Operator::new(
             Fs::default().root(remote_library.to_str().expect("temporary path is UTF-8")),
         )
-        .unwrap()
-        .finish();
+        .unwrap();
         let source = DataSource::Webdav {
             id: "source".into(),
             name: "Source".into(),
@@ -2320,8 +2311,7 @@ mod tests {
         let operator = Operator::new(
             Fs::default().root(remote.path().to_str().expect("temporary path is UTF-8")),
         )
-        .unwrap()
-        .finish();
+        .unwrap();
         let request = RemoteLibraryRequest {
             data_source_id: "source".into(),
             source_path: "/Books/Library/".into(),
@@ -2437,8 +2427,7 @@ mod tests {
         let operator = Operator::new(
             Fs::default().root(remote.path().to_str().expect("temporary path is UTF-8")),
         )
-        .unwrap()
-        .finish();
+        .unwrap();
         let request = RemoteLibraryRequest {
             data_source_id: "source".into(),
             source_path: "/".into(),
