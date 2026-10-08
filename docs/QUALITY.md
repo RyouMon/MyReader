@@ -22,7 +22,7 @@ Quality 仅在 PR 和手动执行时运行，普通推送不触发。手动执�
 | `pnpm qa:rust:coverage` | Core 与移动 FFI 的 cargo-llvm-cov LCOV | 需安装工具及 llvm-tools-preview |
 | `pnpm qa:unused` | Knip 扫描未使用文件、依赖、导出与未解析引用 | 待人工确认的债务报告 |
 | `pnpm lint:report` | 输出原始 ESLint JSON | 有发现时返回非零 |
-| `pnpm qa:security` | npm 生产依赖漏洞审计 | 联网检查；高危及以上返回非零 |
+| `pnpm qa:security` | npm 生产依赖漏洞审计 | 联网检查；中危及以上返回非零 |
 | `pnpm qa:rust:security` | Cargo 锁文件通告与撤包状态审计 | 需安装 cargo-audit 和联网；漏洞返回非零 |
 | `pnpm qa:workflows` | actionlint 校验 Actions 语法、表达式与 action 输入 | 需安装 actionlint；CI 使用官方固定版本镜像 |
 | `pnpm format:check` | Biome 格式检查 | 全仓历史格式差异单独治理 |

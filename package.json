@@ -43,7 +43,7 @@
     "qa:rust": "cargo fmt --all --check && cargo clippy --locked --workspace --all-targets -- -D warnings -D clippy::cognitive_complexity && cargo test --locked --workspace",
     "qa:rust:complexity": "cargo clippy --locked --workspace --all-targets -- -D clippy::cognitive_complexity",
     "qa:rust:coverage": "node -e \"require('node:fs').mkdirSync('reports/rust', { recursive: true })\" && cargo llvm-cov --locked -p my-reader-core -p my-reader-core-ffi --lcov --output-path reports/rust/lcov.info",
-    "qa:security": "pnpm audit --prod --audit-level high",
+    "qa:security": "pnpm audit --prod --audit-level moderate",
     "qa:workflows": "actionlint -shellcheck= -pyflakes=",
     "qa:rust:security": "cargo audit"
   },

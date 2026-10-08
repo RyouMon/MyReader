@@ -171,7 +171,7 @@ jobs:
       - name: npm production dependency audit
         if: always()
         timeout-minutes: 5
-        run: pnpm audit --prod --audit-level high --json > reports/npm-audit.json
+        run: pnpm audit --prod --audit-level moderate --json > reports/npm-audit.json
       - name: Cargo dependency audit
         if: always()
         timeout-minutes: 5
