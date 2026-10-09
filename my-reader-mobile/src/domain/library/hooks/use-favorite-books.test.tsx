@@ -190,6 +190,7 @@ describe("useFavoriteBooks", () => {
   })
 
   it("should handle stale Set-shaped cache without crashing when managing favorite books", async () => {
+    jest.mocked(listFavoriteBookIds).mockResolvedValue([1, 2])
     const invalidateSpy = jest.spyOn(queryClient, "invalidateQueries")
 
     act(() => {
@@ -219,6 +220,7 @@ describe("useFavoriteBooks", () => {
   })
 
   it("should handle non-iterable stale cache without crashing when managing favorite books", async () => {
+    jest.mocked(listFavoriteBookIds).mockResolvedValue([])
     const invalidateSpy = jest.spyOn(queryClient, "invalidateQueries")
 
     act(() => {

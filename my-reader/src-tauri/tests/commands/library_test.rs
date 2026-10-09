@@ -12,7 +12,7 @@ use my_reader_lib::models::{
 };
 
 use crate::common::app::TestApp;
-use crate::common::config::read_persisted_config;
+use crate::common::config::{read_persisted_config, seed_config_file};
 use crate::common::ipc::{invoke_err, invoke_ok};
 
 fn library_fixture(id: &str, name: &str, path: &str) -> LibraryConfig {
@@ -137,36 +137,94 @@ async fn switch_library_should_return_not_found_when_library_id_is_unknown() {
 async fn remove_library_should_drop_entry_and_rollover_active_id() {
     let config = AppConfig {
         libraries: vec![
-            library_fixture("lib-a", "Library A", "/path/a"),
-            library_fixture("lib-b", "Library B", "/path/b"),
+            library_fixture("remove-rollover-a", "Library A", "/path/a"),
+            library_fixture("remove-rollover-b", "Library B", "/path/b"),
         ],
-        active_library_id: Some("lib-a".into()),
+        active_library_id: Some("remove-rollover-a".into()),
         ..Default::default()
     };
     let app = TestApp::with_config(config);
 
-    let _: () = invoke_ok(&app, "remove_library", json!({ "id": "lib-a" }));
+    let _: () = invoke_ok(&app, "remove_library", json!({ "id": "remove-rollover-a" }));
 
     let snapshot = app.config_snapshot();
     assert_eq!(snapshot.libraries.len(), 1);
-    assert_eq!(snapshot.libraries[0].id, "lib-b");
+    assert_eq!(snapshot.libraries[0].id, "remove-rollover-b");
     // Active id rolls over to the first remaining library.
-    assert_eq!(snapshot.active_library_id, Some("lib-b".into()));
+    assert_eq!(snapshot.active_library_id, Some("remove-rollover-b".into()));
 
     let persisted = read_persisted_config(&app).expect("config.json should be written");
     assert_eq!(persisted.libraries.len(), 1);
-    assert_eq!(persisted.active_library_id, Some("lib-b".into()));
+    assert_eq!(
+        persisted.active_library_id,
+        Some("remove-rollover-b".into())
+    );
+}
+
+#[tokio::test]
+async fn remove_library_should_preserve_configuration_when_container_cleanup_fails() {
+    let config = AppConfig {
+        libraries: vec![library_fixture("cleanup-failure", "Library", "/path/a")],
+        active_library_id: Some("cleanup-failure".into()),
+        ..Default::default()
+    };
+    let app = TestApp::with_config(config.clone());
+    seed_config_file(&app, &config);
+    let container = app.app_data_dir().join("libraries").join("cleanup-failure");
+    fs::create_dir_all(container.parent().unwrap()).unwrap();
+    // Windows reproduces an external handle that denies deletion. Other platforms
+    // use a non-directory at the container path to exercise the same I/O error path.
+    #[cfg(windows)]
+    let locked_file = {
+        use std::os::windows::fs::OpenOptionsExt;
+        fs::create_dir_all(&container).unwrap();
+        fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .share_mode(0)
+            .open(container.join("locked"))
+            .unwrap()
+    };
+    #[cfg(not(windows))]
+    fs::write(&container, b"not a directory").unwrap();
+
+    let error = invoke_err(&app, "remove_library", json!({ "id": "cleanup-failure" }));
+    assert!(error.is_kind("Io"), "unexpected error: {}", error.message);
+    let persisted = read_persisted_config(&app).expect("config remains readable");
+    assert_eq!(persisted.libraries.len(), 1);
+    assert_eq!(persisted.libraries[0].id, "cleanup-failure");
+    assert_eq!(persisted.active_library_id, config.active_library_id);
+    let snapshot = app.config_snapshot();
+    assert_eq!(snapshot.libraries.len(), persisted.libraries.len());
+    assert_eq!(snapshot.active_library_id, persisted.active_library_id);
+
+    #[cfg(windows)]
+    drop(locked_file);
+    #[cfg(not(windows))]
+    fs::remove_file(&container).unwrap();
+    let _: () = invoke_ok(&app, "remove_library", json!({ "id": "cleanup-failure" }));
+    assert!(app.config_snapshot().libraries.is_empty());
+    assert!(read_persisted_config(&app).unwrap().libraries.is_empty());
+    assert!(!container.exists());
+    let preferences: serde_json::Value = invoke_ok(&app, "get_reader_ui_preferences", json!({}));
+    let _: () = invoke_ok(
+        &app,
+        "set_reader_ui_preferences",
+        json!({ "preferences": preferences }),
+    );
+    assert!(read_persisted_config(&app).unwrap().libraries.is_empty());
+    assert_eq!(read_persisted_config(&app).unwrap().active_library_id, None);
 }
 
 #[tokio::test]
 async fn remove_library_should_clear_active_id_when_last_library_removed() {
     let app = TestApp::with_config(AppConfig {
-        libraries: vec![library_fixture("lib-a", "Library A", "/path/a")],
-        active_library_id: Some("lib-a".into()),
+        libraries: vec![library_fixture("remove-last", "Library A", "/path/a")],
+        active_library_id: Some("remove-last".into()),
         ..Default::default()
     });
 
-    let _: () = invoke_ok(&app, "remove_library", json!({ "id": "lib-a" }));
+    let _: () = invoke_ok(&app, "remove_library", json!({ "id": "remove-last" }));
 
     assert_eq!(app.config_snapshot().active_library_id, None);
 }

@@ -100,12 +100,36 @@ fn writer() -> &'static Mutex<()> {
     WRITER.get_or_init(|| Mutex::new(()))
 }
 
-fn open_connection(database_path: &str) -> Result<Connection, SyncError> {
+struct LeasedConnection {
+    connection: Connection,
+    _lease: tokio::sync::OwnedRwLockReadGuard<bool>,
+}
+
+impl std::ops::Deref for LeasedConnection {
+    type Target = Connection;
+
+    fn deref(&self) -> &Connection {
+        &self.connection
+    }
+}
+
+impl std::ops::DerefMut for LeasedConnection {
+    fn deref_mut(&mut self) -> &mut Connection {
+        &mut self.connection
+    }
+}
+
+fn open_connection(database_path: &str) -> Result<LeasedConnection, SyncError> {
+    let lease = crate::database::database_lease(std::path::Path::new(database_path))
+        .map_err(|error| sync_error(error.to_string()))?;
     let connection = Connection::open(database_path).map_err(database_error)?;
     connection
         .busy_timeout(Duration::from_secs(5))
         .map_err(database_error)?;
-    Ok(connection)
+    Ok(LeasedConnection {
+        connection,
+        _lease: lease,
+    })
 }
 
 fn new_id() -> String {
@@ -1202,4 +1226,28 @@ pub fn apply_remote_database_objects(
         applied_objects: applied_changes,
         remote_storage_repair,
     })
+}
+
+#[cfg(test)]
+mod lifecycle_tests {
+    #[tokio::test]
+    async fn removal_should_drain_sync_connections_and_reject_new_sync_opens() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("myreader.db");
+        let connection = super::open_connection(path.to_str().unwrap()).unwrap();
+        let mut removing = Box::pin(crate::database::close_database_file(&path));
+        std::future::poll_fn(|cx| {
+            assert!(std::future::Future::poll(removing.as_mut(), cx).is_pending());
+            std::task::Poll::Ready(())
+        })
+        .await;
+        assert!(super::open_connection(path.to_str().unwrap()).is_err());
+        drop(connection);
+        let removal = removing.await.unwrap();
+        assert!(super::open_connection(path.to_str().unwrap()).is_err());
+        std::fs::remove_file(&path).unwrap();
+        removal.commit();
+        assert!(super::open_connection(path.to_str().unwrap()).is_err());
+        assert!(!path.exists());
+    }
 }
