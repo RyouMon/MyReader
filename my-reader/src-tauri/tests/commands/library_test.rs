@@ -12,6 +12,7 @@ use my_reader_lib::models::{
 };
 
 use crate::common::app::TestApp;
+use crate::common::calibre::create_calibre_db;
 use crate::common::config::{read_persisted_config, seed_config_file};
 use crate::common::ipc::{invoke_err, invoke_ok};
 
@@ -25,14 +26,6 @@ fn library_fixture(id: &str, name: &str, path: &str) -> LibraryConfig {
         data_source_id: None,
         source_path: None,
     }
-}
-
-/// Build a minimal directory that passes `CalibreBookRepository::validate_library`
-/// (an empty `metadata.db` file is enough — open failures fall back to book_count=0).
-fn minimal_calibre_dir() -> tempfile::TempDir {
-    let dir = tempfile::tempdir().expect("tempdir");
-    fs::write(dir.path().join("metadata.db"), b"").expect("write metadata.db");
-    dir
 }
 
 #[tokio::test]
@@ -252,7 +245,12 @@ async fn add_library_should_return_config_error_when_path_does_not_exist() {
 #[tokio::test]
 async fn add_library_should_add_and_persist_when_calibre_dir_is_valid() {
     let app = TestApp::new();
-    let calibre_dir = minimal_calibre_dir();
+    let calibre_dir = tempfile::tempdir().unwrap();
+    create_calibre_db(calibre_dir.path())
+        .await
+        .close()
+        .await
+        .unwrap();
 
     let info: LibraryInfo = invoke_ok(
         &app,
@@ -261,7 +259,7 @@ async fn add_library_should_add_and_persist_when_calibre_dir_is_valid() {
     );
 
     assert_eq!(info.name, "Fixture Library");
-    assert_eq!(info.book_count, 0); // metadata.db is empty so open() falls back to 0
+    assert_eq!(info.book_count, 0); // Valid catalog with no books.
     assert_eq!(info.source_type, Some("local".into()));
 
     // First library added becomes active.
@@ -332,12 +330,9 @@ async fn refresh_library_should_return_not_found_when_library_id_is_unknown() {
 }
 
 #[tokio::test]
-async fn refresh_library_should_return_database_error_when_metadata_db_is_corrupt() {
-    // Empty metadata.db passes `validate_library` (file existence check) but fails the
-    // schema lookup inside `repo.get_all_books`. The happy-path test that exercises a
-    // real Calibre fixture lands in Phase B once `create_minimal_calibre_library` is
-    // promoted to `tests/common/calibre.rs`.
-    let calibre_dir = minimal_calibre_dir();
+async fn refresh_library_should_return_schema_error_when_catalog_tables_are_missing() {
+    let calibre_dir = tempfile::tempdir().unwrap();
+    fs::write(calibre_dir.path().join("metadata.db"), b"").unwrap();
     let path_str = calibre_dir.path().to_string_lossy().to_string();
     let app = TestApp::with_config(AppConfig {
         libraries: vec![library_fixture("lib-a", "Library A", &path_str)],
@@ -347,7 +342,8 @@ async fn refresh_library_should_return_database_error_when_metadata_db_is_corrup
 
     let err = invoke_err(&app, "refresh_library", json!({ "id": "lib-a" }));
 
-    assert!(err.is_kind("Database"), "kind was {}", err.kind);
+    assert!(err.is_kind("DataIntegrity"), "kind was {}", err.kind);
+    assert!(err.message.contains("CALIBRE_SCHEMA_UNSUPPORTED"));
 }
 
 #[tokio::test]

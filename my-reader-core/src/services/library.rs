@@ -2,7 +2,6 @@ use std::path::{Path, PathBuf};
 
 use opendal::services::Fs;
 use opendal::Operator;
-use sea_orm::{Database, EntityTrait, PaginatorTrait};
 use uuid::Uuid;
 
 use crate::{
@@ -495,9 +494,11 @@ impl LibraryService {
             .filter(|value| !value.is_empty())
             .ok_or_else(|| CoreError::Config("LIBRARY_NAME_REQUIRED".into()))?;
         let id = Uuid::new_v4().to_string();
-        let book_count = crate::services::catalog::CatalogService::count_books(&library_root)
-            .await
-            .unwrap_or(0) as u64;
+        let book_count =
+            crate::repositories::calibre::CatalogRepository::validate_calibre_metadata(
+                &library_root.join("metadata.db"),
+            )
+            .await?;
         let library = Library {
             id: id.clone(),
             name,
@@ -1094,28 +1095,18 @@ pub(super) async fn download_and_validate_metadata(
     std::fs::create_dir_all(parent)?;
     let temporary = temporary_download_path(destination);
     tokio::fs::write(&temporary, bytes.to_vec()).await?;
-    let count = count_calibre_books(&temporary).await;
-    if count.is_err() {
+    let result = async {
+        let count =
+            crate::repositories::calibre::CatalogRepository::validate_calibre_metadata(&temporary)
+                .await?;
+        tokio::fs::rename(&temporary, destination).await?;
+        Ok(count)
+    }
+    .await;
+    if result.is_err() {
         let _ = tokio::fs::remove_file(&temporary).await;
     }
-    let count = count?;
-    if destination.exists() {
-        std::fs::remove_file(destination)?;
-    }
-    std::fs::rename(&temporary, destination)?;
-    Ok(count)
-}
-
-async fn count_calibre_books(metadata_path: &Path) -> Result<u64, CoreError> {
-    let path = metadata_path
-        .to_str()
-        .ok_or_else(|| CoreError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?;
-    let database = Database::connect(format!("sqlite://{path}?mode=ro")).await?;
-    let count = crate::entities::calibre::books::Entity::find()
-        .count(&database)
-        .await?;
-    database.close().await?;
-    Ok(count)
+    result
 }
 
 fn temporary_download_path(destination: &Path) -> PathBuf {
@@ -1215,6 +1206,13 @@ mod tests {
         let connection = rusqlite::Connection::open(path).unwrap();
         connection
             .execute_batch(include_str!("../../tests/fixtures/calibre_books.sql"))
+            .unwrap();
+        connection
+            .execute_batch(
+                "CREATE TABLE data (book INTEGER, format TEXT, name TEXT, uncompressed_size INTEGER);
+                 CREATE TABLE library_id (uuid TEXT NOT NULL);
+                 INSERT INTO library_id VALUES ('018f2f8d-980b-40ef-b72e-c6e86cb7cc28');",
+            )
             .unwrap();
         connection
             .execute(
@@ -2247,14 +2245,14 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn should_persist_zero_books_when_local_book_count_is_unavailable() {
+    async fn should_reject_local_library_when_catalog_is_unavailable() {
         let directory = tempfile::tempdir().unwrap();
         let config_path = directory.path().join("config.json");
         let library_root = directory.path().join("Library");
         std::fs::create_dir_all(&library_root).unwrap();
         std::fs::write(library_root.join("metadata.db"), []).unwrap();
 
-        let (_, library) = LibraryService::add_local(
+        let error = LibraryService::add_local(
             &config_path,
             LocalLibraryRequest {
                 library_root_path: library_root.to_string_lossy().into_owned(),
@@ -2268,9 +2266,10 @@ mod tests {
             },
         )
         .await
-        .unwrap();
+        .unwrap_err();
 
-        assert_eq!(library.book_count, 0);
+        assert!(error.to_string().contains("CALIBRE_SCHEMA_UNSUPPORTED"));
+        assert!(config::ConfigService::load(&config_path).unwrap().is_none());
     }
 
     #[tokio::test]

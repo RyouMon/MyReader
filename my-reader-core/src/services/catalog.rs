@@ -469,7 +469,9 @@ impl CatalogService {
                 library_root.display()
             )));
         }
-        let books = Self::list_book_summaries(&library_root).await?;
+        let repository = CatalogRepository::open(&library_root.to_string_lossy()).await?;
+        repository.get_library_uuid().await?;
+        let books = repository.get_book_summaries().await?;
         Ok((library_root, books))
     }
 
