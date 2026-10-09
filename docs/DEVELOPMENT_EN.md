@@ -67,6 +67,8 @@ pnpm --filter my-reader run test:e2e:frontend:ui
 Playwright covers the browser frontend with IPC mocks. Validate native reading, windows, and file
 dialogs separately in the running Tauri app; debug builds include Tauri MCP Bridge. The obsolete
 WebDriver browser-launch example has been removed.
+The debug bridge listens only on `127.0.0.1`; use the `0.13` series for both the MCP server and Rust plugin.
+Keep the Mac unlocked for native visual checks; hidden-window state does not prove rendered output.
 
 ### Formatting
 

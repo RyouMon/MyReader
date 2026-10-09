@@ -171,7 +171,11 @@ pub fn run() -> Result<(), tauri::Error> {
         .plugin(tauri_plugin_window_state::Builder::default().build());
 
     #[cfg(debug_assertions)]
-    let builder = base.plugin(tauri_plugin_mcp_bridge::init());
+    let builder = base.plugin(
+        tauri_plugin_mcp_bridge::Builder::new()
+            .bind_address("127.0.0.1")
+            .build(),
+    );
     #[cfg(not(debug_assertions))]
     let builder = base;
 

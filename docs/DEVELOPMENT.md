@@ -66,6 +66,8 @@ pnpm --filter my-reader run test:e2e:frontend:ui
 
 Playwright 验证浏览器前端及 IPC mock。macOS 原生阅读、窗口和文件对话框需启动实际 Tauri
 应用单独验证；调试构建已接入 Tauri MCP Bridge。旧 WebDriver 浏览器启动示例已移除。
+调试桥仅监听 `127.0.0.1`；MCP server 与 Rust plugin 使用同一 `0.13` 版本系列。
+原生可视验证时保持 Mac 解锁；隐藏窗口的页面状态不能替代实际渲染检查。
 
 ### 格式化
 
