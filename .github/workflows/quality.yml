@@ -121,12 +121,21 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter '${{ matrix.package }}' '${{ matrix.command }}'
+      - name: Collect Vitest coverage without a percentage gate
+        if: matrix.package != 'my-reader-mobile'
+        run: >-
+          pnpm --filter '${{ matrix.package }}' '${{ matrix.command }}'
+          --coverage.thresholds.lines=0 --coverage.thresholds.statements=0
+          --coverage.thresholds.functions=0 --coverage.thresholds.branches=0
+      - name: Collect Jest coverage without a percentage gate
+        if: matrix.package == 'my-reader-mobile'
+        run: pnpm --filter '${{ matrix.package }}' '${{ matrix.command }}' --coverageThreshold='{}'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage-${{ strategy.job-index }}
           path: ${{ matrix.directory }}/coverage/
+          if-no-files-found: error
           retention-days: 14
 
   mutation:
@@ -201,6 +210,7 @@ jobs:
         with:
           name: rust-coverage-report
           path: reports/rust/
+          if-no-files-found: error
           retention-days: 14
 
   security:
@@ -249,10 +259,12 @@ jobs:
   unit-gate:
     name: Unit tests
     if: always()
-    needs: [unit, rust]
+    needs: [unit, coverage, rust, rust-coverage]
     runs-on: ubuntu-22.04
     steps:
       - name: Require every unit test job to succeed
         run: |
           test '${{ needs.unit.result }}' = success
+          test '${{ needs.coverage.result }}' = success
           test '${{ needs.rust.result }}' = success
+          test '${{ needs.rust-coverage.result }}' = success

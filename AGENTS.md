@@ -13,7 +13,7 @@ Apply these when writing, reviewing, or refactoring code:
 5. **Think Before Coding** — State assumptions explicitly. If multiple interpretations exist, present them. If something is unclear, ask before implementing.
 6. **Respect the Layering** — Dependencies must only flow downward. For mobile, see module rules in `.agents/rules/mobile.md` (`domain/`, `features/`, `services/`; persistence belongs to Rust Core). No upward imports, no bypassing layers.
 7. **Verification Gate** — After code changes, run the full unit test suite for every touched package before reporting completion. Targeted tests may be used during development, but they do not replace the final full package unit test run. All tests must pass. If a suite cannot be run, state the exact command and blocker.
-8. **PR Gate** — Required checks `QA` and `Unit tests` must pass before merge. Coverage runs independently as a non-blocking report; never suppress unit-test failures to make coverage advisory. Leave merging to human review.
+8. **PR Gate** — Required checks `QA` and `Unit tests` must pass before merge. Coverage percentages are informational; failures in coverage tests or report generation still block merging. Leave merging to human review.
 
 ---
 
