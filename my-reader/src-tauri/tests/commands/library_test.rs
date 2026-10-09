@@ -137,25 +137,28 @@ async fn switch_library_should_return_not_found_when_library_id_is_unknown() {
 async fn remove_library_should_drop_entry_and_rollover_active_id() {
     let config = AppConfig {
         libraries: vec![
-            library_fixture("lib-a", "Library A", "/path/a"),
-            library_fixture("lib-b", "Library B", "/path/b"),
+            library_fixture("remove-rollover-a", "Library A", "/path/a"),
+            library_fixture("remove-rollover-b", "Library B", "/path/b"),
         ],
-        active_library_id: Some("lib-a".into()),
+        active_library_id: Some("remove-rollover-a".into()),
         ..Default::default()
     };
     let app = TestApp::with_config(config);
 
-    let _: () = invoke_ok(&app, "remove_library", json!({ "id": "lib-a" }));
+    let _: () = invoke_ok(&app, "remove_library", json!({ "id": "remove-rollover-a" }));
 
     let snapshot = app.config_snapshot();
     assert_eq!(snapshot.libraries.len(), 1);
-    assert_eq!(snapshot.libraries[0].id, "lib-b");
+    assert_eq!(snapshot.libraries[0].id, "remove-rollover-b");
     // Active id rolls over to the first remaining library.
-    assert_eq!(snapshot.active_library_id, Some("lib-b".into()));
+    assert_eq!(snapshot.active_library_id, Some("remove-rollover-b".into()));
 
     let persisted = read_persisted_config(&app).expect("config.json should be written");
     assert_eq!(persisted.libraries.len(), 1);
-    assert_eq!(persisted.active_library_id, Some("lib-b".into()));
+    assert_eq!(
+        persisted.active_library_id,
+        Some("remove-rollover-b".into())
+    );
 }
 
 #[tokio::test]
@@ -216,12 +219,12 @@ async fn remove_library_should_preserve_configuration_when_container_cleanup_fai
 #[tokio::test]
 async fn remove_library_should_clear_active_id_when_last_library_removed() {
     let app = TestApp::with_config(AppConfig {
-        libraries: vec![library_fixture("lib-a", "Library A", "/path/a")],
-        active_library_id: Some("lib-a".into()),
+        libraries: vec![library_fixture("remove-last", "Library A", "/path/a")],
+        active_library_id: Some("remove-last".into()),
         ..Default::default()
     });
 
-    let _: () = invoke_ok(&app, "remove_library", json!({ "id": "lib-a" }));
+    let _: () = invoke_ok(&app, "remove_library", json!({ "id": "remove-last" }));
 
     assert_eq!(app.config_snapshot().active_library_id, None);
 }
