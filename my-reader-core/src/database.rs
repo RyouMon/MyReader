@@ -71,6 +71,15 @@ fn absolute_path(path: &Path) -> Result<PathBuf, CoreError> {
     }
 }
 
+pub async fn close_database_file(path: &Path) -> Result<(), CoreError> {
+    let path = absolute_path(path)?;
+    let mut stores = LIBRARY_STORES.lock().await;
+    if let Some(store) = stores.remove(&path) {
+        store.database.close().await?;
+    }
+    Ok(())
+}
+
 pub async fn migrate_database_file(path: &Path) -> Result<(), CoreError> {
     open_database_file(path).await.map(|_| ())
 }
@@ -227,7 +236,10 @@ mod tests {
         let sidecar_root = temp.path().to_string_lossy().to_string();
         let database_path = super::library_db_path(&sidecar_root).unwrap();
         let database = open_db(&sidecar_root).await.expect("database should open");
-        drop(database);
+        database
+            .close()
+            .await
+            .expect("release the SQLite file handle before unlinking on Windows");
         std::fs::remove_file(&database_path).expect("database file should be removed");
 
         let reopened = open_db(&sidecar_root)
@@ -246,6 +258,27 @@ mod tests {
             .unwrap();
 
         assert_eq!(table_count, 1);
+    }
+
+    #[tokio::test]
+    async fn close_should_release_only_the_requested_database_and_allow_reopening() {
+        let removed = tempfile::tempdir().unwrap();
+        let retained = tempfile::tempdir().unwrap();
+        let removed_root = removed.path().to_string_lossy();
+        let retained_root = retained.path().to_string_lossy();
+        let database_path = super::library_db_path(&removed_root).unwrap();
+        let database = open_db(&removed_root).await.unwrap();
+        let other_database = open_db(&retained_root).await.unwrap();
+
+        super::close_database_file(&database_path).await.unwrap();
+        assert!(database.ping().await.is_err());
+        other_database.ping().await.unwrap();
+        std::fs::remove_file(&database_path).expect("closed database can be removed on Windows");
+        super::close_database_file(&database_path)
+            .await
+            .expect("closing an already removed database is idempotent");
+        assert!(!database_path.exists());
+        open_db(&removed_root).await.unwrap().ping().await.unwrap();
     }
 
     #[tokio::test]
