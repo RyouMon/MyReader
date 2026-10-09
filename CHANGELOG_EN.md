@@ -6,6 +6,26 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.14.0] - 2026-10-10
+
+### Added
+
+- Expanded desktop and mobile interfaces to 11 languages: English, Simplified Chinese, Traditional Chinese, Japanese, Korean, Spanish, French, German, Brazilian Portuguese, Italian, and Russian ([#79](https://github.com/RyouMon/MyReader/pull/79))
+- Match system language preferences or choose a language manually; dates, relative times, book counts, and narration previews follow the selected language, with English fallback for unsupported languages and missing translations ([#79](https://github.com/RyouMon/MyReader/pull/79))
+- Adapt Calibre libraries to the fields available in each database, covering schemas 25–28; compatible unknown versions remain readable, with clear diagnostics when required fields are missing ([#78](https://github.com/RyouMon/MyReader/pull/78))
+
+### Fixed
+
+- Fixed Calibre sync failures caused by removed fields such as `books.isbn`; failed validation of a remote database now preserves the existing cache ([#76](https://github.com/RyouMon/MyReader/pull/76), [#78](https://github.com/RyouMon/MyReader/pull/78))
+- Fixed EPUB position drift on reopening, lost final progress when closing the reader, and bookmarks pointing outside the current page
+- Fixed unresponsive edge taps in the iOS reader and header action buttons on Android
+- Fixed Android PDF restoration being overridden by the initial layout, inaccurate page indices, and missing final-page progress
+- Fixed late narration callbacks changing playback state after stopping, stale desktop upload progress, and download cancellation being unavailable during startup
+
+### Build and Distribution
+
+- Upgraded mobile to Expo 57 for Xcode 27 compatibility, updated dependencies and quality gates, and aligned release builds with the repository's declared pnpm version
+
 ## [0.13.0] - 2026-10-07
 
 ### Added

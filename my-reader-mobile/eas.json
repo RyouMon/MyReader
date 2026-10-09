@@ -6,7 +6,7 @@
   "build": {
     "development": {
       "node": "22.22.0",
-      "pnpm": "11.7.0",
+      "pnpm": "11.28.5",
       "developmentClient": true,
       "distribution": "internal",
       "env": {
@@ -21,7 +21,7 @@
     },
     "preview": {
       "node": "22.22.0",
-      "pnpm": "11.7.0",
+      "pnpm": "11.28.5",
       "distribution": "internal",
       "env": {
         "ENTRY_FILE": "node_modules/expo-router/entry.js",
@@ -31,7 +31,7 @@
     },
     "production": {
       "node": "22.22.0",
-      "pnpm": "11.7.0",
+      "pnpm": "11.28.5",
       "autoIncrement": true,
       "env": {
         "ENTRY_FILE": "node_modules/expo-router/entry.js",

@@ -5,6 +5,26 @@
 MyReader 的重要变更均记录于此。
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [0.14.0] - 2026-10-10
+
+### Added
+
+- 桌面端和移动端界面语言扩展为 11 种：英文、简体中文、繁体中文、日语、韩语、西班牙语、法语、德语、巴西葡萄牙语、意大利语和俄语（[#79](https://github.com/RyouMon/MyReader/pull/79)）
+- 按系统语言偏好匹配界面语言，支持手动选择；日期、相对时间、书籍数量和听书试听文案随语言切换，不支持的语言和缺失译文回退到英文（[#79](https://github.com/RyouMon/MyReader/pull/79)）
+- Calibre 书库按数据库实际字段适配新旧版本，覆盖 schema 25–28；兼容的未知版本仍可读取，缺少必要字段时提供明确诊断（[#78](https://github.com/RyouMon/MyReader/pull/78)）
+
+### Fixed
+
+- 修复 Calibre 书库因缺少已废弃的 `books.isbn` 等字段而同步失败；远程数据库校验失败时保留已有缓存（[#76](https://github.com/RyouMon/MyReader/pull/76)、[#78](https://github.com/RyouMon/MyReader/pull/78)）
+- 修复 EPUB 重新打开时阅读位置偏移、关闭阅读器时丢失最后进度，以及书签落在当前页面之外的问题
+- 修复 iOS 阅读器边缘点击无法翻页，以及 Android 顶部操作按钮无法响应点击的问题
+- 修复 Android PDF 阅读位置恢复被初次布局覆盖，以及页码和末页进度记录不准确的问题
+- 修复听书停止后迟到的回调更新播放状态，以及桌面端上传进度未及时清除、下载开始阶段无法取消的问题
+
+### Build and Distribution
+
+- 移动端升级至 Expo 57，适配 Xcode 27；更新依赖并补齐质量门禁，发布构建统一使用仓库声明的 pnpm 版本
+
 ## [0.13.0] - 2026-10-07
 
 ### Added
