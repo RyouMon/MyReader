@@ -153,7 +153,11 @@ mod tests {
             drop(connection);
         });
 
-        let error = reqwest::get(format!("https://{address}"))
+        let error = crate::infrastructure::http::client_builder()
+            .build()
+            .unwrap()
+            .get(format!("https://{address}"))
+            .send()
             .await
             .unwrap_err();
         server.abort();
