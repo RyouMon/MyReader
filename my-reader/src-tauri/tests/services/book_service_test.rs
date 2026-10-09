@@ -20,11 +20,9 @@ async fn seed_books_and_authors(db: &DatabaseConnection) {
             series_index: Set(Some(1.0)),
             author_sort: Set(Some("Adams, Alice".to_string())),
             path: Set(Some("Alpha Book".to_string())),
-            flags: Set(Some(1)),
             uuid: Set(Some("uuid-alpha".to_string())),
             has_cover: Set(Some(1)),
             last_modified: Set(Some("2024-01-02T00:00:00+00:00".to_string())),
-            ..Default::default()
         },
         books::ActiveModel {
             id: Set(2),
@@ -35,11 +33,9 @@ async fn seed_books_and_authors(db: &DatabaseConnection) {
             series_index: Set(Some(2.0)),
             author_sort: Set(Some("Brown, Bob".to_string())),
             path: Set(Some("Beta Book".to_string())),
-            flags: Set(Some(1)),
             uuid: Set(Some("uuid-beta".to_string())),
             has_cover: Set(Some(0)),
             last_modified: Set(Some("2024-02-02T00:00:00+00:00".to_string())),
-            ..Default::default()
         },
         books::ActiveModel {
             id: Set(3),
@@ -49,7 +45,6 @@ async fn seed_books_and_authors(db: &DatabaseConnection) {
             pubdate: Set(Some("2022-01-01T00:00:00+00:00".to_string())),
             author_sort: Set(Some("Clark, Carol".to_string())),
             path: Set(Some("Gamma Notes".to_string())),
-            flags: Set(Some(1)),
             uuid: Set(Some("uuid-gamma".to_string())),
             has_cover: Set(Some(0)),
             last_modified: Set(Some("2024-03-02T00:00:00+00:00".to_string())),

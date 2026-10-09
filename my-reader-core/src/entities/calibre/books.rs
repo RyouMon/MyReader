@@ -21,12 +21,7 @@ pub struct Model {
     #[sea_orm(column_type = "Text", nullable)]
     pub author_sort: Option<String>,
     #[sea_orm(column_type = "Text", nullable)]
-    pub isbn: Option<String>,
-    #[sea_orm(column_type = "Text", nullable)]
-    pub lccn: Option<String>,
-    #[sea_orm(column_type = "Text", nullable)]
     pub path: Option<String>,
-    pub flags: Option<i64>,
     #[sea_orm(column_type = "Text", nullable)]
     pub uuid: Option<String>,
     pub has_cover: Option<i64>,

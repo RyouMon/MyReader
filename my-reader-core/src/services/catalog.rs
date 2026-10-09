@@ -1334,7 +1334,10 @@ mod tests {
         .expect("open fixture database");
         let schema = Schema::new(database.get_database_backend());
         create_table(&database, &schema, authors::Entity).await;
-        create_table(&database, &schema, books::Entity).await;
+        database
+            .execute_unprepared(include_str!("../../tests/fixtures/calibre_books.sql"))
+            .await
+            .expect("create external Calibre books table");
         create_table(&database, &schema, books_authors_link::Entity).await;
         create_table(&database, &schema, books_languages_link::Entity).await;
         create_table(&database, &schema, books_publishers_link::Entity).await;
@@ -1414,22 +1417,34 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn should_return_joined_catalog_data_when_calibre_library_is_valid() {
-        let library = tempfile::tempdir().expect("create library");
-        seed_library(library.path()).await;
+    async fn should_return_joined_catalog_data_with_current_and_legacy_calibre_schemas() {
+        for legacy_columns in [false, true] {
+            let library = tempfile::tempdir().expect("create library");
+            seed_library(library.path()).await;
+            if legacy_columns {
+                rusqlite::Connection::open(library.path().join("metadata.db"))
+                    .unwrap()
+                    .execute_batch(
+                        "ALTER TABLE books ADD COLUMN isbn TEXT;
+                         ALTER TABLE books ADD COLUMN lccn TEXT;
+                         ALTER TABLE books ADD COLUMN flags INTEGER DEFAULT 1;",
+                    )
+                    .unwrap();
+            }
 
-        let books = super::CatalogService::list_books(library.path())
-            .await
-            .expect("list books");
-        let detail = super::CatalogService::get_book_detail(library.path(), 42)
-            .await
-            .expect("get book detail");
+            let books = super::CatalogService::list_books(library.path())
+                .await
+                .expect("list books");
+            let detail = super::CatalogService::get_book_detail(library.path(), 42)
+                .await
+                .expect("get book detail");
 
-        assert_eq!(books.len(), 1);
-        assert_eq!(books[0].authors, vec!["Ursula K. Le Guin"]);
-        assert_eq!(books[0].title_sort, "Left Hand of Darkness, The");
-        assert_eq!(detail.format_sizes[0].size_bytes, 1024);
-        assert_eq!(detail.identifiers[0].value, "9780441478125");
+            assert_eq!(books.len(), 1);
+            assert_eq!(books[0].authors, vec!["Ursula K. Le Guin"]);
+            assert_eq!(books[0].title_sort, "Left Hand of Darkness, The");
+            assert_eq!(detail.format_sizes[0].size_bytes, 1024);
+            assert_eq!(detail.identifiers[0].value, "9780441478125");
+        }
     }
 
     #[tokio::test]

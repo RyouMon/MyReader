@@ -3,11 +3,6 @@ name: Quality
 on:
   pull_request:
   workflow_dispatch:
-    inputs:
-      deep:
-        description: Also run Rust coverage and online dependency audits
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -25,6 +20,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - name: Validate workflow syntax and expressions
         uses: docker://rhysd/actionlint:1.7.12
         with:
@@ -35,6 +32,10 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Check formatting of changed files
+        env:
+          BASE_REF: ${{ github.base_ref || github.event.repository.default_branch }}
+        run: pnpm exec biome format --changed --since="origin/$BASE_REF" --no-errors-on-unmatched
       - name: Install Lychee 0.24.2
         run: |
           mkdir -p "$RUNNER_TEMP/docs-qa"
@@ -61,7 +62,35 @@ jobs:
           path: reports/
           retention-days: 14
 
-  javascript:
+  unit:
+    name: Unit tests / ${{ matrix.package }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - package: "@my-reader/fonts"
+            command: test
+          - package: "@my-reader/i18n"
+            command: test
+          - package: "@my-reader/tools"
+            command: test
+          - package: my-reader
+            command: test:unit
+          - package: my-reader-mobile
+            command: test:ci
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter '${{ matrix.package }}' '${{ matrix.command }}'
+
+  coverage:
     name: Coverage / ${{ matrix.package }}
     runs-on: ubuntu-22.04
     timeout-minutes: 15
@@ -92,12 +121,21 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter '${{ matrix.package }}' '${{ matrix.command }}'
+      - name: Collect Vitest coverage without a percentage gate
+        if: matrix.package != 'my-reader-mobile'
+        run: >-
+          pnpm --filter '${{ matrix.package }}' '${{ matrix.command }}'
+          --coverage.thresholds.lines=0 --coverage.thresholds.statements=0
+          --coverage.thresholds.functions=0 --coverage.thresholds.branches=0
+      - name: Collect Jest coverage without a percentage gate
+        if: matrix.package == 'my-reader-mobile'
+        run: pnpm --filter '${{ matrix.package }}' '${{ matrix.command }}' --coverageThreshold='{}'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage-${{ strategy.job-index }}
           path: ${{ matrix.directory }}/coverage/
+          if-no-files-found: error
           retention-days: 14
 
   mutation:
@@ -141,8 +179,8 @@ jobs:
       - run: cargo clippy --locked --workspace --all-targets -- -D warnings -D clippy::cognitive_complexity
       - run: cargo test --locked --workspace
 
-  deep:
-    if: github.event_name == 'workflow_dispatch' && inputs.deep
+  rust-coverage:
+    name: Rust coverage
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     env:
@@ -163,10 +201,33 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-llvm-cov@0.9.1,cargo-audit@0.22.2
+          tool: cargo-llvm-cov@0.9.1
       - run: mkdir -p reports/rust
         if: always()
       - run: pnpm qa:rust:coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rust-coverage-report
+          path: reports/rust/
+          if-no-files-found: error
+          retention-days: 14
+
+  security:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit@0.22.2
+      - run: mkdir -p reports
       - name: npm production dependency audit
         if: always()
         timeout-minutes: 5
@@ -178,6 +239,32 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: deep-quality-reports
+          name: security-reports
           path: reports/
           retention-days: 14
+
+  qa-gate:
+    name: QA
+    if: always()
+    needs: [static, mutation, rust, security]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Require every QA job to succeed
+        run: |
+          test '${{ needs.static.result }}' = success
+          test '${{ needs.mutation.result }}' = success
+          test '${{ needs.rust.result }}' = success
+          test '${{ needs.security.result }}' = success
+
+  unit-gate:
+    name: Unit tests
+    if: always()
+    needs: [unit, coverage, rust, rust-coverage]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Require every unit test job to succeed
+        run: |
+          test '${{ needs.unit.result }}' = success
+          test '${{ needs.coverage.result }}' = success
+          test '${{ needs.rust.result }}' = success
+          test '${{ needs.rust-coverage.result }}' = success

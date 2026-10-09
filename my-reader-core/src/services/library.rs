@@ -1214,10 +1214,7 @@ mod tests {
     fn seed_calibre_database(path: &Path) {
         let connection = rusqlite::Connection::open(path).unwrap();
         connection
-            .execute(
-                "CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT NOT NULL, sort TEXT NOT NULL, timestamp TEXT, pubdate TEXT, series_index REAL NOT NULL DEFAULT 1, author_sort TEXT, isbn TEXT, lccn TEXT, path TEXT, flags INTEGER NOT NULL DEFAULT 1, uuid TEXT, has_cover INTEGER, last_modified TEXT NOT NULL)",
-                [],
-            )
+            .execute_batch(include_str!("../../tests/fixtures/calibre_books.sql"))
             .unwrap();
         connection
             .execute(
