@@ -1,0 +1,168 @@
+diff --git a/expo-module-gradle-plugin/src/main/kotlin/expo/modules/plugin/ProjectConfiguration.kt b/expo-module-gradle-plugin/src/main/kotlin/expo/modules/plugin/ProjectConfiguration.kt
+index cfc300c21ed142f0f25813a9f349f5068e72c991..b5324d69838917769ddb62010f44ace05ea7a956 100644
+--- a/expo-module-gradle-plugin/src/main/kotlin/expo/modules/plugin/ProjectConfiguration.kt
++++ b/expo-module-gradle-plugin/src/main/kotlin/expo/modules/plugin/ProjectConfiguration.kt
+@@ -2,7 +2,8 @@
+ 
+ package expo.modules.plugin
+ 
+-import com.android.build.gradle.LibraryExtension
++import com.android.build.api.dsl.LibraryExtension
++import com.android.build.api.variant.AndroidComponentsExtension
+ import expo.modules.plugin.android.PublicationInfo
+ import expo.modules.plugin.android.applyLinterOptions
+ import expo.modules.plugin.android.applyPublishingVariant
+@@ -20,27 +21,31 @@ import org.gradle.internal.extensions.core.extra
+ import java.io.File
+ 
+ internal fun Project.applyDefaultPlugins() {
+-  if (!plugins.hasPlugin("com.android.library")) {
+-    plugins.apply("com.android.library")
+-  }
+-  if (!plugins.hasPlugin("kotlin-android")) {
+-    plugins.apply("kotlin-android")
+-  }
+-  if (!plugins.hasPlugin("maven-publish")) {
+-    plugins.apply("maven-publish")
++  applyPluginIfNeeded("com.android.library")
++
++  if (!hasBuiltInKotlinSupport()) {
++    // AGP 9 ships built-in Kotlin support (enabled by default), so applying `kotlin-android` on top
++    // of it fails with "Cannot add extension with name 'kotlin', …".
++    applyPluginIfNeeded("kotlin-android")
+   }
++
++  applyPluginIfNeeded("maven-publish")
+ }
+ 
+ internal fun Project.applyPikaPlugin() {
+-  if (!plugins.hasPlugin("io.github.lukmccall.pika")) {
+-    plugins.apply("io.github.lukmccall.pika")
+-  }
++  applyPluginIfNeeded("io.github.lukmccall.pika")
+ 
+   val pika = extensions.getByType(PikaGradleExtension::class.java)
+   pika.introspectableAnnotation("expo.modules.kotlin.types.OptimizedRecord")
+   pika.introspectableAnnotation("expo.modules.kotlin.views.OptimizedComposeProps")
+ }
+ 
++private fun Project.applyPluginIfNeeded(id: String) {
++  if (!plugins.hasPlugin(id)) {
++    plugins.apply(id)
++  }
++}
++
+ internal fun Project.configurePika(shouldBeEnabled: Boolean = true) {
+   val pika = extensions.getByType(PikaGradleExtension::class.java)
+   pika.enabled = shouldBeEnabled
+@@ -72,9 +77,7 @@ internal fun Project.applyDefaultAndroidSdkVersions() {
+       compileSdk = rootProject.extra.safeGet("compileSdkVersion")
+         ?: logger.warnIfNotDefined("compileSdkVersion", 36),
+       minSdk = rootProject.extra.safeGet("minSdkVersion")
+-        ?: logger.warnIfNotDefined("minSdkVersion", 24),
+-      targetSdk = rootProject.extra.safeGet("targetSdkVersion")
+-        ?: logger.warnIfNotDefined("targetSdkVersion", 36)
++        ?: logger.warnIfNotDefined("minSdkVersion", 24)
+     )
+     applyLinterOptions()
+   }
+@@ -119,6 +122,21 @@ internal fun Project.applyPublishing(expoModulesExtension: ExpoModuleExtension)
+   }
+ }
+ 
++private const val AGP_BUILT_IN_KOTLIN_MAJOR = 9
++
++/**
++ * Whether AGP's built-in Kotlin support is active, meaning the `kotlin-android` plugin must not be
++ * applied. True on AGP 9+ unless the project explicitly opts out with `android.builtInKotlin=false`.
++ */
++internal fun Project.hasBuiltInKotlinSupport(): Boolean {
++  val androidComponents = extensions.findByType(AndroidComponentsExtension::class.java)
++    ?: return false
++  if (androidComponents.pluginVersion.major < AGP_BUILT_IN_KOTLIN_MAJOR) {
++    return false
++  }
++  return findProperty("android.builtInKotlin")?.toString()?.toBoolean() ?: true
++}
++
+ internal fun Project.androidLibraryExtension() = extensions.getByType(LibraryExtension::class.java)
+ 
+ internal fun Project.publishingExtension() = extensions.getByType(PublishingExtension::class.java)
+diff --git a/expo-module-gradle-plugin/src/main/kotlin/expo/modules/plugin/android/AndroidLibraryExtension.kt b/expo-module-gradle-plugin/src/main/kotlin/expo/modules/plugin/android/AndroidLibraryExtension.kt
+index 9bfae8d7961d6f63c1b17c1b0d4f01557e15a424..0de0f0ec998c3ab2fb8a5bad1438ad3cdce78601 100644
+--- a/expo-module-gradle-plugin/src/main/kotlin/expo/modules/plugin/android/AndroidLibraryExtension.kt
++++ b/expo-module-gradle-plugin/src/main/kotlin/expo/modules/plugin/android/AndroidLibraryExtension.kt
+@@ -1,22 +1,21 @@
+ package expo.modules.plugin.android
+ 
+-import com.android.build.gradle.LibraryExtension
++import com.android.build.api.dsl.LibraryExtension
+ 
+-internal fun LibraryExtension.applySDKVersions(compileSdk: Int, minSdk: Int, targetSdk: Int) {
++internal fun LibraryExtension.applySDKVersions(compileSdk: Int, minSdk: Int) {
+   this.compileSdk = compileSdk
+   defaultConfig {
+     this@defaultConfig.minSdk = minSdk
+-    this@defaultConfig.targetSdk = targetSdk
+   }
+ }
+ 
+ internal fun LibraryExtension.applyLinterOptions() {
+-  lintOptions.isAbortOnError = false
++  lint.abortOnError = false
+ }
+ 
+ internal fun LibraryExtension.applyPublishingVariant() {
+-  publishing { publishing ->
+-    publishing.singleVariant("release") {
++  publishing {
++    singleVariant("release") {
+       withSourcesJar()
+     }
+   }
+diff --git a/expo-module-gradle-plugin/src/main/kotlin/expo/modules/plugin/android/MavenPublicationExtension.kt b/expo-module-gradle-plugin/src/main/kotlin/expo/modules/plugin/android/MavenPublicationExtension.kt
+index f0ce04eab977193df13557d70833170f736b701b..022886b8bebaea2bd77a9e10c944fe238c54762a 100644
+--- a/expo-module-gradle-plugin/src/main/kotlin/expo/modules/plugin/android/MavenPublicationExtension.kt
++++ b/expo-module-gradle-plugin/src/main/kotlin/expo/modules/plugin/android/MavenPublicationExtension.kt
+@@ -23,9 +23,7 @@ import org.gradle.api.component.SoftwareComponent
+ import org.gradle.api.publish.PublicationContainer
+ import org.gradle.api.publish.maven.MavenPublication
+ import org.gradle.api.tasks.TaskProvider
+-import java.nio.file.Path
+-import kotlin.io.path.exists
+-import kotlin.io.path.toPath
++import java.io.File
+ 
+ internal data class PublicationInfo(
+   val components: SoftwareComponent,
+@@ -41,17 +39,15 @@ internal data class PublicationInfo(
+     artifactId = requireNotNull(project.androidLibraryExtension().namespace) {
+       "'android.namespace' is not defined"
+     },
+-    version = requireNotNull(project.androidLibraryExtension().defaultConfig.versionName) {
+-      "'android.defaultConfig.versionName' is not defined"
++    version = requireNotNull(project.version.toString().takeUnless { it == "unspecified" }) {
++      "'project.version' is not defined. Set `version = \"<x.y.z>\"` in the module's android/build.gradle."
+     },
+   )
+ 
+-  fun resolvePath(repositoryPath: Path): Path {
++  fun resolvePath(repositoryPath: File): File {
+     val groupPath = groupId.replace('.', '/')
+     val artifactPath = "$groupPath/$artifactId/$version"
+-    val publicationPath = repositoryPath.resolve(artifactPath)
+-
+-    return publicationPath
++    return File(repositoryPath, artifactPath)
+   }
+ 
+   override fun toString(): String {
+@@ -180,7 +176,7 @@ private fun Project.expoPublishBody(publicationInfo: PublicationInfo, expoModule
+ 
+   if (pathToRepository == null) {
+     val mavenLocal = publishingExtension().repositories.mavenLocal()
+-    val mavenLocalPath = mavenLocal.url.toPath()
++    val mavenLocalPath = File(mavenLocal.url)
+     val publicationPath = publicationInfo.resolvePath(mavenLocalPath)
+ 
+     if (!publicationPath.exists()) {

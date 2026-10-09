@@ -1,0 +1,138 @@
+diff --git a/react-native-gradle-plugin/src/main/kotlin/com/facebook/react/ReactPlugin.kt b/react-native-gradle-plugin/src/main/kotlin/com/facebook/react/ReactPlugin.kt
+index e7859ff6ad0b5334795452a18829ffb8f6d6d91a..10bce94abcb281ca42e2af4637893ff8335a0a89 100644
+--- a/react-native-gradle-plugin/src/main/kotlin/com/facebook/react/ReactPlugin.kt
++++ b/react-native-gradle-plugin/src/main/kotlin/com/facebook/react/ReactPlugin.kt
+@@ -95,12 +95,37 @@ class ReactPlugin : Plugin<Project> {
+       configureCodegen(project, extension, rootExtension, isLibrary = false)
+       configureResources(project, extension)
+       configureBuildTypesForApp(project)
++
++      // Apply the namespace fallback to every Android library in the build, including third-party
++      // libraries that don't apply the `com.facebook.react` plugin and still rely on the manifest
++      // `package` attribute (which AGP 9 no longer accepts as a namespace). The per-library hook
++      // below only covers libraries that apply our plugin, so we additionally sweep all library
++      // subprojects from the app. We do this once, from the application project, because re-running
++      // a rootProject-wide traversal from every library breaks on AGP 9, which errors when
++      // `finalizeDsl` is registered after a project's DSL has been finalized.
++      // See https://github.com/facebook/react-native/pull/57038.
++      //
++      // We skip projects that have already been evaluated: AGP finalizes a project's DSL during/
++      // after its evaluation, so registering a `finalizeDsl` callback on an already-evaluated
++      // project is "too late" and fails on AGP 9. In a regular app build the app is evaluated
++      // before its libraries (see ReactRootProjectPlugin's `evaluationDependsOn(":app")`), so every
++      // library is still pending here. In composite/monorepo builds (e.g. rn-tester, where
++      // ReactAndroid is a sibling) some library projects are already evaluated by this point; those
++      // already define their own namespace, so skipping them is safe.
++      project.rootProject.allprojects { subproject ->
++        subproject.pluginManager.withPlugin("com.android.library") {
++          if (!subproject.state.executed) {
++            configureBuildConfigFieldsForLibraries(subproject)
++            configureNamespaceForLibraries(subproject)
++          }
++        }
++      }
+     }
+ 
+     // Library Only Configuration
+-    configureBuildConfigFieldsForLibraries(project)
+-    configureNamespaceForLibraries(project)
+     project.pluginManager.withPlugin("com.android.library") {
++      configureBuildConfigFieldsForLibraries(project)
++      configureNamespaceForLibraries(project)
+       configureCodegen(project, extension, rootExtension, isLibrary = true)
+     }
+   }
+diff --git a/react-native-gradle-plugin/src/main/kotlin/com/facebook/react/utils/AgpConfiguratorUtils.kt b/react-native-gradle-plugin/src/main/kotlin/com/facebook/react/utils/AgpConfiguratorUtils.kt
+index c4a7b359d5427ff3775774a41ff13eee8ac22016..f4580be0d1a7357d6a12a09292f27661d8617ffb 100644
+--- a/react-native-gradle-plugin/src/main/kotlin/com/facebook/react/utils/AgpConfiguratorUtils.kt
++++ b/react-native-gradle-plugin/src/main/kotlin/com/facebook/react/utils/AgpConfiguratorUtils.kt
+@@ -9,7 +9,6 @@ package com.facebook.react.utils
+ 
+ import com.android.build.api.variant.ApplicationAndroidComponentsExtension
+ import com.android.build.api.variant.LibraryAndroidComponentsExtension
+-import com.android.build.gradle.LibraryExtension
+ import com.facebook.react.ReactExtension
+ import com.facebook.react.utils.ProjectUtils.isEdgeToEdgeEnabled
+ import com.facebook.react.utils.ProjectUtils.isHermesEnabled
+@@ -18,7 +17,6 @@ import java.net.Inet4Address
+ import java.net.NetworkInterface
+ import javax.xml.parsers.DocumentBuilder
+ import javax.xml.parsers.DocumentBuilderFactory
+-import kotlin.plus
+ import org.gradle.api.Action
+ import org.gradle.api.Project
+ import org.gradle.api.plugins.AppliedPlugin
+@@ -77,13 +75,13 @@ internal object AgpConfiguratorUtils {
+     project.pluginManager.withPlugin("com.android.library", action)
+   }
+ 
+-  fun configureBuildConfigFieldsForLibraries(appProject: Project) {
+-    appProject.rootProject.allprojects { subproject ->
+-      subproject.pluginManager.withPlugin("com.android.library") {
+-        subproject.extensions
+-            .getByType(LibraryAndroidComponentsExtension::class.java)
+-            .finalizeDsl { ext -> ext.buildFeatures.buildConfig = true }
+-      }
++  fun configureBuildConfigFieldsForLibraries(project: Project) {
++    if (project.extensions.extraProperties.has(BUILD_CONFIG_CONFIGURED_PROPERTY)) {
++      return
++    }
++    project.extensions.extraProperties.set(BUILD_CONFIG_CONFIGURED_PROPERTY, true)
++    project.extensions.getByType(LibraryAndroidComponentsExtension::class.java).finalizeDsl { ext ->
++      ext.buildFeatures.buildConfig = true
+     }
+   }
+ 
+@@ -111,23 +109,25 @@ internal object AgpConfiguratorUtils {
+     project.pluginManager.withPlugin("com.android.library", action)
+   }
+ 
+-  fun configureNamespaceForLibraries(appProject: Project) {
+-    appProject.rootProject.allprojects { subproject ->
+-      subproject.pluginManager.withPlugin("com.android.library") {
+-        subproject.extensions
+-            .getByType(LibraryAndroidComponentsExtension::class.java)
+-            .finalizeDsl { ext ->
+-              if (ext.namespace == null) {
+-                val android = subproject.extensions.getByType(LibraryExtension::class.java)
+-                val manifestFile = android.sourceSets.getByName("main").manifest.srcFile
+-
+-                manifestFile
+-                    .takeIf { it.exists() }
+-                    ?.let { file ->
+-                      getPackageNameFromManifest(file)?.let { packageName ->
+-                        ext.namespace = packageName
+-                      }
+-                    }
++  fun configureNamespaceForLibraries(project: Project) {
++    // This helper can be reached both from a library's own application of the React plugin and
++    // from the app-level sweep in ReactPlugin (which also covers libraries that don't apply
++    // `com.facebook.react`). A project's `finalizeDsl` callback must be registered before AGP
++    // finalizes its DSL — registering it twice (or after finalization) is a hard error on AGP 9+ —
++    // so we guard to register the namespace fallback at most once per project.
++    if (project.extensions.extraProperties.has(NAMESPACE_CONFIGURED_PROPERTY)) {
++      return
++    }
++    project.extensions.extraProperties.set(NAMESPACE_CONFIGURED_PROPERTY, true)
++    project.extensions.getByType(LibraryAndroidComponentsExtension::class.java).finalizeDsl { ext ->
++      if (ext.namespace == null) {
++        val manifestFile =
++            project.layout.projectDirectory.file("src/main/AndroidManifest.xml").asFile
++        manifestFile
++            .takeIf { it.exists() }
++            ?.let { file ->
++              getPackageNameFromManifest(file)?.let { packageName ->
++                ext.namespace = packageName
+               }
+             }
+       }
+@@ -135,6 +135,9 @@ internal object AgpConfiguratorUtils {
+   }
+ }
+ 
++private const val NAMESPACE_CONFIGURED_PROPERTY = "com.facebook.react.internal.namespaceConfigured"
++private const val BUILD_CONFIG_CONFIGURED_PROPERTY = "com.facebook.react.internal.buildConfigConfigured"
++
+ const val DEFAULT_DEV_SERVER_PORT = "8081"
+ 
+ fun getPackageNameFromManifest(manifest: File): String? {

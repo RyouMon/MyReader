@@ -76,6 +76,7 @@ internal fun preferencesRecordToPdf(prefs: PreferencesRecord): ReadiumPdfPrefere
     fit = Fit.WIDTH,
     pageSpacing = null,
     readingProgression = prefs.readingProgression?.let { parseReadingProgression(it) },
+    scroll = prefs.scroll ?: false,
     scrollAxis = if (prefs.scroll == true) Axis.VERTICAL else Axis.HORIZONTAL
   )
 }

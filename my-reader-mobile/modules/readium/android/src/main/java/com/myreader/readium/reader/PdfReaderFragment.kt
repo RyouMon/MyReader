@@ -9,6 +9,7 @@ import androidx.fragment.app.commitNow
 import androidx.lifecycle.ViewModelProvider
 import com.myreader.readium.R
 import com.github.barteksc.pdfviewer.PDFView
+import kotlinx.coroutines.CompletableDeferred
 import org.readium.adapter.pdfium.navigator.PdfiumEngineProvider
 import org.readium.adapter.pdfium.navigator.PdfiumPreferences
 import org.readium.adapter.pdfium.navigator.PdfiumPreferencesEditor
@@ -16,7 +17,6 @@ import org.readium.adapter.pdfium.navigator.PdfiumSettings
 import org.readium.r2.navigator.Navigator
 import org.readium.r2.navigator.pdf.PdfNavigatorFragment
 import org.readium.r2.navigator.pdf.PdfNavigatorFactory
-import org.readium.r2.navigator.preferences.Axis
 import org.readium.r2.shared.publication.Locator
 import org.readium.r2.shared.publication.Publication
 
@@ -29,6 +29,11 @@ class PdfReaderFragment : VisualReaderFragment(), PdfNavigatorFragment.Listener 
     private var navigatorFactory: PdfNavigatorFactory<PdfiumSettings, PdfiumPreferences, PdfiumPreferencesEditor>? = null
     private var pendingPreferences: PdfiumPreferences? = null
     private lateinit var userPreferences: PdfiumPreferences
+    private val firstPageDrawn = CompletableDeferred<Unit>()
+
+    override suspend fun awaitNavigatorReady() {
+        firstPageDrawn.await()
+    }
 
     fun initFactory(publication: Publication, initialLocation: Locator?) {
         factory = ReaderViewModel.Factory(publication, initialLocation)
@@ -89,16 +94,16 @@ class PdfReaderFragment : VisualReaderFragment(), PdfNavigatorFragment.Listener 
             .get(ReaderViewModel::class.java)
             .let { model = it }
 
-        val snap = pendingPreferences?.scrollAxis != Axis.VERTICAL
-
         navigatorFactory = PdfNavigatorFactory(
             publication = model.publication,
             pdfEngineProvider = PdfiumEngineProvider(
                 listener = object : PdfiumEngineProvider.Listener {
                     override fun onConfigurePdfView(configurator: PDFView.Configurator) {
-                        configurator
-                            .pageSnap(snap)
-                            .pageFling(snap)
+                        // Readium's initial render applies fitToWidth and restores the
+                        // default page. Wait for drawing before JS restores a locator.
+                        configurator.onDrawAll { _, _, _, _ ->
+                            firstPageDrawn.complete(Unit)
+                        }
                     }
                 }
             )

@@ -72,7 +72,7 @@ class ReaderService(
       return
     }
     val publicationUrl = runCatching {
-      publicationFile.toUrl()
+      publicationFile.toUrl(isDirectory = publicationFile.isDirectory)
     }
       .onFailure {
         Log.e(TAG, "Invalid publication path: $fileName - ${it.message}")

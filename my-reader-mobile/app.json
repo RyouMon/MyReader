@@ -40,7 +40,10 @@
             "deploymentTarget": "16.4",
             "buildReactNativeFromSource": true
           },
-          "android": {}
+          "android": {
+            "compileSdkVersion": 37,
+            "kotlinVersion": "2.3.20"
+          }
         }
       ],
       [
@@ -51,6 +54,7 @@
       ],
       "./plugins/with-readium-ios",
       "./plugins/with-android-desugaring",
+      "./plugins/with-android-toolchain",
       "./plugins/with-android-debug-network-config",
       "@kesha-antonov/react-native-background-downloader",
       "expo-router",

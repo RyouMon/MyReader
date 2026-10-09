@@ -102,6 +102,25 @@ Linked as a workspace dependency (`"link:./modules/readium"` in
 - **iOS:** `Readium.podspec` declares the Readium pod deps; run `pod install` (or
   `expo run:ios`) after native changes.
 - **Android:** `android/build.gradle` pulls `org.readium.kotlin-toolkit:*` from Maven.
+  Readium 3.4 requires compile SDK 37 and desugaring 2.1.5. The app selects Kotlin
+  2.3.20 for the newer metadata and Expo's Pika compiler plugin. `with-android-toolchain`
+  selects AGP 9.1.1, keeps React Native's legacy Gradle DSL/Kotlin plugin integration,
+  preserves Expo autolinking's provider-backed source directories and explicit
+  `preBuild` generation dependency, and applies the Kotlin compiler classpath until
+  [Expo #49668](https://github.com/expo/expo/issues/49668) is resolved.
+  pnpm patches backport [Expo #46769](https://github.com/expo/expo/pull/46769) and
+  [React Native #57038](https://github.com/react/react-native/pull/57038) /
+  [#57290](https://github.com/react/react-native/pull/57290). The React Native patch
+  also keeps BuildConfig generation for Expo libraries in the single app-level pass.
+  Remove these compatibility patches when the installed releases include the fixes.
+
+Readium Kotlin 3.4 fixes PDFium's off-by-one locators and missing last-page updates.
+See the [upstream migration guide](https://github.com/readium/kotlin-toolkit/blob/3.4.0/docs/migration-guide.md).
+Existing synced PDF locators do not record their source platform or engine, so the
+app preserves their stored page numbers instead of blindly shifting iOS/desktop
+records too. A locator saved by the old Android PDFium adapter may reopen one page
+ahead; returning to the intended page and saving progress/bookmarks replaces it
+with the corrected locator.
 
 ## Usage
 

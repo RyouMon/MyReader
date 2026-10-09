@@ -33,9 +33,8 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import org.readium.r2.shared.ExperimentalReadiumApi
+import org.readium.r2.shared.publication.Layout
 import org.readium.r2.shared.publication.Publication
-import org.readium.r2.shared.publication.epub.EpubLayout
-import org.readium.r2.shared.publication.presentation.presentation
 import org.readium.r2.shared.publication.services.content.Content
 import org.readium.r2.shared.publication.services.content.content
 import org.readium.r2.shared.publication.services.search.SearchError
@@ -374,7 +373,7 @@ private fun searchOptionsToMap(options: SearchService.Options): Map<String, Any?
 @OptIn(ExperimentalReadiumApi::class)
 private fun Publication.isSearchableReflowableEpub(): Boolean =
   conformsTo(Publication.Profile.EPUB) &&
-    metadata.presentation.layout != EpubLayout.FIXED &&
+    metadata.layout != Layout.FIXED &&
     isSearchable
 
 @OptIn(ExperimentalReadiumApi::class)
