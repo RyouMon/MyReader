@@ -3,8 +3,13 @@
 本文是测试策略、QA 命令和债务管理的维护入口。包的 `package.json`、各工具配置和
 `.github/workflows/quality.yml` 是执行权威；Agent 规则只负责引导，不另存一套配置示例。
 
-Quality 仅在 PR 和手动执行时运行，普通推送不触发。手动执行默认运行常规门禁；
-选中 `deep` 才额外运行 Rust 覆盖率与联网依赖审计。
+Quality 在 PR 和手动执行时运行，普通推送不触发。两种入口均运行静态门禁、完整单测、
+变异测试、联网依赖审计，以及 JS / Rust 覆盖率报告。
+
+主分支要求 `QA` 和 `Unit tests` 两个聚合检查成功；所依赖的任务失败、取消或意外跳过均不会
+放行。`QA` 汇总静态检查、变异测试、Rust 门禁和安全审计，`Unit tests` 汇总五包 JS 与
+Cargo workspace 完整单测。覆盖率任务独立运行、上传报告，暂不列入必需检查；覆盖率数值
+未达基线不阻止合入，也不会掩盖独立 UT 的失败。通过后仍需人工审核合入。
 
 ## 日常命令
 
@@ -15,17 +20,21 @@ Quality 仅在 PR 和手动执行时运行，普通推送不触发。手动执�
 | `pnpm qa` | Lint、五个 JS 包类型检查、依赖边界、未使用代码、重复率、文档、生成漂移、QA 脚本测试 | PR 静态门禁 |
 | `pnpm qa:docs` | markdownlint 格式与 Lychee 本地链接、图片引用、标题锚点 | 离线门禁；需安装 Lychee |
 | `pnpm test:unit` | 五个 JS 包的完整单元测试及 QA 脚本测试 | 回归门禁 |
-| `pnpm qa:coverage` | 五包完整测试及显式源码范围的 Vitest/Jest 覆盖率 | 按包基线门禁 |
+| `pnpm qa:coverage` | 五包完整测试及显式源码范围的 Vitest/Jest 覆盖率 | 基线报告，非合入硬指标 |
 | `pnpm qa:mutation` | 共享路径、进度、计时、TTS 状态与语言逻辑的 Stryker 变异测试 | 测试有效性门禁 |
 | `pnpm qa:rust` | rustfmt、Clippy、Cargo workspace 完整测试 | Rust 门禁 |
 | `pnpm qa:rust:complexity` | Rust 认知复杂度检查 | 超限返回非零；同时纳入 Rust 门禁 |
-| `pnpm qa:rust:coverage` | Core 与移动 FFI 的 cargo-llvm-cov LCOV | 需安装工具及 llvm-tools-preview |
+| `pnpm qa:rust:coverage` | Core 与移动 FFI 的 cargo-llvm-cov LCOV | PR 报告；需工具及 llvm-tools-preview |
 | `pnpm qa:unused` | Knip 扫描未使用文件、依赖、导出与未解析引用 | PR 门禁；新增发现需核实用途 |
 | `pnpm lint:report` | 输出原始 ESLint JSON | 有发现时返回非零 |
-| `pnpm qa:security` | npm 生产依赖漏洞审计 | 联网检查；中危及以上返回非零 |
-| `pnpm qa:rust:security` | Cargo 锁文件通告与撤包状态审计 | 需安装 cargo-audit 和联网；漏洞返回非零 |
+| `pnpm qa:security` | npm 生产依赖漏洞审计 | PR 门禁；中危及以上返回非零 |
+| `pnpm qa:rust:security` | Cargo 锁文件通告与撤包状态审计 | PR 门禁；需 cargo-audit 和联网 |
 | `pnpm qa:workflows` | actionlint 校验 Actions 语法、表达式与 action 输入 | 需安装 actionlint；CI 使用官方固定版本镜像 |
-| `pnpm format:check` | Biome 格式检查 | 全仓历史格式差异单独治理 |
+| `pnpm format:check` | Biome 全仓格式检查 | PR 检查改动文件；历史差异单独治理 |
+
+PR 的 Biome 格式门禁使用 `pnpm exec biome format --changed --since=origin/main --no-errors-on-unmatched`
+（工作流按实际目标分支替换 `main`），检查本次改动的受支持文件。Rust 格式由 rustfmt 检查，
+Markdown 格式由 markdownlint 检查；不通过重写全仓格式或扩大排除范围处理历史差异。
 
 `reports/` 和包内 `coverage/` 是忽略的本地报告。GitHub Actions 上传报告制品，不上传源码到
 SonarCloud、Codecov 或 Stryker Dashboard。Knip 报告不能直接用作删除原生模块、动态路由、
@@ -65,8 +74,9 @@ Knip 的入口包含 Expo 路由、原生模块和字体准备脚本；动态加
 
 - ESLint 历史问题已清零，不保留 `eslint-suppressions.json`；所有启用规则直接以 `error`
   阻断新增问题。`pnpm lint:report` 输出未经豁免的原始结果，不能通过重建基线接受超限。
-- 覆盖率基线来自全包实测，四项指标分别设门槛；未运行文件也计入。既有桌面 70/65/60/70
-  目标并未达到，仍作为后续提升方向，不能把基线通过宣称为该目标达标。
+- 覆盖率基线来自全包实测，四项指标保留原有参考值；未运行文件也计入。独立覆盖率命令
+  未达参考值仍返回非零以便发现回退，但不属于合入必需检查。既有桌面 70/65/60/70 目标并未
+  达到，仍作为后续提升方向，不能把基线通过宣称为该目标达标。
 - 重复扫描阈值、最小片段和排除项见 `.jscpd.json`。生成绑定、实体、翻译表、第三方 UI
   模板与独立测试文件不进入产品重复率。Rust 内联测试仍随源文件参与扫描。
 - 圈复杂度阈值 22，TS 认知复杂度 16；Rust 认知复杂度阈值 27。
