@@ -37,7 +37,7 @@ import { describeError } from "@/src/utils/common"
 import { Text, View } from "@/tw"
 
 const DEFAULT_VOICE_LANGUAGE = "und"
-const PREVIEW_LANGUAGE = "zh-CN"
+const PREVIEW_LANGUAGE = "en"
 const PREVIEW_MIME_TYPES = [
   "audio/mpeg",
   "audio/ogg",

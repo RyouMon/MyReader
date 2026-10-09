@@ -1,0 +1,934 @@
+{
+  "incomingShare": {
+    "importingTitle": "공유 도서 가져오기",
+    "importingDetail": "MyReader님이 귀하의 서재에 책을 추가하고 있습니다.",
+    "failedTitle": "공유 항목을 가져올 수 없습니다.",
+    "failedDetail": "EPUB, PDF 또는 CBZ 파일 하나를 MyReader에 공유합니다.",
+    "openLibrary": "서재 열기"
+  },
+  "back": "뒤로",
+  "tabs": {
+    "home": "홈",
+    "library": "서재",
+    "settings": "설정"
+  },
+  "home": {
+    "title": "홈",
+    "continueReading": "계속 읽기",
+    "noCover": "커버 없음",
+    "currentLibrary": "서재: {{name}} · {{count}}권",
+    "viewBooks": "도서 보기",
+    "reading": "읽기",
+    "recentReading": "최근 독서",
+    "recentAdded": "최근 추가한 책",
+    "bookCount": "{{count}}권",
+    "readingStats": {
+      "title": "독서 통계",
+      "streak": "연속 독서 일수",
+      "totalDuration": "총 시간",
+      "completed": "완독",
+      "dayUnit": "디",
+      "hourUnit": "h",
+      "bookUnit": "권",
+      "year": "{{year}}",
+      "previousYear": "전년도",
+      "nextYear": "내년",
+      "noRecord": "기록 없음",
+      "readingMinutes": "{{count}}분 읽기",
+      "weekdays": {
+        "mon": "월",
+        "wed": "수요일",
+        "fri": "금요일"
+      },
+      "bookUnit_other": "권"
+    },
+    "noReadingHistory": {
+      "title": "아직 읽은 기록이 없습니다.",
+      "detail": "읽기를 시작하려면 서재에서 책을 선택하세요.",
+      "action": "서재 열기"
+    },
+    "currentLibrary_other": "서재: {{name}} · {{count}}권",
+    "bookCount_other": "{{count}}권"
+  },
+  "library": {
+    "allLibraries": "모든 서재",
+    "importingBook": "가져오는 중…",
+    "importFailed": {
+      "title": "도서를 가져올 수 없습니다."
+    },
+    "importQueued": {
+      "title": "이 기기에 책이 저장되었습니다.",
+      "detail": "연결이 복구되면 원격 서재에 업로드됩니다."
+    },
+    "importUnsupported": {
+      "title": "지원되지 않는 도서 형식",
+      "detail": "EPUB, PDF 또는 CBZ 파일을 선택합니다."
+    },
+    "switchLibrary": "스위치 서재",
+    "syncCurrentLibrary": "현재 서재 동기화",
+    "searchPlaceholder": "검색제목, 저자",
+    "bookCountRatio": "{{visible}} / {{total}} 책",
+    "collections": {
+      "currentLibrary": "현재 서재: {{name}}"
+    },
+    "sort": {
+      "recentlyRead": "최근 읽은 책",
+      "recentlyAdded": "최근 추가한 책"
+    },
+    "view": {
+      "grid": "그리드 보기",
+      "list": "목록 보기"
+    },
+    "sortLabel": "정렬",
+    "viewLabel": "보기",
+    "libraryActions": "서재 작업",
+    "viewConfig": "보기 구성",
+    "switchLibraryAlert": {
+      "title": "스위치 서재",
+      "message": "현재: {{name}}",
+      "unselected": "선택되지 않음",
+      "close": "닫기"
+    },
+    "loading": {
+      "title": "서재 로딩 중",
+      "detail": "로컬 및 WebDAV 서재 구성 읽기."
+    },
+    "notFound": {
+      "title": "서재를 찾을 수 없음",
+      "detail": "이는 제거되었거나 링크 매개변수가 더 이상 유효하지 않을 수 있습니다."
+    },
+    "noLibrary": {
+      "title": "아직 서재가 없습니다.",
+      "detail": "책을 직접 가져오거나 MyReader 또는 Calibre 서재를 추가하세요."
+    },
+    "unselected": {
+      "title": "선택된 서재가 없습니다.",
+      "detail": "탐색할 서재를 선택하거나, 새로운 서재를 추가하세요."
+    },
+    "loadError": {
+      "title": "로드 실패"
+    }
+  },
+  "libraryDetail": {
+    "currentlyUsed": " · 사용 중",
+    "bookCount": "{{count}}권",
+    "typeLocal": "로컬",
+    "typeWebdav": "WebDAV",
+    "typeOnedrive": "OneDrive",
+    "calibreLibrary": "Calibre 서재",
+    "myreaderLibrary": "MyReader 서재",
+    "remove": {
+      "title": "이 서재를 제거하시겠습니까?",
+      "message": "서재와 해당 로컬 데이터가 앱에서 제거됩니다. 소스 파일은 삭제되지 않습니다.",
+      "cancel": "취소",
+      "confirm": "제거"
+    },
+    "deleteLocal": {
+      "title": "이 내부 서재를 삭제하시겠습니까?",
+      "message": "이 서재의 도서 및 독서자료가 삭제됩니다. 이 작업은 취소할 수 없습니다.",
+      "cancel": "취소",
+      "confirm": "삭제"
+    },
+    "removeLibrary": "서재 제거",
+    "deleteLibrary": "서재 삭제",
+    "notFound": {
+      "title": "서재를 찾을 수 없음",
+      "detail": "이는 제거되었거나 링크 매개변수가 더 이상 유효하지 않을 수 있습니다."
+    },
+    "useLibrary": "이 서재 사용",
+    "refreshing": "상쾌하다...",
+    "refresh": "서재 새로 고침",
+    "libraryType": "서재 유형",
+    "storageLocation": "저장 위치",
+    "remotePath": "경로",
+    "sourceType": "소스 유형",
+    "libraryPath": "서재 경로",
+    "bookCountLabel": "책수",
+    "addedAt": "다음 날짜에 추가됨",
+    "bookCount_other": "{{count}}권"
+  },
+  "settings": {
+    "libraryDetail": "서재 세부사항",
+    "manageLibrary": "서재 관리: {{name}}",
+    "addLibrary": "서재 추가",
+    "librarySection": "서재",
+    "currentInUse": "사용 중",
+    "bookCountCurrent": "{{count}}권 · 사용 중",
+    "bookCount": "{{count}}권",
+    "remoteDataSources": "원격 데이터 소스",
+    "webdavDetail": "WebDAV 데이터 소스 관리",
+    "onedriveDetail": "OneDrive 데이터 소스 관리",
+    "appearance": "모양",
+    "darkMode": "다크 모드",
+    "themeMode": {
+      "system": "시스템 설정 따르기",
+      "light": "라이트",
+      "dark": "다크"
+    },
+    "language": "언어",
+    "languageDetail": "표시 언어 변경",
+    "homeCardStyle": "홈 카드 스타일",
+    "homeCardStyle.adaptive": "적응형",
+    "homeCardStyle.coverBlur": "흐릿한 표지",
+    "tts": {
+      "sectionTitle": "소리 내어 읽기",
+      "title": "소리내어 읽기 및 음성",
+      "detail": "시스템 음성 및 TTS 추론 서비스 구성",
+      "previewSection": "미리보기",
+      "previewText": "MyReader 소리내어 읽기에 오신 것을 환영합니다.",
+      "previewAction": "미리보기",
+      "previewGenerating": "생성 중… 중지하려면 탭하세요.",
+      "previewPlaying": "미리보기 중지",
+      "previewFailed": "음성을 미리 볼 수 없습니다.",
+      "engineSection": "기본 나레이션",
+      "engine": "내레이션 엔진",
+      "systemEngine": "시스템 음성",
+      "voice": "음성",
+      "automaticVoice": "자동",
+      "playbackSection": "재생",
+      "speed": "속도",
+      "pitch": "피치",
+      "pitchProviderHint": "시스템 음성에는 피치가 적용된다. 초기 네트워크 엔진은 피치 조정을 지원하지 않습니다.",
+      "providersSection": "TTS 제공자",
+      "providerTypeSection": "제공자 유형 선택",
+      "providerSection": "제공자 구성",
+      "providerKinds": {
+        "openAiCompatible": "OpenAI 호환"
+      },
+      "addOpenAi": "OpenAI 호환 서비스 추가",
+      "openAiProviderTypeDetail": "OpenAI /v1/audio/speech과 호환 가능",
+      "addProvider": "TTS 제공자 추가",
+      "editProvider": "TTS 제공자 편집",
+      "profileName": "이름",
+      "endpoint": "엔드포인트",
+      "model": "모델",
+      "voices": "음성 ID",
+      "voicesPlaceholder": "한 줄에 하나의 공급자 지원 음성 ID를 입력하세요.",
+      "voicesDetail": "OpenAI 호환 API에는 공유 음성 검색 계약이 없습니다. MyReader은 음성 이름이 없다고 가정합니다. 공급자 문서를 사용하십시오.",
+      "defaultVoice": "기본 음성",
+      "defaultVoicePlaceholder": "위 목록 중 하나의 음성 ID를 입력하세요.",
+      "credential": "크리덴셜",
+      "credentialSaved": "이 기기의 보안 저장소에 저장됩니다.",
+      "openAiCredentialPlaceholder": "OpenAI API 키",
+      "credentialPlaceholder": "베어러 토큰(선택사항)",
+      "instructions": "내레이션 지침",
+      "instructionsPlaceholder": "예: 자연스럽고 차분하게 읽으세요.",
+      "enabled": "활성화됨",
+      "disabled": "비활성화됨",
+      "clearCredential": "저장된 자격증명 지우기",
+      "save": "저장",
+      "cancel": "취소",
+      "loading": "로드 중…",
+      "loadFailed": "소리내어 읽기 설정을 로드할 수 없습니다.",
+      "saveFailed": "소리내어 읽기 설정을 저장할 수 없습니다.",
+      "voiceLoadFailed": "음성을 로드할 수 없습니다.",
+      "providerPrivacy": "시스템 음성은 장치 내에서 처리됩니다. 네트워크 공급자를 사용하면 현재 문장이 구성한 엔드포인트로 전송됩니다.",
+      "openAiDetail": "OpenAI /v1/audio/speech과 호환됩니다. 음성 ID와 기본 음성을 구성합니다. API 키는 이 기기의 보안 저장소에 보관됩니다.",
+      "removeProvider": "제공자 삭제",
+      "removeProviderTitle": "TTS 제공자를 삭제하시겠습니까?",
+      "removeProviderDetail": "이는 \"{{name}}\", 로컬 자격 증명 및 관련 음성 기본 설정을 제거합니다.",
+      "removeFailed": "TTS 제공자를 삭제할 수 없습니다."
+    },
+    "privacy": {
+      "title": "개인정보 보호",
+      "diagnostics": {
+        "title": "진단 정보 공유",
+        "detail": "문제가 발생하면 오류 스택, 앱 버전, 기기 환경을 보냅니다. 사용자 신원 데이터, 앱 로그 또는 화면 녹화는 기본적으로 추가되지 않습니다.",
+        "unavailable": "이 빌드에서는 진단 보고가 구성되지 않았습니다."
+      }
+    },
+    "developer": {
+      "title": "개발자",
+      "enabled": "켜짐",
+      "disabled": "끄기",
+      "clearImageCache": {
+        "title": "이미지 캐시 지우기",
+        "detail": "Expo 이미지 캐시 및 서재 표지 섬네일 지우기",
+        "doneTitle": "이미지 캐시가 삭제되었습니다.",
+        "doneDetail": "다시 열면 표지를 읽거나 다운로드하거나 다시 생성할 수 있습니다.",
+        "errorTitle": "이미지 캐시를 지우지 못했습니다.",
+        "errorDetail": "나중에 다시 시도해 주세요.",
+        "unavailable": "이 환경에서는 이미지 캐시 정리가 불가능합니다."
+      },
+      "libraryPerformanceProfiler": {
+        "title": "서재 성능 프로파일러",
+        "detail": "서재 화면에 React Profiler 및 FlashList 타이밍 메트릭을 기록합니다."
+      },
+      "coverLoadingAnimation": {
+        "title": "표지 로딩 애니메이션",
+        "detail": "커버가 로드되는 동안 스켈레톤 펄스를 토글합니다."
+      },
+      "coverThumbnailConcurrency": {
+        "title": "커버 썸네일 동시성",
+        "detail": "동시 썸네일 생성 작업",
+        "decrementLabel": "표지 썸네일 동시성 감소",
+        "incrementLabel": "표지 썸네일 동시성 증가"
+      }
+    },
+    "bookCountCurrent_other": "{{count}}권 · 사용 중",
+    "bookCount_other": "{{count}}권"
+  },
+  "reader": {
+    "cannotOpen": "책을 열 수 없습니다.",
+    "back": "뒤로",
+    "closeOverlay": "오버레이 닫기",
+    "mountingReader": "리더 장착…",
+    "loadFailed": "리더 로드 실패",
+    "loadFailedMessage": "독자에게 예상치 못한 오류가 발생했습니다. 돌아가서 다시 시도하세요.",
+    "positionConflictTitle": "계속할 곳을 선택하세요",
+    "positionConflictDescription": "다른 장치는 오프라인 상태에서 다른 위치를 저장했습니다. 계속하려면 하나를 선택하세요. 선택 사항은 다른 장치와 동기화됩니다.",
+    "positionConflictUnknownProgress": "알 수 없는 진행 상황",
+    "positionConflictLater": "나중에 결정하고 기본 위치를 사용하십시오.",
+    "chrome": {
+      "moreActions": "추가 작업"
+    },
+    "toc": "목차",
+    "navigationSheet": "콘텐츠 패널",
+    "noToc": "이 책에는 목차가 없습니다.",
+    "search": {
+      "title": "검색도서",
+      "inputLabel": "도서 텍스트 검색",
+      "placeholder": "검색 텍스트",
+      "clear": "검색 지우기",
+      "promptTitle": "이 책에서 텍스트 찾기",
+      "prompt": "이 책을 검색하려면 단어나 구문을 입력하세요.",
+      "searching": "검색 중…",
+      "error": "검색을 완료할 수 없습니다.",
+      "errorDetail": "다시 시도해 보세요. 현재 검색이 유지됩니다.",
+      "retry": "다시 시도하세요",
+      "empty": "\"{{query}}\"에 대한 검색결과가 없습니다.",
+      "emptyDetail": "다른 단어나 문구를 시도해 보십시오.",
+      "resultTitle": "텍스트",
+      "position": "위치 {{position}}",
+      "noExcerpt": "발췌 없음",
+      "loadedCount": "결과 {{count}}개 불러옴",
+      "resultCount": "결과 {{count}}개",
+      "loadMore": "더 로드하기",
+      "loadingMore": "더 많은 결과를 로드하는 중…",
+      "loadMoreFailed": "더 많은 결과를 로드할 수 없습니다.",
+      "retryMore": "다시 로드해 보세요.",
+      "loadedCount_other": "결과 {{count}}개 불러옴",
+      "resultCount_other": "결과 {{count}}개"
+    },
+    "bookmarks": {
+      "title": "책갈피",
+      "addCurrent": "현재 위치에 북마크 추가",
+      "removeCurrent": "현재 위치에서 북마크 제거",
+      "loading": "북마크 로드 중…",
+      "error": "북마크를 로드하거나 업데이트할 수 없습니다.",
+      "retry": "다시 시도하세요",
+      "untitled": "북마크",
+      "deleteLabel": "북마크 삭제: {{label}}",
+      "page": "{{page}} 페이지",
+      "position": "위치 {{position}}",
+      "today": "오늘",
+      "select": "선택하다",
+      "deselect": "선택 취소",
+      "manage": "관리하다",
+      "done": "완료",
+      "selectedCount": "책갈피 {{count}}개 선택됨",
+      "deleteSelected": "선택한 북마크 삭제",
+      "longPressHint": "이 북마크를 선택하거나 삭제하려면 길게 누르세요.",
+      "selectedCount_other": "책갈피 {{count}}개 선택됨"
+    },
+    "annotations": {
+      "title": "북마크 및 주석",
+      "notesTab": "주석",
+      "highlightAction": "하이라이트",
+      "noteAction": "메모 추가",
+      "editNoteAction": "편집 노트",
+      "openNote": "노트 열기",
+      "removeAction": "제거",
+      "copyAction": "복사",
+      "selectionActions": "텍스트 액션",
+      "loading": "노트 로드 중…",
+      "error": "노트를 로드하거나 업데이트할 수 없습니다.",
+      "retry": "다시 시도하세요",
+      "openHint": "이 하이라이트로 이동",
+      "select": "선택하다",
+      "deselect": "선택 취소",
+      "manage": "관리하다",
+      "done": "완료",
+      "selectedCount": "주석 {{count}}개 선택됨",
+      "deleteSelected": "선택한 주석 삭제",
+      "longPressHint": "이 주석을 선택, 편집 또는 삭제하려면 길게 누르세요.",
+      "edit": "편집하다",
+      "editTitle": "하이라이트 및 메모 편집",
+      "addNoteTitle": "메모 추가",
+      "color": "하이라이트 컬러",
+      "note": "참고",
+      "notePlaceholder": "생각 쓰기(선택 사항)",
+      "editNoteHint": "메모를 편집하려면 누르세요.",
+      "deleteTitle": "하이라이트를 삭제하시겠습니까?",
+      "deleteMessage": "강조표시와 해당 메모가 이 장치에서 제거됩니다.",
+      "colors": {
+        "yellow": "호박색",
+        "orange": "테라코타",
+        "green": "세이지",
+        "blue": "슬레이트 블루"
+      },
+      "selectedCount_other": "주석 {{count}}개 선택됨"
+    },
+    "tts": {
+      "readAloud": "소리 내어 읽기",
+      "readFromHere": "여기서부터 읽기",
+      "controls": "소리내어 읽기 제어",
+      "openControls": "소리내어 읽기 컨트롤 열기",
+      "settings": "소리 내어 읽기 설정",
+      "settingsAction": "소리 내어 읽기 설정",
+      "manageProviders": "TTS 제공자 관리",
+      "goToCurrent": "현재 말한 문장으로 이동",
+      "play": "이력서 내레이션",
+      "pause": "내레이션 일시 중지",
+      "previous": "이전 문장",
+      "next": "다음 문장",
+      "stop": "나레이션 중지",
+      "playFromCurrentPosition": "여기에서 재생",
+      "returnToPlaybackPosition": "나레이션으로 돌아가기",
+      "states": {
+        "stopped": "정지됨",
+        "loading": "내레이션 준비 중…",
+        "generating": "다음 문장을 생성하는 중…",
+        "playing": "소리내어 읽기",
+        "paused": "일시중지됨",
+        "ended": "내레이션 종료",
+        "error": "나레이션 실패"
+      },
+      "errors": {
+        "unknown": "내레이션을 시작할 수 없습니다. 다시 시도해 주세요.",
+        "noReadableContent": "현재 위치 이후에는 읽을 수 있는 텍스트가 없습니다.",
+        "noVoices": "현재 내레이션 엔진에는 이 책의 언어에 대한 음성이 없습니다.",
+        "providerUnavailable": "음성 서비스를 이용할 수 없습니다. URL, 네트워크 연결 및 API 구성을 확인한 후 다시 시도하세요.",
+        "engine": "내레이션 엔진이 오류를 반환했습니다: {{message}}"
+      }
+    },
+    "settings": "읽기 설정",
+    "settingsSheet": "읽기 설정 패널",
+    "settingsTheme": "테마",
+    "readingMode": "읽기 모드",
+    "pageDirection": "페이지 방향",
+    "backgroundAuto": "자동",
+    "backgroundBlack": "검정색",
+    "backgroundWhite": "흰색",
+    "alignment": "정렬",
+    "alignmentAuto": "자동",
+    "alignmentJustify": "정당화하다",
+    "alignmentStart": "왼쪽",
+    "column": "열",
+    "column1": "항상 싱글",
+    "columnAuto": "자동",
+    "fontSize": "글꼴 크기",
+    "lineHeight": "라인 높이",
+    "margin": "마진",
+    "spread": "페이지 레이아웃",
+    "spreadAuto": "자동",
+    "spreadSingle": "항상 싱글",
+    "readingProgression": "읽기 방향",
+    "directionLtr": "왼쪽에서 오른쪽으로",
+    "directionRtl": "오른쪽에서 왼쪽으로",
+    "zoom": "줌",
+    "pinchZoomHint": "고정 레이아웃은 핀치 투 줌을 지원합니다.",
+    "themeNeutral": "흰색",
+    "themePaper": "종이",
+    "themeSepia": "세피아",
+    "themeGreen": "녹색",
+    "themeOcean": "바다",
+    "themeContrast1": "HC1",
+    "themeNight": "밤",
+    "themeContrast2": "HC2",
+    "themes": {
+      "contrast1": "HC1",
+      "contrast2": "HC2"
+    },
+    "layoutScroll": "스크롤",
+    "layoutPaginate": "페이지 매기기",
+    "navHorizontal": "수평",
+    "navVertical": "수직",
+    "pageLabel": "{{page}} 페이지",
+    "positionLabel": "위치",
+    "positionProgress": "위치 {{current}} / {{total}}",
+    "pageProgress": "페이지 {{current}} / {{total}}",
+    "font": "글꼴",
+    "fontOptions": {
+      "defaultChinese": "중국 기본값",
+      "lxgwWenkai": "LXGW WenKai",
+      "oldStyle": "이전 스타일",
+      "modern": "모던 세리프체",
+      "humanist": "인본주의자 산스",
+      "openDyslexic": "OpenDyslexic",
+      "accessibleDfa": "AccessibleDfA",
+      "iaWriterDuospace": "IA 작가"
+    },
+    "moreActions": "추가 작업",
+    "closeReader": "리더 닫기"
+  },
+  "bookDetail": {
+    "title": "도서 세부정보",
+    "missingParam": {
+      "title": "도서 매개변수 누락",
+      "detail": "서재의 도서정보를 다시 입력해 주세요."
+    },
+    "loadingDetail": "도서 세부정보 로드 중…",
+    "seriesInfo": "{{series}} · #{{index}}",
+    "series": "시리즈",
+    "seriesIndex": "시리즈 인덱스",
+    "infoSection": "세부사항",
+    "bookTitle": "제목",
+    "titleSort": "제목 정렬",
+    "authors": "작성자",
+    "authorSort": "작성자 정렬",
+    "pubDate": "출판 날짜",
+    "language": "언어",
+    "publisher": "출판사",
+    "rating": "평가",
+    "tags": "태그",
+    "identifiers": "식별자",
+    "createdAt": "생성 날짜",
+    "downloadStarted": "다운로드가 시작되었습니다.",
+    "downloadStartedDetail": "{{format}}은 다운로드되면 읽을 준비가 됩니다.",
+    "noReadableFormat": "읽을 수 있는 형식이 없습니다.",
+    "downloadAndRead": "다운로드 및 읽기",
+    "continueReading": "계속 읽기",
+    "startReading": "읽기 시작",
+    "back": "뒤로",
+    "share": "공유",
+    "moreActions": "추가 작업: {{title}}",
+    "openBook": "\"{{title}}\" 열기",
+    "readFileStateFailed": "파일 상태를 읽지 못했습니다.",
+    "downloadFailed": "파일 다운로드 실패: {{path}}",
+    "cannotStartDownload": "다운로드를 시작할 수 없습니다.",
+    "noFormatPath": "{{format}}에 대한 파일 경로를 찾을 수 없습니다.",
+    "deleteLocalFailed": "로컬 파일 삭제 실패",
+    "formatSection": {
+      "title": "파일 형식",
+      "count": "{{count}}개 형식",
+      "default": "기본 판독 형식",
+      "readable": "읽기 가능",
+      "unsupported": "지원되지 않음",
+      "queued": "대기 중",
+      "preparing": "준비 중",
+      "notStarted": "시작되지 않음",
+      "cancel": "취소",
+      "cancelDownload": "다운로드 취소",
+      "download": "다운로드",
+      "downloadFormat": "다운로드",
+      "notDownloaded": "다운로드되지 않음",
+      "setDefault": "기본 판독 형식으로 설정",
+      "shareFormat": "공유",
+      "more": "더 보기",
+      "count_other": "{{count}}개 형식"
+    },
+    "setReadingFormat": "읽기 형식 설정",
+    "expand": "확장하다"
+  },
+  "share": {
+    "fileNotDownloadedTitle": "파일이 다운로드되지 않았습니다.",
+    "fileNotDownloadedMessage": "\"{{title}}\"({{format}})을 먼저 다운로드해야 합니다.",
+    "shareFailed": "공유 실패"
+  },
+  "bookRow": {
+    "finished": "완독"
+  },
+  "addLibrary": {
+    "addedPrompt": {
+      "detail": "\"{{name}}\"으로 전환하고 서재를 여시겠습니까?",
+      "stay": "여기에 머무르세요",
+      "switch": "스위치 및 개방"
+    },
+    "selectSaveLocation": "저장 위치 선택",
+    "selectLibraryLocation": "서재 위치 선택",
+    "name": "이름",
+    "invalidName": "이름에는 / 또는 \\가 포함될 수 없습니다.",
+    "create": "생성",
+    "creating": "생성",
+    "open": "열기",
+    "continue": "계속하다",
+    "path": "경로: {{path}}",
+    "unrecognized": {
+      "title": "서재가 인식되지 않음",
+      "detail": "MyReader 또는 Calibre 서재 폴더를 선택합니다."
+    },
+    "folderExists": {
+      "title": "이름이 이미 존재합니다.",
+      "detail": "다른 서재 이름을 선택하십시오."
+    },
+    "operationFailed": "서재 작동 실패",
+    "operationFailedDetail": "나중에 다시 시도해 주세요."
+  },
+  "webdav": {
+    "sourcesTitle": "WebDAV 소스",
+    "sourceDetail": "소스 세부사항",
+    "addSource": "WebDAV 소스 추가",
+    "reconfigureSource": "WebDAV 재구성",
+    "selectLibrary": "WebDAV 서재 선택",
+    "noSources": {
+      "title": "아직 WebDAV 소스가 없습니다.",
+      "detail": "WebDAV 소스를 추가하려면 아래 버튼을 사용하세요."
+    },
+    "delete": {
+      "title": "WebDAV 소스 삭제",
+      "confirm": "\"{{name}}\"을 삭제하시겠습니까?",
+      "cancel": "취소",
+      "confirmButton": "삭제"
+    },
+    "deleteFailed": {
+      "title": "삭제 불가",
+      "message": "소스 삭제에 실패했습니다."
+    },
+    "deleteSource": "소스 삭제",
+    "type": "유형",
+    "serverAddress": "서버 주소",
+    "username": "사용자 이름",
+    "password": "비밀번호",
+    "passwordSaved": "보안저장소에 저장됨",
+    "passwordNotSet": "설정되지 않음",
+    "basePath": "기본 경로",
+    "status": "상태",
+    "enabled": "활성화됨",
+    "disabled": "비활성화됨",
+    "addedAt": "다음 날짜에 추가됨",
+    "browser": {
+      "notFound": {
+        "title": "소스를 찾을 수 없음",
+        "detail": "먼저 WebDAV 소스를 추가해 주세요."
+      },
+      "loadFailed": {
+        "title": "찾아보기 실패",
+        "message": "WebDAV 브라우저에 예상치 못한 오류가 발생했습니다. 다시 시도해 주세요."
+      },
+      "validating": "디렉터리 유효성 검사 중",
+      "selectDirectory": "현재 디렉토리를 서재로 선택",
+      "currentPath": "현재 경로: {{path}}",
+      "reading": {
+        "title": "디렉토리 읽기",
+        "detail": "WebDAV 서버에서 디렉토리 목록을 가져오는 중입니다."
+      },
+      "readFailed": {
+        "title": "읽기 실패"
+      },
+      "credentialsUnavailable": {
+        "title": "WebDAV 자격 증명을 사용할 수 없습니다.",
+        "detail": "WebDAV 소스를 재구성합니다."
+      },
+      "noCredentials": "WebDAV 자격 증명을 사용할 수 없습니다. 데이터 소스를 편집하고 비밀번호를 설정하세요.",
+      "empty": {
+        "title": "빈 디렉토리",
+        "detail": "현재 디렉토리에는 하위 디렉토리가 없습니다."
+      },
+      "notValidLibrary": {
+        "title": "잘못된 디렉토리",
+        "message": "유효한 서재가 아님 - 메타데이터.db를 찾을 수 없습니다."
+      },
+      "notCalibreLibrary": "유효한 Calibre 서재가 아닙니다.",
+      "cannotReadRemote": "원격 디렉토리를 읽을 수 없습니다."
+    },
+    "add": {
+      "sourceTitle": "WebDAV 소스",
+      "enterServerUrl": "서버주소를 입력해주세요.",
+      "portMustBeNumber": "포트는 숫자여야 합니다.",
+      "portRange": "포트는 1-65535여야 합니다.",
+      "validationFailed": "검증 실패",
+      "connectionTestFailed": "연결 테스트 실패",
+      "reEnter": "재입장",
+      "addAnyway": "어쨌든 추가",
+      "addFailed": "추가 실패",
+      "addFailedMessage": "작업이 실패했습니다. 다시 시도해 주세요.",
+      "updateFailed": "저장 실패",
+      "completing": "완료 중",
+      "complete": "완료",
+      "saving": "저장",
+      "save": "저장",
+      "saveAnyway": "어쨌든 저장",
+      "serverAddressLabel": "서버 주소",
+      "portLabel": "포트",
+      "basePathLabel": "기본 경로",
+      "usernameLabel": "사용자 이름",
+      "usernamePlaceholder": "사용자 이름을 입력하세요",
+      "passwordLabel": "비밀번호",
+      "passwordPlaceholder": "비밀번호를 입력하세요",
+      "passwordKeepPlaceholder": "현재 비밀번호를 유지하려면 공백으로 남겨두세요.",
+      "useSSL": "SSL 사용"
+    }
+  },
+  "onedrive": {
+    "sourcesTitle": "OneDrive 소스",
+    "sourceDetail": "소스 세부사항",
+    "addSource": "OneDrive 소스 추가",
+    "reauthenticate": "OneDrive에 다시 로그인하세요.",
+    "selectLibrary": "OneDrive 서재 선택",
+    "noSources": {
+      "title": "아직 OneDrive 소스가 없습니다.",
+      "detail": "OneDrive 소스를 추가하려면 아래 버튼을 사용하세요."
+    },
+    "delete": {
+      "title": "OneDrive 소스 삭제",
+      "confirm": "\"{{name}}\"을 삭제하시겠습니까?",
+      "cancel": "취소",
+      "confirmButton": "삭제"
+    },
+    "deleteFailed": {
+      "title": "삭제 불가",
+      "message": "소스 삭제에 실패했습니다."
+    },
+    "deleteSource": "소스 삭제",
+    "type": "유형",
+    "displayName": "표시 이름",
+    "email": "이메일",
+    "basePath": "기본 경로",
+    "authStatus": "인증상태",
+    "authenticated": "인증됨",
+    "notAuthenticated": "인증되지 않음",
+    "addedAt": "다음 날짜에 추가됨",
+    "browser": {
+      "notFound": {
+        "title": "소스를 찾을 수 없음",
+        "detail": "먼저 OneDrive 소스를 추가하세요."
+      },
+      "loadFailed": {
+        "title": "찾아보기 실패",
+        "message": "OneDrive 브라우저에 예상치 못한 오류가 발생했습니다. 다시 시도해 주세요."
+      },
+      "validating": "디렉터리 유효성 검사 중",
+      "selectDirectory": "현재 디렉토리를 서재로 선택",
+      "currentPath": "현재 경로: {{path}}",
+      "reading": {
+        "title": "디렉토리 읽기",
+        "detail": "OneDrive에서 디렉토리 목록을 가져오는 중입니다."
+      },
+      "readFailed": {
+        "title": "읽기 실패"
+      },
+      "credentialsUnavailable": {
+        "title": "OneDrive 로그인이 만료되었습니다.",
+        "detail": "OneDrive에 다시 로그인합니다."
+      },
+      "noCredentials": "OneDrive 자격 증명을 사용할 수 없습니다. 데이터 소스를 다시 인증하세요.",
+      "empty": {
+        "title": "빈 디렉토리",
+        "detail": "현재 디렉토리에는 하위 디렉토리가 없습니다."
+      },
+      "notValidLibrary": {
+        "title": "잘못된 디렉토리",
+        "message": "유효한 서재가 아님 - 메타데이터.db를 찾을 수 없습니다."
+      },
+      "notCalibreLibrary": "유효한 Calibre 서재가 아닙니다.",
+      "cannotReadRemote": "원격 디렉토리를 읽을 수 없습니다."
+    },
+    "add": {
+      "signInTitle": "OneDrive에 로그인하세요.",
+      "signInDetail": "마이크로소프트 계정으로 로그인하세요.",
+      "signInWithMicrosoft": "Microsoft로 로그인",
+      "authenticating": "인증하는 중…",
+      "addingTitle": "OneDrive 소스 추가",
+      "addingDetail": "설정 완료 — 앱을 열어두세요.",
+      "authFailed": "인증 실패",
+      "authFailedMessage": "OneDrive에 로그인할 수 없습니다. 다시 시도해 주세요.",
+      "accountMismatch": "계정 불일치",
+      "accountMismatchMessage": "{{email}}로 로그인하거나 돌아가서 새로운 OneDrive 소스를 추가하세요.",
+      "alreadyAdded": "계정이 이미 추가되었습니다.",
+      "alreadyAddedMessage": "{{email}} 계정은 이미 연결되어 있습니다."
+    }
+  },
+  "errorBoundary": {
+    "defaultTitle": "예상치 못한 오류가 발생했습니다.",
+    "retry": "다시 시도"
+  },
+  "dataSource": {
+    "backToList": "소스 목록으로 돌아가기",
+    "backToLocations": "사용 가능한 위치로 돌아가기",
+    "notFound": {
+      "title": "소스가 더 이상 존재하지 않습니다.",
+      "detail": "제거되었을 수도 있습니다. 소스 목록으로 돌아갑니다.",
+      "addLibraryDetail": "제거되었을 수도 있습니다. 사용 가능한 위치로 돌아갑니다."
+    },
+    "deleteInUse": {
+      "title": "삭제 불가",
+      "message": "다음 서재는 {{names}} 소스를 사용하고 있습니다. 소스를 삭제하기 전에 이러한 서재를 제거하세요."
+    }
+  },
+  "common": {
+    "confirm": "OK",
+    "gotIt": "알겠습니다",
+    "search": "검색",
+    "clear": "지우기",
+    "current": "현재",
+    "appInternalStorage": "앱 내부 저장소",
+    "localStorage": "로컬 저장소",
+    "unnamedBook": "이름이 없는 책",
+    "unknownAuthor": "작성자 불명의",
+    "myLibrary": "내 서재",
+    "unnamedLibrary": "이름이 없는 서재",
+    "selected": "선택됨",
+    "unselected": "선택되지 않음"
+  },
+  "bookLang": {
+    "zho": "中文",
+    "chi": "中文",
+    "eng": "영어",
+    "jpn": "日本語"
+  },
+  "bookMenu": {
+    "detail": "도서 세부정보",
+    "addToFavorites": "즐겨찾기에 추가",
+    "removeFromFavorites": "즐겨찾기에서 삭제",
+    "download": "다운로드",
+    "downloadFormat": "다운로드({{format}})",
+    "cancelDownload": "다운로드 취소",
+    "uploadFile": "파일 업로드",
+    "uploadFailed": "업로드 실패",
+    "uploadFailedDetail": "\"{{library}}\"에 업로드할 수 없습니다. \n {{reason}}",
+    "defaultFormat": "기본 판독 형식: {{format}}",
+    "deleteDownload": "다운로드한 파일 삭제",
+    "share": "공유",
+    "editMetadata": "제목 및 저자 편집",
+    "deleteBook": "도서 삭제",
+    "deleteConfirmTitle": "도서 삭제",
+    "deleteConfirmDetail": "이 서재에서 \"{{title}}\" 및 해당 책 파일을 삭제하시겠습니까?",
+    "deleteFailed": "도서를 삭제할 수 없습니다"
+  },
+  "bookEdit": {
+    "title": "도서 정보 편집",
+    "bookTitle": "제목",
+    "authors": "작성자",
+    "authorsPlaceholder": "여러 저자를 쉼표로 구분하세요.",
+    "save": "저장",
+    "saving": "저장",
+    "saveFailed": "도서 정보를 저장할 수 없습니다.",
+    "incomplete": {
+      "title": "누락된 정보",
+      "detail": "제목과 저자가 필요합니다."
+    },
+    "unavailable": {
+      "title": "이 책은 편집할 수 없습니다",
+      "detail": "MyReader 서재의 도서만 편집이 가능합니다."
+    }
+  },
+  "bookLoader": {
+    "loadingBook": "책 로드 중…",
+    "missingParam": "도서 매개변수 누락",
+    "noLibrary": "선택된 서재가 없습니다.",
+    "readingBookInfo": "도서 정보를 읽는 중…",
+    "invalidId": "잘못된 도서 ID",
+    "notFoundInLibrary": "서재에서 책을 찾을 수 없습니다.",
+    "noReadableFormat": "읽을 수 있는 형식 없음(EPUB, CBZ 또는 PDF 필요)",
+    "downloadingFromWebdav": "WebDAV에서 책을 다운로드하는 중…",
+    "downloadingFromRemote": "원격에서 책을 다운로드하는 중…",
+    "loadingBookFile": "책 파일 로드 중…",
+    "downloadFirst": "읽기 전에 도서 세부정보에서 형식을 다운로드하시기 바랍니다."
+  },
+  "sync": {
+    "localDirectRead": "로컬 직접 읽기: 동기화 건너뛰기",
+    "libraryNotFound": "서재를 찾을 수 없습니다: {{id}}",
+    "localDirectLabel": "로컬 · {{path}}",
+    "configError": "동기화 구성 오류",
+    "dataIntegrityError": "동기화 데이터 무결성 오류",
+    "webdavSourceNotFound": "이 서재와 관련된 WebDAV 소스가 존재하지 않습니다.",
+    "webdavPasswordMissing": "현재 WebDAV 소스에 비밀번호가 없습니다. 소스를 다시 편집해주세요.",
+    "onedriveSourceNotFound": "이 서재와 관련된 OneDrive 소스가 존재하지 않습니다.",
+    "onedriveRefreshTokenMissing": "현재 OneDrive 소스에 인증이 없습니다. 출처를 다시 인증해주세요.",
+    "onedriveGetFailed": "OneDrive GET 실패: {{status}} {{path}}",
+    "onedriveDownloadUrlMissing": "OneDrive이(가) 다운로드 URL을 반환하지 않았습니다: {{path}}",
+    "onedrivePutFailed": "OneDrive PUT 실패: {{status}} {{path}}",
+    "onedriveDeleteFailed": "OneDrive 삭제 실패: {{status}} {{path}}",
+    "onedriveListFailed": "OneDrive 목록 실패: {{status}} {{path}}",
+    "onedriveMkdirFailed": "OneDrive mkdir 실패: {{status}} {{path}}",
+    "cannotResolveLocalPath": "로컬 서재 루트 디렉터리를 확인할 수 없습니다.",
+    "downloadCancelled": "다운로드가 취소되었습니다.",
+    "downloadFailed": "백그라운드 다운로드 실패: {{code}}",
+    "downloadStalled": "기본 다운로드가 바이트를 전송했지만 중단되었습니다. 네트워크, WebDAV 범위 지원 또는 시스템 백그라운드 제한 사항을 확인하세요.",
+    "downloadNotStarted": "네이티브 다운로드 작업이 생성되었지만 전송이 시작되지 않았습니다. 데이터 소스, 인증, 네트워크 또는 기본 다운로더 구성을 확인하세요.",
+    "uploadCancelled": "업로드가 취소되었습니다.",
+    "uploadFailed": "백그라운드 업로드 실패: HTTP {{status}} {{body}}",
+    "uploadFailedCode": "백그라운드 업로드 실패: {{code}}",
+    "uploadStalled": "네이티브 업로드가 바이트를 전송했지만 정지되었습니다. 네트워크, WebDAV 인증 또는 시스템 백그라운드 제한 사항을 확인하세요.",
+    "uploadNotStarted": "네이티브 업로드 작업이 생성되었지만 전송이 시작되지 않았습니다. WebDAV URL, 인증 또는 기본 업로더 구성을 확인하세요.",
+    "manifestNotRegistered": "매니페스트에 등록되지 않은 경로: {{path}}",
+    "syncPathEmpty": "동기화 경로는 비워둘 수 없습니다.",
+    "syncPathTraversal": "동기화 경로는 ..: {{path}}을 포함할 수 없습니다.",
+    "syncPathAbsolute": "동기화 경로는 절대적일 수 없습니다: {{path}}",
+    "nativeDownloadMissing": "네이티브 다운로드가 완료되었지만 캐시 파일이 누락되었습니다: {{path}}",
+    "nativeDownloadEmpty": "네이티브 다운로드가 완료되었지만 캐시 파일이 비어 있음: {{path}}",
+    "nativeDownloadNotSupported": "기본 배경 다운로드가 지원되지 않음: {{kind}}",
+    "nativeUploadNotSupported": "기본 배경 업로드가 지원되지 않음: {{kind}}",
+    "hashMismatch": "다운로드 후 해시 불일치: {{expected}}이 예상되었으나 {{actual}}을 받았습니다.",
+    "localFileMissing": "로컬 파일이 존재하지 않아 업로드할 수 없습니다: {{path}}",
+    "libraryNotFoundShort": "서재를 찾을 수 없습니다: {{id}}",
+    "connectionTimeout": "연결 시간 초과(2초). 네트워크 또는 WebDAV 구성을 확인하세요.",
+    "cannotParseFilePath": "파일 경로를 구문 분석할 수 없습니다: {{uri}}",
+    "metadataDbNotAvailable": "메타데이터.db를 사용할 수 없음",
+    "formatNotFoundInLibrary": "서재에서 {{format}} 형식을 찾을 수 없습니다(bookId={{id}}).",
+    "bookFileNotFound": "책 파일을 찾을 수 없습니다: {{name}}",
+    "bookFileNotFoundDetail": "전체 경로: {{uri}} \n 서재 경로: {{libraryPath}} \n 도서 내 경로: {{rowPath}}",
+    "corruptedLibrary": "서재 데이터가 손상됨",
+    "corruptedLibraryMessage": "이 서재에 대한 메타데이터.db를 복구할 수 없습니다. 서재를 제거하고 다시 추가하십시오.",
+    "corruptedLibraryRedownloadMessage": "이 서재에 대한 메타데이터.db를 다시 다운로드할 수 없습니다. 네트워크 또는 WebDAV 구성을 확인하세요.",
+    "cannotRedownloadMeta": "Metadata.db를 다시 다운로드할 수 없습니다.",
+    "metadataNotFound": "메타데이터.db를 찾을 수 없습니다.",
+    "metadataNotFoundDetail": "Calibre 선택한 디렉토리에서 메타데이터.db를 찾을 수 없습니다. 서재 루트 디렉터리(metadata.db를 포함해야 함)를 선택합니다.",
+    "userCancelled": "사용자가 취소되었거나 디렉터리가 선택되지 않았습니다.",
+    "notValidCalibreLibrary": "선택한 서재에서 메타데이터.db를 찾을 수 없습니다. 유효한 Calibre 서재인지 확인하세요.",
+    "loadLibraryFailed": "서재를 로드하지 못했습니다.",
+    "addLibraryFailed": "서재 추가 실패",
+    "cannotAddDuplicate": "추가할 수 없습니다.",
+    "alreadyAdded": "이 서재는 이미 추가되었습니다.",
+    "readLibraryFailed": "서재를 읽지 못했습니다.",
+    "refreshLibraryFailed": "서재를 새로 고치지 못했습니다.",
+    "sourceUnreachable": "소스에 도달할 수 없음",
+    "sourceUnreachableDetail": "WebDAV 소스에 액세스할 수 없습니다. 다운로드가 취소되었습니다. \n \n 가능한 원인: \n • 네트워크를 사용할 수 없거나 불안정함 \n • WebDAV 서버가 실행되지 않거나 연결할 수 없음 \n • 서버 주소, 포트 또는 인증이 잘못 구성됨",
+    "sourceUnreachableSyncDetail": "WebDAV 소스에 액세스할 수 없습니다. 동기화가 취소되었습니다. \n \n 가능한 원인: \n • 네트워크를 사용할 수 없거나 불안정함 \n • WebDAV 서버가 실행되지 않거나 연결할 수 없음 \n • 서버 주소, 포트 또는 인증이 잘못 구성됨",
+    "removeLibraryFirst": "먼저 이 소스를 사용하는 서재를 제거하십시오.",
+    "authFailed": "인증 실패: 사용자 이름이나 비밀번호가 잘못되었거나 권한이 부족합니다.",
+    "pathNotFound": "경로를 찾을 수 없음: 기본 경로를 확인하고 WebDAV 디렉토리가 존재하는지 확인하십시오.",
+    "serverAbnormal": "서버 오류(HTTP {{status}}): 서버 상태 및 WebDAV 구성을 확인하세요.",
+    "connectionTimeoutDetail": "연결 시간 초과: 네트워크, 서버 주소, 포트 및 SSL 구성을 확인하십시오. 이유: {{reason}}",
+    "networkFailed": "네트워크 요청 실패: 서버에 연결할 수 없습니다. 네트워크, 주소, 포트, SSL을 확인하세요. 이유: {{reason}}",
+    "cannotDownload": "다운로드할 수 없습니다.",
+    "noReadableFormatForDownload": "다운로드할 수 있는 읽을 수 있는 형식이 없습니다.",
+    "noReadableFormat": "읽을 수 있는 형식이 없습니다.",
+    "noReadableFormatDetail": "이 책은 읽을 수 있는 형식이 없습니다.",
+    "defaultFormatSet": "기본 형식 설정",
+    "setDefaultFormat": "기본 판독 형식 설정",
+    "currentDefault": "현재 기본값: {{format}}",
+    "readFormatFailed": "형식을 읽지 못했습니다.",
+    "deleteDownloadFile": "다운로드한 파일 삭제",
+    "confirmDeleteDownload": "\"{{title}}\"에 대한 로컬 다운로드를 삭제하시겠습니까?",
+    "deleteFailed": "삭제 실패",
+    "webdavGetFailed": "WebDAV GET 실패: {{status}} {{path}}",
+    "webdavPutFailed": "WebDAV PUT 실패: {{status}} {{path}}",
+    "webdavDeleteFailed": "WebDAV 삭제 실패: {{status}} {{path}}",
+    "webdavPropfindFailed": "WebDAV PROPFIND 실패: {{status}} {{path}}",
+    "webdavPropfindListFailed": "WebDAV PROPFIND 목록 실패: {{status}} {{path}}",
+    "webdavMkcolFailed": "WebDAV MKCOL 실패: {{status}} {{path}}",
+    "localFileNotExist": "로컬 파일이 존재하지 않습니다: {{path}}",
+    "basicAuthNotSupported": "이 환경에서는 기본 인증 인코딩이 지원되지 않습니다.",
+    "syncPathCannotBeEmpty": "동기화 경로는 비워둘 수 없습니다."
+  },
+  "notifications": {
+    "libraryAdded": "추가된 서재: {{name}}",
+    "libraryUpdated": "업데이트된 서재",
+    "libraryUpdateFailed": "서재 업데이트 실패",
+    "downloadStart": "다운로드가 시작되었습니다.",
+    "downloadDone": "다운로드 완료",
+    "downloadFailed": "다운로드 실패",
+    "libraryRefreshing": "서재 새로고침",
+    "librarySyncing": "서재 동기화 중"
+  },
+  "errors": {
+    "sourceUnreachable": "소스에 도달할 수 없음",
+    "sourceUnreachableDetail": "WebDAV 소스에 액세스할 수 없습니다. 다운로드가 취소되었습니다. \n \n 가능한 원인: \n • 네트워크를 사용할 수 없거나 불안정함 \n • WebDAV 서버가 실행되지 않거나 연결할 수 없음 \n • 서버 주소, 포트 또는 인증이 잘못 구성됨",
+    "downloadFailed": "다운로드 실패",
+    "timeout": "타임아웃"
+  },
+  "securityBookmarks": {
+    "invalidUrl": "{{action}} 실패: 잘못된 디렉터리 URL.",
+    "invalidBookmark": "{{action}} 실패: 저장된 북마크가 유효하지 않습니다. 서재를 다시 선택하세요.",
+    "unsupportedUrl": "{{action}} 실패: 디렉터리 URL 형식이 지원되지 않습니다. 대신 파일 앱에서 로컬 디렉터리를 선택하세요.",
+    "cannotAccess": "{{action}} 실패: 승인된 서재 디렉토리에 액세스할 수 없습니다. 다시 선택하고 승인하세요.",
+    "expired": "{{action}} 실패: 북마크 인증이 만료되었습니다. 서재를 다시 선택하세요.",
+    "genericError": "{{action}} 실패: iOS 파일 인증 오류. 다시 시도해 주세요.",
+    "createBookmark": "북마크 생성",
+    "restoreBookmark": "북마크 복원",
+    "accessDirectory": "액세스 디렉토리",
+    "refreshBookmark": "북마크 새로 고침"
+  }
+}

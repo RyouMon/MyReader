@@ -1,0 +1,945 @@
+{
+  "incomingShare": {
+    "importingTitle": "Geteiltes Buch importieren",
+    "importingDetail": "MyReader fügt das Buch Ihrer Bibliothek hinzu.",
+    "failedTitle": "Geteiltes Element konnte nicht importiert werden",
+    "failedDetail": "Geben Sie eine EPUB-, PDF- oder CBZ-Datei für MyReader frei.",
+    "openLibrary": "Bibliothek öffnen"
+  },
+  "back": "Zurück",
+  "tabs": {
+    "home": "Startseite",
+    "library": "Bibliothek",
+    "settings": "Einstellungen"
+  },
+  "home": {
+    "title": "Startseite",
+    "continueReading": "Weiterlesen",
+    "noCover": "Keine Deckung",
+    "currentLibrary": "Bibliothek: {{name}} · {{count}} Bücher",
+    "viewBooks": "Bücher anzeigen",
+    "reading": "Lesen",
+    "recentReading": "Aktuelle Lektüre",
+    "recentAdded": "Zuletzt hinzugefügt",
+    "bookCount": "{{count}} Bücher",
+    "readingStats": {
+      "title": "Lesestatistik",
+      "streak": "Leseserie",
+      "totalDuration": "Gesamtzeit",
+      "completed": "Gelesen",
+      "dayUnit": "d",
+      "hourUnit": "h",
+      "bookUnit": " Bücher",
+      "year": "{{year}}",
+      "previousYear": "Vorheriges Jahr",
+      "nextYear": "Nächstes Jahr",
+      "noRecord": "Kein Eintrag",
+      "readingMinutes": "Lesen Sie {{count}} min",
+      "weekdays": {
+        "mon": "Mo",
+        "wed": "Mi",
+        "fri": "Fr"
+      },
+      "bookUnit_one": " Buch",
+      "bookUnit_other": " Bücher"
+    },
+    "noReadingHistory": {
+      "title": "Noch kein Leseverlauf",
+      "detail": "Wählen Sie ein Buch aus Ihrer Bibliothek aus, um mit dem Lesen zu beginnen.",
+      "action": "Bibliothek öffnen"
+    },
+    "currentLibrary_one": "Bibliothek: {{name}} · {{count}} Buch",
+    "currentLibrary_other": "Bibliothek: {{name}} · {{count}} Bücher",
+    "bookCount_one": "{{count}} Buch",
+    "bookCount_other": "{{count}} Bücher"
+  },
+  "library": {
+    "allLibraries": "Alle Bibliotheken",
+    "importingBook": "Importieren…",
+    "importFailed": {
+      "title": "Buch konnte nicht importiert werden"
+    },
+    "importQueued": {
+      "title": "Buch auf diesem Gerät gespeichert",
+      "detail": "Es wird in die Remote-Bibliothek hochgeladen, wenn die Verbindung wiederhergestellt wird."
+    },
+    "importUnsupported": {
+      "title": "Nicht unterstütztes Buchformat",
+      "detail": "Wählen Sie eine EPUB-, PDF- oder CBZ-Datei."
+    },
+    "switchLibrary": "Bibliothek wechseln",
+    "syncCurrentLibrary": "Aktuelle Bibliothek synchronisieren",
+    "searchPlaceholder": "Titel, Autor suchen",
+    "bookCountRatio": "{{visible}} / {{total}} Bücher",
+    "collections": {
+      "currentLibrary": "Aktuelle Bibliothek: {{name}}"
+    },
+    "sort": {
+      "recentlyRead": "Zuletzt gelesen",
+      "recentlyAdded": "Zuletzt hinzugefügt"
+    },
+    "view": {
+      "grid": "Rasteransicht",
+      "list": "Listenansicht"
+    },
+    "sortLabel": "Sortieren",
+    "viewLabel": "Ansicht",
+    "libraryActions": "Bibliotheksaktionen",
+    "viewConfig": "Konfiguration anzeigen",
+    "switchLibraryAlert": {
+      "title": "Bibliothek wechseln",
+      "message": "Aktuell: {{name}}",
+      "unselected": "Nicht ausgewählt",
+      "close": "Schließen"
+    },
+    "loading": {
+      "title": "Bibliothek wird geladen",
+      "detail": "Lokale und WebDAV-Bibliothekskonfigurationen lesen."
+    },
+    "notFound": {
+      "title": "Bibliothek nicht gefunden",
+      "detail": "Möglicherweise wurde es entfernt oder die Link-Parameter sind nicht mehr gültig."
+    },
+    "noLibrary": {
+      "title": "Noch keine Bibliothek",
+      "detail": "Importieren Sie ein Buch direkt oder fügen Sie eine MyReader- oder Calibre-Bibliothek hinzu."
+    },
+    "unselected": {
+      "title": "Keine Bibliothek ausgewählt",
+      "detail": "Wählen Sie eine Bibliothek zum Durchsuchen aus oder fügen Sie eine neue Bibliothek hinzu."
+    },
+    "loadError": {
+      "title": "Laden fehlgeschlagen"
+    }
+  },
+  "libraryDetail": {
+    "currentlyUsed": " · In Verwendung",
+    "bookCount": "{{count}} Bücher",
+    "typeLocal": "Lokal",
+    "typeWebdav": "WebDAV",
+    "typeOnedrive": "OneDrive",
+    "calibreLibrary": "Calibre Bibliothek",
+    "myreaderLibrary": "MyReader-Bibliothek",
+    "remove": {
+      "title": "Diese Bibliothek entfernen?",
+      "message": "Die Bibliothek und ihre lokalen Daten werden aus der App entfernt. Quelldateien werden nicht gelöscht.",
+      "cancel": "Abbrechen",
+      "confirm": "Entfernen"
+    },
+    "deleteLocal": {
+      "title": "Diese interne Bibliothek löschen?",
+      "message": "Bücher und Lesedaten in dieser Bibliothek werden gelöscht. Dies kann nicht rückgängig gemacht werden.",
+      "cancel": "Abbrechen",
+      "confirm": "Löschen"
+    },
+    "removeLibrary": "Bibliothek entfernen",
+    "deleteLibrary": "Bibliothek löschen",
+    "notFound": {
+      "title": "Bibliothek nicht gefunden",
+      "detail": "Möglicherweise wurde es entfernt oder die Link-Parameter sind nicht mehr gültig."
+    },
+    "useLibrary": "Verwenden Sie diese Bibliothek",
+    "refreshing": "Erfrischend...",
+    "refresh": "Bibliothek aktualisieren",
+    "libraryType": "Bibliothekstyp",
+    "storageLocation": "Speicherort",
+    "remotePath": "Pfad",
+    "sourceType": "Quelltyp",
+    "libraryPath": "Bibliothekspfad",
+    "bookCountLabel": "Buchanzahl",
+    "addedAt": "Hinzugefügt um",
+    "bookCount_one": "{{count}} Buch",
+    "bookCount_other": "{{count}} Bücher"
+  },
+  "settings": {
+    "libraryDetail": "Bibliotheksdetails",
+    "manageLibrary": "Bibliothek verwalten: {{name}}",
+    "addLibrary": "Bibliothek hinzufügen",
+    "librarySection": "Bibliothek",
+    "currentInUse": "Im Einsatz",
+    "bookCountCurrent": "{{count}} Bücher · In Verwendung",
+    "bookCount": "{{count}} Bücher",
+    "remoteDataSources": "Remote-Datenquellen",
+    "webdavDetail": "WebDAV-Datenquellen verwalten",
+    "onedriveDetail": "OneDrive-Datenquellen verwalten",
+    "appearance": "Darstellung",
+    "darkMode": "Dunkler Modus",
+    "themeMode": {
+      "system": "Systemeinstellung",
+      "light": "Hell",
+      "dark": "Dunkel"
+    },
+    "language": "Sprache",
+    "languageDetail": "Anzeigesprache ändern",
+    "homeCardStyle": "Heimkartenstil",
+    "homeCardStyle.adaptive": "Adaptiv",
+    "homeCardStyle.coverBlur": "Verschwommenes Cover",
+    "tts": {
+      "sectionTitle": "Vorlesen",
+      "title": "Vorlesen und Stimmen",
+      "detail": "Konfigurieren Sie Systemstimmen und TTS-Inferenzdienste",
+      "previewSection": "Vorschau",
+      "previewText": "Willkommen beim Vorlesen von MyReader.",
+      "previewAction": "Vorschau",
+      "previewGenerating": "Generieren… Zum Stoppen antippen",
+      "previewPlaying": "Vorschau stoppen",
+      "previewFailed": "Die Stimme konnte nicht in der Vorschau angezeigt werden",
+      "engineSection": "Standardkommentar",
+      "engine": "Erzähl-Engine",
+      "systemEngine": "Systemstimme",
+      "voice": "Stimme",
+      "automaticVoice": "Automatisch",
+      "playbackSection": "Wiedergabe",
+      "speed": "Geschwindigkeit",
+      "pitch": "Tonhöhe",
+      "pitchProviderHint": "Die Tonhöhe wird auf Systemstimmen angewendet. Die anfänglichen Netzwerk-Engines unterstützen keine Tonhöhenanpassung.",
+      "providersSection": "TTS Anbieter",
+      "providerTypeSection": "Wählen Sie den Anbietertyp",
+      "providerSection": "Anbieterkonfiguration",
+      "providerKinds": {
+        "openAiCompatible": "OpenAI-kompatibel"
+      },
+      "addOpenAi": "OpenAI-kompatiblen Dienst hinzufügen",
+      "openAiProviderTypeDetail": "Kompatibel mit OpenAI /v1/audio/speech",
+      "addProvider": "TTS-Anbieter hinzufügen",
+      "editProvider": "TTS-Anbieter bearbeiten",
+      "profileName": "Name",
+      "endpoint": "Endpunkt",
+      "model": "Modell",
+      "voices": "Sprach-IDs",
+      "voicesPlaceholder": "Geben Sie pro Zeile eine vom Anbieter unterstützte Sprach-ID ein",
+      "voicesDetail": "OpenAI-kompatible APIs haben keinen gemeinsamen Spracherkennungsvertrag. MyReader geht von keinen Stimmnamen aus; Verwenden Sie die Dokumentation des Anbieters.",
+      "defaultVoice": "Standardstimme",
+      "defaultVoicePlaceholder": "Geben Sie eine Sprach-ID aus der Liste oben ein",
+      "credential": "Anmeldeinformationen",
+      "credentialSaved": "Wird im sicheren Speicher dieses Geräts gespeichert",
+      "openAiCredentialPlaceholder": "OpenAI API Schlüssel",
+      "credentialPlaceholder": "Inhabertoken (optional)",
+      "instructions": "Erzählanweisungen",
+      "instructionsPlaceholder": "Zum Beispiel: Lesen Sie natürlich und ruhig",
+      "enabled": "Aktiviert",
+      "disabled": "Deaktiviert",
+      "clearCredential": "Gespeicherte Anmeldeinformationen löschen",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "loading": "Laden…",
+      "loadFailed": "Vorleseeinstellungen konnten nicht geladen werden",
+      "saveFailed": "Vorleseeinstellungen konnten nicht gespeichert werden",
+      "voiceLoadFailed": "Stimmen konnten nicht geladen werden",
+      "providerPrivacy": "Systemstimmen werden auf dem Gerät verarbeitet. Bei einem Netzwerkanbieter wird der aktuelle Satz an den von Ihnen konfigurierten Endpunkt gesendet.",
+      "openAiDetail": "Kompatibel mit OpenAI /v1/audio/speech. Sie konfigurieren die Sprach-IDs und die Standardstimme. Der Schlüssel API bleibt im sicheren Speicher auf diesem Gerät.",
+      "removeProvider": "Anbieter löschen",
+      "removeProviderTitle": "TTS-Anbieter löschen?",
+      "removeProviderDetail": "Dadurch werden „{{name}}“, seine lokalen Anmeldeinformationen und die zugehörigen Spracheinstellungen entfernt.",
+      "removeFailed": "Der Anbieter TTS konnte nicht gelöscht werden"
+    },
+    "privacy": {
+      "title": "Datenschutz",
+      "diagnostics": {
+        "title": "Diagnoseinformationen teilen",
+        "detail": "Fehlerstapel, App-Version und Geräteumgebung senden, wenn etwas schief geht. Standardmäßig werden keine Benutzeridentitätsdaten, App-Protokolle oder Bildschirmaufzeichnungen hinzugefügt",
+        "unavailable": "Diagnoseberichte sind in diesem Build nicht konfiguriert"
+      }
+    },
+    "developer": {
+      "title": "Entwickler",
+      "enabled": "Ein",
+      "disabled": "Aus",
+      "clearImageCache": {
+        "title": "Bildcache löschen",
+        "detail": "Expo-Bildcache und Miniaturansichten der Bibliothekscover löschen",
+        "doneTitle": "Bildcache geleert",
+        "doneDetail": "Cover werden beim erneuten Öffnen erneut gelesen, heruntergeladen oder generiert.",
+        "errorTitle": "Der Bildcache konnte nicht geleert werden",
+        "errorDetail": "Bitte versuchen Sie es später noch einmal.",
+        "unavailable": "Die Bereinigung des Bildcaches ist in dieser Umgebung nicht verfügbar."
+      },
+      "libraryPerformanceProfiler": {
+        "title": "Bibliotheksleistungsprofiler",
+        "detail": "Protokollieren Sie die Timing-Metriken von React Profiler und FlashList auf dem Bibliotheksbildschirm"
+      },
+      "coverLoadingAnimation": {
+        "title": "Animation zum Laden des Covers",
+        "detail": "Schalten Sie den Skeleton-Puls um, während die Cover geladen werden"
+      },
+      "coverThumbnailConcurrency": {
+        "title": "Cover-Thumbnail-Parallelität",
+        "detail": "Gleichzeitige Jobs zur Erstellung von Miniaturansichten",
+        "decrementLabel": "Verringern Sie die Parallelität der Cover-Miniaturansichten",
+        "incrementLabel": "Erhöhen Sie die Parallelität der Cover-Miniaturansichten"
+      }
+    },
+    "bookCountCurrent_one": "{{count}} Buch · In Verwendung",
+    "bookCountCurrent_other": "{{count}} Bücher · In Verwendung",
+    "bookCount_one": "{{count}} Buch",
+    "bookCount_other": "{{count}} Bücher"
+  },
+  "reader": {
+    "cannotOpen": "Buch kann nicht geöffnet werden",
+    "back": "Zurück",
+    "closeOverlay": "Overlay schließen",
+    "mountingReader": "Lesegerät montieren…",
+    "loadFailed": "Das Laden des Readers ist fehlgeschlagen",
+    "loadFailedMessage": "Der Leser ist auf einen unerwarteten Fehler gestoßen. Bitte gehen Sie zurück und versuchen Sie es erneut.",
+    "positionConflictTitle": "Wählen Sie, wo Sie fortfahren möchten",
+    "positionConflictDescription": "Ein anderes Gerät hat offline eine andere Position gespeichert. Wählen Sie eine aus, um fortzufahren. Die Auswahl wird mit Ihren anderen Geräten synchronisiert.",
+    "positionConflictUnknownProgress": "Unbekannter Fortschritt",
+    "positionConflictLater": "Entscheiden Sie später und verwenden Sie die Standardposition",
+    "chrome": {
+      "moreActions": "Weitere Aktionen"
+    },
+    "toc": "Inhaltsverzeichnis",
+    "navigationSheet": "Inhaltsbereich",
+    "noToc": "Dieses Buch hat kein Inhaltsverzeichnis",
+    "search": {
+      "title": "Buch suchen",
+      "inputLabel": "Buchtext durchsuchen",
+      "placeholder": "Suchtext",
+      "clear": "Suche löschen",
+      "promptTitle": "Finden Sie Text in diesem Buch",
+      "prompt": "Geben Sie ein Wort oder einen Satz ein, um dieses Buch zu durchsuchen.",
+      "searching": "Suche...",
+      "error": "Die Suche konnte nicht abgeschlossen werden",
+      "errorDetail": "Versuchen Sie es erneut. Ihre aktuelle Suche bleibt erhalten.",
+      "retry": "Versuchen Sie es erneut",
+      "empty": "Keine Ergebnisse für „{{query}}“",
+      "emptyDetail": "Versuchen Sie es mit einem anderen Wort oder einer anderen Phrase.",
+      "resultTitle": "Text",
+      "position": "Position {{position}}",
+      "noExcerpt": "Kein Auszug",
+      "loadedCount": "{{count}} Ergebnisse geladen",
+      "resultCount": "{{count}} Ergebnisse",
+      "loadMore": "Mehr laden",
+      "loadingMore": "Weitere Ergebnisse werden geladen…",
+      "loadMoreFailed": "Es konnten keine weiteren Ergebnisse geladen werden",
+      "retryMore": "Versuchen Sie es erneut",
+      "loadedCount_one": "{{count}} Ergebnis geladen",
+      "loadedCount_other": "{{count}} Ergebnisse geladen",
+      "resultCount_one": "{{count}} Ergebnis",
+      "resultCount_other": "{{count}} Ergebnisse"
+    },
+    "bookmarks": {
+      "title": "Lesezeichen",
+      "addCurrent": "Lesezeichen am aktuellen Standort hinzufügen",
+      "removeCurrent": "Lesezeichen am aktuellen Standort entfernen",
+      "loading": "Lesezeichen werden geladen…",
+      "error": "Lesezeichen konnten nicht geladen oder aktualisiert werden",
+      "retry": "Versuchen Sie es erneut",
+      "untitled": "Lesezeichen",
+      "deleteLabel": "Lesezeichen löschen: {{label}}",
+      "page": "Seite {{page}}",
+      "position": "Position {{position}}",
+      "today": "Heute",
+      "select": "Auswählen",
+      "deselect": "Abwählen",
+      "manage": "Verwalten",
+      "done": "Fertig",
+      "selectedCount": "{{count}} Lesezeichen ausgewählt",
+      "deleteSelected": "Ausgewählte Lesezeichen löschen",
+      "longPressHint": "Langes Drücken, um dieses Lesezeichen auszuwählen oder zu löschen",
+      "selectedCount_one": "{{count}} Lesezeichen ausgewählt",
+      "selectedCount_other": "{{count}} Lesezeichen ausgewählt"
+    },
+    "annotations": {
+      "title": "Lesezeichen und Anmerkungen",
+      "notesTab": "Anmerkungen",
+      "highlightAction": "Hervorheben",
+      "noteAction": "Notiz hinzufügen",
+      "editNoteAction": "Notiz bearbeiten",
+      "openNote": "Notiz öffnen",
+      "removeAction": "Entfernen",
+      "copyAction": "Kopieren",
+      "selectionActions": "Textaktionen",
+      "loading": "Notizen werden geladen…",
+      "error": "Notizen konnten nicht geladen oder aktualisiert werden",
+      "retry": "Versuchen Sie es erneut",
+      "openHint": "Gehen Sie zu diesem Highlight",
+      "select": "Auswählen",
+      "deselect": "Abwählen",
+      "manage": "Verwalten",
+      "done": "Fertig",
+      "selectedCount": "{{count}} Anmerkungen ausgewählt",
+      "deleteSelected": "Ausgewählte Anmerkungen löschen",
+      "longPressHint": "Drücken Sie lange, um diese Anmerkung auszuwählen, zu bearbeiten oder zu löschen",
+      "edit": "Bearbeiten",
+      "editTitle": "Hervorhebung und Notiz bearbeiten",
+      "addNoteTitle": "Notiz hinzufügen",
+      "color": "Hervorhebungsfarbe",
+      "note": "Hinweis",
+      "notePlaceholder": "Schreiben Sie einen Gedanken (optional)",
+      "editNoteHint": "Tippen Sie hier, um die Notiz zu bearbeiten",
+      "deleteTitle": "Hervorhebung löschen?",
+      "deleteMessage": "Die Markierung und die dazugehörige Notiz werden von diesem Gerät entfernt.",
+      "colors": {
+        "yellow": "Bernstein",
+        "orange": "Terrakotta",
+        "green": "Salbei",
+        "blue": "Schieferblau"
+      },
+      "selectedCount_one": "{{count}} Anmerkung ausgewählt",
+      "selectedCount_other": "{{count}} Anmerkungen ausgewählt"
+    },
+    "tts": {
+      "readAloud": "Vorlesen",
+      "readFromHere": "Ab hier vorlesen",
+      "controls": "Vorlesesteuerung",
+      "openControls": "Vorlesesteuerung öffnen",
+      "settings": "Vorleseeinstellungen",
+      "settingsAction": "Vorleseeinstellungen",
+      "manageProviders": "TTS-Anbieter verwalten",
+      "goToCurrent": "Gehe zum aktuell gesprochenen Satz",
+      "play": "Erzählung fortsetzen",
+      "pause": "Erzählung unterbrechen",
+      "previous": "Vorheriger Satz",
+      "next": "Nächster Satz",
+      "stop": "Stoppen Sie das Erzählen",
+      "playFromCurrentPosition": "Spielen Sie von hier aus",
+      "returnToPlaybackPosition": "Zurück zur Erzählung",
+      "states": {
+        "stopped": "Gestoppt",
+        "loading": "Erzählung vorbereiten…",
+        "generating": "Den nächsten Satz generieren…",
+        "playing": "Vorlesen",
+        "paused": "Angehalten",
+        "ended": "Erzählung beendet",
+        "error": "Die Erzählung ist fehlgeschlagen"
+      },
+      "errors": {
+        "unknown": "Die Erzählung kann nicht gestartet werden. Bitte versuchen Sie es erneut.",
+        "noReadableContent": "Nach der aktuellen Position wurde kein lesbarer Text gefunden.",
+        "noVoices": "Die aktuelle Erzählmaschine hat keine Stimme für die Sprache dieses Buches.",
+        "providerUnavailable": "Der Sprachdienst ist nicht verfügbar. Überprüfen Sie die URL, die Netzwerkverbindung und die API-Konfiguration und versuchen Sie es dann erneut.",
+        "engine": "Die Erzähl-Engine hat einen Fehler zurückgegeben: {{message}}"
+      }
+    },
+    "settings": "Leseeinstellungen",
+    "settingsSheet": "Bedienfeld „Leseeinstellungen“.",
+    "settingsTheme": "Thema",
+    "readingMode": "Lesemodus",
+    "pageDirection": "Seitenrichtung",
+    "backgroundAuto": "Auto",
+    "backgroundBlack": "Schwarz",
+    "backgroundWhite": "Weiß",
+    "alignment": "Ausrichtung",
+    "alignmentAuto": "Auto",
+    "alignmentJustify": "Begründen",
+    "alignmentStart": "Links",
+    "column": "Spalten",
+    "column1": "Immer Single",
+    "columnAuto": "Auto",
+    "fontSize": "Schriftgröße",
+    "lineHeight": "Zeilenhöhe",
+    "margin": "Marge",
+    "spread": "Seitenlayout",
+    "spreadAuto": "Auto",
+    "spreadSingle": "Immer Single",
+    "readingProgression": "Leserichtung",
+    "directionLtr": "Von links nach rechts",
+    "directionRtl": "Von rechts nach links",
+    "zoom": "Zoom",
+    "pinchZoomHint": "Festes Layout unterstützt Pinch-to-Zoom.",
+    "themeNeutral": "Weiß",
+    "themePaper": "Papier",
+    "themeSepia": "Sepia",
+    "themeGreen": "Grün",
+    "themeOcean": "Ozean",
+    "themeContrast1": "HC1",
+    "themeNight": "Nacht",
+    "themeContrast2": "HC2",
+    "themes": {
+      "contrast1": "HC1",
+      "contrast2": "HC2"
+    },
+    "layoutScroll": "Scrollen",
+    "layoutPaginate": "Paginieren",
+    "navHorizontal": "Horizontal",
+    "navVertical": "Vertikal",
+    "pageLabel": "Seite {{page}}",
+    "positionLabel": "Ort.",
+    "positionProgress": "Ort. {{current}} / {{total}}",
+    "pageProgress": "Seite {{current}} / {{total}}",
+    "font": "Schriftart",
+    "fontOptions": {
+      "defaultChinese": "Chinesischer Standard",
+      "lxgwWenkai": "LXGW WenKai",
+      "oldStyle": "Alter Stil",
+      "modern": "Moderne Serife",
+      "humanist": "Humanist Sans",
+      "openDyslexic": "OpenDyslexic",
+      "accessibleDfa": "AccessibleDfA",
+      "iaWriterDuospace": "IA-Autor"
+    },
+    "moreActions": "Weitere Aktionen",
+    "closeReader": "Reader schließen"
+  },
+  "bookDetail": {
+    "title": "Buchdetails",
+    "missingParam": {
+      "title": "Fehlender Buchparameter",
+      "detail": "Bitte geben Sie die Buchdetails aus der Bibliothek erneut ein."
+    },
+    "loadingDetail": "Buchdetails werden geladen…",
+    "seriesInfo": "{{series}} · #{{index}}",
+    "series": "Serie",
+    "seriesIndex": "Serienindex",
+    "infoSection": "Details",
+    "bookTitle": "Titel",
+    "titleSort": "Titelsortierung",
+    "authors": "Autoren",
+    "authorSort": "Autorensortierung",
+    "pubDate": "Veröffentlichungsdatum",
+    "language": "Sprache",
+    "publisher": "Herausgeber",
+    "rating": "Bewertung",
+    "tags": "Tags",
+    "identifiers": "Identifikatoren",
+    "createdAt": "Erstellt am",
+    "downloadStarted": "Download gestartet",
+    "downloadStartedDetail": "{{format}} ist nach dem Herunterladen lesebereit.",
+    "noReadableFormat": "Kein lesbares Format",
+    "downloadAndRead": "Herunterladen und lesen",
+    "continueReading": "Weiterlesen",
+    "startReading": "Beginnen Sie mit dem Lesen",
+    "back": "Zurück",
+    "share": "Teilen",
+    "moreActions": "Weitere Aktionen: {{title}}",
+    "openBook": "Öffnen Sie „{{title}}“",
+    "readFileStateFailed": "Dateistatus konnte nicht gelesen werden",
+    "downloadFailed": "Dateidownload fehlgeschlagen: {{path}}",
+    "cannotStartDownload": "Der Download kann nicht gestartet werden",
+    "noFormatPath": "Kein Dateipfad für {{format}} gefunden",
+    "deleteLocalFailed": "Lokale Datei konnte nicht gelöscht werden",
+    "formatSection": {
+      "title": "Dateiformate",
+      "count": "{{count}} Formate",
+      "default": "Standard-Leseformat",
+      "readable": "Lesbar",
+      "unsupported": "Nicht unterstützt",
+      "queued": "In der Warteschlange",
+      "preparing": "Vorbereiten",
+      "notStarted": "Nicht gestartet",
+      "cancel": "Abbrechen",
+      "cancelDownload": "Download abbrechen",
+      "download": "Herunterladen",
+      "downloadFormat": "Herunterladen",
+      "notDownloaded": "Nicht heruntergeladen",
+      "setDefault": "Als Standard-Leseformat festlegen",
+      "shareFormat": "Teilen",
+      "more": "Mehr",
+      "count_one": "{{count}} Format",
+      "count_other": "{{count}} Formate"
+    },
+    "setReadingFormat": "Leseformat festlegen",
+    "expand": "Erweitern"
+  },
+  "share": {
+    "fileNotDownloadedTitle": "Datei nicht heruntergeladen",
+    "fileNotDownloadedMessage": "„{{title}}“ ({{format}}) muss zuerst heruntergeladen werden.",
+    "shareFailed": "Die Freigabe ist fehlgeschlagen"
+  },
+  "bookRow": {
+    "finished": "Gelesen"
+  },
+  "addLibrary": {
+    "addedPrompt": {
+      "detail": "Zu „{{name}}“ wechseln und die Bibliothek öffnen?",
+      "stay": "Bleib hier",
+      "switch": "Wechseln und öffnen"
+    },
+    "selectSaveLocation": "Wählen Sie den Speicherort",
+    "selectLibraryLocation": "Wählen Sie den Standort der Bibliothek",
+    "name": "Name",
+    "invalidName": "Name darf / oder \\ nicht enthalten",
+    "create": "Erstellen",
+    "creating": "Erstellen",
+    "open": "Öffnen",
+    "continue": "Weiter",
+    "path": "Pfad: {{path}}",
+    "unrecognized": {
+      "title": "Bibliothek nicht erkannt",
+      "detail": "Wählen Sie einen Bibliotheksordner MyReader oder Calibre."
+    },
+    "folderExists": {
+      "title": "Name existiert bereits",
+      "detail": "Wählen Sie einen anderen Bibliotheksnamen."
+    },
+    "operationFailed": "Bibliotheksvorgang fehlgeschlagen",
+    "operationFailedDetail": "Bitte versuchen Sie es später noch einmal."
+  },
+  "webdav": {
+    "sourcesTitle": "WebDAV Quellen",
+    "sourceDetail": "Quelldetails",
+    "addSource": "WebDAV Quelle hinzufügen",
+    "reconfigureSource": "WebDAV neu konfigurieren",
+    "selectLibrary": "Wählen Sie die Bibliothek WebDAV aus",
+    "noSources": {
+      "title": "Noch keine WebDAV-Quellen",
+      "detail": "Verwenden Sie die Schaltfläche unten, um eine WebDAV-Quelle hinzuzufügen."
+    },
+    "delete": {
+      "title": "WebDAV-Quelle löschen",
+      "confirm": "„{{name}}“ löschen?",
+      "cancel": "Abbrechen",
+      "confirmButton": "Löschen"
+    },
+    "deleteFailed": {
+      "title": "Kann nicht gelöscht werden",
+      "message": "Die Quelle konnte nicht gelöscht werden."
+    },
+    "deleteSource": "Quelle löschen",
+    "type": "Typ",
+    "serverAddress": "Serveradresse",
+    "username": "Benutzername",
+    "password": "Passwort",
+    "passwordSaved": "In einem sicheren Speicher gespeichert",
+    "passwordNotSet": "Nicht eingestellt",
+    "basePath": "Basispfad",
+    "status": "Status",
+    "enabled": "Aktiviert",
+    "disabled": "Deaktiviert",
+    "addedAt": "Hinzugefügt um",
+    "browser": {
+      "notFound": {
+        "title": "Quelle nicht gefunden",
+        "detail": "Bitte fügen Sie zuerst eine WebDAV-Quelle hinzu."
+      },
+      "loadFailed": {
+        "title": "Durchsuchen fehlgeschlagen",
+        "message": "Im Browser WebDAV ist ein unerwarteter Fehler aufgetreten. Bitte versuchen Sie es erneut."
+      },
+      "validating": "Verzeichnis wird validiert",
+      "selectDirectory": "Aktuelles Verzeichnis als Bibliothek auswählen",
+      "currentPath": "Aktueller Pfad: {{path}}",
+      "reading": {
+        "title": "Verzeichnis lesen",
+        "detail": "Verzeichnisliste vom WebDAV-Server abrufen."
+      },
+      "readFailed": {
+        "title": "Lesen fehlgeschlagen"
+      },
+      "credentialsUnavailable": {
+        "title": "WebDAV Anmeldeinformationen nicht verfügbar",
+        "detail": "Konfigurieren Sie die WebDAV-Quelle neu."
+      },
+      "noCredentials": "WebDAV Anmeldeinformationen nicht verfügbar. Bitte bearbeiten Sie die Datenquelle und legen Sie ein Passwort fest.",
+      "empty": {
+        "title": "Leeres Verzeichnis",
+        "detail": "Keine Unterverzeichnisse im aktuellen Verzeichnis."
+      },
+      "notValidLibrary": {
+        "title": "Ungültiges Verzeichnis",
+        "message": "Keine gültige Bibliothek – metadata.db nicht gefunden."
+      },
+      "notCalibreLibrary": "Keine gültige Calibre-Bibliothek.",
+      "cannotReadRemote": "Remote-Verzeichnis kann nicht gelesen werden"
+    },
+    "add": {
+      "sourceTitle": "WebDAV Quelle",
+      "enterServerUrl": "Bitte geben Sie die Serveradresse ein.",
+      "portMustBeNumber": "Port muss eine Zahl sein",
+      "portRange": "Der Port muss 1-65535 sein",
+      "validationFailed": "Validierung fehlgeschlagen",
+      "connectionTestFailed": "Verbindungstest fehlgeschlagen",
+      "reEnter": "Erneut eingeben",
+      "addAnyway": "Trotzdem hinzufügen",
+      "addFailed": "Hinzufügen fehlgeschlagen",
+      "addFailedMessage": "Der Vorgang ist fehlgeschlagen. Bitte versuchen Sie es erneut.",
+      "updateFailed": "Speichern fehlgeschlagen",
+      "completing": "Wird abgeschlossen",
+      "complete": "Abgeschlossen",
+      "saving": "Speichern",
+      "save": "Speichern",
+      "saveAnyway": "Trotzdem speichern",
+      "serverAddressLabel": "Serveradresse",
+      "portLabel": "Port",
+      "basePathLabel": "Basispfad",
+      "usernameLabel": "Benutzername",
+      "usernamePlaceholder": "Geben Sie den Benutzernamen ein",
+      "passwordLabel": "Passwort",
+      "passwordPlaceholder": "Passwort eingeben",
+      "passwordKeepPlaceholder": "Lassen Sie das Feld leer, um das aktuelle Passwort beizubehalten",
+      "useSSL": "SSL verwenden"
+    }
+  },
+  "onedrive": {
+    "sourcesTitle": "OneDrive Quellen",
+    "sourceDetail": "Quelldetails",
+    "addSource": "OneDrive Quelle hinzufügen",
+    "reauthenticate": "Melden Sie sich erneut bei OneDrive an",
+    "selectLibrary": "Wählen Sie die Bibliothek OneDrive aus",
+    "noSources": {
+      "title": "Noch keine OneDrive-Quellen",
+      "detail": "Verwenden Sie die Schaltfläche unten, um eine OneDrive-Quelle hinzuzufügen."
+    },
+    "delete": {
+      "title": "OneDrive-Quelle löschen",
+      "confirm": "„{{name}}“ löschen?",
+      "cancel": "Abbrechen",
+      "confirmButton": "Löschen"
+    },
+    "deleteFailed": {
+      "title": "Kann nicht gelöscht werden",
+      "message": "Die Quelle konnte nicht gelöscht werden."
+    },
+    "deleteSource": "Quelle löschen",
+    "type": "Typ",
+    "displayName": "Anzeigename",
+    "email": "E-Mail",
+    "basePath": "Basispfad",
+    "authStatus": "Authentifizierungsstatus",
+    "authenticated": "Authentifiziert",
+    "notAuthenticated": "Nicht authentifiziert",
+    "addedAt": "Hinzugefügt um",
+    "browser": {
+      "notFound": {
+        "title": "Quelle nicht gefunden",
+        "detail": "Bitte fügen Sie zuerst eine OneDrive-Quelle hinzu."
+      },
+      "loadFailed": {
+        "title": "Durchsuchen fehlgeschlagen",
+        "message": "Im Browser OneDrive ist ein unerwarteter Fehler aufgetreten. Bitte versuchen Sie es erneut."
+      },
+      "validating": "Verzeichnis wird validiert",
+      "selectDirectory": "Aktuelles Verzeichnis als Bibliothek auswählen",
+      "currentPath": "Aktueller Pfad: {{path}}",
+      "reading": {
+        "title": "Verzeichnis lesen",
+        "detail": "Verzeichnisliste von OneDrive abrufen."
+      },
+      "readFailed": {
+        "title": "Lesen fehlgeschlagen"
+      },
+      "credentialsUnavailable": {
+        "title": "OneDrive-Anmeldung abgelaufen",
+        "detail": "Melden Sie sich erneut bei OneDrive an."
+      },
+      "noCredentials": "OneDrive Anmeldeinformationen nicht verfügbar. Bitte authentifizieren Sie die Datenquelle erneut.",
+      "empty": {
+        "title": "Leeres Verzeichnis",
+        "detail": "Keine Unterverzeichnisse im aktuellen Verzeichnis."
+      },
+      "notValidLibrary": {
+        "title": "Ungültiges Verzeichnis",
+        "message": "Keine gültige Bibliothek – metadata.db nicht gefunden."
+      },
+      "notCalibreLibrary": "Keine gültige Calibre-Bibliothek.",
+      "cannotReadRemote": "Remote-Verzeichnis kann nicht gelesen werden"
+    },
+    "add": {
+      "signInTitle": "Melden Sie sich bei OneDrive an",
+      "signInDetail": "Melden Sie sich mit einem Microsoft-Konto an.",
+      "signInWithMicrosoft": "Melden Sie sich bei Microsoft an",
+      "authenticating": "Authentifizierung…",
+      "addingTitle": "OneDrive-Quelle hinzugefügt",
+      "addingDetail": "Einrichtung abschließen – bitte lassen Sie die App geöffnet.",
+      "authFailed": "Authentifizierung fehlgeschlagen",
+      "authFailedMessage": "Anmeldung bei OneDrive nicht möglich. Bitte versuchen Sie es erneut.",
+      "accountMismatch": "Kontokonflikt",
+      "accountMismatchMessage": "Melden Sie sich als {{email}} an oder gehen Sie zurück und fügen Sie eine neue OneDrive-Quelle hinzu.",
+      "alreadyAdded": "Konto bereits hinzugefügt",
+      "alreadyAddedMessage": "Das Konto {{email}} ist bereits verbunden."
+    }
+  },
+  "errorBoundary": {
+    "defaultTitle": "Es ist ein unerwarteter Fehler aufgetreten",
+    "retry": "Erneut versuchen"
+  },
+  "dataSource": {
+    "backToList": "Zurück zur Quellenliste",
+    "backToLocations": "Zurück zu den verfügbaren Standorten",
+    "notFound": {
+      "title": "Quelle existiert nicht mehr",
+      "detail": "Möglicherweise wurde es entfernt. Kehren Sie zur Quellenliste zurück.",
+      "addLibraryDetail": "Möglicherweise wurde es entfernt. Kehren Sie zu den verfügbaren Standorten zurück."
+    },
+    "deleteInUse": {
+      "title": "Kann nicht gelöscht werden",
+      "message": "Die folgenden Bibliotheken verwenden diese Quelle: {{names}}. Bitte entfernen Sie diese Bibliotheken, bevor Sie die Quelle löschen."
+    }
+  },
+  "common": {
+    "confirm": "OK",
+    "gotIt": "Verstanden",
+    "search": "Suchen",
+    "clear": "Leeren",
+    "current": "Strom",
+    "appInternalStorage": "Interner App-Speicher",
+    "localStorage": "Lokaler Speicher",
+    "unnamedBook": "Unbenanntes Buch",
+    "unknownAuthor": "Unbekannter Autor",
+    "myLibrary": "Meine Bibliothek",
+    "unnamedLibrary": "Unbenannte Bibliothek",
+    "selected": "Ausgewählt",
+    "unselected": "Nicht ausgewählt"
+  },
+  "bookLang": {
+    "zho": "中文",
+    "chi": "中文",
+    "eng": "Englisch",
+    "jpn": "日本語"
+  },
+  "bookMenu": {
+    "detail": "Buchdetails",
+    "addToFavorites": "Zu Favoriten hinzufügen",
+    "removeFromFavorites": "Aus Favoriten entfernen",
+    "download": "Herunterladen",
+    "downloadFormat": "Herunterladen ({{format}})",
+    "cancelDownload": "Download abbrechen",
+    "uploadFile": "Datei hochladen",
+    "uploadFailed": "Hochladen fehlgeschlagen",
+    "uploadFailedDetail": "Hochladen nach „{{library}}“ fehlgeschlagen. \n {{reason}}",
+    "defaultFormat": "Standard-Leseformat: {{format}}",
+    "deleteDownload": "Heruntergeladene Datei löschen",
+    "share": "Teilen",
+    "editMetadata": "Titel und Autoren bearbeiten",
+    "deleteBook": "Buch löschen",
+    "deleteConfirmTitle": "Buch löschen",
+    "deleteConfirmDetail": "„{{title}}“ und seine Buchdatei aus dieser Bibliothek löschen?",
+    "deleteFailed": "Das Buch konnte nicht gelöscht werden"
+  },
+  "bookEdit": {
+    "title": "Buchinformationen bearbeiten",
+    "bookTitle": "Titel",
+    "authors": "Autoren",
+    "authorsPlaceholder": "Trennen Sie mehrere Autoren durch Kommas",
+    "save": "Speichern",
+    "saving": "Speichern",
+    "saveFailed": "Buchinformationen können nicht gespeichert werden",
+    "incomplete": {
+      "title": "Fehlende Informationen",
+      "detail": "Titel und Autoren sind erforderlich."
+    },
+    "unavailable": {
+      "title": "Dieses Buch kann nicht bearbeitet werden",
+      "detail": "Nur Bücher in MyReader-Bibliotheken können bearbeitet werden."
+    }
+  },
+  "bookLoader": {
+    "loadingBook": "Buch wird geladen…",
+    "missingParam": "Fehlender Buchparameter",
+    "noLibrary": "Keine Bibliothek ausgewählt",
+    "readingBookInfo": "Buchinformationen lesen…",
+    "invalidId": "Ungültige Buch-ID",
+    "notFoundInLibrary": "Buch nicht in der Bibliothek gefunden",
+    "noReadableFormat": "Kein lesbares Format (EPUB, CBZ oder PDF erforderlich)",
+    "downloadingFromWebdav": "Buch wird heruntergeladen von WebDAV…",
+    "downloadingFromRemote": "Buch von Remote herunterladen…",
+    "loadingBookFile": "Buchdatei wird geladen…",
+    "downloadFirst": "Bitte laden Sie das Format in den Buchdetails herunter, bevor Sie es lesen."
+  },
+  "sync": {
+    "localDirectRead": "Lokales direktes Lesen: Synchronisierung übersprungen",
+    "libraryNotFound": "Bibliothek nicht gefunden: {{id}}",
+    "localDirectLabel": "Lokal · {{path}}",
+    "configError": "Synchronisierungskonfigurationsfehler",
+    "dataIntegrityError": "Fehler bei der Synchronisierungsdatenintegrität",
+    "webdavSourceNotFound": "Die mit dieser Bibliothek verknüpfte WebDAV-Quelle existiert nicht.",
+    "webdavPasswordMissing": "Der aktuellen WebDAV-Quelle fehlt ein Passwort. Bitte bearbeiten Sie die Quelle erneut.",
+    "onedriveSourceNotFound": "Die mit dieser Bibliothek verknüpfte OneDrive-Quelle existiert nicht.",
+    "onedriveRefreshTokenMissing": "Der aktuellen OneDrive-Quelle fehlt die Authentifizierung. Bitte authentifizieren Sie die Quelle erneut.",
+    "onedriveGetFailed": "OneDrive GET fehlgeschlagen: {{status}} {{path}}",
+    "onedriveDownloadUrlMissing": "OneDrive hat keine Download-URL zurückgegeben: {{path}}",
+    "onedrivePutFailed": "OneDrive PUT fehlgeschlagen: {{status}} {{path}}",
+    "onedriveDeleteFailed": "OneDrive DELETE fehlgeschlagen: {{status}} {{path}}",
+    "onedriveListFailed": "OneDrive-Liste fehlgeschlagen: {{status}} {{path}}",
+    "onedriveMkdirFailed": "OneDrive mkdir fehlgeschlagen: {{status}} {{path}}",
+    "cannotResolveLocalPath": "Das Stammverzeichnis der lokalen Bibliothek kann nicht aufgelöst werden.",
+    "downloadCancelled": "Download abgebrochen",
+    "downloadFailed": "Hintergrund-Download fehlgeschlagen: {{code}}",
+    "downloadStalled": "Der native Download hat Bytes übertragen, ist aber ins Stocken geraten. Überprüfen Sie das Netzwerk, die WebDAV-Bereichsunterstützung oder Systemhintergrundeinschränkungen.",
+    "downloadNotStarted": "Native Download-Aufgabe erstellt, aber keine Übertragung gestartet. Überprüfen Sie die Datenquelle, Authentifizierung, Netzwerk oder native Downloader-Konfiguration.",
+    "uploadCancelled": "Upload abgebrochen",
+    "uploadFailed": "Hintergrund-Upload fehlgeschlagen: HTTP {{status}} {{body}}",
+    "uploadFailedCode": "Hintergrund-Upload fehlgeschlagen: {{code}}",
+    "uploadStalled": "Der native Upload hat Bytes übertragen, ist aber ins Stocken geraten. Überprüfen Sie Netzwerk-, WebDAV-Authentifizierungs- oder Systemhintergrundeinschränkungen.",
+    "uploadNotStarted": "Native Upload-Aufgabe erstellt, aber keine Übertragung gestartet. Überprüfen Sie die URL, Authentifizierung oder native Uploader-Konfiguration von WebDAV.",
+    "manifestNotRegistered": "Pfad nicht im Manifest registriert: {{path}}",
+    "syncPathEmpty": "Der Synchronisierungspfad darf nicht leer sein",
+    "syncPathTraversal": "Der Synchronisierungspfad darf nicht Folgendes enthalten: {{path}}",
+    "syncPathAbsolute": "Der Synchronisierungspfad darf nicht absolut sein: {{path}}",
+    "nativeDownloadMissing": "Nativer Download abgeschlossen, aber Cache-Datei fehlt: {{path}}",
+    "nativeDownloadEmpty": "Nativer Download abgeschlossen, aber Cache-Datei ist leer: {{path}}",
+    "nativeDownloadNotSupported": "Nativer Hintergrund-Download wird nicht unterstützt: {{kind}}",
+    "nativeUploadNotSupported": "Nativer Hintergrund-Upload wird nicht unterstützt: {{kind}}",
+    "hashMismatch": "Hash-Konflikt nach dem Download: {{expected}} erwartet, {{actual}} erhalten",
+    "localFileMissing": "Lokale Datei existiert nicht, kann nicht hochgeladen werden: {{path}}",
+    "libraryNotFoundShort": "Bibliothek nicht gefunden: {{id}}",
+    "connectionTimeout": "Verbindungszeitüberschreitung (2 s). Überprüfen Sie die Netzwerk- oder WebDAV-Konfiguration.",
+    "cannotParseFilePath": "Dateipfad kann nicht analysiert werden: {{uri}}",
+    "metadataDbNotAvailable": "metadata.db nicht verfügbar",
+    "formatNotFoundInLibrary": "Format {{format}} nicht in Bibliothek gefunden (bookId={{id}})",
+    "bookFileNotFound": "Buchdatei nicht gefunden: {{name}}",
+    "bookFileNotFoundDetail": "Vollständiger Pfad: {{uri}} \n Bibliothekspfad: {{libraryPath}} \n Pfad im Buch: {{rowPath}}",
+    "corruptedLibrary": "Bibliotheksdaten beschädigt",
+    "corruptedLibraryMessage": "metadata.db für diese Bibliothek kann nicht wiederhergestellt werden. Bitte entfernen Sie die Bibliothek und fügen Sie sie erneut hinzu.",
+    "corruptedLibraryRedownloadMessage": "Metadata.db für diese Bibliothek kann nicht erneut heruntergeladen werden. Überprüfen Sie die Netzwerk- oder WebDAV-Konfiguration.",
+    "cannotRedownloadMeta": "metadata.db kann nicht erneut heruntergeladen werden",
+    "metadataNotFound": "metadata.db nicht gefunden",
+    "metadataNotFoundDetail": "Calibre metadata.db wurde im ausgewählten Verzeichnis nicht gefunden. Wählen Sie das Stammverzeichnis der Bibliothek aus (sollte metadata.db enthalten).",
+    "userCancelled": "Benutzer hat abgebrochen oder kein Verzeichnis ausgewählt",
+    "notValidCalibreLibrary": "metadata.db wurde in der ausgewählten Bibliothek nicht gefunden. Bestätigen Sie, dass es sich um eine gültige Calibre-Bibliothek handelt.",
+    "loadLibraryFailed": "Bibliothek konnte nicht geladen werden",
+    "addLibraryFailed": "Bibliothek konnte nicht hinzugefügt werden",
+    "cannotAddDuplicate": "Kann nicht hinzugefügt werden",
+    "alreadyAdded": "Diese Bibliothek wurde bereits hinzugefügt.",
+    "readLibraryFailed": "Bibliothek konnte nicht gelesen werden",
+    "refreshLibraryFailed": "Die Bibliothek konnte nicht aktualisiert werden",
+    "sourceUnreachable": "Quelle nicht erreichbar",
+    "sourceUnreachableDetail": "Auf die Quelle WebDAV kann nicht zugegriffen werden. Download abgebrochen. \n \n Mögliche Ursachen: \n • Netzwerk nicht verfügbar oder instabil \n • WebDAV Server läuft nicht oder ist nicht erreichbar \n • Serveradresse, Port oder Authentifizierung falsch konfiguriert",
+    "sourceUnreachableSyncDetail": "Auf die Quelle WebDAV kann nicht zugegriffen werden. Synchronisierung abgebrochen. \n \n Mögliche Ursachen: \n • Netzwerk nicht verfügbar oder instabil \n • WebDAV Server läuft nicht oder ist nicht erreichbar \n • Serveradresse, Port oder Authentifizierung falsch konfiguriert",
+    "removeLibraryFirst": "Bitte entfernen Sie zuerst Bibliotheken, die diese Quelle verwenden",
+    "authFailed": "Authentifizierung fehlgeschlagen: falscher Benutzername oder falsches Passwort oder unzureichende Berechtigungen.",
+    "pathNotFound": "Pfad nicht gefunden: Überprüfen Sie den Basispfad und ob das Verzeichnis WebDAV vorhanden ist.",
+    "serverAbnormal": "Serverfehler (HTTP {{status}}): Überprüfen Sie den Serverstatus und die WebDAV-Konfiguration.",
+    "connectionTimeoutDetail": "Verbindungszeitlimit: Überprüfen Sie Netzwerk, Serveradresse, Port und SSL-Konfiguration. Grund: {{reason}}",
+    "networkFailed": "Netzwerkanforderung fehlgeschlagen: Server kann nicht erreicht werden. Überprüfen Sie Netzwerk, Adresse, Port und SSL. Grund: {{reason}}",
+    "cannotDownload": "Download nicht möglich",
+    "noReadableFormatForDownload": "Kein lesbares Format zum Download verfügbar",
+    "noReadableFormat": "Kein lesbares Format",
+    "noReadableFormatDetail": "Dieses Buch hat kein lesbares Format",
+    "defaultFormatSet": "Standardformat eingestellt",
+    "setDefaultFormat": "Standard-Leseformat festlegen",
+    "currentDefault": "Aktueller Standard: {{format}}",
+    "readFormatFailed": "Formate konnten nicht gelesen werden",
+    "deleteDownloadFile": "Heruntergeladene Datei löschen",
+    "confirmDeleteDownload": "Den lokalen Download für „{{title}}“ löschen?",
+    "deleteFailed": "Löschen fehlgeschlagen",
+    "webdavGetFailed": "WebDAV GET fehlgeschlagen: {{status}} {{path}}",
+    "webdavPutFailed": "WebDAV PUT fehlgeschlagen: {{status}} {{path}}",
+    "webdavDeleteFailed": "WebDAV DELETE fehlgeschlagen: {{status}} {{path}}",
+    "webdavPropfindFailed": "WebDAV PROPFIND fehlgeschlagen: {{status}} {{path}}",
+    "webdavPropfindListFailed": "WebDAV PROPFIND-Liste fehlgeschlagen: {{status}} {{path}}",
+    "webdavMkcolFailed": "WebDAV MKCOL fehlgeschlagen: {{status}} {{path}}",
+    "localFileNotExist": "Lokale Datei existiert nicht: {{path}}",
+    "basicAuthNotSupported": "Basic Auth-Kodierung wird in dieser Umgebung nicht unterstützt",
+    "syncPathCannotBeEmpty": "Der Synchronisierungspfad darf nicht leer sein"
+  },
+  "notifications": {
+    "libraryAdded": "Bibliothek hinzugefügt: {{name}}",
+    "libraryUpdated": "Bibliothek aktualisiert",
+    "libraryUpdateFailed": "Die Aktualisierung der Bibliothek ist fehlgeschlagen",
+    "downloadStart": "Download gestartet",
+    "downloadDone": "Download abgeschlossen",
+    "downloadFailed": "Download fehlgeschlagen",
+    "libraryRefreshing": "Aktualisierung der Bibliothek",
+    "librarySyncing": "Synchronisierungsbibliothek"
+  },
+  "errors": {
+    "sourceUnreachable": "Quelle nicht erreichbar",
+    "sourceUnreachableDetail": "Auf die Quelle WebDAV kann nicht zugegriffen werden. Download abgebrochen. \n \n Mögliche Ursachen: \n • Netzwerk nicht verfügbar oder instabil \n • WebDAV Server läuft nicht oder ist nicht erreichbar \n • Serveradresse, Port oder Authentifizierung falsch konfiguriert",
+    "downloadFailed": "Download fehlgeschlagen",
+    "timeout": "Zeitüberschreitung"
+  },
+  "securityBookmarks": {
+    "invalidUrl": "{{action}} fehlgeschlagen: Ungültige Verzeichnis-URL.",
+    "invalidBookmark": "{{action}} fehlgeschlagen: Gespeichertes Lesezeichen ist ungültig. Bitte wählen Sie die Bibliothek erneut aus.",
+    "unsupportedUrl": "{{action}} fehlgeschlagen: Verzeichnis-URL-Format wird nicht unterstützt. Bitte wählen Sie stattdessen ein lokales Verzeichnis aus der Dateien-App aus.",
+    "cannotAccess": "{{action}} fehlgeschlagen: Auf das autorisierte Bibliotheksverzeichnis kann nicht zugegriffen werden. Bitte erneut auswählen und autorisieren.",
+    "expired": "{{action}} fehlgeschlagen: Lesezeichen-Autorisierung abgelaufen. Bitte wählen Sie die Bibliothek erneut aus.",
+    "genericError": "{{action}} fehlgeschlagen: iOS-Dateiautorisierungsfehler. Bitte versuchen Sie es erneut.",
+    "createBookmark": "Lesezeichen erstellen",
+    "restoreBookmark": "Lesezeichen wiederherstellen",
+    "accessDirectory": "Zugriffsverzeichnis",
+    "refreshBookmark": "Lesezeichen aktualisieren"
+  }
+}

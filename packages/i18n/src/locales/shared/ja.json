@@ -1,0 +1,242 @@
+{
+  "qwenTts": {
+    "title": "Qwen",
+    "add": "{{name}} を追加",
+    "description": "このエンドポイントの認証情報を使用し、自分の声を選択してください。",
+    "sources": {
+      "tokenPlan": {
+        "title": "Qwen · トークン プラン",
+        "description": "Qwen サブスクリプション クレジットとプラン固有のキーを使用します。",
+        "credential": "トークン プランのサブスクリプション キー (sk-sp- で始まる)"
+      },
+      "qianwen": {
+        "title": "Qwen · 従量課金制",
+        "description": "使用量ベースの課金で Qianwen AI プラットフォーム API を使用します。",
+        "credential": "Qianwen AI プラットフォーム API キー (サブスクリプション キーではありません)"
+      },
+      "dashscope": {
+        "title": "Qwen · DashScope (モデルスタジオ)",
+        "description": "デフォルトで北京地域の Alibaba Cloud Model Studio を使用します。",
+        "credential": "このリージョンの Alibaba Cloud Model Studio API キー"
+      }
+    },
+    "manualVoicesAction": "音声IDを手動で入力してください",
+    "manualVoices": "音声 ID",
+    "manualVoicesHint": "リストにない公式またはカスタムの音声。 1 行に 1 つの ID を入力します。",
+    "loadingVoices": "アカウントの音声を読み込んでいます…",
+    "voicesFailed": "アカウントの音声をロードできませんでした。保存した音声と手動で入力した ID は引き続き利用できます。",
+    "voicesEmpty": "このモデルにはアカウントボイスがありません。対応するプラットフォームで音声を作成するか、既存の音声 ID を入力します。",
+    "credentialRequired": "このエンドポイントに一致する API キー。トークン プランには sk-sp- サブスクリプション キーが必要です"
+  },
+  "addLibraryFlow": {
+    "title": "ライブラリを追加",
+    "noLibrary": {
+      "title": "ライブラリはまだ追加されていません",
+      "description": "新しいライブラリを作成するか、既存のライブラリを開きます。"
+    },
+    "create": {
+      "title": "新しいライブラリを作成する",
+      "description": "MyReader ライブラリを作成する"
+    },
+    "open": {
+      "title": "既存のライブラリを開く",
+      "description": "既存の MyReader または Calibre ライブラリを開きます。"
+    },
+    "help": {
+      "label": "ライブラリについて",
+      "myreader": {
+        "title": "MyReader ライブラリとは何ですか?",
+        "body": "MyReader によって作成および管理されます。書籍をインポートおよび削除したり、タイトルや著者を編集したりできます。"
+      },
+      "calibre": {
+        "title": "Calibre ライブラリとは何ですか?",
+        "body": "Calibre によって作成および管理されます。 MyReader は読み取り専用で開き、ブックやメタデータは変更しません。"
+      },
+      "sync": {
+        "title": "読書データ同期について",
+        "body": "どちらのライブラリタイプも、デバイス間での読書データの同期をサポートします。ライブラリをクラウド ストレージに保存し、各デバイスから同じライブラリを開きます。"
+      },
+      "choice": {
+        "title": "どれを選べばいいですか？",
+        "body": "以前に Calibre を使用してライブラリを管理していた場合は、「既存のライブラリを開く」を選択することをお勧めします。それ以外の場合は、「新しいライブラリを作成」を選択します。"
+      }
+    },
+    "storageLocations": "利用可能な場所",
+    "addStorage": "データソースを追加します",
+    "addWebdav": {
+      "title": "WebDAV を追加",
+      "description": "サーバーアドレスとアカウントの詳細を入力します。"
+    },
+    "addOnedrive": {
+      "title": "OneDrive を追加",
+      "description": "Microsoft アカウントでサインインします。"
+    }
+  },
+  "bookDetail": {
+    "backToLibrary": "ライブラリに戻る",
+    "collapse": "崩壊",
+    "favorite": "お気に入り",
+    "libraryUnavailable": {
+      "title": "現在のライブラリは利用できません",
+      "detail": "削除された可能性があります。ライブラリに戻ります。"
+    },
+    "loadFailed": {
+      "title": "書籍の詳細をロードできません",
+      "detail": "書籍情報の読み取り中にエラーが発生しました。もう一度やり直してください。"
+    },
+    "notFound": {
+      "title": "本が見つかりません",
+      "detail": "現在のライブラリから削除された可能性があります。"
+    },
+    "readingProgress": "読書の進捗",
+    "retry": "再試行",
+    "synopsis": "あらすじ"
+  },
+  "bookRow": {
+    "unread": "未読"
+  },
+  "common": {
+    "cancel": "キャンセル",
+    "close": "閉じる",
+    "delete": "削除",
+    "save": "保存"
+  },
+  "library": {
+    "browseAllBooks": "すべての書籍を閲覧する",
+    "importBook": "書籍をインポート",
+    "label": "ライブラリ",
+    "collections": {
+      "transferSection": "転送",
+      "storageSection": "ストレージと同期",
+      "all": "すべての書籍",
+      "recentlyRead": "最近読んだ書籍",
+      "favorites": "お気に入り",
+      "downloaded": "ダウンロード済み",
+      "downloading": "ダウンロード中",
+      "uploading": "アップロード中",
+      "localOnly": "このデバイスのみ",
+      "bookCount": "{{count}} 冊",
+      "bookCount_other": "{{count}} 冊"
+    },
+    "noMatch": {
+      "search": {
+        "title": "検索結果はありません",
+        "detail": "検索に一致する書籍はありません。別のキーワードを試してください。"
+      },
+      "empty": {
+        "title": "ライブラリは空です",
+        "myreaderDetail": "まず、本をインポートしてください。",
+        "calibreDetail": "Calibre を使用してこのライブラリに書籍を追加します。"
+      },
+      "favorites": {
+        "title": "お気に入りはまだありません",
+        "detail": "本をお気に入りに追加します。"
+      },
+      "recentlyRead": {
+        "title": "読書履歴はまだありません",
+        "detail": "本を開いて読み始めます。"
+      },
+      "downloaded": {
+        "title": "ダウンロードされた書籍はまだありません",
+        "detail": "オフラインで読むために本をダウンロードします。"
+      },
+      "downloading": {
+        "title": "ダウンロードタスクはありません",
+        "detail": "ライブラリから本のダウンロードを開始します。"
+      },
+      "uploading": {
+        "title": "アップロードタスクはありません",
+        "detail": "このデバイスにのみ保存されている書籍をアップロードします。"
+      },
+      "localOnly": {
+        "title": "このデバイスのみに保存された書籍はありません",
+        "detail": "アクションは必要ありません。アップロードを待っている書籍はありません。"
+      }
+    },
+    "sort": {
+      "author": "著者",
+      "title": "タイトル"
+    }
+  },
+  "reader": {
+    "background": "背景",
+    "empty": {
+      "annotations": {
+        "title": "ハイライトやメモはまだありません",
+        "detail": "まずテキストを選択し、次にハイライトまたはメモを追加します。"
+      },
+      "bookmarks": {
+        "title": "ブックマークはまだありません",
+        "detail": "読書中にブックマークを追加します。"
+      }
+    },
+    "fontOptions": {
+      "default": "デフォルト",
+      "maru975Sc": "Alimama FangYuanTi",
+      "monospace": "等空間",
+      "notoSansSc": "Noto Sans SC",
+      "notoSerifSc": "Noto Serif SC",
+      "sans": "サンズ",
+      "serif": "セリフ"
+    },
+    "navigation": "目次",
+    "themes": {
+      "green": "グリーン",
+      "neutral": "ホワイト",
+      "night": "夜",
+      "ocean": "オーシャン",
+      "paper": "紙",
+      "sepia": "セピア"
+    }
+  },
+  "settings": {
+    "title": "設定"
+  },
+  "syncStatus": {
+    "title": "同期状況",
+    "details": "同期の詳細",
+    "accessibilityLabel": "同期ステータス: {{status}}",
+    "currentLibrary": "現在のライブラリ",
+    "currentStatus": "現在のステータス",
+    "currentStage": "現段階",
+    "currentReason": "同期理由",
+    "lastReason": "最終同期の理由",
+    "lastSync": "最終同期",
+    "lastAttempt": "最終試行",
+    "noHistory": "同期履歴はありません",
+    "failureReason": "失敗の理由",
+    "failureStage": "失敗段階",
+    "progress": "{{completed}} / {{total}}",
+    "manualSync": "今すぐ同期",
+    "syncingAction": "同期中",
+    "waitingForNetwork": "ネットワークを待機しています",
+    "offlineDetail": "このライブラリのトランスポートにはネットワーク接続が必要です。接続が回復した後も同期を続行できます。",
+    "noActiveLibrary": "同期するライブラリがありません",
+    "noActiveLibraryDetail": "ライブラリを追加して同期を開始します。",
+    "activeLibraryChanged": "現在のライブラリが変更されました。もう一度試してください。",
+    "reason": {
+      "manual": "手動で開始されました",
+      "localChange": "ローカルデータが変更されました",
+      "automaticCheck": "自動更新チェック"
+    },
+    "state": {
+      "idle": "アイドル",
+      "offline": "ネットワークを待機しています",
+      "recentSuccess": "同期しました",
+      "unchanged": "同期は必要ありません",
+      "syncing": "同期中",
+      "pushing": "送信中",
+      "pulling": "取得中",
+      "failed": "同期に失敗しました"
+    },
+    "stage": {
+      "preparing": "準備中",
+      "pushing": "変更を送信中",
+      "pulling": "変更を取得中",
+      "applying": "変更を適用中",
+      "sidecarComplete": "同期結果を最終処理しています",
+      "calibre": "ライブラリを更新しています",
+      "complete": "完了処理中"
+    }
+  }
+}

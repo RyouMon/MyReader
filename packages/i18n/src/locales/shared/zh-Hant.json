@@ -1,0 +1,241 @@
+{
+  "qwenTts": {
+    "title": "Qwen（通義千問）",
+    "add": "新增 {{name}}",
+    "description": "使用與服務地址對應的憑據，支援指定音色。",
+    "sources": {
+      "tokenPlan": {
+        "title": "Qwen · Token Plan",
+        "description": "使用千問套餐額度和套餐專用金鑰。",
+        "credential": "Token Plan 套餐金鑰（sk-sp- 開頭）"
+      },
+      "qianwen": {
+        "title": "Qwen · 按需計費",
+        "description": "使用千問 AI 平臺 API，按實際用量計費。",
+        "credential": "千問 AI 平臺 API Key（非套餐金鑰）"
+      },
+      "dashscope": {
+        "title": "Qwen · DashScope（百鍊）",
+        "description": "使用阿里雲百鍊 API，預設北京地域。",
+        "credential": "阿里雲百鍊 API Key（與服務地域一致）"
+      }
+    },
+    "manualVoicesAction": "手動輸入音色 ID",
+    "manualVoices": "音色 ID",
+    "manualVoicesHint": "僅用於列表中未顯示的官方或自定義音色，每行一個 ID。",
+    "loadingVoices": "正在獲取賬戶音色…",
+    "voicesFailed": "賬戶音色獲取失敗，可繼續使用已有音色或手動輸入。",
+    "voicesEmpty": "當前模型暫無賬戶音色，請先在對應平臺建立音色，或輸入已有音色 ID。",
+    "credentialRequired": "填寫與服務地址對應的 API Key；Token Plan 使用 sk-sp- 開頭的套餐金鑰"
+  },
+  "addLibraryFlow": {
+    "title": "新增書庫",
+    "noLibrary": {
+      "title": "還沒有新增書庫",
+      "description": "建立新書庫或開啟已有書庫。"
+    },
+    "create": {
+      "title": "建立新書庫",
+      "description": "建立 MyReader 書庫"
+    },
+    "open": {
+      "title": "開啟已有書庫",
+      "description": "開啟已建立的 MyReader 書庫或 Calibre 書庫。"
+    },
+    "help": {
+      "label": "關於書庫",
+      "myreader": {
+        "title": "什麼是 MyReader 書庫？",
+        "body": "由 MyReader 建立和管理，支援匯入、刪除圖書，以及編輯書名和作者。"
+      },
+      "calibre": {
+        "title": "什麼是 Calibre 書庫？",
+        "body": "由 Calibre 建立和管理。MyReader 以只讀方式開啟，不會修改其中的圖書和後設資料。"
+      },
+      "sync": {
+        "title": "關於閱讀資料同步",
+        "body": "兩種書庫都支援在裝置間同步閱讀資料。將書庫存放在雲端儲存中，再從不同裝置開啟同一個書庫即可。"
+      },
+      "choice": {
+        "title": "我該選擇哪一個？",
+        "body": "如果你之前使用 Calibre 管理書庫，推薦選擇“開啟已有書庫”；否則，選擇“建立新書庫”。"
+      }
+    },
+    "storageLocations": "可用位置",
+    "addStorage": "新增資料來源",
+    "addWebdav": {
+      "title": "新增 WebDAV",
+      "description": "填寫伺服器地址和賬號資訊。"
+    },
+    "addOnedrive": {
+      "title": "新增 OneDrive",
+      "description": "登入 Microsoft 賬號。"
+    }
+  },
+  "bookDetail": {
+    "backToLibrary": "返回書庫",
+    "collapse": "收起",
+    "favorite": "收藏",
+    "libraryUnavailable": {
+      "title": "當前書庫不可用",
+      "detail": "它可能已被移除，請返回書庫。"
+    },
+    "loadFailed": {
+      "title": "無法載入書籍詳情",
+      "detail": "讀取書籍資訊時出錯，請重試。"
+    },
+    "notFound": {
+      "title": "沒有找到這本書",
+      "detail": "它可能已從當前書庫中移除。"
+    },
+    "readingProgress": "閱讀進度",
+    "retry": "重試",
+    "synopsis": "簡介"
+  },
+  "bookRow": {
+    "unread": "未讀"
+  },
+  "common": {
+    "cancel": "取消",
+    "close": "關閉",
+    "delete": "刪除",
+    "save": "儲存"
+  },
+  "library": {
+    "browseAllBooks": "瀏覽全部圖書",
+    "importBook": "匯入圖書",
+    "label": "書庫",
+    "collections": {
+      "transferSection": "傳輸",
+      "storageSection": "儲存與同步",
+      "all": "全部圖書",
+      "recentlyRead": "最近閱讀",
+      "favorites": "收藏",
+      "downloaded": "已下載",
+      "downloading": "正在下載",
+      "uploading": "正在上傳",
+      "localOnly": "僅本機",
+      "bookCount": "{{count}} 本"
+    },
+    "noMatch": {
+      "search": {
+        "title": "搜尋無結果",
+        "detail": "未找到與搜尋詞匹配的圖書，請嘗試其他關鍵詞。"
+      },
+      "empty": {
+        "title": "書庫為空",
+        "myreaderDetail": "請先匯入一本圖書。",
+        "calibreDetail": "請透過 Calibre 向該書庫新增圖書。"
+      },
+      "favorites": {
+        "title": "還沒有收藏書籍",
+        "detail": "請先將一本圖書加入收藏。"
+      },
+      "recentlyRead": {
+        "title": "還沒有閱讀記錄",
+        "detail": "請先開啟一本圖書開始閱讀。"
+      },
+      "downloaded": {
+        "title": "還沒有已下載圖書",
+        "detail": "請先下載一本圖書。"
+      },
+      "downloading": {
+        "title": "沒有下載任務",
+        "detail": "請先從書庫中選擇一本圖書開始下載。"
+      },
+      "uploading": {
+        "title": "沒有上傳任務",
+        "detail": "請先從書庫中選擇一本僅存於本機的圖書開始上傳。"
+      },
+      "localOnly": {
+        "title": "沒有僅存於本機的圖書",
+        "detail": "無需操作，當前沒有等待上傳的圖書。"
+      }
+    },
+    "sort": {
+      "author": "作者",
+      "title": "書名"
+    }
+  },
+  "reader": {
+    "background": "背景",
+    "empty": {
+      "annotations": {
+        "title": "還沒有高亮或筆記",
+        "detail": "請先選中文字，再新增高亮或筆記。"
+      },
+      "bookmarks": {
+        "title": "還沒有書籤",
+        "detail": "請在閱讀時新增書籤。"
+      }
+    },
+    "fontOptions": {
+      "default": "預設",
+      "maru975Sc": "阿里媽媽方圓體",
+      "monospace": "等寬",
+      "notoSansSc": "思源黑體",
+      "notoSerifSc": "思源宋體",
+      "sans": "無襯線",
+      "serif": "襯線"
+    },
+    "navigation": "目錄",
+    "themes": {
+      "green": "護眼綠色",
+      "neutral": "純白",
+      "night": "夜間",
+      "ocean": "深海",
+      "paper": "羊皮紙",
+      "sepia": "護眼米黃"
+    }
+  },
+  "settings": {
+    "title": "設定"
+  },
+  "syncStatus": {
+    "title": "同步狀態",
+    "details": "同步詳情",
+    "accessibilityLabel": "同步狀態：{{status}}",
+    "currentLibrary": "當前書庫",
+    "currentStatus": "當前狀態",
+    "currentStage": "當前階段",
+    "currentReason": "同步原因",
+    "lastReason": "上次同步原因",
+    "lastSync": "上次同步",
+    "lastAttempt": "上次嘗試",
+    "noHistory": "暫無同步記錄",
+    "failureReason": "失敗原因",
+    "failureStage": "失敗階段",
+    "progress": "{{completed}} / {{total}}",
+    "manualSync": "立即同步",
+    "syncingAction": "正在同步",
+    "waitingForNetwork": "等待網路",
+    "offlineDetail": "當前書庫的傳輸方式需要網路，恢復連線後可繼續同步。",
+    "noActiveLibrary": "暫無可同步書庫",
+    "noActiveLibraryDetail": "請先新增書庫。",
+    "activeLibraryChanged": "當前書庫已改變，請重試。",
+    "reason": {
+      "manual": "手動觸發",
+      "localChange": "本地資料更新",
+      "automaticCheck": "自動檢查書庫更新"
+    },
+    "state": {
+      "idle": "空閒",
+      "offline": "等待網路",
+      "recentSuccess": "剛剛已同步",
+      "unchanged": "無需同步",
+      "syncing": "同步中",
+      "pushing": "正在推送",
+      "pulling": "正在拉取",
+      "failed": "同步失敗"
+    },
+    "stage": {
+      "preparing": "正在準備",
+      "pushing": "正在推送更改",
+      "pulling": "正在拉取更改",
+      "applying": "正在應用更改",
+      "sidecarComplete": "正在整理同步結果",
+      "calibre": "正在更新書庫",
+      "complete": "正在完成"
+    }
+  }
+}

@@ -1,3 +1,4 @@
+import { LANGUAGE_NAMES, SUPPORTED_LANGUAGES } from "@my-reader/i18n/languages"
 import HeadphonesIcon from "@expo/material-symbols/headphones.xml"
 import { libraryTypeOf } from "@my-reader/tools/types/library"
 import type { MenuAction } from "@react-native-menu/menu"
@@ -23,7 +24,7 @@ import {
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import { DEVELOPER_TOOLS_ENABLED } from "@/src/constants/developer-tools"
 import { type ThemeMode, useTheme, useThemePalette } from "@/src/design/tokens"
-import { changeLanguage, resolveAppLanguage } from "@/src/i18n"
+import { resolveAppLanguage } from "@/src/i18n"
 import { clearBookCoverThumbnailCache } from "@/src/services/core/content"
 import { clearCoverThumbnailCache } from "@/src/services/fs/cover-thumbnail-cache"
 import { useAppStore } from "@/src/store/app-store"
@@ -140,18 +141,18 @@ export default function SettingsScreen() {
 
   const language = useAppStore((s) => s.settings.language)
   const setLanguage = useAppStore((s) => s.setLanguage)
-  const effectiveLanguage = language ? resolveAppLanguage(language) : "system"
+  const effectiveLanguage =
+    language && language !== "system" ? resolveAppLanguage(language) : "system"
   const languageLabels = useMemo<Record<string, string>>(
     () => ({
-      "zh-CN": "中文",
-      en: "English",
+      ...LANGUAGE_NAMES,
       system: t("settings.themeMode.system"),
     }),
     [t],
   )
   const languageMenuActions = useMemo<MenuAction[]>(
     () =>
-      ["system", "zh-CN", "en"].map((lang) => ({
+      ["system", ...SUPPORTED_LANGUAGES].map((lang) => ({
         id: `lang:${lang}`,
         title: `${effectiveLanguage === lang ? "✓ " : ""}${languageLabels[lang]}`,
       })),
@@ -276,7 +277,6 @@ export default function SettingsScreen() {
               onPressAction={({ nativeEvent }) => {
                 const lang = nativeEvent.event.replace("lang:", "")
                 setLanguage(lang === "system" ? "" : lang)
-                void changeLanguage(resolveAppLanguage(lang))
               }}
               title={t("settings.language")}
               icon={SETTINGS_ROW_ICONS.language}

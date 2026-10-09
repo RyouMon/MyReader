@@ -14,7 +14,7 @@ export function AppLanguageProvider({ children }: { children: ReactNode }) {
   const systemLanguage = useSyncExternalStore(
     subscribeSystemLanguage,
     getSystemAppLanguage,
-    () => "zh-CN",
+    () => FALLBACK_LANGUAGE,
   )
   const language = resolveAppLanguage(languageMode, systemLanguage)
 
@@ -25,3 +25,4 @@ export function AppLanguageProvider({ children }: { children: ReactNode }) {
 
   return children
 }
+import { FALLBACK_LANGUAGE } from "@my-reader/i18n/languages"
