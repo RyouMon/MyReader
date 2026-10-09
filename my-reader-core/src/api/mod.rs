@@ -11,7 +11,11 @@ pub async fn migrate_library_database(path: &std::path::Path) -> Result<(), crat
     crate::database::migrate_database_file(path).await
 }
 
-/// Release cached connections before removing a library's local database files.
-pub async fn close_library_database(path: &std::path::Path) -> Result<(), crate::CoreError> {
+pub use crate::database::LibraryDatabaseRemoval;
+
+/// Hold the returned guard through file/config cleanup, then commit the removal.
+pub async fn close_library_database(
+    path: &std::path::Path,
+) -> Result<LibraryDatabaseRemoval, crate::CoreError> {
     crate::database::close_database_file(path).await
 }

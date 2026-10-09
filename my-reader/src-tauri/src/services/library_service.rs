@@ -404,20 +404,21 @@ impl LibraryService {
         config: &mut AppConfig,
     ) -> Result<(), AppError> {
         let container = library_container_dir(app_data_dir, id);
-        my_reader_core::api::close_library_database(
+        let removal = my_reader_core::api::close_library_database(
             &container.join(".myreader").join("myreader.db"),
         )
         .await?;
         ensure_config(app_data_dir, config)?;
+        cache::clear_library_cache_files(id)?;
+        if container.exists() {
+            std::fs::remove_dir_all(&container)?;
+        }
         let core_config = my_reader_core::api::library::LibraryService::remove(
             &crate::config::config_path(app_data_dir),
             id,
         )?;
         config.apply_core_config(&core_config);
-        cache::clear_library_cache_files(id)?;
-        if container.exists() {
-            std::fs::remove_dir_all(&container)?;
-        }
+        removal.commit();
         Ok(())
     }
 

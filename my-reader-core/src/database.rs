@@ -1,12 +1,12 @@
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
-    sync::LazyLock,
+    sync::{Arc, LazyLock, Mutex as StdMutex},
 };
 
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement};
 use sea_orm_migration::MigratorTrait;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, OwnedRwLockReadGuard, OwnedRwLockWriteGuard, RwLock};
 use tracing::info;
 
 use crate::{
@@ -24,6 +24,39 @@ struct LibraryStore {
 static LIBRARY_STORES: LazyLock<Mutex<HashMap<PathBuf, LibraryStore>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
+// The flag records committed removal. Retain it for this process so stale tasks
+// cannot reopen a deleted container; newly added libraries use a fresh UUID path.
+static LIBRARY_LIFECYCLES: LazyLock<StdMutex<HashMap<PathBuf, Arc<RwLock<bool>>>>> =
+    LazyLock::new(|| StdMutex::new(HashMap::new()));
+
+fn lifecycle(path: &Path) -> Result<Arc<RwLock<bool>>, CoreError> {
+    let path = absolute_path(path)?;
+    let mut lifecycles = LIBRARY_LIFECYCLES.lock().unwrap_or_else(|e| e.into_inner());
+    Ok(lifecycles.entry(path).or_default().clone())
+}
+
+pub(crate) fn database_lease(path: &Path) -> Result<OwnedRwLockReadGuard<bool>, CoreError> {
+    let lease = lifecycle(path)?
+        .try_read_owned()
+        .map_err(|_| CoreError::NotFound("LIBRARY_DATABASE_REMOVING".into()))?;
+    if *lease {
+        return Err(CoreError::NotFound("LIBRARY_DATABASE_REMOVED".into()));
+    }
+    Ok(lease)
+}
+
+/// Keeps this database unavailable while its files and configuration are removed.
+/// Dropping without committing permits a failed removal to be retried.
+pub struct LibraryDatabaseRemoval {
+    lifecycle: OwnedRwLockWriteGuard<bool>,
+}
+
+impl LibraryDatabaseRemoval {
+    pub fn commit(mut self) {
+        *self.lifecycle = true;
+    }
+}
+
 /// Open and migrate a per-library SQLite database, then return the connection
 /// for SeaORM entity queries.
 pub async fn open_db(sidecar_root: &str) -> Result<DatabaseConnection, CoreError> {
@@ -33,6 +66,7 @@ pub async fn open_db(sidecar_root: &str) -> Result<DatabaseConnection, CoreError
 
 pub async fn open_database_file(path: &Path) -> Result<DatabaseConnection, CoreError> {
     let path = absolute_path(path)?;
+    let _lease = database_lease(&path)?;
     let mut stores = LIBRARY_STORES.lock().await;
     if path.exists() {
         if let Some(store) = stores.get(&path) {
@@ -71,13 +105,14 @@ fn absolute_path(path: &Path) -> Result<PathBuf, CoreError> {
     }
 }
 
-pub async fn close_database_file(path: &Path) -> Result<(), CoreError> {
+pub async fn close_database_file(path: &Path) -> Result<LibraryDatabaseRemoval, CoreError> {
     let path = absolute_path(path)?;
-    let mut stores = LIBRARY_STORES.lock().await;
-    if let Some(store) = stores.remove(&path) {
+    let lifecycle = lifecycle(&path)?.write_owned().await;
+    let store = LIBRARY_STORES.lock().await.remove(&path);
+    if let Some(store) = store {
         store.database.close().await?;
     }
-    Ok(())
+    Ok(LibraryDatabaseRemoval { lifecycle })
 }
 
 pub async fn migrate_database_file(path: &Path) -> Result<(), CoreError> {
@@ -146,6 +181,7 @@ async fn table_exists(db: &DatabaseConnection, name: &str) -> Result<bool, CoreE
 
 pub fn ensure_library_data_dir(sidecar_root: &str) -> Result<PathBuf, CoreError> {
     let dir = Path::new(sidecar_root).join(MYREADER_LIBRARY_DIR_NAME);
+    let _lease = database_lease(&dir.join(MYREADER_LIBRARY_DB_FILE_NAME))?;
     std::fs::create_dir_all(&dir)?;
     Ok(dir)
 }
@@ -258,6 +294,61 @@ mod tests {
             .unwrap();
 
         assert_eq!(table_count, 1);
+    }
+
+    #[tokio::test]
+    async fn removal_should_block_concurrent_open_until_cleanup_finishes() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("library");
+        let sidecar_root = root.to_string_lossy().to_string();
+        let db = open_db(&sidecar_root).await.unwrap();
+        let path = super::library_db_path(&sidecar_root).unwrap();
+        let removal = super::close_database_file(&path).await.unwrap();
+        assert!(db.ping().await.is_err());
+
+        let barrier = Arc::new(Barrier::new(2));
+        let reader_barrier = barrier.clone();
+        let reader = tokio::spawn(async move {
+            reader_barrier.wait().await;
+            assert!(open_db(&sidecar_root).await.is_err());
+        });
+        barrier.wait().await;
+        reader.await.unwrap();
+        std::fs::remove_dir_all(&root).unwrap();
+        removal.commit();
+        assert!(open_db(&root.to_string_lossy()).await.is_err());
+        assert!(
+            !root.exists(),
+            "stale readers must not recreate removed files"
+        );
+    }
+
+    #[tokio::test]
+    async fn removal_should_wait_for_active_transaction_without_blocking_other_libraries() {
+        use sea_orm::TransactionTrait;
+
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("library");
+        let db = open_db(&root.to_string_lossy()).await.unwrap();
+        let path = super::library_db_path(&root.to_string_lossy()).unwrap();
+        let transaction = db.begin().await.unwrap();
+        let mut removing = Box::pin(super::close_database_file(&path));
+        std::future::poll_fn(|cx| {
+            assert!(std::future::Future::poll(removing.as_mut(), cx).is_pending());
+            std::task::Poll::Ready(())
+        })
+        .await;
+        assert!(open_db(&root.to_string_lossy()).await.is_err());
+        open_db(&temp.path().join("other").to_string_lossy())
+            .await
+            .unwrap()
+            .ping()
+            .await
+            .unwrap();
+        transaction.commit().await.unwrap();
+        let removal = removing.await.unwrap();
+        std::fs::remove_dir_all(&root).unwrap();
+        removal.commit();
     }
 
     #[tokio::test]
