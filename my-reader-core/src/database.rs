@@ -332,12 +332,15 @@ mod tests {
         let db = open_db(&root.to_string_lossy()).await.unwrap();
         let path = super::library_db_path(&root.to_string_lossy()).unwrap();
         let transaction = db.begin().await.unwrap();
-        let mut removing = Box::pin(super::close_database_file(&path));
+        let mut removing = Box::pin(async move { super::close_database_file(&path).await });
         std::future::poll_fn(|cx| {
             assert!(std::future::Future::poll(removing.as_mut(), cx).is_pending());
             std::task::Poll::Ready(())
         })
         .await;
+        // Keep driving pool closure even if the first poll stopped at the shared
+        // cache lock, before checking that another library remains accessible.
+        let removing = tokio::spawn(removing);
         assert!(open_db(&root.to_string_lossy()).await.is_err());
         open_db(&temp.path().join("other").to_string_lossy())
             .await
@@ -346,7 +349,7 @@ mod tests {
             .await
             .unwrap();
         transaction.commit().await.unwrap();
-        let removal = removing.await.unwrap();
+        let removal = removing.await.unwrap().unwrap();
         std::fs::remove_dir_all(&root).unwrap();
         removal.commit();
     }
