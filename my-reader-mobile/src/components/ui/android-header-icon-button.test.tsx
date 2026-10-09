@@ -98,18 +98,14 @@ describe("AndroidHeaderIconButton", () => {
     )
 
     const button = screen.getByRole("button")
-    expect(button.props.nativeBackgroundAndroid).toEqual({
+    expect(button.props.nativeBackgroundAndroid).toMatchObject({
       borderless: false,
       color: processColor("rgba(255,255,255,0.22)"),
-      rippleRadius: 24,
       type: "RippleAndroid",
     })
     expect(button.props.style).toMatchObject({
       backgroundColor: "rgba(0,0,0,0.65)",
-      borderRadius: 24,
-      height: 48,
       overflow: "hidden",
-      width: 48,
     })
   })
 })

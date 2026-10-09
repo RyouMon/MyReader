@@ -66,8 +66,8 @@ MyReader was originally designed for readers who use Calibre to manage their ebo
 | Scope | Main technologies and frameworks | Reading and data capabilities |
 |---|---|---|
 | Desktop | Tauri 2, React 18, TypeScript, Vite 6, Tailwind CSS 4, Rust | Readium Web and PDF.js |
-| iOS / iPadOS | Expo 56, React Native 0.85, Expo Router, NativeWind 5, native Swift modules | Readium Swift Toolkit |
-| Android | Expo 56, React Native 0.85, Expo Router, NativeWind 5, native Kotlin modules | Readium Kotlin Toolkit |
+| iOS / iPadOS | Expo 57, React Native 0.86, Expo Router, NativeWind 5, native Swift modules | Readium Swift Toolkit |
+| Android | Expo 57, React Native 0.86, Expo Router, NativeWind 5, native Kotlin modules | Readium Kotlin Toolkit |
 | Shared business and data layer | Rust `my-reader-core`, SeaORM, SQLite | Shared catalog queries, reading data, and sync rules |
 | Sync and merge | Automerge, WebDAV, OneDrive | Automerge merges concurrent changes to the same library; WebDAV / OneDrive store and exchange sync objects |
 

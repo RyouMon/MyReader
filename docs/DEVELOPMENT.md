@@ -6,11 +6,12 @@
 
 | 工具 | 版本 | 说明 |
 |---|---|---|
-| Node.js | ≥ 22 | 建议使用 LTS |
-| pnpm | 11.7.0 | 仓库 `packageManager` 指定版本 |
+| Node.js | 见根 `package.json` 的 `engines` | 建议使用 LTS |
+| pnpm | 见根 `package.json` 的 `packageManager` | 通过 Corepack 使用指定版本 |
 | Rust | stable | Edition 2021；通过 [rustup](https://rustup.rs) 安装 |
+| JDK | 17 | Android 构建，与 CI 保持一致 |
 | Android Studio | 最新版本 | Android SDK/NDK 与模拟器 |
-| Xcode | ≥ 16 | 在 macOS 上开发 iOS 应用 |
+| Xcode | ≥ 26.4 | Expo SDK 57；Xcode 27 已启用场景生命周期支持 |
 
 ## 首次安装
 
@@ -29,7 +30,7 @@ pnpm install
 MyReader/
 ├── my-reader-core/                共享 Rust 后端
 ├── my-reader/                     Tauri 2 + React 桌面应用
-├── my-reader-mobile/              Expo 56 + React Native 0.85 应用
+├── my-reader-mobile/              Expo 57 + React Native 0.86 应用
 │   └── modules/my-reader-core/    Core 的 UniFFI/JSI 移动适配器
 ├── packages/
 │   ├── i18n/                      共享本地化资源
@@ -87,6 +88,11 @@ pnpm --filter my-reader-mobile android
 ```
 
 `ios` 和 `android` 会构建并安装开发客户端。仅修改 JS/TS 时通常只需保持 Metro 运行；修改原生模块、依赖或应用配置后需要重新构建原生应用。
+
+两个命令均带 `--device`，会显示设备选择菜单。在 `my-reader-mobile/` 中也可直接运行
+`pnpm run ios`，选择已配对且开启开发者模式的 iPhone。项目通过 SDK 57 的
+`expo-build-properties.ios.enableSceneSupport` 启用 Xcode 27 / iOS 27 所需的场景生命周期。
+保持 `expo-build-properties` 位于插件列表末尾，使场景迁移先于 OAuth 等 AppDelegate 扩展执行。
 
 修改 `app.json`、config plugin 或其他生成式原生配置后，运行：
 
@@ -177,7 +183,7 @@ npx eas-cli@latest submit \
 ```
 
 本地构建仍需登录 Expo，以读取远端版本和托管签名凭据；它只是不使用 EAS 的云构建机器。
-Android 本地构建需要 JDK、Android SDK/NDK，iOS 本地构建需要 macOS、Xcode、CocoaPods 和
+Android 本地构建需要 JDK 17、Android SDK/NDK，iOS 本地构建需要 macOS、Xcode、CocoaPods 和
 Fastlane。将生成的 Android APK 重命名为 `MyReader-<version>-android.apk`，生成 SHA-256 后可用
 `gh release upload <tag> <apk> <apk>.sha256 --clobber` 上传到现有草稿。
 

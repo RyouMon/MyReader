@@ -6,11 +6,12 @@
 
 | Tool | Version | Notes |
 |---|---|---|
-| Node.js | ≥ 22 | LTS recommended |
-| pnpm | 11.7.0 | Repository `packageManager` version |
+| Node.js | Root `package.json` `engines` | LTS recommended |
+| pnpm | Root `package.json` `packageManager` | Use the pinned version through Corepack |
 | Rust | stable | Edition 2021; install with [rustup](https://rustup.rs) |
+| JDK | 17 | Android builds; matches CI |
 | Android Studio | Latest | Android SDK/NDK and emulator |
-| Xcode | ≥ 16 | iOS development on macOS |
+| Xcode | ≥ 26.4 | Expo SDK 57; scene lifecycle support is enabled for Xcode 27 |
 
 ## First-Time Setup
 
@@ -29,7 +30,7 @@ This installs the desktop, mobile, fonts and tools workspaces and prepares the G
 MyReader/
 ├── my-reader-core/                Shared Rust backend
 ├── my-reader/                     Tauri 2 + React desktop app
-├── my-reader-mobile/              Expo 56 + React Native 0.85 app
+├── my-reader-mobile/              Expo 57 + React Native 0.86 app
 │   └── modules/my-reader-core/    Core UniFFI/JSI mobile adapter
 ├── packages/
 │   ├── i18n/                      Shared localization resources
@@ -89,6 +90,13 @@ pnpm --filter my-reader-mobile android
 
 `ios` and `android` build and install the development client. JS/TS-only changes normally need only a running
 Metro server; native module, dependency or app-config changes require a native rebuild.
+
+Both commands pass `--device` and show a device picker. You can also run `pnpm run ios` from
+`my-reader-mobile/` and select a paired iPhone with Developer Mode enabled. The project enables
+the scene lifecycle required by Xcode 27 / iOS 27 through SDK 57's
+`expo-build-properties.ios.enableSceneSupport` option.
+Keep `expo-build-properties` last in the plugin list so scene migration runs before OAuth and other
+AppDelegate extensions.
 
 After changing `app.json`, config plugins or other generated native configuration:
 
@@ -184,7 +192,7 @@ npx eas-cli@latest submit \
 ```
 
 Local builds still authenticate with Expo to read remote versions and managed signing credentials; they only
-avoid the EAS cloud builders. Android local builds require a JDK and the Android SDK/NDK. iOS local builds
+avoid the EAS cloud builders. Android local builds require JDK 17 and the Android SDK/NDK. iOS local builds
 require macOS, Xcode, CocoaPods, and Fastlane. Rename the Android result to
 `MyReader-<version>-android.apk`, create its SHA-256 checksum, and upload both files to the existing draft with
 `gh release upload <tag> <apk> <apk>.sha256 --clobber`.

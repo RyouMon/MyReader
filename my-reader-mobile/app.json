@@ -34,25 +34,13 @@
     "platforms": ["ios", "android"],
     "plugins": [
       [
-        "expo-build-properties",
-        {
-          "ios": {
-            "deploymentTarget": "16.4",
-            "buildReactNativeFromSource": true
-          },
-          "android": {
-            "compileSdkVersion": 37,
-            "kotlinVersion": "2.3.20"
-          }
-        }
-      ],
-      [
         "expo-dev-client",
         {
           "launchMode": "most-recent"
         }
       ],
       "./plugins/with-readium-ios",
+      "./plugins/with-ios-toolchain",
       "./plugins/with-android-desugaring",
       "./plugins/with-android-toolchain",
       "./plugins/with-android-debug-network-config",
@@ -108,6 +96,20 @@
               "application/vnd.comicbook+zip",
               "application/zip"
             ]
+          }
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "16.4",
+            "buildReactNativeFromSource": true,
+            "enableSceneSupport": true
+          },
+          "android": {
+            "compileSdkVersion": 37,
+            "kotlinVersion": "2.3.20"
           }
         }
       ]

@@ -1,6 +1,6 @@
 # MyReader Mobile
 
-MyReader 的 iOS / Android 客户端，基于 Expo 56、React Native 0.85 与 Expo Router。应用通过自有 Expo Modules 接入 Readium Swift / Kotlin Toolkit，并通过 UniFFI / JSI 使用共享 Rust Core。
+MyReader 的 iOS / Android 客户端，基于 Expo 57、React Native 0.86 与 Expo Router。应用通过自有 Expo Modules 接入 Readium Swift / Kotlin Toolkit，并通过 UniFFI / JSI 使用共享 Rust Core。
 
 本目录不是独立的 Create Expo App 模板。请先按仓库根目录的 [README](../README.md) 与 [开发指南](../docs/DEVELOPMENT.md) 安装整个 pnpm / Cargo workspace。
 

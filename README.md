@@ -66,8 +66,8 @@ MyReader 最初面向使用 Calibre 管理电子书的用户设计。Calibre 仍
 | 范围 | 主要技术与框架 | 阅读与数据能力 |
 |---|---|---|
 | 桌面端 | Tauri 2、React 18、TypeScript、Vite 6、Tailwind CSS 4、Rust | Readium Web 与 PDF.js |
-| iOS / iPadOS | Expo 56、React Native 0.85、Expo Router、NativeWind 5、Swift 原生模块 | Readium Swift Toolkit |
-| Android | Expo 56、React Native 0.85、Expo Router、NativeWind 5、Kotlin 原生模块 | Readium Kotlin Toolkit |
+| iOS / iPadOS | Expo 57、React Native 0.86、Expo Router、NativeWind 5、Swift 原生模块 | Readium Swift Toolkit |
+| Android | Expo 57、React Native 0.86、Expo Router、NativeWind 5、Kotlin 原生模块 | Readium Kotlin Toolkit |
 | 共享业务与数据层 | Rust `my-reader-core`、SeaORM、SQLite | 统一书目查询、阅读数据与同步规则 |
 | 同步与合并 | Automerge、WebDAV、OneDrive | Automerge 合并同一书库的并发变更；WebDAV / OneDrive 负责存储与交换同步对象 |
 
