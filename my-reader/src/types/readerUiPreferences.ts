@@ -1,3 +1,4 @@
+import type { SupportedLanguage } from "@my-reader/i18n/languages"
 import type {
   FixedLayoutSettings,
   ReaderSettings,
@@ -5,7 +6,7 @@ import type {
 
 export type LibraryViewMode = "grid" | "list"
 export type AppThemeMode = "light" | "dark" | "system"
-export type AppLanguageMode = "system" | "zh-CN" | "en"
+export type AppLanguageMode = "system" | SupportedLanguage
 export type ResolvedAppTheme = "light" | "dark"
 
 /** 与 `config.json` 内 `readerUi` / Tauri `ReaderUiPreferences` 对齐。 */

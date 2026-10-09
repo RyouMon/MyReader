@@ -1,0 +1,967 @@
+{
+  "incomingShare": {
+    "importingTitle": "Импорт общей книги",
+    "importingDetail": "MyReader добавляет книгу в вашу библиотеку.",
+    "failedTitle": "Не удалось импортировать общий элемент.",
+    "failedDetail": "Отправьте в MyReader один файл EPUB, PDF или CBZ.",
+    "openLibrary": "Открыть библиотеку"
+  },
+  "back": "Назад",
+  "tabs": {
+    "home": "Главная",
+    "library": "Библиотека",
+    "settings": "Настройки"
+  },
+  "home": {
+    "title": "Главная",
+    "continueReading": "Продолжить чтение",
+    "noCover": "Без крышки",
+    "currentLibrary": "Библиотека: {{name}} · {{count}} книги",
+    "viewBooks": "Просмотр книг",
+    "reading": "Чтение",
+    "recentReading": "Недавнее прочтение",
+    "recentAdded": "Недавно добавленные",
+    "bookCount": "{{count}} книги",
+    "readingStats": {
+      "title": "Статистика чтения",
+      "streak": "Дней чтения подряд",
+      "totalDuration": "Общее время",
+      "completed": "Прочитано",
+      "dayUnit": "д",
+      "hourUnit": "ч",
+      "bookUnit": " книги",
+      "year": "{{year}}",
+      "previousYear": "Предыдущий год",
+      "nextYear": "В следующем году",
+      "noRecord": "Нет записи",
+      "readingMinutes": "Чтение {{count}} мин.",
+      "weekdays": {
+        "mon": "Пн",
+        "wed": "Ср.",
+        "fri": "Пт"
+      },
+      "bookUnit_one": " книга",
+      "bookUnit_few": " книги",
+      "bookUnit_many": " книг",
+      "bookUnit_other": " книги"
+    },
+    "noReadingHistory": {
+      "title": "Пока нет истории чтения",
+      "detail": "Выберите книгу из своей библиотеки, чтобы начать читать.",
+      "action": "Открыть библиотеку"
+    },
+    "currentLibrary_one": "Библиотека: {{name}} · {{count}} книга",
+    "currentLibrary_few": "Библиотека: {{name}} · {{count}} книги",
+    "currentLibrary_many": "Библиотека: {{name}} · {{count}} книг",
+    "currentLibrary_other": "Библиотека: {{name}} · {{count}} книги",
+    "bookCount_one": "{{count}} книга",
+    "bookCount_few": "{{count}} книги",
+    "bookCount_many": "{{count}} книг",
+    "bookCount_other": "{{count}} книги"
+  },
+  "library": {
+    "allLibraries": "Все библиотеки",
+    "importingBook": "Импорт…",
+    "importFailed": {
+      "title": "Невозможно импортировать книгу"
+    },
+    "importQueued": {
+      "title": "Книга сохранена на этом устройстве",
+      "detail": "Он будет загружен в удаленную библиотеку, когда соединение восстановится."
+    },
+    "importUnsupported": {
+      "title": "Неподдерживаемый формат книги",
+      "detail": "Выберите файл EPUB, PDF или CBZ."
+    },
+    "switchLibrary": "Переключение библиотеки",
+    "syncCurrentLibrary": "Синхронизировать текущую библиотеку",
+    "searchPlaceholder": "Поиск по названию, автору",
+    "bookCountRatio": "{{visible}} / {{total}} книг",
+    "collections": {
+      "currentLibrary": "Текущая библиотека: {{name}}"
+    },
+    "sort": {
+      "recentlyRead": "Недавно прочитанные",
+      "recentlyAdded": "Недавно добавленные"
+    },
+    "view": {
+      "grid": "Представление в виде сетки",
+      "list": "Просмотр списка"
+    },
+    "sortLabel": "Сортировать",
+    "viewLabel": "Посмотреть",
+    "libraryActions": "Действия библиотеки",
+    "viewConfig": "Просмотр конфигурации",
+    "switchLibraryAlert": {
+      "title": "Переключение библиотеки",
+      "message": "Текущий: {{name}}",
+      "unselected": "Не выбрано",
+      "close": "Закрыть"
+    },
+    "loading": {
+      "title": "Загрузка библиотеки",
+      "detail": "Чтение конфигураций локальной библиотеки и WebDAV библиотеки."
+    },
+    "notFound": {
+      "title": "Библиотека не найдена",
+      "detail": "Возможно, он был удален или параметры ссылки больше не действительны."
+    },
+    "noLibrary": {
+      "title": "Библиотеки пока нет",
+      "detail": "Импортируйте книгу напрямую или добавьте библиотеку MyReader или Calibre."
+    },
+    "unselected": {
+      "title": "Библиотека не выбрана",
+      "detail": "Выберите библиотеку для просмотра или добавьте новую библиотеку."
+    },
+    "loadError": {
+      "title": "Ошибка загрузки"
+    }
+  },
+  "libraryDetail": {
+    "currentlyUsed": " · Используется",
+    "bookCount": "{{count}} книги",
+    "typeLocal": "Локальный",
+    "typeWebdav": "WebDAV",
+    "typeOnedrive": "OneDrive",
+    "calibreLibrary": "Calibre Библиотека",
+    "myreaderLibrary": "MyReader библиотека",
+    "remove": {
+      "title": "Удалить эту библиотеку?",
+      "message": "Библиотека и ее локальные данные будут удалены из приложения. Исходные файлы не будут удалены.",
+      "cancel": "Отмена",
+      "confirm": "Удалить"
+    },
+    "deleteLocal": {
+      "title": "Удалить эту внутреннюю библиотеку?",
+      "message": "Книги и данные о прочтении в этой библиотеке будут удалены. Это невозможно отменить.",
+      "cancel": "Отмена",
+      "confirm": "Удалить"
+    },
+    "removeLibrary": "Удалить библиотеку",
+    "deleteLibrary": "Удалить библиотеку",
+    "notFound": {
+      "title": "Библиотека не найдена",
+      "detail": "Возможно, он был удален или параметры ссылки больше не действительны."
+    },
+    "useLibrary": "Используйте эту библиотеку",
+    "refreshing": "Обновление...",
+    "refresh": "Обновить библиотеку",
+    "libraryType": "Тип библиотеки",
+    "storageLocation": "Место хранения",
+    "remotePath": "Путь",
+    "sourceType": "Тип источника",
+    "libraryPath": "Путь к библиотеке",
+    "bookCountLabel": "Количество книг",
+    "addedAt": "Добавлено в",
+    "bookCount_one": "{{count}} книга",
+    "bookCount_few": "{{count}} книги",
+    "bookCount_many": "{{count}} книг",
+    "bookCount_other": "{{count}} книги"
+  },
+  "settings": {
+    "libraryDetail": "Подробности библиотеки",
+    "manageLibrary": "Управление библиотекой: {{name}}",
+    "addLibrary": "Добавить библиотеку",
+    "librarySection": "Библиотека",
+    "currentInUse": "Используется",
+    "bookCountCurrent": "{{count}} книги · Используется",
+    "bookCount": "{{count}} книги",
+    "remoteDataSources": "Удаленные источники данных",
+    "webdavDetail": "Управление источниками данных WebDAV",
+    "onedriveDetail": "Управление источниками данных OneDrive",
+    "appearance": "Оформление",
+    "darkMode": "Тёмный режим",
+    "themeMode": {
+      "system": "Как в системе",
+      "light": "Светлая",
+      "dark": "Тёмная"
+    },
+    "language": "Язык",
+    "languageDetail": "Изменить язык отображения",
+    "homeCardStyle": "Стиль домашней карточки",
+    "homeCardStyle.adaptive": "Адаптивный",
+    "homeCardStyle.coverBlur": "Размытая обложка",
+    "tts": {
+      "sectionTitle": "Читать вслух",
+      "title": "Чтение вслух и голоса",
+      "detail": "Настройка системных голосов и служб вывода TTS",
+      "previewSection": "Предварительный просмотр",
+      "previewText": "Добро пожаловать в MyReader, читайте вслух.",
+      "previewAction": "Предварительный просмотр",
+      "previewGenerating": "Генерация… Нажмите, чтобы остановить",
+      "previewPlaying": "Остановить предварительный просмотр",
+      "previewFailed": "Не удалось просмотреть голос",
+      "engineSection": "Речевое сопровождение по умолчанию",
+      "engine": "Механизм повествования",
+      "systemEngine": "Системный голос",
+      "voice": "Голос",
+      "automaticVoice": "Автоматически",
+      "playbackSection": "Воспроизведение",
+      "speed": "Скорость",
+      "pitch": "Шаг",
+      "pitchProviderHint": "К системным голосам применяется высота тона. Исходные сетевые механизмы не поддерживают регулировку шага.",
+      "providersSection": "TTS провайдеры",
+      "providerTypeSection": "Выберите тип провайдера",
+      "providerSection": "Конфигурация провайдера",
+      "providerKinds": {
+        "openAiCompatible": "OpenAI-совместимый"
+      },
+      "addOpenAi": "Добавить OpenAI-совместимую службу",
+      "openAiProviderTypeDetail": "Совместимость с OpenAI /v1/audio/speech",
+      "addProvider": "Добавить провайдера TTS",
+      "editProvider": "Изменить поставщика TTS",
+      "profileName": "Имя",
+      "endpoint": "Конечная точка",
+      "model": "Модель",
+      "voices": "Голосовые идентификаторы",
+      "voicesPlaceholder": "Введите один голосовой идентификатор, поддерживаемый провайдером, в каждой строке.",
+      "voicesDetail": "OpenAI-совместимые API не имеют общего контракта на обнаружение голоса. MyReader не предполагает голосовых имен; используйте документацию поставщика.",
+      "defaultVoice": "Голос по умолчанию",
+      "defaultVoicePlaceholder": "Введите один голосовой идентификатор из списка выше.",
+      "credential": "Учетные данные",
+      "credentialSaved": "Сохранено в безопасном хранилище этого устройства.",
+      "openAiCredentialPlaceholder": "OpenAI API ключ",
+      "credentialPlaceholder": "Токен носителя (необязательно)",
+      "instructions": "Инструкции по повествованию",
+      "instructionsPlaceholder": "Например: Читайте естественно и спокойно.",
+      "enabled": "Включено",
+      "disabled": "Отключено",
+      "clearCredential": "Очистить сохраненные учетные данные",
+      "save": "Сохранить",
+      "cancel": "Отмена",
+      "loading": "Загрузка…",
+      "loadFailed": "Не удалось загрузить настройки чтения вслух.",
+      "saveFailed": "Не удалось сохранить настройки чтения вслух.",
+      "voiceLoadFailed": "Не удалось загрузить голоса",
+      "providerPrivacy": "Системные голоса обрабатываются на устройстве. С помощью сетевого провайдера текущее предложение отправляется на настроенную вами конечную точку.",
+      "openAiDetail": "Совместим с OpenAI /v1/audio/speech. Вы настраиваете голосовые идентификаторы и голос по умолчанию; Ключ API остается в безопасном хранилище на этом устройстве.",
+      "removeProvider": "Удалить провайдера",
+      "removeProviderTitle": "Удалить провайдера TTS?",
+      "removeProviderDetail": "При этом удаляется «{{name}}», его локальные учетные данные и соответствующие голосовые настройки.",
+      "removeFailed": "Не удалось удалить поставщика TTS."
+    },
+    "privacy": {
+      "title": "Конфиденциальность",
+      "diagnostics": {
+        "title": "Обмен диагностической информацией",
+        "detail": "Отправляйте стеки ошибок, версию приложения и среду устройства, если что-то пойдет не так. По умолчанию данные идентификации пользователя, журналы приложений или записи экрана не добавляются.",
+        "unavailable": "В этой сборке не настроены диагностические отчеты"
+      }
+    },
+    "developer": {
+      "title": "Разработчик",
+      "enabled": "Вкл.",
+      "disabled": "Выкл.",
+      "clearImageCache": {
+        "title": "Очистить кэш изображений",
+        "detail": "Очистить кэш изображений Expo и миниатюры обложек библиотеки.",
+        "doneTitle": "Кэш изображений очищен",
+        "doneDetail": "Обложки будут прочитаны, загружены или сгенерированы снова при повторном открытии.",
+        "errorTitle": "Не удалось очистить кэш изображений.",
+        "errorDetail": "Пожалуйста, повторите попытку позже.",
+        "unavailable": "Очистка кэша изображений недоступна в этой среде."
+      },
+      "libraryPerformanceProfiler": {
+        "title": "Профилировщик производительности библиотеки",
+        "detail": "Записывать метрики времени React Profiler и FlashList на экране библиотеки."
+      },
+      "coverLoadingAnimation": {
+        "title": "Анимация загрузки обложки",
+        "detail": "Переключить пульс скелета во время загрузки обложек"
+      },
+      "coverThumbnailConcurrency": {
+        "title": "Параллелизм миниатюр обложки",
+        "detail": "Параллельные задания по созданию миниатюр",
+        "decrementLabel": "Уменьшить одновременность миниатюр обложек",
+        "incrementLabel": "Увеличить одновременность миниатюр обложек"
+      }
+    },
+    "bookCountCurrent_one": "{{count}} книга · Используется",
+    "bookCountCurrent_few": "{{count}} книги · Используется",
+    "bookCountCurrent_many": "{{count}} книг · Используется",
+    "bookCountCurrent_other": "{{count}} книги · Используется",
+    "bookCount_one": "{{count}} книга",
+    "bookCount_few": "{{count}} книги",
+    "bookCount_many": "{{count}} книг",
+    "bookCount_other": "{{count}} книги"
+  },
+  "reader": {
+    "cannotOpen": "Не могу открыть книгу",
+    "back": "Назад",
+    "closeOverlay": "Закрыть наложение",
+    "mountingReader": "Установка считывателя…",
+    "loadFailed": "Не удалось загрузить устройство чтения.",
+    "loadFailedMessage": "Устройство чтения обнаружило непредвиденную ошибку. Пожалуйста, вернитесь и повторите попытку.",
+    "positionConflictTitle": "Выберите, где продолжить",
+    "positionConflictDescription": "Другое устройство сохранило другую позицию в автономном режиме. Выберите один, чтобы продолжить; выбор будет синхронизирован с другими вашими устройствами.",
+    "positionConflictUnknownProgress": "Неизвестный прогресс",
+    "positionConflictLater": "Примите решение позже и используйте положение по умолчанию.",
+    "chrome": {
+      "moreActions": "Дополнительные действия"
+    },
+    "toc": "Оглавление",
+    "navigationSheet": "Панель содержания",
+    "noToc": "В этой книге нет оглавления",
+    "search": {
+      "title": "Поиск книги",
+      "inputLabel": "Поиск по тексту книги",
+      "placeholder": "Поиск текста",
+      "clear": "Очистить поиск",
+      "promptTitle": "Найти текст в этой книге",
+      "prompt": "Введите слово или фразу для поиска в этой книге.",
+      "searching": "Поиск…",
+      "error": "Не удалось завершить поиск",
+      "errorDetail": "Попробуйте еще раз. Ваш текущий поиск будет сохранен.",
+      "retry": "Попробуйте еще раз",
+      "empty": "По запросу «{{query}}» нет результатов.",
+      "emptyDetail": "Попробуйте другое слово или фразу.",
+      "resultTitle": "Текст",
+      "position": "Позиция {{position}}",
+      "noExcerpt": "Нет отрывка",
+      "loadedCount": "Загружено {{count}} результата",
+      "resultCount": "{{count}} результата",
+      "loadMore": "Загрузить еще",
+      "loadingMore": "Загрузка дополнительных результатов…",
+      "loadMoreFailed": "Не удалось загрузить больше результатов.",
+      "retryMore": "Попробуйте загрузить еще раз",
+      "loadedCount_one": "Загружен {{count}} результат",
+      "loadedCount_few": "Загружено {{count}} результата",
+      "loadedCount_many": "Загружено {{count}} результатов",
+      "loadedCount_other": "Загружено {{count}} результата",
+      "resultCount_one": "{{count}} результат",
+      "resultCount_few": "{{count}} результата",
+      "resultCount_many": "{{count}} результатов",
+      "resultCount_other": "{{count}} результата"
+    },
+    "bookmarks": {
+      "title": "Закладки",
+      "addCurrent": "Добавить закладку в текущем месте",
+      "removeCurrent": "Удалить закладку в текущем месте",
+      "loading": "Загрузка закладок…",
+      "error": "Не удалось загрузить или обновить закладки.",
+      "retry": "Попробуйте еще раз",
+      "untitled": "Закладка",
+      "deleteLabel": "Удалить закладку: {{label}}",
+      "page": "Страница {{page}}",
+      "position": "Позиция {{position}}",
+      "today": "Сегодня",
+      "select": "Выбрать",
+      "deselect": "Отменить выбор",
+      "manage": "Управление",
+      "done": "Готово",
+      "selectedCount": "Выбрано {{count}} закладки",
+      "deleteSelected": "Удалить выбранные закладки",
+      "longPressHint": "Длительное нажатие, чтобы выбрать или удалить эту закладку",
+      "selectedCount_one": "Выбрана {{count}} закладка",
+      "selectedCount_few": "Выбрано {{count}} закладки",
+      "selectedCount_many": "Выбрано {{count}} закладок",
+      "selectedCount_other": "Выбрано {{count}} закладки"
+    },
+    "annotations": {
+      "title": "Закладки и аннотации",
+      "notesTab": "Аннотации",
+      "highlightAction": "Выделение",
+      "noteAction": "Добавить примечание",
+      "editNoteAction": "Редактировать заметку",
+      "openNote": "Открыть заметку",
+      "removeAction": "Удалить",
+      "copyAction": "Копировать",
+      "selectionActions": "Действия с текстом",
+      "loading": "Загрузка заметок…",
+      "error": "Не удалось загрузить или обновить заметки.",
+      "retry": "Попробуйте еще раз",
+      "openHint": "Перейти к этому выделению",
+      "select": "Выбрать",
+      "deselect": "Отменить выбор",
+      "manage": "Управление",
+      "done": "Готово",
+      "selectedCount": "Выбрано {{count}} аннотации",
+      "deleteSelected": "Удалить выбранные аннотации",
+      "longPressHint": "Длительное нажатие для выбора, редактирования или удаления этой аннотации",
+      "edit": "Редактировать",
+      "editTitle": "Редактировать выделение и примечание",
+      "addNoteTitle": "Добавить примечание",
+      "color": "Цвет выделения",
+      "note": "Примечание",
+      "notePlaceholder": "Напишите мысль (необязательно)",
+      "editNoteHint": "Нажмите, чтобы отредактировать заметку",
+      "deleteTitle": "Удалить выделение?",
+      "deleteMessage": "Выделение и примечание к нему будут удалены с этого устройства.",
+      "colors": {
+        "yellow": "Янтарь",
+        "orange": "Терракота",
+        "green": "Мудрец",
+        "blue": "Шиферно-синий"
+      },
+      "selectedCount_one": "Выбрана {{count}} аннотация",
+      "selectedCount_few": "Выбрано {{count}} аннотации",
+      "selectedCount_many": "Выбрано {{count}} аннотаций",
+      "selectedCount_other": "Выбрано {{count}} аннотации"
+    },
+    "tts": {
+      "readAloud": "Читать вслух",
+      "readFromHere": "Читать отсюда",
+      "controls": "Элементы управления чтением вслух",
+      "openControls": "Открыть элементы управления чтением вслух",
+      "settings": "Настройки чтения вслух",
+      "settingsAction": "Настройки чтения вслух",
+      "manageProviders": "Управление поставщиками TTS",
+      "goToCurrent": "Перейти к текущему произнесенному предложению",
+      "play": "Возобновить повествование",
+      "pause": "Пауза повествования",
+      "previous": "Предыдущее предложение",
+      "next": "Следующее предложение",
+      "stop": "Остановить повествование",
+      "playFromCurrentPosition": "Воспроизвести отсюда",
+      "returnToPlaybackPosition": "Вернуться к повествованию",
+      "states": {
+        "stopped": "Остановлено",
+        "loading": "Подготовка повествования…",
+        "generating": "Генерация следующего предложения…",
+        "playing": "Чтение вслух",
+        "paused": "Приостановлено",
+        "ended": "Рассказ закончен.",
+        "error": "Повествование не удалось"
+      },
+      "errors": {
+        "unknown": "Невозможно начать повествование. Пожалуйста, попробуйте еще раз.",
+        "noReadableContent": "После текущей позиции не найдено читаемого текста.",
+        "noVoices": "Текущая система повествования не поддерживает язык этой книги.",
+        "providerUnavailable": "Речевая служба недоступна. Проверьте его URL-адрес, сетевое подключение и конфигурацию API, а затем повторите попытку.",
+        "engine": "Механизм повествования возвратил ошибку: {{message}}"
+      }
+    },
+    "settings": "Настройки чтения",
+    "settingsSheet": "Панель «Настройки чтения»",
+    "settingsTheme": "Тема",
+    "readingMode": "Режим чтения",
+    "pageDirection": "Направление страницы",
+    "backgroundAuto": "Авто",
+    "backgroundBlack": "Черный",
+    "backgroundWhite": "Белый",
+    "alignment": "Выравнивание",
+    "alignmentAuto": "Авто",
+    "alignmentJustify": "Обоснование",
+    "alignmentStart": "Слева",
+    "column": "Столбцы",
+    "column1": "Всегда одинок",
+    "columnAuto": "Авто",
+    "fontSize": "Размер шрифта",
+    "lineHeight": "Высота строки",
+    "margin": "Маржа",
+    "spread": "Макет страницы",
+    "spreadAuto": "Авто",
+    "spreadSingle": "Всегда одинок",
+    "readingProgression": "Направление чтения",
+    "directionLtr": "Слева направо",
+    "directionRtl": "Справа налево",
+    "zoom": "Масштаб",
+    "pinchZoomHint": "Фиксированный макет поддерживает масштабирование.",
+    "themeNeutral": "Белый",
+    "themePaper": "Бумага",
+    "themeSepia": "Сепия",
+    "themeGreen": "Зеленый",
+    "themeOcean": "Океан",
+    "themeContrast1": "HC1",
+    "themeNight": "Ночь",
+    "themeContrast2": "HC2",
+    "themes": {
+      "contrast1": "HC1",
+      "contrast2": "HC2"
+    },
+    "layoutScroll": "Прокрутка",
+    "layoutPaginate": "Разбивка на страницы",
+    "navHorizontal": "Горизонтальный",
+    "navVertical": "Вертикальный",
+    "pageLabel": "Страница {{page}}",
+    "positionLabel": "Лок.",
+    "positionProgress": "Лок. {{current}} / {{total}}",
+    "pageProgress": "Страница {{current}} / {{total}}",
+    "font": "Шрифт",
+    "fontOptions": {
+      "defaultChinese": "Китайский по умолчанию",
+      "lxgwWenkai": "LXGW WenKai",
+      "oldStyle": "Старый стиль",
+      "modern": "Современный шрифт с засечками",
+      "humanist": "Гуманист Санс",
+      "openDyslexic": "OpenDyslexic",
+      "accessibleDfa": "AccessibleDfA",
+      "iaWriterDuospace": "IA-писатель"
+    },
+    "moreActions": "Дополнительные действия",
+    "closeReader": "Закрыть программу чтения"
+  },
+  "bookDetail": {
+    "title": "Подробности о книге",
+    "missingParam": {
+      "title": "Отсутствует параметр книги",
+      "detail": "Пожалуйста, повторно введите данные книги из библиотеки."
+    },
+    "loadingDetail": "Загрузка сведений о книге…",
+    "seriesInfo": "{{series}} · #{{index}}",
+    "series": "Серия",
+    "seriesIndex": "Индекс серии",
+    "infoSection": "Подробности",
+    "bookTitle": "Название",
+    "titleSort": "Сортировка по названию",
+    "authors": "Авторы",
+    "authorSort": "Сортировка по автору",
+    "pubDate": "Дата публикации",
+    "language": "Язык",
+    "publisher": "Издатель",
+    "rating": "Рейтинг",
+    "tags": "Теги",
+    "identifiers": "Идентификаторы",
+    "createdAt": "Создано в",
+    "downloadStarted": "Загрузка началась",
+    "downloadStartedDetail": "{{format}} будет готов к чтению после загрузки.",
+    "noReadableFormat": "Нет читаемого формата",
+    "downloadAndRead": "Скачать и прочитать",
+    "continueReading": "Продолжить чтение",
+    "startReading": "Начать чтение",
+    "back": "Назад",
+    "share": "Поделиться",
+    "moreActions": "Дополнительные действия: {{title}}",
+    "openBook": "Откройте «{{title}}»",
+    "readFileStateFailed": "Не удалось прочитать состояние файла.",
+    "downloadFailed": "Не удалось загрузить файл: {{path}}",
+    "cannotStartDownload": "Невозможно начать загрузку.",
+    "noFormatPath": "Путь к файлу {{format}} не найден.",
+    "deleteLocalFailed": "Не удалось удалить локальный файл.",
+    "formatSection": {
+      "title": "Форматы файлов",
+      "count": "{{count}} формата",
+      "default": "Формат чтения по умолчанию",
+      "readable": "Читабельно",
+      "unsupported": "Не поддерживается",
+      "queued": "В очереди",
+      "preparing": "Подготовка",
+      "notStarted": "Не запущено",
+      "cancel": "Отмена",
+      "cancelDownload": "Отменить загрузку",
+      "download": "Скачать",
+      "downloadFormat": "Скачать",
+      "notDownloaded": "Не загружено",
+      "setDefault": "Установить в качестве формата чтения по умолчанию",
+      "shareFormat": "Поделиться",
+      "more": "Ещё",
+      "count_one": "{{count}} формат",
+      "count_few": "{{count}} формата",
+      "count_many": "{{count}} форматов",
+      "count_other": "{{count}} формата"
+    },
+    "setReadingFormat": "Установить формат чтения",
+    "expand": "Развернуть"
+  },
+  "share": {
+    "fileNotDownloadedTitle": "Файл не загружен",
+    "fileNotDownloadedMessage": "«{{title}}» ({{format}}) необходимо загрузить первым.",
+    "shareFailed": "Не удалось поделиться"
+  },
+  "bookRow": {
+    "finished": "Прочитано"
+  },
+  "addLibrary": {
+    "addedPrompt": {
+      "detail": "Переключиться на «{{name}}» и открыть библиотеку?",
+      "stay": "Оставайся здесь",
+      "switch": "Переключить и открыть"
+    },
+    "selectSaveLocation": "Выберите место сохранения",
+    "selectLibraryLocation": "Выберите расположение библиотеки",
+    "name": "Имя",
+    "invalidName": "Имя не может содержать / или \\",
+    "create": "Создать",
+    "creating": "Создание",
+    "open": "Открыть",
+    "continue": "Продолжить",
+    "path": "Путь: {{path}}",
+    "unrecognized": {
+      "title": "Библиотека не распознана",
+      "detail": "Выберите папку библиотеки MyReader или Calibre."
+    },
+    "folderExists": {
+      "title": "Имя уже существует",
+      "detail": "Выберите другое имя библиотеки."
+    },
+    "operationFailed": "Операция библиотеки не удалась",
+    "operationFailedDetail": "Пожалуйста, повторите попытку позже."
+  },
+  "webdav": {
+    "sourcesTitle": "WebDAV Источники",
+    "sourceDetail": "Подробности источника",
+    "addSource": "Добавить источник WebDAV",
+    "reconfigureSource": "Перенастроить WebDAV",
+    "selectLibrary": "Выберите библиотеку WebDAV",
+    "noSources": {
+      "title": "Источников WebDAV пока нет",
+      "detail": "Используйте кнопку ниже, чтобы добавить источник WebDAV."
+    },
+    "delete": {
+      "title": "Удалить источник WebDAV",
+      "confirm": "Удалить \"{{name}}\"?",
+      "cancel": "Отмена",
+      "confirmButton": "Удалить"
+    },
+    "deleteFailed": {
+      "title": "Невозможно удалить",
+      "message": "Не удалось удалить источник."
+    },
+    "deleteSource": "Удалить источник",
+    "type": "Тип",
+    "serverAddress": "Адрес сервера",
+    "username": "Имя пользователя",
+    "password": "Пароль",
+    "passwordSaved": "Сохранено в безопасном хранилище.",
+    "passwordNotSet": "Не установлено",
+    "basePath": "Базовый путь",
+    "status": "Статус",
+    "enabled": "Включено",
+    "disabled": "Отключено",
+    "addedAt": "Добавлено в",
+    "browser": {
+      "notFound": {
+        "title": "Источник не найден",
+        "detail": "Сначала добавьте источник WebDAV."
+      },
+      "loadFailed": {
+        "title": "Ошибка просмотра",
+        "message": "В браузере WebDAV произошла непредвиденная ошибка. Пожалуйста, повторите попытку."
+      },
+      "validating": "Проверка каталога",
+      "selectDirectory": "Выбор текущего каталога в качестве библиотеки",
+      "currentPath": "Текущий путь: {{path}}",
+      "reading": {
+        "title": "Чтение каталога",
+        "detail": "Получение списка каталогов с сервера WebDAV."
+      },
+      "readFailed": {
+        "title": "Не удалось прочитать"
+      },
+      "credentialsUnavailable": {
+        "title": "WebDAV учетные данные недоступны",
+        "detail": "Перенастройте источник WebDAV."
+      },
+      "noCredentials": "WebDAV учетные данные недоступны. Пожалуйста, отредактируйте источник данных и установите пароль.",
+      "empty": {
+        "title": "Пустой каталог",
+        "detail": "В текущем каталоге нет подкаталогов."
+      },
+      "notValidLibrary": {
+        "title": "Неверный каталог",
+        "message": "Недопустимая библиотека — файл Metadata.db не найден."
+      },
+      "notCalibreLibrary": "Недопустимая библиотека Calibre.",
+      "cannotReadRemote": "Невозможно прочитать удаленный каталог"
+    },
+    "add": {
+      "sourceTitle": "WebDAV Источник",
+      "enterServerUrl": "Пожалуйста, введите адрес сервера.",
+      "portMustBeNumber": "Порт должен быть числом",
+      "portRange": "Порт должен быть 1-65535.",
+      "validationFailed": "Проверка не удалась",
+      "connectionTestFailed": "Проверка соединения не удалась",
+      "reEnter": "Повторите ввод",
+      "addAnyway": "Все равно добавить",
+      "addFailed": "Не удалось добавить",
+      "addFailedMessage": "Операция не удалась. Пожалуйста, повторите попытку.",
+      "updateFailed": "Не удалось сохранить",
+      "completing": "Завершение",
+      "complete": "Завершено",
+      "saving": "Сохранение",
+      "save": "Сохранить",
+      "saveAnyway": "Все равно сохранить",
+      "serverAddressLabel": "Адрес сервера",
+      "portLabel": "Порт",
+      "basePathLabel": "Базовый путь",
+      "usernameLabel": "Имя пользователя",
+      "usernamePlaceholder": "Введите имя пользователя",
+      "passwordLabel": "Пароль",
+      "passwordPlaceholder": "Введите пароль",
+      "passwordKeepPlaceholder": "Оставьте поле пустым, чтобы сохранить текущий пароль.",
+      "useSSL": "Использовать SSL"
+    }
+  },
+  "onedrive": {
+    "sourcesTitle": "OneDrive Источники",
+    "sourceDetail": "Подробности источника",
+    "addSource": "Добавить источник OneDrive",
+    "reauthenticate": "Войдите в OneDrive еще раз.",
+    "selectLibrary": "Выберите библиотеку OneDrive",
+    "noSources": {
+      "title": "Источников OneDrive пока нет",
+      "detail": "Используйте кнопку ниже, чтобы добавить источник OneDrive."
+    },
+    "delete": {
+      "title": "Удалить источник OneDrive",
+      "confirm": "Удалить \"{{name}}\"?",
+      "cancel": "Отмена",
+      "confirmButton": "Удалить"
+    },
+    "deleteFailed": {
+      "title": "Невозможно удалить",
+      "message": "Не удалось удалить источник."
+    },
+    "deleteSource": "Удалить источник",
+    "type": "Тип",
+    "displayName": "Отображаемое имя",
+    "email": "Электронная почта",
+    "basePath": "Базовый путь",
+    "authStatus": "Статус аутентификации",
+    "authenticated": "Аутентифицирован",
+    "notAuthenticated": "Не аутентифицирован",
+    "addedAt": "Добавлено в",
+    "browser": {
+      "notFound": {
+        "title": "Источник не найден",
+        "detail": "Сначала добавьте источник OneDrive."
+      },
+      "loadFailed": {
+        "title": "Ошибка просмотра",
+        "message": "В браузере OneDrive произошла непредвиденная ошибка. Пожалуйста, повторите попытку."
+      },
+      "validating": "Проверка каталога",
+      "selectDirectory": "Выбор текущего каталога в качестве библиотеки",
+      "currentPath": "Текущий путь: {{path}}",
+      "reading": {
+        "title": "Чтение каталога",
+        "detail": "Получение списка каталогов из OneDrive."
+      },
+      "readFailed": {
+        "title": "Не удалось прочитать"
+      },
+      "credentialsUnavailable": {
+        "title": "Срок действия входа в систему OneDrive истек",
+        "detail": "Еще раз войдите в систему OneDrive."
+      },
+      "noCredentials": "OneDrive учетные данные недоступны. Пожалуйста, повторите аутентификацию источника данных.",
+      "empty": {
+        "title": "Пустой каталог",
+        "detail": "В текущем каталоге нет подкаталогов."
+      },
+      "notValidLibrary": {
+        "title": "Неверный каталог",
+        "message": "Недопустимая библиотека — файл Metadata.db не найден."
+      },
+      "notCalibreLibrary": "Недопустимая библиотека Calibre.",
+      "cannotReadRemote": "Невозможно прочитать удаленный каталог"
+    },
+    "add": {
+      "signInTitle": "Войдите в OneDrive",
+      "signInDetail": "Войдите в систему, используя учетную запись Microsoft.",
+      "signInWithMicrosoft": "Войдите в систему с помощью Microsoft",
+      "authenticating": "Аутентификация…",
+      "addingTitle": "Добавление источника OneDrive",
+      "addingDetail": "Завершение настройки — оставьте приложение открытым.",
+      "authFailed": "Ошибка аутентификации",
+      "authFailedMessage": "Не удалось войти в систему OneDrive. Пожалуйста, повторите попытку.",
+      "accountMismatch": "Несоответствие учетной записи",
+      "accountMismatchMessage": "Войдите в систему как {{email}} или вернитесь и добавьте новый источник OneDrive.",
+      "alreadyAdded": "Аккаунт уже добавлен",
+      "alreadyAddedMessage": "Учетная запись {{email}} уже подключена."
+    }
+  },
+  "errorBoundary": {
+    "defaultTitle": "Произошла непредвиденная ошибка.",
+    "retry": "Повторить"
+  },
+  "dataSource": {
+    "backToList": "Вернуться к списку источников",
+    "backToLocations": "Вернуться к доступным локациям",
+    "notFound": {
+      "title": "Источник больше не существует",
+      "detail": "Возможно, оно было удалено. Вернитесь к списку источников.",
+      "addLibraryDetail": "Возможно, оно было удалено. Вернитесь в доступные локации."
+    },
+    "deleteInUse": {
+      "title": "Невозможно удалить",
+      "message": "Этот источник используют следующие библиотеки: {{names}}. Пожалуйста, удалите эти библиотеки перед удалением источника."
+    }
+  },
+  "common": {
+    "confirm": "ОК",
+    "gotIt": "Понятно",
+    "search": "Поиск",
+    "clear": "Очистить",
+    "current": "Текущий",
+    "appInternalStorage": "Внутреннее хранилище приложения",
+    "localStorage": "Локальное хранилище",
+    "unnamedBook": "Безымянная книга",
+    "unknownAuthor": "Неизвестный автор",
+    "myLibrary": "Моя библиотека",
+    "unnamedLibrary": "Безымянная библиотека",
+    "selected": "Выбрано",
+    "unselected": "Не выбрано"
+  },
+  "bookLang": {
+    "zho": "中文",
+    "chi": "中文",
+    "eng": "Английский",
+    "jpn": "日本語"
+  },
+  "bookMenu": {
+    "detail": "Подробности о книге",
+    "addToFavorites": "Добавить в избранное",
+    "removeFromFavorites": "Удалить из избранного",
+    "download": "Скачать",
+    "downloadFormat": "Скачать ({{format}})",
+    "cancelDownload": "Отменить загрузку",
+    "uploadFile": "Загрузить файл",
+    "uploadFailed": "Не удалось загрузить",
+    "uploadFailedDetail": "Не удалось загрузить в «{{library}}». __МРНЛ__ {{reason}}",
+    "defaultFormat": "Формат чтения по умолчанию: {{format}}",
+    "deleteDownload": "Удалить загруженный файл",
+    "share": "Поделиться",
+    "editMetadata": "Редактировать название и авторов",
+    "deleteBook": "Удалить книгу",
+    "deleteConfirmTitle": "Удалить книгу",
+    "deleteConfirmDetail": "Удалить «{{title}}» и его файл книги из этой библиотеки?",
+    "deleteFailed": "Невозможно удалить книгу"
+  },
+  "bookEdit": {
+    "title": "Редактировать информацию о книге",
+    "bookTitle": "Название",
+    "authors": "Авторы",
+    "authorsPlaceholder": "Разделяйте нескольких авторов запятыми.",
+    "save": "Сохранить",
+    "saving": "Сохранение",
+    "saveFailed": "Невозможно сохранить информацию о книге",
+    "incomplete": {
+      "title": "Недостающая информация",
+      "detail": "Необходимо указать название и авторов."
+    },
+    "unavailable": {
+      "title": "Эту книгу нельзя редактировать",
+      "detail": "Редактировать можно только книги в библиотеках MyReader."
+    }
+  },
+  "bookLoader": {
+    "loadingBook": "Загрузка книги…",
+    "missingParam": "Отсутствует параметр книги",
+    "noLibrary": "Библиотека не выбрана",
+    "readingBookInfo": "Чтение информации о книге…",
+    "invalidId": "Неверный идентификатор книги.",
+    "notFoundInLibrary": "Книга не найдена в библиотеке",
+    "noReadableFormat": "Нет читаемого формата (требуется EPUB, CBZ или PDF)",
+    "downloadingFromWebdav": "Загрузка книги с WebDAV…",
+    "downloadingFromRemote": "Загрузка книги с удаленного…",
+    "loadingBookFile": "Загрузка файла книги…",
+    "downloadFirst": "Прежде чем читать, загрузите формат в сведениях о книге."
+  },
+  "sync": {
+    "localDirectRead": "Локальное прямое чтение: синхронизация пропущена",
+    "libraryNotFound": "Библиотека не найдена: {{id}}",
+    "localDirectLabel": "Локальный · {{path}}",
+    "configError": "Ошибка конфигурации синхронизации.",
+    "dataIntegrityError": "Ошибка целостности данных синхронизации",
+    "webdavSourceNotFound": "Источник WebDAV, связанный с этой библиотекой, не существует.",
+    "webdavPasswordMissing": "У текущего источника WebDAV отсутствует пароль. Пожалуйста, отредактируйте исходник еще раз.",
+    "onedriveSourceNotFound": "Источник OneDrive, связанный с этой библиотекой, не существует.",
+    "onedriveRefreshTokenMissing": "Текущий источник OneDrive не проходит аутентификацию. Пожалуйста, подтвердите источник.",
+    "onedriveGetFailed": "OneDrive Ошибка GET: {{status}} {{path}}",
+    "onedriveDownloadUrlMissing": "OneDrive не вернул URL-адрес загрузки: {{path}}",
+    "onedrivePutFailed": "OneDrive PUT не удалось: {{status}} {{path}}",
+    "onedriveDeleteFailed": "OneDrive УДАЛИТЬ не удалось: {{status}} {{path}}",
+    "onedriveListFailed": "Ошибка списка OneDrive: {{status}} {{path}}",
+    "onedriveMkdirFailed": "OneDrive mkdir не удалось: {{status}} {{path}}",
+    "cannotResolveLocalPath": "Невозможно разрешить корневой каталог локальной библиотеки.",
+    "downloadCancelled": "Загрузка отменена",
+    "downloadFailed": "Не удалось выполнить фоновую загрузку: {{code}}",
+    "downloadStalled": "Собственная загрузка передала байты, но остановилась. Проверьте сеть, поддержку диапазона WebDAV или фоновые ограничения системы.",
+    "downloadNotStarted": "Собственная задача загрузки создана, но передача не началась. Проверьте источник данных, аутентификацию, сеть или собственную конфигурацию загрузчика.",
+    "uploadCancelled": "Загрузка отменена",
+    "uploadFailed": "Ошибка фоновой загрузки: HTTP {{status}} {{body}}",
+    "uploadFailedCode": "Не удалось выполнить фоновую загрузку: {{code}}",
+    "uploadStalled": "Собственная загрузка передала байты, но остановилась. Проверьте сеть, аутентификацию WebDAV или фоновые ограничения системы.",
+    "uploadNotStarted": "Собственная задача загрузки создана, но передача не началась. Проверьте URL-адрес WebDAV, аутентификацию или собственную конфигурацию загрузчика.",
+    "manifestNotRegistered": "Путь не зарегистрирован в манифесте: {{path}}",
+    "syncPathEmpty": "Путь синхронизации не может быть пустым",
+    "syncPathTraversal": "Путь синхронизации не может содержать ..: {{path}}",
+    "syncPathAbsolute": "Путь синхронизации не может быть абсолютным: {{path}}",
+    "nativeDownloadMissing": "Собственная загрузка завершена, но файл кэша отсутствует: {{path}}",
+    "nativeDownloadEmpty": "Собственная загрузка завершена, но файл кэша пуст: {{path}}",
+    "nativeDownloadNotSupported": "Собственная фоновая загрузка не поддерживается: {{kind}}",
+    "nativeUploadNotSupported": "Собственная фоновая загрузка не поддерживается: {{kind}}",
+    "hashMismatch": "Несоответствие хеша после загрузки: ожидалось {{expected}}, получено {{actual}}.",
+    "localFileMissing": "Локальный файл не существует, невозможно загрузить: {{path}}",
+    "libraryNotFoundShort": "Библиотека не найдена: {{id}}",
+    "connectionTimeout": "Тайм-аут соединения (2 с). Проверьте сеть или конфигурацию WebDAV.",
+    "cannotParseFilePath": "Невозможно проанализировать путь к файлу: {{uri}}.",
+    "metadataDbNotAvailable": "файл метаданных.db недоступен",
+    "formatNotFoundInLibrary": "Формат {{format}} не найден в библиотеке (bookId={{id}})",
+    "bookFileNotFound": "Файл книги не найден: {{name}}",
+    "bookFileNotFoundDetail": "Полный путь: {{uri}} \n Путь к библиотеке: {{libraryPath}} \n Путь к книге: {{rowPath}}",
+    "corruptedLibrary": "Данные библиотеки повреждены",
+    "corruptedLibraryMessage": "Невозможно восстановить файл метаданных.db для этой библиотеки. Пожалуйста, удалите и заново добавьте библиотеку.",
+    "corruptedLibraryRedownloadMessage": "Невозможно повторно загрузить файл метаданных.db для этой библиотеки. Проверьте сеть или конфигурацию WebDAV.",
+    "cannotRedownloadMeta": "Невозможно повторно загрузить файл метаданных.db.",
+    "metadataNotFound": "файл метаданных.db не найден",
+    "metadataNotFoundDetail": "Calibre Metadata.db не найден в выбранном каталоге. Выберите корневой каталог библиотеки (должен содержать файл Metadata.db).",
+    "userCancelled": "Пользователь отменен или каталог не выбран",
+    "notValidCalibreLibrary": "файл Metadata.db не найден в выбранной библиотеке. Убедитесь, что это действительная библиотека Calibre.",
+    "loadLibraryFailed": "Не удалось загрузить библиотеку.",
+    "addLibraryFailed": "Не удалось добавить библиотеку.",
+    "cannotAddDuplicate": "Невозможно добавить",
+    "alreadyAdded": "Эта библиотека уже добавлена.",
+    "readLibraryFailed": "Не удалось прочитать библиотеку.",
+    "refreshLibraryFailed": "Не удалось обновить библиотеку.",
+    "sourceUnreachable": "Источник недоступен",
+    "sourceUnreachableDetail": "Невозможно получить доступ к источнику WebDAV. Загрузка отменена. \n \n Возможные причины: \n • Сеть недоступна или нестабильна \n • Сервер WebDAV не работает или недоступен \n • Неверно настроены адрес, порт или аутентификация сервера",
+    "sourceUnreachableSyncDetail": "Невозможно получить доступ к источнику WebDAV. Синхронизация отменена. \n \n Возможные причины: \n • Сеть недоступна или нестабильна \n • Сервер WebDAV не работает или недоступен \n • Неверно настроены адрес, порт или аутентификация сервера",
+    "removeLibraryFirst": "Пожалуйста, сначала удалите библиотеки, использующие этот источник.",
+    "authFailed": "Ошибка аутентификации: неправильное имя пользователя или пароль или недостаточно прав.",
+    "pathNotFound": "Путь не найден: проверьте базовый путь и наличие каталога WebDAV.",
+    "serverAbnormal": "Ошибка сервера (HTTP {{status}}): проверьте состояние сервера и конфигурацию WebDAV.",
+    "connectionTimeoutDetail": "Тайм-аут соединения: проверьте сеть, адрес сервера, порт и конфигурацию SSL. Причина: {{reason}}",
+    "networkFailed": "Сетевой запрос не выполнен: невозможно достичь сервера. Проверьте сеть, адрес, порт и SSL. Причина: {{reason}}",
+    "cannotDownload": "Не могу скачать",
+    "noReadableFormatForDownload": "Для загрузки не доступен читаемый формат.",
+    "noReadableFormat": "Нет читаемого формата",
+    "noReadableFormatDetail": "Эта книга не имеет читабельного формата.",
+    "defaultFormatSet": "Установлен формат по умолчанию",
+    "setDefaultFormat": "Установить формат чтения по умолчанию",
+    "currentDefault": "Текущее значение по умолчанию: {{format}}",
+    "readFormatFailed": "Не удалось прочитать форматы.",
+    "deleteDownloadFile": "Удалить загруженный файл",
+    "confirmDeleteDownload": "Удалить локальную загрузку \"{{title}}\"?",
+    "deleteFailed": "Не удалось удалить",
+    "webdavGetFailed": "WebDAV GET не удалось: {{status}} {{path}}",
+    "webdavPutFailed": "WebDAV PUT не удалось: {{status}} {{path}}",
+    "webdavDeleteFailed": "WebDAV DELETE не удалось: {{status}} {{path}}",
+    "webdavPropfindFailed": "WebDAV PROPFIND не удалось: {{status}} {{path}}",
+    "webdavPropfindListFailed": "WebDAV Список PROPFIND не выполнен: {{status}} {{path}}",
+    "webdavMkcolFailed": "WebDAV MKCOL не удалось: {{status}} {{path}}",
+    "localFileNotExist": "Локальный файл не существует: {{path}}",
+    "basicAuthNotSupported": "Кодировка базовой аутентификации не поддерживается в этой среде",
+    "syncPathCannotBeEmpty": "Путь синхронизации не может быть пустым"
+  },
+  "notifications": {
+    "libraryAdded": "Добавлена библиотека: {{name}}",
+    "libraryUpdated": "Библиотека обновлена",
+    "libraryUpdateFailed": "Не удалось обновить библиотеку.",
+    "downloadStart": "Загрузка началась",
+    "downloadDone": "Загрузка завершена",
+    "downloadFailed": "Загрузка не удалась",
+    "libraryRefreshing": "Обновление библиотеки",
+    "librarySyncing": "Синхронизация библиотеки"
+  },
+  "errors": {
+    "sourceUnreachable": "Источник недоступен",
+    "sourceUnreachableDetail": "Невозможно получить доступ к источнику WebDAV. Загрузка отменена. \n \n Возможные причины: \n • Сеть недоступна или нестабильна \n • Сервер WebDAV не работает или недоступен \n • Неверно настроены адрес, порт или аутентификация сервера",
+    "downloadFailed": "Загрузка не удалась",
+    "timeout": "Тайм-аут"
+  },
+  "securityBookmarks": {
+    "invalidUrl": "Ошибка {{action}}: неверный URL-адрес каталога.",
+    "invalidBookmark": "{{action}} не удалось: сохраненная закладка недействительна. Пожалуйста, повторно выберите библиотеку.",
+    "unsupportedUrl": "Ошибка {{action}}: формат URL-адреса каталога не поддерживается. Вместо этого выберите локальный каталог в приложении «Файлы».",
+    "cannotAccess": "Ошибка {{action}}: невозможно получить доступ к авторизованному каталогу библиотеки. Пожалуйста, выберите еще раз и авторизируйтесь.",
+    "expired": "{{action}} не удалось: срок действия авторизации на закладку истек. Пожалуйста, повторно выберите библиотеку.",
+    "genericError": "{{action}} не удалось: ошибка авторизации файла iOS. Пожалуйста, повторите попытку.",
+    "createBookmark": "Создать закладку",
+    "restoreBookmark": "Восстановить закладку",
+    "accessDirectory": "Доступ к каталогу",
+    "refreshBookmark": "Обновить закладку"
+  }
+}

@@ -1,0 +1,244 @@
+{
+  "qwenTts": {
+    "title": "Qwen",
+    "add": "Agregar {{name}}",
+    "description": "Utilice las credenciales para este punto final y elija su voz.",
+    "sources": {
+      "tokenPlan": {
+        "title": "Qwen · Plan de tokens",
+        "description": "Utilice sus créditos de suscripción Qwen y la clave específica del plan.",
+        "credential": "Clave de suscripción al Plan Token (comienza con sk-sp-)"
+      },
+      "qianwen": {
+        "title": "Qwen · Paga sobre la marcha",
+        "description": "Utilice Qianwen AI Platform API con facturación basada en el uso.",
+        "credential": "Clave API de Qianwen AI Platform (no es una clave de suscripción)"
+      },
+      "dashscope": {
+        "title": "Qwen · DashScope (Estudio Modelo)",
+        "description": "Utilice Alibaba Cloud Model Studio, región de Beijing de forma predeterminada.",
+        "credential": "Clave API de Alibaba Cloud Model Studio para esta región"
+      }
+    },
+    "manualVoicesAction": "Ingresar ID de voz manualmente",
+    "manualVoices": "ID de voz",
+    "manualVoicesHint": "Para voces oficiales o personalizadas que faltan en la lista. Ingrese una identificación por línea.",
+    "loadingVoices": "Cargando voces de cuenta…",
+    "voicesFailed": "No se pudieron cargar las voces de la cuenta. Las voces guardadas y las identificaciones ingresadas manualmente todavía están disponibles.",
+    "voicesEmpty": "No hay voces de cuenta para este modelo. Cree una voz en la plataforma correspondiente o ingrese una ID de voz existente.",
+    "credentialRequired": "Clave API que coincide con este punto final; El plan Token requiere una clave de suscripción sk-sp"
+  },
+  "addLibraryFlow": {
+    "title": "Añadir biblioteca",
+    "noLibrary": {
+      "title": "Aún no se ha agregado ninguna biblioteca",
+      "description": "Cree una nueva biblioteca o abra una existente."
+    },
+    "create": {
+      "title": "Crear nueva biblioteca",
+      "description": "Crear una biblioteca MyReader"
+    },
+    "open": {
+      "title": "Abrir biblioteca existente",
+      "description": "Abra una biblioteca MyReader o Calibre existente."
+    },
+    "help": {
+      "label": "Acerca de las bibliotecas",
+      "myreader": {
+        "title": "¿Qué es una biblioteca MyReader?",
+        "body": "Creado y administrado por MyReader. Puede importar y eliminar libros, y editar títulos y autores."
+      },
+      "calibre": {
+        "title": "¿Qué es una biblioteca Calibre?",
+        "body": "Creado y administrado por Calibre. MyReader lo abre en modo de solo lectura y no modifica sus libros ni sus metadatos."
+      },
+      "sync": {
+        "title": "Acerca de la sincronización de datos de lectura",
+        "body": "Ambos tipos de biblioteca admiten la sincronización de datos de lectura entre dispositivos. Guarde la biblioteca en el almacenamiento en la nube y luego abra la misma biblioteca desde cada dispositivo."
+      },
+      "choice": {
+        "title": "¿Cuál debo elegir?",
+        "body": "Si anteriormente utilizó Calibre para administrar su biblioteca, le recomendamos elegir \"Abrir biblioteca existente\"; de lo contrario, elija \"Crear nueva biblioteca\"."
+      }
+    },
+    "storageLocations": "Ubicaciones disponibles",
+    "addStorage": "Agregar fuente de datos",
+    "addWebdav": {
+      "title": "Agregar WebDAV",
+      "description": "Ingrese la dirección del servidor y los detalles de la cuenta."
+    },
+    "addOnedrive": {
+      "title": "Agregar OneDrive",
+      "description": "Inicie sesión con una cuenta de Microsoft."
+    }
+  },
+  "bookDetail": {
+    "backToLibrary": "Volver a la biblioteca",
+    "collapse": "Colapso",
+    "favorite": "Favorito",
+    "libraryUnavailable": {
+      "title": "Biblioteca actual no disponible",
+      "detail": "Es posible que se haya eliminado. Regreso a la biblioteca."
+    },
+    "loadFailed": {
+      "title": "No se pueden cargar los detalles del libro",
+      "detail": "Se produjo un error al leer la información del libro. Intentar otra vez."
+    },
+    "notFound": {
+      "title": "Libro no encontrado",
+      "detail": "Es posible que se haya eliminado de la biblioteca actual."
+    },
+    "readingProgress": "Progreso de lectura",
+    "retry": "Reintentar",
+    "synopsis": "Sinopsis"
+  },
+  "bookRow": {
+    "unread": "Sin leer"
+  },
+  "common": {
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "delete": "Eliminar",
+    "save": "Guardar"
+  },
+  "library": {
+    "browseAllBooks": "Explorar todos los libros",
+    "importBook": "Importar libro",
+    "label": "Biblioteca",
+    "collections": {
+      "transferSection": "Transferencias",
+      "storageSection": "Almacenamiento y sincronización",
+      "all": "Todos los libros",
+      "recentlyRead": "Leídos recientemente",
+      "favorites": "Favoritos",
+      "downloaded": "Descargados",
+      "downloading": "Descargando",
+      "uploading": "Subiendo",
+      "localOnly": "Solo en este dispositivo",
+      "bookCount": "{{count}} libros",
+      "bookCount_one": "{{count}} libro",
+      "bookCount_other": "{{count}} libros",
+      "bookCount_many": "{{count}} libros"
+    },
+    "noMatch": {
+      "search": {
+        "title": "No hay resultados de búsqueda",
+        "detail": "No books match your search. Pruebe diferentes palabras clave."
+      },
+      "empty": {
+        "title": "La biblioteca está vacía",
+        "myreaderDetail": "Importa un libro para empezar.",
+        "calibreDetail": "Agregue libros a esta biblioteca usando Calibre."
+      },
+      "favorites": {
+        "title": "Aún no hay favoritos",
+        "detail": "Añade un libro a tus favoritos."
+      },
+      "recentlyRead": {
+        "title": "Aún no hay historial de lectura",
+        "detail": "Abre un libro para empezar a leer."
+      },
+      "downloaded": {
+        "title": "Aún no hay libros descargados",
+        "detail": "Descarga un libro para leer sin conexión."
+      },
+      "downloading": {
+        "title": "Sin tareas de descarga",
+        "detail": "Comience a descargar un libro de su biblioteca."
+      },
+      "uploading": {
+        "title": "No hay tareas de carga",
+        "detail": "Cargue un libro que esté almacenado únicamente en este dispositivo."
+      },
+      "localOnly": {
+        "title": "No hay libros solo en este dispositivo",
+        "detail": "No se necesita ninguna acción. No hay libros esperando para ser cargados."
+      }
+    },
+    "sort": {
+      "author": "Autor",
+      "title": "Título"
+    }
+  },
+  "reader": {
+    "background": "Antecedentes",
+    "empty": {
+      "annotations": {
+        "title": "Aún no hay notas destacadas ni notas",
+        "detail": "Seleccione el texto primero, luego agregue un resaltado o una nota."
+      },
+      "bookmarks": {
+        "title": "Aún no hay marcadores",
+        "detail": "Agregue un marcador mientras lee."
+      }
+    },
+    "fontOptions": {
+      "default": "Predeterminado",
+      "maru975Sc": "Alimama FangYuanTi",
+      "monospace": "Monoespacio",
+      "notoSansSc": "Noto Sans SC",
+      "notoSerifSc": "Noto Serif SC",
+      "sans": "Sin",
+      "serif": "Serifa"
+    },
+    "navigation": "Contenido",
+    "themes": {
+      "green": "Verde",
+      "neutral": "Blanco",
+      "night": "Noche",
+      "ocean": "Océano",
+      "paper": "Papel",
+      "sepia": "Sepia"
+    }
+  },
+  "settings": {
+    "title": "Ajustes"
+  },
+  "syncStatus": {
+    "title": "Estado de sincronización",
+    "details": "Detalles de sincronización",
+    "accessibilityLabel": "Estado de sincronización: {{status}}",
+    "currentLibrary": "Biblioteca actual",
+    "currentStatus": "Estado actual",
+    "currentStage": "Etapa actual",
+    "currentReason": "Motivo de sincronización",
+    "lastReason": "Razón de la última sincronización",
+    "lastSync": "Última sincronización",
+    "lastAttempt": "Último intento",
+    "noHistory": "Sin historial de sincronización",
+    "failureReason": "Motivo del fallo",
+    "failureStage": "Etapa de falla",
+    "progress": "{{completed}} / {{total}}",
+    "manualSync": "Sincronizar ahora",
+    "syncingAction": "Sincronizando",
+    "waitingForNetwork": "Esperando red",
+    "offlineDetail": "El transporte de esta biblioteca requiere una conexión de red. La sincronización puede continuar después de que se restablezca la conectividad.",
+    "noActiveLibrary": "No hay biblioteca para sincronizar",
+    "noActiveLibraryDetail": "Agregue una biblioteca para comenzar a sincronizar.",
+    "activeLibraryChanged": "La biblioteca actual cambió. Por favor inténtalo de nuevo.",
+    "reason": {
+      "manual": "Iniciado manualmente",
+      "localChange": "Datos locales cambiados",
+      "automaticCheck": "Comprobación de actualización automática"
+    },
+    "state": {
+      "idle": "Inactivo",
+      "offline": "Esperando red",
+      "recentSuccess": "Recién sincronizado",
+      "unchanged": "No se necesita sincronización",
+      "syncing": "Sincronizando",
+      "pushing": "Enviando",
+      "pulling": "Recibiendo",
+      "failed": "Error de sincronización"
+    },
+    "stage": {
+      "preparing": "Preparando",
+      "pushing": "Enviando cambios",
+      "pulling": "Recibiendo cambios",
+      "applying": "Aplicando cambios",
+      "sidecarComplete": "Finalizando resultados de sincronización",
+      "calibre": "Actualizando biblioteca",
+      "complete": "Finalizando"
+    }
+  }
+}

@@ -466,7 +466,7 @@ export function ReadingStatisticsCard({
       label: t("home.readingStats.totalDuration"),
     },
     {
-      value: `${completedBooks}${t("home.readingStats.bookUnit")}`,
+      value: `${completedBooks}${t("home.readingStats.bookUnit", { count: completedBooks })}`,
       label: t("home.readingStats.completed"),
     },
   ]

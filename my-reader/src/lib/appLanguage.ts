@@ -1,24 +1,23 @@
+import {
+  FALLBACK_LANGUAGE,
+  matchLanguage,
+  resolveLanguage,
+} from "@my-reader/i18n/languages"
 import type { AppLanguageMode } from "@/types/readerUiPreferences"
 
 export type ResolvedAppLanguage = Exclude<AppLanguageMode, "system">
 
 export function normalizeAppLanguageMode(value: unknown): AppLanguageMode {
-  return value === "zh-CN" || value === "en" || value === "system"
-    ? value
+  return typeof value === "string"
+    ? (matchLanguage(value) ?? "system")
     : "system"
 }
 
-function resolveSystemLanguage(
-  language: string | undefined,
-): ResolvedAppLanguage {
-  const normalized = language?.replace("_", "-").toLowerCase()
-  if (normalized?.startsWith("en")) return "en"
-  return "zh-CN"
-}
-
 export function getSystemAppLanguage(): ResolvedAppLanguage {
-  if (typeof navigator === "undefined") return "zh-CN"
-  return resolveSystemLanguage(navigator.language)
+  if (typeof navigator === "undefined") return FALLBACK_LANGUAGE
+  return resolveLanguage(
+    navigator.languages?.length ? navigator.languages : [navigator.language],
+  )
 }
 
 export function resolveAppLanguage(
@@ -28,5 +27,5 @@ export function resolveAppLanguage(
   if (mode !== "system") return mode
   return systemLanguage === undefined
     ? getSystemAppLanguage()
-    : resolveSystemLanguage(systemLanguage)
+    : resolveLanguage([systemLanguage])
 }

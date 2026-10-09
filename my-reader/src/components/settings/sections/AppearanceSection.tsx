@@ -1,40 +1,21 @@
+import { LANGUAGE_NAMES, SUPPORTED_LANGUAGES } from "@my-reader/i18n/languages"
 import type { DesktopTranslationKey } from "@my-reader/i18n/desktop"
 import { Check, type LucideIcon, Monitor, Moon, Sun } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useTheme } from "@/components/AppThemeProvider"
 import { SectionHeader } from "@/components/common/SectionHeader"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { normalizeAppLanguageMode } from "@/lib/appLanguage"
 import { cn } from "@/lib/utils"
 import { useAppUiStore } from "@/stores/appUiStore"
-import type { AppLanguageMode, AppThemeMode } from "@/types/readerUiPreferences"
-
-const LANGUAGE_OPTIONS: Array<{
-  value: AppLanguageMode
-  icon: LucideIcon | null
-  glyph?: string
-  tKey: DesktopTranslationKey
-  descriptionKey: DesktopTranslationKey
-}> = [
-  {
-    value: "system",
-    icon: Monitor,
-    tKey: "settings.appearance.languageSystem",
-    descriptionKey: "settings.appearance.languageSystemDescription",
-  },
-  {
-    value: "zh-CN",
-    icon: null,
-    glyph: "中",
-    tKey: "settings.appearance.languageChinese",
-    descriptionKey: "settings.appearance.languageChineseDescription",
-  },
-  {
-    value: "en",
-    icon: null,
-    glyph: "A",
-    tKey: "settings.appearance.languageEnglish",
-    descriptionKey: "settings.appearance.languageEnglishDescription",
-  },
-]
+import type { AppThemeMode } from "@/types/readerUiPreferences"
 
 const THEME_OPTIONS: Array<{
   value: AppThemeMode
@@ -85,45 +66,31 @@ export default function AppearanceSection() {
             description={t("settings.appearance.languageDescription")}
           />
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            {LANGUAGE_OPTIONS.map(
-              ({ value, icon: Icon, glyph, tKey, descriptionKey }) => {
-                const selected = languageMode === value
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setLanguageMode(value)}
-                    className={cn(
-                      "relative flex min-h-28 flex-col items-start rounded-md border bg-card p-4 text-left transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
-                      selected &&
-                        "border-primary bg-accent text-accent-foreground",
-                    )}
-                  >
-                    <span className="mb-3 flex size-8 items-center justify-center rounded-md bg-background text-foreground">
-                      {Icon ? (
-                        <Icon className="size-4" />
-                      ) : (
-                        <span
-                          aria-hidden="true"
-                          className="text-lg font-medium leading-none"
-                        >
-                          {glyph}
-                        </span>
-                      )}
-                    </span>
-                    <span className="text-sm font-medium">{t(tKey)}</span>
-                    <span className="mt-1 text-xs text-muted-foreground">
-                      {t(descriptionKey)}
-                    </span>
-                    {selected && (
-                      <Check className="absolute right-3 top-3 size-4 text-primary" />
-                    )}
-                  </button>
-                )
-              },
-            )}
-          </div>
+          <Select
+            value={languageMode}
+            onValueChange={(value) =>
+              setLanguageMode(normalizeAppLanguageMode(value))
+            }
+          >
+            <SelectTrigger
+              aria-label={t("settings.appearance.languageTitle")}
+              className="w-full sm:w-72"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              <SelectGroup>
+                <SelectItem value="system">
+                  {t("settings.appearance.languageSystem")}
+                </SelectItem>
+                {SUPPORTED_LANGUAGES.map((language) => (
+                  <SelectItem key={language} value={language}>
+                    <span lang={language}>{LANGUAGE_NAMES[language]}</span>
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </section>
 
         <section className="mt-8 max-w-3xl border-t border-border pt-6">

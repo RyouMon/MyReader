@@ -1,3 +1,5 @@
+import i18n from "@/i18n"
+
 const FORMAT_TONES: Record<string, string> = {
   EPUB: "bg-primary text-primary-foreground",
   PDF: "bg-secondary text-secondary-foreground border border-border",
@@ -14,7 +16,7 @@ export function formatDate(dateStr: string | null): string {
   try {
     const d = new Date(dateStr)
     if (d.getFullYear() <= 100) return "--"
-    return d.toLocaleDateString("zh-CN", {
+    return d.toLocaleDateString(i18n.resolvedLanguage ?? i18n.language, {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",

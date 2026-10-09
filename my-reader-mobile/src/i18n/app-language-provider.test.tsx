@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react-native"
-import { Text } from "react-native"
+import { AppState, Text } from "react-native"
 
 import { changeLanguage } from "."
 import { AppLanguageProvider } from "./app-language-provider"
@@ -12,7 +12,7 @@ const mockAppState = {
 jest.mock(".", () => ({
   __esModule: true,
   changeLanguage: jest.fn(() => Promise.resolve()),
-  resolveAppLanguage: jest.fn((language: string) => language || "zh-CN"),
+  resolveAppLanguage: jest.fn((language: string) => language || "en"),
 }))
 
 jest.mock("../store/app-store", () => ({
@@ -49,5 +49,46 @@ describe("AppLanguageProvider", () => {
       expect(changeLanguage).toHaveBeenCalledWith("en")
       expect(screen.getByText("App content")).toBeTruthy()
     })
+  })
+
+  it("applies a new saved preference after startup", async () => {
+    mockAppState.storeReady = true
+    const view = render(
+      <AppLanguageProvider>
+        <Text>App content</Text>
+      </AppLanguageProvider>,
+    )
+    await waitFor(() => expect(screen.getByText("App content")).toBeTruthy())
+    mockAppState.settings.language = "ru"
+    view.rerender(
+      <AppLanguageProvider>
+        <Text>App content</Text>
+      </AppLanguageProvider>,
+    )
+    await waitFor(() => expect(changeLanguage).toHaveBeenLastCalledWith("ru"))
+  })
+
+  it("refreshes system language on foreground and removes the listener on unmount", async () => {
+    mockAppState.storeReady = true
+    mockAppState.settings.language = ""
+    const remove = jest.fn()
+    const subscribe = jest
+      .spyOn(AppState, "addEventListener")
+      .mockReturnValue({ remove })
+    const view = render(
+      <AppLanguageProvider>
+        <Text>App content</Text>
+      </AppLanguageProvider>,
+    )
+    await waitFor(() => expect(screen.getByText("App content")).toBeTruthy())
+    const onChange = subscribe.mock.calls[0]![1]
+    jest.mocked(changeLanguage).mockClear()
+    onChange("background")
+    expect(changeLanguage).not.toHaveBeenCalled()
+    onChange("active")
+    await waitFor(() => expect(changeLanguage).toHaveBeenCalledWith("en"))
+    view.unmount()
+    expect(remove).toHaveBeenCalled()
+    subscribe.mockRestore()
   })
 })

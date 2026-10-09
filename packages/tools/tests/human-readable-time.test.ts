@@ -95,4 +95,35 @@ describe("human-readable time formatting", () => {
       }
     }
   })
+
+  it.each([
+    ["zh-Hant", "剛剛", "昨天"],
+    ["zh-HK", "剛剛", "昨天"],
+    ["ja-JP", "たった今", "昨日"],
+    ["ko", "방금", "어제"],
+    ["es", "ahora mismo", "ayer"],
+    ["fr-CA", "à l’instant", "hier"],
+    ["de", "gerade eben", "gestern"],
+    ["pt-BR", "agora mesmo", "ontem"],
+    ["it", "adesso", "ieri"],
+    ["ru", "только что", "вчера"],
+    ["unsupported", "just now", "yesterday"],
+  ])("localizes relative labels for %s", (locale, recent, yesterday) => {
+    expect(formatHumanReadableTime(NOW - 30_000, locale, NOW)).toBe(recent)
+    expect(
+      formatHumanReadableTime(new Date(2026, 6, 9, 12).getTime(), locale, NOW),
+    ).toBe(yesterday)
+  })
+
+  it("uses Russian plural forms in relative times", () => {
+    expect(formatHumanReadableTime(NOW - 60_000, "ru", NOW)).toBe(
+      "минуту назад",
+    )
+    expect(formatHumanReadableTime(NOW - 2 * 60_000, "ru", NOW)).toBe(
+      "2 минуты назад",
+    )
+    expect(formatHumanReadableTime(NOW - 5 * 60_000, "ru", NOW)).toBe(
+      "5 минут назад",
+    )
+  })
 })

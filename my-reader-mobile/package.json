@@ -36,6 +36,9 @@
     "@expo/metro-runtime": "~57.0.16",
     "@expo/ui": "~57.0.22",
     "@expo/vector-icons": "^15.0.3",
+    "@formatjs/intl-getcanonicallocales": "^3.2.12",
+    "@formatjs/intl-locale": "^5.3.12",
+    "@formatjs/intl-pluralrules": "^6.3.15",
     "@kesha-antonov/react-native-background-downloader": "^4.5.4",
     "@material/material-color-utilities": "^0.4.0",
     "@my-reader/book-transition": "link:modules/book-transition",
@@ -130,7 +133,7 @@
   "jest": {
     "preset": "jest-expo",
     "transformIgnorePatterns": [
-      "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|standard-navigation|@sentry/react-native|native-base|decode-uri-component))",
+      "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|@formatjs|react-navigation|@react-navigation|standard-navigation|@sentry/react-native|native-base|decode-uri-component))",
       "/node_modules/react-native-reanimated/plugin/",
       "/node_modules/@react-native/babel-preset/"
     ],
