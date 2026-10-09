@@ -25,6 +25,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Build and Distribution
 
 - Upgraded mobile to Expo 57 for Xcode 27 compatibility, updated dependencies and quality gates, and aligned release builds with the repository's declared pnpm version
+- Fixed missing workspace package manifests in EAS archives causing frozen dependency installation to fail in mobile builds
 
 ## [0.13.0] - 2026-10-07
 
