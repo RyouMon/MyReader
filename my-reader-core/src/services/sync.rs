@@ -819,7 +819,14 @@ async fn sync_calibre(
     }
 
     let old_books = if library_root.join("metadata.db").is_file() {
-        super::catalog::CatalogService::list_book_summaries(library_root).await?
+        match super::catalog::CatalogService::list_book_summaries(library_root).await {
+            Ok(books) => books,
+            Err(CoreError::DataIntegrity(error)) if is_remote_library(&library) => {
+                tracing::warn!(%error, "Refreshing incompatible Calibre cache; retaining cached book files");
+                Vec::new()
+            }
+            Err(error) => return Err(error),
+        }
     } else {
         Vec::new()
     };
