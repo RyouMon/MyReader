@@ -947,24 +947,11 @@ mod tests {
         std::fs::create_dir_all(root).unwrap();
         let connection = rusqlite::Connection::open(root.join("metadata.db")).unwrap();
         connection
+            .execute_batch(include_str!("../../tests/fixtures/calibre_books.sql"))
+            .unwrap();
+        connection
             .execute_batch(
-                "CREATE TABLE books (
-                    id INTEGER PRIMARY KEY,
-                    title TEXT NOT NULL,
-                    sort TEXT NOT NULL,
-                    timestamp TEXT,
-                    pubdate TEXT,
-                    series_index REAL NOT NULL DEFAULT 1,
-                    author_sort TEXT,
-                    isbn TEXT,
-                    lccn TEXT,
-                    path TEXT,
-                    flags INTEGER NOT NULL DEFAULT 1,
-                    uuid TEXT,
-                    has_cover INTEGER,
-                    last_modified TEXT NOT NULL
-                );
-                CREATE TABLE data (
+                "CREATE TABLE data (
                     id INTEGER PRIMARY KEY,
                     book INTEGER NOT NULL,
                     format TEXT NOT NULL,
@@ -1193,6 +1180,43 @@ mod tests {
                 root: "/current/sandbox/library".into(),
             }
         );
+    }
+
+    #[tokio::test]
+    async fn should_sync_calibre_without_legacy_book_columns() {
+        let app = tempfile::tempdir().unwrap();
+        let sidecar = tempfile::tempdir().unwrap();
+        let local_library = tempfile::tempdir().unwrap();
+        let remote_library = tempfile::tempdir().unwrap();
+        seed_calibre_database(local_library.path(), &[1]);
+        seed_calibre_database(remote_library.path(), &[1, 2]);
+        let config_path = app.path().join("config.json");
+        seed_config(&config_path);
+
+        let report = crate::api::sync::SyncService::sync_library(
+            &config_path,
+            sidecar.path(),
+            local_library.path(),
+            "library-1",
+            1_000,
+            all_sync_options(),
+            &LibraryStorageConfig::LocalDirect {
+                root: remote_library.path().to_string_lossy().into_owned(),
+            },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(report.calibre.error, None);
+        assert_eq!(report.myreader.error, None);
+        assert!(report.calibre.changed);
+        assert_eq!(report.calibre.library.book_count, 2);
+        let summaries =
+            crate::api::catalog::CatalogService::list_book_summaries(local_library.path())
+                .await
+                .unwrap();
+        assert_eq!(summaries.len(), 2);
+        assert_eq!(summaries[1].format_paths, ["Author/Book 2/Book 2.epub"]);
     }
 
     #[tokio::test]
