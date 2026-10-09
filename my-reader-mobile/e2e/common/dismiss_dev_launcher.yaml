@@ -95,3 +95,21 @@ tags:
                   text: "Tools button"
 
       - tapOn: "Close"
+
+# A fresh Android dev client enables the floating Tools button by default.
+# It can cover header actions; only toggle it off when the button is visible.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - runFlow:
+          when:
+            visible: "^Tools$"
+          commands:
+            - tapOn: "^Tools$"
+            - scrollUntilVisible:
+                element:
+                  text: "Tools button"
+            - tapOn: "Tools button"
+            - tapOn: "Close"
+            - assertNotVisible: "^Tools$"
