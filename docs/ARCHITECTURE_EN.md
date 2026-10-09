@@ -207,6 +207,30 @@ Calibre `metadata.db` is an external read-only database:
 - MyReader never migrates, extends, or writes Calibre tables.
 - `my-reader-core/src/entities/calibre` contains read-only SeaORM mappings for supported Calibre tables.
 
+Core reads `PRAGMA user_version` and actual table columns whenever it opens an external database.
+Schemas 25, 26, 27 and 28 share a catalog contract; available columns determine optional capabilities.
+Unknown versions are assessed by that contract rather than rejected for having a newer number.
+Official SQL snapshots cover Calibre 6.14.0, 6.15.0, 9.0.0 and 9.16.0;
+see the [fixture provenance and license](../my-reader-core/tests/fixtures/calibre/README.md).
+These tests validate Core reads and sync, not end-to-end execution of each Calibre binary or native client.
+
+Catalog reads require `books.id/title/path` and `data.book/format/name/uncompressed_size`.
+Identity reads separately require `library_id.uuid`, so reading state and favorites do not depend on catalog columns.
+Full library inspection and downloaded metadata validate both contracts.
+Missing required columns produce `CALIBRE_SCHEMA_UNSUPPORTED` with the database schema version and missing names.
+
+Queries explicitly select consumed fields; file summaries and paths do not decode unrelated book metadata.
+Missing optional book columns become null, with `title` as the fallback for missing `sort`.
+An optional metadata group returns empty values when its table or relationship columns are unavailable.
+ISBN comes from `identifiers`, never the obsolete `books.isbn`; null ratings are unrated.
+MyReader-owned projections continue to use their own migrations, not Calibre version numbers.
+
+Downloads are staged in a temporary file and checked for identity, required columns and readable file summaries.
+Database connections close before a same-directory rename replaces the cache.
+Failure retains the old database, cached book files and recorded remote version, and removes the temporary file.
+An incompatible old cache can be refreshed from a valid remote catalog while retaining book files that cannot be safely classified.
+Opening the replacement database detects its capabilities again instead of reusing the previous file's schema.
+
 ### 6.2 MyReader-Managed Libraries
 
 A MyReader-managed source contains `.myreader/library.json`, `Books/<storage-name> (<first 6 characters of book-uuid>)/<storage-name>.<format>`, and Automerge StorageKey objects stored according to [ADR-0020](./adr/0020-adopt-automerge-repo-storage-model.md). The content path is fixed at import time; changing title or author does not move it. Legacy `Books/<book-uuid>/book.<format>` paths remain unchanged. The marker, Automerge document, and device-local `library_id` projection share one stable `libraryUuid`.

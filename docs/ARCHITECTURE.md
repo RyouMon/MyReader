@@ -225,6 +225,27 @@ Calibre `metadata.db` 是外部只读数据库：
 - MyReader 不迁移、不增加字段、不写入 Calibre 表。
 - `my-reader-core/src/entities/calibre` 是受支持 Calibre 表的只读 SeaORM 映射。
 
+Core 每次打开外部数据库时读取 `PRAGMA user_version` 和实际表列信息。数据库 schema
+25、26、27、28 共用目录读取合同，通过列是否存在选择可选能力；未知版本也按实际能力
+判断，不因版本号较新而拒绝。官方 SQL 测试快照分别来自 Calibre 6.14.0、6.15.0、9.0.0、
+9.16.0，来源与许可证见 [fixture 说明](../my-reader-core/tests/fixtures/calibre/README.md)。
+这些测试验证 Core 的读取和同步，不代表各版本 Calibre 程序或原生客户端的端到端认证。
+
+目录读取要求 `books.id/title/path` 和 `data.book/format/name/uncompressed_size`。
+书库身份读取独立要求 `library_id.uuid`，阅读进度、收藏等操作不依赖目录字段。
+完整书库检查和远程下载同时验证这两份合同。缺失必要字段时返回
+`CALIBRE_SCHEMA_UNSUPPORTED`，包含数据库 schema 版本和缺失字段。
+
+查询显式选择消费的字段，文件摘要和路径查询不解码无关书目元数据。可选书籍字段缺失时
+返回空值，缺失 `sort` 时按 `title` 排序；可选元数据表或关联字段缺失时，该项返回空集合
+或空值。ISBN 从 `identifiers` 读取，不依赖遗留 `books.isbn`；空评分表示未评分。
+MyReader 自有 projection 仍由自身 migration 管理，不套用 Calibre 版本号。
+
+远程数据库先写入临时文件，校验书库身份、必要字段和文件摘要，关闭数据库连接后再通过
+同目录 rename 替换缓存。失败保留旧数据库、正文缓存和已记录的远端版本，并清理临时文件。
+旧缓存存在 schema 不兼容时可以重新下载有效远端目录，此时保留无法可靠判断的旧正文文件。
+每次打开替换后的数据库都会重新检测能力，不复用旧文件的 schema 判断。
+
 ### 6.2 MyReader 自有书库
 
 MyReader 自有书库源包含 `.myreader/library.json`、
