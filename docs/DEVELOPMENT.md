@@ -118,14 +118,16 @@ pnpm core:build-bindings:android
 cd my-reader-mobile/ios
 pod install
 xcodebuild \
-  -workspace myreadermobile.xcworkspace \
-  -scheme myreadermobile \
+  -workspace MyReader.xcworkspace \
+  -scheme MyReader \
   -configuration Debug \
   -sdk iphonesimulator \
   -destination 'generic/platform=iOS Simulator' \
-  CODE_SIGNING_ALLOWED=NO \
+  CODE_SIGN_IDENTITY=- \
   build
 ```
+
+模拟器运行保留临时签名，以便 Keychain / SecureStore 获得应用标识权限。
 
 生成的 TypeScript/C++ binding 与平台集成由 Rust 源码派生。个人机器的构建输出、XCFramework 和 Android 动态库不应进入 Git。
 

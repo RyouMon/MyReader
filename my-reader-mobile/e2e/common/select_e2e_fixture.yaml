@@ -1,0 +1,30 @@
+appId: ${APP_ID}
+name: Import a prepared local fixture through the system picker
+tags:
+  - skip
+---
+- runFlow:
+    when:
+      platform: iOS
+    file: select_ios_e2e_fixture.yaml
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - extendedWaitUntil:
+          visible: "Show roots|显示根目录"
+          timeout: 15000
+      - tapOn: "Show roots|显示根目录"
+      - tapOn: ${ANDROID_STORAGE_LABEL}
+      - tapOn: "Download"
+      - tapOn: ${E2E_ROOT_FOLDER}
+      - tapOn: "Fixtures"
+      - extendedWaitUntil:
+          visible: ${IMPORT_FILE_NAME}
+          timeout: 30000
+      - tapOn: ${IMPORT_FILE_NAME}
+      - runFlow:
+          when:
+            visible: "^Select$|^选择$"
+          commands:
+            - tapOn: "^Select$|^选择$"

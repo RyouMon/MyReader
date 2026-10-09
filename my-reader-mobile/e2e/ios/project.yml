@@ -1,0 +1,26 @@
+name: MyReaderE2E
+options:
+  deploymentTarget:
+    iOS: '16.4'
+settings:
+  base:
+    GENERATE_INFOPLIST_FILE: YES
+    CODE_SIGNING_ALLOWED: NO
+    SWIFT_VERSION: '5.0'
+targets:
+  MyReaderE2E:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - ReaderSettingsUITests.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ryoumon.myreader.e2e
+schemes:
+  MyReaderE2E:
+    build:
+      targets:
+        MyReaderE2E: all
+    test:
+      targets:
+        - MyReaderE2E

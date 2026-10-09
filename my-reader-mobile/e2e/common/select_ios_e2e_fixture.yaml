@@ -36,7 +36,6 @@ tags:
             - waitForAnimationToEnd
       - tapOn:
           id: "DOC.sidebar.item.下载|DOC.sidebar.item.Downloads|下载|Downloads"
-          point: "50%,25%"
       - waitForAnimationToEnd
       - scrollUntilVisible:
           element:
@@ -45,7 +44,6 @@ tags:
           timeout: 15000
       - tapOn:
           id: "${E2E_ROOT_FOLDER}, Folder"
-          point: "50%,25%"
       - waitForAnimationToEnd
       - scrollUntilVisible:
           element:
@@ -54,7 +52,6 @@ tags:
           timeout: 15000
       - tapOn:
           id: "Fixtures, Folder"
-          point: "50%,25%"
       - waitForAnimationToEnd
 - extendedWaitUntil:
     visible:
@@ -62,4 +59,3 @@ tags:
     timeout: 30000
 - tapOn:
     id: "${IMPORT_FILE_NAME}, (epub|pdf|cbz)"
-    point: "50%,25%"

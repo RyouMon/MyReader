@@ -258,10 +258,13 @@ xcrun simctl list devices available
 READIUM_SIMULATOR_UDID="paste-simulator-udid-here"
 xcrun simctl boot "$READIUM_SIMULATOR_UDID"
 xcodebuild test -quiet \
-  -workspace myreadermobile.xcworkspace \
+  -workspace MyReader.xcworkspace \
   -scheme Readium-Unit-Tests \
+  -configuration Release \
+  -sdk iphonesimulator \
   -destination "platform=iOS Simulator,id=$READIUM_SIMULATOR_UDID" \
-  -only-testing:Readium-Unit-Tests
+  -only-testing:Readium-Unit-Tests \
+  ENABLE_TESTABILITY=YES CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=-
 ```
 
 If the selected simulator is already booted, omit the `simctl boot` command.

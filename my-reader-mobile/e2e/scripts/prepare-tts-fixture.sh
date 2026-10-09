@@ -20,6 +20,10 @@ rm -f "$OUTPUT_PATH"
   zip -Xr9 "$OUTPUT_PATH" META-INF EPUB >/dev/null
 )
 unzip -tq "$OUTPUT_PATH" >/dev/null
+printf 'Built TTS fixture: %s\n' "$OUTPUT_PATH"
+if [[ ${1:-} == --build-only ]]; then
+  exit 0
+fi
 
 TTS_IOS_UDID=${TTS_IOS_SIMULATOR_UDID:-$(xcrun simctl list devices booted -j 2>/dev/null | jq -r '
   [.devices[][] | select(.state == "Booted") | .udid] |
@@ -40,5 +44,3 @@ if command -v adb >/dev/null && [[ $(adb devices | awk 'NR > 1 && $2 == "device"
   adb push "$OUTPUT_PATH" /sdcard/Download/MyReaderTTS/Fixtures/MyReader-TTS.epub >/dev/null
   printf 'Prepared Android fixture: %s\n' '/sdcard/Download/MyReaderTTS/Fixtures/MyReader-TTS.epub'
 fi
-
-printf 'Built TTS fixture: %s\n' "$OUTPUT_PATH"

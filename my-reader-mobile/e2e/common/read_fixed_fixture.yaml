@@ -1,0 +1,60 @@
+appId: ${APP_ID}
+name: Turn a fixed-layout page and restore it after reopening
+tags:
+  - skip
+---
+# Required: BOOK_TITLE. Starts inside a new three-page PDF/CBZ.
+- extendedWaitUntil:
+    visible:
+      id: "reader-screen"
+    timeout: 30000
+- runFlow:
+    when:
+      notVisible: "更多操作|More Actions|More actions"
+    commands:
+      - tapOn:
+          point: "50%,50%"
+- extendedWaitUntil:
+    visible: ".*1 / 3"
+    timeout: 10000
+- waitForAnimationToEnd
+- tapOn:
+    point: "50%,50%"
+- swipe:
+    start: "85%,50%"
+    end: "15%,50%"
+    duration: 500
+- tapOn:
+    point: "50%,50%"
+- extendedWaitUntil:
+    visible: ".*2 / 3"
+    timeout: 10000
+- takeScreenshot: ${BOOK_TITLE}-page-2
+- runFlow: close_reader.yaml
+- tapOn: '打开《${BOOK_TITLE}》|Open "${BOOK_TITLE}"'
+- extendedWaitUntil:
+    visible:
+      id: "reader-screen"
+    timeout: 30000
+- runFlow:
+    when:
+      notVisible: "更多操作|More Actions|More actions"
+    commands:
+      - tapOn:
+          point: "50%,50%"
+- extendedWaitUntil:
+    visible: ".*2 / 3"
+    timeout: 10000
+- takeScreenshot: ${BOOK_TITLE}-restored
+- tapOn:
+    point: "50%,50%"
+- swipe:
+    start: "85%,50%"
+    end: "15%,50%"
+    duration: 500
+- tapOn:
+    point: "50%,50%"
+- extendedWaitUntil:
+    visible: ".*3 / 3"
+    timeout: 10000
+- takeScreenshot: ${BOOK_TITLE}-last-page

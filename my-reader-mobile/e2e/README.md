@@ -22,7 +22,7 @@
 
 ## Tag 方案
 
-`config.yaml` 默认排除 `skip`、`wip`。设备/视觉维度用 tag 切分：
+`config.yaml` 仅发现 `flows/` 下的流程，默认排除 `skip`、`wip`、`external-library`。设备/视觉维度用 tag 切分：
 
 | tag | 含义 |
 |---|---|
@@ -49,7 +49,7 @@ export APP_ID=ryoumon.myreadermobile
 # 配好 AI 后再加：export MAESTRO_CLOUD_API_KEY=...
 
 # 当前默认稳定 flow
-maestro test --config=e2e/config.yaml e2e/flows/smoke -e APP_ID=$APP_ID
+maestro test --config=e2e/config.yaml e2e -e APP_ID=$APP_ID
 
 # 单条 WIP flow 调试
 maestro test --config=e2e/config.yaml e2e/flows/reader/change_cbz_settings.yaml -e APP_ID=$APP_ID
@@ -69,16 +69,19 @@ maestro test --config=e2e/config.yaml e2e/flows/reader/change_cbz_settings.yaml 
 4. 启动 Metro 和 development build，然后运行：
 
 ```bash
-pnpm run test:e2e:libraries:ios
+IOS_SIMULATOR_UDID=<udid> ./e2e/scripts/run-library-flows.sh
 ```
 
 只验证本地 MyReader 书库的 EPUB、PDF、CBZ 元数据、封面、阅读和删除，可直接运行：
 
 ```bash
-./e2e/scripts/run-local-supported-formats.sh
+IOS_SIMULATOR_UDID=<udid> ./e2e/scripts/run-local-supported-formats.sh ios
+ANDROID_SERIAL=emulator-5554 ./e2e/scripts/run-local-supported-formats.sh android
 ```
 
-该脚本默认使用仓库内三种格式的 fixture，检查应用容器 `Documents/libraries/<id>/` 中的三个 `cover.jpg` 均为有效 JPEG，并验证重启持久化、图书删除及本地书库容器删除。
+先在目标模拟器安装应用；iOS 还需安装 XcodeGen（`brew install xcodegen`），并打开一次“文件”应用以初始化 Downloads。Release 构建不需要 Metro，development build 需要 Metro（Android 执行 `adb reverse tcp:8081 tcp:8081`）。
+
+脚本使用 `fixtures/tts-book` 生成的 EPUB 和 `fixtures/formats` 中项目自制的三页 PDF、CBZ，经系统文件选择器导入。统一阅读流程验证 EPUB 目录跳转、翻页、字体、书签恢复，以及 PDF/CBZ 翻页和重新打开的位置恢复；最后验证进程重启持久化与图书删除。iOS 额外检查应用容器 `Documents/libraries/<id>/` 中三个封面均为有效 JPEG，且删除书库后容器被清理。
 
 脚本每次默认生成新的 `E2E_RUN_ID`，因此不会与上次 WebDAV 或 OneDrive 的测试目录同名。也可以显式设置 `E2E_RUN_ID` 复现某次运行；若重复使用同一个值，需先自行移除同名远程目录。远程流程只移除应用注册和本地缓存，不删除远程文件；本地流程删除书库时会删除对应的应用容器。
 
@@ -159,7 +162,7 @@ iOS 的 `UIEditMenuInteraction` 位于 XCTest 应用可访问性树之外。Flow
 
 ## 已知校准点（首次运行需确认）
 
-1. **设置面板内部可达性（已修复）**：根因是 `@gorhom/bottom-sheet` 默认 `accessible=true`，把整个 sheet 容器折叠成 a11y 叶子，导致内部 SegmentPicker/Slider 对 Maestro 和 VoiceOver 均不可见。修复：在 `ReaderSettingsSheet.tsx` 的 `<BottomSheetModal>` 上加 `accessible={false}`，并把原容器的 `accessibilityLabel` 移到 header `<Text>`（仍作为 `settingsSheet` 锚点）。现在文本 tapOn 可正常选中 `黑色`、`从右到左` 等选项。该修复同时消除了真实的 VoiceOver 缺陷。
+1. **iOS 半屏弹窗测试**：[Maestro #1924](https://github.com/mobile-dev-inc/Maestro/issues/1924) 会在全屏阅读器上漏掉半屏 sheet 的快照子树，`snapshotKeyHonorModalViews` 也不能修复。Android 的 `read_book.yaml` 直接按标签切换字体；iOS 完整格式脚本随后调用 `run-ios-reader-settings.sh`，用 Apple XCTest 从书库打开同一 EPUB，按标签切换两种字体、检查可点击性和选中状态，并验证关闭重开后的原文位置。XcodeGen 只生成测试工程，工程和 `.xcresult` 均位于忽略的 `.artifacts/`。不要为测试改动产品弹窗尺寸或使用坐标替代字体控件。
 2. **`open_reader_by_id.yaml` 的 `BOOK_ID` 不要声明默认值**：`env: BOOK_ID: "1"` 会覆盖 caller 通过 `runFlow: { env: { BOOK_ID: "2" } }` 传入的值，导致所有 CBZ/PDF/EPUB flow 都打开 book 1 (EPUB)。已移除该默认块，由 caller 显式传入。`common/open_reader_by_id.yaml` 中有注释说明。
 3. **FXL（CBZ / PDF）用 swipe 翻页，EPUB reflow 用 tap 翻页**：CBZ 与 PDF 现在走 Readium FXL navigator，`tapOn` 边缘不翻页。LTR 下 `swipe: { direction: LEFT }` = 下一页；iOS / PDF 的 RTL 下 `swipe: { direction: RIGHT }` = 下一页。Android CBZ 的 `ImageNavigatorFragment` 在 RTL 时通过 `R2RTLViewPager` 翻转页序，因此 RTL 下仍用 `swipe: { direction: LEFT }` 进入下一页。EPUB reflow（`read_book.yaml`）仍可用 `tapOn: { point: "85%,50%" }` 翻页。所有 FXL flow 的翻页断言前需先隐藏 chrome（`tapOn: point "50%,50%"`），否则 swipe 可能不生效；页码指示器在 chrome 隐藏时仍可见。
 4. **滑块（字号/行距/页边距）按 accessibilityLabel 定位**：`SliderControl` 移除了 `testID`，改为 `accessibilityLabel={label}` + `accessibilityRole="adjustable"` + `accessibilityValue`。Maestro 通过 `scrollUntilVisible`（`common/scroll_settings_until.yaml`）找到滑块，再用 `tapOn: { text: ${...label}, point: "90%,50%" }` 点击轨道右侧改变数值。`tapToSeek` 仍只响应轨道上的 tap，不要点数值标签。

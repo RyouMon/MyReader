@@ -122,14 +122,16 @@ To compile the iOS app against the generated bridge:
 cd my-reader-mobile/ios
 pod install
 xcodebuild \
-  -workspace myreadermobile.xcworkspace \
-  -scheme myreadermobile \
+  -workspace MyReader.xcworkspace \
+  -scheme MyReader \
   -configuration Debug \
   -sdk iphonesimulator \
   -destination 'generic/platform=iOS Simulator' \
-  CODE_SIGNING_ALLOWED=NO \
+  CODE_SIGN_IDENTITY=- \
   build
 ```
+
+Keep ad-hoc signing enabled for simulator runs so Keychain / SecureStore can identify the app.
 
 The generated TypeScript/C++ bindings and platform integration are derived from Rust source. Personal machine
 build output, XCFrameworks and Android shared libraries do not belong in Git.

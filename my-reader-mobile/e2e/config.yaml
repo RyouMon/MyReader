@@ -1,5 +1,5 @@
 flows:
-  - "*/**"
+  - "flows/**"
 
 testOutputDir: e2e/.artifacts
 

@@ -1,89 +1,105 @@
 appId: ${APP_ID}
-name: read_book
+name: Read the bundled EPUB and restore a bookmarked page
+# Paginated WebViews can omit paragraph nodes from Android accessibility snapshots.
+androidWebViewHierarchy: devtools
 tags:
   - reader
-  - wip
+  - skip
 ---
-# WIP: requires an external fixture setup flow before it can run again.
-- runFlow: ../../common/launch_and_prepare.yaml
-- runFlow: ../../common/open_reader.yaml
+# Called after importing MyReader-TTS.epub through the real library UI.
 - runScript: ../../scripts/selectors.js
-
-# Scenario: 沉浸阅读时点击内容显示 chrome
+- extendedWaitUntil:
+    visible: "TTS verification"
+    timeout: 30000
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      notVisible: ${output.selectors.reader.moreActions}
+    commands:
+      - tapOn:
+          point: "50%,50%"
+- assertVisible: ${output.selectors.reader.moreActions}
+- tapOn:
+    point: "50%,50%"
 - assertNotVisible: ${output.selectors.reader.moreActions}
 - tapOn:
     point: "50%,50%"
-- waitForAnimationToEnd:
-    timeout: 5000
-- assertVisible: ${output.selectors.reader.moreActions}
-
-# Scenario: 再次点击内容隐藏 chrome
-- tapOn:
-    point: "50%,50%"
-- waitForAnimationToEnd:
-    timeout: 5000
-- assertNotVisible: ${output.selectors.reader.moreActions}
-
-# Scenario: 点击更多操作展开目录与设置入口
-- tapOn:
-    point: "50%,50%"
-- assertVisible: ${output.selectors.reader.moreActions}
 - tapOn: ${output.selectors.reader.moreActions}
-- waitForAnimationToEnd:
-    timeout: 5000
-- assertVisible: ${output.selectors.reader.tocButton}
-- assertVisible: ${output.selectors.reader.settingsButton}
-
-# Scenario: 点击目录打开目录面板，点击内容区域外关闭后回到 chrome
 - tapOn: ${output.selectors.reader.tocButton}
-- waitForAnimationToEnd:
-    timeout: 3000
-- assertVisible: ${output.selectors.reader.tocSheet}
+- extendedWaitUntil:
+    visible: "Playback position authority"
+    timeout: 10000
+- tapOn: "Playback position authority"
+- extendedWaitUntil:
+    visible: "Playback position first page.*"
+    timeout: 10000
+# iOS accessibility snapshots retain offscreen pages; DevTools excludes them.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertNotVisible: "Latest narration second page.*"
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: ${output.selectors.reader.moreActions}
+    commands:
+      - tapOn:
+          point: "50%,50%"
 - tapOn:
-    point: "50%,20%"
-- waitForAnimationToEnd:
-    timeout: 3000
-- assertNotVisible: ${output.selectors.reader.tocSheet}
-- assertVisible: ${output.selectors.reader.moreActions}
-- assertNotVisible: ${output.selectors.reader.tocButton}
-
-# Scenario: 点击设置打开设置面板，点击内容区域外关闭后回到 chrome
-- tapOn: ${output.selectors.reader.moreActions}
-- assertVisible: ${output.selectors.reader.settingsButton}
-- tapOn: ${output.selectors.reader.settingsButton}
-- waitForAnimationToEnd:
-    timeout: 3000
-- assertVisible: ${output.selectors.reader.settingsSheet}
-- tapOn:
-    point: "50%,20%"
-- waitForAnimationToEnd:
-    timeout: 3000
-- assertNotVisible: ${output.selectors.reader.settingsSheet}
-- assertVisible: ${output.selectors.reader.moreActions}
-- assertNotVisible: ${output.selectors.reader.settingsButton}
-
-# Scenario: 隐藏 chrome 后向右下方轻扫翻到下一页
-# EPUB reflow 的屏幕边缘 tap 容易触发超链接或失效；在底部安全区域做水平
-# 滑动来翻页更稳定。
+    point: "90%,50%"
+- extendedWaitUntil:
+    visible: "Latest narration second page.*"
+    timeout: 10000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertNotVisible: "Playback position first page.*"
 - tapOn:
     point: "50%,50%"
-- waitForAnimationToEnd:
-    timeout: 5000
-- assertNotVisible: ${output.selectors.reader.moreActions}
-- assertVisible: "1 / 898"
-- swipe:
-    start: "80%,90%"
-    end: "20%,90%"
+- tapOn: "在当前位置添加书签|Add bookmark at current location"
 - extendedWaitUntil:
-    visible: "2 / 898"
+    visible: "移除当前位置的书签|Remove bookmark at current location"
     timeout: 10000
-- assertNotVisible: ${output.selectors.reader.moreActions}
-
-# Scenario: 向左下方轻扫翻回上一页
-- swipe:
-    start: "20%,90%"
-    end: "80%,90%"
+# XCTest covers this half-sheet on iOS; Maestro #1924 omits its subtree.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: ${output.selectors.reader.moreActions}
+      - tapOn: ${output.selectors.reader.settingsButton}
+      - extendedWaitUntil:
+          visible: ${output.selectors.reader.settingsSheet}
+          timeout: 10000
+      - tapOn: "字体: 衬线.*|Font: Serif.*"
+      - assertVisible: "字体: 衬线, 已选择|Font: Serif, Selected"
+      - tapOn: "字体: 人文无衬线.*|Font: Humanist Sans.*"
+      - assertVisible: "字体: 人文无衬线, 已选择|Font: Humanist Sans, Selected"
+      - tapOn:
+          point: "50%,20%"
+      - extendedWaitUntil:
+          notVisible: ${output.selectors.reader.settingsSheet}
+          timeout: 10000
 - extendedWaitUntil:
-    visible: "1 / 898"
+    visible: "Latest narration second page.*"
     timeout: 10000
-- assertNotVisible: ${output.selectors.reader.moreActions}
+- takeScreenshot: epub-bookmarked-page
+- runFlow: ../../common/close_reader.yaml
+- tapOn: '打开《MyReader TTS E2E》|Open "MyReader TTS E2E"'
+- extendedWaitUntil:
+    visible: "Latest narration second page.*"
+    timeout: 30000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertNotVisible: "Playback position first page.*"
+- runFlow:
+    when:
+      notVisible: ${output.selectors.reader.moreActions}
+    commands:
+      - tapOn:
+          point: "50%,50%"
+- assertVisible: "移除当前位置的书签|Remove bookmark at current location"
+- takeScreenshot: epub-restored-bookmark

@@ -74,9 +74,9 @@ output.selectors = {
 
   reader: {
     moreActions: "更多操作|More Actions|More actions",
-    tocButton: "目录与书签|Contents and Bookmarks",
+    tocButton: "目录|Contents",
     settingsButton: "阅读设置|Reading Settings",
-    tocSheet: "目录面板|Table of Contents panel",
+    tocSheet: "目录面板|Contents panel",
     settingsSheet: "阅读设置面板|Reading Settings panel",
   },
 

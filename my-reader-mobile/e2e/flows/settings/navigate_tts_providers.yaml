@@ -9,6 +9,7 @@ tags:
 - runFlow: ../../common/launch_preserving_data.yaml
 - setOrientation: PORTRAIT
 - openLink: myreadermobile://settings/tts
+- runFlow: ../../common/confirm_deep_link.yaml
 - assertVisible: ${output.selectors.settings.tts.addProvider}
 
 # Scenario: 完成添加后直接返回朗读设置，不滞留在供应商类型页
@@ -92,9 +93,20 @@ tags:
           element: ${output.selectors.settings.tts.remove}
           direction: DOWN
       - tapOn: ${output.selectors.settings.tts.remove}
-      - tapOn:
-          text: ${output.selectors.settings.tts.remove}
-          rightOf: ${output.selectors.settings.tts.cancel}
+      - runFlow:
+          when:
+            platform: iOS
+          commands:
+            - tapOn:
+                text: ${output.selectors.settings.tts.remove}
+                above: ${output.selectors.settings.tts.cancel}
+      - runFlow:
+          when:
+            platform: Android
+          commands:
+            - tapOn:
+                text: ${output.selectors.settings.tts.remove}
+                rightOf: ${output.selectors.settings.tts.cancel}
       - assertVisible: ${output.selectors.settings.tts.title}
       - evalScript: ${output.ttsNavigation.index++}
 - assertNotVisible: ${"TTS Nav " + output.ttsNavigation.runId + ".*"}
