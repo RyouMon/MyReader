@@ -77,7 +77,24 @@
       ],
       "@sentry/react-native",
       "expo-asset",
-      "expo-localization",
+      [
+        "expo-localization",
+        {
+          "supportedLocales": [
+            "en",
+            "zh-CN",
+            "zh-Hant",
+            "ja",
+            "ko",
+            "es",
+            "fr",
+            "de",
+            "pt-BR",
+            "it",
+            "ru"
+          ]
+        }
+      ],
       "expo-secure-store",
       [
         "expo-sharing",

@@ -24,7 +24,7 @@ import {
 import { useAppStore } from "@/src/store/app-store"
 import { Text, View } from "@/tw"
 
-function formatDate(timestamp?: number) {
+function formatDate(timestamp: number | undefined, locale: string) {
   if (!timestamp) {
     return "—"
   }
@@ -34,7 +34,7 @@ function formatDate(timestamp?: number) {
     return "—"
   }
 
-  return new Intl.DateTimeFormat("zh-CN", {
+  return new Intl.DateTimeFormat(locale, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -101,7 +101,7 @@ function WebDavDetailHero({
 }
 
 export default function WebDavDataSourceDetailScreen() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { dataSourceId } = useLocalSearchParams<{ dataSourceId?: string }>()
   const palette = useThemePalette()
   const dataSources = useAppStore((state) => state.dataSources)
@@ -286,7 +286,10 @@ export default function WebDavDataSourceDetailScreen() {
             />
             <ListRow
               title={t("webdav.addedAt")}
-              detail={formatDate(webdavSource.createdAt)}
+              detail={formatDate(
+                webdavSource.createdAt,
+                i18n.resolvedLanguage ?? i18n.language,
+              )}
               isLast
             />
           </SectionCard>

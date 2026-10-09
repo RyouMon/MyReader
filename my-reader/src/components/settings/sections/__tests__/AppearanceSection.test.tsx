@@ -23,9 +23,19 @@ describe("AppearanceSection", () => {
   it("should save English when the English language option is selected", () => {
     render(<AppearanceSection />)
 
-    fireEvent.click(screen.getByText("English"))
+    fireEvent.keyDown(screen.getByRole("combobox"), { key: "ArrowDown" })
+    fireEvent.click(screen.getByRole("option", { name: "English" }))
 
     expect(useAppUiStore.getState().appLanguageMode).toBe("en")
+  })
+
+  it("offers all eleven languages by their native names and saves Russian", () => {
+    render(<AppearanceSection />)
+    fireEvent.keyDown(screen.getByRole("combobox"), { key: "ArrowDown" })
+    expect(screen.getAllByRole("option")).toHaveLength(12)
+    expect(screen.getByRole("option", { name: "繁體中文" })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("option", { name: "Русский" }))
+    expect(useAppUiStore.getState().appLanguageMode).toBe("ru")
   })
 
   it("should show the system theme first when rendering theme options", () => {

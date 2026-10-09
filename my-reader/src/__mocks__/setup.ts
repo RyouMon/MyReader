@@ -1,7 +1,13 @@
 import "@testing-library/jest-dom/vitest"
 import { clearMocks } from "@tauri-apps/api/mocks"
 import { cleanup } from "@testing-library/react"
-import { afterEach } from "vitest"
+import i18n from "i18next"
+import { afterEach, beforeEach } from "vitest"
+
+beforeEach(async () => {
+  // Existing UI fixtures assert Chinese copy independently of the app fallback.
+  if (i18n.isInitialized) await i18n.changeLanguage("zh-CN")
+})
 
 afterEach(() => {
   cleanup()

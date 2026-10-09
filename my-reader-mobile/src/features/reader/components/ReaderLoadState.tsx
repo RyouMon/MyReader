@@ -24,7 +24,7 @@ export function ReaderLoadState({
   themeFgColor: string
   handleBack: () => void
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { palette, colorScheme } = useTheme()
   if (loadState.status === "position-conflict") {
     return (
@@ -74,7 +74,9 @@ export function ReaderLoadState({
                     className="mt-1 text-sm"
                     style={{ color: palette.textMuted }}
                   >
-                    {new Date(candidate.recordedAt).toLocaleString()}
+                    {new Date(candidate.recordedAt).toLocaleString(
+                      i18n.resolvedLanguage ?? i18n.language,
+                    )}
                     {" · "}
                     {candidate.replicaId.slice(0, 8)}
                   </Text>

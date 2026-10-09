@@ -22,7 +22,7 @@ import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 import { useAppStore } from "@/src/store/app-store"
 import { Text, View } from "@/tw"
 
-function formatDate(timestamp?: number) {
+function formatDate(timestamp: number | undefined, locale: string) {
   if (!timestamp) {
     return "—"
   }
@@ -32,7 +32,7 @@ function formatDate(timestamp?: number) {
     return "—"
   }
 
-  return new Intl.DateTimeFormat("zh-CN", {
+  return new Intl.DateTimeFormat(locale, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -162,7 +162,7 @@ function DetailHero({
 }
 
 export default function LibraryDetailScreen() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { libraryId } = useLocalSearchParams<{ libraryId?: string }>()
   const palette = useThemePalette()
   const libraries = useAppStore((state) => state.libraries)
@@ -331,7 +331,10 @@ export default function LibraryDetailScreen() {
               />
               <ListRow
                 title={t("libraryDetail.addedAt")}
-                detail={formatDate(library.addedAt)}
+                detail={formatDate(
+                  library.addedAt,
+                  i18n.resolvedLanguage ?? i18n.language,
+                )}
                 isLast
               />
             </SectionCard>

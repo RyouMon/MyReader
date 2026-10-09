@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./languages": "./src/languages.ts",
     "./desktop": "./src/desktop.ts",
     "./mobile": "./src/mobile.ts"
   },

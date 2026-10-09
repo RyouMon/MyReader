@@ -1,0 +1,923 @@
+{
+  "incomingShare": {
+    "importingTitle": "正在匯入分享的圖書",
+    "importingDetail": "MyReader 正在將圖書新增到書庫。",
+    "failedTitle": "無法匯入分享內容",
+    "failedDetail": "請向 MyReader 分享一個 EPUB、PDF 或 CBZ 檔案。",
+    "openLibrary": "開啟書庫"
+  },
+  "back": "返回",
+  "tabs": {
+    "home": "主頁",
+    "library": "書庫",
+    "settings": "設定"
+  },
+  "home": {
+    "title": "主頁",
+    "continueReading": "繼續閱讀",
+    "noCover": "無封面",
+    "currentLibrary": "當前書庫：{{name}} · 共 {{count}} 本",
+    "viewBooks": "檢視書籍",
+    "reading": "讀取中",
+    "recentReading": "最近閱讀",
+    "recentAdded": "最近新增",
+    "bookCount": "{{count}} 本",
+    "readingStats": {
+      "title": "閱讀統計",
+      "streak": "連續閱讀",
+      "totalDuration": "累計時長",
+      "completed": "已讀完",
+      "dayUnit": "天",
+      "hourUnit": "小時",
+      "bookUnit": "本",
+      "year": "{{year}}年",
+      "previousYear": "上一年",
+      "nextYear": "下一年",
+      "noRecord": "無記錄",
+      "readingMinutes": "閱讀 {{count}} 分鐘",
+      "weekdays": {
+        "mon": "一",
+        "wed": "三",
+        "fri": "五"
+      }
+    },
+    "noReadingHistory": {
+      "title": "還沒有閱讀記錄",
+      "detail": "從書庫選一本書開始閱讀。",
+      "action": "開啟書庫"
+    }
+  },
+  "library": {
+    "allLibraries": "所有書庫",
+    "importingBook": "匯入中…",
+    "importFailed": {
+      "title": "無法匯入圖書"
+    },
+    "importQueued": {
+      "title": "圖書已儲存在此裝置",
+      "detail": "恢復聯網後會自動上傳到遠端書庫。"
+    },
+    "importUnsupported": {
+      "title": "不支援的圖書格式",
+      "detail": "請選擇 EPUB、PDF 或 CBZ 檔案。"
+    },
+    "switchLibrary": "切換書庫",
+    "syncCurrentLibrary": "同步當前書庫",
+    "searchPlaceholder": "搜尋書名、作者",
+    "bookCountRatio": "{{visible}} / {{total}} 本",
+    "collections": {
+      "currentLibrary": "當前書庫：{{name}}"
+    },
+    "sort": {
+      "recentlyRead": "最近閱讀",
+      "recentlyAdded": "最近新增"
+    },
+    "view": {
+      "grid": "網格檢視",
+      "list": "列表檢視"
+    },
+    "sortLabel": "排序",
+    "viewLabel": "檢視",
+    "libraryActions": "書庫操作",
+    "viewConfig": "檢視配置",
+    "switchLibraryAlert": {
+      "title": "切換書庫",
+      "message": "當前書庫：{{name}}",
+      "unselected": "未選擇",
+      "close": "關閉"
+    },
+    "loading": {
+      "title": "正在載入書庫",
+      "detail": "正在讀取本地與 WebDAV 書庫配置。"
+    },
+    "notFound": {
+      "title": "沒有找到這個書庫",
+      "detail": "它可能已被移除，或連結引數已經失效。"
+    },
+    "noLibrary": {
+      "title": "還沒有書庫",
+      "detail": "可以直接匯入一本圖書，或新增 MyReader / Calibre 書庫。"
+    },
+    "unselected": {
+      "title": "未選擇書庫",
+      "detail": "請選擇要瀏覽的書庫，或新增一個新書庫。"
+    },
+    "loadError": {
+      "title": "讀取失敗"
+    }
+  },
+  "libraryDetail": {
+    "currentlyUsed": " · 當前使用",
+    "bookCount": "{{count}} 本",
+    "typeLocal": "本地",
+    "typeWebdav": "WebDAV",
+    "typeOnedrive": "OneDrive",
+    "calibreLibrary": "Calibre 書庫",
+    "myreaderLibrary": "MyReader 書庫",
+    "remove": {
+      "title": "移除這個書庫？",
+      "message": "將從應用中移除書庫並清除應用內資料，原始檔不會刪除。",
+      "cancel": "取消",
+      "confirm": "移除"
+    },
+    "deleteLocal": {
+      "title": "刪除這個內部書庫？",
+      "message": "將刪除書庫中的圖書和閱讀資料，此操作無法撤銷。",
+      "cancel": "取消",
+      "confirm": "刪除"
+    },
+    "removeLibrary": "移除書庫",
+    "deleteLibrary": "刪除書庫",
+    "notFound": {
+      "title": "沒有找到這個書庫",
+      "detail": "它可能已經被移除，或者當前連結引數已經失效。"
+    },
+    "useLibrary": "使用該書庫",
+    "refreshing": "更新中...",
+    "refresh": "更新書庫",
+    "libraryType": "書庫型別",
+    "storageLocation": "儲存位置",
+    "remotePath": "路徑",
+    "sourceType": "資料來源型別",
+    "libraryPath": "書庫路徑",
+    "bookCountLabel": "收錄圖書數量",
+    "addedAt": "新增時間"
+  },
+  "settings": {
+    "libraryDetail": "書庫詳情",
+    "manageLibrary": "管理書庫：{{name}}",
+    "addLibrary": "新增書庫",
+    "librarySection": "書庫",
+    "currentInUse": "當前使用",
+    "bookCountCurrent": "{{count}} 本 · 當前使用",
+    "bookCount": "{{count}} 本",
+    "remoteDataSources": "遠端資料來源",
+    "webdavDetail": "管理 WebDAV 資料來源",
+    "onedriveDetail": "管理 OneDrive 資料來源",
+    "appearance": "外觀",
+    "darkMode": "深色模式",
+    "themeMode": {
+      "system": "跟隨裝置",
+      "light": "淺色",
+      "dark": "深色"
+    },
+    "language": "語言",
+    "languageDetail": "切換介面顯示語言",
+    "homeCardStyle": "主頁卡片風格",
+    "homeCardStyle.adaptive": "自適應",
+    "homeCardStyle.coverBlur": "模糊封面",
+    "tts": {
+      "sectionTitle": "朗讀",
+      "title": "朗讀與語音",
+      "detail": "設定系統語音和 TTS 推理服務",
+      "previewSection": "試聽",
+      "previewText": "歡迎使用 MyReader 朗讀功能。",
+      "previewAction": "試聽",
+      "previewGenerating": "正在生成…點選停止",
+      "previewPlaying": "停止試聽",
+      "previewFailed": "無法試聽",
+      "engineSection": "預設朗讀",
+      "engine": "朗讀引擎",
+      "systemEngine": "系統語音",
+      "voice": "聲音",
+      "automaticVoice": "自動選擇",
+      "playbackSection": "播放",
+      "speed": "語速",
+      "pitch": "音調",
+      "pitchProviderHint": "音調由系統語音處理；首批網路引擎暫不支援音調調整。",
+      "providersSection": "TTS 供應商",
+      "providerTypeSection": "選擇供應商型別",
+      "providerSection": "供應商配置",
+      "providerKinds": {
+        "openAiCompatible": "OpenAI-compatible"
+      },
+      "addOpenAi": "新增 OpenAI 相容服務",
+      "openAiProviderTypeDetail": "相容 OpenAI /v1/audio/speech 介面",
+      "addProvider": "新增 TTS 供應商",
+      "editProvider": "編輯 TTS 供應商",
+      "profileName": "名稱",
+      "endpoint": "服務地址",
+      "model": "模型",
+      "voices": "聲音 ID",
+      "voicesPlaceholder": "每行填寫一個供應商支援的聲音 ID",
+      "voicesDetail": "OpenAI-compatible 沒有統一的聲音發現介面；MyReader 不預設聲音名，請按供應商文件填寫。",
+      "defaultVoice": "預設聲音",
+      "defaultVoicePlaceholder": "填寫上方列表中的一個聲音 ID",
+      "credential": "訪問憑據",
+      "credentialSaved": "已儲存在本機安全儲存",
+      "openAiCredentialPlaceholder": "OpenAI API Key",
+      "credentialPlaceholder": "Bearer token（可選）",
+      "instructions": "朗讀指令",
+      "instructionsPlaceholder": "例如：自然、平靜地朗讀",
+      "enabled": "啟用",
+      "disabled": "已停用",
+      "clearCredential": "清除已存憑據",
+      "save": "儲存",
+      "cancel": "取消",
+      "loading": "載入中…",
+      "loadFailed": "無法載入朗讀設定",
+      "saveFailed": "無法儲存朗讀設定",
+      "voiceLoadFailed": "無法讀取聲音列表",
+      "providerPrivacy": "系統語音在裝置上處理。選擇網路供應商後，當前朗讀句子會傳送到你配置的服務地址。",
+      "openAiDetail": "相容 OpenAI /v1/audio/speech。聲音 ID 和預設聲音由你配置；API Key 只儲存在本機安全儲存。",
+      "removeProvider": "刪除供應商",
+      "removeProviderTitle": "刪除 TTS 供應商？",
+      "removeProviderDetail": "將移除“{{name}}”及其本機憑據和聲音偏好。",
+      "removeFailed": "無法刪除 TTS 供應商"
+    },
+    "privacy": {
+      "title": "隱私",
+      "diagnostics": {
+        "title": "共享診斷資訊",
+        "detail": "發生錯誤時傳送錯誤堆疊、應用版本和裝置環境；不主動附加使用者身份資訊，也不傳送應用日誌或螢幕錄製",
+        "unavailable": "此構建未配置診斷服務"
+      }
+    },
+    "developer": {
+      "title": "開發者",
+      "enabled": "已開啟",
+      "disabled": "已關閉",
+      "clearImageCache": {
+        "title": "清除圖片快取",
+        "detail": "清除 Expo Image 快取和書庫封面縮圖",
+        "doneTitle": "圖片快取已清除",
+        "doneDetail": "重新開啟封面時會重新讀取或生成圖片。",
+        "errorTitle": "清除圖片快取失敗",
+        "errorDetail": "請稍後重試。",
+        "unavailable": "當前環境無法完成快取清理。"
+      },
+      "libraryPerformanceProfiler": {
+        "title": "列表效能分析",
+        "detail": "在書庫頁輸出可用的 React Profiler 與 FlashList timing 日誌"
+      },
+      "coverLoadingAnimation": {
+        "title": "封面載入動畫",
+        "detail": "切換封面載入中的 Skeleton 閃爍動畫"
+      },
+      "coverThumbnailConcurrency": {
+        "title": "封面生成併發",
+        "detail": "同時生成縮圖的任務數量",
+        "decrementLabel": "減少封面生成併發",
+        "incrementLabel": "增加封面生成併發"
+      }
+    }
+  },
+  "reader": {
+    "cannotOpen": "無法開啟書籍",
+    "back": "返回",
+    "closeOverlay": "關閉彈層",
+    "mountingReader": "正在掛載閱讀器…",
+    "loadFailed": "閱讀器載入失敗",
+    "loadFailedMessage": "閱讀器遇到了意外錯誤，請返回重試。",
+    "positionConflictTitle": "選擇繼續閱讀的位置",
+    "positionConflictDescription": "其他裝置在離線時儲存了不同位置。請選擇一個位置繼續，選擇會同步到其他裝置。",
+    "positionConflictUnknownProgress": "未知進度",
+    "positionConflictLater": "暫不處理，使用預設位置",
+    "chrome": {
+      "moreActions": "更多操作"
+    },
+    "toc": "目錄",
+    "navigationSheet": "目錄面板",
+    "noToc": "此書籍沒有目錄",
+    "search": {
+      "title": "書內搜尋",
+      "inputLabel": "搜尋書籍正文",
+      "placeholder": "搜尋正文",
+      "clear": "清除搜尋",
+      "promptTitle": "查詢書中內容",
+      "prompt": "輸入關鍵詞搜尋書籍正文",
+      "searching": "正在搜尋…",
+      "error": "無法完成搜尋",
+      "errorDetail": "請重試，當前搜尋內容會保留",
+      "retry": "重試",
+      "empty": "未找到“{{query}}”",
+      "emptyDetail": "換個關鍵詞或短語試試",
+      "resultTitle": "正文",
+      "position": "位置 {{position}}",
+      "noExcerpt": "無摘要",
+      "loadedCount": "已載入 {{count}} 條結果",
+      "resultCount": "{{count}} 條結果",
+      "loadMore": "載入更多",
+      "loadingMore": "正在載入更多結果…",
+      "loadMoreFailed": "載入更多結果失敗",
+      "retryMore": "重試載入"
+    },
+    "bookmarks": {
+      "title": "書籤",
+      "addCurrent": "在當前位置新增書籤",
+      "removeCurrent": "移除當前位置的書籤",
+      "loading": "正在載入書籤…",
+      "error": "無法載入或更新書籤",
+      "retry": "重試",
+      "untitled": "書籤",
+      "deleteLabel": "刪除書籤：{{label}}",
+      "page": "第 {{page}} 頁",
+      "position": "位置 {{position}}",
+      "today": "今天",
+      "select": "選擇",
+      "deselect": "取消選擇",
+      "manage": "管理",
+      "done": "完成",
+      "selectedCount": "已選擇 {{count}} 個書籤",
+      "deleteSelected": "刪除所選書籤",
+      "longPressHint": "長按可選擇或刪除書籤"
+    },
+    "annotations": {
+      "title": "書籤和高亮筆記",
+      "notesTab": "筆記",
+      "highlightAction": "高亮標記",
+      "noteAction": "新增筆記",
+      "editNoteAction": "編輯筆記",
+      "openNote": "開啟筆記",
+      "removeAction": "移除",
+      "copyAction": "複製",
+      "selectionActions": "文字操作",
+      "loading": "正在載入筆記…",
+      "error": "無法載入或更新筆記",
+      "retry": "重試",
+      "openHint": "跳轉到這處高亮",
+      "select": "選擇",
+      "deselect": "取消選擇",
+      "manage": "管理",
+      "done": "完成",
+      "selectedCount": "已選擇 {{count}} 條高亮筆記",
+      "deleteSelected": "刪除所選高亮筆記",
+      "longPressHint": "長按可選擇、編輯或刪除高亮筆記",
+      "edit": "編輯",
+      "editTitle": "編輯高亮與筆記",
+      "addNoteTitle": "新增筆記",
+      "color": "高亮顏色",
+      "note": "筆記",
+      "notePlaceholder": "寫下你的想法（可選）",
+      "editNoteHint": "輕點即可編輯筆記",
+      "deleteTitle": "刪除高亮？",
+      "deleteMessage": "高亮及其筆記將從本機移除。",
+      "colors": {
+        "yellow": "琥珀色",
+        "orange": "陶土色",
+        "green": "鼠尾草綠",
+        "blue": "灰藍色"
+      }
+    },
+    "tts": {
+      "readAloud": "朗讀",
+      "readFromHere": "從這裡朗讀",
+      "controls": "朗讀控制",
+      "openControls": "開啟聽書播放器",
+      "settings": "聽書設定",
+      "settingsAction": "朗讀設定",
+      "manageProviders": "管理 TTS 供應商",
+      "goToCurrent": "跳轉到當前朗讀句子",
+      "play": "繼續朗讀",
+      "pause": "暫停朗讀",
+      "previous": "上一句",
+      "next": "下一句",
+      "stop": "停止朗讀",
+      "playFromCurrentPosition": "從當前位置播放",
+      "returnToPlaybackPosition": "返回播放位置",
+      "states": {
+        "stopped": "已停止",
+        "loading": "正在準備朗讀…",
+        "generating": "正在生成下一句語音…",
+        "playing": "正在朗讀",
+        "paused": "已暫停",
+        "ended": "朗讀結束",
+        "error": "朗讀失敗"
+      },
+      "errors": {
+        "unknown": "無法開始朗讀，請稍後重試。",
+        "noReadableContent": "當前位置之後沒有找到可朗讀的文字。",
+        "noVoices": "當前朗讀引擎沒有適合本書語言的聲音。",
+        "providerUnavailable": "語音服務當前不可用，請檢查服務地址、網路連線和 API 配置後重試。",
+        "engine": "朗讀引擎返回錯誤：{{message}}"
+      }
+    },
+    "settings": "閱讀設定",
+    "settingsSheet": "閱讀設定面板",
+    "settingsTheme": "主題",
+    "readingMode": "閱讀方式",
+    "pageDirection": "翻頁方向",
+    "backgroundAuto": "自動",
+    "backgroundBlack": "黑色",
+    "backgroundWhite": "白色",
+    "alignment": "對齊",
+    "alignmentAuto": "自動",
+    "alignmentJustify": "兩端對齊",
+    "alignmentStart": "左對齊",
+    "column": "欄",
+    "column1": "始終單欄",
+    "columnAuto": "自動",
+    "fontSize": "字號",
+    "lineHeight": "行距",
+    "margin": "邊距",
+    "spread": "頁面佈局",
+    "spreadAuto": "自動",
+    "spreadSingle": "始終單欄",
+    "readingProgression": "閱讀方向",
+    "directionLtr": "從左到右",
+    "directionRtl": "從右到左",
+    "zoom": "縮放",
+    "pinchZoomHint": "固定版式支援雙指捏合縮放。",
+    "themeNeutral": "純白",
+    "themePaper": "羊皮紙",
+    "themeSepia": "護眼米黃",
+    "themeGreen": "護眼綠色",
+    "themeOcean": "深海",
+    "themeContrast1": "高對比 1",
+    "themeNight": "夜間",
+    "themeContrast2": "高對比 2",
+    "themes": {
+      "contrast1": "高對比 1",
+      "contrast2": "高對比 2"
+    },
+    "layoutScroll": "滾動",
+    "layoutPaginate": "左右翻頁",
+    "navHorizontal": "左右翻頁",
+    "navVertical": "上下翻頁",
+    "pageLabel": "第 {{page}} 頁",
+    "positionLabel": "位置",
+    "positionProgress": "位置 {{current}} / {{total}}",
+    "pageProgress": "{{current}} / {{total}} 頁",
+    "font": "字型",
+    "fontOptions": {
+      "defaultChinese": "預設中文",
+      "lxgwWenkai": "霞鶩文楷",
+      "oldStyle": "舊式襯線",
+      "modern": "現代襯線",
+      "humanist": "人文無襯線",
+      "openDyslexic": "OpenDyslexic",
+      "accessibleDfa": "AccessibleDfA",
+      "iaWriterDuospace": "IA Writer"
+    },
+    "moreActions": "更多操作",
+    "closeReader": "關閉閱讀器"
+  },
+  "bookDetail": {
+    "title": "書籍詳情",
+    "missingParam": {
+      "title": "缺少書籍引數",
+      "detail": "請從書庫重新進入書籍詳情。"
+    },
+    "loadingDetail": "載入書籍詳情…",
+    "seriesInfo": "{{series}} · 第 {{index}} 部",
+    "series": "叢書",
+    "seriesIndex": "叢書編號",
+    "infoSection": "詳細資訊",
+    "bookTitle": "書名",
+    "titleSort": "排序書名",
+    "authors": "作者",
+    "authorSort": "排序作者",
+    "pubDate": "出版日期",
+    "language": "語言",
+    "publisher": "出版商",
+    "rating": "評分",
+    "tags": "標籤",
+    "identifiers": "識別符號",
+    "createdAt": "建立日期",
+    "downloadStarted": "已開始下載",
+    "downloadStartedDetail": "{{format}} 下載完成後即可閱讀。",
+    "noReadableFormat": "無可讀格式",
+    "downloadAndRead": "下載並閱讀",
+    "continueReading": "繼續閱讀",
+    "startReading": "開始閱讀",
+    "back": "返回",
+    "share": "分享",
+    "moreActions": "更多操作：{{title}}",
+    "openBook": "開啟《{{title}}》",
+    "readFileStateFailed": "讀取檔案狀態失敗",
+    "downloadFailed": "檔案下載失敗：{{path}}",
+    "cannotStartDownload": "無法開始下載",
+    "noFormatPath": "沒有找到 {{format}} 對應的檔案路徑",
+    "deleteLocalFailed": "刪除本地檔案失敗",
+    "formatSection": {
+      "title": "檔案格式",
+      "count": "{{count}} 種格式",
+      "default": "預設閱讀格式",
+      "readable": "可閱讀",
+      "unsupported": "不支援",
+      "queued": "排隊中",
+      "preparing": "準備中",
+      "notStarted": "未開始閱讀",
+      "cancel": "取消",
+      "cancelDownload": "取消下載",
+      "download": "下載",
+      "downloadFormat": "下載",
+      "notDownloaded": "未下載",
+      "setDefault": "設為預設閱讀格式",
+      "shareFormat": "分享",
+      "more": "更多"
+    },
+    "setReadingFormat": "設定閱讀格式",
+    "expand": "展開"
+  },
+  "share": {
+    "fileNotDownloadedTitle": "檔案未下載",
+    "fileNotDownloadedMessage": "《{{title}}》（{{format}}）需要先下載。",
+    "shareFailed": "分享失敗"
+  },
+  "bookRow": {
+    "finished": "已讀"
+  },
+  "addLibrary": {
+    "addedPrompt": {
+      "detail": "是否切換到“{{name}}”並開啟書庫？",
+      "stay": "留在當前頁",
+      "switch": "切換並開啟"
+    },
+    "selectSaveLocation": "選擇儲存位置",
+    "selectLibraryLocation": "選擇書庫位置",
+    "name": "名稱",
+    "invalidName": "名稱不能包含 / 或 \\",
+    "create": "建立",
+    "creating": "正在建立",
+    "open": "開啟",
+    "continue": "繼續",
+    "path": "路徑：{{path}}",
+    "unrecognized": {
+      "title": "未識別書庫",
+      "detail": "請選擇 MyReader 或 Calibre 書庫資料夾。"
+    },
+    "folderExists": {
+      "title": "名稱已存在",
+      "detail": "請更換書庫名。"
+    },
+    "operationFailed": "書庫操作失敗",
+    "operationFailedDetail": "請稍後重試。"
+  },
+  "webdav": {
+    "sourcesTitle": "WebDAV 資料來源",
+    "sourceDetail": "資料來源詳情",
+    "addSource": "新增 WebDAV 資料來源",
+    "reconfigureSource": "重新配置 WebDAV",
+    "selectLibrary": "選擇 WebDAV 書庫",
+    "noSources": {
+      "title": "還沒有 WebDAV 資料來源",
+      "detail": "請先點選下方按鈕新增 WebDAV 資料來源。"
+    },
+    "delete": {
+      "title": "刪除 WebDAV 資料來源",
+      "confirm": "確認刪除「{{name}}」？",
+      "cancel": "取消",
+      "confirmButton": "刪除"
+    },
+    "deleteFailed": {
+      "title": "無法刪除",
+      "message": "刪除資料來源失敗。"
+    },
+    "deleteSource": "刪除資料來源",
+    "type": "型別",
+    "serverAddress": "伺服器地址",
+    "username": "使用者名稱",
+    "password": "密碼",
+    "passwordSaved": "已儲存在本機安全儲存",
+    "passwordNotSet": "未設定",
+    "basePath": "基礎路徑",
+    "status": "狀態",
+    "enabled": "已啟用",
+    "disabled": "已停用",
+    "addedAt": "新增時間",
+    "browser": {
+      "notFound": {
+        "title": "資料來源不存在",
+        "detail": "請先新增一個 WebDAV 資料來源。"
+      },
+      "loadFailed": {
+        "title": "瀏覽目錄失敗",
+        "message": "WebDAV 瀏覽器遇到了意外錯誤，請重試。"
+      },
+      "validating": "正在驗證目錄",
+      "selectDirectory": "選擇當前目錄為書庫",
+      "currentPath": "當前路徑：{{path}}",
+      "reading": {
+        "title": "正在讀取目錄",
+        "detail": "正在從 WebDAV 伺服器獲取目錄列表。"
+      },
+      "readFailed": {
+        "title": "讀取失敗"
+      },
+      "credentialsUnavailable": {
+        "title": "WebDAV 憑據不可用",
+        "detail": "請重新配置 WebDAV 資料來源。"
+      },
+      "noCredentials": "無法獲取 WebDAV 憑據，請重新編輯資料來源並設定密碼。",
+      "empty": {
+        "title": "當前目錄為空",
+        "detail": "當前目錄下沒有子目錄。"
+      },
+      "notValidLibrary": {
+        "title": "目錄不可用",
+        "message": "當前目錄不是有效書庫，未找到 metadata.db。"
+      },
+      "notCalibreLibrary": "當前目錄不是有效的 Calibre 書庫。",
+      "cannotReadRemote": "無法讀取遠端目錄"
+    },
+    "add": {
+      "sourceTitle": "WebDAV 資料來源",
+      "enterServerUrl": "請輸入伺服器地址。",
+      "portMustBeNumber": "埠必須為數字",
+      "portRange": "埠範圍應為 1-65535",
+      "validationFailed": "校驗失敗",
+      "connectionTestFailed": "連線測試失敗",
+      "reEnter": "重新填寫",
+      "addAnyway": "仍然新增",
+      "addFailed": "新增失敗",
+      "addFailedMessage": "操作失敗，請重試。",
+      "updateFailed": "儲存失敗",
+      "completing": "完成中",
+      "complete": "完成",
+      "saving": "儲存中",
+      "save": "儲存",
+      "saveAnyway": "仍然儲存",
+      "serverAddressLabel": "伺服器地址",
+      "portLabel": "埠號",
+      "basePathLabel": "基礎路徑",
+      "usernameLabel": "使用者名稱",
+      "usernamePlaceholder": "請輸入使用者名稱",
+      "passwordLabel": "密碼",
+      "passwordPlaceholder": "請輸入密碼",
+      "passwordKeepPlaceholder": "留空則保留原密碼",
+      "useSSL": "使用 SSL"
+    }
+  },
+  "onedrive": {
+    "sourcesTitle": "OneDrive 資料來源",
+    "sourceDetail": "資料來源詳情",
+    "addSource": "新增 OneDrive 資料來源",
+    "reauthenticate": "重新登入 OneDrive",
+    "selectLibrary": "選擇 OneDrive 書庫",
+    "noSources": {
+      "title": "暫無 OneDrive 資料來源",
+      "detail": "請先點選下方按鈕新增 OneDrive 資料來源。"
+    },
+    "delete": {
+      "title": "刪除 OneDrive 資料來源",
+      "confirm": "確認刪除「{{name}}」？",
+      "cancel": "取消",
+      "confirmButton": "刪除"
+    },
+    "deleteFailed": {
+      "title": "無法刪除",
+      "message": "刪除資料來源失敗。"
+    },
+    "deleteSource": "刪除資料來源",
+    "type": "型別",
+    "displayName": "顯示名稱",
+    "email": "郵箱",
+    "basePath": "根路徑",
+    "authStatus": "認證狀態",
+    "authenticated": "已認證",
+    "notAuthenticated": "未認證",
+    "addedAt": "新增時間",
+    "browser": {
+      "notFound": {
+        "title": "未找到資料來源",
+        "detail": "請先新增 OneDrive 資料來源。"
+      },
+      "loadFailed": {
+        "title": "瀏覽失敗",
+        "message": "OneDrive 瀏覽器遇到意外錯誤，請重試。"
+      },
+      "validating": "正在驗證目錄",
+      "selectDirectory": "選擇當前目錄作為書庫",
+      "currentPath": "當前路徑：{{path}}",
+      "reading": {
+        "title": "正在讀取目錄",
+        "detail": "正在從 OneDrive 獲取目錄列表。"
+      },
+      "readFailed": {
+        "title": "讀取失敗"
+      },
+      "credentialsUnavailable": {
+        "title": "OneDrive 登入狀態已失效",
+        "detail": "請重新登入 OneDrive。"
+      },
+      "noCredentials": "無法獲取 OneDrive 憑據，請重新認證資料來源。",
+      "empty": {
+        "title": "空目錄",
+        "detail": "當前目錄下沒有子目錄。"
+      },
+      "notValidLibrary": {
+        "title": "無效目錄",
+        "message": "未找到 metadata.db，不是有效的書庫。"
+      },
+      "notCalibreLibrary": "不是有效的 Calibre 書庫。",
+      "cannotReadRemote": "無法讀取遠端目錄"
+    },
+    "add": {
+      "signInTitle": "登入 OneDrive",
+      "signInDetail": "登入 Microsoft 賬號。",
+      "signInWithMicrosoft": "使用 Microsoft 登入",
+      "authenticating": "正在認證…",
+      "addingTitle": "正在新增 OneDrive 資料來源",
+      "addingDetail": "正在完成連線，請勿關閉應用。",
+      "authFailed": "認證失敗",
+      "authFailedMessage": "無法登入 OneDrive，請重試。",
+      "accountMismatch": "賬號不一致",
+      "accountMismatchMessage": "請登入 {{email}}，或返回後新增新的 OneDrive 資料來源。",
+      "alreadyAdded": "賬號已新增",
+      "alreadyAddedMessage": "賬號 {{email}} 已連線。"
+    }
+  },
+  "errorBoundary": {
+    "defaultTitle": "頁面遇到了意外錯誤",
+    "retry": "重試"
+  },
+  "dataSource": {
+    "backToList": "返回資料來源列表",
+    "backToLocations": "返回可用位置",
+    "notFound": {
+      "title": "資料來源不存在",
+      "detail": "它可能已被移除，請返回資料來源列表。",
+      "addLibraryDetail": "它可能已被移除，請返回可用位置。"
+    },
+    "deleteInUse": {
+      "title": "無法刪除",
+      "message": "以下書庫正在使用該資料來源：{{names}}。請先移除這些書庫後再刪除資料來源。"
+    }
+  },
+  "common": {
+    "confirm": "確定",
+    "gotIt": "知道了",
+    "search": "搜尋",
+    "clear": "清除",
+    "current": "當前",
+    "appInternalStorage": "應用內部儲存",
+    "localStorage": "本地儲存",
+    "unnamedBook": "未命名書籍",
+    "unknownAuthor": "未知作者",
+    "myLibrary": "我的書庫",
+    "unnamedLibrary": "未命名書庫",
+    "selected": "已選擇",
+    "unselected": "未選擇"
+  },
+  "bookLang": {
+    "zho": "中文",
+    "chi": "中文",
+    "eng": "English",
+    "jpn": "日本語"
+  },
+  "bookMenu": {
+    "detail": "圖書詳情",
+    "addToFavorites": "加入收藏",
+    "removeFromFavorites": "取消收藏",
+    "download": "下載",
+    "downloadFormat": "下載（{{format}}）",
+    "cancelDownload": "取消下載",
+    "uploadFile": "上傳檔案",
+    "uploadFailed": "上傳失敗",
+    "uploadFailedDetail": "無法上傳到“{{library}}”。\n{{reason}}",
+    "defaultFormat": "預設閱讀格式：{{format}}",
+    "deleteDownload": "刪除下載檔案",
+    "share": "分享",
+    "editMetadata": "修改書名與作者",
+    "deleteBook": "刪除圖書",
+    "deleteConfirmTitle": "刪除圖書",
+    "deleteConfirmDetail": "確認從書庫中刪除《{{title}}》及其圖書檔案？",
+    "deleteFailed": "無法刪除圖書"
+  },
+  "bookEdit": {
+    "title": "編輯圖書資訊",
+    "bookTitle": "書名",
+    "authors": "作者",
+    "authorsPlaceholder": "多個作者用逗號分隔",
+    "save": "儲存",
+    "saving": "正在儲存",
+    "saveFailed": "無法儲存圖書資訊",
+    "incomplete": {
+      "title": "資訊不完整",
+      "detail": "書名和作者不能為空。"
+    },
+    "unavailable": {
+      "title": "無法編輯這本書",
+      "detail": "只有 MyReader 書庫中的圖書可以修改。"
+    }
+  },
+  "bookLoader": {
+    "loadingBook": "正在載入書籍…",
+    "missingParam": "缺少書籍引數",
+    "noLibrary": "未選擇書庫",
+    "readingBookInfo": "正在讀取書籍資訊…",
+    "invalidId": "無效的書籍 ID",
+    "notFoundInLibrary": "在書庫中未找到該書",
+    "noReadableFormat": "該書沒有可閱讀的格式（需要 EPUB、CBZ 或 PDF）",
+    "downloadingFromWebdav": "正在從 WebDAV 下載書籍…",
+    "downloadingFromRemote": "正在從遠端資料來源下載書籍…",
+    "loadingBookFile": "正在載入書籍檔案…",
+    "downloadFirst": "請先在書籍詳情中下載該格式，再開啟閱讀。"
+  },
+  "sync": {
+    "localDirectRead": "本地直讀：跳過同步",
+    "libraryNotFound": "未找到書庫: {{id}}",
+    "localDirectLabel": "本地直讀 · {{path}}",
+    "configError": "同步配置有誤",
+    "dataIntegrityError": "同步資料完整性錯誤",
+    "webdavSourceNotFound": "當前書庫關聯的 WebDAV 資料來源不存在。",
+    "webdavPasswordMissing": "當前 WebDAV 資料來源缺少密碼，請重新編輯資料來源。",
+    "onedriveSourceNotFound": "當前書庫關聯的 OneDrive 資料來源不存在。",
+    "onedriveRefreshTokenMissing": "當前 OneDrive 資料來源缺少認證資訊，請重新認證該資料來源。",
+    "onedriveGetFailed": "OneDrive GET 失敗: {{status}} {{path}}",
+    "onedriveDownloadUrlMissing": "OneDrive 未返回下載地址: {{path}}",
+    "onedrivePutFailed": "OneDrive PUT 失敗: {{status}} {{path}}",
+    "onedriveDeleteFailed": "OneDrive DELETE 失敗: {{status}} {{path}}",
+    "onedriveListFailed": "OneDrive 列目錄失敗: {{status}} {{path}}",
+    "onedriveMkdirFailed": "OneDrive 建立目錄失敗: {{status}} {{path}}",
+    "cannotResolveLocalPath": "無法解析本地書庫根目錄。",
+    "downloadCancelled": "下載已取消",
+    "downloadFailed": "後臺下載失敗: {{code}}",
+    "downloadStalled": "原生下載已有位元組傳輸，但長時間沒有進度更新。請檢查網路、WebDAV Range 支援或系統後臺限制。",
+    "downloadNotStarted": "原生下載任務已建立，但沒有開始傳輸。請檢查資料來源、認證、網路或原生下載器配置。",
+    "uploadCancelled": "上傳已取消",
+    "uploadFailed": "後臺上傳失敗: HTTP {{status}} {{body}}",
+    "uploadFailedCode": "後臺上傳失敗: {{code}}",
+    "uploadStalled": "原生上傳已有位元組傳輸，但長時間沒有進度更新。請檢查網路、WebDAV 認證或系統後臺限制。",
+    "uploadNotStarted": "原生上傳任務已建立，但沒有開始傳輸。請檢查 WebDAV URL、認證或原生上傳器配置。",
+    "manifestNotRegistered": "manifest 中未登記該路徑: {{path}}",
+    "syncPathEmpty": "同步路徑不能為空",
+    "syncPathTraversal": "同步路徑不能包含 ..: {{path}}",
+    "syncPathAbsolute": "同步路徑不能是絕對路徑: {{path}}",
+    "nativeDownloadMissing": "原生下載已完成，但快取檔案不存在: {{path}}",
+    "nativeDownloadEmpty": "原生下載已完成，但快取檔案為空: {{path}}",
+    "nativeDownloadNotSupported": "當前後端不支援原生後臺下載: {{kind}}",
+    "nativeUploadNotSupported": "當前後端不支援原生後臺上傳: {{kind}}",
+    "hashMismatch": "下載後雜湊不匹配: 期望 {{expected}}，實際 {{actual}}",
+    "localFileMissing": "本地檔案不存在，無法上傳: {{path}}",
+    "libraryNotFoundShort": "未找到書庫: {{id}}",
+    "connectionTimeout": "連線資料來源超時（2秒），請檢查網路或 WebDAV 配置",
+    "cannotParseFilePath": "無法解析檔案路徑: {{uri}}",
+    "metadataDbNotAvailable": "metadata.db 不可用",
+    "formatNotFoundInLibrary": "格式 {{format}} 在書庫中未找到 (bookId={{id}})",
+    "bookFileNotFound": "書籍檔案不存在: {{name}}",
+    "bookFileNotFoundDetail": "完整路徑: {{uri}}\n書庫路徑: {{libraryPath}}\n書內路徑: {{rowPath}}",
+    "corruptedLibrary": "書庫資料已損壞",
+    "corruptedLibraryMessage": "無法恢復該書庫的 metadata.db。請刪除當前書庫並重新新增後再試。",
+    "corruptedLibraryRedownloadMessage": "無法重新下載該書庫的 metadata.db。請檢查網路或 WebDAV 配置。",
+    "cannotRedownloadMeta": "無法重新下載 metadata.db",
+    "metadataNotFound": "未找到 metadata.db",
+    "metadataNotFoundDetail": "所選目錄中未找到 Calibre 的 metadata.db。請選擇書庫根目錄（該資料夾內應包含 metadata.db）。",
+    "userCancelled": "使用者取消或未選擇書庫目錄",
+    "notValidCalibreLibrary": "所選書庫中未找到 metadata.db，請確認仍是有效的 Calibre 書庫",
+    "loadLibraryFailed": "載入書庫失敗",
+    "addLibraryFailed": "新增書庫失敗",
+    "cannotAddDuplicate": "無法新增",
+    "alreadyAdded": "該書庫已經新增過了。",
+    "readLibraryFailed": "讀取書庫失敗",
+    "refreshLibraryFailed": "重新整理書庫失敗",
+    "sourceUnreachable": "資料來源無法連線",
+    "sourceUnreachableDetail": "無法訪問 WebDAV 資料來源，下載已取消。\n\n可能的原因：\n• 當前網路連線不可用或不穩定\n• WebDAV 伺服器未執行或無法訪問\n• 伺服器地址、埠或認證配置有誤",
+    "sourceUnreachableSyncDetail": "無法訪問 WebDAV 資料來源，同步已取消。\n\n可能的原因：\n• 當前網路連線不可用或不穩定\n• WebDAV 伺服器未執行或無法訪問\n• 伺服器地址、埠或認證配置有誤",
+    "removeLibraryFirst": "請先移除使用該資料來源的書庫",
+    "authFailed": "認證失敗：使用者名稱或密碼錯誤，或當前賬號無許可權訪問該路徑。",
+    "pathNotFound": "路徑找不到：請檢查基礎路徑是否正確，以及該路徑下是否存在 WebDAV 目錄。",
+    "serverAbnormal": "伺服器響應異常（HTTP {{status}}）：請確認服務端狀態與 WebDAV 配置。",
+    "connectionTimeoutDetail": "連線超時：請檢查網路、伺服器地址、埠和 SSL 配置。原因：{{reason}}",
+    "networkFailed": "網路請求失敗：無法訪問伺服器，請檢查網路、伺服器地址、埠和 SSL 配置。原因：{{reason}}",
+    "cannotDownload": "無法下載",
+    "noReadableFormatForDownload": "該書沒有可下載的可讀格式",
+    "noReadableFormat": "無可讀格式",
+    "noReadableFormatDetail": "該書沒有可閱讀的格式",
+    "defaultFormatSet": "已設定預設格式",
+    "setDefaultFormat": "設定預設閱讀格式",
+    "currentDefault": "當前預設：{{format}}",
+    "readFormatFailed": "讀取格式失敗",
+    "deleteDownloadFile": "刪除下載檔案",
+    "confirmDeleteDownload": "確定要刪除《{{title}}》的本地下載檔案嗎？",
+    "deleteFailed": "刪除失敗",
+    "webdavGetFailed": "WebDAV GET 失敗: {{status}} {{path}}",
+    "webdavPutFailed": "WebDAV PUT 失敗: {{status}} {{path}}",
+    "webdavDeleteFailed": "WebDAV DELETE 失敗: {{status}} {{path}}",
+    "webdavPropfindFailed": "WebDAV PROPFIND 失敗: {{status}} {{path}}",
+    "webdavPropfindListFailed": "WebDAV PROPFIND 列目錄失敗: {{status}} {{path}}",
+    "webdavMkcolFailed": "WebDAV MKCOL 失敗: {{status}} {{path}}",
+    "localFileNotExist": "本地檔案不存在: {{path}}",
+    "basicAuthNotSupported": "當前環境不支援 Basic Auth 編碼",
+    "syncPathCannotBeEmpty": "同步路徑不能為空"
+  },
+  "notifications": {
+    "libraryAdded": "成功新增書庫：{{name}}",
+    "libraryUpdated": "書庫已更新",
+    "libraryUpdateFailed": "書庫更新失敗",
+    "downloadStart": "開始下載",
+    "downloadDone": "下載完成",
+    "downloadFailed": "下載失敗",
+    "libraryRefreshing": "書庫更新中",
+    "librarySyncing": "書庫同步中"
+  },
+  "errors": {
+    "sourceUnreachable": "資料來源無法連線",
+    "sourceUnreachableDetail": "無法訪問 WebDAV 資料來源，下載已取消。\n\n可能的原因：\n• 當前網路連線不可用或不穩定\n• WebDAV 伺服器未執行或無法訪問\n• 伺服器地址、埠或認證配置有誤",
+    "downloadFailed": "下載失敗",
+    "timeout": "超時"
+  },
+  "securityBookmarks": {
+    "invalidUrl": "{{action}}失敗：目錄地址無效。",
+    "invalidBookmark": "{{action}}失敗：儲存的書庫授權資訊無效，請重新選擇書庫。",
+    "unsupportedUrl": "{{action}}失敗：當前選擇的目錄地址格式不受支援，請改用「檔案」中可授權的本地目錄重新選擇。",
+    "cannotAccess": "{{action}}失敗：無法訪問已授權的書庫目錄，請重新選擇書庫並授權。",
+    "expired": "{{action}}失敗：書庫授權資訊已過期，請重新選擇書庫。",
+    "genericError": "{{action}}失敗：iOS 檔案授權處理出錯，請重試。",
+    "createBookmark": "建立書庫授權",
+    "restoreBookmark": "恢復書庫授權",
+    "accessDirectory": "訪問書庫目錄",
+    "refreshBookmark": "重新整理書庫授權"
+  }
+}

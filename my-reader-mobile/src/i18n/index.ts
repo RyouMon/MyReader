@@ -1,3 +1,5 @@
+import "../polyfills/intl-plural-rules"
+import { FALLBACK_LANGUAGE, resolveLanguage } from "@my-reader/i18n/languages"
 import {
   mobileResources,
   SUPPORTED_LANGUAGES,
@@ -12,22 +14,20 @@ export type { SupportedLanguage } from "@my-reader/i18n/mobile"
 export function resolveAppLanguage(
   language: string | null | undefined,
 ): SupportedLanguage {
-  const systemLocale = getLocales()[0]
-  const preferredLanguage =
+  const preferences =
     language && language !== "system"
-      ? language
-      : systemLocale?.languageTag || systemLocale?.languageCode || "zh-CN"
-  const normalizedLanguage = preferredLanguage.replace("_", "-").toLowerCase()
-
-  if (normalizedLanguage.startsWith("en")) return "en"
-  if (normalizedLanguage.startsWith("zh")) return "zh-CN"
-  return "zh-CN"
+      ? [language]
+      : getLocales().map(
+          (locale) => locale.languageTag || locale.languageCode || "",
+        )
+  return resolveLanguage(preferences)
 }
 
 i18n.use(initReactI18next).init({
   resources: mobileResources,
   lng: resolveAppLanguage(null),
-  fallbackLng: "zh-CN",
+  fallbackLng: FALLBACK_LANGUAGE,
+  returnEmptyString: false,
   supportedLngs: SUPPORTED_LANGUAGES,
   interpolation: { escapeValue: false },
 })

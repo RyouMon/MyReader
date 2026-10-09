@@ -11,6 +11,7 @@ import { sharedEn } from "../src/locales/shared/en"
 import { sharedZhCN } from "../src/locales/shared/zh-CN"
 import type { TranslationResource } from "../src/merge-resources"
 import { mobileResources } from "../src/mobile"
+import { SUPPORTED_LANGUAGES } from "../src/languages"
 
 const PLURAL_SUFFIX = /_(zero|one|two|few|many|other)$/
 const INTERPOLATION = /\{\{\s*([^},\s]+)[^}]*\}\}/g
@@ -87,13 +88,18 @@ function expectLocaleContract(
 
   const referenceValues = flatten(reference)
   const translationValues = flatten(translation)
-  for (const [key, referenceValue] of referenceValues) {
-    const translationValue = translationValues.get(key)
-    if (translationValue !== undefined) {
-      expect(interpolationNames(translationValue), key).toEqual(
-        interpolationNames(referenceValue),
-      )
-    }
+  const referenceByKey = new Map(
+    [...referenceValues].map(([key, value]) => [
+      key.replace(PLURAL_SUFFIX, ""),
+      value,
+    ]),
+  )
+  for (const [key, translationValue] of translationValues) {
+    const referenceValue = referenceByKey.get(key.replace(PLURAL_SUFFIX, ""))
+    expect(translationValue.trim(), key).not.toBe("")
+    expect(interpolationNames(translationValue), key).toEqual(
+      interpolationNames(referenceValue ?? ""),
+    )
   }
 }
 
@@ -161,8 +167,49 @@ describe("i18n resource contracts", () => {
   })
 
   it("should expose the same supported locale identifiers for both apps", () => {
-    expect(Object.keys(desktopResources)).toEqual(["zh-CN", "en"])
-    expect(Object.keys(mobileResources)).toEqual(["zh-CN", "en"])
+    expect(Object.keys(desktopResources)).toEqual([...SUPPORTED_LANGUAGES])
+    expect(Object.keys(mobileResources)).toEqual([...SUPPORTED_LANGUAGES])
+  })
+
+  it.each(
+    SUPPORTED_LANGUAGES,
+  )("keeps both apps complete with intact placeholders for %s", (language) => {
+    expectLocaleContract(
+      desktopResources.en.translation,
+      desktopResources[language].translation,
+    )
+    expectLocaleContract(
+      mobileResources.en.translation,
+      mobileResources[language].translation,
+    )
+    const resource = flatten(desktopResources[language].translation)
+    const categories = new Intl.PluralRules(language).resolvedOptions()
+      .pluralCategories
+    const reference = flatten(desktopResources.en.translation)
+    for (const key of normalizedKeys(desktopResources.en.translation)) {
+      if (!reference.has(`${key}_other`)) continue
+      for (const category of categories) {
+        expect(
+          resource.has(`${key}_${category}`) ||
+            (categories.length === 1 && resource.has(key)),
+          `${language}: ${key}_${category}`,
+        ).toBe(true)
+      }
+    }
+  })
+
+  it("declares the same supported languages to mobile operating systems", () => {
+    const config = JSON.parse(
+      readFileSync(
+        path.resolve(import.meta.dirname, "../../../my-reader-mobile/app.json"),
+        "utf8",
+      ),
+    )
+    const plugin = config.expo.plugins.find(
+      (entry: unknown) =>
+        Array.isArray(entry) && entry[0] === "expo-localization",
+    )
+    expect(plugin[1].supportedLocales).toEqual([...SUPPORTED_LANGUAGES])
   })
 
   it("should keep generic remote browser namespaces structurally compatible when providers share one screen", () => {

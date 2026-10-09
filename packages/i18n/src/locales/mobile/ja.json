@@ -1,0 +1,934 @@
+{
+  "incomingShare": {
+    "importingTitle": "共有ブックをインポートしています",
+    "importingDetail": "MyReader がその本をあなたのライブラリに追加しています。",
+    "failedTitle": "共有アイテムをインポートできませんでした",
+    "failedDetail": "1 つの EPUB、PDF、または CBZ ファイルを MyReader と共有します。",
+    "openLibrary": "ライブラリを開く"
+  },
+  "back": "戻る",
+  "tabs": {
+    "home": "ホーム",
+    "library": "ライブラリ",
+    "settings": "設定"
+  },
+  "home": {
+    "title": "ホーム",
+    "continueReading": "読書を続ける",
+    "noCover": "カバーなし",
+    "currentLibrary": "ライブラリ: {{name}} · {{count}} 冊",
+    "viewBooks": "本を見る",
+    "reading": "読書",
+    "recentReading": "最近の読書",
+    "recentAdded": "最近追加した書籍",
+    "bookCount": "{{count}} 冊",
+    "readingStats": {
+      "title": "読書統計",
+      "streak": "連続読書日数",
+      "totalDuration": "合計時間",
+      "completed": "読了",
+      "dayUnit": "d",
+      "hourUnit": "h",
+      "bookUnit": "冊",
+      "year": "{{year}}",
+      "previousYear": "前年",
+      "nextYear": "来年",
+      "noRecord": "記録なし",
+      "readingMinutes": "{{count}} 分を読み取り",
+      "weekdays": {
+        "mon": "月",
+        "wed": "水",
+        "fri": "金曜日"
+      },
+      "bookUnit_other": "冊"
+    },
+    "noReadingHistory": {
+      "title": "読書履歴はまだありません",
+      "detail": "ライブラリから本を選んで読み始めてください。",
+      "action": "ライブラリを開く"
+    },
+    "currentLibrary_other": "ライブラリ: {{name}} · {{count}} 冊",
+    "bookCount_other": "{{count}} 冊"
+  },
+  "library": {
+    "allLibraries": "すべてのライブラリ",
+    "importingBook": "インポート中…",
+    "importFailed": {
+      "title": "本をインポートできません"
+    },
+    "importQueued": {
+      "title": "このデバイスに保存された本",
+      "detail": "接続が戻ると、リモート ライブラリにアップロードされます。"
+    },
+    "importUnsupported": {
+      "title": "サポートされていない書籍フォーマット",
+      "detail": "EPUB、PDF、または CBZ ファイルを選択します。"
+    },
+    "switchLibrary": "スイッチ ライブラリ",
+    "syncCurrentLibrary": "現在のライブラリを同期",
+    "searchPlaceholder": "タイトル、著者名を検索",
+    "bookCountRatio": "{{visible}} / {{total}} 本",
+    "collections": {
+      "currentLibrary": "現在のライブラリ: {{name}}"
+    },
+    "sort": {
+      "recentlyRead": "最近読んだ書籍",
+      "recentlyAdded": "最近追加した書籍"
+    },
+    "view": {
+      "grid": "グリッドビュー",
+      "list": "リストビュー"
+    },
+    "sortLabel": "並べ替え",
+    "viewLabel": "ビュー",
+    "libraryActions": "ライブラリのアクション",
+    "viewConfig": "構成の表示",
+    "switchLibraryAlert": {
+      "title": "スイッチ ライブラリ",
+      "message": "現在: {{name}}",
+      "unselected": "未選択",
+      "close": "閉じる"
+    },
+    "loading": {
+      "title": "ライブラリをロード中",
+      "detail": "ローカルおよび WebDAV ライブラリ構成を読み取ります。"
+    },
+    "notFound": {
+      "title": "ライブラリが見つかりません",
+      "detail": "削除されたか、リンクパラメータが無効になっている可能性があります。"
+    },
+    "noLibrary": {
+      "title": "ライブラリはまだありません",
+      "detail": "本を直接インポートするか、MyReader または Calibre ライブラリを追加します。"
+    },
+    "unselected": {
+      "title": "ライブラリが選択されていません",
+      "detail": "閲覧するライブラリを選択するか、新しいライブラリを追加します。"
+    },
+    "loadError": {
+      "title": "ロードに失敗しました"
+    }
+  },
+  "libraryDetail": {
+    "currentlyUsed": " · 使用中",
+    "bookCount": "{{count}} 冊",
+    "typeLocal": "ローカル",
+    "typeWebdav": "WebDAV",
+    "typeOnedrive": "OneDrive",
+    "calibreLibrary": "Calibre ライブラリ",
+    "myreaderLibrary": "MyReader ライブラリ",
+    "remove": {
+      "title": "このライブラリを削除しますか?",
+      "message": "ライブラリとそのローカル データはアプリから削除されます。ソースファイルは削除されません。",
+      "cancel": "キャンセル",
+      "confirm": "削除"
+    },
+    "deleteLocal": {
+      "title": "この内部ライブラリを削除しますか?",
+      "message": "このライブラリの書籍と読書データは削除されます。これを元に戻すことはできません。",
+      "cancel": "キャンセル",
+      "confirm": "削除"
+    },
+    "removeLibrary": "ライブラリを削除します",
+    "deleteLibrary": "ライブラリの削除",
+    "notFound": {
+      "title": "ライブラリが見つかりません",
+      "detail": "削除されたか、リンクパラメータが無効になっている可能性があります。"
+    },
+    "useLibrary": "このライブラリを使用する",
+    "refreshing": "爽やかな...",
+    "refresh": "ライブラリを更新する",
+    "libraryType": "ライブラリの種類",
+    "storageLocation": "保管場所",
+    "remotePath": "パス",
+    "sourceType": "ソースタイプ",
+    "libraryPath": "ライブラリパス",
+    "bookCountLabel": "本の数",
+    "addedAt": "に追加されました",
+    "bookCount_other": "{{count}} 冊"
+  },
+  "settings": {
+    "libraryDetail": "ライブラリの詳細",
+    "manageLibrary": "ライブラリの管理: {{name}}",
+    "addLibrary": "ライブラリを追加",
+    "librarySection": "ライブラリ",
+    "currentInUse": "使用中",
+    "bookCountCurrent": "{{count}} 冊 · 使用中",
+    "bookCount": "{{count}} 冊",
+    "remoteDataSources": "リモートデータソース",
+    "webdavDetail": "WebDAV データ ソースを管理する",
+    "onedriveDetail": "OneDrive データ ソースを管理する",
+    "appearance": "外観",
+    "darkMode": "ダークモード",
+    "themeMode": {
+      "system": "システムに従う",
+      "light": "ライト",
+      "dark": "ダーク"
+    },
+    "language": "言語",
+    "languageDetail": "表示言語を変更する",
+    "homeCardStyle": "ホームカードスタイル",
+    "homeCardStyle.adaptive": "アダプティブ",
+    "homeCardStyle.coverBlur": "ぼやけた表紙",
+    "tts": {
+      "sectionTitle": "読み上げ",
+      "title": "の読み上げと音声",
+      "detail": "システム音声と TTS 推論サービスを構成する",
+      "previewSection": "プレビュー",
+      "previewText": "MyReader へようこそ。読み上げます。",
+      "previewAction": "プレビュー",
+      "previewGenerating": "生成中…タップして停止します",
+      "previewPlaying": "プレビューを停止する",
+      "previewFailed": "音声をプレビューできませんでした",
+      "engineSection": "デフォルトのナレーション",
+      "engine": "ナレーションエンジン",
+      "systemEngine": "システム音声",
+      "voice": "の声",
+      "automaticVoice": "自動",
+      "playbackSection": "再生",
+      "speed": "スピード",
+      "pitch": "ピッチ",
+      "pitchProviderHint": "ピッチはシステム音声に適用される。初期のネットワーク エンジンはピッチ調整をサポートしていません。",
+      "providersSection": "TTS プロバイダー",
+      "providerTypeSection": "プロバイダーの種類を選択してください",
+      "providerSection": "プロバイダー構成",
+      "providerKinds": {
+        "openAiCompatible": "OpenAI 互換"
+      },
+      "addOpenAi": "OpenAI 互換サービスを追加",
+      "openAiProviderTypeDetail": "OpenAI /v1/audio/speech と互換性あり",
+      "addProvider": "TTS プロバイダーを追加",
+      "editProvider": "TTS プロバイダーを編集します",
+      "profileName": "名前",
+      "endpoint": "エンドポイント",
+      "model": "モデル",
+      "voices": "音声 ID",
+      "voicesPlaceholder": "サービスが対応する音声 ID を 1 行に 1 つ入力してください",
+      "voicesDetail": "OpenAI-compatible APIs have no shared voice discovery contract. MyReader は音声名を想定しません。プロバイダーのドキュメントを使用してください。",
+      "defaultVoice": "デフォルトボイス",
+      "defaultVoicePlaceholder": "上のリストから音声 ID を 1 つ入力してください",
+      "credential": "資格情報",
+      "credentialSaved": "このデバイスの安全なストレージに保存されています",
+      "openAiCredentialPlaceholder": "OpenAI API キー",
+      "credentialPlaceholder": "ベアラートークン (オプション)",
+      "instructions": "ナレーションの指示",
+      "instructionsPlaceholder": "例: 自然に、落ち着いて本を読む",
+      "enabled": "有効",
+      "disabled": "無効",
+      "clearCredential": "保存された資格情報をクリアします",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "loading": "読み込み中…",
+      "loadFailed": "読み上げ設定をロードできませんでした",
+      "saveFailed": "読み上げ設定を保存できませんでした",
+      "voiceLoadFailed": "ボイスをロードできませんでした",
+      "providerPrivacy": "システム音声はデバイス上で処理されます。ネットワークプロバイダーを使用すると、現在の文が構成したエンドポイントに送信されます。",
+      "openAiDetail": "OpenAI /v1/audio/speech と互換性があります。音声 ID とデフォルトの音声を設定します。 API キーはこのデバイスの安全なストレージに残ります。",
+      "removeProvider": "プロバイダーの削除",
+      "removeProviderTitle": "TTS プロバイダーを削除しますか?",
+      "removeProviderDetail": "これにより、「{{name}}」、そのローカル資格情報、および関連する音声設定が削除されます。",
+      "removeFailed": "TTS プロバイダーを削除できませんでした"
+    },
+    "privacy": {
+      "title": "プライバシー",
+      "diagnostics": {
+        "title": "診断情報を共有する",
+        "detail": "何か問題が発生したときに、エラー スタック、アプリのバージョン、デバイス環境を送信します。デフォルトでは、ユーザー ID データ、アプリログ、画面録画は追加されません",
+        "unavailable": "このビルドでは診断レポートが構成されていません"
+      }
+    },
+    "developer": {
+      "title": "開発者",
+      "enabled": "オン",
+      "disabled": "オフ",
+      "clearImageCache": {
+        "title": "画像キャッシュをクリアする",
+        "detail": "Expo 画像キャッシュとライブラリ カバーのサムネイルをクリアします",
+        "doneTitle": "画像キャッシュがクリアされました",
+        "doneDetail": "カバーは、再度開かれたときに再度読み取られ、ダウンロードされ、または生成されます。",
+        "errorTitle": "画像キャッシュをクリアできませんでした",
+        "errorDetail": "後でもう一度試してください。",
+        "unavailable": "この環境では画像キャッシュのクリーンアップは利用できません。"
+      },
+      "libraryPerformanceProfiler": {
+        "title": "ライブラリ パフォーマンス プロファイラ",
+        "detail": "ライブラリ画面上の React Profiler と FlashList のタイミング メトリクスをログに記録します"
+      },
+      "coverLoadingAnimation": {
+        "title": "カバー読み込みアニメーション",
+        "detail": "カバーのロード中にスケルトンパルスを切り替えます"
+      },
+      "coverThumbnailConcurrency": {
+        "title": "表紙のサムネイルの同時実行性",
+        "detail": "同時サムネイル生成ジョブ",
+        "decrementLabel": "表紙のサムネイルの同時実行数を減らす",
+        "incrementLabel": "表紙のサムネイルの同時実行数を増やす"
+      }
+    },
+    "bookCountCurrent_other": "{{count}} 冊 · 使用中",
+    "bookCount_other": "{{count}} 冊"
+  },
+  "reader": {
+    "cannotOpen": "本を開けません",
+    "back": "戻る",
+    "closeOverlay": "オーバーレイを閉じる",
+    "mountingReader": "リーダーを取り付けています…",
+    "loadFailed": "リーダーのロードに失敗しました",
+    "loadFailedMessage": "リーダーで予期しないエラーが発生しました。戻って再試行してください。",
+    "positionConflictTitle": "続行先を選択してください",
+    "positionConflictDescription": "別のデバイスがオフライン中に別の位置を保存しました。続行するには 1 つを選択してください。選択内容は他のデバイスに同期されます。",
+    "positionConflictUnknownProgress": "進捗状況は不明",
+    "positionConflictLater": "後で決定し、デフォルトの位置を使用します",
+    "chrome": {
+      "moreActions": "その他のアクション"
+    },
+    "toc": "目次",
+    "navigationSheet": "コンテンツパネル",
+    "noToc": "この本には目次がありません",
+    "search": {
+      "title": "本を探す",
+      "inputLabel": "書籍本文を検索",
+      "placeholder": "検索テキスト",
+      "clear": "検索をクリア",
+      "promptTitle": "この本のテキストを検索",
+      "prompt": "単語または語句を入力してこの本を検索します。",
+      "searching": "検索中…",
+      "error": "検索を完了できませんでした",
+      "errorDetail": "もう一度試してください。現在の検索は保持されます。",
+      "retry": "もう一度お試しください",
+      "empty": "「{{query}}」の結果はありません",
+      "emptyDetail": "別の単語またはフレーズを試してください。",
+      "resultTitle": "テキスト",
+      "position": "位置 {{position}}",
+      "noExcerpt": "抜粋なし",
+      "loadedCount": "{{count}} 件を読み込み済み",
+      "resultCount": "{{count}} 件",
+      "loadMore": "もっと読み込む",
+      "loadingMore": "さらに結果を読み込んでいます…",
+      "loadMoreFailed": "これ以上の結果をロードできませんでした",
+      "retryMore": "もう一度ロードしてみてください",
+      "loadedCount_other": "{{count}} 件を読み込み済み",
+      "resultCount_other": "{{count}} 件"
+    },
+    "bookmarks": {
+      "title": "しおり",
+      "addCurrent": "現在の場所にブックマークを追加",
+      "removeCurrent": "現在の場所のブックマークを削除します",
+      "loading": "ブックマークをロード中…",
+      "error": "ブックマークをロードまたは更新できませんでした",
+      "retry": "もう一度お試しください",
+      "untitled": "ブックマーク",
+      "deleteLabel": "ブックマークを削除: {{label}}",
+      "page": "ページ {{page}}",
+      "position": "位置 {{position}}",
+      "today": "今日",
+      "select": "選択してください",
+      "deselect": "選択を解除",
+      "manage": "管理する",
+      "done": "完了",
+      "selectedCount": "しおりを {{count}} 件選択中",
+      "deleteSelected": "選択したブックマークを削除します",
+      "longPressHint": "長押ししてこのブックマークを選択または削除します",
+      "selectedCount_other": "しおりを {{count}} 件選択中"
+    },
+    "annotations": {
+      "title": "ブックマークと注釈",
+      "notesTab": "注釈",
+      "highlightAction": "ハイライト",
+      "noteAction": "注記を追加",
+      "editNoteAction": "メモを編集する",
+      "openNote": "メモを開く",
+      "removeAction": "削除",
+      "copyAction": "コピー",
+      "selectionActions": "テキストアクション",
+      "loading": "ノートを読み込んでいます…",
+      "error": "メモをロードまたは更新できませんでした",
+      "retry": "もう一度お試しください",
+      "openHint": "このハイライトに移動",
+      "select": "選択してください",
+      "deselect": "選択を解除",
+      "manage": "管理する",
+      "done": "完了",
+      "selectedCount": "注釈を {{count}} 件選択中",
+      "deleteSelected": "選択した注釈を削除します",
+      "longPressHint": "この注釈を選択、編集、または削除するには長押しします",
+      "edit": "編集",
+      "editTitle": "ハイライトとメモを編集する",
+      "addNoteTitle": "注記を追加",
+      "color": "ハイライトカラー",
+      "note": "注記",
+      "notePlaceholder": "考えを書いてください (オプション)",
+      "editNoteHint": "タップしてメモを編集します",
+      "deleteTitle": "ハイライトを削除しますか?",
+      "deleteMessage": "ハイライトとそのメモはこのデバイスから削除されます。",
+      "colors": {
+        "yellow": "アンバー",
+        "orange": "テラコッタ",
+        "green": "セージ",
+        "blue": "スレートブルー"
+      },
+      "selectedCount_other": "注釈を {{count}} 件選択中"
+    },
+    "tts": {
+      "readAloud": "読み上げ",
+      "readFromHere": "ここから読み上げ",
+      "controls": "読み上げコントロール",
+      "openControls": "読み上げコントロールを開く",
+      "settings": "読み上げ設定",
+      "settingsAction": "読み上げ設定",
+      "manageProviders": "TTS プロバイダーを管理する",
+      "goToCurrent": "現在話されている文に移動します",
+      "play": "ナレーションを再開します",
+      "pause": "ナレーションを一時停止します",
+      "previous": "前の文",
+      "next": "次の文",
+      "stop": "ナレーションを停止",
+      "playFromCurrentPosition": "ここから再生",
+      "returnToPlaybackPosition": "ナレーションに戻る",
+      "states": {
+        "stopped": "停止しました",
+        "loading": "ナレーションを準備中…",
+        "generating": "次の文を生成中…",
+        "playing": "音読",
+        "paused": "一時停止しました",
+        "ended": "ナレーションが終了しました",
+        "error": "ナレーションが失敗しました"
+      },
+      "errors": {
+        "unknown": "ナレーションを開始できません。もう一度試してください。",
+        "noReadableContent": "現在の位置の後に、読み取り可能なテキストが見つかりませんでした。",
+        "noVoices": "現在のナレーション エンジンには、この本の言語に対応する音声がありません。",
+        "providerUnavailable": "音声サービスは利用できません。 URL、ネットワーク接続、API 構成を確認して、再試行してください。",
+        "engine": "ナレーション エンジンがエラーを返しました: {{message}}"
+      }
+    },
+    "settings": "設定の読み取り",
+    "settingsSheet": "読み取り設定パネル",
+    "settingsTheme": "テーマ",
+    "readingMode": "読み取りモード",
+    "pageDirection": "ページ方向",
+    "backgroundAuto": "自動",
+    "backgroundBlack": "ブラック",
+    "backgroundWhite": "ホワイト",
+    "alignment": "アライメント",
+    "alignmentAuto": "自動",
+    "alignmentJustify": "正当化する",
+    "alignmentStart": "左",
+    "column": "コラム",
+    "column1": "常に独身",
+    "columnAuto": "自動",
+    "fontSize": "フォント サイズ",
+    "lineHeight": "行の高さ",
+    "margin": "マージン",
+    "spread": "ページレイアウト",
+    "spreadAuto": "自動",
+    "spreadSingle": "常に独身",
+    "readingProgression": "読み取り方向",
+    "directionLtr": "左から右へ",
+    "directionRtl": "右から左へ",
+    "zoom": "ズーム",
+    "pinchZoomHint": "固定レイアウトはピンチズームをサポートします。",
+    "themeNeutral": "ホワイト",
+    "themePaper": "紙",
+    "themeSepia": "セピア",
+    "themeGreen": "グリーン",
+    "themeOcean": "オーシャン",
+    "themeContrast1": "HC1",
+    "themeNight": "夜",
+    "themeContrast2": "HC2",
+    "themes": {
+      "contrast1": "HC1",
+      "contrast2": "HC2"
+    },
+    "layoutScroll": "スクロール",
+    "layoutPaginate": "ページ付け",
+    "navHorizontal": "水平",
+    "navVertical": "垂直",
+    "pageLabel": "ページ {{page}}",
+    "positionLabel": "場所。",
+    "positionProgress": "場所。 {{current}} / {{total}}",
+    "pageProgress": "ページ {{current}} / {{total}}",
+    "font": "フォント",
+    "fontOptions": {
+      "defaultChinese": "中国のデフォルト",
+      "lxgwWenkai": "LXGW WenKai",
+      "oldStyle": "オールドスタイル",
+      "modern": "モダンセリフ",
+      "humanist": "ヒューマニスト・サンズ",
+      "openDyslexic": "OpenDyslexic",
+      "accessibleDfa": "AccessibleDfA",
+      "iaWriterDuospace": "IAライター"
+    },
+    "moreActions": "その他のアクション",
+    "closeReader": "読者を閉じる"
+  },
+  "bookDetail": {
+    "title": "本の詳細",
+    "missingParam": {
+      "title": "ブックパラメータがありません",
+      "detail": "ライブラリから本の詳細を再入力してください。"
+    },
+    "loadingDetail": "本の詳細を読み込み中…",
+    "seriesInfo": "{{series}} · #{{index}}",
+    "series": "シリーズ",
+    "seriesIndex": "シリーズインデックス",
+    "infoSection": "詳細",
+    "bookTitle": "タイトル",
+    "titleSort": "タイトルソート",
+    "authors": "著者",
+    "authorSort": "著者の並べ替え",
+    "pubDate": "出版日",
+    "language": "言語",
+    "publisher": "出版社",
+    "rating": "評価",
+    "tags": "タグ",
+    "identifiers": "識別子",
+    "createdAt": "で作成されました",
+    "downloadStarted": "ダウンロード開始",
+    "downloadStartedDetail": "{{format}} はダウンロードされるとすぐに読み取ることができます。",
+    "noReadableFormat": "読み取り可能な形式がありません",
+    "downloadAndRead": "ダウンロードして読む",
+    "continueReading": "読書を続ける",
+    "startReading": "読み始めます",
+    "back": "戻る",
+    "share": "シェア",
+    "moreActions": "その他のアクション: {{title}}",
+    "openBook": "「{{title}}」を開く",
+    "readFileStateFailed": "ファイル状態の読み取りに失敗しました",
+    "downloadFailed": "ファイルのダウンロードに失敗しました: {{path}}",
+    "cannotStartDownload": "ダウンロードを開始できません",
+    "noFormatPath": "{{format}} のファイル パスが見つかりません",
+    "deleteLocalFailed": "ローカル ファイルの削除に失敗しました",
+    "formatSection": {
+      "title": "ファイル形式",
+      "count": "{{count}} 形式",
+      "default": "デフォルトの読み取り形式",
+      "readable": "読み取り可能",
+      "unsupported": "サポートされていません",
+      "queued": "キューに登録されました",
+      "preparing": "準備中",
+      "notStarted": "未開始",
+      "cancel": "キャンセル",
+      "cancelDownload": "ダウンロードをキャンセル",
+      "download": "ダウンロード",
+      "downloadFormat": "ダウンロード",
+      "notDownloaded": "ダウンロードされていません",
+      "setDefault": "デフォルトの読み取り形式として設定",
+      "shareFormat": "シェア",
+      "more": "その他",
+      "count_other": "{{count}} 形式"
+    },
+    "setReadingFormat": "読み取り形式の設定",
+    "expand": "展開する"
+  },
+  "share": {
+    "fileNotDownloadedTitle": "ファイルはダウンロードされていません",
+    "fileNotDownloadedMessage": "「{{title}}」({{format}}) を最初にダウンロードする必要があります。",
+    "shareFailed": "共有に失敗しました"
+  },
+  "bookRow": {
+    "finished": "読了"
+  },
+  "addLibrary": {
+    "addedPrompt": {
+      "detail": "「{{name}}」に切り替えてライブラリを開きますか?",
+      "stay": "ここにいてください",
+      "switch": "スイッチとオープン"
+    },
+    "selectSaveLocation": "保存場所を選択してください",
+    "selectLibraryLocation": "ライブラリの場所を選択してください",
+    "name": "名前",
+    "invalidName": "名前に / または \\ を含めることはできません",
+    "create": "作成する",
+    "creating": "作成中",
+    "open": "開く",
+    "continue": "続きます",
+    "path": "パス: {{path}}",
+    "unrecognized": {
+      "title": "ライブラリが認識されません",
+      "detail": "MyReader または Calibre ライブラリ フォルダーを選択します。"
+    },
+    "folderExists": {
+      "title": "名前はすでに存在します",
+      "detail": "別のライブラリ名を選択してください。"
+    },
+    "operationFailed": "ライブラリ操作が失敗しました",
+    "operationFailedDetail": "後でもう一度試してください。"
+  },
+  "webdav": {
+    "sourcesTitle": "WebDAV ソース",
+    "sourceDetail": "ソースの詳細",
+    "addSource": "WebDAV ソースを追加",
+    "reconfigureSource": "WebDAV を再構成する",
+    "selectLibrary": "WebDAV ライブラリを選択してください",
+    "noSources": {
+      "title": "WebDAV ソースはまだありません",
+      "detail": "WebDAV ソースを追加するには、下のボタンを使用します。"
+    },
+    "delete": {
+      "title": "WebDAV ソースを削除",
+      "confirm": "「{{name}}」を削除しますか?",
+      "cancel": "キャンセル",
+      "confirmButton": "削除"
+    },
+    "deleteFailed": {
+      "title": "削除できません",
+      "message": "ソースの削除に失敗しました。"
+    },
+    "deleteSource": "ソースの削除",
+    "type": "タイプ",
+    "serverAddress": "サーバーアドレス",
+    "username": "ユーザー名",
+    "password": "パスワード",
+    "passwordSaved": "安全なストレージに保存されています",
+    "passwordNotSet": "未設定",
+    "basePath": "ベースパス",
+    "status": "ステータス",
+    "enabled": "有効",
+    "disabled": "無効",
+    "addedAt": "に追加されました",
+    "browser": {
+      "notFound": {
+        "title": "ソースが見つかりません",
+        "detail": "まず WebDAV ソースを追加してください。"
+      },
+      "loadFailed": {
+        "title": "参照に失敗しました",
+        "message": "WebDAV ブラウザで予期しないエラーが発生しました。再試行してください。"
+      },
+      "validating": "ディレクトリを検証しています",
+      "selectDirectory": "現在のディレクトリをライブラリとして選択します",
+      "currentPath": "現在のパス: {{path}}",
+      "reading": {
+        "title": "ディレクトリの閲覧",
+        "detail": "WebDAV サーバーからディレクトリ リストを取得しています。"
+      },
+      "readFailed": {
+        "title": "読み取りに失敗しました"
+      },
+      "credentialsUnavailable": {
+        "title": "WebDAV 資格情報が利用できません",
+        "detail": "WebDAV ソースを再構成します。"
+      },
+      "noCredentials": "WebDAV 認証情報が利用できません。データソースを編集し、パスワードを設定してください。",
+      "empty": {
+        "title": "空のディレクトリ",
+        "detail": "現在のディレクトリにはサブディレクトリがありません。"
+      },
+      "notValidLibrary": {
+        "title": "無効なディレクトリです",
+        "message": "有効なライブラリではありません — metadata.db が見つかりません。"
+      },
+      "notCalibreLibrary": "有効な Calibre ライブラリではありません。",
+      "cannotReadRemote": "リモート ディレクトリを読み取れません"
+    },
+    "add": {
+      "sourceTitle": "WebDAV ソース",
+      "enterServerUrl": "サーバーアドレスを入力してください。",
+      "portMustBeNumber": "ポートは数値でなければなりません",
+      "portRange": "ポートは 1-65535 である必要があります",
+      "validationFailed": "検証に失敗しました",
+      "connectionTestFailed": "接続テストに失敗しました",
+      "reEnter": "再入力",
+      "addAnyway": "とにかく追加",
+      "addFailed": "追加に失敗しました",
+      "addFailedMessage": "操作は失敗しました。再試行してください。",
+      "updateFailed": "保存に失敗しました",
+      "completing": "完了中",
+      "complete": "完了",
+      "saving": "保存",
+      "save": "保存",
+      "saveAnyway": "とにかく保存",
+      "serverAddressLabel": "サーバーアドレス",
+      "portLabel": "ポート",
+      "basePathLabel": "ベースパス",
+      "usernameLabel": "ユーザー名",
+      "usernamePlaceholder": "ユーザー名を入力してください",
+      "passwordLabel": "パスワード",
+      "passwordPlaceholder": "パスワードを入力してください",
+      "passwordKeepPlaceholder": "現在のパスワードを保持するには空白のままにします",
+      "useSSL": "SSL を使用する"
+    }
+  },
+  "onedrive": {
+    "sourcesTitle": "OneDrive ソース",
+    "sourceDetail": "ソースの詳細",
+    "addSource": "OneDrive ソースを追加",
+    "reauthenticate": "OneDrive に再度サインインします",
+    "selectLibrary": "OneDrive ライブラリを選択してください",
+    "noSources": {
+      "title": "OneDrive ソースはまだありません",
+      "detail": "OneDrive ソースを追加するには、下のボタンを使用します。"
+    },
+    "delete": {
+      "title": "OneDrive ソースを削除",
+      "confirm": "「{{name}}」を削除しますか?",
+      "cancel": "キャンセル",
+      "confirmButton": "削除"
+    },
+    "deleteFailed": {
+      "title": "削除できません",
+      "message": "ソースの削除に失敗しました。"
+    },
+    "deleteSource": "ソースの削除",
+    "type": "タイプ",
+    "displayName": "表示名",
+    "email": "電子メール",
+    "basePath": "ベースパス",
+    "authStatus": "認証ステータス",
+    "authenticated": "認証されました",
+    "notAuthenticated": "認証されていません",
+    "addedAt": "に追加されました",
+    "browser": {
+      "notFound": {
+        "title": "ソースが見つかりません",
+        "detail": "まず OneDrive ソースを追加してください。"
+      },
+      "loadFailed": {
+        "title": "参照に失敗しました",
+        "message": "OneDrive ブラウザで予期しないエラーが発生しました。再試行してください。"
+      },
+      "validating": "ディレクトリを検証しています",
+      "selectDirectory": "現在のディレクトリをライブラリとして選択します",
+      "currentPath": "現在のパス: {{path}}",
+      "reading": {
+        "title": "ディレクトリの閲覧",
+        "detail": "OneDrive からディレクトリ リストを取得しています。"
+      },
+      "readFailed": {
+        "title": "読み取りに失敗しました"
+      },
+      "credentialsUnavailable": {
+        "title": "OneDrive サインインの有効期限が切れました",
+        "detail": "OneDrive に再度サインインします。"
+      },
+      "noCredentials": "OneDrive 認証情報が利用できません。データソースを再認証してください。",
+      "empty": {
+        "title": "空のディレクトリ",
+        "detail": "現在のディレクトリにはサブディレクトリがありません。"
+      },
+      "notValidLibrary": {
+        "title": "無効なディレクトリです",
+        "message": "有効なライブラリではありません — metadata.db が見つかりません。"
+      },
+      "notCalibreLibrary": "有効な Calibre ライブラリではありません。",
+      "cannotReadRemote": "リモート ディレクトリを読み取れません"
+    },
+    "add": {
+      "signInTitle": "OneDrive にサインインします",
+      "signInDetail": "Microsoft アカウントでサインインします。",
+      "signInWithMicrosoft": "Microsoft でサインインする",
+      "authenticating": "認証中…",
+      "addingTitle": "OneDrive ソースの追加",
+      "addingDetail": "セットアップを終了しています — アプリを開いたままにしてください。",
+      "authFailed": "認証に失敗しました",
+      "authFailedMessage": "OneDrive にサインインできませんでした。再試行してください。",
+      "accountMismatch": "アカウントの不一致",
+      "accountMismatchMessage": "{{email}} としてサインインするか、戻って新しい OneDrive ソースを追加します。",
+      "alreadyAdded": "アカウントはすでに追加されています",
+      "alreadyAddedMessage": "アカウント {{email}} はすでに接続されています。"
+    }
+  },
+  "errorBoundary": {
+    "defaultTitle": "予期しないエラーが発生しました",
+    "retry": "再試行"
+  },
+  "dataSource": {
+    "backToList": "ソースリストに戻る",
+    "backToLocations": "利用可能な場所に戻る",
+    "notFound": {
+      "title": "ソースはもう存在しません",
+      "detail": "削除された可能性があります。ソースリストに戻ります。",
+      "addLibraryDetail": "削除された可能性があります。利用可能な場所に戻ります。"
+    },
+    "deleteInUse": {
+      "title": "削除できません",
+      "message": "次のライブラリはこのソースを使用しています: {{names}}。ソースを削除する前に、これらのライブラリを削除してください。"
+    }
+  },
+  "common": {
+    "confirm": "OK",
+    "gotIt": "わかりました",
+    "search": "検索",
+    "clear": "クリア",
+    "current": "現在",
+    "appInternalStorage": "アプリの内部ストレージ",
+    "localStorage": "ローカルストレージ",
+    "unnamedBook": "名前のない本",
+    "unknownAuthor": "作者不明",
+    "myLibrary": "私のライブラリ",
+    "unnamedLibrary": "名前のないライブラリ",
+    "selected": "選択済み",
+    "unselected": "未選択"
+  },
+  "bookLang": {
+    "zho": "中文",
+    "chi": "中文",
+    "eng": "英語",
+    "jpn": "日本語"
+  },
+  "bookMenu": {
+    "detail": "本の詳細",
+    "addToFavorites": "お気に入りに追加",
+    "removeFromFavorites": "お気に入りから削除",
+    "download": "ダウンロード",
+    "downloadFormat": "ダウンロード ({{format}})",
+    "cancelDownload": "ダウンロードをキャンセル",
+    "uploadFile": "ファイルのアップロード",
+    "uploadFailed": "アップロードに失敗しました",
+    "uploadFailedDetail": "「{{library}}」にアップロードできませんでした。 \n {{reason}}",
+    "defaultFormat": "デフォルトの読み取り形式: {{format}}",
+    "deleteDownload": "ダウンロードしたファイルを削除します",
+    "share": "シェア",
+    "editMetadata": "タイトルと著者を編集する",
+    "deleteBook": "本を削除",
+    "deleteConfirmTitle": "本を削除",
+    "deleteConfirmDetail": "「{{title}}」とそのブック ファイルをこのライブラリから削除しますか?",
+    "deleteFailed": "本を削除できません"
+  },
+  "bookEdit": {
+    "title": "書籍情報の編集",
+    "bookTitle": "タイトル",
+    "authors": "著者",
+    "authorsPlaceholder": "複数の著者はカンマで区切ります",
+    "save": "保存",
+    "saving": "保存",
+    "saveFailed": "書籍情報を保存できません",
+    "incomplete": {
+      "title": "情報が不足しています",
+      "detail": "タイトルと著者は必須です。"
+    },
+    "unavailable": {
+      "title": "この本は編集できません",
+      "detail": "MyReader ライブラリ内の書籍のみを編集できます。"
+    }
+  },
+  "bookLoader": {
+    "loadingBook": "本を読み込み中…",
+    "missingParam": "ブックパラメータがありません",
+    "noLibrary": "ライブラリが選択されていません",
+    "readingBookInfo": "読書情報…",
+    "invalidId": "無効な書籍 ID",
+    "notFoundInLibrary": "ライブラリに本が見つかりません",
+    "noReadableFormat": "読み取り可能な形式はありません (EPUB、CBZ、または PDF が必要です)",
+    "downloadingFromWebdav": "WebDAV から書籍をダウンロードしています…",
+    "downloadingFromRemote": "リモートから本をダウンロードしています…",
+    "loadingBookFile": "ブックファイルをロード中…",
+    "downloadFirst": "読む前に書籍の詳細にあるフォーマットをダウンロードしてください。"
+  },
+  "sync": {
+    "localDirectRead": "ローカル直接読み取り: 同期がスキップされました",
+    "libraryNotFound": "ライブラリが見つかりません: {{id}}",
+    "localDirectLabel": "ローカル · {{path}}",
+    "configError": "同期構成エラー",
+    "dataIntegrityError": "同期データ整合性エラー",
+    "webdavSourceNotFound": "このライブラリに関連付けられた WebDAV ソースは存在しません。",
+    "webdavPasswordMissing": "現在の WebDAV ソースにはパスワードがありません。ソースを再編集してください。",
+    "onedriveSourceNotFound": "このライブラリに関連付けられた OneDrive ソースは存在しません。",
+    "onedriveRefreshTokenMissing": "現在の OneDrive ソースには認証がありません。送信元を再認証してください。",
+    "onedriveGetFailed": "OneDrive GET が失敗しました: {{status}} {{path}}",
+    "onedriveDownloadUrlMissing": "OneDrive はダウンロード URL を返しませんでした: {{path}}",
+    "onedrivePutFailed": "OneDrive PUT が失敗しました: {{status}} {{path}}",
+    "onedriveDeleteFailed": "OneDrive DELETE が失敗しました: {{status}} {{path}}",
+    "onedriveListFailed": "OneDrive リストが失敗しました: {{status}} {{path}}",
+    "onedriveMkdirFailed": "OneDrive mkdir が失敗しました: {{status}} {{path}}",
+    "cannotResolveLocalPath": "ローカル ライブラリのルート ディレクトリを解決できません。",
+    "downloadCancelled": "ダウンロードがキャンセルされました",
+    "downloadFailed": "バックグラウンドでのダウンロードに失敗しました: {{code}}",
+    "downloadStalled": "ネイティブ ダウンロードはバイトを転送しましたが、停止しました。ネットワーク、WebDAV 範囲のサポート、またはシステムのバックグラウンド制限を確認してください。",
+    "downloadNotStarted": "ネイティブ ダウンロード タスクが作成されましたが、転送は開始されませんでした。データ ソース、認証、ネットワーク、またはネイティブ ダウンローダーの構成を確認してください。",
+    "uploadCancelled": "アップロードがキャンセルされました",
+    "uploadFailed": "バックグラウンドでのアップロードに失敗しました: HTTP {{status}} {{body}}",
+    "uploadFailedCode": "バックグラウンドでのアップロードに失敗しました: {{code}}",
+    "uploadStalled": "ネイティブ アップロードはバイトを転送しましたが、停止しました。ネットワーク、WebDAV 認証、またはシステムのバックグラウンド制限を確認してください。",
+    "uploadNotStarted": "ネイティブ アップロード タスクが作成されましたが、転送は開始されませんでした。 WebDAV URL、認証、またはネイティブ アップローダー構成を確認してください。",
+    "manifestNotRegistered": "パスがマニフェストに登録されていません: {{path}}",
+    "syncPathEmpty": "同期パスを空にすることはできません",
+    "syncPathTraversal": "同期パスには ..: {{path}} を含めることはできません",
+    "syncPathAbsolute": "同期パスは絶対パスにはできません: {{path}}",
+    "nativeDownloadMissing": "ネイティブのダウンロードは完了しましたが、キャッシュ ファイルが見つかりません: {{path}}",
+    "nativeDownloadEmpty": "ネイティブのダウンロードは完了しましたが、キャッシュ ファイルが空です: {{path}}",
+    "nativeDownloadNotSupported": "ネイティブ バックグラウンド ダウンロードはサポートされていません: {{kind}}",
+    "nativeUploadNotSupported": "ネイティブ バックグラウンド アップロードはサポートされていません: {{kind}}",
+    "hashMismatch": "ダウンロード後のハッシュの不一致: {{expected}} が予期されましたが、{{actual}} を取得しました",
+    "localFileMissing": "ローカル ファイルが存在しないため、アップロードできません: {{path}}",
+    "libraryNotFoundShort": "ライブラリが見つかりません: {{id}}",
+    "connectionTimeout": "接続タイムアウト (2 秒)。ネットワークまたは WebDAV 構成を確認してください。",
+    "cannotParseFilePath": "ファイル パスを解析できません: {{uri}}",
+    "metadataDbNotAvailable": "メタデータ.db は利用できません",
+    "formatNotFoundInLibrary": "フォーマット {{format}} がライブラリに見つかりません (bookId={{id}})",
+    "bookFileNotFound": "ブック ファイルが見つかりません: {{name}}",
+    "bookFileNotFoundDetail": "フルパス: {{uri}} \n ライブラリパス: {{libraryPath}} \n ブック内パス: {{rowPath}}",
+    "corruptedLibrary": "ライブラリデータが破損しています",
+    "corruptedLibraryMessage": "このライブラリのmetadata.dbを回復できません。ライブラリを削除して再度追加してください。",
+    "corruptedLibraryRedownloadMessage": "このライブラリのmetadata.dbを再ダウンロードできません。ネットワークまたは WebDAV 構成を確認してください。",
+    "cannotRedownloadMeta": "metadata.dbを再ダウンロードできません",
+    "metadataNotFound": "metadata.dbが見つかりません",
+    "metadataNotFoundDetail": "Calibremetadata.db が選択されたディレクトリに見つかりません。ライブラリのルート ディレクトリを選択します (metadata.db が含まれている必要があります)。",
+    "userCancelled": "ユーザーがキャンセルしたか、ディレクトリが選択されていません",
+    "notValidCalibreLibrary": "metadata.dbが選択されたライブラリに見つかりません。有効な Calibre ライブラリであることを確認してください。",
+    "loadLibraryFailed": "ライブラリのロードに失敗しました",
+    "addLibraryFailed": "ライブラリの追加に失敗しました",
+    "cannotAddDuplicate": "追加できません",
+    "alreadyAdded": "このライブラリはすでに追加されています。",
+    "readLibraryFailed": "ライブラリの読み取りに失敗しました",
+    "refreshLibraryFailed": "ライブラリを更新できませんでした",
+    "sourceUnreachable": "ソースに到達できません",
+    "sourceUnreachableDetail": "WebDAV ソースにアクセスできません。ダウンロードがキャンセルされました。 \n \n 考えられる原因: \n • ネットワークが利用できない、または不安定である \n • WebDAV サーバーが実行されていない、または到達できない \n • サーバーのアドレス、ポート、または認証が正しく構成されていない",
+    "sourceUnreachableSyncDetail": "WebDAV ソースにアクセスできません。同期がキャンセルされました。 \n \n 考えられる原因: \n • ネットワークが利用できない、または不安定である \n • WebDAV サーバーが実行されていない、または到達できない \n • サーバーのアドレス、ポート、または認証が正しく構成されていない",
+    "removeLibraryFirst": "まずこのソースを使用しているライブラリを削除してください",
+    "authFailed": "認証に失敗しました: ユーザー名またはパスワードが間違っているか、権限が不十分です。",
+    "pathNotFound": "パスが見つかりません: ベース パスと WebDAV ディレクトリが存在することを確認してください。",
+    "serverAbnormal": "サーバー エラー (HTTP {{status}}): サーバーのステータスと WebDAV 構成を確認してください。",
+    "connectionTimeoutDetail": "接続タイムアウト: ネットワーク、サーバー アドレス、ポート、および SSL 構成を確認します。理由: {{reason}}",
+    "networkFailed": "ネットワーク要求が失敗しました: サーバーに到達できません。ネットワーク、アドレス、ポート、SSL を確認してください。理由: {{reason}}",
+    "cannotDownload": "ダウンロードできません",
+    "noReadableFormatForDownload": "ダウンロードできる読み取り可能な形式がありません",
+    "noReadableFormat": "読み取り可能な形式がありません",
+    "noReadableFormatDetail": "この本には読める形式がありません",
+    "defaultFormatSet": "デフォルトのフォーマットセット",
+    "setDefaultFormat": "デフォルトの読み取り形式を設定します",
+    "currentDefault": "現在のデフォルト: {{format}}",
+    "readFormatFailed": "フォーマットの読み取りに失敗しました",
+    "deleteDownloadFile": "ダウンロードしたファイルを削除します",
+    "confirmDeleteDownload": "「{{title}}」のローカル ダウンロードを削除しますか?",
+    "deleteFailed": "削除に失敗しました",
+    "webdavGetFailed": "WebDAV GET が失敗しました: {{status}} {{path}}",
+    "webdavPutFailed": "WebDAV PUT が失敗しました: {{status}} {{path}}",
+    "webdavDeleteFailed": "WebDAV DELETE が失敗しました: {{status}} {{path}}",
+    "webdavPropfindFailed": "WebDAV PROPFIND が失敗しました: {{status}} {{path}}",
+    "webdavPropfindListFailed": "WebDAV PROPFIND リストが失敗しました: {{status}} {{path}}",
+    "webdavMkcolFailed": "WebDAV MKCOL が失敗しました: {{status}} {{path}}",
+    "localFileNotExist": "ローカル ファイルが存在しません: {{path}}",
+    "basicAuthNotSupported": "Basic 認証エンコーディングはこの環境ではサポートされていません",
+    "syncPathCannotBeEmpty": "同期パスを空にすることはできません"
+  },
+  "notifications": {
+    "libraryAdded": "ライブラリが追加されました: {{name}}",
+    "libraryUpdated": "ライブラリが更新されました",
+    "libraryUpdateFailed": "ライブラリの更新に失敗しました",
+    "downloadStart": "ダウンロード開始",
+    "downloadDone": "ダウンロード完了",
+    "downloadFailed": "ダウンロードに失敗しました",
+    "libraryRefreshing": "ライブラリの更新",
+    "librarySyncing": "ライブラリを同期しています"
+  },
+  "errors": {
+    "sourceUnreachable": "ソースに到達できません",
+    "sourceUnreachableDetail": "WebDAV ソースにアクセスできません。ダウンロードがキャンセルされました。 \n \n 考えられる原因: \n • ネットワークが利用できない、または不安定である \n • WebDAV サーバーが実行されていない、または到達できない \n • サーバーのアドレス、ポート、または認証が正しく構成されていない",
+    "downloadFailed": "ダウンロードに失敗しました",
+    "timeout": "タイムアウト"
+  },
+  "securityBookmarks": {
+    "invalidUrl": "{{action}} が失敗しました: 無効なディレクトリ URL。",
+    "invalidBookmark": "{{action}} が失敗しました: 保存されたブックマークは無効です。ライブラリを再選択してください。",
+    "unsupportedUrl": "{{action}} が失敗しました: ディレクトリ URL 形式はサポートされていません。代わりに、ファイル アプリからローカル ディレクトリを選択してください。",
+    "cannotAccess": "{{action}} が失敗しました: 許可されたライブラリ ディレクトリにアクセスできません。再度選択して承認してください。",
+    "expired": "{{action}} が失敗しました: ブックマークの承認が期限切れになりました。ライブラリを再選択してください。",
+    "genericError": "{{action}} が失敗しました: iOS ファイル認証エラー。再試行してください。",
+    "createBookmark": "ブックマークの作成",
+    "restoreBookmark": "ブックマークを復元する",
+    "accessDirectory": "アクセスディレクトリ",
+    "refreshBookmark": "ブックマークを更新"
+  }
+}
