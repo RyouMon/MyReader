@@ -1,6 +1,10 @@
 import { libraryTypeOf } from "@my-reader/tools/types/library"
 
-import { DataIntegrityError, SyncConnectivityError } from "../../errors"
+import {
+  DataIntegrityError,
+  SyncConnectivityError,
+  SyncFailureError,
+} from "../../errors"
 import {
   invalidateFavoriteBooks,
   invalidateReaderAnnotations,
@@ -176,7 +180,7 @@ function throwSyncFailure(report: LibrarySyncReport): void {
     if (report.failureKind === "data_integrity") {
       throw new DataIntegrityError(report.error)
     }
-    throw new Error(report.error)
+    throw new SyncFailureError(report.error, report.failureKind ?? "unexpected")
   }
 }
 

@@ -170,7 +170,7 @@ fn build_storage_operator_with_timeouts_and_progress(
     match config {
         LibraryStorageConfig::LocalDirect { root } => {
             Operator::new(Fs::default().root(&non_empty(root, "Local storage root")?))
-                .map_err(|error| sync_error(format!("Initialize local storage failed: {error}")))
+                .map_err(Into::into)
         }
         LibraryStorageConfig::Webdav {
             endpoint,
@@ -192,7 +192,7 @@ fn build_storage_operator_with_timeouts_and_progress(
                 .map(|operator| {
                     operator.with_context(OperationContext::new().with_http_transport(client))
                 })
-                .map_err(|error| sync_error(format!("Initialize WebDAV storage failed: {error}")))
+                .map_err(Into::into)
         }
         LibraryStorageConfig::Onedrive { access_token, root } => {
             let client = remote_http_client(connect_timeout, read_timeout, request_timeout)?;
@@ -213,8 +213,7 @@ fn build_onedrive_operator(
     if let Some(root) = root.filter(|value| !value.trim().is_empty()) {
         builder = builder.root(root);
     }
-    let operator = Operator::new(builder)
-        .map_err(|error| sync_error(format!("Initialize OneDrive storage failed: {error}")))?;
+    let operator = Operator::new(builder)?;
     let operator = if retry_operations {
         operator.layer(
             RetryLayer::new()
@@ -417,11 +416,7 @@ fn remote_http_client(
         .read_timeout(read_timeout)
         .timeout(request_timeout)
         .build()
-        .map(|client| {
-            HttpTransporter::new(opendal_http_transport_reqwest::ReqwestTransport::new(
-                client,
-            ))
-        })
+        .map(crate::infrastructure::http::storage_transport)
         .map_err(|error| sync_error(format!("Initialize remote HTTP client failed: {error}")))
 }
 

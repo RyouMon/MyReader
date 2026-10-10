@@ -384,6 +384,10 @@ OneDrive 大文件写入由 OpenDAL OneDrive backend 使用 upload session 分�
 平台 trigger，core 负责 debounce/max-wait、single-flight、pull freshness、retry/backoff、
 suspend 和恢复规则；平台提供前后台、网络、书库切换、Reader 关闭和计时器事件。
 
+同步阶段的失败类别由 Core 根据结构化存储错误决定，通过报告中的 `failureKind` 传递给平台。
+临时网络故障和限流进入退避重试，凭据、配置和数据完整性问题暂停等待修复。平台不得根据
+诊断消息重新判断已有类别；报告的 `error` 保留诊断信息，展示文案与国际化属于 UI。
+
 旧 JSONL/HLC、自研 join、CR-SQLite 和 v4 临时远端数据不会进入当前产品路径。
 
 ## 8. 阅读位置与格式能力

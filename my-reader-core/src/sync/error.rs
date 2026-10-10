@@ -2,6 +2,9 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum SyncError {
+    #[error(transparent)]
+    Storage(#[from] opendal::Error),
+
     #[error("SYNC_ERROR: {0}")]
     Sync(String),
 

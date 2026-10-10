@@ -574,7 +574,7 @@ impl SyncService {
                     mode: options.sidecar_mode,
                     pushed: 0,
                     pulled: 0,
-                    failure_kind: failure_kind(&error),
+                    failure_kind: Some(Self::failure_kind(&error)),
                     error: Some(error.to_string()),
                 },
             }
@@ -625,7 +625,7 @@ impl SyncService {
             {
                 Ok(report) => (report, None),
                 Err(error) => {
-                    let failure_kind = failure_kind(&error);
+                    let failure_kind = Some(Self::failure_kind(&error));
                     (
                         CalibreSyncReport {
                             skipped: true,
@@ -753,6 +753,33 @@ impl SyncService {
         )?)
     }
 
+    /// Classifies a sync failure without interpreting diagnostic text.
+    pub fn failure_kind(error: &CoreError) -> SyncFailureKind {
+        match error {
+            CoreError::StorageBackend(error) => match error.kind() {
+                opendal::ErrorKind::PermissionDenied => SyncFailureKind::Credential,
+                opendal::ErrorKind::ConfigInvalid
+                | opendal::ErrorKind::NotFound
+                | opendal::ErrorKind::Unsupported
+                | opendal::ErrorKind::IsADirectory
+                | opendal::ErrorKind::NotADirectory => SyncFailureKind::Configuration,
+                opendal::ErrorKind::RateLimited => SyncFailureKind::Connectivity,
+                // RetryLayer replaces the temporary flag with persistent. Known
+                // permanent kinds are handled above; retry other failures later.
+                _ if error.is_temporary() || error.is_persistent() => SyncFailureKind::Connectivity,
+                _ => SyncFailureKind::Unexpected,
+            },
+            CoreError::Storage(_) => SyncFailureKind::Connectivity,
+            CoreError::Config(_) | CoreError::NotFound(_) => SyncFailureKind::Configuration,
+            CoreError::DataIntegrity(_) => SyncFailureKind::DataIntegrity,
+            CoreError::Io(_)
+            | CoreError::Database(_)
+            | CoreError::Serialize(_)
+            | CoreError::Tts(_)
+            | CoreError::Sync(_) => SyncFailureKind::Unexpected,
+        }
+    }
+
     pub fn classify_failure(kind: SyncFailureKind) -> SyncFailureDisposition {
         match kind {
             SyncFailureKind::Connectivity => SyncFailureDisposition::Retry,
@@ -772,19 +799,6 @@ fn scope_has_myreader(scope: LibrarySyncScope) -> bool {
     matches!(scope, LibrarySyncScope::All | LibrarySyncScope::Myreader)
 }
 
-fn failure_kind(error: &CoreError) -> Option<SyncFailureKind> {
-    Some(match error {
-        CoreError::Storage(_) => SyncFailureKind::Connectivity,
-        CoreError::Config(_) | CoreError::NotFound(_) => SyncFailureKind::Configuration,
-        CoreError::DataIntegrity(_) => SyncFailureKind::DataIntegrity,
-        CoreError::Io(_)
-        | CoreError::Database(_)
-        | CoreError::Serialize(_)
-        | CoreError::Tts(_)
-        | CoreError::Sync(_) => SyncFailureKind::Unexpected,
-    })
-}
-
 async fn sync_calibre(
     config_path: &Path,
     mut library: Library,
@@ -796,7 +810,7 @@ async fn sync_calibre(
     let metadata = match operator.stat("metadata.db").await {
         Ok(metadata) => Some(metadata),
         Err(error) if error.kind() == opendal::ErrorKind::NotFound => None,
-        Err(error) => return Err(CoreError::Storage(error.to_string())),
+        Err(error) => return Err(error.into()),
     };
     let version = metadata.as_ref().map(metadata_version);
     if version.is_none() && !force {
@@ -1563,17 +1577,145 @@ mod tests {
     #[test]
     fn should_classify_core_errors_when_a_sync_phase_fails() {
         assert_eq!(
-            failure_kind(&CoreError::Storage("network unavailable".into())),
-            Some(SyncFailureKind::Connectivity)
+            SyncService::failure_kind(&CoreError::Storage("network unavailable".into())),
+            SyncFailureKind::Connectivity
         );
         assert_eq!(
-            failure_kind(&CoreError::Config("invalid endpoint".into())),
-            Some(SyncFailureKind::Configuration)
+            SyncService::failure_kind(&CoreError::Config("invalid endpoint".into())),
+            SyncFailureKind::Configuration
         );
         assert_eq!(
-            failure_kind(&CoreError::DataIntegrity("missing change".into())),
-            Some(SyncFailureKind::DataIntegrity)
+            SyncService::failure_kind(&CoreError::DataIntegrity("missing change".into())),
+            SyncFailureKind::DataIntegrity
         );
+    }
+
+    #[test]
+    fn should_preserve_storage_failure_semantics_across_sync_errors() {
+        use opendal::{Error, ErrorKind};
+        use std::error::Error as _;
+
+        for (source, expected) in [
+            (
+                Error::new(ErrorKind::Unexpected, "credential text").set_temporary(),
+                SyncFailureKind::Connectivity,
+            ),
+            (
+                Error::new(ErrorKind::Unexpected, "retry exhausted").set_persistent(),
+                SyncFailureKind::Connectivity,
+            ),
+            (
+                Error::new(ErrorKind::PermissionDenied, "network text").set_persistent(),
+                SyncFailureKind::Credential,
+            ),
+            (
+                Error::new(ErrorKind::ConfigInvalid, "network text").set_persistent(),
+                SyncFailureKind::Configuration,
+            ),
+            (
+                Error::new(ErrorKind::RateLimited, "slow down"),
+                SyncFailureKind::Connectivity,
+            ),
+            (
+                Error::new(ErrorKind::Unexpected, "network text"),
+                SyncFailureKind::Unexpected,
+            ),
+        ] {
+            let error = CoreError::from(crate::sync::SyncError::from(source));
+            assert_eq!(SyncService::failure_kind(&error), expected);
+            assert!(error.source().unwrap().is::<opendal::Error>());
+        }
+    }
+
+    #[tokio::test]
+    async fn should_recover_by_http_failure_kind_when_remote_sync_fails() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        for (status, expected) in [
+            ("503 Service Unavailable", SyncFailureKind::Connectivity),
+            ("429 Too Many Requests", SyncFailureKind::Connectivity),
+            ("401 Unauthorized", SyncFailureKind::Credential),
+            ("403 Forbidden", SyncFailureKind::Credential),
+            ("400 Bad Request", SyncFailureKind::Unexpected),
+        ] {
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let address = listener.local_addr().unwrap();
+            let server = tokio::spawn(async move {
+                loop {
+                    let (mut connection, _) = listener.accept().await.unwrap();
+                    let mut request = vec![0; 4096];
+                    if connection.read(&mut request).await.unwrap() == 0 {
+                        continue;
+                    }
+                    connection
+                        .write_all(
+                            format!(
+                                "HTTP/1.1 {status}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                            )
+                            .as_bytes(),
+                        )
+                        .await
+                        .unwrap();
+                }
+            });
+            let app = tempfile::tempdir().unwrap();
+            let sidecar = tempfile::tempdir().unwrap();
+            let library = tempfile::tempdir().unwrap();
+            seed_calibre_database(library.path(), &[1]);
+            let config_path = app.path().join("config.json");
+            seed_config(&config_path);
+
+            let result = SyncService::sync_library(
+                &config_path,
+                sidecar.path(),
+                library.path(),
+                "library-1",
+                1_000,
+                all_sync_options(),
+                &LibraryStorageConfig::Webdav {
+                    endpoint: format!("http://{address}"),
+                    username: "reader".into(),
+                    password: "secret".into(),
+                    root: None,
+                },
+            )
+            .await;
+            server.abort();
+            let report = result.unwrap();
+            assert!(report.calibre.error.is_some());
+            assert!(report.myreader.error.is_some());
+            assert_eq!(report.failure_kind, Some(expected), "{status}: {report:?}");
+            assert_eq!(
+                report.myreader.failure_kind,
+                Some(expected),
+                "{status}: {report:?}"
+            );
+
+            let coordinator = SyncCoordinator::default();
+            let transition = coordinator
+                .fail(
+                    sidecar.path(),
+                    begin_execution(&coordinator),
+                    report.failure_kind.unwrap(),
+                    "remote failure",
+                    2_000,
+                    0.5,
+                )
+                .await
+                .unwrap();
+            let snapshot = SyncService::schedule_snapshot(sidecar.path())
+                .await
+                .unwrap();
+            if expected == SyncFailureKind::Connectivity {
+                assert!(transition.retry.is_some());
+                assert!(snapshot.next_retry_at.is_some());
+                assert_eq!(snapshot.suspended_reason, None);
+            } else {
+                assert!(transition.retry.is_none());
+                assert_eq!(snapshot.next_retry_at, None);
+                assert!(snapshot.suspended_reason.is_some());
+            }
+        }
     }
 
     #[tokio::test]

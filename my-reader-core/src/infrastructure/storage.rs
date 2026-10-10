@@ -3,7 +3,7 @@ use std::time::Duration;
 use opendal::{
     layers::RetryLayer,
     services::{Onedrive, Webdav},
-    HttpTransporter, OperationContext, Operator,
+    OperationContext, Operator,
 };
 
 use crate::{
@@ -65,9 +65,7 @@ pub(crate) fn build_remote_operator(
     let client = super::http::client_builder()
         .build()
         .map_err(|error| CoreError::Storage(error.to_string()))?;
-    let transport = HttpTransporter::new(opendal_http_transport_reqwest::ReqwestTransport::new(
-        client,
-    ));
+    let transport = super::http::storage_transport(client);
     Ok(operator.with_context(OperationContext::new().with_http_transport(transport)))
 }
 
@@ -112,7 +110,7 @@ fn required<'a>(value: &'a str, code: &str) -> Result<&'a str, CoreError> {
 }
 
 pub(crate) fn storage_error(error: opendal::Error) -> CoreError {
-    CoreError::Storage(error.to_string())
+    error.into()
 }
 
 pub(crate) fn remote_storage_error(source: &DataSource, error: opendal::Error) -> CoreError {

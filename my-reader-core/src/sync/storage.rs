@@ -94,9 +94,7 @@ impl<'a> StorageAdapter<'a> {
         match self.operator.read(&path).await {
             Ok(data) => Ok(Some(data.to_vec())),
             Err(error) if error.kind() == opendal::ErrorKind::NotFound => Ok(None),
-            Err(error) => Err(sync_error(format!(
-                "Load Automerge storage key {key:?} failed: {error}"
-            ))),
+            Err(error) => Err(error.into()),
         }
     }
 
@@ -106,20 +104,12 @@ impl<'a> StorageAdapter<'a> {
             .write(&path, data.to_vec())
             .await
             .map(|_| ())
-            .map_err(|error| {
-                sync_error(format!(
-                    "Save Automerge storage key {key:?} failed: {error}"
-                ))
-            })
+            .map_err(Into::into)
     }
 
     pub async fn remove(&self, key: &[String]) -> Result<(), SyncError> {
         let path = storage_key_to_path(key)?;
-        self.operator.delete(&path).await.map_err(|error| {
-            sync_error(format!(
-                "Remove Automerge storage key {key:?} failed: {error}"
-            ))
-        })
+        self.operator.delete(&path).await.map_err(Into::into)
     }
 
     pub async fn load_range(&self, prefix: &[String]) -> Result<Vec<StorageChunk>, SyncError> {
@@ -132,11 +122,7 @@ impl<'a> StorageAdapter<'a> {
         {
             Ok(entries) => entries,
             Err(error) if error.kind() == opendal::ErrorKind::NotFound => return Ok(Vec::new()),
-            Err(error) => {
-                return Err(sync_error(format!(
-                    "Load Automerge storage range {prefix:?} failed: {error}"
-                )));
-            }
+            Err(error) => return Err(error.into()),
         };
         let mut chunks = Vec::new();
         for entry in entries {
@@ -151,11 +137,7 @@ impl<'a> StorageAdapter<'a> {
                 .operator
                 .read(entry.path())
                 .await
-                .map_err(|error| {
-                    sync_error(format!(
-                        "Load Automerge storage key {key:?} failed: {error}"
-                    ))
-                })?
+                .map_err(SyncError::from)?
                 .to_vec();
             chunks.push(StorageChunk { key, data });
         }
@@ -171,11 +153,7 @@ impl<'a> StorageAdapter<'a> {
             .delete_with(&format!("{path}/"))
             .recursive(true)
             .await
-            .map_err(|error| {
-                sync_error(format!(
-                    "Remove Automerge storage range {prefix:?} failed: {error}"
-                ))
-            })
+            .map_err(Into::into)
     }
 }
 
