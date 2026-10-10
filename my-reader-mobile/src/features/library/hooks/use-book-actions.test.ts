@@ -265,23 +265,29 @@ describe("useBookActions", () => {
       )
     })
 
-    it("should open a remote book after its requested download completes", async () => {
+    it.each([
+      "webdav",
+      "onedrive",
+    ] as const)("should wait for another press to read a completed %s download", async (sourceType) => {
+      const library = { ...remoteLibrary, sourceType }
       jest
         .mocked(getBookFormatPaths)
         .mockResolvedValue([
           { format: "EPUB", relativePath: "Author/Test Book/Test Book.epub" },
         ])
-      const { result, rerender } = renderHook(() =>
-        useBookActions(
-          [baseBook],
-          { "1": "notDownloaded" },
-          buildMetaMap(["EPUB"], "EPUB"),
-          buildFileStateBundle(),
-          null,
-          {},
-          remoteLibrary,
-          null,
-        ),
+      const { result, rerender } = renderHook(
+        ({ downloaded }: { downloaded: boolean }) =>
+          useBookActions(
+            [baseBook],
+            { "1": downloaded ? "downloaded" : "notDownloaded" },
+            buildMetaMap(["EPUB"], "EPUB"),
+            buildFileStateBundle(),
+            null,
+            {},
+            library,
+            null,
+          ),
+        { initialProps: { downloaded: false } },
       )
 
       act(() => result.current.handleBookPress("1"))
@@ -297,14 +303,19 @@ describe("useBookActions", () => {
           status: "done",
         },
       ] as ReturnType<typeof useDownloadStatusTasks>)
-      rerender({})
+      rerender({ downloaded: false })
+      expect(router.push).not.toHaveBeenCalled()
+      rerender({ downloaded: true })
 
-      await waitFor(() =>
-        expect(router.push).toHaveBeenCalledWith({
-          pathname: "/reader/[id]",
-          params: { id: "1", format: "EPUB" },
-        }),
-      )
+      expect(router.push).not.toHaveBeenCalled()
+      act(() => result.current.handleBookPress("1"))
+
+      expect(router.push).toHaveBeenCalledTimes(1)
+      expect(router.push).toHaveBeenCalledWith({
+        pathname: "/reader/[id]",
+        params: { id: "1", format: "EPUB" },
+      })
+      expect(enqueueDownload).toHaveBeenCalledTimes(1)
     })
 
     it("should ignore press when a menu is open", () => {
