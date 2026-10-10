@@ -120,8 +120,12 @@ async fn aborted_caller_should_keep_worker_serialized_and_removal_waiting() {
     started_rx.await.unwrap();
     worker.abort();
     assert!(worker.await.unwrap_err().is_cancelled());
+    assert!(
+        queue(&path).unwrap().try_lock_owned().is_err(),
+        "aborting the caller must not release an active worker's database guard"
+    );
 
-    let mut next = Box::pin(with_database(&path, |_| Ok(())));
+    let mut next = Box::pin(ensure_database_identity(&path, LIBRARY_UUID));
     let mut removal = Box::pin(crate::database::close_database_file(std::path::Path::new(
         &path,
     )));
@@ -131,7 +135,6 @@ async fn aborted_caller_should_keep_worker_serialized_and_removal_waiting() {
         Poll::Ready(())
     })
     .await;
-    drop(next);
     release_tx.send(()).unwrap();
     let removal = removal.await.unwrap();
 
@@ -143,6 +146,10 @@ async fn aborted_caller_should_keep_worker_serialized_and_removal_waiting() {
     drop(connection);
     std::fs::remove_file(&path).unwrap();
     removal.commit();
+    assert!(
+        next.await.is_err(),
+        "queued writes must respect committed removal"
+    );
     assert!(ensure_database_identity(&path, LIBRARY_UUID).await.is_err());
     assert!(
         !std::path::Path::new(&path).exists(),
