@@ -1,0 +1,22 @@
+{
+  "baseline_commit": "b3b03d87",
+  "implementation_commit": "dbc6af4e31f38a402ad0eef37cc91f0baab53fb4",
+  "binaries": {
+    "baseline": "52a79f3f1d5df4337580bc286f0ca35f780d14bfbb25501a6d56800de2c7799f",
+    "after": "35774cb69c3c2ea729030c788d2300f0488eb9469e63d33ca179bc7a3c6a84a2"
+  },
+  "recorded_on": "2026-10-10",
+  "os": "macOS 27.0.1 (26A434)",
+  "cpu": "Apple M1 Pro, 8 logical cores",
+  "memory_bytes": 17179869184,
+  "rustc": "1.95.0 (59807616e 2026-04-14)",
+  "target": "aarch64-apple-darwin",
+  "release_profile": {
+    "opt-level": "s",
+    "lto": true,
+    "codegen-units": 1
+  },
+  "iterations": 20,
+  "repetitions": 3,
+  "timer_interval_ms": 2
+}

@@ -12,7 +12,10 @@ use crate::{
         SidecarSyncMode, MYREADER_LIBRARY_MARKER_RELATIVE_PATH,
     },
     services::config,
-    sync::persistence::{ensure_database_document, ensure_database_identity, DatabaseIdentity},
+    sync::persistence::{
+        async_io::{ensure_database_document, ensure_database_identity},
+        DatabaseIdentity,
+    },
     CoreError,
 };
 
@@ -157,8 +160,8 @@ impl LibraryService {
             let database_path = database_path
                 .to_str()
                 .ok_or_else(|| CoreError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?;
-            let identity = ensure_database_identity(database_path, &library_uuid)?;
-            ensure_database_document(database_path, &identity, recorded_at_ms)?;
+            let identity = ensure_database_identity(database_path, &library_uuid).await?;
+            ensure_database_document(database_path, &identity, recorded_at_ms).await?;
             let state = config::ConfigService::add_library(config_path, library.clone())?;
             Ok((state, library.clone()))
         }
@@ -259,8 +262,8 @@ impl LibraryService {
             let database_path = database_path
                 .to_str()
                 .ok_or_else(|| CoreError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?;
-            let identity = ensure_database_identity(database_path, &marker.library_uuid)?;
-            ensure_database_document(database_path, &identity, recorded_at_ms)?;
+            let identity = ensure_database_identity(database_path, &marker.library_uuid).await?;
+            ensure_database_document(database_path, &identity, recorded_at_ms).await?;
             crate::services::sync::SyncService::sync_sidecar_with_operator(
                 &sidecar_root,
                 &library_root,
@@ -446,7 +449,7 @@ impl LibraryService {
             .to_str()
             .ok_or_else(|| CoreError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?
             .to_owned();
-        let identity = ensure_database_identity(&database_path, &marker.library_uuid)?;
+        let identity = ensure_database_identity(&database_path, &marker.library_uuid).await?;
         Ok((library, marker, database_path, identity))
     }
 
@@ -894,8 +897,8 @@ async fn initialize_local_myreader_cache(
     let database_path = database_path
         .to_str()
         .ok_or_else(|| CoreError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?;
-    let identity = ensure_database_identity(database_path, &marker.library_uuid)?;
-    ensure_database_document(database_path, &identity, recorded_at_ms)?;
+    let identity = ensure_database_identity(database_path, &marker.library_uuid).await?;
+    ensure_database_document(database_path, &identity, recorded_at_ms).await?;
     Ok(())
 }
 
@@ -1196,6 +1199,7 @@ fn validate_request(request: &RemoteLibraryRequest) -> Result<(), CoreError> {
 
 #[cfg(test)]
 mod tests {
+    use crate::sync::persistence::{ensure_database_document, ensure_database_identity};
     use std::io::{Cursor, Write};
 
     use image::{DynamicImage, ImageFormat, Rgb, RgbImage};

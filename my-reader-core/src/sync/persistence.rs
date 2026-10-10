@@ -1,8 +1,9 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
-    sync::{Mutex, OnceLock},
     time::Duration,
 };
+
+pub(crate) mod async_io;
 
 use rusqlite::{params, Connection, OptionalExtension, Transaction, TransactionBehavior};
 use serde::{Deserialize, Serialize};
@@ -21,8 +22,6 @@ use super::{
 
 const PROJECTION_VERSION: i64 = 2;
 const SIDECAR_PROTOCOL: &str = "library-sidecar-automerge-repo";
-
-static WRITER: OnceLock<Mutex<()>> = OnceLock::new();
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -94,10 +93,6 @@ fn sync_error(message: impl Into<String>) -> SyncError {
 
 fn database_error(error: rusqlite::Error) -> SyncError {
     sync_error(format!("SQLite sync store failed: {error}"))
-}
-
-fn writer() -> &'static Mutex<()> {
-    WRITER.get_or_init(|| Mutex::new(()))
 }
 
 struct LeasedConnection {
@@ -177,9 +172,6 @@ pub fn ensure_database_identity(
     library_uuid: &str,
 ) -> Result<DatabaseIdentity, SyncError> {
     let library_uuid = parse_library_uuid(library_uuid)?;
-    let _writer = writer()
-        .lock()
-        .map_err(|_| sync_error("SQLite sync writer lock is poisoned"))?;
     let mut connection = open_connection(database_path)?;
     let transaction = connection
         .transaction_with_behavior(TransactionBehavior::Immediate)
@@ -288,9 +280,6 @@ pub fn write_schedule_state(
     database_path: &str,
     state: &SyncScheduleState,
 ) -> Result<(), SyncError> {
-    let _writer = writer()
-        .lock()
-        .map_err(|_| sync_error("SQLite sync writer lock is poisoned"))?;
     let mut connection = open_connection(database_path)?;
     let transaction = connection
         .transaction_with_behavior(TransactionBehavior::Immediate)
@@ -303,9 +292,6 @@ pub fn mark_schedule_succeeded(
     database_path: &str,
     completed_pull_at: Option<i64>,
 ) -> Result<(), SyncError> {
-    let _writer = writer()
-        .lock()
-        .map_err(|_| sync_error("SQLite sync writer lock is poisoned"))?;
     let mut connection = open_connection(database_path)?;
     let transaction = connection
         .transaction_with_behavior(TransactionBehavior::Immediate)
@@ -889,9 +875,6 @@ pub fn execute_local_database_command(
     now_ms: i64,
     command: SyncDatabaseCommand,
 ) -> Result<DocumentCommandResult, SyncError> {
-    let _writer = writer()
-        .lock()
-        .map_err(|_| sync_error("SQLite sync writer lock is poisoned"))?;
     let mut connection = open_connection(database_path)?;
     let transaction = connection
         .transaction_with_behavior(TransactionBehavior::Immediate)
@@ -933,9 +916,6 @@ pub fn execute_local_database_mutation<F>(
 where
     F: FnOnce(&mut automerge::AutoCommit) -> Result<(), SyncError>,
 {
-    let _writer = writer()
-        .lock()
-        .map_err(|_| sync_error("SQLite sync writer lock is poisoned"))?;
     let mut connection = open_connection(database_path)?;
     let transaction = connection
         .transaction_with_behavior(TransactionBehavior::Immediate)
@@ -1081,9 +1061,6 @@ fn read_pending_outbox(connection: &Connection) -> Result<Vec<SyncOutboxEntry>, 
 
 pub fn delete_outbox_entry(database_path: &str, storage_key: &[String]) -> Result<(), SyncError> {
     let storage_key_json = encode_storage_key(storage_key)?;
-    let _writer = writer()
-        .lock()
-        .map_err(|_| sync_error("SQLite sync writer lock is poisoned"))?;
     let mut connection = open_connection(database_path)?;
     let transaction = connection
         .transaction_with_behavior(TransactionBehavior::Immediate)
@@ -1117,9 +1094,6 @@ pub fn apply_remote_database_objects(
     now_ms: i64,
     objects: Vec<SyncRemoteObject>,
 ) -> Result<ApplyRemoteDatabaseResult, SyncError> {
-    let _writer = writer()
-        .lock()
-        .map_err(|_| sync_error("SQLite sync writer lock is poisoned"))?;
     let mut connection = open_connection(database_path)?;
     let transaction = connection
         .transaction_with_behavior(TransactionBehavior::Immediate)

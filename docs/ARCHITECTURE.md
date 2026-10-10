@@ -106,6 +106,12 @@ models/             跨层稳定业务 DTO
 `services`、`repositories` 和 `infrastructure` 是 crate 内部实现。平台通过 `api` 和必要的稳定
 合同调用 core；平台 adapter 不复制 SQL、CRDT 合并或业务事务。
 
+同步 SQLite / Automerge 的异步调用经过 `sync/persistence/async_io.rs`：同一数据库异步排队，
+完整事务在有并发上限的 `spawn_blocking` 工作中执行；不同数据库不再共用全局写锁。
+远端 Automerge 对象校验也在阻塞线程执行。排队 guard 跟随实际工作，连接持有书库生命周期
+lease；取消调用撤销尚未开始的工作，不提前释放正在执行的事务，删除书库会等待已打开的连接关闭。
+SeaORM / SQLx 的异步查询保留原路径。
+
 ### 3.2 当前业务范围
 
 `my-reader-core` 已拥有：

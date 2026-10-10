@@ -2,14 +2,18 @@ use opendal::Operator;
 use sha2::{Digest, Sha256};
 
 use super::{
+    blocking,
     document::{
         library_sidecar_snapshot_heads, load_library_sidecar_document_bytes,
         validate_library_identity,
     },
     persistence::{
-        apply_remote_database_objects, delete_outbox_entry, ensure_database_document,
-        load_publishable_database_snapshot, DatabaseIdentity, PublishableDatabaseSnapshot,
-        RemoteStorageRepair, SyncOutboxEntry, SyncRemoteObject,
+        async_io::{
+            apply_remote_database_objects, delete_outbox_entry, ensure_database_document,
+            load_publishable_database_snapshot,
+        },
+        DatabaseIdentity, PublishableDatabaseSnapshot, RemoteStorageRepair, SyncOutboxEntry,
+        SyncRemoteObject,
     },
     storage::{
         incremental_prefix, snapshot_key, snapshot_prefix, storage_key_to_path, StorageAdapter,
@@ -98,16 +102,35 @@ fn heads_hash(heads: &[String]) -> String {
 async fn load_document_chunks(
     adapter: &StorageAdapter<'_>,
     identity: &DatabaseIdentity,
-) -> Result<Vec<StorageChunk>, SyncError> {
+    mode: SyncMode,
+) -> Result<(Vec<StorageChunk>, Vec<SyncRemoteObject>), SyncError> {
     let document_id = &identity.library_uuid;
     let mut chunks = adapter.load_range(&snapshot_prefix(document_id)).await?;
     chunks.extend(adapter.load_range(&incremental_prefix(document_id)).await?);
+    let identity = identity.clone();
+    blocking::run(move || {
+        validate_document_chunks(&chunks, &identity)?;
+        let objects = if mode == SyncMode::Full {
+            remote_objects(&chunks)
+        } else {
+            Vec::new()
+        };
+        Ok((chunks, objects))
+    })
+    .await
+}
+
+fn validate_document_chunks(
+    chunks: &[StorageChunk],
+    identity: &DatabaseIdentity,
+) -> Result<(), SyncError> {
+    let document_id = &identity.library_uuid;
     if chunks.len() > MAX_REMOTE_OBJECTS_PER_SYNC {
         return Err(sync_error(format!(
             "Remote Automerge object count exceeds {MAX_REMOTE_OBJECTS_PER_SYNC}"
         )));
     }
-    for chunk in &chunks {
+    for chunk in chunks {
         if chunk.data.len() > MAX_REMOTE_OBJECT_BYTES {
             return Err(sync_error(format!(
                 "Remote Automerge object {} exceeds {MAX_REMOTE_OBJECT_BYTES} bytes",
@@ -156,7 +179,7 @@ async fn load_document_chunks(
             _ => {}
         }
     }
-    Ok(chunks)
+    Ok(())
 }
 
 fn remote_objects(chunks: &[StorageChunk]) -> Vec<SyncRemoteObject> {
@@ -187,7 +210,7 @@ async fn publish_pending(
     for (index, row) in pending.into_iter().enumerate() {
         check_cancelled(observer)?;
         adapter.save(&row.storage_key, &row.bytes).await?;
-        delete_outbox_entry(database_path, &row.storage_key)?;
+        delete_outbox_entry(database_path, &row.storage_key).await?;
         pushed += row.change_count;
         published.push(StorageChunk {
             key: row.storage_key,
@@ -212,7 +235,7 @@ async fn save_total(
     let key = snapshot_key(document_id, &heads_hash(&snapshot.heads));
     adapter.save(&key, &snapshot.snapshot_bytes).await?;
     for row in snapshot.pending {
-        delete_outbox_entry(database_path, &row.storage_key)?;
+        delete_outbox_entry(database_path, &row.storage_key).await?;
     }
     Ok((
         StorageChunk {
@@ -245,7 +268,8 @@ async fn compact(
     if !should_compact(chunks) {
         return Ok(());
     }
-    let Some(publishable) = load_publishable_database_snapshot(database_path, identity)? else {
+    let Some(publishable) = load_publishable_database_snapshot(database_path, identity).await?
+    else {
         return Ok(());
     };
     let (snapshot, _) =
@@ -291,9 +315,9 @@ pub async fn sync_database_with_operator_observed(
         completed: 0,
         total: 1,
     });
-    ensure_database_document(database_path, identity, now_ms)?;
+    ensure_database_document(database_path, identity, now_ms).await?;
     let adapter = StorageAdapter::new(operator);
-    let initial_chunks = load_document_chunks(&adapter, identity).await?;
+    let (initial_chunks, objects) = load_document_chunks(&adapter, identity, mode).await?;
     observer.on_progress(SyncProgress {
         stage: SyncStage::Preparing,
         completed: 1,
@@ -316,12 +340,8 @@ pub async fn sync_database_with_operator_observed(
                 completed: 0,
                 total: initial_chunks.len(),
             });
-            let applied = apply_remote_database_objects(
-                database_path,
-                identity,
-                now_ms,
-                remote_objects(&initial_chunks),
-            )?;
+            let applied =
+                apply_remote_database_objects(database_path, identity, now_ms, objects).await?;
             observer.on_progress(SyncProgress {
                 stage: SyncStage::Applying,
                 completed: initial_chunks.len(),
@@ -332,8 +352,8 @@ pub async fn sync_database_with_operator_observed(
         }
     };
 
-    let mut covered_chunks = initial_chunks.clone();
-    let publishable = load_publishable_database_snapshot(database_path, identity)?;
+    let mut covered_chunks = initial_chunks;
+    let publishable = load_publishable_database_snapshot(database_path, identity).await?;
     let pushed = match publishable {
         None => {
             if let Some(RemoteStorageRepair {
@@ -353,7 +373,7 @@ pub async fn sync_database_with_operator_observed(
             });
             0
         }
-        Some(publishable) if initial_chunks.is_empty() || remote_storage_repair.is_some() => {
+        Some(publishable) if covered_chunks.is_empty() || remote_storage_repair.is_some() => {
             observer.on_progress(SyncProgress {
                 stage: SyncStage::Pushing,
                 completed: 0,
@@ -390,9 +410,12 @@ pub async fn sync_database_with_operator_observed(
     Ok(SyncReport { pushed, pulled })
 }
 
-pub fn has_publishable_database_work(database_path: &str) -> Result<bool, SyncError> {
-    Ok(super::persistence::list_publishable_outbox(database_path)?
-        .is_some_and(|pending| !pending.is_empty()))
+pub async fn has_publishable_database_work(database_path: &str) -> Result<bool, SyncError> {
+    Ok(
+        super::persistence::async_io::list_publishable_outbox(database_path)
+            .await?
+            .is_some_and(|pending| !pending.is_empty()),
+    )
 }
 
 #[cfg(test)]
@@ -406,6 +429,7 @@ mod tests {
     };
     use super::*;
     use crate::migration::LEGACY_MIGRATIONS;
+    use crate::sync::persistence::ensure_database_document;
 
     const LIBRARY_UUID: &str = "11111111-2222-4333-8444-555555555555";
 

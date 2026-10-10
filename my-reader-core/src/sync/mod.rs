@@ -1,5 +1,6 @@
 //! Platform-independent MyReader sidecar synchronization.
 
+mod blocking;
 pub mod document;
 pub mod document_engine;
 mod error;

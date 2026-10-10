@@ -18,7 +18,7 @@ use crate::{
     },
     sync::{
         exchange::{self, SyncMode, SyncObserver},
-        persistence::{self, SyncScheduleState},
+        persistence::{async_io as persistence, SyncScheduleState},
         scheduler::{
             SchedulerEvent, SchedulerPolicy, SchedulerState, SchedulerTransition, SyncExecution,
             SyncTiming,
@@ -459,7 +459,7 @@ impl SyncService {
         let _guard = lock.lock().await;
         let library_uuid =
             super::catalog::CatalogService::get_source_library_uuid(library_root).await?;
-        let identity = persistence::ensure_database_identity(&database_path, &library_uuid)?;
+        let identity = persistence::ensure_database_identity(&database_path, &library_uuid).await?;
         let remote_myreader = remote_content
             && super::library::LibraryService::read_myreader_marker(library_root).is_ok();
         let report = exchange::sync_database_with_operator_observed(
@@ -474,7 +474,7 @@ impl SyncService {
         if remote_myreader {
             super::content::ContentService::retry_remote_deletes(sidecar_root, operator).await?;
             let document =
-                persistence::ensure_database_document(&database_path, &identity, now_ms)?;
+                persistence::ensure_database_document(&database_path, &identity, now_ms).await?;
             super::content::ContentService::reconcile_myreader_catalog(
                 sidecar_root,
                 library_root,
@@ -485,7 +485,8 @@ impl SyncService {
         persistence::mark_schedule_succeeded(
             &database_path,
             (mode == SidecarSyncMode::Full).then_some(now_ms),
-        )?;
+        )
+        .await?;
         Ok(SidecarSyncReport {
             pushed: report.pushed,
             pulled: report.pulled,
@@ -674,7 +675,9 @@ impl SyncService {
 
     pub async fn has_pending_work(sidecar_root: &Path) -> Result<bool, CoreError> {
         database::open_db(&sidecar_root.to_string_lossy()).await?;
-        exchange::has_publishable_database_work(&database_path(sidecar_root)?).map_err(Into::into)
+        exchange::has_publishable_database_work(&database_path(sidecar_root)?)
+            .await
+            .map_err(Into::into)
     }
 
     pub async fn effective_mode(
@@ -688,7 +691,8 @@ impl SyncService {
         }
         database::open_db(&sidecar_root.to_string_lossy()).await?;
         let path = database_path(sidecar_root)?;
-        let last_pull = persistence::read_schedule_state(&path)?
+        let last_pull = persistence::read_schedule_state(&path)
+            .await?
             .and_then(|state| state.last_successful_pull_at);
         let is_fresh = last_pull.is_some_and(|last_pull| {
             last_pull <= now_ms && now_ms.saturating_sub(last_pull) < freshness_ms
@@ -696,7 +700,7 @@ impl SyncService {
         if !is_fresh {
             return Ok(Some(SidecarSyncMode::Full));
         }
-        if exchange::has_publishable_database_work(&path)? {
+        if exchange::has_publishable_database_work(&path).await? {
             return Ok(Some(SidecarSyncMode::PushOnly));
         }
         Ok(None)
@@ -704,7 +708,7 @@ impl SyncService {
 
     pub async fn schedule_snapshot(sidecar_root: &Path) -> Result<SyncScheduleSnapshot, CoreError> {
         database::open_db(&sidecar_root.to_string_lossy()).await?;
-        let state = persistence::read_schedule_state(&database_path(sidecar_root)?)?;
+        let state = persistence::read_schedule_state(&database_path(sidecar_root)?).await?;
         Ok(SyncScheduleSnapshot {
             last_successful_pull_at: state
                 .as_ref()
@@ -724,7 +728,8 @@ impl SyncService {
     ) -> Result<(), CoreError> {
         database::open_db(&sidecar_root.to_string_lossy()).await?;
         let path = database_path(sidecar_root)?;
-        let last_successful_pull_at = persistence::read_schedule_state(&path)?
+        let last_successful_pull_at = persistence::read_schedule_state(&path)
+            .await?
             .and_then(|state| state.last_successful_pull_at);
         Ok(persistence::write_schedule_state(
             &path,
@@ -734,13 +739,15 @@ impl SyncService {
                 transient_failure_count: failure_count,
                 suspended_reason: None,
             },
-        )?)
+        )
+        .await?)
     }
 
     pub async fn record_suspension(sidecar_root: &Path, reason: &str) -> Result<(), CoreError> {
         database::open_db(&sidecar_root.to_string_lossy()).await?;
         let path = database_path(sidecar_root)?;
-        let last_successful_pull_at = persistence::read_schedule_state(&path)?
+        let last_successful_pull_at = persistence::read_schedule_state(&path)
+            .await?
             .and_then(|state| state.last_successful_pull_at);
         Ok(persistence::write_schedule_state(
             &path,
@@ -750,7 +757,8 @@ impl SyncService {
                 transient_failure_count: 0,
                 suspended_reason: Some(reason.to_owned()),
             },
-        )?)
+        )
+        .await?)
     }
 
     /// Classifies a sync failure without interpreting diagnostic text.
@@ -973,6 +981,7 @@ async fn evict_cached_file(sidecar_root: &Path, library_root: &Path, relative_pa
 
 #[cfg(test)]
 mod tests {
+    use crate::sync::persistence;
     use std::sync::Mutex;
 
     use crate::models::{
