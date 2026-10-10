@@ -4,13 +4,14 @@ use std::path::{Path, PathBuf};
 use chrono::{SecondsFormat, TimeZone, Utc};
 use uuid::Uuid;
 
+use crate::library::{self, LibraryContext};
 use crate::models::catalog::{
     myreader_book_relative_path, myreader_cover_relative_path, BookFilePathRequest,
 };
 use crate::models::{
     is_remote_library_source_type, BookContent, BookDetail, BookEntry, BookFormat, BookIdentifier,
-    BookSummary, FormatSize, ImportBookRequest, LibraryType, PaginatedBooks, ReadingFormatPolicy,
-    UpdateBookMetadataRequest,
+    BookSummary, FormatSize, ImportBookRequest, Library, LibraryType, PaginatedBooks,
+    ReadingFormatPolicy, UpdateBookMetadataRequest,
 };
 use crate::repositories::calibre::{CalibreBookRepository, CatalogRepository};
 use crate::repositories::content::PendingBookImport;
@@ -19,7 +20,7 @@ use crate::sync::{
     document_engine::DocumentCommand,
     persistence::{
         async_io::{ensure_database_document, execute_local_database_command},
-        SyncDatabaseCommand,
+        DatabaseIdentity, SyncDatabaseCommand,
     },
 };
 use crate::CoreError;
@@ -496,17 +497,10 @@ impl CatalogService {
     ) -> Result<BookContent, CoreError> {
         let format = ReadingFormatPolicy::normalize(format)
             .ok_or_else(|| CoreError::Config("BOOK_FORMAT_UNSUPPORTED".into()))?;
-        let marker = crate::services::library::LibraryService::read_myreader_marker(content_root)?;
-        crate::database::open_db(&sidecar_root.to_string_lossy()).await?;
-        let database_path = crate::database::library_db_path(&sidecar_root.to_string_lossy())?;
-        let database_path = database_path
-            .to_str()
-            .ok_or_else(|| CoreError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?;
-        let identity = crate::sync::persistence::async_io::ensure_database_identity(
-            database_path,
-            &marker.library_uuid,
-        )
-        .await?;
+        let marker = library::read_myreader_marker(content_root)?;
+        let context = LibraryContext::open(sidecar_root).await?;
+        let database_path = context.path();
+        let identity = context.identity_for_uuid(&marker.library_uuid).await?;
         let document = ensure_database_document(database_path, &identity, 0).await?;
         let book = document
             .projection
@@ -616,15 +610,15 @@ impl CatalogService {
             analyzed_authors
         })?;
         let timestamp = catalog_timestamp(request.recorded_at_ms)?;
-        let (library, _, database_path, identity) =
-            crate::services::library::LibraryService::writable_myreader_identity(
-                config_path,
-                library_id,
-                content_root,
-                sidecar_root,
-                request.recorded_at_ms,
-            )
-            .await?;
+        let (library, context, identity) = writable_myreader_context(
+            config_path,
+            library_id,
+            content_root,
+            sidecar_root,
+            request.recorded_at_ms,
+        )
+        .await?;
+        let database_path = context.path();
         let remote_library = is_remote_library_source_type(library.source_type.as_deref());
         if remote_library != (delivery == ImportDelivery::DeferredRemote) {
             return Err(CoreError::Config(if remote_library {
@@ -634,7 +628,7 @@ impl CatalogService {
             }));
         }
         let current =
-            ensure_database_document(&database_path, &identity, request.recorded_at_ms).await?;
+            ensure_database_document(database_path, &identity, request.recorded_at_ms).await?;
         let pending_imports =
             crate::services::content::ContentService::list_pending_book_imports(sidecar_root)
                 .await?;
@@ -776,7 +770,7 @@ impl CatalogService {
             }
         }
         if let Err(error) = execute_local_database_command(
-            &database_path,
+            database_path,
             &identity,
             request.recorded_at_ms,
             SyncDatabaseCommand {
@@ -841,17 +835,17 @@ impl CatalogService {
         }
         let authors = normalize_authors(request.authors)?;
         let last_modified = catalog_timestamp(request.recorded_at_ms)?;
-        let (_, _, database_path, identity) =
-            crate::services::library::LibraryService::writable_myreader_identity(
-                config_path,
-                library_id,
-                content_root,
-                sidecar_root,
-                request.recorded_at_ms,
-            )
-            .await?;
+        let (_, context, identity) = writable_myreader_context(
+            config_path,
+            library_id,
+            content_root,
+            sidecar_root,
+            request.recorded_at_ms,
+        )
+        .await?;
+        let database_path = context.path();
         let current =
-            ensure_database_document(&database_path, &identity, request.recorded_at_ms).await?;
+            ensure_database_document(database_path, &identity, request.recorded_at_ms).await?;
         let book = current
             .projection
             .catalog_books
@@ -860,7 +854,7 @@ impl CatalogService {
             .ok_or_else(|| CoreError::NotFound(format!("BOOK_NOT_FOUND: {}", request.book_id)))?;
         let book_uuid = book.uuid.clone();
         execute_local_database_command(
-            &database_path,
+            database_path,
             &identity,
             request.recorded_at_ms,
             SyncDatabaseCommand {
@@ -893,16 +887,16 @@ impl CatalogService {
             return Err(CoreError::Config("BOOK_ID_INVALID".into()));
         }
         let last_modified = catalog_timestamp(recorded_at_ms)?;
-        let (library, _, database_path, identity) =
-            crate::services::library::LibraryService::writable_myreader_identity(
-                config_path,
-                library_id,
-                content_root,
-                sidecar_root,
-                recorded_at_ms,
-            )
-            .await?;
-        let current = ensure_database_document(&database_path, &identity, recorded_at_ms).await?;
+        let (library, context, identity) = writable_myreader_context(
+            config_path,
+            library_id,
+            content_root,
+            sidecar_root,
+            recorded_at_ms,
+        )
+        .await?;
+        let database_path = context.path();
+        let current = ensure_database_document(database_path, &identity, recorded_at_ms).await?;
         let book = current
             .projection
             .catalog_books
@@ -912,7 +906,7 @@ impl CatalogService {
         let book_uuid = book.uuid.clone();
         let relative_path = myreader_book_relative_path(&book.path, &book.name, &book.format);
         execute_local_database_command(
-            &database_path,
+            database_path,
             &identity,
             recorded_at_ms,
             SyncDatabaseCommand {
@@ -1036,14 +1030,7 @@ impl CatalogService {
     }
 
     pub async fn get_source_library_uuid(library_root: &Path) -> Result<String, CoreError> {
-        if Self::validate_library(library_root) {
-            Self::get_library_uuid(library_root).await
-        } else {
-            Ok(
-                crate::services::library::LibraryService::read_myreader_marker(library_root)?
-                    .library_uuid,
-            )
-        }
+        library::source_library_uuid(library_root).await
     }
 
     pub async fn list_book_summaries(library_root: &Path) -> Result<Vec<BookSummary>, CoreError> {
@@ -1121,6 +1108,25 @@ impl CatalogService {
         )
         .await
     }
+}
+
+async fn writable_myreader_context(
+    config_path: &Path,
+    library_id: &str,
+    library_root: &Path,
+    sidecar_root: &Path,
+    recorded_at_ms: i64,
+) -> Result<(Library, LibraryContext, DatabaseIdentity), CoreError> {
+    if recorded_at_ms < 0 {
+        return Err(CoreError::Config("RECORDED_AT_INVALID".into()));
+    }
+    let config = crate::services::config::ConfigService::load(config_path)?
+        .ok_or_else(|| CoreError::NotFound("APP_CONFIG_NOT_FOUND".into()))?;
+    let (library, marker) =
+        library::writable_myreader_library(&config, library_id, library_root, recorded_at_ms)?;
+    let context = LibraryContext::open(sidecar_root).await?;
+    let identity = context.identity_for_uuid(&marker.library_uuid).await?;
+    Ok((library, context, identity))
 }
 
 fn imported_file_basename(value: &str) -> Option<&str> {

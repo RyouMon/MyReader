@@ -9,6 +9,7 @@ use opendal::{ErrorKind, Operator};
 use tokio::sync::Mutex as AsyncMutex;
 
 use crate::{
+    library::{self, LibraryContext},
     models::LibraryStorageConfig,
     repositories::content::PendingBookImport,
     sync::{
@@ -156,16 +157,10 @@ impl BookTransferService {
             return Ok(BookUploadReport::default());
         }
 
-        let marker = super::library::LibraryService::read_myreader_marker(content_root)?;
-        let database_path = crate::database::library_db_path(&sidecar_root.to_string_lossy())?;
-        let database_path = database_path
-            .to_str()
-            .ok_or_else(|| CoreError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?;
-        let identity = crate::sync::persistence::async_io::ensure_database_identity(
-            database_path,
-            &marker.library_uuid,
-        )
-        .await?;
+        let marker = library::read_myreader_marker(content_root)?;
+        let context = LibraryContext::open(sidecar_root).await?;
+        let database_path = context.path();
+        let identity = context.identity_for_uuid(&marker.library_uuid).await?;
         let mut report = BookUploadReport {
             completed_book_uuids: Vec::with_capacity(pending_imports.len()),
             unavailable_book_uuids: Vec::new(),

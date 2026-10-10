@@ -6,16 +6,14 @@ use uuid::Uuid;
 
 use crate::{
     infrastructure::storage,
+    library::LibraryContext,
     models::{
         AppConfig, DataSource, Library, LibraryStorageConfig, LibraryType, LocalLibraryRequest,
         ManagedLocalLibraryRequest, MyReaderLibraryMarker, RemoteCredential, RemoteLibraryRequest,
         SidecarSyncMode, MYREADER_LIBRARY_MARKER_RELATIVE_PATH,
     },
     services::config,
-    sync::persistence::{
-        async_io::{ensure_database_document, ensure_database_identity},
-        DatabaseIdentity,
-    },
+    sync::persistence::async_io::ensure_database_document,
     CoreError,
 };
 
@@ -155,12 +153,9 @@ impl LibraryService {
             std::fs::create_dir_all(library_root.join("Books"))?;
             write_myreader_marker(&library_root, &marker)?;
             std::fs::create_dir_all(&sidecar_root)?;
-            crate::database::open_db(&sidecar_root.to_string_lossy()).await?;
-            let database_path = crate::database::library_db_path(&sidecar_root.to_string_lossy())?;
-            let database_path = database_path
-                .to_str()
-                .ok_or_else(|| CoreError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?;
-            let identity = ensure_database_identity(database_path, &library_uuid).await?;
+            let context = LibraryContext::open(&sidecar_root).await?;
+            let database_path = context.path();
+            let identity = context.identity_for_uuid(&library_uuid).await?;
             ensure_database_document(database_path, &identity, recorded_at_ms).await?;
             let state = config::ConfigService::add_library(config_path, library.clone())?;
             Ok((state, library.clone()))
@@ -257,12 +252,9 @@ impl LibraryService {
 
         let result = async {
             std::fs::create_dir_all(&sidecar_root)?;
-            crate::database::open_db(&sidecar_root.to_string_lossy()).await?;
-            let database_path = crate::database::library_db_path(&sidecar_root.to_string_lossy())?;
-            let database_path = database_path
-                .to_str()
-                .ok_or_else(|| CoreError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?;
-            let identity = ensure_database_identity(database_path, &marker.library_uuid).await?;
+            let context = LibraryContext::open(&sidecar_root).await?;
+            let database_path = context.path();
+            let identity = context.identity_for_uuid(&marker.library_uuid).await?;
             ensure_database_document(database_path, &identity, recorded_at_ms).await?;
             crate::services::sync::SyncService::sync_sidecar_with_operator(
                 &sidecar_root,
@@ -366,91 +358,7 @@ impl LibraryService {
     }
 
     pub fn read_myreader_marker(library_root: &Path) -> Result<MyReaderLibraryMarker, CoreError> {
-        let path = library_root.join(MYREADER_LIBRARY_MARKER_RELATIVE_PATH);
-        let bytes = std::fs::read(&path).map_err(|error| {
-            if error.kind() == std::io::ErrorKind::NotFound {
-                CoreError::LibraryMarkerNotFound(path.display().to_string())
-            } else {
-                error.into()
-            }
-        })?;
-        let marker = serde_json::from_slice::<MyReaderLibraryMarker>(&bytes).map_err(|error| {
-            CoreError::DataIntegrity(format!("MYREADER_LIBRARY_MARKER_INVALID: {error}"))
-        })?;
-        marker.validate().map_err(|error| {
-            CoreError::DataIntegrity(format!("MYREADER_LIBRARY_MARKER_INVALID: {error}"))
-        })?;
-        Ok(marker)
-    }
-
-    pub(crate) async fn writable_myreader_identity(
-        config_path: &Path,
-        library_id: &str,
-        library_root: &Path,
-        sidecar_root: &Path,
-        recorded_at_ms: i64,
-    ) -> Result<(Library, MyReaderLibraryMarker, String, DatabaseIdentity), CoreError> {
-        if recorded_at_ms < 0 {
-            return Err(CoreError::Config("RECORDED_AT_INVALID".into()));
-        }
-        let config = config::ConfigService::load(config_path)?
-            .ok_or_else(|| CoreError::NotFound("APP_CONFIG_NOT_FOUND".into()))?;
-        let library = config
-            .libraries
-            .iter()
-            .find(|library| library.id == library_id)
-            .cloned()
-            .ok_or_else(|| CoreError::LibraryNotFound(library_id.to_owned()))?;
-        if library.library_type != LibraryType::MyReader {
-            return Err(CoreError::Config("LIBRARY_NOT_MYREADER".into()));
-        }
-        if !matches!(
-            library.source_type.as_deref(),
-            Some("local") | Some("webdav") | Some("onedrive")
-        ) {
-            return Err(CoreError::Config("MYREADER_LIBRARY_SOURCE_REQUIRED".into()));
-        }
-        if let Some(data_source_id) = library.data_source_id.as_deref() {
-            let source = config
-                .data_sources
-                .iter()
-                .find(|source| source.id() == data_source_id)
-                .ok_or_else(|| {
-                    CoreError::NotFound(format!("DATASOURCE_NOT_FOUND: {data_source_id}"))
-                })?;
-            let (kind, readonly) = match source {
-                DataSource::Local { readonly, .. } => ("local", *readonly),
-                DataSource::Webdav { readonly, .. } => ("webdav", *readonly),
-                DataSource::Onedrive { readonly, .. } => ("onedrive", *readonly),
-            };
-            if library.source_type.as_deref() != Some(kind) {
-                return Err(CoreError::Config("LIBRARY_DATASOURCE_TYPE_MISMATCH".into()));
-            }
-            if readonly == Some(true) {
-                return Err(CoreError::Config("DATASOURCE_READ_ONLY".into()));
-            }
-        }
-        if matches!(
-            library.source_type.as_deref(),
-            Some("webdav") | Some("onedrive")
-        ) && library.data_source_id.is_none()
-        {
-            return Err(CoreError::Config(
-                "REMOTE_LIBRARY_MISSING_DATASOURCE".into(),
-            ));
-        }
-        if library_root.join("metadata.db").exists() {
-            return Err(CoreError::LibraryContainsMetadataDb);
-        }
-        let marker = Self::read_myreader_marker(library_root)?;
-        crate::database::open_db(&sidecar_root.to_string_lossy()).await?;
-        let database_path = crate::database::library_db_path(&sidecar_root.to_string_lossy())?;
-        let database_path = database_path
-            .to_str()
-            .ok_or_else(|| CoreError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?
-            .to_owned();
-        let identity = ensure_database_identity(&database_path, &marker.library_uuid).await?;
-        Ok((library, marker, database_path, identity))
+        crate::library::read_myreader_marker(library_root)
     }
 
     pub async fn add_local(
@@ -892,12 +800,9 @@ async fn initialize_local_myreader_cache(
 ) -> Result<(), CoreError> {
     std::fs::create_dir_all(local_root.join("Books"))?;
     write_myreader_marker(local_root, marker)?;
-    crate::database::open_db(&local_root.to_string_lossy()).await?;
-    let database_path = crate::database::library_db_path(&local_root.to_string_lossy())?;
-    let database_path = database_path
-        .to_str()
-        .ok_or_else(|| CoreError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?;
-    let identity = ensure_database_identity(database_path, &marker.library_uuid).await?;
+    let context = LibraryContext::open(local_root).await?;
+    let database_path = context.path();
+    let identity = context.identity_for_uuid(&marker.library_uuid).await?;
     ensure_database_document(database_path, &identity, recorded_at_ms).await?;
     Ok(())
 }

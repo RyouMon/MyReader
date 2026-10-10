@@ -3,7 +3,7 @@ use std::path::Path;
 
 use opendal::Operator;
 
-use crate::database;
+use crate::library::LibraryContext;
 use crate::models::{
     BookCoverThumbnailCache, BookCoverThumbnailCachePatch, DownloadedFile, FileDigest, FileState,
     FileStateUpdate, LibraryType, ReadingFormatPolicy,
@@ -23,8 +23,9 @@ impl ContentService {
         sidecar_root: &Path,
         library_root: &Path,
     ) -> Result<BTreeMap<String, String>, CoreError> {
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        let rows = ContentRepository::new(&db).list_reading_formats().await?;
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        let rows = ContentRepository::new(db).list_reading_formats().await?;
         let library_type =
             if crate::services::catalog::CatalogService::validate_library(library_root) {
                 LibraryType::Calibre
@@ -64,8 +65,9 @@ impl ContentService {
         book_id: i64,
         format: Option<&str>,
     ) -> Result<(), CoreError> {
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        let repository = ContentRepository::new(&db);
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        let repository = ContentRepository::new(db);
         let Some(format) = format else {
             return repository.clear_reading_format(book_id).await;
         };
@@ -103,16 +105,18 @@ impl ContentService {
         sidecar_root: &Path,
         path: &str,
     ) -> Result<Option<FileState>, CoreError> {
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ContentRepository::new(&db).get_file_state(path).await
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ContentRepository::new(db).get_file_state(path).await
     }
 
     pub async fn get_file_states(
         sidecar_root: &Path,
         paths: &[String],
     ) -> Result<HashMap<String, FileState>, CoreError> {
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        Ok(ContentRepository::new(&db)
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        Ok(ContentRepository::new(db)
             .get_file_states(paths)
             .await?
             .into_iter()
@@ -120,8 +124,9 @@ impl ContentService {
     }
 
     pub async fn list_file_states(sidecar_root: &Path) -> Result<Vec<FileState>, CoreError> {
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ContentRepository::new(&db).list_file_states().await
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ContentRepository::new(db).list_file_states().await
     }
 
     pub async fn upsert_file_state(
@@ -129,30 +134,32 @@ impl ContentService {
         path: &str,
         update: FileStateUpdate,
     ) -> Result<(), CoreError> {
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ContentRepository::new(&db)
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ContentRepository::new(db)
             .upsert_file_state(path, update)
             .await
     }
 
     pub async fn delete_file_state(sidecar_root: &Path, path: &str) -> Result<(), CoreError> {
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ContentRepository::new(&db).delete_file_state(path).await
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ContentRepository::new(db).delete_file_state(path).await
     }
 
     pub(crate) async fn list_pending_book_imports(
         sidecar_root: &Path,
     ) -> Result<Vec<PendingBookImport>, CoreError> {
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ContentRepository::new(&db)
-            .list_pending_book_imports()
-            .await
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ContentRepository::new(db).list_pending_book_imports().await
     }
 
     #[cfg(test)]
     pub(crate) async fn has_pending_book_imports(sidecar_root: &Path) -> Result<bool, CoreError> {
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ContentRepository::new(&db).has_pending_book_imports().await
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ContentRepository::new(db).has_pending_book_imports().await
     }
 
     pub(crate) async fn stage_pending_book_import(
@@ -160,8 +167,9 @@ impl ContentService {
         pending: &PendingBookImport,
         local_mtime: i64,
     ) -> Result<(), CoreError> {
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ContentRepository::new(&db)
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ContentRepository::new(db)
             .stage_pending_book_import(pending, local_mtime)
             .await
     }
@@ -171,8 +179,9 @@ impl ContentService {
         book_uuid: &str,
         relative_path: &str,
     ) -> Result<(), CoreError> {
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ContentRepository::new(&db)
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ContentRepository::new(db)
             .discard_pending_book_import(book_uuid, relative_path)
             .await
     }
@@ -182,8 +191,9 @@ impl ContentService {
         book_uuid: &str,
         error: &str,
     ) -> Result<(), CoreError> {
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ContentRepository::new(&db)
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ContentRepository::new(db)
             .record_pending_book_import_failure(book_uuid, error)
             .await
     }
@@ -192,8 +202,9 @@ impl ContentService {
         sidecar_root: &Path,
         book_uuid: &str,
     ) -> Result<(), CoreError> {
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ContentRepository::new(&db)
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ContentRepository::new(db)
             .delete_pending_book_import(book_uuid)
             .await
     }
@@ -202,8 +213,9 @@ impl ContentService {
         sidecar_root: &Path,
         book_uuid: &str,
     ) -> Result<bool, CoreError> {
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ContentRepository::new(&db)
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ContentRepository::new(db)
             .pending_book_import_exists(book_uuid)
             .await
     }
@@ -364,8 +376,9 @@ impl ContentService {
             local_mtime: Some(mtime_ms),
         };
         if preserve_pending_remote_state {
-            let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-            ContentRepository::new(&db)
+            let context = LibraryContext::open(sidecar_root).await?;
+            let db = context.database();
+            ContentRepository::new(db)
                 .upsert_reconciled_file_state(&relative_path, update)
                 .await?;
         } else {
@@ -579,8 +592,9 @@ impl ContentService {
         width_px: i64,
         height_px: i64,
     ) -> Result<Vec<BookCoverThumbnailCache>, CoreError> {
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ContentRepository::new(&db)
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ContentRepository::new(db)
             .list_cover_thumbnail_cache(thumbnail_version, width_px, height_px)
             .await
     }
@@ -589,8 +603,9 @@ impl ContentService {
         sidecar_root: &Path,
         patch: BookCoverThumbnailCachePatch,
     ) -> Result<(), CoreError> {
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ContentRepository::new(&db)
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ContentRepository::new(db)
             .upsert_cover_thumbnail_cache(patch)
             .await
     }
@@ -602,15 +617,17 @@ impl ContentService {
         width_px: i64,
         height_px: i64,
     ) -> Result<(), CoreError> {
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ContentRepository::new(&db)
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ContentRepository::new(db)
             .delete_cover_thumbnail_cache(book_id, thumbnail_version, width_px, height_px)
             .await
     }
 
     pub async fn clear_cover_thumbnail_cache(sidecar_root: &Path) -> Result<(), CoreError> {
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ContentRepository::new(&db)
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ContentRepository::new(db)
             .clear_cover_thumbnail_cache()
             .await
     }
