@@ -116,15 +116,25 @@ impl CoreFfiError {
             CoreError::Serialize(message) => Self::Serialize(message),
             CoreError::Storage(message) => Self::Storage(message),
             CoreError::Sync(message) => Self::Sync(message),
-            CoreError::Tts(message) => Self::Tts(message),
+            error @ CoreError::Tts { .. } => {
+                use my_reader_core::{api::sync::SyncService, models::SyncFailureKind};
+                match SyncService::failure_kind(&error) {
+                    SyncFailureKind::Configuration => Self::Config(error.to_string()),
+                    SyncFailureKind::Credential => Self::Credential(error.to_string()),
+                    SyncFailureKind::Connectivity => Self::Request(error.to_string()),
+                    _ => Self::Tts(error.to_string()),
+                }
+            }
             CoreError::DataIntegrity(message) => Self::DataIntegrity(message),
-            error @ CoreError::StorageBackend(_) => match SyncService::failure_kind(&error) {
-                SyncFailureKind::Connectivity => Self::Request(error.to_string()),
-                SyncFailureKind::Configuration => Self::Config(error.to_string()),
-                SyncFailureKind::Credential => Self::Credential(error.to_string()),
-                SyncFailureKind::DataIntegrity => Self::DataIntegrity(error.to_string()),
-                SyncFailureKind::Unexpected => Self::Sync(error.to_string()),
-            },
+            error @ (CoreError::StorageBackend(_) | CoreError::Request(_)) => {
+                match SyncService::failure_kind(&error) {
+                    SyncFailureKind::Connectivity => Self::Request(error.to_string()),
+                    SyncFailureKind::Configuration => Self::Config(error.to_string()),
+                    SyncFailureKind::Credential => Self::Credential(error.to_string()),
+                    SyncFailureKind::DataIntegrity => Self::DataIntegrity(error.to_string()),
+                    SyncFailureKind::Unexpected => Self::Sync(error.to_string()),
+                }
+            }
         }
     }
 }
@@ -180,8 +190,8 @@ mod tests {
             CoreFfiError::Sync(message) if message == diagnostic
         ));
         assert!(matches!(
-            CoreFfiError::from_core(CoreError::Tts(diagnostic.into())),
-            CoreFfiError::Tts(message) if message == diagnostic
+            CoreFfiError::from_core(CoreError::Tts { kind: my_reader_core::TtsErrorKind::Cache, message: diagnostic.into() }),
+            CoreFfiError::Tts(message) if message.contains(diagnostic)
         ));
     }
 
@@ -214,6 +224,37 @@ mod tests {
         assert!(matches!(
             CoreFfiError::from_core(error),
             CoreFfiError::Sync(_)
+        ));
+    }
+
+    #[test]
+    fn should_preserve_tts_recovery_categories_across_ffi() {
+        use my_reader_core::TtsErrorKind;
+
+        let convert = |kind| {
+            CoreFfiError::from_core(CoreError::Tts {
+                kind,
+                message: "credential network 503 diagnostic".into(),
+            })
+        };
+        assert!(matches!(
+            convert(TtsErrorKind::Unauthorized),
+            CoreFfiError::Credential(_)
+        ));
+        assert!(matches!(
+            convert(TtsErrorKind::Configuration),
+            CoreFfiError::Config(_)
+        ));
+        for kind in [
+            TtsErrorKind::Timeout,
+            TtsErrorKind::RateLimited,
+            TtsErrorKind::Network,
+        ] {
+            assert!(matches!(convert(kind), CoreFfiError::Request(_)));
+        }
+        assert!(matches!(
+            convert(TtsErrorKind::InvalidAudio),
+            CoreFfiError::Tts(_)
         ));
     }
 }

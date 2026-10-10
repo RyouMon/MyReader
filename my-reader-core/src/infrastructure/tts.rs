@@ -1,3 +1,4 @@
+use crate::TtsErrorKind;
 use std::time::Duration;
 
 use reqwest::{
@@ -129,11 +130,14 @@ async fn synthesize_openai(
         ..
     } = &profile.options
     else {
-        return Err(tts_error("configuration", "TTS_PROVIDER_OPTIONS_MISMATCH"));
+        return Err(tts_error(
+            TtsErrorKind::Configuration,
+            "TTS_PROVIDER_OPTIONS_MISMATCH",
+        ));
     };
     let credential = credential
         .filter(|value| !value.trim().is_empty())
-        .ok_or_else(|| tts_error("unauthorized", "TTS_CREDENTIAL_REQUIRED"))?;
+        .ok_or_else(|| tts_error(TtsErrorKind::Unauthorized, "TTS_CREDENTIAL_REQUIRED"))?;
     let model = profile.model.as_deref().unwrap_or("gpt-4o-mini-tts");
     let mut body = json!({
         "model": model,
@@ -155,7 +159,8 @@ async fn synthesize_openai(
         .header(ACCEPT, response_format.mime_type())
         .body(serde_json::to_vec(&body)?)
         .send()
-        .await?;
+        .await
+        .map_err(map_reqwest_error)?;
     audio_response(response, Some(*response_format)).await
 }
 
@@ -172,10 +177,13 @@ fn audio_from_bytes(
     bytes: Vec<u8>,
     expected_format: Option<TtsAudioFormat>,
 ) -> Result<SynthesizedAudio, CoreError> {
-    let (sniffed_mime, extension) =
-        sniff_audio(&bytes).ok_or_else(|| tts_error("invalid_audio", "INVALID_TTS_AUDIO"))?;
+    let (sniffed_mime, extension) = sniff_audio(&bytes)
+        .ok_or_else(|| tts_error(TtsErrorKind::InvalidAudio, "INVALID_TTS_AUDIO"))?;
     if expected_format.is_some_and(|format| format.mime_type() != sniffed_mime) {
-        return Err(tts_error("invalid_audio", "UNEXPECTED_TTS_AUDIO_FORMAT"));
+        return Err(tts_error(
+            TtsErrorKind::InvalidAudio,
+            "UNEXPECTED_TTS_AUDIO_FORMAT",
+        ));
     }
 
     Ok(SynthesizedAudio {
@@ -193,7 +201,7 @@ async fn response_bytes(
         .content_length()
         .is_some_and(|length| length > MAX_AUDIO_BYTES)
     {
-        return Err(tts_error("payload_too_large", too_large_code));
+        return Err(tts_error(TtsErrorKind::PayloadTooLarge, too_large_code));
     }
     let mut bytes = Vec::with_capacity(
         response
@@ -203,7 +211,7 @@ async fn response_bytes(
     );
     while let Some(chunk) = response.chunk().await.map_err(map_reqwest_error)? {
         if bytes.len().saturating_add(chunk.len()) as u64 > MAX_AUDIO_BYTES {
-            return Err(tts_error("payload_too_large", too_large_code));
+            return Err(tts_error(TtsErrorKind::PayloadTooLarge, too_large_code));
         }
         bytes.extend_from_slice(&chunk);
     }
@@ -217,12 +225,12 @@ async fn successful(response: Response) -> Result<Response, CoreError> {
     }
 
     let kind = match status {
-        StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => "unauthorized",
-        StatusCode::TOO_MANY_REQUESTS => "rate_limited",
-        StatusCode::REQUEST_TIMEOUT | StatusCode::GATEWAY_TIMEOUT => "timeout",
-        StatusCode::PAYLOAD_TOO_LARGE => "payload_too_large",
-        status if status.is_server_error() => "unavailable",
-        _ => "invalid_request",
+        StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => TtsErrorKind::Unauthorized,
+        StatusCode::TOO_MANY_REQUESTS => TtsErrorKind::RateLimited,
+        StatusCode::REQUEST_TIMEOUT | StatusCode::GATEWAY_TIMEOUT => TtsErrorKind::Timeout,
+        StatusCode::PAYLOAD_TOO_LARGE => TtsErrorKind::PayloadTooLarge,
+        status if status.is_server_error() => TtsErrorKind::Unavailable,
+        _ => TtsErrorKind::InvalidRequest,
     };
     Err(tts_error(kind, &format!("HTTP_{}", status.as_u16())))
 }
@@ -238,7 +246,7 @@ fn client() -> Result<Client, CoreError> {
 
 fn openai_speech_endpoint(profile: &TtsProviderProfile) -> Result<Url, CoreError> {
     let mut url = Url::parse(&profile.endpoint)
-        .map_err(|_| tts_error("configuration", "INVALID_TTS_ENDPOINT"))?;
+        .map_err(|_| tts_error(TtsErrorKind::Configuration, "INVALID_TTS_ENDPOINT"))?;
     let path = url.path().trim_end_matches('/');
     if path.ends_with("/audio/speech") {
         return Ok(url);
@@ -306,22 +314,19 @@ pub(crate) fn sniff_audio(bytes: &[u8]) -> Option<(&'static str, &'static str)> 
 
 fn map_reqwest_error(error: reqwest::Error) -> CoreError {
     if error.is_timeout() {
-        tts_error("timeout", "TTS_REQUEST_TIMEOUT")
+        tts_error(TtsErrorKind::Timeout, "TTS_REQUEST_TIMEOUT")
     } else if error.is_connect() {
-        tts_error("unavailable", "TTS_PROVIDER_UNAVAILABLE")
+        tts_error(TtsErrorKind::Unavailable, "TTS_PROVIDER_UNAVAILABLE")
     } else {
-        tts_error("network", "TTS_NETWORK_ERROR")
+        tts_error(TtsErrorKind::Network, "TTS_NETWORK_ERROR")
     }
 }
 
-impl From<reqwest::Error> for CoreError {
-    fn from(error: reqwest::Error) -> Self {
-        map_reqwest_error(error)
+fn tts_error(kind: TtsErrorKind, code: &str) -> CoreError {
+    CoreError::Tts {
+        kind,
+        message: code.to_owned(),
     }
-}
-
-fn tts_error(kind: &str, code: &str) -> CoreError {
-    CoreError::Tts(format!("{kind}:{code}"))
 }
 
 #[cfg(test)]

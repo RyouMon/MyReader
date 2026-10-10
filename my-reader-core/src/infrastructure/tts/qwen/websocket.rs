@@ -2,6 +2,7 @@
 //! https://platform.qianwenai.com/docs/token-plan/best-practices/multimodal-generation
 //! https://github.com/dashscope/dashscope-sdk-python/blob/main/dashscope/audio/tts_v2/speech_synthesizer.py
 
+use crate::TtsErrorKind;
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{json, Value};
 use tokio_tungstenite::{
@@ -31,7 +32,7 @@ pub(super) async fn synthesize(
         synthesize_task(profile, request, credential),
     )
     .await
-    .map_err(|_| tts_error("timeout", "TTS_REQUEST_TIMEOUT"))?
+    .map_err(|_| tts_error(TtsErrorKind::Timeout, "TTS_REQUEST_TIMEOUT"))?
 }
 
 async fn synthesize_task(
@@ -45,19 +46,22 @@ async fn synthesize_task(
         ..
     } = &profile.options
     else {
-        return Err(tts_error("configuration", "TTS_PROVIDER_OPTIONS_MISMATCH"));
+        return Err(tts_error(
+            TtsErrorKind::Configuration,
+            "TTS_PROVIDER_OPTIONS_MISMATCH",
+        ));
     };
     let mut url = Url::parse(&profile.endpoint)
-        .map_err(|_| tts_error("configuration", "INVALID_TTS_ENDPOINT"))?;
+        .map_err(|_| tts_error(TtsErrorKind::Configuration, "INVALID_TTS_ENDPOINT"))?;
     if !matches!(url.scheme(), "ws" | "wss") {
         url.set_scheme("wss")
-            .map_err(|_| tts_error("configuration", "INVALID_TTS_ENDPOINT"))?;
+            .map_err(|_| tts_error(TtsErrorKind::Configuration, "INVALID_TTS_ENDPOINT"))?;
         url.set_path("/api-ws/v1/inference");
     }
     let mut upgrade = url.as_str().into_client_request().map_err(network_error)?;
     let mut authorization = format!("Bearer {credential}")
         .parse::<http::HeaderValue>()
-        .map_err(|_| tts_error("unauthorized", "INVALID_TTS_CREDENTIAL"))?;
+        .map_err(|_| tts_error(TtsErrorKind::Unauthorized, "INVALID_TTS_CREDENTIAL"))?;
     authorization.set_sensitive(true);
     upgrade
         .headers_mut()
@@ -99,10 +103,14 @@ async fn synthesize_task(
     while let Some(message) = socket.next().await {
         match message.map_err(network_error)? {
             Message::Text(text) => {
-                let body: Value = serde_json::from_str(&text)
-                    .map_err(|_| tts_error("invalid_response", "INVALID_QWEN_RESPONSE"))?;
+                let body: Value = serde_json::from_str(&text).map_err(|_| {
+                    tts_error(TtsErrorKind::InvalidResponse, "INVALID_QWEN_RESPONSE")
+                })?;
                 if body["header"]["task_id"].as_str() != Some(&task_id) {
-                    return Err(tts_error("invalid_response", "QWEN_TASK_ID_MISMATCH"));
+                    return Err(tts_error(
+                        TtsErrorKind::InvalidResponse,
+                        "QWEN_TASK_ID_MISMATCH",
+                    ));
                 }
                 match body["header"]["event"].as_str() {
                     Some("task-started") if !started => {
@@ -132,10 +140,12 @@ async fn synthesize_task(
                             .as_str()
                             .unwrap_or("TaskFailed");
                         let kind = match code {
-                            "InvalidApiKey" | "AccessDenied" | "Unauthorized" => "unauthorized",
-                            "Throttling" | "Throttling.RateQuota" => "rate_limited",
-                            "RequestTimeout" => "timeout",
-                            _ => "invalid_request",
+                            "InvalidApiKey" | "AccessDenied" | "Unauthorized" => {
+                                TtsErrorKind::Unauthorized
+                            }
+                            "Throttling" | "Throttling.RateQuota" => TtsErrorKind::RateLimited,
+                            "RequestTimeout" => TtsErrorKind::Timeout,
+                            _ => TtsErrorKind::InvalidRequest,
                         };
                         // Never include error_message: it may echo a book or credential.
                         return Err(tts_error(
@@ -148,7 +158,10 @@ async fn synthesize_task(
             }
             Message::Binary(chunk) if started => {
                 if bytes.len().saturating_add(chunk.len()) as u64 > MAX_AUDIO_BYTES {
-                    return Err(tts_error("payload_too_large", "TTS_AUDIO_TOO_LARGE"));
+                    return Err(tts_error(
+                        TtsErrorKind::PayloadTooLarge,
+                        "TTS_AUDIO_TOO_LARGE",
+                    ));
                 }
                 bytes.extend_from_slice(&chunk);
             }
@@ -157,7 +170,7 @@ async fn synthesize_task(
             _ => {}
         }
     }
-    Err(tts_error("network", "QWEN_TASK_INTERRUPTED"))
+    Err(tts_error(TtsErrorKind::Network, "QWEN_TASK_INTERRUPTED"))
 }
 
 fn network_error(error: Error) -> CoreError {
@@ -165,14 +178,14 @@ fn network_error(error: Error) -> CoreError {
         Error::Http(response) => {
             let status = response.status().as_u16();
             let kind = match status {
-                401 | 403 => "unauthorized",
-                429 => "rate_limited",
-                408 | 504 => "timeout",
-                _ => "unavailable",
+                401 | 403 => TtsErrorKind::Unauthorized,
+                429 => TtsErrorKind::RateLimited,
+                408 | 504 => TtsErrorKind::Timeout,
+                _ => TtsErrorKind::Unavailable,
             };
             tts_error(kind, &format!("HTTP_{status}"))
         }
-        Error::Capacity(_) => tts_error("payload_too_large", "TTS_AUDIO_TOO_LARGE"),
-        _ => tts_error("network", "TTS_NETWORK_ERROR"),
+        Error::Capacity(_) => tts_error(TtsErrorKind::PayloadTooLarge, "TTS_AUDIO_TOO_LARGE"),
+        _ => tts_error(TtsErrorKind::Network, "TTS_NETWORK_ERROR"),
     }
 }

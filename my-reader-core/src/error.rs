@@ -1,5 +1,8 @@
 #[derive(Debug, thiserror::Error)]
 pub enum CoreError {
+    #[error("REQUEST_ERROR: {0}")]
+    Request(#[from] reqwest::Error),
+
     #[error("LIBRARY_ALREADY_EXISTS")]
     LibraryAlreadyExists,
 
@@ -51,8 +54,8 @@ pub enum CoreError {
     #[error("SYNC_ERROR: {0}")]
     Sync(String),
 
-    #[error("TTS_ERROR: {0}")]
-    Tts(String),
+    #[error("TTS_ERROR: {kind}:{message}")]
+    Tts { kind: TtsErrorKind, message: String },
 
     #[error("DATA_INTEGRITY_ERROR: {0}")]
     DataIntegrity(String),
@@ -79,6 +82,51 @@ impl From<crate::sync::SyncError> for CoreError {
             | crate::sync::SyncError::MissingDependencies { .. } => {
                 Self::DataIntegrity(error.to_string())
             }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+pub enum TtsErrorKind {
+    #[error("configuration")]
+    Configuration,
+    #[error("invalid_request")]
+    InvalidRequest,
+    #[error("unauthorized")]
+    Unauthorized,
+    #[error("rate_limited")]
+    RateLimited,
+    #[error("timeout")]
+    Timeout,
+    #[error("network")]
+    Network,
+    #[error("unavailable")]
+    Unavailable,
+    #[error("invalid_response")]
+    InvalidResponse,
+    #[error("cache")]
+    Cache,
+    #[error("unsupported")]
+    Unsupported,
+    #[error("invalid_audio")]
+    InvalidAudio,
+    #[error("payload_too_large")]
+    PayloadTooLarge,
+}
+
+impl TtsErrorKind {
+    pub fn failure_kind(self) -> crate::models::SyncFailureKind {
+        use crate::models::SyncFailureKind;
+        match self {
+            Self::Configuration
+            | Self::InvalidRequest
+            | Self::Unsupported
+            | Self::PayloadTooLarge => SyncFailureKind::Configuration,
+            Self::Unauthorized => SyncFailureKind::Credential,
+            Self::Network | Self::Timeout | Self::Unavailable | Self::RateLimited => {
+                SyncFailureKind::Connectivity
+            }
+            Self::InvalidResponse | Self::Cache | Self::InvalidAudio => SyncFailureKind::Unexpected,
         }
     }
 }

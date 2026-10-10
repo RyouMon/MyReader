@@ -756,6 +756,17 @@ impl SyncService {
     /// Classifies a sync failure without interpreting diagnostic text.
     pub fn failure_kind(error: &CoreError) -> SyncFailureKind {
         match error {
+            CoreError::Request(error) => match error.status().map(|status| status.as_u16()) {
+                Some(401 | 403) => SyncFailureKind::Credential,
+                Some(400..=499)
+                    if !matches!(error.status().map(|s| s.as_u16()), Some(408 | 429)) =>
+                {
+                    SyncFailureKind::Configuration
+                }
+                _ if error.is_builder() => SyncFailureKind::Configuration,
+                _ if error.is_decode() => SyncFailureKind::Unexpected,
+                _ => SyncFailureKind::Connectivity,
+            },
             CoreError::StorageBackend(error) => match error.kind() {
                 opendal::ErrorKind::PermissionDenied => SyncFailureKind::Credential,
                 opendal::ErrorKind::ConfigInvalid
@@ -782,10 +793,10 @@ impl SyncService {
             | CoreError::DataSourceInUse(_) => SyncFailureKind::Configuration,
             CoreError::LibraryContainsMetadataDb => SyncFailureKind::DataIntegrity,
             CoreError::DataIntegrity(_) => SyncFailureKind::DataIntegrity,
+            CoreError::Tts { kind, .. } => kind.failure_kind(),
             CoreError::Io(_)
             | CoreError::Database(_)
             | CoreError::Serialize(_)
-            | CoreError::Tts(_)
             | CoreError::Sync(_) => SyncFailureKind::Unexpected,
         }
     }

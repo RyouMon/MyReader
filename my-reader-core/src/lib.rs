@@ -13,7 +13,7 @@ mod repositories;
 mod services;
 mod sync;
 
-pub use error::CoreError;
+pub use error::{CoreError, TtsErrorKind};
 
 #[cfg(feature = "test-support")]
 pub mod test_support {
