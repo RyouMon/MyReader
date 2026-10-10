@@ -20,6 +20,7 @@ import type { BookDetail } from "@/lib/tauri-api"
 import { cn } from "@/lib/utils"
 import { CircularDownloadProgress } from "./CircularDownloadProgress"
 import { BookFormatFileAction } from "./BookFormatFileAction"
+import { BookShareMenu } from "./BookShareMenu"
 import { DetailSection } from "./BookDetailSections"
 import { getFormatTone } from "./bookDetailFormatting"
 
@@ -200,6 +201,11 @@ function BookFormatRow({
                 format={fmt}
               />
             ) : null}
+            <BookShareMenu
+              libraryId={activeLibraryId}
+              bookId={book.id}
+              format={fmt}
+            />
           </ButtonGroup>
         </div>
       </td>

@@ -99,6 +99,19 @@
     "editMetadata": "タイトルと著者を編集する",
     "deleteBook": "ライブラリから本を削除します"
   },
+  "bookShare": {
+    "saveAs": "名前を付けて保存…",
+    "fileSaved": "ファイルを保存しました",
+    "saveFailed": "ファイルを保存できませんでした",
+    "share": "共有",
+    "shareFormat": "{{format}} ファイルを共有",
+    "copyPath": "ファイルパスをコピー",
+    "revealFile": "ファイルの場所を開く",
+    "pathCopied": "ファイルパスをコピーしました",
+    "unavailable": "ファイルがローカルにありません",
+    "copyFailed": "ファイルパスをコピーできませんでした",
+    "revealFailed": "ファイルの場所を開けませんでした"
+  },
   "bookDetail": {
     "loading": "本の詳細を読み込み中…",
     "formats": {

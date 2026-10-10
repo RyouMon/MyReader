@@ -429,6 +429,37 @@ impl DownloadService {
         Ok(lib_root.join(book_format.relative_path))
     }
 
+    /// Resolve an existing, complete local book file for native file actions.
+    pub async fn resolve_available_book_file_path(
+        &self,
+        app_data_dir: &Path,
+        config: &AppConfig,
+        library_id: &str,
+        book_id: i64,
+        format: &str,
+    ) -> Result<PathBuf, AppError> {
+        let state = self
+            .check_file_state_with_active_download(
+                app_data_dir,
+                config,
+                library_id,
+                book_id,
+                format,
+            )
+            .await?;
+        if !Self::locally_available_state(&state.local_state) {
+            return Err(AppError::NotFound("BOOK_FILE_NOT_AVAILABLE_LOCALLY".into()));
+        }
+
+        let lib = LibraryService::resolve_library(Some(library_id), config)?;
+        let root = dunce::canonicalize(library_root_path(&lib, app_data_dir))?;
+        let path = dunce::canonicalize(root.join(state.path))?;
+        if !path.starts_with(&root) {
+            return Err(AppError::Config("BOOK_FILE_OUTSIDE_LIBRARY".into()));
+        }
+        Ok(path)
+    }
+
     /// Build an OpenDAL operator for a remote library's data source.
     pub async fn build_operator_for_library(
         lib: &LibraryConfig,

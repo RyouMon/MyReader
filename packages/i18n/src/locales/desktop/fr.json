@@ -99,6 +99,19 @@
     "editMetadata": "Modifier le titre et l'auteur",
     "deleteBook": "Supprimer le livre de la bibliothèque"
   },
+  "bookShare": {
+    "saveAs": "Enregistrer sous…",
+    "fileSaved": "Fichier enregistré",
+    "saveFailed": "Impossible d’enregistrer le fichier",
+    "share": "Partager",
+    "shareFormat": "Partager le fichier {{format}}",
+    "copyPath": "Copier le chemin du fichier",
+    "revealFile": "Afficher dans le dossier",
+    "pathCopied": "Chemin du fichier copié",
+    "unavailable": "Fichier indisponible en local",
+    "copyFailed": "Impossible de copier le chemin du fichier",
+    "revealFailed": "Impossible d’afficher le fichier dans le dossier"
+  },
   "bookDetail": {
     "loading": "Chargement des détails du livre…",
     "formats": {

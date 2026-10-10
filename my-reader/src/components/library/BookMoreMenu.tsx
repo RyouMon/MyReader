@@ -26,6 +26,7 @@ import { toast } from "sonner"
 import {
   ContextMenu,
   ContextMenuContent,
+  ContextMenuGroup,
   ContextMenuItem,
   ContextMenuSub,
   ContextMenuSubContent,
@@ -35,6 +36,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -60,11 +62,13 @@ import {
 import { resolveReadFormat } from "@/lib/readFormats"
 import { api, formatApiError } from "@/lib/tauri-api"
 import { cn } from "@/lib/utils"
+import { BookShareSubMenu } from "./BookShareMenu"
 
 type FileAction = "download" | "cancel" | "upload" | "delete"
 const BOOK_MORE_MENU_WIDTH_CLASS = "w-52"
 
 interface MenuParts {
+  Group: ElementType
   Item: ElementType
   Sub: ElementType
   SubContent: ElementType
@@ -72,6 +76,7 @@ interface MenuParts {
 }
 
 const dropdownMenuParts: MenuParts = {
+  Group: DropdownMenuGroup,
   Item: DropdownMenuItem,
   Sub: DropdownMenuSub,
   SubContent: DropdownMenuSubContent,
@@ -79,6 +84,7 @@ const dropdownMenuParts: MenuParts = {
 }
 
 const contextMenuParts: MenuParts = {
+  Group: ContextMenuGroup,
   Item: ContextMenuItem,
   Sub: ContextMenuSub,
   SubContent: ContextMenuSubContent,
@@ -363,6 +369,12 @@ function BookMoreMenuItems({
           parts={parts}
         />
       ) : null}
+      <BookShareSubMenu
+        libraryId={libraryId}
+        bookId={book.id}
+        formats={book.formats}
+        parts={parts}
+      />
       {!fileActionsEnabled ? (
         <Item disabled>
           <Download />
