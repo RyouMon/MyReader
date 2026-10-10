@@ -70,6 +70,7 @@ export async function openReaderInNewWindow(
       })
     await existing.setTitle(windowTitle)
     await existing.show()
+    await existing.unminimize()
     await existing.setFocus()
     console.info(`Success to focus existing reader window. label: "${label}"`)
     return
