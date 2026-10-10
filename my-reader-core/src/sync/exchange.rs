@@ -104,7 +104,7 @@ async fn load_document_chunks(
     identity: &DatabaseIdentity,
     mode: SyncMode,
 ) -> Result<(Vec<StorageChunk>, Vec<SyncRemoteObject>), SyncError> {
-    let document_id = &identity.library_uuid;
+    let document_id = identity.library_uuid.as_str();
     let mut chunks = adapter.load_range(&snapshot_prefix(document_id)).await?;
     chunks.extend(adapter.load_range(&incremental_prefix(document_id)).await?);
     let identity = identity.clone();
@@ -124,7 +124,7 @@ fn validate_document_chunks(
     chunks: &[StorageChunk],
     identity: &DatabaseIdentity,
 ) -> Result<(), SyncError> {
-    let document_id = &identity.library_uuid;
+    let document_id = identity.library_uuid.as_str();
     if chunks.len() > MAX_REMOTE_OBJECTS_PER_SYNC {
         return Err(sync_error(format!(
             "Remote Automerge object count exceeds {MAX_REMOTE_OBJECTS_PER_SYNC}"
@@ -164,7 +164,7 @@ fn validate_document_chunks(
                     });
                 }
                 let document =
-                    load_library_sidecar_document_bytes(&chunk.data, &identity.replica_id)
+                    load_library_sidecar_document_bytes(&chunk.data, identity.replica_id.as_str())
                         .map_err(|error| SyncError::InvalidRemoteObject {
                             object_path: object_path.clone(),
                             reason: error.to_string(),
@@ -272,8 +272,13 @@ async fn compact(
     else {
         return Ok(());
     };
-    let (snapshot, _) =
-        save_total(publishable, database_path, adapter, &identity.library_uuid).await?;
+    let (snapshot, _) = save_total(
+        publishable,
+        database_path,
+        adapter,
+        identity.library_uuid.as_str(),
+    )
+    .await?;
     for chunk in chunks {
         if chunk.key.get(2) != snapshot.key.get(2) {
             adapter.remove(&chunk.key).await?;
@@ -379,8 +384,13 @@ pub async fn sync_database_with_operator_observed(
                 completed: 0,
                 total: 1,
             });
-            let (snapshot, change_count) =
-                save_total(publishable, database_path, &adapter, &identity.library_uuid).await?;
+            let (snapshot, change_count) = save_total(
+                publishable,
+                database_path,
+                &adapter,
+                identity.library_uuid.as_str(),
+            )
+            .await?;
             covered_chunks.push(snapshot);
             observer.on_progress(SyncProgress {
                 stage: SyncStage::Pushing,
@@ -451,13 +461,13 @@ mod tests {
 
     fn identity(replica: &str) -> DatabaseIdentity {
         DatabaseIdentity {
-            library_uuid: LIBRARY_UUID.to_owned(),
-            replica_id: replica.to_owned(),
+            library_uuid: LIBRARY_UUID.parse().unwrap(),
+            replica_id: replica.parse().unwrap(),
         }
     }
 
     fn set_progress(database_path: &str, identity: &DatabaseIdentity, book_id: i64, page: i64) {
-        let replica_id = identity.replica_id.clone();
+        let replica_id = identity.replica_id.to_string();
         execute_local_database_mutation(database_path, identity, page, |document| {
             set_reading_position(
                 document,

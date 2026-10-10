@@ -50,8 +50,8 @@ impl ReadingService {
         let context = LibraryContext::open(sidecar_root).await?;
         let database_path = context.path();
         let identity = context.identity(library_root).await?;
-        let library_uuid = &identity.library_uuid;
-        let replica_id = identity.replica_id.clone();
+        let library_uuid = identity.library_uuid.as_str();
+        let replica_id = identity.replica_id.to_string();
         let mutation_replica_id = replica_id.clone();
 
         let changed = mutate_document(database_path, &identity, recorded_at_ms, move |document| {
@@ -157,7 +157,7 @@ impl ReadingService {
             locator_json,
             display_progression_ppm,
             recorded_at: recorded_at_ms,
-            replica_id: identity.replica_id.clone(),
+            replica_id: identity.replica_id.to_string(),
         };
         let completion = if display_progression_ppm == Some(1_000_000) {
             Some(ReadingCompletionValue {
@@ -167,7 +167,7 @@ impl ReadingService {
                 local_day: local_day_for_timestamp(recorded_at_ms)?,
                 completed_at: recorded_at_ms,
                 updated_at: recorded_at_ms,
-                replica_id: identity.replica_id.clone(),
+                replica_id: identity.replica_id.to_string(),
             })
         } else {
             None
@@ -190,8 +190,8 @@ impl ReadingService {
         info!(
             target: "myreader_sync",
             event = "reading_position.local_write",
-            library_uuid = identity.library_uuid,
-            replica_id = identity.replica_id,
+            library_uuid = %identity.library_uuid,
+            replica_id = %identity.replica_id,
             book_id,
             format,
             "Committed local reading position"
@@ -200,8 +200,8 @@ impl ReadingService {
             info!(
                 target: "myreader_sync",
                 event = "reading_completion.local_write",
-                library_uuid = identity.library_uuid,
-                replica_id = identity.replica_id,
+                library_uuid = %identity.library_uuid,
+                replica_id = %identity.replica_id,
                 book_id,
                 format,
                 "Committed completion with final reading position"
@@ -310,7 +310,7 @@ impl ReadingService {
         mutate_document(database_path, &identity, recorded_at_ms, {
             let format = format.clone();
             let locator_key = locator_key.clone();
-            let replica_id = identity.replica_id.clone();
+            let replica_id = identity.replica_id.to_string();
             move |document| {
                 let current = bookmark_projections(document)?.into_iter().find(|item| {
                     item.book_id == book_id
@@ -350,8 +350,8 @@ impl ReadingService {
         info!(
             target: "myreader_sync",
             event = "bookmark.local_write",
-            library_uuid = identity.library_uuid,
-            replica_id = identity.replica_id,
+            library_uuid = %identity.library_uuid,
+            replica_id = %identity.replica_id,
             book_id,
             format,
             locator_key,
@@ -383,7 +383,7 @@ impl ReadingService {
         let changed = mutate_document(database_path, &identity, recorded_at_ms, {
             let format = format.clone();
             let locator_key = locator_key.clone();
-            let replica_id = identity.replica_id.clone();
+            let replica_id = identity.replica_id.to_string();
             move |document| {
                 let current = bookmark_projections(document)?.into_iter().find(|item| {
                     item.book_id == book_id
@@ -411,8 +411,8 @@ impl ReadingService {
             info!(
                 target: "myreader_sync",
                 event = "bookmark.local_write",
-                library_uuid = identity.library_uuid,
-                replica_id = identity.replica_id,
+                library_uuid = %identity.library_uuid,
+                replica_id = %identity.replica_id,
                 book_id,
                 format,
                 locator_key,
@@ -483,8 +483,8 @@ impl ReadingService {
         info!(
             target: "myreader_sync",
             event = "annotation.local_write",
-            library_uuid = identity.library_uuid,
-            replica_id = identity.replica_id,
+            library_uuid = %identity.library_uuid,
+            replica_id = %identity.replica_id,
             annotation_id = id,
             book_id,
             operation = "create",
@@ -539,8 +539,8 @@ impl ReadingService {
         info!(
             target: "myreader_sync",
             event = "annotation.local_write",
-            library_uuid = identity.library_uuid,
-            replica_id = identity.replica_id,
+            library_uuid = %identity.library_uuid,
+            replica_id = %identity.replica_id,
             annotation_id = id,
             book_id,
             operation = "update",
@@ -584,8 +584,8 @@ impl ReadingService {
         info!(
             target: "myreader_sync",
             event = "annotation.local_write",
-            library_uuid = identity.library_uuid,
-            replica_id = identity.replica_id,
+            library_uuid = %identity.library_uuid,
+            replica_id = %identity.replica_id,
             annotation_id = id,
             book_id,
             operation = "delete",
@@ -628,7 +628,7 @@ impl ReadingService {
         let identity = context.identity(library_root).await?;
         let value = ReadingSessionValue {
             id: id.to_owned(),
-            origin_replica_id: identity.replica_id.clone(),
+            origin_replica_id: identity.replica_id.to_string(),
             book_id,
             format: format.clone(),
             local_day: local_day.to_owned(),
@@ -644,8 +644,8 @@ impl ReadingService {
         info!(
             target: "myreader_sync",
             event = "reading_session.local_write",
-            library_uuid = identity.library_uuid,
-            replica_id = identity.replica_id,
+            library_uuid = %identity.library_uuid,
+            replica_id = %identity.replica_id,
             session_id = id,
             book_id,
             format,
@@ -744,7 +744,7 @@ async fn backfill_legacy_reading_completions(
         .map(|value| value.updated_at)
         .max()
         .unwrap_or_default();
-    let replica_id = identity.replica_id.clone();
+    let replica_id = identity.replica_id.to_string();
     let changed = mutate_document(database_path, &identity, recorded_at, move |document| {
         let mut changed = 0_usize;
         let mut completed_books = reading_completion_records(document)?
@@ -765,8 +765,8 @@ async fn backfill_legacy_reading_completions(
         info!(
             target: "myreader_sync",
             event = "reading_completion.legacy_backfill",
-            library_uuid = identity.library_uuid,
-            replica_id = identity.replica_id,
+            library_uuid = %identity.library_uuid,
+            replica_id = %identity.replica_id,
             completions = changed,
             "Backfilled legacy finished readings"
         );

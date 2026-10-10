@@ -1241,7 +1241,7 @@ mod tests {
         );
         assert!(library_root.join("Books").is_dir());
         assert!(database_path.is_file());
-        assert_eq!(identity.library_uuid, marker.library_uuid);
+        assert_eq!(identity.library_uuid.as_str(), marker.library_uuid);
     }
 
     #[tokio::test]
@@ -1296,7 +1296,8 @@ mod tests {
                 &marker.library_uuid,
             )
             .unwrap()
-            .library_uuid,
+            .library_uuid
+            .as_str(),
             marker.library_uuid
         );
     }

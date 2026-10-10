@@ -27,8 +27,8 @@ async fn source_identity_and_device_replica_stay_separate() {
     assert_eq!(reopened.identity(source.path()).await.unwrap(), a_identity);
     let b = LibraryContext::open(second.path()).await.unwrap();
     let b_identity = b.identity(source.path()).await.unwrap();
-    assert_eq!(a_identity.library_uuid, LIBRARY_UUID);
-    assert_eq!(b_identity.library_uuid, LIBRARY_UUID);
+    assert_eq!(a_identity.library_uuid.as_str(), LIBRARY_UUID);
+    assert_eq!(b_identity.library_uuid.as_str(), LIBRARY_UUID);
     assert_ne!(a_identity.replica_id, b_identity.replica_id);
     assert!(!source.path().join(".myreader/myreader.db").exists());
 
@@ -61,7 +61,12 @@ async fn calibre_identity_does_not_require_catalog_schema_or_modify_source() {
     let sidecar = tempfile::tempdir().unwrap();
     let context = LibraryContext::open(sidecar.path()).await.unwrap();
     assert_eq!(
-        context.identity(source.path()).await.unwrap().library_uuid,
+        context
+            .identity(source.path())
+            .await
+            .unwrap()
+            .library_uuid
+            .as_str(),
         LIBRARY_UUID
     );
     assert_eq!(std::fs::read(&path).unwrap(), original);
