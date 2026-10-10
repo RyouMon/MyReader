@@ -13,7 +13,7 @@ use rusqlite::Connection;
 const LIBRARY_UUID: &str = "11111111-2222-4333-8444-555555555555";
 const REPLICA_ID: &str = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
-fn create_database() -> (tempfile::TempDir, String) {
+pub(super) fn create_database() -> (tempfile::TempDir, String) {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("myreader.db");
     let connection = Connection::open(&path).unwrap();
@@ -172,7 +172,7 @@ fn should_preserve_last_pull_when_schedule_retry_is_cleared_after_push() {
     );
 }
 
-fn identity() -> DatabaseIdentity {
+pub(super) fn identity() -> DatabaseIdentity {
     DatabaseIdentity {
         library_uuid: LIBRARY_UUID.to_owned(),
         replica_id: REPLICA_ID.to_owned(),
@@ -193,7 +193,7 @@ fn favorite_command() -> SyncDatabaseCommand {
     }
 }
 
-fn catalog_book() -> CatalogBookValue {
+pub(super) fn catalog_book() -> CatalogBookValue {
     CatalogBookValue {
         uuid: "22222222-3333-4444-8555-666666666666".into(),
         book_id: 42,

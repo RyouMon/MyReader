@@ -112,6 +112,13 @@ models/             跨层稳定业务 DTO
 lease；取消调用撤销尚未开始的工作，不提前释放正在执行的事务，删除书库会等待已打开的连接关闭。
 SeaORM / SQLx 的异步查询保留原路径。
 
+SQLite 投影以同一事务中的 Automerge heads 为增量边界：阅读写入只解析并更新实际变更的
+domain，不再重建无关 catalog。远端对象仍完整校验，合并后的 SQLite 更新也按 domain 选择。
+变更范围来自原始操作及其父路径，包含未胜出的冲突值。初始化、schema 迁移、根对象变更或
+投影版本 / heads 失效时完整重建；查询完整 document 的入口始终返回全量投影。
+当前粒度为 domain，受影响 domain 内仍完整投影；没有跨事务的内存投影缓存。
+性能与边界见 [增量投影报告](./core-incremental-projection-performance.md)。
+
 ### 3.2 当前业务范围
 
 `my-reader-core` 已拥有：

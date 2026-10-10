@@ -13,8 +13,9 @@ use uuid::{Uuid, Variant, Version};
 use super::{
     document::{library_sidecar_snapshot_heads, CatalogBookValue, LIBRARY_SIDECAR_SCHEMA_VERSION},
     document_engine::{
-        execute_document_command, execute_document_mutation, DocumentCommand,
-        DocumentCommandRequest, DocumentCommandResult,
+        execute_document_command, execute_document_command_projected, execute_document_mutation,
+        DocumentCommand, DocumentCommandRequest, DocumentCommandResult, ProjectionDomain,
+        ProjectionMode,
     },
     storage::{incremental_key, StorageKey},
     SyncError,
@@ -382,10 +383,15 @@ fn read_state(
             "Persisted Automerge heads do not match its snapshot",
         ));
     }
-    let inspected = execute_document_command(
+    let inspected = execute_document_command_projected(
         Some(&snapshot_bytes),
         request(identity, heads.clone(), DocumentCommand::Inspect),
         None,
+        if schema_version == LIBRARY_SIDECAR_SCHEMA_VERSION as i64 {
+            ProjectionMode::None
+        } else {
+            ProjectionMode::Full
+        },
     )?;
     if schema_version == LIBRARY_SIDECAR_SCHEMA_VERSION as i64
         && (inspected.heads != heads || !inspected.changes.is_empty())
@@ -484,7 +490,9 @@ fn project_document(
         .library_uuid
         .as_deref()
         .ok_or_else(|| sync_error("Cannot project a document without a library identity"))?;
-    project_catalog(transaction, library_uuid, &projection.catalog_books)?;
+    if result.projection_scope.includes(ProjectionDomain::Catalog) {
+        project_catalog(transaction, library_uuid, &projection.catalog_books)?;
+    }
     for position in &projection.reading_positions {
         let conflict_count = i64::try_from(position.conflict_count)
             .map_err(|_| sync_error("Too many reading position conflicts"))?;
@@ -808,6 +816,17 @@ fn rebuild_projection(
     write_projection_meta(transaction, &heads_json, Some(now_ms))
 }
 
+fn update_projection_mode(
+    transaction: &Transaction<'_>,
+    heads: &[String],
+) -> Result<ProjectionMode, SyncError> {
+    if projection_is_current(transaction, heads)? {
+        Ok(ProjectionMode::Changed)
+    } else {
+        Ok(ProjectionMode::Full)
+    }
+}
+
 fn persist_local_result(
     transaction: &Transaction<'_>,
     identity: &DatabaseIdentity,
@@ -869,6 +888,9 @@ fn initialize(
     Ok(initialized)
 }
 
+/// Inspect returns the complete projection; write commands return only the
+/// domains materialized by this transaction. Use ensure_database_document to
+/// query the complete document after a write.
 pub fn execute_local_database_command(
     database_path: &str,
     identity: &DatabaseIdentity,
@@ -893,10 +915,19 @@ pub fn execute_local_database_command(
     if let Some(migration) = current.migration.as_ref() {
         persist_local_result(&transaction, identity, migration, now_ms, Some(now_ms))?;
     }
-    let result = execute_document_command(
+    // Inspection callers consume complete projections. Mutations only need the
+    // changed domains, provided SQLite reflects their exact starting heads.
+    let projection_mode = match command.command {
+        DocumentCommand::Inspect | DocumentCommand::InspectDependencies { .. } => {
+            ProjectionMode::Full
+        }
+        _ => update_projection_mode(&transaction, &current.heads)?,
+    };
+    let result = execute_document_command_projected(
         Some(&current.snapshot_bytes),
         request(identity, current.heads, command.command),
         None,
+        projection_mode,
     )?;
     if !result.changes.is_empty() {
         persist_local_result(&transaction, identity, &result, now_ms, None)?;
@@ -907,6 +938,7 @@ pub fn execute_local_database_command(
     Ok(result)
 }
 
+/// Atomically persist a mutation and its affected projection domains.
 pub fn execute_local_database_mutation<F>(
     database_path: &str,
     identity: &DatabaseIdentity,
@@ -934,11 +966,13 @@ where
     if let Some(migration) = current.migration.as_ref() {
         persist_local_result(&transaction, identity, migration, now_ms, Some(now_ms))?;
     }
+    let projection_mode = update_projection_mode(&transaction, &current.heads)?;
     let result = execute_document_mutation(
         &current.snapshot_bytes,
         &identity.replica_id,
         &identity.library_uuid,
         current.heads,
+        projection_mode,
         mutate,
     )?;
     if !result.changes.is_empty() {
@@ -1118,6 +1152,7 @@ pub fn apply_remote_database_objects(
             request(identity, current.heads, DocumentCommand::Inspect),
             None,
         )?;
+        rebuild_projection(&transaction, &document, now_ms)?;
         transaction.commit().map_err(database_error)?;
         return Ok(ApplyRemoteDatabaseResult {
             document,
@@ -1172,7 +1207,8 @@ pub fn apply_remote_database_objects(
         .iter()
         .flat_map(|object| object.bytes.iter().copied())
         .collect::<Vec<_>>();
-    let result = execute_document_command(
+    let projection_mode = update_projection_mode(&transaction, &current.heads)?;
+    let result = execute_document_command_projected(
         Some(&current.snapshot_bytes),
         request(
             identity,
@@ -1180,6 +1216,7 @@ pub fn apply_remote_database_objects(
             DocumentCommand::ApplyIncremental,
         ),
         Some(&merged_bytes),
+        projection_mode,
     )?;
     if !result.missing_dependencies.is_empty() {
         return Err(SyncError::MissingDependencies {
@@ -1188,10 +1225,11 @@ pub fn apply_remote_database_objects(
         });
     }
     let applied_changes = result.changes.len();
-    let local_delta = execute_document_command(
+    let local_delta = execute_document_command_projected(
         Some(&result.snapshot_bytes),
         request(identity, remote.heads, DocumentCommand::Inspect),
         None,
+        ProjectionMode::None,
     )?;
     persist_remote_result(&transaction, identity, &result, &local_delta, now_ms)?;
     transaction.commit().map_err(database_error)?;
