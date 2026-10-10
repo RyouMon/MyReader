@@ -1650,9 +1650,11 @@ function useEpubReaderController({
           }
         })
       })
+      closePanels()
     },
     [
       beginContentNavigation,
+      closePanels,
       finishContentNavigation,
       scheduleTtsUserNavigationCompletion,
       searchHighlightTint,
