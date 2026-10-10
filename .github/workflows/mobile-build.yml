@@ -31,7 +31,6 @@ permissions:
 
 env:
   NODE_VERSION: 22.22.0
-  PNPM_VERSION: 11.7.0
 
 jobs:
   validate:
@@ -75,8 +74,6 @@ jobs:
         run: printf 'EXPO_PUBLIC_SENTRY_DSN=%s\n' "$EXPO_PUBLIC_SENTRY_DSN" > .env
 
       - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
 
       - uses: actions/setup-node@v6
         with:
@@ -165,8 +162,6 @@ jobs:
         run: printf 'EXPO_PUBLIC_SENTRY_DSN=%s\n' "$EXPO_PUBLIC_SENTRY_DSN" > .env
 
       - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
 
       - uses: actions/setup-node@v6
         with:
