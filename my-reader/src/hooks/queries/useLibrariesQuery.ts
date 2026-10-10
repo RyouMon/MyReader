@@ -1,3 +1,4 @@
+import { apiErrorKind } from "@/lib/api-error"
 import type { Library } from "@my-reader/tools/types/library"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { resetBrokenCovers } from "@/lib/coverFailureCache"
@@ -237,10 +238,8 @@ export function useLibraryMutations() {
 }
 
 function shouldTryCalibreLibrary(error: unknown): boolean {
-  const message = String(error)
+  const kind = apiErrorKind(error)
   return (
-    message.includes("MYREADER_LIBRARY_MARKER_NOT_FOUND") ||
-    message.includes("REMOTE_MYREADER_LIBRARY_MARKER_NOT_FOUND") ||
-    message.includes("MYREADER_LIBRARY_CONTAINS_METADATA_DB")
+    kind === "LibraryMarkerNotFound" || kind === "LibraryContainsMetadataDb"
   )
 }

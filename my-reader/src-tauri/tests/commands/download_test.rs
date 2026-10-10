@@ -39,7 +39,7 @@ async fn check_book_file_state_should_return_not_found_when_library_id_is_unknow
         json!({ "libraryId": "lib-ghost", "bookId": 1, "format": "EPUB" }),
     );
 
-    assert!(err.is_kind("NotFound"), "kind was {}", err.kind);
+    assert!(err.is_kind("LibraryNotFound"), "kind was {}", err.kind);
     assert!(
         err.message.contains("LIBRARY_NOT_FOUND"),
         "message was {}",
@@ -199,7 +199,7 @@ async fn delete_local_book_file_should_return_not_found_when_library_id_is_unkno
         json!({ "libraryId": "lib-ghost", "bookId": 1, "format": "EPUB" }),
     );
 
-    assert!(err.is_kind("NotFound"), "kind was {}", err.kind);
+    assert!(err.is_kind("LibraryNotFound"), "kind was {}", err.kind);
 }
 
 #[tokio::test]

@@ -342,7 +342,7 @@ impl LibraryService {
             .libraries
             .iter()
             .find(|l| l.id == id)
-            .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", id)))?;
+            .ok_or_else(|| AppError::LibraryNotFound(format!("LIBRARY_NOT_FOUND: {}", id)))?;
 
         if lib.source_type.as_deref() == Some("webdav") {
             return Err(AppError::Config("WEBDAV_LIBRARY_USE_ASYNC_REFRESH".into()));
@@ -444,13 +444,13 @@ impl LibraryService {
         let lib_id = library_id
             .map(ToString::to_string)
             .or_else(|| config.active_library_id.clone())
-            .ok_or_else(|| AppError::NotFound("NO_ACTIVE_LIBRARY".into()))?;
+            .ok_or_else(|| AppError::NoActiveLibrary("NO_ACTIVE_LIBRARY".into()))?;
 
         let lib = config
             .libraries
             .iter()
             .find(|lib| lib.id == lib_id)
-            .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", lib_id)))?;
+            .ok_or_else(|| AppError::LibraryNotFound(format!("LIBRARY_NOT_FOUND: {}", lib_id)))?;
 
         let root = library_root_path(lib, app_data_dir);
         Ok((lib_id, root.to_string_lossy().to_string()))
@@ -462,14 +462,14 @@ impl LibraryService {
         let lib_id = library_id
             .map(ToString::to_string)
             .or_else(|| config.active_library_id.clone())
-            .ok_or_else(|| AppError::NotFound("NO_ACTIVE_LIBRARY".into()))?;
+            .ok_or_else(|| AppError::NoActiveLibrary("NO_ACTIVE_LIBRARY".into()))?;
 
         config
             .libraries
             .iter()
             .find(|lib| lib.id == lib_id)
             .cloned()
-            .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", lib_id)))
+            .ok_or_else(|| AppError::LibraryNotFound(format!("LIBRARY_NOT_FOUND: {}", lib_id)))
     }
 }
 
@@ -568,7 +568,7 @@ async fn refresh_remote_library(
         .libraries
         .iter()
         .find(|library| library.id == id)
-        .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {id}")))?;
+        .ok_or_else(|| AppError::LibraryNotFound(format!("LIBRARY_NOT_FOUND: {id}")))?;
     let data_source_id = library
         .data_source_id
         .as_deref()

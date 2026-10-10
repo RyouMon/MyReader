@@ -1,3 +1,4 @@
+import { coreErrorKind } from "@/src/services/core/error"
 import { useEffect, useMemo, useState } from "react"
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
@@ -157,11 +158,10 @@ export function useRemoteDirectoryBrowser({
       const library = await openRemoteExistingLibrary(candidate, sourcePath)
       onLibraryOpened(library)
     } catch (caught) {
-      const message = String(caught)
+      const kind = coreErrorKind(caught)
       if (
         isMissingMetadataDbError(caught) ||
-        message.includes("LIBRARY_TYPE_NOT_RECOGNIZED") ||
-        message.includes("MYREADER_LIBRARY_MARKER_NOT_FOUND")
+        kind === "LibraryMarkerNotFound"
       ) {
         showAlertWithStatusBarRestore(
           errorMessages.notValidTitle,
@@ -169,7 +169,7 @@ export function useRemoteDirectoryBrowser({
         )
         return
       }
-      if (message.includes("LIBRARY_ALREADY_EXISTS")) {
+      if (kind === "LibraryAlreadyExists") {
         showAlertWithStatusBarRestore(
           errorMessages.duplicateTitle,
           errorMessages.duplicateMessage,

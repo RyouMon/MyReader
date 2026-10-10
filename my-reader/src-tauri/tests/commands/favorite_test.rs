@@ -48,7 +48,7 @@ async fn list_favorite_book_ids_should_return_not_found_when_no_active_library()
 
     let err = invoke_err(&app, "list_favorite_book_ids", json!({ "libraryId": null }));
 
-    assert!(err.is_kind("NotFound"), "kind was {}", err.kind);
+    assert!(err.is_kind("NoActiveLibrary"), "kind was {}", err.kind);
     assert!(
         err.message.contains("NO_ACTIVE_LIBRARY"),
         "message was {}",
@@ -66,7 +66,7 @@ async fn list_favorite_book_ids_should_return_not_found_when_library_id_is_unkno
         json!({ "libraryId": "lib-ghost" }),
     );
 
-    assert!(err.is_kind("NotFound"), "kind was {}", err.kind);
+    assert!(err.is_kind("LibraryNotFound"), "kind was {}", err.kind);
     assert!(
         err.message.contains("LIBRARY_NOT_FOUND"),
         "message was {}",
@@ -217,7 +217,7 @@ async fn add_favorite_book_should_return_not_found_when_library_id_is_unknown() 
         json!({ "libraryId": "lib-ghost", "bookId": 7 }),
     );
 
-    assert!(err.is_kind("NotFound"), "kind was {}", err.kind);
+    assert!(err.is_kind("LibraryNotFound"), "kind was {}", err.kind);
     assert!(
         err.message.contains("LIBRARY_NOT_FOUND"),
         "message was {}",
@@ -235,7 +235,7 @@ async fn remove_favorite_book_should_return_not_found_when_library_id_is_unknown
         json!({ "libraryId": "lib-ghost", "bookId": 7 }),
     );
 
-    assert!(err.is_kind("NotFound"), "kind was {}", err.kind);
+    assert!(err.is_kind("LibraryNotFound"), "kind was {}", err.kind);
     assert!(
         err.message.contains("LIBRARY_NOT_FOUND"),
         "message was {}",

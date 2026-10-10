@@ -1,3 +1,4 @@
+import { CoreFfiError } from "my-reader-core/src/generated/my_reader_core_ffi"
 import { act, renderHook, waitFor } from "@testing-library/react-native"
 
 import { useRemoteDirectoryBrowser } from "./use-remote-directory-browser"
@@ -60,7 +61,7 @@ describe("useRemoteDirectoryBrowser", () => {
 
   it("should show duplicate feedback without replacing directory state when library already exists", async () => {
     mockOpenRemoteExistingLibrary.mockRejectedValue(
-      new Error("CORE_ERROR: CONFIG_ERROR: LIBRARY_ALREADY_EXISTS"),
+      new CoreFfiError.LibraryAlreadyExists("diagnostic changed"),
     )
     const { result } = renderHook(() =>
       useRemoteDirectoryBrowser({

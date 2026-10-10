@@ -1,3 +1,4 @@
+import { apiErrorKind } from "@/lib/api-error"
 import type { DesktopTranslationKey } from "@my-reader/i18n/desktop"
 import { appendRemotePathSegment } from "@my-reader/tools/remote-path"
 import type { DataSource } from "@my-reader/tools/types/data-source"
@@ -121,14 +122,11 @@ export function AddLibraryDialog({
     operation: LibraryOperation,
   ): string {
     const detail = formatApiError(caught)
-    if (detail.includes("LIBRARY_ALREADY_EXISTS")) {
+    const kind = apiErrorKind(caught)
+    if (kind === "LibraryAlreadyExists") {
       return t("addLibraryFlow.errors.duplicate")
     }
-    if (
-      detail.includes("METADATA_DB_NOT_FOUND") ||
-      detail.includes("MYREADER_LIBRARY_MARKER_NOT_FOUND") ||
-      detail.includes("LIBRARY_TYPE_NOT_RECOGNIZED")
-    ) {
+    if (kind === "MetadataDbNotFound" || kind === "LibraryMarkerNotFound") {
       return t("addLibraryFlow.errors.unrecognized")
     }
     return t(

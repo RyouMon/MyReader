@@ -41,7 +41,7 @@ impl CatalogService {
             .iter()
             .find(|library| library.id == library_id)
             .map(|library| library.library_type)
-            .ok_or_else(|| CoreError::NotFound(format!("LIBRARY_NOT_FOUND: {library_id}")))
+            .ok_or_else(|| CoreError::LibraryNotFound(library_id.to_owned()))
     }
 
     async fn open_library_repository(
@@ -464,10 +464,9 @@ impl CatalogService {
         let library_root = dunce::canonicalize(library_root)
             .map_err(|error| CoreError::Config(format!("INVALID_LIBRARY_PATH: {error}")))?;
         if !Self::validate_library(&library_root) {
-            return Err(CoreError::NotFound(format!(
-                "METADATA_DB_NOT_FOUND: {}",
-                library_root.display()
-            )));
+            return Err(CoreError::MetadataDbNotFound(
+                library_root.display().to_string(),
+            ));
         }
         let repository = CatalogRepository::open(&library_root.to_string_lossy()).await?;
         repository.get_library_uuid().await?;

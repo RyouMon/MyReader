@@ -1,3 +1,4 @@
+import { coreErrorKind } from "@/src/services/core/error"
 import { appendRemotePathSegment } from "@my-reader/tools/remote-path"
 import { router, Stack, useLocalSearchParams } from "expo-router"
 import { useEffect, useState } from "react"
@@ -57,30 +58,22 @@ function sourceBrowserPath(source: DataSource, operation: LibraryOperation) {
 }
 
 function showOperationError(t: (key: string) => string, error: unknown): void {
-  const message = String(error)
-  if (
-    message.includes("LIBRARY_FOLDER_ALREADY_EXISTS") ||
-    message.includes("LIBRARY_ROOT_NOT_EMPTY") ||
-    message.includes("REMOTE_LIBRARY_ROOT_NOT_EMPTY")
-  ) {
+  const kind = coreErrorKind(error)
+  if (kind === "LibraryFolderAlreadyExists" || kind === "LibraryRootNotEmpty") {
     showAlertWithStatusBarRestore(
       t("addLibrary.folderExists.title"),
       t("addLibrary.folderExists.detail"),
     )
     return
   }
-  if (message.includes("LIBRARY_ALREADY_EXISTS")) {
+  if (kind === "LibraryAlreadyExists") {
     showAlertWithStatusBarRestore(
       t("sync.cannotAddDuplicate"),
       t("sync.alreadyAdded"),
     )
     return
   }
-  if (
-    message.includes("LIBRARY_TYPE_NOT_RECOGNIZED") ||
-    message.includes("METADATA_DB_NOT_FOUND") ||
-    message.includes("MYREADER_LIBRARY_MARKER_NOT_FOUND")
-  ) {
+  if (kind === "MetadataDbNotFound" || kind === "LibraryMarkerNotFound") {
     showAlertWithStatusBarRestore(
       t("addLibrary.unrecognized.title"),
       t("addLibrary.unrecognized.detail"),

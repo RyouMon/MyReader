@@ -1,3 +1,4 @@
+import { apiErrorKind } from "@/lib/api-error"
 import type { CalibreBook } from "@my-reader/tools/types/book"
 import { useNavigate } from "@tanstack/react-router"
 import { isTauri } from "@tauri-apps/api/core"
@@ -80,16 +81,10 @@ const MOBILE_HERO_BREAKPOINT = 559
 type BookDetailFailure = "libraryUnavailable" | "loadFailed" | "notFound"
 
 function classifyBookDetailFailure(error: unknown): BookDetailFailure {
-  const kind =
-    error instanceof Error
-      ? (error as Error & { kind?: unknown }).kind
-      : undefined
-  const message = String(error)
-  if (kind !== "NotFound") return "loadFailed"
-  return message.includes("NO_ACTIVE_LIBRARY") ||
-    message.includes("LIBRARY_NOT_FOUND")
-    ? "libraryUnavailable"
-    : "notFound"
+  const kind = apiErrorKind(error)
+  if (kind === "NoActiveLibrary" || kind === "LibraryNotFound")
+    return "libraryUnavailable"
+  return kind === "NotFound" ? "notFound" : "loadFailed"
 }
 
 export default function BookDetailPane({

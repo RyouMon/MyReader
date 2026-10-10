@@ -50,6 +50,33 @@ pub enum CoreFfiError {
 
     #[error("REQUEST_ERROR: {0}")]
     Request(String),
+
+    #[error("{0}")]
+    LibraryAlreadyExists(String),
+
+    #[error("{0}")]
+    LibraryNotFound(String),
+
+    #[error("{0}")]
+    NoActiveLibrary(String),
+
+    #[error("{0}")]
+    MetadataDbNotFound(String),
+
+    #[error("{0}")]
+    LibraryMarkerNotFound(String),
+
+    #[error("{0}")]
+    LibraryContainsMetadataDb(String),
+
+    #[error("{0}")]
+    LibraryRootNotEmpty(String),
+
+    #[error("{0}")]
+    LibraryFolderAlreadyExists(String),
+
+    #[error("{0}")]
+    DataSourceInUse(String),
 }
 
 impl CoreFfiError {
@@ -65,6 +92,23 @@ impl CoreFfiError {
         use my_reader_core::{api::sync::SyncService, models::SyncFailureKind, CoreError};
 
         match error {
+            error @ CoreError::LibraryAlreadyExists => {
+                Self::LibraryAlreadyExists(error.to_string())
+            }
+            error @ CoreError::LibraryNotFound(_) => Self::LibraryNotFound(error.to_string()),
+            error @ CoreError::NoActiveLibrary => Self::NoActiveLibrary(error.to_string()),
+            error @ CoreError::MetadataDbNotFound(_) => Self::MetadataDbNotFound(error.to_string()),
+            error @ CoreError::LibraryMarkerNotFound(_) => {
+                Self::LibraryMarkerNotFound(error.to_string())
+            }
+            error @ CoreError::LibraryContainsMetadataDb => {
+                Self::LibraryContainsMetadataDb(error.to_string())
+            }
+            error @ CoreError::LibraryRootNotEmpty => Self::LibraryRootNotEmpty(error.to_string()),
+            error @ CoreError::LibraryFolderAlreadyExists => {
+                Self::LibraryFolderAlreadyExists(error.to_string())
+            }
+            error @ CoreError::DataSourceInUse(_) => Self::DataSourceInUse(error.to_string()),
             CoreError::Io(error) => Self::Io(error.to_string()),
             CoreError::Database(message) => Self::Database(message),
             CoreError::Config(message) => Self::Config(message),

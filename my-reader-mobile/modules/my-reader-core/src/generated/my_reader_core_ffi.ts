@@ -9474,6 +9474,15 @@ export enum CoreFfiError_Tags {
   Tts = "Tts",
   Credential = "Credential",
   Request = "Request",
+  LibraryAlreadyExists = "LibraryAlreadyExists",
+  LibraryNotFound = "LibraryNotFound",
+  NoActiveLibrary = "NoActiveLibrary",
+  MetadataDbNotFound = "MetadataDbNotFound",
+  LibraryMarkerNotFound = "LibraryMarkerNotFound",
+  LibraryContainsMetadataDb = "LibraryContainsMetadataDb",
+  LibraryRootNotEmpty = "LibraryRootNotEmpty",
+  LibraryFolderAlreadyExists = "LibraryFolderAlreadyExists",
+  DataSourceInUse = "DataSourceInUse",
 }
 export const CoreFfiError = (() => {
   class Core extends UniffiError {
@@ -9740,6 +9749,204 @@ export const CoreFfiError = (() => {
       return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 12;
     }
   }
+  class LibraryAlreadyExists extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = "CoreFfiError";
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 13;
+
+    readonly tag = CoreFfiError_Tags.LibraryAlreadyExists;
+
+    constructor(message: string) {
+      super("CoreFfiError", "LibraryAlreadyExists", message);
+    }
+
+    static instanceOf(e: any): e is LibraryAlreadyExists {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 13;
+    }
+  }
+  class LibraryNotFound extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = "CoreFfiError";
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 14;
+
+    readonly tag = CoreFfiError_Tags.LibraryNotFound;
+
+    constructor(message: string) {
+      super("CoreFfiError", "LibraryNotFound", message);
+    }
+
+    static instanceOf(e: any): e is LibraryNotFound {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 14;
+    }
+  }
+  class NoActiveLibrary extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = "CoreFfiError";
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 15;
+
+    readonly tag = CoreFfiError_Tags.NoActiveLibrary;
+
+    constructor(message: string) {
+      super("CoreFfiError", "NoActiveLibrary", message);
+    }
+
+    static instanceOf(e: any): e is NoActiveLibrary {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 15;
+    }
+  }
+  class MetadataDbNotFound extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = "CoreFfiError";
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 16;
+
+    readonly tag = CoreFfiError_Tags.MetadataDbNotFound;
+
+    constructor(message: string) {
+      super("CoreFfiError", "MetadataDbNotFound", message);
+    }
+
+    static instanceOf(e: any): e is MetadataDbNotFound {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 16;
+    }
+  }
+  class LibraryMarkerNotFound extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = "CoreFfiError";
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 17;
+
+    readonly tag = CoreFfiError_Tags.LibraryMarkerNotFound;
+
+    constructor(message: string) {
+      super("CoreFfiError", "LibraryMarkerNotFound", message);
+    }
+
+    static instanceOf(e: any): e is LibraryMarkerNotFound {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 17;
+    }
+  }
+  class LibraryContainsMetadataDb extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = "CoreFfiError";
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 18;
+
+    readonly tag = CoreFfiError_Tags.LibraryContainsMetadataDb;
+
+    constructor(message: string) {
+      super("CoreFfiError", "LibraryContainsMetadataDb", message);
+    }
+
+    static instanceOf(e: any): e is LibraryContainsMetadataDb {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 18;
+    }
+  }
+  class LibraryRootNotEmpty extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = "CoreFfiError";
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 19;
+
+    readonly tag = CoreFfiError_Tags.LibraryRootNotEmpty;
+
+    constructor(message: string) {
+      super("CoreFfiError", "LibraryRootNotEmpty", message);
+    }
+
+    static instanceOf(e: any): e is LibraryRootNotEmpty {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 19;
+    }
+  }
+  class LibraryFolderAlreadyExists extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = "CoreFfiError";
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 20;
+
+    readonly tag = CoreFfiError_Tags.LibraryFolderAlreadyExists;
+
+    constructor(message: string) {
+      super("CoreFfiError", "LibraryFolderAlreadyExists", message);
+    }
+
+    static instanceOf(e: any): e is LibraryFolderAlreadyExists {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 20;
+    }
+  }
+  class DataSourceInUse extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = "CoreFfiError";
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 21;
+
+    readonly tag = CoreFfiError_Tags.DataSourceInUse;
+
+    constructor(message: string) {
+      super("CoreFfiError", "DataSourceInUse", message);
+    }
+
+    static instanceOf(e: any): e is DataSourceInUse {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 21;
+    }
+  }
 
   // Utility function which does not rely on instanceof.
   function instanceOf(e: any): e is CoreFfiError {
@@ -9758,6 +9965,15 @@ export const CoreFfiError = (() => {
     Tts,
     Credential,
     Request,
+    LibraryAlreadyExists,
+    LibraryNotFound,
+    NoActiveLibrary,
+    MetadataDbNotFound,
+    LibraryMarkerNotFound,
+    LibraryContainsMetadataDb,
+    LibraryRootNotEmpty,
+    LibraryFolderAlreadyExists,
+    DataSourceInUse,
     instanceOf,
   };
 })();
@@ -9776,7 +9992,16 @@ export type CoreFfiError = InstanceType<
     | "Storage"
     | "Tts"
     | "Credential"
-    | "Request"]
+    | "Request"
+    | "LibraryAlreadyExists"
+    | "LibraryNotFound"
+    | "NoActiveLibrary"
+    | "MetadataDbNotFound"
+    | "LibraryMarkerNotFound"
+    | "LibraryContainsMetadataDb"
+    | "LibraryRootNotEmpty"
+    | "LibraryFolderAlreadyExists"
+    | "DataSourceInUse"]
 >;
 
 const FfiConverterTypeCoreFfiError = (() => {
@@ -9820,6 +10045,51 @@ const FfiConverterTypeCoreFfiError = (() => {
 
         case 12:
           return new CoreFfiError.Request(FfiConverterString.read(from));
+
+        case 13:
+          return new CoreFfiError.LibraryAlreadyExists(
+            FfiConverterString.read(from),
+          );
+
+        case 14:
+          return new CoreFfiError.LibraryNotFound(
+            FfiConverterString.read(from),
+          );
+
+        case 15:
+          return new CoreFfiError.NoActiveLibrary(
+            FfiConverterString.read(from),
+          );
+
+        case 16:
+          return new CoreFfiError.MetadataDbNotFound(
+            FfiConverterString.read(from),
+          );
+
+        case 17:
+          return new CoreFfiError.LibraryMarkerNotFound(
+            FfiConverterString.read(from),
+          );
+
+        case 18:
+          return new CoreFfiError.LibraryContainsMetadataDb(
+            FfiConverterString.read(from),
+          );
+
+        case 19:
+          return new CoreFfiError.LibraryRootNotEmpty(
+            FfiConverterString.read(from),
+          );
+
+        case 20:
+          return new CoreFfiError.LibraryFolderAlreadyExists(
+            FfiConverterString.read(from),
+          );
+
+        case 21:
+          return new CoreFfiError.DataSourceInUse(
+            FfiConverterString.read(from),
+          );
 
         default:
           throw new UniffiInternalError.UnexpectedEnumCase();

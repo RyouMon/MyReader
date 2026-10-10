@@ -1,5 +1,32 @@
 #[derive(Debug, thiserror::Error)]
 pub enum CoreError {
+    #[error("LIBRARY_ALREADY_EXISTS")]
+    LibraryAlreadyExists,
+
+    #[error("LIBRARY_NOT_FOUND: {0}")]
+    LibraryNotFound(String),
+
+    #[error("NO_ACTIVE_LIBRARY")]
+    NoActiveLibrary,
+
+    #[error("METADATA_DB_NOT_FOUND: {0}")]
+    MetadataDbNotFound(String),
+
+    #[error("MYREADER_LIBRARY_MARKER_NOT_FOUND: {0}")]
+    LibraryMarkerNotFound(String),
+
+    #[error("MYREADER_LIBRARY_CONTAINS_METADATA_DB")]
+    LibraryContainsMetadataDb,
+
+    #[error("LIBRARY_ROOT_NOT_EMPTY")]
+    LibraryRootNotEmpty,
+
+    #[error("LIBRARY_FOLDER_ALREADY_EXISTS")]
+    LibraryFolderAlreadyExists,
+
+    #[error("DATA_SOURCE_IN_USE: {0:?}")]
+    DataSourceInUse(Vec<String>),
+
     #[error("IO_ERROR: {0}")]
     Io(#[from] std::io::Error),
 

@@ -1,3 +1,5 @@
+import { coreErrorKind } from "@/src/services/core/error"
+import { NetworkError } from "@/src/errors"
 import { resolveCoverUri } from "@/src/services/fs/library-paths"
 import type { RemoteBackend } from "../../services/remote/backend"
 import { createRemoteBackend } from "../../services/remote/factory"
@@ -19,8 +21,8 @@ export function normalizeCurrentPath(path: string | undefined) {
 
 export function isMissingMetadataDbError(error: unknown) {
   return (
-    error instanceof Error &&
-    /404|WEBDAV_NOT_FOUND|ONEDRIVE_NOT_FOUND/.test(error.message)
+    coreErrorKind(error) === "MetadataDbNotFound" ||
+    (error instanceof NetworkError && error.statusCode === 404)
   )
 }
 

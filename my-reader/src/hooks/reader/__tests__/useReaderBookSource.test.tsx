@@ -216,7 +216,9 @@ describe("useReaderBookSource", () => {
 
   it("requests a missing remote file and can retry a rejected download", async () => {
     mocks.api.prepareBookSource.mockRejectedValue(
-      new Error("BOOK_FORMAT_NOT_DOWNLOADED"),
+      Object.assign(new Error("diagnostic changed"), {
+        kind: "BookFormatNotDownloaded",
+      }),
     )
     mocks.api.downloadBookFile.mockRejectedValueOnce(new Error("offline"))
     const { result } = renderHook(() => useReaderBookSource({ bookId: "4" }), {

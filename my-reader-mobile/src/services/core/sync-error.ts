@@ -19,6 +19,15 @@ const FAILURE_KINDS = {
   Tts: "unexpected",
   Credential: "credential",
   Request: "connectivity",
+  LibraryAlreadyExists: "configuration",
+  LibraryNotFound: "configuration",
+  NoActiveLibrary: "configuration",
+  MetadataDbNotFound: "configuration",
+  LibraryMarkerNotFound: "configuration",
+  LibraryContainsMetadataDb: "data_integrity",
+  LibraryRootNotEmpty: "configuration",
+  LibraryFolderAlreadyExists: "configuration",
+  DataSourceInUse: "configuration",
 } satisfies Record<CoreFfiError["tag"], SyncFailureKind>
 
 function isCoreError(error: unknown): error is CoreFfiError {

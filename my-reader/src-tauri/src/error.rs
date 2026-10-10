@@ -2,6 +2,36 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum AppError {
+    #[error("{0}")]
+    LibraryAlreadyExists(String),
+
+    #[error("{0}")]
+    LibraryNotFound(String),
+
+    #[error("{0}")]
+    NoActiveLibrary(String),
+
+    #[error("{0}")]
+    MetadataDbNotFound(String),
+
+    #[error("{0}")]
+    LibraryMarkerNotFound(String),
+
+    #[error("{0}")]
+    LibraryContainsMetadataDb(String),
+
+    #[error("{0}")]
+    LibraryRootNotEmpty(String),
+
+    #[error("{0}")]
+    LibraryFolderAlreadyExists(String),
+
+    #[error("{0}")]
+    DataSourceInUse(String),
+
+    #[error("{0}")]
+    BookFormatNotDownloaded(String),
+
     #[error("IO_ERROR: {0}")]
     Io(#[from] std::io::Error),
 
@@ -60,6 +90,33 @@ impl From<sea_orm::DbErr> for AppError {
 impl From<my_reader_core::CoreError> for AppError {
     fn from(error: my_reader_core::CoreError) -> Self {
         match error {
+            error @ my_reader_core::CoreError::LibraryAlreadyExists => {
+                Self::LibraryAlreadyExists(error.to_string())
+            }
+            error @ my_reader_core::CoreError::LibraryNotFound(_) => {
+                Self::LibraryNotFound(error.to_string())
+            }
+            error @ my_reader_core::CoreError::NoActiveLibrary => {
+                Self::NoActiveLibrary(error.to_string())
+            }
+            error @ my_reader_core::CoreError::MetadataDbNotFound(_) => {
+                Self::MetadataDbNotFound(error.to_string())
+            }
+            error @ my_reader_core::CoreError::LibraryMarkerNotFound(_) => {
+                Self::LibraryMarkerNotFound(error.to_string())
+            }
+            error @ my_reader_core::CoreError::LibraryContainsMetadataDb => {
+                Self::LibraryContainsMetadataDb(error.to_string())
+            }
+            error @ my_reader_core::CoreError::LibraryRootNotEmpty => {
+                Self::LibraryRootNotEmpty(error.to_string())
+            }
+            error @ my_reader_core::CoreError::LibraryFolderAlreadyExists => {
+                Self::LibraryFolderAlreadyExists(error.to_string())
+            }
+            error @ my_reader_core::CoreError::DataSourceInUse(_) => {
+                Self::DataSourceInUse(error.to_string())
+            }
             my_reader_core::CoreError::Io(error) => Self::Io(error),
             my_reader_core::CoreError::Database(message) => Self::Database(message),
             my_reader_core::CoreError::Config(message) => Self::Config(message),
@@ -99,6 +156,16 @@ impl From<tauri::Error> for AppError {
 #[derive(serde::Serialize, specta::Type)]
 #[serde(tag = "kind", content = "message")]
 pub enum ErrorKind {
+    LibraryAlreadyExists(String),
+    LibraryNotFound(String),
+    NoActiveLibrary(String),
+    MetadataDbNotFound(String),
+    LibraryMarkerNotFound(String),
+    LibraryContainsMetadataDb(String),
+    LibraryRootNotEmpty(String),
+    LibraryFolderAlreadyExists(String),
+    DataSourceInUse(String),
+    BookFormatNotDownloaded(String),
     Io(String),
     Database(String),
     NotFound(String),
@@ -127,6 +194,22 @@ impl serde::Serialize for AppError {
         S: serde::ser::Serializer,
     {
         let kind = match self {
+            Self::LibraryAlreadyExists(_) => ErrorKind::LibraryAlreadyExists(self.to_string()),
+            Self::LibraryNotFound(_) => ErrorKind::LibraryNotFound(self.to_string()),
+            Self::NoActiveLibrary(_) => ErrorKind::NoActiveLibrary(self.to_string()),
+            Self::MetadataDbNotFound(_) => ErrorKind::MetadataDbNotFound(self.to_string()),
+            Self::LibraryMarkerNotFound(_) => ErrorKind::LibraryMarkerNotFound(self.to_string()),
+            Self::LibraryContainsMetadataDb(_) => {
+                ErrorKind::LibraryContainsMetadataDb(self.to_string())
+            }
+            Self::LibraryRootNotEmpty(_) => ErrorKind::LibraryRootNotEmpty(self.to_string()),
+            Self::LibraryFolderAlreadyExists(_) => {
+                ErrorKind::LibraryFolderAlreadyExists(self.to_string())
+            }
+            Self::DataSourceInUse(_) => ErrorKind::DataSourceInUse(self.to_string()),
+            Self::BookFormatNotDownloaded(_) => {
+                ErrorKind::BookFormatNotDownloaded(self.to_string())
+            }
             Self::Io(_) => ErrorKind::Io(self.to_string()),
             Self::Database(_) => ErrorKind::Database(self.to_string()),
             Self::NotFound(_) => ErrorKind::NotFound(self.to_string()),

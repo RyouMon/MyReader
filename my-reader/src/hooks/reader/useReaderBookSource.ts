@@ -1,3 +1,4 @@
+import { apiErrorKind } from "@/lib/api-error"
 import type { Locator } from "@readium/shared"
 import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
@@ -265,7 +266,7 @@ export function useReaderBookSource({
       } catch (e) {
         if (cancelled) return
         const msg = String(e)
-        if (msg.includes("BOOK_FORMAT_NOT_DOWNLOADED") && fmt) {
+        if (apiErrorKind(e) === "BookFormatNotDownloaded" && fmt) {
           setFetchError(null)
           await startDownload(fmt)
           return

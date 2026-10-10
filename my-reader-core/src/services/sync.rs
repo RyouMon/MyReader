@@ -325,7 +325,7 @@ impl SyncService {
             .libraries
             .iter()
             .find(|library| library.id == library_id)
-            .ok_or_else(|| CoreError::NotFound(format!("LIBRARY_NOT_FOUND: {library_id}")))?;
+            .ok_or_else(|| CoreError::LibraryNotFound(library_id.to_owned()))?;
         if !is_remote_library(library) {
             let root = local_root_path.trim();
             if root.is_empty() {
@@ -533,7 +533,7 @@ impl SyncService {
             .iter()
             .find(|library| library.id == library_id)
             .cloned()
-            .ok_or_else(|| CoreError::NotFound(format!("LIBRARY_NOT_FOUND: {library_id}")))?;
+            .ok_or_else(|| CoreError::LibraryNotFound(library_id.to_owned()))?;
         let operator = transport::build_storage_operator(storage)?;
 
         let myreader = if scope_has_myreader(options.scope) {
@@ -770,7 +770,17 @@ impl SyncService {
                 _ => SyncFailureKind::Unexpected,
             },
             CoreError::Storage(_) => SyncFailureKind::Connectivity,
-            CoreError::Config(_) | CoreError::NotFound(_) => SyncFailureKind::Configuration,
+            CoreError::Config(_)
+            | CoreError::NotFound(_)
+            | CoreError::LibraryAlreadyExists
+            | CoreError::LibraryNotFound(_)
+            | CoreError::NoActiveLibrary
+            | CoreError::MetadataDbNotFound(_)
+            | CoreError::LibraryMarkerNotFound(_)
+            | CoreError::LibraryRootNotEmpty
+            | CoreError::LibraryFolderAlreadyExists
+            | CoreError::DataSourceInUse(_) => SyncFailureKind::Configuration,
+            CoreError::LibraryContainsMetadataDb => SyncFailureKind::DataIntegrity,
             CoreError::DataIntegrity(_) => SyncFailureKind::DataIntegrity,
             CoreError::Io(_)
             | CoreError::Database(_)
