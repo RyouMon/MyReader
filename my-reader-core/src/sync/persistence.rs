@@ -4,11 +4,14 @@ use std::{
 };
 
 pub(crate) mod async_io;
+mod identity;
+
+pub use identity::{LibraryUuid, ReplicaId};
 
 use rusqlite::{params, Connection, OptionalExtension, Transaction, TransactionBehavior};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use uuid::{Uuid, Variant, Version};
+use uuid::Uuid;
 
 use super::{
     document::{library_sidecar_snapshot_heads, CatalogBookValue, LIBRARY_SIDECAR_SCHEMA_VERSION},
@@ -27,8 +30,8 @@ const SIDECAR_PROTOCOL: &str = "library-sidecar-automerge-repo";
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DatabaseIdentity {
-    pub library_uuid: String,
-    pub replica_id: String,
+    pub library_uuid: LibraryUuid,
+    pub replica_id: ReplicaId,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -132,28 +135,6 @@ fn new_id() -> String {
     Uuid::new_v4().as_simple().to_string()
 }
 
-fn parse_library_uuid(value: &str) -> Result<String, SyncError> {
-    let uuid = Uuid::parse_str(value).map_err(|_| sync_error("Invalid library UUID"))?;
-    if uuid.get_variant() != Variant::RFC4122
-        || !(1..=8).contains(&uuid.get_version_num())
-        || uuid.hyphenated().to_string() != value
-    {
-        return Err(sync_error("Invalid library UUID"));
-    }
-    Ok(uuid.hyphenated().to_string())
-}
-
-fn parse_replica_id(value: &str) -> Result<String, SyncError> {
-    let uuid = Uuid::parse_str(value).map_err(|_| sync_error("Invalid local replica ID"))?;
-    if uuid.get_variant() != Variant::RFC4122
-        || uuid.get_version() != Some(Version::Random)
-        || uuid.hyphenated().to_string() != value
-    {
-        return Err(sync_error("Invalid local replica ID"));
-    }
-    Ok(uuid.hyphenated().to_string())
-}
-
 fn validated_database_identity(
     protocol: String,
     library_uuid: String,
@@ -163,8 +144,8 @@ fn validated_database_identity(
         return Err(sync_error("Local sidecar protocol is unsupported"));
     }
     Ok(DatabaseIdentity {
-        library_uuid: parse_library_uuid(&library_uuid)?,
-        replica_id: parse_replica_id(&replica_id)?,
+        library_uuid: library_uuid.parse()?,
+        replica_id: replica_id.parse()?,
     })
 }
 
@@ -172,7 +153,7 @@ pub fn ensure_database_identity(
     database_path: &str,
     library_uuid: &str,
 ) -> Result<DatabaseIdentity, SyncError> {
-    let library_uuid = parse_library_uuid(library_uuid)?;
+    let library_uuid: LibraryUuid = library_uuid.parse()?;
     let mut connection = open_connection(database_path)?;
     let transaction = connection
         .transaction_with_behavior(TransactionBehavior::Immediate)
@@ -202,13 +183,18 @@ pub fn ensure_database_identity(
         }
         existing
     } else {
-        let replica_id = Uuid::new_v4().to_string();
+        let replica_id = ReplicaId::generate();
         transaction
             .execute(
                 "INSERT INTO sync_local_meta
                  (id, protocol, library_uuid, replica_id)
                  VALUES (?1, ?2, ?3, ?4)",
-                params![new_id(), SIDECAR_PROTOCOL, library_uuid, replica_id],
+                params![
+                    new_id(),
+                    SIDECAR_PROTOCOL,
+                    library_uuid.as_str(),
+                    replica_id.as_str()
+                ],
             )
             .map_err(database_error)?;
         DatabaseIdentity {
@@ -341,8 +327,8 @@ fn request(
     command: DocumentCommand,
 ) -> DocumentCommandRequest {
     DocumentCommandRequest {
-        replica_id: identity.replica_id.clone(),
-        expected_library_uuid: Some(identity.library_uuid.clone()),
+        replica_id: identity.replica_id.to_string(),
+        expected_library_uuid: Some(identity.library_uuid.to_string()),
         base_heads,
         command,
     }
@@ -439,14 +425,14 @@ fn write_state(
 
 fn insert_outbox(
     transaction: &Transaction<'_>,
-    document_id: &str,
+    document_id: &LibraryUuid,
     result: &DocumentCommandResult,
 ) -> Result<(), SyncError> {
     if result.changes.is_empty() || result.incremental_bytes.is_empty() {
         return Ok(());
     }
     let sha256 = sha256_hex(&result.incremental_bytes);
-    let storage_key = incremental_key(document_id, &sha256);
+    let storage_key = incremental_key(document_id.as_str(), &sha256);
     let storage_key_json = encode_storage_key(&storage_key)?;
     let existing = transaction
         .query_row(
@@ -864,7 +850,7 @@ fn initialize(
     let genesis = execute_document_command(
         None,
         DocumentCommandRequest {
-            replica_id: identity.replica_id.clone(),
+            replica_id: identity.replica_id.to_string(),
             expected_library_uuid: None,
             base_heads: Vec::new(),
             command: DocumentCommand::Inspect,
@@ -874,11 +860,11 @@ fn initialize(
     let initialized = execute_document_command(
         Some(&genesis.snapshot_bytes),
         DocumentCommandRequest {
-            replica_id: identity.replica_id.clone(),
+            replica_id: identity.replica_id.to_string(),
             expected_library_uuid: None,
             base_heads: genesis.heads,
             command: DocumentCommand::SetLibraryIdentity {
-                library_uuid: identity.library_uuid.clone(),
+                library_uuid: identity.library_uuid.to_string(),
                 recorded_at: now_ms,
             },
         },
@@ -969,8 +955,8 @@ where
     let projection_mode = update_projection_mode(&transaction, &current.heads)?;
     let result = execute_document_mutation(
         &current.snapshot_bytes,
-        &identity.replica_id,
-        &identity.library_uuid,
+        identity.replica_id.as_str(),
+        identity.library_uuid.as_str(),
         current.heads,
         projection_mode,
         mutate,
@@ -1164,7 +1150,7 @@ pub fn apply_remote_database_objects(
     let genesis = execute_document_command(
         None,
         DocumentCommandRequest {
-            replica_id: identity.replica_id.clone(),
+            replica_id: identity.replica_id.to_string(),
             expected_library_uuid: None,
             base_heads: Vec::new(),
             command: DocumentCommand::Inspect,

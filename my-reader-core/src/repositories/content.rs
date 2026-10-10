@@ -10,7 +10,8 @@ use crate::entities::app::{
     book_cover_thumbnail_cache, book_reading_format, file_state, pending_book_imports,
 };
 use crate::models::{
-    BookCoverThumbnailCache, BookCoverThumbnailCachePatch, FileState, FileStateUpdate,
+    BookCoverThumbnailCache, BookCoverThumbnailCachePatch, FileLocalState, FileState,
+    FileStateUpdate,
 };
 use crate::CoreError;
 
@@ -129,7 +130,7 @@ impl<'a> ContentRepository<'a> {
 
         if let Some(model) = existing {
             let mut active: file_state::ActiveModel = model.into();
-            active.local_state = Set(update.local_state);
+            active.local_state = Set(update.local_state.into());
             active.local_sha256 = Set(update.local_sha256);
             active.local_size = Set(update.local_size);
             active.local_mtime = Set(update.local_mtime);
@@ -139,7 +140,7 @@ impl<'a> ContentRepository<'a> {
             file_state::ActiveModel {
                 id: Set(uuid::Uuid::new_v4().as_simple().to_string()),
                 path: Set(path.to_owned()),
-                local_state: Set(update.local_state),
+                local_state: Set(update.local_state.into()),
                 local_sha256: Set(update.local_sha256),
                 local_size: Set(update.local_size),
                 local_mtime: Set(update.local_mtime),
@@ -159,7 +160,7 @@ impl<'a> ContentRepository<'a> {
         let updated_at = now_seconds();
         let updated = file_state::Entity::update_many()
             .set(file_state::ActiveModel {
-                local_state: Set(update.local_state.clone()),
+                local_state: Set(update.local_state.clone().into()),
                 local_sha256: Set(update.local_sha256.clone()),
                 local_size: Set(update.local_size),
                 local_mtime: Set(update.local_mtime),
@@ -167,9 +168,10 @@ impl<'a> ContentRepository<'a> {
                 ..Default::default()
             })
             .filter(file_state::Column::Path.eq(path))
-            .filter(
-                file_state::Column::LocalState.is_not_in(["dirty_push", "remote_delete_pending"]),
-            )
+            .filter(file_state::Column::LocalState.is_not_in([
+                FileLocalState::DirtyPush.as_str(),
+                FileLocalState::RemoteDeletePending.as_str(),
+            ]))
             .exec(self.db)
             .await?;
         if updated.rows_affected > 0 {
@@ -179,7 +181,7 @@ impl<'a> ContentRepository<'a> {
         file_state::Entity::insert(file_state::ActiveModel {
             id: Set(uuid::Uuid::new_v4().as_simple().to_string()),
             path: Set(path.to_owned()),
-            local_state: Set(update.local_state),
+            local_state: Set(update.local_state.into()),
             local_sha256: Set(update.local_sha256),
             local_size: Set(update.local_size),
             local_mtime: Set(update.local_mtime),
@@ -249,7 +251,7 @@ impl<'a> ContentRepository<'a> {
         file_state::Entity::insert(file_state::ActiveModel {
             id: Set(uuid::Uuid::new_v4().as_simple().to_string()),
             path: Set(pending.relative_path.clone()),
-            local_state: Set("dirty_push".into()),
+            local_state: Set(FileLocalState::DirtyPush.into()),
             local_sha256: Set(Some(pending.sha256.clone())),
             local_size: Set(Some(pending.size)),
             local_mtime: Set(Some(local_mtime)),
@@ -431,7 +433,7 @@ impl From<file_state::Model> for FileState {
         Self {
             id: value.id,
             path: value.path,
-            local_state: value.local_state,
+            local_state: value.local_state.into(),
             local_sha256: value.local_sha256,
             local_size: value.local_size,
             local_mtime: value.local_mtime,

@@ -53,8 +53,8 @@ impl Fixture {
         persistence::execute_local_database_mutation(
             database.to_str().unwrap(),
             &persistence::DatabaseIdentity {
-                library_uuid: LIBRARY_UUID.into(),
-                replica_id: replica.into(),
+                library_uuid: LIBRARY_UUID.parse().unwrap(),
+                replica_id: replica.parse().unwrap(),
             },
             1_000,
             |doc| {

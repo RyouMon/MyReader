@@ -128,8 +128,8 @@ fn should_reuse_replica_identity_when_database_identity_is_ensured_again() {
     let second = ensure_database_identity(&path, LIBRARY_UUID).unwrap();
 
     assert_eq!(first, second);
-    assert_eq!(first.library_uuid, LIBRARY_UUID);
-    assert_eq!(first.replica_id.len(), 36);
+    assert_eq!(first.library_uuid.as_str(), LIBRARY_UUID);
+    assert_eq!(first.replica_id.as_str().len(), 36);
 }
 
 #[test]
@@ -174,8 +174,8 @@ fn should_preserve_last_pull_when_schedule_retry_is_cleared_after_push() {
 
 pub(super) fn identity() -> DatabaseIdentity {
     DatabaseIdentity {
-        library_uuid: LIBRARY_UUID.to_owned(),
-        replica_id: REPLICA_ID.to_owned(),
+        library_uuid: LIBRARY_UUID.parse().unwrap(),
+        replica_id: REPLICA_ID.parse().unwrap(),
     }
 }
 
@@ -410,8 +410,8 @@ fn should_project_remote_mutation_when_two_databases_exchange_outbox_objects() {
 
     let (_target_directory, target_path) = create_database();
     let target_identity = DatabaseIdentity {
-        library_uuid: LIBRARY_UUID.to_owned(),
-        replica_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb".to_owned(),
+        library_uuid: LIBRARY_UUID.parse().unwrap(),
+        replica_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb".parse().unwrap(),
     };
     let objects = source_objects
         .into_iter()
@@ -448,8 +448,8 @@ fn should_report_missing_change_when_remote_history_is_incomplete() {
 
     let (_target_directory, target_path) = create_database();
     let target_identity = DatabaseIdentity {
-        library_uuid: LIBRARY_UUID.to_owned(),
-        replica_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb".to_owned(),
+        library_uuid: LIBRARY_UUID.parse().unwrap(),
+        replica_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb".parse().unwrap(),
     };
     let error = apply_remote_database_objects(
         &target_path,

@@ -10,7 +10,7 @@ use tokio::sync::Mutex as AsyncMutex;
 
 use crate::{
     library::{self, LibraryContext},
-    models::LibraryStorageConfig,
+    models::{FileLocalState, LibraryStorageConfig},
     repositories::content::{ContentRepository, PendingBookImport},
     sync::{
         document::CatalogBookValue,
@@ -72,9 +72,12 @@ impl BookTransferService {
             .list_file_states()
             .await
             .map(|states| {
-                states
-                    .iter()
-                    .any(|state| matches!(state.local_state.as_str(), "local_only" | "dirty_push"))
+                states.iter().any(|state| {
+                    matches!(
+                        state.local_state,
+                        FileLocalState::LocalOnly | FileLocalState::DirtyPush
+                    )
+                })
             })
     }
 

@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use futures::AsyncReadExt;
 use my_reader_core::api::content::{DownloadCancellation, DownloadCoordinator};
-use my_reader_core::models::DownloadTaskRequest;
+use my_reader_core::models::{DownloadTaskRequest, FileLocalState};
 use tauri::{AppHandle, Emitter, Runtime};
 use tokio::io::AsyncWriteExt;
 use tracing::{debug, info, warn};
@@ -505,7 +505,7 @@ impl DownloadService {
                 .unwrap_or("present")
         } else if row
             .as_ref()
-            .is_some_and(|state| state.local_state == "source_missing")
+            .is_some_and(|state| state.local_state == FileLocalState::SourceMissing)
         {
             "source_missing"
         } else {
@@ -588,7 +588,9 @@ impl DownloadService {
                 local_state: if present {
                     row.map(|state| state.local_state.as_str())
                         .unwrap_or("present")
-                } else if row.is_some_and(|state| state.local_state == "source_missing") {
+                } else if row
+                    .is_some_and(|state| state.local_state == FileLocalState::SourceMissing)
+                {
                     "source_missing"
                 } else {
                     "remote_only"
@@ -1128,7 +1130,7 @@ impl DownloadService {
         }
         let source_missing = Self::get_stored_file_state(sidecar_root, book_relative_path)
             .await?
-            .is_some_and(|state| state.local_state == "source_missing");
+            .is_some_and(|state| state.local_state == FileLocalState::SourceMissing);
         if !source_missing {
             my_reader_core::api::content::ContentService::mark_file_remote_only(
                 sidecar_root,

@@ -624,7 +624,7 @@ impl From<models::FileState> for FileState {
         Self {
             id: value.id,
             path: value.path,
-            local_state: FileLocalState(value.local_state),
+            local_state: FileLocalState(value.local_state.into()),
             is_locally_available,
             local_sha256: value.local_sha256,
             local_size: value.local_size.map(|value| value as f64),
@@ -639,7 +639,7 @@ impl TryFrom<FileStateUpdate> for models::FileStateUpdate {
 
     fn try_from(value: FileStateUpdate) -> Result<Self, Self::Error> {
         Ok(Self {
-            local_state: value.local_state.0,
+            local_state: value.local_state.0.into(),
             local_sha256: value.local_sha256,
             local_size: optional_i64(value.local_size, "localSize")?,
             local_mtime: optional_i64(value.local_mtime, "localMtime")?,
@@ -1005,7 +1005,7 @@ impl From<models::Library> for Library {
             metadata_uri: value.metadata_uri,
             added_at: value.added_at,
             data_source_id: value.data_source_id,
-            source_type: value.source_type,
+            source_type: value.source_type.map(Into::into),
             source_path: value.source_path,
             metadata_etag: value.metadata_etag,
             security_scoped_bookmark: value.security_scoped_bookmark.map(Into::into),
@@ -1026,7 +1026,7 @@ impl TryFrom<Library> for models::Library {
             metadata_uri: value.metadata_uri,
             added_at: value.added_at,
             data_source_id: value.data_source_id,
-            source_type: value.source_type,
+            source_type: value.source_type.map(Into::into),
             source_path: value.source_path,
             metadata_etag: value.metadata_etag,
             security_scoped_bookmark: value.security_scoped_bookmark.map(Into::into),
@@ -1475,6 +1475,67 @@ pub fn required_string(value: Option<String>, field: &str) -> Result<String, Cor
 mod tests {
     use super::{parse_library_type, required_i64, required_u64, JS_SAFE_INTEGER_MAX};
     use crate::CoreFfiError;
+
+    #[test]
+    fn file_states_keep_the_native_string_contract() {
+        for wire in [
+            "present",
+            "local_only",
+            "dirty_push",
+            "remote_only",
+            "downloading",
+            "source_missing",
+            "remote_delete_pending",
+            "future_state",
+        ] {
+            let update = super::FileStateUpdate {
+                local_state: super::FileLocalState(wire.into()),
+                local_sha256: None,
+                local_size: Some(42.0),
+                local_mtime: Some(1234.0),
+            };
+            let core: my_reader_core::models::FileStateUpdate = update.try_into().unwrap();
+            let core = my_reader_core::models::FileState {
+                id: "file".into(),
+                path: "Book.epub".into(),
+                local_state: core.local_state,
+                local_sha256: core.local_sha256,
+                local_size: core.local_size,
+                local_mtime: core.local_mtime,
+                updated_at: 1.25,
+            };
+            let native = super::FileState::from(core);
+            assert_eq!(native.local_state.0, wire);
+            assert_eq!(
+                native.is_locally_available,
+                matches!(wire, "present" | "local_only" | "dirty_push")
+            );
+            assert_eq!(native.local_size, Some(42.0));
+            assert_eq!(native.local_mtime, Some(1234.0));
+        }
+    }
+
+    #[test]
+    fn library_sources_keep_the_native_string_contract() {
+        for wire in [
+            Some("local"),
+            Some("webdav"),
+            Some("onedrive"),
+            Some("future_backend"),
+            None,
+        ] {
+            let core: my_reader_core::models::Library = serde_json::from_value(serde_json::json!({
+                "id": "library", "name": "Library", "path": "/library", "sourceType": wire
+            }))
+            .unwrap();
+            let native = super::Library::from(core.clone());
+            assert_eq!(native.source_type.as_deref(), wire);
+            assert_eq!(
+                my_reader_core::models::Library::try_from(native).unwrap(),
+                core
+            );
+        }
+    }
 
     #[test]
     fn should_accept_boundary_when_number_is_a_javascript_safe_integer() {

@@ -112,7 +112,7 @@ fn completion() -> ReadingCompletionValue {
         local_day: "2026-10-10".into(),
         completed_at: 10,
         updated_at: 10,
-        replica_id: identity().replica_id,
+        replica_id: identity().replica_id.to_string(),
     }
 }
 
@@ -122,7 +122,7 @@ fn reading_commands() -> Vec<(&'static str, DocumentCommand)> {
             "reading_progress",
             DocumentCommand::SetReadingPosition {
                 book_id: 42,
-                value: position(&identity().replica_id, 10),
+                value: position(identity().replica_id.as_str(), 10),
             },
         ),
         (
@@ -133,7 +133,7 @@ fn reading_commands() -> Vec<(&'static str, DocumentCommand)> {
                     is_favorite: true,
                     added_at: Some(10),
                     recorded_at: 10,
-                    replica_id: identity().replica_id,
+                    replica_id: identity().replica_id.to_string(),
                 },
             },
         ),
@@ -149,7 +149,7 @@ fn reading_commands() -> Vec<(&'static str, DocumentCommand)> {
                     created_at: 10,
                     deleted_at: None,
                     recorded_at: 10,
-                    replica_id: identity().replica_id,
+                    replica_id: identity().replica_id.to_string(),
                 },
             },
         ),
@@ -176,7 +176,7 @@ fn reading_commands() -> Vec<(&'static str, DocumentCommand)> {
             DocumentCommand::AddReadingSessionDuration {
                 value: ReadingSessionValue {
                     id: "cccccccccccc4ccc8ccccccccccccccc".into(),
-                    origin_replica_id: identity().replica_id,
+                    origin_replica_id: identity().replica_id.to_string(),
                     book_id: 42,
                     format: "EPUB".into(),
                     local_day: "2026-10-10".into(),
@@ -269,7 +269,7 @@ fn reading_mutation_should_leave_unrelated_projections_untouched() {
                 is_favorite: true,
                 added_at: Some(2),
                 recorded_at: 2,
-                replica_id: identity().replica_id,
+                replica_id: identity().replica_id.to_string(),
             },
         )?;
         Ok(())
@@ -312,7 +312,7 @@ fn one_mutation_should_project_both_position_and_completion() {
     let connection = Connection::open(&path).unwrap();
     reject_writes(&connection, CATALOG_TABLES);
     execute_local_database_mutation(&path, &identity(), 10, |doc| {
-        set_reading_position(doc, 42, &position(&identity().replica_id, 10))?;
+        set_reading_position(doc, 42, &position(identity().replica_id.as_str(), 10))?;
         add_reading_completion(doc, &completion())?;
         Ok(())
     })
@@ -388,7 +388,7 @@ fn remote_reading_changes_and_duplicate_delivery_should_not_rewrite_catalog() {
     let (_target_directory, target) = create_database();
     seed_catalog(&source);
     let mut target_identity = identity();
-    target_identity.replica_id = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb".into();
+    target_identity.replica_id = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb".parse().unwrap();
     apply_remote_database_objects(&target, &target_identity, 10, remote_objects(&source)).unwrap();
     let connection = Connection::open(&target).unwrap();
     reject_writes(&connection, CATALOG_TABLES);
@@ -419,7 +419,7 @@ fn losing_position_conflicts_should_update_candidates_and_resolve_without_catalo
     let connection = Connection::open(&target).unwrap();
     reject_writes(&connection, CATALOG_TABLES);
     let mut target_identity = identity();
-    target_identity.replica_id = "dddddddd-dddd-4ddd-8ddd-dddddddddddd".into();
+    target_identity.replica_id = "dddddddd-dddd-4ddd-8ddd-dddddddddddd".parse().unwrap();
     // Deliver the winning actor first, followed by two losing values. The
     // visible locator stays unchanged while the conflict count grows to three.
     for (index, replica) in [
@@ -433,7 +433,7 @@ fn losing_position_conflicts_should_update_candidates_and_resolve_without_catalo
         let (_branch_directory, branch) = create_database();
         install_snapshot(&branch, &base);
         let mut replica_identity = identity();
-        replica_identity.replica_id = (*replica).into();
+        replica_identity.replica_id = (*replica).parse().unwrap();
         execute_local_database_command(
             &branch,
             &replica_identity,
