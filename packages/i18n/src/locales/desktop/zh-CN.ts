@@ -105,6 +105,19 @@ export const desktopZhCN = {
       editMetadata: "修改书名与作者",
       deleteBook: "从书库删除图书",
     },
+    bookShare: {
+      saveAs: "另存为…",
+      fileSaved: "文件已保存",
+      saveFailed: "另存文件失败",
+      share: "分享",
+      shareFormat: "分享 {{format}} 文件",
+      copyPath: "复制文件路径",
+      revealFile: "打开文件所在位置",
+      pathCopied: "已复制文件路径",
+      unavailable: "文件尚未下载到本地",
+      copyFailed: "复制文件路径失败",
+      revealFailed: "打开文件所在位置失败",
+    },
     bookDetail: {
       loading: "加载书籍详情…",
       formats: {

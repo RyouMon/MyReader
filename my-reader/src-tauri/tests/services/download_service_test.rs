@@ -194,6 +194,119 @@ async fn resolve_book_file_path_should_return_path_and_not_found_errors() {
 }
 
 #[tokio::test]
+async fn available_book_path_should_resolve_local_files_and_recheck_existence() {
+    let app_data = tempfile::tempdir().unwrap();
+    let lib_root = tempfile::tempdir().unwrap();
+    let seeded = seed_minimal_calibre_library(lib_root.path()).await;
+    let config = AppConfig {
+        libraries: vec![local_test_library("local", lib_root.path())],
+        ..Default::default()
+    };
+    let service = DownloadService::new();
+    let path = service
+        .resolve_available_book_file_path(app_data.path(), &config, "local", seeded.book_id, "epub")
+        .await
+        .unwrap();
+    assert!(path.is_absolute());
+    assert_eq!(path, dunce::canonicalize(&seeded.file_path).unwrap());
+
+    tokio::fs::remove_file(&seeded.file_path).await.unwrap();
+    let error = service
+        .resolve_available_book_file_path(app_data.path(), &config, "local", seeded.book_id, "EPUB")
+        .await
+        .unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("BOOK_FILE_NOT_AVAILABLE_LOCALLY"));
+}
+
+#[tokio::test]
+async fn available_book_path_should_require_complete_remote_cache() {
+    let app_data = tempfile::tempdir().unwrap();
+    let lib = remote_test_library("remote");
+    let root = library_container_dir(app_data.path(), &lib.id);
+    tokio::fs::create_dir_all(&root).await.unwrap();
+    let seeded = seed_minimal_calibre_library(&root).await;
+    let config = AppConfig {
+        libraries: vec![lib],
+        ..Default::default()
+    };
+    let service = DownloadService::new();
+
+    // A file left by an incomplete download is not shareable without complete state.
+    assert!(service
+        .resolve_available_book_file_path(
+            app_data.path(),
+            &config,
+            "remote",
+            seeded.book_id,
+            "EPUB"
+        )
+        .await
+        .is_err());
+    for local_state in [
+        "remote_only",
+        "downloading",
+        "present",
+        "local_only",
+        "dirty_push",
+    ] {
+        TestFileStateRepository::upsert(&root, "It/It.epub", local_state, Some(12), None)
+            .await
+            .unwrap();
+        let result = service
+            .resolve_available_book_file_path(
+                app_data.path(),
+                &config,
+                "remote",
+                seeded.book_id,
+                "EPUB",
+            )
+            .await;
+        if matches!(local_state, "present" | "local_only" | "dirty_push") {
+            assert_eq!(
+                result.unwrap(),
+                dunce::canonicalize(&seeded.file_path).unwrap()
+            );
+        } else {
+            assert!(result.is_err(), "state {local_state} must not be shareable");
+        }
+    }
+    tokio::fs::remove_file(&seeded.file_path).await.unwrap();
+    assert!(service
+        .resolve_available_book_file_path(
+            app_data.path(),
+            &config,
+            "remote",
+            seeded.book_id,
+            "EPUB"
+        )
+        .await
+        .is_err());
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn available_book_path_should_reject_symlinks_outside_library() {
+    let app_data = tempfile::tempdir().unwrap();
+    let root = tempfile::tempdir().unwrap();
+    let seeded = seed_minimal_calibre_library(root.path()).await;
+    let outside = app_data.path().join("outside.epub");
+    tokio::fs::write(&outside, b"book content").await.unwrap();
+    tokio::fs::remove_file(&seeded.file_path).await.unwrap();
+    std::os::unix::fs::symlink(outside, &seeded.file_path).unwrap();
+    let config = AppConfig {
+        libraries: vec![local_test_library("local", root.path())],
+        ..Default::default()
+    };
+    let error = DownloadService::new()
+        .resolve_available_book_file_path(app_data.path(), &config, "local", seeded.book_id, "EPUB")
+        .await
+        .unwrap_err();
+    assert!(error.to_string().contains("BOOK_FILE_OUTSIDE_LIBRARY"));
+}
+
+#[tokio::test]
 async fn check_file_state_should_cover_local_present_missing_and_sidecar_size() {
     let lib_root = tempfile::tempdir().unwrap();
     let app_data = tempfile::tempdir().unwrap();

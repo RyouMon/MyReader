@@ -107,6 +107,19 @@ export const desktopEn = {
       editMetadata: "Edit title and author",
       deleteBook: "Delete book from library",
     },
+    bookShare: {
+      saveAs: "Save as…",
+      fileSaved: "File saved",
+      saveFailed: "Could not save file",
+      share: "Share",
+      shareFormat: "Share {{format}} file",
+      copyPath: "Copy file path",
+      revealFile: "Show in folder",
+      pathCopied: "File path copied",
+      unavailable: "File not available locally",
+      copyFailed: "Could not copy file path",
+      revealFailed: "Could not show file in folder",
+    },
     bookDetail: {
       loading: "Loading book detail…",
       formats: {

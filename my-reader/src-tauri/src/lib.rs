@@ -78,6 +78,9 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::book::request_book_upload,
             commands::book::update_book_metadata::<tauri::Wry>,
             commands::book::delete_book::<tauri::Wry>,
+            commands::book_file::copy_book_file_path::<tauri::Wry>,
+            commands::book_file::reveal_book_file::<tauri::Wry>,
+            commands::book_file::save_book_file_as::<tauri::Wry>,
             commands::book_reading_format::list_book_reading_formats::<tauri::Wry>,
             commands::book_reading_format::set_book_reading_format::<tauri::Wry>,
             commands::favorite::list_favorite_book_ids::<tauri::Wry>,
@@ -168,6 +171,7 @@ pub fn run() -> Result<(), tauri::Error> {
                 .build(),
         )
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_window_state::Builder::default().build());
 
     #[cfg(debug_assertions)]
