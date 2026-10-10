@@ -1,8 +1,12 @@
+import { errorMessage } from "@/src/i18n/error-message"
 import { router } from "expo-router"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { libraryTypeOf } from "@my-reader/tools/types/library"
 
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import {
+  showAlertWithStatusBarRestore,
+  showErrorAlert,
+} from "@/src/constants/alert-with-status-bar"
 import {
   cancel as cancelDownload,
   enqueue as enqueueDownload,
@@ -18,7 +22,7 @@ import {
 } from "@/src/domain/library/share-book-file"
 import type { BookItem, Library } from "@/src/domain/types"
 import { isRemoteSourceType } from "@/src/domain/types"
-import { describeDownloadError } from "@/src/errors"
+import { describeDownloadError } from "@/src/i18n/error-message"
 import i18n from "@/src/i18n"
 import type { FileState as FileStateRow } from "@/src/services/core/content"
 import { confirmDeleteLocalDownload } from "../utils/delete-download"
@@ -43,10 +47,7 @@ function confirmManagedBookDeletion(lib: Library | null, book: BookItem) {
         style: "destructive",
         onPress: () => {
           void deleteManagedBook(lib, calibreId).catch((error) => {
-            showAlertWithStatusBarRestore(
-              i18n.t("bookMenu.deleteFailed"),
-              error instanceof Error ? error.message : String(error),
-            )
+            showErrorAlert(i18n.t("bookMenu.deleteFailed"), errorMessage(error))
           })
         },
       },
@@ -226,7 +227,7 @@ export function useBookActions(
         return { format, taskId }
       } catch (e) {
         const { title, message } = describeDownloadError(e)
-        showAlertWithStatusBarRestore(title, message)
+        showErrorAlert(title, message)
       }
       return null
     },
@@ -314,10 +315,7 @@ export function useBookActions(
         ],
       )
     } catch (e) {
-      showAlertWithStatusBarRestore(
-        i18n.t("sync.readFormatFailed"),
-        e instanceof Error ? e.message : String(e),
-      )
+      showErrorAlert(i18n.t("sync.readFormatFailed"), errorMessage(e))
     }
   }, [])
 
@@ -399,10 +397,7 @@ export function useBookActions(
         }
         await shareBookFile(resolved.fileUri, resolved.format)
       } catch (e) {
-        showAlertWithStatusBarRestore(
-          i18n.t("share.shareFailed"),
-          e instanceof Error ? e.message : String(e),
-        )
+        showErrorAlert(i18n.t("share.shareFailed"), errorMessage(e))
       }
     },
     [],

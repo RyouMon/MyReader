@@ -1,3 +1,4 @@
+import { CoreFfiError } from "my-reader-core/src/generated/my_reader_core_ffi"
 import { act, renderHook, waitFor } from "@testing-library/react-native"
 
 import { useRemoteDirectoryBrowser } from "./use-remote-directory-browser"
@@ -36,7 +37,7 @@ jest.mock("@/src/services/core/remote", () => ({
 }))
 
 jest.mock("@/src/constants/alert-with-status-bar", () => ({
-  showAlertWithStatusBarRestore: (...args: unknown[]) => mockShowAlert(...args),
+  showErrorAlert: (...args: unknown[]) => mockShowAlert(...args),
 }))
 
 jest.mock("@/src/store/app-store", () => ({
@@ -60,7 +61,7 @@ describe("useRemoteDirectoryBrowser", () => {
 
   it("should show duplicate feedback without replacing directory state when library already exists", async () => {
     mockOpenRemoteExistingLibrary.mockRejectedValue(
-      new Error("CORE_ERROR: CONFIG_ERROR: LIBRARY_ALREADY_EXISTS"),
+      new CoreFfiError.LibraryAlreadyExists("diagnostic changed"),
     )
     const { result } = renderHook(() =>
       useRemoteDirectoryBrowser({
@@ -79,7 +80,7 @@ describe("useRemoteDirectoryBrowser", () => {
 
     expect(mockShowAlert).toHaveBeenCalledWith(
       errorMessages.duplicateTitle,
-      errorMessages.duplicateMessage,
+      `${errorMessages.duplicateMessage}\nLibraryAlreadyExists: CoreFfiError.LibraryAlreadyExists: diagnostic changed`,
     )
     expect(result.current.error).toBeNull()
     expect(mockOnLibraryOpened).not.toHaveBeenCalled()
@@ -123,7 +124,11 @@ describe("useRemoteDirectoryBrowser", () => {
         sourceType: "onedrive",
       }),
     )
-    await waitFor(() => expect(result.current.error).toBe("temporary failure"))
+    await waitFor(() =>
+      expect(result.current.error).toBe(
+        "This action could not be completed. Please try again.\nError: temporary failure",
+      ),
+    )
 
     act(() => result.current.retry())
 
@@ -138,7 +143,7 @@ describe("useRemoteDirectoryBrowser", () => {
 
   it("should offer account recovery when OneDrive rejects the stored credentials", async () => {
     mockListRemoteDirectories.mockRejectedValue(
-      new Error("AUTH_ERROR: ONEDRIVE_UNAUTHORIZED"),
+      new CoreFfiError.Credential("diagnostic changed"),
     )
     const { result } = renderHook(() =>
       useRemoteDirectoryBrowser({

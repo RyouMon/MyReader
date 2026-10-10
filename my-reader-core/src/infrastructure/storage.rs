@@ -113,30 +113,6 @@ pub(crate) fn storage_error(error: opendal::Error) -> CoreError {
     error.into()
 }
 
-pub(crate) fn remote_storage_error(source: &DataSource, error: opendal::Error) -> CoreError {
-    let detail = error.to_string();
-    let code = match (source, error.kind(), detail.as_str()) {
-        (DataSource::Webdav { .. }, _, detail) if detail.contains("status: 401") => {
-            "WEBDAV_UNAUTHORIZED"
-        }
-        (DataSource::Webdav { .. }, _, detail) if detail.contains("status: 403") => {
-            "WEBDAV_FORBIDDEN"
-        }
-        (DataSource::Webdav { .. }, opendal::ErrorKind::PermissionDenied, _) => {
-            "WEBDAV_UNAUTHORIZED"
-        }
-        (DataSource::Webdav { .. }, opendal::ErrorKind::NotFound, _) => "WEBDAV_NOT_FOUND",
-        (DataSource::Webdav { .. }, _, _) => "WEBDAV_UNEXPECTED_STATUS",
-        (DataSource::Onedrive { .. }, opendal::ErrorKind::PermissionDenied, _) => {
-            "ONEDRIVE_UNAUTHORIZED"
-        }
-        (DataSource::Onedrive { .. }, opendal::ErrorKind::NotFound, _) => "ONEDRIVE_NOT_FOUND",
-        (DataSource::Onedrive { .. }, _, _) => "ONEDRIVE_STORAGE_FAILED",
-        (DataSource::Local { .. }, _, _) => "DATASOURCE_NOT_REMOTE",
-    };
-    CoreError::Storage(format!("{code}: {detail}"))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,3 +1,5 @@
+import { appendErrorDetail } from "@my-reader/i18n/mobile"
+import { coreErrorKind } from "@/src/services/core/error"
 import { appendRemotePathSegment } from "@my-reader/tools/remote-path"
 import { router, Stack, useLocalSearchParams } from "expo-router"
 import { useEffect, useState } from "react"
@@ -13,7 +15,7 @@ import {
   SectionLabel,
 } from "@/src/components"
 import { ENTITY_LIST_ROW_ICONS } from "@/src/components/ui/entity-list-row-icons"
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
 import { useThemePalette } from "@/src/design/tokens"
 import {
   createAppInternalMyReaderLibrary,
@@ -57,39 +59,31 @@ function sourceBrowserPath(source: DataSource, operation: LibraryOperation) {
 }
 
 function showOperationError(t: (key: string) => string, error: unknown): void {
-  const message = String(error)
-  if (
-    message.includes("LIBRARY_FOLDER_ALREADY_EXISTS") ||
-    message.includes("LIBRARY_ROOT_NOT_EMPTY") ||
-    message.includes("REMOTE_LIBRARY_ROOT_NOT_EMPTY")
-  ) {
-    showAlertWithStatusBarRestore(
+  const kind = coreErrorKind(error)
+  if (kind === "LibraryFolderAlreadyExists" || kind === "LibraryRootNotEmpty") {
+    showErrorAlert(
       t("addLibrary.folderExists.title"),
-      t("addLibrary.folderExists.detail"),
+      appendErrorDetail(t("addLibrary.folderExists.detail"), error),
     )
     return
   }
-  if (message.includes("LIBRARY_ALREADY_EXISTS")) {
-    showAlertWithStatusBarRestore(
+  if (kind === "LibraryAlreadyExists") {
+    showErrorAlert(
       t("sync.cannotAddDuplicate"),
-      t("sync.alreadyAdded"),
+      appendErrorDetail(t("sync.alreadyAdded"), error),
     )
     return
   }
-  if (
-    message.includes("LIBRARY_TYPE_NOT_RECOGNIZED") ||
-    message.includes("METADATA_DB_NOT_FOUND") ||
-    message.includes("MYREADER_LIBRARY_MARKER_NOT_FOUND")
-  ) {
-    showAlertWithStatusBarRestore(
+  if (kind === "MetadataDbNotFound" || kind === "LibraryMarkerNotFound") {
+    showErrorAlert(
       t("addLibrary.unrecognized.title"),
-      t("addLibrary.unrecognized.detail"),
+      appendErrorDetail(t("addLibrary.unrecognized.detail"), error),
     )
     return
   }
-  showAlertWithStatusBarRestore(
+  showErrorAlert(
     t("addLibrary.operationFailed"),
-    t("addLibrary.operationFailedDetail"),
+    appendErrorDetail(t("addLibrary.operationFailedDetail"), error),
   )
 }
 

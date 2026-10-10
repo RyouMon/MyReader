@@ -63,7 +63,7 @@ describe("LibrarySyncStatus", () => {
       completedAt: now,
       failureKind: "connectivity",
       failureStage: "pulling",
-      message: "The server could not be reached.",
+      message: "Request: 503 INTERNAL_DIAGNOSTIC /private/library",
       reason: "automatic_check",
     })
 
@@ -78,11 +78,83 @@ describe("LibrarySyncStatus", () => {
     expect(within(details).getByText("Shared Library")).toBeInTheDocument()
     expect(within(details).getByText("Pulling changes")).toBeInTheDocument()
     expect(
-      within(details).getByText("The server could not be reached."),
+      within(details).getByText(
+        /Check your network connection and whether the data source is available, then try syncing again\./,
+      ),
     ).toBeInTheDocument()
+    expect(within(details).getByText(/INTERNAL_DIAGNOSTIC/).textContent).toBe(
+      "Check your network connection and whether the data source is available, then try syncing again.\nconnectivity: Request: 503 INTERNAL_DIAGNOSTIC /private/library",
+    )
 
     fireEvent.click(within(details).getByRole("button", { name: "Sync now" }))
     await waitFor(() => expect(onSync).toHaveBeenCalledTimes(1))
+  })
+
+  it("should translate stored failures at render time without replacing diagnostics", async () => {
+    observe({
+      type: "failed",
+      libraryId: library.id,
+      taskId: "failure",
+      completedAt: Date.now(),
+      failureKind: "credential",
+      message: "network 503 INTERNAL_DIAGNOSTIC",
+      reason: "manual",
+    })
+
+    render(<LibrarySyncStatus library={library} />)
+    fireEvent.click(
+      screen.getByRole("button", { name: "Sync status: Sync failed" }),
+    )
+    expect(
+      await screen.findByText("Sync failed: Check data source access"),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/INTERNAL_DIAGNOSTIC/).textContent).toBe(
+      "Sign in again or update the data source credentials, and check that this account can access the library.\ncredential: network 503 INTERNAL_DIAGNOSTIC",
+    )
+
+    await act(async () => {
+      await i18n.changeLanguage("zh-CN")
+    })
+    expect(
+      screen.getByText("同步失败：请检查数据源访问权限"),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText("Sync failed: Check data source access"),
+    ).toBeNull()
+    expect(screen.getByText(/INTERNAL_DIAGNOSTIC/).textContent).toBe(
+      "请重新登录或更新数据源凭据，并确认此账号有权访问书库。\ncredential: network 503 INTERNAL_DIAGNOSTIC",
+    )
+    expect(
+      useSyncStatusStore.getState().librarySyncHistoryById[library.id]
+        .lastFailure?.message,
+    ).toBe("network 503 INTERNAL_DIAGNOSTIC")
+  })
+
+  it.each([
+    undefined,
+    "Config: INTERNAL_DIAGNOSTIC",
+  ])("should show a generic failure for old history without a category (%s)", async (message) => {
+    useSyncStatusStore.setState({
+      librarySyncHistoryById: {
+        [library.id]: { lastFailure: { completedAt: Date.now(), message } },
+      },
+    })
+    render(<LibrarySyncStatus library={library} />)
+    fireEvent.click(
+      screen.getByRole("button", { name: "Sync status: Sync failed" }),
+    )
+    expect(
+      await screen.findByText(
+        /Try syncing again later\. If the problem continues, report it for help\./,
+      ),
+    ).toBeInTheDocument()
+    if (message) {
+      expect(screen.getByText(/INTERNAL_DIAGNOSTIC/).textContent).toContain(
+        `\n${message}`,
+      )
+    } else {
+      expect(screen.queryByText(/INTERNAL_DIAGNOSTIC/)).toBeNull()
+    }
   })
 
   it("should keep a local library available when the host has no network", async () => {

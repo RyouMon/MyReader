@@ -39,7 +39,7 @@ async fn get_books_should_return_not_found_when_no_active_library() {
 
     let err = invoke_err(&app, "get_books", json!({ "libraryId": null }));
 
-    assert!(err.is_kind("NotFound"), "kind was {}", err.kind);
+    assert!(err.is_kind("NoActiveLibrary"), "kind was {}", err.kind);
     assert!(
         err.message.contains("NO_ACTIVE_LIBRARY"),
         "message was {}",

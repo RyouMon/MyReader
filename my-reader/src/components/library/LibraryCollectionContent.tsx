@@ -44,7 +44,9 @@ export function LibraryCollectionContent({
             <AlertCircle className="text-destructive" />
           </EmptyMedia>
           <EmptyTitle>{t("library.loadingFailed")}</EmptyTitle>
-          <EmptyDescription>{error}</EmptyDescription>
+          <EmptyDescription className="select-text whitespace-pre-wrap break-words">
+            {error}
+          </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
           <Button variant="outline" size="sm" onClick={onRetry}>

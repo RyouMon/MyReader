@@ -96,6 +96,7 @@
     "unread": "Ungelesen"
   },
   "common": {
+    "copy": "Kopieren",
     "cancel": "Abbrechen",
     "close": "Schließen",
     "delete": "Löschen",
@@ -205,6 +206,7 @@
     "lastSync": "Zuletzt synchronisiert",
     "lastAttempt": "Letzter Versuch",
     "noHistory": "Kein Synchronisierungsverlauf",
+    "failureSummary": "Synchronisierung fehlgeschlagen: {{title}}",
     "failureReason": "Fehlergrund",
     "failureStage": "Fehlerstadium",
     "progress": "{{completed}} / {{total}}",
@@ -215,6 +217,28 @@
     "noActiveLibrary": "Keine Bibliothek zum Synchronisieren",
     "noActiveLibraryDetail": "Fügen Sie eine Bibliothek hinzu, um die Synchronisierung zu starten.",
     "activeLibraryChanged": "Die aktuelle Bibliothek wurde geändert. Bitte versuchen Sie es erneut.",
+    "failure": {
+      "connectivity": {
+        "title": "Verbindung nicht möglich",
+        "detail": "Prüfe deine Netzwerkverbindung und ob die Datenquelle verfügbar ist. Versuche dann erneut zu synchronisieren."
+      },
+      "credential": {
+        "title": "Zugriff auf die Datenquelle prüfen",
+        "detail": "Melde dich erneut an oder aktualisiere die Zugangsdaten der Datenquelle. Prüfe auch, ob dieses Konto Zugriff auf die Bibliothek hat."
+      },
+      "configuration": {
+        "title": "Bibliothekseinstellungen prüfen",
+        "detail": "Prüfe den Speicherort der Bibliothek und die Einstellungen der Datenquelle. Versuche dann erneut zu synchronisieren."
+      },
+      "data_integrity": {
+        "title": "Synchronisierungsdaten müssen geprüft werden",
+        "detail": "Einige Synchronisierungsdaten fehlen möglicherweise oder sind beschädigt. Behalte deine lokalen Dateien und prüfe zuerst die Kopien auf anderen Geräten oder in einer verlässlichen Sicherung."
+      },
+      "unexpected": {
+        "title": "Synchronisierung nicht abgeschlossen",
+        "detail": "Versuche es später erneut. Wenn das Problem weiterhin besteht, melde es, um Hilfe zu erhalten."
+      }
+    },
     "reason": {
       "manual": "Manuell gestartet",
       "localChange": "Lokale Daten geändert",
@@ -239,5 +263,15 @@
       "calibre": "Bibliothek wird aktualisiert",
       "complete": "Wird abgeschlossen"
     }
+  },
+  "operationError": {
+    "unexpected": "Diese Aktion konnte nicht abgeschlossen werden. Bitte versuche es erneut.",
+    "connectivity": "Keine Verbindung zum Dienst möglich. Prüfe deine Netzwerkverbindung und die Dienstadresse und versuche es erneut.",
+    "credential": "Zugriff verweigert. Prüfe deine Zugangsdaten oder melde dich erneut an.",
+    "configuration": "Prüfe die Bibliotheks- oder Diensteinstellungen und versuche es erneut.",
+    "notFound": "Dieses Element ist nicht mehr verfügbar. Aktualisiere die Ansicht und versuche es erneut.",
+    "io": "Kein Zugriff auf lokale Dateien. Prüfe den Speicherplatz und die Dateiberechtigungen.",
+    "dataIntegrity": "Einige Daten konnten nicht korrekt gelesen werden. Stelle eine verlässliche Kopie wieder her und versuche es erneut.",
+    "tts": "Die Sprachausgabe ist fehlgeschlagen. Prüfe die Spracheinstellungen und versuche es erneut."
   }
 }

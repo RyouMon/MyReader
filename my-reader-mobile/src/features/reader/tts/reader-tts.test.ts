@@ -216,12 +216,12 @@ describe("reader TTS selection", () => {
     })
   })
 
-  it("should turn a wrapped provider outage into an actionable error kind", () => {
+  it("should not classify diagnostic strings as provider failures", () => {
     expect(
       classifyReaderTtsError(
         "engine(ReadiumNavigator.TTSError.other(PlaybackError(message: CORE_ERROR: TTS_ERROR: unavailable:TTS_PROVIDER_UNAVAILABLE)))",
       ),
-    ).toEqual({ kind: "providerUnavailable" })
+    ).toEqual({ kind: "unknown" })
   })
 
   it("should present a missing native reader as a normal startup failure", () => {

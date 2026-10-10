@@ -9,7 +9,7 @@ import {
 } from "@kesha-antonov/react-native-background-downloader"
 
 import { toNativeFilesystemPath } from "../fs/path"
-import i18n from "@/src/i18n"
+import { nativeTransferError } from "./transfer-error"
 
 export type NativeDownloadOptions = {
   taskId?: string
@@ -146,7 +146,7 @@ export function startNativeDownload({
     cancelledBeforeStart.delete(taskId)
     void task.stop()
     activeTasks.delete(taskId)
-    const err = new Error(i18n.t("sync.downloadCancelled"))
+    const err = new Error("download cancelled")
     err.name = "AbortError"
     return Promise.reject(err)
   }
@@ -162,7 +162,7 @@ export function startNativeDownload({
       if (settled) return
       settled = true
       finishCleanup()
-      const err = new Error(i18n.t("sync.downloadCancelled"))
+      const err = new Error("download cancelled")
       err.name = "AbortError"
       reject(err)
     }
@@ -198,12 +198,7 @@ export function startNativeDownload({
       if (settled) return
       settled = true
       finishCleanup()
-      const err = new Error(
-        error || i18n.t("sync.downloadFailed", { code: errorCode }),
-      )
-      if (isNativeCancel(error, errorCode)) {
-        err.name = "AbortError"
-      }
+      const err = nativeTransferError(error, errorCode)
       console.error("Failed to run native download task:", {
         taskId,
         relativePath,
@@ -216,7 +211,7 @@ export function startNativeDownload({
     function resetStalledTimer(): void {
       if (stalledTimer) clearTimeout(stalledTimer)
       stalledTimer = setTimeout(() => {
-        settleError(i18n.t("sync.downloadStalled"), 0)
+        settleError("download Stalled", -1001)
       }, NATIVE_DOWNLOAD_START_TIMEOUT_MS * 4)
     }
 
@@ -260,7 +255,7 @@ export function startNativeDownload({
       task.start()
       startTimer = setTimeout(() => {
         if (settled || hasNativeBegin) return
-        settleError(i18n.t("sync.downloadNotStarted"), 0)
+        settleError("download NotStarted", -1001)
       }, NATIVE_DOWNLOAD_START_TIMEOUT_MS)
     } catch (err) {
       settled = true
@@ -302,7 +297,7 @@ export function startNativeUpload({
     cancelledBeforeStart.delete(taskId)
     void task.stop()
     activeUploadTasks.delete(taskId)
-    const err = new Error(i18n.t("sync.uploadCancelled"))
+    const err = new Error("upload cancelled")
     err.name = "AbortError"
     return Promise.reject(err)
   }
@@ -318,7 +313,7 @@ export function startNativeUpload({
       if (settled) return
       settled = true
       finishCleanup()
-      const err = new Error(i18n.t("sync.uploadCancelled"))
+      const err = new Error("upload cancelled")
       err.name = "AbortError"
       reject(err)
     }
@@ -349,13 +344,7 @@ export function startNativeUpload({
     ): void {
       if (settled) return
       if (responseCode < 200 || responseCode >= 300) {
-        settleError(
-          i18n.t("sync.uploadFailed", {
-            status: responseCode,
-            body: responseBody,
-          }),
-          responseCode,
-        )
+        settleError(`Upload HTTP ${responseCode}`, responseCode)
         return
       }
       settled = true
@@ -369,12 +358,7 @@ export function startNativeUpload({
       if (settled) return
       settled = true
       finishCleanup()
-      const err = new Error(
-        error || i18n.t("sync.uploadFailedCode", { code: errorCode }),
-      )
-      if (isNativeCancel(error, errorCode)) {
-        err.name = "AbortError"
-      }
+      const err = nativeTransferError(error, errorCode)
       console.error("Failed to run native upload task:", {
         taskId,
         relativePath,
@@ -387,7 +371,7 @@ export function startNativeUpload({
     function resetStalledTimer(): void {
       if (stalledTimer) clearTimeout(stalledTimer)
       stalledTimer = setTimeout(() => {
-        settleError(i18n.t("sync.uploadStalled"), 0)
+        settleError("upload Stalled", -1001)
       }, NATIVE_DOWNLOAD_START_TIMEOUT_MS * 4)
     }
 
@@ -431,7 +415,7 @@ export function startNativeUpload({
       task.start()
       startTimer = setTimeout(() => {
         if (settled || hasNativeBegin) return
-        settleError(i18n.t("sync.uploadNotStarted"), 0)
+        settleError("upload NotStarted", -1001)
       }, NATIVE_DOWNLOAD_START_TIMEOUT_MS)
     } catch (err) {
       settled = true
@@ -538,6 +522,6 @@ export function completeNativeTask(taskId: string): void {
 
 export const completeNativeDownload = completeNativeTask
 
-export function isNativeCancel(error: string, errorCode: number): boolean {
-  return errorCode === -999 || error.toLowerCase().includes("cancel")
+export function isNativeCancel(_error: string, errorCode: number): boolean {
+  return errorCode === -999
 }

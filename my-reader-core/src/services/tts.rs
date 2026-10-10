@@ -1,3 +1,4 @@
+use crate::TtsErrorKind;
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
@@ -175,7 +176,10 @@ impl TtsService {
     ) -> Result<TtsConfig, CoreError> {
         let language = language.trim().to_ascii_lowercase();
         if language.is_empty() {
-            return Err(tts_error("configuration", "TTS_LANGUAGE_REQUIRED"));
+            return Err(tts_error(
+                TtsErrorKind::Configuration,
+                "TTS_LANGUAGE_REQUIRED",
+            ));
         }
         let state = ConfigService::mutate_config(config_path, move |state| {
             if let Some(voice) = voice {
@@ -307,7 +311,10 @@ async fn synthesis_lock(cache_directory: &Path, cache_key: &str) -> Arc<Mutex<()
 
 pub(crate) fn validate_tts_config(config: &TtsConfig) -> Result<(), CoreError> {
     if config.schema_version != TTS_CONFIG_SCHEMA_VERSION {
-        return Err(tts_error("configuration", "UNSUPPORTED_TTS_CONFIG_VERSION"));
+        return Err(tts_error(
+            TtsErrorKind::Configuration,
+            "UNSUPPORTED_TTS_CONFIG_VERSION",
+        ));
     }
     validate_playback(&config.playback)?;
 
@@ -315,7 +322,10 @@ pub(crate) fn validate_tts_config(config: &TtsConfig) -> Result<(), CoreError> {
     for profile in &config.profiles {
         validate_profile(profile)?;
         if !profile_ids.insert(profile.id.as_str()) {
-            return Err(tts_error("configuration", "DUPLICATE_TTS_PROFILE_ID"));
+            return Err(tts_error(
+                TtsErrorKind::Configuration,
+                "DUPLICATE_TTS_PROFILE_ID",
+            ));
         }
     }
     if let TtsEngineSelection::Provider { profile_id } = &config.default_engine {
@@ -324,12 +334,18 @@ pub(crate) fn validate_tts_config(config: &TtsConfig) -> Result<(), CoreError> {
             .iter()
             .any(|profile| &profile.id == profile_id && profile.enabled)
         {
-            return Err(tts_error("configuration", "TTS_DEFAULT_PROFILE_NOT_FOUND"));
+            return Err(tts_error(
+                TtsErrorKind::Configuration,
+                "TTS_DEFAULT_PROFILE_NOT_FOUND",
+            ));
         }
     }
     for (language, voice) in &config.voice_by_language {
         if language.trim().is_empty() || voice_id(voice).trim().is_empty() {
-            return Err(tts_error("configuration", "INVALID_TTS_VOICE_MAPPING"));
+            return Err(tts_error(
+                TtsErrorKind::Configuration,
+                "INVALID_TTS_VOICE_MAPPING",
+            ));
         }
         if let TtsVoiceRef::Provider { profile_id, .. } = voice {
             if !config
@@ -337,7 +353,10 @@ pub(crate) fn validate_tts_config(config: &TtsConfig) -> Result<(), CoreError> {
                 .iter()
                 .any(|profile| &profile.id == profile_id)
             {
-                return Err(tts_error("configuration", "TTS_VOICE_PROFILE_NOT_FOUND"));
+                return Err(tts_error(
+                    TtsErrorKind::Configuration,
+                    "TTS_VOICE_PROFILE_NOT_FOUND",
+                ));
             }
         }
     }
@@ -422,13 +441,16 @@ fn validate_configured_voices(profile: &TtsProviderProfile) -> Result<(), CoreEr
     let voices = profile.options.voices();
     let default_voice = profile.options.default_voice();
     if voices.is_empty() {
-        return Err(tts_error("configuration", "TTS_VOICES_REQUIRED"));
+        return Err(tts_error(
+            TtsErrorKind::Configuration,
+            "TTS_VOICES_REQUIRED",
+        ));
     }
-    let default_voice =
-        default_voice.ok_or_else(|| tts_error("configuration", "TTS_DEFAULT_VOICE_REQUIRED"))?;
+    let default_voice = default_voice
+        .ok_or_else(|| tts_error(TtsErrorKind::Configuration, "TTS_DEFAULT_VOICE_REQUIRED"))?;
     if !voices.iter().any(|voice| voice == default_voice) {
         return Err(tts_error(
-            "configuration",
+            TtsErrorKind::Configuration,
             "TTS_DEFAULT_VOICE_NOT_CONFIGURED",
         ));
     }
@@ -441,29 +463,44 @@ fn configured_voice_ids(profile: &TtsProviderProfile) -> HashSet<String> {
 
 fn validate_profile(profile: &TtsProviderProfile) -> Result<(), CoreError> {
     if profile.id.trim().is_empty() {
-        return Err(tts_error("configuration", "TTS_PROFILE_ID_REQUIRED"));
+        return Err(tts_error(
+            TtsErrorKind::Configuration,
+            "TTS_PROFILE_ID_REQUIRED",
+        ));
     }
     if profile.name.trim().is_empty() {
-        return Err(tts_error("configuration", "TTS_PROFILE_NAME_REQUIRED"));
+        return Err(tts_error(
+            TtsErrorKind::Configuration,
+            "TTS_PROFILE_NAME_REQUIRED",
+        ));
     }
     if profile.options.kind() != profile.kind {
-        return Err(tts_error("configuration", "TTS_PROVIDER_OPTIONS_MISMATCH"));
+        return Err(tts_error(
+            TtsErrorKind::Configuration,
+            "TTS_PROVIDER_OPTIONS_MISMATCH",
+        ));
     }
     let endpoint = Url::parse(profile.endpoint.trim())
-        .map_err(|_| tts_error("configuration", "INVALID_TTS_ENDPOINT"))?;
+        .map_err(|_| tts_error(TtsErrorKind::Configuration, "INVALID_TTS_ENDPOINT"))?;
     if !(matches!(endpoint.scheme(), "http" | "https")
         || profile.kind == TtsProviderKind::Qwen && matches!(endpoint.scheme(), "ws" | "wss"))
     {
-        return Err(tts_error("configuration", "INVALID_TTS_ENDPOINT_SCHEME"));
+        return Err(tts_error(
+            TtsErrorKind::Configuration,
+            "INVALID_TTS_ENDPOINT_SCHEME",
+        ));
     }
     if endpoint.host_str().is_none()
         || !endpoint.username().is_empty()
         || endpoint.password().is_some()
     {
-        return Err(tts_error("configuration", "INVALID_TTS_ENDPOINT"));
+        return Err(tts_error(
+            TtsErrorKind::Configuration,
+            "INVALID_TTS_ENDPOINT",
+        ));
     }
     if profile.model.as_deref().is_none_or(str::is_empty) {
-        return Err(tts_error("configuration", "TTS_MODEL_REQUIRED"));
+        return Err(tts_error(TtsErrorKind::Configuration, "TTS_MODEL_REQUIRED"));
     }
     if profile.kind == TtsProviderKind::Qwen {
         tts::qwen::validate_profile(profile)?;
@@ -473,35 +510,41 @@ fn validate_profile(profile: &TtsProviderProfile) -> Result<(), CoreError> {
 
 fn validate_playback(playback: &TtsPlaybackPreferences) -> Result<(), CoreError> {
     if !playback.speed.is_finite() || !(0.25..=4.0).contains(&playback.speed) {
-        return Err(tts_error("configuration", "INVALID_TTS_SPEED"));
+        return Err(tts_error(TtsErrorKind::Configuration, "INVALID_TTS_SPEED"));
     }
     if !playback.pitch.is_finite() || !(0.5..=2.0).contains(&playback.pitch) {
-        return Err(tts_error("configuration", "INVALID_TTS_PITCH"));
+        return Err(tts_error(TtsErrorKind::Configuration, "INVALID_TTS_PITCH"));
     }
     Ok(())
 }
 
 fn validate_request(request: &TtsSynthesisRequest) -> Result<(), CoreError> {
     if request.profile_id.trim().is_empty() {
-        return Err(tts_error("invalid_request", "TTS_PROFILE_ID_REQUIRED"));
+        return Err(tts_error(
+            TtsErrorKind::InvalidRequest,
+            "TTS_PROFILE_ID_REQUIRED",
+        ));
     }
     if request.text.trim().is_empty() {
-        return Err(tts_error("invalid_request", "TTS_TEXT_REQUIRED"));
+        return Err(tts_error(TtsErrorKind::InvalidRequest, "TTS_TEXT_REQUIRED"));
     }
     if request.voice_id.trim().is_empty() {
-        return Err(tts_error("invalid_request", "TTS_VOICE_REQUIRED"));
+        return Err(tts_error(
+            TtsErrorKind::InvalidRequest,
+            "TTS_VOICE_REQUIRED",
+        ));
     }
     if request
         .speed
         .is_some_and(|speed| !speed.is_finite() || !(0.25..=4.0).contains(&speed))
     {
-        return Err(tts_error("invalid_request", "INVALID_TTS_SPEED"));
+        return Err(tts_error(TtsErrorKind::InvalidRequest, "INVALID_TTS_SPEED"));
     }
     if request
         .pitch
         .is_some_and(|pitch| !pitch.is_finite() || !(0.5..=2.0).contains(&pitch))
     {
-        return Err(tts_error("invalid_request", "INVALID_TTS_PITCH"));
+        return Err(tts_error(TtsErrorKind::InvalidRequest, "INVALID_TTS_PITCH"));
     }
     Ok(())
 }
@@ -513,20 +556,26 @@ fn validate_request_for_profile(
     if profile.kind != TtsProviderKind::Qwen
         && !configured_voice_ids(profile).contains(&request.voice_id)
     {
-        return Err(tts_error("invalid_request", "TTS_VOICE_NOT_CONFIGURED"));
+        return Err(tts_error(
+            TtsErrorKind::InvalidRequest,
+            "TTS_VOICE_NOT_CONFIGURED",
+        ));
     }
     let capabilities = tts::capabilities(profile);
     if capabilities
         .max_input_chars
         .is_some_and(|limit| request.text.chars().count() > limit as usize)
     {
-        return Err(tts_error("invalid_request", "TTS_TEXT_TOO_LONG"));
+        return Err(tts_error(TtsErrorKind::InvalidRequest, "TTS_TEXT_TOO_LONG"));
     }
     if request
         .pitch
         .is_some_and(|pitch| pitch != 1.0 && !capabilities.synthesis_pitch)
     {
-        return Err(tts_error("unsupported", "TTS_PITCH_UNSUPPORTED"));
+        return Err(tts_error(
+            TtsErrorKind::Unsupported,
+            "TTS_PITCH_UNSUPPORTED",
+        ));
     }
     Ok(())
 }
@@ -548,7 +597,10 @@ fn find_enabled_profile<'a>(
 ) -> Result<&'a TtsProviderProfile, CoreError> {
     let profile = find_profile(config, profile_id)?;
     if !profile.enabled {
-        return Err(tts_error("configuration", "TTS_PROFILE_DISABLED"));
+        return Err(tts_error(
+            TtsErrorKind::Configuration,
+            "TTS_PROFILE_DISABLED",
+        ));
     }
     Ok(profile)
 }
@@ -627,7 +679,10 @@ fn ensure_accepted_mime(request: &TtsSynthesisRequest, mime_type: &str) -> Resul
     {
         Ok(())
     } else {
-        Err(tts_error("unsupported", "TTS_AUDIO_FORMAT_NOT_ACCEPTED"))
+        Err(tts_error(
+            TtsErrorKind::Unsupported,
+            "TTS_AUDIO_FORMAT_NOT_ACCEPTED",
+        ))
     }
 }
 
@@ -635,7 +690,7 @@ async fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), CoreError> {
     let file_name = path
         .file_name()
         .and_then(|name| name.to_str())
-        .ok_or_else(|| tts_error("cache", "INVALID_TTS_CACHE_PATH"))?;
+        .ok_or_else(|| tts_error(TtsErrorKind::Cache, "INVALID_TTS_CACHE_PATH"))?;
     let temporary = path.with_file_name(format!(".{file_name}.{}.tmp", Uuid::new_v4()));
     tokio::fs::write(&temporary, bytes).await?;
     if let Err(error) = tokio::fs::rename(&temporary, path).await {
@@ -650,8 +705,11 @@ async fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), CoreError> {
     Ok(())
 }
 
-fn tts_error(kind: &str, code: &str) -> CoreError {
-    CoreError::Tts(format!("{kind}:{code}"))
+fn tts_error(kind: TtsErrorKind, code: &str) -> CoreError {
+    CoreError::Tts {
+        kind,
+        message: code.to_owned(),
+    }
 }
 
 #[cfg(test)]

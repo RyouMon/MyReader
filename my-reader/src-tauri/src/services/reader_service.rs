@@ -110,7 +110,7 @@ impl ReaderService {
         if is_remote {
             let relative_path = compute_book_relative_path(&file_path, lib_root)?;
             if !Self::remote_book_file_available(&file_path, sidecar_root, &relative_path).await? {
-                return Err(AppError::NotFound(format!(
+                return Err(AppError::BookFormatNotDownloaded(format!(
                     "BOOK_FORMAT_NOT_DOWNLOADED: book={book_id}, format={format}"
                 )));
             }

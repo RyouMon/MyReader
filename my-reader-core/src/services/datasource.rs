@@ -38,7 +38,7 @@ impl DataSourceService {
         storage::build_remote_operator(source, credential)?
             .check()
             .await
-            .map_err(|error| storage::remote_storage_error(source, error))
+            .map_err(storage::storage_error)
     }
 
     pub async fn list_directories(
@@ -64,7 +64,7 @@ impl DataSourceService {
             return list_onedrive_directories(root_path.as_deref(), path, access_token).await;
         }
         let operator = storage::build_remote_operator(source, credential)?;
-        list_directories_with_operator(&operator, path, Some(source)).await
+        list_directories_with_operator(&operator, path).await
     }
 }
 
@@ -93,34 +93,14 @@ async fn list_onedrive_directories(
     let relative_parent = storage::normalize_remote_path(path)?;
     let source_root = storage::normalize_remote_path(root_path.unwrap_or_default())?;
     let api_path = storage::join_remote_path(&source_root, &relative_parent)?;
-    let client = crate::infrastructure::http::client_builder()
-        .build()
-        .map_err(|error| CoreError::Storage(format!("ONEDRIVE_STORAGE_FAILED: {error}")))?;
+    let client = crate::infrastructure::http::client_builder().build()?;
     let mut next_link = Some(onedrive_children_url(&api_path).to_string());
     let mut entries = Vec::new();
 
     while let Some(url) = next_link {
-        let response = client
-            .get(url)
-            .bearer_auth(access_token)
-            .send()
-            .await
-            .map_err(|error| CoreError::Storage(format!("ONEDRIVE_STORAGE_FAILED: {error}")))?;
-        let status = response.status();
-        if !status.is_success() {
-            let code = match status.as_u16() {
-                401 | 403 => "ONEDRIVE_UNAUTHORIZED",
-                404 => "ONEDRIVE_NOT_FOUND",
-                _ => "ONEDRIVE_STORAGE_FAILED",
-            };
-            return Err(CoreError::Storage(format!(
-                "{code}: List {relative_parent} failed with status {status}"
-            )));
-        }
-        let body = response
-            .bytes()
-            .await
-            .map_err(|error| CoreError::Storage(format!("ONEDRIVE_STORAGE_FAILED: {error}")))?;
+        let response = client.get(url).bearer_auth(access_token).send().await?;
+        let response = response.error_for_status()?;
+        let body = response.bytes().await?;
         let (mut page_entries, page_next_link) =
             parse_onedrive_directory_page(&body, &relative_parent)?;
         entries.append(&mut page_entries);
@@ -149,8 +129,7 @@ fn parse_onedrive_directory_page(
     body: &[u8],
     parent: &str,
 ) -> Result<(Vec<RemoteDirectoryEntry>, Option<String>), CoreError> {
-    let page: OnedriveDirectoryPage = serde_json::from_slice(body)
-        .map_err(|error| CoreError::Storage(format!("ONEDRIVE_INVALID_LIST_RESPONSE: {error}")))?;
+    let page: OnedriveDirectoryPage = serde_json::from_slice(body)?;
     let entries = page
         .value
         .into_iter()
@@ -170,7 +149,6 @@ fn parse_onedrive_directory_page(
 async fn list_directories_with_operator(
     operator: &Operator,
     path: &str,
-    source: Option<&DataSource>,
 ) -> Result<Vec<RemoteDirectoryEntry>, CoreError> {
     let normalized = storage::normalize_remote_path(path)?;
     let directory = if normalized.is_empty() {
@@ -181,10 +159,7 @@ async fn list_directories_with_operator(
     let mut entries = operator
         .list(&directory)
         .await
-        .map_err(|error| match source {
-            Some(source) => storage::remote_storage_error(source, error),
-            None => storage::storage_error(error),
-        })?
+        .map_err(storage::storage_error)?
         .into_iter()
         .filter(|entry| entry.metadata().is_dir())
         .filter_map(|entry| {
@@ -263,7 +238,7 @@ mod tests {
         )
         .unwrap();
 
-        let entries = list_directories_with_operator(&operator, "/Books", None)
+        let entries = list_directories_with_operator(&operator, "/Books")
             .await
             .unwrap();
 

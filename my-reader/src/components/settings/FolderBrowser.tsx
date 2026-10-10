@@ -1,3 +1,4 @@
+import { errorMessage as presentError } from "@/lib/error-presentation"
 import { appendRemotePathSegment } from "@my-reader/tools/remote-path"
 import {
   ArrowUp,
@@ -145,7 +146,7 @@ export function FolderBrowser({
       await onSelect(selectedPath)
       if (closeOnSelect) onOpenChange(false)
     } catch (error) {
-      setSelectError(error instanceof Error ? error.message : String(error))
+      setSelectError(presentError(error))
     } finally {
       setSelecting(false)
     }

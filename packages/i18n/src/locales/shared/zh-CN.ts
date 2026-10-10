@@ -1,4 +1,14 @@
 export const sharedZhCN = {
+  operationError: {
+    unexpected: "未能完成此操作，请重试。",
+    connectivity: "无法连接服务，请检查网络连接和服务地址后重试。",
+    credential: "访问被拒绝，请检查凭据或重新登录。",
+    configuration: "请检查书库或服务设置后重试。",
+    notFound: "此项目已不可用，请刷新后重试。",
+    io: "无法访问本地文件，请检查存储空间和文件权限。",
+    dataIntegrity: "部分数据无法正确读取，请从可靠的副本恢复后重试。",
+    tts: "朗读失败，请检查朗读设置后重试。",
+  },
   qwenTts: {
     title: "Qwen（通义千问）",
     add: "添加 {{name}}",
@@ -98,6 +108,7 @@ export const sharedZhCN = {
     unread: "未读",
   },
   common: {
+    copy: "复制",
     cancel: "取消",
     close: "关闭",
     delete: "删除",
@@ -205,6 +216,7 @@ export const sharedZhCN = {
     lastSync: "上次同步",
     lastAttempt: "上次尝试",
     noHistory: "暂无同步记录",
+    failureSummary: "同步失败：{{title}}",
     failureReason: "失败原因",
     failureStage: "失败阶段",
     progress: "{{completed}} / {{total}}",
@@ -215,6 +227,29 @@ export const sharedZhCN = {
     noActiveLibrary: "暂无可同步书库",
     noActiveLibraryDetail: "请先添加书库。",
     activeLibraryChanged: "当前书库已改变，请重试。",
+    failure: {
+      connectivity: {
+        title: "暂时无法连接",
+        detail: "请检查网络连接和数据源是否可用，然后重试同步。",
+      },
+      credential: {
+        title: "请检查数据源访问权限",
+        detail: "请重新登录或更新数据源凭据，并确认此账号有权访问书库。",
+      },
+      configuration: {
+        title: "请检查书库设置",
+        detail: "请检查书库位置和数据源设置，然后重试同步。",
+      },
+      data_integrity: {
+        title: "同步数据需要检查",
+        detail:
+          "部分同步数据可能缺失或损坏。请保留本地文件，先检查其他设备或可靠备份中的数据副本。",
+      },
+      unexpected: {
+        title: "未能完成同步",
+        detail: "请稍后重试同步；如果问题持续出现，请反馈此问题。",
+      },
+    },
     reason: {
       manual: "手动触发",
       localChange: "本地数据更新",

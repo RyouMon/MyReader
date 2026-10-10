@@ -1,3 +1,5 @@
+import { errorMessage } from "@/lib/error-presentation"
+import { apiErrorKind } from "@/lib/api-error"
 import type { Locator } from "@readium/shared"
 import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
@@ -132,7 +134,9 @@ export function useReaderBookSource({
       setDownloadError(null)
     } else if (downloadProgress.status === "error") {
       setDownloadState("error")
-      setDownloadError(downloadProgress.error ?? t("reader.downloadFailed"))
+      setDownloadError(
+        errorMessage(downloadProgress.failure ?? downloadProgress.error),
+      )
     } else if (downloadProgress.status === "cancelled") {
       setDownloadState("cancelled")
       if (closingRef.current && isTauri()) {
@@ -195,12 +199,12 @@ export function useReaderBookSource({
         )
       } catch (error) {
         setDownloadState("error")
-        setDownloadError(String(error))
+        setDownloadError(errorMessage(error))
         setGlobalDownloadError(
           activeLibraryId,
           Number(bookId),
           requestedFormat,
-          String(error),
+          error,
           queryClient,
         )
       }
@@ -264,8 +268,8 @@ export function useReaderBookSource({
         }
       } catch (e) {
         if (cancelled) return
-        const msg = String(e)
-        if (msg.includes("BOOK_FORMAT_NOT_DOWNLOADED") && fmt) {
+        const msg = errorMessage(e)
+        if (apiErrorKind(e) === "BookFormatNotDownloaded" && fmt) {
           setFetchError(null)
           await startDownload(fmt)
           return
@@ -308,7 +312,7 @@ export function useReaderBookSource({
           setPositionConflict(candidates)
         }
       } catch (e) {
-        if (!cancelled) setFetchError(String(e))
+        if (!cancelled) setFetchError(errorMessage(e))
       }
     }
 
@@ -352,7 +356,7 @@ export function useReaderBookSource({
         )
         setPositionConflict(null)
       } catch (error) {
-        setFetchError(String(error))
+        setFetchError(errorMessage(error))
       } finally {
         setResolvingPositionConflict(false)
       }

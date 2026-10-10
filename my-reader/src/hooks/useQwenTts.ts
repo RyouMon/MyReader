@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
-import { api, formatApiError } from "@/lib/tauri-api"
+import { api } from "@/lib/tauri-api"
+import { errorMessage } from "@/lib/error-presentation"
 import type {
   QwenTtsModelDto,
   QwenTtsPresetDto,
@@ -55,7 +56,7 @@ export function useQwenTtsPresets(enabled: boolean) {
         }
       })
       .catch((cause) => {
-        if (active) setError(formatApiError(cause))
+        if (active) setError(errorMessage(cause))
       })
     return () => {
       active = false
@@ -82,7 +83,7 @@ export function useQwenTtsModels(enabled: boolean, endpoint: string) {
         }
       })
       .catch((cause) => {
-        if (active) setError(formatApiError(cause))
+        if (active) setError(errorMessage(cause))
       })
     return () => {
       active = false
@@ -120,7 +121,7 @@ export function useQwenTtsVoices(input: {
           if (active) setVoices(value)
         })
         .catch((cause) => {
-          if (active) setError(formatApiError(cause))
+          if (active) setError(errorMessage(cause))
         })
         .finally(() => {
           if (active) setLoading(false)

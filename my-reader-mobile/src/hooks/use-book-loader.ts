@@ -1,3 +1,4 @@
+import { errorMessage } from "@/src/i18n/error-message"
 import type { Locator } from "@my-reader/readium"
 import { resolveReadFormat } from "@my-reader/tools/utils"
 import { File } from "expo-file-system"
@@ -382,10 +383,8 @@ export function useBookLoader(
         )
       } catch (e) {
         if (cancelled) return
-        setLoadState({
-          status: "error",
-          message: e instanceof Error ? e.message : String(e),
-        })
+        console.warn("Failed to load reader book", e)
+        setLoadState({ status: "error", message: errorMessage(e) })
       }
     }
 

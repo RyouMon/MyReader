@@ -19,7 +19,8 @@ const toastMock = vi.hoisted(() => ({
   error: vi.fn(),
 }))
 
-vi.mock("@/lib/tauri-api", () => ({
+vi.mock("@/lib/tauri-api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-api")>()),
   api: tauriApiMock,
 }))
 
@@ -94,7 +95,7 @@ describe("BookMoreMenu", () => {
       expect(toastMock.error).toHaveBeenCalledWith(
         "下载失败",
         expect.objectContaining({
-          description: expect.stringContaining("network failed"),
+          description: "未能完成此操作，请重试。\nError: network failed",
         }),
       )
     })

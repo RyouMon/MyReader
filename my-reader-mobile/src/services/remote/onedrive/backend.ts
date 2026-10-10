@@ -1,9 +1,9 @@
+import { fetchRemote, networkRequest } from "@/src/services/http/request"
 import { Directory, File } from "expo-file-system"
 import ky from "ky"
 
-import i18n from "@/src/i18n"
 import { GRAPH_API_BASE } from "../../../constants/onedrive"
-import { NetworkError } from "../../../errors"
+import { AppError, NetworkError } from "../../../errors"
 import {
   invalidateOneDriveAccessToken,
   refreshAccessToken,
@@ -70,29 +70,21 @@ export class OneDriveRemoteBackend implements RemoteBackend {
 
   async statRemoteFile(remotePath: string): Promise<RemoteFileStat | null> {
     const url = this.itemUrl(remotePath)
-    try {
-      const res = await this.fetchWithAuth(url, { method: "GET" })
-      if (res.status === 404) return null
-      if (!res.ok) {
-        throw new NetworkError(
-          i18n.t("sync.onedriveGetFailed", {
-            status: res.status,
-            path: remotePath,
-          }),
-          res.status,
-        )
-      }
-      const item = (await res.json()) as DriveItem
-      return {
-        etag: item.cTag ?? "",
-        size: item.size ?? 0,
-        mtimeMs: item.lastModifiedDateTime
-          ? new Date(item.lastModifiedDateTime).getTime()
-          : 0,
-      }
-    } catch (e) {
-      if (e instanceof NetworkError) throw e
-      return null
+    const res = await this.fetchWithAuth(url, { method: "GET" })
+    if (res.status === 404) return null
+    if (!res.ok) {
+      throw new NetworkError(
+        `sync.onedriveGetFailed: status=${res.status} path=${remotePath}`,
+        res.status,
+      )
+    }
+    const item = (await res.json()) as DriveItem
+    return {
+      etag: item.cTag ?? "",
+      size: item.size ?? 0,
+      mtimeMs: item.lastModifiedDateTime
+        ? new Date(item.lastModifiedDateTime).getTime()
+        : 0,
     }
   }
 
@@ -104,10 +96,7 @@ export class OneDriveRemoteBackend implements RemoteBackend {
     })
     if (!res.ok) {
       throw new NetworkError(
-        i18n.t("sync.onedriveGetFailed", {
-          status: res.status,
-          path: remotePath,
-        }),
+        `sync.onedriveGetFailed: status=${res.status} path=${remotePath}`,
         res.status,
       )
     }
@@ -123,10 +112,7 @@ export class OneDriveRemoteBackend implements RemoteBackend {
     })
     if (!res.ok) {
       throw new NetworkError(
-        i18n.t("sync.onedrivePutFailed", {
-          status: res.status,
-          path: remotePath,
-        }),
+        `sync.onedrivePutFailed: status=${res.status} path=${remotePath}`,
         res.status,
       )
     }
@@ -138,10 +124,7 @@ export class OneDriveRemoteBackend implements RemoteBackend {
     })
     if (!res.ok && res.status !== 404) {
       throw new NetworkError(
-        i18n.t("sync.onedriveDeleteFailed", {
-          status: res.status,
-          path: remotePath,
-        }),
+        `sync.onedriveDeleteFailed: status=${res.status} path=${remotePath}`,
         res.status,
       )
     }
@@ -155,10 +138,7 @@ export class OneDriveRemoteBackend implements RemoteBackend {
     if (res.status === 404) return []
     if (!res.ok) {
       throw new NetworkError(
-        i18n.t("sync.onedriveListFailed", {
-          status: res.status,
-          path: normalizedPrefix,
-        }),
+        `sync.onedriveListFailed: status=${res.status} path=${normalizedPrefix}`,
         res.status,
       )
     }
@@ -172,8 +152,10 @@ export class OneDriveRemoteBackend implements RemoteBackend {
     const headers = await this.getAuthHeaders()
     const url = `${GRAPH_API_BASE}/me/drive/root:${this.encodedPath(remotePath)}:/content`
 
-    const response = await ky(url, { headers })
-    const bytes = new Uint8Array(await response.arrayBuffer())
+    const response = await networkRequest(() => ky(url, { headers }))
+    const bytes = new Uint8Array(
+      await networkRequest(() => response.arrayBuffer()),
+    )
     const parentUri = parentDirectoryUriForFileUri(localFileUri)
     if (parentUri) {
       const parent = new Directory(parentUri)
@@ -203,20 +185,15 @@ export class OneDriveRemoteBackend implements RemoteBackend {
     )
     if (!res.ok) {
       throw new NetworkError(
-        i18n.t("sync.onedriveGetFailed", {
-          status: res.status,
-          path: remotePath,
-        }),
+        `sync.onedriveGetFailed: status=${res.status} path=${remotePath}`,
         res.status,
       )
     }
     const item = (await res.json()) as DriveItem
     const url = item["@microsoft.graph.downloadUrl"]
     if (!url) {
-      throw new NetworkError(
-        i18n.t("sync.onedriveDownloadUrlMissing", {
-          path: remotePath,
-        }),
+      throw new AppError(
+        `OneDrive did not return a download URL: ${remotePath}`,
       )
     }
     return { remotePath, localFileUri, url, headers: {} }
@@ -281,7 +258,7 @@ export class OneDriveRemoteBackend implements RemoteBackend {
     init: RequestInit,
   ): Promise<Response> {
     const headers = await this.getAuthHeaders()
-    const res = await fetch(url, {
+    const res = await fetchRemote(url, {
       ...init,
       headers: {
         ...headers,
@@ -292,7 +269,7 @@ export class OneDriveRemoteBackend implements RemoteBackend {
     if (res.status === 401) {
       this.invalidateAuth()
       const retryHeaders = await this.getAuthHeaders()
-      return fetch(url, {
+      return fetchRemote(url, {
         ...init,
         headers: {
           ...retryHeaders,
@@ -323,10 +300,7 @@ export class OneDriveRemoteBackend implements RemoteBackend {
     if (statRes.ok) return
     if (statRes.status !== 404) {
       throw new NetworkError(
-        i18n.t("sync.onedriveGetFailed", {
-          status: statRes.status,
-          path: cursor,
-        }),
+        `sync.onedriveGetFailed: status=${statRes.status} path=${cursor}`,
         statRes.status,
       )
     }
@@ -353,20 +327,14 @@ export class OneDriveRemoteBackend implements RemoteBackend {
       if (conflictStatRes.ok) return
       if (conflictStatRes.status !== 404) {
         throw new NetworkError(
-          i18n.t("sync.onedriveGetFailed", {
-            status: conflictStatRes.status,
-            path: cursor,
-          }),
+          `sync.onedriveGetFailed: status=${conflictStatRes.status} path=${cursor}`,
           conflictStatRes.status,
         )
       }
     }
 
     throw new NetworkError(
-      i18n.t("sync.onedriveMkdirFailed", {
-        status: createRes.status,
-        path: cursor,
-      }),
+      `sync.onedriveMkdirFailed: status=${createRes.status} path=${cursor}`,
       createRes.status,
     )
   }

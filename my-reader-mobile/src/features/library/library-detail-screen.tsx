@@ -1,3 +1,4 @@
+import { errorMessage } from "@/src/i18n/error-message"
 import { libraryTypeOf } from "@my-reader/tools/types/library"
 import * as Haptics from "expo-haptics"
 import { router, Stack, useLocalSearchParams } from "expo-router"
@@ -293,10 +294,7 @@ export default function LibraryDetailScreen() {
                       await syncNow(library.id)
                       notifyLibraryRefresh("done")
                     } catch (e) {
-                      notifyLibraryRefresh(
-                        "error",
-                        e instanceof Error ? e.message : undefined,
-                      )
+                      notifyLibraryRefresh("error", errorMessage(e))
                     }
                   })()
                 }}

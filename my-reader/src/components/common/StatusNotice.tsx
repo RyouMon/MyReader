@@ -44,7 +44,9 @@ export function StatusNotice({
       )}
     >
       {customIcon ?? defaultIcon}
-      <div className="min-w-0 text-muted-foreground">{children}</div>
+      <div className="select-text whitespace-pre-wrap break-words min-w-0 text-muted-foreground">
+        {children}
+      </div>
     </div>
   )
 }

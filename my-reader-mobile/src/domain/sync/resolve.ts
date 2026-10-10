@@ -14,7 +14,6 @@ import {
 } from "../../services/core/sync"
 import { appConfigPath } from "../../services/core/app-config"
 import { LocalDirectBackend } from "./local"
-import i18n from "@/src/i18n"
 
 export type SyncBackend = RemoteBackend | LocalDirectBackend
 
@@ -41,11 +40,10 @@ export async function resolveSyncTarget(
       (item) => item.id === library.dataSourceId && item.type === "webdav",
     )
     if (!rawSource || rawSource.type !== "webdav") {
-      throw new SyncConfigError(i18n.t("sync.webdavSourceNotFound"))
+      throw new SyncConfigError("sync.webdavSourceNotFound")
     }
     const resolved = await resolveRemoteBackend(rawSource, library)
-    if (!resolved)
-      throw new SyncConfigError(i18n.t("sync.webdavPasswordMissing"))
+    if (!resolved) throw new SyncConfigError("sync.webdavPasswordMissing")
     return {
       backend: resolved.backend,
       libraryStorage: resolved.libraryStorage,
@@ -61,11 +59,10 @@ export async function resolveSyncTarget(
       (item) => item.id === library.dataSourceId && item.type === "onedrive",
     )
     if (!rawSource || rawSource.type !== "onedrive") {
-      throw new SyncConfigError(i18n.t("sync.onedriveSourceNotFound"))
+      throw new SyncConfigError("sync.onedriveSourceNotFound")
     }
     const resolved = await resolveRemoteBackend(rawSource, library)
-    if (!resolved)
-      throw new SyncConfigError(i18n.t("sync.onedriveRefreshTokenMissing"))
+    if (!resolved) throw new SyncConfigError("sync.onedriveRefreshTokenMissing")
     return {
       backend: resolved.backend,
       libraryStorage: resolved.libraryStorage,

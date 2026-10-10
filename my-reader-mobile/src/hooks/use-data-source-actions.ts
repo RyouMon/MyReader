@@ -1,3 +1,5 @@
+import { appErrorKind } from "@/src/errors/kind"
+import { coreErrorKind } from "@/src/services/core/error"
 import type {
   DataSource,
   DataSourceConnectionTestResult,
@@ -117,7 +119,7 @@ export function useDataSourceActions() {
       )
       if (
         usedByLibraries.length > 0 &&
-        String(error).includes("DATA_SOURCE_IN_USE")
+        coreErrorKind(error) === "DataSourceInUse"
       ) {
         const names = usedByLibraries.map((library) => library.name)
         throw new DataSourceInUseError(names.join("、"), names)
@@ -137,7 +139,7 @@ export function useDataSourceActions() {
       return { ok: true, message: "OK" }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      return { ok: false, message: msg }
+      return { ok: false, message: msg, errorKind: appErrorKind(err) }
     }
   }
 

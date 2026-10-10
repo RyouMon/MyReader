@@ -33,7 +33,10 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated"
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import {
+  showAlertWithStatusBarRestore,
+  showErrorAlert,
+} from "@/src/constants/alert-with-status-bar"
 import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
 import { useQwenTtsForm } from "@/src/domain/tts/use-qwen-tts-form"
 import {
@@ -51,7 +54,7 @@ import {
   type TtsVoice,
   upsertTtsProfile,
 } from "@/src/services/core/tts"
-import { describeError } from "@/src/utils/common"
+import { errorMessage } from "@/src/i18n/error-message"
 import { Text, View } from "@/tw"
 import { useReaderTtsPreview } from "@/src/features/reader/tts/use-reader-tts-preview"
 import ReaderSettingsSheetContainer from "./ReaderSettingsSheetContainer"
@@ -222,7 +225,7 @@ const ReaderTtsSettingsSheet = forwardRef<
       }
     } catch (voiceError) {
       setVoices([])
-      setError(describeError(voiceError))
+      setError(errorMessage(voiceError))
     } finally {
       setVoicesLoading(false)
     }
@@ -236,7 +239,7 @@ const ReaderTtsSettingsSheet = forwardRef<
       setConfig(nextConfig)
       void loadVoiceOptions(nextConfig)
     } catch (loadError) {
-      setError(describeError(loadError))
+      setError(errorMessage(loadError))
     } finally {
       setLoading(false)
     }
@@ -294,9 +297,9 @@ const ReaderTtsSettingsSheet = forwardRef<
 
   const handlePreviewError = useCallback(
     (previewError: unknown) => {
-      showAlertWithStatusBarRestore(
+      showErrorAlert(
         t("settings.tts.previewFailed"),
-        describeError(previewError),
+        errorMessage(previewError),
       )
     },
     [t],
@@ -347,7 +350,7 @@ const ReaderTtsSettingsSheet = forwardRef<
         onConfigChange?.(nextConfig)
         void loadVoiceOptions(nextConfig)
       } catch (saveError) {
-        setError(describeError(saveError))
+        setError(errorMessage(saveError))
       } finally {
         setSaving(false)
       }
@@ -393,7 +396,7 @@ const ReaderTtsSettingsSheet = forwardRef<
         setConfig(nextConfig)
         onConfigChange?.(nextConfig)
       } catch (saveError) {
-        setError(describeError(saveError))
+        setError(errorMessage(saveError))
       } finally {
         setSaving(false)
       }
@@ -414,7 +417,7 @@ const ReaderTtsSettingsSheet = forwardRef<
         setConfig(nextConfig)
         onConfigChange?.(nextConfig)
       } catch (saveError) {
-        setError(describeError(saveError))
+        setError(errorMessage(saveError))
         void loadConfig()
       } finally {
         setSaving(false)
@@ -489,7 +492,7 @@ const ReaderTtsSettingsSheet = forwardRef<
       void loadVoiceOptions(nextConfig)
       if (providerDraft.id === activeProfileId) onConfigChange?.(nextConfig)
     } catch (saveError) {
-      setError(`${t("settings.tts.saveFailed")}: ${describeError(saveError)}`)
+      setError(`${t("settings.tts.saveFailed")}: ${errorMessage(saveError)}`)
     } finally {
       setSaving(false)
     }
@@ -531,7 +534,7 @@ const ReaderTtsSettingsSheet = forwardRef<
               })
               .catch((removeError) =>
                 setError(
-                  `${t("settings.tts.removeFailed")}: ${describeError(removeError)}`,
+                  `${t("settings.tts.removeFailed")}: ${errorMessage(removeError)}`,
                 ),
               )
               .finally(() => setSaving(false))
@@ -633,6 +636,7 @@ const ReaderTtsSettingsSheet = forwardRef<
             >
               {error ? (
                 <Text
+                  selectable
                   className="mb-4 rounded-2xl px-4 py-3 text-base"
                   style={{
                     backgroundColor: palette.segmentIdle,

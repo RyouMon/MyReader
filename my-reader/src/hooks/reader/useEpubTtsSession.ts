@@ -39,7 +39,8 @@ import {
   clearEpubTtsHighlight,
 } from "@/lib/readium/epubTtsHighlight"
 import { resolveEpubTtsViewportRelation } from "@/lib/readium/epubTtsViewport"
-import { api, formatApiError } from "@/lib/tauri-api"
+import { api } from "@/lib/tauri-api"
+import { errorMessage } from "@/lib/error-presentation"
 import type {
   TtsConfigDto,
   TtsPlaybackPreferencesDto,
@@ -358,7 +359,7 @@ export function useEpubTtsSession({
       setError(null)
     } catch (refreshError: unknown) {
       if (revision === configRefreshRevisionRef.current) {
-        setError(formatApiError(refreshError))
+        setError(errorMessage(refreshError))
       }
     } finally {
       if (revision === configRefreshRevisionRef.current) setLoading(false)
@@ -499,7 +500,7 @@ export function useEpubTtsSession({
       if (!sessionId) {
         if (status === "loading" || status === "ready") setState(status)
         if (status === "error") {
-          setError(error || "TTS_PLAYBACK_FAILED")
+          setError(errorMessage({ kind: "Tts" }))
           setState("error")
         }
         return null
@@ -513,7 +514,7 @@ export function useEpubTtsSession({
       if (!transition.accepted) return null
       syncViewportState(transition)
       if (transition.effect?.type === "report-error") {
-        setError(transition.effect.error)
+        setError(errorMessage({ kind: "Tts" }))
       }
       setState(transition.snapshot.status)
       if (transition.effect?.type === "pause") speech.pause()
@@ -560,6 +561,7 @@ export function useEpubTtsSession({
         applyPlayback("stopped")
       }),
       speech.on("error", (event) => {
+        console.warn("Reader TTS playback failed", event.detail)
         const message = event.detail?.message
         applyPlayback(
           "error",
@@ -598,7 +600,7 @@ export function useEpubTtsSession({
       })
       .catch((voiceError: unknown) => {
         if (speechRef.current === speech) {
-          setError(formatApiError(voiceError))
+          setError(errorMessage(voiceError))
           restartIfNeeded()
         }
       })
@@ -856,7 +858,7 @@ export function useEpubTtsSession({
           setConfig(nextConfig)
           return notifyTtsConfigChanged(sourceRef.current)
         })
-        .catch((saveError: unknown) => setError(formatApiError(saveError)))
+        .catch((saveError: unknown) => setError(errorMessage(saveError)))
     },
     [captureActiveRestart, language],
   )
@@ -878,7 +880,7 @@ export function useEpubTtsSession({
         configRef.current = nextConfig
         return notifyTtsConfigChanged(sourceRef.current)
       })
-      .catch((saveError: unknown) => setError(formatApiError(saveError)))
+      .catch((saveError: unknown) => setError(errorMessage(saveError)))
   }, [])
 
   const selectedEngine = config?.defaultEngine

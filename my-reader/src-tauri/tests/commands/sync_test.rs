@@ -37,7 +37,7 @@ async fn sync_db_for_library_should_return_not_found_when_library_id_is_unknown(
         json!({ "libraryId": "lib-ghost" }),
     );
 
-    assert!(err.is_kind("NotFound"), "kind was {}", err.kind);
+    assert!(err.is_kind("LibraryNotFound"), "kind was {}", err.kind);
     assert!(
         err.message.contains("LIBRARY_NOT_FOUND"),
         "message was {}",

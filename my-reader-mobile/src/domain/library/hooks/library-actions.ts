@@ -1,3 +1,4 @@
+import { coreErrorKind } from "@/src/services/core/error"
 import type { DataSource } from "@my-reader/tools/types/data-source"
 import type { CalibreBook } from "@my-reader/tools/types/book"
 import { type Library, libraryTypeOf } from "@my-reader/tools/types/library"
@@ -287,14 +288,7 @@ export async function openExistingLocalLibraryFromPicker(
     if (!isMissingMyReaderMarker(error)) throw error
   }
 
-  try {
-    return await registerCalibreLibraryFromPicker(picked)
-  } catch (error) {
-    if (String(error).includes("METADATA_DB_NOT_FOUND")) {
-      throw new Error("LIBRARY_TYPE_NOT_RECOGNIZED")
-    }
-    throw error
-  }
+  return registerCalibreLibraryFromPicker(picked)
 }
 
 async function addRemoteMyReaderLibrary(
@@ -346,7 +340,7 @@ export function openRemoteMyReaderLibrary(
 }
 
 function isMissingMyReaderMarker(error: unknown): boolean {
-  return String(error).includes("MYREADER_LIBRARY_MARKER_NOT_FOUND")
+  return coreErrorKind(error) === "LibraryMarkerNotFound"
 }
 
 /** Opens an existing remote MyReader or Calibre library at the selected root. */

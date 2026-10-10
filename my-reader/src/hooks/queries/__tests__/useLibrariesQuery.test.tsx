@@ -125,7 +125,9 @@ describe("useLibraryMutations", () => {
 
   it("should open a local Calibre library when no MyReader marker exists", async () => {
     vi.mocked(api.openMyreaderLibrary).mockRejectedValue(
-      new Error("MYREADER_LIBRARY_MARKER_NOT_FOUND"),
+      Object.assign(new Error("diagnostic changed"), {
+        kind: "LibraryMarkerNotFound",
+      }),
     )
     vi.mocked(api.addLibrary).mockResolvedValue({
       id: "calibre-1",
@@ -171,7 +173,9 @@ describe("useLibraryMutations", () => {
 
   it("should open a remote OneDrive Calibre library after MyReader detection", async () => {
     vi.mocked(api.openRemoteMyreaderLibrary).mockRejectedValue(
-      new Error("REMOTE_MYREADER_LIBRARY_MARKER_NOT_FOUND"),
+      Object.assign(new Error("diagnostic changed"), {
+        kind: "LibraryMarkerNotFound",
+      }),
     )
     vi.mocked(api.addOnedriveLibrary).mockResolvedValue({
       id: "onedrive-library",

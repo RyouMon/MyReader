@@ -114,7 +114,7 @@ async fn switch_library_should_return_not_found_when_library_id_is_unknown() {
 
     let err = invoke_err(&app, "switch_library", json!({ "id": "lib-missing" }));
 
-    assert!(err.is_kind("NotFound"), "kind was {}", err.kind);
+    assert!(err.is_kind("LibraryNotFound"), "kind was {}", err.kind);
     assert!(
         err.message.contains("LIBRARY_NOT_FOUND"),
         "message was {}",
@@ -321,7 +321,7 @@ async fn refresh_library_should_return_not_found_when_library_id_is_unknown() {
 
     let err = invoke_err(&app, "refresh_library", json!({ "id": "lib-ghost" }));
 
-    assert!(err.is_kind("NotFound"), "kind was {}", err.kind);
+    assert!(err.is_kind("LibraryNotFound"), "kind was {}", err.kind);
     assert!(
         err.message.contains("LIBRARY_NOT_FOUND"),
         "message was {}",
@@ -396,7 +396,7 @@ async fn refresh_webdav_library_should_return_not_found_when_library_id_is_unkno
 
     let err = invoke_err(&app, "refresh_webdav_library", json!({ "id": "lib-ghost" }));
 
-    assert!(err.is_kind("NotFound"), "kind was {}", err.kind);
+    assert!(err.is_kind("LibraryNotFound"), "kind was {}", err.kind);
     assert!(
         err.message.contains("LIBRARY_NOT_FOUND"),
         "message was {}",
@@ -430,7 +430,7 @@ async fn refresh_onedrive_library_should_return_not_found_when_library_id_is_unk
         json!({ "id": "lib-ghost" }),
     );
 
-    assert!(err.is_kind("NotFound"), "kind was {}", err.kind);
+    assert!(err.is_kind("LibraryNotFound"), "kind was {}", err.kind);
     assert!(
         err.message.contains("LIBRARY_NOT_FOUND"),
         "message was {}",

@@ -1,6 +1,10 @@
+import { appendErrorDetail } from "@my-reader/i18n/mobile"
+import { errorMessage } from "@/src/i18n/error-message"
+import { appErrorKind } from "@/src/errors/kind"
+import { coreErrorKind } from "@/src/services/core/error"
 import { useEffect, useMemo, useState } from "react"
 
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
 import { openRemoteExistingLibrary } from "@/src/domain/library/hooks/library-actions"
 import {
   isMissingMetadataDbError,
@@ -54,19 +58,6 @@ type RemoteDirectoryBrowserErrorMessages = {
   generic: string
 }
 
-function isCredentialFailure(
-  message: string,
-  sourceType: "webdav" | "onedrive",
-): boolean {
-  return sourceType === "webdav"
-    ? /PASSWORD_REQUIRED|WEBDAV_(?:UNAUTHORIZED|FORBIDDEN)|\b40[13]\b/i.test(
-        message,
-      )
-    : /REFRESH_TOKEN_REQUIRED|ONEDRIVE_UNAUTHORIZED|INVALID_GRANT|AUTH_ERROR/i.test(
-        message,
-      )
-}
-
 export function useRemoteDirectoryBrowser({
   dataSourceId,
   currentPathParam,
@@ -117,14 +108,10 @@ export function useRemoteDirectoryBrowser({
         }
       } catch (caught) {
         if (active) {
-          const message =
-            caught instanceof Error
-              ? caught.message
-              : "Failed to read directory"
-          if (isCredentialFailure(message, sourceType)) {
+          if (appErrorKind(caught) === "Credential") {
             setResolveFailed(true)
           } else {
-            setError(message)
+            setError(errorMessage(caught))
           }
         }
       } finally {
@@ -157,26 +144,25 @@ export function useRemoteDirectoryBrowser({
       const library = await openRemoteExistingLibrary(candidate, sourcePath)
       onLibraryOpened(library)
     } catch (caught) {
-      const message = String(caught)
+      const kind = coreErrorKind(caught)
       if (
         isMissingMetadataDbError(caught) ||
-        message.includes("LIBRARY_TYPE_NOT_RECOGNIZED") ||
-        message.includes("MYREADER_LIBRARY_MARKER_NOT_FOUND")
+        kind === "LibraryMarkerNotFound"
       ) {
-        showAlertWithStatusBarRestore(
+        showErrorAlert(
           errorMessages.notValidTitle,
-          errorMessages.notValidMessage,
+          appendErrorDetail(errorMessages.notValidMessage, caught),
         )
         return
       }
-      if (message.includes("LIBRARY_ALREADY_EXISTS")) {
-        showAlertWithStatusBarRestore(
+      if (kind === "LibraryAlreadyExists") {
+        showErrorAlert(
           errorMessages.duplicateTitle,
-          errorMessages.duplicateMessage,
+          appendErrorDetail(errorMessages.duplicateMessage, caught),
         )
         return
       }
-      setError(errorMessages.generic)
+      setError(appendErrorDetail(errorMessages.generic, caught))
     } finally {
       setSaving(false)
     }

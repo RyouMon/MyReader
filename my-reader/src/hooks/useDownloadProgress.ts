@@ -1,3 +1,6 @@
+import { formatApiError } from "@/lib/tauri-api"
+import { errorMessage } from "@/lib/error-presentation"
+import type { ErrorKind } from "@/lib/tauri-api"
 import { useEffect } from "react"
 import {
   type QueryClient,
@@ -27,6 +30,7 @@ export type DownloadProgressEvent = {
   bytesWritten: number
   totalBytes?: number
   error?: string
+  failure?: ErrorKind
 }
 
 export type DownloadProgress = {
@@ -34,6 +38,7 @@ export type DownloadProgress = {
   bytesWritten: number
   totalBytes?: number
   error?: string
+  failure?: unknown
 }
 
 export type DownloadQueueEntry = {
@@ -60,9 +65,9 @@ function normalizeFormat(format: string) {
   return format.toUpperCase()
 }
 
-function notifyDownloadError(error?: string) {
+function notifyDownloadError(error?: unknown) {
   toast.error(i18n.t("bookDetail.downloadFailed"), {
-    description: error,
+    description: errorMessage(error),
   })
 }
 
@@ -184,7 +189,7 @@ export function applyDownloadProgressEvent(
       client,
     )
     if (event.status === "error") {
-      notifyDownloadError(event.error)
+      notifyDownloadError(event.failure ?? event.error)
     }
   }
 
@@ -197,6 +202,7 @@ export function applyDownloadProgressEvent(
       bytesWritten: event.bytesWritten,
       totalBytes: event.totalBytes,
       error: event.error,
+      failure: event.failure,
     },
     client,
   )
@@ -238,7 +244,7 @@ export function setDownloadError(
   libraryId: string,
   bookId: number,
   format: string,
-  error: string,
+  error: unknown,
   client?: QueryClient,
 ) {
   updateDownloadQueue(libraryId, bookId, format, null, client)
@@ -247,7 +253,12 @@ export function setDownloadError(
     libraryId,
     bookId,
     format,
-    { status: "error", bytesWritten: 0, error },
+    {
+      status: "error",
+      bytesWritten: 0,
+      error: formatApiError(error),
+      failure: error,
+    },
     client,
   )
   invalidateBookFileStates(libraryId, client)

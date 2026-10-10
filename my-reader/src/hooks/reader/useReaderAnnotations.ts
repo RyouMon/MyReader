@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/error-presentation"
 import {
   canonicalizeReaderAnnotationLocator,
   type ReaderAnnotationColor,
@@ -48,10 +49,6 @@ function annotationFromDto(row: ReaderAnnotationDto): ReaderAnnotation {
     createdAt: row.createdAt ?? 0,
     updatedAt: row.updatedAt ?? 0,
   }
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
 }
 
 export function useReaderAnnotations({

@@ -1,0 +1,43 @@
+diff --git a/android/src/main/java/com/rnappauth/RNAppAuthModule.java b/android/src/main/java/com/rnappauth/RNAppAuthModule.java
+index 33ca68120c7cade83f91f6f02c22bf34942bad3f..b0d55170401b5946597baa17ed3b2a3d937e9654 100644
+--- a/android/src/main/java/com/rnappauth/RNAppAuthModule.java
++++ b/android/src/main/java/com/rnappauth/RNAppAuthModule.java
+@@ -1042,7 +1042,17 @@ public class RNAppAuthModule extends ReactContextBaseJavaModule implements Activ
+ 
+     private void handleAuthorizationException(final String fallbackErrorCode, final AuthorizationException ex,
+             final Promise promise) {
+-        final String code = ex.error != null ? ex.error : fallbackErrorCode;
++        final String code;
++        if (ex.type == AuthorizationException.TYPE_GENERAL_ERROR &&
++                (ex.code == AuthorizationException.GeneralErrors.USER_CANCELED_AUTH_FLOW.code ||
++                 ex.code == AuthorizationException.GeneralErrors.PROGRAM_CANCELED_AUTH_FLOW.code)) {
++            code = "user_cancelled";
++        } else if (ex.type == AuthorizationException.TYPE_GENERAL_ERROR &&
++                ex.code == AuthorizationException.GeneralErrors.NETWORK_ERROR.code) {
++            code = "network_error";
++        } else {
++            code = ex.error != null ? ex.error : fallbackErrorCode;
++        }
+         if (ex.getLocalizedMessage() == null) {
+             promise.reject(code, ex.error, ex);
+         } else {
+diff --git a/ios/RNAppAuth.m b/ios/RNAppAuth.m
+index c48163427a41a810abdbcd1a9763c65bd69db185..382954348e172a62565385b77a1eae0fbedf28fa 100644
+--- a/ios/RNAppAuth.m
++++ b/ios/RNAppAuth.m
+@@ -657,6 +657,15 @@ - (NSDictionary*)formatEndSessionResponse: (OIDEndSessionResponse*)response
+ }
+ 
+ - (NSString*)getErrorCode: (NSError*) error defaultCode: (NSString *) defaultCode {
++    if ([[error domain] isEqualToString:OIDGeneralErrorDomain]) {
++        switch ([error code]) {
++            case OIDErrorCodeUserCanceledAuthorizationFlow:
++            case OIDErrorCodeProgramCanceledAuthorizationFlow:
++                return @"user_cancelled";
++            case OIDErrorCodeNetworkError:
++                return @"network_error";
++        }
++    }
+     if ([[error domain] isEqualToString:OIDOAuthAuthorizationErrorDomain]) {
+         switch ([error code]) {
+             case OIDErrorCodeOAuthAuthorizationInvalidRequest:
