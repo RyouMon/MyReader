@@ -8,15 +8,16 @@ import {
   Settings,
   SquarePen,
 } from "lucide-react"
-import type { ReactNode, PointerEvent as ReactPointerEvent } from "react"
+import type { ReactNode, MouseEvent as ReactMouseEvent } from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { isMacPlatform } from "@/lib/platform"
+import { isMacPlatform, isWindowsPlatform } from "@/lib/platform"
 import {
   releaseReaderTrafficLightsToSystemChrome,
   setReaderTrafficLightsVisible,
 } from "@/lib/readerTrafficLights"
 import { cn } from "@/lib/utils"
+import { WindowsWindowControls } from "./WindowsWindowControls"
 
 interface ReaderTopBarProps {
   visible: boolean
@@ -73,6 +74,8 @@ export function ReaderTopBar({
   const effectiveNativeMacFullscreen =
     previewNativeMacFullscreen || isNativeMacFullscreen
   const useMacWindowSpacing = previewNativeMacFullscreen || isMacPlatform()
+  const useWindowsWindowControls =
+    !previewNativeMacFullscreen && isWindowsPlatform()
 
   useEffect(() => {
     if (previewNativeMacFullscreen) {
@@ -226,7 +229,7 @@ export function ReaderTopBar({
   }, [])
 
   const startWindowDragFromHeader = useCallback(
-    (event: ReactPointerEvent<HTMLElement>) => {
+    (event: ReactMouseEvent<HTMLElement>) => {
       if (event.button !== 0) return
       const target = event.target
       if (!(target instanceof Element)) return
@@ -238,9 +241,13 @@ export function ReaderTopBar({
         return
       }
       event.preventDefault()
-      startWindowDrag()
+      if (event.detail === 2) {
+        toggleMaximizeWindow()
+      } else {
+        startWindowDrag()
+      }
     },
-    [startWindowDrag],
+    [startWindowDrag, toggleMaximizeWindow],
   )
   const chromeVisibilityClass = cn(
     "transition-opacity duration-300 ease-out",
@@ -255,7 +262,10 @@ export function ReaderTopBar({
         useMacWindowSpacing ? "pl-[9px]" : "pl-5",
         !visible && "pointer-events-none",
       )}
-      onPointerDown={startWindowDragFromHeader}
+      onMouseDown={startWindowDragFromHeader}
+      onPointerDown={(event) => {
+        if (event.pointerType !== "mouse") startWindowDragFromHeader(event)
+      }}
       onPointerLeave={
         visible && scheduleChromeHide
           ? () => {
@@ -272,6 +282,8 @@ export function ReaderTopBar({
         )}
       >
         <ReaderWindowButtons
+          side="left"
+          windows={useWindowsWindowControls}
           native={effectiveUseNativeMacWindowControls}
           fullscreen={effectiveNativeMacFullscreen}
           onClose={closeWindow}
@@ -307,7 +319,7 @@ export function ReaderTopBar({
         ) : null}
       </div>
 
-      <div className="relative z-10 flex items-center justify-end gap-[9px]">
+      <div className="relative z-10 flex h-full items-center justify-end gap-[9px]">
         {showReaderActions ? (
           <ReaderUtilityActions
             visible={visible}
@@ -321,6 +333,16 @@ export function ReaderTopBar({
             bookmarkDisabled={bookmarkDisabled}
           />
         ) : null}
+        <ReaderWindowButtons
+          side="right"
+          windows={useWindowsWindowControls}
+          native={effectiveUseNativeMacWindowControls}
+          fullscreen={effectiveNativeMacFullscreen}
+          chromeVisibilityClass={chromeVisibilityClass}
+          onClose={closeWindow}
+          onMinimize={minimizeWindow}
+          onZoom={toggleMaximizeWindow}
+        />
       </div>
     </header>
   )
@@ -442,19 +464,36 @@ function ReaderUtilityActions({
 }
 
 function ReaderWindowButtons({
+  side,
+  windows,
   native,
   fullscreen,
+  chromeVisibilityClass,
   onClose,
   onMinimize,
   onZoom,
 }: {
+  side: "left" | "right"
+  windows: boolean
   native: boolean
   fullscreen: boolean
+  chromeVisibilityClass?: string
   onClose: () => void
   onMinimize: () => void
   onZoom: () => void
 }) {
   const { t } = useTranslation()
+  if (windows)
+    return side === "left" ? null : (
+      <div className={cn("h-full -mr-[9px]", chromeVisibilityClass)}>
+        <WindowsWindowControls
+          onClose={onClose}
+          onMinimize={onMinimize}
+          onToggleMaximize={onZoom}
+        />
+      </div>
+    )
+  if (side === "right") return null
   if (native)
     return fullscreen ? null : (
       <div aria-hidden className="h-3 w-[4.625rem] shrink-0" />

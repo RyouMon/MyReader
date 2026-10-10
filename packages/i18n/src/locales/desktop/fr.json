@@ -460,6 +460,7 @@
     "close": "Fermer",
     "minimize": "Réduire",
     "maximize": "Maximiser",
+    "restore": "Restaurer",
     "fullscreen": "Plein écran",
     "exitFullscreen": "Quitter le mode plein écran",
     "fontFamily": "Police",

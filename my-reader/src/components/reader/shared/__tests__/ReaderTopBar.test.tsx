@@ -1,20 +1,26 @@
-import { fireEvent, render, screen } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import type { ComponentProps } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ReaderTopBar } from "../ReaderTopBar"
 
 const platformMocks = vi.hoisted(() => ({
   isMacPlatform: vi.fn(() => false),
+  isWindowsPlatform: vi.fn(() => false),
 }))
 const tauriMocks = vi.hoisted(() => ({
   isTauri: vi.fn(() => false),
   startDragging: vi.fn(),
+  close: vi.fn(),
+  minimize: vi.fn(),
+  toggleMaximize: vi.fn(),
+  isMaximized: vi.fn(async () => false),
+  onResized: vi.fn(async (_listener: () => void) => vi.fn()),
 }))
 
 vi.mock("@/lib/platform", () => platformMocks)
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: tauriMocks.isTauri }))
 vi.mock("@tauri-apps/api/window", () => ({
-  getCurrentWindow: () => ({ startDragging: tauriMocks.startDragging }),
+  getCurrentWindow: () => tauriMocks,
 }))
 
 vi.mock("react-i18next", () => ({
@@ -43,8 +49,14 @@ const defaultProps = {
 describe("ReaderTopBar", () => {
   beforeEach(() => {
     platformMocks.isMacPlatform.mockReturnValue(false)
+    platformMocks.isWindowsPlatform.mockReturnValue(false)
     tauriMocks.isTauri.mockReturnValue(false)
     tauriMocks.startDragging.mockReset()
+    tauriMocks.close.mockReset()
+    tauriMocks.minimize.mockReset()
+    tauriMocks.toggleMaximize.mockReset()
+    tauriMocks.isMaximized.mockReset().mockResolvedValue(false)
+    tauriMocks.onResized.mockClear()
   })
 
   it("should remove the chapter label when no chapter is resolved", () => {
@@ -198,10 +210,149 @@ describe("ReaderTopBar", () => {
     expect(screen.queryByTitle("reader.settings")).not.toBeInTheDocument()
     expect(screen.queryByTitle("reader.bookmark")).not.toBeInTheDocument()
 
-    fireEvent.pointerDown(container.querySelector("header") as Element, {
+    fireEvent.mouseDown(container.querySelector("header") as Element, {
       button: 0,
     })
 
     expect(tauriMocks.startDragging).toHaveBeenCalledOnce()
+  })
+
+  it("should place Windows controls after reader actions in minimize, maximize, close order", async () => {
+    platformMocks.isWindowsPlatform.mockReturnValue(true)
+    tauriMocks.isTauri.mockReturnValue(true)
+    render(<ReaderTopBar {...defaultProps} chapterTitle="" />)
+
+    const controls = screen.getAllByRole("button").slice(-3)
+    expect(controls.map((button) => button.getAttribute("aria-label"))).toEqual(
+      ["reader.minimize", "reader.maximize", "reader.close"],
+    )
+    fireEvent.click(controls[0])
+    fireEvent.click(controls[1])
+    fireEvent.click(controls[2])
+    expect(tauriMocks.minimize).toHaveBeenCalledOnce()
+    expect(tauriMocks.toggleMaximize).toHaveBeenCalledOnce()
+    expect(tauriMocks.close).toHaveBeenCalledOnce()
+    expect(tauriMocks.startDragging).not.toHaveBeenCalled()
+    await waitFor(() => expect(tauriMocks.isMaximized).toHaveBeenCalled())
+  })
+
+  it("should expose restore when Windows is already maximized and track window resizing", async () => {
+    platformMocks.isWindowsPlatform.mockReturnValue(true)
+    tauriMocks.isTauri.mockReturnValue(true)
+    tauriMocks.isMaximized.mockResolvedValue(true)
+    render(<ReaderTopBar {...defaultProps} chapterTitle="" />)
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "reader.restore" }),
+    )
+    expect(tauriMocks.toggleMaximize).toHaveBeenCalledOnce()
+    tauriMocks.isMaximized.mockResolvedValue(false)
+    await act(async () => tauriMocks.onResized.mock.calls[0][0]())
+    expect(
+      screen.getByRole("button", { name: "reader.maximize" }),
+    ).toBeInTheDocument()
+  })
+
+  it("should keep Windows controls available when reader actions are unavailable", async () => {
+    platformMocks.isWindowsPlatform.mockReturnValue(true)
+    tauriMocks.isTauri.mockReturnValue(true)
+    render(
+      <ReaderTopBar
+        {...defaultProps}
+        chapterTitle=""
+        showReaderActions={false}
+      />,
+    )
+
+    expect(screen.getAllByRole("button")).toHaveLength(3)
+    expect(
+      screen.getByRole("button", { name: "reader.close" }),
+    ).toBeInTheDocument()
+    await waitFor(() => expect(tauriMocks.isMaximized).toHaveBeenCalled())
+  })
+
+  it("should keep macOS fallback controls before reader actions on other platforms", () => {
+    render(<ReaderTopBar {...defaultProps} chapterTitle="" />)
+    expect(
+      screen
+        .getAllByRole("button")
+        .slice(0, 3)
+        .map((button) => button.getAttribute("aria-label")),
+    ).toEqual(["reader.close", "reader.minimize", "reader.maximize"])
+  })
+
+  it("should preserve native macOS fullscreen controls in previews on Windows", () => {
+    platformMocks.isWindowsPlatform.mockReturnValue(true)
+    render(
+      <ReaderTopBar
+        {...defaultProps}
+        chapterTitle=""
+        previewNativeMacFullscreen
+      />,
+    )
+    expect(
+      screen.queryByRole("button", { name: "reader.close" }),
+    ).not.toBeInTheDocument()
+  })
+
+  it.each([
+    "疯传",
+    "第一章",
+  ])("should toggle maximization on the second title-bar mouse press on %s", (title) => {
+    tauriMocks.isTauri.mockReturnValue(true)
+    render(<ReaderTopBar {...defaultProps} chapterTitle="第一章" />)
+    const titleLabel = screen.getByText(title)
+
+    fireEvent.mouseDown(titleLabel, { button: 0, detail: 1 })
+    expect(tauriMocks.startDragging).toHaveBeenCalledOnce()
+    fireEvent.mouseDown(titleLabel, { button: 0, detail: 2 })
+    expect(tauriMocks.toggleMaximize).toHaveBeenCalledOnce()
+    expect(tauriMocks.startDragging).toHaveBeenCalledOnce()
+  })
+
+  it("should ignore secondary clicks and interactive controls when double-clicking the title bar", () => {
+    tauriMocks.isTauri.mockReturnValue(true)
+    render(
+      <ReaderTopBar
+        {...defaultProps}
+        chapterTitle=""
+        rightActionsStart={
+          <span data-reader-window-no-drag="true">No drag</span>
+        }
+      />,
+    )
+
+    fireEvent.mouseDown(screen.getByText("疯传"), { button: 2, detail: 2 })
+    fireEvent.mouseDown(screen.getByTitle("reader.settings"), {
+      button: 0,
+      detail: 2,
+    })
+    fireEvent.mouseDown(screen.getByText("No drag"), { button: 0, detail: 2 })
+    expect(tauriMocks.toggleMaximize).not.toHaveBeenCalled()
+    expect(tauriMocks.startDragging).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    "touch",
+    "pen",
+  ])("should preserve title-bar dragging for %s input", (pointerType) => {
+    tauriMocks.isTauri.mockReturnValue(true)
+    render(<ReaderTopBar {...defaultProps} chapterTitle="" />)
+    fireEvent.pointerDown(screen.getByText("疯传"), { button: 0, pointerType })
+    expect(tauriMocks.startDragging).toHaveBeenCalledOnce()
+    expect(tauriMocks.toggleMaximize).not.toHaveBeenCalled()
+  })
+
+  it("should release the Windows resize listener when the title bar unmounts", async () => {
+    platformMocks.isWindowsPlatform.mockReturnValue(true)
+    tauriMocks.isTauri.mockReturnValue(true)
+    const unlisten = vi.fn()
+    tauriMocks.onResized.mockResolvedValueOnce(unlisten)
+    const { unmount } = render(
+      <ReaderTopBar {...defaultProps} chapterTitle="" />,
+    )
+    await waitFor(() => expect(tauriMocks.onResized).toHaveBeenCalled())
+    unmount()
+    expect(unlisten).toHaveBeenCalledOnce()
   })
 })

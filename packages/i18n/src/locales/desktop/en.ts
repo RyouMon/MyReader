@@ -488,6 +488,7 @@ export const desktopEn = {
       close: "Close",
       minimize: "Minimize",
       maximize: "Maximize",
+      restore: "Restore",
       fullscreen: "Fullscreen",
       exitFullscreen: "Exit fullscreen",
       fontFamily: "Font",
