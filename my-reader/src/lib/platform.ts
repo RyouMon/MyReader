@@ -5,3 +5,8 @@ export function isMacPlatform(): boolean {
     /Mac OS X/.test(navigator.userAgent)
   )
 }
+
+export function isWindowsPlatform(): boolean {
+  if (typeof navigator === "undefined") return false
+  return /Win/.test(navigator.platform) || /Windows/.test(navigator.userAgent)
+}

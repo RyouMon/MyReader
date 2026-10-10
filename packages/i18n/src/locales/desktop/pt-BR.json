@@ -460,6 +460,7 @@
     "close": "Fechar",
     "minimize": "Minimizar",
     "maximize": "Maximizar",
+    "restore": "Restaurar",
     "fullscreen": "Tela cheia",
     "exitFullscreen": "Sair da tela cheia",
     "fontFamily": "Fonte",
