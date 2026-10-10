@@ -12,3 +12,14 @@ export function syncFailureKeys(kind?: string | null) {
     detail: `syncStatus.failure.${category}.detail`,
   } as const
 }
+
+/** Keep diagnostics verbatim after the localized guidance, including legacy messages. */
+export function syncFailureDetail(
+  detail: string,
+  failure: { failureKind?: string; message?: string } | undefined,
+): string {
+  const diagnostic = [failure?.failureKind, failure?.message]
+    .filter(Boolean)
+    .join(": ")
+  return diagnostic ? `${detail}\n\n${diagnostic}` : detail
+}

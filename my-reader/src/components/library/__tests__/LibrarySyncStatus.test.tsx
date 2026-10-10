@@ -79,10 +79,12 @@ describe("LibrarySyncStatus", () => {
     expect(within(details).getByText("Pulling changes")).toBeInTheDocument()
     expect(
       within(details).getByText(
-        "Check your network connection and whether the data source is available, then try syncing again.",
+        /Check your network connection and whether the data source is available, then try syncing again\./,
       ),
     ).toBeInTheDocument()
-    expect(within(details).queryByText(/INTERNAL_DIAGNOSTIC/)).toBeNull()
+    expect(within(details).getByText(/INTERNAL_DIAGNOSTIC/).textContent).toBe(
+      "Check your network connection and whether the data source is available, then try syncing again.\n\nconnectivity: Request: 503 INTERNAL_DIAGNOSTIC /private/library",
+    )
 
     fireEvent.click(within(details).getByRole("button", { name: "Sync now" }))
     await waitFor(() => expect(onSync).toHaveBeenCalledTimes(1))
@@ -106,13 +108,18 @@ describe("LibrarySyncStatus", () => {
     expect(
       await screen.findByText("Check data source access"),
     ).toBeInTheDocument()
-    expect(screen.queryByText(/INTERNAL_DIAGNOSTIC/)).toBeNull()
+    expect(screen.getByText(/INTERNAL_DIAGNOSTIC/).textContent).toBe(
+      "Sign in again or update the data source credentials, and check that this account can access the library.\n\ncredential: network 503 INTERNAL_DIAGNOSTIC",
+    )
 
     await act(async () => {
       await i18n.changeLanguage("zh-CN")
     })
     expect(screen.getByText("请检查数据源访问权限")).toBeInTheDocument()
     expect(screen.queryByText("Check data source access")).toBeNull()
+    expect(screen.getByText(/INTERNAL_DIAGNOSTIC/).textContent).toBe(
+      "请重新登录或更新数据源凭据，并确认此账号有权访问书库。\n\ncredential: network 503 INTERNAL_DIAGNOSTIC",
+    )
     expect(
       useSyncStatusStore.getState().librarySyncHistoryById[library.id]
         .lastFailure?.message,
@@ -134,10 +141,16 @@ describe("LibrarySyncStatus", () => {
     )
     expect(
       await screen.findByText(
-        "Try syncing again later. If the problem continues, report it for help.",
+        /Try syncing again later\. If the problem continues, report it for help\./,
       ),
     ).toBeInTheDocument()
-    expect(screen.queryByText(/INTERNAL_DIAGNOSTIC/)).toBeNull()
+    if (message) {
+      expect(screen.getByText(/INTERNAL_DIAGNOSTIC/).textContent).toContain(
+        `\n\n${message}`,
+      )
+    } else {
+      expect(screen.queryByText(/INTERNAL_DIAGNOSTIC/)).toBeNull()
+    }
   })
 
   it("should keep a local library available when the host has no network", async () => {

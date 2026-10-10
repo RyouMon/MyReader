@@ -1,4 +1,4 @@
-import { syncFailureKeys } from "@my-reader/i18n/mobile"
+import { syncFailureDetail, syncFailureKeys } from "@my-reader/i18n/mobile"
 import { formatHumanReadableTime } from "@my-reader/tools/human-readable-time"
 import * as Haptics from "expo-haptics"
 import { useTranslation } from "react-i18next"
@@ -348,7 +348,7 @@ export default function SyncStatusScreen() {
                 className="text-base"
                 style={{ color: palette.text }}
               >
-                {t(failureKeys.detail)}
+                {syncFailureDetail(t(failureKeys.detail), history.lastFailure)}
               </Text>
             </View>
           ) : null}

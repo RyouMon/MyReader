@@ -204,9 +204,10 @@ describe("SyncStatusScreen", () => {
     expect(screen.getByText("syncStatus.failureStage")).toBeTruthy()
     expect(screen.getByText("syncStatus.stage.applying")).toBeTruthy()
     expect(
-      screen.getByText("syncStatus.failure.data_integrity.detail"),
+      screen.getByText(
+        "syncStatus.failure.data_integrity.detail\n\ndata_integrity: History is damaged",
+      ),
     ).toBeTruthy()
-    expect(screen.queryByText("History is damaged")).toBeNull()
   })
 
   it.each([
@@ -216,7 +217,7 @@ describe("SyncStatusScreen", () => {
     "data_integrity",
     "unexpected",
     undefined,
-  ] as const)("should present %s using localized copy instead of diagnostics", (failureKind) => {
+  ] as const)("should append %s diagnostics to selectable localized guidance", (failureKind) => {
     mockPresentation = {
       ...mockPresentation,
       history: {
@@ -234,12 +235,10 @@ describe("SyncStatusScreen", () => {
         `syncStatus.failure.${failureKind ?? "unexpected"}.title`,
       ),
     ).toBeTruthy()
-    expect(
-      screen.getByText(
-        `syncStatus.failure.${failureKind ?? "unexpected"}.detail`,
-      ),
-    ).toBeTruthy()
-    expect(screen.queryByText(/INTERNAL_DIAGNOSTIC/)).toBeNull()
+    const detail = screen.getByText(
+      `syncStatus.failure.${failureKind ?? "unexpected"}.detail\n\n${failureKind ? `${failureKind}: ` : ""}network credential 503 INTERNAL_DIAGNOSTIC`,
+    )
+    expect(detail.props.selectable).toBe(true)
   })
 
   it("should show a failure even when the diagnostic message is missing", () => {

@@ -1,9 +1,37 @@
 import { describe, expect, it } from "vitest"
-import { desktopResources, syncFailureKeys } from "../src/desktop"
+import {
+  desktopResources,
+  syncFailureDetail,
+  syncFailureKeys,
+} from "../src/desktop"
 import { SUPPORTED_LANGUAGES } from "../src/languages"
 import { mobileResources } from "../src/mobile"
 
 describe("sync failure copy", () => {
+  it("appends the stored category and original message without translating diagnostics", () => {
+    const failure = {
+      failureKind: "credential",
+      message: "STORAGE_ERROR: PermissionDenied\nHTTP 401 /Books",
+    }
+    expect(syncFailureDetail("请检查凭据。", failure)).toBe(
+      "请检查凭据。\n\ncredential: STORAGE_ERROR: PermissionDenied\nHTTP 401 /Books",
+    )
+    expect(syncFailureDetail("Check credentials.", failure)).toBe(
+      "Check credentials.\n\ncredential: STORAGE_ERROR: PermissionDenied\nHTTP 401 /Books",
+    )
+  })
+
+  it("preserves legacy messages and omits absent diagnostics", () => {
+    expect(
+      syncFailureDetail("Try again.", { message: "IO_ERROR: offline" }),
+    ).toBe("Try again.\n\nIO_ERROR: offline")
+    expect(
+      syncFailureDetail("Try again.", { failureKind: "future_kind" }),
+    ).toBe("Try again.\n\nfuture_kind")
+    expect(syncFailureDetail("Try again.", undefined)).toBe("Try again.")
+    expect(syncFailureDetail("Try again.", { message: "" })).toBe("Try again.")
+  })
+
   it.each([
     "connectivity",
     "credential",

@@ -1,5 +1,6 @@
 import {
   type DesktopTranslationKey,
+  syncFailureDetail,
   syncFailureKeys,
 } from "@my-reader/i18n/desktop"
 import { formatHumanReadableTime } from "@my-reader/tools/human-readable-time"
@@ -292,8 +293,8 @@ function SyncHistoryDetails({
             <div className="font-semibold text-danger">
               {t(failureKeys.title)}
             </div>
-            <p className="break-words text-foreground">
-              {t(failureKeys.detail)}
+            <p className="select-text whitespace-pre-wrap break-words text-foreground">
+              {syncFailureDetail(t(failureKeys.detail), lastFailure)}
             </p>
           </div>
         ) : null}
