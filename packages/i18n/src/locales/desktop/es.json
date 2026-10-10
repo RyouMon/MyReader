@@ -99,6 +99,19 @@
     "editMetadata": "Editar título y autor",
     "deleteBook": "Eliminar libro de la biblioteca"
   },
+  "bookShare": {
+    "saveAs": "Guardar como…",
+    "fileSaved": "Archivo guardado",
+    "saveFailed": "No se pudo guardar el archivo",
+    "share": "Compartir",
+    "shareFormat": "Compartir archivo {{format}}",
+    "copyPath": "Copiar ruta del archivo",
+    "revealFile": "Mostrar en carpeta",
+    "pathCopied": "Ruta del archivo copiada",
+    "unavailable": "El archivo no está disponible localmente",
+    "copyFailed": "No se pudo copiar la ruta del archivo",
+    "revealFailed": "No se pudo mostrar el archivo en la carpeta"
+  },
   "bookDetail": {
     "loading": "Cargando detalle del libro…",
     "formats": {

@@ -99,6 +99,19 @@
     "editMetadata": "제목 및 작성자 편집",
     "deleteBook": "서재에서 책 삭제"
   },
+  "bookShare": {
+    "saveAs": "다른 이름으로 저장…",
+    "fileSaved": "파일을 저장했습니다",
+    "saveFailed": "파일을 저장하지 못했습니다",
+    "share": "공유",
+    "shareFormat": "{{format}} 파일 공유",
+    "copyPath": "파일 경로 복사",
+    "revealFile": "파일 위치 열기",
+    "pathCopied": "파일 경로를 복사했습니다",
+    "unavailable": "파일이 로컬에 없습니다",
+    "copyFailed": "파일 경로를 복사하지 못했습니다",
+    "revealFailed": "파일 위치를 열지 못했습니다"
+  },
   "bookDetail": {
     "loading": "도서 세부정보 로드 중…",
     "formats": {

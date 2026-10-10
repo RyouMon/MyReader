@@ -16,6 +16,7 @@ pub struct PreparedBookSource {
 
 pub mod annotation;
 pub mod book;
+pub mod book_file;
 pub mod book_reading_format;
 pub mod bookmark;
 pub(crate) mod common;

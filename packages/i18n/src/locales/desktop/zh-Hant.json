@@ -99,6 +99,19 @@
     "editMetadata": "修改書名與作者",
     "deleteBook": "從書庫刪除圖書"
   },
+  "bookShare": {
+    "saveAs": "另存新檔…",
+    "fileSaved": "檔案已儲存",
+    "saveFailed": "另存檔案失敗",
+    "share": "分享",
+    "shareFormat": "分享 {{format}} 檔案",
+    "copyPath": "複製檔案路徑",
+    "revealFile": "開啟檔案所在位置",
+    "pathCopied": "已複製檔案路徑",
+    "unavailable": "檔案尚未下載到本機",
+    "copyFailed": "複製檔案路徑失敗",
+    "revealFailed": "開啟檔案所在位置失敗"
+  },
   "bookDetail": {
     "loading": "載入書籍詳情…",
     "formats": {
