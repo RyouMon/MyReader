@@ -95,11 +95,28 @@ entities/
 migration.rs
 
 infrastructure/     Registry and object-storage implementations
+library/            Library context, identity, write access, and shared metadata storage
 sync/               Automerge documents, persistence, transport, and scheduling rules
 models/             Stable cross-layer business DTOs
 ```
 
 `services`, `repositories`, and `infrastructure` are crate-internal implementations. Platforms call core through `api` and necessary stable contracts. Platform adapters do not duplicate SQL, CRDT merge rules, or business transactions.
+
+`library::LibraryContext` centralizes sidecar paths, database access, and replica identity initialization.
+It reuses the existing `database` pool, migrations, and close/removal protection without adding another
+cache or global state. Opening a context does not load Automerge or access the source library;
+writes and sync validate source identity when needed. Calibre identity comes from the external
+`library_id`, MyReader identity from its marker, and device replica identity stays in each sidecar.
+Invalid UTF-8 sidecar paths are rejected.
+
+Combined queries use repositories directly: recent reading combines catalog and reading queries,
+format selection queries the requested book, and registration/sync use count queries. Shared marker
+and write-access validation, remote metadata replacement, and catalog timestamp formatting live in
+`library/`; TTS configuration validation lives in `services/config/tts.rs`. These helpers never call
+back into services. Remaining service dependencies are one-way use-case composition, such as Library
+calling Sync, Catalog/Sync/BookTransfer calling Content state transitions, and TTS calling Config.
+Public `api::*Service` paths and signatures stay stable; no new trait or generic service framework is
+introduced for a single implementation.
 
 ### 3.2 Current Business Scope
 
