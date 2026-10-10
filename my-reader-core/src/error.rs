@@ -18,6 +18,9 @@ pub enum CoreError {
     #[error("STORAGE_ERROR: {0}")]
     Storage(String),
 
+    #[error("STORAGE_ERROR: {0}")]
+    StorageBackend(#[from] opendal::Error),
+
     #[error("SYNC_ERROR: {0}")]
     Sync(String),
 
@@ -43,6 +46,7 @@ impl From<serde_json::Error> for CoreError {
 impl From<crate::sync::SyncError> for CoreError {
     fn from(error: crate::sync::SyncError) -> Self {
         match error {
+            crate::sync::SyncError::Storage(error) => Self::StorageBackend(error),
             crate::sync::SyncError::Sync(message) => Self::Sync(message),
             crate::sync::SyncError::InvalidRemoteObject { .. }
             | crate::sync::SyncError::MissingDependencies { .. } => {

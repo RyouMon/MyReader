@@ -47,6 +47,7 @@ import type { DataSource, Library } from "../types"
 import { requestPendingBookUploads } from "./book-upload-store"
 import { openSyncContext, type SyncTargetContext } from "./context"
 import { runCoreLibrarySync } from "./core-sync"
+import { classifySyncFailure, syncSuspensionReason } from "./failure"
 import { DEFAULT_SYNC_POLICY } from "./policy"
 import { syncLibraries, syncLibrary } from "./sync-library"
 
@@ -374,6 +375,26 @@ describe("syncLibrary", () => {
     await expect(
       syncLibrary(library, dataSources, { throwOnFailure: true }),
     ).rejects.toBeInstanceOf(DataIntegrityError)
+  })
+
+  it.each([
+    ["connectivity", "credential rejected"],
+    ["credential", "network unavailable"],
+    ["configuration", "network unavailable"],
+    ["data_integrity", "network unavailable"],
+    ["unexpected", "network unavailable"],
+  ] as const)("should retain Core category %s regardless of diagnostic wording", async (failureKind, message) => {
+    mockRunCoreLibrarySync.mockResolvedValue(
+      coreReport({ error: message, failureKind }),
+    )
+
+    const error: unknown = await syncLibrary(library, dataSources, {
+      throwOnFailure: true,
+    }).catch((error: unknown) => error)
+
+    expect(error).toBeInstanceOf(Error)
+    expect(classifySyncFailure(error)).toBe(failureKind)
+    expect(syncSuspensionReason(error)).toBe(failureKind)
   })
 })
 
