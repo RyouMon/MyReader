@@ -4,6 +4,7 @@ import {
   SyncConfigError,
   SyncFailureError,
 } from "@/src/errors"
+import { coreSyncFailureKind } from "@/src/services/core/sync-error"
 
 import type { SyncFailureKind } from "./types"
 
@@ -15,6 +16,9 @@ export function classifySyncFailure(error: unknown): SyncFailureKind {
   if (error instanceof NetworkError) {
     return "connectivity"
   }
+
+  const coreKind = coreSyncFailureKind(error)
+  if (coreKind !== undefined) return coreKind
 
   const message = error instanceof Error ? error.message : String(error)
   if (

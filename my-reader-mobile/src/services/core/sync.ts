@@ -1,5 +1,4 @@
 import {
-  CoreFfiError,
   type SchedulerTransition as CoreSchedulerTransition,
   type LibraryStorageConfig as CoreLibraryStorageConfig,
   type RemoteCredential,
@@ -33,7 +32,7 @@ import {
   syncSetLibraryOnline,
 } from "my-reader-core"
 import type { Library } from "@my-reader/tools/types/library"
-import { DataIntegrityError } from "@/src/errors"
+import { coreSyncError } from "./sync-error"
 
 export type {
   RetrySchedule,
@@ -375,9 +374,6 @@ export async function syncLibraryData(input: {
       ),
     )
   } catch (error) {
-    if (CoreFfiError.DataIntegrity.instanceOf(error)) {
-      throw new DataIntegrityError(error.message)
-    }
-    throw error
+    throw coreSyncError(error)
   }
 }

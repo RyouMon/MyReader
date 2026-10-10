@@ -388,6 +388,10 @@ suspend 和恢复规则；平台提供前后台、网络、书库切换、Reader
 临时网络故障和限流进入退避重试，凭据、配置和数据完整性问题暂停等待修复。平台不得根据
 诊断消息重新判断已有类别；报告的 `error` 保留诊断信息，展示文案与国际化属于 UI。
 
+移动 UniFFI 异常同样保留 `Config`、`NotFound`、`Credential`、`Request`、`DataIntegrity`
+等类别；`Core` 仅用于 FFI 自身没有更具体类别的错误。同步适配器将这些类别转换为既有
+`failureKind`，并通过 `cause` 保留原异常。诊断字符串不构成前端恢复策略的协议。
+
 旧 JSONL/HLC、自研 join、CR-SQLite 和 v4 临时远端数据不会进入当前产品路径。
 
 ## 8. 阅读位置与格式能力

@@ -3977,6 +3977,7 @@ name = "my-reader-core-ffi"
 version = "0.12.0"
 dependencies = [
  "my-reader-core",
+ "opendal",
  "rusqlite",
  "serde_json",
  "tempfile",

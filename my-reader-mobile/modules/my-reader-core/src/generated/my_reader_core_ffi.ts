@@ -9465,6 +9465,15 @@ export enum CoreFfiError_Tags {
   Core = "Core",
   Sync = "Sync",
   DataIntegrity = "DataIntegrity",
+  Io = "Io",
+  Database = "Database",
+  Config = "Config",
+  NotFound = "NotFound",
+  Serialize = "Serialize",
+  Storage = "Storage",
+  Tts = "Tts",
+  Credential = "Credential",
+  Request = "Request",
 }
 export const CoreFfiError = (() => {
   class Core extends UniffiError {
@@ -9533,6 +9542,204 @@ export const CoreFfiError = (() => {
       return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 3;
     }
   }
+  class Io extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = "CoreFfiError";
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 4;
+
+    readonly tag = CoreFfiError_Tags.Io;
+
+    constructor(message: string) {
+      super("CoreFfiError", "Io", message);
+    }
+
+    static instanceOf(e: any): e is Io {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 4;
+    }
+  }
+  class Database extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = "CoreFfiError";
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 5;
+
+    readonly tag = CoreFfiError_Tags.Database;
+
+    constructor(message: string) {
+      super("CoreFfiError", "Database", message);
+    }
+
+    static instanceOf(e: any): e is Database {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 5;
+    }
+  }
+  class Config extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = "CoreFfiError";
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 6;
+
+    readonly tag = CoreFfiError_Tags.Config;
+
+    constructor(message: string) {
+      super("CoreFfiError", "Config", message);
+    }
+
+    static instanceOf(e: any): e is Config {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 6;
+    }
+  }
+  class NotFound extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = "CoreFfiError";
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 7;
+
+    readonly tag = CoreFfiError_Tags.NotFound;
+
+    constructor(message: string) {
+      super("CoreFfiError", "NotFound", message);
+    }
+
+    static instanceOf(e: any): e is NotFound {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 7;
+    }
+  }
+  class Serialize extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = "CoreFfiError";
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 8;
+
+    readonly tag = CoreFfiError_Tags.Serialize;
+
+    constructor(message: string) {
+      super("CoreFfiError", "Serialize", message);
+    }
+
+    static instanceOf(e: any): e is Serialize {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 8;
+    }
+  }
+  class Storage extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = "CoreFfiError";
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 9;
+
+    readonly tag = CoreFfiError_Tags.Storage;
+
+    constructor(message: string) {
+      super("CoreFfiError", "Storage", message);
+    }
+
+    static instanceOf(e: any): e is Storage {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 9;
+    }
+  }
+  class Tts extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = "CoreFfiError";
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 10;
+
+    readonly tag = CoreFfiError_Tags.Tts;
+
+    constructor(message: string) {
+      super("CoreFfiError", "Tts", message);
+    }
+
+    static instanceOf(e: any): e is Tts {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 10;
+    }
+  }
+  class Credential extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = "CoreFfiError";
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 11;
+
+    readonly tag = CoreFfiError_Tags.Credential;
+
+    constructor(message: string) {
+      super("CoreFfiError", "Credential", message);
+    }
+
+    static instanceOf(e: any): e is Credential {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 11;
+    }
+  }
+  class Request extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = "CoreFfiError";
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 12;
+
+    readonly tag = CoreFfiError_Tags.Request;
+
+    constructor(message: string) {
+      super("CoreFfiError", "Request", message);
+    }
+
+    static instanceOf(e: any): e is Request {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 12;
+    }
+  }
 
   // Utility function which does not rely on instanceof.
   function instanceOf(e: any): e is CoreFfiError {
@@ -9542,13 +9749,34 @@ export const CoreFfiError = (() => {
     Core,
     Sync,
     DataIntegrity,
+    Io,
+    Database,
+    Config,
+    NotFound,
+    Serialize,
+    Storage,
+    Tts,
+    Credential,
+    Request,
     instanceOf,
   };
 })();
 
 // Union type for CoreFfiError error type.
 export type CoreFfiError = InstanceType<
-  (typeof CoreFfiError)["Core" | "Sync" | "DataIntegrity"]
+  (typeof CoreFfiError)[
+    | "Core"
+    | "Sync"
+    | "DataIntegrity"
+    | "Io"
+    | "Database"
+    | "Config"
+    | "NotFound"
+    | "Serialize"
+    | "Storage"
+    | "Tts"
+    | "Credential"
+    | "Request"]
 >;
 
 const FfiConverterTypeCoreFfiError = (() => {
@@ -9565,6 +9793,33 @@ const FfiConverterTypeCoreFfiError = (() => {
 
         case 3:
           return new CoreFfiError.DataIntegrity(FfiConverterString.read(from));
+
+        case 4:
+          return new CoreFfiError.Io(FfiConverterString.read(from));
+
+        case 5:
+          return new CoreFfiError.Database(FfiConverterString.read(from));
+
+        case 6:
+          return new CoreFfiError.Config(FfiConverterString.read(from));
+
+        case 7:
+          return new CoreFfiError.NotFound(FfiConverterString.read(from));
+
+        case 8:
+          return new CoreFfiError.Serialize(FfiConverterString.read(from));
+
+        case 9:
+          return new CoreFfiError.Storage(FfiConverterString.read(from));
+
+        case 10:
+          return new CoreFfiError.Tts(FfiConverterString.read(from));
+
+        case 11:
+          return new CoreFfiError.Credential(FfiConverterString.read(from));
+
+        case 12:
+          return new CoreFfiError.Request(FfiConverterString.read(from));
 
         default:
           throw new UniffiInternalError.UnexpectedEnumCase();
