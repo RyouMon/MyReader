@@ -6,6 +6,10 @@ edition.workspace = true
 [features]
 test-support = []
 
+[[example]]
+name = "executor_baseline"
+required-features = ["test-support"]
+
 [dependencies]
 automerge.workspace = true
 chrono.workspace = true
