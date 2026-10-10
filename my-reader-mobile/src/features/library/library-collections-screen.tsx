@@ -1,3 +1,4 @@
+import { errorMessage } from "@/src/i18n/error-message"
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import type { BuiltInBookCollectionId } from "@my-reader/tools/types/book-collection"
 import { libraryTypeOf } from "@my-reader/tools/types/library"
@@ -15,7 +16,10 @@ import {
   SectionCard,
   SectionLabel,
 } from "@/src/components"
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import {
+  showAlertWithStatusBarRestore,
+  showErrorAlert,
+} from "@/src/constants/alert-with-status-bar"
 import { useThemePalette } from "@/src/design/tokens"
 import {
   importBookFromPicker,
@@ -206,10 +210,7 @@ export default function LibraryCollectionsScreen() {
   const handleImportBook = useCallback(() => {
     void importBookFromPicker(isManagedLibrary ? selectedLibrary : null).catch(
       (error) => {
-        showAlertWithStatusBarRestore(
-          t("library.importFailed.title"),
-          error instanceof Error ? error.message : String(error),
-        )
+        showErrorAlert(t("library.importFailed.title"), errorMessage(error))
       },
     )
   }, [isManagedLibrary, selectedLibrary, t])

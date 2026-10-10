@@ -1,10 +1,14 @@
+import { errorMessage } from "@/src/i18n/error-message"
 import { libraryTypeOf, type Library } from "@my-reader/tools/types/library"
 import { router, Stack, useLocalSearchParams } from "expo-router"
 import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import { EmptyState, FormLabeledFieldRow, Screen } from "@/src/components"
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import {
+  showAlertWithStatusBarRestore,
+  showErrorAlert,
+} from "@/src/constants/alert-with-status-bar"
 import { useThemePalette } from "@/src/design/tokens"
 import { updateManagedBookMetadata } from "@/src/domain/library/hooks/library-actions"
 import type { BookItem } from "@/src/domain/types"
@@ -101,10 +105,7 @@ function EditBookMetadataForm({
       })
       router.dismiss()
     } catch (error) {
-      showAlertWithStatusBarRestore(
-        t("bookEdit.saveFailed"),
-        error instanceof Error ? error.message : String(error),
-      )
+      showErrorAlert(t("bookEdit.saveFailed"), errorMessage(error))
     } finally {
       setSaving(false)
     }

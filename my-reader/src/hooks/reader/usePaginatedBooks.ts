@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/error-presentation"
 import type { CalibreBook, PaginatedBooks } from "@my-reader/tools/types/book"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { listen, type UnlistenFn } from "@tauri-apps/api/event"
@@ -195,7 +196,9 @@ export function usePaginatedBooks(
   }, [libraryId, sortBy, refresh])
 
   const knownTotal = initialPageQuery.data?.total ?? total
-  const error = initialPageQuery.error ? String(initialPageQuery.error) : null
+  const error = initialPageQuery.error
+    ? errorMessage(initialPageQuery.error)
+    : null
   const initialLoading = Boolean(libraryId) && initialPageQuery.isLoading
 
   const ensureRange = useCallback(

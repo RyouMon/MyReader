@@ -43,7 +43,10 @@ vi.mock("@/lib/readerWindow", () => ({
   isMainWebviewWindow: () => false,
   openReaderInNewWindow: vi.fn(),
 }))
-vi.mock("@/lib/tauri-api", () => ({ api: mocks.api }))
+vi.mock("@/lib/tauri-api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-api")>()),
+  api: mocks.api,
+}))
 
 const savedLocator = {
   href: "chapter.xhtml",
@@ -210,20 +213,26 @@ describe("useReaderBookSource", () => {
       result.current.bookPayload?.initialSavedLocator?.locations.position,
     ).toBe(3)
     expect(result.current.positionConflict).toEqual(candidates)
-    expect(result.current.fetchError).toContain("disk full")
+    expect(result.current.fetchError).toBe(
+      "未能完成此操作，请重试。\nError: disk full",
+    )
     expect(result.current.resolvingPositionConflict).toBe(false)
   })
 
   it("requests a missing remote file and can retry a rejected download", async () => {
     mocks.api.prepareBookSource.mockRejectedValue(
-      new Error("BOOK_FORMAT_NOT_DOWNLOADED"),
+      Object.assign(new Error("diagnostic changed"), {
+        kind: "BookFormatNotDownloaded",
+      }),
     )
     mocks.api.downloadBookFile.mockRejectedValueOnce(new Error("offline"))
     const { result } = renderHook(() => useReaderBookSource({ bookId: "4" }), {
       wrapper,
     })
     await waitFor(() => expect(result.current.downloadState).toBe("error"))
-    expect(result.current.downloadError).toContain("offline")
+    expect(result.current.downloadError).toBe(
+      "未能完成此操作，请重试。\nError: offline",
+    )
     expect(result.current.fetchError).toBeNull()
     act(() => result.current.handleRetryDownload())
     await waitFor(() =>

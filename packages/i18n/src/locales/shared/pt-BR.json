@@ -96,6 +96,7 @@
     "unread": "Não lido"
   },
   "common": {
+    "copy": "Copiar",
     "cancel": "Cancelar",
     "close": "Fechar",
     "delete": "Excluir",
@@ -206,6 +207,7 @@
     "lastSync": "Última sincronização",
     "lastAttempt": "Última tentativa",
     "noHistory": "Sem histórico de sincronização",
+    "failureSummary": "Falha na sincronização: {{title}}",
     "failureReason": "Motivo da falha",
     "failureStage": "Estágio de falha",
     "progress": "{{completed}} / {{total}}",
@@ -216,6 +218,28 @@
     "noActiveLibrary": "Nenhuma biblioteca para sincronizar",
     "noActiveLibraryDetail": "Adicione uma biblioteca para iniciar a sincronização.",
     "activeLibraryChanged": "A biblioteca atual foi alterada. Por favor, tente novamente.",
+    "failure": {
+      "connectivity": {
+        "title": "Não foi possível conectar",
+        "detail": "Verifique a conexão de rede e se a fonte de dados está disponível. Depois, tente sincronizar novamente."
+      },
+      "credential": {
+        "title": "Verifique o acesso à fonte de dados",
+        "detail": "Entre novamente ou atualize as credenciais da fonte de dados e verifique se esta conta tem acesso à biblioteca."
+      },
+      "configuration": {
+        "title": "Verifique as configurações da biblioteca",
+        "detail": "Verifique a localização da biblioteca e as configurações da fonte de dados. Depois, tente sincronizar novamente."
+      },
+      "data_integrity": {
+        "title": "Os dados de sincronização precisam de atenção",
+        "detail": "Alguns dados de sincronização podem estar ausentes ou corrompidos. Mantenha os arquivos locais e verifique primeiro as cópias em outros dispositivos ou em um backup confiável."
+      },
+      "unexpected": {
+        "title": "A sincronização não foi concluída",
+        "detail": "Tente sincronizar novamente mais tarde. Se o problema persistir, relate-o para obter ajuda."
+      }
+    },
     "reason": {
       "manual": "Iniciado manualmente",
       "localChange": "Dados locais alterados",
@@ -240,5 +264,15 @@
       "calibre": "Atualizando biblioteca",
       "complete": "Finalizando"
     }
+  },
+  "operationError": {
+    "unexpected": "Não foi possível concluir esta ação. Tente novamente.",
+    "connectivity": "Não foi possível conectar ao serviço. Verifique a conexão de rede e o endereço do serviço e tente novamente.",
+    "credential": "Acesso negado. Verifique suas credenciais ou entre novamente.",
+    "configuration": "Verifique as configurações da biblioteca ou do serviço e tente novamente.",
+    "notFound": "Este item não está mais disponível. Atualize e tente novamente.",
+    "io": "Não foi possível acessar os arquivos locais. Verifique o espaço de armazenamento e as permissões.",
+    "dataIntegrity": "Alguns dados não puderam ser lidos corretamente. Restaure uma cópia confiável e tente novamente.",
+    "tts": "A leitura em voz alta falhou. Verifique as configurações de voz e tente novamente."
   }
 }

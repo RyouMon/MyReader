@@ -1,3 +1,4 @@
+import { syncFailureDetail, syncFailureKeys } from "@my-reader/i18n/mobile"
 import { formatHumanReadableTime } from "@my-reader/tools/human-readable-time"
 import * as Haptics from "expo-haptics"
 import { useTranslation } from "react-i18next"
@@ -97,7 +98,10 @@ type SyncPresentation = ReturnType<typeof useSyncStatusPresentation>
 function SyncStatusSummary({
   activity,
   indicator,
-}: Pick<SyncPresentation, "activity" | "indicator">) {
+  failureTitle,
+}: Pick<SyncPresentation, "activity" | "indicator"> & {
+  failureTitle?: string
+}) {
   const { t } = useTranslation()
   const palette = useThemePalette()
   const statusLabel = t(SYNC_INDICATOR_LABEL_KEYS[indicator])
@@ -134,23 +138,26 @@ function SyncStatusSummary({
       </View>
       <Text
         accessibilityLiveRegion="polite"
-        numberOfLines={1}
         selectable
-        className="-mt-3 h-8 text-center text-xl font-bold"
+        className="-mt-3 min-h-8 text-center text-xl font-bold"
         style={{ color: statusColor }}
       >
-        {stageLabel ?? statusLabel}
+        {failureTitle
+          ? t("syncStatus.failureSummary", { title: failureTitle })
+          : (stageLabel ?? statusLabel)}
       </Text>
 
-      <SyncProgressSlot
-        active={activity != null}
-        color={palette.primary}
-        completed={activity?.completed ?? 0}
-        label={progressLabel}
-        textColor={palette.textMuted}
-        total={activity?.total ?? 0}
-        trackColor={palette.border}
-      />
+      {!failureTitle ? (
+        <SyncProgressSlot
+          active={activity != null}
+          color={palette.primary}
+          completed={activity?.completed ?? 0}
+          label={progressLabel}
+          textColor={palette.textMuted}
+          total={activity?.total ?? 0}
+          trackColor={palette.border}
+        />
+      ) : null}
     </View>
   )
 }
@@ -246,6 +253,7 @@ export default function SyncStatusScreen() {
     transientResult,
   } = useSyncStatusPresentation()
   const { isSyncing: isManualSyncing, syncNow } = useSyncLibrary()
+  const failureKeys = syncFailureKeys(history?.lastFailure?.failureKind)
 
   if (!library || !activeLibraryId) {
     return (
@@ -268,6 +276,8 @@ export default function SyncStatusScreen() {
 
   const isRunning = activity != null || isManualSyncing
   const canSync = !isRunning && !isOffline
+  const failure =
+    indicator === "failed" && !isRunning ? history?.lastFailure : undefined
 
   const handleSync = () => {
     if (!canSync) return
@@ -297,10 +307,24 @@ export default function SyncStatusScreen() {
             title={t("syncStatus.title")}
           />
 
-          <SyncStatusSummary activity={activity} indicator={indicator} />
+          <SyncStatusSummary
+            activity={activity}
+            indicator={indicator}
+            failureTitle={failure ? t(failureKeys.title) : undefined}
+          />
         </View>
 
         <View className="gap-5 px-4 py-4 pb-6">
+          {failure ? (
+            <Text
+              selectable
+              className="text-base"
+              style={{ color: palette.text }}
+              testID="sync-status-error-detail"
+            >
+              {syncFailureDetail(t(failureKeys.detail), failure)}
+            </Text>
+          ) : null}
           <SyncHistoryDetails
             libraryName={library.name}
             activity={activity}
@@ -326,27 +350,6 @@ export default function SyncStatusScreen() {
                 style={{ color: palette.text }}
               >
                 {t("syncStatus.offlineDetail")}
-              </Text>
-            </View>
-          ) : null}
-
-          {history?.lastFailure?.message ? (
-            <View
-              className="gap-2 rounded-xl p-4"
-              style={{ backgroundColor: palette.dangerSoft }}
-            >
-              <Text
-                className="text-base font-bold"
-                style={{ color: palette.danger }}
-              >
-                {t("syncStatus.failureReason")}
-              </Text>
-              <Text
-                selectable
-                className="text-base"
-                style={{ color: palette.text }}
-              >
-                {history.lastFailure.message}
               </Text>
             </View>
           ) : null}

@@ -112,6 +112,6 @@ async fn add_should_return_not_found_when_library_id_is_unknown() {
         }),
     );
 
-    assert!(error.is_kind("NotFound"));
+    assert!(error.is_kind("LibraryNotFound"));
     assert!(error.message.contains("LIBRARY_NOT_FOUND"));
 }

@@ -1,7 +1,7 @@
+import { fetchRemote, networkRequest } from "@/src/services/http/request"
 import type { DataSourceWebdav } from "@my-reader/tools/types/data-source"
 import { Directory, File } from "expo-file-system"
 import ky from "ky"
-import i18n from "@/src/i18n"
 import { NetworkError } from "../../../errors"
 import {
   canonicalRelativePathSegments,
@@ -55,59 +55,46 @@ export class WebDavRemoteBackend implements RemoteBackend {
   // -- Stat --
 
   async statRemoteFile(remotePath: string): Promise<RemoteFileStat | null> {
-    try {
-      const response = await fetch(this.urlBuilder.urlFor(remotePath), {
-        method: "PROPFIND",
-        headers: { ...this.urlBuilder.authHeaders, Depth: "0" },
-      })
-      if (response.status === 404) return null
-      if (!response.ok) {
-        throw new NetworkError(
-          i18n.t("sync.webdavPropfindFailed", {
-            status: response.status,
-            path: remotePath,
-          }),
-          response.status,
-        )
-      }
-      const xml = await response.text()
-      const size = Number(
-        xml.match(/<[^>]*getcontentlength[^>]*>(\d+)</i)?.[1] ?? 0,
+    const response = await fetchRemote(this.urlBuilder.urlFor(remotePath), {
+      method: "PROPFIND",
+      headers: { ...this.urlBuilder.authHeaders, Depth: "0" },
+    })
+    if (response.status === 404) return null
+    if (!response.ok) {
+      throw new NetworkError(
+        `sync.webdavPropfindFailed: status=${response.status} path=${remotePath}`,
+        response.status,
       )
-      const lastModified = xml.match(
-        /<[^>]*getlastmodified[^>]*>([^<]+)</i,
-      )?.[1]
-      const mtimeMs = lastModified ? new Date(lastModified).getTime() || 0 : 0
-      const etag = `${mtimeMs}-${size}`
-      return { etag, size, mtimeMs }
-    } catch (e) {
-      if (e instanceof NetworkError) throw e
-      return null
     }
+    const xml = await response.text()
+    const size = Number(
+      xml.match(/<[^>]*getcontentlength[^>]*>(\d+)</i)?.[1] ?? 0,
+    )
+    const lastModified = xml.match(/<[^>]*getlastmodified[^>]*>([^<]+)</i)?.[1]
+    const mtimeMs = lastModified ? new Date(lastModified).getTime() || 0 : 0
+    const etag = `${mtimeMs}-${size}`
+    return { etag, size, mtimeMs }
   }
 
   // -- Transfer --
 
   async readBytes(remotePath: string): Promise<Uint8Array> {
-    const response = await fetch(this.urlBuilder.urlFor(remotePath), {
+    const response = await fetchRemote(this.urlBuilder.urlFor(remotePath), {
       method: "GET",
       headers: this.urlBuilder.authHeaders,
     })
     if (!response.ok) {
       throw new NetworkError(
-        i18n.t("sync.webdavGetFailed", {
-          status: response.status,
-          path: remotePath,
-        }),
+        `sync.webdavGetFailed: status=${response.status} path=${remotePath}`,
         response.status,
       )
     }
-    return new Uint8Array(await response.arrayBuffer())
+    return new Uint8Array(await networkRequest(() => response.arrayBuffer()))
   }
 
   async writeBytes(remotePath: string, bytes: Uint8Array): Promise<void> {
     await this.ensureParentDirectories(remotePath)
-    const response = await fetch(this.urlBuilder.urlFor(remotePath), {
+    const response = await fetchRemote(this.urlBuilder.urlFor(remotePath), {
       method: "PUT",
       headers: {
         ...this.urlBuilder.authHeaders,
@@ -117,26 +104,20 @@ export class WebDavRemoteBackend implements RemoteBackend {
     })
     if (!response.ok) {
       throw new NetworkError(
-        i18n.t("sync.webdavPutFailed", {
-          status: response.status,
-          path: remotePath,
-        }),
+        `sync.webdavPutFailed: status=${response.status} path=${remotePath}`,
         response.status,
       )
     }
   }
 
   async deleteRemote(remotePath: string): Promise<void> {
-    const response = await fetch(this.urlBuilder.urlFor(remotePath), {
+    const response = await fetchRemote(this.urlBuilder.urlFor(remotePath), {
       method: "DELETE",
       headers: this.urlBuilder.authHeaders,
     })
     if (!response.ok && response.status !== 404) {
       throw new NetworkError(
-        i18n.t("sync.webdavDeleteFailed", {
-          status: response.status,
-          path: remotePath,
-        }),
+        `sync.webdavDeleteFailed: status=${response.status} path=${remotePath}`,
         response.status,
       )
     }
@@ -145,17 +126,14 @@ export class WebDavRemoteBackend implements RemoteBackend {
   async listRemote(prefix: string): Promise<string[]> {
     const normalizedPrefix = prefix.endsWith("/") ? prefix : `${prefix}/`
     const url = this.urlBuilder.urlFor(normalizedPrefix)
-    const response = await fetch(url, {
+    const response = await fetchRemote(url, {
       method: "PROPFIND",
       headers: { ...this.urlBuilder.authHeaders, Depth: "1" },
     })
     if (response.status === 404) return []
     if (!response.ok) {
       throw new NetworkError(
-        i18n.t("sync.webdavPropfindListFailed", {
-          status: response.status,
-          path: normalizedPrefix,
-        }),
+        `sync.webdavPropfindListFailed: status=${response.status} path=${normalizedPrefix}`,
         response.status,
       )
     }
@@ -187,10 +165,12 @@ export class WebDavRemoteBackend implements RemoteBackend {
 
   async downloadToUri(remotePath: string, localFileUri: string): Promise<File> {
     const headers = await this.getAuthHeaders()
-    const response = await ky(this.urlBuilder.urlFor(remotePath), {
-      headers,
-    })
-    const bytes = new Uint8Array(await response.arrayBuffer())
+    const response = await networkRequest(() =>
+      ky(this.urlBuilder.urlFor(remotePath), { headers }),
+    )
+    const bytes = new Uint8Array(
+      await networkRequest(() => response.arrayBuffer()),
+    )
     const parentUri = parentDirectoryUriForFileUri(localFileUri)
     if (parentUri) {
       const parent = new Directory(parentUri)
@@ -256,16 +236,13 @@ export class WebDavRemoteBackend implements RemoteBackend {
     let cursor = ""
     for (let i = 0; i < parts.length - 1; i += 1) {
       cursor = cursor ? `${cursor}/${parts[i]}` : parts[i]!
-      const response = await fetch(this.urlBuilder.urlFor(cursor), {
+      const response = await fetchRemote(this.urlBuilder.urlFor(cursor), {
         method: "MKCOL",
         headers: this.urlBuilder.authHeaders,
       })
       if (!response.ok && ![201, 301, 405].includes(response.status)) {
         throw new NetworkError(
-          i18n.t("sync.webdavMkcolFailed", {
-            status: response.status,
-            path: cursor,
-          }),
+          `sync.webdavMkcolFailed: status=${response.status} path=${cursor}`,
           response.status,
         )
       }

@@ -1,4 +1,16 @@
 export const sharedEn = {
+  operationError: {
+    unexpected: "This action could not be completed. Please try again.",
+    connectivity:
+      "Cannot connect to the service. Check your network connection and service address, then try again.",
+    credential: "Access was denied. Check your credentials or sign in again.",
+    configuration: "Check the library or service settings, then try again.",
+    notFound: "This item is no longer available. Refresh and try again.",
+    io: "Cannot access local files. Check storage space and file permissions.",
+    dataIntegrity:
+      "Some data could not be read correctly. Restore a reliable copy and try again.",
+    tts: "Speech playback failed. Check your speech settings and try again.",
+  },
   qwenTts: {
     title: "Qwen",
     add: "Add {{name}}",
@@ -104,6 +116,7 @@ export const sharedEn = {
     unread: "Unread",
   },
   common: {
+    copy: "Copy",
     cancel: "Cancel",
     close: "Close",
     delete: "Delete",
@@ -211,6 +224,7 @@ export const sharedEn = {
     lastSync: "Last synced",
     lastAttempt: "Last attempt",
     noHistory: "No sync history",
+    failureSummary: "Sync failed: {{title}}",
     failureReason: "Failure reason",
     failureStage: "Failure stage",
     progress: "{{completed}} / {{total}}",
@@ -222,6 +236,33 @@ export const sharedEn = {
     noActiveLibrary: "No library to sync",
     noActiveLibraryDetail: "Add a library to start syncing.",
     activeLibraryChanged: "The current library changed. Please try again.",
+    failure: {
+      connectivity: {
+        title: "Unable to connect",
+        detail:
+          "Check your network connection and whether the data source is available, then try syncing again.",
+      },
+      credential: {
+        title: "Check data source access",
+        detail:
+          "Sign in again or update the data source credentials, and check that this account can access the library.",
+      },
+      configuration: {
+        title: "Check library settings",
+        detail:
+          "Check the library location and data source settings, then try syncing again.",
+      },
+      data_integrity: {
+        title: "Sync data needs attention",
+        detail:
+          "Some sync data may be missing or damaged. Keep your local files and check the copies on other devices or in a trusted backup first.",
+      },
+      unexpected: {
+        title: "Sync could not finish",
+        detail:
+          "Try syncing again later. If the problem continues, report it for help.",
+      },
+    },
     reason: {
       manual: "Started manually",
       localChange: "Local data changed",

@@ -226,7 +226,7 @@ describe("native download adapter", () => {
       "Failed to run native download task:",
       expect.objectContaining({
         taskId: "download-timeout",
-        errorCode: 0,
+        errorCode: -1001,
       }),
     )
   })
@@ -467,7 +467,7 @@ describe("native upload adapter", () => {
       "Failed to run native upload task:",
       expect.objectContaining({
         taskId: "upload-timeout",
-        errorCode: 0,
+        errorCode: -1001,
       }),
     )
   })
@@ -592,9 +592,9 @@ describe("native upload adapter", () => {
 })
 
 describe("native task classification", () => {
-  it("should detect cancellation when native code or message means cancelled", () => {
+  it("should use only the native cancellation code", () => {
     expect(isNativeCancel("", -999)).toBe(true)
-    expect(isNativeCancel("user cancelled", 0)).toBe(true)
+    expect(isNativeCancel("user cancelled", 0)).toBe(false)
   })
 
   it("should reject cancellation when native error is unrelated", () => {

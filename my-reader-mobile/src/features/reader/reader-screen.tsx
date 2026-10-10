@@ -1,3 +1,5 @@
+import { appendErrorDetail } from "@my-reader/i18n/mobile"
+import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
 import { ReaderScreenSettings } from "./components/ReaderScreenSettings"
 import { ReaderPublicationSurface } from "./components/ReaderPublicationSurface"
 import {
@@ -46,12 +48,7 @@ import {
   useState,
 } from "react"
 import { useTranslation } from "react-i18next"
-import {
-  Alert,
-  Animated as RNAnimated,
-  StatusBar,
-  StyleSheet,
-} from "react-native"
+import { Animated as RNAnimated, StatusBar, StyleSheet } from "react-native"
 import { FadeIn, FadeOut } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { ErrorBoundary } from "@/src/components/error-boundary"
@@ -124,7 +121,7 @@ import { bookLoadRequestKey } from "@/src/hooks/book-load-identity"
 import { useBookLoader } from "@/src/hooks/use-book-loader"
 import { useReaderProgressSaver } from "@/src/hooks/use-reader-progress-saver"
 import { useAppStore } from "@/src/store/app-store"
-import { describeError } from "@/src/utils/common"
+import { errorMessage } from "@/src/i18n/error-message"
 import { Animated, View } from "@/tw"
 
 const READER_CONTENT_FADE_MS = 220
@@ -282,14 +279,12 @@ export default function ReaderScreen() {
         case "providerUnavailable":
           message = t("reader.tts.errors.providerUnavailable")
           break
-        case "engine":
-          message = t("reader.tts.errors.engine", {
-            message: presentation.message,
-          })
       }
-      Alert.alert(t("reader.tts.states.error"), message, [
-        { text: t("common.gotIt") },
-      ])
+      showErrorAlert(
+        t("reader.tts.states.error"),
+        appendErrorDetail(message, error),
+        [{ text: t("common.gotIt") }],
+      )
     },
     [t],
   )
@@ -603,7 +598,7 @@ export default function ReaderScreen() {
 
   const showAnnotationError = useCallback(
     (error: unknown) => {
-      Alert.alert(t("reader.annotations.error"), describeError(error))
+      showErrorAlert(t("reader.annotations.error"), errorMessage(error))
     },
     [t],
   )

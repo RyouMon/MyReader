@@ -18,7 +18,7 @@ import {
   SectionCard,
   SectionLabel,
 } from "@/src/components"
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
 import { ttsMaximumPlaybackSpeed } from "@/src/constants/tts"
 import { useThemePalette } from "@/src/design/tokens"
 import {
@@ -33,7 +33,7 @@ import {
   type TtsVoice,
 } from "@/src/services/core/tts"
 import { toFileUri } from "@/src/services/fs/path"
-import { describeError } from "@/src/utils/common"
+import { errorMessage } from "@/src/i18n/error-message"
 import { Text, View } from "@/tw"
 
 const DEFAULT_VOICE_LANGUAGE = "und"
@@ -257,10 +257,7 @@ export default function TtsSettingsScreen() {
     try {
       setConfig(await getTtsConfig())
     } catch (error) {
-      showAlertWithStatusBarRestore(
-        t("settings.tts.loadFailed"),
-        describeError(error),
-      )
+      showErrorAlert(t("settings.tts.loadFailed"), errorMessage(error))
     }
   }, [t])
 
@@ -373,10 +370,7 @@ export default function TtsSettingsScreen() {
       setVoices(await readiumTts.getSystemVoices())
     } catch (error) {
       setVoices([])
-      showAlertWithStatusBarRestore(
-        t("settings.tts.voiceLoadFailed"),
-        describeError(error),
-      )
+      showErrorAlert(t("settings.tts.voiceLoadFailed"), errorMessage(error))
     } finally {
       setVoicesLoading(false)
     }
@@ -404,7 +398,7 @@ export default function TtsSettingsScreen() {
       const timeout = setTimeout(() => {
         setPreviewSource(null)
         setPreviewState("idle")
-        showAlertWithStatusBarRestore(t("settings.tts.previewFailed"), error)
+        showErrorAlert(t("settings.tts.previewFailed"), error)
       }, 0)
       return () => clearTimeout(timeout)
     }
@@ -417,10 +411,7 @@ export default function TtsSettingsScreen() {
         } catch (error) {
           setPreviewSource(null)
           setPreviewState("idle")
-          showAlertWithStatusBarRestore(
-            t("settings.tts.previewFailed"),
-            describeError(error),
-          )
+          showErrorAlert(t("settings.tts.previewFailed"), errorMessage(error))
         }
       }, 0)
       return () => clearTimeout(timeout)
@@ -457,10 +448,7 @@ export default function TtsSettingsScreen() {
           : await setTtsDefaultEngine({ kind: "system" })
         setConfig(next)
       } catch (error) {
-        showAlertWithStatusBarRestore(
-          t("settings.tts.saveFailed"),
-          describeError(error),
-        )
+        showErrorAlert(t("settings.tts.saveFailed"), errorMessage(error))
       }
     },
     [config, selectedEngineKey, stopPreview, t],
@@ -496,10 +484,7 @@ export default function TtsSettingsScreen() {
           ),
         )
       } catch (error) {
-        showAlertWithStatusBarRestore(
-          t("settings.tts.saveFailed"),
-          describeError(error),
-        )
+        showErrorAlert(t("settings.tts.saveFailed"), errorMessage(error))
       }
     },
     [config, stopPreview, t],
@@ -534,10 +519,7 @@ export default function TtsSettingsScreen() {
         onError: (error) => {
           if (previewGenerationRef.current !== generation) return
           setPreviewState("idle")
-          showAlertWithStatusBarRestore(
-            t("settings.tts.previewFailed"),
-            describeError(error),
-          )
+          showErrorAlert(t("settings.tts.previewFailed"), errorMessage(error))
         },
       })
       return
@@ -582,10 +564,7 @@ export default function TtsSettingsScreen() {
       }
       previewAbortRef.current = null
       setPreviewState("idle")
-      showAlertWithStatusBarRestore(
-        t("settings.tts.previewFailed"),
-        describeError(error),
-      )
+      showErrorAlert(t("settings.tts.previewFailed"), errorMessage(error))
     }
   }, [
     availableVoices,
@@ -611,10 +590,7 @@ export default function TtsSettingsScreen() {
       try {
         setConfig(await setTtsPlayback({ ...config.playback, ...patch }))
       } catch (error) {
-        showAlertWithStatusBarRestore(
-          t("settings.tts.saveFailed"),
-          describeError(error),
-        )
+        showErrorAlert(t("settings.tts.saveFailed"), errorMessage(error))
         void loadConfig()
       }
     },

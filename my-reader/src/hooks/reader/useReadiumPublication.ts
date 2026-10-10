@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/error-presentation"
 import { Manifest, Publication } from "@readium/shared"
 import { useCallback, useEffect, useRef, useState } from "react"
 
@@ -72,7 +73,7 @@ export function useReadiumPublication({
     } catch (e) {
       if (requestId !== activeRequestRef.current) return
       console.error("[useReadiumPublication] Failed to load publication:", e)
-      setError(String(e))
+      setError(errorMessage(e))
       setPublication(null)
     } finally {
       if (requestId === activeRequestRef.current) {

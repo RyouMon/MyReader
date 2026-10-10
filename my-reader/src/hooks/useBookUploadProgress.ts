@@ -1,3 +1,5 @@
+import { errorMessage } from "@/lib/error-presentation"
+import type { ErrorKind } from "@/lib/tauri-api"
 import {
   type QueryClient,
   skipToken,
@@ -20,6 +22,7 @@ export type BookUploadProgressEvent = {
   completed: number
   total: number
   error?: string
+  failure?: ErrorKind
 }
 
 type BookUploadProgressSnapshot = {
@@ -93,7 +96,7 @@ export function applyBookUploadProgressEvent(
   })
   if (event.status === "error") {
     toast.error(i18n.t("bookUpload.failed"), {
-      description: event.error,
+      description: errorMessage(event.failure ?? event.error),
     })
   }
 }

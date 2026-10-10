@@ -142,9 +142,9 @@ describe("useReaderTtsSession", () => {
 
     expect(result.current.state).toMatchObject({
       state: "error",
-      error: "TTS_READER_VIEW_UNAVAILABLE",
+      error: "TTS_UNKNOWN_ERROR",
     })
-    expect(onError).toHaveBeenCalledWith("TTS_READER_VIEW_UNAVAILABLE")
+    expect(onError).toHaveBeenCalledWith("TTS_UNKNOWN_ERROR")
   })
 
   it("should keep the active session running when the viewport moves", async () => {

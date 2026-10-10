@@ -13,6 +13,7 @@ const mockUpdateDataSource = jest.fn()
 const mockDataSources: DataSourceOnedrive[] = []
 
 jest.mock("react-i18next", () => ({
+  ...jest.requireActual("react-i18next"),
   useTranslation: () => ({
     t: (key: string, params?: Record<string, string>) =>
       params ? `${key}:${JSON.stringify(params)}` : key,

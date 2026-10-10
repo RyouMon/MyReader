@@ -22,6 +22,15 @@ describe("native sync exceptions", () => {
     ["Tts", "unexpected"],
     ["Credential", "credential"],
     ["Request", "connectivity"],
+    ["LibraryAlreadyExists", "configuration"],
+    ["LibraryNotFound", "configuration"],
+    ["NoActiveLibrary", "configuration"],
+    ["MetadataDbNotFound", "configuration"],
+    ["LibraryMarkerNotFound", "configuration"],
+    ["LibraryContainsMetadataDb", "data_integrity"],
+    ["LibraryRootNotEmpty", "configuration"],
+    ["LibraryFolderAlreadyExists", "configuration"],
+    ["DataSourceInUse", "configuration"],
   ] as const)("should retain %s recovery semantics and diagnostics", (kind, expected) => {
     const nativeError = new CoreFfiError[kind](
       "network credential 503 diagnostic",

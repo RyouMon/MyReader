@@ -1,8 +1,8 @@
 import { AppState } from "react-native"
 import { Notifier } from "react-native-notifier"
 
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
-import { describeDownloadError } from "@/src/errors/app-errors"
+import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
+import { describeDownloadError } from "@/src/i18n/error-message"
 import i18n from "@/src/i18n"
 import { InAppNotification } from "./in-app-notification"
 
@@ -47,14 +47,14 @@ export function notifyLibraryRefresh(
 export function notifyDownloadState(
   kind: DownloadNotificationKind,
   label: string,
-  detail?: string,
+  detail?: unknown,
 ): void {
   if (!initialized) return
   if (AppState.currentState !== "active") return
 
   if (kind === "error") {
     const error = describeDownloadError(detail ?? label)
-    showAlertWithStatusBarRestore(
+    showErrorAlert(
       error.title,
       detail ? `${label}\n${error.message}` : error.message,
     )

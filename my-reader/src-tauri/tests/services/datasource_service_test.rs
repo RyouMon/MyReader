@@ -293,7 +293,7 @@ async fn test_webdav_connection_should_validate_inputs_and_map_server_status() {
     .await
     .unwrap_err();
     assert!(
-        format!("{err}").contains("WEBDAV_UNAUTHORIZED"),
+        serde_json::to_value(&err).unwrap()["kind"] == "Credential",
         "unexpected error: {err}"
     );
 }
@@ -354,7 +354,10 @@ async fn list_webdav_folders_should_decode_spaced_root_and_map_unexpected_status
     let err = DataSourceService::list_webdav_folders(&dto.id, "/", &config_path, &config)
         .await
         .unwrap_err();
-    assert!(format!("{err}").contains("WEBDAV_UNEXPECTED_STATUS"));
+    assert!(
+        serde_json::to_value(&err).unwrap()["kind"] == "Storage",
+        "unexpected error: {err}"
+    );
 }
 
 #[tokio::test]

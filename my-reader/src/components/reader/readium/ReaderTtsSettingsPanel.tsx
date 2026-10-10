@@ -25,7 +25,8 @@ import {
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import type { EpubTtsSession } from "@/hooks/reader/useEpubTtsSession"
-import { api, formatApiError } from "@/lib/tauri-api"
+import { api } from "@/lib/tauri-api"
+import { errorMessage } from "@/lib/error-presentation"
 import type {
   TtsConfigDto,
   TtsPlaybackPreferencesDto,
@@ -81,7 +82,7 @@ export function ReaderTtsSettingsPanel({
         if (!cancelled) setConfig(next)
       })
       .catch((loadError: unknown) => {
-        if (!cancelled) setError(formatApiError(loadError))
+        if (!cancelled) setError(errorMessage(loadError))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -108,7 +109,7 @@ export function ReaderTtsSettingsPanel({
         ),
       )
     } catch (saveError: unknown) {
-      setError(formatApiError(saveError))
+      setError(errorMessage(saveError))
     } finally {
       setSaving(false)
     }
@@ -125,7 +126,7 @@ export function ReaderTtsSettingsPanel({
       await applyConfig(await api.setTtsPlaybackPreferences(playback))
     } catch (saveError: unknown) {
       setConfig(previous)
-      setError(formatApiError(saveError))
+      setError(errorMessage(saveError))
     } finally {
       setSaving(false)
     }
@@ -161,7 +162,7 @@ export function ReaderTtsSettingsPanel({
 
         {error ? (
           <p
-            className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
+            className="select-text whitespace-pre-wrap break-words rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
             role="alert"
           >
             {error}

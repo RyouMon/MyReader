@@ -1,5 +1,3 @@
-import i18n from "@/src/i18n"
-
 export class AppError extends Error {
   constructor(message: string, options?: ErrorOptions) {
     super(message, options)
@@ -31,13 +29,16 @@ export class SyncConnectivityError extends SyncFailureError {
   }
 }
 
+export class CredentialError extends AppError {}
+
 /** 网络请求失败，通常是临时问题，可以重试。 */
 export class NetworkError extends AppError {
   constructor(
     message: string,
     public readonly statusCode?: number,
+    options?: ErrorOptions,
   ) {
-    super(message)
+    super(message, options)
   }
 }
 
@@ -55,33 +56,4 @@ export class DataSourceInUseError extends AppError {
   ) {
     super(message)
   }
-}
-
-type DownloadErrorInfo = { title: string; message: string }
-
-const CONNECTIVITY_ERROR_INFO: DownloadErrorInfo = {
-  title: i18n.t("errors.sourceUnreachable"),
-  message: i18n.t("errors.sourceUnreachableDetail"),
-}
-
-/**
- * Converts an unknown download error into a user-friendly title + message pair
- * suitable for Alert.alert / showAlertWithStatusBarRestore.
- *
- * Connectivity timeouts (NetworkError without an HTTP status code) get a
- * dedicated message that lists the likely causes. All other errors fall back to
- * showing the raw message under a generic title.
- */
-export function describeDownloadError(err: unknown): DownloadErrorInfo {
-  if (err instanceof NetworkError && err.statusCode === undefined) {
-    return CONNECTIVITY_ERROR_INFO
-  }
-  const message = err instanceof Error ? err.message : String(err)
-  if (
-    message.includes(i18n.t("errors.timeout")) ||
-    /network request failed/i.test(message)
-  ) {
-    return CONNECTIVITY_ERROR_INFO
-  }
-  return { title: i18n.t("errors.downloadFailed"), message }
 }

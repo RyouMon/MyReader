@@ -1,10 +1,13 @@
+import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
+import { appendErrorDetail, errorMessageKey } from "@my-reader/i18n/mobile"
+import { errorMessage } from "@/src/i18n/error-message"
 import type { MobileTranslationKey } from "@my-reader/i18n/mobile"
 import type { DataSourceWebdav } from "@my-reader/tools/types/data-source"
 import { useForm, useStore } from "@tanstack/react-form"
 import { router, Stack, useLocalSearchParams } from "expo-router"
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Alert, TextInput as RNTextInput } from "react-native"
+import { TextInput as RNTextInput } from "react-native"
 import { z } from "zod"
 import {
   EmptyState,
@@ -266,28 +269,35 @@ export default function AddWebDavDataSourceScreen() {
         password: effectivePassword,
       })
       if (!testResult.ok) {
-        Alert.alert(t("webdav.add.connectionTestFailed"), testResult.message, [
-          { text: t("webdav.add.reEnter"), style: "cancel" },
-          {
-            text: t(editing ? "webdav.add.saveAnyway" : "webdav.add.addAnyway"),
-            onPress: () => {
-              setSaving(true)
-              void persistDataSource(source, effectivePassword).finally(() =>
-                setSaving(false),
-              )
+        showErrorAlert(
+          t("webdav.add.connectionTestFailed"),
+          appendErrorDetail(t(errorMessageKey(testResult.errorKind)), {
+            kind: testResult.errorKind,
+            message: testResult.message,
+          }),
+          [
+            { text: t("webdav.add.reEnter"), style: "cancel" },
+            {
+              text: t(
+                editing ? "webdav.add.saveAnyway" : "webdav.add.addAnyway",
+              ),
+              onPress: () => {
+                setSaving(true)
+                void persistDataSource(source, effectivePassword).finally(() =>
+                  setSaving(false),
+                )
+              },
             },
-          },
-        ])
+          ],
+        )
         return
       }
 
       await persistDataSource(source, effectivePassword)
     } catch (caught) {
-      Alert.alert(
+      showErrorAlert(
         t(editing ? "webdav.add.updateFailed" : "webdav.add.addFailed"),
-        caught instanceof Error
-          ? caught.message
-          : t("webdav.add.addFailedMessage"),
+        errorMessage(caught),
       )
     } finally {
       setSaving(false)

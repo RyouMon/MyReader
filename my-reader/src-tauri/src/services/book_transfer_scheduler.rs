@@ -1,3 +1,4 @@
+use crate::error::{AppError, ErrorKind};
 use std::{
     collections::HashMap,
     path::PathBuf,
@@ -30,6 +31,7 @@ struct BookUploadProgressPayload {
     completed: u64,
     total: u64,
     error: Option<String>,
+    failure: Option<ErrorKind>,
 }
 
 struct BookUploadEventObserver {
@@ -58,7 +60,7 @@ impl BookUploadEventObserver {
         }
     }
 
-    fn emit_error(&self, error: &str) {
+    fn emit_error(&self, error: &AppError) {
         let book_uuid = self
             .current_book_uuid
             .lock()
@@ -70,7 +72,8 @@ impl BookUploadEventObserver {
             status: "error".into(),
             completed: 0,
             total: 0,
-            error: Some(error.to_owned()),
+            error: Some(error.to_string()),
+            failure: Some(error.as_kind()),
         });
     }
 }
@@ -90,6 +93,7 @@ impl BookUploadObserver for BookUploadEventObserver {
             completed: progress.completed,
             total: progress.total,
             error: None,
+            failure: None,
         });
     }
 }
@@ -158,6 +162,7 @@ impl BookTransferScheduler {
                 completed: 0,
                 total: 0,
                 error: None,
+                failure: None,
             },
         );
         self.request(library_id);
@@ -223,6 +228,7 @@ impl BookTransferScheduler {
                         completed: 0,
                         total: 0,
                         error: None,
+                        failure: None,
                     });
                 }
                 for book_uuid in &report.unavailable_book_uuids {
@@ -233,6 +239,7 @@ impl BookTransferScheduler {
                         completed: 0,
                         total: 0,
                         error: Some("PENDING_BOOK_FILE_UNAVAILABLE".into()),
+                        failure: Some(ErrorKind::NotFound("PENDING_BOOK_FILE_UNAVAILABLE".into())),
                     });
                 }
                 if report.completed_book_uuids.is_empty() {
@@ -261,9 +268,10 @@ impl BookTransferScheduler {
                 completed: 0,
                 total: 0,
                 error: None,
+                failure: None,
             }),
             Err(error) => {
-                observer.emit_error(&error.to_string());
+                observer.emit_error(&error);
                 error!(
                     target: "myreader_book_transfer",
                     library_id,

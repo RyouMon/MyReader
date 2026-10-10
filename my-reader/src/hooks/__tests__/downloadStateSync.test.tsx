@@ -401,7 +401,9 @@ describe("download state synchronization", () => {
     expect(screen.getByTestId("home-status")).toHaveTextContent("remote_only")
     expect(toastMock.error).toHaveBeenCalledWith(
       "下载失败",
-      expect.objectContaining({ description: "network failed" }),
+      expect.objectContaining({
+        description: "未能完成此操作，请重试。\nnetwork failed",
+      }),
     )
   })
 
@@ -697,7 +699,7 @@ describe("download state synchronization", () => {
     expect(toastMock.error).toHaveBeenCalledWith(
       "上传失败",
       expect.objectContaining({
-        description: "STORAGE_ERROR: token expired",
+        description: "未能完成此操作，请重试。\nSTORAGE_ERROR: token expired",
       }),
     )
   })

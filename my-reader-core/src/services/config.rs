@@ -241,10 +241,7 @@ impl ConfigService {
                 .map(|library| library.name.clone())
                 .collect::<Vec<_>>();
             if !library_names.is_empty() {
-                return Err(CoreError::Config(format!(
-                    "DATA_SOURCE_IN_USE: {}",
-                    library_names.join("、")
-                )));
+                return Err(CoreError::DataSourceInUse(library_names));
             }
 
             let before = state.data_sources.len();
@@ -289,7 +286,7 @@ impl ConfigService {
                 .libraries
                 .iter_mut()
                 .find(|existing| existing.id == library.id)
-                .ok_or_else(|| CoreError::NotFound(format!("LIBRARY_NOT_FOUND: {}", library.id)))?;
+                .ok_or_else(|| CoreError::LibraryNotFound(library.id.clone()))?;
             *existing = library;
             Ok(())
         })
@@ -308,7 +305,7 @@ impl ConfigService {
         let _guard = lock_config();
         mutate(path, |state| {
             if !state.libraries.iter().any(|library| library.id == id) {
-                return Err(CoreError::NotFound(format!("LIBRARY_NOT_FOUND: {id}")));
+                return Err(CoreError::LibraryNotFound(id.to_owned()));
             }
             state.active_library_id = Some(id.to_owned());
             Ok(())
@@ -442,7 +439,7 @@ fn validate_config(state: &AppConfig) -> Result<(), CoreError> {
             .iter()
             .any(|library| &library.id == active_id)
         {
-            return Err(CoreError::Config("ACTIVE_LIBRARY_NOT_FOUND".into()));
+            return Err(CoreError::NoActiveLibrary);
         }
     }
     Ok(())
@@ -553,7 +550,7 @@ fn ensure_library_can_add_in(state: &AppConfig, library: &Library) -> Result<(),
             || existing.path == library.path
             || same_remote_library(existing, library)
     }) {
-        return Err(CoreError::Config("LIBRARY_ALREADY_EXISTS".into()));
+        return Err(CoreError::LibraryAlreadyExists);
     }
     Ok(())
 }

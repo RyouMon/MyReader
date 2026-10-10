@@ -25,7 +25,7 @@ import {
   setTtsVoice,
   synthesizeTts,
 } from "@/src/services/core/tts"
-import { describeError } from "@/src/utils/common"
+import { appErrorKind } from "@/src/errors/kind"
 import {
   buildReaderTtsEngineConfig,
   buildReaderTtsSynthesisRequest,
@@ -275,7 +275,7 @@ export function useReaderTtsSession({
           type: "playback",
           sessionId,
           status: "error",
-          error: describeError(error),
+          error: readerTtsFailureCode(error),
         })
         presentTransitionError(sessionId, failed)
       }
@@ -339,7 +339,7 @@ export function useReaderTtsSession({
           type: "playback",
           sessionId,
           status: "error",
-          error: describeError(error),
+          error: readerTtsFailureCode(error),
         })
         presentTransitionError(sessionId, failed)
       }
@@ -606,7 +606,7 @@ export function useReaderTtsSession({
         readerRef.current?.completeTtsSynthesis({
           sessionId: request.sessionId,
           requestId: request.requestId,
-          error: describeError(error),
+          error: readerTtsFailureCode(error),
         })
       } finally {
         if (
@@ -657,4 +657,12 @@ export function useReaderTtsSession({
     handleSynthesisRequest,
     handleSynthesisCancel,
   }
+}
+
+function readerTtsFailureCode(error: unknown): string {
+  console.warn("Reader TTS failed", error)
+  const kind = appErrorKind(error)
+  return kind === "Storage" || kind === "Request" || kind === "Network"
+    ? "TTS_PROVIDER_UNAVAILABLE"
+    : "TTS_UNKNOWN_ERROR"
 }

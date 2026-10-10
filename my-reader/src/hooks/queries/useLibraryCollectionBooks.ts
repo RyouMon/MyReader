@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/error-presentation"
 import type { CalibreBook } from "@my-reader/tools/types/book"
 import type { BuiltInBookCollectionId } from "@my-reader/tools/types/book-collection"
 import { useMemo } from "react"
@@ -61,7 +62,7 @@ export function useLibraryCollectionBooks({
       books: favoriteBooks,
       total: favorites.data?.total ?? 0,
       initialLoading: favorites.isLoading,
-      error: favorites.error ? String(favorites.error) : null,
+      error: favorites.error ? errorMessage(favorites.error) : null,
       ensureRange: () => undefined,
       refresh: () => void favorites.refetch(),
     }

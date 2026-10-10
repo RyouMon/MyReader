@@ -7,7 +7,7 @@ import {
   type QwenTtsPreset,
   type TtsVoice,
 } from "@/src/services/core/tts"
-import { describeError } from "@/src/utils/common"
+import { errorMessage } from "@/src/i18n/error-message"
 
 export function qwenModelFields(model: QwenTtsModel) {
   return {
@@ -77,7 +77,7 @@ export function useQwenTtsForm(draft: QwenTtsFormDraft) {
           if (!controller.signal.aborted) setDiscovered(voices)
         })
         .catch((cause) => {
-          if (!controller.signal.aborted) setError(describeError(cause))
+          if (!controller.signal.aborted) setError(errorMessage(cause))
         })
         .finally(() => {
           if (!controller.signal.aborted) setLoading(false)

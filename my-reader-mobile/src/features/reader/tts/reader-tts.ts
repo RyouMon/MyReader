@@ -34,7 +34,6 @@ export type ReaderTtsErrorPresentation =
   | { kind: "noVoices" }
   | { kind: "unknown" }
   | { kind: "providerUnavailable" }
-  | { kind: "engine"; message: string }
 
 export type ReaderTtsViewportRelation = "before" | "after" | null
 
@@ -128,13 +127,13 @@ export function classifyReaderTtsError(
     return { kind: "unknown" }
   }
   if (
-    error.includes("TTS_PROVIDER_UNAVAILABLE") ||
-    error.includes("TTS_NETWORK_ERROR") ||
-    error.includes("TTS_REQUEST_TIMEOUT")
+    error === "TTS_PROVIDER_UNAVAILABLE" ||
+    error === "TTS_NETWORK_ERROR" ||
+    error === "TTS_REQUEST_TIMEOUT"
   ) {
     return { kind: "providerUnavailable" }
   }
-  return { kind: "engine", message: error }
+  return { kind: "unknown" }
 }
 
 function normalizedLanguage(language: string | undefined): string {

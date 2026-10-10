@@ -1,3 +1,4 @@
+import { apiErrorKind } from "@/lib/api-error"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import type {
   DataSource,
@@ -134,7 +135,7 @@ export function useDataSourceMutations() {
           typeof error === "object" && error !== null && "message" in error
             ? String((error as Record<string, unknown>).message)
             : String(error)
-        return { ok: false, message: raw }
+        return { ok: false, message: raw, errorKind: apiErrorKind(error) }
       }
     },
   })

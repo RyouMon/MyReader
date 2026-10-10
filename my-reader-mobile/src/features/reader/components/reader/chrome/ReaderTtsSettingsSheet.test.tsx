@@ -149,6 +149,7 @@ jest.mock("@react-native-menu/menu", () => ({
 }))
 
 jest.mock("react-i18next", () => ({
+  ...jest.requireActual("react-i18next"),
   useTranslation: () => ({
     t: (key: string) => key,
     i18n: { resolvedLanguage: "en", language: "en" },

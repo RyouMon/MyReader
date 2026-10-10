@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/error-presentation"
 import { useQueryClient } from "@tanstack/react-query"
 import { Download, Loader2, Trash2, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -206,7 +207,7 @@ function useBookFormatFileAction({
           `Failed to download book file from detail. library id: "${libraryId}", book id: ${bookId}, format: "${fmt}", error:`,
           err,
         )
-        setDownloadError(libraryId, bookId, fmt, String(err), queryClient)
+        setDownloadError(libraryId, bookId, fmt, err, queryClient)
         setPending(false)
         setCancelRequested(false)
         cancelAfterStartRef.current = false
@@ -234,7 +235,7 @@ function useBookFormatFileAction({
           err,
         )
         toast.error(t("bookDetail.deleteFileFailed"), {
-          description: String(err),
+          description: errorMessage(err),
         })
       })
   }, [libraryId, bookId, fmt, invalidateFileState, queryClient, t])
@@ -255,7 +256,7 @@ function useBookFormatFileAction({
           err,
         )
         toast.error(t("bookDetail.cancelDownloadFailed"), {
-          description: String(err),
+          description: errorMessage(err),
         })
         setDownloadStarting(libraryId, bookId, fmt, queryClient)
       })

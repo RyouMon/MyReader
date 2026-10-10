@@ -65,6 +65,7 @@
     "expo-audio": "~57.0.5",
     "expo-blur": "~57.0.3",
     "expo-build-properties": "~57.0.22",
+    "expo-clipboard": "~57.0.2",
     "expo-constants": "~57.0.21",
     "expo-crypto": "~57.0.3",
     "expo-dev-client": "~57.0.19",
@@ -133,7 +134,7 @@
   "jest": {
     "preset": "jest-expo",
     "transformIgnorePatterns": [
-      "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|@formatjs|react-navigation|@react-navigation|standard-navigation|@sentry/react-native|native-base|decode-uri-component))",
+      "/node_modules/(?!(.pnpm|ky|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|@formatjs|react-navigation|@react-navigation|standard-navigation|@sentry/react-native|native-base|decode-uri-component))",
       "/node_modules/react-native-reanimated/plugin/",
       "/node_modules/@react-native/babel-preset/"
     ],

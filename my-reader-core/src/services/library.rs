@@ -181,9 +181,7 @@ impl LibraryService {
         let requested_library_root = request.library_root_path.trim();
         let library_root = resolve_existing_library_root(requested_library_root)?;
         if library_root.join("metadata.db").exists() {
-            return Err(CoreError::DataIntegrity(
-                "MYREADER_LIBRARY_CONTAINS_METADATA_DB".into(),
-            ));
+            return Err(CoreError::LibraryContainsMetadataDb);
         }
         let marker = Self::read_myreader_marker(&library_root)?;
         let root = library_root
@@ -367,7 +365,11 @@ impl LibraryService {
     pub fn read_myreader_marker(library_root: &Path) -> Result<MyReaderLibraryMarker, CoreError> {
         let path = library_root.join(MYREADER_LIBRARY_MARKER_RELATIVE_PATH);
         let bytes = std::fs::read(&path).map_err(|error| {
-            CoreError::NotFound(format!("MYREADER_LIBRARY_MARKER_NOT_FOUND: {error}"))
+            if error.kind() == std::io::ErrorKind::NotFound {
+                CoreError::LibraryMarkerNotFound(path.display().to_string())
+            } else {
+                error.into()
+            }
         })?;
         let marker = serde_json::from_slice::<MyReaderLibraryMarker>(&bytes).map_err(|error| {
             CoreError::DataIntegrity(format!("MYREADER_LIBRARY_MARKER_INVALID: {error}"))
@@ -395,7 +397,7 @@ impl LibraryService {
             .iter()
             .find(|library| library.id == library_id)
             .cloned()
-            .ok_or_else(|| CoreError::NotFound(format!("LIBRARY_NOT_FOUND: {library_id}")))?;
+            .ok_or_else(|| CoreError::LibraryNotFound(library_id.to_owned()))?;
         if library.library_type != LibraryType::MyReader {
             return Err(CoreError::Config("LIBRARY_NOT_MYREADER".into()));
         }
@@ -435,9 +437,7 @@ impl LibraryService {
             ));
         }
         if library_root.join("metadata.db").exists() {
-            return Err(CoreError::DataIntegrity(
-                "MYREADER_LIBRARY_CONTAINS_METADATA_DB".into(),
-            ));
+            return Err(CoreError::LibraryContainsMetadataDb);
         }
         let marker = Self::read_myreader_marker(library_root)?;
         crate::database::open_db(&sidecar_root.to_string_lossy()).await?;
@@ -458,10 +458,9 @@ impl LibraryService {
         let library_root = dunce::canonicalize(requested_library_root)
             .map_err(|error| CoreError::Config(format!("INVALID_LIBRARY_PATH: {error}")))?;
         if !crate::services::catalog::CatalogService::validate_library(&library_root) {
-            return Err(CoreError::NotFound(format!(
-                "METADATA_DB_NOT_FOUND: {}",
-                library_root.display()
-            )));
+            return Err(CoreError::MetadataDbNotFound(
+                library_root.display().to_string(),
+            ));
         }
 
         let requested_path = request.path.trim();
@@ -580,7 +579,7 @@ impl LibraryService {
             .iter()
             .find(|library| library.id == library_id)
             .cloned()
-            .ok_or_else(|| CoreError::NotFound(format!("LIBRARY_NOT_FOUND: {library_id}")))?;
+            .ok_or_else(|| CoreError::LibraryNotFound(library_id.to_owned()))?;
         if library.library_type != LibraryType::Calibre {
             return Err(CoreError::Config("LIBRARY_NOT_CALIBRE".into()));
         }
@@ -653,7 +652,7 @@ fn resolve_empty_library_root(value: &str) -> Result<(PathBuf, bool), CoreError>
             return Err(CoreError::Config("LIBRARY_ROOT_NOT_DIRECTORY".into()));
         }
         if std::fs::read_dir(&root)?.next().transpose()?.is_some() {
-            return Err(CoreError::Config("LIBRARY_ROOT_NOT_EMPTY".into()));
+            return Err(CoreError::LibraryRootNotEmpty);
         }
     }
     Ok((root, !existed))
@@ -912,7 +911,7 @@ async fn ensure_remote_myreader_create_target(
     // OpenDAL 0.51's OneDrive backend reports every missing path ending in `/`
     // as an empty directory, so only stat the normalized target path.
     if remote_path_exists(operator, source_path).await? {
-        return Err(CoreError::Config("LIBRARY_FOLDER_ALREADY_EXISTS".into()));
+        return Err(CoreError::LibraryFolderAlreadyExists);
     }
     let entries = match operator.list(&prefix).await {
         Ok(entries) => entries,
@@ -923,7 +922,7 @@ async fn ensure_remote_myreader_create_target(
         let relative = entry.path().trim_end_matches('/');
         relative != source_path.trim_end_matches('/')
     }) {
-        return Err(CoreError::Config("LIBRARY_FOLDER_ALREADY_EXISTS".into()));
+        return Err(CoreError::LibraryFolderAlreadyExists);
     }
     Ok(())
 }
@@ -981,7 +980,7 @@ async fn read_remote_myreader_marker(
     let path = storage::join_remote_path(source_path, MYREADER_LIBRARY_MARKER_RELATIVE_PATH)?;
     let bytes = operator.read(&path).await.map_err(|error| {
         if error.kind() == opendal::ErrorKind::NotFound {
-            CoreError::NotFound("REMOTE_MYREADER_LIBRARY_MARKER_NOT_FOUND".into())
+            CoreError::LibraryMarkerNotFound(path.clone())
         } else {
             storage::storage_error(error)
         }
@@ -1082,10 +1081,13 @@ pub(super) async fn download_and_validate_metadata(
     destination: &Path,
 ) -> Result<u64, CoreError> {
     let remote_path = storage::join_remote_path(source_path, "metadata.db")?;
-    let bytes = operator
-        .read(&remote_path)
-        .await
-        .map_err(storage::storage_error)?;
+    let bytes = operator.read(&remote_path).await.map_err(|error| {
+        if error.kind() == opendal::ErrorKind::NotFound {
+            CoreError::MetadataDbNotFound(remote_path.clone())
+        } else {
+            storage::storage_error(error)
+        }
+    })?;
     if bytes.is_empty() {
         return Err(CoreError::Storage("REMOTE_METADATA_DB_EMPTY".into()));
     }
@@ -1201,6 +1203,22 @@ mod tests {
     use zip::{write::SimpleFileOptions, CompressionMethod, ZipWriter};
 
     use super::*;
+
+    #[test]
+    fn marker_read_errors_only_report_missing_when_the_file_is_absent() {
+        let directory = tempfile::tempdir().unwrap();
+        assert!(matches!(
+            LibraryService::read_myreader_marker(directory.path()),
+            Err(CoreError::LibraryMarkerNotFound(_))
+        ));
+        // A directory at the file path is an I/O failure, not permission to try Calibre.
+        std::fs::create_dir_all(directory.path().join(MYREADER_LIBRARY_MARKER_RELATIVE_PATH))
+            .unwrap();
+        assert!(matches!(
+            LibraryService::read_myreader_marker(directory.path()),
+            Err(CoreError::Io(_))
+        ));
+    }
 
     fn seed_calibre_database(path: &Path) {
         let connection = rusqlite::Connection::open(path).unwrap();

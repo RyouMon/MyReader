@@ -9,7 +9,7 @@ use tauri::{AppHandle, Emitter, Runtime};
 use tokio::io::AsyncWriteExt;
 use tracing::{debug, info, warn};
 
-use crate::error::AppError;
+use crate::error::{AppError, ErrorKind};
 use crate::models::{
     AppConfig, BookFileStateDto, FileStateDto, FileStateRequestDto, LibraryConfig,
 };
@@ -31,6 +31,7 @@ pub struct DownloadProgressPayload {
     pub bytes_written: i64,
     pub total_bytes: Option<i64>,
     pub error: Option<String>,
+    pub failure: Option<ErrorKind>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -42,7 +43,7 @@ fn emit_download_progress<R: Runtime>(
     status: &str,
     bytes_written: u64,
     total_bytes: Option<u64>,
-    error: Option<String>,
+    error: Option<&AppError>,
 ) {
     let event_name = format!("download_progress/{library_id}/{book_id}/{format}");
     let payload = DownloadProgressPayload {
@@ -52,7 +53,8 @@ fn emit_download_progress<R: Runtime>(
         status: status.to_string(),
         bytes_written: bytes_written as i64,
         total_bytes: total_bytes.map(|v| v as i64),
-        error,
+        error: error.map(ToString::to_string),
+        failure: error.map(AppError::as_kind),
     };
     if let Err(e) = app.emit("download_progress", payload.clone()) {
         debug!("Failed to emit global download progress event. error: {e}");
@@ -359,7 +361,7 @@ impl DownloadService {
             "error",
             0,
             None,
-            Some(error.to_string()),
+            Some(error),
         );
     }
 

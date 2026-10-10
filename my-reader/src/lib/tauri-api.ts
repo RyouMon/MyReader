@@ -13,6 +13,10 @@ function unwrap<T>(promise: Promise<Result<T>>): Promise<T> {
   return promise.then((r) => {
     if (r.status === "error") {
       const err = new Error(r.error.message)
+      Object.defineProperty(err, "cause", {
+        value: r.error,
+        configurable: true,
+      })
       ;(err as Error & { kind: string }).kind = r.error.kind
       throw err
     }

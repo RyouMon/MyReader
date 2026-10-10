@@ -19,10 +19,10 @@ jest.mock("./in-app-notification", () => ({
 }))
 
 jest.mock("@/src/constants/alert-with-status-bar", () => ({
-  showAlertWithStatusBarRestore: jest.fn(),
+  showErrorAlert: jest.fn(),
 }))
 
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
 import { Notifier } from "react-native-notifier"
 import {
   initializeDownloadNotifications,
@@ -38,16 +38,16 @@ describe("download notifications", () => {
     jest.clearAllMocks()
   })
 
-  it("should show the complete reason in an alert when a download fails", () => {
+  it("should append raw diagnostic details in a failed download alert", () => {
     notifyDownloadState(
       "error",
       "The Dispossessed · EPUB",
       "HTTP 404: file not found",
     )
 
-    expect(showAlertWithStatusBarRestore).toHaveBeenCalledWith(
+    expect(showErrorAlert).toHaveBeenCalledWith(
       "Download failed",
-      "The Dispossessed · EPUB\nHTTP 404: file not found",
+      "The Dispossessed · EPUB\nThis action could not be completed. Please try again.\nHTTP 404: file not found",
     )
     expect(Notifier.showNotification).not.toHaveBeenCalled()
   })
@@ -61,6 +61,6 @@ describe("download notifications", () => {
         description: "The Dispossessed · EPUB",
       }),
     )
-    expect(showAlertWithStatusBarRestore).not.toHaveBeenCalled()
+    expect(showErrorAlert).not.toHaveBeenCalled()
   })
 })

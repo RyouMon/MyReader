@@ -60,7 +60,8 @@ import {
   setDownloadStarting,
 } from "@/hooks/useDownloadProgress"
 import { resolveReadFormat } from "@/lib/readFormats"
-import { api, formatApiError } from "@/lib/tauri-api"
+import { api } from "@/lib/tauri-api"
+import { errorMessage } from "@/lib/error-presentation"
 import { cn } from "@/lib/utils"
 import { BookShareSubMenu } from "./BookShareMenu"
 
@@ -707,11 +708,11 @@ function BookFormatActionMenuItem({
       }
     } catch (err) {
       if (resolvedAction === "download") {
-        setDownloadError(libraryId, bookId, fmt, String(err), queryClient)
+        setDownloadError(libraryId, bookId, fmt, err, queryClient)
       } else if (resolvedAction === "upload" && bookUuid) {
         clearBookUploadProgress(libraryId, bookUuid, queryClient)
         toast.error(t("bookUpload.failed"), {
-          description: formatApiError(err),
+          description: errorMessage(err),
         })
       } else {
         await invalidateFileState()
@@ -721,7 +722,7 @@ function BookFormatActionMenuItem({
               ? "bookDetail.cancelDownloadFailed"
               : "bookDetail.deleteFileFailed",
           ),
-          { description: formatApiError(err) },
+          { description: errorMessage(err) },
         )
       }
       console.error(

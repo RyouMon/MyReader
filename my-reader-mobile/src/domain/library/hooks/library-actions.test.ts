@@ -1,3 +1,4 @@
+import { CoreFfiError } from "my-reader-core/src/generated/my_reader_core_ffi"
 import type { DataSource } from "@my-reader/tools/types/data-source"
 import type { Library } from "@my-reader/tools/types/library"
 import { Platform } from "react-native"
@@ -747,7 +748,7 @@ describe("openRemoteExistingLibrary", () => {
 
   it("should fall back to Calibre only when the MyReader marker is absent", async () => {
     mockOpenRemoteMyReaderLibrary.mockRejectedValue(
-      new Error("REMOTE_MYREADER_LIBRARY_MARKER_NOT_FOUND"),
+      new CoreFfiError.LibraryMarkerNotFound("diagnostic changed"),
     )
     mockAddRemoteLibrary.mockResolvedValue({ library, config })
 
@@ -759,7 +760,9 @@ describe("openRemoteExistingLibrary", () => {
   })
 
   it("should preserve a damaged MyReader library error", async () => {
-    const error = new Error("MYREADER_LIBRARY_MARKER_INVALID")
+    const error = new Error(
+      "MYREADER_LIBRARY_MARKER_NOT_FOUND is only diagnostic context",
+    )
     mockOpenRemoteMyReaderLibrary.mockRejectedValue(error)
 
     await expect(

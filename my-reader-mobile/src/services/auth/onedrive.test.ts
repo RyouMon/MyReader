@@ -23,7 +23,11 @@ jest.mock("../storage/credentials", () => ({
     mockWriteRefreshToken(...args),
 }))
 
-import { invalidateOneDriveAccessToken, refreshAccessToken } from "./onedrive"
+import {
+  invalidateOneDriveAccessToken,
+  refreshAccessToken,
+  isUserCancelled,
+} from "./onedrive"
 
 function accessToken(expirationMs: number): string {
   const payload = btoa(JSON.stringify({ exp: Math.floor(expirationMs / 1000) }))
@@ -106,5 +110,27 @@ describe("OneDrive access token refresh", () => {
       expect.objectContaining({ accessToken: "replacement-token" }),
     )
     expect(mockRefresh).toHaveBeenCalledTimes(1)
+  })
+})
+
+it("recognizes only structured login cancellation", () => {
+  expect(
+    isUserCancelled({ code: "user_cancelled", message: "changed text" }),
+  ).toBe(true)
+  expect(isUserCancelled(new Error("error -3 user cancelled"))).toBe(false)
+})
+
+it.each([
+  ["invalid_grant", "CredentialError"],
+  ["network_error", "NetworkError"],
+  ["configuration_error", "SyncConfigError"],
+])("preserves the cause and category of %s", async (code, name) => {
+  const original = Object.assign(new Error("401 network diagnostic"), { code })
+  mockReadAccessToken.mockResolvedValue(null)
+  mockReadRefreshToken.mockResolvedValue("refresh-token")
+  mockRefresh.mockRejectedValue(original)
+  await expect(refreshAccessToken(`failure-${code}`)).rejects.toMatchObject({
+    name,
+    cause: original,
   })
 })

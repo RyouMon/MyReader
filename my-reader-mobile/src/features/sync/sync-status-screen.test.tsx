@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react-native"
 
 import SyncStatusScreen from "./sync-status-screen"
+import type { LibrarySyncHistory } from "@/src/store/sync-status-slice"
 
 const mockSyncNow = jest.fn((_libraryId: string, _options?: unknown) =>
   Promise.resolve({}),
@@ -23,20 +24,7 @@ let mockPresentation = {
         reason: "manual" | "local_change" | "automatic_check"
       }
     | undefined,
-  history: undefined as
-    | {
-        lastSync?: {
-          completedAt: number
-          reason?: "manual" | "local_change" | "automatic_check"
-        }
-        lastFailure?: {
-          completedAt: number
-          failureStage?: "preparing" | "pushing" | "pulling" | "applying"
-          message?: string
-          reason?: "manual" | "local_change" | "automatic_check"
-        }
-      }
-    | undefined,
+  history: undefined as LibrarySyncHistory | undefined,
   transientResult: undefined as
     | {
         result: "unchanged"
@@ -71,7 +59,8 @@ jest.mock("react-native-safe-area-context", () => ({
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: (key: string, options?: { title?: string }) =>
+      options?.title ? `${key}: ${options.title}` : key,
     i18n: { language: "en" },
   }),
 }))
@@ -204,6 +193,7 @@ describe("SyncStatusScreen", () => {
         lastFailure: {
           completedAt: Date.now(),
           failureStage: "applying",
+          failureKind: "data_integrity",
           message: "History is damaged",
         },
       },
@@ -214,7 +204,54 @@ describe("SyncStatusScreen", () => {
 
     expect(screen.getByText("syncStatus.failureStage")).toBeTruthy()
     expect(screen.getByText("syncStatus.stage.applying")).toBeTruthy()
-    expect(screen.getByText("History is damaged")).toBeTruthy()
+    expect(
+      screen.getByText(
+        "syncStatus.failure.data_integrity.detail\ndata_integrity: History is damaged",
+      ),
+    ).toBeTruthy()
+  })
+
+  it.each([
+    "connectivity",
+    "credential",
+    "configuration",
+    "data_integrity",
+    "unexpected",
+    undefined,
+  ] as const)("should append %s diagnostics to selectable localized guidance", (failureKind) => {
+    mockPresentation = {
+      ...mockPresentation,
+      history: {
+        lastFailure: {
+          completedAt: Date.now(),
+          failureKind,
+          message: "network credential 503 INTERNAL_DIAGNOSTIC",
+        },
+      },
+      indicator: "failed",
+    }
+    render(<SyncStatusScreen />)
+    expect(
+      screen.getByText(
+        `syncStatus.failureSummary: syncStatus.failure.${failureKind ?? "unexpected"}.title`,
+      ),
+    ).toBeTruthy()
+    const detail = screen.getByText(
+      `syncStatus.failure.${failureKind ?? "unexpected"}.detail\n${failureKind ? `${failureKind}: ` : ""}network credential 503 INTERNAL_DIAGNOSTIC`,
+    )
+    expect(detail.props.selectable).toBe(true)
+  })
+
+  it("should show a failure even when the diagnostic message is missing", () => {
+    mockPresentation = {
+      ...mockPresentation,
+      history: { lastFailure: { completedAt: Date.now() } },
+      indicator: "failed",
+    }
+    render(<SyncStatusScreen />)
+    expect(
+      screen.getByText("syncStatus.failure.unexpected.detail"),
+    ).toBeTruthy()
   })
 
   it("should show the current trigger reason while syncing", () => {

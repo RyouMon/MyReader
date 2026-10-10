@@ -44,7 +44,7 @@ async fn get_reading_progress_should_return_not_found_when_no_active_library() {
         json!({ "libraryId": null, "bookId": 1, "format": "EPUB" }),
     );
 
-    assert!(err.is_kind("NotFound"), "kind was {}", err.kind);
+    assert!(err.is_kind("NoActiveLibrary"), "kind was {}", err.kind);
     assert!(
         err.message.contains("NO_ACTIVE_LIBRARY"),
         "message was {}",
@@ -62,7 +62,7 @@ async fn get_reading_progress_should_return_not_found_when_library_id_is_unknown
         json!({ "libraryId": "lib-ghost", "bookId": 1, "format": "EPUB" }),
     );
 
-    assert!(err.is_kind("NotFound"), "kind was {}", err.kind);
+    assert!(err.is_kind("LibraryNotFound"), "kind was {}", err.kind);
     assert!(
         err.message.contains("LIBRARY_NOT_FOUND"),
         "message was {}",

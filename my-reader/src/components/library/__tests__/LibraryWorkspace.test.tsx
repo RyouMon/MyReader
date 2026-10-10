@@ -185,7 +185,9 @@ describe("LibraryWorkspace", () => {
       refetch: mocks.refetchFavorites,
     })
     renderWorkspace()
-    expect(screen.getByText("Error: 离线")).toBeInTheDocument()
+    expect(
+      screen.getByText("未能完成此操作，请重试。 Error: 离线"),
+    ).toBeInTheDocument()
     await userEvent.setup().click(screen.getByRole("button", { name: "重试" }))
     expect(mocks.refetchFavorites).toHaveBeenCalledOnce()
     expect(mocks.refresh).not.toHaveBeenCalled()

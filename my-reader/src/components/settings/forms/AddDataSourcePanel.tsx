@@ -1,3 +1,5 @@
+import { errorMessageKey } from "@my-reader/i18n/desktop"
+import { errorMessage } from "@/lib/error-presentation"
 import type {
   DataSource,
   DataSourceWebdav,
@@ -64,7 +66,7 @@ export function AddDataSourceForm({
       const dataSource = await onCreateDataSource(input)
       onCreated?.(dataSource)
     } catch (error) {
-      setSubmitError(String(error))
+      setSubmitError(errorMessage(error))
       throw error
     } finally {
       setSubmitting(false)
@@ -119,7 +121,7 @@ export function AddDataSourceForm({
                 tone: result.ok ? "success" : "error",
                 message: result.ok
                   ? t("addDataSourceForm.testSuccess")
-                  : result.message,
+                  : t(errorMessageKey(result.errorKind)),
               })
             } finally {
               setTesting(false)

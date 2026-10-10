@@ -96,6 +96,7 @@
     "unread": "Non letto"
   },
   "common": {
+    "copy": "Copia",
     "cancel": "Annulla",
     "close": "Chiudi",
     "delete": "Elimina",
@@ -206,6 +207,7 @@
     "lastSync": "Ultima sincronizzazione",
     "lastAttempt": "Ultimo tentativo",
     "noHistory": "Nessuna cronologia di sincronizzazione",
+    "failureSummary": "Sincronizzazione non riuscita: {{title}}",
     "failureReason": "Motivo del fallimento",
     "failureStage": "Fase di guasto",
     "progress": "{{completed}} / {{total}}",
@@ -216,6 +218,28 @@
     "noActiveLibrary": "Nessuna libreria da sincronizzare",
     "noActiveLibraryDetail": "Aggiungi una libreria per avviare la sincronizzazione.",
     "activeLibraryChanged": "La libreria corrente è cambiata. Per favore riprova.",
+    "failure": {
+      "connectivity": {
+        "title": "Connessione non riuscita",
+        "detail": "Controlla la connessione di rete e che l’origine dati sia disponibile, quindi riprova a sincronizzare."
+      },
+      "credential": {
+        "title": "Controlla l’accesso all’origine dati",
+        "detail": "Accedi di nuovo o aggiorna le credenziali dell’origine dati e verifica che questo account possa accedere alla libreria."
+      },
+      "configuration": {
+        "title": "Controlla le impostazioni della libreria",
+        "detail": "Controlla la posizione della libreria e le impostazioni dell’origine dati, quindi riprova a sincronizzare."
+      },
+      "data_integrity": {
+        "title": "I dati di sincronizzazione vanno controllati",
+        "detail": "Alcuni dati di sincronizzazione potrebbero mancare o essere danneggiati. Conserva i file locali e controlla prima le copie su altri dispositivi o in un backup affidabile."
+      },
+      "unexpected": {
+        "title": "Sincronizzazione non completata",
+        "detail": "Riprova a sincronizzare più tardi. Se il problema persiste, segnalalo per ricevere assistenza."
+      }
+    },
     "reason": {
       "manual": "Avviato manualmente",
       "localChange": "Dati locali modificati",
@@ -240,5 +264,15 @@
       "calibre": "Aggiornamento della libreria",
       "complete": "Completamento"
     }
+  },
+  "operationError": {
+    "unexpected": "Impossibile completare questa operazione. Riprova.",
+    "connectivity": "Impossibile connettersi al servizio. Controlla la connessione di rete e l’indirizzo del servizio, poi riprova.",
+    "credential": "Accesso negato. Controlla le credenziali o accedi di nuovo.",
+    "configuration": "Controlla le impostazioni della libreria o del servizio, poi riprova.",
+    "notFound": "Questo elemento non è più disponibile. Aggiorna e riprova.",
+    "io": "Impossibile accedere ai file locali. Controlla lo spazio di archiviazione e i permessi.",
+    "dataIntegrity": "Alcuni dati non sono stati letti correttamente. Ripristina una copia affidabile e riprova.",
+    "tts": "La lettura vocale non è riuscita. Controlla le impostazioni vocali e riprova."
   }
 }

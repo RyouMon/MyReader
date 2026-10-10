@@ -1,3 +1,5 @@
+use super::map_reqwest_error;
+use crate::TtsErrorKind;
 use crate::{
     models::{
         QwenTtsModel, QwenTtsPreset, TtsAudioFormat, TtsProviderOptions, TtsProviderProfile,
@@ -171,7 +173,7 @@ pub(crate) fn model(id: &str, endpoint: &str) -> Result<QwenTtsModel, CoreError>
     models_for_endpoint(Some(endpoint))
         .into_iter()
         .find(|model| model.id == id)
-        .ok_or_else(|| super::tts_error("configuration", "QWEN_MODEL_UNSUPPORTED"))
+        .ok_or_else(|| super::tts_error(TtsErrorKind::Configuration, "QWEN_MODEL_UNSUPPORTED"))
 }
 
 fn voice(id: &str, name: &str, language: &str) -> TtsVoice {
@@ -194,27 +196,39 @@ pub(crate) fn validate_profile(profile: &TtsProviderProfile) -> Result<(), CoreE
         ..
     } = &profile.options
     else {
-        return Err(tts_error("configuration", "TTS_PROVIDER_OPTIONS_MISMATCH"));
+        return Err(tts_error(
+            TtsErrorKind::Configuration,
+            "TTS_PROVIDER_OPTIONS_MISMATCH",
+        ));
     };
     if !selected.audio_formats.contains(response_format) {
-        return Err(tts_error("configuration", "QWEN_AUDIO_FORMAT_UNSUPPORTED"));
+        return Err(tts_error(
+            TtsErrorKind::Configuration,
+            "QWEN_AUDIO_FORMAT_UNSUPPORTED",
+        ));
     }
     if instructions
         .as_ref()
         .is_some_and(|value| !value.trim().is_empty())
         && !selected.supports_instructions
     {
-        return Err(tts_error("configuration", "QWEN_INSTRUCTIONS_UNSUPPORTED"));
+        return Err(tts_error(
+            TtsErrorKind::Configuration,
+            "QWEN_INSTRUCTIONS_UNSUPPORTED",
+        ));
     }
     let url = Url::parse(&profile.endpoint)
-        .map_err(|_| tts_error("configuration", "INVALID_TTS_ENDPOINT"))?;
+        .map_err(|_| tts_error(TtsErrorKind::Configuration, "INVALID_TTS_ENDPOINT"))?;
     if selected.id == DEFAULT_MODEL
         && url.host_str().is_some_and(|host| {
             host == "dashscope-intl.aliyuncs.com"
                 || host.ends_with(".ap-southeast-1.maas.aliyuncs.com")
         })
     {
-        return Err(tts_error("configuration", "QWEN_AUDIO_REQUIRES_BEIJING"));
+        return Err(tts_error(
+            TtsErrorKind::Configuration,
+            "QWEN_AUDIO_REQUIRES_BEIJING",
+        ));
     }
     Ok(())
 }
@@ -230,17 +244,20 @@ pub(crate) async fn synthesize(
         ..
     } = &profile.options
     else {
-        return Err(tts_error("configuration", "TTS_PROVIDER_OPTIONS_MISMATCH"));
+        return Err(tts_error(
+            TtsErrorKind::Configuration,
+            "TTS_PROVIDER_OPTIONS_MISMATCH",
+        ));
     };
     let credential = credential
         .filter(|value| !value.trim().is_empty())
-        .ok_or_else(|| tts_error("unauthorized", "TTS_CREDENTIAL_REQUIRED"))?;
+        .ok_or_else(|| tts_error(TtsErrorKind::Unauthorized, "TTS_CREDENTIAL_REQUIRED"))?;
     if uses_websocket(&profile.endpoint) {
         return websocket::synthesize(profile, request, credential).await;
     }
     if credential.starts_with("sk-sp-") {
         return Err(tts_error(
-            "configuration",
+            TtsErrorKind::Configuration,
             "QWEN_TOKEN_PLAN_WEBSOCKET_REQUIRED",
         ));
     }
@@ -273,14 +290,15 @@ pub(crate) async fn synthesize(
             &json!({ "model": model, "input": input }),
         )?)
         .send()
-        .await?;
+        .await
+        .map_err(map_reqwest_error)?;
     let body = json_response(response).await?;
     let audio_url = body
         .pointer("/output/audio/url")
         .and_then(Value::as_str)
-        .ok_or_else(|| tts_error("invalid_response", "QWEN_AUDIO_URL_MISSING"))?;
+        .ok_or_else(|| tts_error(TtsErrorKind::InvalidResponse, "QWEN_AUDIO_URL_MISSING"))?;
     let mut url = Url::parse(audio_url)
-        .map_err(|_| tts_error("invalid_response", "INVALID_QWEN_AUDIO_URL"))?;
+        .map_err(|_| tts_error(TtsErrorKind::InvalidResponse, "INVALID_QWEN_AUDIO_URL"))?;
     // DashScope examples return signed OSS URLs with an http scheme. OSS serves
     // the same signature over TLS; never send the API credential to this host.
     if url.scheme() == "http"
@@ -295,9 +313,16 @@ pub(crate) async fn synthesize(
         || !url.username().is_empty()
         || url.password().is_some()
     {
-        return Err(tts_error("invalid_response", "INVALID_QWEN_AUDIO_URL"));
+        return Err(tts_error(
+            TtsErrorKind::InvalidResponse,
+            "INVALID_QWEN_AUDIO_URL",
+        ));
     }
-    audio_response(http.get(url).send().await?, Some(*response_format)).await
+    audio_response(
+        http.get(url).send().await.map_err(map_reqwest_error)?,
+        Some(*response_format),
+    )
+    .await
 }
 
 pub(crate) fn uses_websocket(endpoint: &str) -> bool {
@@ -319,11 +344,11 @@ async fn json_response(response: reqwest::Response) -> Result<Value, CoreError> 
     {
         let code = body["code"].as_str().unwrap_or("QWEN_REQUEST_FAILED");
         let kind = match status {
-            StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => "unauthorized",
-            StatusCode::TOO_MANY_REQUESTS => "rate_limited",
-            StatusCode::REQUEST_TIMEOUT | StatusCode::GATEWAY_TIMEOUT => "timeout",
-            status if status.is_server_error() => "unavailable",
-            _ => "invalid_request",
+            StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => TtsErrorKind::Unauthorized,
+            StatusCode::TOO_MANY_REQUESTS => TtsErrorKind::RateLimited,
+            StatusCode::REQUEST_TIMEOUT | StatusCode::GATEWAY_TIMEOUT => TtsErrorKind::Timeout,
+            status if status.is_server_error() => TtsErrorKind::Unavailable,
+            _ => TtsErrorKind::InvalidRequest,
         };
         let request_id = body["request_id"].as_str().unwrap_or_default();
         // Do not echo provider messages: they can contain the submitted book text.
@@ -333,7 +358,10 @@ async fn json_response(response: reqwest::Response) -> Result<Value, CoreError> 
         ));
     }
     if body.is_null() {
-        return Err(tts_error("invalid_response", "INVALID_QWEN_RESPONSE"));
+        return Err(tts_error(
+            TtsErrorKind::InvalidResponse,
+            "INVALID_QWEN_RESPONSE",
+        ));
     }
     Ok(body)
 }
@@ -349,10 +377,10 @@ pub(crate) async fn discover_voices(
     }
     let credential = credential
         .filter(|key| !key.trim().is_empty())
-        .ok_or_else(|| tts_error("unauthorized", "TTS_CREDENTIAL_REQUIRED"))?;
+        .ok_or_else(|| tts_error(TtsErrorKind::Unauthorized, "TTS_CREDENTIAL_REQUIRED"))?;
     if credential.starts_with("sk-sp-") {
         return Err(tts_error(
-            "configuration",
+            TtsErrorKind::Configuration,
             "QWEN_TOKEN_PLAN_WEBSOCKET_REQUIRED",
         ));
     }
@@ -375,12 +403,12 @@ pub(crate) async fn discover_voices(
             .body(serde_json::to_vec(&json!({
                 "model": enrollment_model,
                 "input": { "action": if audio { "list_voice" } else { "list" }, "page_size": page_size, "page_index": page }
-            }))?).send().await?;
+            }))?).send().await.map_err(map_reqwest_error)?;
         let body = json_response(response).await?;
         let list = body
             .pointer("/output/voice_list")
             .and_then(Value::as_array)
-            .ok_or_else(|| tts_error("invalid_response", "INVALID_QWEN_VOICE_LIST"))?;
+            .ok_or_else(|| tts_error(TtsErrorKind::InvalidResponse, "INVALID_QWEN_VOICE_LIST"))?;
         for entry in list {
             let id = entry[if audio { "voice_id" } else { "voice" }]
                 .as_str()
@@ -408,14 +436,17 @@ pub(crate) async fn discover_voices(
 }
 
 fn api_endpoint(base: &str, suffix: &str) -> Result<Url, CoreError> {
-    let mut url =
-        Url::parse(base).map_err(|_| tts_error("configuration", "INVALID_TTS_ENDPOINT"))?;
+    let mut url = Url::parse(base)
+        .map_err(|_| tts_error(TtsErrorKind::Configuration, "INVALID_TTS_ENDPOINT"))?;
     if !matches!(url.scheme(), "http" | "https")
         || url.host_str().is_none()
         || !url.username().is_empty()
         || url.password().is_some()
     {
-        return Err(tts_error("configuration", "INVALID_TTS_ENDPOINT"));
+        return Err(tts_error(
+            TtsErrorKind::Configuration,
+            "INVALID_TTS_ENDPOINT",
+        ));
     }
     let base = url.path().trim_end_matches('/');
     if !base.ends_with(suffix) {

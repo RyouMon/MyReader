@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/error-presentation"
 import { Loader2, LogIn, RefreshCw } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
@@ -60,10 +61,7 @@ export function OnedriveDataSourceForm({
           refreshToken: result.refreshToken,
         })
       } catch (err) {
-        const msg =
-          typeof err === "object" && err !== null && "message" in err
-            ? String((err as Record<string, unknown>).message)
-            : String(err)
+        const msg = errorMessage(err)
         setError(msg)
       } finally {
         setCreateLoading(false)
@@ -84,10 +82,7 @@ export function OnedriveDataSourceForm({
       // Auto-create the data source after successful auth, matching mobile UX.
       await autoCreate(result)
     } catch (err) {
-      const msg =
-        typeof err === "object" && err !== null && "message" in err
-          ? String((err as Record<string, unknown>).message)
-          : String(err)
+      const msg = errorMessage(err)
       setError(msg)
     } finally {
       setAuthLoading(false)

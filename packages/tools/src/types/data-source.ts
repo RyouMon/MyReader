@@ -35,4 +35,5 @@ export type DataSourceType = DataSource["type"]
 export type DataSourceConnectionTestResult = {
   ok: boolean
   message: string
+  errorKind?: string
 }

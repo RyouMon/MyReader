@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/error-presentation"
 import {
   type ReaderAnnotationColor,
   readerAnnotationExcerpt,
@@ -2204,7 +2205,7 @@ function useEpubReaderController({
         if (navigatorRef.current === nav) navigatorRef.current = null
         void nav?.destroy()
         console.error("[Readium] Failed to initialize navigator:", e)
-        setInitError(String(e))
+        setInitError(errorMessage(e))
       }
     }
 

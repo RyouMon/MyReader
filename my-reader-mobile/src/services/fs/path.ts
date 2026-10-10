@@ -26,7 +26,6 @@
  */
 
 import { Directory, Paths } from "expo-file-system"
-import i18n from "@/src/i18n"
 import { AppInvariantError } from "@/src/errors"
 
 /** Max decode rounds for `%` sequences within a single path segment. */
@@ -215,7 +214,7 @@ export function fileUriToNativeDirAndName(fileUri: string): {
   const nativePath = toNativeFilesystemPath(fileUri).replace(/\/+$/, "")
   const lastSlash = nativePath.lastIndexOf("/")
   if (lastSlash <= 0) {
-    throw new Error(i18n.t("sync.cannotParseFilePath", { uri: fileUri }))
+    throw new Error(`Cannot parse file path: ${fileUri}`)
   }
   return {
     dir: nativePath.slice(0, lastSlash),
