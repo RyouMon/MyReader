@@ -124,7 +124,7 @@ import { bookLoadRequestKey } from "@/src/hooks/book-load-identity"
 import { useBookLoader } from "@/src/hooks/use-book-loader"
 import { useReaderProgressSaver } from "@/src/hooks/use-reader-progress-saver"
 import { useAppStore } from "@/src/store/app-store"
-import { describeError } from "@/src/utils/common"
+import { errorMessage } from "@/src/i18n/error-message"
 import { Animated, View } from "@/tw"
 
 const READER_CONTENT_FADE_MS = 220
@@ -282,10 +282,6 @@ export default function ReaderScreen() {
         case "providerUnavailable":
           message = t("reader.tts.errors.providerUnavailable")
           break
-        case "engine":
-          message = t("reader.tts.errors.engine", {
-            message: presentation.message,
-          })
       }
       Alert.alert(t("reader.tts.states.error"), message, [
         { text: t("common.gotIt") },
@@ -603,7 +599,7 @@ export default function ReaderScreen() {
 
   const showAnnotationError = useCallback(
     (error: unknown) => {
-      Alert.alert(t("reader.annotations.error"), describeError(error))
+      Alert.alert(t("reader.annotations.error"), errorMessage(error))
     },
     [t],
   )

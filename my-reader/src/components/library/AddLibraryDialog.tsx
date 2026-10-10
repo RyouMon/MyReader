@@ -34,7 +34,7 @@ import {
   useDataSourcesQuery,
 } from "@/hooks/queries/useDataSourcesQuery"
 import { useLibraryMutations } from "@/hooks/queries/useLibrariesQuery"
-import { formatApiError } from "@/lib/tauri-api"
+import { errorMessage } from "@/lib/error-presentation"
 import { cn } from "@/lib/utils"
 
 type LibraryOperation = "create" | "open"
@@ -121,7 +121,7 @@ export function AddLibraryDialog({
     caught: unknown,
     operation: LibraryOperation,
   ): string {
-    const detail = formatApiError(caught)
+    const detail = errorMessage(caught)
     const kind = apiErrorKind(caught)
     if (kind === "LibraryAlreadyExists") {
       return t("addLibraryFlow.errors.duplicate")

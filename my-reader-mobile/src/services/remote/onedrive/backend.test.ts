@@ -6,6 +6,7 @@ import { clearAuthCache, setCachedAuth } from "@/src/services/remote/auth-cache"
 import { OneDriveRemoteBackend } from "./backend"
 
 jest.mock("ky", () => ({
+  ...jest.requireActual("ky"),
   __esModule: true,
   default: jest.fn(),
 }))
@@ -49,6 +50,19 @@ describe("OneDriveRemoteBackend", () => {
   afterEach(() => {
     jest.restoreAllMocks()
     clearAuthCache()
+  })
+
+  it("does not mistake a failed stat request for an absent remote file", async () => {
+    const failure = new TypeError("transport failure")
+    jest.spyOn(globalThis, "fetch").mockRejectedValue(failure)
+    const backend = new OneDriveRemoteBackend(
+      "onedrive-source",
+      libraryRootPath,
+    )
+    await expect(backend.statRemoteFile("metadata.db")).rejects.toMatchObject({
+      name: "NetworkError",
+      cause: failure,
+    })
   })
 
   it("should create the first sidecar directory under the library root when it is missing", async () => {

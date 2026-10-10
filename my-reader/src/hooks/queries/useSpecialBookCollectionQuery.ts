@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/error-presentation"
 import type { BuiltInBookCollectionId } from "@my-reader/tools/types/book-collection"
 import type { CalibreBook } from "@my-reader/tools/types/book"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
@@ -142,7 +143,7 @@ export function useSpecialBookCollection({
     books,
     total: items.length,
     initialLoading,
-    error: error ? String(error) : null,
+    error: error ? errorMessage(error) : null,
     ensureRange: () => undefined,
     refresh: () => {
       void booksQuery.refetch()

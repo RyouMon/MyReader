@@ -262,5 +262,15 @@
       "calibre": "Mise à jour de la bibliothèque",
       "complete": "Finalisation"
     }
+  },
+  "operationError": {
+    "unexpected": "Cette action n’a pas pu être effectuée. Réessayez.",
+    "connectivity": "Impossible de se connecter au service. Vérifiez votre connexion réseau et l’adresse du service, puis réessayez.",
+    "credential": "Accès refusé. Vérifiez vos identifiants ou reconnectez-vous.",
+    "configuration": "Vérifiez les paramètres de la bibliothèque ou du service, puis réessayez.",
+    "notFound": "Cet élément n’est plus disponible. Actualisez, puis réessayez.",
+    "io": "Impossible d’accéder aux fichiers locaux. Vérifiez l’espace de stockage et les autorisations.",
+    "dataIntegrity": "Certaines données n’ont pas pu être lues correctement. Restaurez une copie fiable, puis réessayez.",
+    "tts": "La lecture vocale a échoué. Vérifiez les paramètres vocaux, puis réessayez."
   }
 }

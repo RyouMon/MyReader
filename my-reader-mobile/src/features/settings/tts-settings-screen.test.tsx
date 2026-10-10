@@ -103,6 +103,7 @@ jest.mock("@react-native-community/slider", () =>
 )
 
 jest.mock("react-i18next", () => ({
+  ...jest.requireActual("react-i18next"),
   useTranslation: () => ({
     t: mockT,
     i18n: { resolvedLanguage: "en", language: "en" },

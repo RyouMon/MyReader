@@ -1,6 +1,5 @@
 import { Directory, File } from "expo-file-system"
 
-import i18n from "@/src/i18n"
 import { DataIntegrityError } from "../../errors"
 import {
   fileUriFor,
@@ -47,9 +46,7 @@ export class LocalDirectBackend implements RemoteFileOps {
   async readBytes(relativePath: string): Promise<Uint8Array> {
     const file = this.fileFor(relativePath)
     if (!file.exists) {
-      throw new DataIntegrityError(
-        i18n.t("sync.localFileNotExist", { path: relativePath }),
-      )
+      throw new DataIntegrityError(`Local file missing: ${relativePath}`)
     }
     return file.bytes()
   }

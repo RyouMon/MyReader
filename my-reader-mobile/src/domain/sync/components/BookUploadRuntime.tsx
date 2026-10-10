@@ -1,3 +1,4 @@
+import { errorMessage } from "@/src/i18n/error-message"
 import * as Network from "expo-network"
 import { useEffect, useRef } from "react"
 import { AppState } from "react-native"
@@ -68,7 +69,7 @@ export function BookUploadRuntime(): null {
                 i18n.t("bookMenu.uploadFailed"),
                 i18n.t("bookMenu.uploadFailedDetail", {
                   library: library.name,
-                  reason,
+                  reason: errorMessage(error),
                 }),
               )
             }

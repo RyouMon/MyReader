@@ -49,7 +49,8 @@ import {
   useQwenTtsVoices,
 } from "@/hooks/useQwenTts"
 import { TTS_PITCH_OPTIONS, TTS_SPEED_OPTIONS } from "@/constants/tts"
-import { api, formatApiError } from "@/lib/tauri-api"
+import { api } from "@/lib/tauri-api"
+import { errorMessage } from "@/lib/error-presentation"
 import type {
   TtsAudioFormatDto,
   QwenTtsModelDto,
@@ -255,7 +256,8 @@ function useTtsPreviewPlayer({
           if (previewGenerationRef.current !== generation) return
           systemPreviewActiveRef.current = false
           setPreviewing(false)
-          onError(event.error || "TTS_PLAYBACK_FAILED")
+          console.warn("Speech preview failed", event.error)
+          onError(errorMessage({ kind: "Tts" }))
         }
         systemPreviewActiveRef.current = true
         window.speechSynthesis.speak(utterance)
@@ -311,7 +313,7 @@ function useTtsPreviewPlayer({
         previewRequestIdRef.current = null
       }
       setPreviewing(false)
-      onError(formatApiError(previewError))
+      onError(errorMessage(previewError))
     }
   }, [
     config,
@@ -368,7 +370,7 @@ export default function SpeechSection() {
         if (!cancelled) setConfig(next)
       })
       .catch((loadError: unknown) => {
-        if (!cancelled) setError(formatApiError(loadError))
+        if (!cancelled) setError(errorMessage(loadError))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -394,7 +396,7 @@ export default function SpeechSection() {
         ),
       )
     } catch (saveError: unknown) {
-      setError(formatApiError(saveError))
+      setError(errorMessage(saveError))
     } finally {
       setSaving(false)
     }
@@ -419,7 +421,7 @@ export default function SpeechSection() {
         await api.setTtsVoiceForLanguage(DEFAULT_VOICE_LANGUAGE, voice),
       )
     } catch (saveError: unknown) {
-      setError(formatApiError(saveError))
+      setError(errorMessage(saveError))
     } finally {
       setSaving(false)
     }
@@ -433,7 +435,7 @@ export default function SpeechSection() {
     try {
       await applyConfig(await api.setTtsPlaybackPreferences(playback))
     } catch (saveError: unknown) {
-      setError(formatApiError(saveError))
+      setError(errorMessage(saveError))
     }
   }
 
@@ -841,7 +843,7 @@ export function TtsProviderManager({
       setProviderDialogOpen(false)
       setMessage(t("settings.speech.saved"))
     } catch (saveError: unknown) {
-      setProviderError(formatApiError(saveError))
+      setProviderError(errorMessage(saveError))
     } finally {
       setSaving(false)
     }
@@ -884,7 +886,7 @@ export function TtsProviderManager({
       setPendingDeleteId(null)
       setDraft((current) => (current?.id === profileId ? null : current))
     } catch (removeError: unknown) {
-      setError(formatApiError(removeError))
+      setError(errorMessage(removeError))
     } finally {
       setSaving(false)
     }

@@ -1,4 +1,14 @@
 export const sharedZhCN = {
+  operationError: {
+    unexpected: "未能完成此操作，请重试。",
+    connectivity: "无法连接服务，请检查网络连接和服务地址后重试。",
+    credential: "访问被拒绝，请检查凭据或重新登录。",
+    configuration: "请检查书库或服务设置后重试。",
+    notFound: "此项目已不可用，请刷新后重试。",
+    io: "无法访问本地文件，请检查存储空间和文件权限。",
+    dataIntegrity: "部分数据无法正确读取，请从可靠的副本恢复后重试。",
+    tts: "朗读失败，请检查朗读设置后重试。",
+  },
   qwenTts: {
     title: "Qwen（通义千问）",
     add: "添加 {{name}}",

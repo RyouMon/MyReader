@@ -1,3 +1,4 @@
+import { errorMessage } from "@/src/i18n/error-message"
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import { router, Stack, useLocalSearchParams } from "expo-router"
 import { SymbolView } from "expo-symbols"
@@ -161,9 +162,7 @@ export default function WebDavDataSourceDetailScreen() {
                 } else {
                   showAlertWithStatusBarRestore(
                     t("webdav.deleteFailed.title"),
-                    caught instanceof Error
-                      ? caught.message
-                      : t("webdav.deleteFailed.message"),
+                    errorMessage(caught),
                   )
                 }
               }

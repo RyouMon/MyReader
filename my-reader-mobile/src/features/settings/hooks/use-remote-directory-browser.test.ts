@@ -124,7 +124,11 @@ describe("useRemoteDirectoryBrowser", () => {
         sourceType: "onedrive",
       }),
     )
-    await waitFor(() => expect(result.current.error).toBe("temporary failure"))
+    await waitFor(() =>
+      expect(result.current.error).toBe(
+        "This action could not be completed. Please try again.",
+      ),
+    )
 
     act(() => result.current.retry())
 
@@ -139,7 +143,7 @@ describe("useRemoteDirectoryBrowser", () => {
 
   it("should offer account recovery when OneDrive rejects the stored credentials", async () => {
     mockListRemoteDirectories.mockRejectedValue(
-      new Error("AUTH_ERROR: ONEDRIVE_UNAUTHORIZED"),
+      new CoreFfiError.Credential("diagnostic changed"),
     )
     const { result } = renderHook(() =>
       useRemoteDirectoryBrowser({

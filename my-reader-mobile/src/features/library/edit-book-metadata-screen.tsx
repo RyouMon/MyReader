@@ -1,3 +1,4 @@
+import { errorMessage } from "@/src/i18n/error-message"
 import { libraryTypeOf, type Library } from "@my-reader/tools/types/library"
 import { router, Stack, useLocalSearchParams } from "expo-router"
 import { useMemo, useState } from "react"
@@ -103,7 +104,7 @@ function EditBookMetadataForm({
     } catch (error) {
       showAlertWithStatusBarRestore(
         t("bookEdit.saveFailed"),
-        error instanceof Error ? error.message : String(error),
+        errorMessage(error),
       )
     } finally {
       setSaving(false)

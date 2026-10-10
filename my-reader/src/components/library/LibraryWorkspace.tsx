@@ -46,6 +46,7 @@ import { useWindowSizeClass } from "@/hooks/use-window-size-class"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { resetBrokenCovers } from "@/lib/coverFailureCache"
 import { api, formatApiError } from "@/lib/tauri-api"
+import { errorMessage } from "@/lib/error-presentation"
 import { cn } from "@/lib/utils"
 import { useAppUiStore } from "@/stores/appUiStore"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
@@ -240,7 +241,7 @@ export default function LibraryWorkspace({
       refresh()
     } catch (error) {
       toast.error(t("library.importFailed"), {
-        description: formatApiError(error),
+        description: errorMessage(error),
       })
     } finally {
       setImportingBook(false)
@@ -288,7 +289,7 @@ export default function LibraryWorkspace({
       handleCatalogChanged()
     } catch (error) {
       toast.error(t("bookDetail.deleteBookFailed"), {
-        description: formatApiError(error),
+        description: errorMessage(error),
       })
     } finally {
       setDeletingBook(false)

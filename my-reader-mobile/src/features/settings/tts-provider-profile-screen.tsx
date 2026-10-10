@@ -53,7 +53,7 @@ import {
   upsertTtsProfile,
   type MobileTtsProviderProfile,
 } from "@/src/services/core/tts"
-import { describeError } from "@/src/utils/common"
+import { errorMessage } from "@/src/i18n/error-message"
 import { Text, TextInput, View } from "@/tw"
 
 type ProviderDraft = {
@@ -592,7 +592,7 @@ export default function TtsProviderProfileScreen() {
         if (!active) return
         showAlertWithStatusBarRestore(
           t("settings.tts.loadFailed"),
-          describeError(error),
+          errorMessage(error),
           [{ text: t("common.confirm"), onPress: () => router.back() }],
         )
       })
@@ -634,7 +634,7 @@ export default function TtsProviderProfileScreen() {
     } catch (error) {
       showAlertWithStatusBarRestore(
         t("settings.tts.saveFailed"),
-        describeError(error),
+        errorMessage(error),
       )
     } finally {
       setSaving(false)
@@ -659,7 +659,7 @@ export default function TtsProviderProfileScreen() {
               .catch((error) =>
                 showAlertWithStatusBarRestore(
                   t("settings.tts.removeFailed"),
-                  describeError(error),
+                  errorMessage(error),
                 ),
               )
               .finally(() => setSaving(false))

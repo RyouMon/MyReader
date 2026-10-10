@@ -261,5 +261,15 @@
       "calibre": "Bibliothek wird aktualisiert",
       "complete": "Wird abgeschlossen"
     }
+  },
+  "operationError": {
+    "unexpected": "Diese Aktion konnte nicht abgeschlossen werden. Bitte versuche es erneut.",
+    "connectivity": "Keine Verbindung zum Dienst möglich. Prüfe deine Netzwerkverbindung und die Dienstadresse und versuche es erneut.",
+    "credential": "Zugriff verweigert. Prüfe deine Zugangsdaten oder melde dich erneut an.",
+    "configuration": "Prüfe die Bibliotheks- oder Diensteinstellungen und versuche es erneut.",
+    "notFound": "Dieses Element ist nicht mehr verfügbar. Aktualisiere die Ansicht und versuche es erneut.",
+    "io": "Kein Zugriff auf lokale Dateien. Prüfe den Speicherplatz und die Dateiberechtigungen.",
+    "dataIntegrity": "Einige Daten konnten nicht korrekt gelesen werden. Stelle eine verlässliche Kopie wieder her und versuche es erneut.",
+    "tts": "Die Sprachausgabe ist fehlgeschlagen. Prüfe die Spracheinstellungen und versuche es erneut."
   }
 }

@@ -1,3 +1,5 @@
+import { errorMessageKey } from "@my-reader/i18n/mobile"
+import { errorMessage } from "@/src/i18n/error-message"
 import type { MobileTranslationKey } from "@my-reader/i18n/mobile"
 import type { DataSourceWebdav } from "@my-reader/tools/types/data-source"
 import { useForm, useStore } from "@tanstack/react-form"
@@ -266,18 +268,24 @@ export default function AddWebDavDataSourceScreen() {
         password: effectivePassword,
       })
       if (!testResult.ok) {
-        Alert.alert(t("webdav.add.connectionTestFailed"), testResult.message, [
-          { text: t("webdav.add.reEnter"), style: "cancel" },
-          {
-            text: t(editing ? "webdav.add.saveAnyway" : "webdav.add.addAnyway"),
-            onPress: () => {
-              setSaving(true)
-              void persistDataSource(source, effectivePassword).finally(() =>
-                setSaving(false),
-              )
+        Alert.alert(
+          t("webdav.add.connectionTestFailed"),
+          t(errorMessageKey(testResult.errorKind)),
+          [
+            { text: t("webdav.add.reEnter"), style: "cancel" },
+            {
+              text: t(
+                editing ? "webdav.add.saveAnyway" : "webdav.add.addAnyway",
+              ),
+              onPress: () => {
+                setSaving(true)
+                void persistDataSource(source, effectivePassword).finally(() =>
+                  setSaving(false),
+                )
+              },
             },
-          },
-        ])
+          ],
+        )
         return
       }
 
@@ -285,9 +293,7 @@ export default function AddWebDavDataSourceScreen() {
     } catch (caught) {
       Alert.alert(
         t(editing ? "webdav.add.updateFailed" : "webdav.add.addFailed"),
-        caught instanceof Error
-          ? caught.message
-          : t("webdav.add.addFailedMessage"),
+        errorMessage(caught),
       )
     } finally {
       setSaving(false)

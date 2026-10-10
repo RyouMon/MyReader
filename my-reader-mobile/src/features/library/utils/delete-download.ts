@@ -1,3 +1,4 @@
+import { errorMessage } from "@/src/i18n/error-message"
 import { dismissTasksForPath } from "@/src/domain/download/download-store"
 import { evictLocalFileForLibrary } from "@/src/domain/sync/file-actions"
 import i18n from "@/src/i18n"
@@ -57,7 +58,7 @@ export function confirmDeleteLocalDownload(
             }
             showAlertWithStatusBarRestore(
               i18n.t("sync.deleteFailed"),
-              err instanceof Error ? err.message : String(err),
+              errorMessage(err),
             )
           })
         },

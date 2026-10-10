@@ -1,3 +1,4 @@
+import { errorMessage } from "@/src/i18n/error-message"
 import { LANGUAGE_NAMES, SUPPORTED_LANGUAGES } from "@my-reader/i18n/languages"
 import HeadphonesIcon from "@expo/material-symbols/headphones.xml"
 import { libraryTypeOf } from "@my-reader/tools/types/library"
@@ -106,9 +107,7 @@ export default function SettingsScreen() {
     } catch (error) {
       showAlertWithStatusBarRestore(
         t("settings.developer.clearImageCache.errorTitle"),
-        error instanceof Error
-          ? error.message
-          : t("settings.developer.clearImageCache.errorDetail"),
+        errorMessage(error),
       )
     }
   }

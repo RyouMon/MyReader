@@ -1,3 +1,4 @@
+import { errorMessage } from "@/src/i18n/error-message"
 import {
   Profiler,
   memo,
@@ -204,7 +205,7 @@ function LibraryEmptyContent({
     return (
       <EmptyState
         title={t("library.loadError.title")}
-        detail={booksError.message}
+        detail={errorMessage(booksError)}
         action={
           <PrimaryButton
             title={t("errorBoundary.retry")}
@@ -573,7 +574,7 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
       (error) => {
         showAlertWithStatusBarRestore(
           t("library.importFailed.title"),
-          error instanceof Error ? error.message : String(error),
+          errorMessage(error),
         )
       },
     )

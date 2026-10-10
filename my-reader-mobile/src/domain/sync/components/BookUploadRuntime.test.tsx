@@ -123,7 +123,7 @@ describe("BookUploadRuntime", () => {
         i18n.t("bookMenu.uploadFailed"),
         i18n.t("bookMenu.uploadFailedDetail", {
           library: mockLibrary.name,
-          reason: "PENDING_BOOK_CATALOG_IDENTITY_CONFLICT",
+          reason: i18n.t("operationError.unexpected"),
         }),
       )
     })

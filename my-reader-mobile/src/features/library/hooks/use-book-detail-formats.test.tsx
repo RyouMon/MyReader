@@ -196,7 +196,7 @@ describe("useBookDetailFormats", () => {
       })
     })
 
-    it("should stringify non-Error when reading local format paths fails", async () => {
+    it("should present safe copy for non-Error when reading local format paths fails", async () => {
       const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {})
       jest.mocked(getBookFormatPaths).mockRejectedValue("disk failure")
       mockFile(true, 1024)
@@ -208,7 +208,7 @@ describe("useBookDetailFormats", () => {
       await waitFor(() => {
         expect(alertSpy).toHaveBeenCalledWith(
           expect.any(String),
-          "disk failure",
+          "This action could not be completed. Please try again.",
         )
       })
     })
@@ -299,7 +299,7 @@ describe("useBookDetailFormats", () => {
       })
     })
 
-    it("should stringify non-Error when reading remote format paths fails", async () => {
+    it("should present safe copy for non-Error when reading remote format paths fails", async () => {
       const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {})
       jest.mocked(getBookFormatPaths).mockRejectedValue("network failure")
 
@@ -310,7 +310,7 @@ describe("useBookDetailFormats", () => {
       await waitFor(() => {
         expect(alertSpy).toHaveBeenCalledWith(
           expect.any(String),
-          "network failure",
+          "This action could not be completed. Please try again.",
         )
       })
     })
@@ -1093,9 +1093,11 @@ describe("useBookDetailFormats", () => {
           fileUri: "file:///tmp/Test%20Book.epub",
           isLocal: true,
         })
-      jest
-        .mocked(shareBookFileModule.shareBookFile)
-        .mockRejectedValue(new Error("User cancelled"))
+      jest.mocked(shareBookFileModule.shareBookFile).mockRejectedValue(
+        Object.assign(new Error("arbitrary diagnostic"), {
+          name: "AbortError",
+        }),
+      )
 
       const { result } = await renderHook(
         () => useBookDetailFormats(localLibrary, "1", detail),
@@ -1153,7 +1155,10 @@ describe("useBookDetailFormats", () => {
 
       await result.current.handleShareFormat("EPUB")
 
-      expect(alertSpy).toHaveBeenCalledWith(expect.any(String), "plain failure")
+      expect(alertSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        "This action could not be completed. Please try again.",
+      )
     })
   })
 })

@@ -1,3 +1,5 @@
+import { errorMessage } from "@/src/i18n/error-message"
+import { appErrorKind } from "@/src/errors/kind"
 import { coreErrorKind } from "@/src/services/core/error"
 import { useEffect, useMemo, useState } from "react"
 
@@ -55,19 +57,6 @@ type RemoteDirectoryBrowserErrorMessages = {
   generic: string
 }
 
-function isCredentialFailure(
-  message: string,
-  sourceType: "webdav" | "onedrive",
-): boolean {
-  return sourceType === "webdav"
-    ? /PASSWORD_REQUIRED|WEBDAV_(?:UNAUTHORIZED|FORBIDDEN)|\b40[13]\b/i.test(
-        message,
-      )
-    : /REFRESH_TOKEN_REQUIRED|ONEDRIVE_UNAUTHORIZED|INVALID_GRANT|AUTH_ERROR/i.test(
-        message,
-      )
-}
-
 export function useRemoteDirectoryBrowser({
   dataSourceId,
   currentPathParam,
@@ -118,14 +107,10 @@ export function useRemoteDirectoryBrowser({
         }
       } catch (caught) {
         if (active) {
-          const message =
-            caught instanceof Error
-              ? caught.message
-              : "Failed to read directory"
-          if (isCredentialFailure(message, sourceType)) {
+          if (appErrorKind(caught) === "Credential") {
             setResolveFailed(true)
           } else {
-            setError(message)
+            setError(errorMessage(caught))
           }
         }
       } finally {

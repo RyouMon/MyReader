@@ -1,3 +1,6 @@
+import { nativeTransferError } from "@/src/services/download/transfer-error"
+import { appErrorKind } from "@/src/errors/kind"
+import { describeError } from "@/src/utils/common"
 import { useEffect, useSyncExternalStore } from "react"
 
 import { NetworkError, SyncConfigError } from "../../errors"
@@ -33,14 +36,11 @@ import {
   openDownloadContextForLibrary,
 } from "./download-service"
 
-import i18n from "@/src/i18n"
-
 async function checkLibraryConnectivity(libraryId: string): Promise<void> {
   const snapshot = useAppStore.getState()
   const { libraries, dataSources } = snapshot
   const library = libraries.find((l) => l.id === libraryId)
-  if (!library)
-    throw new SyncConfigError(i18n.t("sync.libraryNotFound", { id: libraryId }))
+  if (!library) throw new SyncConfigError(`Library not found: ${libraryId}`)
   const target = await resolveSyncTarget(library, dataSources)
   if (isRemoteBackend(target.backend)) await checkConnectivity(target.backend)
 }
@@ -71,6 +71,7 @@ export type DownloadTask = {
   status: DownloadTaskStatus
   progress: number
   error: string | null
+  failure?: unknown
 }
 
 export type EnqueueOptions = {
@@ -85,7 +86,14 @@ type StoreState = { tasks: DownloadTask[] }
 type Listener = () => void
 export type DownloadStatusTask = Pick<
   DownloadTask,
-  "id" | "libraryId" | "bookId" | "format" | "relativePath" | "status" | "error"
+  | "id"
+  | "libraryId"
+  | "bookId"
+  | "format"
+  | "relativePath"
+  | "status"
+  | "error"
+  | "failure"
 >
 type DownloadTaskMetadata = {
   source: "myreader"
@@ -120,7 +128,7 @@ type DownloadTaskEvent =
   | { type: "begin" }
   | { type: "progress"; received: number; total: number; force?: boolean }
   | { type: "done" }
-  | { type: "error"; error: string }
+  | { type: "error"; error: unknown }
   | { type: "cancel" }
 
 function setState(next: StoreState): void {
@@ -128,7 +136,10 @@ function setState(next: StoreState): void {
   for (const fn of listeners) fn()
 }
 
-function applyCoreTask(task: CoreDownloadTask): DownloadTask {
+function applyCoreTask(
+  task: CoreDownloadTask,
+  failure?: unknown,
+): DownloadTask {
   const projected: DownloadTask = {
     id: task.id,
     libraryId: task.libraryId,
@@ -139,6 +150,7 @@ function applyCoreTask(task: CoreDownloadTask): DownloadTask {
     status: task.status,
     progress: task.progress,
     error: task.error,
+    failure,
   }
   const index = state.tasks.findIndex((item) => item.id === task.id)
   setState(
@@ -178,9 +190,9 @@ function transitionTask(taskId: string, event: DownloadTaskEvent): void {
       return
     }
     case "error": {
-      const updated = failDownloadTask(taskId, event.error)
+      const updated = failDownloadTask(taskId, describeError(event.error))
       if (updated) {
-        const projected = applyCoreTask(updated)
+        const projected = applyCoreTask(updated, event.error)
         if (projected.status === "error") {
           notifyTaskErrorOnce(projected, event.error)
         }
@@ -208,7 +220,7 @@ function notifyTaskDoneOnce(task: DownloadTask): void {
 /**
  * Emits one local notification when a task reaches failed state.
  */
-function notifyTaskErrorOnce(task: DownloadTask, error: string): void {
+function notifyTaskErrorOnce(task: DownloadTask, error: unknown): void {
   if (notifiedErrorTaskIds.has(task.id)) return
   notifiedErrorTaskIds.add(task.id)
   void notifyDownloadState("error", task.label, error)
@@ -235,6 +247,7 @@ function getStatusSnapshot(): DownloadStatusTask[] {
         task.relativePath,
         task.status,
         task.error ?? "",
+        appErrorKind(task.failure) ?? "",
       ].join("\u0000"),
     )
     .join("\u0001")
@@ -249,6 +262,7 @@ function getStatusSnapshot(): DownloadStatusTask[] {
       relativePath: task.relativePath,
       status: task.status,
       error: task.error,
+      failure: task.failure,
     }))
   }
 
@@ -425,9 +439,7 @@ function handleDownloadFailure(task: DownloadTask, err: unknown): void {
     return
   }
   cancelNativeDownload(taskId)
-  const isAbort =
-    err instanceof Error &&
-    (err.name === "AbortError" || err.message.toLowerCase().includes("abort"))
+  const isAbort = err instanceof Error && err.name === "AbortError"
   console.error("Failed to finish download task:", {
     taskId,
     relativePath: task.relativePath,
@@ -446,7 +458,7 @@ function handleDownloadFailure(task: DownloadTask, err: unknown): void {
   } else {
     transitionTask(taskId, {
       type: "error",
-      error: err instanceof Error ? err.message : String(err),
+      error: err,
     })
   }
 }
@@ -540,7 +552,7 @@ function finalizeRecoveredTaskOnce(task: DownloadTask): Promise<void> {
     .catch((err) => {
       transitionTask(task.id, {
         type: "error",
-        error: err instanceof Error ? err.message : String(err),
+        error: err,
       })
       throw err
     })
@@ -606,7 +618,10 @@ function attachRecoveredTask(
       if (isNativeCancel(error, errorCode)) {
         transitionTask(id, { type: "cancel" })
       } else {
-        transitionTask(id, { type: "error", error })
+        transitionTask(id, {
+          type: "error",
+          error: nativeTransferError(error, errorCode),
+        })
       }
     },
   })

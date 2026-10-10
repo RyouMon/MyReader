@@ -1,3 +1,4 @@
+import { appErrorKind } from "@/src/errors/kind"
 import { coreErrorKind } from "@/src/services/core/error"
 import type {
   DataSource,
@@ -138,7 +139,7 @@ export function useDataSourceActions() {
       return { ok: true, message: "OK" }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      return { ok: false, message: msg }
+      return { ok: false, message: msg, errorKind: appErrorKind(err) }
     }
   }
 

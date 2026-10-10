@@ -1,3 +1,4 @@
+import { errorMessage } from "@/src/i18n/error-message"
 import React from "react"
 import { useTranslation } from "react-i18next"
 
@@ -7,12 +8,12 @@ import { Pressable, Text, View } from "@/tw"
 function ErrorFallback({
   title,
   message,
-  errorMessage,
+  error,
   onRetry,
 }: {
   title?: string
   message?: string
-  errorMessage: string
+  error: Error
   onRetry: () => void
 }) {
   const { t } = useTranslation()
@@ -30,7 +31,7 @@ function ErrorFallback({
         className="text-sm text-center"
         style={{ color: palette.textMuted }}
       >
-        {message ?? errorMessage}
+        {message ?? errorMessage(error)}
       </Text>
       <Pressable
         className="mt-2 rounded-lg px-6 py-2.5"
@@ -87,7 +88,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, State> {
         <ErrorFallback
           title={this.props.title}
           message={this.props.message}
-          errorMessage={error.message}
+          error={error}
           onRetry={this.handleRetry}
         />
       )

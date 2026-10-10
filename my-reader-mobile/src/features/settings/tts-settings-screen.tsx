@@ -33,7 +33,7 @@ import {
   type TtsVoice,
 } from "@/src/services/core/tts"
 import { toFileUri } from "@/src/services/fs/path"
-import { describeError } from "@/src/utils/common"
+import { errorMessage } from "@/src/i18n/error-message"
 import { Text, View } from "@/tw"
 
 const DEFAULT_VOICE_LANGUAGE = "und"
@@ -259,7 +259,7 @@ export default function TtsSettingsScreen() {
     } catch (error) {
       showAlertWithStatusBarRestore(
         t("settings.tts.loadFailed"),
-        describeError(error),
+        errorMessage(error),
       )
     }
   }, [t])
@@ -375,7 +375,7 @@ export default function TtsSettingsScreen() {
       setVoices([])
       showAlertWithStatusBarRestore(
         t("settings.tts.voiceLoadFailed"),
-        describeError(error),
+        errorMessage(error),
       )
     } finally {
       setVoicesLoading(false)
@@ -419,7 +419,7 @@ export default function TtsSettingsScreen() {
           setPreviewState("idle")
           showAlertWithStatusBarRestore(
             t("settings.tts.previewFailed"),
-            describeError(error),
+            errorMessage(error),
           )
         }
       }, 0)
@@ -459,7 +459,7 @@ export default function TtsSettingsScreen() {
       } catch (error) {
         showAlertWithStatusBarRestore(
           t("settings.tts.saveFailed"),
-          describeError(error),
+          errorMessage(error),
         )
       }
     },
@@ -498,7 +498,7 @@ export default function TtsSettingsScreen() {
       } catch (error) {
         showAlertWithStatusBarRestore(
           t("settings.tts.saveFailed"),
-          describeError(error),
+          errorMessage(error),
         )
       }
     },
@@ -536,7 +536,7 @@ export default function TtsSettingsScreen() {
           setPreviewState("idle")
           showAlertWithStatusBarRestore(
             t("settings.tts.previewFailed"),
-            describeError(error),
+            errorMessage(error),
           )
         },
       })
@@ -584,7 +584,7 @@ export default function TtsSettingsScreen() {
       setPreviewState("idle")
       showAlertWithStatusBarRestore(
         t("settings.tts.previewFailed"),
-        describeError(error),
+        errorMessage(error),
       )
     }
   }, [
@@ -613,7 +613,7 @@ export default function TtsSettingsScreen() {
       } catch (error) {
         showAlertWithStatusBarRestore(
           t("settings.tts.saveFailed"),
-          describeError(error),
+          errorMessage(error),
         )
         void loadConfig()
       }

@@ -1,3 +1,4 @@
+import { errorMessage } from "@/src/i18n/error-message"
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import { router, Stack, useLocalSearchParams } from "expo-router"
 import { SymbolView } from "expo-symbols"
@@ -167,9 +168,7 @@ export default function OneDriveDataSourceDetailScreen() {
                 } else {
                   showAlertWithStatusBarRestore(
                     t("onedrive.deleteFailed.title"),
-                    caught instanceof Error
-                      ? caught.message
-                      : t("onedrive.deleteFailed.message"),
+                    errorMessage(caught),
                   )
                 }
               }

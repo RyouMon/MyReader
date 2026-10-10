@@ -1,3 +1,4 @@
+import { CredentialError } from "@/src/errors"
 import type { DataSource } from "@my-reader/tools/types/data-source"
 import type { Library } from "@my-reader/tools/types/library"
 import { Directory, Paths } from "expo-file-system"
@@ -43,7 +44,7 @@ async function credentialFor(
         ? secrets.password
         : await readWebDavPassword(source.id)
     if (!password) {
-      throw new Error("WEBDAV_PASSWORD_REQUIRED")
+      throw new CredentialError("WEBDAV_PASSWORD_REQUIRED")
     }
     return {
       kind: "webdav",
@@ -59,7 +60,7 @@ async function credentialFor(
   }
   const refreshToken = await readOneDriveRefreshToken(source.id)
   if (!refreshToken) {
-    throw new Error("ONEDRIVE_REFRESH_TOKEN_REQUIRED")
+    throw new CredentialError("ONEDRIVE_REFRESH_TOKEN_REQUIRED")
   }
   const { accessToken } = await refreshAccessToken(source.id)
   return {

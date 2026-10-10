@@ -1,3 +1,4 @@
+import { CredentialError, NetworkError, SyncConfigError } from "@/src/errors"
 import { authorize, refresh } from "react-native-app-auth"
 
 import {
@@ -83,9 +84,12 @@ export function invalidateOneDriveAccessToken(dataSourceId: string): void {
 }
 
 export function isUserCancelled(error: unknown): boolean {
-  if (!(error instanceof Error)) return false
-  // User closed the browser/SFSafariViewController on iOS (AppAuth general error -3)
-  return error.message?.includes("error -3") ?? false
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "user_cancelled"
+  )
 }
 
 export async function signIn(): Promise<{
@@ -94,7 +98,9 @@ export async function signIn(): Promise<{
   displayName: string
   email: string
 }> {
-  const result = await authorize(authConfig)
+  const result = await authorize(authConfig).catch((error: unknown) => {
+    throw normalizeAuthError(error)
+  })
 
   let displayName = ""
   let email = ""
@@ -159,10 +165,14 @@ export async function refreshAccessToken(
 
     const refreshToken = await readOneDriveRefreshToken(dataSourceId)
     if (!refreshToken) {
-      throw new Error("No refresh token available")
+      throw new CredentialError("No refresh token available")
     }
 
-    const result = await refresh(authConfig, { refreshToken })
+    const result = await refresh(authConfig, { refreshToken }).catch(
+      (error: unknown) => {
+        throw normalizeAuthError(error)
+      },
+    )
     const next = {
       accessToken: result.accessToken,
       expiresAt: resultExpiresAt(
@@ -193,4 +203,42 @@ export async function getValidAccessToken(
 ): Promise<{ accessToken: string; expiresAt: number }> {
   const { accessToken, expiresAt } = await refreshAccessToken(dataSourceId)
   return { accessToken, expiresAt }
+}
+
+function normalizeAuthError(error: unknown): unknown {
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? error.code
+      : undefined
+  if (
+    [
+      "invalid_grant",
+      "invalid_client",
+      "unauthorized_client",
+      "access_denied",
+    ].includes(String(code))
+  ) {
+    return new CredentialError("OneDrive authorization rejected", {
+      cause: error,
+    })
+  }
+  if (
+    ["network_error", "server_error", "temporarily_unavailable"].includes(
+      String(code),
+    )
+  ) {
+    return new NetworkError("OneDrive authorization unavailable", undefined, {
+      cause: error,
+    })
+  }
+  if (
+    ["configuration_error", "invalid_scope", "invalid_redirect_uri"].includes(
+      String(code),
+    )
+  ) {
+    return new SyncConfigError("OneDrive authorization configuration invalid", {
+      cause: error,
+    })
+  }
+  return error
 }

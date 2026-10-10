@@ -262,5 +262,15 @@
       "calibre": "Atualizando biblioteca",
       "complete": "Finalizando"
     }
+  },
+  "operationError": {
+    "unexpected": "Não foi possível concluir esta ação. Tente novamente.",
+    "connectivity": "Não foi possível conectar ao serviço. Verifique a conexão de rede e o endereço do serviço e tente novamente.",
+    "credential": "Acesso negado. Verifique suas credenciais ou entre novamente.",
+    "configuration": "Verifique as configurações da biblioteca ou do serviço e tente novamente.",
+    "notFound": "Este item não está mais disponível. Atualize e tente novamente.",
+    "io": "Não foi possível acessar os arquivos locais. Verifique o espaço de armazenamento e as permissões.",
+    "dataIntegrity": "Alguns dados não puderam ser lidos corretamente. Restaure uma cópia confiável e tente novamente.",
+    "tts": "A leitura em voz alta falhou. Verifique as configurações de voz e tente novamente."
   }
 }

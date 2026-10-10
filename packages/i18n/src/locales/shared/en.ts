@@ -1,4 +1,16 @@
 export const sharedEn = {
+  operationError: {
+    unexpected: "This action could not be completed. Please try again.",
+    connectivity:
+      "Cannot connect to the service. Check your network connection and service address, then try again.",
+    credential: "Access was denied. Check your credentials or sign in again.",
+    configuration: "Check the library or service settings, then try again.",
+    notFound: "This item is no longer available. Refresh and try again.",
+    io: "Cannot access local files. Check storage space and file permissions.",
+    dataIntegrity:
+      "Some data could not be read correctly. Restore a reliable copy and try again.",
+    tts: "Speech playback failed. Check your speech settings and try again.",
+  },
   qwenTts: {
     title: "Qwen",
     add: "Add {{name}}",

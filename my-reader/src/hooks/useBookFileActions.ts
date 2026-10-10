@@ -1,7 +1,8 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
-import { api, formatApiError } from "@/lib/tauri-api"
+import { api } from "@/lib/tauri-api"
+import { errorMessage } from "@/lib/error-presentation"
 import { useBookFileState } from "./queries/useBookFileState"
 
 export function useBookFileActions(
@@ -33,7 +34,7 @@ export function useBookFileActions(
       }
     } catch (error) {
       toast.error(t(`bookShare.${action}Failed`), {
-        description: formatApiError(error),
+        description: errorMessage(error),
       })
       void fileState.refetch()
     } finally {

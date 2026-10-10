@@ -1140,7 +1140,7 @@ describe("useBookActions", () => {
 
       expect(showAlertWithStatusBarRestore).toHaveBeenCalledWith(
         expect.any(String),
-        "String error",
+        "This action could not be completed. Please try again.",
       )
     })
 
@@ -1329,7 +1329,7 @@ describe("useBookActions", () => {
 
       expect(showAlertWithStatusBarRestore).toHaveBeenCalledWith(
         expect.any(String),
-        "Disk error",
+        "This action could not be completed. Please try again.",
       )
     })
 

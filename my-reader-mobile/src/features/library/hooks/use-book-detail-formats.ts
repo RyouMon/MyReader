@@ -1,3 +1,4 @@
+import { errorMessage } from "@/src/i18n/error-message"
 import type { BookDetail } from "@my-reader/tools/types/book"
 import { File } from "expo-file-system"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -17,7 +18,7 @@ import {
 import { useFileStates } from "@/src/domain/sync/hooks/use-file-states"
 import type { Library, LocalState } from "@/src/domain/types"
 import { isRemoteSourceType } from "@/src/domain/types"
-import { describeDownloadError } from "@/src/errors"
+import { describeDownloadError } from "@/src/i18n/error-message"
 import type { FileState as FileStateRow } from "@/src/services/core/content"
 import { libraryBookFileUri } from "@/src/services/fs/library-paths"
 import { confirmDeleteLocalDownload } from "../utils/delete-download"
@@ -74,10 +75,7 @@ export function useBookDetailFormats(
         })
         .catch((err) => {
           if (!cancelled) {
-            Alert.alert(
-              t("bookDetail.readFileStateFailed"),
-              err instanceof Error ? err.message : String(err),
-            )
+            Alert.alert(t("bookDetail.readFileStateFailed"), errorMessage(err))
           }
         })
       return () => {
@@ -103,10 +101,7 @@ export function useBookDetailFormats(
       })
       .catch((err) => {
         if (!cancelled) {
-          Alert.alert(
-            t("bookDetail.readFileStateFailed"),
-            err instanceof Error ? err.message : String(err),
-          )
+          Alert.alert(t("bookDetail.readFileStateFailed"), errorMessage(err))
         }
       })
     return () => {
@@ -129,10 +124,7 @@ export function useBookDetailFormats(
     for (const task of relevantTasks) {
       if (task.status === "error" && !isTaskErrorAlerted(task.id)) {
         markTaskErrorAlerted(task.id)
-        const { title, message } = describeDownloadError(
-          task.error ??
-            t("bookDetail.downloadFailed", { path: task.relativePath }),
-        )
+        const { title, message } = describeDownloadError(task.failure)
         Alert.alert(title, message)
       }
     }
@@ -249,10 +241,7 @@ export function useBookDetailFormats(
               [format]: { ...prev[format]!, localState: "present" },
             }))
             deletedLocalPathKeysRef.current.delete(pathKey)
-            Alert.alert(
-              t("bookDetail.deleteLocalFailed"),
-              err instanceof Error ? err.message : String(err),
-            )
+            Alert.alert(t("bookDetail.deleteLocalFailed"), errorMessage(err))
           },
         },
       )
@@ -285,16 +274,10 @@ export function useBookDetailFormats(
       try {
         await shareBookFile(shareable.fileUri, format)
       } catch (err) {
-        if (
-          err instanceof Error &&
-          err.message.toLowerCase().includes("cancel")
-        ) {
+        if (err instanceof Error && err.name === "AbortError") {
           return
         }
-        Alert.alert(
-          t("share.shareFailed"),
-          err instanceof Error ? err.message : String(err),
-        )
+        Alert.alert(t("share.shareFailed"), errorMessage(err))
       }
     },
     [activeLibrary, detail, t],

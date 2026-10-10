@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/error-presentation"
 import { apiErrorKind } from "@/lib/api-error"
 import type { CalibreBook } from "@my-reader/tools/types/book"
 import { useNavigate } from "@tanstack/react-router"
@@ -324,7 +325,7 @@ export default function BookDetailPane({
       onLibraryChanged?.()
     } catch (error) {
       toast.error(t("bookDetail.updateMetadataFailed"), {
-        description: String(error),
+        description: errorMessage(error),
       })
     } finally {
       setSavingMetadata(false)

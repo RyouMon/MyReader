@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/error-presentation"
 import type { Locator } from "@readium/shared"
 import { Settings } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -170,7 +171,7 @@ export function ReadiumPdfReader({
         setCurrentLocator(nav.currentLocator)
         setReadiumNavReady(true)
       } catch (error) {
-        if (!cancelled) setInitError(String(error))
+        if (!cancelled) setInitError(errorMessage(error))
       }
     })()
 

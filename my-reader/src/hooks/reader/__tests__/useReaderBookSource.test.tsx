@@ -43,7 +43,10 @@ vi.mock("@/lib/readerWindow", () => ({
   isMainWebviewWindow: () => false,
   openReaderInNewWindow: vi.fn(),
 }))
-vi.mock("@/lib/tauri-api", () => ({ api: mocks.api }))
+vi.mock("@/lib/tauri-api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-api")>()),
+  api: mocks.api,
+}))
 
 const savedLocator = {
   href: "chapter.xhtml",
@@ -210,7 +213,7 @@ describe("useReaderBookSource", () => {
       result.current.bookPayload?.initialSavedLocator?.locations.position,
     ).toBe(3)
     expect(result.current.positionConflict).toEqual(candidates)
-    expect(result.current.fetchError).toContain("disk full")
+    expect(result.current.fetchError).toBe("未能完成此操作，请重试。")
     expect(result.current.resolvingPositionConflict).toBe(false)
   })
 
@@ -225,7 +228,7 @@ describe("useReaderBookSource", () => {
       wrapper,
     })
     await waitFor(() => expect(result.current.downloadState).toBe("error"))
-    expect(result.current.downloadError).toContain("offline")
+    expect(result.current.downloadError).toBe("未能完成此操作，请重试。")
     expect(result.current.fetchError).toBeNull()
     act(() => result.current.handleRetryDownload())
     await waitFor(() =>

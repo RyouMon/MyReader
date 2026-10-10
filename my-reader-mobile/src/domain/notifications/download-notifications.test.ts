@@ -38,7 +38,7 @@ describe("download notifications", () => {
     jest.clearAllMocks()
   })
 
-  it("should show the complete reason in an alert when a download fails", () => {
+  it("should hide raw diagnostic details in a failed download alert", () => {
     notifyDownloadState(
       "error",
       "The Dispossessed · EPUB",
@@ -47,7 +47,7 @@ describe("download notifications", () => {
 
     expect(showAlertWithStatusBarRestore).toHaveBeenCalledWith(
       "Download failed",
-      "The Dispossessed · EPUB\nHTTP 404: file not found",
+      "The Dispossessed · EPUB\nThis action could not be completed. Please try again.",
     )
     expect(Notifier.showNotification).not.toHaveBeenCalled()
   })

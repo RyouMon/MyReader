@@ -23,6 +23,11 @@ apps translate these keys when rendering or showing a notification, so stored
 failures follow the current language. Missing or unknown categories use generic
 guidance; diagnostic messages stay in logs and sync history, not in UI copy.
 
+`errorMessageKey` provides the same boundary for other operations: library and
+source management, transfers, reading and speech. Platform adapters inspect typed
+errors; UI selects copy at presentation time. Unknown errors use a generic message.
+The error classes and transport adapters do not translate diagnostics.
+
 When adding or updating a locale:
 
 - Keep keys and interpolation variables aligned with English. Use i18next plural

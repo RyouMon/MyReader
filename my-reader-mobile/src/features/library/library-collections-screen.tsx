@@ -1,3 +1,4 @@
+import { errorMessage } from "@/src/i18n/error-message"
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import type { BuiltInBookCollectionId } from "@my-reader/tools/types/book-collection"
 import { libraryTypeOf } from "@my-reader/tools/types/library"
@@ -208,7 +209,7 @@ export default function LibraryCollectionsScreen() {
       (error) => {
         showAlertWithStatusBarRestore(
           t("library.importFailed.title"),
-          error instanceof Error ? error.message : String(error),
+          errorMessage(error),
         )
       },
     )

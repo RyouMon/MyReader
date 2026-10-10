@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/error-presentation"
 import {
   canonicalizeReaderLocatorForStorage,
   readerBookmarkLocatorKey,
@@ -67,10 +68,6 @@ function readerBookmarkFromDto(row: ReaderBookmarkDto): ReaderBookmark {
     createdAt: row.createdAt ?? 0,
     updatedAt: row.updatedAt ?? 0,
   }
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
 }
 
 export function useReaderBookmarks({
