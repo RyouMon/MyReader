@@ -335,22 +335,23 @@ pub async fn refresh_library<R: tauri::Runtime>(
 
 #[tauri::command]
 #[specta::specta]
-pub fn remove_library<R: tauri::Runtime>(
+pub async fn remove_library<R: tauri::Runtime>(
     app: AppHandle<R>,
     state: State<'_, AppState>,
     id: String,
 ) -> Result<(), AppError> {
     info!("Start to remove library. id: \"{id}\"");
-    let result = (|| {
+    let _add_guard = LIBRARY_ADD_LOCK.lock().await;
+    let result = async {
         let app_data_dir = common::app_data_dir(&app)?;
-        common::with_config_mut(&state, |config| {
-            LibraryService::remove_library(&app_data_dir, &id, config)
-        })?;
-        // Re-acquire the lock for save_config to keep the persisted view strictly in
-        // sync with the just-mutated in-memory state.
-        let snapshot = common::config_snapshot(&state);
-        common::persist_config(&app, &snapshot)
-    })();
+        let mut config = common::config_snapshot(&state);
+        LibraryService::remove_library(&app_data_dir, &id, &mut config).await?;
+        common::with_config_mut(&state, |current| {
+            current.apply_core_config(&config.to_core_config());
+            common::persist_config(&app, current)
+        })
+    }
+    .await;
     match &result {
         Ok(()) => info!("Success to remove library. id: \"{id}\""),
         Err(err) => error!("Failed to remove library. id: \"{id}\", error: {err}"),

@@ -456,8 +456,8 @@ async fn refresh_remote_library_should_redownload_metadata_and_report_config_err
     assert!(format!("{err}").contains("LIBRARY_NOT_FOUND"));
 }
 
-#[test]
-fn remove_library_should_remove_config_container_cache_and_update_active_library() {
+#[tokio::test]
+async fn remove_library_should_remove_config_container_cache_and_update_active_library() {
     let app_data = tempfile::tempdir().unwrap();
     let local_root = tempfile::tempdir().unwrap();
     let container = app_data.path().join("libraries").join("lib-a");
@@ -472,12 +472,48 @@ fn remove_library_should_remove_config_container_cache_and_update_active_library
     };
 
     LibraryService::remove_library(app_data.path(), "lib-a", &mut config)
+        .await
         .expect("remove should succeed");
 
     assert_eq!(config.libraries.len(), 1);
     assert_eq!(config.libraries[0].id, "lib-b");
     assert_eq!(config.active_library_id.as_deref(), Some("lib-b"));
     assert!(!container.exists());
+}
+
+#[tokio::test]
+async fn remove_library_should_succeed_after_loading_calibre_reading_data() {
+    let app_data = tempfile::tempdir().unwrap();
+    let local_root = tempfile::tempdir().unwrap();
+    let book = seed_minimal_calibre_library(local_root.path()).await;
+    let metadata_before = std::fs::read(local_root.path().join("metadata.db")).unwrap();
+    let book_before = std::fs::read(&book.file_path).unwrap();
+    let mut config = AppConfig::default();
+    let library = LibraryService::add_library(
+        app_data.path(),
+        local_root.path().to_str().unwrap(),
+        Some("Calibre removal regression"),
+        &mut config,
+    )
+    .await
+    .expect("add Calibre library");
+    let container = app_data.path().join("libraries").join(&library.id);
+    my_reader_core::api::reading::ReadingService::list_favorite_book_ids(&container)
+        .await
+        .expect("load reading data as the library view does");
+
+    LibraryService::remove_library(app_data.path(), &library.id, &mut config)
+        .await
+        .expect("remove a library whose reading database has been opened");
+
+    assert!(config.libraries.is_empty());
+    assert!(config.active_library_id.is_none());
+    assert!(!container.exists());
+    assert_eq!(
+        std::fs::read(local_root.path().join("metadata.db")).unwrap(),
+        metadata_before
+    );
+    assert_eq!(std::fs::read(&book.file_path).unwrap(), book_before);
 }
 
 #[test]
