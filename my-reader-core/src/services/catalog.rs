@@ -8,9 +8,9 @@ use crate::models::catalog::{
     myreader_book_relative_path, myreader_cover_relative_path, BookFilePathRequest,
 };
 use crate::models::{
-    is_remote_library_source_type, BookContent, BookDetail, BookEntry, BookFormat, BookIdentifier,
-    BookSummary, FormatSize, ImportBookRequest, Library, LibraryType, PaginatedBooks,
-    ReadingFormatPolicy, UpdateBookMetadataRequest,
+    BookContent, BookDetail, BookEntry, BookFormat, BookIdentifier, BookSummary, FormatSize,
+    ImportBookRequest, Library, LibraryType, PaginatedBooks, ReadingFormatPolicy,
+    UpdateBookMetadataRequest,
 };
 use crate::repositories::calibre::{CalibreBookRepository, CatalogRepository};
 use crate::repositories::content::{ContentRepository, PendingBookImport};
@@ -598,7 +598,7 @@ impl CatalogService {
         )
         .await?;
         let database_path = context.path();
-        let remote_library = is_remote_library_source_type(library.source_type.as_deref());
+        let remote_library = library.is_remote();
         if remote_library != (delivery == ImportDelivery::DeferredRemote) {
             return Err(CoreError::Config(if remote_library {
                 "REMOTE_LIBRARY_STORAGE_REQUIRED".into()
@@ -904,7 +904,7 @@ impl CatalogService {
         )
         .await?;
 
-        if is_remote_library_source_type(library.source_type.as_deref()) {
+        if library.is_remote() {
             crate::services::content::ContentService::mark_file_remote_delete_pending(
                 sidecar_root,
                 &relative_path,

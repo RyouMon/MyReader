@@ -12,7 +12,7 @@ use sea_orm::DatabaseConnection;
 use crate::{
     database,
     models::{
-        AppConfig, DataSource, Library, LibraryType, MyReaderLibraryMarker,
+        AppConfig, DataSource, Library, LibrarySourceType, LibraryType, MyReaderLibraryMarker,
         MYREADER_LIBRARY_MARKER_RELATIVE_PATH,
     },
     repositories::calibre::CatalogRepository,
@@ -129,8 +129,8 @@ pub(crate) fn writable_myreader_library(
         return Err(CoreError::Config("LIBRARY_NOT_MYREADER".into()));
     }
     if !matches!(
-        library.source_type.as_deref(),
-        Some("local") | Some("webdav") | Some("onedrive")
+        library.source_type,
+        Some(LibrarySourceType::Local | LibrarySourceType::Webdav | LibrarySourceType::Onedrive)
     ) {
         return Err(CoreError::Config("MYREADER_LIBRARY_SOURCE_REQUIRED".into()));
     }
@@ -142,23 +142,19 @@ pub(crate) fn writable_myreader_library(
             .ok_or_else(|| {
                 CoreError::NotFound(format!("DATASOURCE_NOT_FOUND: {data_source_id}"))
             })?;
-        let (kind, readonly) = match source {
-            DataSource::Local { readonly, .. } => ("local", *readonly),
-            DataSource::Webdav { readonly, .. } => ("webdav", *readonly),
-            DataSource::Onedrive { readonly, .. } => ("onedrive", *readonly),
+        let readonly = match source {
+            DataSource::Local { readonly, .. }
+            | DataSource::Webdav { readonly, .. }
+            | DataSource::Onedrive { readonly, .. } => *readonly,
         };
-        if library.source_type.as_deref() != Some(kind) {
+        if library.source_type.as_ref() != Some(&source.source_type()) {
             return Err(CoreError::Config("LIBRARY_DATASOURCE_TYPE_MISMATCH".into()));
         }
         if readonly == Some(true) {
             return Err(CoreError::Config("DATASOURCE_READ_ONLY".into()));
         }
     }
-    if matches!(
-        library.source_type.as_deref(),
-        Some("webdav") | Some("onedrive")
-    ) && library.data_source_id.is_none()
-    {
+    if library.is_remote() && library.data_source_id.is_none() {
         return Err(CoreError::Config(
             "REMOTE_LIBRARY_MISSING_DATASOURCE".into(),
         ));

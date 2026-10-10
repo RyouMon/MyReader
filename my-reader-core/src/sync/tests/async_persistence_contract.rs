@@ -165,7 +165,7 @@ async fn concurrent_mutations_should_preserve_every_committed_change() {
         let path = path.clone();
         let identity = identity.clone();
         writers.spawn(async move {
-            let replica_id = identity.replica_id.clone();
+            let replica_id = identity.replica_id.to_string();
             mutate_document(&path, &identity, 100, move |document| {
                 set_favorite(
                     document,
@@ -198,7 +198,7 @@ async fn concurrent_mutations_should_preserve_every_committed_change() {
 async fn failed_mutation_should_rollback_and_preserve_error_category() {
     let (_directory, path, identity) = database().await;
     let before = ensure_database_document(&path, &identity, 1).await.unwrap();
-    let replica_id = identity.replica_id.clone();
+    let replica_id = identity.replica_id.to_string();
     let error = mutate_document(&path, &identity, 100, move |document| {
         set_favorite(
             document,

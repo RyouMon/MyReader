@@ -606,7 +606,7 @@ fn library_info_from_core(library: my_reader_core::models::Library) -> LibraryIn
         path: library.path,
         library_type: library.library_type.into(),
         book_count: usize::try_from(library.book_count).unwrap_or(usize::MAX),
-        source_type: library.source_type,
+        source_type: library.source_type.map(Into::into),
         data_source_id: library.data_source_id,
         source_path: library.source_path,
     }

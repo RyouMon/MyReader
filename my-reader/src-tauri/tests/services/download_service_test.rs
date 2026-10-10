@@ -530,7 +530,7 @@ async fn delete_local_file_should_remove_remote_copy_and_reject_local_library() 
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(row.local_state, "remote_only");
+    assert_eq!(row.local_state.as_str(), "remote_only");
     assert!(row.local_size.is_none());
 
     let local_root = tempfile::tempdir().unwrap();
@@ -839,7 +839,7 @@ async fn execute_download_should_download_remote_file_into_container_and_record_
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(row.local_state, "present");
+    assert_eq!(row.local_state.as_str(), "present");
     assert_eq!(row.local_size, Some(19));
 }
 
@@ -883,7 +883,7 @@ async fn download_book_file_should_copy_remote_content_and_reset_state_on_error(
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(row.local_state, "present");
+    assert_eq!(row.local_state.as_str(), "present");
 
     let missing_path = local_root.path().join("Missing/It.epub");
     let err = DownloadService::download_book_file(
@@ -911,7 +911,7 @@ async fn download_book_file_should_copy_remote_content_and_reset_state_on_error(
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(row.local_state, "remote_only");
+    assert_eq!(row.local_state.as_str(), "remote_only");
 }
 
 #[tokio::test]
@@ -991,7 +991,7 @@ async fn download_book_file_should_cancel_before_open_and_mark_remote_only() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(row.local_state, "remote_only");
+    assert_eq!(row.local_state.as_str(), "remote_only");
 }
 
 fn fs_operator(root: &std::path::Path) -> Operator {

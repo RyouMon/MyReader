@@ -27,8 +27,8 @@ async fn source_identity_and_device_replica_stay_separate() {
     assert_eq!(reopened.identity(source.path()).await.unwrap(), a_identity);
     let b = LibraryContext::open(second.path()).await.unwrap();
     let b_identity = b.identity(source.path()).await.unwrap();
-    assert_eq!(a_identity.library_uuid, LIBRARY_UUID);
-    assert_eq!(b_identity.library_uuid, LIBRARY_UUID);
+    assert_eq!(a_identity.library_uuid.as_str(), LIBRARY_UUID);
+    assert_eq!(b_identity.library_uuid.as_str(), LIBRARY_UUID);
     assert_ne!(a_identity.replica_id, b_identity.replica_id);
     assert!(!source.path().join(".myreader/myreader.db").exists());
 
@@ -61,7 +61,12 @@ async fn calibre_identity_does_not_require_catalog_schema_or_modify_source() {
     let sidecar = tempfile::tempdir().unwrap();
     let context = LibraryContext::open(sidecar.path()).await.unwrap();
     assert_eq!(
-        context.identity(source.path()).await.unwrap().library_uuid,
+        context
+            .identity(source.path())
+            .await
+            .unwrap()
+            .library_uuid
+            .as_str(),
         LIBRARY_UUID
     );
     assert_eq!(std::fs::read(&path).unwrap(), original);
@@ -139,6 +144,13 @@ fn writable_access_preserves_source_permissions_and_marker_errors() {
         matches!(writable_myreader_library(&missing, "library", source.path(), 0), Err(CoreError::Config(message)) if message == "REMOTE_LIBRARY_MISSING_DATASOURCE")
     );
     let mut calibre = config.clone();
+    for source_type in [None, Some(LibrarySourceType::from("future_backend"))] {
+        let mut unsupported = config.clone();
+        unsupported.libraries[0].source_type = source_type;
+        assert!(
+            matches!(writable_myreader_library(&unsupported, "library", source.path(), 0), Err(CoreError::Config(message)) if message == "MYREADER_LIBRARY_SOURCE_REQUIRED")
+        );
+    }
     calibre.libraries[0].library_type = LibraryType::Calibre;
     assert!(
         matches!(writable_myreader_library(&calibre, "library", source.path(), 0), Err(CoreError::Config(message)) if message == "LIBRARY_NOT_MYREADER")
