@@ -30,6 +30,9 @@ cargo run -p my-reader-core --release --example runtime_baseline -- 1000
 
 该示例用于暴露 runtime 或连接缓存意外失效导致的数量级退化，不替代真实 UI 性能测试。
 
+SQLite / Automerge 写入、同步合并和执行器响应性的前后测量，见
+[Core 异步执行器性能](./core-async-executor-performance.md)。
+
 ## 原生绑定构建
 
 ```bash

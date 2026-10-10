@@ -15,8 +15,8 @@ use crate::{
         document::CatalogBookValue,
         document_engine::DocumentCommand,
         persistence::{
-            ensure_database_document, execute_local_database_command, DatabaseIdentity,
-            SyncDatabaseCommand,
+            async_io::{ensure_database_document, execute_local_database_command},
+            DatabaseIdentity, SyncDatabaseCommand,
         },
         transport::{self, RemoteUploadProgress},
     },
@@ -161,10 +161,11 @@ impl BookTransferService {
         let database_path = database_path
             .to_str()
             .ok_or_else(|| CoreError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?;
-        let identity = crate::sync::persistence::ensure_database_identity(
+        let identity = crate::sync::persistence::async_io::ensure_database_identity(
             database_path,
             &marker.library_uuid,
-        )?;
+        )
+        .await?;
         let mut report = BookUploadReport {
             completed_book_uuids: Vec::with_capacity(pending_imports.len()),
             unavailable_book_uuids: Vec::new(),
@@ -223,7 +224,7 @@ impl BookTransferService {
         {
             return Ok(UploadOutcome::Cancelled);
         }
-        let catalog_state = pending_catalog_state(database_path, identity, pending)?;
+        let catalog_state = pending_catalog_state(database_path, identity, pending).await?;
         if catalog_state == PendingCatalogState::Deleted {
             super::content::ContentService::delete_pending_book_import(
                 sidecar_root,
@@ -356,12 +357,13 @@ fn book_upload_lock(sidecar_root: &Path) -> Arc<AsyncMutex<()>> {
     lock
 }
 
-fn pending_catalog_state(
+async fn pending_catalog_state(
     database_path: &str,
     identity: &DatabaseIdentity,
     pending: &PendingBookImport,
 ) -> Result<PendingCatalogState, CoreError> {
-    let document = ensure_database_document(database_path, identity, pending.recorded_at_ms)?;
+    let document =
+        ensure_database_document(database_path, identity, pending.recorded_at_ms).await?;
     let existing = document
         .projection
         .catalog_books
@@ -410,7 +412,7 @@ async fn finalize_pending_upload(
         &pending.book_uuid,
     )
     .await?;
-    let catalog_state = pending_catalog_state(database_path, identity, pending)?;
+    let catalog_state = pending_catalog_state(database_path, identity, pending).await?;
     if !pending_exists || catalog_state == PendingCatalogState::Deleted {
         if catalog_state == PendingCatalogState::Deleted {
             super::content::ContentService::delete_pending_book_import(
@@ -434,7 +436,9 @@ async fn finalize_pending_upload(
     )
     .await?;
 
-    if pending_catalog_state(database_path, identity, pending)? == PendingCatalogState::Deleted {
+    if pending_catalog_state(database_path, identity, pending).await?
+        == PendingCatalogState::Deleted
+    {
         super::content::ContentService::mark_file_remote_delete_pending(
             sidecar_root,
             &pending.relative_path,
@@ -611,7 +615,8 @@ async fn complete_pending_upload(
                     recorded_at: pending.recorded_at_ms,
                 },
             },
-        )?;
+        )
+        .await?;
     }
 
     if final_path.is_file() {

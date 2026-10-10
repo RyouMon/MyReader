@@ -10,7 +10,7 @@ use crate::sync::{
         ReadingPositionValue, ReadingSessionValue,
     },
     persistence::{
-        ensure_database_document, ensure_database_identity, execute_local_database_mutation,
+        async_io::{ensure_database_document, ensure_database_identity, mutate_document},
         DatabaseIdentity,
     },
 };
@@ -56,11 +56,11 @@ impl ReadingService {
         let database_path = database_path
             .to_str()
             .ok_or_else(|| CoreError::Config("Library database path is invalid UTF-8".into()))?;
-        let identity = ensure_database_identity(database_path, &library_uuid)?;
+        let identity = ensure_database_identity(database_path, &library_uuid).await?;
         let replica_id = identity.replica_id.clone();
-        let mut changed = false;
+        let mutation_replica_id = replica_id.clone();
 
-        execute_local_database_mutation(database_path, &identity, recorded_at_ms, |document| {
+        let changed = mutate_document(database_path, &identity, recorded_at_ms, move |document| {
             let current = favorite_projections(document)?
                 .into_iter()
                 .find(|(id, _)| *id == book_id)
@@ -68,9 +68,8 @@ impl ReadingService {
             if current.as_ref().map(|value| value.is_favorite) == Some(is_favorite)
                 || (current.is_none() && !is_favorite)
             {
-                return Ok(());
+                return Ok(false);
             }
-            changed = true;
             set_favorite(
                 document,
                 book_id,
@@ -82,11 +81,12 @@ impl ReadingService {
                         current.and_then(|value| value.added_at)
                     },
                     recorded_at: recorded_at_ms,
-                    replica_id: replica_id.clone(),
+                    replica_id: mutation_replica_id,
                 },
             )?;
-            Ok(())
-        })?;
+            Ok(true)
+        })
+        .await?;
 
         if changed {
             info!(
@@ -173,20 +173,21 @@ impl ReadingService {
         } else {
             None
         };
-        let mut completed = false;
-
-        execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
-            write_reading_position(document, book_id, &value)?;
-            if let Some(completion) = &completion {
-                let already_completed = reading_completion_records(document)?
-                    .into_iter()
-                    .any(|current| current.book_id == book_id);
-                if !already_completed {
-                    completed = write_reading_completion(document, completion)?.is_some();
+        let completed =
+            mutate_document(&database_path, &identity, recorded_at_ms, move |document| {
+                let mut completed = false;
+                write_reading_position(document, book_id, &value)?;
+                if let Some(completion) = &completion {
+                    let already_completed = reading_completion_records(document)?
+                        .into_iter()
+                        .any(|current| current.book_id == book_id);
+                    if !already_completed {
+                        completed = write_reading_completion(document, completion)?.is_some();
+                    }
                 }
-            }
-            Ok(())
-        })?;
+                Ok(completed)
+            })
+            .await?;
         info!(
             target: "myreader_sync",
             event = "reading_position.local_write",
@@ -222,7 +223,7 @@ impl ReadingService {
         }
         let format = normalize_reading_format(format)?;
         let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
-        let result = ensure_database_document(&database_path, &identity, now_ms)?;
+        let result = ensure_database_document(&database_path, &identity, now_ms).await?;
         result
             .projection
             .reading_position_candidates
@@ -258,10 +259,12 @@ impl ReadingService {
         }
         let format = normalize_reading_format(format)?;
         let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
-        execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
-            resolve_reading_position(document, book_id, &format, operation_id, recorded_at_ms)?;
+        let operation_id = operation_id.to_owned();
+        mutate_document(&database_path, &identity, recorded_at_ms, move |document| {
+            resolve_reading_position(document, book_id, &format, &operation_id, recorded_at_ms)?;
             Ok(())
-        })?;
+        })
+        .await?;
         Ok(())
     }
 
@@ -298,37 +301,45 @@ impl ReadingService {
         )?;
         let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
 
-        execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
-            let current = bookmark_projections(document)?.into_iter().find(|item| {
-                item.book_id == book_id && item.format == format && item.locator_key == locator_key
-            });
-            if current
-                .as_ref()
-                .is_some_and(|bookmark| bookmark.deleted_at.is_none())
-            {
-                return Ok(());
+        mutate_document(&database_path, &identity, recorded_at_ms, {
+            let format = format.clone();
+            let locator_key = locator_key.clone();
+            let replica_id = identity.replica_id.clone();
+            move |document| {
+                let current = bookmark_projections(document)?.into_iter().find(|item| {
+                    item.book_id == book_id
+                        && item.format == format
+                        && item.locator_key == locator_key
+                });
+                if current
+                    .as_ref()
+                    .is_some_and(|bookmark| bookmark.deleted_at.is_none())
+                {
+                    return Ok(());
+                }
+                set_bookmark(
+                    document,
+                    &BookmarkValue {
+                        id: current.as_ref().map_or_else(
+                            || uuid::Uuid::new_v4().as_simple().to_string(),
+                            |bookmark| bookmark.id.clone(),
+                        ),
+                        book_id,
+                        format: format.clone(),
+                        locator_key: locator_key.clone(),
+                        locator_json: locator_json.clone(),
+                        created_at: current
+                            .as_ref()
+                            .map_or(recorded_at_ms, |bookmark| bookmark.created_at),
+                        deleted_at: None,
+                        recorded_at: recorded_at_ms,
+                        replica_id: replica_id.clone(),
+                    },
+                )?;
+                Ok(())
             }
-            set_bookmark(
-                document,
-                &BookmarkValue {
-                    id: current.as_ref().map_or_else(
-                        || uuid::Uuid::new_v4().as_simple().to_string(),
-                        |bookmark| bookmark.id.clone(),
-                    ),
-                    book_id,
-                    format: format.clone(),
-                    locator_key: locator_key.clone(),
-                    locator_json: locator_json.clone(),
-                    created_at: current
-                        .as_ref()
-                        .map_or(recorded_at_ms, |bookmark| bookmark.created_at),
-                    deleted_at: None,
-                    recorded_at: recorded_at_ms,
-                    replica_id: identity.replica_id.clone(),
-                },
-            )?;
-            Ok(())
-        })?;
+        })
+        .await?;
 
         info!(
             target: "myreader_sync",
@@ -359,27 +370,33 @@ impl ReadingService {
         let (format, locator_key, _) =
             validate_bookmark(book_id, format, locator_key, None, recorded_at_ms)?;
         let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
-        let mut changed = false;
 
-        execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
-            let current = bookmark_projections(document)?.into_iter().find(|item| {
-                item.book_id == book_id && item.format == format && item.locator_key == locator_key
-            });
-            let Some(current) = current.filter(|bookmark| bookmark.deleted_at.is_none()) else {
-                return Ok(());
-            };
-            changed = true;
-            set_bookmark(
-                document,
-                &BookmarkValue {
-                    deleted_at: Some(recorded_at_ms),
-                    recorded_at: recorded_at_ms,
-                    replica_id: identity.replica_id.clone(),
-                    ..current
-                },
-            )?;
-            Ok(())
-        })?;
+        let changed = mutate_document(&database_path, &identity, recorded_at_ms, {
+            let format = format.clone();
+            let locator_key = locator_key.clone();
+            let replica_id = identity.replica_id.clone();
+            move |document| {
+                let current = bookmark_projections(document)?.into_iter().find(|item| {
+                    item.book_id == book_id
+                        && item.format == format
+                        && item.locator_key == locator_key
+                });
+                let Some(current) = current.filter(|bookmark| bookmark.deleted_at.is_none()) else {
+                    return Ok(false);
+                };
+                set_bookmark(
+                    document,
+                    &BookmarkValue {
+                        deleted_at: Some(recorded_at_ms),
+                        recorded_at: recorded_at_ms,
+                        replica_id: replica_id.clone(),
+                        ..current
+                    },
+                )?;
+                Ok(true)
+            }
+        })
+        .await?;
 
         if changed {
             info!(
@@ -430,11 +447,12 @@ impl ReadingService {
         let id = uuid::Uuid::new_v4().as_simple().to_string();
         let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
 
-        execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
+        let annotation_id = id.clone();
+        mutate_document(&database_path, &identity, recorded_at_ms, move |document| {
             create_annotation(
                 document,
                 &AnnotationValue {
-                    id: id.clone(),
+                    id: annotation_id,
                     book_id,
                     format,
                     kind: "highlight".into(),
@@ -448,7 +466,8 @@ impl ReadingService {
                 },
             )?;
             Ok(())
-        })?;
+        })
+        .await?;
         info!(
             target: "myreader_sync",
             event = "annotation.local_write",
@@ -477,22 +496,29 @@ impl ReadingService {
         let color = validate_annotation_color(color)?.to_owned();
         let note = normalize_annotation_note(note)?;
         let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
-        let mut exists = false;
+        let annotation_id = id.to_owned();
 
-        execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
-            exists = annotation_projections(document)?
+        let exists = mutate_document(&database_path, &identity, recorded_at_ms, move |document| {
+            let exists = annotation_projections(document)?
                 .into_iter()
                 .any(|annotation| {
-                    annotation.id == id
+                    annotation.id == annotation_id
                         && annotation.book_id == book_id
                         && annotation.format == format
                         && !annotation.deleted
                 });
             if exists {
-                update_annotation(document, id, &color, note.as_deref(), recorded_at_ms)?;
+                update_annotation(
+                    document,
+                    &annotation_id,
+                    &color,
+                    note.as_deref(),
+                    recorded_at_ms,
+                )?;
             }
-            Ok(())
-        })?;
+            Ok(exists)
+        })
+        .await?;
         if !exists {
             return Err(CoreError::NotFound("ANNOTATION_NOT_FOUND".into()));
         }
@@ -519,22 +545,23 @@ impl ReadingService {
     ) -> Result<(), CoreError> {
         let format = validate_annotation_identity(book_id, format, recorded_at_ms)?;
         let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
-        let mut exists = false;
+        let annotation_id = id.to_owned();
 
-        execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
-            exists = annotation_projections(document)?
+        let exists = mutate_document(&database_path, &identity, recorded_at_ms, move |document| {
+            let exists = annotation_projections(document)?
                 .into_iter()
                 .any(|annotation| {
-                    annotation.id == id
+                    annotation.id == annotation_id
                         && annotation.book_id == book_id
                         && annotation.format == format
                         && !annotation.deleted
                 });
             if exists {
-                delete_annotation(document, id, recorded_at_ms)?;
+                delete_annotation(document, &annotation_id, recorded_at_ms)?;
             }
-            Ok(())
-        })?;
+            Ok(exists)
+        })
+        .await?;
         if !exists {
             return Err(CoreError::NotFound("ANNOTATION_NOT_FOUND".into()));
         }
@@ -590,10 +617,11 @@ impl ReadingService {
             duration_seconds,
             updated_at: recorded_at_ms,
         };
-        execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
+        mutate_document(&database_path, &identity, recorded_at_ms, move |document| {
             add_reading_session_duration(document, &value)?;
             Ok(())
-        })?;
+        })
+        .await?;
         info!(
             target: "myreader_sync",
             event = "reading_session.local_write",
@@ -695,8 +723,8 @@ async fn backfill_legacy_reading_completions(
         .max()
         .unwrap_or_default();
     let replica_id = identity.replica_id.clone();
-    let mut changed = 0_usize;
-    execute_local_database_mutation(&database_path, &identity, recorded_at, |document| {
+    let changed = mutate_document(&database_path, &identity, recorded_at, move |document| {
+        let mut changed = 0_usize;
         let mut completed_books = reading_completion_records(document)?
             .into_iter()
             .map(|value| value.book_id)
@@ -708,8 +736,9 @@ async fn backfill_legacy_reading_completions(
                 changed += usize::from(write_reading_completion(document, &value)?.is_some());
             }
         }
-        Ok(())
-    })?;
+        Ok(changed)
+    })
+    .await?;
     if changed > 0 {
         info!(
             target: "myreader_sync",
@@ -746,7 +775,7 @@ async fn sync_context(
         .to_str()
         .ok_or_else(|| CoreError::Config("Library database path is invalid UTF-8".into()))?
         .to_owned();
-    let identity = ensure_database_identity(&database_path, &library_uuid)?;
+    let identity = ensure_database_identity(&database_path, &library_uuid).await?;
     Ok((database_path, identity))
 }
 

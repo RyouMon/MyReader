@@ -17,7 +17,10 @@ use crate::repositories::content::PendingBookImport;
 use crate::sync::{
     document::CatalogBookValue,
     document_engine::DocumentCommand,
-    persistence::{ensure_database_document, execute_local_database_command, SyncDatabaseCommand},
+    persistence::{
+        async_io::{ensure_database_document, execute_local_database_command},
+        SyncDatabaseCommand,
+    },
 };
 use crate::CoreError;
 
@@ -499,11 +502,12 @@ impl CatalogService {
         let database_path = database_path
             .to_str()
             .ok_or_else(|| CoreError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?;
-        let identity = crate::sync::persistence::ensure_database_identity(
+        let identity = crate::sync::persistence::async_io::ensure_database_identity(
             database_path,
             &marker.library_uuid,
-        )?;
-        let document = ensure_database_document(database_path, &identity, 0)?;
+        )
+        .await?;
+        let document = ensure_database_document(database_path, &identity, 0).await?;
         let book = document
             .projection
             .catalog_books
@@ -629,7 +633,8 @@ impl CatalogService {
                 "LOCAL_MYREADER_LIBRARY_REQUIRED".into()
             }));
         }
-        let current = ensure_database_document(&database_path, &identity, request.recorded_at_ms)?;
+        let current =
+            ensure_database_document(&database_path, &identity, request.recorded_at_ms).await?;
         let pending_imports =
             crate::services::content::ContentService::list_pending_book_imports(sidecar_root)
                 .await?;
@@ -794,7 +799,9 @@ impl CatalogService {
                     recorded_at: request.recorded_at_ms,
                 },
             },
-        ) {
+        )
+        .await
+        {
             if delivery == ImportDelivery::DeferredRemote {
                 let _ = crate::services::content::ContentService::discard_pending_book_import(
                     sidecar_root,
@@ -843,7 +850,8 @@ impl CatalogService {
                 request.recorded_at_ms,
             )
             .await?;
-        let current = ensure_database_document(&database_path, &identity, request.recorded_at_ms)?;
+        let current =
+            ensure_database_document(&database_path, &identity, request.recorded_at_ms).await?;
         let book = current
             .projection
             .catalog_books
@@ -864,7 +872,8 @@ impl CatalogService {
                     recorded_at: request.recorded_at_ms,
                 },
             },
-        )?;
+        )
+        .await?;
         CatalogRepository::open_myreader(sidecar_root, content_root)
             .await?
             .get_book_by_id(request.book_id)
@@ -893,7 +902,7 @@ impl CatalogService {
                 recorded_at_ms,
             )
             .await?;
-        let current = ensure_database_document(&database_path, &identity, recorded_at_ms)?;
+        let current = ensure_database_document(&database_path, &identity, recorded_at_ms).await?;
         let book = current
             .projection
             .catalog_books
@@ -913,7 +922,8 @@ impl CatalogService {
                     recorded_at: recorded_at_ms,
                 },
             },
-        )?;
+        )
+        .await?;
 
         crate::services::content::ContentService::delete_pending_book_import(
             sidecar_root,
