@@ -1,3 +1,4 @@
+import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
 import { errorMessage } from "@/src/i18n/error-message"
 import { useSyncExternalStore } from "react"
 import { useTranslation } from "react-i18next"
@@ -82,7 +83,7 @@ export function useAddOneDriveDataSource() {
       return created
     } catch (caught) {
       if (isUserCancelled(caught)) return null
-      Alert.alert(t("onedrive.add.authFailed"), errorMessage(caught))
+      showErrorAlert(t("onedrive.add.authFailed"), errorMessage(caught))
       return null
     } finally {
       setAddInProgress(false)
@@ -127,7 +128,7 @@ export function useAddOneDriveDataSource() {
       return true
     } catch (caught) {
       if (isUserCancelled(caught)) return false
-      Alert.alert(t("onedrive.add.authFailed"), errorMessage(caught))
+      showErrorAlert(t("onedrive.add.authFailed"), errorMessage(caught))
       return false
     } finally {
       setAddInProgress(false)

@@ -1,4 +1,3 @@
-import { apiErrorKind } from "@/lib/api-error"
 import { formatApiError } from "@/lib/tauri-api"
 import { errorMessage } from "@/lib/error-presentation"
 import type { ErrorKind } from "@/lib/tauri-api"
@@ -39,7 +38,7 @@ export type DownloadProgress = {
   bytesWritten: number
   totalBytes?: number
   error?: string
-  failure?: ErrorKind
+  failure?: unknown
 }
 
 export type DownloadQueueEntry = {
@@ -190,7 +189,7 @@ export function applyDownloadProgressEvent(
       client,
     )
     if (event.status === "error") {
-      notifyDownloadError(event.failure)
+      notifyDownloadError(event.failure ?? event.error)
     }
   }
 
@@ -248,7 +247,6 @@ export function setDownloadError(
   error: unknown,
   client?: QueryClient,
 ) {
-  const kind = apiErrorKind(error)
   updateDownloadQueue(libraryId, bookId, format, null, client)
   updateBookFileState(libraryId, bookId, format, "remote_only", null, client)
   setDownloadProgressSnapshot(
@@ -259,7 +257,7 @@ export function setDownloadError(
       status: "error",
       bytesWritten: 0,
       error: formatApiError(error),
-      failure: kind ? { kind, message: formatApiError(error) } : undefined,
+      failure: error,
     },
     client,
   )

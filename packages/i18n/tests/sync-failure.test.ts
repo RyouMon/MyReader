@@ -14,20 +14,20 @@ describe("sync failure copy", () => {
       message: "STORAGE_ERROR: PermissionDenied\nHTTP 401 /Books",
     }
     expect(syncFailureDetail("请检查凭据。", failure)).toBe(
-      "请检查凭据。\n\ncredential: STORAGE_ERROR: PermissionDenied\nHTTP 401 /Books",
+      "请检查凭据。\ncredential: STORAGE_ERROR: PermissionDenied\nHTTP 401 /Books",
     )
     expect(syncFailureDetail("Check credentials.", failure)).toBe(
-      "Check credentials.\n\ncredential: STORAGE_ERROR: PermissionDenied\nHTTP 401 /Books",
+      "Check credentials.\ncredential: STORAGE_ERROR: PermissionDenied\nHTTP 401 /Books",
     )
   })
 
   it("preserves legacy messages and omits absent diagnostics", () => {
     expect(
       syncFailureDetail("Try again.", { message: "IO_ERROR: offline" }),
-    ).toBe("Try again.\n\nIO_ERROR: offline")
+    ).toBe("Try again.\nIO_ERROR: offline")
     expect(
       syncFailureDetail("Try again.", { failureKind: "future_kind" }),
-    ).toBe("Try again.\n\nfuture_kind")
+    ).toBe("Try again.\nfuture_kind")
     expect(syncFailureDetail("Try again.", undefined)).toBe("Try again.")
     expect(syncFailureDetail("Try again.", { message: "" })).toBe("Try again.")
   })

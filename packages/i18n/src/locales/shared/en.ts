@@ -116,6 +116,7 @@ export const sharedEn = {
     unread: "Unread",
   },
   common: {
+    copy: "Copy",
     cancel: "Cancel",
     close: "Close",
     delete: "Delete",
@@ -223,6 +224,7 @@ export const sharedEn = {
     lastSync: "Last synced",
     lastAttempt: "Last attempt",
     noHistory: "No sync history",
+    failureSummary: "Sync failed: {{title}}",
     failureReason: "Failure reason",
     failureStage: "Failure stage",
     progress: "{{completed}} / {{total}}",

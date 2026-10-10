@@ -25,7 +25,11 @@ export function InAppNotification({
   return (
     <View style={[styles.card, { backgroundColor: BACKGROUND[kind] }]}>
       {!!title && <Text style={styles.title}>{title}</Text>}
-      {!!description && <Text style={styles.description}>{description}</Text>}
+      {!!description && (
+        <Text selectable style={styles.description}>
+          {description}
+        </Text>
+      )}
     </View>
   )
 }

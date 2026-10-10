@@ -95,7 +95,7 @@ describe("BookMoreMenu", () => {
       expect(toastMock.error).toHaveBeenCalledWith(
         "下载失败",
         expect.objectContaining({
-          description: "未能完成此操作，请重试。",
+          description: "未能完成此操作，请重试。\nError: network failed",
         }),
       )
     })

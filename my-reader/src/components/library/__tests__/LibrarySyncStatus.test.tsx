@@ -83,7 +83,7 @@ describe("LibrarySyncStatus", () => {
       ),
     ).toBeInTheDocument()
     expect(within(details).getByText(/INTERNAL_DIAGNOSTIC/).textContent).toBe(
-      "Check your network connection and whether the data source is available, then try syncing again.\n\nconnectivity: Request: 503 INTERNAL_DIAGNOSTIC /private/library",
+      "Check your network connection and whether the data source is available, then try syncing again.\nconnectivity: Request: 503 INTERNAL_DIAGNOSTIC /private/library",
     )
 
     fireEvent.click(within(details).getByRole("button", { name: "Sync now" }))
@@ -106,19 +106,23 @@ describe("LibrarySyncStatus", () => {
       screen.getByRole("button", { name: "Sync status: Sync failed" }),
     )
     expect(
-      await screen.findByText("Check data source access"),
+      await screen.findByText("Sync failed: Check data source access"),
     ).toBeInTheDocument()
     expect(screen.getByText(/INTERNAL_DIAGNOSTIC/).textContent).toBe(
-      "Sign in again or update the data source credentials, and check that this account can access the library.\n\ncredential: network 503 INTERNAL_DIAGNOSTIC",
+      "Sign in again or update the data source credentials, and check that this account can access the library.\ncredential: network 503 INTERNAL_DIAGNOSTIC",
     )
 
     await act(async () => {
       await i18n.changeLanguage("zh-CN")
     })
-    expect(screen.getByText("请检查数据源访问权限")).toBeInTheDocument()
-    expect(screen.queryByText("Check data source access")).toBeNull()
+    expect(
+      screen.getByText("同步失败：请检查数据源访问权限"),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText("Sync failed: Check data source access"),
+    ).toBeNull()
     expect(screen.getByText(/INTERNAL_DIAGNOSTIC/).textContent).toBe(
-      "请重新登录或更新数据源凭据，并确认此账号有权访问书库。\n\ncredential: network 503 INTERNAL_DIAGNOSTIC",
+      "请重新登录或更新数据源凭据，并确认此账号有权访问书库。\ncredential: network 503 INTERNAL_DIAGNOSTIC",
     )
     expect(
       useSyncStatusStore.getState().librarySyncHistoryById[library.id]
@@ -146,7 +150,7 @@ describe("LibrarySyncStatus", () => {
     ).toBeInTheDocument()
     if (message) {
       expect(screen.getByText(/INTERNAL_DIAGNOSTIC/).textContent).toContain(
-        `\n\n${message}`,
+        `\n${message}`,
       )
     } else {
       expect(screen.queryByText(/INTERNAL_DIAGNOSTIC/)).toBeNull()

@@ -1,4 +1,4 @@
-import { syncFailureKeys } from "@my-reader/i18n/mobile"
+import { appendErrorDetail, syncFailureKeys } from "@my-reader/i18n/mobile"
 import { Notifier } from "react-native-notifier"
 import { InAppNotification } from "@/src/domain/notifications/in-app-notification"
 import i18n from "@/src/i18n"
@@ -18,7 +18,7 @@ export function notifySyncError(error: unknown, label: string): void {
   const keys = syncFailureKeys(kind)
   Notifier.showNotification({
     title: i18n.t(keys.title),
-    description: i18n.t(keys.detail),
+    description: appendErrorDetail(i18n.t(keys.detail), error),
     duration: 6000,
     hideOnPress: true,
     Component: InAppNotification,

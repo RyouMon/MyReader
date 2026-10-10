@@ -96,6 +96,7 @@
     "unread": "Не прочитано"
   },
   "common": {
+    "copy": "Копировать",
     "cancel": "Отмена",
     "close": "Закрыть",
     "delete": "Удалить",
@@ -207,6 +208,7 @@
     "lastSync": "Последняя синхронизация",
     "lastAttempt": "Последняя попытка",
     "noHistory": "Нет истории синхронизации",
+    "failureSummary": "Ошибка синхронизации: {{title}}",
     "failureReason": "Причина сбоя",
     "failureStage": "Стадия отказа",
     "progress": "{{completed}} / {{total}}",

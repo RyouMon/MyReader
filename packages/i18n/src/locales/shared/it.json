@@ -96,6 +96,7 @@
     "unread": "Non letto"
   },
   "common": {
+    "copy": "Copia",
     "cancel": "Annulla",
     "close": "Chiudi",
     "delete": "Elimina",
@@ -206,6 +207,7 @@
     "lastSync": "Ultima sincronizzazione",
     "lastAttempt": "Ultimo tentativo",
     "noHistory": "Nessuna cronologia di sincronizzazione",
+    "failureSummary": "Sincronizzazione non riuscita: {{title}}",
     "failureReason": "Motivo del fallimento",
     "failureStage": "Fase di guasto",
     "progress": "{{completed}} / {{total}}",

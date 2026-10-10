@@ -108,6 +108,7 @@ export const sharedZhCN = {
     unread: "未读",
   },
   common: {
+    copy: "复制",
     cancel: "取消",
     close: "关闭",
     delete: "删除",
@@ -215,6 +216,7 @@ export const sharedZhCN = {
     lastSync: "上次同步",
     lastAttempt: "上次尝试",
     noHistory: "暂无同步记录",
+    failureSummary: "同步失败：{{title}}",
     failureReason: "失败原因",
     failureStage: "失败阶段",
     progress: "{{completed}} / {{total}}",

@@ -162,7 +162,7 @@ export function ReaderTtsSettingsPanel({
 
         {error ? (
           <p
-            className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
+            className="select-text whitespace-pre-wrap break-words rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
             role="alert"
           >
             {error}

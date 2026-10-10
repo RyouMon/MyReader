@@ -16,7 +16,10 @@ import {
   SectionCard,
   SectionLabel,
 } from "@/src/components"
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import {
+  showAlertWithStatusBarRestore,
+  showErrorAlert,
+} from "@/src/constants/alert-with-status-bar"
 import { useThemePalette } from "@/src/design/tokens"
 import {
   importBookFromPicker,
@@ -207,10 +210,7 @@ export default function LibraryCollectionsScreen() {
   const handleImportBook = useCallback(() => {
     void importBookFromPicker(isManagedLibrary ? selectedLibrary : null).catch(
       (error) => {
-        showAlertWithStatusBarRestore(
-          t("library.importFailed.title"),
-          errorMessage(error),
-        )
+        showErrorAlert(t("library.importFailed.title"), errorMessage(error))
       },
     )
   }, [isManagedLibrary, selectedLibrary, t])

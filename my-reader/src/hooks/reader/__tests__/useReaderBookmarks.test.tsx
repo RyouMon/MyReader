@@ -263,7 +263,9 @@ describe("useReaderBookmarks", () => {
       }),
     )
     await waitFor(() =>
-      expect(result.current.error).toBe("未能完成此操作，请重试。"),
+      expect(result.current.error).toBe(
+        "未能完成此操作，请重试。\nError: list failed",
+      ),
     )
     expect(result.current.canToggle).toBe(false)
 

@@ -96,6 +96,7 @@
     "unread": "Non lu"
   },
   "common": {
+    "copy": "Copier",
     "cancel": "Annuler",
     "close": "Fermer",
     "delete": "Supprimer",
@@ -206,6 +207,7 @@
     "lastSync": "Dernière synchronisation",
     "lastAttempt": "Dernière tentative",
     "noHistory": "Aucun historique de synchronisation",
+    "failureSummary": "Échec de la synchronisation : {{title}}",
     "failureReason": "Raison de l'échec",
     "failureStage": "Étape de défaillance",
     "progress": "{{completed}} / {{total}}",

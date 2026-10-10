@@ -7,6 +7,7 @@ import {
   type AlertOptions,
 } from "react-native"
 import { setStatusBarStyle, type StatusBarStyle } from "expo-status-bar"
+import { setStringAsync } from "expo-clipboard"
 
 const STATUS_BAR_RESTORE_DELAY_MS = [0, 80, 240] as const
 let preferredStatusBarStyle: StatusBarStyle | null = null
@@ -82,4 +83,29 @@ export function showAlertWithStatusBarRestore(
       restoreStatusBarStyle()
     },
   })
+}
+
+/** Native alert bodies are not selectable; provide an explicit copy action for errors. */
+export function showErrorAlert(
+  title: string,
+  message: string,
+  buttons: readonly AlertButton[] = [{ text: i18n.t("common.confirm") }],
+  options?: AlertOptions,
+) {
+  showAlertWithStatusBarRestore(
+    title,
+    message,
+    [
+      {
+        text: i18n.t("common.copy"),
+        onPress: () => {
+          void setStringAsync(`${title}\n${message}`).catch((error) =>
+            console.warn("Failed to copy error details", error),
+          )
+        },
+      },
+      ...buttons,
+    ],
+    options,
+  )
 }

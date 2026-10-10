@@ -134,7 +134,9 @@ export function useReaderBookSource({
       setDownloadError(null)
     } else if (downloadProgress.status === "error") {
       setDownloadState("error")
-      setDownloadError(errorMessage(downloadProgress.failure))
+      setDownloadError(
+        errorMessage(downloadProgress.failure ?? downloadProgress.error),
+      )
     } else if (downloadProgress.status === "cancelled") {
       setDownloadState("cancelled")
       if (closingRef.current && isTauri()) {

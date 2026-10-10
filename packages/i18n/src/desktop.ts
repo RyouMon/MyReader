@@ -74,3 +74,4 @@ export type DesktopTranslationKey = TranslationKey<
 export { qwenTtsSourceKeys } from "./qwen-tts"
 export { syncFailureDetail, syncFailureKeys } from "./sync-failure"
 export { errorMessageKey } from "./error-message"
+export { appendErrorDetail } from "./error-detail"

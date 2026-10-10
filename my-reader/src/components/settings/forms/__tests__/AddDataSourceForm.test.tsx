@@ -157,7 +157,9 @@ describe("AddDataSourceForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "使用微软登录" }))
 
     await waitFor(() => {
-      expect(screen.getAllByText("未能完成此操作，请重试。")).toHaveLength(1)
+      expect(
+        screen.getAllByText(`未能完成此操作，请重试。 Error: ${errorMessage}`),
+      ).toHaveLength(1)
       expect(screen.queryByText(errorMessage)).not.toBeInTheDocument()
     })
     const changeAccountButton = screen.getByRole("button", {

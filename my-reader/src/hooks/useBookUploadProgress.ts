@@ -96,7 +96,7 @@ export function applyBookUploadProgressEvent(
   })
   if (event.status === "error") {
     toast.error(i18n.t("bookUpload.failed"), {
-      description: errorMessage(event.failure),
+      description: errorMessage(event.failure ?? event.error),
     })
   }
 }

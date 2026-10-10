@@ -22,7 +22,7 @@ import type { BuiltInBookCollectionId } from "@my-reader/tools/types/book-collec
 import { libraryTypeOf } from "@my-reader/tools/types/library"
 
 import Book2Icon from "@/assets/icons/book_2.xml"
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
 import {
   COVER_THUMBNAIL_DISPLAY_LOOKAROUND_GRID_ROWS,
   COVER_THUMBNAIL_DISPLAY_LOOKAROUND_LIST_ITEMS,
@@ -572,10 +572,7 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
   const handleImportBook = useCallback(() => {
     void importBookFromPicker(isManagedLibrary ? selectedLibrary : null).catch(
       (error) => {
-        showAlertWithStatusBarRestore(
-          t("library.importFailed.title"),
-          errorMessage(error),
-        )
+        showErrorAlert(t("library.importFailed.title"), errorMessage(error))
       },
     )
   }, [isManagedLibrary, selectedLibrary, t])

@@ -33,7 +33,10 @@ import {
   SectionCard,
   SectionLabel,
 } from "@/src/components"
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import {
+  showAlertWithStatusBarRestore,
+  showErrorAlert,
+} from "@/src/constants/alert-with-status-bar"
 import {
   normalizeTtsAudioFormat,
   type TtsAudioFormat,
@@ -590,11 +593,9 @@ export default function TtsProviderProfileScreen() {
       })
       .catch((error) => {
         if (!active) return
-        showAlertWithStatusBarRestore(
-          t("settings.tts.loadFailed"),
-          errorMessage(error),
-          [{ text: t("common.confirm"), onPress: () => router.back() }],
-        )
+        showErrorAlert(t("settings.tts.loadFailed"), errorMessage(error), [
+          { text: t("common.confirm"), onPress: () => router.back() },
+        ])
       })
       .finally(() => {
         if (active) setLoading(false)
@@ -632,10 +633,7 @@ export default function TtsProviderProfileScreen() {
       })
       router.dismissTo("/settings/tts")
     } catch (error) {
-      showAlertWithStatusBarRestore(
-        t("settings.tts.saveFailed"),
-        errorMessage(error),
-      )
+      showErrorAlert(t("settings.tts.saveFailed"), errorMessage(error))
     } finally {
       setSaving(false)
     }
@@ -657,7 +655,7 @@ export default function TtsProviderProfileScreen() {
             void removeTtsProfile(profileId)
               .then(() => router.dismissTo("/settings/tts"))
               .catch((error) =>
-                showAlertWithStatusBarRestore(
+                showErrorAlert(
                   t("settings.tts.removeFailed"),
                   errorMessage(error),
                 ),

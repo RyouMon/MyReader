@@ -3,7 +3,7 @@ import * as Network from "expo-network"
 import { useEffect, useRef } from "react"
 import { AppState } from "react-native"
 
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
 import { isRemoteSourceType } from "@/src/domain/types"
 import { openSyncContext } from "@/src/domain/sync/context"
 import {
@@ -65,7 +65,7 @@ export function BookUploadRuntime(): null {
               error: reason,
             })
             if (!disposed.current) {
-              showAlertWithStatusBarRestore(
+              showErrorAlert(
                 i18n.t("bookMenu.uploadFailed"),
                 i18n.t("bookMenu.uploadFailedDetail", {
                   library: library.name,

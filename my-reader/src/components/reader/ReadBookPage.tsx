@@ -745,7 +745,7 @@ function ReadBookError({
           <EmptyTitle className="text-reader-fg">
             {t("reader.loadFailed")}
           </EmptyTitle>
-          <EmptyDescription className="text-reader-chrome-muted">
+          <EmptyDescription className="select-text whitespace-pre-wrap break-words text-reader-chrome-muted">
             {message}
           </EmptyDescription>
         </EmptyHeader>

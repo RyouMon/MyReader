@@ -96,6 +96,7 @@
     "unread": "읽지 않음"
   },
   "common": {
+    "copy": "복사",
     "cancel": "취소",
     "close": "닫기",
     "delete": "삭제",
@@ -204,6 +205,7 @@
     "lastSync": "마지막 동기화",
     "lastAttempt": "마지막 시도",
     "noHistory": "동기화 기록 없음",
+    "failureSummary": "동기화 실패: {{title}}",
     "failureReason": "실패 이유",
     "failureStage": "실패 단계",
     "progress": "{{completed}} / {{total}}",

@@ -458,7 +458,7 @@ export default function SpeechSection() {
 
       <div className="flex-1 overflow-y-auto px-7 py-6">
         {error ? (
-          <p className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          <p className="select-text whitespace-pre-wrap break-words mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
             {error}
           </p>
         ) : null}

@@ -96,6 +96,7 @@
     "unread": "未読"
   },
   "common": {
+    "copy": "コピー",
     "cancel": "キャンセル",
     "close": "閉じる",
     "delete": "削除",
@@ -204,6 +205,7 @@
     "lastSync": "最終同期",
     "lastAttempt": "最終試行",
     "noHistory": "同期履歴はありません",
+    "failureSummary": "同期に失敗しました：{{title}}",
     "failureReason": "失敗の理由",
     "failureStage": "失敗段階",
     "progress": "{{completed}} / {{total}}",

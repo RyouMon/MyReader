@@ -1,9 +1,10 @@
+import { appendErrorDetail } from "@my-reader/i18n/mobile"
 import { errorMessage } from "@/src/i18n/error-message"
 import { appErrorKind } from "@/src/errors/kind"
 import { coreErrorKind } from "@/src/services/core/error"
 import { useEffect, useMemo, useState } from "react"
 
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
 import { openRemoteExistingLibrary } from "@/src/domain/library/hooks/library-actions"
 import {
   isMissingMetadataDbError,
@@ -148,20 +149,20 @@ export function useRemoteDirectoryBrowser({
         isMissingMetadataDbError(caught) ||
         kind === "LibraryMarkerNotFound"
       ) {
-        showAlertWithStatusBarRestore(
+        showErrorAlert(
           errorMessages.notValidTitle,
-          errorMessages.notValidMessage,
+          appendErrorDetail(errorMessages.notValidMessage, caught),
         )
         return
       }
       if (kind === "LibraryAlreadyExists") {
-        showAlertWithStatusBarRestore(
+        showErrorAlert(
           errorMessages.duplicateTitle,
-          errorMessages.duplicateMessage,
+          appendErrorDetail(errorMessages.duplicateMessage, caught),
         )
         return
       }
-      setError(errorMessages.generic)
+      setError(appendErrorDetail(errorMessages.generic, caught))
     } finally {
       setSaving(false)
     }

@@ -96,6 +96,7 @@
     "unread": "未讀"
   },
   "common": {
+    "copy": "複製",
     "cancel": "取消",
     "close": "關閉",
     "delete": "刪除",
@@ -203,6 +204,7 @@
     "lastSync": "上次同步",
     "lastAttempt": "上次嘗試",
     "noHistory": "暫無同步記錄",
+    "failureSummary": "同步失敗：{{title}}",
     "failureReason": "失敗原因",
     "failureStage": "失敗階段",
     "progress": "{{completed}} / {{total}}",

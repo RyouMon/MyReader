@@ -560,7 +560,9 @@ export function ReadiumPdfReader({
           <p className="text-destructive font-medium mb-2">
             {t("reader.loadFailed")}
           </p>
-          <p className="text-sm text-muted-foreground max-w-md">{initError}</p>
+          <p className="select-text whitespace-pre-wrap break-words text-sm text-muted-foreground max-w-md">
+            {initError}
+          </p>
         </div>
       </div>
     )

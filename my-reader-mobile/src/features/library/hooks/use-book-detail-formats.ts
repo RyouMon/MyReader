@@ -1,3 +1,4 @@
+import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
 import { errorMessage } from "@/src/i18n/error-message"
 import type { BookDetail } from "@my-reader/tools/types/book"
 import { File } from "expo-file-system"
@@ -75,7 +76,10 @@ export function useBookDetailFormats(
         })
         .catch((err) => {
           if (!cancelled) {
-            Alert.alert(t("bookDetail.readFileStateFailed"), errorMessage(err))
+            showErrorAlert(
+              t("bookDetail.readFileStateFailed"),
+              errorMessage(err),
+            )
           }
         })
       return () => {
@@ -101,7 +105,7 @@ export function useBookDetailFormats(
       })
       .catch((err) => {
         if (!cancelled) {
-          Alert.alert(t("bookDetail.readFileStateFailed"), errorMessage(err))
+          showErrorAlert(t("bookDetail.readFileStateFailed"), errorMessage(err))
         }
       })
     return () => {
@@ -124,8 +128,10 @@ export function useBookDetailFormats(
     for (const task of relevantTasks) {
       if (task.status === "error" && !isTaskErrorAlerted(task.id)) {
         markTaskErrorAlerted(task.id)
-        const { title, message } = describeDownloadError(task.failure)
-        Alert.alert(title, message)
+        const { title, message } = describeDownloadError(
+          task.failure ?? task.error,
+        )
+        showErrorAlert(title, message)
       }
     }
 
@@ -196,7 +202,7 @@ export function useBookDetailFormats(
         )
       } catch (err) {
         const { title, message } = describeDownloadError(err)
-        Alert.alert(title, message)
+        showErrorAlert(title, message)
       }
     },
     [formatInfoMap, activeLibrary.id, bookId, detail, t],
@@ -241,7 +247,7 @@ export function useBookDetailFormats(
               [format]: { ...prev[format]!, localState: "present" },
             }))
             deletedLocalPathKeysRef.current.delete(pathKey)
-            Alert.alert(t("bookDetail.deleteLocalFailed"), errorMessage(err))
+            showErrorAlert(t("bookDetail.deleteLocalFailed"), errorMessage(err))
           },
         },
       )
@@ -277,7 +283,7 @@ export function useBookDetailFormats(
         if (err instanceof Error && err.name === "AbortError") {
           return
         }
-        Alert.alert(t("share.shareFailed"), errorMessage(err))
+        showErrorAlert(t("share.shareFailed"), errorMessage(err))
       }
     },
     [activeLibrary, detail, t],

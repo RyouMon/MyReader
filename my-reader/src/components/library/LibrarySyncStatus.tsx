@@ -220,10 +220,12 @@ function SyncHistoryDetails({
   library,
   presentation,
   labels,
+  showFailure,
 }: {
   library: Library
   presentation: SyncPresentation
   labels: ReturnType<typeof useSyncStatusLabels>
+  showFailure: boolean
 }) {
   const { t } = useTranslation()
   const { activity, history, transientResult, isOffline } = presentation
@@ -239,6 +241,11 @@ function SyncHistoryDetails({
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
       <div className="space-y-3">
+        {showFailure && lastFailure ? (
+          <p className="select-text whitespace-pre-wrap break-words text-sm text-foreground">
+            {syncFailureDetail(t(failureKeys.detail), lastFailure)}
+          </p>
+        ) : null}
         <dl className="space-y-2.5 rounded-lg bg-muted/50 p-3">
           <DetailRow
             label={t("syncStatus.currentLibrary")}
@@ -287,17 +294,6 @@ function SyncHistoryDetails({
             <p className="text-foreground">{t("syncStatus.offlineDetail")}</p>
           </div>
         ) : null}
-
-        {lastFailure ? (
-          <div className="space-y-1.5 rounded-lg bg-danger-soft p-3 text-sm">
-            <div className="font-semibold text-danger">
-              {t(failureKeys.title)}
-            </div>
-            <p className="select-text whitespace-pre-wrap break-words text-foreground">
-              {syncFailureDetail(t(failureKeys.detail), lastFailure)}
-            </p>
-          </div>
-        ) : null}
       </div>
     </div>
   )
@@ -318,6 +314,14 @@ export default function LibrarySyncStatus({
   const canSync = Boolean(library && onSync && !isRunning && !isOffline)
   const labels = useSyncStatusLabels(library, displayIndicator, presentation)
   const { triggerLabel, summaryLabel } = labels
+  const failure =
+    displayIndicator === "failed"
+      ? presentation.history?.lastFailure
+      : undefined
+  const failureKeys = syncFailureKeys(failure?.failureKind)
+  const statusSummary = failure
+    ? t("syncStatus.failureSummary", { title: t(failureKeys.title) })
+    : summaryLabel
 
   const handleSync = async () => {
     if (!canSync || !onSync) return
@@ -379,23 +383,26 @@ export default function LibrarySyncStatus({
                 />
                 <div
                   className={cn(
-                    "mt-2 text-base font-semibold",
+                    "mt-2 text-center text-base font-semibold",
                     statusColorClass(displayIndicator),
                   )}
                 >
-                  {summaryLabel}
+                  {statusSummary}
                 </div>
-                <SyncProgress
-                  completed={activity?.completed ?? 0}
-                  running={activity != null}
-                  total={activity?.total ?? 0}
-                />
+                {!failure ? (
+                  <SyncProgress
+                    completed={activity?.completed ?? 0}
+                    running={activity != null}
+                    total={activity?.total ?? 0}
+                  />
+                ) : null}
               </div>
 
               <SyncHistoryDetails
                 library={library}
                 presentation={presentation}
                 labels={labels}
+                showFailure={failure != null}
               />
 
               <div className="shrink-0 px-4 pb-4 pt-2">

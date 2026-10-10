@@ -21,5 +21,5 @@ export function syncFailureDetail(
   const diagnostic = [failure?.failureKind, failure?.message]
     .filter(Boolean)
     .join(": ")
-  return diagnostic ? `${detail}\n\n${diagnostic}` : detail
+  return diagnostic ? `${detail}\n${diagnostic}` : detail
 }

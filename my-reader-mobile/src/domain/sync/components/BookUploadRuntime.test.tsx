@@ -74,7 +74,7 @@ jest.mock("@/src/services/query/invalidate-table", () => ({
 }))
 
 jest.mock("@/src/constants/alert-with-status-bar", () => ({
-  showAlertWithStatusBarRestore: (...args: unknown[]) => mockShowAlert(...args),
+  showErrorAlert: (...args: unknown[]) => mockShowAlert(...args),
 }))
 
 describe("BookUploadRuntime", () => {
@@ -123,7 +123,7 @@ describe("BookUploadRuntime", () => {
         i18n.t("bookMenu.uploadFailed"),
         i18n.t("bookMenu.uploadFailedDetail", {
           library: mockLibrary.name,
-          reason: i18n.t("operationError.unexpected"),
+          reason: `${i18n.t("operationError.unexpected")}\nError: PENDING_BOOK_CATALOG_IDENTITY_CONFLICT`,
         }),
       )
     })

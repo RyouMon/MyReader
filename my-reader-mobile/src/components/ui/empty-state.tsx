@@ -103,6 +103,7 @@ export function EmptyState({
           {title}
         </Text>
         <Text
+          selectable
           className="text-center text-base"
           style={{ color: colors?.detail ?? palette.textMuted, maxWidth: 280 }}
         >

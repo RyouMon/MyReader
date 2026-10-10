@@ -59,7 +59,8 @@ jest.mock("react-native-safe-area-context", () => ({
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: (key: string, options?: { title?: string }) =>
+      options?.title ? `${key}: ${options.title}` : key,
     i18n: { language: "en" },
   }),
 }))
@@ -205,7 +206,7 @@ describe("SyncStatusScreen", () => {
     expect(screen.getByText("syncStatus.stage.applying")).toBeTruthy()
     expect(
       screen.getByText(
-        "syncStatus.failure.data_integrity.detail\n\ndata_integrity: History is damaged",
+        "syncStatus.failure.data_integrity.detail\ndata_integrity: History is damaged",
       ),
     ).toBeTruthy()
   })
@@ -232,11 +233,11 @@ describe("SyncStatusScreen", () => {
     render(<SyncStatusScreen />)
     expect(
       screen.getByText(
-        `syncStatus.failure.${failureKind ?? "unexpected"}.title`,
+        `syncStatus.failureSummary: syncStatus.failure.${failureKind ?? "unexpected"}.title`,
       ),
     ).toBeTruthy()
     const detail = screen.getByText(
-      `syncStatus.failure.${failureKind ?? "unexpected"}.detail\n\n${failureKind ? `${failureKind}: ` : ""}network credential 503 INTERNAL_DIAGNOSTIC`,
+      `syncStatus.failure.${failureKind ?? "unexpected"}.detail\n${failureKind ? `${failureKind}: ` : ""}network credential 503 INTERNAL_DIAGNOSTIC`,
     )
     expect(detail.props.selectable).toBe(true)
   })

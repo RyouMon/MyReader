@@ -2,7 +2,10 @@ import { act, renderHook, waitFor } from "@testing-library/react-native"
 
 import { router } from "expo-router"
 
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import {
+  showAlertWithStatusBarRestore,
+  showErrorAlert,
+} from "@/src/constants/alert-with-status-bar"
 import {
   cancel as cancelDownload,
   enqueue as enqueueDownload,
@@ -27,6 +30,7 @@ jest.mock("expo-router", () => ({
 
 jest.mock("@/src/constants/alert-with-status-bar", () => ({
   showAlertWithStatusBarRestore: jest.fn(),
+  showErrorAlert: jest.fn(),
 }))
 
 jest.mock("@/src/domain/download/download-store", () => ({
@@ -592,7 +596,7 @@ describe("useBookActions", () => {
       result.current.handleBookMenuAction("1", "download")
       await new Promise((resolve) => setTimeout(resolve, 50))
 
-      expect(showAlertWithStatusBarRestore).toHaveBeenCalled()
+      expect(showErrorAlert).toHaveBeenCalled()
     })
 
     it("should download a specific format when format action is invoked", async () => {
@@ -1138,9 +1142,9 @@ describe("useBookActions", () => {
       result.current.handleBookMenuAction("1", "share:EPUB")
       await new Promise((resolve) => setTimeout(resolve, 50))
 
-      expect(showAlertWithStatusBarRestore).toHaveBeenCalledWith(
+      expect(showErrorAlert).toHaveBeenCalledWith(
         expect.any(String),
-        "This action could not be completed. Please try again.",
+        "This action could not be completed. Please try again.\nString error",
       )
     })
 
@@ -1327,9 +1331,9 @@ describe("useBookActions", () => {
       result.current.handleBookMenuAction("1", "share:EPUB")
       await new Promise((resolve) => setTimeout(resolve, 50))
 
-      expect(showAlertWithStatusBarRestore).toHaveBeenCalledWith(
+      expect(showErrorAlert).toHaveBeenCalledWith(
         expect.any(String),
-        "This action could not be completed. Please try again.",
+        "This action could not be completed. Please try again.\nError: Disk error",
       )
     })
 

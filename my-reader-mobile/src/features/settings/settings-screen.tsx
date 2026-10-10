@@ -22,7 +22,10 @@ import {
   COVER_THUMBNAIL_GENERATION_CONCURRENCY_MAX,
   COVER_THUMBNAIL_GENERATION_CONCURRENCY_MIN,
 } from "@/src/config/library-list-performance"
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import {
+  showAlertWithStatusBarRestore,
+  showErrorAlert,
+} from "@/src/constants/alert-with-status-bar"
 import { DEVELOPER_TOOLS_ENABLED } from "@/src/constants/developer-tools"
 import { type ThemeMode, useTheme, useThemePalette } from "@/src/design/tokens"
 import { resolveAppLanguage } from "@/src/i18n"
@@ -105,7 +108,7 @@ export default function SettingsScreen() {
         t("settings.developer.clearImageCache.doneDetail"),
       )
     } catch (error) {
-      showAlertWithStatusBarRestore(
+      showErrorAlert(
         t("settings.developer.clearImageCache.errorTitle"),
         errorMessage(error),
       )

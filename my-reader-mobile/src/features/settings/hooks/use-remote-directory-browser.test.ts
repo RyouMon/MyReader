@@ -37,7 +37,7 @@ jest.mock("@/src/services/core/remote", () => ({
 }))
 
 jest.mock("@/src/constants/alert-with-status-bar", () => ({
-  showAlertWithStatusBarRestore: (...args: unknown[]) => mockShowAlert(...args),
+  showErrorAlert: (...args: unknown[]) => mockShowAlert(...args),
 }))
 
 jest.mock("@/src/store/app-store", () => ({
@@ -80,7 +80,7 @@ describe("useRemoteDirectoryBrowser", () => {
 
     expect(mockShowAlert).toHaveBeenCalledWith(
       errorMessages.duplicateTitle,
-      errorMessages.duplicateMessage,
+      `${errorMessages.duplicateMessage}\nLibraryAlreadyExists: CoreFfiError.LibraryAlreadyExists: diagnostic changed`,
     )
     expect(result.current.error).toBeNull()
     expect(mockOnLibraryOpened).not.toHaveBeenCalled()
@@ -126,7 +126,7 @@ describe("useRemoteDirectoryBrowser", () => {
     )
     await waitFor(() =>
       expect(result.current.error).toBe(
-        "This action could not be completed. Please try again.",
+        "This action could not be completed. Please try again.\nError: temporary failure",
       ),
     )
 

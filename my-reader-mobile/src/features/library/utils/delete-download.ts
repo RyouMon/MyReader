@@ -2,7 +2,10 @@ import { errorMessage } from "@/src/i18n/error-message"
 import { dismissTasksForPath } from "@/src/domain/download/download-store"
 import { evictLocalFileForLibrary } from "@/src/domain/sync/file-actions"
 import i18n from "@/src/i18n"
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import {
+  showAlertWithStatusBarRestore,
+  showErrorAlert,
+} from "@/src/constants/alert-with-status-bar"
 
 export type ConfirmDeleteLocalDownloadOptions = {
   /** Called immediately when the user confirms deletion, before async work. */
@@ -56,10 +59,7 @@ export function confirmDeleteLocalDownload(
               options.onError(err)
               return
             }
-            showAlertWithStatusBarRestore(
-              i18n.t("sync.deleteFailed"),
-              errorMessage(err),
-            )
+            showErrorAlert(i18n.t("sync.deleteFailed"), errorMessage(err))
           })
         },
       },

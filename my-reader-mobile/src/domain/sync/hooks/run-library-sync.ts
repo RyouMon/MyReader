@@ -1,5 +1,5 @@
-import { syncFailureKeys } from "@my-reader/i18n/mobile"
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import { appendErrorDetail, syncFailureKeys } from "@my-reader/i18n/mobile"
+import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
 import {
   DEFAULT_SYNC_POLICY,
   type LibrarySyncReport,
@@ -25,9 +25,7 @@ export type RunLibrarySyncInput = {
 }
 
 function showSyncFailureAlert(title: string, message: string): void {
-  showAlertWithStatusBarRestore(title, message, [
-    { text: i18n.t("common.gotIt") },
-  ])
+  showErrorAlert(title, message, [{ text: i18n.t("common.gotIt") }])
 }
 
 /** Orchestrates domain sync + UI write-back after adding a library or syncing manually. */
@@ -74,7 +72,10 @@ export async function runLibrarySync(
     }
     if (showFailureAlert) {
       const keys = syncFailureKeys(classifySyncFailure(err))
-      showSyncFailureAlert(i18n.t(keys.title), i18n.t(keys.detail))
+      showSyncFailureAlert(
+        i18n.t(keys.title),
+        appendErrorDetail(i18n.t(keys.detail), err),
+      )
     }
     throw err
   }

@@ -33,7 +33,10 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated"
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import {
+  showAlertWithStatusBarRestore,
+  showErrorAlert,
+} from "@/src/constants/alert-with-status-bar"
 import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
 import { useQwenTtsForm } from "@/src/domain/tts/use-qwen-tts-form"
 import {
@@ -294,7 +297,7 @@ const ReaderTtsSettingsSheet = forwardRef<
 
   const handlePreviewError = useCallback(
     (previewError: unknown) => {
-      showAlertWithStatusBarRestore(
+      showErrorAlert(
         t("settings.tts.previewFailed"),
         errorMessage(previewError),
       )
@@ -633,6 +636,7 @@ const ReaderTtsSettingsSheet = forwardRef<
             >
               {error ? (
                 <Text
+                  selectable
                   className="mb-4 rounded-2xl px-4 py-3 text-base"
                   style={{
                     backgroundColor: palette.segmentIdle,

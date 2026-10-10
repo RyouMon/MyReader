@@ -184,7 +184,7 @@ describe("book file sharing", () => {
     await user.click(action)
     await waitFor(() => {
       expect(mocks.toast.error).toHaveBeenCalledWith(message, {
-        description: "未能完成此操作，请重试。",
+        description: "未能完成此操作，请重试。\nError: File was removed",
       })
       expect(mocks.api.checkBookFileState).toHaveBeenCalledTimes(2)
     })

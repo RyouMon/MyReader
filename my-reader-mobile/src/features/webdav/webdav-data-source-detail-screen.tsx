@@ -13,7 +13,10 @@ import {
   SectionCard,
 } from "@/src/components"
 import { ENTITY_LIST_ROW_ICONS } from "@/src/components/ui/entity-list-row-icons"
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import {
+  showAlertWithStatusBarRestore,
+  showErrorAlert,
+} from "@/src/constants/alert-with-status-bar"
 import { useThemePalette } from "@/src/design/tokens"
 import type { DataSourceWebdav } from "@/src/domain/types"
 import { DataSourceInUseError } from "@/src/errors"
@@ -160,7 +163,7 @@ export default function WebDavDataSourceDetailScreen() {
                     }),
                   )
                 } else {
-                  showAlertWithStatusBarRestore(
+                  showErrorAlert(
                     t("webdav.deleteFailed.title"),
                     errorMessage(caught),
                   )

@@ -88,7 +88,7 @@ describe("Qwen voice discovery in provider forms", () => {
       jest.advanceTimersByTime(400)
     })
     expect(result.current.error).toBe(
-      "This action could not be completed. Please try again.",
+      "This action could not be completed. Please try again.\nError: InvalidApiKey",
     )
     expect(result.current.voices).toEqual([
       { id: "manual-voice", name: "manual-voice" },

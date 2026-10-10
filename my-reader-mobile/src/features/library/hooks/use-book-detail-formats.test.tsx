@@ -196,7 +196,7 @@ describe("useBookDetailFormats", () => {
       })
     })
 
-    it("should present safe copy for non-Error when reading local format paths fails", async () => {
+    it("should preserve diagnostics for non-Error when reading local format paths fails", async () => {
       const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {})
       jest.mocked(getBookFormatPaths).mockRejectedValue("disk failure")
       mockFile(true, 1024)
@@ -208,7 +208,9 @@ describe("useBookDetailFormats", () => {
       await waitFor(() => {
         expect(alertSpy).toHaveBeenCalledWith(
           expect.any(String),
-          "This action could not be completed. Please try again.",
+          "This action could not be completed. Please try again.\ndisk failure",
+          expect.any(Array),
+          expect.objectContaining({ onDismiss: expect.any(Function) }),
         )
       })
     })
@@ -299,7 +301,7 @@ describe("useBookDetailFormats", () => {
       })
     })
 
-    it("should present safe copy for non-Error when reading remote format paths fails", async () => {
+    it("should preserve diagnostics for non-Error when reading remote format paths fails", async () => {
       const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {})
       jest.mocked(getBookFormatPaths).mockRejectedValue("network failure")
 
@@ -310,7 +312,9 @@ describe("useBookDetailFormats", () => {
       await waitFor(() => {
         expect(alertSpy).toHaveBeenCalledWith(
           expect.any(String),
-          "This action could not be completed. Please try again.",
+          "This action could not be completed. Please try again.\nnetwork failure",
+          expect.any(Array),
+          expect.objectContaining({ onDismiss: expect.any(Function) }),
         )
       })
     })
@@ -1157,7 +1161,9 @@ describe("useBookDetailFormats", () => {
 
       expect(alertSpy).toHaveBeenCalledWith(
         expect.any(String),
-        "This action could not be completed. Please try again.",
+        "This action could not be completed. Please try again.\nplain failure",
+        expect.any(Array),
+        expect.objectContaining({ onDismiss: expect.any(Function) }),
       )
     })
   })

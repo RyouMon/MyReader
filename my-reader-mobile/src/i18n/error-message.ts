@@ -1,9 +1,9 @@
-import { errorMessageKey } from "@my-reader/i18n/mobile"
+import { appendErrorDetail, errorMessageKey } from "@my-reader/i18n/mobile"
 import { appErrorKind } from "@/src/errors/kind"
 import i18n from "@/src/i18n"
 
 export function errorMessage(error: unknown): string {
-  return i18n.t(errorMessageKey(appErrorKind(error)))
+  return appendErrorDetail(i18n.t(errorMessageKey(appErrorKind(error))), error)
 }
 
 export function describeDownloadError(error: unknown): {
