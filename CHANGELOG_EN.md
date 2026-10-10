@@ -6,6 +6,30 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.15.0] - 2026-10-11
+
+### Added
+
+- Added desktop actions to copy a local book file's path, reveal it in the file manager, and save a copy ([#81](https://github.com/RyouMon/MyReader/pull/81))
+
+### Changed
+
+- Unified desktop and mobile error messages for sync, transfers, libraries, data sources, and narration. Localized titles and details now follow structured error categories, with copyable original error types, messages, and causes. Sync errors appear below the status icon, and recovery no longer parses diagnostic text ([#83](https://github.com/RyouMon/MyReader/pull/83), [#84](https://github.com/RyouMon/MyReader/pull/84), [#85](https://github.com/RyouMon/MyReader/pull/85))
+- Mobile remote-book downloads now leave the library open; tap the book again to start reading ([#82](https://github.com/RyouMon/MyReader/issues/82), [#92](https://github.com/RyouMon/MyReader/pull/92))
+
+### Fixed
+
+- Kept the desktop EPUB search panel, query, and selected result open after navigating to a match ([#69](https://github.com/RyouMon/MyReader/issues/69), [#90](https://github.com/RyouMon/MyReader/pull/90))
+- Explicitly restore minimized reader windows and focus them when opening an already open book ([#70](https://github.com/RyouMon/MyReader/issues/70), [#91](https://github.com/RyouMon/MyReader/pull/91))
+- Use right-aligned minimize, maximize/restore, and close controls in the Windows reader. Double-clicking the title bar toggles maximization, and the controls follow the native window state ([#68](https://github.com/RyouMon/MyReader/issues/68), [#93](https://github.com/RyouMon/MyReader/pull/93))
+- Release desktop library database connections before removal and preserve library records when deletion fails ([#77](https://github.com/RyouMon/MyReader/pull/77))
+
+### Performance and Internals
+
+- Move synchronous SQLite, Automerge, and lock waits into bounded blocking tasks with per-library queues to improve async executor responsiveness ([#86](https://github.com/RyouMon/MyReader/pull/86))
+- Update only the affected database projection domains for reading positions, favorites, bookmarks, annotations, and reading records. Small reading changes no longer rebuild the entire catalog; local Core benchmarks with 1,000 books reduced reading-write time by about 84%–85%, which does not represent mobile-device or real-network performance ([#87](https://github.com/RyouMon/MyReader/pull/87))
+- Centralize library identity, paths, and database lifecycles, remove circular service dependencies, and strengthen file-state, library-source, and sync-identity types while preserving existing database, sync, and platform serialization formats ([#88](https://github.com/RyouMon/MyReader/pull/88), [#89](https://github.com/RyouMon/MyReader/pull/89))
+
 ## [0.14.0] - 2026-10-10
 
 ### Added
