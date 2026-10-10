@@ -1,10 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use chrono::{SecondsFormat, TimeZone, Utc};
 use uuid::Uuid;
 
-use crate::library::{self, LibraryContext};
+use crate::library::{self, metadata::catalog_timestamp, LibraryContext};
 use crate::models::catalog::{
     myreader_book_relative_path, myreader_cover_relative_path, BookFilePathRequest,
 };
@@ -14,7 +13,8 @@ use crate::models::{
     ReadingFormatPolicy, UpdateBookMetadataRequest,
 };
 use crate::repositories::calibre::{CalibreBookRepository, CatalogRepository};
-use crate::repositories::content::PendingBookImport;
+use crate::repositories::content::{ContentRepository, PendingBookImport};
+use crate::repositories::reading::ReadingRepository;
 use crate::sync::{
     document::CatalogBookValue,
     document_engine::DocumentCommand,
@@ -48,25 +48,12 @@ impl CatalogService {
             .ok_or_else(|| CoreError::LibraryNotFound(library_id.to_owned()))
     }
 
-    async fn open_library_repository(
-        library_type: LibraryType,
-        sidecar_root: &Path,
-        content_root: &Path,
-    ) -> Result<CatalogRepository, CoreError> {
-        match library_type {
-            LibraryType::Calibre => CatalogRepository::open(&content_root.to_string_lossy()).await,
-            LibraryType::MyReader => {
-                CatalogRepository::open_myreader(sidecar_root, content_root).await
-            }
-        }
-    }
-
     pub async fn list_library_books(
         library_type: LibraryType,
         sidecar_root: &Path,
         content_root: &Path,
     ) -> Result<Vec<BookEntry>, CoreError> {
-        Self::open_library_repository(library_type, sidecar_root, content_root)
+        CatalogRepository::open_library(library_type, sidecar_root, content_root)
             .await?
             .get_all_books()
             .await
@@ -82,7 +69,7 @@ impl CatalogService {
         search: Option<&str>,
     ) -> Result<PaginatedBooks, CoreError> {
         let repository =
-            Self::open_library_repository(library_type, sidecar_root, content_root).await?;
+            CatalogRepository::open_library(library_type, sidecar_root, content_root).await?;
         let (items, total) = repository
             .get_books_page(
                 offset,
@@ -119,8 +106,10 @@ impl CatalogService {
             });
         }
 
-        let latest_by_book =
-            crate::services::reading::ReadingService::latest_read_at_by_book(sidecar_root).await?;
+        let context = LibraryContext::open(sidecar_root).await?;
+        let latest_by_book = ReadingRepository::new(context.database())
+            .latest_read_at_by_book()
+            .await?;
         books.retain(|book| latest_by_book.contains_key(&book.id));
         books.sort_by(|left, right| {
             let left_read_at = latest_by_book.get(&left.id).copied();
@@ -150,7 +139,7 @@ impl CatalogService {
         book_id: i64,
     ) -> Result<BookDetail, CoreError> {
         let repository =
-            Self::open_library_repository(library_type, sidecar_root, content_root).await?;
+            CatalogRepository::open_library(library_type, sidecar_root, content_root).await?;
         let book = repository
             .get_book_by_id(book_id)
             .await?
@@ -181,7 +170,7 @@ impl CatalogService {
         series_name: &str,
         exclude_book_id: Option<i64>,
     ) -> Result<Vec<BookEntry>, CoreError> {
-        Self::open_library_repository(library_type, sidecar_root, content_root)
+        CatalogRepository::open_library(library_type, sidecar_root, content_root)
             .await?
             .get_books_by_series(series_name, exclude_book_id)
             .await
@@ -192,7 +181,7 @@ impl CatalogService {
         sidecar_root: &Path,
         content_root: &Path,
     ) -> Result<usize, CoreError> {
-        Self::open_library_repository(library_type, sidecar_root, content_root)
+        CatalogRepository::open_library(library_type, sidecar_root, content_root)
             .await?
             .get_book_count()
             .await
@@ -203,7 +192,7 @@ impl CatalogService {
         sidecar_root: &Path,
         content_root: &Path,
     ) -> Result<String, CoreError> {
-        Self::open_library_repository(library_type, sidecar_root, content_root)
+        CatalogRepository::open_library(library_type, sidecar_root, content_root)
             .await?
             .get_library_uuid()
             .await
@@ -214,7 +203,7 @@ impl CatalogService {
         sidecar_root: &Path,
         content_root: &Path,
     ) -> Result<Vec<BookSummary>, CoreError> {
-        Self::open_library_repository(library_type, sidecar_root, content_root)
+        CatalogRepository::open_library(library_type, sidecar_root, content_root)
             .await?
             .get_book_summaries()
             .await
@@ -226,7 +215,7 @@ impl CatalogService {
         content_root: &Path,
         book_id: i64,
     ) -> Result<Vec<BookFormat>, CoreError> {
-        Self::open_library_repository(library_type, sidecar_root, content_root)
+        CatalogRepository::open_library(library_type, sidecar_root, content_root)
             .await?
             .get_book_formats(book_id)
             .await
@@ -239,7 +228,7 @@ impl CatalogService {
         book_id: i64,
         format: &str,
     ) -> Result<Option<BookFormat>, CoreError> {
-        Self::open_library_repository(library_type, sidecar_root, content_root)
+        CatalogRepository::open_library(library_type, sidecar_root, content_root)
             .await?
             .get_book_format(book_id, format)
             .await
@@ -427,7 +416,7 @@ impl CatalogService {
                 format: format.clone(),
             })
             .collect::<Vec<_>>();
-        Self::open_library_repository(library_type, sidecar_root, content_root)
+        CatalogRepository::open_library(library_type, sidecar_root, content_root)
             .await?
             .get_book_file_paths(&requests)
             .await
@@ -439,7 +428,7 @@ impl CatalogService {
         content_root: &Path,
         book_path: &str,
     ) -> Result<Option<PathBuf>, CoreError> {
-        Self::open_library_repository(library_type, sidecar_root, content_root)
+        CatalogRepository::open_library(library_type, sidecar_root, content_root)
             .await?
             .get_book_cover_path(book_path)
     }
@@ -465,17 +454,7 @@ impl CatalogService {
     pub async fn inspect_library(
         library_root: &Path,
     ) -> Result<(PathBuf, Vec<BookSummary>), CoreError> {
-        let library_root = dunce::canonicalize(library_root)
-            .map_err(|error| CoreError::Config(format!("INVALID_LIBRARY_PATH: {error}")))?;
-        if !Self::validate_library(&library_root) {
-            return Err(CoreError::MetadataDbNotFound(
-                library_root.display().to_string(),
-            ));
-        }
-        let repository = CatalogRepository::open(&library_root.to_string_lossy()).await?;
-        repository.get_library_uuid().await?;
-        let books = repository.get_book_summaries().await?;
-        Ok((library_root, books))
+        CatalogRepository::inspect_library(library_root).await
     }
 
     pub async fn list_books(library_root: &Path) -> Result<Vec<BookEntry>, CoreError> {
@@ -629,9 +608,9 @@ impl CatalogService {
         }
         let current =
             ensure_database_document(database_path, &identity, request.recorded_at_ms).await?;
-        let pending_imports =
-            crate::services::content::ContentService::list_pending_book_imports(sidecar_root)
-                .await?;
+        let pending_imports = ContentRepository::new(context.database())
+            .list_pending_book_imports()
+            .await?;
         let mut used_book_ids = current
             .projection
             .catalog_books
@@ -1220,16 +1199,6 @@ async fn file_mtime_ms(path: &Path) -> Result<i64, CoreError> {
         .unwrap_or(0))
 }
 
-pub(crate) fn catalog_timestamp(recorded_at_ms: i64) -> Result<String, CoreError> {
-    if recorded_at_ms < 0 {
-        return Err(CoreError::Config("RECORDED_AT_INVALID".into()));
-    }
-    Utc.timestamp_millis_opt(recorded_at_ms)
-        .single()
-        .map(|timestamp| timestamp.to_rfc3339_opts(SecondsFormat::Millis, true))
-        .ok_or_else(|| CoreError::Config("RECORDED_AT_INVALID".into()))
-}
-
 fn new_book_id(used: &HashSet<i64>) -> i64 {
     const JS_SAFE_INTEGER_MAX: u128 = (1_u128 << 53) - 1;
     loop {
@@ -1601,6 +1570,168 @@ mod tests {
         assert_eq!(page.items[1].id, 42);
         assert_eq!(filtered.total, 1);
         assert_eq!(filtered.items[0].id, 42);
+
+        // Multiple formats still produce one book, ranked by the latest format.
+        for (book_id, format, recorded_at_ms) in [(42, "PDF", 3_000), (999, "EPUB", 4_000)] {
+            crate::services::reading::ReadingService::set_reading_position(
+                sidecar.path(),
+                library.path(),
+                book_id,
+                format,
+                r#"{"href":"chapter","type":"application/xhtml+xml"}"#,
+                None,
+                recorded_at_ms,
+            )
+            .await
+            .unwrap();
+        }
+        let page = super::CatalogService::list_books_page_by_last_read(
+            library.path(),
+            sidecar.path(),
+            1,
+            1,
+            None,
+        )
+        .await
+        .unwrap();
+        assert_eq!(page.total, 2, "positions for missing books are excluded");
+        assert_eq!(
+            page.items.iter().map(|book| book.id).collect::<Vec<_>>(),
+            [43]
+        );
+
+        crate::services::reading::ReadingService::set_reading_position(
+            sidecar.path(),
+            library.path(),
+            43,
+            "EPUB",
+            r#"{"href":"chapter","type":"application/xhtml+xml"}"#,
+            None,
+            3_000,
+        )
+        .await
+        .unwrap();
+        let tied = super::CatalogService::list_books_page_by_last_read(
+            library.path(),
+            sidecar.path(),
+            0,
+            10,
+            None,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            tied.items.iter().map(|book| book.id).collect::<Vec<_>>(),
+            [43, 42]
+        );
+
+        let other_sidecar = tempfile::tempdir().unwrap();
+        let empty = super::CatalogService::list_books_page_by_last_read(
+            library.path(),
+            other_sidecar.path(),
+            0,
+            10,
+            None,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            empty.total, 0,
+            "recent reads come from the requested device sidecar"
+        );
+    }
+
+    #[tokio::test]
+    async fn recent_query_composes_managed_catalog_and_reading_projection() {
+        use crate::api::{library::LibraryService, reading::ReadingService};
+
+        let directory = tempfile::tempdir().unwrap();
+        let source = directory.path().join("book.epub");
+        std::fs::write(&source, b"test book").unwrap();
+        let config_path = directory.path().join("config.json");
+        let libraries_root = directory.path().join("libraries");
+        let (_, library) = LibraryService::create_managed_local_myreader(
+            &config_path,
+            crate::models::ManagedLocalLibraryRequest {
+                libraries_root_path: libraries_root.to_string_lossy().into_owned(),
+                libraries_root_uri: None,
+                name: "Books".into(),
+                added_at: None,
+            },
+            0,
+        )
+        .await
+        .unwrap();
+        let root = libraries_root.join(&library.id);
+        let mut ids = Vec::new();
+        for title in ["Read book", "Unread book"] {
+            ids.push(
+                super::CatalogService::import_local_book(
+                    &config_path,
+                    &library.id,
+                    &root,
+                    &root,
+                    ImportBookRequest {
+                        source_file_path: source.to_string_lossy().into_owned(),
+                        source_file_name: None,
+                        title: Some(title.into()),
+                        authors: vec!["Author".into()],
+                        recorded_at_ms: 100,
+                        consume_source_file: false,
+                    },
+                )
+                .await
+                .unwrap()
+                .id,
+            );
+        }
+        ReadingService::set_reading_position(
+            &root,
+            &root,
+            ids[0],
+            "EPUB",
+            r#"{"href":"chapter.xhtml","type":"application/xhtml+xml"}"#,
+            Some(0.5),
+            200,
+        )
+        .await
+        .unwrap();
+        let page = super::CatalogService::list_registered_library_books_page_by_last_read(
+            &config_path,
+            &library.id,
+            &root,
+            &root,
+            0,
+            10,
+            Some("Author"),
+        )
+        .await
+        .unwrap();
+        assert_eq!(page.total, 1);
+        assert_eq!(page.items[0].id, ids[0]);
+        assert_eq!(page.items[0].title, "Read book");
+        super::CatalogService::delete_local_book(
+            &config_path,
+            &library.id,
+            &root,
+            &root,
+            ids[0],
+            300,
+        )
+        .await
+        .unwrap();
+        let deleted = super::CatalogService::list_registered_library_books_page_by_last_read(
+            &config_path,
+            &library.id,
+            &root,
+            &root,
+            0,
+            10,
+            None,
+        )
+        .await
+        .unwrap();
+        assert_eq!(deleted.total, 0);
     }
 
     #[tokio::test]

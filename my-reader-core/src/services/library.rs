@@ -6,12 +6,13 @@ use uuid::Uuid;
 
 use crate::{
     infrastructure::storage,
-    library::LibraryContext,
+    library::{metadata::download_and_validate_metadata, LibraryContext},
     models::{
         AppConfig, DataSource, Library, LibraryStorageConfig, LibraryType, LocalLibraryRequest,
         ManagedLocalLibraryRequest, MyReaderLibraryMarker, RemoteCredential, RemoteLibraryRequest,
         SidecarSyncMode, MYREADER_LIBRARY_MARKER_RELATIVE_PATH,
     },
+    repositories::calibre::CatalogRepository,
     services::config,
     sync::persistence::async_io::ensure_database_document,
     CoreError,
@@ -267,12 +268,10 @@ impl LibraryService {
             .await?;
             let mut library = library;
             library.book_count = u64::try_from(
-                crate::services::catalog::CatalogService::list_myreader_books(
-                    &sidecar_root,
-                    &library_root,
-                )
-                .await?
-                .len(),
+                CatalogRepository::open_myreader(&sidecar_root, &library_root)
+                    .await?
+                    .get_book_count()
+                    .await?,
             )
             .unwrap_or(u64::MAX);
             let state = config::ConfigService::add_library(config_path, library.clone())?;
@@ -368,7 +367,7 @@ impl LibraryService {
         let requested_library_root = request.library_root_path.trim();
         let library_root = dunce::canonicalize(requested_library_root)
             .map_err(|error| CoreError::Config(format!("INVALID_LIBRARY_PATH: {error}")))?;
-        if !crate::services::catalog::CatalogService::validate_library(&library_root) {
+        if !CatalogRepository::validate_library(&library_root.to_string_lossy()) {
             return Err(CoreError::MetadataDbNotFound(
                 library_root.display().to_string(),
             ));
@@ -726,9 +725,10 @@ async fn open_remote_myreader_with_operators(
         )
         .await?;
         library.book_count = u64::try_from(
-            crate::services::catalog::CatalogService::list_myreader_books(&local_root, &local_root)
+            CatalogRepository::open_myreader(&local_root, &local_root)
                 .await?
-                .len(),
+                .get_book_count()
+                .await?,
         )
         .unwrap_or(u64::MAX);
         let state = config::ConfigService::add_library(config_path, library.clone())?;
@@ -983,46 +983,6 @@ async fn add_remote_library_with_operator(
     result
 }
 
-pub(super) async fn download_and_validate_metadata(
-    operator: &Operator,
-    source_path: &str,
-    destination: &Path,
-) -> Result<u64, CoreError> {
-    let remote_path = storage::join_remote_path(source_path, "metadata.db")?;
-    let bytes = operator.read(&remote_path).await.map_err(|error| {
-        if error.kind() == opendal::ErrorKind::NotFound {
-            CoreError::MetadataDbNotFound(remote_path.clone())
-        } else {
-            storage::storage_error(error)
-        }
-    })?;
-    if bytes.is_empty() {
-        return Err(CoreError::Storage("REMOTE_METADATA_DB_EMPTY".into()));
-    }
-    let parent = destination
-        .parent()
-        .ok_or_else(|| CoreError::Config("LIBRARY_CONTAINER_PATH_INVALID".into()))?;
-    std::fs::create_dir_all(parent)?;
-    let temporary = temporary_download_path(destination);
-    tokio::fs::write(&temporary, bytes.to_vec()).await?;
-    let result = async {
-        let count =
-            crate::repositories::calibre::CatalogRepository::validate_calibre_metadata(&temporary)
-                .await?;
-        tokio::fs::rename(&temporary, destination).await?;
-        Ok(count)
-    }
-    .await;
-    if result.is_err() {
-        let _ = tokio::fs::remove_file(&temporary).await;
-    }
-    result
-}
-
-fn temporary_download_path(destination: &Path) -> PathBuf {
-    destination.with_extension("db.download")
-}
-
 fn remote_source_type(source: &DataSource) -> Result<&'static str, CoreError> {
     match source {
         DataSource::Webdav { .. } => Ok("webdav"),
@@ -1060,7 +1020,7 @@ fn remote_library_storage(
             endpoint: endpoint.clone(),
             username: username.clone(),
             password: password.clone(),
-            root: Some(crate::services::sync::SyncService::scope_remote_root(
+            root: Some(storage::scope_remote_root(
                 root_path.as_deref(),
                 source_path,
             )?),
@@ -1068,7 +1028,7 @@ fn remote_library_storage(
         (DataSource::Onedrive { root_path, .. }, RemoteCredential::Onedrive { access_token }) => {
             Ok(LibraryStorageConfig::Onedrive {
                 access_token: access_token.clone(),
-                root: Some(crate::services::sync::SyncService::scope_remote_root(
+                root: Some(storage::scope_remote_root(
                     root_path.as_deref(),
                     source_path,
                 )?),

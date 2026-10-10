@@ -1,3 +1,5 @@
+pub(super) mod tts;
+
 use std::{
     path::Path,
     sync::{LazyLock, Mutex, MutexGuard},
@@ -426,7 +428,7 @@ fn validate_config(state: &AppConfig) -> Result<(), CoreError> {
             state.schema_version
         )));
     }
-    super::tts::validate_tts_config(&state.tts)?;
+    tts::validate_tts_config(&state.tts)?;
     for source in &state.data_sources {
         validate_data_source(source)?;
     }

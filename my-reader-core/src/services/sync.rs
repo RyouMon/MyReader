@@ -16,6 +16,7 @@ use crate::{
         RemoteCredential, SidecarSyncMode, SidecarSyncReport, SyncFailureDisposition,
         SyncFailureKind, SyncScheduleSnapshot,
     },
+    repositories::calibre::CatalogRepository,
     sync::{
         exchange::{self, SyncMode, SyncObserver},
         persistence::{async_io as persistence, SyncScheduleState},
@@ -294,13 +295,7 @@ pub struct SyncService;
 
 impl SyncService {
     pub fn scope_remote_root(base: Option<&str>, library: &str) -> Result<String, CoreError> {
-        let root =
-            crate::infrastructure::storage::join_remote_path(base.unwrap_or_default(), library)?;
-        Ok(if root.is_empty() {
-            "/".to_owned()
-        } else {
-            format!("/{root}")
-        })
+        crate::infrastructure::storage::scope_remote_root(base, library)
     }
 
     pub fn resolve_library_storage_at_path(
@@ -588,12 +583,11 @@ impl SyncService {
         };
 
         if library.library_type == crate::models::LibraryType::MyReader && !myreader.skipped {
-            let book_count = super::catalog::CatalogService::count_library_books(
-                library.library_type,
-                sidecar_root,
-                library_root,
-            )
-            .await?;
+            let book_count =
+                CatalogRepository::open_library(library.library_type, sidecar_root, library_root)
+                    .await?
+                    .get_book_count()
+                    .await?;
             let book_count = u64::try_from(book_count).unwrap_or(u64::MAX);
             if library.book_count != book_count {
                 library.book_count = book_count;
@@ -858,7 +852,14 @@ async fn sync_calibre(
     }
 
     let old_books = if library_root.join("metadata.db").is_file() {
-        match super::catalog::CatalogService::list_book_summaries(library_root).await {
+        match async {
+            CatalogRepository::open(&library_root.to_string_lossy())
+                .await?
+                .get_book_summaries()
+                .await
+        }
+        .await
+        {
             Ok(books) => books,
             Err(CoreError::DataIntegrity(error)) if is_remote_library(&library) => {
                 tracing::warn!(%error, "Refreshing incompatible Calibre cache; retaining cached book files");
@@ -870,14 +871,14 @@ async fn sync_calibre(
         Vec::new()
     };
     if is_remote_library(&library) {
-        super::library::download_and_validate_metadata(
+        library::metadata::download_and_validate_metadata(
             operator,
             "",
             &library_root.join("metadata.db"),
         )
         .await?;
     }
-    let (_, new_books) = super::catalog::CatalogService::inspect_library(library_root).await?;
+    let (_, new_books) = CatalogRepository::inspect_library(library_root).await?;
     if is_remote_library(&library) {
         evict_stale_book_files(sidecar_root, library_root, &old_books, &new_books).await;
     }

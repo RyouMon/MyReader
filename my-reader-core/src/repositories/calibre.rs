@@ -16,7 +16,7 @@ use crate::entities::calibre::{
     library_id, publishers, ratings, series, tags,
 };
 use crate::models::catalog::BookFilePathRequest;
-use crate::models::{BookEntry, BookFormat, BookSummary};
+use crate::models::{BookEntry, BookFormat, BookSummary, LibraryType};
 use crate::CoreError;
 
 #[derive(FromQueryResult)]
@@ -87,6 +87,35 @@ pub struct CatalogRepository {
 pub type CalibreBookRepository = CatalogRepository;
 
 impl CatalogRepository {
+    pub(crate) async fn open_library(
+        library_type: LibraryType,
+        sidecar_root: &Path,
+        content_root: &Path,
+    ) -> Result<CatalogRepository, CoreError> {
+        match library_type {
+            LibraryType::Calibre => CatalogRepository::open(&content_root.to_string_lossy()).await,
+            LibraryType::MyReader => {
+                CatalogRepository::open_myreader(sidecar_root, content_root).await
+            }
+        }
+    }
+
+    pub(crate) async fn inspect_library(
+        library_root: &Path,
+    ) -> Result<(PathBuf, Vec<BookSummary>), CoreError> {
+        let library_root = dunce::canonicalize(library_root)
+            .map_err(|error| CoreError::Config(format!("INVALID_LIBRARY_PATH: {error}")))?;
+        if !Self::validate_library(&library_root.to_string_lossy()) {
+            return Err(CoreError::MetadataDbNotFound(
+                library_root.display().to_string(),
+            ));
+        }
+        let repository = CatalogRepository::open(&library_root.to_string_lossy()).await?;
+        repository.get_library_uuid().await?;
+        let books = repository.get_book_summaries().await?;
+        Ok((library_root, books))
+    }
+
     pub async fn open(library_path: &str) -> Result<Self, CoreError> {
         info!("Start to open Calibre database. library path: \"{library_path}\"");
         let db_path = Path::new(library_path).join("metadata.db");

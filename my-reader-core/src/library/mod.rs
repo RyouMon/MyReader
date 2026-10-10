@@ -3,6 +3,8 @@
 #[cfg(test)]
 mod tests;
 
+pub(crate) mod metadata;
+
 use std::path::Path;
 
 use sea_orm::DatabaseConnection;
