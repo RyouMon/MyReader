@@ -1,0 +1,30 @@
+{
+  "baseline_commit": "7c88354e9cbc1cf45c18a60e8dbe931580373d11",
+  "baseline_sha256": "dab1f390e594ddab48aa69b2ef542bd26a0890072f2b4cdb7970f26743f0619b",
+  "harness_sha256": "ceb0ff4f9e794b34f3879c361c9cfdc93228dc21869812ac6bc9f07abbea92ae",
+  "rustc": "rustc 1.95.0 (59807616e 2026-04-14)\nbinary: rustc\ncommit-hash: 59807616e1fa2540724bfbac14d7976d7e4a3860\ncommit-date: 2026-04-14\nhost: aarch64-apple-darwin\nrelease: 1.95.0\nLLVM version: 22.1.2",
+  "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.0.1\nBuildVersion:\t\t26A434",
+  "cpu": "Apple M1 Pro",
+  "logical_cpus": 8,
+  "memory_bytes": 17179869184,
+  "profile": {
+    "opt-level": "s",
+    "lto": true,
+    "codegen-units": 1,
+    "strip": true,
+    "panic": "abort"
+  },
+  "rounds": 3,
+  "runtime_workers": {
+    "current-thread": 1,
+    "multi-thread": 2
+  },
+  "books": [
+    4,
+    100,
+    1000
+  ],
+  "iterations": 20,
+  "implementation_commit": "dc7377a2d429b47d7dad6586a5840b9a2e5afbbf",
+  "implementation_sha256": "6031627d42f228274e8730dd827d1cc861e4caf109c82cb37722030d725a0856"
+}
