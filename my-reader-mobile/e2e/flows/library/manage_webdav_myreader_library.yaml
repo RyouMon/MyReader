@@ -113,7 +113,7 @@ tags:
 - assertVisible: "确定要删除《${REMOTE_BOOK_TITLE}》的本地下载文件吗？|Delete the local downloaded file.*${REMOTE_BOOK_TITLE}"
 - tapOn: "删除|Delete"
 
-# Scenario: the remote-only book downloads on demand and opens from one tap.
+# Scenario: the first tap downloads without leaving the library; a second tap reads.
 - tapOn: "更多操作：${REMOTE_BOOK_TITLE}|More actions: ${REMOTE_BOOK_TITLE}"
 - assertVisible: "下载（EPUB）|Download .*EPUB.*"
 - assertNotVisible: "删除下载文件|Delete Downloaded File"
@@ -121,8 +121,20 @@ tags:
 - tapOn: '打开《${REMOTE_BOOK_TITLE}》|Open "${REMOTE_BOOK_TITLE}"'
 - extendedWaitUntil:
     visible:
-      id: "reader-screen"
+      id: "transfer-arrow-down"
+    timeout: 30000
+- extendedWaitUntil:
+    notVisible:
+      id: "transfer-arrow-down"
     timeout: 300000
+- assertNotVisible:
+    id: "reader-screen"
+- assertVisible: ${REMOTE_BOOK_TITLE}
+- tapOn: '打开《${REMOTE_BOOK_TITLE}》|Open "${REMOTE_BOOK_TITLE}"'
+- extendedWaitUntil:
+    visible:
+      id: "reader-screen"
+    timeout: 30000
 - runFlow: ../../common/close_reader.yaml
 
 # Scenario: deleting the book and syncing removes the remote entity as well.
