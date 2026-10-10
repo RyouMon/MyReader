@@ -99,6 +99,7 @@ entities/
 migration.rs
 
 infrastructure/     registry 与对象存储实现
+library/            书库上下文、身份与写权限、共享元数据存储
 sync/               Automerge document、持久化、传输和调度规则
 models/             跨层稳定业务 DTO
 ```
@@ -106,11 +107,30 @@ models/             跨层稳定业务 DTO
 `services`、`repositories` 和 `infrastructure` 是 crate 内部实现。平台通过 `api` 和必要的稳定
 合同调用 core；平台 adapter 不复制 SQL、CRDT 合并或业务事务。
 
+`library::LibraryContext` 汇集 sidecar 路径、数据库访问与副本身份初始化。它复用 `database`
+已有的连接池、migration 和关闭 / 删除保护，不建立第二份缓存或新的全局状态。创建上下文时
+不加载 Automerge 或访问源书库；写入与同步按需验证源身份。Calibre 身份来自外部 `library_id`，
+MyReader 身份读取 marker，设备副本身份保留在各自 sidecar。无效 UTF-8 sidecar 路径直接拒绝。
+
+组合查询直接复用 repository：最近阅读组合 catalog 与 reading 查询，格式选择按目标书籍
+查询格式，书库注册 / 同步通过 count 查询更新数量。marker、写权限校验、远程 metadata
+校验替换和 catalog 时间格式化由 `library/` 共享；TTS 配置校验位于 `services/config/tts.rs`。
+这些模块不反向调用 service。现有 service 只按单向依赖编排用例，例如 Library 调用 Sync，
+Catalog / Sync / BookTransfer 调用 Content 的状态转换，TTS 调用 Config。
+`api::*Service` 的公开路径和签名保持稳定；没有为单一实现引入新的 trait 或通用 service 框架。
+
 同步 SQLite / Automerge 的异步调用经过 `sync/persistence/async_io.rs`：同一数据库异步排队，
 完整事务在有并发上限的 `spawn_blocking` 工作中执行；不同数据库不再共用全局写锁。
 远端 Automerge 对象校验也在阻塞线程执行。排队 guard 跟随实际工作，连接持有书库生命周期
 lease；取消调用撤销尚未开始的工作，不提前释放正在执行的事务，删除书库会等待已打开的连接关闭。
 SeaORM / SQLx 的异步查询保留原路径。
+
+SQLite 投影以同一事务中的 Automerge heads 为增量边界：阅读写入只解析并更新实际变更的
+domain，不再重建无关 catalog。远端对象仍完整校验，合并后的 SQLite 更新也按 domain 选择。
+变更范围来自原始操作及其父路径，包含未胜出的冲突值。初始化、schema 迁移、根对象变更或
+投影版本 / heads 失效时完整重建；查询完整 document 的入口始终返回全量投影。
+当前粒度为 domain，受影响 domain 内仍完整投影；没有跨事务的内存投影缓存。
+性能与边界见 [增量投影报告](./core-incremental-projection-performance.md)。
 
 ### 3.2 当前业务范围
 

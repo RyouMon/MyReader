@@ -69,6 +69,15 @@ pub(crate) fn build_remote_operator(
     Ok(operator.with_context(OperationContext::new().with_http_transport(transport)))
 }
 
+pub(crate) fn scope_remote_root(base: Option<&str>, library: &str) -> Result<String, CoreError> {
+    let root = join_remote_path(base.unwrap_or_default(), library)?;
+    Ok(if root.is_empty() {
+        "/".to_owned()
+    } else {
+        format!("/{root}")
+    })
+}
+
 pub(crate) fn normalize_remote_path(path: &str) -> Result<String, CoreError> {
     let normalized = path.trim().replace('\\', "/");
     let segments = normalized

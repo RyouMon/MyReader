@@ -9,15 +9,12 @@ use crate::sync::{
         AnnotationValue, BookmarkValue, FavoriteValue, ReadingCompletionValue,
         ReadingPositionValue, ReadingSessionValue,
     },
-    persistence::{
-        async_io::{ensure_database_document, ensure_database_identity, mutate_document},
-        DatabaseIdentity,
-    },
+    persistence::async_io::{ensure_database_document, mutate_document},
 };
 use chrono::{Local, TimeZone};
 use tracing::info;
 
-use crate::database;
+use crate::library::LibraryContext;
 use crate::models::{
     LegacyFinishedReading, ReaderAnnotation, ReaderBookmark, ReadingFormatPolicy, ReadingPosition,
     ReadingPositionCandidate, ReadingStatistics,
@@ -29,8 +26,9 @@ pub struct ReadingService;
 
 impl ReadingService {
     pub async fn list_favorite_book_ids(sidecar_root: &Path) -> Result<Vec<i64>, CoreError> {
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ReadingRepository::new(&db).list_favorite_book_ids().await
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ReadingRepository::new(db).list_favorite_book_ids().await
     }
 
     pub async fn set_favorite_book(
@@ -49,14 +47,10 @@ impl ReadingService {
             ));
         }
 
-        database::open_db(&sidecar_root.to_string_lossy()).await?;
-        let library_uuid =
-            crate::services::catalog::CatalogService::get_source_library_uuid(library_root).await?;
-        let database_path = database::library_db_path(&sidecar_root.to_string_lossy())?;
-        let database_path = database_path
-            .to_str()
-            .ok_or_else(|| CoreError::Config("Library database path is invalid UTF-8".into()))?;
-        let identity = ensure_database_identity(database_path, &library_uuid).await?;
+        let context = LibraryContext::open(sidecar_root).await?;
+        let database_path = context.path();
+        let identity = context.identity(library_root).await?;
+        let library_uuid = &identity.library_uuid;
         let replica_id = identity.replica_id.clone();
         let mutation_replica_id = replica_id.clone();
 
@@ -108,8 +102,9 @@ impl ReadingService {
         format: &str,
     ) -> Result<Option<ReadingPosition>, CoreError> {
         let format = normalize_reading_format(format)?;
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ReadingRepository::new(&db)
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ReadingRepository::new(db)
             .get_reading_position(book_id, &format)
             .await
     }
@@ -117,15 +112,17 @@ impl ReadingService {
     pub async fn list_reading_positions(
         sidecar_root: &Path,
     ) -> Result<Vec<ReadingPosition>, CoreError> {
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ReadingRepository::new(&db).list_reading_positions().await
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ReadingRepository::new(db).list_reading_positions().await
     }
 
     pub async fn latest_read_at_by_book(
         sidecar_root: &Path,
     ) -> Result<std::collections::BTreeMap<i64, f64>, CoreError> {
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ReadingRepository::new(&db).latest_read_at_by_book().await
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ReadingRepository::new(db).latest_read_at_by_book().await
     }
 
     pub async fn set_reading_position(
@@ -152,7 +149,9 @@ impl ReadingService {
                 Ok((value * 1_000_000.0).round() as u32)
             })
             .transpose()?;
-        let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+        let context = LibraryContext::open(sidecar_root).await?;
+        let database_path = context.path();
+        let identity = context.identity(library_root).await?;
         let value = ReadingPositionValue {
             format: format.clone(),
             locator_json,
@@ -174,7 +173,7 @@ impl ReadingService {
             None
         };
         let completed =
-            mutate_document(&database_path, &identity, recorded_at_ms, move |document| {
+            mutate_document(database_path, &identity, recorded_at_ms, move |document| {
                 let mut completed = false;
                 write_reading_position(document, book_id, &value)?;
                 if let Some(completion) = &completion {
@@ -222,8 +221,10 @@ impl ReadingService {
             return Err(CoreError::Config("Reading position is invalid".into()));
         }
         let format = normalize_reading_format(format)?;
-        let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
-        let result = ensure_database_document(&database_path, &identity, now_ms).await?;
+        let context = LibraryContext::open(sidecar_root).await?;
+        let database_path = context.path();
+        let identity = context.identity(library_root).await?;
+        let result = ensure_database_document(database_path, &identity, now_ms).await?;
         result
             .projection
             .reading_position_candidates
@@ -258,9 +259,11 @@ impl ReadingService {
             ));
         }
         let format = normalize_reading_format(format)?;
-        let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+        let context = LibraryContext::open(sidecar_root).await?;
+        let database_path = context.path();
+        let identity = context.identity(library_root).await?;
         let operation_id = operation_id.to_owned();
-        mutate_document(&database_path, &identity, recorded_at_ms, move |document| {
+        mutate_document(database_path, &identity, recorded_at_ms, move |document| {
             resolve_reading_position(document, book_id, &format, &operation_id, recorded_at_ms)?;
             Ok(())
         })
@@ -277,8 +280,9 @@ impl ReadingService {
             return Err(CoreError::Config("Bookmark identity is invalid".into()));
         }
         let format = normalize_reading_format(format)?;
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ReadingRepository::new(&db)
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ReadingRepository::new(db)
             .list_bookmarks(book_id, &format)
             .await
     }
@@ -299,9 +303,11 @@ impl ReadingService {
             Some(locator_json),
             recorded_at_ms,
         )?;
-        let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+        let context = LibraryContext::open(sidecar_root).await?;
+        let database_path = context.path();
+        let identity = context.identity(library_root).await?;
 
-        mutate_document(&database_path, &identity, recorded_at_ms, {
+        mutate_document(database_path, &identity, recorded_at_ms, {
             let format = format.clone();
             let locator_key = locator_key.clone();
             let replica_id = identity.replica_id.clone();
@@ -352,8 +358,9 @@ impl ReadingService {
             present = true,
             "Committed local bookmark state"
         );
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ReadingRepository::new(&db)
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ReadingRepository::new(db)
             .find_bookmark(book_id, &format, &locator_key)
             .await?
             .ok_or_else(|| CoreError::Database("Bookmark add returned no row".into()))
@@ -369,9 +376,11 @@ impl ReadingService {
     ) -> Result<(), CoreError> {
         let (format, locator_key, _) =
             validate_bookmark(book_id, format, locator_key, None, recorded_at_ms)?;
-        let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+        let context = LibraryContext::open(sidecar_root).await?;
+        let database_path = context.path();
+        let identity = context.identity(library_root).await?;
 
-        let changed = mutate_document(&database_path, &identity, recorded_at_ms, {
+        let changed = mutate_document(database_path, &identity, recorded_at_ms, {
             let format = format.clone();
             let locator_key = locator_key.clone();
             let replica_id = identity.replica_id.clone();
@@ -423,8 +432,9 @@ impl ReadingService {
             return Err(CoreError::Config("Annotation identity is invalid".into()));
         }
         let format = normalize_reading_format(format)?;
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ReadingRepository::new(&db)
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ReadingRepository::new(db)
             .list_annotations(book_id, &format)
             .await
     }
@@ -445,10 +455,12 @@ impl ReadingService {
         let color = validate_annotation_color(color)?.to_owned();
         let note = normalize_annotation_note(note)?;
         let id = uuid::Uuid::new_v4().as_simple().to_string();
-        let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+        let context = LibraryContext::open(sidecar_root).await?;
+        let database_path = context.path();
+        let identity = context.identity(library_root).await?;
 
         let annotation_id = id.clone();
-        mutate_document(&database_path, &identity, recorded_at_ms, move |document| {
+        mutate_document(database_path, &identity, recorded_at_ms, move |document| {
             create_annotation(
                 document,
                 &AnnotationValue {
@@ -495,10 +507,12 @@ impl ReadingService {
         let format = validate_annotation_identity(book_id, format, recorded_at_ms)?;
         let color = validate_annotation_color(color)?.to_owned();
         let note = normalize_annotation_note(note)?;
-        let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+        let context = LibraryContext::open(sidecar_root).await?;
+        let database_path = context.path();
+        let identity = context.identity(library_root).await?;
         let annotation_id = id.to_owned();
 
-        let exists = mutate_document(&database_path, &identity, recorded_at_ms, move |document| {
+        let exists = mutate_document(database_path, &identity, recorded_at_ms, move |document| {
             let exists = annotation_projections(document)?
                 .into_iter()
                 .any(|annotation| {
@@ -544,10 +558,12 @@ impl ReadingService {
         recorded_at_ms: i64,
     ) -> Result<(), CoreError> {
         let format = validate_annotation_identity(book_id, format, recorded_at_ms)?;
-        let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+        let context = LibraryContext::open(sidecar_root).await?;
+        let database_path = context.path();
+        let identity = context.identity(library_root).await?;
         let annotation_id = id.to_owned();
 
-        let exists = mutate_document(&database_path, &identity, recorded_at_ms, move |document| {
+        let exists = mutate_document(database_path, &identity, recorded_at_ms, move |document| {
             let exists = annotation_projections(document)?
                 .into_iter()
                 .any(|annotation| {
@@ -580,8 +596,9 @@ impl ReadingService {
 }
 
 async fn find_annotation(sidecar_root: &Path, id: &str) -> Result<ReaderAnnotation, CoreError> {
-    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-    ReadingRepository::new(&db)
+    let context = LibraryContext::open(sidecar_root).await?;
+    let db = context.database();
+    ReadingRepository::new(db)
         .find_annotation(id)
         .await?
         .ok_or_else(|| CoreError::Database("Annotation mutation returned no row".into()))
@@ -606,7 +623,9 @@ impl ReadingService {
         }
         let format = normalize_reading_format(format)?;
         validate_local_day(local_day)?;
-        let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+        let context = LibraryContext::open(sidecar_root).await?;
+        let database_path = context.path();
+        let identity = context.identity(library_root).await?;
         let value = ReadingSessionValue {
             id: id.to_owned(),
             origin_replica_id: identity.replica_id.clone(),
@@ -617,7 +636,7 @@ impl ReadingService {
             duration_seconds,
             updated_at: recorded_at_ms,
         };
-        mutate_document(&database_path, &identity, recorded_at_ms, move |document| {
+        mutate_document(database_path, &identity, recorded_at_ms, move |document| {
             add_reading_session_duration(document, &value)?;
             Ok(())
         })
@@ -650,8 +669,9 @@ impl ReadingService {
             ));
         }
         backfill_legacy_reading_completions(sidecar_root, library_root).await?;
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        let repository = ReadingRepository::new(&db);
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        let repository = ReadingRepository::new(db);
         let sessions = repository
             .list_reading_sessions_by_day_range(start_day, end_day)
             .await?;
@@ -716,14 +736,16 @@ async fn backfill_legacy_reading_completions(
         });
     }
 
-    let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+    let context = LibraryContext::open(sidecar_root).await?;
+    let database_path = context.path();
+    let identity = context.identity(library_root).await?;
     let recorded_at = values
         .iter()
         .map(|value| value.updated_at)
         .max()
         .unwrap_or_default();
     let replica_id = identity.replica_id.clone();
-    let changed = mutate_document(&database_path, &identity, recorded_at, move |document| {
+    let changed = mutate_document(database_path, &identity, recorded_at, move |document| {
         let mut changed = 0_usize;
         let mut completed_books = reading_completion_records(document)?
             .into_iter()
@@ -756,27 +778,12 @@ impl ReadingService {
     pub async fn list_legacy_finished_readings(
         sidecar_root: &Path,
     ) -> Result<Vec<LegacyFinishedReading>, CoreError> {
-        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-        ReadingRepository::new(&db)
+        let context = LibraryContext::open(sidecar_root).await?;
+        let db = context.database();
+        ReadingRepository::new(db)
             .list_legacy_finished_readings()
             .await
     }
-}
-
-async fn sync_context(
-    sidecar_root: &Path,
-    library_root: &Path,
-) -> Result<(String, DatabaseIdentity), CoreError> {
-    database::open_db(&sidecar_root.to_string_lossy()).await?;
-    let library_uuid =
-        crate::services::catalog::CatalogService::get_source_library_uuid(library_root).await?;
-    let database_path = database::library_db_path(&sidecar_root.to_string_lossy())?;
-    let database_path = database_path
-        .to_str()
-        .ok_or_else(|| CoreError::Config("Library database path is invalid UTF-8".into()))?
-        .to_owned();
-    let identity = ensure_database_identity(&database_path, &library_uuid).await?;
-    Ok((database_path, identity))
 }
 
 fn normalize_reading_format(format: &str) -> Result<String, CoreError> {

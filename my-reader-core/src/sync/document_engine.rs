@@ -3,6 +3,9 @@ use std::str::FromStr;
 use automerge::ChangeHash;
 use serde::{Deserialize, Serialize};
 
+mod projection;
+pub(crate) use projection::{ProjectionDomain, ProjectionMode, ProjectionScope};
+
 use super::document::{
     add_reading_completion, add_reading_session_duration, annotation_projections,
     apply_library_sidecar_incremental, bookmark_projections, catalog_book_projections,
@@ -37,7 +40,7 @@ pub struct ReadingPositionCandidateProjection {
     pub value: ReadingPositionValue,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DocumentProjection {
     pub catalog_books: Vec<CatalogBookValue>,
@@ -61,6 +64,8 @@ pub struct DocumentCommandResult {
     pub changes: Vec<LibrarySidecarAutomergeChange>,
     pub missing_dependencies: Vec<String>,
     pub projection: DocumentProjection,
+    // Only these domains are materialized; an omitted domain is not empty data.
+    pub(crate) projection_scope: ProjectionScope,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -156,16 +161,53 @@ fn parse_heads(values: &[String]) -> Result<Vec<ChangeHash>, SyncError> {
         .collect()
 }
 
-fn project_document(doc: &automerge::AutoCommit) -> Result<DocumentProjection, SyncError> {
-    let reading_positions = reading_position_projections(doc)?;
-    let mut position_candidates = Vec::new();
-    for projection in &reading_positions {
+fn project_document(
+    doc: &automerge::AutoCommit,
+    scope: &ProjectionScope,
+) -> Result<DocumentProjection, SyncError> {
+    let mut projection = DocumentProjection::default();
+    if scope.includes(ProjectionDomain::Catalog) {
+        projection.catalog_books = catalog_book_projections(doc)?;
+    }
+    if scope.includes(ProjectionDomain::Positions) {
+        projection.reading_positions = reading_position_projections(doc)?;
+        projection.reading_position_candidates =
+            project_position_candidates(doc, &projection.reading_positions)?;
+    }
+    if scope.includes(ProjectionDomain::Favorites) {
+        projection.favorites = favorite_projections(doc)?
+            .into_iter()
+            .map(|(book_id, value)| FavoriteProjection { book_id, value })
+            .collect();
+    }
+    if scope.includes(ProjectionDomain::Bookmarks) {
+        projection.bookmarks = bookmark_projections(doc)?;
+    }
+    if scope.includes(ProjectionDomain::Annotations) {
+        projection.annotations = annotation_projections(doc)?;
+    }
+    if scope.includes(ProjectionDomain::Sessions) {
+        projection.reading_sessions = reading_session_projections(doc)?;
+    }
+    if scope.includes(ProjectionDomain::Completions) {
+        projection.reading_completion_records = reading_completion_records(doc)?;
+        projection.reading_completions = reading_completion_projections(doc)?;
+    }
+    Ok(projection)
+}
+
+fn project_position_candidates(
+    doc: &automerge::AutoCommit,
+    positions: &[ReadingPositionProjection],
+) -> Result<Vec<ReadingPositionCandidateProjection>, SyncError> {
+    let mut candidates = Vec::new();
+    for projection in positions {
         for ReadingPositionCandidate {
             operation_id,
             value,
         } in reading_position_candidates(doc, projection.book_id, &projection.value.format)?
         {
-            position_candidates.push(ReadingPositionCandidateProjection {
+            candidates.push(ReadingPositionCandidateProjection {
                 book_id: projection.book_id,
                 format: projection.value.format.clone(),
                 operation_id,
@@ -173,26 +215,22 @@ fn project_document(doc: &automerge::AutoCommit) -> Result<DocumentProjection, S
             });
         }
     }
-    Ok(DocumentProjection {
-        catalog_books: catalog_book_projections(doc)?,
-        reading_positions,
-        reading_position_candidates: position_candidates,
-        favorites: favorite_projections(doc)?
-            .into_iter()
-            .map(|(book_id, value)| FavoriteProjection { book_id, value })
-            .collect(),
-        bookmarks: bookmark_projections(doc)?,
-        annotations: annotation_projections(doc)?,
-        reading_sessions: reading_session_projections(doc)?,
-        reading_completion_records: reading_completion_records(doc)?,
-        reading_completions: reading_completion_projections(doc)?,
-    })
+    Ok(candidates)
 }
 
 pub fn execute_document_command(
     snapshot: Option<&[u8]>,
     request: DocumentCommandRequest,
     payload: Option<&[u8]>,
+) -> Result<DocumentCommandResult, SyncError> {
+    execute_document_command_projected(snapshot, request, payload, ProjectionMode::Full)
+}
+
+pub(crate) fn execute_document_command_projected(
+    snapshot: Option<&[u8]>,
+    request: DocumentCommandRequest,
+    payload: Option<&[u8]>,
+    projection_mode: ProjectionMode,
 ) -> Result<DocumentCommandResult, SyncError> {
     let mut document = match snapshot {
         Some(bytes) => load_library_sidecar_document_bytes(bytes, &request.replica_id)?,
@@ -304,7 +342,9 @@ pub fn execute_document_command(
         library_sidecar_missing_dependencies(&mut document, &dependency_heads);
     let changes = library_sidecar_changes_since(&mut document, &base_heads);
     let incremental_bytes = save_library_sidecar_incremental(&mut document, &base_heads);
-    let projection = project_document(&document)?;
+    let projection_scope =
+        ProjectionScope::for_document(&mut document, &base_heads, projection_mode)?;
+    let projection = project_document(&document, &projection_scope)?;
     let heads = library_sidecar_heads(&mut document);
     let snapshot_bytes = save_library_sidecar_document(&mut document);
     Ok(DocumentCommandResult {
@@ -316,14 +356,16 @@ pub fn execute_document_command(
         changes,
         missing_dependencies,
         projection,
+        projection_scope,
     })
 }
 
-pub fn execute_document_mutation<F>(
+pub(crate) fn execute_document_mutation<F>(
     snapshot: &[u8],
     replica_id: &str,
     expected_library_uuid: &str,
     base_heads: Vec<String>,
+    projection_mode: ProjectionMode,
     mutate: F,
 ) -> Result<DocumentCommandResult, SyncError>
 where
@@ -336,7 +378,9 @@ where
     validate_library_identity(&document, expected_library_uuid)?;
     let changes = library_sidecar_changes_since(&mut document, &base_heads);
     let incremental_bytes = save_library_sidecar_incremental(&mut document, &base_heads);
-    let projection = project_document(&document)?;
+    let projection_scope =
+        ProjectionScope::for_document(&mut document, &base_heads, projection_mode)?;
+    let projection = project_document(&document, &projection_scope)?;
     let heads = library_sidecar_heads(&mut document);
     let snapshot_bytes = save_library_sidecar_document(&mut document);
     Ok(DocumentCommandResult {
@@ -348,5 +392,6 @@ where
         changes,
         missing_dependencies: Vec::new(),
         projection,
+        projection_scope,
     })
 }
