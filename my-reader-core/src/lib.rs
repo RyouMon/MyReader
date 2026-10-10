@@ -8,6 +8,7 @@ mod database;
 mod entities;
 mod error;
 mod infrastructure;
+mod library;
 mod migration;
 mod repositories;
 mod services;

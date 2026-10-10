@@ -9,8 +9,9 @@ use opendal::{ErrorKind, Operator};
 use tokio::sync::Mutex as AsyncMutex;
 
 use crate::{
+    library::{self, LibraryContext},
     models::LibraryStorageConfig,
-    repositories::content::PendingBookImport,
+    repositories::content::{ContentRepository, PendingBookImport},
     sync::{
         document::CatalogBookValue,
         document_engine::DocumentCommand,
@@ -66,7 +67,9 @@ pub struct BookTransferService;
 
 impl BookTransferService {
     pub async fn has_local_only_books(sidecar_root: &Path) -> Result<bool, CoreError> {
-        super::content::ContentService::list_file_states(sidecar_root)
+        let context = LibraryContext::open(sidecar_root).await?;
+        ContentRepository::new(context.database())
+            .list_file_states()
             .await
             .map(|states| {
                 states
@@ -76,7 +79,9 @@ impl BookTransferService {
     }
 
     pub async fn pending_book_uuids(sidecar_root: &Path) -> Result<Vec<String>, CoreError> {
-        super::content::ContentService::list_pending_book_imports(sidecar_root)
+        let context = LibraryContext::open(sidecar_root).await?;
+        ContentRepository::new(context.database())
+            .list_pending_book_imports()
             .await
             .map(|pending| pending.into_iter().map(|book| book.book_uuid).collect())
     }
@@ -150,22 +155,17 @@ impl BookTransferService {
     ) -> Result<BookUploadReport, CoreError> {
         let lock = book_upload_lock(sidecar_root);
         let _guard = lock.lock().await;
-        let pending_imports =
-            super::content::ContentService::list_pending_book_imports(sidecar_root).await?;
+        let context = LibraryContext::open(sidecar_root).await?;
+        let pending_imports = ContentRepository::new(context.database())
+            .list_pending_book_imports()
+            .await?;
         if pending_imports.is_empty() {
             return Ok(BookUploadReport::default());
         }
 
-        let marker = super::library::LibraryService::read_myreader_marker(content_root)?;
-        let database_path = crate::database::library_db_path(&sidecar_root.to_string_lossy())?;
-        let database_path = database_path
-            .to_str()
-            .ok_or_else(|| CoreError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?;
-        let identity = crate::sync::persistence::async_io::ensure_database_identity(
-            database_path,
-            &marker.library_uuid,
-        )
-        .await?;
+        let marker = library::read_myreader_marker(content_root)?;
+        let database_path = context.path();
+        let identity = context.identity_for_uuid(&marker.library_uuid).await?;
         let mut report = BookUploadReport {
             completed_book_uuids: Vec::with_capacity(pending_imports.len()),
             unavailable_book_uuids: Vec::new(),
@@ -216,11 +216,9 @@ impl BookTransferService {
         upload_progress: Option<&RemoteUploadProgress>,
         observer: &dyn BookUploadObserver,
     ) -> Result<UploadOutcome, CoreError> {
-        if !super::content::ContentService::pending_book_import_exists(
-            sidecar_root,
-            &pending.book_uuid,
-        )
-        .await?
+        if !ContentRepository::new(LibraryContext::open(sidecar_root).await?.database())
+            .pending_book_import_exists(&pending.book_uuid)
+            .await?
         {
             return Ok(UploadOutcome::Cancelled);
         }
@@ -280,7 +278,7 @@ impl BookTransferService {
                 .await?;
             return Ok(UploadOutcome::SourceUnavailable);
         }
-        let digest = super::content::ContentService::sha256_file(&final_path).await?;
+        let digest = crate::infrastructure::file::sha256_file(&final_path).await?;
         if digest.size != pending.size || digest.sha256 != pending.sha256 {
             mark_pending_source_unavailable(
                 sidecar_root,
@@ -407,11 +405,10 @@ async fn finalize_pending_upload(
     operator: &Operator,
     observer: &dyn BookUploadObserver,
 ) -> Result<UploadOutcome, CoreError> {
-    let pending_exists = super::content::ContentService::pending_book_import_exists(
-        sidecar_root,
-        &pending.book_uuid,
-    )
-    .await?;
+    let pending_exists =
+        ContentRepository::new(LibraryContext::open(sidecar_root).await?.database())
+            .pending_book_import_exists(&pending.book_uuid)
+            .await?;
     let catalog_state = pending_catalog_state(database_path, identity, pending).await?;
     if !pending_exists || catalog_state == PendingCatalogState::Deleted {
         if catalog_state == PendingCatalogState::Deleted {
@@ -515,7 +512,8 @@ async fn ensure_remote_cover(
     if !has_cover {
         return Ok(true);
     }
-    if !super::content::ContentService::pending_book_import_exists(sidecar_root, &pending.book_uuid)
+    if !ContentRepository::new(LibraryContext::open(sidecar_root).await?.database())
+        .pending_book_import_exists(&pending.book_uuid)
         .await?
     {
         return Ok(false);
@@ -547,7 +545,8 @@ async fn ensure_remote_cover(
         .write(relative_path, bytes)
         .await
         .map_err(crate::infrastructure::storage::storage_error)?;
-    if !super::content::ContentService::pending_book_import_exists(sidecar_root, &pending.book_uuid)
+    if !ContentRepository::new(LibraryContext::open(sidecar_root).await?.database())
+        .pending_book_import_exists(&pending.book_uuid)
         .await?
     {
         let _ = operator.delete(relative_path).await;
@@ -590,7 +589,7 @@ async fn complete_pending_upload(
     final_path: &Path,
 ) -> Result<(), CoreError> {
     if !catalog_exists {
-        let timestamp = super::catalog::catalog_timestamp(pending.recorded_at_ms)?;
+        let timestamp = library::metadata::catalog_timestamp(pending.recorded_at_ms)?;
         execute_local_database_command(
             database_path,
             identity,
@@ -685,10 +684,10 @@ async fn upload_remote_book(
             _ = tokio::time::sleep(Duration::from_millis(100)) => {
                 tick_count = tick_count.wrapping_add(1);
                 if tick_count.is_multiple_of(5)
-                    && !super::content::ContentService::pending_book_import_exists(
-                        sidecar_root,
-                        &pending.book_uuid,
+                    && !ContentRepository::new(
+                        LibraryContext::open(sidecar_root).await?.database(),
                     )
+                    .pending_book_import_exists(&pending.book_uuid)
                     .await?
                 {
                     return Ok(false);
