@@ -222,6 +222,33 @@ export const sharedEn = {
     noActiveLibrary: "No library to sync",
     noActiveLibraryDetail: "Add a library to start syncing.",
     activeLibraryChanged: "The current library changed. Please try again.",
+    failure: {
+      connectivity: {
+        title: "Unable to connect",
+        detail:
+          "Check your network connection and whether the data source is available, then try syncing again.",
+      },
+      credential: {
+        title: "Check data source access",
+        detail:
+          "Sign in again or update the data source credentials, and check that this account can access the library.",
+      },
+      configuration: {
+        title: "Check library settings",
+        detail:
+          "Check the library location and data source settings, then try syncing again.",
+      },
+      data_integrity: {
+        title: "Sync data needs attention",
+        detail:
+          "Some sync data may be missing or damaged. Keep your local files and check the copies on other devices or in a trusted backup first.",
+      },
+      unexpected: {
+        title: "Sync could not finish",
+        detail:
+          "Try syncing again later. If the problem continues, report it for help.",
+      },
+    },
     reason: {
       manual: "Started manually",
       localChange: "Local data changed",

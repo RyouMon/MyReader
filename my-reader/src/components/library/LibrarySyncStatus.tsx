@@ -1,4 +1,7 @@
-import type { DesktopTranslationKey } from "@my-reader/i18n/desktop"
+import {
+  type DesktopTranslationKey,
+  syncFailureKeys,
+} from "@my-reader/i18n/desktop"
 import { formatHumanReadableTime } from "@my-reader/tools/human-readable-time"
 import type {
   SyncIndicatorState,
@@ -224,6 +227,7 @@ function SyncHistoryDetails({
   const { t } = useTranslation()
   const { activity, history, transientResult, isOffline } = presentation
   const lastFailure = history?.lastFailure
+  const failureKeys = syncFailureKeys(lastFailure?.failureKind)
   const {
     statusLabel,
     stageLabel,
@@ -283,12 +287,14 @@ function SyncHistoryDetails({
           </div>
         ) : null}
 
-        {lastFailure?.message ? (
+        {lastFailure ? (
           <div className="space-y-1.5 rounded-lg bg-danger-soft p-3 text-sm">
             <div className="font-semibold text-danger">
-              {t("syncStatus.failureReason")}
+              {t(failureKeys.title)}
             </div>
-            <p className="break-words text-foreground">{lastFailure.message}</p>
+            <p className="break-words text-foreground">
+              {t(failureKeys.detail)}
+            </p>
           </div>
         ) : null}
       </div>

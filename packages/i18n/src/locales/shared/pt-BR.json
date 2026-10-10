@@ -216,6 +216,28 @@
     "noActiveLibrary": "Nenhuma biblioteca para sincronizar",
     "noActiveLibraryDetail": "Adicione uma biblioteca para iniciar a sincronização.",
     "activeLibraryChanged": "A biblioteca atual foi alterada. Por favor, tente novamente.",
+    "failure": {
+      "connectivity": {
+        "title": "Não foi possível conectar",
+        "detail": "Verifique a conexão de rede e se a fonte de dados está disponível. Depois, tente sincronizar novamente."
+      },
+      "credential": {
+        "title": "Verifique o acesso à fonte de dados",
+        "detail": "Entre novamente ou atualize as credenciais da fonte de dados e verifique se esta conta tem acesso à biblioteca."
+      },
+      "configuration": {
+        "title": "Verifique as configurações da biblioteca",
+        "detail": "Verifique a localização da biblioteca e as configurações da fonte de dados. Depois, tente sincronizar novamente."
+      },
+      "data_integrity": {
+        "title": "Os dados de sincronização precisam de atenção",
+        "detail": "Alguns dados de sincronização podem estar ausentes ou corrompidos. Mantenha os arquivos locais e verifique primeiro as cópias em outros dispositivos ou em um backup confiável."
+      },
+      "unexpected": {
+        "title": "A sincronização não foi concluída",
+        "detail": "Tente sincronizar novamente mais tarde. Se o problema persistir, relate-o para obter ajuda."
+      }
+    },
     "reason": {
       "manual": "Iniciado manualmente",
       "localChange": "Dados locais alterados",

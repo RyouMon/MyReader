@@ -1,3 +1,4 @@
+import { syncFailureKeys } from "@my-reader/i18n/mobile"
 import { formatHumanReadableTime } from "@my-reader/tools/human-readable-time"
 import * as Haptics from "expo-haptics"
 import { useTranslation } from "react-i18next"
@@ -246,6 +247,7 @@ export default function SyncStatusScreen() {
     transientResult,
   } = useSyncStatusPresentation()
   const { isSyncing: isManualSyncing, syncNow } = useSyncLibrary()
+  const failureKeys = syncFailureKeys(history?.lastFailure?.failureKind)
 
   if (!library || !activeLibraryId) {
     return (
@@ -330,7 +332,7 @@ export default function SyncStatusScreen() {
             </View>
           ) : null}
 
-          {history?.lastFailure?.message ? (
+          {history?.lastFailure ? (
             <View
               className="gap-2 rounded-xl p-4"
               style={{ backgroundColor: palette.dangerSoft }}
@@ -339,14 +341,14 @@ export default function SyncStatusScreen() {
                 className="text-base font-bold"
                 style={{ color: palette.danger }}
               >
-                {t("syncStatus.failureReason")}
+                {t(failureKeys.title)}
               </Text>
               <Text
                 selectable
                 className="text-base"
                 style={{ color: palette.text }}
               >
-                {history.lastFailure.message}
+                {t(failureKeys.detail)}
               </Text>
             </View>
           ) : null}

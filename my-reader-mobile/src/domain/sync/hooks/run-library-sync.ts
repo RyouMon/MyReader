@@ -1,3 +1,4 @@
+import { syncFailureKeys } from "@my-reader/i18n/mobile"
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import {
   DEFAULT_SYNC_POLICY,
@@ -7,13 +8,14 @@ import {
   type SyncTrigger,
   syncLibrary,
 } from "@/src/domain/sync"
-import { DataIntegrityError, SyncConnectivityError } from "@/src/errors"
+import { SyncConnectivityError } from "@/src/errors"
 import i18n from "@/src/i18n"
 import { useAppStore } from "@/src/store/app-store"
 import { observeLibrarySync } from "@/src/store/sync-status-observer"
 
 import { applySyncReport } from "./apply-sync-report"
 import { syncReasonForTrigger } from "../sync-reason"
+import { classifySyncFailure } from "../failure"
 
 export type RunLibrarySyncInput = {
   libraryId: string
@@ -69,19 +71,10 @@ export async function runLibrarySync(
   } catch (err) {
     if (err instanceof SyncConnectivityError) {
       await applySyncReport(err.report, { trigger: input.trigger })
-      if (showFailureAlert) {
-        showSyncFailureAlert(i18n.t("sync.sourceUnreachable"), err.message)
-      }
-    } else if (showFailureAlert) {
-      const message = err instanceof Error ? err.message : String(err)
-      showSyncFailureAlert(
-        i18n.t(
-          err instanceof DataIntegrityError
-            ? "sync.dataIntegrityError"
-            : "sync.sourceUnreachable",
-        ),
-        message,
-      )
+    }
+    if (showFailureAlert) {
+      const keys = syncFailureKeys(classifySyncFailure(err))
+      showSyncFailureAlert(i18n.t(keys.title), i18n.t(keys.detail))
     }
     throw err
   }

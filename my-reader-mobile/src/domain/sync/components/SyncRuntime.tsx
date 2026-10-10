@@ -2,8 +2,6 @@ import * as Network from "expo-network"
 import { usePathname } from "expo-router"
 import { useEffect, useRef } from "react"
 import { AppState } from "react-native"
-import { Notifier } from "react-native-notifier"
-import { InAppNotification } from "@/src/domain/notifications/in-app-notification"
 import { runSyncLibraries, type SyncLibrariesDeps } from "@/src/domain/sync"
 import { applySyncRunReports } from "@/src/domain/sync/hooks/apply-sync-report"
 import {
@@ -11,25 +9,13 @@ import {
   type SidecarSyncRuntime,
 } from "@/src/domain/sync/sidecar-sync-runtime"
 import { isRemoteSourceType } from "@/src/domain/types"
-import { DataIntegrityError, SyncConfigError } from "@/src/errors"
-import i18n from "@/src/i18n"
+import { notifySyncError } from "@/src/domain/sync/notify-sync-error"
 import { getValidAccessToken } from "@/src/services/auth/onedrive"
 import { subscribeLocalSidecarWork } from "@/src/services/core/sync-events"
 import { setCachedAuth } from "@/src/services/remote/auth-cache"
 import { useAppStore } from "@/src/store/app-store"
 import { observeLibrarySync } from "@/src/store/sync-status-observer"
 import { cancelIdleWork, scheduleIdleWork } from "@/src/utils/common"
-
-function notifySyncError(title: string, message: string): void {
-  Notifier.showNotification({
-    title,
-    description: message,
-    duration: 6000,
-    hideOnPress: true,
-    Component: InAppNotification,
-    componentProps: { kind: "error" },
-  })
-}
 
 function getSyncDeps(): SyncLibrariesDeps {
   const state = useAppStore.getState()
@@ -40,18 +26,6 @@ function getSyncDeps(): SyncLibrariesDeps {
     enableAutoSync: state.settings.enableAutoSync,
     activeLibraryId: state.activeLibraryId,
   }
-}
-
-function handleSyncError(err: unknown, label: string): void {
-  if (err instanceof SyncConfigError) {
-    notifySyncError(i18n.t("sync.configError"), err.message)
-    return
-  }
-  if (err instanceof DataIntegrityError) {
-    notifySyncError(i18n.t("sync.dataIntegrityError"), err.message)
-    return
-  }
-  console.warn(`[SyncRuntime] ${label} sync failed`, err)
 }
 
 function isReaderRoute(pathname: string): boolean {
@@ -98,7 +72,7 @@ export function SyncRuntime(): null {
         .then(async (report) => {
           await applySyncRunReports(report.results, { trigger: "startup" })
         })
-        .catch((err) => handleSyncError(err, "startup"))
+        .catch((err) => notifySyncError(err, "startup"))
     })
 
     return () => cancelIdleWork(startupHandle)
@@ -117,7 +91,7 @@ export function SyncRuntime(): null {
           activeLibraryId: state.activeLibraryId,
         }
       },
-      (error) => handleSyncError(error, "automatic"),
+      (error) => notifySyncError(error, "automatic"),
       observeLibrarySync,
     )
     sidecarRuntime.current = runtime
@@ -130,7 +104,7 @@ export function SyncRuntime(): null {
         "debounced",
       )
     })
-    void runtime.recover().catch((error) => handleSyncError(error, "recovery"))
+    void runtime.recover().catch((error) => notifySyncError(error, "recovery"))
     let stopSafetySweep: (() => void) | null = null
     const startSafetySweep = () => {
       if (stopSafetySweep) return
@@ -154,7 +128,7 @@ export function SyncRuntime(): null {
       if (!activeLibrary) return
       void runtime
         .requestContextualPull(activeLibrary.id, reason)
-        .catch((error) => handleSyncError(error, reason))
+        .catch((error) => notifySyncError(error, reason))
     }
     if (AppState.currentState === "active") {
       if (enableAutoSync) startSafetySweep()
@@ -195,7 +169,7 @@ export function SyncRuntime(): null {
     }
     void Network.getNetworkStateAsync()
       .then(handleNetworkState)
-      .catch((error) => handleSyncError(error, "network-state"))
+      .catch((error) => notifySyncError(error, "network-state"))
     const networkSubscription =
       Network.addNetworkStateListener(handleNetworkState)
 
@@ -240,7 +214,7 @@ export function SyncRuntime(): null {
     if (!library || !runtime) return
     void runtime
       .requestContextualPull(library.id, "library_activated")
-      .catch((error) => handleSyncError(error, "library_activated"))
+      .catch((error) => notifySyncError(error, "library_activated"))
   }, [storeReady, enableAutoSync, activeLibraryId])
 
   return null

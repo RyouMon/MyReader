@@ -18,6 +18,11 @@ All resources ship with the app and work offline. Shared copy lives in
 contextual terminology and plural corrections; native-speaker review remains
 recommended before release.
 
+`syncFailureKeys` selects shared UI copy from Core's sync failure category. Both
+apps translate these keys when rendering or showing a notification, so stored
+failures follow the current language. Missing or unknown categories use generic
+guidance; diagnostic messages stay in logs and sync history, not in UI copy.
+
 When adding or updating a locale:
 
 - Keep keys and interpolation variables aligned with English. Use i18next plural

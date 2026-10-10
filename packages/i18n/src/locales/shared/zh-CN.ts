@@ -215,6 +215,29 @@ export const sharedZhCN = {
     noActiveLibrary: "暂无可同步书库",
     noActiveLibraryDetail: "请先添加书库。",
     activeLibraryChanged: "当前书库已改变，请重试。",
+    failure: {
+      connectivity: {
+        title: "暂时无法连接",
+        detail: "请检查网络连接和数据源是否可用，然后重试同步。",
+      },
+      credential: {
+        title: "请检查数据源访问权限",
+        detail: "请重新登录或更新数据源凭据，并确认此账号有权访问书库。",
+      },
+      configuration: {
+        title: "请检查书库设置",
+        detail: "请检查书库位置和数据源设置，然后重试同步。",
+      },
+      data_integrity: {
+        title: "同步数据需要检查",
+        detail:
+          "部分同步数据可能缺失或损坏。请保留本地文件，先检查其他设备或可靠备份中的数据副本。",
+      },
+      unexpected: {
+        title: "未能完成同步",
+        detail: "请稍后重试同步；如果问题持续出现，请反馈此问题。",
+      },
+    },
     reason: {
       manual: "手动触发",
       localChange: "本地数据更新",

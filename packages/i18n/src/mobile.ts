@@ -69,3 +69,4 @@ export type MobileTranslationKey = TranslationKey<
   typeof mobileResources.en.translation
 >
 export { qwenTtsSourceKeys } from "./qwen-tts"
+export { syncFailureKeys } from "./sync-failure"

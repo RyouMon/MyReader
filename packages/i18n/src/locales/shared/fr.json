@@ -216,6 +216,28 @@
     "noActiveLibrary": "Aucune bibliothèque à synchroniser",
     "noActiveLibraryDetail": "Ajoutez une bibliothèque pour démarrer la synchronisation.",
     "activeLibraryChanged": "La bibliothèque actuelle a changé. Veuillez réessayer.",
+    "failure": {
+      "connectivity": {
+        "title": "Connexion impossible",
+        "detail": "Vérifiez votre connexion réseau et la disponibilité de la source de données, puis relancez la synchronisation."
+      },
+      "credential": {
+        "title": "Vérifiez l’accès à la source de données",
+        "detail": "Reconnectez-vous ou mettez à jour les identifiants de la source de données, puis vérifiez que ce compte a accès à la bibliothèque."
+      },
+      "configuration": {
+        "title": "Vérifiez les paramètres de la bibliothèque",
+        "detail": "Vérifiez l’emplacement de la bibliothèque et les paramètres de la source de données, puis relancez la synchronisation."
+      },
+      "data_integrity": {
+        "title": "Les données de synchronisation sont à vérifier",
+        "detail": "Certaines données de synchronisation sont peut-être absentes ou endommagées. Conservez vos fichiers locaux et vérifiez d’abord les copies sur d’autres appareils ou dans une sauvegarde fiable."
+      },
+      "unexpected": {
+        "title": "La synchronisation n’a pas pu se terminer",
+        "detail": "Relancez la synchronisation plus tard. Si le problème persiste, signalez-le pour obtenir de l’aide."
+      }
+    },
     "reason": {
       "manual": "Démarré manuellement",
       "localChange": "Données locales modifiées",

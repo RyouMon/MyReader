@@ -213,6 +213,28 @@
     "noActiveLibrary": "暫無可同步書庫",
     "noActiveLibraryDetail": "請先新增書庫。",
     "activeLibraryChanged": "當前書庫已改變，請重試。",
+    "failure": {
+      "connectivity": {
+        "title": "暫時無法連線",
+        "detail": "請檢查網路連線和資料來源是否可用，然後重試同步。"
+      },
+      "credential": {
+        "title": "請檢查資料來源存取權限",
+        "detail": "請重新登入或更新資料來源憑證，並確認此帳號有權存取書庫。"
+      },
+      "configuration": {
+        "title": "請檢查書庫設定",
+        "detail": "請檢查書庫位置和資料來源設定，然後重試同步。"
+      },
+      "data_integrity": {
+        "title": "同步資料需要檢查",
+        "detail": "部分同步資料可能遺失或損壞。請保留本機檔案，先檢查其他裝置或可靠備份中的資料副本。"
+      },
+      "unexpected": {
+        "title": "未能完成同步",
+        "detail": "請稍後重試同步；如果問題持續出現，請回報此問題。"
+      }
+    },
     "reason": {
       "manual": "手動觸發",
       "localChange": "本地資料更新",

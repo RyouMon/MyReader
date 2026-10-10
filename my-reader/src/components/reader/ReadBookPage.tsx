@@ -1,6 +1,7 @@
 import { useReaderBookSource } from "@/hooks/reader/useReaderBookSource"
 import { formatFileSize } from "@my-reader/tools/book-metadata"
 import { isTauri } from "@tauri-apps/api/core"
+import type { TFunction } from "i18next"
 import { AlertCircle, List, Loader2, Type } from "lucide-react"
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
@@ -149,7 +150,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
 function getReadBookWindowContent(
   source: ReturnType<typeof useReaderBookSource>,
   renderWindowState: (content: ReactNode) => ReactNode,
-  t: ReturnType<typeof useTranslation>["t"],
+  t: TFunction,
 ) {
   const {
     fetchError,
