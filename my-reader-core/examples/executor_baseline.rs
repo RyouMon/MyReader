@@ -243,6 +243,15 @@ async fn run(runtime: &str, books: usize, iterations: usize) {
     })
     .await;
     holder.join().unwrap();
+
+    // Close cached SQLx pools before TempDir cleanup (required on Windows).
+    // Cleanup is outside every timed workload.
+    for database in [&fixture.database, &target.database] {
+        my_reader_core::api::close_library_database(database)
+            .await
+            .unwrap()
+            .commit();
+    }
 }
 
 fn main() {

@@ -53,7 +53,8 @@ SeaORM / SQLx 已有异步执行机制，保持原来的异步查询路径。
 
 基准程序提交为 `b3b03d87`，最终实现为 `dbc6af4e`。原版与新版交替运行三轮，
 第二轮反转先后顺序；测量期间不并行运行本任务的编译、测试或 QA。每轮都重新创建相同内容的
-独立临时书库。保留原版二进制后才开始实现。原始记录：
+独立临时书库。保留原版二进制后才开始实现。随后补充的缓存连接关闭位于所有计时结束后，
+未改动测量负载。原始记录：
 
 - [实现前最初 48 条基线](./benchmarks/core-executor-before.jsonl)
 - [最终交替运行的 144 条记录](./benchmarks/core-executor-comparison.jsonl)
@@ -104,6 +105,7 @@ SeaORM / SQLx 已有异步执行机制，保持原来的异步查询路径。
 - `cargo clippy --locked --workspace --all-targets --features my-reader-core/test-support -- -D warnings -D clippy::cognitive_complexity`：通过，包含基准示例。
 - `cargo fmt --all --check`：通过。
 - `pnpm qa`：通过，包含 11 项 QA 脚本测试；未调整门禁或基线。
+- 补充基准清理后，Core 完整 221 项测试、含示例的 Clippy、4 本书示例冒烟通过。
 - 新增七项合同测试覆盖单线程活性、两种队列的取消、不同书库隔离、事务完成前保留锁与 lease、
   删除时拒绝排队写入、并发写入不丢失、错误分类及回滚。阻塞池排队取消测试另行单独运行通过。
 
