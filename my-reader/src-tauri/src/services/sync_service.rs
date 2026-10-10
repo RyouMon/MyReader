@@ -320,6 +320,38 @@ mod tests {
         );
     }
 
+    #[test]
+    fn should_preserve_core_storage_category_at_the_desktop_boundary() {
+        use opendal::{Error, ErrorKind};
+
+        for (source, expected, wire_kind) in [
+            (
+                Error::new(ErrorKind::Unexpected, "credential text").set_temporary(),
+                SyncFailureKind::Connectivity,
+                "Storage",
+            ),
+            (
+                Error::new(ErrorKind::PermissionDenied, "network text"),
+                SyncFailureKind::Credential,
+                "Credential",
+            ),
+            (
+                Error::new(ErrorKind::ConfigInvalid, "network text"),
+                SyncFailureKind::Configuration,
+                "Config",
+            ),
+            (
+                Error::new(ErrorKind::Unexpected, "network text"),
+                SyncFailureKind::Unexpected,
+                "Sync",
+            ),
+        ] {
+            let error = AppError::from(my_reader_core::CoreError::from(source));
+            assert_eq!(SyncService::failure_kind(&error), expected);
+            assert_eq!(serde_json::to_value(&error).unwrap()["kind"], wire_kind);
+        }
+    }
+
     #[tokio::test]
     async fn should_refresh_core_catalog_state_when_manual_sync_runs() {
         let app_data = tempfile::tempdir().unwrap();

@@ -13,5 +13,6 @@ thiserror.workspace = true
 uniffi = { workspace = true, features = ["tokio"] }
 
 [dev-dependencies]
+opendal.workspace = true
 rusqlite.workspace = true
 tempfile = "3"

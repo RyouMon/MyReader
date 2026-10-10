@@ -66,6 +66,17 @@ impl From<my_reader_core::CoreError> for AppError {
             my_reader_core::CoreError::NotFound(message) => Self::NotFound(message),
             my_reader_core::CoreError::Serialize(message) => Self::Serialize(message),
             my_reader_core::CoreError::Storage(message) => Self::Storage(message),
+            error @ my_reader_core::CoreError::StorageBackend(_) => {
+                use my_reader_core::{api::sync::SyncService, models::SyncFailureKind};
+
+                match SyncService::failure_kind(&error) {
+                    SyncFailureKind::Connectivity => Self::Storage(error.to_string()),
+                    SyncFailureKind::Configuration => Self::Config(error.to_string()),
+                    SyncFailureKind::Credential => Self::Credential(error.to_string()),
+                    SyncFailureKind::DataIntegrity => Self::DataIntegrity(error.to_string()),
+                    SyncFailureKind::Unexpected => Self::Sync(error.to_string()),
+                }
+            }
             my_reader_core::CoreError::Sync(message) => Self::Sync(message),
             my_reader_core::CoreError::Tts(message) => Self::Tts(message),
             my_reader_core::CoreError::DataIntegrity(message) => Self::DataIntegrity(message),
