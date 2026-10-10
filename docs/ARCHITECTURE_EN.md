@@ -118,6 +118,19 @@ calling Sync, Catalog/Sync/BookTransfer calling Content state transitions, and T
 Public `api::*Service` paths and signatures stay stable; no new trait or generic service framework is
 introduced for a single implementation.
 
+Core uses `FileLocalState` for `FileState.local_state` / `FileStateUpdate.local_state` and
+`Option<LibrarySourceType>` for `Library.source_type`. Business decisions match enum variants;
+SQLite, JSON, Tauri DTOs, and UniFFI retain their existing string values through explicit boundary
+conversions. Unknown strings round-trip unchanged but do not count as available local files or
+supported writable library sources. Missing/null legacy `sourceType` remains `None`. Rust callers
+construct these fields with enum variants.
+
+Sync identity distinguishes `LibraryUuid` from `ReplicaId` with two newtypes. Construction preserves
+existing canonical UUID validation: RFC UUID v1–v8 for a library, v4 for a device replica, both
+lowercase and hyphenated. These internal types cannot be interchanged; SQLite and Automerge retain
+their original strings. Newtypes are limited to these confusable identities; existing filesystem
+`Path` / `PathBuf` values and time parameters with explicit units keep their current representation.
+
 ### 3.2 Current Business Scope
 
 `my-reader-core` owns:

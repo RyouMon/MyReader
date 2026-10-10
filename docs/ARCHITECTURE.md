@@ -119,6 +119,17 @@ MyReader 身份读取 marker，设备副本身份保留在各自 sidecar。无�
 Catalog / Sync / BookTransfer 调用 Content 的状态转换，TTS 调用 Config。
 `api::*Service` 的公开路径和签名保持稳定；没有为单一实现引入新的 trait 或通用 service 框架。
 
+Core 的 `FileState.local_state` / `FileStateUpdate.local_state` 使用 `FileLocalState`，
+`Library.source_type` 使用 `Option<LibrarySourceType>`。业务状态判断使用枚举；SQLite、JSON、
+Tauri DTO 和 UniFFI 的既有字符串值保持不变，转换集中在持久化与平台边界。未知字符串原样保留，
+不视为可用的本地文件或已支持的可写书库来源；缺失 / null 的旧 `sourceType` 仍为 `None`。
+Rust 调用者构造这些字段时使用枚举变体。
+
+同步身份用 `LibraryUuid` 和 `ReplicaId` 两个 newtype 区分，构造时保留现有的规范 UUID 校验：
+书库接受 RFC UUID v1–v8，设备副本只接受 v4；两者都要求小写且带连字符。内部类型不能互换，
+SQLite 和 Automerge 边界仍写入原字符串。newtype 限于这里实际易混淆的身份；现有文件系统
+`Path` / `PathBuf` 和带单位的时间参数不另建通用包装层。
+
 同步 SQLite / Automerge 的异步调用经过 `sync/persistence/async_io.rs`：同一数据库异步排队，
 完整事务在有并发上限的 `spawn_blocking` 工作中执行；不同数据库不再共用全局写锁。
 远端 Automerge 对象校验也在阻塞线程执行。排队 guard 跟随实际工作，连接持有书库生命周期
