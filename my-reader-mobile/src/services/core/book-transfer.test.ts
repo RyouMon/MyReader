@@ -2,11 +2,9 @@ jest.mock("my-reader-core", () => ({
   bookTransferReadTaskProgress: jest.fn(() => null),
   bookTransferReleaseTask: jest.fn(),
   bookTransferRunPendingUploads: jest.fn(),
-  CoreFfiError: {
-    DataIntegrity: {
-      instanceOf: () => false,
-    },
-  },
+  CoreFfiError: jest.requireActual(
+    "../../../modules/my-reader-core/src/generated/my_reader_core_ffi",
+  ).CoreFfiError,
 }))
 
 jest.mock("@/src/services/fs/library-paths", () => ({

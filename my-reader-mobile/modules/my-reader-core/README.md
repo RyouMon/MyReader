@@ -22,6 +22,11 @@ pnpm core:build-bindings:android
 pnpm core:build-bindings
 ```
 
+`CoreFfiError` uses [UniFFI error variants](https://mozilla.github.io/uniffi-rs/latest/types/errors.html)
+to retain Core failure categories. Consumers branch on the generated variant/tag, never on its
+diagnostic `message`. Messages remain available for logging; UI code owns localized presentation.
+Changes to error variants also require regenerating the bindings and rebuilding the native library.
+
 `pnpm --filter my-reader-mobile ios` and `pnpm --filter my-reader-mobile android` run the matching
 binding build automatically. EAS runs it in `eas-build-pre-install` so CocoaPods can inspect the
 generated XCFramework.

@@ -1,8 +1,8 @@
 import i18n from "@/src/i18n"
 
 export class AppError extends Error {
-  constructor(message: string) {
-    super(message)
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options)
     this.name = this.constructor.name
   }
 }
@@ -15,8 +15,9 @@ export class SyncFailureError extends AppError {
   constructor(
     message: string,
     public readonly failureKind: import("../domain/sync/types").SyncFailureKind,
+    options?: ErrorOptions,
   ) {
-    super(message)
+    super(message, options)
   }
 }
 

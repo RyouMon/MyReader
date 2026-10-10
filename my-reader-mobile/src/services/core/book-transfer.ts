@@ -2,12 +2,11 @@ import {
   bookTransferReadTaskProgress,
   bookTransferReleaseTask,
   bookTransferRunPendingUploads,
-  CoreFfiError,
   type BookUploadTaskProgress,
 } from "my-reader-core"
 import type { Library } from "@my-reader/tools/types/library"
 
-import { DataIntegrityError } from "@/src/errors"
+import { coreSyncError } from "./sync-error"
 import { librarySidecarRootUri } from "@/src/services/fs/library-paths"
 import { toNativeFilesystemPath } from "@/src/services/fs/path"
 import {
@@ -45,10 +44,7 @@ export async function runPendingBookUploads(input: {
     publishProgress()
     return completed
   } catch (error) {
-    if (CoreFfiError.DataIntegrity.instanceOf(error)) {
-      throw new DataIntegrityError(error.message)
-    }
-    throw error
+    throw coreSyncError(error)
   } finally {
     clearInterval(progressTimer)
     bookTransferReleaseTask(taskId)
