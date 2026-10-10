@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use super::FileLocalState;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileDigest {
@@ -13,7 +15,7 @@ pub struct FileState {
     pub id: String,
     pub path: String,
 
-    pub local_state: String,
+    pub local_state: FileLocalState,
     pub local_sha256: Option<String>,
     pub local_size: Option<i64>,
     pub local_mtime: Option<i64>,
@@ -22,17 +24,14 @@ pub struct FileState {
 
 impl FileState {
     pub fn is_locally_available(&self) -> bool {
-        matches!(
-            self.local_state.as_str(),
-            "present" | "local_only" | "dirty_push"
-        )
+        self.local_state.is_locally_available()
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileStateUpdate {
-    pub local_state: String,
+    pub local_state: FileLocalState,
     pub local_sha256: Option<String>,
     pub local_size: Option<i64>,
     pub local_mtime: Option<i64>,
@@ -95,5 +94,31 @@ mod tests {
             assert!(state(local_state).is_locally_available());
         }
         assert!(!state("remote_only").is_locally_available());
+    }
+
+    #[test]
+    fn file_state_wire_values_round_trip_without_changing_availability() {
+        for (wire, available) in [
+            ("present", true),
+            ("local_only", true),
+            ("dirty_push", true),
+            ("remote_only", false),
+            ("downloading", false),
+            ("source_missing", false),
+            ("remote_delete_pending", false),
+            ("future_state", false),
+            ("", false),
+        ] {
+            let value = serde_json::json!({
+                "id": "state-1", "path": "Book.epub", "localState": wire,
+                "localSha256": null, "localSize": null, "localMtime": null,
+                "updatedAt": 1.25
+            });
+            let decoded: FileState = serde_json::from_value(value.clone()).unwrap();
+            assert_eq!(decoded.is_locally_available(), available, "{wire}");
+            assert_eq!(serde_json::to_value(decoded).unwrap(), value);
+            let update: super::FileStateUpdate = serde_json::from_value(value).unwrap();
+            assert_eq!(serde_json::to_value(update).unwrap()["localState"], wire);
+        }
     }
 }

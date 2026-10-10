@@ -539,7 +539,7 @@ fn ensure_library_can_add_in(state: &AppConfig, library: &Library) -> Result<(),
             .ok_or_else(|| {
                 CoreError::NotFound(format!("DATASOURCE_NOT_FOUND: {data_source_id}"))
             })?;
-        if library.source_type.as_deref() != Some(source.kind()) {
+        if library.source_type.as_ref() != Some(&source.source_type()) {
             return Err(CoreError::Config("LIBRARY_DATASOURCE_TYPE_MISMATCH".into()));
         }
     }

@@ -8,9 +8,9 @@ use crate::{
     infrastructure::storage,
     library::{metadata::download_and_validate_metadata, LibraryContext},
     models::{
-        AppConfig, DataSource, Library, LibraryStorageConfig, LibraryType, LocalLibraryRequest,
-        ManagedLocalLibraryRequest, MyReaderLibraryMarker, RemoteCredential, RemoteLibraryRequest,
-        SidecarSyncMode, MYREADER_LIBRARY_MARKER_RELATIVE_PATH,
+        AppConfig, DataSource, Library, LibrarySourceType, LibraryStorageConfig, LibraryType,
+        LocalLibraryRequest, ManagedLocalLibraryRequest, MyReaderLibraryMarker, RemoteCredential,
+        RemoteLibraryRequest, SidecarSyncMode, MYREADER_LIBRARY_MARKER_RELATIVE_PATH,
     },
     repositories::calibre::CatalogRepository,
     services::config,
@@ -53,7 +53,7 @@ impl LibraryService {
             metadata_uri: None,
             added_at: request.added_at,
             data_source_id: None,
-            source_type: Some("local".into()),
+            source_type: Some(LibrarySourceType::Local),
             source_path: None,
             metadata_etag: None,
             security_scoped_bookmark: None,
@@ -138,7 +138,7 @@ impl LibraryService {
             metadata_uri: None,
             added_at: request.added_at,
             data_source_id: None,
-            source_type: Some("local".into()),
+            source_type: Some(LibrarySourceType::Local),
             source_path,
             metadata_etag: None,
             security_scoped_bookmark: request.security_scoped_bookmark,
@@ -241,7 +241,7 @@ impl LibraryService {
             metadata_uri: None,
             added_at: request.added_at,
             data_source_id: None,
-            source_type: Some("local".into()),
+            source_type: Some(LibrarySourceType::Local),
             source_path,
             metadata_etag: None,
             security_scoped_bookmark: request.security_scoped_bookmark,
@@ -417,7 +417,7 @@ impl LibraryService {
             metadata_uri: request.metadata_uri,
             added_at: request.added_at,
             data_source_id: None,
-            source_type: Some("local".into()),
+            source_type: Some(LibrarySourceType::Local),
             source_path,
             metadata_etag: None,
             security_scoped_bookmark: request.security_scoped_bookmark,
@@ -644,7 +644,7 @@ fn rollback_local_myreader_creation(
 async fn create_remote_myreader_with_operators(
     config_path: &Path,
     request: RemoteLibraryRequest,
-    source_type: &str,
+    source_type: LibrarySourceType,
     source_name: &str,
     recorded_at_ms: i64,
     base_operator: &Operator,
@@ -689,7 +689,7 @@ async fn create_remote_myreader_with_operators(
 async fn open_remote_myreader_with_operators(
     config_path: &Path,
     request: RemoteLibraryRequest,
-    source_type: &str,
+    source_type: LibrarySourceType,
     source_name: &str,
     recorded_at_ms: i64,
     base_operator: &Operator,
@@ -744,7 +744,7 @@ async fn open_remote_myreader_with_operators(
 
 fn remote_myreader_registration(
     request: &RemoteLibraryRequest,
-    source_type: &str,
+    source_type: LibrarySourceType,
     source_name: &str,
     source_path: &str,
     library_id: Option<String>,
@@ -780,7 +780,7 @@ fn remote_myreader_registration(
             metadata_uri: None,
             added_at: request.added_at,
             data_source_id: Some(request.data_source_id.clone()),
-            source_type: Some(source_type.to_owned()),
+            source_type: Some(source_type),
             source_path: Some(if source_path.is_empty() {
                 "/".into()
             } else {
@@ -916,7 +916,7 @@ async fn rollback_remote_myreader_creation(operator: &Operator, source_path: &st
 async fn add_remote_library_with_operator(
     config_path: &Path,
     request: RemoteLibraryRequest,
-    source_type: &str,
+    source_type: LibrarySourceType,
     source_name: &str,
     operator: &Operator,
 ) -> Result<(AppConfig, Library), CoreError> {
@@ -951,7 +951,7 @@ async fn add_remote_library_with_operator(
         metadata_uri: Some(format!("{public_root}/metadata.db")),
         added_at: request.added_at,
         data_source_id: Some(request.data_source_id),
-        source_type: Some(source_type.to_owned()),
+        source_type: Some(source_type),
         source_path: Some(format!("/{source_path}")),
         metadata_etag: None,
         security_scoped_bookmark: None,
@@ -983,10 +983,10 @@ async fn add_remote_library_with_operator(
     result
 }
 
-fn remote_source_type(source: &DataSource) -> Result<&'static str, CoreError> {
+fn remote_source_type(source: &DataSource) -> Result<LibrarySourceType, CoreError> {
     match source {
-        DataSource::Webdav { .. } => Ok("webdav"),
-        DataSource::Onedrive { .. } => Ok("onedrive"),
+        DataSource::Webdav { .. } => Ok(LibrarySourceType::Webdav),
+        DataSource::Onedrive { .. } => Ok(LibrarySourceType::Onedrive),
         DataSource::Local { .. } => Err(CoreError::Config("DATASOURCE_NOT_REMOTE".into())),
     }
 }
@@ -1156,7 +1156,7 @@ mod tests {
         assert_eq!(library.name, "Ursula K. Le Guin");
         assert_eq!(library.book_count, 1);
         assert_eq!(library.path, "file:///library");
-        assert_eq!(library.source_type.as_deref(), Some("local"));
+        assert_eq!(library.source_type, Some(LibrarySourceType::Local));
         assert_eq!(
             state.active_library_id.as_deref(),
             Some(library.id.as_str())
@@ -1233,7 +1233,7 @@ mod tests {
             format!("file:///documents/libraries/{}", library.id)
         );
         assert_eq!(library.library_type, LibraryType::MyReader);
-        assert_eq!(library.source_type.as_deref(), Some("local"));
+        assert_eq!(library.source_type, Some(LibrarySourceType::Local));
         assert_eq!(library.source_path, None);
         assert_eq!(
             state.active_library_id.as_deref(),
@@ -1276,7 +1276,7 @@ mod tests {
             crate::sync::persistence::list_pending_outbox(database_path.to_str().unwrap()).unwrap();
 
         assert_eq!(library.library_type, LibraryType::MyReader);
-        assert_eq!(library.source_type.as_deref(), Some("local"));
+        assert_eq!(library.source_type, Some(LibrarySourceType::Local));
         assert_eq!(
             library.source_path.as_deref(),
             Some("content://tree/primary%3ABooks")
@@ -1466,7 +1466,7 @@ mod tests {
                 name: Some("Remote Library".into()),
                 added_at: None,
             },
-            "webdav",
+            LibrarySourceType::Webdav,
             "Source",
             100,
             &base_operator,
@@ -1528,7 +1528,7 @@ mod tests {
             .await
             .unwrap()
             .into_iter()
-            .find(|state| state.local_state == "dirty_push")
+            .find(|state| state.local_state == crate::models::FileLocalState::DirtyPush)
             .unwrap();
         assert!(queued_state.is_locally_available());
         assert!(local_root.join(&queued_state.path).is_file());
@@ -1611,7 +1611,8 @@ mod tests {
             .await
             .unwrap()
             .unwrap()
-            .local_state,
+            .local_state
+            .as_str(),
             "dirty_push",
             "catalog reconciliation must preserve a pending upload"
         );
@@ -1637,7 +1638,8 @@ mod tests {
             .await
             .unwrap()
             .unwrap()
-            .local_state,
+            .local_state
+            .as_str(),
             "source_missing"
         );
         std::fs::rename(&temporarily_missing_path, &local_book_path).unwrap();
@@ -1683,7 +1685,8 @@ mod tests {
             .await
             .unwrap()
             .unwrap()
-            .local_state,
+            .local_state
+            .as_str(),
             "present"
         );
         assert!(
@@ -1758,7 +1761,7 @@ mod tests {
                 name: Some("Remote Library".into()),
                 added_at: None,
             },
-            "webdav",
+            LibrarySourceType::Webdav,
             "Source",
             100,
             &base_operator,
@@ -1822,7 +1825,8 @@ mod tests {
                 .await
                 .unwrap()
                 .unwrap()
-                .local_state,
+                .local_state
+                .as_str(),
             "remote_delete_pending"
         );
     }
@@ -1904,7 +1908,7 @@ mod tests {
                 name: Some("Retryable".into()),
                 added_at: None,
             },
-            "webdav",
+            LibrarySourceType::Webdav,
             "Source",
             100,
             &base_operator,
@@ -1973,7 +1977,7 @@ mod tests {
         let (_, library_one) = create_remote_myreader_with_operators(
             &config_path_one,
             request_one,
-            "webdav",
+            LibrarySourceType::Webdav,
             "Source",
             100,
             &base_operator,
@@ -2030,7 +2034,7 @@ mod tests {
         let (_, library_two) = open_remote_myreader_with_operators(
             &config_path_two,
             request_two,
-            "webdav",
+            LibrarySourceType::Webdav,
             "Source",
             400,
             &base_operator,
@@ -2052,7 +2056,7 @@ mod tests {
                 .await
                 .unwrap()
                 .unwrap();
-        assert_eq!(state.local_state, "remote_only");
+        assert_eq!(state.local_state.as_str(), "remote_only");
         assert!(scoped_operator.exists(&cover_path).await.unwrap());
 
         let remote_bytes = scoped_operator.read(&relative_path).await.unwrap();
@@ -2204,10 +2208,15 @@ mod tests {
             added_at: Some(1.0),
         };
 
-        let (state, library) =
-            add_remote_library_with_operator(&config_path, request, "webdav", "Source", &operator)
-                .await
-                .unwrap();
+        let (state, library) = add_remote_library_with_operator(
+            &config_path,
+            request,
+            LibrarySourceType::Webdav,
+            "Source",
+            &operator,
+        )
+        .await
+        .unwrap();
 
         assert_eq!(library.name, "Library");
         assert_eq!(library.book_count, 1);
@@ -2323,7 +2332,7 @@ mod tests {
         let (_, library) = add_remote_library_with_operator(
             &config_path,
             request,
-            "webdav",
+            LibrarySourceType::Webdav,
             "Remote Books",
             &operator,
         )

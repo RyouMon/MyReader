@@ -2,7 +2,9 @@ mod app_config;
 pub(crate) mod catalog;
 mod content;
 mod download;
+mod file_local_state;
 mod library;
+mod library_source;
 mod reading;
 mod storage;
 mod sync;
@@ -21,11 +23,13 @@ pub use content::{
     FileStateUpdate,
 };
 pub use download::{DownloadTask, DownloadTaskRequest, DownloadTaskStatus, EnqueuedDownloadTask};
+pub use file_local_state::FileLocalState;
 pub use library::{
     LocalLibraryRequest, ManagedLocalLibraryRequest, MyReaderLibraryMarker, RemoteLibraryRequest,
     MYREADER_LIBRARY_MARKER_RELATIVE_PATH, MYREADER_LIBRARY_MARKER_TYPE,
     MYREADER_LIBRARY_MARKER_VERSION,
 };
+pub use library_source::LibrarySourceType;
 pub use reading::{
     LegacyFinishedReading, ReaderAnnotation, ReaderBookmark, ReadingPosition,
     ReadingPositionCandidate, ReadingStatistics,

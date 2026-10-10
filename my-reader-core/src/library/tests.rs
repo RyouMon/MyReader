@@ -139,6 +139,13 @@ fn writable_access_preserves_source_permissions_and_marker_errors() {
         matches!(writable_myreader_library(&missing, "library", source.path(), 0), Err(CoreError::Config(message)) if message == "REMOTE_LIBRARY_MISSING_DATASOURCE")
     );
     let mut calibre = config.clone();
+    for source_type in [None, Some(LibrarySourceType::from("future_backend"))] {
+        let mut unsupported = config.clone();
+        unsupported.libraries[0].source_type = source_type;
+        assert!(
+            matches!(writable_myreader_library(&unsupported, "library", source.path(), 0), Err(CoreError::Config(message)) if message == "MYREADER_LIBRARY_SOURCE_REQUIRED")
+        );
+    }
     calibre.libraries[0].library_type = LibraryType::Calibre;
     assert!(
         matches!(writable_myreader_library(&calibre, "library", source.path(), 0), Err(CoreError::Config(message)) if message == "LIBRARY_NOT_MYREADER")

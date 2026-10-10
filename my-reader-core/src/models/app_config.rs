@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::TtsConfig;
+use super::{LibrarySourceType, TtsConfig};
 
 pub const APP_CONFIG_SCHEMA_VERSION: u32 = 1;
 
@@ -181,6 +181,14 @@ impl DataSource {
             Self::Onedrive { .. } => "onedrive",
         }
     }
+
+    pub fn source_type(&self) -> LibrarySourceType {
+        match self {
+            Self::Local { .. } => LibrarySourceType::Local,
+            Self::Webdav { .. } => LibrarySourceType::Webdav,
+            Self::Onedrive { .. } => LibrarySourceType::Onedrive,
+        }
+    }
 }
 
 fn enabled_by_default() -> bool {
@@ -188,7 +196,7 @@ fn enabled_by_default() -> bool {
 }
 
 pub fn is_remote_library_source_type(source_type: Option<&str>) -> bool {
-    matches!(source_type, Some("webdav") | Some("onedrive"))
+    source_type.is_some_and(|value| LibrarySourceType::from(value).is_remote())
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -281,6 +289,34 @@ mod tests {
     }
 
     #[test]
+    fn library_source_wire_values_preserve_unknown_and_legacy_configs() {
+        for (wire, remote) in [
+            (Some("local"), false),
+            (Some("webdav"), true),
+            (Some("onedrive"), true),
+            (Some("future_backend"), false),
+            (Some(""), false),
+            (None, false),
+        ] {
+            let value = serde_json::json!({
+                "id": "library", "name": "Library", "path": "/library",
+                "sourceType": wire
+            });
+            let library: Library = serde_json::from_value(value).unwrap();
+            assert_eq!(library.is_remote(), remote);
+            assert_eq!(is_remote_library_source_type(wire), remote);
+            let encoded = serde_json::to_value(&library).unwrap();
+            assert_eq!(encoded["sourceType"], serde_json::json!(wire));
+            assert_eq!(serde_json::from_value::<Library>(encoded).unwrap(), library);
+        }
+        let legacy: Library = serde_json::from_value(serde_json::json!({
+            "id": "library", "name": "Library", "path": "/library"
+        }))
+        .unwrap();
+        assert_eq!(legacy.source_type, None);
+    }
+
+    #[test]
     fn should_default_legacy_library_to_calibre_when_type_is_missing() {
         let library = serde_json::from_value::<Library>(serde_json::json!({
             "id": "library",
@@ -331,13 +367,21 @@ pub struct Library {
     #[serde(default)]
     pub data_source_id: Option<String>,
     #[serde(default)]
-    pub source_type: Option<String>,
+    pub source_type: Option<LibrarySourceType>,
     #[serde(default)]
     pub source_path: Option<String>,
     #[serde(default)]
     pub metadata_etag: Option<String>,
     #[serde(default)]
     pub security_scoped_bookmark: Option<SecurityScopedBookmark>,
+}
+
+impl Library {
+    pub fn is_remote(&self) -> bool {
+        self.source_type
+            .as_ref()
+            .is_some_and(LibrarySourceType::is_remote)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

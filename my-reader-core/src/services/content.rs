@@ -5,8 +5,8 @@ use opendal::Operator;
 
 use crate::library::{source_library_type, LibraryContext};
 use crate::models::{
-    BookCoverThumbnailCache, BookCoverThumbnailCachePatch, DownloadedFile, FileDigest, FileState,
-    FileStateUpdate, ReadingFormatPolicy,
+    BookCoverThumbnailCache, BookCoverThumbnailCachePatch, DownloadedFile, FileDigest,
+    FileLocalState, FileState, FileStateUpdate, ReadingFormatPolicy,
 };
 use crate::repositories::calibre::CatalogRepository;
 use crate::repositories::content::{ContentRepository, PendingBookImport};
@@ -338,7 +338,7 @@ impl ContentService {
             .and_then(|value| i64::try_from(value.as_millis()).ok())
             .unwrap_or(0);
         let update = FileStateUpdate {
-            local_state: "present".into(),
+            local_state: FileLocalState::Present,
             local_sha256: Some(digest.sha256.clone()),
             local_size: Some(size),
             local_mtime: Some(mtime_ms),
@@ -380,7 +380,7 @@ impl ContentService {
             sidecar_root,
             &relative_path,
             FileStateUpdate {
-                local_state: "remote_only".into(),
+                local_state: FileLocalState::RemoteOnly,
                 local_sha256: None,
                 local_size: None,
                 local_mtime: None,
@@ -393,20 +393,25 @@ impl ContentService {
         sidecar_root: &Path,
         relative_path: &str,
     ) -> Result<(), CoreError> {
-        Self::upsert_remote_state(sidecar_root, relative_path, "source_missing").await
+        Self::upsert_remote_state(sidecar_root, relative_path, FileLocalState::SourceMissing).await
     }
 
     pub(crate) async fn mark_file_remote_delete_pending(
         sidecar_root: &Path,
         relative_path: &str,
     ) -> Result<(), CoreError> {
-        Self::upsert_remote_state(sidecar_root, relative_path, "remote_delete_pending").await
+        Self::upsert_remote_state(
+            sidecar_root,
+            relative_path,
+            FileLocalState::RemoteDeletePending,
+        )
+        .await
     }
 
     async fn upsert_remote_state(
         sidecar_root: &Path,
         relative_path: &str,
-        state: &str,
+        state: FileLocalState,
     ) -> Result<(), CoreError> {
         let relative_path = crate::infrastructure::storage::normalize_remote_path(relative_path)?;
         if relative_path.is_empty() {
@@ -416,7 +421,7 @@ impl ContentService {
             sidecar_root,
             &relative_path,
             FileStateUpdate {
-                local_state: state.into(),
+                local_state: state,
                 local_sha256: None,
                 local_size: None,
                 local_mtime: None,
@@ -432,7 +437,7 @@ impl ContentService {
         for state in Self::list_file_states(sidecar_root)
             .await?
             .into_iter()
-            .filter(|state| state.local_state == "remote_delete_pending")
+            .filter(|state| state.local_state == FileLocalState::RemoteDeletePending)
         {
             operator
                 .delete(&state.path)
@@ -459,9 +464,7 @@ impl ContentService {
         for book in books {
             let relative_path = catalog_book_relative_path(book);
             let local_path = content_root.join(&relative_path);
-            let current_state = existing
-                .get(&relative_path)
-                .map(|state| state.local_state.as_str());
+            let current_state = existing.get(&relative_path).map(|state| &state.local_state);
             if book.deleted {
                 match tokio::fs::remove_dir_all(content_root.join(&book.path)).await {
                     Ok(()) => {}
@@ -472,7 +475,7 @@ impl ContentService {
                 continue;
             }
 
-            if current_state == Some("remote_delete_pending") {
+            if current_state == Some(&FileLocalState::RemoteDeletePending) {
                 continue;
             }
             if !local_path.is_file() {
@@ -480,7 +483,7 @@ impl ContentService {
                 continue;
             }
 
-            if current_state == Some("dirty_push") {
+            if current_state == Some(&FileLocalState::DirtyPush) {
                 continue;
             }
             let digest = match Self::sha256_file(&local_path).await {
@@ -504,8 +507,8 @@ impl ContentService {
             let latest_state = Self::get_file_state(sidecar_root, &relative_path).await?;
             if latest_state.as_ref().is_some_and(|state| {
                 matches!(
-                    state.local_state.as_str(),
-                    "dirty_push" | "remote_delete_pending"
+                    &state.local_state,
+                    FileLocalState::DirtyPush | FileLocalState::RemoteDeletePending
                 )
             }) {
                 continue;
@@ -536,10 +539,12 @@ impl ContentService {
         match Self::get_file_state(sidecar_root, relative_path)
             .await?
             .as_ref()
-            .map(|state| state.local_state.as_str())
+            .map(|state| &state.local_state)
         {
-            Some("source_missing" | "remote_delete_pending") => Ok(()),
-            Some("dirty_push") => Self::mark_file_source_missing(sidecar_root, relative_path).await,
+            Some(FileLocalState::SourceMissing | FileLocalState::RemoteDeletePending) => Ok(()),
+            Some(FileLocalState::DirtyPush) => {
+                Self::mark_file_source_missing(sidecar_root, relative_path).await
+            }
             _ => Self::mark_file_remote_only(sidecar_root, relative_path).await,
         }
     }
@@ -617,8 +622,62 @@ mod tests {
     use sea_orm::{ActiveModelTrait, ConnectionTrait, Database, Schema, Set};
 
     use crate::entities::calibre::{books, data};
-    use crate::models::{BookCoverThumbnailCachePatch, FileStateUpdate};
+    use crate::models::{BookCoverThumbnailCachePatch, FileLocalState, FileStateUpdate};
     use crate::sync::document::CatalogBookValue;
+
+    #[tokio::test]
+    async fn file_state_storage_preserves_wire_values_across_all_queries() {
+        let sidecar = tempfile::tempdir().unwrap();
+        let states = [
+            "present",
+            "dirty_push",
+            "remote_delete_pending",
+            "future_state",
+        ];
+        for wire in states {
+            let path = format!("{wire}.epub");
+            super::ContentService::upsert_file_state(
+                sidecar.path(),
+                &path,
+                FileStateUpdate {
+                    local_state: wire.into(),
+                    local_sha256: Some("digest".into()),
+                    local_size: Some(42),
+                    local_mtime: Some(1234),
+                },
+            )
+            .await
+            .unwrap();
+            let state = super::ContentService::get_file_state(sidecar.path(), &path)
+                .await
+                .unwrap()
+                .unwrap();
+            assert_eq!(state.local_state.as_str(), wire);
+            assert_eq!(state.local_mtime, Some(1234));
+        }
+        let paths = states.map(|wire| format!("{wire}.epub"));
+        let by_path = super::ContentService::get_file_states(sidecar.path(), &paths)
+            .await
+            .unwrap();
+        let all = super::ContentService::list_file_states(sidecar.path())
+            .await
+            .unwrap();
+        assert_eq!(all.len(), states.len());
+        for state in all {
+            assert_eq!(by_path[&state.path], state);
+        }
+        let db = rusqlite::Connection::open(sidecar.path().join(".myreader/myreader.db")).unwrap();
+        for wire in states {
+            let stored: String = db
+                .query_row(
+                    "SELECT local_state FROM file_state WHERE path = ?1",
+                    [format!("{wire}.epub")],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(stored, wire);
+        }
+    }
 
     async fn seed_catalog(root: &Path) {
         let db = Database::connect(format!(
@@ -684,7 +743,7 @@ mod tests {
             sidecar.path(),
             path,
             FileStateUpdate {
-                local_state: "present".into(),
+                local_state: FileLocalState::Present,
                 local_sha256: Some("ab".repeat(32)),
                 local_size: Some(1024),
                 local_mtime: Some(1000),
@@ -697,7 +756,7 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(state.local_state, "present");
+        assert_eq!(state.local_state.as_str(), "present");
         assert_eq!(state.local_size, Some(1024));
 
         super::ContentService::delete_file_state(sidecar.path(), path)
@@ -730,7 +789,7 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(state.local_state, "present");
+        assert_eq!(state.local_state.as_str(), "present");
         assert_eq!(state.local_size, Some(4));
         assert_eq!(state.local_sha256, Some(downloaded.sha256));
     }
@@ -806,7 +865,8 @@ mod tests {
                 .await
                 .unwrap()
                 .unwrap()
-                .local_state,
+                .local_state
+                .as_str(),
             "present"
         );
     }
@@ -823,7 +883,7 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        assert_eq!(state.local_state, "remote_only");
+        assert_eq!(state.local_state.as_str(), "remote_only");
         assert_eq!(state.local_size, None);
     }
 
@@ -870,7 +930,7 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(state.local_state, "remote_delete_pending");
+        assert_eq!(state.local_state.as_str(), "remote_delete_pending");
 
         super::ContentService::finalize_downloaded_file_with_digest(
             library.path(),
@@ -885,7 +945,7 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(state.local_state, "remote_delete_pending");
+        assert_eq!(state.local_state.as_str(), "remote_delete_pending");
     }
 
     #[tokio::test]

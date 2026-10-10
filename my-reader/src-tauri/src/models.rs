@@ -70,7 +70,7 @@ impl From<&LibraryConfig> for my_reader_core::models::Library {
             metadata_uri: None,
             added_at: None,
             data_source_id: value.data_source_id.clone(),
-            source_type: value.source_type.clone(),
+            source_type: value.source_type.clone().map(Into::into),
             source_path: value.source_path.clone(),
             metadata_etag: None,
             security_scoped_bookmark: None,
@@ -85,7 +85,7 @@ impl From<&my_reader_core::models::Library> for LibraryConfig {
             name: value.name.clone(),
             path: value.path.clone(),
             library_type: value.library_type.into(),
-            source_type: value.source_type.clone(),
+            source_type: value.source_type.clone().map(Into::into),
             data_source_id: value.data_source_id.clone(),
             source_path: value.source_path.clone(),
         }
@@ -645,6 +645,29 @@ impl specta::Type for JsonAny {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn library_sources_keep_the_desktop_string_contract() {
+        for wire in [
+            Some("local"),
+            Some("webdav"),
+            Some("onedrive"),
+            Some("future_backend"),
+            None,
+        ] {
+            let value = serde_json::json!({
+                "id": "library", "name": "Library", "path": "/library", "sourceType": wire
+            });
+            let dto: LibraryConfig = serde_json::from_value(value).unwrap();
+            let core = my_reader_core::models::Library::from(&dto);
+            assert_eq!(core.is_remote(), dto.is_remote());
+            let returned = LibraryConfig::from(&core);
+            assert_eq!(
+                serde_json::to_value(returned).unwrap(),
+                serde_json::to_value(dto).unwrap()
+            );
+        }
+    }
 
     #[test]
     fn default_data_source_enabled_should_return_true_when_data_source_is_added() {

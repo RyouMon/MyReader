@@ -320,7 +320,7 @@ impl SyncService {
             .iter()
             .find(|library| library.id == library_id)
             .ok_or_else(|| CoreError::LibraryNotFound(library_id.to_owned()))?;
-        if !is_remote_library(library) {
+        if !library.is_remote() {
             let root = local_root_path.trim();
             if root.is_empty() {
                 return Err(CoreError::Config("LIBRARY_ROOT_PATH_REQUIRED".into()));
@@ -341,7 +341,7 @@ impl SyncService {
             .ok_or_else(|| {
                 CoreError::NotFound(format!("DATASOURCE_NOT_FOUND: {data_source_id}"))
             })?;
-        if library.source_type.as_deref() != Some(source.kind()) {
+        if library.source_type.as_ref() != Some(&source.source_type()) {
             return Err(CoreError::Config("LIBRARY_DATASOURCE_TYPE_MISMATCH".into()));
         }
         let credential =
@@ -861,7 +861,7 @@ async fn sync_calibre(
         .await
         {
             Ok(books) => books,
-            Err(CoreError::DataIntegrity(error)) if is_remote_library(&library) => {
+            Err(CoreError::DataIntegrity(error)) if library.is_remote() => {
                 tracing::warn!(%error, "Refreshing incompatible Calibre cache; retaining cached book files");
                 Vec::new()
             }
@@ -870,7 +870,7 @@ async fn sync_calibre(
     } else {
         Vec::new()
     };
-    if is_remote_library(&library) {
+    if library.is_remote() {
         library::metadata::download_and_validate_metadata(
             operator,
             "",
@@ -879,7 +879,7 @@ async fn sync_calibre(
         .await?;
     }
     let (_, new_books) = CatalogRepository::inspect_library(library_root).await?;
-    if is_remote_library(&library) {
+    if library.is_remote() {
         evict_stale_book_files(sidecar_root, library_root, &old_books, &new_books).await;
     }
     library.book_count = u64::try_from(new_books.len()).unwrap_or(u64::MAX);
@@ -903,13 +903,6 @@ fn metadata_version(metadata: &opendal::Metadata) -> String {
             metadata.content_length()
         )
     })
-}
-
-fn is_remote_library(library: &Library) -> bool {
-    matches!(
-        library.source_type.as_deref(),
-        Some("webdav") | Some("onedrive")
-    )
 }
 
 fn is_remote_storage(storage: &LibraryStorageConfig) -> bool {
@@ -1540,7 +1533,7 @@ mod tests {
         .await
         .unwrap()
         .unwrap();
-        assert_eq!(state.local_state, "remote_only");
+        assert_eq!(state.local_state.as_str(), "remote_only");
     }
 
     fn begin_execution(coordinator: &SyncCoordinator) -> crate::sync::scheduler::SyncExecution {
