@@ -89,7 +89,7 @@ ANDROID_SERIAL=emulator-5554 ./e2e/scripts/run-local-supported-formats.sh androi
 
 - `manage_local_myreader_library.yaml`：iOS 外部目录创建、导入阅读、收藏、元数据修改、重启持久化、验证“打开已有书库”的本地存储入口、删除图书。
 - `manage_webdav_myreader_library.yaml`：后台上传、上传前禁止删除本地文件、上传中删除、同步不等待上传、按需下载、远端删除与重开。
-- `manage_onedrive_myreader_library.yaml`：Graph 上传、进程重启续传、token 并发路径、远端-only 下载并自动阅读。
+- `manage_onedrive_myreader_library.yaml`：Graph 上传、进程重启续传、token 并发路径、远端-only 下载后留在书库，再次点击阅读。
 
 ## TTS 端到端验证
 

@@ -119,13 +119,25 @@ tags:
 - assertNotVisible: "删除下载文件|Delete Downloaded File"
 - tapOn: "加入收藏|Add to Favorites"
 
-# Scenario: one tap downloads through the Graph pre-authenticated URL and opens
-# the reader automatically; no second tap or manual sync is needed.
+# Scenario: downloading through the Graph pre-authenticated URL stays in the
+# library; reading begins only after a second tap, without a manual sync.
+- tapOn: '打开《${REMOTE_BOOK_TITLE}》|Open "${REMOTE_BOOK_TITLE}"'
+- extendedWaitUntil:
+    visible:
+      id: "transfer-arrow-down"
+    timeout: 30000
+- extendedWaitUntil:
+    notVisible:
+      id: "transfer-arrow-down"
+    timeout: 600000
+- assertNotVisible:
+    id: "reader-screen"
+- assertVisible: ${REMOTE_BOOK_TITLE}
 - tapOn: '打开《${REMOTE_BOOK_TITLE}》|Open "${REMOTE_BOOK_TITLE}"'
 - extendedWaitUntil:
     visible:
       id: "reader-screen"
-    timeout: 600000
+    timeout: 30000
 - runFlow: ../../common/close_reader.yaml
 
 # Scenario: delete the remote book and synchronize its catalog tombstone/file.

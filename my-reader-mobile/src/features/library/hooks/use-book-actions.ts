@@ -1,6 +1,6 @@
 import { errorMessage } from "@/src/i18n/error-message"
 import { router } from "expo-router"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { libraryTypeOf } from "@my-reader/tools/types/library"
 
 import {
@@ -140,13 +140,7 @@ export function useBookActions(
   toggleFavorite?: (bookId: string) => Promise<void> | void,
 ) {
   const isNavigatingRef = useRef(false)
-  const handledReaderDownloadTaskIdsRef = useRef(new Set<string>())
   const tasks = useDownloadStatusTasks()
-  const [pendingReaderDownload, setPendingReaderDownload] = useState<{
-    bookId: string
-    format: string
-    taskId: string
-  } | null>(null)
 
   // Sync latest props into a ref so callbacks always read current values
   // without rebuilding their references on every parent render.
@@ -217,19 +211,17 @@ export function useBookActions(
         const match = paths.find((p) => p.format.toUpperCase() === format)
         if (!match) return
 
-        const taskId = await enqueueDownload({
+        await enqueueDownload({
           libraryId: lib.id,
           bookId: book.id,
           format,
           relativePath: match.relativePath,
           label: `${book.title} · ${format}`,
         })
-        return { format, taskId }
       } catch (e) {
         const { title, message } = describeDownloadError(e)
         showErrorAlert(title, message)
       }
-      return null
     },
     [],
   )
@@ -245,23 +237,6 @@ export function useBookActions(
       isNavigatingRef.current = false
     }, 1200)
   }, [])
-
-  useEffect(() => {
-    if (!pendingReaderDownload) return
-    if (
-      handledReaderDownloadTaskIdsRef.current.has(pendingReaderDownload.taskId)
-    ) {
-      return
-    }
-    const task = tasks.find((item) => item.id === pendingReaderDownload.taskId)
-    if (!task) return
-    if (task.status === "done") {
-      handledReaderDownloadTaskIdsRef.current.add(pendingReaderDownload.taskId)
-      openReader(pendingReaderDownload.bookId, pendingReaderDownload.format)
-    } else if (task.status === "error" || task.status === "cancelled") {
-      handledReaderDownloadTaskIdsRef.current.add(pendingReaderDownload.taskId)
-    }
-  }, [openReader, pendingReaderDownload, tasks])
 
   const promptSetDefaultFormat = useCallback(async (book: BookItem) => {
     const {
@@ -338,11 +313,7 @@ export function useBookActions(
         return
       }
 
-      void downloadBook(book).then((download) => {
-        if (!download) return
-        handledReaderDownloadTaskIdsRef.current.delete(download.taskId)
-        setPendingReaderDownload({ bookId, ...download })
-      })
+      void downloadBook(book)
     },
     [downloadBook, openReader],
   )
