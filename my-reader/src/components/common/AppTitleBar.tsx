@@ -46,7 +46,7 @@ export default function AppTitleBar({
       data-window-focused={windowFocused}
       className={cn(
         "relative z-60 flex shrink-0 select-none items-center border-b border-border bg-background pointer-events-auto",
-        windows ? "app-titlebar-windows h-8" : "h-11",
+        windows ? "app-titlebar-windows h-12" : "h-11",
       )}
       style={
         {
@@ -85,7 +85,7 @@ export default function AppTitleBar({
           />
         </div>
       ) : null}
-      <div data-tauri-drag-region className="absolute top-0 end-0 flex h-8">
+      <div data-tauri-drag-region className="absolute inset-y-0 end-0 flex">
         {windows ? (
           <WindowsWindowControls
             variant="app"
