@@ -232,12 +232,10 @@ impl CatalogRepository {
                 .or_default()
                 .push(row.format.clone());
             if let Some(book_path) = book_paths.get(&row.book) {
-                format_paths_by_book.entry(row.book).or_default().push(
-                    Path::new(book_path)
-                        .join(format!("{}.{}", row.name, row.format.to_lowercase()))
-                        .to_string_lossy()
-                        .to_string(),
-                );
+                format_paths_by_book
+                    .entry(row.book)
+                    .or_default()
+                    .push(book_format_relative_path(book_path, &row.name, &row.format));
             }
         }
 
@@ -1120,7 +1118,7 @@ fn book_format_relative_path(book_path: &str, name: &str, format: &str) -> Strin
     Path::new(book_path)
         .join(format!("{}.{}", name, format.to_lowercase()))
         .to_string_lossy()
-        .to_string()
+        .replace(std::path::MAIN_SEPARATOR, "/")
 }
 
 fn book_format_from_row(book_path: &str, row: FormatRow) -> BookFormat {

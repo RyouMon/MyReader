@@ -217,11 +217,11 @@
     .toolbar-sort-trigger,
     [data-slot="input"]
   ) {
-  @apply h-7 rounded-sm;
+  @apply h-8 rounded-sm;
 }
 
 .app-titlebar-windows :is([data-size="icon-sm"], .toolbar-search-trigger) {
-  @apply w-7;
+  @apply w-8;
 }
 
 .app-titlebar-windows .toolbar-search-field {
@@ -267,7 +267,7 @@
   }
 
   .app-titlebar-windows .toolbar-sort-trigger {
-    @apply w-7;
+    @apply w-8;
   }
 }
 
