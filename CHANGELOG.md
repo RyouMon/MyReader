@@ -5,6 +5,30 @@
 MyReader 的重要变更均记录于此。
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [0.15.0] - 2026-10-11
+
+### Added
+
+- 桌面端支持复制本地图书文件路径、在文件管理器中显示文件和另存为（[#81](https://github.com/RyouMon/MyReader/pull/81)）
+
+### Changed
+
+- 统一桌面端和移动端的同步、传输、书库、数据源与听书错误提示，按错误类别显示本地化标题和说明，并保留可复制的原始错误类型、消息及原因链；同步错误移到状态图标下方，恢复策略不再依赖诊断文本（[#83](https://github.com/RyouMon/MyReader/pull/83)、[#84](https://github.com/RyouMon/MyReader/pull/84)、[#85](https://github.com/RyouMon/MyReader/pull/85)）
+- 移动端下载远程图书成功后留在书库，再次点击图书才进入阅读器（[#82](https://github.com/RyouMon/MyReader/issues/82)、[#92](https://github.com/RyouMon/MyReader/pull/92)）
+
+### Fixed
+
+- 桌面 EPUB 搜索结果跳转后保留搜索面板、查询和选中结果，便于连续查找（[#69](https://github.com/RyouMon/MyReader/issues/69)、[#90](https://github.com/RyouMon/MyReader/pull/90)）
+- 重复打开已有阅读窗口时恢复最小化状态并聚焦，避免依赖平台的隐式窗口恢复行为（[#70](https://github.com/RyouMon/MyReader/issues/70)、[#91](https://github.com/RyouMon/MyReader/pull/91)）
+- Windows 阅读器改用右侧最小化、最大化／还原和关闭按钮，支持双击标题栏切换最大化，按钮状态随窗口变化更新（[#68](https://github.com/RyouMon/MyReader/issues/68)、[#93](https://github.com/RyouMon/MyReader/pull/93)）
+- 修复桌面端移除书库时未先释放数据库连接的问题；删除失败时保留书库记录（[#77](https://github.com/RyouMon/MyReader/pull/77)）
+
+### Performance and Internals
+
+- 将同步 SQLite、Automerge 和锁等待移到有界阻塞任务中，按书库排队，减少对异步执行器响应的影响（[#86](https://github.com/RyouMon/MyReader/pull/86)）
+- 阅读进度、收藏、书签、批注和阅读记录变更仅更新相关领域的数据库投影，避免小变更重建整份书目；本机 1,000 本书 Core 基准的阅读写入耗时减少约 84%–85%，不代表移动设备或真实网络性能（[#87](https://github.com/RyouMon/MyReader/pull/87)）
+- 统一书库身份、路径与数据库生命周期管理，消除 service 双向依赖，并加强文件状态、书库来源和同步身份的类型约束；现有数据库、同步和平台序列化格式保持兼容（[#88](https://github.com/RyouMon/MyReader/pull/88)、[#89](https://github.com/RyouMon/MyReader/pull/89)）
+
 ## [0.14.0] - 2026-10-10
 
 ### Added

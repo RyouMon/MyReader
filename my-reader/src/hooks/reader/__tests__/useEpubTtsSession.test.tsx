@@ -1519,6 +1519,7 @@ describe("useEpubTtsSession", () => {
     )
 
     await waitFor(() => expect(configChangeListeners).toHaveLength(1))
+    await waitFor(() => expect(result.current.state).toBe("ready"))
     act(() => result.current.play())
     await waitFor(() => expect(result.current.state).toBe("playing"))
     vi.mocked(api.getTtsConfig).mockResolvedValue({

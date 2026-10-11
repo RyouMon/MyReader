@@ -20,6 +20,8 @@ colors:
   brand-onedrive: "#0078d4"
   data-source-local: "#64748b"
   data-source-webdav: "#0f766e"
+  window-close-background: "#c42b1c"
+  window-close-foreground: "#ffffff"
 
 ---
 

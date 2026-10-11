@@ -9,7 +9,7 @@ import { AddLibraryDialog } from "@/components/library/AddLibraryDialog"
 import AppSidebar from "@/components/library/AppSidebar"
 import LibraryWorkspace from "@/components/library/LibraryWorkspace"
 import SettingsActivity from "@/components/settings/SettingsActivity"
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
+import { SidebarProvider } from "@/components/ui/sidebar"
 import { useWindowSizeClass } from "@/hooks/use-window-size-class"
 import type { SettingsSection } from "@/types/settings"
 
@@ -86,25 +86,22 @@ function Layout() {
         if (isLargeWindow) setSidebarOpen(open)
       }}
       forceCollapsed={!isLargeWindow}
-      className="relative h-svh min-h-0 overflow-hidden"
+      className="relative h-svh min-h-0 flex-col overflow-hidden"
     >
-      <AppSidebar onAddLibrary={() => setAddLibraryOpen(true)} />
-      <SidebarInset className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <LibraryWorkspace
-          activeBookId={activeBookId}
-          onAddLibrary={() => setAddLibraryOpen(true)}
-        />
-      </SidebarInset>
-
-      {settingsOpen ? (
-        <div className="absolute inset-0 z-50 bg-background animate-in fade-in-0 duration-150">
-          <SettingsActivity
-            onClose={closeSettings}
-            onAddLibrary={() => setAddLibraryOpen(true)}
-            initialSection={settingsSection}
-          />
-        </div>
-      ) : null}
+      <LibraryWorkspace
+        activeBookId={activeBookId}
+        onAddLibrary={() => setAddLibraryOpen(true)}
+        sidebar={<AppSidebar onAddLibrary={() => setAddLibraryOpen(true)} />}
+        settings={
+          settingsOpen ? (
+            <SettingsActivity
+              onClose={closeSettings}
+              onAddLibrary={() => setAddLibraryOpen(true)}
+              initialSection={settingsSection}
+            />
+          ) : null
+        }
+      />
 
       <AddLibraryDialog
         open={addLibraryOpen}

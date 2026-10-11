@@ -1,4 +1,4 @@
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
+import { PanelLeft } from "lucide-react"
 import { useTranslation } from "react-i18next"
 
 import { Button } from "@/components/ui/button"
@@ -20,7 +20,6 @@ export default function AppSidebarToggle({
 
   const isOpen = forceCollapsed || isMobile ? openMobile : state !== "collapsed"
   const label = isOpen ? t("sidebar.collapse") : t("sidebar.expand")
-  const Icon = isOpen ? PanelLeftClose : PanelLeftOpen
 
   return (
     <Button
@@ -31,9 +30,10 @@ export default function AppSidebarToggle({
       onClick={toggleSidebar}
       title={label}
       aria-label={label}
+      aria-expanded={isOpen}
       className={cn("text-muted-foreground", className)}
     >
-      <Icon />
+      <PanelLeft strokeWidth={1.5} />
     </Button>
   )
 }

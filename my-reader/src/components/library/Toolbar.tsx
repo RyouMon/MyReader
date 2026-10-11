@@ -7,7 +7,6 @@ import {
   List,
   Loader2,
   Search,
-  SlidersHorizontal,
 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 
@@ -15,14 +14,21 @@ import { Button, buttonVariants } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import type { LibrarySortOption } from "@/types/libraryUi"
-import AppSidebarToggle from "./AppSidebarToggle"
+
+const SEARCH_INPUT_CLASS =
+  "h-8 border-0 bg-transparent shadow-none focus-visible:ring-0 dark:bg-transparent"
 
 function useSortLabels(): Record<LibrarySortOption, string> {
   const { t } = useTranslation()
@@ -68,21 +74,54 @@ export default function Toolbar({
   ]
 
   return (
-    <header className="toolbar-shell flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background px-4">
-      <AppSidebarToggle />
-
+    <div
+      data-tauri-drag-region
+      className="toolbar-shell flex h-full min-w-0 flex-1 items-center gap-2 px-2 text-muted-foreground"
+    >
       {/* Search */}
-      <div className="relative flex-1 max-w-sm">
+      <div className="toolbar-search-field relative min-w-0 flex-1 max-w-sm rounded-md transition-colors hover:bg-accent/50 focus-within:bg-accent/50">
         <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
         <Input
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder={t("library.searchPlaceholder")}
-          className="ps-8 h-8 bg-card border-border"
+          aria-label={t("library.searchPlaceholder")}
+          className={cn(SEARCH_INPUT_CLASS, "ps-8")}
         />
       </div>
+      <Popover>
+        <PopoverTrigger
+          className={cn(
+            buttonVariants({
+              variant: searchQuery ? "secondary" : "ghost",
+              size: "icon-sm",
+            }),
+            "toolbar-search-trigger hidden",
+          )}
+          title={t("library.searchPlaceholder")}
+          aria-label={t("library.searchPlaceholder")}
+        >
+          <Search />
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          className="border-0 p-1"
+          aria-label={t("library.searchPlaceholder")}
+        >
+          <Input
+            value={searchQuery}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder={t("library.searchPlaceholder")}
+            aria-label={t("library.searchPlaceholder")}
+            className={SEARCH_INPUT_CLASS}
+          />
+        </PopoverContent>
+      </Popover>
 
-      <div className="ms-auto flex items-center gap-1">
+      <div
+        data-tauri-drag-region
+        className="ms-auto flex shrink-0 items-center"
+      >
         {canImportBook && (
           <Button
             variant="ghost"
@@ -105,6 +144,8 @@ export default function Toolbar({
           variant="ghost"
           size="icon-sm"
           title={t("library.gridView")}
+          aria-label={t("library.gridView")}
+          aria-pressed={viewMode === "grid"}
           className={cn(
             viewMode === "grid" && "bg-accent text-accent-foreground",
           )}
@@ -116,6 +157,8 @@ export default function Toolbar({
           variant="ghost"
           size="icon-sm"
           title={t("library.listView")}
+          aria-label={t("library.listView")}
+          aria-pressed={viewMode === "list"}
           className={cn(
             viewMode === "list" && "bg-accent text-accent-foreground",
           )}
@@ -123,8 +166,6 @@ export default function Toolbar({
         >
           <List />
         </Button>
-
-        <Separator orientation="vertical" className="h-4 mx-1" />
 
         {/* Sort */}
         <DropdownMenu>
@@ -135,7 +176,7 @@ export default function Toolbar({
               buttonVariants({
                 variant: "ghost",
                 size: "sm",
-                className: "toolbar-sort-trigger h-8 gap-1 bg-card/60",
+                className: "toolbar-sort-trigger h-8 gap-1",
               }),
             )}
           >
@@ -146,29 +187,26 @@ export default function Toolbar({
             <ChevronDown className="toolbar-sort-chevron size-3 opacity-50" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-36">
-            {sortOptions.map((option) => (
-              <DropdownMenuItem
-                key={option}
-                onClick={() => onSortChange(option)}
-                className="gap-2"
-              >
-                <Check
-                  className={cn(
-                    "size-3.5",
-                    option === sortBy ? "opacity-100" : "opacity-0",
-                  )}
-                />
-                {sortLabels[option]}
-              </DropdownMenuItem>
-            ))}
+            <DropdownMenuGroup>
+              {sortOptions.map((option) => (
+                <DropdownMenuItem
+                  key={option}
+                  onClick={() => onSortChange(option)}
+                  className="gap-2"
+                >
+                  <Check
+                    className={cn(
+                      "size-3.5",
+                      option === sortBy ? "opacity-100" : "opacity-0",
+                    )}
+                  />
+                  {sortLabels[option]}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
-
-        {/* Filter */}
-        <Button variant="ghost" size="icon-sm" title={t("library.filter")}>
-          <SlidersHorizontal />
-        </Button>
       </div>
-    </header>
+    </div>
   )
 }

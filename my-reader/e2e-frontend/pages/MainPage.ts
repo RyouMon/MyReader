@@ -12,7 +12,7 @@ export class MainPage {
   }
 
   getBranding() {
-    return this.page.getByText("MyReader")
+    return this.getDesktopSidebar().getByText("MyReader", { exact: true })
   }
 
   // --- Viewport helpers ---
@@ -192,7 +192,10 @@ export class MainPage {
   async clickOverlayOutside() {
     const viewport = this.page.viewportSize()
     await this.getSheetOverlay().click({
-      position: { x: (viewport?.width ?? 767) - 5, y: 5 },
+      position: {
+        x: (viewport?.width ?? 767) - 5,
+        y: (viewport?.height ?? DESKTOP_HEIGHT) / 2,
+      },
     })
   }
 
