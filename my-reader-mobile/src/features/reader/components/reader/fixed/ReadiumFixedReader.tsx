@@ -50,6 +50,11 @@ export type ReadiumFixedReaderProps = {
   initialLocator?: Locator
   onStateChange: (state: ReaderState) => void
   onPositionsReady?: (positions: Locator[]) => void
+  onUserLocationChange?: (
+    locator: Locator,
+    navigationId: string,
+    navigationKind: "pageTurn" | "programmatic",
+  ) => void
   onTocReady: (items: ReaderTocItem[]) => void
   onRequestClose: () => void
   onToggleChrome?: () => void
@@ -85,6 +90,7 @@ const ReadiumFixedReader = forwardRef<
     initialLocator,
     onStateChange,
     onPositionsReady,
+    onUserLocationChange,
     onTocReady,
     onToggleChrome,
     showChapterTitle = true,
@@ -101,6 +107,8 @@ const ReadiumFixedReader = forwardRef<
   const currentLocatorRef = useRef<Locator | null>(null)
   const hasPublicationTocRef = useRef(false)
   const chapterTitleRef = useRef("")
+  const programmaticNavigationPendingRef = useRef(false)
+  const programmaticNavigationIdRef = useRef<string | undefined>(undefined)
 
   useImperativeHandle(
     ref,
@@ -193,6 +201,7 @@ const ReadiumFixedReader = forwardRef<
 
       // Navigate to the resolved position after the view is ready
       if (startLocator && startLocator !== event.positions[0]) {
+        programmaticNavigationPendingRef.current = true
         readiumRef.current?.goTo(startLocator)
       }
     },
@@ -206,7 +215,27 @@ const ReadiumFixedReader = forwardRef<
   )
 
   const handleLocationChange = useCallback(
-    (locator: Locator) => {
+    (
+      locator: Locator,
+      source?: "tts" | "user",
+      navigationId?: string,
+      navigationKind?: "pageTurn" | "programmatic",
+    ) => {
+      if (programmaticNavigationPendingRef.current)
+        programmaticNavigationIdRef.current = navigationId
+      if (
+        !programmaticNavigationPendingRef.current &&
+        source === "user" &&
+        navigationId &&
+        navigationId !== programmaticNavigationIdRef.current
+      ) {
+        onUserLocationChange?.(
+          locator,
+          navigationId,
+          navigationKind ?? "pageTurn",
+        )
+      }
+      programmaticNavigationPendingRef.current = false
       currentLocatorRef.current = locator
 
       const positions = positionsRef.current
@@ -241,7 +270,7 @@ const ReadiumFixedReader = forwardRef<
         locator,
       })
     },
-    [onStateChange, showChapterTitle],
+    [onStateChange, onUserLocationChange, showChapterTitle],
   )
 
   return (

@@ -19,12 +19,22 @@ export type SidecarSyncCompletedEvent = {
   mode: "full"
   pushed: number
   pulled: number
+  readingPositions?: {
+    bookId: number
+    format: string
+    operationId: string
+    locator: unknown
+    recordedAt: number
+  }[]
 }
 
 export async function applySidecarSyncCompleted(
   event: SidecarSyncCompletedEvent,
   queryClient: QueryClient,
 ) {
+  window.dispatchEvent(
+    new CustomEvent(SIDECAR_SYNC_COMPLETED_EVENT, { detail: event }),
+  )
   await Promise.all([
     queryClient.invalidateQueries({
       queryKey: readingProgressKeys.list(event.libraryId),
@@ -34,9 +44,6 @@ export async function applySidecarSyncCompleted(
       queryKey: bookFileStateKeys.library(event.libraryId),
     }),
   ])
-  window.dispatchEvent(
-    new CustomEvent(SIDECAR_SYNC_COMPLETED_EVENT, { detail: event }),
-  )
 }
 
 export function applySyncStatusObservation(observation: SyncStatusObservation) {

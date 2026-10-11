@@ -1,3 +1,6 @@
+import { ReaderNavigationButtons } from "@/components/reader/shared/ReaderNavigationButtons"
+import { locatorToJson } from "@/lib/readium/locator"
+import { useReaderNavigationHistory } from "@/hooks/reader/useReaderNavigationHistory"
 import { errorMessage } from "@/lib/error-presentation"
 import type { Locator } from "@readium/shared"
 import { Settings } from "lucide-react"
@@ -106,6 +109,13 @@ export function ReadiumPdfReader({
   const [initError, setInitError] = useState<string | null>(null)
   const [readiumNavReady, setReadiumNavReady] = useState(false)
   const [currentLocator, setCurrentLocator] = useState<Locator | null>(null)
+  const history = useReaderNavigationHistory({
+    libraryId,
+    bookId,
+    format,
+    currentLocator,
+    enabled: progressSyncEnabled,
+  })
   const readerBookmarks = useReaderBookmarks({
     libraryId,
     bookId,
@@ -259,10 +269,11 @@ export function ReadiumPdfReader({
   }, [currentSpreadIndex, doublePage, navigationMode, spreads])
 
   const goToPdfPage = useCallback(
-    (pageNumber: number) => {
+    (pageNumber: number, recordHistory = false) => {
       const nav = navRef.current
       if (!nav) return
       nav.goToPage(pageNumber)
+      if (recordHistory) history.jump(locatorToJson(nav.currentLocator))
       if (navigationMode === "vertical") {
         requestAnimationFrame(() => {
           verticalScrollRef.current
@@ -271,7 +282,7 @@ export function ReadiumPdfReader({
         })
       }
     },
-    [navigationMode],
+    [history, navigationMode],
   )
   const onBookmarkSelect = useCallback(
     (bookmark: ReadiumBookmarkRow) => {
@@ -279,14 +290,14 @@ export function ReadiumPdfReader({
       if (!nav) return
       const storedPage = pdfPageForBookmark(bookmark.locator, totalPages)
       if (storedPage !== null) {
-        goToPdfPage(storedPage)
+        goToPdfPage(storedPage, true)
         closePanels()
         return
       }
       const locator = deserializeReaderBookmarkLocator(bookmark.locator)
       if (!locator) return
       nav.go(locator)
-      goToPdfPage(nav.currentPage)
+      goToPdfPage(nav.currentPage, true)
       closePanels()
     },
     [closePanels, goToPdfPage, totalPages],
@@ -294,11 +305,15 @@ export function ReadiumPdfReader({
   const goToSpread = useCallback(
     (spreadIndex: number) => {
       const page = spreads[spreadIndex]?.[0]
-      if (page) goToPdfPage(page)
+      if (page) {
+        history.dismissRemoteHint()
+        goToPdfPage(page)
+      }
     },
-    [goToPdfPage, spreads],
+    [goToPdfPage, history, spreads],
   )
   const onPrevious = useCallback(() => {
+    history.dismissRemoteHint()
     const nav = navRef.current
     if (!nav) return
     if (navigationMode === "horizontal") {
@@ -307,8 +322,9 @@ export function ReadiumPdfReader({
       nav.goBackward()
       goToPdfPage(nav.currentPage)
     }
-  }, [currentSpreadIndex, goToPdfPage, goToSpread, navigationMode])
+  }, [history, currentSpreadIndex, goToPdfPage, goToSpread, navigationMode])
   const onNext = useCallback(() => {
+    history.dismissRemoteHint()
     const nav = navRef.current
     if (!nav) return
     if (navigationMode === "horizontal") {
@@ -318,6 +334,7 @@ export function ReadiumPdfReader({
       goToPdfPage(nav.currentPage)
     }
   }, [
+    history,
     currentSpreadIndex,
     goToPdfPage,
     goToSpread,
@@ -427,9 +444,10 @@ export function ReadiumPdfReader({
         }
       })
     if (nextPage === nav.currentPage) return
+    history.dismissRemoteHint()
     verticalScrollPageChangeRef.current = true
     nav.goToPage(nextPage)
-  }, [])
+  }, [history])
 
   useEffect(() => {
     const container = containerRef.current
@@ -498,7 +516,7 @@ export function ReadiumPdfReader({
       const nav = navRef.current
       if (!nav || nav.totalPages < 1) return
       const page = positionForDisplayProgressPercent(progress, nav.totalPages)
-      if (page != null) goToPdfPage(page)
+      if (page != null) goToPdfPage(page, true)
     },
     [goToPdfPage],
   )
@@ -527,7 +545,7 @@ export function ReadiumPdfReader({
   const onTocSelect = useCallback(
     (row: ReadiumTocRow) => {
       const match = /^page-(\d+)$/i.exec(row.href)
-      if (match) goToPdfPage(Number(match[1]))
+      if (match) goToPdfPage(Number(match[1]), true)
       closePanels()
     },
     [closePanels, goToPdfPage],
@@ -570,6 +588,16 @@ export function ReadiumPdfReader({
 
   return (
     <ReaderChromeShell
+      historyNavigation={
+        <ReaderNavigationButtons
+          history={history}
+          chromeVisible={chromeVisible}
+          onNavigate={(locator) => {
+            const page = pdfPageForBookmark(locator, totalPages)
+            if (page !== null) goToPdfPage(page)
+          }}
+        />
+      }
       readerRootRef={readerRootRef}
       chromeVisible={chromeVisible}
       showChrome={showChrome}

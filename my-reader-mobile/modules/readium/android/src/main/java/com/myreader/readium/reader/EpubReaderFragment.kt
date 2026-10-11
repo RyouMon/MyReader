@@ -40,6 +40,9 @@ import org.readium.r2.navigator.DecorableNavigator
 import org.readium.r2.navigator.Selection
 import org.readium.r2.navigator.SelectableNavigator
 import org.readium.r2.navigator.epub.EpubNavigatorFragment
+import org.readium.r2.navigator.HyperlinkNavigator
+import org.readium.r2.shared.publication.Link
+import org.readium.r2.shared.util.AbsoluteUrl
 import org.readium.r2.navigator.Navigator
 import org.readium.r2.navigator.VisualNavigator
 import org.readium.r2.navigator.epub.EpubPreferences
@@ -431,6 +434,13 @@ class EpubReaderFragment : VisualReaderFragment() {
             navigatorFactory.createFragmentFactory(
               initialLocator = model.initialLocation,
               initialPreferences = userPreferences,
+              listener = object : EpubNavigatorFragment.Listener {
+                override fun shouldFollowInternalLink(link: Link, context: HyperlinkNavigator.LinkContext?): Boolean {
+                  onInternalLinkNavigation?.invoke()
+                  return true
+                }
+                override fun onExternalLinkActivated(url: AbsoluteUrl) {}
+              },
               paginationListener = object : EpubNavigatorFragment.PaginationListener {
                 override fun onPageLoaded() {
                   firstPageLoaded.complete(Unit)

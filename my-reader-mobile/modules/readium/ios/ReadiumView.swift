@@ -694,6 +694,9 @@ final class ReadiumView: ExpoView {
     }
     .store(in: &subscriptions)
 
+    vc.onInternalLinkNavigation = { [weak self] in
+      self?.beginUserNavigation(detachViewport: false)
+    }
     readerViewController = vc
     vc.view.layer.opacity = viewportPresentationFrozen ? 0 : 1
     let bookId = vc.bookId

@@ -723,24 +723,19 @@ pub(crate) fn reading_position_projection(
     book_id: i64,
     format: &str,
 ) -> Result<ReadingPositionProjection, SyncError> {
-    let positions = map_object_id(doc, "positions")?;
-    let key = format!("{book_id}:{format}");
-    let selected = doc
-        .get(&positions, &key)
-        .map_err(|error| sync_error(format!("Failed to read reading position: {error}")))?
-        .ok_or_else(|| sync_error("Reading position value is missing"))?;
-    let json = selected
-        .0
-        .to_str()
-        .ok_or_else(|| sync_error("Reading position value is not a string"))?;
-    let value: ReadingPositionValue = serde_json::from_str(json)
-        .map_err(|error| sync_error(format!("Reading position value is invalid: {error}")))?;
+    let candidates = reading_position_candidates(doc, book_id, format)?;
+    let conflict_count = candidates.len();
+    let value = candidates
+        .into_iter()
+        .max_by(|left, right| {
+            (left.value.recorded_at, &left.operation_id)
+                .cmp(&(right.value.recorded_at, &right.operation_id))
+        })
+        .ok_or_else(|| sync_error("Reading position value is missing"))?
+        .value;
     if value.format != format {
         return Err(sync_error("Reading position key does not match its value"));
     }
-    let conflict_count = reading_position_candidates(doc, book_id, format)?
-        .len()
-        .max(1);
     Ok(ReadingPositionProjection {
         book_id,
         value,
@@ -1440,6 +1435,38 @@ mod tests {
         assert_eq!(projections.len(), 1);
         assert_eq!(projections[0].book_id, 7);
         assert_eq!(projections[0].conflict_count, 2);
+    }
+
+    #[test]
+    fn concurrent_positions_should_choose_reading_time_and_converge_in_either_merge_order() {
+        let mut first = load_library_sidecar_document(REPLICA_A).unwrap();
+        let mut second = load_library_sidecar_document(REPLICA_B).unwrap();
+        set_library_identity(&mut first, LIBRARY_UUID, 1).unwrap();
+        set_library_identity(&mut second, LIBRARY_UUID, 1).unwrap();
+        let mut latest = position(REPLICA_A, 300_000);
+        latest.recorded_at = 200;
+        let mut earlier = position(REPLICA_B, 700_000);
+        earlier.recorded_at = 100;
+        set_reading_position(&mut first, 7, &latest).unwrap();
+        set_reading_position(&mut second, 7, &earlier).unwrap();
+        let mut reversed = second.clone();
+        reversed.merge(&mut first.clone()).unwrap();
+        first.merge(&mut second).unwrap();
+        for document in [&first, &reversed] {
+            assert_eq!(
+                reading_position_projection(document, 7, "PDF")
+                    .unwrap()
+                    .value,
+                latest
+            );
+        }
+        // A causal successor wins even with an earlier device clock.
+        earlier.recorded_at = 50;
+        set_reading_position(&mut first, 7, &earlier).unwrap();
+        assert_eq!(
+            reading_position_projection(&first, 7, "PDF").unwrap().value,
+            earlier
+        );
     }
 
     #[test]

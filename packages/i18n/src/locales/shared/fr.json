@@ -162,6 +162,8 @@
     }
   },
   "reader": {
+    "navigationBack": "Revenir à la position précédente",
+    "navigationForward": "Avancer à la position suivante",
     "background": "Contexte",
     "empty": {
       "annotations": {

@@ -161,6 +161,8 @@
     }
   },
   "reader": {
+    "navigationBack": "Zum vorherigen Lesepunkt zurück",
+    "navigationForward": "Zum nächsten Lesepunkt vor",
     "background": "Hintergrund",
     "empty": {
       "annotations": {

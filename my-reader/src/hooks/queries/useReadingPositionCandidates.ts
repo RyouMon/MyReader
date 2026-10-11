@@ -20,12 +20,8 @@ export function useReadingPositionCandidates(
     staleTime: 0,
     retry: false,
     enabled: enabled && Boolean(libraryId && format),
-    queryFn: async () => {
-      const position = await api.getReadingProgress(libraryId!, bookId, format)
-      return position && position.conflictCount > 1
-        ? api.listReadingPositionCandidates(libraryId!, bookId, format)
-        : []
-    },
+    queryFn: () =>
+      api.listReadingPositionCandidates(libraryId!, bookId, format),
   })
   return { ...query, queryKey }
 }

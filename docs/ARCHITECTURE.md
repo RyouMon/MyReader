@@ -332,7 +332,7 @@ sidecar。Android 不提供外部本地书库入口，也不使用 SAF 私有镜
 | 表 | 用途 |
 |---|---|
 | `reading_position_candidates` | 按图书和格式索引的阅读位置候选 |
-| `reading_position_drafts` | 冲突未解决时的设备本地阅读进度 |
+| `reading_position_drafts` | 旧版本遗留草稿兼容；下一次正常阅读保存时提交并清除 |
 | `sync_local_meta` | 当前书库 Automerge 本地身份与协议元数据 |
 | `sync_automerge_state` | Automerge document 快照 |
 | `sync_automerge_outbox` | 待保存到远端的本地 incremental chunk |
@@ -413,10 +413,15 @@ OneDrive 大文件写入由 OpenDAL OneDrive backend 使用 upload session 分�
 - core 负责 change 因果关系、去重、冲突候选、SQLite projection、outbox 和收敛。
 - 阅读位置真并发时保留候选；`reading_position_candidates` 按 book/format 索引候选，
   升级尚未回填时只读取目标 document key，不重建全库投影。
-- 冲突期间自动保存写入 `reading_position_drafts`，设备本地读取优先使用草稿，不产生解决冲突的
-  change。用户明确选择候选（`local` 表示本地草稿）时原子提交同步 change 并清除草稿。
-- 桌面正文按本地位置先打开，候选查询与冲突提示不阻塞正文；暂不选择仍保留冲突。
-- 同步完成后平台只负责刷新可见查询。
+- [ADR-0023](./adr/0023-session-reading-navigation-history.md) 取代阅读位置的手动冲突解决策略：
+  因果后继自然覆盖已见值；真并发的 SQLite 续读投影按 `recorded_at`、operation ID 选择。
+  普通阅读保存始终产生同步 change，并在同一事务清除遗留草稿，不等待用户选择。
+- 桌面和移动端先打开正文，远端位置异步加入本次阅读的导航栈，不移动当前视口。
+  接收远端文档时产生的位置通知随同步结果传递，因此后续本机保存不会让刚收到的入口消失。
+- 显式跳转新增历史；正常翻页、滚动和朗读跟随只更新当前项；后退后新跳转截断前进路径。
+  收到远端位置插入当前项之后，保留已有前进路径，并按 operation ID 去重。
+- 导航栈仅属于打开的阅读会话，真正关书后清空；数据库 `reading_progress` 继续负责下次续读。
+  平台负责 Chrome 显示和 Readium 导航，不新增长期历史表。
 
 [ADR-0020](./adr/0020-adopt-automerge-repo-storage-model.md) 进一步规定：
 

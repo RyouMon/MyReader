@@ -60,6 +60,7 @@ const savedLocator = {
 const candidates: ReadingPositionCandidateDto[] = [
   {
     operationId: "first",
+    isLocal: false,
     replicaId: "device-one",
     locator: savedLocator,
     recordedAt: 1,
@@ -67,6 +68,7 @@ const candidates: ReadingPositionCandidateDto[] = [
   },
   {
     operationId: "second",
+    isLocal: false,
     replicaId: "device-two",
     locator: { ...savedLocator, locations: { position: 7 } },
     recordedAt: 2,
@@ -107,7 +109,7 @@ afterEach(() => {
 })
 
 describe("useReaderBookSource", () => {
-  it("discovers conflicts delivered by sync without reopening the publication", async () => {
+  it("keeps the open publication and viewport when sync changes the saved position", async () => {
     mocks.api.getReadingProgress.mockResolvedValue({
       locator: savedLocator,
       conflictCount: 1,
@@ -132,9 +134,6 @@ describe("useReaderBookSource", () => {
         client,
       ),
     )
-    await waitFor(() =>
-      expect(result.current.positionConflict).toEqual(candidates),
-    )
     expect(result.current.bookPayload).toBe(payload)
     expect(mocks.api.prepareBookSource).toHaveBeenCalledTimes(1)
   })
@@ -152,31 +151,10 @@ describe("useReaderBookSource", () => {
     })
     await waitFor(() => expect(result.current.bookPayload).not.toBeNull())
     expect(mocks.api.listReadingPositionCandidates).not.toHaveBeenCalled()
-    expect(result.current.positionConflict).toBeNull()
     expect(
       result.current.bookPayload?.initialSavedLocator?.locations.position ??
         null,
     ).toBe(progress ? 3 : null)
-  })
-
-  it("opens at the local position while conflict candidates are still loading", async () => {
-    let finishCandidates!: (value: ReadingPositionCandidateDto[]) => void
-    mocks.api.listReadingPositionCandidates.mockReturnValue(
-      new Promise<ReadingPositionCandidateDto[]>((resolve) => {
-        finishCandidates = resolve
-      }),
-    )
-    const { result } = renderHook(() => useReaderBookSource({ bookId: "4" }), {
-      wrapper,
-    })
-    await waitFor(() =>
-      expect(mocks.api.listReadingPositionCandidates).toHaveBeenCalled(),
-    )
-    await waitFor(() => expect(result.current.bookPayload).not.toBeNull())
-    expect(result.current.positionConflict).toBeNull()
-    await act(async () => finishCandidates(candidates))
-    await waitFor(() => expect(result.current.bookPayload).not.toBeNull())
-    expect(result.current.positionConflict).toEqual(candidates)
   })
 
   it("persists the latest pending page before closing the reader window", async () => {
@@ -233,7 +211,6 @@ describe("useReaderBookSource", () => {
     expect(
       result.current.bookPayload?.initialSavedLocator?.locations.position,
     ).toBe(3)
-    expect(result.current.positionConflict).toEqual(candidates)
   })
 
   it("ignores an old book response after navigation and closes its streamer", async () => {
@@ -259,66 +236,6 @@ describe("useReaderBookSource", () => {
       expect.anything(),
     )
     expect(mocks.api.closeBookStreamer).toHaveBeenCalledWith("library", 1)
-  })
-
-  it("applies a selected conflict only after the backend accepts it", async () => {
-    const { result } = renderHook(() => useReaderBookSource({ bookId: "4" }), {
-      wrapper,
-    })
-    await waitFor(() => expect(result.current.positionConflict).toHaveLength(2))
-    mocks.api.getReadingProgress.mockResolvedValue({
-      locator: candidates[1].locator,
-      conflictCount: 1,
-    })
-    await act(() => result.current.handlePositionConflict(candidates[1]))
-    expect(mocks.api.selectReadingPositionCandidate).toHaveBeenCalledWith(
-      "library",
-      4,
-      "EPUB",
-      "second",
-    )
-    expect(result.current.positionConflict).toBeNull()
-    expect(
-      result.current.bookPayload?.initialSavedLocator?.locations.position,
-    ).toBe(7)
-  })
-
-  it("keeps the original position and exposes failed conflict persistence", async () => {
-    mocks.api.selectReadingPositionCandidate.mockRejectedValue(
-      new Error("disk full"),
-    )
-    const { result } = renderHook(() => useReaderBookSource({ bookId: "4" }), {
-      wrapper,
-    })
-    await waitFor(() => expect(result.current.positionConflict).toHaveLength(2))
-    await act(() => result.current.handlePositionConflict(candidates[1]))
-    expect(
-      result.current.bookPayload?.initialSavedLocator?.locations.position,
-    ).toBe(3)
-    expect(result.current.positionConflict).toEqual(candidates)
-    expect(result.current.fetchError).toBeNull()
-    expect(result.current.positionConflictError).toBe(
-      "未能完成此操作，请重试。\nError: disk full",
-    )
-    expect(result.current.resolvingPositionConflict).toBe(false)
-  })
-
-  it("requires the latest local page to be durable before selecting a conflict", async () => {
-    const { result } = renderHook(() => useReaderBookSource({ bookId: "4" }), {
-      wrapper,
-    })
-    await waitFor(() => expect(result.current.positionConflict).toHaveLength(2))
-    mocks.api.setReadingProgress.mockRejectedValue(new Error("save failed"))
-    scheduleReaderProgressSave("library", 4, "EPUB", savedLocator, 0.3)
-    await act(() => result.current.handlePositionConflict(candidates[1]))
-    try {
-      expect(mocks.api.selectReadingPositionCandidate).not.toHaveBeenCalled()
-      expect(result.current.positionConflictError).toContain("save failed")
-    } finally {
-      mocks.api.setReadingProgress.mockResolvedValue(undefined)
-      await flushReaderProgress()
-      expect(mocks.api.setReadingProgress).toHaveBeenCalledTimes(2)
-    }
   })
 
   it("drains a newer page queued while the reader close is waiting for a save", async () => {

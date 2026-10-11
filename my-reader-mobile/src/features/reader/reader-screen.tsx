@@ -2,8 +2,8 @@ import { appendErrorDetail } from "@my-reader/i18n/mobile"
 import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
 import { ReaderScreenSettings } from "./components/ReaderScreenSettings"
 import { ReaderPublicationSurface } from "./components/ReaderPublicationSurface"
-import { ReaderPositionConflict } from "./components/ReaderPositionConflict"
-import { useReaderPositionConflict } from "@/src/hooks/use-reader-position-conflict"
+import { ReaderNavigationButtons } from "./components/ReaderNavigationButtons"
+import { useReaderNavigationHistory } from "@/src/hooks/use-reader-navigation-history"
 import {
   ReaderLoadState,
   ReaderLoadingSurface,
@@ -335,11 +335,12 @@ export default function ReaderScreen() {
     activeLoadState,
     readerState,
   )
-  const positionConflict = useReaderPositionConflict(
+  const history = useReaderNavigationHistory(
+    publicationKey,
     activeLibrary,
     loadedBookId,
     loadedFormat,
-    flushProgress,
+    currentLocator,
   )
   useReadingSessionTracker(
     activeLibrary,
@@ -406,6 +407,8 @@ export default function ReaderScreen() {
     [publicationKey],
   )
 
+  const historyNavigationIdRef = useRef<string | null>(null)
+  const pendingHistoryNavigationRef = useRef(false)
   const handleUserLocationChange = useCallback(
     (
       locator: Locator,
@@ -414,6 +417,12 @@ export default function ReaderScreen() {
     ) => {
       setSearchDecoration(null)
       if (navigationKind === "programmatic") {
+        const key = `${publicationKey}:${navigationId}`
+        if (historyNavigationIdRef.current !== key) {
+          historyNavigationIdRef.current = key
+          if (!pendingHistoryNavigationRef.current) history.jump(locator)
+          pendingHistoryNavigationRef.current = false
+        }
         if (
           ttsState?.state === "loading" ||
           ttsState?.state === "playing" ||
@@ -427,9 +436,18 @@ export default function ReaderScreen() {
         }
         return
       }
+      pendingHistoryNavigationRef.current = false
+      history.dismissRemoteHint()
       markTtsViewportMoved(navigationId, currentLocator ?? ttsState?.locator)
     },
-    [markTtsViewportMoved, currentLocator, seekTts, ttsState],
+    [
+      history,
+      publicationKey,
+      markTtsViewportMoved,
+      currentLocator,
+      seekTts,
+      ttsState,
+    ],
   )
 
   const handlePositionsReady = useCallback(
@@ -552,14 +570,16 @@ export default function ReaderScreen() {
   }, [])
 
   const navigateToLocator = useCallback(
-    (locator: Locator, tocItem?: ReaderTocItem) => {
+    (locator: Locator, tocItem?: ReaderTocItem, recordHistory = true) => {
+      if (recordHistory) history.jump(locator)
+      pendingHistoryNavigationRef.current = true
       if (isReflowReady) {
         reflowReaderRef.current?.goTo(locator, tocItem)
         return
       }
       fixedReaderRef.current?.goTo(locator)
     },
-    [isReflowReady],
+    [history, isReflowReady],
   )
 
   const handleTocSelect = useCallback(
@@ -1319,6 +1339,7 @@ export default function ReaderScreen() {
                   }}
                   fixed={{
                     ref: fixedReaderRef,
+                    onUserLocationChange: handleUserLocationChange,
                     onStateChange: handleStateChange,
                     onPositionsReady: handlePositionsReady,
                     onTocReady: handleTocReady,
@@ -1365,15 +1386,14 @@ export default function ReaderScreen() {
               onPress={handleRequestClose}
             />
 
-            <ReaderPositionConflict
-              conflict={positionConflict}
-              visible={chromeState >= ChromeState.Chrome}
-              insetsTop={insets.top}
+            <ReaderNavigationButtons
+              history={history}
+              chromeVisible={chromeState >= ChromeState.Chrome}
+              insetsBottom={insets.bottom}
               palette={chromePalette}
-              onSelect={async (operationId) => {
-                const locator = await positionConflict.select(operationId)
-                if (locator) navigateToLocator(locator)
-              }}
+              onNavigate={(locator) =>
+                navigateToLocator(locator, undefined, false)
+              }
             />
 
             {/* Fixed-layout fallback; text EPUB renders both bottom anchors together below. */}

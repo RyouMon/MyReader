@@ -184,6 +184,7 @@ const ReadiumReflowReader = forwardRef<
   const chapterTitleRef = useRef("")
   const publicationReadySeqRef = useRef(0)
   const programmaticNavigationPendingRef = useRef(false)
+  const programmaticNavigationIdRef = useRef<string | undefined>(undefined)
   const [startLocation, setStartLocation] = useState<Locator | null>(null)
   const restoredStartRef = useRef<Locator | null>(null)
 
@@ -452,11 +453,18 @@ const ReadiumReflowReader = forwardRef<
     ) => {
       const programmaticNavigationPending =
         programmaticNavigationPendingRef.current
+      if (programmaticNavigationPending)
+        programmaticNavigationIdRef.current = navigationId
       programmaticNavigationPendingRef.current = false
       const selectedToc = selectedTocItemRef.current
       selectedTocItemRef.current = null
       emitLocationState(locator, selectedToc)
-      if (!programmaticNavigationPending && source === "user" && navigationId) {
+      if (
+        !programmaticNavigationPending &&
+        source === "user" &&
+        navigationId &&
+        navigationId !== programmaticNavigationIdRef.current
+      ) {
         onUserLocationChange?.(
           locator,
           navigationId,

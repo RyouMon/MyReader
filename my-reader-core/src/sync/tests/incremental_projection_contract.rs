@@ -420,8 +420,7 @@ async fn losing_position_conflicts_should_update_candidates_and_resolve_without_
     reject_writes(&connection, CATALOG_TABLES);
     let mut target_identity = identity();
     target_identity.replica_id = "dddddddd-dddd-4ddd-8ddd-dddddddddddd".parse().unwrap();
-    // Deliver the winning actor first, followed by two losing values. The
-    // visible locator stays unchanged while the conflict count grows to three.
+    // Concurrent positions remain available; the latest reading time supplies the projection.
     for (index, replica) in [
         "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
         "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
@@ -464,50 +463,51 @@ async fn losing_position_conflicts_should_update_candidates_and_resolve_without_
                 |row| row.get(0),
             )
             .unwrap();
-        assert_eq!(locator, position("", 10).locator_json);
+        assert_eq!(locator, position("", 10 + index as i64).locator_json);
     }
     let inspected = ensure_database_document(&target, &target_identity, 100).unwrap();
     assert_eq!(inspected.projection.reading_position_candidates.len(), 3);
     let before = rows(&connection, "sync_automerge_state");
     let outbox_before = rows(&connection, "sync_automerge_outbox");
-    let draft = position(target_identity.replica_id.as_str(), 99);
+    let mut draft = position(target_identity.replica_id.as_str(), 99);
+    draft.recorded_at = 150;
+    let saved_position = draft.clone();
     crate::sync::persistence::async_io::mutate_reading_position(
         &target,
         &target_identity,
         150,
         42,
-        draft.clone(),
-        false,
-        |_, _| panic!("conflicted autosave must remain local"),
+        draft.format.clone(),
+        move |document| {
+            crate::sync::document::set_reading_position(document, 42, &saved_position)?;
+            Ok(false)
+        },
     )
     .await
     .unwrap();
-    assert_eq!(rows(&connection, "sync_automerge_state"), before);
-    assert_eq!(rows(&connection, "sync_automerge_outbox"), outbox_before);
-    assert_eq!(rows(&connection, "reading_position_candidates").len(), 3);
-    assert_eq!(rows(&connection, "reading_position_drafts").len(), 1);
+    assert_ne!(rows(&connection, "sync_automerge_state"), before);
+    assert_ne!(rows(&connection, "sync_automerge_outbox"), outbox_before);
+    assert_eq!(rows(&connection, "reading_position_candidates").len(), 1);
+    assert!(rows(&connection, "reading_position_drafts").is_empty());
     // Indexed candidate reads are independent of document decoding.
     let db = sea_orm::Database::connect(format!("sqlite:{target}?mode=rw"))
         .await
         .unwrap();
     let repository = crate::repositories::reading::ReadingRepository::new(&db);
+    let candidates = repository
+        .list_position_candidates(42, "EPUB")
+        .await
+        .unwrap();
+    assert_eq!(candidates.len(), 1);
     assert_eq!(
-        repository
-            .list_position_candidates(42, "EPUB")
-            .await
-            .unwrap()
-            .len(),
-        3
-    );
-    assert_eq!(
-        repository
-            .position_draft(42, "EPUB")
-            .await
-            .unwrap()
-            .unwrap()
-            .locator,
+        candidates[0].locator,
         serde_json::from_str::<serde_json::Value>(&draft.locator_json).unwrap()
     );
+    assert!(repository
+        .position_draft(42, "EPUB")
+        .await
+        .unwrap()
+        .is_none());
     assert_eq!(
         repository
             .get_reading_position(42, "EPUB")
@@ -532,10 +532,8 @@ async fn losing_position_conflicts_should_update_candidates_and_resolve_without_
         &target_identity,
         160,
         42,
-        draft.clone(),
-        true,
-        move |document, conflicted| {
-            assert!(conflicted);
+        draft.format.clone(),
+        move |document| {
             crate::sync::document::add_reading_completion(
                 document,
                 &crate::sync::document::ReadingCompletionValue {
@@ -554,8 +552,9 @@ async fn losing_position_conflicts_should_update_candidates_and_resolve_without_
     .await
     .unwrap();
     assert!(completed);
-    assert_eq!(rows(&connection, "reading_position_candidates").len(), 3);
+    assert_eq!(rows(&connection, "reading_position_candidates").len(), 1);
     assert_eq!(rows(&connection, "reading_completions").len(), 1);
+    let inspected = ensure_database_document(&target, &target_identity, 160).unwrap();
     let chosen = &inspected.projection.reading_position_candidates[0];
     execute_local_database_command(
         &target,

@@ -177,13 +177,10 @@ impl ReadingService {
             &identity,
             recorded_at_ms,
             book_id,
-            value.clone(),
-            completion.is_some(),
-            move |document, conflicted| {
+            format.clone(),
+            move |document| {
                 let mut completed = false;
-                if !conflicted {
-                    write_reading_position(document, book_id, &value)?;
-                }
+                write_reading_position(document, book_id, &value)?;
                 if let Some(completion) = &completion {
                     let already_completed = reading_completion_records(document)?
                         .into_iter()
@@ -231,6 +228,7 @@ impl ReadingService {
         }
         let format = normalize_reading_format(format)?;
         let context = LibraryContext::open(sidecar_root).await?;
+        let identity = context.identity(library_root).await?;
         let repository = ReadingRepository::new(context.database());
         let draft = repository.position_draft(book_id, &format).await?;
         let mut candidates = repository
@@ -242,10 +240,12 @@ impl ReadingService {
                 .await?
                 .is_none()
         {
+            for candidate in &mut candidates {
+                candidate.is_local = candidate.replica_id == identity.replica_id.as_str();
+            }
             candidates.extend(draft);
             return Ok(candidates);
         }
-        let identity = context.identity(library_root).await?;
         let mut candidates = read_position_candidates(context.path(), &identity, book_id, &format)
             .await?
             .into_iter()
@@ -258,6 +258,7 @@ impl ReadingService {
                         .display_progression_ppm
                         .map(|value| f64::from(value) / 1_000_000.0),
                     recorded_at: candidate.value.recorded_at,
+                    is_local: candidate.value.replica_id == identity.replica_id.as_str(),
                     replica_id: candidate.value.replica_id,
                 })
             })
@@ -1013,7 +1014,11 @@ mod tests {
 
     use sea_orm::EntityTrait;
 
-    async fn deliver_position_snapshot(source: &Path, target: &Path, library: &Path) {
+    async fn deliver_position_snapshot(
+        source: &Path,
+        target: &Path,
+        library: &Path,
+    ) -> Vec<crate::models::SyncedReadingPosition> {
         use crate::library::LibraryContext;
         use crate::sync::persistence::{async_io, SyncRemoteObject};
         use sha2::{Digest, Sha256};
@@ -1041,11 +1046,12 @@ mod tests {
             }],
         )
         .await
-        .unwrap();
+        .unwrap()
+        .reading_positions
     }
 
     #[tokio::test]
-    async fn unresolved_draft_should_survive_reopen_and_only_converge_after_explicit_choice() {
+    async fn continued_reading_should_sync_after_concurrent_positions_without_explicit_choice() {
         use super::ReadingService;
         let left = tempfile::tempdir().unwrap();
         let right = tempfile::tempdir().unwrap();
@@ -1081,7 +1087,9 @@ mod tests {
             .await
             .unwrap();
         }
-        deliver_position_snapshot(right.path(), left.path(), library.path()).await;
+        let received = deliver_position_snapshot(right.path(), left.path(), library.path()).await;
+        assert_eq!(received.len(), 1);
+        assert_eq!(received[0].locator["locations"]["position"], 8);
         let candidates = ReadingService::list_reading_position_candidates(
             left.path(),
             library.path(),
@@ -1133,40 +1141,11 @@ mod tests {
         )
         .await
         .unwrap();
-        assert_eq!(remote_candidates.len(), 2);
-        assert!(remote_candidates
-            .iter()
-            .all(|value| value.locator["locations"]["position"] != 5));
-        assert!(ReadingService::select_reading_position_candidate(
-            left.path(),
-            library.path(),
-            42,
-            "EPUB",
-            "expired",
-            22
-        )
-        .await
-        .is_err());
-        assert_eq!(
-            ReadingService::get_reading_position(left.path(), 42, "EPUB")
-                .await
-                .unwrap()
-                .unwrap()
-                .locator,
-            reopened.locator
-        );
-
-        ReadingService::select_reading_position_candidate(
-            left.path(),
-            library.path(),
-            42,
-            "EPUB",
-            "local",
-            23,
-        )
-        .await
-        .unwrap();
-        deliver_position_snapshot(left.path(), right.path(), library.path()).await;
+        // The notification retains the received position even after the local
+        // reading continuation supersedes it in the persisted register.
+        assert_eq!(received[0].locator["locations"]["position"], 8);
+        assert_eq!(remote_candidates.len(), 1);
+        assert_eq!(remote_candidates[0].locator["locations"]["position"], 5);
         for sidecar in [left.path(), right.path()] {
             let candidates = ReadingService::list_reading_position_candidates(
                 sidecar,

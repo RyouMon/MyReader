@@ -5,6 +5,7 @@ struct RemoteDocument {
     heads: Vec<String>,
     paths: String,
     repair: Option<RemoteStorageRepair>,
+    reading_positions: Vec<crate::models::SyncedReadingPosition>,
 }
 
 fn remote_document(
@@ -32,7 +33,30 @@ fn remote_document(
         .collect::<Vec<_>>()
         .join(",");
     let missing = library_sidecar_missing_dependencies(&mut document, &[]);
+    let mut reading_positions = Vec::new();
+    if missing.is_empty() && !objects.is_empty() {
+        for projection in crate::sync::document::reading_position_projections(&document)? {
+            for candidate in crate::sync::document::reading_position_candidates(
+                &document,
+                projection.book_id,
+                &projection.value.format,
+            )? {
+                if candidate.value.replica_id == identity.replica_id.as_str() {
+                    continue;
+                }
+                reading_positions.push(crate::models::SyncedReadingPosition {
+                    book_id: projection.book_id,
+                    format: candidate.value.format,
+                    operation_id: candidate.operation_id,
+                    locator: serde_json::from_str(&candidate.value.locator_json)
+                        .map_err(|error| sync_error(error.to_string()))?,
+                    recorded_at: candidate.value.recorded_at,
+                });
+            }
+        }
+    }
     Ok(RemoteDocument {
+        reading_positions,
         bytes: objects
             .iter()
             .flat_map(|o| o.bytes.iter().copied())
@@ -166,6 +190,7 @@ fn apply_prepared(
         transaction.commit().map_err(database_error)?;
         return Ok(ApplyRemoteDatabaseResult {
             applied_objects: result.changes.len(),
+            reading_positions: remote.reading_positions,
             document: result,
             remote_storage_repair: remote.repair,
         });

@@ -478,6 +478,7 @@ impl SyncService {
         )
         .await?;
         Ok(SidecarSyncReport {
+            reading_positions: report.reading_positions,
             pushed: report.pushed,
             pulled: report.pulled,
         })
@@ -541,6 +542,7 @@ impl SyncService {
             {
                 Ok(report) => {
                     observer.on_sidecar_complete(&exchange::SyncReport {
+                        reading_positions: report.reading_positions,
                         pushed: report.pushed,
                         pulled: report.pulled,
                     });

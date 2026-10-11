@@ -159,6 +159,8 @@
     }
   },
   "reader": {
+    "navigationBack": "回到上一個閱讀位置",
+    "navigationForward": "前往下一個閱讀位置",
     "background": "背景",
     "empty": {
       "annotations": {

@@ -162,6 +162,8 @@
     }
   },
   "reader": {
+    "navigationBack": "Volver a la posición anterior",
+    "navigationForward": "Ir a la posición siguiente",
     "background": "Antecedentes",
     "empty": {
       "annotations": {

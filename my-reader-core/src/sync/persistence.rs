@@ -25,7 +25,7 @@ use super::{
     SyncError,
 };
 
-const PROJECTION_VERSION: i64 = 3;
+const PROJECTION_VERSION: i64 = 4;
 const SIDECAR_PROTOCOL: &str = "library-sidecar-automerge-repo";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -80,6 +80,7 @@ pub struct RemoteStorageRepair {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ApplyRemoteDatabaseResult {
+    pub reading_positions: Vec<crate::models::SyncedReadingPosition>,
     pub document: DocumentCommandResult,
     pub applied_objects: usize,
     pub remote_storage_repair: Option<RemoteStorageRepair>,

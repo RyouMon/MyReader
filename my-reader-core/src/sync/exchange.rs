@@ -34,6 +34,7 @@ pub enum SyncMode {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SyncReport {
+    pub reading_positions: Vec<crate::models::SyncedReadingPosition>,
     pub pushed: usize,
     pub pulled: usize,
 }
@@ -330,6 +331,7 @@ pub async fn sync_database_with_operator_observed(
     });
 
     let mut remote_storage_repair = None;
+    let mut reading_positions = Vec::new();
     let pulled = match mode {
         SyncMode::PushOnly => 0,
         SyncMode::Full if initial_chunks.is_empty() => 0,
@@ -352,6 +354,7 @@ pub async fn sync_database_with_operator_observed(
                 completed: initial_chunks.len(),
                 total: initial_chunks.len(),
             });
+            reading_positions = applied.reading_positions;
             remote_storage_repair = applied.remote_storage_repair;
             applied.applied_objects
         }
@@ -417,7 +420,11 @@ pub async fn sync_database_with_operator_observed(
         completed: 1,
         total: 1,
     });
-    Ok(SyncReport { pushed, pulled })
+    Ok(SyncReport {
+        pushed,
+        pulled,
+        reading_positions,
+    })
 }
 
 pub async fn has_publishable_database_work(database_path: &str) -> Result<bool, SyncError> {

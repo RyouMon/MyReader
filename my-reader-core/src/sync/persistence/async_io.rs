@@ -120,30 +120,36 @@ pub(crate) async fn mutate_reading_position<F>(
     identity: &DatabaseIdentity,
     now_ms: i64,
     book_id: i64,
-    value: crate::sync::document::ReadingPositionValue,
-    has_completion: bool,
+    format: String,
     mutate: F,
 ) -> Result<bool, SyncError>
 where
-    F: FnOnce(&mut automerge::AutoCommit, bool) -> Result<bool, SyncError> + Send + 'static,
+    F: FnOnce(&mut automerge::AutoCommit) -> Result<bool, SyncError> + Send + 'static,
 {
     let identity = identity.clone();
     with_database(path, move |path| {
         let mut completed = false;
-        let conflicted = std::cell::Cell::new(false);
-        super::execute_guarded_mutation(path, &identity, now_ms, |transaction| {
-            let saved = transaction.execute(
-                "INSERT INTO reading_position_drafts (book_id, format, locator_json, display_progression, recorded_at)
-                 SELECT ?1, ?2, ?3, ?4, ?5 WHERE EXISTS (SELECT 1 FROM reading_progress WHERE book_id = ?1 AND format = ?2 AND sync_conflict_count > 1)
-                 OR EXISTS (SELECT 1 FROM reading_position_drafts WHERE book_id = ?1 AND format = ?2)
-                 ON CONFLICT(book_id, format) DO UPDATE SET locator_json = excluded.locator_json, display_progression = excluded.display_progression, recorded_at = excluded.recorded_at",
-                rusqlite::params![book_id, value.format, value.locator_json, value.display_progression_ppm.map(|v| f64::from(v) / 1_000_000.0), now_ms],
-            ).map_err(super::database_error)?;
-            conflicted.set(saved > 0);
-            Ok(saved > 0 && !has_completion)
-        }, |document| { completed = mutate(document, conflicted.get())?; Ok(()) })?;
+        super::execute_guarded_mutation(
+            path,
+            &identity,
+            now_ms,
+            |transaction| {
+                transaction
+                    .execute(
+                        "DELETE FROM reading_position_drafts WHERE book_id = ?1 AND format = ?2",
+                        rusqlite::params![book_id, format],
+                    )
+                    .map_err(super::database_error)?;
+                Ok(false)
+            },
+            |document| {
+                completed = mutate(document)?;
+                Ok(())
+            },
+        )?;
         Ok(completed)
-    }).await
+    })
+    .await
 }
 
 pub(crate) async fn apply_remote_database_objects(

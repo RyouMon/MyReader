@@ -163,6 +163,8 @@
     }
   },
   "reader": {
+    "navigationBack": "Вернуться к предыдущему месту",
+    "navigationForward": "Перейти к следующему месту",
     "background": "Предыстория",
     "empty": {
       "annotations": {

@@ -179,6 +179,8 @@ export const sharedEn = {
     },
   },
   reader: {
+    navigationBack: "Go back to previous location",
+    navigationForward: "Go forward to next location",
     background: "Background",
     empty: {
       annotations: {

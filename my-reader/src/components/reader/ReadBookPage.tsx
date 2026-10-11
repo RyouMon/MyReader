@@ -20,15 +20,6 @@ import {
   ReaderSidePanelScrollArea,
   readerSettingsOptionStateClass,
 } from "@/components/reader/shared/ReaderSidePanelChrome"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import {
   Empty,
   EmptyContent,
@@ -145,18 +136,6 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
         divinaPub={divinaPub}
         renderWindowState={renderWindowState}
       />
-      {(bookSource.positionConflict || bookSource.positionConflictError) && (
-        <ReadBookPositionConflict
-          candidates={bookSource.positionConflict ?? []}
-          resolving={
-            bookSource.resolvingPositionConflict ||
-            bookSource.refreshingPositionConflict
-          }
-          error={bookSource.positionConflictError}
-          onSelect={bookSource.handlePositionConflict}
-          onRefresh={bookSource.refreshPositionConflict}
-        />
-      )}
     </>
   )
 }
@@ -229,101 +208,6 @@ function getReadBookWindowContent(
   return null
 }
 
-function ReadBookPositionConflict({
-  candidates,
-  resolving,
-  onSelect,
-  error,
-  onRefresh,
-}: {
-  candidates: NonNullable<
-    ReturnType<typeof useReaderBookSource>["positionConflict"]
-  >
-  resolving: boolean
-  error: string | null
-  onSelect: ReturnType<typeof useReaderBookSource>["handlePositionConflict"]
-  onRefresh: () => Promise<void>
-}) {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-  return (
-    <>
-      <Button
-        className="fixed right-4 top-16 z-50"
-        variant="outline"
-        onClick={() => {
-          setOpen(true)
-          void onRefresh()
-        }}
-      >
-        {t("reader.positionConflictTitle")}
-      </Button>
-      <Dialog
-        open={open}
-        onOpenChange={(value) => {
-          if (!resolving) setOpen(value)
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("reader.positionConflictTitle")}</DialogTitle>
-            <DialogDescription>
-              {t("reader.positionConflictDescription")}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-2">
-            {candidates.map((candidate) => (
-              <Button
-                key={candidate.operationId}
-                variant="outline"
-                className="h-auto justify-between px-4 py-3"
-                disabled={resolving}
-                onClick={() => void onSelect(candidate)}
-              >
-                <span>
-                  {candidate.displayProgression == null
-                    ? t("reader.positionUnknown")
-                    : t("reader.positionPercentage", {
-                        percentage: Math.round(
-                          candidate.displayProgression * 100,
-                        ),
-                      })}
-                </span>
-                <span className="text-xs font-normal text-muted-foreground">
-                  {new Date(candidate.recordedAt).toLocaleString()}
-                </span>
-              </Button>
-            ))}
-          </div>
-          {error && (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          )}
-          <DialogFooter>
-            {error && (
-              <Button
-                variant="outline"
-                disabled={resolving}
-                onClick={() => void onRefresh()}
-              >
-                {t("common.retry")}
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              disabled={resolving}
-              onClick={() => setOpen(false)}
-            >
-              {t("reader.positionConflictKeepDefault")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
-  )
-}
-
 function ReadBookContent({
   source,
   readiumPub,
@@ -367,7 +251,7 @@ function ReadBookContent({
   if (format === "PDF") {
     return (
       <ReadiumPdfReader
-        key={source.readerRevision}
+        key={`${activeLibraryId}:${source.bookId}:${format}`}
         {...readerProps}
         fileUrl={bookPayload.source.filePath}
       />
@@ -397,7 +281,7 @@ function ReadBookContent({
   }
   return (
     <Reader
-      key={source.readerRevision}
+      key={`${activeLibraryId}:${source.bookId}:${format}`}
       {...readerProps}
       publication={result.publication}
     />

@@ -36,6 +36,7 @@ abstract class BaseReaderFragment : Fragment() {
 
   protected abstract val model: ReaderViewModel
   protected abstract val navigator: Navigator
+  var onInternalLinkNavigation: (() -> Unit)? = null
   var onUserNavigationIntent: (() -> Unit)? = null
   var onUserNavigationGestureStart: (() -> Unit)? = null
   var onUserNavigationGestureEnd: (() -> Unit)? = null

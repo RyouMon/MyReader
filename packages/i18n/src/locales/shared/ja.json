@@ -160,6 +160,8 @@
     }
   },
   "reader": {
+    "navigationBack": "前の読書位置に戻る",
+    "navigationForward": "次の読書位置に進む",
     "background": "背景",
     "empty": {
       "annotations": {

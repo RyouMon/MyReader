@@ -182,7 +182,13 @@ impl<R: Runtime> SyncObserver for SyncStatusEmitter<R> {
     fn on_sidecar_complete(&self, report: &SyncReport) {
         self.sidecar_completed.store(true, Ordering::Relaxed);
         if self.emit_sidecar_completion {
-            emit_sidecar_sync_completed(&self.app, &self.library_id, report.pushed, report.pulled);
+            emit_sidecar_sync_completed(
+                &self.app,
+                &self.library_id,
+                report.pushed,
+                report.pulled,
+                &report.reading_positions,
+            );
         }
     }
 }
@@ -192,12 +198,14 @@ pub(crate) fn emit_sidecar_sync_completed<R: Runtime>(
     library_id: &str,
     pushed: usize,
     pulled: usize,
+    reading_positions: &[my_reader_core::models::SyncedReadingPosition],
 ) {
     #[derive(Clone, Serialize)]
     #[serde(rename_all = "camelCase")]
     struct Payload<'a> {
         library_id: &'a str,
         mode: &'static str,
+        reading_positions: &'a [my_reader_core::models::SyncedReadingPosition],
         pushed: usize,
         pulled: usize,
     }
@@ -207,6 +215,7 @@ pub(crate) fn emit_sidecar_sync_completed<R: Runtime>(
         Payload {
             library_id,
             mode: "full",
+            reading_positions,
             pushed,
             pulled,
         },

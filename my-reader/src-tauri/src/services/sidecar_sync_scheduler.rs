@@ -262,6 +262,7 @@ impl SidecarSyncScheduler {
                         &library_id,
                         report.pushed,
                         report.pulled,
+                        &report.reading_positions,
                     );
                 }
                 status.finished(report.changed);

@@ -160,6 +160,8 @@
     }
   },
   "reader": {
+    "navigationBack": "이전 읽기 위치로 돌아가기",
+    "navigationForward": "다음 읽기 위치로 이동",
     "background": "배경",
     "empty": {
       "annotations": {

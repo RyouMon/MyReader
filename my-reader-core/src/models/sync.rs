@@ -27,7 +27,18 @@ pub struct LibrarySyncOptions {
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SyncedReadingPosition {
+    pub book_id: i64,
+    pub format: String,
+    pub operation_id: String,
+    pub locator: serde_json::Value,
+    pub recorded_at: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SidecarSyncReport {
+    pub reading_positions: Vec<SyncedReadingPosition>,
     pub pushed: usize,
     pub pulled: usize,
 }

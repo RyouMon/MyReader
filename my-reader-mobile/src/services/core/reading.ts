@@ -19,7 +19,6 @@ import {
   readingListPositions,
   readingRemoveAnnotation,
   readingRemoveBookmark,
-  readingSelectPositionCandidate,
   readingSetFavoriteBook,
   readingSetPosition,
   readingUpdateAnnotation,
@@ -196,26 +195,6 @@ export async function listReadingPositionCandidates(
       ),
   )
   return candidates.map(positionCandidateFromCore)
-}
-
-export function selectReadingPositionCandidate(
-  library: Library,
-  bookId: number,
-  format: string,
-  operationId: string,
-): Promise<void> {
-  return mutateSidecar(library, () =>
-    withLocalLibraryContentRoot(library, (libraryRootUri) =>
-      readingSelectPositionCandidate(
-        sidecarRootPath(library),
-        toNativeFilesystemPath(libraryRootUri),
-        bookId,
-        format,
-        operationId,
-        Date.now(),
-      ),
-    ),
-  )
 }
 
 export function listReaderBookmarks(

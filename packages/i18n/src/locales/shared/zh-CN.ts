@@ -171,6 +171,8 @@ export const sharedZhCN = {
     },
   },
   reader: {
+    navigationBack: "回到上一个阅读位置",
+    navigationForward: "前往下一个阅读位置",
     background: "背景",
     empty: {
       annotations: {

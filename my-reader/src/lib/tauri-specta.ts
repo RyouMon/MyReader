@@ -356,6 +356,7 @@ export type ReadingPositionCandidateDto = {
 	displayProgression: number | null,
 	recordedAt: number,
 	replicaId: string,
+	isLocal: boolean,
 };
 
 /**  Returned by `get_reading_progress`: JSON of a Readium `Locator` (compatible with `@readium/shared`). */

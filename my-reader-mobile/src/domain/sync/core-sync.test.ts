@@ -111,10 +111,14 @@ describe("runCoreLibrarySync", () => {
 
     jest
       .mocked(readSyncTaskSidecarReport)
-      .mockReturnValue({ pushed: 1, pulled: 2 })
+      .mockReturnValue({ pushed: 1, pulled: 2, readingPositions: [] })
     jest.advanceTimersByTime(100)
 
-    expect(onSidecarComplete).toHaveBeenCalledWith({ pushed: 1, pulled: 2 })
+    expect(onSidecarComplete).toHaveBeenCalledWith({
+      pushed: 1,
+      pulled: 2,
+      readingPositions: [],
+    })
     expect(finishSync).toBeDefined()
     finishSync?.(report)
     await pending

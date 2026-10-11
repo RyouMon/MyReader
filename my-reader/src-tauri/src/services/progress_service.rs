@@ -16,6 +16,7 @@ pub struct ReadingPositionCandidateDto {
     pub display_progression: Option<f64>,
     pub recorded_at: i64,
     pub replica_id: String,
+    pub is_local: bool,
 }
 
 fn unix_epoch_millis() -> i64 {
@@ -128,6 +129,7 @@ impl ProgressService {
                 display_progression: candidate.display_progression,
                 recorded_at: candidate.recorded_at,
                 replica_id: candidate.replica_id,
+                is_local: candidate.is_local,
             })
             .collect(),
         )

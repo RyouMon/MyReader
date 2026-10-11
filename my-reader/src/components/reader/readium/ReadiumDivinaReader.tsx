@@ -1,3 +1,6 @@
+import { ReaderNavigationButtons } from "@/components/reader/shared/ReaderNavigationButtons"
+import { locatorToJson } from "@/lib/readium/locator"
+import { useReaderNavigationHistory } from "@/hooks/reader/useReaderNavigationHistory"
 import { Locator, LocatorLocations, type Publication } from "@readium/shared"
 import { Settings } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -128,6 +131,13 @@ export function ReadiumDivinaReader({
   )
   const currentSpreadIndex = spreadIndexForPage(spreads, currentPage)
   const currentLocator = positions[currentPage - 1] ?? positions[0] ?? null
+  const history = useReaderNavigationHistory({
+    libraryId,
+    bookId,
+    format,
+    currentLocator,
+    enabled: progressSyncEnabled,
+  })
   const readerBookmarks = useReaderBookmarks({
     libraryId,
     bookId,
@@ -165,11 +175,14 @@ export function ReadiumDivinaReader({
   }, [])
 
   const goToPage = useCallback(
-    (pageNumber: number) => {
+    (pageNumber: number, recordHistory = false) => {
       const clamped = Math.max(1, Math.min(positions.length, pageNumber))
+      if (recordHistory && positions[clamped - 1])
+        history.jump(locatorToJson(positions[clamped - 1]))
+      else if (clamped !== currentPage) history.dismissRemoteHint()
       setCurrentPage(clamped)
     },
-    [positions.length],
+    [currentPage, history, positions],
   )
   const goToSpread = useCallback(
     (spreadIndex: number) => {
@@ -181,7 +194,7 @@ export function ReadiumDivinaReader({
   const onBookmarkSelect = useCallback(
     (bookmark: ReadiumBookmarkRow) => {
       const page = divinaPageForBookmark(bookmark.locator, positions)
-      if (page !== null) goToPage(page)
+      if (page !== null) goToPage(page, true)
       closePanels()
     },
     [closePanels, goToPage, positions],
@@ -241,7 +254,7 @@ export function ReadiumDivinaReader({
       const index = publication.readingOrder.items.findIndex(
         (item) => item.href === row.href.split("#")[0],
       )
-      if (index >= 0) goToPage(index + 1)
+      if (index >= 0) goToPage(index + 1, true)
       closePanels()
     },
     [closePanels, goToPage, publication],
@@ -250,7 +263,7 @@ export function ReadiumDivinaReader({
     (progress: number) => {
       if (positions.length === 0) return
       const page = positionForDisplayProgressPercent(progress, positions.length)
-      if (page != null) goToPage(page)
+      if (page != null) goToPage(page, true)
     },
     [goToPage, positions.length],
   )
@@ -308,6 +321,16 @@ export function ReadiumDivinaReader({
 
   return (
     <ReaderChromeShell
+      historyNavigation={
+        <ReaderNavigationButtons
+          history={history}
+          chromeVisible={chromeVisible}
+          onNavigate={(locator) => {
+            const page = divinaPageForBookmark(locator, positions)
+            if (page !== null) goToPage(page)
+          }}
+        />
+      }
       readerRootRef={readerRootRef}
       chromeVisible={chromeVisible}
       showChrome={showChrome}

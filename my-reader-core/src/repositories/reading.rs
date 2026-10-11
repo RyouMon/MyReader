@@ -30,6 +30,7 @@ impl<'a> ReadingRepository<'a> {
             display_progression: row.try_get("", "display_progression")?,
             recorded_at: row.try_get("", "recorded_at")?,
             replica_id: "local".into(),
+            is_local: true,
         })).transpose()
     }
 
@@ -48,6 +49,7 @@ impl<'a> ReadingRepository<'a> {
             display_progression: row.try_get("", "display_progression")?,
             recorded_at: row.try_get("", "recorded_at")?,
             replica_id: row.try_get("", "replica_id")?,
+            is_local: false,
         })).collect()
     }
     pub(crate) fn new(db: &'a DatabaseConnection) -> Self {
