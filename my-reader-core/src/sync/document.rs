@@ -718,6 +718,36 @@ pub fn reading_position_candidates(
     Ok(candidates)
 }
 
+pub(crate) fn reading_position_projection(
+    doc: &AutoCommit,
+    book_id: i64,
+    format: &str,
+) -> Result<ReadingPositionProjection, SyncError> {
+    let positions = map_object_id(doc, "positions")?;
+    let key = format!("{book_id}:{format}");
+    let selected = doc
+        .get(&positions, &key)
+        .map_err(|error| sync_error(format!("Failed to read reading position: {error}")))?
+        .ok_or_else(|| sync_error("Reading position value is missing"))?;
+    let json = selected
+        .0
+        .to_str()
+        .ok_or_else(|| sync_error("Reading position value is not a string"))?;
+    let value: ReadingPositionValue = serde_json::from_str(json)
+        .map_err(|error| sync_error(format!("Reading position value is invalid: {error}")))?;
+    if value.format != format {
+        return Err(sync_error("Reading position key does not match its value"));
+    }
+    let conflict_count = reading_position_candidates(doc, book_id, format)?
+        .len()
+        .max(1);
+    Ok(ReadingPositionProjection {
+        book_id,
+        value,
+        conflict_count,
+    })
+}
+
 pub fn reading_position_projections(
     doc: &AutoCommit,
 ) -> Result<Vec<ReadingPositionProjection>, SyncError> {
@@ -731,28 +761,7 @@ pub fn reading_position_projections(
             let book_id = book_id
                 .parse::<i64>()
                 .map_err(|_| sync_error("Reading position book ID is invalid"))?;
-            let selected = doc
-                .get(&positions, &key)
-                .map_err(|error| sync_error(format!("Failed to read reading position: {error}")))?
-                .ok_or_else(|| sync_error("Reading position value is missing"))?;
-            let json = selected
-                .0
-                .to_str()
-                .ok_or_else(|| sync_error("Reading position value is not a string"))?;
-            let value: ReadingPositionValue = serde_json::from_str(json).map_err(|error| {
-                sync_error(format!("Reading position value is invalid: {error}"))
-            })?;
-            if value.format != format {
-                return Err(sync_error("Reading position key does not match its value"));
-            }
-            let conflict_count = reading_position_candidates(doc, book_id, format)?
-                .len()
-                .max(1);
-            Ok(ReadingPositionProjection {
-                book_id,
-                value,
-                conflict_count,
-            })
+            reading_position_projection(doc, book_id, format)
         })
         .collect::<Result<Vec<_>, SyncError>>()?;
     projections.sort_by(|left, right| {

@@ -1,4 +1,3 @@
-import { useReaderBookSource } from "@/hooks/reader/useReaderBookSource"
 import { formatFileSize } from "@my-reader/tools/book-metadata"
 import { isTauri } from "@tauri-apps/api/core"
 import type { TFunction } from "i18next"
@@ -38,6 +37,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
+import { useReaderBookSource } from "@/hooks/reader/useReaderBookSource"
 import { useReaderPaginateEdgeHover } from "@/hooks/reader/useReaderPaginateEdgeHover"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
 import { useReadiumDivinaPublication } from "@/hooks/reader/useReadiumDivinaPublication"
@@ -138,12 +138,22 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   }
 
   return (
-    <ReadBookContent
-      source={bookSource}
-      readiumPub={readiumPub}
-      divinaPub={divinaPub}
-      renderWindowState={renderWindowState}
-    />
+    <>
+      <ReadBookContent
+        source={bookSource}
+        readiumPub={readiumPub}
+        divinaPub={divinaPub}
+        renderWindowState={renderWindowState}
+      />
+      {bookSource.positionConflict && (
+        <ReadBookPositionConflict
+          candidates={bookSource.positionConflict}
+          resolving={bookSource.resolvingPositionConflict}
+          error={bookSource.positionConflictError}
+          onSelect={bookSource.handlePositionConflict}
+        />
+      )}
+    </>
   )
 }
 
@@ -158,12 +168,9 @@ function getReadBookWindowContent(
     downloadError,
     downloadProgress,
     bookPayload,
-    positionConflict,
-    resolvingPositionConflict,
     handleErrorClose,
     handleRetryDownload,
     handleCancelDownload,
-    handlePositionConflict,
   } = source
   if (fetchError) {
     return renderWindowState(
@@ -215,16 +222,6 @@ function getReadBookWindowContent(
     )
   }
 
-  if (positionConflict) {
-    return renderWindowState(
-      <ReadBookPositionConflict
-        candidates={positionConflict}
-        resolving={resolvingPositionConflict}
-        onSelect={handlePositionConflict}
-      />,
-    )
-  }
-
   return null
 }
 
@@ -232,19 +229,28 @@ function ReadBookPositionConflict({
   candidates,
   resolving,
   onSelect,
+  error,
 }: {
   candidates: NonNullable<
     ReturnType<typeof useReaderBookSource>["positionConflict"]
   >
   resolving: boolean
+  error: string | null
   onSelect: ReturnType<typeof useReaderBookSource>["handlePositionConflict"]
 }) {
   const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
   return (
     <>
-      <ReadBookLoading message={t("reader.loadingBook")} />
-      <Dialog open>
-        <DialogContent showCloseButton={false}>
+      <Button
+        className="fixed right-4 top-16 z-50"
+        variant="outline"
+        onClick={() => setOpen(true)}
+      >
+        {t("reader.positionConflictTitle")}
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("reader.positionConflictTitle")}</DialogTitle>
             <DialogDescription>
@@ -275,6 +281,11 @@ function ReadBookPositionConflict({
               </Button>
             ))}
           </div>
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
           <DialogFooter>
             <Button
               variant="ghost"

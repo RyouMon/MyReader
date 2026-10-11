@@ -408,8 +408,8 @@ fn remote_reading_changes_and_duplicate_delivery_should_not_rewrite_catalog() {
     assert_matches_rebuild(&target);
 }
 
-#[test]
-fn losing_position_conflicts_should_update_candidates_and_resolve_without_catalog_writes() {
+#[tokio::test]
+async fn losing_position_conflicts_should_update_candidates_and_resolve_without_catalog_writes() {
     let (_source_directory, source) = create_database();
     let (_target_directory, target) = create_database();
     seed_catalog(&source);
@@ -468,6 +468,94 @@ fn losing_position_conflicts_should_update_candidates_and_resolve_without_catalo
     }
     let inspected = ensure_database_document(&target, &target_identity, 100).unwrap();
     assert_eq!(inspected.projection.reading_position_candidates.len(), 3);
+    let before = rows(&connection, "sync_automerge_state");
+    let outbox_before = rows(&connection, "sync_automerge_outbox");
+    let draft = position(target_identity.replica_id.as_str(), 99);
+    crate::sync::persistence::async_io::mutate_reading_position(
+        &target,
+        &target_identity,
+        150,
+        42,
+        draft.clone(),
+        false,
+        |_, _| panic!("conflicted autosave must remain local"),
+    )
+    .await
+    .unwrap();
+    assert_eq!(rows(&connection, "sync_automerge_state"), before);
+    assert_eq!(rows(&connection, "sync_automerge_outbox"), outbox_before);
+    assert_eq!(rows(&connection, "reading_position_candidates").len(), 3);
+    assert_eq!(rows(&connection, "reading_position_drafts").len(), 1);
+    // Indexed candidate reads are independent of document decoding.
+    let db = sea_orm::Database::connect(format!("sqlite:{target}?mode=rw"))
+        .await
+        .unwrap();
+    let repository = crate::repositories::reading::ReadingRepository::new(&db);
+    assert_eq!(
+        repository
+            .list_position_candidates(42, "EPUB")
+            .await
+            .unwrap()
+            .len(),
+        3
+    );
+    assert_eq!(
+        repository
+            .position_draft(42, "EPUB")
+            .await
+            .unwrap()
+            .unwrap()
+            .locator,
+        serde_json::from_str::<serde_json::Value>(&draft.locator_json).unwrap()
+    );
+    assert_eq!(
+        repository
+            .get_reading_position(42, "EPUB")
+            .await
+            .unwrap()
+            .unwrap()
+            .updated_at,
+        150.0
+    );
+    assert_eq!(
+        repository.list_reading_positions().await.unwrap()[0].updated_at,
+        150.0
+    );
+    assert_eq!(
+        repository.latest_read_at_by_book().await.unwrap()[&42],
+        150.0
+    );
+    drop(db);
+    let completion_replica = target_identity.replica_id.to_string();
+    let completed = crate::sync::persistence::async_io::mutate_reading_position(
+        &target,
+        &target_identity,
+        160,
+        42,
+        draft.clone(),
+        true,
+        move |document, conflicted| {
+            assert!(conflicted);
+            crate::sync::document::add_reading_completion(
+                document,
+                &crate::sync::document::ReadingCompletionValue {
+                    id: uuid::Uuid::new_v4().simple().to_string(),
+                    book_id: 42,
+                    format: "EPUB".into(),
+                    local_day: "2026-10-11".into(),
+                    completed_at: 160,
+                    updated_at: 160,
+                    replica_id: completion_replica,
+                },
+            )
+            .map(|change| change.is_some())
+        },
+    )
+    .await
+    .unwrap();
+    assert!(completed);
+    assert_eq!(rows(&connection, "reading_position_candidates").len(), 3);
+    assert_eq!(rows(&connection, "reading_completions").len(), 1);
     let chosen = &inspected.projection.reading_position_candidates[0];
     execute_local_database_command(
         &target,
@@ -483,11 +571,39 @@ fn losing_position_conflicts_should_update_candidates_and_resolve_without_catalo
         },
     )
     .unwrap();
+    assert!(rows(&connection, "reading_position_drafts").is_empty());
     let resolved = ensure_database_document(&target, &target_identity, 200).unwrap();
     assert_eq!(resolved.projection.reading_position_candidates.len(), 1);
     assert_eq!(
         resolved.projection.reading_positions[0].value.locator_json,
         chosen.value.locator_json
+    );
+    // Choosing the device-local draft explicitly publishes that exact position.
+    connection
+        .execute(
+            "INSERT INTO reading_position_drafts VALUES (42, 'EPUB', ?1, 0.5, 250)",
+            [&draft.locator_json],
+        )
+        .unwrap();
+    execute_local_database_command(
+        &target,
+        &target_identity,
+        300,
+        SyncDatabaseCommand {
+            command: DocumentCommand::ResolveReadingPosition {
+                book_id: 42,
+                format: "EPUB".into(),
+                operation_id: "local".into(),
+                recorded_at: 300,
+            },
+        },
+    )
+    .unwrap();
+    assert!(rows(&connection, "reading_position_drafts").is_empty());
+    let local = ensure_database_document(&target, &target_identity, 300).unwrap();
+    assert_eq!(
+        local.projection.reading_positions[0].value.locator_json,
+        draft.locator_json
     );
     allow_writes(&connection, CATALOG_TABLES);
     assert_matches_rebuild(&target);

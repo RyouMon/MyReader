@@ -4,12 +4,12 @@ use crate::sync::{
     document::{
         add_reading_completion as write_reading_completion, add_reading_session_duration,
         annotation_projections, bookmark_projections, create_annotation, delete_annotation,
-        favorite_projections, reading_completion_records, resolve_reading_position, set_bookmark,
-        set_favorite, set_reading_position as write_reading_position, update_annotation,
-        AnnotationValue, BookmarkValue, FavoriteValue, ReadingCompletionValue,
-        ReadingPositionValue, ReadingSessionValue,
+        favorite_projections, reading_completion_records, set_bookmark, set_favorite,
+        set_reading_position as write_reading_position, update_annotation, AnnotationValue,
+        BookmarkValue, FavoriteValue, ReadingCompletionValue, ReadingPositionValue,
+        ReadingSessionValue,
     },
-    persistence::async_io::{ensure_database_document, mutate_document},
+    persistence::async_io::{mutate_document, read_position_candidates},
 };
 use chrono::{Local, TimeZone};
 use tracing::info;
@@ -172,10 +172,18 @@ impl ReadingService {
         } else {
             None
         };
-        let completed =
-            mutate_document(database_path, &identity, recorded_at_ms, move |document| {
+        let completed = crate::sync::persistence::async_io::mutate_reading_position(
+            database_path,
+            &identity,
+            recorded_at_ms,
+            book_id,
+            value.clone(),
+            completion.is_some(),
+            move |document, conflicted| {
                 let mut completed = false;
-                write_reading_position(document, book_id, &value)?;
+                if !conflicted {
+                    write_reading_position(document, book_id, &value)?;
+                }
                 if let Some(completion) = &completion {
                     let already_completed = reading_completion_records(document)?
                         .into_iter()
@@ -185,8 +193,9 @@ impl ReadingService {
                     }
                 }
                 Ok(completed)
-            })
-            .await?;
+            },
+        )
+        .await?;
         info!(
             target: "myreader_sync",
             event = "reading_position.local_write",
@@ -222,14 +231,24 @@ impl ReadingService {
         }
         let format = normalize_reading_format(format)?;
         let context = LibraryContext::open(sidecar_root).await?;
-        let database_path = context.path();
+        let repository = ReadingRepository::new(context.database());
+        let draft = repository.position_draft(book_id, &format).await?;
+        let mut candidates = repository
+            .list_position_candidates(book_id, &format)
+            .await?;
+        if !candidates.is_empty()
+            || repository
+                .get_reading_position(book_id, &format)
+                .await?
+                .is_none()
+        {
+            candidates.extend(draft);
+            return Ok(candidates);
+        }
         let identity = context.identity(library_root).await?;
-        let result = ensure_database_document(database_path, &identity, now_ms).await?;
-        result
-            .projection
-            .reading_position_candidates
+        let mut candidates = read_position_candidates(context.path(), &identity, book_id, &format)
+            .await?
             .into_iter()
-            .filter(|candidate| candidate.book_id == book_id && candidate.format == format)
             .map(|candidate| {
                 Ok(ReadingPositionCandidate {
                     operation_id: candidate.operation_id,
@@ -242,7 +261,9 @@ impl ReadingService {
                     replica_id: candidate.value.replica_id,
                 })
             })
-            .collect()
+            .collect::<Result<Vec<_>, CoreError>>()?;
+        candidates.extend(draft);
+        Ok(candidates)
     }
 
     pub async fn select_reading_position_candidate(
@@ -262,11 +283,19 @@ impl ReadingService {
         let context = LibraryContext::open(sidecar_root).await?;
         let database_path = context.path();
         let identity = context.identity(library_root).await?;
-        let operation_id = operation_id.to_owned();
-        mutate_document(database_path, &identity, recorded_at_ms, move |document| {
-            resolve_reading_position(document, book_id, &format, &operation_id, recorded_at_ms)?;
-            Ok(())
-        })
+        crate::sync::persistence::async_io::execute_local_database_command(
+            database_path,
+            &identity,
+            recorded_at_ms,
+            crate::sync::persistence::SyncDatabaseCommand {
+                command: crate::sync::document_engine::DocumentCommand::ResolveReadingPosition {
+                    book_id,
+                    format,
+                    operation_id: operation_id.to_owned(),
+                    recorded_at: recorded_at_ms,
+                },
+            },
+        )
         .await?;
         Ok(())
     }

@@ -3,8 +3,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react"
 import type { ReactNode } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import type { ReadingPositionCandidateDto } from "@/lib/tauri-api"
 import { scheduleReaderProgressSave } from "@/lib/readerProgressPersistence"
+import type { ReadingPositionCandidateDto } from "@/lib/tauri-api"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 import { useReaderBookSource } from "../useReaderBookSource"
 
@@ -83,7 +83,10 @@ beforeEach(() => {
   useLibraryUiStore.setState({ activeLibraryId: "library" })
   mocks.onCloseRequested.mockResolvedValue(() => {})
   mocks.api.getBookDetail.mockResolvedValue(book())
-  mocks.api.getReadingProgress.mockResolvedValue({ locator: savedLocator })
+  mocks.api.getReadingProgress.mockResolvedValue({
+    locator: savedLocator,
+    conflictCount: 2,
+  })
   mocks.api.listReadingPositionCandidates.mockResolvedValue(candidates)
   mocks.api.prepareBookSource.mockResolvedValue({
     filePath: "/book.epub",
@@ -100,6 +103,46 @@ afterEach(() => {
 })
 
 describe("useReaderBookSource", () => {
+  it.each([
+    null,
+    { locator: savedLocator, conflictCount: 1 },
+  ])("opens without waiting for Automerge when the saved position has no conflict: %j", async (progress) => {
+    mocks.api.getReadingProgress.mockResolvedValue(progress)
+    mocks.api.listReadingPositionCandidates.mockReturnValue(
+      new Promise(() => {}),
+    )
+    const { result } = renderHook(() => useReaderBookSource({ bookId: "4" }), {
+      wrapper,
+    })
+    await waitFor(() => expect(result.current.bookPayload).not.toBeNull())
+    expect(mocks.api.listReadingPositionCandidates).not.toHaveBeenCalled()
+    expect(result.current.positionConflict).toBeNull()
+    expect(
+      result.current.bookPayload?.initialSavedLocator?.locations.position ??
+        null,
+    ).toBe(progress ? 3 : null)
+  })
+
+  it("opens at the local position while conflict candidates are still loading", async () => {
+    let finishCandidates!: (value: ReadingPositionCandidateDto[]) => void
+    mocks.api.listReadingPositionCandidates.mockReturnValue(
+      new Promise<ReadingPositionCandidateDto[]>((resolve) => {
+        finishCandidates = resolve
+      }),
+    )
+    const { result } = renderHook(() => useReaderBookSource({ bookId: "4" }), {
+      wrapper,
+    })
+    await waitFor(() =>
+      expect(mocks.api.listReadingPositionCandidates).toHaveBeenCalled(),
+    )
+    await waitFor(() => expect(result.current.bookPayload).not.toBeNull())
+    expect(result.current.positionConflict).toBeNull()
+    await act(async () => finishCandidates(candidates))
+    await waitFor(() => expect(result.current.bookPayload).not.toBeNull())
+    expect(result.current.positionConflict).toEqual(candidates)
+  })
+
   it("persists the latest pending page before closing the reader window", async () => {
     const { result } = renderHook(
       () => useReaderBookSource({ bookId: "4", formatFromSearch: "PDF" }),
@@ -187,6 +230,10 @@ describe("useReaderBookSource", () => {
       wrapper,
     })
     await waitFor(() => expect(result.current.positionConflict).toHaveLength(2))
+    mocks.api.getReadingProgress.mockResolvedValue({
+      locator: candidates[1].locator,
+      conflictCount: 1,
+    })
     await act(() => result.current.handlePositionConflict(candidates[1]))
     expect(mocks.api.selectReadingPositionCandidate).toHaveBeenCalledWith(
       "library",
@@ -213,7 +260,8 @@ describe("useReaderBookSource", () => {
       result.current.bookPayload?.initialSavedLocator?.locations.position,
     ).toBe(3)
     expect(result.current.positionConflict).toEqual(candidates)
-    expect(result.current.fetchError).toBe(
+    expect(result.current.fetchError).toBeNull()
+    expect(result.current.positionConflictError).toBe(
       "未能完成此操作，请重试。\nError: disk full",
     )
     expect(result.current.resolvingPositionConflict).toBe(false)

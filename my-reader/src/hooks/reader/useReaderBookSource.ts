@@ -1,5 +1,3 @@
-import { errorMessage } from "@/lib/error-presentation"
-import { apiErrorKind } from "@/lib/api-error"
 import type { Locator } from "@readium/shared"
 import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
@@ -15,10 +13,12 @@ import {
   setDownloadError as setGlobalDownloadError,
   useDownloadProgress,
 } from "@/hooks/useDownloadProgress"
+import { apiErrorKind } from "@/lib/api-error"
+import { errorMessage } from "@/lib/error-presentation"
+import { flushReaderProgress } from "@/lib/readerProgressPersistence"
 import { isMainWebviewWindow, openReaderInNewWindow } from "@/lib/readerWindow"
 import { resolveReadFormat } from "@/lib/readFormats"
 import { parseSavedLocator } from "@/lib/readium/locator"
-import { flushReaderProgress } from "@/lib/readerProgressPersistence"
 import { api, type ReadingPositionCandidateDto } from "@/lib/tauri-api"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 
@@ -31,12 +31,17 @@ async function loadReadingPosition(
   bookId: number,
   format: string,
 ) {
-  const [row, candidates] = await Promise.all([
-    api.getReadingProgress(libraryId, bookId, format).catch(() => null),
-    api
-      .listReadingPositionCandidates(libraryId, bookId, format)
-      .catch(() => []),
-  ])
+  const row = await api
+    .getReadingProgress(libraryId, bookId, format)
+    .catch(() => null)
+  // The SQLite projection already knows whether conflict resolution is needed.
+  // Keep candidate loading (including upgrade backfill) off the opening path.
+  const candidates =
+    row && row.conflictCount > 1
+      ? api
+          .listReadingPositionCandidates(libraryId, bookId, format)
+          .catch(() => [])
+      : Promise.resolve([])
   return {
     initialSavedLocator: parseSavedLocator(row?.locator ?? null),
     candidates,
@@ -92,6 +97,9 @@ export function useReaderBookSource({
   >(null)
   const [resolvingPositionConflict, setResolvingPositionConflict] =
     useState(false)
+  const [positionConflictError, setPositionConflictError] = useState<
+    string | null
+  >(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [downloadState, setDownloadState] = useState<
     "idle" | "downloading" | "error" | "cancelled" | "done"
@@ -143,7 +151,7 @@ export function useReaderBookSource({
         void getCurrentWindow().close()
       }
     }
-  }, [downloadProgress, t])
+  }, [downloadProgress])
 
   useEffect(() => {
     if (!isTauri()) return
@@ -263,9 +271,9 @@ export function useReaderBookSource({
         if (cancelled) return
         const { initialSavedLocator, candidates } = position
         setBookPayload({ source, initialSavedLocator })
-        if (candidates.length > 1) {
-          setPositionConflict(candidates)
-        }
+        void Promise.resolve(candidates).then((items) => {
+          if (!cancelled && items.length > 1) setPositionConflict(items)
+        })
       } catch (e) {
         if (cancelled) return
         const msg = errorMessage(e)
@@ -308,9 +316,9 @@ export function useReaderBookSource({
         )
         if (cancelled) return
         setBookPayload({ source, initialSavedLocator })
-        if (candidates.length > 1) {
-          setPositionConflict(candidates)
-        }
+        void Promise.resolve(candidates).then((items) => {
+          if (!cancelled && items.length > 1) setPositionConflict(items)
+        })
       } catch (e) {
         if (!cancelled) setFetchError(errorMessage(e))
       }
@@ -338,25 +346,34 @@ export function useReaderBookSource({
       }
       if (!activeLibraryId || !format) return
 
+      setPositionConflictError(null)
       setResolvingPositionConflict(true)
       try {
+        await flushReaderProgress()
         await api.selectReadingPositionCandidate(
           activeLibraryId,
           Number(bookId),
           format,
           candidate.operationId,
         )
+        const selected = await api.getReadingProgress(
+          activeLibraryId,
+          Number(bookId),
+          format,
+        )
         setBookPayload((current) =>
           current
             ? {
                 ...current,
-                initialSavedLocator: parseSavedLocator(candidate.locator),
+                initialSavedLocator: parseSavedLocator(
+                  selected?.locator ?? candidate.locator,
+                ),
               }
             : current,
         )
         setPositionConflict(null)
       } catch (error) {
-        setFetchError(errorMessage(error))
+        setPositionConflictError(errorMessage(error))
       } finally {
         setResolvingPositionConflict(false)
       }
@@ -392,6 +409,7 @@ export function useReaderBookSource({
     bookPayload,
     positionConflict,
     resolvingPositionConflict,
+    positionConflictError,
     fetchError,
     downloadState,
     downloadError,

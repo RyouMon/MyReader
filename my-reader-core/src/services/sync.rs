@@ -464,8 +464,7 @@ impl SyncService {
         .await?;
         if remote_myreader {
             super::content::ContentService::retry_remote_deletes(sidecar_root, operator).await?;
-            let document =
-                persistence::ensure_database_document(database_path, &identity, now_ms).await?;
+            let document = persistence::inspect_for_sync(database_path, &identity).await?;
             super::content::ContentService::reconcile_myreader_catalog(
                 sidecar_root,
                 library_root,

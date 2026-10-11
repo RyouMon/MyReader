@@ -53,6 +53,7 @@ export const commands = {
 	locator: any,
 	displayProgression: number | null,
 	updatedAt: number | null,
+	conflictCount: number,
 } | null, ErrorKind>(__TAURI_INVOKE("get_reading_progress", { libraryId, bookId, format })),
 	listReadingProgress: (libraryId: string | null) => typedError<ReadingProgressDto[], ErrorKind>(__TAURI_INVOKE("list_reading_progress", { libraryId })),
 	setReadingProgress: (libraryId: string | null, bookId: number, format: string, locator: any, displayProgression: number | null) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reading_progress", { libraryId, bookId, format, locator, displayProgression })),
@@ -365,6 +366,7 @@ export type ReadingProgressDto = {
 	locator: any,
 	displayProgression: number | null,
 	updatedAt: number | null,
+	conflictCount: number,
 };
 
 export type ReflowTtsDto = {

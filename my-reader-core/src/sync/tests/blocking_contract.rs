@@ -41,3 +41,12 @@ fn cancelled_caller_should_discard_work_still_queued_in_the_blocking_pool() {
         );
     });
 }
+
+#[tokio::test]
+async fn saturated_background_capacity_does_not_block_local_work() {
+    let permits = super::BACKGROUND_CAPACITY.acquire_many(2).await.unwrap();
+    let result =
+        tokio::time::timeout(std::time::Duration::from_secs(2), super::run(|| Ok(42))).await;
+    drop(permits);
+    assert_eq!(result.unwrap().unwrap(), 42);
+}

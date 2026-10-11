@@ -170,7 +170,14 @@ fn project_document(
         projection.catalog_books = catalog_book_projections(doc)?;
     }
     if scope.includes(ProjectionDomain::Positions) {
-        projection.reading_positions = reading_position_projections(doc)?;
+        projection.reading_positions = match scope {
+            ProjectionScope::Position(book_id, format) => {
+                vec![super::document::reading_position_projection(
+                    doc, *book_id, format,
+                )?]
+            }
+            _ => reading_position_projections(doc)?,
+        };
         projection.reading_position_candidates =
             project_position_candidates(doc, &projection.reading_positions)?;
     }
@@ -232,10 +239,19 @@ pub(crate) fn execute_document_command_projected(
     payload: Option<&[u8]>,
     projection_mode: ProjectionMode,
 ) -> Result<DocumentCommandResult, SyncError> {
-    let mut document = match snapshot {
+    let document = match snapshot {
         Some(bytes) => load_library_sidecar_document_bytes(bytes, &request.replica_id)?,
         None => load_library_sidecar_document(&request.replica_id)?,
     };
+    execute_loaded_document_command(document, request, payload, projection_mode)
+}
+
+pub(crate) fn execute_loaded_document_command(
+    mut document: automerge::AutoCommit,
+    request: DocumentCommandRequest,
+    payload: Option<&[u8]>,
+    projection_mode: ProjectionMode,
+) -> Result<DocumentCommandResult, SyncError> {
     if let Some(library_uuid) = request.expected_library_uuid.as_deref() {
         validate_library_identity(&document, library_uuid)?;
     }
@@ -360,9 +376,8 @@ pub(crate) fn execute_document_command_projected(
     })
 }
 
-pub(crate) fn execute_document_mutation<F>(
-    snapshot: &[u8],
-    replica_id: &str,
+pub(crate) fn execute_loaded_document_mutation<F>(
+    mut document: automerge::AutoCommit,
     expected_library_uuid: &str,
     base_heads: Vec<String>,
     projection_mode: ProjectionMode,
@@ -371,7 +386,6 @@ pub(crate) fn execute_document_mutation<F>(
 where
     F: FnOnce(&mut automerge::AutoCommit) -> Result<(), SyncError>,
 {
-    let mut document = load_library_sidecar_document_bytes(snapshot, replica_id)?;
     validate_library_identity(&document, expected_library_uuid)?;
     let base_heads = parse_heads(&base_heads)?;
     mutate(&mut document)?;

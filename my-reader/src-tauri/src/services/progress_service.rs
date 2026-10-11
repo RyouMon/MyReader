@@ -36,6 +36,7 @@ fn progress_dto(
         locator: value.locator,
         display_progression: value.display_progression,
         updated_at: value.updated_at,
+        conflict_count: value.conflict_count,
     }
 }
 

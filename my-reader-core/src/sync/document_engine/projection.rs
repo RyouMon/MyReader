@@ -30,8 +30,9 @@ impl ProjectionDomain {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) enum ProjectionMode {
+    Position(i64, String),
     Full,
     Changed,
     None,
@@ -39,6 +40,7 @@ pub(crate) enum ProjectionMode {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ProjectionScope {
+    Position(i64, String),
     Full,
     Domains(BTreeSet<ProjectionDomain>),
 }
@@ -47,6 +49,7 @@ impl ProjectionScope {
     pub(crate) fn includes(&self, domain: ProjectionDomain) -> bool {
         match self {
             Self::Full => true,
+            Self::Position(..) => domain == ProjectionDomain::Positions,
             Self::Domains(domains) => domains.contains(&domain),
         }
     }
@@ -57,6 +60,7 @@ impl ProjectionScope {
         mode: ProjectionMode,
     ) -> Result<Self, SyncError> {
         match mode {
+            ProjectionMode::Position(id, format) => return Ok(Self::Position(id, format)),
             ProjectionMode::Full => return Ok(Self::Full),
             ProjectionMode::None => return Ok(Self::Domains(BTreeSet::new())),
             ProjectionMode::Changed => {}

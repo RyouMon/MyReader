@@ -130,17 +130,19 @@ Rust 调用者构造这些字段时使用枚举变体。
 SQLite 和 Automerge 边界仍写入原字符串。newtype 限于这里实际易混淆的身份；现有文件系统
 `Path` / `PathBuf` 和带单位的时间参数不另建通用包装层。
 
-同步 SQLite / Automerge 的异步调用经过 `sync/persistence/async_io.rs`：同一数据库异步排队，
-完整事务在有并发上限的 `spawn_blocking` 工作中执行；不同数据库不再共用全局写锁。
-远端 Automerge 对象校验也在阻塞线程执行。排队 guard 跟随实际工作，连接持有书库生命周期
-lease；取消调用撤销尚未开始的工作，不提前释放正在执行的事务，删除书库会等待已打开的连接关闭。
+本地 SQLite / Automerge 写入经过 `sync/persistence/async_io.rs` 按数据库异步排队，
+完整事务在有并发上限的 `spawn_blocking` 工作中执行；不同数据库不共用全局写锁。
+后台同步使用独立的工作容量，不进入本地写入队列。远端对象校验、解码、合并与投影计算在
+SQLite 事务外执行；提交时比较原始 snapshot/schema/heads，若本地写入已推进则重新计算。
+SQLite 写事务只负责原子提交 document、投影与 outbox。排队 guard 跟随实际工作，连接持有
+书库生命周期 lease；取消调用撤销尚未开始的工作，删除书库仍等待已打开的连接关闭。
 SeaORM / SQLx 的异步查询保留原路径。
 
 SQLite 投影以同一事务中的 Automerge heads 为增量边界：阅读写入只解析并更新实际变更的
 domain，不再重建无关 catalog。远端对象仍完整校验，合并后的 SQLite 更新也按 domain 选择。
 变更范围来自原始操作及其父路径，包含未胜出的冲突值。初始化、schema 迁移、根对象变更或
 投影版本 / heads 失效时完整重建；查询完整 document 的入口始终返回全量投影。
-当前粒度为 domain，受影响 domain 内仍完整投影；没有跨事务的内存投影缓存。
+一般写入粒度为 domain；选择阅读位置只投影目标 book/format。没有跨事务的内存投影缓存。
 性能与边界见 [增量投影报告](./core-incremental-projection-performance.md)。
 
 ### 3.2 当前业务范围
@@ -329,6 +331,8 @@ sidecar。Android 不提供外部本地书库入口，也不使用 SAF 私有镜
 
 | 表 | 用途 |
 |---|---|
+| `reading_position_candidates` | 按图书和格式索引的阅读位置候选 |
+| `reading_position_drafts` | 冲突未解决时的设备本地阅读进度 |
 | `sync_local_meta` | 当前书库 Automerge 本地身份与协议元数据 |
 | `sync_automerge_state` | Automerge document 快照 |
 | `sync_automerge_outbox` | 待保存到远端的本地 incremental chunk |
@@ -407,7 +411,11 @@ OneDrive 大文件写入由 OpenDAL OneDrive backend 使用 upload session 分�
 - Calibre 书库同步收藏、阅读位置、书签、批注、阅读 session 和完成记录六个 domain；MyReader
   书库在同一 document 中再同步 catalog root。
 - core 负责 change 因果关系、去重、冲突候选、SQLite projection、outbox 和收敛。
-- 阅读位置真并发时保留候选；用户选择后写入因果上更新的 change。
+- 阅读位置真并发时保留候选；`reading_position_candidates` 按 book/format 索引候选，
+  升级尚未回填时只读取目标 document key，不重建全库投影。
+- 冲突期间自动保存写入 `reading_position_drafts`，设备本地读取优先使用草稿，不产生解决冲突的
+  change。用户明确选择候选（`local` 表示本地草稿）时原子提交同步 change 并清除草稿。
+- 桌面正文按本地位置先打开，候选查询与冲突提示不阻塞正文；暂不选择仍保留冲突。
 - 同步完成后平台只负责刷新可见查询。
 
 [ADR-0020](./adr/0020-adopt-automerge-repo-storage-model.md) 进一步规定：

@@ -5,6 +5,7 @@ use std::{
 
 pub(crate) mod async_io;
 mod identity;
+mod remote;
 
 pub use identity::{LibraryUuid, ReplicaId};
 
@@ -16,15 +17,15 @@ use uuid::Uuid;
 use super::{
     document::{library_sidecar_snapshot_heads, CatalogBookValue, LIBRARY_SIDECAR_SCHEMA_VERSION},
     document_engine::{
-        execute_document_command, execute_document_command_projected, execute_document_mutation,
-        DocumentCommand, DocumentCommandRequest, DocumentCommandResult, ProjectionDomain,
-        ProjectionMode,
+        execute_document_command, execute_document_command_projected,
+        execute_loaded_document_command, execute_loaded_document_mutation, DocumentCommand,
+        DocumentCommandRequest, DocumentCommandResult, ProjectionDomain, ProjectionMode,
     },
     storage::{incremental_key, StorageKey},
     SyncError,
 };
 
-const PROJECTION_VERSION: i64 = 2;
+const PROJECTION_VERSION: i64 = 3;
 const SIDECAR_PROTOCOL: &str = "library-sidecar-automerge-repo";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -89,6 +90,7 @@ struct PersistedState {
     snapshot_bytes: Vec<u8>,
     heads: Vec<String>,
     migration: Option<DocumentCommandResult>,
+    loaded: Option<automerge::AutoCommit>,
 }
 
 fn sync_error(message: impl Into<String>) -> SyncError {
@@ -354,6 +356,13 @@ fn read_state(
         )
         .optional()
         .map_err(database_error)?;
+    decode_state(row, identity)
+}
+
+fn decode_state(
+    row: Option<(i64, Vec<u8>, String)>,
+    identity: &DatabaseIdentity,
+) -> Result<Option<PersistedState>, SyncError> {
     let Some((schema_version, snapshot_bytes, heads_json)) = row else {
         return Ok(None);
     };
@@ -364,6 +373,25 @@ fn read_state(
     }
     let heads = serde_json::from_str::<Vec<String>>(&heads_json)
         .map_err(|error| sync_error(format!("Persisted Automerge heads are invalid: {error}")))?;
+    if schema_version == LIBRARY_SIDECAR_SCHEMA_VERSION as i64 {
+        use super::document::{
+            library_sidecar_heads, load_library_sidecar_document_bytes, validate_library_identity,
+        };
+        let mut document =
+            load_library_sidecar_document_bytes(&snapshot_bytes, identity.replica_id.as_str())?;
+        validate_library_identity(&document, identity.library_uuid.as_str())?;
+        if library_sidecar_heads(&mut document) != heads {
+            return Err(sync_error(
+                "Persisted Automerge heads do not match its snapshot",
+            ));
+        }
+        return Ok(Some(PersistedState {
+            snapshot_bytes,
+            heads,
+            migration: None,
+            loaded: Some(document),
+        }));
+    }
     if library_sidecar_snapshot_heads(&snapshot_bytes)? != heads {
         return Err(sync_error(
             "Persisted Automerge heads do not match its snapshot",
@@ -373,26 +401,28 @@ fn read_state(
         Some(&snapshot_bytes),
         request(identity, heads.clone(), DocumentCommand::Inspect),
         None,
-        if schema_version == LIBRARY_SIDECAR_SCHEMA_VERSION as i64 {
-            ProjectionMode::None
-        } else {
-            ProjectionMode::Full
-        },
+        ProjectionMode::Full,
     )?;
-    if schema_version == LIBRARY_SIDECAR_SCHEMA_VERSION as i64
-        && (inspected.heads != heads || !inspected.changes.is_empty())
-    {
-        return Err(sync_error(
-            "Persisted Automerge heads do not match its snapshot",
-        ));
-    }
-    let migration =
-        (schema_version != LIBRARY_SIDECAR_SCHEMA_VERSION as i64).then(|| inspected.clone());
+    let migration = Some(inspected.clone());
     Ok(Some(PersistedState {
         snapshot_bytes: inspected.snapshot_bytes,
         heads: inspected.heads,
         migration,
+        loaded: None,
     }))
+}
+
+fn take_document(
+    state: &mut PersistedState,
+    identity: &DatabaseIdentity,
+) -> Result<automerge::AutoCommit, SyncError> {
+    match state.loaded.take() {
+        Some(document) => Ok(document),
+        None => super::document::load_library_sidecar_document_bytes(
+            &state.snapshot_bytes,
+            identity.replica_id.as_str(),
+        ),
+    }
 }
 
 fn write_state(
@@ -480,6 +510,12 @@ fn project_document(
         project_catalog(transaction, library_uuid, &projection.catalog_books)?;
     }
     for position in &projection.reading_positions {
+        transaction
+            .execute(
+                "DELETE FROM reading_position_candidates WHERE book_id = ?1 AND format = ?2",
+                params![position.book_id, position.value.format],
+            )
+            .map_err(database_error)?;
         let conflict_count = i64::try_from(position.conflict_count)
             .map_err(|_| sync_error("Too many reading position conflicts"))?;
         transaction
@@ -507,6 +543,13 @@ fn project_document(
                 ],
             )
             .map_err(database_error)?;
+    }
+    for candidate in &projection.reading_position_candidates {
+        transaction.execute(
+            "INSERT INTO reading_position_candidates (book_id, format, operation_id, locator_json, display_progression, recorded_at, replica_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![candidate.book_id, candidate.format, candidate.operation_id, candidate.value.locator_json,
+                candidate.value.display_progression_ppm.map(|v| f64::from(v) / 1_000_000.0), candidate.value.recorded_at, candidate.value.replica_id],
+        ).map_err(database_error)?;
     }
     for favorite in &projection.favorites {
         transaction
@@ -887,7 +930,7 @@ pub fn execute_local_database_command(
     let transaction = connection
         .transaction_with_behavior(TransactionBehavior::Immediate)
         .map_err(database_error)?;
-    let current = match read_state(&transaction, identity)? {
+    let mut current = match read_state(&transaction, identity)? {
         Some(state) => state,
         None => {
             let initialized = initialize(&transaction, identity, now_ms)?;
@@ -895,23 +938,60 @@ pub fn execute_local_database_command(
                 snapshot_bytes: initialized.snapshot_bytes,
                 heads: initialized.heads,
                 migration: None,
+                loaded: None,
             }
         }
     };
     if let Some(migration) = current.migration.as_ref() {
         persist_local_result(&transaction, identity, migration, now_ms, Some(now_ms))?;
     }
+    let resolution = match &command.command {
+        DocumentCommand::ResolveReadingPosition {
+            book_id, format, ..
+        } => Some((*book_id, format.clone())),
+        _ => None,
+    };
     // Inspection callers consume complete projections. Mutations only need the
     // changed domains, provided SQLite reflects their exact starting heads.
-    let projection_mode = match command.command {
+    let projection_mode = match &command.command {
         DocumentCommand::Inspect | DocumentCommand::InspectDependencies { .. } => {
             ProjectionMode::Full
         }
+        DocumentCommand::ResolveReadingPosition {
+            book_id, format, ..
+        } if projection_is_current(&transaction, &current.heads)? => {
+            ProjectionMode::Position(*book_id, format.clone())
+        }
         _ => update_projection_mode(&transaction, &current.heads)?,
     };
-    let result = execute_document_command_projected(
-        Some(&current.snapshot_bytes),
-        request(identity, current.heads, command.command),
+    let command = match command.command {
+        DocumentCommand::ResolveReadingPosition {
+            book_id,
+            format,
+            operation_id,
+            recorded_at,
+        } if operation_id == "local" => {
+            let (locator_json, progression): (String, Option<f64>) = transaction.query_row(
+                "SELECT locator_json, display_progression FROM reading_position_drafts WHERE book_id = ?1 AND format = ?2 UNION ALL SELECT locator_json, display_progression FROM reading_progress WHERE book_id = ?1 AND format = ?2 LIMIT 1",
+                params![book_id, format], |row| Ok((row.get(0)?, row.get(1)?)),
+            ).map_err(database_error)?;
+            DocumentCommand::SetReadingPosition {
+                book_id,
+                value: crate::sync::document::ReadingPositionValue {
+                    format,
+                    locator_json,
+                    display_progression_ppm: progression.map(|v| (v * 1_000_000.0).round() as u32),
+                    recorded_at,
+                    replica_id: identity.replica_id.to_string(),
+                },
+            }
+        }
+        command => command,
+    };
+    let document = take_document(&mut current, identity)?;
+    let result = execute_loaded_document_command(
+        document,
+        request(identity, current.heads, command),
         None,
         projection_mode,
     )?;
@@ -919,6 +999,14 @@ pub fn execute_local_database_command(
         persist_local_result(&transaction, identity, &result, now_ms, None)?;
     } else {
         rebuild_projection(&transaction, &result, now_ms)?;
+    }
+    if let Some((book_id, format)) = resolution {
+        transaction
+            .execute(
+                "DELETE FROM reading_position_drafts WHERE book_id = ? AND format = ?",
+                params![book_id, format],
+            )
+            .map_err(database_error)?;
     }
     transaction.commit().map_err(database_error)?;
     Ok(result)
@@ -934,11 +1022,29 @@ pub fn execute_local_database_mutation<F>(
 where
     F: FnOnce(&mut automerge::AutoCommit) -> Result<(), SyncError>,
 {
+    execute_guarded_mutation(database_path, identity, now_ms, |_| Ok(false), mutate)
+        .map(|result| result.expect("unguarded mutation always executes"))
+}
+
+fn execute_guarded_mutation<F>(
+    database_path: &str,
+    identity: &DatabaseIdentity,
+    now_ms: i64,
+    before_mutation: impl FnOnce(&Transaction<'_>) -> Result<bool, SyncError>,
+    mutate: F,
+) -> Result<Option<DocumentCommandResult>, SyncError>
+where
+    F: FnOnce(&mut automerge::AutoCommit) -> Result<(), SyncError>,
+{
     let mut connection = open_connection(database_path)?;
     let transaction = connection
         .transaction_with_behavior(TransactionBehavior::Immediate)
         .map_err(database_error)?;
-    let current = match read_state(&transaction, identity)? {
+    if before_mutation(&transaction)? {
+        transaction.commit().map_err(database_error)?;
+        return Ok(None);
+    }
+    let mut current = match read_state(&transaction, identity)? {
         Some(state) => state,
         None => {
             let initialized = initialize(&transaction, identity, now_ms)?;
@@ -946,6 +1052,7 @@ where
                 snapshot_bytes: initialized.snapshot_bytes,
                 heads: initialized.heads,
                 migration: None,
+                loaded: None,
             }
         }
     };
@@ -953,9 +1060,9 @@ where
         persist_local_result(&transaction, identity, migration, now_ms, Some(now_ms))?;
     }
     let projection_mode = update_projection_mode(&transaction, &current.heads)?;
-    let result = execute_document_mutation(
-        &current.snapshot_bytes,
-        identity.replica_id.as_str(),
+    let document = take_document(&mut current, identity)?;
+    let result = execute_loaded_document_mutation(
+        document,
         identity.library_uuid.as_str(),
         current.heads,
         projection_mode,
@@ -967,7 +1074,7 @@ where
         rebuild_projection(&transaction, &result, now_ms)?;
     }
     transaction.commit().map_err(database_error)?;
-    Ok(result)
+    Ok(Some(result))
 }
 
 pub fn ensure_database_document(
@@ -1033,19 +1140,19 @@ pub fn load_publishable_database_snapshot(
         .transaction_with_behavior(TransactionBehavior::Deferred)
         .map_err(database_error)?;
     let blocked = publishable_outbox_is_blocked(&transaction)?;
-    let snapshot = if blocked {
-        None
-    } else {
-        let state = read_state(&transaction, identity)?
-            .ok_or_else(|| sync_error("Local Automerge state is missing"))?;
-        Some(PublishableDatabaseSnapshot {
-            snapshot_bytes: state.snapshot_bytes,
-            heads: state.heads,
-            pending: read_pending_outbox(&transaction)?,
-        })
-    };
+    if blocked {
+        return Ok(None);
+    }
+    let token = remote::snapshot_token(&transaction)?;
+    let pending = read_pending_outbox(&transaction)?;
     transaction.commit().map_err(database_error)?;
-    Ok(snapshot)
+    let state = decode_state(token, identity)?
+        .ok_or_else(|| sync_error("Local Automerge state is missing"))?;
+    Ok(Some(PublishableDatabaseSnapshot {
+        snapshot_bytes: state.snapshot_bytes,
+        heads: state.heads,
+        pending,
+    }))
 }
 
 fn read_pending_outbox(connection: &Connection) -> Result<Vec<SyncOutboxEntry>, SyncError> {
@@ -1108,123 +1215,7 @@ fn display_storage_key(key: &[String]) -> String {
     key.join("/")
 }
 
-pub fn apply_remote_database_objects(
-    database_path: &str,
-    identity: &DatabaseIdentity,
-    now_ms: i64,
-    objects: Vec<SyncRemoteObject>,
-) -> Result<ApplyRemoteDatabaseResult, SyncError> {
-    let mut connection = open_connection(database_path)?;
-    let transaction = connection
-        .transaction_with_behavior(TransactionBehavior::Immediate)
-        .map_err(database_error)?;
-    let current = match read_state(&transaction, identity)? {
-        Some(state) => state,
-        None => {
-            let initialized = initialize(&transaction, identity, now_ms)?;
-            PersistedState {
-                snapshot_bytes: initialized.snapshot_bytes,
-                heads: initialized.heads,
-                migration: None,
-            }
-        }
-    };
-    if let Some(migration) = current.migration.as_ref() {
-        persist_local_result(&transaction, identity, migration, now_ms, Some(now_ms))?;
-    }
-    if objects.is_empty() {
-        let document = execute_document_command(
-            Some(&current.snapshot_bytes),
-            request(identity, current.heads, DocumentCommand::Inspect),
-            None,
-        )?;
-        rebuild_projection(&transaction, &document, now_ms)?;
-        transaction.commit().map_err(database_error)?;
-        return Ok(ApplyRemoteDatabaseResult {
-            document,
-            applied_objects: 0,
-            remote_storage_repair: None,
-        });
-    }
-    validate_remote_objects(&objects)?;
-    let genesis = execute_document_command(
-        None,
-        DocumentCommandRequest {
-            replica_id: identity.replica_id.to_string(),
-            expected_library_uuid: None,
-            base_heads: Vec::new(),
-            command: DocumentCommand::Inspect,
-        },
-        None,
-    )?;
-    let mut remote_snapshot = genesis.snapshot_bytes;
-    for object in &objects {
-        let applied = execute_document_command(
-            Some(&remote_snapshot),
-            request(identity, Vec::new(), DocumentCommand::ApplyIncremental),
-            Some(&object.bytes),
-        )
-        .map_err(|error| SyncError::InvalidRemoteObject {
-            object_path: display_storage_key(&object.storage_key),
-            reason: error.to_string(),
-        })?;
-        remote_snapshot = applied.snapshot_bytes;
-    }
-    let remote = execute_document_command(
-        Some(&remote_snapshot),
-        request(
-            identity,
-            Vec::new(),
-            DocumentCommand::InspectDependencies { heads: Vec::new() },
-        ),
-        None,
-    )?;
-    let object_paths = objects
-        .iter()
-        .map(|object| display_storage_key(&object.storage_key))
-        .collect::<Vec<_>>()
-        .join(",");
-    let remote_storage_repair =
-        (!remote.missing_dependencies.is_empty()).then(|| RemoteStorageRepair {
-            change_hashes: remote.missing_dependencies.join(","),
-            object_paths: object_paths.clone(),
-        });
-    let merged_bytes = objects
-        .iter()
-        .flat_map(|object| object.bytes.iter().copied())
-        .collect::<Vec<_>>();
-    let projection_mode = update_projection_mode(&transaction, &current.heads)?;
-    let result = execute_document_command_projected(
-        Some(&current.snapshot_bytes),
-        request(
-            identity,
-            current.heads.clone(),
-            DocumentCommand::ApplyIncremental,
-        ),
-        Some(&merged_bytes),
-        projection_mode,
-    )?;
-    if !result.missing_dependencies.is_empty() {
-        return Err(SyncError::MissingDependencies {
-            change_hashes: result.missing_dependencies.join(","),
-            object_paths,
-        });
-    }
-    let applied_changes = result.changes.len();
-    let local_delta = execute_document_command_projected(
-        Some(&result.snapshot_bytes),
-        request(identity, remote.heads, DocumentCommand::Inspect),
-        None,
-        ProjectionMode::None,
-    )?;
-    persist_remote_result(&transaction, identity, &result, &local_delta, now_ms)?;
-    transaction.commit().map_err(database_error)?;
-    Ok(ApplyRemoteDatabaseResult {
-        document: result,
-        applied_objects: applied_changes,
-        remote_storage_repair,
-    })
-}
+pub use remote::apply_remote_database_objects;
 
 #[cfg(test)]
 mod lifecycle_tests {
