@@ -17,7 +17,7 @@ import {
   setReaderTrafficLightsVisible,
 } from "@/lib/readerTrafficLights"
 import { cn } from "@/lib/utils"
-import { WindowsWindowControls } from "./WindowsWindowControls"
+import { WindowsWindowControls } from "@/components/common/WindowsWindowControls"
 
 interface ReaderTopBarProps {
   visible: boolean

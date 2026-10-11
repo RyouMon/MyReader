@@ -3,16 +3,8 @@ import { apiErrorKind } from "@/lib/api-error"
 import type { CalibreBook } from "@my-reader/tools/types/book"
 import { useNavigate } from "@tanstack/react-router"
 import { isTauri } from "@tauri-apps/api/core"
+import { AlertCircle, Loader2 } from "lucide-react"
 import {
-  AlertCircle,
-  ChevronLeft,
-  Loader2,
-  Maximize2,
-  Minimize2,
-  X,
-} from "lucide-react"
-import {
-  type ReactNode,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -21,7 +13,6 @@ import {
 } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
-import AppSidebarToggle from "@/components/library/AppSidebarToggle"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -69,10 +60,7 @@ interface BookDetailPaneProps {
   onBackToList?: () => void
   forceNarrowHero?: boolean
   forceWideHero?: boolean
-  fullScreenAvailable?: boolean
-  detailFullScreen?: boolean
-  onToggleDetailFullScreen?: () => void
-  showSidebarToggle?: boolean
+  wideBackdropHost?: HTMLDivElement | null
   onLibraryChanged?: () => void
   onDeleteBook?: (book: Pick<BookDetail, "id" | "title">) => void
 }
@@ -94,10 +82,7 @@ export default function BookDetailPane({
   onBackToList,
   forceNarrowHero = false,
   forceWideHero = false,
-  fullScreenAvailable,
-  detailFullScreen,
-  onToggleDetailFullScreen,
-  showSidebarToggle,
+  wideBackdropHost,
   onLibraryChanged,
   onDeleteBook,
 }: BookDetailPaneProps) {
@@ -376,22 +361,12 @@ export default function BookDetailPane({
     [navigate, book?.title],
   )
 
-  const header = (
-    <DetailPaneHeaderBar
-      onBackToList={onBackToList}
-      fullScreenAvailable={fullScreenAvailable}
-      detailFullScreen={detailFullScreen}
-      onToggleDetailFullScreen={onToggleDetailFullScreen}
-      showSidebarToggle={showSidebarToggle}
-    />
-  )
   if (loading || failure || !book) {
     return (
       <BookDetailStatus
         loading={loading}
         failure={failure}
         className={className}
-        header={header}
         onRetry={() => setReloadIndex((value) => value + 1)}
         onReturnToLibrary={handleReturnToLibrary}
       />
@@ -417,6 +392,7 @@ export default function BookDetailPane({
       title={book.title}
       isNarrowHero={isNarrowHero}
       forceWideHero={forceWideHero}
+      wideBackdropHost={wideBackdropHost}
       showNarrowCoverBackdrop={showNarrowCoverBackdrop}
       coverSrc={coverSrc}
       handleCoverError={handleCoverError}
@@ -424,7 +400,6 @@ export default function BookDetailPane({
       bodyRef={bodyRef}
       handleDetailScroll={handleDetailScroll}
       setDetailHeroElement={setDetailHeroElement}
-      header={header}
       hero={
         <BookDetailHero
           book={book}
@@ -492,83 +467,6 @@ export default function BookDetailPane({
         />
       }
     />
-  )
-}
-
-function DetailPaneHeaderBar({
-  onBackToList,
-  fullScreenAvailable = false,
-  detailFullScreen = false,
-  onToggleDetailFullScreen,
-  showSidebarToggle = false,
-}: {
-  onBackToList?: () => void
-  fullScreenAvailable?: boolean
-  detailFullScreen?: boolean
-  onToggleDetailFullScreen?: () => void
-  showSidebarToggle?: boolean
-}) {
-  const { t } = useTranslation()
-  const FullScreenIcon = detailFullScreen ? Minimize2 : Maximize2
-  const fullScreenLabel = detailFullScreen
-    ? t("reader.exitFullscreen")
-    : t("reader.fullscreen")
-  const NavigationIcon = fullScreenAvailable
-    ? detailFullScreen
-      ? ChevronLeft
-      : X
-    : ChevronLeft
-  const navigationLabel = fullScreenAvailable
-    ? detailFullScreen
-      ? t("common.back")
-      : t("common.close")
-    : t("common.back")
-  const navigationTestId =
-    fullScreenAvailable && !detailFullScreen
-      ? "book-detail-close"
-      : "book-detail-back"
-  const chromeButtonClass =
-    "text-[var(--detail-hero-fg)] hover:bg-[var(--detail-hero-control-bg)] hover:text-[var(--detail-hero-fg)]"
-
-  return (
-    <header className="detail-headerbar pointer-events-none absolute inset-x-0 top-0 z-40 flex h-14 items-center justify-between gap-2 px-4">
-      <div className="pointer-events-auto flex min-w-0 items-center gap-1">
-        {showSidebarToggle ? (
-          <AppSidebarToggle className={chromeButtonClass} />
-        ) : null}
-        {onBackToList ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className={chromeButtonClass}
-            title={navigationLabel}
-            aria-label={navigationLabel}
-            data-testid={navigationTestId}
-            onClick={onBackToList}
-          >
-            <NavigationIcon className="detail-header-icon" />
-          </Button>
-        ) : null}
-      </div>
-
-      <div className="pointer-events-auto flex items-center gap-1">
-        {fullScreenAvailable && onToggleDetailFullScreen ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className={chromeButtonClass}
-            title={fullScreenLabel}
-            aria-label={fullScreenLabel}
-            data-testid="book-detail-fullscreen-toggle"
-            onClick={onToggleDetailFullScreen}
-          >
-            <FullScreenIcon className="detail-header-icon" />
-          </Button>
-        ) : null}
-      </div>
-    </header>
   )
 }
 
@@ -660,14 +558,12 @@ function BookDetailStatus({
   loading,
   failure,
   className,
-  header,
   onRetry,
   onReturnToLibrary,
 }: {
   loading: boolean
   failure: BookDetailFailure | null
   className?: string
-  header: ReactNode
   onRetry: () => void
   onReturnToLibrary: () => void
 }) {
@@ -678,7 +574,6 @@ function BookDetailStatus({
         className={cn(DETAIL_CARD_CLASS, className)}
         data-testid="book-detail-pane"
       >
-        {header}
         <Empty className="min-h-0 flex-1">
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -697,7 +592,6 @@ function BookDetailStatus({
       className={cn(DETAIL_CARD_CLASS, className)}
       data-testid="book-detail-pane"
     >
-      {header}
       <Empty className="min-h-0 flex-1">
         <EmptyHeader>
           <EmptyMedia variant="icon">

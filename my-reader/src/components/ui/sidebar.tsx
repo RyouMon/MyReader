@@ -6,6 +6,7 @@ import { PanelLeftIcon } from "lucide-react"
 import { Slot } from "radix-ui"
 
 import { useIsMobile } from "@/hooks/use-mobile"
+import { isWindowsPlatform } from "@/lib/platform"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -323,7 +324,18 @@ function SidebarSheet({
         data-sidebar="sidebar"
         data-slot="sidebar"
         data-mobile="true"
-        className="w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground"
+        className={cn(
+          "h-auto w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground",
+          isWindowsPlatform() ? "top-8" : "top-11"
+        )}
+        onPointerDownOutside={(event) => {
+          if (
+            event.target instanceof Element &&
+            event.target.closest('[data-testid="app-titlebar"]')
+          ) {
+            event.preventDefault()
+          }
+        }}
         style={
           {
             "--sidebar-width": SIDEBAR_WIDTH_MOBILE,

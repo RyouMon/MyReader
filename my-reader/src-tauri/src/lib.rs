@@ -172,7 +172,17 @@ pub fn run() -> Result<(), tauri::Error> {
         )
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(tauri_plugin_window_state::Builder::default().build());
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(if cfg!(target_os = "windows") {
+                    // Keep the configured custom title bar when restoring older window state.
+                    tauri_plugin_window_state::StateFlags::all()
+                        - tauri_plugin_window_state::StateFlags::DECORATIONS
+                } else {
+                    tauri_plugin_window_state::StateFlags::all()
+                })
+                .build(),
+        );
 
     #[cfg(debug_assertions)]
     let builder = base.plugin(

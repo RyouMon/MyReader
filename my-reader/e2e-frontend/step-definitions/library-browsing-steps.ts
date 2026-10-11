@@ -327,10 +327,54 @@ Then("详情页封面区应从详情面板顶部开始", async ({ page }) => {
     .toBeLessThanOrEqual(1)
 })
 
-Then("详情页顶部栏应保持透明", async ({ page }) => {
-  const background = await page
-    .locator(".detail-headerbar")
-    .evaluate((el) => getComputedStyle(el).backgroundColor)
+Then("详情操作应显示在窗口标题栏中", async ({ page }) => {
+  const titlebar = page.getByTestId("app-titlebar")
+  await expect(titlebar.getByTestId("book-detail-close")).toBeVisible()
+  await expect(
+    titlebar.getByTestId("book-detail-fullscreen-toggle"),
+  ).toBeVisible()
+})
 
-  expect(background).toBe("rgba(0, 0, 0, 0)")
+When("用户打开标题栏的紧凑搜索", async ({ page }) => {
+  await page
+    .getByTestId("app-titlebar")
+    .getByRole("button", {
+      name: "搜索书名、作者、标签…",
+      exact: true,
+    })
+    .click()
+})
+
+Then("搜索弹层应显示在窗口内并接受输入", async ({ page }) => {
+  const search = page.getByRole("dialog", { name: "搜索书名、作者、标签…" })
+  await expect(search).toBeInViewport({ ratio: 1 })
+  const input = search.getByRole("textbox")
+  await expect(input).toBeFocused()
+  await input.fill("测试图书")
+  await expect(input).toHaveValue("测试图书")
+  await input.press("Escape")
+  await expect(search).toBeHidden()
+})
+
+Then("封面背景应覆盖整个列表和详情内容区", async ({ page }) => {
+  const backdrop = page.getByTestId("book-detail-backdrop")
+  await expect(backdrop).toBeVisible()
+  await expect(page.getByTestId("library-pane")).toBeVisible()
+  await expect(page.getByTestId("book-detail-pane")).toBeVisible()
+  await expect
+    .poll(() => backdrop.boundingBox())
+    .toEqual(await page.getByTestId("library-content").boundingBox())
+})
+
+Then("封面背景应限制在详情面板内", async ({ page }) => {
+  const detail = page.getByTestId("book-detail-pane")
+  const backdrop = detail.getByTestId("book-detail-backdrop")
+  await expect(backdrop).toHaveCount(1)
+  await expect
+    .poll(() => backdrop.boundingBox())
+    .toEqual(await detail.boundingBox())
+})
+
+Then("书库不应保留详情封面背景", async ({ page }) => {
+  await expect(page.getByTestId("book-detail-backdrop")).toHaveCount(0)
 })
