@@ -7,6 +7,8 @@ import { getCurrentWindow } from "@tauri-apps/api/window"
 import pTimeout from "p-timeout"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
+import { useReadingPositionCandidates } from "@/hooks/queries/useReadingPositionCandidates"
 import {
   setDownloadCancelled,
   setDownloadStarting,
@@ -34,17 +36,8 @@ async function loadReadingPosition(
   const row = await api
     .getReadingProgress(libraryId, bookId, format)
     .catch(() => null)
-  // The SQLite projection already knows whether conflict resolution is needed.
-  // Keep candidate loading (including upgrade backfill) off the opening path.
-  const candidates =
-    row && row.conflictCount > 1
-      ? api
-          .listReadingPositionCandidates(libraryId, bookId, format)
-          .catch(() => [])
-      : Promise.resolve([])
   return {
     initialSavedLocator: parseSavedLocator(row?.locator ?? null),
-    candidates,
   }
 }
 
@@ -92,9 +85,6 @@ export function useReaderBookSource({
     }
     initialSavedLocator: Locator | null
   } | null>(null)
-  const [positionConflict, setPositionConflict] = useState<
-    ReadingPositionCandidateDto[] | null
-  >(null)
   const [resolvingPositionConflict, setResolvingPositionConflict] =
     useState(false)
   const [positionConflictError, setPositionConflictError] = useState<
@@ -106,11 +96,24 @@ export function useReaderBookSource({
   >("idle")
   const [downloadError, setDownloadError] = useState<string | null>(null)
   const closingRef = useRef(false)
+  const loadGenerationRef = useRef(0)
+  const conflictPendingRef = useRef(false)
+  const [readerRevision, setReaderRevision] = useState(0)
 
   const mainHandoff = useMemo(() => isMainWebviewWindow(), [])
 
   const progressSyncEnabled =
     isTauri() && !mainHandoff && Boolean(activeLibraryId && format)
+  const candidatesQuery = useReadingPositionCandidates(
+    activeLibraryId,
+    Number(bookId),
+    format,
+    progressSyncEnabled && Boolean(bookPayload),
+  )
+  const positionConflict =
+    candidatesQuery.data && candidatesQuery.data.length > 1
+      ? candidatesQuery.data
+      : null
 
   const downloadProgress = useDownloadProgress(
     activeLibraryId,
@@ -179,8 +182,13 @@ export function useReaderBookSource({
         }
       }
 
-      await flushReaderProgress()
-      await getCurrentWindow().close()
+      try {
+        await flushReaderProgress()
+        await getCurrentWindow().close()
+      } catch (error) {
+        closingRef.current = false
+        toast.error(errorMessage(error))
+      }
     })
 
     return () => {
@@ -223,6 +231,7 @@ export function useReaderBookSource({
   useEffect(() => {
     if (mainHandoff) return
     let cancelled = false
+    loadGenerationRef.current += 1
 
     async function load() {
       if (!activeLibraryId) {
@@ -232,7 +241,9 @@ export function useReaderBookSource({
         return
       }
       setBookPayload(null)
-      setPositionConflict(null)
+      setPositionConflictError(null)
+      setResolvingPositionConflict(false)
+      conflictPendingRef.current = false
       setFetchError(null)
       setDownloadState("idle")
       setDownloadError(null)
@@ -260,7 +271,7 @@ export function useReaderBookSource({
         const [position, source] = await Promise.all([
           isTauri()
             ? loadReadingPosition(activeLibraryId, Number(bookId), fmt)
-            : Promise.resolve({ initialSavedLocator: null, candidates: [] }),
+            : Promise.resolve({ initialSavedLocator: null }),
           prepareReaderSource(
             activeLibraryId,
             Number(bookId),
@@ -269,11 +280,8 @@ export function useReaderBookSource({
           ),
         ])
         if (cancelled) return
-        const { initialSavedLocator, candidates } = position
+        const { initialSavedLocator } = position
         setBookPayload({ source, initialSavedLocator })
-        void Promise.resolve(candidates).then((items) => {
-          if (!cancelled && items.length > 1) setPositionConflict(items)
-        })
       } catch (e) {
         if (cancelled) return
         const msg = errorMessage(e)
@@ -289,6 +297,7 @@ export function useReaderBookSource({
     load()
     return () => {
       cancelled = true
+      loadGenerationRef.current += 1
       if (activeLibraryId) {
         void api.closeBookStreamer(activeLibraryId, Number(bookId))
       }
@@ -309,16 +318,13 @@ export function useReaderBookSource({
           t("reader.loadTimeout"),
         )
         if (cancelled) return
-        const { initialSavedLocator, candidates } = await loadReadingPosition(
+        const { initialSavedLocator } = await loadReadingPosition(
           activeLibraryId,
           Number(bookId),
           format,
         )
         if (cancelled) return
         setBookPayload({ source, initialSavedLocator })
-        void Promise.resolve(candidates).then((items) => {
-          if (!cancelled && items.length > 1) setPositionConflict(items)
-        })
       } catch (e) {
         if (!cancelled) setFetchError(errorMessage(e))
       }
@@ -341,15 +347,19 @@ export function useReaderBookSource({
   const handlePositionConflict = useCallback(
     async (candidate: ReadingPositionCandidateDto | null) => {
       if (!candidate) {
-        setPositionConflict(null)
+        setPositionConflictError(null)
         return
       }
-      if (!activeLibraryId || !format) return
+      if (!activeLibraryId || !format || conflictPendingRef.current) return
 
       setPositionConflictError(null)
+      conflictPendingRef.current = true
       setResolvingPositionConflict(true)
+      const generation = loadGenerationRef.current
       try {
         await flushReaderProgress()
+        if (loadGenerationRef.current !== generation) return
+        await queryClient.cancelQueries({ queryKey: candidatesQuery.queryKey })
         await api.selectReadingPositionCandidate(
           activeLibraryId,
           Number(bookId),
@@ -361,6 +371,7 @@ export function useReaderBookSource({
           Number(bookId),
           format,
         )
+        if (loadGenerationRef.current !== generation) return
         setBookPayload((current) =>
           current
             ? {
@@ -371,15 +382,42 @@ export function useReaderBookSource({
               }
             : current,
         )
-        setPositionConflict(null)
+        setReaderRevision((value) => value + 1)
+        await candidatesQuery.refetch({ throwOnError: true })
       } catch (error) {
-        setPositionConflictError(errorMessage(error))
+        if (loadGenerationRef.current === generation) {
+          setPositionConflictError(errorMessage(error))
+        }
       } finally {
-        setResolvingPositionConflict(false)
+        if (loadGenerationRef.current === generation) {
+          conflictPendingRef.current = false
+          setResolvingPositionConflict(false)
+        }
       }
     },
-    [activeLibraryId, bookId, format],
+    [activeLibraryId, bookId, format, queryClient, candidatesQuery],
   )
+
+  const refreshPositionConflict = async () => {
+    if (conflictPendingRef.current) return
+    const generation = loadGenerationRef.current
+    conflictPendingRef.current = true
+    setResolvingPositionConflict(true)
+    setPositionConflictError(null)
+    try {
+      await flushReaderProgress()
+      if (loadGenerationRef.current !== generation) return
+      await candidatesQuery.refetch({ throwOnError: true })
+    } catch (error) {
+      if (loadGenerationRef.current === generation)
+        setPositionConflictError(errorMessage(error))
+    } finally {
+      if (loadGenerationRef.current === generation) {
+        conflictPendingRef.current = false
+        setResolvingPositionConflict(false)
+      }
+    }
+  }
 
   const handleRetryDownload = useCallback(() => {
     void startDownload(format)
@@ -407,9 +445,14 @@ export function useReaderBookSource({
     bookTitle,
     format,
     bookPayload,
+    readerRevision,
     positionConflict,
     resolvingPositionConflict,
-    positionConflictError,
+    positionConflictError:
+      positionConflictError ??
+      (candidatesQuery.error ? errorMessage(candidatesQuery.error) : null),
+    refreshingPositionConflict: candidatesQuery.isFetching,
+    refreshPositionConflict,
     fetchError,
     downloadState,
     downloadError,

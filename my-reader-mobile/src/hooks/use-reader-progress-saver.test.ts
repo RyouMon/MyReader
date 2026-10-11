@@ -64,6 +64,77 @@ function readerState(position: number): ReaderState {
 }
 
 describe("useReaderProgressSaver", () => {
+  it("drains a newer page queued while closing waits for an earlier save", async () => {
+    const { result, rerender } = renderHook(
+      ({ state }: { state: ReaderState }) =>
+        useReaderProgressSaver(library.id, loadState, state),
+      { initialProps: { state: readerState(1) } },
+    )
+    let finish!: () => void
+    jest.mocked(setReadingProgress).mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve
+        }),
+    )
+    rerender({ state: readerState(3) })
+    let closing!: Promise<void>
+    await act(async () => {
+      closing = result.current.flush()
+    })
+    rerender({ state: readerState(5) })
+    await act(async () => {
+      finish()
+      await closing
+    })
+    expect(setReadingProgress).toHaveBeenCalledTimes(2)
+    expect(jest.mocked(setReadingProgress).mock.calls[1]?.[3]).toEqual(
+      readerState(5).locator,
+    )
+  })
+
+  it("retains the latest failed save for an explicit retry", async () => {
+    const { result, rerender } = renderHook(
+      ({ state }: { state: ReaderState }) =>
+        useReaderProgressSaver(library.id, loadState, state),
+      { initialProps: { state: readerState(1) } },
+    )
+    rerender({ state: readerState(3) })
+    jest
+      .mocked(setReadingProgress)
+      .mockRejectedValueOnce(new Error("disk full"))
+    await act(async () =>
+      expect(result.current.flush()).rejects.toThrow("disk full"),
+    )
+    await act(() => result.current.flush())
+    expect(setReadingProgress).toHaveBeenCalledTimes(2)
+    expect(jest.mocked(setReadingProgress).mock.calls[1]?.[3]).toEqual(
+      readerState(3).locator,
+    )
+  })
+
+  it("flushes pending progress once before resolving a conflict", async () => {
+    const { result, rerender } = renderHook(
+      ({ state }: { state: ReaderState }) =>
+        useReaderProgressSaver(library.id, loadState, state),
+      { initialProps: { state: readerState(1) } },
+    )
+    rerender({ state: readerState(3) })
+    await act(() => result.current.flush())
+    await act(async () => jest.advanceTimersByTime(1600))
+    expect(setReadingProgress).toHaveBeenCalledTimes(1)
+    expect(setReadingProgress).toHaveBeenCalledWith(
+      library,
+      7,
+      "EPUB",
+      readerState(3).locator,
+      {
+        displayProgression: 0.3,
+        invalidate: false,
+      },
+    )
+  })
+
   beforeEach(() => {
     jest.useFakeTimers()
     jest.clearAllMocks()
@@ -98,7 +169,7 @@ describe("useReaderProgressSaver", () => {
     )
   })
 
-  it("saves movement within the same publication position", () => {
+  it("saves movement within the same publication position", async () => {
     const initial = readerState(1)
     const next = {
       ...initial,
@@ -113,7 +184,7 @@ describe("useReaderProgressSaver", () => {
       { initialProps: { state: initial } },
     )
     rerender({ state: next })
-    act(() => jest.advanceTimersByTime(1600))
+    await act(async () => jest.advanceTimersByTime(1600))
     expect(setReadingProgress).toHaveBeenCalledWith(
       library,
       7,
@@ -123,26 +194,26 @@ describe("useReaderProgressSaver", () => {
     )
   })
 
-  it("should not overwrite initial progress when a book opens", () => {
+  it("should not overwrite initial progress when a book opens", async () => {
     const { rerender, unmount } = renderHook(
       ({ state }: { state: ReaderState }) =>
         useReaderProgressSaver(library.id, loadState, state),
       { initialProps: { state: readerState(1) } },
     )
 
-    act(() => {
+    await act(async () => {
       jest.advanceTimersByTime(1600)
     })
     expect(setReadingProgress).not.toHaveBeenCalled()
 
     rerender({ state: readerState(1) })
-    act(() => {
+    await act(async () => {
       jest.advanceTimersByTime(1600)
     })
     expect(setReadingProgress).not.toHaveBeenCalled()
 
     rerender({ state: readerState(2) })
-    act(() => {
+    await act(async () => {
       jest.advanceTimersByTime(1600)
     })
     expect(setReadingProgress).toHaveBeenCalledWith(

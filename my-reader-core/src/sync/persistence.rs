@@ -972,9 +972,10 @@ pub fn execute_local_database_command(
             recorded_at,
         } if operation_id == "local" => {
             let (locator_json, progression): (String, Option<f64>) = transaction.query_row(
-                "SELECT locator_json, display_progression FROM reading_position_drafts WHERE book_id = ?1 AND format = ?2 UNION ALL SELECT locator_json, display_progression FROM reading_progress WHERE book_id = ?1 AND format = ?2 LIMIT 1",
+                "SELECT locator_json, display_progression FROM reading_position_drafts WHERE book_id = ?1 AND format = ?2",
                 params![book_id, format], |row| Ok((row.get(0)?, row.get(1)?)),
-            ).map_err(database_error)?;
+            ).optional().map_err(database_error)?
+                .ok_or_else(|| sync_error("Local reading position draft is no longer available"))?;
             DocumentCommand::SetReadingPosition {
                 book_id,
                 value: crate::sync::document::ReadingPositionValue {

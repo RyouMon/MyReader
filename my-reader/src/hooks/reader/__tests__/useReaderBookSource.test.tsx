@@ -3,7 +3,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react"
 import type { ReactNode } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { scheduleReaderProgressSave } from "@/lib/readerProgressPersistence"
+import {
+  flushReaderProgress,
+  scheduleReaderProgressSave,
+} from "@/lib/readerProgressPersistence"
+import { applySidecarSyncCompleted } from "@/hooks/useSidecarSync"
 import type { ReadingPositionCandidateDto } from "@/lib/tauri-api"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 import { useReaderBookSource } from "../useReaderBookSource"
@@ -103,6 +107,38 @@ afterEach(() => {
 })
 
 describe("useReaderBookSource", () => {
+  it("discovers conflicts delivered by sync without reopening the publication", async () => {
+    mocks.api.getReadingProgress.mockResolvedValue({
+      locator: savedLocator,
+      conflictCount: 1,
+    })
+    const { result } = renderHook(() => useReaderBookSource({ bookId: "4" }), {
+      wrapper,
+    })
+    await waitFor(() => expect(result.current.bookPayload).not.toBeNull())
+    const payload = result.current.bookPayload
+    mocks.api.getReadingProgress.mockResolvedValue({
+      locator: candidates[1].locator,
+      conflictCount: 2,
+    })
+    await act(() =>
+      applySidecarSyncCompleted(
+        {
+          libraryId: "library",
+          mode: "full",
+          pulled: 1,
+          pushed: 0,
+        },
+        client,
+      ),
+    )
+    await waitFor(() =>
+      expect(result.current.positionConflict).toEqual(candidates),
+    )
+    expect(result.current.bookPayload).toBe(payload)
+    expect(mocks.api.prepareBookSource).toHaveBeenCalledTimes(1)
+  })
+
   it.each([
     null,
     { locator: savedLocator, conflictCount: 1 },
@@ -265,6 +301,47 @@ describe("useReaderBookSource", () => {
       "未能完成此操作，请重试。\nError: disk full",
     )
     expect(result.current.resolvingPositionConflict).toBe(false)
+  })
+
+  it("requires the latest local page to be durable before selecting a conflict", async () => {
+    const { result } = renderHook(() => useReaderBookSource({ bookId: "4" }), {
+      wrapper,
+    })
+    await waitFor(() => expect(result.current.positionConflict).toHaveLength(2))
+    mocks.api.setReadingProgress.mockRejectedValue(new Error("save failed"))
+    scheduleReaderProgressSave("library", 4, "EPUB", savedLocator, 0.3)
+    await act(() => result.current.handlePositionConflict(candidates[1]))
+    try {
+      expect(mocks.api.selectReadingPositionCandidate).not.toHaveBeenCalled()
+      expect(result.current.positionConflictError).toContain("save failed")
+    } finally {
+      mocks.api.setReadingProgress.mockResolvedValue(undefined)
+      await flushReaderProgress()
+      expect(mocks.api.setReadingProgress).toHaveBeenCalledTimes(2)
+    }
+  })
+
+  it("drains a newer page queued while the reader close is waiting for a save", async () => {
+    let finish!: () => void
+    mocks.api.setReadingProgress.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve
+        }),
+    )
+    scheduleReaderProgressSave("library", 4, "EPUB", savedLocator, 0.3)
+    const closing = flushReaderProgress()
+    await waitFor(() =>
+      expect(mocks.api.setReadingProgress).toHaveBeenCalledTimes(1),
+    )
+    scheduleReaderProgressSave("library", 4, "EPUB", candidates[1].locator, 0.8)
+    finish()
+    await closing
+    try {
+      expect(mocks.api.setReadingProgress).toHaveBeenCalledTimes(2)
+    } finally {
+      await flushReaderProgress()
+    }
   })
 
   it("requests a missing remote file and can retry a rejected download", async () => {

@@ -145,12 +145,16 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
         divinaPub={divinaPub}
         renderWindowState={renderWindowState}
       />
-      {bookSource.positionConflict && (
+      {(bookSource.positionConflict || bookSource.positionConflictError) && (
         <ReadBookPositionConflict
-          candidates={bookSource.positionConflict}
-          resolving={bookSource.resolvingPositionConflict}
+          candidates={bookSource.positionConflict ?? []}
+          resolving={
+            bookSource.resolvingPositionConflict ||
+            bookSource.refreshingPositionConflict
+          }
           error={bookSource.positionConflictError}
           onSelect={bookSource.handlePositionConflict}
+          onRefresh={bookSource.refreshPositionConflict}
         />
       )}
     </>
@@ -230,6 +234,7 @@ function ReadBookPositionConflict({
   resolving,
   onSelect,
   error,
+  onRefresh,
 }: {
   candidates: NonNullable<
     ReturnType<typeof useReaderBookSource>["positionConflict"]
@@ -237,6 +242,7 @@ function ReadBookPositionConflict({
   resolving: boolean
   error: string | null
   onSelect: ReturnType<typeof useReaderBookSource>["handlePositionConflict"]
+  onRefresh: () => Promise<void>
 }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -245,11 +251,19 @@ function ReadBookPositionConflict({
       <Button
         className="fixed right-4 top-16 z-50"
         variant="outline"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setOpen(true)
+          void onRefresh()
+        }}
       >
         {t("reader.positionConflictTitle")}
       </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        onOpenChange={(value) => {
+          if (!resolving) setOpen(value)
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("reader.positionConflictTitle")}</DialogTitle>
@@ -287,10 +301,19 @@ function ReadBookPositionConflict({
             </p>
           )}
           <DialogFooter>
+            {error && (
+              <Button
+                variant="outline"
+                disabled={resolving}
+                onClick={() => void onRefresh()}
+              >
+                {t("common.retry")}
+              </Button>
+            )}
             <Button
               variant="ghost"
               disabled={resolving}
-              onClick={() => void onSelect(null)}
+              onClick={() => setOpen(false)}
             >
               {t("reader.positionConflictKeepDefault")}
             </Button>
@@ -344,6 +367,7 @@ function ReadBookContent({
   if (format === "PDF") {
     return (
       <ReadiumPdfReader
+        key={source.readerRevision}
         {...readerProps}
         fileUrl={bookPayload.source.filePath}
       />
@@ -371,7 +395,13 @@ function ReadBookContent({
         t(isEpub ? "reader.loadEpubFailed" : "reader.loadComicFailed"),
     )
   }
-  return <Reader {...readerProps} publication={result.publication} />
+  return (
+    <Reader
+      key={source.readerRevision}
+      {...readerProps}
+      publication={result.publication}
+    />
+  )
 }
 
 function DemoReaderPreview({

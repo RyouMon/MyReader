@@ -110,16 +110,11 @@ impl<'a> ReadingRepository<'a> {
     }
 
     pub(crate) async fn latest_read_at_by_book(&self) -> Result<BTreeMap<i64, f64>, CoreError> {
-        let mut latest = BTreeMap::new();
-        for row in self.list_reading_positions().await? {
-            latest
-                .entry(row.book_id)
-                .and_modify(|updated_at: &mut f64| {
-                    *updated_at = updated_at.max(row.updated_at);
-                })
-                .or_insert(row.updated_at);
-        }
-        Ok(latest)
+        self.db.query_all_raw(Statement::from_string(DbBackend::Sqlite,
+            "SELECT p.book_id, CAST(MAX(COALESCE(d.recorded_at, p.updated_at)) AS REAL) AS latest_read_at
+             FROM reading_progress p LEFT JOIN reading_position_drafts d ON d.book_id = p.book_id AND d.format = p.format
+             GROUP BY p.book_id"
+        )).await?.into_iter().map(|row| Ok((row.try_get("", "book_id")?, row.try_get("", "latest_read_at")?))).collect()
     }
 
     pub(crate) async fn list_bookmarks(

@@ -2,6 +2,8 @@ import { appendErrorDetail } from "@my-reader/i18n/mobile"
 import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
 import { ReaderScreenSettings } from "./components/ReaderScreenSettings"
 import { ReaderPublicationSurface } from "./components/ReaderPublicationSurface"
+import { ReaderPositionConflict } from "./components/ReaderPositionConflict"
+import { useReaderPositionConflict } from "@/src/hooks/use-reader-position-conflict"
 import {
   ReaderLoadState,
   ReaderLoadingSurface,
@@ -245,11 +247,7 @@ export default function ReaderScreen() {
     (s) =>
       s.libraries.find((library) => library.id === s.activeLibraryId) ?? null,
   )
-  const { loadState, resolveReadingPositionConflict } = useBookLoader(
-    id,
-    formatParam,
-    activeLibraryId,
-  )
+  const { loadState } = useBookLoader(id, formatParam, activeLibraryId)
   const {
     activeLoadState,
     isReflowReady,
@@ -332,7 +330,17 @@ export default function ReaderScreen() {
     publicationKey,
   )
   const readingLocationKey = readingSessionLocation(currentLocator, currentPage)
-  useReaderProgressSaver(activeLibraryId, activeLoadState, readerState)
+  const { flush: flushProgress } = useReaderProgressSaver(
+    activeLibraryId,
+    activeLoadState,
+    readerState,
+  )
+  const positionConflict = useReaderPositionConflict(
+    activeLibrary,
+    loadedBookId,
+    loadedFormat,
+    flushProgress,
+  )
   useReadingSessionTracker(
     activeLibrary,
     activeLoadState,
@@ -527,12 +535,17 @@ export default function ReaderScreen() {
   }, [])
 
   const handleRequestClose = useCallback(async () => {
-    closeReader()
-  }, [closeReader])
+    try {
+      await flushProgress()
+      closeReader()
+    } catch (error) {
+      showErrorAlert(t("errorBoundary.defaultTitle"), errorMessage(error))
+    }
+  }, [closeReader, flushProgress, t])
 
   const handleBack = useCallback(() => {
-    closeReader()
-  }, [closeReader])
+    void handleRequestClose()
+  }, [handleRequestClose])
 
   const toggleChrome = useCallback(() => {
     dispatch({ type: "contentTap" })
@@ -1202,7 +1215,6 @@ export default function ReaderScreen() {
     return (
       <ReaderLoadState
         loadState={loadState}
-        resolveReadingPositionConflict={resolveReadingPositionConflict}
         statusBarStyle={statusBarStyle}
         themeBgColor={themeBgColor}
         themeFgColor={themeFgColor}
@@ -1351,6 +1363,17 @@ export default function ReaderScreen() {
               visible={chromeState >= ChromeState.Chrome}
               palette={chromePalette}
               onPress={handleRequestClose}
+            />
+
+            <ReaderPositionConflict
+              conflict={positionConflict}
+              visible={chromeState >= ChromeState.Chrome}
+              insetsTop={insets.top}
+              palette={chromePalette}
+              onSelect={async (operationId) => {
+                const locator = await positionConflict.select(operationId)
+                if (locator) navigateToLocator(locator)
+              }}
             />
 
             {/* Fixed-layout fallback; text EPUB renders both bottom anchors together below. */}

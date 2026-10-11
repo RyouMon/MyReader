@@ -1013,6 +1013,176 @@ mod tests {
 
     use sea_orm::EntityTrait;
 
+    async fn deliver_position_snapshot(source: &Path, target: &Path, library: &Path) {
+        use crate::library::LibraryContext;
+        use crate::sync::persistence::{async_io, SyncRemoteObject};
+        use sha2::{Digest, Sha256};
+        let source = LibraryContext::open(source).await.unwrap();
+        let target = LibraryContext::open(target).await.unwrap();
+        let source_identity = source.identity(library).await.unwrap();
+        let target_identity = target.identity(library).await.unwrap();
+        let snapshot =
+            async_io::load_publishable_database_snapshot(source.path(), &source_identity)
+                .await
+                .unwrap()
+                .unwrap();
+        let hash = format!("{:x}", Sha256::digest(&snapshot.snapshot_bytes));
+        async_io::apply_remote_database_objects(
+            target.path(),
+            &target_identity,
+            1000,
+            vec![SyncRemoteObject {
+                storage_key: crate::sync::storage::snapshot_key(
+                    source_identity.library_uuid.as_str(),
+                    &hash,
+                ),
+                bytes: snapshot.snapshot_bytes,
+                sha256: hash,
+            }],
+        )
+        .await
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn unresolved_draft_should_survive_reopen_and_only_converge_after_explicit_choice() {
+        use super::ReadingService;
+        let left = tempfile::tempdir().unwrap();
+        let right = tempfile::tempdir().unwrap();
+        let library = tempfile::tempdir().unwrap();
+        seed_library_uuid(library.path()).await;
+        let locator = |position| {
+            format!(
+                r#"{{"href":"chapter.xhtml","type":"application/xhtml+xml","locations":{{"position":{position}}}}}"#
+            )
+        };
+        ReadingService::set_reading_position(
+            left.path(),
+            library.path(),
+            42,
+            "EPUB",
+            &locator(1),
+            Some(0.1),
+            1,
+        )
+        .await
+        .unwrap();
+        deliver_position_snapshot(left.path(), right.path(), library.path()).await;
+        for (sidecar, page) in [(left.path(), 2), (right.path(), 8)] {
+            ReadingService::set_reading_position(
+                sidecar,
+                library.path(),
+                42,
+                "EPUB",
+                &locator(page),
+                Some(f64::from(page) / 10.0),
+                i64::from(page),
+            )
+            .await
+            .unwrap();
+        }
+        deliver_position_snapshot(right.path(), left.path(), library.path()).await;
+        let candidates = ReadingService::list_reading_position_candidates(
+            left.path(),
+            library.path(),
+            42,
+            "EPUB",
+            10,
+        )
+        .await
+        .unwrap();
+        assert_eq!(candidates.len(), 2);
+        ReadingService::set_reading_position(
+            left.path(),
+            library.path(),
+            42,
+            "EPUB",
+            &locator(5),
+            Some(0.5),
+            20,
+        )
+        .await
+        .unwrap();
+
+        // Close the actual pool and reopen the migrated sidecar from disk.
+        let path = crate::library::LibraryContext::database_path(left.path()).unwrap();
+        drop(
+            crate::database::close_database_file(Path::new(&path))
+                .await
+                .unwrap(),
+        );
+        let reopened = ReadingService::get_reading_position(left.path(), 42, "EPUB")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(reopened.locator["locations"]["position"], 5);
+        assert_eq!(
+            ReadingService::latest_read_at_by_book(left.path())
+                .await
+                .unwrap()[&42],
+            20.0
+        );
+
+        deliver_position_snapshot(left.path(), right.path(), library.path()).await;
+        let remote_candidates = ReadingService::list_reading_position_candidates(
+            right.path(),
+            library.path(),
+            42,
+            "EPUB",
+            21,
+        )
+        .await
+        .unwrap();
+        assert_eq!(remote_candidates.len(), 2);
+        assert!(remote_candidates
+            .iter()
+            .all(|value| value.locator["locations"]["position"] != 5));
+        assert!(ReadingService::select_reading_position_candidate(
+            left.path(),
+            library.path(),
+            42,
+            "EPUB",
+            "expired",
+            22
+        )
+        .await
+        .is_err());
+        assert_eq!(
+            ReadingService::get_reading_position(left.path(), 42, "EPUB")
+                .await
+                .unwrap()
+                .unwrap()
+                .locator,
+            reopened.locator
+        );
+
+        ReadingService::select_reading_position_candidate(
+            left.path(),
+            library.path(),
+            42,
+            "EPUB",
+            "local",
+            23,
+        )
+        .await
+        .unwrap();
+        deliver_position_snapshot(left.path(), right.path(), library.path()).await;
+        for sidecar in [left.path(), right.path()] {
+            let candidates = ReadingService::list_reading_position_candidates(
+                sidecar,
+                library.path(),
+                42,
+                "EPUB",
+                24,
+            )
+            .await
+            .unwrap();
+            assert_eq!(candidates.len(), 1);
+            assert_eq!(candidates[0].locator["locations"]["position"], 5);
+            assert_ne!(candidates[0].operation_id, "local");
+        }
+    }
+
     #[tokio::test]
     async fn should_persist_projection_and_outbox_when_book_is_favorited() {
         let sidecar = tempfile::tempdir().unwrap();
@@ -1105,6 +1275,45 @@ mod tests {
         .unwrap();
         assert_eq!(candidates.len(), 1);
         assert_eq!(candidates[0].locator["locations"]["position"], 3);
+    }
+
+    #[tokio::test]
+    async fn should_reject_a_local_candidate_without_a_persisted_draft() {
+        let sidecar = tempfile::tempdir().unwrap();
+        let library = tempfile::tempdir().unwrap();
+        seed_library_uuid(library.path()).await;
+        let locator =
+            r#"{"href":"chapter.xhtml","type":"application/xhtml+xml","locations":{"position":3}}"#;
+        super::ReadingService::set_reading_position(
+            sidecar.path(),
+            library.path(),
+            42,
+            "EPUB",
+            locator,
+            Some(0.4),
+            900,
+        )
+        .await
+        .unwrap();
+
+        let selected = super::ReadingService::select_reading_position_candidate(
+            sidecar.path(),
+            library.path(),
+            42,
+            "EPUB",
+            "local",
+            901,
+        )
+        .await;
+        assert!(
+            selected.is_err(),
+            "a stale draft selection must not resolve to the synchronized default"
+        );
+        let position = super::ReadingService::get_reading_position(sidecar.path(), 42, "EPUB")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(position.updated_at, 900.0);
     }
 
     #[tokio::test]
