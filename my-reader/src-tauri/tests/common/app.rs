@@ -10,8 +10,8 @@
 //!
 //! Constraints:
 //! - `mock_app_handle()` requires the tauri `test` feature (already in `[dev-dependencies]`).
-//! - On Windows, integration tests using `mock_builder()` hit
-//!   `STATUS_ENTRYPOINT_NOT_FOUND` (tauri-apps/tauri#13419). Run via WSL.
+//! - On Windows MSVC, `build.rs` embeds Common Controls v6 in integration tests
+//!   to prevent `STATUS_ENTRYPOINT_NOT_FOUND` (tauri-apps/tauri#13419).
 //! - Each `TestApp` gets a fresh in-memory `AppConfig`. The `app_data_dir` returned by
 //!   `app.path().app_data_dir()` is the default mock path — tests must use
 //!   `seed_config_file` / `read_persisted_config` from `common::config` rather than
