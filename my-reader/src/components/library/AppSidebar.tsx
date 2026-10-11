@@ -176,7 +176,7 @@ export default function AppSidebar({ onAddLibrary }: AppSidebarProps) {
   return (
     <Sidebar
       collapsible="icon"
-      className="min-w-0 overflow-x-hidden touch-pan-y overscroll-x-none"
+      className="absolute h-full min-w-0 overflow-x-hidden touch-pan-y overscroll-x-none"
     >
       <SidebarHeader className="gap-0 overflow-x-hidden">
         <SidebarMenu>

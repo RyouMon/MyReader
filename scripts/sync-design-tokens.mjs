@@ -253,6 +253,8 @@ const COLOR_PAIRS = [
   ["brand-onedrive", "--brand-onedrive"],
   ["data-source-local", "--data-source-local"],
   ["data-source-webdav", "--data-source-webdav"],
+  ["window-close-background", "--window-close-background"],
+  ["window-close-foreground", "--window-close-foreground"],
 ]
 
 const REQUIRED_TOKENS = COLOR_PAIRS.map(([, tokenName]) => tokenName)
@@ -323,6 +325,8 @@ function syncDesktopTokens(desktopCss, rootVars, darkVars) {
     "--brand-onedrive",
     "--data-source-local",
     "--data-source-webdav",
+    "--window-close-background",
+    "--window-close-foreground",
   ]
 
   for (const tokenName of lightTokenNames) {

@@ -7,13 +7,14 @@ import {
 import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { open } from "@tauri-apps/plugin-dialog"
-import { useCallback, useMemo, useState } from "react"
+import { type ReactNode, useCallback, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
-import { SectionHeader } from "@/components/common/SectionHeader"
+import AppTitleBar from "@/components/common/AppTitleBar"
 import LibrarySyncStatus from "@/components/library/LibrarySyncStatus"
 import Toolbar from "@/components/library/Toolbar"
 import { Button } from "@/components/ui/button"
+import { SidebarInset } from "@/components/ui/sidebar"
 import {
   Dialog,
   DialogContent,
@@ -51,15 +52,17 @@ import { cn } from "@/lib/utils"
 import { useAppUiStore } from "@/stores/appUiStore"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 import BookDetailPane from "./BookDetailPane"
+import BookDetailTitleBar from "./BookDetailTitleBar"
 import {
   LibraryCollectionContent,
   LibraryCollectionEmpty,
 } from "./LibraryCollectionContent"
-import { getDesktopBookCollectionDefinition } from "./bookCollectionDefinitions"
 
 interface LibraryWorkspaceProps {
   activeBookId: string | null
   onAddLibrary: () => void
+  sidebar: ReactNode
+  settings: ReactNode
 }
 
 const EMPTY_SELECTED_FORMATS: Record<string, string> = {}
@@ -68,6 +71,8 @@ type DeletableBook = Pick<CalibreBook, "id" | "title">
 export default function LibraryWorkspace({
   activeBookId,
   onAddLibrary,
+  sidebar,
+  settings,
 }: LibraryWorkspaceProps) {
   const { t } = useTranslation()
   const { data: libraries = [], isLoading: libLoading } = useLibrariesQuery()
@@ -98,6 +103,12 @@ export default function LibraryWorkspace({
   const [bookPendingDeletion, setBookPendingDeletion] =
     useState<DeletableBook | null>(null)
   const [deletingBook, setDeletingBook] = useState(false)
+  const [detailBackdropHost, setDetailBackdropHost] =
+    useState<HTMLDivElement | null>(null)
+  const [closedDetail, setClosedDetail] = useState<{
+    bookId: string
+    libraryId: string | null
+  } | null>(null)
 
   const viewMode = useAppUiStore((s) => s.libraryViewMode)
   const setViewMode = useAppUiStore((s) => s.setLibraryViewMode)
@@ -106,7 +117,7 @@ export default function LibraryWorkspace({
   const {
     isSplitMode,
     showListPane,
-    keepsListSplitGeometry,
+    listPaneClassName,
     isDetailOverlay,
     showDetailPane,
     forceNarrowDetailHero,
@@ -248,10 +259,6 @@ export default function LibraryWorkspace({
     }
   }
 
-  const collectionDefinition =
-    getDesktopBookCollectionDefinition(activeCollectionId)
-  const sectionLabel = t(collectionDefinition.titleKey)
-
   function handleOpenReader(book: CalibreBook) {
     void openReader({
       bookId: book.id,
@@ -271,6 +278,15 @@ export default function LibraryWorkspace({
     navigate({ to: "/" })
   }, [navigate])
 
+  function handleToggleDetail() {
+    if (activeBookId) {
+      setClosedDetail({ bookId: activeBookId, libraryId: activeLibraryId })
+      handleBackToList()
+    } else if (closedDetail?.libraryId === activeLibraryId) {
+      navigate({ to: "/book/$bookId", params: { bookId: closedDetail.bookId } })
+    }
+  }
+
   const handleBrowseAllBooks = useCallback(() => {
     setActiveCollectionId("all")
     navigate({ to: "/" })
@@ -282,6 +298,12 @@ export default function LibraryWorkspace({
     setDeletingBook(true)
     try {
       await api.deleteBook(activeLibraryId, bookPendingDeletion.id)
+      setClosedDetail((detail) =>
+        detail?.libraryId === activeLibraryId &&
+        detail.bookId === String(bookPendingDeletion.id)
+          ? null
+          : detail,
+      )
       setBookPendingDeletion(null)
       if (String(bookPendingDeletion.id) === activeBookId) {
         handleBackToList()
@@ -304,19 +326,6 @@ export default function LibraryWorkspace({
     t,
   ])
 
-  const gridHeader = (
-    <div className="flex items-baseline gap-2.5 mb-4 pt-5">
-      <SectionHeader
-        className="mb-0"
-        title={sectionLabel}
-        titleClassName="text-xl font-semibold"
-      />
-      <span className="text-sm text-muted-foreground font-normal">
-        {t("library.collections.bookCount", { count: displayedTotal })}
-      </span>
-    </div>
-  )
-
   return (
     <section
       className={cn(
@@ -324,99 +333,122 @@ export default function LibraryWorkspace({
         isSplitMode && "[&_[data-testid=library-scroll]]:px-5",
       )}
     >
-      <div className="relative flex min-h-0 flex-1 overflow-hidden">
-        <div
-          data-testid="library-pane"
-          aria-hidden={!showListPane}
-          className={cn(
-            "flex min-w-0 flex-1 flex-col",
-            showListPane
-              ? "relative z-10"
-              : "pointer-events-none invisible absolute top-0 bottom-0 start-0 z-0 h-full",
-            keepsListSplitGeometry
-              ? "w-1/2 max-w-none flex-none shrink-0"
-              : showListPane
-                ? "flex-1"
-                : "end-0",
-          )}
-        >
-          <Toolbar
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-            sortBy={sortBy}
-            onSortChange={setSortBy}
-            canImportBook={isManagedLibrary}
-            importingBook={importingBook}
-            onImportBook={() => void handleImportBook()}
-          />
-
-          <LibraryCollectionContent
-            loading={loading}
-            error={displayedError}
-            hasNoLibrary={libraries.length === 0}
-            onAddLibrary={onAddLibrary}
-            onRetry={collection.refresh}
-            emptyState={
-              <LibraryCollectionEmpty
-                activeCollectionId={activeCollectionId}
-                searchQuery={searchQuery}
-                isManagedLibrary={isManagedLibrary}
-                importingBook={importingBook}
-                onImportBook={handleImportBook}
-                onBrowseAllBooks={handleBrowseAllBooks}
-              />
-            }
-            gridProps={{
-              books: displayedBooks,
-              total: displayedTotal,
-              libraryId: activeLibraryId,
-              onRead: handleOpenDetail,
-              onOpenReader: handleOpenReader,
-              onDeleteBook: isManagedLibrary
-                ? setBookPendingDeletion
-                : undefined,
-              ensureRange: collection.ensureRange,
-              header: gridHeader,
-              viewMode,
-              fileActionsEnabled,
-              selectedFormatById,
-              progressByBookId,
-              activeBookId,
-            }}
-          />
-        </div>
-
-        {showDetailPane ? (
-          <aside
-            className={cn(
-              "flex min-w-0 flex-1 flex-col bg-background p-0",
-              isSplitMode && "w-1/2 flex-none",
-              isDetailOverlay
-                ? "absolute inset-0 z-20"
-                : "relative z-10 animate-in fade-in-0 duration-150",
-            )}
-            data-testid="book-detail-shell"
-          >
-            <BookDetailPane
-              bookId={activeBookId!}
+      <AppTitleBar
+        showSidebarToggle={!settings}
+        detailVisible={showDetailPane}
+        libraryControls={
+          showListPane ? (
+            <Toolbar
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              canImportBook={isManagedLibrary}
+              importingBook={importingBook}
+              onImportBook={() => void handleImportBook()}
+            />
+          ) : null
+        }
+        detailControls={
+          showDetailPane ||
+          (closedDetail && closedDetail.libraryId === activeLibraryId) ? (
+            <BookDetailTitleBar
               onBackToList={handleBackToList}
-              forceNarrowHero={forceNarrowDetailHero}
               fullScreenAvailable={canToggleDetailFullScreen}
               detailFullScreen={detailFullScreen}
               onToggleDetailFullScreen={() =>
                 setDetailFullScreen(!detailFullScreen)
               }
-              showSidebarToggle={!showListPane}
-              onLibraryChanged={handleCatalogChanged}
-              onDeleteBook={setBookPendingDeletion}
+              detailVisible={showDetailPane}
+              onToggleDetail={handleToggleDetail}
             />
-          </aside>
+          ) : null
+        }
+      />
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
+        {sidebar}
+        <SidebarInset className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <div
+            ref={setDetailBackdropHost}
+            className="relative isolate flex min-h-0 flex-1 overflow-hidden"
+            data-testid="library-content"
+          >
+            <div
+              data-testid="library-pane"
+              aria-hidden={!showListPane}
+              className={listPaneClassName}
+            >
+              <LibraryCollectionContent
+                loading={loading}
+                error={displayedError}
+                hasNoLibrary={libraries.length === 0}
+                onAddLibrary={onAddLibrary}
+                onRetry={collection.refresh}
+                emptyState={
+                  <LibraryCollectionEmpty
+                    activeCollectionId={activeCollectionId}
+                    searchQuery={searchQuery}
+                    isManagedLibrary={isManagedLibrary}
+                    importingBook={importingBook}
+                    onImportBook={handleImportBook}
+                    onBrowseAllBooks={handleBrowseAllBooks}
+                  />
+                }
+                gridProps={{
+                  books: displayedBooks,
+                  total: displayedTotal,
+                  libraryId: activeLibraryId,
+                  onRead: handleOpenDetail,
+                  onOpenReader: handleOpenReader,
+                  onDeleteBook: isManagedLibrary
+                    ? setBookPendingDeletion
+                    : undefined,
+                  ensureRange: collection.ensureRange,
+                  viewMode,
+                  fileActionsEnabled,
+                  selectedFormatById,
+                  progressByBookId,
+                  activeBookId,
+                }}
+              />
+            </div>
+
+            {showDetailPane ? (
+              <aside
+                className={cn(
+                  "flex min-w-0 flex-1 flex-col p-0",
+                  isSplitMode && "w-1/2 flex-none",
+                  isDetailOverlay
+                    ? "absolute inset-0 z-20"
+                    : "relative z-10 animate-in fade-in-0 duration-150",
+                )}
+                data-testid="book-detail-shell"
+              >
+                <BookDetailPane
+                  bookId={activeBookId!}
+                  onBackToList={handleBackToList}
+                  forceNarrowHero={forceNarrowDetailHero}
+                  wideBackdropHost={detailBackdropHost}
+                  onLibraryChanged={handleCatalogChanged}
+                  onDeleteBook={setBookPendingDeletion}
+                />
+              </aside>
+            ) : null}
+          </div>
+
+          <LibraryStatusBar
+            activeLibrary={activeLibrary}
+            onSync={handleRefresh}
+          />
+        </SidebarInset>
+        {settings ? (
+          <div className="absolute inset-0 z-50 bg-background animate-in fade-in-0 duration-150">
+            {settings}
+          </div>
         ) : null}
       </div>
-
-      <LibraryStatusBar activeLibrary={activeLibrary} onSync={handleRefresh} />
 
       <DeleteBookDialog
         book={bookPendingDeletion}
@@ -467,10 +499,22 @@ function getWorkspaceLayout(
   const forceNarrowDetailHero = isSmallWindow || (isSplitMode && isMediumWindow)
   const canToggleDetailFullScreen = Boolean(activeBookId && !isSmallWindow)
 
+  const listPaneClassName = cn(
+    "flex min-w-0 flex-1 flex-col",
+    showListPane
+      ? "relative z-10"
+      : "pointer-events-none invisible absolute top-0 bottom-0 start-0 z-0 h-full",
+    keepsListSplitGeometry
+      ? "w-1/2 max-w-none flex-none shrink-0"
+      : showListPane
+        ? "flex-1"
+        : "end-0",
+  )
+
   return {
     isSplitMode,
     showListPane,
-    keepsListSplitGeometry,
+    listPaneClassName,
     isDetailOverlay,
     showDetailPane,
     forceNarrowDetailHero,

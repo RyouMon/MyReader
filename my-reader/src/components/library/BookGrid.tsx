@@ -1,7 +1,6 @@
 import type { CalibreBook } from "@my-reader/tools/types/book"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import {
-  type ReactNode,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -45,7 +44,6 @@ interface BookGridProps {
   onMore?: (book: CalibreBook) => void
   onDeleteBook?: (book: CalibreBook) => void
   ensureRange: (start: number, end: number) => void
-  header?: ReactNode
   viewMode?: LibraryViewMode
   fileActionsEnabled?: boolean
   selectedFormatById?: Record<string, string>
@@ -71,7 +69,6 @@ export default function BookGrid({
   onMore,
   onDeleteBook,
   ensureRange,
-  header,
   viewMode = "grid",
   fileActionsEnabled = true,
   selectedFormatById = {},
@@ -364,9 +361,10 @@ export default function BookGrid({
         onScroll={rememberScrollAnchor}
         className="myreader-overlay-viewport h-full min-h-0 overflow-x-hidden overflow-y-auto"
       >
-        <div ref={scrollContentRef} className="min-h-full px-6">
-          {header}
-
+        <div
+          ref={scrollContentRef}
+          className="min-h-full px-6 pt-4 sm:pt-5 2xl:pt-7"
+        >
           <div
             ref={virtualListRef}
             className="relative w-full"
@@ -590,11 +588,7 @@ export function LibrarySkeletonGrid({
   viewMode: LibraryViewMode
 }) {
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-6">
-      <div className="mb-4 flex items-baseline gap-2.5 pt-5">
-        <Skeleton className="h-5 w-14 rounded" />
-        <Skeleton className="h-3.5 w-6 rounded" />
-      </div>
+    <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-4 sm:pt-5 2xl:pt-7">
       {viewMode === "list" ? (
         <div>
           {Array.from({ length: SKELETON_COUNT }, (_, i) => (

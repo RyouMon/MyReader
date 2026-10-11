@@ -4,10 +4,11 @@ import type { BuiltInBookCollectionId } from "@my-reader/tools/types/book-collec
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { type ComponentProps, useState } from "react"
+import { type ComponentProps, type ReactNode, useState } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { useAppUiStore } from "@/stores/appUiStore"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
+import { SidebarProvider } from "@/components/ui/sidebar"
 import type BookGrid from "../BookGrid"
 import LibraryWorkspace from "../LibraryWorkspace"
 
@@ -21,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
   refetchFavorites: vi.fn(),
   refreshSpecial: vi.fn(),
+  windowSizeClass: vi.fn(() => "large"),
 }))
 
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => mocks.navigate }))
@@ -67,9 +69,9 @@ vi.mock("@/hooks/reader/useOpenReader", () => ({
   useOpenReader: () => vi.fn(),
 }))
 vi.mock("@/hooks/use-window-size-class", () => ({
-  useWindowSizeClass: () => "large",
+  useWindowSizeClass: mocks.windowSizeClass,
 }))
-vi.mock("../Toolbar", () => ({ default: () => null }))
+vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: () => false }))
 vi.mock("../LibrarySyncStatus", () => ({ default: () => null }))
 vi.mock("../BookDetailPane", () => ({ default: () => <div>图书详情</div> }))
 vi.mock("../BookGrid", () => ({
@@ -122,15 +124,26 @@ function renderWorkspace(activeBookId: string | null = null) {
     defaultOptions: { queries: { retry: false } },
   })
   return render(
-    <QueryClientProvider client={client}>
-      <LibraryWorkspace activeBookId={activeBookId} onAddLibrary={vi.fn()} />
-    </QueryClientProvider>,
+    <LibraryWorkspace
+      activeBookId={activeBookId}
+      onAddLibrary={vi.fn()}
+      sidebar={null}
+      settings={null}
+    />,
+    {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={client}>
+          <SidebarProvider>{children}</SidebarProvider>
+        </QueryClientProvider>
+      ),
+    },
   )
 }
 
 describe("LibraryWorkspace", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.windowSizeClass.mockReturnValue("large")
     mocks.deleteBook.mockResolvedValue(undefined)
     mocks.paginated.mockReturnValue(collectionResult(book.title))
     mocks.favorites.mockReturnValue({
@@ -149,6 +162,119 @@ describe("LibraryWorkspace", () => {
       librarySortBy: "title",
     })
     useAppUiStore.setState({ detailFullScreen: false, libraryViewMode: "grid" })
+  })
+
+  it("connects search, view mode and sorting from the window title bar", async () => {
+    const user = userEvent.setup()
+    renderWorkspace()
+    const titlebar = within(screen.getByTestId("app-titlebar"))
+    await user.type(titlebar.getByRole("textbox"), "夜航")
+    expect(useLibraryUiStore.getState().librarySearchQuery).toBe("夜航")
+    await user.click(
+      titlebar.getByRole("button", { name: i18n.t("library.listView") }),
+    )
+    expect(useAppUiStore.getState().libraryViewMode).toBe("list")
+    await user.click(
+      titlebar.getByRole("button", { name: i18n.t("library.sort.title") }),
+    )
+    await user.click(
+      screen.getByRole("menuitem", { name: i18n.t("library.sort.author") }),
+    )
+    expect(useLibraryUiStore.getState().librarySortBy).toBe("author")
+    expect(
+      titlebar.queryByRole("button", { name: i18n.t("library.filter") }),
+    ).toBeNull()
+  })
+
+  it("puts full-screen before the detail toggle and keeps navigation in the title bar", async () => {
+    const user = userEvent.setup()
+    renderWorkspace("42")
+    const titlebar = screen.getByTestId("app-titlebar")
+    expect(
+      within(screen.getByTestId("detail-titlebar"))
+        .getAllByRole("button")
+        .map((button) => button.dataset.testid),
+    ).toEqual(["book-detail-fullscreen-toggle", "book-detail-close"])
+    await user.click(screen.getByTestId("book-detail-fullscreen-toggle"))
+    expect(useAppUiStore.getState().detailFullScreen).toBe(true)
+    expect(screen.queryByTestId("library-titlebar")).toBeNull()
+    expect(titlebar).toContainElement(screen.getByTestId("book-detail-back"))
+    await user.click(screen.getByTestId("book-detail-back"))
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/" })
+  })
+
+  it("reopens the closed detail only in the same library", async () => {
+    const user = userEvent.setup()
+    const view = renderWorkspace("42")
+    await user.click(screen.getByTestId("book-detail-close"))
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/" })
+    view.rerender(
+      <LibraryWorkspace
+        activeBookId={null}
+        onAddLibrary={vi.fn()}
+        sidebar={null}
+        settings={null}
+      />,
+    )
+    const open = screen.getByTestId("book-detail-open")
+    expect(open).toHaveAttribute("aria-expanded", "false")
+    expect(screen.getByTestId("app-titlebar")).toContainElement(open)
+    await user.click(open)
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: "/book/$bookId",
+      params: { bookId: "42" },
+    })
+    act(() => useLibraryUiStore.setState({ activeLibraryId: "lib-2" }))
+    expect(screen.queryByTestId("book-detail-open")).toBeNull()
+  })
+
+  it("keeps back navigation and omits full-screen in a compact window", async () => {
+    mocks.windowSizeClass.mockReturnValue("small")
+    renderWorkspace("42")
+    const titlebar = screen.getByTestId("app-titlebar")
+    expect(titlebar).toContainElement(screen.getByTestId("book-detail-back"))
+    expect(titlebar).toContainElement(screen.getByTestId("book-detail-close"))
+    expect(screen.queryByTestId("book-detail-fullscreen-toggle")).toBeNull()
+    expect(screen.queryByTestId("library-titlebar")).toBeNull()
+  })
+
+  it("removes the reopen action when the closed book is deleted", async () => {
+    const user = userEvent.setup()
+    const view = renderWorkspace("42")
+    await user.click(screen.getByTestId("book-detail-close"))
+    view.rerender(
+      <LibraryWorkspace
+        activeBookId={null}
+        onAddLibrary={vi.fn()}
+        sidebar={null}
+        settings={null}
+      />,
+    )
+    await user.click(screen.getByRole("button", { name: book.title }))
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "删除图书",
+      }),
+    )
+    await waitFor(() =>
+      expect(screen.queryByTestId("book-detail-open")).toBeNull(),
+    )
+  })
+
+  it("hides workspace title-bar actions while settings are open", () => {
+    const view = renderWorkspace("42")
+    view.rerender(
+      <LibraryWorkspace
+        activeBookId="42"
+        onAddLibrary={vi.fn()}
+        sidebar={null}
+        settings={<div>应用设置</div>}
+      />,
+    )
+    expect(screen.getByText("应用设置")).toBeVisible()
+    expect(screen.queryByTestId("library-titlebar")).toBeNull()
+    expect(screen.queryByTestId("detail-titlebar")).toBeNull()
+    expect(screen.getByTestId("library-pane")).toBeInTheDocument()
   })
 
   it.each<[BuiltInBookCollectionId, string]>([
@@ -220,9 +346,12 @@ describe("LibraryWorkspace", () => {
       librarySearchQuery: search,
     })
     renderWorkspace()
-    const importButton = screen.queryByRole("button", {
-      name: i18n.t("library.empty.importBook"),
-    })
+    const importButton = within(screen.getByTestId("library-pane")).queryByRole(
+      "button",
+      {
+        name: i18n.t("library.empty.importBook"),
+      },
+    )
     const browseButton = screen.queryByRole("button", {
       name: i18n.t("library.browseAllBooks"),
     })

@@ -27,6 +27,10 @@
   --data-source-local: #64748b;
   --data-source-webdav: #0f766e;
 
+  /* Windows caption controls retain system colors in both themes. */
+  --window-close-background: #c42b1c;
+  --window-close-foreground: #ffffff;
+
   /* ── BACKGROUNDS ──────────────────────────────────────────
      Low-contrast paper-like surfaces. Quiet editorial.
      Cards sit slightly darker than the page so they read as

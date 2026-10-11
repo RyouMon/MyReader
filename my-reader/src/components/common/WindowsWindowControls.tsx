@@ -1,24 +1,28 @@
 import { isTauri } from "@tauri-apps/api/core"
 import { getCurrentWindow } from "@tauri-apps/api/window"
-import { Copy, Minus, Square, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils"
 
-const buttonClass =
-  "inline-flex h-full w-8 items-center justify-center text-reader-chrome-fg/80 hover:bg-reader-chrome-fg/10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-reader-chrome-active sm:w-12"
-
 export function WindowsWindowControls({
+  variant = "reader",
   onClose,
   onMinimize,
   onToggleMaximize,
 }: {
+  variant?: "app" | "reader"
   onClose: () => void
   onMinimize: () => void
   onToggleMaximize: () => void
 }) {
   const { t } = useTranslation()
   const [maximized, setMaximized] = useState(false)
+  const buttonClass = cn(
+    "inline-flex h-full items-center justify-center focus-visible:outline-2 focus-visible:-outline-offset-2",
+    variant === "reader"
+      ? "w-8 text-reader-chrome-fg/80 hover:bg-reader-chrome-fg/10 active:bg-reader-chrome-fg/20 focus-visible:outline-reader-chrome-active sm:w-12"
+      : "w-12 text-foreground hover:bg-foreground/10 active:bg-foreground/15 focus-visible:outline-ring",
+  )
 
   useEffect(() => {
     if (!isTauri()) return
@@ -31,7 +35,7 @@ export function WindowsWindowControls({
         const value = await win.isMaximized()
         if (!canceled) setMaximized(value)
       } catch (e) {
-        console.error("Failed to sync Windows reader maximized state:", e)
+        console.error("Failed to sync Windows maximized state:", e)
       }
     }
 
@@ -48,7 +52,7 @@ export function WindowsWindowControls({
         }
       })
       .catch((e) => {
-        console.error("Failed to listen to Windows reader resize events:", e)
+        console.error("Failed to listen to Windows resize events:", e)
       })
 
     return () => {
@@ -67,7 +71,7 @@ export function WindowsWindowControls({
         aria-label={t("reader.minimize")}
         onClick={onMinimize}
       >
-        <Minus className="size-3" strokeWidth={1.5} aria-hidden />
+        <WindowsCaptionIcon action="minimize" />
       </button>
       <button
         type="button"
@@ -76,21 +80,44 @@ export function WindowsWindowControls({
         aria-label={maximizeLabel}
         onClick={onToggleMaximize}
       >
-        {maximized ? (
-          <Copy className="size-3" strokeWidth={1.5} aria-hidden />
-        ) : (
-          <Square className="size-3" strokeWidth={1.5} aria-hidden />
-        )}
+        <WindowsCaptionIcon action={maximized ? "restore" : "maximize"} />
       </button>
       <button
         type="button"
-        className={cn(buttonClass, "hover:bg-danger hover:text-ink-inverse")}
+        className={cn(buttonClass, "windows-caption-close")}
         title={t("reader.close")}
         aria-label={t("reader.close")}
         onClick={onClose}
       >
-        <X className="size-3" strokeWidth={1.5} aria-hidden />
+        <WindowsCaptionIcon action="close" />
       </button>
     </div>
+  )
+}
+
+const CAPTION_ICON_PATHS = {
+  minimize: "M0 5.5h10",
+  maximize:
+    "M1.5.5h7a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1Z",
+  restore:
+    "M2.5 2.5v-1a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-1M1.5 2.5h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1Z",
+  close: "m.5.5 9 9m0-9-9 9",
+}
+
+function WindowsCaptionIcon({
+  action,
+}: {
+  action: keyof typeof CAPTION_ICON_PATHS
+}) {
+  return (
+    <svg
+      className="size-2.5"
+      viewBox="0 0 10 10"
+      fill="none"
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <path d={CAPTION_ICON_PATHS[action]} />
+    </svg>
   )
 }
