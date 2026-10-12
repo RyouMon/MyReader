@@ -91,7 +91,27 @@ describe("resolveInitialEpubPosition", () => {
     expect(resolveInitialEpubPosition([resource], saved)?.serialize()).toEqual({
       ...saved.serialize(),
       href: resource.href,
+      locations: { ...saved.serialize().locations, position: 1 },
     })
+  })
+
+  it("maps a different device's position numbers to this resource while preserving precise anchors", () => {
+    const chapterMiddle = chapterStart.copyWithLocations({
+      position: 2,
+      progression: 0.5,
+    })
+    const saved = chapterStart.copyWithLocations({
+      position: 227,
+      progression: 0.6,
+      fragments: ["paragraph-two"],
+    })
+    const restored = resolveInitialEpubPosition(
+      [chapterStart, chapterMiddle],
+      saved,
+    )
+    expect(restored?.locations.position).toBe(2)
+    expect(restored?.locations.progression).toBe(0.6)
+    expect(restored?.locations.fragments).toEqual(["paragraph-two"])
   })
 
   it("falls back to the saved overall position when the resource is unavailable", () => {

@@ -1,3 +1,4 @@
+import { announceReadingPositions } from "@/src/services/core/reading-position-events"
 import { libraryTypeOf } from "@my-reader/tools/types/library"
 
 import {
@@ -226,8 +227,10 @@ export async function syncLibrary(
             completed: progress.completed,
             total: progress.total,
           }),
-        onSidecarComplete: ({ pulled }) =>
-          invalidatePulledSidecar(library.id, pulled),
+        onSidecarComplete: ({ pulled, readingPositions }) => {
+          announceReadingPositions(library.id, readingPositions ?? [])
+          invalidatePulledSidecar(library.id, pulled)
+        },
       })
 
     coreReport =

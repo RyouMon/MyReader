@@ -4113,64 +4113,6 @@ export async function readingRemoveBookmark(
   }
 }
 
-export async function readingSelectPositionCandidate(
-  sidecarRootPath: string,
-  libraryRootPath: string,
-  bookId: number,
-  format: string,
-  operationId: string,
-  recordedAtMs: number,
-  asyncOpts_?: { signal: AbortSignal },
-): Promise<void> /*throws*/ {
-  const __stack = uniffiIsDebug ? new Error().stack : undefined;
-  try {
-    return await uniffiRustCallAsync(
-      /*rustCaller:*/ uniffiCaller,
-      /*rustFutureFunc:*/ () => {
-        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_reading_select_position_candidate(
-          FfiConverterString.lower(
-            sidecarRootPath,
-            nativeModule().rustbuffer_alloc,
-          ),
-          FfiConverterString.lower(
-            libraryRootPath,
-            nativeModule().rustbuffer_alloc,
-          ),
-          FfiConverterFloat64.lower(bookId, nativeModule().rustbuffer_alloc),
-          FfiConverterString.lower(format, nativeModule().rustbuffer_alloc),
-          FfiConverterString.lower(
-            operationId,
-            nativeModule().rustbuffer_alloc,
-          ),
-          FfiConverterFloat64.lower(
-            recordedAtMs,
-            nativeModule().rustbuffer_alloc,
-          ),
-        );
-      },
-      /*pollFunc:*/ nativeModule()
-        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_void,
-      /*cancelFunc:*/ nativeModule()
-        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_void,
-      /*completeFunc:*/ nativeModule()
-        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_void,
-      /*freeFunc:*/ nativeModule()
-        .ubrn_ffi_my_reader_core_ffi_rust_future_free_void,
-      /*liftFunc:*/ (_v) => {},
-      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
-      /*asyncOpts:*/ asyncOpts_,
-      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
-        FfiConverterTypeCoreFfiError,
-      ),
-    );
-  } catch (__error: any) {
-    if (uniffiIsDebug && __error instanceof Error) {
-      __error.stack = __stack;
-    }
-    throw __error;
-  }
-}
-
 export async function readingSetFavoriteBook(
   sidecarRootPath: string,
   libraryRootPath: string,
@@ -8289,6 +8231,7 @@ export type ReadingPositionCandidate = {
   displayProgression?: number;
   recordedAt: number;
   replicaId: string;
+  isLocal: boolean;
 };
 
 /**
@@ -8320,6 +8263,7 @@ const FfiConverterTypeReadingPositionCandidate = (() => {
         displayProgression: FfiConverterOptionalFloat64.read(from),
         recordedAt: FfiConverterFloat64.read(from),
         replicaId: FfiConverterString.read(from),
+        isLocal: FfiConverterBool.read(from),
       };
     }
     write(value: TypeName, into: RustBuffer): void {
@@ -8328,6 +8272,7 @@ const FfiConverterTypeReadingPositionCandidate = (() => {
       FfiConverterOptionalFloat64.write(value.displayProgression, into);
       FfiConverterFloat64.write(value.recordedAt, into);
       FfiConverterString.write(value.replicaId, into);
+      FfiConverterBool.write(value.isLocal, into);
     }
     allocationSize(value: TypeName): number {
       return (
@@ -8335,7 +8280,8 @@ const FfiConverterTypeReadingPositionCandidate = (() => {
         FfiConverterTypeReaderLocatorJson.allocationSize(value.locator) +
         FfiConverterOptionalFloat64.allocationSize(value.displayProgression) +
         FfiConverterFloat64.allocationSize(value.recordedAt) +
-        FfiConverterString.allocationSize(value.replicaId)
+        FfiConverterString.allocationSize(value.replicaId) +
+        FfiConverterBool.allocationSize(value.isLocal)
       );
     }
   }
@@ -8752,7 +8698,66 @@ const FfiConverterTypeSchedulerTransition = (() => {
   return new FFIConverter();
 })();
 
+export type SyncedReadingPosition = {
+  bookId: number;
+  format: string;
+  operationId: string;
+  locator: ReaderLocatorJson;
+  recordedAt: number;
+};
+
+/**
+ * Generated factory for {@link SyncedReadingPosition} record objects.
+ */
+export const SyncedReadingPosition = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<
+      SyncedReadingPosition,
+      ReturnType<typeof defaults>
+    >(defaults);
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<SyncedReadingPosition>,
+  });
+})();
+
+const FfiConverterTypeSyncedReadingPosition = (() => {
+  type TypeName = SyncedReadingPosition;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        bookId: FfiConverterFloat64.read(from),
+        format: FfiConverterString.read(from),
+        operationId: FfiConverterString.read(from),
+        locator: FfiConverterTypeReaderLocatorJson.read(from),
+        recordedAt: FfiConverterFloat64.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterFloat64.write(value.bookId, into);
+      FfiConverterString.write(value.format, into);
+      FfiConverterString.write(value.operationId, into);
+      FfiConverterTypeReaderLocatorJson.write(value.locator, into);
+      FfiConverterFloat64.write(value.recordedAt, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterFloat64.allocationSize(value.bookId) +
+        FfiConverterString.allocationSize(value.format) +
+        FfiConverterString.allocationSize(value.operationId) +
+        FfiConverterTypeReaderLocatorJson.allocationSize(value.locator) +
+        FfiConverterFloat64.allocationSize(value.recordedAt)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
 export type SidecarSyncReport = {
+  readingPositions: Array<SyncedReadingPosition>;
   pushed: number;
   pulled: number;
 };
@@ -8779,16 +8784,25 @@ const FfiConverterTypeSidecarSyncReport = (() => {
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
     read(from: RustBuffer): TypeName {
       return {
+        readingPositions:
+          FfiConverterSequenceTypeSyncedReadingPosition.read(from),
         pushed: FfiConverterFloat64.read(from),
         pulled: FfiConverterFloat64.read(from),
       };
     }
     write(value: TypeName, into: RustBuffer): void {
+      FfiConverterSequenceTypeSyncedReadingPosition.write(
+        value.readingPositions,
+        into,
+      );
       FfiConverterFloat64.write(value.pushed, into);
       FfiConverterFloat64.write(value.pulled, into);
     }
     allocationSize(value: TypeName): number {
       return (
+        FfiConverterSequenceTypeSyncedReadingPosition.allocationSize(
+          value.readingPositions,
+        ) +
         FfiConverterFloat64.allocationSize(value.pushed) +
         FfiConverterFloat64.allocationSize(value.pulled)
       );
@@ -10258,6 +10272,11 @@ const FfiConverterOptionalTypeRetrySchedule = new FfiConverterOptional(
   FfiConverterTypeRetrySchedule,
 );
 
+// FfiConverter for Array<SyncedReadingPosition>
+const FfiConverterSequenceTypeSyncedReadingPosition = new FfiConverterArray(
+  FfiConverterTypeSyncedReadingPosition,
+);
+
 // FfiConverter for Array<TtsTiming>
 const FfiConverterSequenceTypeTtsTiming = new FfiConverterArray(
   FfiConverterTypeTtsTiming,
@@ -11105,14 +11124,6 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
-    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_select_position_candidate() !==
-    16404
-  ) {
-    throw new UniffiInternalError.ApiChecksumMismatch(
-      "uniffi_my_reader_core_ffi_checksum_func_reading_select_position_candidate",
-    );
-  }
-  if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_set_favorite_book() !==
     31424
   ) {
@@ -11452,6 +11463,7 @@ export default Object.freeze({
     FfiConverterTypeSyncFailureKind,
     FfiConverterTypeSyncTaskProgress,
     FfiConverterTypeSyncTiming,
+    FfiConverterTypeSyncedReadingPosition,
     FfiConverterTypeTtsAudioArtifact,
     FfiConverterTypeTtsConfig,
     FfiConverterTypeTtsEngine,

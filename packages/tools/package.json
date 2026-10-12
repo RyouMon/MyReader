@@ -9,6 +9,7 @@
     "./reader-chrome-palette": "./src/reader-chrome-palette.ts",
     "./reader-annotations": "./src/reader-annotations.ts",
     "./reader-bookmarks": "./src/reader-bookmarks.ts",
+    "./reader-navigation-history": "./src/reader-navigation-history.ts",
     "./reading-progress": "./src/reading-progress.ts",
     "./reading-time-accumulator": "./src/reading-time-accumulator.ts",
     "./reader-note-marker/*": "./src/reader-note-marker/*",

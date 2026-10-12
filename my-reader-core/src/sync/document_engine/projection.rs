@@ -30,7 +30,7 @@ impl ProjectionDomain {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) enum ProjectionMode {
     Full,
     Changed,

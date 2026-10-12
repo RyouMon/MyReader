@@ -317,10 +317,6 @@ protected:
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_reading_remove_bookmark(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
-  jsi::Value
-  cpp_uniffi_my_reader_core_ffi_fn_func_reading_select_position_candidate(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_reading_set_favorite_book(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
@@ -885,10 +881,6 @@ protected:
       size_t count);
   jsi::Value
   cpp_uniffi_my_reader_core_ffi_checksum_func_reading_remove_bookmark(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value
-  cpp_uniffi_my_reader_core_ffi_checksum_func_reading_select_position_candidate(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value

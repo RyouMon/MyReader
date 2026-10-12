@@ -8,6 +8,8 @@ overview: 保留每书库 sidecar、本地 SQLite projection 和现有数据源�
 isProject: true
 ---
 
+> 2026-10-12：阅读位置的手动冲突解决策略由 [ADR-0023](./0023-session-reading-navigation-history.md) 取代。其余决策及历史正文保留。
+
 # 采用 Automerge 作为书库 sidecar 的 CRDT 核心
 
 ## 结论

@@ -37,7 +37,7 @@ pub use reading::{
 pub use storage::{LibraryStorageConfig, RemoteCredential, RemoteDirectoryEntry};
 pub use sync::{
     CalibreSyncReport, LibrarySyncOptions, LibrarySyncReport, LibrarySyncScope, MyReaderSyncReport,
-    SidecarSyncMode, SidecarSyncReport, SyncFailureKind,
+    SidecarSyncMode, SidecarSyncReport, SyncFailureKind, SyncedReadingPosition,
 };
 pub(crate) use sync::{SyncFailureDisposition, SyncScheduleSnapshot};
 pub use tts::{

@@ -760,16 +760,16 @@ async fn enqueue_book_file_download_should_spawn_remote_download_and_finish_acti
         .expect("enqueue should succeed");
     assert_eq!(result, "");
 
-    let downloaded = container_root.join("It/It.epub");
-    for _ in 0..100 {
-        if tokio::fs::try_exists(&downloaded).await.unwrap()
-            && !service.is_active(&lib.id, seeded.book_id, &seeded.format)
-        {
-            break;
+    // The file can exist before SQLite finalization and coordinator cleanup finish.
+    tokio::time::timeout(std::time::Duration::from_secs(30), async {
+        while service.is_active(&lib.id, seeded.book_id, &seeded.format) {
+            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
         }
-        std::thread::sleep(std::time::Duration::from_millis(20));
-    }
+    })
+    .await
+    .expect("background download should finish and release its active state");
 
+    let downloaded = container_root.join("It/It.epub");
     assert!(tokio::fs::try_exists(&downloaded).await.unwrap());
     assert_eq!(
         tokio::fs::read(&downloaded).await.unwrap(),

@@ -287,10 +287,6 @@
     "mountingReader": "Montaggio lettore...",
     "loadFailed": "Caricamento del lettore non riuscito",
     "loadFailedMessage": "Il lettore ha riscontrato un errore imprevisto. Per favore torna indietro e riprova.",
-    "positionConflictTitle": "Scegli dove continuare",
-    "positionConflictDescription": "Un altro dispositivo ha salvato una posizione diversa mentre era offline. Scegline uno per continuare; la scelta si sincronizzerà con gli altri tuoi dispositivi.",
-    "positionConflictUnknownProgress": "Progresso sconosciuto",
-    "positionConflictLater": "Decidi in seguito e utilizza la posizione predefinita",
     "chrome": {
       "moreActions": "Altre azioni"
     },

@@ -712,6 +712,7 @@ class ReadiumView(
     registry[this.id] = this
 
     fragment = frag
+    frag.onInternalLinkNavigation = { beginUserNavigation(detachViewport = false) }
     frag.onUserNavigationIntent = { beginUserNavigation() }
     frag.onUserNavigationGestureStart = {
       activeDragNavigationId = beginUserNavigation(scheduleReset = false)

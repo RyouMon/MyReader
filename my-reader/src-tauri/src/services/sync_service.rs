@@ -18,6 +18,9 @@ pub struct SyncService;
 #[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DbSyncReport {
+    #[specta(skip)]
+    #[serde(skip)]
+    pub reading_positions: Vec<my_reader_core::models::SyncedReadingPosition>,
     pub pushed: usize,
     pub pulled: usize,
     pub changed: bool,
@@ -117,6 +120,7 @@ impl SyncService {
             "Completed library sync"
         );
         Ok(DbSyncReport {
+            reading_positions: Vec::new(),
             pushed: report.myreader.pushed,
             pulled: report.myreader.pulled,
             changed: report.myreader.pushed > 0
@@ -188,6 +192,7 @@ impl SyncService {
             "Completed library sidecar sync"
         );
         Ok(DbSyncReport {
+            reading_positions: report.reading_positions,
             pushed: report.pushed,
             pulled: report.pulled,
             changed: report.pushed > 0 || report.pulled > 0,

@@ -119,27 +119,6 @@ pub async fn reading_list_position_candidates(
 }
 
 #[uniffi::export(async_runtime = "tokio")]
-pub async fn reading_select_position_candidate(
-    sidecar_root_path: String,
-    library_root_path: String,
-    book_id: f64,
-    format: String,
-    operation_id: String,
-    recorded_at_ms: f64,
-) -> Result<(), CoreFfiError> {
-    ReadingService::select_reading_position_candidate(
-        Path::new(&sidecar_root_path),
-        Path::new(&library_root_path),
-        required_i64(book_id, "bookId")?,
-        &format,
-        &operation_id,
-        required_i64(recorded_at_ms, "recordedAtMs")?,
-    )
-    .await
-    .map_err(CoreFfiError::from_core)
-}
-
-#[uniffi::export(async_runtime = "tokio")]
 pub async fn reading_list_bookmarks(
     sidecar_root_path: String,
     book_id: f64,

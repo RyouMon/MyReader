@@ -16,11 +16,6 @@ import { isRemoteSourceType } from "@/src/domain/types"
 import { pageIndexFromFixedLocator } from "@/src/features/reader/components/reader/locator"
 import i18n from "@/src/i18n"
 import { getFileState } from "@/src/services/core/content"
-import {
-  listReadingPositionCandidates,
-  type ReadingPositionCandidate,
-  selectReadingPositionCandidate,
-} from "@/src/services/core/reading"
 import { libraryBookFileUri } from "@/src/services/fs/library-paths"
 import { queryClient } from "@/src/services/query/query-client"
 import { useAppStore } from "@/src/store/app-store"
@@ -117,11 +112,6 @@ export type LoadState =
   | { status: "loading"; message: string }
   | { status: "error"; message: string }
   | ({ status: "ready" } & ReadyBookLoad)
-  | {
-      status: "position-conflict"
-      ready: ReadyBookLoad
-      candidates: ReadingPositionCandidate[]
-    }
 
 async function resolveBookCoverUri(
   library: Library,
@@ -370,17 +360,7 @@ export function useBookLoader(
           initialLocator,
           layoutMode: detailLayoutMode,
         }
-        const candidates = await listReadingPositionCandidates(
-          lib,
-          calibreId,
-          fmt,
-        )
-        if (cancelled) return
-        setLoadState(
-          candidates.length > 1
-            ? { status: "position-conflict", ready, candidates }
-            : { status: "ready", ...ready },
-        )
+        setLoadState({ status: "ready", ...ready })
       } catch (e) {
         if (cancelled) return
         console.warn("Failed to load reader book", e)
@@ -394,42 +374,9 @@ export function useBookLoader(
     }
   }, [id, activeLibraryId, formatParam])
 
-  const resolveReadingPositionConflict = async (operationId: string | null) => {
-    const current = loadStateRef.current
-    if (current.status !== "position-conflict") return
-    let initialLocator = current.ready.initialLocator
-    if (operationId) {
-      const candidate = current.candidates.find(
-        (item) => item.operationId === operationId,
-      )
-      if (!candidate) throw new Error("Reading position candidate not found")
-      const conflictLibrary = useAppStore
-        .getState()
-        .libraries.find((library) => library.id === current.ready.libraryId)
-      if (!conflictLibrary) throw new Error("Library not found")
-      await selectReadingPositionCandidate(
-        conflictLibrary,
-        current.ready.bookId,
-        current.ready.format,
-        operationId,
-      )
-      initialLocator = candidate.locator as Locator
-    }
-    setLoadState({
-      status: "ready",
-      ...current.ready,
-      initialLocator,
-      initialPage:
-        current.ready.layoutMode === "fixedLayout"
-          ? pageIndexFromFixedLocator(initialLocator, INITIAL_READER_PAGE)
-          : INITIAL_READER_PAGE,
-    })
-  }
-
   return {
     loadState,
     coverUri,
     bookTitle,
-    resolveReadingPositionConflict,
   }
 }

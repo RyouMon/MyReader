@@ -48,14 +48,27 @@ export function resolveInitialEpubPosition(
 
   // A position list samples a resource; it is not precise enough to restore a page.
   const savedHref = locatorToJson(initialSavedLocator).href
-  const resource = positions.find(
+  const resourcePositions = positions.filter(
     (position) => locatorToJson(position).href === savedHref,
+  )
+  const savedProgression = initialSavedLocator.locations.progression ?? 0
+  const resource = resourcePositions.reduce<Locator | undefined>(
+    (closest, position) =>
+      (position.locations.progression ?? 0) <= savedProgression
+        ? position
+        : closest,
+    resourcePositions[0],
   )
   if (resource) {
     return (
       Locator.deserialize({
         ...initialSavedLocator.serialize(),
         href: resource.href,
+        locations: {
+          ...initialSavedLocator.serialize().locations,
+          // Position numbers belong to the current navigator's position list.
+          position: resource.locations.position,
+        },
       }) ?? resource
     )
   }

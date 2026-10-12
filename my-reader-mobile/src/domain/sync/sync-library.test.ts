@@ -226,7 +226,7 @@ describe("syncLibrary", () => {
 
   it("should refresh sidecar queries when Core reports pulled changes", async () => {
     mockRunCoreLibrarySync.mockImplementation(async (input) => {
-      input.onSidecarComplete?.({ pushed: 0, pulled: 2 })
+      input.onSidecarComplete?.({ pushed: 0, pulled: 2, readingPositions: [] })
       return coreReport()
     })
 

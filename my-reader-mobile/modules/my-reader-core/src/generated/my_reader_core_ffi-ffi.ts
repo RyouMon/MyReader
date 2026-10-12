@@ -631,14 +631,6 @@ interface NativeModuleInterface {
     locatorKey: Uint8Array,
     recordedAtMs: number,
   ): bigint;
-  ubrn_uniffi_my_reader_core_ffi_fn_func_reading_select_position_candidate(
-    sidecarRootPath: Uint8Array,
-    libraryRootPath: Uint8Array,
-    bookId: number,
-    format: Uint8Array,
-    operationId: Uint8Array,
-    recordedAtMs: number,
-  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_reading_set_favorite_book(
     sidecarRootPath: Uint8Array,
     libraryRootPath: Uint8Array,
@@ -925,7 +917,6 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_list_positions(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_remove_annotation(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_remove_bookmark(): number;
-  ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_select_position_candidate(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_set_favorite_book(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_set_position(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_update_annotation(): number;

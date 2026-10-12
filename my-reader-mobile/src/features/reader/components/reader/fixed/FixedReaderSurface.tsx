@@ -13,7 +13,10 @@ import type {
   ReaderTocItem,
 } from "@/src/features/reader/components/reader/types"
 import { toNativeFilesystemPath } from "@/src/services/fs/path"
-import type { ReadiumFixedReaderRef } from "./ReadiumFixedReader"
+import type {
+  ReadiumFixedReaderRef,
+  ReadiumFixedReaderProps,
+} from "./ReadiumFixedReader"
 
 const ReadiumFixedReader = lazy(async () => import("./ReadiumFixedReader"))
 
@@ -27,6 +30,7 @@ export type FixedReaderSurfaceProps = {
   initialLocator?: Locator
   onStateChange: (state: ReaderState) => Promise<void>
   onPositionsReady?: (positions: Locator[]) => void
+  onUserLocationChange?: ReadiumFixedReaderProps["onUserLocationChange"]
   onTocReady: (toc: ReaderTocItem[]) => Promise<void>
   onRequestClose: () => Promise<void>
   onToggleChrome?: () => void
@@ -59,6 +63,7 @@ const FixedReaderSurface = forwardRef<
     initialLocator,
     onStateChange,
     onPositionsReady,
+    onUserLocationChange,
     onTocReady,
     onRequestClose,
     onToggleChrome,
@@ -88,6 +93,7 @@ const FixedReaderSurface = forwardRef<
           initialLocator={initialLocator}
           onStateChange={onStateChange}
           onPositionsReady={onPositionsReady}
+          onUserLocationChange={onUserLocationChange}
           onTocReady={onTocReady}
           onRequestClose={onRequestClose}
           onToggleChrome={onToggleChrome}
@@ -132,6 +138,7 @@ const FixedReaderSurface = forwardRef<
           initialLocator={pdfInitialLocator}
           onStateChange={onStateChange}
           onPositionsReady={onPositionsReady}
+          onUserLocationChange={onUserLocationChange}
           onTocReady={onTocReady}
           onRequestClose={onRequestClose}
           onToggleChrome={onToggleChrome}

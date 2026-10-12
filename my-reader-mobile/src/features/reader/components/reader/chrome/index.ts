@@ -10,7 +10,6 @@ export type { ReaderBookmarkItem } from "./ReaderBookmarkList"
 export { default as ReaderBookmarksAndNotesSheet } from "./ReaderBookmarksAndNotesSheet"
 export { default as ReaderBookmarkButton } from "./ReaderBookmarkButton"
 
-export { ReaderChapterLabel } from "./ReaderChapterLabel"
 export { default as ReaderCloseButton } from "./ReaderCloseButton"
 export { default as ReaderMoreButton } from "./ReaderMoreButton"
 export { ReaderTtsControls } from "./ReaderTtsControls"

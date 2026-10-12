@@ -64,6 +64,12 @@ impl my_reader_core::api::sync::SyncObserver for FfiSyncObserver {
             .sidecar_report
             .lock()
             .unwrap_or_else(|error| error.into_inner()) = Some(SidecarSyncReport {
+            reading_positions: report
+                .reading_positions
+                .clone()
+                .into_iter()
+                .map(Into::into)
+                .collect(),
             pushed: report.pushed as f64,
             pulled: report.pulled as f64,
         });

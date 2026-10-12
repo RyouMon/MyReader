@@ -1,3 +1,4 @@
+import { ReaderNavigationButtons } from "@/components/reader/shared/ReaderNavigationButtons"
 import type { DesktopTranslationKey } from "@my-reader/i18n/desktop"
 import { READER_THEME_PRESETS } from "@my-reader/tools/reader-themes"
 import {
@@ -481,6 +482,14 @@ export function EpubReaderView({ state }: { state: EpubReaderViewState }) {
 
   return (
     <ReaderChromeShell
+      historyNavigation={
+        <ReaderNavigationButtons
+          history={state.history}
+          chromeVisible={chromeVisible}
+          getLocationLabel={state.getHistoryLocationLabel}
+          onNavigate={state.onHistoryNavigate}
+        />
+      }
       readerRootRef={readerRootRef}
       chromeVisible={chromeVisible}
       showChrome={showChrome}
