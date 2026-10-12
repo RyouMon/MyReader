@@ -592,6 +592,9 @@ export function ReadiumPdfReader({
         <ReaderNavigationButtons
           history={history}
           chromeVisible={chromeVisible}
+          getLocationLabel={(locator) =>
+            String(pdfPageForBookmark(locator, totalPages) ?? "")
+          }
           onNavigate={(locator) => {
             const page = pdfPageForBookmark(locator, totalPages)
             if (page !== null) goToPdfPage(page)

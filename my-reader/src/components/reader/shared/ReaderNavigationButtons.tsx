@@ -10,10 +10,12 @@ import { useTranslation } from "react-i18next"
 export function ReaderNavigationButtons({
   history,
   chromeVisible,
+  getLocationLabel,
   onNavigate,
 }: {
   history: ReaderNavigationHistory
   chromeVisible: boolean
+  getLocationLabel: (locator: ReaderLocator) => string
   onNavigate: (locator: ReaderLocator) => void
 }) {
   const { t } = useTranslation()
@@ -22,12 +24,10 @@ export function ReaderNavigationButtons({
     history.getSnapshot,
   )
   return (
-    <>
+    <div className="pointer-events-none absolute inset-x-4 top-0 bottom-4 grid grid-cols-2 items-center gap-4">
       {([-1, 1] as const).map((direction: NavigationDirection) => {
-        if (
-          !entries[index + direction] ||
-          (!chromeVisible && !(direction === 1 && remoteHint))
-        )
+        const target = entries[index + direction]
+        if (!target || (!chromeVisible && !(direction === 1 && remoteHint)))
           return null
         const Icon = direction === -1 ? Undo2 : Redo2
         const label = t(
@@ -35,22 +35,29 @@ export function ReaderNavigationButtons({
             ? "reader.navigationBack"
             : "reader.navigationForward",
         )
+        const locationLabel = getLocationLabel(target)
+        const accessibilityLabel = `${label}, ${locationLabel}`
         return (
           <button
             key={direction}
             type="button"
-            aria-label={label}
-            title={label}
-            className={`absolute bottom-14 z-[52] flex size-11 items-center justify-center rounded-full border border-reader-chrome-border bg-[var(--reader-chrome-action-surface)] text-[var(--reader-chrome-action-text)] shadow-md hover:bg-[var(--reader-chrome-hover)] ${direction === -1 ? "left-4" : "right-4"}`}
+            dir="ltr"
+            aria-label={accessibilityLabel}
+            title={accessibilityLabel}
+            className={`reader-chrome-icon-btn pointer-events-auto row-start-1 h-7 w-auto min-w-7 max-w-2/3 gap-1.5 rounded-full px-2.5 text-xs font-medium tabular-nums ${direction === -1 ? "col-start-1 justify-self-start" : "col-start-2 justify-self-end"}`}
             onClick={() => {
               const locator = history.move(direction)
               if (locator) onNavigate(locator)
             }}
           >
-            <Icon className="size-5" />
+            {direction === -1 && <Icon className="size-3 shrink-0" />}
+            <span dir="auto" className="truncate">
+              {locationLabel}
+            </span>
+            {direction === 1 && <Icon className="size-3 shrink-0" />}
           </button>
         )
       })}
-    </>
+    </div>
   )
 }

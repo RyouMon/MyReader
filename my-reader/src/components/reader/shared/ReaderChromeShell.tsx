@@ -57,8 +57,9 @@ export type ReaderChromeShellProps = {
   bottomChrome?: ReactNode
   /** 底部状态栏（页码、进度文字），轻量悬浮风格。 */
   bottomStatusBar?: ReactNode
-  /** 叠在正文区上的左右翻页按钮。 */
+  /** 底部位置显示区域内的历史导航按钮。 */
   historyNavigation?: ReactNode
+  /** 叠在正文区上的左右翻页按钮。 */
   edgeTurnOverlays?: ReactNode
   /** 追加在根布局 class 上。 */
   rootClassName?: string
@@ -247,9 +248,9 @@ export function ReaderChromeShell({
             onPointerLeave={chromeVisible ? scheduleChromeHide : undefined}
           >
             {bottomStatusBar}
+            {historyNavigation}
           </div>
         ) : null}
-        {historyNavigation}
         {bottomChrome}
         {tocPanel}
         {bookmarkPanel}

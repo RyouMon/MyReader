@@ -65,7 +65,6 @@ import {
   ReaderBookmarkButton,
   type ReaderBookmarkItem,
   ReaderBookmarksAndNotesSheet,
-  ReaderChapterLabel,
   ReaderCloseButton,
   ReaderMoreButton,
   ReaderNavigationSheet,
@@ -1362,14 +1361,6 @@ export default function ReaderScreen() {
               </View>
             </ErrorBoundary>
 
-            {showChapterLabel ? (
-              <ReaderChapterLabel
-                insetsTop={insets.top}
-                title={chapterLabelTitle}
-                palette={chromePalette}
-              />
-            ) : null}
-
             <ReaderPositionLabel
               visible={positionLabelVisible}
               currentPage={currentPage}
@@ -1389,8 +1380,12 @@ export default function ReaderScreen() {
             <ReaderNavigationButtons
               history={history}
               chromeVisible={chromeState >= ChromeState.Chrome}
-              insetsBottom={insets.bottom}
+              insetsTop={insets.top}
+              title={showChapterLabel ? chapterLabelTitle : undefined}
               palette={chromePalette}
+              getLocationLabel={(locator) =>
+                String(positionIndexForLocator(positions, locator) + 1)
+              }
               onNavigate={(locator) =>
                 navigateToLocator(locator, undefined, false)
               }

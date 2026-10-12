@@ -486,6 +486,7 @@ export function EpubReaderView({ state }: { state: EpubReaderViewState }) {
         <ReaderNavigationButtons
           history={state.history}
           chromeVisible={chromeVisible}
+          getLocationLabel={state.getHistoryLocationLabel}
           onNavigate={state.onHistoryNavigate}
         />
       }

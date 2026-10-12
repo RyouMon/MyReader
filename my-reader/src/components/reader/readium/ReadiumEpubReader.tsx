@@ -2353,6 +2353,13 @@ function useEpubReaderController({
   return {
     initError,
     history,
+    getHistoryLocationLabel: (locator: ReaderLocator) => {
+      const target = resolveInitialEpubPosition(
+        epubPositions,
+        readerLocatorToReadiumLocator(locator),
+      )
+      return String(locatorDisplayPosition(target, bottomPositionTotal))
+    },
     onHistoryNavigate: (locator: ReaderLocator) => {
       const target = resolveInitialEpubPosition(
         epubPositions,

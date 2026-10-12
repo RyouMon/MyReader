@@ -65,17 +65,21 @@ describe("ReaderChromeShell", () => {
         settingsPanel={null}
         main={<main data-testid="readium-region" />}
         bottomStatusBar={<div data-testid="bottom-region" />}
+        historyNavigation={<button data-testid="history-navigation" />}
       />,
     )
 
     const readiumRegion = screen.getByTestId("readium-region")
     const bottomRegion = screen.getByTestId("bottom-region")
+    const historyNavigation = screen.getByTestId("history-navigation")
     const content = container.querySelector(".reader-window-content")
     const footer = container.querySelector(".reader-window-footer")
 
     expect(content).toContainElement(readiumRegion)
     expect(content).not.toContainElement(bottomRegion)
     expect(footer).toContainElement(bottomRegion)
+    expect(footer).toContainElement(historyNavigation)
+    expect(content).not.toContainElement(historyNavigation)
     expect(footer?.previousElementSibling).toBe(content)
   })
 

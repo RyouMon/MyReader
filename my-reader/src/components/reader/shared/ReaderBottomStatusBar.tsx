@@ -231,14 +231,14 @@ export function ReaderBottomStatusBar({
   return (
     <div
       className={cn(
-        "grid h-full w-full grid-rows-[1fr_auto_1fr] transition-opacity duration-300 ease-out",
+        "grid h-full w-full grid-rows-[1fr_auto] transition-opacity duration-300 ease-out",
         visible ? "opacity-100" : "pointer-events-none opacity-0",
       )}
     >
       {leftText ? (
         <span
           className={cn(
-            "reader-position-label col-start-1 row-start-2 block w-fit self-center justify-self-center select-none rounded-md px-2 text-center text-xs tabular-nums",
+            "reader-position-label col-start-1 row-start-1 block w-fit self-center justify-self-center select-none rounded-md px-2 text-center text-xs tabular-nums",
             emphasizePositionLabel
               ? "font-semibold text-reader-chrome-fg"
               : "text-reader-chrome-muted/80",
@@ -249,7 +249,7 @@ export function ReaderBottomStatusBar({
       ) : null}
       <div
         ref={trackRef}
-        className="reader-progress-control relative col-start-1 row-start-3 w-full self-end"
+        className="reader-progress-control relative col-start-1 row-start-2 w-full self-end"
         onPointerDown={onTrackPointerDown}
       >
         <div className="reader-progress-track" aria-hidden />

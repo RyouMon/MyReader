@@ -325,6 +325,9 @@ export function ReadiumDivinaReader({
         <ReaderNavigationButtons
           history={history}
           chromeVisible={chromeVisible}
+          getLocationLabel={(locator) =>
+            String(divinaPageForBookmark(locator, positions) ?? "")
+          }
           onNavigate={(locator) => {
             const page = divinaPageForBookmark(locator, positions)
             if (page !== null) goToPage(page)
