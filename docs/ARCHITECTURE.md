@@ -142,7 +142,7 @@ SQLite 投影以同一事务中的 Automerge heads 为增量边界：阅读写�
 domain，不再重建无关 catalog。远端对象仍完整校验，合并后的 SQLite 更新也按 domain 选择。
 变更范围来自原始操作及其父路径，包含未胜出的冲突值。初始化、schema 迁移、根对象变更或
 投影版本 / heads 失效时完整重建；查询完整 document 的入口始终返回全量投影。
-一般写入粒度为 domain；选择阅读位置只投影目标 book/format。没有跨事务的内存投影缓存。
+当前写入粒度为 domain；受影响 domain 内仍完整投影，没有跨事务的内存投影缓存。
 性能与边界见 [增量投影报告](./core-incremental-projection-performance.md)。
 
 ### 3.2 当前业务范围
@@ -332,7 +332,6 @@ sidecar。Android 不提供外部本地书库入口，也不使用 SAF 私有镜
 | 表 | 用途 |
 |---|---|
 | `reading_position_candidates` | 按图书和格式索引的阅读位置候选 |
-| `reading_position_drafts` | 旧版本遗留草稿兼容；下一次正常阅读保存时提交并清除 |
 | `sync_local_meta` | 当前书库 Automerge 本地身份与协议元数据 |
 | `sync_automerge_state` | Automerge document 快照 |
 | `sync_automerge_outbox` | 待保存到远端的本地 incremental chunk |
@@ -415,7 +414,7 @@ OneDrive 大文件写入由 OpenDAL OneDrive backend 使用 upload session 分�
   升级尚未回填时只读取目标 document key，不重建全库投影。
 - [ADR-0023](./adr/0023-session-reading-navigation-history.md) 取代阅读位置的手动冲突解决策略：
   因果后继自然覆盖已见值；真并发的 SQLite 续读投影按 `recorded_at`、operation ID 选择。
-  普通阅读保存始终产生同步 change，并在同一事务清除遗留草稿，不等待用户选择。
+  普通阅读保存始终产生同步 change，不等待用户选择。
 - 桌面和移动端先打开正文，远端位置异步加入本次阅读的导航栈，不移动当前视口。
   接收远端文档时产生的位置通知随同步结果传递，因此后续本机保存不会让刚收到的入口消失。
 - 显式跳转新增历史；正常翻页、滚动和朗读跟随只更新当前项；后退后新跳转截断前进路径。

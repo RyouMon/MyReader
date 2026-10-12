@@ -1,6 +1,6 @@
 import { ReaderNavigationHistory } from "@my-reader/tools/reader-navigation-history"
 import type { Locator } from "@readium/shared"
-import { useEffect, useState, useSyncExternalStore } from "react"
+import { useEffect, useState } from "react"
 import { useReadingPositionCandidates } from "@/hooks/queries/useReadingPositionCandidates"
 import {
   SIDECAR_SYNC_COMPLETED_EVENT,
@@ -29,7 +29,6 @@ export function useReaderNavigationHistory({
   if (session.key !== sessionKey)
     setSession({ key: sessionKey, history: new ReaderNavigationHistory() })
   const history = session.history
-  useSyncExternalStore(history.subscribe, history.getSnapshot)
   const candidates = useReadingPositionCandidates(
     libraryId,
     bookId,

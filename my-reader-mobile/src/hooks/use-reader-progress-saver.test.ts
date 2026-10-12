@@ -113,7 +113,7 @@ describe("useReaderProgressSaver", () => {
     )
   })
 
-  it("flushes pending progress once before resolving a conflict", async () => {
+  it("flushes pending progress once and cancels the scheduled duplicate save", async () => {
     const { result, rerender } = renderHook(
       ({ state }: { state: ReaderState }) =>
         useReaderProgressSaver(library.id, loadState, state),

@@ -946,54 +946,18 @@ pub fn execute_local_database_command(
     if let Some(migration) = current.migration.as_ref() {
         persist_local_result(&transaction, identity, migration, now_ms, Some(now_ms))?;
     }
-    let resolution = match &command.command {
-        DocumentCommand::ResolveReadingPosition {
-            book_id, format, ..
-        } => Some((*book_id, format.clone())),
-        _ => None,
-    };
     // Inspection callers consume complete projections. Mutations only need the
     // changed domains, provided SQLite reflects their exact starting heads.
     let projection_mode = match &command.command {
         DocumentCommand::Inspect | DocumentCommand::InspectDependencies { .. } => {
             ProjectionMode::Full
         }
-        DocumentCommand::ResolveReadingPosition {
-            book_id, format, ..
-        } if projection_is_current(&transaction, &current.heads)? => {
-            ProjectionMode::Position(*book_id, format.clone())
-        }
         _ => update_projection_mode(&transaction, &current.heads)?,
-    };
-    let command = match command.command {
-        DocumentCommand::ResolveReadingPosition {
-            book_id,
-            format,
-            operation_id,
-            recorded_at,
-        } if operation_id == "local" => {
-            let (locator_json, progression): (String, Option<f64>) = transaction.query_row(
-                "SELECT locator_json, display_progression FROM reading_position_drafts WHERE book_id = ?1 AND format = ?2",
-                params![book_id, format], |row| Ok((row.get(0)?, row.get(1)?)),
-            ).optional().map_err(database_error)?
-                .ok_or_else(|| sync_error("Local reading position draft is no longer available"))?;
-            DocumentCommand::SetReadingPosition {
-                book_id,
-                value: crate::sync::document::ReadingPositionValue {
-                    format,
-                    locator_json,
-                    display_progression_ppm: progression.map(|v| (v * 1_000_000.0).round() as u32),
-                    recorded_at,
-                    replica_id: identity.replica_id.to_string(),
-                },
-            }
-        }
-        command => command,
     };
     let document = take_document(&mut current, identity)?;
     let result = execute_loaded_document_command(
         document,
-        request(identity, current.heads, command),
+        request(identity, current.heads, command.command),
         None,
         projection_mode,
     )?;
@@ -1001,14 +965,6 @@ pub fn execute_local_database_command(
         persist_local_result(&transaction, identity, &result, now_ms, None)?;
     } else {
         rebuild_projection(&transaction, &result, now_ms)?;
-    }
-    if let Some((book_id, format)) = resolution {
-        transaction
-            .execute(
-                "DELETE FROM reading_position_drafts WHERE book_id = ? AND format = ?",
-                params![book_id, format],
-            )
-            .map_err(database_error)?;
     }
     transaction.commit().map_err(database_error)?;
     Ok(result)
@@ -1024,28 +980,10 @@ pub fn execute_local_database_mutation<F>(
 where
     F: FnOnce(&mut automerge::AutoCommit) -> Result<(), SyncError>,
 {
-    execute_guarded_mutation(database_path, identity, now_ms, |_| Ok(false), mutate)
-        .map(|result| result.expect("unguarded mutation always executes"))
-}
-
-fn execute_guarded_mutation<F>(
-    database_path: &str,
-    identity: &DatabaseIdentity,
-    now_ms: i64,
-    before_mutation: impl FnOnce(&Transaction<'_>) -> Result<bool, SyncError>,
-    mutate: F,
-) -> Result<Option<DocumentCommandResult>, SyncError>
-where
-    F: FnOnce(&mut automerge::AutoCommit) -> Result<(), SyncError>,
-{
     let mut connection = open_connection(database_path)?;
     let transaction = connection
         .transaction_with_behavior(TransactionBehavior::Immediate)
         .map_err(database_error)?;
-    if before_mutation(&transaction)? {
-        transaction.commit().map_err(database_error)?;
-        return Ok(None);
-    }
     let mut current = match read_state(&transaction, identity)? {
         Some(state) => state,
         None => {
@@ -1076,7 +1014,7 @@ where
         rebuild_projection(&transaction, &result, now_ms)?;
     }
     transaction.commit().map_err(database_error)?;
-    Ok(Some(result))
+    Ok(result)
 }
 
 pub fn ensure_database_document(

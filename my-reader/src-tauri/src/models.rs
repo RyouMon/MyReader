@@ -567,7 +567,6 @@ pub struct ReadingProgressDto {
     pub locator: serde_json::Value,
     pub display_progression: Option<f64>,
     pub updated_at: f64,
-    pub conflict_count: i64,
 }
 
 /// A durable Readium Locator saved by the reader as an explicit bookmark.

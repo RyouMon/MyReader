@@ -275,10 +275,6 @@
     "mountingReader": "リーダーを取り付けています…",
     "loadFailed": "リーダーのロードに失敗しました",
     "loadFailedMessage": "リーダーで予期しないエラーが発生しました。戻って再試行してください。",
-    "positionConflictTitle": "続行先を選択してください",
-    "positionConflictDescription": "別のデバイスがオフライン中に別の位置を保存しました。続行するには 1 つを選択してください。選択内容は他のデバイスに同期されます。",
-    "positionConflictUnknownProgress": "進捗状況は不明",
-    "positionConflictLater": "後で決定し、デフォルトの位置を使用します",
     "chrome": {
       "moreActions": "その他のアクション"
     },

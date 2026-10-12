@@ -129,14 +129,12 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   }
 
   return (
-    <>
-      <ReadBookContent
-        source={bookSource}
-        readiumPub={readiumPub}
-        divinaPub={divinaPub}
-        renderWindowState={renderWindowState}
-      />
-    </>
+    <ReadBookContent
+      source={bookSource}
+      readiumPub={readiumPub}
+      divinaPub={divinaPub}
+      renderWindowState={renderWindowState}
+    />
   )
 }
 

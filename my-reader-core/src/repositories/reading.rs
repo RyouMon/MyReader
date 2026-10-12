@@ -16,24 +16,6 @@ pub(crate) struct ReadingRepository<'a> {
 }
 
 impl<'a> ReadingRepository<'a> {
-    pub(crate) async fn position_draft(
-        &self,
-        book_id: i64,
-        format: &str,
-    ) -> Result<Option<crate::models::ReadingPositionCandidate>, CoreError> {
-        self.db.query_one_raw(Statement::from_sql_and_values(DbBackend::Sqlite,
-            "SELECT locator_json, display_progression, recorded_at FROM reading_position_drafts WHERE book_id = ? AND format = ?",
-            [book_id.into(), format.into()],
-        )).await?.map(|row| Ok(crate::models::ReadingPositionCandidate {
-            operation_id: "local".into(),
-            locator: serde_json::from_str(&row.try_get::<String>("", "locator_json")?)?,
-            display_progression: row.try_get("", "display_progression")?,
-            recorded_at: row.try_get("", "recorded_at")?,
-            replica_id: "local".into(),
-            is_local: true,
-        })).transpose()
-    }
-
     pub(crate) async fn list_position_candidates(
         &self,
         book_id: i64,
@@ -72,51 +54,40 @@ impl<'a> ReadingRepository<'a> {
         book_id: i64,
         format: &str,
     ) -> Result<Option<ReadingPosition>, CoreError> {
-        let position = reading_progress::Entity::find()
+        reading_progress::Entity::find()
             .filter(reading_progress::Column::BookId.eq(book_id))
             .filter(reading_progress::Column::Format.eq(format))
             .one(self.db)
             .await?
             .map(TryInto::try_into)
-            .transpose()?;
-        self.with_position_draft(position).await
-    }
-
-    async fn with_position_draft(
-        &self,
-        mut position: Option<ReadingPosition>,
-    ) -> Result<Option<ReadingPosition>, CoreError> {
-        if let Some(position) = position.as_mut() {
-            if let Some(draft) = self
-                .position_draft(position.book_id, &position.format)
-                .await?
-            {
-                position.locator = draft.locator;
-                position.display_progression = draft.display_progression;
-                position.updated_at = draft.recorded_at as f64;
-                position.conflict_count = position.conflict_count.max(2);
-            }
-        }
-        Ok(position)
+            .transpose()
     }
 
     pub(crate) async fn list_reading_positions(&self) -> Result<Vec<ReadingPosition>, CoreError> {
-        reading_progress::Entity::find().from_raw_sql(Statement::from_string(DbBackend::Sqlite,
-            "SELECT p.id, p.book_id, p.format,
-                COALESCE(d.locator_json, p.locator_json) AS locator_json,
-                CAST(COALESCE(d.recorded_at, p.updated_at) AS REAL) AS updated_at,
-                CASE WHEN d.book_id IS NULL THEN p.display_progression ELSE d.display_progression END AS display_progression,
-                CASE WHEN d.book_id IS NULL THEN p.sync_conflict_count ELSE MAX(p.sync_conflict_count, 2) END AS sync_conflict_count
-             FROM reading_progress p LEFT JOIN reading_position_drafts d ON d.book_id = p.book_id AND d.format = p.format"
-        )).all(self.db).await?.into_iter().map(TryInto::try_into).collect()
+        reading_progress::Entity::find()
+            .all(self.db)
+            .await?
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect()
     }
 
     pub(crate) async fn latest_read_at_by_book(&self) -> Result<BTreeMap<i64, f64>, CoreError> {
-        self.db.query_all_raw(Statement::from_string(DbBackend::Sqlite,
-            "SELECT p.book_id, CAST(MAX(COALESCE(d.recorded_at, p.updated_at)) AS REAL) AS latest_read_at
-             FROM reading_progress p LEFT JOIN reading_position_drafts d ON d.book_id = p.book_id AND d.format = p.format
-             GROUP BY p.book_id"
-        )).await?.into_iter().map(|row| Ok((row.try_get("", "book_id")?, row.try_get("", "latest_read_at")?))).collect()
+        self.db
+            .query_all_raw(Statement::from_string(
+                DbBackend::Sqlite,
+                "SELECT book_id, CAST(MAX(updated_at) AS REAL) AS latest_read_at
+             FROM reading_progress GROUP BY book_id",
+            ))
+            .await?
+            .into_iter()
+            .map(|row| {
+                Ok((
+                    row.try_get("", "book_id")?,
+                    row.try_get("", "latest_read_at")?,
+                ))
+            })
+            .collect()
     }
 
     pub(crate) async fn list_bookmarks(

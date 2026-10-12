@@ -767,29 +767,6 @@ pub fn reading_position_projections(
     Ok(projections)
 }
 
-pub fn resolve_reading_position(
-    doc: &mut AutoCommit,
-    book_id: i64,
-    format: &str,
-    operation_id: &str,
-    recorded_at: i64,
-) -> Result<ChangeHash, SyncError> {
-    let candidate = reading_position_candidates(doc, book_id, format)?
-        .into_iter()
-        .find(|candidate| candidate.operation_id == operation_id)
-        .ok_or_else(|| sync_error("Reading position candidate does not exist"))?;
-    let replica_id = Uuid::from_slice(doc.get_actor().to_bytes())
-        .map_err(|_| sync_error("Automerge actor is not a UUID"))?
-        .hyphenated()
-        .to_string();
-    let resolved = ReadingPositionValue {
-        recorded_at,
-        replica_id,
-        ..candidate.value
-    };
-    set_reading_position(doc, book_id, &resolved)
-}
-
 fn put_json_register<T: Serialize>(
     doc: &mut AutoCommit,
     root: &str,
@@ -1538,28 +1515,6 @@ mod tests {
             reading_position_candidates(&first, 7, "PDF").unwrap(),
             reading_position_candidates(&second, 7, "PDF").unwrap()
         );
-    }
-
-    #[test]
-    fn should_remove_conflict_when_user_selects_a_position_candidate() {
-        let mut first = load_library_sidecar_document(REPLICA_A).unwrap();
-        let mut second = load_library_sidecar_document(REPLICA_B).unwrap();
-        set_library_identity(&mut first, LIBRARY_UUID, 1).unwrap();
-        set_library_identity(&mut second, LIBRARY_UUID, 1).unwrap();
-        set_reading_position(&mut first, 7, &position(REPLICA_A, 700_000)).unwrap();
-        set_reading_position(&mut second, 7, &position(REPLICA_B, 300_000)).unwrap();
-        first.merge(&mut second).unwrap();
-        let selected = reading_position_candidates(&first, 7, "PDF")
-            .unwrap()
-            .into_iter()
-            .find(|candidate| candidate.value.display_progression_ppm == Some(300_000))
-            .unwrap();
-
-        resolve_reading_position(&mut first, 7, "PDF", &selected.operation_id, 2).unwrap();
-
-        let candidates = reading_position_candidates(&first, 7, "PDF").unwrap();
-        assert_eq!(candidates.len(), 1);
-        assert_eq!(candidates[0].value.display_progression_ppm, Some(300_000));
     }
 
     #[test]

@@ -172,13 +172,8 @@ impl ReadingService {
         } else {
             None
         };
-        let completed = crate::sync::persistence::async_io::mutate_reading_position(
-            database_path,
-            &identity,
-            recorded_at_ms,
-            book_id,
-            format.clone(),
-            move |document| {
+        let completed =
+            mutate_document(database_path, &identity, recorded_at_ms, move |document| {
                 let mut completed = false;
                 write_reading_position(document, book_id, &value)?;
                 if let Some(completion) = &completion {
@@ -190,9 +185,8 @@ impl ReadingService {
                     }
                 }
                 Ok(completed)
-            },
-        )
-        .await?;
+            })
+            .await?;
         info!(
             target: "myreader_sync",
             event = "reading_position.local_write",
@@ -230,7 +224,6 @@ impl ReadingService {
         let context = LibraryContext::open(sidecar_root).await?;
         let identity = context.identity(library_root).await?;
         let repository = ReadingRepository::new(context.database());
-        let draft = repository.position_draft(book_id, &format).await?;
         let mut candidates = repository
             .list_position_candidates(book_id, &format)
             .await?;
@@ -243,10 +236,9 @@ impl ReadingService {
             for candidate in &mut candidates {
                 candidate.is_local = candidate.replica_id == identity.replica_id.as_str();
             }
-            candidates.extend(draft);
             return Ok(candidates);
         }
-        let mut candidates = read_position_candidates(context.path(), &identity, book_id, &format)
+        read_position_candidates(context.path(), &identity, book_id, &format)
             .await?
             .into_iter()
             .map(|candidate| {
@@ -262,43 +254,7 @@ impl ReadingService {
                     replica_id: candidate.value.replica_id,
                 })
             })
-            .collect::<Result<Vec<_>, CoreError>>()?;
-        candidates.extend(draft);
-        Ok(candidates)
-    }
-
-    pub async fn select_reading_position_candidate(
-        sidecar_root: &Path,
-        library_root: &Path,
-        book_id: i64,
-        format: &str,
-        operation_id: &str,
-        recorded_at_ms: i64,
-    ) -> Result<(), CoreError> {
-        if book_id < 1 || operation_id.is_empty() || recorded_at_ms < 0 {
-            return Err(CoreError::Config(
-                "Reading position candidate is invalid".into(),
-            ));
-        }
-        let format = normalize_reading_format(format)?;
-        let context = LibraryContext::open(sidecar_root).await?;
-        let database_path = context.path();
-        let identity = context.identity(library_root).await?;
-        crate::sync::persistence::async_io::execute_local_database_command(
-            database_path,
-            &identity,
-            recorded_at_ms,
-            crate::sync::persistence::SyncDatabaseCommand {
-                command: crate::sync::document_engine::DocumentCommand::ResolveReadingPosition {
-                    book_id,
-                    format,
-                    operation_id: operation_id.to_owned(),
-                    recorded_at: recorded_at_ms,
-                },
-            },
-        )
-        .await?;
-        Ok(())
+            .collect()
     }
 
     pub async fn list_reader_bookmarks(
@@ -1254,45 +1210,6 @@ mod tests {
         .unwrap();
         assert_eq!(candidates.len(), 1);
         assert_eq!(candidates[0].locator["locations"]["position"], 3);
-    }
-
-    #[tokio::test]
-    async fn should_reject_a_local_candidate_without_a_persisted_draft() {
-        let sidecar = tempfile::tempdir().unwrap();
-        let library = tempfile::tempdir().unwrap();
-        seed_library_uuid(library.path()).await;
-        let locator =
-            r#"{"href":"chapter.xhtml","type":"application/xhtml+xml","locations":{"position":3}}"#;
-        super::ReadingService::set_reading_position(
-            sidecar.path(),
-            library.path(),
-            42,
-            "EPUB",
-            locator,
-            Some(0.4),
-            900,
-        )
-        .await
-        .unwrap();
-
-        let selected = super::ReadingService::select_reading_position_candidate(
-            sidecar.path(),
-            library.path(),
-            42,
-            "EPUB",
-            "local",
-            901,
-        )
-        .await;
-        assert!(
-            selected.is_err(),
-            "a stale draft selection must not resolve to the synchronized default"
-        );
-        let position = super::ReadingService::get_reading_position(sidecar.path(), 42, "EPUB")
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(position.updated_at, 900.0);
     }
 
     #[tokio::test]

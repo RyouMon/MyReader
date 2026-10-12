@@ -4113,64 +4113,6 @@ export async function readingRemoveBookmark(
   }
 }
 
-export async function readingSelectPositionCandidate(
-  sidecarRootPath: string,
-  libraryRootPath: string,
-  bookId: number,
-  format: string,
-  operationId: string,
-  recordedAtMs: number,
-  asyncOpts_?: { signal: AbortSignal },
-): Promise<void> /*throws*/ {
-  const __stack = uniffiIsDebug ? new Error().stack : undefined;
-  try {
-    return await uniffiRustCallAsync(
-      /*rustCaller:*/ uniffiCaller,
-      /*rustFutureFunc:*/ () => {
-        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_reading_select_position_candidate(
-          FfiConverterString.lower(
-            sidecarRootPath,
-            nativeModule().rustbuffer_alloc,
-          ),
-          FfiConverterString.lower(
-            libraryRootPath,
-            nativeModule().rustbuffer_alloc,
-          ),
-          FfiConverterFloat64.lower(bookId, nativeModule().rustbuffer_alloc),
-          FfiConverterString.lower(format, nativeModule().rustbuffer_alloc),
-          FfiConverterString.lower(
-            operationId,
-            nativeModule().rustbuffer_alloc,
-          ),
-          FfiConverterFloat64.lower(
-            recordedAtMs,
-            nativeModule().rustbuffer_alloc,
-          ),
-        );
-      },
-      /*pollFunc:*/ nativeModule()
-        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_void,
-      /*cancelFunc:*/ nativeModule()
-        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_void,
-      /*completeFunc:*/ nativeModule()
-        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_void,
-      /*freeFunc:*/ nativeModule()
-        .ubrn_ffi_my_reader_core_ffi_rust_future_free_void,
-      /*liftFunc:*/ (_v) => {},
-      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
-      /*asyncOpts:*/ asyncOpts_,
-      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
-        FfiConverterTypeCoreFfiError,
-      ),
-    );
-  } catch (__error: any) {
-    if (uniffiIsDebug && __error instanceof Error) {
-      __error.stack = __stack;
-    }
-    throw __error;
-  }
-}
-
 export async function readingSetFavoriteBook(
   sidecarRootPath: string,
   libraryRootPath: string,
@@ -11179,14 +11121,6 @@ function uniffiEnsureInitialized() {
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_reading_remove_bookmark",
-    );
-  }
-  if (
-    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_select_position_candidate() !==
-    16404
-  ) {
-    throw new UniffiInternalError.ApiChecksumMismatch(
-      "uniffi_my_reader_core_ffi_checksum_func_reading_select_position_candidate",
     );
   }
   if (

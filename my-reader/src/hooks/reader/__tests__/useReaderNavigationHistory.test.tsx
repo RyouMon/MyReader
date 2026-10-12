@@ -58,17 +58,16 @@ describe("reader session navigation", () => {
     expect(
       result.current.getSnapshot().entries[result.current.getSnapshot().index],
     ).toMatchObject(page(80))
-    expect(result.current.buttonVisible(1, false)).toBe(true)
+    expect(result.current.getSnapshot().remoteHint).toBe(true)
     act(() => result.current.dismissRemoteHint())
     await act(() => applySidecarSyncCompleted(event, client))
-    expect(result.current.buttonVisible(1, false)).toBe(false)
-    expect(result.current.buttonVisible(1, true)).toBe(true)
+    expect(result.current.getSnapshot().remoteHint).toBe(false)
     act(() => {
       expect(result.current.move(1)).toMatchObject(page(20))
     })
     rerender({ bookId: 8 })
     expect(result.current.getSnapshot().entries).toHaveLength(1)
-    expect(result.current.buttonVisible(-1, true)).toBe(false)
+    expect(result.current.move(-1)).toBeNull()
     unmount()
     client.clear()
   })

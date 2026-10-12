@@ -37,7 +37,6 @@ fn progress_dto(
         locator: value.locator,
         display_progression: value.display_progression,
         updated_at: value.updated_at,
-        conflict_count: value.conflict_count,
     }
 }
 
@@ -133,28 +132,5 @@ impl ProgressService {
             })
             .collect(),
         )
-    }
-
-    pub async fn select_reading_position_candidate_for_library(
-        app_data_dir: &Path,
-        config: &AppConfig,
-        library_id: Option<&str>,
-        book_id: i64,
-        format: &str,
-        operation_id: &str,
-    ) -> Result<(), AppError> {
-        let library = LibraryService::resolve_library(library_id, config)?;
-        let sidecar_root = library_sidecar_path(&library, app_data_dir);
-        let library_root = library_root_path(&library, app_data_dir);
-        my_reader_core::api::reading::ReadingService::select_reading_position_candidate(
-            &sidecar_root,
-            &library_root,
-            book_id,
-            format,
-            operation_id,
-            unix_epoch_millis(),
-        )
-        .await?;
-        Ok(())
     }
 }

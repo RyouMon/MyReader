@@ -1,7 +1,7 @@
 import type { Locator } from "@my-reader/readium"
 import { ReaderNavigationHistory } from "@my-reader/tools/reader-navigation-history"
 import { useQuery } from "@tanstack/react-query"
-import { useEffect, useState, useSyncExternalStore } from "react"
+import { useEffect, useState } from "react"
 import type { Library } from "@/src/domain/types"
 import { parseStoredLocator } from "@/src/domain/library/reading-progress"
 import { listReadingPositionCandidates } from "@/src/services/core/reading"
@@ -22,7 +22,6 @@ export function useReaderNavigationHistory(
   if (session.key !== sessionKey)
     setSession({ key: sessionKey, history: new ReaderNavigationHistory() })
   const history = session.history
-  useSyncExternalStore(history.subscribe, history.getSnapshot)
   const candidates = useQuery({
     queryKey: [
       ...queryKeys.readingProgress(library?.id),

@@ -23,7 +23,6 @@ const mocks = vi.hoisted(() => ({
     listReadingPositionCandidates: vi.fn(),
     prepareBookSource: vi.fn(),
     closeBookStreamer: vi.fn(),
-    selectReadingPositionCandidate: vi.fn(),
     downloadBookFile: vi.fn(),
     cancelBookDownload: vi.fn(),
     setReadingProgress: vi.fn(),
@@ -91,7 +90,6 @@ beforeEach(() => {
   mocks.api.getBookDetail.mockResolvedValue(book())
   mocks.api.getReadingProgress.mockResolvedValue({
     locator: savedLocator,
-    conflictCount: 2,
   })
   mocks.api.listReadingPositionCandidates.mockResolvedValue(candidates)
   mocks.api.prepareBookSource.mockResolvedValue({
@@ -100,7 +98,6 @@ beforeEach(() => {
     extractedEntries: [],
   })
   mocks.api.closeBookStreamer.mockResolvedValue(undefined)
-  mocks.api.selectReadingPositionCandidate.mockResolvedValue(undefined)
   mocks.api.downloadBookFile.mockResolvedValue(undefined)
 })
 afterEach(() => {
@@ -112,7 +109,6 @@ describe("useReaderBookSource", () => {
   it("keeps the open publication and viewport when sync changes the saved position", async () => {
     mocks.api.getReadingProgress.mockResolvedValue({
       locator: savedLocator,
-      conflictCount: 1,
     })
     const { result } = renderHook(() => useReaderBookSource({ bookId: "4" }), {
       wrapper,
@@ -121,7 +117,6 @@ describe("useReaderBookSource", () => {
     const payload = result.current.bookPayload
     mocks.api.getReadingProgress.mockResolvedValue({
       locator: candidates[1].locator,
-      conflictCount: 2,
     })
     await act(() =>
       applySidecarSyncCompleted(
@@ -140,8 +135,8 @@ describe("useReaderBookSource", () => {
 
   it.each([
     null,
-    { locator: savedLocator, conflictCount: 1 },
-  ])("opens without waiting for Automerge when the saved position has no conflict: %j", async (progress) => {
+    { locator: savedLocator },
+  ])("opens without waiting for remote position lookup: %j", async (progress) => {
     mocks.api.getReadingProgress.mockResolvedValue(progress)
     mocks.api.listReadingPositionCandidates.mockReturnValue(
       new Promise(() => {}),

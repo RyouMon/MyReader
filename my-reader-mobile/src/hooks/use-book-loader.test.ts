@@ -34,7 +34,7 @@ it.each([
   "EPUB",
   "PDF",
   "CBZ",
-])("opens cached %s while conflict lookup is pending", async (format) => {
+])("opens cached %s while remote position lookup is pending", async (format) => {
   jest.mocked(useAppStore.getState).mockReturnValue({
     libraries: [
       { id: "library", sourceType: "local", path: "file:///library" },

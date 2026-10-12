@@ -281,10 +281,6 @@
     "mountingReader": "Lesegerät montieren…",
     "loadFailed": "Das Laden des Readers ist fehlgeschlagen",
     "loadFailedMessage": "Der Leser ist auf einen unerwarteten Fehler gestoßen. Bitte gehen Sie zurück und versuchen Sie es erneut.",
-    "positionConflictTitle": "Wählen Sie, wo Sie fortfahren möchten",
-    "positionConflictDescription": "Ein anderes Gerät hat offline eine andere Position gespeichert. Wählen Sie eine aus, um fortzufahren. Die Auswahl wird mit Ihren anderen Geräten synchronisiert.",
-    "positionConflictUnknownProgress": "Unbekannter Fortschritt",
-    "positionConflictLater": "Entscheiden Sie später und verwenden Sie die Standardposition",
     "chrome": {
       "moreActions": "Weitere Aktionen"
     },

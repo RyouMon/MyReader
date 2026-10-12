@@ -108,11 +108,4 @@ export class ReaderNavigationHistory {
     if (this.snapshot.remoteHint)
       this.publish({ ...this.snapshot, remoteHint: false })
   }
-
-  buttonVisible(direction: NavigationDirection, chromeVisible: boolean) {
-    return (
-      Boolean(this.snapshot.entries[this.snapshot.index + direction]) &&
-      (chromeVisible || (direction === 1 && this.snapshot.remoteHint))
-    )
-  }
 }

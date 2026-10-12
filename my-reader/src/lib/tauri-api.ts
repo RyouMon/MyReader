@@ -88,7 +88,6 @@ export const api = {
   listReadingProgress: wrap(commands.listReadingProgress),
   setReadingProgress: wrap(commands.setReadingProgress),
   listReadingPositionCandidates: wrap(commands.listReadingPositionCandidates),
-  selectReadingPositionCandidate: wrap(commands.selectReadingPositionCandidate),
   addReadingSessionInterval: wrap(commands.addReadingSessionInterval),
   listReaderAnnotations: wrap(commands.listReaderAnnotations),
   addReaderAnnotation: wrap(commands.addReaderAnnotation),

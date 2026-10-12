@@ -90,7 +90,6 @@ export function useReaderBookSource({
   >("idle")
   const [downloadError, setDownloadError] = useState<string | null>(null)
   const closingRef = useRef(false)
-  const loadGenerationRef = useRef(0)
 
   const mainHandoff = useMemo(() => isMainWebviewWindow(), [])
 
@@ -212,7 +211,6 @@ export function useReaderBookSource({
   useEffect(() => {
     if (mainHandoff) return
     let cancelled = false
-    loadGenerationRef.current += 1
 
     async function load() {
       if (!activeLibraryId) {
@@ -275,7 +273,6 @@ export function useReaderBookSource({
     load()
     return () => {
       cancelled = true
-      loadGenerationRef.current += 1
       if (activeLibraryId) {
         void api.closeBookStreamer(activeLibraryId, Number(bookId))
       }

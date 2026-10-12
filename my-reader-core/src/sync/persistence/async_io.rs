@@ -115,43 +115,6 @@ where
     .await
 }
 
-pub(crate) async fn mutate_reading_position<F>(
-    path: &str,
-    identity: &DatabaseIdentity,
-    now_ms: i64,
-    book_id: i64,
-    format: String,
-    mutate: F,
-) -> Result<bool, SyncError>
-where
-    F: FnOnce(&mut automerge::AutoCommit) -> Result<bool, SyncError> + Send + 'static,
-{
-    let identity = identity.clone();
-    with_database(path, move |path| {
-        let mut completed = false;
-        super::execute_guarded_mutation(
-            path,
-            &identity,
-            now_ms,
-            |transaction| {
-                transaction
-                    .execute(
-                        "DELETE FROM reading_position_drafts WHERE book_id = ?1 AND format = ?2",
-                        rusqlite::params![book_id, format],
-                    )
-                    .map_err(super::database_error)?;
-                Ok(false)
-            },
-            |document| {
-                completed = mutate(document)?;
-                Ok(())
-            },
-        )?;
-        Ok(completed)
-    })
-    .await
-}
-
 pub(crate) async fn apply_remote_database_objects(
     path: &str,
     identity: &DatabaseIdentity,
@@ -185,10 +148,12 @@ pub(crate) async fn inspect_for_sync(
     let identity = identity.clone();
     blocking::run_background(move || {
         let connection = super::open_connection(&path)?;
-        let state = super::decode_state(super::remote::snapshot_token(&connection)?, &identity)?
-            .ok_or_else(|| super::sync_error("Local Automerge state is missing"))?;
-        super::execute_document_command_projected(
-            Some(&state.snapshot_bytes),
+        let mut state =
+            super::decode_state(super::remote::snapshot_token(&connection)?, &identity)?
+                .ok_or_else(|| super::sync_error("Local Automerge state is missing"))?;
+        let document = super::take_document(&mut state, &identity)?;
+        super::execute_loaded_document_command(
+            document,
             super::request(&identity, state.heads, super::DocumentCommand::Inspect),
             None,
             super::ProjectionMode::Full,

@@ -34,8 +34,6 @@ const INTENTIONAL_PLATFORM_VARIANTS = [
   "reader.loadFailed",
   "reader.margin",
   "reader.pageDirection",
-  "reader.positionConflictDescription",
-  "reader.positionConflictTitle",
   "reader.readingMode",
   "reader.readingProgression",
   "reader.settings",

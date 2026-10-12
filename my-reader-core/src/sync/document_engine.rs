@@ -14,12 +14,11 @@ use super::document::{
     library_sidecar_missing_dependencies, load_library_sidecar_document,
     load_library_sidecar_document_bytes, reading_completion_projections,
     reading_completion_records, reading_position_candidates, reading_position_projections,
-    reading_session_projections, resolve_reading_position, save_library_sidecar_document,
-    save_library_sidecar_incremental, set_bookmark, set_favorite, set_library_identity,
-    set_reading_position, update_annotation, update_catalog_book_metadata,
-    validate_library_identity, AnnotationValue, BookmarkValue, CatalogBookValue, FavoriteValue,
-    LibrarySidecarAutomergeChange, ReadingCompletionValue, ReadingPositionCandidate,
-    ReadingPositionProjection, ReadingPositionValue, ReadingSessionValue,
+    reading_session_projections, save_library_sidecar_document, save_library_sidecar_incremental,
+    set_bookmark, set_favorite, set_library_identity, set_reading_position, update_annotation,
+    update_catalog_book_metadata, validate_library_identity, AnnotationValue, BookmarkValue,
+    CatalogBookValue, FavoriteValue, LibrarySidecarAutomergeChange, ReadingCompletionValue,
+    ReadingPositionCandidate, ReadingPositionProjection, ReadingPositionValue, ReadingSessionValue,
     LIBRARY_SIDECAR_SCHEMA_VERSION,
 };
 use super::SyncError;
@@ -112,12 +111,6 @@ pub enum DocumentCommand {
         book_id: i64,
         value: ReadingPositionValue,
     },
-    ResolveReadingPosition {
-        book_id: i64,
-        format: String,
-        operation_id: String,
-        recorded_at: i64,
-    },
     SetFavorite {
         book_id: i64,
         value: FavoriteValue,
@@ -170,14 +163,7 @@ fn project_document(
         projection.catalog_books = catalog_book_projections(doc)?;
     }
     if scope.includes(ProjectionDomain::Positions) {
-        projection.reading_positions = match scope {
-            ProjectionScope::Position(book_id, format) => {
-                vec![super::document::reading_position_projection(
-                    doc, *book_id, format,
-                )?]
-            }
-            _ => reading_position_projections(doc)?,
-        };
+        projection.reading_positions = reading_position_projections(doc)?;
         projection.reading_position_candidates =
             project_position_candidates(doc, &projection.reading_positions)?;
     }
@@ -300,15 +286,6 @@ pub(crate) fn execute_loaded_document_command(
         }
         DocumentCommand::SetReadingPosition { book_id, ref value } => {
             set_reading_position(&mut document, book_id, value)?;
-            Vec::new()
-        }
-        DocumentCommand::ResolveReadingPosition {
-            book_id,
-            ref format,
-            ref operation_id,
-            recorded_at,
-        } => {
-            resolve_reading_position(&mut document, book_id, format, operation_id, recorded_at)?;
             Vec::new()
         }
         DocumentCommand::SetFavorite { book_id, ref value } => {

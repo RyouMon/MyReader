@@ -32,13 +32,12 @@ describe("reader navigation history", () => {
     expect(history.getSnapshot().entries[history.getSnapshot().index]).toEqual(
       page(80),
     )
-    expect(history.buttonVisible(1, false)).toBe(true)
-    expect(history.buttonVisible(-1, false)).toBe(false)
+    expect(history.getSnapshot().remoteHint).toBe(true)
+    expect(history.getSnapshot().index).toBe(0)
     history.dismissRemoteHint()
-    expect(history.buttonVisible(1, false)).toBe(false)
-    expect(history.buttonVisible(1, true)).toBe(true)
+    expect(history.getSnapshot().remoteHint).toBe(false)
     history.receiveRemote("remote-1", page(10))
-    expect(history.buttonVisible(1, false)).toBe(false)
+    expect(history.getSnapshot().remoteHint).toBe(false)
     expect(history.move(1)).toEqual(page(10))
     expect(history.move(1)).toEqual(page(20))
     expect(history.move(-1)).toEqual(page(10))
