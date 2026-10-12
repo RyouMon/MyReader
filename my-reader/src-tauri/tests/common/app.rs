@@ -10,8 +10,8 @@
 //!
 //! Constraints:
 //! - `mock_app_handle()` requires the tauri `test` feature (already in `[dev-dependencies]`).
-//! - On Windows, integration tests using `mock_builder()` hit
-//!   `STATUS_ENTRYPOINT_NOT_FOUND` (tauri-apps/tauri#13419). Run via WSL.
+//! - On Windows MSVC, `build.rs` embeds Common Controls v6 in integration tests
+//!   to prevent `STATUS_ENTRYPOINT_NOT_FOUND` (tauri-apps/tauri#13419).
 //! - Each `TestApp` gets a fresh in-memory `AppConfig`. The `app_data_dir` returned by
 //!   `app.path().app_data_dir()` is the default mock path — tests must use
 //!   `seed_config_file` / `read_persisted_config` from `common::config` rather than
@@ -165,6 +165,7 @@ impl TestApp {
             "refusing to clean unexpected test app_data_dir: {}",
             dir.display()
         );
+        close_test_library_databases(&dir);
         match std::fs::remove_dir_all(&dir) {
             Ok(()) => {}
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
@@ -210,4 +211,47 @@ impl Default for TestApp {
     fn default() -> Self {
         Self::new()
     }
+}
+
+fn close_test_library_databases(app_data_dir: &std::path::Path) {
+    let libraries = match std::fs::read_dir(app_data_dir.join("libraries")) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return,
+        Err(error) => panic!("failed to list test libraries: {error}"),
+    };
+    // Core pools outlive the previous mock app. Close them before removing their
+    // files on Windows. A separate thread avoids nesting the caller's Tokio runtime.
+    std::thread::spawn(move || {
+        tauri::async_runtime::block_on(async {
+            for library in libraries {
+                let path = library
+                    .expect("test library directory should be readable")
+                    .path()
+                    .join(".myreader/myreader.db");
+                let _removal = my_reader_core::api::close_library_database(&path)
+                    .await
+                    .expect("test library database should close");
+            }
+        });
+    })
+    .join()
+    .expect("test database cleanup should complete");
+}
+
+#[test]
+fn test_app_should_release_pooled_database_before_next_fixture() {
+    let app = TestApp::new();
+    let database_path = app
+        .app_data_dir()
+        .join("libraries/fixture-cleanup/.myreader/myreader.db");
+    std::fs::create_dir_all(database_path.parent().unwrap()).unwrap();
+    tauri::async_runtime::block_on(my_reader_core::api::migrate_library_database(
+        &database_path,
+    ))
+    .unwrap();
+    assert!(database_path.exists());
+    drop(app);
+
+    let _next_app = TestApp::new();
+    assert!(!database_path.exists());
 }
