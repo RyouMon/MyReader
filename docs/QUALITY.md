@@ -12,6 +12,10 @@ Cargo workspace 完整单测及覆盖率任务的执行结果。覆盖率任务�
 覆盖率百分比门槛；其中的测试、编译、采集或报告上传失败仍会阻止合入。
 通过后仍需人工审核合入。
 
+Rust 门禁在 Linux 和 Windows MSVC 上运行相同的格式检查、Clippy 和完整 Cargo workspace 测试。
+Windows 集成测试通过 `my-reader/src-tauri/build.rs` 单独嵌入 Common Controls v6 清单，
+避免测试程序启动时报 `STATUS_ENTRYPOINT_NOT_FOUND`；应用程序仍使用 Tauri 默认清单。
+
 ## 日常命令
 
 从仓库根目录执行；使用 `packageManager` 指定的 pnpm 和 `pnpm install --frozen-lockfile`。

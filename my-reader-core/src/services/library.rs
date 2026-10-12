@@ -1918,7 +1918,7 @@ mod tests {
         .await
         .expect_err("the local cache root is blocked by a file");
 
-        assert!(error.to_string().contains("Not a directory"));
+        assert!(matches!(error, CoreError::Io(_)), "{error}");
         assert!(!remote_library.exists());
         ensure_remote_myreader_create_target(&base_operator, source_path)
             .await

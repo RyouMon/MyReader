@@ -13,11 +13,11 @@
 //! tests stay inline as `#[cfg(test)] mod tests` in their source file — see
 //! `.agents/rules/tauri-testing-strategy.md`.
 //!
-//! Windows note: `tauri::test::mock_app()` triggers `STATUS_ENTRYPOINT_NOT_FOUND` from
-//! integration-test binaries on native Windows (tauri-apps/tauri#13419). Run in WSL:
+//! Native Windows MSVC tests use the Common Controls v6 manifest embedded by `build.rs`
+//! to avoid `STATUS_ENTRYPOINT_NOT_FOUND` (tauri-apps/tauri#13419):
 //!
 //! ```sh
-//! cd my-reader/src-tauri && cargo test --test integration
+//! cargo test --locked -p my-reader --test integration
 //! ```
 
 mod commands;
