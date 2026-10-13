@@ -5,6 +5,19 @@
 MyReader 的重要变更均记录于此。
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [0.16.1] - 2026-10-13
+
+### Changed
+
+- 语音生成、凭据与跨端桥接等待、桌面音频启动增加 20 秒超时，并取消或丢弃过期请求，避免听书一直停留在生成状态；移除桌面端冗余的“正在生成下一条语音”提示（[#99](https://github.com/RyouMon/MyReader/pull/99)）
+- 正文朗读与试听保留服务端原始错误及原因链，过滤凭据，并在本地化说明和原始错误之间留一行空行，便于排查失败原因（[#99](https://github.com/RyouMon/MyReader/pull/99)）
+
+### Fixed
+
+- 修复移动端点击播放立即出现 `TypeError: undefined is not a function`，以及桌面端重新打开阅读器后使用相同配置无法开始朗读的问题（[#99](https://github.com/RyouMon/MyReader/pull/99)）
+- 修复 Qwen Token Plan WebSocket 连接卡住，按接口区分可用模型，并保留旧配置的编辑能力（[#99](https://github.com/RyouMon/MyReader/pull/99)）
+- 修复正文朗读高亮失效，以及翻页后返回朗读位置的识别不稳定；改进跨页句子、特殊元素编号与空白文本的定位，并阻止过期回调覆盖当前页面状态（[#99](https://github.com/RyouMon/MyReader/pull/99)）
+
 ## [0.16.0] - 2026-10-13
 
 ### Added
