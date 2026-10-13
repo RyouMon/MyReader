@@ -14,6 +14,30 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class TtsViewportStartLocatorTest {
   @Test
+  fun playback_quote_escapes_numeric_ids_and_discards_stale_page_ranges() {
+    val locator = Locator(
+      href = requireNotNull(Url("chapter.xhtml")),
+      mediaType = MediaType.XHTML,
+      locations = Locator.Locations(
+        progression = 0.4,
+        position = 33,
+        otherLocations = mapOf(
+          "cssSelector" to "#8IL20-book > div > p:nth-child(3)",
+          "domRange" to mapOf("start" to mapOf("cssSelector" to "p", "charOffset" to 0)),
+        ),
+      ),
+      text = Locator.Text(before = "在上面专业", highlight = "剧本", after = "故事线"),
+    )
+    val playback = ttsPlaybackTextLocator(locator)
+    assertEquals("#\\38 IL20-book > div > p:nth-child(3)", playback.locations.otherLocations["cssSelector"])
+    assertNull(playback.locations.otherLocations["domRange"])
+    assertNull(playback.locations.progression)
+    assertEquals(33, playback.locations.position)
+    assertEquals(locator.text, playback.text)
+    assertEquals(playback, ttsPlaybackTextLocator(playback))
+  }
+
+  @Test
   fun viewport_text_anchor_overrides_a_stale_end_progression() {
     val current = Locator(
       href = requireNotNull(Url("chapter.xhtml")),

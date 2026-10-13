@@ -172,9 +172,10 @@ describe("ReaderTtsControls", () => {
       />,
     )
 
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "reader.tts.generating",
-    )
+    expect(
+      screen.getByRole("button", { name: "reader.tts.play" }),
+    ).toHaveAttribute("aria-busy", "true")
+    expect(screen.queryByRole("status")).not.toBeInTheDocument()
   })
 
   it("reports speech engine failures to the user", () => {

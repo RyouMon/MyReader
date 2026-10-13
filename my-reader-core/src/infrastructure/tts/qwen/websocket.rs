@@ -5,9 +5,11 @@
 use crate::TtsErrorKind;
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{json, Value};
+use std::sync::Arc;
 use tokio_tungstenite::{
-    connect_async_with_config,
+    connect_async_tls_with_config,
     tungstenite::{client::IntoClientRequest, protocol::WebSocketConfig, Error, Message},
+    Connector,
 };
 use url::Url;
 use uuid::Uuid;
@@ -58,7 +60,10 @@ async fn synthesize_task(
             .map_err(|_| tts_error(TtsErrorKind::Configuration, "INVALID_TTS_ENDPOINT"))?;
         url.set_path("/api-ws/v1/inference");
     }
-    let mut upgrade = url.as_str().into_client_request().map_err(network_error)?;
+    let mut upgrade = url
+        .as_str()
+        .into_client_request()
+        .map_err(|error| network_error(error, credential))?;
     let mut authorization = format!("Bearer {credential}")
         .parse::<http::HeaderValue>()
         .map_err(|_| tts_error(TtsErrorKind::Unauthorized, "INVALID_TTS_CREDENTIAL"))?;
@@ -69,9 +74,13 @@ async fn synthesize_task(
     let mut config = WebSocketConfig::default();
     config.max_message_size = Some(MAX_AUDIO_BYTES as usize);
     config.max_frame_size = Some(MAX_AUDIO_BYTES as usize);
-    let (mut socket, _) = connect_async_with_config(upgrade, Some(config), false)
-        .await
-        .map_err(network_error)?;
+    // Desktop dependencies enable both ring and aws-lc. An implicit rustls
+    // provider panics before the handshake; use Core's explicit TLS policy.
+    let connector = Connector::Rustls(Arc::new(crate::infrastructure::http::tls_client_config()));
+    let (mut socket, _) =
+        connect_async_tls_with_config(upgrade, Some(config), false, Some(connector))
+            .await
+            .map_err(|error| network_error(error, credential))?;
     let task_id = Uuid::new_v4().simple().to_string();
     let header =
         |action: &str| json!({"action": action, "task_id": task_id, "streaming": "duplex"});
@@ -96,12 +105,12 @@ async fn synthesize_task(
             .to_string(),
         ))
         .await
-        .map_err(network_error)?;
+        .map_err(|error| network_error(error, credential))?;
 
     let mut started = false;
     let mut bytes = Vec::new();
     while let Some(message) = socket.next().await {
-        match message.map_err(network_error)? {
+        match message.map_err(|error| network_error(error, credential))? {
             Message::Text(text) => {
                 let body: Value = serde_json::from_str(&text).map_err(|_| {
                     tts_error(TtsErrorKind::InvalidResponse, "INVALID_QWEN_RESPONSE")
@@ -119,7 +128,7 @@ async fn synthesize_task(
                             "header": header("continue-task"),
                             "payload": {"model": profile.model, "task_group": "audio", "task": "tts",
                                 "function": "SpeechSynthesizer", "input": {"text": request.text}},
-                        }).to_string())).await.map_err(network_error)?;
+                        }).to_string())).await.map_err(|error| network_error(error, credential))?;
                         socket
                             .send(Message::text(
                                 json!({
@@ -128,7 +137,7 @@ async fn synthesize_task(
                                 .to_string(),
                             ))
                             .await
-                            .map_err(network_error)?;
+                            .map_err(|error| network_error(error, credential))?;
                     }
                     Some("task-finished") if started => {
                         let audio = audio_from_bytes(bytes, Some(*response_format))?;
@@ -147,10 +156,11 @@ async fn synthesize_task(
                             "RequestTimeout" => TtsErrorKind::Timeout,
                             _ => TtsErrorKind::InvalidRequest,
                         };
-                        // Never include error_message: it may echo a book or credential.
+                        let detail =
+                            super::super::redact_credential(&body.to_string(), Some(credential));
                         return Err(tts_error(
                             kind,
-                            &format!("QWEN_{code} (request_id={task_id})"),
+                            &format!("QWEN_{code} (request_id={task_id}): {detail}"),
                         ));
                     }
                     _ => {}
@@ -166,14 +176,17 @@ async fn synthesize_task(
                 bytes.extend_from_slice(&chunk);
             }
             Message::Close(_) => break,
-            Message::Ping(_) => socket.flush().await.map_err(network_error)?,
+            Message::Ping(_) => socket
+                .flush()
+                .await
+                .map_err(|error| network_error(error, credential))?,
             _ => {}
         }
     }
     Err(tts_error(TtsErrorKind::Network, "QWEN_TASK_INTERRUPTED"))
 }
 
-fn network_error(error: Error) -> CoreError {
+fn network_error(error: Error, credential: &str) -> CoreError {
     match error {
         Error::Http(response) => {
             let status = response.status().as_u16();
@@ -183,7 +196,18 @@ fn network_error(error: Error) -> CoreError {
                 408 | 504 => TtsErrorKind::Timeout,
                 _ => TtsErrorKind::Unavailable,
             };
-            tts_error(kind, &format!("HTTP_{status}"))
+            let detail = response
+                .body()
+                .as_deref()
+                .map(String::from_utf8_lossy)
+                .unwrap_or_default();
+            tts_error(
+                kind,
+                &format!(
+                    "HTTP_{status}: {}",
+                    super::super::redact_credential(&detail, Some(credential))
+                ),
+            )
         }
         Error::Capacity(_) => tts_error(TtsErrorKind::PayloadTooLarge, "TTS_AUDIO_TOO_LARGE"),
         _ => tts_error(TtsErrorKind::Network, "TTS_NETWORK_ERROR"),

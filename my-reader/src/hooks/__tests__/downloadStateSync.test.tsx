@@ -402,7 +402,7 @@ describe("download state synchronization", () => {
     expect(toastMock.error).toHaveBeenCalledWith(
       "下载失败",
       expect.objectContaining({
-        description: "未能完成此操作，请重试。\nnetwork failed",
+        description: "未能完成此操作，请重试。\n\nnetwork failed",
       }),
     )
   })
@@ -699,7 +699,7 @@ describe("download state synchronization", () => {
     expect(toastMock.error).toHaveBeenCalledWith(
       "上传失败",
       expect.objectContaining({
-        description: "未能完成此操作，请重试。\nSTORAGE_ERROR: token expired",
+        description: "未能完成此操作，请重试。\n\nSTORAGE_ERROR: token expired",
       }),
     )
   })

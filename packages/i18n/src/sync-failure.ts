@@ -1,3 +1,5 @@
+import { appendErrorDetail } from "./error-detail"
+
 /** Choose UI copy from Core's category; old or unknown categories use a safe fallback. */
 export function syncFailureKeys(kind?: string | null) {
   const category =
@@ -21,5 +23,5 @@ export function syncFailureDetail(
   const diagnostic = [failure?.failureKind, failure?.message]
     .filter(Boolean)
     .join(": ")
-  return diagnostic ? `${detail}\n${diagnostic}` : detail
+  return appendErrorDetail(detail, diagnostic)
 }

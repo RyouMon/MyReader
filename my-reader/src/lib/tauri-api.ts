@@ -3,6 +3,7 @@
 export type * from "./tauri-specta"
 
 import { demoCommands, isDemoApiEnabled } from "./demo-api"
+import { runTtsRequest } from "@my-reader/tools/tts-request"
 import { type ErrorKind, commands as raw } from "./tauri-specta"
 
 type Result<T> =
@@ -115,7 +116,20 @@ export const api = {
   probeTtsProvider: wrap(commands.probeTtsProvider),
   listTtsVoices: wrap(commands.listTtsVoices),
   synthesizeTts: wrap(commands.synthesizeTts),
-  synthesizeTtsRequest: wrap(commands.synthesizeTtsRequest),
+  synthesizeTtsRequest: (
+    ...args: Parameters<typeof commands.synthesizeTtsRequest>
+  ) =>
+    runTtsRequest(async (signal) => {
+      const cancel = () => {
+        void commands.cancelTtsSynthesis(args[0]).catch(() => undefined)
+      }
+      signal.addEventListener("abort", cancel, { once: true })
+      try {
+        return await unwrap(commands.synthesizeTtsRequest(...args))
+      } finally {
+        signal.removeEventListener("abort", cancel)
+      }
+    }),
   cancelTtsSynthesis: commands.cancelTtsSynthesis,
   syncDbForLibrary: wrap(commands.syncDbForLibrary),
   notifySidecarNetworkReconnected: wrap(

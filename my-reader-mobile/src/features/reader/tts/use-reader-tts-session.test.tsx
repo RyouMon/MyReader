@@ -10,6 +10,7 @@ import {
   synthesizeTts,
 } from "@/src/services/core/tts"
 import { useReaderTtsSession } from "./use-reader-tts-session"
+import { errorMessage } from "@/src/i18n/error-message"
 
 jest.mock("@/src/services/core/tts", () => ({
   getTtsConfig: jest.fn(),
@@ -142,9 +143,9 @@ describe("useReaderTtsSession", () => {
 
     expect(result.current.state).toMatchObject({
       state: "error",
-      error: "TTS_UNKNOWN_ERROR",
+      error: "TTS_READER_VIEW_UNAVAILABLE",
     })
-    expect(onError).toHaveBeenCalledWith("TTS_UNKNOWN_ERROR")
+    expect(onError).toHaveBeenCalledWith("TTS_READER_VIEW_UNAVAILABLE")
   })
 
   it("should keep the active session running when the viewport moves", async () => {
@@ -1024,6 +1025,29 @@ describe("useReaderTtsSession", () => {
       mimeType: "audio/mpeg",
       timings: [],
     })
+
+    const failure = new Error(
+      'QWEN_InvalidParameter (HTTP_400): {"message":"Model not exist.","request_id":"request-1"}',
+    )
+    jest.mocked(synthesizeTts).mockRejectedValueOnce(failure)
+    await act(async () => {
+      await result.current.handleSynthesisRequest({
+        sessionId,
+        requestId: "request-failed",
+        text: "下一句",
+        language: "zh-CN",
+        profileId: "openai",
+        voiceId: "reader-voice",
+        speed: 1.2,
+        pitch: 1,
+      })
+    })
+    expect(ref.current.completeTtsSynthesis).toHaveBeenLastCalledWith({
+      sessionId,
+      requestId: "request-failed",
+      error: errorMessage(failure),
+    })
+    expect(errorMessage(failure)).toContain(failure.message)
   })
 
   it("should not persist a voice discovered after the start was cancelled", async () => {

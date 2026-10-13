@@ -283,11 +283,11 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
   private let onFollowTextNavigation: (UUID, Locator, Bool) -> Void
   private var stopRequested = false
   private var emitStoppedState = true
-  private var highlightedUtterance: PublicationSpeechSynthesizer.Utterance?
-  private var followedUtterance: PublicationSpeechSynthesizer.Utterance?
+  private var highlightedLocator: Locator?
+  private var followedLocator: Locator?
   private var currentUtterance: PublicationSpeechSynthesizer.Utterance?
   private var currentLocator: Locator?
-  var playbackLocator: Locator? { currentUtterance?.locator }
+  var playbackLocator: Locator? { currentLocator }
   private var remoteBufferingKey: RemoteTtsSpeechKey?
   private var sentenceNavigationPlaybackState = TtsSentenceNavigationPlaybackState()
   private var followTextTask: Task<Void, Never>?
@@ -447,31 +447,35 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
       }
 
     case let .paused(utterance):
+      let locator = currentUtterance == utterance
+        ? currentLocator ?? ttsPlaybackTextLocator(utterance.locator)
+        : ttsPlaybackTextLocator(utterance.locator)
       currentUtterance = utterance
-      currentLocator = utterance.locator
+      currentLocator = locator
       sentenceNavigationPlaybackState.didPause()
-      updateHighlight(for: utterance)
+      updateHighlight(at: locator)
       scheduleRemotePrefetch(from: utterance.locator)
       let buffering = remoteBufferingKey == speechKey(for: utterance)
-      if !buffering { followText(for: utterance) }
-      onStateChange(statePayload("paused", utterance: utterance, locator: utterance.locator))
+      if !buffering { followText(at: locator) }
+      onStateChange(statePayload("paused", utterance: utterance, locator: locator))
 
-    case let .playing(utterance, _):
+    case let .playing(utterance, range):
       if sentenceNavigationPlaybackState.didStartPlaying() {
         synthesizer.pause()
         return
       }
       currentUtterance = utterance
-      currentLocator = utterance.locator
-      updateHighlight(for: utterance)
+      let locator = ttsPlaybackTextLocator(range ?? utterance.locator)
+      currentLocator = locator
+      updateHighlight(at: locator)
       scheduleRemotePrefetch(from: utterance.locator)
       let buffering = remoteBufferingKey == speechKey(for: utterance)
-      if !buffering { followText(for: utterance) }
+      if !buffering { followText(at: locator) }
       onStateChange(
         statePayload(
           buffering ? "loading" : "playing",
           utterance: utterance,
-          locator: utterance.locator
+          locator: locator
         )
       )
     }
@@ -483,7 +487,12 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
     didFailWithError error: PublicationSpeechSynthesizer.Error
   ) {
     var payload = statePayload("error", utterance: utterance, locator: utterance.locator)
-    payload["error"] = String(describing: error)
+    switch error {
+    case let .engine(.other(cause)):
+      payload["error"] = cause.localizedDescription
+    default:
+      payload["error"] = String(describing: error)
+    }
     onStateChange(payload)
   }
 
@@ -501,16 +510,16 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
     ]
   }
 
-  private func updateHighlight(for utterance: PublicationSpeechSynthesizer.Utterance) {
-    guard highlightedUtterance != utterance else { return }
-    highlightedUtterance = utterance
+  private func updateHighlight(at locator: Locator) {
+    guard highlightedLocator != locator else { return }
+    highlightedLocator = locator
     let tint = config.highlightColor.flatMap(UIColor.fromCSS)
       ?? UIColor(red: 0.96, green: 0.78, blue: 0.67, alpha: 0.72)
     navigator.apply(
       decorations: [
         Decoration(
           id: "tts-current-sentence",
-          locator: utterance.locator,
+          locator: locator,
           style: .highlight(tint: tint)
         ),
       ],
@@ -518,20 +527,20 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
     )
   }
 
-  private func followText(for utterance: PublicationSpeechSynthesizer.Utterance) {
-    guard shouldFollowText(), followedUtterance != utterance else { return }
+  private func followText(at locator: Locator) {
+    guard shouldFollowText(), followedLocator != locator else { return }
     followTextTask?.cancel()
-    followedUtterance = utterance
+    followedLocator = locator
     followTextTask = Task { @MainActor [weak self] in
       guard let self, !Task.isCancelled, self.shouldFollowText() else { return }
       let navigationId = UUID()
-      self.onFollowTextNavigation(navigationId, utterance.locator, true)
+      self.onFollowTextNavigation(navigationId, locator, true)
       defer {
-        self.onFollowTextNavigation(navigationId, utterance.locator, false)
+        self.onFollowTextNavigation(navigationId, locator, false)
       }
       guard !Task.isCancelled, self.shouldFollowText() else { return }
       _ = await self.navigateToPlaybackLocator(
-        utterance.locator,
+        locator,
         animated: false
       )
     }
@@ -583,7 +592,7 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
     guard let utterance = currentUtterance,
           let locator = currentLocator,
           speechKey(for: utterance) == key else { return }
-    if !buffering { followText(for: utterance) }
+    if !buffering { followText(at: locator) }
     onStateChange(
       statePayload(
         buffering
@@ -642,11 +651,11 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
   private func invalidateFollowTextNavigation() {
     followTextTask?.cancel()
     followTextTask = nil
-    followedUtterance = nil
+    followedLocator = nil
   }
 
   private func clearHighlight() {
-    highlightedUtterance = nil
+    highlightedLocator = nil
     invalidateFollowTextNavigation()
     navigator.apply(decorations: [], in: Self.decorationGroup)
   }

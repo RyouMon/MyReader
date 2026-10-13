@@ -555,6 +555,7 @@ final class ReadiumView: ExpoView {
       ttsNavigationState.allowsTtsFollow &&
       !ttsNavigationState.isReturningToPlaybackPosition
     let playbackLocator = ttsController?.playbackLocator
+    let sessionId = ttsSessionId
 
     viewportLocationTask?.cancel()
     viewportLocationTask = Task { @MainActor [weak self, weak navigator] in
@@ -574,6 +575,11 @@ final class ReadiumView: ExpoView {
           currentHref: locator.href.string,
           navigator: navigator
         )
+        guard !Task.isCancelled,
+              self.ttsSessionId == sessionId,
+              navigator.viewport == viewport,
+              self.ttsController?.playbackLocator == playbackLocator,
+              !self.ttsNavigationState.isReturningToPlaybackPosition else { return }
         if !playbackIsVisible {
           self.beginUserNavigation()
         }

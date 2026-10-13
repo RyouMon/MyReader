@@ -19,7 +19,7 @@ use crate::{
 pub(crate) mod qwen;
 
 const MAX_AUDIO_BYTES: u64 = 32 * 1024 * 1024;
-const REQUEST_TIMEOUT: Duration = Duration::from_secs(45);
+pub(crate) const REQUEST_TIMEOUT: Duration = Duration::from_secs(20);
 
 pub(crate) struct SynthesizedAudio {
     pub bytes: Vec<u8>,
@@ -161,14 +161,15 @@ async fn synthesize_openai(
         .send()
         .await
         .map_err(map_reqwest_error)?;
-    audio_response(response, Some(*response_format)).await
+    audio_response(response, Some(*response_format), Some(credential)).await
 }
 
 async fn audio_response(
     response: Response,
     expected_format: Option<TtsAudioFormat>,
+    credential: Option<&str>,
 ) -> Result<SynthesizedAudio, CoreError> {
-    let response = successful(response).await?;
+    let response = successful(response, credential).await?;
     let bytes = response_bytes(response, "TTS_AUDIO_TOO_LARGE").await?;
     audio_from_bytes(bytes, expected_format)
 }
@@ -218,21 +219,47 @@ async fn response_bytes(
     Ok(bytes)
 }
 
-async fn successful(response: Response) -> Result<Response, CoreError> {
+async fn successful(response: Response, credential: Option<&str>) -> Result<Response, CoreError> {
     let status = response.status();
     if status.is_success() {
         return Ok(response);
     }
 
-    let kind = match status {
+    let request_id = response
+        .headers()
+        .get("x-request-id")
+        .or_else(|| response.headers().get("x-dashscope-request-id"))
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or_default()
+        .to_owned();
+    let bytes = response_bytes(response, "TTS_ERROR_RESPONSE_TOO_LARGE").await?;
+    Err(tts_error(
+        http_error_kind(status),
+        &format!(
+            "HTTP_{} (request_id={}): {}",
+            status.as_u16(),
+            request_id,
+            redact_credential(&String::from_utf8_lossy(&bytes), credential)
+        ),
+    ))
+}
+
+fn http_error_kind(status: StatusCode) -> TtsErrorKind {
+    match status {
         StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => TtsErrorKind::Unauthorized,
         StatusCode::TOO_MANY_REQUESTS => TtsErrorKind::RateLimited,
         StatusCode::REQUEST_TIMEOUT | StatusCode::GATEWAY_TIMEOUT => TtsErrorKind::Timeout,
         StatusCode::PAYLOAD_TOO_LARGE => TtsErrorKind::PayloadTooLarge,
         status if status.is_server_error() => TtsErrorKind::Unavailable,
         _ => TtsErrorKind::InvalidRequest,
-    };
-    Err(tts_error(kind, &format!("HTTP_{}", status.as_u16())))
+    }
+}
+
+fn redact_credential(message: &str, credential: Option<&str>) -> String {
+    match credential.filter(|value| !value.is_empty()) {
+        Some(credential) => message.replace(credential, "[credential]"),
+        None => message.to_owned(),
+    }
 }
 
 fn client() -> Result<Client, CoreError> {

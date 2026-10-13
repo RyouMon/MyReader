@@ -2,22 +2,22 @@ import { describe, expect, it } from "vitest"
 import { appendErrorDetail } from "../src/error-detail"
 
 describe("error details", () => {
-  it("appends the original type and message after localized guidance", () => {
+  it("separates localized guidance from original diagnostics with a blank line", () => {
     expect(
       appendErrorDetail("请重试。", new TypeError("Failed to fetch")),
-    ).toBe("请重试。\nTypeError: Failed to fetch")
+    ).toBe("请重试。\n\nTypeError: Failed to fetch")
     expect(
       appendErrorDetail("Sign in again.", {
         tag: "Credential",
         message: "HTTP 401",
       }),
-    ).toBe("Sign in again.\nCredential: HTTP 401")
+    ).toBe("Sign in again.\n\nCredential: HTTP 401")
     expect(
       appendErrorDetail("Sign in again.", {
         kind: "Credential",
         message: "HTTP 401",
       }),
-    ).toBe("Sign in again.\nCredential: HTTP 401")
+    ).toBe("Sign in again.\n\nCredential: HTTP 401")
   })
 
   it("preserves underlying causes and handles repeated or cyclic errors", () => {
@@ -26,7 +26,7 @@ describe("error details", () => {
     })
     error.cause.cause = error
     expect(appendErrorDetail("Try again.", error)).toBe(
-      "Try again.\nError: Request failed\n-1001: Timed out",
+      "Try again.\n\nError: Request failed\n-1001: Timed out",
     )
     expect(
       appendErrorDetail("Try again.", {
@@ -34,12 +34,12 @@ describe("error details", () => {
         message: "offline",
         cause: { kind: "Io", message: "offline" },
       }),
-    ).toBe("Try again.\nIo: offline")
+    ).toBe("Try again.\n\nIo: offline")
   })
 
   it("keeps legacy messages and omits unavailable diagnostics", () => {
     expect(appendErrorDetail("Try again.", "RAW_ERROR\nline 2")).toBe(
-      "Try again.\nRAW_ERROR\nline 2",
+      "Try again.\n\nRAW_ERROR\nline 2",
     )
     for (const error of [undefined, null, {}, { message: "" }]) {
       expect(appendErrorDetail("Try again.", error)).toBe("Try again.")

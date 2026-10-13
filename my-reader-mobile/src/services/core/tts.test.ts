@@ -92,7 +92,30 @@ const openAiProfile = {
   revision: 1,
 }
 
+// Use the same AbortController implementation as React Native, not Node's newer API.
+const nodeRequire = require as typeof require & {
+  resolve: (id: string, options?: { paths: string[] }) => string
+}
+const nativeAbort = jest.requireActual(
+  nodeRequire.resolve("abort-controller/dist/abort-controller", {
+    paths: [nodeRequire.resolve("react-native/package.json")],
+  }),
+) as Pick<typeof globalThis, "AbortController" | "AbortSignal">
+
 describe("mobile core TTS", () => {
+  const originalAbortController = globalThis.AbortController
+  const originalAbortSignal = globalThis.AbortSignal
+
+  beforeAll(() => {
+    globalThis.AbortController = nativeAbort.AbortController
+    globalThis.AbortSignal = nativeAbort.AbortSignal
+  })
+
+  afterAll(() => {
+    globalThis.AbortController = originalAbortController
+    globalThis.AbortSignal = originalAbortSignal
+  })
+
   beforeEach(() => {
     jest.clearAllMocks()
   })
@@ -253,8 +276,73 @@ describe("mobile core TTS", () => {
       "/cache/tts",
       request,
       "secret",
+      { signal: expect.any(AbortSignal) },
+    )
+  })
+
+  it("times out credential loading and never dispatches synthesis after the deadline", async () => {
+    jest.useFakeTimers()
+    try {
+      jest
+        .mocked(ttsGetConfig)
+        .mockResolvedValue({ ...systemConfig, profiles: [openAiProfile] })
+      let resolveCredential!: (value: string) => void
+      jest.mocked(readTtsCredential).mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveCredential = resolve
+        }),
+      )
+      const pending = synthesizeTts({
+        profileId: "openai",
+        text: "Hello",
+        voiceId: "reader-voice",
+        acceptedMimeTypes: ["audio/mpeg"],
+        cachePolicy: "use",
+      })
+      const assertion = expect(pending).rejects.toThrow("TTS_REQUEST_TIMEOUT")
+      await jest.advanceTimersByTimeAsync(20_000)
+      await assertion
+      resolveCredential("secret")
+      await jest.advanceTimersByTimeAsync(0)
+      expect(ttsSynthesize).not.toHaveBeenCalled()
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  it("cancels during credential loading without dispatching late synthesis", async () => {
+    jest
+      .mocked(ttsGetConfig)
+      .mockResolvedValue({ ...systemConfig, profiles: [openAiProfile] })
+    let resolveCredential!: (value: string) => void
+    jest.mocked(readTtsCredential).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveCredential = resolve
+      }),
+    )
+    const controller = new AbortController()
+    const pending = synthesizeTts(
+      {
+        profileId: "openai",
+        text: "Hello",
+        voiceId: "reader-voice",
+        acceptedMimeTypes: ["audio/mpeg"],
+        cachePolicy: "use",
+      },
       { signal: controller.signal },
     )
+    const assertion = expect(pending).rejects.toMatchObject({
+      name: "AbortError",
+      message: "TTS_SYNTHESIS_CANCELLED",
+    })
+    await Promise.resolve()
+    expect(readTtsCredential).toHaveBeenCalled()
+    controller.abort()
+    await assertion
+    resolveCredential("secret")
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(ttsSynthesize).not.toHaveBeenCalled()
   })
 
   it("removes the SecureStore entry after Core removes a profile", async () => {

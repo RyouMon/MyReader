@@ -633,6 +633,45 @@ describe("reader viewport anchor capture", () => {
 })
 
 describe("reader viewport DOM ranges", () => {
+  it("should resolve normalized Readium quotes across whitespace and inline elements", () => {
+    document.body.innerHTML =
+      '<p id="current">Before.\n  Read <em>this\n\t sentence</em> now.\u00a0After.</p>'
+    useViewport(100, 100)
+    useRangeRects((range) =>
+      range.toString() === "Read this\n\t sentence now." ? [rect(10, 10)] : [],
+    )
+    expect(
+      isReaderTextLocatorVisible(window, {
+        locations: { cssSelector: "#current" },
+        text: {
+          before: "Before. ",
+          highlight: "Read this sentence now.",
+          after: " After.",
+        },
+      }),
+    ).toBe(true)
+  })
+
+  it("should disambiguate repeated normalized quotes using surrounding text", () => {
+    document.body.innerHTML =
+      '<p id="old">Old. Same\n sentence. End.</p><p id="current">New.\nSame\t sentence. Finish.</p>'
+    useViewport(100, 100)
+    useRangeRects((range) =>
+      range.startContainer.parentElement?.id === "current"
+        ? [rect(10, 10)]
+        : [rect(110, 10)],
+    )
+    expect(
+      isReaderTextLocatorVisible(window, {
+        text: {
+          before: "New. ",
+          highlight: "Same sentence.",
+          after: " Finish.",
+        },
+      }),
+    ).toBe(true)
+  })
+
   it("should resolve a TTS locator by its text quote instead of a stale DOM range", () => {
     document.body.innerHTML = `
       <p id="stale">Playback position first page.</p>

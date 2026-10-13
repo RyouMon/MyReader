@@ -239,8 +239,12 @@ impl TtsService {
         } else {
             None
         };
-        let mut artifact =
-            Self::synthesize_part(profile, cache_directory, request, credential).await?;
+        let mut artifact = tokio::time::timeout(
+            tts::REQUEST_TIMEOUT,
+            Self::synthesize_part(profile, cache_directory, request, credential),
+        )
+        .await
+        .map_err(|_| tts_error(TtsErrorKind::Timeout, "TTS_REQUEST_TIMEOUT"))??;
         artifact.playback_rate = rate;
         Ok(artifact)
     }
@@ -874,7 +878,9 @@ mod tests {
                 "QWEN_TASK_INTERRUPTED"
             }));
             assert!(!error.contains("private-key"));
-            assert!(!error.contains("private book text"));
+            if fail {
+                assert!(error.contains("[credential] and private book text"));
+            }
             assert!(!cache.exists());
             server.await.unwrap();
         }
@@ -1052,7 +1058,7 @@ mod tests {
         });
         waiting.await.unwrap();
         tokio::time::pause();
-        tokio::time::advance(std::time::Duration::from_secs(46)).await;
+        tokio::time::advance(std::time::Duration::from_secs(20)).await;
         assert!(client
             .await
             .unwrap()
@@ -1253,18 +1259,90 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn qwen_discovery_surfaces_provider_errors_without_echoing_secrets_or_text() {
+    async fn qwen_discovery_preserves_provider_response_and_redacts_credentials() {
         let body = br#"{"code":"InvalidApiKey","message":"private text and secret","request_id":"request-1"}"#;
         let (endpoint, server) = test_server(vec![response("application/json", body)]).await;
         let error =
-            TtsService::discover_qwen_voices(&endpoint, "qwen3-tts-vc-2026-01-22", Some("key"))
+            TtsService::discover_qwen_voices(&endpoint, "qwen3-tts-vc-2026-01-22", Some("secret"))
                 .await
                 .unwrap_err()
                 .to_string();
         assert!(error.contains("InvalidApiKey"));
         assert!(error.contains("request-1"));
-        assert!(!error.contains("private"));
+        assert!(error.contains("HTTP_200"));
+        assert!(error.contains("private text and [credential]"));
+        assert!(!error.contains("secret"));
         server.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn synthesis_preserves_raw_http_errors_for_both_providers() {
+        for qwen in [false, true] {
+            let body = r#"{"code":"InvalidApiKey","message":"API key private-key expired","request_id":"request-1"}"#;
+            let response = format!("HTTP/1.1 401 Unauthorized\r\nContent-Type: application/json\r\nContent-Length: {}\r\nx-request-id: request-header\r\nConnection: close\r\n\r\n{body}", body.len()).into_bytes();
+            let (endpoint, server) = test_server(vec![response]).await;
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("config.json");
+            let profile = if qwen {
+                qwen_profile(endpoint, "qwen3-tts-flash", "reader-voice")
+            } else {
+                openai_profile(endpoint)
+            };
+            let input = request(&profile.id, if qwen { "audio/wav" } else { "audio/mpeg" });
+            TtsService::upsert_profile(&path, profile).unwrap();
+            let error = TtsService::synthesize(&path, dir.path(), input, Some("private-key"))
+                .await
+                .unwrap_err();
+            assert!(matches!(
+                &error,
+                CoreError::Tts {
+                    kind: TtsErrorKind::Unauthorized,
+                    ..
+                }
+            ));
+            let detail = error.to_string();
+            assert!(detail.contains("HTTP_401"));
+            assert!(detail.contains(&body.replace("private-key", "[credential]")));
+            assert!(!detail.contains("private-key"));
+            if !qwen {
+                assert!(detail.contains("request-header"));
+            }
+            server.await.unwrap();
+        }
+    }
+
+    #[test]
+    fn qianwen_catalog_rejects_unsupported_models_but_keeps_old_profiles_editable() {
+        let endpoint = "https://maas.qianwenaiapi.com/api/v1";
+        let ids: Vec<_> = TtsService::qwen_models(Some(endpoint))
+            .into_iter()
+            .map(|model| model.id)
+            .collect();
+        assert_eq!(ids, ["qwen-audio-3.0-tts-plus", "qwen3-tts-flash"]);
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.json");
+        let profile = qwen_profile(endpoint.into(), "qwen3-tts-instruct-flash", "Bunny");
+        ConfigService::mutate_config(&path, |config| {
+            config.tts.profiles.push(profile.clone());
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(
+            TtsService::get_config(&path).unwrap().profiles[0].model,
+            profile.model
+        );
+        assert!(TtsService::upsert_profile(&path, profile.clone())
+            .unwrap_err()
+            .to_string()
+            .contains("QWEN_MODEL_UNSUPPORTED"));
+        TtsService::upsert_profile(
+            &path,
+            TtsProviderProfile {
+                model: Some("qwen3-tts-flash".into()),
+                ..profile
+            },
+        )
+        .unwrap();
     }
 
     #[test]

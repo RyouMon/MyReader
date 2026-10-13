@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
+import { ReadiumSpeechNavigator } from "@readium/speech"
 import type { TtsAudioArtifactDto } from "@/lib/tauri-specta"
 import { CoreSpeechEngine, type TtsAudio } from "@/lib/tts/CoreSpeechEngine"
 
@@ -52,6 +53,63 @@ async function flushPromises() {
 }
 
 describe("CoreSpeechEngine", () => {
+  it("plays after Readium replaces a ready queue before the first utterance", async () => {
+    const audio = new FakeAudio()
+    const synthesize = vi.fn(async () => artifact("/cache/current.mp3"))
+    const engine = new CoreSpeechEngine("provider", {
+      synthesize,
+      listVoices: async () => [
+        { id: "voice", name: "Voice", language: "en", gender: null },
+      ],
+      createAudio: () => audio,
+      audioSource: (path) => path,
+    })
+    const navigator = new ReadiumSpeechNavigator(engine)
+    navigator.loadContent([{ id: "first", plain: "First sentence." }])
+    navigator.loadContent([{ id: "current", plain: "Current page sentence." }])
+    expect(navigator.getState()).toBe("ready")
+    navigator.play()
+    await vi.waitFor(() => expect(audio.play).toHaveBeenCalledOnce())
+    expect(synthesize).toHaveBeenCalledWith(
+      expect.objectContaining({ text: "Current page sentence." }),
+      expect.anything(),
+    )
+    await navigator.destroy()
+  })
+
+  it("fails and releases audio when playback never starts", async () => {
+    vi.useFakeTimers()
+    const audio = new FakeAudio()
+    audio.play.mockImplementation(() => new Promise(() => {}))
+    const engine = new CoreSpeechEngine("provider", {
+      synthesize: async () => artifact("/cache/current.mp3"),
+      listVoices: async () => [
+        { id: "voice", name: "Voice", language: "en", gender: null },
+      ],
+      cancelSynthesis: async () => true,
+      createAudio: () => audio,
+      audioSource: (path) => path,
+    })
+    const failure = vi.fn()
+    engine.on("error", failure)
+    engine.loadUtterances([{ id: "one", plain: "One." }])
+    engine.speak()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(audio.play).toHaveBeenCalledOnce()
+    await vi.advanceTimersByTimeAsync(20_000)
+    expect(failure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          message: "TTS_REQUEST_TIMEOUT (20s)",
+        }),
+      }),
+    )
+    expect(audio.pause).toHaveBeenCalled()
+    expect(engine.getState()).toBe("idle")
+    await engine.destroy()
+    vi.useRealTimers()
+  })
+
   it("synthesizes and plays the active Readium utterance", async () => {
     const audio = new FakeAudio()
     const synthesize = vi.fn(async () => artifact("/cache/one.mp3"))

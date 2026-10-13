@@ -25,7 +25,7 @@ import {
   setTtsVoice,
   synthesizeTts,
 } from "@/src/services/core/tts"
-import { appErrorKind } from "@/src/errors/kind"
+import { errorMessage } from "@/src/i18n/error-message"
 import {
   buildReaderTtsEngineConfig,
   buildReaderTtsSynthesisRequest,
@@ -275,7 +275,7 @@ export function useReaderTtsSession({
           type: "playback",
           sessionId,
           status: "error",
-          error: readerTtsFailureCode(error),
+          error: readerTtsFailureMessage(error),
         })
         presentTransitionError(sessionId, failed)
       }
@@ -339,7 +339,7 @@ export function useReaderTtsSession({
           type: "playback",
           sessionId,
           status: "error",
-          error: readerTtsFailureCode(error),
+          error: readerTtsFailureMessage(error),
         })
         presentTransitionError(sessionId, failed)
       }
@@ -606,7 +606,7 @@ export function useReaderTtsSession({
         readerRef.current?.completeTtsSynthesis({
           sessionId: request.sessionId,
           requestId: request.requestId,
-          error: readerTtsFailureCode(error),
+          error: readerTtsFailureMessage(error),
         })
       } finally {
         if (
@@ -659,10 +659,13 @@ export function useReaderTtsSession({
   }
 }
 
-function readerTtsFailureCode(error: unknown): string {
+function readerTtsFailureMessage(error: unknown): string {
   console.warn("Reader TTS failed", error)
-  const kind = appErrorKind(error)
-  return kind === "Storage" || kind === "Request" || kind === "Network"
-    ? "TTS_PROVIDER_UNAVAILABLE"
-    : "TTS_UNKNOWN_ERROR"
+  if (
+    error instanceof Error &&
+    (error.message === READER_TTS_VOICES_EMPTY_ERROR ||
+      error.message === "TTS_READER_VIEW_UNAVAILABLE")
+  )
+    return error.message
+  return errorMessage(error)
 }
