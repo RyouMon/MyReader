@@ -6,6 +6,19 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.16.1] - 2026-10-13
+
+### Changed
+
+- Added 20-second deadlines for speech generation, credential and bridge waits, and desktop audio startup. Cancel or discard expired requests to prevent narration from remaining stuck, and remove the redundant desktop “Generating next speech” message ([#99](https://github.com/RyouMon/MyReader/pull/99))
+- Preserve original provider errors and causes in narration and preview failures, redact credentials, and separate localized explanations from raw errors with a blank line ([#99](https://github.com/RyouMon/MyReader/pull/99))
+
+### Fixed
+
+- Fixed mobile playback immediately failing with `TypeError: undefined is not a function`, and desktop narration failing to start with the same configuration after reopening the reader ([#99](https://github.com/RyouMon/MyReader/pull/99))
+- Fixed stalled Qwen Token Plan WebSocket connections, filter available models by endpoint, and retain editing support for existing profiles ([#99](https://github.com/RyouMon/MyReader/pull/99))
+- Fixed missing narration highlights and unreliable return-to-playback detection after page turns. Improve anchors for sentences spanning pages, special element IDs, and whitespace, and prevent stale callbacks from replacing the current viewport state ([#99](https://github.com/RyouMon/MyReader/pull/99))
+
 ## [0.16.0] - 2026-10-13
 
 ### Added
