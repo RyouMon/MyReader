@@ -5,6 +5,31 @@
 MyReader 的重要变更均记录于此。
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [0.16.0] - 2026-10-13
+
+### Added
+
+- 桌面端和移动端的 EPUB、PDF、CBZ 阅读器新增会话导航历史，目录、链接等显式跳转后可多级后退和前进；普通翻页持续更新当前位置，关书后清空导航历史并保留正常续读进度（[#96](https://github.com/RyouMon/MyReader/pull/96)）
+- 同步收到其他设备的阅读位置时提供可选的前进入口，保留现有导航历史且不移动当前页面；临时提示在翻页后隐藏，打开阅读工具栏后可再次使用（[#96](https://github.com/RyouMon/MyReader/pull/96)）
+
+### Changed
+
+- 桌面书库将搜索、视图切换、排序和详情操作集中到主窗口标题栏，窄窗口自动收起搜索框；macOS 保留原生红绿灯，Windows 使用右侧窗口控制，并调整宽屏详情的封面背景与对齐（[#95](https://github.com/RyouMon/MyReader/pull/95)）
+- 多设备并发阅读时自动确定续读位置，阅读进度保存持续参与同步，无需先手动解决位置冲突（[#96](https://github.com/RyouMon/MyReader/pull/96)）
+
+### Fixed
+
+- 修复 Windows 恢复旧窗口状态后可能出现双标题栏，以及书目相对路径使用平台分隔符导致跨端结果不一致的问题（[#95](https://github.com/RyouMon/MyReader/pull/95)）
+- 修复桌面 EPUB 恢复其他设备的位置时，因位置编号超出本机范围而无法跳转；保留精确定位信息，并避免本机自动保存覆盖刚收到的远端导航入口（[#96](https://github.com/RyouMon/MyReader/pull/96)）
+
+### Performance and Internals
+
+- 将远端同步的校验、合并和投影计算放到独立后台任务中，提交时检查并发本地修改，减少启动同步对缓存图书打开和阅读进度保存的阻塞（[#96](https://github.com/RyouMon/MyReader/pull/96)）
+
+### Build and Distribution
+
+- Rust 质量门禁覆盖 Linux 与 Windows 的完整 workspace 测试，修复 Windows 测试进程启动和数据库夹具清理问题（[#95](https://github.com/RyouMon/MyReader/pull/95)）
+
 ## [0.15.0] - 2026-10-11
 
 ### Added

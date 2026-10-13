@@ -6,6 +6,31 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.16.0] - 2026-10-13
+
+### Added
+
+- Added session navigation history to desktop and mobile EPUB, PDF, and CBZ readers. Go back and forward through explicit jumps such as table-of-contents entries and links; ordinary page turns update the current stop. Closing a book clears navigation history while preserving normal reading progress for resume ([#96](https://github.com/RyouMon/MyReader/pull/96))
+- Offer incoming reading positions from other devices as optional forward stops without moving the current page or discarding existing history. The temporary hint hides after a page turn, and available controls return when the reader toolbar opens ([#96](https://github.com/RyouMon/MyReader/pull/96))
+
+### Changed
+
+- Consolidated desktop library search, view selection, sorting, and detail actions into the main window title bar, with compact search in narrow windows. Retained native macOS traffic lights, placed Windows controls on the right, and refined cover backgrounds and alignment in wide detail layouts ([#95](https://github.com/RyouMon/MyReader/pull/95))
+- Automatically resolve resume positions after concurrent reading on multiple devices. Ordinary progress saves continue to sync without requiring manual conflict resolution first ([#96](https://github.com/RyouMon/MyReader/pull/96))
+
+### Fixed
+
+- Fixed duplicate Windows title bars when restoring older window state, and inconsistent cross-platform catalog paths caused by native path separators ([#95](https://github.com/RyouMon/MyReader/pull/95))
+- Fixed desktop EPUB navigation to positions from other devices when their position numbers exceed the local navigator's range. Preserve precise location anchors and retain incoming remote navigation stops after a local autosave ([#96](https://github.com/RyouMon/MyReader/pull/96))
+
+### Performance and Internals
+
+- Moved remote sync validation, merge, and projection computation into separate background tasks, checking for concurrent local changes before committing to reduce startup sync blocking cached-book access and reading-progress saves ([#96](https://github.com/RyouMon/MyReader/pull/96))
+
+### Build and Distribution
+
+- Extended Rust quality gates to full workspace tests on Linux and Windows, and fixed Windows test-process startup and database-fixture cleanup ([#95](https://github.com/RyouMon/MyReader/pull/95))
+
 ## [0.15.0] - 2026-10-11
 
 ### Added
