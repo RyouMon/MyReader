@@ -46,10 +46,10 @@ Pod::Spec.new do |s|
   }
 
   s.dependency 'ExpoModulesCore'
-  s.dependency 'ReadiumShared',            '~> 3.9.0'
-  s.dependency 'ReadiumStreamer',          '~> 3.9.0'
-  s.dependency 'ReadiumNavigator',         '~> 3.9.0'
-  s.dependency 'ReadiumInternal'
+  s.dependency 'ReadiumShared',            '3.11.0'
+  s.dependency 'ReadiumStreamer',          '3.11.0'
+  s.dependency 'ReadiumNavigator',         '3.11.0'
+  s.dependency 'ReadiumInternal',          '3.11.0'
   # Used by ReaderViewController to sanitize noteref referrer/title markup.
   s.dependency 'SwiftSoup'
 

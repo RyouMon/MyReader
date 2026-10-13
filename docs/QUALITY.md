@@ -4,10 +4,10 @@
 `.github/workflows/quality.yml` 是执行权威；Agent 规则只负责引导，不另存一套配置示例。
 
 Quality 在 PR 和手动执行时运行，普通推送不触发。两种入口均运行静态门禁、完整单测、
-变异测试、联网依赖审计，以及 JS / Rust 覆盖率报告。
+变异测试、联网依赖审计、iOS Readium 无缓存依赖安装，以及 JS / Rust 覆盖率报告。
 
 主分支要求 `QA` 和 `Unit tests` 两个聚合检查成功；所依赖的任务失败、取消或意外跳过均不会
-放行。`QA` 汇总静态检查、变异测试、Rust 门禁和安全审计，`Unit tests` 汇总五包 JS 与
+放行。`QA` 汇总静态检查、iOS 依赖安装、变异测试、Rust 门禁和安全审计，`Unit tests` 汇总五包 JS 与
 Cargo workspace 完整单测及覆盖率任务的执行结果。覆盖率任务独立运行、上传报告，CI 不设
 覆盖率百分比门槛；其中的测试、编译、采集或报告上传失败仍会阻止合入。
 通过后仍需人工审核合入。
@@ -35,6 +35,7 @@ Windows 集成测试通过 `my-reader/src-tauri/build.rs` 单独嵌入 Common Co
 | `pnpm qa:security` | npm 生产依赖漏洞审计 | PR 门禁；中危及以上返回非零 |
 | `pnpm qa:rust:security` | Cargo 锁文件通告与撤包状态审计 | PR 门禁；需 cargo-audit 和联网 |
 | `pnpm qa:workflows` | actionlint 校验 Actions 语法、表达式与 action 输入 | 需安装 actionlint；CI 使用官方固定版本镜像 |
+| `ruby scripts/quality/readium-ios-dependencies.rb` | 从 Readium.podspec 读取版本，在空 specs、下载缓存和无锁文件的目录执行 CocoaPods 安装 | PR 联网门禁；需 macOS、Xcode 和 CocoaPods 1.16.2；不代替原生编译 |
 | `pnpm format:check` | Biome 全仓格式检查 | PR 检查改动文件；历史差异单独治理 |
 
 PR 的 Biome 格式门禁使用 `pnpm exec biome format --changed --since=origin/main --no-errors-on-unmatched`

@@ -62,6 +62,19 @@ jobs:
           path: reports/
           retention-days: 14
 
+  ios-dependencies:
+    name: iOS dependencies (no cache)
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+      - run: gem install cocoapods -v 1.16.2 --no-document
+      - name: Install Readium from official sources without caches
+        run: ruby scripts/quality/readium-ios-dependencies.rb
+
   unit:
     name: Unit tests / ${{ matrix.package }}
     runs-on: ubuntu-22.04
@@ -252,12 +265,13 @@ jobs:
   qa-gate:
     name: QA
     if: always()
-    needs: [static, mutation, rust, security]
+    needs: [static, ios-dependencies, mutation, rust, security]
     runs-on: ubuntu-22.04
     steps:
       - name: Require every QA job to succeed
         run: |
           test '${{ needs.static.result }}' = success
+          test '${{ needs.ios-dependencies.result }}' = success
           test '${{ needs.mutation.result }}' = success
           test '${{ needs.rust.result }}' = success
           test '${{ needs.security.result }}' = success
