@@ -221,7 +221,7 @@ describe("reader TTS selection", () => {
       classifyReaderTtsError(
         "engine(ReadiumNavigator.TTSError.other(PlaybackError(message: CORE_ERROR: TTS_ERROR: unavailable:TTS_PROVIDER_UNAVAILABLE)))",
       ),
-    ).toEqual({ kind: "unknown" })
+    ).toEqual({ kind: "detail" })
   })
 
   it("should present a missing native reader as a normal startup failure", () => {

@@ -26,5 +26,7 @@ export function appendErrorDetail(detail: string, error: unknown): string {
         ? current.cause
         : undefined
   }
-  return [detail, ...diagnostics].join("\n")
+  return diagnostics.size
+    ? `${detail}\n\n${[...diagnostics].join("\n")}`
+    : detail
 }

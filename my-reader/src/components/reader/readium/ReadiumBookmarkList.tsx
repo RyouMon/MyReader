@@ -123,7 +123,10 @@ export function ReadiumBookmarkList({
         <div className="flex flex-1 flex-col px-4 py-3">
           {error ? (
             <div className="flex flex-col items-center gap-3 py-8 text-center">
-              <p className="text-xs text-destructive" role="alert">
+              <p
+                className="whitespace-pre-wrap text-xs text-destructive"
+                role="alert"
+              >
                 {t("reader.bookmarkLoadFailed")}: {error}
               </p>
               <button

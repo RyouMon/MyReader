@@ -70,7 +70,7 @@ describe("manual sync failure presentation", () => {
     ).rejects.toBe(error)
     expect(showErrorAlert).toHaveBeenCalledWith(
       "请检查数据源访问权限",
-      "请重新登录或更新数据源凭据，并确认此账号有权访问书库。\nSyncFailureError: INTERNAL_DIAGNOSTIC",
+      "请重新登录或更新数据源凭据，并确认此账号有权访问书库。\n\nSyncFailureError: INTERNAL_DIAGNOSTIC",
       expect.any(Array),
     )
   })
@@ -83,7 +83,7 @@ describe("manual sync failure presentation", () => {
     ).rejects.toBe(error)
     expect(showErrorAlert).toHaveBeenCalledWith(
       "Sync could not finish",
-      "Try syncing again later. If the problem continues, report it for help.\nError: INTERNAL_DIAGNOSTIC",
+      "Try syncing again later. If the problem continues, report it for help.\n\nError: INTERNAL_DIAGNOSTIC",
       expect.any(Array),
     )
   })

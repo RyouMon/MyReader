@@ -276,10 +276,15 @@ export default function ReaderScreen() {
         case "providerUnavailable":
           message = t("reader.tts.errors.providerUnavailable")
           break
+        case "detail":
+          message = error
+          break
       }
       showErrorAlert(
         t("reader.tts.states.error"),
-        appendErrorDetail(message, error),
+        presentation.kind === "detail"
+          ? message
+          : appendErrorDetail(message, error),
         [{ text: t("common.gotIt") }],
       )
     },

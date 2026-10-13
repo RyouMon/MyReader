@@ -63,9 +63,6 @@ export function ReaderTtsControls({
 
   const playing = session.state === "playing"
   const preparing = session.loading || session.state === "loading"
-  const preparationLabel = t(
-    session.remote ? "reader.tts.generating" : "reader.tts.loading",
-  )
   const shown = visible
   const controlTabIndex = expanded && shown ? 0 : -1
   const { left, right } = navigationActions({
@@ -97,16 +94,6 @@ export function ReaderTtsControls({
       data-testid="reader-tts-controls"
       className="reader-tts-mini-player"
     >
-      {expanded && preparing ? (
-        <div
-          className="reader-tts-mini-status"
-          role="status"
-          aria-live="polite"
-        >
-          <Loader2 className="size-3.5 animate-spin" aria-hidden />
-          <span>{preparationLabel}</span>
-        </div>
-      ) : null}
       <div className="reader-tts-mini-controls">
         <button
           type="button"
@@ -144,6 +131,7 @@ export function ReaderTtsControls({
           type="button"
           className="reader-chrome-icon-btn reader-tts-mini-control"
           aria-label={t(playing ? "reader.tts.pause" : "reader.tts.play")}
+          aria-busy={preparing}
           aria-hidden={!expanded}
           tabIndex={controlTabIndex}
           data-active={playing ? "true" : undefined}

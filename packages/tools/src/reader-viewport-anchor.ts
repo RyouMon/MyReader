@@ -603,12 +603,31 @@ function textPointForOffset(
     : null
 }
 
+function normalizedReaderText(source: string) {
+  // Readium collapses whitespace when extracting publication text. Retain the
+  // source offsets so normalized quotes still map to the original DOM nodes.
+  const starts: number[] = []
+  const ends: number[] = []
+  let content = ""
+  for (let offset = 0; offset < source.length; offset += 1) {
+    const character = /\s/.test(source[offset]!) ? " " : source[offset]!
+    if (character === " " && content.endsWith(" ")) {
+      ends[ends.length - 1] = offset + 1
+    } else {
+      content += character
+      starts.push(offset)
+      ends.push(offset + 1)
+    }
+  }
+  return { content, starts, ends }
+}
+
 /** Resolves a Readium text-quote locator to its DOM range. */
 function rangeForReaderTextLocator(
   window: Window,
   locator: ReaderTextLocator,
 ): Range | null {
-  const highlight = locator.text?.highlight
+  const highlight = locator.text?.highlight?.replace(/\s+/g, " ")
   if (!highlight) return null
   let root: Element = window.document.body ?? window.document.documentElement
   const cssSelector = locator.locations?.cssSelector
@@ -619,7 +638,7 @@ function rangeForReaderTextLocator(
       return null
     }
   }
-  const content = root.textContent ?? ""
+  const { content, starts, ends } = normalizedReaderText(root.textContent ?? "")
   let bestStart = -1
   let bestScore = -1
   let searchFrom = 0
@@ -630,8 +649,12 @@ function rangeForReaderTextLocator(
     const score =
       matchingSuffixLength(
         content.slice(0, start),
-        locator.text?.before ?? "",
-      ) + matchingPrefixLength(content.slice(end), locator.text?.after ?? "")
+        (locator.text?.before ?? "").replace(/\s+/g, " "),
+      ) +
+      matchingPrefixLength(
+        content.slice(end),
+        (locator.text?.after ?? "").replace(/\s+/g, " "),
+      )
     if (score > bestScore) {
       bestStart = start
       bestScore = score
@@ -639,11 +662,11 @@ function rangeForReaderTextLocator(
     searchFrom = start + Math.max(1, highlight.length)
   }
   if (bestStart < 0) return null
-  const start = textPointForOffset(window, root, bestStart, false)
+  const start = textPointForOffset(window, root, starts[bestStart]!, false)
   const end = textPointForOffset(
     window,
     root,
-    bestStart + highlight.length,
+    ends[bestStart + highlight.length - 1]!,
     true,
   )
   if (!start || !end) return null

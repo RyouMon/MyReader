@@ -243,7 +243,7 @@ class EpubTtsController(
   private var currentLocation: TtsNavigator.Location? = null
   private var currentPlayback: TtsNavigator.Playback? = null
 
-  fun currentPlaybackLocator(): Locator? = currentLocation?.utteranceLocator
+  fun currentPlaybackLocator(): Locator? = currentLocation?.utteranceLocator?.let(::ttsPlaybackTextLocator)
   private var remoteBufferingKey: RemoteTtsSpeechKey? = null
   private var highlightedLocator: Locator? = null
   private var followedLocator: Locator? = null
@@ -358,9 +358,10 @@ class EpubTtsController(
       .onEach { location ->
         currentLocation = location
         scheduleRemotePrefetch(location.utteranceLocator)
-        if (highlightedLocator != location.utteranceLocator) {
-          highlightedLocator = location.utteranceLocator
-          updateHighlight(location.utteranceLocator)
+        val locator = ttsPlaybackTextLocator(location.utteranceLocator)
+        if (highlightedLocator != locator) {
+          highlightedLocator = locator
+          updateHighlight(locator)
           if (remoteBufferingKey == null) followCurrentLocation()
         }
       }
@@ -393,8 +394,8 @@ class EpubTtsController(
       "canGoPrevious" to value.hasPreviousUtterance(),
       "canGoNext" to value.hasNextUtterance(),
     )
-    currentLocation?.let { location ->
-      payload["locator"] = readiumLocatorToMap(location.utteranceLocator)
+    currentPlaybackLocator()?.let { locator ->
+      payload["locator"] = readiumLocatorToMap(locator)
     }
     (playback.state as? TtsNavigator.State.Failure)?.let { failure ->
       payload["error"] = failure.error.message
@@ -498,7 +499,7 @@ class EpubTtsController(
 
   private fun followCurrentLocation() {
     if (!shouldFollowText()) return
-    val locator = currentLocation?.utteranceLocator ?: return
+    val locator = currentPlaybackLocator() ?: return
     if (followedLocator == locator) return
     followedLocator = locator
     followNavigationJob?.cancel()

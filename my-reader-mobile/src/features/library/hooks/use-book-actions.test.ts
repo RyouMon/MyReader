@@ -1155,7 +1155,7 @@ describe("useBookActions", () => {
 
       expect(showErrorAlert).toHaveBeenCalledWith(
         expect.any(String),
-        "This action could not be completed. Please try again.\nString error",
+        "This action could not be completed. Please try again.\n\nString error",
       )
     })
 
@@ -1344,7 +1344,7 @@ describe("useBookActions", () => {
 
       expect(showErrorAlert).toHaveBeenCalledWith(
         expect.any(String),
-        "This action could not be completed. Please try again.\nError: Disk error",
+        "This action could not be completed. Please try again.\n\nError: Disk error",
       )
     })
 

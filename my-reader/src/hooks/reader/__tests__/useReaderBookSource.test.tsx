@@ -268,7 +268,7 @@ describe("useReaderBookSource", () => {
     })
     await waitFor(() => expect(result.current.downloadState).toBe("error"))
     expect(result.current.downloadError).toBe(
-      "未能完成此操作，请重试。\nError: offline",
+      "未能完成此操作，请重试。\n\nError: offline",
     )
     expect(result.current.fetchError).toBeNull()
     act(() => result.current.handleRetryDownload())

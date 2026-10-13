@@ -34,6 +34,7 @@ export type ReaderTtsErrorPresentation =
   | { kind: "noVoices" }
   | { kind: "unknown" }
   | { kind: "providerUnavailable" }
+  | { kind: "detail" }
 
 export type ReaderTtsViewportRelation = "before" | "after" | null
 
@@ -133,7 +134,7 @@ export function classifyReaderTtsError(
   ) {
     return { kind: "providerUnavailable" }
   }
-  return { kind: "unknown" }
+  return { kind: "detail" }
 }
 
 function normalizedLanguage(language: string | undefined): string {

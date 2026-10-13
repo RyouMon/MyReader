@@ -15,10 +15,10 @@ it("appends diagnostics without using misleading text for recovery policy", () =
   const diagnostic = "credential 401 network timeout /private/library"
   expect(classifySyncFailure(new Error(diagnostic))).toBe("unexpected")
   expect(errorMessage(new Error(diagnostic))).toBe(
-    `${i18n.t("operationError.unexpected")}\nError: ${diagnostic}`,
+    `${i18n.t("operationError.unexpected")}\n\nError: ${diagnostic}`,
   )
   expect(errorMessage(new CoreFfiError.Credential(diagnostic))).toBe(
-    `${i18n.t("operationError.credential")}\nCredential: CoreFfiError.Credential: ${diagnostic}`,
+    `${i18n.t("operationError.credential")}\n\nCredential: CoreFfiError.Credential: ${diagnostic}`,
   )
   expect(classifySyncFailure(new NetworkError(diagnostic, 403))).toBe(
     "credential",
@@ -31,11 +31,11 @@ it("appends diagnostics without using misleading text for recovery policy", () =
 it("translates the same download failure in the current language at presentation time", async () => {
   const error = new NetworkError("raw HTTP 404", 404)
   expect(describeDownloadError(error).message).toBe(
-    `${i18n.t("operationError.notFound")}\nNetworkError: raw HTTP 404`,
+    `${i18n.t("operationError.notFound")}\n\nNetworkError: raw HTTP 404`,
   )
   await i18n.changeLanguage("zh-CN")
   expect(describeDownloadError(error)).toEqual({
     title: i18n.t("errors.downloadFailed"),
-    message: "此项目已不可用，请刷新后重试。\nNetworkError: raw HTTP 404",
+    message: "此项目已不可用，请刷新后重试。\n\nNetworkError: raw HTTP 404",
   })
 })

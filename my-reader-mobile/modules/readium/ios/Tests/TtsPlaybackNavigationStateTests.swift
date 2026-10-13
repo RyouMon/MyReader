@@ -3,6 +3,30 @@ import ReadiumShared
 @testable import Readium
 
 @Test
+func playback_text_locator_escapes_numeric_ids_and_discards_stale_page_ranges() {
+  let locator = Locator(
+    href: AnyURL(string: "chapter.xhtml")!,
+    mediaType: .xhtml,
+    locations: Locator.Locations(
+      progression: 0.4,
+      position: 33,
+      otherLocations: [
+        "cssSelector": "#8IL20-book > div > p:nth-child(3)",
+        "domRange": ["start": ["cssSelector": "p", "charOffset": 0]],
+      ]
+    ),
+    text: .init(after: "故事线", before: "在上面专业", highlight: "剧本")
+  )
+  let playback = ttsPlaybackTextLocator(locator)
+  #expect(playback.locations.cssSelector == "#\\38 IL20-book > div > p:nth-child(3)")
+  #expect(playback.locations.otherLocations["domRange"] == nil)
+  #expect(playback.locations.progression == nil)
+  #expect(playback.locations.position == 33)
+  #expect(playback.text == locator.text)
+  #expect(ttsPlaybackTextLocator(playback) == playback)
+}
+
+@Test
 func tts_follow_scrolls_without_locking_navigation_inside_the_current_resource() {
   #expect(ttsFollowStaysInCurrentResource(
     currentHref: "chapter.xhtml",

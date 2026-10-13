@@ -11,15 +11,15 @@ describe("error presentation", () => {
     await i18n.changeLanguage("en")
     const diagnostic = "401 network /private/library"
     expect(errorMessage(new Error(diagnostic))).toBe(
-      `${i18n.t("operationError.unexpected")}\nError: ${diagnostic}`,
+      `${i18n.t("operationError.unexpected")}\n\nError: ${diagnostic}`,
     )
     const error = Object.assign(new Error(diagnostic), { kind: "Credential" })
     expect(errorMessage(error)).toBe(
-      `${i18n.t("operationError.credential")}\nCredential: ${diagnostic}`,
+      `${i18n.t("operationError.credential")}\n\nCredential: ${diagnostic}`,
     )
     await i18n.changeLanguage("zh-CN")
     expect(errorMessage(error)).toBe(
-      `访问被拒绝，请检查凭据或重新登录。\nCredential: ${diagnostic}`,
+      `访问被拒绝，请检查凭据或重新登录。\n\nCredential: ${diagnostic}`,
     )
   })
 })

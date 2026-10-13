@@ -47,7 +47,7 @@ describe("download notifications", () => {
 
     expect(showErrorAlert).toHaveBeenCalledWith(
       "Download failed",
-      "The Dispossessed · EPUB\nThis action could not be completed. Please try again.\nHTTP 404: file not found",
+      "The Dispossessed · EPUB\nThis action could not be completed. Please try again.\n\nHTTP 404: file not found",
     )
     expect(Notifier.showNotification).not.toHaveBeenCalled()
   })

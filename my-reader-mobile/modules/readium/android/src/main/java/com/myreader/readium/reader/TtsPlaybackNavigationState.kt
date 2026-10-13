@@ -8,6 +8,21 @@ internal data class TtsPlaybackNavigationEvent(
   val navigationKind: String?,
 )
 
+internal fun ttsPlaybackTextLocator(locator: Locator): Locator {
+  if (locator.text.highlight.isNullOrEmpty()) return locator
+  val locations = locator.locations.otherLocations.toMutableMap()
+  locations.remove("domRange")
+  (locations["cssSelector"] as? String)?.let { selector ->
+    locations["cssSelector"] = selector.replace(Regex("#([0-9])")) { match ->
+      "#\\3" + match.groupValues[1] + " "
+    }
+  }
+  return locator.copy(locations = locator.locations.copy(
+    progression = null,
+    otherLocations = locations,
+  ))
+}
+
 internal fun ttsViewportStartLocator(
   current: Locator,
   cssSelector: String,
