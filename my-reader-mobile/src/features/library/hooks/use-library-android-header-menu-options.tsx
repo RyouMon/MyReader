@@ -4,13 +4,12 @@ import type { MenuComponentRef } from "@react-native-menu/menu"
 import type { NativeStackNavigationOptions } from "expo-router"
 import { type RefObject, useCallback, useMemo } from "react"
 import { useTranslation } from "react-i18next"
-
+import { AndroidHeaderActions } from "@/src/components/ui/android-header-layout"
 import { AndroidHeaderMenuButton } from "@/src/components/ui/android-header-menu-button"
 import { renderHeaderToolbarActions } from "@/src/components/ui/header-toolbar.android"
 import type { SortOption } from "@/src/features/library/hooks/use-books-for-collection"
 import type { ScreenHeaderAction } from "@/src/navigation/hooks/use-screen-header"
 import type { LibraryViewMode } from "@/src/store/app-store.types"
-import { View } from "@/tw"
 
 import {
   getLibrarySortOptions,
@@ -87,7 +86,7 @@ export function useLibraryAndroidHeaderMenuOptions({
   return useMemo(
     () => ({
       headerRight: () => (
-        <View className="flex-row items-center">
+        <AndroidHeaderActions>
           {renderHeaderToolbarActions([syncAction])}
           <AndroidHeaderMenuButton
             menuRef={rightMenuRef}
@@ -95,11 +94,10 @@ export function useLibraryAndroidHeaderMenuOptions({
             onPressAction={handleRightMenuAction}
             icon={TuneIcon}
             accessibilityLabel={t("library.viewConfig")}
-            side="right"
             anchoredToRight
           />
           {renderHeaderToolbarActions([searchAction])}
-        </View>
+        </AndroidHeaderActions>
       ),
     }),
     [

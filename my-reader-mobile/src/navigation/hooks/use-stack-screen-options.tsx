@@ -1,7 +1,7 @@
-import { router, type NativeStackNavigationOptions } from "expo-router"
+import { type NativeStackNavigationOptions, router } from "expo-router"
 import { Platform } from "react-native"
 
-import { AndroidHeaderSlot } from "@/src/components/ui/android-header-layout"
+import { AndroidHeaderActions } from "@/src/components/ui/android-header-layout"
 import { HeaderBackButton } from "@/src/components/ui/header-back-button"
 import { useThemePalette } from "@/src/design/tokens"
 
@@ -30,9 +30,9 @@ export function useStackScreenOptions(): NativeStackNavigationOptions {
     headerBackVisible: false,
     headerLeft: ({ canGoBack }) =>
       canGoBack ? (
-        <AndroidHeaderSlot side="left">
+        <AndroidHeaderActions>
           <HeaderBackButton onPress={() => router.back()} />
-        </AndroidHeaderSlot>
+        </AndroidHeaderActions>
       ) : null,
   }
 }

@@ -91,6 +91,17 @@ ANDROID_SERIAL=emulator-5554 ./e2e/scripts/run-local-supported-formats.sh androi
 - `manage_webdav_myreader_library.yaml`：后台上传、上传前禁止删除本地文件、上传中删除、同步不等待上传、按需下载、远端删除与重开。
 - `manage_onedrive_myreader_library.yaml`：Graph 上传、进程重启续传、token 并发路径、远端-only 下载后留在书库，再次点击阅读。
 
+## 主页与书库工具栏
+
+在 iOS 或 Android 模拟器中选择一个已有的测试 MyReader 书库，运行：
+
+```bash
+maestro --device <device-id> test --config=e2e/native-navigation.config.yaml \
+  e2e/flows/library/navigate_root_header.yaml -e APP_ID=ryoumon.myreadermobile
+```
+
+流程分别验证主页和书库的全部书库、搜索、同步详情，以及书库内容区的导入入口。它保留书库和凭据，只打开并取消系统文件选择器。此配置保留原生动画；iOS 26.5 上关闭动画时，连续导航后曾出现工具栏点击未打开弹窗的自动化失败。
+
 ## 目录搜索端到端验证
 
 目录令牌搜索也使用下方生成的 `MyReader-TTS.epub`。将它导入当前测试书库后，可在 iOS 和 Android 上运行：
