@@ -40,7 +40,7 @@ import {
   useRef,
   useState,
 } from "react"
-import { StyleSheet, View } from "react-native"
+import { Platform, StyleSheet, View } from "react-native"
 
 import type {
   ReaderState,
@@ -229,13 +229,14 @@ const ReadiumReflowReader = forwardRef<
     [],
   )
 
-  // Don't pass initialLocator as initialLocation — its href may not match
-  // the native publication format. Instead, navigate after publicationReady.
+  // Android resolves foreign locators before creating its navigator.
+  // iOS still resolves them here after publicationReady.
   const file = useMemo<ReadiumFile>(
     () => ({
       url: epubPath,
+      initialLocation: Platform.OS === "android" ? initialLocator : undefined,
     }),
-    [epubPath],
+    [epubPath, initialLocator],
   )
 
   const preferences = useMemo(
@@ -333,7 +334,11 @@ const ReadiumReflowReader = forwardRef<
         locator: startLocator,
       })
 
-      if (startLocator && startLocator !== event.positions[0]) {
+      if (
+        Platform.OS !== "android" &&
+        startLocator &&
+        startLocator !== event.positions[0]
+      ) {
         setStartLocation(startLocator)
       }
 

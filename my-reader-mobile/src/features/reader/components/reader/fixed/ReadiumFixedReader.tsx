@@ -10,7 +10,7 @@ import {
   useMemo,
   useRef,
 } from "react"
-import { StyleSheet, View } from "react-native"
+import { Platform, StyleSheet, View } from "react-native"
 import { ReadiumView } from "@my-reader/readium"
 import type {
   Locator,
@@ -118,13 +118,14 @@ const ReadiumFixedReader = forwardRef<
     [],
   )
 
-  // Don't pass initialLocator as initialLocation — its href may not match
-  // the native publication format. Instead, navigate after publicationReady.
+  // Android resolves foreign locators before creating its navigator.
+  // iOS still resolves them here after publicationReady.
   const file = useMemo<ReadiumFile>(
     () => ({
       url: filePath,
+      initialLocation: Platform.OS === "android" ? initialLocator : undefined,
     }),
-    [filePath],
+    [filePath, initialLocator],
   )
 
   const preferences = useMemo(
@@ -200,7 +201,11 @@ const ReadiumFixedReader = forwardRef<
       })
 
       // Navigate to the resolved position after the view is ready
-      if (startLocator && startLocator !== event.positions[0]) {
+      if (
+        Platform.OS !== "android" &&
+        startLocator &&
+        startLocator !== event.positions[0]
+      ) {
         programmaticNavigationPendingRef.current = true
         readiumRef.current?.goTo(startLocator)
       }

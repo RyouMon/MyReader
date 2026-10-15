@@ -6,10 +6,12 @@ import com.myreader.readium.Streamer.StreamerConfig
 import com.myreader.readium.utils.LinkOrLocator
 import java.io.File
 import java.util.Locale
+import kotlin.math.roundToInt
 import org.readium.adapter.pdfium.document.PdfiumDocumentFactory
 import org.readium.r2.shared.ExperimentalReadiumApi
 import org.readium.r2.shared.publication.Locator
 import org.readium.r2.shared.publication.Publication
+import org.readium.r2.shared.publication.services.positions
 import org.readium.r2.shared.util.FileExtension
 import org.readium.r2.shared.util.asset.AssetRetriever
 import org.readium.r2.shared.util.format.FormatHints
@@ -42,7 +44,7 @@ class ReaderService(
     onCreatePublication = { /* REP-005: reserved for Phase 2 */ }
   )
 
-  fun locatorFromLinkOrLocator(
+  suspend fun locatorFromLinkOrLocator(
     location: LinkOrLocator?,
     publication: Publication,
   ): Locator? {
@@ -54,7 +56,22 @@ class ReaderService(
         return publication.locatorFromLink(location.link)
       }
       is LinkOrLocator.Locator -> {
-        return location.locator
+        val stored = location.locator
+        val positions = publication.positions()
+        val byPosition = stored.locations.position?.let { positions.getOrNull(it - 1) }
+        val resolved = byPosition?.takeIf { sameResource(it, stored) }
+          ?: positions.firstOrNull { sameResource(it, stored) }
+        if (resolved == null) {
+          if (byPosition != null) return byPosition
+          val progression = stored.locations.totalProgression ?: stored.locations.progression
+          return progression?.takeIf { it.isFinite() && positions.isNotEmpty() }?.let {
+            positions[(it.coerceIn(0.0, 1.0) * (positions.size - 1)).roundToInt()]
+          }
+        }
+        return stored.copy(
+          href = resolved.href,
+          locations = stored.locations.copy(position = resolved.locations.position),
+        )
       }
     }
 
@@ -136,5 +153,11 @@ class ReaderService(
 
   companion object {
     private const val TAG = "ReaderService"
+
+    private fun sameResource(left: Locator, right: Locator): Boolean {
+      val a = left.href.toString().substringBefore('#')
+      val b = right.href.toString().substringBefore('#')
+      return a == b || a.endsWith("/$b") || b.endsWith("/$a")
+    }
   }
 }
