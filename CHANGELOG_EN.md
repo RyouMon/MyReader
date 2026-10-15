@@ -6,6 +6,25 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.17.0] - 2026-10-16
+
+### Added
+
+- Added author, tag, and series browsing on desktop and mobile, with alphabetical indexes for authors and tags and up to four cover images per series. Author, tag, and series links in book details open related books ([#103](https://github.com/RyouMon/MyReader/pull/103))
+- Added search suggestions that turn selected authors, tags, and series into filter tokens. All selected filters apply together while preserving text search, sorting, pagination, and the current collection scope; each token can be removed individually ([#103](https://github.com/RyouMon/MyReader/pull/103))
+
+### Fixed
+
+- Fixed Android failing to restore the last reading position when reopening EPUB, PDF, and CBZ books. Pass the resume location when creating the native reader without adding extra back/forward history entries ([#104](https://github.com/RyouMon/MyReader/pull/104))
+
+### Security
+
+- Updated rustls to 0.23.46 to address RUSTSEC-2026-0346 through RUSTSEC-2026-0349 found by the dependency audit ([#103](https://github.com/RyouMon/MyReader/pull/103))
+
+### Build and Distribution
+
+- Pinned the iOS Readium Swift Toolkit to the available 3.11.0 release, fixing clean builds that failed because an older version's Git tag was missing. Added an uncached dependency installation check to the QA gate ([#101](https://github.com/RyouMon/MyReader/pull/101))
+
 ## [0.16.1] - 2026-10-13
 
 ### Changed
