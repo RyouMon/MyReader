@@ -1480,8 +1480,10 @@ mod tests {
         write_cbz_fixture(&source_file);
         let sync_lock = crate::services::sync::library_sync_lock(&local_root).unwrap();
         let sync_guard = sync_lock.lock().await;
+        // Keep the lock held to prove staging is independent of sync. Allow slow file/SQLite
+        // I/O on CI; the deadline only guards against a lock-order regression.
         let imported = tokio::time::timeout(
-            std::time::Duration::from_secs(1),
+            std::time::Duration::from_secs(30),
             crate::services::catalog::CatalogService::stage_remote_book_import(
                 &config_path,
                 &library.id,
