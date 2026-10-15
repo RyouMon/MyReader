@@ -46,6 +46,10 @@ tags:
     visible: ".*2 / 3"
     timeout: 10000
 - takeScreenshot: ${BOOK_TITLE}-restored
+- assertNotVisible:
+    id: "reader-history-back"
+- assertNotVisible:
+    id: "reader-history-forward"
 - tapOn:
     point: "50%,50%"
 - swipe:

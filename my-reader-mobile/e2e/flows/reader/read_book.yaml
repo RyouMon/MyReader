@@ -102,4 +102,9 @@ tags:
       - tapOn:
           point: "50%,50%"
 - assertVisible: "移除当前位置的书签|Remove bookmark at current location"
+# Restoring a saved location starts a new history with no synthetic first page.
+- assertNotVisible:
+    id: "reader-history-back"
+- assertNotVisible:
+    id: "reader-history-forward"
 - takeScreenshot: epub-restored-bookmark
