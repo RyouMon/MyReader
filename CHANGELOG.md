@@ -5,6 +5,25 @@
 MyReader 的重要变更均记录于此。
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [0.17.0] - 2026-10-16
+
+### Added
+
+- 桌面端和移动端新增作者、标签与丛书浏览入口，作者和标签支持字母索引，丛书以最多四张封面展示；点击图书详情中的作者、标签或丛书可查看相关图书（[#103](https://github.com/RyouMon/MyReader/pull/103)）
+- 书库搜索支持从建议中选择作者、标签与丛书作为筛选条件，多个条件同时生效，并保留文本搜索、排序、分页和当前集合范围；已选条件可单独移除（[#103](https://github.com/RyouMon/MyReader/pull/103)）
+
+### Fixed
+
+- 修复 Android 重新打开 EPUB、PDF 和 CBZ 时无法恢复上次阅读位置的问题；在原生阅读器创建时传入续读位置，避免恢复过程产生额外的后退／前进历史（[#104](https://github.com/RyouMon/MyReader/pull/104)）
+
+### Security
+
+- 将 rustls 升级至 0.23.46，修复依赖审计发现的 RUSTSEC-2026-0346 至 RUSTSEC-2026-0349 安全问题（[#103](https://github.com/RyouMon/MyReader/pull/103)）
+
+### Build and Distribution
+
+- iOS Readium Swift Toolkit 固定到可用的 3.11.0 版本，修复全新构建环境因旧版本标签缺失而安装失败；新增无缓存依赖安装检查并纳入 QA 门禁（[#101](https://github.com/RyouMon/MyReader/pull/101)）
+
 ## [0.16.1] - 2026-10-13
 
 ### Changed
