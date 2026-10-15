@@ -32,6 +32,8 @@ export const commands = {
 	listPendingBookUploads: (libraryId: string) => typedError<string[], ErrorKind>(__TAURI_INVOKE("list_pending_book_uploads", { libraryId })),
 	hasLocalOnlyBooks: (libraryId: string) => typedError<boolean, ErrorKind>(__TAURI_INVOKE("has_local_only_books", { libraryId })),
 	getBooksPage: (libraryId: string | null, offset: number, limit: number, sortBy: string | null, search: string | null) => typedError<PaginatedBooks, ErrorKind>(__TAURI_INVOKE("get_books_page", { libraryId, offset, limit, sortBy, search })),
+	queryCatalogBooks: (libraryId: string, request: CatalogQuery) => typedError<PaginatedBooks, ErrorKind>(__TAURI_INVOKE("query_catalog_books", { libraryId, request })),
+	getCatalogNavigation: (libraryId: string) => typedError<CatalogNavigation, ErrorKind>(__TAURI_INVOKE("get_catalog_navigation", { libraryId })),
 	getBookDetail: (libraryId: string | null, bookId: number) => typedError<BookDetail, ErrorKind>(__TAURI_INVOKE("get_book_detail", { libraryId, bookId })),
 	getSeriesBooks: (libraryId: string | null, seriesName: string, excludeBookId: number | null) => typedError<BookEntry[], ErrorKind>(__TAURI_INVOKE("get_series_books", { libraryId, seriesName, excludeBookId })),
 	importBook: (libraryId: string | null, sourceFilePath: string, title: string | null, authors: string[]) => typedError<ImportBookOutcome, ErrorKind>(__TAURI_INVOKE("import_book", { libraryId, sourceFilePath, title, authors })),
@@ -138,6 +140,40 @@ export type BookFileStateDto = {
 export type BookIdentifier = {
 	idType: string,
 	value: string,
+};
+
+export type CatalogCover = {
+	id: number,
+	title: string,
+	path: string,
+	hasCover: boolean,
+};
+
+export type CatalogFacet = {
+	name: string,
+	bookCount: number,
+	covers: CatalogCover[],
+};
+
+export type CatalogNavigation = {
+	authors: CatalogFacet[],
+	tags: CatalogFacet[],
+	series: CatalogFacet[],
+};
+
+/**
+ *  Every selected value must match. Names are stable across rebuilt projections;
+ *  database-local author/tag IDs are deliberately not part of this contract.
+ */
+export type CatalogQuery = {
+	authors: string[],
+	tags: string[],
+	series: string[],
+	search: string | null,
+	bookIds: number[] | null,
+	sortBy: string | null,
+	offset: number,
+	limit: number | null,
 };
 
 export type DataSourceDetailDto = { kind: "local"; root_path: string } | { kind: "webdav"; endpoint: string; username: string; has_password: boolean; root_path: string | null } | { kind: "onedrive"; client_id: string; tenant_id: string; has_refresh_token: boolean; root_path: string | null; user_name: string | null; user_email: string | null };

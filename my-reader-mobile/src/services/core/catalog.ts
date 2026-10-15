@@ -1,3 +1,4 @@
+import { catalogQuery as makeCatalogQuery } from "@my-reader/tools/catalog-navigation"
 import type {
   BookDetail,
   CalibreBook,
@@ -9,6 +10,8 @@ import {
   type BookContent,
   type BookSummary,
   type BookEntry as CoreBookEntry,
+  catalogNavigation,
+  catalogQueryBooks,
   catalogDeleteLocalBook,
   catalogGetBookDetail,
   catalogGetBookFormat,
@@ -347,4 +350,39 @@ export async function deleteLocalBook(
     Date.now(),
   )
   announceLocalSidecarWork(library.id)
+}
+
+export function getCatalogNavigation(
+  library: CatalogLibrary,
+  contentRootUri: string,
+  sidecarRootUri: string,
+) {
+  return catalogNavigation(
+    appConfigPath,
+    library.id,
+    nativePath(sidecarRootUri),
+    nativePath(contentRootUri),
+  )
+}
+
+export async function queryCatalogBooks(
+  library: CatalogLibrary,
+  contentRootUri: string,
+  sidecarRootUri: string,
+  request: ReturnType<typeof makeCatalogQuery>,
+): Promise<PaginatedBooks> {
+  const page = await catalogQueryBooks(
+    appConfigPath,
+    library.id,
+    nativePath(sidecarRootUri),
+    nativePath(contentRootUri),
+    {
+      ...request,
+      search: request.search ?? undefined,
+      bookIds: request.bookIds ?? undefined,
+      sortBy: request.sortBy ?? undefined,
+      limit: request.limit ?? undefined,
+    },
+  )
+  return { total: page.total, items: page.items.map(bookFromCore) }
 }

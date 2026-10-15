@@ -170,6 +170,12 @@ describe("useLibraryCollectionsHeader", () => {
     fireEvent.press(screen.getByLabelText("library.importBook"))
     expect(onImportBook).toHaveBeenCalledTimes(1)
     expect(screen.queryByLabelText("addLibraryFlow.title")).toBeNull()
+
+    fireEvent.press(screen.getByLabelText("common.search"))
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: "/library/catalog",
+      params: { search: "1" },
+    })
   })
 
   it("should open the library switcher sheet from the Android left header", () => {

@@ -11,6 +11,38 @@ use crate::utils::paths::{library_root_path, library_sidecar_path};
 pub struct BookService;
 
 impl BookService {
+    pub async fn query_catalog_books(
+        lib: &LibraryConfig,
+        app_data_dir: &Path,
+        request: my_reader_core::models::CatalogQuery,
+    ) -> Result<PaginatedBooks, AppError> {
+        Ok(
+            my_reader_core::api::catalog::CatalogService::query_library_books(
+                lib.library_type.into(),
+                &library_sidecar_path(lib, app_data_dir),
+                &library_root_path(lib, app_data_dir),
+                request,
+            )
+            .await?
+            .into(),
+        )
+    }
+
+    pub async fn catalog_navigation(
+        lib: &LibraryConfig,
+        app_data_dir: &Path,
+    ) -> Result<crate::catalog_models::CatalogNavigation, AppError> {
+        Ok(
+            my_reader_core::api::catalog::CatalogService::catalog_navigation(
+                lib.library_type.into(),
+                &library_sidecar_path(lib, app_data_dir),
+                &library_root_path(lib, app_data_dir),
+            )
+            .await?
+            .into(),
+        )
+    }
+
     pub async fn get_library_books(
         lib: &LibraryConfig,
         app_data_dir: &Path,

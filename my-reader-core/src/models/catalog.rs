@@ -56,6 +56,46 @@ pub struct PaginatedBooks {
     pub total: usize,
 }
 
+/// Every selected value must match. Names are stable across rebuilt projections;
+/// database-local author/tag IDs are deliberately not part of this contract.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct CatalogQuery {
+    pub authors: Vec<String>,
+    pub tags: Vec<String>,
+    pub series: Vec<String>,
+    pub search: Option<String>,
+    pub book_ids: Option<Vec<i64>>,
+    pub sort_by: Option<String>,
+    pub offset: usize,
+    pub limit: Option<usize>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CatalogCover {
+    pub id: i64,
+    pub title: String,
+    pub path: String,
+    pub has_cover: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CatalogFacet {
+    pub name: String,
+    pub book_count: usize,
+    pub covers: Vec<CatalogCover>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CatalogNavigation {
+    pub authors: Vec<CatalogFacet>,
+    pub tags: Vec<CatalogFacet>,
+    pub series: Vec<CatalogFacet>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BookEntry {

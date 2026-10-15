@@ -34,6 +34,88 @@ enum ImportDelivery {
 }
 
 impl CatalogService {
+    pub async fn catalog_navigation(
+        library_type: LibraryType,
+        sidecar_root: &Path,
+        content_root: &Path,
+    ) -> Result<crate::models::CatalogNavigation, CoreError> {
+        CatalogRepository::open_library(library_type, sidecar_root, content_root)
+            .await?
+            .catalog_navigation()
+            .await
+    }
+
+    pub async fn registered_catalog_navigation(
+        config_path: &Path,
+        library_id: &str,
+        sidecar_root: &Path,
+        content_root: &Path,
+    ) -> Result<crate::models::CatalogNavigation, CoreError> {
+        Self::catalog_navigation(
+            Self::registered_library_type(config_path, library_id)?,
+            sidecar_root,
+            content_root,
+        )
+        .await
+    }
+
+    pub async fn query_registered_library_books(
+        config_path: &Path,
+        library_id: &str,
+        sidecar_root: &Path,
+        content_root: &Path,
+        request: crate::models::CatalogQuery,
+    ) -> Result<PaginatedBooks, CoreError> {
+        Self::query_library_books(
+            Self::registered_library_type(config_path, library_id)?,
+            sidecar_root,
+            content_root,
+            request,
+        )
+        .await
+    }
+
+    pub async fn query_library_books(
+        library_type: LibraryType,
+        sidecar_root: &Path,
+        content_root: &Path,
+        mut request: crate::models::CatalogQuery,
+    ) -> Result<PaginatedBooks, CoreError> {
+        let repository =
+            CatalogRepository::open_library(library_type, sidecar_root, content_root).await?;
+        if request.sort_by.as_deref() != Some("lastRead") {
+            return repository.query_books(&request).await;
+        }
+        let context = LibraryContext::open(sidecar_root).await?;
+        let latest = ReadingRepository::new(context.database())
+            .latest_read_at_by_book()
+            .await?;
+        request.book_ids = Some(
+            latest
+                .keys()
+                .copied()
+                .filter(|id| request.book_ids.as_ref().is_none_or(|ids| ids.contains(id)))
+                .collect(),
+        );
+        let offset = request.offset;
+        let limit = request.limit.map(|limit| limit.clamp(1, 200));
+        request.offset = 0;
+        request.limit = None;
+        let mut result = repository.query_books(&request).await?;
+        result.items.sort_by(|left, right| {
+            latest[&right.id]
+                .total_cmp(&latest[&left.id])
+                .then_with(|| left.id.cmp(&right.id))
+        });
+        result.items = result
+            .items
+            .into_iter()
+            .skip(offset)
+            .take(limit.unwrap_or(usize::MAX))
+            .collect();
+        Ok(result)
+    }
+
     fn registered_library_type(
         config_path: &Path,
         library_id: &str,

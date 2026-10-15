@@ -1,4 +1,21 @@
 export const sharedEn = {
+  catalog: {
+    searchPlaceholder: "Search titles, authors, tags, series…",
+    searchDirectory: "Search {{kind}}",
+    authors: "Authors",
+    tags: "Tags",
+    series: "Series",
+    directory: "Library directory",
+    alphabetIndex: "Alphabetical index",
+    jumpTo: "Go to {{letter}}",
+    suggestions: "Search suggestions",
+    removeToken: "Remove condition",
+    removeNamedToken: "Remove {{name}}",
+    emptyDirectory: "No entries to display.",
+    loading: "Loading…",
+    retry: "Retry",
+    noResults: "No books match all conditions.",
+  },
   operationError: {
     unexpected: "This action could not be completed. Please try again.",
     connectivity:

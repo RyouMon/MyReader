@@ -1,4 +1,5 @@
 import {
+  ArrowLeft,
   ArrowUpDown,
   BookPlus,
   Check,
@@ -18,7 +19,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
+import { CatalogTokenField } from "./CatalogTokenField"
+import {
+  EMPTY_NAVIGATION,
+  type CatalogFacetKind,
+  type CatalogNavigation,
+  type CatalogToken,
+} from "@my-reader/tools/catalog-navigation"
 import {
   Popover,
   PopoverContent,
@@ -26,9 +33,6 @@ import {
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import type { LibrarySortOption } from "@/types/libraryUi"
-
-const SEARCH_INPUT_CLASS =
-  "h-8 border-0 bg-transparent shadow-none focus-visible:ring-0 dark:bg-transparent"
 
 function useSortLabels(): Record<LibrarySortOption, string> {
   const { t } = useTranslation()
@@ -41,6 +45,11 @@ function useSortLabels(): Record<LibrarySortOption, string> {
 }
 
 interface ToolbarProps {
+  directory?: CatalogFacetKind
+  onBack?: () => void
+  tokens?: CatalogToken[]
+  onTokensChange?: (tokens: CatalogToken[], query?: string) => void
+  navigation?: CatalogNavigation
   searchQuery: string
   onSearchChange: (q: string) => void
   viewMode: "grid" | "list"
@@ -53,6 +62,11 @@ interface ToolbarProps {
 }
 
 export default function Toolbar({
+  directory,
+  onBack,
+  tokens = [],
+  onTokensChange = () => undefined,
+  navigation = EMPTY_NAVIGATION,
   searchQuery,
   onSearchChange,
   viewMode,
@@ -65,6 +79,10 @@ export default function Toolbar({
 }: ToolbarProps) {
   const { t } = useTranslation()
   const sortLabels = useSortLabels()
+  const showViewMode = !directory || directory === "series"
+  const placeholder = directory
+    ? t("catalog.searchDirectory", { kind: t(`catalog.${directory}`) })
+    : undefined
 
   const sortOptions: LibrarySortOption[] = [
     "recent",
@@ -78,22 +96,34 @@ export default function Toolbar({
       data-tauri-drag-region
       className="toolbar-shell flex h-full min-w-0 flex-1 items-center gap-2 px-2 text-muted-foreground"
     >
+      {onBack && (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={onBack}
+          aria-label={t("common.back")}
+        >
+          <ArrowLeft />
+        </Button>
+      )}
       {/* Search */}
-      <div className="toolbar-search-field relative min-w-0 flex-1 max-w-sm rounded-md transition-colors hover:bg-accent/50 focus-within:bg-accent/50">
-        <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-        <Input
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder={t("library.searchPlaceholder")}
-          aria-label={t("library.searchPlaceholder")}
-          className={cn(SEARCH_INPUT_CLASS, "ps-8")}
+      <div className="toolbar-search-field relative min-w-0 flex-1 max-w-2xl rounded-md transition-colors hover:bg-accent/50 focus-within:bg-accent/50">
+        <CatalogTokenField
+          {...{
+            tokens,
+            placeholder,
+            onTokensChange,
+            navigation,
+            searchQuery,
+            onSearchChange,
+          }}
         />
       </div>
       <Popover>
         <PopoverTrigger
           className={cn(
             buttonVariants({
-              variant: searchQuery ? "secondary" : "ghost",
+              variant: searchQuery || tokens.length ? "secondary" : "ghost",
               size: "icon-sm",
             }),
             "toolbar-search-trigger hidden",
@@ -108,12 +138,15 @@ export default function Toolbar({
           className="border-0 p-1"
           aria-label={t("library.searchPlaceholder")}
         >
-          <Input
-            value={searchQuery}
-            onChange={(event) => onSearchChange(event.target.value)}
-            placeholder={t("library.searchPlaceholder")}
-            aria-label={t("library.searchPlaceholder")}
-            className={SEARCH_INPUT_CLASS}
+          <CatalogTokenField
+            {...{
+              tokens,
+              placeholder,
+              onTokensChange,
+              navigation,
+              searchQuery,
+              onSearchChange,
+            }}
           />
         </PopoverContent>
       </Popover>
@@ -122,7 +155,7 @@ export default function Toolbar({
         data-tauri-drag-region
         className="ms-auto flex shrink-0 items-center"
       >
-        {canImportBook && (
+        {canImportBook && !directory && (
           <Button
             variant="ghost"
             size="icon-sm"
@@ -140,72 +173,77 @@ export default function Toolbar({
         )}
 
         {/* View toggle */}
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          title={t("library.gridView")}
-          aria-label={t("library.gridView")}
-          aria-pressed={viewMode === "grid"}
-          className={cn(
-            viewMode === "grid" && "bg-accent text-accent-foreground",
-          )}
-          onClick={() => onViewModeChange("grid")}
-        >
-          <LayoutGrid />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          title={t("library.listView")}
-          aria-label={t("library.listView")}
-          aria-pressed={viewMode === "list"}
-          className={cn(
-            viewMode === "list" && "bg-accent text-accent-foreground",
-          )}
-          onClick={() => onViewModeChange("list")}
-        >
-          <List />
-        </Button>
-
+        {showViewMode && (
+          <>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              title={t("library.gridView")}
+              aria-label={t("library.gridView")}
+              aria-pressed={viewMode === "grid"}
+              className={cn(
+                viewMode === "grid" && "bg-accent text-accent-foreground",
+              )}
+              onClick={() => onViewModeChange("grid")}
+            >
+              <LayoutGrid />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              title={t("library.listView")}
+              aria-label={t("library.listView")}
+              aria-pressed={viewMode === "list"}
+              className={cn(
+                viewMode === "list" && "bg-accent text-accent-foreground",
+              )}
+              onClick={() => onViewModeChange("list")}
+            >
+              <List />
+            </Button>
+          </>
+        )}
         {/* Sort */}
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            title={sortLabels[sortBy]}
-            aria-label={sortLabels[sortBy]}
-            className={cn(
-              buttonVariants({
-                variant: "ghost",
-                size: "sm",
-                className: "toolbar-sort-trigger h-8 gap-1",
-              }),
-            )}
-          >
-            <ArrowUpDown className="size-3.5" />
-            <span className="toolbar-sort-label text-xs">
-              {sortLabels[sortBy]}
-            </span>
-            <ChevronDown className="toolbar-sort-chevron size-3 opacity-50" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-36">
-            <DropdownMenuGroup>
-              {sortOptions.map((option) => (
-                <DropdownMenuItem
-                  key={option}
-                  onClick={() => onSortChange(option)}
-                  className="gap-2"
-                >
-                  <Check
-                    className={cn(
-                      "size-3.5",
-                      option === sortBy ? "opacity-100" : "opacity-0",
-                    )}
-                  />
-                  {sortLabels[option]}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {!directory && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              title={sortLabels[sortBy]}
+              aria-label={sortLabels[sortBy]}
+              className={cn(
+                buttonVariants({
+                  variant: "ghost",
+                  size: "sm",
+                  className: "toolbar-sort-trigger h-8 gap-1",
+                }),
+              )}
+            >
+              <ArrowUpDown className="size-3.5" />
+              <span className="toolbar-sort-label text-xs">
+                {sortLabels[sortBy]}
+              </span>
+              <ChevronDown className="toolbar-sort-chevron size-3 opacity-50" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-36">
+              <DropdownMenuGroup>
+                {sortOptions.map((option) => (
+                  <DropdownMenuItem
+                    key={option}
+                    onClick={() => onSortChange(option)}
+                    className="gap-2"
+                  >
+                    <Check
+                      className={cn(
+                        "size-3.5",
+                        option === sortBy ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                    {sortLabels[option]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     </div>
   )

@@ -34,6 +34,16 @@ export function useLibraryCollectionsHeader({
     () => router.push("/switch-library"),
     [],
   )
+  const searchAction = useMemo(
+    () => ({
+      label: t("common.search"),
+      iosSfSymbol: "magnifyingglass" as const,
+      disabled: !selectedLibraryName,
+      onPress: () =>
+        router.push({ pathname: "/library/catalog", params: { search: "1" } }),
+    }),
+    [selectedLibraryName, t],
+  )
   const { options: baseOptions, toolbar: baseToolbar } = useScreenHeader({
     title: selectedLibraryName ?? t("library.label"),
     headerLargeTitle: true,
@@ -65,6 +75,7 @@ export function useLibraryCollectionsHeader({
               testID="library-import-book-button"
             />
           ) : null}
+          {renderHeaderToolbarActions([searchAction])}
         </View>
       ),
     }
@@ -74,6 +85,7 @@ export function useLibraryCollectionsHeader({
     handleOpenLibrarySwitcher,
     onImportBook,
     syncAction,
+    searchAction,
     t,
   ])
 
@@ -99,6 +111,13 @@ export function useLibraryCollectionsHeader({
               <Stack.Toolbar.Icon sf={syncAction.iosSfSymbol} />
             </Stack.Toolbar.Button>
           ) : null}
+          <Stack.Toolbar.Button
+            accessibilityLabel={searchAction.label}
+            disabled={searchAction.disabled}
+            onPress={searchAction.onPress}
+          >
+            <Stack.Toolbar.Icon sf="magnifyingglass" />
+          </Stack.Toolbar.Button>
           {canImportBook ? (
             <Stack.Toolbar.Button
               accessibilityLabel={t("library.importBook")}
@@ -116,6 +135,7 @@ export function useLibraryCollectionsHeader({
     handleOpenLibrarySwitcher,
     onImportBook,
     syncAction,
+    searchAction,
     t,
   ])
 

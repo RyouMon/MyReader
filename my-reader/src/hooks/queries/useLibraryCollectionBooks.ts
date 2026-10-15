@@ -1,3 +1,4 @@
+import type { CatalogToken } from "@my-reader/tools/catalog-navigation"
 import { errorMessage } from "@/lib/error-presentation"
 import type { CalibreBook } from "@my-reader/tools/types/book"
 import type { BuiltInBookCollectionId } from "@my-reader/tools/types/book-collection"
@@ -13,6 +14,7 @@ interface LibraryCollectionOptions {
   collectionId: BuiltInBookCollectionId
   sortBy: LibrarySortOption
   search: string
+  tokens?: CatalogToken[]
   selectedFormatById: Record<string, string>
   isManagedLibrary: boolean
   isRemoteLibrary: boolean
@@ -23,6 +25,7 @@ export function useLibraryCollectionBooks({
   collectionId,
   sortBy,
   search,
+  tokens,
   selectedFormatById,
   isManagedLibrary,
   isRemoteLibrary,
@@ -34,11 +37,13 @@ export function useLibraryCollectionBooks({
     collectionId === "recentlyRead" ? "lastRead" : sortBy,
     search,
     isManagedLibrary,
+    tokens,
   )
   const favorites = useFavoriteBooks(
     collectionId === "favorites" ? libraryId : null,
     sortBy,
     search,
+    tokens,
   )
   const favoriteBooks = useMemo(
     () =>
@@ -52,6 +57,7 @@ export function useLibraryCollectionBooks({
     collectionId,
     sortBy,
     search,
+    tokens,
     selectedFormatById,
     isRemoteLibrary,
   })

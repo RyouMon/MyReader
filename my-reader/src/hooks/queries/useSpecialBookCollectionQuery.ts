@@ -1,3 +1,7 @@
+import {
+  catalogQuery,
+  type CatalogToken,
+} from "@my-reader/tools/catalog-navigation"
 import { errorMessage } from "@/lib/error-presentation"
 import type { BuiltInBookCollectionId } from "@my-reader/tools/types/book-collection"
 import type { CalibreBook } from "@my-reader/tools/types/book"
@@ -24,6 +28,7 @@ type UseSpecialBookCollectionInput = {
   collectionId: BuiltInBookCollectionId
   sortBy: LibrarySortOption
   search: string
+  tokens?: CatalogToken[]
   selectedFormatById: Record<string, string>
   isRemoteLibrary: boolean
 }
@@ -33,14 +38,20 @@ export function useSpecialBookCollection({
   collectionId,
   sortBy,
   search,
+  tokens = [],
   selectedFormatById,
   isRemoteLibrary,
 }: UseSpecialBookCollectionInput) {
   const queryClient = useQueryClient()
   const enabled = Boolean(libraryId && isSpecialBookCollectionId(collectionId))
   const booksQuery = useQuery<CalibreBook[], Error>({
-    queryKey: specialBookCollectionKeys.catalog(libraryId ?? ""),
-    queryFn: () => api.getBooks(libraryId),
+    queryKey: [...specialBookCollectionKeys.catalog(libraryId ?? ""), tokens],
+    queryFn: () =>
+      tokens.length > 0 && libraryId
+        ? api
+            .queryCatalogBooks(libraryId, catalogQuery(tokens))
+            .then((page) => page.items)
+        : api.getBooks(libraryId),
     enabled,
   })
   const downloadQueue = useDownloadQueue(libraryId)

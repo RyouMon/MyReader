@@ -1,6 +1,7 @@
 import type { CalibreBook } from "@my-reader/tools/types/book"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import {
+  type ReactNode,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -15,6 +16,8 @@ import {
 } from "@/lib/readingProgress"
 import BookCard from "./BookCard"
 import BookRow from "./BookRow"
+
+const savedOffsets = new Map<string, number>()
 
 const GRID_CARD_WIDTH = 164
 const MIN_GRID_CARD_WIDTH = 136
@@ -36,6 +39,8 @@ const DEFAULT_GRID_LAYOUT = getGridLayoutMetrics(
 export type LibraryViewMode = "grid" | "list"
 
 interface BookGridProps {
+  renderItem?: (index: number, mode: LibraryViewMode) => ReactNode
+  scrollKey?: string
   books: Map<number, CalibreBook>
   total: number
   libraryId: string | null
@@ -61,6 +66,8 @@ interface ScrollAnchor {
  * Renders the virtualized library contents in grid or list mode.
  */
 export default function BookGrid({
+  renderItem,
+  scrollKey,
   books,
   total,
   libraryId,
@@ -150,10 +157,20 @@ export default function BookGrid({
 
   const virtualizer = useVirtualizer({
     count: rowCount,
+    initialOffset: scrollKey ? (savedOffsets.get(scrollKey) ?? 0) : 0,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => rowHeight,
     overscan: 3,
   })
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current
+    if (!el || !scrollKey) return
+    el.scrollTop = savedOffsets.get(scrollKey) ?? 0
+    return () => {
+      savedOffsets.set(scrollKey, el.scrollTop)
+    }
+  }, [scrollKey])
 
   const getVirtualListTop = useCallback(() => {
     const listEl = virtualListRef.current
@@ -381,18 +398,22 @@ export default function BookGrid({
                 }}
               >
                 {isList ? (
-                  renderListRow(
-                    vRow.index,
-                    books,
-                    libraryId,
-                    fileActionsEnabled,
-                    selectedFormatById,
-                    progressByBookId,
-                    activeBookId,
-                    handleRead,
-                    onOpenReader,
-                    onMore,
-                    onDeleteBook,
+                  renderItem ? (
+                    renderItem(vRow.index, "list")
+                  ) : (
+                    renderListRow(
+                      vRow.index,
+                      books,
+                      libraryId,
+                      fileActionsEnabled,
+                      selectedFormatById,
+                      progressByBookId,
+                      activeBookId,
+                      handleRead,
+                      onOpenReader,
+                      onMore,
+                      onDeleteBook,
+                    )
                   )
                 ) : (
                   <div
@@ -406,6 +427,8 @@ export default function BookGrid({
                     {Array.from({ length: cols }, (_, c) => {
                       const idx = vRow.index * cols + c
                       if (idx >= total) return <div key={c} />
+                      if (renderItem)
+                        return <div key={idx}>{renderItem(idx, "grid")}</div>
                       const book = books.get(idx)
                       if (!book) return <BookCardSkeleton key={`s-${idx}`} />
                       const selectedFormat = selectedFormatById[String(book.id)]

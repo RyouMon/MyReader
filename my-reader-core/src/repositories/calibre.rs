@@ -19,6 +19,8 @@ use crate::models::catalog::BookFilePathRequest;
 use crate::models::{BookEntry, BookFormat, BookSummary, LibraryType};
 use crate::CoreError;
 
+mod navigation;
+
 #[derive(FromQueryResult)]
 struct BookPathRow {
     id: i64,

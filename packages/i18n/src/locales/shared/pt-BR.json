@@ -276,5 +276,22 @@
     "io": "Não foi possível acessar os arquivos locais. Verifique o espaço de armazenamento e as permissões.",
     "dataIntegrity": "Alguns dados não puderam ser lidos corretamente. Restaure uma cópia confiável e tente novamente.",
     "tts": "A leitura em voz alta falhou. Verifique as configurações de voz e tente novamente."
+  },
+  "catalog": {
+    "searchPlaceholder": "Buscar títulos, autores, etiquetas, séries…",
+    "searchDirectory": "Buscar em {{kind}}",
+    "authors": "Autores",
+    "tags": "Etiquetas",
+    "series": "Séries",
+    "directory": "Índice da biblioteca",
+    "alphabetIndex": "Índice alfabético",
+    "jumpTo": "Ir para {{letter}}",
+    "suggestions": "Sugestões de pesquisa",
+    "removeToken": "Remover condição",
+    "removeNamedToken": "Remover {{name}}",
+    "emptyDirectory": "Nenhum item para exibir.",
+    "loading": "Carregando…",
+    "retry": "Tentar novamente",
+    "noResults": "Nenhum livro atende a todas as condições."
   }
 }

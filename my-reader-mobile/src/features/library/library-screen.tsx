@@ -1,3 +1,8 @@
+import { useCatalogSearch } from "./hooks/use-catalog-search"
+import { useCatalogSearchPresentation } from "./hooks/use-catalog-search-presentation"
+import { type CatalogToken } from "@my-reader/tools/catalog-navigation"
+import { CatalogTokenField } from "./components/catalog-token-field"
+import { CatalogSuggestionsHost } from "./components/catalog-suggestions-overlay"
 import { errorMessage } from "@/src/i18n/error-message"
 import {
   Profiler,
@@ -12,6 +17,7 @@ import {
 
 import {
   FlashList,
+  type FlashListRef,
   type ListRenderItemInfo,
   type ViewToken,
 } from "@shopify/flash-list"
@@ -97,7 +103,12 @@ import { useLibraryBookMeta } from "@/src/hooks/use-library-book-meta"
 import { useAppStore } from "@/src/store/app-store"
 import { useBookActions } from "./hooks/use-book-actions"
 
+const EMPTY_TOKENS: CatalogToken[] = []
+
 type LibraryScreenProps = {
+  initialSearchOpen?: boolean
+  initialTokens?: CatalogToken[]
+  libraryId?: string
   collectionId: BuiltInBookCollectionId
 }
 
@@ -301,7 +312,12 @@ function LibraryUnavailableContent({
   return null
 }
 
-export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
+export default function LibraryScreen({
+  initialSearchOpen = false,
+  collectionId,
+  initialTokens = EMPTY_TOKENS,
+  libraryId,
+}: LibraryScreenProps) {
   const { t } = useTranslation()
   const palette = useThemePalette()
   const isLibraryFocused = useIsFocused()
@@ -320,14 +336,15 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
     [height, pixelRatio, screenBounds.height, screenBounds.width, width],
   )
   const libraries = useAppStore((s) => s.libraries)
-  const activeLibraryId = useAppStore((s) => s.activeLibraryId)
+  const storedLibraryId = useAppStore((s) => s.activeLibraryId)
+  const activeLibraryId = libraryId ?? storedLibraryId
   const storeReady = useAppStore((s) => s.storeReady)
   const effectiveLibraryId = activeLibraryId ?? undefined
   const {
     data: books = [],
     isLoading: loadingBooks,
-    error: booksError,
-    refetch: refetchBooks,
+    error: catalogBooksError,
+    refetch: refetchAllBooks,
   } = useBooks(activeLibraryId)
   const { data: pendingBookImports = [] } =
     usePendingBookImports(activeLibraryId)
@@ -342,11 +359,36 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
   const coverThumbnailGenerationConcurrency = useAppStore(
     (s) => s.settings.coverThumbnailGenerationConcurrency,
   )
-  const { query, setQuery, debouncedQuery, clearQuery } =
-    useSearchQuery(effectiveLibraryId)
+  const { query, setQuery, debouncedQuery } = useSearchQuery(effectiveLibraryId)
+  const listRef = useRef<FlashListRef<BookItem>>(null)
+  const searchPresentation = useCatalogSearchPresentation(
+    effectiveLibraryId,
+    initialSearchOpen,
+    () => listRef.current?.scrollToOffset({ offset: 0, animated: false }),
+  )
   const [sortBy, setSortBy] = useState<SortOption>(() =>
     defaultSortOptionForCollection(collectionId),
   )
+  const {
+    tokens,
+    setTokens,
+    isFiltered,
+    title: catalogTitle,
+    navigation: catalogNavigation,
+    resultBooks,
+    booksError,
+    isLoadingNewContent,
+    refetchBooks,
+  } = useCatalogSearch({
+    libraryId: activeLibraryId,
+    initialTokens,
+    search: debouncedQuery,
+    recentlyRead: collectionId === "recentlyRead",
+    books,
+    loadingBooks,
+    error: catalogBooksError,
+    refetch: refetchAllBooks,
+  })
   const isGridView = viewMode === "grid"
   const listDrawDistance = getLibraryListDrawDistance(isGridView, cardWidth)
 
@@ -355,9 +397,6 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
   const scrollIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const thumbnailWorkPausedRef = useRef(true)
   const [thumbnailWorkPaused, setThumbnailWorkPaused] = useState(true)
-
-  const isLoadingNewContent =
-    loadingBooks && books.length === 0 && pendingBookImports.length === 0
 
   const handleMenuOpen = useCallback((bookId: string) => {
     if (menuCloseTimerRef.current) {
@@ -426,10 +465,11 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
   } = useLibraryBookMeta(selectedLibrary, books, selectedFormatById)
   const { data: progressByBookId } = useBookReadingProgress(selectedLibrary)
   const visibleBooks = useBooksForCollection({
-    books,
-    recentlyReadBooks,
+    books: resultBooks,
+    recentlyReadBooks:
+      collectionId === "recentlyRead" ? resultBooks : recentlyReadBooks,
     collectionId,
-    query: debouncedQuery,
+    query: "",
     sortBy,
     bookActiveFormatsById,
     bookDownloadStatusById,
@@ -439,10 +479,10 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
   })
   const displayedBooks = useMemo(
     () =>
-      collectionId === "all"
+      collectionId === "all" && !isFiltered
         ? [...pendingBookImports, ...visibleBooks]
         : visibleBooks,
-    [collectionId, pendingBookImports, visibleBooks],
+    [collectionId, isFiltered, pendingBookImports, visibleBooks],
   )
   const isRemote = isRemoteSourceType(selectedLibrary?.sourceType)
   const isManagedLibrary =
@@ -588,8 +628,8 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
     viewMode,
     onSetSortBy: setSortBy,
     onSetViewMode: setViewMode,
-    onQueryChange: setQuery,
-    onSearchCancel: clearQuery,
+    searchAction: searchPresentation.action,
+    title: catalogTitle,
   })
 
   const { handleBookPress, handleBookMenuAction } = useBookActions(
@@ -877,6 +917,12 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
       icon: { ios: "book.closed", android: Book2Icon } as const,
     }
 
+    if (tokens.length > 0)
+      return {
+        title: t("catalog.noResults"),
+        detail: t("library.noMatch.search.detail"),
+        icon: { ios: "magnifyingglass", android: "search" } as const,
+      }
     if (query.length > 0) {
       return {
         title: t("library.noMatch.search.title"),
@@ -930,13 +976,10 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
       default:
         return emptyLibraryState
     }
-  }, [collectionId, isManagedLibrary, query.length, t])
+  }, [collectionId, isManagedLibrary, query.length, t, tokens.length])
 
-  const showsEmptyLibraryState = query.length === 0 && collectionId === "all"
-  const showsBrowseAllBooksAction =
-    query.length === 0 &&
-    !showsEmptyLibraryState &&
-    collectionId !== "localOnly"
+  const { showsEmptyLibraryState, showsBrowseAllBooksAction } =
+    emptyCollectionActions(collectionId, query, tokens)
 
   if (variant !== "loaded") {
     return (
@@ -949,8 +992,30 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
 
   const flashList = (
     <FlashList
+      ref={listRef}
       key={`${collectionId}-${viewMode}-${gridColumns}-${activeLibraryId ?? "none"}`}
       data={isLoadingNewContent ? [] : displayedBooks}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      ListHeaderComponent={
+        searchPresentation.isOpen ? (
+          <View
+            style={
+              isGridView
+                ? LIBRARY_GRID_CELL_CONTAINER_STYLE
+                : { paddingHorizontal: LIBRARY_LIST_PADDING_X }
+            }
+          >
+            <CatalogTokenField
+              tokens={tokens}
+              onTokensChange={setTokens}
+              navigation={catalogNavigation}
+              query={query}
+              onQueryChange={setQuery}
+            />
+          </View>
+        ) : null
+      }
       extraData={flashListExtraData}
       numColumns={isGridView ? gridColumns : 1}
       keyExtractor={(item) => item.id}
@@ -958,33 +1023,32 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
       contentInsetAdjustmentBehavior="automatic"
       className="flex-1"
       style={{ backgroundColor: palette.background }}
-      contentContainerStyle={{
-        paddingHorizontal: isGridView
-          ? LIBRARY_GRID_PADDING_X - LIBRARY_GRID_CARD_GAP / 2
-          : 0,
-        paddingTop: 16,
-        paddingBottom: 40,
-      }}
+      contentContainerStyle={libraryContentContainerStyle(
+        isGridView,
+        searchPresentation.isOpen,
+      )}
       ItemSeparatorComponent={isGridView ? SeparatorGrid : SeparatorList}
       drawDistance={listDrawDistance}
       maintainVisibleContentPosition={
         LIBRARY_LIST_MAINTAIN_VISIBLE_CONTENT_POSITION
       }
       ListEmptyComponent={
-        <LibraryEmptyContent
-          isLoadingNewContent={isLoadingNewContent}
-          viewMode={viewMode}
-          cardWidth={cardWidth}
-          gridColumns={gridColumns}
-          booksError={booksError}
-          refetchBooks={refetchBooks}
-          emptyState={emptyState}
-          isManagedLibrary={isManagedLibrary}
-          showsEmptyLibraryState={showsEmptyLibraryState}
-          showsBrowseAllBooksAction={showsBrowseAllBooksAction}
-          handleImportBook={handleImportBook}
-          handleBrowseAllBooks={handleBrowseAllBooks}
-        />
+        <View>
+          <LibraryEmptyContent
+            isLoadingNewContent={isLoadingNewContent}
+            viewMode={viewMode}
+            cardWidth={cardWidth}
+            gridColumns={gridColumns}
+            booksError={booksError}
+            refetchBooks={refetchBooks}
+            emptyState={emptyState}
+            isManagedLibrary={isManagedLibrary}
+            showsEmptyLibraryState={showsEmptyLibraryState}
+            showsBrowseAllBooksAction={showsBrowseAllBooksAction}
+            handleImportBook={handleImportBook}
+            handleBrowseAllBooks={handleBrowseAllBooks}
+          />
+        </View>
       }
       onCommitLayoutEffect={onCommitLayoutEffect}
       onMomentumScrollBegin={handleScrollActive}
@@ -1004,8 +1068,7 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
   )
 
   return (
-    <>
-      {header}
+    <CatalogSuggestionsHost>
       {onRender ? (
         <Profiler id="LibraryScreen.FlashList" onRender={onRender}>
           {flashList}
@@ -1013,6 +1076,37 @@ export default function LibraryScreen({ collectionId }: LibraryScreenProps) {
       ) : (
         flashList
       )}
-    </>
+      {header}
+    </CatalogSuggestionsHost>
   )
+}
+
+function libraryContentContainerStyle(
+  isGridView: boolean,
+  searchOpen: boolean,
+) {
+  return {
+    flexGrow: 1,
+    paddingHorizontal: isGridView
+      ? LIBRARY_GRID_PADDING_X - LIBRARY_GRID_CARD_GAP / 2
+      : 0,
+    paddingTop: searchOpen ? 0 : 16,
+    paddingBottom: 40,
+  }
+}
+
+function emptyCollectionActions(
+  collectionId: BuiltInBookCollectionId,
+  query: string,
+  tokens: CatalogToken[],
+) {
+  const showsEmptyLibraryState =
+    tokens.length === 0 && query.length === 0 && collectionId === "all"
+  const showsBrowseAllBooksAction =
+    tokens.length === 0 &&
+    query.length === 0 &&
+    !showsEmptyLibraryState &&
+    collectionId !== "localOnly"
+
+  return { showsEmptyLibraryState, showsBrowseAllBooksAction }
 }

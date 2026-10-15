@@ -175,6 +175,26 @@ describe("resolveBookDetailHeroMode", () => {
 })
 
 describe("HeroSection", () => {
+  it("opens every metadata value as its own typed facet, including tags beyond the fourth", () => {
+    const onBrowse = jest.fn()
+    renderHero(390, {
+      book: {
+        ...detail,
+        authors: ["Author A", "Author B"],
+        tags: ["Tag 1", "Tag 2", "Tag 3", "Tag 4", "Tag 5"],
+      },
+      onBrowse,
+    })
+    fireEvent.press(screen.getByText("Author B"))
+    fireEvent.press(screen.getByText("Tag 5"))
+    fireEvent.press(screen.getByText(/Series/))
+    expect(onBrowse.mock.calls).toEqual([
+      [{ kind: "authors", value: "Author B" }],
+      [{ kind: "tags", value: "Tag 5" }],
+      [{ kind: "series", value: "Series" }],
+    ])
+  })
+
   beforeEach(() => {
     jest.clearAllMocks()
   })

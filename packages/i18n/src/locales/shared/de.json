@@ -275,5 +275,22 @@
     "io": "Kein Zugriff auf lokale Dateien. Prüfe den Speicherplatz und die Dateiberechtigungen.",
     "dataIntegrity": "Einige Daten konnten nicht korrekt gelesen werden. Stelle eine verlässliche Kopie wieder her und versuche es erneut.",
     "tts": "Die Sprachausgabe ist fehlgeschlagen. Prüfe die Spracheinstellungen und versuche es erneut."
+  },
+  "catalog": {
+    "searchPlaceholder": "Titel, Autoren, Tags, Reihen suchen…",
+    "searchDirectory": "{{kind}} durchsuchen",
+    "authors": "Autoren",
+    "tags": "Schlagwörter",
+    "series": "Reihen",
+    "directory": "Bibliotheksverzeichnis",
+    "alphabetIndex": "Alphabetisches Register",
+    "jumpTo": "Zu {{letter}} springen",
+    "suggestions": "Suchvorschläge",
+    "removeToken": "Bedingung entfernen",
+    "removeNamedToken": "{{name}} entfernen",
+    "emptyDirectory": "Keine Einträge vorhanden.",
+    "loading": "Wird geladen…",
+    "retry": "Erneut versuchen",
+    "noResults": "Kein Buch erfüllt alle Bedingungen."
   }
 }

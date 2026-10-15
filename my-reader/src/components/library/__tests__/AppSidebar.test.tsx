@@ -13,7 +13,7 @@ const queryState = vi.hoisted(() => ({
 
 vi.mock("@tanstack/react-router", () => ({
   Link: "a",
-  useLocation: () => ({ pathname: "/" }),
+  useLocation: () => ({ pathname: "/", search: {} }),
   useNavigate: () => vi.fn(),
 }))
 

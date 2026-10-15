@@ -25,7 +25,19 @@ const mocks = vi.hoisted(() => ({
   windowSizeClass: vi.fn(() => "large"),
 }))
 
-vi.mock("@tanstack/react-router", () => ({ useNavigate: () => mocks.navigate }))
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => mocks.navigate,
+  useLocation: () => ({ search: {} }),
+  useRouter: () => ({ history: { canGoBack: () => false } }),
+}))
+vi.mock("@/hooks/queries/useCatalogNavigation", () => ({
+  useCatalogNavigation: () => ({
+    data: { authors: [], tags: [], series: [] },
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+}))
 vi.mock("sonner", () => ({ toast: { error: mocks.toastError } }))
 vi.mock("@/lib/tauri-api", () => ({
   api: { deleteBook: mocks.deleteBook },
@@ -168,7 +180,7 @@ describe("LibraryWorkspace", () => {
     const user = userEvent.setup()
     renderWorkspace()
     const titlebar = within(screen.getByTestId("app-titlebar"))
-    await user.type(titlebar.getByRole("textbox"), "夜航")
+    await user.type(titlebar.getByRole("combobox"), "夜航")
     expect(useLibraryUiStore.getState().librarySearchQuery).toBe("夜航")
     await user.click(
       titlebar.getByRole("button", { name: i18n.t("library.listView") }),
@@ -200,14 +212,18 @@ describe("LibraryWorkspace", () => {
     expect(screen.queryByTestId("library-titlebar")).toBeNull()
     expect(titlebar).toContainElement(screen.getByTestId("book-detail-back"))
     await user.click(screen.getByTestId("book-detail-back"))
-    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/" })
+    expect(mocks.navigate).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "/" }),
+    )
   })
 
   it("reopens the closed detail only in the same library", async () => {
     const user = userEvent.setup()
     const view = renderWorkspace("42")
     await user.click(screen.getByTestId("book-detail-close"))
-    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/" })
+    expect(mocks.navigate).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "/" }),
+    )
     view.rerender(
       <LibraryWorkspace
         activeBookId={null}
@@ -223,6 +239,7 @@ describe("LibraryWorkspace", () => {
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: "/book/$bookId",
       params: { bookId: "42" },
+      search: { catalog: undefined },
     })
     act(() => useLibraryUiStore.setState({ activeLibraryId: "lib-2" }))
     expect(screen.queryByTestId("book-detail-open")).toBeNull()
@@ -294,11 +311,13 @@ describe("LibraryWorkspace", () => {
       collection === "recentlyRead" ? "lastRead" : "title",
       "",
       true,
+      [],
     )
     expect(mocks.favorites).toHaveBeenCalledWith(
       collection === "favorites" ? "lib-1" : null,
       "title",
       "",
+      [],
     )
   })
 
@@ -360,7 +379,9 @@ describe("LibraryWorkspace", () => {
     if (browseButton) {
       await userEvent.setup().click(browseButton)
       expect(useLibraryUiStore.getState().activeCollectionId).toBe("all")
-      expect(mocks.navigate).toHaveBeenCalledWith({ to: "/" })
+      expect(mocks.navigate).toHaveBeenCalledWith(
+        expect.objectContaining({ to: "/" }),
+      )
     }
   })
 
@@ -396,7 +417,9 @@ describe("LibraryWorkspace", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
     )
     expect(mocks.deleteBook).toHaveBeenCalledExactlyOnceWith("lib-1", 42)
-    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/" })
+    expect(mocks.navigate).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "/" }),
+    )
     expect(mocks.refresh).toHaveBeenCalledOnce()
   })
 

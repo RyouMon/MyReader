@@ -1,3 +1,4 @@
+import type { CatalogToken } from "@my-reader/tools/catalog-navigation"
 import { extractYear } from "@my-reader/tools/book-metadata"
 import { BookOpen, ChevronDown, Star } from "lucide-react"
 import type { Ref } from "react"
@@ -36,6 +37,7 @@ interface HeroActions {
 type HeroVariant = "mobile" | "desktop"
 
 interface BookDetailHeroProps {
+  onBrowse?: (token: CatalogToken) => void
   book: BookDetail
   coverSrc: string | null
   handleCoverError: () => void
@@ -51,6 +53,7 @@ const DETAIL_ICON_ACTION_CLASS =
 
 export function BookDetailHero({
   book,
+  onBrowse,
   coverSrc,
   handleCoverError,
   mobileCoverArtRef,
@@ -123,7 +126,16 @@ export function BookDetailHero({
 
             {seriesLabel && (
               <div className="detail-anim-2 mt-2 text-[14px] font-medium text-[var(--detail-hero-muted)]">
-                {seriesLabel}
+                <button
+                  type="button"
+                  className="text-start hover:underline"
+                  onClick={() =>
+                    book.series &&
+                    onBrowse?.({ kind: "series", value: book.series })
+                  }
+                >
+                  {seriesLabel}
+                </button>
               </div>
             )}
           </div>
@@ -136,7 +148,11 @@ export function BookDetailHero({
             variant="mobile"
           />
 
-          <HeroTags tags={book.tags} variant="mobile" />
+          <HeroTags
+            onSelect={(value) => onBrowse?.({ kind: "tags", value })}
+            tags={book.tags}
+            variant="mobile"
+          />
 
           <div className="detail-anim-6 flex min-w-0 items-center gap-2">
             <HeroProgress progress={reading.progress} variant="mobile" />
@@ -164,6 +180,11 @@ export function BookDetailHero({
           <HeroAuthors
             className="detail-anim-8"
             authorCredits={authorCredits}
+            onSelect={
+              book.authors.length
+                ? (value) => onBrowse?.({ kind: "authors", value })
+                : undefined
+            }
           />
         </div>
       </div>
@@ -215,7 +236,16 @@ export function BookDetailHero({
 
               {seriesLabel && (
                 <div className="detail-hero-series detail-anim-2 mt-2 text-[15px] font-medium text-[var(--detail-hero-muted)]">
-                  {seriesLabel}
+                  <button
+                    type="button"
+                    className="text-start hover:underline"
+                    onClick={() =>
+                      book.series &&
+                      onBrowse?.({ kind: "series", value: book.series })
+                    }
+                  >
+                    {seriesLabel}
+                  </button>
                 </div>
               )}
 
@@ -225,7 +255,11 @@ export function BookDetailHero({
                 variant="desktop"
               />
 
-              <HeroTags tags={book.tags} variant="desktop" />
+              <HeroTags
+                onSelect={(value) => onBrowse?.({ kind: "tags", value })}
+                tags={book.tags}
+                variant="desktop"
+              />
             </div>
 
             <div className="detail-anim-5 flex min-w-0 flex-col gap-3">
@@ -256,6 +290,11 @@ export function BookDetailHero({
               <HeroAuthors
                 className="detail-anim-8"
                 authorCredits={authorCredits}
+                onSelect={
+                  book.authors.length
+                    ? (value) => onBrowse?.({ kind: "authors", value })
+                    : undefined
+                }
               />
             </div>
           </div>
@@ -273,6 +312,11 @@ export function BookDetailHero({
             <HeroAuthors
               className="detail-anim-8"
               authorCredits={authorCredits}
+              onSelect={
+                book.authors.length
+                  ? (value) => onBrowse?.({ kind: "authors", value })
+                  : undefined
+              }
             />
           </div>
         </div>
@@ -427,9 +471,11 @@ function HeroSynopsis({
 
 function HeroAuthors({
   authorCredits,
+  onSelect,
   className,
 }: {
   authorCredits: string[]
+  onSelect?: (name: string) => void
   className: string
 }) {
   const { t } = useTranslation()
@@ -438,7 +484,17 @@ function HeroAuthors({
       {authorCredits.map((author) => (
         <div key={author} className="min-w-[5rem] max-w-full">
           <div className="truncate text-[14.5px] font-semibold text-[var(--detail-hero-fg)]">
-            {author}
+            {onSelect ? (
+              <button
+                type="button"
+                className="text-start hover:underline"
+                onClick={() => onSelect(author)}
+              >
+                {author}
+              </button>
+            ) : (
+              author
+            )}
           </div>
           <div className="mt-0.5 text-[12.5px] text-[var(--detail-hero-muted)]">
             {t("bookDetail.authorRole")}
@@ -476,7 +532,15 @@ function HeroMetadata({
   )
 }
 
-function HeroTags({ tags, variant }: { tags: string[]; variant: HeroVariant }) {
+function HeroTags({
+  tags,
+  variant,
+  onSelect,
+}: {
+  tags: string[]
+  variant: HeroVariant
+  onSelect: (name: string) => void
+}) {
   if (tags.length === 0) return null
   return (
     <div
@@ -494,7 +558,9 @@ function HeroTags({ tags, variant }: { tags: string[]; variant: HeroVariant }) {
             variant === "desktop" && "backdrop-blur-sm",
           )}
         >
-          {tag}
+          <button type="button" onClick={() => onSelect(tag)}>
+            {tag}
+          </button>
         </Badge>
       ))}
     </div>

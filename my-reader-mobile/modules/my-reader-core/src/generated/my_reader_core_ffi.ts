@@ -1490,6 +1490,121 @@ export async function catalogListSeriesBooks(
   }
 }
 
+export async function catalogNavigation(
+  configPath: string,
+  libraryId: string,
+  sidecarRootPath: string,
+  contentRootPath: string,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<CatalogNavigation> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_navigation(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(libraryId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            sidecarRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            contentRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeCatalogNavigation.lift.bind(
+        FfiConverterTypeCatalogNavigation,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function catalogQueryBooks(
+  configPath: string,
+  libraryId: string,
+  sidecarRootPath: string,
+  contentRootPath: string,
+  request: CatalogQuery,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<PaginatedBooks> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_query_books(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(libraryId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            sidecarRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            contentRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterTypeCatalogQuery.lower(
+            request,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypePaginatedBooks.lift.bind(
+        FfiConverterTypePaginatedBooks,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
 export async function catalogStageRemoteBookImport(
   configPath: string,
   libraryId: string,
@@ -6767,6 +6882,230 @@ const FfiConverterTypeCalibreSyncReport = (() => {
   return new FFIConverter();
 })();
 
+export type CatalogCover = {
+  id: number;
+  title: string;
+  path: string;
+  hasCover: boolean;
+};
+
+/**
+ * Generated factory for {@link CatalogCover} record objects.
+ */
+export const CatalogCover = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<CatalogCover, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<CatalogCover>,
+  });
+})();
+
+const FfiConverterTypeCatalogCover = (() => {
+  type TypeName = CatalogCover;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        id: FfiConverterFloat64.read(from),
+        title: FfiConverterString.read(from),
+        path: FfiConverterString.read(from),
+        hasCover: FfiConverterBool.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterFloat64.write(value.id, into);
+      FfiConverterString.write(value.title, into);
+      FfiConverterString.write(value.path, into);
+      FfiConverterBool.write(value.hasCover, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterFloat64.allocationSize(value.id) +
+        FfiConverterString.allocationSize(value.title) +
+        FfiConverterString.allocationSize(value.path) +
+        FfiConverterBool.allocationSize(value.hasCover)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type CatalogFacet = {
+  name: string;
+  bookCount: number;
+  covers: Array<CatalogCover>;
+};
+
+/**
+ * Generated factory for {@link CatalogFacet} record objects.
+ */
+export const CatalogFacet = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<CatalogFacet, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<CatalogFacet>,
+  });
+})();
+
+const FfiConverterTypeCatalogFacet = (() => {
+  type TypeName = CatalogFacet;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        name: FfiConverterString.read(from),
+        bookCount: FfiConverterFloat64.read(from),
+        covers: FfiConverterSequenceTypeCatalogCover.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.name, into);
+      FfiConverterFloat64.write(value.bookCount, into);
+      FfiConverterSequenceTypeCatalogCover.write(value.covers, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.name) +
+        FfiConverterFloat64.allocationSize(value.bookCount) +
+        FfiConverterSequenceTypeCatalogCover.allocationSize(value.covers)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type CatalogNavigation = {
+  authors: Array<CatalogFacet>;
+  tags: Array<CatalogFacet>;
+  series: Array<CatalogFacet>;
+};
+
+/**
+ * Generated factory for {@link CatalogNavigation} record objects.
+ */
+export const CatalogNavigation = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<CatalogNavigation, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<CatalogNavigation>,
+  });
+})();
+
+const FfiConverterTypeCatalogNavigation = (() => {
+  type TypeName = CatalogNavigation;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        authors: FfiConverterSequenceTypeCatalogFacet.read(from),
+        tags: FfiConverterSequenceTypeCatalogFacet.read(from),
+        series: FfiConverterSequenceTypeCatalogFacet.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterSequenceTypeCatalogFacet.write(value.authors, into);
+      FfiConverterSequenceTypeCatalogFacet.write(value.tags, into);
+      FfiConverterSequenceTypeCatalogFacet.write(value.series, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterSequenceTypeCatalogFacet.allocationSize(value.authors) +
+        FfiConverterSequenceTypeCatalogFacet.allocationSize(value.tags) +
+        FfiConverterSequenceTypeCatalogFacet.allocationSize(value.series)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+/**
+ * Every selected value must match. Names are stable across rebuilt projections;
+ * database-local author/tag IDs are deliberately not part of this contract.
+ */
+export type CatalogQuery = {
+  authors: Array<string>;
+  tags: Array<string>;
+  series: Array<string>;
+  search?: string;
+  bookIds?: Array<number>;
+  sortBy?: string;
+  offset: number;
+  limit?: number;
+};
+
+/**
+ * Generated factory for {@link CatalogQuery} record objects.
+ */
+export const CatalogQuery = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<CatalogQuery, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<CatalogQuery>,
+  });
+})();
+
+const FfiConverterTypeCatalogQuery = (() => {
+  type TypeName = CatalogQuery;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        authors: FfiConverterSequenceString.read(from),
+        tags: FfiConverterSequenceString.read(from),
+        series: FfiConverterSequenceString.read(from),
+        search: FfiConverterOptionalString.read(from),
+        bookIds: FfiConverterOptionalSequenceFloat64.read(from),
+        sortBy: FfiConverterOptionalString.read(from),
+        offset: FfiConverterFloat64.read(from),
+        limit: FfiConverterOptionalFloat64.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterSequenceString.write(value.authors, into);
+      FfiConverterSequenceString.write(value.tags, into);
+      FfiConverterSequenceString.write(value.series, into);
+      FfiConverterOptionalString.write(value.search, into);
+      FfiConverterOptionalSequenceFloat64.write(value.bookIds, into);
+      FfiConverterOptionalString.write(value.sortBy, into);
+      FfiConverterFloat64.write(value.offset, into);
+      FfiConverterOptionalFloat64.write(value.limit, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterSequenceString.allocationSize(value.authors) +
+        FfiConverterSequenceString.allocationSize(value.tags) +
+        FfiConverterSequenceString.allocationSize(value.series) +
+        FfiConverterOptionalString.allocationSize(value.search) +
+        FfiConverterOptionalSequenceFloat64.allocationSize(value.bookIds) +
+        FfiConverterOptionalString.allocationSize(value.sortBy) +
+        FfiConverterFloat64.allocationSize(value.offset) +
+        FfiConverterOptionalFloat64.allocationSize(value.limit)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
 /**
  * Typealias from the type name used in the UDL file to the custom type.  This
  * is needed because the UDL type name is used in function/method signatures.
@@ -10237,6 +10576,24 @@ const FfiConverterSequenceTypeBookIdentifier = new FfiConverterArray(
   FfiConverterTypeBookIdentifier,
 );
 
+// FfiConverter for Array<CatalogCover>
+const FfiConverterSequenceTypeCatalogCover = new FfiConverterArray(
+  FfiConverterTypeCatalogCover,
+);
+
+// FfiConverter for Array<CatalogFacet>
+const FfiConverterSequenceTypeCatalogFacet = new FfiConverterArray(
+  FfiConverterTypeCatalogFacet,
+);
+
+// FfiConverter for Array<number>
+const FfiConverterSequenceFloat64 = new FfiConverterArray(FfiConverterFloat64);
+
+// FfiConverter for Array<number> | undefined
+const FfiConverterOptionalSequenceFloat64 = new FfiConverterOptional(
+  FfiConverterSequenceFloat64,
+);
+
 // FfiConverter for SyncFailureKind | undefined
 const FfiConverterOptionalTypeSyncFailureKind = new FfiConverterOptional(
   FfiConverterTypeSyncFailureKind,
@@ -10369,9 +10726,6 @@ const FfiConverterSequenceTypeReaderAnnotation = new FfiConverterArray(
 const FfiConverterSequenceTypeReaderBookmark = new FfiConverterArray(
   FfiConverterTypeReaderBookmark,
 );
-
-// FfiConverter for Array<number>
-const FfiConverterSequenceFloat64 = new FfiConverterArray(FfiConverterFloat64);
 
 // FfiConverter for Array<ReadingPositionCandidate>
 const FfiConverterSequenceTypeReadingPositionCandidate = new FfiConverterArray(
@@ -10657,6 +11011,22 @@ function uniffiEnsureInitialized() {
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_catalog_list_series_books",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_navigation() !==
+    5341
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_catalog_navigation",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_query_books() !==
+    53004
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_catalog_query_books",
     );
   }
   if (
@@ -11420,6 +11790,10 @@ export default Object.freeze({
     FfiConverterTypeBookSummary,
     FfiConverterTypeBookUploadTaskProgress,
     FfiConverterTypeCalibreSyncReport,
+    FfiConverterTypeCatalogCover,
+    FfiConverterTypeCatalogFacet,
+    FfiConverterTypeCatalogNavigation,
+    FfiConverterTypeCatalogQuery,
     FfiConverterTypeCoreFfiError,
     FfiConverterTypeDataSource,
     FfiConverterTypeDownloadTask,

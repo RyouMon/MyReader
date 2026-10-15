@@ -274,5 +274,22 @@
     "io": "ローカルファイルにアクセスできません。空き容量とファイルのアクセス権を確認してください。",
     "dataIntegrity": "一部のデータを正しく読み取れませんでした。信頼できるコピーから復元して、もう一度お試しください。",
     "tts": "読み上げに失敗しました。読み上げ設定を確認して、もう一度お試しください。"
+  },
+  "catalog": {
+    "searchPlaceholder": "書名・著者・タグ・シリーズを検索…",
+    "searchDirectory": "{{kind}}を検索",
+    "authors": "著者",
+    "tags": "タグ",
+    "series": "シリーズ",
+    "directory": "ライブラリ索引",
+    "alphabetIndex": "頭文字索引",
+    "jumpTo": "{{letter}} へ移動",
+    "suggestions": "検索候補",
+    "removeToken": "条件を削除",
+    "removeNamedToken": "{{name}} を削除",
+    "emptyDirectory": "表示する項目がありません。",
+    "loading": "読み込み中…",
+    "retry": "再試行",
+    "noResults": "すべての条件に一致する本はありません。"
   }
 }

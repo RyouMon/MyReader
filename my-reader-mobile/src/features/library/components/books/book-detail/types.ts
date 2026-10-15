@@ -1,3 +1,4 @@
+import type { CatalogToken } from "@my-reader/tools/catalog-navigation"
 import type { ThemePalette } from "@/src/design/tokens"
 
 export type DetailColors = {
@@ -16,6 +17,7 @@ export type DetailColors = {
 }
 
 export type InfoCardItem = {
+  tokens?: CatalogToken[]
   label: string
   value: string
 }

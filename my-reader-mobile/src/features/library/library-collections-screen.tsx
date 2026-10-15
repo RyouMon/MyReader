@@ -1,3 +1,4 @@
+import { FACET_KINDS } from "@my-reader/tools/catalog-navigation"
 import { errorMessage } from "@/src/i18n/error-message"
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import type { BuiltInBookCollectionId } from "@my-reader/tools/types/book-collection"
@@ -297,6 +298,36 @@ export default function LibraryCollectionsScreen() {
             collections={PRIMARY_BOOK_COLLECTIONS}
             counts={counts}
           />
+        </SectionCard>
+        <SectionCard>
+          {FACET_KINDS.map((kind, index) => (
+            <ListRow
+              key={kind}
+              testID={`library-browse-${kind}`}
+              title={t(`catalog.${kind}`)}
+              isLast={index === FACET_KINDS.length - 1}
+              icon={{
+                ios:
+                  kind === "authors"
+                    ? "person"
+                    : kind === "tags"
+                      ? "tag"
+                      : "books.vertical",
+                android:
+                  kind === "authors"
+                    ? "person"
+                    : kind === "tags"
+                      ? "label"
+                      : "book",
+              }}
+              onPress={() =>
+                router.push({
+                  pathname: "/library/browse/[kind]",
+                  params: { kind },
+                })
+              }
+            />
+          ))}
         </SectionCard>
         {activeTransferCollections.length > 0 ? (
           <View className="gap-3">

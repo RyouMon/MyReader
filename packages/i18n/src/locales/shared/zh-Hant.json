@@ -273,5 +273,22 @@
     "io": "無法存取本機檔案，請檢查儲存空間與檔案權限。",
     "dataIntegrity": "部分資料無法正確讀取，請從可靠的副本還原後重試。",
     "tts": "朗讀失敗，請檢查朗讀設定後重試。"
+  },
+  "catalog": {
+    "searchPlaceholder": "搜尋書名、作者、標籤、叢書…",
+    "searchDirectory": "搜尋{{kind}}",
+    "authors": "作者",
+    "tags": "標籤",
+    "series": "叢書",
+    "directory": "書庫目錄",
+    "alphabetIndex": "首字母索引",
+    "jumpTo": "跳至 {{letter}}",
+    "suggestions": "搜尋建議",
+    "removeToken": "移除條件",
+    "removeNamedToken": "移除 {{name}}",
+    "emptyDirectory": "暫無可顯示的項目。",
+    "loading": "載入中…",
+    "retry": "重試",
+    "noResults": "沒有同時符合所有條件的書籍。"
   }
 }

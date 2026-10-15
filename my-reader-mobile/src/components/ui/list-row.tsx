@@ -7,6 +7,7 @@ import {
   StyleSheet,
   TouchableNativeFeedback,
   type ImageSourcePropType,
+  type StyleProp,
   type ViewStyle,
 } from "react-native"
 
@@ -109,6 +110,7 @@ type ListRowProps = {
   onPress?: () => void
   isLast?: boolean
   testID?: string
+  contentStyle?: StyleProp<ViewStyle>
 }
 
 type ListMenuRowProps = Omit<ListRowProps, "onPress"> & {
@@ -235,6 +237,7 @@ function ListRowPressable({
   omitSeparator,
   accessibilityLabel,
   testID,
+  contentStyle,
   children,
 }: {
   onPress?: () => void
@@ -242,6 +245,7 @@ function ListRowPressable({
   omitSeparator?: boolean
   accessibilityLabel?: string
   testID?: string
+  contentStyle?: StyleProp<ViewStyle>
   children: ReactNode
 }) {
   const { colorScheme } = useTheme()
@@ -258,7 +262,11 @@ function ListRowPressable({
 
   if (!onPress) {
     return (
-      <View testID={testID} className={ROW_CLASS} style={separatorStyle}>
+      <View
+        testID={testID}
+        className={ROW_CLASS}
+        style={[separatorStyle, contentStyle]}
+      >
         {children}
       </View>
     )
@@ -275,7 +283,11 @@ function ListRowPressable({
       >
         <View
           className={ROW_CLASS}
-          style={[separatorStyle, { backgroundColor: palette.surface }]}
+          style={[
+            separatorStyle,
+            { backgroundColor: palette.surface },
+            contentStyle,
+          ]}
         >
           {children}
         </View>
@@ -294,7 +306,7 @@ function ListRowPressable({
         { backgroundColor: pressed ? rowPressedBackground : palette.surface },
       ]}
     >
-      <View className={ROW_CLASS} style={separatorStyle}>
+      <View className={ROW_CLASS} style={[separatorStyle, contentStyle]}>
         {children}
       </View>
     </RNPressable>
@@ -338,6 +350,7 @@ export function ListMenuRow({
   value,
   accessory,
   isLast,
+  contentStyle,
 }: ListMenuRowProps) {
   const { t } = useTranslation()
   const menuRef = useRef<MenuComponentRef>(null)
@@ -380,6 +393,7 @@ export function ListMenuRow({
           accessibilityLabel={label ?? title}
           omitSeparator
           onPress={handlePress}
+          contentStyle={contentStyle}
         >
           {body}
         </ListRowPressable>
@@ -392,6 +406,7 @@ export function ListMenuRow({
       accessibilityLabel={label ?? title}
       isLast={isLast}
       onPress={handlePress}
+      contentStyle={contentStyle}
     >
       {body}
     </ListRowPressable>
@@ -408,6 +423,7 @@ export function ListRow({
   onPress,
   isLast,
   testID,
+  contentStyle,
 }: ListRowProps) {
   const palette = useThemePalette()
   const body = (
@@ -427,6 +443,7 @@ export function ListRow({
       onPress={onPress}
       isLast={isLast}
       testID={testID}
+      contentStyle={contentStyle}
     >
       {body}
     </ListRowPressable>

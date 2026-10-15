@@ -1,8 +1,9 @@
+import type { CatalogToken } from "@my-reader/tools/catalog-navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import Feather from "@expo/vector-icons/Feather"
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
-import { router, Stack, useLocalSearchParams } from "expo-router"
+import { router, Stack, useLocalSearchParams, useSegments } from "expo-router"
 import { useHeaderHeight } from "expo-router/react-navigation"
 import { useTranslation } from "react-i18next"
 import {
@@ -88,14 +89,19 @@ function detailScreenLayout(
 
 export default function BookDetailScreen() {
   const { t } = useTranslation()
-  const { id } = useLocalSearchParams<{ id?: string }>()
+  const { id, libraryId } = useLocalSearchParams<{
+    id?: string
+    libraryId?: string
+  }>()
+  const segments = useSegments()
   const { colorScheme, palette } = useTheme()
   const headerHeight = useHeaderHeight()
   const { width: windowWidth } = useWindowDimensions()
   const [detailLayoutWidth, setDetailLayoutWidth] = useState<number | null>(
     null,
   )
-  const activeLibraryId = useAppStore((s) => s.activeLibraryId)
+  const storedLibraryId = useAppStore((s) => s.activeLibraryId)
+  const activeLibraryId = libraryId ?? storedLibraryId
   const { data: books = [] } = useBooks(activeLibraryId)
   const libraries = useAppStore((s) => s.libraries)
   const activeLibrary = useMemo(
@@ -316,6 +322,15 @@ export default function BookDetailScreen() {
     [baseOptions, detailHeroMode, headerForeground],
   )
 
+  const browseFacet = (token: CatalogToken) => {
+    if (!activeLibraryId) return
+    router.push({
+      pathname:
+        segments[0] === "book" ? "/book/catalog" : "/library-book/catalog",
+      params: { libraryId: activeLibraryId, tokens: JSON.stringify([token]) },
+    })
+  }
+
   const handleDetailLayout = useCallback((event: LayoutChangeEvent) => {
     const nextWidth = event.nativeEvent.layout.width
     setDetailLayoutWidth((currentWidth) =>
@@ -495,6 +510,7 @@ export default function BookDetailScreen() {
         onRetry={handleRetryDetail}
       >
         <BookDetailContent
+          onBrowse={browseFacet}
           activeLibrary={activeLibrary}
           availableWidth={detailAvailableWidth}
           bookId={currentId}

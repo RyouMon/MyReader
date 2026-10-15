@@ -1,3 +1,4 @@
+import type { CatalogToken } from "@my-reader/tools/catalog-navigation"
 import type { TFunction } from "i18next"
 import { useCallback, useMemo, type Ref } from "react"
 
@@ -40,6 +41,7 @@ import { SynopsisSection } from "./synopsis-section"
 import type { DetailColors, InfoCardItem } from "./types"
 
 type BookDetailContentProps = {
+  onBrowse?: (token: CatalogToken) => void
   activeLibrary: Library
   availableWidth: number
   bookId: string
@@ -139,9 +141,17 @@ function bookInfoRows(book: BookDetail, t: TFunction): InfoCardItem[] {
   return [
     { label: t("bookDetail.bookTitle"), value: book.title },
     { label: t("bookDetail.titleSort"), value: book.titleSort || "—" },
-    { label: t("bookDetail.authors"), value: authorsText },
+    {
+      label: t("bookDetail.authors"),
+      value: authorsText,
+      tokens: book.authors.map((value) => ({ kind: "authors", value })),
+    },
     { label: t("bookDetail.authorSort"), value: book.authorSort || "—" },
-    { label: t("bookDetail.series"), value: book.series || "—" },
+    {
+      label: t("bookDetail.series"),
+      value: book.series || "—",
+      tokens: book.series ? [{ kind: "series", value: book.series }] : [],
+    },
     {
       label: t("bookDetail.seriesIndex"),
       value: book.seriesIndex !== null ? String(book.seriesIndex) : "—",
@@ -154,7 +164,11 @@ function bookInfoRows(book: BookDetail, t: TFunction): InfoCardItem[] {
           },
         ]
       : []),
-    { label: t("bookDetail.tags"), value: tagsText },
+    {
+      label: t("bookDetail.tags"),
+      value: tagsText,
+      tokens: book.tags.map((value) => ({ kind: "tags", value })),
+    },
     { label: t("bookDetail.identifiers"), value: identifierValue || "—" },
     { label: t("bookDetail.createdAt"), value: formatDate(book.timestamp) },
     { label: t("bookDetail.pubDate"), value: formatDate(book.pubdate) },
@@ -165,6 +179,7 @@ function bookInfoRows(book: BookDetail, t: TFunction): InfoCardItem[] {
 
 export function BookDetailContent({
   activeLibrary,
+  onBrowse,
   availableWidth,
   bookId,
   colors,
@@ -384,6 +399,7 @@ export function BookDetailContent({
           style={{ maxWidth: BOOK_DETAIL_MAX_CONTENT_WIDTH }}
         >
           <HeroSection
+            onBrowse={onBrowse}
             availableWidth={contentWidth}
             book={book}
             canReadInApp={canReadInApp}
@@ -423,6 +439,7 @@ export function BookDetailContent({
 
           <InfoRowSection
             items={bookInfoRows(book, t)}
+            onBrowse={onBrowse}
             title={t("bookDetail.infoSection")}
           />
         </View>
