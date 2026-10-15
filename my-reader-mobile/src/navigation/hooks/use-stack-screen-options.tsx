@@ -21,6 +21,7 @@ export function useStackScreenOptions(): NativeStackNavigationOptions {
       ...shared,
       headerBackVisible: true,
       headerBackButtonDisplayMode: "generic",
+      scrollEdgeEffects: { top: "soft" },
     }
   }
 

@@ -74,11 +74,17 @@ function handleBookMetadataAction(
 ): boolean {
   switch (actionId) {
     case "detail":
-      router.push({ pathname: "/library-book/[id]", params: { id: book.id } })
+      router.push({
+        pathname: "/library-book/[id]",
+        params: { id: book.id, libraryId: lib?.id },
+      })
       return true
     case "editMetadata":
       if (lib && libraryTypeOf(lib) === "myreader") {
-        router.push({ pathname: "/library-book/edit", params: { id: book.id } })
+        router.push({
+          pathname: "/library-book/edit",
+          params: { id: book.id },
+        })
       }
       return true
     case "deleteBook":

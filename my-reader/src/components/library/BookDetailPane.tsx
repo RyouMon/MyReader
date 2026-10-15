@@ -1,3 +1,4 @@
+import type { CatalogToken } from "@my-reader/tools/catalog-navigation"
 import { errorMessage } from "@/lib/error-presentation"
 import { apiErrorKind } from "@/lib/api-error"
 import type { CalibreBook } from "@my-reader/tools/types/book"
@@ -55,6 +56,7 @@ import { BookDetailSections } from "./BookDetailSections"
 import { useBookDetailCover } from "@/hooks/useBookDetailCover"
 
 interface BookDetailPaneProps {
+  onBrowse?: (token: CatalogToken) => void
   bookId: string
   className?: string
   onBackToList?: () => void
@@ -79,6 +81,7 @@ function classifyBookDetailFailure(error: unknown): BookDetailFailure {
 export default function BookDetailPane({
   bookId,
   className,
+  onBrowse,
   onBackToList,
   forceNarrowHero = false,
   forceWideHero = false,
@@ -402,6 +405,7 @@ export default function BookDetailPane({
       setDetailHeroElement={setDetailHeroElement}
       hero={
         <BookDetailHero
+          onBrowse={onBrowse}
           book={book}
           coverSrc={coverSrc}
           handleCoverError={handleCoverError}
@@ -448,6 +452,7 @@ export default function BookDetailPane({
             onOpenBook={(id) =>
               navigate({
                 to: "/book/$bookId",
+                search: true,
                 params: { bookId: String(id) },
               })
             }

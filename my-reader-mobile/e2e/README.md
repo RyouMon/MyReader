@@ -91,6 +91,17 @@ ANDROID_SERIAL=emulator-5554 ./e2e/scripts/run-local-supported-formats.sh androi
 - `manage_webdav_myreader_library.yaml`：后台上传、上传前禁止删除本地文件、上传中删除、同步不等待上传、按需下载、远端删除与重开。
 - `manage_onedrive_myreader_library.yaml`：Graph 上传、进程重启续传、token 并发路径、远端-only 下载后留在书库，再次点击阅读。
 
+## 目录搜索端到端验证
+
+目录令牌搜索也使用下方生成的 `MyReader-TTS.epub`。将它导入当前测试书库后，可在 iOS 和 Android 上运行：
+
+```bash
+maestro test e2e/flows/library/search_with_catalog_tokens.yaml \
+  -e APP_ID=ryoumon.myreadermobile
+```
+
+该流程验证搜索框默认隐藏、点击工具栏后展开、提交完整作者名仍是普通文字搜索、选择建议才添加作者条件、收起后保留条件，以及条件只能删除、不能编辑。
+
 ## TTS 端到端验证
 
 仓库内置一个短文本 EPUB 和本地 HTTP 语音服务，用于验证系统朗读与 OpenAI-compatible

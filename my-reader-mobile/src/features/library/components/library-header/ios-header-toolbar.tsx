@@ -16,6 +16,7 @@ type LibraryIosHeaderToolbarProps = {
   sortBy: SortOption
   viewMode: LibraryViewMode
   syncAction: ScreenHeaderAction
+  searchAction: ScreenHeaderAction
   onSetSortBy: (value: SortOption) => void
   onSetViewMode: (value: LibraryViewMode) => void
 }
@@ -26,6 +27,7 @@ export function LibraryIosHeaderToolbar({
   sortBy,
   viewMode,
   syncAction,
+  searchAction,
   onSetSortBy,
   onSetViewMode,
 }: LibraryIosHeaderToolbarProps) {
@@ -68,6 +70,12 @@ export function LibraryIosHeaderToolbar({
           ))}
         </Stack.Toolbar.Menu>
       </Stack.Toolbar.Menu>
+      <Stack.Toolbar.Button
+        accessibilityLabel={searchAction.label}
+        onPress={searchAction.onPress}
+      >
+        <Stack.Toolbar.Icon sf={searchAction.iosSfSymbol!} />
+      </Stack.Toolbar.Button>
     </Stack.Toolbar>
   )
 }

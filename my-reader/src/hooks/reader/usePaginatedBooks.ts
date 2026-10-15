@@ -1,3 +1,7 @@
+import {
+  catalogQuery,
+  type CatalogToken,
+} from "@my-reader/tools/catalog-navigation"
 import { errorMessage } from "@/lib/error-presentation"
 import type { CalibreBook, PaginatedBooks } from "@my-reader/tools/types/book"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
@@ -10,6 +14,7 @@ import {
 } from "@/hooks/useSidecarSync"
 import { api } from "@/lib/tauri-api"
 
+const EMPTY_TOKENS: CatalogToken[] = []
 const PAGE_SIZE = 100
 const BOOK_PAGE_STALE_TIME = 5 * 60 * 1000
 const BOOK_PAGE_GC_TIME = 30 * 60 * 1000
@@ -43,21 +48,33 @@ function getBooksPageQueryOptions(
   search: string,
   refreshEpoch: number,
   page: number,
+  tokens: CatalogToken[],
 ) {
   const offset = page * PAGE_SIZE
   return {
-    queryKey: bookPageKeys.page(libraryId, sortBy, search, refreshEpoch, page),
+    queryKey: [
+      ...bookPageKeys.page(libraryId, sortBy, search, refreshEpoch, page),
+      tokens,
+    ],
     queryFn: async () => {
       console.info(
         `Start to fetch books page. library id: "${libraryId}", page index: ${page}, offset: ${offset}, limit: ${PAGE_SIZE}, sort by: "${sortBy}", search: "${search}"`,
       )
-      const result = await api.getBooksPage(
-        libraryId,
-        offset,
-        PAGE_SIZE,
-        sortBy,
-        search || null,
-      )
+      const result =
+        tokens.length > 0
+          ? await api.queryCatalogBooks(libraryId, {
+              ...catalogQuery(tokens, search),
+              offset,
+              limit: PAGE_SIZE,
+              sortBy,
+            })
+          : await api.getBooksPage(
+              libraryId,
+              offset,
+              PAGE_SIZE,
+              sortBy,
+              search || null,
+            )
       console.info(
         `Success to fetch books page. page index: ${page}, total: ${result.total}, returned: ${result.items.length}`,
       )
@@ -73,13 +90,14 @@ export function usePaginatedBooks(
   sortBy: string,
   search: string,
   refreshOnSidecarSync = false,
+  tokens: CatalogToken[] = EMPTY_TOKENS,
 ) {
   const queryClient = useQueryClient()
   const normalizedSearch = useMemo(() => normalizeSearch(search), [search])
   const [refreshEpoch, setRefreshEpoch] = useState(0)
   const [books, setBooks] = useState<Map<number, CalibreBook>>(new Map())
   const [total, setTotal] = useState(0)
-  const scopeSignature = `${libraryId ?? ""}\u0000${sortBy}\u0000${normalizedSearch}\u0000${refreshEpoch}`
+  const scopeSignature = `${libraryId ?? ""}\u0000${sortBy}\u0000${normalizedSearch}\u0000${refreshEpoch}\u0000${JSON.stringify(tokens)}`
 
   const appliedPagesRef = useRef(new Set<number>())
   const pendingPagesRef = useRef<Set<number>>(
@@ -108,6 +126,7 @@ export function usePaginatedBooks(
           normalizedSearch,
           refreshEpoch,
           0,
+          tokens,
         )
       : {
           queryKey: bookPageKeys.disabled(),
@@ -137,7 +156,7 @@ export function usePaginatedBooks(
   useEffect(() => {
     if (!initialPageQuery.data) return
     applyPage(0, initialPageQuery.data)
-  }, [applyPage, initialPageQuery.data])
+  }, [applyPage, initialPageQuery.data, scopeSignature])
 
   const refresh = useCallback(() => {
     if (!libraryId) return
@@ -223,6 +242,7 @@ export function usePaginatedBooks(
               normalizedSearch,
               refreshEpoch,
               p,
+              tokens,
             ),
           )
           .then((result) => {
@@ -247,6 +267,7 @@ export function usePaginatedBooks(
       queryClient,
       refreshEpoch,
       sortBy,
+      tokens,
     ],
   )
 

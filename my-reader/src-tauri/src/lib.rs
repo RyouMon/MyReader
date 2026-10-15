@@ -1,6 +1,7 @@
 mod asset_scope;
 pub mod auth;
 pub mod cache;
+mod catalog_models;
 pub mod clients;
 pub mod commands;
 mod config;
@@ -72,6 +73,8 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::book::list_pending_book_uploads::<tauri::Wry>,
             commands::book::has_local_only_books::<tauri::Wry>,
             commands::book::get_books_page::<tauri::Wry>,
+            commands::book::query_catalog_books::<tauri::Wry>,
+            commands::book::get_catalog_navigation::<tauri::Wry>,
             commands::book::get_book_detail::<tauri::Wry>,
             commands::book::get_series_books::<tauri::Wry>,
             commands::book::import_book::<tauri::Wry>,

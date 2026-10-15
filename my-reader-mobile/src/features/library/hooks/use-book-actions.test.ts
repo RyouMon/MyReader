@@ -447,7 +447,7 @@ describe("useBookActions", () => {
       result.current.handleBookMenuAction("1", "detail")
       expect(router.push).toHaveBeenCalledWith({
         pathname: "/library-book/[id]",
-        params: { id: "1" },
+        params: { id: "1", libraryId: "lib-local" },
       })
     })
 

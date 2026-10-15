@@ -12,8 +12,15 @@ import SettingsActivity from "@/components/settings/SettingsActivity"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { useWindowSizeClass } from "@/hooks/use-window-size-class"
 import type { SettingsSection } from "@/types/settings"
+import {
+  parseCatalogLocation,
+  type CatalogLocation,
+} from "@/lib/catalogLocation"
 
 export const Route = createFileRoute("/_layout")({
+  validateSearch: (search): { catalog?: CatalogLocation } => ({
+    catalog: parseCatalogLocation(search.catalog),
+  }),
   component: Layout,
 })
 
@@ -73,11 +80,15 @@ function Layout() {
     }
     const bookId = getBookIdFromPath(lastWorkspacePathRef.current)
     if (bookId) {
-      navigate({ to: "/book/$bookId", params: { bookId } })
+      navigate({
+        to: "/book/$bookId",
+        params: { bookId },
+        search: { catalog: location.search.catalog },
+      })
       return
     }
-    navigate({ to: "/" })
-  }, [navigate, returnBookId, returnFormat])
+    navigate({ to: "/", search: { catalog: location.search.catalog } })
+  }, [navigate, returnBookId, returnFormat, location.search.catalog])
 
   return (
     <SidebarProvider

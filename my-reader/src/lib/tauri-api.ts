@@ -71,6 +71,8 @@ export const api = {
   listPendingBookUploads: wrap(commands.listPendingBookUploads),
   hasLocalOnlyBooks: wrap(commands.hasLocalOnlyBooks),
   getBooksPage: wrap(commands.getBooksPage),
+  queryCatalogBooks: wrap(commands.queryCatalogBooks),
+  getCatalogNavigation: wrap(commands.getCatalogNavigation),
   getBookDetail: wrap(commands.getBookDetail),
   getSeriesBooks: wrap(commands.getSeriesBooks),
   importBook: wrap(commands.importBook),

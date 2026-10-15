@@ -1,3 +1,5 @@
+import { useCatalogWorkspace } from "@/hooks/useCatalogWorkspace"
+import { CatalogDirectory } from "./CatalogDirectory"
 import type { CalibreBook } from "@my-reader/tools/types/book"
 import type { Library as LibraryRecord } from "@my-reader/tools/types/library"
 import {
@@ -77,14 +79,26 @@ export default function LibraryWorkspace({
   const { t } = useTranslation()
   const { data: libraries = [], isLoading: libLoading } = useLibrariesQuery()
   const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
-  const activeCollectionId = useLibraryUiStore((s) => s.activeCollectionId)
   const setActiveCollectionId = useLibraryUiStore(
     (s) => s.setActiveCollectionId,
   )
-  const searchQuery = useLibraryUiStore((s) => s.librarySearchQuery)
-  const setSearchQuery = useLibraryUiStore((s) => s.setLibrarySearchQuery)
-  const sortBy = useLibraryUiStore((s) => s.librarySortBy)
-  const setSortBy = useLibraryUiStore((s) => s.setLibrarySortBy)
+  const {
+    catalog,
+    tokens,
+    directory,
+    collectionId: activeCollectionId,
+    searchQuery,
+    sortBy,
+    setSearchQuery,
+    setSortBy,
+    browseFacet,
+    back: handleBackToList,
+    onBack,
+    setTokens,
+    emptySearch,
+    scrollKey,
+    navigation,
+  } = useCatalogWorkspace(activeLibraryId)
   const activeLibrary = libraries.find((l) => l.id === activeLibraryId) ?? null
   const isManagedLibrary = Boolean(
     activeLibrary && libraryTypeOf(activeLibrary) === "myreader",
@@ -134,6 +148,7 @@ export default function LibraryWorkspace({
     collectionId: activeCollectionId,
     sortBy,
     search: debouncedSearch,
+    tokens,
     selectedFormatById,
     isManagedLibrary,
     isRemoteLibrary,
@@ -161,6 +176,9 @@ export default function LibraryWorkspace({
 
   const handleCatalogChanged = useCallback(() => {
     resetBrokenCovers()
+    void queryClient.invalidateQueries({
+      queryKey: ["catalogNavigation", activeLibraryId],
+    })
     void queryClient.invalidateQueries({ queryKey: libraryKeys.all })
     if (activeLibraryId) {
       void invalidateFavoriteBookQueries(queryClient, activeLibraryId)
@@ -180,6 +198,9 @@ export default function LibraryWorkspace({
       await api.syncDbForLibrary(activeLibraryId)
       resetBrokenCovers()
       await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["catalogNavigation", activeLibraryId],
+        }),
         queryClient.invalidateQueries({
           queryKey: libraryKeys.all,
         }),
@@ -241,6 +262,9 @@ export default function LibraryWorkspace({
         toast.info(t("library.importQueued"))
         return
       }
+      void queryClient.invalidateQueries({
+        queryKey: ["catalogNavigation", libraryId],
+      })
       resetBrokenCovers()
       queryClient.setQueryData<LibraryRecord[]>(libraryKeys.all, (current) =>
         current?.map((library) =>
@@ -271,19 +295,20 @@ export default function LibraryWorkspace({
     navigate({
       to: "/book/$bookId",
       params: { bookId: String(book.id) },
+      search: { catalog },
     })
   }
-
-  const handleBackToList = useCallback(() => {
-    navigate({ to: "/" })
-  }, [navigate])
 
   function handleToggleDetail() {
     if (activeBookId) {
       setClosedDetail({ bookId: activeBookId, libraryId: activeLibraryId })
       handleBackToList()
     } else if (closedDetail?.libraryId === activeLibraryId) {
-      navigate({ to: "/book/$bookId", params: { bookId: closedDetail.bookId } })
+      navigate({
+        to: "/book/$bookId",
+        params: { bookId: closedDetail.bookId },
+        search: { catalog },
+      })
     }
   }
 
@@ -339,6 +364,11 @@ export default function LibraryWorkspace({
         libraryControls={
           showListPane ? (
             <Toolbar
+              directory={directory}
+              onBack={onBack}
+              tokens={tokens}
+              navigation={navigation.data}
+              onTokensChange={setTokens}
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
               viewMode={viewMode}
@@ -380,39 +410,55 @@ export default function LibraryWorkspace({
               aria-hidden={!showListPane}
               className={listPaneClassName}
             >
-              <LibraryCollectionContent
-                loading={loading}
-                error={displayedError}
-                hasNoLibrary={libraries.length === 0}
-                onAddLibrary={onAddLibrary}
-                onRetry={collection.refresh}
-                emptyState={
-                  <LibraryCollectionEmpty
-                    activeCollectionId={activeCollectionId}
-                    searchQuery={searchQuery}
-                    isManagedLibrary={isManagedLibrary}
-                    importingBook={importingBook}
-                    onImportBook={handleImportBook}
-                    onBrowseAllBooks={handleBrowseAllBooks}
-                  />
-                }
-                gridProps={{
-                  books: displayedBooks,
-                  total: displayedTotal,
-                  libraryId: activeLibraryId,
-                  onRead: handleOpenDetail,
-                  onOpenReader: handleOpenReader,
-                  onDeleteBook: isManagedLibrary
-                    ? setBookPendingDeletion
-                    : undefined,
-                  ensureRange: collection.ensureRange,
-                  viewMode,
-                  fileActionsEnabled,
-                  selectedFormatById,
-                  progressByBookId,
-                  activeBookId,
-                }}
-              />
+              {directory ? (
+                <CatalogDirectory
+                  kind={directory}
+                  navigation={navigation.data}
+                  libraryId={activeLibraryId}
+                  search={searchQuery}
+                  viewMode={viewMode}
+                  loading={navigation.isLoading}
+                  error={navigation.error}
+                  onRetry={() => void navigation.refetch()}
+                  onSelect={browseFacet}
+                />
+              ) : (
+                <LibraryCollectionContent
+                  key={scrollKey}
+                  loading={loading}
+                  error={displayedError}
+                  hasNoLibrary={libraries.length === 0}
+                  onAddLibrary={onAddLibrary}
+                  onRetry={collection.refresh}
+                  emptyState={
+                    <LibraryCollectionEmpty
+                      activeCollectionId={activeCollectionId}
+                      searchQuery={emptySearch}
+                      isManagedLibrary={isManagedLibrary}
+                      importingBook={importingBook}
+                      onImportBook={handleImportBook}
+                      onBrowseAllBooks={handleBrowseAllBooks}
+                    />
+                  }
+                  gridProps={{
+                    scrollKey,
+                    books: displayedBooks,
+                    total: displayedTotal,
+                    libraryId: activeLibraryId,
+                    onRead: handleOpenDetail,
+                    onOpenReader: handleOpenReader,
+                    onDeleteBook: isManagedLibrary
+                      ? setBookPendingDeletion
+                      : undefined,
+                    ensureRange: collection.ensureRange,
+                    viewMode,
+                    fileActionsEnabled,
+                    selectedFormatById,
+                    progressByBookId,
+                    activeBookId,
+                  }}
+                />
+              )}
             </div>
 
             {showDetailPane ? (
@@ -428,6 +474,7 @@ export default function LibraryWorkspace({
               >
                 <BookDetailPane
                   bookId={activeBookId!}
+                  onBrowse={browseFacet}
                   onBackToList={handleBackToList}
                   forceNarrowHero={forceNarrowDetailHero}
                   wideBackdropHost={detailBackdropHost}

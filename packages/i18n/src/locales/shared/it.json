@@ -276,5 +276,22 @@
     "io": "Impossibile accedere ai file locali. Controlla lo spazio di archiviazione e i permessi.",
     "dataIntegrity": "Alcuni dati non sono stati letti correttamente. Ripristina una copia affidabile e riprova.",
     "tts": "La lettura vocale non è riuscita. Controlla le impostazioni vocali e riprova."
+  },
+  "catalog": {
+    "searchPlaceholder": "Cerca titoli, autori, tag, serie…",
+    "searchDirectory": "Cerca in {{kind}}",
+    "authors": "Autori",
+    "tags": "Tag",
+    "series": "Serie",
+    "directory": "Indice della biblioteca",
+    "alphabetIndex": "Indice alfabetico",
+    "jumpTo": "Vai a {{letter}}",
+    "suggestions": "Suggerimenti di ricerca",
+    "removeToken": "Rimuovi condizione",
+    "removeNamedToken": "Rimuovi {{name}}",
+    "emptyDirectory": "Nessuna voce da mostrare.",
+    "loading": "Caricamento…",
+    "retry": "Riprova",
+    "noResults": "Nessun libro soddisfa tutte le condizioni."
   }
 }

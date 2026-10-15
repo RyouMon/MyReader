@@ -23,6 +23,7 @@ type UseLibraryAndroidHeaderMenuOptionsParams = {
   sortBy: SortOption
   viewMode: LibraryViewMode
   syncAction: ScreenHeaderAction
+  searchAction: ScreenHeaderAction
   onSetSortBy: (value: SortOption) => void
   onSetViewMode: (value: LibraryViewMode) => void
 }
@@ -34,6 +35,7 @@ export function useLibraryAndroidHeaderMenuOptions({
   sortBy,
   viewMode,
   syncAction,
+  searchAction,
   onSetSortBy,
   onSetViewMode,
 }: UseLibraryAndroidHeaderMenuOptionsParams): Pick<
@@ -96,9 +98,17 @@ export function useLibraryAndroidHeaderMenuOptions({
             side="right"
             anchoredToRight
           />
+          {renderHeaderToolbarActions([searchAction])}
         </View>
       ),
     }),
-    [rightActions, rightMenuRef, syncAction, t, handleRightMenuAction],
+    [
+      rightActions,
+      rightMenuRef,
+      syncAction,
+      searchAction,
+      t,
+      handleRightMenuAction,
+    ],
   )
 }

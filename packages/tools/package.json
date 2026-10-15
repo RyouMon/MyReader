@@ -24,11 +24,13 @@
     "./utils": "./src/utils/index.ts",
     "./types": "./src/types/index.ts",
     "./types/*": "./src/types/*.ts",
-    "./store/*": "./src/store/*.ts"
+    "./store/*": "./src/store/*.ts",
+    "./catalog-navigation": "./src/catalog-navigation.ts"
   },
   "dependencies": {
     "chroma-js": "^3.2.0",
-    "dayjs": "^1.11.21"
+    "dayjs": "^1.11.21",
+    "pinyin-pro": "^3.29.5"
   },
   "scripts": {
     "check:generated": "node ../../scripts/generate-reader-viewport-anchor.mjs --check",

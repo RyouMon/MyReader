@@ -43,6 +43,17 @@ export async function applySyncReport(
     })
   }
 
+  if (calibre.changed || pulledManagedCatalog || (calibre.books && !passive)) {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["catalogNavigation", libraryId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [...libraryQueryKeys.books(libraryId), "catalog"],
+      }),
+    ])
+  }
+
   if (!report.myreader.skipped) {
     await invalidateFileStates(libraryId)
   }

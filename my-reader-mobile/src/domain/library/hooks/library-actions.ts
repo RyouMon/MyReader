@@ -416,6 +416,12 @@ function removePendingBookImport(libraryId: string, importId: string): void {
 }
 
 function cacheImportedBook(library: Library, book: CalibreBook): void {
+  void queryClient.invalidateQueries({
+    queryKey: ["catalogNavigation", library.id],
+  })
+  void queryClient.invalidateQueries({
+    queryKey: [...libraryQueryKeys.books(library.id), "catalog"],
+  })
   const imported = mapListRowsToBookItems(library, [book])[0]
   if (!imported) return
   queryClient.setQueryData<BookItem[]>(
@@ -513,6 +519,9 @@ export async function updateManagedBookMetadata(
 ): Promise<void> {
   await updateBookMetadataInLibrary(library, input)
   await queryClient.invalidateQueries({
+    queryKey: ["catalogNavigation", library.id],
+  })
+  await queryClient.invalidateQueries({
     queryKey: libraryQueryKeys.books(library.id),
   })
 }
@@ -536,6 +545,9 @@ export async function deleteManagedBook(
     await persistLibraryBookCount(library, library.bookCount - 1)
   } finally {
     await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["catalogNavigation", library.id],
+      }),
       queryClient.invalidateQueries({ queryKey: booksQueryKey }),
       queryClient.invalidateQueries({ queryKey: recentlyReadQueryKey }),
     ])
