@@ -37,8 +37,10 @@ tags:
     id: home-screen
 - tapOn: 搜索|Search
 - assertVisible: 搜索书名、作者、标签、丛书…|Search titles, authors, tags, series…
+- assertNotVisible: '同步状态.*|Sync status.*'
 - takeScreenshot: root-header-home-search
 - tapOn: 关闭|Close
+- assertNotVisible: '同步状态.*|Sync status.*'
 
 # Returning from Home must reopen the retained search page, without another push.
 - tapOn: 主页|首页|Home
@@ -96,6 +98,16 @@ tags:
 - takeScreenshot: root-header-library-search
 - tapOn: 关闭|Close
 - runFlow: ../../common/tap_header_back.yaml
+
+# Nested book lists keep search and view controls, without another sync entry.
+- tapOn:
+    id: library-collection-all
+- assertVisible: 搜索|Search
+- assertNotVisible: '同步状态.*|Sync status.*'
+- takeScreenshot: root-header-all-books
+- runFlow: ../../common/tap_header_back.yaml
+- assertVisible: '同步状态.*|Sync status.*'
+
 - tapOn:
     id: library-import-book-button
 - waitForAnimationToEnd
@@ -122,3 +134,8 @@ tags:
       - tapOn: 取消|Cancel
 - assertVisible:
     id: library-import-book-button
+
+# Settings retains its existing sync-status toolbar entry.
+- runFlow: ../../common/open_settings.yaml
+- assertVisible: '同步状态.*|Sync status.*'
+- takeScreenshot: root-header-settings

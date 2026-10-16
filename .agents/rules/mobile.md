@@ -27,6 +27,8 @@ Read [current architecture](../../docs/ARCHITECTURE.md) and
   `AndroidHeaderActions` per side. Buttons own their touch targets; groups measure their full size
   and native-stack owns edge spacing. Inline headers use `ANDROID_HEADER_EDGE_INSET`. Do not put a
   whole group in an icon-sized slot or add per-screen button margins.
+- The sync-status toolbar action appears on the Home and Library roots through
+  `useLibraryRootHeader`, and on Settings. Nested catalog pages do not show it.
 - Run the full `pnpm test:mobile` suite after changes. Rust/FFI changes also require full Cargo tests;
   native changes require the applicable source build and simulator verification.
 - Native build and simulator commands: [DEVELOPMENT.md](../../docs/DEVELOPMENT.md).

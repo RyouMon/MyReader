@@ -21,7 +21,6 @@ type UseLibraryAndroidHeaderMenuOptionsParams = {
   collectionId: BuiltInBookCollectionId
   sortBy: SortOption
   viewMode: LibraryViewMode
-  syncAction: ScreenHeaderAction
   searchAction: ScreenHeaderAction
   onSetSortBy: (value: SortOption) => void
   onSetViewMode: (value: LibraryViewMode) => void
@@ -33,7 +32,6 @@ export function useLibraryAndroidHeaderMenuOptions({
   collectionId,
   sortBy,
   viewMode,
-  syncAction,
   searchAction,
   onSetSortBy,
   onSetViewMode,
@@ -87,7 +85,6 @@ export function useLibraryAndroidHeaderMenuOptions({
     () => ({
       headerRight: () => (
         <AndroidHeaderActions>
-          {renderHeaderToolbarActions([syncAction])}
           <AndroidHeaderMenuButton
             menuRef={rightMenuRef}
             actions={rightActions}
@@ -100,13 +97,6 @@ export function useLibraryAndroidHeaderMenuOptions({
         </AndroidHeaderActions>
       ),
     }),
-    [
-      rightActions,
-      rightMenuRef,
-      syncAction,
-      searchAction,
-      t,
-      handleRightMenuAction,
-    ],
+    [rightActions, rightMenuRef, searchAction, t, handleRightMenuAction],
   )
 }
