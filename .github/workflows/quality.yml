@@ -265,7 +265,11 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-llvm-cov@0.9.1
-      - run: cargo llvm-cov --locked -p my-reader --lcov --output-path reports/rust-desktop/lcov.info
+      - name: Collect desktop compiler coverage
+        shell: bash
+        run: |
+          mkdir -p reports/rust-desktop
+          cargo llvm-cov --locked -p my-reader --lcov --output-path reports/rust-desktop/lcov.info
       - uses: actions/upload-artifact@v4
         if: always()
         with:
