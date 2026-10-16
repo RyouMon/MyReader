@@ -4,6 +4,7 @@ import ReadiumShared
 import Testing
 import UIKit
 import WebKit
+import XCTest
 @testable import Readium
 
 @Suite(.serialized)
@@ -82,13 +83,27 @@ struct ReaderImageExportTests {
     window.makeKeyAndVisible()
     defer { window.isHidden = true }
     var selections: [String] = []
-    controller.onImagePress = { selections.append($0) }
-    webView.loadHTMLString("<html><body><img src='images/2.jpg'></body></html>", baseURL: URL(string: "https://reader.test/book/"))
-    for _ in 0..<100 {
-      if !webView.isLoading { break }
-      try await Task.sleep(nanoseconds: 50_000_000)
+    let selected = XCTestExpectation(description: "Publication image selected through WebKit")
+    controller.onImagePress = {
+      selections.append($0)
+      selected.fulfill()
     }
-    #expect(!webView.isLoading)
+    let fixture = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: fixture.appendingPathComponent("images"), withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: fixture) }
+    let image = UIGraphicsImageRenderer(size: CGSize(width: 1, height: 1)).image { context in
+      UIColor.blue.setFill()
+      context.fill(CGRect(x: 0, y: 0, width: 1, height: 1))
+    }
+    try #require(image.jpegData(compressionQuality: 1)).write(to: fixture.appendingPathComponent("images/2.jpg"))
+    let html = fixture.appendingPathComponent("index.html")
+    try "<html><body><img src='images/2.jpg'></body></html>".write(to: html, atomically: true, encoding: .utf8)
+    let navigation = ImageFixtureNavigation()
+    webView.navigationDelegate = navigation
+    webView.loadFileURL(html, allowingReadAccessTo: fixture)
+    let loaded = await XCTWaiter.fulfillment(of: [navigation.loaded], timeout: 15)
+    try #require(loaded == .completed)
+    if let error = navigation.error { throw error }
     try await webView.evaluateJavaScript("""
       document.querySelector('img').dispatchEvent(new PointerEvent('pointerdown', {bubbles:true,isPrimary:true,button:0}));
       window.webkit.messageHandlers.readerImage.postMessage({src:'https://reader.test/book/chapter.xhtml'});
@@ -96,10 +111,8 @@ struct ReaderImageExportTests {
       window.webkit.messageHandlers.readerImage.postMessage({invalid:'missing source'});
       true;
       """)
-    for _ in 0..<100 {
-      if !selections.isEmpty { break }
-      try await Task.sleep(nanoseconds: 50_000_000)
-    }
+    let received = await XCTWaiter.fulfillment(of: [selected], timeout: 5)
+    #expect(received == .completed)
     #expect(selections == ["images/2.jpg"])
   }
 
@@ -223,5 +236,25 @@ struct ReaderImageExportTests {
   private func near(_ actual: [UInt8], _ expected: [UInt8]) -> Bool {
     // PDFKit may JPEG-compress PDFPage(image:); allow its 1-2 level rounding.
     zip(actual, expected).allSatisfy { abs(Int($0) - Int($1)) <= 2 }
+  }
+}
+
+@MainActor
+private final class ImageFixtureNavigation: NSObject, WKNavigationDelegate {
+  let loaded = XCTestExpectation(description: "Local WebKit fixture loaded")
+  var error: Error?
+
+  func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+    loaded.fulfill()
+  }
+
+  func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+    self.error = error
+    loaded.fulfill()
+  }
+
+  func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+    self.error = error
+    loaded.fulfill()
   }
 }
