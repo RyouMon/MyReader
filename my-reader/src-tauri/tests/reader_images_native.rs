@@ -11,11 +11,23 @@ fn main() {
     use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
     use tauri_plugin_clipboard_manager::ClipboardExt;
 
+    let fixture_directory = tempfile::tempdir().unwrap();
+    let fixture_path = fixture_directory.path().join("image.html");
+    std::fs::write(&fixture_path, "<html><body style='margin:0;background:rgb(255,0,0)'><div style='position:absolute;left:100px;top:0;width:100px;height:200px;background:rgb(0,0,255)'></div></body></html>").unwrap();
+    let fixture_url = url::Url::from_file_path(fixture_path).unwrap();
     let result = Arc::new(Mutex::new(None));
     let outcome = result.clone();
     let mut context = tauri::test::mock_context(tauri::test::noop_assets());
     context.config_mut().identifier = "com.myreader.image-coverage".into();
     let app = tauri::Builder::default()
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .level(log::LevelFilter::Warn)
+                .targets([tauri_plugin_log::Target::new(
+                    tauri_plugin_log::TargetKind::Stdout,
+                )])
+                .build(),
+        )
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(move |app| {
@@ -26,13 +38,17 @@ fn main() {
                 WebviewUrl::External("about:blank".parse().unwrap()),
             )
             .inner_size(400.0, 300.0)
+            .on_navigation(|url| {
+                eprintln!("native image test: navigating to {url}");
+                true
+            })
             .on_page_load(move |webview, payload| {
                 eprintln!(
                     "native image test: page {:?} ({})",
                     payload.event(),
                     payload.url().scheme()
                 );
-                if payload.url().scheme() != "data"
+                if payload.url().scheme() != "file"
                     || payload.event() != tauri::webview::PageLoadEvent::Finished
                     || started.swap(true, Ordering::SeqCst)
                 {
@@ -156,15 +172,14 @@ fn main() {
         })
         .build(context)
         .unwrap();
-    app.run_return(|app, event| {
+    app.run_return(move |app, event| {
         if let RunEvent::Ready = event {
             // Load only after Tauri registers the webview so its load events can be delivered.
-            let html = "data:text/html,<html><body style='margin:0;background:rgb(255,0,0)'><div style='position:absolute;left:100px;top:0;width:100px;height:200px;background:rgb(0,0,255)'></div></body></html>";
             eprintln!("native image test: loading fixture after app readiness");
-            app.get_webview_window("image-test")
-                .unwrap()
-                .navigate(html.parse().unwrap())
-                .unwrap();
+            let window = app.get_webview_window("image-test").unwrap();
+            #[cfg(target_os = "windows")]
+            observe_webview_failures(&window);
+            window.navigate(fixture_url.clone()).unwrap();
         }
     });
     assert_eq!(
@@ -172,6 +187,31 @@ fn main() {
         Some(Ok(())),
         "native image export did not complete"
     );
+}
+
+#[cfg(target_os = "windows")]
+fn observe_webview_failures(window: &tauri::WebviewWindow) {
+    window
+        .with_webview(|webview| unsafe {
+            let mut token = 0;
+            webview
+                .controller()
+                .CoreWebView2()
+                .unwrap()
+                .add_ProcessFailed(
+                    &webview2_com::ProcessFailedEventHandler::create(Box::new(|_, args| {
+                        if let Some(args) = args {
+                            let mut kind = Default::default();
+                            args.ProcessFailedKind(&mut kind)?;
+                            eprintln!("native image test: WebView2 process failed ({kind:?})");
+                        }
+                        Ok(())
+                    })),
+                    &mut token,
+                )
+                .unwrap();
+        })
+        .unwrap();
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
