@@ -1,0 +1,11 @@
+coverage:
+  status:
+    project:
+      target: auto
+      informational: true
+    patch:
+      target: 80
+      informational: true
+comment: false
+config:
+  files: changed
