@@ -13,7 +13,10 @@ function fixture() {
     summary,
     JSON.stringify(
       Object.fromEntries(
-        keys.map((key) => [key, { changed: key === "rust" ? 0 : 10 }]),
+        keys.map((key) => [
+          key,
+          { changed: key === "rust" ? 0 : 10, covered: key === "rust" ? 0 : 5 },
+        ]),
       ),
     ),
   )
@@ -95,7 +98,7 @@ test("failed coverage remains visible and repeated runs update one bot-owned PR 
     })
     await publishCoverage(f.args, f.summary)
     assert.equal(f.writes.length, 1)
-    assert.match(f.writes[0].create.body, /50% < target 80%/)
+    assert.match(f.writes[0].create.body, /50\.00% \(5\/10\) < target 80%/)
     assert.match(f.writes[0].create.body, /block merging/)
     assert.match(
       f.writes[0].create.body,
@@ -109,6 +112,35 @@ test("failed coverage remains visible and repeated runs update one bot-owned PR 
     })
     await publishCoverage(f.args, f.summary)
     assert.equal(f.writes[1].update.comment_id, 2)
+  } finally {
+    f.cleanup()
+  }
+})
+
+test("the PR summary uses the gate's exact counts even when the upstream display rounds or omits a line", async () => {
+  const f = fixture()
+  try {
+    writeFileSync(
+      f.summary,
+      JSON.stringify({
+        js: { changed: 100000, covered: 79999 },
+        rust: { changed: 211, covered: 197 },
+        swift: { changed: 10, covered: 8 },
+        android: { changed: 10, covered: 8 },
+      }),
+    )
+    f.statuses.find(
+      (status) => status.context === "codecov/patch (js)",
+    ).description = "80.00% >= target 80%"
+    f.statuses.find(
+      (status) => status.context === "codecov/patch (rust)",
+    ).description = "93.81% >= target 80%"
+    await publishCoverage(f.args, f.summary)
+    const body = f.writes[0].create.body
+    assert.match(body, /80\.00% \(79999\/100000\) < target 80%/)
+    assert.match(body, /93\.36% \(197\/211\) >= target 80%/)
+    assert.match(body, /80\.00% \(8\/10\) >= target 80%/)
+    assert.doesNotMatch(body, /93\.81%/)
   } finally {
     f.cleanup()
   }
