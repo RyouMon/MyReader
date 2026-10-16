@@ -24,11 +24,16 @@ export function ReaderPublicationSurface({
   reflowStyle: ComponentProps<typeof Animated.View>["style"]
   reflow: Omit<
     ComponentProps<typeof ReadiumReflowReader>,
-    "epubPath" | "initialLocator"
+    "epubPath" | "initialLocator" | "imageBook"
   >
   fixed: Omit<
     ComponentProps<typeof FixedReaderSurface>,
-    "archiveUri" | "pdfLocalUri" | "format" | "initialPage" | "initialLocator"
+    | "archiveUri"
+    | "pdfLocalUri"
+    | "format"
+    | "initialPage"
+    | "initialLocator"
+    | "imageBook"
   >
 }) {
   if (loadState.layoutMode === "reflowable") {
@@ -37,6 +42,7 @@ export function ReaderPublicationSurface({
       <Animated.View style={reflowStyle}>
         <ReadiumReflowReader
           {...reflow}
+          imageBook={{ title: loadState.title, authors: loadState.authors }}
           epubPath={toNativeFilesystemPath(loadState.epubFileUri)}
           initialLocator={loadState.initialLocator ?? undefined}
         />
@@ -47,6 +53,7 @@ export function ReaderPublicationSurface({
     return (
       <FixedReaderSurface
         {...fixed}
+        imageBook={{ title: loadState.title, authors: loadState.authors }}
         archiveUri={loadState.bookArchiveUri}
         pdfLocalUri={loadState.pdfLocalUri}
         format={loadState.format}

@@ -248,6 +248,16 @@ cd my-reader-mobile/android
 ./gradlew :my-reader-readium:testDebugUnitTest --console=plain
 ```
 
+Image export tests assert original bytes, visible page numbers and reading order,
+rendered pixels, and long-press selection. The patched system share module has a
+separate unit target; PDF rendering also requires a connected Android emulator:
+
+```bash
+cd my-reader-mobile/android
+./gradlew -I ../tests/native-sharing/android.init.gradle :expo-sharing:testDebugUnitTest --console=plain
+./gradlew :my-reader-readium:connectedDebugAndroidTest --console=plain
+```
+
 To run one Android test class:
 
 ```bash
@@ -271,7 +281,7 @@ xcrun simctl boot "$READIUM_SIMULATOR_UDID"
 xcodebuild test -quiet \
   -workspace MyReader.xcworkspace \
   -scheme Readium-Unit-Tests \
-  -configuration Release \
+  -configuration Debug \
   -sdk iphonesimulator \
   -destination "platform=iOS Simulator,id=$READIUM_SIMULATOR_UDID" \
   -only-testing:Readium-Unit-Tests \

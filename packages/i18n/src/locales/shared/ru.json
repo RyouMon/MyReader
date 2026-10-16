@@ -163,6 +163,17 @@
     }
   },
   "reader": {
+    "copyImage": "Копировать изображение",
+    "saveImage": "Сохранить изображение…",
+    "saveImageToPhotos": "Сохранить в Фото",
+    "saveImageToFiles": "Сохранить в Файлы",
+    "imageCopied": "Изображение скопировано",
+    "imageSaved": "Изображение сохранено",
+    "imageActionFailed": "Не удалось экспортировать изображение. Повторите попытку.",
+    "sharePage": "Поделиться",
+    "imageMore": "Ещё",
+    "image": "Изображение",
+    "imagePhotoPermission": "Для сохранения изображения разрешите добавление фото.",
     "navigationBack": "Вернуться к предыдущему месту",
     "navigationForward": "Перейти к следующему месту",
     "background": "Предыстория",

@@ -40,6 +40,7 @@ function readerRef() {
     reattachTtsViewport: jest.Mock<Promise<boolean>, [string, string]>
     returnToTtsPosition: jest.Mock<Promise<boolean>, [string, string]>
   } = {
+    sharePage: jest.fn(() => Promise.resolve()),
     goTo: jest.fn(),
     clearSelection: jest.fn(),
     getBookmarkLocator: jest.fn(() => Promise.resolve(null)),

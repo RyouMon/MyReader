@@ -159,6 +159,17 @@
     }
   },
   "reader": {
+    "copyImage": "複製圖片",
+    "saveImage": "儲存圖片…",
+    "saveImageToPhotos": "儲存到相簿",
+    "saveImageToFiles": "儲存到檔案",
+    "imageCopied": "已複製圖片",
+    "imageSaved": "已儲存圖片",
+    "imageActionFailed": "圖片匯出失敗，請重試。",
+    "sharePage": "分享",
+    "imageMore": "更多",
+    "image": "圖片",
+    "imagePhotoPermission": "儲存圖片需要相簿新增權限。",
     "navigationBack": "回到上一個閱讀位置",
     "navigationForward": "前往下一個閱讀位置",
     "background": "背景",

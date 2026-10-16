@@ -53,6 +53,27 @@ class ImageReaderFragment : VisualReaderFragment(), ImageNavigatorFragment.Liste
         super.onCreate(savedInstanceState)
     }
 
+    private val imageLayoutListener = android.view.ViewTreeObserver.OnGlobalLayoutListener {
+        fun bind(root: View) {
+            if (root is android.widget.ImageView) root.setOnLongClickListener {
+                imageLocation?.href?.toString()?.let { onImagePress?.invoke(it) }
+                true
+            }
+            if (root is ViewGroup) for (index in 0 until root.childCount) bind(root.getChildAt(index))
+        }
+        view?.let { bind(it) }
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        view.viewTreeObserver.addOnGlobalLayoutListener(imageLayoutListener)
+    }
+
+    override fun onDestroyView() {
+        view?.viewTreeObserver?.removeOnGlobalLayoutListener(imageLayoutListener)
+        super.onDestroyView()
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,

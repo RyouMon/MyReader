@@ -160,6 +160,17 @@
     }
   },
   "reader": {
+    "copyImage": "画像をコピー",
+    "saveImage": "画像を保存…",
+    "saveImageToPhotos": "写真に保存",
+    "saveImageToFiles": "ファイルに保存",
+    "imageCopied": "画像をコピーしました",
+    "imageSaved": "画像を保存しました",
+    "imageActionFailed": "画像を書き出せませんでした。もう一度お試しください。",
+    "sharePage": "共有",
+    "imageMore": "その他",
+    "image": "画像",
+    "imagePhotoPermission": "画像を保存するには写真への追加を許可してください。",
     "navigationBack": "前の読書位置に戻る",
     "navigationForward": "次の読書位置に進む",
     "background": "背景",

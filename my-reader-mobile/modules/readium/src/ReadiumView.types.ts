@@ -20,8 +20,16 @@ import type {
   TtsSynthesisRequestEvent,
 } from "./types"
 
+export type ReaderImageFile = {
+  uri: string
+  name: string
+  mimeType: string
+  position: number
+}
+
 /** Imperative navigation and reading controls. */
 export type ReadiumViewRef = {
+  exportImages: (href?: string) => Promise<ReaderImageFile[]>
   goTo: (locator: Locator, preferences?: Preferences) => void
   goForward: () => void
   goBackward: () => void
@@ -75,6 +83,7 @@ export type ReadiumProps = {
   onSelectionChange?: (event: SelectionEvent) => void
   onSelectionAction?: (event: SelectionActionEvent) => void
   onTap?: (event: TapEvent) => void
+  onImagePress?: (event: { href: string }) => void
   onTtsStateChange?: (event: TtsPlaybackState) => void
   onTtsSynthesisRequest?: (event: TtsSynthesisRequestEvent) => void
   onTtsSynthesisCancel?: (event: TtsSynthesisCancelEvent) => void

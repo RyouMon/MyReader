@@ -1416,6 +1416,12 @@ export default function ReaderScreen() {
 
             {/* State 3: Expanded action pills */}
             <ReaderActionsExpanded
+              onShare={() => {
+                const reader = isFixedSurface
+                  ? fixedReaderRef.current
+                  : reflowReaderRef.current
+                void reader?.sharePage()
+              }}
               insetsBottom={insets.bottom}
               visible={chromeState === ChromeState.Expanded}
               currentPositionIndex={currentPage ?? 0}

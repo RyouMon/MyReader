@@ -240,6 +240,7 @@ function ReadBookContent({
     )
   const readerProps = {
     bookTitle,
+    bookAuthors: source.bookAuthors,
     initialSavedLocator: bookPayload.initialSavedLocator,
     libraryId: activeLibraryId,
     bookId: source.bookId,

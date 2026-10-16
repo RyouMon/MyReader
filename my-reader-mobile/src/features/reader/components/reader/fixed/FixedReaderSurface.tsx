@@ -1,3 +1,4 @@
+import type { ReaderImageBook } from "@my-reader/tools/reader-image-export"
 import { forwardRef, lazy, Suspense, useMemo } from "react"
 
 import type { Locator } from "@my-reader/readium"
@@ -21,6 +22,7 @@ import type {
 const ReadiumFixedReader = lazy(async () => import("./ReadiumFixedReader"))
 
 export type FixedReaderSurfaceProps = {
+  imageBook?: ReaderImageBook
   archiveUri?: string | null
   format: string
   /** PDF：Readium 使用的稳定本地 `file://` URI */
@@ -57,6 +59,7 @@ const FixedReaderSurface = forwardRef<
 >(function FixedReaderSurface(
   {
     archiveUri,
+    imageBook,
     format,
     pdfLocalUri,
     initialPage,
@@ -89,6 +92,7 @@ const FixedReaderSurface = forwardRef<
       <Suspense fallback={domFallback}>
         <ReadiumFixedReader
           ref={ref}
+          imageBook={imageBook}
           filePath={cbzFilePath}
           initialLocator={initialLocator}
           onStateChange={onStateChange}
@@ -134,6 +138,7 @@ const FixedReaderSurface = forwardRef<
       <Suspense fallback={domFallback}>
         <ReadiumFixedReader
           ref={ref}
+          imageBook={imageBook}
           filePath={pdfFilePath}
           initialLocator={pdfInitialLocator}
           onStateChange={onStateChange}

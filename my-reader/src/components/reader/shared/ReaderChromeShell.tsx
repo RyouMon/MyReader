@@ -7,10 +7,15 @@ import {
   type Ref,
   useEffect,
   useMemo,
+  useState,
+  useCallback,
 } from "react"
 import { ReaderPanelsBackdrop } from "@/components/reader/shared/ReaderPanelsBackdrop"
 import { ReaderTopBar } from "@/components/reader/shared/ReaderTopBar"
 import { ReadingChromeEdgeZones } from "@/components/reader/shared/ReadingChromeEdgeZones"
+import { useReaderImageActions } from "@/hooks/reader/useReaderImageActions"
+import { ReaderImageMenu, ReaderShareMenu } from "./ReaderImageMenu"
+import type { ReaderImageSource } from "@/types/reader"
 import { cn } from "@/lib/utils"
 
 const READER_ROOT_LAYOUT =
@@ -38,6 +43,10 @@ export type ReaderChromeTopBarConfig = {
 }
 
 export type ReaderChromeShellProps = {
+  getPageImages?: () => Promise<ReaderImageSource[]>
+  bookAuthors?: string[]
+  imagePosition?: number
+  imageActions?: boolean
   readerRootRef: Ref<HTMLDivElement>
   chromeVisible: boolean
   showChrome: () => void
@@ -138,6 +147,10 @@ export function readerChromeThemeStyle(
  */
 export function ReaderChromeShell({
   readerRootRef,
+  getPageImages,
+  bookAuthors,
+  imagePosition = 1,
+  imageActions = false,
   chromeVisible,
   showChrome,
   scheduleChromeHide,
@@ -161,6 +174,27 @@ export function ReaderChromeShell({
   readerMode,
   readerBackgroundColor,
 }: ReaderChromeShellProps) {
+  const [root, setRoot] = useState<HTMLDivElement | null>(null)
+  const image = useReaderImageActions(
+    imageActions ? root : null,
+    { title: topBar.bookTitle, authors: bookAuthors },
+    imagePosition,
+  )
+  const attachRoot = useCallback(
+    (node: HTMLDivElement | null) => {
+      setRoot(node)
+      if (typeof readerRootRef === "function") readerRootRef(node)
+      else if (readerRootRef)
+        (readerRootRef as { current: HTMLDivElement | null }).current = node
+    },
+    [readerRootRef],
+  )
+  const sharePage = () => {
+    void image.run("prepareShare", async () => {
+      if (!getPageImages) throw new Error("READER_NOT_READY")
+      return getPageImages()
+    })
+  }
   const chromeThemeStyle = useMemo(() => {
     const themeStyle = readerChromeThemeStyle(theme, readerMode)
     if (!readerBackgroundColor) return themeStyle
@@ -190,7 +224,7 @@ export function ReaderChromeShell({
 
   return (
     <div
-      ref={readerRootRef}
+      ref={attachRoot}
       className={cn(READER_ROOT_LAYOUT, rootClassName)}
       data-reader-theme={theme || undefined}
       data-reader-mode={readerMode}
@@ -215,7 +249,18 @@ export function ReaderChromeShell({
           annotationsOpen={topBar.annotationsOpen}
           searchOpen={topBar.searchOpen}
           settingsOpen={topBar.settingsOpen}
-          rightActionsStart={topBar.rightActionsStart}
+          rightActionsStart={
+            <>
+              {topBar.rightActionsStart}
+              {imageActions && image.supported ? (
+                <ReaderShareMenu
+                  onShare={sharePage}
+                  busy={image.busy}
+                  visible={chromeVisible}
+                />
+              ) : null}
+            </>
+          }
           showReaderActions={topBar.showReaderActions}
           previewNativeMacFullscreen={topBar.previewNativeMacFullscreen}
           onToggleToc={topBar.onToggleToc}
@@ -252,6 +297,15 @@ export function ReaderChromeShell({
           </div>
         ) : null}
         {bottomChrome}
+        {imageActions && image.supported ? (
+          <ReaderImageMenu
+            target={image.target}
+            onClose={() => image.setTarget(null)}
+            onAction={(action, source) => {
+              void image.run(action, async () => [source])
+            }}
+          />
+        ) : null}
         {tocPanel}
         {bookmarkPanel}
         {annotationsPanel}

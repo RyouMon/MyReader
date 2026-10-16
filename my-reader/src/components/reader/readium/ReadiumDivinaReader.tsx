@@ -47,6 +47,7 @@ import { useAppUiStore } from "@/stores/appUiStore"
 
 export type ReadiumDivinaReaderProps = {
   bookTitle: string
+  bookAuthors?: string[]
   publication: Publication
   initialSavedLocator: Locator | null
   libraryId: string | null
@@ -76,6 +77,7 @@ function initialPage(
 
 export function ReadiumDivinaReader({
   bookTitle,
+  bookAuthors,
   publication,
   initialSavedLocator,
   libraryId,
@@ -321,6 +323,16 @@ export function ReadiumDivinaReader({
 
   return (
     <ReaderChromeShell
+      imageActions
+      bookAuthors={bookAuthors}
+      imagePosition={currentPage}
+      getPageImages={async () =>
+        (spreads[currentSpreadIndex] ?? []).map((page) => {
+          const item = publication.readingOrder.items[page - 1]
+          if (!item) throw new Error("READER_NOT_READY")
+          return { url: item.href, position: page }
+        })
+      }
       historyNavigation={
         <ReaderNavigationButtons
           history={history}
@@ -427,6 +439,7 @@ export function ReadiumDivinaReader({
       }
       main={
         <div
+          data-reader-share-surface
           ref={containerRef}
           className="relative min-h-0 min-w-0 w-full flex-1 basis-0 overflow-hidden"
           style={{ backgroundColor }}
@@ -450,6 +463,7 @@ export function ReadiumDivinaReader({
                     return item ? (
                       <img
                         key={item.href}
+                        data-reader-page={page}
                         src={item.href}
                         alt=""
                         draggable={false}

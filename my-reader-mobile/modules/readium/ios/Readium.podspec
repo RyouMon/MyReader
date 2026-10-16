@@ -42,7 +42,8 @@ Pod::Spec.new do |s|
     }
   ]
   s.resource_bundles = {
-    "ReadiumReaderFonts" => ["Generated/reader-fonts/*"]
+    "ReadiumReaderFonts" => ["Generated/reader-fonts/*"],
+    "ReadiumReaderScripts" => ["Resources/*.js"]
   }
 
   s.dependency 'ExpoModulesCore'
@@ -55,5 +56,7 @@ Pod::Spec.new do |s|
 
   s.test_spec 'Tests' do |test_spec|
     test_spec.source_files = 'Tests/**/*.swift'
+    test_spec.dependency 'ExpoSharing'
+    test_spec.requires_app_host = true
   end
 end

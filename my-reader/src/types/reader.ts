@@ -62,3 +62,11 @@ export const DEFAULT_FIXED_LAYOUT_SETTINGS: FixedLayoutSettings = {
   brightness: 100,
   pageGap: 16,
 }
+export type ReaderImageSource = (
+  | { url: string; name?: string }
+  | { data: string; name: string }
+  | {
+      capture: { x: number; y: number; width: number; height: number }
+      name: string
+    }
+) & { position?: number }

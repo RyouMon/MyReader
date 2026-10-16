@@ -54,6 +54,7 @@ import { useAppUiStore } from "@/stores/appUiStore"
 
 export type ReadiumPdfReaderProps = {
   bookTitle: string
+  bookAuthors?: string[]
   fileUrl: string
   initialSavedLocator: Locator | null
   libraryId: string | null
@@ -79,6 +80,7 @@ function usePdfLayout(landscape: boolean) {
 
 export function ReadiumPdfReader({
   bookTitle,
+  bookAuthors,
   fileUrl,
   initialSavedLocator,
   libraryId,
@@ -588,6 +590,46 @@ export function ReadiumPdfReader({
 
   return (
     <ReaderChromeShell
+      imageActions
+      bookAuthors={bookAuthors}
+      imagePosition={pageNum}
+      getPageImages={async () => {
+        const nav = navRef.current
+        const container = containerRef.current
+        if (!nav || !container) throw new Error("READER_NOT_READY")
+        const viewport = container.getBoundingClientRect()
+        const pages =
+          navigationMode === "vertical"
+            ? Array.from(
+                container.querySelectorAll<HTMLCanvasElement>(
+                  "canvas[data-pdf-page]",
+                ),
+              )
+                .filter((canvas) => {
+                  const rect = canvas.getBoundingClientRect()
+                  return (
+                    rect.bottom > viewport.top && rect.top < viewport.bottom
+                  )
+                })
+                .map((canvas) => Number(canvas.dataset.pdfPage))
+            : (spreads[currentSpreadIndex] ?? [])
+        const images = []
+        for (const page of pages) {
+          const canvas = document.createElement("canvas")
+          await nav.renderSinglePage(
+            canvas,
+            page,
+            container.clientWidth / pages.length,
+            container.clientHeight,
+          )
+          images.push({
+            name: "page.png",
+            position: page,
+            data: canvas.toDataURL("image/png").split(",")[1],
+          })
+        }
+        return images
+      }}
       historyNavigation={
         <ReaderNavigationButtons
           history={history}
@@ -692,6 +734,7 @@ export function ReadiumPdfReader({
       }
       main={
         <div
+          data-reader-share-surface
           ref={containerRef}
           className="relative flex min-h-0 min-w-0 flex-1 basis-0 flex-col items-center justify-center overflow-hidden"
           style={{ backgroundColor }}
@@ -711,7 +754,7 @@ export function ReadiumPdfReader({
               renderSpread={(spread) => (
                 <div
                   data-fixed-layout-panzoom-target
-                  className="flex h-full w-full min-w-0 items-center justify-center"
+                  className="relative flex h-full w-full min-w-0 items-center justify-center"
                 >
                   <canvas
                     data-pdf-spread-page={spread[0]}
@@ -733,7 +776,7 @@ export function ReadiumPdfReader({
                   <div
                     key={page}
                     data-pdf-page-slot={page}
-                    className="flex min-h-full w-full items-center justify-center p-4"
+                    className="relative flex min-h-full w-full items-center justify-center p-4"
                   >
                     {shouldRender ? (
                       <canvas

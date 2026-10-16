@@ -74,6 +74,11 @@ class PDFViewController: ReaderViewController, SelectionActionHandlerDelegate {
       return navigator as! PDFNavigatorViewController
     }
 
+    func pageImages() throws -> [(image: UIImage, position: Int)] {
+      guard let pdfView = pdfDocumentView else { throw NSError(domain: "ReadiumImage", code: 5) }
+      return try ReaderImageExport.pdfPages(view: pdfView)
+    }
+
     override func viewDidLayoutSubviews() {
       super.viewDidLayoutSubviews()
 

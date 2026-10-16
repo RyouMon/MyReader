@@ -47,6 +47,7 @@ fn export_tauri_specta_typescript_bindings() {
             my_reader_lib::commands::book_file::copy_book_file_path::<tauri::Wry>,
             my_reader_lib::commands::book_file::reveal_book_file::<tauri::Wry>,
             my_reader_lib::commands::book_file::save_book_file_as::<tauri::Wry>,
+            my_reader_lib::commands::reader_image::reader_image_action,
             my_reader_lib::commands::book_reading_format::list_book_reading_formats::<tauri::Wry>,
             my_reader_lib::commands::book_reading_format::set_book_reading_format::<tauri::Wry>,
             my_reader_lib::commands::favorite::list_favorite_book_ids::<tauri::Wry>,

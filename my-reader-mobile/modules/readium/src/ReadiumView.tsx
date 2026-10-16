@@ -57,6 +57,7 @@ type NativeReadiumViewProps = {
   onSelectionChange?: (e: { nativeEvent: SelectionEvent }) => void
   onSelectionAction?: (e: { nativeEvent: SelectionActionEvent }) => void
   onTap?: (e: { nativeEvent: TapEvent }) => void
+  onImagePress?: (e: { nativeEvent: { href: string } }) => void
   onTtsStateChange?: (e: { nativeEvent: TtsPlaybackState }) => void
   onTtsSynthesisRequest?: (e: { nativeEvent: TtsSynthesisRequestEvent }) => void
   onTtsSynthesisCancel?: (e: { nativeEvent: TtsSynthesisCancelEvent }) => void
@@ -111,6 +112,7 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
       onSelectionChange,
       onSelectionAction,
       onTap,
+      onImagePress,
       onTtsStateChange,
       onTtsSynthesisRequest,
       onTtsSynthesisCancel,
@@ -158,6 +160,11 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
     useImperativeHandle(
       forwardedRef,
       () => ({
+        exportImages: (href) => {
+          const tag = tagOf()
+          if (tag == null) return Promise.reject(new Error("READER_NOT_READY"))
+          return ReadiumModule.exportImages(tag, href ?? null)
+        },
         goTo: (locator, requestedPreferences) => {
           const tag = tagOf()
           if (tag != null) {
@@ -275,6 +282,7 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
             onSelectionChange={forwardNativeEvent(onSelectionChange)}
             onSelectionAction={forwardNativeEvent(onSelectionAction)}
             onTap={forwardNativeEvent(onTap)}
+            onImagePress={forwardNativeEvent(onImagePress)}
             onTtsStateChange={forwardNativeEvent(onTtsStateChange)}
             onTtsSynthesisRequest={forwardNativeEvent(onTtsSynthesisRequest)}
             onTtsSynthesisCancel={forwardNativeEvent(onTtsSynthesisCancel)}
