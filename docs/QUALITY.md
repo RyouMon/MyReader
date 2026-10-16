@@ -122,6 +122,8 @@ dependency-cruiser 使用独立的 `scripts/quality/tsconfig.mobile.json` 适配
 配置入口为 `.github/coverage.yml`，全量保持 `informational: true`，增量目标为 80% 且
 `informational: false`。Action 开启 `fail-on-error`，并使用编译器行计数独立验证门槛；
 fork PR 即使没有状态写权限也执行相同校验。某组失败后仍生成其余语言的报告及汇总评论。
+`Changed-line coverage` 仅由 PR 事件产生；推送和手动执行使用独立的 `Coverage report integrity`
+检查名，不能用没有 PR 差异的手动运行覆盖增量门禁结果。
 
 采集范围：
 
