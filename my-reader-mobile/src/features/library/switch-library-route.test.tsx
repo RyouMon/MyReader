@@ -160,6 +160,9 @@ describe("LibrarySwitcherSheetRoute", () => {
 
     render(<LibrarySwitcherSheetRoute />)
 
+    expect(
+      screen.getByRole("header", { name: "library.allLibraries" }),
+    ).toBeTruthy()
     fireEvent.press(screen.getByTestId("library-switcher-close-button"))
     fireEvent.press(screen.getByTestId("library-switcher-add-button"))
 

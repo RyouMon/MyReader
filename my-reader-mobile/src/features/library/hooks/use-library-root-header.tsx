@@ -47,7 +47,6 @@ export function useLibraryRootHeader(title: string) {
     if (Platform.OS !== "android") return baseOptions
     return {
       ...baseOptions,
-      headerTitleAlign: "center",
       headerLeft: () => (
         <AndroidHeaderActions>
           <AndroidHeaderIconButton

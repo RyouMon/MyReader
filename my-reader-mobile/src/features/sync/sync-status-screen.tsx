@@ -2,9 +2,11 @@ import { syncFailureDetail, syncFailureKeys } from "@my-reader/i18n/mobile"
 import { formatHumanReadableTime } from "@my-reader/tools/human-readable-time"
 import * as Haptics from "expo-haptics"
 import { useTranslation } from "react-i18next"
+import { Platform } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { Button, EmptyState, ListRow, SectionCard } from "@/src/components/ui"
+import { AndroidHeaderTitle } from "@/src/components/ui/android-header-layout"
 import { useThemePalette } from "@/src/design/tokens"
 import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library"
 import { ScrollView, Text, View } from "@/tw"
@@ -80,6 +82,14 @@ function SyncStatusSheetTitle({
   color: string
   title: string
 }) {
+  if (Platform.OS === "android") {
+    return (
+      <View className="min-h-14 flex-row items-center">
+        <AndroidHeaderTitle color={color}>{title}</AndroidHeaderTitle>
+      </View>
+    )
+  }
+
   return (
     <View className="h-12 items-center justify-center">
       <Text
@@ -258,10 +268,12 @@ export default function SyncStatusScreen() {
   if (!library || !activeLibraryId) {
     return (
       <View className="flex-1" style={{ backgroundColor: palette.background }}>
-        <SyncStatusSheetTitle
-          color={palette.text}
-          title={t("syncStatus.title")}
-        />
+        <View className="px-4">
+          <SyncStatusSheetTitle
+            color={palette.text}
+            title={t("syncStatus.title")}
+          />
+        </View>
         <View className="flex-1 px-4 pb-10 pt-4">
           <EmptyState
             title={t("syncStatus.noActiveLibrary")}

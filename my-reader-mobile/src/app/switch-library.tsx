@@ -9,11 +9,12 @@ import { AndroidHeaderIconButton } from "@/src/components/ui/android-header-icon
 import {
   ANDROID_HEADER_EDGE_INSET,
   AndroidHeaderActions,
+  AndroidHeaderTitle,
 } from "@/src/components/ui/android-header-layout"
 import { useThemePalette } from "@/src/design/tokens"
 import { LibrarySwitcherList } from "@/src/features/library/components/library-switcher-list"
 import { useAppStore } from "@/src/store/app-store"
-import { Text, View } from "@/tw"
+import { View } from "@/tw"
 
 export default function LibrarySwitcherSheetRoute() {
   const { t } = useTranslation()
@@ -58,7 +59,7 @@ export default function LibrarySwitcherSheetRoute() {
       >
         {Platform.OS === "android" ? (
           <View
-            className="h-16 flex-row items-center"
+            className="min-h-14 flex-row items-center"
             style={{ paddingHorizontal: ANDROID_HEADER_EDGE_INSET }}
           >
             <AndroidHeaderActions>
@@ -69,12 +70,9 @@ export default function LibrarySwitcherSheetRoute() {
                 testID="library-switcher-close-button"
               />
             </AndroidHeaderActions>
-            <Text
-              className="flex-1 text-center text-xl font-semibold"
-              style={{ color: palette.text }}
-            >
+            <AndroidHeaderTitle color={palette.text}>
               {t("library.allLibraries")}
-            </Text>
+            </AndroidHeaderTitle>
             <AndroidHeaderActions>
               <AndroidHeaderIconButton
                 accessibilityLabel={t("addLibraryFlow.title")}

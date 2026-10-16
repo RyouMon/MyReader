@@ -20,4 +20,18 @@ describe("buildBookDetailScreenOptions", () => {
         .title,
     ).toBe("Book detail")
   })
+
+  it("should preserve base typography when adapting the header contrast", () => {
+    const typography = { fontFamily: "system", fontWeight: "500" as const }
+    const options = buildBookDetailScreenOptions(
+      { headerTitleStyle: [typography, { color: "#111111" }] },
+      "#ffffff",
+      false,
+    )
+
+    expect(options.headerTitleStyle).toEqual({
+      ...typography,
+      color: "#ffffff",
+    })
+  })
 })
