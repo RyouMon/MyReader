@@ -12,6 +12,7 @@ function toolbarButtonElements(actions: HeaderToolbarAction[]) {
       accessibilityLabel={action.label}
       disabled={action.disabled}
       onPress={action.onPress}
+      separateBackground
       tintColor={action.color}
       variant={action.variant ?? "plain"}
     >

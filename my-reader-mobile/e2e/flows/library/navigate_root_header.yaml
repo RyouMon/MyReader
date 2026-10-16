@@ -32,18 +32,41 @@ tags:
       - swipe:
           start: 50%,18%
           end: 50%,95%
+- waitForAnimationToEnd
 - assertVisible:
     id: home-screen
 - tapOn: 搜索|Search
 - assertVisible: 搜索书名、作者、标签、丛书…|Search titles, authors, tags, series…
 - takeScreenshot: root-header-home-search
 - tapOn: 关闭|Close
+
+# Returning from Home must reopen the retained search page, without another push.
+- tapOn: 主页|首页|Home
+- assertVisible:
+    id: home-screen
+- tapOn: 搜索|Search
+- assertVisible: 搜索书名、作者、标签、丛书…|Search titles, authors, tags, series…
+- takeScreenshot: root-header-home-search-reopened
+- tapOn: 关闭|Close
 - runFlow: ../../common/tap_header_back.yaml
+- assertVisible:
+    id: library-import-book-button
+
+# Cold and warm visits must both return to the Library root after one back action.
+- repeat:
+    times: 2
+    commands:
+      - tapOn: 主页|首页|Home
+      - assertVisible:
+          id: home-screen
+      - tapOn: 搜索|Search
+      - assertVisible: 搜索书名、作者、标签、丛书…|Search titles, authors, tags, series…
+      - tapOn: 关闭|Close
+      - runFlow: ../../common/tap_header_back.yaml
+      - assertVisible:
+          id: library-import-book-button
 
 # Scenario: Library retains import in its content and shares the same header actions.
-- runFlow: ../../common/launch_preserving_data.yaml
-- openLink: myreadermobile://library
-- waitForAnimationToEnd
 - assertVisible:
     id: library-import-book-button
 - takeScreenshot: root-header-library
@@ -67,6 +90,7 @@ tags:
       - swipe:
           start: 50%,18%
           end: 50%,95%
+- waitForAnimationToEnd
 - tapOn: 搜索|Search
 - assertVisible: 搜索书名、作者、标签、丛书…|Search titles, authors, tags, series…
 - takeScreenshot: root-header-library-search
@@ -74,6 +98,7 @@ tags:
 - runFlow: ../../common/tap_header_back.yaml
 - tapOn:
     id: library-import-book-button
+- waitForAnimationToEnd
 - takeScreenshot: root-header-library-import
 - runFlow:
     when:

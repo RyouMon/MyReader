@@ -30,14 +30,17 @@ export function useLibraryRootHeader(title: string) {
       iconOnly: true,
       disabled: !canSearch,
       onPress: () =>
-        router.push({ pathname: "/library/catalog", params: { search: "1" } }),
+        router.navigate(
+          { pathname: "/library/catalog", params: { search: "1" } },
+          { withAnchor: true },
+        ),
     }),
     [canSearch, t],
   )
   const { options: baseOptions, toolbar: baseToolbar } = useScreenHeader({
     title,
     headerLargeTitle: true,
-    right: [searchAction, syncAction],
+    right: [syncAction, searchAction],
   })
 
   const options = useMemo((): NativeStackNavigationOptions => {

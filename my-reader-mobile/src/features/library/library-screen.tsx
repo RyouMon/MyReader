@@ -107,6 +107,7 @@ const EMPTY_TOKENS: CatalogToken[] = []
 
 type LibraryScreenProps = {
   initialSearchOpen?: boolean
+  onSearchClose?: () => void
   initialTokens?: CatalogToken[]
   libraryId?: string
   collectionId: BuiltInBookCollectionId
@@ -314,6 +315,7 @@ function LibraryUnavailableContent({
 
 export default function LibraryScreen({
   initialSearchOpen = false,
+  onSearchClose,
   collectionId,
   initialTokens = EMPTY_TOKENS,
   libraryId,
@@ -365,6 +367,7 @@ export default function LibraryScreen({
     effectiveLibraryId,
     initialSearchOpen,
     () => listRef.current?.scrollToOffset({ offset: 0, animated: false }),
+    onSearchClose,
   )
   const [sortBy, setSortBy] = useState<SortOption>(() =>
     defaultSortOptionForCollection(collectionId),

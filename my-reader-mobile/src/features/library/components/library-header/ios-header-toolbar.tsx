@@ -41,12 +41,13 @@ export function LibraryIosHeaderToolbar({
           accessibilityLabel={syncAction.label}
           disabled={syncAction.disabled}
           onPress={syncAction.onPress}
+          separateBackground
           tintColor={syncAction.color}
         >
           <Stack.Toolbar.Icon sf={syncAction.iosSfSymbol} />
         </Stack.Toolbar.Button>
       ) : null}
-      <Stack.Toolbar.Menu icon="slider.horizontal.3">
+      <Stack.Toolbar.Menu icon="slider.horizontal.3" separateBackground>
         <Stack.Toolbar.Menu inline title={t("library.sortLabel")}>
           {sortOptions.map((option) => (
             <Stack.Toolbar.MenuAction
@@ -73,6 +74,7 @@ export function LibraryIosHeaderToolbar({
       <Stack.Toolbar.Button
         accessibilityLabel={searchAction.label}
         onPress={searchAction.onPress}
+        separateBackground
       >
         <Stack.Toolbar.Icon sf={searchAction.iosSfSymbol!} />
       </Stack.Toolbar.Button>

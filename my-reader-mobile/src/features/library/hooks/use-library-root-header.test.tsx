@@ -61,7 +61,10 @@ jest.mock("expo-router", () => {
     )
   Toolbar.Icon = () => null
   Toolbar.Label = Native.Text
-  return { router: { push: jest.fn() }, Stack: { Toolbar } }
+  return {
+    router: { push: jest.fn(), navigate: jest.fn() },
+    Stack: { Toolbar },
+  }
 })
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -175,17 +178,17 @@ describe.each(["ios", "android"])("library root header on %s", (platform) => {
       right
         .getAllByRole("button")
         .map((button) => button.props.accessibilityLabel),
-    ).toEqual(["common.search", "Sync status: Idle"])
+    ).toEqual(["Sync status: Idle", "common.search"])
 
     fireEvent.press(left.getByRole("button", { name: "library.allLibraries" }))
     fireEvent.press(right.getByRole("button", { name: "common.search" }))
     fireEvent.press(right.getByRole("button", { name: "Sync status: Idle" }))
     const { router } = jest.requireMock("expo-router")
     expect(router.push).toHaveBeenNthCalledWith(1, "/switch-library")
-    expect(router.push).toHaveBeenNthCalledWith(2, {
-      pathname: "/library/catalog",
-      params: { search: "1" },
-    })
+    expect(router.navigate).toHaveBeenCalledWith(
+      { pathname: "/library/catalog", params: { search: "1" } },
+      { withAnchor: true },
+    )
     expect(mockSyncPress).toHaveBeenCalledTimes(1)
   })
 
@@ -205,6 +208,7 @@ describe.each(["ios", "android"])("library root header on %s", (platform) => {
     fireEvent.press(search)
     const { router } = jest.requireMock("expo-router")
     expect(router.push).not.toHaveBeenCalled()
+    expect(router.navigate).not.toHaveBeenCalled()
     expect(
       screen.getByRole("button", { name: "library.allLibraries" }),
     ).toBeEnabled()
