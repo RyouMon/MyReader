@@ -12,6 +12,7 @@ import {
 } from "@/src/components/ui/header-toolbar.android"
 import { HeaderToolbar } from "@/src/components/ui/header-toolbar"
 import { HeaderCloseButton } from "@/src/components/ui/button"
+import { ANDROID_HEADER_TITLE_STYLE } from "@/src/components/ui/android-header-layout"
 
 export type ScreenHeaderAction = {
   label: string
@@ -93,10 +94,11 @@ export function useScreenHeader({
   const androidOptions = useMemo((): NativeStackNavigationOptions => {
     if (Platform.OS !== "android") return {}
 
-    const options: NativeStackNavigationOptions = {}
+    const options: NativeStackNavigationOptions = {
+      headerTitleAlign: "left",
+      headerTitleStyle: ANDROID_HEADER_TITLE_STYLE,
+    }
     if (title !== undefined) options.title = title
-    if (headerLargeTitle !== undefined)
-      options.headerLargeTitle = headerLargeTitle
     if (headerShadowVisible !== undefined)
       options.headerShadowVisible = headerShadowVisible
 
@@ -116,7 +118,7 @@ export function useScreenHeader({
     }
 
     return options
-  }, [title, headerLargeTitle, headerShadowVisible, left, right])
+  }, [title, headerShadowVisible, left, right])
 
   const useLayoutClose = close?.variant === "layout"
 

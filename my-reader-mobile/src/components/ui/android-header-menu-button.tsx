@@ -1,13 +1,8 @@
-import { MenuView, type MenuComponentRef } from "@react-native-menu/menu"
+import { type MenuComponentRef, MenuView } from "@react-native-menu/menu"
 import type { RefObject } from "react"
-import { View, type ImageSourcePropType } from "react-native"
-
-import {
-  ANDROID_HEADER_ICON_SIZE,
-  AndroidHeaderSlot,
-  type AndroidHeaderSlotSide,
-} from "./android-header-layout"
+import { type ImageSourcePropType, View } from "react-native"
 import { AndroidHeaderIconButton } from "./android-header-icon-button"
+import { ANDROID_HEADER_BUTTON_SIZE } from "./android-header-layout"
 
 type AndroidHeaderMenuButtonProps = {
   menuRef: RefObject<MenuComponentRef | null>
@@ -15,7 +10,6 @@ type AndroidHeaderMenuButtonProps = {
   onPressAction: (event: string) => void
   icon: ImageSourcePropType
   accessibilityLabel: string
-  side?: AndroidHeaderSlotSide
   anchoredToRight?: boolean
 }
 
@@ -26,46 +20,36 @@ export function AndroidHeaderMenuButton({
   onPressAction,
   icon,
   accessibilityLabel,
-  side = "left",
   anchoredToRight = false,
 }: AndroidHeaderMenuButtonProps) {
   return (
-    <AndroidHeaderSlot side={side}>
-      <View
+    <View>
+      <MenuView
+        ref={menuRef}
+        actions={actions}
+        isAnchoredToRight={anchoredToRight}
+        onPressAction={({ nativeEvent }) => onPressAction(nativeEvent.event)}
         style={{
-          width: ANDROID_HEADER_ICON_SIZE,
-          height: ANDROID_HEADER_ICON_SIZE,
-          alignItems: "center",
-          justifyContent: "center",
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: ANDROID_HEADER_BUTTON_SIZE,
+          height: ANDROID_HEADER_BUTTON_SIZE,
+          opacity: 0,
         }}
       >
-        <MenuView
-          ref={menuRef}
-          actions={actions}
-          isAnchoredToRight={anchoredToRight}
-          onPressAction={({ nativeEvent }) => onPressAction(nativeEvent.event)}
+        <View
           style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: ANDROID_HEADER_ICON_SIZE,
-            height: ANDROID_HEADER_ICON_SIZE,
-            opacity: 0,
+            width: ANDROID_HEADER_BUTTON_SIZE,
+            height: ANDROID_HEADER_BUTTON_SIZE,
           }}
-        >
-          <View
-            style={{
-              width: ANDROID_HEADER_ICON_SIZE,
-              height: ANDROID_HEADER_ICON_SIZE,
-            }}
-          />
-        </MenuView>
-        <AndroidHeaderIconButton
-          icon={icon}
-          accessibilityLabel={accessibilityLabel}
-          onPress={() => menuRef.current?.show()}
         />
-      </View>
-    </AndroidHeaderSlot>
+      </MenuView>
+      <AndroidHeaderIconButton
+        icon={icon}
+        accessibilityLabel={accessibilityLabel}
+        onPress={() => menuRef.current?.show()}
+      />
+    </View>
   )
 }

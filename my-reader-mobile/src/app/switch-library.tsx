@@ -6,10 +6,15 @@ import { useTranslation } from "react-i18next"
 import { View as NativeView, Platform, ScrollView } from "react-native"
 
 import { AndroidHeaderIconButton } from "@/src/components/ui/android-header-icon-button"
+import {
+  ANDROID_HEADER_EDGE_INSET,
+  AndroidHeaderActions,
+  AndroidHeaderTitle,
+} from "@/src/components/ui/android-header-layout"
 import { useThemePalette } from "@/src/design/tokens"
 import { LibrarySwitcherList } from "@/src/features/library/components/library-switcher-list"
 import { useAppStore } from "@/src/store/app-store"
-import { Text, View } from "@/tw"
+import { View } from "@/tw"
 
 export default function LibrarySwitcherSheetRoute() {
   const { t } = useTranslation()
@@ -53,29 +58,29 @@ export default function LibrarySwitcherSheetRoute() {
         style={{ flex: 1, backgroundColor: palette.background }}
       >
         {Platform.OS === "android" ? (
-          <View className="h-16 flex-row items-center px-2">
-            <View className="w-12 items-start">
+          <View
+            className="min-h-14 flex-row items-center"
+            style={{ paddingHorizontal: ANDROID_HEADER_EDGE_INSET }}
+          >
+            <AndroidHeaderActions>
               <AndroidHeaderIconButton
                 accessibilityLabel={t("library.switchLibraryAlert.close")}
                 icon={CloseIcon}
                 onPress={dismiss}
                 testID="library-switcher-close-button"
               />
-            </View>
-            <Text
-              className="flex-1 text-center text-xl font-semibold"
-              style={{ color: palette.text }}
-            >
+            </AndroidHeaderActions>
+            <AndroidHeaderTitle color={palette.text}>
               {t("library.allLibraries")}
-            </Text>
-            <View className="w-12 items-end">
+            </AndroidHeaderTitle>
+            <AndroidHeaderActions>
               <AndroidHeaderIconButton
                 accessibilityLabel={t("addLibraryFlow.title")}
                 icon={AddIcon}
                 onPress={addLibrary}
                 testID="library-switcher-add-button"
               />
-            </View>
+            </AndroidHeaderActions>
           </View>
         ) : null}
         {hasLibraries ? (

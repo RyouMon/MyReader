@@ -26,12 +26,14 @@ it("starts with a search button and only opens the editor when requested", () =>
 
 it("closes the editor before navigating back on Android", () => {
   const subscribe = jest.spyOn(BackHandler, "addEventListener")
+  const onClose = jest.fn()
   const { result } = renderHook(() =>
-    useCatalogSearchPresentation("library", true),
+    useCatalogSearchPresentation("library", true, undefined, onClose),
   )
   const handler = subscribe.mock.calls.at(-1)![1]
   act(() => expect(handler({} as Parameters<typeof handler>[0])).toBe(true))
   expect(result.current.isOpen).toBe(false)
+  expect(onClose).toHaveBeenCalledTimes(1)
   subscribe.mockRestore()
 })
 

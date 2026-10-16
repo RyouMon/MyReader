@@ -8,6 +8,7 @@ export function useCatalogSearchPresentation(
   scope: string | null | undefined,
   initialOpen = false,
   onOpen?: () => void,
+  onClose?: () => void,
 ) {
   const { t } = useTranslation()
   const focused = useIsFocused()
@@ -16,7 +17,8 @@ export function useCatalogSearchPresentation(
   const close = useCallback(() => {
     Keyboard.dismiss()
     setIsOpen(false)
-  }, [])
+    onClose?.()
+  }, [onClose])
   useEffect(() => {
     if (!isOpen || !focused) return
     const subscription = BackHandler.addEventListener(

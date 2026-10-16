@@ -1,60 +1,53 @@
 import type { ReactNode } from "react"
-import { View, type ViewStyle } from "react-native"
+import type { ColorValue } from "react-native"
+import { Text, View } from "@/tw"
 
-/** Material top app bar icon touch target (dp). */
-export const ANDROID_HEADER_ICON_SIZE = 24
+/** Material icon buttons reserve their full touch target in the header layout. */
+export const ANDROID_HEADER_BUTTON_SIZE = 48
+/** Matches the horizontal content inset supplied by Android native-stack headers. */
+export const ANDROID_HEADER_EDGE_INSET = 16
+/** Match native-stack's Android system title in native and inline sheet headers. */
+export const ANDROID_HEADER_TITLE_STYLE = {
+  fontFamily: "sans-serif-medium",
+  fontSize: 20,
+  fontWeight: "normal",
+} as const
 
-/** Distance from screen edge to the icon button. Applied as View margin (native stack ignores containerStyle props). */
-export const ANDROID_HEADER_EDGE_INSET = 0
-
-/** Extra space between the leading icon slot and the title. Applied as trailing margin on left actions. */
-export const ANDROID_HEADER_TITLE_LEADING_GAP = 12
-
-export type AndroidHeaderSlotSide = "left" | "right"
-
-/** Margin styles that actually affect Android native-stack custom header slots. */
-export function androidHeaderSlotStyle(side: AndroidHeaderSlotSide): ViewStyle {
-  if (side === "left") {
-    return {
-      marginStart: ANDROID_HEADER_EDGE_INSET,
-      marginEnd: ANDROID_HEADER_TITLE_LEADING_GAP,
-    }
-  }
-
-  return {
-    marginStart: 0,
-    marginEnd: ANDROID_HEADER_EDGE_INSET,
-  }
-}
-
-type AndroidHeaderSlotProps = {
-  side: AndroidHeaderSlotSide
-  children: ReactNode
-}
-
-/** Fixed-size header icon slot so actions align with the title bar vertically. */
-export function AndroidHeaderSlot({ side, children }: AndroidHeaderSlotProps) {
+/** Android form sheets cannot show a native-stack header. */
+export function AndroidHeaderTitle({
+  children,
+  color,
+}: {
+  children: string
+  color: ColorValue
+}) {
   return (
-    <View
-      style={{
-        width: ANDROID_HEADER_ICON_SIZE,
-        height: ANDROID_HEADER_ICON_SIZE,
-        alignItems: "center",
-        justifyContent: "center",
-        ...androidHeaderSlotStyle(side),
-      }}
+    <Text
+      accessibilityRole="header"
+      className="flex-1"
+      maxFontSizeMultiplier={0}
+      numberOfLines={1}
+      style={[ANDROID_HEADER_TITLE_STYLE, { color }]}
     >
       {children}
-    </View>
+    </Text>
   )
 }
 
-/** Wraps a header action renderer so it occupies the standard icon slot. */
+type AndroidHeaderActionsProps = {
+  children: ReactNode
+}
+
+/** One row per native-stack header side; each child keeps its own measured width. */
+export function AndroidHeaderActions({ children }: AndroidHeaderActionsProps) {
+  return <View className="flex-row items-center">{children}</View>
+}
+
+/** Let native-stack apply its edge spacing around the complete action group. */
 export function wrapAndroidHeaderAction(
-  side: AndroidHeaderSlotSide,
   render: () => ReactNode,
 ): () => ReactNode {
   return function AndroidHeaderAction() {
-    return <AndroidHeaderSlot side={side}>{render()}</AndroidHeaderSlot>
+    return <AndroidHeaderActions>{render()}</AndroidHeaderActions>
   }
 }
