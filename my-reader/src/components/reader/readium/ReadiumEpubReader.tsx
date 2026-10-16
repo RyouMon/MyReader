@@ -1,3 +1,4 @@
+import { epubPageImages } from "@/lib/reader-image"
 import { useReaderNavigationHistory } from "@/hooks/reader/useReaderNavigationHistory"
 import { errorMessage } from "@/lib/error-presentation"
 import {
@@ -719,6 +720,7 @@ function setReaderFontInIframeDocs(
 
 export type ReadiumEpubReaderProps = {
   bookTitle: string
+  bookAuthors?: string[]
   publication: Publication
   initialSavedLocator: Locator | null
   libraryId: string | null
@@ -729,6 +731,7 @@ export type ReadiumEpubReaderProps = {
 
 function useEpubReaderController({
   bookTitle,
+  bookAuthors,
   publication,
   initialSavedLocator,
   libraryId,
@@ -2386,6 +2389,19 @@ function useEpubReaderController({
     readerSettings,
     isFixedLayout,
     bookTitle,
+    bookAuthors,
+    getPageImages: async () => {
+      const container = containerRef.current
+      const nav = navigatorRef.current
+      if (!container || !nav) throw new Error("READER_NOT_READY")
+      const positions = nav.viewport.positions
+      const start = positions?.[0] ?? nav.currentLocator.locations.position ?? 1
+      return epubPageImages(
+        container,
+        start,
+        positions?.[positions.length - 1] ?? start,
+      )
+    },
     chapterTitle,
     readerBookmarks,
     annotationsAvailable,

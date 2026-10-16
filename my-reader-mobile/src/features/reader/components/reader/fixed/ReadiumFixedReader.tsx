@@ -1,3 +1,5 @@
+import type { ReaderImageBook } from "@my-reader/tools/reader-image-export"
+import { useReaderImageActions } from "../use-reader-image-actions"
 import {
   resolveReaderStart,
   readerProgress,
@@ -40,10 +42,12 @@ import {
 const PROGRESS_PERCENT_MULTIPLIER = 100
 
 export type ReadiumFixedReaderRef = {
+  sharePage: () => Promise<void>
   goTo: (locator: Locator) => void
 }
 
 export type ReadiumFixedReaderProps = {
+  imageBook?: ReaderImageBook
   /** Native filesystem path to the CBZ archive. */
   filePath: string
   /** Restored Readium Locator used as `ReadiumFile.initialLocation`. */
@@ -87,6 +91,7 @@ const ReadiumFixedReader = forwardRef<
 >(function ReadiumFixedReader(
   {
     filePath,
+    imageBook,
     initialLocator,
     onStateChange,
     onPositionsReady,
@@ -102,6 +107,7 @@ const ReadiumFixedReader = forwardRef<
   ref,
 ) {
   const readiumRef = useRef<ReadiumViewRef>(null)
+  const imageActions = useReaderImageActions(readiumRef, imageBook)
   const tocItemsRef = useRef<ReaderTocItem[]>([])
   const positionsRef = useRef<Locator[]>([])
   const currentLocatorRef = useRef<Locator | null>(null)
@@ -113,9 +119,10 @@ const ReadiumFixedReader = forwardRef<
   useImperativeHandle(
     ref,
     () => ({
+      sharePage: imageActions.sharePage,
       goTo: (locator: Locator) => readiumRef.current?.goTo(locator),
     }),
-    [],
+    [imageActions.sharePage],
   )
 
   // Android resolves foreign locators before creating its navigator.
@@ -291,6 +298,7 @@ const ReadiumFixedReader = forwardRef<
         // touch handlers don't receive events on Android because the native
         // reader view consumes them.
         onTap={onToggleChrome}
+        onImagePress={imageActions.onImagePress}
       />
     </View>
   )

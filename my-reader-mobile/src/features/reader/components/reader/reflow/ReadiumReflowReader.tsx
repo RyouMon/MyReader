@@ -1,3 +1,5 @@
+import type { ReaderImageBook } from "@my-reader/tools/reader-image-export"
+import { useReaderImageActions } from "../use-reader-image-actions"
 import {
   resolveReaderStart,
   readerProgress,
@@ -68,6 +70,7 @@ const NO_READER_CAPABILITIES: ReaderCapabilities = {
 }
 
 export type ReadiumReflowReaderRef = {
+  sharePage: () => Promise<void>
   goTo: (locator: Locator, tocItem?: ReaderTocItem) => void
   clearSelection: () => void
   getBookmarkLocator: () => Promise<Locator | null>
@@ -99,6 +102,7 @@ export type ReadiumReflowReaderRef = {
 }
 
 export type ReadiumReflowReaderProps = {
+  imageBook?: ReaderImageBook
   /** Native filesystem path to the EPUB archive（`toNativeFilesystemPath(fileUri)`）。 */
   epubPath: string
   /** 自 DB 恢复的 Readium Locator，作为 `ReadiumFile.initialLocation` 传给原生层。 */
@@ -144,6 +148,7 @@ const ReadiumReflowReader = forwardRef<
 >(function ReadiumReflowReader(
   {
     epubPath,
+    imageBook,
     initialLocator,
     onStateChange,
     onPositionsReady,
@@ -177,6 +182,7 @@ const ReadiumReflowReader = forwardRef<
   ref,
 ) {
   const readiumRef = useRef<ReadiumViewRef>(null)
+  const imageActions = useReaderImageActions(readiumRef, imageBook)
   const tocItemsRef = useRef<ReaderTocItem[]>([])
   const selectedTocItemRef = useRef<ReaderTocItem | null>(null)
   const positionsRef = useRef<Locator[]>([])
@@ -191,6 +197,7 @@ const ReadiumReflowReader = forwardRef<
   useImperativeHandle(
     ref,
     () => ({
+      sharePage: imageActions.sharePage,
       goTo: (locator: Locator, tocItem?: ReaderTocItem) => {
         selectedTocItemRef.current = tocItem ?? null
         readiumRef.current?.goTo(locator)
@@ -226,7 +233,7 @@ const ReadiumReflowReader = forwardRef<
       completeTtsSynthesis: (completion) =>
         readiumRef.current?.completeTtsSynthesis(completion),
     }),
-    [],
+    [imageActions.sharePage],
   )
 
   // Android resolves foreign locators before creating its navigator.
@@ -504,6 +511,7 @@ const ReadiumReflowReader = forwardRef<
         // touch handlers don't receive events on Android because the native
         // reader view consumes them.
         onTap={onToggleChrome}
+        onImagePress={imageActions.onImagePress}
       />
     </View>
   )

@@ -482,6 +482,10 @@ export function EpubReaderView({ state }: { state: EpubReaderViewState }) {
 
   return (
     <ReaderChromeShell
+      imageActions
+      bookAuthors={state.bookAuthors}
+      imagePosition={state.bottomPositionCurrent ?? 1}
+      getPageImages={state.getPageImages}
       historyNavigation={
         <ReaderNavigationButtons
           history={state.history}

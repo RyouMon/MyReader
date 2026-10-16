@@ -162,6 +162,17 @@
     }
   },
   "reader": {
+    "copyImage": "Copiar imagen",
+    "saveImage": "Guardar imagen…",
+    "saveImageToPhotos": "Guardar en Fotos",
+    "saveImageToFiles": "Guardar en Archivos",
+    "imageCopied": "Imagen copiada",
+    "imageSaved": "Imagen guardada",
+    "imageActionFailed": "No se pudo exportar la imagen. Inténtalo de nuevo.",
+    "sharePage": "Compartir",
+    "imageMore": "Más",
+    "image": "Imagen",
+    "imagePhotoPermission": "Se necesita permiso para añadir la imagen a Fotos.",
     "navigationBack": "Volver a la posición anterior",
     "navigationForward": "Ir a la posición siguiente",
     "background": "Antecedentes",

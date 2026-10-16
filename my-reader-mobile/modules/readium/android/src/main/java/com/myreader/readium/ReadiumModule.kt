@@ -61,6 +61,7 @@ class ReadiumModule : Module() {
         "onSelectionChange",
         "onSelectionAction",
         "onTap",
+        "onImagePress",
         "onTtsStateChange",
         "onTtsSynthesisRequest",
         "onTtsSynthesisCancel"
@@ -140,6 +141,11 @@ class ReadiumModule : Module() {
 
     AsyncFunction("clearSelection") { tag: Int ->
       ReadiumView.registry[tag]?.clearSelection()
+    }
+
+    AsyncFunction("exportImages") Coroutine { tag: Int, href: String? ->
+      val view = ReadiumView.registry[tag] ?: error("Reader unavailable")
+      view.exportImages(href)
     }
 
     AsyncFunction("getBookmarkLocator") Coroutine { tag: Int ->

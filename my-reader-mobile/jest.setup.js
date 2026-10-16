@@ -121,3 +121,7 @@ jest.mock("@my-reader/readium", () => {
     }),
   }
 })
+jest.mock("expo-media-library", () => ({
+  Asset: { create: jest.fn() },
+  requestPermissionsAsync: jest.fn(),
+}))

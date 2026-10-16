@@ -214,6 +214,12 @@ WebDAV 密码与 OneDrive token 存在系统凭据存储中，不写入前端持
 
 桌面 Reader、资源 protocol、HTTP streamer 和窗口生命周期是桌面平台实现，不进入 core。
 
+macOS/Windows 的图片菜单直接保存 EPUB/CBZ 资源；PDF 图片命中和裁剪复用 PDF.js
+`TextLayerImages`，不承诺恢复 PDF 内嵌原始编码。页面分享按实际显示数量输出：CBZ 可见页原图、
+PDF 可见页渲染图、EPUB 可见页/栏截图。EPUB 截图由 WebKit/WebView2 捕获，隐藏阅读器
+工具栏后交给系统分享面板；临时分享文件保留 24 小时供接收应用读取，下次导出时清理。
+Linux 暂不提供图片操作或页面分享入口。
+
 ## 5. 移动端
 
 ### 5.1 分层
@@ -251,6 +257,15 @@ FFI 门面，不实现 SQL、合并策略或第二套业务规则。
 Selection、Decoration 和原生 View 转换。iOS 使用 Readium Swift Toolkit，Android 使用 Readium
 Kotlin Toolkit。TTS 同样由该 bridge 组合 Readium 会话与系统或 Core 远端引擎；Reader bridge 与
 `my-reader-core` 的业务 binding 是两个独立平台边界。
+
+图片操作也留在 Reader bridge：EPUB/CBZ 长按定位图片后，通过 Publication resource 读取原文件；
+移动端 PDF 不提供单张插图操作。`exportImages` 返回当前可见页或选中资源的临时文件 URI、文件名、页码/位置和 MIME 类型，
+React Native 负责复制、文件选择器、按需申请相册添加权限和 `expo-sharing` 分享。
+页面分享遵循与桌面相同的格式约定；iOS PDF 使用 PDFKit，Android PDF 使用系统 PdfRenderer
+生成当前可见页面，EPUB 按实际栏数截取原生阅读视图，避免包含 React Native 阅读器工具栏。
+CBZ 单页分享一张原图、双页分享两张原图；`expo-sharing` 补丁将多文件交给系统分享面板。
+该模块通过 Expo Autolinking 的 `buildFromSource` 编译，确保多文件补丁进入原生构建。
+保存与分享统一使用 `作者-书名-N.扩展名`，作者缺失时为 `书名-N.扩展名`，N 为对应页码或位置。
 
 ## 6. 数据与持久化
 

@@ -1,3 +1,4 @@
+import type { ReaderImageFile } from "./ReadiumView.types"
 import { requireNativeModule } from "expo"
 
 import type {
@@ -23,6 +24,7 @@ import type {
  * open-architecture extension points (REP-003~007).
  */
 export type ReadiumModuleMethods = {
+  exportImages: (tag: number, href: string | null) => Promise<ReaderImageFile[]>
   // Imperative navigation (view-tag based)
   goTo: (
     tag: number,

@@ -160,6 +160,17 @@
     }
   },
   "reader": {
+    "copyImage": "이미지 복사",
+    "saveImage": "이미지 저장…",
+    "saveImageToPhotos": "사진에 저장",
+    "saveImageToFiles": "파일에 저장",
+    "imageCopied": "이미지를 복사했습니다",
+    "imageSaved": "이미지를 저장했습니다",
+    "imageActionFailed": "이미지를 내보내지 못했습니다. 다시 시도해 주세요.",
+    "sharePage": "공유",
+    "imageMore": "더 보기",
+    "image": "이미지",
+    "imagePhotoPermission": "이미지를 저장하려면 사진 추가 권한이 필요합니다.",
     "navigationBack": "이전 읽기 위치로 돌아가기",
     "navigationForward": "다음 읽기 위치로 이동",
     "background": "배경",

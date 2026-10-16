@@ -25,6 +25,8 @@ pub mod favorite;
 pub mod library;
 pub mod progress;
 pub mod reader;
+pub mod reader_image;
+mod reader_snapshot;
 pub mod reading_statistics;
 pub mod source;
 pub mod sync;

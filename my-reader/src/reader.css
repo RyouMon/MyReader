@@ -1028,3 +1028,26 @@
     transition-delay: 0ms;
   }
 }
+
+/* Native page captures include only the publication surface. */
+.reader-image-capture .reader-window-paper > :not(.reader-window-content) {
+  visibility: hidden !important;
+}
+.reader-image-capture [data-radix-popper-content-wrapper],
+.reader-image-capture [data-sonner-toaster] {
+  visibility: hidden !important;
+}
+.reader-image-capture
+  .reader-window-content
+  > :not(:has([data-reader-share-surface])):not([data-reader-share-surface]) {
+  visibility: hidden !important;
+}
+.textLayerImages {
+  position: absolute;
+  overflow: clip;
+  pointer-events: none;
+  user-select: none;
+}
+.textLayerImages canvas {
+  pointer-events: auto;
+}

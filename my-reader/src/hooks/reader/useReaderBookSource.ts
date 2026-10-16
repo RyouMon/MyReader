@@ -75,6 +75,7 @@ export function useReaderBookSource({
   const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
 
   const [bookTitle, setBookTitle] = useState("")
+  const [bookAuthors, setBookAuthors] = useState<string[]>([])
   const [format, setFormat] = useState("")
   const [bookPayload, setBookPayload] = useState<{
     source: {
@@ -229,6 +230,7 @@ export function useReaderBookSource({
         if (cancelled) return
 
         setBookTitle(detail.title)
+        setBookAuthors(detail.authors)
         if (isTauri()) {
           void WebviewWindow.getCurrent().setTitle(detail.title)
         }
@@ -343,6 +345,7 @@ export function useReaderBookSource({
   return {
     bookId: Number(bookId),
     bookTitle,
+    bookAuthors,
     format,
     bookPayload,
     fetchError,

@@ -54,6 +54,7 @@ type Props = {
   showSearchAction: boolean
   showBookmarksAndNotesAction: boolean
   showTtsSettingsAction: boolean
+  onShare?: () => void
   onOpenToc: () => void
   onOpenBookmarksAndNotes: () => void
   onOpenSearch: () => void
@@ -120,6 +121,7 @@ export default function ReaderActionsExpanded({
   showSearchAction,
   showBookmarksAndNotesAction,
   showTtsSettingsAction,
+  onShare,
   onOpenToc,
   onOpenBookmarksAndNotes,
   onOpenSearch,
@@ -184,6 +186,34 @@ export default function ReaderActionsExpanded({
           onPreviewPosition={onPreviewPosition}
           onCommitPosition={onCommitPosition}
         />
+
+        {onShare ? (
+          <ExpandedActionButton
+            accessibilityLabel={t("reader.sharePage")}
+            actionPillWidth={actionPillWidth}
+            palette={palette}
+            onPress={onShare}
+          >
+            <RNView
+              style={[styles.pillInner, styles.pillContent]}
+              accessibilityElementsHidden
+            >
+              <Text
+                className="min-w-0 flex-1 text-lg font-semibold"
+                style={{ color: palette.actionText }}
+              >
+                {t("reader.sharePage")}
+              </Text>
+              <RNView style={styles.pillIcon}>
+                <ReaderChromeIcon
+                  name="share"
+                  size={READER_EXPANDED_ACTION_ICON_SIZE}
+                  color={palette.actionText}
+                />
+              </RNView>
+            </RNView>
+          </ExpandedActionButton>
+        ) : null}
 
         {showBookmarksAndNotesAction ? (
           <ExpandedActionButton

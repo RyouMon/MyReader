@@ -161,6 +161,17 @@
     }
   },
   "reader": {
+    "copyImage": "Bild kopieren",
+    "saveImage": "Bild speichern…",
+    "saveImageToPhotos": "In Fotos sichern",
+    "saveImageToFiles": "In Dateien sichern",
+    "imageCopied": "Bild kopiert",
+    "imageSaved": "Bild gespeichert",
+    "imageActionFailed": "Das Bild konnte nicht exportiert werden. Bitte erneut versuchen.",
+    "sharePage": "Teilen",
+    "imageMore": "Mehr",
+    "image": "Bild",
+    "imagePhotoPermission": "Zum Speichern ist die Berechtigung zum Hinzufügen von Fotos erforderlich.",
     "navigationBack": "Zum vorherigen Lesepunkt zurück",
     "navigationForward": "Zum nächsten Lesepunkt vor",
     "background": "Hintergrund",

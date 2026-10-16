@@ -1,0 +1,16 @@
+// Exercise the installed pnpm patch, using the same module and Expo APIs as the app.
+gradle.beforeProject { project ->
+  project.plugins.withId('com.android.library') {
+    if (project.name == 'expo-sharing') {
+      project.android.sourceSets.getByName('test').java.srcDir(
+        new File(gradle.startParameter.currentDir, '../tests/native-sharing/android'))
+      project.android.testOptions.unitTests.includeAndroidResources = true
+      project.android.testOptions.unitTests.all {
+        systemProperty 'robolectric.dependency.repo.url', 'https://repo.maven.apache.org/maven2'
+      }
+      project.dependencies.add('testImplementation', 'junit:junit:4.13.2')
+      project.dependencies.add('testImplementation', 'org.robolectric:robolectric:4.16.1')
+      project.dependencies.add('testImplementation', 'io.mockk:mockk:1.14.9')
+    }
+  }
+}

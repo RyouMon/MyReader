@@ -53,6 +53,7 @@ import org.readium.r2.navigator.preferences.FontFamily
 import org.readium.r2.shared.ExperimentalReadiumApi
 import org.readium.r2.shared.publication.Locator
 import org.readium.r2.shared.publication.Publication
+import org.readium.r2.shared.publication.services.positions
 import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener
@@ -103,6 +104,25 @@ class EpubReaderFragment : VisualReaderFragment() {
     var onTtsSynthesisRequest: ((Map<String, Any?>) -> Unit)? = null
     var onTtsSynthesisCancel: ((Map<String, Any?>) -> Unit)? = null
     var onTtsFollowTextNavigation: ((String, Locator, Boolean) -> Unit)? = null
+
+    suspend fun imagePagePositions(): List<Int> {
+      val location = imageLocation ?: error("Reader not ready")
+      val layout = decodeJavascriptValue(navigatorFragment.evaluateJavascript("""
+        (() => {
+          const style = getComputedStyle(document.documentElement);
+          const columns = Math.max(1, Math.min(2, Number(style.getPropertyValue('--RS__colCount')) || Number(style.columnCount) || 1));
+          return {columns, step: innerWidth / Math.max(innerWidth, document.documentElement.scrollWidth) / columns};
+        })()
+      """)) as? JSONObject ?: error("Reader not ready")
+      val positions = publication.positions().filter { it.href == location.href }
+      return (0 until layout.getInt("columns")).map { index ->
+        if (index == 0 || positions.isEmpty()) location.locations.position ?: 1
+        else {
+          val progression = (location.locations.progression ?: 0.0) + layout.getDouble("step") * index
+          positions[kotlin.math.ceil(progression * (positions.size - 1)).toInt().coerceIn(positions.indices)].locations.position ?: 1
+        }
+      }
+    }
 
     suspend fun captureViewportAnchor(): ViewportAnchor? {
       if (!this::navigatorFragment.isInitialized) return null
@@ -444,9 +464,21 @@ class EpubReaderFragment : VisualReaderFragment() {
               paginationListener = object : EpubNavigatorFragment.PaginationListener {
                 override fun onPageLoaded() {
                   firstPageLoaded.complete(Unit)
+                  view?.post {
+                    view?.let { root ->
+                      val script = requireContext().assets.open("reader-image-actions.js").bufferedReader().use { it.readText() }
+                      ReaderImageExport.installScript(root, script)
+                    }
+                  }
                 }
               },
               configuration = EpubNavigatorFragment.Configuration {
+                registerJavascriptInterface("ReaderImage") { _ ->
+                  ReaderImageBridge { source ->
+                    val href = ReaderImageExport.imageHref(model.publication, source)
+                    if (href != null) view?.post { onImagePress?.invoke(href) }
+                  }
+                }
                 decorationTemplates = readerDecorationTemplates()
                 val assetPatterns = fontFamilyDeclarations
                   .flatMap { it.fontFaces.orEmpty() }

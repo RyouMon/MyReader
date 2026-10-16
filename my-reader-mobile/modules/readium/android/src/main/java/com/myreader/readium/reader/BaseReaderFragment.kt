@@ -36,6 +36,8 @@ abstract class BaseReaderFragment : Fragment() {
 
   protected abstract val model: ReaderViewModel
   protected abstract val navigator: Navigator
+  val imageLocation: Locator? get() = navigator.currentLocator.value
+  var onImagePress: ((String) -> Unit)? = null
   var onInternalLinkNavigation: (() -> Unit)? = null
   var onUserNavigationIntent: (() -> Unit)? = null
   var onUserNavigationGestureStart: (() -> Unit)? = null

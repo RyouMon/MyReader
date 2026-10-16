@@ -22,6 +22,7 @@ public final class ReadiumModule: Module {
         "onSelectionChange",
         "onSelectionAction",
         "onTap",
+        "onImagePress",
         "onTtsStateChange",
         "onTtsSynthesisRequest",
         "onTtsSynthesisCancel"
@@ -108,6 +109,14 @@ public final class ReadiumModule: Module {
     }
     AsyncFunction("clearSelection") { (tag: Int) in
       ReadiumView.registry[tag]?.clearSelection()
+    }
+    AsyncFunction("exportImages") { (tag: Int, href: String?, promise: Promise) in
+      Task { @MainActor in
+        do {
+          guard let view = ReadiumView.registry[tag] else { throw NSError(domain: "ReadiumImage", code: 2) }
+          promise.resolve(try await view.exportImages(href: href))
+        } catch { promise.reject("ERR_READER_IMAGE", error.localizedDescription) }
+      }
     }
     AsyncFunction("getBookmarkLocator") { (tag: Int, promise: Promise) in
       Task { @MainActor in

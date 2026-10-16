@@ -43,6 +43,12 @@ export const commands = {
 	copyBookFilePath: (libraryId: string, bookId: number, format: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("copy_book_file_path", { libraryId, bookId, format })),
 	revealBookFile: (libraryId: string, bookId: number, format: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("reveal_book_file", { libraryId, bookId, format })),
 	saveBookFileAs: (libraryId: string, bookId: number, format: string) => typedError<boolean, ErrorKind>(__TAURI_INVOKE("save_book_file_as", { libraryId, bookId, format })),
+	readerImageAction: (action: ReaderImageAction, name: string, data: string | null, capture: {
+	x: number | null,
+	y: number | null,
+	width: number | null,
+	height: number | null,
+} | null) => typedError<string | null, ErrorKind>(__TAURI_INVOKE("reader_image_action", { action, name, data, capture })),
 	listBookReadingFormats: (libraryId: string) => typedError<{ [key in string]: string }, ErrorKind>(__TAURI_INVOKE("list_book_reading_formats", { libraryId })),
 	setBookReadingFormat: (libraryId: string, bookId: number, format: string | null) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_book_reading_format", { libraryId, bookId, format })),
 	listFavoriteBookIds: (libraryId: string | null) => typedError<number[], ErrorKind>(__TAURI_INVOKE("list_favorite_book_ids", { libraryId })),
@@ -346,6 +352,15 @@ export type ReaderBookmarkDto = {
 	createdAt: number | null,
 	updatedAt: number | null,
 };
+
+export type ReaderCaptureRect = {
+	x: number | null,
+	y: number | null,
+	width: number | null,
+	height: number | null,
+};
+
+export type ReaderImageAction = "copy" | "save" | "prepareShare";
 
 export type ReaderSettingsDto = {
 	theme?: string,

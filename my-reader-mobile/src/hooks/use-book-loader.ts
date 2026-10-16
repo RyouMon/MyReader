@@ -102,6 +102,7 @@ type ReadyBookLoad = {
   bookId: number
   format: string
   title: string
+  authors?: string[]
   languages: string[]
   initialPage: number
   initialLocator: Locator | null
@@ -355,6 +356,7 @@ export function useBookLoader(
           bookId: calibreId,
           format: fmt,
           title: detail.title,
+          authors: detail.authors,
           languages: detail.languages,
           initialPage,
           initialLocator,
