@@ -7,11 +7,13 @@ Quality 在 PR、主分支推送和手动执行时运行；其他分支的普通
 完整单测、变异测试、联网依赖审计、iOS Readium 无缓存依赖安装，以及 JS、Rust、Swift 和
 Android Java / Kotlin 覆盖率报告。主分支推送保存后续 PR 使用的基准。
 
-主分支要求 `QA` 和 `Unit tests` 两个聚合检查成功；所依赖的任务失败、取消或意外跳过均不会
+主分支要求 `QA`、`Unit tests` 和 `Changed-line coverage` 三个聚合检查成功；所依赖的任务失败、取消或意外跳过均不会
 放行。`QA` 汇总静态检查、iOS 依赖安装、变异测试、Rust 门禁和安全审计，`Unit tests` 汇总五包 JS 与
 Cargo workspace 完整单测、原生覆盖率测试及报告任务的执行结果。覆盖率任务独立运行、上传报告，
-PR 按语言展示全量和增量行覆盖率；80% 增量目标仅作参考，不阻止合入。
+PR 按语言展示全量和增量行覆盖率；JS/TS、Rust、Swift、Java/Kotlin 的增量行覆盖率分别必须达到 80%。
+`Changed-line coverage` 拒绝任一语言低于门槛，不按跨语言平均值放行，也不将 79.99% 四舍五入为通过。
 其中的测试、编译、采集、必需报告或基准制品上传失败仍会阻止合入。
+80% 是最低要求，不是测试完备的证明；达到门槛后仍须补齐未保护的重要行为，不写无意义测试凑数字。
 通过后仍需人工审核合入。
 
 Rust 门禁在 Linux 和 Windows MSVC 上运行相同的格式检查、Clippy 和完整 Cargo workspace 测试。
@@ -117,31 +119,35 @@ dependency-cruiser 使用独立的 `scripts/quality/tsconfig.mobile.json` 适配
 
 使用固定提交版本的 [getsentry/coverage-action](https://github.com/getsentry/coverage-action)，
 在 GitHub Artifacts 保存基准并在 Actions 摘要展示每组覆盖率及未覆盖行。PR 只更新一条汇总评论。
-配置入口为 `.github/coverage.yml`，全量与增量状态均为 `informational: true`。
-当前没有新增百分比硬门禁；以后启用时必须按语言独立校验，不用跨语言平均值放行。
+配置入口为 `.github/coverage.yml`，全量保持 `informational: true`，增量目标为 80% 且
+`informational: false`。Action 开启 `fail-on-error`，并使用编译器行计数独立验证门槛；
+fork PR 即使没有状态写权限也执行相同校验。某组失败后仍生成其余语言的报告及汇总评论。
 
 采集范围：
 
 - JS / TS：现有五个包的 Vitest / Jest 源码范围，不额外运行一套报告专用测试。
-- Rust：Core / FFI 的 LLVM 行覆盖率；不代表桌面 Tauri 适配层。
+- Rust：Core / FFI 与 Tauri 的 LLVM 行覆盖率；Tauri 在 macOS / Windows 运行完整原生测试并合并命中。
 - Swift：完整 `Readium-Unit-Tests` scheme，插桩 Readium 和 ExpoSharing，
   从 Xcode 生成的 LLVM profile 导出 LCOV。运行入口见 [原生测试](../my-reader-mobile/modules/readium/README.md#native-tests)。
 - Android：Readium 与 patched ExpoSharing 的完整 JVM 测试，以及模拟器上的 Readium 设备测试。
   使用 Android Gradle Plugin 的 JaCoCo 任务，合并同一源码行的 JVM / 设备命中，不重复计数。
 
 Swift / Android 暂不代表 book-transition、security-scoped-bookmarks 或生成的 Core binding。
-原生测试、生成文件和 Readium 上游 Toolkit 不计入产品行覆盖率。对 expo-sharing 只计入
+原生测试、生成文件和 Readium 上游 Toolkit 不计入产品行覆盖率。桌面浏览器集成测试文件也不计入产品分母；
+共享的图片长按脚本纳入 JS 采集，继续由手势测试保护。对 expo-sharing 只计入
 仓库补丁新增的可执行行，并将已安装源码的命中映射回 `.patch` 文件，便于 PR 中定位。
 跨 runner 的绝对路径转换为仓库路径，使主分支和 PR 可以比较。
 
 主分支首次运行前显示 `No base report`，不把缺失基准解释成零变化。之后 Action 比较最近可用的
 主分支报告；这是主分支报告间的比较，不保证基准恰好是 PR 的共同祖先。增量按本次 PR 的实际
-改动行计算。没有测得新增可执行行时，汇总评论显示 N/A；覆盖率不是未采集模块的通过证明。
+改动行计算。没有测得新增可执行行时，汇总评论显示 N/A。变更的手写产品源码如果没有报告会失败，
+不能把漏采文件当作 N/A；不包含可执行逻辑的类型声明、模块声明、翻译表和生成文件除外。
+尚未采集的模块有代码变更时，必须先补采集。
 首次将工作流合入主分支后才会生成该分支的新基准，不能把特性分支结果冒充主分支基准。
 
 报告任务需要 `actions: read`、`statuses: write` 和 `pull-requests: write`，写权限仅授予该任务。
 fork PR 仍运行测试并展示 Actions 摘要，受 GitHub 只读令牌限制不发布评论或状态；不使用
-`pull_request_target` 执行外部 PR 代码。报告制品缺失始终失败；低覆盖率只展示，不改写已有基线。
+`pull_request_target` 执行外部 PR 代码。报告制品缺失始终失败；增量低于 80% 阻断合入，不改写已有基线。
 
 `native-coverage.py` 的 `prepare-swift` 和 `swift-llvm` 子命令用于准备插桩 scheme、导出 Xcode
 profile；`jacoco` 子命令导出指定 Java / Kotlin 源码根目录的行命中。

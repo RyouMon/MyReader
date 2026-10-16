@@ -33,6 +33,7 @@ function setup(images = [image]) {
 describe("reader image actions", () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    jest.spyOn(console, "error").mockImplementation(() => {})
     jest.spyOn(Alert, "alert").mockImplementation(() => {})
     ;(File as unknown as jest.Mock).mockImplementation((uri: string) => ({
       uri,
@@ -43,6 +44,7 @@ describe("reader image actions", () => {
       copy: jest.fn(),
     }))
   })
+  afterEach(() => jest.restoreAllMocks())
 
   it("shares the native current-page file without decoding or re-encoding it", async () => {
     const { result, exportImages } = setup()
@@ -121,5 +123,90 @@ describe("reader image actions", () => {
     expect(requestPermissionsAsync).toHaveBeenCalledWith(true, ["photo"])
     expect(Asset.create).not.toHaveBeenCalled()
     expect(Alert.alert).toHaveBeenCalled()
+  })
+
+  it("saves the selected original to the chosen directory with its book and position name", async () => {
+    const destination = { uri: "file:///chosen/张三-山海-2.jpg" }
+    const createFile = jest.fn().mockReturnValue(destination)
+    ;(Directory.pickDirectoryAsync as jest.Mock).mockResolvedValue({
+      createFile,
+    })
+    const { exportImages } = await choose(1)
+    expect(exportImages).toHaveBeenCalledWith("images/original.jpg")
+    expect(createFile).toHaveBeenCalledWith("张三-山海-2.jpg", "image/jpeg")
+    expect(
+      (File as unknown as jest.Mock).mock.results[1]!.value.copy,
+    ).toHaveBeenCalledWith(destination)
+    expect(shareAsync).not.toHaveBeenCalled()
+  })
+
+  it("adds an original to Photos only after add-only permission is granted", async () => {
+    ;(requestPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true })
+    await choose(2)
+    expect(Asset.create).toHaveBeenCalledWith("file:///cache/张三-山海-2.jpg")
+    expect(setImageAsync).not.toHaveBeenCalled()
+  })
+
+  it("shares mixed-format spreads without losing the second attachment", async () => {
+    const { result } = setup([
+      image,
+      {
+        ...image,
+        uri: "file:///cache/second.png",
+        name: "second.png",
+        mimeType: "image/png",
+        position: 3,
+      },
+    ])
+    await act(() => result.current.sharePage())
+    expect(shareAsync).toHaveBeenCalledWith("file:///cache/张三-山海-2.jpg", {
+      mimeType: "image/*",
+      additionalUrls: ["file:///cache/张三-山海-3.png"],
+    })
+  })
+
+  it("prevents duplicate exports and restores the action after failure", async () => {
+    const { result, exportImages } = setup()
+    let reject!: (error: Error) => void
+    exportImages.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, fail) => {
+          reject = fail
+        }),
+    )
+    let pending!: Promise<void>
+    act(() => {
+      pending = result.current.sharePage()
+    })
+    await act(() => result.current.sharePage())
+    expect(exportImages).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      reject(new Error("Reader closed"))
+      await pending
+    })
+    expect(shareAsync).not.toHaveBeenCalled()
+    expect(Alert.alert).toHaveBeenCalledTimes(1)
+    await act(() => result.current.sharePage())
+    expect(shareAsync).toHaveBeenCalledTimes(1)
+  })
+
+  it("rejects an empty export instead of sharing a previously saved page", async () => {
+    const { result } = setup([])
+    await act(() => result.current.sharePage())
+    expect(shareAsync).not.toHaveBeenCalled()
+    expect(Alert.alert).toHaveBeenCalledTimes(1)
+  })
+
+  it("Android image menus export only the selected image when the user chooses copy", async () => {
+    jest.replaceProperty(Platform, "OS", "android")
+    const { result, exportImages } = setup()
+    act(() => result.current.onImagePress({ href: "images/2.jpg" }))
+    expect(exportImages).not.toHaveBeenCalled()
+    const buttons = jest.mocked(Alert.alert).mock.calls[0]![2]!
+    await act(async () => {
+      buttons[0]!.onPress!()
+    })
+    expect(exportImages).toHaveBeenCalledWith("images/2.jpg")
+    expect(setImageAsync).toHaveBeenCalledWith("original-bytes")
   })
 })

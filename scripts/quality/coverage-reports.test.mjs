@@ -17,9 +17,66 @@ import {
   parseLcov,
   patchLineMap,
   prepareReports,
+  requireChangedCoverage,
+  requireChangedSources,
   summarizeChanges,
   writeLcov,
 } from "./coverage-reports.mjs"
+
+test("changed-line coverage rejects any language below 80%, without rounding or averaging", () => {
+  const passing = Object.fromEntries(
+    ["js", "rust", "swift", "android"].map((key) => [
+      key,
+      { changed: 10, covered: 8 },
+    ]),
+  )
+  assert.doesNotThrow(() => requireChangedCoverage(passing))
+  for (const key of Object.keys(passing)) {
+    assert.throws(
+      () =>
+        requireChangedCoverage({
+          ...passing,
+          [key]: { changed: 10000, covered: 7999 },
+        }),
+      new RegExp(key),
+    )
+    assert.throws(
+      () => requireChangedCoverage({ ...passing, [key]: undefined }),
+      /missing/i,
+    )
+  }
+  assert.doesNotThrow(() =>
+    requireChangedCoverage({ ...passing, rust: { changed: 0, covered: 0 } }),
+  )
+})
+
+test("unreported changed product sources fail instead of silently becoming N/A", () => {
+  const files = new Set(["my-reader/src/lib/reader-image.ts"])
+  const changes = new Map([
+    ["my-reader/src/lib/reader-image.ts", new Set([1])],
+    [
+      "my-reader-mobile/modules/book-transition/ios/Transition.swift",
+      new Set([1]),
+    ],
+  ])
+  assert.throws(
+    () => requireChangedSources(files, changes, () => "func exportImage() {}"),
+    /Transition.swift/,
+  )
+  changes.delete(
+    "my-reader-mobile/modules/book-transition/ios/Transition.swift",
+  )
+  changes.set("my-reader/src-tauri/src/commands/mod.rs", new Set([1]))
+  changes.set("my-reader/src/lib/reader-image.test.ts", new Set([1]))
+  assert.doesNotThrow(() =>
+    requireChangedSources(files, changes, () => "pub mod reader_image;"),
+  )
+  assert.throws(
+    () =>
+      requireChangedSources(files, changes, () => "pub fn export_image() {}"),
+    /mod.rs/,
+  )
+})
 
 const record = (file, lines = "DA:10,0\nDA:11,1") =>
   `SF:${file}\n${lines}\nend_of_record\n`

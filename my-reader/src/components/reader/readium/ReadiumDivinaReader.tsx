@@ -1,5 +1,6 @@
 import { ReaderNavigationButtons } from "@/components/reader/shared/ReaderNavigationButtons"
 import { locatorToJson } from "@/lib/readium/locator"
+import { divinaPageImages } from "@/lib/reader-image"
 import { useReaderNavigationHistory } from "@/hooks/reader/useReaderNavigationHistory"
 import { Locator, LocatorLocations, type Publication } from "@readium/shared"
 import { Settings } from "lucide-react"
@@ -327,11 +328,10 @@ export function ReadiumDivinaReader({
       bookAuthors={bookAuthors}
       imagePosition={currentPage}
       getPageImages={async () =>
-        (spreads[currentSpreadIndex] ?? []).map((page) => {
-          const item = publication.readingOrder.items[page - 1]
-          if (!item) throw new Error("READER_NOT_READY")
-          return { url: item.href, position: page }
-        })
+        divinaPageImages(
+          publication.readingOrder.items,
+          spreads[currentSpreadIndex] ?? [],
+        )
       }
       historyNavigation={
         <ReaderNavigationButtons

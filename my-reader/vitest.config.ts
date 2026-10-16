@@ -19,11 +19,19 @@ export default defineConfig({
     reporters: ["default"],
     coverage: {
       provider: "v8",
-      include: ["src/**/*.{ts,tsx}"],
+      allowExternal: true,
+      include: [
+        "src/**/*.{ts,tsx}",
+        path.resolve(
+          __dirname,
+          "../my-reader-mobile/modules/readium/ios/Resources/reader-image-actions.js",
+        ),
+      ],
       reporter: ["text-summary", "json-summary", "html", "lcov"],
       exclude: [
         "node_modules/",
         "**/__tests__/**",
+        "**/*.{test,spec}.{ts,tsx}",
         "**/__mocks__/**",
         "src/routeTree.gen.ts",
         "src/lib/tauri-specta.ts",

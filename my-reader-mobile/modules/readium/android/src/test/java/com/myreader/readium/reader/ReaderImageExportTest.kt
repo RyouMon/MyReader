@@ -14,10 +14,13 @@ import android.widget.ImageView
 import androidx.fragment.app.Fragment
 import com.myreader.readium.ReadiumView
 import com.myreader.readium.Types.PreferencesRecord
+import com.myreader.readium.Types.ReadiumFileRecord
 import expo.modules.kotlin.AppContext
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -157,6 +160,29 @@ class ReaderImageExportTest {
         assertEquals(1, selected.single()["position"])
         assertArrayEquals(original, file(selected.single()).readBytes())
         assertTrue(runCatching { reader(null).exportImages(null) }.isFailure)
+    }
+
+    @Test fun pdf_bridge_exports_every_visible_page_and_falls_back_to_the_current_position_before_drawing() = runBlocking {
+        val nav = mockk<Navigator>().also {
+            every { it.currentLocator } returns MutableStateFlow(Locator(Url("book.pdf")!!, MediaType.PDF, locations = Locator.Locations(position = 7)))
+        }
+        val fragment = PdfReaderFragment().apply { setNavigator(this, this@ReaderImageExportTest.publication, nav) }
+        val view = View(context).apply { layout(0, 0, 200, 100) }
+        Fragment::class.java.getDeclaredField("mView").apply { isAccessible = true }.set(fragment, view)
+        val reader = reader(fragment).apply { file = ReadiumFileRecord(url = "/cache/book.pdf") }
+        val exported = mutableListOf<Int>()
+        mockkObject(ReaderImageExport)
+        try {
+            coEvery { ReaderImageExport.page(context, view, "/cache/book.pdf", any(), any(), any()) } answers {
+                val index = arg<Int>(3)
+                exported.add(index + 1)
+                mapOf("position" to index + 1)
+            }
+            assertEquals(listOf(7), reader.exportImages(null).map { it["position"] })
+            PdfReaderFragment::class.java.getDeclaredField("visibleImagePages").apply { isAccessible = true }.set(fragment, listOf(2, 3))
+            assertEquals(listOf(2, 3), reader.exportImages(null).map { it["position"] })
+            assertEquals(listOf(7, 2, 3), exported)
+        } finally { unmockkObject(ReaderImageExport) }
     }
 
     @Test fun epub_bridge_exports_the_visible_columns_in_reading_order() = runBlocking {

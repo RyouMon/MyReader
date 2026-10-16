@@ -253,18 +253,7 @@ final class ReadiumView: ExpoView {
   @MainActor
   func exportImages(href: String?) async throws -> [[String: Any]] {
     guard let reader = readerViewController else { throw NSError(domain: "ReadiumImage", code: 2) }
-    let position = reader.navigator.currentLocation?.locations.position ?? 1
-    let epub = reader.navigator as? EPUBNavigatorViewController
-    let visibleResources = epub?.viewport?.resources ?? []
-    return try await ReaderImageExport.images(publication: reader.publication, href: href, position: position, visibleHrefs: visibleResources.map { $0.href.string }) {
-      if let pdf = reader as? PDFViewController { return try pdf.pageImages() }
-      let view = reader.navigator.view!
-      let columnsResult = await epub?.evaluateJavaScript("Number(getComputedStyle(document.documentElement).getPropertyValue('--RS__colCount')) || Number(getComputedStyle(document.documentElement).columnCount) || 1")
-      let columns = max(1, min(2, max((try? columnsResult?.get() as? Int) ?? 1, visibleResources.count)))
-      let end = epub?.viewport?.positions?.upperBound ?? position
-      let rtl = epub?.settings.readingProgression == .rtl
-      return try ReaderImageExport.renderedPages(view: view, start: position, end: end, columns: columns, rtl: rtl)
-    }
+    return try await ReaderImageExport.images(reader: reader, href: href)
   }
 
   // MARK: - Preferences
