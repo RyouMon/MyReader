@@ -497,7 +497,7 @@ jobs:
           retention-days: 14
 
   changed-coverage-gate:
-    name: Changed-line coverage
+    name: ${{ github.event_name == 'pull_request' && 'Changed-line coverage' || 'Coverage report integrity' }}
     if: always()
     needs: [coverage-report]
     runs-on: ubuntu-22.04
