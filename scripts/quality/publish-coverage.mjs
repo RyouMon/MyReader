@@ -65,8 +65,12 @@ export async function publishCoverage(
   }
   const summary = JSON.parse(readFileSync(summaryPath, "utf8"))
   const rows = groups.map(([key, label]) => {
-    const patch = description("patch", key)
-    return `| ${label} | ${description("project", key)} | ${summary[key].changed ? patch : "N/A — no measured executable changes"} |`
+    description("patch", key)
+    const { changed, covered } = summary[key]
+    const patch = changed
+      ? `${((covered / changed) * 100).toFixed(2)}% (${covered}/${changed}) ${covered * 100 >= changed * 80 ? ">=" : "<"} target 80%`
+      : "N/A — no measured executable changes"
+    return `| ${label} | ${description("project", key)} | ${patch} |`
   })
   const marker = "<!-- myreader-coverage-report -->"
   const runUrl = `${context.serverUrl}/${repository.owner}/${repository.repo}/actions/runs/${context.runId}`
