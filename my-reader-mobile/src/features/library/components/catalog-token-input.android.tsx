@@ -18,10 +18,19 @@ import {
   semantics,
 } from "@expo/ui/jetpack-compose/modifiers"
 import { tokenKey } from "@my-reader/tools/catalog-navigation"
-import { useEffect, useImperativeHandle, useRef } from "react"
+import { useNavigation, type NativeStackNavigationProp } from "expo-router"
+import type { ParamListBase } from "expo-router/react-navigation"
+import {
+  useContext,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react"
 import { useTranslation } from "react-i18next"
 import { useThemePalette } from "@/src/design/tokens"
 import type { CatalogTokenInputProps } from "./catalog-token-input.types"
+import { LibraryTabVisibilityContext } from "./library-tab-visibility"
 
 export default function CatalogTokenInput({
   ref,
@@ -34,12 +43,36 @@ export default function CatalogTokenInput({
 }: CatalogTokenInputProps) {
   const { t } = useTranslation()
   const palette = useThemePalette()
+  const navigation = useNavigation<NativeStackNavigationProp<ParamListBase>>()
+  const libraryVisible = useContext(LibraryTabVisibilityContext)
+  // Tab focus can precede its native appearance. Enable autofocus only once,
+  // so returning to this mounted field does not reopen a dismissed keyboard.
+  const [autoFocus, setAutoFocus] = useState(libraryVisible)
+  useEffect(() => {
+    if (libraryVisible) setAutoFocus(true)
+  }, [libraryVisible])
   const input = useRef<TextFieldRef>(null)
   const value = useNativeState(text)
   const lastNativeText = useRef(text)
   useImperativeHandle(ref, () => ({
     focus: () => void input.current?.focus(),
   }))
+  useEffect(() => {
+    if (!autoFocus) return
+    // Compose autoFocus can run before the entering native screen accepts focus.
+    // Retry once after entry, but never when returning to an existing search.
+    const unsubscribe = navigation.addListener("transitionEnd", ({ data }) => {
+      if (!data.closing && navigation.isFocused()) {
+        void input.current?.focus()
+        unsubscribe()
+      }
+    })
+    const unsubscribeBlur = navigation.addListener("blur", unsubscribe)
+    return () => {
+      unsubscribe()
+      unsubscribeBlur()
+    }
+  }, [navigation, autoFocus])
   useEffect(() => {
     // Native typing already updates the shared state; only write external edits.
     if (text !== lastNativeText.current) value.set(text)
@@ -91,7 +124,7 @@ export default function CatalogTokenInput({
         <TextField
           ref={input}
           value={value}
-          autoFocus
+          autoFocus={autoFocus}
           singleLine
           modifiers={[
             fillMaxWidth(),

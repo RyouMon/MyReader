@@ -131,7 +131,9 @@ tags:
       platform: iOS
     commands:
       - assertVisible: 取消|Cancel
-      - tapOn: 取消|Cancel
+      - tapOn:
+          text: 取消|Cancel
+          retryTapIfNoChange: true
 - assertVisible:
     id: library-import-book-button
 
