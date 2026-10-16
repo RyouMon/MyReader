@@ -238,6 +238,42 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  rust-desktop-coverage:
+    name: Rust desktop coverage / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-2022]
+    env:
+      CARGO_BUILD_JOBS: "2"
+      CARGO_INCREMENTAL: "0"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: dtolnay/rust-toolchain@1.95.0
+        with:
+          components: llvm-tools-preview
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: desktop-coverage
+          workspaces: . -> target/llvm-cov-target
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov@0.9.1
+      - run: cargo llvm-cov --locked -p my-reader --lcov --output-path reports/rust-desktop/lcov.info
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rust-desktop-coverage-${{ matrix.os }}
+          path: reports/rust-desktop/
+          if-no-files-found: error
+          retention-days: 14
+
   security:
     runs-on: ubuntu-22.04
     timeout-minutes: 15
@@ -352,7 +388,7 @@ jobs:
 
   coverage-report:
     name: Coverage report
-    needs: [coverage, rust-coverage, android-coverage, swift-coverage]
+    needs: [coverage, rust-coverage, rust-desktop-coverage, android-coverage, swift-coverage]
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     permissions:
@@ -372,12 +408,14 @@ jobs:
         with:
           path: reports/coverage-input
       - name: Validate and normalize all compiler reports
+        id: normalize
         env:
           COVERAGE_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           node scripts/quality/coverage-reports.mjs
           echo "COVERAGE_REPORT_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
       - name: JS and TypeScript coverage
+        if: ${{ !cancelled() && steps.normalize.outcome == 'success' }}
         uses: getsentry/coverage-action@18b70839c6f742d77e2341f9d3f13a25d91b9f61
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -389,7 +427,9 @@ jobs:
           status-key: js
           title: JS / TS coverage
           fail-ci-if-error: true
-      - name: Rust Core and FFI coverage
+          fail-on-error: true
+      - name: Rust Core, FFI and Tauri coverage
+        if: ${{ !cancelled() && steps.normalize.outcome == 'success' }}
         uses: getsentry/coverage-action@18b70839c6f742d77e2341f9d3f13a25d91b9f61
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -399,9 +439,11 @@ jobs:
           enable-tests: false
           name: rust
           status-key: rust
-          title: Rust Core / FFI coverage
+          title: Rust Core / FFI / Tauri coverage
           fail-ci-if-error: true
+          fail-on-error: true
       - name: Swift coverage
+        if: ${{ !cancelled() && steps.normalize.outcome == 'success' }}
         uses: getsentry/coverage-action@18b70839c6f742d77e2341f9d3f13a25d91b9f61
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -413,7 +455,9 @@ jobs:
           status-key: swift
           title: Swift Readium / sharing coverage
           fail-ci-if-error: true
+          fail-on-error: true
       - name: Android Java and Kotlin coverage
+        if: ${{ !cancelled() && steps.normalize.outcome == 'success' }}
         uses: getsentry/coverage-action@18b70839c6f742d77e2341f9d3f13a25d91b9f61
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -425,12 +469,21 @@ jobs:
           status-key: android
           title: Android Readium / sharing coverage
           fail-ci-if-error: true
+          fail-on-error: true
       - name: Verify stored baselines and update one PR summary
+        if: ${{ !cancelled() && steps.normalize.outcome == 'success' }}
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const { publishCoverage } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/quality/publish-coverage.mjs`);
             await publishCoverage({ github, context, core });
+      - name: Enforce 80% changed-line coverage independently per language
+        if: ${{ !cancelled() && steps.normalize.outcome == 'success' }}
+        run: >-
+          node --input-type=module -e '
+          import { readFileSync } from "node:fs";
+          import { requireChangedCoverage } from "./scripts/quality/coverage-reports.mjs";
+          requireChangedCoverage(JSON.parse(readFileSync("reports/coverage/summary.json", "utf8")));'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -438,6 +491,15 @@ jobs:
           path: reports/coverage/
           if-no-files-found: error
           retention-days: 14
+
+  changed-coverage-gate:
+    name: Changed-line coverage
+    if: always()
+    needs: [coverage-report]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Require all language thresholds and reports to pass
+        run: test '${{ needs.coverage-report.result }}' = success
 
   qa-gate:
     name: QA

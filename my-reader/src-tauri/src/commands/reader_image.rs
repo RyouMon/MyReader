@@ -75,6 +75,20 @@ fn save_image(destination: &Path, bytes: &[u8]) -> Result<(), AppError> {
     Ok(())
 }
 
+fn finish_image_save(
+    destination: Option<tauri_plugin_dialog::FilePath>,
+    bytes: &[u8],
+) -> Result<Option<String>, AppError> {
+    let Some(destination) = destination else {
+        return Ok(None);
+    };
+    let destination = destination
+        .into_path()
+        .map_err(|e| AppError::Config(e.to_string()))?;
+    save_image(&destination, bytes)?;
+    Ok(Some("saved".into()))
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn reader_image_action(
@@ -112,20 +126,13 @@ pub async fn reader_image_action(
             Ok(Some("copied".into()))
         }
         ReaderImageAction::Save => {
-            let Some(destination) = app
+            let destination = app
                 .dialog()
                 .file()
                 .set_parent(&window)
                 .set_file_name(safe_name(&name))
-                .blocking_save_file()
-            else {
-                return Ok(None);
-            };
-            let destination = destination
-                .into_path()
-                .map_err(|e| AppError::Config(e.to_string()))?;
-            save_image(&destination, &bytes)?;
-            Ok(Some("saved".into()))
+                .blocking_save_file();
+            finish_image_save(destination, &bytes)
         }
         ReaderImageAction::PrepareShare => write_share_file(
             &app.path().app_cache_dir()?.join("reader-shares"),

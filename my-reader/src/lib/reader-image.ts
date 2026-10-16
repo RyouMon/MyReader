@@ -1,8 +1,54 @@
 import type { ReaderImageSource } from "@/types/reader"
+import type { PdfNavigator } from "./readium/PdfNavigator"
 import {
   readerImageFileName,
   type ReaderImageBook,
 } from "@my-reader/tools/reader-image-export"
+
+export function divinaPageImages(
+  items: readonly { href: string }[],
+  pages: readonly number[],
+): ReaderImageSource[] {
+  return pages.map((page) => {
+    const item = items[page - 1]
+    if (!item) throw new Error("READER_NOT_READY")
+    return { url: item.href, position: page }
+  })
+}
+
+export async function pdfPageImages(
+  navigator: Pick<PdfNavigator, "renderSinglePage">,
+  container: HTMLElement,
+  spread: readonly number[] | null,
+): Promise<ReaderImageSource[]> {
+  const viewport = container.getBoundingClientRect()
+  const pages =
+    spread ??
+    Array.from(
+      container.querySelectorAll<HTMLCanvasElement>("canvas[data-pdf-page]"),
+    )
+      .filter((canvas) => {
+        const rect = canvas.getBoundingClientRect()
+        return rect.bottom > viewport.top && rect.top < viewport.bottom
+      })
+      .map((canvas) => Number(canvas.dataset.pdfPage))
+  const images: ReaderImageSource[] = []
+  for (const page of pages) {
+    const canvas = document.createElement("canvas")
+    await navigator.renderSinglePage(
+      canvas,
+      page,
+      container.clientWidth / pages.length,
+      container.clientHeight,
+    )
+    images.push({
+      name: "page.png",
+      position: page,
+      data: canvas.toDataURL("image/png").split(",")[1],
+    })
+  }
+  return images
+}
 
 export async function readerImagePayload(
   source: ReaderImageSource,

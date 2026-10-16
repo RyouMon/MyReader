@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs"
 
 const groups = [
   ["js", "JS / TS · five packages"],
-  ["rust", "Rust · Core / FFI"],
+  ["rust", "Rust · Core / FFI / Tauri"],
   ["swift", "Swift · Readium / sharing patch"],
   ["android", "Java / Kotlin · Readium / sharing patch"],
 ]
@@ -24,7 +24,7 @@ export async function publishCoverage(
     },
   )
   // The upstream action treats artifact upload failures as warnings. Baseline
-  // storage is required here, even though percentage thresholds are advisory.
+  // storage is required here, alongside the changed-line threshold.
   for (const [key] of groups) {
     const expected = `codecov-coverage-results-${safeBranch}-${process.env.GITHUB_JOB}-${key}`
     if (
@@ -80,9 +80,9 @@ export async function publishCoverage(
     "| --- | --- | --- |",
     ...rows,
     "",
-    "Percentages are informational; the 80% patch target does not block merging. Test, collection and required-report failures still block merging.",
+    "Changed-line coverage must reach 80% independently in every language. Below-target coverage, failed tests, collection errors or missing required reports block merging. Overall coverage remains informational. Passing 80% is a minimum, not a substitute for protecting important behavior.",
     "",
-    "Native reports cover Readium and authored expo-sharing patch instructions. Android includes JVM and device tests. Other native modules and desktop Tauri coverage are not yet collected. Patch percentages describe measured executable lines; the detailed reports identify when no changed executable lines were found.",
+    "Native reports cover Readium and authored expo-sharing patch instructions. Android includes JVM and device tests; Rust includes Tauri tests on macOS and Windows. Other mobile native modules are not yet collected. Patch percentages describe measured executable lines; the detailed reports identify when no changed executable lines were found.",
     "",
     "`No base report` means a main-branch baseline is not available yet, not a zero coverage change. Main pushes store the baseline for subsequent PRs.",
   ].join("\n")

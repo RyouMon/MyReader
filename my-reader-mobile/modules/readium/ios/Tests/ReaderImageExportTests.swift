@@ -1,5 +1,6 @@
 import Foundation
 import PDFKit
+import ReadiumNavigator
 import ReadiumShared
 import Testing
 import UIKit
@@ -19,6 +20,103 @@ struct ReaderImageExportTests {
         SingleResourceContainer(resource: DataResource(data: bytes), at: AnyURL(string: $0)!)
       })
     )
+  }
+
+  @Test
+  @MainActor
+  func epubReaderExportsRenderedContentAndStillPreservesSelectedOriginals() async throws {
+    let html = Data("""
+      <html xmlns="http://www.w3.org/1999/xhtml"><head><title>Export</title></head>
+      <body><div id="export-page" style="position:fixed;inset:0;background:rgb(255,0,0)">Reader fixture</div></body></html>
+      """.utf8)
+    let publication = Publication(
+      manifest: Manifest(readingOrder: [Link(href: "chapter.xhtml", mediaType: .xhtml)], resources: [Link(href: "original.jpg", mediaType: .jpeg)]),
+      container: CompositeContainer([
+        SingleResourceContainer(resource: DataResource(data: html), at: AnyURL(string: "chapter.xhtml")!),
+        SingleResourceContainer(resource: DataResource(data: bytes), at: AnyURL(string: "original.jpg")!)
+      ])
+    )
+    let reader = try EPUBViewController(publication: publication, locator: nil, bookId: "epub-export")
+    let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
+    window.rootViewController = reader
+    window.makeKeyAndVisible()
+    defer { window.isHidden = true }
+    func findWebView(_ view: UIView) -> WKWebView? {
+      if let web = view as? WKWebView { return web }
+      return view.subviews.lazy.compactMap { findWebView($0) }.first
+    }
+    var ready = false
+    for _ in 0..<100 {
+      let result = await reader.epubNavigator.evaluateJavaScript("!!document.getElementById('export-page')")
+      // Readium fades its content in after the document and viewport are ready.
+      if (try? result.get() as? Bool) == true,
+         reader.epubNavigator.viewport?.resources.isEmpty == false,
+         let content = findWebView(reader.view)?.scrollView,
+         content.layer.presentation()?.opacity == 1 {
+        ready = true
+        break
+      }
+      try await Task.sleep(nanoseconds: 50_000_000)
+    }
+    try #require(ready)
+    window.layoutIfNeeded()
+    let rendered = try await ReaderImageExport.images(reader: reader, href: nil)
+    #expect(rendered.count == 1)
+    #expect(rendered[0]["position"] as? Int == 1)
+    let image = try #require(UIImage(contentsOfFile: URL(string: rendered[0]["uri"] as! String)!.path))
+    let raster = try #require(image.cgImage)
+    // Sample the actual chapter, without blending the navigator's page margins.
+    let center = try #require(raster.cropping(to: CGRect(x: raster.width / 2, y: raster.height / 2, width: 1, height: 1)))
+    #expect(pixel(UIImage(cgImage: center)) == [255, 0, 0, 255])
+    let original = try await ReaderImageExport.images(reader: reader, href: "original.jpg")
+    #expect(try Data(contentsOf: URL(string: original[0]["uri"] as! String)!) == bytes)
+  }
+
+  @Test
+  @MainActor
+  func nativePDFReaderExportsItsVisiblePageInsteadOfItsInitialLocator() async throws {
+    let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).pdf")
+    defer { try? FileManager.default.removeItem(at: file) }
+    let bounds = CGRect(x: 0, y: 0, width: 100, height: 150)
+    try UIGraphicsPDFRenderer(bounds: bounds).writePDF(to: file) { context in
+      for color in [UIColor.red, .green, .blue] {
+        context.beginPage()
+        color.setFill()
+        context.fill(bounds)
+      }
+    }
+    let service = ReaderService()
+    let loaded = XCTestExpectation(description: "PDF publication opened")
+    var controller: ReaderViewController?
+    service.buildViewController(url: file.absoluteString, bookId: "pdf-export", locator: nil, preferences: nil, selectionActions: nil, fontFamilyDeclarations: [], sender: nil) {
+      controller = $0
+      loaded.fulfill()
+    }
+    let result = await XCTWaiter.fulfillment(of: [loaded], timeout: 15)
+    try #require(result == .completed)
+    let reader = try #require(controller as? PDFViewController)
+    #expect(throws: (any Error).self) { try reader.pageImages() }
+    let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
+    window.rootViewController = reader
+    window.makeKeyAndVisible()
+    defer { window.isHidden = true }
+    func findPDF(_ view: UIView) -> PDFView? {
+      if let pdf = view as? PDFView { return pdf }
+      return view.subviews.lazy.compactMap { findPDF($0) }.first
+    }
+    for _ in 0..<100 {
+      if findPDF(reader.view)?.document?.pageCount == 3 { break }
+      try await Task.sleep(nanoseconds: 50_000_000)
+    }
+    let pdf = try #require(findPDF(reader.view))
+    let page = try #require(pdf.document?.page(at: 2))
+    pdf.displayMode = .singlePage
+    pdf.go(to: page)
+    pdf.layoutIfNeeded()
+    let images = try await ReaderImageExport.images(reader: reader, href: nil)
+    #expect(images.compactMap { $0["position"] as? Int } == [3])
+    let image = try #require(UIImage(contentsOfFile: URL(string: images[0]["uri"] as! String)!.path))
+    #expect(near(pixel(image), [0, 0, 255, 255]))
   }
 
   @Test

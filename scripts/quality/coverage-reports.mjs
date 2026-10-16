@@ -12,6 +12,8 @@ export const inputs = [
   ["js", "coverage-3/lcov.info", "my-reader"],
   ["js", "coverage-4/lcov.info", "my-reader-mobile"],
   ["rust", "rust-coverage-report/lcov.info", ""],
+  ["rust", "rust-desktop-coverage-macos-latest/lcov.info", ""],
+  ["rust", "rust-desktop-coverage-windows-2022/lcov.info", ""],
   ["swift", "swift-coverage-report/lcov.info", ""],
   ["android", "android-coverage-report/readium-unit.info", ""],
   ["android", "android-coverage-report/readium-device.info", ""],
@@ -111,7 +113,7 @@ export function normalizeCoverage(
       if (/(?:^|\/)(?:Tests|Generated[^/]*)(?:\/|\.)/.test(file)) continue
     } else if (group === "rust") {
       if (
-        !/^(?:my-reader-core\/|my-reader-mobile\/modules\/my-reader-core\/rust\/)/.test(
+        !/^(?:my-reader-core\/|my-reader\/src-tauri\/src\/|my-reader-mobile\/modules\/my-reader-core\/rust\/)/.test(
           file,
         )
       )
@@ -175,12 +177,64 @@ export function changedLines(diff) {
 
 export function summarizeChanges(files, changes) {
   let changed = 0
+  let covered = 0
   for (const [file, lines] of files) {
     for (const line of changes.get(file) ?? []) {
-      if (lines.has(line)) changed++
+      if (lines.has(line)) {
+        changed++
+        if (lines.get(line) > 0) covered++
+      }
     }
   }
-  return { changed }
+  return { changed, covered }
+}
+
+export function requireChangedCoverage(summary) {
+  for (const key of ["js", "rust", "swift", "android"]) {
+    const counts = summary[key]
+    if (
+      !counts ||
+      !Number.isInteger(counts.changed) ||
+      !Number.isInteger(counts.covered)
+    )
+      throw new Error(`Changed-line coverage report missing: ${key}`)
+    if (counts.covered * 100 < counts.changed * 80)
+      throw new Error(
+        `${key} changed-line coverage ${counts.covered}/${counts.changed} is below 80%`,
+      )
+  }
+}
+
+export function requireChangedSources(reported, changes, readSource) {
+  for (const [file, added] of changes) {
+    if (!added.size || reported.has(file)) continue
+    if (
+      !/^(?:my-reader\/src(?:-tauri\/src)?\/|my-reader-core\/src\/|my-reader-mobile\/(?:src\/|modules\/.+\/(?:src|ios|rust\/src|android\/src\/main)\/)|packages\/[^/]+\/src\/)/.test(
+        file,
+      )
+    )
+      continue
+    if (!/\.(?:[cm]?[jt]sx?|rs|swift|kt|java)$/.test(file)) continue
+    // Type declarations, generated bindings and translation tables are not executable product logic.
+    if (
+      /(?:^|\/)(?:__tests__|__mocks__|Tests|tests|test|androidTest|types|generated|Generated[^/]*)(?:\/|\.)|\.(?:test|spec|types|d)\.[jt]sx?$|(?:tauri-specta|routeTree\.gen)\.ts$|packages\/i18n\/src\/locales\//.test(
+        file,
+      )
+    )
+      continue
+    const lines = readSource(file).split("\n")
+    // Rust module/import declarations have no compiler counters; a function in the same file still requires coverage.
+    if (
+      file.endsWith(".rs") &&
+      [...added].every((line) =>
+        /^\s*(?:(?:pub(?:\([^)]*\))?\s+)?(?:mod|use)\s+[^;]+;|\/\/.*)?\s*$/.test(
+          lines[line - 1],
+        ),
+      )
+    )
+      continue
+    throw new Error(`Changed product source has no coverage report: ${file}`)
+  }
 }
 
 export function prepareReports(
@@ -230,6 +284,11 @@ export function prepareReports(
       )
     : new Map()
   const summary = {}
+  requireChangedSources(
+    new Set([...groups.values()].flatMap((files) => [...files.keys()])),
+    changes,
+    (file) => readFileSync(path.join(repositoryRoot, file), "utf8"),
+  )
   for (const [group, files] of groups) {
     writeFileSync(path.join(outputDirectory, `${group}.info`), writeLcov(files))
     summary[group] = summarizeChanges(files, changes)

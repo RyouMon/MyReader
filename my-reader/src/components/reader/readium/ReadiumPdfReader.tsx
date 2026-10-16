@@ -1,5 +1,6 @@
 import { ReaderNavigationButtons } from "@/components/reader/shared/ReaderNavigationButtons"
 import { locatorToJson } from "@/lib/readium/locator"
+import { pdfPageImages } from "@/lib/reader-image"
 import { useReaderNavigationHistory } from "@/hooks/reader/useReaderNavigationHistory"
 import { errorMessage } from "@/lib/error-presentation"
 import type { Locator } from "@readium/shared"
@@ -597,38 +598,13 @@ export function ReadiumPdfReader({
         const nav = navRef.current
         const container = containerRef.current
         if (!nav || !container) throw new Error("READER_NOT_READY")
-        const viewport = container.getBoundingClientRect()
-        const pages =
+        return pdfPageImages(
+          nav,
+          container,
           navigationMode === "vertical"
-            ? Array.from(
-                container.querySelectorAll<HTMLCanvasElement>(
-                  "canvas[data-pdf-page]",
-                ),
-              )
-                .filter((canvas) => {
-                  const rect = canvas.getBoundingClientRect()
-                  return (
-                    rect.bottom > viewport.top && rect.top < viewport.bottom
-                  )
-                })
-                .map((canvas) => Number(canvas.dataset.pdfPage))
-            : (spreads[currentSpreadIndex] ?? [])
-        const images = []
-        for (const page of pages) {
-          const canvas = document.createElement("canvas")
-          await nav.renderSinglePage(
-            canvas,
-            page,
-            container.clientWidth / pages.length,
-            container.clientHeight,
-          )
-          images.push({
-            name: "page.png",
-            position: page,
-            data: canvas.toDataURL("image/png").split(",")[1],
-          })
-        }
-        return images
+            ? null
+            : (spreads[currentSpreadIndex] ?? []),
+        )
       }}
       historyNavigation={
         <ReaderNavigationButtons

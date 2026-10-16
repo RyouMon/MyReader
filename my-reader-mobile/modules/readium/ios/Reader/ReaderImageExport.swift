@@ -1,10 +1,27 @@
 import Foundation
 import PDFKit
+import ReadiumNavigator
 import ReadiumShared
 import UIKit
 import WebKit
 
 enum ReaderImageExport {
+  @MainActor
+  static func images(reader: ReaderViewController, href: String?) async throws -> [[String: Any]] {
+    let position = reader.navigator.currentLocation?.locations.position ?? 1
+    let epub = reader.navigator as? EPUBNavigatorViewController
+    let visibleResources = epub?.viewport?.resources ?? []
+    return try await images(publication: reader.publication, href: href, position: position, visibleHrefs: visibleResources.map { $0.href.string }) {
+      if let pdf = reader as? PDFViewController { return try pdf.pageImages() }
+      let view = reader.navigator.view!
+      let columnsResult = await epub?.evaluateJavaScript("Number(getComputedStyle(document.documentElement).getPropertyValue('--RS__colCount')) || Number(getComputedStyle(document.documentElement).columnCount) || 1")
+      let columns = max(1, min(2, max((try? columnsResult?.get() as? Int) ?? 1, visibleResources.count)))
+      let end = epub?.viewport?.positions?.upperBound ?? position
+      let rtl = epub?.settings.readingProgression == .rtl
+      return try renderedPages(view: view, start: position, end: end, columns: columns, rtl: rtl)
+    }
+  }
+
   @MainActor
   static func images(publication: Publication, href: String?, position: Int, visibleHrefs: [String], render: () async throws -> [(image: UIImage, position: Int)]) async throws -> [[String: Any]] {
     if let href { return [try await resource(href, publication: publication, position: position)] }

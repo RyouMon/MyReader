@@ -28,9 +28,7 @@ function fixture() {
       context: `codecov/${kind} (${key})`,
       created_at: "2026-10-17T00:01:00Z",
       description:
-        kind === "project"
-          ? "50% (No base report)"
-          : "(informational) 50% < target 80%",
+        kind === "project" ? "50% (No base report)" : "50% < target 80%",
     })),
   )
   const comments = []
@@ -87,7 +85,7 @@ function fixture() {
   }
 }
 
-test("low coverage stays advisory and repeated runs update one bot-owned PR comment", async () => {
+test("failed coverage remains visible and repeated runs update one bot-owned PR comment", async () => {
   const f = fixture()
   try {
     f.comments.push({
@@ -98,6 +96,7 @@ test("low coverage stays advisory and repeated runs update one bot-owned PR comm
     await publishCoverage(f.args, f.summary)
     assert.equal(f.writes.length, 1)
     assert.match(f.writes[0].create.body, /50% < target 80%/)
+    assert.match(f.writes[0].create.body, /block merging/)
     assert.match(
       f.writes[0].create.body,
       /N\/A — no measured executable changes/,
