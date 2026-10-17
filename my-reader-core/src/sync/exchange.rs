@@ -104,10 +104,37 @@ async fn load_document_chunks(
     adapter: &StorageAdapter<'_>,
     identity: &DatabaseIdentity,
     mode: SyncMode,
+    observer: &dyn SyncObserver,
 ) -> Result<(Vec<StorageChunk>, Vec<SyncRemoteObject>), SyncError> {
     let document_id = identity.library_uuid.as_str();
-    let mut chunks = adapter.load_range(&snapshot_prefix(document_id)).await?;
-    chunks.extend(adapter.load_range(&incremental_prefix(document_id)).await?);
+    let snapshots = snapshot_prefix(document_id);
+    let incrementals = incremental_prefix(document_id);
+    let (mut keys, incremental_keys) = tokio::try_join!(
+        adapter.list_range(&snapshots),
+        adapter.list_range(&incrementals),
+    )?;
+    keys.extend(incremental_keys);
+    if keys.len() > MAX_REMOTE_OBJECTS_PER_SYNC {
+        return Err(sync_error(format!(
+            "Remote Automerge object count exceeds {MAX_REMOTE_OBJECTS_PER_SYNC}"
+        )));
+    }
+    check_cancelled(observer)?;
+    observer.on_progress(SyncProgress {
+        stage: SyncStage::Preparing,
+        completed: 1,
+        total: 1,
+    });
+    let chunks = adapter
+        .load_chunks(keys, |completed, total| {
+            observer.on_progress(SyncProgress {
+                stage: SyncStage::Pulling,
+                completed,
+                total,
+            });
+            check_cancelled(observer)
+        })
+        .await?;
     let identity = identity.clone();
     blocking::run_background(move || {
         validate_document_chunks(&chunks, &identity)?;
@@ -126,11 +153,6 @@ fn validate_document_chunks(
     identity: &DatabaseIdentity,
 ) -> Result<(), SyncError> {
     let document_id = identity.library_uuid.as_str();
-    if chunks.len() > MAX_REMOTE_OBJECTS_PER_SYNC {
-        return Err(sync_error(format!(
-            "Remote Automerge object count exceeds {MAX_REMOTE_OBJECTS_PER_SYNC}"
-        )));
-    }
     for chunk in chunks {
         if chunk.data.len() > MAX_REMOTE_OBJECT_BYTES {
             return Err(sync_error(format!(
@@ -323,12 +345,8 @@ pub async fn sync_database_with_operator_observed(
     });
     prepare_for_sync(database_path, identity, now_ms).await?;
     let adapter = StorageAdapter::new(operator);
-    let (initial_chunks, objects) = load_document_chunks(&adapter, identity, mode).await?;
-    observer.on_progress(SyncProgress {
-        stage: SyncStage::Preparing,
-        completed: 1,
-        total: 1,
-    });
+    let (initial_chunks, objects) =
+        load_document_chunks(&adapter, identity, mode, observer).await?;
 
     let mut remote_storage_repair = None;
     let mut reading_positions = Vec::new();
@@ -337,11 +355,6 @@ pub async fn sync_database_with_operator_observed(
         SyncMode::Full if initial_chunks.is_empty() => 0,
         SyncMode::Full => {
             check_cancelled(observer)?;
-            observer.on_progress(SyncProgress {
-                stage: SyncStage::Pulling,
-                completed: initial_chunks.len(),
-                total: initial_chunks.len(),
-            });
             observer.on_progress(SyncProgress {
                 stage: SyncStage::Applying,
                 completed: 0,
