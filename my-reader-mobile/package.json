@@ -169,7 +169,8 @@
       "!**/*.{test,spec}.{ts,tsx}",
       "!**/*.d.ts",
       "!**/__mocks__/**",
-      "!src/app/**"
+      "!src/app/**",
+      "src/app/[(]tabs[)]/_layout.tsx"
     ],
     "coverageReporters": [
       "text-summary",
