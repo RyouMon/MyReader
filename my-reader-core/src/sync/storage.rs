@@ -1,8 +1,10 @@
+use futures_util::{stream, StreamExt, TryStreamExt};
 use opendal::Operator;
 
 use super::SyncError;
 
 pub const STORAGE_ROOT: &str = ".myreader/automerge";
+const MAX_CONCURRENT_DOWNLOADS: usize = 4;
 
 pub type StorageKey = Vec<String>;
 
@@ -113,6 +115,11 @@ impl<'a> StorageAdapter<'a> {
     }
 
     pub async fn load_range(&self, prefix: &[String]) -> Result<Vec<StorageChunk>, SyncError> {
+        self.load_chunks(self.list_range(prefix).await?, |_, _| Ok(()))
+            .await
+    }
+
+    pub async fn list_range(&self, prefix: &[String]) -> Result<Vec<StorageKey>, SyncError> {
         let path = storage_key_to_path(prefix)?;
         let entries = match self
             .operator
@@ -124,7 +131,7 @@ impl<'a> StorageAdapter<'a> {
             Err(error) if error.kind() == opendal::ErrorKind::NotFound => return Ok(Vec::new()),
             Err(error) => return Err(error.into()),
         };
-        let mut chunks = Vec::new();
+        let mut keys = Vec::new();
         for entry in entries {
             if !entry.metadata().is_file() {
                 continue;
@@ -133,16 +140,34 @@ impl<'a> StorageAdapter<'a> {
             if !key.starts_with(prefix) {
                 continue;
             }
-            let data = self
-                .operator
-                .read(entry.path())
-                .await
-                .map_err(SyncError::from)?
-                .to_vec();
-            chunks.push(StorageChunk { key, data });
+            keys.push(key);
         }
-        chunks.sort_by(|left, right| left.key.cmp(&right.key));
-        Ok(chunks)
+        keys.sort();
+        Ok(keys)
+    }
+
+    pub async fn load_chunks(
+        &self,
+        keys: Vec<StorageKey>,
+        mut on_progress: impl FnMut(usize, usize) -> Result<(), SyncError>,
+    ) -> Result<Vec<StorageChunk>, SyncError> {
+        let total = keys.len();
+        on_progress(0, total)?;
+        let mut downloads = stream::iter(keys)
+            .enumerate()
+            .map(|(index, key)| async move {
+                let path = storage_key_to_path(&key)?;
+                let data = self.operator.read(&path).await?.to_vec();
+                Ok::<_, SyncError>((index, StorageChunk { key, data }))
+            })
+            .buffer_unordered(MAX_CONCURRENT_DOWNLOADS);
+        let mut chunks = Vec::with_capacity(total);
+        while let Some(chunk) = downloads.try_next().await? {
+            chunks.push(chunk);
+            on_progress(chunks.len(), total)?;
+        }
+        chunks.sort_by_key(|(index, _)| *index);
+        Ok(chunks.into_iter().map(|(_, chunk)| chunk).collect())
     }
 
     // Kept to match StorageAdapterInterface; compaction removes only covered keys.
@@ -244,3 +269,7 @@ mod tests {
             .is_empty());
     }
 }
+
+#[cfg(test)]
+#[path = "tests/storage_contract.rs"]
+mod network_tests;
