@@ -221,6 +221,44 @@ pub fn extract_zip_to_dir(zip_path: &Path, output_dir: &Path) -> Result<Vec<Stri
 mod tests {
     use super::*;
 
+    #[test]
+    fn extract_zip_to_dir_should_keep_entries_inside_output_directory() {
+        let directory = tempfile::tempdir().unwrap();
+        let zip_path = directory.path().join("book.epub");
+        let output_dir = directory.path().join("extracted");
+        let absolute_path = directory.path().join("absolute.txt");
+        let mut archive = zip::ZipWriter::new(fs::File::create(&zip_path).unwrap());
+        let options = zip::write::SimpleFileOptions::default();
+        archive.add_directory("OEBPS/", options).unwrap();
+        for path in [
+            "OEBPS/chapter.xhtml",
+            "../escaped.txt",
+            absolute_path.to_str().unwrap(),
+        ] {
+            archive.start_file(path, options).unwrap();
+            archive.write_all(b"chapter content").unwrap();
+        }
+        archive.finish().unwrap();
+
+        let entries = extract_zip_to_dir(&zip_path, &output_dir).unwrap();
+
+        assert!(entries.iter().any(|entry| entry == "OEBPS/chapter.xhtml"));
+        let output_dir = output_dir.canonicalize().unwrap();
+        for entry in entries {
+            assert!(output_dir
+                .join(entry)
+                .canonicalize()
+                .unwrap()
+                .starts_with(&output_dir));
+        }
+        assert_eq!(
+            fs::read(output_dir.join("OEBPS/chapter.xhtml")).unwrap(),
+            b"chapter content"
+        );
+        assert!(!directory.path().join("escaped.txt").exists());
+        assert!(!absolute_path.exists());
+    }
+
     fn library_container(app_data_dir: &Path, library_id: &str) -> PathBuf {
         app_data_dir.join(LIBRARIES_DIR_NAME).join(library_id)
     }
