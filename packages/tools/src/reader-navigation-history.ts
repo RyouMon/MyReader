@@ -36,6 +36,7 @@ export class ReaderNavigationHistory {
   private listeners = new Set<() => void>()
   private seenRemoteOperations = new Set<string>()
   private pendingRemote = new Map<string, ReaderLocator>()
+  private initialRemoteOperationsSet = false
 
   getSnapshot = () => this.snapshot
   subscribe = (listener: () => void) => {
@@ -48,6 +49,16 @@ export class ReaderNavigationHistory {
   private publish(snapshot: ReaderNavigationSnapshot) {
     this.snapshot = snapshot
     for (const listener of this.listeners) listener()
+  }
+
+  setInitialRemoteOperations(operationIds: readonly string[]) {
+    if (this.initialRemoteOperationsSet) return
+    this.initialRemoteOperationsSet = true
+    for (const operationId of operationIds) {
+      // Events received while the opening query was pending are still late arrivals.
+      if (!this.pendingRemote.has(operationId))
+        this.seenRemoteOperations.add(operationId)
+    }
   }
 
   update(locator: ReaderLocator) {

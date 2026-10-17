@@ -235,7 +235,10 @@ fn analyze_cbz(source_path: &Path, include_cover: bool) -> Result<PublicationAna
         if entry.is_dir() {
             continue;
         }
-        let name = entry.name().replace('\\', "/");
+        let name = entry
+            .name()
+            .map_err(|error| error.to_string())?
+            .replace('\\', "/");
         let file_name = name.rsplit('/').next().unwrap_or_default();
         if file_name.eq_ignore_ascii_case("ComicInfo.xml") {
             comic_info_index.get_or_insert(index);
