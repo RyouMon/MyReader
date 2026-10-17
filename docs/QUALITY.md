@@ -103,7 +103,8 @@ Knip 的入口包含 Expo 路由、原生模块和字体准备脚本；动态加
 
 覆盖率分母采用配置中的 authored source：排除声明、测试、生成文件、第三方 UI 模板；移动端
 另外排除 Expo Router 路由装配，i18n 排除翻译 JSON 与入口 re-export。没有被测试导入的范围内
-源码仍计入分母。i18n 的翻译完整性另有单元测试，100% 覆盖率不表示翻译质量已经验证。
+源码仍计入分母。原生 Tab 布局 `src/app/(tabs)/_layout.tsx` 纳入移动端采集，保护主题切换时的
+选中和按压反馈。i18n 的翻译完整性另有单元测试，100% 覆盖率不表示翻译质量已经验证。
 Rust LCOV 当前覆盖 Core/FFI 两个 crate，没有为尚未测量的 Tauri 原生 UI 设置覆盖率门槛。
 actionlint 当前仅校验工作流本身，显式关闭其可选 ShellCheck / Pyflakes 集成，以保持本地与 CI 范围一致。
 无补丁的已接受风险按通告编号配置在 `pnpm-workspace.yaml` 的 `audit.ignore` 和
