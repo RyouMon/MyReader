@@ -1,3 +1,4 @@
+import { parseCatalogLocation } from "@/lib/catalogLocation"
 import type { DesktopTranslationKey } from "@my-reader/i18n/desktop"
 import type { BuiltInBookCollectionId } from "@my-reader/tools/types/book-collection"
 import {
@@ -108,6 +109,9 @@ export default function AppSidebar({ onAddLibrary }: AppSidebarProps) {
     useHasLocalOnlyBooks(activeLibraryId, isRemoteManagedLibrary)
   const location = useLocation()
 
+  const catalogLocation = parseCatalogLocation(location.search.catalog)
+  const directory = catalogLocation?.directory
+  const selectedCollectionId = catalogLocation?.collection ?? activeCollectionId
   const isSettingsActive = location.pathname === "/settings"
   const isLibraryWorkspace =
     location.pathname === "/" || location.pathname.startsWith("/book/")
@@ -154,11 +158,15 @@ export default function AppSidebar({ onAddLibrary }: AppSidebarProps) {
     return (
       <SidebarMenuItem key={collection.id}>
         <SidebarMenuButton
-          isActive={isLibraryWorkspace && activeCollectionId === collection.id}
+          isActive={
+            isLibraryWorkspace &&
+            !directory &&
+            selectedCollectionId === collection.id
+          }
           tooltip={title}
           onClick={() => {
             setActiveCollectionId(collection.id)
-            navigate({ to: "/" })
+            navigate({ to: "/", search: {} })
           }}
         >
           <Icon />
@@ -312,21 +320,48 @@ export default function AppSidebar({ onAddLibrary }: AppSidebarProps) {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip={t("sidebar.tags")}>
+                <SidebarMenuButton
+                  tooltip={t("sidebar.tags")}
+                  isActive={directory === "tags"}
+                  onClick={() =>
+                    navigate({
+                      to: "/",
+                      search: { catalog: { directory: "tags" } },
+                    })
+                  }
+                >
                   <Tags />
                   <span>{t("sidebar.tags")}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip={t("sidebar.series")}>
+                <SidebarMenuButton
+                  tooltip={t("sidebar.series")}
+                  isActive={directory === "series"}
+                  onClick={() =>
+                    navigate({
+                      to: "/",
+                      search: { catalog: { directory: "series" } },
+                    })
+                  }
+                >
                   <BookCopy />
                   <span>{t("sidebar.series")}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip={t("sidebar.authors")}>
+                <SidebarMenuButton
+                  tooltip={t("sidebar.authors")}
+                  isActive={directory === "authors"}
+                  onClick={() =>
+                    navigate({
+                      to: "/",
+                      search: { catalog: { directory: "authors" } },
+                    })
+                  }
+                >
                   <User />
                   <span>{t("sidebar.authors")}</span>
                 </SidebarMenuButton>
@@ -375,7 +410,10 @@ export default function AppSidebar({ onAddLibrary }: AppSidebarProps) {
               tooltip={t("sidebar.settings")}
               isActive={isSettingsActive}
             >
-              <Link to="/settings">
+              <Link
+                to="/settings"
+                search={{ catalog: location.search.catalog }}
+              >
                 <Settings />
                 <span>{t("sidebar.settings")}</span>
               </Link>

@@ -1,6 +1,8 @@
 name: Quality
 
 on:
+  push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -62,6 +64,19 @@ jobs:
           path: reports/
           retention-days: 14
 
+  ios-dependencies:
+    name: iOS dependencies (no cache)
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+      - run: gem install cocoapods -v 1.16.2 --no-document
+      - name: Install Readium from official sources without caches
+        run: ruby scripts/quality/readium-ios-dependencies.rb
+
   unit:
     name: Unit tests / ${{ matrix.package }}
     runs-on: ubuntu-22.04
@@ -115,6 +130,8 @@ jobs:
             directory: my-reader-mobile
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v6
         with:
@@ -195,6 +212,8 @@ jobs:
       CARGO_PROFILE_TEST_DEBUG: "0"
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v6
         with:
@@ -216,6 +235,46 @@ jobs:
         with:
           name: rust-coverage-report
           path: reports/rust/
+          if-no-files-found: error
+          retention-days: 14
+
+  rust-desktop-coverage:
+    name: Rust desktop coverage / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-2022]
+    env:
+      CARGO_BUILD_JOBS: "2"
+      CARGO_INCREMENTAL: "0"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: dtolnay/rust-toolchain@1.95.0
+        with:
+          components: llvm-tools-preview
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: desktop-coverage
+          workspaces: . -> target/llvm-cov-target
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov@0.9.1
+      - name: Collect desktop compiler coverage
+        shell: bash
+        run: |
+          mkdir -p reports/rust-desktop
+          cargo llvm-cov --locked -p my-reader --lcov --output-path reports/rust-desktop/lcov.info
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rust-desktop-coverage-${{ matrix.os }}
+          path: reports/rust-desktop/
           if-no-files-found: error
           retention-days: 14
 
@@ -249,15 +308,213 @@ jobs:
           path: reports/
           retention-days: 14
 
+  android-coverage:
+    name: Android native coverage
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.workers.max=2
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter my-reader-mobile exec expo prebuild --platform android --no-install
+      - name: Enable KVM for Android device tests
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          disable-animations: true
+          working-directory: my-reader-mobile/android
+          script: ./gradlew -I ../tests/native-sharing/android.init.gradle -I ../../scripts/quality/android-coverage.init.gradle :my-reader-readium:createDebugUnitTestCoverageReport :expo-sharing:createDebugUnitTestCoverageReport :my-reader-readium:createDebugAndroidTestCoverageReport -PreactNativeArchitectures=x86_64 --console=plain
+      - name: Export Android compiler coverage
+        run: |
+          python3 scripts/quality/native-coverage.py jacoco my-reader-mobile/modules/readium/android/build/reports/coverage/test/debug/report.xml reports/native/android/readium-unit.info my-reader-mobile/modules/readium/android/src/main/java
+          python3 scripts/quality/native-coverage.py jacoco my-reader-mobile/modules/readium/android/build/reports/coverage/androidTest/debug/connected/report.xml reports/native/android/readium-device.info my-reader-mobile/modules/readium/android/src/main/java
+          python3 scripts/quality/native-coverage.py jacoco my-reader-mobile/node_modules/expo-sharing/android/build/reports/coverage/test/debug/report.xml reports/native/android/sharing.info my-reader-mobile/node_modules/expo-sharing/android/src/main/java
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-coverage-report
+          path: reports/native/android/
+          if-no-files-found: error
+          retention-days: 14
+
+  swift-coverage:
+    name: Swift native coverage
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+      - run: gem install cocoapods -v 1.16.2 --no-document
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter my-reader-mobile exec expo prebuild --platform ios --no-install
+      - run: pod install
+        working-directory: my-reader-mobile/ios
+      - run: python3 scripts/quality/native-coverage.py prepare-swift
+      - name: Run the full native test scheme with compiler coverage
+        run: |
+          READER_SIMULATOR=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; print(next(d["udid"] for runtime,devices in json.load(sys.stdin)["devices"].items() if "iOS" in runtime for d in devices if "iPhone" in d["name"]))')
+          xcodebuild test -quiet -jobs 3 -workspace my-reader-mobile/ios/MyReader.xcworkspace -scheme Reader-Coverage -configuration Debug -sdk iphonesimulator -destination "platform=iOS Simulator,id=$READER_SIMULATOR" -derivedDataPath "$RUNNER_TEMP/myreader-native" -only-testing:Readium-Unit-Tests ENABLE_TESTABILITY=YES CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=-
+          python3 scripts/quality/native-coverage.py swift-llvm "$RUNNER_TEMP/myreader-native" "$READER_SIMULATOR" reports/native/swift/lcov.info
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: swift-coverage-report
+          path: reports/native/swift/
+          if-no-files-found: error
+          retention-days: 14
+
+  coverage-report:
+    name: Coverage report
+    needs: [coverage, rust-coverage, rust-desktop-coverage, android-coverage, swift-coverage]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+      statuses: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: reports/coverage-input
+      - name: Validate and normalize all compiler reports
+        id: normalize
+        env:
+          COVERAGE_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          node scripts/quality/coverage-reports.mjs
+          echo "COVERAGE_REPORT_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+      - name: JS and TypeScript coverage
+        if: ${{ !cancelled() && steps.normalize.outcome == 'success' }}
+        uses: getsentry/coverage-action@18b70839c6f742d77e2341f9d3f13a25d91b9f61
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: reports/coverage/js.info
+          coverage-format: lcov
+          disable-search: true
+          enable-tests: false
+          name: js
+          status-key: js
+          title: JS / TS coverage
+          fail-ci-if-error: true
+          fail-on-error: true
+      - name: Rust Core, FFI and Tauri coverage
+        if: ${{ !cancelled() && steps.normalize.outcome == 'success' }}
+        uses: getsentry/coverage-action@18b70839c6f742d77e2341f9d3f13a25d91b9f61
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: reports/coverage/rust.info
+          coverage-format: lcov
+          disable-search: true
+          enable-tests: false
+          name: rust
+          status-key: rust
+          title: Rust Core / FFI / Tauri coverage
+          fail-ci-if-error: true
+          fail-on-error: true
+      - name: Swift coverage
+        if: ${{ !cancelled() && steps.normalize.outcome == 'success' }}
+        uses: getsentry/coverage-action@18b70839c6f742d77e2341f9d3f13a25d91b9f61
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: reports/coverage/swift.info
+          coverage-format: lcov
+          disable-search: true
+          enable-tests: false
+          name: swift
+          status-key: swift
+          title: Swift Readium / sharing coverage
+          fail-ci-if-error: true
+          fail-on-error: true
+      - name: Android Java and Kotlin coverage
+        if: ${{ !cancelled() && steps.normalize.outcome == 'success' }}
+        uses: getsentry/coverage-action@18b70839c6f742d77e2341f9d3f13a25d91b9f61
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: reports/coverage/android.info
+          coverage-format: lcov
+          disable-search: true
+          enable-tests: false
+          name: android
+          status-key: android
+          title: Android Readium / sharing coverage
+          fail-ci-if-error: true
+          fail-on-error: true
+      - name: Verify stored baselines and update one PR summary
+        if: ${{ !cancelled() && steps.normalize.outcome == 'success' }}
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const { publishCoverage } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/quality/publish-coverage.mjs`);
+            await publishCoverage({ github, context, core });
+      - name: Enforce 80% changed-line coverage independently per language
+        if: ${{ !cancelled() && steps.normalize.outcome == 'success' }}
+        run: >-
+          node --input-type=module -e '
+          import { readFileSync } from "node:fs";
+          import { requireChangedCoverage } from "./scripts/quality/coverage-reports.mjs";
+          requireChangedCoverage(JSON.parse(readFileSync("reports/coverage/summary.json", "utf8")));'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: normalized-coverage-reports
+          path: reports/coverage/
+          if-no-files-found: error
+          retention-days: 14
+
+  changed-coverage-gate:
+    name: ${{ github.event_name == 'pull_request' && 'Changed-line coverage' || 'Coverage report integrity' }}
+    if: always()
+    needs: [coverage-report]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Require all language thresholds and reports to pass
+        run: test '${{ needs.coverage-report.result }}' = success
+
   qa-gate:
     name: QA
     if: always()
-    needs: [static, mutation, rust, security]
+    needs: [static, ios-dependencies, mutation, rust, security]
     runs-on: ubuntu-22.04
     steps:
       - name: Require every QA job to succeed
         run: |
           test '${{ needs.static.result }}' = success
+          test '${{ needs.ios-dependencies.result }}' = success
           test '${{ needs.mutation.result }}' = success
           test '${{ needs.rust.result }}' = success
           test '${{ needs.security.result }}' = success
@@ -265,7 +522,7 @@ jobs:
   unit-gate:
     name: Unit tests
     if: always()
-    needs: [unit, coverage, rust, rust-coverage]
+    needs: [unit, coverage, rust, rust-coverage, android-coverage, swift-coverage, coverage-report]
     runs-on: ubuntu-22.04
     steps:
       - name: Require every unit test job to succeed
@@ -274,3 +531,6 @@ jobs:
           test '${{ needs.coverage.result }}' = success
           test '${{ needs.rust.result }}' = success
           test '${{ needs.rust-coverage.result }}' = success
+          test '${{ needs.android-coverage.result }}' = success
+          test '${{ needs.swift-coverage.result }}' = success
+          test '${{ needs.coverage-report.result }}' = success

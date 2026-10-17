@@ -21,6 +21,13 @@ class ReaderViewController: UIViewController, Loggable {
     pointerPolicy: .init(edges: .all),
     animatedTransition: true
   )
+  var onInternalLinkNavigation: (() -> Void)?
+
+  func navigator(_ navigator: VisualNavigator, shouldNavigateToLink link: ReadiumShared.Link) -> Bool {
+    onInternalLinkNavigation?()
+    return true
+  }
+
   private var subject = PassthroughSubject<ReadiumShared.Locator, Never>()
   lazy var publisher = subject.eraseToAnyPublisher()
 

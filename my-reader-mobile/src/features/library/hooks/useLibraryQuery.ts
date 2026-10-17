@@ -1,3 +1,8 @@
+import {
+  catalogQuery,
+  type CatalogToken,
+} from "@my-reader/tools/catalog-navigation"
+import { fetchCatalogNavigation } from "@/src/domain/library/catalog"
 import { useQuery } from "@tanstack/react-query"
 
 import { fetchBooks, libraryQueryKeys } from "@/src/domain/library/catalog"
@@ -63,5 +68,42 @@ function inflateCoverUris(
     }
 
     return { ...book, coverUri: { ...book.coverUri, headers: cachedHeaders } }
+  })
+}
+
+export function useCatalogNavigation(libraryId: string | null) {
+  return useQuery({
+    queryKey: ["catalogNavigation", libraryId],
+    queryFn: async () => {
+      const state = useAppStore.getState()
+      const library = state.libraries.find((item) => item.id === libraryId)
+      if (!library) throw new Error("LIBRARY_NOT_FOUND")
+      return fetchCatalogNavigation(library, state.dataSources)
+    },
+    enabled: Boolean(libraryId),
+  })
+}
+
+export function useCatalogBooks(
+  libraryId: string | null,
+  tokens: CatalogToken[],
+  search: string,
+  recentlyRead: boolean,
+) {
+  const request = {
+    ...catalogQuery(tokens, search),
+    sortBy: recentlyRead ? "lastRead" : null,
+  }
+  return useQuery({
+    queryKey: [...libraryQueryKeys.books(libraryId), "catalog", request],
+    queryFn: async () => {
+      const state = useAppStore.getState()
+      const library = state.libraries.find((item) => item.id === libraryId)
+      return library ? fetchBooks(library, state.dataSources, request) : []
+    },
+    enabled: Boolean(
+      libraryId && (tokens.length || search.trim() || recentlyRead),
+    ),
+    select: (books: BookItem[]) => inflateCoverUris(books, libraryId),
   })
 }

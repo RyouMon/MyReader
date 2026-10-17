@@ -10,98 +10,18 @@ const ERROR_BACK_BUTTON_BORDER_COLOR = READER_CHROME.border
 
 export function ReaderLoadState({
   loadState,
-  resolveReadingPositionConflict,
   statusBarStyle,
   themeBgColor,
   themeFgColor,
   handleBack,
-}: Pick<
-  ReturnType<typeof useBookLoader>,
-  "loadState" | "resolveReadingPositionConflict"
-> & {
+}: Pick<ReturnType<typeof useBookLoader>, "loadState"> & {
   statusBarStyle: StatusBarStyle
   themeBgColor: string
   themeFgColor: string
   handleBack: () => void
 }) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const { palette, colorScheme } = useTheme()
-  if (loadState.status === "position-conflict") {
-    return (
-      <View
-        className="flex-1 justify-center px-5"
-        style={{ backgroundColor: palette.background }}
-      >
-        <StatusBar hidden={false} barStyle={statusBarStyle} />
-        <View
-          className="rounded-2xl border p-5"
-          style={{
-            backgroundColor: palette.surface,
-            borderColor: palette.border,
-          }}
-        >
-          <Text
-            className="text-lg font-semibold"
-            style={{ color: palette.text }}
-          >
-            {t("reader.positionConflictTitle")}
-          </Text>
-          <Text className="mt-2 text-sm" style={{ color: palette.textMuted }}>
-            {t("reader.positionConflictDescription")}
-          </Text>
-          <View className="mt-4 gap-2">
-            {loadState.candidates.map((candidate) => {
-              const progression = candidate.displayProgression
-              return (
-                <Pressable
-                  key={candidate.operationId}
-                  accessibilityRole="button"
-                  className="rounded-xl border px-4 py-3"
-                  style={{ borderColor: palette.border }}
-                  onPress={() => {
-                    void resolveReadingPositionConflict(candidate.operationId)
-                  }}
-                >
-                  <Text
-                    className="text-base font-medium"
-                    style={{ color: palette.text }}
-                  >
-                    {progression === null
-                      ? t("reader.positionConflictUnknownProgress")
-                      : `${Math.round(progression * 100)}%`}
-                  </Text>
-                  <Text
-                    className="mt-1 text-sm"
-                    style={{ color: palette.textMuted }}
-                  >
-                    {new Date(candidate.recordedAt).toLocaleString(
-                      i18n.resolvedLanguage ?? i18n.language,
-                    )}
-                    {" · "}
-                    {candidate.replicaId.slice(0, 8)}
-                  </Text>
-                </Pressable>
-              )
-            })}
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            className="mt-3 items-center py-3"
-            onPress={() => {
-              void resolveReadingPositionConflict(null)
-            }}
-          >
-            <Text
-              className="text-sm font-medium"
-              style={{ color: palette.textMuted }}
-            >
-              {t("reader.positionConflictLater")}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-    )
-  }
   if (loadState.status === "error") {
     return (
       <View

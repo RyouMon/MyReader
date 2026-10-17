@@ -3,13 +3,17 @@
 本文是测试策略、QA 命令和债务管理的维护入口。包的 `package.json`、各工具配置和
 `.github/workflows/quality.yml` 是执行权威；Agent 规则只负责引导，不另存一套配置示例。
 
-Quality 在 PR 和手动执行时运行，普通推送不触发。两种入口均运行静态门禁、完整单测、
-变异测试、联网依赖审计，以及 JS / Rust 覆盖率报告。
+Quality 在 PR、主分支推送和手动执行时运行；其他分支的普通推送不触发。各入口均运行静态门禁、
+完整单测、变异测试、联网依赖审计、iOS Readium 无缓存依赖安装，以及 JS、Rust、Swift 和
+Android Java / Kotlin 覆盖率报告。主分支推送保存后续 PR 使用的基准。
 
-主分支要求 `QA` 和 `Unit tests` 两个聚合检查成功；所依赖的任务失败、取消或意外跳过均不会
-放行。`QA` 汇总静态检查、变异测试、Rust 门禁和安全审计，`Unit tests` 汇总五包 JS 与
-Cargo workspace 完整单测及覆盖率任务的执行结果。覆盖率任务独立运行、上传报告，CI 不设
-覆盖率百分比门槛；其中的测试、编译、采集或报告上传失败仍会阻止合入。
+主分支要求 `QA`、`Unit tests` 和 `Changed-line coverage` 三个聚合检查成功；所依赖的任务失败、取消或意外跳过均不会
+放行。`QA` 汇总静态检查、iOS 依赖安装、变异测试、Rust 门禁和安全审计，`Unit tests` 汇总五包 JS 与
+Cargo workspace 完整单测、原生覆盖率测试及报告任务的执行结果。覆盖率任务独立运行、上传报告，
+PR 按语言展示全量和增量行覆盖率；JS/TS、Rust、Swift、Java/Kotlin 的增量行覆盖率分别必须达到 80%。
+`Changed-line coverage` 拒绝任一语言低于门槛，不按跨语言平均值放行，也不将 79.99% 四舍五入为通过。
+其中的测试、编译、采集、必需报告或基准制品上传失败仍会阻止合入。
+80% 是最低要求，不是测试完备的证明；达到门槛后仍须补齐未保护的重要行为，不写无意义测试凑数字。
 通过后仍需人工审核合入。
 
 Rust 门禁在 Linux 和 Windows MSVC 上运行相同的格式检查、Clippy 和完整 Cargo workspace 测试。
@@ -30,11 +34,13 @@ Windows 集成测试通过 `my-reader/src-tauri/build.rs` 单独嵌入 Common Co
 | `pnpm qa:rust` | rustfmt、Clippy、Cargo workspace 完整测试 | Rust 门禁 |
 | `pnpm qa:rust:complexity` | Rust 认知复杂度检查 | 超限返回非零；同时纳入 Rust 门禁 |
 | `pnpm qa:rust:coverage` | Core 与移动 FFI 的 cargo-llvm-cov LCOV | PR 报告；需工具及 llvm-tools-preview |
+| `node scripts/quality/coverage-reports.mjs` | 校验并合并 CI 制品，统一路径和原生补丁行号 | 缺少或损坏的必需报告返回非零 |
 | `pnpm qa:unused` | Knip 扫描未使用文件、依赖、导出与未解析引用 | PR 门禁；新增发现需核实用途 |
 | `pnpm lint:report` | 输出原始 ESLint JSON | 有发现时返回非零 |
 | `pnpm qa:security` | npm 生产依赖漏洞审计 | PR 门禁；中危及以上返回非零 |
 | `pnpm qa:rust:security` | Cargo 锁文件通告与撤包状态审计 | PR 门禁；需 cargo-audit 和联网 |
 | `pnpm qa:workflows` | actionlint 校验 Actions 语法、表达式与 action 输入 | 需安装 actionlint；CI 使用官方固定版本镜像 |
+| `ruby scripts/quality/readium-ios-dependencies.rb` | 从 Readium.podspec 读取版本，在空 specs、下载缓存和无锁文件的目录执行 CocoaPods 安装 | PR 联网门禁；需 macOS、Xcode 和 CocoaPods 1.16.2；不代替原生编译 |
 | `pnpm format:check` | Biome 全仓格式检查 | PR 检查改动文件；历史差异单独治理 |
 
 PR 的 Biome 格式门禁使用 `pnpm exec biome format --changed --since=origin/main --no-errors-on-unmatched`
@@ -108,6 +114,47 @@ actionlint 当前仅校验工作流本身，显式关闭其可选 ShellCheck / P
 
 dependency-cruiser 使用独立的 `scripts/quality/tsconfig.mobile.json` 适配 Expo 的路径解析；
 它继承应用配置，只为分析器提供 baseUrl，不改变移动应用的编译配置。
+
+## PR 覆盖率报告与主分支基准
+
+使用固定提交版本的 [getsentry/coverage-action](https://github.com/getsentry/coverage-action)，
+在 GitHub Artifacts 保存基准并在 Actions 摘要展示每组覆盖率及未覆盖行。PR 只更新一条汇总评论。
+配置入口为 `.github/coverage.yml`，全量保持 `informational: true`，增量目标为 80% 且
+`informational: false`。Action 开启 `fail-on-error`，并使用编译器行计数独立验证门槛；
+fork PR 即使没有状态写权限也执行相同校验。某组失败后仍生成其余语言的报告及汇总评论。
+`Changed-line coverage` 仅由 PR 事件产生；推送和手动执行使用独立的 `Coverage report integrity`
+检查名，不能用没有 PR 差异的手动运行覆盖增量门禁结果。
+
+采集范围：
+
+- JS / TS：现有五个包的 Vitest / Jest 源码范围，不额外运行一套报告专用测试。
+- Rust：Core / FFI 与 Tauri 的 LLVM 行覆盖率；Tauri 在 macOS / Windows 运行完整原生测试并合并命中。
+- Swift：完整 `Readium-Unit-Tests` scheme，插桩 Readium 和 ExpoSharing，
+  从 Xcode 生成的 LLVM profile 导出 LCOV。运行入口见 [原生测试](../my-reader-mobile/modules/readium/README.md#native-tests)。
+- Android：Readium 与 patched ExpoSharing 的完整 JVM 测试，以及模拟器上的 Readium 设备测试。
+  使用 Android Gradle Plugin 的 JaCoCo 任务，合并同一源码行的 JVM / 设备命中，不重复计数。
+
+Swift / Android 暂不代表 book-transition、security-scoped-bookmarks 或生成的 Core binding。
+原生测试、生成文件和 Readium 上游 Toolkit 不计入产品行覆盖率。桌面浏览器集成测试文件也不计入产品分母；
+共享的图片长按脚本纳入 JS 采集，继续由手势测试保护。对 expo-sharing 只计入
+仓库补丁新增的可执行行，并将已安装源码的命中映射回 `.patch` 文件，便于 PR 中定位。
+跨 runner 的绝对路径转换为仓库路径，使主分支和 PR 可以比较。
+
+主分支首次运行前显示 `No base report`，不把缺失基准解释成零变化。之后 Action 比较最近可用的
+主分支报告；这是主分支报告间的比较，不保证基准恰好是 PR 的共同祖先。增量按本次 PR 的实际
+改动行计算。没有测得新增可执行行时，汇总评论显示 N/A。变更的手写产品源码如果没有报告会失败，
+不能把漏采文件当作 N/A；不包含可执行逻辑的类型声明、模块声明、翻译表和生成文件除外。
+尚未采集的模块有代码变更时，必须先补采集。
+首次将工作流合入主分支后才会生成该分支的新基准，不能把特性分支结果冒充主分支基准。
+
+报告任务需要 `actions: read`、`statuses: write` 和 `pull-requests: write`，写权限仅授予该任务。
+fork PR 仍运行测试并展示 Actions 摘要，受 GitHub 只读令牌限制不发布评论或状态；不使用
+`pull_request_target` 执行外部 PR 代码。报告制品缺失始终失败；增量低于 80% 阻断合入，不改写已有基线。
+
+`native-coverage.py` 的 `prepare-swift` 和 `swift-llvm` 子命令用于准备插桩 scheme、导出 Xcode
+profile；`jacoco` 子命令导出指定 Java / Kotlin 源码根目录的行命中。
+Android 采集通过 `scripts/quality/android-coverage.init.gradle` 显式开启，不改变日常构建和渲染。
+CI 中的完整采集命令以 `.github/workflows/quality.yml` 为准。
 
 ## 按风险选择验证
 

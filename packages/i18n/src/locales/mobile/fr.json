@@ -287,10 +287,6 @@
     "mountingReader": "Montage du lecteur…",
     "loadFailed": "Le chargement du lecteur a échoué",
     "loadFailedMessage": "Le lecteur a rencontré une erreur inattendue. Veuillez revenir en arrière et réessayer.",
-    "positionConflictTitle": "Choisissez où continuer",
-    "positionConflictDescription": "Un autre appareil a enregistré une position différente alors qu'il était hors ligne. Choisissez-en un pour continuer ; le choix sera synchronisé avec vos autres appareils.",
-    "positionConflictUnknownProgress": "Progression inconnue",
-    "positionConflictLater": "Décidez plus tard et utilisez la position par défaut",
     "chrome": {
       "moreActions": "Plus d'actions"
     },

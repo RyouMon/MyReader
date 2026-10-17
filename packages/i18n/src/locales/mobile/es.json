@@ -287,10 +287,6 @@
     "mountingReader": "Montando lector…",
     "loadFailed": "Falló la carga del lector",
     "loadFailedMessage": "El lector encontró un error inesperado. Por favor regresa y vuelve a intentarlo.",
-    "positionConflictTitle": "Elige dónde continuar",
-    "positionConflictDescription": "Otro dispositivo guardó una posición diferente mientras estaba fuera de línea. Elija uno para continuar; la elección se sincronizará con sus otros dispositivos.",
-    "positionConflictUnknownProgress": "Progreso desconocido",
-    "positionConflictLater": "Decida más tarde y use la posición predeterminada",
     "chrome": {
       "moreActions": "Más acciones"
     },

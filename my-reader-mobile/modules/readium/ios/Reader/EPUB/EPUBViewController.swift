@@ -1,4 +1,5 @@
 import UIKit
+import WebKit
 import ReadiumShared
 import ReadiumNavigator
 
@@ -16,6 +17,7 @@ class EPUBViewController: ReaderViewController, SelectionActionHandlerDelegate {
     private var selectionMenu: SelectionMenuRecord?
     private var selectionMenuPresenter: AnyObject?
     weak var selectionActionDelegate: SelectionActionDelegate?
+    var onImagePress: ((String) -> Void)?
     var usesCustomSelectionMenu = false
     var onSelectionChange: ((ReadiumShared.Locator, String, CGRect?) -> Void)?
     var onSelectionMenuDismiss: (() -> Void)?
@@ -207,6 +209,18 @@ class EPUBViewController: ReaderViewController, SelectionActionHandlerDelegate {
 }
 
 extension EPUBViewController: EPUBNavigatorDelegate {
+  func navigator(_ navigator: EPUBNavigatorViewController, setupUserScripts controller: WKUserContentController) {
+    guard let bundleURL = Bundle(for: ReadiumView.self).url(forResource: "ReadiumReaderScripts", withExtension: "bundle"),
+          let bundle = Bundle(url: bundleURL),
+          let scriptURL = bundle.url(forResource: "reader-image-actions", withExtension: "js"),
+          let script = try? String(contentsOf: scriptURL, encoding: .utf8) else { return }
+    controller.add(ReaderImageMessageHandler { [weak self] source in
+      guard let self, let link = ReaderImageExport.imageLink(in: self.publication, source: source) else { return }
+      self.onImagePress?(link.href)
+    }, name: "readerImage")
+    controller.addUserScript(WKUserScript(source: script, injectionTime: .atDocumentEnd, forMainFrameOnly: false))
+  }
+
   func navigator(
     _ navigator: any ViewportObservingNavigator,
     viewportDidChange viewport: NavigatorViewport?

@@ -1,4 +1,5 @@
 import { ttsLanguageMatches } from "@my-reader/tools/reader-tts-language"
+import { runTtsRequest } from "@my-reader/tools/tts-request"
 import type {
   ReadiumSpeechPlaybackEngine,
   ReadiumSpeechPlaybackEvent,
@@ -115,6 +116,7 @@ export class CoreSpeechEngine implements ReadiumSpeechPlaybackEngine {
   private state: ReadiumSpeechPlaybackState = "idle"
   private audio: TtsAudio | null = null
   private audioCleanup: (() => void) | null = null
+  private playbackController: AbortController | null = null
   private generation = 0
   private synthesisRevision = 0
   private synthesisSequence = 0
@@ -156,7 +158,10 @@ export class CoreSpeechEngine implements ReadiumSpeechPlaybackEngine {
     this.resetSynthesisQueue()
     this.utterances = [...contents]
     this.currentIndex = 0
-    this.setState("ready")
+    // Readium waits for a ready event on every content load, even when the
+    // previous queue was already ready and never started playing.
+    this.state = "ready"
+    this.emit({ type: "ready" })
   }
 
   setVoice(voice: ReadiumSpeechVoice | string): void {
@@ -182,7 +187,7 @@ export class CoreSpeechEngine implements ReadiumSpeechPlaybackEngine {
 
   async getAvailableVoices(): Promise<ReadiumSpeechVoice[]> {
     if (this.voices) return [...this.voices]
-    this.voicesPromise ??= this.listVoices(this.profileId)
+    this.voicesPromise ??= runTtsRequest(() => this.listVoices(this.profileId))
       .then((voices) => {
         this.voices = voices.map(toReadiumVoice)
         this.currentVoice ??= this.voices[0] ?? null
@@ -212,65 +217,64 @@ export class CoreSpeechEngine implements ReadiumSpeechPlaybackEngine {
     }
 
     this.cancelAudio()
+    this.playbackController = new AbortController()
     this.currentIndex = nextIndex
     const generation = this.generation
     const synthesisRevision = this.synthesisRevision
     this.setState("loading")
-    void this.synthesizeAndPlay(generation, synthesisRevision)
+    void runTtsRequest(
+      () => this.synthesizeAndPlay(generation, synthesisRevision),
+      this.playbackController.signal,
+    ).catch((error: unknown) => {
+      if (generation === this.generation) this.fail(error)
+    })
   }
 
   private async synthesizeAndPlay(
     generation: number,
     synthesisRevision: number,
   ): Promise<void> {
-    try {
-      const artifact = await this.scheduleLookahead(
-        this.currentIndex,
-        synthesisRevision,
-      )
-      if (
-        generation !== this.generation ||
-        synthesisRevision !== this.synthesisRevision
-      )
-        return
+    const artifact = await this.scheduleLookahead(
+      this.currentIndex,
+      synthesisRevision,
+    )
+    if (
+      generation !== this.generation ||
+      synthesisRevision !== this.synthesisRevision
+    )
+      return
 
-      const audio = this.createAudio()
-      this.audio = audio
-      audio.src = this.audioSource(artifact.path)
-      audio.playbackRate = Math.max(0.25, Math.min(4, this.rate))
-      audio.volume = this.volume
+    const audio = this.createAudio()
+    this.audio = audio
+    audio.src = this.audioSource(artifact.path)
+    audio.playbackRate = Math.max(0.25, Math.min(4, this.rate))
+    audio.volume = this.volume
 
-      const onEnded = () => {
-        if (generation !== this.generation) return
-        this.audioCleanup?.()
-        this.audioCleanup = null
-        this.audio = null
-        this.setState("ready")
-        this.emit({ type: "end" })
-      }
-      const onError = () => {
-        if (generation !== this.generation) return
-        this.audioCleanup?.()
-        this.audioCleanup = null
-        this.audio = null
-        this.fail(new Error("TTS_AUDIO_PLAYBACK_FAILED"))
-      }
-      audio.addEventListener("ended", onEnded)
-      audio.addEventListener("error", onError)
-      this.audioCleanup = () => this.detachAudio(audio, onEnded, onError)
-      await audio.play()
-      if (generation !== this.generation) {
-        audio.pause()
-        this.audioCleanup?.()
-        this.audioCleanup = null
-        return
-      }
-      this.setState("playing")
-      this.emit({ type: "start" })
-    } catch (error: unknown) {
+    const onEnded = () => {
       if (generation !== this.generation) return
-      this.fail(error)
+      this.audioCleanup?.()
+      this.audioCleanup = null
+      this.audio = null
+      this.setState("ready")
+      this.emit({ type: "end" })
     }
+    const onError = () => {
+      if (generation !== this.generation) return
+      this.audioCleanup?.()
+      this.audioCleanup = null
+      this.audio = null
+      this.fail(new Error("TTS_AUDIO_PLAYBACK_FAILED"))
+    }
+    audio.addEventListener("ended", onEnded)
+    audio.addEventListener("error", onError)
+    this.audioCleanup = () => this.detachAudio(audio, onEnded, onError)
+    await audio.play()
+    if (generation !== this.generation) {
+      audio.pause()
+      return
+    }
+    this.setState("playing")
+    this.emit({ type: "start" })
   }
 
   pause(): void {
@@ -287,8 +291,10 @@ export class CoreSpeechEngine implements ReadiumSpeechPlaybackEngine {
       return
     }
     const generation = this.generation
-    void this.audio
-      .play()
+    void runTtsRequest(
+      () => this.audio!.play(),
+      this.playbackController?.signal,
+    )
       .then(() => {
         if (generation !== this.generation) return
         this.setState("playing")
@@ -384,6 +390,8 @@ export class CoreSpeechEngine implements ReadiumSpeechPlaybackEngine {
 
   private cancelAudio(): void {
     this.generation += 1
+    this.playbackController?.abort()
+    this.playbackController = null
     this.audioCleanup?.()
     this.audioCleanup = null
     if (!this.audio) return
@@ -539,6 +547,7 @@ export class CoreSpeechEngine implements ReadiumSpeechPlaybackEngine {
 
   private fail(error: unknown): void {
     this.cancelAudio()
+    this.resetSynthesisQueue()
     this.setState("idle")
     this.emit({
       type: "error",

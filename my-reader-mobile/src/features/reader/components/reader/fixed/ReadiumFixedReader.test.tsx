@@ -1,17 +1,18 @@
 import React from "react"
-import { View } from "react-native"
+import { Platform, View } from "react-native"
 import { act, render } from "@testing-library/react-native"
-import type { Locator, PublicationReadyEvent } from "@my-reader/readium"
+import type {
+  Locator,
+  PublicationReadyEvent,
+  ReadiumProps,
+} from "@my-reader/readium"
 
 import ReadiumFixedReader, {
   type ReadiumFixedReaderRef,
 } from "./ReadiumFixedReader"
 
 const mockGoTo = jest.fn()
-let mockReadiumProps: {
-  onPublicationReady?: (event: PublicationReadyEvent) => void
-  onLocationChange?: (locator: Locator) => void
-} | null = null
+let mockReadiumProps: ReadiumProps | null = null
 
 jest.mock("@my-reader/readium", () => {
   const mockReact = jest.requireActual<typeof React>("react")
@@ -20,10 +21,7 @@ jest.mock("@my-reader/readium", () => {
 
   return {
     ReadiumView: mockReact.forwardRef(function ReadiumViewMock(
-      props: {
-        onPublicationReady?: (event: PublicationReadyEvent) => void
-        onLocationChange?: (locator: Locator) => void
-      },
+      props: ReadiumProps,
       ref: React.Ref<unknown>,
     ) {
       mockReadiumProps = props
@@ -46,9 +44,75 @@ function fixedLocator(page: number): Locator {
 }
 
 describe("ReadiumFixedReader", () => {
+  afterEach(() => jest.restoreAllMocks())
+
   beforeEach(() => {
     mockGoTo.mockClear()
     mockReadiumProps = null
+  })
+
+  it.each([
+    "pdf",
+    "cbz",
+  ])("should open Android %s at the saved page without a restoration jump", (format) => {
+    jest.replaceProperty(Platform, "OS", "android")
+    const positions = [0, 1, 2].map((page) =>
+      format === "pdf"
+        ? fixedLocator(page)
+        : {
+            ...fixedLocator(page),
+            href: `${page + 1}.jpg`,
+            type: "image/jpeg",
+          },
+    )
+    const saved = positions[1]!
+    const onStateChange = jest.fn()
+    const onUserLocationChange = jest.fn()
+    render(
+      <ReadiumFixedReader
+        filePath={`/tmp/book.${format}`}
+        initialLocator={saved}
+        onRequestClose={jest.fn()}
+        onStateChange={onStateChange}
+        onUserLocationChange={onUserLocationChange}
+        onTocReady={jest.fn()}
+        backgroundColor="#ffffff"
+        navigationMode="horizontal"
+        readingProgression="ltr"
+        spread="auto"
+      />,
+    )
+
+    expect(mockReadiumProps?.file.initialLocation).toEqual(saved)
+    act(() => {
+      mockReadiumProps?.onPublicationReady?.({
+        metadata: { language: [], title: "Book" },
+        positions,
+        publicationId: "publication",
+        tableOfContents: [],
+      } as PublicationReadyEvent)
+      mockReadiumProps?.onLocationChange?.(saved)
+    })
+
+    expect(mockGoTo).not.toHaveBeenCalled()
+    expect(onUserLocationChange).not.toHaveBeenCalled()
+    expect(onStateChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ locator: saved }),
+    )
+
+    act(() =>
+      mockReadiumProps?.onLocationChange?.(
+        positions[2]!,
+        "user",
+        "jump",
+        "programmatic",
+      ),
+    )
+    expect(onUserLocationChange).toHaveBeenCalledWith(
+      positions[2],
+      "jump",
+      "programmatic",
+    )
   })
 
   it("should navigate to the exact Readium position when progress is committed", () => {

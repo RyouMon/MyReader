@@ -433,23 +433,42 @@ private val readerViewportAnchorRuntimeScript = """
               ? { node: last, offset: last.data.length }
               : null;
       }
+      function normalizedReaderText(source) {
+          // Readium collapses whitespace when extracting publication text. Retain the
+          // source offsets so normalized quotes still map to the original DOM nodes.
+          const starts = [];
+          const ends = [];
+          let content = "";
+          for (let offset = 0; offset < source.length; offset += 1) {
+              const character = /\s/.test(source[offset]) ? " " : source[offset];
+              if (character === " " && content.endsWith(" ")) {
+                  ends[ends.length - 1] = offset + 1;
+              }
+              else {
+                  content += character;
+                  starts.push(offset);
+                  ends.push(offset + 1);
+              }
+          }
+          return { content, starts, ends };
+      }
       /** Resolves a Readium text-quote locator to its DOM range. */
       function rangeForReaderTextLocator(window, locator) {
-          var _a, _b, _c, _d, _e, _f, _g, _h, _j;
-          const highlight = (_a = locator.text) === null || _a === void 0 ? void 0 : _a.highlight;
+          var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+          const highlight = (_b = (_a = locator.text) === null || _a === void 0 ? void 0 : _a.highlight) === null || _b === void 0 ? void 0 : _b.replace(/\s+/g, " ");
           if (!highlight)
               return null;
-          let root = (_b = window.document.body) !== null && _b !== void 0 ? _b : window.document.documentElement;
-          const cssSelector = (_c = locator.locations) === null || _c === void 0 ? void 0 : _c.cssSelector;
+          let root = (_c = window.document.body) !== null && _c !== void 0 ? _c : window.document.documentElement;
+          const cssSelector = (_d = locator.locations) === null || _d === void 0 ? void 0 : _d.cssSelector;
           if (cssSelector) {
               try {
-                  root = (_d = window.document.querySelector(cssSelector)) !== null && _d !== void 0 ? _d : root;
+                  root = (_e = window.document.querySelector(cssSelector)) !== null && _e !== void 0 ? _e : root;
               }
               catch {
                   return null;
               }
           }
-          const content = (_e = root.textContent) !== null && _e !== void 0 ? _e : "";
+          const { content, starts, ends } = normalizedReaderText((_f = root.textContent) !== null && _f !== void 0 ? _f : "");
           let bestStart = -1;
           let bestScore = -1;
           let searchFrom = 0;
@@ -458,7 +477,8 @@ private val readerViewportAnchorRuntimeScript = """
               if (start < 0)
                   break;
               const end = start + highlight.length;
-              const score = matchingSuffixLength(content.slice(0, start), (_g = (_f = locator.text) === null || _f === void 0 ? void 0 : _f.before) !== null && _g !== void 0 ? _g : "") + matchingPrefixLength(content.slice(end), (_j = (_h = locator.text) === null || _h === void 0 ? void 0 : _h.after) !== null && _j !== void 0 ? _j : "");
+              const score = matchingSuffixLength(content.slice(0, start), ((_h = (_g = locator.text) === null || _g === void 0 ? void 0 : _g.before) !== null && _h !== void 0 ? _h : "").replace(/\s+/g, " ")) +
+                  matchingPrefixLength(content.slice(end), ((_k = (_j = locator.text) === null || _j === void 0 ? void 0 : _j.after) !== null && _k !== void 0 ? _k : "").replace(/\s+/g, " "));
               if (score > bestScore) {
                   bestStart = start;
                   bestScore = score;
@@ -467,8 +487,8 @@ private val readerViewportAnchorRuntimeScript = """
           }
           if (bestStart < 0)
               return null;
-          const start = textPointForOffset(window, root, bestStart, false);
-          const end = textPointForOffset(window, root, bestStart + highlight.length, true);
+          const start = textPointForOffset(window, root, starts[bestStart], false);
+          const end = textPointForOffset(window, root, ends[bestStart + highlight.length - 1], true);
           if (!start || !end)
               return null;
           const range = window.document.createRange();

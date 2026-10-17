@@ -16,6 +16,7 @@ pub struct ReadingPositionCandidateDto {
     pub display_progression: Option<f64>,
     pub recorded_at: i64,
     pub replica_id: String,
+    pub is_local: bool,
 }
 
 fn unix_epoch_millis() -> i64 {
@@ -127,31 +128,9 @@ impl ProgressService {
                 display_progression: candidate.display_progression,
                 recorded_at: candidate.recorded_at,
                 replica_id: candidate.replica_id,
+                is_local: candidate.is_local,
             })
             .collect(),
         )
-    }
-
-    pub async fn select_reading_position_candidate_for_library(
-        app_data_dir: &Path,
-        config: &AppConfig,
-        library_id: Option<&str>,
-        book_id: i64,
-        format: &str,
-        operation_id: &str,
-    ) -> Result<(), AppError> {
-        let library = LibraryService::resolve_library(library_id, config)?;
-        let sidecar_root = library_sidecar_path(&library, app_data_dir);
-        let library_root = library_root_path(&library, app_data_dir);
-        my_reader_core::api::reading::ReadingService::select_reading_position_candidate(
-            &sidecar_root,
-            &library_root,
-            book_id,
-            format,
-            operation_id,
-            unix_epoch_millis(),
-        )
-        .await?;
-        Ok(())
     }
 }

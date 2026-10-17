@@ -162,6 +162,19 @@
     }
   },
   "reader": {
+    "copyImage": "Copier l’image",
+    "saveImage": "Enregistrer l’image…",
+    "saveImageToPhotos": "Enregistrer dans Photos",
+    "saveImageToFiles": "Enregistrer dans Fichiers",
+    "imageCopied": "Image copiée",
+    "imageSaved": "Image enregistrée",
+    "imageActionFailed": "Impossible d’exporter l’image. Réessayez.",
+    "sharePage": "Partager",
+    "imageMore": "Plus",
+    "image": "Image",
+    "imagePhotoPermission": "Autorisez l’ajout aux photos pour enregistrer l’image.",
+    "navigationBack": "Revenir à la position précédente",
+    "navigationForward": "Avancer à la position suivante",
     "background": "Contexte",
     "empty": {
       "annotations": {
@@ -274,5 +287,22 @@
     "io": "Impossible d’accéder aux fichiers locaux. Vérifiez l’espace de stockage et les autorisations.",
     "dataIntegrity": "Certaines données n’ont pas pu être lues correctement. Restaurez une copie fiable, puis réessayez.",
     "tts": "La lecture vocale a échoué. Vérifiez les paramètres vocaux, puis réessayez."
+  },
+  "catalog": {
+    "searchPlaceholder": "Rechercher titres, auteurs, étiquettes, séries…",
+    "searchDirectory": "Rechercher dans {{kind}}",
+    "authors": "Auteurs",
+    "tags": "Étiquettes",
+    "series": "Séries",
+    "directory": "Répertoire de la bibliothèque",
+    "alphabetIndex": "Index alphabétique",
+    "jumpTo": "Aller à {{letter}}",
+    "suggestions": "Suggestions de recherche",
+    "removeToken": "Supprimer le critère",
+    "removeNamedToken": "Supprimer {{name}}",
+    "emptyDirectory": "Aucune entrée à afficher.",
+    "loading": "Chargement…",
+    "retry": "Réessayer",
+    "noResults": "Aucun livre ne correspond à tous les critères."
   }
 }

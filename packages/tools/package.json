@@ -4,11 +4,13 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./reader-image-export": "./src/reader-image-export.ts",
     "./book-metadata": "./src/book-metadata.ts",
     "./human-readable-time": "./src/human-readable-time.ts",
     "./reader-chrome-palette": "./src/reader-chrome-palette.ts",
     "./reader-annotations": "./src/reader-annotations.ts",
     "./reader-bookmarks": "./src/reader-bookmarks.ts",
+    "./reader-navigation-history": "./src/reader-navigation-history.ts",
     "./reading-progress": "./src/reading-progress.ts",
     "./reading-time-accumulator": "./src/reading-time-accumulator.ts",
     "./reader-note-marker/*": "./src/reader-note-marker/*",
@@ -16,17 +18,20 @@
     "./reader-themes": "./src/reader-themes.ts",
     "./reader-tts-session": "./src/reader-tts-session.ts",
     "./reader-tts-language": "./src/reader-tts-language.ts",
+    "./tts-request": "./src/tts-request.ts",
     "./reader-toc": "./src/reader-toc.ts",
     "./remote-path": "./src/remote-path.ts",
     "./sync-status": "./src/sync-status.ts",
     "./utils": "./src/utils/index.ts",
     "./types": "./src/types/index.ts",
     "./types/*": "./src/types/*.ts",
-    "./store/*": "./src/store/*.ts"
+    "./store/*": "./src/store/*.ts",
+    "./catalog-navigation": "./src/catalog-navigation.ts"
   },
   "dependencies": {
     "chroma-js": "^3.2.0",
-    "dayjs": "^1.11.21"
+    "dayjs": "^1.11.21",
+    "pinyin-pro": "^3.29.5"
   },
   "scripts": {
     "check:generated": "node ../../scripts/generate-reader-viewport-anchor.mjs --check",

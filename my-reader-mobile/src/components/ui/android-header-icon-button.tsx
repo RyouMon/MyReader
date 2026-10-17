@@ -6,13 +6,14 @@ import {
 } from "@expo/ui/jetpack-compose"
 import { size } from "@expo/ui/jetpack-compose/modifiers"
 import {
-  Pressable,
-  View,
   type ColorValue,
   type ImageSourcePropType,
+  Pressable,
+  View,
 } from "react-native"
 
 import { useTheme } from "@/src/design/tokens"
+import { ANDROID_HEADER_BUTTON_SIZE } from "./android-header-layout"
 
 type AndroidHeaderIconButtonProps = {
   icon: ImageSourcePropType
@@ -57,21 +58,16 @@ export function AndroidHeaderIconButton({
         radius: 24,
       }}
       disabled={!enabled}
-      hitSlop={8}
       onPress={onPress}
-      style={
-        backgroundColor === undefined
-          ? undefined
-          : {
-              alignItems: "center",
-              backgroundColor,
-              borderRadius: 24,
-              height: 48,
-              justifyContent: "center",
-              overflow: "hidden",
-              width: 48,
-            }
-      }
+      style={{
+        alignItems: "center",
+        backgroundColor,
+        borderRadius: ANDROID_HEADER_BUTTON_SIZE / 2,
+        height: ANDROID_HEADER_BUTTON_SIZE,
+        justifyContent: "center",
+        overflow: backgroundColor === undefined ? "visible" : "hidden",
+        width: ANDROID_HEADER_BUTTON_SIZE,
+      }}
     >
       <View
         pointerEvents="none"

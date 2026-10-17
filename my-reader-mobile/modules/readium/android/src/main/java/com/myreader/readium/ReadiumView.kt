@@ -32,6 +32,7 @@ import com.myreader.readium.reader.BaseReaderFragment
 import com.myreader.readium.reader.EpubReaderFragment
 import com.myreader.readium.reader.ImageReaderFragment
 import com.myreader.readium.reader.PdfReaderFragment
+import com.myreader.readium.reader.ReaderImageExport
 import com.myreader.readium.reader.ReaderService
 import com.myreader.readium.reader.ReaderViewModel
 import com.myreader.readium.reader.SelectionAction as FragmentSelectionAction
@@ -99,6 +100,7 @@ class ReadiumView(
   private val onSelectionChange by EventDispatcher<Map<String, Any?>>()
   private val onSelectionAction by EventDispatcher<Map<String, Any?>>()
   private val onTap by EventDispatcher<Map<String, Any?>>()
+  private val onImagePress by EventDispatcher<Map<String, Any?>>()
   private val onTtsStateChange by EventDispatcher<Map<String, Any?>>()
   private val onTtsSynthesisRequest by EventDispatcher<Map<String, Any?>>()
   private val onTtsSynthesisCancel by EventDispatcher<Map<String, Any?>>()
@@ -129,6 +131,26 @@ class ReadiumView(
         mainHandler.postDelayed(runnable, 300)
       }
     })
+  }
+
+  suspend fun exportImages(href: String?): List<Map<String, Any>> = withContext(Dispatchers.Main.immediate) {
+    val frag = fragment ?: error("Reader unavailable")
+    val location = frag.imageLocation
+    val position = location?.locations?.position ?: 1
+    if (href != null) return@withContext listOf(ReaderImageExport.resource(context, frag.publication, href, position))
+    if (frag is ImageReaderFragment) {
+      return@withContext listOf(ReaderImageExport.resource(context, frag.publication, location?.href?.toString() ?: error("Reader not ready"), position))
+    }
+    if (frag is PdfReaderFragment) {
+      return@withContext frag.visibleImagePages.ifEmpty { listOf(position) }.map { page ->
+        ReaderImageExport.page(context, frag.requireView(), file?.url ?: error("Reader not ready"), page - 1)
+      }
+    }
+    val positions = (frag as? EpubReaderFragment)?.imagePagePositions() ?: listOf(position)
+    val rtl = preferences?.readingProgression == "rtl"
+    positions.mapIndexed { index, page ->
+      ReaderImageExport.page(context, frag.requireView(), null, page - 1, if (rtl) positions.lastIndex - index else index, positions.size)
+    }
   }
 
   // MARK: - Props
@@ -712,6 +734,8 @@ class ReadiumView(
     registry[this.id] = this
 
     fragment = frag
+    frag.onImagePress = { href -> onImagePress(mapOf("href" to href)) }
+    frag.onInternalLinkNavigation = { beginUserNavigation(detachViewport = false) }
     frag.onUserNavigationIntent = { beginUserNavigation() }
     frag.onUserNavigationGestureStart = {
       activeDragNavigationId = beginUserNavigation(scheduleReset = false)

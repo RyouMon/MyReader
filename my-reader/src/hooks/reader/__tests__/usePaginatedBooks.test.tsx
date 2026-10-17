@@ -10,6 +10,7 @@ import { usePaginatedBooks } from "../usePaginatedBooks"
 vi.mock("@/lib/tauri-api", () => ({
   api: {
     getBooksPage: vi.fn(),
+    queryCatalogBooks: vi.fn(),
   },
 }))
 
@@ -71,6 +72,31 @@ beforeEach(() => {
 })
 
 describe("usePaginatedBooks", () => {
+  it("keeps token scopes separate and reuses their cached pages when returning", async () => {
+    const client = makeClient()
+    vi.mocked(api.queryCatalogBooks).mockImplementation(async (_, request) => ({
+      items: [makeBook(request.tags[0] === "A" ? 1 : 2)],
+      total: 1,
+    }))
+    const { result, rerender } = renderHook(
+      ({ tag }) =>
+        usePaginatedBooks("library-1", "title", "", false, [
+          { kind: "tags", value: tag },
+        ]),
+      { wrapper: createWrapper(client), initialProps: { tag: "A" } },
+    )
+    await waitFor(() => expect(result.current.books.get(0)?.id).toBe(1))
+    rerender({ tag: "B" })
+    await waitFor(() => expect(result.current.books.get(0)?.id).toBe(2))
+    rerender({ tag: "A" })
+    await waitFor(() => expect(result.current.books.get(0)?.id).toBe(1))
+    expect(api.queryCatalogBooks).toHaveBeenCalledTimes(2)
+    expect(api.queryCatalogBooks).toHaveBeenCalledWith(
+      "library-1",
+      expect.objectContaining({ tags: ["A"], offset: 0, limit: 100 }),
+    )
+  })
+
   it("should reuse cached initial page when hook remounts with same query key", async () => {
     const client = makeClient()
     const wrapper = createWrapper(client)

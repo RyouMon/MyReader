@@ -1,4 +1,3 @@
-import { useReaderBookSource } from "@/hooks/reader/useReaderBookSource"
 import { formatFileSize } from "@my-reader/tools/book-metadata"
 import { isTauri } from "@tauri-apps/api/core"
 import type { TFunction } from "i18next"
@@ -21,15 +20,6 @@ import {
   ReaderSidePanelScrollArea,
   readerSettingsOptionStateClass,
 } from "@/components/reader/shared/ReaderSidePanelChrome"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import {
   Empty,
   EmptyContent,
@@ -38,6 +28,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
+import { useReaderBookSource } from "@/hooks/reader/useReaderBookSource"
 import { useReaderPaginateEdgeHover } from "@/hooks/reader/useReaderPaginateEdgeHover"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
 import { useReadiumDivinaPublication } from "@/hooks/reader/useReadiumDivinaPublication"
@@ -158,12 +149,9 @@ function getReadBookWindowContent(
     downloadError,
     downloadProgress,
     bookPayload,
-    positionConflict,
-    resolvingPositionConflict,
     handleErrorClose,
     handleRetryDownload,
     handleCancelDownload,
-    handlePositionConflict,
   } = source
   if (fetchError) {
     return renderWindowState(
@@ -215,79 +203,7 @@ function getReadBookWindowContent(
     )
   }
 
-  if (positionConflict) {
-    return renderWindowState(
-      <ReadBookPositionConflict
-        candidates={positionConflict}
-        resolving={resolvingPositionConflict}
-        onSelect={handlePositionConflict}
-      />,
-    )
-  }
-
   return null
-}
-
-function ReadBookPositionConflict({
-  candidates,
-  resolving,
-  onSelect,
-}: {
-  candidates: NonNullable<
-    ReturnType<typeof useReaderBookSource>["positionConflict"]
-  >
-  resolving: boolean
-  onSelect: ReturnType<typeof useReaderBookSource>["handlePositionConflict"]
-}) {
-  const { t } = useTranslation()
-  return (
-    <>
-      <ReadBookLoading message={t("reader.loadingBook")} />
-      <Dialog open>
-        <DialogContent showCloseButton={false}>
-          <DialogHeader>
-            <DialogTitle>{t("reader.positionConflictTitle")}</DialogTitle>
-            <DialogDescription>
-              {t("reader.positionConflictDescription")}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-2">
-            {candidates.map((candidate) => (
-              <Button
-                key={candidate.operationId}
-                variant="outline"
-                className="h-auto justify-between px-4 py-3"
-                disabled={resolving}
-                onClick={() => void onSelect(candidate)}
-              >
-                <span>
-                  {candidate.displayProgression == null
-                    ? t("reader.positionUnknown")
-                    : t("reader.positionPercentage", {
-                        percentage: Math.round(
-                          candidate.displayProgression * 100,
-                        ),
-                      })}
-                </span>
-                <span className="text-xs font-normal text-muted-foreground">
-                  {new Date(candidate.recordedAt).toLocaleString()}
-                </span>
-              </Button>
-            ))}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="ghost"
-              disabled={resolving}
-              onClick={() => void onSelect(null)}
-            >
-              {t("reader.positionConflictKeepDefault")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
-  )
 }
 
 function ReadBookContent({
@@ -324,6 +240,7 @@ function ReadBookContent({
     )
   const readerProps = {
     bookTitle,
+    bookAuthors: source.bookAuthors,
     initialSavedLocator: bookPayload.initialSavedLocator,
     libraryId: activeLibraryId,
     bookId: source.bookId,
@@ -333,6 +250,7 @@ function ReadBookContent({
   if (format === "PDF") {
     return (
       <ReadiumPdfReader
+        key={`${activeLibraryId}:${source.bookId}:${format}`}
         {...readerProps}
         fileUrl={bookPayload.source.filePath}
       />
@@ -360,7 +278,13 @@ function ReadBookContent({
         t(isEpub ? "reader.loadEpubFailed" : "reader.loadComicFailed"),
     )
   }
-  return <Reader {...readerProps} publication={result.publication} />
+  return (
+    <Reader
+      key={`${activeLibraryId}:${source.bookId}:${format}`}
+      {...readerProps}
+      publication={result.publication}
+    />
+  )
 }
 
 function DemoReaderPreview({

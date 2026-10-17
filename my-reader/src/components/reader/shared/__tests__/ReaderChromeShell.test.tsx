@@ -1,10 +1,18 @@
 import { readerChromePalette } from "@my-reader/tools/reader-chrome-palette"
-import { fireEvent, render, screen } from "@testing-library/react"
-import { describe, expect, it, vi } from "vitest"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { api } from "@/lib/tauri-api"
 import { ReaderChromeShell, readerChromeThemeStyle } from "../ReaderChromeShell"
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
+}))
+vi.mock("@/lib/platform", () => ({
+  isMacPlatform: () => true,
+  isWindowsPlatform: () => false,
+}))
+vi.mock("@/lib/tauri-api", () => ({
+  api: { readerImageAction: vi.fn(), shareReaderImages: vi.fn() },
 }))
 
 Object.defineProperty(window, "matchMedia", {
@@ -26,6 +34,83 @@ const topBar = {
 }
 
 describe("ReaderChromeShell", () => {
+  beforeEach(() => vi.clearAllMocks())
+  afterEach(() => vi.unstubAllGlobals())
+
+  it("shares the current spread through More and saves only the right-clicked original", async () => {
+    const getPageImages = vi.fn(async () =>
+      [2, 3].map((position) => ({
+        name: "page.png",
+        data: `page-${position}`,
+        position,
+      })),
+    )
+    vi.mocked(api.readerImageAction).mockImplementation(
+      async (_action, name) => `/cache/${name}`,
+    )
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        blob: async () => new Blob(["original"], { type: "image/jpeg" }),
+      })),
+    )
+    render(
+      <ReaderChromeShell
+        readerRootRef={{ current: null }}
+        chromeVisible
+        showChrome={vi.fn()}
+        scheduleChromeHide={vi.fn()}
+        topBar={topBar}
+        tocPanel={null}
+        settingsPanel={null}
+        imageActions
+        imagePosition={2}
+        bookAuthors={["作者"]}
+        getPageImages={getPageImages}
+        main={
+          <img
+            alt="Second visible page"
+            data-reader-page="3"
+            src="https://reader.test/original.jpg"
+          />
+        }
+      />,
+    )
+    fireEvent.keyDown(
+      screen.getByRole("button", { name: "reader.imageMore" }),
+      { key: "ArrowDown" },
+    )
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "reader.sharePage" }),
+    )
+    await waitFor(() =>
+      expect(api.shareReaderImages).toHaveBeenCalledExactlyOnceWith([
+        "/cache/作者-疯传-2.png",
+        "/cache/作者-疯传-3.png",
+      ]),
+    )
+    expect(getPageImages).toHaveBeenCalledOnce()
+    fireEvent.contextMenu(
+      screen.getByRole("img", { name: "Second visible page" }),
+    )
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "reader.saveImage" }),
+    )
+    await waitFor(() =>
+      expect(api.readerImageAction).toHaveBeenLastCalledWith(
+        "save",
+        "作者-疯传-3.jpg",
+        "b3JpZ2luYWw=",
+        null,
+      ),
+    )
+    expect(getPageImages).toHaveBeenCalledOnce()
+    expect(
+      screen.queryByRole("menuitem", { name: "reader.saveImage" }),
+    ).not.toBeInTheDocument()
+  })
+
   it("should derive reflowable chrome colors from the reading theme", () => {
     const style = readerChromeThemeStyle("green")
     const palette = readerChromePalette("#000000", "#C5E7CD")
@@ -65,17 +150,21 @@ describe("ReaderChromeShell", () => {
         settingsPanel={null}
         main={<main data-testid="readium-region" />}
         bottomStatusBar={<div data-testid="bottom-region" />}
+        historyNavigation={<button data-testid="history-navigation" />}
       />,
     )
 
     const readiumRegion = screen.getByTestId("readium-region")
     const bottomRegion = screen.getByTestId("bottom-region")
+    const historyNavigation = screen.getByTestId("history-navigation")
     const content = container.querySelector(".reader-window-content")
     const footer = container.querySelector(".reader-window-footer")
 
     expect(content).toContainElement(readiumRegion)
     expect(content).not.toContainElement(bottomRegion)
     expect(footer).toContainElement(bottomRegion)
+    expect(footer).toContainElement(historyNavigation)
+    expect(content).not.toContainElement(historyNavigation)
     expect(footer?.previousElementSibling).toBe(content)
   })
 

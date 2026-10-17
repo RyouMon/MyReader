@@ -1,9 +1,6 @@
-import { type ReactNode } from "react"
-
 import type { SFSymbol } from "expo-symbols"
+import type { ReactNode } from "react"
 import type { ColorValue } from "react-native"
-
-import { View } from "@/tw"
 
 import { AndroidHeaderIconButton } from "./android-header-icon-button"
 import { resolveToolbarMaterialIcon } from "./header-toolbar-material-icons.android"
@@ -65,17 +62,7 @@ function HeaderToolbarActionButton({
   )
 }
 
-function ActionGroup({ actions }: { actions: HeaderToolbarAction[] }) {
-  return (
-    <View className="flex-row items-center">
-      {actions.map((action) => (
-        <HeaderToolbarActionButton key={action.label} action={action} />
-      ))}
-    </View>
-  )
-}
-
-/** Renders a set of toolbar actions as Android header button nodes. */
+/** Button nodes only; the native-stack adapter owns the complete action row. */
 export function renderHeaderToolbarActions(
   actions?: HeaderToolbarAction[],
 ): ReactNode {
@@ -83,14 +70,9 @@ export function renderHeaderToolbarActions(
     return null
   }
 
-  const first = actions[0]
-  if (!first) return null
-
-  return actions.length === 1 ? (
-    <HeaderToolbarActionButton action={first} />
-  ) : (
-    <ActionGroup actions={actions} />
-  )
+  return actions.map((action) => (
+    <HeaderToolbarActionButton key={action.label} action={action} />
+  ))
 }
 
 /** @deprecated On Android, toolbar actions should be set via `useScreenHeader` hook which injects them into `Stack.Screen` options. This component returns null on Android. */

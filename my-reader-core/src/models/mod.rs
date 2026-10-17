@@ -15,8 +15,9 @@ pub use app_config::{
     SecurityScopedBookmark, APP_CONFIG_SCHEMA_VERSION,
 };
 pub use catalog::{
-    BookContent, BookDetail, BookEntry, BookFormat, BookIdentifier, BookSummary, FormatSize,
-    ImportBookRequest, PaginatedBooks, ReadingFormatPolicy, UpdateBookMetadataRequest,
+    BookContent, BookDetail, BookEntry, BookFormat, BookIdentifier, BookSummary, CatalogCover,
+    CatalogFacet, CatalogNavigation, CatalogQuery, FormatSize, ImportBookRequest, PaginatedBooks,
+    ReadingFormatPolicy, UpdateBookMetadataRequest,
 };
 pub use content::{
     BookCoverThumbnailCache, BookCoverThumbnailCachePatch, DownloadedFile, FileDigest, FileState,
@@ -37,7 +38,7 @@ pub use reading::{
 pub use storage::{LibraryStorageConfig, RemoteCredential, RemoteDirectoryEntry};
 pub use sync::{
     CalibreSyncReport, LibrarySyncOptions, LibrarySyncReport, LibrarySyncScope, MyReaderSyncReport,
-    SidecarSyncMode, SidecarSyncReport, SyncFailureKind,
+    SidecarSyncMode, SidecarSyncReport, SyncFailureKind, SyncedReadingPosition,
 };
 pub(crate) use sync::{SyncFailureDisposition, SyncScheduleSnapshot};
 pub use tts::{

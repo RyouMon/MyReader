@@ -6,6 +6,63 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.17.0] - 2026-10-16
+
+### Added
+
+- Added author, tag, and series browsing on desktop and mobile, with alphabetical indexes for authors and tags and up to four cover images per series. Author, tag, and series links in book details open related books ([#103](https://github.com/RyouMon/MyReader/pull/103))
+- Added search suggestions that turn selected authors, tags, and series into filter tokens. All selected filters apply together while preserving text search, sorting, pagination, and the current collection scope; each token can be removed individually ([#103](https://github.com/RyouMon/MyReader/pull/103))
+
+### Fixed
+
+- Fixed Android failing to restore the last reading position when reopening EPUB, PDF, and CBZ books. Pass the resume location when creating the native reader without adding extra back/forward history entries ([#104](https://github.com/RyouMon/MyReader/pull/104))
+
+### Security
+
+- Updated rustls to 0.23.46 to address RUSTSEC-2026-0346 through RUSTSEC-2026-0349 found by the dependency audit ([#103](https://github.com/RyouMon/MyReader/pull/103))
+
+### Build and Distribution
+
+- Pinned the iOS Readium Swift Toolkit to the available 3.11.0 release, fixing clean builds that failed because an older version's Git tag was missing. Added an uncached dependency installation check to the QA gate ([#101](https://github.com/RyouMon/MyReader/pull/101))
+
+## [0.16.1] - 2026-10-13
+
+### Changed
+
+- Added 20-second deadlines for speech generation, credential and bridge waits, and desktop audio startup. Cancel or discard expired requests to prevent narration from remaining stuck, and remove the redundant desktop “Generating next speech” message ([#99](https://github.com/RyouMon/MyReader/pull/99))
+- Preserve original provider errors and causes in narration and preview failures, redact credentials, and separate localized explanations from raw errors with a blank line ([#99](https://github.com/RyouMon/MyReader/pull/99))
+
+### Fixed
+
+- Fixed mobile playback immediately failing with `TypeError: undefined is not a function`, and desktop narration failing to start with the same configuration after reopening the reader ([#99](https://github.com/RyouMon/MyReader/pull/99))
+- Fixed stalled Qwen Token Plan WebSocket connections, filter available models by endpoint, and retain editing support for existing profiles ([#99](https://github.com/RyouMon/MyReader/pull/99))
+- Fixed missing narration highlights and unreliable return-to-playback detection after page turns. Improve anchors for sentences spanning pages, special element IDs, and whitespace, and prevent stale callbacks from replacing the current viewport state ([#99](https://github.com/RyouMon/MyReader/pull/99))
+
+## [0.16.0] - 2026-10-13
+
+### Added
+
+- Added session navigation history to desktop and mobile EPUB, PDF, and CBZ readers. Go back and forward through explicit jumps such as table-of-contents entries and links; ordinary page turns update the current stop. Closing a book clears navigation history while preserving normal reading progress for resume ([#96](https://github.com/RyouMon/MyReader/pull/96))
+- Offer incoming reading positions from other devices as optional forward stops without moving the current page or discarding existing history. The temporary hint hides after a page turn, and available controls return when the reader toolbar opens ([#96](https://github.com/RyouMon/MyReader/pull/96))
+
+### Changed
+
+- Consolidated desktop library search, view selection, sorting, and detail actions into the main window title bar, with compact search in narrow windows. Retained native macOS traffic lights, placed Windows controls on the right, and refined cover backgrounds and alignment in wide detail layouts ([#95](https://github.com/RyouMon/MyReader/pull/95))
+- Automatically resolve resume positions after concurrent reading on multiple devices. Ordinary progress saves continue to sync without requiring manual conflict resolution first ([#96](https://github.com/RyouMon/MyReader/pull/96))
+
+### Fixed
+
+- Fixed duplicate Windows title bars when restoring older window state, and inconsistent cross-platform catalog paths caused by native path separators ([#95](https://github.com/RyouMon/MyReader/pull/95))
+- Fixed desktop EPUB navigation to positions from other devices when their position numbers exceed the local navigator's range. Preserve precise location anchors and retain incoming remote navigation stops after a local autosave ([#96](https://github.com/RyouMon/MyReader/pull/96))
+
+### Performance and Internals
+
+- Moved remote sync validation, merge, and projection computation into separate background tasks, checking for concurrent local changes before committing to reduce startup sync blocking cached-book access and reading-progress saves ([#96](https://github.com/RyouMon/MyReader/pull/96))
+
+### Build and Distribution
+
+- Extended Rust quality gates to full workspace tests on Linux and Windows, and fixed Windows test-process startup and database-fixture cleanup ([#95](https://github.com/RyouMon/MyReader/pull/95))
+
 ## [0.15.0] - 2026-10-11
 
 ### Added

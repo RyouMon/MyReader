@@ -19,6 +19,7 @@ pub struct ReadingPositionCandidate {
     pub display_progression: Option<f64>,
     pub recorded_at: i64,
     pub replica_id: String,
+    pub is_local: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]

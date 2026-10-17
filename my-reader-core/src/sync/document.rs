@@ -718,6 +718,31 @@ pub fn reading_position_candidates(
     Ok(candidates)
 }
 
+pub(crate) fn reading_position_projection(
+    doc: &AutoCommit,
+    book_id: i64,
+    format: &str,
+) -> Result<ReadingPositionProjection, SyncError> {
+    let candidates = reading_position_candidates(doc, book_id, format)?;
+    let conflict_count = candidates.len();
+    let value = candidates
+        .into_iter()
+        .max_by(|left, right| {
+            (left.value.recorded_at, &left.operation_id)
+                .cmp(&(right.value.recorded_at, &right.operation_id))
+        })
+        .ok_or_else(|| sync_error("Reading position value is missing"))?
+        .value;
+    if value.format != format {
+        return Err(sync_error("Reading position key does not match its value"));
+    }
+    Ok(ReadingPositionProjection {
+        book_id,
+        value,
+        conflict_count,
+    })
+}
+
 pub fn reading_position_projections(
     doc: &AutoCommit,
 ) -> Result<Vec<ReadingPositionProjection>, SyncError> {
@@ -731,28 +756,7 @@ pub fn reading_position_projections(
             let book_id = book_id
                 .parse::<i64>()
                 .map_err(|_| sync_error("Reading position book ID is invalid"))?;
-            let selected = doc
-                .get(&positions, &key)
-                .map_err(|error| sync_error(format!("Failed to read reading position: {error}")))?
-                .ok_or_else(|| sync_error("Reading position value is missing"))?;
-            let json = selected
-                .0
-                .to_str()
-                .ok_or_else(|| sync_error("Reading position value is not a string"))?;
-            let value: ReadingPositionValue = serde_json::from_str(json).map_err(|error| {
-                sync_error(format!("Reading position value is invalid: {error}"))
-            })?;
-            if value.format != format {
-                return Err(sync_error("Reading position key does not match its value"));
-            }
-            let conflict_count = reading_position_candidates(doc, book_id, format)?
-                .len()
-                .max(1);
-            Ok(ReadingPositionProjection {
-                book_id,
-                value,
-                conflict_count,
-            })
+            reading_position_projection(doc, book_id, format)
         })
         .collect::<Result<Vec<_>, SyncError>>()?;
     projections.sort_by(|left, right| {
@@ -761,29 +765,6 @@ pub fn reading_position_projections(
             .then_with(|| left.value.format.cmp(&right.value.format))
     });
     Ok(projections)
-}
-
-pub fn resolve_reading_position(
-    doc: &mut AutoCommit,
-    book_id: i64,
-    format: &str,
-    operation_id: &str,
-    recorded_at: i64,
-) -> Result<ChangeHash, SyncError> {
-    let candidate = reading_position_candidates(doc, book_id, format)?
-        .into_iter()
-        .find(|candidate| candidate.operation_id == operation_id)
-        .ok_or_else(|| sync_error("Reading position candidate does not exist"))?;
-    let replica_id = Uuid::from_slice(doc.get_actor().to_bytes())
-        .map_err(|_| sync_error("Automerge actor is not a UUID"))?
-        .hyphenated()
-        .to_string();
-    let resolved = ReadingPositionValue {
-        recorded_at,
-        replica_id,
-        ..candidate.value
-    };
-    set_reading_position(doc, book_id, &resolved)
 }
 
 fn put_json_register<T: Serialize>(
@@ -1434,6 +1415,38 @@ mod tests {
     }
 
     #[test]
+    fn concurrent_positions_should_choose_reading_time_and_converge_in_either_merge_order() {
+        let mut first = load_library_sidecar_document(REPLICA_A).unwrap();
+        let mut second = load_library_sidecar_document(REPLICA_B).unwrap();
+        set_library_identity(&mut first, LIBRARY_UUID, 1).unwrap();
+        set_library_identity(&mut second, LIBRARY_UUID, 1).unwrap();
+        let mut latest = position(REPLICA_A, 300_000);
+        latest.recorded_at = 200;
+        let mut earlier = position(REPLICA_B, 700_000);
+        earlier.recorded_at = 100;
+        set_reading_position(&mut first, 7, &latest).unwrap();
+        set_reading_position(&mut second, 7, &earlier).unwrap();
+        let mut reversed = second.clone();
+        reversed.merge(&mut first.clone()).unwrap();
+        first.merge(&mut second).unwrap();
+        for document in [&first, &reversed] {
+            assert_eq!(
+                reading_position_projection(document, 7, "PDF")
+                    .unwrap()
+                    .value,
+                latest
+            );
+        }
+        // A causal successor wins even with an earlier device clock.
+        earlier.recorded_at = 50;
+        set_reading_position(&mut first, 7, &earlier).unwrap();
+        assert_eq!(
+            reading_position_projection(&first, 7, "PDF").unwrap().value,
+            earlier
+        );
+    }
+
+    #[test]
     fn should_hydrate_typescript_change_when_rust_imports_incremental_bytes() {
         let mut doc = load_library_sidecar_document(REPLICA_B).unwrap();
 
@@ -1502,28 +1515,6 @@ mod tests {
             reading_position_candidates(&first, 7, "PDF").unwrap(),
             reading_position_candidates(&second, 7, "PDF").unwrap()
         );
-    }
-
-    #[test]
-    fn should_remove_conflict_when_user_selects_a_position_candidate() {
-        let mut first = load_library_sidecar_document(REPLICA_A).unwrap();
-        let mut second = load_library_sidecar_document(REPLICA_B).unwrap();
-        set_library_identity(&mut first, LIBRARY_UUID, 1).unwrap();
-        set_library_identity(&mut second, LIBRARY_UUID, 1).unwrap();
-        set_reading_position(&mut first, 7, &position(REPLICA_A, 700_000)).unwrap();
-        set_reading_position(&mut second, 7, &position(REPLICA_B, 300_000)).unwrap();
-        first.merge(&mut second).unwrap();
-        let selected = reading_position_candidates(&first, 7, "PDF")
-            .unwrap()
-            .into_iter()
-            .find(|candidate| candidate.value.display_progression_ppm == Some(300_000))
-            .unwrap();
-
-        resolve_reading_position(&mut first, 7, "PDF", &selected.operation_id, 2).unwrap();
-
-        let candidates = reading_position_candidates(&first, 7, "PDF").unwrap();
-        assert_eq!(candidates.len(), 1);
-        assert_eq!(candidates[0].value.display_progression_ppm, Some(300_000));
     }
 
     #[test]

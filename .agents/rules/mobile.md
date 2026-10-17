@@ -23,6 +23,16 @@ Read [current architecture](../../docs/ARCHITECTURE.md) and
   regenerate the binding after exported Rust API changes.
 - Prefer official platform APIs and existing adapters. Keep platform-specific navigation, permissions,
   filesystem access, lifecycle, background scheduling and notifications on the platform.
+- Android stack header actions use `useScreenHeader`; custom menu groups use one
+  `AndroidHeaderActions` per side. Buttons own their touch targets; groups measure their full size
+  and native-stack owns edge spacing. Inline headers use `ANDROID_HEADER_EDGE_INSET`. Do not put a
+  whole group in an icon-sized slot or add per-screen button margins.
+- The sync-status toolbar action appears on the Home and Library roots through
+  `useLibraryRootHeader`, and on Settings. Nested catalog pages do not show it.
+- Android navigation titles are left-aligned and use `ANDROID_HEADER_TITLE_STYLE` through
+  the shared header hooks. Form-sheet headers use `AndroidHeaderTitle` because native-stack
+  headers are unsupported there. Do not add per-screen title alignment or typography overrides;
+  iOS retains its native title behavior.
 - Run the full `pnpm test:mobile` suite after changes. Rust/FFI changes also require full Cargo tests;
   native changes require the applicable source build and simulator verification.
 - Native build and simulator commands: [DEVELOPMENT.md](../../docs/DEVELOPMENT.md).

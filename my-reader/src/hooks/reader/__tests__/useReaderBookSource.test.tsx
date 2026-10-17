@@ -3,8 +3,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react"
 import type { ReactNode } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import {
+  flushReaderProgress,
+  scheduleReaderProgressSave,
+} from "@/lib/readerProgressPersistence"
+import { applySidecarSyncCompleted } from "@/hooks/useSidecarSync"
 import type { ReadingPositionCandidateDto } from "@/lib/tauri-api"
-import { scheduleReaderProgressSave } from "@/lib/readerProgressPersistence"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 import { useReaderBookSource } from "../useReaderBookSource"
 
@@ -19,7 +23,6 @@ const mocks = vi.hoisted(() => ({
     listReadingPositionCandidates: vi.fn(),
     prepareBookSource: vi.fn(),
     closeBookStreamer: vi.fn(),
-    selectReadingPositionCandidate: vi.fn(),
     downloadBookFile: vi.fn(),
     cancelBookDownload: vi.fn(),
     setReadingProgress: vi.fn(),
@@ -56,6 +59,7 @@ const savedLocator = {
 const candidates: ReadingPositionCandidateDto[] = [
   {
     operationId: "first",
+    isLocal: false,
     replicaId: "device-one",
     locator: savedLocator,
     recordedAt: 1,
@@ -63,6 +67,7 @@ const candidates: ReadingPositionCandidateDto[] = [
   },
   {
     operationId: "second",
+    isLocal: false,
     replicaId: "device-two",
     locator: { ...savedLocator, locations: { position: 7 } },
     recordedAt: 2,
@@ -83,7 +88,9 @@ beforeEach(() => {
   useLibraryUiStore.setState({ activeLibraryId: "library" })
   mocks.onCloseRequested.mockResolvedValue(() => {})
   mocks.api.getBookDetail.mockResolvedValue(book())
-  mocks.api.getReadingProgress.mockResolvedValue({ locator: savedLocator })
+  mocks.api.getReadingProgress.mockResolvedValue({
+    locator: savedLocator,
+  })
   mocks.api.listReadingPositionCandidates.mockResolvedValue(candidates)
   mocks.api.prepareBookSource.mockResolvedValue({
     filePath: "/book.epub",
@@ -91,7 +98,6 @@ beforeEach(() => {
     extractedEntries: [],
   })
   mocks.api.closeBookStreamer.mockResolvedValue(undefined)
-  mocks.api.selectReadingPositionCandidate.mockResolvedValue(undefined)
   mocks.api.downloadBookFile.mockResolvedValue(undefined)
 })
 afterEach(() => {
@@ -100,6 +106,52 @@ afterEach(() => {
 })
 
 describe("useReaderBookSource", () => {
+  it("keeps the open publication and viewport when sync changes the saved position", async () => {
+    mocks.api.getReadingProgress.mockResolvedValue({
+      locator: savedLocator,
+    })
+    const { result } = renderHook(() => useReaderBookSource({ bookId: "4" }), {
+      wrapper,
+    })
+    await waitFor(() => expect(result.current.bookPayload).not.toBeNull())
+    const payload = result.current.bookPayload
+    mocks.api.getReadingProgress.mockResolvedValue({
+      locator: candidates[1].locator,
+    })
+    await act(() =>
+      applySidecarSyncCompleted(
+        {
+          libraryId: "library",
+          mode: "full",
+          pulled: 1,
+          pushed: 0,
+        },
+        client,
+      ),
+    )
+    expect(result.current.bookPayload).toBe(payload)
+    expect(mocks.api.prepareBookSource).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    null,
+    { locator: savedLocator },
+  ])("opens without waiting for remote position lookup: %j", async (progress) => {
+    mocks.api.getReadingProgress.mockResolvedValue(progress)
+    mocks.api.listReadingPositionCandidates.mockReturnValue(
+      new Promise(() => {}),
+    )
+    const { result } = renderHook(() => useReaderBookSource({ bookId: "4" }), {
+      wrapper,
+    })
+    await waitFor(() => expect(result.current.bookPayload).not.toBeNull())
+    expect(mocks.api.listReadingPositionCandidates).not.toHaveBeenCalled()
+    expect(
+      result.current.bookPayload?.initialSavedLocator?.locations.position ??
+        null,
+    ).toBe(progress ? 3 : null)
+  })
+
   it("persists the latest pending page before closing the reader window", async () => {
     const { result } = renderHook(
       () => useReaderBookSource({ bookId: "4", formatFromSearch: "PDF" }),
@@ -154,7 +206,6 @@ describe("useReaderBookSource", () => {
     expect(
       result.current.bookPayload?.initialSavedLocator?.locations.position,
     ).toBe(3)
-    expect(result.current.positionConflict).toEqual(candidates)
   })
 
   it("ignores an old book response after navigation and closes its streamer", async () => {
@@ -182,41 +233,27 @@ describe("useReaderBookSource", () => {
     expect(mocks.api.closeBookStreamer).toHaveBeenCalledWith("library", 1)
   })
 
-  it("applies a selected conflict only after the backend accepts it", async () => {
-    const { result } = renderHook(() => useReaderBookSource({ bookId: "4" }), {
-      wrapper,
-    })
-    await waitFor(() => expect(result.current.positionConflict).toHaveLength(2))
-    await act(() => result.current.handlePositionConflict(candidates[1]))
-    expect(mocks.api.selectReadingPositionCandidate).toHaveBeenCalledWith(
-      "library",
-      4,
-      "EPUB",
-      "second",
+  it("drains a newer page queued while the reader close is waiting for a save", async () => {
+    let finish!: () => void
+    mocks.api.setReadingProgress.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve
+        }),
     )
-    expect(result.current.positionConflict).toBeNull()
-    expect(
-      result.current.bookPayload?.initialSavedLocator?.locations.position,
-    ).toBe(7)
-  })
-
-  it("keeps the original position and exposes failed conflict persistence", async () => {
-    mocks.api.selectReadingPositionCandidate.mockRejectedValue(
-      new Error("disk full"),
+    scheduleReaderProgressSave("library", 4, "EPUB", savedLocator, 0.3)
+    const closing = flushReaderProgress()
+    await waitFor(() =>
+      expect(mocks.api.setReadingProgress).toHaveBeenCalledTimes(1),
     )
-    const { result } = renderHook(() => useReaderBookSource({ bookId: "4" }), {
-      wrapper,
-    })
-    await waitFor(() => expect(result.current.positionConflict).toHaveLength(2))
-    await act(() => result.current.handlePositionConflict(candidates[1]))
-    expect(
-      result.current.bookPayload?.initialSavedLocator?.locations.position,
-    ).toBe(3)
-    expect(result.current.positionConflict).toEqual(candidates)
-    expect(result.current.fetchError).toBe(
-      "未能完成此操作，请重试。\nError: disk full",
-    )
-    expect(result.current.resolvingPositionConflict).toBe(false)
+    scheduleReaderProgressSave("library", 4, "EPUB", candidates[1].locator, 0.8)
+    finish()
+    await closing
+    try {
+      expect(mocks.api.setReadingProgress).toHaveBeenCalledTimes(2)
+    } finally {
+      await flushReaderProgress()
+    }
   })
 
   it("requests a missing remote file and can retry a rejected download", async () => {
@@ -231,7 +268,7 @@ describe("useReaderBookSource", () => {
     })
     await waitFor(() => expect(result.current.downloadState).toBe("error"))
     expect(result.current.downloadError).toBe(
-      "未能完成此操作，请重试。\nError: offline",
+      "未能完成此操作，请重试。\n\nError: offline",
     )
     expect(result.current.fetchError).toBeNull()
     act(() => result.current.handleRetryDownload())

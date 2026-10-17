@@ -10,7 +10,12 @@ import CloudOffIcon from "@expo/material-symbols/cloud_off.xml"
 import CloudSyncIcon from "@expo/material-symbols/cloud_sync.xml"
 import CloudUploadIcon from "@expo/material-symbols/cloud_upload.xml"
 import DeleteIcon from "@expo/material-symbols/delete.xml"
+import EditIcon from "@expo/material-symbols/edit.xml"
+import GridViewIcon from "@expo/material-symbols/grid_view.xml"
+import ListIcon from "@expo/material-symbols/list.xml"
+import LoginIcon from "@expo/material-symbols/login.xml"
 import ShareIcon from "@expo/material-symbols/share.xml"
+import SearchIcon from "@expo/material-symbols/search.xml"
 import StarIcon from "@expo/material-symbols/star.xml"
 import SwapHorizIcon from "@expo/material-symbols/swap_horiz.xml"
 import type { SFSymbol } from "expo-symbols"
@@ -22,7 +27,12 @@ const SF_SYMBOL_MATERIAL_ICON: Partial<Record<SFSymbol, ImageSourcePropType>> =
     plus: AddIcon,
     checkmark: CheckIcon,
     xmark: CloseIcon,
+    magnifyingglass: SearchIcon,
     trash: DeleteIcon,
+    pencil: EditIcon,
+    "arrow.clockwise": LoginIcon,
+    "list.bullet": ListIcon,
+    "square.grid.2x2": GridViewIcon,
     "chevron.left": ArrowBackIcon,
     star: StarIcon,
     "star.fill": StarFillIcon,

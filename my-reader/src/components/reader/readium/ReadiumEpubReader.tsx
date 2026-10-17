@@ -1,3 +1,5 @@
+import { epubPageImages } from "@/lib/reader-image"
+import { useReaderNavigationHistory } from "@/hooks/reader/useReaderNavigationHistory"
 import { errorMessage } from "@/lib/error-presentation"
 import {
   type ReaderAnnotationColor,
@@ -570,6 +572,7 @@ function setupIframeWindow(
     onAnnotationClick: (selection: EpubAnnotationSelection) => void
     onAnnotationNoteClick: (annotationId: string) => void
     onSelectionCleared: () => void
+    onInternalLinkNavigation: () => void
     noteMarkerAccessibilityLabel: string
   },
 ): (() => void) | undefined {
@@ -628,11 +631,19 @@ function setupIframeWindow(
         opts.getChromeVisible() || nearRight,
       )
     }
+    const onClick = (event: MouseEvent) => {
+      const target = event.target as Element | null
+      const href = target?.closest?.("a[href]")?.getAttribute("href")
+      if (href && !/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(href))
+        opts.onInternalLinkNavigation()
+    }
+    doc.addEventListener("click", onClick, true)
     wnd.addEventListener("pointermove", onMove)
     return () => {
       stopSelectedTextContextMenu()
       stopAnnotationClickBridge()
       stopTextSelectionChangeBridge()
+      doc.removeEventListener("click", onClick, true)
       wnd.removeEventListener("pointermove", onMove)
       setupIframeDocuments.delete(doc)
     }
@@ -709,6 +720,7 @@ function setReaderFontInIframeDocs(
 
 export type ReadiumEpubReaderProps = {
   bookTitle: string
+  bookAuthors?: string[]
   publication: Publication
   initialSavedLocator: Locator | null
   libraryId: string | null
@@ -719,6 +731,7 @@ export type ReadiumEpubReaderProps = {
 
 function useEpubReaderController({
   bookTitle,
+  bookAuthors,
   publication,
   initialSavedLocator,
   libraryId,
@@ -730,6 +743,7 @@ function useEpubReaderController({
   const noteMarkerAccessibilityLabel = t("reader.openNote")
   const containerRef = useRef<HTMLDivElement>(null)
   const navigatorRef = useRef<EpubNavigator | null>(null)
+  const internalLinkNavigationRef = useRef(false)
   const {
     tocOpen,
     bookmarksOpen,
@@ -768,6 +782,13 @@ function useEpubReaderController({
   const [initError, setInitError] = useState<string | null>(null)
   const [chapterTitle, setChapterTitle] = useState("")
   const [currentLocator, setCurrentLocator] = useState<Locator | null>(null)
+  const history = useReaderNavigationHistory({
+    libraryId,
+    bookId,
+    format,
+    currentLocator,
+    enabled: progressSyncEnabled,
+  })
   const captureCurrentBookmarkLocator = useCallback(async () => {
     const navigator = navigatorRef.current
     if (!navigator || isFixedLayout) return null
@@ -1202,8 +1223,14 @@ function useEpubReaderController({
   const beginContentNavigation = useCallback(
     (
       targetLocator?: Locator | null,
-      options?: { trackTtsViewport?: boolean },
+      options?: { trackTtsViewport?: boolean; recordHistory?: boolean },
     ) => {
+      if (
+        targetLocator &&
+        options?.trackTtsViewport !== false &&
+        options?.recordHistory !== false
+      )
+        history.jump(readiumLocatorToReaderLocator(targetLocator))
       const ttsState = ttsSessionRef.current.state
       if (
         options?.trackTtsViewport !== false &&
@@ -1237,6 +1264,7 @@ function useEpubReaderController({
       return sequence
     },
     [
+      history,
       clearContentNavigationTimers,
       clearPendingProgressSeek,
       setContentSettlingState,
@@ -1285,6 +1313,8 @@ function useEpubReaderController({
 
   const beginContentSettlingForPageTurn = useCallback(
     (direction: "backward" | "forward") => {
+      internalLinkNavigationRef.current = false
+      history.dismissRemoteHint()
       const navigationId = `desktop-navigation-${++ttsUserNavigationSequenceRef.current}`
       const ttsState = ttsSessionRef.current.state
       if (
@@ -1306,7 +1336,7 @@ function useEpubReaderController({
         navigationId,
       }
     },
-    [beginContentNavigationForPageTurn],
+    [beginContentNavigationForPageTurn, history],
   )
 
   const completeTtsUserNavigation = useCallback(
@@ -1897,6 +1927,9 @@ function useEpubReaderController({
             onAnnotationClick,
             onAnnotationNoteClick,
             onSelectionCleared: () => setAnnotationSelection(null),
+            onInternalLinkNavigation: () => {
+              internalLinkNavigationRef.current = true
+            },
             noteMarkerAccessibilityLabel,
           })
           if (cleanup) cleanups.push(cleanup)
@@ -2051,6 +2084,9 @@ function useEpubReaderController({
                   onAnnotationClick,
                   onAnnotationNoteClick,
                   onSelectionCleared: () => setAnnotationSelection(null),
+                  onInternalLinkNavigation: () => {
+                    internalLinkNavigationRef.current = true
+                  },
                   noteMarkerAccessibilityLabel,
                 })
               })
@@ -2085,6 +2121,10 @@ function useEpubReaderController({
                 )
                   ? pendingSeek.locator
                   : locator
+              if (internalLinkNavigationRef.current) {
+                internalLinkNavigationRef.current = false
+                history.jump(readiumLocatorToReaderLocator(stableLocator))
+              }
               setCurrentLocator(stableLocator)
               setChapterTitle(resolveChapterTitle(stableLocator, selected))
               finishContentNavigationForLocator(stableLocator)
@@ -2099,7 +2139,9 @@ function useEpubReaderController({
             miscPointer: () => {
               // Center taps stay content-only; chrome is revealed by edge zones.
             },
-            scroll: () => {},
+            scroll: () => {
+              history.dismissRemoteHint()
+            },
             customEvent: () => {},
             handleLocator: () => false,
             textSelected: onTextSelected,
@@ -2228,6 +2270,7 @@ function useEpubReaderController({
       void activeNavigator?.destroy()
     }
   }, [
+    history,
     publication,
     initialSavedLocator,
     epubPositions,
@@ -2312,6 +2355,25 @@ function useEpubReaderController({
 
   return {
     initError,
+    history,
+    getHistoryLocationLabel: (locator: ReaderLocator) => {
+      const target = resolveInitialEpubPosition(
+        epubPositions,
+        readerLocatorToReadiumLocator(locator),
+      )
+      return String(locatorDisplayPosition(target, bottomPositionTotal))
+    },
+    onHistoryNavigate: (locator: ReaderLocator) => {
+      const target = resolveInitialEpubPosition(
+        epubPositions,
+        readerLocatorToReadiumLocator(locator),
+      )
+      if (!target) return
+      const sequence = beginContentNavigation(target, { recordHistory: false })
+      navigatorRef.current?.go(target, false, () =>
+        finishContentNavigation(sequence),
+      )
+    },
     readerRootRef,
     chromeVisible,
     showChrome,
@@ -2327,6 +2389,19 @@ function useEpubReaderController({
     readerSettings,
     isFixedLayout,
     bookTitle,
+    bookAuthors,
+    getPageImages: async () => {
+      const container = containerRef.current
+      const nav = navigatorRef.current
+      if (!container || !nav) throw new Error("READER_NOT_READY")
+      const positions = nav.viewport.positions
+      const start = positions?.[0] ?? nav.currentLocator.locations.position ?? 1
+      return epubPageImages(
+        container,
+        start,
+        positions?.[positions.length - 1] ?? start,
+      )
+    },
     chapterTitle,
     readerBookmarks,
     annotationsAvailable,

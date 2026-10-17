@@ -1,6 +1,6 @@
 import type { Locator } from "@my-reader/readium"
 import { hrefRoughlyMatches } from "@my-reader/tools/reader-toc"
-import { useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef } from "react"
 
 import { displayProgressionForPosition } from "@/src/domain/library/display-progression"
 import { setReadingProgress } from "@/src/domain/library/reading-progress"
@@ -77,6 +77,14 @@ export function useReaderProgressSaver(
     moved: boolean
   } | null>(null)
   const pendingSaveRef = useRef<(() => Promise<void>) | null>(null)
+  const writeTailRef = useRef(Promise.resolve())
+  const flush = useCallback(async () => {
+    let saving: Promise<void>
+    do {
+      saving = pendingSaveRef.current?.() ?? writeTailRef.current
+      await saving
+    } while (pendingSaveRef.current || saving !== writeTailRef.current)
+  }, [])
 
   useEffect(() => {
     if (
@@ -95,7 +103,7 @@ export function useReaderProgressSaver(
           key,
         }
         if (trackedPositionRef.current?.bookKey !== key) {
-          void pendingSaveRef.current?.()
+          void flush().catch(() => {})
           trackedPositionRef.current = {
             bookKey: key,
             initial: null,
@@ -104,7 +112,7 @@ export function useReaderProgressSaver(
         }
       }
     }
-  }, [activeLibraryId, loadState])
+  }, [activeLibraryId, loadState, flush])
 
   const saveSeqRef = useRef(0)
 
@@ -136,43 +144,56 @@ export function useReaderProgressSaver(
     }
 
     const seq = ++saveSeqRef.current
-    const save = async () => {
+    let write: Promise<void> | null = null
+    const save = () => {
       if (pendingSaveRef.current === save) pendingSaveRef.current = null
-      try {
-        await setReadingProgress(
-          ctx.library,
-          ctx.bookId,
-          ctx.format,
-          readerState.locator!,
-          {
-            displayProgression: displayProgressionForPosition(
-              readerState.currentPage,
-              readerState.totalPages,
-            ),
-            invalidate: false,
-          },
-        )
-        console.info("[reading-sync] reader:progress-saved", {
-          libraryId: ctx.library.id,
-          bookId: ctx.bookId,
-          format: ctx.format.toUpperCase(),
-          href: readerState.locator?.href ?? null,
-          position: readerState.locator?.locations?.position ?? null,
-          totalProgression:
-            readerState.locator?.locations?.totalProgression ?? null,
+      if (write) return write
+      write = writeTailRef.current
+        .catch(() => {})
+        .then(async () => {
+          try {
+            await setReadingProgress(
+              ctx.library,
+              ctx.bookId,
+              ctx.format,
+              readerState.locator!,
+              {
+                displayProgression: displayProgressionForPosition(
+                  readerState.currentPage,
+                  readerState.totalPages,
+                ),
+                invalidate: false,
+              },
+            )
+            console.info("[reading-sync] reader:progress-saved", {
+              libraryId: ctx.library.id,
+              bookId: ctx.bookId,
+              format: ctx.format.toUpperCase(),
+              href: readerState.locator?.href ?? null,
+              position: readerState.locator?.locations?.position ?? null,
+              totalProgression:
+                readerState.locator?.locations?.totalProgression ?? null,
+            })
+          } catch (e) {
+            if (saveSeqRef.current === seq) {
+              pendingSaveRef.current = save
+              write = null
+            }
+            console.error("[reading-sync] reader:progress-save-failed", {
+              libraryId: ctx.library.id,
+              bookId: ctx.bookId,
+              format: ctx.format.toUpperCase(),
+              error: e,
+            })
+            throw e
+          }
         })
-      } catch (e) {
-        console.error("[reading-sync] reader:progress-save-failed", {
-          libraryId: ctx.library.id,
-          bookId: ctx.bookId,
-          format: ctx.format.toUpperCase(),
-          error: e,
-        })
-      }
+      writeTailRef.current = write
+      return write
     }
     pendingSaveRef.current = save
     const t = setTimeout(() => {
-      if (saveSeqRef.current === seq) void save()
+      if (saveSeqRef.current === seq) void save().catch(() => {})
     }, SAVE_DEBOUNCE_MS)
 
     return () => clearTimeout(t)
@@ -185,21 +206,25 @@ export function useReaderProgressSaver(
 
   useEffect(() => {
     return () => {
-      const saving = pendingSaveRef.current?.() ?? Promise.resolve()
+      const saving = flush()
       const ctx = bookContextRef.current
       if (ctx) {
-        void saving.then(() => {
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.readingProgress(ctx.library.id),
+        void saving
+          .catch(() => {})
+          .then(() => {
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.readingProgress(ctx.library.id),
+            })
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.recentlyReadBooks(ctx.library.id),
+            })
+            console.info(
+              "[mobile-reader] Invalidated queryKey: reading-progress, recently-read-books.",
+            )
           })
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.recentlyReadBooks(ctx.library.id),
-          })
-          console.info(
-            "[mobile-reader] Invalidated queryKey: reading-progress, recently-read-books.",
-          )
-        })
       }
     }
-  }, [])
+  }, [flush])
+
+  return { flush }
 }

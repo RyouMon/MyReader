@@ -49,3 +49,4 @@
 | [ADR-0020](./0020-adopt-automerge-repo-storage-model.md) | 采用 automerge-repo 存储模型重构书库 sidecar | 已接受 | 2026-07-30 |
 | [ADR-0021](./0021-support-myreader-managed-libraries.md) | 复用 Calibre 书目结构支持独立的 MyReader 可写书库 | 已实施 | 2026-07-31 |
 | [ADR-0022](./0022-adopt-readium-tts-and-core-provider-architecture.md) | 采用 Readium TTS 会话与 MyReaderCore 推理供应商架构 | 已接受，部分实施 | 2026-08-22 |
+| [ADR-0023](./0023-session-reading-navigation-history.md) | 用会话导航历史承接阅读跳转与远端位置 | 已接受 | 2026-10-12 |

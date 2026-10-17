@@ -208,7 +208,7 @@ describe("useBookDetailFormats", () => {
       await waitFor(() => {
         expect(alertSpy).toHaveBeenCalledWith(
           expect.any(String),
-          "This action could not be completed. Please try again.\ndisk failure",
+          "This action could not be completed. Please try again.\n\ndisk failure",
           expect.any(Array),
           expect.objectContaining({ onDismiss: expect.any(Function) }),
         )
@@ -312,7 +312,7 @@ describe("useBookDetailFormats", () => {
       await waitFor(() => {
         expect(alertSpy).toHaveBeenCalledWith(
           expect.any(String),
-          "This action could not be completed. Please try again.\nnetwork failure",
+          "This action could not be completed. Please try again.\n\nnetwork failure",
           expect.any(Array),
           expect.objectContaining({ onDismiss: expect.any(Function) }),
         )
@@ -1161,7 +1161,7 @@ describe("useBookDetailFormats", () => {
 
       expect(alertSpy).toHaveBeenCalledWith(
         expect.any(String),
-        "This action could not be completed. Please try again.\nplain failure",
+        "This action could not be completed. Please try again.\n\nplain failure",
         expect.any(Array),
         expect.objectContaining({ onDismiss: expect.any(Function) }),
       )

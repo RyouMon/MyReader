@@ -1,5 +1,6 @@
 import { Directory, Paths } from "expo-file-system"
 import { randomUUID } from "expo-crypto"
+import { runTtsRequest } from "@my-reader/tools/tts-request"
 import {
   ttsGetConfig,
   ttsQwenModels,
@@ -188,14 +189,17 @@ export async function synthesizeTts(
   request: TtsSynthesisRequest,
   options?: { signal?: AbortSignal },
 ): Promise<TtsAudioArtifact> {
-  const credential = await resolveCredential(request.profileId)
-  return ttsSynthesize(
-    appConfigPath,
-    ttsCachePath,
-    request,
-    credential,
-    options?.signal ? { signal: options.signal } : undefined,
-  )
+  return runTtsRequest(async (signal) => {
+    const credential = await resolveCredential(request.profileId)
+    if (signal.aborted) {
+      const error = new Error("TTS_SYNTHESIS_CANCELLED")
+      error.name = "AbortError"
+      throw error
+    }
+    return ttsSynthesize(appConfigPath, ttsCachePath, request, credential, {
+      signal,
+    })
+  }, options?.signal)
 }
 
 export type {

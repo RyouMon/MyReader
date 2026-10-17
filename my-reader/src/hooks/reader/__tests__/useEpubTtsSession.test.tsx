@@ -54,9 +54,9 @@ vi.mock("@readium/speech", () => {
       return () => listeners.delete(listener)
     }
 
-    private emit(event: string) {
+    private emit(event: string, detail?: Event["detail"]) {
       this.listeners.get(event)?.forEach((listener) => {
-        listener({})
+        listener({ detail })
       })
     }
 
@@ -121,9 +121,9 @@ vi.mock("@readium/speech", () => {
       this.emit("start")
     }
 
-    emitError() {
+    emitError(message?: string) {
       this.state = "error"
-      this.emit("error")
+      this.emit("error", { message })
     }
 
     emitEnd(index: number, state: "idle" | "playing") {
@@ -1665,6 +1665,14 @@ describe("useEpubTtsSession", () => {
     act(() => result.current.play())
     expect(result.current.state).toBe("playing")
     expect(result.current.error).toBeNull()
+
+    const failure =
+      'QWEN_InvalidParameter (HTTP_400): {"message":"Model not exist.","request_id":"request-1"}'
+    act(() =>
+      (speech as { emitError: (message: string) => void }).emitError(failure),
+    )
+    expect(result.current.state).toBe("error")
+    expect(result.current.error).toContain(failure)
   })
 
   it("does not restore a stale follow-text highlight after stop", async () => {

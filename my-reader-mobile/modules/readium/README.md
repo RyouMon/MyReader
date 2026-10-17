@@ -99,8 +99,12 @@ Linked as a workspace dependency (`"link:./modules/readium"` in
 `my-reader-mobile/package.json`); Expo autolinking discovers it via
 `expo-module.config.json`. No manual install step.
 
-- **iOS:** `Readium.podspec` declares the Readium pod deps; run `pod install` (or
-  `expo run:ios`) after native changes.
+- **iOS:** `Readium.podspec` pins all four Swift Toolkit pods to the official
+  [3.11.0 release](https://github.com/readium/swift-toolkit/releases/tag/3.11.0).
+  Run `pod install` (or `expo run:ios`) after native changes. If the generated
+  `ios/Podfile.lock` still contains 3.9.0, run
+  `pod update ReadiumInternal ReadiumShared ReadiumStreamer ReadiumNavigator --repo-update`
+  from the app's `ios/` directory.
 - **Android:** `android/build.gradle` pulls `org.readium.kotlin-toolkit:*` from Maven.
   Readium 3.4 requires compile SDK 37 and desugaring 2.1.5. The app selects Kotlin
   2.3.20 for the newer metadata and Expo's Pika compiler plugin. `with-android-toolchain`
@@ -113,6 +117,13 @@ Linked as a workspace dependency (`"link:./modules/readium"` in
   [#57290](https://github.com/react/react-native/pull/57290). The React Native patch
   also keeps BuildConfig generation for Expo libraries in the single app-level pass.
   Remove these compatibility patches when the installed releases include the fixes.
+
+The official 3.9.0 CocoaPods specs reference a Git tag that is no longer available.
+Do not rely on an existing CocoaPods cache to validate dependency upgrades. Run
+`ruby scripts/quality/readium-ios-dependencies.rb` from the repository root to
+resolve and download the declared Readium dependencies with isolated specs and
+download caches. PR `QA` runs the same check. Version 3.11.0 also includes the font
+CORS fix, so the old `WebViewServer.swift` post-install patch is no longer needed.
 
 Readium Kotlin 3.4 fixes PDFium's off-by-one locators and missing last-page updates.
 See the [upstream migration guide](https://github.com/readium/kotlin-toolkit/blob/3.4.0/docs/migration-guide.md).
@@ -237,6 +248,16 @@ cd my-reader-mobile/android
 ./gradlew :my-reader-readium:testDebugUnitTest --console=plain
 ```
 
+Image export tests assert original bytes, visible page numbers and reading order,
+rendered pixels, and long-press selection. The patched system share module has a
+separate unit target; PDF rendering also requires a connected Android emulator:
+
+```bash
+cd my-reader-mobile/android
+./gradlew -I ../tests/native-sharing/android.init.gradle :expo-sharing:testDebugUnitTest --console=plain
+./gradlew :my-reader-readium:connectedDebugAndroidTest --console=plain
+```
+
 To run one Android test class:
 
 ```bash
@@ -260,7 +281,7 @@ xcrun simctl boot "$READIUM_SIMULATOR_UDID"
 xcodebuild test -quiet \
   -workspace MyReader.xcworkspace \
   -scheme Readium-Unit-Tests \
-  -configuration Release \
+  -configuration Debug \
   -sdk iphonesimulator \
   -destination "platform=iOS Simulator,id=$READIUM_SIMULATOR_UDID" \
   -only-testing:Readium-Unit-Tests \

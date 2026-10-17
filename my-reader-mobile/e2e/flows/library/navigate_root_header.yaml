@@ -1,0 +1,143 @@
+appId: ${APP_ID}
+name: Use the same library actions from Home and Library
+tags:
+  - library
+  - external-library
+---
+# Prerequisite: an active test MyReader library. Preserve its books and credentials.
+- runFlow: ../../common/launch_preserving_data.yaml
+
+# Scenario: Home exposes the library switcher, search and current sync status.
+- takeScreenshot: root-header-home
+- tapOn: 全部书库|All libraries
+- assertVisible:
+    id: library-switcher-content
+- takeScreenshot: root-header-home-switcher
+- tapOn: 关闭|Close
+- assertVisible:
+    id: home-screen
+- tapOn: '同步状态.*|Sync status.*'
+- assertVisible:
+    id: sync-status-summary
+- takeScreenshot: root-header-home-sync
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - swipe:
+          start: 50%,18%
+          end: 50%,95%
+- waitForAnimationToEnd
+- assertVisible:
+    id: home-screen
+- tapOn: 搜索|Search
+- assertVisible: 搜索书名、作者、标签、丛书…|Search titles, authors, tags, series…
+- assertNotVisible: '同步状态.*|Sync status.*'
+- takeScreenshot: root-header-home-search
+- tapOn: 关闭|Close
+- assertNotVisible: '同步状态.*|Sync status.*'
+
+# Returning from Home must reopen the retained search page, without another push.
+- tapOn: 主页|首页|Home
+- assertVisible:
+    id: home-screen
+- tapOn: 搜索|Search
+- assertVisible: 搜索书名、作者、标签、丛书…|Search titles, authors, tags, series…
+- takeScreenshot: root-header-home-search-reopened
+- tapOn: 关闭|Close
+- runFlow: ../../common/tap_header_back.yaml
+- assertVisible:
+    id: library-import-book-button
+
+# Cold and warm visits must both return to the Library root after one back action.
+- repeat:
+    times: 2
+    commands:
+      - tapOn: 主页|首页|Home
+      - assertVisible:
+          id: home-screen
+      - tapOn: 搜索|Search
+      - assertVisible: 搜索书名、作者、标签、丛书…|Search titles, authors, tags, series…
+      - tapOn: 关闭|Close
+      - runFlow: ../../common/tap_header_back.yaml
+      - assertVisible:
+          id: library-import-book-button
+
+# Scenario: Library retains import in its content and shares the same header actions.
+- assertVisible:
+    id: library-import-book-button
+- takeScreenshot: root-header-library
+- tapOn: 全部书库|All libraries
+- assertVisible:
+    id: library-switcher-content
+- tapOn: 关闭|Close
+- tapOn: '同步状态.*|Sync status.*'
+- assertVisible:
+    id: sync-status-summary
+- takeScreenshot: root-header-library-sync
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - swipe:
+          start: 50%,18%
+          end: 50%,95%
+- waitForAnimationToEnd
+- tapOn: 搜索|Search
+- assertVisible: 搜索书名、作者、标签、丛书…|Search titles, authors, tags, series…
+- takeScreenshot: root-header-library-search
+- tapOn: 关闭|Close
+- runFlow: ../../common/tap_header_back.yaml
+
+# Nested book lists keep search and view controls, without another sync entry.
+- tapOn:
+    id: library-collection-all
+- assertVisible: 搜索|Search
+- assertNotVisible: '同步状态.*|Sync status.*'
+- takeScreenshot: root-header-all-books
+- runFlow: ../../common/tap_header_back.yaml
+- assertVisible: '同步状态.*|Sync status.*'
+
+- tapOn:
+    id: library-import-book-button
+- waitForAnimationToEnd
+- takeScreenshot: root-header-library-import
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertVisible:
+          id: (com.google.android.documentsui|com.android.documentsui):id/toolbar
+      # Back first leaves remembered subdirectories, then cancels the picker.
+      - repeat:
+          times: 10
+          while:
+            visible:
+              id: (com.google.android.documentsui|com.android.documentsui):id/toolbar
+          commands:
+            - back
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - assertVisible: 取消|Cancel
+      - tapOn:
+          text: 取消|Cancel
+          retryTapIfNoChange: true
+- assertVisible:
+    id: library-import-book-button
+
+# Settings retains its existing sync-status toolbar entry.
+- runFlow: ../../common/open_settings.yaml
+- assertVisible: '同步状态.*|Sync status.*'
+- takeScreenshot: root-header-settings

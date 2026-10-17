@@ -1,4 +1,5 @@
 import type { NativeStackNavigationOptions } from "expo-router"
+import { StyleSheet } from "react-native"
 
 export function buildBookDetailScreenOptions(
   baseOptions: NativeStackNavigationOptions,
@@ -11,7 +12,10 @@ export function buildBookDetailScreenOptions(
     headerShadowVisible: false,
     headerStyle: { backgroundColor: "transparent" },
     headerTintColor: foregroundColor,
-    headerTitleStyle: { color: foregroundColor },
+    headerTitleStyle: {
+      ...StyleSheet.flatten(baseOptions.headerTitleStyle),
+      color: foregroundColor,
+    },
     headerTransparent: true,
   }
 }

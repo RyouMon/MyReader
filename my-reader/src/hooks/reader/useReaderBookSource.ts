@@ -1,5 +1,3 @@
-import { errorMessage } from "@/lib/error-presentation"
-import { apiErrorKind } from "@/lib/api-error"
 import type { Locator } from "@readium/shared"
 import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
@@ -9,17 +7,20 @@ import { getCurrentWindow } from "@tauri-apps/api/window"
 import pTimeout from "p-timeout"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import {
   setDownloadCancelled,
   setDownloadStarting,
   setDownloadError as setGlobalDownloadError,
   useDownloadProgress,
 } from "@/hooks/useDownloadProgress"
+import { apiErrorKind } from "@/lib/api-error"
+import { errorMessage } from "@/lib/error-presentation"
+import { flushReaderProgress } from "@/lib/readerProgressPersistence"
 import { isMainWebviewWindow, openReaderInNewWindow } from "@/lib/readerWindow"
 import { resolveReadFormat } from "@/lib/readFormats"
 import { parseSavedLocator } from "@/lib/readium/locator"
-import { flushReaderProgress } from "@/lib/readerProgressPersistence"
-import { api, type ReadingPositionCandidateDto } from "@/lib/tauri-api"
+import { api } from "@/lib/tauri-api"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 
 function toReaderAssetSrc(path: string): string {
@@ -31,15 +32,11 @@ async function loadReadingPosition(
   bookId: number,
   format: string,
 ) {
-  const [row, candidates] = await Promise.all([
-    api.getReadingProgress(libraryId, bookId, format).catch(() => null),
-    api
-      .listReadingPositionCandidates(libraryId, bookId, format)
-      .catch(() => []),
-  ])
+  const row = await api
+    .getReadingProgress(libraryId, bookId, format)
+    .catch(() => null)
   return {
     initialSavedLocator: parseSavedLocator(row?.locator ?? null),
-    candidates,
   }
 }
 
@@ -78,6 +75,7 @@ export function useReaderBookSource({
   const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
 
   const [bookTitle, setBookTitle] = useState("")
+  const [bookAuthors, setBookAuthors] = useState<string[]>([])
   const [format, setFormat] = useState("")
   const [bookPayload, setBookPayload] = useState<{
     source: {
@@ -87,11 +85,6 @@ export function useReaderBookSource({
     }
     initialSavedLocator: Locator | null
   } | null>(null)
-  const [positionConflict, setPositionConflict] = useState<
-    ReadingPositionCandidateDto[] | null
-  >(null)
-  const [resolvingPositionConflict, setResolvingPositionConflict] =
-    useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [downloadState, setDownloadState] = useState<
     "idle" | "downloading" | "error" | "cancelled" | "done"
@@ -103,7 +96,6 @@ export function useReaderBookSource({
 
   const progressSyncEnabled =
     isTauri() && !mainHandoff && Boolean(activeLibraryId && format)
-
   const downloadProgress = useDownloadProgress(
     activeLibraryId,
     bookId ? Number(bookId) : null,
@@ -143,7 +135,7 @@ export function useReaderBookSource({
         void getCurrentWindow().close()
       }
     }
-  }, [downloadProgress, t])
+  }, [downloadProgress])
 
   useEffect(() => {
     if (!isTauri()) return
@@ -171,8 +163,13 @@ export function useReaderBookSource({
         }
       }
 
-      await flushReaderProgress()
-      await getCurrentWindow().close()
+      try {
+        await flushReaderProgress()
+        await getCurrentWindow().close()
+      } catch (error) {
+        closingRef.current = false
+        toast.error(errorMessage(error))
+      }
     })
 
     return () => {
@@ -224,7 +221,6 @@ export function useReaderBookSource({
         return
       }
       setBookPayload(null)
-      setPositionConflict(null)
       setFetchError(null)
       setDownloadState("idle")
       setDownloadError(null)
@@ -234,6 +230,7 @@ export function useReaderBookSource({
         if (cancelled) return
 
         setBookTitle(detail.title)
+        setBookAuthors(detail.authors)
         if (isTauri()) {
           void WebviewWindow.getCurrent().setTitle(detail.title)
         }
@@ -252,7 +249,7 @@ export function useReaderBookSource({
         const [position, source] = await Promise.all([
           isTauri()
             ? loadReadingPosition(activeLibraryId, Number(bookId), fmt)
-            : Promise.resolve({ initialSavedLocator: null, candidates: [] }),
+            : Promise.resolve({ initialSavedLocator: null }),
           prepareReaderSource(
             activeLibraryId,
             Number(bookId),
@@ -261,11 +258,8 @@ export function useReaderBookSource({
           ),
         ])
         if (cancelled) return
-        const { initialSavedLocator, candidates } = position
+        const { initialSavedLocator } = position
         setBookPayload({ source, initialSavedLocator })
-        if (candidates.length > 1) {
-          setPositionConflict(candidates)
-        }
       } catch (e) {
         if (cancelled) return
         const msg = errorMessage(e)
@@ -301,16 +295,13 @@ export function useReaderBookSource({
           t("reader.loadTimeout"),
         )
         if (cancelled) return
-        const { initialSavedLocator, candidates } = await loadReadingPosition(
+        const { initialSavedLocator } = await loadReadingPosition(
           activeLibraryId,
           Number(bookId),
           format,
         )
         if (cancelled) return
         setBookPayload({ source, initialSavedLocator })
-        if (candidates.length > 1) {
-          setPositionConflict(candidates)
-        }
       } catch (e) {
         if (!cancelled) setFetchError(errorMessage(e))
       }
@@ -329,40 +320,6 @@ export function useReaderBookSource({
       navigate({ to: "/book/$bookId", params: { bookId } })
     }
   }, [navigate, bookId])
-
-  const handlePositionConflict = useCallback(
-    async (candidate: ReadingPositionCandidateDto | null) => {
-      if (!candidate) {
-        setPositionConflict(null)
-        return
-      }
-      if (!activeLibraryId || !format) return
-
-      setResolvingPositionConflict(true)
-      try {
-        await api.selectReadingPositionCandidate(
-          activeLibraryId,
-          Number(bookId),
-          format,
-          candidate.operationId,
-        )
-        setBookPayload((current) =>
-          current
-            ? {
-                ...current,
-                initialSavedLocator: parseSavedLocator(candidate.locator),
-              }
-            : current,
-        )
-        setPositionConflict(null)
-      } catch (error) {
-        setFetchError(errorMessage(error))
-      } finally {
-        setResolvingPositionConflict(false)
-      }
-    },
-    [activeLibraryId, bookId, format],
-  )
 
   const handleRetryDownload = useCallback(() => {
     void startDownload(format)
@@ -388,10 +345,9 @@ export function useReaderBookSource({
   return {
     bookId: Number(bookId),
     bookTitle,
+    bookAuthors,
     format,
     bookPayload,
-    positionConflict,
-    resolvingPositionConflict,
     fetchError,
     downloadState,
     downloadError,
@@ -400,7 +356,6 @@ export function useReaderBookSource({
     downloadProgress,
     activeLibraryId,
     handleErrorClose,
-    handlePositionConflict,
     handleRetryDownload,
     handleCancelDownload,
   }

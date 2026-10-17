@@ -9,8 +9,8 @@ use super::{
     },
     persistence::{
         async_io::{
-            apply_remote_database_objects, delete_outbox_entry, ensure_database_document,
-            load_publishable_database_snapshot,
+            apply_remote_database_objects, delete_outbox_entry, load_publishable_database_snapshot,
+            prepare_for_sync,
         },
         DatabaseIdentity, PublishableDatabaseSnapshot, RemoteStorageRepair, SyncOutboxEntry,
         SyncRemoteObject,
@@ -34,6 +34,7 @@ pub enum SyncMode {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SyncReport {
+    pub reading_positions: Vec<crate::models::SyncedReadingPosition>,
     pub pushed: usize,
     pub pulled: usize,
 }
@@ -108,7 +109,7 @@ async fn load_document_chunks(
     let mut chunks = adapter.load_range(&snapshot_prefix(document_id)).await?;
     chunks.extend(adapter.load_range(&incremental_prefix(document_id)).await?);
     let identity = identity.clone();
-    blocking::run(move || {
+    blocking::run_background(move || {
         validate_document_chunks(&chunks, &identity)?;
         let objects = if mode == SyncMode::Full {
             remote_objects(&chunks)
@@ -320,7 +321,7 @@ pub async fn sync_database_with_operator_observed(
         completed: 0,
         total: 1,
     });
-    ensure_database_document(database_path, identity, now_ms).await?;
+    prepare_for_sync(database_path, identity, now_ms).await?;
     let adapter = StorageAdapter::new(operator);
     let (initial_chunks, objects) = load_document_chunks(&adapter, identity, mode).await?;
     observer.on_progress(SyncProgress {
@@ -330,6 +331,7 @@ pub async fn sync_database_with_operator_observed(
     });
 
     let mut remote_storage_repair = None;
+    let mut reading_positions = Vec::new();
     let pulled = match mode {
         SyncMode::PushOnly => 0,
         SyncMode::Full if initial_chunks.is_empty() => 0,
@@ -352,6 +354,7 @@ pub async fn sync_database_with_operator_observed(
                 completed: initial_chunks.len(),
                 total: initial_chunks.len(),
             });
+            reading_positions = applied.reading_positions;
             remote_storage_repair = applied.remote_storage_repair;
             applied.applied_objects
         }
@@ -417,7 +420,11 @@ pub async fn sync_database_with_operator_observed(
         completed: 1,
         total: 1,
     });
-    Ok(SyncReport { pushed, pulled })
+    Ok(SyncReport {
+        pushed,
+        pulled,
+        reading_positions,
+    })
 }
 
 pub async fn has_publishable_database_work(database_path: &str) -> Result<bool, SyncError> {

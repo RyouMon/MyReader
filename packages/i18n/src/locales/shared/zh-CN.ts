@@ -1,4 +1,21 @@
 export const sharedZhCN = {
+  catalog: {
+    searchPlaceholder: "搜索书名、作者、标签、丛书…",
+    searchDirectory: "搜索{{kind}}",
+    authors: "作者",
+    tags: "标签",
+    series: "丛书",
+    directory: "书库目录",
+    alphabetIndex: "首字母索引",
+    jumpTo: "跳转到 {{letter}}",
+    suggestions: "搜索建议",
+    removeToken: "移除条件",
+    removeNamedToken: "移除 {{name}}",
+    emptyDirectory: "暂无可显示的条目。",
+    loading: "加载中…",
+    retry: "重试",
+    noResults: "没有同时满足所有条件的书籍。",
+  },
   operationError: {
     unexpected: "未能完成此操作，请重试。",
     connectivity: "无法连接服务，请检查网络连接和服务地址后重试。",
@@ -171,6 +188,19 @@ export const sharedZhCN = {
     },
   },
   reader: {
+    copyImage: "复制图片",
+    saveImage: "保存图片…",
+    saveImageToPhotos: "保存到相册",
+    saveImageToFiles: "保存到文件",
+    imageCopied: "已复制图片",
+    imageSaved: "已保存图片",
+    imageActionFailed: "图片导出失败，请重试。",
+    sharePage: "分享",
+    imageMore: "更多",
+    image: "图片",
+    imagePhotoPermission: "保存图片需要相册添加权限。",
+    navigationBack: "回到上一个阅读位置",
+    navigationForward: "前往下一个阅读位置",
     background: "背景",
     empty: {
       annotations: {

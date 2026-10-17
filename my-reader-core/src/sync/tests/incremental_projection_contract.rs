@@ -408,8 +408,8 @@ fn remote_reading_changes_and_duplicate_delivery_should_not_rewrite_catalog() {
     assert_matches_rebuild(&target);
 }
 
-#[test]
-fn losing_position_conflicts_should_update_candidates_and_resolve_without_catalog_writes() {
+#[tokio::test]
+async fn continued_reading_should_update_candidates_without_catalog_writes() {
     let (_source_directory, source) = create_database();
     let (_target_directory, target) = create_database();
     seed_catalog(&source);
@@ -420,8 +420,7 @@ fn losing_position_conflicts_should_update_candidates_and_resolve_without_catalo
     reject_writes(&connection, CATALOG_TABLES);
     let mut target_identity = identity();
     target_identity.replica_id = "dddddddd-dddd-4ddd-8ddd-dddddddddddd".parse().unwrap();
-    // Deliver the winning actor first, followed by two losing values. The
-    // visible locator stays unchanged while the conflict count grows to three.
+    // Concurrent positions remain available; the latest reading time supplies the projection.
     for (index, replica) in [
         "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
         "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
@@ -464,31 +463,87 @@ fn losing_position_conflicts_should_update_candidates_and_resolve_without_catalo
                 |row| row.get(0),
             )
             .unwrap();
-        assert_eq!(locator, position("", 10).locator_json);
+        assert_eq!(locator, position("", 10 + index as i64).locator_json);
     }
     let inspected = ensure_database_document(&target, &target_identity, 100).unwrap();
     assert_eq!(inspected.projection.reading_position_candidates.len(), 3);
-    let chosen = &inspected.projection.reading_position_candidates[0];
-    execute_local_database_command(
+    let before = rows(&connection, "sync_automerge_state");
+    let outbox_before = rows(&connection, "sync_automerge_outbox");
+    let mut continued = position(target_identity.replica_id.as_str(), 99);
+    continued.recorded_at = 150;
+    let saved_position = continued.clone();
+    crate::sync::persistence::async_io::mutate_document(
         &target,
         &target_identity,
-        200,
-        SyncDatabaseCommand {
-            command: DocumentCommand::ResolveReadingPosition {
-                book_id: 42,
-                format: "EPUB".into(),
-                operation_id: chosen.operation_id.clone(),
-                recorded_at: 200,
-            },
+        150,
+        move |document| {
+            crate::sync::document::set_reading_position(document, 42, &saved_position)?;
+            Ok(false)
         },
     )
+    .await
     .unwrap();
-    let resolved = ensure_database_document(&target, &target_identity, 200).unwrap();
-    assert_eq!(resolved.projection.reading_position_candidates.len(), 1);
+    assert_ne!(rows(&connection, "sync_automerge_state"), before);
+    assert_ne!(rows(&connection, "sync_automerge_outbox"), outbox_before);
+    assert_eq!(rows(&connection, "reading_position_candidates").len(), 1);
+    // Indexed candidate reads are independent of document decoding.
+    let db = sea_orm::Database::connect(format!("sqlite:{target}?mode=rw"))
+        .await
+        .unwrap();
+    let repository = crate::repositories::reading::ReadingRepository::new(&db);
+    let candidates = repository
+        .list_position_candidates(42, "EPUB")
+        .await
+        .unwrap();
+    assert_eq!(candidates.len(), 1);
     assert_eq!(
-        resolved.projection.reading_positions[0].value.locator_json,
-        chosen.value.locator_json
+        candidates[0].locator,
+        serde_json::from_str::<serde_json::Value>(&continued.locator_json).unwrap()
     );
+    assert_eq!(
+        repository
+            .get_reading_position(42, "EPUB")
+            .await
+            .unwrap()
+            .unwrap()
+            .updated_at,
+        150.0
+    );
+    assert_eq!(
+        repository.list_reading_positions().await.unwrap()[0].updated_at,
+        150.0
+    );
+    assert_eq!(
+        repository.latest_read_at_by_book().await.unwrap()[&42],
+        150.0
+    );
+    drop(db);
+    let completion_replica = target_identity.replica_id.to_string();
+    let completed = crate::sync::persistence::async_io::mutate_document(
+        &target,
+        &target_identity,
+        160,
+        move |document| {
+            crate::sync::document::add_reading_completion(
+                document,
+                &crate::sync::document::ReadingCompletionValue {
+                    id: uuid::Uuid::new_v4().simple().to_string(),
+                    book_id: 42,
+                    format: "EPUB".into(),
+                    local_day: "2026-10-11".into(),
+                    completed_at: 160,
+                    updated_at: 160,
+                    replica_id: completion_replica,
+                },
+            )
+            .map(|change| change.is_some())
+        },
+    )
+    .await
+    .unwrap();
+    assert!(completed);
+    assert_eq!(rows(&connection, "reading_position_candidates").len(), 1);
+    assert_eq!(rows(&connection, "reading_completions").len(), 1);
     allow_writes(&connection, CATALOG_TABLES);
     assert_matches_rebuild(&target);
 }

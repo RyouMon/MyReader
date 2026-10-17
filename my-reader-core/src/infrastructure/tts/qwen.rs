@@ -7,7 +7,6 @@ use crate::{
     },
     CoreError,
 };
-use reqwest::StatusCode;
 use serde_json::{json, Value};
 use url::Url;
 
@@ -165,6 +164,12 @@ pub(crate) fn models_for_endpoint(endpoint: Option<&str>) -> Vec<QwenTtsModel> {
                 .voices
                 .insert(0, voice("longanhuan_v3.6", "龙安欢", "mul"));
         }
+    } else if endpoint.is_some_and(|endpoint| {
+        Url::parse(endpoint).is_ok_and(|url| url.host_str() == Some("maas.qianwenaiapi.com"))
+    }) {
+        // Qianwen's HTTP catalog differs from DashScope's. Instruct/VC/VD
+        // models return InvalidParameter: Model not exist on this endpoint.
+        catalog.retain(|model| model.id == DEFAULT_MODEL || model.id == "qwen3-tts-flash");
     }
     catalog
 }
@@ -173,7 +178,12 @@ pub(crate) fn model(id: &str, endpoint: &str) -> Result<QwenTtsModel, CoreError>
     models_for_endpoint(Some(endpoint))
         .into_iter()
         .find(|model| model.id == id)
-        .ok_or_else(|| super::tts_error(TtsErrorKind::Configuration, "QWEN_MODEL_UNSUPPORTED"))
+        .ok_or_else(|| {
+            super::tts_error(
+                TtsErrorKind::Configuration,
+                &format!("QWEN_MODEL_UNSUPPORTED: {id}"),
+            )
+        })
 }
 
 fn voice(id: &str, name: &str, language: &str) -> TtsVoice {
@@ -186,10 +196,12 @@ fn voice(id: &str, name: &str, language: &str) -> TtsVoice {
 }
 
 pub(crate) fn validate_profile(profile: &TtsProviderProfile) -> Result<(), CoreError> {
-    let selected = model(
-        profile.model.as_deref().unwrap_or_default(),
-        &profile.endpoint,
-    )?;
+    // Retain the ability to load and edit profiles saved with the old catalog.
+    // New profile writes and synthesis separately validate endpoint support.
+    let selected = models()
+        .into_iter()
+        .find(|model| Some(model.id.as_str()) == profile.model.as_deref())
+        .ok_or_else(|| tts_error(TtsErrorKind::Configuration, "QWEN_MODEL_UNSUPPORTED"))?;
     let TtsProviderOptions::Qwen {
         response_format,
         instructions,
@@ -238,6 +250,10 @@ pub(crate) async fn synthesize(
     request: &TtsSynthesisRequest,
     credential: Option<&str>,
 ) -> Result<SynthesizedAudio, CoreError> {
+    model(
+        profile.model.as_deref().unwrap_or_default(),
+        &profile.endpoint,
+    )?;
     let TtsProviderOptions::Qwen {
         response_format,
         instructions,
@@ -292,7 +308,7 @@ pub(crate) async fn synthesize(
         .send()
         .await
         .map_err(map_reqwest_error)?;
-    let body = json_response(response).await?;
+    let body = json_response(response, credential).await?;
     let audio_url = body
         .pointer("/output/audio/url")
         .and_then(Value::as_str)
@@ -321,6 +337,7 @@ pub(crate) async fn synthesize(
     audio_response(
         http.get(url).send().await.map_err(map_reqwest_error)?,
         Some(*response_format),
+        Some(credential),
     )
     .await
 }
@@ -332,7 +349,7 @@ pub(crate) fn uses_websocket(endpoint: &str) -> bool {
     })
 }
 
-async fn json_response(response: reqwest::Response) -> Result<Value, CoreError> {
+async fn json_response(response: reqwest::Response, credential: &str) -> Result<Value, CoreError> {
     let status = response.status();
     let bytes = response_bytes(response, "QWEN_RESPONSE_TOO_LARGE").await?;
     let body: Value = serde_json::from_slice(&bytes).unwrap_or(Value::Null);
@@ -343,18 +360,10 @@ async fn json_response(response: reqwest::Response) -> Result<Value, CoreError> 
             .is_some_and(|code| !code.is_empty())
     {
         let code = body["code"].as_str().unwrap_or("QWEN_REQUEST_FAILED");
-        let kind = match status {
-            StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => TtsErrorKind::Unauthorized,
-            StatusCode::TOO_MANY_REQUESTS => TtsErrorKind::RateLimited,
-            StatusCode::REQUEST_TIMEOUT | StatusCode::GATEWAY_TIMEOUT => TtsErrorKind::Timeout,
-            status if status.is_server_error() => TtsErrorKind::Unavailable,
-            _ => TtsErrorKind::InvalidRequest,
-        };
-        let request_id = body["request_id"].as_str().unwrap_or_default();
-        // Do not echo provider messages: they can contain the submitted book text.
+        let detail = super::redact_credential(&String::from_utf8_lossy(&bytes), Some(credential));
         return Err(tts_error(
-            kind,
-            &format!("QWEN_{code} (request_id={request_id})"),
+            super::http_error_kind(status),
+            &format!("QWEN_{code} (HTTP_{}): {detail}", status.as_u16()),
         ));
     }
     if body.is_null() {
@@ -404,7 +413,7 @@ pub(crate) async fn discover_voices(
                 "model": enrollment_model,
                 "input": { "action": if audio { "list_voice" } else { "list" }, "page_size": page_size, "page_index": page }
             }))?).send().await.map_err(map_reqwest_error)?;
-        let body = json_response(response).await?;
+        let body = json_response(response, credential).await?;
         let list = body
             .pointer("/output/voice_list")
             .and_then(Value::as_array)

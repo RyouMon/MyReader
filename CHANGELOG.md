@@ -5,6 +5,63 @@
 MyReader 的重要变更均记录于此。
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [0.17.0] - 2026-10-16
+
+### Added
+
+- 桌面端和移动端新增作者、标签与丛书浏览入口，作者和标签支持字母索引，丛书以最多四张封面展示；点击图书详情中的作者、标签或丛书可查看相关图书（[#103](https://github.com/RyouMon/MyReader/pull/103)）
+- 书库搜索支持从建议中选择作者、标签与丛书作为筛选条件，多个条件同时生效，并保留文本搜索、排序、分页和当前集合范围；已选条件可单独移除（[#103](https://github.com/RyouMon/MyReader/pull/103)）
+
+### Fixed
+
+- 修复 Android 重新打开 EPUB、PDF 和 CBZ 时无法恢复上次阅读位置的问题；在原生阅读器创建时传入续读位置，避免恢复过程产生额外的后退／前进历史（[#104](https://github.com/RyouMon/MyReader/pull/104)）
+
+### Security
+
+- 将 rustls 升级至 0.23.46，修复依赖审计发现的 RUSTSEC-2026-0346 至 RUSTSEC-2026-0349 安全问题（[#103](https://github.com/RyouMon/MyReader/pull/103)）
+
+### Build and Distribution
+
+- iOS Readium Swift Toolkit 固定到可用的 3.11.0 版本，修复全新构建环境因旧版本标签缺失而安装失败；新增无缓存依赖安装检查并纳入 QA 门禁（[#101](https://github.com/RyouMon/MyReader/pull/101)）
+
+## [0.16.1] - 2026-10-13
+
+### Changed
+
+- 语音生成、凭据与跨端桥接等待、桌面音频启动增加 20 秒超时，并取消或丢弃过期请求，避免听书一直停留在生成状态；移除桌面端冗余的“正在生成下一条语音”提示（[#99](https://github.com/RyouMon/MyReader/pull/99)）
+- 正文朗读与试听保留服务端原始错误及原因链，过滤凭据，并在本地化说明和原始错误之间留一行空行，便于排查失败原因（[#99](https://github.com/RyouMon/MyReader/pull/99)）
+
+### Fixed
+
+- 修复移动端点击播放立即出现 `TypeError: undefined is not a function`，以及桌面端重新打开阅读器后使用相同配置无法开始朗读的问题（[#99](https://github.com/RyouMon/MyReader/pull/99)）
+- 修复 Qwen Token Plan WebSocket 连接卡住，按接口区分可用模型，并保留旧配置的编辑能力（[#99](https://github.com/RyouMon/MyReader/pull/99)）
+- 修复正文朗读高亮失效，以及翻页后返回朗读位置的识别不稳定；改进跨页句子、特殊元素编号与空白文本的定位，并阻止过期回调覆盖当前页面状态（[#99](https://github.com/RyouMon/MyReader/pull/99)）
+
+## [0.16.0] - 2026-10-13
+
+### Added
+
+- 桌面端和移动端的 EPUB、PDF、CBZ 阅读器新增会话导航历史，目录、链接等显式跳转后可多级后退和前进；普通翻页持续更新当前位置，关书后清空导航历史并保留正常续读进度（[#96](https://github.com/RyouMon/MyReader/pull/96)）
+- 同步收到其他设备的阅读位置时提供可选的前进入口，保留现有导航历史且不移动当前页面；临时提示在翻页后隐藏，打开阅读工具栏后可再次使用（[#96](https://github.com/RyouMon/MyReader/pull/96)）
+
+### Changed
+
+- 桌面书库将搜索、视图切换、排序和详情操作集中到主窗口标题栏，窄窗口自动收起搜索框；macOS 保留原生红绿灯，Windows 使用右侧窗口控制，并调整宽屏详情的封面背景与对齐（[#95](https://github.com/RyouMon/MyReader/pull/95)）
+- 多设备并发阅读时自动确定续读位置，阅读进度保存持续参与同步，无需先手动解决位置冲突（[#96](https://github.com/RyouMon/MyReader/pull/96)）
+
+### Fixed
+
+- 修复 Windows 恢复旧窗口状态后可能出现双标题栏，以及书目相对路径使用平台分隔符导致跨端结果不一致的问题（[#95](https://github.com/RyouMon/MyReader/pull/95)）
+- 修复桌面 EPUB 恢复其他设备的位置时，因位置编号超出本机范围而无法跳转；保留精确定位信息，并避免本机自动保存覆盖刚收到的远端导航入口（[#96](https://github.com/RyouMon/MyReader/pull/96)）
+
+### Performance and Internals
+
+- 将远端同步的校验、合并和投影计算放到独立后台任务中，提交时检查并发本地修改，减少启动同步对缓存图书打开和阅读进度保存的阻塞（[#96](https://github.com/RyouMon/MyReader/pull/96)）
+
+### Build and Distribution
+
+- Rust 质量门禁覆盖 Linux 与 Windows 的完整 workspace 测试，修复 Windows 测试进程启动和数据库夹具清理问题（[#95](https://github.com/RyouMon/MyReader/pull/95)）
+
 ## [0.15.0] - 2026-10-11
 
 ### Added

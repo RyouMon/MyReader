@@ -27,16 +27,16 @@ afterEach(async () => {
 })
 
 it("copies the complete localized message and original diagnostics", async () => {
-  showErrorAlert("连接失败", "请检查凭据。\nCredential: HTTP 401")
+  showErrorAlert("连接失败", "请检查凭据。\n\nCredential: HTTP 401")
   const [title, message, buttons] = jest.mocked(Alert.alert).mock.calls[0]!
   expect([title, message]).toEqual([
     "连接失败",
-    "请检查凭据。\nCredential: HTTP 401",
+    "请检查凭据。\n\nCredential: HTTP 401",
   ])
   expect(buttons?.map((button) => button.text)).toEqual(["复制", "确定"])
   buttons?.[0]?.onPress?.()
   expect(setStringAsync).toHaveBeenCalledWith(
-    "连接失败\n请检查凭据。\nCredential: HTTP 401",
+    "连接失败\n请检查凭据。\n\nCredential: HTTP 401",
   )
   jest.runOnlyPendingTimers()
   expect(setStatusBarStyle).toHaveBeenCalledWith("dark", true)

@@ -4,11 +4,13 @@ import type {
   Locator,
   Preferences,
   PublicationReadyEvent,
+  ReadiumFile,
   SelectionMenuConfig,
 } from "@my-reader/readium"
 import { act, render } from "@testing-library/react-native"
 import React from "react"
-import { View } from "react-native"
+import { Platform, View } from "react-native"
+import { ReaderNavigationHistory } from "@my-reader/tools/reader-navigation-history"
 
 import ReadiumReflowReader, {
   type ReadiumReflowReaderProps,
@@ -21,6 +23,7 @@ const mockStartTts = jest.fn()
 const mockCompleteTtsSynthesis = jest.fn()
 const mockReturnToTtsPosition = jest.fn()
 let mockReadiumProps: {
+  file?: ReadiumFile
   preferences?: Preferences
   onPublicationReady?: (event: PublicationReadyEvent) => void
   onLocationChange?: (
@@ -120,6 +123,8 @@ function readerElement(
 }
 
 describe("ReadiumReflowReader", () => {
+  afterEach(() => jest.restoreAllMocks())
+
   beforeEach(() => {
     mockGoTo.mockReset()
     mockClearSelection.mockClear()
@@ -170,6 +175,61 @@ describe("ReadiumReflowReader", () => {
       saved,
       expect.objectContaining({ language: "en", fontFamily: "Seravek" }),
     )
+  })
+
+  it("should open Android at the saved location without a restoration jump in history", () => {
+    jest.replaceProperty(Platform, "OS", "android")
+    const positions = [
+      locator("OEBPS/chapter1.xhtml", { position: 1, totalProgression: 0 }),
+      locator("OEBPS/chapter2.xhtml", { position: 2, totalProgression: 0.5 }),
+      locator("OEBPS/chapter3.xhtml", { position: 3, totalProgression: 1 }),
+    ]
+    const saved = positions[1]!
+    const history = new ReaderNavigationHistory()
+    function Reader() {
+      const [current, setCurrent] = React.useState<Locator | undefined>()
+      React.useEffect(() => {
+        if (current) history.update(current)
+      }, [current])
+      return (
+        <ReadiumReflowReader
+          epubPath="/tmp/book.epub"
+          initialLocator={saved}
+          onStateChange={({ locator }) => setCurrent(locator)}
+          onUserLocationChange={(locator, _id, kind) => {
+            if (kind === "programmatic") history.jump(locator)
+          }}
+          onTocReady={jest.fn()}
+          onRequestClose={jest.fn()}
+        />
+      )
+    }
+    render(<Reader />)
+
+    expect(mockReadiumProps?.file?.initialLocation).toEqual(saved)
+    act(() => {
+      mockReadiumProps?.onLocationChange?.(saved)
+      mockReadiumProps?.onPublicationReady?.({
+        metadata: { language: [], title: "Book" },
+        positions,
+        publicationId: "publication",
+        tableOfContents: [],
+      } as PublicationReadyEvent)
+    })
+
+    expect(mockGoTo).not.toHaveBeenCalled()
+    expect(history.getSnapshot()).toMatchObject({ entries: [saved], index: 0 })
+
+    act(() => {
+      mockReadiumProps?.onLocationChange?.(
+        positions[2]!,
+        "user",
+        "user-jump",
+        "programmatic",
+      )
+    })
+    expect(history.move(-1)).toEqual(saved)
+    expect(history.move(-1)).toBeNull()
   })
 
   it("should enhance shared-resource toc items from native content locators", async () => {

@@ -30,6 +30,9 @@ class PdfReaderFragment : VisualReaderFragment(), PdfNavigatorFragment.Listener 
     private var pendingPreferences: PdfiumPreferences? = null
     private lateinit var userPreferences: PdfiumPreferences
     private val firstPageDrawn = CompletableDeferred<Unit>()
+    private val drawnImagePages = mutableSetOf<Int>()
+    var visibleImagePages: List<Int> = emptyList()
+        private set
 
     override suspend fun awaitNavigatorReady() {
         firstPageDrawn.await()
@@ -101,8 +104,14 @@ class PdfReaderFragment : VisualReaderFragment(), PdfNavigatorFragment.Listener 
                     override fun onConfigurePdfView(configurator: PDFView.Configurator) {
                         // Readium's initial render applies fitToWidth and restores the
                         // default page. Wait for drawing before JS restores a locator.
-                        configurator.onDrawAll { _, _, _, _ ->
+                        configurator.onDrawAll { canvas, width, height, page ->
                             firstPageDrawn.complete(Unit)
+                            if (android.graphics.RectF.intersects(android.graphics.RectF(canvas.clipBounds), android.graphics.RectF(0f, 0f, width, height))) {
+                                drawnImagePages.add(page + 1)
+                            }
+                        }.onDraw { _, _, _, _ ->
+                            visibleImagePages = drawnImagePages.sorted()
+                            drawnImagePages.clear()
                         }
                     }
                 }

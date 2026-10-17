@@ -1,3 +1,4 @@
+import type { ReaderImageBook } from "@my-reader/tools/reader-image-export"
 import { forwardRef, lazy, Suspense, useMemo } from "react"
 
 import type { Locator } from "@my-reader/readium"
@@ -13,11 +14,15 @@ import type {
   ReaderTocItem,
 } from "@/src/features/reader/components/reader/types"
 import { toNativeFilesystemPath } from "@/src/services/fs/path"
-import type { ReadiumFixedReaderRef } from "./ReadiumFixedReader"
+import type {
+  ReadiumFixedReaderRef,
+  ReadiumFixedReaderProps,
+} from "./ReadiumFixedReader"
 
 const ReadiumFixedReader = lazy(async () => import("./ReadiumFixedReader"))
 
 export type FixedReaderSurfaceProps = {
+  imageBook?: ReaderImageBook
   archiveUri?: string | null
   format: string
   /** PDF：Readium 使用的稳定本地 `file://` URI */
@@ -27,6 +32,7 @@ export type FixedReaderSurfaceProps = {
   initialLocator?: Locator
   onStateChange: (state: ReaderState) => Promise<void>
   onPositionsReady?: (positions: Locator[]) => void
+  onUserLocationChange?: ReadiumFixedReaderProps["onUserLocationChange"]
   onTocReady: (toc: ReaderTocItem[]) => Promise<void>
   onRequestClose: () => Promise<void>
   onToggleChrome?: () => void
@@ -53,12 +59,14 @@ const FixedReaderSurface = forwardRef<
 >(function FixedReaderSurface(
   {
     archiveUri,
+    imageBook,
     format,
     pdfLocalUri,
     initialPage,
     initialLocator,
     onStateChange,
     onPositionsReady,
+    onUserLocationChange,
     onTocReady,
     onRequestClose,
     onToggleChrome,
@@ -84,10 +92,12 @@ const FixedReaderSurface = forwardRef<
       <Suspense fallback={domFallback}>
         <ReadiumFixedReader
           ref={ref}
+          imageBook={imageBook}
           filePath={cbzFilePath}
           initialLocator={initialLocator}
           onStateChange={onStateChange}
           onPositionsReady={onPositionsReady}
+          onUserLocationChange={onUserLocationChange}
           onTocReady={onTocReady}
           onRequestClose={onRequestClose}
           onToggleChrome={onToggleChrome}
@@ -128,10 +138,12 @@ const FixedReaderSurface = forwardRef<
       <Suspense fallback={domFallback}>
         <ReadiumFixedReader
           ref={ref}
+          imageBook={imageBook}
           filePath={pdfFilePath}
           initialLocator={pdfInitialLocator}
           onStateChange={onStateChange}
           onPositionsReady={onPositionsReady}
+          onUserLocationChange={onUserLocationChange}
           onTocReady={onTocReady}
           onRequestClose={onRequestClose}
           onToggleChrome={onToggleChrome}

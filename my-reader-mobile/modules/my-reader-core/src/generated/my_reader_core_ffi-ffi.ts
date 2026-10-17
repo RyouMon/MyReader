@@ -329,6 +329,19 @@ interface NativeModuleInterface {
     seriesName: Uint8Array,
     excludeBookId: Uint8Array,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_navigation(
+    configPath: Uint8Array,
+    libraryId: Uint8Array,
+    sidecarRootPath: Uint8Array,
+    contentRootPath: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_query_books(
+    configPath: Uint8Array,
+    libraryId: Uint8Array,
+    sidecarRootPath: Uint8Array,
+    contentRootPath: Uint8Array,
+    request: Uint8Array,
+  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_stage_remote_book_import(
     configPath: Uint8Array,
     libraryId: Uint8Array,
@@ -631,14 +644,6 @@ interface NativeModuleInterface {
     locatorKey: Uint8Array,
     recordedAtMs: number,
   ): bigint;
-  ubrn_uniffi_my_reader_core_ffi_fn_func_reading_select_position_candidate(
-    sidecarRootPath: Uint8Array,
-    libraryRootPath: Uint8Array,
-    bookId: number,
-    format: Uint8Array,
-    operationId: Uint8Array,
-    recordedAtMs: number,
-  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_reading_set_favorite_book(
     sidecarRootPath: Uint8Array,
     libraryRootPath: Uint8Array,
@@ -867,6 +872,8 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_library_books_page_by_last_read(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_library_series_books(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_series_books(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_navigation(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_query_books(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_stage_remote_book_import(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_update_local_book_metadata(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_validate_library(): number;
@@ -925,7 +932,6 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_list_positions(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_remove_annotation(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_remove_bookmark(): number;
-  ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_select_position_candidate(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_set_favorite_book(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_set_position(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_update_annotation(): number;

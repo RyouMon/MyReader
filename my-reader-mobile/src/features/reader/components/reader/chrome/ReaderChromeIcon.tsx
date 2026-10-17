@@ -9,6 +9,7 @@ const READER_CHROME_ICON_SOURCE = {
   check: { ios: "checkmark", android: "check" },
   close: { ios: "xmark", android: "close" },
   delete: { ios: "trash", android: "delete-outline" },
+  share: { ios: "square.and.arrow.up", android: "share" },
   more: { ios: "ellipsis", android: "more-horiz" },
   bookmark: { ios: "bookmark", android: "bookmark-border" },
   bookmarkActive: { ios: "bookmark.fill", android: "bookmark" },
@@ -22,6 +23,8 @@ const READER_CHROME_ICON_SOURCE = {
   next: { ios: "forward.frame.fill", android: "skip-next" },
   rewind: { ios: "backward.end.fill", android: "fast-rewind" },
   fastForward: { ios: "forward.end.fill", android: "fast-forward" },
+  historyBack: { ios: "arrow.uturn.left", android: "undo" },
+  historyForward: { ios: "arrow.uturn.right", android: "redo" },
   returnBackward: {
     ios: "arrowshape.turn.up.backward.fill",
     android: "undo",

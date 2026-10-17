@@ -1,3 +1,5 @@
+import type { ReaderImageBook } from "@my-reader/tools/reader-image-export"
+import { useReaderImageActions } from "../use-reader-image-actions"
 import {
   resolveReaderStart,
   readerProgress,
@@ -40,7 +42,7 @@ import {
   useRef,
   useState,
 } from "react"
-import { StyleSheet, View } from "react-native"
+import { Platform, StyleSheet, View } from "react-native"
 
 import type {
   ReaderState,
@@ -68,6 +70,7 @@ const NO_READER_CAPABILITIES: ReaderCapabilities = {
 }
 
 export type ReadiumReflowReaderRef = {
+  sharePage: () => Promise<void>
   goTo: (locator: Locator, tocItem?: ReaderTocItem) => void
   clearSelection: () => void
   getBookmarkLocator: () => Promise<Locator | null>
@@ -99,6 +102,7 @@ export type ReadiumReflowReaderRef = {
 }
 
 export type ReadiumReflowReaderProps = {
+  imageBook?: ReaderImageBook
   /** Native filesystem path to the EPUB archive（`toNativeFilesystemPath(fileUri)`）。 */
   epubPath: string
   /** 自 DB 恢复的 Readium Locator，作为 `ReadiumFile.initialLocation` 传给原生层。 */
@@ -144,6 +148,7 @@ const ReadiumReflowReader = forwardRef<
 >(function ReadiumReflowReader(
   {
     epubPath,
+    imageBook,
     initialLocator,
     onStateChange,
     onPositionsReady,
@@ -177,6 +182,7 @@ const ReadiumReflowReader = forwardRef<
   ref,
 ) {
   const readiumRef = useRef<ReadiumViewRef>(null)
+  const imageActions = useReaderImageActions(readiumRef, imageBook)
   const tocItemsRef = useRef<ReaderTocItem[]>([])
   const selectedTocItemRef = useRef<ReaderTocItem | null>(null)
   const positionsRef = useRef<Locator[]>([])
@@ -184,12 +190,14 @@ const ReadiumReflowReader = forwardRef<
   const chapterTitleRef = useRef("")
   const publicationReadySeqRef = useRef(0)
   const programmaticNavigationPendingRef = useRef(false)
+  const programmaticNavigationIdRef = useRef<string | undefined>(undefined)
   const [startLocation, setStartLocation] = useState<Locator | null>(null)
   const restoredStartRef = useRef<Locator | null>(null)
 
   useImperativeHandle(
     ref,
     () => ({
+      sharePage: imageActions.sharePage,
       goTo: (locator: Locator, tocItem?: ReaderTocItem) => {
         selectedTocItemRef.current = tocItem ?? null
         readiumRef.current?.goTo(locator)
@@ -225,16 +233,17 @@ const ReadiumReflowReader = forwardRef<
       completeTtsSynthesis: (completion) =>
         readiumRef.current?.completeTtsSynthesis(completion),
     }),
-    [],
+    [imageActions.sharePage],
   )
 
-  // Don't pass initialLocator as initialLocation — its href may not match
-  // the native publication format. Instead, navigate after publicationReady.
+  // Android resolves foreign locators before creating its navigator.
+  // iOS still resolves them here after publicationReady.
   const file = useMemo<ReadiumFile>(
     () => ({
       url: epubPath,
+      initialLocation: Platform.OS === "android" ? initialLocator : undefined,
     }),
-    [epubPath],
+    [epubPath, initialLocator],
   )
 
   const preferences = useMemo(
@@ -332,7 +341,11 @@ const ReadiumReflowReader = forwardRef<
         locator: startLocator,
       })
 
-      if (startLocator && startLocator !== event.positions[0]) {
+      if (
+        Platform.OS !== "android" &&
+        startLocator &&
+        startLocator !== event.positions[0]
+      ) {
         setStartLocation(startLocator)
       }
 
@@ -452,11 +465,18 @@ const ReadiumReflowReader = forwardRef<
     ) => {
       const programmaticNavigationPending =
         programmaticNavigationPendingRef.current
+      if (programmaticNavigationPending)
+        programmaticNavigationIdRef.current = navigationId
       programmaticNavigationPendingRef.current = false
       const selectedToc = selectedTocItemRef.current
       selectedTocItemRef.current = null
       emitLocationState(locator, selectedToc)
-      if (!programmaticNavigationPending && source === "user" && navigationId) {
+      if (
+        !programmaticNavigationPending &&
+        source === "user" &&
+        navigationId &&
+        navigationId !== programmaticNavigationIdRef.current
+      ) {
         onUserLocationChange?.(
           locator,
           navigationId,
@@ -491,6 +511,7 @@ const ReadiumReflowReader = forwardRef<
         // touch handlers don't receive events on Android because the native
         // reader view consumes them.
         onTap={onToggleChrome}
+        onImagePress={imageActions.onImagePress}
       />
     </View>
   )

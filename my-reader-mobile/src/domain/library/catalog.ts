@@ -1,3 +1,4 @@
+import type { catalogQuery } from "@my-reader/tools/catalog-navigation"
 import type { BookDetail, CalibreBook } from "@my-reader/tools/types/book"
 import { libraryTypeOf } from "@my-reader/tools/types/library"
 import { File as FSFile } from "expo-file-system"
@@ -19,6 +20,8 @@ import {
   listLibraryBookFormats,
   listLibraryBookSummaries,
   listLibraryBooks,
+  getCatalogNavigation,
+  queryCatalogBooks,
   updateLocalBookMetadata as updateLocalBookMetadataThroughCore,
 } from "../../services/core/catalog"
 import type { BookItem, DataSource, Library } from "../types"
@@ -256,13 +259,23 @@ export async function resolveBookFileForRead(
 export async function readBooksFromLibrary(
   library: Library,
   dataSources: DataSource[],
+  request?: ReturnType<typeof catalogQuery>,
 ): Promise<BookItem[]> {
   return withLocalLibraryContentRoot(library, async (contentRootUri) => {
-    const rows = await listLibraryBooks(
-      library,
-      contentRootUri,
-      librarySidecarRootUri(library),
-    )
+    const rows = request
+      ? (
+          await queryCatalogBooks(
+            library,
+            contentRootUri,
+            librarySidecarRootUri(library),
+            request,
+          )
+        ).items
+      : await listLibraryBooks(
+          library,
+          contentRootUri,
+          librarySidecarRootUri(library),
+        )
     if (rows.length === 0) {
       return []
     }
@@ -323,13 +336,14 @@ async function ensureRemoteCalibreMetadata(
 export async function fetchBooks(
   library: Library,
   dataSources: DataSource[],
+  request?: ReturnType<typeof catalogQuery>,
 ): Promise<BookItem[]> {
   const readableLibrary = await ensureRemoteCalibreMetadata(
     library,
     dataSources,
   )
   if (!readableLibrary) return []
-  return readBooksFromLibrary(readableLibrary, dataSources)
+  return readBooksFromLibrary(readableLibrary, dataSources, request)
 }
 
 export async function importBookIntoLibrary(
@@ -387,6 +401,24 @@ export async function deleteBookFromLibrary(
       libraryRootUri,
       librarySidecarRootUri(library),
       bookId,
+    ),
+  )
+}
+
+export async function fetchCatalogNavigation(
+  library: Library,
+  dataSources: DataSource[],
+) {
+  const readableLibrary = await ensureRemoteCalibreMetadata(
+    library,
+    dataSources,
+  )
+  if (!readableLibrary) throw new Error(i18n.t("sync.metadataDbNotAvailable"))
+  return withLocalLibraryContentRoot(readableLibrary, (root) =>
+    getCatalogNavigation(
+      readableLibrary,
+      root,
+      librarySidecarRootUri(readableLibrary),
     ),
   )
 }

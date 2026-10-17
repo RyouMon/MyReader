@@ -1,6 +1,9 @@
 use std::collections::BTreeMap;
 
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder};
+use sea_orm::{
+    ColumnTrait, ConnectionTrait, DatabaseConnection, DbBackend, EntityTrait, QueryFilter,
+    QueryOrder, Statement,
+};
 
 use crate::entities::app::{
     annotations, bookmarks, favorite_books, reading_completions, reading_progress, reading_sessions,
@@ -13,6 +16,24 @@ pub(crate) struct ReadingRepository<'a> {
 }
 
 impl<'a> ReadingRepository<'a> {
+    pub(crate) async fn list_position_candidates(
+        &self,
+        book_id: i64,
+        format: &str,
+    ) -> Result<Vec<crate::models::ReadingPositionCandidate>, CoreError> {
+        self.db.query_all_raw(Statement::from_sql_and_values(
+            DbBackend::Sqlite,
+            "SELECT operation_id, locator_json, display_progression, recorded_at, replica_id FROM reading_position_candidates WHERE book_id = ? AND format = ? ORDER BY operation_id",
+            [book_id.into(), format.into()],
+        )).await?.into_iter().map(|row| Ok(crate::models::ReadingPositionCandidate {
+            operation_id: row.try_get("", "operation_id")?,
+            locator: serde_json::from_str(&row.try_get::<String>("", "locator_json")?)?,
+            display_progression: row.try_get("", "display_progression")?,
+            recorded_at: row.try_get("", "recorded_at")?,
+            replica_id: row.try_get("", "replica_id")?,
+            is_local: false,
+        })).collect()
+    }
     pub(crate) fn new(db: &'a DatabaseConnection) -> Self {
         Self { db }
     }
@@ -44,7 +65,6 @@ impl<'a> ReadingRepository<'a> {
 
     pub(crate) async fn list_reading_positions(&self) -> Result<Vec<ReadingPosition>, CoreError> {
         reading_progress::Entity::find()
-            .order_by_asc(reading_progress::Column::UpdatedAt)
             .all(self.db)
             .await?
             .into_iter()
@@ -53,16 +73,21 @@ impl<'a> ReadingRepository<'a> {
     }
 
     pub(crate) async fn latest_read_at_by_book(&self) -> Result<BTreeMap<i64, f64>, CoreError> {
-        let mut latest = BTreeMap::new();
-        for row in reading_progress::Entity::find().all(self.db).await? {
-            latest
-                .entry(row.book_id)
-                .and_modify(|updated_at: &mut f64| {
-                    *updated_at = updated_at.max(row.updated_at);
-                })
-                .or_insert(row.updated_at);
-        }
-        Ok(latest)
+        self.db
+            .query_all_raw(Statement::from_string(
+                DbBackend::Sqlite,
+                "SELECT book_id, CAST(MAX(updated_at) AS REAL) AS latest_read_at
+             FROM reading_progress GROUP BY book_id",
+            ))
+            .await?
+            .into_iter()
+            .map(|row| {
+                Ok((
+                    row.try_get("", "book_id")?,
+                    row.try_get("", "latest_read_at")?,
+                ))
+            })
+            .collect()
     }
 
     pub(crate) async fn list_bookmarks(

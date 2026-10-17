@@ -68,7 +68,7 @@ describe("background sync failure presentation", () => {
       expect.objectContaining({
         title: "请检查数据源访问权限",
         description:
-          "请重新登录或更新数据源凭据，并确认此账号有权访问书库。\nSyncFailureError: INTERNAL_DIAGNOSTIC",
+          "请重新登录或更新数据源凭据，并确认此账号有权访问书库。\n\nSyncFailureError: INTERNAL_DIAGNOSTIC",
       }),
     )
   })

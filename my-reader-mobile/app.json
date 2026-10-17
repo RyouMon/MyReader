@@ -2,7 +2,7 @@
   "expo": {
     "name": "MyReader",
     "slug": "my-reader-mobile",
-    "version": "0.15.0",
+    "version": "0.17.0",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "myreadermobile",
@@ -60,6 +60,15 @@
       ],
       "expo-font",
       "expo-image",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": false,
+          "savePhotosPermission": "Allow MyReader to save book images to your photos.",
+          "granularPermissions": [],
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
       [
         "@sentry/react-native/expo",
         {

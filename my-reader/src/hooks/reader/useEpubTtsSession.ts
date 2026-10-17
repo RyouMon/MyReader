@@ -500,7 +500,7 @@ export function useEpubTtsSession({
       if (!sessionId) {
         if (status === "loading" || status === "ready") setState(status)
         if (status === "error") {
-          setError(errorMessage({ kind: "Tts" }))
+          setError(error ?? errorMessage({ kind: "Tts" }))
           setState("error")
         }
         return null
@@ -514,7 +514,7 @@ export function useEpubTtsSession({
       if (!transition.accepted) return null
       syncViewportState(transition)
       if (transition.effect?.type === "report-error") {
-        setError(errorMessage({ kind: "Tts" }))
+        setError(transition.effect.error)
       }
       setState(transition.snapshot.status)
       if (transition.effect?.type === "pause") speech.pause()
@@ -562,10 +562,12 @@ export function useEpubTtsSession({
       }),
       speech.on("error", (event) => {
         console.warn("Reader TTS playback failed", event.detail)
-        const message = event.detail?.message
+        const detail = event.detail
         applyPlayback(
           "error",
-          typeof message === "string" ? message : "TTS_PLAYBACK_FAILED",
+          errorMessage(
+            detail?.error ?? { kind: "Tts", message: detail?.message },
+          ),
         )
       }),
     ]

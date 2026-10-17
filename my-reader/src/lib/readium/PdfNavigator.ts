@@ -1,5 +1,6 @@
 import { Locator, LocatorLocations } from "@readium/shared"
-import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist"
+import type { PDFDocumentProxy, PDFPageProxy, PageViewport } from "pdfjs-dist"
+import { isMacPlatform, isWindowsPlatform } from "@/lib/platform"
 import { ensurePdfJsWorker } from "@/lib/pdfWorker"
 
 export const PDF_RENDER_BASE = 1.25
@@ -64,6 +65,10 @@ export class PdfNavigator {
   private _destroyed = false
 
   /** Page proxy cache: avoids re-fetching page data on every render. */
+  private imageLayers = new Map<
+    HTMLCanvasElement,
+    { elements: HTMLElement[]; observer: ResizeObserver }
+  >()
   private pageCache = new Map<number, PDFPageProxy>()
   private canvasRenderState = new WeakMap<
     HTMLCanvasElement,
@@ -104,6 +109,11 @@ export class PdfNavigator {
 
   async destroy(): Promise<void> {
     this._destroyed = true
+    this.imageLayers.forEach(({ elements, observer }) => {
+      observer.disconnect()
+      elements.forEach((element) => element.remove())
+    })
+    this.imageLayers.clear()
     this.pageCache.clear()
     await this.pdf?.loadingTask.destroy()
     this.pdf = null
@@ -352,6 +362,60 @@ export class PdfNavigator {
     context.drawImage(renderedCanvas, 0, 0)
   }
 
+  private async attachImageLayers(
+    canvas: HTMLCanvasElement,
+    pages: {
+      canvas: HTMLCanvasElement
+      viewport: PageViewport
+      coordinates: Float64Array | null
+      pageNumber: number
+      x: number
+    }[],
+    cssScale: number,
+  ) {
+    const parent = canvas.parentElement
+    if (!parent || !(isMacPlatform() || isWindowsPlatform())) return
+    this.imageLayers.forEach((entry, previous) => {
+      if (previous !== canvas && previous.isConnected) return
+      entry.observer.disconnect()
+      entry.elements.forEach((element) => element.remove())
+      this.imageLayers.delete(previous)
+    })
+    const { TextLayerImages } = await import("pdfjs-dist")
+    if (this._destroyed || !canvas.isConnected) return
+    const layers = pages
+      .filter((page) => page.coordinates?.length)
+      .map((page) => ({
+        page,
+        element: new TextLayerImages(
+          0,
+          page.coordinates,
+          page.viewport,
+          () => page.canvas,
+        ).render(),
+      }))
+    const layout = () =>
+      layers.forEach(({ element, page }) => {
+        Object.assign(element.style, {
+          left: `${canvas.offsetLeft + page.x / cssScale}px`,
+          top: `${canvas.offsetTop}px`,
+          width: `${page.viewport.width / cssScale}px`,
+          height: `${page.viewport.height / cssScale}px`,
+        })
+      })
+    layers.forEach(({ element, page }) => {
+      element.dataset.readerPage = String(page.pageNumber)
+      parent.append(element)
+    })
+    layout()
+    const observer = new ResizeObserver(layout)
+    observer.observe(parent)
+    this.imageLayers.set(canvas, {
+      elements: layers.map((layer) => layer.element),
+      observer,
+    })
+  }
+
   /** Compute scale to fit page(s) within the container. */
   private async computeFitScale(
     containerWidth: number,
@@ -427,68 +491,50 @@ export class PdfNavigator {
       const cssScale =
         PDF_RENDER_BASE * (keepDisplaySize ? this._renderScale : 1)
 
-      if (pages.length === 1) {
-        const page = await this.getPage(pages[0])
-        const vp = page.getViewport({ scale })
-        const renderedCanvas = canvas.ownerDocument.createElement("canvas")
-        renderedCanvas.width = vp.width
-        renderedCanvas.height = vp.height
-        const context = renderedCanvas.getContext("2d")
+      const renderedPages = []
+      let offset = 0
+      for (const number of pages) {
+        const page = await this.getPage(number)
+        const viewport = page.getViewport({ scale })
+        const pageCanvas = canvas.ownerDocument.createElement("canvas")
+        pageCanvas.width = Math.ceil(viewport.width)
+        pageCanvas.height = Math.ceil(viewport.height)
+        const context = pageCanvas.getContext("2d")
         if (!context) return
-        await page.render({
+        const task = page.render({
+          canvas: pageCanvas,
           canvasContext: context,
-          viewport: vp,
-          canvas: renderedCanvas,
-        }).promise
+          viewport,
+          recordImages: isMacPlatform() || isWindowsPlatform(),
+        })
+        await task.promise
         if (!isCurrent()) return
-        this.commitRenderedCanvas(
-          canvas,
-          renderedCanvas,
-          vp.width / cssScale,
-          vp.height / cssScale,
-        )
-      } else {
-        // Double-page spread: render side by side
-        const [page1, page2] = await Promise.all([
-          this.getPage(pages[0]),
-          this.getPage(pages[1]),
-        ])
-        const vp1 = page1.getViewport({ scale })
-        const vp2 = page2.getViewport({ scale })
-        const gap = 4 * PDF_RENDER_BASE * this._renderScale
-        const contentWidth = vp1.width + gap + vp2.width
-        const contentHeight = Math.max(vp1.height, vp2.height)
-        const totalWidth = Math.ceil(contentWidth)
-        const totalHeight = Math.ceil(contentHeight)
-        const renderedCanvas = canvas.ownerDocument.createElement("canvas")
-        renderedCanvas.width = totalWidth
-        renderedCanvas.height = totalHeight
-        const context = renderedCanvas.getContext("2d")
-        if (!context) return
-        // Render left page at origin
-        await page1.render({
-          canvasContext: context,
-          viewport: vp1,
-          canvas: renderedCanvas,
-        }).promise
-        if (!isCurrent()) return
-        // Render right page offset by left page width + gap
-        context.save()
-        context.translate(Math.ceil(vp1.width) + gap, 0)
-        await page2.render({
-          canvasContext: context,
-          viewport: vp2,
-          canvas: renderedCanvas,
-        }).promise
-        context.restore()
-        if (!isCurrent()) return
-        this.commitRenderedCanvas(
-          canvas,
-          renderedCanvas,
-          contentWidth / cssScale,
-          contentHeight / cssScale,
-        )
+        renderedPages.push({
+          pageNumber: number,
+          canvas: pageCanvas,
+          viewport,
+          coordinates: page.imageCoordinates,
+          x: offset,
+        })
+        offset += viewport.width + 4 * PDF_RENDER_BASE * this._renderScale
       }
+      const width = offset - 4 * PDF_RENDER_BASE * this._renderScale
+      const height = Math.max(
+        ...renderedPages.map((page) => page.viewport.height),
+      )
+      const renderedCanvas = canvas.ownerDocument.createElement("canvas")
+      renderedCanvas.width = Math.ceil(width)
+      renderedCanvas.height = Math.ceil(height)
+      const context = renderedCanvas.getContext("2d")
+      if (!context) return
+      renderedPages.forEach((page) => context.drawImage(page.canvas, page.x, 0))
+      this.commitRenderedCanvas(
+        canvas,
+        renderedCanvas,
+        width / cssScale,
+        height / cssScale,
+      )
+      await this.attachImageLayers(canvas, renderedPages, cssScale)
     })
   }
 
@@ -522,17 +568,32 @@ export class PdfNavigator {
       const context = renderedCanvas.getContext("2d")
       if (!context) return
 
-      await page.render({
+      const task = page.render({
         canvasContext: context,
         viewport,
         canvas: renderedCanvas,
-      }).promise
+        recordImages: isMacPlatform() || isWindowsPlatform(),
+      })
+      await task.promise
       if (!isCurrent()) return
       this.commitRenderedCanvas(
         canvas,
         renderedCanvas,
         viewport.width / PDF_RENDER_BASE,
         viewport.height / PDF_RENDER_BASE,
+      )
+      await this.attachImageLayers(
+        canvas,
+        [
+          {
+            canvas: renderedCanvas,
+            pageNumber,
+            viewport,
+            coordinates: page.imageCoordinates,
+            x: 0,
+          },
+        ],
+        PDF_RENDER_BASE,
       )
     })
   }

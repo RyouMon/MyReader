@@ -1,12 +1,18 @@
 import { api } from "@/lib/tauri-api"
 
 const SAVE_DEBOUNCE_MS = 1600
-let pendingSave: { timer: number; save: () => Promise<void> } | null = null
+type PendingSave = { timer: number; save: () => Promise<void> }
+let pendingSave: PendingSave | null = null
+let latestSave: PendingSave | null = null
 let writeTail = Promise.resolve()
 
 /** Drain this reader window's latest position before destroying its webview. */
-export function flushReaderProgress(): Promise<void> {
-  return pendingSave?.save() ?? writeTail
+export async function flushReaderProgress(): Promise<void> {
+  let saving: Promise<void>
+  do {
+    saving = pendingSave?.save() ?? writeTail
+    await saving
+  } while (pendingSave || saving !== writeTail)
 }
 
 export function scheduleReaderProgressSave(
@@ -21,11 +27,17 @@ export function scheduleReaderProgressSave(
       if (pendingSave === entry) pendingSave = null
       if (!write) {
         write = writeTail
+          .catch(() => {})
           .then(async () => {
             await api.setReadingProgress(...position)
           })
           .catch((error: unknown) => {
+            if (latestSave === entry) {
+              pendingSave = entry
+              write = null
+            }
             console.error("[useLocatorProgressSync] save failed:", error)
+            throw error
           })
         writeTail = write
       }
@@ -33,9 +45,14 @@ export function scheduleReaderProgressSave(
     },
   }
   pendingSave = entry
-  entry.timer = window.setTimeout(() => void entry.save(), SAVE_DEBOUNCE_MS)
+  latestSave = entry
+  entry.timer = window.setTimeout(
+    () => void entry.save().catch(() => {}),
+    SAVE_DEBOUNCE_MS,
+  )
   return () => {
     window.clearTimeout(entry.timer)
     if (pendingSave === entry) pendingSave = null
+    if (latestSave === entry) latestSave = null
   }
 }

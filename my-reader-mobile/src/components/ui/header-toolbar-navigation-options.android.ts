@@ -21,11 +21,11 @@ export function buildAndroidHeaderToolbarNavigationOptions({
 
   if (hasLeft) {
     options.headerBackVisible = false
-    options.headerLeft = wrapAndroidHeaderAction("left", renderLeft)
+    options.headerLeft = wrapAndroidHeaderAction(renderLeft)
   }
 
   if (hasRight) {
-    options.headerRight = wrapAndroidHeaderAction("right", renderRight)
+    options.headerRight = wrapAndroidHeaderAction(renderRight)
   }
 
   return options

@@ -1,3 +1,4 @@
+import type { CatalogToken } from "@my-reader/tools/catalog-navigation"
 import type { TFunction } from "i18next"
 import type { BookDetail } from "@my-reader/tools/types/book"
 import type { MenuAction } from "@react-native-menu/menu"
@@ -23,6 +24,7 @@ import {
 import type { DetailColors } from "./types"
 
 type HeroSectionProps = {
+  onBrowse?: (token: CatalogToken) => void
   availableWidth: number
   book: BookDetail
   colors: DetailColors
@@ -57,6 +59,7 @@ function bookSeriesLabel(book: BookDetail, t: TFunction) {
 
 export function HeroSection({
   availableWidth,
+  onBrowse,
   book,
   colors,
   coverUri,
@@ -132,12 +135,28 @@ export function HeroSection({
 
   const heroDetails = (
     <View className="gap-4">
-      <Text
-        className="text-base"
-        style={{ color: colors.accent, fontWeight: "600" }}
-      >
-        {authors}
-      </Text>
+      <View className="flex-row flex-wrap gap-x-2">
+        {book.authors.length ? (
+          book.authors.map((author) => (
+            <Text
+              key={author}
+              className="text-base"
+              style={{ color: colors.accent, fontWeight: "600" }}
+              accessibilityRole="link"
+              onPress={() => onBrowse?.({ kind: "authors", value: author })}
+            >
+              {author}
+            </Text>
+          ))
+        ) : (
+          <Text
+            className="text-base"
+            style={{ color: colors.accent, fontWeight: "600" }}
+          >
+            {authors}
+          </Text>
+        )}
+      </View>
 
       {metadata.length > 0 ? (
         <View className="flex-row flex-wrap items-center gap-x-2 gap-y-1">
@@ -161,7 +180,7 @@ export function HeroSection({
 
       {book.tags.length > 0 ? (
         <View className="flex-row flex-wrap gap-2">
-          {book.tags.slice(0, 4).map((tag) => (
+          {book.tags.map((tag) => (
             <View
               key={tag}
               className="justify-center rounded-md border px-2.5 py-1"
@@ -170,6 +189,8 @@ export function HeroSection({
               <Text
                 className="text-base"
                 style={{ color: colors.muted, fontWeight: "500" }}
+                accessibilityRole="link"
+                onPress={() => onBrowse?.({ kind: "tags", value: tag })}
               >
                 {tag}
               </Text>
@@ -314,6 +335,11 @@ export function HeroSection({
                 <Text
                   className="text-base"
                   style={{ color: colors.muted, fontWeight: "600" }}
+                  accessibilityRole="link"
+                  onPress={() =>
+                    book.series &&
+                    onBrowse?.({ kind: "series", value: book.series })
+                  }
                 >
                   {seriesLabel}
                 </Text>
@@ -387,6 +413,11 @@ export function HeroSection({
               className="mt-2 text-base"
               numberOfLines={2}
               style={{ color: colors.muted, fontWeight: "600" }}
+              accessibilityRole="link"
+              onPress={() =>
+                book.series &&
+                onBrowse?.({ kind: "series", value: book.series })
+              }
             >
               {seriesLabel}
             </Text>

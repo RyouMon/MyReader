@@ -16,10 +16,11 @@ android {
     minSdkVersion 24
     versionCode 1
     versionName "0.12.0"
+    testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
   }
   sourceSets {
     main {
-      assets.srcDirs += ["../ios/Generated"]
+      assets.srcDirs += ["../ios/Generated", "../ios/Resources"]
     }
     test {
       resources.srcDirs += ["../fixtures"]
@@ -27,6 +28,14 @@ android {
   }
   buildFeatures {
     viewBinding true
+  }
+  testOptions {
+    unitTests.all {
+      systemProperty 'robolectric.dependency.repo.url', 'https://repo.maven.apache.org/maven2'
+    }
+  }
+  compileOptions {
+    coreLibraryDesugaringEnabled true
   }
 }
 
@@ -58,6 +67,7 @@ repositories {
 }
 
 dependencies {
+  coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.5"
   implementation 'com.facebook.react:react-android'
 
   // Readium Kotlin Toolkit (REP-001~009)
@@ -99,4 +109,8 @@ dependencies {
   testImplementation "junit:junit:4.13.2"
   testImplementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1"
   testImplementation "org.robolectric:robolectric:4.16.1"
+  testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0"
+  testImplementation "io.mockk:mockk:1.14.9"
+  androidTestImplementation "androidx.test.ext:junit:1.2.1"
+  androidTestImplementation "androidx.test:runner:1.6.2"
 }

@@ -13,7 +13,7 @@ use rusqlite::Connection;
 const LIBRARY_UUID: &str = "11111111-2222-4333-8444-555555555555";
 const REPLICA_ID: &str = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
-pub(super) fn create_database() -> (tempfile::TempDir, String) {
+pub(crate) fn create_database() -> (tempfile::TempDir, String) {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("myreader.db");
     let connection = Connection::open(&path).unwrap();
@@ -115,6 +115,11 @@ pub(super) fn create_database() -> (tempfile::TempDir, String) {
     connection
         .execute_batch(include_str!(
             "../../../migrations/legacy/0020_add_catalog_projection.sql"
+        ))
+        .unwrap();
+    connection
+        .execute_batch(include_str!(
+            "../../../migrations/legacy/0023_add_reading_position_candidates.sql"
         ))
         .unwrap();
     (directory, path.to_string_lossy().into_owned())

@@ -2,6 +2,7 @@
 
 mod book_transfer;
 mod catalog;
+mod catalog_navigation;
 mod config;
 mod content;
 mod data_source;

@@ -1,3 +1,5 @@
+import type { ReaderImageBook } from "@my-reader/tools/reader-image-export"
+import { useReaderImageActions } from "../use-reader-image-actions"
 import {
   resolveReaderStart,
   readerProgress,
@@ -10,7 +12,7 @@ import {
   useMemo,
   useRef,
 } from "react"
-import { StyleSheet, View } from "react-native"
+import { Platform, StyleSheet, View } from "react-native"
 import { ReadiumView } from "@my-reader/readium"
 import type {
   Locator,
@@ -40,16 +42,23 @@ import {
 const PROGRESS_PERCENT_MULTIPLIER = 100
 
 export type ReadiumFixedReaderRef = {
+  sharePage: () => Promise<void>
   goTo: (locator: Locator) => void
 }
 
 export type ReadiumFixedReaderProps = {
+  imageBook?: ReaderImageBook
   /** Native filesystem path to the CBZ archive. */
   filePath: string
   /** Restored Readium Locator used as `ReadiumFile.initialLocation`. */
   initialLocator?: Locator
   onStateChange: (state: ReaderState) => void
   onPositionsReady?: (positions: Locator[]) => void
+  onUserLocationChange?: (
+    locator: Locator,
+    navigationId: string,
+    navigationKind: "pageTurn" | "programmatic",
+  ) => void
   onTocReady: (items: ReaderTocItem[]) => void
   onRequestClose: () => void
   onToggleChrome?: () => void
@@ -82,9 +91,11 @@ const ReadiumFixedReader = forwardRef<
 >(function ReadiumFixedReader(
   {
     filePath,
+    imageBook,
     initialLocator,
     onStateChange,
     onPositionsReady,
+    onUserLocationChange,
     onTocReady,
     onToggleChrome,
     showChapterTitle = true,
@@ -96,27 +107,32 @@ const ReadiumFixedReader = forwardRef<
   ref,
 ) {
   const readiumRef = useRef<ReadiumViewRef>(null)
+  const imageActions = useReaderImageActions(readiumRef, imageBook)
   const tocItemsRef = useRef<ReaderTocItem[]>([])
   const positionsRef = useRef<Locator[]>([])
   const currentLocatorRef = useRef<Locator | null>(null)
   const hasPublicationTocRef = useRef(false)
   const chapterTitleRef = useRef("")
+  const programmaticNavigationPendingRef = useRef(false)
+  const programmaticNavigationIdRef = useRef<string | undefined>(undefined)
 
   useImperativeHandle(
     ref,
     () => ({
+      sharePage: imageActions.sharePage,
       goTo: (locator: Locator) => readiumRef.current?.goTo(locator),
     }),
-    [],
+    [imageActions.sharePage],
   )
 
-  // Don't pass initialLocator as initialLocation — its href may not match
-  // the native publication format. Instead, navigate after publicationReady.
+  // Android resolves foreign locators before creating its navigator.
+  // iOS still resolves them here after publicationReady.
   const file = useMemo<ReadiumFile>(
     () => ({
       url: filePath,
+      initialLocation: Platform.OS === "android" ? initialLocator : undefined,
     }),
-    [filePath],
+    [filePath, initialLocator],
   )
 
   const preferences = useMemo(
@@ -192,7 +208,12 @@ const ReadiumFixedReader = forwardRef<
       })
 
       // Navigate to the resolved position after the view is ready
-      if (startLocator && startLocator !== event.positions[0]) {
+      if (
+        Platform.OS !== "android" &&
+        startLocator &&
+        startLocator !== event.positions[0]
+      ) {
+        programmaticNavigationPendingRef.current = true
         readiumRef.current?.goTo(startLocator)
       }
     },
@@ -206,7 +227,27 @@ const ReadiumFixedReader = forwardRef<
   )
 
   const handleLocationChange = useCallback(
-    (locator: Locator) => {
+    (
+      locator: Locator,
+      source?: "tts" | "user",
+      navigationId?: string,
+      navigationKind?: "pageTurn" | "programmatic",
+    ) => {
+      if (programmaticNavigationPendingRef.current)
+        programmaticNavigationIdRef.current = navigationId
+      if (
+        !programmaticNavigationPendingRef.current &&
+        source === "user" &&
+        navigationId &&
+        navigationId !== programmaticNavigationIdRef.current
+      ) {
+        onUserLocationChange?.(
+          locator,
+          navigationId,
+          navigationKind ?? "pageTurn",
+        )
+      }
+      programmaticNavigationPendingRef.current = false
       currentLocatorRef.current = locator
 
       const positions = positionsRef.current
@@ -241,7 +282,7 @@ const ReadiumFixedReader = forwardRef<
         locator,
       })
     },
-    [onStateChange, showChapterTitle],
+    [onStateChange, onUserLocationChange, showChapterTitle],
   )
 
   return (
@@ -257,6 +298,7 @@ const ReadiumFixedReader = forwardRef<
         // touch handlers don't receive events on Android because the native
         // reader view consumes them.
         onTap={onToggleChrome}
+        onImagePress={imageActions.onImagePress}
       />
     </View>
   )

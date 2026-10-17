@@ -1,5 +1,5 @@
-import { errorMessage } from "@/src/i18n/error-message"
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
+import { FACET_KINDS } from "@my-reader/tools/catalog-navigation"
 import type { BuiltInBookCollectionId } from "@my-reader/tools/types/book-collection"
 import { libraryTypeOf } from "@my-reader/tools/types/library"
 import { router, Stack } from "expo-router"
@@ -7,7 +7,6 @@ import { SymbolView } from "expo-symbols"
 import { useCallback, useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { Platform } from "react-native"
-
 import {
   EmptyState,
   ListRow,
@@ -36,13 +35,14 @@ import {
   PRIMARY_BOOK_COLLECTIONS,
 } from "@/src/features/library/book-collection-definitions"
 import { NoLibraryEmptyState } from "@/src/features/library/components/no-library-empty-state"
-import { useLibraryCollectionsHeader } from "@/src/features/library/hooks/use-library-collections-header"
+import { useLibraryRootHeader } from "@/src/features/library/hooks/use-library-root-header"
 import {
   useBooks,
   usePendingBookImports,
 } from "@/src/features/library/hooks/useLibraryQuery"
 import { resolveLibraryScreenVariant } from "@/src/features/library/utils/resolve-library-screen-variant"
 import { useLibraryBookMeta } from "@/src/hooks/use-library-book-meta"
+import { errorMessage } from "@/src/i18n/error-message"
 import { useAppStore } from "@/src/store/app-store"
 import { Text, View } from "@/tw"
 
@@ -214,11 +214,9 @@ export default function LibraryCollectionsScreen() {
       },
     )
   }, [isManagedLibrary, selectedLibrary, t])
-  const { options, toolbar } = useLibraryCollectionsHeader({
-    selectedLibraryName: selectedLibrary?.name,
-    canImportBook: isManagedLibrary,
-    onImportBook: handleImportBook,
-  })
+  const { options, toolbar } = useLibraryRootHeader(
+    selectedLibrary?.name ?? t("library.label"),
+  )
   const header = (
     <>
       <Stack.Screen options={options} />
@@ -298,6 +296,47 @@ export default function LibraryCollectionsScreen() {
             counts={counts}
           />
         </SectionCard>
+        <SectionCard>
+          {FACET_KINDS.map((kind, index) => (
+            <ListRow
+              key={kind}
+              testID={`library-browse-${kind}`}
+              title={t(`catalog.${kind}`)}
+              isLast={index === FACET_KINDS.length - 1}
+              icon={{
+                ios:
+                  kind === "authors"
+                    ? "person"
+                    : kind === "tags"
+                      ? "tag"
+                      : "books.vertical",
+                android:
+                  kind === "authors"
+                    ? "person"
+                    : kind === "tags"
+                      ? "label"
+                      : "book",
+              }}
+              onPress={() =>
+                router.push({
+                  pathname: "/library/browse/[kind]",
+                  params: { kind },
+                })
+              }
+            />
+          ))}
+        </SectionCard>
+        {isManagedLibrary ? (
+          <SectionCard>
+            <ListRow
+              testID="library-import-book-button"
+              title={t("library.importBook")}
+              icon={{ ios: "square.and.arrow.down", android: "file-download" }}
+              isLast
+              onPress={handleImportBook}
+            />
+          </SectionCard>
+        ) : null}
         {activeTransferCollections.length > 0 ? (
           <View className="gap-3">
             <SectionLabel>

@@ -1,6 +1,7 @@
 mod asset_scope;
 pub mod auth;
 pub mod cache;
+mod catalog_models;
 pub mod clients;
 pub mod commands;
 mod config;
@@ -72,6 +73,8 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::book::list_pending_book_uploads::<tauri::Wry>,
             commands::book::has_local_only_books::<tauri::Wry>,
             commands::book::get_books_page::<tauri::Wry>,
+            commands::book::query_catalog_books::<tauri::Wry>,
+            commands::book::get_catalog_navigation::<tauri::Wry>,
             commands::book::get_book_detail::<tauri::Wry>,
             commands::book::get_series_books::<tauri::Wry>,
             commands::book::import_book::<tauri::Wry>,
@@ -81,6 +84,7 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::book_file::copy_book_file_path::<tauri::Wry>,
             commands::book_file::reveal_book_file::<tauri::Wry>,
             commands::book_file::save_book_file_as::<tauri::Wry>,
+            commands::reader_image::reader_image_action,
             commands::book_reading_format::list_book_reading_formats::<tauri::Wry>,
             commands::book_reading_format::set_book_reading_format::<tauri::Wry>,
             commands::favorite::list_favorite_book_ids::<tauri::Wry>,
@@ -90,7 +94,6 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::progress::list_reading_progress::<tauri::Wry>,
             commands::progress::set_reading_progress::<tauri::Wry>,
             commands::progress::list_reading_position_candidates::<tauri::Wry>,
-            commands::progress::select_reading_position_candidate::<tauri::Wry>,
             commands::reading_statistics::add_reading_session_interval::<tauri::Wry>,
             commands::annotation::list_reader_annotations::<tauri::Wry>,
             commands::annotation::add_reader_annotation::<tauri::Wry>,
@@ -172,6 +175,7 @@ pub fn run() -> Result<(), tauri::Error> {
         )
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_vnidrop_share::init())
         .plugin(
             tauri_plugin_window_state::Builder::default()
                 .with_state_flags(if cfg!(target_os = "windows") {

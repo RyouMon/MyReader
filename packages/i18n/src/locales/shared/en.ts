@@ -1,4 +1,21 @@
 export const sharedEn = {
+  catalog: {
+    searchPlaceholder: "Search titles, authors, tags, series…",
+    searchDirectory: "Search {{kind}}",
+    authors: "Authors",
+    tags: "Tags",
+    series: "Series",
+    directory: "Library directory",
+    alphabetIndex: "Alphabetical index",
+    jumpTo: "Go to {{letter}}",
+    suggestions: "Search suggestions",
+    removeToken: "Remove condition",
+    removeNamedToken: "Remove {{name}}",
+    emptyDirectory: "No entries to display.",
+    loading: "Loading…",
+    retry: "Retry",
+    noResults: "No books match all conditions.",
+  },
   operationError: {
     unexpected: "This action could not be completed. Please try again.",
     connectivity:
@@ -179,6 +196,19 @@ export const sharedEn = {
     },
   },
   reader: {
+    copyImage: "Copy image",
+    saveImage: "Save image…",
+    saveImageToPhotos: "Save to Photos",
+    saveImageToFiles: "Save to Files",
+    imageCopied: "Image copied",
+    imageSaved: "Image saved",
+    imageActionFailed: "Could not export this image. Please try again.",
+    sharePage: "Share",
+    imageMore: "More",
+    image: "Image",
+    imagePhotoPermission: "Photo access is required to save the image.",
+    navigationBack: "Go back to previous location",
+    navigationForward: "Go forward to next location",
     background: "Background",
     empty: {
       annotations: {

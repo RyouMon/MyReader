@@ -19,6 +19,7 @@ final class ReadiumView: ExpoView {
   let onSelectionChange = EventDispatcher()
   let onSelectionAction = EventDispatcher()
   let onTap = EventDispatcher()
+  let onImagePress = EventDispatcher()
   let onTtsStateChange = EventDispatcher()
   let onTtsSynthesisRequest = EventDispatcher()
   let onTtsSynthesisCancel = EventDispatcher()
@@ -216,6 +217,7 @@ final class ReadiumView: ExpoView {
           guard let self = self else { return }
 
           if let epubVC = vc as? EPUBViewController {
+            epubVC.onImagePress = { [weak self] href in self?.onImagePress(["href": href]) }
             epubVC.selectionActionDelegate = self
             epubVC.usesCustomSelectionMenu = self.customSelectionMenu
             epubVC.updateSelectionMenu(self.selectionMenu)
@@ -246,6 +248,12 @@ final class ReadiumView: ExpoView {
         }
       }
     )
+  }
+
+  @MainActor
+  func exportImages(href: String?) async throws -> [[String: Any]] {
+    guard let reader = readerViewController else { throw NSError(domain: "ReadiumImage", code: 2) }
+    return try await ReaderImageExport.images(reader: reader, href: href)
   }
 
   // MARK: - Preferences
@@ -555,6 +563,7 @@ final class ReadiumView: ExpoView {
       ttsNavigationState.allowsTtsFollow &&
       !ttsNavigationState.isReturningToPlaybackPosition
     let playbackLocator = ttsController?.playbackLocator
+    let sessionId = ttsSessionId
 
     viewportLocationTask?.cancel()
     viewportLocationTask = Task { @MainActor [weak self, weak navigator] in
@@ -574,6 +583,11 @@ final class ReadiumView: ExpoView {
           currentHref: locator.href.string,
           navigator: navigator
         )
+        guard !Task.isCancelled,
+              self.ttsSessionId == sessionId,
+              navigator.viewport == viewport,
+              self.ttsController?.playbackLocator == playbackLocator,
+              !self.ttsNavigationState.isReturningToPlaybackPosition else { return }
         if !playbackIsVisible {
           self.beginUserNavigation()
         }
@@ -694,6 +708,9 @@ final class ReadiumView: ExpoView {
     }
     .store(in: &subscriptions)
 
+    vc.onInternalLinkNavigation = { [weak self] in
+      self?.beginUserNavigation(detachViewport: false)
+    }
     readerViewController = vc
     vc.view.layer.opacity = viewportPresentationFrozen ? 0 : 1
     let bookId = vc.bookId

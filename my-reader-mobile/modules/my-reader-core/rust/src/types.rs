@@ -233,6 +233,7 @@ pub struct ReadingPositionCandidate {
     pub display_progression: Option<f64>,
     pub recorded_at: f64,
     pub replica_id: String,
+    pub is_local: bool,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -412,7 +413,29 @@ pub struct LibraryStorageConfig {
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
+pub struct SyncedReadingPosition {
+    pub book_id: f64,
+    pub format: String,
+    pub operation_id: String,
+    pub locator: ReaderLocatorJson,
+    pub recorded_at: f64,
+}
+
+impl From<models::SyncedReadingPosition> for SyncedReadingPosition {
+    fn from(value: models::SyncedReadingPosition) -> Self {
+        Self {
+            book_id: value.book_id as f64,
+            format: value.format,
+            operation_id: value.operation_id,
+            locator: ReaderLocatorJson(value.locator.to_string()),
+            recorded_at: value.recorded_at as f64,
+        }
+    }
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
 pub struct SidecarSyncReport {
+    pub reading_positions: Vec<SyncedReadingPosition>,
     pub pushed: f64,
     pub pulled: f64,
 }
@@ -736,6 +759,7 @@ impl From<models::ReadingPositionCandidate> for ReadingPositionCandidate {
             display_progression: value.display_progression,
             recorded_at: value.recorded_at as f64,
             replica_id: value.replica_id,
+            is_local: value.is_local,
         }
     }
 }
@@ -1225,6 +1249,11 @@ impl From<models::LibraryStorageConfig> for LibraryStorageConfig {
 impl From<models::SidecarSyncReport> for SidecarSyncReport {
     fn from(value: models::SidecarSyncReport) -> Self {
         Self {
+            reading_positions: value
+                .reading_positions
+                .into_iter()
+                .map(Into::into)
+                .collect(),
             pushed: value.pushed as f64,
             pulled: value.pulled as f64,
         }

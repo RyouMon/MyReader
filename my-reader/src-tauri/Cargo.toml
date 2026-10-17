@@ -22,6 +22,8 @@ tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-opener = "2"
+tauri-plugin-vnidrop-share = "=1.0.0-rc.2"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp"] }
 tempfile = "3"
 tauri-plugin-window-state = "2"
 tauri-plugin-mcp-bridge = "0.13"
@@ -60,9 +62,21 @@ percent-encoding = "2"
 uuid = { version = "1", features = ["v4"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSButton", "NSControl", "NSResponder", "NSView", "NSWindow"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSButton", "NSControl", "NSResponder", "NSView", "NSWindow", "NSImage", "NSBitmapImageRep", "NSImageRep"] }
+objc2 = "0.6"
+objc2-foundation = "0.3"
+objc2-web-kit = { version = "0.3", features = ["WKWebView", "WKSnapshotConfiguration", "block2"] }
+block2 = "0.6"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+webview2-com = "0.38"
+windows = { version = "0.61", features = ["Win32_System_Com", "Win32_UI_Shell"] }
 
 [dev-dependencies]
 my-reader-core = { workspace = true, features = ["test-support"] }
 bytes = "1"
 tauri = { version = "2", features = ["test"] }
+
+[[test]]
+name = "reader_images_native"
+harness = false

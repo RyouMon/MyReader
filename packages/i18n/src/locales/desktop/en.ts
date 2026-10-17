@@ -478,12 +478,6 @@ export const desktopEn = {
       backToDetail: "Back to book detail",
       loadFailed: "Failed to load",
       loadTimeout: "Book loading timed out, check library connection and retry",
-      positionConflictTitle: "Choose reading position",
-      positionConflictDescription:
-        "This book has multiple offline reading positions. Choose where to continue.",
-      positionConflictKeepDefault: "Use current progress for now",
-      positionPercentage: "{{percentage}}% read",
-      positionUnknown: "Unknown reading position",
       toc: "Contents",
       close: "Close",
       minimize: "Minimize",

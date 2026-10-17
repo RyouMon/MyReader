@@ -53,6 +53,7 @@ pub(crate) const LEGACY_MIGRATIONS: &[LegacyMigrationSpec] = &[
         1_785_772_800_000
     ),
     legacy_migration!("0022_add_pending_book_imports", 1_785_859_200_000),
+    legacy_migration!("0023_add_reading_position_candidates", 1_785_945_600_000),
 ];
 
 pub struct LibraryMigrator;

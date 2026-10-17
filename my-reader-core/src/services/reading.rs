@@ -4,12 +4,12 @@ use crate::sync::{
     document::{
         add_reading_completion as write_reading_completion, add_reading_session_duration,
         annotation_projections, bookmark_projections, create_annotation, delete_annotation,
-        favorite_projections, reading_completion_records, resolve_reading_position, set_bookmark,
-        set_favorite, set_reading_position as write_reading_position, update_annotation,
-        AnnotationValue, BookmarkValue, FavoriteValue, ReadingCompletionValue,
-        ReadingPositionValue, ReadingSessionValue,
+        favorite_projections, reading_completion_records, set_bookmark, set_favorite,
+        set_reading_position as write_reading_position, update_annotation, AnnotationValue,
+        BookmarkValue, FavoriteValue, ReadingCompletionValue, ReadingPositionValue,
+        ReadingSessionValue,
     },
-    persistence::async_io::{ensure_database_document, mutate_document},
+    persistence::async_io::{mutate_document, read_position_candidates},
 };
 use chrono::{Local, TimeZone};
 use tracing::info;
@@ -222,14 +222,25 @@ impl ReadingService {
         }
         let format = normalize_reading_format(format)?;
         let context = LibraryContext::open(sidecar_root).await?;
-        let database_path = context.path();
         let identity = context.identity(library_root).await?;
-        let result = ensure_database_document(database_path, &identity, now_ms).await?;
-        result
-            .projection
-            .reading_position_candidates
+        let repository = ReadingRepository::new(context.database());
+        let mut candidates = repository
+            .list_position_candidates(book_id, &format)
+            .await?;
+        if !candidates.is_empty()
+            || repository
+                .get_reading_position(book_id, &format)
+                .await?
+                .is_none()
+        {
+            for candidate in &mut candidates {
+                candidate.is_local = candidate.replica_id == identity.replica_id.as_str();
+            }
+            return Ok(candidates);
+        }
+        read_position_candidates(context.path(), &identity, book_id, &format)
+            .await?
             .into_iter()
-            .filter(|candidate| candidate.book_id == book_id && candidate.format == format)
             .map(|candidate| {
                 Ok(ReadingPositionCandidate {
                     operation_id: candidate.operation_id,
@@ -239,36 +250,11 @@ impl ReadingService {
                         .display_progression_ppm
                         .map(|value| f64::from(value) / 1_000_000.0),
                     recorded_at: candidate.value.recorded_at,
+                    is_local: candidate.value.replica_id == identity.replica_id.as_str(),
                     replica_id: candidate.value.replica_id,
                 })
             })
             .collect()
-    }
-
-    pub async fn select_reading_position_candidate(
-        sidecar_root: &Path,
-        library_root: &Path,
-        book_id: i64,
-        format: &str,
-        operation_id: &str,
-        recorded_at_ms: i64,
-    ) -> Result<(), CoreError> {
-        if book_id < 1 || operation_id.is_empty() || recorded_at_ms < 0 {
-            return Err(CoreError::Config(
-                "Reading position candidate is invalid".into(),
-            ));
-        }
-        let format = normalize_reading_format(format)?;
-        let context = LibraryContext::open(sidecar_root).await?;
-        let database_path = context.path();
-        let identity = context.identity(library_root).await?;
-        let operation_id = operation_id.to_owned();
-        mutate_document(database_path, &identity, recorded_at_ms, move |document| {
-            resolve_reading_position(document, book_id, &format, &operation_id, recorded_at_ms)?;
-            Ok(())
-        })
-        .await?;
-        Ok(())
     }
 
     pub async fn list_reader_bookmarks(
@@ -983,6 +969,154 @@ mod tests {
     use std::path::Path;
 
     use sea_orm::EntityTrait;
+
+    async fn deliver_position_snapshot(
+        source: &Path,
+        target: &Path,
+        library: &Path,
+    ) -> Vec<crate::models::SyncedReadingPosition> {
+        use crate::library::LibraryContext;
+        use crate::sync::persistence::{async_io, SyncRemoteObject};
+        use sha2::{Digest, Sha256};
+        let source = LibraryContext::open(source).await.unwrap();
+        let target = LibraryContext::open(target).await.unwrap();
+        let source_identity = source.identity(library).await.unwrap();
+        let target_identity = target.identity(library).await.unwrap();
+        let snapshot =
+            async_io::load_publishable_database_snapshot(source.path(), &source_identity)
+                .await
+                .unwrap()
+                .unwrap();
+        let hash = format!("{:x}", Sha256::digest(&snapshot.snapshot_bytes));
+        async_io::apply_remote_database_objects(
+            target.path(),
+            &target_identity,
+            1000,
+            vec![SyncRemoteObject {
+                storage_key: crate::sync::storage::snapshot_key(
+                    source_identity.library_uuid.as_str(),
+                    &hash,
+                ),
+                bytes: snapshot.snapshot_bytes,
+                sha256: hash,
+            }],
+        )
+        .await
+        .unwrap()
+        .reading_positions
+    }
+
+    #[tokio::test]
+    async fn continued_reading_should_sync_after_concurrent_positions_without_explicit_choice() {
+        use super::ReadingService;
+        let left = tempfile::tempdir().unwrap();
+        let right = tempfile::tempdir().unwrap();
+        let library = tempfile::tempdir().unwrap();
+        seed_library_uuid(library.path()).await;
+        let locator = |position| {
+            format!(
+                r#"{{"href":"chapter.xhtml","type":"application/xhtml+xml","locations":{{"position":{position}}}}}"#
+            )
+        };
+        ReadingService::set_reading_position(
+            left.path(),
+            library.path(),
+            42,
+            "EPUB",
+            &locator(1),
+            Some(0.1),
+            1,
+        )
+        .await
+        .unwrap();
+        deliver_position_snapshot(left.path(), right.path(), library.path()).await;
+        for (sidecar, page) in [(left.path(), 2), (right.path(), 8)] {
+            ReadingService::set_reading_position(
+                sidecar,
+                library.path(),
+                42,
+                "EPUB",
+                &locator(page),
+                Some(f64::from(page) / 10.0),
+                i64::from(page),
+            )
+            .await
+            .unwrap();
+        }
+        let received = deliver_position_snapshot(right.path(), left.path(), library.path()).await;
+        assert_eq!(received.len(), 1);
+        assert_eq!(received[0].locator["locations"]["position"], 8);
+        let candidates = ReadingService::list_reading_position_candidates(
+            left.path(),
+            library.path(),
+            42,
+            "EPUB",
+            10,
+        )
+        .await
+        .unwrap();
+        assert_eq!(candidates.len(), 2);
+        ReadingService::set_reading_position(
+            left.path(),
+            library.path(),
+            42,
+            "EPUB",
+            &locator(5),
+            Some(0.5),
+            20,
+        )
+        .await
+        .unwrap();
+
+        // Close the actual pool and reopen the migrated sidecar from disk.
+        let path = crate::library::LibraryContext::database_path(left.path()).unwrap();
+        drop(
+            crate::database::close_database_file(Path::new(&path))
+                .await
+                .unwrap(),
+        );
+        let reopened = ReadingService::get_reading_position(left.path(), 42, "EPUB")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(reopened.locator["locations"]["position"], 5);
+        assert_eq!(
+            ReadingService::latest_read_at_by_book(left.path())
+                .await
+                .unwrap()[&42],
+            20.0
+        );
+
+        deliver_position_snapshot(left.path(), right.path(), library.path()).await;
+        let remote_candidates = ReadingService::list_reading_position_candidates(
+            right.path(),
+            library.path(),
+            42,
+            "EPUB",
+            21,
+        )
+        .await
+        .unwrap();
+        // The notification retains the received position even after the local
+        // reading continuation supersedes it in the persisted register.
+        assert_eq!(received[0].locator["locations"]["position"], 8);
+        assert_eq!(remote_candidates.len(), 1);
+        assert_eq!(remote_candidates[0].locator["locations"]["position"], 5);
+        for sidecar in [left.path(), right.path()] {
+            let candidates = ReadingService::list_reading_position_candidates(
+                sidecar,
+                library.path(),
+                42,
+                "EPUB",
+                24,
+            )
+            .await
+            .unwrap();
+            assert_eq!(candidates.len(), 1);
+            assert_eq!(candidates[0].locator["locations"]["position"], 5);
+            assert_ne!(candidates[0].operation_id, "local");
+        }
+    }
 
     #[tokio::test]
     async fn should_persist_projection_and_outbox_when_book_is_favorited() {

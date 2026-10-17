@@ -6,6 +6,22 @@ struct TtsPlaybackNavigationEvent: Equatable {
   let navigationKind: String?
 }
 
+func ttsPlaybackTextLocator(_ locator: Locator) -> Locator {
+  guard locator.text.highlight?.isEmpty == false else { return locator }
+  return locator.copy(locations: { locations in
+    // Readium's content locator can retain the start page's DOM range even
+    // after its text quote advances to another sentence or spoken word.
+    locations.otherLocations.removeValue(forKey: "domRange")
+    locations.progression = nil
+    if let selector = locations.cssSelector {
+      // SwiftSoup emits unescaped IDs such as #8IL20 in EPUB selectors.
+      locations.otherLocations["cssSelector"] = .string(selector.replacingOccurrences(
+        of: "#([0-9])", with: "#\\\\3$1 ", options: .regularExpression
+      ))
+    }
+  })
+}
+
 func ttsViewportStartLocator(
   current: Locator,
   cssSelector: String,

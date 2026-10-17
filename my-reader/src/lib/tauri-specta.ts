@@ -32,6 +32,8 @@ export const commands = {
 	listPendingBookUploads: (libraryId: string) => typedError<string[], ErrorKind>(__TAURI_INVOKE("list_pending_book_uploads", { libraryId })),
 	hasLocalOnlyBooks: (libraryId: string) => typedError<boolean, ErrorKind>(__TAURI_INVOKE("has_local_only_books", { libraryId })),
 	getBooksPage: (libraryId: string | null, offset: number, limit: number, sortBy: string | null, search: string | null) => typedError<PaginatedBooks, ErrorKind>(__TAURI_INVOKE("get_books_page", { libraryId, offset, limit, sortBy, search })),
+	queryCatalogBooks: (libraryId: string, request: CatalogQuery) => typedError<PaginatedBooks, ErrorKind>(__TAURI_INVOKE("query_catalog_books", { libraryId, request })),
+	getCatalogNavigation: (libraryId: string) => typedError<CatalogNavigation, ErrorKind>(__TAURI_INVOKE("get_catalog_navigation", { libraryId })),
 	getBookDetail: (libraryId: string | null, bookId: number) => typedError<BookDetail, ErrorKind>(__TAURI_INVOKE("get_book_detail", { libraryId, bookId })),
 	getSeriesBooks: (libraryId: string | null, seriesName: string, excludeBookId: number | null) => typedError<BookEntry[], ErrorKind>(__TAURI_INVOKE("get_series_books", { libraryId, seriesName, excludeBookId })),
 	importBook: (libraryId: string | null, sourceFilePath: string, title: string | null, authors: string[]) => typedError<ImportBookOutcome, ErrorKind>(__TAURI_INVOKE("import_book", { libraryId, sourceFilePath, title, authors })),
@@ -41,6 +43,12 @@ export const commands = {
 	copyBookFilePath: (libraryId: string, bookId: number, format: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("copy_book_file_path", { libraryId, bookId, format })),
 	revealBookFile: (libraryId: string, bookId: number, format: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("reveal_book_file", { libraryId, bookId, format })),
 	saveBookFileAs: (libraryId: string, bookId: number, format: string) => typedError<boolean, ErrorKind>(__TAURI_INVOKE("save_book_file_as", { libraryId, bookId, format })),
+	readerImageAction: (action: ReaderImageAction, name: string, data: string | null, capture: {
+	x: number | null,
+	y: number | null,
+	width: number | null,
+	height: number | null,
+} | null) => typedError<string | null, ErrorKind>(__TAURI_INVOKE("reader_image_action", { action, name, data, capture })),
 	listBookReadingFormats: (libraryId: string) => typedError<{ [key in string]: string }, ErrorKind>(__TAURI_INVOKE("list_book_reading_formats", { libraryId })),
 	setBookReadingFormat: (libraryId: string, bookId: number, format: string | null) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_book_reading_format", { libraryId, bookId, format })),
 	listFavoriteBookIds: (libraryId: string | null) => typedError<number[], ErrorKind>(__TAURI_INVOKE("list_favorite_book_ids", { libraryId })),
@@ -57,7 +65,6 @@ export const commands = {
 	listReadingProgress: (libraryId: string | null) => typedError<ReadingProgressDto[], ErrorKind>(__TAURI_INVOKE("list_reading_progress", { libraryId })),
 	setReadingProgress: (libraryId: string | null, bookId: number, format: string, locator: any, displayProgression: number | null) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reading_progress", { libraryId, bookId, format, locator, displayProgression })),
 	listReadingPositionCandidates: (libraryId: string | null, bookId: number, format: string) => typedError<ReadingPositionCandidateDto[], ErrorKind>(__TAURI_INVOKE("list_reading_position_candidates", { libraryId, bookId, format })),
-	selectReadingPositionCandidate: (libraryId: string | null, bookId: number, format: string, operationId: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("select_reading_position_candidate", { libraryId, bookId, format, operationId })),
 	addReadingSessionInterval: (libraryId: string | null, id: string, bookId: number, format: string, localDay: string, startedAt: number | null, durationSeconds: number, updatedAt: number | null) => typedError<null, ErrorKind>(__TAURI_INVOKE("add_reading_session_interval", { libraryId, id, bookId, format, localDay, startedAt, durationSeconds, updatedAt })),
 	listReaderAnnotations: (libraryId: string | null, bookId: number, format: string) => typedError<ReaderAnnotationDto[], ErrorKind>(__TAURI_INVOKE("list_reader_annotations", { libraryId, bookId, format })),
 	addReaderAnnotation: (libraryId: string | null, bookId: number, format: string, locator: any, color: string, note: string | null) => typedError<ReaderAnnotationDto, ErrorKind>(__TAURI_INVOKE("add_reader_annotation", { libraryId, bookId, format, locator, color, note })),
@@ -139,6 +146,40 @@ export type BookFileStateDto = {
 export type BookIdentifier = {
 	idType: string,
 	value: string,
+};
+
+export type CatalogCover = {
+	id: number,
+	title: string,
+	path: string,
+	hasCover: boolean,
+};
+
+export type CatalogFacet = {
+	name: string,
+	bookCount: number,
+	covers: CatalogCover[],
+};
+
+export type CatalogNavigation = {
+	authors: CatalogFacet[],
+	tags: CatalogFacet[],
+	series: CatalogFacet[],
+};
+
+/**
+ *  Every selected value must match. Names are stable across rebuilt projections;
+ *  database-local author/tag IDs are deliberately not part of this contract.
+ */
+export type CatalogQuery = {
+	authors: string[],
+	tags: string[],
+	series: string[],
+	search: string | null,
+	bookIds: number[] | null,
+	sortBy: string | null,
+	offset: number,
+	limit: number | null,
 };
 
 export type DataSourceDetailDto = { kind: "local"; root_path: string } | { kind: "webdav"; endpoint: string; username: string; has_password: boolean; root_path: string | null } | { kind: "onedrive"; client_id: string; tenant_id: string; has_refresh_token: boolean; root_path: string | null; user_name: string | null; user_email: string | null };
@@ -312,6 +353,15 @@ export type ReaderBookmarkDto = {
 	updatedAt: number | null,
 };
 
+export type ReaderCaptureRect = {
+	x: number | null,
+	y: number | null,
+	width: number | null,
+	height: number | null,
+};
+
+export type ReaderImageAction = "copy" | "save" | "prepareShare";
+
 export type ReaderSettingsDto = {
 	theme?: string,
 	fontFamily?: string,
@@ -355,6 +405,7 @@ export type ReadingPositionCandidateDto = {
 	displayProgression: number | null,
 	recordedAt: number,
 	replicaId: string,
+	isLocal: boolean,
 };
 
 /**  Returned by `get_reading_progress`: JSON of a Readium `Locator` (compatible with `@readium/shared`). */

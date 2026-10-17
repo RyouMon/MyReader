@@ -160,6 +160,19 @@
     }
   },
   "reader": {
+    "copyImage": "이미지 복사",
+    "saveImage": "이미지 저장…",
+    "saveImageToPhotos": "사진에 저장",
+    "saveImageToFiles": "파일에 저장",
+    "imageCopied": "이미지를 복사했습니다",
+    "imageSaved": "이미지를 저장했습니다",
+    "imageActionFailed": "이미지를 내보내지 못했습니다. 다시 시도해 주세요.",
+    "sharePage": "공유",
+    "imageMore": "더 보기",
+    "image": "이미지",
+    "imagePhotoPermission": "이미지를 저장하려면 사진 추가 권한이 필요합니다.",
+    "navigationBack": "이전 읽기 위치로 돌아가기",
+    "navigationForward": "다음 읽기 위치로 이동",
     "background": "배경",
     "empty": {
       "annotations": {
@@ -272,5 +285,22 @@
     "io": "로컬 파일에 접근할 수 없습니다. 저장 공간과 파일 권한을 확인해 주세요.",
     "dataIntegrity": "일부 데이터를 올바르게 읽지 못했습니다. 신뢰할 수 있는 사본에서 복원한 후 다시 시도해 주세요.",
     "tts": "읽어주기에 실패했습니다. 음성 설정을 확인한 후 다시 시도해 주세요."
+  },
+  "catalog": {
+    "searchPlaceholder": "제목, 저자, 태그, 시리즈 검색…",
+    "searchDirectory": "{{kind}} 검색",
+    "authors": "저자",
+    "tags": "태그",
+    "series": "시리즈",
+    "directory": "서재 목록",
+    "alphabetIndex": "첫 글자 색인",
+    "jumpTo": "{{letter}}(으)로 이동",
+    "suggestions": "검색 제안",
+    "removeToken": "조건 삭제",
+    "removeNamedToken": "{{name}} 삭제",
+    "emptyDirectory": "표시할 항목이 없습니다.",
+    "loading": "불러오는 중…",
+    "retry": "다시 시도",
+    "noResults": "모든 조건에 맞는 책이 없습니다."
   }
 }

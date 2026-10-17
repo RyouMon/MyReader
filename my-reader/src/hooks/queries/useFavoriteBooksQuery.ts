@@ -1,4 +1,8 @@
 import {
+  catalogQuery,
+  type CatalogToken,
+} from "@my-reader/tools/catalog-navigation"
+import {
   type QueryClient,
   useMutation,
   useQuery,
@@ -101,13 +105,24 @@ export function useFavoriteBooks(
   libraryId: string | null,
   sortBy: string,
   search: string,
+  tokens: CatalogToken[] = [],
 ) {
   return useQuery({
-    queryKey: [...favoriteBookKeys.list(libraryId), "books", sortBy, search],
+    queryKey: [
+      ...favoriteBookKeys.list(libraryId),
+      "books",
+      sortBy,
+      search,
+      tokens,
+    ],
     queryFn: async () => {
       const [favoriteIds, books] = await Promise.all([
         api.listFavoriteBookIds(libraryId),
-        api.getBooks(libraryId),
+        tokens.length > 0 && libraryId
+          ? api
+              .queryCatalogBooks(libraryId, catalogQuery(tokens, search))
+              .then((page) => page.items)
+          : api.getBooks(libraryId),
       ])
       const favoriteSet = new Set(favoriteIds)
       const items = sortBooks(

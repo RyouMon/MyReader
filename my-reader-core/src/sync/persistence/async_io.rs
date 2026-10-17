@@ -122,8 +122,69 @@ pub(crate) async fn apply_remote_database_objects(
     objects: Vec<SyncRemoteObject>,
 ) -> Result<ApplyRemoteDatabaseResult, SyncError> {
     let identity = identity.clone();
-    with_database(path, move |path| {
-        super::apply_remote_database_objects(path, &identity, now_ms, objects)
+    let path = path.to_owned();
+    blocking::run_background(move || {
+        super::apply_remote_database_objects(&path, &identity, now_ms, objects)
+    })
+    .await
+}
+
+pub(crate) async fn prepare_for_sync(
+    path: &str,
+    identity: &DatabaseIdentity,
+    now_ms: i64,
+) -> Result<(), SyncError> {
+    apply_remote_database_objects(path, identity, now_ms, Vec::new()).await?;
+    Ok(())
+}
+
+/// Sync inspection never joins the local writer queue or holds a SQLite lock
+/// while decoding/projecting the CRDT snapshot.
+pub(crate) async fn inspect_for_sync(
+    path: &str,
+    identity: &DatabaseIdentity,
+) -> Result<DocumentCommandResult, SyncError> {
+    let path = path.to_owned();
+    let identity = identity.clone();
+    blocking::run_background(move || {
+        let connection = super::open_connection(&path)?;
+        let mut state =
+            super::decode_state(super::remote::snapshot_token(&connection)?, &identity)?
+                .ok_or_else(|| super::sync_error("Local Automerge state is missing"))?;
+        let document = super::take_document(&mut state, &identity)?;
+        super::execute_loaded_document_command(
+            document,
+            super::request(&identity, state.heads, super::DocumentCommand::Inspect),
+            None,
+            super::ProjectionMode::Full,
+        )
+    })
+    .await
+}
+
+// Upgrade fallback only. Normal reads use the indexed SQLite projection; an
+// existing database can still expose conflicts before its first sync/backfill.
+pub(crate) async fn read_position_candidates(
+    path: &str,
+    identity: &DatabaseIdentity,
+    book_id: i64,
+    format: &str,
+) -> Result<Vec<crate::sync::document::ReadingPositionCandidate>, SyncError> {
+    let path = path.to_owned();
+    let identity = identity.clone();
+    let format = format.to_owned();
+    blocking::run(move || {
+        let mut connection = super::open_connection(&path)?;
+        let transaction = connection
+            .transaction_with_behavior(rusqlite::TransactionBehavior::Deferred)
+            .map_err(super::database_error)?;
+        let token = super::remote::snapshot_token(&transaction)?;
+        transaction.commit().map_err(super::database_error)?;
+        let Some(mut state) = super::decode_state(token, &identity)? else {
+            return Ok(Vec::new());
+        };
+        let document = super::take_document(&mut state, &identity)?;
+        crate::sync::document::reading_position_candidates(&document, book_id, &format)
     })
     .await
 }
@@ -133,10 +194,9 @@ pub(crate) async fn load_publishable_database_snapshot(
     identity: &DatabaseIdentity,
 ) -> Result<Option<PublishableDatabaseSnapshot>, SyncError> {
     let identity = identity.clone();
-    with_database(path, move |path| {
-        super::load_publishable_database_snapshot(path, &identity)
-    })
-    .await
+    let path = path.to_owned();
+    blocking::run_background(move || super::load_publishable_database_snapshot(&path, &identity))
+        .await
 }
 
 pub(crate) async fn list_publishable_outbox(

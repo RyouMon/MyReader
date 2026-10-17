@@ -14,12 +14,11 @@ use super::document::{
     library_sidecar_missing_dependencies, load_library_sidecar_document,
     load_library_sidecar_document_bytes, reading_completion_projections,
     reading_completion_records, reading_position_candidates, reading_position_projections,
-    reading_session_projections, resolve_reading_position, save_library_sidecar_document,
-    save_library_sidecar_incremental, set_bookmark, set_favorite, set_library_identity,
-    set_reading_position, update_annotation, update_catalog_book_metadata,
-    validate_library_identity, AnnotationValue, BookmarkValue, CatalogBookValue, FavoriteValue,
-    LibrarySidecarAutomergeChange, ReadingCompletionValue, ReadingPositionCandidate,
-    ReadingPositionProjection, ReadingPositionValue, ReadingSessionValue,
+    reading_session_projections, save_library_sidecar_document, save_library_sidecar_incremental,
+    set_bookmark, set_favorite, set_library_identity, set_reading_position, update_annotation,
+    update_catalog_book_metadata, validate_library_identity, AnnotationValue, BookmarkValue,
+    CatalogBookValue, FavoriteValue, LibrarySidecarAutomergeChange, ReadingCompletionValue,
+    ReadingPositionCandidate, ReadingPositionProjection, ReadingPositionValue, ReadingSessionValue,
     LIBRARY_SIDECAR_SCHEMA_VERSION,
 };
 use super::SyncError;
@@ -111,12 +110,6 @@ pub enum DocumentCommand {
     SetReadingPosition {
         book_id: i64,
         value: ReadingPositionValue,
-    },
-    ResolveReadingPosition {
-        book_id: i64,
-        format: String,
-        operation_id: String,
-        recorded_at: i64,
     },
     SetFavorite {
         book_id: i64,
@@ -232,10 +225,19 @@ pub(crate) fn execute_document_command_projected(
     payload: Option<&[u8]>,
     projection_mode: ProjectionMode,
 ) -> Result<DocumentCommandResult, SyncError> {
-    let mut document = match snapshot {
+    let document = match snapshot {
         Some(bytes) => load_library_sidecar_document_bytes(bytes, &request.replica_id)?,
         None => load_library_sidecar_document(&request.replica_id)?,
     };
+    execute_loaded_document_command(document, request, payload, projection_mode)
+}
+
+pub(crate) fn execute_loaded_document_command(
+    mut document: automerge::AutoCommit,
+    request: DocumentCommandRequest,
+    payload: Option<&[u8]>,
+    projection_mode: ProjectionMode,
+) -> Result<DocumentCommandResult, SyncError> {
     if let Some(library_uuid) = request.expected_library_uuid.as_deref() {
         validate_library_identity(&document, library_uuid)?;
     }
@@ -284,15 +286,6 @@ pub(crate) fn execute_document_command_projected(
         }
         DocumentCommand::SetReadingPosition { book_id, ref value } => {
             set_reading_position(&mut document, book_id, value)?;
-            Vec::new()
-        }
-        DocumentCommand::ResolveReadingPosition {
-            book_id,
-            ref format,
-            ref operation_id,
-            recorded_at,
-        } => {
-            resolve_reading_position(&mut document, book_id, format, operation_id, recorded_at)?;
             Vec::new()
         }
         DocumentCommand::SetFavorite { book_id, ref value } => {
@@ -360,9 +353,8 @@ pub(crate) fn execute_document_command_projected(
     })
 }
 
-pub(crate) fn execute_document_mutation<F>(
-    snapshot: &[u8],
-    replica_id: &str,
+pub(crate) fn execute_loaded_document_mutation<F>(
+    mut document: automerge::AutoCommit,
     expected_library_uuid: &str,
     base_heads: Vec<String>,
     projection_mode: ProjectionMode,
@@ -371,7 +363,6 @@ pub(crate) fn execute_document_mutation<F>(
 where
     F: FnOnce(&mut automerge::AutoCommit) -> Result<(), SyncError>,
 {
-    let mut document = load_library_sidecar_document_bytes(snapshot, replica_id)?;
     validate_library_identity(&document, expected_library_uuid)?;
     let base_heads = parse_heads(&base_heads)?;
     mutate(&mut document)?;

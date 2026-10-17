@@ -191,6 +191,12 @@ uniffi_my_reader_core_ffi_fn_func_catalog_update_local_book_metadata(
     RustBuffer content_root_path, RustBuffer request);
 int8_t uniffi_my_reader_core_ffi_fn_func_catalog_validate_library(
     RustBuffer library_root_path, RustCallStatus *uniffi_out_err);
+/*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_catalog_navigation(
+    RustBuffer config_path, RustBuffer library_id, RustBuffer sidecar_root_path,
+    RustBuffer content_root_path);
+/*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_catalog_query_books(
+    RustBuffer config_path, RustBuffer library_id, RustBuffer sidecar_root_path,
+    RustBuffer content_root_path, RustBuffer request);
 /*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_app_config_initialize(
     RustBuffer config_path, RustBuffer initial_config);
 /*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_app_config_write_mobile(
@@ -357,10 +363,6 @@ uniffi_my_reader_core_ffi_fn_func_reading_list_position_candidates(
 /*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_reading_remove_bookmark(
     RustBuffer sidecar_root_path, RustBuffer library_root_path, double book_id,
     RustBuffer format, RustBuffer locator_key, double recorded_at_ms);
-/*handle*/ uint64_t
-uniffi_my_reader_core_ffi_fn_func_reading_select_position_candidate(
-    RustBuffer sidecar_root_path, RustBuffer library_root_path, double book_id,
-    RustBuffer format, RustBuffer operation_id, double recorded_at_ms);
 /*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_reading_set_favorite_book(
     RustBuffer sidecar_root_path, RustBuffer library_root_path, double book_id,
     int8_t is_favorite, double recorded_at_ms);
@@ -620,6 +622,8 @@ uniffi_my_reader_core_ffi_checksum_func_catalog_stage_remote_book_import();
 uint16_t
 uniffi_my_reader_core_ffi_checksum_func_catalog_update_local_book_metadata();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_catalog_validate_library();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_catalog_navigation();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_catalog_query_books();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_app_config_initialize();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_app_config_write_mobile();
 uint16_t
@@ -692,8 +696,6 @@ uniffi_my_reader_core_ffi_checksum_func_reading_list_position_candidates();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_reading_list_positions();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_reading_remove_annotation();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_reading_remove_bookmark();
-uint16_t
-uniffi_my_reader_core_ffi_checksum_func_reading_select_position_candidate();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_reading_set_favorite_book();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_reading_set_position();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_reading_update_annotation();
@@ -2470,6 +2472,30 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                 ->cpp_uniffi_my_reader_core_ffi_fn_func_catalog_validate_library(
                     rt, thisVal, args, count);
           });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_navigation"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt, "ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_navigation"),
+          4,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_fn_func_catalog_navigation(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_query_books"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt, "ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_query_books"),
+          5,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_fn_func_catalog_query_books(
+                    rt, thisVal, args, count);
+          });
   props["ubrn_uniffi_my_reader_core_ffi_fn_func_app_config_initialize"] =
       jsi::Function::createFromHostFunction(
           rt,
@@ -3188,20 +3214,6 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                  const jsi::Value *args, size_t count) -> jsi::Value {
             return this
                 ->cpp_uniffi_my_reader_core_ffi_fn_func_reading_remove_bookmark(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_fn_func_reading_select_position_"
-        "candidate"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt,
-                                    "ubrn_uniffi_my_reader_core_ffi_fn_func_"
-                                    "reading_select_position_candidate"),
-          6,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_fn_func_reading_select_position_candidate(
                     rt, thisVal, args, count);
           });
   props["ubrn_uniffi_my_reader_core_ffi_fn_func_reading_set_favorite_book"] =
@@ -4550,6 +4562,30 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                 ->cpp_uniffi_my_reader_core_ffi_checksum_func_catalog_validate_library(
                     rt, thisVal, args, count);
           });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_navigation"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_"
+                                        "checksum_func_catalog_navigation"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_catalog_navigation(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_query_books"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_"
+                                        "checksum_func_catalog_query_books"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_catalog_query_books(
+                    rt, thisVal, args, count);
+          });
   props["ubrn_uniffi_my_reader_core_ffi_checksum_func_app_config_initialize"] =
       jsi::Function::createFromHostFunction(
           rt,
@@ -5303,20 +5339,6 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                  const jsi::Value *args, size_t count) -> jsi::Value {
             return this
                 ->cpp_uniffi_my_reader_core_ffi_checksum_func_reading_remove_bookmark(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_select_position_"
-        "candidate"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt,
-                                    "ubrn_uniffi_my_reader_core_ffi_checksum_"
-                                    "func_reading_select_position_candidate"),
-          0,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_checksum_func_reading_select_position_candidate(
                     rt, thisVal, args, count);
           });
   props["ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_set_favorite_"
@@ -6427,6 +6449,42 @@ jsi::Value NativeMyReaderCoreFfi::
 
   return uniffi_jsi::Bridging<int8_t>::toJs(rt, callInvoker, value);
 }
+jsi::Value
+NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_fn_func_catalog_navigation(
+    jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+    size_t count) {
+  auto value = uniffi_my_reader_core_ffi_fn_func_catalog_navigation(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[1]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[2]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[3]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_fn_func_catalog_query_books(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_fn_func_catalog_query_books(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[1]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[2]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[3]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[4]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
+}
 jsi::Value NativeMyReaderCoreFfi::
     cpp_uniffi_my_reader_core_ffi_fn_func_app_config_initialize(
         jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
@@ -7301,26 +7359,6 @@ jsi::Value NativeMyReaderCoreFfi::
       uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
                                                                args[4]),
       uniffi_jsi::Bridging<double>::fromJs(rt, callInvoker, args[5]));
-
-  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
-                                                         value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_fn_func_reading_select_position_candidate(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value =
-      uniffi_my_reader_core_ffi_fn_func_reading_select_position_candidate(
-          uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(
-              rt, callInvoker, args[0]),
-          uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(
-              rt, callInvoker, args[1]),
-          uniffi_jsi::Bridging<double>::fromJs(rt, callInvoker, args[2]),
-          uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(
-              rt, callInvoker, args[3]),
-          uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(
-              rt, callInvoker, args[4]),
-          uniffi_jsi::Bridging<double>::fromJs(rt, callInvoker, args[5]));
 
   return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
                                                          value);
@@ -8773,6 +8811,22 @@ jsi::Value NativeMyReaderCoreFfi::
   return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
 }
 jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_catalog_navigation(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_checksum_func_catalog_navigation();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_catalog_query_books(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_checksum_func_catalog_query_books();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
     cpp_uniffi_my_reader_core_ffi_checksum_func_app_config_initialize(
         jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
         size_t count) {
@@ -9256,15 +9310,6 @@ jsi::Value NativeMyReaderCoreFfi::
         size_t count) {
   auto value =
       uniffi_my_reader_core_ffi_checksum_func_reading_remove_bookmark();
-
-  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_checksum_func_reading_select_position_candidate(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value =
-      uniffi_my_reader_core_ffi_checksum_func_reading_select_position_candidate();
 
   return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
 }

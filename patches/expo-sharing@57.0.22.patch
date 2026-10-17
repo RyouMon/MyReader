@@ -1,8 +1,127 @@
+diff --git a/android/src/main/java/expo/modules/sharing/SharingModule.kt b/android/src/main/java/expo/modules/sharing/SharingModule.kt
+index 69ccba68e28af71a262c01bd54a202a7bd985909..7c59e98d2bf02afca82990eacd56006bdd4d99dc 100644
+--- a/android/src/main/java/expo/modules/sharing/SharingModule.kt
++++ b/android/src/main/java/expo/modules/sharing/SharingModule.kt
+@@ -1,5 +1,6 @@
+ package expo.modules.sharing
+ 
++import android.content.ClipData
+ import android.content.Context
+ import android.content.Intent
+ import android.content.pm.PackageManager
+@@ -27,17 +28,15 @@ class SharingModule : Module() {
+         throw SharingInProgressException()
+       }
+       try {
+-        val fileToShare = getLocalFileFoUrl(url)
+-        val contentUri = FileProvider.getUriForFile(
+-          context,
+-          context.applicationInfo.packageName + ".SharingFileProvider",
+-          fileToShare
+-        )
++        val files = (listOf(url) + params.additionalUrls).map { getLocalFileFoUrl(it) }
++        val uris = ArrayList(files.map { file ->
++          FileProvider.getUriForFile(context, context.applicationInfo.packageName + ".SharingFileProvider", file)
++        })
+         val mimeType = params.mimeType
+-          ?: URLConnection.guessContentTypeFromName(fileToShare.name)
++          ?: URLConnection.guessContentTypeFromName(files.first().name)
+           ?: "*/*"
+         val intent = Intent.createChooser(
+-          createSharingIntent(contentUri, mimeType),
++          createSharingIntent(uris, mimeType),
+           params.dialogTitle
+         )
+         val resInfoList = context.packageManager.queryIntentActivities(
+@@ -46,7 +45,9 @@ class SharingModule : Module() {
+         )
+         resInfoList.forEach {
+           val packageName = it.activityInfo.packageName
+-          context.grantUriPermission(packageName, contentUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
++          uris.forEach { uri ->
++            context.grantUriPermission(packageName, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
++          }
+         }
+         pendingPromise = promise
+         appContext.throwingActivity.startActivityForResult(intent, REQUEST_CODE)
+@@ -113,9 +114,13 @@ class SharingModule : Module() {
+       .contains(FilePermissionService.Permission.READ)
+   }
+ 
+-  private fun createSharingIntent(uri: Uri, mimeType: String?) =
+-    Intent(Intent.ACTION_SEND).apply {
+-      putExtra(Intent.EXTRA_STREAM, uri)
++  private fun createSharingIntent(uris: ArrayList<Uri>, mimeType: String) =
++    Intent(if (uris.size > 1) Intent.ACTION_SEND_MULTIPLE else Intent.ACTION_SEND).apply {
++      if (uris.size > 1) putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
++      else putExtra(Intent.EXTRA_STREAM, uris.first())
++      clipData = ClipData.newUri(context.contentResolver, "", uris.first()).apply {
++        uris.drop(1).forEach { addItem(ClipData.Item(it)) }
++      }
+       setTypeAndNormalize(mimeType)
+       addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+     }
+diff --git a/android/src/main/java/expo/modules/sharing/SharingOptions.kt b/android/src/main/java/expo/modules/sharing/SharingOptions.kt
+index 99926bf59ab20237bcad538bca5d2ace37f8e1c8..19631f10f2e1d53ee39f5d3d85569f4f93e2af7c 100644
+--- a/android/src/main/java/expo/modules/sharing/SharingOptions.kt
++++ b/android/src/main/java/expo/modules/sharing/SharingOptions.kt
+@@ -6,6 +6,7 @@ import expo.modules.kotlin.types.OptimizedRecord
+ 
+ @OptimizedRecord
+ data class SharingOptions(
++  @Field val additionalUrls: List<String> = emptyList(),
+   @Field val mimeType: String?,
+   @Field val UTI: String?,
+   @Field val dialogTitle: String?
+diff --git a/build/Sharing.types.d.ts b/build/Sharing.types.d.ts
+index e9820b061bddce91657ab7144fde98d0543a3b8e..5d9218f97a8f325a962e68407a76eeb8361eadd5 100644
+--- a/build/Sharing.types.d.ts
++++ b/build/Sharing.types.d.ts
+@@ -1,4 +1,6 @@
+ export type SharingOptions = {
++  /** Additional local files included in the same native share sheet (iOS/Android). */
++  additionalUrls?: string[];
+     /**
+      * Sets `mimeType` for `Intent`.
+      * @platform android
+diff --git a/ios/SharingModule.swift b/ios/SharingModule.swift
+index 3e1772c7799e632feaea40e2a7c115cee808302b..18385a20dcdda081d6e3e280ec991bf4902fff5b 100644
+--- a/ios/SharingModule.swift
++++ b/ios/SharingModule.swift
+@@ -14,11 +14,12 @@ public final class SharingModule: Module {
+     Name("ExpoSharing")
+ 
+     AsyncFunction("shareAsync") { (url: URL, options: SharingOptions, promise: Promise) in
+-      guard FileSystemUtilities.isReadableFile(appContext, url) else {
++      let urls = [url] + options.additionalUrls
++      guard urls.allSatisfy({ FileSystemUtilities.isReadableFile(appContext, $0) }) else {
+         throw FilePermissionException()
+       }
+ 
+-      let activityController = UIActivityViewController(activityItems: [url], applicationActivities: nil)
++      let activityController = UIActivityViewController(activityItems: urls, applicationActivities: nil)
+       activityController.title = options.dialogTitle
+ 
+       activityController.completionWithItemsHandler = { _, _, _, _ in
+diff --git a/ios/SharingOptions.swift b/ios/SharingOptions.swift
+index c13fe014fb6406552d3123e44b6222fddaafc150..97c739ddbd4fee326ef8274c818c490e4a1eff0c 100644
+--- a/ios/SharingOptions.swift
++++ b/ios/SharingOptions.swift
+@@ -1,6 +1,7 @@
+ import ExpoModulesCore
+ 
+ internal struct SharingOptions: Record {
++  @Field var additionalUrls: [URL] = []
+   @Field var mimeType: String?
+   @Field var UTI: String?
+   @Field var dialogTitle: String?
 diff --git a/plugin/template-files/ios/ShareIntoViewController.swift b/plugin/template-files/ios/ShareIntoViewController.swift
 index 71753393f64ed1c37147850647b89712bf1401e5..d6fb628662db88f451211272c8fc2de80739ba22 100644
 --- a/plugin/template-files/ios/ShareIntoViewController.swift
 +++ b/plugin/template-files/ios/ShareIntoViewController.swift
-@@ -177,5 +177,6 @@ class ShareIntoViewController: SLComposeServiceViewController {
+@@ -175,7 +175,8 @@ class ShareIntoViewController: SLComposeServiceViewController {
+         }
+ 
          if let data = item as? Data {
 -          let fileName = UUID().randomFilename(forTypeIdentifier: identifier)
 +          let fileName = provider.suggestedFilename(forTypeIdentifier: identifier)
@@ -27,3 +146,15 @@ index 71753393f64ed1c37147850647b89712bf1401e5..d6fb628662db88f451211272c8fc2de8
 +    return "\(fileName).\(preferredExtension)"
 +  }
 +}
+diff --git a/src/Sharing.types.ts b/src/Sharing.types.ts
+index d9a5ad38f5fe2856b365eb91b71abd640314a5cc..e222ab53ee3896260cca6bc8d8dc647fea888675 100644
+--- a/src/Sharing.types.ts
++++ b/src/Sharing.types.ts
+@@ -1,5 +1,7 @@
+ // @needsAudit
+ export type SharingOptions = {
++  /** Additional local files included in the same native share sheet (iOS/Android). */
++  additionalUrls?: string[];
+   /**
+    * Sets `mimeType` for `Intent`.
+    * @platform android
