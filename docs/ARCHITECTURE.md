@@ -443,6 +443,10 @@ OneDrive 大文件写入由 OpenDAL OneDrive backend 使用 upload session 分�
   `.myreader/automerge/<document_id>/<kind>/<hash>`；`document_id` 是 Calibre `library_id.uuid`
   或 MyReader marker 中的 `libraryUuid`。
 - core 负责 snapshot-first 加载、内容寻址增量和只删除 covered chunks 的并发安全压缩。
+- Core 在本地 sidecar 的 `myreader.automerge-cache/` 中复用同一 StorageAdapter 保存原始
+  snapshot/incremental bytes，key 与远端一致。每轮仍列举远端，只下载本地缺失或校验不通过的块；
+  复用的块仍参与完整的 Automerge 合并、缺失依赖检测和 covered-chunk 压缩。缓存可丢弃，
+  不承担文档权威或远端存在性判断，不新增同步协议、版本、游标或 manifest。
 
 自动同步遵循 [ADR-0017](./adr/0017-event-driven-library-sidecar-sync-scheduling.md)：业务写入通知
 平台 trigger，core 负责 debounce/max-wait、single-flight、pull freshness、retry/backoff、
