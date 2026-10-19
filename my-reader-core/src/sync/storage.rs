@@ -89,8 +89,6 @@ impl<'a> StorageAdapter<'a> {
         Self { operator }
     }
 
-    // Kept to match StorageAdapterInterface; document sync currently reads ranges.
-    #[allow(dead_code)]
     pub async fn load(&self, key: &[String]) -> Result<Option<Vec<u8>>, SyncError> {
         let path = storage_key_to_path(key)?;
         match self.operator.read(&path).await {
