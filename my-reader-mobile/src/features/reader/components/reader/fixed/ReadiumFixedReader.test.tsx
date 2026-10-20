@@ -1,6 +1,7 @@
 import React from "react"
 import { Platform, View } from "react-native"
 import { act, render } from "@testing-library/react-native"
+import { ReaderNavigationHistory } from "@my-reader/tools/reader-navigation-history"
 import type {
   Locator,
   PublicationReadyEvent,
@@ -52,10 +53,12 @@ describe("ReadiumFixedReader", () => {
   })
 
   it.each([
-    "pdf",
-    "cbz",
-  ])("should open Android %s at the saved page without a restoration jump", (format) => {
-    jest.replaceProperty(Platform, "OS", "android")
+    ["android", "pdf"],
+    ["android", "cbz"],
+    ["ios", "pdf"],
+    ["ios", "cbz"],
+  ] as const)("should open %s %s at the saved page without a restoration jump", (platform, format) => {
+    jest.replaceProperty(Platform, "OS", platform)
     const positions = [0, 1, 2].map((page) =>
       format === "pdf"
         ? fixedLocator(page)
@@ -66,8 +69,15 @@ describe("ReadiumFixedReader", () => {
           },
     )
     const saved = positions[1]!
-    const onStateChange = jest.fn()
-    const onUserLocationChange = jest.fn()
+    const history = new ReaderNavigationHistory()
+    const onStateChange = jest.fn(({ locator }: { locator?: Locator }) => {
+      if (locator) history.update(locator)
+    })
+    const onUserLocationChange = jest.fn(
+      (locator: Locator, _id: string, kind: string) => {
+        if (kind === "programmatic") history.jump(locator)
+      },
+    )
     render(
       <ReadiumFixedReader
         filePath={`/tmp/book.${format}`}
@@ -84,6 +94,8 @@ describe("ReadiumFixedReader", () => {
     )
 
     expect(mockReadiumProps?.file.initialLocation).toEqual(saved)
+    // PDFKit can report its document's first page while initializing.
+    act(() => mockReadiumProps?.onLocationChange?.(positions[0]!))
     act(() => {
       mockReadiumProps?.onPublicationReady?.({
         metadata: { language: [], title: "Book" },
@@ -99,6 +111,7 @@ describe("ReadiumFixedReader", () => {
     expect(onStateChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ locator: saved }),
     )
+    expect(history.getSnapshot()).toMatchObject({ entries: [saved], index: 0 })
 
     act(() =>
       mockReadiumProps?.onLocationChange?.(
@@ -113,6 +126,8 @@ describe("ReadiumFixedReader", () => {
       "jump",
       "programmatic",
     )
+    expect(history.move(-1)).toEqual(saved)
+    expect(history.move(-1)).toBeNull()
   })
 
   it("should navigate to the exact Readium position when progress is committed", () => {

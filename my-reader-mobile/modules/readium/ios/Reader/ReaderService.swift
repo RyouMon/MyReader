@@ -64,7 +64,7 @@ final class ReaderService: Loggable {
         },
         receiveValue: { pub in
           Task { @MainActor in
-            guard let viewController = reader.getViewController(
+            guard let viewController = await reader.getViewController(
               for: pub,
               bookId: bookId,
               locator: locator,
