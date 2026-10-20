@@ -1,5 +1,6 @@
 use opendal::Operator;
 use sha2::{Digest, Sha256};
+use std::{collections::HashSet, path::Path};
 
 use super::{
     blocking,
@@ -102,21 +103,105 @@ fn heads_hash(heads: &[String]) -> String {
 
 async fn load_document_chunks(
     adapter: &StorageAdapter<'_>,
+    cache: &StorageAdapter<'_>,
     identity: &DatabaseIdentity,
     mode: SyncMode,
+    observer: &dyn SyncObserver,
 ) -> Result<(Vec<StorageChunk>, Vec<SyncRemoteObject>), SyncError> {
     let document_id = identity.library_uuid.as_str();
-    let mut chunks = adapter.load_range(&snapshot_prefix(document_id)).await?;
-    chunks.extend(adapter.load_range(&incremental_prefix(document_id)).await?);
+    let snapshots = snapshot_prefix(document_id);
+    let incrementals = incremental_prefix(document_id);
+    let (mut keys, incremental_keys) = tokio::try_join!(
+        adapter.list_range(&snapshots),
+        adapter.list_range(&incrementals),
+    )?;
+    keys.extend(incremental_keys);
+    if keys.len() > MAX_REMOTE_OBJECTS_PER_SYNC {
+        return Err(sync_error(format!(
+            "Remote Automerge object count exceeds {MAX_REMOTE_OBJECTS_PER_SYNC}"
+        )));
+    }
+    check_cancelled(observer)?;
+    observer.on_progress(SyncProgress {
+        stage: SyncStage::Preparing,
+        completed: 1,
+        total: 1,
+    });
+    let mut cached = Vec::with_capacity(keys.len());
+    for key in &keys {
+        check_cancelled(observer)?;
+        cached.push((key.clone(), cache.load(key).await?));
+    }
+    let cache_identity = identity.clone();
+    let (mut chunks, missing_keys) = blocking::run_background(move || {
+        let mut chunks = Vec::new();
+        let mut missing = Vec::new();
+        for (key, data) in cached {
+            if let Some(data) = data {
+                let chunk = StorageChunk { key, data };
+                if validate_document_chunks(std::slice::from_ref(&chunk), &cache_identity).is_ok() {
+                    chunks.push(chunk);
+                } else {
+                    missing.push(chunk.key);
+                }
+            } else {
+                missing.push(key);
+            }
+        }
+        Ok((chunks, missing))
+    })
+    .await?;
+    let downloaded_keys: HashSet<_> = missing_keys.iter().cloned().collect();
+    let downloaded = adapter
+        .load_chunks(missing_keys, |completed, total| {
+            observer.on_progress(SyncProgress {
+                stage: SyncStage::Pulling,
+                completed,
+                total,
+            });
+            check_cancelled(observer)
+        })
+        .await?;
     let identity = identity.clone();
-    blocking::run_background(move || {
-        validate_document_chunks(&chunks, &identity)?;
+    let (chunks, objects) = blocking::run_background(move || {
+        validate_document_chunks(&downloaded, &identity)?;
+        chunks.extend(downloaded);
+        // Cache hits must not put incrementals ahead of newly downloaded snapshots.
+        chunks.sort_by(|a, b| {
+            (a.key[1] == "incremental", &a.key).cmp(&(b.key[1] == "incremental", &b.key))
+        });
         let objects = if mode == SyncMode::Full {
             remote_objects(&chunks)
         } else {
             Vec::new()
         };
         Ok((chunks, objects))
+    })
+    .await?;
+    for chunk in &chunks {
+        if downloaded_keys.contains(&chunk.key) {
+            cache.save(&chunk.key, &chunk.data).await?;
+        }
+    }
+    // Only the currently listed remote keys participate in loading or compaction.
+    let keys: HashSet<_> = keys.into_iter().collect();
+    for key in cache.list_range(&[document_id.to_owned()]).await? {
+        if !keys.contains(&key) {
+            cache.remove(&key).await?;
+        }
+    }
+    Ok((chunks, objects))
+}
+
+async fn local_chunk_storage(database_path: &str) -> Result<Operator, SyncError> {
+    let root = Path::new(database_path).with_extension("automerge-cache");
+    blocking::run_background(move || {
+        Operator::new(
+            opendal::services::Fs::default()
+                .root(&root.to_string_lossy())
+                .atomic_write_dir(&root.join("tmp").to_string_lossy()),
+        )
+        .map_err(Into::into)
     })
     .await
 }
@@ -126,11 +211,6 @@ fn validate_document_chunks(
     identity: &DatabaseIdentity,
 ) -> Result<(), SyncError> {
     let document_id = identity.library_uuid.as_str();
-    if chunks.len() > MAX_REMOTE_OBJECTS_PER_SYNC {
-        return Err(sync_error(format!(
-            "Remote Automerge object count exceeds {MAX_REMOTE_OBJECTS_PER_SYNC}"
-        )));
-    }
     for chunk in chunks {
         if chunk.data.len() > MAX_REMOTE_OBJECT_BYTES {
             return Err(sync_error(format!(
@@ -198,6 +278,7 @@ async fn publish_pending(
     pending: Vec<SyncOutboxEntry>,
     database_path: &str,
     adapter: &StorageAdapter<'_>,
+    cache: &StorageAdapter<'_>,
     observer: &dyn SyncObserver,
 ) -> Result<(usize, Vec<StorageChunk>), SyncError> {
     observer.on_progress(SyncProgress {
@@ -211,6 +292,7 @@ async fn publish_pending(
     for (index, row) in pending.into_iter().enumerate() {
         check_cancelled(observer)?;
         adapter.save(&row.storage_key, &row.bytes).await?;
+        cache.save(&row.storage_key, &row.bytes).await?;
         delete_outbox_entry(database_path, &row.storage_key).await?;
         pushed += row.change_count;
         published.push(StorageChunk {
@@ -230,11 +312,13 @@ async fn save_total(
     snapshot: PublishableDatabaseSnapshot,
     database_path: &str,
     adapter: &StorageAdapter<'_>,
+    cache: &StorageAdapter<'_>,
     document_id: &str,
 ) -> Result<(StorageChunk, usize), SyncError> {
     let change_count = snapshot.pending.iter().map(|row| row.change_count).sum();
     let key = snapshot_key(document_id, &heads_hash(&snapshot.heads));
     adapter.save(&key, &snapshot.snapshot_bytes).await?;
+    cache.save(&key, &snapshot.snapshot_bytes).await?;
     for row in snapshot.pending {
         delete_outbox_entry(database_path, &row.storage_key).await?;
     }
@@ -263,6 +347,7 @@ fn should_compact(chunks: &[StorageChunk]) -> bool {
 async fn compact(
     database_path: &str,
     adapter: &StorageAdapter<'_>,
+    cache: &StorageAdapter<'_>,
     identity: &DatabaseIdentity,
     chunks: &[StorageChunk],
 ) -> Result<(), SyncError> {
@@ -277,12 +362,14 @@ async fn compact(
         publishable,
         database_path,
         adapter,
+        cache,
         identity.library_uuid.as_str(),
     )
     .await?;
     for chunk in chunks {
         if chunk.key.get(2) != snapshot.key.get(2) {
             adapter.remove(&chunk.key).await?;
+            cache.remove(&chunk.key).await?;
         }
     }
     Ok(())
@@ -323,12 +410,10 @@ pub async fn sync_database_with_operator_observed(
     });
     prepare_for_sync(database_path, identity, now_ms).await?;
     let adapter = StorageAdapter::new(operator);
-    let (initial_chunks, objects) = load_document_chunks(&adapter, identity, mode).await?;
-    observer.on_progress(SyncProgress {
-        stage: SyncStage::Preparing,
-        completed: 1,
-        total: 1,
-    });
+    let cache_operator = local_chunk_storage(database_path).await?;
+    let cache = StorageAdapter::new(&cache_operator);
+    let (initial_chunks, objects) =
+        load_document_chunks(&adapter, &cache, identity, mode, observer).await?;
 
     let mut remote_storage_repair = None;
     let mut reading_positions = Vec::new();
@@ -337,11 +422,6 @@ pub async fn sync_database_with_operator_observed(
         SyncMode::Full if initial_chunks.is_empty() => 0,
         SyncMode::Full => {
             check_cancelled(observer)?;
-            observer.on_progress(SyncProgress {
-                stage: SyncStage::Pulling,
-                completed: initial_chunks.len(),
-                total: initial_chunks.len(),
-            });
             observer.on_progress(SyncProgress {
                 stage: SyncStage::Applying,
                 completed: 0,
@@ -391,6 +471,7 @@ pub async fn sync_database_with_operator_observed(
                 publishable,
                 database_path,
                 &adapter,
+                &cache,
                 identity.library_uuid.as_str(),
             )
             .await?;
@@ -403,15 +484,21 @@ pub async fn sync_database_with_operator_observed(
             change_count
         }
         Some(publishable) => {
-            let (change_count, published) =
-                publish_pending(publishable.pending, database_path, &adapter, observer).await?;
+            let (change_count, published) = publish_pending(
+                publishable.pending,
+                database_path,
+                &adapter,
+                &cache,
+                observer,
+            )
+            .await?;
             covered_chunks.extend(published);
             change_count
         }
     };
 
     if mode == SyncMode::Full && (pushed > 0 || pulled > 0) {
-        compact(database_path, &adapter, identity, &covered_chunks).await?;
+        compact(database_path, &adapter, &cache, identity, &covered_chunks).await?;
     }
 
     check_cancelled(observer)?;
@@ -436,6 +523,10 @@ pub async fn has_publishable_database_work(database_path: &str) -> Result<bool, 
 }
 
 #[cfg(test)]
+#[path = "tests/chunk_reuse_contract.rs"]
+mod chunk_reuse_tests;
+
+#[cfg(test)]
 mod tests {
     use rusqlite::Connection;
     use std::sync::atomic::{AtomicBool, Ordering};
@@ -450,7 +541,7 @@ mod tests {
 
     const LIBRARY_UUID: &str = "11111111-2222-4333-8444-555555555555";
 
-    fn database() -> (tempfile::TempDir, String) {
+    pub(super) fn database() -> (tempfile::TempDir, String) {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("library.sqlite");
         let connection = Connection::open(&path).unwrap();
@@ -466,14 +557,19 @@ mod tests {
         (directory, path.to_string_lossy().into_owned())
     }
 
-    fn identity(replica: &str) -> DatabaseIdentity {
+    pub(super) fn identity(replica: &str) -> DatabaseIdentity {
         DatabaseIdentity {
             library_uuid: LIBRARY_UUID.parse().unwrap(),
             replica_id: replica.parse().unwrap(),
         }
     }
 
-    fn set_progress(database_path: &str, identity: &DatabaseIdentity, book_id: i64, page: i64) {
+    pub(super) fn set_progress(
+        database_path: &str,
+        identity: &DatabaseIdentity,
+        book_id: i64,
+        page: i64,
+    ) {
         let replica_id = identity.replica_id.to_string();
         execute_local_database_mutation(database_path, identity, page, |document| {
             set_reading_position(
@@ -865,9 +961,17 @@ mod tests {
         adapter.save(&covered.key, &covered.data).await.unwrap();
         adapter.save(&concurrent, b"concurrent").await.unwrap();
 
-        compact(&path, &adapter, &identity, std::slice::from_ref(&covered))
-            .await
-            .unwrap();
+        let cache_operator = local_chunk_storage(&path).await.unwrap();
+        let cache = StorageAdapter::new(&cache_operator);
+        compact(
+            &path,
+            &adapter,
+            &cache,
+            &identity,
+            std::slice::from_ref(&covered),
+        )
+        .await
+        .unwrap();
 
         assert_eq!(
             adapter.load(&concurrent).await.unwrap(),
