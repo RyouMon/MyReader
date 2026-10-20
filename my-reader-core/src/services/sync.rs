@@ -83,6 +83,12 @@ impl SyncCoordinator {
         reason: &str,
         now_ms: u64,
     ) -> Result<SchedulerTransition, CoreError> {
+        let started_at = tokio::time::Instant::now();
+        let lock = library_sync_lock(sidecar_root)?;
+        // Startup and manual syncs can run outside this coordinator.
+        let _guard = lock.lock().await;
+        let now_ms = now_ms
+            .saturating_add(u64::try_from(started_at.elapsed().as_millis()).unwrap_or(u64::MAX));
         let Some(mode) = SyncService::effective_mode(
             sidecar_root,
             SidecarSyncMode::Full,
@@ -447,6 +453,7 @@ impl SyncService {
         remote_content: bool,
         observer: &dyn SyncObserver,
     ) -> Result<SidecarSyncReport, CoreError> {
+        let started_at = tokio::time::Instant::now();
         let context = LibraryContext::open(sidecar_root).await?;
         let database_path = context.path();
         let lock = library_sync_lock(sidecar_root)?;
@@ -472,9 +479,11 @@ impl SyncService {
             )
             .await?;
         }
+        let completed_at = now_ms
+            .saturating_add(i64::try_from(started_at.elapsed().as_millis()).unwrap_or(i64::MAX));
         persistence::mark_schedule_succeeded(
             database_path,
-            (mode == SidecarSyncMode::Full).then_some(now_ms),
+            (mode == SidecarSyncMode::Full).then_some(completed_at),
         )
         .await?;
         Ok(SidecarSyncReport {
@@ -1811,6 +1820,114 @@ mod tests {
             .unwrap();
 
         assert!(transition.schedules.is_empty());
+    }
+
+    #[tokio::test]
+    async fn should_recheck_contextual_pull_after_an_independent_sync_finishes() {
+        for completed_pull_at in [Some(91_000), None] {
+            let directory = tempfile::tempdir().unwrap();
+            let context = LibraryContext::open(directory.path()).await.unwrap();
+            let coordinator = SyncCoordinator::default();
+            let lock = library_sync_lock(directory.path()).unwrap();
+            let running_sync = lock.lock().await;
+            let mut request = Box::pin(coordinator.request_contextual_pull(
+                directory.path(),
+                "library-1",
+                "safety_sweep",
+                1_000,
+            ));
+            assert!(futures::poll!(&mut request).is_pending());
+            tokio::time::pause();
+            tokio::time::advance(std::time::Duration::from_secs(90)).await;
+            tokio::time::resume();
+            if let Some(completed_at) = completed_pull_at {
+                persistence::mark_schedule_succeeded(context.path(), Some(completed_at)).unwrap();
+            }
+            drop(running_sync);
+
+            let transition = request.await.unwrap();
+            assert_eq!(
+                transition.schedules.is_empty(),
+                completed_pull_at.is_some(),
+                "only a successful concurrent pull can satisfy the waiting check"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn should_skip_queued_pull_when_running_sync_outlasts_freshness_window() {
+        let sidecar = tempfile::tempdir().unwrap();
+        let library = tempfile::tempdir().unwrap();
+        let remote = tempfile::tempdir().unwrap();
+        seed_calibre_database(library.path(), &[1]);
+        LibraryContext::open(sidecar.path()).await.unwrap();
+        let operator = transport::build_storage_operator(&LibraryStorageConfig::LocalDirect {
+            root: remote.path().to_string_lossy().into_owned(),
+        })
+        .unwrap();
+        let coordinator = SyncCoordinator::default();
+        begin_execution(&coordinator);
+        let lock = library_sync_lock(sidecar.path()).unwrap();
+        let guard = lock.lock().await;
+        let started_at = tokio::time::Instant::now();
+        let mut sync = Box::pin(SyncService::sync_sidecar_with_operator(
+            sidecar.path(),
+            library.path(),
+            1_000,
+            SidecarSyncMode::Full,
+            &operator,
+            false,
+        ));
+        assert!(futures::poll!(&mut sync).is_pending());
+        tokio::time::pause();
+        tokio::time::advance(std::time::Duration::from_secs(90)).await;
+        tokio::time::resume();
+        let queued = coordinator.request(
+            "library-1",
+            SidecarSyncMode::Full,
+            "safety_sweep",
+            SyncTiming::Immediate,
+            91_000,
+        );
+        assert!(
+            queued.schedules.is_empty(),
+            "the first sync is still running"
+        );
+        drop(guard);
+        sync.await.unwrap();
+        let completed_at = 1_000 + u64::try_from(started_at.elapsed().as_millis()).unwrap();
+        let pending = coordinator.complete("library-1", completed_at);
+        let execution = coordinator
+            .begin("library-1", pending.schedules[0].generation)
+            .execution
+            .unwrap();
+
+        assert!(
+            coordinator
+                .effective_execution(sidecar.path(), execution, completed_at)
+                .await
+                .unwrap()
+                .is_none(),
+            "a completed pull must remain fresh even when the sync took over a minute"
+        );
+        assert!(coordinator
+            .complete("library-1", completed_at)
+            .schedules
+            .is_empty());
+        let later = coordinator
+            .request_contextual_pull(
+                sidecar.path(),
+                "library-1",
+                "safety_sweep",
+                completed_at + 30_000,
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            later.schedules.len(),
+            1,
+            "future remote checks must still run"
+        );
     }
 
     #[tokio::test]
