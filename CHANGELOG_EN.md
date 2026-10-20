@@ -6,6 +6,33 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.18.0] - 2026-10-21
+
+### Added
+
+- Added copying and saving EPUB and CBZ images, plus system sharing of visible EPUB, PDF, and CBZ pages on macOS, Windows, iOS, and Android. Single-page views share one image and spreads share two; EPUB/CBZ image actions preserve original assets, with files named “Author-Title-N”. Desktop PDF also supports copying and saving images; mobile PDF supports page sharing only, and these features are not yet available on Linux ([#117](https://github.com/RyouMon/MyReader/pull/117))
+
+### Changed
+
+- Unified mobile Home and Library root titlebars with library switching, sync status, and search. Android navigation titles, back buttons, and actions now follow a consistent native layout; iOS toolbar buttons use separate backgrounds ([#112](https://github.com/RyouMon/MyReader/pull/112))
+
+### Fixed
+
+- Fixed search intermittently failing to focus or show the keyboard when opened from Home or the Library root, and incorrect back navigation after repeated searches. Search can reopen after being closed without reopening unexpectedly when returning from the reader ([#112](https://github.com/RyouMon/MyReader/pull/112))
+- Fixed slow syncs becoming stale immediately after completion and queued checks triggering repeated pulls. Freshness now starts at pull completion, and automatic checks wait for an active sync of the same library before deciding whether to pull again ([#120](https://github.com/RyouMon/MyReader/pull/120))
+
+### Performance and Internals
+
+- Reuse downloaded or published Automerge storage chunks on desktop and mobile, including after restart, and download only new remote chunks or replacements for damaged local copies. This avoids repeatedly downloading all OneDrive objects when the remote data is unchanged; parallel directory listing and up to four concurrent downloads also speed up sync preparation ([#120](https://github.com/RyouMon/MyReader/pull/120))
+
+### Security
+
+- Updated ZIP dependencies to 9.0.4 and rbook to 0.7.12 to address RUSTSEC-2026-0367, RUSTSEC-2026-0368, and RUSTSEC-2026-0369, with regression coverage for CBZ extraction directory boundaries ([#120](https://github.com/RyouMon/MyReader/pull/120))
+
+### Build and Distribution
+
+- Extended PR coverage reports to JS/TS, Rust, Swift, and Java/Kotlin, enforcing 80% changed-line coverage independently for each language and using the same counts in reports and gates ([#117](https://github.com/RyouMon/MyReader/pull/117))
+
 ## [0.17.0] - 2026-10-16
 
 ### Added

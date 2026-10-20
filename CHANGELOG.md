@@ -5,6 +5,33 @@
 MyReader 的重要变更均记录于此。
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [0.18.0] - 2026-10-21
+
+### Added
+
+- macOS、Windows、iOS 和 Android 阅读器支持复制与保存 EPUB、CBZ 图片，并分享 EPUB、PDF、CBZ 的当前可见页面；单页分享一张、双页分享两张，EPUB／CBZ 图片操作保留原始资源，文件按“作者-书名-N”命名。桌面 PDF 另支持图片复制与保存；移动 PDF 仅支持页面分享，Linux 暂不支持这些功能（[#117](https://github.com/RyouMon/MyReader/pull/117)）
+
+### Changed
+
+- 统一移动端主页和书库根页的标题栏操作，集中提供书库切换、同步状态与搜索；Android 导航标题、返回按钮与操作按钮采用一致的原生布局，iOS 工具栏按钮独立显示背景（[#112](https://github.com/RyouMon/MyReader/pull/112)）
+
+### Fixed
+
+- 修复从主页或书库根页进入搜索时输入框偶发无法聚焦、无法弹出键盘，以及重复搜索后返回层级不正确的问题；关闭后可以重新打开搜索，从阅读器返回时不会意外重开（[#112](https://github.com/RyouMon/MyReader/pull/112)）
+- 修复慢速同步完成后立即被判定为过期、排队检查重复拉取的问题；同步新鲜度以拉取完成时间计算，同书库自动检查等待正在进行的同步结束后再决定是否拉取（[#120](https://github.com/RyouMon/MyReader/pull/120)）
+
+### Performance and Internals
+
+- 桌面端和移动端复用已下载或发布的 Automerge 数据块，仅下载远端新增或本地损坏的块，重启后仍可复用；避免 OneDrive 在远端无变化时反复下载全部对象，并通过并行目录列举和最多四个并发下载加速同步准备（[#120](https://github.com/RyouMon/MyReader/pull/120)）
+
+### Security
+
+- 将 ZIP 依赖升级至 9.0.4、rbook 升级至 0.7.12，修复 RUSTSEC-2026-0367、RUSTSEC-2026-0368 和 RUSTSEC-2026-0369，并补充 CBZ 解压目录边界回归测试（[#120](https://github.com/RyouMon/MyReader/pull/120)）
+
+### Build and Distribution
+
+- PR 覆盖率报告扩展到 JS／TS、Rust、Swift 和 Java／Kotlin，每种语言分别执行 80% 变更行覆盖率门禁，并统一报告与门禁的计数（[#117](https://github.com/RyouMon/MyReader/pull/117)）
+
 ## [0.17.0] - 2026-10-16
 
 ### Added
