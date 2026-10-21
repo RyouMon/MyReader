@@ -4,11 +4,12 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from "node:fs"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
 import test from "node:test"
 import {
   prepareCandidate,
@@ -46,13 +47,14 @@ test("release candidate binds complete platform reports to the published APK", (
     for (const name of [
       "arm.dmg",
       "intel.dmg",
-      "app.msi",
-      "app.exe",
-      "app.AppImage",
-      "app.deb",
-      "app.rpm",
+      "msi/app.msi",
+      "nsis/app.exe",
+      "appimage/app.AppImage",
+      "deb/app.deb",
+      "rpm/app.rpm",
       apk,
     ]) {
+      mkdirSync(dirname(join(assets, name)), { recursive: true })
       writeFileSync(join(assets, name), "release payload")
     }
     writeFileSync(join(assets, `${apk}.sha256`), `${digest}  ${apk}\n`)
@@ -99,7 +101,27 @@ test("release candidate binds complete platform reports to the published APK", (
     }
     const manifest = prepareCandidate(assets, evidence, "head")
     assert.equal(manifest.assets[apk], digest)
+    assert.deepEqual(
+      readdirSync(assets).sort(),
+      [
+        ...Object.keys(manifest.assets),
+        `${apk}.sha256`,
+        "release-evidence.json",
+      ].sort(),
+    )
+    for (const name of Object.keys(manifest.assets))
+      assert.equal(readFileSync(join(assets, name), "utf8"), "release payload")
     rmSync(join(assets, "release-evidence.json"))
+    mkdirSync(join(assets, "nested"))
+    writeFileSync(join(assets, "nested/arm.dmg"), "conflicting installer")
+    rmSync(join(assets, "intel.dmg"))
+    assert.throws(() => prepareCandidate(assets, evidence, "head"), /unique/)
+    assert.equal(
+      readFileSync(join(assets, "arm.dmg"), "utf8"),
+      "release payload",
+    )
+    rmSync(join(assets, "nested"), { recursive: true })
+    writeFileSync(join(assets, "intel.dmg"), "release payload")
     writeFileSync(join(assets, apk), "untested replacement")
     assert.throws(
       () => prepareCandidate(assets, evidence, "head"),

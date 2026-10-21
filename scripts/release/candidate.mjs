@@ -1,6 +1,12 @@
 import assert from "node:assert/strict"
 import { createHash } from "node:crypto"
-import { readdirSync, readFileSync, writeFileSync } from "node:fs"
+import {
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs"
 import { basename, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -53,6 +59,11 @@ export function prepareCandidate(assetDirectory, reportDirectory, commit) {
     ),
   )
   const assets = files(assetDirectory)
+  assert.equal(
+    new Set(assets.map((path) => basename(path))).size,
+    assets.length,
+    "Release asset filenames must be unique",
+  )
   // Two macOS architectures, two Windows installers, three Linux packages and the tested APK.
   for (const [extension, count] of [
     [".dmg", 2],
@@ -122,6 +133,16 @@ export function prepareCandidate(assetDirectory, reportDirectory, commit) {
     for (const file of ["/reports/report.json", "/reports/integration.json"]) {
       validateBrowserReport(JSON.parse(readFileSync(one(paths, file), "utf8")))
     }
+  }
+  // Multi-path build artifacts retain bundler directories (msi/, deb/, etc.).
+  // Publication consumes the validated files by their unique asset filenames.
+  for (const path of assets) {
+    const destination = join(assetDirectory, basename(path))
+    if (resolve(path) !== resolve(destination)) renameSync(path, destination)
+  }
+  for (const entry of readdirSync(assetDirectory, { withFileTypes: true })) {
+    if (entry.isDirectory())
+      rmSync(join(assetDirectory, entry.name), { recursive: true })
   }
   const manifest = { commit, assets: digests, iosSimulatorSha256: iosDigest }
   writeFileSync(
