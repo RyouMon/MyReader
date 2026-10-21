@@ -5,7 +5,7 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 E2E_ROOT=$(cd "${SCRIPT_DIR}/.." && pwd)
 : "${IOS_SIMULATOR_UDID:?Set IOS_SIMULATOR_UDID to the target simulator.}"
 APP_ID=${APP_ID:-ryoumon.myreadermobile}
-RUN_ROOT="${E2E_ROOT}/.artifacts/ios-settings-$(date -u +%Y%m%d-%H%M%S)"
+RUN_ROOT="${E2E_REPORT_DIR:-${E2E_ROOT}/.artifacts}/ios-settings-$(date -u +%Y%m%d-%H%M%S)"
 
 # XCTest queries sheet controls directly. Maestro's app snapshot omits this
 # half-sheet over a fullscreen reader: mobile-dev-inc/Maestro#1924.

@@ -358,9 +358,7 @@ When("阅读器下载发生{word}", async ({ page }, event: string) => {
       }),
     用户重试下载该格式文件: async () => {
       await emitMockDownloadStatus(page, "下载失败")
-      await expect(
-        page.getByText("网络错误", { exact: true }).first(),
-      ).toBeVisible()
+      await expect(page.getByText(/网络错误/).first()).toBeVisible()
       await page.getByRole("button", { name: "重试", exact: true }).click()
       await expect
         .poll(
@@ -401,9 +399,7 @@ Then("阅读器下载结果应为{word}", async ({ page }, status: string) => {
       ).toBeVisible()
     },
     下载失败: async () => {
-      await expect(
-        page.getByText("网络错误", { exact: true }).first(),
-      ).toBeVisible()
+      await expect(page.getByText(/网络错误/).first()).toBeVisible()
       await expect(
         page.getByRole("button", { name: "重试", exact: true }),
       ).toBeEnabled()

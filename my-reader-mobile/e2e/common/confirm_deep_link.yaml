@@ -1,7 +1,5 @@
 appId: ${APP_ID}
 name: Confirm deep link open prompts
-tags:
-  - skip
 ---
 - runFlow:
     when:

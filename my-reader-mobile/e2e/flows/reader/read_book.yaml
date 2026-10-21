@@ -1,10 +1,7 @@
 appId: ${APP_ID}
 name: Read the bundled EPUB and restore a bookmarked page
-# Paginated WebViews can omit paragraph nodes from Android accessibility snapshots.
-androidWebViewHierarchy: devtools
 tags:
   - reader
-  - skip
 ---
 # Called after importing MyReader-TTS.epub through the real library UI.
 - runScript: ../../scripts/selectors.js
@@ -33,7 +30,7 @@ tags:
 - extendedWaitUntil:
     visible: "Playback position first page.*"
     timeout: 10000
-# iOS accessibility snapshots retain offscreen pages; DevTools excludes them.
+# Assert the visible page in the production accessibility hierarchy.
 - runFlow:
     when:
       platform: Android

@@ -334,10 +334,16 @@ export default function ReaderScreen() {
     publicationKey,
   )
   const readingLocationKey = readingSessionLocation(currentLocator, currentPage)
+  const captureCurrentBookmarkLocator = useCallback(
+    () =>
+      reflowReaderRef.current?.getBookmarkLocator() ?? Promise.resolve(null),
+    [],
+  )
   const { flush: flushProgress } = useReaderProgressSaver(
     activeLibraryId,
     activeLoadState,
     readerState,
+    isReflowReady ? captureCurrentBookmarkLocator : undefined,
   )
   const history = useReaderNavigationHistory(
     publicationKey,
@@ -351,11 +357,6 @@ export default function ReaderScreen() {
     activeLoadState,
     readerState,
     readingLocationKey,
-  )
-  const captureCurrentBookmarkLocator = useCallback(
-    () =>
-      reflowReaderRef.current?.getBookmarkLocator() ?? Promise.resolve(null),
-    [],
   )
   const isBookmarkLocatorVisible = useCallback(
     (locator: Locator) =>

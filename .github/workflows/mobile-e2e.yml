@@ -1,0 +1,121 @@
+name: Mobile Release E2E
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: 22.22.0
+  MAESTRO_VERSION: 2.6.0
+  MAESTRO_DRIVER_STARTUP_TIMEOUT: 600000
+
+jobs:
+  android:
+    name: Maestro / signed Android APK
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pnpm install --frozen-lockfile
+      - run: pip install -r my-reader-mobile/e2e/requirements.txt
+      - name: Install pinned Maestro CLI
+        run: |
+          curl --fail --location https://get.maestro.mobile.dev -o "$RUNNER_TEMP/install-maestro.sh"
+          bash "$RUNNER_TEMP/install-maestro.sh"
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - uses: actions/download-artifact@v5
+        with:
+          name: MyReader-Android-APK
+          path: candidate
+      - name: Verify downloaded APK checksum
+        working-directory: candidate
+        run: sha256sum --check *.sha256
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        env:
+          E2E_REPORT_DIR: ${{ github.workspace }}/reports/mobile-android
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          disable-animations: false
+          script: node my-reader-mobile/e2e/scripts/run-release.mjs android candidate/*.apk emulator-5554
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-mobile-android
+          path: reports/mobile-android/
+          if-no-files-found: error
+          retention-days: 30
+
+  ios:
+    name: Maestro / iOS Release / ${{ matrix.device }}
+    runs-on: macos-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [iPhone, iPad]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pnpm install --frozen-lockfile
+      - run: pip install -r my-reader-mobile/e2e/requirements.txt
+      - name: Install Maestro and XCTest project generator
+        run: |
+          curl --fail --location https://get.maestro.mobile.dev -o "$RUNNER_TEMP/install-maestro.sh"
+          bash "$RUNNER_TEMP/install-maestro.sh"
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+          brew install xcodegen
+      - uses: actions/download-artifact@v5
+        with:
+          name: MyReader-iOS-simulator
+          path: candidate
+      - name: Run complete Release suite, including native settings XCTest
+        env:
+          DEVICE_KIND: ${{ matrix.device }}
+          E2E_REPORT_DIR: ${{ github.workspace }}/reports/mobile-ios-${{ matrix.device }}
+        run: |
+          tar -xzf candidate/MyReader-iOS-simulator.tar.gz -C candidate
+          app_paths=(candidate/*.app)
+          test "${#app_paths[@]}" -eq 1
+          simulator=$(xcrun simctl list devices available --json | python3 -c 'import json,os,sys; print(next(d["udid"] for runtime,devices in json.load(sys.stdin)["devices"].items() if "iOS" in runtime for d in devices if os.environ["DEVICE_KIND"] in d["name"]))')
+          xcrun simctl boot "$simulator"
+          node my-reader-mobile/e2e/scripts/run-release.mjs ios "${app_paths[0]}" "$simulator"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-mobile-ios-${{ matrix.device }}
+          path: reports/mobile-ios-${{ matrix.device }}/
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,18 @@
+appId: ${APP_ID}
+name: Import the EPUB through the system picker
+---
+# Scenario: EPUB metadata and cover are available before opening the reader.
+- tapOn: "导入图书|Import Book"
+- runFlow:
+    file: select_e2e_fixture.yaml
+    env:
+      E2E_ROOT_FOLDER: ${E2E_ROOT_FOLDER}
+      IMPORT_FILE_NAME: ${EPUB_IMPORT_FILE_NAME}
+- extendedWaitUntil:
+    visible: ${EPUB_BOOK_TITLE}
+    timeout: 30000
+- tapOn: '打开《${EPUB_BOOK_TITLE}》|Open "${EPUB_BOOK_TITLE}"'
+- extendedWaitUntil:
+    visible:
+      id: "reader-screen"
+    timeout: 30000

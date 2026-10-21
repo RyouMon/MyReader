@@ -1,0 +1,7 @@
+[
+  "imports EPUB, PDF and CBZ through the real Core and renders the library",
+  "EPUB navigation and bookmarks survive closing the native reader",
+  "PDF pagination survives closing the native reader",
+  "CBZ pagination survives closing the native reader",
+  "library and reading state survive an application restart"
+]

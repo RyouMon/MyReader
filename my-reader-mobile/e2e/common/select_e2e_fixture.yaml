@@ -1,7 +1,5 @@
 appId: ${APP_ID}
 name: Import a prepared local fixture through the system picker
-tags:
-  - skip
 ---
 - runFlow:
     when:

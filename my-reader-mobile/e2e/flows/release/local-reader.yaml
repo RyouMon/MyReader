@@ -1,0 +1,9 @@
+appId: ${APP_ID}
+name: Local books, navigation, narration and deletion on a release app
+---
+- runFlow: ../library/import_local_supported_formats.yaml
+- runFlow: ../library/navigate_root_header.yaml
+- runFlow: ../reader/read_with_tts.yaml
+- runFlow: ../../common/configure_network_tts.yaml
+- runFlow: ../reader/read_with_tts.yaml
+- runFlow: ../library/delete_local_supported_formats.yaml

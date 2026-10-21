@@ -1,0 +1,39 @@
+appId: ${APP_ID}
+name: Configure the local speech fixture through provider settings
+---
+- openLink: myreadermobile://settings/tts
+- runFlow: confirm_deep_link.yaml
+- scrollUntilVisible:
+    element: "添加 TTS 供应商|Add TTS provider"
+    direction: DOWN
+- tapOn: "添加 TTS 供应商|Add TTS provider"
+- tapOn: "OpenAI 兼容|OpenAI-compatible"
+- tapOn:
+    id: tts-provider-name
+- eraseText
+- inputText: "E2E Speech"
+- tapOn:
+    id: tts-provider-endpoint
+    point: "95%,50%"
+- eraseText
+- inputText: ${TTS_URL}
+- assertVisible: ${TTS_URL}
+- tapOn:
+    id: tts-provider-credential
+- inputText: "fixture-openai-key"
+- scrollUntilVisible:
+    element:
+      id: tts-provider-voices
+    direction: DOWN
+- tapOn:
+    id: tts-provider-voices
+- inputText: "alloy"
+- tapOn: "保存|Save"
+- extendedWaitUntil:
+    visible: "朗读与语音|Read aloud and voices"
+    timeout: 10000
+- scrollUntilVisible:
+    element: "朗读引擎.*|Narration engine.*"
+    direction: UP
+- tapOn: "朗读引擎.*|Narration engine.*"
+- tapOn: "E2E Speech"

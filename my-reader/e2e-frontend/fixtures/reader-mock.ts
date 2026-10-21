@@ -1,5 +1,5 @@
-import { fileURLToPath } from "node:url"
 import type { Page } from "@playwright/test"
+import { serveEpubFixture } from "./epub-fixture"
 import { TEST_LIBRARY_ID } from "./library-mock"
 
 export interface ReaderMockOptions {
@@ -22,12 +22,7 @@ export async function setupReaderMocks(
     bookId = 1,
     hangPrepareBookSource = false,
     format = "EPUB",
-    extractedDirPath = `http://localhost:1420/@fs${fileURLToPath(
-      new URL(
-        "../../../my-reader-mobile/e2e/fixtures/tts-book",
-        import.meta.url,
-      ),
-    )}`,
+    extractedDirPath = await serveEpubFixture(page),
   } = options
 
   const libraryId = TEST_LIBRARY_ID

@@ -1,0 +1,18 @@
+appId: ${APP_ID}
+name: Import and restore a fixed-layout fixture
+---
+- runFlow: tap_header_back.yaml
+- waitForAnimationToEnd
+- tapOn: "导入图书|Import Book"
+- runFlow:
+    file: select_e2e_fixture.yaml
+    env:
+      IMPORT_FILE_NAME: ${IMPORT_FILE_NAME}
+- tapOn:
+    id: library-collection-all
+- extendedWaitUntil:
+    visible: ${BOOK_TITLE}
+    timeout: 30000
+- tapOn: '打开《${BOOK_TITLE}》|Open "${BOOK_TITLE}"'
+- runFlow: read_fixed_fixture.yaml
+- runFlow: close_reader.yaml

@@ -1,13 +1,11 @@
 appId: ${APP_ID}
-name: Launch app and dismiss dev launcher
-tags:
-  - skip
+name: Cold start the standalone release app
 ---
 - stopApp
 - launchApp:
     clearState: true
 
-- runFlow: dismiss_dev_launcher.yaml
-
-- assertVisible:
-    id: "home-screen"
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 30000

@@ -14,6 +14,7 @@ Apply these when writing, reviewing, or refactoring code:
 6. **Respect the Layering** — Dependencies must only flow downward. For mobile, see module rules in `.agents/rules/mobile.md` (`domain/`, `features/`, `services/`; persistence belongs to Rust Core). No upward imports, no bypassing layers.
 7. **Verification Gate** — After code changes, run the full unit test suite for every touched package before reporting completion. Targeted tests may be used during development, but they do not replace the final full package unit test run. All tests must pass. If a suite cannot be run, state the exact command and blocker.
 8. **PR Gate** — Required checks `QA`, `Unit tests`, and `Changed-line coverage` must pass before merge. Each language must reach 80% changed-line coverage; overall percentages remain informational. Test or report failures block merging. The threshold is a minimum: protect all important changed behaviors even after reaching 80%, and never add trivial tests just to raise coverage. Leave merging to human review.
+9. **Runtime Validation** — Daily development uses dev builds with direct simulator or device interaction. Use standalone Release builds for E2E development, release validation, or when native packaging risks require them. Tagged releases must pass the complete mobile Maestro and desktop E2E suites before automatic publication; fix unstable tests instead of excluding or retrying them.
 
 ---
 

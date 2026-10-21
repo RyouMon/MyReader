@@ -1,7 +1,5 @@
 appId: ${APP_ID}
 name: Open Add Library without the tab bar obscuring the row
-tags:
-  - skip
 ---
 - runFlow:
     when:

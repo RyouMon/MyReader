@@ -1,7 +1,5 @@
 appId: ${APP_ID}
 name: Activate a registered library and open the library tab
-tags:
-  - skip
 ---
 # Required env: LIBRARY_NAME.
 - runFlow: reset_settings_scroll.yaml

@@ -1,7 +1,5 @@
 appId: ${APP_ID}
 name: Turn a fixed-layout page and restore it after reopening
-tags:
-  - skip
 ---
 # Required: BOOK_TITLE. Starts inside a new three-page PDF/CBZ.
 - extendedWaitUntil:

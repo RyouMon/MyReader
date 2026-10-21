@@ -1,15 +1,12 @@
 flows:
-  - "flows/**"
+  - flows/release/*
+  - flows/settings/navigate_tts_providers.yaml
 
 testOutputDir: e2e/.artifacts
 
-excludeTags:
-  - skip
-  - wip
-  - external-library
-
+# Native focus, sheet and navigation transitions are part of the release contract.
 platform:
   ios:
-    disableAnimations: true
+    disableAnimations: false
   android:
-    disableAnimations: true
+    disableAnimations: false

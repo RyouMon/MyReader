@@ -160,9 +160,11 @@ CI 中的完整采集命令以 `.github/workflows/quality.yml` 为准。
 ## 按风险选择验证
 
 - 桌面 React：完整 `pnpm test:desktop`；交互流程使用现有 Playwright + IPC mock。
-  这不验证 Tauri 原生窗口、系统对话框或原生权限；macOS 需另行启动实际应用，通过调试构建的
-  Tauri MCP Bridge 或原生界面完成验证。
-- 移动 React Native：完整 `pnpm test:mobile`；原生模块用模拟器验证。测试放在路由目录之外。
+  发布时三个桌面系统还运行 `test:integration:frontend`、`test:e2e:frontend` 和 `test:e2e:native`。
+  原生套件通过可选 `e2e` Cargo feature 操作独立 Release 应用、真实 Core 和窗口；生产包不含测试服务。
+  该套件不替代系统文件对话框与权限的人工验证。
+- 移动 React Native：完整 `pnpm test:mobile`；日常使用 dev build 直接操作模拟器/真机。
+  E2E 开发与发布使用完整 Release 包执行完整 Maestro 清单；测试放在路由目录之外。
   [Maestro runbook](../my-reader-mobile/e2e/README.md) 维护 fixture、选择器、平台差异和已知限制。
 - Rust / FFI：`cargo test --locked --workspace`。Swift/Kotlin 改动还需原生单元测试及消费端编译；
   详见 [开发指南](./DEVELOPMENT.md) 和 [Readium 模块](../my-reader-mobile/modules/readium/README.md)。

@@ -1,7 +1,5 @@
 appId: ${APP_ID}
 name: Reset the Settings list to its top edge
-tags:
-  - skip
 ---
 # Settings preserves its scroll offset across sheets. Repeated downward swipes
 # make later target lookup deterministic regardless of the previous scenario.

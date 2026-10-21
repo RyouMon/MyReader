@@ -1,0 +1,14 @@
+{
+  "android": [
+    "flows/release/local-reader.yaml",
+    "flows/release/webdav.yaml",
+    "flows/settings/navigate_tts_providers.yaml"
+  ],
+  "ios": [
+    "flows/release/local-reader.yaml",
+    "flows/release/webdav.yaml",
+    "flows/release/external-library.yaml",
+    "flows/release/ios-settings.yaml",
+    "flows/settings/navigate_tts_providers.yaml"
+  ]
+}

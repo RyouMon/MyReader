@@ -92,6 +92,10 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           if [ -z "$APPLE_CERTIFICATE" ]; then
+            if [ "$GITHUB_EVENT_NAME" = push ] && [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+              echo "A tagged release requires a Developer ID certificate and notarization credentials." >&2
+              exit 1
+            fi
             echo "APPLE_SIGNING_IDENTITY=-" >> "$GITHUB_ENV"
             echo "Using an ad-hoc signature; configure the Apple secrets before publishing a notarized release."
             exit 0

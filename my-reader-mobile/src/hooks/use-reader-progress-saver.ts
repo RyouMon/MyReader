@@ -64,6 +64,7 @@ export function useReaderProgressSaver(
   activeLibraryId: string | null,
   loadState: { status: string; bookId?: number; format?: string } | null,
   readerState: ReaderState | null,
+  captureLocator?: () => Promise<Locator | null>,
 ) {
   const bookContextRef = useRef<{
     library: Library
@@ -152,11 +153,27 @@ export function useReaderProgressSaver(
         .catch(() => {})
         .then(async () => {
           try {
+            let locator = readerState.locator!
+            if (captureLocator && bookContextRef.current?.key === ctx.key) {
+              const precise = await captureLocator().catch(() => null)
+              // A capture may finish after another page turn. Never attach its
+              // text anchor to a different recorded position.
+              if (
+                precise &&
+                isSameReaderPosition(
+                  snapshotReaderPosition(locator, readerState.currentPage),
+                  precise,
+                  readerState.currentPage,
+                )
+              ) {
+                locator = precise
+              }
+            }
             await setReadingProgress(
               ctx.library,
               ctx.bookId,
               ctx.format,
-              readerState.locator!,
+              locator,
               {
                 displayProgression: displayProgressionForPosition(
                   readerState.currentPage,
@@ -202,6 +219,7 @@ export function useReaderProgressSaver(
     readerState?.locator,
     readerState?.ready,
     readerState?.totalPages,
+    captureLocator,
   ])
 
   useEffect(() => {

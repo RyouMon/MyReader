@@ -9,6 +9,7 @@ node_modules/
 .tmp/
 .tmp-*
 coverage/
+reports/
 target/
 
 my-reader-mobile/.expo/

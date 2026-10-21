@@ -144,7 +144,6 @@ jobs:
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       EXPO_PUBLIC_SENTRY_DSN: ${{ vars.EXPO_PUBLIC_SENTRY_DSN }}
-      TESTFLIGHT_GROUP: ${{ vars.TESTFLIGHT_INTERNAL_GROUP || 'Team (Expo)' }}
     steps:
       - name: Check Expo authentication
         shell: bash
@@ -196,7 +195,6 @@ jobs:
           printf 'ipa_path=%s\n' "${ipa_paths[0]}" >> "$GITHUB_OUTPUT"
 
       - name: Upload iOS candidate
-        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: MyReader-iOS-IPA
@@ -204,8 +202,32 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Submit release build to internal TestFlight
-        if: github.event_name != 'workflow_dispatch'
-        shell: bash
+  ios-simulator:
+    name: iOS Release simulator application
+    if: inputs.build_ios
+    needs: validate
+    runs-on: macos-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_PUBLIC_SENTRY_DSN: ${{ vars.EXPO_PUBLIC_SENTRY_DSN }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: pnpm install --frozen-lockfile
+      - name: Build standalone Release app from the release commit
         working-directory: my-reader-mobile
-        run: eas submit --platform ios --profile production --path "$IPA_PATH" --groups "$TESTFLIGHT_GROUP" --non-interactive --wait
+        run: eas build --platform ios --profile release-simulator --local --non-interactive --output "$RUNNER_TEMP/MyReader-iOS-simulator.tar.gz"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MyReader-iOS-simulator
+          path: ${{ runner.temp }}/MyReader-iOS-simulator.tar.gz
+          if-no-files-found: error
+          retention-days: 30

@@ -104,11 +104,13 @@ pnpm --filter my-reader-mobile expo prebuild --clean
 
 ```bash
 pnpm --filter my-reader-mobile exec jest --runInBand
-pnpm --filter my-reader-mobile test:e2e:ios
-pnpm --filter my-reader-mobile test:e2e:android
+pnpm --filter my-reader-mobile test:e2e:ios /absolute/path/MyReader.app <simulator-udid>
+pnpm --filter my-reader-mobile test:e2e:android /absolute/path/app-release.apk emulator-5554
 ```
 
-Maestro E2E 需要安装 Maestro CLI，并运行开发客户端。
+日常开发通过 dev build 直接操作模拟器或真机。维护 E2E、发布或需要完整原生验证时，
+使用已构建的独立 Release 包运行完整 Maestro；不启动 Metro。准备和运行说明见
+[Release E2E runbook](../my-reader-mobile/e2e/README.md)。
 
 ### 共享 Rust 原生验证
 
@@ -152,16 +154,16 @@ Sentry 为可选功能。
 
 ## 发布构建
 
-正式发布与候选构建分开：
+推送 `v*` 标签后，`Release` 自动构建所有产物，运行完整质量检查、移动 Maestro 和桌面 E2E。
+Android 使用将发布的签名 APK；iOS 使用同提交、同 production 配置的 Release simulator app，
+在 iPhone/iPad 分别执行完整套件和原生设置 XCTest。IPA 不能直接安装到模拟器。
+桌面 macOS/Windows/Linux 均执行完整浏览器套件和独立 Release 原生 WebDriver 套件。
 
-- `Release` 仅在推送 `v*` 标签后运行。完整发布测试通过后，它会并行调用桌面和移动构建；
-  Android 与 iOS 均在 GitHub runner 上执行 `eas build --local`。桌面或移动构建完成后会立即将该端
-  产物独立写入同一 GitHub 草稿 Release，互不等待；iOS 会提交到内部 TestFlight。
-- `Desktop build candidate` 仅手动运行，为所选引用构建全部桌面安装包并上传 Actions 制品；它不修改
-  GitHub Release。
-- `Mobile build candidate` 仅手动运行，可分别勾选 Android 和 iOS。它会上传 APK、校验文件或 IPA
-  作为 Actions 制品，但不修改 GitHub Release，也不提交 TestFlight。
-- 所有正式产物确认完成后，在 GitHub 中手动发布草稿；流水线不会自动公开 Release。
+只有全部报告通过且提交号、套件清单、APK 摘要一致，才提交已构建的 IPA 到 TestFlight，
+随后自动公开 GitHub Release。失败、缺失报告、跳过和 flaky 结果均阻断发布。
+手动触发 `Release` 运行相同的构建和测试，但不提交 TestFlight、不公开版本。
+单独的 `Desktop build candidate` / `Mobile build candidate` 工作流只构建并保存 Actions 制品。
+详细门禁、测试层次与证据见 [Release E2E runbook](../my-reader-mobile/e2e/README.md)。
 
 本机也可以使用相同的本地构建配置：
 

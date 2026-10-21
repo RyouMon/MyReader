@@ -1,7 +1,5 @@
 appId: ${APP_ID}
 name: Close the reader and return to the library
-tags:
-  - skip
 ---
 - runFlow:
     when:

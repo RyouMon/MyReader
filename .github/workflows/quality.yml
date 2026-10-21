@@ -1,6 +1,7 @@
 name: Quality
 
 on:
+  workflow_call:
   push:
     branches: [main]
   pull_request:
@@ -410,6 +411,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - uses: actions/download-artifact@v4
         with:
+          pattern: '*coverage*'
           path: reports/coverage-input
       - name: Validate and normalize all compiler reports
         id: normalize

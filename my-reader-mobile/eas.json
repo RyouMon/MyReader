@@ -38,6 +38,14 @@
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
+    "release-simulator": {
+      "extends": "production",
+      "autoIncrement": false,
+      "ios": {
+        "simulator": true,
+        "buildConfiguration": "Release"
+      }
+    },
     "release-apk": {
       "extends": "production",
       "distribution": "internal",

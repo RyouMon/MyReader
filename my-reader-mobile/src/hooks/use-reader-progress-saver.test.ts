@@ -64,6 +64,47 @@ function readerState(position: number): ReaderState {
 }
 
 describe("useReaderProgressSaver", () => {
+  it("persists the visible text anchor so a fresh device can restore within a resource", async () => {
+    const precise = {
+      ...locator(3),
+      locations: { ...locator(3).locations, cssSelector: "p:nth-of-type(2)" },
+      text: { highlight: "Latest narration second page." },
+    }
+    const capture = jest.fn().mockResolvedValue(precise)
+    const { result, rerender } = renderHook(
+      ({ state }: { state: ReaderState }) =>
+        useReaderProgressSaver(library.id, loadState, state, capture),
+      { initialProps: { state: readerState(1) } },
+    )
+    rerender({ state: readerState(3) })
+    await act(() => result.current.flush())
+    expect(jest.mocked(setReadingProgress).mock.calls[0]?.[3]).toEqual(precise)
+  })
+
+  it.each([
+    "unavailable",
+    "failed",
+    "another-page",
+  ])("keeps the recorded position when its precise anchor is %s", async (reason) => {
+    const capture = jest
+      .fn()
+      .mockImplementation(() =>
+        reason === "failed"
+          ? Promise.reject(new Error("reader closed"))
+          : Promise.resolve(reason === "another-page" ? locator(4) : null),
+      )
+    const { result, rerender } = renderHook(
+      ({ state }: { state: ReaderState }) =>
+        useReaderProgressSaver(library.id, loadState, state, capture),
+      { initialProps: { state: readerState(1) } },
+    )
+    rerender({ state: readerState(3) })
+    await act(() => result.current.flush())
+    expect(jest.mocked(setReadingProgress).mock.calls[0]?.[3]).toEqual(
+      locator(3),
+    )
+  })
+
   it("drains a newer page queued while closing waits for an earlier save", async () => {
     const { result, rerender } = renderHook(
       ({ state }: { state: ReaderState }) =>

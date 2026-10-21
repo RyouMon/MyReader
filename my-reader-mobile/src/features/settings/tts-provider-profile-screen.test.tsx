@@ -16,14 +16,22 @@ import {
 
 import {
   discoverQwenTtsVoices,
+  getTtsConfig,
+  removeTtsProfile,
   upsertTtsProfile,
 } from "@/src/services/core/tts"
+import {
+  showAlertWithStatusBarRestore,
+  showErrorAlert,
+} from "@/src/constants/alert-with-status-bar"
 import TtsProviderProfileScreen from "./tts-provider-profile-screen"
 
 const mockRouterBack = jest.fn()
 const mockRouterPush = jest.fn()
 const mockRouterDismissTo = jest.fn()
-let mockRouteParams: { kind?: string; sourceId?: string } = {}
+let mockRouteParams: { kind?: string; sourceId?: string; providerId?: string } =
+  {}
+const mockTranslate = (key: string) => key
 const mockUseScreenHeader = jest.fn((options: unknown) => ({
   options,
   toolbar: null,
@@ -41,7 +49,7 @@ jest.mock("expo-router", () => ({
 
 jest.mock("react-i18next", () => ({
   ...jest.requireActual("react-i18next"),
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({ t: mockTranslate }),
 }))
 
 jest.mock("@react-native-menu/menu", () => ({
@@ -49,7 +57,12 @@ jest.mock("@react-native-menu/menu", () => ({
 }))
 
 jest.mock("@/src/components", () => ({
-  Button: jest.fn(() => null),
+  Button: ({ title, onPress }: { title: string; onPress: () => void }) =>
+    mockReact.createElement(
+      mockPressable,
+      { accessibilityRole: "button", accessibilityLabel: title, onPress },
+      mockReact.createElement(mockText, null, title),
+    ),
   FormFieldSwitch: jest.fn(() => null),
   FormLabeledFieldRow: jest.fn(
     ({ children, label }: { children: mockReact.ReactNode; label: string }) =>
@@ -102,6 +115,7 @@ jest.mock("@/src/design/tokens", () => ({
 
 jest.mock("@/src/constants/alert-with-status-bar", () => ({
   showAlertWithStatusBarRestore: jest.fn(),
+  showErrorAlert: jest.fn(),
 }))
 
 jest.mock("@/src/navigation/hooks/use-screen-header", () => ({
@@ -127,6 +141,90 @@ jest.mock("@/tw", () => ({
 }))
 
 describe("TtsProviderProfileScreen", () => {
+  function saveForm() {
+    const header = mockUseScreenHeader.mock.calls.at(-1)?.[0] as {
+      right?: { onPress: () => void }[]
+    }
+    act(() => header.right?.[0]?.onPress())
+  }
+
+  it("keeps an unsaved form open until valid voices are persisted", async () => {
+    renderForm()
+    saveForm()
+    expect(upsertTtsProfile).not.toHaveBeenCalled()
+    fireEvent.changeText(
+      screen.getByTestId("tts-provider-voices"),
+      " voice-a\nvoice-a\nvoice-b ",
+    )
+    jest.mocked(upsertTtsProfile).mockRejectedValueOnce(new Error("offline"))
+    saveForm()
+    await waitFor(() => expect(showErrorAlert).toHaveBeenCalled())
+    expect(mockRouterDismissTo).not.toHaveBeenCalled()
+    expect(screen.getByTestId("tts-provider-voices").props.value).toContain(
+      "voice-b",
+    )
+    saveForm()
+    await waitFor(() =>
+      expect(mockRouterDismissTo).toHaveBeenCalledWith("/settings/tts"),
+    )
+    expect(upsertTtsProfile).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        profile: expect.objectContaining({
+          voices: ["voice-a", "voice-b"],
+          defaultVoice: "voice-a",
+        }),
+      }),
+    )
+  })
+
+  it("requires confirmation and successful persistence before leaving a deleted provider", async () => {
+    mockRouteParams = { providerId: "fixture-provider" }
+    jest.mocked(getTtsConfig).mockResolvedValue({
+      profiles: [
+        {
+          id: "fixture-provider",
+          kind: "openAiCompatible",
+          name: "Fixture",
+          endpoint: "http://127.0.0.1:5050/v1",
+          model: "fixture",
+          responseFormat: "mp3",
+          voices: ["voice-a"],
+          defaultVoice: "voice-a",
+          enabled: true,
+          hasCredential: true,
+        },
+      ],
+    } as never)
+    render(<TtsProviderProfileScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId("tts-provider-name").props.value).toBe(
+        "Fixture",
+      ),
+    )
+    fireEvent.press(
+      screen.getByRole("button", { name: "settings.tts.removeProvider" }),
+    )
+    expect(removeTtsProfile).not.toHaveBeenCalled()
+    const buttons = jest
+      .mocked(showAlertWithStatusBarRestore)
+      .mock.calls.at(-1)?.[2]
+    jest
+      .mocked(removeTtsProfile)
+      .mockRejectedValueOnce(new Error("storage unavailable"))
+    await act(async () =>
+      buttons?.find((button) => button.style === "destructive")?.onPress?.(),
+    )
+    await waitFor(() => expect(showErrorAlert).toHaveBeenCalled())
+    expect(mockRouterDismissTo).not.toHaveBeenCalled()
+    jest.mocked(removeTtsProfile).mockResolvedValue({} as never)
+    await act(async () =>
+      buttons?.find((button) => button.style === "destructive")?.onPress?.(),
+    )
+    await waitFor(() =>
+      expect(mockRouterDismissTo).toHaveBeenCalledWith("/settings/tts"),
+    )
+    expect(removeTtsProfile).toHaveBeenLastCalledWith("fixture-provider")
+  })
   function renderForm(sourceId?: string) {
     mockRouteParams = sourceId
       ? { kind: "qwen", sourceId }

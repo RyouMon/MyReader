@@ -2,11 +2,11 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    tags: ['v*']
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -17,58 +17,30 @@ env:
 
 jobs:
   verify:
-    name: Verify release candidate
+    name: Verify release metadata
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v7
-
-      - name: Validate release metadata
+      - name: Require consistent version and tag
         shell: bash
         run: |
-          release_version="${GITHUB_REF_NAME#v}"
-          desktop_version="$(jq -er '.version' my-reader/src-tauri/tauri.conf.json)"
-          mobile_version="$(jq -er '.expo.version' my-reader-mobile/app.json)"
-
-          if [ "$desktop_version" != "$release_version" ] || [ "$mobile_version" != "$release_version" ]; then
-            echo "$GITHUB_REF_NAME does not match desktop $desktop_version and mobile $mobile_version." >&2
-            exit 1
+          desktop_version=$(jq -er '.version' my-reader/src-tauri/tauri.conf.json)
+          mobile_version=$(jq -er '.expo.version' my-reader-mobile/app.json)
+          test "$desktop_version" = "$mobile_version"
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            test "${GITHUB_REF_NAME#v}" = "$desktop_version"
           fi
 
-      - name: Install Linux dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf xdg-utils
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: ". -> target"
-
-      - name: Install JavaScript dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run release unit suites
-        env:
-          CARGO_BUILD_JOBS: "1"
-          CARGO_INCREMENTAL: "0"
-          CARGO_PROFILE_DEV_DEBUG: "0"
-          CARGO_PROFILE_TEST_DEBUG: "0"
-        run: |
-          pnpm --filter @my-reader/fonts test
-          pnpm --filter @my-reader/i18n test
-          pnpm --filter @my-reader/tools test
-          pnpm --filter my-reader run test:unit
-          pnpm --filter my-reader-mobile exec jest --runInBand
-          cargo test --workspace
+  quality:
+    name: All release quality gates
+    needs: verify
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+      statuses: write
+    uses: ./.github/workflows/quality.yml
+    secrets: inherit
 
   desktop:
     name: Build desktop release artifacts
@@ -85,17 +57,105 @@ jobs:
       build_ios: true
     secrets: inherit
 
-  prepare-release:
-    name: Prepare draft GitHub release
-    needs: verify
+  desktop-e2e:
+    name: Complete desktop E2E
+    needs: desktop
+    uses: ./.github/workflows/desktop-e2e.yml
+
+  mobile-e2e:
+    name: Complete mobile Release Maestro
+    needs: mobile
+    uses: ./.github/workflows/mobile-e2e.yml
+
+  candidate:
+    name: Verify all test evidence and release assets
+    needs: [quality, desktop, mobile, desktop-e2e, mobile-e2e]
     runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: MyReader-macOS-*
+          path: release-assets
+          merge-multiple: true
+      - uses: actions/download-artifact@v5
+        with:
+          name: MyReader-Windows-x64
+          path: release-assets
+      - uses: actions/download-artifact@v5
+        with:
+          name: MyReader-Linux-x64
+          path: release-assets
+      - uses: actions/download-artifact@v5
+        with:
+          name: MyReader-Android-APK
+          path: release-assets
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: e2e-*
+          path: test-evidence
+      - name: Require the complete suites and the exact tested APK
+        run: node scripts/release/candidate.mjs release-assets test-evidence "$GITHUB_SHA"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MyReader-Verified-Release
+          path: release-assets/
+          if-no-files-found: error
+          retention-days: 30
+
+  submit-ios:
+    name: Submit validated iOS release to TestFlight
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: candidate
+    runs-on: macos-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      TESTFLIGHT_GROUP: ${{ vars.TESTFLIGHT_INTERNAL_GROUP || 'Team (Expo)' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - uses: actions/download-artifact@v5
+        with:
+          name: MyReader-iOS-IPA
+          path: candidate
+      - run: pnpm install --frozen-lockfile
+      - name: Submit the already built IPA after all gates pass
+        working-directory: my-reader-mobile
+        run: |
+          ipa_paths=(../candidate/*.ipa)
+          test "${#ipa_paths[@]}" -eq 1
+          eas submit --platform ios --profile production --path "${ipa_paths[0]}" --groups "$TESTFLIGHT_GROUP" --non-interactive --wait
+
+  publish:
+    name: Publish tested release automatically
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [candidate, submit-ios]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
-
-      - name: Prepare release notes
-        shell: bash
+      - uses: actions/download-artifact@v5
+        with:
+          name: MyReader-Verified-Release
+          path: release-assets
+      - name: Prepare changelog and verify artifact integrity
         run: |
           version="${GITHUB_REF_NAME#v}"
           heading="## [$version]"
@@ -104,83 +164,26 @@ jobs:
             capture && /^## \[/ { exit }
             capture { print }
           ' CHANGELOG.md > "$RUNNER_TEMP/release-notes.md"
-
-          if [ ! -s "$RUNNER_TEMP/release-notes.md" ]; then
-            echo "No CHANGELOG entry found for $GITHUB_REF_NAME." >&2
-            exit 1
-          fi
-
-      - name: Update draft release
+          test -s "$RUNNER_TEMP/release-notes.md"
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib
+          root = pathlib.Path('release-assets')
+          manifest = json.loads((root / 'release-evidence.json').read_text())
+          assert manifest['commit'] == os.environ['GITHUB_SHA']
+          for name, digest in manifest['assets'].items():
+              assert pathlib.Path(name).name == name
+              assert hashlib.sha256((root / name).read_bytes()).hexdigest() == digest, name
+          PY
+      - name: Publish only after upload succeeds
         run: |
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            if [ "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq '.isDraft')" != "true" ]; then
-              echo "$GITHUB_REF_NAME already has a published release." >&2
-              exit 1
-            fi
-            gh release edit "$GITHUB_REF_NAME" \
-              --draft \
-              --verify-tag \
-              --title "MyReader $GITHUB_REF_NAME" \
-              --notes-file "$RUNNER_TEMP/release-notes.md"
+            test "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq '.isDraft')" = true
+            gh release edit "$GITHUB_REF_NAME" --draft --verify-tag --title "MyReader $GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md"
           else
-            gh release create "$GITHUB_REF_NAME" \
-              --draft \
-              --verify-tag \
-              --title "MyReader $GITHUB_REF_NAME" \
-              --notes-file "$RUNNER_TEMP/release-notes.md"
+            gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "MyReader $GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md"
           fi
-
-  archive-desktop:
-    name: Archive desktop release artifacts
-    needs:
-      - prepare-release
-      - desktop
-    runs-on: ubuntu-22.04
-    env:
-      GH_TOKEN: ${{ github.token }}
-    steps:
-      - uses: actions/download-artifact@v5
-        with:
-          pattern: MyReader-macOS-*
-          path: release-assets
-          merge-multiple: true
-
-      - uses: actions/download-artifact@v5
-        with:
-          name: MyReader-Windows-x64
-          path: release-assets
-
-      - uses: actions/download-artifact@v5
-        with:
-          name: MyReader-Linux-x64
-          path: release-assets
-
-      - name: Upload desktop release artifacts
-        shell: bash
-        run: |
-          asset_paths=()
-          while IFS= read -r -d '' asset_path; do
-            asset_paths+=("$asset_path")
-          done < <(find release-assets -type f -print0)
-          if [ "${#asset_paths[@]}" -eq 0 ]; then
-            echo "No desktop release artifacts found." >&2
-            exit 1
-          fi
-          gh release upload "$GITHUB_REF_NAME" "${asset_paths[@]}" --clobber --repo "$GITHUB_REPOSITORY"
-
-  archive-mobile:
-    name: Archive mobile release artifacts
-    needs:
-      - prepare-release
-      - mobile
-    runs-on: ubuntu-22.04
-    env:
-      GH_TOKEN: ${{ github.token }}
-    steps:
-      - uses: actions/download-artifact@v5
-        with:
-          name: MyReader-Android-APK
-          path: release-assets
-
-      - name: Upload mobile release artifacts
-        run: gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber --repo "$GITHUB_REPOSITORY"
+          gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" > "$RUNNER_TEMP/uploaded-release.json"
+          node scripts/release/verify-upload.mjs release-assets "$RUNNER_TEMP/uploaded-release.json" "$GITHUB_REF_NAME"
+          gh release edit "$GITHUB_REF_NAME" --draft=false --latest
+          test "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq '.isDraft')" = false

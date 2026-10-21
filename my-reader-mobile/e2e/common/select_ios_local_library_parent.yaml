@@ -1,7 +1,5 @@
 appId: ${APP_ID}
 name: Select the prepared iOS E2E folder as a local-library parent
-tags:
-  - skip
 ---
 # Required env: E2E_ROOT_FOLDER.
 - extendedWaitUntil:
@@ -24,10 +22,10 @@ tags:
 - runFlow:
     when:
       visible:
-        id: "DOC.sidebar.item.我的iPhone|DOC.sidebar.item.On My iPhone"
+        id: "DOC.sidebar.item.我的iPhone|DOC.sidebar.item.On My iPhone|DOC.sidebar.item.我的iPad|DOC.sidebar.item.On My iPad"
     commands:
       - tapOn:
-          id: "DOC.sidebar.item.我的iPhone|DOC.sidebar.item.On My iPhone"
+          id: "DOC.sidebar.item.我的iPhone|DOC.sidebar.item.On My iPhone|DOC.sidebar.item.我的iPad|DOC.sidebar.item.On My iPad"
       - waitForAnimationToEnd
 - tapOn:
     id: "DOC.sidebar.item.下载|DOC.sidebar.item.Downloads|下载|Downloads"

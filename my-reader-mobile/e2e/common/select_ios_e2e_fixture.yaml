@@ -1,7 +1,5 @@
 appId: ${APP_ID}
 name: Select a supported book fixture from the prepared iOS E2E folder
-tags:
-  - skip
 ---
 # Required env: E2E_ROOT_FOLDER, IMPORT_FILE_NAME.
 - extendedWaitUntil:
@@ -29,10 +27,10 @@ tags:
       - runFlow:
           when:
             visible:
-              id: "DOC.sidebar.item.我的iPhone|DOC.sidebar.item.On My iPhone"
+              id: "DOC.sidebar.item.我的iPhone|DOC.sidebar.item.On My iPhone|DOC.sidebar.item.我的iPad|DOC.sidebar.item.On My iPad"
           commands:
             - tapOn:
-                id: "DOC.sidebar.item.我的iPhone|DOC.sidebar.item.On My iPhone"
+                id: "DOC.sidebar.item.我的iPhone|DOC.sidebar.item.On My iPhone|DOC.sidebar.item.我的iPad|DOC.sidebar.item.On My iPad"
             - waitForAnimationToEnd
       - tapOn:
           id: "DOC.sidebar.item.下载|DOC.sidebar.item.Downloads|下载|Downloads"
