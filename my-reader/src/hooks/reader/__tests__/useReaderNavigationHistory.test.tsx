@@ -18,7 +18,24 @@ const page = (position: number) => ({
 
 describe("reader session navigation", () => {
   it("retains incoming sync positions even if the following database query only sees a newer local save", async () => {
-    vi.mocked(api.listReadingPositionCandidates).mockResolvedValue([])
+    vi.mocked(api.listReadingPositionCandidates).mockResolvedValue([
+      {
+        operationId: "already-synced",
+        replicaId: "other",
+        isLocal: false,
+        locator: page(20),
+        displayProgression: 0.2,
+        recordedAt: 20,
+      },
+      {
+        operationId: "latest-synced",
+        replicaId: "other",
+        isLocal: false,
+        locator: page(80),
+        displayProgression: 0.8,
+        recordedAt: 80,
+      },
+    ])
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     })
@@ -36,9 +53,10 @@ describe("reader session navigation", () => {
         }),
       { wrapper, initialProps: { bookId: 7 } },
     )
-    await waitFor(() =>
-      expect(api.listReadingPositionCandidates).toHaveBeenCalled(),
-    )
+    await waitFor(() => expect(client.isFetching()).toBe(0))
+    expect(result.current.getSnapshot().entries).toHaveLength(1)
+    expect(result.current.getSnapshot().remoteHint).toBe(false)
+    vi.mocked(api.listReadingPositionCandidates).mockResolvedValue([])
     const event = {
       libraryId: "library",
       mode: "full" as const,
@@ -71,4 +89,82 @@ describe("reader session navigation", () => {
     unmount()
     client.clear()
   })
+})
+
+it("keeps a sync event received before the opening query and initial viewport finish", async () => {
+  let finishQuery!: (
+    rows: Awaited<ReturnType<typeof api.listReadingPositionCandidates>>,
+  ) => void
+  vi.mocked(api.listReadingPositionCandidates).mockReturnValue(
+    new Promise((resolve) => {
+      finishQuery = resolve
+    }),
+  )
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  )
+  const { result, rerender, unmount } = renderHook(
+    ({ ready }) =>
+      useReaderNavigationHistory({
+        libraryId: "library",
+        bookId: 7,
+        format: "PDF",
+        currentLocator: ready ? Locator.deserialize(page(80))! : null,
+        enabled: true,
+      }),
+    { wrapper, initialProps: { ready: false } },
+  )
+  let sync!: Promise<void>
+  act(() => {
+    sync = applySidecarSyncCompleted(
+      {
+        libraryId: "library",
+        mode: "full",
+        pulled: 1,
+        pushed: 0,
+        readingPositions: [
+          {
+            bookId: 7,
+            format: "PDF",
+            operationId: "late",
+            locator: page(30),
+            recordedAt: 300,
+          },
+        ],
+      },
+      client,
+    )
+  })
+  await act(async () => {
+    finishQuery([
+      {
+        operationId: "old",
+        replicaId: "other",
+        isLocal: false,
+        locator: page(20),
+        displayProgression: 0.2,
+        recordedAt: 20,
+      },
+      {
+        operationId: "late",
+        replicaId: "other",
+        isLocal: false,
+        locator: page(30),
+        displayProgression: 0.3,
+        recordedAt: 300,
+      },
+    ])
+    await sync
+  })
+  await waitFor(() => expect(client.isFetching()).toBe(0))
+  rerender({ ready: true })
+  expect(result.current.getSnapshot().entries).toHaveLength(2)
+  expect(result.current.getSnapshot().entries[0]).toMatchObject(page(80))
+  expect(result.current.getSnapshot().entries[1]).toMatchObject(page(30))
+  expect(result.current.getSnapshot().remoteHint).toBe(true)
+  unmount()
+  client.clear()
 })

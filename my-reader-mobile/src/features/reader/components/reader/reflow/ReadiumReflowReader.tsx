@@ -36,13 +36,11 @@ import {
 import {
   forwardRef,
   useCallback,
-  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
-  useState,
 } from "react"
-import { Platform, StyleSheet, View } from "react-native"
+import { StyleSheet, View } from "react-native"
 
 import type {
   ReaderState,
@@ -189,10 +187,6 @@ const ReadiumReflowReader = forwardRef<
   const currentLocatorRef = useRef<Locator | null>(null)
   const chapterTitleRef = useRef("")
   const publicationReadySeqRef = useRef(0)
-  const programmaticNavigationPendingRef = useRef(false)
-  const programmaticNavigationIdRef = useRef<string | undefined>(undefined)
-  const [startLocation, setStartLocation] = useState<Locator | null>(null)
-  const restoredStartRef = useRef<Locator | null>(null)
 
   useImperativeHandle(
     ref,
@@ -236,12 +230,10 @@ const ReadiumReflowReader = forwardRef<
     [imageActions.sharePage],
   )
 
-  // Android resolves foreign locators before creating its navigator.
-  // iOS still resolves them here after publicationReady.
   const file = useMemo<ReadiumFile>(
     () => ({
       url: epubPath,
-      initialLocation: Platform.OS === "android" ? initialLocator : undefined,
+      initialLocation: initialLocator,
     }),
     [epubPath, initialLocator],
   )
@@ -269,14 +261,6 @@ const ReadiumReflowReader = forwardRef<
       language,
     ],
   )
-
-  useEffect(() => {
-    if (!startLocation || restoredStartRef.current === startLocation) return
-    restoredStartRef.current = startLocation
-    programmaticNavigationPendingRef.current = true
-    // Send the final preferences with the jump; native prop updates are asynchronous.
-    readiumRef.current?.goTo(startLocation, preferences)
-  }, [startLocation, preferences])
 
   const handlePublicationReady = useCallback(
     (event: PublicationReadyEvent) => {
@@ -340,14 +324,6 @@ const ReadiumReflowReader = forwardRef<
         error: null,
         locator: startLocator,
       })
-
-      if (
-        Platform.OS !== "android" &&
-        startLocator &&
-        startLocator !== event.positions[0]
-      ) {
-        setStartLocation(startLocator)
-      }
 
       void readiumPublication
         .getContent(event.publicationId)
@@ -463,20 +439,10 @@ const ReadiumReflowReader = forwardRef<
       navigationId?: string,
       navigationKind?: "pageTurn" | "programmatic",
     ) => {
-      const programmaticNavigationPending =
-        programmaticNavigationPendingRef.current
-      if (programmaticNavigationPending)
-        programmaticNavigationIdRef.current = navigationId
-      programmaticNavigationPendingRef.current = false
       const selectedToc = selectedTocItemRef.current
       selectedTocItemRef.current = null
       emitLocationState(locator, selectedToc)
-      if (
-        !programmaticNavigationPending &&
-        source === "user" &&
-        navigationId &&
-        navigationId !== programmaticNavigationIdRef.current
-      ) {
+      if (source === "user" && navigationId) {
         onUserLocationChange?.(
           locator,
           navigationId,

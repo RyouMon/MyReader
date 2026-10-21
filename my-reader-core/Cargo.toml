@@ -34,11 +34,12 @@ sha2.workspace = true
 tempfile = "3"
 thiserror.workspace = true
 tokio.workspace = true
-tokio-tungstenite = { version = "0.28", features = ["rustls-tls-webpki-roots"] }
+# Core supplies its own Rustls connector and root store for every WSS connection.
+tokio-tungstenite = { version = "0.28", features = ["__rustls-tls"] }
 tracing.workspace = true
 url.workspace = true
 uuid.workspace = true
-webpki-roots = "1.0.6"
+webpki-roots = "1.0.10"
 zip = { version = "9.0.4", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
 [dev-dependencies]

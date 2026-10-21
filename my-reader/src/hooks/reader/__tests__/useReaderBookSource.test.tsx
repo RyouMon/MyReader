@@ -110,9 +110,12 @@ describe("useReaderBookSource", () => {
     mocks.api.getReadingProgress.mockResolvedValue({
       locator: savedLocator,
     })
-    const { result } = renderHook(() => useReaderBookSource({ bookId: "4" }), {
-      wrapper,
-    })
+    const { result, unmount } = renderHook(
+      () => useReaderBookSource({ bookId: "4" }),
+      {
+        wrapper,
+      },
+    )
     await waitFor(() => expect(result.current.bookPayload).not.toBeNull())
     const payload = result.current.bookPayload
     mocks.api.getReadingProgress.mockResolvedValue({
@@ -131,6 +134,18 @@ describe("useReaderBookSource", () => {
     )
     expect(result.current.bookPayload).toBe(payload)
     expect(mocks.api.prepareBookSource).toHaveBeenCalledTimes(1)
+    unmount()
+    const reopened = renderHook(() => useReaderBookSource({ bookId: "4" }), {
+      wrapper,
+    })
+    await waitFor(() =>
+      expect(reopened.result.current.bookPayload).not.toBeNull(),
+    )
+    expect(
+      reopened.result.current.bookPayload?.initialSavedLocator?.locations
+        .position,
+    ).toBe(7)
+    expect(mocks.api.getReadingProgress).toHaveBeenCalledTimes(2)
   })
 
   it.each([
