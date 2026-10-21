@@ -13,13 +13,17 @@ export default function TabsLayout() {
   const palette = useThemePalette()
   const { t } = useTranslation()
   const [libraryVisible, setLibraryVisible] = useState(false)
+  // Material also uses the indicator drawable as the ripple's alpha mask.
+  const indicatorColor = chroma
+    .mix(palette.surface, palette.primary, 0.12, "rgb")
+    .hex()
 
   return (
     <LibraryTabVisibilityContext value={libraryVisible}>
       <NativeTabs
         tintColor={palette.primary}
         backgroundColor={palette.surface}
-        indicatorColor={chroma(palette.primary).alpha(0.12).css()}
+        indicatorColor={indicatorColor}
         rippleColor={chroma(palette.primary).alpha(0.16).css()}
       >
         <Trigger

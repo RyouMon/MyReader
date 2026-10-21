@@ -34,21 +34,24 @@ jest.mock("expo-router/unstable-native-tabs", () => {
 
 function expectThemeFeedback(mode: "light" | "dark") {
   const props = jest.mocked(NativeTabs).mock.calls.at(-1)![0]
-  const primary = getThemePalette(mode).primary
-  for (const color of [props.indicatorColor, props.rippleColor]) {
-    expect(typeof color).toBe("string")
-    const feedback = chroma(color as string)
-    expect(feedback.rgb()).toEqual(chroma(primary).rgb())
-    expect(feedback.alpha()).toBeGreaterThan(0)
-    expect(feedback.alpha()).toBeLessThan(1)
-  }
+  const { primary, surface } = getThemePalette(mode)
+  const indicator = chroma(props.indicatorColor as string)
+  const ripple = chroma(props.rippleColor as string)
+
+  // Material also uses the indicator drawable as the ripple's alpha mask.
+  expect(indicator.alpha()).toBe(1)
+  expect(indicator.hex()).not.toBe(chroma(surface).hex())
+  expect(ripple.rgb()).toEqual(chroma(primary).rgb())
+  expect(ripple.alpha()).toBeGreaterThan(0)
+  return props
 }
 
-it("keeps native selection and press feedback on the active theme accent", () => {
+it("keeps the native ripple mask opaque while following the active theme", () => {
   const { rerender } = render(<TabsLayout />)
-  expectThemeFeedback("light")
+  const light = expectThemeFeedback("light")
 
   mockThemeMode = "dark"
   rerender(<TabsLayout />)
-  expectThemeFeedback("dark")
+  const dark = expectThemeFeedback("dark")
+  expect(dark.indicatorColor).not.toBe(light.indicatorColor)
 })
