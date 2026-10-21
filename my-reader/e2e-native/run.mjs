@@ -121,6 +121,8 @@ async function revealReaderChrome() {
   await browser
     .action("pointer")
     .move({ origin: "viewport", x: Math.floor(width / 2), y: 16 })
+    .down({ button: 0 })
+    .up({ button: 0 })
     .perform()
   await browser.$('section[data-reader-chrome-visible="true"]').waitForExist()
 }
@@ -148,6 +150,11 @@ async function openReader(format) {
   const reader = (await browser.getWindowHandles()).find(
     (handle) => handle !== mainWindow,
   )
+  await browser.switchToWindow(reader)
+  await browser
+    .$("section[data-reader-theme], section[data-reader-mode]")
+    .waitForExist({ timeout: 30000 })
+  await browser.switchToWindow(mainWindow)
   await evaluate(async (label) => {
     const windowHandle = await window.__TAURI__.window.Window.getByLabel(label)
     await windowHandle.unminimize()

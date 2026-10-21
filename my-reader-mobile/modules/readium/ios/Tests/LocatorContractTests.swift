@@ -154,16 +154,18 @@ func should_not_invent_a_start_progression_for_an_incoming_text_anchor() throws 
   record.locations = locations
   let locator = try #require(locatorRecordToReadium(record))
   #expect(locator.locations.progression == nil)
-  #expect(locator.locations.otherLocations["cssSelector"] as? String == "p:nth-of-type(2)")
+  #expect(locator.locations.otherLocations["cssSelector"]?.string == "p:nth-of-type(2)")
 }
 
 @Test
 func should_preserve_absent_progression_when_exporting_a_text_anchor() throws {
-  var locator = try #require(locatorRecordToReadium(try loadFixture().makeRecord()))
+  let fixture = try loadFixture()
+  var locator = try #require(locatorRecordToReadium(try fixture.makeRecord()))
   locator.locations.progression = nil
   let exported = locatorToDict(locator)
   let locations = try #require(exported["locations"] as? [String: Any])
   #expect(locations["progression"] == nil)
-  #expect(locations["domRange"] as? NSDictionary == locator.locations.otherLocations["domRange"] as? NSDictionary)
+  let expectedRange = try dictionary(from: fixture.locations.domRange)
+  #expect(locations["domRange"] as? NSDictionary == expectedRange as NSDictionary)
   #expect((exported["text"] as? [String: Any])?["highlight"] as? String == locator.text.highlight)
 }
