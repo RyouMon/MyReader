@@ -8,5 +8,8 @@ testOutputDir: e2e/.artifacts
 platform:
   ios:
     disableAnimations: false
+    # iPad's cross-process Files picker and SwiftUI reader sheets are otherwise
+    # omitted from XCTest snapshots. Keep their native controls addressable.
+    snapshotKeyHonorModalViews: false
   android:
     disableAnimations: false

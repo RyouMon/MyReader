@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { assertPassingJUnit, assertPassingXCTest } from "../release/junit.mjs"
+import { assertPassingJUnit } from "../release/junit.mjs"
 
 test("publishing requires a complete passing report, including no silent skips", () => {
   const passing =
@@ -27,22 +27,4 @@ test("publishing requires a complete passing report, including no silent skips",
       /failures, errors or skipped/,
     )
   }
-})
-
-test("XCTest must execute the whole suite with no skips or expected failures", () => {
-  const passing = {
-    result: "Passed",
-    totalTestCount: 1,
-    passedTests: 1,
-    failedTests: 0,
-    skippedTests: 0,
-    expectedFailures: 0,
-    testFailures: [],
-  }
-  assertPassingXCTest(passing, 1)
-  for (const key of ["failedTests", "skippedTests", "expectedFailures"])
-    assert.throws(() => assertPassingXCTest({ ...passing, [key]: 1 }, 1))
-  assert.throws(() => assertPassingXCTest({ ...passing, result: "Failed" }, 1))
-  assert.throws(() => assertPassingXCTest({ ...passing, totalTestCount: 0 }, 1))
-  assert.throws(() => assertPassingXCTest({ ...passing, passedTests: 0 }, 1))
 })

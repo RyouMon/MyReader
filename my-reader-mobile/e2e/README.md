@@ -7,9 +7,13 @@
 ## 完整执行入口
 
 `release-suite.json` 是发布套件清单。Android 全部执行；iOS 在 iPhone 和 iPad 各执行全部流程，
-并执行 `ios/ReaderSettingsUITests.swift`。iOS 原生设置半屏弹层的可访问性子树在 Maestro 中缺失，
-因此该部分使用 XCTest 操作同一个已安装的 Release app，并保留截图和 xcresult。
+包括原生阅读设置弹层中的字体切换和位置保持。
 任何失败都阻断发布；没有 `wip`、排除标签、AI 判断或整例自动重试。
+
+iOS 使用官方 `snapshotKeyHonorModalViews: false`，让 iPad 系统文件选择器的跨进程控件进入
+可访问性快照。选择器内的返回、取消操作限定在 `Browse View (Picker)`，并等待选择器关闭后
+继续操作书库，避免命中弹窗后方的同名按钮。目录项限定在目录标题下方，避免命中书页上的
+同名章节标题；iOS WebView 快照可能包含屏幕外正文，不能仅凭正文文字存在证明导航成功。
 
 ```bash
 # 仓库根目录；需要 Maestro 2.11.0、Java 17、Android SDK 或 Xcode。
@@ -22,7 +26,7 @@ export MAESTRO_DRIVER_STARTUP_TIMEOUT=600000
 node my-reader-mobile/e2e/scripts/run-release.mjs android /absolute/path/app-release.apk emulator-5554
 
 # iOS：先启动专用模拟器；传入 Release-iphonesimulator 下的 .app。
-# 同一 app 分别在 iPhone、iPad 上执行。需要 brew install xcodegen。
+# 同一 app 分别在 iPhone、iPad 上执行。
 node my-reader-mobile/e2e/scripts/run-release.mjs ios /absolute/path/MyReader.app <simulator-udid>
 ```
 
@@ -37,8 +41,8 @@ WebDAV 和 OpenAI 兼容语音 fixture。Android 自动设置 fixture 所需的 
 所有数据源配置通过应用 UI 完成，不预填产品数据库，不需要 OneDrive 登录或真实付费 TTS。
 
 报告默认保存到 `e2e/.artifacts/<platform>-<run-id>/`，可用 `E2E_REPORT_DIR` 指定目录。
-报告包含安装包摘要、提交号、工作区状态、每个 flow 的 JUnit、失败截图、日志及 iOS xcresult。
-只有完整清单和 XCTest 全部成功才写入 `passed.json`。网络朗读还检查实际合成请求。
+报告包含安装包摘要、提交号、工作区状态、每个 flow 的 JUnit、失败截图和日志。
+只有完整清单全部成功才写入 `passed.json`。网络朗读还检查实际合成请求。
 
 ## 测试金字塔与旧 20 个流程的去向
 
@@ -59,7 +63,7 @@ WebDAV 和 OpenAI 兼容语音 fixture。Android 自动设置 fixture 所需的 
 | `reader/read_with_tts` | 同一阅读游程分别使用系统语音与本地网络语音，确认实际网络请求 |
 | `reader/tts_playback_lifecycle` | 关键启动/暂停/恢复/停止并入上述语音游程；终态和取消矩阵移至原生 `TtsPlaybackNavigationStateTests.swift` / `TtsPlaybackNavigationStateTest.kt` |
 | `reader/tts_playback_position_authority` | 保留翻页后继续朗读、返回朗读位置；精确预取/边界矩阵由 `RemoteTtsPrefetchWindowTests.swift` / `RemoteTtsPrefetchWindowTest.kt` 和 viewport/start locator 测试承担 |
-| `reader/change_epub_settings` | `reader-reflow-preferences.test.ts`、`app-store.slices.test.ts`：主题/字号/间距/对齐/栏数与持久化；原生字体切换保留在阅读游程/XCTest |
+| `reader/change_epub_settings` | `reader-reflow-preferences.test.ts`、`app-store.slices.test.ts`：主题/字号/间距/对齐/栏数与持久化；原生字体切换保留在阅读游程 |
 | `reader/change_epub_settings_on_pad` | 同一偏好合同；iPad 完整 Release 游程及原生设置验证，移除云端 AI 布局判断 |
 | `reader/change_cbz_settings` | `ReadiumFixedReader.test.tsx`、`fixed-reader-navigation.test.ts` 与 store 偏好合同；真实 CBZ 翻页/恢复仍在 Release 游程 |
 | `reader/change_cbz_settings_on_pad` | 同上，iPad 运行完整 Release 游程 |

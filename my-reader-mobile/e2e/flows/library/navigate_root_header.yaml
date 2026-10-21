@@ -28,6 +28,12 @@ name: Search autofocus and one-back navigation survive cross-tab reentry
     commands:
       - tapOn:
           text: "取消|Cancel"
+          childOf:
+            id: "Browse View \\(Picker\\)"
+      - extendedWaitUntil:
+          notVisible:
+            id: "Browse View \\(Picker\\)"
+          timeout: 15000
 - runFlow:
     when:
       platform: Android

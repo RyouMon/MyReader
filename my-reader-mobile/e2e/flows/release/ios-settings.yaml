@@ -1,7 +1,0 @@
-appId: ${APP_ID}
-name: Prepare an independent reader for the native iOS sheet regression
----
-- runFlow: ../../common/create_fixture_library.yaml
-- runFlow: ../../common/import_epub_fixture.yaml
-- runFlow: ../reader/read_book.yaml
-- runFlow: ../../common/close_reader.yaml

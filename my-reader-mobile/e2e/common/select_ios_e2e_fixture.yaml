@@ -20,9 +20,13 @@ name: Select a supported book fixture from the prepared iOS E2E folder
           while:
             visible:
               id: "BackButton"
+              childOf:
+                id: "Browse View \\(Picker\\)"
           commands:
             - tapOn:
                 id: "BackButton"
+                childOf:
+                  id: "Browse View \\(Picker\\)"
             - waitForAnimationToEnd
       - runFlow:
           when:
@@ -55,5 +59,10 @@ name: Select a supported book fixture from the prepared iOS E2E folder
     visible:
       id: "${IMPORT_FILE_NAME}, (epub|pdf|cbz)"
     timeout: 30000
+- waitForAnimationToEnd
 - tapOn:
     id: "${IMPORT_FILE_NAME}, (epub|pdf|cbz)"
+- extendedWaitUntil:
+    notVisible:
+      id: "Browse View \\(Picker\\)"
+    timeout: 15000

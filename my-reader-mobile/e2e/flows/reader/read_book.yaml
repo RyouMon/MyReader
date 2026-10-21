@@ -24,9 +24,13 @@ tags:
 - tapOn: ${output.selectors.reader.moreActions}
 - tapOn: ${output.selectors.reader.tocButton}
 - extendedWaitUntil:
-    visible: "Playback position authority"
+    visible:
+      text: "Playback position authority"
+      below: "目录|Contents"
     timeout: 10000
-- tapOn: "Playback position authority"
+- tapOn:
+    text: "Playback position authority"
+    below: "目录|Contents"
 - extendedWaitUntil:
     visible: "Playback position first page.*"
     timeout: 10000
@@ -59,25 +63,20 @@ tags:
 - extendedWaitUntil:
     visible: "移除当前位置的书签|Remove bookmark at current location"
     timeout: 10000
-# XCTest covers this half-sheet on iOS; Maestro #1924 omits its subtree.
-- runFlow:
-    when:
-      platform: Android
-    commands:
-      - tapOn: ${output.selectors.reader.moreActions}
-      - tapOn: ${output.selectors.reader.settingsButton}
-      - extendedWaitUntil:
-          visible: ${output.selectors.reader.settingsSheet}
-          timeout: 10000
-      - tapOn: "字体: 衬线.*|Font: Serif.*"
-      - assertVisible: "字体: 衬线, 已选择|Font: Serif, Selected"
-      - tapOn: "字体: 人文无衬线.*|Font: Humanist Sans.*"
-      - assertVisible: "字体: 人文无衬线, 已选择|Font: Humanist Sans, Selected"
-      - tapOn:
-          point: "50%,20%"
-      - extendedWaitUntil:
-          notVisible: ${output.selectors.reader.settingsSheet}
-          timeout: 10000
+- tapOn: ${output.selectors.reader.moreActions}
+- tapOn: ${output.selectors.reader.settingsButton}
+- extendedWaitUntil:
+    visible: ${output.selectors.reader.settingsSheet}
+    timeout: 10000
+- tapOn: "字体: 衬线.*|Font: Serif.*"
+- assertVisible: "字体: 衬线, 已选择|Font: Serif, Selected"
+- tapOn: "字体: 人文无衬线.*|Font: Humanist Sans.*"
+- assertVisible: "字体: 人文无衬线, 已选择|Font: Humanist Sans, Selected"
+- tapOn:
+    point: "50%,20%"
+- extendedWaitUntil:
+    notVisible: ${output.selectors.reader.settingsSheet}
+    timeout: 10000
 - extendedWaitUntil:
     visible: "Latest narration second page.*"
     timeout: 10000

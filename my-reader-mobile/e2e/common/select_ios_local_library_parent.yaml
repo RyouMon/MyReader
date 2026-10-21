@@ -15,9 +15,13 @@ name: Select the prepared iOS E2E folder as a local-library parent
     while:
       visible:
         id: "BackButton"
+        childOf:
+          id: "Browse View \\(Picker\\)"
     commands:
       - tapOn:
           id: "BackButton"
+          childOf:
+            id: "Browse View \\(Picker\\)"
       - waitForAnimationToEnd
 - runFlow:
     when:

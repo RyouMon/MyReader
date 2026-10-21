@@ -1,5 +1,4 @@
 import { readFileSync } from "node:fs"
-import assert from "node:assert/strict"
 import { XMLParser, XMLValidator } from "fast-xml-parser"
 
 export function assertPassingJUnit(xml, expectedTests) {
@@ -36,13 +35,4 @@ export function assertPassingJUnit(xml, expectedTests) {
 
 export function verifyJUnit(path, expectedTests) {
   return assertPassingJUnit(readFileSync(path, "utf8"), expectedTests)
-}
-
-export function assertPassingXCTest(report, expectedTests) {
-  assert.equal(report.result, "Passed", "XCTest did not pass")
-  assert.equal(report.totalTestCount, expectedTests, "Incomplete XCTest suite")
-  assert.equal(report.passedTests, expectedTests)
-  for (const key of ["failedTests", "skippedTests", "expectedFailures"])
-    assert.equal(report[key], 0, `XCTest contains ${key}`)
-  assert.deepEqual(report.testFailures, [])
 }

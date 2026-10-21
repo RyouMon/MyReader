@@ -91,17 +91,16 @@ jobs:
           python-version: '3.12'
       - run: pnpm install --frozen-lockfile
       - run: pip install -r my-reader-mobile/e2e/requirements.txt
-      - name: Install Maestro and XCTest project generator
+      - name: Install Maestro
         run: |
           curl --fail --location https://get.maestro.mobile.dev -o "$RUNNER_TEMP/install-maestro.sh"
           bash "$RUNNER_TEMP/install-maestro.sh"
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
-          brew install xcodegen
       - uses: actions/download-artifact@v5
         with:
           name: MyReader-iOS-simulator
           path: candidate
-      - name: Run complete Release suite, including native settings XCTest
+      - name: Run complete Release Maestro suite
         env:
           DEVICE_KIND: ${{ matrix.device }}
           E2E_REPORT_DIR: ${{ github.workspace }}/reports/mobile-ios-${{ matrix.device }}

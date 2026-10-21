@@ -252,15 +252,6 @@ try {
           },
         },
       )
-    if (flow.endsWith("ios-settings.yaml"))
-      run("bash", [join(e2e, "scripts/run-ios-reader-settings.sh")], {
-        env: {
-          ...process.env,
-          IOS_SIMULATOR_UDID: device,
-          APP_ID: appId,
-          E2E_REPORT_DIR: output,
-        },
-      })
   }
   writeFileSync(
     join(output, "passed.json"),
