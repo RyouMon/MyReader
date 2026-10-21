@@ -22,6 +22,11 @@ export default function TabsLayout() {
     <LibraryTabVisibilityContext value={libraryVisible}>
       <NativeTabs
         tintColor={palette.primary}
+        iconColor={{ default: palette.textMuted, selected: palette.primary }}
+        labelStyle={{
+          default: { color: palette.textMuted },
+          selected: { color: palette.primary },
+        }}
         backgroundColor={palette.surface}
         indicatorColor={indicatorColor}
         rippleColor={chroma(palette.primary).alpha(0.16).css()}

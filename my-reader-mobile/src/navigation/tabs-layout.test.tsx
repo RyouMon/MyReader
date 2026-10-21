@@ -34,7 +34,7 @@ jest.mock("expo-router/unstable-native-tabs", () => {
 
 function expectThemeFeedback(mode: "light" | "dark") {
   const props = jest.mocked(NativeTabs).mock.calls.at(-1)![0]
-  const { primary, surface } = getThemePalette(mode)
+  const { primary, surface, textMuted } = getThemePalette(mode)
   const indicator = chroma(props.indicatorColor as string)
   const ripple = chroma(props.rippleColor as string)
 
@@ -43,10 +43,18 @@ function expectThemeFeedback(mode: "light" | "dark") {
   expect(indicator.hex()).not.toBe(chroma(surface).hex())
   expect(ripple.rgb()).toEqual(chroma(primary).rgb())
   expect(ripple.alpha()).toBeGreaterThan(0)
+  expect(props.iconColor).toMatchObject({
+    default: textMuted,
+    selected: primary,
+  })
+  expect(props.labelStyle).toMatchObject({
+    default: { color: textMuted },
+    selected: { color: primary },
+  })
   return props
 }
 
-it("keeps the native ripple mask opaque while following the active theme", () => {
+it("keeps the native ripple visible and tab foregrounds on the active theme", () => {
   const { rerender } = render(<TabsLayout />)
   const light = expectThemeFeedback("light")
 
