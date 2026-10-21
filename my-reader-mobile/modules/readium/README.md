@@ -99,6 +99,14 @@ Linked as a workspace dependency (`"link:./modules/readium"` in
 `my-reader-mobile/package.json`); Expo autolinking discovers it via
 `expo-module.config.json`. No manual install step.
 
+The CocoaPods post-install hook applies a checked patch to Readium Swift 3.11.0's
+pagination script: before its first resize frame initializes the cached page
+width, locator restoration uses the current viewport width. Without this fallback,
+an early saved-text anchor produces a `NaN` scroll coordinate and silently opens
+the first page. `ReaderStartLocationTests` delays the resize callback to cover this
+startup race with the real navigator. The hook fails if the upstream script
+changes, so dependency upgrades must review or remove this patch.
+
 - **iOS:** `Readium.podspec` pins all four Swift Toolkit pods to the official
   [3.11.0 release](https://github.com/readium/swift-toolkit/releases/tag/3.11.0).
   Run `pod install` (or `expo run:ios`) after native changes. If the generated

@@ -4,6 +4,7 @@ import ReadiumShared
 import Testing
 import UIKit
 import XCTest
+import WebKit
 @testable import Readium
 
 @Suite(.serialized)
@@ -95,8 +96,8 @@ struct ReaderStartLocationTests {
     ))
   }
 
-  @Test
-  func restoresSyncedTextAnchorInFreshNavigator() async throws {
+  @Test(arguments: [false, true])
+  func restoresSyncedTextAnchorInFreshNavigator(delayedFirstFrame: Bool) async throws {
     let fixture = URL(fileURLWithPath: #filePath)
       .deletingLastPathComponent().deletingLastPathComponent()
       .deletingLastPathComponent().deletingLastPathComponent()
@@ -121,11 +122,17 @@ struct ReaderStartLocationTests {
     preferences.pageMargins = 0.8
     preferences.scroll = false
     preferences.publisherStyles = false
+    preferences.columnCount = "1"
     let controller = try #require(await ReaderModule(delegate: nil).getViewController(
       for: publication, bookId: "fresh-resume", locator: stored, preferences: preferences,
       selectionActions: nil, fontFamilyDeclarations: []
     ) as? EPUBViewController)
-    let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 820, height: 506))
+    // WebKit can finish loading before its first animation frame when the app
+    // opens a reader during a navigation transition. Keep the real Readium
+    // locator path, while delaying that first pagination frame deterministically.
+    let delegate = DelayedPaginationDelegate()
+    if delayedFirstFrame { controller.epubNavigator.delegate = delegate }
+    let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 820, height: 1180))
     window.rootViewController = controller
     window.makeKeyAndVisible()
     defer { window.isHidden = true }
@@ -134,10 +141,12 @@ struct ReaderStartLocationTests {
       try await Task.sleep(nanoseconds: 50_000_000)
     }
     try #require(controller.epubNavigator.viewport?.resources.isEmpty == false)
+    if delayedFirstFrame { try #require(delegate.configured) }
     let visible = await controller.epubNavigator.evaluateJavaScript("""
       (() => {
         const rect = document.querySelector('body > p:nth-of-type(2)').getBoundingClientRect();
-        return rect.right > 0 && rect.left < window.innerWidth && rect.bottom > 0 && rect.top < window.innerHeight;
+        const previous = document.querySelector('body > p:first-of-type').getBoundingClientRect();
+        return rect.right > 0 && rect.left < window.innerWidth && rect.bottom > 0 && rect.top < window.innerHeight && previous.right <= 0;
       })()
       """)
     #expect(try visible.get() as? Bool == true)
@@ -229,5 +238,25 @@ struct ReaderStartLocationTests {
     let pdfView = try #require(reader.pdfNavigator.pdfView)
     let page = try #require(pdfView.currentPage)
     #expect(pdfView.document?.index(for: page) == 2)
+  }
+}
+
+@MainActor
+private final class DelayedPaginationDelegate: NSObject, EPUBNavigatorDelegate {
+  var configured = false
+  func navigator(_ navigator: Navigator, presentError error: NavigatorError) {
+    Issue.record("Readium navigation failed: \(error)")
+  }
+
+  func navigator(_ navigator: EPUBNavigatorViewController, setupUserScripts controller: WKUserContentController) {
+    configured = true
+    controller.addUserScript(WKUserScript(source: """
+      const Observer = window.ResizeObserver;
+      window.ResizeObserver = class extends Observer {
+        constructor(callback) {
+          super((entries, observer) => setTimeout(() => callback(entries, observer), 1000));
+        }
+      };
+      """, injectionTime: .atDocumentStart, forMainFrameOnly: false))
   }
 }

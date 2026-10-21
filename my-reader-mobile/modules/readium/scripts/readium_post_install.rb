@@ -19,6 +19,8 @@
 #   end
 #
 def readium_post_install(installer)
+  readium_fix_initial_pagination_width(installer.sandbox.root)
+
   # Rewrite the Minizip modulemap to drop submodules and mark as [extern_c] [system].
   # The modulemap path differs depending on whether use_frameworks! is active:
   #   - With use_frameworks!:  Target Support Files/Minizip/Minizip.modulemap
@@ -61,4 +63,23 @@ def readium_post_install(installer)
       end
     end
   end
+end
+
+# Readium 3.11.0 caches the page width in its first ResizeObserver animation
+# frame. A saved locator can be restored before that frame, so modulo zero
+# produces NaN and scrollToLocator reports success without moving the page.
+# Use the live viewport width until the pagination observer has initialized.
+# Remove this patch when the pinned upstream version includes the fix.
+def readium_fix_initial_pagination_width(pods_root)
+  script = File.join(pods_root, 'ReadiumNavigator/Sources/Navigator/EPUB/Assets/Static/scripts/readium-reflowable.js')
+  original = 'function I(t){const e=t+(T()?-1:1);return e-e%O}'
+  fixed = 'function I(t){const e=t+(T()?-1:1);return e-e%(O||window.innerWidth)}'
+  source = File.read(script)
+  return if source.include?(fixed)
+
+  unless source.scan(original).length == 1
+    raise 'Readium pagination script changed; review the initial page-width patch before updating the dependency.'
+  end
+
+  File.write(script, source.sub(original, fixed))
 end
