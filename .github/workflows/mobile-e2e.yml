@@ -8,7 +8,7 @@ permissions:
 
 env:
   NODE_VERSION: 22.22.0
-  MAESTRO_VERSION: 2.6.0
+  MAESTRO_VERSION: 2.11.0
   MAESTRO_DRIVER_STARTUP_TIMEOUT: 600000
 
 jobs:
@@ -56,7 +56,7 @@ jobs:
           api-level: 36
           target: google_apis
           arch: x86_64
-          profile: pixel_7
+          profile: pixel_2
           disable-animations: false
           script: node my-reader-mobile/e2e/scripts/run-release.mjs android candidate/*.apk emulator-5554
       - uses: actions/upload-artifact@v4

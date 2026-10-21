@@ -4,11 +4,7 @@ import { createHash } from "node:crypto"
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import {
-  cleanupWdioSession,
-  startWdioSession,
-  withExecuteOptions,
-} from "@wdio/tauri-service"
+import { cleanupWdioSession, startWdioSession } from "@wdio/tauri-service"
 
 const desktop = fileURLToPath(new URL("../", import.meta.url))
 const root = resolve(desktop, "..")
@@ -104,10 +100,7 @@ async function invoke(command, args = {}) {
 }
 
 async function evaluate(fn, ...args) {
-  return browser.tauri.execute(
-    `return (${fn.toString()})(...${JSON.stringify(args)});`,
-    withExecuteOptions({ windowLabel: await browser.getWindowHandle() }),
-  )
+  return browser.execute(fn, ...args)
 }
 
 async function click(selector) {
@@ -169,9 +162,13 @@ async function openReader(format) {
         "The native reader must be visible before interacting with it",
     },
   )
-  await browser
-    .$("section[data-reader-theme], section[data-reader-mode]")
-    .waitForDisplayed({ timeout: 30000 })
+  await browser.waitUntil(
+    async () =>
+      (
+        await browser.$("section[data-reader-theme], section[data-reader-mode]")
+      ).isDisplayed(),
+    { timeout: 30000, timeoutMsg: "The native reader content must be visible" },
+  )
   await browser.waitUntil(() =>
     evaluate(
       () =>
@@ -343,9 +340,19 @@ try {
   )
   if (browser) {
     await evaluate(() => {
-      const button = document.querySelector(
-        "button[aria-label='Start reading'], button[aria-label='Continue reading']",
+      const errorDetails = [...document.querySelectorAll("button")].find(
+        (button) => button.textContent === "Show Error",
       )
+      errorDetails?.click()
+    }).catch(console.error)
+    await evaluate(() => {
+      const button =
+        document.querySelector(
+          "section[data-reader-theme], section[data-reader-mode]",
+        ) ||
+        document.querySelector(
+          "button[aria-label='Start reading'], button[aria-label='Continue reading']",
+        )
       const ancestors = []
       for (let element = button; element; element = element.parentElement) {
         const style = getComputedStyle(element)

@@ -12,7 +12,7 @@
 任何失败都阻断发布；没有 `wip`、排除标签、AI 判断或整例自动重试。
 
 ```bash
-# 仓库根目录；需要 Maestro 2.6.0、Java 17、Android SDK 或 Xcode。
+# 仓库根目录；需要 Maestro 2.11.0、Java 17、Android SDK 或 Xcode。
 python3 -m venv .tmp/e2e-python
 .tmp/e2e-python/bin/pip install -r my-reader-mobile/e2e/requirements.txt
 export E2E_PYTHON="$PWD/.tmp/e2e-python/bin/python3"
