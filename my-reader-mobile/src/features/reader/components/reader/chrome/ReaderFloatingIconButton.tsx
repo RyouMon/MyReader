@@ -131,9 +131,7 @@ export function ReaderFloatingIconButton({
         testID={testID}
         accessibilityRole={loading ? "progressbar" : "button"}
         accessibilityLabel={accessibilityLabel}
-        accessibilityState={
-          loading ? { busy: true, disabled: true } : { disabled: !interactive }
-        }
+        accessibilityState={{ busy: loading, disabled: !interactive }}
         disabled={!interactive}
         hitSlop={READER_FLOATING_BUTTON_HIT_SLOP}
         onPress={onPress}

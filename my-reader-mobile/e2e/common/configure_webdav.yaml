@@ -26,5 +26,5 @@ name: Register the isolated local WebDAV source
     commands:
       - tapOn: "以后|Not Now"
 - extendedWaitUntil:
-    visible: "127.0.0.1"
+    visible: ${WEBDAV_HOST}
     timeout: 30000

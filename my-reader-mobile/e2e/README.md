@@ -39,8 +39,8 @@ node my-reader-mobile/e2e/scripts/run-release.mjs ios /absolute/path/MyReader.ap
 iOS Release simulator 在 CI 通过 Expo prebuild 和 Xcode Release 构建，使用与 production 相同的入口、Core 绑定和环境配置；本地也可使用 `eas.json` 的 `release-simulator`。
 
 脚本安装指定包、创建唯一 fixture 目录、通过系统选择器导入自制 EPUB/PDF/CBZ，并启动本地
-WebDAV 和 OpenAI 兼容语音 fixture。Android 自动设置 fixture 所需的 `adb reverse`，移除
-该模拟器的 Metro 端口映射。测试只操作专用模拟器；不要向该模拟器放入个人书库或凭据。
+WebDAV 和 OpenAI 兼容语音 fixture。Android 使用模拟器的宿主回环地址 `10.0.2.2`，
+iOS 使用 `127.0.0.1`；Android 同时移除 Metro 端口映射。测试只操作专用模拟器；不要向该模拟器放入个人书库或凭据。
 所有数据源配置通过应用 UI 完成，不预填产品数据库，不需要 OneDrive 登录或真实付费 TTS。
 
 报告默认保存到 `e2e/.artifacts/<platform>-<run-id>/`，可用 `E2E_REPORT_DIR` 指定目录。

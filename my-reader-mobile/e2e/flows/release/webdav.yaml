@@ -11,7 +11,7 @@ name: WebDAV upload, explicit download and reading persist across restart
 - runFlow: ../../common/open_add_library.yaml
 - tapOn:
     id: add-library-create
-- tapOn: "127.0.0.1"
+- tapOn: ${WEBDAV_HOST}
 - tapOn: "Shared"
 - tapOn: "继续|Continue"
 - tapOn:
@@ -85,7 +85,7 @@ name: WebDAV upload, explicit download and reading persist across restart
 - runFlow: ../../common/open_add_library.yaml
 - tapOn:
     id: add-library-open
-- tapOn: "127.0.0.1"
+- tapOn: ${WEBDAV_HOST}
 - tapOn: "Shared"
 - tapOn: ${WEBDAV_LIBRARY_NAME}
 - tapOn: "^打开$|^Open$"

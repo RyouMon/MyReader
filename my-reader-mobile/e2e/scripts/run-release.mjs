@@ -29,6 +29,7 @@ const artifact = resolve(artifactArgument)
 const appId = "ryoumon.myreadermobile"
 const davPort = Number(process.env.E2E_DAV_PORT || 8082)
 const ttsPort = Number(process.env.E2E_TTS_PORT || 5050)
+const fixtureHost = platform === "android" ? "10.0.2.2" : "127.0.0.1"
 const runId = `${platform}-${Date.now()}`
 const rootFolder = `MyReaderE2E-${runId}`
 const output = resolve(
@@ -77,6 +78,7 @@ async function ready(url, child, options = {}) {
   throw new Error(`Fixture server did not become ready: ${url}`)
 }
 
+const commit = read("git", ["rev-parse", "HEAD"])
 let fixtureRoot
 try {
   if (platform === "ios") {
@@ -128,7 +130,7 @@ try {
     run("adb", ["-s", device, "install", "--no-streaming", "-r", artifact], {
       timeout: 120000,
     })
-    // Remove only Metro's mapping. Fixture mappings are independent.
+    // The release suite must not connect to Metro.
     if (read("adb", ["-s", device, "reverse", "--list"]).includes("tcp:8081")) {
       run("adb", ["-s", device, "reverse", "--remove", "tcp:8081"])
     }
@@ -141,8 +143,6 @@ try {
       "-p",
       `${fixtureRoot}/Fixtures`,
     ])
-    for (const port of [ttsPort, davPort])
-      run("adb", ["-s", device, "reverse", `tcp:${port}`, `tcp:${port}`])
   }
   run(process.env.E2E_PYTHON || "python3", [
     join(e2e, "scripts/build-fixture.py"),
@@ -192,9 +192,10 @@ try {
       platform === "android"
         ? read("adb", ["-s", device, "shell", "getprop", "ro.product.model"])
         : "",
-    WEBDAV_URL: `http://127.0.0.1:${davPort}`,
+    WEBDAV_HOST: fixtureHost,
+    WEBDAV_URL: `http://${fixtureHost}:${davPort}`,
     WEBDAV_LIBRARY_NAME: `Remote-${runId}`,
-    TTS_URL: `http://127.0.0.1:${ttsPort}/openai/v1`,
+    TTS_URL: `http://${fixtureHost}:${ttsPort}/openai/v1`,
   }
   const suite = JSON.parse(
     readFileSync(join(e2e, "release-suite.json"), "utf8"),
@@ -208,7 +209,7 @@ try {
         artifact,
         platform,
         device,
-        commit: read("git", ["rev-parse", "HEAD"]),
+        commit,
         dirty: read("git", ["status", "--porcelain"]),
         suite,
       },
@@ -260,7 +261,7 @@ try {
         platform,
         sha256: identity.sha256,
         suite,
-        commit: read("git", ["rev-parse", "HEAD"]),
+        commit,
       },
       null,
       2,
@@ -275,13 +276,9 @@ try {
       run("adb", ["-s", device, "shell", "rm", "-rf", fixtureRoot], {
         timeout: 15000,
       })
-      for (const port of [ttsPort, davPort])
-        run("adb", ["-s", device, "reverse", "--remove", `tcp:${port}`], {
-          timeout: 15000,
-        })
     } catch (error) {
       console.error(
-        `Could not remove fixture files/ports from ${device}: ${error.message}`,
+        `Could not remove fixture files from ${device}: ${error.message}`,
       )
     }
   }
