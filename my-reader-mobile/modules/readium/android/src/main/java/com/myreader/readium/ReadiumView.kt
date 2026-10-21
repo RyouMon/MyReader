@@ -777,29 +777,17 @@ class ReadiumView(
 
     activity.supportFragmentManager
       .beginTransaction()
-      .replace(hostView.id, frag, hostView.id.toString())
+      // React Native IDs can collide with View.generateViewId(). Pass the host
+      // itself so the navigator never attaches elsewhere and recycles on removal.
+      .add(hostView, frag, hostView.id.toString())
       .commitNow()
 
-    // The FragmentManager may not find hostView via activity.findViewById()
-    // in React Native's view tree. Manually add the fragment's view to
-    // hostView if needed.
     frag.view?.let { fragView ->
       fragView.alpha = if (viewportPresentationFrozen) 0f else 1f
-      if (fragView.parent !== hostView) {
-        (fragView.parent as? ViewGroup)?.removeView(fragView)
-        hostView.addView(
-          fragView,
-          FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.MATCH_PARENT
-          )
-        )
-      } else {
-        fragView.layoutParams = FrameLayout.LayoutParams(
-          FrameLayout.LayoutParams.MATCH_PARENT,
-          FrameLayout.LayoutParams.MATCH_PARENT
-        )
-      }
+      fragView.layoutParams = FrameLayout.LayoutParams(
+        FrameLayout.LayoutParams.MATCH_PARENT,
+        FrameLayout.LayoutParams.MATCH_PARENT
+      )
     } ?: Log.w(TAG, "addFragment: fragment view is null after commitNow!")
 
     // Apply the reader background color now that the fragment (and its child
