@@ -8,6 +8,7 @@ import ReadiumShared
 protocol ReaderModuleAPI {
   var delegate: ReaderModuleDelegate? { get }
 
+  @MainActor
   func getViewController(
     for publication: Publication,
     bookId: String,
@@ -15,7 +16,7 @@ protocol ReaderModuleAPI {
     preferences: PreferencesRecord?,
     selectionActions: [SelectionActionData]?,
     fontFamilyDeclarations: [AnyHTMLFontFamilyDeclaration]
-  ) -> ReaderViewController?
+  ) async -> ReaderViewController?
 }
 
 protocol ReaderModuleDelegate: ModuleDelegate {}
@@ -38,6 +39,7 @@ final class ReaderModule: ReaderModuleAPI {
     ]
   }
 
+  @MainActor
   func getViewController(
     for publication: Publication,
     bookId: String,
@@ -45,7 +47,7 @@ final class ReaderModule: ReaderModuleAPI {
     preferences: PreferencesRecord?,
     selectionActions: [SelectionActionData]?,
     fontFamilyDeclarations: [AnyHTMLFontFamilyDeclaration]
-  ) -> ReaderViewController? {
+  ) async -> ReaderViewController? {
     guard let module = self.formatModules.first(
       where:{ $0.supports(publication) }
     ) else {
@@ -56,7 +58,7 @@ final class ReaderModule: ReaderModuleAPI {
     do {
       return try module.makeReaderViewController(
         for: publication,
-        locator: locator,
+        locator: await initialLocation(locator, in: publication),
         bookId: bookId,
         preferences: preferences,
         selectionActions: selectionActions,
@@ -67,6 +69,32 @@ final class ReaderModule: ReaderModuleAPI {
       print(error)
       return nil
     }
+  }
+
+  private func initialLocation(
+    _ stored: ReadiumShared.Locator?,
+    in publication: Publication
+  ) async -> ReadiumShared.Locator? {
+    guard let stored else { return nil }
+    let href = stored.href.removingFragment().string
+    if let link = publication.readingOrder.first(where: {
+      let nativeHref = $0.url().removingFragment().string
+      return href == nativeHref || href.hasSuffix("/" + nativeHref)
+        || nativeHref.hasSuffix("/" + href)
+    }) {
+      // Keep precise text/DOM anchors when only the device's resource path differs.
+      return stored.copy(href: link.url().removingFragment(), locations: {
+        if let fragment = stored.href.fragment, !$0.fragments.contains(fragment) {
+          $0.fragments.append(fragment)
+        }
+      })
+    }
+    if let position = stored.locations.position,
+       let positions = try? await publication.positions().get(),
+       positions.indices.contains(position - 1) {
+      return positions[position - 1]
+    }
+    return await publication.locate(stored)
   }
 
 }

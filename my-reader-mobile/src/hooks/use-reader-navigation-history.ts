@@ -39,14 +39,16 @@ export function useReaderNavigationHistory(
     if (currentLocator) history.update(currentLocator)
   }, [currentLocator, history])
   useEffect(() => {
-    for (const candidate of [...(candidates.data ?? [])].sort(
-      (a, b) => a.recordedAt - b.recordedAt,
-    )) {
-      if (candidate.isLocal) continue
-      const locator = parseStoredLocator(candidate.locator)
-      if (locator) history.receiveRemote(candidate.operationId, locator)
-    }
-  }, [candidates.data, history])
+    if (candidates.isSuccess && candidates.isFetchedAfterMount)
+      history.setInitialRemoteOperations(
+        candidates.data.map((candidate) => candidate.operationId),
+      )
+  }, [
+    candidates.data,
+    candidates.isSuccess,
+    candidates.isFetchedAfterMount,
+    history,
+  ])
   useEffect(
     () =>
       subscribeReadingPositions((event) => {

@@ -136,12 +136,8 @@ describe("ReadiumReflowReader", () => {
     mockReadiumProps = null
   })
 
-  it("applies the publication font before restoring its saved location", () => {
+  it("keeps the initial location when publication metadata updates the font", () => {
     const saved = locator("chapter.xhtml", { progression: 0.5 })
-    const preferencesAtNavigation: Array<Preferences | undefined> = []
-    mockGoTo.mockImplementation(() => {
-      preferencesAtNavigation.push(mockReadiumProps?.preferences)
-    })
     function Reader() {
       const [language, setLanguage] = React.useState("")
       return (
@@ -160,6 +156,8 @@ describe("ReadiumReflowReader", () => {
       )
     }
     render(<Reader />)
+    const initialFile = mockReadiumProps?.file
+    expect(initialFile?.initialLocation).toEqual(saved)
     act(() => {
       mockReadiumProps?.onPublicationReady?.({
         metadata: { language: ["en"], title: "Book" },
@@ -168,17 +166,18 @@ describe("ReadiumReflowReader", () => {
         tableOfContents: [],
       } as PublicationReadyEvent)
     })
-    expect(preferencesAtNavigation).toEqual([
-      expect.objectContaining({ language: "en", fontFamily: "Seravek" }),
-    ])
-    expect(mockGoTo).toHaveBeenCalledWith(
-      saved,
+    expect(mockReadiumProps?.file).toBe(initialFile)
+    expect(mockReadiumProps?.preferences).toEqual(
       expect.objectContaining({ language: "en", fontFamily: "Seravek" }),
     )
+    expect(mockGoTo).not.toHaveBeenCalled()
   })
 
-  it("should open Android at the saved location without a restoration jump in history", () => {
-    jest.replaceProperty(Platform, "OS", "android")
+  it.each([
+    "android",
+    "ios",
+  ] as const)("should open %s at the saved location without a restoration jump in history", (platform) => {
+    jest.replaceProperty(Platform, "OS", platform)
     const positions = [
       locator("OEBPS/chapter1.xhtml", { position: 1, totalProgression: 0 }),
       locator("OEBPS/chapter2.xhtml", { position: 2, totalProgression: 0.5 }),
@@ -557,7 +556,7 @@ describe("ReadiumReflowReader", () => {
       } as PublicationReadyEvent)
     })
 
-    expect(mockGoTo).toHaveBeenCalledWith(positions[2], expect.any(Object))
+    expect(mockGoTo).not.toHaveBeenCalled()
     expect(onStateChange).toHaveBeenLastCalledWith(
       expect.objectContaining({
         currentPage: 2,

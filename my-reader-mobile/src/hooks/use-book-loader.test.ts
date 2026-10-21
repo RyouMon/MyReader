@@ -60,11 +60,27 @@ it.each([
   jest
     .mocked(listReadingPositionCandidates)
     .mockReturnValue(new Promise(() => {}))
-  const { result } = renderHook(() => useBookLoader("4", format, "library"))
+  const { result, unmount } = renderHook(() =>
+    useBookLoader("4", format, "library"),
+  )
   await waitFor(() => expect(result.current.loadState.status).toBe("ready"))
   expect(result.current.loadState).toMatchObject({
     bookId: 4,
     format,
     initialLocator: locator,
   })
+  unmount()
+  const syncedLocator = {
+    ...locator,
+    locations: { position: 8, progression: 0 },
+  }
+  jest.mocked(getReadingProgress).mockResolvedValue(syncedLocator)
+  const reopened = renderHook(() => useBookLoader("4", format, "library"))
+  await waitFor(() =>
+    expect(reopened.result.current.loadState.status).toBe("ready"),
+  )
+  expect(reopened.result.current.loadState).toMatchObject({
+    initialLocator: syncedLocator,
+  })
+  reopened.unmount()
 })

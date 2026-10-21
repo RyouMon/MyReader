@@ -69,3 +69,18 @@ describe("reader navigation history", () => {
     expect(history.move(1)).toEqual(locator(0.6))
   })
 })
+
+it("uses opening candidates only for deduplication and retains late positions while loading", () => {
+  const history = new ReaderNavigationHistory()
+  history.receiveRemote("during-open", page(30))
+  history.setInitialRemoteOperations(["already-synced", "during-open"])
+  history.update(page(80))
+  history.receiveRemote("already-synced", page(20))
+  expect(history.getSnapshot().entries).toEqual([page(80), page(30)])
+  expect(history.getSnapshot().remoteHint).toBe(true)
+  history.dismissRemoteHint()
+  history.setInitialRemoteOperations(["new"])
+  history.receiveRemote("new", page(40))
+  expect(history.getSnapshot().entries).toEqual([page(80), page(40), page(30)])
+  expect(history.getSnapshot().remoteHint).toBe(true)
+})

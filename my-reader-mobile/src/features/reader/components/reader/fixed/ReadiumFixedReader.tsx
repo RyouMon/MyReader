@@ -12,7 +12,7 @@ import {
   useMemo,
   useRef,
 } from "react"
-import { Platform, StyleSheet, View } from "react-native"
+import { StyleSheet, View } from "react-native"
 import { ReadiumView } from "@my-reader/readium"
 import type {
   Locator,
@@ -113,8 +113,6 @@ const ReadiumFixedReader = forwardRef<
   const currentLocatorRef = useRef<Locator | null>(null)
   const hasPublicationTocRef = useRef(false)
   const chapterTitleRef = useRef("")
-  const programmaticNavigationPendingRef = useRef(false)
-  const programmaticNavigationIdRef = useRef<string | undefined>(undefined)
 
   useImperativeHandle(
     ref,
@@ -125,12 +123,10 @@ const ReadiumFixedReader = forwardRef<
     [imageActions.sharePage],
   )
 
-  // Android resolves foreign locators before creating its navigator.
-  // iOS still resolves them here after publicationReady.
   const file = useMemo<ReadiumFile>(
     () => ({
       url: filePath,
-      initialLocation: Platform.OS === "android" ? initialLocator : undefined,
+      initialLocation: initialLocator,
     }),
     [filePath, initialLocator],
   )
@@ -206,16 +202,6 @@ const ReadiumFixedReader = forwardRef<
         error: null,
         locator: startLocator,
       })
-
-      // Navigate to the resolved position after the view is ready
-      if (
-        Platform.OS !== "android" &&
-        startLocator &&
-        startLocator !== event.positions[0]
-      ) {
-        programmaticNavigationPendingRef.current = true
-        readiumRef.current?.goTo(startLocator)
-      }
     },
     [
       initialLocator,
@@ -233,21 +219,13 @@ const ReadiumFixedReader = forwardRef<
       navigationId?: string,
       navigationKind?: "pageTurn" | "programmatic",
     ) => {
-      if (programmaticNavigationPendingRef.current)
-        programmaticNavigationIdRef.current = navigationId
-      if (
-        !programmaticNavigationPendingRef.current &&
-        source === "user" &&
-        navigationId &&
-        navigationId !== programmaticNavigationIdRef.current
-      ) {
+      if (source === "user" && navigationId) {
         onUserLocationChange?.(
           locator,
           navigationId,
           navigationKind ?? "pageTurn",
         )
       }
-      programmaticNavigationPendingRef.current = false
       currentLocatorRef.current = locator
 
       const positions = positionsRef.current

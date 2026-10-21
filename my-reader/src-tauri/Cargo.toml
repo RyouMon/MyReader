@@ -35,7 +35,7 @@ specta-typescript = { version = "0.0.12", features = ["serde"] }
 tauri-specta = { version = "2.0.0-rc.25", features = ["typescript"] }
 sea-orm.workspace = true
 sea-orm-migration.workspace = true
-sqlx = { version = "0.8", default-features = false, features = ["sqlite", "runtime-tokio-rustls"] }
+sqlx = { version = "0.8", default-features = false, features = ["sqlite", "runtime-tokio"] }
 thiserror = "1"
 base64 = "0.22"
 log = "0.4"
