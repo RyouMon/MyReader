@@ -1,6 +1,6 @@
 export interface ReaderLocatorLocations {
   fragments?: string[]
-  progression: number
+  progression?: number
   position?: number
   totalProgression?: number
   cssSelector?: string

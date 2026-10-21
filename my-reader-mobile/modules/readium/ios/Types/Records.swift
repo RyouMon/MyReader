@@ -5,7 +5,7 @@ import Foundation
 
 struct LocatorLocationsRecord: Record {
   @Field var fragments: [String]? = nil
-  @Field var progression: Double = 0
+  @Field var progression: Double? = nil
   @Field var position: Double? = nil
   @Field var totalProgression: Double? = nil
   @Field var cssSelector: String? = nil

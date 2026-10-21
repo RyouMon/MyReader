@@ -145,3 +145,25 @@ func should_preserve_surrounding_text_when_reader_locator_crosses_ios_bridge() t
 
   #expect(actual.text == expected.text)
 }
+
+@Test
+func should_not_invent_a_start_progression_for_an_incoming_text_anchor() throws {
+  let record = try loadFixture().makeRecord()
+  let locations = LocatorLocationsRecord()
+  locations.cssSelector = "p:nth-of-type(2)"
+  record.locations = locations
+  let locator = try #require(locatorRecordToReadium(record))
+  #expect(locator.locations.progression == nil)
+  #expect(locator.locations.otherLocations["cssSelector"] as? String == "p:nth-of-type(2)")
+}
+
+@Test
+func should_preserve_absent_progression_when_exporting_a_text_anchor() throws {
+  var locator = try #require(locatorRecordToReadium(try loadFixture().makeRecord()))
+  locator.locations.progression = nil
+  let exported = locatorToDict(locator)
+  let locations = try #require(exported["locations"] as? [String: Any])
+  #expect(locations["progression"] == nil)
+  #expect(locations["domRange"] as? NSDictionary == locator.locations.otherLocations["domRange"] as? NSDictionary)
+  #expect((exported["text"] as? [String: Any])?["highlight"] as? String == locator.text.highlight)
+}

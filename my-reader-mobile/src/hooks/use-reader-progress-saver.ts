@@ -160,6 +160,8 @@ export function useReaderProgressSaver(
               // text anchor to a different recorded position.
               if (
                 precise &&
+                saveSeqRef.current === seq &&
+                bookContextRef.current?.key === ctx.key &&
                 isSameReaderPosition(
                   snapshotReaderPosition(locator, readerState.currentPage),
                   precise,

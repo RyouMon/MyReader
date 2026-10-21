@@ -237,7 +237,9 @@ func decorationRecordToReadium(_ rec: DecorationRecord) -> RDecoration? {
 
 func locatorToDict(_ loc: RLocator) -> [String: Any] {
   var locations = loc.locations.otherLocations.mapValues(\.any)
-  locations["progression"] = loc.locations.progression ?? 0
+  if let progression = loc.locations.progression {
+    locations["progression"] = progression
+  }
   if let position = loc.locations.position {
     locations["position"] = position
   }

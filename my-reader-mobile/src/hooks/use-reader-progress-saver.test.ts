@@ -67,7 +67,11 @@ describe("useReaderProgressSaver", () => {
   it("persists the visible text anchor so a fresh device can restore within a resource", async () => {
     const precise = {
       ...locator(3),
-      locations: { ...locator(3).locations, cssSelector: "p:nth-of-type(2)" },
+      locations: {
+        position: 3,
+        totalProgression: 0.3,
+        cssSelector: "p:nth-of-type(2)",
+      },
       text: { highlight: "Latest narration second page." },
     }
     const capture = jest.fn().mockResolvedValue(precise)
@@ -103,6 +107,35 @@ describe("useReaderProgressSaver", () => {
     expect(jest.mocked(setReadingProgress).mock.calls[0]?.[3]).toEqual(
       locator(3),
     )
+  })
+
+  it("does not attach an anchor captured while a newer page is being saved", async () => {
+    let finishCapture!: (value: Locator) => void
+    const capture = jest.fn().mockResolvedValue(locator(5))
+    capture.mockImplementationOnce(
+      () =>
+        new Promise<Locator>((resolve) => {
+          finishCapture = resolve
+        }),
+    )
+    const { result, rerender } = renderHook(
+      ({ state }: { state: ReaderState }) =>
+        useReaderProgressSaver(library.id, loadState, state, capture),
+      { initialProps: { state: readerState(1) } },
+    )
+    rerender({ state: readerState(3) })
+    let closing!: Promise<void>
+    await act(async () => {
+      closing = result.current.flush()
+    })
+    rerender({ state: readerState(5) })
+    await act(async () => {
+      finishCapture({ ...locator(3), text: { highlight: "stale anchor" } })
+      await closing
+    })
+    expect(
+      jest.mocked(setReadingProgress).mock.calls.map((call) => call[3]),
+    ).toEqual([locator(3), locator(5)])
   })
 
   it("drains a newer page queued while closing waits for an earlier save", async () => {
