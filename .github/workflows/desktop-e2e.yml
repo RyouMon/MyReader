@@ -50,6 +50,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: desktop-release-e2e
+          cache-on-failure: true
       - run: pnpm install --frozen-lockfile
       - name: Install browser engines
         run: pnpm --filter my-reader exec playwright install --with-deps chromium webkit
