@@ -43,7 +43,7 @@
       "./plugins/with-ios-toolchain",
       "./plugins/with-android-desugaring",
       "./plugins/with-android-toolchain",
-      "./plugins/with-android-debug-network-config",
+      "./plugins/with-android-network-config",
       "@kesha-antonov/react-native-background-downloader",
       "expo-router",
       [
