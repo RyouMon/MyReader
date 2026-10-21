@@ -70,7 +70,24 @@ async function start() {
     "Refusing to test a user's production data directory",
   )
   mainWindow = await browser.getWindowHandle()
-  await evaluate(() => window.__TAURI__.window.getCurrentWindow().setFocus())
+  await focusMainWindow()
+}
+
+async function focusMainWindow() {
+  await browser.switchToWindow(mainWindow)
+  await evaluate(async () => {
+    const current = window.__TAURI__.window.getCurrentWindow()
+    await current.unminimize()
+    await current.show()
+    await current.setFocus()
+  })
+  await browser.waitUntil(
+    () => evaluate(() => document.visibilityState === "visible"),
+    {
+      timeoutMsg:
+        "The native window must be visible before interacting with it",
+    },
+  )
 }
 
 async function stop() {
@@ -99,10 +116,18 @@ async function click(selector) {
   await element.click()
 }
 
+async function revealReaderChrome() {
+  const width = await evaluate(() => window.innerWidth)
+  await browser
+    .action("pointer")
+    .move({ origin: "viewport", x: Math.floor(width / 2), y: 16 })
+    .perform()
+  await browser.$('section[data-reader-chrome-visible="true"]').waitForExist()
+}
+
 async function openReader(format) {
   const book = books[format]
-  await browser.switchToWindow(mainWindow)
-  await evaluate(() => window.__TAURI__.window.getCurrentWindow().setFocus())
+  await focusMainWindow()
   await click(`[role='button'][aria-label='Open ${book.title}']`)
   const read = await browser.$(
     "button[aria-label='Start reading'], button[aria-label='Continue reading']",
@@ -125,9 +150,18 @@ async function openReader(format) {
   )
   await evaluate(async (label) => {
     const windowHandle = await window.__TAURI__.window.Window.getByLabel(label)
+    await windowHandle.unminimize()
+    await windowHandle.show()
     await windowHandle.setFocus()
   }, reader)
   await browser.switchToWindow(reader)
+  await browser.waitUntil(
+    () => evaluate(() => document.visibilityState === "visible"),
+    {
+      timeoutMsg:
+        "The native reader must be visible before interacting with it",
+    },
+  )
   await browser
     .$("section[data-reader-theme], section[data-reader-mode]")
     .waitForDisplayed({ timeout: 30000 })
@@ -139,6 +173,7 @@ async function openReader(format) {
         ),
     ),
   )
+  await revealReaderChrome()
 }
 
 async function closeReader() {
@@ -162,6 +197,9 @@ async function position(format) {
 
 async function fixedReader(format) {
   await openReader(format)
+  await browser.waitUntil(async () =>
+    (await browser.$("body").getText()).includes("1 / 3"),
+  )
   await browser.keys("ArrowRight")
   await browser.waitUntil(
     async () => (await position(format))?.locator.locations.position === 2,
@@ -221,6 +259,7 @@ const cases = [
     await browser.waitUntil(async () =>
       (await position("EPUB"))?.locator.href.includes("playback-position"),
     )
+    await revealReaderChrome()
     await click('button[title="Bookmark"]')
     await browser.waitUntil(
       async () =>
@@ -296,6 +335,33 @@ try {
     ),
   )
   if (browser) {
+    await evaluate(() => {
+      const button = document.querySelector(
+        "button[aria-label='Start reading'], button[aria-label='Continue reading']",
+      )
+      const ancestors = []
+      for (let element = button; element; element = element.parentElement) {
+        const style = getComputedStyle(element)
+        ancestors.push({
+          tag: element.tagName,
+          testId: element.getAttribute("data-testid"),
+          rect: element.getBoundingClientRect().toJSON(),
+          opacity: style.opacity,
+          visibility: style.visibility,
+          display: style.display,
+          scrollTop: element.scrollTop,
+          scrollLeft: element.scrollLeft,
+        })
+      }
+      return { visibility: document.visibilityState, ancestors }
+    })
+      .then((state) =>
+        writeFileSync(
+          join(output, "failure-layout.json"),
+          JSON.stringify(state, null, 2),
+        ),
+      )
+      .catch(console.error)
     await browser
       .saveScreenshot(join(output, "failure.png"))
       .catch(console.error)

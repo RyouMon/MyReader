@@ -208,8 +208,11 @@ jobs:
     needs: validate
     runs-on: macos-latest
     env:
-      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       EXPO_PUBLIC_SENTRY_DSN: ${{ vars.EXPO_PUBLIC_SENTRY_DSN }}
+      EAS_BUILD_PLATFORM: ios
+      ENTRY_FILE: node_modules/expo-router/entry.js
+      SENTRY_DISABLE_AUTO_UPLOAD: 'true'
+      CARGO_BUILD_JOBS: '2'
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
@@ -217,14 +220,27 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-      - uses: expo/expo-github-action@v8
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
         with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+          key: mobile-ios-release
       - run: pnpm install --frozen-lockfile
+      - name: Generate Core bindings and the native iOS project
+        run: |
+          bash my-reader-mobile/modules/my-reader-core/scripts/prepare-eas.sh
+          pnpm --filter my-reader-mobile exec expo prebuild --platform ios --no-install
+          cd my-reader-mobile/ios
+          pod install
       - name: Build standalone Release app from the release commit
-        working-directory: my-reader-mobile
-        run: eas build --platform ios --profile release-simulator --local --non-interactive --output "$RUNNER_TEMP/MyReader-iOS-simulator.tar.gz"
+        run: |
+          xcodebuild -quiet -jobs 3 \
+            -workspace my-reader-mobile/ios/MyReader.xcworkspace -scheme MyReader \
+            -configuration Release -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/myreader-release" \
+            CODE_SIGN_IDENTITY=- ONLY_ACTIVE_ARCH=YES ARCHS="$(uname -m)" build
+          tar -czf "$RUNNER_TEMP/MyReader-iOS-simulator.tar.gz" \
+            -C "$RUNNER_TEMP/myreader-release/Build/Products/Release-iphonesimulator" MyReader.app
       - uses: actions/upload-artifact@v4
         with:
           name: MyReader-iOS-simulator

@@ -22,3 +22,11 @@ TEST_RUNNER_TARGET_APP_ID="$APP_ID" xcodebuild test \
   -destination "platform=iOS Simulator,id=${IOS_SIMULATOR_UDID}" \
   -jobs 1 \
   -resultBundlePath "${RUN_ROOT}/ReaderSettings.xcresult"
+xcrun xcresulttool get test-results summary \
+  --path "${RUN_ROOT}/ReaderSettings.xcresult" --compact > "${RUN_ROOT}/summary.json"
+node --input-type=module - "${RUN_ROOT}/summary.json" "${E2E_ROOT}/../../scripts/release/junit.mjs" <<'JS'
+import { readFileSync } from "node:fs"
+import { pathToFileURL } from "node:url"
+const { assertPassingXCTest } = await import(pathToFileURL(process.argv[3]))
+assertPassingXCTest(JSON.parse(readFileSync(process.argv[2], "utf8")), 1)
+JS

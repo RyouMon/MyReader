@@ -29,7 +29,7 @@ node my-reader-mobile/e2e/scripts/run-release.mjs ios /absolute/path/MyReader.ap
 也可使用 `pnpm --filter my-reader-mobile test:e2e:android <apk> <serial>` 或
 `test:e2e:ios <app> <udid>`。相对安装包路径相对于命令工作目录，推荐绝对路径。
 脚本拒绝 Android 真机、debug APK、错误应用 ID、缺少内置 JS 的应用，以及无法在模拟器运行的 IPA。
-iOS Release simulator 构建配置来自 `eas.json` 的 `release-simulator`，继承 production 配置。
+iOS Release simulator 在 CI 通过 Expo prebuild 和 Xcode Release 构建，使用与 production 相同的入口、Core 绑定和环境配置；本地也可使用 `eas.json` 的 `release-simulator`。
 
 脚本安装指定包、创建唯一 fixture 目录、通过系统选择器导入自制 EPUB/PDF/CBZ，并启动本地
 WebDAV 和 OpenAI 兼容语音 fixture。Android 自动设置 fixture 所需的 `adb reverse`，移除

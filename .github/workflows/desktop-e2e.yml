@@ -19,7 +19,7 @@ jobs:
       matrix:
         os: [ubuntu-22.04, windows-latest, macos-latest]
     env:
-      CI: '1'
+      CI: 'true'
       CARGO_BUILD_JOBS: '2'
       CARGO_INCREMENTAL: '0'
       APPLE_SIGNING_IDENTITY: '-'
