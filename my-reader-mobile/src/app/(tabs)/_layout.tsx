@@ -1,4 +1,5 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
+import chroma from "chroma-js"
 import { NativeTabs } from "expo-router/unstable-native-tabs"
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
@@ -12,10 +13,24 @@ export default function TabsLayout() {
   const palette = useThemePalette()
   const { t } = useTranslation()
   const [libraryVisible, setLibraryVisible] = useState(false)
+  // Material also uses the indicator drawable as the ripple's alpha mask.
+  const indicatorColor = chroma
+    .mix(palette.surface, palette.primary, 0.12, "rgb")
+    .hex()
 
   return (
     <LibraryTabVisibilityContext value={libraryVisible}>
-      <NativeTabs tintColor={palette.primary} backgroundColor={palette.surface}>
+      <NativeTabs
+        tintColor={palette.primary}
+        iconColor={{ default: palette.textMuted, selected: palette.primary }}
+        labelStyle={{
+          default: { color: palette.textMuted },
+          selected: { color: palette.primary },
+        }}
+        backgroundColor={palette.surface}
+        indicatorColor={indicatorColor}
+        rippleColor={chroma(palette.primary).alpha(0.16).css()}
+      >
         <Trigger
           name="home"
           unstable_nativeProps={{ tabBarItemTestID: "tab-home" }}
