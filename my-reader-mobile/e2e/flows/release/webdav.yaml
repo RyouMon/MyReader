@@ -43,7 +43,7 @@ name: WebDAV upload, explicit download and reading persist across restart
     text: "删除下载文件|Delete Downloaded File"
     enabled: true
 - extendedWaitUntil:
-    visible: "确定要删除.*|Delete the local downloaded file.*"
+    visible: "确定要删除.*|Delete the local download for.*"
     timeout: 10000
 - tapOn: "^删除$|^Delete$"
 - tapOn: '打开《${EPUB_BOOK_TITLE}》|Open "${EPUB_BOOK_TITLE}"'
