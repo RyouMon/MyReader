@@ -26,11 +26,11 @@ tags:
 - extendedWaitUntil:
     visible:
       text: "Playback position authority"
-      below: "目录|Contents"
+      below: "目录|Contents|Table of Contents"
     timeout: 10000
 - tapOn:
     text: "Playback position authority"
-    below: "目录|Contents"
+    below: "目录|Contents|Table of Contents"
 - extendedWaitUntil:
     visible: "Playback position first page.*"
     timeout: 10000

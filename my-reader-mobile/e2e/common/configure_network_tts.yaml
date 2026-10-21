@@ -29,6 +29,7 @@ name: Configure the local speech fixture through provider settings
     id: tts-provider-voices
 - inputText: "alloy"
 - tapOn: "保存|Save"
+- waitForAnimationToEnd
 - extendedWaitUntil:
     visible: "朗读与语音|Read aloud and voices"
     timeout: 10000
@@ -36,4 +37,22 @@ name: Configure the local speech fixture through provider settings
     element: "朗读引擎.*|Narration engine.*"
     direction: UP
 - tapOn: "朗读引擎.*|Narration engine.*"
-- tapOn: "E2E Speech"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: "E2E Speech"
+          childOf:
+            containsChild:
+              text: "✓ 系统语音|✓ System voice"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: "E2E Speech"
+- waitForAnimationToEnd
+# Reopen the native menu to verify persistence before launching the reader.
+- tapOn: "朗读引擎.*|Narration engine.*"
+- assertVisible: "✓ E2E Speech"
+- tapOn: "✓ E2E Speech"

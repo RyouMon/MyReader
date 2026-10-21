@@ -20,7 +20,7 @@ name: Narration preserves its own cursor across manual page turns
 - tapOn: "目录|Contents"
 - tapOn:
     text: "Playback position authority"
-    below: "目录|Contents"
+    below: "目录|Contents|Table of Contents"
 - extendedWaitUntil:
     visible: "Playback position first page.*"
     timeout: 10000
