@@ -17,6 +17,8 @@ iOS 使用官方 `snapshotKeyHonorModalViews: false`，让 iPad 系统文件选�
 朗读引擎选项限定在原生菜单内，并重新打开菜单核对选中状态，防止误点后方供应商列表。
 Android 阅读流程使用 Maestro 官方 `androidWebViewHierarchy: devtools`，避免章节跳转后
 原生无障碍快照遗漏 WebView 正文；仍检查翻页后的可见文字与旧页消失。
+PDF/CBZ 翻页使用 1.2 秒连续滑动，给 Android `input swipe` 足够时间送达 MOVE 事件；短滑动在模拟器负载下可能只送达两次移动并触发分页回弹。
+EPUB 朗读用例使用 Readium 页面边缘点击进行手动翻页，检查目标页正文、独立播放位置和返回操作；PDF/CBZ 用例保留滑动覆盖。
 
 ```bash
 # 仓库根目录；需要 Maestro 2.11.0、Java 17、Android SDK 或 Xcode。
@@ -41,6 +43,7 @@ iOS Release simulator 在 CI 通过 Expo prebuild 和 Xcode Release 构建，使
 脚本安装指定包、创建唯一 fixture 目录、通过系统选择器导入自制 EPUB/PDF/CBZ，并启动本地
 WebDAV 和 OpenAI 兼容语音 fixture。Android 使用模拟器的宿主回环地址 `10.0.2.2`，
 iOS 使用 `127.0.0.1`；Android 同时移除 Metro 端口映射。测试只操作专用模拟器；不要向该模拟器放入个人书库或凭据。
+专用 iOS 模拟器关闭 Password AutoFill，避免系统密码管理器保存 fixture 凭据并遮挡应用；产品本身的凭据输入和安全存储保持正常运行。
 所有数据源配置通过应用 UI 完成，不预填产品数据库，不需要 OneDrive 登录或真实付费 TTS。
 
 报告默认保存到 `e2e/.artifacts/<platform>-<run-id>/`，可用 `E2E_REPORT_DIR` 指定目录。

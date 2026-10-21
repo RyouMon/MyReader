@@ -83,6 +83,19 @@ let fixtureRoot
 try {
   if (platform === "ios") {
     run("xcrun", ["simctl", "bootstatus", device, "-b"])
+    // Dedicated test devices must not save fixture credentials in iOS Passwords.
+    // This is the same simulator preference used by Appium's autoFillPasswords.
+    run("xcrun", [
+      "simctl",
+      "spawn",
+      device,
+      "defaults",
+      "write",
+      "com.apple.WebUI",
+      "AutoFillPasswords",
+      "-int",
+      "0",
+    ])
     run("xcrun", ["simctl", "install", device, artifact])
     run("xcrun", ["simctl", "launch", device, "com.apple.DocumentsApp"])
     const groups = join(

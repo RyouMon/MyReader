@@ -17,9 +17,9 @@ name: Turn a fixed-layout page and restore it after reopening
     timeout: 10000
 - waitForAnimationToEnd
 - swipe:
-    start: "85%,50%"
-    end: "15%,50%"
-    duration: 500
+    start: "90%,50%"
+    end: "10%,50%"
+    duration: 1200
 - waitForAnimationToEnd
 - extendedWaitUntil:
     visible: ".*2 / 3"
@@ -46,9 +46,9 @@ name: Turn a fixed-layout page and restore it after reopening
 - assertNotVisible:
     id: "reader-history-forward"
 - swipe:
-    start: "85%,50%"
-    end: "15%,50%"
-    duration: 500
+    start: "90%,50%"
+    end: "10%,50%"
+    duration: 1200
 - waitForAnimationToEnd
 - extendedWaitUntil:
     visible: ".*3 / 3"

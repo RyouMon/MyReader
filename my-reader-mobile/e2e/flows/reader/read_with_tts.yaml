@@ -42,10 +42,12 @@ name: Narration preserves its own cursor across manual page turns
     visible: "Latest narration second page.*"
     timeout: 10000
 - waitForAnimationToEnd
-- swipe:
-    start: "85%,50%"
-    end: "15%,50%"
-    duration: 500
+# Readium's edge tap is a manual page turn independent of Android fling velocity.
+- tapOn:
+    point: "90%,50%"
+- extendedWaitUntil:
+    visible: "User viewport third page heading.*"
+    timeout: 10000
 - waitForAnimationToEnd
 - extendedWaitUntil:
     visible: "返回播放位置|Return to narration"
