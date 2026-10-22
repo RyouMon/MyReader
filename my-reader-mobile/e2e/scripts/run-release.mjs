@@ -1,6 +1,5 @@
 import { execFileSync, spawn } from "node:child_process"
 import {
-  cpSync,
   existsSync,
   mkdirSync,
   readdirSync,
@@ -14,6 +13,7 @@ import { fileURLToPath } from "node:url"
 import { verifyJUnit } from "../../../scripts/release/junit.mjs"
 import { validateMaestroSuite } from "../../../scripts/release/maestro-suite.mjs"
 import { inspectRelease } from "./inspect-release.mjs"
+import { prepareIosFixtures } from "./prepare-ios-fixtures.mjs"
 
 const mobile = fileURLToPath(new URL("../../", import.meta.url))
 const e2e = join(mobile, "e2e")
@@ -80,6 +80,7 @@ async function ready(url, child, options = {}) {
 
 const commit = read("git", ["rev-parse", "HEAD"])
 let fixtureRoot
+let iosStorageContainer
 try {
   if (platform === "ios") {
     run("xcrun", ["simctl", "bootstatus", device, "-b"])
@@ -104,7 +105,7 @@ try {
       device,
       "data/Containers/Shared/AppGroup",
     )
-    for (let attempt = 0; attempt < 100 && !fixtureRoot; attempt++) {
+    for (let attempt = 0; attempt < 100 && !iosStorageContainer; attempt++) {
       for (const group of readdirSync(groups)) {
         const metadata = join(
           groups,
@@ -122,19 +123,14 @@ try {
             metadata,
           ]) === "group.com.apple.FileProvider.LocalStorage"
         ) {
-          fixtureRoot = join(
-            groups,
-            group,
-            "File Provider Storage/Downloads",
-            rootFolder,
-          )
+          iosStorageContainer = join(groups, group)
           break
         }
       }
-      if (!fixtureRoot) await delay(200)
+      if (!iosStorageContainer) await delay(200)
     }
-    if (!fixtureRoot) throw new Error("Files local storage did not initialize")
-    mkdirSync(join(fixtureRoot, "Fixtures"), { recursive: true })
+    if (!iosStorageContainer)
+      throw new Error("Files local storage did not initialize")
     run("xcrun", ["simctl", "terminate", device, "com.apple.DocumentsApp"])
   } else {
     run("adb", ["-s", device, "shell", "am", "force-stop", appId], {
@@ -161,14 +157,20 @@ try {
     join(e2e, "scripts/build-fixture.py"),
     join(e2e, ".artifacts/MyReader-TTS.epub"),
   ])
-  for (const source of [
+  const fixtureSources = [
     join(e2e, ".artifacts/MyReader-TTS.epub"),
     join(e2e, "fixtures/formats/MyReader-QA.pdf"),
     join(e2e, "fixtures/formats/MyReader-QA.cbz"),
-  ]) {
-    if (platform === "ios")
-      cpSync(source, join(fixtureRoot, "Fixtures", source.split("/").at(-1)))
-    else run("adb", ["-s", device, "push", source, `${fixtureRoot}/Fixtures/`])
+  ]
+  if (platform === "ios") {
+    fixtureRoot = prepareIosFixtures(
+      iosStorageContainer,
+      rootFolder,
+      fixtureSources,
+    )
+  } else {
+    for (const source of fixtureSources)
+      run("adb", ["-s", device, "push", source, `${fixtureRoot}/Fixtures/`])
   }
   const davRoot = join(output, "webdav")
   mkdirSync(join(davRoot, "Shared"), { recursive: true })

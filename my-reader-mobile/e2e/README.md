@@ -18,6 +18,7 @@ iOS 使用官方 `snapshotKeyHonorModalViews: false`，让 iPad 系统文件选�
 设置滚动使用[面板内的有界滑动](https://docs.maestro.dev/examples/recipes/custom-scrolling-for-screen-fragments)，从 `reader-settings-scroll` 实际滚动区域内开始；全屏 `scrollUntilVisible` 和固定屏幕坐标可能落在手机底部面板或 iPad 居中弹窗之外。
 控件还必须位于面板标题下方，避免 iOS 快照中已滚出面板的节点被当成可点击目标。
 单栏和双栏的首次位置恢复由 `ReaderStartLocationTests` 使用真实 WebKit 检查排版完成后文字是否在屏内，包括首次 resize 回调延迟和末尾空白栏场景。
+字体重建期间保存位置的原生回归直接验证 `ReadiumView` 返回排版事务保留的精确锚点，避免捕获已被替换或尚未加载的 Navigator。
 朗读引擎选项限定在原生菜单内，并重新打开菜单核对选中状态，防止误点后方供应商列表。
 供应商表单的 iOS 返回手势从原生导航栏的左边缘开始，兼容 iPad 内缩弹窗与 iPhone 全宽页面。
 Android 阅读流程使用 Maestro 官方 `androidWebViewHierarchy: devtools`，避免章节跳转后
@@ -48,6 +49,7 @@ iOS Release simulator 在 CI 通过 Expo prebuild 和 Xcode Release 构建，使
 脚本安装指定包、创建唯一 fixture 目录、通过系统选择器导入自制 EPUB/PDF/CBZ，并启动本地
 WebDAV 和 OpenAI 兼容语音 fixture。Android 使用模拟器的宿主回环地址 `10.0.2.2`，
 iOS 使用 `127.0.0.1`；Android 同时移除 Metro 端口映射。测试只操作专用模拟器；不要向该模拟器放入个人书库或凭据。
+iOS 夹具先在 File Provider 监视目录之外写完整，再原子移入 Downloads，避免 Files 显示无法解析 document ID 的未完成文件。
 Android 应用网络策略允许用户明确配置的 HTTP WebDAV 地址（表单默认 HTTPS），并保留系统 TLS 证书校验；Release 和 dev 使用同一策略，避免 Core 能列目录而原生下载被拦截。
 专用 iOS 模拟器关闭 Password AutoFill，避免系统密码管理器保存 fixture 凭据并遮挡应用；产品本身的凭据输入和安全存储保持正常运行。
 所有数据源配置通过应用 UI 完成，不预填产品数据库，不需要 OneDrive 登录或真实付费 TTS。
