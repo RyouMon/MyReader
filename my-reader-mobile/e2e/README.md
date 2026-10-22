@@ -21,6 +21,7 @@ iOS 使用官方 `snapshotKeyHonorModalViews: false`，让 iPad 系统文件选�
 字体重建期间保存位置的原生回归直接验证 `ReadiumView` 返回排版事务保留的精确锚点，避免捕获已被替换或尚未加载的 Navigator。
 朗读引擎选项限定在原生菜单内，并重新打开菜单核对选中状态，防止误点后方供应商列表。
 供应商表单的 iOS 返回手势从原生导航栏的左边缘开始，兼容 iPad 内缩弹窗与 iPhone 全宽页面。
+设置、语音和 WebDAV 流程通过真实标签、列表与返回按钮导航，覆盖正常用户入口，并避免深链接切换留下已退出的 SafariViewService 导致 XCTest 驱动崩溃。
 Android 阅读流程使用官方 `androidWebViewHierarchy: devtools`，检查翻页后的可见文字与旧页消失。
 原生无障碍快照会遗漏分页 WebView 的可见正文，不能可靠完成这些断言。
 发布测试固定 Android 35、Emulator 36.6.11（15507667）、3072 MB 内存和 `swangle` 软件渲染，保持本地与 CI 的测试运行时一致。

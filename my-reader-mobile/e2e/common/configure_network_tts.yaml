@@ -1,8 +1,7 @@
 appId: ${APP_ID}
 name: Configure the local speech fixture through provider settings
 ---
-- openLink: myreadermobile://settings/tts
-- runFlow: confirm_deep_link.yaml
+- runFlow: open_tts_settings.yaml
 - scrollUntilVisible:
     element: "添加 TTS 供应商|Add TTS provider"
     direction: DOWN

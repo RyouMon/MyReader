@@ -1,0 +1,15 @@
+appId: ${APP_ID}
+name: Open Settings through the native tab
+---
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: tab-settings
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: "Settings|设置"
+- waitForAnimationToEnd

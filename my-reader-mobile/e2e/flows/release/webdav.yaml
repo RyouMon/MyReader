@@ -5,9 +5,9 @@ name: WebDAV upload, explicit download and reading persist across restart
 ---
 - runFlow: ../../common/launch_and_prepare.yaml
 - runFlow: ../../common/configure_webdav.yaml
-# Leave the source browser and create a managed library on the configured source.
-- openLink: myreadermobile://settings
-- runFlow: ../../common/confirm_deep_link.yaml
+# Close the source sheet and create a library on the configured source.
+- tapOn: "关闭|Close"
+- waitForAnimationToEnd
 - runFlow: ../../common/open_add_library.yaml
 - tapOn:
     id: add-library-create
@@ -70,8 +70,8 @@ name: WebDAV upload, explicit download and reading persist across restart
 - runFlow: ../../common/close_reader.yaml
 # Flush through the real transport, then open a fresh consumer with no local
 # publication, saved locator or bookmark cache. Its first read must use sync.
-- openLink: myreadermobile://sync-status
-- runFlow: ../../common/confirm_deep_link.yaml
+- runFlow: ../../common/open_settings.yaml
+- tapOn: "同步状态：.*|Sync status:.*"
 - tapOn:
     text: "立即同步|Sync now"
     enabled: true
@@ -80,8 +80,8 @@ name: WebDAV upload, explicit download and reading persist across restart
     timeout: 60000
 - runFlow: ../../common/launch_and_prepare.yaml
 - runFlow: ../../common/configure_webdav.yaml
-- openLink: myreadermobile://settings
-- runFlow: ../../common/confirm_deep_link.yaml
+- tapOn: "关闭|Close"
+- waitForAnimationToEnd
 - runFlow: ../../common/open_add_library.yaml
 - tapOn:
     id: add-library-open

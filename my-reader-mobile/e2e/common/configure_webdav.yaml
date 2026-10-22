@@ -1,8 +1,15 @@
 appId: ${APP_ID}
 name: Register the isolated local WebDAV source
 ---
-- openLink: myreadermobile://settings/webdav/add
-- runFlow: confirm_deep_link.yaml
+- runFlow: open_settings.yaml
+- scrollUntilVisible:
+    element:
+      id: settings-webdav-row
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: settings-webdav-row
+- tapOn: "添加 WebDAV 数据源|Add WebDAV Source"
 - tapOn:
     id: webdav-server-url
 - inputText: ${WEBDAV_URL}
@@ -17,8 +24,6 @@ name: Register the isolated local WebDAV source
     notVisible:
       id: webdav-server-url
     timeout: 30000
-- openLink: myreadermobile://settings/webdav
-- runFlow: confirm_deep_link.yaml
 - runFlow:
     when:
       platform: iOS

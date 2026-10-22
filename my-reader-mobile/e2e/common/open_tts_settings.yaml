@@ -1,0 +1,14 @@
+appId: ${APP_ID}
+name: Open narration settings through the Settings list
+---
+- runFlow: open_settings.yaml
+- scrollUntilVisible:
+    element:
+      id: settings-tts-row
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: settings-tts-row
+- extendedWaitUntil:
+    visible: "朗读与语音|Read aloud and voices"
+    timeout: 10000

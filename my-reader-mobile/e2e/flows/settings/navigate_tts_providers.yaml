@@ -2,8 +2,7 @@ appId: ${APP_ID}
 name: Provider form returns through the native sheet stack
 ---
 - runFlow: ../../common/launch_and_prepare.yaml
-- openLink: myreadermobile://settings/tts
-- runFlow: ../../common/confirm_deep_link.yaml
+- runFlow: ../../common/open_tts_settings.yaml
 - scrollUntilVisible:
     element: "添加 TTS 供应商|Add TTS provider"
     direction: DOWN
