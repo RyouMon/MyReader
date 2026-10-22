@@ -315,11 +315,14 @@ extension ReaderWindowTests {
             viewport: [window.innerWidth, window.innerHeight, window.scrollX, window.scrollY],
             target: rect.toJSON(),
             first: previous.toJSON(),
-            content: [document.scrollingElement.scrollWidth, document.scrollingElement.scrollHeight]
+            content: [document.scrollingElement.scrollWidth, document.scrollingElement.scrollHeight],
+            trace: window.readerTestTrace
           };
         })()
         """)
       let geometry = try #require(try visible.get() as? [String: Any])
+      let trace = try JSONSerialization.data(withJSONObject: geometry, options: [.sortedKeys])
+      print("ReaderResumeTrace columns=\(columnCount) resized=\(resizesDuringLoad) delayed=\(delayedFirstFrame) \(String(decoding: trace, as: UTF8.self))")
       #expect(geometry["visible"] as? Bool == true, "Restored page geometry: \(geometry)")
     }
 
@@ -512,7 +515,30 @@ private final class DelayedPaginationDelegate: NSObject, EPUBNavigatorDelegate, 
     configured = true
     controller.add(self, name: "readerTestLoaded")
     controller.addUserScript(WKUserScript(source: """
-      window.addEventListener('load', () => window.webkit.messageHandlers.readerTestLoaded.postMessage({}));
+      window.readerTestTrace = [];
+      window.readerTestRecord = (event) => {
+        const target = document.querySelector('body > section > h2');
+        window.readerTestTrace.push({
+          event, time: performance.now(), width: window.innerWidth, height: window.innerHeight,
+          x: window.scrollX, content: document.scrollingElement?.scrollWidth,
+          columns: getComputedStyle(document.documentElement).columnCount,
+          virtualPage: !!document.getElementById('readium-virtual-page'),
+          target: target?.getBoundingClientRect().left
+        });
+      };
+      window.addEventListener('resize', () => window.readerTestRecord('resize'));
+      window.addEventListener('scroll', () => window.readerTestRecord('scroll'));
+      window.addEventListener('load', () => {
+        window.readerTestRecord('load');
+        const scrollToLocator = readium.scrollToLocator;
+        readium.scrollToLocator = (...args) => {
+          window.readerTestRecord('restore-before');
+          const result = scrollToLocator(...args);
+          window.readerTestRecord('restore-after');
+          return result;
+        };
+        window.webkit.messageHandlers.readerTestLoaded.postMessage({});
+      });
       """, injectionTime: .atDocumentStart, forMainFrameOnly: false))
     guard delayResize else { return }
     controller.addUserScript(WKUserScript(source: """
@@ -520,9 +546,13 @@ private final class DelayedPaginationDelegate: NSObject, EPUBNavigatorDelegate, 
       window.ResizeObserver = class extends Observer {
         constructor(callback) {
           super((entries, observer) => setTimeout(() => {
+            window.readerTestRecord('observer-before');
             callback(entries, observer);
             if (entries.some(entry => entry.target === document.body)) {
-              requestAnimationFrame(() => { window.readerTestPaginationReady = true; });
+              requestAnimationFrame(() => {
+                window.readerTestRecord('observer-frame');
+                window.readerTestPaginationReady = true;
+              });
             }
           }, 1000));
         }
