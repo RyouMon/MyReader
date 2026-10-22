@@ -1,6 +1,8 @@
 import Foundation
+import ExpoModulesCore
 import ReadiumNavigator
 import ReadiumShared
+import ReadiumZIPFoundation
 import Testing
 import UIKit
 import XCTest
@@ -167,6 +169,81 @@ extension ReaderWindowTests {
         })()
         """)
       #expect(try visible.get() as? Bool == true)
+    }
+
+    @Test
+    func capturesThePreservedBookmarkWhileFontReloadReplacesTheNavigator() async throws {
+      let fixtures = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent()
+        .deletingLastPathComponent().deletingLastPathComponent()
+        .deletingLastPathComponent().appendingPathComponent("e2e/fixtures/tts-book")
+      let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+      let contents = temporary.appendingPathComponent("contents")
+      let book = temporary.appendingPathComponent("book.epub")
+      try FileManager.default.createDirectory(at: temporary, withIntermediateDirectories: true)
+      defer { try? FileManager.default.removeItem(at: temporary) }
+      try FileManager.default.copyItem(at: fixtures, to: contents)
+      try Data("application/epub+zip".utf8).write(to: contents.appendingPathComponent("mimetype"))
+      try await FileManager.default.zipItem(at: contents, to: book, shouldKeepParent: false)
+
+      let window = try #require(UIApplication.shared.delegate?.window ?? nil)
+      let previousRoot = window.rootViewController
+      let host = UIViewController()
+      window.rootViewController = host
+      window.makeKeyAndVisible()
+      let context = AppContext()
+      let view = ReadiumView(appContext: context)
+      view.frame = window.bounds
+      host.view.addSubview(view)
+      defer {
+        view.cleanup()
+        view.removeFromSuperview()
+        window.rootViewController = previousRoot
+      }
+      let preferences = PreferencesRecord()
+      preferences.fontFamily = "serif"
+      preferences.columnCount = "1"
+      view.preferences = preferences
+      view.selectionActions = []
+      view.customSelectionMenu = false
+      view.fontFamilyDeclarations = []
+      let file = ReadiumFileRecord()
+      file.url = book.absoluteString
+      view.file = file
+      for _ in 0..<200 {
+        if let reader = host.children.first as? EPUBViewController,
+           reader.epubNavigator.viewport?.resources.isEmpty == false { break }
+        try await Task.sleep(nanoseconds: 25_000_000)
+      }
+      let reader = try #require(host.children.first as? EPUBViewController)
+      let original = try #require(await view.getBookmarkLocator())
+      let next = PreferencesRecord()
+      next.fontFamily = "sans-serif"
+      next.columnCount = "1"
+      view.preferences = next
+      // Observe the real replacement boundary, before the new navigator has
+      // loaded its spread. Saving/closing must use the anchor already captured
+      // for this transaction instead of waiting on a disposable WebView.
+      for _ in 0..<200 {
+        if reader.parent == nil { break }
+        try await Task.sleep(nanoseconds: 5_000_000)
+      }
+      try #require(reader.parent == nil)
+      let captured = XCTestExpectation(description: "Bookmark captured during font reload")
+      var bookmark: [String: Any]?
+      let capture = Task { @MainActor in
+        bookmark = await view.getBookmarkLocator()
+        captured.fulfill()
+      }
+      defer { capture.cancel() }
+      let result = await XCTWaiter.fulfillment(of: [captured], timeout: 1)
+      try #require(result == .completed)
+      let saved = try #require(bookmark)
+      #expect(saved["href"] as? String == original["href"] as? String)
+      #expect(NSDictionary(dictionary: saved["locations"] as? [String: Any] ?? [:]) ==
+        NSDictionary(dictionary: original["locations"] as? [String: Any] ?? [:]))
+      #expect(NSDictionary(dictionary: saved["text"] as? [String: Any] ?? [:]) ==
+        NSDictionary(dictionary: original["text"] as? [String: Any] ?? [:]))
     }
 
     @Test

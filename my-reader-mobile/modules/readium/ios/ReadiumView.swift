@@ -946,7 +946,12 @@ final class ReadiumView: ExpoView {
 
   @MainActor
   func getBookmarkLocator() async -> [String: Any]? {
-    await captureViewportAnchor().map { locatorToDict($0.locator) }
+    // Font changes replace the navigator. Its replacement may not have loaded
+    // (or may be replaced again); the transaction's anchor is still authoritative.
+    if let anchor = viewportAnchor {
+      return locatorToDict(anchor.locator)
+    }
+    return await captureViewportAnchor().map { locatorToDict($0.locator) }
   }
 
   @MainActor
