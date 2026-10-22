@@ -1,7 +1,7 @@
 import CloseIcon from "@expo/material-symbols/close.xml"
 import { Redirect, router } from "expo-router"
 import { useTranslation } from "react-i18next"
-import { Platform, View as NativeView } from "react-native"
+import { View as NativeView } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { AndroidHeaderIconButton } from "@/src/components/ui/android-header-icon-button"
 import {
@@ -15,14 +15,6 @@ import { ReleaseNotes } from "./release-notes"
 import { useAppUpdate } from "./use-app-update"
 
 export default function UpdateNotesScreen() {
-  return Platform.OS === "android" ? (
-    <AndroidUpdateNotesScreen />
-  ) : (
-    <Redirect href="/settings" />
-  )
-}
-
-function AndroidUpdateNotesScreen() {
   const { t } = useTranslation()
   const palette = useThemePalette()
   const insets = useSafeAreaInsets()

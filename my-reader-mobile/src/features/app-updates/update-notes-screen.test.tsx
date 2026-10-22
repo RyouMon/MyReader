@@ -1,7 +1,7 @@
 import { fireEvent, render } from "@testing-library/react-native"
 import { Redirect, router } from "expo-router"
 import { Linking, Platform } from "react-native"
-import UpdateNotesScreen from "./update-notes-screen"
+import UpdateNotesScreen from "@/src/app/update-notes"
 import { useAppUpdate } from "./use-app-update"
 
 jest.mock("@expo/material-symbols/close.xml", () => ({ uri: "close" }))
