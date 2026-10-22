@@ -10,6 +10,11 @@ name: Narration preserves its own cursor across manual page turns
     visible:
       id: reader-screen
     timeout: 30000
+# The route mounts before Readium can receive taps; wait for its content and fade.
+- extendedWaitUntil:
+    visible: "Playback position first page.*|Latest narration second page.*|User viewport third page heading.*"
+    timeout: 30000
+- waitForAnimationToEnd
 - runFlow:
     when:
       notVisible: "更多操作|More Actions|More actions"
