@@ -1,6 +1,4 @@
 appId: ${APP_ID}
-# Android WebView accessibility can omit body nodes after chapter navigation.
-androidWebViewHierarchy: devtools
 name: Local books, navigation, narration and deletion on a release app
 ---
 - runFlow: ../library/import_local_supported_formats.yaml

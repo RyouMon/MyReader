@@ -1,6 +1,4 @@
 appId: ${APP_ID}
-# Android WebView accessibility can omit body nodes after chapter navigation.
-androidWebViewHierarchy: devtools
 name: WebDAV upload, explicit download and reading persist across restart
 ---
 - runFlow: ../../common/launch_and_prepare.yaml

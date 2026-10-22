@@ -43,6 +43,8 @@ const run = (command, args, options = {}) =>
     cwd: mobile,
     stdio: "inherit",
     timeout: 20 * 60 * 1000,
+    // A wedged Maestro JVM can also block its SIGTERM shutdown hook.
+    killSignal: "SIGKILL",
     ...options,
   })
 const read = (command, args) =>
@@ -282,6 +284,29 @@ try {
       2,
     ),
   )
+} catch (error) {
+  if (platform === "android") {
+    // Maestro cannot write its own failure screenshot when its JVM is wedged.
+    for (const [name, args] of [
+      ["device.log", ["logcat", "-d", "-v", "threadtime", "-t", "5000"]],
+      ["device.png", ["exec-out", "screencap", "-p"]],
+      ["webview.txt", ["shell", "dumpsys", "webviewupdate"]],
+    ]) {
+      try {
+        writeFileSync(
+          join(output, name),
+          run("adb", ["-s", device, ...args], {
+            stdio: "pipe",
+            timeout: 15000,
+            maxBuffer: 16 * 1024 * 1024,
+          }),
+        )
+      } catch (diagnosticError) {
+        console.error(`Could not collect ${name}: ${diagnosticError.message}`)
+      }
+    }
+  }
+  throw error
 } finally {
   for (const child of children) child.kill("SIGTERM")
   if (fixtureRoot && platform === "ios")

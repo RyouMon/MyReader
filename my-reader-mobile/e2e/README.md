@@ -21,8 +21,9 @@ iOS 使用官方 `snapshotKeyHonorModalViews: false`，让 iPad 系统文件选�
 字体重建期间保存位置的原生回归直接验证 `ReadiumView` 返回排版事务保留的精确锚点，避免捕获已被替换或尚未加载的 Navigator。
 朗读引擎选项限定在原生菜单内，并重新打开菜单核对选中状态，防止误点后方供应商列表。
 供应商表单的 iOS 返回手势从原生导航栏的左边缘开始，兼容 iPad 内缩弹窗与 iPhone 全宽页面。
-Android 阅读流程使用 Maestro 官方 `androidWebViewHierarchy: devtools`，避免章节跳转后
-原生无障碍快照遗漏 WebView 正文；仍检查翻页后的可见文字与旧页消失。
+Android 阅读流程使用原生无障碍层级，检查翻页后的可见文字与旧页消失。
+`androidWebViewHierarchy: devtools` 会额外探测调试连接，在 CI 的 ADB 连接上可能持续阻塞；
+正式包测试不依赖这条调试通道。
 PDF/CBZ 翻页使用 1.2 秒连续滑动，给 Android `input swipe` 足够时间送达 MOVE 事件；短滑动在模拟器负载下可能只送达两次移动并触发分页回弹。
 EPUB 朗读用例使用 Readium 页面边缘点击进行手动翻页，检查目标页正文、独立播放位置和返回操作；PDF/CBZ 用例保留滑动覆盖。
 
@@ -57,6 +58,8 @@ Android 应用网络策略允许用户明确配置的 HTTP WebDAV 地址（表�
 报告默认保存到 `e2e/.artifacts/<platform>-<run-id>/`，可用 `E2E_REPORT_DIR` 指定目录。
 报告包含安装包摘要、提交号、工作区状态、每个 flow 的 JUnit、失败截图和日志。
 只有完整清单全部成功才写入 `passed.json`。网络朗读还检查实际合成请求。
+单个流程最多运行 20 分钟；超时强制终止 Maestro JVM，使失败日志能够上传，不依赖可能卡住的 JVM 退出钩子。
+Android 失败后额外采集系统日志、屏幕截图和 WebView 版本，即使 Maestro 本身卡死也保留诊断信息。
 
 ## 测试金字塔与旧 20 个流程的去向
 
