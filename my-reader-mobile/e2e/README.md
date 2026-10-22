@@ -23,14 +23,16 @@ iOS 使用官方 `snapshotKeyHonorModalViews: false`，让 iPad 系统文件选�
 供应商表单的 iOS 返回手势从原生导航栏的左边缘开始，兼容 iPad 内缩弹窗与 iPhone 全宽页面。
 Android 供应商表单先收起软键盘再定位 voice 输入框，并核对焦点、输入内容和保存按钮可用状态；无障碍快照可能把键盘下方的控件误判为可见。
 WebDAV 表单同样在填写密码前收起 Android 键盘并滚动到输入框，提交后必须完成真实连接校验并显示已保存的数据源。
+Android 文件选择器的设备入口限定为抽屉列表项，避免误点后方同名的目录面包屑。
 设置、语音和 WebDAV 流程通过真实标签、列表与返回按钮导航，覆盖正常用户入口，并避免深链接切换留下已退出的 SafariViewService 导致 XCTest 驱动崩溃。
-Android 阅读流程使用官方 `androidWebViewHierarchy: devtools`，检查翻页后的可见文字与旧页消失。
-原生无障碍快照会遗漏分页 WebView 的可见正文，不能可靠完成这些断言。
-Maestro 直接连接专用模拟器的 adbd 端口（控制台端口 + 1），避免经 adb-server 转发的 CDP 连接在 WebView 替换后阻塞，并牵连点击所用的 gRPC 连接。
+Android 阅读流程通过系统无障碍快照检查翻页后的可见文字与旧页消失，并保留字体切换、重新打开和冷启动断言。
+DevTools 检查在应用进程重启后曾持续超时并阻塞 Maestro 控制连接；发布套件使用原生检查路径。
+Maestro 直接连接专用模拟器的 adbd 端口（控制台端口 + 1），把驱动、安装和 fixture 操作绑定到同一设备。
 该连接入口由固定版本 CLI 的 `--host` / `--port` 提供；安装和故障诊断仍通过 `adb -s` 指定同一设备。
 发布测试固定 Android 35、Emulator 36.6.11（15507667）、3072 MB 内存和 `swangle` 软件渲染，保持本地与 CI 的测试运行时一致。
 上游记录了 [ADB / WebView 调试通道阻塞](https://github.com/mobile-dev-inc/Maestro/pull/3419)，表现为设备仍显示在线但 `adb shell` 不再响应；仅固定系统 API 仍不足以稳定运行，模拟器版本和渲染器也必须明确。
 这些测试运行时设置不改变 APK 的目标版本、签名或完整用例清单。
+iOS CI 明确使用 iOS 26.5 上的 iPhone 17 Pro 与 iPad Pro 13-inch (M5)，与本地验证设备一致，避免按设备列表顺序选中旧运行时。
 PDF/CBZ 翻页使用 1.2 秒连续滑动，给 Android `input swipe` 足够时间送达 MOVE 事件；短滑动在模拟器负载下可能只送达两次移动并触发分页回弹。
 EPUB 朗读用例使用 Readium 页面边缘点击进行手动翻页，检查目标页正文、独立播放位置和返回操作；PDF/CBZ 用例保留滑动覆盖。
 
@@ -66,7 +68,8 @@ CI 等待专用 Simulator 启动后禁用其中的 APNs daemon；模拟器无法
 报告默认保存到 `e2e/.artifacts/<platform>-<run-id>/`，可用 `E2E_REPORT_DIR` 指定目录。
 报告包含安装包摘要、提交号、工作区状态、每个 flow 的 JUnit、失败截图和日志。
 只有完整清单全部成功才写入 `passed.json`。网络朗读还检查实际合成请求。
-单个流程最多运行 20 分钟；超时强制终止 Maestro JVM，使失败日志能够上传，不依赖可能卡住的 JVM 退出钩子。
+单个流程最多运行 30 分钟，覆盖云端完整阅读流程的实际耗时；单步 UI 断言时限保持独立。
+超时强制终止 Maestro JVM，使失败日志能够上传，不依赖可能卡住的 JVM 退出钩子。
 Android 失败后额外采集系统日志、屏幕截图和 WebView 版本，即使 Maestro 本身卡死也保留诊断信息。
 
 ## 测试金字塔与旧 20 个流程的去向

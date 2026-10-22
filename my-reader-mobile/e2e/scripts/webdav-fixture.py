@@ -12,6 +12,7 @@ app = WsgiDAVApp({
 })
 server = wsgi.Server(("127.0.0.1", int(port)), app)
 try:
+    print(f"Starting WebDAV fixture on http://127.0.0.1:{port}", flush=True)
     server.start()
 finally:
     server.stop()

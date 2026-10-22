@@ -57,20 +57,28 @@ function service(command, args, env = {}) {
   return child
 }
 async function ready(url, child, options = {}) {
+  let lastFailure = "No response"
   for (let attempt = 0; attempt < 100; attempt++) {
-    if (child.exitCode !== null)
-      throw new Error(`Fixture server exited: ${child.exitCode}`)
-    try {
-      if (
-        (await fetch(url, { ...options, signal: AbortSignal.timeout(2000) })).ok
+    if (child.exitCode !== null || child.signalCode !== null)
+      throw new Error(
+        `Fixture server exited: ${child.signalCode ?? child.exitCode}`,
       )
-        return
-    } catch {
-      /* Server is still starting. */
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: AbortSignal.timeout(2000),
+      })
+      if (response.ok) return
+      lastFailure = `HTTP ${response.status}`
+      await response.body?.cancel()
+    } catch (error) {
+      lastFailure = error.cause?.code ?? error.message
     }
     await delay(100)
   }
-  throw new Error(`Fixture server did not become ready: ${url}`)
+  throw new Error(
+    `Fixture server did not become ready: ${url} (${lastFailure})`,
+  )
 }
 
 const commit = read("git", ["rev-parse", "HEAD"])
@@ -200,37 +208,45 @@ try {
   )
   for (const [index, flow] of suite.entries()) {
     const report = join(output, `maestro-${index}.xml`)
-    run("maestro", [
-      // Use the dedicated emulator's adbd socket. Routing CDP and gRPC through
-      // adb-server can leave both streams blocked after a WebView is replaced.
-      ...(platform === "android"
-        ? [
-            "--host",
-            "127.0.0.1",
-            "--port",
-            String(Number(device.slice("emulator-".length)) + 1),
-          ]
-        : []),
-      "test",
-      ...(platform === "ios" ? ["--udid", device] : []),
-      "--platform",
-      platform,
-      "--config",
-      join(e2e, "config.yaml"),
-      "--format",
-      "JUNIT",
-      "--output",
-      report,
-      "--test-output-dir",
-      output,
-      "--debug-output",
-      join(output, `debug-${index}`),
-      ...Object.entries(environment).flatMap(([key, value]) => [
-        "-e",
-        `${key}=${value}`,
-      ]),
-      join(e2e, flow),
-    ])
+    run(
+      "maestro",
+      [
+        // Bind the driver directly to the same dedicated emulator used for
+        // installation and fixture setup.
+        ...(platform === "android"
+          ? [
+              "--host",
+              "127.0.0.1",
+              "--port",
+              String(Number(device.slice("emulator-".length)) + 1),
+            ]
+          : []),
+        "test",
+        ...(platform === "ios" ? ["--udid", device] : []),
+        "--platform",
+        platform,
+        "--config",
+        join(e2e, "config.yaml"),
+        "--format",
+        "JUNIT",
+        "--output",
+        report,
+        "--test-output-dir",
+        output,
+        "--debug-output",
+        join(output, `debug-${index}`),
+        ...Object.entries(environment).flatMap(([key, value]) => [
+          "-e",
+          `${key}=${value}`,
+        ]),
+        join(e2e, flow),
+      ],
+      {
+        // The complete iPhone flow can still be progressing after 20 minutes
+        // on hosted runners. Per-command UI assertion deadlines stay bounded.
+        timeout: 30 * 60 * 1000,
+      },
+    )
     verifyJUnit(report, 1)
     if (flow.endsWith("local-reader.yaml"))
       run(

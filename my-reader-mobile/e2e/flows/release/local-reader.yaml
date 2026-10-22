@@ -1,6 +1,4 @@
 appId: ${APP_ID}
-# Paginated WebViews can omit visible body nodes from native accessibility.
-androidWebViewHierarchy: devtools
 name: Local books, navigation, narration and deletion on a release app
 ---
 - runFlow: ../library/import_local_supported_formats.yaml
