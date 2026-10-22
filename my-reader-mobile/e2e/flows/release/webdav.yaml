@@ -1,4 +1,6 @@
 appId: ${APP_ID}
+# Paginated WebViews can omit visible body nodes from native accessibility.
+androidWebViewHierarchy: devtools
 name: WebDAV upload, explicit download and reading persist across restart
 ---
 - runFlow: ../../common/launch_and_prepare.yaml

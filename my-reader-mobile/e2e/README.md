@@ -21,14 +21,15 @@ iOS 使用官方 `snapshotKeyHonorModalViews: false`，让 iPad 系统文件选�
 字体重建期间保存位置的原生回归直接验证 `ReadiumView` 返回排版事务保留的精确锚点，避免捕获已被替换或尚未加载的 Navigator。
 朗读引擎选项限定在原生菜单内，并重新打开菜单核对选中状态，防止误点后方供应商列表。
 供应商表单的 iOS 返回手势从原生导航栏的左边缘开始，兼容 iPad 内缩弹窗与 iPhone 全宽页面。
-Android 阅读流程使用原生无障碍层级，检查翻页后的可见文字与旧页消失。
-`androidWebViewHierarchy: devtools` 会额外探测调试连接，在 CI 的 ADB 连接上可能持续阻塞；
-正式包测试不依赖这条调试通道。
+Android 阅读流程使用官方 `androidWebViewHierarchy: devtools`，检查翻页后的可见文字与旧页消失。
+原生无障碍快照会遗漏分页 WebView 的可见正文，不能可靠完成这些断言。
+发布测试固定在应用支持的 Android 35：Android 36 存在上游确认的 [ADB / WebView 调试通道阻塞](https://github.com/mobile-dev-inc/Maestro/pull/3419)，
+表现为设备仍显示在线但 `adb shell` 不再响应。固定测试系统版本不改变 APK 的目标版本、签名或完整用例清单。
 PDF/CBZ 翻页使用 1.2 秒连续滑动，给 Android `input swipe` 足够时间送达 MOVE 事件；短滑动在模拟器负载下可能只送达两次移动并触发分页回弹。
 EPUB 朗读用例使用 Readium 页面边缘点击进行手动翻页，检查目标页正文、独立播放位置和返回操作；PDF/CBZ 用例保留滑动覆盖。
 
 ```bash
-# 仓库根目录；需要 Maestro 2.11.0、Java 17、Android SDK 或 Xcode。
+# 仓库根目录；需要 Maestro 2.11.0、Java 17、Android 35 模拟器或 Xcode。
 python3 -m venv .tmp/e2e-python
 .tmp/e2e-python/bin/pip install -r my-reader-mobile/e2e/requirements.txt
 export E2E_PYTHON="$PWD/.tmp/e2e-python/bin/python3"

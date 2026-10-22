@@ -54,7 +54,7 @@ jobs:
           sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           "$sdkmanager" --licenses < <(yes) > /dev/null
           for attempt in 1 2 3; do
-            if "$sdkmanager" --verbose --install emulator 'system-images;android-36;google_apis;x86_64'; then
+            if "$sdkmanager" --verbose --install emulator 'system-images;android-35;google_apis;x86_64'; then
               exit 0
             fi
             if [ "$attempt" -lt 3 ]; then sleep 10; fi
@@ -64,7 +64,9 @@ jobs:
         env:
           E2E_REPORT_DIR: ${{ github.workspace }}/reports/mobile-android
         with:
-          api-level: 36
+          # API 36 can wedge the entire ADB transport on WebView CDP connections.
+          # https://github.com/mobile-dev-inc/Maestro/pull/3419
+          api-level: 35
           target: google_apis
           arch: x86_64
           profile: pixel_2
