@@ -35,4 +35,3 @@ name: Create an isolated internal fixture library
 - tapOn:
     id: "library-collection-all"
 - assertVisible: "书库为空|Library is empty"
-
