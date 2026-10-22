@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next"
+import AppUpdateSection from "./AppUpdateSection"
 
 export default function AboutSection() {
   const { t } = useTranslation()
@@ -10,8 +11,8 @@ export default function AboutSection() {
           {t("settings.about.description")}
         </p>
       </div>
-      <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
-        {t("settings.about.version")}
+      <div className="flex-1 overflow-auto">
+        <AppUpdateSection />
       </div>
     </div>
   )

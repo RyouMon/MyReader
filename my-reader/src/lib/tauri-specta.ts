@@ -4,6 +4,11 @@ import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
 /** Commands */
 export const commands = {
+	getAppUpdate: () => typedError<AppUpdateSnapshot, ErrorKind>(__TAURI_INVOKE("get_app_update")),
+	checkAppUpdate: (manual: boolean) => typedError<AppUpdateSnapshot, ErrorKind>(__TAURI_INVOKE("check_app_update", { manual })),
+	downloadAppUpdate: () => typedError<AppUpdateSnapshot, ErrorKind>(__TAURI_INVOKE("download_app_update")),
+	setAppUpdatePreferences: (autoCheck: boolean, autoDownload: boolean) => typedError<AppUpdateSnapshot, ErrorKind>(__TAURI_INVOKE("set_app_update_preferences", { autoCheck, autoDownload })),
+	revealAppUpdate: () => typedError<null, ErrorKind>(__TAURI_INVOKE("reveal_app_update")),
 	listLibraries: () => typedError<LibraryInfo[], ErrorKind>(__TAURI_INVOKE("list_libraries")),
 	listDataSources: () => typedError<DataSourceDto[], ErrorKind>(__TAURI_INVOKE("list_data_sources")),
 	testWebdavConnection: (input: TestWebdavConnectionInput) => typedError<null, ErrorKind>(__TAURI_INVOKE("test_webdav_connection", { input })),
@@ -104,6 +109,20 @@ export const commands = {
 };
 
 /* Types */
+export type AppUpdateSnapshot = {
+	currentVersion: string,
+	autoCheck: boolean,
+	autoDownload: boolean,
+	status: string,
+	version: string | null,
+	releaseUrl: string | null,
+	notes: string | null,
+	assetName: string | null,
+	downloadedBytes: number,
+	totalBytes: number,
+	error: string | null,
+};
+
 /**  Extended book detail with format sizes and identifiers pre-loaded. */
 export type BookDetail = {
 	formatSizes: FormatSize[],

@@ -31,6 +31,7 @@ import { useDataSourceActions } from "@/src/hooks/use-data-source-actions"
 import { AppLanguageProvider } from "@/src/i18n/app-language-provider"
 import { queryClient } from "@/src/services/query/query-client"
 import { useAppStore } from "@/src/store/app-store"
+import { AppUpdateRuntime } from "@/src/features/app-updates/app-update-runtime"
 
 function RootNavigator() {
   const { colorScheme, palette } = useTheme()
@@ -141,6 +142,7 @@ function RootNavigator() {
       <ReaderOpenTransitionHost />
       <BookUploadRuntime />
       <SyncRuntime />
+      <AppUpdateRuntime />
     </>
   )
 }

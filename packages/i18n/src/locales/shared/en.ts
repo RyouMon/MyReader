@@ -1,4 +1,37 @@
 export const sharedEn = {
+  appUpdates: {
+    title: "App updates",
+    currentVersion: "Version {{version}}",
+    check: "Check for updates",
+    autoCheck: "Automatically check for updates",
+    autoCheckDetail: "Check once a day while MyReader is open.",
+    autoDownload: "Automatically download installers",
+    autoDownloadDetail:
+      "Download while MyReader is open. Installation always requires your action.",
+    download: "Download installer",
+    showInstaller: "Show installer in folder",
+    install: "Open installer",
+    manualInstall:
+      "Open the downloaded package and follow its installation steps. MyReader will not install or restart automatically.",
+    androidInstallHint:
+      "Android may ask you to allow installations from MyReader. Complete installation in the system installer.",
+    notes: "Release notes",
+    missingPackage:
+      "This release has no compatible installer for this device. Try again later.",
+    integrityFailed:
+      "The installer is incomplete or failed verification. Download it again.",
+    actionFailed:
+      "The update action failed. Check your connection or available storage, then try again.",
+    status: {
+      idle: "Ready to check for updates.",
+      checking: "Checking for updates…",
+      upToDate: "You are up to date.",
+      available: "Version {{version}} is available.",
+      downloading: "Downloading… {{progress}}%",
+      downloaded: "Version {{version}} is ready to install.",
+      error: "Could not complete the update action.",
+    },
+  },
   catalog: {
     searchPlaceholder: "Search titles, authors, tags, series…",
     searchDirectory: "Search {{kind}}",

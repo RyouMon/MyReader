@@ -1,4 +1,31 @@
 {
+  "appUpdates": {
+    "title": "App-Updates",
+    "currentVersion": "Version {{version}}",
+    "check": "Nach Updates suchen",
+    "autoCheck": "Automatisch nach Updates suchen",
+    "autoCheckDetail": "Einmal täglich prüfen, während MyReader geöffnet ist.",
+    "autoDownload": "Installationsdateien automatisch herunterladen",
+    "autoDownloadDetail": "Bei geöffnetem MyReader herunterladen. Die Installation startest du selbst.",
+    "download": "Installationsdatei herunterladen",
+    "showInstaller": "Installationsdatei im Ordner anzeigen",
+    "install": "Installationsprogramm öffnen",
+    "manualInstall": "Öffne die heruntergeladene Datei und folge den Anweisungen. MyReader installiert und startet nicht automatisch neu.",
+    "androidInstallHint": "Android fordert möglicherweise eine Erlaubnis für Installationen aus MyReader an. Schließe die Installation im Systemdialog ab.",
+    "notes": "Versionshinweise",
+    "missingPackage": "Für dieses Gerät ist keine passende Installationsdatei verfügbar. Versuche es später erneut.",
+    "integrityFailed": "Die Datei ist unvollständig oder konnte nicht verifiziert werden. Lade sie erneut herunter.",
+    "actionFailed": "Die Aktion ist fehlgeschlagen. Prüfe die Verbindung oder den freien Speicherplatz und versuche es erneut.",
+    "status": {
+      "idle": "Bereit, nach Updates zu suchen.",
+      "checking": "Suche nach Updates…",
+      "upToDate": "Du verwendest die neueste Version.",
+      "available": "Version {{version}} ist verfügbar.",
+      "downloading": "Download läuft… {{progress}}%",
+      "downloaded": "Version {{version}} ist zur Installation bereit.",
+      "error": "Die Update-Aktion konnte nicht abgeschlossen werden."
+    }
+  },
   "qwenTts": {
     "title": "Qwen",
     "add": "{{name}} hinzufügen",

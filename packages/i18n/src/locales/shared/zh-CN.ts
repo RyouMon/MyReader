@@ -1,4 +1,33 @@
 export const sharedZhCN = {
+  appUpdates: {
+    title: "应用更新",
+    currentVersion: "版本 {{version}}",
+    check: "检查更新",
+    autoCheck: "自动检查更新",
+    autoCheckDetail: "在 MyReader 运行时每天检查一次。",
+    autoDownload: "自动下载安装包",
+    autoDownloadDetail: "在 MyReader 运行时下载，安装始终由你手动完成。",
+    download: "下载安装包",
+    showInstaller: "打开安装包所在目录",
+    install: "打开安装程序",
+    manualInstall:
+      "打开下载的安装包并按提示完成安装。MyReader 不会自动安装或重启。",
+    androidInstallHint:
+      "安卓可能会要求允许 MyReader 安装未知应用，请在系统安装界面中手动完成安装。",
+    notes: "更新说明",
+    missingPackage: "此版本尚无适合当前设备的安装包，请稍后重试。",
+    integrityFailed: "安装包不完整或校验失败，请重新下载。",
+    actionFailed: "更新操作失败，请检查网络连接或可用存储空间后重试。",
+    status: {
+      idle: "可以检查更新。",
+      checking: "正在检查更新…",
+      upToDate: "当前已是最新版本。",
+      available: "发现新版本 {{version}}。",
+      downloading: "正在下载… {{progress}}%",
+      downloaded: "版本 {{version}} 已下载，可手动安装。",
+      error: "未能完成更新操作。",
+    },
+  },
   catalog: {
     searchPlaceholder: "搜索书名、作者、标签、丛书…",
     searchDirectory: "搜索{{kind}}",

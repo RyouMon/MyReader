@@ -8,6 +8,11 @@ fn export_tauri_specta_typescript_bindings() {
     tauri_specta::Builder::<tauri::Wry>::new()
         .dangerously_cast_bigints_to_number()
         .commands(tauri_specta::collect_commands![
+            my_reader_lib::commands::app_update::get_app_update::<tauri::Wry>,
+            my_reader_lib::commands::app_update::check_app_update::<tauri::Wry>,
+            my_reader_lib::commands::app_update::download_app_update::<tauri::Wry>,
+            my_reader_lib::commands::app_update::set_app_update_preferences::<tauri::Wry>,
+            my_reader_lib::commands::app_update::reveal_app_update::<tauri::Wry>,
             my_reader_lib::commands::library::list_libraries::<tauri::Wry>,
             my_reader_lib::commands::source::list_data_sources,
             my_reader_lib::commands::source::test_webdav_connection,

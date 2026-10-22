@@ -1,4 +1,31 @@
 {
+  "appUpdates": {
+    "title": "アプリの更新",
+    "currentVersion": "バージョン {{version}}",
+    "check": "更新を確認",
+    "autoCheck": "更新を自動で確認",
+    "autoCheckDetail": "MyReader の起動中に1日1回確認します。",
+    "autoDownload": "インストーラーを自動でダウンロード",
+    "autoDownloadDetail": "MyReader の起動中にダウンロードします。インストールは手動で行います。",
+    "download": "インストーラーをダウンロード",
+    "showInstaller": "保存先フォルダーを開く",
+    "install": "インストーラーを開く",
+    "manualInstall": "ダウンロードしたファイルを開き、手順に従ってインストールしてください。自動インストールや再起動は行いません。",
+    "androidInstallHint": "Android で MyReader からのインストール許可を求められる場合があります。システム画面でインストールを完了してください。",
+    "notes": "リリースノート",
+    "missingPackage": "この端末に対応するインストーラーがありません。後でもう一度お試しください。",
+    "integrityFailed": "ファイルが不完全か検証に失敗しました。もう一度ダウンロードしてください。",
+    "actionFailed": "更新操作に失敗しました。接続や空き容量を確認して再試行してください。",
+    "status": {
+      "idle": "更新を確認できます。",
+      "checking": "更新を確認中…",
+      "upToDate": "最新バージョンです。",
+      "available": "バージョン {{version}} が利用できます。",
+      "downloading": "ダウンロード中… {{progress}}%",
+      "downloaded": "バージョン {{version}} をインストールできます。",
+      "error": "更新操作を完了できませんでした。"
+    }
+  },
   "qwenTts": {
     "title": "Qwen",
     "add": "{{name}} を追加",

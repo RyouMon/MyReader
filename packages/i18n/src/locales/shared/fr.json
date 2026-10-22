@@ -1,4 +1,31 @@
 {
+  "appUpdates": {
+    "title": "Mises à jour de l’application",
+    "currentVersion": "Version {{version}}",
+    "check": "Rechercher des mises à jour",
+    "autoCheck": "Rechercher automatiquement les mises à jour",
+    "autoCheckDetail": "Vérifier une fois par jour lorsque MyReader est ouvert.",
+    "autoDownload": "Télécharger automatiquement les programmes d’installation",
+    "autoDownloadDetail": "Télécharger lorsque MyReader est ouvert. Vous choisissez quand installer.",
+    "download": "Télécharger le programme d’installation",
+    "showInstaller": "Afficher le fichier dans son dossier",
+    "install": "Ouvrir le programme d’installation",
+    "manualInstall": "Ouvrez le fichier téléchargé et suivez les instructions. MyReader ne s’installera ni ne redémarrera automatiquement.",
+    "androidInstallHint": "Android peut demander d’autoriser les installations depuis MyReader. Terminez l’installation dans l’écran système.",
+    "notes": "Notes de version",
+    "missingPackage": "Aucun programme d’installation compatible avec cet appareil. Réessayez plus tard.",
+    "integrityFailed": "Le fichier est incomplet ou sa vérification a échoué. Téléchargez-le à nouveau.",
+    "actionFailed": "L’opération a échoué. Vérifiez la connexion ou l’espace disponible, puis réessayez.",
+    "status": {
+      "idle": "Prêt à rechercher des mises à jour.",
+      "checking": "Recherche de mises à jour…",
+      "upToDate": "Vous disposez de la dernière version.",
+      "available": "La version {{version}} est disponible.",
+      "downloading": "Téléchargement… {{progress}}%",
+      "downloaded": "La version {{version}} est prête à être installée.",
+      "error": "Impossible de terminer la mise à jour."
+    }
+  },
   "qwenTts": {
     "title": "Qwen",
     "add": "Ajouter {{name}}",

@@ -1,4 +1,31 @@
 {
+  "appUpdates": {
+    "title": "Atualizações do aplicativo",
+    "currentVersion": "Versão {{version}}",
+    "check": "Verificar atualizações",
+    "autoCheck": "Verificar atualizações automaticamente",
+    "autoCheckDetail": "Verificar uma vez por dia enquanto o MyReader estiver aberto.",
+    "autoDownload": "Baixar instaladores automaticamente",
+    "autoDownloadDetail": "Baixar enquanto o MyReader estiver aberto. Você decide quando instalar.",
+    "download": "Baixar instalador",
+    "showInstaller": "Mostrar instalador na pasta",
+    "install": "Abrir instalador",
+    "manualInstall": "Abra o arquivo baixado e siga as instruções. O MyReader não instalará nem reiniciará automaticamente.",
+    "androidInstallHint": "O Android pode pedir permissão para instalar a partir do MyReader. Conclua a instalação na tela do sistema.",
+    "notes": "Notas da versão",
+    "missingPackage": "Não há instalador compatível com este dispositivo. Tente novamente mais tarde.",
+    "integrityFailed": "O instalador está incompleto ou falhou na verificação. Baixe novamente.",
+    "actionFailed": "A operação falhou. Verifique a conexão ou o espaço disponível e tente novamente.",
+    "status": {
+      "idle": "Pronto para verificar atualizações.",
+      "checking": "Verificando atualizações…",
+      "upToDate": "Você está na versão mais recente.",
+      "available": "A versão {{version}} está disponível.",
+      "downloading": "Baixando… {{progress}}%",
+      "downloaded": "A versão {{version}} está pronta para instalar.",
+      "error": "Não foi possível concluir a atualização."
+    }
+  },
   "qwenTts": {
     "title": "Qwen",
     "add": "Adicionar {{name}}",
