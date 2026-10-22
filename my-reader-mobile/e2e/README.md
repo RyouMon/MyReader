@@ -14,6 +14,8 @@ iOS 使用官方 `snapshotKeyHonorModalViews: false`，让 iPad 系统文件选�
 可访问性快照。选择器内的返回、取消操作限定在 `Browse View (Picker)`，并等待选择器关闭后
 继续操作书库，避免命中弹窗后方的同名按钮。目录项通过原生标识符和章节文字定位，
 选中后必须确认目录关闭，避免命中后方同名的 WebView 节点。iOS WebView 快照可能包含屏幕外正文，不能仅凭正文文字存在证明导航成功。
+固定分页夹具显式选择“始终单栏”，让一次翻页在不同屏幕上含义一致。
+单栏和双栏的首次位置恢复由 `ReaderStartLocationTests` 使用真实 WebKit 检查排版完成后文字是否在屏内，包括首次 resize 回调延迟和末尾空白栏场景。
 朗读引擎选项限定在原生菜单内，并重新打开菜单核对选中状态，防止误点后方供应商列表。
 Android 阅读流程使用 Maestro 官方 `androidWebViewHierarchy: devtools`，避免章节跳转后
 原生无障碍快照遗漏 WebView 正文；仍检查翻页后的可见文字与旧页消失。

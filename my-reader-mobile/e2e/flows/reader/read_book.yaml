@@ -22,6 +22,21 @@ tags:
 - tapOn:
     point: "50%,50%"
 - tapOn: ${output.selectors.reader.moreActions}
+# Keep the fixture's page turns deterministic on pads.
+# Native tests separately cover restoring anchors in a two-column spread.
+- tapOn: ${output.selectors.reader.settingsButton}
+- scrollUntilVisible:
+    element: "栏: 始终单栏.*|Columns: Always Single.*"
+    direction: DOWN
+    timeout: 10000
+- tapOn: "栏: 始终单栏.*|Columns: Always Single.*"
+- assertVisible: "栏: 始终单栏, 已选择|Columns: Always Single, Selected"
+- tapOn:
+    point: "50%,20%"
+- extendedWaitUntil:
+    notVisible: ${output.selectors.reader.settingsSheet}
+    timeout: 10000
+- tapOn: ${output.selectors.reader.moreActions}
 - tapOn: ${output.selectors.reader.tocButton}
 - extendedWaitUntil:
     visible:
@@ -70,6 +85,10 @@ tags:
 - tapOn: ${output.selectors.reader.settingsButton}
 - extendedWaitUntil:
     visible: ${output.selectors.reader.settingsSheet}
+    timeout: 10000
+- scrollUntilVisible:
+    element: "字体: 衬线.*|Font: Serif.*"
+    direction: UP
     timeout: 10000
 - tapOn: "字体: 衬线.*|Font: Serif.*"
 - assertVisible: "字体: 衬线, 已选择|Font: Serif, Selected"

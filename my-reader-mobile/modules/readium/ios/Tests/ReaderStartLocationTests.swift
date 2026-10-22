@@ -102,8 +102,8 @@ extension ReaderWindowTests {
       ))
     }
 
-    @Test(arguments: [false, true])
-    func restoresSyncedTextAnchorInFreshNavigator(delayedFirstFrame: Bool) async throws {
+    @Test(arguments: [false, true], ["1", "2"])
+    func restoresSyncedTextAnchorInFreshNavigator(delayedFirstFrame: Bool, columnCount: String) async throws {
       let fixture = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent()
         .deletingLastPathComponent().deletingLastPathComponent()
@@ -115,12 +115,16 @@ extension ReaderWindowTests {
         manifest: Manifest(metadata: Metadata(languages: ["en"]), readingOrder: [Link(href: href.string, mediaType: .xhtml)]),
         container: SingleResourceContainer(resource: DataResource(data: html), at: href)
       )
+      let selector = columnCount == "1" ? "html > body > p:nth-of-type(2)" : "html > body > section > h2"
       let stored = Locator(
         href: href, mediaType: .xhtml,
-        locations: .init(progression: 1.0 / 3, otherLocations: [
-          "cssSelector": .string("html > body > p:nth-of-type(2)"),
+        locations: .init(progression: columnCount == "1" ? 1.0 / 3 : 0.5, otherLocations: [
+          "cssSelector": .string(selector),
+          "domRange": ["start": ["cssSelector": .string(selector), "textNodeIndex": 0, "charOffset": 0]],
         ]),
-        text: .init(after: "atest narration second page, whe", highlight: "L")
+        text: columnCount == "1"
+          ? .init(after: "atest narration second page, whe", highlight: "L")
+          : .init(after: "ser viewport third page heading.", highlight: "U")
       )
       let preferences = PreferencesRecord()
       preferences.fontSize = 18.0 / 16
@@ -128,7 +132,7 @@ extension ReaderWindowTests {
       preferences.pageMargins = 0.8
       preferences.scroll = false
       preferences.publisherStyles = false
-      preferences.columnCount = "1"
+      preferences.columnCount = columnCount
       let controller = try #require(await ReaderModule(delegate: nil).getViewController(
         for: publication, bookId: "fresh-resume", locator: stored, preferences: preferences,
         selectionActions: nil, fontFamilyDeclarations: []
@@ -138,20 +142,26 @@ extension ReaderWindowTests {
       // locator path, while delaying that first pagination frame deterministically.
       let delegate = DelayedPaginationDelegate()
       if delayedFirstFrame { controller.epubNavigator.delegate = delegate }
-      let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 820, height: 1180))
+      let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 1032, height: 1376))
       window.rootViewController = controller
       window.makeKeyAndVisible()
       defer { window.isHidden = true }
+      var paginationReady = !delayedFirstFrame
       for _ in 0..<100 {
         try #require(window.isKeyWindow, "Another native test took the reader window")
-        if controller.epubNavigator.viewport?.resources.isEmpty == false { break }
+        if delayedFirstFrame,
+           case let .success(value) = await controller.epubNavigator.evaluateJavaScript("window.readerTestPaginationReady === true") {
+          paginationReady = value as? Bool == true
+        }
+        if controller.epubNavigator.viewport?.resources.isEmpty == false && paginationReady { break }
         try await Task.sleep(nanoseconds: 50_000_000)
       }
       try #require(controller.epubNavigator.viewport?.resources.isEmpty == false)
+      try #require(paginationReady)
       if delayedFirstFrame { try #require(delegate.configured) }
       let visible = await controller.epubNavigator.evaluateJavaScript("""
         (() => {
-          const rect = document.querySelector('body > p:nth-of-type(2)').getBoundingClientRect();
+          const rect = document.querySelector('\(selector)').getBoundingClientRect();
           const previous = document.querySelector('body > p:first-of-type').getBoundingClientRect();
           return rect.right > 0 && rect.left < window.innerWidth && rect.bottom > 0 && rect.top < window.innerHeight && previous.right <= 0;
         })()
@@ -262,7 +272,12 @@ private final class DelayedPaginationDelegate: NSObject, EPUBNavigatorDelegate {
       const Observer = window.ResizeObserver;
       window.ResizeObserver = class extends Observer {
         constructor(callback) {
-          super((entries, observer) => setTimeout(() => callback(entries, observer), 1000));
+          super((entries, observer) => setTimeout(() => {
+            callback(entries, observer);
+            if (entries.some(entry => entry.target === document.body)) {
+              requestAnimationFrame(() => { window.readerTestPaginationReady = true; });
+            }
+          }, 1000));
         }
       };
       """, injectionTime: .atDocumentStart, forMainFrameOnly: false))

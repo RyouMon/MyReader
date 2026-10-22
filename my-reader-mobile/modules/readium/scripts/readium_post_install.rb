@@ -19,7 +19,7 @@
 #   end
 #
 def readium_post_install(installer)
-  readium_fix_initial_pagination_width(installer.sandbox.root)
+  readium_fix_initial_pagination(installer.sandbox.root)
 
   # Rewrite the Minizip modulemap to drop submodules and mark as [extern_c] [system].
   # The modulemap path differs depending on whether use_frameworks! is active:
@@ -65,21 +65,38 @@ def readium_post_install(installer)
   end
 end
 
-# Readium 3.11.0 caches the page width in its first ResizeObserver animation
-# frame. A saved locator can be restored before that frame, so modulo zero
-# produces NaN and scrollToLocator reports success without moving the page.
-# Use the live viewport width until the pagination observer has initialized.
+# Readium 3.11.0 initializes pagination in its first ResizeObserver frame.
+# Restoring a locator before it runs can divide by zero or clamp the last
+# spread before its blank column exists. Run the same initialization on load,
+# before Readium announces that the spread can accept a saved locator.
 # Remove this patch when the pinned upstream version includes the fix.
-def readium_fix_initial_pagination_width(pods_root)
+def readium_fix_initial_pagination(pods_root)
   script = File.join(pods_root, 'ReadiumNavigator/Sources/Navigator/EPUB/Assets/Static/scripts/readium-reflowable.js')
   original = 'function I(t){const e=t+(T()?-1:1);return e-e%O}'
   fixed = 'function I(t){const e=t+(T()?-1:1);return e-e%(O||window.innerWidth)}'
   source = File.read(script)
-  return if source.include?(fixed)
+  return if source.include?(fixed) && source.include?('const initializeReadiumPagination=')
 
-  unless source.scan(original).length == 1
-    raise 'Readium pagination script changed; review the initial page-width patch before updating the dependency.'
+  unless source.include?(fixed)
+    unless source.scan(original).length == 1
+      raise 'Readium pagination script changed; review the initial page-width patch before updating the dependency.'
+    end
+    source = source.sub(original, fixed)
   end
 
-  File.write(script, source.sub(original, fixed))
+  unless source.include?('const initializeReadiumPagination=')
+    prefix = 'window.addEventListener("load",function(){var t;new ResizeObserver(()=>{t&&window.cancelAnimationFrame(t),t=window.requestAnimationFrame('
+    suffix = ')}).observe(document.body)},!1)'
+    pattern = /#{Regexp.escape(prefix)}(function\(\)\{O=window.innerWidth,.*?\})#{Regexp.escape(suffix)}/
+    unless source.scan(pattern).length == 1
+      raise 'Readium resize observer changed; review pagination initialization before updating the dependency.'
+    end
+    source = source.sub(pattern) do
+      initialize = Regexp.last_match(1)
+      'window.addEventListener("load",function(){var t;const initializeReadiumPagination=' + initialize +
+        ';initializeReadiumPagination();new ResizeObserver(()=>{t&&window.cancelAnimationFrame(t),t=window.requestAnimationFrame(initializeReadiumPagination)}).observe(document.body)},!1)'
+    end
+  end
+
+  File.write(script, source)
 end
