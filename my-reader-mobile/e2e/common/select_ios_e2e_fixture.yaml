@@ -62,6 +62,7 @@ name: Select a supported book fixture from the prepared iOS E2E folder
 - waitForAnimationToEnd
 - tapOn:
     id: "${IMPORT_FILE_NAME}, (epub|pdf|cbz)"
+    point: "50%,25%"
 - extendedWaitUntil:
     notVisible:
       id: "Browse View \\(Picker\\)"

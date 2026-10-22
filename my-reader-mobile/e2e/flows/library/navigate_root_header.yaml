@@ -7,14 +7,14 @@ name: Search autofocus and one-back navigation survive cross-tab reentry
 - inputText: "MyReader"
 - assertVisible: "作者, MyReader|Authors, MyReader"
 - tapOn: "作者, MyReader|Authors, MyReader"
-- assertVisible: "MyReader TTS E2E"
+- assertVisible: '打开《MyReader TTS E2E》|Open "MyReader TTS E2E"'
 - tapOn: "关闭|Close"
 - tapOn: "主页|首页|Home"
 - assertVisible:
     id: home-screen
 - tapOn: "搜索|Search"
 - inputText: "TTS"
-- assertVisible: "MyReader TTS E2E"
+- assertVisible: '打开《MyReader TTS E2E》|Open "MyReader TTS E2E"'
 - tapOn: "关闭|Close"
 - runFlow: ../../common/tap_header_back.yaml
 - assertVisible:

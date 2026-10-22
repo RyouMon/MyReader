@@ -20,3 +20,7 @@ name: Close the reader and return to the library
           visible: "Close reader"
           timeout: 10000
       - tapOn: "Close reader"
+- extendedWaitUntil:
+    notVisible:
+      id: reader-screen
+    timeout: 15000
