@@ -183,6 +183,17 @@ extension ReaderWindowTests {
         try await Task.sleep(nanoseconds: 25_000_000)
       }
       let reader = try #require(host.children.first as? EPUBViewController)
+      let viewportReady = XCTestExpectation(description: "Readium published its initial viewport")
+      let onViewportChange = reader.onViewportChange
+      var receivedViewport = reader.epubNavigator.viewport?.resources.isEmpty == false
+      if receivedViewport { viewportReady.fulfill() }
+      reader.onViewportChange = { viewport in
+        onViewportChange?(viewport)
+        guard !receivedViewport, viewport?.resources.isEmpty == false else { return }
+        receivedViewport = true
+        viewportReady.fulfill()
+      }
+      defer { reader.onViewportChange = onViewportChange }
       var reportedProgressions: [Double] = []
       let subscription = reader.publisher.sink { locator in
         if let progression = locator.locations.progression {
@@ -199,10 +210,8 @@ extension ReaderWindowTests {
       localized.publisherStyles = false
       localized.language = "en"
       view.preferences = localized
-      for _ in 0..<200 {
-        if reader.epubNavigator.viewport?.resources.isEmpty == false { break }
-        try await Task.sleep(nanoseconds: 25_000_000)
-      }
+      let result = await XCTWaiter.fulfillment(of: [viewportReady], timeout: 15)
+      try #require(result == .completed)
       try #require(reader.epubNavigator.viewport?.resources.isEmpty == false)
       let visible = await reader.epubNavigator.evaluateJavaScript("""
         (() => {
@@ -265,7 +274,9 @@ extension ReaderWindowTests {
       // locator path while controlling that initial layout transition.
       let delegate = DelayedPaginationDelegate()
       delegate.delayResize = delayedFirstFrame
-      if delayedFirstFrame || resizesDuringLoad { controller.epubNavigator.delegate = delegate }
+      let viewportReady = XCTestExpectation(description: "Readium published its initial viewport")
+      delegate.onViewportReady = { viewportReady.fulfill() }
+      controller.epubNavigator.delegate = delegate
       let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 1032, height: 1376))
       delegate.onLoad = { [weak window, weak controller] in
         guard resizesDuringLoad, let window, let controller else { return }
@@ -276,6 +287,8 @@ extension ReaderWindowTests {
       window.rootViewController = controller
       window.makeKeyAndVisible()
       defer { window.isHidden = true }
+      let result = await XCTWaiter.fulfillment(of: [viewportReady], timeout: 15)
+      try #require(result == .completed)
       var paginationReady = !delayedFirstFrame
       for _ in 0..<100 {
         try #require(window.isKeyWindow, "Another native test took the reader window")
@@ -288,7 +301,7 @@ extension ReaderWindowTests {
       }
       try #require(controller.epubNavigator.viewport?.resources.isEmpty == false)
       try #require(paginationReady)
-      if delayedFirstFrame || resizesDuringLoad { try #require(delegate.configured) }
+      try #require(delegate.configured)
       let visible = await controller.epubNavigator.evaluateJavaScript("""
         (() => {
           const rect = document.querySelector('\(selector)').getBoundingClientRect();
@@ -476,6 +489,13 @@ private final class DelayedPaginationDelegate: NSObject, EPUBNavigatorDelegate, 
   var configured = false
   var delayResize = true
   var onLoad: (() -> Void)?
+  var onViewportReady: (() -> Void)?
+
+  func navigator(_ navigator: any ViewportObservingNavigator, viewportDidChange viewport: NavigatorViewport?) {
+    guard viewport?.resources.isEmpty == false else { return }
+    onViewportReady?()
+    onViewportReady = nil
+  }
 
   func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
     onLoad?()
