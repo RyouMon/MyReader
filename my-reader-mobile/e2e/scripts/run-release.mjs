@@ -16,7 +16,7 @@ if (!["ios", "android"].includes(platform) || !artifactArgument || !device) {
     "Usage: node e2e/scripts/run-release.mjs ios|android <Release.app|release.apk> <device-id>",
   )
 }
-if (platform === "android" && !device.startsWith("emulator-"))
+if (platform === "android" && !/^emulator-\d+$/.test(device))
   throw new Error("Use a dedicated Android emulator for the release suite")
 const artifact = resolve(artifactArgument)
 const appId = "ryoumon.myreadermobile"
@@ -78,6 +78,8 @@ let fixtureRoot
 try {
   if (platform === "ios") {
     run("xcrun", ["simctl", "bootstatus", device, "-b"])
+    // Keep Simulator's input service attached before XCTest synthesizes touches.
+    run("open", ["-a", "Simulator", "--args", "-CurrentDeviceUDID", device])
     // Dedicated test devices must not save fixture credentials in iOS Passwords.
     // This is the same simulator preference used by Appium's autoFillPasswords.
     run("xcrun", [
@@ -201,9 +203,18 @@ try {
   for (const [index, flow] of suite.entries()) {
     const report = join(output, `maestro-${index}.xml`)
     run("maestro", [
+      // Use the dedicated emulator's adbd socket. Routing CDP and gRPC through
+      // adb-server can leave both streams blocked after a WebView is replaced.
+      ...(platform === "android"
+        ? [
+            "--host",
+            "127.0.0.1",
+            "--port",
+            String(Number(device.slice("emulator-".length)) + 1),
+          ]
+        : []),
       "test",
-      "--udid",
-      device,
+      ...(platform === "ios" ? ["--udid", device] : []),
       "--platform",
       platform,
       "--config",

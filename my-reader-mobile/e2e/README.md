@@ -24,6 +24,8 @@ iOS 使用官方 `snapshotKeyHonorModalViews: false`，让 iPad 系统文件选�
 设置、语音和 WebDAV 流程通过真实标签、列表与返回按钮导航，覆盖正常用户入口，并避免深链接切换留下已退出的 SafariViewService 导致 XCTest 驱动崩溃。
 Android 阅读流程使用官方 `androidWebViewHierarchy: devtools`，检查翻页后的可见文字与旧页消失。
 原生无障碍快照会遗漏分页 WebView 的可见正文，不能可靠完成这些断言。
+Maestro 直接连接专用模拟器的 adbd 端口（控制台端口 + 1），避免经 adb-server 转发的 CDP 连接在 WebView 替换后阻塞，并牵连点击所用的 gRPC 连接。
+该连接入口由固定版本 CLI 的 `--host` / `--port` 提供；安装和故障诊断仍通过 `adb -s` 指定同一设备。
 发布测试固定 Android 35、Emulator 36.6.11（15507667）、3072 MB 内存和 `swangle` 软件渲染，保持本地与 CI 的测试运行时一致。
 上游记录了 [ADB / WebView 调试通道阻塞](https://github.com/mobile-dev-inc/Maestro/pull/3419)，表现为设备仍显示在线但 `adb shell` 不再响应；仅固定系统 API 仍不足以稳定运行，模拟器版本和渲染器也必须明确。
 这些测试运行时设置不改变 APK 的目标版本、签名或完整用例清单。
@@ -56,6 +58,7 @@ iOS 使用 `127.0.0.1`；Android 同时移除 Metro 端口映射。测试只操�
 iOS runner 编译并安装独立的 `MyReader Fixtures` 模拟器 App，由它通过 `NSFileCoordinator` 将完整夹具写入公开共享的 Documents 目录。通过真实 Files 选择器访问“我的 iPhone/iPad → MyReader Fixtures”，测试结束卸载夹具 App；不直接修改 Files 私有存储，以免出现文件可见但 document ID 无法解析的情况。首次打开系统选择器按可见控件等待，允许冷启动服务耗时 60 秒。
 Android 应用网络策略允许用户明确配置的 HTTP WebDAV 地址（表单默认 HTTPS），并保留系统 TLS 证书校验；Release 和 dev 使用同一策略，避免 Core 能列目录而原生下载被拦截。
 专用 iOS 模拟器关闭 Password AutoFill，避免系统密码管理器保存 fixture 凭据并遮挡应用；产品本身的凭据输入和安全存储保持正常运行。
+runner 等待设备启动后打开对应 Simulator 窗口，让输入服务在 XCTest 合成第一次触摸前就绪。
 所有数据源配置通过应用 UI 完成，不预填产品数据库，不需要 OneDrive 登录或真实付费 TTS。
 
 报告默认保存到 `e2e/.artifacts/<platform>-<run-id>/`，可用 `E2E_REPORT_DIR` 指定目录。
