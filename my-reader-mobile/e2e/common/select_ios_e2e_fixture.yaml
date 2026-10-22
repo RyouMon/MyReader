@@ -4,7 +4,8 @@ name: Select a supported book fixture from the prepared iOS E2E folder
 # Required env: E2E_ROOT_FOLDER, IMPORT_FILE_NAME.
 - extendedWaitUntil:
     visible: "Cancel|取消"
-    timeout: 30000
+    # A fresh CI simulator can take over 30 seconds to start DocumentManager.
+    timeout: 60000
 - runFlow:
     when:
       notVisible:
@@ -37,7 +38,7 @@ name: Select a supported book fixture from the prepared iOS E2E folder
                 id: "DOC.sidebar.item.我的iPhone|DOC.sidebar.item.On My iPhone|DOC.sidebar.item.我的iPad|DOC.sidebar.item.On My iPad"
             - waitForAnimationToEnd
       - tapOn:
-          id: "DOC.sidebar.item.下载|DOC.sidebar.item.Downloads|下载|Downloads"
+          id: "MyReader Fixtures, Container"
       - waitForAnimationToEnd
       - scrollUntilVisible:
           element:

@@ -6,6 +6,8 @@ name: Turn a fixed-layout page and restore it after reopening
     visible:
       id: "reader-screen"
     timeout: 30000
+# The route exists before the native page finishes its opening transition.
+- waitForAnimationToEnd
 - runFlow:
     when:
       notVisible: "更多操作|More Actions|More actions"
@@ -31,6 +33,7 @@ name: Turn a fixed-layout page and restore it after reopening
     visible:
       id: "reader-screen"
     timeout: 30000
+- waitForAnimationToEnd
 - runFlow:
     when:
       notVisible: "更多操作|More Actions|More actions"

@@ -1,19 +1,12 @@
 import { execFileSync, spawn } from "node:child_process"
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs"
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { setTimeout as delay } from "node:timers/promises"
 import { fileURLToPath } from "node:url"
 import { verifyJUnit } from "../../../scripts/release/junit.mjs"
 import { validateMaestroSuite } from "../../../scripts/release/maestro-suite.mjs"
 import { inspectRelease } from "./inspect-release.mjs"
-import { prepareIosFixtures } from "./prepare-ios-fixtures.mjs"
+import { fixtureAppId, installIosFixtures } from "./install-ios-fixtures.mjs"
 
 const mobile = fileURLToPath(new URL("../../", import.meta.url))
 const e2e = join(mobile, "e2e")
@@ -82,7 +75,6 @@ async function ready(url, child, options = {}) {
 
 const commit = read("git", ["rev-parse", "HEAD"])
 let fixtureRoot
-let iosStorageContainer
 try {
   if (platform === "ios") {
     run("xcrun", ["simctl", "bootstatus", device, "-b"])
@@ -100,41 +92,17 @@ try {
       "0",
     ])
     run("xcrun", ["simctl", "install", device, artifact])
-    run("xcrun", ["simctl", "launch", device, "com.apple.DocumentsApp"])
-    const groups = join(
-      process.env.HOME,
-      "Library/Developer/CoreSimulator/Devices",
-      device,
-      "data/Containers/Shared/AppGroup",
-    )
-    for (let attempt = 0; attempt < 100 && !iosStorageContainer; attempt++) {
-      for (const group of readdirSync(groups)) {
-        const metadata = join(
-          groups,
-          group,
-          ".com.apple.mobile_container_manager.metadata.plist",
-        )
-        if (!existsSync(metadata)) continue
-        if (
-          read("plutil", [
-            "-extract",
-            "MCMMetadataIdentifier",
-            "raw",
-            "-o",
-            "-",
-            metadata,
-          ]) === "group.com.apple.FileProvider.LocalStorage"
-        ) {
-          iosStorageContainer = join(groups, group)
-          break
-        }
-      }
-      if (!iosStorageContainer) await delay(200)
-    }
-    if (!iosStorageContainer)
-      throw new Error("Files local storage did not initialize")
-    run("xcrun", ["simctl", "terminate", device, "com.apple.DocumentsApp"])
   } else {
+    // Preserve runtime diagnostics before a failed ADB connection can prevent
+    // collecting them during failure handling.
+    writeFileSync(
+      join(output, "webview.txt"),
+      read("adb", ["-s", device, "shell", "dumpsys", "webviewupdate"]),
+    )
+    writeFileSync(
+      join(output, "device-properties.txt"),
+      read("adb", ["-s", device, "shell", "getprop"]),
+    )
     run("adb", ["-s", device, "shell", "am", "force-stop", appId], {
       timeout: 30000,
     })
@@ -165,11 +133,7 @@ try {
     join(e2e, "fixtures/formats/MyReader-QA.cbz"),
   ]
   if (platform === "ios") {
-    fixtureRoot = prepareIosFixtures(
-      iosStorageContainer,
-      rootFolder,
-      fixtureSources,
-    )
+    await installIosFixtures(device, rootFolder, fixtureSources, output)
   } else {
     for (const source of fixtureSources)
       run("adb", ["-s", device, "push", source, `${fixtureRoot}/Fixtures/`])
@@ -309,8 +273,8 @@ try {
   throw error
 } finally {
   for (const child of children) child.kill("SIGTERM")
-  if (fixtureRoot && platform === "ios")
-    rmSync(fixtureRoot, { recursive: true, force: true })
+  if (platform === "ios")
+    run("xcrun", ["simctl", "uninstall", device, fixtureAppId])
   if (fixtureRoot && platform === "android") {
     try {
       run("adb", ["-s", device, "shell", "rm", "-rf", fixtureRoot], {

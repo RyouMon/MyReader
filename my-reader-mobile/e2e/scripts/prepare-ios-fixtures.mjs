@@ -9,10 +9,10 @@ import {
 import { basename, join } from "node:path"
 
 export function prepareIosFixtures(container, folder, sources) {
-  const downloads = join(container, "File Provider Storage/Downloads")
-  const destination = join(downloads, folder)
-  // Prepare complete files outside the File Provider's watched storage. In-place
-  // copies can leave Files displaying an item whose document ID cannot resolve.
+  const resources = join(container, "FixtureData")
+  const destination = join(resources, folder)
+  // Stage complete bundle resources. The fixture app publishes these through
+  // its shared Documents directory using iOS file coordination.
   const staging = mkdtempSync(join(container, ".myreader-fixtures-"))
   try {
     mkdirSync(join(staging, "Fixtures"))
@@ -22,7 +22,7 @@ export function prepareIosFixtures(container, folder, sources) {
         readFileSync(source),
       )
     }
-    mkdirSync(downloads, { recursive: true })
+    mkdirSync(resources, { recursive: true })
     renameSync(staging, destination)
     return destination
   } finally {

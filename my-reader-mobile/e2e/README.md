@@ -23,8 +23,9 @@ iOS 使用官方 `snapshotKeyHonorModalViews: false`，让 iPad 系统文件选�
 供应商表单的 iOS 返回手势从原生导航栏的左边缘开始，兼容 iPad 内缩弹窗与 iPhone 全宽页面。
 Android 阅读流程使用官方 `androidWebViewHierarchy: devtools`，检查翻页后的可见文字与旧页消失。
 原生无障碍快照会遗漏分页 WebView 的可见正文，不能可靠完成这些断言。
-发布测试固定在应用支持的 Android 35：Android 36 存在上游确认的 [ADB / WebView 调试通道阻塞](https://github.com/mobile-dev-inc/Maestro/pull/3419)，
-表现为设备仍显示在线但 `adb shell` 不再响应。固定测试系统版本不改变 APK 的目标版本、签名或完整用例清单。
+发布测试固定 Android 35、Emulator 36.6.11（15507667）、3072 MB 内存和 `swangle` 软件渲染，保持本地与 CI 的测试运行时一致。
+上游记录了 [ADB / WebView 调试通道阻塞](https://github.com/mobile-dev-inc/Maestro/pull/3419)，表现为设备仍显示在线但 `adb shell` 不再响应；仅固定系统 API 仍不足以稳定运行，模拟器版本和渲染器也必须明确。
+这些测试运行时设置不改变 APK 的目标版本、签名或完整用例清单。
 PDF/CBZ 翻页使用 1.2 秒连续滑动，给 Android `input swipe` 足够时间送达 MOVE 事件；短滑动在模拟器负载下可能只送达两次移动并触发分页回弹。
 EPUB 朗读用例使用 Readium 页面边缘点击进行手动翻页，检查目标页正文、独立播放位置和返回操作；PDF/CBZ 用例保留滑动覆盖。
 
@@ -51,7 +52,7 @@ iOS Release simulator 在 CI 通过 Expo prebuild 和 Xcode Release 构建，使
 脚本安装指定包、创建唯一 fixture 目录、通过系统选择器导入自制 EPUB/PDF/CBZ，并启动本地
 WebDAV 和 OpenAI 兼容语音 fixture。Android 使用模拟器的宿主回环地址 `10.0.2.2`，
 iOS 使用 `127.0.0.1`；Android 同时移除 Metro 端口映射。测试只操作专用模拟器；不要向该模拟器放入个人书库或凭据。
-iOS 夹具先在 File Provider 监视目录之外写完整，再原子移入 Downloads，避免 Files 显示无法解析 document ID 的未完成文件。
+iOS runner 编译并安装独立的 `MyReader Fixtures` 模拟器 App，由它通过 `NSFileCoordinator` 将完整夹具写入公开共享的 Documents 目录。通过真实 Files 选择器访问“我的 iPhone/iPad → MyReader Fixtures”，测试结束卸载夹具 App；不直接修改 Files 私有存储，以免出现文件可见但 document ID 无法解析的情况。首次打开系统选择器按可见控件等待，允许冷启动服务耗时 60 秒。
 Android 应用网络策略允许用户明确配置的 HTTP WebDAV 地址（表单默认 HTTPS），并保留系统 TLS 证书校验；Release 和 dev 使用同一策略，避免 Core 能列目录而原生下载被拦截。
 专用 iOS 模拟器关闭 Password AutoFill，避免系统密码管理器保存 fixture 凭据并遮挡应用；产品本身的凭据输入和安全存储保持正常运行。
 所有数据源配置通过应用 UI 完成，不预填产品数据库，不需要 OneDrive 登录或真实付费 TTS。

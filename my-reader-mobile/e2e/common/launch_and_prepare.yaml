@@ -4,6 +4,8 @@ name: Cold start the standalone release app
 - stopApp
 - launchApp:
     clearState: true
+    # Keep normal system permission behavior instead of blanket grants.
+    permissions: {}
 
 - extendedWaitUntil:
     visible:

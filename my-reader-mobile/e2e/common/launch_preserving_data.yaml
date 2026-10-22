@@ -4,7 +4,8 @@ name: Launch app without clearing libraries or credentials
 # Remote-library flows must preserve the configured WebDAV and OneDrive
 # credentials. Never replace this with launchApp.clearState.
 - stopApp
-- launchApp
+- launchApp:
+    permissions: {}
 - extendedWaitUntil:
     visible:
       id: "home-screen"

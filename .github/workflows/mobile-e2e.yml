@@ -70,6 +70,11 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_2
+          # Pin the host runtime as well as the guest API and match the locally
+          # verified emulator, memory and GLES renderer.
+          emulator-build: 15507667 # 36.6.11
+          ram-size: 3072M
+          emulator-options: -no-window -gpu swangle -no-snapshot -noaudio -no-boot-anim
           disable-animations: false
           script: node my-reader-mobile/e2e/scripts/run-release.mjs android candidate/*.apk emulator-5554
       - uses: actions/upload-artifact@v4
