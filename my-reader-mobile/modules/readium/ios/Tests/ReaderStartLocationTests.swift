@@ -43,6 +43,23 @@ extension ReaderWindowTests {
       ))
     }
 
+    private func waitForInitialViewport(_ reader: EPUBViewController) async throws {
+      if reader.epubNavigator.viewport?.resources.isEmpty == false { return }
+      let ready = XCTestExpectation(description: "Readium published its initial viewport")
+      let onViewportChange = reader.onViewportChange
+      var receivedViewport = false
+      reader.onViewportChange = { viewport in
+        onViewportChange?(viewport)
+        guard !receivedViewport, viewport?.resources.isEmpty == false else { return }
+        receivedViewport = true
+        ready.fulfill()
+      }
+      defer { reader.onViewportChange = onViewportChange }
+      let result = await XCTWaiter.fulfillment(of: [ready], timeout: 15)
+      try #require(result == .completed)
+      try #require(reader.epubNavigator.viewport?.resources.isEmpty == false)
+    }
+
     @Test(arguments: [
       "chapter-2.xhtml",
       "/chapter-2.xhtml",
@@ -183,17 +200,6 @@ extension ReaderWindowTests {
         try await Task.sleep(nanoseconds: 25_000_000)
       }
       let reader = try #require(host.children.first as? EPUBViewController)
-      let viewportReady = XCTestExpectation(description: "Readium published its initial viewport")
-      let onViewportChange = reader.onViewportChange
-      var receivedViewport = reader.epubNavigator.viewport?.resources.isEmpty == false
-      if receivedViewport { viewportReady.fulfill() }
-      reader.onViewportChange = { viewport in
-        onViewportChange?(viewport)
-        guard !receivedViewport, viewport?.resources.isEmpty == false else { return }
-        receivedViewport = true
-        viewportReady.fulfill()
-      }
-      defer { reader.onViewportChange = onViewportChange }
       var reportedProgressions: [Double] = []
       let subscription = reader.publisher.sink { locator in
         if let progression = locator.locations.progression {
@@ -210,9 +216,7 @@ extension ReaderWindowTests {
       localized.publisherStyles = false
       localized.language = "en"
       view.preferences = localized
-      let result = await XCTWaiter.fulfillment(of: [viewportReady], timeout: 15)
-      try #require(result == .completed)
-      try #require(reader.epubNavigator.viewport?.resources.isEmpty == false)
+      try await waitForInitialViewport(reader)
       let visible = await reader.epubNavigator.evaluateJavaScript("""
         (() => {
           const rect = document.querySelector('\(selector)').getBoundingClientRect();
@@ -359,11 +363,11 @@ extension ReaderWindowTests {
       file.url = book.absoluteString
       view.file = file
       for _ in 0..<200 {
-        if let reader = host.children.first as? EPUBViewController,
-           reader.epubNavigator.viewport?.resources.isEmpty == false { break }
+        if host.children.first is EPUBViewController { break }
         try await Task.sleep(nanoseconds: 25_000_000)
       }
       let reader = try #require(host.children.first as? EPUBViewController)
+      try await waitForInitialViewport(reader)
       let original = try #require(await view.getBookmarkLocator())
       let next = PreferencesRecord()
       next.fontFamily = "sans-serif"
