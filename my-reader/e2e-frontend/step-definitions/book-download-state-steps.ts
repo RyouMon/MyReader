@@ -204,12 +204,21 @@ async function expectFileActions(page: Page, status: string) {
       (await item.count()) > 0 &&
       (await item.getAttribute("aria-haspopup")) === "menu"
     ) {
-      await item.focus()
-      await item.press("ArrowRight")
-      const format = page.getByRole("menuitem", { name: "EPUB", exact: true })
+      await item.click()
+      await expect(item).toHaveAttribute("aria-expanded", "true")
+      const submenu = page.locator(
+        `[id="${await item.getAttribute("aria-controls")}"]`,
+      )
+      const format = submenu.getByRole("menuitem", {
+        name: "EPUB",
+        exact: true,
+      })
       if (action === label) await expect(format).toBeEnabled()
       else await expect(format).toHaveCount(0)
-      await page.keyboard.press("ArrowLeft")
+      // Leaving the trigger cancels its delayed hover-open before keyboard close.
+      await submenu.getByRole("menuitem").first().hover()
+      await submenu.getByRole("menuitem").first().press("ArrowLeft")
+      await expect(item).toHaveAttribute("aria-expanded", "false")
     } else if (action === label) {
       await expect(item).toBeEnabled()
     } else {
