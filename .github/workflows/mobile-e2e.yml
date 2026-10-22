@@ -128,6 +128,8 @@ jobs:
           test "${#app_paths[@]}" -eq 1
           simulator=$(xcrun simctl list devices available --json | python3 -c 'import json,os,sys; print(next(d["udid"] for runtime,devices in json.load(sys.stdin)["devices"].items() if "iOS" in runtime for d in devices if os.environ["DEVICE_KIND"] in d["name"]))')
           xcrun simctl boot "$simulator"
+          # Attach the CI Simulator input service before XCTest's first touch.
+          open "$(xcode-select --print-path)/Applications/Simulator.app" --args -CurrentDeviceUDID "$simulator"
           node my-reader-mobile/e2e/scripts/run-release.mjs ios "${app_paths[0]}" "$simulator"
       - uses: actions/upload-artifact@v4
         if: always()

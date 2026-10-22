@@ -78,8 +78,6 @@ let fixtureRoot
 try {
   if (platform === "ios") {
     run("xcrun", ["simctl", "bootstatus", device, "-b"])
-    // Keep Simulator's input service attached before XCTest synthesizes touches.
-    run("open", ["-a", "Simulator", "--args", "-CurrentDeviceUDID", device])
     // Dedicated test devices must not save fixture credentials in iOS Passwords.
     // This is the same simulator preference used by Appium's autoFillPasswords.
     run("xcrun", [

@@ -58,7 +58,7 @@ iOS 使用 `127.0.0.1`；Android 同时移除 Metro 端口映射。测试只操�
 iOS runner 编译并安装独立的 `MyReader Fixtures` 模拟器 App，由它通过 `NSFileCoordinator` 将完整夹具写入公开共享的 Documents 目录。通过真实 Files 选择器访问“我的 iPhone/iPad → MyReader Fixtures”，测试结束卸载夹具 App；不直接修改 Files 私有存储，以免出现文件可见但 document ID 无法解析的情况。首次打开系统选择器按可见控件等待，允许冷启动服务耗时 60 秒。
 Android 应用网络策略允许用户明确配置的 HTTP WebDAV 地址（表单默认 HTTPS），并保留系统 TLS 证书校验；Release 和 dev 使用同一策略，避免 Core 能列目录而原生下载被拦截。
 专用 iOS 模拟器关闭 Password AutoFill，避免系统密码管理器保存 fixture 凭据并遮挡应用；产品本身的凭据输入和安全存储保持正常运行。
-runner 等待设备启动后打开对应 Simulator 窗口，让输入服务在 XCTest 合成第一次触摸前就绪。
+CI 打开当前 Xcode 中对应的 Simulator 窗口，让输入服务在 XCTest 合成第一次触摸前就绪；runner 继续通过 `bootstatus` 等待设备启动完成。
 所有数据源配置通过应用 UI 完成，不预填产品数据库，不需要 OneDrive 登录或真实付费 TTS。
 
 报告默认保存到 `e2e/.artifacts/<platform>-<run-id>/`，可用 `E2E_REPORT_DIR` 指定目录。
