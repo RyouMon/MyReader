@@ -112,18 +112,20 @@ def readium_fix_initial_location_notifications(pods_root)
 end
 
 # Readium 3.11.0 initializes pagination in its first ResizeObserver frame.
-# Restoring a locator before it runs can divide by zero or clamp the last
-# spread before its blank column exists. Run the same initialization on load,
-# before Readium announces that the spread can accept a saved locator.
+# Restoring a locator before it runs can use a stale page width or clamp the
+# last spread before its blank column exists. Use the live viewport width and
+# run initialization on load before the spread can accept a saved locator.
 # Remove this patch when the pinned upstream version includes the fix.
 def readium_fix_initial_pagination(pods_root)
   script = File.join(pods_root, 'ReadiumNavigator/Sources/Navigator/EPUB/Assets/Static/scripts/readium-reflowable.js')
   original = 'function I(t){const e=t+(T()?-1:1);return e-e%O}'
-  fixed = 'function I(t){const e=t+(T()?-1:1);return e-e%(O||window.innerWidth)}'
+  previous = 'function I(t){const e=t+(T()?-1:1);return e-e%(O||window.innerWidth)}'
+  fixed = 'function I(t){const e=t+(T()?-1:1);return e-e%window.innerWidth}'
   source = File.read(script)
   return if source.include?(fixed) && source.include?('const initializeReadiumPagination=')
 
   unless source.include?(fixed)
+    original = previous if source.include?(previous)
     unless source.scan(original).length == 1
       raise 'Readium pagination script changed; review the initial page-width patch before updating the dependency.'
     end

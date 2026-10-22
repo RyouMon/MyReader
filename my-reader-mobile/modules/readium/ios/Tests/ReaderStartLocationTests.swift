@@ -220,8 +220,13 @@ extension ReaderWindowTests {
       #expect(reportedProgressions.allSatisfy { $0 > 0 }, "Startup must not persist the first page before restoring the saved anchor: \(reportedProgressions)")
     }
 
-    @Test(arguments: [false, true], ["1", "2"])
-    func restoresSyncedTextAnchorInFreshNavigator(delayedFirstFrame: Bool, columnCount: String) async throws {
+    @Test(arguments: [false, true], [
+      ("1", false), ("2", false), ("1", true), ("2", true),
+    ])
+    func restoresSyncedTextAnchorInFreshNavigator(
+      delayedFirstFrame: Bool, layout: (columnCount: String, resizesDuringLoad: Bool)
+    ) async throws {
+      let (columnCount, resizesDuringLoad) = layout
       let fixture = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent()
         .deletingLastPathComponent().deletingLastPathComponent()
@@ -255,12 +260,19 @@ extension ReaderWindowTests {
         for: publication, bookId: "fresh-resume", locator: stored, preferences: preferences,
         selectionActions: nil, fontFamilyDeclarations: []
       ) as? EPUBViewController)
-      // WebKit can finish loading before its first animation frame when the app
-      // opens a reader during a navigation transition. Keep the real Readium
-      // locator path, while delaying that first pagination frame deterministically.
+      // Navigation can resize the reader after the document loads but before
+      // ResizeObserver updates pagination. Restore through the real Readium
+      // locator path while controlling that initial layout transition.
       let delegate = DelayedPaginationDelegate()
-      if delayedFirstFrame { controller.epubNavigator.delegate = delegate }
+      delegate.delayResize = delayedFirstFrame
+      if delayedFirstFrame || resizesDuringLoad { controller.epubNavigator.delegate = delegate }
       let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 1032, height: 1376))
+      delegate.onLoad = { [weak window, weak controller] in
+        guard resizesDuringLoad, let window, let controller else { return }
+        window.frame = CGRect(x: 0, y: 0, width: 402, height: 786)
+        controller.view.frame = window.bounds
+        controller.view.layoutIfNeeded()
+      }
       window.rootViewController = controller
       window.makeKeyAndVisible()
       defer { window.isHidden = true }
@@ -276,15 +288,22 @@ extension ReaderWindowTests {
       }
       try #require(controller.epubNavigator.viewport?.resources.isEmpty == false)
       try #require(paginationReady)
-      if delayedFirstFrame { try #require(delegate.configured) }
+      if delayedFirstFrame || resizesDuringLoad { try #require(delegate.configured) }
       let visible = await controller.epubNavigator.evaluateJavaScript("""
         (() => {
           const rect = document.querySelector('\(selector)').getBoundingClientRect();
           const previous = document.querySelector('body > p:first-of-type').getBoundingClientRect();
-          return rect.right > 0 && rect.left < window.innerWidth && rect.bottom > 0 && rect.top < window.innerHeight && previous.right <= 0;
+          return {
+            visible: rect.right > 0 && rect.left < window.innerWidth && rect.bottom > 0 && rect.top < window.innerHeight && previous.right <= 0,
+            viewport: [window.innerWidth, window.innerHeight, window.scrollX, window.scrollY],
+            target: rect.toJSON(),
+            first: previous.toJSON(),
+            content: [document.scrollingElement.scrollWidth, document.scrollingElement.scrollHeight]
+          };
         })()
         """)
-      #expect(try visible.get() as? Bool == true)
+      let geometry = try #require(try visible.get() as? [String: Any])
+      #expect(geometry["visible"] as? Bool == true, "Restored page geometry: \(geometry)")
     }
 
     @Test
@@ -453,14 +472,25 @@ extension ReaderWindowTests {
 }
 
 @MainActor
-private final class DelayedPaginationDelegate: NSObject, EPUBNavigatorDelegate {
+private final class DelayedPaginationDelegate: NSObject, EPUBNavigatorDelegate, WKScriptMessageHandler {
   var configured = false
+  var delayResize = true
+  var onLoad: (() -> Void)?
+
+  func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+    onLoad?()
+  }
   func navigator(_ navigator: Navigator, presentError error: NavigatorError) {
     Issue.record("Readium navigation failed: \(error)")
   }
 
   func navigator(_ navigator: EPUBNavigatorViewController, setupUserScripts controller: WKUserContentController) {
     configured = true
+    controller.add(self, name: "readerTestLoaded")
+    controller.addUserScript(WKUserScript(source: """
+      window.addEventListener('load', () => window.webkit.messageHandlers.readerTestLoaded.postMessage({}));
+      """, injectionTime: .atDocumentStart, forMainFrameOnly: false))
+    guard delayResize else { return }
     controller.addUserScript(WKUserScript(source: """
       const Observer = window.ResizeObserver;
       window.ResizeObserver = class extends Observer {
