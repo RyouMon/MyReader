@@ -20,14 +20,38 @@ name: Configure the local speech fixture through provider settings
 - tapOn:
     id: tts-provider-credential
 - inputText: "fixture-openai-key"
+# Android accessibility can include fields underneath the software keyboard.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
 - scrollUntilVisible:
     element:
-      id: tts-provider-voices
+      id: tts-provider-default-voice
     direction: DOWN
+    centerElement: true
 - tapOn:
     id: tts-provider-voices
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertVisible:
+          id: tts-provider-voices
+          focused: true
 - inputText: "alloy"
-- tapOn: "保存|Save"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- assertVisible:
+    id: tts-provider-voices
+    text: "alloy"
+- tapOn:
+    text: "保存|Save"
+    enabled: true
 - waitForAnimationToEnd
 - extendedWaitUntil:
     visible: "朗读与语音|Read aloud and voices"
