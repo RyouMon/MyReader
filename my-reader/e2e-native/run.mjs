@@ -181,14 +181,16 @@ async function openReader(format) {
 }
 
 async function closeReader() {
-  // Use the app's close request so pending reading progress is flushed.
-  await browser.execute(() => {
-    void window.__TAURI__.window.getCurrentWindow().close()
-  })
+  const reader = await browser.getWindowHandle()
+  await browser.switchToWindow(mainWindow)
+  // Preserve the close request and progress flush without destroying the caller.
+  await evaluate(async (label) => {
+    const windowHandle = await window.__TAURI__.window.Window.getByLabel(label)
+    await windowHandle.close()
+  }, reader)
   await browser.waitUntil(
     async () => (await browser.getWindowHandles()).length === 1,
   )
-  await browser.switchToWindow(mainWindow)
 }
 
 async function position(format) {

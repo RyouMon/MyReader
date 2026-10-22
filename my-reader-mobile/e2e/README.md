@@ -22,6 +22,7 @@ iOS 使用官方 `snapshotKeyHonorModalViews: false`，让 iPad 系统文件选�
 朗读引擎选项限定在原生菜单内，并重新打开菜单核对选中状态，防止误点后方供应商列表。
 供应商表单的 iOS 返回手势从原生导航栏的左边缘开始，兼容 iPad 内缩弹窗与 iPhone 全宽页面。
 Android 供应商表单先收起软键盘再定位 voice 输入框，并核对焦点、输入内容和保存按钮可用状态；无障碍快照可能把键盘下方的控件误判为可见。
+WebDAV 表单同样在填写密码前收起 Android 键盘并滚动到输入框，提交后必须完成真实连接校验并显示已保存的数据源。
 设置、语音和 WebDAV 流程通过真实标签、列表与返回按钮导航，覆盖正常用户入口，并避免深链接切换留下已退出的 SafariViewService 导致 XCTest 驱动崩溃。
 Android 阅读流程使用官方 `androidWebViewHierarchy: devtools`，检查翻页后的可见文字与旧页消失。
 原生无障碍快照会遗漏分页 WebView 的可见正文，不能可靠完成这些断言。

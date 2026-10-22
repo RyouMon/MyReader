@@ -16,9 +16,26 @@ name: Register the isolated local WebDAV source
 - tapOn:
     id: webdav-username
 - inputText: maestro
+- assertVisible:
+    id: webdav-username
+    text: maestro
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: webdav-password
+    direction: DOWN
 - tapOn:
     id: webdav-password
 - inputText: fixture-webdav-key
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
 - tapOn: "完成|Complete"
 - extendedWaitUntil:
     notVisible:
