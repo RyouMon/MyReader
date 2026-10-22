@@ -25,7 +25,7 @@ tags:
 # Keep the fixture's page turns deterministic on pads.
 # Native tests separately cover restoring anchors in a two-column spread.
 - tapOn: ${output.selectors.reader.settingsButton}
-# The settings sheet occupies the bottom half of phone screens.
+# Start inside the scroll viewport on both phone sheets and iPad popovers.
 - repeat:
     times: 6
     while:
@@ -34,8 +34,10 @@ tags:
         below: ${output.selectors.reader.settingsSheet}
     commands:
       - swipe:
-          start: "50%,90%"
-          end: "50%,65%"
+          from:
+            id: "reader-settings-scroll"
+            point: "50%,85%"
+          direction: UP
           duration: 600
 - tapOn:
     text: "栏: 始终单栏.*|Columns: Always Single.*"
@@ -104,8 +106,10 @@ tags:
         below: ${output.selectors.reader.settingsSheet}
     commands:
       - swipe:
-          start: "50%,65%"
-          end: "50%,90%"
+          from:
+            id: "reader-settings-scroll"
+            point: "50%,20%"
+          direction: DOWN
           duration: 600
 - tapOn:
     text: "字体: 衬线.*|Font: Serif.*"
