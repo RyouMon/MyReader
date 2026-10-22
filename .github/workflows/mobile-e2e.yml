@@ -138,7 +138,6 @@ jobs:
           xcrun simctl bootstatus "$simulator" -b
           # Simulator APNs retries flood the runner and delay touch registration.
           # This dedicated suite has no push-notification flows.
-          # https://github.com/mobile-dev-inc/Maestro/issues/3686
           xcrun simctl spawn "$simulator" launchctl disable system/com.apple.apsd
           xcrun simctl spawn "$simulator" launchctl bootout system/com.apple.apsd
           node my-reader-mobile/e2e/scripts/run-release.mjs ios "${app_paths[0]}" "$simulator"

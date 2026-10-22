@@ -22,6 +22,9 @@ name: WebDAV upload, explicit download and reading persist across restart
 - tapOn: "切换并打开|Switch and Open"
 - tapOn:
     id: library-collection-all
+# The iOS snapshot can expose the destination's controls while the native
+# push transition still moves them. Settle before resolving the tap target.
+- waitForAnimationToEnd
 - tapOn: "导入图书|Import Book"
 - runFlow:
     file: ../../common/select_e2e_fixture.yaml

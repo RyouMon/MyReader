@@ -3,21 +3,7 @@ name: Create an isolated internal fixture library
 ---
 - runFlow: launch_and_prepare.yaml
 # Scenario: create a local MyReader library in the app container.
-- runFlow:
-    when:
-      platform: iOS
-    commands:
-      - tapOn:
-          id: "tab-settings"
-      - extendedWaitUntil:
-          notVisible:
-            id: "home-screen"
-          timeout: 10000
-- runFlow:
-    when:
-      platform: Android
-    commands:
-      - tapOn: "Settings|设置"
+- runFlow: open_settings.yaml
 - runFlow: open_add_library.yaml
 - tapOn:
     id: "add-library-create"

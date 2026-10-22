@@ -7,6 +7,21 @@ name: Open Settings through the native tab
     commands:
       - tapOn:
           id: tab-settings
+      - waitForAnimationToEnd
+      # CoreSimulator can drop the first Recap touch before registering its
+      # digitizer (Maestro #3686). Re-deliver this idempotent navigation once
+      # only if Home is still present; all destination assertions still apply.
+      - runFlow:
+          when:
+            visible:
+              id: home-screen
+          commands:
+            - tapOn:
+                id: tab-settings
+      - extendedWaitUntil:
+          notVisible:
+            id: home-screen
+          timeout: 10000
 - runFlow:
     when:
       platform: Android

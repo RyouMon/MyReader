@@ -17,7 +17,7 @@ iOS 使用官方 `snapshotKeyHonorModalViews: false`，让 iPad 系统文件选�
 固定分页夹具显式选择“始终单栏”，让一次翻页在不同屏幕上含义一致。
 设置滚动使用[面板内的有界滑动](https://docs.maestro.dev/examples/recipes/custom-scrolling-for-screen-fragments)，从 `reader-settings-scroll` 实际滚动区域内开始；全屏 `scrollUntilVisible` 和固定屏幕坐标可能落在手机底部面板或 iPad 居中弹窗之外。
 控件还必须位于面板标题下方，避免 iOS 快照中已滚出面板的节点被当成可点击目标。
-单栏和双栏的首次位置恢复由 `ReaderStartLocationTests` 使用真实 WebKit 检查排版完成后文字是否在屏内，包括首次 resize 回调延迟、加载中容器尺寸变化和末尾空白栏场景。定位时使用当前视口宽度，避免首次布局尚未刷新宽度缓存时错误回到章首。
+单栏和双栏的首次位置恢复由 `ReaderStartLocationTests` 使用真实 WebKit 检查排版完成后文字是否在屏内，包括首次 resize 回调延迟、加载中容器尺寸变化和末尾空白栏场景。定位时使用正文布局视口宽度，避免首次布局尚未刷新宽度缓存或 `window.innerWidth` 在原生尺寸变化时短暂偏离正文栏宽，导致恢复后又退回前一页。测试显式保持该过渡状态直到定位结束，避免依赖竞态碰巧出现。
 原生启动回归还让 WebKit 在首次布局期间保持忙碌，验证恢复锚点前不会上报临时章首位置；Readium 3.11.0 的依赖补丁将位置通知延后到初始定位完成，避免错误位置覆盖同步记录。
 字体重建期间保存位置的原生回归直接验证 `ReadiumView` 返回排版事务保留的精确锚点，避免捕获已被替换或尚未加载的 Navigator。
 删除后冷启动的缓存回归由 `query-provider.test.tsx` 覆盖：Core 已提交删除而查询缓存尚未落盘时，恢复后必须重新读取 Core。使用 [TanStack 持久化 Provider](https://tanstack.com/query/latest/docs/framework/react/plugins/persistQueryClient) 协调恢复和首次查询，避免将旧缓存继续视为新鲜数据。
@@ -27,6 +27,11 @@ Android 供应商表单先收起软键盘再定位 voice 输入框，并核对�
 WebDAV 表单同样在填写密码前收起 Android 键盘并滚动到输入框，提交后必须完成真实连接校验并显示已保存的数据源。
 Android 文件选择器的设备入口限定为抽屉列表项，避免误点后方同名的目录面包屑。
 设置、语音和 WebDAV 流程通过真实标签、列表与返回按钮导航，覆盖正常用户入口，并避免深链接切换留下已退出的 SafariViewService 导致 XCTest 驱动崩溃。
+进入图书列表后先等待原生转场结束，再查找导入按钮；iOS 的无障碍快照可能提前包含仍在移动的目标控件。
+iOS 冷启动后的首次设置导航允许在首页仍然可见时补发一次点击，随后必须通过离开首页和目标页面断言。
+云端日志已证实 CoreSimulator 会在 Recap 触摸设备注册前丢弃按下事件（[Maestro #3686](https://github.com/mobile-dev-inc/Maestro/issues/3686)）；
+固定 CLI 的 `retryTapIfNoChange` 又会把空快照误当成界面变化（[#3685](https://github.com/mobile-dev-inc/Maestro/issues/3685)）。
+此处只补发一次幂等导航动作，不重启应用、不重跑流程，也不忽略后续断言。
 Android 阅读流程通过系统无障碍快照检查翻页后的可见文字与旧页消失，并保留字体切换、重新打开和冷启动断言。
 DevTools 检查在应用进程重启后曾持续超时并阻塞 Maestro 控制连接；发布套件使用原生检查路径。
 Maestro 直接连接专用模拟器的 adbd 端口（控制台端口 + 1），把驱动、安装和 fixture 操作绑定到同一设备。
@@ -65,7 +70,7 @@ iOS 使用 `127.0.0.1`；Android 同时移除 Metro 端口映射。测试只操�
 iOS runner 编译并安装独立的 `MyReader Fixtures` 模拟器 App，由它通过 `NSFileCoordinator` 对每个夹具文件分别进行原子写入，发布到公开共享的 Documents 目录。整目录复制不会协调其中每个文档的写入，曾导致 Files 显示文件却无法解析 document ID。通过真实 Files 选择器访问“我的 iPhone/iPad → MyReader Fixtures”，测试结束卸载夹具 App；不直接修改 Files 私有存储。首次打开系统选择器按可见控件等待，允许冷启动服务耗时 60 秒。
 Android 应用网络策略允许用户明确配置的 HTTP WebDAV 地址（表单默认 HTTPS），并保留系统 TLS 证书校验；Release 和 dev 使用同一策略，避免 Core 能列目录而原生下载被拦截。
 专用 iOS 模拟器关闭 Password AutoFill，避免系统密码管理器保存 fixture 凭据并遮挡应用；产品本身的凭据输入和安全存储保持正常运行。
-CI 等待专用 Simulator 启动后禁用其中的 APNs daemon；模拟器无法取得推送证书时的高频重试会拖慢输入服务，导致 XCTest 触摸被取消（[上游问题](https://github.com/mobile-dev-inc/Maestro/issues/3686)）。本套件不包含推送通知流程，此设置不修改应用或宿主机服务，也不重试失败的用例。
+CI 等待专用 Simulator 启动后禁用其中的 APNs daemon，减少模拟器无法取得推送证书时的高频重试。本套件不包含推送通知流程，此设置不修改应用或宿主机服务；它不能消除上述 Recap 注册竞态。
 所有数据源配置通过应用 UI 完成，不预填产品数据库，不需要 OneDrive 登录或真实付费 TTS。
 
 报告默认保存到 `e2e/.artifacts/<platform>-<run-id>/`，可用 `E2E_REPORT_DIR` 指定目录。

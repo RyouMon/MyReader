@@ -278,6 +278,7 @@ extension ReaderWindowTests {
       // locator path while controlling that initial layout transition.
       let delegate = DelayedPaginationDelegate()
       delegate.delayResize = delayedFirstFrame
+      delegate.transientViewportDuringRestore = resizesDuringLoad && delayedFirstFrame
       let viewportReady = XCTestExpectation(description: "Readium published its initial viewport")
       delegate.onViewportReady = { viewportReady.fulfill() }
       controller.epubNavigator.delegate = delegate
@@ -495,6 +496,7 @@ extension ReaderWindowTests {
 private final class DelayedPaginationDelegate: NSObject, EPUBNavigatorDelegate, WKScriptMessageHandler {
   var configured = false
   var delayResize = true
+  var transientViewportDuringRestore = false
   var onLoad: (() -> Void)?
   var onViewportReady: (() -> Void)?
 
@@ -520,6 +522,7 @@ private final class DelayedPaginationDelegate: NSObject, EPUBNavigatorDelegate, 
         const target = document.querySelector('body > section > h2');
         window.readerTestTrace.push({
           event, time: performance.now(), width: window.innerWidth, height: window.innerHeight,
+          layoutWidth: document.documentElement.clientWidth,
           x: window.scrollX, content: document.scrollingElement?.scrollWidth,
           columns: getComputedStyle(document.documentElement).columnCount,
           virtualPage: !!document.getElementById('readium-virtual-page'),
@@ -532,10 +535,22 @@ private final class DelayedPaginationDelegate: NSObject, EPUBNavigatorDelegate, 
         window.readerTestRecord('load');
         const scrollToLocator = readium.scrollToLocator;
         readium.scrollToLocator = (...args) => {
-          window.readerTestRecord('restore-before');
-          const result = scrollToLocator(...args);
-          window.readerTestRecord('restore-after');
-          return result;
+          // Native resize traces contain an intermediate window width while
+          // CSS already uses the final layout width. Hold that state through
+          // restoration so the regression does not depend on frame timing.
+          const transientViewport = \(transientViewportDuringRestore ? "true" : "false");
+          const width = Object.getOwnPropertyDescriptor(window, 'innerWidth');
+          if (transientViewport) Object.defineProperty(window, 'innerWidth', {
+            configurable: true, value: Math.floor(document.documentElement.clientWidth * 0.95)
+          });
+          try {
+            window.readerTestRecord('restore-before');
+            const result = scrollToLocator(...args);
+            window.readerTestRecord('restore-after');
+            return result;
+          } finally {
+            if (transientViewport) Object.defineProperty(window, 'innerWidth', width);
+          }
         };
         window.webkit.messageHandlers.readerTestLoaded.postMessage({});
       });
