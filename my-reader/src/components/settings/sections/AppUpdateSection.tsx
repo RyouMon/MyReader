@@ -23,10 +23,7 @@ export default function AppUpdateSection() {
   const { progress, statusText, errorText } = useUpdateText(data)
 
   return (
-    <section
-      className="mx-auto w-full max-w-2xl space-y-5 p-7"
-      aria-label={t("appUpdates.title")}
-    >
+    <section className="w-full space-y-5" aria-label={t("appUpdates.title")}>
       <div>
         <h2 className="text-base font-semibold">{t("appUpdates.title")}</h2>
         {data ? (

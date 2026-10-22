@@ -11,7 +11,7 @@ export default function AboutSection() {
           {t("settings.about.description")}
         </p>
       </div>
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-y-auto px-7 py-5">
         <AppUpdateSection />
       </div>
     </div>

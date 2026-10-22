@@ -456,14 +456,14 @@ export default function SpeechSection() {
         </p>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-7 py-6">
+      <div className="flex-1 overflow-y-auto px-7 py-5">
         {error ? (
           <p className="select-text whitespace-pre-wrap break-words mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
             {error}
           </p>
         ) : null}
         {config ? (
-          <section className="max-w-3xl">
+          <section>
             <SectionHeader
               title={t("settings.speech.previewTitle")}
               description={t("settings.speech.previewDescription")}
@@ -505,7 +505,7 @@ export default function SpeechSection() {
           />
         ) : null}
 
-        <section className="mt-8 max-w-3xl border-t border-border pt-6">
+        <section className="mt-8 border-t border-border pt-6">
           <SectionHeader
             title={t("settings.speech.managedEnginesTitle")}
             description={t("settings.speech.managedEnginesDescription")}
@@ -516,7 +516,7 @@ export default function SpeechSection() {
         </section>
 
         {config ? (
-          <section className="mt-8 max-w-3xl border-t border-border pt-6">
+          <section className="mt-8 border-t border-border pt-6">
             <SectionHeader
               title={t("settings.speech.playbackTitle")}
               description={t("settings.speech.playbackDescription")}
@@ -1362,7 +1362,7 @@ function DefaultEngineSettings({
 }) {
   const { t } = useTranslation()
   return (
-    <section className="mt-8 max-w-3xl border-t border-border pt-6">
+    <section className="mt-8 border-t border-border pt-6">
       <SectionHeader
         title={t("settings.speech.engineTitle")}
         description={t("settings.speech.engineDescription")}
