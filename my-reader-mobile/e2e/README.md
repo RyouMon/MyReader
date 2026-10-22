@@ -34,7 +34,8 @@ Maestro 直接连接专用模拟器的 adbd 端口（控制台端口 + 1），�
 上游记录了 [ADB / WebView 调试通道阻塞](https://github.com/mobile-dev-inc/Maestro/pull/3419)，表现为设备仍显示在线但 `adb shell` 不再响应；仅固定系统 API 仍不足以稳定运行，模拟器版本和渲染器也必须明确。
 这些测试运行时设置不改变 APK 的目标版本、签名或完整用例清单。
 iOS CI 明确使用 iOS 26.5 上的 iPhone 17 Pro 与 iPad Pro 13-inch (M5)，与本地验证设备一致，避免按设备列表顺序选中旧运行时。
-PDF/CBZ 翻页使用 1.2 秒连续滑动，给 Android `input swipe` 足够时间送达 MOVE 事件；短滑动在模拟器负载下可能只送达两次移动并触发分页回弹。
+PDF/CBZ 翻页在 Android 使用 1.2 秒连续滑动，给 `input swipe` 足够时间送达 MOVE 事件；短滑动在模拟器负载下可能只送达两次移动并触发分页回弹。
+iOS 使用 200 毫秒：Maestro 2.11 的 [iOS 手势实现](https://github.com/mobile-dev-inc/maestro/blob/cli-2.11.0/maestro-ios-xctest-runner/maestro-driver-iosUITests/Routes/XCTest/EventRecord.swift) 在移动终点保持按下指定时长，复用 Android 的 1.2 秒会触发图片长按菜单。两端仍必须一次翻页成功，并验证重开后的页码。
 EPUB 朗读用例使用 Readium 页面边缘点击进行手动翻页，检查目标页正文、独立播放位置和返回操作；PDF/CBZ 用例保留滑动覆盖。
 
 ```bash

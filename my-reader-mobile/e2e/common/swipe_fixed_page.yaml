@@ -1,0 +1,21 @@
+appId: ${APP_ID}
+name: Swipe a fixed-layout page without holding an image
+---
+# Android needs enough MOVE events; iOS Maestro holds at the endpoint for duration.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - swipe:
+          start: "90%,50%"
+          end: "10%,50%"
+          duration: 1200
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - swipe:
+          start: "90%,50%"
+          end: "10%,50%"
+          duration: 200
+- assertNotVisible: "复制图片|Copy image"
