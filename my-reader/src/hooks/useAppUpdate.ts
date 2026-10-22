@@ -38,8 +38,8 @@ export function useAppUpdate() {
     () => mutate(() => api.downloadAppUpdate()),
     [mutate],
   )
-  const reveal = useCallback(
-    () => mutate(() => api.revealAppUpdate()),
+  const install = useCallback(
+    () => mutate(() => api.openAppUpdateInstaller()),
     [mutate],
   )
   const setPreferences = useCallback(
@@ -60,7 +60,7 @@ export function useAppUpdate() {
     supported,
     check,
     download,
-    reveal,
+    install,
     setPreferences,
   }
 }

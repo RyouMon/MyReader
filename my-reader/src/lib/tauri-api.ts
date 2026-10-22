@@ -48,7 +48,7 @@ export const api = {
   checkAppUpdate: wrap(commands.checkAppUpdate),
   downloadAppUpdate: wrap(commands.downloadAppUpdate),
   setAppUpdatePreferences: wrap(commands.setAppUpdatePreferences),
-  revealAppUpdate: wrap(commands.revealAppUpdate),
+  openAppUpdateInstaller: wrap(commands.openAppUpdateInstaller),
   readerImageAction: wrap(commands.readerImageAction),
   shareReaderImages: async (paths: string[]): Promise<void> => {
     try {

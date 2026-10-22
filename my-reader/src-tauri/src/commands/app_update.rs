@@ -57,9 +57,9 @@ pub async fn set_app_update_preferences<R: tauri::Runtime>(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn reveal_app_update<R: tauri::Runtime>(
+pub async fn open_app_update_installer<R: tauri::Runtime>(
     app: AppHandle<R>,
     updater: State<'_, DesktopAppUpdater>,
 ) -> Result<(), AppError> {
-    updater.reveal(&app).await
+    updater.open_installer(&app).await
 }

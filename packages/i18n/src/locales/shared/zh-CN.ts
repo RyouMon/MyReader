@@ -10,7 +10,6 @@ export const sharedZhCN = {
     autoDownload: "自动下载安装包",
     autoDownloadDetail: "在 MyReader 运行时下载，安装始终由你手动完成。",
     download: "下载安装包",
-    showInstaller: "打开安装包所在目录",
     install: "打开安装程序",
     manualInstall:
       "打开下载的安装包并按提示完成安装。MyReader 不会自动安装或重启。",

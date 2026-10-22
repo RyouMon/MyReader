@@ -17,7 +17,7 @@ export default function AppUpdateSection() {
     supported,
     check,
     download,
-    reveal,
+    install,
     setPreferences,
   } = useAppUpdate()
   const status = data?.status ?? "idle"
@@ -69,8 +69,8 @@ export default function AppUpdateSection() {
             </Button>
           ) : null}
           {status === "downloaded" ? (
-            <Button disabled={busy} onClick={reveal}>
-              {t("appUpdates.showInstaller")}
+            <Button disabled={busy} onClick={install}>
+              {t("appUpdates.install")}
             </Button>
           ) : null}
         </div>

@@ -66,11 +66,30 @@ impl DesktopAppUpdater {
             .await
     }
 
-    pub async fn reveal<R: Runtime>(&self, app: &AppHandle<R>) -> Result<(), AppError> {
+    pub async fn open_installer<R: Runtime>(&self, app: &AppHandle<R>) -> Result<(), AppError> {
         let path = self.get(app).await?.installer_path().await?;
-        tauri_plugin_opener::reveal_item_in_dir(path)
-            .map_err(|error| AppError::Config(error.to_string()))
+        tauri::async_runtime::spawn_blocking(move || open_installer(&path))
+            .await
+            .map_err(|error| AppError::Config(error.to_string()))?
     }
+}
+
+fn open_installer(path: &std::path::Path) -> Result<(), AppError> {
+    #[cfg(target_os = "linux")]
+    if path
+        .extension()
+        .is_some_and(|extension| extension == "AppImage")
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut permissions = std::fs::metadata(path)?.permissions();
+        permissions.set_mode(permissions.mode() | 0o100);
+        std::fs::set_permissions(path, permissions)?;
+        let mut child = std::process::Command::new(path).spawn()?;
+        std::thread::spawn(move || child.wait());
+        return Ok(());
+    }
+    tauri_plugin_opener::open_path(path, None::<&str>)
+        .map_err(|error| AppError::Config(error.to_string()))
 }
 
 fn package_format() -> &'static str {

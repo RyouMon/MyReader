@@ -12,7 +12,7 @@ vi.mock("@/lib/tauri-api", () => ({
     getAppUpdate: vi.fn(),
     checkAppUpdate: vi.fn(),
     downloadAppUpdate: vi.fn(),
-    revealAppUpdate: vi.fn(),
+    openAppUpdateInstaller: vi.fn(),
     setAppUpdatePreferences: vi.fn(),
   },
 }))
@@ -55,7 +55,7 @@ beforeEach(() => {
 })
 afterEach(() => client.clear())
 
-it("checks on request, polls transfer progress, and reveals only after an explicit action", async () => {
+it("checks on request, polls transfer progress, and opens the installer only after an explicit action", async () => {
   const { result } = renderHook(useAppUpdate, { wrapper })
   await waitFor(() => expect(result.current.data?.status).toBe("idle"))
   data = {
@@ -80,9 +80,9 @@ it("checks on request, polls transfer progress, and reveals only after an explic
   act(() => complete(data))
   await waitFor(() => expect(result.current.busy).toBe(false))
   expect(result.current.data?.status).toBe("downloaded")
-  expect(api.revealAppUpdate).not.toHaveBeenCalled()
-  act(() => result.current.reveal())
-  await waitFor(() => expect(api.revealAppUpdate).toHaveBeenCalledOnce())
+  expect(api.openAppUpdateInstaller).not.toHaveBeenCalled()
+  act(() => result.current.install())
+  await waitFor(() => expect(api.openAppUpdateInstaller).toHaveBeenCalledOnce())
 })
 
 it("persists preferences before running an automatic check and recovers from failed actions", async () => {

@@ -10,7 +10,6 @@
     "autoDownload": "自動下載安裝套件",
     "autoDownloadDetail": "在 MyReader 執行時下載，安裝一律由你手動完成。",
     "download": "下載安裝套件",
-    "showInstaller": "開啟安裝套件所在資料夾",
     "install": "開啟安裝程式",
     "manualInstall": "開啟下載的安裝套件並依提示完成安裝。MyReader 不會自動安裝或重新啟動。",
     "androidInstallHint": "Android 可能要求允許 MyReader 安裝未知應用程式，請在系統安裝畫面中手動完成安裝。",

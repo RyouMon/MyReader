@@ -8,7 +8,7 @@ import type { AppUpdateSnapshot } from "@/lib/tauri-api"
 vi.mock("@/hooks/useAppUpdate", () => ({ useAppUpdate: vi.fn() }))
 const check = vi.fn(),
   download = vi.fn(),
-  reveal = vi.fn(),
+  install = vi.fn(),
   setPreferences = vi.fn()
 const snapshot: AppUpdateSnapshot = {
   currentVersion: "0.18.0",
@@ -31,7 +31,7 @@ function state(patch: Partial<AppUpdateSnapshot> = {}, busy = false) {
     supported: true,
     check,
     download,
-    reveal,
+    install,
     setPreferences,
   })
 }
@@ -103,17 +103,15 @@ describe("app updates", () => {
     expect(check).toHaveBeenCalled()
     expect(download).toHaveBeenCalledTimes(1)
     expect(setPreferences).toHaveBeenCalledWith(true, true)
-    expect(reveal).not.toHaveBeenCalled()
+    expect(install).not.toHaveBeenCalled()
   })
-  it("requires an explicit click to reveal a downloaded installer", () => {
+  it("requires an explicit click to open a downloaded installer", () => {
     state({ status: "downloaded", downloadedBytes: 100 })
     render(<AppUpdateSection />)
     expect(screen.getByRole("status")).toHaveTextContent("0.19.0")
-    expect(reveal).not.toHaveBeenCalled()
-    fireEvent.click(
-      screen.getByRole("button", { name: "Show installer in folder" }),
-    )
-    expect(reveal).toHaveBeenCalledTimes(1)
+    expect(install).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole("button", { name: "Open installer" }))
+    expect(install).toHaveBeenCalledTimes(1)
   })
   it("shows download progress and disables conflicting actions during transfer", () => {
     state({ status: "downloading", downloadedBytes: 25 }, true)
@@ -133,7 +131,7 @@ describe("app updates", () => {
     fireEvent.click(screen.getByRole("button", { name: "Download installer" }))
     expect(download).toHaveBeenCalledOnce()
     expect(
-      screen.queryByRole("button", { name: "Show installer in folder" }),
+      screen.queryByRole("button", { name: "Open installer" }),
     ).not.toBeInTheDocument()
   })
 })

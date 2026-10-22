@@ -21,7 +21,7 @@ beforeEach(() => {
     error: null,
     check,
     download: vi.fn(),
-    reveal: vi.fn(),
+    install: vi.fn(),
     setPreferences: vi.fn(),
   }
   vi.mocked(useAppUpdate).mockImplementation(() => state)
@@ -62,7 +62,7 @@ it("announces each available and downloaded state once without starting installa
   view.rerender(<AppUpdateRuntime />)
   expect(toast.info).toHaveBeenLastCalledWith("appUpdates.status.downloaded")
   expect(toast.info).toHaveBeenCalledTimes(2)
-  expect(state.reveal).not.toHaveBeenCalled()
+  expect(state.install).not.toHaveBeenCalled()
 })
 
 it("does not schedule checks in the browser", () => {

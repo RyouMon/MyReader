@@ -49,7 +49,7 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::app_update::check_app_update::<tauri::Wry>,
             commands::app_update::download_app_update::<tauri::Wry>,
             commands::app_update::set_app_update_preferences::<tauri::Wry>,
-            commands::app_update::reveal_app_update::<tauri::Wry>,
+            commands::app_update::open_app_update_installer::<tauri::Wry>,
             commands::library::list_libraries::<tauri::Wry>,
             commands::source::list_data_sources,
             commands::source::test_webdav_connection,

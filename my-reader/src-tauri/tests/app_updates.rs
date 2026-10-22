@@ -32,7 +32,7 @@ async fn updater_commands_preserve_device_preferences_and_require_a_verified_ins
         .await
         .unwrap();
     assert_eq!(download.status, "idle");
-    assert!(reveal_app_update(handle.clone(), app.state())
+    assert!(open_app_update_installer(handle.clone(), app.state())
         .await
         .is_err());
 

@@ -11,7 +11,6 @@ export const sharedEn = {
     autoDownloadDetail:
       "Download while MyReader is open. Installation always requires your action.",
     download: "Download installer",
-    showInstaller: "Show installer in folder",
     install: "Open installer",
     manualInstall:
       "Open the downloaded package and follow its installation steps. MyReader will not install or restart automatically.",

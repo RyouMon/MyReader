@@ -10,7 +10,6 @@
     "autoDownload": "Baixar instaladores automaticamente",
     "autoDownloadDetail": "Baixar enquanto o MyReader estiver aberto. Você decide quando instalar.",
     "download": "Baixar instalador",
-    "showInstaller": "Mostrar instalador na pasta",
     "install": "Abrir instalador",
     "manualInstall": "Abra o arquivo baixado e siga as instruções. O MyReader não instalará nem reiniciará automaticamente.",
     "androidInstallHint": "O Android pode pedir permissão para instalar a partir do MyReader. Conclua a instalação na tela do sistema.",

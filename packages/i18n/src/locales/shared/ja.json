@@ -10,7 +10,6 @@
     "autoDownload": "インストーラーを自動でダウンロード",
     "autoDownloadDetail": "MyReader の起動中にダウンロードします。インストールは手動で行います。",
     "download": "インストーラーをダウンロード",
-    "showInstaller": "保存先フォルダーを開く",
     "install": "インストーラーを開く",
     "manualInstall": "ダウンロードしたファイルを開き、手順に従ってインストールしてください。自動インストールや再起動は行いません。",
     "androidInstallHint": "Android で MyReader からのインストール許可を求められる場合があります。システム画面でインストールを完了してください。",
