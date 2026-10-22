@@ -20,6 +20,7 @@ iOS 使用官方 `snapshotKeyHonorModalViews: false`，让 iPad 系统文件选�
 单栏和双栏的首次位置恢复由 `ReaderStartLocationTests` 使用真实 WebKit 检查排版完成后文字是否在屏内，包括首次 resize 回调延迟、加载中容器尺寸变化和末尾空白栏场景。定位时使用当前视口宽度，避免首次布局尚未刷新宽度缓存时错误回到章首。
 原生启动回归还让 WebKit 在首次布局期间保持忙碌，验证恢复锚点前不会上报临时章首位置；Readium 3.11.0 的依赖补丁将位置通知延后到初始定位完成，避免错误位置覆盖同步记录。
 字体重建期间保存位置的原生回归直接验证 `ReadiumView` 返回排版事务保留的精确锚点，避免捕获已被替换或尚未加载的 Navigator。
+删除后冷启动的缓存回归由 `query-provider.test.tsx` 覆盖：Core 已提交删除而查询缓存尚未落盘时，恢复后必须重新读取 Core。使用 [TanStack 持久化 Provider](https://tanstack.com/query/latest/docs/framework/react/plugins/persistQueryClient) 协调恢复和首次查询，避免将旧缓存继续视为新鲜数据。
 朗读引擎选项限定在原生菜单内，并重新打开菜单核对选中状态，防止误点后方供应商列表。
 供应商表单的 iOS 返回手势从原生导航栏的左边缘开始，兼容 iPad 内缩弹窗与 iPhone 全宽页面。
 Android 供应商表单先收起软键盘再定位 voice 输入框，并核对焦点、输入内容和保存按钮可用状态；无障碍快照可能把键盘下方的控件误判为可见。
