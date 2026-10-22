@@ -25,11 +25,21 @@ tags:
 # Keep the fixture's page turns deterministic on pads.
 # Native tests separately cover restoring anchors in a two-column spread.
 - tapOn: ${output.selectors.reader.settingsButton}
-- scrollUntilVisible:
-    element: "栏: 始终单栏.*|Columns: Always Single.*"
-    direction: DOWN
-    timeout: 10000
-- tapOn: "栏: 始终单栏.*|Columns: Always Single.*"
+# The settings sheet occupies the bottom half of phone screens.
+- repeat:
+    times: 6
+    while:
+      notVisible:
+        text: "栏: 始终单栏.*|Columns: Always Single.*"
+        below: ${output.selectors.reader.settingsSheet}
+    commands:
+      - swipe:
+          start: "50%,90%"
+          end: "50%,65%"
+          duration: 600
+- tapOn:
+    text: "栏: 始终单栏.*|Columns: Always Single.*"
+    below: ${output.selectors.reader.settingsSheet}
 - assertVisible: "栏: 始终单栏, 已选择|Columns: Always Single, Selected"
 - tapOn:
     point: "50%,20%"
@@ -86,11 +96,20 @@ tags:
 - extendedWaitUntil:
     visible: ${output.selectors.reader.settingsSheet}
     timeout: 10000
-- scrollUntilVisible:
-    element: "字体: 衬线.*|Font: Serif.*"
-    direction: UP
-    timeout: 10000
-- tapOn: "字体: 衬线.*|Font: Serif.*"
+- repeat:
+    times: 6
+    while:
+      notVisible:
+        text: "字体: 衬线.*|Font: Serif.*"
+        below: ${output.selectors.reader.settingsSheet}
+    commands:
+      - swipe:
+          start: "50%,65%"
+          end: "50%,90%"
+          duration: 600
+- tapOn:
+    text: "字体: 衬线.*|Font: Serif.*"
+    below: ${output.selectors.reader.settingsSheet}
 - assertVisible: "字体: 衬线, 已选择|Font: Serif, Selected"
 - tapOn: "字体: 人文无衬线.*|Font: Humanist Sans.*"
 - assertVisible: "字体: 人文无衬线, 已选择|Font: Humanist Sans, Selected"

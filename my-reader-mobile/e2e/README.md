@@ -15,6 +15,8 @@ iOS 使用官方 `snapshotKeyHonorModalViews: false`，让 iPad 系统文件选�
 继续操作书库，避免命中弹窗后方的同名按钮。目录项通过原生标识符和章节文字定位，
 选中后必须确认目录关闭，避免命中后方同名的 WebView 节点。iOS WebView 快照可能包含屏幕外正文，不能仅凭正文文字存在证明导航成功。
 固定分页夹具显式选择“始终单栏”，让一次翻页在不同屏幕上含义一致。
+设置滚动使用[面板内的有界滑动](https://docs.maestro.dev/examples/recipes/custom-scrolling-for-screen-fragments)；全屏 `scrollUntilVisible` 的起点可能落在手机底部面板之外。
+控件还必须位于面板标题下方，避免 iOS 快照中已滚出面板的节点被当成可点击目标。
 单栏和双栏的首次位置恢复由 `ReaderStartLocationTests` 使用真实 WebKit 检查排版完成后文字是否在屏内，包括首次 resize 回调延迟和末尾空白栏场景。
 朗读引擎选项限定在原生菜单内，并重新打开菜单核对选中状态，防止误点后方供应商列表。
 供应商表单的 iOS 返回手势从原生导航栏的左边缘开始，兼容 iPad 内缩弹窗与 iPhone 全宽页面。
