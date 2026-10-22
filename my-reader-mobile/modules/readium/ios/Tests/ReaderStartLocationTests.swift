@@ -104,6 +104,122 @@ extension ReaderWindowTests {
       ))
     }
 
+    @Test(arguments: [false, true])
+    func keepsSyncedAnchorDuringInitialLayout(busyWebKit: Bool) async throws {
+      let fixtures = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent()
+        .deletingLastPathComponent().deletingLastPathComponent()
+        .deletingLastPathComponent().appendingPathComponent("e2e/fixtures/tts-book")
+      let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+      let contents = temporary.appendingPathComponent("contents")
+      let book = temporary.appendingPathComponent("book.epub")
+      try FileManager.default.createDirectory(at: temporary, withIntermediateDirectories: true)
+      defer { try? FileManager.default.removeItem(at: temporary) }
+      try FileManager.default.copyItem(at: fixtures, to: contents)
+      if busyWebKit {
+        let page = contents.appendingPathComponent("EPUB/playback-position.xhtml")
+        let html = try String(contentsOf: page, encoding: .utf8)
+        let script = """
+          <script><![CDATA[
+            window.addEventListener('load', () => setTimeout(() => {
+              const deadline = performance.now() + 1200;
+              while (performance.now() < deadline) {}
+              window.readerTestBusyFinished = true;
+            }, 100));
+          ]]></script>
+          """
+        try html.replacingOccurrences(of: "</head>", with: script + "</head>")
+          .write(to: page, atomically: true, encoding: .utf8)
+      }
+      try Data("application/epub+zip".utf8).write(to: contents.appendingPathComponent("mimetype"))
+      try await FileManager.default.zipItem(at: contents, to: book, shouldKeepParent: false)
+
+      let window = try #require(UIApplication.shared.delegate?.window ?? nil)
+      let previousRoot = window.rootViewController
+      let host = UIViewController()
+      window.rootViewController = host
+      window.makeKeyAndVisible()
+      let view = ReadiumView(appContext: AppContext())
+      view.frame = CGRect(x: 0, y: 0, width: 402, height: 840)
+      host.view.addSubview(view)
+      defer {
+        view.cleanup()
+        view.removeFromSuperview()
+        window.rootViewController = previousRoot
+      }
+      let selector = "html > body > p:nth-of-type(2)"
+      let locations = LocatorLocationsRecord()
+      locations.cssSelector = selector
+      locations.domRange = ["start": ["cssSelector": selector, "textNodeIndex": 0, "charOffset": 375]]
+      locations.position = 3
+      locations.progression = 1.0 / 3
+      locations.totalProgression = 0.3888888888888889
+      let text = LocatorTextRecord()
+      text.before = "when to continue the journey, ke"
+      text.highlight = "e"
+      text.after = "ping this entire description tog"
+      let stored = LocatorRecord()
+      stored.href = "EPUB/playback-position.xhtml"
+      stored.type = "application/xhtml+xml"
+      stored.locations = locations
+      stored.text = text
+      let file = ReadiumFileRecord()
+      file.url = book.absoluteString
+      file.initialLocation = stored
+      view.file = file
+      let preferences = PreferencesRecord()
+      preferences.theme = "sepia"
+      preferences.fontSize = 18.0 / 16
+      preferences.lineHeight = 1.85
+      preferences.pageMargins = 0.8
+      preferences.scroll = false
+      preferences.publisherStyles = false
+      view.preferences = preferences
+      view.selectionActions = []
+      view.customSelectionMenu = false
+      view.fontFamilyDeclarations = []
+      for _ in 0..<200 {
+        if host.children.first is EPUBViewController { break }
+        try await Task.sleep(nanoseconds: 25_000_000)
+      }
+      let reader = try #require(host.children.first as? EPUBViewController)
+      var reportedProgressions: [Double] = []
+      let subscription = reader.publisher.sink { locator in
+        if let progression = locator.locations.progression {
+          reportedProgressions.append(progression)
+        }
+      }
+      defer { subscription.cancel() }
+      let localized = PreferencesRecord()
+      localized.theme = "sepia"
+      localized.fontSize = 18.0 / 16
+      localized.lineHeight = 1.85
+      localized.pageMargins = 0.8
+      localized.scroll = false
+      localized.publisherStyles = false
+      localized.language = "en"
+      view.preferences = localized
+      for _ in 0..<200 {
+        if reader.epubNavigator.viewport?.resources.isEmpty == false { break }
+        try await Task.sleep(nanoseconds: 25_000_000)
+      }
+      try #require(reader.epubNavigator.viewport?.resources.isEmpty == false)
+      let visible = await reader.epubNavigator.evaluateJavaScript("""
+        (() => {
+          const rect = document.querySelector('\(selector)').getBoundingClientRect();
+          const previous = document.querySelector('body > p:first-of-type').getBoundingClientRect();
+          return rect.right > 0 && rect.left < window.innerWidth && rect.bottom > 0 && rect.top < window.innerHeight && previous.right <= 0;
+        })()
+        """)
+      #expect(try visible.get() as? Bool == true)
+      if busyWebKit {
+        let busyFinished = await reader.epubNavigator.evaluateJavaScript("window.readerTestBusyFinished === true")
+        try #require(try busyFinished.get() as? Bool == true)
+      }
+      #expect(!reportedProgressions.isEmpty)
+      #expect(reportedProgressions.allSatisfy { $0 > 0 }, "Startup must not persist the first page before restoring the saved anchor: \(reportedProgressions)")
+    }
+
     @Test(arguments: [false, true], ["1", "2"])
     func restoresSyncedTextAnchorInFreshNavigator(delayedFirstFrame: Bool, columnCount: String) async throws {
       let fixture = URL(fileURLWithPath: #filePath)

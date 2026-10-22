@@ -18,6 +18,7 @@ iOS 使用官方 `snapshotKeyHonorModalViews: false`，让 iPad 系统文件选�
 设置滚动使用[面板内的有界滑动](https://docs.maestro.dev/examples/recipes/custom-scrolling-for-screen-fragments)，从 `reader-settings-scroll` 实际滚动区域内开始；全屏 `scrollUntilVisible` 和固定屏幕坐标可能落在手机底部面板或 iPad 居中弹窗之外。
 控件还必须位于面板标题下方，避免 iOS 快照中已滚出面板的节点被当成可点击目标。
 单栏和双栏的首次位置恢复由 `ReaderStartLocationTests` 使用真实 WebKit 检查排版完成后文字是否在屏内，包括首次 resize 回调延迟和末尾空白栏场景。
+原生启动回归还让 WebKit 在首次布局期间保持忙碌，验证恢复锚点前不会上报临时章首位置；Readium 3.11.0 的依赖补丁将位置通知延后到初始定位完成，避免错误位置覆盖同步记录。
 字体重建期间保存位置的原生回归直接验证 `ReadiumView` 返回排版事务保留的精确锚点，避免捕获已被替换或尚未加载的 Navigator。
 朗读引擎选项限定在原生菜单内，并重新打开菜单核对选中状态，防止误点后方供应商列表。
 供应商表单的 iOS 返回手势从原生导航栏的左边缘开始，兼容 iPad 内缩弹窗与 iPhone 全宽页面。
