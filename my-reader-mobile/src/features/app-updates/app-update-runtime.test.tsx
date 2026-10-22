@@ -1,12 +1,14 @@
 import { act, fireEvent, render } from "@testing-library/react-native"
 import type { ReactNode } from "react"
 import { Notifier } from "react-native-notifier"
-import { AppState, Linking } from "react-native"
+import { AppState } from "react-native"
+import { router } from "expo-router"
 import { AppUpdateRuntime } from "./app-update-runtime"
 import { AppUpdateSection } from "./app-update-section"
 import { useAppUpdate } from "./use-app-update"
 import { Platform } from "react-native"
 
+jest.mock("expo-router", () => ({ router: { push: jest.fn() } }))
 jest.mock("./use-app-update", () => ({ useAppUpdate: jest.fn() }))
 jest.mock("react-native-notifier", () => ({
   Notifier: { showNotification: jest.fn() },
@@ -100,51 +102,24 @@ it("hides release content on Android when no update is available", () => {
   jest.mocked(useAppUpdate).mockReturnValue(state)
   const section = render(<AppUpdateSection />)
   expect(section.queryByText(/appUpdates.latestVersion/)).toBeNull()
+  expect(section.queryByLabelText("appUpdates.notes")).toBeNull()
   expect(section.queryByText("Improved library browsing")).toBeNull()
   expect(state.download).not.toHaveBeenCalled()
   expect(state.install).not.toHaveBeenCalled()
 })
 
-it("renders the new Android version with Markdown notes and opens links only on press", () => {
+it("opens release notes on demand without mixing them into settings", () => {
   Platform.OS = "android"
   const state = updaterState()
-  state.data = {
-    ...snapshot,
-    version: "0.19.0",
-    status: "available",
-    notes:
-      "## Improvements\n\n- **Faster browsing**\n- Fixed EPUB loading\n\n[Full changelog](https://github.com/RyouMon/MyReader/releases/tag/v0.19.0)",
-  }
-  const open = jest.spyOn(Linking, "openURL").mockResolvedValue(true)
+  state.data = { ...snapshot, version: "0.19.0", status: "available" }
   jest.mocked(useAppUpdate).mockReturnValue(state)
   const section = render(<AppUpdateSection />)
-  expect(section.getByText("appUpdates.latestVersion:0.19.0")).toBeTruthy()
-  expect(section.getByText("Improvements")).toBeTruthy()
-  expect(section.queryByText("## Improvements")).toBeNull()
-  expect(section.getByText("Faster browsing")).toHaveStyle({
-    fontWeight: "bold",
-  })
-  expect(section.getByText("Fixed EPUB loading")).toBeTruthy()
-  expect(open).not.toHaveBeenCalled()
-  fireEvent.press(section.getByText("Full changelog"))
-  expect(open).toHaveBeenCalledWith(
-    "https://github.com/RyouMon/MyReader/releases/tag/v0.19.0",
-  )
-})
-
-it("explains when a new Android release has no notes", () => {
-  Platform.OS = "android"
-  const state = updaterState()
-  state.data = {
-    ...snapshot,
-    version: "0.19.0",
-    status: "available",
-    notes: " ",
-  }
-  jest.mocked(useAppUpdate).mockReturnValue(state)
-  expect(
-    render(<AppUpdateSection />).getByText("appUpdates.notesEmpty"),
-  ).toBeTruthy()
+  expect(section.queryByText("Improved library browsing")).toBeNull()
+  expect(router.push).not.toHaveBeenCalled()
+  fireEvent.press(section.getByLabelText("appUpdates.notes"))
+  expect(router.push).toHaveBeenCalledWith("/update-notes")
+  expect(state.download).not.toHaveBeenCalled()
+  expect(state.install).not.toHaveBeenCalled()
 })
 
 it("offers explicit check, download, preferences, and installation actions on Android", () => {

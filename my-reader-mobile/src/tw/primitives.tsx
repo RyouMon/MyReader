@@ -35,7 +35,7 @@ export const Link = Object.assign(CSSLink, {
   MenuAction: RouterLink.MenuAction,
 }) as typeof RouterLink
 
-export const useCSSVariable = useFunctionalVariable
+export const useCSSVariable = useFunctionalVariable as (name: string) => unknown
 
 export type ViewProps = React.ComponentProps<typeof RNView> & {
   className?: string

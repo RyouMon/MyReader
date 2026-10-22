@@ -13,7 +13,7 @@
     "install": "開啟安裝程式",
     "manualInstall": "開啟下載的安裝套件並依提示完成安裝。MyReader 不會自動安裝或重新啟動。",
     "androidInstallHint": "Android 可能要求允許 MyReader 安裝未知應用程式，請在系統安裝畫面中手動完成安裝。",
-    "notes": "更新日誌",
+    "notes": "更新說明",
     "missingPackage": "此版本尚無適合目前裝置的安裝套件，請稍後重試。",
     "integrityFailed": "安裝套件不完整或驗證失敗，請重新下載。",
     "actionFailed": "更新操作失敗，請檢查網路連線或可用儲存空間後重試。",

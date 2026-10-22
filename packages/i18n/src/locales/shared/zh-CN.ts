@@ -15,7 +15,7 @@ export const sharedZhCN = {
       "打开下载的安装包并按提示完成安装。MyReader 不会自动安装或重启。",
     androidInstallHint:
       "安卓可能会要求允许 MyReader 安装未知应用，请在系统安装界面中手动完成安装。",
-    notes: "更新日志",
+    notes: "更新说明",
     missingPackage: "此版本尚无适合当前设备的安装包，请稍后重试。",
     integrityFailed: "安装包不完整或校验失败，请重新下载。",
     actionFailed: "更新操作失败，请检查网络连接或可用存储空间后重试。",

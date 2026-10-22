@@ -119,6 +119,17 @@ function RootNavigator() {
             }}
           />
           <Stack.Screen
+            name="update-notes"
+            options={{
+              contentStyle: { backgroundColor: palette.background },
+              headerShown: false,
+              presentation: "formSheet",
+              sheetAllowedDetents: [0.85],
+              sheetCornerRadius: 24,
+              sheetGrabberVisible: true,
+            }}
+          />
+          <Stack.Screen
             name="handle-share"
             options={{ presentation: "fullScreenModal" }}
           />

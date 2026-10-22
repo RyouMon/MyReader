@@ -1,11 +1,11 @@
 import { appUpdateMessage, appUpdateErrorMessage } from "@my-reader/i18n/mobile"
+import { router } from "expo-router"
 import { useTranslation } from "react-i18next"
 import { Platform, Switch } from "react-native"
 import { ListRow, SectionCard, SectionLabel } from "@/src/components"
 import { useThemePalette } from "@/src/design/tokens"
 import { Text, View } from "@/tw"
 import { useAppUpdate } from "./use-app-update"
-import { ReleaseNotes } from "./release-notes"
 
 export function AppUpdateSection() {
   return Platform.OS === "android" ? <AndroidAppUpdateSection /> : null
@@ -13,6 +13,7 @@ export function AppUpdateSection() {
 
 function AndroidAppUpdateSection() {
   const { t } = useTranslation()
+  const palette = useThemePalette()
   const { data, error, busy, check, download, install, setPreferences } =
     useAppUpdate()
   const status = data?.status ?? "idle"
@@ -41,13 +42,24 @@ function AndroidAppUpdateSection() {
         />
       </SectionCard>
       {data?.error || error ? (
-        <Text accessibilityRole="alert" className="text-sm text-danger">
+        <Text
+          accessibilityRole="alert"
+          className="px-4 text-base"
+          style={{ color: palette.danger }}
+        >
           {errorText}
         </Text>
       ) : null}
       {data?.version ? (
         <SectionCard>
           <ListRow
+            title={t("appUpdates.notes")}
+            icon={{ ios: "doc.text", android: "description" }}
+            value={data.version}
+            onPress={() => router.push("/update-notes")}
+          />
+          <ListRow
+            icon={{ ios: "arrow.down.circle", android: "system-update" }}
             title={
               status === "downloaded"
                 ? t("appUpdates.install")
@@ -60,22 +72,9 @@ function AndroidAppUpdateSection() {
         </SectionCard>
       ) : null}
       {status === "downloaded" ? (
-        <Text className="text-sm text-ink-2">
+        <Text className="px-4 text-base" style={{ color: palette.textMuted }}>
           {t("appUpdates.androidInstallHint")}
         </Text>
-      ) : null}
-      {data?.version ? (
-        <View className="gap-2">
-          <Text
-            accessibilityRole="header"
-            className="text-sm font-semibold text-ink-1"
-          >
-            {t("appUpdates.latestVersion", { version: data.version })}
-          </Text>
-          <ReleaseNotes>
-            {data.notes?.trim() || t("appUpdates.notesEmpty")}
-          </ReleaseNotes>
-        </View>
       ) : null}
     </View>
   )
