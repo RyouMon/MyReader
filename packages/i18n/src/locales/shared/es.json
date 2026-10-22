@@ -1,7 +1,9 @@
 {
   "appUpdates": {
     "title": "Actualizaciones de la aplicación",
-    "currentVersion": "Versión {{version}}",
+    "currentVersion": "Versión actual: {{version}}",
+    "latestVersion": "Última versión: {{version}}",
+    "notesEmpty": "No se proporcionaron notas para esta versión.",
     "check": "Buscar actualizaciones",
     "autoCheck": "Buscar actualizaciones automáticamente",
     "autoCheckDetail": "Comprobar una vez al día mientras MyReader esté abierto.",

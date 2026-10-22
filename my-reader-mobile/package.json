@@ -112,6 +112,7 @@
     "react-native-css": "^3.0.6",
     "react-native-gesture-handler": "~2.32.0",
     "react-native-image-colors": "^2.6.0",
+    "react-native-marked": "8.3.2",
     "react-native-notifier": "^2.0.0",
     "react-native-reanimated": "4.5.1",
     "react-native-safe-area-context": "~5.7.0",
@@ -144,7 +145,7 @@
   "jest": {
     "preset": "jest-expo",
     "transformIgnorePatterns": [
-      "/node_modules/(?!(.pnpm|ky|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|@formatjs|react-navigation|@react-navigation|standard-navigation|@sentry/react-native|native-base|decode-uri-component))",
+      "/node_modules/(?!(.pnpm|ky|marked|github-slugger|@jsamr|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|@formatjs|react-navigation|@react-navigation|standard-navigation|@sentry/react-native|native-base|decode-uri-component))",
       "/node_modules/react-native-reanimated/plugin/",
       "/node_modules/@react-native/babel-preset/"
     ],
@@ -172,7 +173,8 @@
       "!**/*.d.ts",
       "!**/__mocks__/**",
       "!src/app/**",
-      "src/app/[(]tabs[)]/_layout.tsx"
+      "src/app/[(]tabs[)]/_layout.tsx",
+      "src/app/_layout.tsx"
     ],
     "coverageReporters": [
       "text-summary",

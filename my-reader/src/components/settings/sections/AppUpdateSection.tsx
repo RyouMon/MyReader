@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { useAppUpdate } from "@/hooks/useAppUpdate"
+import { ReleaseNotes } from "./ReleaseNotes"
 
 export default function AppUpdateSection() {
   const { t } = useTranslation()
@@ -84,15 +85,18 @@ export default function AppUpdateSection() {
           </p>
         ) : null}
       </div>
-      {data?.notes ? (
-        <details className="text-sm">
-          <summary className="cursor-pointer font-medium">
-            {t("appUpdates.notes")}
-          </summary>
-          <p className="mt-3 whitespace-pre-wrap break-words text-muted-foreground">
-            {data.notes}
-          </p>
-        </details>
+      {data?.version ? (
+        <section
+          className="space-y-3 border-t border-border pt-5 text-sm"
+          aria-label={t("appUpdates.notes")}
+        >
+          <h3 className="font-semibold">
+            {t("appUpdates.latestVersion", { version: data.version })}
+          </h3>
+          <ReleaseNotes>
+            {data.notes?.trim() || t("appUpdates.notesEmpty")}
+          </ReleaseNotes>
+        </section>
       ) : null}
     </section>
   )

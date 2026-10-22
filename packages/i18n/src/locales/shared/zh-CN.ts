@@ -1,7 +1,9 @@
 export const sharedZhCN = {
   appUpdates: {
     title: "应用更新",
-    currentVersion: "版本 {{version}}",
+    currentVersion: "当前版本：{{version}}",
+    latestVersion: "最新版本：{{version}}",
+    notesEmpty: "此版本未提供更新日志。",
     check: "检查更新",
     autoCheck: "自动检查更新",
     autoCheckDetail: "在 MyReader 运行时每天检查一次。",
@@ -14,7 +16,7 @@ export const sharedZhCN = {
       "打开下载的安装包并按提示完成安装。MyReader 不会自动安装或重启。",
     androidInstallHint:
       "安卓可能会要求允许 MyReader 安装未知应用，请在系统安装界面中手动完成安装。",
-    notes: "更新说明",
+    notes: "更新日志",
     missingPackage: "此版本尚无适合当前设备的安装包，请稍后重试。",
     integrityFailed: "安装包不完整或校验失败，请重新下载。",
     actionFailed: "更新操作失败，请检查网络连接或可用存储空间后重试。",

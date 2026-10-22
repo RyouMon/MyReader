@@ -1,7 +1,9 @@
 {
   "appUpdates": {
     "title": "Обновления приложения",
-    "currentVersion": "Версия {{version}}",
+    "currentVersion": "Текущая версия: {{version}}",
+    "latestVersion": "Последняя версия: {{version}}",
+    "notesEmpty": "Примечания к этой версии не предоставлены.",
     "check": "Проверить обновления",
     "autoCheck": "Автоматически проверять обновления",
     "autoCheckDetail": "Проверять раз в день, пока MyReader открыт.",

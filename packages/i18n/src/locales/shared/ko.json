@@ -1,7 +1,9 @@
 {
   "appUpdates": {
     "title": "앱 업데이트",
-    "currentVersion": "버전 {{version}}",
+    "currentVersion": "현재 버전: {{version}}",
+    "latestVersion": "최신 버전: {{version}}",
+    "notesEmpty": "이 버전의 업데이트 내용이 제공되지 않았습니다.",
     "check": "업데이트 확인",
     "autoCheck": "업데이트 자동 확인",
     "autoCheckDetail": "MyReader 실행 중 하루에 한 번 확인합니다.",

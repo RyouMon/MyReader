@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react"
+import { fireEvent, render, screen, within } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import AppUpdateSection from "../AppUpdateSection"
 import { useAppUpdate } from "@/hooks/useAppUpdate"
@@ -43,6 +43,55 @@ beforeEach(async () => {
 })
 
 describe("app updates", () => {
+  it("hides release content when the installed version is current", () => {
+    state({
+      status: "upToDate",
+      version: null,
+      notes: "Improved library browsing",
+      assetName: null,
+    })
+    render(<AppUpdateSection />)
+    expect(screen.getByText("Current version: 0.18.0")).toBeVisible()
+    expect(screen.queryByText(/Latest version:/)).toBeNull()
+    expect(screen.queryByText("Improved library browsing")).toBeNull()
+    expect(screen.queryByRole("region", { name: "Release notes" })).toBeNull()
+    expect(screen.getByRole("status")).toHaveTextContent("You are up to date")
+    expect(
+      screen.queryByRole("button", { name: "Download installer" }),
+    ).toBeNull()
+  })
+  it("groups the new version with rendered Markdown notes and safe external links", () => {
+    state({
+      notes:
+        "## Improvements\n\n- **Faster browsing**\n- Fixed `EPUB` loading\n\n[Full changelog](https://github.com/RyouMon/MyReader/releases/tag/v0.19.0)\n\n<script>alert('unsafe')</script>\n\n[Unsafe](javascript:alert(1))",
+    })
+    render(<AppUpdateSection />)
+    const release = within(
+      screen.getByRole("region", { name: "Release notes" }),
+    )
+    expect(
+      release.getByRole("heading", { name: "Latest version: 0.19.0" }),
+    ).toBeVisible()
+    expect(release.getByRole("heading", { name: "Improvements" })).toBeVisible()
+    expect(release.getAllByRole("listitem")).toHaveLength(2)
+    expect(release.getByText("Faster browsing").tagName).toBe("STRONG")
+    expect(release.getByText("EPUB").tagName).toBe("CODE")
+    const link = release.getByRole("link", { name: "Full changelog" })
+    expect(link).toHaveAttribute("href", snapshot.releaseUrl)
+    expect(link).toHaveAttribute("target", "_blank")
+    expect(document.querySelector("script")).toBeNull()
+    expect(release.getByText("Unsafe")).not.toHaveAttribute(
+      "href",
+      "javascript:alert(1)",
+    )
+  })
+  it("explains when the latest release has no notes", () => {
+    state({ notes: "  " })
+    render(<AppUpdateSection />)
+    expect(
+      screen.getByText("No release notes were provided for this version."),
+    ).toBeVisible()
+  })
   it("lets the user check, download, and opt into automatic downloads independently", () => {
     render(<AppUpdateSection />)
     expect(download).not.toHaveBeenCalled()

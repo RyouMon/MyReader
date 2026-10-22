@@ -1,7 +1,9 @@
 {
   "appUpdates": {
     "title": "アプリの更新",
-    "currentVersion": "バージョン {{version}}",
+    "currentVersion": "現在のバージョン：{{version}}",
+    "latestVersion": "最新バージョン：{{version}}",
+    "notesEmpty": "このバージョンの更新履歴はありません。",
     "check": "更新を確認",
     "autoCheck": "更新を自動で確認",
     "autoCheckDetail": "MyReader の起動中に1日1回確認します。",

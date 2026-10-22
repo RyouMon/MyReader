@@ -1,7 +1,9 @@
 {
   "appUpdates": {
     "title": "應用程式更新",
-    "currentVersion": "版本 {{version}}",
+    "currentVersion": "目前版本：{{version}}",
+    "latestVersion": "最新版本：{{version}}",
+    "notesEmpty": "此版本未提供更新日誌。",
     "check": "檢查更新",
     "autoCheck": "自動檢查更新",
     "autoCheckDetail": "在 MyReader 執行時每天檢查一次。",
@@ -12,7 +14,7 @@
     "install": "開啟安裝程式",
     "manualInstall": "開啟下載的安裝套件並依提示完成安裝。MyReader 不會自動安裝或重新啟動。",
     "androidInstallHint": "Android 可能要求允許 MyReader 安裝未知應用程式，請在系統安裝畫面中手動完成安裝。",
-    "notes": "更新說明",
+    "notes": "更新日誌",
     "missingPackage": "此版本尚無適合目前裝置的安裝套件，請稍後重試。",
     "integrityFailed": "安裝套件不完整或驗證失敗，請重新下載。",
     "actionFailed": "更新操作失敗，請檢查網路連線或可用儲存空間後重試。",

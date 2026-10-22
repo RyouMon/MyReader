@@ -1,7 +1,9 @@
 export const sharedEn = {
   appUpdates: {
     title: "App updates",
-    currentVersion: "Version {{version}}",
+    currentVersion: "Current version: {{version}}",
+    latestVersion: "Latest version: {{version}}",
+    notesEmpty: "No release notes were provided for this version.",
     check: "Check for updates",
     autoCheck: "Automatically check for updates",
     autoCheckDetail: "Check once a day while MyReader is open.",

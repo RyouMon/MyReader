@@ -5,6 +5,7 @@ import { ListRow, SectionCard, SectionLabel } from "@/src/components"
 import { useThemePalette } from "@/src/design/tokens"
 import { Text, View } from "@/tw"
 import { useAppUpdate } from "./use-app-update"
+import { ReleaseNotes } from "./release-notes"
 
 export function AppUpdateSection() {
   return Platform.OS === "android" ? <AndroidAppUpdateSection /> : null
@@ -63,14 +64,17 @@ function AndroidAppUpdateSection() {
           {t("appUpdates.androidInstallHint")}
         </Text>
       ) : null}
-      {data?.notes ? (
+      {data?.version ? (
         <View className="gap-2">
-          <Text className="text-sm font-medium text-ink-1">
-            {t("appUpdates.notes")}
+          <Text
+            accessibilityRole="header"
+            className="text-sm font-semibold text-ink-1"
+          >
+            {t("appUpdates.latestVersion", { version: data.version })}
           </Text>
-          <Text className="text-sm text-ink-2" selectable>
-            {data.notes}
-          </Text>
+          <ReleaseNotes>
+            {data.notes?.trim() || t("appUpdates.notesEmpty")}
+          </ReleaseNotes>
         </View>
       ) : null}
     </View>

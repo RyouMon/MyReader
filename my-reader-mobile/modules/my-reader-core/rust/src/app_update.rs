@@ -117,3 +117,38 @@ pub async fn app_update_installer_path() -> Result<String, CoreFfiError> {
         .to_string_lossy()
         .into_owned())
 }
+
+#[cfg(all(test, not(target_os = "android")))]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn ffi_keeps_snapshot_preferences_and_installation_as_separate_operations() {
+        assert!(app_update_snapshot().is_err());
+        assert!(app_update_initialize("unused".into(), "1.0.0".into())
+            .await
+            .is_err());
+        let directory = tempfile::tempdir().unwrap();
+        let service = AppUpdateService::new(
+            directory.path().into(),
+            "1.0.0".into(),
+            UpdateTarget {
+                os: "android".into(),
+                arch: "aarch64".into(),
+                package: "apk".into(),
+            },
+        )
+        .await
+        .unwrap();
+        assert!(UPDATER.set(service).is_ok());
+        assert_eq!(app_update_snapshot().unwrap().current_version, "1.0.0");
+        let snapshot = app_update_set_preferences(false, true).await.unwrap();
+        assert!(!snapshot.auto_check);
+        assert!(snapshot.auto_download);
+        assert_eq!(app_update_check(false, 1).await.unwrap().status, "idle");
+        assert_eq!(app_update_download().await.unwrap().status, "idle");
+        assert!(app_update_installer_path().await.is_err());
+        assert!(snapshot.release_url.is_none());
+        assert_eq!(snapshot.downloaded_bytes, 0.0);
+    }
+}
