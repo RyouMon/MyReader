@@ -17,6 +17,7 @@ iOS 使用官方 `snapshotKeyHonorModalViews: false`，让 iPad 系统文件选�
 固定分页夹具显式选择“始终单栏”，让一次翻页在不同屏幕上含义一致。
 单栏和双栏的首次位置恢复由 `ReaderStartLocationTests` 使用真实 WebKit 检查排版完成后文字是否在屏内，包括首次 resize 回调延迟和末尾空白栏场景。
 朗读引擎选项限定在原生菜单内，并重新打开菜单核对选中状态，防止误点后方供应商列表。
+供应商表单的 iOS 返回手势从原生导航栏的左边缘开始，兼容 iPad 内缩弹窗与 iPhone 全宽页面。
 Android 阅读流程使用 Maestro 官方 `androidWebViewHierarchy: devtools`，避免章节跳转后
 原生无障碍快照遗漏 WebView 正文；仍检查翻页后的可见文字与旧页消失。
 PDF/CBZ 翻页使用 1.2 秒连续滑动，给 Android `input swipe` 足够时间送达 MOVE 事件；短滑动在模拟器负载下可能只送达两次移动并触发分页回弹。

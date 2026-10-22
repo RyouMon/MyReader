@@ -15,9 +15,12 @@ name: Provider form returns through the native sheet stack
     when:
       platform: iOS
     commands:
+      # The iPad modal is inset from the screen edge. Begin inside its native bar.
       - swipe:
-          start: "1%,45%"
-          end: "90%,45%"
+          from:
+            id: "添加 OpenAI 兼容服务|Add OpenAI-compatible service"
+            point: "1%,50%"
+          direction: RIGHT
           duration: 600
 - runFlow:
     when:
