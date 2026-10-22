@@ -1,8 +1,8 @@
 import type { Locator } from "@my-reader/readium"
 import { act, cleanup, render } from "@testing-library/react-native"
 import { router } from "expo-router"
-import type { ComponentProps } from "react"
-import { View as mockView } from "react-native"
+import { type ComponentProps, useEffect as mockUseEffect } from "react"
+import { BackHandler, View as mockView } from "react-native"
 
 import { setReadingProgress } from "@/src/domain/library/reading-progress"
 import { defaultSettings } from "@/src/store/app-store.constants"
@@ -27,6 +27,8 @@ let mockSurface: ComponentProps<typeof ReaderPublicationSurface>
 jest.mock("expo-router", () => ({
   router: { back: jest.fn(), canGoBack: () => true },
   useLocalSearchParams: () => ({ id: "7", format: "EPUB" }),
+  useFocusEffect: (callback: () => void | (() => void)) =>
+    mockUseEffect(callback, [callback]),
 }))
 jest.mock("react-i18next", () => ({
   initReactI18next: { type: "3rdParty", init: jest.fn() },
@@ -156,9 +158,14 @@ describe("ReaderScreen progress at the native boundary", () => {
   })
   afterEach(() => {
     cleanup()
+    jest.restoreAllMocks()
   })
 
-  it("saves the native text anchor before a requested close navigates away", async () => {
+  it.each([
+    "reader control",
+    "Android system back",
+  ])("saves the native text anchor before %s navigates away", async (source) => {
+    const subscribe = jest.spyOn(BackHandler, "addEventListener")
     const precise: Locator = {
       ...position(1).locator!,
       locations: { cssSelector: "p:nth-of-type(2)" },
@@ -180,7 +187,15 @@ describe("ReaderScreen progress at the native boundary", () => {
     )
     let closing!: Promise<void>
     await act(async () => {
-      closing = Promise.resolve(mockSurface.reflow.onRequestClose!())
+      if (source === "reader control") {
+        closing = Promise.resolve(mockSurface.reflow.onRequestClose!())
+      } else {
+        const handler = subscribe.mock.calls.at(-1)?.[1]
+        const handled = handler?.(
+          {} as Parameters<NonNullable<typeof handler>>[0],
+        )
+        if (!handled) router.back()
+      }
     })
     expect(capture).toHaveBeenCalledTimes(1)
     expect(setReadingProgress).toHaveBeenCalledWith(

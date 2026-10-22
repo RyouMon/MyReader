@@ -40,7 +40,7 @@ import {
   sortReaderAnnotations,
 } from "@my-reader/tools/reader-annotations"
 import type { ReaderLocator } from "@my-reader/tools/reader-toc"
-import { router, useLocalSearchParams } from "expo-router"
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router"
 import {
   useCallback,
   useEffect,
@@ -50,7 +50,12 @@ import {
   useState,
 } from "react"
 import { useTranslation } from "react-i18next"
-import { Animated as RNAnimated, StatusBar, StyleSheet } from "react-native"
+import {
+  Animated as RNAnimated,
+  BackHandler,
+  StatusBar,
+  StyleSheet,
+} from "react-native"
 import { FadeIn, FadeOut } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { ErrorBoundary } from "@/src/components/error-boundary"
@@ -569,6 +574,19 @@ export default function ReaderScreen() {
   const handleBack = useCallback(() => {
     void handleRequestClose()
   }, [handleRequestClose])
+
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        () => {
+          handleBack()
+          return true
+        },
+      )
+      return () => subscription.remove()
+    }, [handleBack]),
+  )
 
   const toggleChrome = useCallback(() => {
     dispatch({ type: "contentTap" })
