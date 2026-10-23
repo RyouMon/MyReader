@@ -18,6 +18,7 @@ import {
   FfiConverterBool,
   FfiConverterFloat64,
   FfiConverterInt32,
+  FfiConverterInt64,
   FfiConverterOptional,
   FfiConverterUInt32,
   FfiConverterUInt8,
@@ -141,6 +142,244 @@ export async function appConfigWriteMobile(
     }
     throw __error;
   }
+}
+
+export async function appUpdateCheck(
+  manual: boolean,
+  nowMs: bigint,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<AppUpdateSnapshot> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_app_update_check(
+          FfiConverterBool.lower(manual, nativeModule().rustbuffer_alloc),
+          FfiConverterInt64.lower(nowMs, nativeModule().rustbuffer_alloc),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeAppUpdateSnapshot.lift.bind(
+        FfiConverterTypeAppUpdateSnapshot,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function appUpdateDownload(asyncOpts_?: {
+  signal: AbortSignal;
+}): Promise<AppUpdateSnapshot> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_app_update_download();
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeAppUpdateSnapshot.lift.bind(
+        FfiConverterTypeAppUpdateSnapshot,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function appUpdateInitialize(
+  directory: string,
+  currentVersion: string,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<AppUpdateSnapshot> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_app_update_initialize(
+          FfiConverterString.lower(directory, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            currentVersion,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeAppUpdateSnapshot.lift.bind(
+        FfiConverterTypeAppUpdateSnapshot,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function appUpdateInstallerPath(asyncOpts_?: {
+  signal: AbortSignal;
+}): Promise<string> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_app_update_installer_path();
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function appUpdateSetPreferences(
+  autoCheck: boolean,
+  autoDownload: boolean,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<AppUpdateSnapshot> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_app_update_set_preferences(
+          FfiConverterBool.lower(autoCheck, nativeModule().rustbuffer_alloc),
+          FfiConverterBool.lower(autoDownload, nativeModule().rustbuffer_alloc),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeAppUpdateSnapshot.lift.bind(
+        FfiConverterTypeAppUpdateSnapshot,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export function appUpdateSnapshot(): AppUpdateSnapshot /*throws*/ {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterTypeAppUpdateSnapshot.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCallWithError(
+      /*liftError:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+      /*caller:*/ (callStatus) => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_app_update_snapshot(
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
 }
 
 export function bookTransferReadTaskProgress(
@@ -6111,6 +6350,87 @@ const FfiConverterTypeAppConfig = (() => {
   return new FFIConverter();
 })();
 
+export type AppUpdateSnapshot = {
+  currentVersion: string;
+  autoCheck: boolean;
+  autoDownload: boolean;
+  status: string;
+  version?: string;
+  releaseUrl?: string;
+  notes?: string;
+  assetName?: string;
+  downloadedBytes: number;
+  totalBytes: number;
+  error?: string;
+};
+
+/**
+ * Generated factory for {@link AppUpdateSnapshot} record objects.
+ */
+export const AppUpdateSnapshot = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<AppUpdateSnapshot, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<AppUpdateSnapshot>,
+  });
+})();
+
+const FfiConverterTypeAppUpdateSnapshot = (() => {
+  type TypeName = AppUpdateSnapshot;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        currentVersion: FfiConverterString.read(from),
+        autoCheck: FfiConverterBool.read(from),
+        autoDownload: FfiConverterBool.read(from),
+        status: FfiConverterString.read(from),
+        version: FfiConverterOptionalString.read(from),
+        releaseUrl: FfiConverterOptionalString.read(from),
+        notes: FfiConverterOptionalString.read(from),
+        assetName: FfiConverterOptionalString.read(from),
+        downloadedBytes: FfiConverterFloat64.read(from),
+        totalBytes: FfiConverterFloat64.read(from),
+        error: FfiConverterOptionalString.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.currentVersion, into);
+      FfiConverterBool.write(value.autoCheck, into);
+      FfiConverterBool.write(value.autoDownload, into);
+      FfiConverterString.write(value.status, into);
+      FfiConverterOptionalString.write(value.version, into);
+      FfiConverterOptionalString.write(value.releaseUrl, into);
+      FfiConverterOptionalString.write(value.notes, into);
+      FfiConverterOptionalString.write(value.assetName, into);
+      FfiConverterFloat64.write(value.downloadedBytes, into);
+      FfiConverterFloat64.write(value.totalBytes, into);
+      FfiConverterOptionalString.write(value.error, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.currentVersion) +
+        FfiConverterBool.allocationSize(value.autoCheck) +
+        FfiConverterBool.allocationSize(value.autoDownload) +
+        FfiConverterString.allocationSize(value.status) +
+        FfiConverterOptionalString.allocationSize(value.version) +
+        FfiConverterOptionalString.allocationSize(value.releaseUrl) +
+        FfiConverterOptionalString.allocationSize(value.notes) +
+        FfiConverterOptionalString.allocationSize(value.assetName) +
+        FfiConverterFloat64.allocationSize(value.downloadedBytes) +
+        FfiConverterFloat64.allocationSize(value.totalBytes) +
+        FfiConverterOptionalString.allocationSize(value.error)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
 export type BookContent = {
   bookId: number;
   format: string;
@@ -10806,6 +11126,54 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_app_update_check() !==
+    27813
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_app_update_check",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_app_update_download() !==
+    26835
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_app_update_download",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_app_update_initialize() !==
+    10159
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_app_update_initialize",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_app_update_installer_path() !==
+    57404
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_app_update_installer_path",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_app_update_set_preferences() !==
+    19224
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_app_update_set_preferences",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_app_update_snapshot() !==
+    45971
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_app_update_snapshot",
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_book_transfer_read_task_progress() !==
     27216
   ) {
@@ -11780,6 +12148,7 @@ export default Object.freeze({
   converters: {
     FfiConverterTypeAppConfig,
     FfiConverterTypeAppPreferences,
+    FfiConverterTypeAppUpdateSnapshot,
     FfiConverterTypeBookContent,
     FfiConverterTypeBookCoverThumbnailCache,
     FfiConverterTypeBookCoverThumbnailCachePatch,

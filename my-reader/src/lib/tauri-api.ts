@@ -44,6 +44,11 @@ const commands = isDemoApiEnabled()
   : raw
 
 export const api = {
+  getAppUpdate: wrap(commands.getAppUpdate),
+  checkAppUpdate: wrap(commands.checkAppUpdate),
+  downloadAppUpdate: wrap(commands.downloadAppUpdate),
+  setAppUpdatePreferences: wrap(commands.setAppUpdatePreferences),
+  openAppUpdateInstaller: wrap(commands.openAppUpdateInstaller),
   readerImageAction: wrap(commands.readerImageAction),
   shareReaderImages: async (paths: string[]): Promise<void> => {
     try {

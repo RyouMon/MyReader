@@ -41,7 +41,7 @@ describe("error details", () => {
     expect(appendErrorDetail("Try again.", "RAW_ERROR\nline 2")).toBe(
       "Try again.\n\nRAW_ERROR\nline 2",
     )
-    for (const error of [undefined, null, {}, { message: "" }]) {
+    for (const error of [undefined, null, 0, {}, { message: "" }]) {
       expect(appendErrorDetail("Try again.", error)).toBe("Try again.")
     }
   })

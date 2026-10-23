@@ -1,4 +1,5 @@
 import type { SupportedLanguage } from "./languages"
+export { appUpdateMessage, appUpdateErrorMessage } from "./app-update"
 import { sharedResources } from "./shared-resources"
 import {
   mergeTranslationResources,

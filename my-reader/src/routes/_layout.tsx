@@ -9,6 +9,7 @@ import { AddLibraryDialog } from "@/components/library/AddLibraryDialog"
 import AppSidebar from "@/components/library/AppSidebar"
 import LibraryWorkspace from "@/components/library/LibraryWorkspace"
 import SettingsActivity from "@/components/settings/SettingsActivity"
+import { AppUpdateRuntime } from "@/components/settings/AppUpdateRuntime"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { useWindowSizeClass } from "@/hooks/use-window-size-class"
 import type { SettingsSection } from "@/types/settings"
@@ -99,6 +100,7 @@ function Layout() {
       forceCollapsed={!isLargeWindow}
       className="relative h-svh min-h-0 flex-col overflow-hidden"
     >
+      <AppUpdateRuntime />
       <LibraryWorkspace
         activeBookId={activeBookId}
         onAddLibrary={() => setAddLibraryOpen(true)}

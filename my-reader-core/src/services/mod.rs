@@ -1,3 +1,4 @@
+pub(crate) mod app_update;
 pub(crate) mod book_transfer;
 pub(crate) mod catalog;
 pub(crate) mod config;

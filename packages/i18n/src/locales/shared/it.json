@@ -1,4 +1,32 @@
 {
+  "appUpdates": {
+    "title": "Aggiornamenti dell’app",
+    "currentVersion": "Versione attuale: {{version}}",
+    "latestVersion": "Ultima versione: {{version}}",
+    "notesEmpty": "Non sono state fornite note per questa versione.",
+    "check": "Cerca aggiornamenti",
+    "autoCheck": "Cerca aggiornamenti automaticamente",
+    "autoCheckDetail": "Controlla una volta al giorno mentre MyReader è aperto.",
+    "autoDownload": "Scarica automaticamente i programmi di installazione",
+    "autoDownloadDetail": "Scarica mentre MyReader è aperto. Decidi tu quando installare.",
+    "download": "Scarica il programma di installazione",
+    "install": "Apri il programma di installazione",
+    "manualInstall": "Apri il file scaricato e segui le istruzioni. MyReader non installerà né si riavvierà automaticamente.",
+    "androidInstallHint": "Android potrebbe chiedere di consentire le installazioni da MyReader. Completa l’installazione nella schermata di sistema.",
+    "notes": "Note di rilascio",
+    "missingPackage": "Non è disponibile un programma di installazione compatibile con questo dispositivo. Riprova più tardi.",
+    "integrityFailed": "Il file è incompleto o la verifica è fallita. Scaricalo di nuovo.",
+    "actionFailed": "L’operazione è fallita. Controlla la connessione o lo spazio disponibile e riprova.",
+    "status": {
+      "idle": "Pronto a cercare aggiornamenti.",
+      "checking": "Ricerca aggiornamenti…",
+      "upToDate": "Hai la versione più recente.",
+      "available": "La versione {{version}} è disponibile.",
+      "downloading": "Download… {{progress}}%",
+      "downloaded": "La versione {{version}} è pronta per l’installazione.",
+      "error": "Impossibile completare l’aggiornamento."
+    }
+  },
   "qwenTts": {
     "title": "Qwen",
     "add": "Aggiungi {{name}}",

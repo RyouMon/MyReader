@@ -59,8 +59,8 @@ export default function AppearanceSection() {
           {t("settings.appearance.description")}
         </p>
       </div>
-      <div className="flex-1 overflow-y-auto px-7 py-6">
-        <section className="max-w-3xl">
+      <div className="flex-1 overflow-y-auto px-7 py-5">
+        <section>
           <SectionHeader
             title={t("settings.appearance.languageTitle")}
             description={t("settings.appearance.languageDescription")}
@@ -74,7 +74,7 @@ export default function AppearanceSection() {
           >
             <SelectTrigger
               aria-label={t("settings.appearance.languageTitle")}
-              className="w-full sm:w-72"
+              className="w-full"
             >
               <SelectValue />
             </SelectTrigger>
@@ -93,7 +93,7 @@ export default function AppearanceSection() {
           </Select>
         </section>
 
-        <section className="mt-8 max-w-3xl border-t border-border pt-6">
+        <section className="mt-8 border-t border-border pt-6">
           <SectionHeader
             title={t("settings.appearance.themeTitle")}
             description={t("settings.appearance.themeDescription")}

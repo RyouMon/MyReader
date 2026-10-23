@@ -35,6 +35,7 @@ import { useAppStore } from "@/src/store/app-store"
 import type { HomeCardStyle } from "@/src/store/app-store.types"
 import { View } from "@/tw"
 import { DeveloperConcurrencyControl } from "./components/developer-concurrency-control"
+import { AppUpdateSection } from "@/src/features/app-updates/app-update-section"
 
 const SETTINGS_ROW_ICONS = {
   addLibrary: { ios: "plus.circle", android: "add-circle-outline" },
@@ -359,6 +360,7 @@ export default function SettingsScreen() {
             />
           </SectionCard>
         </View>
+        <AppUpdateSection />
         {DEVELOPER_TOOLS_ENABLED ? (
           <View className="gap-3">
             <SectionLabel>{t("settings.developer.title")}</SectionLabel>

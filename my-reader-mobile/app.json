@@ -27,6 +27,7 @@
       "predictiveBackGestureEnabled": false,
       "package": "ryoumon.myreadermobile",
       "permissions": [
+        "android.permission.REQUEST_INSTALL_PACKAGES",
         "android.permission.DOWNLOAD_WITHOUT_NOTIFICATION",
         "android.permission.ACCESS_NETWORK_STATE"
       ]

@@ -31,6 +31,7 @@ import { useDataSourceActions } from "@/src/hooks/use-data-source-actions"
 import { AppLanguageProvider } from "@/src/i18n/app-language-provider"
 import { queryClient } from "@/src/services/query/query-client"
 import { useAppStore } from "@/src/store/app-store"
+import { AppUpdateRuntime } from "@/src/features/app-updates/app-update-runtime"
 
 function RootNavigator() {
   const { colorScheme, palette } = useTheme()
@@ -118,6 +119,17 @@ function RootNavigator() {
             }}
           />
           <Stack.Screen
+            name="update-notes"
+            options={{
+              contentStyle: { backgroundColor: palette.background },
+              headerShown: false,
+              presentation: "formSheet",
+              sheetAllowedDetents: [0.85],
+              sheetCornerRadius: 24,
+              sheetGrabberVisible: true,
+            }}
+          />
+          <Stack.Screen
             name="handle-share"
             options={{ presentation: "fullScreenModal" }}
           />
@@ -141,6 +153,7 @@ function RootNavigator() {
       <ReaderOpenTransitionHost />
       <BookUploadRuntime />
       <SyncRuntime />
+      <AppUpdateRuntime />
     </>
   )
 }

@@ -177,6 +177,23 @@ interface NativeModuleInterface {
     preferences: Uint8Array,
     mobileJson: Uint8Array,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_app_update_check(
+    manual: number,
+    nowMs: bigint,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_app_update_download(): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_app_update_initialize(
+    directory: Uint8Array,
+    currentVersion: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_app_update_installer_path(): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_app_update_set_preferences(
+    autoCheck: number,
+    autoDownload: number,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_app_update_snapshot(
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
   ubrn_uniffi_my_reader_core_ffi_fn_func_book_transfer_read_task_progress(
     taskId: Uint8Array,
     uniffi_out_err: UniffiRustCallStatus,
@@ -846,6 +863,12 @@ interface NativeModuleInterface {
   ubrn_ffi_my_reader_core_ffi_uniffi_contract_version(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_app_config_initialize(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_app_config_write_mobile(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_app_update_check(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_app_update_download(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_app_update_initialize(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_app_update_installer_path(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_app_update_set_preferences(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_app_update_snapshot(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_book_transfer_read_task_progress(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_book_transfer_release_task(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_book_transfer_run_pending_uploads(): number;
