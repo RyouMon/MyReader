@@ -71,14 +71,16 @@ async function start() {
 
 async function focusMainWindow() {
   await browser.switchToWindow(mainWindow)
-  await evaluate(async () => {
-    const current = window.__TAURI__.window.getCurrentWindow()
-    await current.unminimize()
-    await current.show()
-    await current.setFocus()
-  })
   await browser.waitUntil(
-    () => evaluate(() => document.visibilityState === "visible"),
+    () =>
+      evaluate(async () => {
+        // Closing another native window can finish after the first focus request.
+        const current = window.__TAURI__.window.getCurrentWindow()
+        await current.unminimize()
+        await current.show()
+        await current.setFocus()
+        return document.visibilityState === "visible"
+      }),
     {
       timeoutMsg:
         "The native window must be visible before interacting with it",
