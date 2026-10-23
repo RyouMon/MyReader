@@ -157,7 +157,8 @@ Sentry 为可选功能。
 推送 `v*` 标签后，`Release` 自动构建所有产物，运行完整质量检查、移动 Maestro 和桌面 E2E。
 Android 使用将发布的签名 APK；iOS 使用同提交、同 production 配置的 Release simulator app，
 在 iPhone/iPad 分别执行完整套件和原生设置 XCTest。IPA 不能直接安装到模拟器。
-桌面 macOS/Windows/Linux 均执行完整浏览器套件和独立 Release 原生 WebDriver 套件。
+桌面 macOS/Windows 执行完整浏览器套件和独立 Release 原生 WebDriver 套件。
+Ubuntu 暂不执行 release E2E；Linux 安装包继续构建并纳入发布资产核验。
 
 只有全部报告通过且提交号、套件清单、APK 摘要一致，才提交已构建的 IPA 到 TestFlight，
 随后自动公开 GitHub Release。失败、缺失报告、跳过和 flaky 结果均阻断发布。

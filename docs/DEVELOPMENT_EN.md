@@ -165,8 +165,9 @@ A `v*` tag starts the complete automated release pipeline: build all packages, r
 Quality workflow, run mobile Maestro and desktop E2E, and validate reports and artifact digests.
 Android tests the exact signed distribution APK. iPhone and iPad test the same Release simulator
 app, built from the IPA's commit and production configuration, including native settings XCTest.
-A device IPA cannot run in Simulator. macOS, Windows and Linux run every browser integration/E2E
+A device IPA cannot run in Simulator. macOS and Windows run every browser integration/E2E
 scenario and the Release native WebDriver suite with an isolated test application ID.
+Ubuntu release E2E is temporarily disabled; Linux installers are still built and validated as release assets.
 
 Only a complete successful gate permits submitting the already built IPA to TestFlight and then
 publishing the GitHub Release automatically. Missing reports, skips, failures and flaky results block

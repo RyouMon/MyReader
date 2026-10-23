@@ -122,7 +122,8 @@ Core 远程书库关键合同位于 `my-reader-core/src/services/library.rs`：
 
 1. 校验版本，构建桌面安装包、签名 Android APK、iOS IPA 和同提交的 iOS Release simulator app。
 2. 运行完整 Quality 工作流；Android 使用将要发布的同一 APK，iPhone/iPad 使用同一 simulator app。
-3. 桌面三种操作系统运行完整浏览器集成/行为套件，以及 Release 原生 WebDriver 套件。
+3. 桌面 Windows、macOS 运行完整浏览器集成/行为套件，以及 Release 原生 WebDriver 套件。
+   Ubuntu 暂不执行 release E2E；Linux 安装包继续构建并核验。
 4. 检查全部报告与提交号、清单完整性和安装包摘要；只接受无失败、无跳过、无 flaky 的结果。
 5. 所有检查成功后提交已构建的 IPA 到 TestFlight，再上传并自动公开 GitHub Release。
 
