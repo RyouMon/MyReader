@@ -4101,6 +4101,7 @@ dependencies = [
  "rustls",
  "sea-orm",
  "sea-orm-migration",
+ "semver",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -4125,6 +4126,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror 1.0.69",
+ "tokio",
  "uniffi",
 ]
 

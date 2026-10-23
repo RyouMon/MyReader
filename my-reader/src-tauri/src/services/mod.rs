@@ -1,4 +1,5 @@
 pub mod annotation_service;
+pub mod app_update_service;
 pub mod book_reading_format_service;
 pub mod book_service;
 pub mod book_transfer_scheduler;

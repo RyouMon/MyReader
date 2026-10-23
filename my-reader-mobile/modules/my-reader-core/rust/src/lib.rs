@@ -1,5 +1,6 @@
 //! Mobile FFI aggregation root for MyReader Core.
 
+mod app_update;
 mod book_transfer;
 mod catalog;
 mod catalog_navigation;

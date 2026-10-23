@@ -15,6 +15,7 @@ pub struct PreparedBookSource {
 }
 
 pub mod annotation;
+pub mod app_update;
 pub mod book;
 pub mod book_file;
 pub mod book_reading_format;

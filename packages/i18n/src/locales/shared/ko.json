@@ -1,4 +1,32 @@
 {
+  "appUpdates": {
+    "title": "앱 업데이트",
+    "currentVersion": "현재 버전: {{version}}",
+    "latestVersion": "최신 버전: {{version}}",
+    "notesEmpty": "이 버전의 업데이트 내용이 제공되지 않았습니다.",
+    "check": "업데이트 확인",
+    "autoCheck": "업데이트 자동 확인",
+    "autoCheckDetail": "MyReader 실행 중 하루에 한 번 확인합니다.",
+    "autoDownload": "설치 파일 자동 다운로드",
+    "autoDownloadDetail": "MyReader 실행 중 다운로드합니다. 설치는 항상 직접 진행합니다.",
+    "download": "설치 파일 다운로드",
+    "install": "설치 프로그램 열기",
+    "manualInstall": "다운로드한 파일을 열고 안내에 따라 설치하세요. MyReader는 자동으로 설치하거나 다시 시작하지 않습니다.",
+    "androidInstallHint": "Android에서 MyReader의 알 수 없는 앱 설치 허용을 요청할 수 있습니다. 시스템 설치 화면에서 완료하세요.",
+    "notes": "릴리스 노트",
+    "missingPackage": "이 기기에 맞는 설치 파일이 없습니다. 나중에 다시 시도하세요.",
+    "integrityFailed": "설치 파일이 불완전하거나 검증에 실패했습니다. 다시 다운로드하세요.",
+    "actionFailed": "업데이트 작업에 실패했습니다. 연결 또는 저장 공간을 확인하고 다시 시도하세요.",
+    "status": {
+      "idle": "업데이트를 확인할 수 있습니다.",
+      "checking": "업데이트 확인 중…",
+      "upToDate": "최신 버전입니다.",
+      "available": "버전 {{version}}을 사용할 수 있습니다.",
+      "downloading": "다운로드 중… {{progress}}%",
+      "downloaded": "버전 {{version}}을 설치할 수 있습니다.",
+      "error": "업데이트 작업을 완료하지 못했습니다."
+    }
+  },
   "qwenTts": {
     "title": "Qwen",
     "add": "{{name}} 추가",

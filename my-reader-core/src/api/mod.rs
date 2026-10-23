@@ -1,3 +1,4 @@
+pub mod app_update;
 pub mod catalog;
 pub mod config;
 pub mod content;
