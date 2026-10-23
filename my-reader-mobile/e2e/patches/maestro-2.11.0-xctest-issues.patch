@@ -1,0 +1,57 @@
+diff --git a/maestro-ios-xctest-runner/maestro-driver-iosUITests/Routes/XCTestHTTPServer.swift b/maestro-ios-xctest-runner/maestro-driver-iosUITests/Routes/XCTestHTTPServer.swift
+index 30874d4..171e682 100644
+--- a/maestro-ios-xctest-runner/maestro-driver-iosUITests/Routes/XCTestHTTPServer.swift
++++ b/maestro-ios-xctest-runner/maestro-driver-iosUITests/Routes/XCTestHTTPServer.swift
+@@ -35,9 +35,20 @@ struct XCTestHTTPServer {
+         
+         for route in Route.allCases {
+             let handler = await RouteHandlerFactory.createRouteHandler(route: route)
+-            await server.appendRoute(route.toHTTPRoute(), to: handler)
++            await server.appendRoute(route.toHTTPRoute(), to: IssueReportingHandler(handler: handler))
+         }
+         
+         try await server.run()
+     }
+ }
++
++@MainActor
++struct IssueReportingHandler: HTTPHandler {
++    let handler: HTTPHandler
++
++    func handleRequest(_ request: HTTPRequest) async throws -> HTTPResponse {
++        let issues = XCTestIssues.count
++        let response = try await handler.handleRequest(request)
++        return XCTestIssues.count == issues ? response : AppError(message: XCTestIssues.latest).httpResponse
++    }
++}
+diff --git a/maestro-ios-xctest-runner/maestro-driver-iosUITests/maestro_driver_iosUITests.swift b/maestro-ios-xctest-runner/maestro-driver-iosUITests/maestro_driver_iosUITests.swift
+index e41c4ec..568f613 100644
+--- a/maestro-ios-xctest-runner/maestro-driver-iosUITests/maestro_driver_iosUITests.swift
++++ b/maestro-ios-xctest-runner/maestro-driver-iosUITests/maestro_driver_iosUITests.swift
+@@ -29,11 +29,26 @@ final class maestro_driver_iosUITests: XCTestCase {
+         try await server.start()
+     }
+ 
++    override func record(_ issue: XCTIssue) {
++        XCTestIssues.record(issue)
++    }
++
+     override class func tearDown() {
+         logger.trace("tearDown")
+     }
+ }
+ 
++enum XCTestIssues {
++    private(set) static var count = 0
++    private(set) static var latest = ""
++
++    static func record(_ issue: XCTIssue) {
++        count += 1
++        latest = issue.compactDescription
++        NSLog("Kept serving after XCTest issue: \(latest)")
++    }
++}
++
+ /// Pure-logic tests for `SwipeRouteHandlerV2.classify`. No app is launched, so these run on the
+ /// simulator's test runtime without touching a device. The XCUITest error inputs below are the
+ /// real domain/code/message observed in production for the DoorDash swipeV2 failures.

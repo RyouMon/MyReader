@@ -118,6 +118,12 @@ jobs:
           curl --fail --location https://get.maestro.mobile.dev -o "$RUNNER_TEMP/install-maestro.sh"
           bash "$RUNNER_TEMP/install-maestro.sh"
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Prepare pinned iOS XCTest driver
+        run: |
+          python3 my-reader-mobile/e2e/scripts/prepare-ios-maestro.py \
+            "$HOME/.maestro" "$RUNNER_TEMP/myreader-maestro" \
+            --evidence "reports/mobile-ios-${{ matrix.device }}/driver"
+          echo "$RUNNER_TEMP/myreader-maestro/bin" >> "$GITHUB_PATH"
       - uses: actions/download-artifact@v5
         with:
           name: MyReader-iOS-simulator

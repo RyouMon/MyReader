@@ -82,6 +82,29 @@ CI 等待专用 Simulator 启动后禁用其中的 APNs daemon，减少模拟器
 超时强制终止 Maestro JVM，使失败日志能够上传，不依赖可能卡住的 JVM 退出钩子。
 Android 失败后额外采集系统日志、屏幕截图和 WebView 版本，即使 Maestro 本身卡死也保留诊断信息。
 
+## 临时 iOS XCTest 驱动补丁
+
+Maestro 2.11.0 的 XCTest runner 在截图请求超时后可能退出，后续操作全部失去连接（[上游问题 #3538](https://github.com/mobile-dev-inc/Maestro/issues/3538)）。
+iOS CI 暂时从固定的官方源码构建驱动，并应用[固定提交的社区补丁](https://github.com/arun279/cue/blob/ca84a837c2806f5997c3a103c3209e288f7ef44c/patches/maestro-runner/0001-keep-serving-after-xctest-issues.patch)。
+补丁将 XCTest issue 转成该请求的 HTTP 500 错误，并保持服务存活；断言、用例退出码和发布门禁继续处理真实失败。
+本地故障注入已对照官方二进制、同环境重编译的原版和补丁版；另以必然失败的断言确认 CLI 仍返回失败。
+
+`scripts/prepare-ios-maestro.py` 校验官方源码归档、补丁和原版驱动 JAR 的 SHA-256，
+使用 Xcode 和锁定的 Swift Package 依赖构建，再仅替换独立 CLI 副本中的三个 Simulator 资源。
+原版 CLI 和其余 JAR 内容保持不变；构建失败或校验不符会终止执行。
+构建日志和来源、补丁、输出摘要保存在 CI 报告的 `driver/` 目录。
+本地使用同一入口，输出目录必须尚不存在：
+
+```bash
+python3 my-reader-mobile/e2e/scripts/prepare-ios-maestro.py \
+  "$HOME/.maestro" "$PWD/.tmp/maestro-ios" \
+  --evidence "$PWD/reports/maestro-ios-driver"
+export PATH="$PWD/.tmp/maestro-ios/bin:$PATH"
+# 然后运行上文完整 iOS Release 套件。
+```
+
+该补丁只用于测试工具。官方发布等效修复后，先验证故障处理和完整套件，再移除补丁、构建脚本及 CI 接入步骤。
+
 ## 测试金字塔与旧 20 个流程的去向
 
 已有下层测试继续保留。新增供应商表单保存/删除失败的组件回归，补齐从 UI 长流程移出的分支。
