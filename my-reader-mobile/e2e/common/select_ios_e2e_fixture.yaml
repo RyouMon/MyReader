@@ -6,56 +6,53 @@ name: Select a supported book fixture from the prepared iOS E2E folder
     visible: "Cancel|取消"
     # A fresh CI simulator can take over 30 seconds to start DocumentManager.
     timeout: 60000
+# Re-enter the folder for every import. Files restores its previous list, but
+# those item IDs become stale if the LocalStorage provider restarts between picks.
 - runFlow:
     when:
-      notVisible:
-        id: "${IMPORT_FILE_NAME}, (epub|pdf|cbz)"
+      visible: "浏览|Browse"
     commands:
-      - runFlow:
-          when:
-            visible: "浏览|Browse"
-          commands:
-            - tapOn: "浏览|Browse"
-      - repeat:
-          times: 8
-          while:
-            visible:
-              id: "BackButton"
-              childOf:
-                id: "Browse View \\(Picker\\)"
-          commands:
-            - tapOn:
-                id: "BackButton"
-                childOf:
-                  id: "Browse View \\(Picker\\)"
-            - waitForAnimationToEnd
-      - runFlow:
-          when:
-            visible:
-              id: "DOC.sidebar.item.我的iPhone|DOC.sidebar.item.On My iPhone|DOC.sidebar.item.我的iPad|DOC.sidebar.item.On My iPad"
-          commands:
-            - tapOn:
-                id: "DOC.sidebar.item.我的iPhone|DOC.sidebar.item.On My iPhone|DOC.sidebar.item.我的iPad|DOC.sidebar.item.On My iPad"
-            - waitForAnimationToEnd
+      - tapOn: "浏览|Browse"
+- repeat:
+    times: 8
+    while:
+      visible:
+        id: "BackButton"
+        childOf:
+          id: "Browse View \\(Picker\\)"
+    commands:
       - tapOn:
-          id: "MyReader Fixtures, Container"
+          id: "BackButton"
+          childOf:
+            id: "Browse View \\(Picker\\)"
       - waitForAnimationToEnd
-      - scrollUntilVisible:
-          element:
-            id: "${E2E_ROOT_FOLDER}, Folder"
-          direction: DOWN
-          timeout: 15000
+- runFlow:
+    when:
+      visible:
+        id: "DOC.sidebar.item.我的iPhone|DOC.sidebar.item.On My iPhone|DOC.sidebar.item.我的iPad|DOC.sidebar.item.On My iPad"
+    commands:
       - tapOn:
-          id: "${E2E_ROOT_FOLDER}, Folder"
+          id: "DOC.sidebar.item.我的iPhone|DOC.sidebar.item.On My iPhone|DOC.sidebar.item.我的iPad|DOC.sidebar.item.On My iPad"
       - waitForAnimationToEnd
-      - scrollUntilVisible:
-          element:
-            id: "Fixtures, Folder"
-          direction: DOWN
-          timeout: 15000
-      - tapOn:
-          id: "Fixtures, Folder"
-      - waitForAnimationToEnd
+- tapOn:
+    id: "MyReader Fixtures, Container"
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: "${E2E_ROOT_FOLDER}, Folder"
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: "${E2E_ROOT_FOLDER}, Folder"
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: "Fixtures, Folder"
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: "Fixtures, Folder"
+- waitForAnimationToEnd
 - extendedWaitUntil:
     visible:
       id: "${IMPORT_FILE_NAME}, (epub|pdf|cbz)"

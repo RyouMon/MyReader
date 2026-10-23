@@ -67,7 +67,7 @@ iOS Release simulator 在 CI 通过 Expo prebuild 和 Xcode Release 构建，使
 脚本安装指定包、创建唯一 fixture 目录、通过系统选择器导入自制 EPUB/PDF/CBZ，并启动本地
 WebDAV 和 OpenAI 兼容语音 fixture。Android 使用模拟器的宿主回环地址 `10.0.2.2`，
 iOS 使用 `127.0.0.1`；Android 同时移除 Metro 端口映射。测试只操作专用模拟器；不要向该模拟器放入个人书库或凭据。
-iOS runner 编译并安装独立的 `MyReader Fixtures` 模拟器 App，由它通过 `NSFileCoordinator` 对每个夹具文件分别进行原子写入，发布到公开共享的 Documents 目录。整目录复制不会协调其中每个文档的写入，曾导致 Files 显示文件却无法解析 document ID。通过真实 Files 选择器访问“我的 iPhone/iPad → MyReader Fixtures”，测试结束卸载夹具 App；不直接修改 Files 私有存储。首次打开系统选择器按可见控件等待，允许冷启动服务耗时 60 秒。
+iOS runner 编译并安装独立的 `MyReader Fixtures` 模拟器 App，由它通过 `NSFileCoordinator` 对每个夹具文件分别进行原子写入，发布到公开共享的 Documents 目录。整目录复制不会协调其中每个文档的写入，曾导致 Files 显示文件却无法解析 document ID。通过真实 Files 选择器访问“我的 iPhone/iPad → MyReader Fixtures”，测试结束卸载夹具 App；不直接修改 Files 私有存储。首次打开系统选择器按可见控件等待，允许冷启动服务耗时 60 秒。 每次导入都重新浏览到夹具目录，触发当前文件项的枚举；Files 恢复的旧列表可能持有已重启的 LocalStorage 提供器所分配的失效 ID，文件仍可见却无法选择。
 Android 应用网络策略允许用户明确配置的 HTTP WebDAV 地址（表单默认 HTTPS），并保留系统 TLS 证书校验；Release 和 dev 使用同一策略，避免 Core 能列目录而原生下载被拦截。
 专用 iOS 模拟器关闭 Password AutoFill，避免系统密码管理器保存 fixture 凭据并遮挡应用；产品本身的凭据输入和安全存储保持正常运行。
 CI 等待专用 Simulator 启动后禁用其中的 APNs daemon，减少模拟器无法取得推送证书时的高频重试。本套件不包含推送通知流程，此设置不修改应用或宿主机服务；它不能消除上述 Recap 注册竞态。
