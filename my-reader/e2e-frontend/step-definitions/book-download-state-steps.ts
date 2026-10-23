@@ -205,9 +205,10 @@ async function expectFileActions(page: Page, status: string) {
     await showFileMenu(page)
     const expanded = page.getByRole("menuitem", { expanded: true })
     if (await expanded.count()) {
-      await closeFileSubmenu(
-        page.locator(`[id="${await expanded.getAttribute("aria-controls")}"]`),
-      )
+      // File actions can remove their own submenu while the state updates.
+      await page.keyboard.press("Escape")
+      await expect(page.getByRole("menu")).toHaveCount(0)
+      await showFileMenu(page)
     }
   }
   await expect(fileAction(page, label)).toBeEnabled()
