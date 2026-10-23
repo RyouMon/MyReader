@@ -1,5 +1,5 @@
 diff --git a/dist/index.js b/dist/index.js
-index f2ca8e78d860af4a9739400f957d0dcecf5e6366..e3aa9c007cf87cd507fc37a5929bb86b22ac7575 100644
+index f2ca8e78d860af4a9739400f957d0dcecf5e6366..3fcc29075bd6e3cddfd8bbdb6f95897f06e3a00f 100644
 --- a/dist/index.js
 +++ b/dist/index.js
 @@ -6784,9 +6784,11 @@ class Cn {
@@ -17,7 +17,7 @@ index f2ca8e78d860af4a9739400f957d0dcecf5e6366..e3aa9c007cf87cd507fc37a5929bb86b
          });
        this.comms?.halt();
      }
-@@ -6795,13 +6797,15 @@ class Cn {
+@@ -6795,13 +6797,27 @@ class Cn {
      if (this.destroyed) throw Error("Trying to show frame when it doesn't exist");
      if (!this.frame.parentElement) throw Error("Trying to show frame that is not attached to the DOM");
      return this.comms ? this.comms.resume() : this.comms = new Nt(this.frame.contentWindow, this.source), new Promise((e, i) => {
@@ -25,7 +25,19 @@ index f2ca8e78d860af4a9739400f957d0dcecf5e6366..e3aa9c007cf87cd507fc37a5929bb86b
 +      const o = () => {
 +        n || (n = !0, s !== void 0 && clearTimeout(s), this.frame.style.removeProperty("visibility"), this.frame.style.removeProperty("aria-hidden"), this.frame.style.removeProperty("opacity"), this.frame.style.removeProperty("pointer-events"), this.hidden = !1, J.UA.WebKit && this.comms?.send("force_webkit_recalc", void 0), e());
 +      };
-+      s = setTimeout(o, 250);
++      let positioned = false;
++      const position = () => {
++        if (positioned) return;
++        positioned = true;
++        s !== void 0 && clearTimeout(s);
++        if (t !== void 0) {
++          s = setTimeout(o, 250);
++          this.comms?.send("go_progression", t, o);
++        } else {
++          o();
++        }
++      };
++      s = setTimeout(position, 250);
        this.comms?.send("activate", void 0, () => {
          this.comms?.send("focus", void 0, () => {
            this.applyContentProtection();
@@ -33,12 +45,12 @@ index f2ca8e78d860af4a9739400f957d0dcecf5e6366..e3aa9c007cf87cd507fc37a5929bb86b
 -            this.frame.style.removeProperty("visibility"), this.frame.style.removeProperty("aria-hidden"), this.frame.style.removeProperty("opacity"), this.frame.style.removeProperty("pointer-events"), this.hidden = !1, J.UA.WebKit && this.comms?.send("force_webkit_recalc", void 0), e();
 -          };
 -          t !== void 0 ? this.comms?.send("go_progression", t, n) : n();
-+          t !== void 0 ? this.comms?.send("go_progression", t, o) : o();
++          position();
          });
        });
      });
 diff --git a/src/epub/frame/FrameManager.ts b/src/epub/frame/FrameManager.ts
-index 3485634409f66d4f13409784c11afe646352a72d..12a22e0c2981f3f11a12b63bf825476bc3ef7243 100644
+index 3485634409f66d4f13409784c11afe646352a72d..adbea496261ca8df1320681ecf08f31773b7e380 100644
 --- a/src/epub/frame/FrameManager.ts
 +++ b/src/epub/frame/FrameManager.ts
 @@ -5,6 +5,7 @@ import { sML } from "../../helpers/index.ts";
@@ -69,7 +81,7 @@ index 3485634409f66d4f13409784c11afe646352a72d..12a22e0c2981f3f11a12b63bf825476b
              });
          } else
              this.comms?.halt();
-@@ -133,28 +141,33 @@ export class FrameManager {
+@@ -133,29 +141,43 @@ export class FrameManager {
          if(this.comms) this.comms.resume();
          else this.comms = new FrameComms(this.frame.contentWindow!, this.source);
          return new Promise((res, _) => {
@@ -91,7 +103,19 @@ index 3485634409f66d4f13409784c11afe646352a72d..12a22e0c2981f3f11a12b63bf825476b
 +
 +                res();
 +            }
-+            fallback = setTimeout(reveal, SHOW_ACK_TIMEOUT_MS);
++            let positioned = false;
++            const position = () => {
++                if(positioned) return;
++                positioned = true;
++                if(fallback !== undefined) clearTimeout(fallback);
++                if(atProgress !== undefined) {
++                    fallback = setTimeout(reveal, SHOW_ACK_TIMEOUT_MS);
++                    this.comms?.send("go_progression", atProgress, reveal);
++                } else {
++                    reveal();
++                }
++            };
++            fallback = setTimeout(position, SHOW_ACK_TIMEOUT_MS);
              this.comms?.send("activate", undefined, () => {
                  this.comms?.send("focus", undefined, () => {
                      // Apply content protection synchronously
@@ -110,12 +134,13 @@ index 3485634409f66d4f13409784c11afe646352a72d..12a22e0c2981f3f11a12b63bf825476b
 -
 -                        res();
 -                    }
-                     if(atProgress !== undefined) {
+-                    if(atProgress !== undefined) {
 -                        this.comms?.send("go_progression", atProgress, remove);
-+                        this.comms?.send("go_progression", atProgress, reveal);
-                     } else {
+-                    } else {
 -                        remove();
-+                        reveal();
-                     }
+-                    }
++                    // Position once, before reveal; late ACKs cannot undo newer navigation.
++                    position();
                  });
              });
+         });

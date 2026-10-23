@@ -16,7 +16,7 @@ patchedDependencies:
   '@kesha-antonov/react-native-background-downloader@4.5.4': 81b2791631172bc3fe1dd36c417783c5c9b687472b5520c1683becc1469b1c47
   '@react-native-menu/menu@2.0.0': 10a3f512a6501be9c28096044efef2014b8f3c3ec5efbe3017c77d75d4cf4e02
   '@react-native/gradle-plugin@0.86.3': c35377bb0e0fbf0cf3f75b31bf6e6b0598445332825f5cc70cfa95ad3c9e29ba
-  '@readium/navigator@2.5.4': e183eb1df143cc687aba11902a179bcc05045d300aa5fac8cf8414012caad59a
+  '@readium/navigator@2.5.4': 17979548239373c279521ebb41ce9645815541de1120e0585ed0155e2de32fb0
   '@readium/speech@0.7.0': 1c4134e10e8de69821d0c9050402540fd167d83c6099cccf804a25c27d44a7ff
   expo-modules-core@57.0.21: 171ef16010aed274faf971f9befa4e68eb937266315b0c74aca69c381995d08e
   expo-sharing@57.0.22: 5d23eb0526c566be5738b770b8f6e3122b8074d5f77c350b3a09ec73a0c5099f
@@ -106,7 +106,7 @@ importers:
         version: 1.2.4(@types/react@18.3.28)(react@18.3.1)
       '@readium/navigator':
         specifier: ^2.5.1
-        version: 2.5.4(patch_hash=e183eb1df143cc687aba11902a179bcc05045d300aa5fac8cf8414012caad59a)
+        version: 2.5.4(patch_hash=17979548239373c279521ebb41ce9645815541de1120e0585ed0155e2de32fb0)
       '@readium/navigator-html-injectables':
         specifier: ^2.4.1
         version: 2.4.2
@@ -13025,7 +13025,7 @@ snapshots:
       '@readium/helpers': 1.0.0
       '@readium/shared': 2.4.0
 
-  '@readium/navigator@2.5.4(patch_hash=e183eb1df143cc687aba11902a179bcc05045d300aa5fac8cf8414012caad59a)': {}
+  '@readium/navigator@2.5.4(patch_hash=17979548239373c279521ebb41ce9645815541de1120e0585ed0155e2de32fb0)': {}
 
   '@readium/shared@2.2.0':
     dependencies:
