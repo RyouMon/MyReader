@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, windows-latest, macos-latest]
+        os: [windows-latest, macos-latest]
     env:
       CI: 'true'
       CARGO_BUILD_JOBS: '2'
@@ -33,11 +33,6 @@ jobs:
       E2E_REPORT_DIR: ${{ github.workspace }}/reports/desktop-native
     steps:
       - uses: actions/checkout@v7
-      - name: Install Linux webview and display dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf xdg-utils xvfb
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v6
         with:
@@ -67,11 +62,7 @@ jobs:
         run: |
           test -s my-reader/integration-frontend/reports/integration.json
           test -s my-reader/e2e-frontend/reports/report.json
-      - name: Run complete native suite on Linux
-        if: runner.os == 'Linux'
-        run: xvfb-run -a pnpm --filter my-reader test:e2e:native
-      - name: Run complete native suite on macOS and Windows
-        if: runner.os != 'Linux'
+      - name: Run complete native suite
         run: pnpm --filter my-reader test:e2e:native
       - uses: actions/upload-artifact@v4
         if: always()

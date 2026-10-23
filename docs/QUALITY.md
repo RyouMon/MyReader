@@ -160,7 +160,8 @@ CI 中的完整采集命令以 `.github/workflows/quality.yml` 为准。
 ## 按风险选择验证
 
 - 桌面 React：完整 `pnpm test:desktop`；交互流程使用现有 Playwright + IPC mock。
-  发布时三个桌面系统还运行 `test:integration:frontend`、`test:e2e:frontend` 和 `test:e2e:native`。
+  发布时 Windows、macOS 还运行 `test:integration:frontend`、`test:e2e:frontend` 和 `test:e2e:native`。
+  Ubuntu 暂不纳入 release E2E 门禁；Linux 安装包仍正常构建。
   原生套件通过可选 `e2e` Cargo feature 操作独立 Release 应用、真实 Core 和窗口；生产包不含测试服务。
   该套件不替代系统文件对话框与权限的人工验证。
 - 移动 React Native：完整 `pnpm test:mobile`；日常使用 dev build 直接操作模拟器/真机。

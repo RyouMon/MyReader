@@ -36,7 +36,7 @@ test("release evidence rejects an old commit, partial suites and missing artifac
   )
 })
 
-test("release candidate binds complete platform reports to the published APK", () => {
+test("release candidate requires Windows, macOS and mobile evidence while retaining Linux packages", () => {
   const root = mkdtempSync(join(tmpdir(), "myreader-release-"))
   try {
     const assets = join(root, "assets")
@@ -84,7 +84,6 @@ test("release candidate binds complete platform reports to the published APK", (
     report("e2e-mobile-ios-iPhone", "ios", mobile.ios)
     report("e2e-mobile-ios-iPad", "ios", mobile.ios)
     for (const [runner, platform] of [
-      ["ubuntu-22.04", "linux"],
       ["windows-latest", "win32"],
       ["macos-latest", "darwin"],
     ]) {

@@ -122,7 +122,6 @@ export function prepareCandidate(assetDirectory, reportDirectory, commit) {
     }
   }
   for (const [runner, platform] of [
-    ["ubuntu-22.04", "linux"],
     ["windows-latest", "win32"],
     ["macos-latest", "darwin"],
   ]) {

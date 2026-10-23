@@ -11,6 +11,13 @@ const workflow = (name) =>
     ),
   )
 
+test("desktop release E2E runs on Windows and macOS", () => {
+  assert.deepEqual(workflow("desktop-e2e").jobs.desktop.strategy.matrix.os, [
+    "windows-latest",
+    "macos-latest",
+  ])
+})
+
 test("publication and TestFlight depend on every build, full E2E suite and quality gate", () => {
   const { jobs } = workflow("release")
   function ancestors(name) {
