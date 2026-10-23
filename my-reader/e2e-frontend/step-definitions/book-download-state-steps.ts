@@ -187,6 +187,11 @@ function fileAction(page: Page, label: string) {
     : homeFileAction(page, label)
 }
 
+async function closeFileSubmenu(submenu: Locator) {
+  await submenu.press("ArrowLeft")
+  await expect(submenu).toBeHidden()
+}
+
 async function expectFileActions(page: Page, status: string) {
   const label =
     (
@@ -196,7 +201,15 @@ async function expectFileActions(page: Page, status: string) {
         已下载: "删除本地文件",
       } as Record<string, string>
     )[status] ?? "下载文件"
-  if (fileEntrypoints.get(page) !== "书籍详情页") await showFileMenu(page)
+  if (fileEntrypoints.get(page) !== "书籍详情页") {
+    await showFileMenu(page)
+    const expanded = page.getByRole("menuitem", { expanded: true })
+    if (await expanded.count()) {
+      await closeFileSubmenu(
+        page.locator(`[id="${await expanded.getAttribute("aria-controls")}"]`),
+      )
+    }
+  }
   await expect(fileAction(page, label)).toBeEnabled()
   for (const action of HOME_FILE_ACTION_LABELS) {
     const item = fileAction(page, action)
@@ -204,7 +217,7 @@ async function expectFileActions(page: Page, status: string) {
       (await item.count()) > 0 &&
       (await item.getAttribute("aria-haspopup")) === "menu"
     ) {
-      await item.click()
+      await item.press("ArrowRight")
       await expect(item).toHaveAttribute("aria-expanded", "true")
       const submenu = page.locator(
         `[id="${await item.getAttribute("aria-controls")}"]`,
@@ -215,9 +228,8 @@ async function expectFileActions(page: Page, status: string) {
       })
       if (action === label) await expect(format).toBeEnabled()
       else await expect(format).toHaveCount(0)
-      // Leaving the trigger cancels its delayed hover-open before keyboard close.
-      await submenu.getByRole("menuitem").first().hover()
-      await submenu.getByRole("menuitem").first().press("ArrowLeft")
+      // Keyboard navigation avoids crossing adjacent hover-open triggers.
+      await closeFileSubmenu(submenu)
       await expect(item).toHaveAttribute("aria-expanded", "false")
     } else if (action === label) {
       await expect(item).toBeEnabled()

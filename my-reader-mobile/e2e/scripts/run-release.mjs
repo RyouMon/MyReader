@@ -111,6 +111,35 @@ try {
       join(output, "device-properties.txt"),
       read("adb", ["-s", device, "shell", "getprop"]),
     )
+    // Maestro 2.11 probes every WebView socket, including frozen background
+    // Google Search. The launcher restarts it after force-stop. Isolate this
+    // unrelated app on the dedicated emulator; keep Android's freezer enabled.
+    // https://github.com/mobile-dev-inc/Maestro/pull/3419#issuecomment-4997305721
+    const googleSearch = "com.google.android.googlequicksearchbox"
+    if (
+      read("adb", [
+        "-s",
+        device,
+        "shell",
+        "pm",
+        "list",
+        "packages",
+        googleSearch,
+      ])
+        .split("\n")
+        .includes(`package:${googleSearch}`)
+    ) {
+      run("adb", [
+        "-s",
+        device,
+        "shell",
+        "pm",
+        "disable-user",
+        "--user",
+        "0",
+        googleSearch,
+      ])
+    }
     run("adb", ["-s", device, "shell", "am", "force-stop", appId], {
       timeout: 30000,
     })

@@ -32,15 +32,14 @@ iOS 冷启动后的首次设置导航允许在首页仍然可见时补发一次�
 云端日志已证实 CoreSimulator 会在 Recap 触摸设备注册前丢弃按下事件（[Maestro #3686](https://github.com/mobile-dev-inc/Maestro/issues/3686)）；
 固定 CLI 的 `retryTapIfNoChange` 又会把空快照误当成界面变化（[#3685](https://github.com/mobile-dev-inc/Maestro/issues/3685)）。
 此处只补发一次幂等导航动作，不重启应用、不重跑流程，也不忽略后续断言。
-Android 阅读流程通过系统无障碍快照检查翻页后的可见文字与旧页消失，并保留字体切换、重新打开和冷启动断言。
-关闭重开 EPUB 时，WebView 偶尔只向无障碍树提供文档标题，即使正文已正确显示。
-这一步使用官方 [`assertScreenshot`](https://docs.maestro.dev/reference/commands-available/assertscreenshot)：先确认第二页正文与书签、收起工具栏，再截取当前阅读区域；重开后比较同一区域，要求 99% 像素匹配。
-基准只来自同次流程中已通过行为断言的页面，不提交固定设备整屏图片，也不在失败时更新基准。首次采用或修改比较规则时，必须验证正确恢复通过、故意切到另一页失败；书签与导航历史断言仍然保留。
-DevTools 检查在应用进程重启后曾持续超时并阻塞 Maestro 控制连接；发布套件使用原生检查路径。
+Android 关闭重开 EPUB 时，WebView 偶尔只向无障碍树提供文档标题，即使正文已正确显示。
+阅读游程按 [Maestro 官方建议](https://docs.maestro.dev/extra-materials/troubleshooting/known-issues) 在入口声明 `androidWebViewHierarchy: devtools`，补充 WebView 正文节点。继续检查目标页文字可见、旧页消失、书签和空导航历史，并保留字体切换、重新打开和冷启动验证。截图用于故障取证，不替代这些行为断言。
+工具栏隐藏后按钮仍残留时，应同时检查实际画面与原生节点；节点禁用并不代表动画已正确完成。Reanimated 4.5.1 在 JS 线程阻塞或重复动画后可能恢复旧样式，移动端升级到包含[官方修复](https://github.com/software-mansion/react-native-reanimated/pull/9987)的 4.5.5，保留正常动画和工具栏显隐断言。
+Maestro 2.11 会探测所有应用的 WebView 调试端口；[上游维护者确认](https://github.com/mobile-dev-inc/Maestro/pull/3419#issuecomment-4997305721)后台冻结进程仍暴露端口，重复查询会耗尽连接队列。固定 Google APIs 镜像中的 Google 搜索应用触发了相同问题：仅解冻该进程后超时消失，但强制停止后会被桌面重新启动。因此 runner 只在专用模拟器中禁用 `com.google.android.googlequicksearchbox`，隔离无关的后台 WebView；保留系统进程冻结、MyReader 生命周期、系统文件选择器和语音引擎。需要恢复该模拟器的 Google 搜索时，执行 `adb -s <serial> shell pm enable --user 0 com.google.android.googlequicksearchbox`。这是本项目经对照验证的环境隔离措施，不是 Maestro 提供的配置项；上游加入应用范围过滤后可移除。
 Maestro 直接连接专用模拟器的 adbd 端口（控制台端口 + 1），把驱动、安装和 fixture 操作绑定到同一设备。
 该连接入口由固定版本 CLI 的 `--host` / `--port` 提供；安装和故障诊断仍通过 `adb -s` 指定同一设备。
 发布测试固定 Android 35、Emulator 36.6.11（15507667）、3072 MB 内存和 `swangle` 软件渲染，保持本地与 CI 的测试运行时一致。
-上游记录了 [ADB / WebView 调试通道阻塞](https://github.com/mobile-dev-inc/Maestro/pull/3419)，表现为设备仍显示在线但 `adb shell` 不再响应；仅固定系统 API 仍不足以稳定运行，模拟器版本和渲染器也必须明确。
+Maestro 2.11 已包含调试连接的超时保护，但尚未按应用过滤端口；固定运行时不能替代上述后台进程隔离。
 这些测试运行时设置不改变 APK 的目标版本、签名或完整用例清单。
 iOS CI 明确使用 iOS 26.5 上的 iPhone 17 Pro 与 iPad Pro 13-inch (M5)，与本地验证设备一致，避免按设备列表顺序选中旧运行时。
 PDF/CBZ 翻页在 Android 使用 1.2 秒连续滑动，给 `input swipe` 足够时间送达 MOVE 事件；短滑动在模拟器负载下可能只送达两次移动并触发分页回弹。

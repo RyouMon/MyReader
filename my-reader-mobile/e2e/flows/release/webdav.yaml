@@ -1,5 +1,6 @@
 appId: ${APP_ID}
 name: WebDAV upload, explicit download and reading persist across restart
+androidWebViewHierarchy: devtools
 ---
 - runFlow: ../../common/launch_and_prepare.yaml
 - runFlow: ../../common/configure_webdav.yaml

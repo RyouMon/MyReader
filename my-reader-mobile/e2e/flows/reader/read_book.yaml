@@ -64,7 +64,7 @@ tags:
 - extendedWaitUntil:
     visible: "Playback position first page.*"
     timeout: 10000
-# Assert the visible page in the production accessibility hierarchy.
+# Assert the visible page, including the absence of offscreen content.
 - runFlow:
     when:
       platform: Android
@@ -125,53 +125,17 @@ tags:
 - extendedWaitUntil:
     visible: "Latest narration second page.*"
     timeout: 10000
-- runFlow:
-    when:
-      platform: Android
-    commands:
-      # Compare the same viewport before/after reopening. Hide chrome first so
-      # status bars and navigation history do not alter the reference image.
-      - tapOn:
-          point: "50%,50%"
-      - assertNotVisible: ${output.selectors.reader.moreActions}
-      - waitForAnimationToEnd
-      - takeScreenshot:
-          path: epub-bookmarked-page
-          cropOn:
-            id: "ryoumon.myreadermobile:id/resourcePager"
-- runFlow:
-    when:
-      platform: iOS
-    commands:
-      - takeScreenshot: epub-bookmarked-page
+- takeScreenshot: epub-bookmarked-page
 - runFlow: ../../common/close_reader.yaml
 - tapOn: '打开《MyReader TTS E2E》|Open "MyReader TTS E2E"'
+- extendedWaitUntil:
+    visible: "Latest narration second page.*"
+    timeout: 30000
 - runFlow:
     when:
       platform: Android
     commands:
-      - extendedWaitUntil:
-          visible:
-            id: "ryoumon.myreadermobile:id/resourcePager"
-          timeout: 30000
-      - extendedWaitUntil:
-          visible: "^Playback position authority$"
-          timeout: 30000
-      - waitForAnimationToEnd
-      # WebView can expose only its title after a renderer restart even while
-      # the page is correctly painted. Compare the actual restored content.
-      - assertScreenshot:
-          path: epub-bookmarked-page
-          cropOn:
-            id: "ryoumon.myreadermobile:id/resourcePager"
-          thresholdPercentage: 99
-- runFlow:
-    when:
-      platform: iOS
-    commands:
-      - extendedWaitUntil:
-          visible: "Latest narration second page.*"
-          timeout: 30000
+      - assertNotVisible: "Playback position first page.*"
 - runFlow:
     when:
       notVisible: ${output.selectors.reader.moreActions}

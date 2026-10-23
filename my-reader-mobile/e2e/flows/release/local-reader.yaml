@@ -1,5 +1,6 @@
 appId: ${APP_ID}
 name: Local books, navigation, narration and deletion on a release app
+androidWebViewHierarchy: devtools
 ---
 - runFlow: ../library/import_local_supported_formats.yaml
 - runFlow: ../library/navigate_root_header.yaml

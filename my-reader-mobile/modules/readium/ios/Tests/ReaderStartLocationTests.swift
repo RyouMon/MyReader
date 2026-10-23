@@ -55,7 +55,8 @@ extension ReaderWindowTests {
         ready.fulfill()
       }
       defer { reader.onViewportChange = onViewportChange }
-      let result = await XCTWaiter.fulfillment(of: [ready], timeout: 15)
+      // Initial viewport delivery includes launching the WebContent process.
+      let result = await XCTWaiter.fulfillment(of: [ready], timeout: 60)
       try #require(result == .completed)
       try #require(reader.epubNavigator.viewport?.resources.isEmpty == false)
     }
@@ -292,7 +293,7 @@ extension ReaderWindowTests {
       window.rootViewController = controller
       window.makeKeyAndVisible()
       defer { window.isHidden = true }
-      let result = await XCTWaiter.fulfillment(of: [viewportReady], timeout: 15)
+      let result = await XCTWaiter.fulfillment(of: [viewportReady], timeout: 60)
       try #require(result == .completed)
       var paginationReady = !delayedFirstFrame
       for _ in 0..<100 {

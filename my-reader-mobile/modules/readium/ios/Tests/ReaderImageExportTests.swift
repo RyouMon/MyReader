@@ -200,7 +200,8 @@ extension ReaderWindowTests {
       let navigation = ImageFixtureNavigation()
       webView.navigationDelegate = navigation
       webView.loadFileURL(html, allowingReadAccessTo: fixture)
-      let loaded = await XCTWaiter.fulfillment(of: [navigation.loaded], timeout: 15)
+      // CI WebContent process launch alone can take over 20 seconds before navigation starts.
+      let loaded = await XCTWaiter.fulfillment(of: [navigation.loaded], timeout: 60)
       try #require(loaded == .completed)
       if let error = navigation.error { throw error }
       try await webView.evaluateJavaScript("""

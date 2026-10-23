@@ -74,6 +74,10 @@ export async function exerciseDelayedActivation(command: "activate" | "focus") {
     const comms = frame.msg!
     const send = comms.send.bind(comms)
     let release: (() => void) | undefined
+    let positioned!: () => void
+    const initialPosition = new Promise<void>((resolve) => {
+      positioned = resolve
+    })
     const ready = new Promise<void>((resolve) => {
       comms.send = (key, data, callback, ...rest) =>
         send(
@@ -84,7 +88,12 @@ export async function exerciseDelayedActivation(command: "activate" | "focus") {
                 release = () => callback?.(ok)
                 resolve()
               }
-            : callback,
+            : key === "go_progression"
+              ? (ok) => {
+                  callback?.(ok)
+                  positioned()
+                }
+              : callback,
           ...rest,
         )
     })
@@ -98,6 +107,8 @@ export async function exerciseDelayedActivation(command: "activate" | "focus") {
     }
     await frame.show(1)
     await ready
+    // show() can reveal the frame before its asynchronous positioning completes.
+    await initialPosition
     const restored = visible("resume")
     comms.send = send
     const target = initial.copyWithLocations({ fragments: ["target"] })
