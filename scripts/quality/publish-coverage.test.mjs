@@ -36,6 +36,7 @@ function fixture() {
   )
   const comments = []
   const writes = []
+  const summaries = []
   const github = {
     rest: {
       actions: { listWorkflowRunArtifacts: "artifacts" },
@@ -75,7 +76,9 @@ function fixture() {
   }
   const core = {
     info: () => {},
-    summary: { addRaw: () => ({ write: async () => {} }) },
+    summary: {
+      addRaw: (body) => ({ write: async () => summaries.push(body) }),
+    },
   }
   return {
     args: { github, context, core },
@@ -84,6 +87,7 @@ function fixture() {
     statuses,
     comments,
     writes,
+    summaries,
     cleanup: () => rmSync(dir, { recursive: true, force: true }),
   }
 }
@@ -146,25 +150,97 @@ test("the PR summary uses the gate's exact counts even when the upstream display
   }
 })
 
-test("a missing baseline artifact or stale status fails publication instead of reusing old green results", async () => {
+test("a missing baseline artifact fails publication instead of reusing old green results", async () => {
   const f = fixture()
   try {
-    const removed = f.artifacts.pop()
+    f.artifacts.pop()
     await assert.rejects(
       publishCoverage(f.args, f.summary),
       /baseline artifact missing/,
-    )
-    f.artifacts.push(removed)
-    f.statuses[0].created_at = "2026-10-16T00:00:00Z"
-    await assert.rejects(
-      publishCoverage(f.args, f.summary),
-      /Current coverage status missing/,
     )
     assert.equal(f.writes.length, 0)
   } finally {
     f.cleanup()
   }
 })
+
+test("release reports wait until newly written commit statuses are visible", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"] })
+  const f = fixture()
+  try {
+    delete f.args.context.payload.pull_request
+    f.args.context.ref = "refs/heads/codex/coverage"
+    f.args.context.sha = "current-head"
+    const paginate = f.args.github.paginate
+    let visible = false
+    f.args.github.paginate = async (endpoint, args) => {
+      const result = await paginate(endpoint, args)
+      if (endpoint !== "statuses" || visible) return result
+      return result
+        .filter((status) => status.context !== "codecov/patch (android)")
+        .map((status) =>
+          status.context === "codecov/project (android)"
+            ? { ...status, created_at: "2026-10-16T00:00:00Z" }
+            : status,
+        )
+    }
+    const publication = publishCoverage(f.args, f.summary).then(
+      () => true,
+      (error) => error,
+    )
+    await new Promise(setImmediate)
+    assert.deepEqual(f.summaries, [])
+    visible = true
+    t.mock.timers.tick(1000)
+    assert.equal(await publication, true)
+    assert.equal(f.summaries.length, 1)
+    assert.match(f.summaries[0], /current-head/)
+    assert.match(f.summaries[0], /50\.00% \(5\/10\) < target 80%/)
+    assert.equal(f.writes.length, 0)
+  } finally {
+    f.cleanup()
+  }
+})
+
+test("tagged release reports use the upstream action's tag artifact names", async () => {
+  const f = fixture()
+  try {
+    delete f.args.context.payload.pull_request
+    f.args.context.ref = "refs/tags/v0.18.0"
+    f.args.context.sha = "current-head"
+    for (const artifact of f.artifacts)
+      artifact.name = artifact.name.replace("codex-coverage", "unknown")
+    await publishCoverage(f.args, f.summary)
+    assert.equal(f.summaries.length, 1)
+    assert.match(f.summaries[0], /current-head/)
+    assert.equal(f.writes.length, 0)
+  } finally {
+    f.cleanup()
+  }
+})
+
+for (const unavailable of ["missing", "stale"]) {
+  test(`${unavailable} commit statuses still block publication after the wait budget`, async (t) => {
+    t.mock.timers.enable({ apis: ["setTimeout", "Date"] })
+    const f = fixture()
+    try {
+      if (unavailable === "missing") f.statuses.pop()
+      else f.statuses[0].created_at = "2026-10-16T00:00:00Z"
+      const publication = assert.rejects(
+        publishCoverage(f.args, f.summary),
+        /Current coverage status missing/,
+      )
+      await new Promise(setImmediate)
+      assert.deepEqual(f.summaries, [])
+      t.mock.timers.tick(30_000)
+      await publication
+      assert.deepEqual(f.summaries, [])
+      assert.equal(f.writes.length, 0)
+    } finally {
+      f.cleanup()
+    }
+  })
+}
 
 test("fork PRs require reports but do not need a write token or post comments", async () => {
   const f = fixture()
