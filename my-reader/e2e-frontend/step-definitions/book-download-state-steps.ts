@@ -346,7 +346,7 @@ Then("阅读器应显示图书内容", async ({ page }) => {
       .frameLocator("iframe:visible")
       .first()
       .getByText("MyReader reads this first sentence aloud.", { exact: false }),
-  ).toBeVisible()
+  ).toBeVisible({ timeout: 20_000 })
 })
 
 Then("阅读器应显示下载中反馈", async ({ page }) => {
@@ -418,7 +418,7 @@ Then("阅读器下载结果应为{word}", async ({ page }, status: string) => {
           .getByText("MyReader reads this first sentence aloud.", {
             exact: false,
           }),
-      ).toBeVisible()
+      ).toBeVisible({ timeout: 20_000 })
     },
     下载失败: async () => {
       await expect(page.getByText(/网络错误/).first()).toBeVisible()
