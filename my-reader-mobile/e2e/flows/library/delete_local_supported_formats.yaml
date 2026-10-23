@@ -42,6 +42,10 @@ tags:
 
 # Scenario: each successful deletion immediately removes its cached card.
 - tapOn: "更多操作：${CBZ_BOOK_TITLE}|More actions: ${CBZ_BOOK_TITLE}"
+# Native menus expose moving accessibility bounds during their entrance.
+# Settle before tapOn captures the target; keep the confirmation assertion.
+- waitForAnimationToEnd:
+    timeout: 10000
 - tapOn: "删除图书|Delete Book"
 - tapOn: "删除|Delete"
 - extendedWaitUntil:
@@ -60,6 +64,8 @@ tags:
     id: "library-collection-all"
 
 - tapOn: "更多操作：${PDF_BOOK_TITLE}|More actions: ${PDF_BOOK_TITLE}"
+- waitForAnimationToEnd:
+    timeout: 10000
 - tapOn: "删除图书|Delete Book"
 - tapOn: "删除|Delete"
 - extendedWaitUntil:
@@ -67,6 +73,8 @@ tags:
     timeout: 5000
 
 - tapOn: "更多操作：${EPUB_BOOK_TITLE}|More actions: ${EPUB_BOOK_TITLE}"
+- waitForAnimationToEnd:
+    timeout: 10000
 - tapOn: "删除图书|Delete Book"
 - tapOn: "删除|Delete"
 - extendedWaitUntil:
