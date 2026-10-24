@@ -24,10 +24,10 @@
     if (error) break;
     NSError *coordinationError = nil;
     __block NSError *writeError = nil;
-    // Publish each document through its own coordinated write. Directory-level
-    // copies do not coordinate the individual files with the Files provider.
+    // These are new documents. Coordinate creation as replacement even when
+    // the destination does not exist yet, as required by NSFileCoordinator.
     [coordinator coordinateWritingItemAtURL:[destination URLByAppendingPathComponent:file.lastPathComponent]
-        options:0 error:&coordinationError byAccessor:^(NSURL *url) {
+        options:NSFileCoordinatorWritingForReplacing error:&coordinationError byAccessor:^(NSURL *url) {
           [data writeToURL:url options:NSDataWritingAtomic error:&writeError];
         }];
     error = coordinationError ?: writeError;
