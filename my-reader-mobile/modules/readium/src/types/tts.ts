@@ -40,6 +40,7 @@ export type TtsSynthesisRequestEvent = {
   voiceId: string
   speed: number
   pitch: number
+  locator?: Locator
 }
 
 export type TtsSynthesisCancelEvent = {
@@ -62,6 +63,17 @@ export type TtsSynthesisCompletion = {
   timings?: TtsTiming[]
   playbackRate?: number
   error?: string
+  segments?: TtsPlaybackSegment[]
+}
+
+export type TtsPlaybackSegment = {
+  text: string
+  startUtf16: number
+  endUtf16: number
+  path?: string
+  timings?: TtsTiming[]
+  playbackRate?: number
+  systemVoiceId?: string
 }
 
 export type TtsVoice = {

@@ -8,6 +8,8 @@ pub mod datasource_service;
 pub mod download_service;
 pub mod favorite_book_service;
 pub mod library_service;
+pub mod llm_service;
+pub mod narration_dto;
 pub mod progress_service;
 pub mod reader_service;
 pub mod reader_window_service;

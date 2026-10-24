@@ -148,7 +148,12 @@ async fn synthesize_openai(
     if let Some(speed) = request.speed {
         body["speed"] = json!(speed);
     }
-    if let Some(instructions) = instructions.as_deref().filter(|value| !value.is_empty()) {
+    if let Some(instructions) = request
+        .instructions
+        .as_deref()
+        .or(instructions.as_deref())
+        .filter(|value| !value.is_empty())
+    {
         body["instructions"] = json!(instructions);
     }
 

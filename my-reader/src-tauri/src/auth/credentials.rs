@@ -11,6 +11,7 @@ use crate::error::AppError;
 const WEBDAV_KEYRING_SERVICE: &str = "com.myreader.webdav";
 const ONEDRIVE_KEYRING_SERVICE: &str = "com.myreader.onedrive";
 const TTS_KEYRING_SERVICE: &str = "com.myreader.tts";
+const LLM_KEYRING_SERVICE: &str = "com.myreader.llm";
 
 /// Credential type used to unify keyring operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -18,6 +19,7 @@ pub enum Service {
     Webdav,
     Onedrive,
     Tts,
+    Llm,
 }
 
 impl Service {
@@ -26,6 +28,7 @@ impl Service {
             Service::Webdav => WEBDAV_KEYRING_SERVICE,
             Service::Onedrive => ONEDRIVE_KEYRING_SERVICE,
             Service::Tts => TTS_KEYRING_SERVICE,
+            Service::Llm => LLM_KEYRING_SERVICE,
         }
     }
 
@@ -34,6 +37,7 @@ impl Service {
             Service::Webdav => "WebDAV 密码",
             Service::Onedrive => "OneDrive refresh token",
             Service::Tts => "TTS 凭据",
+            Service::Llm => "LLM 凭据",
         }
     }
 }
@@ -176,6 +180,18 @@ pub fn read_tts_credential(account: &str) -> Result<Option<String>, AppError> {
 
 pub fn delete_tts_credential(account: &str) -> Result<(), AppError> {
     store().delete(Service::Tts, account)
+}
+
+pub fn save_llm_credential(account: &str, credential: &str) -> Result<(), AppError> {
+    store().save(Service::Llm, account, credential)
+}
+
+pub fn read_llm_credential(account: &str) -> Result<Option<String>, AppError> {
+    store().read(Service::Llm, account)
+}
+
+pub fn delete_llm_credential(account: &str) -> Result<(), AppError> {
+    store().delete(Service::Llm, account)
 }
 
 #[cfg(any(test, debug_assertions))]

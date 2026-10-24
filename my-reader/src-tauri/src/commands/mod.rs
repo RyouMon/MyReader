@@ -24,6 +24,8 @@ pub(crate) mod common;
 pub mod download;
 pub mod favorite;
 pub mod library;
+pub mod llm;
+pub mod narration;
 pub mod progress;
 pub mod reader;
 pub mod reader_image;

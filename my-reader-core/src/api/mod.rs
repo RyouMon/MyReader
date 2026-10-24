@@ -4,6 +4,8 @@ pub mod config;
 pub mod content;
 pub mod datasource;
 pub mod library;
+pub mod llm;
+pub mod narration;
 pub mod reading;
 pub mod sync;
 pub mod tts;

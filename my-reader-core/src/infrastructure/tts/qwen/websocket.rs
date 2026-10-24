@@ -90,7 +90,12 @@ async fn synthesize_task(
         "rate": request.speed.unwrap_or(1.0).clamp(0.5, 2.0),
         "pitch": request.pitch.unwrap_or(1.0),
     });
-    if let Some(value) = instructions.as_deref().filter(|value| !value.is_empty()) {
+    if let Some(value) = request
+        .instructions
+        .as_deref()
+        .or(instructions.as_deref())
+        .filter(|value| !value.is_empty())
+    {
         parameters["instruction"] = json!(value);
     }
     socket

@@ -190,6 +190,18 @@ data class TtsSynthesisCompletionRecord(
   @Field val timings: List<TtsTimingRecord>? = null,
   @Field val playbackRate: Double? = null,
   @Field val error: String? = null,
+  @Field val segments: List<TtsPlaybackSegmentRecord>? = null,
+) : Record
+
+@OptimizedRecord
+data class TtsPlaybackSegmentRecord(
+  @Field val text: String = "",
+  @Field val startUtf16: Int = 0,
+  @Field val endUtf16: Int = 0,
+  @Field val path: String? = null,
+  @Field val timings: List<TtsTimingRecord>? = null,
+  @Field val playbackRate: Double? = null,
+  @Field val systemVoiceId: String? = null,
 ) : Record
 
 // MARK: - Streamer / open-architecture config (REP-005/006)
