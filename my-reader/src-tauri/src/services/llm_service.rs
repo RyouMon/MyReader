@@ -84,13 +84,31 @@ impl DesktopLlmService {
         if profile.id.is_empty() {
             profile.id = uuid::Uuid::new_v4().to_string();
         }
-        let reference = format!("llm-provider-{}", profile.id);
-        profile.credential_reference = Some(reference.clone());
+        let previous = LlmService::get_config(path)?;
+        let old_reference = previous
+            .profiles
+            .iter()
+            .find(|item| item.id == profile.id)
+            .and_then(|item| item.credential_reference.clone());
+        let key = input.credential.filter(|value| !value.trim().is_empty());
+        let reference = if input.clear_credential {
+            None
+        } else if key.is_some() {
+            Some(format!("llm-provider-{}", uuid::Uuid::new_v4()))
+        } else {
+            old_reference.clone()
+        };
+        profile.credential_reference = reference.clone();
         let config = LlmService::upsert_profile(path, profile)?;
-        if input.clear_credential {
-            credentials::delete_llm_credential(&reference)?;
-        } else if let Some(key) = input.credential.filter(|value| !value.trim().is_empty()) {
-            credentials::save_llm_credential(&reference, key.trim())?;
+        if !input.clear_credential {
+            if let (Some(key), Some(reference)) = (key, &reference) {
+                credentials::save_llm_credential(reference, key.trim())?;
+            }
+        }
+        if old_reference != reference {
+            if let Some(old) = old_reference {
+                credentials::delete_llm_credential(&old)?;
+            }
         }
         config_dto(config)
     }
@@ -136,14 +154,19 @@ impl DesktopLlmService {
     }
 }
 
-pub fn selected_credential(path: &Path) -> Result<Option<String>, AppError> {
+pub fn selected_credential(path: &Path) -> Result<my_reader_core::models::LlmCredential, AppError> {
     let profile = LlmService::selected_profile(path)?;
-    profile
+    let value = profile
         .credential_reference
         .as_deref()
         .map(credentials::read_llm_credential)
         .transpose()
-        .map(Option::flatten)
+        .map(Option::flatten)?;
+    Ok(my_reader_core::models::LlmCredential {
+        profile_id: profile.id,
+        profile_revision: profile.revision,
+        value,
+    })
 }
 
 fn input_credential(path: &Path, input: &LlmProfileInput) -> Result<Option<String>, AppError> {

@@ -19,6 +19,23 @@ pub struct LlmConfig {
     pub default_profile_id: Option<String>,
 }
 
+#[derive(uniffi::Record)]
+pub struct LlmCredential {
+    pub profile_id: String,
+    pub profile_revision: u32,
+    pub value: Option<String>,
+}
+
+impl From<LlmCredential> for core::LlmCredential {
+    fn from(value: LlmCredential) -> Self {
+        Self {
+            profile_id: value.profile_id,
+            profile_revision: value.profile_revision,
+            value: value.value,
+        }
+    }
+}
+
 impl TryFrom<LlmProviderProfile> for core::LlmProviderProfile {
     type Error = CoreFfiError;
     fn try_from(value: LlmProviderProfile) -> Result<Self, Self::Error> {

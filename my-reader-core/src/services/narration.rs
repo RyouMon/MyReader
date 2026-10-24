@@ -35,7 +35,7 @@ impl NarrationService {
         config_path: &Path,
         request: NarrationRequest,
         default_voice: crate::models::TtsVoiceRef,
-        credential: Option<&str>,
+        credential: Option<&crate::models::LlmCredential>,
     ) -> Result<Vec<crate::models::NarrationSpeech>, CoreError> {
         let plan = Self::plan(root, config_path, request.clone(), credential).await?;
         let settings = Self::get_settings(root, request.book_id).await?;
@@ -122,7 +122,7 @@ impl NarrationService {
         root: &Path,
         config_path: &Path,
         request: NarrationRequest,
-        credential: Option<&str>,
+        credential: Option<&crate::models::LlmCredential>,
     ) -> Result<NarrationPlan, CoreError> {
         validate_request(&request)?;
         let context = LibraryContext::open(root).await?;
@@ -144,6 +144,7 @@ impl NarrationService {
             return Err(error("STALE_REQUEST"));
         }
         let profile = LlmService::selected_profile(config_path)?;
+        let credential = credential_for(&profile, credential)?;
         let key = cache_key(&request, &profile, settings.identity_revision)?;
         if let Some(plan) = repository.cached(&session, &key).await? {
             return Ok(plan);
@@ -182,6 +183,21 @@ impl NarrationService {
             .commit(&session, &settings, &key, &request, &plan, checkpoint)
             .await?;
         Ok(plan)
+    }
+}
+
+fn credential_for<'a>(
+    profile: &LlmProviderProfile,
+    credential: Option<&'a crate::models::LlmCredential>,
+) -> Result<Option<&'a str>, CoreError> {
+    match credential {
+        Some(value)
+            if value.profile_id != profile.id || value.profile_revision != profile.revision =>
+        {
+            Err(error("STALE_REQUEST"))
+        }
+        Some(value) => Ok(value.value.as_deref()),
+        None => Ok(None),
     }
 }
 

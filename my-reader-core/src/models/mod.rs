@@ -33,7 +33,7 @@ pub use library::{
     MYREADER_LIBRARY_MARKER_VERSION,
 };
 pub use library_source::LibrarySourceType;
-pub use llm::{LlmConfig, LlmMessage, LlmProtocol, LlmProviderProfile};
+pub use llm::{LlmConfig, LlmCredential, LlmMessage, LlmProtocol, LlmProviderProfile};
 pub use narration::{
     BookCharacter, BookNarrationSettings, CharacterImportCandidate, CharacterImportRequest,
     CharacterSource, NarrationPlan, NarrationRequest, NarrationSegment, NarrationSpeech,

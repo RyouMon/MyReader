@@ -174,7 +174,10 @@ afterEach(() => {
 function mount(kind: "settings" | "reader" = "settings") {
   const ui = kind === "reader" ? reader() : <LlmSettingsScreen />
   const client = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    defaultOptions: {
+      queries: { retry: false, gcTime: Infinity },
+      mutations: { retry: false, gcTime: Infinity },
+    },
   })
   clients.push(client)
   return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
@@ -277,7 +280,10 @@ it("shows role controls only after enabling a book with a configured LLM and acc
   await act(async () => buttons[1]!.onPress?.())
   await screen.findByText("narration.import")
   await waitFor(() =>
-    expect(screen.getByLabelText("narration.enabled")).toBeEnabled(),
+    expect(screen.getByLabelText("narration.enabled")).toHaveProp(
+      "disabled",
+      false,
+    ),
   )
   fireEvent(screen.getByLabelText("narration.enabled"), "valueChange", false)
   await waitFor(() => expect(screen.queryByText("narration.import")).toBeNull())

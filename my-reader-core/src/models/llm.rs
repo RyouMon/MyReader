@@ -43,3 +43,10 @@ pub struct LlmMessage {
     pub role: String,
     pub content: String,
 }
+
+// Request-scoped only: never serialized into configuration or conversation history.
+pub struct LlmCredential {
+    pub profile_id: String,
+    pub profile_revision: u32,
+    pub value: Option<String>,
+}
