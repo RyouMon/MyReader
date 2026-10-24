@@ -7,6 +7,10 @@
       "entry": ["scripts/*.{mjs,sh}", "scripts/quality/*.mjs"],
       "project": ["scripts/**/*.{mjs,js,ts}"]
     },
+    "scripts/experiments/issue-107-pi": {
+      "entry": ["probe.mjs", "browser-entry.mjs"],
+      "project": ["*.mjs"]
+    },
     "my-reader": {
       "entry": ["src/routes/**/*.{ts,tsx}", "scripts/*.mjs"],
       "project": ["src/**/*.{ts,tsx,css}"]

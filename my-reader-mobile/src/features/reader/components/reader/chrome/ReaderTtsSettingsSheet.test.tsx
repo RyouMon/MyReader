@@ -24,6 +24,10 @@ import {
 } from "@/src/services/core/tts"
 import ReaderTtsSettingsSheet from "./ReaderTtsSettingsSheet"
 
+jest.mock("./BookNarrationSettings", () => ({
+  BookNarrationSettings: () => null,
+}))
+
 let mockPlaybackRate = 1
 const mockAudioPlayer = {
   play: jest.fn(() => mockPlaybackRate),

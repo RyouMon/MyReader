@@ -85,6 +85,17 @@ export const commands = {
 	setReaderTrafficLightsVisible: (visible: boolean, x: number, y: number, reposition: boolean) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reader_traffic_lights_visible", { visible, x, y, reposition })),
 	closeBookStreamer: (libraryId: string, bookId: number) => typedError<null, ErrorKind>(__TAURI_INVOKE("close_book_streamer", { libraryId, bookId })),
 	getTtsConfig: () => typedError<TtsConfigDto, ErrorKind>(__TAURI_INVOKE("get_tts_config")),
+	getLlmConfig: () => typedError<LlmConfigDto, ErrorKind>(__TAURI_INVOKE("get_llm_config")),
+	upsertLlmProfile: (input: LlmProfileInput) => typedError<LlmConfigDto, ErrorKind>(__TAURI_INVOKE("upsert_llm_profile", { input })),
+	removeLlmProfile: (profileId: string) => typedError<LlmConfigDto, ErrorKind>(__TAURI_INVOKE("remove_llm_profile", { profileId })),
+	selectLlmProfile: (profileId: string | null) => typedError<LlmConfigDto, ErrorKind>(__TAURI_INVOKE("select_llm_profile", { profileId })),
+	listLlmModels: (input: LlmProfileInput) => typedError<string[], ErrorKind>(__TAURI_INVOKE("list_llm_models", { input })),
+	probeLlmProfile: (input: LlmProfileInput) => typedError<null, ErrorKind>(__TAURI_INVOKE("probe_llm_profile", { input })),
+	getBookNarration: (libraryId: string, bookId: number) => typedError<BookNarrationSettingsDto, ErrorKind>(__TAURI_INVOKE("get_book_narration", { libraryId, bookId })),
+	saveBookNarration: (libraryId: string, settings: BookNarrationSettingsDto) => typedError<BookNarrationSettingsDto, ErrorKind>(__TAURI_INVOKE("save_book_narration", { libraryId, settings })),
+	cancelBookNarration: (libraryId: string, bookId: number) => typedError<null, ErrorKind>(__TAURI_INVOKE("cancel_book_narration", { libraryId, bookId })),
+	importBookCharacters: (libraryId: string, request: CharacterImportRequestDto) => typedError<CharacterImportCandidateDto[], ErrorKind>(__TAURI_INVOKE("import_book_characters", { libraryId, request })),
+	prepareBookNarration: (libraryId: string, requestId: string, request: NarrationRequestDto, defaultVoice: TtsVoiceRefDto) => typedError<NarrationSpeechDto[], ErrorKind>(__TAURI_INVOKE("prepare_book_narration", { libraryId, requestId, request, defaultVoice })),
 	listQwenTtsModels: (endpoint: string | null) => __TAURI_INVOKE<QwenTtsModelDto[]>("list_qwen_tts_models", { endpoint }),
 	listQwenTtsPresets: () => __TAURI_INVOKE<QwenTtsPresetDto[]>("list_qwen_tts_presets"),
 	discoverQwenTtsVoices: (input: DiscoverQwenTtsVoicesInput) => typedError<TtsVoiceDto[], ErrorKind>(__TAURI_INVOKE("discover_qwen_tts_voices", { input })),
@@ -121,6 +132,16 @@ export type AppUpdateSnapshot = {
 	downloadedBytes: number,
 	totalBytes: number,
 	error: string | null,
+};
+
+export type BookCharacterDto = {
+	id: string,
+	name: string,
+	aliases: string[],
+	identity: string,
+	voice: TtsVoiceRefDto | null,
+	instructions: string,
+	source: CharacterSourceDto | null,
 };
 
 /**  Extended book detail with format sizes and identifiers pre-loaded. */
@@ -167,6 +188,14 @@ export type BookIdentifier = {
 	value: string,
 };
 
+export type BookNarrationSettingsDto = {
+	bookId: number,
+	enabled: boolean,
+	revision: number,
+	identityRevision: number,
+	characters: BookCharacterDto[],
+};
+
 export type CatalogCover = {
 	id: number,
 	title: string,
@@ -199,6 +228,25 @@ export type CatalogQuery = {
 	sortBy: string | null,
 	offset: number,
 	limit: number | null,
+};
+
+export type CharacterImportCandidateDto = {
+	name: string,
+	aliases: string[],
+	identity: string,
+	source: CharacterSourceDto,
+};
+
+export type CharacterImportRequestDto = {
+	bookId: number,
+	title: string,
+	authors: string[],
+	language: string,
+};
+
+export type CharacterSourceDto = {
+	title: string,
+	url: string,
 };
 
 export type DataSourceDetailDto = { kind: "local"; root_path: string } | { kind: "webdav"; endpoint: string; username: string; has_password: boolean; root_path: string | null } | { kind: "onedrive"; client_id: string; tenant_id: string; has_refresh_token: boolean; root_path: string | null; user_name: string | null; user_email: string | null };
@@ -276,6 +324,47 @@ export type LibraryInfo = {
 };
 
 export type LibraryType = "calibre" | "myreader";
+
+export type LlmConfigDto = {
+	profiles: LlmProfileDto[],
+	defaultProfileId: string | null,
+};
+
+export type LlmProfileDto = {
+	id: string,
+	name: string,
+	protocol: LlmProtocolDto,
+	endpoint: string,
+	model: string,
+	contextWindow: number,
+	hasCredential?: boolean,
+};
+
+export type LlmProfileInput = {
+	profile: LlmProfileDto,
+	credential: string | null,
+	clearCredential?: boolean,
+};
+
+export type LlmProtocolDto = "chatCompletions" | "responses";
+
+export type NarrationRequestDto = {
+	bookId: number,
+	contentVersion: string,
+	sourceKey: string,
+	position: number | null,
+	text: string,
+	before: string,
+	after: string,
+};
+
+export type NarrationSpeechDto = {
+	text: string,
+	startUtf16: number,
+	endUtf16: number,
+	voice: TtsVoiceRefDto,
+	instructions: string,
+};
 
 export type NewLocalDataSourceInput = {
 	name: string,
@@ -540,6 +629,7 @@ export type TtsSynthesisInput = {
 	text: string,
 	language?: string | null,
 	voiceId: string,
+	instructions?: string | null,
 	speed?: number | null,
 	pitch?: number | null,
 	acceptedMimeTypes?: string[],

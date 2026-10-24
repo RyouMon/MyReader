@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::{LibrarySourceType, TtsConfig};
+use super::{LibrarySourceType, LlmConfig, TtsConfig};
 
 pub const APP_CONFIG_SCHEMA_VERSION: u32 = 1;
 
@@ -24,6 +24,8 @@ pub struct AppConfig {
     pub active_library_id: Option<String>,
     #[serde(default)]
     pub tts: TtsConfig,
+    #[serde(default)]
+    pub llm: LlmConfig,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub desktop: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -42,6 +44,7 @@ impl AppConfig {
             libraries: Vec::new(),
             active_library_id: None,
             tts: TtsConfig::default(),
+            llm: LlmConfig::default(),
             desktop: None,
             mobile: None,
             extensions: BTreeMap::new(),

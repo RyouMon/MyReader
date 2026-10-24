@@ -65,7 +65,32 @@ impl MigratorTrait for LibraryMigrator {
             .iter()
             .copied()
             .map(|spec| Box::new(LegacyMigration(spec)) as Box<dyn MigrationTrait>)
+            .chain(std::iter::once(
+                Box::new(NarrationMigration) as Box<dyn MigrationTrait>
+            ))
             .collect()
+    }
+}
+
+struct NarrationMigration;
+
+impl MigrationName for NarrationMigration {
+    fn name(&self) -> &str {
+        "0024_book_narration"
+    }
+}
+
+#[async_trait]
+impl MigrationTrait for NarrationMigration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .get_connection()
+            .execute_unprepared(include_str!("../migrations/0024_book_narration.sql"))
+            .await?;
+        Ok(())
+    }
+    fn use_transaction(&self) -> Option<bool> {
+        Some(true)
     }
 }
 

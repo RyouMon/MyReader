@@ -2,6 +2,7 @@ import type { DesktopTranslationKey } from "@my-reader/i18n/desktop"
 import {
   ArrowLeft,
   Headphones,
+  Cpu,
   Database,
   FolderOpen,
   Info,
@@ -37,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "libraries", tKey: "settings.nav.libraries", Icon: FolderOpen },
   { key: "dataSources", tKey: "settings.nav.dataSources", Icon: Database },
   { key: "speech", tKey: "settings.nav.speech", Icon: Headphones },
+  { key: "llm", tKey: "llm.title", Icon: Cpu },
   { key: "appearance", tKey: "settings.nav.appearance", Icon: Palette },
   { key: "about", tKey: "settings.nav.about", Icon: Info },
 ]

@@ -317,6 +317,7 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
 
     let engineFactory: PublicationSpeechSynthesizer.EngineFactory
     var bufferingHandler: ((RemoteTtsSpeechKey, Bool) -> Void)?
+    var narrationLocator: (() -> Locator?)?
     if config.kind == "provider" {
       guard let profileId = config.profileId, !profileId.isEmpty,
             let voiceId = config.voiceId, !voiceId.isEmpty else { return nil }
@@ -326,7 +327,11 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
         speed: config.speed,
         pitch: config.pitch,
         onRequest: { request in
-          onSynthesisRequest(request.dictionary)
+          var payload = request.dictionary
+          if config.profileId == "narration", let locator = narrationLocator?() {
+            payload["locator"] = locatorToDict(locator)
+          }
+          onSynthesisRequest(payload)
         },
         onCancel: { requestIds in
           onSynthesisCancel(["requestIds": requestIds])
@@ -359,6 +364,12 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
       }
     ) else { return nil }
     self.synthesizer = synthesizer
+    narrationLocator = { [weak synthesizer] in
+      switch synthesizer?.state {
+      case let .playing(utterance, _), let .paused(utterance): return utterance.locator
+      default: return nil
+      }
+    }
     super.init()
     synthesizer.delegate = self
     bufferingHandler = { [weak self] key, buffering in
@@ -619,6 +630,7 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
   }
 
   private func scheduleRemotePrefetch(from anchor: Locator) {
+    guard config.profileId != "narration" else { return }
     guard let remoteEngine else { return }
     guard remotePrefetchAnchor != anchor else { return }
     remotePrefetchAnchor = anchor

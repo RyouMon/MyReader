@@ -47,6 +47,8 @@ import type {
   TtsVoiceRefDto,
 } from "@/lib/tauri-specta"
 import { CoreSpeechEngine } from "@/lib/tts/CoreSpeechEngine"
+import { NarrationSpeechEngine } from "@/lib/tts/NarrationSpeechEngine"
+import { narrationContext } from "@/lib/tts/narration-context"
 import {
   notifyTtsConfigChanged,
   TTS_CONFIG_CHANGED_EVENT,
@@ -54,6 +56,8 @@ import {
 } from "@/lib/tts/events"
 
 type UseEpubTtsSessionOptions = {
+  libraryId?: string | null
+  bookId?: number
   enabled: boolean
   navigatorRef: RefObject<EpubNavigator | null>
   resources: EpubTextResource[]
@@ -177,6 +181,8 @@ function playPreparedUtterance(
 }
 
 export function useEpubTtsSession({
+  libraryId,
+  bookId,
   enabled,
   navigatorRef,
   resources,
@@ -186,6 +192,7 @@ export function useEpubTtsSession({
   highlightTint,
 }: UseEpubTtsSessionOptions): EpubTtsSession {
   const [config, setConfig] = useState<TtsConfigDto | null>(null)
+  const [narrationEnabled, setNarrationEnabled] = useState(false)
   const [loading, setLoading] = useState(enabled)
   const [state, setState] = useState<ReaderTtsSessionStatus>("idle")
   const [viewportDetached, setViewportDetached] = useState(false)
@@ -201,6 +208,7 @@ export function useEpubTtsSession({
   const playbackUtterancesRef = useRef<EpubTtsUtterance[]>([])
   const currentLocatorRef = useRef<Locator | null>(currentLocator)
   const positionsRef = useRef(positions)
+  const resourcesRef = useRef(resources)
   const restartAfterConfigRef = useRef<{
     locator: Locator
     autoplay: boolean
@@ -233,6 +241,7 @@ export function useEpubTtsSession({
   )
   currentLocatorRef.current = currentLocator
   positionsRef.current = positions
+  resourcesRef.current = resources
 
   const syncViewportState = useCallback(
     (transition: ReaderTtsSessionTransition, originLocator?: Locator) => {
@@ -351,10 +360,16 @@ export function useEpubTtsSession({
     captureActiveRestart()
     setLoading(true)
     try {
-      const next = await api.getTtsConfig()
+      const [next, narration] = await Promise.all([
+        api.getTtsConfig(),
+        libraryId && bookId !== undefined
+          ? api.getBookNarration(libraryId, bookId)
+          : Promise.resolve(null),
+      ])
       if (revision !== configRefreshRevisionRef.current) return
       configRef.current = next
       setConfig(next)
+      setNarrationEnabled(narration?.enabled ?? false)
       setSpeedState(finitePreference(next.playback.speed, 1))
       setError(null)
     } catch (refreshError: unknown) {
@@ -364,7 +379,7 @@ export function useEpubTtsSession({
     } finally {
       if (revision === configRefreshRevisionRef.current) setLoading(false)
     }
-  }, [captureActiveRestart, enabled])
+  }, [captureActiveRestart, enabled, libraryId, bookId])
 
   useEffect(() => {
     if (!enabled) {
@@ -439,9 +454,25 @@ export function useEpubTtsSession({
       setError(null)
       return
     }
-    const engine = provider
+    const baseEngine = provider
       ? new CoreSpeechEngine(provider.id)
       : new WebSpeechEngine()
+    const engine =
+      narrationEnabled && libraryId && bookId !== undefined
+        ? new NarrationSpeechEngine(
+            baseEngine,
+            provider?.id,
+            async (utterance, voice, signal) => {
+              const request = await narrationContext(
+                bookId,
+                utterance as EpubTtsUtterance,
+                utterances,
+                resourcesRef.current,
+              )
+              return api.prepareBookNarration(libraryId, request, voice, signal)
+            },
+          )
+        : baseEngine
     const speech = new ReadiumSpeechNavigator(engine, {
       preferences: {
         rate: finitePreference(activeConfig.playback.speed, 1),
@@ -628,6 +659,9 @@ export function useEpubTtsSession({
   }, [
     beginSession,
     config,
+    narrationEnabled,
+    libraryId,
+    bookId,
     enabled,
     language,
     navigatorRef,

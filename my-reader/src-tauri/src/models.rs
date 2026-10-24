@@ -298,6 +298,7 @@ impl AppConfig {
             libraries: self.libraries.iter().map(Into::into).collect(),
             active_library_id: self.active_library_id.clone(),
             tts: Default::default(),
+            llm: Default::default(),
             desktop: Some(serde_json::json!({ "readerUi": reader_ui })),
             mobile: None,
             extensions: Default::default(),

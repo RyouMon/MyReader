@@ -40,6 +40,7 @@ import { AppUpdateSection } from "@/src/features/app-updates/app-update-section"
 const SETTINGS_ROW_ICONS = {
   addLibrary: { ios: "plus.circle", android: "add-circle-outline" },
   language: { ios: "globe", android: "language" },
+  llm: { ios: "cpu", android: "memory" },
   tts: {
     ios: "headphones",
     android: "headphones",
@@ -324,8 +325,13 @@ export default function SettingsScreen() {
               title={t("settings.tts.title")}
               icon={SETTINGS_ROW_ICONS.tts}
               detail={t("settings.tts.detail")}
-              isLast
               onPress={() => navigateTo("/settings/tts")}
+            />
+            <ListRow
+              title={t("llm.title")}
+              icon={SETTINGS_ROW_ICONS.llm}
+              onPress={() => navigateTo("/settings/llm")}
+              isLast
             />
           </SectionCard>
         </View>

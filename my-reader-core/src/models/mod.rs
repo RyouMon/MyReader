@@ -5,6 +5,8 @@ mod download;
 mod file_local_state;
 mod library;
 mod library_source;
+mod llm;
+mod narration;
 mod reading;
 mod storage;
 mod sync;
@@ -31,6 +33,12 @@ pub use library::{
     MYREADER_LIBRARY_MARKER_VERSION,
 };
 pub use library_source::LibrarySourceType;
+pub use llm::{LlmConfig, LlmMessage, LlmProtocol, LlmProviderProfile};
+pub use narration::{
+    BookCharacter, BookNarrationSettings, CharacterImportCandidate, CharacterImportRequest,
+    CharacterSource, NarrationPlan, NarrationRequest, NarrationSegment, NarrationSpeech,
+    NARRATOR_ID,
+};
 pub use reading::{
     LegacyFinishedReading, ReaderAnnotation, ReaderBookmark, ReadingPosition,
     ReadingPositionCandidate, ReadingStatistics,

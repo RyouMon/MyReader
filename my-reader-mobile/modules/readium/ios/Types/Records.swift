@@ -169,6 +169,17 @@ struct TtsSynthesisCompletionRecord: Record {
   @Field var timings: [TtsTimingRecord]? = nil
   @Field var playbackRate: Double? = nil
   @Field var error: String? = nil
+  @Field var segments: [TtsPlaybackSegmentRecord]? = nil
+}
+
+struct TtsPlaybackSegmentRecord: Record {
+  @Field var text: String = ""
+  @Field var startUtf16: Int = 0
+  @Field var endUtf16: Int = 0
+  @Field var path: String? = nil
+  @Field var timings: [TtsTimingRecord]? = nil
+  @Field var playbackRate: Double? = nil
+  @Field var systemVoiceId: String? = nil
 }
 
 // MARK: - Streamer / open-architecture config (REP-005/006)

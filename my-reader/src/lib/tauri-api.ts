@@ -6,6 +6,7 @@ import { invoke } from "@tauri-apps/api/core"
 import { demoCommands, isDemoApiEnabled } from "./demo-api"
 import { runTtsRequest } from "@my-reader/tools/tts-request"
 import { type ErrorKind, commands as raw } from "./tauri-specta"
+import type { NarrationRequestDto, TtsVoiceRefDto } from "./tauri-specta"
 
 type Result<T> =
   | { status: "ok"; data: T }
@@ -44,6 +45,41 @@ const commands = isDemoApiEnabled()
   : raw
 
 export const api = {
+  getLlmConfig: wrap(commands.getLlmConfig),
+  upsertLlmProfile: wrap(commands.upsertLlmProfile),
+  removeLlmProfile: wrap(commands.removeLlmProfile),
+  selectLlmProfile: wrap(commands.selectLlmProfile),
+  listLlmModels: wrap(commands.listLlmModels),
+  probeLlmProfile: wrap(commands.probeLlmProfile),
+  getBookNarration: wrap(commands.getBookNarration),
+  saveBookNarration: wrap(commands.saveBookNarration),
+  cancelBookNarration: wrap(commands.cancelBookNarration),
+  importBookCharacters: wrap(commands.importBookCharacters),
+  prepareBookNarration: async (
+    libraryId: string,
+    request: NarrationRequestDto,
+    defaultVoice: TtsVoiceRefDto,
+    signal?: AbortSignal,
+  ) => {
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError")
+    const requestId = crypto.randomUUID()
+    const cancel = () => {
+      void commands.cancelTtsSynthesis(requestId).catch(() => undefined)
+    }
+    signal?.addEventListener("abort", cancel, { once: true })
+    try {
+      return await unwrap(
+        commands.prepareBookNarration(
+          libraryId,
+          requestId,
+          request,
+          defaultVoice,
+        ),
+      )
+    } finally {
+      signal?.removeEventListener("abort", cancel)
+    }
+  },
   getAppUpdate: wrap(commands.getAppUpdate),
   checkAppUpdate: wrap(commands.checkAppUpdate),
   downloadAppUpdate: wrap(commands.downloadAppUpdate),

@@ -954,6 +954,8 @@ function useEpubReaderController({
   )
 
   const ttsSession = useEpubTtsSession({
+    libraryId,
+    bookId,
     enabled:
       isTauri() &&
       !isFixedLayout &&
@@ -2390,6 +2392,15 @@ function useEpubReaderController({
     isFixedLayout,
     bookTitle,
     bookAuthors,
+    narrationBook: libraryId
+      ? {
+          libraryId,
+          bookId,
+          title: bookTitle,
+          authors: bookAuthors ?? [],
+          language: readerLanguage,
+        }
+      : undefined,
     getPageImages: async () => {
       const container = containerRef.current
       const nav = navigatorRef.current

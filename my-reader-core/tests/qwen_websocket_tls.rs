@@ -57,6 +57,7 @@ async fn websocket_tls_reports_handshake_errors_without_a_global_crypto_provider
                 voice_id: "longanhuan_v3.6".into(),
                 speed: None,
                 pitch: None,
+                instructions: None,
                 accepted_mime_types: vec!["audio/mpeg".into()],
                 cache_policy: TtsCachePolicy::Bypass,
             },

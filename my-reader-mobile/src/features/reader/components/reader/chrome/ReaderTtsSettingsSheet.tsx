@@ -68,6 +68,10 @@ import {
 } from "./reader-tts-provider-draft"
 import { ReaderTtsProviderForm } from "./ReaderTtsProviderForm"
 import {
+  BookNarrationSettings,
+  type NarrationBook,
+} from "./BookNarrationSettings"
+import {
   ReaderTtsProviderList,
   ReaderTtsProviderTypes,
   ReaderTtsPlaybackSettings,
@@ -75,6 +79,8 @@ import {
 } from "./ReaderTtsSettingsViews"
 
 type ReaderTtsSettingsSheetProps = {
+  book?: NarrationBook
+  onNarrationChange?: () => void
   language: string
   palette: ReaderChromePalette
   onDismiss?: () => void
@@ -160,7 +166,14 @@ const ReaderTtsSettingsSheet = forwardRef<
   ReaderSettingsSheetRef,
   ReaderTtsSettingsSheetProps
 >(function ReaderTtsSettingsSheet(
-  { language, palette, onDismiss = NOOP, onConfigChange },
+  {
+    language,
+    palette,
+    onDismiss = NOOP,
+    onConfigChange,
+    book,
+    onNarrationChange,
+  },
   ref,
 ) {
   const { t, i18n } = useTranslation()
@@ -676,28 +689,36 @@ const ReaderTtsSettingsSheet = forwardRef<
                   removeProvider={removeProvider}
                 />
               ) : (
-                <ReaderTtsPlaybackSettings
-                  config={config}
-                  palette={palette}
-                  selectedProfile={selectedProfile}
-                  selectedEngineKey={selectedEngineKey}
-                  engineOptions={engineOptions}
-                  applyEngine={applyEngine}
-                  voicesLoading={voicesLoading}
-                  selectedVoice={selectedVoice}
-                  selectedVoiceId={selectedVoiceId}
-                  voiceActions={voiceActions}
-                  selectVoice={selectVoice}
-                  updatePlayback={updatePlayback}
-                  previewState={previewState}
-                  canPreview={canPreview}
-                  startPreview={startPreview}
-                  stopPreview={stopPreview}
-                  openProviders={() => {
-                    stopPreview()
-                    push("providers")
-                  }}
-                />
+                <>
+                  <BookNarrationSettings
+                    book={book}
+                    config={config}
+                    palette={palette}
+                    onChange={onNarrationChange}
+                  />
+                  <ReaderTtsPlaybackSettings
+                    config={config}
+                    palette={palette}
+                    selectedProfile={selectedProfile}
+                    selectedEngineKey={selectedEngineKey}
+                    engineOptions={engineOptions}
+                    applyEngine={applyEngine}
+                    voicesLoading={voicesLoading}
+                    selectedVoice={selectedVoice}
+                    selectedVoiceId={selectedVoiceId}
+                    voiceActions={voiceActions}
+                    selectVoice={selectVoice}
+                    updatePlayback={updatePlayback}
+                    previewState={previewState}
+                    canPreview={canPreview}
+                    startPreview={startPreview}
+                    stopPreview={stopPreview}
+                    openProviders={() => {
+                      stopPreview()
+                      push("providers")
+                    }}
+                  />
+                </>
               )}
             </BottomSheetScrollView>
           </Animated.View>

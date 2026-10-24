@@ -220,6 +220,8 @@ pub struct TtsSynthesisInput {
     pub language: Option<String>,
     pub voice_id: String,
     #[serde(default)]
+    pub instructions: Option<String>,
+    #[serde(default)]
     pub speed: Option<f64>,
     #[serde(default)]
     pub pitch: Option<f64>,
@@ -744,6 +746,7 @@ impl From<TtsSynthesisInput> for my_reader_core::models::TtsSynthesisRequest {
             text: value.text,
             language: value.language,
             voice_id: value.voice_id,
+            instructions: value.instructions,
             speed: value.speed,
             pitch: value.pitch,
             accepted_mime_types: value.accepted_mime_types,
