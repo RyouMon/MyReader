@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { createHash } from "node:crypto"
 import {
+  appendFileSync,
   readdirSync,
   readFileSync,
   renameSync,
@@ -45,7 +46,12 @@ function one(paths, suffix) {
   return matches[0]
 }
 
-export function prepareCandidate(assetDirectory, reportDirectory, commit) {
+export function prepareCandidate(
+  assetDirectory,
+  reportDirectory,
+  commit,
+  { advisory = false, sourceRun } = {},
+) {
   const mobile = JSON.parse(
     readFileSync(
       new URL("../../my-reader-mobile/e2e/release-suite.json", import.meta.url),
@@ -95,16 +101,32 @@ export function prepareCandidate(assetDirectory, reportDirectory, commit) {
     digests[basename(apk)],
     "APK checksum mismatch",
   )
+  const results = []
+  function assess(name, check) {
+    try {
+      const report = check()
+      results.push({ name, status: "passed" })
+      return report
+    } catch (error) {
+      if (!advisory) throw error
+      results.push({ name, status: "review-required", reason: error.message })
+      return undefined
+    }
+  }
   let iosDigest
   for (const [name, platform] of [
     ["android", "android"],
     ["ios-iPhone", "ios"],
     ["ios-iPad", "ios"],
   ]) {
-    const paths = files(join(reportDirectory, `e2e-mobile-${name}`))
-    const report = JSON.parse(readFileSync(one(paths, "passed.json"), "utf8"))
-    validateEvidence(report, commit, mobile[platform])
-    assert.equal(report.platform, platform)
+    const report = assess(`mobile-${name}`, () => {
+      const paths = files(join(reportDirectory, `e2e-mobile-${name}`))
+      const report = JSON.parse(readFileSync(one(paths, "passed.json"), "utf8"))
+      validateEvidence(report, commit, mobile[platform])
+      assert.equal(report.platform, platform)
+      return report
+    })
+    if (!report) continue
     if (platform === "android")
       assert.equal(
         report.sha256,
@@ -125,13 +147,21 @@ export function prepareCandidate(assetDirectory, reportDirectory, commit) {
     ["windows-latest", "win32"],
     ["macos-latest", "darwin"],
   ]) {
-    const paths = files(join(reportDirectory, `e2e-desktop-${runner}`))
-    const report = JSON.parse(readFileSync(one(paths, "passed.json"), "utf8"))
-    validateEvidence(report, commit, desktop)
-    assert.equal(report.platform, platform)
-    for (const file of ["/reports/report.json", "/reports/integration.json"]) {
-      validateBrowserReport(JSON.parse(readFileSync(one(paths, file), "utf8")))
-    }
+    assess(`desktop-${runner}`, () => {
+      const paths = files(join(reportDirectory, `e2e-desktop-${runner}`))
+      const report = JSON.parse(readFileSync(one(paths, "passed.json"), "utf8"))
+      validateEvidence(report, commit, desktop)
+      assert.equal(report.platform, platform)
+      for (const file of [
+        "/reports/report.json",
+        "/reports/integration.json",
+      ]) {
+        validateBrowserReport(
+          JSON.parse(readFileSync(one(paths, file), "utf8")),
+        )
+      }
+      return report
+    })
   }
   // Multi-path build artifacts retain bundler directories (msi/, deb/, etc.).
   // Publication consumes the validated files by their unique asset filenames.
@@ -143,7 +173,18 @@ export function prepareCandidate(assetDirectory, reportDirectory, commit) {
     if (entry.isDirectory())
       rmSync(join(assetDirectory, entry.name), { recursive: true })
   }
-  const manifest = { commit, assets: digests, iosSimulatorSha256: iosDigest }
+  const manifest = {
+    commit,
+    assets: digests,
+    iosSimulatorSha256: iosDigest,
+    sourceRun,
+    e2e: {
+      status: results.every((result) => result.status === "passed")
+        ? "passed"
+        : "review-required",
+      results,
+    },
+  }
   writeFileSync(
     join(assetDirectory, "release-evidence.json"),
     `${JSON.stringify(manifest, null, 2)}\n`,
@@ -160,5 +201,21 @@ if (
     assets && reports && commit,
     "Usage: candidate.mjs <assets> <reports> <commit>",
   )
-  prepareCandidate(assets, reports, commit)
+  const manifest = prepareCandidate(assets, reports, commit, {
+    advisory: true,
+    sourceRun: {
+      id: process.env.GITHUB_RUN_ID,
+      attempt: process.env.GITHUB_RUN_ATTEMPT,
+    },
+  })
+  const publishable = manifest.e2e.status === "passed"
+  if (process.env.GITHUB_OUTPUT)
+    appendFileSync(process.env.GITHUB_OUTPUT, `publishable=${publishable}\n`)
+  if (process.env.GITHUB_STEP_SUMMARY)
+    appendFileSync(
+      process.env.GITHUB_STEP_SUMMARY,
+      publishable
+        ? "All E2E evidence passed. Release candidate is eligible for publication.\n"
+        : `E2E needs review. Candidate artifacts are retained; publication has not been approved.\n\n${manifest.e2e.results.map((result) => `- ${result.name}: ${result.status}${result.reason ? ` — ${result.reason.split("\n")[0]}` : ""}`).join("\n")}\n\nInspect the failed jobs and artifacts. Only after confirming a non-functional cause, dispatch Release on the same tag with review_run_id=${process.env.GITHUB_RUN_ID} and non_functional_e2e_reason. Functional or unexplained failures must be investigated.\n`,
+    )
 }

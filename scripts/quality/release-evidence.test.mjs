@@ -36,7 +36,7 @@ test("release evidence rejects an old commit, partial suites and missing artifac
   )
 })
 
-test("release candidate requires Windows, macOS and mobile evidence while retaining Linux packages", () => {
+test("release candidates retain assets for E2E review without relaxing artifact integrity", () => {
   const root = mkdtempSync(join(tmpdir(), "myreader-release-"))
   try {
     const assets = join(root, "assets")
@@ -99,6 +99,8 @@ test("release candidate requires Windows, macOS and mobile evidence while retain
       }
     }
     const manifest = prepareCandidate(assets, evidence, "head")
+    assert.equal(manifest.e2e.status, "passed")
+    assert.equal(manifest.e2e.results.length, 5)
     assert.equal(manifest.assets[apk], digest)
     assert.deepEqual(
       readdirSync(assets).sort(),
@@ -137,10 +139,27 @@ test("release candidate requires Windows, macOS and mobile evidence while retain
       () => prepareCandidate(assets, evidence, "head"),
       /Tested APK differs/,
     )
+    assert.throws(
+      () => prepareCandidate(assets, evidence, "head", { advisory: true }),
+      /Tested APK differs/,
+    )
     writeFileSync(join(assets, apk), "release payload")
     writeFileSync(join(assets, `${apk}.sha256`), `${digest}  ${apk}\n`)
     rmSync(join(evidence, "e2e-desktop-windows-latest"), { recursive: true })
     assert.throws(() => prepareCandidate(assets, evidence, "head"), /ENOENT/)
+    const reviewed = prepareCandidate(assets, evidence, "head", {
+      advisory: true,
+      sourceRun: { id: "123", attempt: "1" },
+    })
+    assert.equal(reviewed.e2e.status, "review-required")
+    assert.deepEqual(reviewed.sourceRun, { id: "123", attempt: "1" })
+    assert.equal(
+      reviewed.e2e.results.filter((result) => result.status === "passed")
+        .length,
+      4,
+    )
+    assert.match(reviewed.e2e.results.at(-2).reason, /ENOENT/)
+    assert.equal(readFileSync(join(assets, apk), "utf8"), "release payload")
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

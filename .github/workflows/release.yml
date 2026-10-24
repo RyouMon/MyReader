@@ -4,9 +4,19 @@ on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      review_run_id:
+        description: 'Original tag Release run to publish after E2E review; empty starts a rehearsal'
+        type: string
+        default: ''
+      non_functional_e2e_reason:
+        description: 'Confirmed non-functional cause and supporting evidence; required for review'
+        type: string
+        default: ''
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -27,13 +37,14 @@ jobs:
           desktop_version=$(jq -er '.version' my-reader/src-tauri/tauri.conf.json)
           mobile_version=$(jq -er '.expo.version' my-reader-mobile/app.json)
           test "$desktop_version" = "$mobile_version"
-          if [ "$GITHUB_EVENT_NAME" = push ]; then
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
             test "${GITHUB_REF_NAME#v}" = "$desktop_version"
           fi
 
   quality:
     name: All release quality gates
     needs: verify
+    if: inputs.review_run_id == ''
     permissions:
       contents: read
       actions: read
@@ -45,12 +56,14 @@ jobs:
   desktop:
     name: Build desktop release artifacts
     needs: verify
+    if: inputs.review_run_id == ''
     uses: ./.github/workflows/desktop-build.yml
     secrets: inherit
 
   mobile:
     name: Build mobile release artifacts
     needs: verify
+    if: inputs.review_run_id == ''
     uses: ./.github/workflows/mobile-build.yml
     with:
       build_android: true
@@ -61,16 +74,26 @@ jobs:
     name: Complete desktop E2E
     needs: desktop
     uses: ./.github/workflows/desktop-e2e.yml
+    with:
+      advisory: true
 
   mobile-e2e:
     name: Complete mobile Release Maestro
     needs: mobile
     uses: ./.github/workflows/mobile-e2e.yml
+    with:
+      advisory: true
 
   candidate:
-    name: Verify all test evidence and release assets
+    name: Verify release assets and summarize E2E
     needs: [quality, desktop, mobile, desktop-e2e, mobile-e2e]
+    if: >-
+      ${{ !cancelled() && inputs.review_run_id == '' &&
+          needs.quality.result == 'success' && needs.desktop.result == 'success' &&
+          needs.mobile.result == 'success' }}
     runs-on: ubuntu-22.04
+    outputs:
+      publishable: ${{ steps.evidence.outputs.publishable }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
@@ -100,19 +123,57 @@ jobs:
         with:
           pattern: e2e-*
           path: test-evidence
-      - name: Require the complete suites and the exact tested APK
+      - name: Verify assets and record incomplete or failed E2E for review
+        id: evidence
         run: node scripts/release/candidate.mjs release-assets test-evidence "$GITHUB_SHA"
       - uses: actions/upload-artifact@v4
         with:
-          name: MyReader-Verified-Release
+          name: MyReader-Release-Candidate
+          path: release-assets/
+          if-no-files-found: error
+          retention-days: 30
+
+  review:
+    name: Approve reviewed non-functional E2E failures
+    needs: verify
+    if: inputs.review_run_id != ''
+    runs-on: ubuntu-22.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REVIEW_RUN_ID: ${{ inputs.review_run_id }}
+      REVIEW_REASON: ${{ inputs.non_functional_e2e_reason }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Load the original release run
+        run: |
+          test "$GITHUB_REF_TYPE" = tag
+          [[ "$REVIEW_RUN_ID" =~ ^[0-9]+$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$REVIEW_RUN_ID" > "$RUNNER_TEMP/source-run.json"
+      - uses: actions/download-artifact@v5
+        with:
+          name: MyReader-Release-Candidate
+          path: release-assets
+          run-id: ${{ inputs.review_run_id }}
+          github-token: ${{ github.token }}
+      - name: Bind the review to the same tag, commit, run and artifact bytes
+        run: node scripts/release/review.mjs release-assets "$RUNNER_TEMP/source-run.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MyReader-Release-Candidate
           path: release-assets/
           if-no-files-found: error
           retention-days: 30
 
   submit-ios:
-    name: Submit validated iOS release to TestFlight
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: candidate
+    name: Submit approved iOS release to TestFlight
+    if: >-
+      ${{ !cancelled() && startsWith(github.ref, 'refs/tags/v') &&
+          (github.event_name == 'push' || inputs.review_run_id != '') &&
+          (needs.candidate.outputs.publishable == 'true' || needs.review.result == 'success') }}
+    needs: [candidate, review]
     runs-on: macos-latest
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
@@ -132,8 +193,10 @@ jobs:
         with:
           name: MyReader-iOS-IPA
           path: candidate
+          run-id: ${{ inputs.review_run_id || github.run_id }}
+          github-token: ${{ github.token }}
       - run: pnpm install --frozen-lockfile
-      - name: Submit the already built IPA after all gates pass
+      - name: Submit the already built IPA after approval
         working-directory: my-reader-mobile
         run: |
           ipa_paths=(../candidate/*.ipa)
@@ -141,9 +204,9 @@ jobs:
           eas submit --platform ios --profile production --path "${ipa_paths[0]}" --groups "$TESTFLIGHT_GROUP" --non-interactive --wait
 
   publish:
-    name: Publish tested release automatically
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: [candidate, submit-ios]
+    name: Publish approved release automatically
+    if: (github.event_name == 'push' || inputs.review_run_id != '') && startsWith(github.ref, 'refs/tags/v')
+    needs: submit-ios
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -153,7 +216,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v5
         with:
-          name: MyReader-Verified-Release
+          name: MyReader-Release-Candidate
           path: release-assets
       - name: Prepare changelog and verify artifact integrity
         run: |
@@ -170,6 +233,8 @@ jobs:
           root = pathlib.Path('release-assets')
           manifest = json.loads((root / 'release-evidence.json').read_text())
           assert manifest['commit'] == os.environ['GITHUB_SHA']
+          e2e = manifest['e2e']
+          assert e2e['status'] == 'passed' or e2e.get('review', {}).get('classification') == 'non-functional'
           for name, digest in manifest['assets'].items():
               assert pathlib.Path(name).name == name
               assert hashlib.sha256((root / name).read_bytes()).hexdigest() == digest, name

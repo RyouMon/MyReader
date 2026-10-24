@@ -8,7 +8,7 @@
 
 `release-suite.json` 是发布套件清单。Android 全部执行；iOS 在 iPhone 和 iPad 各执行全部流程，
 包括原生阅读设置弹层中的字体切换和位置保持。
-任何失败都阻断发布；没有 `wip`、排除标签、AI 判断或整例自动重试。
+失败保留并进入发布复核；没有 `wip`、排除标签、AI 视觉断言或整例自动重试。
 
 iOS 使用官方 `snapshotKeyHonorModalViews: false`，让 iPad 系统文件选择器的跨进程控件进入
 可访问性快照。选择器内的返回、取消操作限定在 `Browse View (Picker)`，并等待选择器关闭后
@@ -146,11 +146,21 @@ Core 远程书库关键合同位于 `my-reader-core/src/services/library.rs`：
 2. 运行完整 Quality 工作流；Android 使用将要发布的同一 APK，iPhone/iPad 使用同一 simulator app。
 3. 桌面 Windows、macOS 运行完整浏览器集成/行为套件，以及 Release 原生 WebDriver 套件。
    Ubuntu 暂不执行 release E2E；Linux 安装包继续构建并核验。
-4. 检查全部报告与提交号、清单完整性和安装包摘要；只接受无失败、无跳过、无 flaky 的结果。
-5. 所有检查成功后提交已构建的 IPA 到 TestFlight，再上传并自动公开 GitHub Release。
+4. 核验安装包完整性和摘要，归档 `MyReader-Release-Candidate`。E2E 全部通过时自动放行；
+   失败、缺报告、跳过或 flaky 时保留真实结果，并在 Actions 摘要中列出待复核的平台。
+5. 获得放行后提交已构建的 IPA 到 TestFlight，再上传并自动公开 GitHub Release。
 
-手动运行 `Release` 是完整演练：构建和全部测试照常执行，生成 `MyReader-Verified-Release`，
-但不会提交 TestFlight 或公开版本。单独的两个 candidate build 工作流只生成构建产物。
+E2E 是发布复核依据，不作为不可豁免的硬门禁。人工或代理先检查失败日志、截图和实际功能；
+只有确认属于测试工具、环境或用例不稳定等非功能原因，才可复核放行。功能缺陷或原因未明时
+继续调查，不能自动归类为 flaky。Quality、构建、安装包摘要与发布上传完整性仍是硬门禁。
+
+复核时，在 Actions 中手动运行 `Release`，选择**原版本标签**，填写 `review_run_id`
+和 `non_functional_e2e_reason`（结论及证据）。该入口校验原运行、提交、标签和安装包字节，
+复用原候选包与 IPA，不重建、不重跑 E2E；复核人和原因写入 `release-evidence.json`，
+原失败结果保留。原运行必须是版本标签触发且已生成候选产物，报告和包的保留期为 30 天。
+
+未填写 `review_run_id` 的手动 `Release` 仍是完整演练：构建和全部测试照常执行，
+生成候选产物，但不会提交 TestFlight 或公开版本。单独的两个 candidate build 工作流只生成构建产物。
 
 iOS IPA 的设备架构不能运行在 Simulator；其 Release simulator app 与 IPA 使用同一提交、
 production 环境和原生依赖。模拟器结果不等同于设备签名、Apple 处理或真机验证。
@@ -164,3 +174,20 @@ production 环境和原生依赖。模拟器结果不等同于设备签名、App
 - 流程使用可访问名称、真实状态等待和系统选择器。失败应修复产品、fixture 或过期断言。
 - `pnpm test:qa` 检查所有 YAML 有效、全部流程可达、无过滤或重试，以及发布依赖链完整。
 - 原生 E2E 的测试用 transport 不验证系统文件对话框；移动端真实系统选择器由 Maestro 覆盖。
+
+## 本轮收尾时的未解决问题
+
+以下是 2026-10-24 的调查边界，不是后续发布的预先豁免：
+
+- Android 云端 Emulator 36.6.11 曾触发 QEMU `mPendingFdWatches.erase(watch) > 0` 并退出。
+  标准 ADB 连接的本地运行没有复现崩溃，但尚未证明云端故障已解决。
+- Android 本地第二轮 CBZ 流程中，中心点击出现图片长按菜单，遮住页码断言；模拟器未崩溃。
+  按压注入延迟只是待验证假设，未改产品长按行为或放宽断言。
+- iPhone 新建 WebDAV 消费者后，偶发从已同步的第二页落到第一页并写回进度。
+  原失败现场的远端快照复验能恢复第二页，原生回归也通过，但原故障原因仍未确认，可能涉及功能。
+  发布复核应实际检查跨设备位置恢复，不能直接归类为工具不稳定。
+- iPad 冷启动搜索点击偶发无响应的旧现象未稳定复现，尚未确认根因。
+
+iPad 的 FileProvider 导入问题已通过文件协调写入修复；同一 Release 包的导入路径连续三次通过，
+包含一轮完整四组 Maestro。Windows/macOS 完整 E2E 在此前云端提交通过；这些结果不冒充后续提交验证。
+完整调查记录保留在本次 PR #125 和本地 `reports/release-e2e/`，本轮不再继续稳定性追查。
