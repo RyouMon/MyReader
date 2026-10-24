@@ -1,10 +1,7 @@
 appId: ${APP_ID}
 name: Read the bundled EPUB and restore a bookmarked page
-# Paginated WebViews can omit paragraph nodes from Android accessibility snapshots.
-androidWebViewHierarchy: devtools
 tags:
   - reader
-  - skip
 ---
 # Called after importing MyReader-TTS.epub through the real library UI.
 - runScript: ../../scripts/selectors.js
@@ -25,15 +22,49 @@ tags:
 - tapOn:
     point: "50%,50%"
 - tapOn: ${output.selectors.reader.moreActions}
+# Keep the fixture's page turns deterministic on pads.
+# Native tests separately cover restoring anchors in a two-column spread.
+- tapOn: ${output.selectors.reader.settingsButton}
+# Start inside the scroll viewport on both phone sheets and iPad popovers.
+- repeat:
+    times: 6
+    while:
+      notVisible:
+        text: "栏: 始终单栏.*|Columns: Always Single.*"
+        below: ${output.selectors.reader.settingsSheet}
+    commands:
+      - swipe:
+          from:
+            id: "reader-settings-scroll"
+            point: "50%,85%"
+          direction: UP
+          duration: 600
+- tapOn:
+    text: "栏: 始终单栏.*|Columns: Always Single.*"
+    below: ${output.selectors.reader.settingsSheet}
+- assertVisible: "栏: 始终单栏, 已选择|Columns: Always Single, Selected"
+- tapOn:
+    point: "50%,20%"
+- extendedWaitUntil:
+    notVisible: ${output.selectors.reader.settingsSheet}
+    timeout: 10000
+- tapOn: ${output.selectors.reader.moreActions}
 - tapOn: ${output.selectors.reader.tocButton}
 - extendedWaitUntil:
-    visible: "Playback position authority"
+    visible:
+      text: "Playback position authority"
+      id: "reader-toc-item-.*"
     timeout: 10000
-- tapOn: "Playback position authority"
+- tapOn:
+    text: "Playback position authority"
+    id: "reader-toc-item-.*"
+- extendedWaitUntil:
+    notVisible: "目录|Contents|Table of Contents"
+    timeout: 10000
 - extendedWaitUntil:
     visible: "Playback position first page.*"
     timeout: 10000
-# iOS accessibility snapshots retain offscreen pages; DevTools excludes them.
+# Assert the visible page, including the absence of offscreen content.
 - runFlow:
     when:
       platform: Android
@@ -62,25 +93,35 @@ tags:
 - extendedWaitUntil:
     visible: "移除当前位置的书签|Remove bookmark at current location"
     timeout: 10000
-# XCTest covers this half-sheet on iOS; Maestro #1924 omits its subtree.
-- runFlow:
-    when:
-      platform: Android
+- tapOn: ${output.selectors.reader.moreActions}
+- tapOn: ${output.selectors.reader.settingsButton}
+- extendedWaitUntil:
+    visible: ${output.selectors.reader.settingsSheet}
+    timeout: 10000
+- repeat:
+    times: 6
+    while:
+      notVisible:
+        text: "字体: 衬线.*|Font: Serif.*"
+        below: ${output.selectors.reader.settingsSheet}
     commands:
-      - tapOn: ${output.selectors.reader.moreActions}
-      - tapOn: ${output.selectors.reader.settingsButton}
-      - extendedWaitUntil:
-          visible: ${output.selectors.reader.settingsSheet}
-          timeout: 10000
-      - tapOn: "字体: 衬线.*|Font: Serif.*"
-      - assertVisible: "字体: 衬线, 已选择|Font: Serif, Selected"
-      - tapOn: "字体: 人文无衬线.*|Font: Humanist Sans.*"
-      - assertVisible: "字体: 人文无衬线, 已选择|Font: Humanist Sans, Selected"
-      - tapOn:
-          point: "50%,20%"
-      - extendedWaitUntil:
-          notVisible: ${output.selectors.reader.settingsSheet}
-          timeout: 10000
+      - swipe:
+          from:
+            id: "reader-settings-scroll"
+            point: "50%,20%"
+          direction: DOWN
+          duration: 600
+- tapOn:
+    text: "字体: 衬线.*|Font: Serif.*"
+    below: ${output.selectors.reader.settingsSheet}
+- assertVisible: "字体: 衬线, 已选择|Font: Serif, Selected"
+- tapOn: "字体: 人文无衬线.*|Font: Humanist Sans.*"
+- assertVisible: "字体: 人文无衬线, 已选择|Font: Humanist Sans, Selected"
+- tapOn:
+    point: "50%,20%"
+- extendedWaitUntil:
+    notVisible: ${output.selectors.reader.settingsSheet}
+    timeout: 10000
 - extendedWaitUntil:
     visible: "Latest narration second page.*"
     timeout: 10000

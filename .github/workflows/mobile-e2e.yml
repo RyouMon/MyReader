@@ -1,0 +1,163 @@
+name: Mobile Release E2E
+
+on:
+  workflow_call:
+    inputs:
+      advisory:
+        description: 'Keep release candidates available for failure review'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: 22.22.0
+  MAESTRO_VERSION: 2.11.0
+  MAESTRO_DRIVER_STARTUP_TIMEOUT: 600000
+
+jobs:
+  android:
+    name: Maestro / signed Android APK
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    continue-on-error: ${{ inputs.advisory }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pnpm install --frozen-lockfile
+      - run: pip install -r my-reader-mobile/e2e/requirements.txt
+      - name: Install pinned Maestro CLI
+        run: |
+          curl --fail --location https://get.maestro.mobile.dev -o "$RUNNER_TEMP/install-maestro.sh"
+          bash "$RUNNER_TEMP/install-maestro.sh"
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - uses: actions/download-artifact@v5
+        with:
+          name: MyReader-Android-APK
+          path: candidate
+      - name: Verify downloaded APK checksum
+        working-directory: candidate
+        run: sha256sum --check *.sha256
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Download emulator dependencies
+        run: |
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          "$sdkmanager" --licenses < <(yes) > /dev/null
+          for attempt in 1 2 3; do
+            if "$sdkmanager" --verbose --install emulator 'system-images;android-35;google_apis;x86_64'; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then sleep 10; fi
+          done
+          exit 1
+      - uses: reactivecircus/android-emulator-runner@v2
+        env:
+          E2E_REPORT_DIR: ${{ github.workspace }}/reports/mobile-android
+        with:
+          # API 36 can wedge the entire ADB transport on WebView CDP connections.
+          # https://github.com/mobile-dev-inc/Maestro/pull/3419
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          # Pin the host runtime as well as the guest API and match the locally
+          # verified emulator, memory and GLES renderer.
+          emulator-build: 15507667 # 36.6.11
+          ram-size: 3072M
+          emulator-options: -no-window -gpu swangle -no-snapshot -noaudio -no-boot-anim
+          disable-animations: false
+          script: node my-reader-mobile/e2e/scripts/run-release.mjs android candidate/*.apk emulator-5554
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-mobile-android
+          path: reports/mobile-android/
+          if-no-files-found: error
+          retention-days: 30
+
+  ios:
+    name: Maestro / iOS Release / ${{ matrix.device }}
+    runs-on: macos-latest
+    timeout-minutes: 60
+    continue-on-error: ${{ inputs.advisory }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - device: iPhone
+            simulator: iPhone 17 Pro
+          - device: iPad
+            simulator: iPad Pro 13-inch (M5)
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pnpm install --frozen-lockfile
+      - run: pip install -r my-reader-mobile/e2e/requirements.txt
+      - name: Install Maestro
+        run: |
+          curl --fail --location https://get.maestro.mobile.dev -o "$RUNNER_TEMP/install-maestro.sh"
+          bash "$RUNNER_TEMP/install-maestro.sh"
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Prepare pinned iOS XCTest driver
+        run: |
+          python3 my-reader-mobile/e2e/scripts/prepare-ios-maestro.py \
+            "$HOME/.maestro" "$RUNNER_TEMP/myreader-maestro" \
+            --evidence "reports/mobile-ios-${{ matrix.device }}/driver"
+          echo "$RUNNER_TEMP/myreader-maestro/bin" >> "$GITHUB_PATH"
+      - uses: actions/download-artifact@v5
+        with:
+          name: MyReader-iOS-simulator
+          path: candidate
+      - name: Run complete Release Maestro suite
+        env:
+          SIMULATOR_NAME: ${{ matrix.simulator }}
+          IOS_SIMULATOR_RUNTIME: com.apple.CoreSimulator.SimRuntime.iOS-26-5
+          E2E_REPORT_DIR: ${{ github.workspace }}/reports/mobile-ios-${{ matrix.device }}
+        run: |
+          tar -xzf candidate/MyReader-iOS-simulator.tar.gz -C candidate
+          app_paths=(candidate/*.app)
+          test "${#app_paths[@]}" -eq 1
+          # Match the runtime and devices verified locally; image ordering can
+          # otherwise silently select an older XCTest/CoreSimulator runtime.
+          simulator=$(xcrun simctl list devices available --json | python3 -c 'import json,os,sys; print(next(d["udid"] for d in json.load(sys.stdin)["devices"][os.environ["IOS_SIMULATOR_RUNTIME"]] if d["name"] == os.environ["SIMULATOR_NAME"]))')
+          xcrun simctl boot "$simulator"
+          xcrun simctl bootstatus "$simulator" -b
+          # Simulator APNs retries flood the runner and delay touch registration.
+          # This dedicated suite has no push-notification flows.
+          xcrun simctl spawn "$simulator" launchctl disable system/com.apple.apsd
+          xcrun simctl spawn "$simulator" launchctl bootout system/com.apple.apsd
+          node my-reader-mobile/e2e/scripts/run-release.mjs ios "${app_paths[0]}" "$simulator"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-mobile-ios-${{ matrix.device }}
+          path: reports/mobile-ios-${{ matrix.device }}/
+          if-no-files-found: error
+          retention-days: 30

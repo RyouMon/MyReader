@@ -10,6 +10,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "jsdom",
+    // Leave CPU capacity for Vite and V8 coverage while jsdom handles UI events.
+    maxWorkers: 2,
     setupFiles: [path.resolve(__dirname, "src/__mocks__/setup.ts")],
     include: [
       "src/**/__tests__/**/*.test.ts",

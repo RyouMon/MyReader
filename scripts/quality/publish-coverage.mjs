@@ -13,7 +13,12 @@ export async function publishCoverage(
 ) {
   const repository = context.repo
   const pr = context.payload.pull_request
-  const branch = pr?.head.ref ?? context.ref.replace("refs/heads/", "")
+  // Match getsentry/coverage-action's getCurrentBranch, including tag events.
+  const branch =
+    pr?.head.ref ??
+    (context.ref.startsWith("refs/heads/")
+      ? context.ref.replace("refs/heads/", "")
+      : "unknown")
   const safeBranch = branch.replace(/[^a-zA-Z0-9-_]/g, "-")
   const artifacts = await github.paginate(
     github.rest.actions.listWorkflowRunArtifacts,
@@ -43,24 +48,40 @@ export async function publishCoverage(
     )
     return
   }
-  const statuses = await github.paginate(
-    github.rest.repos.listCommitStatusesForRef,
-    {
-      ...repository,
-      ref: pr?.head.sha ?? context.sha,
-      per_page: 100,
-    },
+  const startedAt = new Date(process.env.COVERAGE_REPORT_STARTED_AT)
+  const deadline = Date.now() + 30_000
+  const contexts = groups.flatMap(([key]) =>
+    ["project", "patch"].map((kind) => `${kind} (${key})`),
   )
+  let statuses
+  for (;;) {
+    statuses = await github.paginate(
+      github.rest.repos.listCommitStatusesForRef,
+      {
+        ...repository,
+        ref: pr?.head.sha ?? context.sha,
+        per_page: 100,
+      },
+    )
+    const missing = contexts.find((context) => {
+      const status = statuses.find(
+        (entry) => entry.context === `codecov/${context}`,
+      )
+      return !status || new Date(status.created_at) < startedAt
+    })
+    if (!missing) break
+    const remaining = deadline - Date.now()
+    if (remaining <= 0)
+      throw new Error(`Current coverage status missing: ${missing}`)
+    core.info(`Waiting for current coverage status: ${missing}`)
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.min(1000, remaining)),
+    )
+  }
   const description = (kind, key) => {
     const status = statuses.find(
       (entry) => entry.context === `codecov/${kind} (${key})`,
     )
-    if (
-      !status ||
-      new Date(status.created_at) <
-        new Date(process.env.COVERAGE_REPORT_STARTED_AT)
-    )
-      throw new Error(`Current coverage status missing: ${kind} (${key})`)
     return status.description.replaceAll("|", "\\|")
   }
   const summary = JSON.parse(readFileSync(summaryPath, "utf8"))

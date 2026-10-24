@@ -274,6 +274,7 @@ const ReaderSettingsSheet = forwardRef<
         </Text>
       </RNView>
       <BottomSheetScrollView
+        testID="reader-settings-scroll"
         style={styles.scrollArea}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}

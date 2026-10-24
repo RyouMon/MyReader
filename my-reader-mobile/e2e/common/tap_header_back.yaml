@@ -1,7 +1,5 @@
 appId: ${APP_ID}
 name: Tap pushed page back button
-tags:
-  - skip
 ---
 - runScript: ../scripts/selectors.js
 - runFlow:

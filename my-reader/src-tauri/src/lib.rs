@@ -193,6 +193,9 @@ pub fn run() -> Result<(), tauri::Error> {
                 .build(),
         );
 
+    #[cfg(feature = "e2e")]
+    let base = base.plugin(tauri_plugin_wdio_webdriver::init());
+
     #[cfg(debug_assertions)]
     let builder = base.plugin(
         tauri_plugin_mcp_bridge::Builder::new()

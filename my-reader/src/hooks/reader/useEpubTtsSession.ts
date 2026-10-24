@@ -431,6 +431,14 @@ export function useEpubTtsSession({
               profile.id === configuredEngine.profileId && profile.enabled,
           )
         : undefined
+    if (!provider && !window.speechSynthesis) {
+      setState("idle")
+      setCurrentIndex(null)
+      setVoices([])
+      setCurrentVoiceId("")
+      setError(null)
+      return
+    }
     const engine = provider
       ? new CoreSpeechEngine(provider.id)
       : new WebSpeechEngine()
@@ -894,7 +902,7 @@ export function useEpubTtsSession({
       : undefined
 
   return {
-    available: enabled && Boolean(config) && utterances.length > 0,
+    available: enabled && Boolean(speechRef.current) && utterances.length > 0,
     loading,
     state,
     viewportDetached,

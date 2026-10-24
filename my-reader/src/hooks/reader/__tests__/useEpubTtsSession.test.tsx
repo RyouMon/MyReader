@@ -179,6 +179,7 @@ vi.mock("@/lib/tauri-api", () => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.stubGlobal("speechSynthesis", {})
   speechInstances.length = 0
   speechVoices.length = 0
   configChangeListeners.length = 0
@@ -214,10 +215,75 @@ beforeEach(() => {
 afterEach(() => {
   document.body.replaceChildren()
   Reflect.deleteProperty(Range.prototype, "getClientRects")
+  vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
 
 describe("useEpubTtsSession", () => {
+  it.each([
+    "system",
+    "provider",
+  ] as const)("keeps the reader usable with %s speech when the Web Speech API is absent", async (engine) => {
+    vi.stubGlobal("speechSynthesis", undefined)
+    if (engine === "provider") {
+      const config = await api.getTtsConfig()
+      vi.mocked(api.getTtsConfig).mockResolvedValue({
+        ...config,
+        defaultEngine: { kind: "provider", profileId: "remote" },
+        profiles: [
+          {
+            id: "remote",
+            name: "Remote speech",
+            kind: "openAiCompatible",
+            enabled: true,
+            endpoint: "https://example.com/v1",
+            model: "tts-model",
+            options: {
+              kind: "openAiCompatible",
+              voices: ["reader"],
+              defaultVoice: "reader",
+            },
+            revision: 1,
+            hasCredential: false,
+          },
+        ],
+      })
+    }
+    const locator = new Locator({
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      locations: new LocatorLocations({ progression: 0 }),
+    })
+    vi.mocked(extractEpubTtsUtterances).mockReturnValue([
+      { id: "sentence", plain: "Keep reading.", locator },
+    ])
+    const navigatorRef = {
+      current: { currentLocator: locator, go: vi.fn() },
+    } as unknown as RefObject<EpubNavigator>
+    const resources = [{} as EpubTextResource]
+    const positions = [{} as ReaderLocator]
+    const { result } = renderHook(() =>
+      useEpubTtsSession({
+        enabled: true,
+        navigatorRef,
+        resources,
+        positions,
+        currentLocator: locator,
+        language: "en",
+        highlightTint: "#ff00aa",
+      }),
+    )
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.available).toBe(engine === "provider")
+    expect(result.current.state).toBe(engine === "provider" ? "ready" : "idle")
+    expect(result.current.error).toBeNull()
+    expect(speechInstances).toHaveLength(engine === "provider" ? 1 : 0)
+    if (engine === "provider") {
+      act(() => result.current.play())
+      expect(result.current.state).toBe("playing")
+    }
+  })
+
   it.each([
     "cleared",
     "replaced",

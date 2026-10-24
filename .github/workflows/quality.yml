@@ -1,6 +1,7 @@
 name: Quality
 
 on:
+  workflow_call:
   push:
     branches: [main]
   pull_request:
@@ -335,6 +336,17 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      - name: Download emulator dependencies
+        run: |
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          "$sdkmanager" --licenses < <(yes) > /dev/null
+          for attempt in 1 2 3; do
+            if "$sdkmanager" --verbose --install emulator 'system-images;android-35;default;x86_64'; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then sleep 10; fi
+          done
+          exit 1
       - uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -380,7 +392,8 @@ jobs:
       - name: Run the full native test scheme with compiler coverage
         run: |
           READER_SIMULATOR=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; print(next(d["udid"] for runtime,devices in json.load(sys.stdin)["devices"].items() if "iOS" in runtime for d in devices if "iPhone" in d["name"]))')
-          xcodebuild test -quiet -jobs 3 -workspace my-reader-mobile/ios/MyReader.xcworkspace -scheme Reader-Coverage -configuration Debug -sdk iphonesimulator -destination "platform=iOS Simulator,id=$READER_SIMULATOR" -derivedDataPath "$RUNNER_TEMP/myreader-native" -only-testing:Readium-Unit-Tests ENABLE_TESTABILITY=YES CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=-
+          mkdir -p reports/native/swift
+          xcodebuild test -quiet -jobs 3 -workspace my-reader-mobile/ios/MyReader.xcworkspace -scheme Reader-Coverage -configuration Debug -sdk iphonesimulator -destination "platform=iOS Simulator,id=$READER_SIMULATOR" -derivedDataPath "$RUNNER_TEMP/myreader-native" -resultBundlePath reports/native/swift/Reader.xcresult -only-testing:Readium-Unit-Tests ENABLE_TESTABILITY=YES CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=-
           python3 scripts/quality/native-coverage.py swift-llvm "$RUNNER_TEMP/myreader-native" "$READER_SIMULATOR" reports/native/swift/lcov.info
       - uses: actions/upload-artifact@v4
         if: always()
@@ -410,6 +423,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - uses: actions/download-artifact@v4
         with:
+          pattern: '*coverage*'
           path: reports/coverage-input
       - name: Validate and normalize all compiler reports
         id: normalize

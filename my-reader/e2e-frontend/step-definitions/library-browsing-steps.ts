@@ -348,7 +348,7 @@ When("用户打开标题栏的紧凑搜索", async ({ page }) => {
 Then("搜索弹层应显示在窗口内并接受输入", async ({ page }) => {
   const search = page.getByRole("dialog", { name: "搜索书名、作者、标签…" })
   await expect(search).toBeInViewport({ ratio: 1 })
-  const input = search.getByRole("textbox")
+  const input = search.getByRole("combobox")
   await expect(input).toBeFocused()
   await input.fill("测试图书")
   await expect(input).toHaveValue("测试图书")

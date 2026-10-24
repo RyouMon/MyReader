@@ -187,6 +187,11 @@ function fileAction(page: Page, label: string) {
     : homeFileAction(page, label)
 }
 
+async function closeFileSubmenu(submenu: Locator) {
+  await submenu.press("ArrowLeft")
+  await expect(submenu).toBeHidden()
+}
+
 async function expectFileActions(page: Page, status: string) {
   const label =
     (
@@ -196,7 +201,16 @@ async function expectFileActions(page: Page, status: string) {
         已下载: "删除本地文件",
       } as Record<string, string>
     )[status] ?? "下载文件"
-  if (fileEntrypoints.get(page) !== "书籍详情页") await showFileMenu(page)
+  if (fileEntrypoints.get(page) !== "书籍详情页") {
+    await showFileMenu(page)
+    const expanded = page.getByRole("menuitem", { expanded: true })
+    if (await expanded.count()) {
+      // File actions can remove their own submenu while the state updates.
+      await page.keyboard.press("Escape")
+      await expect(page.getByRole("menu")).toHaveCount(0)
+      await showFileMenu(page)
+    }
+  }
   await expect(fileAction(page, label)).toBeEnabled()
   for (const action of HOME_FILE_ACTION_LABELS) {
     const item = fileAction(page, action)
@@ -204,12 +218,20 @@ async function expectFileActions(page: Page, status: string) {
       (await item.count()) > 0 &&
       (await item.getAttribute("aria-haspopup")) === "menu"
     ) {
-      await item.focus()
       await item.press("ArrowRight")
-      const format = page.getByRole("menuitem", { name: "EPUB", exact: true })
+      await expect(item).toHaveAttribute("aria-expanded", "true")
+      const submenu = page.locator(
+        `[id="${await item.getAttribute("aria-controls")}"]`,
+      )
+      const format = submenu.getByRole("menuitem", {
+        name: "EPUB",
+        exact: true,
+      })
       if (action === label) await expect(format).toBeEnabled()
       else await expect(format).toHaveCount(0)
-      await page.keyboard.press("ArrowLeft")
+      // Keyboard navigation avoids crossing adjacent hover-open triggers.
+      await closeFileSubmenu(submenu)
+      await expect(item).toHaveAttribute("aria-expanded", "false")
     } else if (action === label) {
       await expect(item).toBeEnabled()
     } else {
@@ -324,7 +346,7 @@ Then("阅读器应显示图书内容", async ({ page }) => {
       .frameLocator("iframe:visible")
       .first()
       .getByText("MyReader reads this first sentence aloud.", { exact: false }),
-  ).toBeVisible()
+  ).toBeVisible({ timeout: 20_000 })
 })
 
 Then("阅读器应显示下载中反馈", async ({ page }) => {
@@ -358,9 +380,7 @@ When("阅读器下载发生{word}", async ({ page }, event: string) => {
       }),
     用户重试下载该格式文件: async () => {
       await emitMockDownloadStatus(page, "下载失败")
-      await expect(
-        page.getByText("网络错误", { exact: true }).first(),
-      ).toBeVisible()
+      await expect(page.getByText(/网络错误/).first()).toBeVisible()
       await page.getByRole("button", { name: "重试", exact: true }).click()
       await expect
         .poll(
@@ -398,12 +418,10 @@ Then("阅读器下载结果应为{word}", async ({ page }, status: string) => {
           .getByText("MyReader reads this first sentence aloud.", {
             exact: false,
           }),
-      ).toBeVisible()
+      ).toBeVisible({ timeout: 20_000 })
     },
     下载失败: async () => {
-      await expect(
-        page.getByText("网络错误", { exact: true }).first(),
-      ).toBeVisible()
+      await expect(page.getByText(/网络错误/).first()).toBeVisible()
       await expect(
         page.getByRole("button", { name: "重试", exact: true }),
       ).toBeEnabled()

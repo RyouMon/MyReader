@@ -1,0 +1,52 @@
+appId: ${APP_ID}
+name: Register the isolated local WebDAV source
+---
+- runFlow: open_settings.yaml
+- scrollUntilVisible:
+    element:
+      id: settings-webdav-row
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: settings-webdav-row
+- tapOn: "添加 WebDAV 数据源|Add WebDAV Source"
+- tapOn:
+    id: webdav-server-url
+- inputText: ${WEBDAV_URL}
+- tapOn:
+    id: webdav-username
+- inputText: maestro
+- assertVisible:
+    id: webdav-username
+    text: maestro
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: webdav-password
+    direction: DOWN
+- tapOn:
+    id: webdav-password
+- inputText: fixture-webdav-key
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- tapOn: "完成|Complete"
+- extendedWaitUntil:
+    notVisible:
+      id: webdav-server-url
+    timeout: 30000
+- runFlow:
+    when:
+      platform: iOS
+      visible: "保存密码.*|Save Password.*"
+    commands:
+      - tapOn: "以后|Not Now"
+- extendedWaitUntil:
+    visible: ${WEBDAV_HOST}
+    timeout: 30000

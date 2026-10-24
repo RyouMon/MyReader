@@ -1,7 +1,5 @@
 appId: ${APP_ID}
 name: Import a prepared local fixture through the system picker
-tags:
-  - skip
 ---
 - runFlow:
     when:
@@ -15,7 +13,10 @@ tags:
           visible: "Show roots|显示根目录"
           timeout: 15000
       - tapOn: "Show roots|显示根目录"
-      - tapOn: ${ANDROID_STORAGE_LABEL}
+      # The disabled breadcrumb behind the drawer has the same device name.
+      - tapOn:
+          text: ${ANDROID_STORAGE_LABEL}
+          id: "android:id/title"
       - tapOn: "Download"
       - tapOn: ${E2E_ROOT_FOLDER}
       - tapOn: "Fixtures"

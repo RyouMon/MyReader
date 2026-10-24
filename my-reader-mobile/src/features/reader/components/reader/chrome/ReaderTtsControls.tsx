@@ -68,7 +68,8 @@ export function ReaderTtsControls({
       testID="reader-tts-player"
       accessibilityRole={playbackControlsVisible ? "toolbar" : undefined}
       accessibilityLabel={
-        playbackControlsVisible ? t("reader.tts.controls") : undefined
+        // Android retains its previous content description when set to null.
+        playbackControlsVisible ? t("reader.tts.controls") : ""
       }
       pointerEvents="box-none"
       style={styles.controls}

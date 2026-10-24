@@ -9,7 +9,7 @@ import expo.modules.kotlin.types.OptimizedRecord
 @OptimizedRecord
 data class LocatorLocationsRecord(
   @Field val fragments: List<String>? = null,
-  @Field val progression: Double = 0.0,
+  @Field val progression: Double? = null,
   @Field val position: Double? = null,
   @Field val totalProgression: Double? = null,
   @Field val cssSelector: String? = null,

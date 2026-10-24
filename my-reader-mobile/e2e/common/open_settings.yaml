@@ -1,8 +1,30 @@
 appId: ${APP_ID}
-name: Open settings tab from home
-tags:
-  - skip
+name: Open Settings through the native tab
 ---
-- runScript: ../scripts/selectors.js
-- tapOn: ${output.selectors.tabs.settings}
-- assertVisible: ${output.selectors.settings.rows.addLibrary}
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: tab-settings
+      - waitForAnimationToEnd
+      # CoreSimulator can drop the first Recap touch before registering its
+      # digitizer (Maestro #3686). Re-deliver this idempotent navigation once
+      # only if Home is still present; all destination assertions still apply.
+      - runFlow:
+          when:
+            visible:
+              id: home-screen
+          commands:
+            - tapOn:
+                id: tab-settings
+      - extendedWaitUntil:
+          notVisible:
+            id: home-screen
+          timeout: 10000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: "Settings|设置"
+- waitForAnimationToEnd

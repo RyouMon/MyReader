@@ -5,7 +5,7 @@
  */
 export interface LocatorLocations {
   fragments?: string[]
-  progression: number
+  progression?: number
   position?: number
   totalProgression?: number
   cssSelector?: string

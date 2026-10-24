@@ -1,0 +1,123 @@
+appId: ${APP_ID}
+name: WebDAV upload, explicit download and reading persist across restart
+androidWebViewHierarchy: devtools
+---
+- runFlow: ../../common/launch_and_prepare.yaml
+- runFlow: ../../common/configure_webdav.yaml
+# Return to Settings and create a library on the configured source.
+- runFlow: ../../common/close_webdav_sources.yaml
+- runFlow: ../../common/open_add_library.yaml
+- tapOn:
+    id: add-library-create
+- tapOn: ${WEBDAV_HOST}
+- tapOn: "Shared"
+- tapOn: "继续|Continue"
+- tapOn:
+    id: new-library-name
+- eraseText
+- inputText: ${WEBDAV_LIBRARY_NAME}
+- tapOn: "^创建$|^Create$"
+- extendedWaitUntil:
+    visible: "切换并打开|Switch and Open"
+    timeout: 30000
+- tapOn: "切换并打开|Switch and Open"
+- tapOn:
+    id: library-collection-all
+# The iOS snapshot can expose the destination's controls while the native
+# push transition still moves them. Settle before resolving the tap target.
+- waitForAnimationToEnd
+- tapOn: "导入图书|Import Book"
+- runFlow:
+    file: ../../common/select_e2e_fixture.yaml
+    env:
+      IMPORT_FILE_NAME: ${EPUB_IMPORT_FILE_NAME}
+- extendedWaitUntil:
+    visible: ${EPUB_BOOK_TITLE}
+    timeout: 30000
+# Wait for the menu's durable availability, not a transient arrow on a tiny file.
+- extendedWaitUntil:
+    notVisible:
+      id: transfer-arrow-up
+    timeout: 60000
+- tapOn: "更多操作：${EPUB_BOOK_TITLE}|More actions: ${EPUB_BOOK_TITLE}"
+- tapOn:
+    text: "删除下载文件|Delete Downloaded File"
+    enabled: true
+- extendedWaitUntil:
+    visible: "确定要删除.*|Delete the local download for.*"
+    timeout: 10000
+- tapOn: "^删除$|^Delete$"
+- tapOn: '打开《${EPUB_BOOK_TITLE}》|Open "${EPUB_BOOK_TITLE}"'
+- extendedWaitUntil:
+    notVisible:
+      id: transfer-arrow-down
+    timeout: 60000
+- assertNotVisible:
+    id: reader-screen
+- tapOn: "更多操作：${EPUB_BOOK_TITLE}|More actions: ${EPUB_BOOK_TITLE}"
+- assertVisible: "删除下载文件|Delete Downloaded File"
+- tapOn: "加入收藏|Add to Favorites"
+- tapOn: '打开《${EPUB_BOOK_TITLE}》|Open "${EPUB_BOOK_TITLE}"'
+- runFlow: ../reader/read_book.yaml
+- runFlow: ../../common/close_reader.yaml
+- runFlow: ../../common/launch_preserving_data.yaml
+- tapOn: "Library|书库"
+- tapOn:
+    id: library-collection-all
+- tapOn: '打开《${EPUB_BOOK_TITLE}》|Open "${EPUB_BOOK_TITLE}"'
+- extendedWaitUntil:
+    visible: "Latest narration second page.*"
+    timeout: 30000
+- runFlow: ../../common/close_reader.yaml
+# Flush through the real transport, then open a fresh consumer with no local
+# publication, saved locator or bookmark cache. Its first read must use sync.
+- runFlow: ../../common/open_settings.yaml
+- tapOn: "同步状态：.*|Sync status:.*"
+- tapOn:
+    text: "立即同步|Sync now"
+    enabled: true
+- extendedWaitUntil:
+    visible: "刚刚已同步|无需同步|Just synced|No sync needed"
+    timeout: 60000
+- runFlow: ../../common/launch_and_prepare.yaml
+- runFlow: ../../common/configure_webdav.yaml
+- runFlow: ../../common/close_webdav_sources.yaml
+- runFlow: ../../common/open_add_library.yaml
+- tapOn:
+    id: add-library-open
+- tapOn: ${WEBDAV_HOST}
+- tapOn: "Shared"
+- tapOn: ${WEBDAV_LIBRARY_NAME}
+- tapOn: "^打开$|^Open$"
+- extendedWaitUntil:
+    visible: "切换并打开|Switch and Open"
+    timeout: 30000
+- tapOn: "切换并打开|Switch and Open"
+- tapOn:
+    id: library-collection-all
+- extendedWaitUntil:
+    visible: ${EPUB_BOOK_TITLE}
+    timeout: 30000
+# First tap downloads; the explicit second tap opens the downloaded publication.
+- tapOn: '打开《${EPUB_BOOK_TITLE}》|Open "${EPUB_BOOK_TITLE}"'
+- tapOn: "更多操作：${EPUB_BOOK_TITLE}|More actions: ${EPUB_BOOK_TITLE}"
+- extendedWaitUntil:
+    visible:
+      text: "删除下载文件|Delete Downloaded File"
+      enabled: true
+    timeout: 60000
+- tapOn: "取消收藏|Remove from Favorites"
+- assertNotVisible:
+    id: reader-screen
+- tapOn: '打开《${EPUB_BOOK_TITLE}》|Open "${EPUB_BOOK_TITLE}"'
+- extendedWaitUntil:
+    visible: "Latest narration second page.*"
+    timeout: 30000
+- runFlow:
+    when:
+      notVisible: "更多操作|More Actions|More actions"
+    commands:
+      - tapOn:
+          point: "50%,50%"
+- assertVisible: "移除当前位置的书签|Remove bookmark at current location"
+- runFlow: ../../common/close_reader.yaml

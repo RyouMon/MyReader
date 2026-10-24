@@ -17,6 +17,8 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -83,6 +85,27 @@ class LocatorContractTest {
     val actual = roundTrip(fixture)
 
     assertEquals(fixture.getValue("text"), actual.getValue("text"))
+  }
+
+  @Test
+  fun should_not_invent_a_start_progression_for_an_incoming_text_anchor() {
+    val record = fixture.toRecord().copy(
+      locations = LocatorLocationsRecord(cssSelector = "p:nth-of-type(2)")
+    )
+    val locator = requireNotNull(locatorRecordToReadium(record))
+    assertNull(locator.locations.progression)
+    assertEquals("p:nth-of-type(2)", locator.locations.otherLocations["cssSelector"])
+  }
+
+  @Test
+  fun should_preserve_absent_progression_when_exporting_a_text_anchor() {
+    val locator = requireNotNull(locatorRecordToReadium(fixture.toRecord()))
+    val anchored = locator.copy(locations = locator.locations.copy(progression = null))
+    val exported = readiumLocatorToMap(anchored)
+    val locations = exported["locations"] as Map<*, *>
+    assertFalse(locations.containsKey("progression"))
+    assertEquals(anchored.locations.otherLocations["domRange"], locations["domRange"])
+    assertEquals(anchored.text.highlight, (exported["text"] as Map<*, *>)["highlight"])
   }
 }
 

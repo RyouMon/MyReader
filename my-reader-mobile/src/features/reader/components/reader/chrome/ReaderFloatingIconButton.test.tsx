@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react-native"
+import { fireEvent, render } from "@testing-library/react-native"
 
 import { readerChromePalette } from "@/src/design/reader-chrome-palette"
 import { ReaderFloatingIconButton } from "./ReaderFloatingIconButton"
@@ -16,6 +16,33 @@ jest.mock("./ReaderChromeIcon", () => {
 const palette = readerChromePalette("#FFFFFF", "#181842")
 
 describe("ReaderFloatingIconButton", () => {
+  it("clears the native busy state when loading finishes and enables the action", () => {
+    const onPress = jest.fn()
+    const button = (loading: boolean) => (
+      <ReaderFloatingIconButton
+        accessibilityLabel={loading ? "Generating speech" : "Pause narration"}
+        icon="pause"
+        loading={loading}
+        onPress={onPress}
+        palette={palette}
+        visible
+      />
+    )
+    const screen = render(button(true))
+    expect(screen.getByRole("progressbar").props.accessibilityState).toEqual({
+      busy: true,
+      disabled: true,
+    })
+    screen.rerender(button(false))
+    const pause = screen.getByRole("button", { name: "Pause narration" })
+    expect(pause.props.accessibilityState).toEqual({
+      busy: false,
+      disabled: false,
+    })
+    fireEvent.press(pause)
+    expect(onPress).toHaveBeenCalledTimes(1)
+  })
+
   it("crossfades icon content when its semantic action changes", () => {
     const screen = render(
       <ReaderFloatingIconButton

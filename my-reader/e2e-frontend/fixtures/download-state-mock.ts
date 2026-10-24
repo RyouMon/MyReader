@@ -1,6 +1,6 @@
-import { fileURLToPath } from "node:url"
-import type { BookDetail } from "@/lib/tauri-api"
 import type { Page } from "@playwright/test"
+import type { BookDetail } from "@/lib/tauri-api"
+import { serveEpubFixture } from "./epub-fixture"
 import { setupLibraryMocks, TEST_LIBRARY_ID } from "./library-mock"
 
 export type FileStatus =
@@ -23,9 +23,7 @@ type DownloadProgressStatus =
 
 export async function setupDownloadStateMocks(page: Page) {
   await setupLibraryMocks(page, 1)
-  const extractedDirPath = `http://localhost:1420/@fs${fileURLToPath(
-    new URL("../../../my-reader-mobile/e2e/fixtures/tts-book", import.meta.url),
-  )}`
+  const extractedDirPath = await serveEpubFixture(page)
   await page.addInitScript(
     (arg: {
       libraryId: string
@@ -233,7 +231,11 @@ export async function setupDownloadStateMocks(page: Page) {
             state.librarySourceType !== "local" &&
             state.fileStates[format] !== "present"
           ) {
-            throw new Error("BOOK_FORMAT_NOT_DOWNLOADED")
+            // Match the serialized Rust ErrorKind received over Tauri IPC.
+            throw {
+              kind: "BookFormatNotDownloaded",
+              message: "BOOK_FORMAT_NOT_DOWNLOADED",
+            }
           }
           return {
             filePath: `/mock/books/${bookId}.${format.toLowerCase()}`,

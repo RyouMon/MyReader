@@ -108,11 +108,13 @@ pnpm --filter my-reader-mobile expo prebuild --clean
 
 ```bash
 pnpm --filter my-reader-mobile exec jest --runInBand
-pnpm --filter my-reader-mobile test:e2e:ios
-pnpm --filter my-reader-mobile test:e2e:android
+pnpm --filter my-reader-mobile test:e2e:ios /absolute/path/MyReader.app <simulator-udid>
+pnpm --filter my-reader-mobile test:e2e:android /absolute/path/app-release.apk emulator-5554
 ```
 
-Maestro E2E requires the Maestro CLI and a running development client.
+Use a dev build and direct simulator/device interaction during everyday development.
+E2E development, releases and risk-driven checks use standalone Release packages with Maestro.
+See the [Release E2E runbook](../my-reader-mobile/e2e/README.md); Metro is not required.
 
 ### Shared Rust native verification
 
@@ -159,20 +161,21 @@ Sentry is optional.
 
 ## Release Builds
 
-Production releases and candidate builds are separate:
+A `v*` tag starts the complete automated release pipeline: build all packages, run the full
+Quality workflow, run mobile Maestro and desktop E2E, and validate reports and artifact digests.
+Android tests the exact signed distribution APK. iPhone and iPad test the same Release simulator
+app, built from the IPA's commit and production configuration, including native settings XCTest.
+A device IPA cannot run in Simulator. macOS and Windows run every browser integration/E2E
+scenario and the Release native WebDriver suite with an isolated test application ID.
+Ubuntu release E2E is temporarily disabled; Linux installers are still built and validated as release assets.
 
-- `Release` runs only after a `v*` tag is pushed. Once the complete release test gate passes, it calls the
-  desktop and mobile builds in parallel; Android and iOS both run `eas build --local` on GitHub runners. Each
-  platform archives its artifacts to the same draft GitHub Release as soon as that build completes, without
-  waiting for the other platform; iOS is submitted to the internal TestFlight group.
-- `Desktop build candidate` is manual-only. It builds all desktop installers for the selected ref and uploads
-  them as Actions artifacts without modifying a GitHub Release.
-- `Mobile build candidate` is manual-only and lets Android and iOS be selected independently. It uploads the
-  APK and checksum or the IPA as Actions artifacts without modifying a GitHub Release or submitting TestFlight.
-- Publish the draft manually in GitHub after reviewing all production artifacts. The workflows never make a
-  Release public automatically.
+Only a complete successful gate permits submitting the already built IPA to TestFlight and then
+publishing the GitHub Release automatically. Missing reports, skips, failures and flaky results block
+publication. Manual `Release` dispatch is a full rehearsal with no TestFlight submission or publication.
+The separate desktop/mobile candidate workflows only build and store Actions artifacts.
+See the [Release E2E runbook](../my-reader-mobile/e2e/README.md) for commands and evidence boundaries.
 
-The same local profiles can run on a development machine:
+Local production builds remain available:
 
 ```bash
 cd my-reader-mobile

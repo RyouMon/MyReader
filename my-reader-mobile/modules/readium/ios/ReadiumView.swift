@@ -56,9 +56,10 @@ final class ReadiumView: ExpoView {
 
   var preferences: PreferencesRecord? = nil {
     didSet {
-      let preserveViewport = preferencesRequireViewportPreservation(
+      let preserveViewport = Self.preferencesRequireViewportPreservation(
         from: oldValue,
-        to: preferences
+        to: preferences,
+        navigator: readerViewController?.navigator as? EPUBNavigatorViewController
       )
       let reloadForFontFamily = shouldReloadEPUBForFontFamilyChange(
         from: oldValue,
@@ -159,6 +160,11 @@ final class ReadiumView: ExpoView {
     registerInRegistry()
   }
 
+  override func layoutSubviews() {
+    super.layoutSubviews()
+    tryLoadBook()
+  }
+
   override func willMove(toSuperview newSuperview: UIView?) {
     super.willMove(toSuperview: newSuperview)
     if newSuperview == nil {
@@ -180,6 +186,8 @@ final class ReadiumView: ExpoView {
           selectionActionsReceived,
           customSelectionMenuReceived,
           fontFamilyDeclarationsReceived,
+          bounds.width > 0,
+          bounds.height > 0,
           !hasLoadedBook else {
       return
     }
@@ -258,17 +266,28 @@ final class ReadiumView: ExpoView {
 
   // MARK: - Preferences
 
-  private func preferencesRequireViewportPreservation(
+  static func preferencesRequireViewportPreservation(
     from previous: PreferencesRecord?,
-    to next: PreferencesRecord?
+    to next: PreferencesRecord?,
+    navigator: EPUBNavigatorViewController?
   ) -> Bool {
     guard let previous, let next else { return false }
+    var languageChangesLayout = previous.language != next.language
+    if languageChangesLayout, let navigator {
+      // Publication metadata can arrive after the initial locator. Applying the
+      // same effective language must not capture and restore an unfinished page.
+      let before = navigator.editor(of: preferencesRecordToEPUB(previous))
+      let after = navigator.editor(of: preferencesRecordToEPUB(next))
+      languageChangesLayout = before.language.effectiveValue != after.language.effectiveValue ||
+        before.readingProgression.effectiveValue != after.readingProgression.effectiveValue ||
+        before.verticalText.effectiveValue != after.verticalText.effectiveValue
+    }
     return previous.columnCount != next.columnCount ||
       previous.fontFamily != next.fontFamily ||
       previous.fontSize != next.fontSize ||
       previous.fontWeight != next.fontWeight ||
       previous.hyphens != next.hyphens ||
-      previous.language != next.language ||
+      languageChangesLayout ||
       previous.letterSpacing != next.letterSpacing ||
       previous.ligatures != next.ligatures ||
       previous.lineHeight != next.lineHeight ||
@@ -934,7 +953,12 @@ final class ReadiumView: ExpoView {
 
   @MainActor
   func getBookmarkLocator() async -> [String: Any]? {
-    await captureViewportAnchor().map { locatorToDict($0.locator) }
+    // Font changes replace the navigator. Its replacement may not have loaded
+    // (or may be replaced again); the transaction's anchor is still authoritative.
+    if let anchor = viewportAnchor {
+      return locatorToDict(anchor.locator)
+    }
+    return await captureViewportAnchor().map { locatorToDict($0.locator) }
   }
 
   @MainActor

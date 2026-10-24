@@ -2,7 +2,6 @@ import "@/src/global.css"
 import "@/src/i18n"
 import "@/src/polyfills/reader-engine-globals"
 
-import { QueryClientProvider } from "@tanstack/react-query"
 import { Stack } from "expo-router"
 import {
   DarkTheme,
@@ -29,7 +28,7 @@ import { setReaderTransitionRootNode } from "@/src/features/reader/reader-open-t
 import { ReaderOpenTransitionHost } from "@/src/features/reader/reader-open-transition-overlay"
 import { useDataSourceActions } from "@/src/hooks/use-data-source-actions"
 import { AppLanguageProvider } from "@/src/i18n/app-language-provider"
-import { queryClient } from "@/src/services/query/query-client"
+import { QueryProvider } from "@/src/services/query/query-provider"
 import { useAppStore } from "@/src/store/app-store"
 import { AppUpdateRuntime } from "@/src/features/app-updates/app-update-runtime"
 
@@ -182,7 +181,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
+      <QueryProvider>
         <ThemeProvider>
           <AppLanguageProvider>
             <ErrorBoundary>
@@ -199,7 +198,7 @@ export default function RootLayout() {
             </ErrorBoundary>
           </AppLanguageProvider>
         </ThemeProvider>
-      </QueryClientProvider>
+      </QueryProvider>
     </GestureHandlerRootView>
   )
 }

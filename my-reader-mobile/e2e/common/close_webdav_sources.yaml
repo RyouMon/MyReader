@@ -1,0 +1,14 @@
+appId: ${APP_ID}
+name: Return from WebDAV sources to Settings
+---
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: "关闭|Close"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- waitForAnimationToEnd

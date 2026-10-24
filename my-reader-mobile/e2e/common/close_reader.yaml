@@ -1,7 +1,5 @@
 appId: ${APP_ID}
 name: Close the reader and return to the library
-tags:
-  - skip
 ---
 - runFlow:
     when:
@@ -22,3 +20,7 @@ tags:
           visible: "Close reader"
           timeout: 10000
       - tapOn: "Close reader"
+- extendedWaitUntil:
+    notVisible:
+      id: reader-screen
+    timeout: 15000

@@ -1,15 +1,15 @@
 flows:
-  - "flows/**"
+  - flows/release/*
+  - flows/settings/navigate_tts_providers.yaml
 
 testOutputDir: e2e/.artifacts
 
-excludeTags:
-  - skip
-  - wip
-  - external-library
-
+# Native focus, sheet and navigation transitions are part of the release contract.
 platform:
   ios:
-    disableAnimations: true
+    disableAnimations: false
+    # iPad's cross-process Files picker and SwiftUI reader sheets are otherwise
+    # omitted from XCTest snapshots. Keep their native controls addressable.
+    snapshotKeyHonorModalViews: false
   android:
-    disableAnimations: true
+    disableAnimations: false

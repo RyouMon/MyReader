@@ -1,0 +1,7 @@
+appId: ${APP_ID}
+name: iOS external directory permission survives process restart
+env:
+  LOCAL_IMPORT_FILE_NAME: MyReader-TTS.epub
+  LOCAL_BOOK_TITLE: MyReader TTS E2E
+---
+- runFlow: ../library/manage_local_myreader_library.yaml

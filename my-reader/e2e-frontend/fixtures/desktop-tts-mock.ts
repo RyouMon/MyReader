@@ -1,11 +1,5 @@
-import { fileURLToPath } from "node:url"
 import type { Page } from "@playwright/test"
 import { setupReaderMocks } from "./reader-mock"
-
-const fixtureDirectory = fileURLToPath(
-  new URL("../../../my-reader-mobile/e2e/fixtures/tts-book", import.meta.url),
-)
-const fixtureUrl = `http://localhost:1420/@fs${fixtureDirectory.replaceAll("\\", "/")}`
 
 export async function setupDesktopTtsMocks(page: Page) {
   await page.addInitScript(() => {
@@ -212,6 +206,5 @@ export async function setupDesktopTtsMocks(page: Page) {
   await setupReaderMocks(page, {
     bookId: 1,
     format: "EPUB",
-    extractedDirPath: fixtureUrl,
   })
 }

@@ -62,6 +62,7 @@ const TocRow = memo(function TocRow({
 
   return (
     <TouchableHighlight
+      testID={`reader-toc-item-${item.id}`}
       accessibilityRole="button"
       accessibilityLabel={item.label}
       underlayColor={underlayFromSurface(

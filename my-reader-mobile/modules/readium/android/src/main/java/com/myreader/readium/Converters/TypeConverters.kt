@@ -225,7 +225,7 @@ internal fun parseColorString(colorString: String?): Int {
 internal fun readiumLocatorToMap(loc: ReadiumLocator): Map<String, Any?> {
   val locations = mutableMapOf<String, Any?>()
   locations.putAll(loc.locations.otherLocations)
-  locations["progression"] = loc.locations.progression ?: 0.0
+  loc.locations.progression?.let { locations["progression"] = it }
   loc.locations.position?.let { locations["position"] = it }
   loc.locations.totalProgression?.let { locations["totalProgression"] = it }
   if (loc.locations.fragments.isNotEmpty()) {

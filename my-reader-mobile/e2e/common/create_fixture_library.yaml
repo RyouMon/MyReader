@@ -1,0 +1,23 @@
+appId: ${APP_ID}
+name: Create an isolated internal fixture library
+---
+- runFlow: launch_and_prepare.yaml
+# Scenario: create a local MyReader library in the app container.
+- runFlow: open_settings.yaml
+- runFlow: open_add_library.yaml
+- tapOn:
+    id: "add-library-create"
+- tapOn:
+    id: "add-library-app-internal-storage"
+- tapOn:
+    id: "new-library-name"
+- eraseText
+- inputText: ${LOCAL_LIBRARY_NAME}
+- tapOn: "^创建$|^Create$"
+- extendedWaitUntil:
+    visible: "成功添加书库：${LOCAL_LIBRARY_NAME}|Library added: ${LOCAL_LIBRARY_NAME}"
+    timeout: 30000
+- tapOn: "切换并打开|Switch and Open"
+- tapOn:
+    id: "library-collection-all"
+- assertVisible: "书库为空|Library is empty"

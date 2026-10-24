@@ -122,6 +122,29 @@ describe("ReaderTtsControls", () => {
     expect(screen.queryByText("reader.tts.states.generating")).toBeNull()
   })
 
+  it("removes playback actions and its toolbar name when stopped", () => {
+    const screen = renderPlayer({ sessionId: "session-1", state: "playing" })
+    expect(screen.getByLabelText("reader.tts.controls")).toBeTruthy()
+
+    screen.rerender(
+      <ReaderTtsControls
+        visible
+        expanded={false}
+        state={null}
+        remote={false}
+        viewportRelation={null}
+        palette={palette}
+        {...callbacks}
+      />,
+    )
+
+    expect(screen.queryByLabelText("reader.tts.controls")).toBeNull()
+    expect(screen.queryByLabelText("reader.tts.pause")).toBeNull()
+    expect(screen.queryByLabelText("reader.tts.stop")).toBeNull()
+    fireEvent.press(screen.getByLabelText("reader.tts.openControls"))
+    expect(callbacks.onExpand).toHaveBeenCalledTimes(1)
+  })
+
   it("returns on the left and fast-forwards from a viewport after playback", () => {
     const screen = render(
       <ReaderTtsControls

@@ -19,6 +19,9 @@
 #   end
 #
 def readium_post_install(installer)
+  readium_fix_initial_pagination(installer.sandbox.root)
+  readium_fix_initial_location_notifications(installer.sandbox.root)
+
   # Rewrite the Minizip modulemap to drop submodules and mark as [extern_c] [system].
   # The modulemap path differs depending on whether use_frameworks! is active:
   #   - With use_frameworks!:  Target Support Files/Minizip/Minizip.modulemap
@@ -61,4 +64,91 @@ def readium_post_install(installer)
       end
     end
   end
+end
+
+# The document's load event precedes restoration of its initial locator.
+# A busy WebKit process can leave progression at zero during that interval.
+# Keep the navigator's saved locator until the spread finishes restoring it.
+# Remove this patch when the pinned upstream version includes the fix.
+def readium_fix_initial_location_notifications(pods_root)
+  patches = {
+    'EPUBSpreadView.swift' => {
+      '    private(set) var isSpreadLoaded = false' =>
+        "    private(set) var isSpreadLoaded = false\n    private(set) var isReadyForLocationUpdates = false",
+      '            onSpreadLoadedCallbacks.complete()' =>
+        "            isReadyForLocationUpdates = true\n            onSpreadLoadedCallbacks.complete()",
+    },
+    'EPUBNavigatorViewController.swift' => {
+      '        when: { [weak self] in self?.state == .idle },' => <<~SWIFT.chomp.gsub(/^/, '        '),
+                when: { [weak self] in
+                    guard let self, self.state == .idle,
+                          let spreadView = self.paginationView?.currentView as? EPUBSpreadView else { return false }
+                    return spreadView.isReadyForLocationUpdates
+                },
+      SWIFT
+    },
+  }
+  patches.each do |file, replacements|
+    path = File.join(pods_root, 'ReadiumNavigator/Sources/Navigator/EPUB', file)
+    source = File.read(path)
+    original_source = source
+    replacements.each do |original, fixed|
+      next if source.include?(fixed)
+      unless source.scan(original).length == 1
+        raise 'Readium loading state changed; review initial location notifications before updating the dependency.'
+      end
+      source = source.sub(original, fixed)
+    end
+    next if source == original_source
+    # CocoaPods can mark downloaded sources read-only before post_install.
+    mode = File.stat(path).mode
+    begin
+      File.chmod(mode | 0200, path)
+      File.write(path, source)
+    ensure
+      File.chmod(mode, path)
+    end
+  end
+end
+
+# Readium 3.11.0 initializes pagination in its first ResizeObserver frame.
+# Restoring a locator before it runs can use a stale page width or clamp the
+# last spread before its blank column exists. Use the document layout width:
+# WKWebView can temporarily report a different window.innerWidth while resizing.
+# Run initialization on load before the spread can accept a saved locator.
+# Remove this patch when the pinned upstream version includes the fix.
+def readium_fix_initial_pagination(pods_root)
+  script = File.join(pods_root, 'ReadiumNavigator/Sources/Navigator/EPUB/Assets/Static/scripts/readium-reflowable.js')
+  original = 'function I(t){const e=t+(T()?-1:1);return e-e%O}'
+  previous = [
+    'function I(t){const e=t+(T()?-1:1);return e-e%(O||window.innerWidth)}',
+    'function I(t){const e=t+(T()?-1:1);return e-e%window.innerWidth}'
+  ]
+  fixed = 'function I(t){const e=t+(T()?-1:1);return e-e%document.documentElement.clientWidth}'
+  source = File.read(script)
+  return if source.include?(fixed) && source.include?('const initializeReadiumPagination=')
+
+  unless source.include?(fixed)
+    original = previous.find { |candidate| source.include?(candidate) } || original
+    unless source.scan(original).length == 1
+      raise 'Readium pagination script changed; review the initial page-width patch before updating the dependency.'
+    end
+    source = source.sub(original, fixed)
+  end
+
+  unless source.include?('const initializeReadiumPagination=')
+    prefix = 'window.addEventListener("load",function(){var t;new ResizeObserver(()=>{t&&window.cancelAnimationFrame(t),t=window.requestAnimationFrame('
+    suffix = ')}).observe(document.body)},!1)'
+    pattern = /#{Regexp.escape(prefix)}(function\(\)\{O=window.innerWidth,.*?\})#{Regexp.escape(suffix)}/
+    unless source.scan(pattern).length == 1
+      raise 'Readium resize observer changed; review pagination initialization before updating the dependency.'
+    end
+    source = source.sub(pattern) do
+      initialize = Regexp.last_match(1)
+      'window.addEventListener("load",function(){var t;const initializeReadiumPagination=' + initialize +
+        ';initializeReadiumPagination();new ResizeObserver(()=>{t&&window.cancelAnimationFrame(t),t=window.requestAnimationFrame(initializeReadiumPagination)}).observe(document.body)},!1)'
+    end
+  end
+
+  File.write(script, source)
 end

@@ -1,0 +1,5 @@
+{
+  "identifier": "ryoumon.myreader.e2e",
+  "bundle": { "active": false },
+  "build": { "beforeBuildCommand": "pnpm run build" }
+}

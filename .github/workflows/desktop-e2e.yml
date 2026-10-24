@@ -1,0 +1,84 @@
+name: Desktop Release E2E
+
+on:
+  workflow_call:
+    inputs:
+      advisory:
+        description: 'Keep release candidates available for failure review'
+        type: boolean
+        default: false
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/desktop-e2e.yml
+      - my-reader/e2e-native/**
+      - my-reader/e2e-frontend/**
+      - my-reader/integration-frontend/**
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: 22.22.0
+
+jobs:
+  desktop:
+    name: Desktop complete E2E / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    continue-on-error: ${{ inputs.advisory || false }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    env:
+      CI: 'true'
+      CARGO_BUILD_JOBS: '2'
+      CARGO_INCREMENTAL: '0'
+      APPLE_SIGNING_IDENTITY: '-'
+      E2E_REPORT_DIR: ${{ github.workspace }}/reports/desktop-native
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: desktop-release-e2e
+          cache-on-failure: true
+      - run: pnpm install --frozen-lockfile
+      - name: Install browser engines
+        run: pnpm --filter my-reader exec playwright install --with-deps chromium webkit
+      - name: Build the Release application with test transport
+        run: pnpm --filter my-reader build:e2e:native
+      - name: Run every browser integration and E2E scenario
+        env:
+          E2E_PREVIEW: '1'
+        run: |
+          pnpm --filter my-reader test:integration:frontend
+          pnpm --filter my-reader test:e2e:frontend
+      - name: Require both browser reports
+        shell: bash
+        run: |
+          test -s my-reader/integration-frontend/reports/integration.json
+          test -s my-reader/e2e-frontend/reports/report.json
+      - name: Run complete native suite
+        run: pnpm --filter my-reader test:e2e:native
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-desktop-${{ matrix.os }}
+          path: |
+            reports/desktop-native/
+            my-reader/integration-frontend/reports/
+            my-reader/e2e-frontend/reports/
+            my-reader/test-results/
+            my-reader/playwright-report/
+          if-no-files-found: error
+          retention-days: 30

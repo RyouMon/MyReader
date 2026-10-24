@@ -160,15 +160,23 @@ CI 中的完整采集命令以 `.github/workflows/quality.yml` 为准。
 ## 按风险选择验证
 
 - 桌面 React：完整 `pnpm test:desktop`；交互流程使用现有 Playwright + IPC mock。
-  这不验证 Tauri 原生窗口、系统对话框或原生权限；macOS 需另行启动实际应用，通过调试构建的
-  Tauri MCP Bridge 或原生界面完成验证。
-- 移动 React Native：完整 `pnpm test:mobile`；原生模块用模拟器验证。测试放在路由目录之外。
+  发布时 Windows、macOS 还运行 `test:integration:frontend`、`test:e2e:frontend` 和 `test:e2e:native`。
+  Ubuntu 暂不执行 release E2E；Linux 安装包仍正常构建。
+  原生套件通过可选 `e2e` Cargo feature 操作独立 Release 应用、真实 Core 和窗口；生产包不含测试服务。
+  该套件不替代系统文件对话框与权限的人工验证。
+- 移动 React Native：完整 `pnpm test:mobile`；日常使用 dev build 直接操作模拟器/真机。
+  E2E 开发与发布使用完整 Release 包执行完整 Maestro 清单；测试放在路由目录之外。
   [Maestro runbook](../my-reader-mobile/e2e/README.md) 维护 fixture、选择器、平台差异和已知限制。
 - Rust / FFI：`cargo test --locked --workspace`。Swift/Kotlin 改动还需原生单元测试及消费端编译；
   详见 [开发指南](./DEVELOPMENT.md) 和 [Readium 模块](../my-reader-mobile/modules/readium/README.md)。
 - 数据库、Automerge、文件路径与校验、TTS 终态/取消属于高价值测试对象。先确定行为或合同，
   再决定测试层；不为每个组件强制建测试，不固定容易调整的像素或 utility class。
 - 改动包必须运行完整单元套件。聚焦测试可用于开发，不能替代最终全包回归。
+
+Release E2E 全部通过时自动发布；失败、缺报告、跳过或 flaky 时保留候选包和证据，
+由人工或代理复核原因。确认属于非功能原因后，可通过原运行编号和复核说明复用同一批包发布；
+功能问题或原因未明时不自动放行。Quality、构建和安装包完整性仍须通过。
+复核入口与审计记录见 [发布流水线](../my-reader-mobile/e2e/README.md#发布流水线)。
 
 当前变异集合只覆盖配置中指定的共享 TS 模块（实际列表见
 [`packages/tools/stryker.config.json`](../packages/tools/stryker.config.json)），不代表全部 UI、Rust、
