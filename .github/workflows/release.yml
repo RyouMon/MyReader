@@ -251,7 +251,8 @@ jobs:
             gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "MyReader $GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md"
           fi
           gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" > "$RUNNER_TEMP/uploaded-release.json"
+          release_api_url=$(gh release view "$GITHUB_REF_NAME" --json apiUrl --jq '.apiUrl')
+          gh api "$release_api_url" > "$RUNNER_TEMP/uploaded-release.json"
           node scripts/release/verify-upload.mjs release-assets "$RUNNER_TEMP/uploaded-release.json" "$GITHUB_REF_NAME"
           gh release edit "$GITHUB_REF_NAME" --draft=false --latest
           test "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq '.isDraft')" = false

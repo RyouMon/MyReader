@@ -6,6 +6,31 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.19.0] - 2026-10-24
+
+### Added
+
+- Added update checks, release notes, and installer downloads on Windows, macOS, Linux, and Android. Check daily by default, with manual checks and optional automatic downloads. Select installers by platform, architecture, and installation format, verify their size and SHA-256, and let users open the installer explicitly; downloads never trigger automatic installation or restarts. iOS continues to update through the App Store ([#127](https://github.com/RyouMon/MyReader/pull/127))
+
+### Changed
+
+- Made desktop settings pages use the full content width, show Android release notes in a separate native sheet, and provide translations in 11 languages ([#127](https://github.com/RyouMon/MyReader/pull/127))
+- Match Android tab press ripples, selected backgrounds, icons, and labels to the app theme, preserving the warm palette and readability in light and dark modes ([#118](https://github.com/RyouMon/MyReader/pull/118))
+
+### Fixed
+
+- Initialize the iOS reader at the latest saved position while preserving precise cross-device anchors. Avoid opening EPUB and PDF files at page one before jumping, extra navigation history, and treating remote positions already present at opening as new history entries ([#119](https://github.com/RyouMon/MyReader/pull/119))
+- Fixed blank readers after reopening books on Android, reading positions not being saved promptly on exit, and HTTP WebDAV access in Release builds. Fixed iOS loading in zero-sized containers, initial pagination, font changes, and safe-area handling ([#125](https://github.com/RyouMon/MyReader/pull/125))
+- Fixed delayed page callbacks interfering with narration navigation, stale caches restoring deleted books, and desktop errors when the Web Speech API is unavailable ([#125](https://github.com/RyouMon/MyReader/pull/125))
+
+### Security
+
+- Updated Rust TLS certificate verification, root certificates, and Zod dependencies, and removed unused TLS features to resolve dependency audit findings without adding audit exemptions ([#119](https://github.com/RyouMon/MyReader/pull/119), [#125](https://github.com/RyouMon/MyReader/pull/125))
+
+### Build and Distribution
+
+- Automated multiplatform Release builds, quality checks, complete mobile and Windows/macOS E2E suites, artifact verification, TestFlight submission, and publication. Failed E2E runs retain reports and candidate artifacts; the same artifacts can be published after review confirms a non-functional cause. Quality checks, builds, and artifact integrity remain mandatory. Linux installers still build, with Release E2E temporarily paused ([#125](https://github.com/RyouMon/MyReader/pull/125))
+
 ## [0.18.0] - 2026-10-21
 
 ### Added
