@@ -32,11 +32,16 @@ import type {
   TtsPlaybackPreferencesDto,
 } from "@/lib/tauri-specta"
 import { notifyTtsConfigChanged } from "@/lib/tts/events"
+import {
+  BookNarrationSettings,
+  type NarrationBook,
+} from "./BookNarrationSettings"
 
 type ReaderTtsSettingsPanelProps = {
   visible: boolean
   session: EpubTtsSession
   theme?: string
+  book?: NarrationBook
 }
 
 const RANGE_INPUT_CLASS = "reader-settings-range disabled:opacity-50"
@@ -58,6 +63,7 @@ export function ReaderTtsSettingsPanel({
   visible,
   session,
   theme,
+  book,
 }: ReaderTtsSettingsPanelProps) {
   const { t, i18n } = useTranslation()
   const interfaceLanguage = i18n?.resolvedLanguage || i18n?.language || "en"
@@ -180,6 +186,9 @@ export function ReaderTtsSettingsPanel({
 
         {!loading && config && view === "settings" ? (
           <>
+            {book ? (
+              <BookNarrationSettings book={book} config={config} />
+            ) : null}
             <ReaderTtsEngineSelect
               config={config}
               saving={saving}

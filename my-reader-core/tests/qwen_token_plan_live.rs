@@ -53,6 +53,7 @@ async fn token_plan_synthesizes_selected_voices_into_playable_audio() {
                 voice_id: voice.into(),
                 speed: Some(1.0),
                 pitch: None,
+                instructions: None,
                 accepted_mime_types: vec![format.mime_type().into()],
                 cache_policy: TtsCachePolicy::Bypass,
             },

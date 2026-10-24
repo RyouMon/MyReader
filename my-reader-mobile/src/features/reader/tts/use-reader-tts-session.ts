@@ -26,6 +26,12 @@ import {
   synthesizeTts,
 } from "@/src/services/core/tts"
 import { errorMessage } from "@/src/i18n/error-message"
+import { type NarrationVoice } from "@/src/services/core/narration"
+import {
+  prepareNarrationPlayback,
+  loadNarrationContext,
+  type NarrationBookContext,
+} from "./narration-playback"
 import {
   buildReaderTtsEngineConfig,
   buildReaderTtsSynthesisRequest,
@@ -46,6 +52,7 @@ const REMOTE_AUDIO_MIME_TYPES =
       ]
 
 type UseReaderTtsSessionOptions = {
+  narrationBook?: NarrationBookContext
   enabled: boolean
   publicationKey: string
   language: string
@@ -56,7 +63,11 @@ type UseReaderTtsSessionOptions = {
 
 export const READER_TTS_VOICES_EMPTY_ERROR = "TTS_VOICES_EMPTY"
 
-async function loadSessionConfig(language: string, isCurrent: () => boolean) {
+async function loadSessionConfig(
+  language: string,
+  isCurrent: () => boolean,
+  book?: NarrationBookContext,
+) {
   let config = await getTtsConfig()
   if (!isCurrent()) return null
   let selection = resolveReaderTtsSelection(config, language)
@@ -75,10 +86,12 @@ async function loadSessionConfig(language: string, isCurrent: () => boolean) {
     selection = resolveReaderTtsSelection(config, language)
   }
 
-  return isCurrent() ? { config, selection } : null
+  const narration = await loadNarrationContext(book, selection)
+  return isCurrent() ? { config, selection, narration } : null
 }
 
 export function useReaderTtsSession({
+  narrationBook,
   enabled,
   publicationKey,
   language,
@@ -127,6 +140,10 @@ export function useReaderTtsSession({
     locator: Locator
   } | null>(null)
   const synthesisControllersRef = useRef(new Map<string, AbortController>())
+  const activeNarrationRef = useRef<{
+    book: NarrationBookContext
+    defaultVoice: NarrationVoice
+  } | null>(null)
 
   const abortOutstandingSynthesis = useCallback(() => {
     synthesisControllersRef.current.forEach((controller) => {
@@ -155,6 +172,7 @@ export function useReaderTtsSession({
   )
 
   const stop = useCallback(() => {
+    activeNarrationRef.current = null
     const transition = sessionMachine.send({ type: "stop" })
     syncViewportState(transition)
     activeEngineConfigRef.current = null
@@ -177,6 +195,7 @@ export function useReaderTtsSession({
   useEffect(() => {
     const activeReader = readerRef.current
     return () => {
+      activeNarrationRef.current = null
       sessionMachine.send({ type: "stop" })
       activeEngineConfigRef.current = null
       activeLocatorRef.current = null
@@ -234,6 +253,7 @@ export function useReaderTtsSession({
       activeEngineConfigRef.current = null
       activeLocatorRef.current = null
       abortOutstandingSynthesis()
+      activeNarrationRef.current = null
       setRemote(false)
       setSessionState({
         publicationKey,
@@ -241,18 +261,28 @@ export function useReaderTtsSession({
       })
 
       try {
-        const resolved = await loadSessionConfig(language, isCurrentSession)
+        const resolved = await loadSessionConfig(
+          language,
+          isCurrentSession,
+          narrationBook,
+        )
         if (!resolved) return
         if (!isCurrentSession()) return
-        const { config, selection } = resolved
+        const { config, selection, narration } = resolved
         const current = sessionMachine.snapshot
-        setRemote(selection.kind === "provider")
         const engineConfig = buildReaderTtsEngineConfig(
           config,
           selection,
           language,
           highlightColor,
         )
+        activeNarrationRef.current = narration
+        if (narration) {
+          engineConfig.kind = "provider"
+          engineConfig.profileId = "narration"
+          engineConfig.voiceId = "narration"
+        }
+        setRemote(engineConfig.kind === "provider")
         activeEngineConfigRef.current = engineConfig
         const viewportDetached = current.viewportDetached
         const viewportNavigationId = viewportNavigationIdRef.current
@@ -285,6 +315,7 @@ export function useReaderTtsSession({
       enabled,
       highlightColor,
       language,
+      narrationBook,
       publicationKey,
       readerRef,
       presentTransitionError,
@@ -576,6 +607,28 @@ export function useReaderTtsSession({
       const controller = new AbortController()
       synthesisControllersRef.current.set(request.requestId, controller)
       try {
+        const narration = activeNarrationRef.current
+        if (narration) {
+          const segments = await prepareNarrationPlayback(
+            narration.book,
+            narration.defaultVoice,
+            request,
+            REMOTE_AUDIO_MIME_TYPES,
+            controller.signal,
+          )
+          if (
+            controller.signal.aborted ||
+            sessionMachine.snapshot.generation !== generation ||
+            sessionMachine.snapshot.sessionId !== request.sessionId
+          )
+            return
+          readerRef.current?.completeTtsSynthesis({
+            sessionId: request.sessionId,
+            requestId: request.requestId,
+            segments,
+          })
+          return
+        }
         const artifact = await synthesizeTts(
           buildReaderTtsSynthesisRequest(request, REMOTE_AUDIO_MIME_TYPES),
           { signal: controller.signal },

@@ -13,3 +13,5 @@ pub mod reading_statistics_test;
 pub mod source_test;
 pub mod sync_test;
 pub mod tts_test;
+
+pub mod llm_narration_test;
