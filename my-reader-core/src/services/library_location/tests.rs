@@ -373,11 +373,10 @@ async fn calibre_relocation_checks_database_and_library_uuid() {
             .unwrap();
     assert_eq!(result.location.problem, None, "{result:?}");
     let saved = &result.config.unwrap().libraries[0];
-    assert!(saved
-        .metadata_uri
-        .as_ref()
-        .unwrap()
-        .ends_with("/calibre/metadata.db"));
+    assert_eq!(
+        Path::new(saved.metadata_uri.as_deref().unwrap()),
+        Path::new(&saved.path).join("metadata.db")
+    );
     assert_eq!(saved.metadata_etag, None);
 }
 
