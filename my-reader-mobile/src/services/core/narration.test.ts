@@ -10,7 +10,9 @@ import type { Library } from "@my-reader/tools/types/library"
 
 jest.mock("./app-config", () => ({ appConfigPath: "/config.json" }))
 jest.mock("./llm", () => ({
-  selectedLlmCredential: jest.fn().mockResolvedValue("secret"),
+  selectedLlmCredential: jest
+    .fn()
+    .mockResolvedValue({ profileId: "p", profileRevision: 1, value: "secret" }),
 }))
 jest.mock("../fs/library-paths", () => ({
   librarySidecarRootUri: (library: Library) => `file:///sidecars/${library.id}`,
@@ -61,7 +63,7 @@ it("routes book settings and import to the library sidecar and passes cancellati
     "/sidecars/library",
     "/config.json",
     source,
-    "secret",
+    { profileId: "p", profileRevision: 1, value: "secret" },
     { signal },
   )
 })
@@ -86,7 +88,7 @@ it("reads LLM credentials only for enabled books and rejects canceled analysis b
     "/config.json",
     request,
     voice,
-    "secret",
+    { profileId: "p", profileRevision: 1, value: "secret" },
     { signal: controller.signal },
   )
   controller.abort()

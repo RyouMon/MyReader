@@ -70,7 +70,7 @@ pub async fn import_book_characters<R: tauri::Runtime>(
     let (root, config) = paths(&app, &state, &library_id)?;
     let credential = selected_credential(&config)?;
     Ok(
-        NarrationService::import_characters(&root, &config, request.into(), credential.as_deref())
+        NarrationService::import_characters(&root, &config, request.into(), Some(&credential))
             .await?
             .into_iter()
             .map(Into::into)
@@ -97,7 +97,7 @@ pub async fn prepare_book_narration<R: tauri::Runtime>(
             .await?
             .enabled;
         let credential = if enabled {
-            selected_credential(&config)?
+            Some(selected_credential(&config)?)
         } else {
             None
         };
@@ -106,7 +106,7 @@ pub async fn prepare_book_narration<R: tauri::Runtime>(
             &config,
             request.into(),
             default_voice.into(),
-            credential.as_deref(),
+            credential.as_ref(),
         )
         .await?
         .into_iter()

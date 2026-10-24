@@ -131,6 +131,61 @@ async fn setup(root: &Path) -> BookNarrationSettings {
 }
 
 #[tokio::test]
+async fn credentials_cannot_follow_a_provider_switch_or_configuration_edit() {
+    let root = tempfile::tempdir().unwrap();
+    let config = root.path().join("config.json");
+    let server = fixture().await;
+    setup(root.path()).await;
+    LlmService::upsert_profile(&config, profile(server.endpoint.clone())).unwrap();
+    let original = LlmService::selected_profile(&config).unwrap();
+    let credential = crate::models::LlmCredential {
+        profile_id: original.id.clone(),
+        profile_revision: original.revision,
+        value: Some("fixture-secret".into()),
+    };
+    for mut replacement in [original.clone(), original] {
+        if LlmService::selected_profile(&config).unwrap().revision > 1 {
+            replacement.id = "other-provider".into();
+        }
+        let id = replacement.id.clone();
+        LlmService::upsert_profile(&config, replacement).unwrap();
+        LlmService::select_profile(&config, Some(id)).unwrap();
+        let error = NarrationService::plan(root.path(), &config, request(1), Some(&credential))
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("STALE_REQUEST"));
+        let error = NarrationService::import_characters(
+            root.path(),
+            &config,
+            CharacterImportRequest {
+                book_id: 42,
+                title: "Novel".into(),
+                authors: vec![],
+                language: "en".into(),
+            },
+            Some(&credential),
+        )
+        .await
+        .unwrap_err();
+        assert!(error.to_string().contains("STALE_REQUEST"));
+    }
+    assert!(server.requests.lock().unwrap().is_empty());
+    let selected = LlmService::selected_profile(&config).unwrap();
+    let credential = crate::models::LlmCredential {
+        profile_id: selected.id,
+        profile_revision: selected.revision,
+        value: Some("fixture-secret".into()),
+    };
+    NarrationService::plan(root.path(), &config, request(1), Some(&credential))
+        .await
+        .unwrap();
+    assert_eq!(server.requests.lock().unwrap().len(), 1);
+    assert!(!std::fs::read_to_string(config)
+        .unwrap()
+        .contains("fixture-secret"));
+}
+
+#[tokio::test]
 async fn replay_after_a_backtrack_keeps_uncompacted_later_positions_and_excludes_future_text() {
     let root = tempfile::tempdir().unwrap();
     let settings = setup(root.path()).await;

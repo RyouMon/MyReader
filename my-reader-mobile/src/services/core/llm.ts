@@ -8,6 +8,7 @@ import {
   llmListModels,
   llmProbe,
   type LlmConfig,
+  type LlmCredential,
   type LlmProviderProfile,
 } from "my-reader-core"
 import { appConfigPath } from "./app-config"
@@ -40,29 +41,42 @@ async function hydrate(config: LlmConfig): Promise<LlmSettings> {
 export async function getLlmConfig() {
   return hydrate(await llmGetConfig(appConfigPath))
 }
-export async function selectedLlmCredential(): Promise<string | undefined> {
+export async function selectedLlmCredential(): Promise<LlmCredential> {
   const config = await llmGetConfig(appConfigPath)
   const profile = config.profiles.find(
     (item) => item.id === config.defaultProfileId,
   )
   if (!profile) throw new Error("LLM_PROFILE_REQUIRED")
-  return profile.credentialReference
-    ? ((await SecureStore.getItemAsync(profile.credentialReference)) ??
+  return {
+    profileId: profile.id,
+    profileRevision: profile.revision,
+    value: profile.credentialReference
+      ? ((await SecureStore.getItemAsync(profile.credentialReference)) ??
         undefined)
-    : undefined
+      : undefined,
+  }
 }
 export async function upsertLlmProfile(input: LlmProfileInput) {
   const id = input.profile.id || randomUUID()
-  const credentialReference = `llm-provider-${id}`
+  const previous = await llmGetConfig(appConfigPath)
+  const oldReference = previous.profiles.find(
+    (profile) => profile.id === id,
+  )?.credentialReference
+  const key = input.credential?.trim()
+  const credentialReference = input.clearCredential
+    ? undefined
+    : key
+      ? `llm-provider-${randomUUID()}`
+      : oldReference
   const config = await llmUpsertProfile(appConfigPath, {
     ...input.profile,
     id,
     credentialReference,
   })
-  if (input.clearCredential)
-    await SecureStore.deleteItemAsync(credentialReference)
-  else if (input.credential?.trim())
-    await SecureStore.setItemAsync(credentialReference, input.credential.trim())
+  if (!input.clearCredential && key && credentialReference)
+    await SecureStore.setItemAsync(credentialReference, key)
+  if (oldReference && oldReference !== credentialReference)
+    await SecureStore.deleteItemAsync(oldReference)
   return hydrate(config)
 }
 export async function removeLlmProfile(id: string) {

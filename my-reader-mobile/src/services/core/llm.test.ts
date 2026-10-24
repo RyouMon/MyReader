@@ -45,7 +45,11 @@ beforeEach(() => {
 })
 it("exposes only credential presence and resolves the selected credential at the service boundary", async () => {
   expect(await getLlmConfig()).toEqual({ ...config, profiles: [profile] })
-  expect(await selectedLlmCredential()).toBe("secret")
+  expect(await selectedLlmCredential()).toEqual({
+    profileId: "p",
+    profileRevision: profile.revision,
+    value: "secret",
+  })
   jest
     .mocked(core.llmGetConfig)
     .mockResolvedValue({ ...config, defaultProfileId: undefined })
@@ -56,12 +60,14 @@ it("keeps an unchanged key, replaces or clears only when requested, and never st
   expect(SecureStore.setItemAsync).not.toHaveBeenCalled()
   await upsertLlmProfile({ profile, credential: " replacement " })
   expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
-    "llm-provider-p",
+    "llm-provider-new-profile",
     "replacement",
   )
   expect(core.llmUpsertProfile).toHaveBeenLastCalledWith(
     "/config.json",
-    expect.objectContaining({ credentialReference: "llm-provider-p" }),
+    expect.objectContaining({
+      credentialReference: "llm-provider-new-profile",
+    }),
   )
   expect(
     JSON.stringify(jest.mocked(core.llmUpsertProfile).mock.calls),
@@ -73,7 +79,7 @@ it("keeps an unchanged key, replaces or clears only when requested, and never st
     "/config.json",
     expect.objectContaining({
       id: "new-profile",
-      credentialReference: "llm-provider-new-profile",
+      credentialReference: undefined,
     }),
   )
 })
@@ -89,6 +95,47 @@ it("does not change credentials when Core rejects a profile, and removes the ref
   expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith("llm-provider-p")
   jest.mocked(core.llmSelectProfile).mockResolvedValue(empty)
   expect(await selectLlmProfile()).toEqual(empty)
+})
+it("cannot read the previous key while a new provider configuration is being saved", async () => {
+  const keys = new Map([["llm-provider-p", "previous-secret"]])
+  let current = config
+  jest.mocked(core.llmGetConfig).mockImplementation(async () => current)
+  jest
+    .mocked(SecureStore.getItemAsync)
+    .mockImplementation(async (key) => keys.get(key) ?? null)
+  jest
+    .mocked(core.llmUpsertProfile)
+    .mockImplementation(async (_path, replacement) => {
+      current = {
+        ...config,
+        profiles: [{ ...stored, ...replacement, revision: 2 }],
+      }
+      const duringSave = await selectedLlmCredential()
+      expect(duringSave).toEqual({
+        profileId: "p",
+        profileRevision: 2,
+        value: undefined,
+      })
+      return current
+    })
+  jest
+    .mocked(SecureStore.setItemAsync)
+    .mockImplementation(async (key, value) => {
+      keys.set(key, value)
+    })
+  jest.mocked(SecureStore.deleteItemAsync).mockImplementation(async (key) => {
+    keys.delete(key)
+  })
+  await upsertLlmProfile({
+    profile: { ...profile, endpoint: "https://replacement.example/v1" },
+    credential: "new-secret",
+  })
+  expect(await selectedLlmCredential()).toEqual({
+    profileId: "p",
+    profileRevision: 2,
+    value: "new-secret",
+  })
+  expect(keys.has("llm-provider-p")).toBe(false)
 })
 it("discovers models without a chosen model and probes with draft credentials plus cancellation", async () => {
   const controller = new AbortController()

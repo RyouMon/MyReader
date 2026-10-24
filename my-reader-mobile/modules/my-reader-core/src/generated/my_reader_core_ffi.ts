@@ -4163,7 +4163,7 @@ export async function narrationImport(
   root: string,
   configPath: string,
   request: CharacterImportRequest,
-  credential: string | undefined,
+  credential: LlmCredential | undefined,
   asyncOpts_?: { signal: AbortSignal },
 ): Promise<Array<CharacterImportCandidate>> /*throws*/ {
   const __stack = uniffiIsDebug ? new Error().stack : undefined;
@@ -4178,7 +4178,7 @@ export async function narrationImport(
             request,
             nativeModule().rustbuffer_alloc,
           ),
-          FfiConverterOptionalString.lower(
+          FfiConverterOptionalTypeLlmCredential.lower(
             credential,
             nativeModule().rustbuffer_alloc,
           ),
@@ -4219,7 +4219,7 @@ export async function narrationPrepare(
   configPath: string,
   request: NarrationRequest,
   defaultVoice: NarrationVoice,
-  credential: string | undefined,
+  credential: LlmCredential | undefined,
   asyncOpts_?: { signal: AbortSignal },
 ): Promise<Array<NarrationSpeech>> /*throws*/ {
   const __stack = uniffiIsDebug ? new Error().stack : undefined;
@@ -4238,7 +4238,7 @@ export async function narrationPrepare(
             defaultVoice,
             nativeModule().rustbuffer_alloc,
           ),
-          FfiConverterOptionalString.lower(
+          FfiConverterOptionalTypeLlmCredential.lower(
             credential,
             nativeModule().rustbuffer_alloc,
           ),
@@ -9180,6 +9180,55 @@ const FfiConverterTypeLlmConfig = (() => {
   return new FFIConverter();
 })();
 
+export type LlmCredential = {
+  profileId: string;
+  profileRevision: number;
+  value?: string;
+};
+
+/**
+ * Generated factory for {@link LlmCredential} record objects.
+ */
+export const LlmCredential = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<LlmCredential, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<LlmCredential>,
+  });
+})();
+
+const FfiConverterTypeLlmCredential = (() => {
+  type TypeName = LlmCredential;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        profileId: FfiConverterString.read(from),
+        profileRevision: FfiConverterUInt32.read(from),
+        value: FfiConverterOptionalString.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.profileId, into);
+      FfiConverterUInt32.write(value.profileRevision, into);
+      FfiConverterOptionalString.write(value.value, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.profileId) +
+        FfiConverterUInt32.allocationSize(value.profileRevision) +
+        FfiConverterOptionalString.allocationSize(value.value)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
 export type LocalLibraryRequest = {
   libraryRootPath: string;
   path: string;
@@ -12143,6 +12192,11 @@ const FfiConverterSequenceTypeDownloadTask = new FfiConverterArray(
   FfiConverterTypeDownloadTask,
 );
 
+// FfiConverter for LlmCredential | undefined
+const FfiConverterOptionalTypeLlmCredential = new FfiConverterOptional(
+  FfiConverterTypeLlmCredential,
+);
+
 // FfiConverter for Array<CharacterImportCandidate>
 const FfiConverterSequenceTypeCharacterImportCandidate = new FfiConverterArray(
   FfiConverterTypeCharacterImportCandidate,
@@ -12952,7 +13006,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_import() !==
-    27009
+    65126
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_narration_import",
@@ -12960,7 +13014,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_prepare() !==
-    54154
+    63719
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_narration_prepare",
@@ -13394,6 +13448,7 @@ export default Object.freeze({
     FfiConverterTypeLibrarySyncReport,
     FfiConverterTypeLibrarySyncScope,
     FfiConverterTypeLlmConfig,
+    FfiConverterTypeLlmCredential,
     FfiConverterTypeLlmProviderProfile,
     FfiConverterTypeLocalLibraryRequest,
     FfiConverterTypeManagedLocalLibraryRequest,

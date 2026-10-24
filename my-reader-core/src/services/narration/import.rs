@@ -14,7 +14,7 @@ impl NarrationService {
         root: &Path,
         config_path: &Path,
         request: CharacterImportRequest,
-        credential: Option<&str>,
+        credential: Option<&crate::models::LlmCredential>,
     ) -> Result<Vec<CharacterImportCandidate>, CoreError> {
         if !Self::get_settings(root, request.book_id).await?.enabled {
             return Err(error("DISABLED"));
@@ -26,6 +26,7 @@ impl NarrationService {
             return Err(error("REQUEST_INVALID"));
         }
         let profile = LlmService::selected_profile(config_path)?;
+        let credential = super::credential_for(&profile, credential)?;
         let language = request.language.split(['-', '_']).next().unwrap_or("en");
         let language = match language {
             "zh" | "ja" | "en" | "fr" | "de" | "es" | "ko" | "ru" | "it" | "pt" => language,

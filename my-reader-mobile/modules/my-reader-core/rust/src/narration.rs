@@ -85,13 +85,13 @@ pub async fn narration_import(
     root: String,
     config_path: String,
     request: CharacterImportRequest,
-    credential: Option<String>,
+    credential: Option<crate::llm::LlmCredential>,
 ) -> Result<Vec<CharacterImportCandidate>, CoreFfiError> {
     Ok(NarrationService::import_characters(
         Path::new(&root),
         Path::new(&config_path),
         request.try_into()?,
-        credential.as_deref(),
+        credential.map(Into::into).as_ref(),
     )
     .await
     .map_err(CoreFfiError::from_core)?
@@ -105,14 +105,14 @@ pub async fn narration_prepare(
     config_path: String,
     request: NarrationRequest,
     default_voice: NarrationVoice,
-    credential: Option<String>,
+    credential: Option<crate::llm::LlmCredential>,
 ) -> Result<Vec<NarrationSpeech>, CoreFfiError> {
     Ok(NarrationService::prepare(
         Path::new(&root),
         Path::new(&config_path),
         request.try_into()?,
         default_voice.try_into()?,
-        credential.as_deref(),
+        credential.map(Into::into).as_ref(),
     )
     .await
     .map_err(CoreFfiError::from_core)?
