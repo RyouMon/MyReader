@@ -1316,8 +1316,83 @@ mod tests {
             assert!(detail.contains("HTTP_401"));
             assert!(detail.contains(&body.replace("private-key", "[credential]")));
             assert!(!detail.contains("private-key"));
-            if !qwen {
-                assert!(detail.contains("request-header"));
+            assert!(detail.contains("request-header"));
+            server.await.unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn qwen_errors_preserve_empty_and_non_json_responses_with_request_context() {
+        for (body, header, expected) in [
+            (
+                "{}",
+                "x-request-id: request-header",
+                "Provider returned no error details (body: {}).",
+            ),
+            (
+                "  ",
+                "x-dashscope-request-id: request-header",
+                "Provider returned an empty response body.",
+            ),
+            (
+                "upstream rejected private-key",
+                "x-request-id: request-header",
+                "upstream rejected [credential]",
+            ),
+            (
+                r#"{"code":"","message":"private-key invalid","request_id":"request-body"}"#,
+                "x-request-id:",
+                "request-body",
+            ),
+            (
+                r#"{"error":{"code":"InvalidParameter","message":"Voice not found"}}"#,
+                "x-request-id: private-key",
+                "Voice not found",
+            ),
+        ] {
+            let response = format!("HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\nContent-Length: {}\r\n{header}\r\nConnection: close\r\n\r\n{body}", body.len()).into_bytes();
+            let (endpoint, server) = test_server(vec![response]).await;
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("config.json");
+            TtsService::upsert_profile(
+                &path,
+                qwen_profile(
+                    format!("{endpoint}?key=private-key"),
+                    "qwen3-tts-flash",
+                    "reader-voice",
+                ),
+            )
+            .unwrap();
+            let error = TtsService::synthesize(
+                &path,
+                dir.path(),
+                request("qwen", "audio/wav"),
+                Some("private-key"),
+            )
+            .await
+            .unwrap_err();
+            assert!(matches!(
+                &error,
+                CoreError::Tts {
+                    kind: TtsErrorKind::InvalidRequest,
+                    ..
+                }
+            ));
+            let detail = error.to_string();
+            assert!(
+                detail.contains("QWEN_REQUEST_FAILED (HTTP_400;"),
+                "{detail}"
+            );
+            assert!(!detail.contains("QWEN_QWEN_"));
+            assert!(detail.contains(expected), "{detail}");
+            assert!(detail.contains("model=qwen3-tts-flash"));
+            assert!(detail.contains(&format!(
+                "endpoint={endpoint}/api/v1/services/aigc/multimodal-generation/generation"
+            )));
+            assert!(!detail.contains("private-key"));
+            assert!(!detail.contains("?key="));
+            if header.contains("request-header") {
+                assert!(detail.contains("request_id=request-header"));
             }
             server.await.unwrap();
         }

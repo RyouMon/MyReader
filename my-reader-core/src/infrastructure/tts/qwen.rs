@@ -316,7 +316,7 @@ pub(crate) async fn synthesize(
         .send()
         .await
         .map_err(map_reqwest_error)?;
-    let body = json_response(response, credential).await?;
+    let body = json_response(response, credential, model).await?;
     let audio_url = body
         .pointer("/output/audio/url")
         .and_then(Value::as_str)
@@ -357,8 +357,24 @@ pub(crate) fn uses_websocket(endpoint: &str) -> bool {
     })
 }
 
-async fn json_response(response: reqwest::Response, credential: &str) -> Result<Value, CoreError> {
+async fn json_response(
+    response: reqwest::Response,
+    credential: &str,
+    model: &str,
+) -> Result<Value, CoreError> {
     let status = response.status();
+    let endpoint = format!(
+        "{}{}",
+        response.url().origin().ascii_serialization(),
+        response.url().path()
+    );
+    let request_id = response
+        .headers()
+        .get("x-request-id")
+        .or_else(|| response.headers().get("x-dashscope-request-id"))
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or_default()
+        .to_owned();
     let bytes = response_bytes(response, "QWEN_RESPONSE_TOO_LARGE").await?;
     let body: Value = serde_json::from_slice(&bytes).unwrap_or(Value::Null);
     if !status.is_success()
@@ -367,11 +383,32 @@ async fn json_response(response: reqwest::Response, credential: &str) -> Result<
             .and_then(Value::as_str)
             .is_some_and(|code| !code.is_empty())
     {
-        let code = body["code"].as_str().unwrap_or("QWEN_REQUEST_FAILED");
-        let detail = super::redact_credential(&String::from_utf8_lossy(&bytes), Some(credential));
+        let code = body["code"]
+            .as_str()
+            .filter(|code| !code.is_empty())
+            .unwrap_or("REQUEST_FAILED");
+        let request_id = if request_id.is_empty() {
+            body["request_id"].as_str().unwrap_or("unavailable")
+        } else {
+            &request_id
+        };
+        let raw = String::from_utf8_lossy(&bytes);
+        let detail = if raw.trim().is_empty() {
+            "Provider returned an empty response body."
+        } else if body.as_object().is_some_and(|object| object.is_empty()) {
+            "Provider returned no error details (body: {})."
+        } else {
+            &raw
+        };
         return Err(tts_error(
             super::http_error_kind(status),
-            &format!("QWEN_{code} (HTTP_{}): {detail}", status.as_u16()),
+            &super::redact_credential(
+                &format!(
+                    "QWEN_{code} (HTTP_{}; request_id={request_id}; model={model}; endpoint={endpoint}): {detail}",
+                    status.as_u16()
+                ),
+                Some(credential),
+            ),
         ));
     }
     if body.is_null() {
@@ -421,7 +458,7 @@ pub(crate) async fn discover_voices(
                 "model": enrollment_model,
                 "input": { "action": if audio { "list_voice" } else { "list" }, "page_size": page_size, "page_index": page }
             }))?).send().await.map_err(map_reqwest_error)?;
-        let body = json_response(response, credential).await?;
+        let body = json_response(response, credential, model_id).await?;
         let list = body
             .pointer("/output/voice_list")
             .and_then(Value::as_array)
@@ -478,12 +515,82 @@ fn api_endpoint(base: &str, suffix: &str) -> Result<Url, CoreError> {
 }
 
 fn endpoint(profile: &TtsProviderProfile, audio: bool) -> Result<Url, CoreError> {
-    api_endpoint(
+    let mut url = api_endpoint(
         &profile.endpoint,
         if audio {
             "/services/audio/tts/SpeechSynthesizer"
         } else {
             "/services/aigc/multimodal-generation/generation"
         },
-    )
+    )?;
+    // Qianwen's Qwen3-TTS HTTP reference uses DashScope. The generic MaaS
+    // gateway returns HTTP 400 with only {} for this model.
+    // https://platform.qianwenai.com/docs/api-reference/speech-synthesis/qwen-tts
+    if profile.model.as_deref() == Some("qwen3-tts-flash")
+        && url.host_str() == Some("maas.qianwenaiapi.com")
+        && url.scheme() == "https"
+        && url.port().is_none()
+        && url.path() == "/api/v1/services/aigc/multimodal-generation/generation"
+    {
+        url.set_host(Some("dashscope.aliyuncs.com"))
+            .expect("static DashScope hostname is valid");
+    }
+    Ok(url)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::TtsProviderKind;
+
+    #[test]
+    fn qianwen_flash_uses_its_documented_http_endpoint() {
+        let mut profile = TtsProviderProfile {
+            id: "qwen".into(),
+            name: "Qwen".into(),
+            kind: TtsProviderKind::Qwen,
+            enabled: true,
+            endpoint: String::new(),
+            model: Some("qwen3-tts-flash".into()),
+            credential_reference: None,
+            options: TtsProviderOptions::Qwen {
+                response_format: TtsAudioFormat::Wav,
+                instructions: None,
+                voices: vec!["Bunny".into()],
+                default_voice: Some("Bunny".into()),
+            },
+            revision: 1,
+        };
+        let path = "/api/v1/services/aigc/multimodal-generation/generation";
+        for base in [
+            "https://maas.qianwenaiapi.com",
+            "https://maas.qianwenaiapi.com/api/v1/",
+            &format!("https://maas.qianwenaiapi.com{path}"),
+        ] {
+            profile.endpoint = base.into();
+            assert_eq!(
+                endpoint(&profile, false).unwrap().as_str(),
+                format!("https://dashscope.aliyuncs.com{path}")
+            );
+        }
+        for base in [
+            "https://custom.example/api/v1",
+            "https://dashscope-intl.aliyuncs.com/api/v1",
+            "http://maas.qianwenaiapi.com/api/v1",
+            "https://maas.qianwenaiapi.com:8443/api/v1",
+            "https://maas.qianwenaiapi.com/custom",
+        ] {
+            profile.endpoint = base.into();
+            assert_eq!(
+                endpoint(&profile, false).unwrap(),
+                api_endpoint(base, "/services/aigc/multimodal-generation/generation").unwrap()
+            );
+        }
+        profile.endpoint = "https://maas.qianwenaiapi.com/api/v1".into();
+        profile.model = Some(DEFAULT_MODEL.into());
+        assert_eq!(
+            endpoint(&profile, true).unwrap().as_str(),
+            "https://maas.qianwenaiapi.com/api/v1/services/audio/tts/SpeechSynthesizer"
+        );
+    }
 }
