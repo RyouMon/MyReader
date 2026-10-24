@@ -5,7 +5,11 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react-native"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import {
+  QueryClient,
+  QueryClientProvider,
+  notifyManager,
+} from "@tanstack/react-query"
 import * as llm from "@/src/services/core/llm"
 import * as narration from "@/src/services/core/narration"
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
@@ -167,6 +171,8 @@ const tts = {
   ],
 } as MobileTtsConfig
 const clients: QueryClient[] = []
+beforeAll(() => notifyManager.setNotifyFunction((notify) => act(notify)))
+afterAll(() => notifyManager.setNotifyFunction((notify) => notify()))
 afterEach(() => {
   clients.forEach((client) => client.clear())
   clients.length = 0
@@ -262,6 +268,12 @@ it("edits and probes without revealing saved keys, discovers models, and selects
   )
 })
 it("shows role controls only after enabling a book with a configured LLM and acceptance", async () => {
+  const completeSave: ((value: narration.BookNarrationSettings) => void)[] = []
+  jest
+    .mocked(narration.saveBookNarration)
+    .mockImplementation(
+      () => new Promise((resolve) => completeSave.push(resolve)),
+    )
   jest
     .mocked(narration.getBookNarration)
     .mockResolvedValue({ ...settings, enabled: false })
@@ -278,6 +290,15 @@ it("shows role controls only after enabling a book with a configured LLM and acc
   await waitFor(() => expect(showAlertWithStatusBarRestore).toHaveBeenCalled())
   const buttons = jest.mocked(showAlertWithStatusBarRestore).mock.calls[0]![2]!
   await act(async () => buttons[1]!.onPress?.())
+  await waitFor(() => expect(completeSave).toHaveLength(1))
+  await waitFor(() =>
+    expect(screen.getByLabelText("narration.enabled")).toHaveProp(
+      "disabled",
+      true,
+    ),
+  )
+  expect(screen.queryByText("narration.import")).toBeNull()
+  await act(async () => completeSave[0]!({ ...settings, enabled: true }))
   await screen.findByText("narration.import")
   await waitFor(() =>
     expect(screen.getByLabelText("narration.enabled")).toHaveProp(
@@ -286,6 +307,14 @@ it("shows role controls only after enabling a book with a configured LLM and acc
     ),
   )
   fireEvent(screen.getByLabelText("narration.enabled"), "valueChange", false)
+  await waitFor(() =>
+    expect(narration.saveBookNarration).toHaveBeenLastCalledWith(
+      book.library,
+      expect.objectContaining({ enabled: false }),
+    ),
+  )
+  await waitFor(() => expect(completeSave).toHaveLength(2))
+  await act(async () => completeSave[1]!({ ...settings, enabled: false }))
   await waitFor(() => expect(screen.queryByText("narration.import")).toBeNull())
 })
 it("preserves a character ID, resets voice after provider changes and saves fixed instructions", async () => {
