@@ -122,8 +122,8 @@ extension ReaderWindowTests {
       ))
     }
 
-    @Test(arguments: [false, true])
-    func keepsSyncedAnchorDuringInitialLayout(busyWebKit: Bool) async throws {
+    @Test(arguments: [false, true], [false, true])
+    func keepsSyncedAnchorDuringInitialLayout(busyWebKit: Bool, delayedHostLayout: Bool) async throws {
       let fixtures = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent()
         .deletingLastPathComponent().deletingLastPathComponent()
@@ -158,7 +158,8 @@ extension ReaderWindowTests {
       window.rootViewController = host
       window.makeKeyAndVisible()
       let view = ReadiumView(appContext: AppContext())
-      view.frame = CGRect(x: 0, y: 0, width: 402, height: 840)
+      let laidOutFrame = CGRect(x: 0, y: 0, width: 402, height: 840)
+      view.frame = delayedHostLayout ? .zero : laidOutFrame
       host.view.addSubview(view)
       defer {
         view.cleanup()
@@ -196,6 +197,13 @@ extension ReaderWindowTests {
       view.selectionActions = []
       view.customSelectionMenu = false
       view.fontFamilyDeclarations = []
+      // Model the native host receiving its React Native layout after the book.
+      let layoutTask = delayedHostLayout ? Task { @MainActor in
+        try await Task.sleep(nanoseconds: 2_000_000_000)
+        view.frame = laidOutFrame
+        host.view.layoutIfNeeded()
+      } : nil
+      defer { layoutTask?.cancel() }
       for _ in 0..<200 {
         if host.children.first is EPUBViewController { break }
         try await Task.sleep(nanoseconds: 25_000_000)
@@ -208,6 +216,7 @@ extension ReaderWindowTests {
         }
       }
       defer { subscription.cancel() }
+      try await layoutTask?.value
       let localized = PreferencesRecord()
       localized.theme = "sepia"
       localized.fontSize = 18.0 / 16

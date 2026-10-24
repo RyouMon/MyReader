@@ -37,6 +37,7 @@ import com.myreader.readium.reader.ReaderService
 import com.myreader.readium.reader.ReaderViewModel
 import com.myreader.readium.reader.SelectionAction as FragmentSelectionAction
 import com.myreader.readium.reader.TtsPlaybackNavigationState
+import com.myreader.readium.reader.UserNavigationViewport
 import com.myreader.readium.reader.ViewportAnchor
 import com.myreader.readium.reader.ttsFollowStaysInCurrentResource
 import com.myreader.readium.utils.LinkOrLocator
@@ -88,7 +89,8 @@ class ReadiumView(
   private var pendingLocation: Locator? = null
   private var viewportPresentationFrozen = false
   private val ttsNavigationState = TtsPlaybackNavigationState()
-  private var userNavigationResetRunnable: Runnable? = null
+  private var userNavigationResetJob: Job? = null
+  private var userNavigationViewport: UserNavigationViewport? = null
   private var activeDragNavigationId: String? = null
   private var lastDispatchedHref: String? = null
 
@@ -329,8 +331,9 @@ class ReadiumView(
     navigation.navigationId?.let { payload["navigationId"] = it }
     navigation.navigationKind?.let { payload["navigationKind"] = it }
     if (navigation.source == "user") {
-      userNavigationResetRunnable?.let(mainHandler::removeCallbacks)
-      userNavigationResetRunnable = null
+      userNavigationResetJob?.cancel()
+      userNavigationResetJob = null
+      userNavigationViewport = null
       if (activeDragNavigationId == navigation.navigationId) {
         activeDragNavigationId = null
       }
@@ -350,8 +353,9 @@ class ReadiumView(
   }
 
   private fun clearTtsFollowTextNavigation() {
-    userNavigationResetRunnable?.let(mainHandler::removeCallbacks)
-    userNavigationResetRunnable = null
+    userNavigationResetJob?.cancel()
+    userNavigationResetJob = null
+    userNavigationViewport = null
     activeDragNavigationId = null
     ttsNavigationState.resetForSession()
   }
@@ -360,7 +364,8 @@ class ReadiumView(
     detachViewport: Boolean = true,
     scheduleReset: Boolean = true,
   ): String {
-    userNavigationResetRunnable?.let(mainHandler::removeCallbacks)
+    userNavigationResetJob?.cancel()
+    userNavigationViewport = UserNavigationViewport.capture(fragment?.view)
     val navigationId = ttsNavigationState.beginUserNavigation(detachViewport)
     if (scheduleReset) scheduleUserNavigationReset(navigationId)
     (fragment as? EpubReaderFragment)?.prepareTtsForUserNavigation()
@@ -368,13 +373,19 @@ class ReadiumView(
   }
 
   private fun scheduleUserNavigationReset(navigationId: String) {
-    userNavigationResetRunnable?.let(mainHandler::removeCallbacks)
-    val reset = Runnable {
-      ttsNavigationState.cancelUserNavigationIfUnchanged(navigationId)
-      userNavigationResetRunnable = null
+    userNavigationResetJob?.cancel()
+    val epub = fragment is EpubReaderFragment
+    val viewport = userNavigationViewport
+    userNavigationResetJob = scope.launch {
+      val unchanged = if (epub) {
+        viewport?.unchangedAfterSettling() == true
+      } else {
+        delay(USER_NAVIGATION_SETTLE_MS)
+        true
+      }
+      if (unchanged) ttsNavigationState.cancelUserNavigationIfUnchanged(navigationId)
+      userNavigationResetJob = null
     }
-    userNavigationResetRunnable = reset
-    mainHandler.postDelayed(reset, USER_NAVIGATION_SETTLE_MS)
   }
 
   private fun finishUserNavigationGesture() {

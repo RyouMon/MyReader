@@ -160,6 +160,11 @@ final class ReadiumView: ExpoView {
     registerInRegistry()
   }
 
+  override func layoutSubviews() {
+    super.layoutSubviews()
+    tryLoadBook()
+  }
+
   override func willMove(toSuperview newSuperview: UIView?) {
     super.willMove(toSuperview: newSuperview)
     if newSuperview == nil {
@@ -181,6 +186,8 @@ final class ReadiumView: ExpoView {
           selectionActionsReceived,
           customSelectionMenuReceived,
           fontFamilyDeclarationsReceived,
+          bounds.width > 0,
+          bounds.height > 0,
           !hasLoadedBook else {
       return
     }
