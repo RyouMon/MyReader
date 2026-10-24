@@ -43,7 +43,16 @@
     "enableConfirm": "Activar",
     "llmRequired": "Configura primero un proveedor LLM en Ajustes.",
     "noCandidates": "No se encontró información fiable sobre los personajes.",
-    "delete": "Eliminar personaje"
+    "delete": "Eliminar personaje",
+    "series": "Serie: {{name}}",
+    "merge": "Combinar ajustes de personajes",
+    "autoMerge": "Combinar con LLM",
+    "manualMerge": "Combinar manualmente",
+    "newCharacter": "Nuevo personaje",
+    "voiceAndInstructions": "Voz e instrucciones",
+    "keepExisting": "Conservar actuales",
+    "useIncoming": "Usar {{title}}",
+    "confirmMerge": "Confirmar combinación"
   },
   "appUpdates": {
     "title": "Actualizaciones de la aplicación",

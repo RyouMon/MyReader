@@ -6,6 +6,60 @@ use my_reader_core::{api::narration::NarrationService, models::TtsVoiceRef};
 use std::path::Path;
 use types::*;
 
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn narration_resolve_settings(
+    root: String,
+    content_root: String,
+    library_type: String,
+    book_id: f64,
+) -> Result<BookNarrationSettings, CoreFfiError> {
+    Ok(NarrationService::get_library_settings(
+        Path::new(&root),
+        Path::new(&content_root),
+        crate::types::parse_library_type(&library_type)?,
+        required_i64(book_id, "bookId")?,
+    )
+    .await
+    .map_err(CoreFfiError::from_core)?
+    .into())
+}
+
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn narration_preview_merge(
+    root: String,
+    config_path: String,
+    book_id: f64,
+    automatic: bool,
+    credential: Option<crate::llm::LlmCredential>,
+) -> Result<NarrationMergePlan, CoreFfiError> {
+    Ok(NarrationService::preview_merge(
+        Path::new(&root),
+        Path::new(&config_path),
+        required_i64(book_id, "bookId")?,
+        automatic,
+        credential.map(Into::into).as_ref(),
+    )
+    .await
+    .map_err(CoreFfiError::from_core)?
+    .into())
+}
+
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn narration_merge_settings(
+    root: String,
+    book_id: f64,
+    plan: NarrationMergePlan,
+) -> Result<BookNarrationSettings, CoreFfiError> {
+    Ok(NarrationService::merge_settings(
+        Path::new(&root),
+        required_i64(book_id, "bookId")?,
+        plan.try_into()?,
+    )
+    .await
+    .map_err(CoreFfiError::from_core)?
+    .into())
+}
+
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct NarrationVoice {
     pub engine: String,

@@ -10,6 +10,24 @@ use crate::{
 use my_reader_core::api::narration::NarrationService;
 use tauri::{AppHandle, State};
 
+async fn resolve_settings<R: tauri::Runtime>(
+    app: &AppHandle<R>,
+    state: &State<'_, AppState>,
+    library_id: &str,
+    book_id: i64,
+) -> Result<my_reader_core::models::BookNarrationSettings, AppError> {
+    let app_data = common::app_data_dir(app)?;
+    let library =
+        LibraryService::resolve_library(Some(library_id), &common::config_snapshot(state))?;
+    Ok(NarrationService::get_library_settings(
+        &library_sidecar_path(&library, &app_data),
+        &crate::utils::paths::library_root_path(&library, &app_data),
+        library.library_type.into(),
+        book_id,
+    )
+    .await?)
+}
+
 fn paths<R: tauri::Runtime>(
     app: &AppHandle<R>,
     state: &State<'_, AppState>,
@@ -32,8 +50,9 @@ pub async fn get_book_narration<R: tauri::Runtime>(
     library_id: String,
     book_id: i64,
 ) -> Result<BookNarrationSettingsDto, AppError> {
-    let (root, _) = paths(&app, &state, &library_id)?;
-    Ok(NarrationService::get_settings(&root, book_id).await?.into())
+    Ok(resolve_settings(&app, &state, &library_id, book_id)
+        .await?
+        .into())
 }
 #[tauri::command]
 #[specta::specta]
@@ -44,6 +63,7 @@ pub async fn save_book_narration<R: tauri::Runtime>(
     settings: BookNarrationSettingsDto,
 ) -> Result<BookNarrationSettingsDto, AppError> {
     let (root, _) = paths(&app, &state, &library_id)?;
+    resolve_settings(&app, &state, &library_id, settings.book_id).await?;
     Ok(NarrationService::save_settings(&root, settings.into())
         .await?
         .into())
@@ -68,6 +88,7 @@ pub async fn import_book_characters<R: tauri::Runtime>(
     request: CharacterImportRequestDto,
 ) -> Result<Vec<CharacterImportCandidateDto>, AppError> {
     let (root, config) = paths(&app, &state, &library_id)?;
+    resolve_settings(&app, &state, &library_id, request.book_id).await?;
     let credential = selected_credential(&config)?;
     Ok(
         NarrationService::import_characters(&root, &config, request.into(), Some(&credential))
@@ -93,7 +114,7 @@ pub async fn prepare_book_narration<R: tauri::Runtime>(
     };
     let work = async {
         let (root, config) = paths(&app, &state, &library_id)?;
-        let enabled = NarrationService::get_settings(&root, request.book_id)
+        let enabled = resolve_settings(&app, &state, &library_id, request.book_id)
             .await?
             .enabled;
         let credential = if enabled {
@@ -120,4 +141,45 @@ pub async fn prepare_book_narration<R: tauri::Runtime>(
     };
     coordinator.finish(&request_id);
     result
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn preview_book_narration_merge<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    library_id: String,
+    book_id: i64,
+    automatic: bool,
+) -> Result<NarrationMergePlanDto, AppError> {
+    let (root, config) = paths(&app, &state, &library_id)?;
+    resolve_settings(&app, &state, &library_id, book_id).await?;
+    let credential = if automatic {
+        Some(selected_credential(&config)?)
+    } else {
+        None
+    };
+    Ok(
+        NarrationService::preview_merge(&root, &config, book_id, automatic, credential.as_ref())
+            .await?
+            .into(),
+    )
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn merge_book_narration<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    library_id: String,
+    book_id: i64,
+    plan: NarrationMergePlanDto,
+) -> Result<BookNarrationSettingsDto, AppError> {
+    let (root, _) = paths(&app, &state, &library_id)?;
+    resolve_settings(&app, &state, &library_id, book_id).await?;
+    Ok(
+        NarrationService::merge_settings(&root, book_id, plan.into())
+            .await?
+            .into(),
+    )
 }

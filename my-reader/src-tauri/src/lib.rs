@@ -125,6 +125,8 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::narration::cancel_book_narration::<tauri::Wry>,
             commands::narration::import_book_characters::<tauri::Wry>,
             commands::narration::prepare_book_narration::<tauri::Wry>,
+            commands::narration::preview_book_narration_merge::<tauri::Wry>,
+            commands::narration::merge_book_narration::<tauri::Wry>,
             commands::tts::list_qwen_tts_models,
             commands::tts::list_qwen_tts_presets,
             commands::tts::discover_qwen_tts_voices::<tauri::Wry>,

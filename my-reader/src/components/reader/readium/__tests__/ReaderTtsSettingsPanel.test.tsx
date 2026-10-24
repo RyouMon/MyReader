@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { readerChromePalette } from "@my-reader/tools/reader-chrome-palette"
 import {
   fireEvent,
@@ -14,6 +15,7 @@ import type { TtsConfigDto } from "@/lib/tauri-specta"
 
 const mocks = vi.hoisted(() => ({
   getTtsConfig: vi.fn(),
+  getBookNarration: vi.fn(),
   setTtsDefaultEngine: vi.fn(),
   setTtsPlaybackPreferences: vi.fn(),
   synthesizeTtsRequest: vi.fn(),
@@ -38,6 +40,8 @@ vi.mock("@/lib/tauri-api", () => ({
     listQwenTtsModels: vi.fn().mockResolvedValue([]),
     listQwenTtsPresets: vi.fn().mockResolvedValue([]),
     getTtsConfig: mocks.getTtsConfig,
+    getBookNarration: mocks.getBookNarration,
+    listTtsVoices: vi.fn().mockResolvedValue([]),
     setTtsDefaultEngine: mocks.setTtsDefaultEngine,
     setTtsPlaybackPreferences: mocks.setTtsPlaybackPreferences,
     synthesizeTtsRequest: mocks.synthesizeTtsRequest,
@@ -299,4 +303,84 @@ describe("ReaderTtsSettingsPanel", () => {
       screen.getByRole("combobox", { name: "reader.tts.engine" }),
     ).toBeInTheDocument()
   })
+})
+
+it("names the character being edited and replaces general playback controls until returning", async () => {
+  mocks.getBookNarration.mockResolvedValue({
+    bookId: 42,
+    scopeId: "book:42",
+    scopeName: null,
+    mergeSources: [],
+    enabled: true,
+    revision: 1,
+    identityRevision: 1,
+    characters: [
+      {
+        id: "narrator",
+        name: "narrator",
+        aliases: [],
+        identity: "",
+        voice: null,
+        instructions: "",
+        source: null,
+      },
+      {
+        id: "chen",
+        name: "陈默",
+        aliases: [],
+        identity: "Teacher",
+        voice: null,
+        instructions: "",
+        source: null,
+      },
+    ],
+  })
+  mocks.getTtsConfig.mockResolvedValue(config)
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  })
+  render(
+    <QueryClientProvider client={client}>
+      <ReaderTtsSettingsPanel
+        visible
+        session={session()}
+        book={{
+          libraryId: "library",
+          bookId: 42,
+          title: "Novel",
+          authors: [],
+          language: "zh",
+        }}
+      />
+    </QueryClientProvider>,
+  )
+  await screen.findByRole("combobox", { name: "reader.tts.engine" })
+  fireEvent.click(
+    await screen.findByRole("button", { name: /narration.narrator/ }),
+  )
+  expect(await screen.findByText("narration.narrator")).toBeInTheDocument()
+  expect(
+    screen.queryByRole("combobox", { name: "reader.tts.engine" }),
+  ).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole("slider", { name: /^reader\.tts\.speed/ }),
+  ).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole("switch", { name: "narration.enabled" }),
+  ).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole("button", { name: "common.back" }))
+  expect(
+    await screen.findByRole("combobox", { name: "reader.tts.engine" }),
+  ).toBeInTheDocument()
+  fireEvent.click(screen.getByRole("button", { name: /陈默/ }))
+  expect(await screen.findByText("陈默")).toBeInTheDocument()
+  expect(screen.getByLabelText("narration.name")).toHaveValue("陈默")
+  expect(
+    screen.queryByRole("combobox", { name: "reader.tts.engine" }),
+  ).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole("button", { name: "llm.cancel" }))
+  expect(
+    await screen.findByRole("combobox", { name: "reader.tts.engine" }),
+  ).toBeInTheDocument()
+  client.clear()
 })

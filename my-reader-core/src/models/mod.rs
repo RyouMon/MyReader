@@ -36,8 +36,8 @@ pub use library_source::LibrarySourceType;
 pub use llm::{LlmConfig, LlmCredential, LlmMessage, LlmProtocol, LlmProviderProfile};
 pub use narration::{
     BookCharacter, BookNarrationSettings, CharacterImportCandidate, CharacterImportRequest,
-    CharacterSource, NarrationPlan, NarrationRequest, NarrationSegment, NarrationSpeech,
-    NARRATOR_ID,
+    CharacterSource, NarrationMergeChoice, NarrationMergePlan, NarrationMergeSource, NarrationPlan,
+    NarrationRequest, NarrationSegment, NarrationSpeech, NARRATOR_ID,
 };
 pub use reading::{
     LegacyFinishedReading, ReaderAnnotation, ReaderBookmark, ReadingPosition,

@@ -70,6 +70,7 @@ import { ReaderTtsProviderForm } from "./ReaderTtsProviderForm"
 import {
   BookNarrationSettings,
   type NarrationBook,
+  type NarrationSubview,
 } from "./BookNarrationSettings"
 import {
   ReaderTtsProviderList,
@@ -185,6 +186,9 @@ const ReaderTtsSettingsSheet = forwardRef<
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [presented, setPresented] = useState(false)
+  const [narrationView, setNarrationView] = useState<NarrationSubview | null>(
+    null,
+  )
   const [providerDraft, setProviderDraft] = useState<ProviderDraft | null>(null)
   const [showManualVoices, setShowManualVoices] = useState(false)
   const qwen = useQwenTtsForm(providerDraft)
@@ -198,7 +202,7 @@ const ReaderTtsSettingsSheet = forwardRef<
       : undefined
   const containerRef = useRef<ReaderSettingsSheetRef>(null)
   const {
-    canGoBack,
+    canGoBack: routeCanGoBack,
     currentRoute,
     pop,
     popTo,
@@ -206,6 +210,7 @@ const ReaderTtsSettingsSheet = forwardRef<
     reset,
     transitionDirection,
   } = useReaderTtsSettingsNavigation()
+  const canGoBack = routeCanGoBack || Boolean(narrationView)
   const view = currentRoute.name
   const sceneOpacity = useSharedValue(1)
   const sceneTranslateX = useSharedValue(0)
@@ -566,11 +571,15 @@ const ReaderTtsSettingsSheet = forwardRef<
   ])
 
   const goBack = useCallback(() => {
+    if (narrationView) {
+      narrationView.onBack()
+      return
+    }
     setError(null)
     setShowManualVoices(false)
     if (view === "providerForm" && providerDraft?.id) setProviderDraft(null)
     pop()
-  }, [pop, providerDraft?.id, view])
+  }, [pop, providerDraft?.id, view, narrationView])
 
   useEffect(() => {
     if (Platform.OS !== "android" || !presented || !canGoBack) return
@@ -611,7 +620,9 @@ const ReaderTtsSettingsSheet = forwardRef<
     )
   }, [])
 
-  const headerTitle = settingsHeaderTitle(view, providerDraft, qwenPreset, t)
+  const headerTitle =
+    narrationView?.title ??
+    settingsHeaderTitle(view, providerDraft, qwenPreset, t)
 
   const handleDismiss = useCallback(() => {
     stopPreview()
@@ -695,8 +706,10 @@ const ReaderTtsSettingsSheet = forwardRef<
                     config={config}
                     palette={palette}
                     onChange={onNarrationChange}
+                    onSubviewChange={setNarrationView}
                   />
                   <ReaderTtsPlaybackSettings
+                    hidden={Boolean(narrationView)}
                     config={config}
                     palette={palette}
                     selectedProfile={selectedProfile}

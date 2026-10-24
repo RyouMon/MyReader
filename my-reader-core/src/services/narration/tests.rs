@@ -1,3 +1,5 @@
+mod scopes;
+
 use super::*;
 use crate::models::{BookCharacter, CharacterImportRequest, LlmProtocol, TtsVoiceRef};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -55,7 +57,12 @@ async fn fixture() -> Fixture {
                 let response = if head.contains("list=search") {
                     json!({"query":{"search":[{"pageid":1,"title":"Fixture book"}]}})
                 } else if head.contains("prop=revisions") {
-                    json!({"query":{"pages":[{"revisions":[{"slots":{"main":{"content":"Fixture book by Writer\n== Characters ==\n陈默, also called 老陈, a teacher."}}}]}]}})
+                    let mut content = format!("Fixture book by Writer\n== Characters ==\n; 陈默\nA teacher, alias 老陈. {}\n", "A long biography. ".repeat(300));
+                    for index in 1..=30 {
+                        content.push_str(&format!("; Person {index}\nA supporting character.\n"));
+                    }
+                    content.push_str("== Publication ==\nUnrelated publication history");
+                    json!({"query":{"pages":[{"revisions":[{"slots":{"main":{"content":content}}}]}]}})
                 } else {
                     let messages = request["messages"]
                         .as_array()
@@ -65,7 +72,27 @@ async fn fixture() -> Fixture {
                     let result = if system.starts_with("Summarize") {
                         json!({"summary":"The classroom scene continues. char-chen is 陈默, alias 老陈; never change the stable ID."})
                     } else if system.starts_with("Extract") {
-                        json!({"characters":[{"name":"陈默","aliases":["老陈"],"identity":"A teacher","sourceUrl":format!("{origin}/w/index.php?curid=1")}]})
+                        let input: Value = serde_json::from_str(
+                            messages.last().unwrap()["content"].as_str().unwrap(),
+                        )
+                        .unwrap();
+                        let content = input["sources"][0]["content"].as_str().unwrap();
+                        let mut characters = vec![
+                            json!({"name":"陈默","aliases":["老陈"],"identity":"A teacher","sourceUrl":format!("{origin}/w/index.php?curid=1")}),
+                        ];
+                        for index in 1..=30 {
+                            if content.contains(&format!("; Person {index}\n")) {
+                                characters.push(json!({"name":format!("Person {index}"),"aliases":[],"identity":"A supporting character","sourceUrl":format!("{origin}/w/index.php?curid=1")}));
+                            }
+                        }
+                        json!({"characters":characters})
+                    } else if system.starts_with("Match each") {
+                        let input: Value = serde_json::from_str(
+                            messages.last().unwrap()["content"].as_str().unwrap(),
+                        )
+                        .unwrap();
+                        let existing = input["existing"].as_array().unwrap();
+                        json!({"matches":input["incoming"].as_array().unwrap().iter().map(|incoming| json!({"characterId":incoming["id"],"targetCharacterId":existing.iter().find(|character| character["name"] == incoming["name"]).map(|character| character["id"].clone())})).collect::<Vec<_>>()})
                     } else if system.starts_with("You assign") {
                         let input: Value = serde_json::from_str(
                             messages.last().unwrap()["content"].as_str().unwrap(),
@@ -78,7 +105,13 @@ async fn fixture() -> Fixture {
                     } else {
                         json!({"ok":true})
                     };
-                    if request.get("input").is_some() {
+                    let limited = system.starts_with("Extract")
+                        && (request["model"] == "always-limited"
+                            || (request["model"] == "retry-limit"
+                                && request["max_output_tokens"] == 8192));
+                    if limited {
+                        json!({"status":"incomplete","incomplete_details":{"reason":"max_output_tokens"},"output":[]})
+                    } else if request.get("input").is_some() {
                         json!({"status":"completed","output":[{"type":"message","content":[{"type":"output_text","text":result.to_string()}]}]})
                     } else {
                         json!({"choices":[{"finish_reason":"stop","message":{"content":result.to_string()}}]})
@@ -211,7 +244,12 @@ async fn replay_after_a_backtrack_keeps_uncompacted_later_positions_and_excludes
             .unwrap();
     }
     let checkpoint = repository
-        .checkpoint(&session, 0.4, settings.identity_revision)
+        .checkpoint(
+            &session,
+            0.4,
+            settings.identity_revision,
+            &settings.scope_id,
+        )
         .await
         .unwrap();
     let history = repository
@@ -221,6 +259,7 @@ async fn replay_after_a_backtrack_keeps_uncompacted_later_positions_and_excludes
             checkpoint.through_seq,
             checkpoint.position,
             settings.identity_revision,
+            &settings.scope_id,
         )
         .await
         .unwrap();
@@ -228,7 +267,12 @@ async fn replay_after_a_backtrack_keeps_uncompacted_later_positions_and_excludes
     assert_eq!(history[0].position, 0.2);
     assert_eq!(history[0].seq, 1);
     let earlier = repository
-        .checkpoint(&session, 0.05, settings.identity_revision)
+        .checkpoint(
+            &session,
+            0.05,
+            settings.identity_revision,
+            &settings.scope_id,
+        )
         .await
         .unwrap();
     assert!(earlier.summary.is_empty());
@@ -309,7 +353,12 @@ async fn persistent_conversation_compacts_without_changing_character_identity_or
     let repository = NarrationRepository::new(context.database());
     let session = repository.session(42, "sha256:fixture").await.unwrap();
     let checkpoint = repository
-        .checkpoint(&session, 0.35, settings.identity_revision)
+        .checkpoint(
+            &session,
+            0.35,
+            settings.identity_revision,
+            &settings.scope_id,
+        )
         .await
         .unwrap();
     assert!(checkpoint.through_seq > 0);
@@ -321,6 +370,7 @@ async fn persistent_conversation_compacts_without_changing_character_identity_or
             checkpoint.through_seq,
             checkpoint.position,
             settings.identity_revision,
+            &settings.scope_id,
         )
         .await
         .unwrap();
@@ -371,6 +421,10 @@ async fn encyclopedia_import_searches_reads_and_keeps_verified_provenance() {
     )
     .await
     .unwrap();
+    assert_eq!(candidates.len(), 31);
+    assert!(candidates
+        .iter()
+        .any(|character| character.name == "Person 30"));
     assert_eq!(candidates[0].aliases, vec!["老陈"]);
     assert_eq!(
         candidates[0].source.url,
@@ -383,6 +437,47 @@ async fn encyclopedia_import_searches_reads_and_keeps_verified_provenance() {
     assert!(requests.iter().any(|request| request["url"]
         .as_str()
         .is_some_and(|url| url.contains("prop=revisions"))));
+}
+
+#[tokio::test]
+async fn encyclopedia_import_retries_output_limits_once_within_the_context_budget() {
+    for (model, context_window, succeeds, expected_limits) in [
+        ("retry-limit", 32768, true, vec![8192, 16384]),
+        ("retry-limit", 16384, false, vec![8192]),
+        ("always-limited", 32768, false, vec![8192, 16384]),
+    ] {
+        let server = fixture().await;
+        let mut provider = profile(server.endpoint.clone());
+        provider.protocol = LlmProtocol::Responses;
+        provider.model = model.into();
+        provider.context_window = context_window;
+        let result = import::fixture_import(
+            &server.endpoint,
+            &CharacterImportRequest {
+                book_id: 42,
+                title: "Fixture book".into(),
+                authors: vec!["Writer".into()],
+                language: "zh".into(),
+            },
+            &provider,
+        )
+        .await;
+        if succeeds {
+            assert_eq!(result.unwrap().len(), 31);
+        } else {
+            assert!(result.unwrap_err().to_string().contains("LLM_OUTPUT_LIMIT"));
+        }
+        let requests = server.requests.lock().unwrap();
+        let limits: Vec<_> = requests
+            .iter()
+            .filter_map(|request| request["max_output_tokens"].as_u64())
+            .collect();
+        if succeeds {
+            assert!(limits.chunks(2).all(|pair| pair == expected_limits));
+        } else {
+            assert_eq!(limits, expected_limits);
+        }
+    }
 }
 
 #[tokio::test]

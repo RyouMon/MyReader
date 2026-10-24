@@ -147,6 +147,8 @@ it("leaves disabled books on the existing playback path", async () => {
     bookId: 42,
     enabled: false,
     revision: 0,
+    scopeId: "book:fixture",
+    mergeSources: [],
     identityRevision: 0,
     characters: [],
   })
@@ -157,6 +159,8 @@ it("leaves disabled books on the existing playback path", async () => {
     bookId: 42,
     enabled: true,
     revision: 1,
+    scopeId: "book:fixture",
+    mergeSources: [],
     identityRevision: 0,
     characters: [],
   })

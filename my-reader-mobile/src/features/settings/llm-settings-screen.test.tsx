@@ -57,6 +57,8 @@ jest.mock("@/src/services/core/narration", () => ({
   getBookNarration: jest.fn(),
   saveBookNarration: jest.fn(),
   importBookCharacters: jest.fn(),
+  previewBookNarrationMerge: jest.fn(),
+  mergeBookNarration: jest.fn(),
 }))
 jest.mock("@/src/components", () => {
   const React = jest.requireActual("react")
@@ -154,6 +156,8 @@ const settings: narration.BookNarrationSettings = {
   bookId: 7,
   enabled: true,
   revision: 2,
+  scopeId: "book:fixture",
+  mergeSources: [],
   identityRevision: 1,
   characters: [narrator, alice],
 }
@@ -188,10 +192,12 @@ function mount(kind: "settings" | "reader" = "settings") {
   clients.push(client)
   return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
 }
+const onSubviewChange = jest.fn()
 function reader() {
   return (
     <BookNarrationSettings
       book={book}
+      onSubviewChange={onSubviewChange}
       config={tts}
       palette={{} as ReaderChromePalette}
     />
@@ -398,4 +404,68 @@ it("imports selected sourced candidates without overwriting manually edited iden
     authors: ["Writer"],
     language: "en",
   })
+})
+
+it("identifies narrator and named role editing and returns to the character list", async () => {
+  mount("reader")
+  fireEvent.press(await screen.findByText("narration.narrator"))
+  expect(onSubviewChange).toHaveBeenLastCalledWith(
+    expect.objectContaining({ title: "narration.narrator" }),
+  )
+  expect(screen.queryByLabelText("narration.enabled")).toBeNull()
+  act(() => onSubviewChange.mock.calls.at(-1)![0].onBack())
+  fireEvent.press(screen.getByText("Alice"))
+  expect(onSubviewChange).toHaveBeenLastCalledWith(
+    expect.objectContaining({ title: "Alice" }),
+  )
+  expect(screen.getByLabelText("narration.name")).toHaveProp("value", "Alice")
+})
+
+it("reviews a series merge and applies only after confirmation", async () => {
+  const current = {
+    ...settings,
+    scopeId: "series",
+    mergeSources: [
+      {
+        scopeId: "book:8",
+        title: "Volume 2",
+        characters: [{ ...alice, id: "other-alice" }],
+      },
+    ],
+  }
+  const plan = {
+    scopeId: "series",
+    sourceScopeId: "book:8",
+    revision: 2,
+    choices: [
+      {
+        characterId: "other-alice",
+        targetCharacterId: "stable-alice",
+        preferIncoming: false,
+      },
+    ],
+  }
+  jest.mocked(narration.getBookNarration).mockResolvedValue(current)
+  jest.mocked(narration.previewBookNarrationMerge).mockResolvedValue(plan)
+  jest
+    .mocked(narration.mergeBookNarration)
+    .mockResolvedValue({ ...settings, scopeId: "series", revision: 3 })
+  mount("reader")
+  fireEvent.press(await screen.findByText("narration.manualMerge"))
+  await screen.findByText("Volume 2")
+  expect(narration.previewBookNarrationMerge).toHaveBeenCalledWith(
+    book.library,
+    7,
+    false,
+  )
+  expect(narration.mergeBookNarration).not.toHaveBeenCalled()
+  fireEvent.press(screen.getByText("narration.confirmMerge"))
+  await waitFor(() =>
+    expect(narration.mergeBookNarration).toHaveBeenCalledWith(
+      book.library,
+      7,
+      plan,
+    ),
+  )
+  await screen.findByText("narration.import")
 })

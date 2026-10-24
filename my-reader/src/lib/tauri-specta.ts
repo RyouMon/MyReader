@@ -96,6 +96,8 @@ export const commands = {
 	cancelBookNarration: (libraryId: string, bookId: number) => typedError<null, ErrorKind>(__TAURI_INVOKE("cancel_book_narration", { libraryId, bookId })),
 	importBookCharacters: (libraryId: string, request: CharacterImportRequestDto) => typedError<CharacterImportCandidateDto[], ErrorKind>(__TAURI_INVOKE("import_book_characters", { libraryId, request })),
 	prepareBookNarration: (libraryId: string, requestId: string, request: NarrationRequestDto, defaultVoice: TtsVoiceRefDto) => typedError<NarrationSpeechDto[], ErrorKind>(__TAURI_INVOKE("prepare_book_narration", { libraryId, requestId, request, defaultVoice })),
+	previewBookNarrationMerge: (libraryId: string, bookId: number, automatic: boolean) => typedError<NarrationMergePlanDto, ErrorKind>(__TAURI_INVOKE("preview_book_narration_merge", { libraryId, bookId, automatic })),
+	mergeBookNarration: (libraryId: string, bookId: number, plan: NarrationMergePlanDto) => typedError<BookNarrationSettingsDto, ErrorKind>(__TAURI_INVOKE("merge_book_narration", { libraryId, bookId, plan })),
 	listQwenTtsModels: (endpoint: string | null) => __TAURI_INVOKE<QwenTtsModelDto[]>("list_qwen_tts_models", { endpoint }),
 	listQwenTtsPresets: () => __TAURI_INVOKE<QwenTtsPresetDto[]>("list_qwen_tts_presets"),
 	discoverQwenTtsVoices: (input: DiscoverQwenTtsVoicesInput) => typedError<TtsVoiceDto[], ErrorKind>(__TAURI_INVOKE("discover_qwen_tts_voices", { input })),
@@ -190,6 +192,9 @@ export type BookIdentifier = {
 
 export type BookNarrationSettingsDto = {
 	bookId: number,
+	scopeId: string,
+	scopeName: string | null,
+	mergeSources: NarrationMergeSourceDto[],
 	enabled: boolean,
 	revision: number,
 	identityRevision: number,
@@ -347,6 +352,25 @@ export type LlmProfileInput = {
 };
 
 export type LlmProtocolDto = "chatCompletions" | "responses";
+
+export type NarrationMergeChoiceDto = {
+	characterId: string,
+	targetCharacterId: string | null,
+	preferIncoming: boolean,
+};
+
+export type NarrationMergePlanDto = {
+	scopeId: string,
+	sourceScopeId: string,
+	revision: number,
+	choices: NarrationMergeChoiceDto[],
+};
+
+export type NarrationMergeSourceDto = {
+	scopeId: string,
+	title: string,
+	characters: BookCharacterDto[],
+};
 
 export type NarrationRequestDto = {
 	bookId: number,

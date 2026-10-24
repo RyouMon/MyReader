@@ -43,7 +43,16 @@
     "enableConfirm": "Aktivieren",
     "llmRequired": "Richte zuerst in den Einstellungen einen LLM-Anbieter ein.",
     "noCandidates": "Keine verlässlichen Figureninformationen gefunden.",
-    "delete": "Figur löschen"
+    "delete": "Figur löschen",
+    "series": "Reihe: {{name}}",
+    "merge": "Figureneinstellungen zusammenführen",
+    "autoMerge": "Mit LLM zusammenführen",
+    "manualMerge": "Manuell zusammenführen",
+    "newCharacter": "Neue Figur",
+    "voiceAndInstructions": "Stimme und Anweisungen",
+    "keepExisting": "Vorhandene beibehalten",
+    "useIncoming": "{{title}} verwenden",
+    "confirmMerge": "Zusammenführen bestätigen"
   },
   "appUpdates": {
     "title": "App-Updates",
