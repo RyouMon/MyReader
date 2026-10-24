@@ -5,6 +5,7 @@ import AppearanceSection from "@/components/settings/sections/AppearanceSection"
 import DataSourcesSection from "@/components/settings/sections/DataSourcesSection"
 import LibrariesSection from "@/components/settings/sections/LibrariesSection"
 import SpeechSection from "@/components/settings/sections/SpeechSection"
+import LlmSection from "@/components/settings/sections/LlmSection"
 import type { SettingsSection } from "@/types/settings"
 
 interface SettingsActivityProps {
@@ -38,6 +39,7 @@ export default function SettingsActivity({
         )}
         {activeSection === "dataSources" && <DataSourcesSection />}
         {activeSection === "speech" && <SpeechSection />}
+        {activeSection === "llm" && <LlmSection />}
         {activeSection === "appearance" && <AppearanceSection />}
         {activeSection === "about" && <AboutSection />}
       </div>

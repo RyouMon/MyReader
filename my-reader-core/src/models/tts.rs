@@ -256,6 +256,8 @@ pub struct TtsSynthesisRequest {
     pub language: Option<String>,
     pub voice_id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instructions: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub speed: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pitch: Option<f64>,

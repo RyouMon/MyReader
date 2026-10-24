@@ -1,3 +1,4 @@
+pub(super) mod llm;
 pub(super) mod tts;
 
 use std::{
@@ -429,6 +430,7 @@ fn validate_config(state: &AppConfig) -> Result<(), CoreError> {
         )));
     }
     tts::validate_tts_config(&state.tts)?;
+    llm::validate_config(&state.llm)?;
     for source in &state.data_sources {
         validate_data_source(source)?;
     }

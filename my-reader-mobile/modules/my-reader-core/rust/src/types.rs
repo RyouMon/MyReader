@@ -848,6 +848,7 @@ impl TryFrom<AppConfig> for models::AppConfig {
                 .collect::<Result<_, _>>()?,
             active_library_id: value.active_library_id,
             tts: Default::default(),
+            llm: Default::default(),
             desktop: None,
             mobile: value
                 .mobile_json

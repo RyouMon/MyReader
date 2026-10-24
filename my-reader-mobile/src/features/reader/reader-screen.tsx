@@ -124,7 +124,7 @@ import {
 } from "@/src/features/reader/tts/reader-tts"
 import { useReaderTtsSession } from "@/src/features/reader/tts/use-reader-tts-session"
 import { bookLoadRequestKey } from "@/src/hooks/book-load-identity"
-import { useBookLoader } from "@/src/hooks/use-book-loader"
+import { useBookLoader, type LoadState } from "@/src/hooks/use-book-loader"
 import { useReaderProgressSaver } from "@/src/hooks/use-reader-progress-saver"
 import { useAppStore } from "@/src/store/app-store"
 import { errorMessage } from "@/src/i18n/error-message"
@@ -295,6 +295,16 @@ export default function ReaderScreen() {
     },
     [t],
   )
+  const narrationBook = useMemo(
+    () =>
+      readerNarrationBook(
+        activeLibrary,
+        activeLoadState,
+        positions,
+        readerLanguage,
+      ),
+    [activeLibrary, activeLoadState, positions, readerLanguage],
+  )
   const {
     state: ttsState,
     remote: ttsRemote,
@@ -313,6 +323,7 @@ export default function ReaderScreen() {
     handleSynthesisRequest: handleTtsSynthesisRequest,
     handleSynthesisCancel: handleTtsSynthesisCancel,
   } = useReaderTtsSession({
+    narrationBook,
     enabled: Boolean(isReflowReady && readerReady),
     publicationKey,
     language: readerLanguage,
@@ -1564,6 +1575,8 @@ export default function ReaderScreen() {
               language={readerLanguage}
               palette={chromePalette}
               onConfigChange={handleTtsConfigChange}
+              book={narrationBook}
+              onNarrationChange={stopTts}
             />
           </Animated.View>
         </RNAnimated.View>
@@ -1582,3 +1595,22 @@ const styles = StyleSheet.create({
     overflow: "visible",
   },
 })
+
+function readerNarrationBook(
+  library: ReturnType<typeof useAppStore.getState>["libraries"][number] | null,
+  load: LoadState | null,
+  positions: Locator[],
+  language: string,
+) {
+  if (!library || load?.status !== "ready" || !load.bookArchiveFingerprint)
+    return undefined
+  return {
+    library,
+    bookId: load.bookId,
+    contentVersion: load.bookArchiveFingerprint,
+    positions,
+    title: load.title,
+    authors: load.authors ?? [],
+    language,
+  }
+}

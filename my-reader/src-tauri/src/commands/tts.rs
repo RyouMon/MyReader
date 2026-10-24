@@ -54,7 +54,7 @@ pub struct TtsSynthesisCoordinator {
 }
 
 impl TtsSynthesisCoordinator {
-    fn start(&self, request_id: &str) -> Option<oneshot::Receiver<()>> {
+    pub(crate) fn start(&self, request_id: &str) -> Option<oneshot::Receiver<()>> {
         let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
         if state.pending_cancellations.remove(request_id) {
             state.pending_order.retain(|id| id != request_id);
@@ -67,7 +67,7 @@ impl TtsSynthesisCoordinator {
         Some(receiver)
     }
 
-    fn finish(&self, request_id: &str) {
+    pub(crate) fn finish(&self, request_id: &str) {
         self.state
             .lock()
             .unwrap_or_else(|error| error.into_inner())

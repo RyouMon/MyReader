@@ -293,7 +293,15 @@ pub(crate) async fn synthesize(
         // in a Chinese book must retain its own pronunciation.
         input["language_type"] = json!("Auto");
     }
-    if let Some(instructions) = instructions.as_deref().filter(|value| !value.is_empty()) {
+    if let Some(instructions) = request
+        .instructions
+        .as_deref()
+        .or(instructions.as_deref())
+        .filter(|value| !value.is_empty())
+        .filter(|_| {
+            self::model(model, &profile.endpoint).is_ok_and(|model| model.supports_instructions)
+        })
+    {
         input[if audio { "instruction" } else { "instructions" }] = json!(instructions);
     }
     let endpoint = endpoint(profile, audio)?;

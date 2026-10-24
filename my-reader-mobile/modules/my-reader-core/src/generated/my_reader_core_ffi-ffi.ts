@@ -581,6 +581,72 @@ interface NativeModuleInterface {
     configPath: Uint8Array,
     libraryId: Uint8Array,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_llm_get_config(
+    configPath: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_llm_list_models(
+    profile: Uint8Array,
+    credential: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_llm_probe(
+    profile: Uint8Array,
+    credential: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_llm_remove_profile(
+    configPath: Uint8Array,
+    profileId: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_llm_select_profile(
+    configPath: Uint8Array,
+    profileId: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_llm_upsert_profile(
+    configPath: Uint8Array,
+    profile: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_narration_cancel(
+    root: Uint8Array,
+    bookId: number,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_narration_get_settings(
+    root: Uint8Array,
+    bookId: number,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_narration_import(
+    root: Uint8Array,
+    configPath: Uint8Array,
+    request: Uint8Array,
+    credential: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_narration_merge_settings(
+    root: Uint8Array,
+    bookId: number,
+    plan: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_narration_prepare(
+    root: Uint8Array,
+    configPath: Uint8Array,
+    request: Uint8Array,
+    defaultVoice: Uint8Array,
+    credential: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_narration_preview_merge(
+    root: Uint8Array,
+    configPath: Uint8Array,
+    bookId: number,
+    automatic: number,
+    credential: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_narration_resolve_settings(
+    root: Uint8Array,
+    contentRoot: Uint8Array,
+    libraryType: Uint8Array,
+    bookId: number,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_narration_save_settings(
+    root: Uint8Array,
+    settings: Uint8Array,
+  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_reading_add_annotation(
     sidecarRootPath: Uint8Array,
     libraryRootPath: Uint8Array,
@@ -943,6 +1009,20 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_remove(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_replace(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_switch(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_llm_get_config(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_llm_list_models(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_llm_probe(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_llm_remove_profile(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_llm_select_profile(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_llm_upsert_profile(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_cancel(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_get_settings(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_import(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_merge_settings(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_prepare(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_preview_merge(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_resolve_settings(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_save_settings(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_add_annotation(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_add_bookmark(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_add_session_interval(): number;

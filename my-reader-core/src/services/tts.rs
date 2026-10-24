@@ -410,6 +410,16 @@ fn configured_voice_ids(profile: &TtsProviderProfile) -> HashSet<String> {
 }
 
 fn validate_request(request: &TtsSynthesisRequest) -> Result<(), CoreError> {
+    if request
+        .instructions
+        .as_ref()
+        .is_some_and(|value| value.len() > 4000)
+    {
+        return Err(tts_error(
+            TtsErrorKind::InvalidRequest,
+            "TTS_INSTRUCTIONS_TOO_LONG",
+        ));
+    }
     if request.profile_id.trim().is_empty() {
         return Err(tts_error(
             TtsErrorKind::InvalidRequest,
@@ -525,6 +535,7 @@ fn synthesis_cache_key(
         "text": request.text,
         "language": request.language,
         "voiceId": request.voice_id,
+        "instructions": request.instructions,
         "speed": request.speed.unwrap_or(1.0),
         "pitch": request.pitch.unwrap_or(1.0),
     });
@@ -640,6 +651,7 @@ mod tests {
             pitch: None,
             accepted_mime_types: vec![accepted_mime_type.into()],
             cache_policy: TtsCachePolicy::Use,
+            instructions: None,
         }
     }
 
@@ -1425,6 +1437,46 @@ mod tests {
         let persisted = std::fs::read_to_string(config_path).unwrap();
         assert!(persisted.contains("tts:openai:api-key"));
         assert!(!persisted.contains("test-secret"));
+    }
+
+    #[tokio::test]
+    async fn character_instructions_override_without_mutating_provider_or_reusing_other_voice_audio(
+    ) {
+        let (endpoint, server) = test_server(vec![
+            response("audio/mpeg", b"ID3gentle"),
+            response("audio/mpeg", b"ID3male"),
+        ])
+        .await;
+        let directory = tempfile::tempdir().unwrap();
+        let config_path = directory.path().join("config.json");
+        TtsService::upsert_profile(&config_path, openai_profile(endpoint)).unwrap();
+        let original = TtsService::get_config(&config_path).unwrap();
+        let mut gentle = request("openai", "audio/mpeg");
+        gentle.instructions = Some("温柔的女声".into());
+        let mut male = gentle.clone();
+        male.instructions = Some("仿男声\n高兴".into());
+        let first = TtsService::synthesize(
+            &config_path,
+            directory.path(),
+            gentle.clone(),
+            Some("fixture-key"),
+        )
+        .await
+        .unwrap();
+        let second =
+            TtsService::synthesize(&config_path, directory.path(), male, Some("fixture-key"))
+                .await
+                .unwrap();
+        let repeated =
+            TtsService::synthesize(&config_path, directory.path(), gentle, Some("fixture-key"))
+                .await
+                .unwrap();
+        assert_ne!(first.cache_key, second.cache_key);
+        assert_eq!(first, repeated);
+        assert_eq!(TtsService::get_config(&config_path).unwrap(), original);
+        let requests = server.await.unwrap();
+        assert_eq!(request_body(&requests[0])["instructions"], "温柔的女声");
+        assert_eq!(request_body(&requests[1])["instructions"], "仿男声\n高兴");
     }
 
     #[tokio::test]

@@ -65,11 +65,61 @@ impl MigratorTrait for LibraryMigrator {
             .iter()
             .copied()
             .map(|spec| Box::new(LegacyMigration(spec)) as Box<dyn MigrationTrait>)
+            .chain(std::iter::once(
+                Box::new(NarrationMigration) as Box<dyn MigrationTrait>
+            ))
+            .chain(std::iter::once(
+                Box::new(NarrationScopesMigration) as Box<dyn MigrationTrait>
+            ))
             .collect()
     }
 }
 
+struct NarrationMigration;
+
+impl MigrationName for NarrationMigration {
+    fn name(&self) -> &str {
+        "0024_book_narration"
+    }
+}
+
+#[async_trait]
+impl MigrationTrait for NarrationMigration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .get_connection()
+            .execute_unprepared(include_str!("../migrations/0024_book_narration.sql"))
+            .await?;
+        Ok(())
+    }
+    fn use_transaction(&self) -> Option<bool> {
+        Some(true)
+    }
+}
+
 struct LegacyMigration(LegacyMigrationSpec);
+
+struct NarrationScopesMigration;
+
+impl MigrationName for NarrationScopesMigration {
+    fn name(&self) -> &str {
+        "0025_narration_scopes"
+    }
+}
+
+#[async_trait]
+impl MigrationTrait for NarrationScopesMigration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .get_connection()
+            .execute_unprepared(include_str!("../migrations/0025_narration_scopes.sql"))
+            .await?;
+        Ok(())
+    }
+    fn use_transaction(&self) -> Option<bool> {
+        Some(true)
+    }
+}
 
 impl MigrationName for LegacyMigration {
     fn name(&self) -> &str {
@@ -188,6 +238,49 @@ mod tests {
         assert!(columns.contains(&"local_sha256".to_owned()));
         assert!(!columns.contains(&"local_blake3".to_owned()));
         assert_eq!(sha256, None);
+    }
+
+    #[tokio::test]
+    async fn narration_scope_migration_preserves_saved_roles_and_book_history() {
+        let db = Database::connect("sqlite::memory:").await.unwrap();
+        LibraryMigrator::up(&db, Some(LEGACY_MIGRATIONS.len() as u32 + 1))
+            .await
+            .unwrap();
+        db.execute_unprepared(r#"
+            INSERT INTO book_narration(book_id, revision, settings_json)
+            VALUES (7, 3, '{"bookId":7,"enabled":true,"revision":3,"identityRevision":2,"characters":[{"id":"narrator","name":"narrator","voice":{"engine":"system","voiceId":"saved-voice"},"instructions":"gentle"}]}');
+            INSERT INTO narration_sessions(id, book_id, content_version) VALUES ('session', 7, 'v1');
+            INSERT INTO narration_entries(session_id,seq,cache_key,identity_revision,position,source_key,request_json,plan_json)
+            VALUES ('session',1,'cache',2,0.1,'locator','{}','{}');
+            INSERT INTO narration_checkpoints(session_id,through_seq,position,identity_revision,summary)
+            VALUES ('session',1,0.1,2,'Saved scene');
+        "#).await.unwrap();
+        LibraryMigrator::up(&db, None).await.unwrap();
+        let settings = crate::repositories::narration::NarrationRepository::new(&db)
+            .settings(7)
+            .await
+            .unwrap();
+        assert_eq!(settings.scope_id, "book:7");
+        assert_eq!(settings.revision, 3);
+        assert!(settings.enabled);
+        assert_eq!(settings.characters[0].instructions, "gentle");
+        assert_eq!(
+            settings.characters[0].voice,
+            Some(crate::models::TtsVoiceRef::System {
+                voice_id: "saved-voice".into()
+            })
+        );
+        for table in ["narration_entries", "narration_checkpoints"] {
+            let row = db
+                .query_one_raw(Statement::from_string(
+                    DbBackend::Sqlite,
+                    format!("SELECT scope_id FROM {table} WHERE session_id = 'session'"),
+                ))
+                .await
+                .unwrap()
+                .unwrap();
+            assert_eq!(row.try_get::<String>("", "scope_id").unwrap(), "book:7");
+        }
     }
 
     #[tokio::test]

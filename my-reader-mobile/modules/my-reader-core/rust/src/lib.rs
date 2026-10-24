@@ -9,6 +9,8 @@ mod content;
 mod data_source;
 mod download;
 mod library;
+mod llm;
+mod narration;
 mod reading;
 mod sync;
 mod tts;

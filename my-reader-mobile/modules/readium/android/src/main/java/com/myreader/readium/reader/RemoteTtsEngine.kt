@@ -4,9 +4,13 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.net.Uri
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import com.myreader.readium.Types.TtsSynthesisCompletionRecord
+import com.myreader.readium.Types.TtsPlaybackSegmentRecord
+import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
@@ -113,6 +117,8 @@ class RemoteTtsEngine(
     val text: String,
     var player: MediaPlayer? = null,
     var started: Boolean = false,
+    var segments: List<TtsPlaybackSegmentRecord> = emptyList(),
+    var segmentIndex: Int = 0,
   )
 
   private val scope: CoroutineScope = MainScope()
@@ -123,6 +129,9 @@ class RemoteTtsEngine(
   private var desiredKeys = emptySet<RemoteTtsSpeechKey>()
   private var active: ActiveRequest? = null
   private var isClosed = false
+  private var systemSpeech: TextToSpeech? = null
+  private var systemReady = false
+  private var systemUtteranceId: String? = null
 
   override val settings: StateFlow<RemoteTtsSettings> = mutableSettings.asStateFlow()
   override val voices: Set<RemoteTtsVoice> = emptySet()
@@ -136,6 +145,7 @@ class RemoteTtsEngine(
   }
 
   fun setPrefetchWindow(utterances: List<RemoteTtsPrefetchUtterance>) {
+    if (profileId == "narration") return
     val nextKeys = utterances.mapTo(mutableSetOf()) { it.key }
     active?.let { nextKeys += it.key }
     desiredKeys = nextKeys
@@ -177,6 +187,8 @@ class RemoteTtsEngine(
   override fun stop() {
     val request = active ?: return
     active = null
+    systemUtteranceId = null
+    systemSpeech?.stop()
     request.player?.runCatching { stop() }
     request.player?.release()
     request.player = null
@@ -185,7 +197,11 @@ class RemoteTtsEngine(
     } else {
       listener?.onFlushed(request.id)
     }
-    if (request.key !in desiredKeys) removeEntry(request.key)
+    if (request.key !in desiredKeys) {
+      val pending = entries[request.key]?.takeIf { it.completion == null }?.id
+      removeEntry(request.key)
+      if (pending != null) onCancel(listOf(pending))
+    }
   }
 
   fun cancelAll() {
@@ -203,6 +219,8 @@ class RemoteTtsEngine(
     if (isClosed) return
     cancelAll()
     isClosed = true
+    systemSpeech?.shutdown()
+    systemSpeech = null
     scope.cancel()
   }
 
@@ -229,12 +247,28 @@ class RemoteTtsEngine(
     request: ActiveRequest,
     completion: TtsSynthesisCompletionRecord,
   ) {
-    if (active !== request || request.player != null) return
+    if (active !== request || request.player != null || systemUtteranceId != null) return
     completion.error?.takeIf { it.isNotEmpty() }?.let { error ->
       fail(request, RemoteTtsError(error))
       return
     }
-    val path = completion.path
+    request.segments = completion.segments?.takeIf { it.isNotEmpty() } ?: listOf(
+      TtsPlaybackSegmentRecord(text = request.text, endUtf16 = request.text.length, path = completion.path, timings = completion.timings, playbackRate = completion.playbackRate)
+    )
+    playSegment(request)
+  }
+
+  private fun playSegment(request: ActiveRequest) {
+    if (active !== request) return
+    val segment = request.segments.getOrNull(request.segmentIndex) ?: return finish(request)
+    if (segment.startUtf16 < 0 || segment.endUtf16 > request.text.length || segment.endUtf16 <= segment.startUtf16 || request.text.substring(segment.startUtf16, segment.endUtf16) != segment.text) {
+      return fail(request, RemoteTtsError("NARRATION_PLAN_INVALID"))
+    }
+    if (segment.systemVoiceId != null) {
+      speakSystem(request, segment)
+      return
+    }
+    val path = segment.path
     if (path.isNullOrEmpty()) {
       fail(request, RemoteTtsError("TTS provider returned no audio path."))
       return
@@ -251,21 +285,22 @@ class RemoteTtsEngine(
     player.setOnPreparedListener {
       if (active !== request) return@setOnPreparedListener
       try {
-        completion.playbackRate?.let { rate ->
+        segment.playbackRate?.let { rate ->
           it.playbackParams = it.playbackParams.setSpeed(rate.toFloat())
         }
       } catch (error: Exception) {
         fail(request, RemoteTtsError(error.message ?: "Unable to set speech playback rate."))
         return@setOnPreparedListener
       }
+      if (!request.started) listener?.onStart(request.id)
       request.started = true
       onBuffering(request.key, false)
-      listener?.onStart(request.id)
+      listener?.onRange(request.id, segment.startUtf16 until segment.endUtf16)
       it.start()
-      scheduleTimings(request, completion)
+      scheduleTimings(request, segment)
     }
     player.setOnCompletionListener {
-      if (active === request) finish(request)
+      if (active === request) advance(request)
     }
     player.setOnErrorListener { _, what, extra ->
       if (active === request) {
@@ -289,6 +324,7 @@ class RemoteTtsEngine(
   private fun finish(request: ActiveRequest) {
     if (active !== request) return
     active = null
+    systemUtteranceId = null
     request.player?.release()
     request.player = null
     listener?.onDone(request.id)
@@ -298,6 +334,8 @@ class RemoteTtsEngine(
   private fun fail(request: ActiveRequest, error: RemoteTtsError) {
     if (active !== request) return
     active = null
+    systemUtteranceId = null
+    systemSpeech?.stop()
     request.player?.release()
     request.player = null
     removeEntry(request.key)
@@ -311,20 +349,71 @@ class RemoteTtsEngine(
 
   private fun scheduleTimings(
     request: ActiveRequest,
-    completion: TtsSynthesisCompletionRecord,
+    segment: TtsPlaybackSegmentRecord,
   ) {
-    completion.timings.orEmpty().forEach { timing ->
+    val index = request.segmentIndex
+    segment.timings.orEmpty().forEach { timing ->
       if (timing.startUtf16 < 0 ||
         timing.endUtf16 <= timing.startUtf16 ||
-        timing.endUtf16 > request.text.length
+        timing.endUtf16 > segment.text.length
       ) return@forEach
       scope.launch {
-        delay(timing.startMs.coerceAtLeast(0.0).toLong())
-        if (active === request) {
-          listener?.onRange(request.id, timing.startUtf16 until timing.endUtf16)
+        delay((timing.startMs.coerceAtLeast(0.0) / (segment.playbackRate ?: 1.0)).toLong())
+        if (active === request && request.segmentIndex == index) {
+          listener?.onRange(request.id, (segment.startUtf16 + timing.startUtf16) until (segment.startUtf16 + timing.endUtf16))
         }
       }
     }
+  }
+
+  private fun advance(request: ActiveRequest) {
+    if (active !== request) return
+    request.player?.release()
+    request.player = null
+    systemUtteranceId = null
+    request.segmentIndex += 1
+    playSegment(request)
+  }
+
+  private fun speakSystem(request: ActiveRequest, segment: TtsPlaybackSegmentRecord) {
+    if (systemSpeech == null) {
+      systemSpeech = TextToSpeech(context) { status ->
+        scope.launch {
+          if (isClosed) return@launch
+          systemReady = status == TextToSpeech.SUCCESS
+          if (!systemReady) { active?.let { fail(it, RemoteTtsError("TTS_SYSTEM_UNAVAILABLE")) }; return@launch }
+          systemSpeech?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            override fun onStart(utteranceId: String?) { scope.launch {
+              val current = active ?: return@launch
+              if (systemUtteranceId != utteranceId) return@launch
+              if (!current.started) listener?.onStart(current.id)
+              current.started = true
+              onBuffering(current.key, false)
+            } }
+            override fun onDone(utteranceId: String?) { scope.launch { active?.takeIf { systemUtteranceId == utteranceId }?.let(::advance) } }
+            @Deprecated("Deprecated in Android")
+            override fun onError(utteranceId: String?) { scope.launch { active?.takeIf { systemUtteranceId == utteranceId }?.let { fail(it, RemoteTtsError("TTS_SYSTEM_FAILED")) } } }
+            override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int) { scope.launch {
+              val current = active ?: return@launch
+              if (systemUtteranceId != utteranceId) return@launch
+              val offset = current.segments[current.segmentIndex].startUtf16
+              listener?.onRange(current.id, (offset + start) until (offset + end))
+            } }
+          })
+          active?.let { current -> current.segments.getOrNull(current.segmentIndex)?.takeIf { it.systemVoiceId != null }?.let { speakSystem(current, it) } }
+        }
+      }
+      return
+    }
+    if (!systemReady) return
+    val speech = systemSpeech ?: return
+    speech.language = Locale.forLanguageTag(request.key.language ?: settings.value.language?.code ?: Locale.getDefault().toLanguageTag())
+    speech.voices?.find { it.name == segment.systemVoiceId }?.let { speech.voice = it }
+    speech.setSpeechRate(settings.value.speed.toFloat())
+    speech.setPitch(settings.value.pitch.toFloat())
+    val id = UUID.randomUUID().toString()
+    systemUtteranceId = id
+    if (speech.speak(segment.text, TextToSpeech.QUEUE_FLUSH, null, id) == TextToSpeech.ERROR) fail(request, RemoteTtsError("TTS_SYSTEM_FAILED"))
   }
 
   private fun RemoteTtsPreferences.toSettings() = RemoteTtsSettings(

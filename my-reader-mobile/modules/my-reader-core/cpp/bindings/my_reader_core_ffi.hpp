@@ -303,6 +303,48 @@ protected:
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_library_switch(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_llm_get_config(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_llm_list_models(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_llm_probe(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_llm_remove_profile(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_llm_select_profile(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_llm_upsert_profile(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_narration_cancel(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_narration_get_settings(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_narration_import(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_narration_merge_settings(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_narration_prepare(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_narration_preview_merge(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_narration_resolve_settings(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_narration_save_settings(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_reading_add_annotation(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
@@ -889,6 +931,52 @@ protected:
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_library_switch(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_llm_get_config(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_llm_list_models(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_llm_probe(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_llm_remove_profile(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_llm_select_profile(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_llm_upsert_profile(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_narration_cancel(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_narration_get_settings(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_narration_import(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value
+  cpp_uniffi_my_reader_core_ffi_checksum_func_narration_merge_settings(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_narration_prepare(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value
+  cpp_uniffi_my_reader_core_ffi_checksum_func_narration_preview_merge(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value
+  cpp_uniffi_my_reader_core_ffi_checksum_func_narration_resolve_settings(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value
+  cpp_uniffi_my_reader_core_ffi_checksum_func_narration_save_settings(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_reading_add_annotation(

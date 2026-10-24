@@ -25,7 +25,7 @@ struct RemoteTtsSynthesisRequest {
 }
 
 @MainActor
-final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrency AVAudioPlayerDelegate {
+final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrency AVAudioPlayerDelegate, @preconcurrency AVSpeechSynthesizerDelegate {
   private final class CacheEntry {
     let id = UUID().uuidString
     let key: RemoteTtsSpeechKey
@@ -43,6 +43,9 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
     var continuation: CheckedContinuation<Result<Void, TTSError>, Never>?
     var player: AVAudioPlayer?
     var rangeTasks: [Task<Void, Never>] = []
+    var segments: [TtsPlaybackSegmentRecord] = []
+    var segmentIndex = 0
+    var systemUtterance: AVSpeechUtterance?
 
     init(
       key: RemoteTtsSpeechKey,
@@ -73,6 +76,7 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
   private var keysByRequestId: [String: RemoteTtsSpeechKey] = [:]
   private var desiredKeys: Set<RemoteTtsSpeechKey> = []
   private var active: ActivePlayback?
+  private let systemSpeech = AVSpeechSynthesizer()
 
   init(
     profileId: String,
@@ -90,9 +94,12 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
     self.onRequest = onRequest
     self.onCancel = onCancel
     self.onBuffering = onBuffering
+    super.init()
+    systemSpeech.delegate = self
   }
 
   func setPrefetchWindow(_ utterances: [RemoteTtsPrefetchUtterance]) {
+    guard profileId != "narration" else { return }
     var nextKeys = Set(utterances.map(\.key))
     if let active { nextKeys.insert(active.key) }
     desiredKeys = nextKeys
@@ -112,15 +119,12 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
     _ utterance: TTSUtterance,
     onSpeakRange: @escaping (Range<String.Index>) -> Void
   ) async -> Result<Void, TTSError> {
-    let key = RemoteTtsSpeechKey(
-      text: utterance.text,
-      language: utterance.language.code.bcp47
-    )
-    let playback = ActivePlayback(
-      key: key,
-      text: utterance.text,
-      onSpeakRange: onSpeakRange
-    )
+    await speak(text: utterance.text, language: utterance.language.code.bcp47, onSpeakRange: onSpeakRange)
+  }
+
+  func speak(text: String, language: String, onSpeakRange: @escaping (Range<String.Index>) -> Void) async -> Result<Void, TTSError> {
+    let key = RemoteTtsSpeechKey(text: text, language: language)
+    let playback = ActivePlayback(key: key, text: text, onSpeakRange: onSpeakRange)
 
     return await withTaskCancellationHandler {
       await withCheckedContinuation { continuation in
@@ -160,6 +164,8 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
     }
     if let active {
       active.player?.stop()
+      active.systemUtterance = nil
+      systemSpeech.stopSpeaking(at: .immediate)
       active.rangeTasks.forEach { $0.cancel() }
       active.continuation?.resume(returning: .success(()))
       active.continuation = nil
@@ -174,7 +180,7 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
   func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
     guard let playback = active, playback.player === player else { return }
     if flag {
-      finish(playback, result: .success(()))
+      advance(playback)
     } else {
       fail(
         playback,
@@ -213,12 +219,49 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
     _ playback: ActivePlayback,
     completion: TtsSynthesisCompletionRecord
   ) {
-    guard active === playback, playback.player == nil else { return }
+    guard active === playback, playback.player == nil, playback.systemUtterance == nil else { return }
     if let error = completion.error, !error.isEmpty {
       fail(playback, error: .other(PlaybackError(message: error)))
       return
     }
-    guard let path = completion.path, !path.isEmpty else {
+    if let segments = completion.segments, !segments.isEmpty {
+      playback.segments = segments
+    } else {
+      var segment = TtsPlaybackSegmentRecord()
+      segment.text = playback.text
+      segment.endUtf16 = playback.text.utf16.count
+      segment.path = completion.path
+      segment.timings = completion.timings
+      segment.playbackRate = completion.playbackRate
+      playback.segments = [segment]
+    }
+    playSegment(playback)
+  }
+
+  private func playSegment(_ playback: ActivePlayback) {
+    guard active === playback else { return }
+    guard playback.segmentIndex < playback.segments.count else {
+      finish(playback, result: .success(()))
+      return
+    }
+    let segment = playback.segments[playback.segmentIndex]
+    guard let range = stringRange(in: playback.text, startUtf16: segment.startUtf16, endUtf16: segment.endUtf16),
+          String(playback.text[range]) == segment.text else {
+      fail(playback, error: .other(PlaybackError(message: "NARRATION_PLAN_INVALID")))
+      return
+    }
+    playback.onSpeakRange(range)
+    if let voiceId = segment.systemVoiceId {
+      let utterance = AVSpeechUtterance(string: segment.text)
+      utterance.voice = AVSpeechSynthesisVoice(identifier: voiceId) ?? AVSpeechSynthesisVoice(language: playback.key.language)
+      utterance.rate = Float(min(max(Double(AVSpeechUtteranceDefaultSpeechRate) * speed, Double(AVSpeechUtteranceMinimumSpeechRate)), Double(AVSpeechUtteranceMaximumSpeechRate)))
+      utterance.pitchMultiplier = Float(min(max(pitch, 0.5), 2))
+      playback.systemUtterance = utterance
+      systemSpeech.speak(utterance)
+      onBuffering(playback.key, false)
+      return
+    }
+    guard let path = segment.path, !path.isEmpty else {
       fail(
         playback,
         error: .other(PlaybackError(message: "TTS provider returned no audio path."))
@@ -232,7 +275,7 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
         : URL(fileURLWithPath: path)
       let player = try AVAudioPlayer(contentsOf: url)
       player.delegate = self
-      if let rate = completion.playbackRate {
+      if let rate = segment.playbackRate {
         player.enableRate = true
         player.rate = Float(rate)
       }
@@ -241,9 +284,23 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
       }
       playback.player = player
       onBuffering(playback.key, false)
-      scheduleTimings(completion.timings ?? [], for: playback)
+      scheduleTimings(segment, for: playback)
     } catch {
       fail(playback, error: .other(error))
+    }
+  }
+
+  func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+    guard let playback = active, playback.systemUtterance === utterance else { return }
+    playback.systemUtterance = nil
+    advance(playback)
+  }
+
+  func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, willSpeakRangeOfSpeechString range: NSRange, utterance: AVSpeechUtterance) {
+    guard let playback = active, playback.systemUtterance === utterance else { return }
+    let segment = playback.segments[playback.segmentIndex]
+    if let fullRange = stringRange(in: playback.text, startUtf16: segment.startUtf16 + range.location, endUtf16: segment.startUtf16 + range.location + range.length) {
+      playback.onSpeakRange(fullRange)
     }
   }
 
@@ -262,6 +319,8 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
     playback.rangeTasks.removeAll()
     playback.player?.delegate = nil
     playback.player = nil
+    playback.systemUtterance = nil
+    systemSpeech.stopSpeaking(at: .immediate)
     active = nil
     playback.continuation?.resume(returning: result)
     playback.continuation = nil
@@ -275,6 +334,16 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
     removeEntry(for: playback.key)
   }
 
+  private func advance(_ playback: ActivePlayback) {
+    guard active === playback else { return }
+    playback.rangeTasks.forEach { $0.cancel() }
+    playback.rangeTasks.removeAll()
+    playback.player?.delegate = nil
+    playback.player = nil
+    playback.segmentIndex += 1
+    playSegment(playback)
+  }
+
   private func removeEntry(for key: RemoteTtsSpeechKey) {
     guard let entry = entries.removeValue(forKey: key) else { return }
     keysByRequestId.removeValue(forKey: entry.id)
@@ -282,18 +351,19 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
   }
 
   private func scheduleTimings(
-    _ timings: [TtsTimingRecord],
+    _ segment: TtsPlaybackSegmentRecord,
     for playback: ActivePlayback
   ) {
-    playback.rangeTasks = timings.compactMap { timing in
+    playback.rangeTasks = (segment.timings ?? []).compactMap { timing in
+      guard timing.endUtf16 <= segment.text.utf16.count else { return nil }
       guard let range = stringRange(
         in: playback.text,
-        startUtf16: timing.startUtf16,
-        endUtf16: timing.endUtf16
+        startUtf16: segment.startUtf16 + timing.startUtf16,
+        endUtf16: segment.startUtf16 + timing.endUtf16
       ) else { return nil }
 
       return Task { @MainActor [weak self, weak playback] in
-        let delay = max(timing.startMs, 0)
+        let delay = max(timing.startMs, 0) / (segment.playbackRate ?? 1)
         if delay > 0 {
           try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000))
         }
