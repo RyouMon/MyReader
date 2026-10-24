@@ -144,6 +144,10 @@
   },
   "jest": {
     "preset": "jest-expo",
+    "modulePathIgnorePatterns": [
+      "<rootDir>/ios/",
+      "<rootDir>/android/"
+    ],
     "transformIgnorePatterns": [
       "/node_modules/(?!(.pnpm|ky|marked|github-slugger|@jsamr|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|@formatjs|react-navigation|@react-navigation|standard-navigation|@sentry/react-native|native-base|decode-uri-component))",
       "/node_modules/react-native-reanimated/plugin/",

@@ -393,3 +393,50 @@ pub fn get_active_library_id(state: State<'_, AppState>) -> Result<Option<String
     info!("Success to get active library id. active library id: {result:?}");
     Ok(result)
 }
+
+#[tauri::command]
+#[specta::specta]
+pub async fn get_library_location<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    id: String,
+    diagnose: bool,
+) -> Result<crate::services::library_location_service::LibraryLocationInfo, AppError> {
+    crate::services::library_location_service::location(
+        &common::app_data_dir(&app)?,
+        &common::config_snapshot(&state),
+        &id,
+        diagnose,
+    )
+    .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn relocate_library<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    id: String,
+    path: String,
+) -> Result<crate::services::library_location_service::LibraryLocationInfo, AppError> {
+    use tauri::Manager;
+    let _guard = LIBRARY_ADD_LOCK.lock().await;
+    let app_data_dir = common::app_data_dir(&app)?;
+    let mut config = common::config_snapshot(&state);
+    let location =
+        crate::services::library_location_service::relocate(&app_data_dir, &mut config, &id, &path)
+            .await?;
+    if location.problem.is_none() {
+        common::with_config_mut(&state, |current| *current = config.clone());
+        if let Err(error) = crate::asset_scope::sync_for_reader_libraries(&app, &config.libraries) {
+            error!("Failed to refresh library asset access after relocation: {error}");
+        }
+        if let Some(scheduler) =
+            app.try_state::<crate::services::sidecar_sync_scheduler::SidecarSyncScheduler>()
+        {
+            scheduler.resume_library(&id);
+        }
+        common::schedule_sidecar_pull(&app, &id, SidecarSyncReason::LibraryActivated);
+    }
+    Ok(location)
+}

@@ -7,6 +7,7 @@ pub mod bookmark_service;
 pub mod datasource_service;
 pub mod download_service;
 pub mod favorite_book_service;
+pub mod library_location_service;
 pub mod library_service;
 pub mod progress_service;
 pub mod reader_service;

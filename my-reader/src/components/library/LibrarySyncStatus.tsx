@@ -79,6 +79,8 @@ type LibrarySyncStatusProps = {
   onSync?: () => Promise<void> | void
 }
 
+import { LibraryLocationFailure } from "@/components/settings/LibraryLocationDialog"
+
 function statusColorClass(indicator: SyncIndicatorState) {
   switch (indicator) {
     case "failed":
@@ -242,9 +244,18 @@ function SyncHistoryDetails({
     <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
       <div className="space-y-3">
         {showFailure && lastFailure ? (
-          <p className="select-text whitespace-pre-wrap break-words text-sm text-foreground">
-            {syncFailureDetail(t(failureKeys.detail), lastFailure)}
-          </p>
+          <div className="min-w-0 space-y-3">
+            <LibraryLocationFailure library={library} />
+            <p className="text-sm">{t(failureKeys.detail)}</p>
+            <details>
+              <summary className="text-sm">
+                {t("libraryLocation.technicalDetails")}
+              </summary>
+              <pre className="max-h-40 overflow-auto whitespace-pre-wrap text-xs [overflow-wrap:anywhere]">
+                {syncFailureDetail("", lastFailure)}
+              </pre>
+            </details>
+          </div>
         ) : null}
         <dl className="space-y-2.5 rounded-lg bg-muted/50 p-3">
           <DetailRow

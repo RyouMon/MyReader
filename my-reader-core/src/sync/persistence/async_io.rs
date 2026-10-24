@@ -55,6 +55,12 @@ where
     .await
 }
 
+pub(crate) async fn read_database_identity(
+    path: &str,
+) -> Result<Option<DatabaseIdentity>, SyncError> {
+    with_database(path, super::read_database_identity).await
+}
+
 pub(crate) async fn ensure_database_identity(
     path: &str,
     library_uuid: &str,

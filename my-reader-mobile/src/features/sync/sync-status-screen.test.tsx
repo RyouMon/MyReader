@@ -9,6 +9,11 @@ import {
 import SyncStatusScreen from "./sync-status-screen"
 import type { LibrarySyncHistory } from "@/src/store/sync-status-slice"
 
+jest.mock("@/src/domain/library/hooks/use-library-location", () => ({
+  useLibraryLocation: () => ({ data: undefined }),
+}))
+jest.mock("expo-router", () => ({ router: { push: jest.fn() } }))
+
 const mockSyncNow = jest.fn((_libraryId: string, _options?: unknown) =>
   Promise.resolve({}),
 )
@@ -205,10 +210,10 @@ describe("SyncStatusScreen", () => {
     expect(screen.getByText("syncStatus.failureStage")).toBeTruthy()
     expect(screen.getByText("syncStatus.stage.applying")).toBeTruthy()
     expect(
-      screen.getByText(
-        "syncStatus.failure.data_integrity.detail\n\ndata_integrity: History is damaged",
-      ),
+      screen.getByText("syncStatus.failure.data_integrity.detail"),
     ).toBeTruthy()
+    fireEvent.press(screen.getByText("libraryLocation.technicalDetails"))
+    expect(screen.getByText("data_integrity: History is damaged")).toBeTruthy()
   })
 
   it.each([
@@ -236,8 +241,15 @@ describe("SyncStatusScreen", () => {
         `syncStatus.failureSummary: syncStatus.failure.${failureKind ?? "unexpected"}.title`,
       ),
     ).toBeTruthy()
+    expect(screen.queryByText(/INTERNAL_DIAGNOSTIC/)).toBeNull()
+    expect(
+      screen.getByText(
+        `syncStatus.failure.${failureKind ?? "unexpected"}.detail`,
+      ),
+    ).toBeTruthy()
+    fireEvent.press(screen.getByText("libraryLocation.technicalDetails"))
     const detail = screen.getByText(
-      `syncStatus.failure.${failureKind ?? "unexpected"}.detail\n\n${failureKind ? `${failureKind}: ` : ""}network credential 503 INTERNAL_DIAGNOSTIC`,
+      `${failureKind ? `${failureKind}: ` : ""}network credential 503 INTERNAL_DIAGNOSTIC`,
     )
     expect(detail.props.selectable).toBe(true)
   })

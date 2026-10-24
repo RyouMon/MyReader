@@ -14,6 +14,13 @@ vi.mock("@/hooks/queries/useLibrariesQuery", () => ({
   useLibraryMutations: () => ({ removeLibrary: vi.fn() }),
 }))
 
+vi.mock("@/hooks/useLibraryLocation", () => ({
+  useLibraryLocation: () => ({ data: { canRelocate: true } }),
+}))
+vi.mock("../../LibraryLocationDialog", () => ({
+  LibraryLocationDialog: () => <div>Repair dialog</div>,
+}))
+
 describe("LibrariesSection", () => {
   beforeEach(() => {
     queryState.libraries = []
@@ -49,6 +56,8 @@ describe("LibrariesSection", () => {
 
     render(<LibrariesSection onAddLibrary={vi.fn()} />)
 
+    fireEvent.click(screen.getByRole("button", { name: "修改书库路径" }))
+    expect(screen.getByText("Repair dialog")).toBeInTheDocument()
     expect(screen.getByText("/Attachments")).toBeInTheDocument()
     expect(screen.getByRole("img", { name: "MyReader" })).toHaveAttribute(
       "data-entity-icon",

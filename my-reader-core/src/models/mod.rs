@@ -4,6 +4,7 @@ mod content;
 mod download;
 mod file_local_state;
 mod library;
+mod library_location;
 mod library_source;
 mod reading;
 mod storage;
@@ -29,6 +30,9 @@ pub use library::{
     LocalLibraryRequest, ManagedLocalLibraryRequest, MyReaderLibraryMarker, RemoteLibraryRequest,
     MYREADER_LIBRARY_MARKER_RELATIVE_PATH, MYREADER_LIBRARY_MARKER_TYPE,
     MYREADER_LIBRARY_MARKER_VERSION,
+};
+pub use library_location::{
+    LibraryLocation, LibraryLocationProblem, RelocateLibraryRequest, RelocateLibraryResult,
 };
 pub use library_source::LibrarySourceType;
 pub use reading::{

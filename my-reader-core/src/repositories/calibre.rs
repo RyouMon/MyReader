@@ -163,6 +163,13 @@ impl CatalogRepository {
         Ok(count)
     }
 
+    pub(crate) async fn read_library_uuid(db_path: &Path) -> Result<String, CoreError> {
+        let repository = Self::open_calibre_file(db_path).await?;
+        let result = repository.get_library_uuid().await;
+        repository.db.close().await?;
+        result
+    }
+
     pub async fn open_myreader(
         sidecar_root: &Path,
         content_root: &Path,

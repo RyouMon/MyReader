@@ -103,3 +103,16 @@ describe("applySyncReport", () => {
     })
   })
 })
+
+it("ignores a completed report from the previous location after repair", async () => {
+  jest.clearAllMocks()
+  await applySyncReport({
+    ...report,
+    calibre: {
+      ...report.calibre,
+      library: { ...report.calibre.library, path: "file:///old-location" },
+    },
+  })
+  expect(mockSetLibraries).not.toHaveBeenCalled()
+  expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
+})

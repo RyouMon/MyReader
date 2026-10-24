@@ -1,4 +1,38 @@
 export const sharedZhCN = {
+  libraryLocation: {
+    title: "书库位置",
+    action: "修改书库路径",
+    missingTitle: "找不到书库文件夹",
+    unavailableTitle: "无法访问书库路径",
+    currentPath: "当前路径",
+    sourceRoot: "数据源根路径",
+    effectivePath: "有效路径",
+    dataSource: "数据源",
+    choose: "重新选择位置",
+    save: "校验并保存",
+    retry: "立即同步",
+    saved: "位置已保存，可以立即重试同步。",
+    keepData: "请选择原书库的新位置。阅读数据和本地下载将保留。",
+    technicalDetails: "技术详情",
+    sourceSettings: "数据源设置",
+    up: "上级文件夹",
+    problems: {
+      root_missing:
+        "找不到已保存的书库文件夹。如果书库已移动，请重新选择位置。",
+      path_unavailable:
+        "无法访问书库路径。请核对目录和账号权限，或重新选择位置。",
+      invalid_library: "目录可以访问，但不是与原书库类型一致的有效书库。",
+      identity_unknown: "无法确认原书库身份，未修改位置。",
+      identity_mismatch: "这是另一个书库。未修改位置，也未合并阅读数据。",
+      credential: "访问被拒绝。请核对账号权限，或重新授予文件夹访问权限。",
+      connectivity: "无法连接服务器。请检查网络后重试。",
+      data_source: "无法访问数据源。请先检查数据源设置。",
+      busy: "同步或上传正在进行，请等待完成后重试。",
+      changed: "校验期间书库已发生变化，请重新打开此页面后重试。",
+      managed: "该书库由应用内部管理，不能修改位置。",
+      save_failed: "无法保存新位置，原配置已保留。",
+    },
+  },
   appUpdates: {
     title: "应用更新",
     currentVersion: "当前版本：{{version}}",

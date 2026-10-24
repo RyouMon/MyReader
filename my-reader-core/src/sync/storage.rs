@@ -155,7 +155,21 @@ impl<'a> StorageAdapter<'a> {
             .enumerate()
             .map(|(index, key)| async move {
                 let path = storage_key_to_path(&key)?;
-                let data = self.operator.read(&path).await?.to_vec();
+                let data = self
+                    .operator
+                    .read(&path)
+                    .await
+                    .map_err(|error| {
+                        if error.kind() == opendal::ErrorKind::NotFound {
+                            SyncError::InvalidRemoteObject {
+                                object_path: path.clone(),
+                                reason: format!("Listed sync object is missing: {error}"),
+                            }
+                        } else {
+                            error.into()
+                        }
+                    })?
+                    .to_vec();
                 Ok::<_, SyncError>((index, StorageChunk { key, data }))
             })
             .buffer_unordered(MAX_CONCURRENT_DOWNLOADS);

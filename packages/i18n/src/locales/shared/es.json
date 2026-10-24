@@ -332,5 +332,37 @@
     "loading": "Cargando…",
     "retry": "Reintentar",
     "noResults": "Ningún libro cumple todas las condiciones."
+  },
+  "libraryLocation": {
+    "title": "Ubicación de la biblioteca",
+    "action": "Cambiar ubicación",
+    "missingTitle": "No se encuentra la carpeta",
+    "unavailableTitle": "No se puede acceder a la biblioteca",
+    "currentPath": "Ruta actual",
+    "sourceRoot": "Raíz de la fuente",
+    "effectivePath": "Ruta completa",
+    "dataSource": "Fuente de datos",
+    "choose": "Elegir carpeta",
+    "save": "Validar y guardar",
+    "retry": "Sincronizar ahora",
+    "saved": "Ubicación guardada. Ya puedes sincronizar.",
+    "keepData": "Elige la nueva ubicación de la misma biblioteca. Se conservarán tus datos de lectura y descargas.",
+    "technicalDetails": "Detalles técnicos",
+    "sourceSettings": "Ajustes de la fuente",
+    "up": "Carpeta superior",
+    "problems": {
+      "root_missing": "No se encontró la carpeta guardada de la biblioteca. Si se movió, elige su nueva ubicación.",
+      "path_unavailable": "No se puede acceder a la ruta de la biblioteca. Revisa la carpeta y los permisos de la cuenta o elige su nueva ubicación.",
+      "invalid_library": "La carpeta es accesible, pero no es una biblioteca válida del tipo original.",
+      "identity_unknown": "No se pudo confirmar la identidad de la biblioteca original. No se cambió la ubicación.",
+      "identity_mismatch": "Es otra biblioteca. No se cambió la ubicación ni se combinaron los datos de lectura.",
+      "credential": "Acceso denegado. Comprueba los permisos de la cuenta o renueva el acceso a la carpeta.",
+      "connectivity": "No se pudo conectar con el servidor. Comprueba la conexión e inténtalo de nuevo.",
+      "data_source": "No se puede acceder a la fuente de datos. Revisa primero sus ajustes.",
+      "busy": "Hay una sincronización o carga en curso. Espera a que termine.",
+      "changed": "La biblioteca cambió durante la validación. Vuelve a abrir esta página.",
+      "managed": "Esta biblioteca se administra dentro de la aplicación. No se puede cambiar su ubicación.",
+      "save_failed": "No se pudo guardar la ubicación. Se conservó la configuración original."
+    }
   }
 }

@@ -11,6 +11,10 @@ import LibrarySyncStatus from "@/components/library/LibrarySyncStatus"
 import i18n from "@/i18n"
 import { useSyncStatusStore } from "@/stores/syncStatusStore"
 
+vi.mock("@/hooks/useLibraryLocation", () => ({
+  useLibraryLocation: () => ({ data: undefined }),
+}))
+
 const library = {
   id: "library-1",
   name: "Shared Library",
@@ -83,7 +87,7 @@ describe("LibrarySyncStatus", () => {
       ),
     ).toBeInTheDocument()
     expect(within(details).getByText(/INTERNAL_DIAGNOSTIC/).textContent).toBe(
-      "Check your network connection and whether the data source is available, then try syncing again.\n\nconnectivity: Request: 503 INTERNAL_DIAGNOSTIC /private/library",
+      "\n\nconnectivity: Request: 503 INTERNAL_DIAGNOSTIC /private/library",
     )
 
     fireEvent.click(within(details).getByRole("button", { name: "Sync now" }))
@@ -109,7 +113,7 @@ describe("LibrarySyncStatus", () => {
       await screen.findByText("Sync failed: Check data source access"),
     ).toBeInTheDocument()
     expect(screen.getByText(/INTERNAL_DIAGNOSTIC/).textContent).toBe(
-      "Sign in again or update the data source credentials, and check that this account can access the library.\n\ncredential: network 503 INTERNAL_DIAGNOSTIC",
+      "\n\ncredential: network 503 INTERNAL_DIAGNOSTIC",
     )
 
     await act(async () => {
@@ -122,7 +126,7 @@ describe("LibrarySyncStatus", () => {
       screen.queryByText("Sync failed: Check data source access"),
     ).toBeNull()
     expect(screen.getByText(/INTERNAL_DIAGNOSTIC/).textContent).toBe(
-      "请重新登录或更新数据源凭据，并确认此账号有权访问书库。\n\ncredential: network 503 INTERNAL_DIAGNOSTIC",
+      "\n\ncredential: network 503 INTERNAL_DIAGNOSTIC",
     )
     expect(
       useSyncStatusStore.getState().librarySyncHistoryById[library.id]
