@@ -184,21 +184,22 @@ it("opens repair from the failure notice and links invalid data sources to setti
     problem: "data_source",
     dataSourceId: "source",
   })
-  mount(<LibraryLocationFailure library={library} />)
+  const onRepair = vi.fn()
+  mount(<LibraryLocationFailure library={library} onRepair={onRepair} />)
   expect(
     await screen.findByRole("link", { name: "Data source settings" }),
   ).toHaveAttribute("href", "/settings?section=dataSources")
   fireEvent.click(
     screen.getByRole("button", { name: "Change library location" }),
   )
-  expect(await screen.findByRole("dialog")).toBeInTheDocument()
+  expect(onRepair).toHaveBeenCalledOnce()
 })
 it("does not offer location changes for app-managed storage", async () => {
   vi.mocked(api.getLibraryLocation).mockResolvedValue({
     ...location,
     canRelocate: false,
   })
-  mount(<LibraryLocationFailure library={library} />)
+  mount(<LibraryLocationFailure library={library} onRepair={vi.fn()} />)
   await screen.findByText("Library folder not found")
   expect(
     screen.queryByRole("button", { name: "Change library location" }),

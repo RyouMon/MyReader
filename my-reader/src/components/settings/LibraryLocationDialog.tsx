@@ -220,20 +220,22 @@ export function LibraryLocationDialog({
   )
 }
 
-export function LibraryLocationFailure({ library }: { library: Library }) {
+export function LibraryLocationFailure({
+  library,
+  onRepair,
+}: {
+  library: Library
+  onRepair: () => void
+}) {
   const info = useLibraryLocation(library, true)
-  const [open, setOpen] = useState(false)
   const { t } = useTranslation()
   return (
     <div className="min-w-0 space-y-3">
       {info.data ? <LibraryLocationDetails location={info.data} /> : null}
       {info.data?.canRelocate ? (
-        <Button variant="outline" onClick={() => setOpen(true)}>
+        <Button variant="outline" onClick={onRepair}>
           {t("libraryLocation.action")}
         </Button>
-      ) : null}
-      {open ? (
-        <LibraryLocationDialog library={library} open onOpenChange={setOpen} />
       ) : null}
     </div>
   )
