@@ -205,7 +205,10 @@ jobs:
 
   publish:
     name: Publish approved release automatically
-    if: (github.event_name == 'push' || inputs.review_run_id != '') && startsWith(github.ref, 'refs/tags/v')
+    if: >-
+      ${{ !cancelled() && needs.submit-ios.result == 'success' &&
+          (github.event_name == 'push' || inputs.review_run_id != '') &&
+          startsWith(github.ref, 'refs/tags/v') }}
     needs: submit-ios
     runs-on: ubuntu-22.04
     permissions:
