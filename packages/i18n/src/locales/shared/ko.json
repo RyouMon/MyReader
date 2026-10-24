@@ -43,7 +43,16 @@
     "enableConfirm": "사용",
     "llmRequired": "먼저 설정에서 LLM 제공업체를 설정하세요.",
     "noCandidates": "신뢰할 수 있는 인물 정보를 찾지 못했습니다.",
-    "delete": "등장인물 삭제"
+    "delete": "등장인물 삭제",
+    "series": "시리즈: {{name}}",
+    "merge": "인물 설정 병합",
+    "autoMerge": "LLM으로 병합",
+    "manualMerge": "수동 병합",
+    "newCharacter": "새 인물",
+    "voiceAndInstructions": "음성과 지시",
+    "keepExisting": "기존 설정 유지",
+    "useIncoming": "{{title}} 사용",
+    "confirmMerge": "병합 확인"
   },
   "appUpdates": {
     "title": "앱 업데이트",

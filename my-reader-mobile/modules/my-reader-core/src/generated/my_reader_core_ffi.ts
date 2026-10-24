@@ -4214,6 +4214,56 @@ export async function narrationImport(
   }
 }
 
+export async function narrationMergeSettings(
+  root: string,
+  bookId: number,
+  plan: NarrationMergePlan,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<BookNarrationSettings> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_narration_merge_settings(
+          FfiConverterString.lower(root, nativeModule().rustbuffer_alloc),
+          FfiConverterFloat64.lower(bookId, nativeModule().rustbuffer_alloc),
+          FfiConverterTypeNarrationMergePlan.lower(
+            plan,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeBookNarrationSettings.lift.bind(
+        FfiConverterTypeBookNarrationSettings,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
 export async function narrationPrepare(
   root: string,
   configPath: string,
@@ -4259,6 +4309,115 @@ export async function narrationPrepare(
       // here using the per-callable return-type converter.
       /*liftFunc:*/ FfiConverterSequenceTypeNarrationSpeech.lift.bind(
         FfiConverterSequenceTypeNarrationSpeech,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function narrationPreviewMerge(
+  root: string,
+  configPath: string,
+  bookId: number,
+  automatic: boolean,
+  credential: LlmCredential | undefined,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<NarrationMergePlan> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_narration_preview_merge(
+          FfiConverterString.lower(root, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterFloat64.lower(bookId, nativeModule().rustbuffer_alloc),
+          FfiConverterBool.lower(automatic, nativeModule().rustbuffer_alloc),
+          FfiConverterOptionalTypeLlmCredential.lower(
+            credential,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeNarrationMergePlan.lift.bind(
+        FfiConverterTypeNarrationMergePlan,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function narrationResolveSettings(
+  root: string,
+  contentRoot: string,
+  libraryType: string,
+  bookId: number,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<BookNarrationSettings> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_narration_resolve_settings(
+          FfiConverterString.lower(root, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            contentRoot,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            libraryType,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterFloat64.lower(bookId, nativeModule().rustbuffer_alloc),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeBookNarrationSettings.lift.bind(
+        FfiConverterTypeBookNarrationSettings,
       ),
       /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
       /*asyncOpts:*/ asyncOpts_,
@@ -7709,8 +7868,61 @@ const FfiConverterTypeBookFormat = (() => {
   return new FFIConverter();
 })();
 
+export type NarrationMergeSource = {
+  scopeId: string;
+  title: string;
+  characters: Array<BookCharacter>;
+};
+
+/**
+ * Generated factory for {@link NarrationMergeSource} record objects.
+ */
+export const NarrationMergeSource = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<
+      NarrationMergeSource,
+      ReturnType<typeof defaults>
+    >(defaults);
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<NarrationMergeSource>,
+  });
+})();
+
+const FfiConverterTypeNarrationMergeSource = (() => {
+  type TypeName = NarrationMergeSource;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        scopeId: FfiConverterString.read(from),
+        title: FfiConverterString.read(from),
+        characters: FfiConverterSequenceTypeBookCharacter.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.scopeId, into);
+      FfiConverterString.write(value.title, into);
+      FfiConverterSequenceTypeBookCharacter.write(value.characters, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.scopeId) +
+        FfiConverterString.allocationSize(value.title) +
+        FfiConverterSequenceTypeBookCharacter.allocationSize(value.characters)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
 export type BookNarrationSettings = {
   bookId: number;
+  scopeId: string;
+  scopeName?: string;
+  mergeSources: Array<NarrationMergeSource>;
   enabled: boolean;
   revision: number;
   identityRevision: number;
@@ -7741,6 +7953,9 @@ const FfiConverterTypeBookNarrationSettings = (() => {
     read(from: RustBuffer): TypeName {
       return {
         bookId: FfiConverterFloat64.read(from),
+        scopeId: FfiConverterString.read(from),
+        scopeName: FfiConverterOptionalString.read(from),
+        mergeSources: FfiConverterSequenceTypeNarrationMergeSource.read(from),
         enabled: FfiConverterBool.read(from),
         revision: FfiConverterUInt32.read(from),
         identityRevision: FfiConverterUInt32.read(from),
@@ -7749,6 +7964,12 @@ const FfiConverterTypeBookNarrationSettings = (() => {
     }
     write(value: TypeName, into: RustBuffer): void {
       FfiConverterFloat64.write(value.bookId, into);
+      FfiConverterString.write(value.scopeId, into);
+      FfiConverterOptionalString.write(value.scopeName, into);
+      FfiConverterSequenceTypeNarrationMergeSource.write(
+        value.mergeSources,
+        into,
+      );
       FfiConverterBool.write(value.enabled, into);
       FfiConverterUInt32.write(value.revision, into);
       FfiConverterUInt32.write(value.identityRevision, into);
@@ -7757,6 +7978,11 @@ const FfiConverterTypeBookNarrationSettings = (() => {
     allocationSize(value: TypeName): number {
       return (
         FfiConverterFloat64.allocationSize(value.bookId) +
+        FfiConverterString.allocationSize(value.scopeId) +
+        FfiConverterOptionalString.allocationSize(value.scopeName) +
+        FfiConverterSequenceTypeNarrationMergeSource.allocationSize(
+          value.mergeSources,
+        ) +
         FfiConverterBool.allocationSize(value.enabled) +
         FfiConverterUInt32.allocationSize(value.revision) +
         FfiConverterUInt32.allocationSize(value.identityRevision) +
@@ -9355,6 +9581,111 @@ const FfiConverterTypeManagedLocalLibraryRequest = (() => {
         FfiConverterOptionalString.allocationSize(value.librariesRootUri) +
         FfiConverterString.allocationSize(value.name) +
         FfiConverterOptionalFloat64.allocationSize(value.addedAt)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type NarrationMergeChoice = {
+  characterId: string;
+  targetCharacterId?: string;
+  preferIncoming: boolean;
+};
+
+/**
+ * Generated factory for {@link NarrationMergeChoice} record objects.
+ */
+export const NarrationMergeChoice = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<
+      NarrationMergeChoice,
+      ReturnType<typeof defaults>
+    >(defaults);
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<NarrationMergeChoice>,
+  });
+})();
+
+const FfiConverterTypeNarrationMergeChoice = (() => {
+  type TypeName = NarrationMergeChoice;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        characterId: FfiConverterString.read(from),
+        targetCharacterId: FfiConverterOptionalString.read(from),
+        preferIncoming: FfiConverterBool.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.characterId, into);
+      FfiConverterOptionalString.write(value.targetCharacterId, into);
+      FfiConverterBool.write(value.preferIncoming, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.characterId) +
+        FfiConverterOptionalString.allocationSize(value.targetCharacterId) +
+        FfiConverterBool.allocationSize(value.preferIncoming)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type NarrationMergePlan = {
+  scopeId: string;
+  sourceScopeId: string;
+  revision: number;
+  choices: Array<NarrationMergeChoice>;
+};
+
+/**
+ * Generated factory for {@link NarrationMergePlan} record objects.
+ */
+export const NarrationMergePlan = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<NarrationMergePlan, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<NarrationMergePlan>,
+  });
+})();
+
+const FfiConverterTypeNarrationMergePlan = (() => {
+  type TypeName = NarrationMergePlan;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        scopeId: FfiConverterString.read(from),
+        sourceScopeId: FfiConverterString.read(from),
+        revision: FfiConverterUInt32.read(from),
+        choices: FfiConverterSequenceTypeNarrationMergeChoice.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.scopeId, into);
+      FfiConverterString.write(value.sourceScopeId, into);
+      FfiConverterUInt32.write(value.revision, into);
+      FfiConverterSequenceTypeNarrationMergeChoice.write(value.choices, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.scopeId) +
+        FfiConverterString.allocationSize(value.sourceScopeId) +
+        FfiConverterUInt32.allocationSize(value.revision) +
+        FfiConverterSequenceTypeNarrationMergeChoice.allocationSize(
+          value.choices,
+        )
       );
     }
   }
@@ -12051,6 +12382,11 @@ const FfiConverterSequenceTypeBookCharacter = new FfiConverterArray(
   FfiConverterTypeBookCharacter,
 );
 
+// FfiConverter for Array<NarrationMergeSource>
+const FfiConverterSequenceTypeNarrationMergeSource = new FfiConverterArray(
+  FfiConverterTypeNarrationMergeSource,
+);
+
 // FfiConverter for Array<CatalogCover>
 const FfiConverterSequenceTypeCatalogCover = new FfiConverterArray(
   FfiConverterTypeCatalogCover,
@@ -12077,6 +12413,11 @@ const FfiConverterOptionalTypeSyncFailureKind = new FfiConverterOptional(
 // FfiConverter for Array<LlmProviderProfile>
 const FfiConverterSequenceTypeLlmProviderProfile = new FfiConverterArray(
   FfiConverterTypeLlmProviderProfile,
+);
+
+// FfiConverter for Array<NarrationMergeChoice>
+const FfiConverterSequenceTypeNarrationMergeChoice = new FfiConverterArray(
+  FfiConverterTypeNarrationMergeChoice,
 );
 
 // FfiConverter for Array<BookEntry>
@@ -13013,11 +13354,35 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_merge_settings() !==
+    38359
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_narration_merge_settings",
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_prepare() !==
     63719
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_narration_prepare",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_preview_merge() !==
+    6535
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_narration_preview_merge",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_resolve_settings() !==
+    6796
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_narration_resolve_settings",
     );
   }
   if (
@@ -13453,6 +13818,9 @@ export default Object.freeze({
     FfiConverterTypeLocalLibraryRequest,
     FfiConverterTypeManagedLocalLibraryRequest,
     FfiConverterTypeMyReaderSyncReport,
+    FfiConverterTypeNarrationMergeChoice,
+    FfiConverterTypeNarrationMergePlan,
+    FfiConverterTypeNarrationMergeSource,
     FfiConverterTypeNarrationRequest,
     FfiConverterTypeNarrationSpeech,
     FfiConverterTypeNarrationVoice,

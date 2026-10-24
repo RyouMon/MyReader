@@ -247,6 +247,7 @@ export function ReaderTtsProviderTypes({
 }
 
 export function ReaderTtsPlaybackSettings({
+  hidden = false,
   config,
   palette,
   selectedProfile,
@@ -265,6 +266,7 @@ export function ReaderTtsPlaybackSettings({
   stopPreview,
   openProviders,
 }: {
+  hidden?: boolean
   config: MobileTtsConfig
   palette: ReaderChromePalette
   selectedProfile: MobileTtsProviderProfile | undefined
@@ -284,6 +286,7 @@ export function ReaderTtsPlaybackSettings({
   openProviders: () => void
 }) {
   const { t } = useTranslation()
+  if (hidden) return null
   return (
     <>
       <ReaderTtsPreviewCard

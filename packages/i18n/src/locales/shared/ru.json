@@ -43,7 +43,16 @@
     "enableConfirm": "Включить",
     "llmRequired": "Сначала настройте провайдера LLM в настройках.",
     "noCandidates": "Достоверные сведения о персонажах не найдены.",
-    "delete": "Удалить персонажа"
+    "delete": "Удалить персонажа",
+    "series": "Серия: {{name}}",
+    "merge": "Объединить настройки персонажей",
+    "autoMerge": "Объединить с LLM",
+    "manualMerge": "Объединить вручную",
+    "newCharacter": "Новый персонаж",
+    "voiceAndInstructions": "Голос и инструкции",
+    "keepExisting": "Сохранить текущие",
+    "useIncoming": "Использовать {{title}}",
+    "confirmMerge": "Подтвердить объединение"
   },
   "appUpdates": {
     "title": "Обновления приложения",

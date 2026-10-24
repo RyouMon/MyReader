@@ -43,7 +43,16 @@
     "enableConfirm": "啟用",
     "llmRequired": "請先在設定中配置 LLM 供應商。",
     "noCandidates": "未找到可靠的人物資料。",
-    "delete": "刪除人物"
+    "delete": "刪除人物",
+    "series": "叢書：{{name}}",
+    "merge": "合併角色設定",
+    "autoMerge": "LLM 合併",
+    "manualMerge": "手動合併",
+    "newCharacter": "新增人物",
+    "voiceAndInstructions": "音色與指令",
+    "keepExisting": "保留現有",
+    "useIncoming": "使用《{{title}}》",
+    "confirmMerge": "確認合併"
   },
   "appUpdates": {
     "title": "應用程式更新",

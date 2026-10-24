@@ -8,6 +8,7 @@ use my_reader_lib::{
     auth::test_support::{use_test_backend, MemoryBackend},
     models::{AppConfig, LibraryConfig},
 };
+use sea_orm::ConnectionTrait;
 use serde_json::{json, Value};
 use warp::Filter;
 
@@ -91,7 +92,8 @@ async fn llm_commands_keep_keys_out_of_config_and_support_preview_and_profile_li
 async fn narration_commands_preserve_identity_and_route_exact_text_with_book_scoped_settings() {
     let _keys = use_test_backend(MemoryBackend::default());
     let root = tempfile::tempdir().unwrap();
-    create_calibre_db(root.path()).await;
+    let db = create_calibre_db(root.path()).await;
+    db.execute_unprepared("INSERT INTO books (id, title, path) VALUES (7, 'Volume 7', 'Book7'), (8, 'Volume 8', 'Book8')").await.unwrap();
     let config = AppConfig {
         libraries: vec![LibraryConfig {
             id: "library".into(),
@@ -161,4 +163,41 @@ async fn narration_commands_preserve_identity_and_route_exact_text_with_book_sco
         json!({"libraryId":"library","request":{"bookId":7,"title":"","authors":[],"language":"en"}}),
     );
     assert!(error.message.contains("REQUEST_INVALID"));
+
+    let mut other = other;
+    other["enabled"] = json!(true);
+    other["characters"].as_array_mut().unwrap().push(json!({"id":"second-alice","name":"Alice","aliases":[],"identity":"teacher","voice":{"engine":"provider","profileId":"tts-b","voiceId":"B"},"instructions":"calm","source":null}));
+    let _: Value = invoke_ok(
+        &app,
+        "save_book_narration",
+        json!({"libraryId":"library","settings":other}),
+    );
+    db.execute_unprepared("INSERT INTO series (id, name) VALUES (1, 'Novel'); INSERT INTO books_series_link (id, book, series) VALUES (1, 7, 1), (2, 8, 1)").await.unwrap();
+    let shared: Value = invoke_ok(
+        &app,
+        "get_book_narration",
+        json!({"libraryId":"library","bookId":8}),
+    );
+    assert_eq!(shared["scopeName"], "Novel");
+    assert_eq!(shared["mergeSources"].as_array().unwrap().len(), 1);
+    let mut plan: Value = invoke_ok(
+        &app,
+        "preview_book_narration_merge",
+        json!({"libraryId":"library","bookId":8,"automatic":false}),
+    );
+    plan["choices"][1]["preferIncoming"] = json!(true);
+    let merged: Value = invoke_ok(
+        &app,
+        "merge_book_narration",
+        json!({"libraryId":"library","bookId":8,"plan":plan}),
+    );
+    assert!(merged["mergeSources"].as_array().unwrap().is_empty());
+    assert_eq!(merged["characters"][1]["id"], "alice");
+    assert_eq!(merged["characters"][1]["voice"]["profileId"], "tts-b");
+    let first: Value = invoke_ok(
+        &app,
+        "get_book_narration",
+        json!({"libraryId":"library","bookId":7}),
+    );
+    assert_eq!(first["characters"], merged["characters"]);
 }

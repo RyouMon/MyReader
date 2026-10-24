@@ -35,6 +35,7 @@ import { notifyTtsConfigChanged } from "@/lib/tts/events"
 import {
   BookNarrationSettings,
   type NarrationBook,
+  type NarrationSubview,
 } from "./BookNarrationSettings"
 
 type ReaderTtsSettingsPanelProps = {
@@ -72,6 +73,9 @@ export function ReaderTtsSettingsPanel({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<"settings" | "providers">("settings")
+  const [narrationView, setNarrationView] = useState<NarrationSubview | null>(
+    null,
+  )
   const themeStyle = useMemo(() => readerChromeThemeStyle(theme), [theme])
 
   useEffect(() => {
@@ -151,12 +155,15 @@ export function ReaderTtsSettingsPanel({
     <ReaderSidePanelFrame visible={visible} side="right">
       <ReaderSidePanelHeader
         title={
-          view === "providers"
-            ? t("reader.tts.manageProviders")
-            : t("reader.tts.settings")
+          narrationView?.title ??
+          t(
+            view === "providers"
+              ? "reader.tts.manageProviders"
+              : "reader.tts.settings",
+          )
         }
         icon={view === "providers" ? Server : Settings2}
-        onBack={view === "providers" ? () => setView("settings") : undefined}
+        onBack={panelBack(narrationView, view, () => setView("settings"))}
         backLabel={t("common.back")}
       />
       <ReaderSidePanelScrollArea className={READER_SETTINGS_CONTENT_CLASS}>
@@ -187,117 +194,131 @@ export function ReaderTtsSettingsPanel({
         {!loading && config && view === "settings" ? (
           <>
             {book ? (
-              <BookNarrationSettings book={book} config={config} />
+              <BookNarrationSettings
+                key={`${book.libraryId}:${book.bookId}`}
+                book={book}
+                config={config}
+                onSubviewChange={setNarrationView}
+              />
             ) : null}
-            <ReaderTtsEngineSelect
-              config={config}
-              saving={saving}
-              themeStyle={themeStyle}
-              selectEngine={selectEngine}
-            />
+            {!narrationView ? (
+              <>
+                <ReaderTtsEngineSelect
+                  config={config}
+                  saving={saving}
+                  themeStyle={themeStyle}
+                  selectEngine={selectEngine}
+                />
 
-            <section className="flex flex-col gap-2">
-              <Label
-                className={READER_SETTINGS_LABEL_CLASS}
-                htmlFor="reader-tts-voice"
-              >
-                {t("reader.tts.voice")}
-              </Label>
-              <Select
-                value={session.currentVoiceId}
-                disabled={session.voices.length === 0}
-                onValueChange={session.setVoice}
-              >
-                <SelectTrigger
-                  id="reader-tts-voice"
-                  aria-label={t("reader.tts.voice")}
-                  className="reader-tts-themed-trigger w-full"
+                <section className="flex flex-col gap-2">
+                  <Label
+                    className={READER_SETTINGS_LABEL_CLASS}
+                    htmlFor="reader-tts-voice"
+                  >
+                    {t("reader.tts.voice")}
+                  </Label>
+                  <Select
+                    value={session.currentVoiceId}
+                    disabled={session.voices.length === 0}
+                    onValueChange={session.setVoice}
+                  >
+                    <SelectTrigger
+                      id="reader-tts-voice"
+                      aria-label={t("reader.tts.voice")}
+                      className="reader-tts-themed-trigger w-full"
+                    >
+                      <SelectValue
+                        placeholder={t("reader.tts.loadingVoices")}
+                      />
+                    </SelectTrigger>
+                    <SelectContent
+                      position="popper"
+                      align="start"
+                      style={themeStyle}
+                    >
+                      <SelectGroup>
+                        {session.voices.map((voice) => (
+                          <SelectItem
+                            key={voiceId(voice)}
+                            value={voiceId(voice)}
+                          >
+                            {voice.label || voice.name} ·{" "}
+                            {formatTtsLanguageName(
+                              voice.language,
+                              interfaceLanguage,
+                            )}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </section>
+
+                <section className="flex flex-col gap-4 rounded-md bg-[var(--reader-chrome-segment-idle)] p-3">
+                  <ReaderSettingsRangeControl
+                    id="reader-tts-speed"
+                    label={t("reader.tts.speed")}
+                    value={session.speed}
+                    min={0.5}
+                    max={3}
+                    step={0.1}
+                    className={RANGE_INPUT_CLASS}
+                    labelClassName={READER_SETTINGS_LABEL_CLASS}
+                    valueClassName={READER_SETTINGS_VALUE_CLASS}
+                    formatValue={(value) => `${value.toFixed(1)}×`}
+                    rangeStyle={rangeStyle}
+                    onCommit={updateSpeed}
+                  />
+                  <ReaderSettingsRangeControl
+                    id="reader-tts-pitch"
+                    label={t("reader.tts.pitch")}
+                    value={finitePreference(config.playback.pitch, 1)}
+                    min={0.5}
+                    max={2}
+                    step={0.1}
+                    className={RANGE_INPUT_CLASS}
+                    labelClassName={READER_SETTINGS_LABEL_CLASS}
+                    valueClassName={READER_SETTINGS_VALUE_CLASS}
+                    formatValue={(value) => value.toFixed(1)}
+                    rangeStyle={rangeStyle}
+                    onCommit={(pitch) => void updatePlayback({ pitch })}
+                  />
+                </section>
+
+                <ReaderPlaybackSwitch
+                  id="reader-tts-skip-page-breaks"
+                  label={t("reader.tts.skipPageBreaks")}
+                  description={t("reader.tts.skipPageBreaksDescription")}
+                  checked={config.playback.skipPageBreaks}
+                  disabled={saving}
+                  onCheckedChange={(skipPageBreaks) =>
+                    void updatePlayback({ skipPageBreaks })
+                  }
+                />
+                <ReaderPlaybackSwitch
+                  id="reader-tts-skip-footnotes"
+                  label={t("reader.tts.skipFootnotes")}
+                  description={t("reader.tts.skipFootnotesDescription")}
+                  checked={config.playback.skipFootnotes}
+                  disabled={saving}
+                  onCheckedChange={(skipFootnotes) =>
+                    void updatePlayback({ skipFootnotes })
+                  }
+                />
+
+                <button
+                  type="button"
+                  className="flex h-11 w-full items-center justify-between rounded-md bg-[var(--reader-chrome-segment-idle)] px-3 text-[13px] font-medium text-reader-chrome-fg transition-colors hover:bg-[var(--reader-chrome-segment-active)]"
+                  onClick={() => setView("providers")}
                 >
-                  <SelectValue placeholder={t("reader.tts.loadingVoices")} />
-                </SelectTrigger>
-                <SelectContent
-                  position="popper"
-                  align="start"
-                  style={themeStyle}
-                >
-                  <SelectGroup>
-                    {session.voices.map((voice) => (
-                      <SelectItem key={voiceId(voice)} value={voiceId(voice)}>
-                        {voice.label || voice.name} ·{" "}
-                        {formatTtsLanguageName(
-                          voice.language,
-                          interfaceLanguage,
-                        )}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </section>
-
-            <section className="flex flex-col gap-4 rounded-md bg-[var(--reader-chrome-segment-idle)] p-3">
-              <ReaderSettingsRangeControl
-                id="reader-tts-speed"
-                label={t("reader.tts.speed")}
-                value={session.speed}
-                min={0.5}
-                max={3}
-                step={0.1}
-                className={RANGE_INPUT_CLASS}
-                labelClassName={READER_SETTINGS_LABEL_CLASS}
-                valueClassName={READER_SETTINGS_VALUE_CLASS}
-                formatValue={(value) => `${value.toFixed(1)}×`}
-                rangeStyle={rangeStyle}
-                onCommit={updateSpeed}
-              />
-              <ReaderSettingsRangeControl
-                id="reader-tts-pitch"
-                label={t("reader.tts.pitch")}
-                value={finitePreference(config.playback.pitch, 1)}
-                min={0.5}
-                max={2}
-                step={0.1}
-                className={RANGE_INPUT_CLASS}
-                labelClassName={READER_SETTINGS_LABEL_CLASS}
-                valueClassName={READER_SETTINGS_VALUE_CLASS}
-                formatValue={(value) => value.toFixed(1)}
-                rangeStyle={rangeStyle}
-                onCommit={(pitch) => void updatePlayback({ pitch })}
-              />
-            </section>
-
-            <ReaderPlaybackSwitch
-              id="reader-tts-skip-page-breaks"
-              label={t("reader.tts.skipPageBreaks")}
-              description={t("reader.tts.skipPageBreaksDescription")}
-              checked={config.playback.skipPageBreaks}
-              disabled={saving}
-              onCheckedChange={(skipPageBreaks) =>
-                void updatePlayback({ skipPageBreaks })
-              }
-            />
-            <ReaderPlaybackSwitch
-              id="reader-tts-skip-footnotes"
-              label={t("reader.tts.skipFootnotes")}
-              description={t("reader.tts.skipFootnotesDescription")}
-              checked={config.playback.skipFootnotes}
-              disabled={saving}
-              onCheckedChange={(skipFootnotes) =>
-                void updatePlayback({ skipFootnotes })
-              }
-            />
-
-            <button
-              type="button"
-              className="flex h-11 w-full items-center justify-between rounded-md bg-[var(--reader-chrome-segment-idle)] px-3 text-[13px] font-medium text-reader-chrome-fg transition-colors hover:bg-[var(--reader-chrome-segment-active)]"
-              onClick={() => setView("providers")}
-            >
-              <span>{t("reader.tts.manageProviders")}</span>
-              <ChevronRight
-                className="size-4 text-reader-chrome-muted"
-                aria-hidden
-              />
-            </button>
+                  <span>{t("reader.tts.manageProviders")}</span>
+                  <ChevronRight
+                    className="size-4 text-reader-chrome-muted"
+                    aria-hidden
+                  />
+                </button>
+              </>
+            ) : null}
           </>
         ) : null}
       </ReaderSidePanelScrollArea>
@@ -400,4 +421,13 @@ function ReaderTtsEngineSelect({
       </Select>
     </section>
   )
+}
+
+function panelBack(
+  narration: NarrationSubview | null,
+  view: "settings" | "providers",
+  onBack: () => void,
+) {
+  if (narration) return narration.onBack
+  return view === "providers" ? onBack : undefined
 }

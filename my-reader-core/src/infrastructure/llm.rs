@@ -31,20 +31,30 @@ pub(crate) async fn complete(
     messages: &[LlmMessage],
     schema: Value,
 ) -> Result<Value, CoreError> {
+    complete_with_output_limit(profile, credential, messages, schema, 4096).await
+}
+
+pub(crate) async fn complete_with_output_limit(
+    profile: &LlmProviderProfile,
+    credential: Option<&str>,
+    messages: &[LlmMessage],
+    schema: Value,
+    output_tokens: u32,
+) -> Result<Value, CoreError> {
     let format = json!({"name":"myreader_result", "strict":true, "schema":schema});
     let (suffix, body) = match profile.protocol {
         LlmProtocol::ChatCompletions => (
             "chat/completions",
             json!({
                 "model":profile.model, "messages":messages, "stream":false,
-                "max_completion_tokens":4096, "response_format":{"type":"json_schema", "json_schema":format}
+                "max_completion_tokens":output_tokens, "response_format":{"type":"json_schema", "json_schema":format}
             }),
         ),
         LlmProtocol::Responses => (
             "responses",
             json!({
                 "model":profile.model, "input":messages, "store":false, "stream":false,
-                "max_output_tokens":4096, "text":{"format":{
+                "max_output_tokens":output_tokens, "text":{"format":{
                     "type":"json_schema", "name":"myreader_result", "strict":true, "schema":format["schema"]
                 }}
             }),
@@ -64,6 +74,9 @@ fn response_text(protocol: LlmProtocol, response: &Value) -> Result<String, Core
     match protocol {
         LlmProtocol::ChatCompletions => {
             let choice = &response["choices"][0];
+            if choice["finish_reason"] == "length" {
+                return Err(error("OUTPUT_LIMIT"));
+            }
             if choice["finish_reason"] != "stop" {
                 return Err(error("INCOMPLETE_RESPONSE"));
             }
@@ -73,6 +86,9 @@ fn response_text(protocol: LlmProtocol, response: &Value) -> Result<String, Core
                 .ok_or_else(|| error("INVALID_RESPONSE"))
         }
         LlmProtocol::Responses => {
+            if response["incomplete_details"]["reason"] == "max_output_tokens" {
+                return Err(error("OUTPUT_LIMIT"));
+            }
             if response["status"] != "completed" {
                 return Err(error("INCOMPLETE_RESPONSE"));
             }
@@ -199,13 +215,22 @@ mod tests {
             LlmProtocol::ChatCompletions,
             &json!({"choices":[{"finish_reason":"length","message":{"content":"{}"}}]})
         )
-        .is_err());
+        .unwrap_err()
+        .to_string()
+        .contains("LLM_OUTPUT_LIMIT"));
         assert_eq!(response_text(LlmProtocol::Responses, &json!({"status":"completed","output":[{"type":"message","content":[{"type":"output_text","text":"{}"}]}]})).unwrap(), "{}");
         assert!(response_text(LlmProtocol::Responses, &json!({"status":"completed","output":[{"type":"message","content":[{"type":"refusal","refusal":"no"}]}]})).is_err());
         assert!(response_text(
             LlmProtocol::Responses,
             &json!({"status":"incomplete","output":[]})
         )
-        .is_err());
+        .unwrap_err()
+        .to_string()
+        .contains("LLM_INCOMPLETE_RESPONSE"));
+        assert!(response_text(
+            LlmProtocol::Responses,
+            &json!({"status":"incomplete","incomplete_details":{"reason":"max_output_tokens"},"output":[]})
+        )
+        .unwrap_err().to_string().contains("LLM_OUTPUT_LIMIT"));
     }
 }

@@ -618,12 +618,30 @@ interface NativeModuleInterface {
     request: Uint8Array,
     credential: Uint8Array,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_narration_merge_settings(
+    root: Uint8Array,
+    bookId: number,
+    plan: Uint8Array,
+  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_narration_prepare(
     root: Uint8Array,
     configPath: Uint8Array,
     request: Uint8Array,
     defaultVoice: Uint8Array,
     credential: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_narration_preview_merge(
+    root: Uint8Array,
+    configPath: Uint8Array,
+    bookId: number,
+    automatic: number,
+    credential: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_narration_resolve_settings(
+    root: Uint8Array,
+    contentRoot: Uint8Array,
+    libraryType: Uint8Array,
+    bookId: number,
   ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_narration_save_settings(
     root: Uint8Array,
@@ -1000,7 +1018,10 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_cancel(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_get_settings(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_import(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_merge_settings(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_prepare(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_preview_merge(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_resolve_settings(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_save_settings(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_add_annotation(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_add_bookmark(): number;

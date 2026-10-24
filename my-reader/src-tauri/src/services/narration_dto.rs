@@ -65,6 +65,9 @@ impl From<BookCharacterDto> for core::BookCharacter {
 #[serde(rename_all = "camelCase")]
 pub struct BookNarrationSettingsDto {
     pub book_id: i64,
+    pub scope_id: String,
+    pub scope_name: Option<String>,
+    pub merge_sources: Vec<NarrationMergeSourceDto>,
     pub enabled: bool,
     pub revision: u32,
     pub identity_revision: u32,
@@ -74,6 +77,9 @@ impl From<core::BookNarrationSettings> for BookNarrationSettingsDto {
     fn from(value: core::BookNarrationSettings) -> Self {
         Self {
             book_id: value.book_id,
+            scope_id: value.scope_id,
+            scope_name: value.scope_name,
+            merge_sources: value.merge_sources.into_iter().map(Into::into).collect(),
             enabled: value.enabled,
             revision: value.revision,
             identity_revision: value.identity_revision,
@@ -85,6 +91,9 @@ impl From<BookNarrationSettingsDto> for core::BookNarrationSettings {
     fn from(value: BookNarrationSettingsDto) -> Self {
         Self {
             book_id: value.book_id,
+            scope_id: value.scope_id,
+            scope_name: value.scope_name,
+            merge_sources: value.merge_sources.into_iter().map(Into::into).collect(),
             enabled: value.enabled,
             revision: value.revision,
             identity_revision: value.identity_revision,
@@ -213,6 +222,87 @@ impl From<NarrationSpeechDto> for core::NarrationSpeech {
             end_utf16: value.end_utf16,
             voice: value.voice.into(),
             instructions: value.instructions,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NarrationMergeSourceDto {
+    pub scope_id: String,
+    pub title: String,
+    pub characters: Vec<BookCharacterDto>,
+}
+impl From<core::NarrationMergeSource> for NarrationMergeSourceDto {
+    fn from(value: core::NarrationMergeSource) -> Self {
+        Self {
+            scope_id: value.scope_id,
+            title: value.title,
+            characters: value.characters.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+impl From<NarrationMergeSourceDto> for core::NarrationMergeSource {
+    fn from(value: NarrationMergeSourceDto) -> Self {
+        Self {
+            scope_id: value.scope_id,
+            title: value.title,
+            characters: value.characters.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NarrationMergeChoiceDto {
+    pub character_id: String,
+    pub target_character_id: Option<String>,
+    pub prefer_incoming: bool,
+}
+impl From<core::NarrationMergeChoice> for NarrationMergeChoiceDto {
+    fn from(value: core::NarrationMergeChoice) -> Self {
+        Self {
+            character_id: value.character_id,
+            target_character_id: value.target_character_id,
+            prefer_incoming: value.prefer_incoming,
+        }
+    }
+}
+impl From<NarrationMergeChoiceDto> for core::NarrationMergeChoice {
+    fn from(value: NarrationMergeChoiceDto) -> Self {
+        Self {
+            character_id: value.character_id,
+            target_character_id: value.target_character_id,
+            prefer_incoming: value.prefer_incoming,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NarrationMergePlanDto {
+    pub scope_id: String,
+    pub source_scope_id: String,
+    pub revision: u32,
+    pub choices: Vec<NarrationMergeChoiceDto>,
+}
+impl From<core::NarrationMergePlan> for NarrationMergePlanDto {
+    fn from(value: core::NarrationMergePlan) -> Self {
+        Self {
+            scope_id: value.scope_id,
+            source_scope_id: value.source_scope_id,
+            revision: value.revision,
+            choices: value.choices.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+impl From<NarrationMergePlanDto> for core::NarrationMergePlan {
+    fn from(value: NarrationMergePlanDto) -> Self {
+        Self {
+            scope_id: value.scope_id,
+            source_scope_id: value.source_scope_id,
+            revision: value.revision,
+            choices: value.choices.into_iter().map(Into::into).collect(),
         }
     }
 }

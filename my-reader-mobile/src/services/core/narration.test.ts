@@ -15,13 +15,14 @@ jest.mock("./llm", () => ({
     .mockResolvedValue({ profileId: "p", profileRevision: 1, value: "secret" }),
 }))
 jest.mock("../fs/library-paths", () => ({
+  libraryRootUri: (library: Library) => `file:///content/${library.id}`,
   librarySidecarRootUri: (library: Library) => `file:///sidecars/${library.id}`,
 }))
 jest.mock("../fs/path", () => ({
   toNativeFilesystemPath: (uri: string) => uri.replace("file://", ""),
 }))
 jest.mock("my-reader-core", () => ({
-  narrationGetSettings: jest.fn(),
+  narrationResolveSettings: jest.fn(),
   narrationSaveSettings: jest.fn(),
   narrationImport: jest.fn(),
   narrationPrepare: jest.fn(),
@@ -41,16 +42,23 @@ const settings = {
   bookId: 1,
   enabled: false,
   revision: 0,
+  scopeId: "book:fixture",
+  mergeSources: [],
   identityRevision: 0,
   characters: [],
 }
 beforeEach(() => {
   jest.clearAllMocks()
-  jest.mocked(core.narrationGetSettings).mockResolvedValue(settings)
+  jest.mocked(core.narrationResolveSettings).mockResolvedValue(settings)
 })
 it("routes book settings and import to the library sidecar and passes cancellation to FFI", async () => {
   await getBookNarration(library, 1)
-  expect(core.narrationGetSettings).toHaveBeenCalledWith("/sidecars/library", 1)
+  expect(core.narrationResolveSettings).toHaveBeenCalledWith(
+    "/sidecars/library",
+    "/content/library",
+    "calibre",
+    1,
+  )
   await saveBookNarration(library, settings)
   expect(core.narrationSaveSettings).toHaveBeenCalledWith(
     "/sidecars/library",
@@ -79,7 +87,7 @@ it("reads LLM credentials only for enabled books and rejects canceled analysis b
     undefined,
   )
   jest
-    .mocked(core.narrationGetSettings)
+    .mocked(core.narrationResolveSettings)
     .mockResolvedValue({ ...settings, enabled: true })
   const controller = new AbortController()
   await prepareBookNarration(library, request, voice, controller.signal)

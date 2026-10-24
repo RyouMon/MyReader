@@ -4,7 +4,10 @@ import {
   getBookNarration,
   saveBookNarration,
   importBookCharacters,
+  previewBookNarrationMerge,
+  mergeBookNarration,
   type BookNarrationSettings,
+  type NarrationMergePlan,
 } from "@/src/services/core/narration"
 
 export function useBookNarration(
@@ -19,14 +22,30 @@ export function useBookNarration(
     queryFn: () => getBookNarration(library!, bookId),
     enabled: enabled && Boolean(library),
   })
+  const update = async (data: BookNarrationSettings) => {
+    client.setQueryData(key, data)
+    await client.invalidateQueries({
+      queryKey: ["book-narration", library?.id],
+      predicate: (query) => query.queryKey[2] !== bookId,
+    })
+  }
   const save = useMutation({
     mutationFn: (settings: BookNarrationSettings) =>
       saveBookNarration(library!, settings),
-    onSuccess: (data) => client.setQueryData(key, data),
+    onSuccess: update,
   })
   const importCharacters = useMutation({
     mutationFn: (request: Parameters<typeof importBookCharacters>[1]) =>
       importBookCharacters(library!, request),
   })
-  return { query, save, importCharacters }
+  const previewMerge = useMutation({
+    mutationFn: (automatic: boolean) =>
+      previewBookNarrationMerge(library!, bookId, automatic),
+  })
+  const merge = useMutation({
+    mutationFn: (plan: NarrationMergePlan) =>
+      mergeBookNarration(library!, bookId, plan),
+    onSuccess: update,
+  })
+  return { query, save, importCharacters, previewMerge, merge }
 }

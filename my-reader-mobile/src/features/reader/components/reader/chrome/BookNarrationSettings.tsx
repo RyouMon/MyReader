@@ -1,4 +1,6 @@
-import { useState } from "react"
+import type { TFunction } from "i18next"
+import { NarrationMergeEditor } from "./NarrationMergeEditor"
+import { useCallback, useEffect, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
 import { Linking, Switch } from "react-native"
@@ -12,11 +14,14 @@ import { getLlmConfig } from "@/src/services/core/llm"
 import type {
   BookCharacter,
   CharacterImportCandidate,
+  NarrationMergePlan,
 } from "@/src/services/core/narration"
 import { listTtsVoices, type MobileTtsConfig } from "@/src/services/core/tts"
 import { errorMessage } from "@/src/i18n/error-message"
 import { Text, View } from "@/tw"
 import { ProviderTextField, ReaderTtsMenuRow } from "./ReaderTtsSettingsFields"
+
+export type NarrationSubview = { title: string; onBack: () => void }
 
 export type NarrationBook = {
   library: Library
@@ -34,8 +39,15 @@ export function BookNarrationSettings({
   config: MobileTtsConfig
   palette: ReaderChromePalette
   onChange?: () => void
+  onSubviewChange?: (view: NarrationSubview | null) => void
 }) {
-  return book ? <BookNarrationContent book={book} {...props} /> : null
+  return book ? (
+    <BookNarrationContent
+      key={`${book.library.id}:${book.bookId}`}
+      book={book}
+      {...props}
+    />
+  ) : null
 }
 
 function BookNarrationContent({
@@ -43,67 +55,87 @@ function BookNarrationContent({
   config,
   palette,
   onChange,
+  onSubviewChange,
 }: {
   book: NarrationBook
   config: MobileTtsConfig
   palette: ReaderChromePalette
   onChange?: () => void
+  onSubviewChange?: (view: NarrationSubview | null) => void
 }) {
   const { t } = useTranslation()
-  const { query, save, importCharacters } = useBookNarration(
-    book.library,
-    book.bookId,
-  )
+  const { query, save, importCharacters, previewMerge, merge } =
+    useBookNarration(book.library, book.bookId)
   const [enableError, setEnableError] = useState<string | null>(null)
+  const [subview, setSubview] = useState<NarrationSubview | null>(null)
+  const changeSubview = useCallback(
+    (view: NarrationSubview | null) => {
+      setSubview(view)
+      onSubviewChange?.(view)
+    },
+    [onSubviewChange],
+  )
   const settings = query.data
-  const error = save.error ?? importCharacters.error ?? query.error
+  const error =
+    save.error ??
+    importCharacters.error ??
+    previewMerge.error ??
+    merge.error ??
+    query.error
   if (!settings)
     return error ? (
       <Text accessibilityRole="alert">{errorMessage(error)}</Text>
     ) : null
   return (
     <View className="gap-3">
-      <View className="min-h-12 flex-row items-center justify-between">
-        <Text style={{ color: palette.text }}>{t("narration.enabled")}</Text>
-        <Switch
-          accessibilityLabel={t("narration.enabled")}
-          value={settings.enabled}
-          disabled={save.isPending}
-          onValueChange={(enabled) => {
-            setEnableError(null)
-            if (!enabled) {
-              save.mutate({ ...settings, enabled }, { onSuccess: onChange })
-              return
-            }
-            void getLlmConfig()
-              .then((config) => {
-                if (!config.defaultProfileId) {
-                  setEnableError(t("narration.llmRequired"))
-                  return
-                }
-                showAlertWithStatusBarRestore(
-                  t("narration.enabled"),
-                  t("narration.enableNotice"),
-                  [
-                    { text: t("llm.cancel"), style: "cancel" },
-                    {
-                      text: t("narration.enableConfirm"),
-                      onPress: () =>
-                        save.mutate(
-                          { ...settings, enabled: true },
-                          { onSuccess: onChange },
-                        ),
-                    },
-                  ],
-                )
-              })
-              .catch((value) => setEnableError(errorMessage(value)))
-          }}
-        />
-      </View>
+      {!subview ? (
+        <View className="min-h-12 flex-row items-center justify-between">
+          <Text style={{ color: palette.text }}>{t("narration.enabled")}</Text>
+          <Switch
+            accessibilityLabel={t("narration.enabled")}
+            value={settings.enabled}
+            disabled={save.isPending}
+            onValueChange={(enabled) => {
+              setEnableError(null)
+              if (!enabled) {
+                save.mutate({ ...settings, enabled }, { onSuccess: onChange })
+                return
+              }
+              void getLlmConfig()
+                .then((config) => {
+                  if (!config.defaultProfileId) {
+                    setEnableError(t("narration.llmRequired"))
+                    return
+                  }
+                  showAlertWithStatusBarRestore(
+                    t("narration.enabled"),
+                    t("narration.enableNotice"),
+                    [
+                      { text: t("llm.cancel"), style: "cancel" },
+                      {
+                        text: t("narration.enableConfirm"),
+                        onPress: () =>
+                          save.mutate(
+                            { ...settings, enabled: true },
+                            { onSuccess: onChange },
+                          ),
+                      },
+                    ],
+                  )
+                })
+                .catch((value) => setEnableError(errorMessage(value)))
+            }}
+          />
+        </View>
+      ) : null}
       {enableError || error ? (
         <Text accessibilityRole="alert" style={{ color: palette.text }}>
           {enableError ?? errorMessage(error)}
+        </Text>
+      ) : null}
+      {settings.enabled && settings.scopeName && !subview ? (
+        <Text style={{ color: palette.textMuted }}>
+          {t("narration.series", { name: settings.scopeName })}
         </Text>
       ) : null}
       {settings.enabled ? (
@@ -113,8 +145,11 @@ function BookNarrationContent({
           settings={settings}
           save={save}
           importCharacters={importCharacters}
+          previewMerge={previewMerge}
+          merge={merge}
           palette={palette}
           onChange={onChange}
+          onSubviewChange={changeSubview}
         />
       ) : null}
     </View>
@@ -127,16 +162,22 @@ function BookCharacters({
   settings,
   save,
   importCharacters,
+  previewMerge,
+  merge,
   palette,
   onChange,
+  onSubviewChange,
 }: {
   book: NarrationBook
   config: MobileTtsConfig
   settings: NonNullable<ReturnType<typeof useBookNarration>["query"]["data"]>
   save: ReturnType<typeof useBookNarration>["save"]
   importCharacters: ReturnType<typeof useBookNarration>["importCharacters"]
+  previewMerge: ReturnType<typeof useBookNarration>["previewMerge"]
+  merge: ReturnType<typeof useBookNarration>["merge"]
   palette: ReaderChromePalette
   onChange?: () => void
+  onSubviewChange?: (view: NarrationSubview | null) => void
 }) {
   const { t } = useTranslation()
   const [draft, setDraft] = useState<BookCharacter | null>(null)
@@ -144,6 +185,28 @@ function BookCharacters({
     CharacterImportCandidate[] | null
   >(null)
   const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [mergePlan, setMergePlan] = useState<NarrationMergePlan | null>(null)
+  const subviewTitle = characterSubviewTitle(
+    draft,
+    Boolean(candidates),
+    Boolean(mergePlan),
+    t,
+  )
+  useEffect(() => {
+    onSubviewChange?.(
+      subviewTitle
+        ? {
+            title: subviewTitle,
+            onBack: () => {
+              setDraft(null)
+              setCandidates(null)
+              setMergePlan(null)
+            },
+          }
+        : null,
+    )
+    return () => onSubviewChange?.(null)
+  }, [subviewTitle, onSubviewChange])
   const commit = (characters: BookCharacter[]) =>
     save.mutate(
       { ...settings, characters },
@@ -154,6 +217,44 @@ function BookCharacters({
           onChange?.()
         },
       },
+    )
+  if (mergePlan)
+    return (
+      <NarrationMergeEditor
+        settings={settings}
+        plan={mergePlan}
+        onChange={setMergePlan}
+        onCancel={() => setMergePlan(null)}
+        saving={merge.isPending}
+        onSave={() =>
+          merge.mutate(mergePlan, {
+            onSuccess: () => {
+              setMergePlan(null)
+              onChange?.()
+            },
+          })
+        }
+        palette={palette}
+      />
+    )
+  if (settings.mergeSources.length > 0)
+    return (
+      <View className="gap-3">
+        <Text style={{ color: palette.text }}>{t("narration.merge")}</Text>
+        <Button
+          title={t("narration.autoMerge")}
+          disabled={previewMerge.isPending}
+          onPress={() => previewMerge.mutate(true, { onSuccess: setMergePlan })}
+        />
+        <Button
+          title={t("narration.manualMerge")}
+          variant="secondary"
+          disabled={previewMerge.isPending}
+          onPress={() =>
+            previewMerge.mutate(false, { onSuccess: setMergePlan })
+          }
+        />
+      </View>
     )
   return draft ? (
     <CharacterEditor
@@ -495,4 +596,19 @@ function CharacterVoiceFields({
       ) : null}
     </>
   )
+}
+
+function characterSubviewTitle(
+  character: { id: string; name: string } | null,
+  importing: boolean,
+  merging: boolean,
+  t: TFunction,
+) {
+  if (character)
+    return character.id === "narrator"
+      ? t("narration.narrator")
+      : character.name || t("narration.add")
+  if (importing) return t("narration.import")
+  if (merging) return t("narration.merge")
+  return null
 }

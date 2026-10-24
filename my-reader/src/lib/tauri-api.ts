@@ -52,6 +52,8 @@ export const api = {
   listLlmModels: wrap(commands.listLlmModels),
   probeLlmProfile: wrap(commands.probeLlmProfile),
   getBookNarration: wrap(commands.getBookNarration),
+  previewBookNarrationMerge: wrap(commands.previewBookNarrationMerge),
+  mergeBookNarration: wrap(commands.mergeBookNarration),
   saveBookNarration: wrap(commands.saveBookNarration),
   cancelBookNarration: wrap(commands.cancelBookNarration),
   importBookCharacters: wrap(commands.importBookCharacters),

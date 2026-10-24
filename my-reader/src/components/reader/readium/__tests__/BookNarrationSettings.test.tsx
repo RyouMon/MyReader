@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   getBookNarration: vi.fn(),
   saveBookNarration: vi.fn(),
   importBookCharacters: vi.fn(),
+  previewBookNarrationMerge: vi.fn(),
+  mergeBookNarration: vi.fn(),
   getLlmConfig: vi.fn(),
   listTtsVoices: vi.fn(),
 }))
@@ -32,6 +34,9 @@ const settings: BookNarrationSettingsDto = {
   bookId: 42,
   enabled: false,
   revision: 0,
+  scopeId: "book:fixture",
+  scopeName: null,
+  mergeSources: [],
   identityRevision: 0,
   characters: [
     {
@@ -213,4 +218,68 @@ it("imports selected sourced characters without overwriting an existing manual i
     "library",
     expect.objectContaining({ title: "Book", authors: ["Writer"] }),
   )
+})
+
+it("reviews a pending series merge before applying identities and voice preferences", async () => {
+  const source = {
+    scopeId: "book:other",
+    title: "Volume 2",
+    characters: [
+      { ...settings.characters[1]!, id: "other-id", instructions: "沉稳" },
+    ],
+  }
+  const current = {
+    ...settings,
+    enabled: true,
+    scopeId: "series:one",
+    scopeName: "Series",
+    mergeSources: [source],
+  }
+  const plan = {
+    scopeId: current.scopeId,
+    sourceScopeId: source.scopeId,
+    revision: current.revision,
+    choices: [
+      {
+        characterId: "other-id",
+        targetCharacterId: "stable-id",
+        preferIncoming: false,
+      },
+    ],
+  }
+  mocks.getBookNarration.mockResolvedValue(current)
+  mocks.previewBookNarrationMerge.mockResolvedValue(plan)
+  mocks.mergeBookNarration.mockResolvedValue({
+    ...current,
+    mergeSources: [],
+    revision: 1,
+  })
+  mount()
+  fireEvent.click(
+    await screen.findByRole("button", { name: "narration.manualMerge" }),
+  )
+  await screen.findByText("Volume 2")
+  expect(mocks.previewBookNarrationMerge).toHaveBeenCalledWith(
+    "library",
+    42,
+    false,
+  )
+  expect(mocks.mergeBookNarration).not.toHaveBeenCalled()
+  const user = userEvent.setup()
+  await user.click(
+    screen.getByRole("combobox", { name: "narration.voiceAndInstructions" }),
+  )
+  await user.click(
+    screen.getByRole("option", { name: "narration.useIncoming" }),
+  )
+  fireEvent.click(
+    screen.getByRole("button", { name: "narration.confirmMerge" }),
+  )
+  await waitFor(() =>
+    expect(mocks.mergeBookNarration).toHaveBeenCalledWith("library", 42, {
+      ...plan,
+      choices: [{ ...plan.choices[0], preferIncoming: true }],
+    }),
+  )
+  await screen.findByRole("button", { name: "narration.import" })
 })

@@ -1,4 +1,5 @@
 mod import;
+mod merge;
 #[cfg(test)]
 mod tests;
 
@@ -30,6 +31,36 @@ const MAX_CONTEXT_BYTES: usize = 4_000;
 const KEEP_RECENT: usize = 2;
 
 impl NarrationService {
+    pub async fn get_library_settings(
+        root: &Path,
+        content_root: &Path,
+        library_type: crate::models::LibraryType,
+        book_id: i64,
+    ) -> Result<BookNarrationSettings, CoreError> {
+        let catalog = crate::repositories::calibre::CatalogRepository::open_library(
+            library_type,
+            root,
+            content_root,
+        )
+        .await?;
+        let book = catalog
+            .get_book_by_id(book_id)
+            .await?
+            .ok_or_else(|| CoreError::NotFound(format!("BOOK_NOT_FOUND: {book_id}")))?;
+        let members = match book
+            .series
+            .as_deref()
+            .filter(|name| !name.trim().is_empty())
+        {
+            Some(series) => catalog.get_books_by_series(series, None).await?,
+            None => Vec::new(),
+        };
+        let context = LibraryContext::open(root).await?;
+        NarrationRepository::new(context.database())
+            .resolve_scope(&book, &members)
+            .await
+    }
+
     pub async fn prepare(
         root: &Path,
         config_path: &Path,
@@ -96,10 +127,12 @@ impl NarrationService {
         let context = LibraryContext::open(root).await?;
         let repository = NarrationRepository::new(context.database());
         let current = repository.settings(settings.book_id).await?;
-        if current.revision != settings.revision {
+        if current.revision != settings.revision || current.scope_id != settings.scope_id {
             return Err(error("STALE_REQUEST"));
         }
         validate_settings(&mut settings)?;
+        settings.scope_name = current.scope_name.clone();
+        settings.merge_sources = current.merge_sources.clone();
         settings.identity_revision =
             current.identity_revision + u32::from(roster(&current) != roster(&settings));
         settings.revision = current.revision.saturating_add(1);
@@ -107,7 +140,6 @@ impl NarrationService {
             .save_settings(&settings, current.revision)
             .await?;
         // A disabled or edited book invalidates work started before the change.
-        repository.invalidate(settings.book_id).await?;
         Ok(settings)
     }
 
@@ -131,6 +163,9 @@ impl NarrationService {
         if !initial.enabled {
             return Ok(NarrationPlan::narrator(&request.text));
         }
+        if !initial.merge_sources.is_empty() {
+            return Err(error("MERGE_REQUIRED"));
+        }
         let session = repository
             .session(request.book_id, &request.content_version)
             .await?;
@@ -145,12 +180,22 @@ impl NarrationService {
         }
         let profile = LlmService::selected_profile(config_path)?;
         let credential = credential_for(&profile, credential)?;
-        let key = cache_key(&request, &profile, settings.identity_revision)?;
+        let key = cache_key(
+            &request,
+            &profile,
+            settings.identity_revision,
+            &settings.scope_id,
+        )?;
         if let Some(plan) = repository.cached(&session, &key).await? {
             return Ok(plan);
         }
         let checkpoint = repository
-            .checkpoint(&session, request.position, settings.identity_revision)
+            .checkpoint(
+                &session,
+                request.position,
+                settings.identity_revision,
+                &settings.scope_id,
+            )
             .await?;
         let history = repository
             .history(
@@ -159,6 +204,7 @@ impl NarrationService {
                 checkpoint.through_seq,
                 checkpoint.position,
                 settings.identity_revision,
+                &settings.scope_id,
             )
             .await?;
         let result = analyze(
@@ -279,11 +325,12 @@ fn cache_key(
     request: &NarrationRequest,
     profile: &LlmProviderProfile,
     identity_revision: u32,
+    scope_id: &str,
 ) -> Result<String, CoreError> {
     Ok(format!(
         "{:x}",
         Sha256::digest(serde_json::to_vec(
-            &json!({"schema":1,"request":request,"profile":profile.id,"revision":profile.revision,"identity":identity_revision})
+            &json!({"schema":1,"request":request,"profile":profile.id,"revision":profile.revision,"identity":identity_revision,"scope":scope_id})
         )?)
     ))
 }

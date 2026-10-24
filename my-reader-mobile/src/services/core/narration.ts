@@ -1,15 +1,18 @@
 import type { Library } from "@my-reader/tools/types/library"
 import {
-  narrationGetSettings,
+  narrationResolveSettings,
   narrationSaveSettings,
   narrationImport,
   narrationPrepare,
+  narrationPreviewMerge,
+  narrationMergeSettings,
   type BookNarrationSettings,
   type CharacterImportRequest,
   type NarrationRequest,
   type NarrationVoice,
+  type NarrationMergePlan,
 } from "my-reader-core"
-import { librarySidecarRootUri } from "../fs/library-paths"
+import { librarySidecarRootUri, libraryRootUri } from "../fs/library-paths"
 import { toNativeFilesystemPath } from "../fs/path"
 import { appConfigPath } from "./app-config"
 import { selectedLlmCredential } from "./llm"
@@ -18,12 +21,18 @@ function root(library: Library) {
   return toNativeFilesystemPath(librarySidecarRootUri(library))
 }
 export function getBookNarration(library: Library, bookId: number) {
-  return narrationGetSettings(root(library), bookId)
+  return narrationResolveSettings(
+    root(library),
+    toNativeFilesystemPath(libraryRootUri(library)),
+    library.libraryType ?? "calibre",
+    bookId,
+  )
 }
-export function saveBookNarration(
+export async function saveBookNarration(
   library: Library,
   settings: BookNarrationSettings,
 ) {
+  await getBookNarration(library, settings.bookId)
   return narrationSaveSettings(root(library), settings)
 }
 export async function importBookCharacters(
@@ -31,6 +40,7 @@ export async function importBookCharacters(
   request: CharacterImportRequest,
   signal?: AbortSignal,
 ) {
+  await getBookNarration(library, request.bookId)
   return narrationImport(
     root(library),
     appConfigPath,
@@ -65,4 +75,29 @@ export type {
   BookCharacter,
   CharacterImportCandidate,
   NarrationVoice,
+  NarrationMergePlan,
 } from "my-reader-core"
+
+export async function previewBookNarrationMerge(
+  library: Library,
+  bookId: number,
+  automatic: boolean,
+) {
+  await getBookNarration(library, bookId)
+  return narrationPreviewMerge(
+    root(library),
+    appConfigPath,
+    bookId,
+    automatic,
+    automatic ? await selectedLlmCredential() : undefined,
+  )
+}
+
+export async function mergeBookNarration(
+  library: Library,
+  bookId: number,
+  plan: NarrationMergePlan,
+) {
+  await getBookNarration(library, bookId)
+  return narrationMergeSettings(root(library), bookId, plan)
+}

@@ -88,6 +88,8 @@ fn export_tauri_specta_typescript_bindings() {
             my_reader_lib::commands::narration::cancel_book_narration::<tauri::Wry>,
             my_reader_lib::commands::narration::import_book_characters::<tauri::Wry>,
             my_reader_lib::commands::narration::prepare_book_narration::<tauri::Wry>,
+            my_reader_lib::commands::narration::preview_book_narration_merge::<tauri::Wry>,
+            my_reader_lib::commands::narration::merge_book_narration::<tauri::Wry>,
             my_reader_lib::commands::tts::list_qwen_tts_models,
             my_reader_lib::commands::tts::list_qwen_tts_presets,
             my_reader_lib::commands::tts::discover_qwen_tts_voices::<tauri::Wry>,

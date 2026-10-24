@@ -33,16 +33,24 @@ pub struct BookCharacter {
 #[serde(rename_all = "camelCase")]
 pub struct BookNarrationSettings {
     pub book_id: i64,
+    #[serde(default)]
+    pub scope_id: String,
+    #[serde(default)]
+    pub scope_name: Option<String>,
     pub enabled: bool,
     pub revision: u32,
     pub identity_revision: u32,
     pub characters: Vec<BookCharacter>,
+    #[serde(default)]
+    pub merge_sources: Vec<NarrationMergeSource>,
 }
 
 impl BookNarrationSettings {
     pub fn new(book_id: i64) -> Self {
         Self {
             book_id,
+            scope_id: format!("book:{book_id}"),
+            scope_name: None,
             enabled: false,
             revision: 0,
             identity_revision: 0,
@@ -55,8 +63,34 @@ impl BookNarrationSettings {
                 instructions: String::new(),
                 source: None,
             }],
+            merge_sources: Vec::new(),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NarrationMergeSource {
+    pub scope_id: String,
+    pub title: String,
+    pub characters: Vec<BookCharacter>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NarrationMergeChoice {
+    pub character_id: String,
+    pub target_character_id: Option<String>,
+    pub prefer_incoming: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NarrationMergePlan {
+    pub scope_id: String,
+    pub source_scope_id: String,
+    pub revision: u32,
+    pub choices: Vec<NarrationMergeChoice>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

@@ -25,7 +25,30 @@ import {
 import ReaderTtsSettingsSheet from "./ReaderTtsSettingsSheet"
 
 jest.mock("./BookNarrationSettings", () => ({
-  BookNarrationSettings: () => null,
+  BookNarrationSettings: ({
+    book,
+    onSubviewChange,
+  }: {
+    book?: unknown
+    onSubviewChange: (
+      view: { title: string; onBack: () => void } | null,
+    ) => void
+  }) =>
+    book
+      ? mockReact.createElement(
+          mockPressable,
+          {
+            accessibilityRole: "button",
+            accessibilityLabel: "Edit Alice",
+            onPress: () =>
+              onSubviewChange({
+                title: "Alice",
+                onBack: () => onSubviewChange(null),
+              }),
+          },
+          mockReact.createElement(mockText, null, "Edit Alice"),
+        )
+      : null,
 }))
 
 let mockPlaybackRate = 1
@@ -559,4 +582,28 @@ describe("ReaderTtsSettingsSheet", () => {
     )
     expect(screen.queryByText("settings.tts.refreshVoices")).toBeNull()
   })
+})
+
+it("uses the role title and hides playback controls while a character subview is open", async () => {
+  const book = {
+    library: {
+      id: "library",
+      name: "Library",
+      path: "",
+      bookCount: 1,
+      sourceType: "local" as const,
+    },
+    bookId: 7,
+    title: "Novel",
+    authors: [],
+    language: "en",
+  }
+  render(<ReaderTtsSettingsSheet language="en" palette={palette} book={book} />)
+  await screen.findByText("settings.tts.engine")
+  fireEvent.press(screen.getByRole("button", { name: "Edit Alice" }))
+  expect(screen.getByText("Alice")).toBeTruthy()
+  expect(screen.queryByText("settings.tts.engine")).toBeNull()
+  expect(screen.queryByText("settings.tts.speed")).toBeNull()
+  fireEvent.press(screen.getByRole("button", { name: "back" }))
+  expect(screen.getByText("settings.tts.engine")).toBeTruthy()
 })

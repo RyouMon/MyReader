@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react"
+import type { TFunction } from "i18next"
+import { NarrationMergeEditor } from "./NarrationMergeEditor"
+import { useCallback, useEffect, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
@@ -32,8 +34,11 @@ import { errorMessage } from "@/lib/error-presentation"
 import type {
   BookCharacterDto,
   CharacterImportCandidateDto,
+  NarrationMergePlanDto,
   TtsConfigDto,
 } from "@/lib/tauri-specta"
+
+export type NarrationSubview = { title: string; onBack: () => void }
 
 export type NarrationBook = {
   libraryId: string
@@ -46,48 +51,63 @@ export type NarrationBook = {
 export function BookNarrationSettings({
   book,
   config,
+  onSubviewChange,
 }: {
   book: NarrationBook
   config: TtsConfigDto
+  onSubviewChange?: (view: NarrationSubview | null) => void
 }) {
   const { t } = useTranslation()
-  const { query, save, importCharacters } = useBookNarration(
-    book.libraryId,
-    book.bookId,
-  )
+  const { query, save, importCharacters, previewMerge, merge } =
+    useBookNarration(book.libraryId, book.bookId)
   const [confirmEnable, setConfirmEnable] = useState(false)
   const [enableError, setEnableError] = useState<string | null>(null)
+  const [subview, setSubview] = useState<NarrationSubview | null>(null)
+  const changeSubview = useCallback(
+    (view: NarrationSubview | null) => {
+      setSubview(view)
+      onSubviewChange?.(view)
+    },
+    [onSubviewChange],
+  )
   const settings = query.data
-  const error = save.error ?? importCharacters.error ?? query.error
+  const error =
+    save.error ??
+    importCharacters.error ??
+    previewMerge.error ??
+    merge.error ??
+    query.error
   if (!settings)
     return error ? <FieldError>{errorMessage(error)}</FieldError> : null
   return (
     <section className="flex flex-col gap-3">
-      <Field orientation="horizontal">
-        <FieldLabel htmlFor="narration-enabled">
-          {t("narration.enabled")}
-        </FieldLabel>
-        <Switch
-          id="narration-enabled"
-          checked={settings.enabled}
-          disabled={save.isPending}
-          onCheckedChange={(enabled) => {
-            setEnableError(null)
-            if (!enabled) {
-              save.mutate({ ...settings, enabled })
-              return
-            }
-            void api
-              .getLlmConfig()
-              .then((config) => {
-                if (!config.defaultProfileId)
-                  setEnableError(t("narration.llmRequired"))
-                else setConfirmEnable(true)
-              })
-              .catch((value) => setEnableError(errorMessage(value)))
-          }}
-        />
-      </Field>
+      {!subview ? (
+        <Field orientation="horizontal">
+          <FieldLabel htmlFor="narration-enabled">
+            {t("narration.enabled")}
+          </FieldLabel>
+          <Switch
+            id="narration-enabled"
+            checked={settings.enabled}
+            disabled={save.isPending}
+            onCheckedChange={(enabled) => {
+              setEnableError(null)
+              if (!enabled) {
+                save.mutate({ ...settings, enabled })
+                return
+              }
+              void api
+                .getLlmConfig()
+                .then((config) => {
+                  if (!config.defaultProfileId)
+                    setEnableError(t("narration.llmRequired"))
+                  else setConfirmEnable(true)
+                })
+                .catch((value) => setEnableError(errorMessage(value)))
+            }}
+          />
+        </Field>
+      ) : null}
       {enableError ? <FieldError>{enableError}</FieldError> : null}
       {error ? <FieldError>{errorMessage(error)}</FieldError> : null}
       <Dialog open={confirmEnable} onOpenChange={setConfirmEnable}>
@@ -111,6 +131,11 @@ export function BookNarrationSettings({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {settings.enabled && settings.scopeName && !subview ? (
+        <p className="text-sm text-muted-foreground">
+          {t("narration.series", { name: settings.scopeName })}
+        </p>
+      ) : null}
       {settings.enabled ? (
         <BookCharacters
           book={book}
@@ -118,6 +143,9 @@ export function BookNarrationSettings({
           settings={settings}
           save={save}
           importCharacters={importCharacters}
+          previewMerge={previewMerge}
+          merge={merge}
+          onSubviewChange={changeSubview}
         />
       ) : null}
     </section>
@@ -130,12 +158,18 @@ function BookCharacters({
   settings,
   save,
   importCharacters,
+  previewMerge,
+  merge,
+  onSubviewChange,
 }: {
   book: NarrationBook
   config: TtsConfigDto
   settings: NonNullable<ReturnType<typeof useBookNarration>["query"]["data"]>
   save: ReturnType<typeof useBookNarration>["save"]
   importCharacters: ReturnType<typeof useBookNarration>["importCharacters"]
+  previewMerge: ReturnType<typeof useBookNarration>["previewMerge"]
+  merge: ReturnType<typeof useBookNarration>["merge"]
+  onSubviewChange?: (view: NarrationSubview | null) => void
 }) {
   const { t } = useTranslation()
   const [draft, setDraft] = useState<BookCharacterDto | null>(null)
@@ -143,6 +177,28 @@ function BookCharacters({
     CharacterImportCandidateDto[] | null
   >(null)
   const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [mergePlan, setMergePlan] = useState<NarrationMergePlanDto | null>(null)
+  const subviewTitle = characterSubviewTitle(
+    draft,
+    Boolean(candidates),
+    Boolean(mergePlan),
+    t,
+  )
+  useEffect(() => {
+    onSubviewChange?.(
+      subviewTitle
+        ? {
+            title: subviewTitle,
+            onBack: () => {
+              setDraft(null)
+              setCandidates(null)
+              setMergePlan(null)
+            },
+          }
+        : null,
+    )
+    return () => onSubviewChange?.(null)
+  }, [subviewTitle, onSubviewChange])
   const commit = (characters: BookCharacterDto[]) =>
     save.mutate(
       { ...settings, characters },
@@ -152,6 +208,44 @@ function BookCharacters({
           setCandidates(null)
         },
       },
+    )
+  if (mergePlan)
+    return (
+      <NarrationMergeEditor
+        settings={settings}
+        plan={mergePlan}
+        onChange={setMergePlan}
+        onCancel={() => setMergePlan(null)}
+        saving={merge.isPending}
+        onSave={() =>
+          merge.mutate(mergePlan, {
+            onSuccess: () => {
+              setMergePlan(null)
+            },
+          })
+        }
+      />
+    )
+  if (settings.mergeSources.length > 0)
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="text-sm font-medium">{t("narration.merge")}</p>
+        <Button
+          disabled={previewMerge.isPending}
+          onClick={() => previewMerge.mutate(true, { onSuccess: setMergePlan })}
+        >
+          {t("narration.autoMerge")}
+        </Button>
+        <Button
+          variant="outline"
+          disabled={previewMerge.isPending}
+          onClick={() =>
+            previewMerge.mutate(false, { onSuccess: setMergePlan })
+          }
+        >
+          {t("narration.manualMerge")}
+        </Button>
+      </div>
     )
   return draft ? (
     <CharacterEditor
@@ -530,4 +624,19 @@ function CharacterEditor({
       </div>
     </form>
   )
+}
+
+function characterSubviewTitle(
+  character: { id: string; name: string } | null,
+  importing: boolean,
+  merging: boolean,
+  t: TFunction,
+) {
+  if (character)
+    return character.id === "narrator"
+      ? t("narration.narrator")
+      : character.name || t("narration.add")
+  if (importing) return t("narration.import")
+  if (merging) return t("narration.merge")
+  return null
 }
