@@ -240,18 +240,9 @@ try {
     run(
       "maestro",
       [
-        // Bind the driver directly to the same dedicated emulator used for
-        // installation and fixture setup.
-        ...(platform === "android"
-          ? [
-              "--host",
-              "127.0.0.1",
-              "--port",
-              String(Number(device.slice("emulator-".length)) + 1),
-            ]
-          : []),
+        "--device",
+        device,
         "test",
-        ...(platform === "ios" ? ["--udid", device] : []),
         "--platform",
         platform,
         "--config",
