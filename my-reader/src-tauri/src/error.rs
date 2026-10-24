@@ -136,13 +136,19 @@ impl From<my_reader_core::CoreError> for AppError {
                 }
             }
             my_reader_core::CoreError::Sync(message) => Self::Sync(message),
-            error @ my_reader_core::CoreError::Tts { .. } => {
-                use my_reader_core::{api::sync::SyncService, models::SyncFailureKind};
-                match SyncService::failure_kind(&error) {
-                    SyncFailureKind::Configuration => Self::Config(error.to_string()),
-                    SyncFailureKind::Credential => Self::Credential(error.to_string()),
-                    SyncFailureKind::Connectivity => Self::Storage(error.to_string()),
-                    _ => Self::Tts(error.to_string()),
+            my_reader_core::CoreError::Tts { kind, message } => {
+                use my_reader_core::TtsErrorKind;
+                match kind {
+                    TtsErrorKind::Unauthorized => {
+                        Self::Credential(format!("TTS_ERROR: {kind}:{message}"))
+                    }
+                    TtsErrorKind::Network
+                    | TtsErrorKind::Timeout
+                    | TtsErrorKind::Unavailable
+                    | TtsErrorKind::RateLimited => {
+                        Self::Storage(format!("TTS_ERROR: {kind}:{message}"))
+                    }
+                    _ => Self::Tts(format!("{kind}:{message}")),
                 }
             }
             my_reader_core::CoreError::DataIntegrity(message) => Self::DataIntegrity(message),
@@ -249,5 +255,51 @@ impl serde::Serialize for AppError {
         S: serde::ser::Serializer,
     {
         self.as_kind().serialize(serializer)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use my_reader_core::{CoreError, TtsErrorKind};
+
+    #[test]
+    fn tts_errors_keep_speech_context_and_recovery_categories() {
+        let convert = |kind| {
+            AppError::from(CoreError::Tts {
+                kind,
+                message: "QWEN_REQUEST_FAILED (HTTP_400; request_id=request-1): {}".into(),
+            })
+        };
+        for kind in [
+            TtsErrorKind::Configuration,
+            TtsErrorKind::InvalidRequest,
+            TtsErrorKind::PayloadTooLarge,
+            TtsErrorKind::Unsupported,
+            TtsErrorKind::InvalidAudio,
+            TtsErrorKind::InvalidResponse,
+            TtsErrorKind::Cache,
+        ] {
+            let serialized = serde_json::to_value(convert(kind)).unwrap();
+            assert_eq!(serialized["kind"], "Tts");
+            assert_eq!(
+                serialized["message"],
+                format!(
+                    "TTS_ERROR: {kind}:QWEN_REQUEST_FAILED (HTTP_400; request_id=request-1): {{}}"
+                )
+            );
+        }
+        assert!(matches!(
+            convert(TtsErrorKind::Unauthorized).as_kind(),
+            ErrorKind::Credential(_)
+        ));
+        for kind in [
+            TtsErrorKind::Timeout,
+            TtsErrorKind::Network,
+            TtsErrorKind::Unavailable,
+            TtsErrorKind::RateLimited,
+        ] {
+            assert!(matches!(convert(kind).as_kind(), ErrorKind::Storage(_)));
+        }
     }
 }

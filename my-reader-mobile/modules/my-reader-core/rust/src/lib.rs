@@ -120,13 +120,19 @@ impl CoreFfiError {
             CoreError::Serialize(message) => Self::Serialize(message),
             CoreError::Storage(message) => Self::Storage(message),
             CoreError::Sync(message) => Self::Sync(message),
-            error @ CoreError::Tts { .. } => {
-                use my_reader_core::{api::sync::SyncService, models::SyncFailureKind};
-                match SyncService::failure_kind(&error) {
-                    SyncFailureKind::Configuration => Self::Config(error.to_string()),
-                    SyncFailureKind::Credential => Self::Credential(error.to_string()),
-                    SyncFailureKind::Connectivity => Self::Request(error.to_string()),
-                    _ => Self::Tts(error.to_string()),
+            CoreError::Tts { kind, message } => {
+                use my_reader_core::TtsErrorKind;
+                match kind {
+                    TtsErrorKind::Unauthorized => {
+                        Self::Credential(format!("TTS_ERROR: {kind}:{message}"))
+                    }
+                    TtsErrorKind::Network
+                    | TtsErrorKind::Timeout
+                    | TtsErrorKind::Unavailable
+                    | TtsErrorKind::RateLimited => {
+                        Self::Request(format!("TTS_ERROR: {kind}:{message}"))
+                    }
+                    _ => Self::Tts(format!("{kind}:{message}")),
                 }
             }
             CoreError::DataIntegrity(message) => Self::DataIntegrity(message),
@@ -245,20 +251,29 @@ mod tests {
             convert(TtsErrorKind::Unauthorized),
             CoreFfiError::Credential(_)
         ));
-        assert!(matches!(
-            convert(TtsErrorKind::Configuration),
-            CoreFfiError::Config(_)
-        ));
         for kind in [
             TtsErrorKind::Timeout,
             TtsErrorKind::RateLimited,
             TtsErrorKind::Network,
+            TtsErrorKind::Unavailable,
         ] {
             assert!(matches!(convert(kind), CoreFfiError::Request(_)));
         }
-        assert!(matches!(
-            convert(TtsErrorKind::InvalidAudio),
-            CoreFfiError::Tts(_)
-        ));
+        for kind in [
+            TtsErrorKind::Configuration,
+            TtsErrorKind::InvalidRequest,
+            TtsErrorKind::PayloadTooLarge,
+            TtsErrorKind::Unsupported,
+            TtsErrorKind::InvalidAudio,
+            TtsErrorKind::InvalidResponse,
+            TtsErrorKind::Cache,
+        ] {
+            let error = convert(kind);
+            assert!(matches!(&error, CoreFfiError::Tts(_)));
+            assert_eq!(
+                error.to_string(),
+                format!("TTS_ERROR: {kind}:credential network 503 diagnostic")
+            );
+        }
     }
 }
