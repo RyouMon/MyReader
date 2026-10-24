@@ -110,12 +110,14 @@ impl BookTransferService {
         storage: &LibraryStorageConfig,
         observer: &dyn BookUploadObserver,
     ) -> Result<BookUploadReport, CoreError> {
+        let _location = super::library_location_gate::acquire(sidecar_root, storage).await?;
         if !Self::has_pending_books(sidecar_root).await? {
             return Ok(BookUploadReport::default());
         }
         if matches!(storage, LibraryStorageConfig::LocalDirect { .. }) {
             return Err(CoreError::Config("REMOTE_LIBRARY_STORAGE_REQUIRED".into()));
         }
+        super::library_location::ensure_root(storage).await?;
         let (operator, upload_progress) =
             transport::build_storage_operator_with_upload_progress(storage)?;
         let book_upload_operator =

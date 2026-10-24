@@ -332,5 +332,37 @@
     "loading": "Caricamento…",
     "retry": "Riprova",
     "noResults": "Nessun libro soddisfa tutte le condizioni."
+  },
+  "libraryLocation": {
+    "title": "Posizione della biblioteca",
+    "action": "Cambia posizione",
+    "missingTitle": "Cartella della biblioteca non trovata",
+    "unavailableTitle": "Impossibile accedere alla biblioteca",
+    "currentPath": "Percorso attuale",
+    "sourceRoot": "Radice della fonte",
+    "effectivePath": "Percorso completo",
+    "dataSource": "Fonte dati",
+    "choose": "Scegli cartella",
+    "save": "Verifica e salva",
+    "retry": "Sincronizza ora",
+    "saved": "Posizione salvata. Puoi riprovare la sincronizzazione.",
+    "keepData": "Scegli la nuova posizione della stessa biblioteca. I dati di lettura e i download saranno conservati.",
+    "technicalDetails": "Dettagli tecnici",
+    "sourceSettings": "Impostazioni della fonte",
+    "up": "Cartella superiore",
+    "problems": {
+      "root_missing": "La cartella salvata della libreria non è stata trovata. Se è stata spostata, scegli la nuova posizione.",
+      "path_unavailable": "Impossibile accedere al percorso della libreria. Controlla la cartella e le autorizzazioni dell’account o scegli la nuova posizione.",
+      "invalid_library": "La cartella è accessibile ma non contiene una biblioteca valida del tipo originale.",
+      "identity_unknown": "Impossibile confermare l’identità della biblioteca originale. La posizione non è stata modificata.",
+      "identity_mismatch": "Questa è un’altra biblioteca. La posizione non è stata modificata e i dati di lettura non sono stati uniti.",
+      "credential": "Accesso negato. Verifica i permessi dell’account o rinnova l’accesso alla cartella.",
+      "connectivity": "Impossibile connettersi al server. Verifica la connessione e riprova.",
+      "data_source": "Impossibile accedere alla fonte dati. Verifica prima le sue impostazioni.",
+      "busy": "È in corso una sincronizzazione o un caricamento. Attendi il completamento.",
+      "changed": "La biblioteca è cambiata durante la verifica. Riapri questa pagina.",
+      "managed": "Questa biblioteca è gestita internamente dall’app. La posizione non può essere modificata.",
+      "save_failed": "Impossibile salvare la posizione. La configurazione originale è stata conservata."
+    }
   }
 }

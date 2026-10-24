@@ -66,6 +66,8 @@ export const api = {
     }
   },
   listLibraries: wrap(commands.listLibraries),
+  getLibraryLocation: wrap(commands.getLibraryLocation),
+  relocateLibrary: wrap(commands.relocateLibrary),
   listDataSources: wrap(commands.listDataSources),
   testWebdavConnection: wrap(commands.testWebdavConnection),
   webdavListFolders: wrap(commands.webdavListFolders),

@@ -203,7 +203,13 @@ async fn failed_download_should_fail_the_range_and_drop_remaining_requests() {
         .load_range(&incremental_prefix("document"))
         .await
         .unwrap_err();
-    assert!(error.to_string().contains("NotFound"));
+    assert!(
+        matches!(&error, SyncError::InvalidRemoteObject { object_path, .. } if object_path.ends_with("/00"))
+    );
+    assert_eq!(
+        crate::api::sync::SyncService::failure_kind(&error.into()),
+        crate::models::SyncFailureKind::DataIntegrity
+    );
     assert!(client.started.load(Ordering::SeqCst) < OBJECT_COUNT);
     assert_eq!(client.active.load(Ordering::SeqCst), 0);
 }

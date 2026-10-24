@@ -14,6 +14,8 @@ fn export_tauri_specta_typescript_bindings() {
             my_reader_lib::commands::app_update::set_app_update_preferences::<tauri::Wry>,
             my_reader_lib::commands::app_update::open_app_update_installer::<tauri::Wry>,
             my_reader_lib::commands::library::list_libraries::<tauri::Wry>,
+            my_reader_lib::commands::library::get_library_location::<tauri::Wry>,
+            my_reader_lib::commands::library::relocate_library::<tauri::Wry>,
             my_reader_lib::commands::source::list_data_sources,
             my_reader_lib::commands::source::test_webdav_connection,
             my_reader_lib::commands::library::add_library::<tauri::Wry>,

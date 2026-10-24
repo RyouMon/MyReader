@@ -10,6 +10,8 @@ export const commands = {
 	setAppUpdatePreferences: (autoCheck: boolean, autoDownload: boolean) => typedError<AppUpdateSnapshot, ErrorKind>(__TAURI_INVOKE("set_app_update_preferences", { autoCheck, autoDownload })),
 	openAppUpdateInstaller: () => typedError<null, ErrorKind>(__TAURI_INVOKE("open_app_update_installer")),
 	listLibraries: () => typedError<LibraryInfo[], ErrorKind>(__TAURI_INVOKE("list_libraries")),
+	getLibraryLocation: (id: string, diagnose: boolean) => typedError<LibraryLocationInfo, ErrorKind>(__TAURI_INVOKE("get_library_location", { id, diagnose })),
+	relocateLibrary: (id: string, path: string) => typedError<LibraryLocationInfo, ErrorKind>(__TAURI_INVOKE("relocate_library", { id, path })),
 	listDataSources: () => typedError<DataSourceDto[], ErrorKind>(__TAURI_INVOKE("list_data_sources")),
 	testWebdavConnection: (input: TestWebdavConnectionInput) => typedError<null, ErrorKind>(__TAURI_INVOKE("test_webdav_connection", { input })),
 	addLibrary: (path: string, name: string | null) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("add_library", { path, name })),
@@ -273,6 +275,19 @@ export type LibraryInfo = {
 	sourceType: string | null,
 	dataSourceId: string | null,
 	sourcePath: string | null,
+};
+
+export type LibraryLocationInfo = {
+	libraryId: string,
+	libraryName: string,
+	dataSourceId: string | null,
+	dataSourceName: string | null,
+	sourceRoot: string,
+	path: string,
+	effectivePath: string,
+	canRelocate: boolean,
+	problem: string | null,
+	detail: string | null,
 };
 
 export type LibraryType = "calibre" | "myreader";

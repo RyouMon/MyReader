@@ -411,6 +411,8 @@ impl SyncService {
         storage: &LibraryStorageConfig,
         observer: &dyn SyncObserver,
     ) -> Result<SidecarSyncReport, CoreError> {
+        let _location = super::library_location_gate::acquire(sidecar_root, storage).await?;
+        super::library_location::ensure_root(storage).await?;
         let operator = transport::build_storage_operator(storage)?;
         Self::sync_sidecar_with_operator_observed(
             sidecar_root,
@@ -526,6 +528,7 @@ impl SyncService {
         storage: &LibraryStorageConfig,
         observer: &dyn SyncObserver,
     ) -> Result<LibrarySyncReport, CoreError> {
+        let _location = super::library_location_gate::acquire(sidecar_root, storage).await?;
         let started_at = Instant::now();
         let config = super::config::ConfigService::load(config_path)?
             .ok_or_else(|| CoreError::NotFound("APP_CONFIG_NOT_FOUND".into()))?;
@@ -538,15 +541,19 @@ impl SyncService {
         let operator = transport::build_storage_operator(storage)?;
 
         let myreader = if scope_has_myreader(options.scope) {
-            match Self::sync_sidecar_with_operator_observed(
-                sidecar_root,
-                library_root,
-                now_ms,
-                options.sidecar_mode,
-                &operator,
-                is_remote_storage(storage),
-                observer,
-            )
+            match async {
+                super::library_location::ensure_root(storage).await?;
+                Self::sync_sidecar_with_operator_observed(
+                    sidecar_root,
+                    library_root,
+                    now_ms,
+                    options.sidecar_mode,
+                    &operator,
+                    is_remote_storage(storage),
+                    observer,
+                )
+                .await
+            }
             .await
             {
                 Ok(report) => {

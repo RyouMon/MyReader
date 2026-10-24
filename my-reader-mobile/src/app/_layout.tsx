@@ -118,6 +118,14 @@ function RootNavigator() {
             }}
           />
           <Stack.Screen
+            name="library-location"
+            options={{
+              contentStyle: { backgroundColor: palette.background },
+              headerShown: true,
+              presentation: "modal",
+            }}
+          />
+          <Stack.Screen
             name="update-notes"
             options={{
               contentStyle: { backgroundColor: palette.background },

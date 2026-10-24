@@ -2,6 +2,10 @@ import { syncFailureDetail, syncFailureKeys } from "@my-reader/i18n/mobile"
 import { formatHumanReadableTime } from "@my-reader/tools/human-readable-time"
 import * as Haptics from "expo-haptics"
 import { useTranslation } from "react-i18next"
+import { useState } from "react"
+import { router } from "expo-router"
+import { useLibraryLocation } from "@/src/domain/library/hooks/use-library-location"
+import { LibraryLocationNotice } from "@/src/components/library-location-notice"
 import { Platform } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
@@ -249,6 +253,69 @@ function SyncHistoryDetails({
   )
 }
 
+function SyncFailureNotice({
+  library,
+  failure,
+}: {
+  library: NonNullable<SyncPresentation["library"]>
+  failure: NonNullable<NonNullable<SyncPresentation["history"]>["lastFailure"]>
+}) {
+  const { t } = useTranslation()
+  const palette = useThemePalette()
+  const failureKeys = syncFailureKeys(failure.failureKind)
+  const location = useLibraryLocation(library)
+  const [showDetails, setShowDetails] = useState(false)
+  return (
+    <View className="gap-3">
+      {location.data ? (
+        <LibraryLocationNotice
+          location={{
+            ...location.data,
+            detail: [location.data.detail, syncFailureDetail("", failure)]
+              .filter(Boolean)
+              .join("\n\n"),
+          }}
+          sourceType={library.sourceType}
+        />
+      ) : null}
+      {!location.data?.problem ? (
+        <Text
+          selectable
+          className="text-base"
+          style={{ color: palette.text }}
+          testID="sync-status-error-detail"
+        >
+          {t(failureKeys.detail)}
+        </Text>
+      ) : null}
+      {location.data?.canRelocate ? (
+        <Button
+          title={t("libraryLocation.action")}
+          onPress={() =>
+            router.push({
+              pathname: "/library-location",
+              params: { libraryId: library.id },
+            })
+          }
+        />
+      ) : null}
+      {!location.data ? (
+        <Button
+          title={t("libraryLocation.technicalDetails")}
+          onPress={() => setShowDetails((value) => !value)}
+        />
+      ) : null}
+      {!location.data && showDetails ? (
+        <ScrollView className="max-h-40" nestedScrollEnabled>
+          <Text selectable style={{ color: palette.textMuted }}>
+            {syncFailureDetail("", failure)}
+          </Text>
+        </ScrollView>
+      ) : null}
+    </View>
+  )
+}
+
 export default function SyncStatusScreen() {
   const { t } = useTranslation()
   const palette = useThemePalette()
@@ -328,14 +395,7 @@ export default function SyncStatusScreen() {
 
         <View className="gap-5 px-4 py-4 pb-6">
           {failure ? (
-            <Text
-              selectable
-              className="text-base"
-              style={{ color: palette.text }}
-              testID="sync-status-error-detail"
-            >
-              {syncFailureDetail(t(failureKeys.detail), failure)}
-            </Text>
+            <SyncFailureNotice library={library} failure={failure} />
           ) : null}
           <SyncHistoryDetails
             libraryName={library.name}

@@ -437,3 +437,58 @@ async fn refresh_onedrive_library_should_return_not_found_when_library_id_is_unk
         err.message
     );
 }
+
+#[tokio::test]
+async fn relocate_library_should_preserve_registry_identity_and_refresh_live_state() {
+    let app = TestApp::new();
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("external");
+    let library: LibraryInfo = invoke_ok(
+        &app,
+        "create_myreader_library",
+        json!({ "path": root, "name": "Relocated books" }),
+    );
+    let description: serde_json::Value = invoke_ok(
+        &app,
+        "get_library_location",
+        json!({ "id": library.id, "diagnose": false }),
+    );
+    assert_eq!(description["libraryName"], "Relocated books");
+    assert_eq!(description["canRelocate"], true);
+    let target = temp.path().join("moved");
+    fs::rename(&root, &target).unwrap();
+    let diagnosis: serde_json::Value = invoke_ok(
+        &app,
+        "get_library_location",
+        json!({ "id": library.id, "diagnose": true }),
+    );
+    assert_eq!(diagnosis["problem"], "root_missing");
+    let result: serde_json::Value = invoke_ok(
+        &app,
+        "relocate_library",
+        json!({ "id": library.id, "path": root }),
+    );
+    assert_eq!(result["problem"], "root_missing");
+    let result: serde_json::Value = invoke_ok(
+        &app,
+        "relocate_library",
+        json!({ "id": library.id, "path": target }),
+    );
+    assert!(result["problem"].is_null(), "{result}");
+    let current = app.config_snapshot();
+    let persisted = read_persisted_config(&app).unwrap();
+    assert_eq!(
+        serde_json::to_value(&current.libraries).unwrap(),
+        serde_json::to_value(&persisted.libraries).unwrap()
+    );
+    assert_eq!(
+        current.active_library_id.as_deref(),
+        Some(library.id.as_str())
+    );
+    assert_eq!(current.libraries[0].id, library.id);
+    assert_eq!(
+        std::path::Path::new(&current.libraries[0].path),
+        dunce::canonicalize(&target).unwrap()
+    );
+    assert!(!root.exists());
+}

@@ -79,6 +79,11 @@ type LibrarySyncStatusProps = {
   onSync?: () => Promise<void> | void
 }
 
+import {
+  LibraryLocationDialog,
+  LibraryLocationFailure,
+} from "@/components/settings/LibraryLocationDialog"
+
 function statusColorClass(indicator: SyncIndicatorState) {
   switch (indicator) {
     case "failed":
@@ -221,11 +226,13 @@ function SyncHistoryDetails({
   presentation,
   labels,
   showFailure,
+  onRepair,
 }: {
   library: Library
   presentation: SyncPresentation
   labels: ReturnType<typeof useSyncStatusLabels>
   showFailure: boolean
+  onRepair: () => void
 }) {
   const { t } = useTranslation()
   const { activity, history, transientResult, isOffline } = presentation
@@ -242,9 +249,18 @@ function SyncHistoryDetails({
     <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
       <div className="space-y-3">
         {showFailure && lastFailure ? (
-          <p className="select-text whitespace-pre-wrap break-words text-sm text-foreground">
-            {syncFailureDetail(t(failureKeys.detail), lastFailure)}
-          </p>
+          <div className="min-w-0 space-y-3">
+            <LibraryLocationFailure library={library} onRepair={onRepair} />
+            <p className="text-sm">{t(failureKeys.detail)}</p>
+            <details>
+              <summary className="text-sm">
+                {t("libraryLocation.technicalDetails")}
+              </summary>
+              <pre className="max-h-40 overflow-auto whitespace-pre-wrap text-xs [overflow-wrap:anywhere]">
+                {syncFailureDetail("", lastFailure)}
+              </pre>
+            </details>
+          </div>
         ) : null}
         <dl className="space-y-2.5 rounded-lg bg-muted/50 p-3">
           <DetailRow
@@ -307,6 +323,7 @@ export default function LibrarySyncStatus({
   const presentation = useSyncStatusPresentation(library)
   const { activity, indicator, isOffline } = presentation
   const [open, setOpen] = useState(false)
+  const [repairLibrary, setRepairLibrary] = useState<Library | null>(null)
   const [manualSyncPending, setManualSyncPending] = useState(false)
   const displayIndicator =
     manualSyncPending && !activity ? "syncing" : indicator
@@ -403,6 +420,10 @@ export default function LibrarySyncStatus({
                 presentation={presentation}
                 labels={labels}
                 showFailure={failure != null}
+                onRepair={() => {
+                  setOpen(false)
+                  setRepairLibrary(library)
+                }}
               />
 
               <div className="shrink-0 px-4 pb-4 pt-2">
@@ -438,6 +459,13 @@ export default function LibrarySyncStatus({
           )}
         </Popover.Content>
       </Popover.Portal>
+      {repairLibrary && (
+        <LibraryLocationDialog
+          library={repairLibrary}
+          open
+          onOpenChange={() => setRepairLibrary(null)}
+        />
+      )}
     </Popover.Root>
   )
 }

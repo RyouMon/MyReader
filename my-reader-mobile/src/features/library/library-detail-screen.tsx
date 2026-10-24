@@ -306,6 +306,18 @@ export default function LibraryDetailScreen() {
                 variant="secondary"
               />
             </ButtonGroup>
+            {isRemoteSourceType(library.sourceType) ||
+            library.securityScopedBookmark ? (
+              <Button
+                title={t("libraryLocation.action")}
+                onPress={() =>
+                  router.push({
+                    pathname: "/library-location",
+                    params: { libraryId: library.id },
+                  })
+                }
+              />
+            ) : null}
             <SectionCard>
               <ListRow
                 title={t("libraryDetail.libraryType")}

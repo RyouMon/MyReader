@@ -97,6 +97,15 @@ export function SyncRuntime(): null {
     sidecarRuntime.current = runtime
     const unsubscribeWork = subscribeLocalSidecarWork((work) => {
       if (work.libraryId !== useAppStore.getState().activeLibraryId) return
+      if (work.locationChanged) {
+        void runtime
+          .recover()
+          .then(() =>
+            runtime.requestContextualPull(work.libraryId, "library_activated"),
+          )
+          .catch((error) => notifySyncError(error, "recovery"))
+        return
+      }
       runtime.request(
         work.libraryId,
         "push_only",

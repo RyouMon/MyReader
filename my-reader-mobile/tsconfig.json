@@ -23,5 +23,5 @@
     "nativewind-env.d.ts",
     "../packages/tools/src/types/foliate-epub.d.ts"
   ],
-  "exclude": ["app-example"]
+  "exclude": ["app-example", "ios", "android", "node_modules"]
 }
