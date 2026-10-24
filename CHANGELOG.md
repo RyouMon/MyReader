@@ -5,6 +5,31 @@
 MyReader 的重要变更均记录于此。
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [0.19.0] - 2026-10-24
+
+### Added
+
+- Windows、macOS、Linux 和 Android 新增应用更新检查、更新日志与安装包下载，默认每天检查一次，支持手动检查和可选的自动下载；按平台、架构与安装格式选择安装包，校验大小及 SHA-256 后由用户手动打开安装程序，下载完成不会自动安装或重启。iOS 继续通过 App Store 更新（[#127](https://github.com/RyouMon/MyReader/pull/127)）
+
+### Changed
+
+- 桌面设置页统一使用完整内容宽度；Android 更新说明在独立原生面板内展示，并补齐 11 种语言文案（[#127](https://github.com/RyouMon/MyReader/pull/127)）
+- Android 底部 Tab 的按压波纹、选中背景和图标文字随应用主题切换，保持暖色主题与浅色、深色模式下的可读性（[#118](https://github.com/RyouMon/MyReader/pull/118)）
+
+### Fixed
+
+- iOS 阅读器在创建时直接恢复最新保存位置，保留跨设备精确定位信息，避免 EPUB、PDF 先打开第一页再跳转及产生多余导航历史；开书前已有的远端位置不会成为新的历史入口（[#119](https://github.com/RyouMon/MyReader/pull/119)）
+- 修复 Android 重开图书空白、退出时阅读位置未及时保存和 Release 包访问 HTTP WebDAV 的问题，以及 iOS 阅读器零尺寸容器加载、首次分页、字体切换与安全区异常（[#125](https://github.com/RyouMon/MyReader/pull/125)）
+- 修复迟到翻页回调干扰朗读导航、删除图书后旧缓存恢复图书，以及桌面缺少 Web Speech API 时的异常（[#125](https://github.com/RyouMon/MyReader/pull/125)）
+
+### Security
+
+- 更新 Rust TLS 证书验证、根证书和 Zod 依赖，移除未使用的 TLS 功能，修复依赖审计问题且未新增审计豁免（[#119](https://github.com/RyouMon/MyReader/pull/119)、[#125](https://github.com/RyouMon/MyReader/pull/125)）
+
+### Build and Distribution
+
+- 自动串联多平台 Release 构建、质量检查、完整移动端及 Windows/macOS E2E、安装包核验、TestFlight 提交与发布。E2E 失败保留报告和候选包，经复核确认非功能原因后可发布同一批产物；质量检查、构建和产物完整性仍为硬门禁，Linux 安装包继续构建但暂不运行 Release E2E（[#125](https://github.com/RyouMon/MyReader/pull/125)）
+
 ## [0.18.0] - 2026-10-21
 
 ### Added
