@@ -22,10 +22,10 @@ export function LibraryLocationNotice({
   const [details, setDetails] = useState(false)
   function sourceSettings() {
     if (!location.dataSourceId) {
-      router.push("/settings")
+      router.dismissTo("/settings")
       return
     }
-    router.push({
+    router.dismissTo({
       pathname:
         sourceType === "onedrive"
           ? "/settings/onedrive/[dataSourceId]"

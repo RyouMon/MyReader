@@ -487,6 +487,3 @@ async fn target_identity(
 
 #[cfg(test)]
 mod tests;
-
-#[cfg(test)]
-mod remote_tests;

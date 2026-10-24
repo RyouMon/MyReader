@@ -1,3 +1,5 @@
+mod remote;
+
 use super::*;
 use crate::models::{LocalLibraryRequest, SidecarSyncMode};
 use crate::services::library::LibraryService;
@@ -358,7 +360,7 @@ async fn calibre_relocation_checks_database_and_library_uuid() {
     std::fs::remove_file(target.join("metadata.db")).unwrap();
     {
         let db = rusqlite::Connection::open(target.join("metadata.db")).unwrap();
-        db.execute_batch(include_str!("../../../tests/fixtures/calibre_books.sql"))
+        db.execute_batch(include_str!("../../../../tests/fixtures/calibre_books.sql"))
             .unwrap();
         db.execute_batch("CREATE TABLE data (book INTEGER, format TEXT, name TEXT, uncompressed_size INTEGER); CREATE TABLE library_id (uuid TEXT NOT NULL);").unwrap();
         db.execute(

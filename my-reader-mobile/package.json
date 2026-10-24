@@ -179,6 +179,7 @@
       "!src/app/**",
       "src/app/_layout.tsx",
       "src/app/[(]tabs[)]/_layout.tsx",
+      "src/app/library-location.tsx",
       "src/app/reader/[[]id[]].tsx",
       "src/app/update-notes.tsx"
     ],

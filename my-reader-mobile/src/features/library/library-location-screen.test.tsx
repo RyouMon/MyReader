@@ -6,7 +6,7 @@ import {
   waitFor,
 } from "@testing-library/react-native"
 import { router } from "expo-router"
-import LibraryLocationScreen from "./library-location-screen"
+import LibraryLocationScreen from "@/src/app/library-location"
 import { readLibraryLocation } from "@/src/services/core/library-location"
 import { relocateLibrary } from "@/src/domain/library/relocate-library"
 import { pickLocalLibraryDirectory } from "@/src/domain/library/local-library-picker"
@@ -69,7 +69,7 @@ jest.mock("@/src/domain/sync/hooks/use-sync-library", () => ({
   useSyncLibrary: () => ({ syncNow: mockSync, isSyncing: false }),
 }))
 jest.mock("expo-router", () => ({
-  router: { push: jest.fn(), back: jest.fn() },
+  router: { dismissTo: jest.fn(), back: jest.fn() },
   useLocalSearchParams: () => ({ libraryId: "lib" }),
   Stack: { Screen: () => null },
 }))
@@ -189,7 +189,7 @@ it("keeps validation errors and settings access visible without offering success
     .mockResolvedValue({ ...location, problem: "credential" })
   mount()
   fireEvent.press(await screen.findByText("libraryLocation.sourceSettings"))
-  expect(router.push).toHaveBeenCalledWith({
+  expect(router.dismissTo).toHaveBeenCalledWith({
     pathname: "/settings/webdav/[dataSourceId]",
     params: { dataSourceId: "dav" },
   })
@@ -248,7 +248,7 @@ it("allows folder-list retry and routes OneDrive access failures to the source",
   jest.mocked(listRemoteDirectories).mockRejectedValueOnce(new Error("offline"))
   mount()
   fireEvent.press(await screen.findByText("libraryLocation.sourceSettings"))
-  expect(router.push).toHaveBeenCalledWith({
+  expect(router.dismissTo).toHaveBeenCalledWith({
     pathname: "/settings/onedrive/[dataSourceId]",
     params: { dataSourceId: "dav" },
   })

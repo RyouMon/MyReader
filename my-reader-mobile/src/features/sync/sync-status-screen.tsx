@@ -269,7 +269,12 @@ function SyncFailureNotice({
     <View className="gap-3">
       {location.data ? (
         <LibraryLocationNotice
-          location={location.data}
+          location={{
+            ...location.data,
+            detail: [location.data.detail, syncFailureDetail("", failure)]
+              .filter(Boolean)
+              .join("\n\n"),
+          }}
           sourceType={library.sourceType}
         />
       ) : null}
@@ -288,17 +293,19 @@ function SyncFailureNotice({
           title={t("libraryLocation.action")}
           onPress={() =>
             router.push({
-              pathname: "/settings/library-location",
+              pathname: "/library-location",
               params: { libraryId: library.id },
             })
           }
         />
       ) : null}
-      <Button
-        title={t("libraryLocation.technicalDetails")}
-        onPress={() => setShowDetails((value) => !value)}
-      />
-      {showDetails ? (
+      {!location.data ? (
+        <Button
+          title={t("libraryLocation.technicalDetails")}
+          onPress={() => setShowDetails((value) => !value)}
+        />
+      ) : null}
+      {!location.data && showDetails ? (
         <ScrollView className="max-h-40" nestedScrollEnabled>
           <Text selectable style={{ color: palette.textMuted }}>
             {syncFailureDetail("", failure)}

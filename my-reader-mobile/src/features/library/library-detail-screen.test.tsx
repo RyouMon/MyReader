@@ -1,5 +1,11 @@
 import type { Library } from "@my-reader/tools/types/library"
-import { act, render, screen, waitFor } from "@testing-library/react-native"
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react-native"
 import { router } from "expo-router"
 import * as mockReact from "react"
 import {
@@ -46,6 +52,7 @@ jest.mock("expo-router", () => ({
     Screen: jest.fn(() => null),
   },
   router: {
+    push: jest.fn(),
     back: jest.fn(),
     canGoBack: jest.fn(() => true),
     replace: jest.fn(),
@@ -159,6 +166,18 @@ describe("LibraryDetailScreen", () => {
     jest.clearAllMocks()
     mockDeleteAction = undefined
     mockLibraries = [mockLibrary]
+  })
+
+  it("opens the shared repair route for the existing remote library", () => {
+    mockLibraries = [
+      { ...mockLibrary, sourceType: "webdav", sourcePath: "/old" },
+    ]
+    render(<LibraryDetailScreen />)
+    fireEvent.press(screen.getByText("libraryLocation.action"))
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: "/library-location",
+      params: { libraryId: mockLibrary.id },
+    })
   })
 
   it("should pass a serializable danger color to the Android header", () => {

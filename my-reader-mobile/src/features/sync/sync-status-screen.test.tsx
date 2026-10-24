@@ -5,12 +5,15 @@ import {
   waitFor,
   within,
 } from "@testing-library/react-native"
+import { router } from "expo-router"
 
 import SyncStatusScreen from "./sync-status-screen"
 import type { LibrarySyncHistory } from "@/src/store/sync-status-slice"
+import type { LibraryLocation } from "@/src/services/core/library-location"
 
+let mockLocation: LibraryLocation | undefined
 jest.mock("@/src/domain/library/hooks/use-library-location", () => ({
-  useLibraryLocation: () => ({ data: undefined }),
+  useLibraryLocation: () => ({ data: mockLocation }),
 }))
 jest.mock("expo-router", () => ({ router: { push: jest.fn() } }))
 
@@ -166,6 +169,7 @@ jest.mock("@/src/components/ui", () => {
 describe("SyncStatusScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockLocation = undefined
     mockPresentation = {
       activeLibraryId: "library-1",
       activity: undefined,
@@ -175,6 +179,43 @@ describe("SyncStatusScreen", () => {
       isOffline: false,
       library: { id: "library-1", name: "Current Library" },
     }
+  })
+
+  it("opens the affected library outside the tab stack and groups failure details", () => {
+    mockLocation = {
+      libraryId: "library-1",
+      libraryName: "Current Library",
+      sourceRoot: "/dav",
+      path: "/old",
+      effectivePath: "https://example.test/dav/old",
+      canRelocate: true,
+      problem: "path_unavailable",
+      detail: "Root probe returned 404",
+    }
+    mockPresentation = {
+      ...mockPresentation,
+      indicator: "failed",
+      history: {
+        lastFailure: {
+          completedAt: Date.now(),
+          failureStage: "pulling",
+          failureKind: "configuration",
+          message: "Remote path is unavailable",
+        },
+      },
+    }
+    render(<SyncStatusScreen />)
+    expect(
+      screen.getAllByText("libraryLocation.technicalDetails"),
+    ).toHaveLength(1)
+    fireEvent.press(screen.getByText("libraryLocation.technicalDetails"))
+    expect(screen.getByText(/Root probe returned 404/)).toBeTruthy()
+    expect(screen.getByText(/Remote path is unavailable/)).toBeTruthy()
+    fireEvent.press(screen.getByText("libraryLocation.action"))
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: "/library-location",
+      params: { libraryId: "library-1" },
+    })
   })
 
   it("should manually sync only the current active library", async () => {

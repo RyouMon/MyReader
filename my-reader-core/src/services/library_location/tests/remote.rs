@@ -1,5 +1,5 @@
-use super::tests::{fixture, request};
-use super::*;
+use super::super::*;
+use super::{fixture, request};
 use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 

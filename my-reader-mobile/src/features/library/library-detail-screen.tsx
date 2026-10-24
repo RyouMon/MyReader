@@ -312,7 +312,7 @@ export default function LibraryDetailScreen() {
                 title={t("libraryLocation.action")}
                 onPress={() =>
                   router.push({
-                    pathname: "/settings/library-location",
+                    pathname: "/library-location",
                     params: { libraryId: library.id },
                   })
                 }
