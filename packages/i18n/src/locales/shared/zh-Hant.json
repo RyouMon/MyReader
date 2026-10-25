@@ -13,7 +13,7 @@
     "test": "測試連線",
     "testPassed": "連線成功",
     "context": "上下文視窗",
-    "default": "預設供應商",
+    "default": "預設模型",
     "none": "無",
     "clearKey": "移除已儲存的金鑰",
     "save": "儲存",
@@ -33,15 +33,15 @@
     "aliases": "別名",
     "identity": "人物介紹",
     "instructions": "朗讀指令",
-    "provider": "TTS 供應商",
+    "provider": "模型",
     "voice": "音色",
     "defaultVoice": "預設",
     "system": "系統",
     "narrator": "旁白",
     "source": "來源",
-    "enableNotice": "附近的書籍文字將傳送至所選 LLM 供應商。",
+    "enableNotice": "附近的書籍文字將傳送至所選大型語言模型供應商。",
     "enableConfirm": "啟用",
-    "llmRequired": "請先在設定中配置 LLM 供應商。",
+    "llmRequired": "請先在設定中配置大型語言模型供應商。",
     "noCandidates": "未找到可靠的人物資料。",
     "delete": "刪除人物",
     "series": "叢書：{{name}}",
@@ -384,5 +384,24 @@
     "loading": "載入中…",
     "retry": "重試",
     "noResults": "沒有同時符合所有條件的書籍。"
+  },
+  "ttsSettings": {
+    "providers": "TTS 供應商",
+    "defaults": "朗讀設定",
+    "manageProviders": "供應商管理",
+    "test": "測試",
+    "testing": "測試中…",
+    "testSucceeded": "測試成功",
+    "testFailed": "測試失敗"
+  },
+  "aiProviders": {
+    "title": "AI 供應商",
+    "ttsDescription": "提供文字轉語音功能",
+    "llmDescription": "提供自然語言分析能力",
+    "addModel": "新增模型",
+    "newModel": "新模型",
+    "removeModel": "移除模型",
+    "endpointHint": "服務位址需精確填寫至 /v1 層級。",
+    "modelScopedVoices": "音色按模型設定"
   }
 }

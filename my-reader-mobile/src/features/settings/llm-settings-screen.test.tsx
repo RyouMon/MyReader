@@ -47,7 +47,7 @@ jest.mock("@/src/services/core/tts", () => ({
 }))
 jest.mock("@/src/services/core/llm", () => ({
   getLlmConfig: jest.fn(),
-  upsertLlmProfile: jest.fn(),
+  saveLlmProvider: jest.fn(),
   removeLlmProfile: jest.fn(),
   selectLlmProfile: jest.fn(),
   listLlmModels: jest.fn(),
@@ -98,6 +98,7 @@ jest.mock("@/src/components", () => {
     Screen: View,
     SectionCard: View,
     FormLabeledFieldRow: Row,
+    FormFieldSwitch: jest.requireActual("react-native").Switch,
     ListRow: Row,
     ListMenuRow: Menu,
   }
@@ -135,6 +136,18 @@ const profile: llm.LlmProfile = {
 }
 const config: llm.LlmSettings = {
   profiles: [profile],
+  providers: [
+    {
+      ...profile,
+      models: [
+        {
+          id: profile.id,
+          model: profile.model,
+          contextWindow: profile.contextWindow,
+        },
+      ],
+    },
+  ],
   defaultProfileId: "p",
 }
 const narrator: narration.BookCharacter = {
@@ -206,7 +219,7 @@ function reader() {
 beforeEach(() => {
   jest.clearAllMocks()
   jest.mocked(llm.getLlmConfig).mockResolvedValue(config)
-  jest.mocked(llm.upsertLlmProfile).mockResolvedValue(config)
+  jest.mocked(llm.saveLlmProvider).mockResolvedValue(config)
   jest
     .mocked(llm.removeLlmProfile)
     .mockResolvedValue({ ...config, profiles: [] })
@@ -218,6 +231,51 @@ beforeEach(() => {
     .mocked(narration.saveBookNarration)
     .mockImplementation(async (_library, value) => value)
 })
+it("reloads providers from Core when the cache contains the old flat profile schema", async () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+  })
+  clients.push(client)
+  client.setQueryData(["llm-settings"], {
+    profiles: [profile],
+    defaultProfileId: profile.id,
+  })
+  render(
+    <QueryClientProvider client={client}>
+      <LlmSettingsScreen />
+    </QueryClientProvider>,
+  )
+  fireEvent.press(await screen.findByText("Provider"))
+  expect(screen.getByLabelText("llm.model").props.value).toBe("model")
+  expect(llm.getLlmConfig).toHaveBeenCalledTimes(1)
+})
+
+it("preserves each model when switching and saves one provider with multiple models", async () => {
+  mount()
+  fireEvent.press(await screen.findByText("Provider"))
+  fireEvent.press(screen.getByText("aiProviders.addModel"))
+  fireEvent.changeText(screen.getByLabelText("llm.model"), "second-model")
+  fireEvent.press(screen.getByText("model"))
+  expect(screen.getByLabelText("llm.model").props.value).toBe("model")
+  fireEvent.press(screen.getByText("second-model"))
+  expect(screen.getByLabelText("llm.model").props.value).toBe("second-model")
+  fireEvent.press(screen.getByText("llm.save"))
+  await waitFor(() =>
+    expect(llm.saveLlmProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: expect.objectContaining({
+          id: "p",
+          models: [
+            { id: "p", model: "model", contextWindow: 32768 },
+            { id: "", model: "second-model", contextWindow: 32768 },
+          ],
+        }),
+      }),
+      expect.anything(),
+    ),
+  )
+})
+
 it("saves a manually entered model without discovery, and clears connection success after changing the draft", async () => {
   mount()
   fireEvent.press(await screen.findByText("llm.add"))
@@ -230,9 +288,11 @@ it("saves a manually entered model without discovery, and clears connection succ
   expect(screen.queryByText("llm.testPassed")).toBeNull()
   fireEvent.press(screen.getByText("llm.save"))
   await waitFor(() =>
-    expect(llm.upsertLlmProfile).toHaveBeenCalledWith(
+    expect(llm.saveLlmProvider).toHaveBeenCalledWith(
       expect.objectContaining({
-        profile: expect.objectContaining({ model: "manual-model-2" }),
+        provider: expect.objectContaining({
+          models: [expect.objectContaining({ model: "manual-model-2" })],
+        }),
         credential: "secret",
       }),
       expect.anything(),
@@ -252,14 +312,18 @@ it("edits and probes without revealing saved keys, discovers models, and selects
   fireEvent(screen.getByLabelText("llm.clearKey"), "valueChange", true)
   fireEvent.press(screen.getByText("llm.save"))
   await waitFor(() =>
-    expect(llm.upsertLlmProfile).toHaveBeenCalledWith(
+    expect(llm.saveLlmProvider).toHaveBeenCalledWith(
       expect.objectContaining({
         clearCredential: true,
-        profile: expect.objectContaining({
+        provider: expect.objectContaining({
           id: "p",
           protocol: "responses",
-          model: "discovered",
-          contextWindow: 65536,
+          models: [
+            expect.objectContaining({
+              model: "discovered",
+              contextWindow: 65536,
+            }),
+          ],
         }),
       }),
       expect.anything(),

@@ -42,6 +42,7 @@ pub(crate) async fn complete_with_output_limit(
     output_tokens: u32,
 ) -> Result<Value, CoreError> {
     let format = json!({"name":"myreader_result", "strict":true, "schema":schema});
+    let output_tokens = output_tokens.min(profile.max_output_tokens.unwrap_or(u32::MAX));
     let (suffix, body) = match profile.protocol {
         LlmProtocol::ChatCompletions => (
             "chat/completions",

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   getLlmConfig,
-  upsertLlmProfile,
+  saveLlmProvider,
   removeLlmProfile,
   selectLlmProfile,
   listLlmModels,
@@ -9,12 +9,13 @@ import {
   type LlmProfileInput,
 } from "@/src/services/core/llm"
 
-const key = ["llm-settings"]
+// The persisted v1 cache contains flat profiles without provider/model groups.
+const key = ["llm-settings", 2]
 export function useLlmSettings() {
   const client = useQueryClient()
   const query = useQuery({ queryKey: key, queryFn: getLlmConfig })
   const save = useMutation({
-    mutationFn: upsertLlmProfile,
+    mutationFn: saveLlmProvider,
     onSuccess: (data) => client.setQueryData(key, data),
   })
   const remove = useMutation({

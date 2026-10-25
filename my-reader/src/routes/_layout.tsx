@@ -12,6 +12,7 @@ import SettingsActivity from "@/components/settings/SettingsActivity"
 import { AppUpdateRuntime } from "@/components/settings/AppUpdateRuntime"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { useWindowSizeClass } from "@/hooks/use-window-size-class"
+import { useSettingsWindowNavigation } from "@/hooks/useSettingsWindowNavigation"
 import type { SettingsSection } from "@/types/settings"
 import {
   parseCatalogLocation,
@@ -28,6 +29,7 @@ export const Route = createFileRoute("/_layout")({
 const BOOK_DETAIL_PATH_RE = /^\/book\/([^/]+)$/
 
 function Layout() {
+  useSettingsWindowNavigation()
   const location = useLocation()
   const navigate = useNavigate()
   const windowSizeClass = useWindowSizeClass()
@@ -40,6 +42,9 @@ function Layout() {
   const settingsSection: SettingsSection =
     requestedSection === "dataSources" ||
     requestedSection === "speech" ||
+    requestedSection === "llm" ||
+    requestedSection === "aiProviders" ||
+    requestedSection === "ttsProviders" ||
     requestedSection === "appearance" ||
     requestedSection === "about"
       ? requestedSection
@@ -111,6 +116,9 @@ function Layout() {
               onClose={closeSettings}
               onAddLibrary={() => setAddLibraryOpen(true)}
               initialSection={settingsSection}
+              onSectionChange={(section) =>
+                void navigate({ to: "/settings", search: { section } })
+              }
             />
           ) : null
         }

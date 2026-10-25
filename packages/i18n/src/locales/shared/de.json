@@ -13,7 +13,7 @@
     "test": "Verbindung testen",
     "testPassed": "Verbindung bestätigt",
     "context": "Kontextfenster",
-    "default": "Standardanbieter",
+    "default": "Standardmodell",
     "none": "Keiner",
     "clearKey": "Gespeicherten Schlüssel entfernen",
     "save": "Speichern",
@@ -33,7 +33,7 @@
     "aliases": "Andere Namen",
     "identity": "Figurenbeschreibung",
     "instructions": "Vorleseanweisungen",
-    "provider": "TTS-Anbieter",
+    "provider": "Modell",
     "voice": "Stimme",
     "defaultVoice": "Standard",
     "system": "System",
@@ -386,5 +386,24 @@
     "loading": "Wird geladen…",
     "retry": "Erneut versuchen",
     "noResults": "Kein Buch erfüllt alle Bedingungen."
+  },
+  "ttsSettings": {
+    "providers": "TTS-Anbieter",
+    "defaults": "Vorleseeinstellungen",
+    "manageProviders": "Anbieter verwalten",
+    "test": "Testen",
+    "testing": "Test läuft…",
+    "testSucceeded": "Test erfolgreich",
+    "testFailed": "Test fehlgeschlagen"
+  },
+  "aiProviders": {
+    "title": "KI-Anbieter",
+    "ttsDescription": "Bietet Text-zu-Sprache",
+    "llmDescription": "Bietet Analyse natürlicher Sprache",
+    "addModel": "Modell hinzufügen",
+    "newModel": "Neues Modell",
+    "removeModel": "Modell entfernen",
+    "endpointHint": "Die genaue Dienst-URL bis einschließlich /v1 eingeben.",
+    "modelScopedVoices": "Modellspezifische Stimmen"
   }
 }

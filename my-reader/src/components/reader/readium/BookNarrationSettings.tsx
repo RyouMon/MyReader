@@ -531,7 +531,7 @@ function CharacterEditor({
                   .filter((profile) => profile.enabled)
                   .map((profile) => (
                     <SelectItem key={profile.id} value={profile.id}>
-                      {profile.name}
+                      {`${profile.name}/${profile.modelName || profile.model}`}
                     </SelectItem>
                   ))}
               </SelectGroup>

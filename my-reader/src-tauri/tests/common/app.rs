@@ -138,7 +138,7 @@ impl TestApp {
                 my_reader_lib::commands::narration::prepare_book_narration::<MockRuntime>,
                 my_reader_lib::commands::narration::preview_book_narration_merge::<MockRuntime>,
                 my_reader_lib::commands::narration::merge_book_narration::<MockRuntime>,
-                my_reader_lib::commands::tts::list_qwen_tts_models,
+                my_reader_lib::commands::tts::list_qwen_tts_models::<MockRuntime>,
                 my_reader_lib::commands::tts::list_qwen_tts_presets,
                 my_reader_lib::commands::tts::discover_qwen_tts_voices::<MockRuntime>,
                 my_reader_lib::commands::tts::upsert_tts_profile::<MockRuntime>,

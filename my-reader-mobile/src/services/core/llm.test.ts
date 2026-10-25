@@ -4,6 +4,7 @@ import {
   getLlmConfig,
   selectedLlmCredential,
   upsertLlmProfile,
+  saveLlmProvider,
   removeLlmProfile,
   selectLlmProfile,
   listLlmModels,
@@ -20,6 +21,7 @@ jest.mock("expo-secure-store", () => ({
 jest.mock("my-reader-core", () => ({
   llmGetConfig: jest.fn(),
   llmUpsertProfile: jest.fn(),
+  llmSaveProvider: jest.fn(),
   llmRemoveProfile: jest.fn(),
   llmSelectProfile: jest.fn(),
   llmListModels: jest.fn(),
@@ -36,15 +38,36 @@ const profile = {
   hasCredential: true,
 }
 const stored = { ...profile, credentialReference: "llm-provider-p" }
-const config = { schemaVersion: 1, profiles: [stored], defaultProfileId: "p" }
+const provider = {
+  ...stored,
+  models: [
+    { id: stored.id, model: stored.model, contextWindow: stored.contextWindow },
+  ],
+}
+const hydratedProvider = {
+  ...provider,
+  credentialReference: undefined,
+  hasCredential: true,
+}
+const config = {
+  schemaVersion: 1,
+  profiles: [stored],
+  providers: [provider],
+  defaultProfileId: "p",
+}
 beforeEach(() => {
   jest.resetAllMocks()
   jest.mocked(core.llmGetConfig).mockResolvedValue(config)
   jest.mocked(core.llmUpsertProfile).mockResolvedValue(config)
+  jest.mocked(core.llmSaveProvider).mockResolvedValue(config)
   jest.mocked(SecureStore.getItemAsync).mockResolvedValue("secret")
 })
 it("exposes only credential presence and resolves the selected credential at the service boundary", async () => {
-  expect(await getLlmConfig()).toEqual({ ...config, profiles: [profile] })
+  expect(await getLlmConfig()).toEqual({
+    ...config,
+    profiles: [profile],
+    providers: [hydratedProvider],
+  })
   expect(await selectedLlmCredential()).toEqual({
     profileId: "p",
     profileRevision: profile.revision,
@@ -55,6 +78,47 @@ it("exposes only credential presence and resolves the selected credential at the
     .mockResolvedValue({ ...config, defaultProfileId: undefined })
   await expect(selectedLlmCredential()).rejects.toThrow("LLM_PROFILE_REQUIRED")
 })
+it("saves a provider's models with one credential reference and resolves it for any model", async () => {
+  const models = [
+    ...provider.models,
+    { id: "second", model: "m2", contextWindow: 65536 },
+  ]
+  await saveLlmProvider({
+    provider: { ...hydratedProvider, models },
+    credential: " replacement ",
+  })
+  expect(core.llmSaveProvider).toHaveBeenCalledWith(
+    "/config.json",
+    expect.objectContaining({
+      id: "p",
+      models,
+      credentialReference: "llm-provider-new-profile",
+    }),
+  )
+  expect(SecureStore.setItemAsync).toHaveBeenCalledTimes(1)
+  expect(
+    JSON.stringify(jest.mocked(core.llmSaveProvider).mock.calls),
+  ).not.toContain("replacement")
+  jest
+    .mocked(core.llmGetConfig)
+    .mockResolvedValue({ ...config, providers: [{ ...provider, models }] })
+  await probeLlmProfile({ profile: { ...profile, id: "second", model: "m2" } })
+  expect(core.llmProbe).toHaveBeenCalledWith(
+    expect.objectContaining({ id: "second", model: "m2" }),
+    "secret",
+    undefined,
+  )
+  jest.mocked(core.llmSaveProvider).mockRejectedValueOnce(new Error("INVALID"))
+  jest.mocked(SecureStore.setItemAsync).mockClear()
+  await expect(
+    saveLlmProvider({
+      provider: { ...hydratedProvider, models },
+      credential: "replacement",
+    }),
+  ).rejects.toThrow("INVALID")
+  expect(SecureStore.setItemAsync).not.toHaveBeenCalled()
+})
+
 it("keeps an unchanged key, replaces or clears only when requested, and never stores its value in Core", async () => {
   await upsertLlmProfile({ profile })
   expect(SecureStore.setItemAsync).not.toHaveBeenCalled()
@@ -89,7 +153,12 @@ it("does not change credentials when Core rejects a profile, and removes the ref
     upsertLlmProfile({ profile, credential: "replacement" }),
   ).rejects.toThrow("INVALID")
   expect(SecureStore.setItemAsync).not.toHaveBeenCalled()
-  const empty = { ...config, profiles: [], defaultProfileId: undefined }
+  const empty = {
+    ...config,
+    providers: [],
+    profiles: [],
+    defaultProfileId: undefined,
+  }
   jest.mocked(core.llmRemoveProfile).mockResolvedValue(empty)
   expect(await removeLlmProfile("p")).toEqual(empty)
   expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith("llm-provider-p")

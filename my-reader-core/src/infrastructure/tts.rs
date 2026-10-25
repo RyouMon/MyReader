@@ -55,7 +55,7 @@ pub(crate) fn capabilities(profile: &TtsProviderProfile) -> TtsProviderCapabilit
             ],
         },
         TtsProviderKind::Qwen => {
-            let audio = profile.model.as_deref() == Some(qwen::DEFAULT_MODEL);
+            let audio = qwen::is_audio_model(profile.model.as_deref().unwrap_or_default());
             TtsProviderCapabilities {
                 voice_discovery: qwen::model(
                     profile.model.as_deref().unwrap_or_default(),
@@ -84,28 +84,10 @@ pub(crate) async fn list_voices(
     profile: &TtsProviderProfile,
     credential: Option<&str>,
 ) -> Result<Vec<TtsVoice>, CoreError> {
-    let mut voices = configured_voices(profile);
-    if profile.kind == TtsProviderKind::Qwen {
-        let model = qwen::model(
-            profile.model.as_deref().unwrap_or_default(),
-            &profile.endpoint,
-        )?;
-        for voice in &mut voices {
-            if let Some(builtin) = model.voices.iter().find(|builtin| builtin.id == voice.id) {
-                *voice = builtin.clone();
-            }
-        }
-        if let Ok(discovered) =
-            qwen::discover_voices(&profile.endpoint, &model.id, credential).await
-        {
-            for voice in discovered {
-                if !voices.iter().any(|existing| existing.id == voice.id) {
-                    voices.push(voice);
-                }
-            }
-        }
-    }
-    Ok(voices)
+    // Playback uses the user's saved selection. Refreshing the catalog is an
+    // explicit settings action and must not restore voices the user removed.
+    let _ = credential;
+    Ok(configured_voices(profile))
 }
 
 pub(crate) async fn synthesize(
@@ -117,6 +99,42 @@ pub(crate) async fn synthesize(
         TtsProviderKind::OpenAiCompatible => synthesize_openai(profile, request, credential).await,
         TtsProviderKind::Qwen => qwen::synthesize(profile, request, credential).await,
     }
+}
+
+pub(crate) async fn discover_models(
+    profile: &TtsProviderProfile,
+    credential: Option<&str>,
+) -> Result<Vec<String>, CoreError> {
+    if profile.kind == TtsProviderKind::Qwen {
+        return Ok(qwen::discover_models(&profile.endpoint, credential)
+            .await?
+            .into_iter()
+            .map(|m| m.id)
+            .collect());
+    }
+    let mut url = openai_speech_endpoint(profile)?;
+    let path = url.path().trim_end_matches("/audio/speech");
+    url.set_path(&format!("{path}/models"));
+    let mut request = client()?.get(url);
+    if let Some(credential) = credential.filter(|v| !v.trim().is_empty()) {
+        request = request.bearer_auth(credential);
+    }
+    let response = successful(request.send().await.map_err(map_reqwest_error)?, credential).await?;
+    let bytes = response_bytes(response, "TTS_MODEL_LIST_TOO_LARGE").await?;
+    let body: serde_json::Value = serde_json::from_slice(&bytes)
+        .map_err(|_| tts_error(TtsErrorKind::InvalidResponse, "TTS_INVALID_MODEL_LIST"))?;
+    let entries = body["data"]
+        .as_array()
+        .ok_or_else(|| tts_error(TtsErrorKind::InvalidResponse, "TTS_INVALID_MODEL_LIST"))?;
+    let mut ids: Vec<String> = entries
+        .iter()
+        .filter_map(|entry| entry["id"].as_str())
+        .filter(|id| !id.trim().is_empty())
+        .map(str::to_owned)
+        .collect();
+    ids.sort();
+    ids.dedup();
+    Ok(ids)
 }
 
 async fn synthesize_openai(

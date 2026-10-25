@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react"
+import { useMutation } from "@tanstack/react-query"
+import { useEffect, useState } from "react"
 import { normalizeTtsAudioFormat } from "@/src/constants/tts"
 import {
   discoverQwenTtsVoices,
@@ -24,7 +25,11 @@ export function newQwenProviderFields(preset: QwenTtsPreset, name: string) {
     kind: "qwen" as const,
     name,
     endpoint: preset.endpoint,
-    ...qwenModelFields(preset.defaultModel),
+    model: "",
+    voices: "",
+    defaultVoice: "",
+    responseFormat: "wav" as const,
+    instructions: "",
   }
 }
 
@@ -40,22 +45,82 @@ type QwenTtsFormDraft = {
   defaultVoice: string
 } | null
 
-export function useQwenTtsForm(draft: QwenTtsFormDraft) {
+function useQwenModels(draft: QwenTtsFormDraft) {
   const enabled = draft?.kind === "qwen"
   const endpoint = draft?.endpoint ?? ""
-  const models = useMemo(
-    () => (enabled ? getQwenTtsModels(endpoint) : []),
-    [enabled, endpoint],
-  )
+  const profileId = draft?.hasCredential ? draft.id : undefined
+  const credential = draft?.credential ?? ""
+  const source = JSON.stringify([
+    enabled,
+    endpoint,
+    profileId,
+    credential,
+    draft?.clearCredential,
+  ])
+  const {
+    mutate: fetchModels,
+    data: modelResult,
+    error,
+    variables,
+  } = useMutation({
+    mutationFn: async (input: {
+      endpoint: string
+      profileId?: string
+      credential?: string
+      signal: AbortSignal
+      source: string
+    }) => ({
+      source: input.source,
+      models: await getQwenTtsModels(input, input.signal),
+    }),
+  })
+  useEffect(() => {
+    if (!enabled || draft?.clearCredential || !(credential.trim() || profileId))
+      return
+    const controller = new AbortController()
+    const timer = setTimeout(
+      () =>
+        fetchModels({
+          endpoint,
+          profileId,
+          credential,
+          signal: controller.signal,
+          source,
+        }),
+      400,
+    )
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
+  }, [
+    enabled,
+    endpoint,
+    profileId,
+    credential,
+    draft?.clearCredential,
+    fetchModels,
+    source,
+  ])
+  return {
+    models: modelResult?.source === source ? modelResult.models : [],
+    error: variables?.source === source && error ? errorMessage(error) : null,
+  }
+}
+
+export function useQwenTtsForm(draft: QwenTtsFormDraft) {
+  const { models, error: modelError } = useQwenModels(draft)
+  const enabled = draft?.kind === "qwen"
+  const endpoint = draft?.endpoint ?? ""
+  const model = draft?.model ?? ""
+  const profileId = draft?.hasCredential ? draft.id : undefined
+  const credential = draft?.credential ?? ""
   const [discovered, setDiscovered] = useState<TtsVoice[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const selectedModel = enabled
     ? models.find((model) => model.id === draft.model)
     : undefined
-  const model = draft?.model ?? ""
-  const profileId = draft?.hasCredential ? draft.id : undefined
-  const credential = draft?.credential ?? ""
   const canDiscover = Boolean(
     selectedModel?.voiceDiscovery &&
       !draft?.clearCredential &&
@@ -93,7 +158,7 @@ export function useQwenTtsForm(draft: QwenTtsFormDraft) {
     models,
     selectedModel,
     loading: enabled && loading,
-    error: enabled ? error : null,
+    error: enabled ? error || modelError : null,
     ...qwenVoiceOptions(draft, selectedModel, discovered),
   }
 }

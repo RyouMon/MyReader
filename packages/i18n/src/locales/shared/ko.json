@@ -13,7 +13,7 @@
     "test": "연결 테스트",
     "testPassed": "연결 확인됨",
     "context": "컨텍스트 창",
-    "default": "기본 제공업체",
+    "default": "기본 모델",
     "none": "없음",
     "clearKey": "저장된 키 삭제",
     "save": "저장",
@@ -33,7 +33,7 @@
     "aliases": "별칭",
     "identity": "인물 소개",
     "instructions": "읽기 지시",
-    "provider": "TTS 제공업체",
+    "provider": "모델",
     "voice": "음성",
     "defaultVoice": "기본값",
     "system": "시스템",
@@ -385,5 +385,24 @@
     "loading": "불러오는 중…",
     "retry": "다시 시도",
     "noResults": "모든 조건에 맞는 책이 없습니다."
+  },
+  "ttsSettings": {
+    "providers": "TTS 공급자",
+    "defaults": "읽어주기 설정",
+    "manageProviders": "공급자 관리",
+    "test": "테스트",
+    "testing": "테스트 중…",
+    "testSucceeded": "테스트 성공",
+    "testFailed": "테스트 실패"
+  },
+  "aiProviders": {
+    "title": "AI 공급자",
+    "ttsDescription": "텍스트 음성 변환 기능 제공",
+    "llmDescription": "자연어 분석 기능 제공",
+    "addModel": "모델 추가",
+    "newModel": "새 모델",
+    "removeModel": "모델 제거",
+    "endpointHint": "서비스 URL을 /v1 경로까지 정확히 입력하세요.",
+    "modelScopedVoices": "모델별 음성 설정"
   }
 }

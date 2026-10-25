@@ -13,7 +13,7 @@
     "test": "接続をテスト",
     "testPassed": "接続を確認しました",
     "context": "コンテキストウィンドウ",
-    "default": "既定のプロバイダー",
+    "default": "既定のモデル",
     "none": "なし",
     "clearKey": "保存したキーを削除",
     "save": "保存",
@@ -33,7 +33,7 @@
     "aliases": "別名",
     "identity": "人物紹介",
     "instructions": "読み上げ指示",
-    "provider": "TTS プロバイダー",
+    "provider": "モデル",
     "voice": "音声",
     "defaultVoice": "既定",
     "system": "システム",
@@ -385,5 +385,24 @@
     "loading": "読み込み中…",
     "retry": "再試行",
     "noResults": "すべての条件に一致する本はありません。"
+  },
+  "ttsSettings": {
+    "providers": "TTS プロバイダー",
+    "defaults": "読み上げ設定",
+    "manageProviders": "プロバイダー管理",
+    "test": "テスト",
+    "testing": "テスト中…",
+    "testSucceeded": "テスト成功",
+    "testFailed": "テスト失敗"
+  },
+  "aiProviders": {
+    "title": "AI プロバイダー",
+    "ttsDescription": "テキスト読み上げ機能を提供",
+    "llmDescription": "自然言語の分析機能を提供",
+    "addModel": "モデルを追加",
+    "newModel": "新しいモデル",
+    "removeModel": "モデルを削除",
+    "endpointHint": "サービスURLは /v1 まで正確に入力してください。",
+    "modelScopedVoices": "モデルごとに音声を設定"
   }
 }

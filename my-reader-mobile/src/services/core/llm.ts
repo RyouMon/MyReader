@@ -2,6 +2,8 @@ import { randomUUID } from "expo-crypto"
 import * as SecureStore from "expo-secure-store"
 import {
   llmGetConfig,
+  llmSaveProvider,
+  type LlmProvider,
   llmUpsertProfile,
   llmRemoveProfile,
   llmSelectProfile,
@@ -16,7 +18,11 @@ import { appConfigPath } from "./app-config"
 export type LlmProfile = Omit<LlmProviderProfile, "credentialReference"> & {
   hasCredential: boolean
 }
-export type LlmSettings = Omit<LlmConfig, "profiles"> & {
+export type LlmProviderSettings = Omit<LlmProvider, "credentialReference"> & {
+  hasCredential: boolean
+}
+export type LlmSettings = Omit<LlmConfig, "profiles" | "providers"> & {
+  providers: LlmProviderSettings[]
   profiles: LlmProfile[]
 }
 export type LlmProfileInput = {
@@ -28,6 +34,14 @@ export type LlmProfileInput = {
 async function hydrate(config: LlmConfig): Promise<LlmSettings> {
   return {
     ...config,
+    providers: await Promise.all(
+      config.providers.map(async ({ credentialReference, ...provider }) => ({
+        ...provider,
+        hasCredential: credentialReference
+          ? Boolean(await SecureStore.getItemAsync(credentialReference))
+          : false,
+      })),
+    ),
     profiles: await Promise.all(
       config.profiles.map(async ({ credentialReference, ...profile }) => ({
         ...profile,
@@ -79,10 +93,37 @@ export async function upsertLlmProfile(input: LlmProfileInput) {
     await SecureStore.deleteItemAsync(oldReference)
   return hydrate(config)
 }
+export async function saveLlmProvider(input: {
+  provider: LlmProviderSettings
+  credential?: string
+  clearCredential?: boolean
+}) {
+  const id = input.provider.id || randomUUID()
+  const previous = await llmGetConfig(appConfigPath)
+  const oldReference = previous.providers.find(
+    (profile) => profile.id === id,
+  )?.credentialReference
+  const key = input.credential?.trim()
+  const credentialReference = input.clearCredential
+    ? undefined
+    : key
+      ? `llm-provider-${randomUUID()}`
+      : oldReference
+  const config = await llmSaveProvider(appConfigPath, {
+    ...input.provider,
+    id,
+    credentialReference,
+  })
+  if (!input.clearCredential && key && credentialReference)
+    await SecureStore.setItemAsync(credentialReference, key)
+  if (oldReference && oldReference !== credentialReference)
+    await SecureStore.deleteItemAsync(oldReference)
+  return hydrate(config)
+}
 export async function removeLlmProfile(id: string) {
   const previous = await llmGetConfig(appConfigPath)
   const config = await llmRemoveProfile(appConfigPath, id)
-  const reference = previous.profiles.find(
+  const reference = previous.providers.find(
     (profile) => profile.id === id,
   )?.credentialReference
   if (reference) await SecureStore.deleteItemAsync(reference)
@@ -95,8 +136,10 @@ async function inputCredential(input: LlmProfileInput) {
   if (input.clearCredential) return undefined
   if (input.credential?.trim()) return input.credential.trim()
   const config = await llmGetConfig(appConfigPath)
-  const reference = config.profiles.find(
-    (profile) => profile.id === input.profile.id,
+  const reference = config.providers.find(
+    (profile) =>
+      profile.id === input.profile.id ||
+      profile.models.some((model) => model.id === input.profile.id),
   )?.credentialReference
   return reference
     ? ((await SecureStore.getItemAsync(reference)) ?? undefined)

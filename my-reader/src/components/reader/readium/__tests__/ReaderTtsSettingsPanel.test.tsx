@@ -1,12 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { readerChromePalette } from "@my-reader/tools/reader-chrome-palette"
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ReaderTtsSettingsPanel } from "@/components/reader/readium/ReaderTtsSettingsPanel"
@@ -14,6 +8,7 @@ import type { EpubTtsSession } from "@/hooks/reader/useEpubTtsSession"
 import type { TtsConfigDto } from "@/lib/tauri-specta"
 
 const mocks = vi.hoisted(() => ({
+  openTtsProviderSettings: vi.fn().mockResolvedValue(undefined),
   getTtsConfig: vi.fn(),
   getBookNarration: vi.fn(),
   setTtsDefaultEngine: vi.fn(),
@@ -21,6 +16,10 @@ const mocks = vi.hoisted(() => ({
   synthesizeTtsRequest: vi.fn(),
   cancelTtsSynthesis: vi.fn(),
   notifyTtsConfigChanged: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock("@/lib/settingsWindow", () => ({
+  openTtsProviderSettings: mocks.openTtsProviderSettings,
 }))
 
 vi.mock("react-i18next", async (importOriginal) => ({
@@ -55,7 +54,8 @@ vi.mock("@/lib/tts/events", () => ({
 }))
 
 const config: TtsConfigDto = {
-  schemaVersion: 1,
+  schemaVersion: 2,
+  providers: [],
   defaultEngine: { kind: "system" },
   profiles: [
     {
@@ -194,7 +194,9 @@ describe("ReaderTtsSettingsPanel", () => {
     ).not.toBeInTheDocument()
 
     await user.click(engineSelect)
-    const openAiOption = await screen.findByRole("option", { name: "OpenAI" })
+    const openAiOption = await screen.findByRole("option", {
+      name: "OpenAI/gpt-4o-mini-tts",
+    })
     const oceanPalette = readerChromePalette("#ffffff", "#181842")
     expect(openAiOption.closest('[data-slot="select-content"]')).toHaveStyle({
       "--popover": oceanPalette.sheetSurface,
@@ -220,88 +222,13 @@ describe("ReaderTtsSettingsPanel", () => {
     expect(ttsSession.setSpeed).toHaveBeenCalledWith(1.5)
 
     fireEvent.click(
-      screen.getByRole("button", { name: "reader.tts.manageProviders" }),
+      screen.getByRole("button", { name: "ttsSettings.manageProviders" }),
     )
-    expect(screen.getByRole("button", { name: "common.back" })).toHaveAttribute(
-      "data-variant",
-      "ghost",
-    )
+    expect(mocks.openTtsProviderSettings).toHaveBeenCalledOnce()
     expect(
-      screen.queryByRole("button", { name: "reader.closePanel" }),
+      screen.queryByRole("button", { name: "settings.speech.addProvider" }),
     ).not.toBeInTheDocument()
-    expect(screen.getByText("settings.speech.previewText")).toBeInTheDocument()
-    expect(
-      screen.getByRole("combobox", { name: "reader.tts.engine" }),
-    ).toHaveTextContent("OpenAI")
-    expect(
-      screen.getByRole("combobox", { name: "reader.tts.voice" }),
-    ).toHaveTextContent("reader-voice")
-    expect(
-      screen.getByRole("button", { name: "settings.speech.editProvider" }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole("button", { name: "settings.speech.removeProvider" }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole("button", { name: "settings.speech.addProvider" }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole("button", { name: "settings.speech.addProvider" })
-        .parentElement?.parentElement,
-    ).toHaveStyle({
-      "--card": oceanPalette.segmentIdle,
-      "--muted-foreground": oceanPalette.textMuted,
-    })
-    await user.click(
-      screen.getByRole("button", { name: "settings.speech.addProvider" }),
-    )
-    const providerDialog = screen.getByRole("dialog")
-    expect(providerDialog).toHaveStyle({
-      color: oceanPalette.text,
-      "--background": oceanPalette.sheetSurface,
-      "--foreground": oceanPalette.text,
-      "--border": oceanPalette.border,
-    })
-    await user.click(
-      within(providerDialog).getByRole("button", { name: "common.close" }),
-    )
-    await user.click(
-      screen.getByRole("combobox", { name: "reader.tts.engine" }),
-    )
-    await user.click(
-      await screen.findByRole("option", {
-        name: "settings.speech.systemTitle",
-      }),
-    )
-    expect(
-      screen.getByRole("combobox", { name: "reader.tts.voice" }),
-    ).toBeDisabled()
-    await user.click(
-      screen.getByRole("combobox", { name: "reader.tts.engine" }),
-    )
-    await user.click(await screen.findByRole("option", { name: "OpenAI" }))
-    await user.click(screen.getByRole("combobox", { name: "reader.tts.voice" }))
-    await user.click(
-      await screen.findByRole("option", { name: "reader-voice" }),
-    )
-    await user.click(
-      screen.getByRole("button", { name: "settings.speech.previewAction" }),
-    )
-    await waitFor(() =>
-      expect(mocks.synthesizeTtsRequest).toHaveBeenCalledWith(
-        expect.stringMatching(/^settings-preview-/),
-        expect.objectContaining({
-          profileId: "openai",
-          voiceId: "reader-voice",
-          text: "settings.speech.previewText",
-        }),
-      ),
-    )
-
-    fireEvent.click(screen.getByRole("button", { name: "common.back" }))
-    expect(
-      screen.getByRole("combobox", { name: "reader.tts.engine" }),
-    ).toBeInTheDocument()
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })
 })
 

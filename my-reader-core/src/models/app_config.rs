@@ -235,7 +235,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(config.tts.default_engine, TtsEngineSelection::System);
-        assert!(config.tts.profiles.is_empty());
+        assert!(config.tts.profiles().is_empty());
     }
 
     #[test]

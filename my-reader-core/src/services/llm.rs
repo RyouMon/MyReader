@@ -1,7 +1,7 @@
 use super::config::{llm::validate_profile, ConfigService};
 use crate::{
     infrastructure::llm,
-    models::{LlmConfig, LlmProviderProfile},
+    models::{LlmConfig, LlmProvider, LlmProviderProfile},
     CoreError,
 };
 use std::path::Path;
@@ -21,29 +21,56 @@ impl LlmService {
         path: &Path,
         mut profile: LlmProviderProfile,
     ) -> Result<LlmConfig, CoreError> {
-        profile.id = profile.id.trim().to_owned();
-        if profile.id.is_empty() {
+        if profile.id.trim().is_empty() {
             profile.id = Uuid::new_v4().to_string();
         }
-        profile.name = profile.name.trim().to_owned();
-        profile.model = profile.model.trim().to_owned();
-        profile.endpoint = profile.endpoint.trim().trim_end_matches('/').to_owned();
-        validate_profile(&profile)?;
+        Self::upsert_provider(path, profile.into())
+    }
+
+    pub fn upsert_provider(path: &Path, mut provider: LlmProvider) -> Result<LlmConfig, CoreError> {
+        provider.id = provider.id.trim().to_owned();
+        if provider.id.is_empty() {
+            provider.id = Uuid::new_v4().to_string();
+        }
+        provider.name = provider.name.trim().to_owned();
+        provider.endpoint = provider.endpoint.trim().trim_end_matches('/').to_owned();
+        for model in &mut provider.models {
+            if model.id.trim().is_empty() {
+                model.id = Uuid::new_v4().to_string();
+            }
+            model.model = model.model.trim().to_owned();
+            model.display_name = model.display_name.trim().to_owned();
+        }
         Ok(ConfigService::mutate_config(path, |config| {
-            if let Some(existing) = config
+            let previous = config.llm.profiles();
+            let resolved = provider.profiles();
+            for (model, profile) in provider.models.iter_mut().zip(resolved) {
+                validate_profile(&profile)?;
+                model.revision = previous
+                    .iter()
+                    .find(|old| old.id == model.id)
+                    .map_or(1, |old| old.revision.saturating_add(1));
+            }
+            let is_new = !config.llm.providers.iter().any(|old| old.id == provider.id);
+            if let Some(old) = config
                 .llm
-                .profiles
+                .providers
                 .iter_mut()
-                .find(|item| item.id == profile.id)
+                .find(|old| old.id == provider.id)
             {
-                profile.revision = existing.revision.saturating_add(1);
-                *existing = profile;
+                *old = provider;
             } else {
-                profile.revision = 1;
-                if config.llm.default_profile_id.is_none() {
-                    config.llm.default_profile_id = Some(profile.id.clone());
-                }
-                config.llm.profiles.push(profile);
+                config.llm.providers.push(provider);
+            }
+            let profiles = config.llm.profiles();
+            if (is_new && config.llm.default_profile_id.is_none())
+                || config
+                    .llm
+                    .default_profile_id
+                    .as_ref()
+                    .is_some_and(|id| !profiles.iter().any(|profile| &profile.id == id))
+            {
+                config.llm.default_profile_id = profiles.first().map(|profile| profile.id.clone());
             }
             Ok(())
         })?
@@ -51,14 +78,20 @@ impl LlmService {
     }
 
     pub fn remove_profile(path: &Path, id: &str) -> Result<LlmConfig, CoreError> {
+        Self::remove_provider(path, id)
+    }
+
+    pub fn remove_provider(path: &Path, id: &str) -> Result<LlmConfig, CoreError> {
         Ok(ConfigService::mutate_config(path, |config| {
-            config.llm.profiles.retain(|profile| profile.id != id);
-            if config.llm.default_profile_id.as_deref() == Some(id) {
-                config.llm.default_profile_id = config
-                    .llm
-                    .profiles
-                    .first()
-                    .map(|profile| profile.id.clone());
+            config.llm.providers.retain(|provider| provider.id != id);
+            let profiles = config.llm.profiles();
+            if config
+                .llm
+                .default_profile_id
+                .as_ref()
+                .is_some_and(|id| !profiles.iter().any(|profile| &profile.id == id))
+            {
+                config.llm.default_profile_id = profiles.first().map(|profile| profile.id.clone());
             }
             Ok(())
         })?
@@ -76,7 +109,7 @@ impl LlmService {
     pub fn selected_profile(path: &Path) -> Result<LlmProviderProfile, CoreError> {
         let config = Self::get_config(path)?;
         config
-            .profiles
+            .profiles()
             .into_iter()
             .find(|profile| Some(&profile.id) == config.default_profile_id.as_ref())
             .ok_or_else(|| CoreError::Config("LLM_PROFILE_REQUIRED".into()))

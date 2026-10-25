@@ -7,7 +7,6 @@ import {
 } from "@testing-library/react-native"
 import * as mockReact from "react"
 import {
-  ActionSheetIOS,
   Pressable as mockPressable,
   Text as mockText,
   TextInput as mockTextInput,
@@ -20,7 +19,6 @@ import {
   getTtsConfig,
   setTtsDefaultEngine,
   synthesizeTts,
-  upsertTtsProfile,
 } from "@/src/services/core/tts"
 import ReaderTtsSettingsSheet from "./ReaderTtsSettingsSheet"
 
@@ -75,7 +73,8 @@ let mockBackGestureOnEnd:
   | undefined
 
 const mockConfig = {
-  schemaVersion: 1,
+  schemaVersion: 2,
+  providers: [],
   defaultEngine: { kind: "system" as const },
   profiles: [
     {
@@ -124,7 +123,10 @@ jest.mock("expo-speech", () => ({
   stop: () => mockSpeechStop(),
 }))
 
+const mockRouterPush = jest.fn()
+
 jest.mock("expo-router", () => ({
+  router: { push: (route: string) => mockRouterPush(route) },
   useFocusEffect: (callback: () => void) =>
     mockReact.useEffect(callback, [callback]),
 }))
@@ -216,9 +218,18 @@ jest.mock("./ReaderSettingsSheetContainer", () =>
     {
       children,
       expanded,
-    }: { children: mockReact.ReactNode; expanded?: boolean },
-    _ref: mockReact.Ref<unknown>,
+      onDismiss,
+    }: {
+      children: mockReact.ReactNode
+      expanded?: boolean
+      onDismiss: () => void
+    },
+    ref: mockReact.Ref<unknown>,
   ) {
+    mockReact.useImperativeHandle(ref, () => ({
+      dismiss: onDismiss,
+      present: jest.fn(),
+    }))
     return mockReact.createElement(
       mockView,
       {
@@ -289,7 +300,6 @@ describe("ReaderTtsSettingsSheet", () => {
     mockPlaybackRate = 1
     mockBackGestureOnEnd = undefined
     jest.mocked(getTtsConfig).mockResolvedValue(mockConfig)
-    jest.mocked(upsertTtsProfile).mockResolvedValue(mockConfig)
     jest.mocked(synthesizeTts).mockResolvedValue({
       path: "/tmp/reader-preview.mp3",
       mimeType: "audio/mpeg",
@@ -405,174 +415,32 @@ describe("ReaderTtsSettingsSheet", () => {
     expect(signal?.aborted).toBe(true)
   })
 
-  it("navigates to provider management inside the reader sheet", async () => {
-    render(<ReaderTtsSettingsSheet language="en" palette={palette} />)
-
+  it("dismisses reader settings before presenting the shared provider sheet", async () => {
+    const onDismiss = jest.fn()
+    render(
+      <ReaderTtsSettingsSheet
+        language="en"
+        palette={palette}
+        onDismiss={onDismiss}
+      />,
+    )
     fireEvent.press(
       await screen.findByRole("button", {
-        name: "reader.tts.manageProviders",
+        name: "ttsSettings.manageProviders",
       }),
     )
-
-    expect(screen.getByText("reader.tts.manageProviders")).toBeTruthy()
-    expect(screen.queryByText("settings.tts.engine")).toBeNull()
-
-    fireEvent.press(screen.getByRole("button", { name: "OpenAI" }))
-    expect(screen.getByTestId("reader-tts-provider-endpoint")).toBeTruthy()
-
-    fireEvent.press(screen.getByRole("button", { name: "back" }))
-    expect(screen.getByText("reader.tts.manageProviders")).toBeTruthy()
-
-    fireEvent.press(
-      screen.getByRole("button", { name: "settings.tts.addProvider" }),
-    )
-    expect(
-      screen.getByRole("button", {
-        name: "settings.tts.providerKinds.openAiCompatible",
-      }),
-    ).toBeTruthy()
-
-    fireEvent.press(
-      screen.getByRole("button", {
-        name: "settings.tts.providerKinds.openAiCompatible",
-      }),
-    )
-    expect(screen.getByTestId("reader-tts-provider-endpoint")).toBeTruthy()
-
-    fireEvent.press(screen.getByRole("button", { name: "back" }))
-    expect(
-      screen.getByRole("button", {
-        name: "settings.tts.providerKinds.openAiCompatible",
-      }),
-    ).toBeTruthy()
-  })
-
-  it.each([
-    ["tokenPlan", "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference"],
-    ["qianwen", "https://maas.qianwenaiapi.com/api/v1"],
-    ["dashscope", "https://dashscope.aliyuncs.com/api/v1"],
-  ])("offers %s inside the reader sheet without leaving the reader", async (id, endpoint) => {
-    render(<ReaderTtsSettingsSheet language="en" palette={palette} />)
-    fireEvent.press(
-      await screen.findByRole("button", {
-        name: "reader.tts.manageProviders",
-      }),
-    )
-    fireEvent.press(
-      screen.getByRole("button", { name: "settings.tts.addProvider" }),
-    )
-    fireEvent.press(
-      screen.getByRole("button", { name: `qwenTts.sources.${id}.title` }),
-    )
-    expect(screen.getByTestId("reader-tts-provider-endpoint").props.value).toBe(
-      endpoint,
-    )
-    expect(
-      screen.queryByRole("button", { name: "settings.tts.audioFormat" }),
-    ).toBeNull()
-    expect(screen.queryByTestId("reader-tts-provider-voices")).toBeNull()
-    fireEvent.press(
-      screen.getByRole("button", { name: "qwenTts.manualVoicesAction" }),
-    )
-    fireEvent.changeText(
-      screen.getByTestId("reader-tts-provider-voices"),
-      "future-voice",
-    )
-    jest
-      .spyOn(ActionSheetIOS, "showActionSheetWithOptions")
-      .mockImplementationOnce((options, callback) =>
-        callback(options.options.indexOf("future-voice")),
-      )
-    fireEvent.press(
-      screen.getByRole("button", { name: "settings.tts.defaultVoice" }),
-    )
-    fireEvent.press(screen.getByRole("button", { name: "settings.tts.save" }))
-    await waitFor(() =>
-      expect(upsertTtsProfile).toHaveBeenCalledWith(
-        expect.objectContaining({
-          profile: expect.objectContaining({
-            endpoint,
-            responseFormat: "mp3",
-            defaultVoice: "future-voice",
-          }),
-        }),
-      ),
-    )
-    fireEvent.press(
-      await screen.findByRole("button", { name: "settings.tts.addProvider" }),
-    )
-    expect(
-      screen.getByRole("button", { name: `qwenTts.sources.${id}.title` }),
-    ).toBeTruthy()
-  })
-
-  it("returns one route with the iOS edge-back gesture", async () => {
-    render(<ReaderTtsSettingsSheet language="en" palette={palette} />)
-
-    fireEvent.press(
-      await screen.findByRole("button", {
-        name: "reader.tts.manageProviders",
-      }),
-    )
-    expect(screen.queryByText("settings.tts.engine")).toBeNull()
-
-    act(() => {
-      mockBackGestureOnEnd?.({ translationX: 80, velocityX: 0 })
-    })
-
-    expect(screen.getByText("settings.tts.engine")).toBeTruthy()
-  })
-
-  it("creates a provider without leaving the reader sheet", async () => {
-    render(<ReaderTtsSettingsSheet language="en" palette={palette} />)
-
-    fireEvent.press(
-      await screen.findByRole("button", {
-        name: "reader.tts.manageProviders",
-      }),
-    )
-    fireEvent.press(
-      screen.getByRole("button", { name: "settings.tts.addProvider" }),
-    )
-    fireEvent.press(
-      screen.getByRole("button", {
-        name: "settings.tts.providerKinds.openAiCompatible",
-      }),
-    )
-    expect(
-      screen.queryByRole("button", { name: "settings.tts.audioFormat" }),
-    ).toBeNull()
-    fireEvent.changeText(
-      screen.getByTestId("reader-tts-provider-voices"),
-      "custom-voice",
-    )
-    fireEvent.press(screen.getByRole("button", { name: "settings.tts.save" }))
-
-    await waitFor(() =>
-      expect(upsertTtsProfile).toHaveBeenCalledWith({
-        profile: {
-          id: undefined,
-          name: "OpenAI",
-          kind: "openAiCompatible",
-          enabled: true,
-          endpoint: "https://api.openai.com/v1",
-          model: "gpt-4o-mini-tts",
-          responseFormat: "mp3",
-          instructions: undefined,
-          voices: ["custom-voice"],
-          defaultVoice: "custom-voice",
-        },
-        credential: undefined,
-        clearCredential: false,
-      }),
-    )
-    expect(screen.getByText("reader.tts.manageProviders")).toBeTruthy()
+    expect(onDismiss).toHaveBeenCalledTimes(1)
+    expect(mockRouterPush).toHaveBeenCalledWith("/tts-providers")
+    expect(screen.queryByTestId("reader-tts-provider-endpoint")).toBeNull()
+    expect(screen.queryByText("settings.tts.addProvider")).toBeNull()
   })
 
   it("applies a provider engine directly and has no refresh action", async () => {
     render(<ReaderTtsSettingsSheet language="en" palette={palette} />)
 
-    fireEvent.press(await screen.findByRole("button", { name: "OpenAI" }))
+    fireEvent.press(
+      await screen.findByRole("button", { name: "OpenAI/gpt-4o-mini-tts" }),
+    )
 
     await waitFor(() =>
       expect(setTtsDefaultEngine).toHaveBeenCalledWith({
@@ -604,6 +472,6 @@ it("uses the role title and hides playback controls while a character subview is
   expect(screen.getByText("Alice")).toBeTruthy()
   expect(screen.queryByText("settings.tts.engine")).toBeNull()
   expect(screen.queryByText("settings.tts.speed")).toBeNull()
-  fireEvent.press(screen.getByRole("button", { name: "back" }))
+  act(() => mockBackGestureOnEnd?.({ translationX: 80, velocityX: 0 }))
   expect(screen.getByText("settings.tts.engine")).toBeTruthy()
 })

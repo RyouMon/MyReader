@@ -21,8 +21,26 @@ pub(crate) fn validate_tts_config(config: &TtsConfig) -> Result<(), CoreError> {
     }
     validate_playback(&config.playback)?;
 
+    let mut providers = HashSet::new();
+    for provider in &config.providers {
+        let mut models = HashSet::new();
+        if provider.id.trim().is_empty()
+            || !providers.insert(&provider.id)
+            || provider.models.is_empty()
+            || provider
+                .models
+                .iter()
+                .any(|model| !models.insert(&model.model))
+        {
+            return Err(tts_error(
+                TtsErrorKind::Configuration,
+                "TTS_INVALID_PROVIDER_MODELS",
+            ));
+        }
+    }
+    let profiles = config.profiles();
     let mut profile_ids = HashSet::new();
-    for profile in &config.profiles {
+    for profile in &profiles {
         validate_profile(profile)?;
         if !profile_ids.insert(profile.id.as_str()) {
             return Err(tts_error(
@@ -32,8 +50,7 @@ pub(crate) fn validate_tts_config(config: &TtsConfig) -> Result<(), CoreError> {
         }
     }
     if let TtsEngineSelection::Provider { profile_id } = &config.default_engine {
-        if !config
-            .profiles
+        if !profiles
             .iter()
             .any(|profile| &profile.id == profile_id && profile.enabled)
         {
@@ -51,11 +68,7 @@ pub(crate) fn validate_tts_config(config: &TtsConfig) -> Result<(), CoreError> {
             ));
         }
         if let TtsVoiceRef::Provider { profile_id, .. } = voice {
-            if !config
-                .profiles
-                .iter()
-                .any(|profile| &profile.id == profile_id)
-            {
+            if !profiles.iter().any(|profile| &profile.id == profile_id) {
                 return Err(tts_error(
                     TtsErrorKind::Configuration,
                     "TTS_VOICE_PROFILE_NOT_FOUND",

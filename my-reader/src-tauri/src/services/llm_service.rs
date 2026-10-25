@@ -38,6 +38,8 @@ pub struct LlmProfileDto {
     pub model: String,
     pub context_window: u32,
     #[serde(default)]
+    pub max_output_tokens: Option<u32>,
+    #[serde(default)]
     pub has_credential: bool,
 }
 
@@ -50,15 +52,50 @@ impl From<LlmProfileDto> for core::LlmProviderProfile {
             endpoint: value.endpoint,
             model: value.model,
             context_window: value.context_window,
+            max_output_tokens: value.max_output_tokens,
             credential_reference: None,
             revision: 0,
         }
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct LlmModelDto {
+    #[serde(default)]
+    pub display_name: String,
+    pub id: String,
+    pub model: String,
+    pub context_window: u32,
+    #[serde(default)]
+    pub max_output_tokens: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct LlmProviderDto {
+    pub id: String,
+    pub name: String,
+    pub protocol: LlmProtocolDto,
+    pub endpoint: String,
+    pub models: Vec<LlmModelDto>,
+    #[serde(default)]
+    pub has_credential: bool,
+}
+
+#[derive(Debug, Clone, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SaveLlmProviderInput {
+    pub provider: LlmProviderDto,
+    pub credential: Option<String>,
+    #[serde(default)]
+    pub clear_credential: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LlmConfigDto {
+    pub providers: Vec<LlmProviderDto>,
     pub profiles: Vec<LlmProfileDto>,
     pub default_profile_id: Option<String>,
 }
@@ -79,6 +116,63 @@ impl DesktopLlmService {
         config_dto(LlmService::get_config(path)?)
     }
 
+    pub fn save_provider(
+        path: &Path,
+        input: SaveLlmProviderInput,
+    ) -> Result<LlmConfigDto, AppError> {
+        let mut value = input.provider;
+        if value.id.is_empty() {
+            value.id = uuid::Uuid::new_v4().to_string();
+        }
+        let previous = LlmService::get_config(path)?;
+        let old_reference = previous
+            .providers
+            .iter()
+            .find(|p| p.id == value.id)
+            .and_then(|p| p.credential_reference.clone());
+        let key = input.credential.filter(|key| !key.trim().is_empty());
+        let reference = if input.clear_credential {
+            None
+        } else if key.is_some() {
+            Some(format!("llm-provider-{}", uuid::Uuid::new_v4()))
+        } else {
+            old_reference.clone()
+        };
+        let config = LlmService::upsert_provider(
+            path,
+            core::LlmProvider {
+                id: value.id,
+                name: value.name,
+                protocol: value.protocol.into(),
+                endpoint: value.endpoint,
+                credential_reference: reference.clone(),
+                models: value
+                    .models
+                    .into_iter()
+                    .map(|m| core::LlmModel {
+                        id: m.id,
+                        model: m.model,
+                        context_window: m.context_window,
+                        display_name: m.display_name,
+                        max_output_tokens: m.max_output_tokens,
+                        revision: 0,
+                    })
+                    .collect(),
+            },
+        )?;
+        if !input.clear_credential {
+            if let (Some(key), Some(reference)) = (key, &reference) {
+                credentials::save_llm_credential(reference, key.trim())?;
+            }
+        }
+        if old_reference != reference {
+            if let Some(old) = old_reference {
+                credentials::delete_llm_credential(&old)?;
+            }
+        }
+        config_dto(config)
+    }
+
     pub fn upsert(path: &Path, input: LlmProfileInput) -> Result<LlmConfigDto, AppError> {
         let mut profile: core::LlmProviderProfile = input.profile.into();
         if profile.id.is_empty() {
@@ -86,7 +180,7 @@ impl DesktopLlmService {
         }
         let previous = LlmService::get_config(path)?;
         let old_reference = previous
-            .profiles
+            .providers
             .iter()
             .find(|item| item.id == profile.id)
             .and_then(|item| item.credential_reference.clone());
@@ -117,7 +211,7 @@ impl DesktopLlmService {
         let previous = LlmService::get_config(path)?;
         let config = LlmService::remove_profile(path, id)?;
         if let Some(reference) = previous
-            .profiles
+            .providers
             .iter()
             .find(|profile| profile.id == id)
             .and_then(|profile| profile.credential_reference.as_deref())
@@ -182,9 +276,15 @@ fn input_credential(path: &Path, input: &LlmProfileInput) -> Result<Option<Strin
     }
     let config = LlmService::get_config(path)?;
     config
-        .profiles
+        .providers
         .iter()
-        .find(|profile| profile.id == input.profile.id)
+        .find(|provider| {
+            provider.id == input.profile.id
+                || provider
+                    .models
+                    .iter()
+                    .any(|model| model.id == input.profile.id)
+        })
         .and_then(|profile| profile.credential_reference.as_deref())
         .map(credentials::read_llm_credential)
         .transpose()
@@ -192,10 +292,42 @@ fn input_credential(path: &Path, input: &LlmProfileInput) -> Result<Option<Strin
 }
 
 fn config_dto(config: core::LlmConfig) -> Result<LlmConfigDto, AppError> {
+    let profiles = config.profiles();
+    let providers = config
+        .providers
+        .into_iter()
+        .map(|provider| {
+            let has_credential = provider
+                .credential_reference
+                .as_deref()
+                .map(credentials::read_llm_credential)
+                .transpose()?
+                .flatten()
+                .is_some();
+            Ok(LlmProviderDto {
+                id: provider.id,
+                name: provider.name,
+                protocol: provider.protocol.into(),
+                endpoint: provider.endpoint,
+                has_credential,
+                models: provider
+                    .models
+                    .into_iter()
+                    .map(|m| LlmModelDto {
+                        id: m.id,
+                        model: m.model,
+                        context_window: m.context_window,
+                        display_name: m.display_name,
+                        max_output_tokens: m.max_output_tokens,
+                    })
+                    .collect(),
+            })
+        })
+        .collect::<Result<_, AppError>>()?;
     Ok(LlmConfigDto {
+        providers,
         default_profile_id: config.default_profile_id,
-        profiles: config
-            .profiles
+        profiles: profiles
             .into_iter()
             .map(|profile| {
                 let has_credential = profile
@@ -206,6 +338,7 @@ fn config_dto(config: core::LlmConfig) -> Result<LlmConfigDto, AppError> {
                     .flatten()
                     .is_some_and(|key| !key.is_empty());
                 Ok(LlmProfileDto {
+                    max_output_tokens: profile.max_output_tokens,
                     id: profile.id,
                     name: profile.name,
                     protocol: profile.protocol.into(),

@@ -519,6 +519,9 @@ function CharacterVoiceFields({
   const { t } = useTranslation()
   const provider =
     draft.voice?.engine === "provider" ? draft.voice.profileId : undefined
+  const selectedModel = config.profiles.find(
+    (profile) => profile.id === provider,
+  )
   const voices = useQuery({
     queryKey: ["narration-voices", provider ?? "system"],
     queryFn: () =>
@@ -532,8 +535,9 @@ function CharacterVoiceFields({
         palette={palette}
         value={
           provider
-            ? (config.profiles.find((profile) => profile.id === provider)
-                ?.name ?? provider)
+            ? selectedModel
+              ? `${selectedModel.name}/${selectedModel.model}`
+              : provider
             : t(
                 draft.voice?.engine === "system"
                   ? "narration.system"
@@ -545,7 +549,10 @@ function CharacterVoiceFields({
           { id: "system", title: t("narration.system") },
           ...config.profiles
             .filter((profile) => profile.enabled)
-            .map((profile) => ({ id: profile.id, title: profile.name })),
+            .map((profile) => ({
+              id: profile.id,
+              title: `${profile.name}/${profile.model}`,
+            })),
         ]}
         onSelect={(value) =>
           setDraft({

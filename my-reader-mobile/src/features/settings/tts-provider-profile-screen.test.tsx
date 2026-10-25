@@ -1,11 +1,12 @@
 import {
   act,
   fireEvent,
-  render,
+  render as renderNative,
   screen,
   waitFor,
 } from "@testing-library/react-native"
 import * as mockReact from "react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import {
   ActionSheetIOS,
   Pressable as mockPressable,
@@ -18,7 +19,8 @@ import {
   discoverQwenTtsVoices,
   getTtsConfig,
   removeTtsProfile,
-  upsertTtsProfile,
+  saveTtsProvider,
+  testTtsProvider,
 } from "@/src/services/core/tts"
 import {
   showAlertWithStatusBarRestore,
@@ -31,6 +33,16 @@ const mockRouterPush = jest.fn()
 const mockRouterDismissTo = jest.fn()
 let mockRouteParams: { kind?: string; sourceId?: string; providerId?: string } =
   {}
+function render(
+  ui: mockReact.ComponentProps<typeof QueryClientProvider>["children"],
+) {
+  const client = new QueryClient({
+    defaultOptions: { mutations: { retry: false, gcTime: Infinity } },
+  })
+  return renderNative(
+    <QueryClientProvider client={client}>{ui}</QueryClientProvider>,
+  )
+}
 const mockTranslate = (key: string) => key
 const mockUseScreenHeader = jest.fn((options: unknown) => ({
   options,
@@ -63,7 +75,7 @@ jest.mock("@/src/components", () => ({
       { accessibilityRole: "button", accessibilityLabel: title, onPress },
       mockReact.createElement(mockText, null, title),
     ),
-  FormFieldSwitch: jest.fn(() => null),
+  FormFieldSwitch: jest.requireActual("react-native").Switch,
   FormLabeledFieldRow: jest.fn(
     ({ children, label }: { children: mockReact.ReactNode; label: string }) =>
       mockReact.createElement(
@@ -131,7 +143,8 @@ jest.mock("@/src/services/core/tts", () => ({
   discoverQwenTtsVoices: jest.fn(),
   getTtsConfig: jest.fn(),
   removeTtsProfile: jest.fn(),
-  upsertTtsProfile: jest.fn(),
+  saveTtsProvider: jest.fn(),
+  testTtsProvider: jest.fn(),
 }))
 
 jest.mock("@/tw", () => ({
@@ -141,6 +154,21 @@ jest.mock("@/tw", () => ({
 }))
 
 describe("TtsProviderProfileScreen", () => {
+  async function chooseModel(index: number, name: string) {
+    const choose = jest
+      .spyOn(ActionSheetIOS, "showActionSheetWithOptions")
+      .mockImplementation(() => {})
+    await waitFor(() => {
+      fireEvent.press(screen.getByTestId("tts-provider-model"))
+      expect(choose).toHaveBeenLastCalledWith(
+        expect.objectContaining({ options: expect.arrayContaining([name]) }),
+        expect.any(Function),
+      )
+    })
+    act(() => choose.mock.calls.at(-1)?.[1](index))
+    choose.mockRestore()
+  }
+
   function saveForm() {
     const header = mockUseScreenHeader.mock.calls.at(-1)?.[0] as {
       right?: { onPress: () => void }[]
@@ -151,12 +179,12 @@ describe("TtsProviderProfileScreen", () => {
   it("keeps an unsaved form open until valid voices are persisted", async () => {
     renderForm()
     saveForm()
-    expect(upsertTtsProfile).not.toHaveBeenCalled()
+    expect(saveTtsProvider).not.toHaveBeenCalled()
     fireEvent.changeText(
       screen.getByTestId("tts-provider-voices"),
       " voice-a\nvoice-a\nvoice-b ",
     )
-    jest.mocked(upsertTtsProfile).mockRejectedValueOnce(new Error("offline"))
+    jest.mocked(saveTtsProvider).mockRejectedValueOnce(new Error("offline"))
     saveForm()
     await waitFor(() => expect(showErrorAlert).toHaveBeenCalled())
     expect(mockRouterDismissTo).not.toHaveBeenCalled()
@@ -165,13 +193,13 @@ describe("TtsProviderProfileScreen", () => {
     )
     saveForm()
     await waitFor(() =>
-      expect(mockRouterDismissTo).toHaveBeenCalledWith("/settings/tts"),
+      expect(mockRouterDismissTo).toHaveBeenCalledWith("/tts-providers"),
     )
-    expect(upsertTtsProfile).toHaveBeenLastCalledWith(
+    expect(saveTtsProvider).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        profile: expect.objectContaining({
+        provider: expect.objectContaining({
           voices: ["voice-a", "voice-b"],
-          defaultVoice: "voice-a",
+          models: [expect.objectContaining({ defaultVoice: "voice-a" })],
         }),
       }),
     )
@@ -180,13 +208,21 @@ describe("TtsProviderProfileScreen", () => {
   it("requires confirmation and successful persistence before leaving a deleted provider", async () => {
     mockRouteParams = { providerId: "fixture-provider" }
     jest.mocked(getTtsConfig).mockResolvedValue({
-      profiles: [
+      providers: [
         {
           id: "fixture-provider",
           kind: "openAiCompatible",
           name: "Fixture",
           endpoint: "http://127.0.0.1:5050/v1",
-          model: "fixture",
+          models: [
+            {
+              id: "fixture-model",
+              model: "fixture",
+              responseFormat: "mp3",
+              defaultVoice: "voice-a",
+              voices: [],
+            },
+          ],
           responseFormat: "mp3",
           voices: ["voice-a"],
           defaultVoice: "voice-a",
@@ -196,6 +232,19 @@ describe("TtsProviderProfileScreen", () => {
       ],
     } as never)
     render(<TtsProviderProfileScreen />)
+    await screen.findByRole("button", { name: "ttsSettings.test" })
+    jest.mocked(testTtsProvider).mockResolvedValue(undefined)
+    fireEvent.press(screen.getByRole("button", { name: "ttsSettings.test" }))
+    await screen.findByText("ttsSettings.testSucceeded")
+    expect(testTtsProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        profile: expect.objectContaining({ id: "fixture-provider" }),
+      }),
+      expect.any(String),
+      expect.anything(),
+    )
+    expect(saveTtsProvider).not.toHaveBeenCalled()
+    saveForm() // The detail header opens the editor.
     await waitFor(() =>
       expect(screen.getByTestId("tts-provider-name").props.value).toBe(
         "Fixture",
@@ -221,10 +270,50 @@ describe("TtsProviderProfileScreen", () => {
       buttons?.find((button) => button.style === "destructive")?.onPress?.(),
     )
     await waitFor(() =>
-      expect(mockRouterDismissTo).toHaveBeenCalledWith("/settings/tts"),
+      expect(mockRouterDismissTo).toHaveBeenCalledWith("/tts-providers"),
     )
     expect(removeTtsProfile).toHaveBeenLastCalledWith("fixture-provider")
   })
+  it("tests current form values without persisting and clears stale results after editing", async () => {
+    jest.mocked(testTtsProvider).mockResolvedValue(undefined)
+    renderForm()
+    fireEvent.changeText(
+      screen.getByTestId("tts-provider-endpoint"),
+      "https://draft.example/v1",
+    )
+    fireEvent.changeText(
+      screen.getByTestId("tts-provider-credential"),
+      "draft-key",
+    )
+    fireEvent.changeText(
+      screen.getByTestId("tts-provider-voices"),
+      "custom-voice",
+    )
+    fireEvent.press(screen.getByRole("button", { name: "ttsSettings.test" }))
+    await screen.findByText("ttsSettings.testSucceeded")
+    expect(testTtsProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        profile: expect.objectContaining({
+          endpoint: "https://draft.example/v1",
+          defaultVoice: "custom-voice",
+        }),
+        credential: "draft-key",
+      }),
+      "settings.tts.previewText",
+      expect.anything(),
+    )
+    expect(saveTtsProvider).not.toHaveBeenCalled()
+    expect(mockRouterDismissTo).not.toHaveBeenCalled()
+    fireEvent.changeText(
+      screen.getByTestId("tts-provider-model"),
+      "other-model",
+    )
+    expect(screen.queryByText("ttsSettings.testSucceeded")).toBeNull()
+    jest.mocked(testTtsProvider).mockRejectedValueOnce(new Error("invalid key"))
+    fireEvent.press(screen.getByRole("button", { name: "ttsSettings.test" }))
+    await screen.findByText(/invalid key/)
+  })
+
   function renderForm(sourceId?: string) {
     mockRouteParams = sourceId
       ? { kind: "qwen", sourceId }
@@ -235,7 +324,7 @@ describe("TtsProviderProfileScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockRouteParams = {}
-    jest.mocked(upsertTtsProfile).mockResolvedValue({} as never)
+    jest.mocked(saveTtsProvider).mockResolvedValue({} as never)
     jest.mocked(discoverQwenTtsVoices).mockResolvedValue([])
   })
 
@@ -247,8 +336,9 @@ describe("TtsProviderProfileScreen", () => {
     ],
     ["qianwen", "https://maas.qianwenaiapi.com/api/v1", "longanlingxin"],
     ["dashscope", "https://dashscope.aliyuncs.com/api/v1", "longanlingxin"],
-  ])("creates the %s source with its own defaults and credential hint", async (id, endpoint, voice) => {
+  ])("creates the %s source with a discovered model and manually entered system voice", async (id, endpoint, voice) => {
     renderForm(id)
+    expect(screen.queryByLabelText("aiProviders.modelScopedVoices")).toBeNull()
     expect(screen.getByTestId("tts-provider-endpoint").props.value).toBe(
       endpoint,
     )
@@ -258,25 +348,41 @@ describe("TtsProviderProfileScreen", () => {
     expect(screen.queryByTestId("tts-provider-audio-format")).toBeNull()
     expect(screen.queryByTestId("tts-provider-voices")).toBeNull()
     expect(screen.queryByText("qwenTts.modelHint")).toBeNull()
+    saveForm()
+    expect(saveTtsProvider).not.toHaveBeenCalled()
+    fireEvent.changeText(screen.getByTestId("tts-provider-credential"), "key")
+    await chooseModel(0, "Qwen-Audio-TTS Plus")
+    fireEvent.press(
+      screen.getByRole("button", { name: "qwenTts.manualVoicesAction" }),
+    )
+    fireEvent.changeText(screen.getByTestId("tts-provider-voices"), voice)
+    jest
+      .spyOn(ActionSheetIOS, "showActionSheetWithOptions")
+      .mockImplementationOnce((_options, callback) => callback(0))
+    fireEvent.press(screen.getByTestId("tts-provider-default-voice"))
     const header = mockUseScreenHeader.mock.calls.at(-1)?.[0] as {
       right?: { onPress: () => void }[]
     }
     act(() => header.right?.[0]?.onPress())
     await waitFor(() =>
-      expect(upsertTtsProfile).toHaveBeenCalledWith(
+      expect(saveTtsProvider).toHaveBeenCalledWith(
         expect.objectContaining({
-          profile: expect.objectContaining({
+          provider: expect.objectContaining({
             kind: "qwen",
             name: `qwenTts.sources.${id}.title`,
             endpoint,
-            defaultVoice: voice,
-            model: "qwen-audio-3.0-tts-plus",
-            responseFormat: "mp3",
+            models: [
+              expect.objectContaining({
+                defaultVoice: voice,
+                model: "qwen-audio-3.0-tts-plus",
+                responseFormat: "mp3",
+              }),
+            ],
           }),
         }),
       ),
     )
-    expect(mockRouterDismissTo).toHaveBeenCalledWith("/settings/tts")
+    expect(mockRouterDismissTo).toHaveBeenCalledWith("/tts-providers")
   })
 
   it("does not reuse credentials or manual voices when selecting a different source", () => {
@@ -300,7 +406,7 @@ describe("TtsProviderProfileScreen", () => {
       screen.getByRole("button", { name: "qwenTts.manualVoicesAction" }),
     )
     expect(screen.getByTestId("tts-provider-voices").props.value).toBe("")
-    expect(screen.getByText("龙安灵心")).toBeTruthy()
+    expect(screen.queryByText("龙安灵心")).toBeNull()
   })
 
   it("loads account voices for the selected Qwen model and saves the chosen voice", async () => {
@@ -309,9 +415,7 @@ describe("TtsProviderProfileScreen", () => {
       .mockResolvedValue([
         { id: "my-cloned-voice", name: "my-cloned-voice", language: "zh" },
       ])
-    const choose = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions")
     renderForm("tokenPlan")
-    expect(screen.getByText("龙安欢")).toBeTruthy()
     expect(screen.getByTestId("tts-provider-endpoint").props.value).toBe(
       "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference",
     )
@@ -319,10 +423,8 @@ describe("TtsProviderProfileScreen", () => {
       screen.getByTestId("tts-provider-endpoint"),
       "https://dashscope.aliyuncs.com/api/v1",
     )
-    choose.mockImplementationOnce((_options, callback) => callback(2))
-    fireEvent.press(screen.getByTestId("tts-provider-model"))
-    expect(screen.queryByText("龙安欢")).toBeNull()
     fireEvent.changeText(screen.getByTestId("tts-provider-credential"), "key")
+    await chooseModel(2, "Qwen3-TTS VC")
     await waitFor(() =>
       expect(discoverQwenTtsVoices).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -332,7 +434,9 @@ describe("TtsProviderProfileScreen", () => {
         expect.any(AbortSignal),
       ),
     )
-    choose.mockImplementationOnce((_options, callback) => callback(0))
+    jest
+      .spyOn(ActionSheetIOS, "showActionSheetWithOptions")
+      .mockImplementationOnce((_options, callback) => callback(0))
     fireEvent.press(screen.getByTestId("tts-provider-default-voice"))
     expect(screen.getByText("my-cloned-voice")).toBeTruthy()
     const header = mockUseScreenHeader.mock.calls.at(-1)?.[0] as {
@@ -340,14 +444,18 @@ describe("TtsProviderProfileScreen", () => {
     }
     act(() => header.right?.[0]?.onPress())
     await waitFor(() =>
-      expect(upsertTtsProfile).toHaveBeenCalledWith(
+      expect(saveTtsProvider).toHaveBeenCalledWith(
         expect.objectContaining({
-          profile: expect.objectContaining({
+          provider: expect.objectContaining({
             kind: "qwen",
-            model: "qwen3-tts-vc-2026-01-22",
-            responseFormat: "wav",
-            defaultVoice: "my-cloned-voice",
-            voices: ["my-cloned-voice"],
+            models: [
+              expect.objectContaining({
+                model: "qwen3-tts-vc-2026-01-22",
+                responseFormat: "wav",
+                defaultVoice: "my-cloned-voice",
+                voices: ["my-cloned-voice"],
+              }),
+            ],
           }),
         }),
       ),
@@ -375,11 +483,114 @@ describe("TtsProviderProfileScreen", () => {
     expect(screen.queryByTestId("tts-provider-endpoint")).toBeNull()
     fireEvent.press(screen.getByRole("button", { name: title }))
     expect(mockRouterPush).toHaveBeenCalledWith({
-      pathname: "/settings/tts-provider/form",
+      pathname: "/tts-providers/form",
       params,
     })
     expect(screen.getByText("settings.tts.providerTypeSection")).toBeTruthy()
     expect(screen.queryByTestId("tts-provider-endpoint")).toBeNull()
+  })
+
+  it("shares OpenAI voices across models while preserving each model's instructions", async () => {
+    renderForm()
+    fireEvent.changeText(
+      screen.getByTestId("tts-provider-voices"),
+      "voice-a\nvoice-b",
+    )
+    fireEvent.changeText(
+      screen.getByTestId("tts-provider-instructions"),
+      "First instructions",
+    )
+    fireEvent.press(
+      screen.getByRole("button", { name: "aiProviders.addModel" }),
+    )
+    fireEvent.changeText(screen.getByTestId("tts-provider-model"), "second-tts")
+    fireEvent.changeText(
+      screen.getByTestId("tts-provider-default-voice"),
+      "voice-b",
+    )
+    fireEvent.changeText(
+      screen.getByTestId("tts-provider-instructions"),
+      "Second instructions",
+    )
+    fireEvent.press(screen.getByRole("button", { name: "gpt-4o-mini-tts" }))
+    expect(screen.getByTestId("tts-provider-instructions").props.value).toBe(
+      "First instructions",
+    )
+    expect(screen.getByTestId("tts-provider-default-voice").props.value).toBe(
+      "voice-a",
+    )
+    saveForm()
+    await waitFor(() =>
+      expect(saveTtsProvider).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider: expect.objectContaining({
+            voices: ["voice-a", "voice-b"],
+            models: [
+              expect.objectContaining({
+                model: "gpt-4o-mini-tts",
+                defaultVoice: "voice-a",
+                voices: [],
+                instructions: "First instructions",
+              }),
+              expect.objectContaining({
+                model: "second-tts",
+                defaultVoice: "voice-b",
+                voices: [],
+                instructions: "Second instructions",
+              }),
+            ],
+          }),
+        }),
+      ),
+    )
+  })
+
+  it("switches between shared and model-specific voice lists without losing voices or defaults", async () => {
+    renderForm()
+    fireEvent.changeText(screen.getByTestId("tts-provider-voices"), "voice-a")
+    fireEvent.press(
+      screen.getByRole("button", { name: "aiProviders.addModel" }),
+    )
+    fireEvent.changeText(screen.getByTestId("tts-provider-model"), "second-tts")
+    fireEvent(
+      screen.getByLabelText("aiProviders.modelScopedVoices"),
+      "valueChange",
+      true,
+    )
+    expect(screen.getByTestId("tts-provider-voices").props.value).toBe(
+      "voice-a",
+    )
+    fireEvent.changeText(screen.getByTestId("tts-provider-voices"), "voice-b")
+    fireEvent.press(screen.getByRole("button", { name: "gpt-4o-mini-tts" }))
+    expect(screen.getByTestId("tts-provider-voices").props.value).toBe(
+      "voice-a",
+    )
+    expect(screen.getByTestId("tts-provider-default-voice").props.value).toBe(
+      "voice-a",
+    )
+    fireEvent(
+      screen.getByLabelText("aiProviders.modelScopedVoices"),
+      "valueChange",
+      false,
+    )
+    expect(screen.getByTestId("tts-provider-voices").props.value).toBe(
+      "voice-a\nvoice-b",
+    )
+    fireEvent.press(screen.getByRole("button", { name: "second-tts" }))
+    expect(screen.getByTestId("tts-provider-default-voice").props.value).toBe(
+      "voice-b",
+    )
+    saveForm()
+    await waitFor(() =>
+      expect(saveTtsProvider).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider: expect.objectContaining({
+            modelScopedVoices: false,
+            voices: ["voice-a", "voice-b"],
+          }),
+        }),
+      ),
+    )
   })
 
   it("saves OpenAI-compatible providers as MP3 without asking for an audio format", async () => {
@@ -398,9 +609,11 @@ describe("TtsProviderProfileScreen", () => {
     act(() => formHeader.right?.[0]?.onPress())
 
     await waitFor(() =>
-      expect(upsertTtsProfile).toHaveBeenCalledWith(
+      expect(saveTtsProvider).toHaveBeenCalledWith(
         expect.objectContaining({
-          profile: expect.objectContaining({ responseFormat: "mp3" }),
+          provider: expect.objectContaining({
+            models: [expect.objectContaining({ responseFormat: "mp3" })],
+          }),
         }),
       ),
     )

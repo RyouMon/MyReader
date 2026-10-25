@@ -2,17 +2,17 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-pub const TTS_CONFIG_SCHEMA_VERSION: u32 = 1;
+pub const TTS_CONFIG_SCHEMA_VERSION: u32 = 2;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", from = "TtsConfigWire")]
 pub struct TtsConfig {
     #[serde(default = "default_tts_schema_version")]
     pub schema_version: u32,
     #[serde(default)]
     pub default_engine: TtsEngineSelection,
     #[serde(default)]
-    pub profiles: Vec<TtsProviderProfile>,
+    pub providers: Vec<TtsProvider>,
     #[serde(default)]
     pub voice_by_language: BTreeMap<String, TtsVoiceRef>,
     #[serde(default)]
@@ -24,9 +24,187 @@ impl Default for TtsConfig {
         Self {
             schema_version: TTS_CONFIG_SCHEMA_VERSION,
             default_engine: TtsEngineSelection::System,
-            profiles: Vec::new(),
+            providers: Vec::new(),
             voice_by_language: BTreeMap::new(),
             playback: TtsPlaybackPreferences::default(),
+        }
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TtsConfigWire {
+    #[serde(default = "default_tts_schema_version")]
+    schema_version: u32,
+    providers: Option<Vec<TtsProvider>>,
+    #[serde(default)]
+    profiles: Vec<TtsProviderProfile>,
+    #[serde(default)]
+    default_engine: TtsEngineSelection,
+    #[serde(default)]
+    voice_by_language: BTreeMap<String, TtsVoiceRef>,
+    #[serde(default)]
+    playback: TtsPlaybackPreferences,
+}
+
+impl From<TtsConfigWire> for TtsConfig {
+    fn from(value: TtsConfigWire) -> Self {
+        let mut providers = value
+            .providers
+            .unwrap_or_else(|| value.profiles.into_iter().map(Into::into).collect());
+        for provider in &mut providers {
+            provider.model_scoped_voices |= provider.kind == TtsProviderKind::Qwen;
+        }
+        Self {
+            schema_version: if value.schema_version == 1 {
+                TTS_CONFIG_SCHEMA_VERSION
+            } else {
+                value.schema_version
+            },
+            providers,
+            default_engine: value.default_engine,
+            voice_by_language: value.voice_by_language,
+            playback: value.playback,
+        }
+    }
+}
+
+impl TtsConfig {
+    /// Resolved models for playback; never persisted as a second source of configuration.
+    pub fn profiles(&self) -> Vec<TtsProviderProfile> {
+        self.providers
+            .iter()
+            .flat_map(TtsProvider::profiles)
+            .collect()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TtsProvider {
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub voice_names: BTreeMap<String, String>,
+    pub id: String,
+    pub name: String,
+    pub kind: TtsProviderKind,
+    #[serde(default = "enabled_by_default")]
+    pub enabled: bool,
+    pub endpoint: String,
+    #[serde(default)]
+    pub credential_reference: Option<String>,
+    #[serde(default)]
+    pub model_scoped_voices: bool,
+    /// Shared voices when model-scoped voices are disabled.
+    #[serde(default)]
+    pub voices: Vec<String>,
+    pub models: Vec<TtsModel>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TtsModel {
+    pub id: String,
+    pub model: String,
+    #[serde(default)]
+    pub display_name: String,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub voice_names: BTreeMap<String, String>,
+    pub response_format: TtsAudioFormat,
+    #[serde(default)]
+    pub instructions: Option<String>,
+    #[serde(default)]
+    pub default_voice: Option<String>,
+    /// Voices for this model when model-scoped voices are enabled.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub voices: Vec<String>,
+    #[serde(default = "initial_profile_revision")]
+    pub revision: u64,
+}
+
+impl TtsProvider {
+    pub fn profiles(&self) -> Vec<TtsProviderProfile> {
+        self.models
+            .iter()
+            .map(|model| {
+                let options = match self.kind {
+                    TtsProviderKind::OpenAiCompatible => TtsProviderOptions::OpenAiCompatible {
+                        response_format: model.response_format,
+                        instructions: model.instructions.clone(),
+                        default_voice: model.default_voice.clone(),
+                        voices: if self.model_scoped_voices {
+                            model.voices.clone()
+                        } else {
+                            self.voices.clone()
+                        },
+                    },
+                    TtsProviderKind::Qwen => TtsProviderOptions::Qwen {
+                        response_format: model.response_format,
+                        instructions: model.instructions.clone(),
+                        default_voice: model.default_voice.clone(),
+                        voices: model.voices.clone(),
+                    },
+                };
+                TtsProviderProfile {
+                    id: model.id.clone(),
+                    name: self.name.clone(),
+                    kind: self.kind,
+                    enabled: self.enabled,
+                    endpoint: self.endpoint.clone(),
+                    model: Some(model.model.clone()),
+                    credential_reference: self.credential_reference.clone(),
+                    options,
+                    revision: model.revision,
+                }
+            })
+            .collect()
+    }
+}
+
+impl From<TtsProviderProfile> for TtsProvider {
+    fn from(profile: TtsProviderProfile) -> Self {
+        let (response_format, instructions, voices, default_voice) = match profile.options {
+            TtsProviderOptions::OpenAiCompatible {
+                response_format,
+                instructions,
+                voices,
+                default_voice,
+            }
+            | TtsProviderOptions::Qwen {
+                response_format,
+                instructions,
+                voices,
+                default_voice,
+            } => (response_format, instructions, voices, default_voice),
+        };
+        Self {
+            id: profile.id.clone(),
+            voice_names: BTreeMap::new(),
+            name: profile.name,
+            kind: profile.kind,
+            enabled: profile.enabled,
+            endpoint: profile.endpoint,
+            credential_reference: profile.credential_reference,
+            model_scoped_voices: profile.kind == TtsProviderKind::Qwen,
+            voices: if profile.kind == TtsProviderKind::OpenAiCompatible {
+                voices.clone()
+            } else {
+                vec![]
+            },
+            models: vec![TtsModel {
+                id: profile.id,
+                display_name: String::new(),
+                voice_names: BTreeMap::new(),
+                model: profile.model.unwrap_or_default(),
+                response_format,
+                instructions,
+                default_voice,
+                revision: profile.revision,
+                voices: if profile.kind == TtsProviderKind::Qwen {
+                    voices
+                } else {
+                    vec![]
+                },
+            }],
         }
     }
 }
@@ -151,7 +329,6 @@ pub struct QwenTtsModel {
 pub struct QwenTtsPreset {
     pub id: String,
     pub endpoint: String,
-    pub default_model: QwenTtsModel,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -325,7 +502,7 @@ mod tests {
         let config = TtsConfig::default();
 
         assert_eq!(config.default_engine, TtsEngineSelection::System);
-        assert!(config.profiles.is_empty());
+        assert!(config.profiles().is_empty());
         assert_eq!(config.playback.speed, 1.0);
         assert!(config.playback.skip_page_breaks);
     }

@@ -13,8 +13,9 @@ use crate::{
     infrastructure::tts,
     models::{
         QwenTtsModel, QwenTtsPreset, TtsAudioArtifact, TtsCachePolicy, TtsConfig,
-        TtsEngineSelection, TtsPlaybackPreferences, TtsProviderCapabilities, TtsProviderKind,
-        TtsProviderOptions, TtsProviderProfile, TtsSynthesisRequest, TtsVoice, TtsVoiceRef,
+        TtsEngineSelection, TtsPlaybackPreferences, TtsProvider, TtsProviderCapabilities,
+        TtsProviderKind, TtsProviderOptions, TtsProviderProfile, TtsSynthesisRequest, TtsVoice,
+        TtsVoiceRef,
     },
     CoreError,
 };
@@ -34,13 +35,19 @@ static SYNTHESIS_LOCKS: OnceLock<Mutex<HashMap<String, Weak<Mutex<()>>>>> = Once
 
 pub struct TtsService;
 
+#[cfg(test)]
+mod provider_tests;
+
 impl TtsService {
     pub fn qwen_presets() -> Vec<QwenTtsPreset> {
         tts::qwen::presets()
     }
 
-    pub fn qwen_models(endpoint: Option<&str>) -> Vec<QwenTtsModel> {
-        tts::qwen::models_for_endpoint(endpoint)
+    pub async fn qwen_models(
+        endpoint: &str,
+        credential: Option<&str>,
+    ) -> Result<Vec<QwenTtsModel>, CoreError> {
+        tts::qwen::discover_models(endpoint, credential).await
     }
 
     pub async fn discover_qwen_voices(
@@ -49,6 +56,13 @@ impl TtsService {
         credential: Option<&str>,
     ) -> Result<Vec<TtsVoice>, CoreError> {
         tts::qwen::discover_voices(endpoint, model, credential).await
+    }
+
+    pub async fn discover_models(
+        profile: &TtsProviderProfile,
+        credential: Option<&str>,
+    ) -> Result<Vec<String>, CoreError> {
+        tts::discover_models(profile, credential).await
     }
 
     pub fn get_config(config_path: &Path) -> Result<TtsConfig, CoreError> {
@@ -60,86 +74,92 @@ impl TtsService {
         mut profile: TtsProviderProfile,
     ) -> Result<TtsConfig, CoreError> {
         normalize_profile(&mut profile)?;
-        let profile_id = profile.id.clone();
-        let configured_voice_ids = configured_voice_ids(&profile);
-        let state = ConfigService::mutate_config(config_path, move |state| {
-            let retains_discovered_voices = profile.kind == TtsProviderKind::Qwen
-                && state.tts.profiles.iter().any(|existing| {
-                    existing.id == profile_id
-                        && existing.kind == profile.kind
-                        && existing.model == profile.model
-                });
-            if let Some(existing) = state
-                .tts
-                .profiles
-                .iter_mut()
-                .find(|existing| existing.id == profile_id)
+        Self::upsert_provider(config_path, profile.into())
+    }
+
+    pub fn upsert_provider(
+        config_path: &Path,
+        mut provider: TtsProvider,
+    ) -> Result<TtsConfig, CoreError> {
+        provider.model_scoped_voices |= provider.kind == TtsProviderKind::Qwen;
+        if provider.id.trim().is_empty() {
+            provider.id = Uuid::new_v4().to_string();
+        }
+        provider
+            .credential_reference
+            .get_or_insert_with(|| format!("tts:{}:api-key", provider.id));
+        let mut models = Vec::new();
+        for (mut profile, original) in provider.profiles().into_iter().zip(&provider.models) {
+            if profile
+                .model
+                .as_deref()
+                .is_none_or(|model| model.trim().is_empty())
             {
-                profile.revision = if same_synthesis_profile(existing, &profile) {
-                    existing.revision.max(1)
-                } else {
-                    existing.revision.max(1).saturating_add(1)
-                };
-                *existing = profile;
+                return Err(tts_error(TtsErrorKind::Configuration, "TTS_MODEL_REQUIRED"));
+            }
+            normalize_profile(&mut profile)?;
+            let mut normalized = TtsProvider::from(profile);
+            normalized.models[0].display_name = original.display_name.trim().to_owned();
+            normalized.models[0].voice_names = normalize_voice_names(&original.voice_names);
+            if provider.model_scoped_voices && provider.kind == TtsProviderKind::OpenAiCompatible {
+                normalized.models[0].voices = std::mem::take(&mut normalized.voices);
+            }
+            provider.name = normalized.name;
+            provider.endpoint = normalized.endpoint;
+            provider.voices = normalized.voices;
+            models.extend(normalized.models);
+        }
+        provider.models = models;
+        provider.voice_names = normalize_voice_names(&provider.voice_names);
+        let state = ConfigService::mutate_config(config_path, move |state| {
+            let previous = state.tts.profiles();
+            let resolved = provider.profiles();
+            for (model, profile) in provider.models.iter_mut().zip(&resolved) {
+                model.revision = previous
+                    .iter()
+                    .find(|old| old.id == model.id)
+                    .map_or(1, |old| {
+                        if same_synthesis_profile(old, profile) {
+                            old.revision.max(1)
+                        } else {
+                            old.revision.max(1).saturating_add(1)
+                        }
+                    });
+            }
+            if let Some(old) = state
+                .tts
+                .providers
+                .iter_mut()
+                .find(|old| old.id == provider.id)
+            {
+                *old = provider;
             } else {
-                profile.revision = 1;
-                state.tts.profiles.push(profile);
+                state.tts.providers.push(provider);
             }
-            state.tts.voice_by_language.retain(|_, voice| {
-                retains_discovered_voices
-                    || !matches!(
-                        voice,
-                        TtsVoiceRef::Provider {
-                            profile_id: selected_profile_id,
-                            voice_id,
-                        } if selected_profile_id == &profile_id
-                            && !configured_voice_ids.contains(voice_id)
-                    )
-            });
-            if matches!(
-                &state.tts.default_engine,
-                TtsEngineSelection::Provider { profile_id }
-                    if state
-                        .tts
-                        .profiles
-                        .iter()
-                        .any(|profile| &profile.id == profile_id && !profile.enabled)
-            ) {
-                state.tts.default_engine = TtsEngineSelection::System;
-            }
+            reconcile_selections(&mut state.tts, &previous);
             Ok(())
         })?;
         Ok(state.tts)
     }
 
     pub fn remove_profile(config_path: &Path, profile_id: &str) -> Result<TtsConfig, CoreError> {
-        let profile_id = profile_id.trim().to_owned();
+        Self::remove_provider(config_path, profile_id)
+    }
+
+    pub fn remove_provider(config_path: &Path, provider_id: &str) -> Result<TtsConfig, CoreError> {
         let state = ConfigService::mutate_config(config_path, |state| {
-            let initial_len = state.tts.profiles.len();
+            let previous = state.tts.profiles();
+            let count = state.tts.providers.len();
             state
                 .tts
-                .profiles
-                .retain(|profile| profile.id != profile_id);
-            if state.tts.profiles.len() == initial_len {
+                .providers
+                .retain(|provider| provider.id != provider_id.trim());
+            if state.tts.providers.len() == count {
                 return Err(CoreError::NotFound(format!(
-                    "TTS_PROFILE_NOT_FOUND: {profile_id}"
+                    "TTS_PROFILE_NOT_FOUND: {provider_id}"
                 )));
             }
-            if matches!(
-                &state.tts.default_engine,
-                TtsEngineSelection::Provider { profile_id: selected } if selected == &profile_id
-            ) {
-                state.tts.default_engine = TtsEngineSelection::System;
-            }
-            state.tts.voice_by_language.retain(|_, voice| {
-                !matches!(
-                    voice,
-                    TtsVoiceRef::Provider {
-                        profile_id: selected,
-                        ..
-                    } if selected == &profile_id
-                )
-            });
+            reconcile_selections(&mut state.tts, &previous);
             Ok(())
         })?;
         Ok(state.tts)
@@ -195,7 +215,7 @@ impl TtsService {
         profile_id: &str,
     ) -> Result<TtsProviderCapabilities, CoreError> {
         let config = Self::get_config(config_path)?;
-        Ok(tts::capabilities(find_profile(&config, profile_id)?))
+        Ok(tts::capabilities(&find_profile(&config, profile_id)?))
     }
 
     pub async fn probe_provider(
@@ -205,7 +225,7 @@ impl TtsService {
     ) -> Result<TtsProviderCapabilities, CoreError> {
         let config = Self::get_config(config_path)?;
         let profile = find_enabled_profile(&config, profile_id)?;
-        tts::probe(profile, credential).await
+        tts::probe(&profile, credential).await
     }
 
     pub async fn list_voices(
@@ -215,7 +235,98 @@ impl TtsService {
     ) -> Result<Vec<TtsVoice>, CoreError> {
         let config = Self::get_config(config_path)?;
         let profile = find_enabled_profile(&config, profile_id)?;
-        tts::list_voices(profile, credential).await
+        let mut voices = tts::list_voices(&profile, credential).await?;
+        if let Some((provider, model)) = config.providers.iter().find_map(|provider| {
+            provider
+                .models
+                .iter()
+                .find(|model| model.id == profile_id)
+                .map(|model| (provider, model))
+        }) {
+            let names = if provider.model_scoped_voices || provider.kind == TtsProviderKind::Qwen {
+                &model.voice_names
+            } else {
+                &provider.voice_names
+            };
+            for voice in &mut voices {
+                if let Some(name) = names.get(&voice.id).filter(|name| !name.trim().is_empty()) {
+                    voice.name = name.clone();
+                }
+            }
+        }
+        Ok(voices)
+    }
+
+    /// Test an unsaved profile without changing configuration or writing audio to disk.
+    pub async fn test_provider(
+        mut profile: TtsProviderProfile,
+        text: String,
+        credential: Option<&str>,
+    ) -> Result<(), CoreError> {
+        if profile.id.trim().is_empty() {
+            profile.id = "tts-test".into();
+        }
+        normalize_profile(&mut profile)?;
+        let request = TtsSynthesisRequest {
+            profile_id: profile.id.clone(),
+            text,
+            language: None,
+            voice_id: profile
+                .options
+                .default_voice()
+                .unwrap_or_default()
+                .to_owned(),
+            instructions: None,
+            speed: None,
+            pitch: None,
+            accepted_mime_types: Vec::new(),
+            cache_policy: TtsCachePolicy::Bypass,
+        };
+        validate_request(&request)?;
+        validate_request_for_profile(&profile, &request)?;
+        tokio::time::timeout(
+            tts::REQUEST_TIMEOUT,
+            tts::synthesize(&profile, &request, credential),
+        )
+        .await
+        .map_err(|_| tts_error(TtsErrorKind::Timeout, "TTS_REQUEST_TIMEOUT"))??;
+        Ok(())
+    }
+
+    /// Audition an unsaved voice using the same synthesis and audio validation as reading.
+    pub async fn preview_provider(
+        mut profile: TtsProviderProfile,
+        cache_directory: &Path,
+        text: String,
+        credential: Option<&str>,
+    ) -> Result<TtsAudioArtifact, CoreError> {
+        if profile.id.trim().is_empty() {
+            profile.id = "tts-preview".into();
+        }
+        normalize_profile(&mut profile)?;
+        let request = TtsSynthesisRequest {
+            profile_id: profile.id.clone(),
+            text,
+            language: None,
+            voice_id: profile
+                .options
+                .default_voice()
+                .unwrap_or_default()
+                .to_owned(),
+            instructions: None,
+            speed: None,
+            pitch: None,
+            accepted_mime_types: Vec::new(),
+            cache_policy: TtsCachePolicy::Bypass,
+        };
+        validate_request(&request)?;
+        validate_request_for_profile(&profile, &request)?;
+        tokio::time::timeout(
+            tts::REQUEST_TIMEOUT,
+            Self::synthesize_part(&profile, cache_directory, request, credential),
+        )
+        .await
+        .map_err(|_| tts_error(TtsErrorKind::Timeout, "TTS_REQUEST_TIMEOUT"))?
     }
 
     pub async fn synthesize(
@@ -227,10 +338,10 @@ impl TtsService {
         validate_request(&request)?;
         let config = Self::get_config(config_path)?;
         let profile = find_enabled_profile(&config, &request.profile_id)?;
-        validate_request_for_profile(profile, &request)?;
+        validate_request_for_profile(&profile, &request)?;
         let rate = if profile.kind == TtsProviderKind::Qwen {
             let requested = request.speed.unwrap_or(1.0);
-            let synthesized = if tts::capabilities(profile).synthesis_rate {
+            let synthesized = if tts::capabilities(&profile).synthesis_rate {
                 requested.clamp(0.5, 2.0)
             } else {
                 1.0
@@ -241,7 +352,7 @@ impl TtsService {
         };
         let mut artifact = tokio::time::timeout(
             tts::REQUEST_TIMEOUT,
-            Self::synthesize_part(profile, cache_directory, request, credential),
+            Self::synthesize_part(&profile, cache_directory, request, credential),
         )
         .await
         .map_err(|_| tts_error(TtsErrorKind::Timeout, "TTS_REQUEST_TIMEOUT"))??;
@@ -333,14 +444,11 @@ fn normalize_profile(profile: &mut TtsProviderProfile) -> Result<(), CoreError> 
     }
     profile.model = normalize_optional(profile.model.take());
     profile.credential_reference = normalize_optional(profile.credential_reference.take());
-    profile.model.get_or_insert_with(|| {
-        if qwen {
-            tts::qwen::DEFAULT_MODEL
-        } else {
-            "gpt-4o-mini-tts"
-        }
-        .into()
-    });
+    if !qwen {
+        profile
+            .model
+            .get_or_insert_with(|| "gpt-4o-mini-tts".into());
+    }
     profile
         .credential_reference
         .get_or_insert_with(|| format!("tts:{}:api-key", profile.id));
@@ -366,18 +474,19 @@ fn normalize_profile(profile: &mut TtsProviderProfile) -> Result<(), CoreError> 
     }
     *voices = normalized_voices;
     *default_voice = normalize_optional(default_voice.take());
-    if qwen {
-        let model = tts::qwen::model(
+    if qwen && default_voice.is_none() {
+        *default_voice = voices.first().cloned();
+    }
+    if let TtsProviderOptions::Qwen {
+        response_format, ..
+    } = &mut profile.options
+    {
+        let selected = tts::qwen::model(
             profile.model.as_deref().unwrap_or_default(),
             &profile.endpoint,
         )?;
-        for voice in model.voices {
-            if !voices.contains(&voice.id) {
-                voices.push(voice.id);
-            }
-        }
-        if default_voice.is_none() {
-            *default_voice = voices.first().cloned();
+        if !selected.audio_formats.contains(response_format) {
+            *response_format = selected.audio_formats[0];
         }
     }
     profile.revision = profile.revision.max(1);
@@ -481,21 +590,49 @@ fn validate_request_for_profile(
     Ok(())
 }
 
-fn find_profile<'a>(
-    config: &'a TtsConfig,
-    profile_id: &str,
-) -> Result<&'a TtsProviderProfile, CoreError> {
+fn reconcile_selections(config: &mut TtsConfig, previous: &[TtsProviderProfile]) {
+    let profiles = config.profiles();
+    if let TtsEngineSelection::Provider { profile_id } = &config.default_engine {
+        if !profiles
+            .iter()
+            .any(|profile| &profile.id == profile_id && profile.enabled)
+        {
+            config.default_engine = TtsEngineSelection::System;
+        }
+    }
+    config.voice_by_language.retain(|_, voice| {
+        let TtsVoiceRef::Provider {
+            profile_id,
+            voice_id,
+        } = voice
+        else {
+            return true;
+        };
+        profiles
+            .iter()
+            .find(|profile| &profile.id == profile_id)
+            .is_some_and(|profile| {
+                configured_voice_ids(profile).contains(voice_id)
+                    || (profile.kind == TtsProviderKind::Qwen
+                        && previous
+                            .iter()
+                            .any(|old| old.id == profile.id && old.model == profile.model))
+            })
+    });
+}
+
+fn find_profile(config: &TtsConfig, profile_id: &str) -> Result<TtsProviderProfile, CoreError> {
     config
-        .profiles
-        .iter()
+        .profiles()
+        .into_iter()
         .find(|profile| profile.id == profile_id.trim())
         .ok_or_else(|| CoreError::NotFound(format!("TTS_PROFILE_NOT_FOUND: {profile_id}")))
 }
 
-fn find_enabled_profile<'a>(
-    config: &'a TtsConfig,
+fn find_enabled_profile(
+    config: &TtsConfig,
     profile_id: &str,
-) -> Result<&'a TtsProviderProfile, CoreError> {
+) -> Result<TtsProviderProfile, CoreError> {
     let profile = find_profile(config, profile_id)?;
     if !profile.enabled {
         return Err(tts_error(
@@ -608,6 +745,19 @@ fn tts_error(kind: TtsErrorKind, code: &str) -> CoreError {
     }
 }
 
+fn normalize_voice_names(
+    names: &std::collections::BTreeMap<String, String>,
+) -> std::collections::BTreeMap<String, String> {
+    names
+        .iter()
+        .filter_map(|(id, name)| {
+            let id = id.trim();
+            let name = name.trim();
+            (!id.is_empty() && !name.is_empty()).then(|| (id.to_owned(), name.to_owned()))
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
@@ -653,6 +803,104 @@ mod tests {
             cache_policy: TtsCachePolicy::Use,
             instructions: None,
         }
+    }
+
+    #[tokio::test]
+    async fn tests_unsaved_and_disabled_profiles_with_real_synthesis() {
+        let (endpoint, server) = test_server(vec![response("audio/mpeg", b"ID3test-audio")]).await;
+        let mut profile = openai_profile(endpoint);
+        profile.id.clear();
+        profile.enabled = false;
+        profile.model = Some("draft-model".into());
+        TtsService::test_provider(profile, "Test this draft.".into(), Some("draft-key"))
+            .await
+            .unwrap();
+        let requests = server.await.unwrap();
+        assert_eq!(requests.len(), 1);
+        let body = request_body(&requests[0]);
+        assert_eq!(body["model"], "draft-model");
+        assert_eq!(body["voice"], "reader-voice");
+        assert_eq!(body["input"], "Test this draft.");
+        assert_eq!(body["instructions"], "Speak warmly");
+        assert!(request_text(&requests[0]).contains("Bearer draft-key"));
+    }
+
+    #[tokio::test]
+    async fn provider_tests_validate_before_sending_and_report_provider_failure() {
+        let mut profile = openai_profile("http://127.0.0.1:1".into());
+        assert!(
+            TtsService::test_provider(profile.clone(), " ".into(), Some("key"))
+                .await
+                .unwrap_err()
+                .to_string()
+                .contains("TTS_TEXT_REQUIRED")
+        );
+        assert!(
+            TtsService::test_provider(profile.clone(), "Test".into(), None)
+                .await
+                .unwrap_err()
+                .to_string()
+                .contains("TTS_CREDENTIAL_REQUIRED")
+        );
+        let (endpoint, server) = test_server(vec![
+            b"HTTP/1.1 401 Unauthorized\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}"
+                .to_vec(),
+        ])
+        .await;
+        profile.endpoint = endpoint;
+        assert!(matches!(
+            TtsService::test_provider(profile, "Test".into(), Some("bad-key")).await,
+            Err(CoreError::Tts {
+                kind: TtsErrorKind::Unauthorized,
+                ..
+            })
+        ));
+        assert_eq!(server.await.unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn previews_unsaved_voice_to_validated_audio_without_configuration() {
+        let dir = tempfile::tempdir().unwrap();
+        let audio = b"ID3\x04\x00\x00MyReader";
+        let (endpoint, server) = test_server(vec![response("audio/mpeg", audio)]).await;
+        let mut profile = openai_profile(endpoint);
+        profile.id.clear();
+        profile.enabled = false;
+        if let TtsProviderOptions::OpenAiCompatible { default_voice, .. } = &mut profile.options {
+            *default_voice = Some("narrator-voice".into());
+        }
+        let artifact = TtsService::preview_provider(
+            profile,
+            dir.path(),
+            "Draft preview".into(),
+            Some("draft-key"),
+        )
+        .await
+        .unwrap();
+        assert_eq!(std::fs::read(&artifact.path).unwrap(), audio);
+        assert_eq!(artifact.mime_type, "audio/mpeg");
+        let requests = server.await.unwrap();
+        assert_eq!(request_body(&requests[0])["voice"], "narrator-voice");
+        assert_eq!(request_body(&requests[0])["input"], "Draft preview");
+        assert!(!dir.path().join("config.json").exists());
+    }
+
+    #[tokio::test]
+    async fn discovers_models_from_speech_endpoint_without_synthesizing() {
+        let (endpoint, server) = test_server(vec![response(
+            "application/json",
+            br#"{"data":[{"id":"b"},{"id":"a"},{"id":"b"}]}"#,
+        )])
+        .await;
+        let profile = openai_profile(format!("{endpoint}/v1/audio/speech"));
+        let models = TtsService::discover_models(&profile, Some("draft-key"))
+            .await
+            .unwrap();
+        assert_eq!(models, vec!["a", "b"]);
+        let requests = server.await.unwrap();
+        let request = request_text(&requests[0]);
+        assert!(request.starts_with("GET /v1/models HTTP/1.1"));
+        assert!(request.contains("Bearer draft-key"));
     }
 
     async fn test_server(responses: Vec<Vec<u8>>) -> (String, JoinHandle<Vec<Vec<u8>>>) {
@@ -959,68 +1207,100 @@ mod tests {
     }
 
     #[test]
-    fn qwen_creation_presets_provide_valid_independent_source_defaults() {
+    fn qwen_presets_contain_only_connection_settings() {
         let presets = TtsService::qwen_presets();
-        let expected = [
-            (
-                "tokenPlan",
-                "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference",
-                "longanhuan_v3.6",
-            ),
-            (
-                "qianwen",
-                "https://maas.qianwenaiapi.com/api/v1",
-                "longanlingxin",
-            ),
-            (
-                "dashscope",
-                "https://dashscope.aliyuncs.com/api/v1",
-                "longanlingxin",
-            ),
+        assert_eq!(presets.len(), 3);
+        assert_eq!(presets[0].endpoint, tts::qwen::DEFAULT_ENDPOINT);
+        assert_eq!(presets[1].endpoint, "https://maas.qianwenaiapi.com/api/v1");
+        assert_eq!(presets[2].endpoint, "https://dashscope.aliyuncs.com/api/v1");
+    }
+
+    #[tokio::test]
+    async fn qwen_catalog_pages_official_metadata_and_accepts_future_models() {
+        let pages = [
+            serde_json::json!({"output":{"total":4,"models":[
+                {"model":"qwen-audio-9.0-tts-plus", "name":"New Audio"},
+                {"model":"qwen3-tts-flash-realtime"}
+            ]}}),
+            serde_json::json!({"output":{"total":4,"models":[
+                {"model":"qwen3-tts-instruct-flash-2099-01-01"},
+                {"model":"qwen-max"}
+            ]}}),
         ];
-        assert_eq!(presets.len(), expected.len());
-        let dir = tempfile::tempdir().unwrap();
-        let config_path = dir.path().join("config.json");
-        for (preset, (id, endpoint, voice)) in presets.into_iter().zip(expected) {
-            assert_eq!(
-                (preset.id.as_str(), preset.endpoint.as_str()),
-                (id, endpoint)
-            );
-            assert_eq!(preset.default_model.voices[0].id, voice);
-            assert_eq!(preset.default_model.voice_discovery, id != "tokenPlan");
-            let mut profile = qwen_profile(preset.endpoint, &preset.default_model.id, voice);
-            profile.id = id.into();
-            profile.credential_reference = None;
-            TtsService::upsert_profile(&config_path, profile).unwrap();
-        }
-        let config = TtsService::get_config(&config_path).unwrap();
-        assert_eq!(config.profiles.len(), 3);
-        for profile in config.profiles {
-            assert_eq!(profile.kind, TtsProviderKind::Qwen);
-            assert_eq!(
-                profile.credential_reference,
-                Some(format!("tts:{}:api-key", profile.id))
-            );
+        let (endpoint, server) = test_server(
+            pages
+                .iter()
+                .map(|page| response("application/json", &serde_json::to_vec(page).unwrap()))
+                .collect(),
+        )
+        .await;
+        let models = TtsService::qwen_models(&endpoint, Some("catalog-key"))
+            .await
+            .unwrap();
+        assert_eq!(
+            models.iter().map(|m| m.id.as_str()).collect::<Vec<_>>(),
+            [
+                "qwen-audio-9.0-tts-plus",
+                "qwen3-tts-instruct-flash-2099-01-01"
+            ]
+        );
+        assert_eq!(models[0].name, "New Audio");
+        assert!(models[0].voices.is_empty());
+        assert!(!models[1].voices.is_empty());
+        for (index, request) in server.await.unwrap().iter().enumerate() {
+            let text = request_text(request);
+            assert!(text.starts_with(&format!(
+                "GET /api/v1/models?page_no={}&page_size=100 ",
+                index + 1
+            )));
+            assert!(text
+                .to_lowercase()
+                .contains("authorization: bearer catalog-key"));
         }
     }
 
-    #[test]
-    fn qwen_defaults_use_the_token_plan_catalog_and_documented_endpoint() {
-        let models = TtsService::qwen_models(None);
+    #[tokio::test]
+    async fn token_plan_catalog_stays_on_subscription_gateway() {
+        let body = serde_json::json!({"data":[{"id":"qwen-audio-9.0-tts-plus"},{"id":"qwen3-tts-flash"},{"id":"qwen-max"}]});
+        let (endpoint, server) = test_server(vec![response(
+            "application/json",
+            &serde_json::to_vec(&body).unwrap(),
+        )])
+        .await;
+        let websocket = format!("{}/api-ws/v1/inference", endpoint.replace("http:", "ws:"));
+        let models = TtsService::qwen_models(&websocket, Some("sk-sp-private"))
+            .await
+            .unwrap();
         assert_eq!(models.len(), 1);
-        assert_eq!(models[0].id, "qwen-audio-3.0-tts-plus");
-        assert!(!models[0].voice_discovery);
-        assert_eq!(models[0].voices[0].id, "longanhuan_v3.6");
-        let dir = tempfile::tempdir().unwrap();
-        let config = TtsService::upsert_profile(
-            &dir.path().join("config.json"),
-            qwen_profile("".into(), "qwen-audio-3.0-tts-plus", "longanhuan_v3.6"),
-        )
-        .unwrap();
-        assert_eq!(
-            config.profiles[0].endpoint,
-            "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference"
+        assert_eq!(models[0].id, "qwen-audio-9.0-tts-plus");
+        assert!(
+            request_text(&server.await.unwrap()[0]).starts_with("GET /compatible-mode/v1/models?")
         );
+        assert!(TtsService::qwen_models(&endpoint, Some("sk-sp-private"))
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("QWEN_TOKEN_PLAN_WEBSOCKET_REQUIRED"));
+    }
+
+    #[tokio::test]
+    async fn catalog_does_not_silently_substitute_defaults_on_failure() {
+        for body in [
+            serde_json::json!({"output":{}}),
+            serde_json::json!({"code":"InvalidApiKey", "message":"bad secret"}),
+        ] {
+            let (endpoint, server) = test_server(vec![response(
+                "application/json",
+                &serde_json::to_vec(&body).unwrap(),
+            )])
+            .await;
+            let error = TtsService::qwen_models(&endpoint, Some("secret"))
+                .await
+                .unwrap_err()
+                .to_string();
+            assert!(!error.contains("secret"));
+            server.await.unwrap();
+        }
     }
 
     #[tokio::test]
@@ -1112,19 +1392,18 @@ mod tests {
         assert!(error
             .to_string()
             .contains("QWEN_TOKEN_PLAN_WEBSOCKET_REQUIRED"));
-        let voices = TtsService::discover_qwen_voices(
-            tts::qwen::DEFAULT_ENDPOINT,
-            "qwen-audio-3.0-tts-plus",
-            Some("sk-sp-fixture"),
-        )
-        .await
-        .unwrap();
-        assert_eq!(voices[0].id, "longanhuan_v3.6");
     }
 
     #[tokio::test]
     async fn qwen_models_use_native_protocol_and_download_audio_without_credentials() {
-        for model in TtsService::qwen_models(Some("https://dashscope.aliyuncs.com/api/v1")) {
+        for id in [
+            "qwen-audio-9.0-tts-plus",
+            "qwen3-tts-flash",
+            "qwen3-tts-instruct-flash-2099-01-01",
+            "qwen3-tts-vc-2099-01-01",
+            "qwen3-tts-vd-2099-01-01",
+        ] {
+            let model = tts::qwen::model(id, "https://dashscope.aliyuncs.com/api/v1").unwrap();
             let voice = model
                 .voices
                 .first()
@@ -1173,7 +1452,7 @@ mod tests {
             assert_eq!(body["model"], model.id);
             assert_eq!(body["input"]["voice"], voice);
             assert_eq!(body["input"]["text"], "你好，Hello.");
-            let audio_plus = model.id == tts::qwen::DEFAULT_MODEL;
+            let audio_plus = tts::qwen::is_audio_model(&model.id);
             let path = if audio_plus {
                 "/api/v1/services/audio/tts/SpeechSynthesizer"
             } else {
@@ -1229,7 +1508,7 @@ mod tests {
                     .collect(),
             )
             .await;
-            let voices = TtsService::discover_qwen_voices(&endpoint, model, Some("key"))
+            let voices = tts::qwen::discover_account_voices(&endpoint, model, Some("key"))
                 .await
                 .unwrap();
             assert_eq!(voices.len(), 100);
@@ -1248,7 +1527,7 @@ mod tests {
 
     #[tokio::test]
     async fn qwen_audio_discovery_includes_only_ready_voices_for_selected_model() {
-        let model = tts::qwen::DEFAULT_MODEL;
+        let model = "qwen-audio-9.0-tts-plus";
         let id = format!("{model}-reader-1234");
         let body = serde_json::json!({"output": {"voice_list": [
             {"voice_id": id, "status": "OK"},
@@ -1260,10 +1539,10 @@ mod tests {
             &serde_json::to_vec(&body).unwrap(),
         )])
         .await;
-        let voices = TtsService::discover_qwen_voices(&endpoint, model, Some("key"))
+        let voices = tts::qwen::discover_account_voices(&endpoint, model, Some("key"))
             .await
             .unwrap();
-        assert_eq!(voices.len(), 3);
+        assert_eq!(voices.len(), 1);
         assert_eq!(voices.last().unwrap().id, id);
         let body = request_body(&server.await.unwrap()[0]);
         assert_eq!(body["model"], "voice-enrollment");
@@ -1318,6 +1597,42 @@ mod tests {
             assert!(!detail.contains("private-key"));
             assert!(detail.contains("request-header"));
             server.await.unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn invalid_qwen_voice_ids_report_provider_errors_without_substitution_or_audio() {
+        for model in ["qwen-audio-3.1-tts-plus", "qwen3-tts-flash"] {
+            let body =
+                r#"{"code":"InvalidParameter","message":"Voice not found: misspelled-voice"}"#;
+            let response = format!("HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).into_bytes();
+            let (endpoint, server) = test_server(vec![response]).await;
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("config.json");
+            let cache = dir.path().join("audio");
+            TtsService::upsert_profile(&path, qwen_profile(endpoint, model, "configured-voice"))
+                .unwrap();
+            let mut input = request("qwen", "audio/wav");
+            input.voice_id = "misspelled-voice".into();
+            let error = TtsService::synthesize(&path, &cache, input, Some("key"))
+                .await
+                .unwrap_err();
+            assert!(matches!(
+                &error,
+                CoreError::Tts {
+                    kind: TtsErrorKind::InvalidRequest,
+                    ..
+                }
+            ));
+            assert!(error
+                .to_string()
+                .contains("Voice not found: misspelled-voice"));
+            let requests = server.await.unwrap();
+            assert_eq!(
+                request_body(&requests[0])["input"]["voice"],
+                "misspelled-voice"
+            );
+            assert!(!cache.exists());
         }
     }
 
@@ -1398,38 +1713,49 @@ mod tests {
         }
     }
 
-    #[test]
-    fn qianwen_catalog_rejects_unsupported_models_but_keeps_old_profiles_editable() {
-        let endpoint = "https://maas.qianwenaiapi.com/api/v1";
-        let ids: Vec<_> = TtsService::qwen_models(Some(endpoint))
-            .into_iter()
-            .map(|model| model.id)
-            .collect();
-        assert_eq!(ids, ["qwen-audio-3.0-tts-plus", "qwen3-tts-flash"]);
+    #[tokio::test]
+    async fn new_model_versions_and_edited_voices_survive_save_and_playback_listing() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("config.json");
-        let profile = qwen_profile(endpoint.into(), "qwen3-tts-instruct-flash", "Bunny");
-        ConfigService::mutate_config(&path, |config| {
-            config.tts.profiles.push(profile.clone());
-            Ok(())
-        })
-        .unwrap();
-        assert_eq!(
-            TtsService::get_config(&path).unwrap().profiles[0].model,
-            profile.model
-        );
-        assert!(TtsService::upsert_profile(&path, profile.clone())
-            .unwrap_err()
-            .to_string()
-            .contains("QWEN_MODEL_UNSUPPORTED"));
-        TtsService::upsert_profile(
-            &path,
-            TtsProviderProfile {
-                model: Some("qwen3-tts-flash".into()),
-                ..profile
-            },
-        )
-        .unwrap();
+        for model in ["qwen-audio-9.0-tts-plus", "qwen3-tts-flash"] {
+            let profile = qwen_profile(
+                "https://maas.qianwenaiapi.com/api/v1".into(),
+                model,
+                "future-voice",
+            );
+            TtsService::upsert_profile(&path, profile.clone()).unwrap();
+            let saved = TtsService::get_config(&path).unwrap();
+            assert_eq!(saved.profiles()[0].options.voices(), &["future-voice"]);
+            let voices = TtsService::list_voices(&path, "qwen", None).await.unwrap();
+            assert_eq!(voices.len(), 1);
+            assert_eq!(voices[0].id, "future-voice");
+            TtsService::upsert_profile(&path, profile).unwrap();
+            assert_eq!(
+                TtsService::get_config(&path).unwrap().profiles()[0]
+                    .options
+                    .voices(),
+                &["future-voice"]
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn system_voice_presets_do_not_require_a_network_request() {
+        for (model, endpoint) in [
+            ("qwen3-tts-flash", "http://127.0.0.1:9/api/v1"),
+            (
+                "qwen-audio-3.0-tts-plus",
+                "ws://127.0.0.1:9/api-ws/v1/inference",
+            ),
+        ] {
+            let defaults = tts::qwen::model(model, endpoint).unwrap();
+            assert!(!defaults.voices.is_empty());
+            assert!(!defaults.voice_discovery);
+            assert!(TtsService::discover_qwen_voices(endpoint, model, None)
+                .await
+                .unwrap()
+                .is_empty());
+        }
     }
 
     #[test]
@@ -1443,7 +1769,7 @@ mod tests {
         );
         let config = TtsService::upsert_profile(&path, profile.clone()).unwrap();
         assert_eq!(
-            config.profiles[0].options.default_voice(),
+            config.profiles()[0].options.default_voice(),
             Some("future-official-voice")
         );
         let mut input = request("qwen", "audio/wav");
@@ -1460,10 +1786,14 @@ mod tests {
         {
             *response_format = TtsAudioFormat::Mp3;
         }
-        assert!(TtsService::upsert_profile(&path, profile)
-            .unwrap_err()
-            .to_string()
-            .contains("QWEN_AUDIO_FORMAT_UNSUPPORTED"));
+        let saved = TtsService::upsert_profile(&path, profile).unwrap();
+        assert!(matches!(
+            saved.profiles()[0].options,
+            TtsProviderOptions::Qwen {
+                response_format: TtsAudioFormat::Wav,
+                ..
+            }
+        ));
     }
 
     #[tokio::test]
@@ -1603,7 +1933,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            config.profiles[0].options,
+            config.profiles()[0].options,
             TtsProviderOptions::OpenAiCompatible {
                 response_format: TtsAudioFormat::Mp3,
                 instructions: None,
@@ -1671,9 +2001,9 @@ mod tests {
         profile.model = Some("tts-1".into());
         let changed = TtsService::upsert_profile(&config_path, profile).unwrap();
 
-        assert_eq!(first.profiles[0].revision, 1);
-        assert_eq!(renamed.profiles[0].revision, 1);
-        assert_eq!(changed.profiles[0].revision, 2);
+        assert_eq!(first.profiles()[0].revision, 1);
+        assert_eq!(renamed.profiles()[0].revision, 1);
+        assert_eq!(changed.profiles()[0].revision, 2);
     }
 
     #[test]
@@ -1696,6 +2026,6 @@ mod tests {
         let config = TtsService::remove_profile(&config_path, "openai").unwrap();
 
         assert_eq!(config.default_engine, TtsEngineSelection::System);
-        assert!(config.profiles.is_empty());
+        assert!(config.profiles().is_empty());
     }
 }

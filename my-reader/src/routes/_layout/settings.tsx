@@ -5,6 +5,9 @@ const SETTINGS_SECTIONS = new Set<SettingsSection>([
   "libraries",
   "dataSources",
   "speech",
+  "llm",
+  "aiProviders",
+  "ttsProviders",
   "appearance",
   "about",
 ])

@@ -28,7 +28,8 @@ const playback = {
 }
 
 const systemConfig: MobileTtsConfig = {
-  schemaVersion: 1,
+  schemaVersion: 2,
+  providers: [],
   defaultEngine: { kind: "system" },
   profiles: [],
   voices: [],

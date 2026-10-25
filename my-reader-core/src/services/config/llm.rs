@@ -6,8 +6,23 @@ use crate::{
 };
 
 pub(crate) fn validate_config(config: &LlmConfig) -> Result<(), CoreError> {
+    let mut providers = HashSet::new();
+    for provider in &config.providers {
+        let mut models = HashSet::new();
+        if provider.id.trim().is_empty()
+            || !providers.insert(&provider.id)
+            || provider.models.is_empty()
+            || provider
+                .models
+                .iter()
+                .any(|model| !models.insert(&model.model))
+        {
+            return Err(CoreError::Config("LLM_INVALID_PROVIDER_MODELS".into()));
+        }
+    }
+    let profiles = config.profiles();
     let mut ids = HashSet::new();
-    for profile in &config.profiles {
+    for profile in &profiles {
         validate_profile(profile)?;
         if !ids.insert(&profile.id) {
             return Err(CoreError::Config("LLM_DUPLICATE_PROFILE".into()));
@@ -43,6 +58,12 @@ pub(crate) fn validate_profile(profile: &LlmProviderProfile) -> Result<(), CoreE
     }
     if !(8_192..=2_000_000).contains(&profile.context_window) {
         return Err(CoreError::Config("LLM_INVALID_CONTEXT_WINDOW".into()));
+    }
+    if profile
+        .max_output_tokens
+        .is_some_and(|limit| limit == 0 || limit > profile.context_window)
+    {
+        return Err(CoreError::Config("LLM_INVALID_OUTPUT_LIMIT".into()));
     }
     Ok(())
 }

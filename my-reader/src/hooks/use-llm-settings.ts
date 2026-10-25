@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api } from "@/lib/tauri-api"
-import type { LlmProfileInput } from "@/lib/tauri-specta"
+import type { SaveLlmProviderInput } from "@/lib/tauri-specta"
 
 const key = ["llm-settings"]
 export function useLlmSettings() {
   const client = useQueryClient()
   const query = useQuery({ queryKey: key, queryFn: api.getLlmConfig })
   const save = useMutation({
-    mutationFn: (input: LlmProfileInput) => api.upsertLlmProfile(input),
+    mutationFn: (input: SaveLlmProviderInput) => api.saveLlmProvider(input),
     onSuccess: (data) => client.setQueryData(key, data),
   })
   const remove = useMutation({

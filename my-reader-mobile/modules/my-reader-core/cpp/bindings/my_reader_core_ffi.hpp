@@ -315,6 +315,9 @@ protected:
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_llm_remove_profile(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_llm_save_provider(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_llm_select_profile(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
@@ -474,6 +477,9 @@ protected:
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_tts_remove_profile(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_tts_save_provider(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_tts_set_default_engine(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
@@ -484,6 +490,9 @@ protected:
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_tts_synthesize(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_tts_test_provider(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_tts_upsert_profile(
@@ -945,6 +954,9 @@ protected:
   jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_llm_remove_profile(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_llm_save_provider(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_llm_select_profile(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
@@ -1124,6 +1136,9 @@ protected:
   jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_tts_remove_profile(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_tts_save_provider(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_tts_set_default_engine(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
@@ -1134,6 +1149,9 @@ protected:
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_tts_synthesize(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_tts_test_provider(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_tts_upsert_profile(
