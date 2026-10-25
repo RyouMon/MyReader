@@ -1,4 +1,48 @@
 export const sharedEn = {
+  libraryLocation: {
+    title: "Library location",
+    action: "Change library location",
+    missingTitle: "Library folder not found",
+    unavailableTitle: "Cannot access library path",
+    currentPath: "Current path",
+    sourceRoot: "Data source root",
+    effectivePath: "Effective path",
+    dataSource: "Data source",
+    choose: "Choose folder",
+    save: "Validate and save",
+    retry: "Sync now",
+    saved: "Location saved. You can sync now.",
+    keepData:
+      "Choose the same library at its new location. Reading data and downloads stay on this device.",
+    technicalDetails: "Technical details",
+    sourceSettings: "Data source settings",
+    up: "Parent folder",
+    problems: {
+      root_missing:
+        "The saved library folder was not found. If it moved, choose its new location.",
+      path_unavailable:
+        "Cannot access the library path. Check the folder and account permissions, or choose its new location.",
+      invalid_library:
+        "The folder is accessible but is not a valid library of the original type.",
+      identity_unknown:
+        "The original library identity cannot be confirmed. The location was not changed.",
+      identity_mismatch:
+        "This is a different library. The location was not changed and reading data was not merged.",
+      credential:
+        "Access was denied. Check the account permissions or renew folder access.",
+      connectivity:
+        "The server could not be reached. Check the connection and try again.",
+      data_source:
+        "The data source cannot be accessed. Check its settings before changing the library location.",
+      busy: "Sync or upload is in progress. Wait for it to finish and try again.",
+      changed:
+        "The library changed during validation. Reopen this page and try again.",
+      managed:
+        "This library is managed inside the app. Its location cannot be changed.",
+      save_failed:
+        "The location could not be saved. The original configuration was preserved.",
+    },
+  },
   appUpdates: {
     title: "App updates",
     currentVersion: "Current version: {{version}}",

@@ -1,5 +1,5 @@
 import type { Library } from "@my-reader/tools/types/library"
-import { Library as LibraryIcon, Trash2 } from "lucide-react"
+import { Library as LibraryIcon, FolderPen, Trash2 } from "lucide-react"
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { AddPanelButton } from "@/components/common/AddPanelButton"
@@ -20,6 +20,9 @@ import {
 } from "@/hooks/queries/useLibrariesQuery"
 import { cn } from "@/lib/utils"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
+
+import { LibraryLocationDialog } from "@/components/library/LibraryLocationDialog"
+import { useLibraryLocation } from "@/hooks/useLibraryLocation"
 
 interface LibrariesSectionProps {
   onAddLibrary: () => void
@@ -124,6 +127,8 @@ function LibraryCard({
   onDeleteClick,
 }: LibraryCardProps) {
   const { t } = useTranslation()
+  const [relocating, setRelocating] = useState(false)
+  const location = useLibraryLocation(lib)
   const isWebdav = lib.sourceType === "webdav"
   const isOnedrive = lib.sourceType === "onedrive"
   const sourceIconKind: EntityIconKind = isOnedrive
@@ -184,6 +189,24 @@ function LibraryCard({
         }
         actions={
           <div className="flex items-center gap-1">
+            {location.data?.canRelocate ? (
+              <button
+                type="button"
+                aria-label={t("libraryLocation.action")}
+                title={t("libraryLocation.action")}
+                onClick={() => setRelocating(true)}
+                className="rounded-md p-2 text-muted-foreground hover:bg-accent"
+              >
+                <FolderPen className="size-3.5" />
+              </button>
+            ) : null}
+            {relocating ? (
+              <LibraryLocationDialog
+                library={lib}
+                open
+                onOpenChange={setRelocating}
+              />
+            ) : null}
             <button
               type="button"
               onClick={() => onDeleteClick(lib.id)}

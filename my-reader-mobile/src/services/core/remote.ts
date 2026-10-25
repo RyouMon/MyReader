@@ -34,7 +34,7 @@ type RemoteLibraryResult = {
   library: Library
 }
 
-async function credentialFor(
+export async function credentialFor(
   source: DataSource,
   secrets?: DataSourceSecrets,
 ): Promise<CoreRemoteCredential> {

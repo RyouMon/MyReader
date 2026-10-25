@@ -251,3 +251,18 @@ impl serde::Serialize for AppError {
         self.as_kind().serialize(serializer)
     }
 }
+
+impl AppError {
+    pub(crate) fn failure_kind(&self) -> my_reader_core::models::SyncFailureKind {
+        use my_reader_core::models::SyncFailureKind;
+        match self {
+            AppError::Request(_) | AppError::Storage(_) => SyncFailureKind::Connectivity,
+            AppError::Credential(_) => SyncFailureKind::Credential,
+            AppError::Auth(_) | AppError::Config(_) => SyncFailureKind::Configuration,
+            AppError::Database(_) | AppError::Serialize(_) | AppError::DataIntegrity(_) => {
+                SyncFailureKind::DataIntegrity
+            }
+            _ => SyncFailureKind::Unexpected,
+        }
+    }
+}

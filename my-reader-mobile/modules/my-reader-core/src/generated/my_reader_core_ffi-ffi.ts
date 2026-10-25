@@ -552,6 +552,13 @@ interface NativeModuleInterface {
     credential: Uint8Array,
     recordedAtMs: number,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_library_location(
+    configPath: Uint8Array,
+    libraryId: Uint8Array,
+    localRootPath: Uint8Array,
+    credential: Uint8Array,
+    diagnose: number,
+  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_library_open_local_myreader(
     configPath: Uint8Array,
     request: Uint8Array,
@@ -567,6 +574,13 @@ interface NativeModuleInterface {
     configPath: Uint8Array,
     libraryId: Uint8Array,
     localRootPath: Uint8Array,
+    credential: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_library_relocate(
+    configPath: Uint8Array,
+    libraryId: Uint8Array,
+    sidecarRootPath: Uint8Array,
+    request: Uint8Array,
     credential: Uint8Array,
   ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_library_remove(
@@ -937,9 +951,11 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_create_local_myreader(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_create_managed_local_myreader(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_create_remote_myreader(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_library_location(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_open_local_myreader(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_open_remote_myreader(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_refresh_remote(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_library_relocate(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_remove(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_replace(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_switch(): number;

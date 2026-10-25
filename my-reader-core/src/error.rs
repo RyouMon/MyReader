@@ -1,3 +1,5 @@
+use crate::models::SyncFailureKind;
+
 #[derive(Debug, thiserror::Error)]
 pub enum CoreError {
     #[error("REQUEST_ERROR: {0}")]
@@ -127,6 +129,56 @@ impl TtsErrorKind {
                 SyncFailureKind::Connectivity
             }
             Self::InvalidResponse | Self::Cache | Self::InvalidAudio => SyncFailureKind::Unexpected,
+        }
+    }
+}
+
+impl CoreError {
+    /// Classifies failures without interpreting diagnostic text.
+    pub(crate) fn failure_kind(&self) -> SyncFailureKind {
+        match self {
+            CoreError::Request(error) => match error.status().map(|status| status.as_u16()) {
+                Some(401 | 403) => SyncFailureKind::Credential,
+                Some(400..=499)
+                    if !matches!(error.status().map(|s| s.as_u16()), Some(408 | 429)) =>
+                {
+                    SyncFailureKind::Configuration
+                }
+                _ if error.is_builder() => SyncFailureKind::Configuration,
+                _ if error.is_decode() => SyncFailureKind::Unexpected,
+                _ => SyncFailureKind::Connectivity,
+            },
+            CoreError::StorageBackend(error) => match error.kind() {
+                opendal::ErrorKind::PermissionDenied => SyncFailureKind::Credential,
+                opendal::ErrorKind::ConfigInvalid
+                | opendal::ErrorKind::NotFound
+                | opendal::ErrorKind::Unsupported
+                | opendal::ErrorKind::IsADirectory
+                | opendal::ErrorKind::NotADirectory => SyncFailureKind::Configuration,
+                opendal::ErrorKind::RateLimited => SyncFailureKind::Connectivity,
+                // RetryLayer replaces the temporary flag with persistent. Known
+                // permanent kinds are handled above; retry other failures later.
+                _ if error.is_temporary() || error.is_persistent() => SyncFailureKind::Connectivity,
+                _ => SyncFailureKind::Unexpected,
+            },
+            CoreError::Storage(_) => SyncFailureKind::Connectivity,
+            CoreError::Config(_)
+            | CoreError::NotFound(_)
+            | CoreError::LibraryAlreadyExists
+            | CoreError::LibraryNotFound(_)
+            | CoreError::NoActiveLibrary
+            | CoreError::MetadataDbNotFound(_)
+            | CoreError::LibraryMarkerNotFound(_)
+            | CoreError::LibraryRootNotEmpty
+            | CoreError::LibraryFolderAlreadyExists
+            | CoreError::DataSourceInUse(_) => SyncFailureKind::Configuration,
+            CoreError::LibraryContainsMetadataDb => SyncFailureKind::DataIntegrity,
+            CoreError::DataIntegrity(_) => SyncFailureKind::DataIntegrity,
+            CoreError::Tts { kind, .. } => kind.failure_kind(),
+            CoreError::Io(_)
+            | CoreError::Database(_)
+            | CoreError::Serialize(_)
+            | CoreError::Sync(_) => SyncFailureKind::Unexpected,
         }
     }
 }

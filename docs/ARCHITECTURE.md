@@ -119,6 +119,13 @@ MyReader 身份读取 marker，设备副本身份保留在各自 sidecar。无�
 Catalog / Sync / BookTransfer 调用 Content 的状态转换，TTS 调用 Config。
 `api::*Service` 的公开路径和签名保持稳定；没有为单一实现引入新的 trait 或通用 service 框架。
 
+书库位置查询、诊断和重新定位统一由 `api::library::LibraryService` 提供，实现在
+`services/library/location.rs`。位置 DTO 属于 `models/library/`，不另设位置服务。
+`library/source.rs` 负责源位置解析、根目录探测和目标身份校验；`library/access.rs` 负责
+重新定位与同步、上传之间的读写保护，并对照持久配置拒绝仍使用旧位置的任务。
+这些共享模块只依赖模型、存储和同步基础能力，不调用 service；错误分类由错误类型提供。
+Tauri 与 UniFFI 的位置适配也归入各自的 library 模块，保持现有 IPC 名称和数据合同。
+
 Core 的 `FileState.local_state` / `FileStateUpdate.local_state` 使用 `FileLocalState`，
 `Library.source_type` 使用 `Option<LibrarySourceType>`。业务状态判断使用枚举；SQLite、JSON、
 Tauri DTO 和 UniFFI 的既有字符串值保持不变，转换集中在持久化与平台边界。未知字符串原样保留，

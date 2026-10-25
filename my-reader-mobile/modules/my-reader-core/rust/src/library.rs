@@ -1,3 +1,5 @@
+mod location;
+
 use std::path::Path;
 
 use my_reader_core::api::library::LibraryService;

@@ -329,5 +329,37 @@
     "loading": "載入中…",
     "retry": "重試",
     "noResults": "沒有同時符合所有條件的書籍。"
+  },
+  "libraryLocation": {
+    "title": "書庫位置",
+    "action": "修改書庫路徑",
+    "missingTitle": "找不到書庫資料夾",
+    "unavailableTitle": "無法存取書庫路徑",
+    "currentPath": "目前路徑",
+    "sourceRoot": "資料來源根路徑",
+    "effectivePath": "有效路徑",
+    "dataSource": "資料來源",
+    "choose": "重新選擇位置",
+    "save": "驗證並儲存",
+    "retry": "立即同步",
+    "saved": "位置已儲存，可以立即重試同步。",
+    "keepData": "請選擇原書庫的新位置。閱讀資料和本機下載將保留。",
+    "technicalDetails": "技術詳細資訊",
+    "sourceSettings": "資料來源設定",
+    "up": "上層資料夾",
+    "problems": {
+      "root_missing": "找不到已儲存的書庫資料夾。如果書庫已移動，請重新選擇位置。",
+      "path_unavailable": "無法存取書庫路徑。請檢查資料夾和帳戶權限，或重新選擇位置。",
+      "invalid_library": "目錄可以存取，但不是與原書庫類型一致的有效書庫。",
+      "identity_unknown": "無法確認原書庫身分，未修改位置。",
+      "identity_mismatch": "這是另一個書庫。未修改位置，也未合併閱讀資料。",
+      "credential": "存取遭拒。請確認帳號權限，或重新授予資料夾存取權限。",
+      "connectivity": "無法連線至伺服器。請檢查網路後重試。",
+      "data_source": "無法存取資料來源。請先檢查資料來源設定。",
+      "busy": "同步或上傳正在進行，請等待完成後重試。",
+      "changed": "驗證期間書庫已變更，請重新開啟此頁面後重試。",
+      "managed": "此書庫由應用程式內部管理，無法修改位置。",
+      "save_failed": "無法儲存新位置，原設定已保留。"
+    }
   }
 }

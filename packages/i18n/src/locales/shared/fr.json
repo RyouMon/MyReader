@@ -332,5 +332,37 @@
     "loading": "Chargement…",
     "retry": "Réessayer",
     "noResults": "Aucun livre ne correspond à tous les critères."
+  },
+  "libraryLocation": {
+    "title": "Emplacement de la bibliothèque",
+    "action": "Modifier l’emplacement",
+    "missingTitle": "Dossier de bibliothèque introuvable",
+    "unavailableTitle": "Accès à la bibliothèque impossible",
+    "currentPath": "Chemin actuel",
+    "sourceRoot": "Racine de la source",
+    "effectivePath": "Chemin complet",
+    "dataSource": "Source de données",
+    "choose": "Choisir un dossier",
+    "save": "Vérifier et enregistrer",
+    "retry": "Synchroniser",
+    "saved": "Emplacement enregistré. Vous pouvez synchroniser.",
+    "keepData": "Choisissez le nouvel emplacement de la même bibliothèque. Vos données de lecture et téléchargements seront conservés.",
+    "technicalDetails": "Détails techniques",
+    "sourceSettings": "Paramètres de la source",
+    "up": "Dossier parent",
+    "problems": {
+      "root_missing": "Le dossier enregistré de la bibliothèque est introuvable. S’il a été déplacé, choisissez son nouvel emplacement.",
+      "path_unavailable": "Impossible d’accéder au chemin de la bibliothèque. Vérifiez le dossier et les autorisations du compte ou choisissez son nouvel emplacement.",
+      "invalid_library": "Le dossier est accessible mais ne contient pas une bibliothèque valide du type d’origine.",
+      "identity_unknown": "L’identité de la bibliothèque d’origine ne peut pas être confirmée. L’emplacement reste inchangé.",
+      "identity_mismatch": "Il s’agit d’une autre bibliothèque. L’emplacement reste inchangé et les données de lecture n’ont pas été fusionnées.",
+      "credential": "Accès refusé. Vérifiez les autorisations du compte ou renouvelez l’accès au dossier.",
+      "connectivity": "Le serveur est inaccessible. Vérifiez la connexion et réessayez.",
+      "data_source": "La source de données est inaccessible. Vérifiez d’abord ses paramètres.",
+      "busy": "Une synchronisation ou un envoi est en cours. Attendez la fin puis réessayez.",
+      "changed": "La bibliothèque a changé pendant la vérification. Rouvrez cette page.",
+      "managed": "Cette bibliothèque est gérée dans l’application. Son emplacement ne peut pas être modifié.",
+      "save_failed": "L’emplacement n’a pas pu être enregistré. La configuration d’origine est conservée."
+    }
   }
 }

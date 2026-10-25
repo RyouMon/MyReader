@@ -69,6 +69,8 @@ impl TestApp {
             .dangerously_cast_bigints_to_number()
             .commands(tauri_specta::collect_commands![
                 my_reader_lib::commands::library::list_libraries::<MockRuntime>,
+                my_reader_lib::commands::library::get_library_location::<MockRuntime>,
+                my_reader_lib::commands::library::relocate_library::<MockRuntime>,
                 my_reader_lib::commands::source::list_data_sources,
                 my_reader_lib::commands::source::test_webdav_connection,
                 my_reader_lib::commands::library::add_library::<MockRuntime>,

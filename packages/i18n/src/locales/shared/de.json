@@ -331,5 +331,37 @@
     "loading": "Wird geladen…",
     "retry": "Erneut versuchen",
     "noResults": "Kein Buch erfüllt alle Bedingungen."
+  },
+  "libraryLocation": {
+    "title": "Bibliotheksort",
+    "action": "Bibliotheksort ändern",
+    "missingTitle": "Bibliotheksordner nicht gefunden",
+    "unavailableTitle": "Kein Zugriff auf den Bibliothekspfad",
+    "currentPath": "Aktueller Pfad",
+    "sourceRoot": "Stammordner der Datenquelle",
+    "effectivePath": "Vollständiger Pfad",
+    "dataSource": "Datenquelle",
+    "choose": "Ordner wählen",
+    "save": "Prüfen und speichern",
+    "retry": "Jetzt synchronisieren",
+    "saved": "Ort gespeichert. Die Synchronisierung kann erneut gestartet werden.",
+    "keepData": "Wähle den neuen Ort derselben Bibliothek. Lesedaten und Downloads bleiben erhalten.",
+    "technicalDetails": "Technische Details",
+    "sourceSettings": "Datenquelleneinstellungen",
+    "up": "Übergeordneter Ordner",
+    "problems": {
+      "root_missing": "Der gespeicherte Bibliotheksordner wurde nicht gefunden. Wählen Sie seinen neuen Speicherort, falls er verschoben wurde.",
+      "path_unavailable": "Auf den Bibliothekspfad kann nicht zugegriffen werden. Prüfen Sie den Ordner und die Kontoberechtigungen oder wählen Sie den neuen Speicherort.",
+      "invalid_library": "Der Ordner ist erreichbar, enthält aber keine gültige Bibliothek des ursprünglichen Typs.",
+      "identity_unknown": "Die Identität der ursprünglichen Bibliothek lässt sich nicht bestätigen. Der Ort bleibt unverändert.",
+      "identity_mismatch": "Dies ist eine andere Bibliothek. Der Ort bleibt unverändert und Lesedaten wurden nicht zusammengeführt.",
+      "credential": "Zugriff verweigert. Prüfe die Kontoberechtigungen oder erteile den Ordnerzugriff erneut.",
+      "connectivity": "Der Server ist nicht erreichbar. Prüfe die Verbindung und versuche es erneut.",
+      "data_source": "Die Datenquelle ist nicht erreichbar. Prüfe zuerst ihre Einstellungen.",
+      "busy": "Synchronisierung oder Upload läuft. Warte bis zum Abschluss und versuche es erneut.",
+      "changed": "Die Bibliothek wurde während der Prüfung geändert. Öffne diese Seite erneut.",
+      "managed": "Diese Bibliothek wird intern von der App verwaltet. Ihr Ort kann nicht geändert werden.",
+      "save_failed": "Der Ort konnte nicht gespeichert werden. Die ursprüngliche Konfiguration bleibt erhalten."
+    }
   }
 }

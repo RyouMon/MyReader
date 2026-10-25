@@ -1,16 +1,21 @@
 type LocalSidecarWork = {
   libraryId: string
   required: boolean
+  locationChanged?: boolean
 }
 
 const listeners = new Set<(work: LocalSidecarWork) => void>()
 
 export function announceLocalSidecarWork(
   libraryId: string,
-  options?: { required?: boolean },
+  options?: { required?: boolean; locationChanged?: boolean },
 ): void {
   for (const listener of listeners) {
-    listener({ libraryId, required: options?.required === true })
+    listener({
+      libraryId,
+      required: options?.required === true,
+      ...(options?.locationChanged ? { locationChanged: true } : {}),
+    })
   }
 }
 

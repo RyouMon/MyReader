@@ -23,6 +23,15 @@ export async function applySyncReport(
 ): Promise<void> {
   const passive = isPassiveTrigger(context?.trigger)
   const { calibre, libraryId } = report
+  const current = useAppStore
+    .getState()
+    .libraries.find((library) => library.id === libraryId)
+  if (
+    current &&
+    (current.path !== calibre.library.path ||
+      current.sourcePath !== calibre.library.sourcePath)
+  )
+    return
   const pulledManagedCatalog = hasPulledManagedCatalog(report)
 
   useAppStore

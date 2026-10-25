@@ -332,5 +332,37 @@
     "loading": "Carregando…",
     "retry": "Tentar novamente",
     "noResults": "Nenhum livro atende a todas as condições."
+  },
+  "libraryLocation": {
+    "title": "Local da biblioteca",
+    "action": "Alterar local",
+    "missingTitle": "Pasta da biblioteca não encontrada",
+    "unavailableTitle": "Não foi possível acessar a biblioteca",
+    "currentPath": "Caminho atual",
+    "sourceRoot": "Raiz da fonte de dados",
+    "effectivePath": "Caminho completo",
+    "dataSource": "Fonte de dados",
+    "choose": "Escolher pasta",
+    "save": "Validar e salvar",
+    "retry": "Sincronizar agora",
+    "saved": "Local salvo. Você pode sincronizar agora.",
+    "keepData": "Escolha o novo local da mesma biblioteca. Seus dados de leitura e downloads serão preservados.",
+    "technicalDetails": "Detalhes técnicos",
+    "sourceSettings": "Configurações da fonte",
+    "up": "Pasta superior",
+    "problems": {
+      "root_missing": "A pasta salva da biblioteca não foi encontrada. Se ela foi movida, escolha o novo local.",
+      "path_unavailable": "Não é possível acessar o caminho da biblioteca. Verifique a pasta e as permissões da conta ou escolha o novo local.",
+      "invalid_library": "A pasta está acessível, mas não é uma biblioteca válida do tipo original.",
+      "identity_unknown": "Não foi possível confirmar a identidade da biblioteca original. O local não foi alterado.",
+      "identity_mismatch": "Esta é outra biblioteca. O local não foi alterado e os dados de leitura não foram mesclados.",
+      "credential": "Acesso negado. Verifique as permissões da conta ou renove o acesso à pasta.",
+      "connectivity": "Não foi possível conectar ao servidor. Verifique a conexão e tente novamente.",
+      "data_source": "Não foi possível acessar a fonte de dados. Verifique suas configurações primeiro.",
+      "busy": "Uma sincronização ou um envio está em andamento. Aguarde a conclusão.",
+      "changed": "A biblioteca mudou durante a validação. Abra esta página novamente.",
+      "managed": "Esta biblioteca é gerenciada dentro do aplicativo. Seu local não pode ser alterado.",
+      "save_failed": "Não foi possível salvar o local. A configuração original foi preservada."
+    }
   }
 }

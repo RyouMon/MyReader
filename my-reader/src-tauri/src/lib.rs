@@ -51,6 +51,8 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::app_update::set_app_update_preferences::<tauri::Wry>,
             commands::app_update::open_app_update_installer::<tauri::Wry>,
             commands::library::list_libraries::<tauri::Wry>,
+            commands::library::get_library_location::<tauri::Wry>,
+            commands::library::relocate_library::<tauri::Wry>,
             commands::source::list_data_sources,
             commands::source::test_webdav_connection,
             commands::library::add_library::<tauri::Wry>,

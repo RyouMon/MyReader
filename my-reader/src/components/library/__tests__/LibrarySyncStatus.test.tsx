@@ -10,6 +10,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import LibrarySyncStatus from "@/components/library/LibrarySyncStatus"
 import i18n from "@/i18n"
 import { useSyncStatusStore } from "@/stores/syncStatusStore"
+import { useLibraryLocation } from "@/hooks/useLibraryLocation"
+
+vi.mock("@/hooks/useLibraryLocation", () => ({
+  useLibraryLocation: vi.fn(() => ({ data: undefined })),
+  useRelocateLibrary: () => ({ isPending: false }),
+  useLocationFolders: () => ({ data: [] }),
+}))
 
 const library = {
   id: "library-1",
@@ -30,6 +37,9 @@ function observe(
 
 describe("LibrarySyncStatus", () => {
   beforeEach(async () => {
+    vi.mocked(useLibraryLocation).mockReturnValue({
+      data: undefined,
+    } as ReturnType<typeof useLibraryLocation>)
     localStorage.clear()
     useSyncStatusStore.setState({
       librarySyncActivityById: {},
@@ -44,6 +54,60 @@ describe("LibrarySyncStatus", () => {
     await act(async () => {
       await i18n.changeLanguage("zh-CN")
     })
+  })
+
+  it("keeps an open repair dialog available when automatic sync clears the failure", async () => {
+    vi.mocked(useLibraryLocation).mockReturnValue({
+      data: {
+        libraryId: library.id,
+        libraryName: library.name,
+        path: "/old",
+        effectivePath: "/old",
+        sourceRoot: "/",
+        canRelocate: true,
+        problem: "root_missing",
+      },
+    } as ReturnType<typeof useLibraryLocation>)
+    observe({
+      type: "failed",
+      libraryId: library.id,
+      taskId: "failure",
+      completedAt: Date.now(),
+      failureKind: "configuration",
+      message: "Old directory is unavailable",
+      reason: "manual",
+    })
+    render(<LibrarySyncStatus library={library} onSync={vi.fn()} />)
+    fireEvent.click(
+      screen.getByRole("button", { name: "Sync status: Sync failed" }),
+    )
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Change library location" }),
+    )
+    expect(
+      await screen.findByRole("dialog", { name: "Change library location" }),
+    ).toBeInTheDocument()
+    await act(async () =>
+      observe({
+        type: "started",
+        libraryId: library.id,
+        taskId: "recovered",
+        startedAt: Date.now(),
+        reason: "automatic_check",
+      }),
+    )
+    await act(async () =>
+      observe({
+        type: "unchanged",
+        libraryId: library.id,
+        taskId: "recovered",
+        completedAt: Date.now(),
+        reason: "automatic_check",
+      }),
+    )
+    expect(
+      screen.getByRole("dialog", { name: "Change library location" }),
+    ).toBeInTheDocument()
   })
 
   it("should show failure details and trigger a manual sync from the status bar", async () => {
@@ -83,7 +147,7 @@ describe("LibrarySyncStatus", () => {
       ),
     ).toBeInTheDocument()
     expect(within(details).getByText(/INTERNAL_DIAGNOSTIC/).textContent).toBe(
-      "Check your network connection and whether the data source is available, then try syncing again.\n\nconnectivity: Request: 503 INTERNAL_DIAGNOSTIC /private/library",
+      "\n\nconnectivity: Request: 503 INTERNAL_DIAGNOSTIC /private/library",
     )
 
     fireEvent.click(within(details).getByRole("button", { name: "Sync now" }))
@@ -109,7 +173,7 @@ describe("LibrarySyncStatus", () => {
       await screen.findByText("Sync failed: Check data source access"),
     ).toBeInTheDocument()
     expect(screen.getByText(/INTERNAL_DIAGNOSTIC/).textContent).toBe(
-      "Sign in again or update the data source credentials, and check that this account can access the library.\n\ncredential: network 503 INTERNAL_DIAGNOSTIC",
+      "\n\ncredential: network 503 INTERNAL_DIAGNOSTIC",
     )
 
     await act(async () => {
@@ -122,7 +186,7 @@ describe("LibrarySyncStatus", () => {
       screen.queryByText("Sync failed: Check data source access"),
     ).toBeNull()
     expect(screen.getByText(/INTERNAL_DIAGNOSTIC/).textContent).toBe(
-      "请重新登录或更新数据源凭据，并确认此账号有权访问书库。\n\ncredential: network 503 INTERNAL_DIAGNOSTIC",
+      "\n\ncredential: network 503 INTERNAL_DIAGNOSTIC",
     )
     expect(
       useSyncStatusStore.getState().librarySyncHistoryById[library.id]

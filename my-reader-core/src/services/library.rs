@@ -1,3 +1,5 @@
+mod location;
+
 use std::path::{Path, PathBuf};
 
 use opendal::services::Fs;
