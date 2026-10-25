@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{AppConfig, SecurityScopedBookmark};
+use crate::models::{AppConfig, SecurityScopedBookmark};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

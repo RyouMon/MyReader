@@ -1,3 +1,9 @@
+mod location;
+
+pub use location::{
+    LibraryLocation, LibraryLocationProblem, RelocateLibraryRequest, RelocateLibraryResult,
+};
+
 use serde::{Deserialize, Serialize};
 use uuid::{Uuid, Variant};
 

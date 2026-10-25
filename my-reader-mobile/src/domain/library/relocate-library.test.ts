@@ -1,5 +1,5 @@
 import { relocateLibrary } from "./relocate-library"
-import { relocateLibraryLocation } from "@/src/services/core/library-location"
+import { relocateLibraryLocation } from "@/src/services/core/library/location"
 import { announceLocalSidecarWork } from "@/src/services/core/sync-events"
 import { queryClient } from "@/src/services/query/query-client"
 
@@ -12,7 +12,7 @@ const mockState = {
 jest.mock("@/src/store/app-store", () => ({
   useAppStore: { getState: () => mockState },
 }))
-jest.mock("@/src/services/core/library-location", () => ({
+jest.mock("@/src/services/core/library/location", () => ({
   relocateLibraryLocation: jest.fn(),
 }))
 jest.mock("@/src/services/core/sync-events", () => ({

@@ -3,7 +3,9 @@
 #[cfg(test)]
 mod tests;
 
+pub(crate) mod access;
 pub(crate) mod metadata;
+pub(crate) mod source;
 
 use std::path::Path;
 

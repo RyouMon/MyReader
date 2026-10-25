@@ -4,7 +4,7 @@ use crate::{
     types::{AppConfig, RemoteCredential, SecurityScopedBookmark},
     CoreFfiError,
 };
-use my_reader_core::{api::library::LibraryLocationService, models};
+use my_reader_core::{api::library::LibraryService, models};
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct LibraryLocation {
@@ -60,7 +60,7 @@ pub async fn library_location(
 ) -> Result<LibraryLocation, CoreFfiError> {
     let credential = credential.map(TryInto::try_into).transpose()?;
     let result = if diagnose {
-        LibraryLocationService::diagnose(
+        LibraryService::diagnose_location(
             Path::new(&config_path),
             &library_id,
             Path::new(&local_root_path),
@@ -68,7 +68,7 @@ pub async fn library_location(
         )
         .await
     } else {
-        LibraryLocationService::describe(Path::new(&config_path), &library_id)
+        LibraryService::describe_location(Path::new(&config_path), &library_id)
     };
     result.map(Into::into).map_err(CoreFfiError::from_core)
 }
@@ -82,7 +82,7 @@ pub async fn library_relocate(
     credential: Option<RemoteCredential>,
 ) -> Result<RelocateLibraryResult, CoreFfiError> {
     let credential = credential.map(TryInto::try_into).transpose()?;
-    let result = LibraryLocationService::relocate(
+    let result = LibraryService::relocate(
         Path::new(&config_path),
         &library_id,
         Path::new(&sidecar_root_path),

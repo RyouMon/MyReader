@@ -82,7 +82,7 @@ type LibrarySyncStatusProps = {
 import {
   LibraryLocationDialog,
   LibraryLocationFailure,
-} from "@/components/settings/LibraryLocationDialog"
+} from "@/components/library/LibraryLocationDialog"
 
 function statusColorClass(indicator: SyncIndicatorState) {
   switch (indicator) {

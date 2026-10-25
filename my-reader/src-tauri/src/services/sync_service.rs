@@ -205,15 +205,7 @@ impl SyncService {
     }
 
     pub fn failure_kind(error: &AppError) -> SyncFailureKind {
-        match error {
-            AppError::Request(_) | AppError::Storage(_) => SyncFailureKind::Connectivity,
-            AppError::Credential(_) => SyncFailureKind::Credential,
-            AppError::Auth(_) | AppError::Config(_) => SyncFailureKind::Configuration,
-            AppError::Database(_) | AppError::Serialize(_) | AppError::DataIntegrity(_) => {
-                SyncFailureKind::DataIntegrity
-            }
-            _ => SyncFailureKind::Unexpected,
-        }
+        error.failure_kind()
     }
 
     fn report_error(kind: Option<SyncFailureKind>, message: String) -> AppError {

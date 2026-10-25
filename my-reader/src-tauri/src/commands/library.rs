@@ -401,8 +401,8 @@ pub async fn get_library_location<R: tauri::Runtime>(
     state: State<'_, AppState>,
     id: String,
     diagnose: bool,
-) -> Result<crate::services::library_location_service::LibraryLocationInfo, AppError> {
-    crate::services::library_location_service::location(
+) -> Result<crate::services::library_service::LibraryLocationInfo, AppError> {
+    LibraryService::location(
         &common::app_data_dir(&app)?,
         &common::config_snapshot(&state),
         &id,
@@ -418,14 +418,12 @@ pub async fn relocate_library<R: tauri::Runtime>(
     state: State<'_, AppState>,
     id: String,
     path: String,
-) -> Result<crate::services::library_location_service::LibraryLocationInfo, AppError> {
+) -> Result<crate::services::library_service::LibraryLocationInfo, AppError> {
     use tauri::Manager;
     let _guard = LIBRARY_ADD_LOCK.lock().await;
     let app_data_dir = common::app_data_dir(&app)?;
     let mut config = common::config_snapshot(&state);
-    let location =
-        crate::services::library_location_service::relocate(&app_data_dir, &mut config, &id, &path)
-            .await?;
+    let location = LibraryService::relocate(&app_data_dir, &mut config, &id, &path).await?;
     if location.problem.is_none() {
         common::with_config_mut(&state, |current| *current = config.clone());
         if let Err(error) = crate::asset_scope::sync_for_reader_libraries(&app, &config.libraries) {

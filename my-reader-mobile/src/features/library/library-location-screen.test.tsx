@@ -7,7 +7,7 @@ import {
 } from "@testing-library/react-native"
 import { router } from "expo-router"
 import LibraryLocationScreen from "@/src/app/library-location"
-import { readLibraryLocation } from "@/src/services/core/library-location"
+import { readLibraryLocation } from "@/src/services/core/library/location"
 import { relocateLibrary } from "@/src/domain/library/relocate-library"
 import { pickLocalLibraryDirectory } from "@/src/domain/library/local-library-picker"
 import { listRemoteDirectories } from "@/src/services/core/remote"
@@ -49,7 +49,7 @@ const location = {
   dataSourceName: "Shelf",
   detail: "HTTP 404 diagnostic",
 }
-jest.mock("@/src/services/core/library-location", () => ({
+jest.mock("@/src/services/core/library/location", () => ({
   readLibraryLocation: jest.fn(),
 }))
 jest.mock("@/src/domain/library/relocate-library", () => ({

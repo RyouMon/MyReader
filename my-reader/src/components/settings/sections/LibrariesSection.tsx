@@ -21,7 +21,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 
-import { LibraryLocationDialog } from "../LibraryLocationDialog"
+import { LibraryLocationDialog } from "@/components/library/LibraryLocationDialog"
 import { useLibraryLocation } from "@/hooks/useLibraryLocation"
 
 interface LibrariesSectionProps {

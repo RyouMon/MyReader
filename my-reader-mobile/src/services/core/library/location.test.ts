@@ -1,29 +1,26 @@
 import { libraryLocation, libraryRelocate } from "my-reader-core"
-import {
-  readLibraryLocation,
-  relocateLibraryLocation,
-} from "./library-location"
-import { credentialFor } from "./remote"
+import { readLibraryLocation, relocateLibraryLocation } from "./location"
+import { credentialFor } from "../remote"
 import { CredentialError, NetworkError } from "@/src/errors"
-import { withSecurityScopedLibraryAccess } from "../fs/bookmarks"
+import { withSecurityScopedLibraryAccess } from "../../fs/bookmarks"
 
 jest.mock("my-reader-core", () => ({
   libraryLocation: jest.fn(),
   libraryRelocate: jest.fn(),
 }))
-jest.mock("./app-config", () => ({
+jest.mock("../app-config", () => ({
   appConfigPath: "/app/config.json",
   appConfigFromCore: (config: unknown) => config,
 }))
-jest.mock("./remote", () => ({ credentialFor: jest.fn() }))
-jest.mock("../fs/path", () => ({
+jest.mock("../remote", () => ({ credentialFor: jest.fn() }))
+jest.mock("../../fs/path", () => ({
   toNativeFilesystemPath: (uri: string) => uri.replace("file://", ""),
 }))
-jest.mock("../fs/library-paths", () => ({
+jest.mock("../../fs/library-paths", () => ({
   libraryRootUri: (library: { path: string }) => library.path,
   librarySidecarRootUri: () => "file:///app/libraries/lib",
 }))
-jest.mock("../fs/bookmarks", () => ({
+jest.mock("../../fs/bookmarks", () => ({
   withSecurityScopedLibraryAccess: jest.fn((library, run) => run(library.path)),
 }))
 const library = { id: "lib", name: "Books", path: "file:///old", bookCount: 1 }

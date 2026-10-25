@@ -17,7 +17,7 @@ vi.mock("@/hooks/queries/useLibrariesQuery", () => ({
 vi.mock("@/hooks/useLibraryLocation", () => ({
   useLibraryLocation: () => ({ data: { canRelocate: true } }),
 }))
-vi.mock("../../LibraryLocationDialog", () => ({
+vi.mock("@/components/library/LibraryLocationDialog", () => ({
   LibraryLocationDialog: () => <div>Repair dialog</div>,
 }))
 

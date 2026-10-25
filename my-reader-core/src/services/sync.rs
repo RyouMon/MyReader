@@ -11,7 +11,7 @@ use tokio::sync::Mutex as AsyncMutex;
 use crate::{
     library::{self, LibraryContext},
     models::{
-        AppConfig, BookSummary, CalibreSyncReport, DataSource, Library, LibraryStorageConfig,
+        AppConfig, BookSummary, CalibreSyncReport, Library, LibraryStorageConfig,
         LibrarySyncOptions, LibrarySyncReport, LibrarySyncScope, MyReaderSyncReport,
         RemoteCredential, SidecarSyncMode, SidecarSyncReport, SyncFailureDisposition,
         SyncFailureKind, SyncScheduleSnapshot,
@@ -321,68 +321,7 @@ impl SyncService {
         local_root_path: &str,
         credential: Option<&RemoteCredential>,
     ) -> Result<LibraryStorageConfig, CoreError> {
-        let library = config
-            .libraries
-            .iter()
-            .find(|library| library.id == library_id)
-            .ok_or_else(|| CoreError::LibraryNotFound(library_id.to_owned()))?;
-        if !library.is_remote() {
-            let root = local_root_path.trim();
-            if root.is_empty() {
-                return Err(CoreError::Config("LIBRARY_ROOT_PATH_REQUIRED".into()));
-            }
-            return Ok(LibraryStorageConfig::LocalDirect {
-                root: root.to_owned(),
-            });
-        }
-
-        let data_source_id = library
-            .data_source_id
-            .as_deref()
-            .ok_or_else(|| CoreError::Config("LIBRARY_DATA_SOURCE_MISSING".into()))?;
-        let source = config
-            .data_sources
-            .iter()
-            .find(|source| source.id() == data_source_id)
-            .ok_or_else(|| {
-                CoreError::NotFound(format!("DATASOURCE_NOT_FOUND: {data_source_id}"))
-            })?;
-        if library.source_type.as_ref() != Some(&source.source_type()) {
-            return Err(CoreError::Config("LIBRARY_DATASOURCE_TYPE_MISMATCH".into()));
-        }
-        let credential =
-            credential.ok_or_else(|| CoreError::Config("REMOTE_CREDENTIAL_REQUIRED".into()))?;
-        let library_root = library.source_path.as_deref().unwrap_or_default();
-
-        match (source, credential) {
-            (
-                DataSource::Webdav {
-                    endpoint,
-                    username,
-                    root_path,
-                    ..
-                },
-                RemoteCredential::Webdav { password },
-            ) => Ok(LibraryStorageConfig::Webdav {
-                endpoint: endpoint.clone(),
-                username: username.clone(),
-                password: password.clone(),
-                root: Some(Self::scope_remote_root(root_path.as_deref(), library_root)?),
-            }),
-            (
-                DataSource::Onedrive { root_path, .. },
-                RemoteCredential::Onedrive { access_token },
-            ) => Ok(LibraryStorageConfig::Onedrive {
-                access_token: access_token.clone(),
-                root: Some(Self::scope_remote_root(root_path.as_deref(), library_root)?),
-            }),
-            (DataSource::Local { .. }, _) => {
-                Err(CoreError::Config("LIBRARY_DATASOURCE_TYPE_MISMATCH".into()))
-            }
-            _ => Err(CoreError::Config(
-                "DATASOURCE_CREDENTIAL_TYPE_MISMATCH".into(),
-            )),
-        }
+        library::source::resolve_storage(config, library_id, local_root_path, credential)
     }
 
     pub async fn sync_sidecar(
@@ -411,8 +350,8 @@ impl SyncService {
         storage: &LibraryStorageConfig,
         observer: &dyn SyncObserver,
     ) -> Result<SidecarSyncReport, CoreError> {
-        let _location = super::library_location_gate::acquire(sidecar_root, storage).await?;
-        super::library_location::ensure_root(storage).await?;
+        let _location = library::access::acquire(sidecar_root, storage).await?;
+        library::source::ensure_root(storage).await?;
         let operator = transport::build_storage_operator(storage)?;
         Self::sync_sidecar_with_operator_observed(
             sidecar_root,
@@ -528,7 +467,7 @@ impl SyncService {
         storage: &LibraryStorageConfig,
         observer: &dyn SyncObserver,
     ) -> Result<LibrarySyncReport, CoreError> {
-        let _location = super::library_location_gate::acquire(sidecar_root, storage).await?;
+        let _location = library::access::acquire(sidecar_root, storage).await?;
         let started_at = Instant::now();
         let config = super::config::ConfigService::load(config_path)?
             .ok_or_else(|| CoreError::NotFound("APP_CONFIG_NOT_FOUND".into()))?;
@@ -542,7 +481,7 @@ impl SyncService {
 
         let myreader = if scope_has_myreader(options.scope) {
             match async {
-                super::library_location::ensure_root(storage).await?;
+                library::source::ensure_root(storage).await?;
                 Self::sync_sidecar_with_operator_observed(
                     sidecar_root,
                     library_root,
@@ -770,50 +709,7 @@ impl SyncService {
 
     /// Classifies a sync failure without interpreting diagnostic text.
     pub fn failure_kind(error: &CoreError) -> SyncFailureKind {
-        match error {
-            CoreError::Request(error) => match error.status().map(|status| status.as_u16()) {
-                Some(401 | 403) => SyncFailureKind::Credential,
-                Some(400..=499)
-                    if !matches!(error.status().map(|s| s.as_u16()), Some(408 | 429)) =>
-                {
-                    SyncFailureKind::Configuration
-                }
-                _ if error.is_builder() => SyncFailureKind::Configuration,
-                _ if error.is_decode() => SyncFailureKind::Unexpected,
-                _ => SyncFailureKind::Connectivity,
-            },
-            CoreError::StorageBackend(error) => match error.kind() {
-                opendal::ErrorKind::PermissionDenied => SyncFailureKind::Credential,
-                opendal::ErrorKind::ConfigInvalid
-                | opendal::ErrorKind::NotFound
-                | opendal::ErrorKind::Unsupported
-                | opendal::ErrorKind::IsADirectory
-                | opendal::ErrorKind::NotADirectory => SyncFailureKind::Configuration,
-                opendal::ErrorKind::RateLimited => SyncFailureKind::Connectivity,
-                // RetryLayer replaces the temporary flag with persistent. Known
-                // permanent kinds are handled above; retry other failures later.
-                _ if error.is_temporary() || error.is_persistent() => SyncFailureKind::Connectivity,
-                _ => SyncFailureKind::Unexpected,
-            },
-            CoreError::Storage(_) => SyncFailureKind::Connectivity,
-            CoreError::Config(_)
-            | CoreError::NotFound(_)
-            | CoreError::LibraryAlreadyExists
-            | CoreError::LibraryNotFound(_)
-            | CoreError::NoActiveLibrary
-            | CoreError::MetadataDbNotFound(_)
-            | CoreError::LibraryMarkerNotFound(_)
-            | CoreError::LibraryRootNotEmpty
-            | CoreError::LibraryFolderAlreadyExists
-            | CoreError::DataSourceInUse(_) => SyncFailureKind::Configuration,
-            CoreError::LibraryContainsMetadataDb => SyncFailureKind::DataIntegrity,
-            CoreError::DataIntegrity(_) => SyncFailureKind::DataIntegrity,
-            CoreError::Tts { kind, .. } => kind.failure_kind(),
-            CoreError::Io(_)
-            | CoreError::Database(_)
-            | CoreError::Serialize(_)
-            | CoreError::Sync(_) => SyncFailureKind::Unexpected,
-        }
+        error.failure_kind()
     }
 
     pub fn classify_failure(kind: SyncFailureKind) -> SyncFailureDisposition {

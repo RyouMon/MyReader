@@ -7,7 +7,7 @@ import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/src/components/ui"
 import { useThemePalette } from "@/src/design/tokens"
-import type { LibraryLocation } from "@/src/services/core/library-location"
+import type { LibraryLocation } from "@/src/services/core/library/location"
 import { ScrollView, Text, View } from "@/tw"
 
 export function LibraryLocationNotice({

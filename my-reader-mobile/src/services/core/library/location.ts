@@ -5,12 +5,12 @@ import {
   libraryRelocate,
   type RelocateLibraryRequest,
 } from "my-reader-core"
-import { appConfigFromCore, appConfigPath } from "./app-config"
-import { credentialFor } from "./remote"
+import { appConfigFromCore, appConfigPath } from "../app-config"
+import { credentialFor } from "../remote"
 import { appErrorKind } from "@/src/errors/kind"
-import { libraryRootUri, librarySidecarRootUri } from "../fs/library-paths"
-import { toNativeFilesystemPath } from "../fs/path"
-import { withSecurityScopedLibraryAccess } from "../fs/bookmarks"
+import { libraryRootUri, librarySidecarRootUri } from "../../fs/library-paths"
+import { toNativeFilesystemPath } from "../../fs/path"
+import { withSecurityScopedLibraryAccess } from "../../fs/bookmarks"
 
 export type { LibraryLocation } from "my-reader-core"
 

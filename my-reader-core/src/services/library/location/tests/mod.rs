@@ -1,8 +1,12 @@
 mod remote;
 
 use super::*;
-use crate::models::{LocalLibraryRequest, SidecarSyncMode};
+use crate::models::{
+    LibraryStorageConfig, LocalLibraryRequest, MyReaderLibraryMarker, SidecarSyncMode,
+    MYREADER_LIBRARY_MARKER_RELATIVE_PATH,
+};
 use crate::services::library::LibraryService;
+use crate::services::sync::SyncService;
 
 pub(super) async fn fixture() -> (tempfile::TempDir, PathBuf, Library, PathBuf) {
     let temp = tempfile::tempdir().unwrap();
@@ -54,15 +58,14 @@ async fn repair_preserves_identity_data_and_selection_and_rejects_stale_sync() {
     let target = temp.path().join("moved");
     std::fs::rename(&library.path, &target).unwrap();
     let diagnosis =
-        LibraryLocationService::diagnose(&config, &library.id, Path::new(&library.path), None)
+        LibraryService::diagnose_location(&config, &library.id, Path::new(&library.path), None)
             .await
             .unwrap();
     assert_eq!(diagnosis.problem, Some(Problem::RootMissing));
     assert_eq!(diagnosis.effective_path, library.path);
-    let result =
-        LibraryLocationService::relocate(&config, &library.id, &sidecar, request(&target), None)
-            .await
-            .unwrap();
+    let result = LibraryService::relocate(&config, &library.id, &sidecar, request(&target), None)
+        .await
+        .unwrap();
     assert_eq!(result.location.problem, None);
     let persisted = ConfigService::load(&config).unwrap().unwrap();
     assert_eq!(
@@ -89,7 +92,25 @@ async fn repair_preserves_identity_data_and_selection_and_rejects_stale_sync() {
             .suspended_reason,
         None
     );
-    assert!(gate::acquire(&sidecar, &original_storage).await.is_err());
+    let sync_error = SyncService::sync_sidecar(
+        &sidecar,
+        Path::new(&library.path),
+        200,
+        SidecarSyncMode::Full,
+        &original_storage,
+    )
+    .await
+    .unwrap_err();
+    let upload_error = crate::services::book_transfer::BookTransferService::upload_pending_books(
+        &sidecar,
+        Path::new(&library.path),
+        &original_storage,
+    )
+    .await
+    .unwrap_err();
+    for error in [sync_error, upload_error] {
+        assert!(matches!(error, CoreError::Config(code) if code == "LIBRARY_LOCATION_CHANGED"));
+    }
     let storage = LibraryStorageConfig::LocalDirect {
         root: dunce::canonicalize(&target)
             .unwrap()
@@ -109,8 +130,8 @@ async fn refuses_busy_missing_invalid_and_different_targets_without_saving() {
     let storage = LibraryStorageConfig::LocalDirect {
         root: library.path.clone(),
     };
-    let lease = gate::acquire(&sidecar, &storage).await.unwrap();
-    let busy = LibraryLocationService::relocate(
+    let lease = access::acquire(&sidecar, &storage).await.unwrap();
+    let busy = LibraryService::relocate(
         &config,
         &library.id,
         &sidecar,
@@ -139,15 +160,10 @@ async fn refuses_busy_missing_invalid_and_different_targets_without_saving() {
             )
             .unwrap();
         }
-        let result = LibraryLocationService::relocate(
-            &config,
-            &library.id,
-            &sidecar,
-            request(&target),
-            None,
-        )
-        .await
-        .unwrap();
+        let result =
+            LibraryService::relocate(&config, &library.id, &sidecar, request(&target), None)
+                .await
+                .unwrap();
         assert_eq!(
             result.location.problem,
             Some(expected),
@@ -162,7 +178,7 @@ async fn refuses_busy_missing_invalid_and_different_targets_without_saving() {
 async fn missing_sync_objects_do_not_mean_missing_root() {
     let (_temp, config, library, _) = fixture().await;
     let location =
-        LibraryLocationService::diagnose(&config, &library.id, Path::new(&library.path), None)
+        LibraryService::diagnose_location(&config, &library.id, Path::new(&library.path), None)
             .await
             .unwrap();
     assert_eq!(location.problem, None);
@@ -214,10 +230,9 @@ async fn preserves_reading_state_outbox_and_cached_content() {
     std::fs::write(&cache, b"cached-content").unwrap();
     let target = temp.path().join("moved");
     std::fs::rename(root, &target).unwrap();
-    let result =
-        LibraryLocationService::relocate(&config, &library.id, &sidecar, request(&target), None)
-            .await
-            .unwrap();
+    let result = LibraryService::relocate(&config, &library.id, &sidecar, request(&target), None)
+        .await
+        .unwrap();
     assert_eq!(result.location.problem, None);
     assert_eq!(
         persistence::inspect_for_sync(&database, &identity)
@@ -243,7 +258,7 @@ async fn requires_persisted_identity_and_rejects_managed_libraries() {
         .execute("DELETE FROM sync_local_meta", [])
         .unwrap();
     let original = std::fs::read(&config).unwrap();
-    let result = LibraryLocationService::relocate(
+    let result = LibraryService::relocate(
         &config,
         &library.id,
         &sidecar,
@@ -259,9 +274,9 @@ async fn requires_persisted_identity_and_rejects_managed_libraries() {
         Ok(())
     })
     .unwrap();
-    let location = LibraryLocationService::describe(&config, &library.id).unwrap();
+    let location = LibraryService::describe_location(&config, &library.id).unwrap();
     assert!(!location.can_relocate);
-    let result = LibraryLocationService::relocate(
+    let result = LibraryService::relocate(
         &config,
         &library.id,
         &sidecar,
@@ -290,10 +305,9 @@ async fn replaces_external_bookmark_only_after_validation() {
     let target = temp.path().join("moved");
     std::fs::rename(&library.path, &target).unwrap();
     let original = std::fs::read(&config).unwrap();
-    let result =
-        LibraryLocationService::relocate(&config, &library.id, &sidecar, request(&target), None)
-            .await
-            .unwrap();
+    let result = LibraryService::relocate(&config, &library.id, &sidecar, request(&target), None)
+        .await
+        .unwrap();
     assert_eq!(result.location.problem, Some(Problem::Credential));
     assert_eq!(std::fs::read(&config).unwrap(), original);
     let uri = url::Url::from_file_path(dunce::canonicalize(&target).unwrap())
@@ -304,7 +318,7 @@ async fn replaces_external_bookmark_only_after_validation() {
         resolved_uri: uri.clone(),
         stale: false,
     };
-    let result = LibraryLocationService::relocate(
+    let result = LibraryService::relocate(
         &config,
         &library.id,
         &sidecar,
@@ -320,7 +334,7 @@ async fn replaces_external_bookmark_only_after_validation() {
     let library = &result.config.unwrap().libraries[0];
     assert_eq!(library.path, uri);
     assert_eq!(library.security_scoped_bookmark.as_ref(), Some(&bookmark));
-    assert!(gate::acquire(
+    assert!(access::acquire(
         &sidecar,
         &LibraryStorageConfig::LocalDirect {
             root: dunce::canonicalize(target)
@@ -351,17 +365,18 @@ async fn calibre_relocation_checks_database_and_library_uuid() {
     std::fs::create_dir_all(&target).unwrap();
     std::fs::write(target.join("metadata.db"), b"not sqlite").unwrap();
     let original = std::fs::read(&config).unwrap();
-    let result =
-        LibraryLocationService::relocate(&config, &library.id, &sidecar, request(&target), None)
-            .await
-            .unwrap();
+    let result = LibraryService::relocate(&config, &library.id, &sidecar, request(&target), None)
+        .await
+        .unwrap();
     assert_eq!(result.location.problem, Some(Problem::InvalidLibrary));
     assert_eq!(std::fs::read(&config).unwrap(), original);
     std::fs::remove_file(target.join("metadata.db")).unwrap();
     {
         let db = rusqlite::Connection::open(target.join("metadata.db")).unwrap();
-        db.execute_batch(include_str!("../../../../tests/fixtures/calibre_books.sql"))
-            .unwrap();
+        db.execute_batch(include_str!(
+            "../../../../../tests/fixtures/calibre_books.sql"
+        ))
+        .unwrap();
         db.execute_batch("CREATE TABLE data (book INTEGER, format TEXT, name TEXT, uncompressed_size INTEGER); CREATE TABLE library_id (uuid TEXT NOT NULL);").unwrap();
         db.execute(
             "INSERT INTO library_id VALUES (?1)",
@@ -369,10 +384,9 @@ async fn calibre_relocation_checks_database_and_library_uuid() {
         )
         .unwrap();
     }
-    let result =
-        LibraryLocationService::relocate(&config, &library.id, &sidecar, request(&target), None)
-            .await
-            .unwrap();
+    let result = LibraryService::relocate(&config, &library.id, &sidecar, request(&target), None)
+        .await
+        .unwrap();
     assert_eq!(result.location.problem, None, "{result:?}");
     let saved = &result.config.unwrap().libraries[0];
     assert_eq!(
@@ -393,7 +407,7 @@ async fn duplicate_or_concurrent_registry_changes_are_not_overwritten() {
     })
     .unwrap();
     let original = std::fs::read(&config).unwrap();
-    let result = LibraryLocationService::relocate(
+    let result = LibraryService::relocate(
         &config,
         &library.id,
         &sidecar,
@@ -432,11 +446,11 @@ async fn source_paths_are_scoped_and_credentials_never_enter_display_paths() {
             Ok(())
         })
         .unwrap();
-        let location = LibraryLocationService::describe(&config, &library.id).unwrap();
+        let location = LibraryService::describe_location(&config, &library.id).unwrap();
         assert!(location.effective_path.ends_with("/base/Books"));
         assert!(!location.effective_path.contains("secret"));
         let diagnosis =
-            LibraryLocationService::diagnose(&config, &library.id, Path::new(&library.path), None)
+            LibraryService::diagnose_location(&config, &library.id, Path::new(&library.path), None)
                 .await
                 .unwrap();
         assert_eq!(diagnosis.problem, Some(Problem::DataSource));

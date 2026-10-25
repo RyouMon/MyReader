@@ -9,7 +9,7 @@ import { router } from "expo-router"
 
 import SyncStatusScreen from "./sync-status-screen"
 import type { LibrarySyncHistory } from "@/src/store/sync-status-slice"
-import type { LibraryLocation } from "@/src/services/core/library-location"
+import type { LibraryLocation } from "@/src/services/core/library/location"
 
 let mockLocation: LibraryLocation | undefined
 jest.mock("@/src/domain/library/hooks/use-library-location", () => ({

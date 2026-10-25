@@ -12016,7 +12016,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_library_location() !==
-    29944
+    54159
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_library_location",
@@ -12048,7 +12048,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_library_relocate() !==
-    9857
+    18235
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_library_relocate",

@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next"
 import { useState } from "react"
 import { router } from "expo-router"
 import { useLibraryLocation } from "@/src/domain/library/hooks/use-library-location"
-import { LibraryLocationNotice } from "@/src/components/library-location-notice"
+import { LibraryLocationNotice } from "@/src/features/library/components/library-location-notice"
 import { Platform } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 

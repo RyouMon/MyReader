@@ -5,7 +5,7 @@ import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button, ListRow, SectionCard, Screen } from "@/src/components/ui"
 import { useThemePalette } from "@/src/design/tokens"
-import { LibraryLocationNotice } from "@/src/components/library-location-notice"
+import { LibraryLocationNotice } from "@/src/features/library/components/library-location-notice"
 import { useLibraryLocation } from "@/src/domain/library/hooks/use-library-location"
 import {
   pickLocalLibraryDirectory,
@@ -13,7 +13,7 @@ import {
 } from "@/src/domain/library/local-library-picker"
 import { relocateLibrary } from "@/src/domain/library/relocate-library"
 import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library"
-import type { LibraryLocation } from "@/src/services/core/library-location"
+import type { LibraryLocation } from "@/src/services/core/library/location"
 import { listRemoteDirectories } from "@/src/services/core/remote"
 import { useAppStore } from "@/src/store/app-store"
 import { Text, View } from "@/tw"

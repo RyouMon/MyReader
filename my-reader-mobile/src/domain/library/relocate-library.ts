@@ -1,5 +1,5 @@
 import type { Library } from "@my-reader/tools/types/library"
-import { relocateLibraryLocation } from "@/src/services/core/library-location"
+import { relocateLibraryLocation } from "@/src/services/core/library/location"
 import { announceLocalSidecarWork } from "@/src/services/core/sync-events"
 import { useAppStore } from "@/src/store/app-store"
 import { queryClient } from "@/src/services/query/query-client"

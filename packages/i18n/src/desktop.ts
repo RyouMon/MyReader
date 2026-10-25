@@ -80,4 +80,4 @@ export { appendErrorDetail } from "./error-detail"
 export {
   libraryLocationProblemKey,
   libraryLocationTitleKey,
-} from "./library-location"
+} from "./library/location"

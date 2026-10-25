@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use my_reader_core::{api::library::LibraryLocationService as Core, models};
+use my_reader_core::{api::library::LibraryService as Core, models};
 use serde::Serialize;
 
 use crate::{
@@ -62,25 +62,25 @@ async fn credential(
         .map(Some)
 }
 
-pub async fn location(
-    app_data_dir: &Path,
-    config: &AppConfig,
-    id: &str,
-    diagnose: bool,
-) -> Result<LibraryLocationInfo, AppError> {
-    let path = crate::config::config_path(app_data_dir);
-    if !diagnose {
-        return Ok(Core::describe(&path, id)?.into());
-    }
-    let library = LibraryService::resolve_library(Some(id), config)?;
-    let credential = credential(config, library.data_source_id.as_deref()).await;
-    // Missing credentials must still leave the current path and settings action visible.
-    let credential = match credential {
-        Ok(value) => value,
-        Err(error) => {
-            let mut location = Core::describe(&path, id)?;
-            location.problem = Some(
-                match super::sync_service::SyncService::failure_kind(&error) {
+impl LibraryService {
+    pub async fn location(
+        app_data_dir: &Path,
+        config: &AppConfig,
+        id: &str,
+        diagnose: bool,
+    ) -> Result<LibraryLocationInfo, AppError> {
+        let path = crate::config::config_path(app_data_dir);
+        if !diagnose {
+            return Ok(Core::describe_location(&path, id)?.into());
+        }
+        let library = LibraryService::resolve_library(Some(id), config)?;
+        let credential = credential(config, library.data_source_id.as_deref()).await;
+        // Missing credentials must still leave the current path and settings action visible.
+        let credential = match credential {
+            Ok(value) => value,
+            Err(error) => {
+                let mut location = Core::describe_location(&path, id)?;
+                location.problem = Some(match error.failure_kind() {
                     models::SyncFailureKind::Connectivity => {
                         models::LibraryLocationProblem::Connectivity
                     }
@@ -88,44 +88,44 @@ pub async fn location(
                         models::LibraryLocationProblem::DataSource
                     }
                     _ => models::LibraryLocationProblem::Credential,
-                },
-            );
-            location.detail = Some(error.to_string());
-            return Ok(location.into());
-        }
-    };
-    Ok(Core::diagnose(
-        &path,
-        id,
-        &library_root_path(&library, app_data_dir),
-        credential.as_ref(),
-    )
-    .await?
-    .into())
-}
-
-pub async fn relocate(
-    app_data_dir: &Path,
-    config: &mut AppConfig,
-    id: &str,
-    target: &str,
-) -> Result<LibraryLocationInfo, AppError> {
-    let library = LibraryService::resolve_library(Some(id), config)?;
-    let credential = credential(config, library.data_source_id.as_deref()).await?;
-    let result = Core::relocate(
-        &crate::config::config_path(app_data_dir),
-        id,
-        &library_sidecar_path(&library, app_data_dir),
-        models::RelocateLibraryRequest {
-            target_path: target.into(),
-            target_uri: None,
-            security_scoped_bookmark: None,
-        },
-        credential.as_ref(),
-    )
-    .await?;
-    if let Some(updated) = result.config {
-        config.apply_core_config(&updated);
+                });
+                location.detail = Some(error.to_string());
+                return Ok(location.into());
+            }
+        };
+        Ok(Core::diagnose_location(
+            &path,
+            id,
+            &library_root_path(&library, app_data_dir),
+            credential.as_ref(),
+        )
+        .await?
+        .into())
     }
-    Ok(result.location.into())
+
+    pub async fn relocate(
+        app_data_dir: &Path,
+        config: &mut AppConfig,
+        id: &str,
+        target: &str,
+    ) -> Result<LibraryLocationInfo, AppError> {
+        let library = LibraryService::resolve_library(Some(id), config)?;
+        let credential = credential(config, library.data_source_id.as_deref()).await?;
+        let result = Core::relocate(
+            &crate::config::config_path(app_data_dir),
+            id,
+            &library_sidecar_path(&library, app_data_dir),
+            models::RelocateLibraryRequest {
+                target_path: target.into(),
+                target_uri: None,
+                security_scoped_bookmark: None,
+            },
+            credential.as_ref(),
+        )
+        .await?;
+        if let Some(updated) = result.config {
+            config.apply_core_config(&updated);
+        }
+        Ok(result.location.into())
+    }
 }

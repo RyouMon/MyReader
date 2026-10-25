@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
-import { FolderBrowser } from "./FolderBrowser"
+import { FolderBrowser } from "@/components/settings/FolderBrowser"
 import {
   pickLibraryLocation,
   retryLibrarySync,

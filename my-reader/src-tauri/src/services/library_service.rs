@@ -1,3 +1,7 @@
+mod location;
+
+pub use location::LibraryLocationInfo;
+
 use std::path::Path;
 
 use tauri::AppHandle;

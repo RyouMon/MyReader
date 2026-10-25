@@ -6,13 +6,14 @@ use std::{
 
 use tokio::sync::{OwnedRwLockReadGuard, RwLock};
 
-use super::{config::ConfigService, sync::SyncService};
+use super::source;
+use crate::infrastructure::config_store;
 use crate::{
     models::{LibraryStorageConfig, RemoteCredential},
     CoreError,
 };
 
-pub(super) struct Registry {
+pub(crate) struct Registry {
     pub config_path: PathBuf,
     pub library_id: String,
 }
@@ -23,7 +24,7 @@ type Gate = Arc<RwLock<Option<Registry>>>;
 static GATES: LazyLock<Mutex<HashMap<PathBuf, Gate>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
-pub(super) fn gate(sidecar_root: &Path) -> Gate {
+pub(crate) fn gate(sidecar_root: &Path) -> Gate {
     let mut gates = GATES.lock().unwrap_or_else(|error| error.into_inner());
     gates
         .entry(dunce::canonicalize(sidecar_root).unwrap_or_else(|_| sidecar_root.to_path_buf()))
@@ -48,7 +49,9 @@ impl Registry {
         &self,
         snapshot: &LibraryStorageConfig,
     ) -> Result<LibraryStorageConfig, CoreError> {
-        let config = ConfigService::load(&self.config_path)?
+        // Config writes atomically replace the file. Resolve the saved source
+        // directly so access coordination never calls back into a service.
+        let config = config_store::load(&self.config_path)?
             .ok_or_else(|| CoreError::Config("APP_CONFIG_NOT_FOUND".into()))?;
         let library = config
             .libraries
@@ -66,8 +69,8 @@ impl Registry {
             }
             _ => None,
         };
-        let root = super::library_location::native_path(&library.path);
-        SyncService::resolve_library_storage(
+        let root = source::native_path(&library.path);
+        source::resolve_storage(
             &config,
             &self.library_id,
             &root.to_string_lossy(),
@@ -76,7 +79,7 @@ impl Registry {
     }
 }
 
-pub(super) async fn acquire(
+pub(crate) async fn acquire(
     sidecar_root: &Path,
     storage: &LibraryStorageConfig,
 ) -> Result<OwnedRwLockReadGuard<Option<Registry>>, CoreError> {
