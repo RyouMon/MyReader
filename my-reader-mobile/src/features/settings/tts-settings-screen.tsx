@@ -4,7 +4,7 @@ import { formatTtsLanguageName } from "@my-reader/tools/reader-tts-language"
 import Slider from "@react-native-community/slider"
 import type { MenuAction } from "@react-native-menu/menu"
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio"
-import { router, useFocusEffect } from "expo-router"
+import { useFocusEffect } from "expo-router"
 import * as Speech from "expo-speech"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
@@ -133,7 +133,6 @@ function TtsPreviewControls({
 
   return (
     <View className="gap-3">
-      <SectionLabel>{t("settings.tts.previewSection")}</SectionLabel>
       <Text className="px-1 text-base" style={{ color: palette.textMuted }}>
         {t("settings.tts.previewText")}
       </Text>
@@ -161,56 +160,6 @@ function TtsPreviewControls({
           {previewActionLabel}
         </Text>
       </Button>
-    </View>
-  )
-}
-
-function TtsProviderList({
-  profiles,
-}: {
-  profiles: MobileTtsConfig["profiles"]
-}) {
-  const { t } = useTranslation()
-  const palette = useThemePalette()
-  return (
-    <View className="gap-3">
-      <SectionLabel>{t("settings.tts.providersSection")}</SectionLabel>
-      {profiles.length > 0 ? (
-        <SectionCard>
-          {profiles.map((profile, index) => (
-            <ListRow
-              key={profile.id}
-              title={profile.name}
-              detail={`${profile.kind === "qwen" ? "Qwen" : t("settings.tts.providerKinds.openAiCompatible")} · ${profile.endpoint}`}
-              value={profile.enabled ? undefined : t("settings.tts.disabled")}
-              isLast={index === profiles.length - 1}
-              onPress={() =>
-                router.push({
-                  pathname: "/settings/tts-provider",
-                  params: { providerId: profile.id },
-                })
-              }
-            />
-          ))}
-        </SectionCard>
-      ) : null}
-      <Button
-        size="md"
-        variant="primary"
-        accessibilityLabel={t("settings.tts.addProvider")}
-        onPress={() => router.push("/settings/tts-provider")}
-      >
-        <MaterialIcons name="add" size={20} color={palette.primaryForeground} />
-        <Text
-          className="text-base font-bold"
-          style={{ color: palette.primaryForeground }}
-        >
-          {t("settings.tts.addProvider")}
-        </Text>
-      </Button>
-      <Text className="px-1 text-xs" style={{ color: palette.textMuted }}>
-        {t("settings.tts.providerPrivacy")}
-      </Text>
     </View>
   )
 }
@@ -297,8 +246,9 @@ export default function TtsSettingsScreen() {
       active = false
     }
   }, [qwenProfileId, qwenRevision])
-  const selectedEngineLabel =
-    selectedProfile?.name ?? t("settings.tts.systemEngine")
+  const selectedEngineLabel = selectedProfile
+    ? `${selectedProfile.name}/${selectedProfile.model}`
+    : t("settings.tts.systemEngine")
   const selectedVoice = config?.voices.find((voice) => {
     if (voice.language.toLowerCase() !== DEFAULT_VOICE_LANGUAGE) return false
     if (config.defaultEngine.kind === "system") return voice.engine === "system"
@@ -339,7 +289,7 @@ export default function TtsSettingsScreen() {
         .filter((profile) => profile.enabled)
         .map((profile) => ({
           id: `engine:provider:${profile.id}`,
-          title: `${selectedEngineKey === `provider:${profile.id}` ? "✓ " : ""}${profile.name}`,
+          title: `${selectedEngineKey === `provider:${profile.id}` ? "✓ " : ""}${profile.name}/${profile.model}`,
         })),
     ]
   }, [config, selectedEngineKey, t])
@@ -609,12 +559,6 @@ export default function TtsSettingsScreen() {
 
   return (
     <Screen>
-      <TtsPreviewControls
-        previewState={previewState}
-        preview={preview}
-        stopPreview={stopPreview}
-      />
-
       <View className="gap-3">
         <SectionLabel>{t("settings.tts.engineSection")}</SectionLabel>
         <SectionCard>
@@ -643,6 +587,12 @@ export default function TtsSettingsScreen() {
           )}
         </SectionCard>
       </View>
+
+      <TtsPreviewControls
+        previewState={previewState}
+        preview={preview}
+        stopPreview={stopPreview}
+      />
 
       <View className="gap-3">
         <SectionLabel>{t("settings.tts.playbackSection")}</SectionLabel>
@@ -675,8 +625,6 @@ export default function TtsSettingsScreen() {
           {t("settings.tts.pitchProviderHint")}
         </Text>
       </View>
-
-      <TtsProviderList profiles={config.profiles} />
     </Screen>
   )
 }

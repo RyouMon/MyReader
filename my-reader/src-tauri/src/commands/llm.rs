@@ -67,3 +67,15 @@ pub async fn probe_llm_profile<R: tauri::Runtime>(
     )
     .await
 }
+
+#[tauri::command]
+#[specta::specta]
+pub fn save_llm_provider<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    input: crate::services::llm_service::SaveLlmProviderInput,
+) -> Result<LlmConfigDto, AppError> {
+    DesktopLlmService::save_provider(
+        &crate::config::config_path(&common::app_data_dir(&app)?),
+        input,
+    )
+}

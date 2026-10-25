@@ -27,8 +27,15 @@ pub fn list_qwen_tts_presets() -> Vec<QwenTtsPresetDto> {
 
 #[tauri::command]
 #[specta::specta]
-pub fn list_qwen_tts_models(endpoint: Option<String>) -> Vec<QwenTtsModelDto> {
-    DesktopTtsService::qwen_models(endpoint.as_deref())
+pub async fn list_qwen_tts_models<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    input: UpsertTtsProviderInput,
+) -> Result<Vec<QwenTtsModelDto>, AppError> {
+    DesktopTtsService::qwen_models(
+        &crate::config::config_path(&common::app_data_dir(&app)?),
+        input,
+    )
+    .await
 }
 
 #[tauri::command]
@@ -98,6 +105,35 @@ impl TtsSynthesisCoordinator {
 pub fn get_tts_config<R: tauri::Runtime>(app: AppHandle<R>) -> Result<TtsConfigDto, AppError> {
     let app_data_dir = common::app_data_dir(&app)?;
     DesktopTtsService::get_config(&crate::config::config_path(&app_data_dir))
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn test_tts_provider<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    coordinator: State<'_, TtsSynthesisCoordinator>,
+    request_id: String,
+    input: UpsertTtsProviderInput,
+    text: String,
+) -> Result<TtsAudioArtifactDto, AppError> {
+    let request_id = request_id.trim();
+    if request_id.is_empty() {
+        return Err(AppError::Tts("TTS_REQUEST_ID_REQUIRED".into()));
+    }
+    let app_data_dir = common::app_data_dir(&app)?;
+    let config_path = crate::config::config_path(&app_data_dir);
+    let Some(mut cancelled) = coordinator.start(request_id) else {
+        return Err(AppError::Tts("TTS_SYNTHESIS_CANCELLED".into()));
+    };
+    let cache_directory = app.path().app_cache_dir()?.join("tts");
+    let result = tokio::select! {
+        result = DesktopTtsService::test_provider(&config_path, &cache_directory, input, text) => result,
+        _ = &mut cancelled => Err(AppError::Tts("TTS_SYNTHESIS_CANCELLED".into())),
+    };
+    coordinator.finish(request_id);
+    let artifact = result?;
+    app.asset_protocol_scope().allow_file(&artifact.path)?;
+    Ok(artifact)
 }
 
 #[tauri::command]
@@ -266,4 +302,29 @@ mod tests {
         assert!(coordinator.cancel("before-start"));
         assert!(coordinator.start("before-start").is_none());
     }
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn save_tts_provider<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    input: crate::services::tts_service::SaveTtsProviderInput,
+) -> Result<TtsConfigDto, AppError> {
+    DesktopTtsService::save_provider(
+        &crate::config::config_path(&common::app_data_dir(&app)?),
+        input,
+    )
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn discover_tts_models<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    input: UpsertTtsProviderInput,
+) -> Result<Vec<String>, AppError> {
+    DesktopTtsService::discover_models(
+        &crate::config::config_path(&common::app_data_dir(&app)?),
+        input,
+    )
+    .await
 }

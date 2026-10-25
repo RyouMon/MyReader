@@ -322,13 +322,26 @@ export default function SettingsScreen() {
           <SectionCard>
             <ListRow
               testID="settings-tts-row"
-              title={t("settings.tts.title")}
+              title={t("ttsSettings.defaults")}
               icon={SETTINGS_ROW_ICONS.tts}
-              detail={t("settings.tts.detail")}
               onPress={() => navigateTo("/settings/tts")}
+              isLast
+            />
+          </SectionCard>
+        </View>
+        <View className="gap-3">
+          <SectionLabel>{t("aiProviders.title")}</SectionLabel>
+          <SectionCard>
+            <ListRow
+              testID="settings-tts-providers-row"
+              title={t("ttsSettings.providers")}
+              detail={t("aiProviders.ttsDescription")}
+              icon={SETTINGS_ROW_ICONS.tts}
+              onPress={() => navigateTo("/tts-providers")}
             />
             <ListRow
               title={t("llm.title")}
+              detail={t("aiProviders.llmDescription")}
               icon={SETTINGS_ROW_ICONS.llm}
               onPress={() => navigateTo("/settings/llm")}
               isLast

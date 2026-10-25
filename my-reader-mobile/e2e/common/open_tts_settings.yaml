@@ -10,5 +10,5 @@ name: Open narration settings through the Settings list
 - tapOn:
     id: settings-tts-row
 - extendedWaitUntil:
-    visible: "朗读与语音|Read aloud and voices"
+    visible: "朗读配置|Narration settings"
     timeout: 10000

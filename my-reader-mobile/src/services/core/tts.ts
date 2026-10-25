@@ -3,6 +3,9 @@ import { randomUUID } from "expo-crypto"
 import { runTtsRequest } from "@my-reader/tools/tts-request"
 import {
   ttsGetConfig,
+  ttsSaveProvider,
+  type TtsProvider,
+  type TtsModel,
   ttsQwenModels,
   ttsQwenPresets,
   ttsDiscoverQwenVoices,
@@ -14,6 +17,7 @@ import {
   ttsSetPlayback,
   ttsSetVoice,
   ttsSynthesize,
+  ttsTestProvider,
   ttsUpsertProfile,
   type TtsAudioArtifact,
   type TtsConfig,
@@ -37,7 +41,10 @@ export type MobileTtsProviderProfile = TtsProviderProfile & {
   hasCredential: boolean
 }
 
-export type MobileTtsConfig = Omit<TtsConfig, "profiles"> & {
+export type MobileTtsProvider = TtsProvider & { hasCredential: boolean }
+export type MobileTtsModel = TtsModel
+export type MobileTtsConfig = Omit<TtsConfig, "profiles" | "providers"> & {
+  providers: MobileTtsProvider[]
   profiles: MobileTtsProviderProfile[]
 }
 
@@ -65,14 +72,24 @@ async function hydrateConfig(config: TtsConfig): Promise<MobileTtsConfig> {
         : false,
     })),
   )
-  return { ...config, profiles }
+  const providers = await Promise.all(
+    config.providers.map(async (provider) => ({
+      ...provider,
+      hasCredential: provider.credentialReference
+        ? Boolean(await readTtsCredential(provider.credentialReference))
+        : false,
+    })),
+  )
+  return { ...config, profiles, providers }
 }
 
 async function resolveCredential(
   profileId: string,
 ): Promise<string | undefined> {
-  const profile = (await ttsGetConfig(appConfigPath)).profiles.find(
-    (candidate) => candidate.id === profileId,
+  const profile = (await ttsGetConfig(appConfigPath)).providers.find(
+    (candidate) =>
+      candidate.id === profileId ||
+      candidate.models.some((model) => model.id === profileId),
   )
   if (!profile) throw new Error(`TTS_PROFILE_NOT_FOUND: ${profileId}`)
   if (!profile.credentialReference) return undefined
@@ -83,8 +100,18 @@ export async function getTtsConfig(): Promise<MobileTtsConfig> {
   return hydrateConfig(await ttsGetConfig(appConfigPath))
 }
 
-export function getQwenTtsModels(endpoint?: string): QwenTtsModel[] {
-  return ttsQwenModels(endpoint)
+export async function getQwenTtsModels(
+  input: { endpoint: string; profileId?: string; credential?: string },
+  signal?: AbortSignal,
+): Promise<QwenTtsModel[]> {
+  const credential =
+    input.credential?.trim() ||
+    (input.profileId ? await resolveCredential(input.profileId) : undefined)
+  return ttsQwenModels(
+    input.endpoint,
+    credential,
+    signal ? { signal } : undefined,
+  )
 }
 
 export function getQwenTtsPresets(): QwenTtsPreset[] {
@@ -106,6 +133,28 @@ export async function discoverQwenTtsVoices(
   return ttsDiscoverQwenVoices(
     input.endpoint,
     input.model,
+    credential,
+    signal ? { signal } : undefined,
+  )
+}
+
+export async function testTtsProvider(
+  input: UpsertMobileTtsProfileInput,
+  text: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const credential = input.clearCredential
+    ? undefined
+    : input.credential?.trim() ||
+      (input.profile.id ? await resolveCredential(input.profile.id) : undefined)
+  await ttsTestProvider(
+    {
+      ...input.profile,
+      id: input.profile.id ?? "",
+      revision: 1,
+      credentialReference: undefined,
+    },
+    text,
     credential,
     signal ? { signal } : undefined,
   )
@@ -143,11 +192,32 @@ export async function upsertTtsProfile(
   return hydrateConfig(config)
 }
 
+export async function saveTtsProvider(input: {
+  provider: Omit<TtsProvider, "credentialReference">
+  credential?: string
+  clearCredential?: boolean
+}): Promise<MobileTtsConfig> {
+  const current = await ttsGetConfig(appConfigPath)
+  const id = input.provider.id || randomUUID()
+  const credentialReference =
+    current.providers.find((provider) => provider.id === id)
+      ?.credentialReference ?? ttsCredentialReference(id)
+  const config = await ttsSaveProvider(appConfigPath, {
+    ...input.provider,
+    id,
+    credentialReference,
+  })
+  if (input.clearCredential) await deleteTtsCredential(credentialReference)
+  else if (input.credential?.trim())
+    await writeTtsCredential(credentialReference, input.credential.trim())
+  return hydrateConfig(config)
+}
+
 export async function removeTtsProfile(
   profileId: string,
 ): Promise<MobileTtsConfig> {
   const current = await ttsGetConfig(appConfigPath)
-  const reference = current.profiles.find(
+  const reference = current.providers.find(
     (profile) => profile.id === profileId,
   )?.credentialReference
   const config = await ttsRemoveProfile(appConfigPath, profileId)

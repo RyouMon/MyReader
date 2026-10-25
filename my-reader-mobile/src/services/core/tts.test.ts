@@ -5,6 +5,7 @@ import {
   ttsQwenPresets,
   ttsRemoveProfile,
   ttsSynthesize,
+  ttsTestProvider,
   ttsUpsertProfile,
 } from "my-reader-core"
 import {
@@ -19,6 +20,7 @@ import {
   getQwenTtsPresets,
   removeTtsProfile,
   synthesizeTts,
+  testTtsProvider,
   type TtsConfig,
   upsertTtsProfile,
 } from "./tts"
@@ -61,11 +63,13 @@ jest.mock("my-reader-core", () => ({
   ttsSetPlayback: jest.fn(),
   ttsSetVoice: jest.fn(),
   ttsSynthesize: jest.fn(),
+  ttsTestProvider: jest.fn(),
   ttsUpsertProfile: jest.fn(),
 }))
 
 const systemConfig: TtsConfig = {
-  schemaVersion: 1,
+  schemaVersion: 2,
+  providers: [],
   defaultEngine: { kind: "system" },
   profiles: [],
   voices: [],
@@ -120,18 +124,70 @@ describe("mobile core TTS", () => {
     jest.clearAllMocks()
   })
 
+  it.each([
+    [undefined, false, "saved-key"],
+    [" draft-key ", false, "draft-key"],
+    ["draft-key", true, undefined],
+  ])("tests draft credentials %s (clear %s) without saving", async (credential, clearCredential, expected) => {
+    jest.mocked(ttsGetConfig).mockResolvedValue({
+      ...systemConfig,
+      profiles: [openAiProfile],
+      providers: [
+        {
+          modelScopedVoices: false,
+          ...openAiProfile,
+          models: [
+            {
+              id: openAiProfile.id,
+              model: openAiProfile.model,
+              responseFormat: "mp3",
+              defaultVoice: "reader-voice",
+              voices: [],
+            },
+          ],
+        },
+      ],
+    })
+    jest.mocked(readTtsCredential).mockResolvedValue("saved-key")
+    jest.mocked(ttsTestProvider).mockResolvedValue(undefined)
+    const signal = new AbortController().signal
+    await testTtsProvider(
+      {
+        profile: { ...openAiProfile, endpoint: "https://draft.example/v1" },
+        credential,
+        clearCredential,
+      },
+      "Test",
+      signal,
+    )
+    expect(ttsTestProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint: "https://draft.example/v1",
+        credentialReference: undefined,
+      }),
+      "Test",
+      expected,
+      { signal },
+    )
+    expect(ttsUpsertProfile).not.toHaveBeenCalled()
+    expect(writeTtsCredential).not.toHaveBeenCalled()
+    expect(deleteTtsCredential).not.toHaveBeenCalled()
+  })
+
   it("uses the shared Core creation presets without duplicating endpoints", () => {
     jest.mocked(ttsQwenPresets).mockReturnValue([])
     expect(getQwenTtsPresets()).toEqual([])
     expect(ttsQwenPresets).toHaveBeenCalledWith()
   })
 
-  it("delegates endpoint-specific model availability to shared Core", () => {
-    jest.mocked(ttsQwenModels).mockReturnValue([])
+  it("delegates authenticated model discovery to shared Core", async () => {
+    jest.mocked(ttsQwenModels).mockResolvedValue([])
     const endpoint =
       "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference"
-    expect(getQwenTtsModels(endpoint)).toEqual([])
-    expect(ttsQwenModels).toHaveBeenCalledWith(endpoint)
+    expect(
+      await getQwenTtsModels({ endpoint, credential: "draft-key" }),
+    ).toEqual([])
+    expect(ttsQwenModels).toHaveBeenCalledWith(endpoint, "draft-key", undefined)
   })
 
   it("discovers Qwen voices using draft credentials without saving a provider", async () => {
@@ -167,6 +223,22 @@ describe("mobile core TTS", () => {
     jest.mocked(ttsGetConfig).mockResolvedValue({
       ...systemConfig,
       profiles: [{ ...openAiProfile, id: "qwen", kind: "qwen" }],
+      providers: [
+        {
+          modelScopedVoices: false,
+          ...openAiProfile,
+          id: "qwen",
+          kind: "qwen",
+          models: [
+            {
+              id: "qwen-model",
+              model: "qwen3-tts-vc-2026-01-22",
+              responseFormat: "wav",
+              voices: [],
+            },
+          ],
+        },
+      ],
     })
     jest.mocked(readTtsCredential).mockResolvedValue("stored-secret")
     await discoverQwenTtsVoices({
@@ -186,6 +258,21 @@ describe("mobile core TTS", () => {
     jest.mocked(ttsGetConfig).mockResolvedValue({
       ...systemConfig,
       profiles: [openAiProfile],
+      providers: [
+        {
+          modelScopedVoices: false,
+          ...openAiProfile,
+          models: [
+            {
+              id: openAiProfile.id,
+              model: openAiProfile.model,
+              responseFormat: "mp3",
+              defaultVoice: "reader-voice",
+              voices: [],
+            },
+          ],
+        },
+      ],
     })
     jest.mocked(readTtsCredential).mockResolvedValue("secret")
 
@@ -253,6 +340,21 @@ describe("mobile core TTS", () => {
     jest.mocked(ttsGetConfig).mockResolvedValue({
       ...systemConfig,
       profiles: [openAiProfile],
+      providers: [
+        {
+          modelScopedVoices: false,
+          ...openAiProfile,
+          models: [
+            {
+              id: openAiProfile.id,
+              model: openAiProfile.model,
+              responseFormat: "mp3",
+              defaultVoice: "reader-voice",
+              voices: [],
+            },
+          ],
+        },
+      ],
     })
     jest.mocked(readTtsCredential).mockResolvedValue("secret")
     jest.mocked(ttsSynthesize).mockResolvedValue({
@@ -283,9 +385,25 @@ describe("mobile core TTS", () => {
   it("times out credential loading and never dispatches synthesis after the deadline", async () => {
     jest.useFakeTimers()
     try {
-      jest
-        .mocked(ttsGetConfig)
-        .mockResolvedValue({ ...systemConfig, profiles: [openAiProfile] })
+      jest.mocked(ttsGetConfig).mockResolvedValue({
+        ...systemConfig,
+        profiles: [openAiProfile],
+        providers: [
+          {
+            modelScopedVoices: false,
+            ...openAiProfile,
+            models: [
+              {
+                id: openAiProfile.id,
+                model: openAiProfile.model,
+                responseFormat: "mp3",
+                defaultVoice: "reader-voice",
+                voices: [],
+              },
+            ],
+          },
+        ],
+      })
       let resolveCredential!: (value: string) => void
       jest.mocked(readTtsCredential).mockReturnValueOnce(
         new Promise((resolve) => {
@@ -311,9 +429,25 @@ describe("mobile core TTS", () => {
   })
 
   it("cancels during credential loading without dispatching late synthesis", async () => {
-    jest
-      .mocked(ttsGetConfig)
-      .mockResolvedValue({ ...systemConfig, profiles: [openAiProfile] })
+    jest.mocked(ttsGetConfig).mockResolvedValue({
+      ...systemConfig,
+      profiles: [openAiProfile],
+      providers: [
+        {
+          modelScopedVoices: false,
+          ...openAiProfile,
+          models: [
+            {
+              id: openAiProfile.id,
+              model: openAiProfile.model,
+              responseFormat: "mp3",
+              defaultVoice: "reader-voice",
+              voices: [],
+            },
+          ],
+        },
+      ],
+    })
     let resolveCredential!: (value: string) => void
     jest.mocked(readTtsCredential).mockReturnValueOnce(
       new Promise((resolve) => {
@@ -349,6 +483,21 @@ describe("mobile core TTS", () => {
     jest.mocked(ttsGetConfig).mockResolvedValue({
       ...systemConfig,
       profiles: [openAiProfile],
+      providers: [
+        {
+          modelScopedVoices: false,
+          ...openAiProfile,
+          models: [
+            {
+              id: openAiProfile.id,
+              model: openAiProfile.model,
+              responseFormat: "mp3",
+              defaultVoice: "reader-voice",
+              voices: [],
+            },
+          ],
+        },
+      ],
     })
     jest.mocked(ttsRemoveProfile).mockResolvedValue(systemConfig)
 

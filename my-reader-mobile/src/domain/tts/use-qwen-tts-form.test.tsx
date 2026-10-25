@@ -1,15 +1,17 @@
-import { act, renderHook } from "@testing-library/react-native"
+import type { ComponentProps } from "react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { act, renderHook, waitFor } from "@testing-library/react-native"
 import { discoverQwenTtsVoices } from "@/src/services/core/tts"
 import { useQwenTtsForm } from "./use-qwen-tts-form"
 
 jest.mock("@/src/services/core/tts", () => ({
-  getQwenTtsModels: (endpoint: string) =>
+  getQwenTtsModels: async ({ endpoint }: { endpoint: string }) =>
     endpoint.startsWith("wss:")
       ? [
           {
             id: "qwen-audio-3.0-tts-plus",
             voiceDiscovery: false,
-            voices: [{ id: "longanhuan_v3.6", name: "龙安欢" }],
+            voices: [],
           },
         ]
       : [
@@ -18,6 +20,18 @@ jest.mock("@/src/services/core/tts", () => ({
         ],
   discoverQwenTtsVoices: jest.fn(),
 }))
+
+const client = new QueryClient({
+  defaultOptions: {
+    queries: { retry: false, gcTime: Infinity },
+    mutations: { retry: false, gcTime: Infinity },
+  },
+})
+const wrapper = ({
+  children,
+}: {
+  children: ComponentProps<typeof QueryClientProvider>["children"]
+}) => <QueryClientProvider client={client}>{children}</QueryClientProvider>
 
 const draft = {
   kind: "qwen",
@@ -32,11 +46,8 @@ const draft = {
 
 describe("Qwen voice discovery in provider forms", () => {
   beforeEach(() => {
-    jest.useFakeTimers()
+    client.clear()
     jest.clearAllMocks()
-  })
-  afterEach(() => {
-    jest.useRealTimers()
   })
 
   it("ignores an older model's response and aborts its request when the selection changes", async () => {
@@ -59,16 +70,15 @@ describe("Qwen voice discovery in provider forms", () => {
       { model: string }
     >(({ model }) => useQwenTtsForm({ ...draft, model }), {
       initialProps: { model: "clone" },
+      wrapper,
     })
-    await act(async () => {
-      jest.advanceTimersByTime(400)
-    })
+    await waitFor(() => expect(discoverQwenTtsVoices).toHaveBeenCalled())
     const oldSignal = jest.mocked(discoverQwenTtsVoices).mock.calls[0]?.[1]
     rerender({ model: "design" })
     expect(oldSignal?.aborted).toBe(true)
-    await act(async () => {
-      jest.advanceTimersByTime(400)
-    })
+    await waitFor(() =>
+      expect(result.current.voices[0]?.id).toBe("design-voice"),
+    )
     await act(async () => {
       resolveOld([{ id: "old-clone", name: "Old voice", language: "zh" }])
     })
@@ -83,12 +93,11 @@ describe("Qwen voice discovery in provider forms", () => {
     jest
       .mocked(discoverQwenTtsVoices)
       .mockRejectedValue(new Error("InvalidApiKey"))
-    const { result } = renderHook(() => useQwenTtsForm(draft))
-    await act(async () => {
-      jest.advanceTimersByTime(400)
-    })
-    expect(result.current.error).toBe(
-      "This action could not be completed. Please try again.\n\nError: InvalidApiKey",
+    const { result } = renderHook(() => useQwenTtsForm(draft), { wrapper })
+    await waitFor(() =>
+      expect(result.current.error).toBe(
+        "This action could not be completed. Please try again.\n\nError: InvalidApiKey",
+      ),
     )
     expect(result.current.voices).toEqual([
       { id: "manual-voice", name: "manual-voice" },
@@ -109,27 +118,27 @@ describe("Qwen voice discovery in provider forms", () => {
           credential: "sk-sp-fixture",
         }),
       {
+        wrapper,
         initialProps: {
           endpoint:
             "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference",
         },
       },
     )
-    await act(async () => {
-      jest.advanceTimersByTime(500)
-    })
+    await waitFor(() => expect(result.current.models).toHaveLength(1))
     expect(discoverQwenTtsVoices).not.toHaveBeenCalled()
     expect(result.current.models.map((model) => model.id)).toEqual([
       "qwen-audio-3.0-tts-plus",
     ])
     expect(result.current.voices.map((voice) => voice.id)).toEqual([
-      "longanhuan_v3.6",
       "manual-voice",
     ])
     rerender({ endpoint: draft.endpoint })
-    expect(result.current.models.map((model) => model.id)).toEqual([
-      "clone",
-      "design",
-    ])
+    await waitFor(() =>
+      expect(result.current.models.map((model) => model.id)).toEqual([
+        "clone",
+        "design",
+      ]),
+    )
   })
 })

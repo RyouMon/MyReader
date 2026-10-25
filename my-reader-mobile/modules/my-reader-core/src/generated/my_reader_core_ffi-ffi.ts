@@ -596,6 +596,10 @@ interface NativeModuleInterface {
     configPath: Uint8Array,
     profileId: Uint8Array,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_llm_save_provider(
+    configPath: Uint8Array,
+    provider: Uint8Array,
+  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_llm_select_profile(
     configPath: Uint8Array,
     profileId: Uint8Array,
@@ -894,14 +898,18 @@ interface NativeModuleInterface {
   ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_tts_qwen_models(
     endpoint: Uint8Array,
-    uniffi_out_err: UniffiRustCallStatus,
-  ): Uint8Array;
+    credential: Uint8Array,
+  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_tts_qwen_presets(
     uniffi_out_err: UniffiRustCallStatus,
   ): Uint8Array;
   ubrn_uniffi_my_reader_core_ffi_fn_func_tts_remove_profile(
     configPath: Uint8Array,
     profileId: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_tts_save_provider(
+    configPath: Uint8Array,
+    provider: Uint8Array,
   ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_tts_set_default_engine(
     configPath: Uint8Array,
@@ -920,6 +928,11 @@ interface NativeModuleInterface {
     configPath: Uint8Array,
     cacheDirectory: Uint8Array,
     request: Uint8Array,
+    credential: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_tts_test_provider(
+    profile: Uint8Array,
+    text: Uint8Array,
     credential: Uint8Array,
   ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_tts_upsert_profile(
@@ -1013,6 +1026,7 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_llm_list_models(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_llm_probe(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_llm_remove_profile(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_llm_save_provider(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_llm_select_profile(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_llm_upsert_profile(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_cancel(): number;
@@ -1065,10 +1079,12 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_qwen_models(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_qwen_presets(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_remove_profile(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_save_provider(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_set_default_engine(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_set_playback(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_set_voice(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_synthesize(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_test_provider(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_upsert_profile(): number;
   // Codegen call sites use these via `nativeModule().rustbuffer_alloc(...)`
   // and `nativeModule().rustbuffer_free(...)`. The JSI host object exposes

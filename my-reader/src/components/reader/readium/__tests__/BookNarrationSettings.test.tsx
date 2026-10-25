@@ -60,7 +60,8 @@ const settings: BookNarrationSettingsDto = {
   ],
 }
 const config: TtsConfigDto = {
-  schemaVersion: 1,
+  schemaVersion: 2,
+  providers: [],
   defaultEngine: { kind: "system" },
   voiceByLanguage: {},
   playback: {
@@ -162,7 +163,7 @@ it("clears the previous voice when switching provider and preserves the stable c
   fireEvent.click(await screen.findByRole("button", { name: /^陈默/ }))
   const user = userEvent.setup()
   await user.click(screen.getByRole("combobox", { name: "narration.provider" }))
-  await user.click(screen.getByRole("option", { name: "two" }))
+  await user.click(screen.getByRole("option", { name: "two/tts" }))
   expect(screen.getByRole("button", { name: "llm.save" })).toBeDisabled()
   await user.click(screen.getByRole("combobox", { name: "narration.voice" }))
   await user.click(await screen.findByRole("option", { name: "Voice A" }))

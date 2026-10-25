@@ -198,7 +198,8 @@ beforeEach(() => {
     return 1
   })
   vi.mocked(api.getTtsConfig).mockResolvedValue({
-    schemaVersion: 1,
+    schemaVersion: 2,
+    providers: [],
     defaultEngine: { kind: "system" },
     profiles: [],
     voiceByLanguage: {},
@@ -411,7 +412,8 @@ describe("useEpubTtsSession", () => {
       { id: "sentence-1", plain: "Global default.", locator },
     ])
     vi.mocked(api.getTtsConfig).mockResolvedValue({
-      schemaVersion: 1,
+      schemaVersion: 2,
+      providers: [],
       defaultEngine: { kind: "system" },
       profiles: [],
       voiceByLanguage: {
@@ -1589,7 +1591,8 @@ describe("useEpubTtsSession", () => {
     act(() => result.current.play())
     await waitFor(() => expect(result.current.state).toBe("playing"))
     vi.mocked(api.getTtsConfig).mockResolvedValue({
-      schemaVersion: 1,
+      schemaVersion: 2,
+      providers: [],
       defaultEngine: { kind: "provider", profileId: "openai" },
       profiles: [
         {
@@ -1641,7 +1644,8 @@ describe("useEpubTtsSession", () => {
       { id: "sentence-1", plain: "Change voices.", locator },
     ])
     vi.mocked(api.setTtsVoiceForLanguage).mockResolvedValue({
-      schemaVersion: 1,
+      schemaVersion: 2,
+      providers: [],
       defaultEngine: { kind: "system" },
       profiles: [],
       voiceByLanguage: {

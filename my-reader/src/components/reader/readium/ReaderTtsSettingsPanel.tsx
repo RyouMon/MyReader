@@ -1,5 +1,5 @@
 import { formatTtsLanguageName } from "@my-reader/tools/reader-tts-language"
-import { ChevronRight, Loader2, Server, Settings2 } from "lucide-react"
+import { ChevronRight, Loader2, Settings2 } from "lucide-react"
 import type { CSSProperties } from "react"
 import { useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
@@ -13,7 +13,7 @@ import {
   ReaderSidePanelHeader,
   ReaderSidePanelScrollArea,
 } from "@/components/reader/shared/ReaderSidePanelChrome"
-import { TtsProviderManager } from "@/components/settings/sections/SpeechSection"
+import { openTtsProviderSettings } from "@/lib/settingsWindow"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -72,7 +72,6 @@ export function ReaderTtsSettingsPanel({
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [view, setView] = useState<"settings" | "providers">("settings")
   const [narrationView, setNarrationView] = useState<NarrationSubview | null>(
     null,
   )
@@ -80,24 +79,28 @@ export function ReaderTtsSettingsPanel({
 
   useEffect(() => {
     if (!visible) {
-      setView("settings")
       return
     }
     let cancelled = false
     setLoading(true)
     setError(null)
-    void api
-      .getTtsConfig()
-      .then((next) => {
-        if (!cancelled) setConfig(next)
-      })
-      .catch((loadError: unknown) => {
-        if (!cancelled) setError(errorMessage(loadError))
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
+    const refresh = () => {
+      void api
+        .getTtsConfig()
+        .then((next) => {
+          if (!cancelled) setConfig(next)
+        })
+        .catch((loadError: unknown) => {
+          if (!cancelled) setError(errorMessage(loadError))
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false)
+        })
+    }
+    refresh()
+    window.addEventListener("focus", refresh)
     return () => {
+      window.removeEventListener("focus", refresh)
       cancelled = true
     }
   }, [visible])
@@ -154,16 +157,9 @@ export function ReaderTtsSettingsPanel({
   return (
     <ReaderSidePanelFrame visible={visible} side="right">
       <ReaderSidePanelHeader
-        title={
-          narrationView?.title ??
-          t(
-            view === "providers"
-              ? "reader.tts.manageProviders"
-              : "reader.tts.settings",
-          )
-        }
-        icon={view === "providers" ? Server : Settings2}
-        onBack={panelBack(narrationView, view, () => setView("settings"))}
+        title={narrationView?.title ?? t("reader.tts.settings")}
+        icon={Settings2}
+        onBack={narrationView?.onBack}
         backLabel={t("common.back")}
       />
       <ReaderSidePanelScrollArea className={READER_SETTINGS_CONTENT_CLASS}>
@@ -182,16 +178,7 @@ export function ReaderTtsSettingsPanel({
           </p>
         ) : null}
 
-        {!loading && config && view === "providers" ? (
-          <TtsProviderManager
-            config={config}
-            onConfigChange={applyConfig}
-            showPreview
-            themeStyle={themeStyle}
-          />
-        ) : null}
-
-        {!loading && config && view === "settings" ? (
+        {!loading && config ? (
           <>
             {book ? (
               <BookNarrationSettings
@@ -309,9 +296,13 @@ export function ReaderTtsSettingsPanel({
                 <button
                   type="button"
                   className="flex h-11 w-full items-center justify-between rounded-md bg-[var(--reader-chrome-segment-idle)] px-3 text-[13px] font-medium text-reader-chrome-fg transition-colors hover:bg-[var(--reader-chrome-segment-active)]"
-                  onClick={() => setView("providers")}
+                  onClick={() =>
+                    void openTtsProviderSettings().catch((error: unknown) =>
+                      setError(errorMessage(error)),
+                    )
+                  }
                 >
-                  <span>{t("reader.tts.manageProviders")}</span>
+                  <span>{t("ttsSettings.manageProviders")}</span>
                   <ChevronRight
                     className="size-4 text-reader-chrome-muted"
                     aria-hidden
@@ -413,7 +404,7 @@ function ReaderTtsEngineSelect({
                 value={profile.id}
                 disabled={!profile.enabled}
               >
-                {profile.name}
+                {`${profile.name}/${profile.modelName || profile.model}`}
               </SelectItem>
             ))}
           </SelectGroup>
@@ -421,13 +412,4 @@ function ReaderTtsEngineSelect({
       </Select>
     </section>
   )
-}
-
-function panelBack(
-  narration: NarrationSubview | null,
-  view: "settings" | "providers",
-  onBack: () => void,
-) {
-  if (narration) return narration.onBack
-  return view === "providers" ? onBack : undefined
 }

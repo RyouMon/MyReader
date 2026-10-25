@@ -13,7 +13,7 @@
     "test": "Testar conexão",
     "testPassed": "Conexão verificada",
     "context": "Janela de contexto",
-    "default": "Provedor padrão",
+    "default": "Modelo padrão",
     "none": "Nenhum",
     "clearKey": "Remover chave salva",
     "save": "Salvar",
@@ -33,7 +33,7 @@
     "aliases": "Apelidos",
     "identity": "Descrição do personagem",
     "instructions": "Instruções de leitura",
-    "provider": "Provedor TTS",
+    "provider": "Modelo",
     "voice": "Voz",
     "defaultVoice": "Padrão",
     "system": "Sistema",
@@ -387,5 +387,24 @@
     "loading": "Carregando…",
     "retry": "Tentar novamente",
     "noResults": "Nenhum livro atende a todas as condições."
+  },
+  "ttsSettings": {
+    "providers": "Provedores TTS",
+    "defaults": "Configurações de leitura",
+    "manageProviders": "Gerenciar provedores",
+    "test": "Testar",
+    "testing": "Testando…",
+    "testSucceeded": "Teste concluído",
+    "testFailed": "Falha no teste"
+  },
+  "aiProviders": {
+    "title": "Provedores de IA",
+    "ttsDescription": "Oferece conversão de texto em fala",
+    "llmDescription": "Oferece análise de linguagem natural",
+    "addModel": "Adicionar modelo",
+    "newModel": "Novo modelo",
+    "removeModel": "Remover modelo",
+    "endpointHint": "Informe a URL exata do serviço até /v1.",
+    "modelScopedVoices": "Vozes por modelo"
   }
 }

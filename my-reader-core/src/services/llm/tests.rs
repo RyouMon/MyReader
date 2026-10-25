@@ -10,6 +10,7 @@ fn profile() -> LlmProviderProfile {
         model: " model ".into(),
         credential_reference: Some("key-reference".into()),
         context_window: 32768,
+        max_output_tokens: None,
         revision: 0,
     }
 }
@@ -27,7 +28,7 @@ fn profiles_persist_selection_and_revision_without_overwriting_other_settings() 
     })
     .unwrap();
     let first = LlmService::upsert_profile(&path, profile()).unwrap();
-    let saved = &first.profiles[0];
+    let saved = &first.profiles()[0];
     assert!(!saved.id.is_empty());
     assert_eq!(saved.name, "Local model");
     assert_eq!(saved.endpoint, "http://localhost:1234/v1");
@@ -35,8 +36,8 @@ fn profiles_persist_selection_and_revision_without_overwriting_other_settings() 
     let mut edited = saved.clone();
     edited.model = "another".into();
     let updated = LlmService::upsert_profile(&path, edited).unwrap();
-    assert_eq!(updated.profiles.len(), 1);
-    assert_eq!(updated.profiles[0].revision, 2);
+    assert_eq!(updated.profiles().len(), 1);
+    assert_eq!(updated.profiles()[0].revision, 2);
     assert_eq!(LlmService::get_config(&path).unwrap(), updated);
     assert_eq!(
         ConfigService::load_or_initialize(&path, None)
@@ -56,7 +57,7 @@ fn profiles_persist_selection_and_revision_without_overwriting_other_settings() 
         "another"
     );
     let removed = LlmService::remove_profile(&path, &saved.id).unwrap();
-    assert!(removed.profiles.is_empty());
+    assert!(removed.profiles().is_empty());
     assert!(removed.default_profile_id.is_none());
 }
 
@@ -81,4 +82,134 @@ fn rejects_credentials_in_urls_and_invalid_context_budgets_before_persisting() {
         assert!(LlmService::upsert_profile(&path, value).is_err());
     }
     assert!(!path.exists());
+}
+
+#[test]
+fn provider_models_share_connection_and_keep_stable_selection() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("config.json");
+    let mut legacy = profile();
+    legacy.id = "old-model".into();
+    let mut config = serde_json::to_value(crate::models::AppConfig::empty()).unwrap();
+    config["llm"] = serde_json::json!({ "profiles": [legacy], "defaultProfileId": "old-model" });
+    std::fs::write(&path, serde_json::to_vec(&config).unwrap()).unwrap();
+    let migrated = LlmService::get_config(&path).unwrap();
+    assert_eq!(migrated.providers[0].models[0].id, "old-model");
+    let mut provider = migrated.providers[0].clone();
+    provider.models.push(crate::models::LlmModel {
+        id: "second-model".into(),
+        model: "second".into(),
+        context_window: 65536,
+        max_output_tokens: None,
+        display_name: String::new(),
+        revision: 0,
+    });
+    LlmService::upsert_provider(&path, provider.clone()).unwrap();
+    LlmService::select_profile(&path, Some("second-model".into())).unwrap();
+    let selected = LlmService::selected_profile(&path).unwrap();
+    assert_eq!(selected.model, "second");
+    assert_eq!(
+        selected.credential_reference.as_deref(),
+        Some("key-reference")
+    );
+    provider.endpoint = "https://updated.example/v1".into();
+    let saved = LlmService::upsert_provider(&path, provider.clone()).unwrap();
+    assert!(saved
+        .profiles()
+        .iter()
+        .all(|p| p.endpoint == provider.endpoint));
+    assert_eq!(saved.default_profile_id.as_deref(), Some("second-model"));
+    let on_disk: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    assert!(on_disk["llm"].get("profiles").is_none());
+    assert_eq!(on_disk["llm"]["providers"].as_array().unwrap().len(), 1);
+    provider.models.pop();
+    let saved = LlmService::upsert_provider(&path, provider.clone()).unwrap();
+    assert_eq!(saved.default_profile_id.as_deref(), Some("old-model"));
+    provider.models.push(provider.models[0].clone());
+    assert!(LlmService::upsert_provider(&path, provider).is_err());
+    assert_eq!(LlmService::get_config(&path).unwrap(), saved);
+}
+
+#[test]
+fn model_labels_and_output_limits_roundtrip_and_invalid_limits_do_not_overwrite_config() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("config.json");
+    let mut provider: LlmProvider = profile().into();
+    provider.models[0].display_name = " Fast model ".into();
+    provider.models[0].max_output_tokens = Some(2048);
+    let saved = LlmService::upsert_provider(&path, provider).unwrap();
+    assert_eq!(saved.providers[0].models[0].display_name, "Fast model");
+    assert_eq!(
+        LlmService::selected_profile(&path)
+            .unwrap()
+            .max_output_tokens,
+        Some(2048)
+    );
+    assert_eq!(LlmService::get_config(&path).unwrap(), saved);
+    for limit in [0, 32769] {
+        let mut invalid = saved.providers[0].clone();
+        invalid.models[0].max_output_tokens = Some(limit);
+        assert!(LlmService::upsert_provider(&path, invalid).is_err());
+        assert_eq!(LlmService::get_config(&path).unwrap(), saved);
+    }
+}
+
+#[tokio::test]
+async fn caps_inference_output_using_the_configured_model_limit_for_both_protocols() {
+    use tokio::{
+        io::{AsyncReadExt, AsyncWriteExt},
+        net::TcpListener,
+    };
+    for protocol in [LlmProtocol::ChatCompletions, LlmProtocol::Responses] {
+        for (configured, requested, expected) in [
+            (Some(1024), 4096, 1024),
+            (Some(8192), 4096, 4096),
+            (None, 4096, 4096),
+        ] {
+            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let mut model = profile();
+            model.endpoint = format!("http://{}", listener.local_addr().unwrap());
+            model.protocol = protocol;
+            model.max_output_tokens = configured;
+            let server = tokio::spawn(async move {
+                let (mut stream, _) = listener.accept().await.unwrap();
+                let mut bytes = Vec::new();
+                let body = loop {
+                    let mut chunk = [0u8; 4096];
+                    let count = stream.read(&mut chunk).await.unwrap();
+                    assert!(count > 0);
+                    bytes.extend_from_slice(&chunk[..count]);
+                    if let Some(offset) = bytes.windows(4).position(|w| w == b"\r\n\r\n") {
+                        if let Ok(body) =
+                            serde_json::from_slice::<serde_json::Value>(&bytes[offset + 4..])
+                        {
+                            break body;
+                        }
+                    }
+                };
+                let response = match protocol {
+                    LlmProtocol::ChatCompletions => serde_json::json!({"choices":[{"finish_reason":"stop","message":{"content":"{}"}}]}),
+                    LlmProtocol::Responses => serde_json::json!({"status":"completed","output":[{"type":"message","content":[{"type":"output_text","text":"{}"}]}]}),
+                }.to_string();
+                stream.write_all(format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", response.len(),response).as_bytes()).await.unwrap();
+                body
+            });
+            llm::complete_with_output_limit(
+                &model,
+                None,
+                &[],
+                serde_json::json!({"type":"object"}),
+                requested,
+            )
+            .await
+            .unwrap();
+            let body = server.await.unwrap();
+            let field = match protocol {
+                LlmProtocol::ChatCompletions => "max_completion_tokens",
+                LlmProtocol::Responses => "max_output_tokens",
+            };
+            assert_eq!(body[field], expected);
+        }
+    }
 }

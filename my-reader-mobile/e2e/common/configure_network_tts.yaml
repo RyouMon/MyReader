@@ -1,12 +1,18 @@
 appId: ${APP_ID}
 name: Configure the local speech fixture through provider settings
 ---
-- runFlow: open_tts_settings.yaml
+- runFlow: open_settings.yaml
+- scrollUntilVisible:
+    element:
+      id: settings-tts-providers-row
+    direction: DOWN
+- tapOn:
+    id: settings-tts-providers-row
 - scrollUntilVisible:
     element: "添加 TTS 供应商|Add TTS provider"
     direction: DOWN
 - tapOn: "添加 TTS 供应商|Add TTS provider"
-- tapOn: "OpenAI 兼容|OpenAI-compatible"
+- tapOn: ".*OpenAI 兼容.*|.*OpenAI-compatible.*"
 - tapOn:
     id: tts-provider-name
 - eraseText
@@ -54,8 +60,19 @@ name: Configure the local speech fixture through provider settings
     enabled: true
 - waitForAnimationToEnd
 - extendedWaitUntil:
-    visible: "朗读与语音|Read aloud and voices"
+    visible: "TTS 供应商|TTS providers"
     timeout: 10000
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: "关闭|Close"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- runFlow: open_tts_settings.yaml
 - scrollUntilVisible:
     element: "朗读引擎.*|Narration engine.*"
     direction: UP

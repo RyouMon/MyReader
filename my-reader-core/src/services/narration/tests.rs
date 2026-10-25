@@ -8,6 +8,8 @@ struct Fixture {
     endpoint: String,
     requests: Arc<Mutex<Vec<Value>>>,
     task: tokio::task::JoinHandle<()>,
+    slow_request: Arc<tokio::sync::Notify>,
+    release_slow: Arc<tokio::sync::Notify>,
 }
 
 impl Drop for Fixture {
@@ -22,11 +24,17 @@ async fn fixture() -> Fixture {
     let requests = Arc::new(Mutex::new(Vec::new()));
     let captured = requests.clone();
     let origin = endpoint.clone();
+    let slow_request = Arc::new(tokio::sync::Notify::new());
+    let release_slow = Arc::new(tokio::sync::Notify::new());
+    let received = slow_request.clone();
+    let release = release_slow.clone();
     let task = tokio::spawn(async move {
         loop {
             let (mut stream, _) = listener.accept().await.unwrap();
             let captured = captured.clone();
             let origin = origin.clone();
+            let received = received.clone();
+            let release = release.clone();
             tokio::spawn(async move {
                 let mut bytes = Vec::new();
                 let (head, body) = loop {
@@ -99,7 +107,8 @@ async fn fixture() -> Fixture {
                         )
                         .unwrap();
                         if input["text"].as_str().unwrap().contains("slow") {
-                            tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+                            received.notify_one();
+                            release.notified().await;
                         }
                         json!({"segments":[{"text":input["text"],"characterId":"char-chen","delivery":"calm"}]})
                     } else {
@@ -127,6 +136,8 @@ async fn fixture() -> Fixture {
         endpoint,
         requests,
         task,
+        slow_request,
+        release_slow,
     }
 }
 
@@ -139,6 +150,7 @@ fn profile(endpoint: String) -> LlmProviderProfile {
         model: "fixture".into(),
         credential_reference: None,
         context_window: 32768,
+        max_output_tokens: None,
         revision: 0,
     }
 }
@@ -526,11 +538,12 @@ async fn disabled_mode_makes_no_model_requests_and_rejects_inflight_commit() {
     slow.text = "slow".into();
     let pending = NarrationService::plan(root.path(), &config, slow, None);
     let disable = async {
-        tokio::time::sleep(std::time::Duration::from_millis(40)).await;
+        fixture.slow_request.notified().await;
         settings.enabled = false;
         NarrationService::save_settings(root.path(), settings)
             .await
             .unwrap();
+        fixture.release_slow.notify_one();
     };
     let (result, _) = tokio::join!(pending, disable);
     assert!(result.unwrap_err().to_string().contains("STALE_REQUEST"));

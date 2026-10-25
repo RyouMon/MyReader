@@ -33,7 +33,9 @@ pub use library::{
     MYREADER_LIBRARY_MARKER_VERSION,
 };
 pub use library_source::LibrarySourceType;
-pub use llm::{LlmConfig, LlmCredential, LlmMessage, LlmProtocol, LlmProviderProfile};
+pub use llm::{
+    LlmConfig, LlmCredential, LlmMessage, LlmModel, LlmProtocol, LlmProvider, LlmProviderProfile,
+};
 pub use narration::{
     BookCharacter, BookNarrationSettings, CharacterImportCandidate, CharacterImportRequest,
     CharacterSource, NarrationMergeChoice, NarrationMergePlan, NarrationMergeSource, NarrationPlan,
@@ -51,7 +53,7 @@ pub use sync::{
 pub(crate) use sync::{SyncFailureDisposition, SyncScheduleSnapshot};
 pub use tts::{
     QwenTtsModel, QwenTtsPreset, TtsAudioArtifact, TtsAudioFormat, TtsCachePolicy, TtsConfig,
-    TtsEngineSelection, TtsPlaybackPreferences, TtsProviderCapabilities, TtsProviderKind,
-    TtsProviderOptions, TtsProviderProfile, TtsSynthesisRequest, TtsTiming, TtsVoice, TtsVoiceRef,
-    TTS_CONFIG_SCHEMA_VERSION,
+    TtsEngineSelection, TtsModel, TtsPlaybackPreferences, TtsProvider, TtsProviderCapabilities,
+    TtsProviderKind, TtsProviderOptions, TtsProviderProfile, TtsSynthesisRequest, TtsTiming,
+    TtsVoice, TtsVoiceRef, TTS_CONFIG_SCHEMA_VERSION,
 };

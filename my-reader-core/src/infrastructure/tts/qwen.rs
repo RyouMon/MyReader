@@ -12,9 +12,11 @@ use url::Url;
 
 use super::{audio_response, client, response_bytes, tts_error, SynthesizedAudio};
 
+mod catalog;
+mod default_voices;
 mod websocket;
+pub(crate) use catalog::discover_models;
 
-pub(crate) const DEFAULT_MODEL: &str = "qwen-audio-3.0-tts-plus";
 pub(crate) const DEFAULT_ENDPOINT: &str =
     "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference";
 
@@ -28,162 +30,40 @@ pub(crate) fn presets() -> Vec<QwenTtsPreset> {
     .map(|(id, endpoint)| QwenTtsPreset {
         id: id.into(),
         endpoint: endpoint.into(),
-        default_model: models_for_endpoint(Some(endpoint)).remove(0),
     })
     .collect()
 }
 
-// Official HTTP model/voice catalogs, checked 2026-09-29:
-// https://help.aliyun.com/zh/model-studio/qwen-audio-tts-voice-list
-// https://help.aliyun.com/zh/model-studio/qwen-tts-voice-list
-pub(crate) fn models() -> Vec<QwenTtsModel> {
-    let instruct_voices = [
-        ("Cherry", "芊悦"),
-        ("Serena", "苏瑶"),
-        ("Ethan", "晨煦"),
-        ("Chelsie", "千雪"),
-        ("Momo", "茉兔"),
-        ("Vivian", "十三"),
-        ("Moon", "月白"),
-        ("Maia", "四月"),
-        ("Kai", "凯"),
-        ("Nofish", "不吃鱼"),
-        ("Bella", "萌宝"),
-        ("Eldric Sage", "沧明子"),
-        ("Mia", "乖小妹"),
-        ("Mochi", "沙小弥"),
-        ("Bellona", "燕铮莺"),
-        ("Vincent", "田叔"),
-        ("Bunny", "萌小姬"),
-        ("Neil", "阿闻"),
-        ("Elias", "墨讲师"),
-        ("Arthur", "徐大爷"),
-        ("Nini", "邻家妹妹"),
-        ("Seren", "小婉"),
-        ("Pip", "顽屁小孩"),
-        ("Stella", "少女阿月"),
-    ]
-    .into_iter()
-    .map(|(id, name)| voice(id, name, "mul"))
-    .collect::<Vec<_>>();
-    let mut flash_voices = instruct_voices.clone();
-    flash_voices.extend(
-        [
-            ("Jennifer", "詹妮弗"),
-            ("Ryan", "甜茶"),
-            ("Katerina", "卡捷琳娜"),
-            ("Aiden", "艾登"),
-            ("Bodega", "博德加"),
-            ("Sonrisa", "索尼莎"),
-            ("Alek", "阿列克"),
-            ("Dolce", "多尔切"),
-            ("Sohee", "素熙"),
-            ("Ono Anna", "小野杏"),
-            ("Lenn", "莱恩"),
-            ("Emilien", "埃米尔安"),
-            ("Andre", "安德雷"),
-            ("Radio Gol", "拉迪奥·戈尔"),
-            ("Jada", "上海-阿珍"),
-            ("Dylan", "北京-晓东"),
-            ("Li", "南京-老李"),
-            ("Marcus", "陕西-秦川"),
-            ("Roy", "闽南-阿杰"),
-            ("Peter", "天津-李彼得"),
-            ("Sunny", "四川-晴儿"),
-            ("Eric", "四川-程川"),
-            ("Rocky", "粤语-阿强"),
-            ("Kiki", "粤语-阿清"),
-        ]
-        .into_iter()
-        .map(|(id, name)| voice(id, name, "mul")),
-    );
-    vec![
-        QwenTtsModel {
-            id: DEFAULT_MODEL.into(),
-            name: "Qwen-Audio-TTS Plus".into(),
-            supports_instructions: true,
-            voice_discovery: true,
-            audio_formats: vec![
-                TtsAudioFormat::Mp3,
-                TtsAudioFormat::Wav,
-                TtsAudioFormat::Opus,
-            ],
-            voices: vec![
-                voice("longanlingxin", "龙安灵心", "mul"),
-                voice("longanlufeng", "龙安鲁风", "mul"),
-            ],
-        },
-        QwenTtsModel {
-            id: "qwen3-tts-flash".into(),
-            name: "Qwen3-TTS Flash".into(),
-            supports_instructions: false,
-            voice_discovery: false,
-            audio_formats: vec![TtsAudioFormat::Wav],
-            voices: flash_voices,
-        },
-        QwenTtsModel {
-            id: "qwen3-tts-instruct-flash".into(),
-            name: "Qwen3-TTS Instruct Flash".into(),
-            supports_instructions: true,
-            voice_discovery: false,
-            audio_formats: vec![TtsAudioFormat::Wav],
-            voices: instruct_voices,
-        },
-        QwenTtsModel {
-            id: "qwen3-tts-vc-2026-01-22".into(),
-            name: "Qwen3-TTS VC".into(),
-            supports_instructions: false,
-            voice_discovery: true,
-            audio_formats: vec![TtsAudioFormat::Wav],
-            voices: vec![],
-        },
-        QwenTtsModel {
-            id: "qwen3-tts-vd-2026-01-26".into(),
-            name: "Qwen3-TTS VD".into(),
-            supports_instructions: false,
-            voice_discovery: true,
-            audio_formats: vec![TtsAudioFormat::Wav],
-            voices: vec![],
-        },
-    ]
-}
-
-pub(crate) fn models_for_endpoint(endpoint: Option<&str>) -> Vec<QwenTtsModel> {
-    let mut catalog = models();
-    if uses_websocket(
-        endpoint
-            .filter(|value| !value.is_empty())
-            .unwrap_or(DEFAULT_ENDPOINT),
-    ) {
-        // Token Plan only advertises Audio Plus. Its gateway does not expose
-        // the account voice customization endpoint (404); manual IDs still work.
-        catalog.retain(|model| model.id == DEFAULT_MODEL);
-        for model in &mut catalog {
-            model.voice_discovery = false;
-            model
-                .voices
-                .insert(0, voice("longanhuan_v3.6", "龙安欢", "mul"));
-        }
-    } else if endpoint.is_some_and(|endpoint| {
-        Url::parse(endpoint).is_ok_and(|url| url.host_str() == Some("maas.qianwenaiapi.com"))
-    }) {
-        // Qianwen's HTTP catalog differs from DashScope's. Instruct/VC/VD
-        // models return InvalidParameter: Model not exist on this endpoint.
-        catalog.retain(|model| model.id == DEFAULT_MODEL || model.id == "qwen3-tts-flash");
-    }
-    catalog
+pub(crate) fn is_audio_model(id: &str) -> bool {
+    id.starts_with("qwen-audio-") && id.contains("-tts-")
 }
 
 pub(crate) fn model(id: &str, endpoint: &str) -> Result<QwenTtsModel, CoreError> {
-    models_for_endpoint(Some(endpoint))
-        .into_iter()
-        .find(|model| model.id == id)
-        .ok_or_else(|| {
-            super::tts_error(
-                TtsErrorKind::Configuration,
-                &format!("QWEN_MODEL_UNSUPPORTED: {id}"),
-            )
-        })
+    let audio = is_audio_model(id);
+    let multimodal = id.starts_with("qwen3-tts-") && !id.contains("realtime");
+    if !audio && (!multimodal || uses_websocket(endpoint)) {
+        return Err(tts_error(
+            TtsErrorKind::Configuration,
+            &format!("QWEN_MODEL_UNSUPPORTED: {id}"),
+        ));
+    }
+    Ok(QwenTtsModel {
+        id: id.into(),
+        name: id.into(),
+        supports_instructions: audio || id.contains("-instruct-"),
+        voice_discovery: !uses_websocket(endpoint)
+            && (audio || id.starts_with("qwen3-tts-vc-") || id.starts_with("qwen3-tts-vd-")),
+        audio_formats: if audio {
+            vec![
+                TtsAudioFormat::Mp3,
+                TtsAudioFormat::Wav,
+                TtsAudioFormat::Opus,
+            ]
+        } else {
+            vec![TtsAudioFormat::Wav]
+        },
+        voices: default_voices::default_voices(id, uses_websocket(endpoint)),
+    })
 }
 
 fn voice(id: &str, name: &str, language: &str) -> TtsVoice {
@@ -196,12 +76,10 @@ fn voice(id: &str, name: &str, language: &str) -> TtsVoice {
 }
 
 pub(crate) fn validate_profile(profile: &TtsProviderProfile) -> Result<(), CoreError> {
-    // Retain the ability to load and edit profiles saved with the old catalog.
-    // New profile writes and synthesis separately validate endpoint support.
-    let selected = models()
-        .into_iter()
-        .find(|model| Some(model.id.as_str()) == profile.model.as_deref())
-        .ok_or_else(|| tts_error(TtsErrorKind::Configuration, "QWEN_MODEL_UNSUPPORTED"))?;
+    let selected = model(
+        profile.model.as_deref().unwrap_or_default(),
+        &profile.endpoint,
+    )?;
     let TtsProviderOptions::Qwen {
         response_format,
         instructions,
@@ -227,19 +105,6 @@ pub(crate) fn validate_profile(profile: &TtsProviderProfile) -> Result<(), CoreE
         return Err(tts_error(
             TtsErrorKind::Configuration,
             "QWEN_INSTRUCTIONS_UNSUPPORTED",
-        ));
-    }
-    let url = Url::parse(&profile.endpoint)
-        .map_err(|_| tts_error(TtsErrorKind::Configuration, "INVALID_TTS_ENDPOINT"))?;
-    if selected.id == DEFAULT_MODEL
-        && url.host_str().is_some_and(|host| {
-            host == "dashscope-intl.aliyuncs.com"
-                || host.ends_with(".ap-southeast-1.maas.aliyuncs.com")
-        })
-    {
-        return Err(tts_error(
-            TtsErrorKind::Configuration,
-            "QWEN_AUDIO_REQUIRES_BEIJING",
         ));
     }
     Ok(())
@@ -277,8 +142,8 @@ pub(crate) async fn synthesize(
             "QWEN_TOKEN_PLAN_WEBSOCKET_REQUIRED",
         ));
     }
-    let model = profile.model.as_deref().unwrap_or(DEFAULT_MODEL);
-    let audio = model == DEFAULT_MODEL;
+    let model = profile.model.as_deref().unwrap_or_default();
+    let audio = is_audio_model(model);
     let mut input = json!({ "text": request.text, "voice": request.voice_id });
     if audio {
         input["format"] = json!(response_format.as_str());
@@ -426,9 +291,23 @@ pub(crate) async fn discover_voices(
     credential: Option<&str>,
 ) -> Result<Vec<TtsVoice>, CoreError> {
     let selected = model(model_id, base)?;
-    if !selected.voice_discovery {
-        return Ok(selected.voices);
+    if credential.is_some_and(|key| key.starts_with("sk-sp-")) && !uses_websocket(base) {
+        return Err(tts_error(
+            TtsErrorKind::Configuration,
+            "QWEN_TOKEN_PLAN_WEBSOCKET_REQUIRED",
+        ));
     }
+    if !selected.voice_discovery {
+        return Ok(vec![]);
+    }
+    discover_account_voices(base, model_id, credential).await
+}
+
+pub(crate) async fn discover_account_voices(
+    base: &str,
+    model_id: &str,
+    credential: Option<&str>,
+) -> Result<Vec<TtsVoice>, CoreError> {
     let credential = credential
         .filter(|key| !key.trim().is_empty())
         .ok_or_else(|| tts_error(TtsErrorKind::Unauthorized, "TTS_CREDENTIAL_REQUIRED"))?;
@@ -439,7 +318,7 @@ pub(crate) async fn discover_voices(
         ));
     }
     let url = api_endpoint(base, "/services/audio/tts/customization")?;
-    let audio = model_id == DEFAULT_MODEL;
+    let audio = is_audio_model(model_id);
     let enrollment_model = if audio {
         "voice-enrollment"
     } else if model_id.starts_with("qwen3-tts-vd-") {
@@ -448,7 +327,7 @@ pub(crate) async fn discover_voices(
         "qwen-voice-enrollment"
     };
     let http = client()?;
-    let mut voices = selected.voices;
+    let mut voices: Vec<TtsVoice> = Vec::new();
     let page_size = 100;
     let mut page = 0;
     loop {
@@ -526,7 +405,7 @@ fn endpoint(profile: &TtsProviderProfile, audio: bool) -> Result<Url, CoreError>
     // Qianwen's Qwen3-TTS HTTP reference uses DashScope. The generic MaaS
     // gateway returns HTTP 400 with only {} for this model.
     // https://platform.qianwenai.com/docs/api-reference/speech-synthesis/qwen-tts
-    if profile.model.as_deref() == Some("qwen3-tts-flash")
+    if !audio
         && url.host_str() == Some("maas.qianwenaiapi.com")
         && url.scheme() == "https"
         && url.port().is_none()
@@ -587,7 +466,7 @@ mod tests {
             );
         }
         profile.endpoint = "https://maas.qianwenaiapi.com/api/v1".into();
-        profile.model = Some(DEFAULT_MODEL.into());
+        profile.model = Some("qwen-audio-3.0-tts-plus".into());
         assert_eq!(
             endpoint(&profile, true).unwrap().as_str(),
             "https://maas.qianwenaiapi.com/api/v1/services/audio/tts/SpeechSynthesizer"

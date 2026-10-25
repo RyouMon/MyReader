@@ -20,15 +20,8 @@ export default function SettingsStackLayout() {
       <Stack.Screen
         name="tts"
         options={{
-          title: t("settings.tts.title"),
+          title: t("ttsSettings.defaults"),
           presentation: "modal",
-        }}
-      />
-      <Stack.Screen
-        name="tts-provider"
-        options={{
-          presentation: "modal",
-          headerShown: false,
         }}
       />
       <Stack.Screen

@@ -1,5 +1,24 @@
 export const desktopZhCN = {
   translation: {
+    providerEditor: {
+      playbackFailed: "音频播放失败。",
+      fetchModels: "获取可用模型",
+      models: "模型列表",
+      voices: "声音列表",
+      modelId: "模型 ID",
+      displayName: "显示名称",
+      modelDetails: "模型设置",
+      maxOutput: "最大输出 token 数",
+      automatic: "自动",
+      noNewModels: "可用模型均已添加",
+      addSelected: "添加所选模型",
+      audioFormat: "音频格式",
+      voiceId: "声音 ID",
+      removeVoice: "删除声音",
+      addVoice: "添加声音",
+      fetchVoices: "获取声音",
+      testModel: "测试模型",
+    },
     errors: {
       io: "文件读写错误",
       database: "数据库错误",
@@ -259,7 +278,7 @@ export const desktopZhCN = {
         previewDescription: "使用当前选择的朗读引擎、声音和播放参数。",
         previewAction: "试听",
         stopPreview: "停止试听",
-        engineTitle: "默认朗读引擎",
+        engineTitle: "朗读引擎",
         engineDescription:
           "阅读器会使用这里选择的引擎；声音和语速也可在阅读时切换。",
         defaultEngine: "朗读引擎",
@@ -288,7 +307,7 @@ export const desktopZhCN = {
           "OpenAI 兼容接口没有统一的声音发现能力；MyReader 不预设声音名，请按供应商文档填写。",
         defaultVoice: "默认声音",
         selectDefaultVoice: "请先填写声音 ID",
-        instructions: "朗读指令",
+        instructions: "默认朗读指令",
         instructionsPlaceholder: "例如：自然、平静地朗读",
         credential: "API 密钥或访问令牌",
         credentialSaved: "已安全保存；留空则保持不变",

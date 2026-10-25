@@ -1,9 +1,11 @@
+import { ProviderModels } from "./provider-models"
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
-import { ActivityIndicator, Switch } from "react-native"
+import { ActivityIndicator } from "react-native"
 import {
   Button,
   FormLabeledFieldRow,
+  FormFieldSwitch,
   ListMenuRow,
   ListRow,
   Screen,
@@ -11,18 +13,24 @@ import {
 } from "@/src/components"
 import { useThemePalette } from "@/src/design/tokens"
 import { useLlmSettings } from "@/src/domain/llm/use-llm-settings"
-import type { LlmProfile, LlmProfileInput } from "@/src/services/core/llm"
+import type {
+  LlmProviderSettings,
+  LlmProfileInput,
+} from "@/src/services/core/llm"
 import { errorMessage } from "@/src/i18n/error-message"
 import { Text, TextInput, View } from "@/tw"
 
-const newProfile = (): LlmProfile => ({
+const protocolActions = [
+  { id: "chatCompletions", title: "Chat Completions" },
+  { id: "responses", title: "Responses" },
+]
+
+const newProfile = (): LlmProviderSettings => ({
   id: "",
   name: "",
   protocol: "chatCompletions",
   endpoint: "https://api.openai.com/v1",
-  model: "",
-  contextWindow: 32768,
-  revision: 0,
+  models: [{ id: "", model: "", contextWindow: 32768 }],
   hasCredential: false,
 })
 
@@ -30,14 +38,19 @@ export default function LlmSettingsScreen() {
   const { t } = useTranslation()
   const palette = useThemePalette()
   const { query, save, remove, select, models, probe, error } = useLlmSettings()
-  const [draft, setDraft] = useState<LlmProfile | null>(null)
+  const [draft, setDraft] = useState<LlmProviderSettings | null>(null)
+  const [selected, setSelected] = useState(0)
+  const model = draft?.models[selected]
+  const setModel = (patch: Partial<LlmProviderSettings["models"][number]>) =>
+    setDraft((current) => updateModel(current, selected, patch))
   const [credential, setCredential] = useState("")
   const [clearCredential, setClearCredential] = useState(false)
   const [testedInput, setTestedInput] = useState<string | null>(null)
   const inputIdentity = JSON.stringify([draft, credential, clearCredential])
   const [advanced, setAdvanced] = useState(false)
-  const edit = (profile: LlmProfile) => {
+  const edit = (profile: LlmProviderSettings) => {
     setDraft(profile)
+    setSelected(0)
     setCredential("")
     setClearCredential(false)
     save.reset()
@@ -45,95 +58,120 @@ export default function LlmSettingsScreen() {
     models.reset()
     probe.reset()
   }
-  const input = (): LlmProfileInput => ({
-    profile: draft!,
-    credential,
-    clearCredential,
-  })
+  const input = currentProfileInput(draft, model, credential, clearCredential)
   const valid = validProfile(draft)
   const busy = save.isPending || remove.isPending
   return (
     <Screen>
       {query.isPending ? <ActivityIndicator color={palette.primary} /> : null}
       {error ? (
-        <Text accessibilityRole="alert" style={{ color: palette.error }}>
+        <Text accessibilityRole="alert" style={{ color: palette.danger }}>
           {errorMessage(error)}
         </Text>
       ) : null}
-      {draft ? (
-        <View className="gap-4">
-          {(["name", "endpoint"] as const).map((key) => (
-            <FormLabeledFieldRow key={key} label={t(`llm.${key}`)}>
-              <TextInput
-                accessibilityLabel={t(`llm.${key}`)}
-                value={draft[key]}
-                autoCapitalize="none"
-                autoCorrect={false}
-                className="flex-1 text-base"
-                style={{ color: palette.text }}
-                onChangeText={(value) => setDraft({ ...draft, [key]: value })}
-              />
-            </FormLabeledFieldRow>
-          ))}
+      {draft && model && input ? (
+        <View className="gap-3">
           <SectionCard>
             <ListMenuRow
               title={t("llm.protocol")}
               value={
-                draft.protocol === "responses"
-                  ? "Responses"
-                  : "Chat Completions"
+                protocolActions.find((action) => action.id === draft.protocol)
+                  ?.title
               }
-              actions={[
-                { id: "chatCompletions", title: "Chat Completions" },
-                { id: "responses", title: "Responses" },
-              ]}
+              actions={protocolActions}
               onPressAction={({ nativeEvent }) =>
                 setDraft({ ...draft, protocol: nativeEvent.event })
               }
               isLast
             />
           </SectionCard>
-          <FormLabeledFieldRow label={t("llm.key")}>
-            <TextInput
-              accessibilityLabel={t("llm.key")}
-              value={credential}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              textContentType="none"
-              placeholder={draft.hasCredential ? t("llm.keySaved") : ""}
-              placeholderTextColor={palette.textMuted}
-              className="flex-1 text-base"
-              style={{ color: palette.text }}
-              onChangeText={(value) => {
-                setCredential(value)
-                setClearCredential(false)
-              }}
-            />
-          </FormLabeledFieldRow>
-          {draft.hasCredential ? (
-            <FormLabeledFieldRow label={t("llm.clearKey")}>
-              <Switch
-                accessibilityLabel={t("llm.clearKey")}
-                value={clearCredential}
-                onValueChange={setClearCredential}
-              />
-            </FormLabeledFieldRow>
-          ) : null}
-          <FormLabeledFieldRow label={t("llm.model")}>
-            <TextInput
-              accessibilityLabel={t("llm.model")}
-              value={draft.model}
-              autoCapitalize="none"
-              autoCorrect={false}
-              className="flex-1 text-base"
-              style={{ color: palette.text }}
-              onChangeText={(model) => setDraft({ ...draft, model })}
-            />
-          </FormLabeledFieldRow>
+          <SectionCard>
+            <View className="gap-2 p-3">
+              {(["name", "endpoint"] as const).map((key) => (
+                <FormLabeledFieldRow key={key} label={t(`llm.${key}`)} required>
+                  <TextInput
+                    accessibilityLabel={t(`llm.${key}`)}
+                    value={draft[key]}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    className="min-h-10 border-0 bg-transparent py-1 text-base"
+                    style={{ color: palette.text }}
+                    onChangeText={(value) =>
+                      setDraft({ ...draft, [key]: value })
+                    }
+                  />
+                </FormLabeledFieldRow>
+              ))}
+
+              <FormLabeledFieldRow label={t("llm.key")}>
+                <TextInput
+                  accessibilityLabel={t("llm.key")}
+                  value={credential}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  textContentType="none"
+                  placeholder={draft.hasCredential ? t("llm.keySaved") : ""}
+                  placeholderTextColor={palette.textMuted}
+                  className="min-h-10 border-0 bg-transparent py-1 text-base"
+                  style={{ color: palette.text }}
+                  onChangeText={(value) => {
+                    setCredential(value)
+                    setClearCredential(false)
+                  }}
+                />
+              </FormLabeledFieldRow>
+              {draft.hasCredential ? (
+                <FormLabeledFieldRow label={t("llm.clearKey")}>
+                  <FormFieldSwitch
+                    accessibilityLabel={t("llm.clearKey")}
+                    value={clearCredential}
+                    onValueChange={setClearCredential}
+                  />
+                </FormLabeledFieldRow>
+              ) : null}
+            </View>
+          </SectionCard>
+          <ProviderModels
+            models={draft.models}
+            selected={selected}
+            onSelect={setSelected}
+            onAdd={() => {
+              setDraft({
+                ...draft,
+                models: [
+                  ...draft.models,
+                  { id: "", model: "", contextWindow: 32768 },
+                ],
+              })
+              setSelected(draft.models.length)
+            }}
+            onRemove={(index) => {
+              setDraft({
+                ...draft,
+                models: draft.models.filter((_, i) => i !== index),
+              })
+              setSelected(0)
+            }}
+          />
+          <SectionCard>
+            <View className="gap-2 p-3">
+              <FormLabeledFieldRow label={t("llm.model")} required>
+                <TextInput
+                  accessibilityLabel={t("llm.model")}
+                  value={model.model}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  className="min-h-10 border-0 bg-transparent py-1 text-base"
+                  style={{ color: palette.text }}
+                  onChangeText={(model) => setModel({ model })}
+                />
+              </FormLabeledFieldRow>
+            </View>
+          </SectionCard>
           <ModelOptions
-            draft={draft}
-            setDraft={setDraft}
+            model={model.model}
+            setModel={(model) => setModel({ model })}
             models={models}
             input={input}
           />
@@ -141,105 +179,109 @@ export default function LlmSettingsScreen() {
             <ListRow
               title={t("llm.advanced")}
               onPress={() => setAdvanced((value) => !value)}
-              isLast
+              isLast={!advanced}
             />
+            {advanced ? (
+              <View className="p-3">
+                <FormLabeledFieldRow label={t("llm.context")}>
+                  <TextInput
+                    accessibilityLabel={t("llm.context")}
+                    keyboardType="number-pad"
+                    value={String(model.contextWindow)}
+                    className="min-h-10 border-0 bg-transparent py-1 text-base"
+                    style={{ color: palette.text }}
+                    onChangeText={(value) =>
+                      setModel({ contextWindow: Number(value) })
+                    }
+                  />
+                </FormLabeledFieldRow>
+              </View>
+            ) : null}
           </SectionCard>
-          {advanced ? (
-            <FormLabeledFieldRow label={t("llm.context")}>
-              <TextInput
-                accessibilityLabel={t("llm.context")}
-                keyboardType="number-pad"
-                value={String(draft.contextWindow)}
-                className="flex-1 text-base"
-                style={{ color: palette.text }}
-                onChangeText={(value) =>
-                  setDraft({ ...draft, contextWindow: Number(value) })
-                }
-              />
-            </FormLabeledFieldRow>
-          ) : null}
           <Button
+            title={t("llm.save")}
             disabled={!valid || busy}
             onPress={() =>
-              save.mutate(input(), { onSuccess: () => setDraft(null) })
+              save.mutate(
+                { provider: draft, credential, clearCredential },
+                { onSuccess: () => setDraft(null) },
+              )
             }
-          >
-            <Text style={{ color: palette.primaryForeground }}>
-              {t("llm.save")}
-            </Text>
-          </Button>
+          />
           <Button
+            title={t("llm.test")}
             variant="secondary"
             disabled={!valid || probe.isPending}
             onPress={() =>
-              probe.mutate(input(), {
+              probe.mutate(input, {
                 onSuccess: () => setTestedInput(inputIdentity),
               })
             }
-          >
-            <Text style={{ color: palette.text }}>{t("llm.test")}</Text>
-          </Button>
+          />
           {probe.isSuccess && testedInput === inputIdentity ? (
             <Text accessibilityRole="text" style={{ color: palette.textMuted }}>
               {t("llm.testPassed")}
             </Text>
           ) : null}
-          <Button variant="secondary" onPress={() => setDraft(null)}>
-            <Text style={{ color: palette.text }}>{t("llm.cancel")}</Text>
-          </Button>
+          <Button
+            variant="secondary"
+            title={t("llm.cancel")}
+            onPress={() => setDraft(null)}
+          />
           {draft.id ? (
             <Button
-              variant="secondary"
+              title={t("llm.delete")}
+              variant="danger"
               disabled={busy}
               onPress={() =>
                 remove.mutate(draft.id, { onSuccess: () => setDraft(null) })
               }
-            >
-              <Text style={{ color: palette.error }}>{t("llm.delete")}</Text>
-            </Button>
+            />
           ) : null}
         </View>
       ) : (
-        <LlmProfileList query={query} select={select} edit={edit} />
+        <LlmProviderSettingsList query={query} select={select} edit={edit} />
       )}
     </Screen>
   )
 }
 
-function validProfile(
-  profile: { name: string; endpoint: string; model: string } | null,
-) {
+function validProfile(profile: LlmProviderSettings | null) {
   return Boolean(
-    profile?.name.trim() && profile.endpoint.trim() && profile.model.trim(),
+    profile?.name.trim() &&
+      profile.endpoint.trim() &&
+      profile.models.every((model) => model.model.trim()) &&
+      new Set(profile.models.map((model) => model.model.trim())).size ===
+        profile.models.length,
   )
 }
 
-function LlmProfileList({
+function LlmProviderSettingsList({
   query,
   select,
   edit,
 }: {
   query: ReturnType<typeof useLlmSettings>["query"]
   select: ReturnType<typeof useLlmSettings>["select"]
-  edit: (profile: LlmProfile) => void
+  edit: (profile: LlmProviderSettings) => void
 }) {
   const { t } = useTranslation()
-  const palette = useThemePalette()
+  const selected = query.data?.profiles.find(
+    (profile) => profile.id === query.data?.defaultProfileId,
+  )
   return (
-    <View className="gap-4">
+    <View className="gap-3">
       <SectionCard>
         <ListMenuRow
           title={t("llm.default")}
           value={
-            query.data?.profiles.find(
-              (profile) => profile.id === query.data?.defaultProfileId,
-            )?.name ?? t("llm.none")
+            selected ? `${selected.name}/${selected.model}` : t("llm.none")
           }
           actions={[
             { id: "none", title: t("llm.none") },
             ...(query.data?.profiles.map((profile) => ({
               id: profile.id,
-              title: profile.name,
+              title: `${profile.name}/${profile.model}`,
             })) ?? []),
           ]}
           onPressAction={({ nativeEvent }) =>
@@ -250,65 +292,94 @@ function LlmProfileList({
           isLast
         />
       </SectionCard>
-      {query.data?.profiles.length ? (
+      {query.data?.providers.length ? (
         <SectionCard>
-          {query.data.profiles.map((profile, index) => (
+          {query.data.providers.map((profile, index) => (
             <ListRow
               key={profile.id}
               title={profile.name}
-              value={profile.model}
+              detail={profile.models.map((model) => model.model).join(" · ")}
               onPress={() => edit(profile)}
-              isLast={index === query.data!.profiles.length - 1}
+              isLast={index === query.data!.providers.length - 1}
             />
           ))}
         </SectionCard>
       ) : null}
-      <Button onPress={() => edit(newProfile())}>
-        <Text style={{ color: palette.primaryForeground }}>{t("llm.add")}</Text>
-      </Button>
+      <Button title={t("llm.add")} onPress={() => edit(newProfile())} />
     </View>
   )
 }
 
 function ModelOptions({
-  draft,
-  setDraft,
+  model,
+  setModel,
   models,
   input,
 }: {
-  draft: LlmProfile
-  setDraft: (value: LlmProfile) => void
+  model: string
+  setModel: (value: string) => void
   models: ReturnType<typeof useLlmSettings>["models"]
-  input: () => LlmProfileInput
+  input: LlmProfileInput
 }) {
   const { t } = useTranslation()
-  const palette = useThemePalette()
   return (
     <>
       {models.data?.length ? (
         <SectionCard>
           <ListMenuRow
             title={t("llm.models")}
-            value={draft.model}
+            value={model}
             actions={models.data.map((model) => ({
               id: model,
-              title: model,
+              title: `${input.profile.name}/${model}`,
             }))}
-            onPressAction={({ nativeEvent }) =>
-              setDraft({ ...draft, model: nativeEvent.event })
-            }
+            onPressAction={({ nativeEvent }) => setModel(nativeEvent.event)}
             isLast
           />
         </SectionCard>
       ) : (
         <Button
+          title={t("llm.models")}
           variant="secondary"
-          disabled={!draft.name || !draft.endpoint || models.isPending}
-          onPress={() => models.mutate(input())}
-        >
-          <Text style={{ color: palette.text }}>{t("llm.models")}</Text>
-        </Button>
+          disabled={
+            !input.profile.name || !input.profile.endpoint || models.isPending
+          }
+          onPress={() => models.mutate(input)}
+        />
       )}
     </>
   )
+}
+
+function updateModel(
+  provider: LlmProviderSettings | null,
+  selected: number,
+  patch: Partial<LlmProviderSettings["models"][number]>,
+) {
+  if (!provider) return null
+  return {
+    ...provider,
+    models: provider.models.map((model, index) =>
+      index === selected ? { ...model, ...patch } : model,
+    ),
+  }
+}
+
+function currentProfileInput(
+  draft: LlmProviderSettings | null,
+  model: LlmProviderSettings["models"][number] | undefined,
+  credential: string,
+  clearCredential: boolean,
+): LlmProfileInput | null {
+  if (!draft || !model) return null
+  return {
+    profile: {
+      ...draft,
+      model: model.model,
+      contextWindow: model.contextWindow,
+      revision: 0,
+    },
+    credential,
+    clearCredential,
+  }
 }

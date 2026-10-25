@@ -220,7 +220,7 @@ async fn editing_shared_settings_cancels_another_volumes_inflight_plan_and_keeps
     slow.text = "slow".into();
     let pending = NarrationService::plan(root.path(), &config, slow, None);
     let edit = async {
-        tokio::time::sleep(std::time::Duration::from_millis(40)).await;
+        server.slow_request.notified().await;
         let mut settings = NarrationService::get_settings(root.path(), 43)
             .await
             .unwrap();
@@ -228,6 +228,7 @@ async fn editing_shared_settings_cancels_another_volumes_inflight_plan_and_keeps
         NarrationService::save_settings(root.path(), settings)
             .await
             .unwrap();
+        server.release_slow.notify_one();
     };
     let (result, _) = tokio::join!(pending, edit);
     assert!(result.unwrap_err().to_string().contains("STALE_REQUEST"));

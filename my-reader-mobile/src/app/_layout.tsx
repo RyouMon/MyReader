@@ -91,6 +91,16 @@ function RootNavigator() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen
+            name="tts-providers"
+            options={{
+              presentation: "formSheet",
+              headerShown: false,
+              sheetAllowedDetents: [1],
+              sheetGrabberVisible: true,
+              contentStyle: { backgroundColor: palette.background },
+            }}
+          />
+          <Stack.Screen
             name="(add-library)"
             options={{ headerShown: false, presentation: "modal" }}
           />

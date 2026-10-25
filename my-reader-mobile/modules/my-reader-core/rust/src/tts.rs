@@ -17,6 +17,7 @@ const JS_SAFE_INTEGER_MAX: f64 = 9_007_199_254_740_991.0;
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct TtsConfig {
+    pub providers: Vec<TtsProvider>,
     pub schema_version: u32,
     pub default_engine: TtsEngine,
     pub profiles: Vec<TtsProviderProfile>,
@@ -44,6 +45,113 @@ pub struct TtsProviderProfile {
     pub voices: Vec<String>,
     pub default_voice: Option<String>,
     pub revision: f64,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct TtsModel {
+    pub id: String,
+    pub model: String,
+    pub response_format: String,
+    pub instructions: Option<String>,
+    pub default_voice: Option<String>,
+    pub voices: Vec<String>,
+}
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct TtsProvider {
+    pub model_scoped_voices: bool,
+    pub id: String,
+    pub name: String,
+    pub kind: String,
+    pub enabled: bool,
+    pub endpoint: String,
+    pub credential_reference: Option<String>,
+    pub voices: Vec<String>,
+    pub models: Vec<TtsModel>,
+}
+impl TryFrom<TtsProvider> for my_reader_core::models::TtsProvider {
+    type Error = CoreFfiError;
+    fn try_from(value: TtsProvider) -> Result<Self, Self::Error> {
+        Ok(Self {
+            voice_names: Default::default(),
+            id: value.id,
+            name: value.name,
+            endpoint: value.endpoint,
+            kind: parse_provider_kind(&value.kind)?,
+            enabled: value.enabled,
+            credential_reference: value.credential_reference,
+            model_scoped_voices: value.model_scoped_voices,
+            voices: value.voices,
+            models: value
+                .models
+                .into_iter()
+                .map(|m| {
+                    Ok(my_reader_core::models::TtsModel {
+                        display_name: String::new(),
+                        voice_names: Default::default(),
+                        id: m.id,
+                        model: m.model,
+                        response_format: parse_audio_format(&m.response_format)?,
+                        instructions: m.instructions,
+                        default_voice: m.default_voice,
+                        voices: m.voices,
+                        revision: 1,
+                    })
+                })
+                .collect::<Result<_, CoreFfiError>>()?,
+        })
+    }
+}
+impl From<my_reader_core::models::TtsProvider> for TtsProvider {
+    fn from(value: my_reader_core::models::TtsProvider) -> Self {
+        Self {
+            id: value.id,
+            name: value.name,
+            endpoint: value.endpoint,
+            kind: provider_kind(value.kind).into(),
+            enabled: value.enabled,
+            credential_reference: value.credential_reference,
+            model_scoped_voices: value.model_scoped_voices,
+            voices: value.voices,
+            models: value
+                .models
+                .into_iter()
+                .map(|m| TtsModel {
+                    id: m.id,
+                    model: m.model,
+                    response_format: m.response_format.as_str().into(),
+                    instructions: m.instructions,
+                    default_voice: m.default_voice,
+                    voices: m.voices,
+                })
+                .collect(),
+        }
+    }
+}
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn tts_save_provider(
+    config_path: String,
+    provider: TtsProvider,
+) -> Result<TtsConfig, CoreFfiError> {
+    let mut provider: my_reader_core::models::TtsProvider = provider.try_into()?;
+    if let Some(previous) = TtsService::get_config(Path::new(&config_path))
+        .map_err(CoreFfiError::from_core)?
+        .providers
+        .into_iter()
+        .find(|old| old.id == provider.id)
+    {
+        provider.voice_names = previous.voice_names;
+        for model in &mut provider.models {
+            if let Some(old) = previous.models.iter().find(|old| old.id == model.id) {
+                model.display_name = old.display_name.clone();
+                model.voice_names = old.voice_names.clone();
+            }
+        }
+    }
+    Ok(
+        TtsService::upsert_provider(Path::new(&config_path), provider)
+            .map_err(CoreFfiError::from_core)?
+            .into(),
+    )
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -99,7 +207,6 @@ pub struct QwenTtsModel {
 pub struct QwenTtsPreset {
     pub id: String,
     pub endpoint: String,
-    pub default_model: QwenTtsModel,
 }
 
 impl From<my_reader_core::models::QwenTtsModel> for QwenTtsModel {
@@ -126,17 +233,21 @@ pub fn tts_qwen_presets() -> Vec<QwenTtsPreset> {
         .map(|preset| QwenTtsPreset {
             id: preset.id,
             endpoint: preset.endpoint,
-            default_model: preset.default_model.into(),
         })
         .collect()
 }
 
-#[uniffi::export]
-pub fn tts_qwen_models(endpoint: Option<String>) -> Vec<QwenTtsModel> {
-    TtsService::qwen_models(endpoint.as_deref())
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn tts_qwen_models(
+    endpoint: String,
+    credential: Option<String>,
+) -> Result<Vec<QwenTtsModel>, CoreFfiError> {
+    Ok(TtsService::qwen_models(&endpoint, credential.as_deref())
+        .await
+        .map_err(CoreFfiError::from_core)?
         .into_iter()
         .map(Into::into)
-        .collect()
+        .collect())
 }
 
 #[uniffi::export(async_runtime = "tokio")]
@@ -282,6 +393,17 @@ pub async fn tts_probe_provider(
 }
 
 #[uniffi::export(async_runtime = "tokio")]
+pub async fn tts_test_provider(
+    profile: TtsProviderProfile,
+    text: String,
+    credential: Option<String>,
+) -> Result<(), CoreFfiError> {
+    TtsService::test_provider(profile.try_into()?, text, credential.as_deref())
+        .await
+        .map_err(CoreFfiError::from_core)
+}
+
+#[uniffi::export(async_runtime = "tokio")]
 pub async fn tts_list_voices(
     config_path: String,
     profile_id: String,
@@ -318,9 +440,10 @@ pub async fn tts_synthesize(
 impl From<CoreTtsConfig> for TtsConfig {
     fn from(value: CoreTtsConfig) -> Self {
         Self {
+            profiles: value.profiles().into_iter().map(Into::into).collect(),
+            providers: value.providers.into_iter().map(Into::into).collect(),
             schema_version: value.schema_version,
             default_engine: value.default_engine.into(),
-            profiles: value.profiles.into_iter().map(Into::into).collect(),
             voices: value
                 .voice_by_language
                 .into_iter()
@@ -616,7 +739,7 @@ mod tests {
     #[test]
     fn should_round_trip_typed_config_without_secret_material() {
         let core = CoreTtsConfig {
-            profiles: vec![CoreProviderProfile {
+            providers: vec![CoreProviderProfile {
                 id: "openai".into(),
                 name: "OpenAI".into(),
                 kind: TtsProviderKind::OpenAiCompatible,
@@ -631,7 +754,8 @@ mod tests {
                     default_voice: Some("reader-voice".into()),
                 },
                 revision: 2,
-            }],
+            }
+            .into()],
             ..Default::default()
         };
 
@@ -651,6 +775,37 @@ mod tests {
             Some("reader-voice")
         );
         assert_eq!(ffi.profiles[0].revision, 2.0);
+    }
+
+    #[tokio::test]
+    async fn mobile_provider_edit_preserves_desktop_model_and_voice_names() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("config.json");
+        let provider = serde_json::from_value(serde_json::json!({
+            "id":"p", "name":"Provider", "kind":"openAiCompatible", "enabled":true,
+            "endpoint":"https://example.com/v1", "modelScopedVoices":true,
+            "voices":[], "voiceNames":{"shared":"Shared alias"},
+            "models":[{"id":"m", "model":"tts", "displayName":"Model alias", "revision":1,
+                "responseFormat":"mp3", "voices":["reader"], "voiceNames":{"reader":"Narrator"}, "defaultVoice":"reader"}]
+        })).unwrap();
+        TtsService::upsert_provider(&path, provider).unwrap();
+        let mut mobile = tts_get_config(path.to_string_lossy().into_owned())
+            .await
+            .unwrap()
+            .providers
+            .remove(0);
+        mobile.name = "Mobile edit".into();
+        tts_save_provider(path.to_string_lossy().into_owned(), mobile)
+            .await
+            .unwrap();
+        let saved = TtsService::get_config(&path).unwrap();
+        assert_eq!(saved.providers[0].name, "Mobile edit");
+        assert_eq!(saved.providers[0].voice_names["shared"], "Shared alias");
+        assert_eq!(saved.providers[0].models[0].display_name, "Model alias");
+        assert_eq!(
+            saved.providers[0].models[0].voice_names["reader"],
+            "Narrator"
+        );
     }
 
     #[test]

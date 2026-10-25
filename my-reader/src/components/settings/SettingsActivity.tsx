@@ -1,27 +1,25 @@
-import { useState } from "react"
 import SettingsNav from "@/components/settings/SettingsNav"
 import AboutSection from "@/components/settings/sections/AboutSection"
 import AppearanceSection from "@/components/settings/sections/AppearanceSection"
 import DataSourcesSection from "@/components/settings/sections/DataSourcesSection"
 import LibrariesSection from "@/components/settings/sections/LibrariesSection"
 import SpeechSection from "@/components/settings/sections/SpeechSection"
-import LlmSection from "@/components/settings/sections/LlmSection"
+import AiProvidersSection from "@/components/settings/sections/AiProvidersSection"
 import type { SettingsSection } from "@/types/settings"
 
 interface SettingsActivityProps {
   onClose: () => void
   onAddLibrary: () => void
   initialSection?: SettingsSection
+  onSectionChange: (section: SettingsSection) => void
 }
 
 export default function SettingsActivity({
   onClose,
   onAddLibrary,
-  initialSection = "libraries",
+  initialSection: activeSection = "libraries",
+  onSectionChange,
 }: SettingsActivityProps) {
-  const [activeSection, setActiveSection] =
-    useState<SettingsSection>(initialSection)
-
   return (
     <section
       className="flex h-full min-h-0 overflow-hidden bg-background"
@@ -29,7 +27,7 @@ export default function SettingsActivity({
     >
       <SettingsNav
         activeSection={activeSection}
-        onSectionChange={setActiveSection}
+        onSectionChange={onSectionChange}
         onBack={onClose}
       />
 
@@ -38,8 +36,15 @@ export default function SettingsActivity({
           <LibrariesSection onAddLibrary={onAddLibrary} />
         )}
         {activeSection === "dataSources" && <DataSourcesSection />}
+        {(activeSection === "aiProviders" ||
+          activeSection === "ttsProviders" ||
+          activeSection === "llm") && (
+          <AiProvidersSection
+            section={activeSection}
+            onSectionChange={onSectionChange}
+          />
+        )}
         {activeSection === "speech" && <SpeechSection />}
-        {activeSection === "llm" && <LlmSection />}
         {activeSection === "appearance" && <AppearanceSection />}
         {activeSection === "about" && <AboutSection />}
       </div>

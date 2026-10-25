@@ -2,12 +2,19 @@ appId: ${APP_ID}
 name: Provider form returns through the native sheet stack
 ---
 - runFlow: ../../common/launch_and_prepare.yaml
-- runFlow: ../../common/open_tts_settings.yaml
+- runFlow: ../../common/open_settings.yaml
+- scrollUntilVisible:
+    element:
+      id: settings-tts-providers-row
+    direction: DOWN
+- tapOn:
+    id: settings-tts-providers-row
+- assertVisible: "TTS 供应商|TTS providers"
 - scrollUntilVisible:
     element: "添加 TTS 供应商|Add TTS provider"
     direction: DOWN
 - tapOn: "添加 TTS 供应商|Add TTS provider"
-- tapOn: "OpenAI 兼容|OpenAI-compatible"
+- tapOn: ".*OpenAI 兼容.*|.*OpenAI-compatible.*"
 - assertVisible:
     id: tts-provider-name
 - runFlow:
@@ -26,8 +33,17 @@ name: Provider form returns through the native sheet stack
       platform: Android
     commands:
       - back
-- assertVisible: "OpenAI 兼容|OpenAI-compatible"
+- assertVisible: ".*OpenAI 兼容.*|.*OpenAI-compatible.*"
 - assertNotVisible:
     id: tts-provider-name
-- tapOn: "取消|Cancel"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: "关闭|Close"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
 - assertVisible: "添加 TTS 供应商|Add TTS provider"

@@ -11,6 +11,7 @@ type CoreTtsService = my_reader_core::api::tts::TtsService;
 #[derive(Debug, Clone, PartialEq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct TtsConfigDto {
+    pub providers: Vec<TtsProviderDto>,
     pub schema_version: u32,
     pub default_engine: TtsEngineSelectionDto,
     pub profiles: Vec<TtsProviderProfileDto>,
@@ -88,7 +89,6 @@ pub struct QwenTtsModelDto {
 pub struct QwenTtsPresetDto {
     pub id: String,
     pub endpoint: String,
-    pub default_model: QwenTtsModelDto,
 }
 
 impl From<my_reader_core::models::QwenTtsModel> for QwenTtsModelDto {
@@ -116,6 +116,10 @@ pub struct DiscoverQwenTtsVoicesInput {
 #[derive(Debug, Clone, PartialEq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct TtsProviderProfileDto {
+    #[serde(default)]
+    pub model_name: String,
+    #[serde(default)]
+    pub voice_names: BTreeMap<String, String>,
     pub id: String,
     pub name: String,
     pub kind: TtsProviderKindDto,
@@ -252,6 +256,48 @@ pub struct TtsTimingDto {
     pub end_ms: u64,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct TtsModelDto {
+    #[serde(default)]
+    pub display_name: String,
+    #[serde(default)]
+    pub voice_names: BTreeMap<String, String>,
+    pub id: String,
+    pub model: String,
+    pub response_format: TtsAudioFormatDto,
+    pub instructions: Option<String>,
+    pub default_voice: Option<String>,
+    pub voices: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct TtsProviderDto {
+    #[serde(default)]
+    pub voice_names: BTreeMap<String, String>,
+    #[serde(default)]
+    pub model_scoped_voices: bool,
+    pub id: String,
+    pub name: String,
+    pub kind: TtsProviderKindDto,
+    pub enabled: bool,
+    pub endpoint: String,
+    pub voices: Vec<String>,
+    pub models: Vec<TtsModelDto>,
+    #[serde(default)]
+    pub has_credential: bool,
+}
+
+#[derive(Debug, Clone, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SaveTtsProviderInput {
+    pub provider: TtsProviderDto,
+    pub credential: Option<String>,
+    #[serde(default)]
+    pub clear_credential: bool,
+}
+
 pub struct DesktopTtsService;
 
 impl DesktopTtsService {
@@ -261,16 +307,22 @@ impl DesktopTtsService {
             .map(|preset| QwenTtsPresetDto {
                 id: preset.id,
                 endpoint: preset.endpoint,
-                default_model: preset.default_model.into(),
             })
             .collect()
     }
 
-    pub fn qwen_models(endpoint: Option<&str>) -> Vec<QwenTtsModelDto> {
-        CoreTtsService::qwen_models(endpoint)
-            .into_iter()
-            .map(Into::into)
-            .collect()
+    pub async fn qwen_models(
+        config_path: &Path,
+        input: UpsertTtsProviderInput,
+    ) -> Result<Vec<QwenTtsModelDto>, AppError> {
+        let credential = draft_credential(config_path, &input)?;
+        Ok(
+            CoreTtsService::qwen_models(&input.profile.endpoint, credential.as_deref())
+                .await?
+                .into_iter()
+                .map(Into::into)
+                .collect(),
+        )
     }
 
     pub async fn discover_qwen_voices(
@@ -300,6 +352,92 @@ impl DesktopTtsService {
         config_dto(CoreTtsService::get_config(config_path)?)
     }
 
+    pub async fn discover_models(
+        config_path: &Path,
+        input: UpsertTtsProviderInput,
+    ) -> Result<Vec<String>, AppError> {
+        let credential = draft_credential(config_path, &input)?;
+        Ok(
+            CoreTtsService::discover_models(&input.profile.into_core(), credential.as_deref())
+                .await?,
+        )
+    }
+
+    pub async fn test_provider(
+        config_path: &Path,
+        cache_directory: &Path,
+        input: UpsertTtsProviderInput,
+        text: String,
+    ) -> Result<TtsAudioArtifactDto, AppError> {
+        let credential = draft_credential(config_path, &input)?;
+        Ok(CoreTtsService::preview_provider(
+            input.profile.into_core(),
+            cache_directory,
+            text,
+            credential.as_deref(),
+        )
+        .await?
+        .into())
+    }
+
+    pub fn save_provider(
+        config_path: &Path,
+        input: SaveTtsProviderInput,
+    ) -> Result<TtsConfigDto, AppError> {
+        use my_reader_core::models::{TtsModel, TtsProvider};
+        let mut value = input.provider;
+        if value.id.is_empty() {
+            value.id = Uuid::new_v4().to_string();
+        }
+        let previous = CoreTtsService::get_config(config_path)?;
+        let reference = previous
+            .providers
+            .iter()
+            .find(|p| p.id == value.id)
+            .and_then(|p| p.credential_reference.clone())
+            .unwrap_or_else(|| credentials::tts_credential_account(&value.id));
+        let config = CoreTtsService::upsert_provider(
+            config_path,
+            TtsProvider {
+                id: value.id,
+                name: value.name,
+                kind: value.kind.into(),
+                enabled: value.enabled,
+                endpoint: value.endpoint,
+                credential_reference: Some(reference.clone()),
+                voices: value.voices,
+                voice_names: value.voice_names,
+                model_scoped_voices: value.model_scoped_voices,
+                models: value
+                    .models
+                    .into_iter()
+                    .map(|m| TtsModel {
+                        id: m.id,
+                        model: m.model,
+                        display_name: m.display_name,
+                        voice_names: m.voice_names,
+                        response_format: m.response_format.into(),
+                        instructions: m.instructions,
+                        default_voice: m.default_voice,
+                        voices: m.voices,
+                        revision: 1,
+                    })
+                    .collect(),
+            },
+        )?;
+        if input.clear_credential {
+            credentials::delete_tts_credential(&reference)?;
+        } else if let Some(key) = input
+            .credential
+            .as_deref()
+            .map(str::trim)
+            .filter(|key| !key.is_empty())
+        {
+            credentials::save_tts_credential(&reference, key)?;
+        }
+        config_dto(config)
+    }
+
     pub fn upsert_profile(
         config_path: &Path,
         input: UpsertTtsProviderInput,
@@ -316,18 +454,18 @@ impl DesktopTtsService {
         }
         let profile_id = profile.id.clone();
         let existing = existing_config
-            .profiles
-            .iter()
+            .profiles()
+            .into_iter()
             .find(|existing| existing.id == profile.id);
-        profile.revision = existing.map_or(1, |existing| existing.revision);
+        profile.revision = existing.as_ref().map_or(1, |existing| existing.revision);
         profile.credential_reference = existing
             .and_then(|existing| existing.credential_reference.clone())
             .or_else(|| Some(credentials::tts_credential_account(&profile.id)));
 
         let config = CoreTtsService::upsert_profile(config_path, profile)?;
         let persisted = config
-            .profiles
-            .iter()
+            .profiles()
+            .into_iter()
             .find(|profile| profile.id == profile_id)
             .ok_or_else(|| AppError::Config("TTS_PROFILE_CONFIG_WRITE_FAILED".into()))?;
         let credential_reference = persisted.credential_reference.as_deref();
@@ -352,8 +490,8 @@ impl DesktopTtsService {
     pub fn remove_profile(config_path: &Path, profile_id: &str) -> Result<TtsConfigDto, AppError> {
         let config = CoreTtsService::get_config(config_path)?;
         let credential_reference = config
-            .profiles
-            .iter()
+            .providers
+            .into_iter()
             .find(|profile| profile.id == profile_id)
             .and_then(|profile| profile.credential_reference.clone());
         let config = CoreTtsService::remove_profile(config_path, profile_id)?;
@@ -447,12 +585,12 @@ impl DesktopTtsService {
 
 fn resolve_credential(config_path: &Path, profile_id: &str) -> Result<Option<String>, AppError> {
     let config = CoreTtsService::get_config(config_path)?;
-    let profile = config
-        .profiles
+    let provider = config
+        .providers
         .iter()
-        .find(|profile| profile.id == profile_id)
-        .ok_or_else(|| AppError::NotFound(format!("TTS_PROFILE_NOT_FOUND: {profile_id}")))?;
-    profile
+        .find(|p| p.id == profile_id || p.models.iter().any(|m| m.id == profile_id))
+        .ok_or_else(|| AppError::Config("TTS_PROFILE_NOT_FOUND".into()))?;
+    provider
         .credential_reference
         .as_deref()
         .map(credentials::read_tts_credential)
@@ -462,7 +600,7 @@ fn resolve_credential(config_path: &Path, profile_id: &str) -> Result<Option<Str
 
 fn config_dto(config: my_reader_core::models::TtsConfig) -> Result<TtsConfigDto, AppError> {
     let profiles = config
-        .profiles
+        .profiles()
         .into_iter()
         .map(|profile| {
             let has_credential = profile
@@ -472,10 +610,68 @@ fn config_dto(config: my_reader_core::models::TtsConfig) -> Result<TtsConfigDto,
                 .transpose()?
                 .flatten()
                 .is_some_and(|credential| !credential.trim().is_empty());
-            Ok(TtsProviderProfileDto::from_core(profile, has_credential))
+            let metadata = config.providers.iter().find_map(|provider| {
+                provider
+                    .models
+                    .iter()
+                    .find(|model| model.id == profile.id)
+                    .map(|model| (provider, model))
+            });
+            let mut dto = TtsProviderProfileDto::from_core(profile, has_credential);
+            if let Some((provider, model)) = metadata {
+                dto.model_name = model.display_name.clone();
+                dto.voice_names = if provider.model_scoped_voices
+                    || provider.kind == my_reader_core::models::TtsProviderKind::Qwen
+                {
+                    model.voice_names.clone()
+                } else {
+                    provider.voice_names.clone()
+                };
+            }
+            Ok(dto)
         })
         .collect::<Result<Vec<_>, AppError>>()?;
+    let providers = config
+        .providers
+        .into_iter()
+        .map(|p| {
+            let has_credential = p
+                .credential_reference
+                .as_deref()
+                .map(credentials::read_tts_credential)
+                .transpose()?
+                .flatten()
+                .is_some();
+            Ok(TtsProviderDto {
+                id: p.id,
+                name: p.name,
+                kind: p.kind.into(),
+                enabled: p.enabled,
+                endpoint: p.endpoint,
+                voices: p.voices,
+                voice_names: p.voice_names,
+                model_scoped_voices: p.kind == my_reader_core::models::TtsProviderKind::Qwen
+                    || p.model_scoped_voices,
+                has_credential,
+                models: p
+                    .models
+                    .into_iter()
+                    .map(|m| TtsModelDto {
+                        id: m.id,
+                        model: m.model,
+                        display_name: m.display_name,
+                        voice_names: m.voice_names,
+                        response_format: m.response_format.into(),
+                        instructions: m.instructions,
+                        default_voice: m.default_voice,
+                        voices: m.voices,
+                    })
+                    .collect(),
+            })
+        })
+        .collect::<Result<_, AppError>>()?;
     Ok(TtsConfigDto {
+        providers,
         schema_version: config.schema_version,
         default_engine: config.default_engine.into(),
         profiles,
@@ -514,6 +710,8 @@ impl TtsProviderProfileDto {
         has_credential: bool,
     ) -> Self {
         Self {
+            model_name: String::new(),
+            voice_names: BTreeMap::new(),
             id: profile.id,
             name: profile.name,
             kind: profile.kind.into(),
@@ -776,6 +974,28 @@ impl From<my_reader_core::models::TtsTiming> for TtsTimingDto {
             start_ms: value.start_ms,
             end_ms: value.end_ms,
         }
+    }
+}
+
+fn draft_credential(
+    config_path: &Path,
+    input: &UpsertTtsProviderInput,
+) -> Result<Option<String>, AppError> {
+    if input.clear_credential {
+        return Ok(None);
+    }
+    if let Some(value) = input
+        .credential
+        .as_deref()
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+    {
+        return Ok(Some(value.to_owned()));
+    }
+    if !input.profile.id.is_empty() {
+        resolve_credential(config_path, &input.profile.id)
+    } else {
+        Ok(None)
     }
 }
 

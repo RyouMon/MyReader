@@ -11,7 +11,8 @@ import {
 
 function config(overrides: Partial<MobileTtsConfig> = {}): MobileTtsConfig {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    providers: [],
     defaultEngine: { kind: "system" },
     profiles: [],
     voices: [],

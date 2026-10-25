@@ -1,5 +1,24 @@
 export const desktopEn = {
   translation: {
+    providerEditor: {
+      playbackFailed: "Audio playback failed.",
+      fetchModels: "Fetch available models",
+      models: "Model list",
+      voices: "Voice list",
+      modelId: "Model ID",
+      displayName: "Display name",
+      modelDetails: "Model details",
+      maxOutput: "Maximum output tokens",
+      automatic: "Automatic",
+      noNewModels: "All available models have been added",
+      addSelected: "Add selected models",
+      audioFormat: "Audio format",
+      voiceId: "Voice ID",
+      removeVoice: "Remove voice",
+      addVoice: "Add voice",
+      fetchVoices: "Fetch voices",
+      testModel: "Test model",
+    },
     errors: {
       io: "File I/O error",
       database: "Database error",
@@ -264,7 +283,7 @@ export const desktopEn = {
           "Use the currently selected engine, voice, and playback settings.",
         previewAction: "Preview",
         stopPreview: "Stop preview",
-        engineTitle: "Default read-aloud engine",
+        engineTitle: "Narration engine",
         engineDescription:
           "The reader uses this engine by default. Voice and speed remain adjustable while reading.",
         defaultEngine: "Narration engine",
@@ -295,7 +314,7 @@ export const desktopEn = {
           "OpenAI-compatible APIs have no shared voice discovery contract. MyReader assumes no voice names; use the provider documentation.",
         defaultVoice: "Default voice",
         selectDefaultVoice: "Enter voice IDs first",
-        instructions: "Speaking instructions",
+        instructions: "Default reading instructions",
         instructionsPlaceholder: "For example: Read naturally and calmly",
         credential: "API key or access token",
         credentialSaved: "Saved securely; leave blank to keep it",

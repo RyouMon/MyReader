@@ -129,8 +129,8 @@ export PATH="$PWD/.tmp/maestro-ios/bin:$PATH"
 | `reader/change_cbz_settings_on_pad` | 同上，iPad 运行完整 Release 游程 |
 | `reader/change_pdf_settings` | `ReadiumFixedReader.test.tsx`、`PdfPreferencesContractTest.kt` 与 store 偏好合同；真实 PDF 翻页/恢复仍在 Release 游程 |
 | `reader/change_pdf_settings_on_pad` | 同上，iPad 运行完整 Release 游程 |
-| `settings/navigate_settings` | `settings-screen.test.tsx`、`add-library-screen.test.tsx` 和 `use-reader-tts-settings-navigation.test.ts`；原生设置入口已由书库/供应商游程覆盖 |
-| `settings/navigate_tts_providers` | 保留原生 pushed 页面返回/手势；CRUD、校验、保存失败、删除确认移至 `tts-provider-profile-screen.test.tsx` 和 Core TTS 配置测试 |
+| `settings/navigate_settings` | `settings-screen.test.tsx`、`add-library-screen.test.tsx` 和 `ReaderTtsSettingsSheet.test.tsx`；原生设置入口已由书库/供应商游程覆盖 |
+| `settings/navigate_tts_providers` | 保留统一供应商 sheet 中的原生页面返回/手势；CRUD、校验、保存失败、删除确认移至 `tts-provider-profile-screen.test.tsx` 和 Core TTS 配置测试 |
 
 Core 远程书库关键合同位于 `my-reader-core/src/services/library.rs`：
 `should_complete_sidecar_sync_when_remote_import_upload_is_pending`、

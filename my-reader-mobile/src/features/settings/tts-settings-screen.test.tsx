@@ -5,7 +5,6 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react-native"
-import { router } from "expo-router"
 import * as mockReact from "react"
 import {
   Pressable as mockPressable,
@@ -45,7 +44,8 @@ const mockSpeechStop = jest.fn().mockResolvedValue(undefined)
 const mockT = (key: string) => key
 jest.mock("@expo/vector-icons/MaterialIcons", () => jest.fn(() => null))
 const mockProviderConfig = {
-  schemaVersion: 1,
+  schemaVersion: 2,
+  providers: [],
   defaultEngine: { kind: "provider" as const, profileId: "openai" },
   profiles: [
     {
@@ -322,17 +322,17 @@ describe("TtsSettingsScreen preview", () => {
     expect(screen.queryByText("settings.tts.refreshVoices")).toBeNull()
   })
 
-  it("opens the provider flow from the add button", async () => {
+  it("keeps preview on defaults without supplier management controls", async () => {
     render(<TtsSettingsScreen />)
-    fireEvent.press(
-      await screen.findByRole("button", { name: "settings.tts.addProvider" }),
-    )
-    expect(router.push).toHaveBeenCalledWith("/settings/tts-provider")
+    await screen.findByRole("button", { name: "settings.tts.previewAction" })
+    expect(
+      screen.queryByRole("button", { name: "settings.tts.addProvider" }),
+    ).toBeNull()
   })
 
   it("keeps the settings content visible while refreshing after a child sheet closes", async () => {
     render(<TtsSettingsScreen />)
-    await screen.findByRole("button", { name: "settings.tts.addProvider" })
+    await screen.findByRole("button", { name: "settings.tts.previewAction" })
     let finishRefresh!: (config: typeof mockProviderConfig) => void
     jest.mocked(getTtsConfig).mockImplementationOnce(
       () =>
@@ -346,7 +346,7 @@ describe("TtsSettingsScreen preview", () => {
     })
 
     expect(
-      screen.getByRole("button", { name: "settings.tts.addProvider" }),
+      screen.getByRole("button", { name: "settings.tts.previewAction" }),
     ).toBeTruthy()
     expect(screen.getByText("settings.tts.playbackSection")).toBeTruthy()
     await act(async () => {
@@ -358,6 +358,8 @@ describe("TtsSettingsScreen preview", () => {
         })),
       })
     })
-    expect(screen.getAllByText("Updated provider").length).toBeGreaterThan(0)
+    expect(
+      screen.getAllByText("Updated provider/gpt-4o-mini-tts").length,
+    ).toBeGreaterThan(0)
   })
 })

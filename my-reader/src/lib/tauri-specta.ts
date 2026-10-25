@@ -85,7 +85,9 @@ export const commands = {
 	setReaderTrafficLightsVisible: (visible: boolean, x: number, y: number, reposition: boolean) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reader_traffic_lights_visible", { visible, x, y, reposition })),
 	closeBookStreamer: (libraryId: string, bookId: number) => typedError<null, ErrorKind>(__TAURI_INVOKE("close_book_streamer", { libraryId, bookId })),
 	getTtsConfig: () => typedError<TtsConfigDto, ErrorKind>(__TAURI_INVOKE("get_tts_config")),
+	saveTtsProvider: (input: SaveTtsProviderInput) => typedError<TtsConfigDto, ErrorKind>(__TAURI_INVOKE("save_tts_provider", { input })),
 	getLlmConfig: () => typedError<LlmConfigDto, ErrorKind>(__TAURI_INVOKE("get_llm_config")),
+	saveLlmProvider: (input: SaveLlmProviderInput) => typedError<LlmConfigDto, ErrorKind>(__TAURI_INVOKE("save_llm_provider", { input })),
 	upsertLlmProfile: (input: LlmProfileInput) => typedError<LlmConfigDto, ErrorKind>(__TAURI_INVOKE("upsert_llm_profile", { input })),
 	removeLlmProfile: (profileId: string) => typedError<LlmConfigDto, ErrorKind>(__TAURI_INVOKE("remove_llm_profile", { profileId })),
 	selectLlmProfile: (profileId: string | null) => typedError<LlmConfigDto, ErrorKind>(__TAURI_INVOKE("select_llm_profile", { profileId })),
@@ -98,7 +100,7 @@ export const commands = {
 	prepareBookNarration: (libraryId: string, requestId: string, request: NarrationRequestDto, defaultVoice: TtsVoiceRefDto) => typedError<NarrationSpeechDto[], ErrorKind>(__TAURI_INVOKE("prepare_book_narration", { libraryId, requestId, request, defaultVoice })),
 	previewBookNarrationMerge: (libraryId: string, bookId: number, automatic: boolean) => typedError<NarrationMergePlanDto, ErrorKind>(__TAURI_INVOKE("preview_book_narration_merge", { libraryId, bookId, automatic })),
 	mergeBookNarration: (libraryId: string, bookId: number, plan: NarrationMergePlanDto) => typedError<BookNarrationSettingsDto, ErrorKind>(__TAURI_INVOKE("merge_book_narration", { libraryId, bookId, plan })),
-	listQwenTtsModels: (endpoint: string | null) => __TAURI_INVOKE<QwenTtsModelDto[]>("list_qwen_tts_models", { endpoint }),
+	listQwenTtsModels: (input: UpsertTtsProviderInput) => typedError<QwenTtsModelDto[], ErrorKind>(__TAURI_INVOKE("list_qwen_tts_models", { input })),
 	listQwenTtsPresets: () => __TAURI_INVOKE<QwenTtsPresetDto[]>("list_qwen_tts_presets"),
 	discoverQwenTtsVoices: (input: DiscoverQwenTtsVoicesInput) => typedError<TtsVoiceDto[], ErrorKind>(__TAURI_INVOKE("discover_qwen_tts_voices", { input })),
 	upsertTtsProfile: (input: UpsertTtsProviderInput) => typedError<TtsConfigDto, ErrorKind>(__TAURI_INVOKE("upsert_tts_profile", { input })),
@@ -108,6 +110,8 @@ export const commands = {
 	setTtsVoiceForLanguage: (language: string, voice: { engine: "system"; voiceId: string } | { engine: "provider"; profileId: string; voiceId: string } | null) => typedError<TtsConfigDto, ErrorKind>(__TAURI_INVOKE("set_tts_voice_for_language", { language, voice })),
 	getTtsProviderCapabilities: (profileId: string) => typedError<TtsProviderCapabilitiesDto, ErrorKind>(__TAURI_INVOKE("get_tts_provider_capabilities", { profileId })),
 	probeTtsProvider: (profileId: string) => typedError<TtsProviderCapabilitiesDto, ErrorKind>(__TAURI_INVOKE("probe_tts_provider", { profileId })),
+	testTtsProvider: (requestId: string, input: UpsertTtsProviderInput, text: string) => typedError<TtsAudioArtifactDto_Serialize, ErrorKind>(__TAURI_INVOKE("test_tts_provider", { requestId, input, text })),
+	discoverTtsModels: (input: UpsertTtsProviderInput) => typedError<string[], ErrorKind>(__TAURI_INVOKE("discover_tts_models", { input })),
 	listTtsVoices: (profileId: string) => typedError<TtsVoiceDto[], ErrorKind>(__TAURI_INVOKE("list_tts_voices", { profileId })),
 	synthesizeTts: (input: TtsSynthesisInput) => typedError<TtsAudioArtifactDto_Serialize, ErrorKind>(__TAURI_INVOKE("synthesize_tts", { input })),
 	synthesizeTtsRequest: (requestId: string, input: TtsSynthesisInput) => typedError<TtsAudioArtifactDto_Serialize, ErrorKind>(__TAURI_INVOKE("synthesize_tts_request", { requestId, input })),
@@ -331,8 +335,17 @@ export type LibraryInfo = {
 export type LibraryType = "calibre" | "myreader";
 
 export type LlmConfigDto = {
+	providers: LlmProviderDto[],
 	profiles: LlmProfileDto[],
 	defaultProfileId: string | null,
+};
+
+export type LlmModelDto = {
+	displayName?: string,
+	id: string,
+	model: string,
+	contextWindow: number,
+	maxOutputTokens?: number | null,
 };
 
 export type LlmProfileDto = {
@@ -342,6 +355,7 @@ export type LlmProfileDto = {
 	endpoint: string,
 	model: string,
 	contextWindow: number,
+	maxOutputTokens?: number | null,
 	hasCredential?: boolean,
 };
 
@@ -352,6 +366,15 @@ export type LlmProfileInput = {
 };
 
 export type LlmProtocolDto = "chatCompletions" | "responses";
+
+export type LlmProviderDto = {
+	id: string,
+	name: string,
+	protocol: LlmProtocolDto,
+	endpoint: string,
+	models: LlmModelDto[],
+	hasCredential?: boolean,
+};
 
 export type NarrationMergeChoiceDto = {
 	characterId: string,
@@ -456,7 +479,6 @@ export type QwenTtsModelDto = {
 export type QwenTtsPresetDto = {
 	id: string,
 	endpoint: string,
-	defaultModel: QwenTtsModelDto,
 };
 
 /**  A local reader highlight with an optional note attached to its Readium Locator. */
@@ -560,6 +582,18 @@ export type ReflowableReaderPreferencesDto = {
 	tts?: ReflowTtsDto,
 };
 
+export type SaveLlmProviderInput = {
+	provider: LlmProviderDto,
+	credential: string | null,
+	clearCredential?: boolean,
+};
+
+export type SaveTtsProviderInput = {
+	provider: TtsProviderDto,
+	credential: string | null,
+	clearCredential?: boolean,
+};
+
 export type TestWebdavConnectionInput = {
 	endpoint: string,
 	username: string,
@@ -592,6 +626,7 @@ export type TtsAudioFormatDto = "mp3" | "opus" | "aac" | "flac" | "wav";
 export type TtsCachePolicyDto = "use" | "refresh" | "bypass";
 
 export type TtsConfigDto = {
+	providers: TtsProviderDto[],
 	schemaVersion: number,
 	defaultEngine: TtsEngineSelectionDto,
 	profiles: TtsProviderProfileDto[],
@@ -600,6 +635,17 @@ export type TtsConfigDto = {
 };
 
 export type TtsEngineSelectionDto = { kind: "system" } | { kind: "provider"; profileId: string };
+
+export type TtsModelDto = {
+	displayName?: string,
+	voiceNames?: { [key in string]: string },
+	id: string,
+	model: string,
+	responseFormat: TtsAudioFormatDto,
+	instructions: string | null,
+	defaultVoice: string | null,
+	voices: string[],
+};
 
 export type TtsPlaybackPreferencesDto = {
 	speed: number | null,
@@ -622,11 +668,26 @@ export type TtsProviderCapabilitiesDto = {
 	outputMimeTypes: string[],
 };
 
+export type TtsProviderDto = {
+	voiceNames?: { [key in string]: string },
+	modelScopedVoices?: boolean,
+	id: string,
+	name: string,
+	kind: TtsProviderKindDto,
+	enabled: boolean,
+	endpoint: string,
+	voices: string[],
+	models: TtsModelDto[],
+	hasCredential?: boolean,
+};
+
 export type TtsProviderKindDto = "openAiCompatible" | "qwen";
 
 export type TtsProviderOptionsDto = { kind: "openAiCompatible"; responseFormat?: TtsAudioFormatDto; instructions?: string | null; voices?: string[]; defaultVoice?: string | null } | { kind: "qwen"; responseFormat: TtsAudioFormatDto; instructions: string | null; voices: string[]; defaultVoice: string | null };
 
 export type TtsProviderProfileDto = {
+	modelName?: string,
+	voiceNames?: { [key in string]: string },
 	id: string,
 	name: string,
 	kind: TtsProviderKindDto,
