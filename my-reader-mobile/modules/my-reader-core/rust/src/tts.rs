@@ -36,7 +36,6 @@ pub struct TtsProviderProfile {
     pub id: String,
     pub name: String,
     pub kind: String,
-    pub enabled: bool,
     pub endpoint: String,
     pub model: Option<String>,
     pub credential_reference: Option<String>,
@@ -62,7 +61,6 @@ pub struct TtsProvider {
     pub id: String,
     pub name: String,
     pub kind: String,
-    pub enabled: bool,
     pub endpoint: String,
     pub credential_reference: Option<String>,
     pub voices: Vec<String>,
@@ -72,12 +70,10 @@ impl TryFrom<TtsProvider> for my_reader_core::models::TtsProvider {
     type Error = CoreFfiError;
     fn try_from(value: TtsProvider) -> Result<Self, Self::Error> {
         Ok(Self {
-            voice_names: Default::default(),
             id: value.id,
             name: value.name,
             endpoint: value.endpoint,
             kind: parse_provider_kind(&value.kind)?,
-            enabled: value.enabled,
             credential_reference: value.credential_reference,
             model_scoped_voices: value.model_scoped_voices,
             voices: value.voices,
@@ -86,8 +82,6 @@ impl TryFrom<TtsProvider> for my_reader_core::models::TtsProvider {
                 .into_iter()
                 .map(|m| {
                     Ok(my_reader_core::models::TtsModel {
-                        display_name: String::new(),
-                        voice_names: Default::default(),
                         id: m.id,
                         model: m.model,
                         response_format: parse_audio_format(&m.response_format)?,
@@ -108,7 +102,6 @@ impl From<my_reader_core::models::TtsProvider> for TtsProvider {
             name: value.name,
             endpoint: value.endpoint,
             kind: provider_kind(value.kind).into(),
-            enabled: value.enabled,
             credential_reference: value.credential_reference,
             model_scoped_voices: value.model_scoped_voices,
             voices: value.voices,
@@ -132,23 +125,8 @@ pub async fn tts_save_provider(
     config_path: String,
     provider: TtsProvider,
 ) -> Result<TtsConfig, CoreFfiError> {
-    let mut provider: my_reader_core::models::TtsProvider = provider.try_into()?;
-    if let Some(previous) = TtsService::get_config(Path::new(&config_path))
-        .map_err(CoreFfiError::from_core)?
-        .providers
-        .into_iter()
-        .find(|old| old.id == provider.id)
-    {
-        provider.voice_names = previous.voice_names;
-        for model in &mut provider.models {
-            if let Some(old) = previous.models.iter().find(|old| old.id == model.id) {
-                model.display_name = old.display_name.clone();
-                model.voice_names = old.voice_names.clone();
-            }
-        }
-    }
     Ok(
-        TtsService::upsert_provider(Path::new(&config_path), provider)
+        TtsService::upsert_provider(Path::new(&config_path), provider.try_into()?)
             .map_err(CoreFfiError::from_core)?
             .into(),
     )
@@ -188,7 +166,6 @@ pub struct TtsProviderCapabilities {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct TtsVoice {
     pub id: String,
-    pub name: String,
     pub language: String,
     pub gender: Option<String>,
 }
@@ -196,7 +173,6 @@ pub struct TtsVoice {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct QwenTtsModel {
     pub id: String,
-    pub name: String,
     pub supports_instructions: bool,
     pub voice_discovery: bool,
     pub audio_formats: Vec<String>,
@@ -213,7 +189,6 @@ impl From<my_reader_core::models::QwenTtsModel> for QwenTtsModel {
     fn from(model: my_reader_core::models::QwenTtsModel) -> Self {
         Self {
             id: model.id,
-            name: model.name,
             supports_instructions: model.supports_instructions,
             voice_discovery: model.voice_discovery,
             audio_formats: model
@@ -404,6 +379,34 @@ pub async fn tts_test_provider(
 }
 
 #[uniffi::export(async_runtime = "tokio")]
+pub async fn tts_discover_models(
+    profile: TtsProviderProfile,
+    credential: Option<String>,
+) -> Result<Vec<String>, CoreFfiError> {
+    TtsService::discover_models(&profile.try_into()?, credential.as_deref())
+        .await
+        .map_err(CoreFfiError::from_core)
+}
+
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn tts_preview_provider(
+    profile: TtsProviderProfile,
+    cache_directory: String,
+    text: String,
+    credential: Option<String>,
+) -> Result<TtsAudioArtifact, CoreFfiError> {
+    Ok(TtsService::preview_provider(
+        profile.try_into()?,
+        Path::new(&cache_directory),
+        text,
+        credential.as_deref(),
+    )
+    .await
+    .map_err(CoreFfiError::from_core)?
+    .into())
+}
+
+#[uniffi::export(async_runtime = "tokio")]
 pub async fn tts_list_voices(
     config_path: String,
     profile_id: String,
@@ -501,7 +504,6 @@ impl From<CoreProviderProfile> for TtsProviderProfile {
             id: value.id,
             name: value.name,
             kind: provider_kind(value.kind).into(),
-            enabled: value.enabled,
             endpoint: value.endpoint,
             model: value.model,
             credential_reference: value.credential_reference,
@@ -541,7 +543,6 @@ impl TryFrom<TtsProviderProfile> for CoreProviderProfile {
             id: value.id,
             name: value.name,
             kind,
-            enabled: value.enabled,
             endpoint: value.endpoint,
             model: value.model,
             credential_reference: value.credential_reference,
@@ -635,7 +636,6 @@ impl From<CoreVoice> for TtsVoice {
     fn from(value: CoreVoice) -> Self {
         Self {
             id: value.id,
-            name: value.name,
             language: value.language,
             gender: value.gender,
         }
@@ -743,7 +743,6 @@ mod tests {
                 id: "openai".into(),
                 name: "OpenAI".into(),
                 kind: TtsProviderKind::OpenAiCompatible,
-                enabled: true,
                 endpoint: "https://api.openai.com/v1".into(),
                 model: Some("gpt-4o-mini-tts".into()),
                 credential_reference: Some("tts:openai:api-key".into()),
@@ -778,11 +777,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn mobile_provider_edit_preserves_desktop_model_and_voice_names() {
+    async fn mobile_provider_edit_preserves_ids_and_discards_legacy_labels() {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("config.json");
         let provider = serde_json::from_value(serde_json::json!({
-            "id":"p", "name":"Provider", "kind":"openAiCompatible", "enabled":true,
+            "id":"p", "name":"Provider", "kind":"openAiCompatible",
             "endpoint":"https://example.com/v1", "modelScopedVoices":true,
             "voices":[], "voiceNames":{"shared":"Shared alias"},
             "models":[{"id":"m", "model":"tts", "displayName":"Model alias", "revision":1,
@@ -795,17 +794,26 @@ mod tests {
             .providers
             .remove(0);
         mobile.name = "Mobile edit".into();
+        assert_eq!(mobile.models[0].model, "tts");
+        assert_eq!(mobile.models[0].voices, ["reader"]);
+        mobile.models[0].voices.push("another-voice".into());
         tts_save_provider(path.to_string_lossy().into_owned(), mobile)
             .await
             .unwrap();
         let saved = TtsService::get_config(&path).unwrap();
         assert_eq!(saved.providers[0].name, "Mobile edit");
-        assert_eq!(saved.providers[0].voice_names["shared"], "Shared alias");
-        assert_eq!(saved.providers[0].models[0].display_name, "Model alias");
+        assert_eq!(saved.providers[0].models[0].model, "tts");
         assert_eq!(
-            saved.providers[0].models[0].voice_names["reader"],
-            "Narrator"
+            saved.providers[0].models[0].voices,
+            ["reader", "another-voice"]
         );
+        assert_eq!(
+            saved.providers[0].models[0].default_voice.as_deref(),
+            Some("reader")
+        );
+        let on_disk = std::fs::read_to_string(path).unwrap();
+        assert!(!on_disk.contains("displayName"));
+        assert!(!on_disk.contains("voiceNames"));
     }
 
     #[test]
@@ -814,7 +822,6 @@ mod tests {
             id: "bad".into(),
             name: "Bad".into(),
             kind: "unknown".into(),
-            enabled: true,
             endpoint: "https://example.com".into(),
             model: None,
             credential_reference: None,

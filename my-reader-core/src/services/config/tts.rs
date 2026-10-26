@@ -50,10 +50,7 @@ pub(crate) fn validate_tts_config(config: &TtsConfig) -> Result<(), CoreError> {
         }
     }
     if let TtsEngineSelection::Provider { profile_id } = &config.default_engine {
-        if !profiles
-            .iter()
-            .any(|profile| &profile.id == profile_id && profile.enabled)
-        {
+        if !profiles.iter().any(|profile| &profile.id == profile_id) {
             return Err(tts_error(
                 TtsErrorKind::Configuration,
                 "TTS_DEFAULT_PROFILE_NOT_FOUND",

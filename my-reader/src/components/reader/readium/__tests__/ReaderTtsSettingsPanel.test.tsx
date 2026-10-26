@@ -62,7 +62,6 @@ const config: TtsConfigDto = {
       id: "openai",
       name: "OpenAI",
       kind: "openAiCompatible",
-      enabled: true,
       endpoint: "https://api.openai.com/v1",
       model: "gpt-4o-mini-tts",
       options: {

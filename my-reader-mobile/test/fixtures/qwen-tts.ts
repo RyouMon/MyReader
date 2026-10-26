@@ -27,7 +27,7 @@ export async function getQwenTtsModels({
   if (!preset) return []
   const audio: QwenTtsModel = {
     id: "qwen-audio-3.0-tts-plus",
-    name: "Qwen-Audio-TTS Plus",
+
     audioFormats: ["mp3", "wav", "opus"],
     supportsInstructions: true,
     voiceDiscovery: preset.id !== "tokenPlan",
@@ -38,7 +38,7 @@ export async function getQwenTtsModels({
     audio,
     {
       id: "qwen3-tts-flash",
-      name: "Qwen3-TTS Flash",
+
       audioFormats: ["wav"],
       voices: [],
       supportsInstructions: false,
@@ -46,7 +46,7 @@ export async function getQwenTtsModels({
     },
     {
       id: "qwen3-tts-vc-2026-01-22",
-      name: "Qwen3-TTS VC",
+
       audioFormats: ["wav"],
       voices: [],
       supportsInstructions: false,

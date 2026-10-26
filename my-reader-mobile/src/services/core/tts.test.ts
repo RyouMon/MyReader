@@ -5,7 +5,7 @@ import {
   ttsQwenPresets,
   ttsRemoveProfile,
   ttsSynthesize,
-  ttsTestProvider,
+  ttsPreviewProvider,
   ttsUpsertProfile,
 } from "my-reader-core"
 import {
@@ -20,7 +20,7 @@ import {
   getQwenTtsPresets,
   removeTtsProfile,
   synthesizeTts,
-  testTtsProvider,
+  previewTtsProvider,
   type TtsConfig,
   upsertTtsProfile,
 } from "./tts"
@@ -63,7 +63,7 @@ jest.mock("my-reader-core", () => ({
   ttsSetPlayback: jest.fn(),
   ttsSetVoice: jest.fn(),
   ttsSynthesize: jest.fn(),
-  ttsTestProvider: jest.fn(),
+  ttsPreviewProvider: jest.fn(),
   ttsUpsertProfile: jest.fn(),
 }))
 
@@ -86,7 +86,6 @@ const openAiProfile = {
   id: "openai",
   name: "OpenAI",
   kind: "openAiCompatible",
-  enabled: true,
   endpoint: "https://api.openai.com/v1",
   model: "gpt-4o-mini-tts",
   credentialReference: "ryoumon.myreader.tts.openai",
@@ -135,11 +134,13 @@ describe("mobile core TTS", () => {
       providers: [
         {
           modelScopedVoices: false,
+
           ...openAiProfile,
           models: [
             {
               id: openAiProfile.id,
               model: openAiProfile.model,
+
               responseFormat: "mp3",
               defaultVoice: "reader-voice",
               voices: [],
@@ -149,9 +150,13 @@ describe("mobile core TTS", () => {
       ],
     })
     jest.mocked(readTtsCredential).mockResolvedValue("saved-key")
-    jest.mocked(ttsTestProvider).mockResolvedValue(undefined)
+    jest.mocked(ttsPreviewProvider).mockResolvedValue({
+      path: "/cache/tts/test.wav",
+      mimeType: "audio/wav",
+      timings: [],
+    })
     const signal = new AbortController().signal
-    await testTtsProvider(
+    await previewTtsProvider(
       {
         profile: { ...openAiProfile, endpoint: "https://draft.example/v1" },
         credential,
@@ -160,11 +165,12 @@ describe("mobile core TTS", () => {
       "Test",
       signal,
     )
-    expect(ttsTestProvider).toHaveBeenCalledWith(
+    expect(ttsPreviewProvider).toHaveBeenCalledWith(
       expect.objectContaining({
         endpoint: "https://draft.example/v1",
         credentialReference: undefined,
       }),
+      "/cache/tts",
       "Test",
       expected,
       { signal },
@@ -194,9 +200,7 @@ describe("mobile core TTS", () => {
     const controller = new AbortController()
     jest
       .mocked(ttsDiscoverQwenVoices)
-      .mockResolvedValue([
-        { id: "account-voice", name: "account-voice", language: "zh" },
-      ])
+      .mockResolvedValue([{ id: "account-voice", language: "zh" }])
     await expect(
       discoverQwenTtsVoices(
         {
@@ -206,9 +210,7 @@ describe("mobile core TTS", () => {
         },
         controller.signal,
       ),
-    ).resolves.toEqual([
-      { id: "account-voice", name: "account-voice", language: "zh" },
-    ])
+    ).resolves.toEqual([{ id: "account-voice", language: "zh" }])
     expect(ttsDiscoverQwenVoices).toHaveBeenCalledWith(
       "https://dashscope.aliyuncs.com/api/v1",
       "qwen3-tts-vc-2026-01-22",
@@ -226,6 +228,7 @@ describe("mobile core TTS", () => {
       providers: [
         {
           modelScopedVoices: false,
+
           ...openAiProfile,
           id: "qwen",
           kind: "qwen",
@@ -233,6 +236,7 @@ describe("mobile core TTS", () => {
             {
               id: "qwen-model",
               model: "qwen3-tts-vc-2026-01-22",
+
               responseFormat: "wav",
               voices: [],
             },
@@ -261,11 +265,13 @@ describe("mobile core TTS", () => {
       providers: [
         {
           modelScopedVoices: false,
+
           ...openAiProfile,
           models: [
             {
               id: openAiProfile.id,
               model: openAiProfile.model,
+
               responseFormat: "mp3",
               defaultVoice: "reader-voice",
               voices: [],
@@ -287,7 +293,6 @@ describe("mobile core TTS", () => {
         profile: {
           name: "Unsupported",
           kind: "unsupported",
-          enabled: true,
           endpoint: "http://127.0.0.1:5100",
           voices: [],
         },
@@ -310,7 +315,6 @@ describe("mobile core TTS", () => {
       profile: {
         name: "OpenAI",
         kind: "openAiCompatible",
-        enabled: true,
         endpoint: "https://api.openai.com/v1",
         model: "gpt-4o-mini-tts",
         responseFormat: "mp3",
@@ -343,11 +347,13 @@ describe("mobile core TTS", () => {
       providers: [
         {
           modelScopedVoices: false,
+
           ...openAiProfile,
           models: [
             {
               id: openAiProfile.id,
               model: openAiProfile.model,
+
               responseFormat: "mp3",
               defaultVoice: "reader-voice",
               voices: [],
@@ -391,11 +397,13 @@ describe("mobile core TTS", () => {
         providers: [
           {
             modelScopedVoices: false,
+
             ...openAiProfile,
             models: [
               {
                 id: openAiProfile.id,
                 model: openAiProfile.model,
+
                 responseFormat: "mp3",
                 defaultVoice: "reader-voice",
                 voices: [],
@@ -435,11 +443,13 @@ describe("mobile core TTS", () => {
       providers: [
         {
           modelScopedVoices: false,
+
           ...openAiProfile,
           models: [
             {
               id: openAiProfile.id,
               model: openAiProfile.model,
+
               responseFormat: "mp3",
               defaultVoice: "reader-voice",
               voices: [],
@@ -486,11 +496,13 @@ describe("mobile core TTS", () => {
       providers: [
         {
           modelScopedVoices: false,
+
           ...openAiProfile,
           models: [
             {
               id: openAiProfile.id,
               model: openAiProfile.model,
+
               responseFormat: "mp3",
               defaultVoice: "reader-voice",
               voices: [],

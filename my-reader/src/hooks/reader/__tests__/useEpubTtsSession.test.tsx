@@ -236,7 +236,6 @@ describe("useEpubTtsSession", () => {
             id: "remote",
             name: "Remote speech",
             kind: "openAiCompatible",
-            enabled: true,
             endpoint: "https://example.com/v1",
             model: "tts-model",
             options: {
@@ -1599,7 +1598,6 @@ describe("useEpubTtsSession", () => {
           id: "openai",
           name: "OpenAI compatible",
           kind: "openAiCompatible",
-          enabled: true,
           endpoint: "https://example.com/v1",
           model: "tts-model",
           options: {

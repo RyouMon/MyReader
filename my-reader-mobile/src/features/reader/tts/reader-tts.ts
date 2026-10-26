@@ -167,7 +167,7 @@ export function resolveReaderTtsSelection(
 
   const profileId = config.defaultEngine.profileId
   const profile = config.profiles.find(
-    (candidate) => candidate.id === profileId && candidate.enabled,
+    (candidate) => candidate.id === profileId,
   )
   if (!profile) throw new Error("TTS_DEFAULT_PROFILE_NOT_FOUND")
 

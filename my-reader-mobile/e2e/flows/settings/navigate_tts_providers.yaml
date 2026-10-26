@@ -10,10 +10,12 @@ name: Provider form returns through the native sheet stack
 - tapOn:
     id: settings-tts-providers-row
 - assertVisible: "TTS 供应商|TTS providers"
+- assertVisible: "关闭|Close"
 - scrollUntilVisible:
     element: "添加 TTS 供应商|Add TTS provider"
     direction: DOWN
 - tapOn: "添加 TTS 供应商|Add TTS provider"
+- assertNotVisible: "关闭|Close"
 - tapOn: ".*OpenAI 兼容.*|.*OpenAI-compatible.*"
 - assertVisible:
     id: tts-provider-name
@@ -40,10 +42,13 @@ name: Provider form returns through the native sheet stack
     when:
       platform: iOS
     commands:
-      - tapOn: "关闭|Close"
+      - tapOn: "返回|Back"
 - runFlow:
     when:
       platform: Android
     commands:
       - back
 - assertVisible: "添加 TTS 供应商|Add TTS provider"
+- tapOn: "关闭|Close"
+- assertVisible:
+    id: settings-tts-providers-row

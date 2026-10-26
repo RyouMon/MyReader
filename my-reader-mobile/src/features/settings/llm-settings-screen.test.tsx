@@ -17,7 +17,27 @@ import type { MobileTtsConfig } from "@/src/services/core/tts"
 import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
 import type { Library } from "@my-reader/tools/types/library"
 import LlmSettingsScreen from "./llm-settings-screen"
+import LlmProviderFormScreen from "./llm-provider-form-screen"
 import { BookNarrationSettings } from "../reader/components/reader/chrome/BookNarrationSettings"
+
+const mockRouter = { push: jest.fn(), back: jest.fn(), dismissTo: jest.fn() }
+const mockHeader = jest.fn((_options: unknown) => ({
+  options: {},
+  toolbar: null,
+}))
+let mockParams: { providerId?: string } = {}
+jest.mock("expo-router", () => ({
+  router: {
+    push: (route: unknown) => mockRouter.push(route),
+    back: () => mockRouter.back(),
+    dismissTo: (route: unknown) => mockRouter.dismissTo(route),
+  },
+  Stack: { Screen: () => null },
+  useLocalSearchParams: () => mockParams,
+}))
+jest.mock("@/src/navigation/hooks/use-screen-header", () => ({
+  useScreenHeader: (options: unknown) => mockHeader(options),
+}))
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -97,6 +117,22 @@ jest.mock("@/src/components", () => {
     Button,
     Screen: View,
     SectionCard: View,
+    SectionLabel: Text,
+    IconButton: ({ label, onPress, disabled, ...props }: any) =>
+      React.createElement(Button, {
+        ...props,
+        title: label,
+        label,
+        onPress,
+        disabled,
+      }),
+    RoundIconButton: ({ label, onPress }: any) =>
+      React.createElement(Button, { title: label, onPress }),
+    FormTextField: ({ label, ...props }: any) =>
+      React.createElement(jest.requireActual("react-native").TextInput, {
+        ...props,
+        accessibilityLabel: label,
+      }),
     FormLabeledFieldRow: Row,
     FormFieldSwitch: jest.requireActual("react-native").Switch,
     ListRow: Row,
@@ -143,6 +179,7 @@ const config: llm.LlmSettings = {
         {
           id: profile.id,
           model: profile.model,
+
           contextWindow: profile.contextWindow,
         },
       ],
@@ -183,8 +220,8 @@ const book = {
 }
 const tts = {
   profiles: [
-    { id: "tts-a", name: "A", enabled: true },
-    { id: "tts-b", name: "B", enabled: true },
+    { id: "tts-a", name: "A" },
+    { id: "tts-b", name: "B" },
   ],
 } as MobileTtsConfig
 const clients: QueryClient[] = []
@@ -194,8 +231,15 @@ afterEach(() => {
   clients.forEach((client) => client.clear())
   clients.length = 0
 })
-function mount(kind: "settings" | "reader" = "settings") {
-  const ui = kind === "reader" ? reader() : <LlmSettingsScreen />
+function mount(kind: "settings" | "form" | "reader" = "settings") {
+  const ui =
+    kind === "reader" ? (
+      reader()
+    ) : kind === "form" ? (
+      <LlmProviderFormScreen />
+    ) : (
+      <LlmSettingsScreen />
+    )
   const client = new QueryClient({
     defaultOptions: {
       queries: { retry: false, gcTime: Infinity },
@@ -218,6 +262,7 @@ function reader() {
 }
 beforeEach(() => {
   jest.clearAllMocks()
+  mockParams = {}
   jest.mocked(llm.getLlmConfig).mockResolvedValue(config)
   jest.mocked(llm.saveLlmProvider).mockResolvedValue(config)
   jest
@@ -232,6 +277,7 @@ beforeEach(() => {
     .mockImplementation(async (_library, value) => value)
 })
 it("reloads providers from Core when the cache contains the old flat profile schema", async () => {
+  mockParams = { providerId: "p" }
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity } },
   })
@@ -242,23 +288,32 @@ it("reloads providers from Core when the cache contains the old flat profile sch
   })
   render(
     <QueryClientProvider client={client}>
-      <LlmSettingsScreen />
+      <LlmProviderFormScreen />
     </QueryClientProvider>,
   )
-  fireEvent.press(await screen.findByText("Provider"))
-  expect(screen.getByLabelText("llm.model").props.value).toBe("model")
+  await screen.findByLabelText("providerEditor.modelId")
+  expect(screen.getByLabelText("providerEditor.modelId").props.value).toBe(
+    "model",
+  )
   expect(llm.getLlmConfig).toHaveBeenCalledTimes(1)
 })
 
 it("preserves each model when switching and saves one provider with multiple models", async () => {
-  mount()
-  fireEvent.press(await screen.findByText("Provider"))
+  mockParams = { providerId: "p" }
+  mount("form")
+  await screen.findByLabelText("providerEditor.modelId")
   fireEvent.press(screen.getByText("aiProviders.addModel"))
-  fireEvent.changeText(screen.getByLabelText("llm.model"), "second-model")
-  fireEvent.press(screen.getByText("model"))
-  expect(screen.getByLabelText("llm.model").props.value).toBe("model")
-  fireEvent.press(screen.getByText("second-model"))
-  expect(screen.getByLabelText("llm.model").props.value).toBe("second-model")
+  fireEvent.changeText(
+    screen.getByTestId("provider-model-id-1"),
+    "second-model",
+  )
+  fireEvent.changeText(screen.getByLabelText("llm.context"), "65536")
+  fireEvent.press(screen.getByText("providerEditor.modelDetails model"))
+  expect(screen.getByLabelText("llm.context").props.value).toBe("32768")
+  expect(screen.getByDisplayValue("second-model")).toBeTruthy()
+  fireEvent.press(screen.getByText("providerEditor.modelDetails second-model"))
+  expect(screen.getByLabelText("llm.context").props.value).toBe("65536")
+  expect(screen.getByDisplayValue("model")).toBeTruthy()
   fireEvent.press(screen.getByText("llm.save"))
   await waitFor(() =>
     expect(llm.saveLlmProvider).toHaveBeenCalledWith(
@@ -267,7 +322,63 @@ it("preserves each model when switching and saves one provider with multiple mod
           id: "p",
           models: [
             { id: "p", model: "model", contextWindow: 32768 },
-            { id: "", model: "second-model", contextWindow: 32768 },
+            expect.objectContaining({
+              model: "second-model",
+              contextWindow: 65536,
+            }),
+          ],
+        }),
+      }),
+      expect.anything(),
+    ),
+  )
+})
+
+it("accepts only integer digits for token limits and requires a model ID before saving", async () => {
+  mount("form")
+  fireEvent.changeText(screen.getByLabelText("llm.name"), "Local")
+  expect(screen.getByRole("button", { name: "llm.save" })).toBeDisabled()
+  fireEvent.changeText(
+    screen.getByLabelText("providerEditor.modelId"),
+    "manual",
+  )
+  fireEvent.changeText(
+    screen.getByLabelText("providerEditor.maxOutput"),
+    "4096",
+  )
+  for (const value of [
+    "abc",
+    "1e4",
+    "-8192",
+    "8192.5",
+    "12345678901234567890",
+  ]) {
+    fireEvent.changeText(screen.getByLabelText("llm.context"), value)
+    fireEvent.changeText(
+      screen.getByLabelText("providerEditor.maxOutput"),
+      value,
+    )
+  }
+  expect(screen.getByLabelText("llm.context").props.value).toBe("32768")
+  expect(screen.getByLabelText("providerEditor.maxOutput").props.value).toBe(
+    "4096",
+  )
+  fireEvent.changeText(screen.getByLabelText("llm.context"), "")
+  expect(screen.getByLabelText("llm.context").props.value).toBe("")
+  expect(screen.getByRole("button", { name: "llm.save" })).toBeDisabled()
+  fireEvent.changeText(screen.getByLabelText("llm.context"), "65536")
+  fireEvent.changeText(screen.getByLabelText("providerEditor.maxOutput"), "")
+  fireEvent.press(screen.getByText("llm.save"))
+  await waitFor(() =>
+    expect(llm.saveLlmProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: expect.objectContaining({
+          models: [
+            expect.objectContaining({
+              model: "manual",
+              contextWindow: 65536,
+              maxOutputTokens: undefined,
+            }),
           ],
         }),
       }),
@@ -277,14 +388,19 @@ it("preserves each model when switching and saves one provider with multiple mod
 })
 
 it("saves a manually entered model without discovery, and clears connection success after changing the draft", async () => {
-  mount()
-  fireEvent.press(await screen.findByText("llm.add"))
+  mount("form")
   fireEvent.changeText(screen.getByLabelText("llm.name"), "Local")
-  fireEvent.changeText(screen.getByLabelText("llm.model"), "manual-model")
+  fireEvent.changeText(
+    screen.getByLabelText("providerEditor.modelId"),
+    "manual-model",
+  )
   fireEvent.changeText(screen.getByLabelText("llm.key"), "secret")
   fireEvent.press(screen.getByText("llm.test"))
   await screen.findByText("llm.testPassed")
-  fireEvent.changeText(screen.getByLabelText("llm.model"), "manual-model-2")
+  fireEvent.changeText(
+    screen.getByLabelText("providerEditor.modelId"),
+    "manual-model-2",
+  )
   expect(screen.queryByText("llm.testPassed")).toBeNull()
   fireEvent.press(screen.getByText("llm.save"))
   await waitFor(() =>
@@ -300,14 +416,16 @@ it("saves a manually entered model without discovery, and clears connection succ
   )
   expect(llm.listLlmModels).not.toHaveBeenCalled()
 })
-it("edits and probes without revealing saved keys, discovers models, and selects or removes providers", async () => {
-  mount()
-  fireEvent.press(await screen.findByText("Provider"))
+it("edits without revealing saved keys, discovers models, and returns to the sheet list after saving", async () => {
+  mockParams = { providerId: "p" }
+  mount("form")
+  await screen.findByLabelText("llm.key")
   expect(screen.getByLabelText("llm.key").props.value).toBe("")
-  fireEvent.press(screen.getByText("llm.models"))
-  fireEvent.press(await screen.findByText("llm.models:discovered"))
+  fireEvent.press(screen.getByText("providerEditor.fetchModels"))
+  fireEvent.press(await screen.findByText("discovered"))
+  fireEvent.press(screen.getByText("providerEditor.addSelected"))
+  fireEvent.press(screen.getByText("providerEditor.modelDetails discovered"))
   fireEvent.press(screen.getByText("llm.protocol:responses"))
-  fireEvent.press(screen.getByText("llm.advanced"))
   fireEvent.changeText(screen.getByLabelText("llm.context"), "65536")
   fireEvent(screen.getByLabelText("llm.clearKey"), "valueChange", true)
   fireEvent.press(screen.getByText("llm.save"))
@@ -319,6 +437,7 @@ it("edits and probes without revealing saved keys, discovers models, and selects
           id: "p",
           protocol: "responses",
           models: [
+            expect.objectContaining({ model: "model" }),
             expect.objectContaining({
               model: "discovered",
               contextWindow: 65536,
@@ -329,12 +448,39 @@ it("edits and probes without revealing saved keys, discovers models, and selects
       expect.anything(),
     ),
   )
-  fireEvent.press(await screen.findByText("llm.default:none"))
+  expect(mockRouter.dismissTo).toHaveBeenCalledWith("/llm-providers")
+})
+
+it("opens provider forms in the sheet stack and keeps selection on its list page", async () => {
+  mount()
+  fireEvent.press(await screen.findByText("Provider"))
+  expect(mockRouter.push).toHaveBeenLastCalledWith({
+    pathname: "/llm-providers/form",
+    params: { providerId: "p" },
+  })
+  expect(screen.queryByLabelText("llm.key")).toBeNull()
+  expect(mockHeader).toHaveBeenLastCalledWith(
+    expect.objectContaining({ close: { variant: "layout" }, back: "hidden" }),
+  )
+  fireEvent.press(screen.getByText("llm.add"))
+  expect(mockRouter.push).toHaveBeenLastCalledWith("/llm-providers/form")
+  fireEvent.press(screen.getByText("llm.default:none"))
   await waitFor(() => expect(llm.selectLlmProfile).toHaveBeenCalled())
-  fireEvent.press(screen.getByText("Provider"))
+})
+
+it("uses back in the form and returns to the list only after successful deletion", async () => {
+  mockParams = { providerId: "p" }
+  mount("form")
+  fireEvent.press(await screen.findByText("llm.cancel"))
+  expect(mockRouter.back).toHaveBeenCalledTimes(1)
+  expect(mockHeader.mock.calls.at(-1)?.[0]).not.toHaveProperty("close")
+  jest.mocked(llm.removeLlmProfile).mockRejectedValueOnce(new Error("offline"))
+  fireEvent.press(screen.getByText("llm.delete"))
+  await screen.findByText("offline")
+  expect(mockRouter.dismissTo).not.toHaveBeenCalled()
   fireEvent.press(screen.getByText("llm.delete"))
   await waitFor(() =>
-    expect(llm.removeLlmProfile).toHaveBeenCalledWith("p", expect.anything()),
+    expect(mockRouter.dismissTo).toHaveBeenCalledWith("/llm-providers"),
   )
 })
 it("shows role controls only after enabling a book with a configured LLM and acceptance", async () => {

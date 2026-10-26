@@ -56,8 +56,6 @@ pub struct LlmModel {
     pub id: String,
     pub model: String,
     #[serde(default)]
-    pub display_name: String,
-    #[serde(default)]
     pub max_output_tokens: Option<u32>,
     #[serde(default = "default_context_window")]
     pub context_window: u32,
@@ -95,7 +93,7 @@ impl From<LlmProviderProfile> for LlmProvider {
             models: vec![LlmModel {
                 id: profile.id,
                 model: profile.model,
-                display_name: String::new(),
+
                 max_output_tokens: profile.max_output_tokens,
                 context_window: profile.context_window,
                 revision: profile.revision,

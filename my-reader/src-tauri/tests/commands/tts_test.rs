@@ -165,7 +165,6 @@ async fn provider_commands_should_round_trip_openai_audio() {
                     "id": "openai-e2e",
                     "name": "OpenAI E2E",
                     "kind": "openAiCompatible",
-                    "enabled": true,
                     "endpoint": format!("{server}/openai"),
                     "model": "gpt-4o-mini-tts",
                     "options": {

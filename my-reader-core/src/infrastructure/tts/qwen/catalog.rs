@@ -46,13 +46,7 @@ pub(crate) async fn discover_models(
             }
             // Only list models supported by an implemented wire protocol. This
             // accepts new versions without maintaining a list of model IDs.
-            if let Ok(mut selected) = model(id, base) {
-                if let Some(name) = entry["name"]
-                    .as_str()
-                    .filter(|name| !name.trim().is_empty())
-                {
-                    selected.name = name.to_owned();
-                }
+            if let Ok(selected) = model(id, base) {
                 models.push(selected);
             }
         }

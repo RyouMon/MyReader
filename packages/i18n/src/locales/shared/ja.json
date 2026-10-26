@@ -1,4 +1,22 @@
 {
+  "providerEditor": {
+    "playbackFailed": "音声を再生できませんでした。",
+    "fetchModels": "利用可能なモデルを取得",
+    "models": "モデル一覧",
+    "voices": "音声一覧",
+    "modelId": "モデル ID",
+    "modelDetails": "モデル設定",
+    "maxOutput": "最大出力トークン数",
+    "automatic": "自動",
+    "noNewModels": "利用可能なモデルは追加済みです",
+    "addSelected": "選択したモデルを追加",
+    "audioFormat": "音声形式",
+    "voiceId": "音声 ID",
+    "removeVoice": "音声を削除",
+    "addVoice": "音声を追加",
+    "fetchVoices": "音声を取得",
+    "testModel": "テスト用モデル"
+  },
   "llm": {
     "title": "LLM プロバイダー",
     "add": "プロバイダーを追加",

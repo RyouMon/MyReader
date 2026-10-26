@@ -1,24 +1,5 @@
 export const desktopEn = {
   translation: {
-    providerEditor: {
-      playbackFailed: "Audio playback failed.",
-      fetchModels: "Fetch available models",
-      models: "Model list",
-      voices: "Voice list",
-      modelId: "Model ID",
-      displayName: "Display name",
-      modelDetails: "Model details",
-      maxOutput: "Maximum output tokens",
-      automatic: "Automatic",
-      noNewModels: "All available models have been added",
-      addSelected: "Add selected models",
-      audioFormat: "Audio format",
-      voiceId: "Voice ID",
-      removeVoice: "Remove voice",
-      addVoice: "Add voice",
-      fetchVoices: "Fetch voices",
-      testModel: "Test model",
-    },
     errors: {
       io: "File I/O error",
       database: "Database error",
@@ -291,7 +272,6 @@ export const desktopEn = {
         managedEnginesTitle: "Narration engines and voice services",
         managedEnginesDescription:
           "Manage system speech and configured network voice services.",
-        disabled: "Disabled",
         systemTitle: "System speech",
         systemDescription:
           "Use voices installed by the operating system without sending text over the network.",
@@ -321,7 +301,6 @@ export const desktopEn = {
         credentialOptional:
           "Optional; some OpenAI-compatible services may not need one",
         clearCredential: "Delete saved credential",
-        enabled: "Enable this service",
         openAiContract:
           "Uses the OpenAI-compatible /v1/audio/speech API. Enter the /v1 base path and configure voice IDs from the provider documentation.",
         playbackTitle: "Reading preferences",

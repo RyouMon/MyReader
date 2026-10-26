@@ -1,24 +1,5 @@
 export const desktopZhCN = {
   translation: {
-    providerEditor: {
-      playbackFailed: "音频播放失败。",
-      fetchModels: "获取可用模型",
-      models: "模型列表",
-      voices: "声音列表",
-      modelId: "模型 ID",
-      displayName: "显示名称",
-      modelDetails: "模型设置",
-      maxOutput: "最大输出 token 数",
-      automatic: "自动",
-      noNewModels: "可用模型均已添加",
-      addSelected: "添加所选模型",
-      audioFormat: "音频格式",
-      voiceId: "声音 ID",
-      removeVoice: "删除声音",
-      addVoice: "添加声音",
-      fetchVoices: "获取声音",
-      testModel: "测试模型",
-    },
     errors: {
       io: "文件读写错误",
       database: "数据库错误",
@@ -285,7 +266,6 @@ export const desktopZhCN = {
         automaticVoice: "自动选择",
         managedEnginesTitle: "阅读引擎与语音服务",
         managedEnginesDescription: "管理系统语音和已配置的网络语音服务。",
-        disabled: "已停用",
         systemTitle: "系统朗读",
         systemDescription: "使用操作系统提供的本地声音，文字不会发送到网络。",
         openAiCompatible: "OpenAI 兼容",
@@ -313,7 +293,6 @@ export const desktopZhCN = {
         credentialSaved: "已安全保存；留空则保持不变",
         credentialOptional: "可选；部分 OpenAI 兼容服务可不填写",
         clearCredential: "删除已保存的凭据",
-        enabled: "启用此服务",
         openAiContract:
           "兼容 OpenAI /v1/audio/speech 接口；服务器地址应填写到 /v1 层级，声音 ID 由你按供应商文档配置。",
         playbackTitle: "阅读偏好",

@@ -1,4 +1,22 @@
 export const sharedEn = {
+  providerEditor: {
+    playbackFailed: "Audio playback failed.",
+    fetchModels: "Fetch available models",
+    models: "Model list",
+    voices: "Voice list",
+    modelId: "Model ID",
+    modelDetails: "Model details",
+    maxOutput: "Maximum output tokens",
+    automatic: "Automatic",
+    noNewModels: "All available models have been added",
+    addSelected: "Add selected models",
+    audioFormat: "Audio format",
+    voiceId: "Voice ID",
+    removeVoice: "Remove voice",
+    addVoice: "Add voice",
+    fetchVoices: "Fetch voices",
+    testModel: "Test model",
+  },
   aiProviders: {
     modelScopedVoices: "Model-specific voices",
     title: "AI providers",

@@ -161,7 +161,23 @@ per screen. Height: 32px desktop / 48px mobile.
 `surface-2` background, `ink-1` text. Lower visual weight but clear affordance.
 
 ### Button — Destructive
-`danger` background. Requires confirmation flow for irreversible actions.
+Desktop uses a `danger` background; mobile forms use `danger` text to keep the
+primary action prominent. Irreversible actions require confirmation.
+
+### Mobile Forms
+
+- Use `FormTextField`, built on React Native Paper's floating-label input.
+  Empty fields show the label in the input position; focused or populated
+  fields move it to the upper left.
+- Keep two surfaces: page and controls. Group with headings and spacing;
+  do not wrap fields in another colored card.
+- Use the shared `Button` variants (`primary`, `secondary`, `ghost`, `danger`)
+  and `IconButton`. Pages compose these controls without defining button styles.
+- In model and voice lists, place add actions at the right of section headings,
+  with labeled fetch actions beside them. Keep preview/delete actions with their
+  items, preserving touch targets and press feedback.
+- Selection rows use anchored native menus with system selection indicators.
+  iOS uses `IosSelectMenu` with a named, full-width trigger.
 
 ### Book Card
 Cover art at `aspect-ratio 2/3`. Cover gradient overlay uses `rgba(0,0,0,…)`

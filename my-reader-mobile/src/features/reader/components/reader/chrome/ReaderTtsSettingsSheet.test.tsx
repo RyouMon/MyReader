@@ -81,7 +81,6 @@ const mockConfig = {
       id: "openai",
       name: "OpenAI",
       kind: "openAiCompatible" as const,
-      enabled: true,
       endpoint: "https://api.openai.com/v1",
       model: "gpt-4o-mini-tts",
       responseFormat: "mp3" as const,
@@ -175,6 +174,11 @@ jest.mock("@my-reader/readium", () => ({
 
 jest.mock("@react-native-menu/menu", () => ({
   MenuView: mockView,
+}))
+
+jest.mock("@/src/components/ui/ios-select-menu", () => ({
+  IosSelectMenu: ({ children }: { children: mockReact.ReactNode }) =>
+    mockReact.createElement(mockView, null, children),
 }))
 
 jest.mock("react-i18next", () => ({

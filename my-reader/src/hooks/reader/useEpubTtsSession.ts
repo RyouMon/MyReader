@@ -442,8 +442,7 @@ export function useEpubTtsSession({
     const provider =
       configuredEngine.kind === "provider"
         ? activeConfig.profiles.find(
-            (profile) =>
-              profile.id === configuredEngine.profileId && profile.enabled,
+            (profile) => profile.id === configuredEngine.profileId,
           )
         : undefined
     if (!provider && !window.speechSynthesis) {

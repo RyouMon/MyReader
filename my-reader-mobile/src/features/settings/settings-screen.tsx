@@ -2,7 +2,6 @@ import { errorMessage } from "@/src/i18n/error-message"
 import { LANGUAGE_NAMES, SUPPORTED_LANGUAGES } from "@my-reader/i18n/languages"
 import HeadphonesIcon from "@expo/material-symbols/headphones.xml"
 import { libraryTypeOf } from "@my-reader/tools/types/library"
-import type { MenuAction } from "@react-native-menu/menu"
 import { Image as ExpoImage } from "expo-image"
 import { router, useNavigation } from "expo-router"
 import { useEffect, useMemo, useRef } from "react"
@@ -10,6 +9,7 @@ import { useTranslation } from "react-i18next"
 import { Switch } from "react-native"
 import {
   ListMenuRow,
+  type ListMenuAction,
   ListRow,
   type ListRowIcon,
   Screen,
@@ -126,7 +126,7 @@ export default function SettingsScreen() {
     [t],
   )
   const themeMode = themeModeLabels[mode]
-  const themeMenuActions = useMemo<MenuAction[]>(() => {
+  const themeMenuActions = useMemo<ListMenuAction[]>(() => {
     const themeModes = [
       t("settings.themeMode.system"),
       t("settings.themeMode.light"),
@@ -139,7 +139,8 @@ export default function SettingsScreen() {
     }
     return themeModes.map((nextMode) => ({
       id: `theme:${themeModeMap[nextMode]}`,
-      title: `${nextMode === themeMode ? "✓ " : ""}${nextMode}`,
+      title: nextMode,
+      state: nextMode === themeMode ? "on" : "off",
     }))
   }, [t, themeMode])
 
@@ -154,11 +155,12 @@ export default function SettingsScreen() {
     }),
     [t],
   )
-  const languageMenuActions = useMemo<MenuAction[]>(
+  const languageMenuActions = useMemo<ListMenuAction[]>(
     () =>
       ["system", ...SUPPORTED_LANGUAGES].map((lang) => ({
         id: `lang:${lang}`,
-        title: `${effectiveLanguage === lang ? "✓ " : ""}${languageLabels[lang]}`,
+        title: languageLabels[lang] ?? lang,
+        state: effectiveLanguage === lang ? "on" : "off",
       })),
     [effectiveLanguage, languageLabels],
   )
@@ -193,11 +195,12 @@ export default function SettingsScreen() {
     [t],
   )
   const homeCardStyleValue = homeCardStyleLabels[homeCardStyle]
-  const homeCardStyleMenuActions = useMemo<MenuAction[]>(
+  const homeCardStyleMenuActions = useMemo<ListMenuAction[]>(
     () =>
       (["adaptive", "coverBlur"] as HomeCardStyle[]).map((style) => ({
         id: `homeCardStyle:${style}`,
-        title: `${homeCardStyle === style ? "✓ " : ""}${homeCardStyleLabels[style]}`,
+        title: homeCardStyleLabels[style],
+        state: homeCardStyle === style ? "on" : "off",
       })),
     [homeCardStyle, homeCardStyleLabels],
   )
@@ -340,10 +343,11 @@ export default function SettingsScreen() {
               onPress={() => navigateTo("/tts-providers")}
             />
             <ListRow
+              testID="settings-llm-providers-row"
               title={t("llm.title")}
               detail={t("aiProviders.llmDescription")}
               icon={SETTINGS_ROW_ICONS.llm}
-              onPress={() => navigateTo("/settings/llm")}
+              onPress={() => navigateTo("/llm-providers")}
               isLast
             />
           </SectionCard>

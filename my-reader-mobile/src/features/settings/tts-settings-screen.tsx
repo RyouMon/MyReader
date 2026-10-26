@@ -1,8 +1,10 @@
-import { tts as readiumTts } from "@my-reader/readium"
+import {
+  tts as readiumTts,
+  type TtsVoice as SystemTtsVoice,
+} from "@my-reader/readium"
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import { formatTtsLanguageName } from "@my-reader/tools/reader-tts-language"
 import Slider from "@react-native-community/slider"
-import type { MenuAction } from "@react-native-menu/menu"
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio"
 import { useFocusEffect } from "expo-router"
 import * as Speech from "expo-speech"
@@ -13,6 +15,7 @@ import { ActivityIndicator } from "react-native"
 import {
   Button,
   ListMenuRow,
+  type ListMenuAction,
   ListRow,
   Screen,
   SectionCard,
@@ -165,7 +168,7 @@ function TtsPreviewControls({
 }
 
 function voiceLabel(
-  availableVoices: TtsVoice[],
+  availableVoices: SystemTtsVoice[],
   selectedVoiceId: string | undefined,
   automaticLabel: string,
 ) {
@@ -182,7 +185,7 @@ export default function TtsSettingsScreen() {
     i18n?.resolvedLanguage || i18n?.language || PREVIEW_LANGUAGE
   const palette = useThemePalette()
   const [config, setConfig] = useState<MobileTtsConfig | null>(null)
-  const [voices, setVoices] = useState<TtsVoice[]>([])
+  const [voices, setVoices] = useState<SystemTtsVoice[]>([])
   const [voicesLoading, setVoicesLoading] = useState(false)
   const [previewState, setPreviewState] = useState<PreviewState>("idle")
   const [previewSource, setPreviewSource] = useState<string | null>(null)
@@ -263,7 +266,7 @@ export default function TtsSettingsScreen() {
     () =>
       selectedProfile
         ? qwenVoices?.profileId === selectedProfile.id
-          ? qwenVoices.voices
+          ? qwenVoices.voices.map((voice) => ({ ...voice, name: voice.id }))
           : selectedProfile.voices.map((id) => ({
               id,
               name: id,
@@ -278,36 +281,42 @@ export default function TtsSettingsScreen() {
     t("settings.tts.automaticVoice"),
   )
 
-  const engineActions = useMemo<MenuAction[]>(() => {
+  const engineActions = useMemo<ListMenuAction[]>(() => {
     if (!config) return []
     return [
       {
         id: "engine:system",
-        title: `${selectedEngineKey === "system" ? "✓ " : ""}${t("settings.tts.systemEngine")}`,
+        title: t("settings.tts.systemEngine"),
+        state: selectedEngineKey === "system" ? "on" : "off",
       },
-      ...config.profiles
-        .filter((profile) => profile.enabled)
-        .map((profile) => ({
+      ...config.profiles.map(
+        (profile): ListMenuAction => ({
           id: `engine:provider:${profile.id}`,
-          title: `${selectedEngineKey === `provider:${profile.id}` ? "✓ " : ""}${profile.name}/${profile.model}`,
-        })),
+          title: `${profile.name}/${profile.model}`,
+          state: selectedEngineKey === `provider:${profile.id}` ? "on" : "off",
+        }),
+      ),
     ]
   }, [config, selectedEngineKey, t])
 
-  const voiceActions = useMemo<MenuAction[]>(() => {
-    const actions = availableVoices.map((voice) => ({
-      id: `voice:${encodeURIComponent(voice.id)}`,
-      title: `${voice.id === selectedVoiceId ? "✓ " : ""}${voice.name}${
-        voice.language
-          ? ` · ${formatTtsLanguageName(voice.language, previewLanguage)}`
-          : ""
-      }`,
-    }))
+  const voiceActions = useMemo<ListMenuAction[]>(() => {
+    const actions = availableVoices.map(
+      (voice): ListMenuAction => ({
+        id: `voice:${encodeURIComponent(voice.id)}`,
+        state: voice.id === selectedVoiceId ? "on" : "off",
+        title: `${voice.name}${
+          voice.language
+            ? ` · ${formatTtsLanguageName(voice.language, previewLanguage)}`
+            : ""
+        }`,
+      }),
+    )
     if (selectedProfile) return actions
     return [
       {
         id: "voice:automatic",
-        title: `${selectedVoiceId ? "" : "✓ "}${t("settings.tts.automaticVoice")}`,
+        title: t("settings.tts.automaticVoice"),
+        state: selectedVoiceId ? "off" : "on",
       },
       ...actions,
     ]

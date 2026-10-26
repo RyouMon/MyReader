@@ -20,13 +20,13 @@ export function useTtsModelDiscovery() {
         const models = await api.listQwenTtsModels(ttsDraftInput(draft))
         return models.map((model) => ({
           id: model.id,
-          name: model.name,
+
           qwen: model,
         }))
       }
       return (await api.discoverTtsModels(ttsDraftInput(draft))).map((id) => ({
         id,
-        name: id,
+
         qwen: undefined,
       }))
     },

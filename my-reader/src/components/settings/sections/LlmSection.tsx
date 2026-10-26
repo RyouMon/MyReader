@@ -35,7 +35,7 @@ import type { LlmProviderDto, LlmProfileInput } from "@/lib/tauri-specta"
 const newModel = (model = "") => ({
   id: crypto.randomUUID(),
   model,
-  displayName: "",
+
   contextWindow: 32768,
   maxOutputTokens: null,
 })
@@ -102,7 +102,7 @@ export default function LlmSection() {
                       <SelectItem value="none">{t("llm.none")}</SelectItem>
                       {query.data?.profiles.map((profile) => (
                         <SelectItem key={profile.id} value={profile.id}>
-                          {`${profile.name}/${query.data?.providers.flatMap((provider) => provider.models).find((model) => model.id === profile.id)?.displayName || profile.model}`}
+                          {`${profile.name}/${profile.model}`}
                         </SelectItem>
                       ))}
                     </SelectGroup>
@@ -130,7 +130,7 @@ export default function LlmSection() {
                     }
                     body={profile.name}
                     detail={profile.models
-                      .map((model) => model.displayName || model.model)
+                      .map((model) => model.model)
                       .join(" · ")}
                     tail={<Pencil className="size-3.5 text-muted-foreground" />}
                   />
@@ -391,7 +391,7 @@ function LlmProviderForm({
             }
           >
             {(index) => (
-              <FieldGroup className="grid grid-cols-2 gap-3 pr-22">
+              <FieldGroup className="grid grid-cols-2 gap-3">
                 <Field>
                   <FieldLabel
                     className="border-l border-transparent pl-3"

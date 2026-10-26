@@ -41,7 +41,12 @@ const stored = { ...profile, credentialReference: "llm-provider-p" }
 const provider = {
   ...stored,
   models: [
-    { id: stored.id, model: stored.model, contextWindow: stored.contextWindow },
+    {
+      id: stored.id,
+      model: stored.model,
+
+      contextWindow: stored.contextWindow,
+    },
   ],
 }
 const hydratedProvider = {

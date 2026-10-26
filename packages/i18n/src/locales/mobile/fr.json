@@ -221,8 +221,6 @@
       "credentialPlaceholder": "Jeton porteur (facultatif)",
       "instructions": "Consignes de lecture par défaut",
       "instructionsPlaceholder": "Par exemple : Lire naturellement et calmement",
-      "enabled": "Activé",
-      "disabled": "Désactivé",
       "clearCredential": "Effacer les informations d'identification enregistrées",
       "save": "Enregistrer",
       "cancel": "Annuler",

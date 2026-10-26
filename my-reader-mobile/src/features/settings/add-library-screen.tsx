@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next"
 import { Platform } from "react-native"
 
 import {
-  FormLabeledFieldRow,
+  FormTextField,
   HelpSection,
   ListRow,
   Screen,
@@ -31,7 +31,7 @@ import { OneDriveAddingEmptyState } from "@/src/features/onedrive/onedrive-addin
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 import { createSaveAction } from "@/src/navigation/toolbar-action-helpers"
 import { useAppStore } from "@/src/store/app-store"
-import { TextInput, View } from "@/tw"
+import { View } from "@/tw"
 import { useAddLibraryFlow } from "./add-library-flow-context"
 
 export type LibraryOperation = "create" | "open"
@@ -401,15 +401,8 @@ export function CreateLibraryScreen() {
       <Stack.Screen options={options} />
       {toolbar}
       <Screen>
-        <View
-          className="rounded-3xl px-4 py-4"
-          style={{
-            backgroundColor: palette.surface,
-            borderColor: palette.border,
-            borderWidth: 1,
-          }}
-        >
-          <FormLabeledFieldRow
+        <View className="gap-3">
+          <FormTextField
             label={t("addLibrary.name")}
             error={
               trimmedName.length > 0 && !folderNameValid
@@ -417,22 +410,16 @@ export function CreateLibraryScreen() {
                 : undefined
             }
             required
-          >
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder={t("common.myLibrary")}
-              placeholderTextColor={palette.textMuted}
-              autoFocus
-              autoCapitalize="sentences"
-              autoCorrect={false}
-              returnKeyType="done"
-              onSubmitEditing={() => void handleCreate()}
-              className="min-h-10 border-0 bg-transparent py-1 text-base"
-              style={{ color: palette.text }}
-              testID="new-library-name"
-            />
-          </FormLabeledFieldRow>
+            value={name}
+            onChangeText={setName}
+            placeholder={t("common.myLibrary")}
+            autoFocus
+            autoCapitalize="sentences"
+            autoCorrect={false}
+            returnKeyType="done"
+            onSubmitEditing={() => void handleCreate()}
+            testID="new-library-name"
+          />
         </View>
       </Screen>
     </>

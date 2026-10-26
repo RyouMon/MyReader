@@ -79,6 +79,11 @@ jest.mock("react-i18next", () => ({
 }))
 
 jest.mock("@/src/components", () => ({
+  FormTextField: ({ label, ...props }: { label: string }) =>
+    mockReact.createElement(mockTextInput, {
+      ...props,
+      accessibilityLabel: label,
+    }),
   FormLabeledFieldRow: jest.fn(({ children }) =>
     mockReact.createElement(mockView, null, children),
   ),

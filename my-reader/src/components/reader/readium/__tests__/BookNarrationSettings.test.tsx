@@ -75,7 +75,6 @@ const config: TtsConfigDto = {
     id,
     name: id,
     kind: "openAiCompatible",
-    enabled: true,
     endpoint: "https://example.com/v1",
     model: "tts",
     hasCredential: false,
@@ -125,7 +124,7 @@ beforeEach(() => {
     profiles: [],
   })
   mocks.listTtsVoices.mockResolvedValue([
-    { id: "A", name: "Voice A", language: "zh", gender: null },
+    { id: "A", language: "zh", gender: null },
   ])
 })
 
@@ -166,7 +165,7 @@ it("clears the previous voice when switching provider and preserves the stable c
   await user.click(screen.getByRole("option", { name: "two/tts" }))
   expect(screen.getByRole("button", { name: "llm.save" })).toBeDisabled()
   await user.click(screen.getByRole("combobox", { name: "narration.voice" }))
-  await user.click(await screen.findByRole("option", { name: "Voice A" }))
+  await user.click(await screen.findByRole("option", { name: "A" }))
   fireEvent.change(screen.getByLabelText("narration.instructions"), {
     target: { value: "仿男声" },
   })

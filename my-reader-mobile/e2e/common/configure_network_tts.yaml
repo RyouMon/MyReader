@@ -33,18 +33,18 @@ name: Configure the local speech fixture through provider settings
     commands:
       - hideKeyboard
 - scrollUntilVisible:
-    element:
-      id: tts-provider-default-voice
+    element: "添加声音|Add voice"
     direction: DOWN
     centerElement: true
+- tapOn: "添加声音|Add voice"
 - tapOn:
-    id: tts-provider-voices
+    id: tts-voice-id-0
 - runFlow:
     when:
       platform: Android
     commands:
       - assertVisible:
-          id: tts-provider-voices
+          id: tts-voice-id-0
           focused: true
 - inputText: "alloy"
 - runFlow:
@@ -53,7 +53,7 @@ name: Configure the local speech fixture through provider settings
     commands:
       - hideKeyboard
 - assertVisible:
-    id: tts-provider-voices
+    id: tts-voice-id-0
     text: "alloy"
 - tapOn:
     text: "保存|Save"
@@ -82,7 +82,7 @@ name: Configure the local speech fixture through provider settings
       platform: iOS
     commands:
       - tapOn:
-          text: "E2E Speech"
+          text: "E2E Speech/.*"
           childOf:
             containsChild:
               text: "✓ 系统语音|✓ System voice"
@@ -90,9 +90,9 @@ name: Configure the local speech fixture through provider settings
     when:
       platform: Android
     commands:
-      - tapOn: "E2E Speech"
+      - tapOn: "E2E Speech/.*"
 - waitForAnimationToEnd
 # Reopen the native menu to verify persistence before launching the reader.
 - tapOn: "朗读引擎.*|Narration engine.*"
-- assertVisible: "✓ E2E Speech"
-- tapOn: "✓ E2E Speech"
+- assertVisible: "✓ E2E Speech/.*"
+- tapOn: "✓ E2E Speech/.*"

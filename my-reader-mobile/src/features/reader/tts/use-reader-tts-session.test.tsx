@@ -944,7 +944,6 @@ describe("useReaderTtsSession", () => {
       id: "openai",
       name: "OpenAI",
       kind: "openAiCompatible",
-      enabled: true,
       endpoint: "https://api.openai.com/v1",
       model: "gpt-4o-mini-tts",
       responseFormat: "mp3",
@@ -1062,7 +1061,6 @@ describe("useReaderTtsSession", () => {
           id: "openai",
           name: "OpenAI",
           kind: "openAiCompatible",
-          enabled: true,
           endpoint: "https://example.com/v1",
           model: "tts-model",
           voices: [],
@@ -1091,7 +1089,7 @@ describe("useReaderTtsSession", () => {
     await waitFor(() => expect(listTtsVoices).toHaveBeenCalledWith("openai"))
     act(() => result.current.stop())
     await act(async () => {
-      voices.resolve([{ id: "reader", name: "Reader", language: "en" }])
+      voices.resolve([{ id: "reader", language: "en" }])
       await pending
     })
 
@@ -1128,7 +1126,6 @@ describe("useReaderTtsSession", () => {
             id: "openai",
             name: "OpenAI",
             kind: "openAiCompatible",
-            enabled: true,
             endpoint: "https://example.com/v1",
             model: "tts-model",
             voices: [],
@@ -1164,7 +1161,6 @@ describe("useReaderTtsSession", () => {
             id: "openai",
             name: "OpenAI",
             kind: "openAiCompatible",
-            enabled: true,
             endpoint: "https://example.com/v1",
             model: "tts-model",
             voices: ["reader"],
@@ -1241,7 +1237,6 @@ describe("useReaderTtsSession", () => {
       id: "openai",
       name: "OpenAI",
       kind: "openAiCompatible" as const,
-      enabled: true,
       endpoint: "https://api.openai.com/v1",
       model: "gpt-4o-mini-tts",
       responseFormat: "mp3",
@@ -1314,7 +1309,6 @@ describe("useReaderTtsSession", () => {
       id: "openai",
       name: "OpenAI",
       kind: "openAiCompatible" as const,
-      enabled: true,
       endpoint: "https://api.openai.com/v1",
       model: "gpt-4o-mini-tts",
       responseFormat: "mp3",

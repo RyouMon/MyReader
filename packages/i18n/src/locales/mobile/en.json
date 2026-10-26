@@ -209,8 +209,6 @@
       "credentialPlaceholder": "Bearer token (optional)",
       "instructions": "Default reading instructions",
       "instructionsPlaceholder": "For example: Read naturally and calmly",
-      "enabled": "Enabled",
-      "disabled": "Disabled",
       "clearCredential": "Clear saved credential",
       "save": "Save",
       "cancel": "Cancel",

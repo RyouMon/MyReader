@@ -314,6 +314,8 @@ describe("SettingsScreen library navigation", () => {
     expect(screen.getByText("aiProviders.title")).toBeTruthy()
     fireEvent.press(screen.getByTestId("settings-tts-providers-row"))
     expect(router.push).toHaveBeenLastCalledWith("/tts-providers")
+    fireEvent.press(screen.getByTestId("settings-llm-providers-row"))
+    expect(router.push).toHaveBeenLastCalledWith("/llm-providers")
   })
 
   it("should show semantic icons for every settings row", () => {

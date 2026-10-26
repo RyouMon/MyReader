@@ -29,7 +29,6 @@ async fn token_plan_synthesizes_selected_voices_into_playable_audio() {
                 id: "qwen-live".into(),
                 name: "Qwen live verification".into(),
                 kind: TtsProviderKind::Qwen,
-                enabled: true,
                 endpoint: String::new(),
                 model: Some("qwen-audio-3.0-tts-plus".into()),
                 credential_reference: None,

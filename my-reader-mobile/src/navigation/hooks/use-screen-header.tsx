@@ -102,8 +102,14 @@ export function useScreenHeader({
     if (headerShadowVisible !== undefined)
       options.headerShadowVisible = headerShadowVisible
 
-    const hasLeftActions = (left?.length ?? 0) > 0
+    const leftActions = closeAction ? [closeAction, ...(left ?? [])] : left
+    const hasLeftActions = (leftActions?.length ?? 0) > 0
     const hasRightActions = (right?.length ?? 0) > 0
+
+    if (closeAction || back === "hidden") {
+      options.headerBackVisible = false
+      options.headerLeft = () => null
+    }
 
     if (hasLeftActions || hasRightActions) {
       Object.assign(
@@ -111,14 +117,14 @@ export function useScreenHeader({
         buildAndroidHeaderToolbarNavigationOptions({
           hasLeft: hasLeftActions,
           hasRight: hasRightActions,
-          renderLeft: () => renderHeaderToolbarActions(left),
+          renderLeft: () => renderHeaderToolbarActions(leftActions),
           renderRight: () => renderHeaderToolbarActions(right),
         }),
       )
     }
 
     return options
-  }, [title, headerShadowVisible, left, right])
+  }, [title, headerShadowVisible, left, right, closeAction, back])
 
   const useLayoutClose = close?.variant === "layout"
 

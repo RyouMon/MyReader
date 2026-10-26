@@ -5,14 +5,14 @@ import type { MobileTranslationKey } from "@my-reader/i18n/mobile"
 import type { DataSourceWebdav } from "@my-reader/tools/types/data-source"
 import { useForm, useStore } from "@tanstack/react-form"
 import { router, Stack, useLocalSearchParams } from "expo-router"
-import { useRef, useState } from "react"
+import { useRef, useState, type ComponentRef } from "react"
 import { useTranslation } from "react-i18next"
-import { TextInput as RNTextInput } from "react-native"
 import { z } from "zod"
 import {
   EmptyState,
   FormFieldSwitch,
   FormLabeledFieldRow,
+  FormTextField,
   PrimaryButton,
   Screen,
 } from "@/src/components"
@@ -22,7 +22,7 @@ import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 import { createSaveAction } from "@/src/navigation/toolbar-action-helpers"
 import { readWebDavPassword } from "@/src/services/storage/credentials"
 import { useAppStore } from "@/src/store/app-store"
-import { TextInput, View } from "@/tw"
+import { View } from "@/tw"
 
 const addWebDavMobileSchema = z
   .object({
@@ -172,10 +172,10 @@ export default function AddWebDavDataSourceScreen() {
     Partial<Record<string, WebDavValidationKey>>
   >({})
 
-  const portRef = useRef<RNTextInput>(null)
-  const basePathRef = useRef<RNTextInput>(null)
-  const usernameRef = useRef<RNTextInput>(null)
-  const passwordRef = useRef<RNTextInput>(null)
+  const portRef = useRef<ComponentRef<typeof FormTextField>>(null)
+  const basePathRef = useRef<ComponentRef<typeof FormTextField>>(null)
+  const usernameRef = useRef<ComponentRef<typeof FormTextField>>(null)
+  const passwordRef = useRef<ComponentRef<typeof FormTextField>>(null)
 
   const form = useForm({
     defaultValues: webDavFormDefaults(existingWebDavSource),
@@ -304,7 +304,6 @@ export default function AddWebDavDataSourceScreen() {
     }
   }
 
-  const inputClassName = "border-0 bg-transparent py-1 text-base"
   const isAddLibraryFlow = from === "add-library"
 
   const { options, toolbar } = useScreenHeader({
@@ -377,144 +376,102 @@ export default function AddWebDavDataSourceScreen() {
       {toolbar}
 
       <View className="flex-1" style={{ backgroundColor: palette.background }}>
-        <Screen contentContainerClassName="pb-10">
-          <View
-            className="gap-3 rounded-3xl px-4 py-4"
-            style={{
-              backgroundColor: palette.surface,
-              borderColor: palette.border,
-              borderWidth: 1,
-            }}
-          >
+        <Screen>
+          <View className="gap-3">
             <form.Field name="serverUrl">
               {(field) => (
-                <FormLabeledFieldRow
+                <FormTextField
                   label={t("webdav.add.serverAddressLabel")}
                   required
                   error={fieldError("serverUrl")}
-                >
-                  <TextInput
-                    testID="webdav-server-url"
-                    value={field.state.value}
-                    onChangeText={(t) => field.handleChange(t)}
-                    onBlur={field.handleBlur}
-                    placeholder="dav.example.com"
-                    placeholderTextColor={palette.textMuted}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    underlineColorAndroid="transparent"
-                    returnKeyType="next"
-                    onSubmitEditing={() => portRef.current?.focus()}
-                    className={inputClassName}
-                    style={{ color: palette.text }}
-                  />
-                </FormLabeledFieldRow>
+                  testID="webdav-server-url"
+                  value={field.state.value}
+                  onChangeText={(t) => field.handleChange(t)}
+                  onBlur={field.handleBlur}
+                  placeholder="dav.example.com"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="next"
+                  onSubmitEditing={() => portRef.current?.focus()}
+                />
               )}
             </form.Field>
 
             <form.Field name="port">
               {(field) => (
-                <FormLabeledFieldRow
+                <FormTextField
                   label={t("webdav.add.portLabel")}
                   error={fieldError("port")}
-                >
-                  <RNTextInput
-                    testID="webdav-port"
-                    ref={portRef}
-                    value={field.state.value}
-                    onChangeText={(t) => field.handleChange(t)}
-                    onBlur={field.handleBlur}
-                    placeholder={useSsl ? "443" : "80"}
-                    placeholderTextColor={palette.textMuted}
-                    keyboardType="number-pad"
-                    underlineColorAndroid="transparent"
-                    returnKeyType="next"
-                    onSubmitEditing={() => basePathRef.current?.focus()}
-                    className="min-h-10 border-0 bg-transparent py-1 text-base"
-                    style={{ color: palette.text }}
-                  />
-                </FormLabeledFieldRow>
+                  testID="webdav-port"
+                  ref={portRef}
+                  value={field.state.value}
+                  onChangeText={(t) => field.handleChange(t)}
+                  onBlur={field.handleBlur}
+                  placeholder={useSsl ? "443" : "80"}
+                  keyboardType="number-pad"
+                  returnKeyType="next"
+                  onSubmitEditing={() => basePathRef.current?.focus()}
+                />
               )}
             </form.Field>
 
             <form.Field name="basePath">
               {(field) => (
-                <FormLabeledFieldRow
+                <FormTextField
                   label={t("webdav.add.basePathLabel")}
                   error={fieldError("basePath")}
-                >
-                  <RNTextInput
-                    testID="webdav-base-path"
-                    ref={basePathRef}
-                    value={field.state.value}
-                    onChangeText={(t) => field.handleChange(t)}
-                    onBlur={field.handleBlur}
-                    placeholder="/"
-                    placeholderTextColor={palette.textMuted}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    underlineColorAndroid="transparent"
-                    returnKeyType="next"
-                    onSubmitEditing={() => usernameRef.current?.focus()}
-                    className="min-h-10 border-0 bg-transparent py-1 text-base"
-                    style={{ color: palette.text }}
-                  />
-                </FormLabeledFieldRow>
+                  testID="webdav-base-path"
+                  ref={basePathRef}
+                  value={field.state.value}
+                  onChangeText={(t) => field.handleChange(t)}
+                  onBlur={field.handleBlur}
+                  placeholder="/"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="next"
+                  onSubmitEditing={() => usernameRef.current?.focus()}
+                />
               )}
             </form.Field>
 
             <form.Field name="username">
               {(field) => (
-                <FormLabeledFieldRow
+                <FormTextField
                   label={t("webdav.add.usernameLabel")}
                   error={fieldError("username")}
-                >
-                  <RNTextInput
-                    testID="webdav-username"
-                    ref={usernameRef}
-                    value={field.state.value}
-                    onChangeText={(t) => field.handleChange(t)}
-                    onBlur={field.handleBlur}
-                    placeholder={t("webdav.add.usernamePlaceholder")}
-                    placeholderTextColor={palette.textMuted}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    underlineColorAndroid="transparent"
-                    returnKeyType="next"
-                    onSubmitEditing={() => passwordRef.current?.focus()}
-                    className="min-h-10 border-0 bg-transparent py-1 text-base"
-                    style={{ color: palette.text }}
-                  />
-                </FormLabeledFieldRow>
+                  testID="webdav-username"
+                  ref={usernameRef}
+                  value={field.state.value}
+                  onChangeText={(t) => field.handleChange(t)}
+                  onBlur={field.handleBlur}
+                  placeholder={t("webdav.add.usernamePlaceholder")}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                />
               )}
             </form.Field>
 
             <form.Field name="password">
               {(field) => (
-                <FormLabeledFieldRow
+                <FormTextField
                   label={t("webdav.add.passwordLabel")}
                   error={fieldError("password")}
-                >
-                  <RNTextInput
-                    testID="webdav-password"
-                    ref={passwordRef}
-                    value={field.state.value}
-                    onChangeText={(t) => field.handleChange(t)}
-                    onBlur={field.handleBlur}
-                    placeholder={t(
-                      editing
-                        ? "webdav.add.passwordKeepPlaceholder"
-                        : "webdav.add.passwordPlaceholder",
-                    )}
-                    placeholderTextColor={palette.textMuted}
-                    secureTextEntry
-                    underlineColorAndroid="transparent"
-                    returnKeyType="done"
-                    onSubmitEditing={() => void handleSave()}
-                    className="min-h-10 border-0 bg-transparent py-1 text-base"
-                    style={{ color: palette.text }}
-                  />
-                </FormLabeledFieldRow>
+                  testID="webdav-password"
+                  ref={passwordRef}
+                  value={field.state.value}
+                  onChangeText={(t) => field.handleChange(t)}
+                  onBlur={field.handleBlur}
+                  placeholder={t(
+                    editing
+                      ? "webdav.add.passwordKeepPlaceholder"
+                      : "webdav.add.passwordPlaceholder",
+                  )}
+                  secureTextEntry
+                  returnKeyType="done"
+                  onSubmitEditing={() => void handleSave()}
+                />
               )}
             </form.Field>
 

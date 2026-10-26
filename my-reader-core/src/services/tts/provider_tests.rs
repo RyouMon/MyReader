@@ -2,11 +2,9 @@ use super::*;
 
 fn provider(kind: TtsProviderKind) -> TtsProvider {
     TtsProvider {
-        voice_names: Default::default(),
         id: "provider".into(),
         name: "Provider".into(),
         kind,
-        enabled: true,
         endpoint: "https://dashscope.aliyuncs.com/api/v1".into(),
         credential_reference: Some("shared-reference".into()),
         model_scoped_voices: kind == TtsProviderKind::Qwen,
@@ -16,8 +14,6 @@ fn provider(kind: TtsProviderKind) -> TtsProvider {
             vec![]
         },
         models: vec![crate::models::TtsModel {
-            display_name: String::new(),
-            voice_names: Default::default(),
             id: "model-a".into(),
             model: if kind == TtsProviderKind::Qwen {
                 "qwen3-tts-flash"
@@ -192,35 +188,28 @@ fn openai_can_scope_voices_to_models_and_switch_back_without_changing_model_ids(
 }
 
 #[tokio::test]
-async fn persists_display_names_and_uses_voice_labels_without_changing_synthesis_revision() {
+async fn legacy_labels_are_dropped_without_changing_voice_ids_or_synthesis_revision() {
     for scoped in [false, true] {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("config.json");
         let mut provider = provider(TtsProviderKind::OpenAiCompatible);
         provider.model_scoped_voices = scoped;
         provider.models[0].voices = provider.voices.clone();
-        TtsService::upsert_provider(&path, provider.clone()).unwrap();
-        provider.models[0].display_name = " Narrator model ".into();
-        let names = [(" voice-a ".into(), " Narrator ".into())].into();
-        if scoped {
-            provider.models[0].voice_names = names;
-        } else {
-            provider.voice_names = names;
-        }
-        let saved = TtsService::upsert_provider(&path, provider).unwrap();
-        assert_eq!(saved.providers[0].models[0].display_name, "Narrator model");
-        assert_eq!(saved.providers[0].models[0].revision, 1);
+        let original = TtsService::upsert_provider(&path, provider.clone()).unwrap();
+        let mut legacy = serde_json::to_value(provider).unwrap();
+        legacy["models"][0]["displayName"] = serde_json::json!("Narrator model");
+        legacy["models"][0]["voiceNames"] = serde_json::json!({"voice-a":"Narrator"});
+        legacy["voiceNames"] = serde_json::json!({"voice-a":"Narrator"});
+        let saved =
+            TtsService::upsert_provider(&path, serde_json::from_value(legacy).unwrap()).unwrap();
+        assert_eq!(saved, original);
         assert_eq!(TtsService::get_config(&path).unwrap(), saved);
         let voices = TtsService::list_voices(&path, "model-a", None)
             .await
             .unwrap();
-        assert_eq!(
-            voices
-                .iter()
-                .find(|voice| voice.id == "voice-a")
-                .unwrap()
-                .name,
-            "Narrator"
-        );
+        assert!(voices.iter().any(|voice| voice.id == "voice-a"));
+        let on_disk = std::fs::read_to_string(&path).unwrap();
+        assert!(!on_disk.contains("displayName"));
+        assert!(!on_disk.contains("voiceNames"));
     }
 }

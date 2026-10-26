@@ -1,4 +1,22 @@
 {
+  "providerEditor": {
+    "playbackFailed": "오디오를 재생하지 못했습니다.",
+    "fetchModels": "사용 가능한 모델 가져오기",
+    "models": "모델 목록",
+    "voices": "음성 목록",
+    "modelId": "모델 ID",
+    "modelDetails": "모델 설정",
+    "maxOutput": "최대 출력 토큰 수",
+    "automatic": "자동",
+    "noNewModels": "사용 가능한 모델이 모두 추가되었습니다",
+    "addSelected": "선택한 모델 추가",
+    "audioFormat": "오디오 형식",
+    "voiceId": "음성 ID",
+    "removeVoice": "음성 삭제",
+    "addVoice": "음성 추가",
+    "fetchVoices": "음성 가져오기",
+    "testModel": "테스트 모델"
+  },
   "llm": {
     "title": "LLM 제공업체",
     "add": "제공업체 추가",

@@ -470,7 +470,6 @@ type TtsProviderProfile = {
   id: string
   name: string
   kind: TtsProviderKind
-  enabled: boolean
   endpoint?: string
   model?: string
   credentialRef?: string

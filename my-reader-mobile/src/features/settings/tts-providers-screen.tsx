@@ -18,7 +18,8 @@ export default function TtsProvidersScreen() {
   const { options, toolbar } = useScreenHeader({
     title: t("ttsSettings.providers"),
     back: "hidden",
-    close: {},
+    close: { variant: "layout" },
+    backTitle: t("back"),
   })
   useFocusEffect(
     useCallback(() => {
@@ -67,7 +68,6 @@ function TtsProviderList({
               key={profile.id}
               title={profile.name}
               detail={`${profile.kind === "qwen" ? "Qwen" : t("settings.tts.providerKinds.openAiCompatible")} · ${profile.endpoint}`}
-              value={profile.enabled ? undefined : t("settings.tts.disabled")}
               isLast={index === profiles.length - 1}
               onPress={() =>
                 router.push({

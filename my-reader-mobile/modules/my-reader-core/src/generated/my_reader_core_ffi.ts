@@ -6092,6 +6092,57 @@ export function syncSetLibraryOnline(
   );
 }
 
+export async function ttsDiscoverModels(
+  profile: TtsProviderProfile,
+  credential: string | undefined,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<Array<string>> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_tts_discover_models(
+          FfiConverterTypeTtsProviderProfile.lower(
+            profile,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterOptionalString.lower(
+            credential,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterSequenceString.lift.bind(
+        FfiConverterSequenceString,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
 export async function ttsDiscoverQwenVoices(
   endpoint: string,
   model: string,
@@ -6220,6 +6271,64 @@ export async function ttsListVoices(
       // here using the per-callable return-type converter.
       /*liftFunc:*/ FfiConverterSequenceTypeTtsVoice.lift.bind(
         FfiConverterSequenceTypeTtsVoice,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function ttsPreviewProvider(
+  profile: TtsProviderProfile,
+  cacheDirectory: string,
+  text: string,
+  credential: string | undefined,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<TtsAudioArtifact> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_tts_preview_provider(
+          FfiConverterTypeTtsProviderProfile.lower(
+            profile,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            cacheDirectory,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(text, nativeModule().rustbuffer_alloc),
+          FfiConverterOptionalString.lower(
+            credential,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeTtsAudioArtifact.lift.bind(
+        FfiConverterTypeTtsAudioArtifact,
       ),
       /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
       /*asyncOpts:*/ asyncOpts_,
@@ -9461,6 +9570,7 @@ const FfiConverterTypeLibrarySyncReport = (() => {
 export type LlmModel = {
   id: string;
   model: string;
+  maxOutputTokens?: number;
   contextWindow: number;
 };
 
@@ -9486,18 +9596,21 @@ const FfiConverterTypeLlmModel = (() => {
       return {
         id: FfiConverterString.read(from),
         model: FfiConverterString.read(from),
+        maxOutputTokens: FfiConverterOptionalUInt32.read(from),
         contextWindow: FfiConverterUInt32.read(from),
       };
     }
     write(value: TypeName, into: RustBuffer): void {
       FfiConverterString.write(value.id, into);
       FfiConverterString.write(value.model, into);
+      FfiConverterOptionalUInt32.write(value.maxOutputTokens, into);
       FfiConverterUInt32.write(value.contextWindow, into);
     }
     allocationSize(value: TypeName): number {
       return (
         FfiConverterString.allocationSize(value.id) +
         FfiConverterString.allocationSize(value.model) +
+        FfiConverterOptionalUInt32.allocationSize(value.maxOutputTokens) +
         FfiConverterUInt32.allocationSize(value.contextWindow)
       );
     }
@@ -9573,6 +9686,7 @@ export type LlmProviderProfile = {
   endpoint: string;
   model: string;
   contextWindow: number;
+  maxOutputTokens?: number;
   credentialReference?: string;
   revision: number;
 };
@@ -9605,6 +9719,7 @@ const FfiConverterTypeLlmProviderProfile = (() => {
         endpoint: FfiConverterString.read(from),
         model: FfiConverterString.read(from),
         contextWindow: FfiConverterUInt32.read(from),
+        maxOutputTokens: FfiConverterOptionalUInt32.read(from),
         credentialReference: FfiConverterOptionalString.read(from),
         revision: FfiConverterUInt32.read(from),
       };
@@ -9616,6 +9731,7 @@ const FfiConverterTypeLlmProviderProfile = (() => {
       FfiConverterString.write(value.endpoint, into);
       FfiConverterString.write(value.model, into);
       FfiConverterUInt32.write(value.contextWindow, into);
+      FfiConverterOptionalUInt32.write(value.maxOutputTokens, into);
       FfiConverterOptionalString.write(value.credentialReference, into);
       FfiConverterUInt32.write(value.revision, into);
     }
@@ -9627,6 +9743,7 @@ const FfiConverterTypeLlmProviderProfile = (() => {
         FfiConverterString.allocationSize(value.endpoint) +
         FfiConverterString.allocationSize(value.model) +
         FfiConverterUInt32.allocationSize(value.contextWindow) +
+        FfiConverterOptionalUInt32.allocationSize(value.maxOutputTokens) +
         FfiConverterOptionalString.allocationSize(value.credentialReference) +
         FfiConverterUInt32.allocationSize(value.revision)
       );
@@ -10139,7 +10256,6 @@ const FfiConverterTypePaginatedBooks = (() => {
 
 export type TtsVoice = {
   id: string;
-  name: string;
   language: string;
   gender?: string;
 };
@@ -10165,21 +10281,18 @@ const FfiConverterTypeTtsVoice = (() => {
     read(from: RustBuffer): TypeName {
       return {
         id: FfiConverterString.read(from),
-        name: FfiConverterString.read(from),
         language: FfiConverterString.read(from),
         gender: FfiConverterOptionalString.read(from),
       };
     }
     write(value: TypeName, into: RustBuffer): void {
       FfiConverterString.write(value.id, into);
-      FfiConverterString.write(value.name, into);
       FfiConverterString.write(value.language, into);
       FfiConverterOptionalString.write(value.gender, into);
     }
     allocationSize(value: TypeName): number {
       return (
         FfiConverterString.allocationSize(value.id) +
-        FfiConverterString.allocationSize(value.name) +
         FfiConverterString.allocationSize(value.language) +
         FfiConverterOptionalString.allocationSize(value.gender)
       );
@@ -10190,7 +10303,6 @@ const FfiConverterTypeTtsVoice = (() => {
 
 export type QwenTtsModel = {
   id: string;
-  name: string;
   supportsInstructions: boolean;
   voiceDiscovery: boolean;
   audioFormats: Array<string>;
@@ -10220,7 +10332,6 @@ const FfiConverterTypeQwenTtsModel = (() => {
     read(from: RustBuffer): TypeName {
       return {
         id: FfiConverterString.read(from),
-        name: FfiConverterString.read(from),
         supportsInstructions: FfiConverterBool.read(from),
         voiceDiscovery: FfiConverterBool.read(from),
         audioFormats: FfiConverterSequenceString.read(from),
@@ -10229,7 +10340,6 @@ const FfiConverterTypeQwenTtsModel = (() => {
     }
     write(value: TypeName, into: RustBuffer): void {
       FfiConverterString.write(value.id, into);
-      FfiConverterString.write(value.name, into);
       FfiConverterBool.write(value.supportsInstructions, into);
       FfiConverterBool.write(value.voiceDiscovery, into);
       FfiConverterSequenceString.write(value.audioFormats, into);
@@ -10238,7 +10348,6 @@ const FfiConverterTypeQwenTtsModel = (() => {
     allocationSize(value: TypeName): number {
       return (
         FfiConverterString.allocationSize(value.id) +
-        FfiConverterString.allocationSize(value.name) +
         FfiConverterBool.allocationSize(value.supportsInstructions) +
         FfiConverterBool.allocationSize(value.voiceDiscovery) +
         FfiConverterSequenceString.allocationSize(value.audioFormats) +
@@ -11440,7 +11549,6 @@ export type TtsProvider = {
   id: string;
   name: string;
   kind: string;
-  enabled: boolean;
   endpoint: string;
   credentialReference?: string;
   voices: Array<string>;
@@ -11473,7 +11581,6 @@ const FfiConverterTypeTtsProvider = (() => {
         id: FfiConverterString.read(from),
         name: FfiConverterString.read(from),
         kind: FfiConverterString.read(from),
-        enabled: FfiConverterBool.read(from),
         endpoint: FfiConverterString.read(from),
         credentialReference: FfiConverterOptionalString.read(from),
         voices: FfiConverterSequenceString.read(from),
@@ -11485,7 +11592,6 @@ const FfiConverterTypeTtsProvider = (() => {
       FfiConverterString.write(value.id, into);
       FfiConverterString.write(value.name, into);
       FfiConverterString.write(value.kind, into);
-      FfiConverterBool.write(value.enabled, into);
       FfiConverterString.write(value.endpoint, into);
       FfiConverterOptionalString.write(value.credentialReference, into);
       FfiConverterSequenceString.write(value.voices, into);
@@ -11497,7 +11603,6 @@ const FfiConverterTypeTtsProvider = (() => {
         FfiConverterString.allocationSize(value.id) +
         FfiConverterString.allocationSize(value.name) +
         FfiConverterString.allocationSize(value.kind) +
-        FfiConverterBool.allocationSize(value.enabled) +
         FfiConverterString.allocationSize(value.endpoint) +
         FfiConverterOptionalString.allocationSize(value.credentialReference) +
         FfiConverterSequenceString.allocationSize(value.voices) +
@@ -11555,7 +11660,6 @@ export type TtsProviderProfile = {
   id: string;
   name: string;
   kind: string;
-  enabled: boolean;
   endpoint: string;
   model?: string;
   credentialReference?: string;
@@ -11591,7 +11695,6 @@ const FfiConverterTypeTtsProviderProfile = (() => {
         id: FfiConverterString.read(from),
         name: FfiConverterString.read(from),
         kind: FfiConverterString.read(from),
-        enabled: FfiConverterBool.read(from),
         endpoint: FfiConverterString.read(from),
         model: FfiConverterOptionalString.read(from),
         credentialReference: FfiConverterOptionalString.read(from),
@@ -11606,7 +11709,6 @@ const FfiConverterTypeTtsProviderProfile = (() => {
       FfiConverterString.write(value.id, into);
       FfiConverterString.write(value.name, into);
       FfiConverterString.write(value.kind, into);
-      FfiConverterBool.write(value.enabled, into);
       FfiConverterString.write(value.endpoint, into);
       FfiConverterOptionalString.write(value.model, into);
       FfiConverterOptionalString.write(value.credentialReference, into);
@@ -11621,7 +11723,6 @@ const FfiConverterTypeTtsProviderProfile = (() => {
         FfiConverterString.allocationSize(value.id) +
         FfiConverterString.allocationSize(value.name) +
         FfiConverterString.allocationSize(value.kind) +
-        FfiConverterBool.allocationSize(value.enabled) +
         FfiConverterString.allocationSize(value.endpoint) +
         FfiConverterOptionalString.allocationSize(value.model) +
         FfiConverterOptionalString.allocationSize(value.credentialReference) +
@@ -12820,6 +12921,9 @@ const FfiConverterOptionalTypeSyncFailureKind = new FfiConverterOptional(
   FfiConverterTypeSyncFailureKind,
 );
 
+// FfiConverter for number | undefined
+const FfiConverterOptionalUInt32 = new FfiConverterOptional(FfiConverterUInt32);
+
 // FfiConverter for Array<LlmModel>
 const FfiConverterSequenceTypeLlmModel = new FfiConverterArray(
   FfiConverterTypeLlmModel,
@@ -12899,9 +13003,6 @@ const FfiConverterSequenceTypeTtsProviderProfile = new FfiConverterArray(
 const FfiConverterSequenceTypeTtsLanguageVoice = new FfiConverterArray(
   FfiConverterTypeTtsLanguageVoice,
 );
-
-// FfiConverter for number | undefined
-const FfiConverterOptionalUInt32 = new FfiConverterOptional(FfiConverterUInt32);
 
 // FfiConverter for AppConfig | undefined
 const FfiConverterOptionalTypeAppConfig = new FfiConverterOptional(
@@ -14104,6 +14205,14 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_discover_models() !==
+    30721
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_tts_discover_models",
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_discover_qwen_voices() !==
     7599
   ) {
@@ -14125,6 +14234,14 @@ function uniffiEnsureInitialized() {
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_tts_list_voices",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_preview_provider() !==
+    47845
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_tts_preview_provider",
     );
   }
   if (

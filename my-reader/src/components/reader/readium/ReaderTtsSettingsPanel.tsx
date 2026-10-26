@@ -399,12 +399,8 @@ function ReaderTtsEngineSelect({
               {t("reader.tts.systemEngine")}
             </SelectItem>
             {config.profiles.map((profile) => (
-              <SelectItem
-                key={profile.id}
-                value={profile.id}
-                disabled={!profile.enabled}
-              >
-                {`${profile.name}/${profile.modelName || profile.model}`}
+              <SelectItem key={profile.id} value={profile.id}>
+                {`${profile.name}/${profile.model}`}
               </SelectItem>
             ))}
           </SelectGroup>

@@ -32,7 +32,6 @@ async fn websocket_tls_reports_handshake_errors_without_a_global_crypto_provider
             id: "qwen-tls".into(),
             name: "Qwen TLS regression".into(),
             kind: TtsProviderKind::Qwen,
-            enabled: true,
             endpoint,
             model: Some("qwen-audio-3.0-tts-plus".into()),
             credential_reference: None,
