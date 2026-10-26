@@ -524,8 +524,13 @@ function CharacterVoiceFields({
   )
   const voices = useQuery({
     queryKey: ["narration-voices", provider ?? "system"],
-    queryFn: () =>
-      provider ? listTtsVoices(provider) : readiumTts.getSystemVoices(),
+    queryFn: async () =>
+      provider
+        ? (await listTtsVoices(provider)).map((voice) => ({
+            ...voice,
+            name: voice.id,
+          }))
+        : readiumTts.getSystemVoices(),
     enabled: Boolean(draft.voice),
   })
   return (
@@ -547,12 +552,10 @@ function CharacterVoiceFields({
         actions={[
           { id: "default", title: t("narration.defaultVoice") },
           { id: "system", title: t("narration.system") },
-          ...config.profiles
-            .filter((profile) => profile.enabled)
-            .map((profile) => ({
-              id: profile.id,
-              title: `${profile.name}/${profile.model}`,
-            })),
+          ...config.profiles.map((profile) => ({
+            id: profile.id,
+            title: `${profile.name}/${profile.model}`,
+          })),
         ]}
         onSelect={(value) =>
           setDraft({

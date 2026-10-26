@@ -1,4 +1,22 @@
 export const sharedZhCN = {
+  providerEditor: {
+    playbackFailed: "音频播放失败。",
+    fetchModels: "获取可用模型",
+    models: "模型列表",
+    voices: "声音列表",
+    modelId: "模型 ID",
+    modelDetails: "模型设置",
+    maxOutput: "最大输出 token 数",
+    automatic: "自动",
+    noNewModels: "可用模型均已添加",
+    addSelected: "添加所选模型",
+    audioFormat: "音频格式",
+    voiceId: "声音 ID",
+    removeVoice: "删除声音",
+    addVoice: "添加声音",
+    fetchVoices: "获取声音",
+    testModel: "测试模型",
+  },
   aiProviders: {
     modelScopedVoices: "音色按模型配置",
     title: "AI 供应商",

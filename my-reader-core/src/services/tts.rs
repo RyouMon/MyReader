@@ -89,7 +89,7 @@ impl TtsService {
             .credential_reference
             .get_or_insert_with(|| format!("tts:{}:api-key", provider.id));
         let mut models = Vec::new();
-        for (mut profile, original) in provider.profiles().into_iter().zip(&provider.models) {
+        for mut profile in provider.profiles() {
             if profile
                 .model
                 .as_deref()
@@ -99,8 +99,6 @@ impl TtsService {
             }
             normalize_profile(&mut profile)?;
             let mut normalized = TtsProvider::from(profile);
-            normalized.models[0].display_name = original.display_name.trim().to_owned();
-            normalized.models[0].voice_names = normalize_voice_names(&original.voice_names);
             if provider.model_scoped_voices && provider.kind == TtsProviderKind::OpenAiCompatible {
                 normalized.models[0].voices = std::mem::take(&mut normalized.voices);
             }
@@ -110,7 +108,6 @@ impl TtsService {
             models.extend(normalized.models);
         }
         provider.models = models;
-        provider.voice_names = normalize_voice_names(&provider.voice_names);
         let state = ConfigService::mutate_config(config_path, move |state| {
             let previous = state.tts.profiles();
             let resolved = provider.profiles();
@@ -224,7 +221,7 @@ impl TtsService {
         credential: Option<&str>,
     ) -> Result<TtsProviderCapabilities, CoreError> {
         let config = Self::get_config(config_path)?;
-        let profile = find_enabled_profile(&config, profile_id)?;
+        let profile = find_profile(&config, profile_id)?;
         tts::probe(&profile, credential).await
     }
 
@@ -234,27 +231,8 @@ impl TtsService {
         credential: Option<&str>,
     ) -> Result<Vec<TtsVoice>, CoreError> {
         let config = Self::get_config(config_path)?;
-        let profile = find_enabled_profile(&config, profile_id)?;
-        let mut voices = tts::list_voices(&profile, credential).await?;
-        if let Some((provider, model)) = config.providers.iter().find_map(|provider| {
-            provider
-                .models
-                .iter()
-                .find(|model| model.id == profile_id)
-                .map(|model| (provider, model))
-        }) {
-            let names = if provider.model_scoped_voices || provider.kind == TtsProviderKind::Qwen {
-                &model.voice_names
-            } else {
-                &provider.voice_names
-            };
-            for voice in &mut voices {
-                if let Some(name) = names.get(&voice.id).filter(|name| !name.trim().is_empty()) {
-                    voice.name = name.clone();
-                }
-            }
-        }
-        Ok(voices)
+        let profile = find_profile(&config, profile_id)?;
+        tts::list_voices(&profile, credential).await
     }
 
     /// Test an unsaved profile without changing configuration or writing audio to disk.
@@ -337,7 +315,7 @@ impl TtsService {
     ) -> Result<TtsAudioArtifact, CoreError> {
         validate_request(&request)?;
         let config = Self::get_config(config_path)?;
-        let profile = find_enabled_profile(&config, &request.profile_id)?;
+        let profile = find_profile(&config, &request.profile_id)?;
         validate_request_for_profile(&profile, &request)?;
         let rate = if profile.kind == TtsProviderKind::Qwen {
             let requested = request.speed.unwrap_or(1.0);
@@ -593,10 +571,7 @@ fn validate_request_for_profile(
 fn reconcile_selections(config: &mut TtsConfig, previous: &[TtsProviderProfile]) {
     let profiles = config.profiles();
     if let TtsEngineSelection::Provider { profile_id } = &config.default_engine {
-        if !profiles
-            .iter()
-            .any(|profile| &profile.id == profile_id && profile.enabled)
-        {
+        if !profiles.iter().any(|profile| &profile.id == profile_id) {
             config.default_engine = TtsEngineSelection::System;
         }
     }
@@ -627,20 +602,6 @@ fn find_profile(config: &TtsConfig, profile_id: &str) -> Result<TtsProviderProfi
         .into_iter()
         .find(|profile| profile.id == profile_id.trim())
         .ok_or_else(|| CoreError::NotFound(format!("TTS_PROFILE_NOT_FOUND: {profile_id}")))
-}
-
-fn find_enabled_profile(
-    config: &TtsConfig,
-    profile_id: &str,
-) -> Result<TtsProviderProfile, CoreError> {
-    let profile = find_profile(config, profile_id)?;
-    if !profile.enabled {
-        return Err(tts_error(
-            TtsErrorKind::Configuration,
-            "TTS_PROFILE_DISABLED",
-        ));
-    }
-    Ok(profile)
 }
 
 fn normalize_optional(value: Option<String>) -> Option<String> {
@@ -745,19 +706,6 @@ fn tts_error(kind: TtsErrorKind, code: &str) -> CoreError {
     }
 }
 
-fn normalize_voice_names(
-    names: &std::collections::BTreeMap<String, String>,
-) -> std::collections::BTreeMap<String, String> {
-    names
-        .iter()
-        .filter_map(|(id, name)| {
-            let id = id.trim();
-            let name = name.trim();
-            (!id.is_empty() && !name.is_empty()).then(|| (id.to_owned(), name.to_owned()))
-        })
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
@@ -777,7 +725,6 @@ mod tests {
             id: "openai".into(),
             name: "OpenAI".into(),
             kind: TtsProviderKind::OpenAiCompatible,
-            enabled: true,
             endpoint,
             model: Some("gpt-4o-mini-tts".into()),
             credential_reference: Some("tts:openai:api-key".into()),
@@ -806,11 +753,59 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn tests_unsaved_and_disabled_profiles_with_real_synthesis() {
+    async fn legacy_disabled_providers_remain_selectable_and_playable() {
+        for version in [1, 2] {
+            let directory = tempfile::tempdir().unwrap();
+            let path = directory.path().join("config.json");
+            let audio = b"ID3test-audio";
+            let (endpoint, server) = test_server(vec![response("audio/mpeg", audio)]).await;
+            let profile = openai_profile(endpoint);
+            let provider = TtsProvider::from(profile.clone());
+            let (key, mut saved) = if version == 1 {
+                ("profiles", serde_json::to_value(&profile).unwrap())
+            } else {
+                ("providers", serde_json::to_value(&provider).unwrap())
+            };
+            saved["enabled"] = false.into();
+            let mut config = serde_json::json!({"tts": {"schemaVersion": version}});
+            config["tts"][key] = serde_json::json!([saved]);
+            std::fs::write(&path, serde_json::to_vec(&config).unwrap()).unwrap();
+
+            assert_eq!(
+                TtsService::get_config(&path).unwrap().providers,
+                vec![provider.clone()]
+            );
+            let engine = TtsEngineSelection::Provider {
+                profile_id: profile.id.clone(),
+            };
+            TtsService::set_default_engine(&path, engine.clone()).unwrap();
+            let updated = TtsService::upsert_provider(&path, provider).unwrap();
+            assert_eq!(updated.default_engine, engine);
+            assert!(TtsService::list_voices(&path, &profile.id, None)
+                .await
+                .unwrap()
+                .iter()
+                .any(|voice| voice.id == "reader-voice"));
+            let artifact = TtsService::synthesize(
+                &path,
+                directory.path(),
+                request(&profile.id, "audio/mpeg"),
+                Some("fixture-key"),
+            )
+            .await
+            .unwrap();
+            assert_eq!(std::fs::read(artifact.path).unwrap(), audio);
+            assert_eq!(server.await.unwrap().len(), 1);
+            let stored: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+            assert!(stored["tts"]["providers"][0].get("enabled").is_none());
+        }
+    }
+
+    #[tokio::test]
+    async fn tests_unsaved_profiles_with_real_synthesis() {
         let (endpoint, server) = test_server(vec![response("audio/mpeg", b"ID3test-audio")]).await;
         let mut profile = openai_profile(endpoint);
         profile.id.clear();
-        profile.enabled = false;
         profile.model = Some("draft-model".into());
         TtsService::test_provider(profile, "Test this draft.".into(), Some("draft-key"))
             .await
@@ -865,7 +860,6 @@ mod tests {
         let (endpoint, server) = test_server(vec![response("audio/mpeg", audio)]).await;
         let mut profile = openai_profile(endpoint);
         profile.id.clear();
-        profile.enabled = false;
         if let TtsProviderOptions::OpenAiCompatible { default_voice, .. } = &mut profile.options {
             *default_voice = Some("narrator-voice".into());
         }
@@ -973,7 +967,6 @@ mod tests {
             id: "qwen".into(),
             name: "Qwen".into(),
             kind: TtsProviderKind::Qwen,
-            enabled: true,
             endpoint,
             model: Some(model.into()),
             credential_reference: Some("tts:qwen:api-key".into()),
@@ -1244,7 +1237,6 @@ mod tests {
                 "qwen3-tts-instruct-flash-2099-01-01"
             ]
         );
-        assert_eq!(models[0].name, "New Audio");
         assert!(models[0].voices.is_empty());
         assert!(!models[1].voices.is_empty());
         for (index, request) in server.await.unwrap().iter().enumerate() {

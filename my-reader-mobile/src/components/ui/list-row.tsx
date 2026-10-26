@@ -1,6 +1,5 @@
-import { useCallback, useRef, type ReactNode } from "react"
+import { useRef, type ReactNode } from "react"
 import {
-  ActionSheetIOS,
   Image,
   Platform,
   Pressable as RNPressable,
@@ -13,13 +12,8 @@ import {
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import { Host, Icon as MaterialSymbolIcon } from "@expo/ui/jetpack-compose"
-import {
-  MenuView,
-  type MenuAction,
-  type MenuComponentRef,
-} from "@react-native-menu/menu"
+import { MenuView, type MenuComponentRef } from "@react-native-menu/menu"
 import { SymbolView } from "expo-symbols"
-import { useTranslation } from "react-i18next"
 
 import {
   useTheme,
@@ -31,6 +25,7 @@ import {
   androidRippleColor,
 } from "@/src/design/press-feedback"
 import { Text, View } from "@/tw"
+import { IosSelectMenu, type SelectMenuAction } from "./ios-select-menu"
 
 const ROW_CLASS = "flex-row items-start justify-between gap-3 px-4 py-4"
 const ROW_ICON_SIZE = 22
@@ -97,6 +92,7 @@ function rowSeparatorStyle(
 
 type ListRowProps = {
   title: string
+  titleWeight?: "normal" | "bold"
   /** Overrides `accessibilityLabel`; defaults to `title` when omitted. */
   label?: string
   /** Leading icon — platform symbol or bundled artwork. */
@@ -111,10 +107,13 @@ type ListRowProps = {
   isLast?: boolean
   testID?: string
   contentStyle?: StyleProp<ViewStyle>
+  backgroundColor?: string
 }
 
+export type ListMenuAction = SelectMenuAction
+
 type ListMenuRowProps = Omit<ListRowProps, "onPress"> & {
-  actions: MenuAction[]
+  actions: ListMenuAction[]
   onPressAction: (event: { nativeEvent: { event: string } }) => void
   isAnchoredToRight?: boolean
 }
@@ -179,12 +178,16 @@ function ListRowIconView({
 
 function ListRowBody({
   title,
+  titleWeight = "bold",
   icon,
   detail,
   value,
   accessory,
   palette,
-}: Pick<ListRowProps, "title" | "icon" | "detail" | "value" | "accessory"> & {
+}: Pick<
+  ListRowProps,
+  "title" | "titleWeight" | "icon" | "detail" | "value" | "accessory"
+> & {
   palette: ThemePalette
 }) {
   const hasValue = value != null && value.length > 0
@@ -200,9 +203,8 @@ function ListRowBody({
       ) : null}
       <View className="flex-1 gap-1" style={{ minWidth: 96 }}>
         <Text
-          className="text-base font-bold"
-          numberOfLines={1}
-          style={listRowTextStyle(palette.text)}
+          className="text-base"
+          style={[listRowTextStyle(palette.text), { fontWeight: titleWeight }]}
         >
           {title}
         </Text>
@@ -238,6 +240,7 @@ function ListRowPressable({
   accessibilityLabel,
   testID,
   contentStyle,
+  backgroundColor,
   children,
 }: {
   onPress?: () => void
@@ -246,6 +249,7 @@ function ListRowPressable({
   accessibilityLabel?: string
   testID?: string
   contentStyle?: StyleProp<ViewStyle>
+  backgroundColor?: string
   children: ReactNode
 }) {
   const { colorScheme } = useTheme()
@@ -285,7 +289,7 @@ function ListRowPressable({
           className={ROW_CLASS}
           style={[
             separatorStyle,
-            { backgroundColor: palette.surface },
+            { backgroundColor: backgroundColor ?? palette.surface },
             contentStyle,
           ]}
         >
@@ -303,7 +307,11 @@ function ListRowPressable({
       onPress={onPress}
       style={({ pressed }) => [
         styles.pressableRow,
-        { backgroundColor: pressed ? rowPressedBackground : palette.surface },
+        {
+          backgroundColor: pressed
+            ? rowPressedBackground
+            : (backgroundColor ?? palette.surface),
+        },
       ]}
     >
       <View className={ROW_CLASS} style={[separatorStyle, contentStyle]}>
@@ -313,37 +321,13 @@ function ListRowPressable({
   )
 }
 
-function showIOSMenuActionSheet(
-  actions: MenuAction[],
-  cancelLabel: string,
-  onPressAction: ListMenuRowProps["onPressAction"],
-) {
-  const cancelButtonIndex = actions.length
-
-  ActionSheetIOS.showActionSheetWithOptions(
-    {
-      options: [...actions.map((action) => action.title), cancelLabel],
-      cancelButtonIndex,
-    },
-    (buttonIndex) => {
-      if (buttonIndex === undefined || buttonIndex === cancelButtonIndex) {
-        return
-      }
-
-      const action = actions[buttonIndex]
-      if (action?.id) {
-        onPressAction({ nativeEvent: { event: action.id } })
-      }
-    },
-  )
-}
-
 /** Grouped list row that opens a native menu with the same press feedback as ListRow. */
 export function ListMenuRow({
   actions,
   onPressAction,
   isAnchoredToRight,
   title,
+  titleWeight,
   label,
   icon,
   detail,
@@ -351,13 +335,15 @@ export function ListMenuRow({
   accessory,
   isLast,
   contentStyle,
+  backgroundColor,
+  testID,
 }: ListMenuRowProps) {
-  const { t } = useTranslation()
   const menuRef = useRef<MenuComponentRef>(null)
   const palette = useThemePalette()
   const body = (
     <ListRowBody
       title={title}
+      titleWeight={titleWeight}
       icon={icon}
       detail={detail}
       value={value}
@@ -365,15 +351,6 @@ export function ListMenuRow({
       palette={palette}
     />
   )
-
-  const handlePress = useCallback(() => {
-    if (Platform.OS === "ios") {
-      showIOSMenuActionSheet(actions, t("common.cancel"), onPressAction)
-      return
-    }
-
-    menuRef.current?.show()
-  }, [actions, onPressAction, t])
 
   if (Platform.OS === "android") {
     return (
@@ -391,9 +368,11 @@ export function ListMenuRow({
         </View>
         <ListRowPressable
           accessibilityLabel={label ?? title}
+          testID={testID}
           omitSeparator
-          onPress={handlePress}
+          onPress={() => menuRef.current?.show()}
           contentStyle={contentStyle}
+          backgroundColor={backgroundColor}
         >
           {body}
         </ListRowPressable>
@@ -402,19 +381,28 @@ export function ListMenuRow({
   }
 
   return (
-    <ListRowPressable
-      accessibilityLabel={label ?? title}
-      isLast={isLast}
-      onPress={handlePress}
-      contentStyle={contentStyle}
+    <IosSelectMenu
+      label={label ?? title}
+      actions={actions}
+      onSelect={(event) => onPressAction({ nativeEvent: { event } })}
     >
-      {body}
-    </ListRowPressable>
+      <ListRowPressable
+        accessibilityLabel={label ?? title}
+        testID={testID}
+        isLast={isLast}
+        onPress={() => {}}
+        contentStyle={contentStyle}
+        backgroundColor={backgroundColor}
+      >
+        {body}
+      </ListRowPressable>
+    </IosSelectMenu>
   )
 }
 
 export function ListRow({
   title,
+  titleWeight,
   label,
   icon,
   detail,
@@ -424,11 +412,13 @@ export function ListRow({
   isLast,
   testID,
   contentStyle,
+  backgroundColor,
 }: ListRowProps) {
   const palette = useThemePalette()
   const body = (
     <ListRowBody
       title={title}
+      titleWeight={titleWeight}
       icon={icon}
       detail={detail}
       value={value}
@@ -444,6 +434,7 @@ export function ListRow({
       isLast={isLast}
       testID={testID}
       contentStyle={contentStyle}
+      backgroundColor={backgroundColor}
     >
       {body}
     </ListRowPressable>

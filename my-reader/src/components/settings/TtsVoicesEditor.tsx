@@ -29,18 +29,15 @@ export function TtsVoicesEditor({
   disabled?: boolean
   embedded?: boolean
   actions?: ReactNode
-  onChange: (voices: string[], names: Record<string, string>) => void
+  onChange: (voices: string[]) => void
 }) {
   const { t } = useTranslation()
   const scoped = modelVoices(draft)
   const voices = scoped ? (model?.voices ?? []) : draft.voices
-  const names = (scoped ? model?.voiceNames : draft.voiceNames) ?? {}
   const updateId = (index: number, id: string) => {
     const next = [...voices]
     next[index] = id
-    const nextNames = { ...names, [id]: names[voices[index]] ?? "" }
-    if (!next.includes(voices[index])) delete nextNames[voices[index]]
-    onChange(next, nextNames)
+    onChange(next)
   }
   const prefix = model?.id || "shared"
   return (
@@ -72,23 +69,12 @@ export function TtsVoicesEditor({
               prefix={`${prefix}-${index}`}
               index={index}
               voice={voice}
-              name={names[voice] ?? ""}
               readOnly={readOnly}
               disabled={disabled}
               input={ttsDraftInput(draft, model, voice)}
               canPlay={Boolean(voice.trim() && model?.model.trim())}
               onIdChange={(id) => updateId(index, id)}
-              onNameChange={(name) =>
-                onChange(voices, { ...names, [voice]: name })
-              }
-              onRemove={() => {
-                const nextNames = { ...names }
-                delete nextNames[voice]
-                onChange(
-                  voices.filter((_, i) => i !== index),
-                  nextNames,
-                )
-              }}
+              onRemove={() => onChange(voices.filter((_, i) => i !== index))}
             />
           </GroupListItem>
         ))}
@@ -103,7 +89,7 @@ export function TtsVoicesEditor({
               variant="ghost"
               size="sm"
               disabled={disabled}
-              onClick={() => onChange([...voices, ""], names)}
+              onClick={() => onChange([...voices, ""])}
             >
               <Plus data-icon="inline-start" />
               {t("providerEditor.addVoice")}
@@ -119,36 +105,32 @@ function VoiceRow({
   prefix,
   index,
   voice,
-  name,
   readOnly,
   disabled,
   input,
   canPlay,
   onIdChange,
-  onNameChange,
   onRemove,
 }: {
   prefix: string
   index: number
   voice: string
-  name: string
   readOnly?: boolean
   disabled?: boolean
   input: UpsertTtsProviderInput
   canPlay: boolean
   onIdChange: (id: string) => void
-  onNameChange: (name: string) => void
   onRemove: () => void
 }) {
   const { t } = useTranslation()
   const { state, error, test, stop } = useTtsProviderTest(input)
   const active = state === "testing" || state === "playing"
-  const label = name || voice || index + 1
+  const label = voice || index + 1
   const playLabel = `${t(active ? "settings.speech.stopPreview" : "ttsSettings.test")} ${label}`
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-end gap-2">
-        <FieldGroup className="grid min-w-0 flex-1 grid-cols-2 gap-3">
+        <FieldGroup className="min-w-0 flex-1">
           <Field>
             <FieldLabel
               className={index ? "sr-only" : "border-l border-transparent pl-3"}
@@ -163,22 +145,6 @@ function VoiceRow({
               disabled={disabled}
               placeholder={t("providerEditor.voiceId")}
               onChange={(event) => onIdChange(event.target.value)}
-            />
-          </Field>
-          <Field>
-            <FieldLabel
-              className={index ? "sr-only" : "border-l border-transparent pl-3"}
-              htmlFor={`${prefix}-voice-name`}
-            >
-              {t("providerEditor.displayName")}
-            </FieldLabel>
-            <Input
-              id={`${prefix}-voice-name`}
-              value={name}
-              readOnly={readOnly}
-              disabled={disabled}
-              placeholder={voice || t("providerEditor.displayName")}
-              onChange={(event) => onNameChange(event.target.value)}
             />
           </Field>
         </FieldGroup>

@@ -209,8 +209,6 @@
       "credentialPlaceholder": "Bearer token（可選）",
       "instructions": "預設朗讀指令",
       "instructionsPlaceholder": "例如：自然、平靜地朗讀",
-      "enabled": "啟用",
-      "disabled": "已停用",
       "clearCredential": "清除已存憑據",
       "save": "儲存",
       "cancel": "取消",

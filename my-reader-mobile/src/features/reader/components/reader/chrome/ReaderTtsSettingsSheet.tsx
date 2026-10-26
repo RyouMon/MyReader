@@ -1,5 +1,5 @@
 import { BottomSheetScrollView } from "@expo/ui/community/bottom-sheet"
-import { tts as readiumTts } from "@my-reader/readium"
+import { tts as readiumTts, type TtsVoice } from "@my-reader/readium"
 import {
   filterTtsVoicesForLanguage,
   formatTtsLanguageName,
@@ -36,7 +36,6 @@ import {
   setTtsVoice,
   type TtsLanguageVoice,
   type TtsPlayback,
-  type TtsVoice,
 } from "@/src/services/core/tts"
 import { errorMessage } from "@/src/i18n/error-message"
 import { Text, View } from "@/tw"
@@ -169,7 +168,13 @@ const ReaderTtsSettingsSheet = forwardRef<
         setVoices(
           orderedVoiceIds.map((id) => ({ id, name: id, language: "mul" })),
         )
-        if (profile.kind === "qwen") setVoices(await listTtsVoices(profile.id))
+        if (profile.kind === "qwen")
+          setVoices(
+            (await listTtsVoices(profile.id)).map((voice) => ({
+              ...voice,
+              name: voice.id,
+            })),
+          )
       } else {
         setVoices(await readiumTts.getSystemVoices())
       }
@@ -247,12 +252,10 @@ const ReaderTtsSettingsSheet = forwardRef<
   const engineOptions = useMemo(
     () => [
       { key: "system", label: t("settings.tts.systemEngine") },
-      ...(config?.profiles
-        .filter((profile) => profile.enabled)
-        .map((profile) => ({
-          key: `provider:${profile.id}`,
-          label: `${profile.name}/${profile.model}`,
-        })) ?? []),
+      ...(config?.profiles.map((profile) => ({
+        key: `provider:${profile.id}`,
+        label: `${profile.name}/${profile.model}`,
+      })) ?? []),
     ],
     [config?.profiles, t],
   )

@@ -221,8 +221,6 @@
       "credentialPlaceholder": "Gettone al portatore (opzionale)",
       "instructions": "Istruzioni di lettura predefinite",
       "instructionsPlaceholder": "Ad esempio: Leggere in modo naturale e con calma",
-      "enabled": "Abilitato",
-      "disabled": "Disabilitato",
       "clearCredential": "Cancella credenziale salvata",
       "save": "Salva",
       "cancel": "Annulla",

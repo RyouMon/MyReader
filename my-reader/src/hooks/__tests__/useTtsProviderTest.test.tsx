@@ -28,7 +28,6 @@ const input: UpsertTtsProviderInput = {
     id: "saved",
     name: "Local",
     kind: "openAiCompatible",
-    enabled: true,
     endpoint: "http://localhost/v1",
     model: "draft-model",
     options: {

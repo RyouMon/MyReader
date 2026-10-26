@@ -1,4 +1,22 @@
 {
+  "providerEditor": {
+    "playbackFailed": "Audiowiedergabe fehlgeschlagen.",
+    "fetchModels": "Verfügbare Modelle laden",
+    "models": "Modellliste",
+    "voices": "Stimmenliste",
+    "modelId": "Modell-ID",
+    "modelDetails": "Modelleinstellungen",
+    "maxOutput": "Maximale Ausgabetokens",
+    "automatic": "Automatisch",
+    "noNewModels": "Alle verfügbaren Modelle wurden hinzugefügt",
+    "addSelected": "Ausgewählte Modelle hinzufügen",
+    "audioFormat": "Audioformat",
+    "voiceId": "Stimmen-ID",
+    "removeVoice": "Stimme entfernen",
+    "addVoice": "Stimme hinzufügen",
+    "fetchVoices": "Stimmen abrufen",
+    "testModel": "Testmodell"
+  },
   "llm": {
     "title": "LLM-Anbieter",
     "add": "Anbieter hinzufügen",

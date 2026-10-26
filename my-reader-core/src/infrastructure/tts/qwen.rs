@@ -49,7 +49,6 @@ pub(crate) fn model(id: &str, endpoint: &str) -> Result<QwenTtsModel, CoreError>
     }
     Ok(QwenTtsModel {
         id: id.into(),
-        name: id.into(),
         supports_instructions: audio || id.contains("-instruct-"),
         voice_discovery: !uses_websocket(endpoint)
             && (audio || id.starts_with("qwen3-tts-vc-") || id.starts_with("qwen3-tts-vd-")),
@@ -66,10 +65,9 @@ pub(crate) fn model(id: &str, endpoint: &str) -> Result<QwenTtsModel, CoreError>
     })
 }
 
-fn voice(id: &str, name: &str, language: &str) -> TtsVoice {
+fn voice(id: &str, language: &str) -> TtsVoice {
     TtsVoice {
         id: id.into(),
-        name: name.into(),
         language: language.into(),
         gender: None,
     }
@@ -352,7 +350,7 @@ pub(crate) async fn discover_account_voices(
                 entry["target_model"] == model_id
             };
             if matches_model && !id.is_empty() && !voices.iter().any(|voice| voice.id == id) {
-                voices.push(voice(id, id, entry["language"].as_str().unwrap_or("und")));
+                voices.push(voice(id, entry["language"].as_str().unwrap_or("und")));
             }
         }
         page += 1;
@@ -428,7 +426,6 @@ mod tests {
             id: "qwen".into(),
             name: "Qwen".into(),
             kind: TtsProviderKind::Qwen,
-            enabled: true,
             endpoint: String::new(),
             model: Some("qwen3-tts-flash".into()),
             credential_reference: None,

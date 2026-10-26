@@ -1,7 +1,7 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import { router, type Href } from "expo-router"
 import { SymbolView } from "expo-symbols"
-import { type ReactNode } from "react"
+import { type ComponentProps, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import {
   ActivityIndicator,
@@ -43,6 +43,7 @@ export type ButtonProps = {
   contentClassName?: string
   disabled?: boolean
   loading?: boolean
+  icon?: ComponentProps<typeof MaterialIcons>["name"]
   onPress?: () => void
   size?: ButtonSize
   style?: StyleProp<ViewStyle>
@@ -62,7 +63,7 @@ const SIZE_CLASS: Record<
     text: "text-sm",
   },
   md: {
-    content: "min-h-11 px-4 py-2",
+    content: "min-h-12 px-4 py-2",
     gap: 8,
     text: "text-base",
   },
@@ -99,9 +100,9 @@ function getButtonColors(
     case "secondary":
       return {
         backgroundColor: palette.surface,
-        borderColor: palette.border,
-        indicatorColor: palette.text,
-        textColor: palette.text,
+        borderColor: "transparent",
+        indicatorColor: palette.primary,
+        textColor: palette.primary,
         underlayColor: palette.background,
       }
     case "outline":
@@ -116,23 +117,23 @@ function getButtonColors(
       return {
         backgroundColor: "transparent",
         borderColor: "transparent",
-        indicatorColor: palette.text,
-        textColor: palette.text,
+        indicatorColor: palette.primary,
+        textColor: palette.primary,
         underlayColor: palette.backgroundSecondary,
       }
     case "danger":
       return {
-        backgroundColor: palette.danger,
-        borderColor: palette.danger,
-        indicatorColor: palette.primaryForeground,
-        textColor: palette.primaryForeground,
-        underlayColor: palette.error,
+        backgroundColor: "transparent",
+        borderColor: "transparent",
+        indicatorColor: palette.danger,
+        textColor: palette.danger,
+        underlayColor: palette.backgroundSecondary,
       }
   }
 }
 
 /**
- * Renders the shared touch-highlight button used by mobile CTA and pill actions.
+ * Shared semantic actions with consistent touch feedback and sizing.
  */
 export function Button({
   accessibilityLabel,
@@ -142,8 +143,9 @@ export function Button({
   contentClassName,
   disabled = false,
   loading = false,
+  icon,
   onPress,
-  size = "lg",
+  size = "md",
   style,
   textClassName,
   textStyle,
@@ -160,7 +162,7 @@ export function Button({
 
   return (
     <TouchableHighlight
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={accessibilityLabel ?? title}
       accessibilityRole="button"
       accessibilityState={{ busy: loading, disabled: isDisabled }}
       className={cx("overflow-hidden rounded-full", className)}
@@ -179,9 +181,8 @@ export function Button({
     >
       <View
         className={cx(
-          "flex-row items-center justify-center rounded-full",
-          sizeClass.content,
-          contentClassName,
+          "flex-row items-center justify-center",
+          contentClassName ?? sizeClass.content,
         )}
         style={{ columnGap: sizeClass.gap }}
       >
@@ -190,10 +191,16 @@ export function Button({
             color={resolvedColors.indicatorColor}
             size="small"
           />
+        ) : icon ? (
+          <MaterialIcons
+            name={icon}
+            size={20}
+            color={resolvedColors.textColor}
+          />
         ) : null}
         {children ?? (
           <Text
-            className={cx(textClassName ?? sizeClass.text, "font-bold")}
+            className={cx(textClassName ?? sizeClass.text, "font-semibold")}
             style={[{ color: resolvedColors.textColor }, textStyle]}
           >
             {title}
@@ -201,6 +208,50 @@ export function Button({
         )}
       </View>
     </TouchableHighlight>
+  )
+}
+
+/** Compact form and list actions; no persistent frame around the icon. */
+export function IconButton({
+  label,
+  icon,
+  tone = "neutral",
+  loading = false,
+  disabled,
+  onPress,
+  size = "md",
+}: {
+  label: string
+  icon: ComponentProps<typeof MaterialIcons>["name"]
+  tone?: "neutral" | "primary" | "danger"
+  loading?: boolean
+  disabled?: boolean
+  onPress?: () => void
+  size?: "sm" | "md"
+}) {
+  const palette = useThemePalette()
+  const color = tone === "neutral" ? palette.textMuted : palette[tone]
+  return (
+    <Button
+      accessibilityLabel={label}
+      variant="ghost"
+      size="md"
+      disabled={disabled}
+      onPress={onPress}
+      colors={{ indicatorColor: color }}
+      style={{
+        width: size === "sm" ? 44 : 48,
+        height: size === "sm" ? 44 : 48,
+        justifyContent: "center",
+      }}
+      contentClassName={size === "sm" ? "min-h-11" : "min-h-12"}
+    >
+      {loading ? (
+        <ActivityIndicator color={color} />
+      ) : (
+        <MaterialIcons name={icon} size={24} color={color} />
+      )}
+    </Button>
   )
 }
 
@@ -319,7 +370,7 @@ export function FilterChip({
 }) {
   return (
     <Button
-      className="self-start"
+      className="self-start rounded-full"
       onPress={onPress}
       size="md"
       title={label}

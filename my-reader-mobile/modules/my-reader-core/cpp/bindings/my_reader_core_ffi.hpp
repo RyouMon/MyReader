@@ -453,6 +453,9 @@ protected:
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_sync_set_library_online(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_tts_discover_models(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_tts_discover_qwen_voices(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
@@ -460,6 +463,9 @@ protected:
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_tts_list_voices(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_tts_preview_provider(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_tts_probe_provider(
@@ -1110,6 +1116,9 @@ protected:
   cpp_uniffi_my_reader_core_ffi_checksum_func_sync_set_library_online(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_tts_discover_models(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
   jsi::Value
   cpp_uniffi_my_reader_core_ffi_checksum_func_tts_discover_qwen_voices(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
@@ -1118,6 +1127,9 @@ protected:
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_tts_list_voices(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_tts_preview_provider(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_tts_probe_provider(

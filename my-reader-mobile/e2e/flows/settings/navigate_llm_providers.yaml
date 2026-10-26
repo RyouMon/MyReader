@@ -1,0 +1,21 @@
+appId: ${APP_ID}
+name: LLM provider forms navigate inside their sheet
+---
+- runFlow: ../../common/launch_and_prepare.yaml
+- runFlow: ../../common/open_settings.yaml
+- scrollUntilVisible:
+    element:
+      id: settings-llm-providers-row
+    direction: DOWN
+- tapOn:
+    id: settings-llm-providers-row
+- assertVisible: "关闭|Close"
+- tapOn: "添加供应商|Add provider"
+- assertVisible:
+    id: llm-provider-endpoint
+- assertNotVisible: "关闭|Close"
+- tapOn: "返回|Back"
+- assertVisible: "添加供应商|Add provider"
+- tapOn: "关闭|Close"
+- assertVisible:
+    id: settings-llm-providers-row

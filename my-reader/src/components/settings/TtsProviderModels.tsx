@@ -95,11 +95,7 @@ export function TtsProviderModels({
       },
     )
   }
-  const updateVoices = (
-    model: TtsModelDto,
-    next: string[],
-    names: Record<string, string>,
-  ) => {
+  const updateVoices = (model: TtsModelDto, next: string[]) => {
     const defaultVoice = updatedDefaultVoice(
       model.defaultVoice,
       model.voices,
@@ -111,14 +107,13 @@ export function TtsProviderModels({
             ...draft,
             models: draft.models.map((old) =>
               old.id === model.id
-                ? { ...old, voices: next, voiceNames: names, defaultVoice }
+                ? { ...old, voices: next, defaultVoice }
                 : old,
             ),
           }
         : {
             ...draft,
             voices: next,
-            voiceNames: names,
             models: draft.models.map((old) => ({
               ...old,
               defaultVoice: updatedDefaultVoice(
@@ -130,10 +125,7 @@ export function TtsProviderModels({
           },
     )
   }
-  const changeModel = (
-    index: number,
-    change: { model?: string; displayName?: string },
-  ) => {
+  const changeModel = (index: number, change: { model?: string }) => {
     const known = catalog.find((model) => model.id === change.model)
     patch(
       index,
@@ -245,8 +237,8 @@ export function TtsProviderModels({
                   draft={draft}
                   model={draft.models[index]}
                   readOnly={readOnly}
-                  onVoicesChange={(voices, names) =>
-                    updateVoices(draft.models[index], voices, names)
+                  onVoicesChange={(voices) =>
+                    updateVoices(draft.models[index], voices)
                   }
                   onRefresh={() => {
                     const model = draft.models[index]
@@ -263,7 +255,6 @@ export function TtsProviderModels({
                               model,
                               result.voices.map((id) => ({
                                 id,
-                                name: result.voiceNames?.[id] || id,
                                 language: "mul",
                                 gender: null,
                               })),
@@ -302,11 +293,7 @@ function SharedVoices({
   readOnly: boolean
   busy: boolean
   onChange: (draft: TtsProviderDraft) => void
-  updateVoices: (
-    model: TtsModelDto,
-    voices: string[],
-    names: Record<string, string>,
-  ) => void
+  updateVoices: (model: TtsModelDto, voices: string[]) => void
 }) {
   const { t } = useTranslation()
   const [previewId, setPreviewId] = useState(draft.models[0]?.id ?? "")
@@ -328,9 +315,7 @@ function SharedVoices({
                 <SelectGroup>
                   {draft.models.map((model) => (
                     <SelectItem key={model.id} value={model.id}>
-                      {model.displayName ||
-                        model.model ||
-                        t("aiProviders.newModel")}
+                      {model.model || t("aiProviders.newModel")}
                     </SelectItem>
                   ))}
                 </SelectGroup>
@@ -343,9 +328,9 @@ function SharedVoices({
       model={preview}
       readOnly={readOnly}
       disabled={busy}
-      onChange={(voices, names) => {
-        if (preview) updateVoices(preview, voices, names)
-        else onChange({ ...draft, voices, voiceNames: names })
+      onChange={(voices) => {
+        if (preview) updateVoices(preview, voices)
+        else onChange({ ...draft, voices })
       }}
     />
   )

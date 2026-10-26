@@ -330,7 +330,6 @@ fn configured_voices(profile: &TtsProviderProfile) -> Vec<TtsVoice> {
         .into_iter()
         .map(|id| TtsVoice {
             id: id.to_owned(),
-            name: id.to_owned(),
             language: "mul".into(),
             gender: None,
         })

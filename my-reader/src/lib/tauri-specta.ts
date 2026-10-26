@@ -341,7 +341,6 @@ export type LlmConfigDto = {
 };
 
 export type LlmModelDto = {
-	displayName?: string,
 	id: string,
 	model: string,
 	contextWindow: number,
@@ -469,7 +468,6 @@ export type PreparedBookSource = {
 
 export type QwenTtsModelDto = {
 	id: string,
-	name: string,
 	supportsInstructions: boolean,
 	voiceDiscovery: boolean,
 	audioFormats: TtsAudioFormatDto[],
@@ -637,8 +635,6 @@ export type TtsConfigDto = {
 export type TtsEngineSelectionDto = { kind: "system" } | { kind: "provider"; profileId: string };
 
 export type TtsModelDto = {
-	displayName?: string,
-	voiceNames?: { [key in string]: string },
 	id: string,
 	model: string,
 	responseFormat: TtsAudioFormatDto,
@@ -669,12 +665,10 @@ export type TtsProviderCapabilitiesDto = {
 };
 
 export type TtsProviderDto = {
-	voiceNames?: { [key in string]: string },
 	modelScopedVoices?: boolean,
 	id: string,
 	name: string,
 	kind: TtsProviderKindDto,
-	enabled: boolean,
 	endpoint: string,
 	voices: string[],
 	models: TtsModelDto[],
@@ -686,12 +680,9 @@ export type TtsProviderKindDto = "openAiCompatible" | "qwen";
 export type TtsProviderOptionsDto = { kind: "openAiCompatible"; responseFormat?: TtsAudioFormatDto; instructions?: string | null; voices?: string[]; defaultVoice?: string | null } | { kind: "qwen"; responseFormat: TtsAudioFormatDto; instructions: string | null; voices: string[]; defaultVoice: string | null };
 
 export type TtsProviderProfileDto = {
-	modelName?: string,
-	voiceNames?: { [key in string]: string },
 	id: string,
 	name: string,
 	kind: TtsProviderKindDto,
-	enabled: boolean,
 	endpoint: string,
 	model: string | null,
 	options: TtsProviderOptionsDto,
@@ -703,7 +694,6 @@ export type TtsProviderProfileInput = {
 	id?: string,
 	name: string,
 	kind: TtsProviderKindDto,
-	enabled?: boolean,
 	endpoint: string,
 	model?: string | null,
 	options: TtsProviderOptionsDto,
@@ -730,7 +720,6 @@ export type TtsTimingDto = {
 
 export type TtsVoiceDto = {
 	id: string,
-	name: string,
 	language: string,
 	gender: string | null,
 };

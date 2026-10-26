@@ -52,6 +52,11 @@ jest.mock("@/tw", () => ({
 jest.mock("@/src/components", () => ({
   EmptyState: jest.fn(() => null),
   FormFieldSwitch: jest.fn(() => null),
+  FormTextField: ({ label, ...props }: { label: string }) =>
+    mockReact.createElement(mockTextInput, {
+      ...props,
+      accessibilityLabel: label,
+    }),
   FormLabeledFieldRow: jest.fn(
     ({ children, label }: { children: ReactNode; label: string }) =>
       mockReact.createElement(

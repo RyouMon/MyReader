@@ -4,7 +4,7 @@ import { router, Stack, useLocalSearchParams } from "expo-router"
 import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 
-import { EmptyState, FormLabeledFieldRow, Screen } from "@/src/components"
+import { EmptyState, FormTextField, Screen } from "@/src/components"
 import {
   showAlertWithStatusBarRestore,
   showErrorAlert,
@@ -16,7 +16,7 @@ import { useBooks } from "@/src/features/library/hooks/useLibraryQuery"
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 import { createSaveAction } from "@/src/navigation/toolbar-action-helpers"
 import { useAppStore } from "@/src/store/app-store"
-import { TextInput, View } from "@/tw"
+import { View } from "@/tw"
 
 function parseAuthors(value: string): string[] {
   return value
@@ -129,39 +129,26 @@ function EditBookMetadataForm({
       <Stack.Screen options={options} />
       {toolbar}
       <Screen>
-        <View
-          className="gap-3 rounded-3xl px-4 py-4"
-          style={{
-            backgroundColor: palette.surface,
-            borderColor: palette.border,
-            borderWidth: 1,
-          }}
-        >
-          <FormLabeledFieldRow label={t("bookEdit.bookTitle")} required>
-            <TextInput
-              testID="book-edit-title"
-              accessibilityLabel={t("bookEdit.bookTitle")}
-              value={title}
-              onChangeText={setTitle}
-              placeholder={t("bookEdit.bookTitle")}
-              placeholderTextColor={palette.textMuted}
-              className="min-h-10 border-0 bg-transparent py-1 text-base"
-              style={{ color: palette.text }}
-            />
-          </FormLabeledFieldRow>
-          <FormLabeledFieldRow label={t("bookEdit.authors")} required>
-            <TextInput
-              testID="book-edit-authors"
-              accessibilityLabel={t("bookEdit.authors")}
-              value={authors}
-              onChangeText={setAuthors}
-              placeholder={t("bookEdit.authorsPlaceholder")}
-              placeholderTextColor={palette.textMuted}
-              autoCorrect={false}
-              className="min-h-10 border-0 bg-transparent py-1 text-base"
-              style={{ color: palette.text }}
-            />
-          </FormLabeledFieldRow>
+        <View className="gap-3">
+          <FormTextField
+            label={t("bookEdit.bookTitle")}
+            required
+            testID="book-edit-title"
+            accessibilityLabel={t("bookEdit.bookTitle")}
+            value={title}
+            onChangeText={setTitle}
+            placeholder={t("bookEdit.bookTitle")}
+          />
+          <FormTextField
+            label={t("bookEdit.authors")}
+            required
+            testID="book-edit-authors"
+            accessibilityLabel={t("bookEdit.authors")}
+            value={authors}
+            onChangeText={setAuthors}
+            placeholder={t("bookEdit.authorsPlaceholder")}
+            autoCorrect={false}
+          />
         </View>
       </Screen>
     </>

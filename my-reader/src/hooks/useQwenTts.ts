@@ -31,13 +31,9 @@ export function useProviderTtsVoices(profile?: TtsProviderProfileDto) {
     }
   }, [id, revision])
   return result && result.id === id && result.revision === revision
-    ? result.voices.map((voice) => ({
-        ...voice,
-        name: profile?.voiceNames?.[voice.id] || voice.name,
-      }))
+    ? result.voices
     : (profile?.options.voices ?? []).map((id) => ({
         id,
-        name: profile?.voiceNames?.[id] || id,
         language: "mul",
         gender: null,
       }))

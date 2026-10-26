@@ -17,7 +17,8 @@ import {
   ttsSetPlayback,
   ttsSetVoice,
   ttsSynthesize,
-  ttsTestProvider,
+  ttsPreviewProvider,
+  ttsDiscoverModels,
   ttsUpsertProfile,
   type TtsAudioArtifact,
   type TtsConfig,
@@ -41,8 +42,8 @@ export type MobileTtsProviderProfile = TtsProviderProfile & {
   hasCredential: boolean
 }
 
-export type MobileTtsProvider = TtsProvider & { hasCredential: boolean }
 export type MobileTtsModel = TtsModel
+export type MobileTtsProvider = TtsProvider & { hasCredential: boolean }
 export type MobileTtsConfig = Omit<TtsConfig, "profiles" | "providers"> & {
   providers: MobileTtsProvider[]
   profiles: MobileTtsProviderProfile[]
@@ -138,24 +139,44 @@ export async function discoverQwenTtsVoices(
   )
 }
 
-export async function testTtsProvider(
+async function draftCredential(input: UpsertMobileTtsProfileInput) {
+  if (input.clearCredential) return undefined
+  return (
+    input.credential?.trim() ||
+    (input.profile.id ? await resolveCredential(input.profile.id) : undefined)
+  )
+}
+
+function draftProfile(input: UpsertMobileTtsProfileInput): TtsProviderProfile {
+  return {
+    ...input.profile,
+    id: input.profile.id ?? "",
+    revision: 1,
+    credentialReference: undefined,
+  }
+}
+
+export async function discoverTtsModels(
+  input: UpsertMobileTtsProfileInput,
+  signal?: AbortSignal,
+): Promise<string[]> {
+  return ttsDiscoverModels(
+    draftProfile(input),
+    await draftCredential(input),
+    signal ? { signal } : undefined,
+  )
+}
+
+export async function previewTtsProvider(
   input: UpsertMobileTtsProfileInput,
   text: string,
   signal?: AbortSignal,
-): Promise<void> {
-  const credential = input.clearCredential
-    ? undefined
-    : input.credential?.trim() ||
-      (input.profile.id ? await resolveCredential(input.profile.id) : undefined)
-  await ttsTestProvider(
-    {
-      ...input.profile,
-      id: input.profile.id ?? "",
-      revision: 1,
-      credentialReference: undefined,
-    },
+): Promise<TtsAudioArtifact> {
+  return ttsPreviewProvider(
+    draftProfile(input),
+    ttsCachePath,
     text,
-    credential,
+    await draftCredential(input),
     signal ? { signal } : undefined,
   )
 }
@@ -193,7 +214,7 @@ export async function upsertTtsProfile(
 }
 
 export async function saveTtsProvider(input: {
-  provider: Omit<TtsProvider, "credentialReference">
+  provider: Omit<MobileTtsProvider, "credentialReference" | "hasCredential">
   credential?: string
   clearCredential?: boolean
 }): Promise<MobileTtsConfig> {

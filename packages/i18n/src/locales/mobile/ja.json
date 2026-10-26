@@ -213,8 +213,6 @@
       "credentialPlaceholder": "ベアラートークン (オプション)",
       "instructions": "既定の読み上げ指示",
       "instructionsPlaceholder": "例: 自然に、落ち着いて本を読む",
-      "enabled": "有効",
-      "disabled": "無効",
       "clearCredential": "保存された資格情報をクリアします",
       "save": "保存",
       "cancel": "キャンセル",

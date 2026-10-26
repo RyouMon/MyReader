@@ -39,7 +39,6 @@ impl LlmService {
                 model.id = Uuid::new_v4().to_string();
             }
             model.model = model.model.trim().to_owned();
-            model.display_name = model.display_name.trim().to_owned();
         }
         Ok(ConfigService::mutate_config(path, |config| {
             let previous = config.llm.profiles();

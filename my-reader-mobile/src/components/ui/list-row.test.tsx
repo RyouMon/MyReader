@@ -1,7 +1,7 @@
-import { render } from "@testing-library/react-native"
+import { act, render, screen } from "@testing-library/react-native"
 import { Platform } from "react-native"
 
-import { ListRow } from "./list-row"
+import { ListMenuRow, ListRow } from "./list-row"
 
 jest.mock("@expo/vector-icons/MaterialIcons", () => jest.fn(() => null))
 
@@ -12,6 +12,10 @@ jest.mock("@expo/ui/jetpack-compose", () => ({
 
 jest.mock("expo-symbols", () => ({
   SymbolView: jest.fn(() => null),
+}))
+
+jest.mock("./ios-select-menu", () => ({
+  IosSelectMenu: jest.fn(({ children }) => children),
 }))
 
 jest.mock("@react-native-menu/menu", () => ({
@@ -43,6 +47,31 @@ describe("ListRow", () => {
     Object.defineProperty(Platform, "OS", {
       configurable: true,
       value: initialPlatform,
+    })
+  })
+
+  it("passes selection and disabled states to the native iOS menu and forwards its action", () => {
+    Object.defineProperty(Platform, "OS", { configurable: true, value: "ios" })
+    const onPressAction = jest.fn()
+    const actions = [
+      { id: "current", title: "Current model", state: "on" as const },
+      { id: "disabled", title: "Unavailable", attributes: { disabled: true } },
+    ]
+    render(
+      <ListMenuRow
+        title="Model"
+        actions={actions}
+        onPressAction={onPressAction}
+      />,
+    )
+    expect(screen.getByRole("button", { name: "Model" })).toBeTruthy()
+    const { IosSelectMenu } = jest.requireMock("./ios-select-menu")
+    const props = IosSelectMenu.mock.calls[0][0]
+    expect(props.actions).toEqual(actions)
+    act(() => props.onSelect("current"))
+    expect(onPressAction).toHaveBeenCalledTimes(1)
+    expect(onPressAction).toHaveBeenCalledWith({
+      nativeEvent: { event: "current" },
     })
   })
 

@@ -77,7 +77,6 @@ pub enum TtsProviderOptionsDto {
 #[serde(rename_all = "camelCase")]
 pub struct QwenTtsModelDto {
     pub id: String,
-    pub name: String,
     pub supports_instructions: bool,
     pub voice_discovery: bool,
     pub audio_formats: Vec<TtsAudioFormatDto>,
@@ -95,7 +94,6 @@ impl From<my_reader_core::models::QwenTtsModel> for QwenTtsModelDto {
     fn from(model: my_reader_core::models::QwenTtsModel) -> Self {
         Self {
             id: model.id,
-            name: model.name,
             supports_instructions: model.supports_instructions,
             voice_discovery: model.voice_discovery,
             audio_formats: model.audio_formats.into_iter().map(Into::into).collect(),
@@ -116,14 +114,9 @@ pub struct DiscoverQwenTtsVoicesInput {
 #[derive(Debug, Clone, PartialEq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct TtsProviderProfileDto {
-    #[serde(default)]
-    pub model_name: String,
-    #[serde(default)]
-    pub voice_names: BTreeMap<String, String>,
     pub id: String,
     pub name: String,
     pub kind: TtsProviderKindDto,
-    pub enabled: bool,
     pub endpoint: String,
     pub model: Option<String>,
     pub options: TtsProviderOptionsDto,
@@ -138,8 +131,6 @@ pub struct TtsProviderProfileInput {
     pub id: String,
     pub name: String,
     pub kind: TtsProviderKindDto,
-    #[serde(default = "enabled_by_default")]
-    pub enabled: bool,
     pub endpoint: String,
     #[serde(default)]
     pub model: Option<String>,
@@ -201,7 +192,6 @@ pub struct TtsProviderCapabilitiesDto {
 #[serde(rename_all = "camelCase")]
 pub struct TtsVoiceDto {
     pub id: String,
-    pub name: String,
     pub language: String,
     pub gender: Option<String>,
 }
@@ -259,10 +249,6 @@ pub struct TtsTimingDto {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct TtsModelDto {
-    #[serde(default)]
-    pub display_name: String,
-    #[serde(default)]
-    pub voice_names: BTreeMap<String, String>,
     pub id: String,
     pub model: String,
     pub response_format: TtsAudioFormatDto,
@@ -275,13 +261,10 @@ pub struct TtsModelDto {
 #[serde(rename_all = "camelCase")]
 pub struct TtsProviderDto {
     #[serde(default)]
-    pub voice_names: BTreeMap<String, String>,
-    #[serde(default)]
     pub model_scoped_voices: bool,
     pub id: String,
     pub name: String,
     pub kind: TtsProviderKindDto,
-    pub enabled: bool,
     pub endpoint: String,
     pub voices: Vec<String>,
     pub models: Vec<TtsModelDto>,
@@ -402,11 +385,10 @@ impl DesktopTtsService {
                 id: value.id,
                 name: value.name,
                 kind: value.kind.into(),
-                enabled: value.enabled,
                 endpoint: value.endpoint,
                 credential_reference: Some(reference.clone()),
                 voices: value.voices,
-                voice_names: value.voice_names,
+
                 model_scoped_voices: value.model_scoped_voices,
                 models: value
                     .models
@@ -414,8 +396,7 @@ impl DesktopTtsService {
                     .map(|m| TtsModel {
                         id: m.id,
                         model: m.model,
-                        display_name: m.display_name,
-                        voice_names: m.voice_names,
+
                         response_format: m.response_format.into(),
                         instructions: m.instructions,
                         default_voice: m.default_voice,
@@ -610,25 +591,7 @@ fn config_dto(config: my_reader_core::models::TtsConfig) -> Result<TtsConfigDto,
                 .transpose()?
                 .flatten()
                 .is_some_and(|credential| !credential.trim().is_empty());
-            let metadata = config.providers.iter().find_map(|provider| {
-                provider
-                    .models
-                    .iter()
-                    .find(|model| model.id == profile.id)
-                    .map(|model| (provider, model))
-            });
-            let mut dto = TtsProviderProfileDto::from_core(profile, has_credential);
-            if let Some((provider, model)) = metadata {
-                dto.model_name = model.display_name.clone();
-                dto.voice_names = if provider.model_scoped_voices
-                    || provider.kind == my_reader_core::models::TtsProviderKind::Qwen
-                {
-                    model.voice_names.clone()
-                } else {
-                    provider.voice_names.clone()
-                };
-            }
-            Ok(dto)
+            Ok(TtsProviderProfileDto::from_core(profile, has_credential))
         })
         .collect::<Result<Vec<_>, AppError>>()?;
     let providers = config
@@ -646,10 +609,9 @@ fn config_dto(config: my_reader_core::models::TtsConfig) -> Result<TtsConfigDto,
                 id: p.id,
                 name: p.name,
                 kind: p.kind.into(),
-                enabled: p.enabled,
                 endpoint: p.endpoint,
                 voices: p.voices,
-                voice_names: p.voice_names,
+
                 model_scoped_voices: p.kind == my_reader_core::models::TtsProviderKind::Qwen
                     || p.model_scoped_voices,
                 has_credential,
@@ -659,8 +621,7 @@ fn config_dto(config: my_reader_core::models::TtsConfig) -> Result<TtsConfigDto,
                     .map(|m| TtsModelDto {
                         id: m.id,
                         model: m.model,
-                        display_name: m.display_name,
-                        voice_names: m.voice_names,
+
                         response_format: m.response_format.into(),
                         instructions: m.instructions,
                         default_voice: m.default_voice,
@@ -684,17 +645,12 @@ fn config_dto(config: my_reader_core::models::TtsConfig) -> Result<TtsConfigDto,
     })
 }
 
-fn enabled_by_default() -> bool {
-    true
-}
-
 impl TtsProviderProfileInput {
     fn into_core(self) -> my_reader_core::models::TtsProviderProfile {
         my_reader_core::models::TtsProviderProfile {
             id: self.id,
             name: self.name,
             kind: self.kind.into(),
-            enabled: self.enabled,
             endpoint: self.endpoint,
             model: self.model,
             credential_reference: None,
@@ -710,12 +666,9 @@ impl TtsProviderProfileDto {
         has_credential: bool,
     ) -> Self {
         Self {
-            model_name: String::new(),
-            voice_names: BTreeMap::new(),
             id: profile.id,
             name: profile.name,
             kind: profile.kind.into(),
-            enabled: profile.enabled,
             endpoint: profile.endpoint,
             model: profile.model,
             options: profile.options.into(),
@@ -920,7 +873,6 @@ impl From<my_reader_core::models::TtsVoice> for TtsVoiceDto {
     fn from(value: my_reader_core::models::TtsVoice) -> Self {
         Self {
             id: value.id,
-            name: value.name,
             language: value.language,
             gender: value.gender,
         }
@@ -1010,7 +962,6 @@ mod tests {
                 id: "openai".into(),
                 name: "OpenAI".into(),
                 kind: TtsProviderKindDto::OpenAiCompatible,
-                enabled: true,
                 endpoint: "https://api.openai.com/v1".into(),
                 model: Some("gpt-4o-mini-tts".into()),
                 options: TtsProviderOptionsDto::OpenAiCompatible {

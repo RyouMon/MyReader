@@ -22,6 +22,9 @@ export function Screen({
     <ScrollView
       className="flex-1"
       contentInsetAdjustmentBehavior="automatic"
+      automaticallyAdjustKeyboardInsets
+      keyboardDismissMode="on-drag"
+      keyboardShouldPersistTaps="handled"
       contentContainerClassName={bottomPad}
       scrollEnabled={scrollEnabled}
       style={{ backgroundColor: palette.background }}

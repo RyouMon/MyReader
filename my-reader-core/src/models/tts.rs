@@ -82,13 +82,9 @@ impl TtsConfig {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TtsProvider {
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub voice_names: BTreeMap<String, String>,
     pub id: String,
     pub name: String,
     pub kind: TtsProviderKind,
-    #[serde(default = "enabled_by_default")]
-    pub enabled: bool,
     pub endpoint: String,
     #[serde(default)]
     pub credential_reference: Option<String>,
@@ -105,10 +101,6 @@ pub struct TtsProvider {
 pub struct TtsModel {
     pub id: String,
     pub model: String,
-    #[serde(default)]
-    pub display_name: String,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub voice_names: BTreeMap<String, String>,
     pub response_format: TtsAudioFormat,
     #[serde(default)]
     pub instructions: Option<String>,
@@ -148,7 +140,6 @@ impl TtsProvider {
                     id: model.id.clone(),
                     name: self.name.clone(),
                     kind: self.kind,
-                    enabled: self.enabled,
                     endpoint: self.endpoint.clone(),
                     model: Some(model.model.clone()),
                     credential_reference: self.credential_reference.clone(),
@@ -178,10 +169,9 @@ impl From<TtsProviderProfile> for TtsProvider {
         };
         Self {
             id: profile.id.clone(),
-            voice_names: BTreeMap::new(),
+
             name: profile.name,
             kind: profile.kind,
-            enabled: profile.enabled,
             endpoint: profile.endpoint,
             credential_reference: profile.credential_reference,
             model_scoped_voices: profile.kind == TtsProviderKind::Qwen,
@@ -192,8 +182,7 @@ impl From<TtsProviderProfile> for TtsProvider {
             },
             models: vec![TtsModel {
                 id: profile.id,
-                display_name: String::new(),
-                voice_names: BTreeMap::new(),
+
                 model: profile.model.unwrap_or_default(),
                 response_format,
                 instructions,
@@ -240,8 +229,6 @@ pub struct TtsProviderProfile {
     pub id: String,
     pub name: String,
     pub kind: TtsProviderKind,
-    #[serde(default = "enabled_by_default")]
-    pub enabled: bool,
     pub endpoint: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
@@ -252,7 +239,7 @@ pub struct TtsProviderProfile {
     pub revision: u64,
 }
 
-fn enabled_by_default() -> bool {
+fn default_skip_page_breaks() -> bool {
     true
 }
 
@@ -316,7 +303,6 @@ impl TtsProviderOptions {
 #[serde(rename_all = "camelCase")]
 pub struct QwenTtsModel {
     pub id: String,
-    pub name: String,
     pub supports_instructions: bool,
     pub voice_discovery: bool,
     pub audio_formats: Vec<TtsAudioFormat>,
@@ -371,7 +357,7 @@ pub struct TtsPlaybackPreferences {
     pub speed: f64,
     #[serde(default = "default_pitch")]
     pub pitch: f64,
-    #[serde(default = "enabled_by_default")]
+    #[serde(default = "default_skip_page_breaks")]
     pub skip_page_breaks: bool,
     #[serde(default)]
     pub skip_footnotes: bool,
@@ -471,7 +457,6 @@ pub struct TtsTiming {
 #[serde(rename_all = "camelCase")]
 pub struct TtsVoice {
     pub id: String,
-    pub name: String,
     pub language: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub gender: Option<String>,
@@ -513,7 +498,6 @@ mod tests {
             id: "openai".into(),
             name: "OpenAI".into(),
             kind: TtsProviderKind::OpenAiCompatible,
-            enabled: true,
             endpoint: "https://api.openai.com/v1".into(),
             model: Some("gpt-4o-mini-tts".into()),
             credential_reference: Some("tts:openai:api-key".into()),

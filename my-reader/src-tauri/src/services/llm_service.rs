@@ -62,8 +62,6 @@ impl From<LlmProfileDto> for core::LlmProviderProfile {
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LlmModelDto {
-    #[serde(default)]
-    pub display_name: String,
     pub id: String,
     pub model: String,
     pub context_window: u32,
@@ -153,7 +151,7 @@ impl DesktopLlmService {
                         id: m.id,
                         model: m.model,
                         context_window: m.context_window,
-                        display_name: m.display_name,
+
                         max_output_tokens: m.max_output_tokens,
                         revision: 0,
                     })
@@ -317,7 +315,7 @@ fn config_dto(config: core::LlmConfig) -> Result<LlmConfigDto, AppError> {
                         id: m.id,
                         model: m.model,
                         context_window: m.context_window,
-                        display_name: m.display_name,
+
                         max_output_tokens: m.max_output_tokens,
                     })
                     .collect(),

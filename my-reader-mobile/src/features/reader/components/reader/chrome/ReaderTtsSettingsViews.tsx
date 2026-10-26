@@ -1,3 +1,4 @@
+import type { TtsVoice } from "@my-reader/readium"
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import type { MenuAction } from "@react-native-menu/menu"
 import { SymbolView } from "expo-symbols"
@@ -14,7 +15,6 @@ import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
 import type {
   MobileTtsConfig,
   MobileTtsProviderProfile,
-  TtsVoice,
   TtsPlayback,
 } from "@/src/services/core/tts"
 import type { useReaderTtsPreview } from "@/src/features/reader/tts/use-reader-tts-preview"

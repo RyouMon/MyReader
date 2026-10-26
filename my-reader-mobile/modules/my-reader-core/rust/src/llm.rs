@@ -10,6 +10,7 @@ pub struct LlmProviderProfile {
     pub endpoint: String,
     pub model: String,
     pub context_window: u32,
+    pub max_output_tokens: Option<u32>,
     pub credential_reference: Option<String>,
     pub revision: u32,
 }
@@ -24,6 +25,7 @@ pub struct LlmConfig {
 pub struct LlmModel {
     pub id: String,
     pub model: String,
+    pub max_output_tokens: Option<u32>,
     pub context_window: u32,
 }
 #[derive(Debug, Clone, uniffi::Record)]
@@ -52,8 +54,7 @@ impl TryFrom<LlmProvider> for core::LlmProvider {
                 .models
                 .into_iter()
                 .map(|m| core::LlmModel {
-                    display_name: String::new(),
-                    max_output_tokens: None,
+                    max_output_tokens: m.max_output_tokens,
                     id: m.id,
                     model: m.model,
                     context_window: m.context_window,
@@ -79,6 +80,7 @@ impl From<core::LlmProvider> for LlmProvider {
                 .models
                 .into_iter()
                 .map(|m| LlmModel {
+                    max_output_tokens: m.max_output_tokens,
                     id: m.id,
                     model: m.model,
                     context_window: m.context_window,
@@ -92,22 +94,8 @@ pub async fn llm_save_provider(
     config_path: String,
     provider: LlmProvider,
 ) -> Result<LlmConfig, CoreFfiError> {
-    let mut provider: core::LlmProvider = provider.try_into()?;
-    if let Some(previous) = LlmService::get_config(Path::new(&config_path))
-        .map_err(CoreFfiError::from_core)?
-        .providers
-        .into_iter()
-        .find(|old| old.id == provider.id)
-    {
-        for model in &mut provider.models {
-            if let Some(old) = previous.models.iter().find(|old| old.id == model.id) {
-                model.display_name = old.display_name.clone();
-                model.max_output_tokens = old.max_output_tokens;
-            }
-        }
-    }
     Ok(
-        LlmService::upsert_provider(Path::new(&config_path), provider)
+        LlmService::upsert_provider(Path::new(&config_path), provider.try_into()?)
             .map_err(CoreFfiError::from_core)?
             .into(),
     )
@@ -144,7 +132,7 @@ impl TryFrom<LlmProviderProfile> for core::LlmProviderProfile {
             endpoint: value.endpoint,
             model: value.model,
             context_window: value.context_window,
-            max_output_tokens: None,
+            max_output_tokens: value.max_output_tokens,
             credential_reference: value.credential_reference,
             revision: value.revision,
         })
@@ -153,6 +141,7 @@ impl TryFrom<LlmProviderProfile> for core::LlmProviderProfile {
 impl From<core::LlmProviderProfile> for LlmProviderProfile {
     fn from(value: core::LlmProviderProfile) -> Self {
         Self {
+            max_output_tokens: value.max_output_tokens,
             id: value.id,
             name: value.name,
             protocol: match value.protocol {
@@ -261,6 +250,7 @@ mod tests {
             endpoint: "http://127.0.0.1:1/v1".into(),
             model: "m".into(),
             context_window: 32768,
+            max_output_tokens: Some(1024),
             credential_reference: Some("secure-key-reference".into()),
             revision: 0,
         };
@@ -291,7 +281,6 @@ mod tests {
             .unwrap()
             .providers
             .remove(0);
-        desktop_provider.models[0].display_name = "Desktop alias".into();
         desktop_provider.models[0].max_output_tokens = Some(2048);
         LlmService::upsert_provider(Path::new(&path), desktop_provider).unwrap();
         let mut mobile_provider = llm_get_config(path.clone())
@@ -300,13 +289,14 @@ mod tests {
             .providers
             .remove(0);
         mobile_provider.name = "Renamed on mobile".into();
+        assert_eq!(mobile_provider.models[0].max_output_tokens, Some(2048));
+        mobile_provider.models[0].max_output_tokens = Some(4096);
         llm_save_provider(path.clone(), mobile_provider)
             .await
             .unwrap();
         let saved = LlmService::get_config(Path::new(&path)).unwrap();
         assert_eq!(saved.providers[0].name, "Renamed on mobile");
-        assert_eq!(saved.providers[0].models[0].display_name, "Desktop alias");
-        assert_eq!(saved.providers[0].models[0].max_output_tokens, Some(2048));
+        assert_eq!(saved.providers[0].models[0].max_output_tokens, Some(4096));
         profile.protocol = "unknown".into();
         assert!(llm_probe(profile.clone(), None).await.is_err());
         assert!(llm_list_models(profile.clone(), None).await.is_err());

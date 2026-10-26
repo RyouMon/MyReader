@@ -221,8 +221,6 @@
       "credentialPlaceholder": "Token al portador (opcional)",
       "instructions": "Instrucciones de lectura predeterminadas",
       "instructionsPlaceholder": "Por ejemplo: Leer con naturalidad y calma",
-      "enabled": "Habilitado",
-      "disabled": "Deshabilitado",
       "clearCredential": "Borrar credencial guardada",
       "save": "Guardar",
       "cancel": "Cancelar",

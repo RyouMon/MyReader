@@ -52,7 +52,6 @@ const mockProviderConfig = {
       id: "openai",
       name: "OpenAI",
       kind: "openAiCompatible" as const,
-      enabled: true,
       endpoint: "https://api.openai.com/v1",
       model: "gpt-4o-mini-tts",
       responseFormat: "mp3" as const,
@@ -239,7 +238,7 @@ describe("TtsSettingsScreen preview", () => {
     await act(async () => {
       await Promise.resolve()
     })
-    expect(screen.getByText("✓ reader-voice · Multilingual")).toBeTruthy()
+    expect(screen.getByText("reader-voice · Multilingual")).toBeTruthy()
 
     const action = await screen.findByRole("button", {
       name: "settings.tts.previewAction",

@@ -170,9 +170,6 @@ it("adds models to one provider and preserves each model when switching the edit
   fireEvent.change(screen.getByLabelText("providerEditor.modelId"), {
     target: { value: "first" },
   })
-  fireEvent.change(screen.getByLabelText("providerEditor.displayName"), {
-    target: { value: "Fast" },
-  })
   fireEvent.change(screen.getByLabelText("providerEditor.maxOutput"), {
     target: { value: "8192" },
   })
@@ -181,7 +178,7 @@ it("adds models to one provider and preserves each model when switching the edit
     target: { value: "second" },
   })
   fireEvent.click(
-    screen.getByRole("button", { name: "providerEditor.modelDetails Fast" }),
+    screen.getByRole("button", { name: "providerEditor.modelDetails first" }),
   )
   expect(screen.getAllByLabelText("providerEditor.modelId")[0]).toHaveValue(
     "first",
@@ -195,7 +192,7 @@ it("adds models to one provider and preserves each model when switching the edit
           models: [
             expect.objectContaining({
               model: "first",
-              displayName: "Fast",
+
               maxOutputTokens: 8192,
             }),
             expect.objectContaining({ model: "second", maxOutputTokens: null }),
@@ -206,7 +203,7 @@ it("adds models to one provider and preserves each model when switching the edit
   )
 })
 
-it("imports only selected new models and retains existing edited names", async () => {
+it("imports only selected new models and retains existing model settings", async () => {
   mocks.listLlmModels.mockResolvedValue(["first", "second", "third"])
   render(
     <QueryClientProvider client={new QueryClient()}>
@@ -219,9 +216,6 @@ it("imports only selected new models and retains existing edited names", async (
   })
   fireEvent.change(screen.getByLabelText("providerEditor.modelId"), {
     target: { value: "first" },
-  })
-  fireEvent.change(screen.getByLabelText("providerEditor.displayName"), {
-    target: { value: "Edited" },
   })
   fireEvent.click(
     screen.getByRole("button", { name: "providerEditor.fetchModels" }),
@@ -239,7 +233,7 @@ it("imports only selected new models and retains existing edited names", async (
       expect.objectContaining({
         provider: expect.objectContaining({
           models: [
-            expect.objectContaining({ model: "first", displayName: "Edited" }),
+            expect.objectContaining({ model: "first" }),
             expect.objectContaining({ model: "second" }),
           ],
         }),

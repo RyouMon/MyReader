@@ -87,12 +87,11 @@ function newProfileDraft(): ProfileDraft {
     id: "",
     name: "OpenAI",
     kind: "openAiCompatible",
-    enabled: true,
     endpoint: "https://api.openai.com/v1",
     modelScopedVoices: false,
     models: [newTtsModel("gpt-4o-mini-tts")],
     voices: [],
-    voiceNames: {},
+
     credential: "",
     hasCredential: false,
     clearCredential: false,
@@ -227,7 +226,7 @@ function useTtsPreviewPlayer({
       const profile = config.profiles.find(
         (candidate) => candidate.id === engineId,
       )
-      if (!profile?.enabled) throw new Error("TTS_DEFAULT_PROFILE_NOT_FOUND")
+      if (!profile) throw new Error("TTS_DEFAULT_PROFILE_NOT_FOUND")
       if (!voiceId) throw new Error("TTS_VOICE_REQUIRED")
       requestId = `settings-preview-${Date.now()}-${Math.random()}`
       requestPending = true
@@ -639,10 +638,9 @@ export function TtsProviderManager({
         id: draft.id,
         name: draft.name,
         kind: draft.kind,
-        enabled: draft.enabled,
         endpoint: draft.endpoint,
         voices: usesModelVoices(draft) ? [] : voices,
-        voiceNames: draft.voiceNames,
+
         modelScopedVoices: usesModelVoices(draft),
         models,
         hasCredential: draft.hasCredential,
@@ -724,7 +722,6 @@ export function TtsProviderManager({
             title={profile.name}
             onOpen={() => openEditProvider(profile, true)}
             description={`${profile.kind === "qwen" ? "Qwen" : t("settings.speech.openAiCompatible")} · ${profile.endpoint}`}
-            status={profile.enabled ? undefined : t("settings.speech.disabled")}
             icon={<Server className="size-4" />}
             actions={
               <>
@@ -1081,16 +1078,6 @@ function ProfileEditor({
       </div>
       <DialogFooter className="shrink-0 flex-row items-center justify-between border-t border-border px-6 py-4 sm:justify-between">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-sm">
-            <Switch
-              aria-labelledby="tts-profile-enabled-label"
-              checked={draft.enabled}
-              onCheckedChange={(enabled) => update({ enabled })}
-            />
-            <span id="tts-profile-enabled-label">
-              {t("settings.speech.enabled")}
-            </span>
-          </div>
           {draft.hasCredential ? (
             <div className="flex items-center gap-2">
               <Checkbox
@@ -1191,13 +1178,11 @@ function DefaultEngineSettings({
                 <SelectItem value="system">
                   {t("settings.speech.systemTitle")}
                 </SelectItem>
-                {config.profiles
-                  .filter((profile) => profile.enabled)
-                  .map((profile) => (
-                    <SelectItem key={profile.id} value={profile.id}>
-                      {`${profile.name}/${profile.modelName || profile.model}`}
-                    </SelectItem>
-                  ))}
+                {config.profiles.map((profile) => (
+                  <SelectItem key={profile.id} value={profile.id}>
+                    {`${profile.name}/${profile.model}`}
+                  </SelectItem>
+                ))}
               </SelectGroup>
             </SelectContent>
           </Select>
@@ -1240,7 +1225,7 @@ function DefaultEngineSettings({
                 ) : (
                   providerVoices.map((voice) => (
                     <SelectItem key={voice.id} value={voice.id}>
-                      {voice.name}
+                      {voice.id}
                     </SelectItem>
                   ))
                 )}

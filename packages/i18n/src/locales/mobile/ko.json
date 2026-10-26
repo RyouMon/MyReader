@@ -213,8 +213,6 @@
       "credentialPlaceholder": "베어러 토큰(선택사항)",
       "instructions": "기본 읽기 지침",
       "instructionsPlaceholder": "예: 자연스럽고 차분하게 읽으세요.",
-      "enabled": "활성화됨",
-      "disabled": "비활성화됨",
       "clearCredential": "저장된 자격증명 지우기",
       "save": "저장",
       "cancel": "취소",

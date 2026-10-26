@@ -14,7 +14,7 @@ export function TtsModelDetails({
   draft: TtsProviderDraft
   model: TtsModelDto
   readOnly: boolean
-  onVoicesChange: (voices: string[], names: Record<string, string>) => void
+  onVoicesChange: (voices: string[]) => void
   onRefresh: () => void
 }) {
   const { t } = useTranslation()

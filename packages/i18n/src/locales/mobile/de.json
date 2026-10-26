@@ -217,8 +217,6 @@
       "credentialPlaceholder": "Inhabertoken (optional)",
       "instructions": "Standard-Leseanweisungen",
       "instructionsPlaceholder": "Zum Beispiel: Lesen Sie natürlich und ruhig",
-      "enabled": "Aktiviert",
-      "disabled": "Deaktiviert",
       "clearCredential": "Gespeicherte Anmeldeinformationen löschen",
       "save": "Speichern",
       "cancel": "Abbrechen",

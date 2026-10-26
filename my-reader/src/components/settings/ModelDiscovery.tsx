@@ -11,7 +11,7 @@ export function ModelDiscovery({
   onAdd,
   onClose,
 }: {
-  models: { id: string; name?: string }[]
+  models: { id: string }[]
   existing: string[]
   onAdd: (ids: string[]) => void
   onClose: () => void
@@ -39,12 +39,7 @@ export function ModelDiscovery({
               htmlFor={`discover-${model.id}`}
               className="min-w-0 flex-1"
             >
-              <AppRow
-                body={model.name || model.id}
-                detail={
-                  model.name && model.name !== model.id ? model.id : undefined
-                }
-              />
+              <AppRow body={model.id} />
             </FieldLabel>
           </Field>
         ))}

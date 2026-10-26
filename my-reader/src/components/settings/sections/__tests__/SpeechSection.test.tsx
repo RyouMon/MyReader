@@ -83,7 +83,7 @@ const presets: (QwenTtsPresetDto & { defaultModel: QwenTtsModelDto })[] = [
   endpoint,
   defaultModel: {
     id: "qwen-audio-3.0-tts-plus",
-    name: "Qwen-Audio-TTS Plus",
+
     audioFormats: ["mp3", "wav", "opus"],
     supportsInstructions: true,
     voiceDiscovery: id !== "tokenPlan",
@@ -126,12 +126,12 @@ beforeEach(() => {
         .map((preset) => preset.defaultModel),
   )
   mocks.discoverQwenTtsVoices.mockImplementation(async () => [
-    { id: "custom-voice", name: "Custom voice", language: "mul", gender: null },
+    { id: "custom-voice", language: "mul", gender: null },
   ])
   mocks.saveTtsProvider.mockResolvedValue(config)
 })
 
-async function importQwenModel(name: RegExp = /Qwen-Audio-TTS Plus/) {
+async function importQwenModel(name: RegExp = /qwen-audio-3.0-tts-plus/) {
   fireEvent.click(screen.getByRole("button", { name: "获取可用模型" }))
   fireEvent.click(await screen.findByRole("checkbox", { name }))
   fireEvent.click(screen.getByRole("button", { name: "添加所选模型" }))
@@ -303,7 +303,7 @@ describe("SpeechSection", () => {
       presets[2].defaultModel,
       {
         id: "qwen3-tts-flash",
-        name: "Qwen3-TTS Flash",
+
         audioFormats: ["wav"],
         supportsInstructions: false,
         voiceDiscovery: false,
@@ -315,7 +315,7 @@ describe("SpeechSection", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: /^Qwen · DashScope/ }),
     )
-    await importQwenModel(/Qwen3-TTS Flash/)
+    await importQwenModel(/qwen3-tts-flash/)
     const form = within(screen.getByRole("dialog"))
     expect(mocks.discoverQwenTtsVoices).not.toHaveBeenCalled()
     fireEvent.click(form.getByRole("button", { name: "添加声音" }))
@@ -350,7 +350,6 @@ describe("SpeechSection", () => {
           id: "openai",
           name: "My voice service",
           kind: "openAiCompatible",
-          enabled: true,
           endpoint: "https://example.com/v1",
           model: "tts-model",
           options: {
@@ -464,7 +463,6 @@ describe("SpeechSection", () => {
       id: "fixture",
       name: "Fixture provider",
       kind: "openAiCompatible" as const,
-      enabled: false,
       endpoint: "https://old.example/v1",
       model: "old-model",
       options: {
@@ -517,7 +515,6 @@ describe("SpeechSection", () => {
         profile: expect.objectContaining({
           id: "fixture",
           endpoint: profile.endpoint,
-          enabled: false,
         }),
         credential: null,
       }),
@@ -687,18 +684,16 @@ it("merges editable system presets with account voices and tests each unsaved vo
     presets[1].defaultModel,
     {
       id: "qwen-new",
-      name: "New TTS",
+
       audioFormats: ["wav"],
       supportsInstructions: false,
       voiceDiscovery: true,
-      voices: [
-        { id: "builtin", name: "Built in", language: "mul", gender: null },
-      ],
+      voices: [{ id: "builtin", language: "mul", gender: null }],
     },
   ])
   mocks.discoverQwenTtsVoices.mockResolvedValue([
-    { id: "builtin", name: "Built in", language: "mul", gender: null },
-    { id: "custom", name: "My voice", language: "mul", gender: null },
+    { id: "builtin", language: "mul", gender: null },
+    { id: "custom", language: "mul", gender: null },
   ])
   render(<TtsProvidersSection />)
   fireEvent.click(await screen.findByRole("button", { name: "添加语音服务" }))
@@ -709,7 +704,7 @@ it("merges editable system presets with account voices and tests each unsaved vo
     target: { value: "draft-key" },
   })
   fireEvent.click(screen.getByRole("button", { name: "获取可用模型" }))
-  fireEvent.click(await screen.findByRole("checkbox", { name: /New TTS/ }))
+  fireEvent.click(await screen.findByRole("checkbox", { name: "qwen-new" }))
   fireEvent.click(screen.getByRole("button", { name: "添加所选模型" }))
   await waitFor(() =>
     expect(
@@ -721,13 +716,7 @@ it("merges editable system presets with account voices and tests each unsaved vo
   expect(mocks.discoverQwenTtsVoices).toHaveBeenCalledWith(
     expect.objectContaining({ model: "qwen-new", credential: "draft-key" }),
   )
-  fireEvent.change(
-    within(screen.getByRole("region", { name: "声音列表" })).getAllByLabelText(
-      "显示名称",
-    )[1],
-    { target: { value: "Actor" } },
-  )
-  fireEvent.click(screen.getByRole("button", { name: "测试 Actor" }))
+  fireEvent.click(screen.getByRole("button", { name: "测试 custom" }))
   await waitFor(() =>
     expect(mocks.testTtsProvider).toHaveBeenCalledWith(
       expect.any(String),
@@ -744,16 +733,18 @@ it("merges editable system presets with account voices and tests each unsaved vo
     ),
   )
   expect(mocks.saveTtsProvider).not.toHaveBeenCalled()
-  fireEvent.click(screen.getByRole("button", { name: "删除声音 Built in" }))
+  fireEvent.click(screen.getByRole("button", { name: "删除声音 builtin" }))
   mocks.discoverQwenTtsVoices.mockResolvedValue([
-    { id: "custom", name: "My voice", language: "mul", gender: null },
+    { id: "custom", language: "mul", gender: null },
   ])
   fireEvent.click(screen.getByRole("button", { name: "获取声音" }))
   await waitFor(() =>
     expect(mocks.discoverQwenTtsVoices).toHaveBeenCalledTimes(2),
   )
   expect(screen.getAllByLabelText("声音 ID")).toHaveLength(1)
-  expect(screen.getByRole("button", { name: "测试 Actor" })).toBeInTheDocument()
+  expect(
+    screen.getByRole("button", { name: "测试 custom" }),
+  ).toBeInTheDocument()
   fireEvent.click(
     within(screen.getByRole("dialog")).getByRole("button", {
       name: "添加语音服务",
@@ -766,7 +757,7 @@ it("merges editable system presets with account voices and tests each unsaved vo
           models: expect.arrayContaining([
             expect.objectContaining({
               model: "qwen-new",
-              voiceNames: { custom: "Actor" },
+
               voices: ["custom"],
             }),
           ]),
@@ -781,9 +772,9 @@ it("previews a shared voice with the chosen model and preserves saved playback v
     {
       id: "first",
       model: "first-model",
-      displayName: "First model",
+
       voices: [],
-      voiceNames: {},
+
       responseFormat: "wav",
       defaultVoice: "reader",
       instructions: "Warm",
@@ -791,9 +782,9 @@ it("previews a shared voice with the chosen model and preserves saved playback v
     {
       id: "second",
       model: "second-model",
-      displayName: "Second model",
+
       voices: [],
-      voiceNames: {},
+
       responseFormat: "mp3",
       defaultVoice: "actor",
       instructions: null,
@@ -806,12 +797,11 @@ it("previews a shared voice with the chosen model and preserves saved playback v
         id: "existing-provider",
         name: "Voice service",
         kind: "openAiCompatible",
-        enabled: true,
         endpoint: "https://example.com/v1",
         hasCredential: true,
         modelScopedVoices: false,
         voices: ["reader", "actor"],
-        voiceNames: {},
+
         models,
       },
     ],
@@ -825,7 +815,7 @@ it("previews a shared voice with the chosen model and preserves saved playback v
   fireEvent.keyDown(screen.getByRole("combobox", { name: "测试模型" }), {
     key: "ArrowDown",
   })
-  await user.click(await screen.findByRole("option", { name: "Second model" }))
+  await user.click(await screen.findByRole("option", { name: "second-model" }))
   await user.click(screen.getByRole("button", { name: "测试 reader" }))
   expect(mocks.testTtsProvider).toHaveBeenLastCalledWith(
     expect.any(String),

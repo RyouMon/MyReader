@@ -71,8 +71,8 @@ function voiceIdentifier(voice: ReadiumSpeechVoice): string {
 function toReadiumVoice(voice: TtsVoiceDto): ReadiumSpeechVoice {
   return {
     source: "server",
-    label: voice.name,
-    name: voice.name,
+    label: voice.id,
+    name: voice.id,
     originalName: voice.id,
     voiceURI: voice.id,
     language: voice.language,

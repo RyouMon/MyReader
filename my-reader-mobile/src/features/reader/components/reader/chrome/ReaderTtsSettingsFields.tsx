@@ -4,15 +4,9 @@ import {
   type MenuAction,
   type MenuComponentRef,
 } from "@react-native-menu/menu"
-import { useCallback, useRef } from "react"
-import { useTranslation } from "react-i18next"
-import {
-  ActionSheetIOS,
-  Platform,
-  Pressable,
-  StyleSheet,
-  View as RNView,
-} from "react-native"
+import { useRef } from "react"
+import { Platform, Pressable, StyleSheet, View as RNView } from "react-native"
+import { IosSelectMenu } from "@/src/components/ui/ios-select-menu"
 import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
 import { Text, View } from "@/tw"
 
@@ -29,30 +23,34 @@ export function ReaderTtsMenuRow({
   palette: ReaderChromePalette
   onSelect: (id: string) => void
 }) {
-  const { t } = useTranslation()
   const menuRef = useRef<MenuComponentRef>(null)
-  const handlePress = useCallback(() => {
-    if (Platform.OS === "ios") {
-      const cancelIndex = actions.length
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: [
-            ...actions.map((action) => action.title),
-            t("common.cancel"),
-          ],
-          cancelButtonIndex: cancelIndex,
-        },
-        (index) => {
-          if (index === undefined || index === cancelIndex) return
-          const action = actions[index]
-          if (action?.id) onSelect(action.id)
-        },
-      )
-      return
-    }
-    menuRef.current?.show()
-  }, [actions, onSelect, t])
 
+  const trigger = (
+    <Pressable
+      accessibilityLabel={title}
+      accessibilityRole="button"
+      disabled={actions.length === 0}
+      onPress={() => menuRef.current?.show()}
+      style={({ pressed }) => [
+        styles.menuRow,
+        {
+          backgroundColor: palette.segmentIdle,
+          opacity: actions.length === 0 ? 0.55 : pressed ? 0.72 : 1,
+        },
+      ]}
+    >
+      <Text className="text-base font-semibold" style={{ color: palette.text }}>
+        {title}
+      </Text>
+      <Text
+        className="min-w-0 flex-1 text-right text-base"
+        numberOfLines={1}
+        style={{ color: palette.textMuted }}
+      >
+        {value}
+      </Text>
+    </Pressable>
+  )
   return (
     <View style={styles.menuAnchor}>
       {Platform.OS === "android" ? (
@@ -68,33 +66,22 @@ export function ReaderTtsMenuRow({
           </MenuView>
         </View>
       ) : null}
-      <Pressable
-        accessibilityLabel={title}
-        accessibilityRole="button"
-        disabled={actions.length === 0}
-        onPress={handlePress}
-        style={({ pressed }) => [
-          styles.menuRow,
-          {
-            backgroundColor: palette.segmentIdle,
-            opacity: actions.length === 0 ? 0.55 : pressed ? 0.72 : 1,
-          },
-        ]}
-      >
-        <Text
-          className="text-base font-semibold"
-          style={{ color: palette.text }}
+      {Platform.OS === "ios" ? (
+        <IosSelectMenu
+          label={title}
+          onSelect={onSelect}
+          actions={actions.map(({ id, title, attributes, state }) => ({
+            id,
+            title,
+            attributes,
+            state: state === "on" ? "on" : state === "off" ? "off" : undefined,
+          }))}
         >
-          {title}
-        </Text>
-        <Text
-          className="min-w-0 flex-1 text-right text-base"
-          numberOfLines={1}
-          style={{ color: palette.textMuted }}
-        >
-          {value}
-        </Text>
-      </Pressable>
+          {trigger}
+        </IosSelectMenu>
+      ) : (
+        trigger
+      )}
     </View>
   )
 }

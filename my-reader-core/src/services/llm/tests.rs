@@ -101,7 +101,7 @@ fn provider_models_share_connection_and_keep_stable_selection() {
         model: "second".into(),
         context_window: 65536,
         max_output_tokens: None,
-        display_name: String::new(),
+
         revision: 0,
     });
     LlmService::upsert_provider(&path, provider.clone()).unwrap();
@@ -132,14 +132,21 @@ fn provider_models_share_connection_and_keep_stable_selection() {
 }
 
 #[test]
-fn model_labels_and_output_limits_roundtrip_and_invalid_limits_do_not_overwrite_config() {
+fn legacy_model_labels_are_dropped_and_invalid_limits_do_not_overwrite_config() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("config.json");
     let mut provider: LlmProvider = profile().into();
-    provider.models[0].display_name = " Fast model ".into();
+    let mut legacy = serde_json::to_value(&provider).unwrap();
+    legacy["models"][0]["displayName"] = serde_json::json!("Fast model");
+    provider = serde_json::from_value(legacy).unwrap();
     provider.models[0].max_output_tokens = Some(2048);
     let saved = LlmService::upsert_provider(&path, provider).unwrap();
-    assert_eq!(saved.providers[0].models[0].display_name, "Fast model");
+    assert_eq!(saved.providers[0].models[0].model, profile().model.trim());
+    assert!(
+        serde_json::to_value(&saved).unwrap()["providers"][0]["models"][0]
+            .get("displayName")
+            .is_none()
+    );
     assert_eq!(
         LlmService::selected_profile(&path)
             .unwrap()

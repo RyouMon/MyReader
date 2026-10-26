@@ -225,8 +225,6 @@
       "credentialPlaceholder": "Токен носителя (необязательно)",
       "instructions": "Инструкции чтения по умолчанию",
       "instructionsPlaceholder": "Например: Читайте естественно и спокойно.",
-      "enabled": "Включено",
-      "disabled": "Отключено",
       "clearCredential": "Очистить сохраненные учетные данные",
       "save": "Сохранить",
       "cancel": "Отмена",

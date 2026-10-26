@@ -1,4 +1,22 @@
 {
+  "providerEditor": {
+    "playbackFailed": "Riproduzione audio non riuscita.",
+    "fetchModels": "Carica modelli disponibili",
+    "models": "Elenco modelli",
+    "voices": "Elenco voci",
+    "modelId": "ID modello",
+    "modelDetails": "Impostazioni modello",
+    "maxOutput": "Token massimi di output",
+    "automatic": "Automatico",
+    "noNewModels": "Tutti i modelli disponibili sono stati aggiunti",
+    "addSelected": "Aggiungi modelli selezionati",
+    "audioFormat": "Formato audio",
+    "voiceId": "ID voce",
+    "removeVoice": "Rimuovi voce",
+    "addVoice": "Aggiungi voce",
+    "fetchVoices": "Ottieni voci",
+    "testModel": "Modello di prova"
+  },
   "llm": {
     "title": "Fornitori LLM",
     "add": "Aggiungi fornitore",

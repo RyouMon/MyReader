@@ -18,13 +18,10 @@ export function ProviderModels({
   discovery,
   settings,
 }: {
-  models: { id: string; model: string; displayName?: string }[]
+  models: { id: string; model: string }[]
   selected: number | null
   onSelect: (index: number | null) => void
-  onChange?: (
-    index: number,
-    patch: { model?: string; displayName?: string },
-  ) => void
+  onChange?: (index: number, patch: { model?: string }) => void
   onAdd?: () => void
   onRemove?: (index: number) => void
   children?: (index: number) => ReactNode
@@ -51,7 +48,7 @@ export function ProviderModels({
             className="flex flex-col gap-3"
           >
             <div className="flex items-end gap-2">
-              <FieldGroup className="grid min-w-0 flex-1 grid-cols-2 gap-3">
+              <FieldGroup className="min-w-0 flex-1">
                 <Field>
                   <FieldLabel
                     className={
@@ -71,25 +68,6 @@ export function ProviderModels({
                     }
                   />
                 </Field>
-                <Field>
-                  <FieldLabel
-                    className={
-                      index ? "sr-only" : "border-l border-transparent pl-3"
-                    }
-                    htmlFor={`model-name-${model.id || index}`}
-                  >
-                    {t("providerEditor.displayName")}
-                  </FieldLabel>
-                  <Input
-                    id={`model-name-${model.id || index}`}
-                    value={model.displayName ?? ""}
-                    readOnly={!onChange}
-                    placeholder={model.model || t("providerEditor.displayName")}
-                    onChange={(event) =>
-                      onChange?.(index, { displayName: event.target.value })
-                    }
-                  />
-                </Field>
               </FieldGroup>
               <div className="flex w-20 shrink-0 items-center justify-end gap-2">
                 {children ? (
@@ -99,7 +77,7 @@ export function ProviderModels({
                     size="icon"
                     aria-expanded={selected === index}
                     aria-controls={`model-details-${model.id || index}`}
-                    aria-label={`${t("providerEditor.modelDetails")} ${model.displayName || model.model || index + 1}`}
+                    aria-label={`${t("providerEditor.modelDetails")} ${model.model || index + 1}`}
                     onClick={() => onSelect(selected === index ? null : index)}
                   >
                     {selected === index ? <ChevronDown /> : <ChevronRight />}
@@ -110,7 +88,7 @@ export function ProviderModels({
                     type="button"
                     variant="ghost"
                     size="icon"
-                    aria-label={`${t("aiProviders.removeModel")} ${model.displayName || model.model || index + 1}`}
+                    aria-label={`${t("aiProviders.removeModel")} ${model.model || index + 1}`}
                     onClick={() => onRemove(index)}
                   >
                     <Trash2 />

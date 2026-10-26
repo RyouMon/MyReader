@@ -1,6 +1,7 @@
 flows:
   - flows/release/*
   - flows/settings/navigate_tts_providers.yaml
+  - flows/settings/navigate_llm_providers.yaml
 
 testOutputDir: e2e/.artifacts
 
