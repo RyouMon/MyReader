@@ -2,7 +2,10 @@ import type {
   Locator,
   TtsSynthesisRequestEvent,
   TtsPlaybackSegment,
+  ContentResult,
+  Utterance,
 } from "@my-reader/readium"
+import { publication as readiumPublication } from "@my-reader/readium"
 import type { Library } from "@my-reader/tools/types/library"
 import { hrefRoughlyMatches } from "@my-reader/tools/reader-toc"
 import {
@@ -15,12 +18,15 @@ import {
   buildReaderTtsSynthesisRequest,
   type ReaderTtsSelection,
 } from "./reader-tts"
+import { narrationTextContext } from "./narration-text-context"
 
 export type NarrationBookContext = {
   library: Library
   bookId: number
   contentVersion: string
   positions: Locator[]
+  publicationId?: string
+  utterances?: Utterance[]
 }
 
 export async function prepareNarrationPlayback(
@@ -50,12 +56,11 @@ export async function prepareNarrationPlayback(
             sourceKey: JSON.stringify(locator),
             position,
             text: request.text,
-            before: Array.from(locator.text?.before ?? "")
-              .slice(-900)
-              .join(""),
-            after: Array.from(locator.text?.after ?? "")
-              .slice(0, 900)
-              .join(""),
+            ...narrationTextContext(
+              book.utterances ?? [],
+              locator,
+              request.text,
+            ),
           },
           defaultVoice,
           signal,
@@ -118,6 +123,18 @@ export async function loadNarrationContext(
     engine: selection.kind,
     profileId: selection.kind === "provider" ? selection.profile.id : undefined,
     voiceId: selection.voiceId ?? "",
+  }
+  if (book.publicationId) {
+    const content = (await readiumPublication.getContent(
+      book.publicationId,
+    )) as ContentResult & { content?: Utterance[] }
+    return {
+      book: {
+        ...book,
+        utterances: content.utterances ?? content.content ?? [],
+      },
+      defaultVoice,
+    }
   }
   return { book, defaultVoice }
 }
