@@ -302,8 +302,9 @@ export default function ReaderScreen() {
         activeLoadState,
         positions,
         readerLanguage,
+        publicationId,
       ),
-    [activeLibrary, activeLoadState, positions, readerLanguage],
+    [activeLibrary, activeLoadState, positions, readerLanguage, publicationId],
   )
   const {
     state: ttsState,
@@ -1601,6 +1602,7 @@ function readerNarrationBook(
   load: LoadState | null,
   positions: Locator[],
   language: string,
+  publicationId: string | null,
 ) {
   if (!library || load?.status !== "ready" || !load.bookArchiveFingerprint)
     return undefined
@@ -1609,6 +1611,7 @@ function readerNarrationBook(
     bookId: load.bookId,
     contentVersion: load.bookArchiveFingerprint,
     positions,
+    publicationId: publicationId ?? undefined,
     title: load.title,
     authors: load.authors ?? [],
     language,

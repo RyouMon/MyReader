@@ -1,5 +1,6 @@
 import type { Library } from "@my-reader/tools/types/library"
 import type { TtsSynthesisRequestEvent } from "@my-reader/readium"
+import { publication as readiumPublication } from "@my-reader/readium"
 import {
   getBookNarration,
   prepareBookNarration,
@@ -16,6 +17,9 @@ jest.mock("@/src/services/core/narration", () => ({
   prepareBookNarration: jest.fn(),
 }))
 jest.mock("@/src/services/core/tts", () => ({ synthesizeTts: jest.fn() }))
+jest.mock("@my-reader/readium", () => ({
+  publication: { getContent: jest.fn() },
+}))
 
 const book: NarrationBookContext = {
   library: { id: "library" } as Library,
@@ -155,6 +159,7 @@ it("leaves disabled books on the existing playback path", async () => {
   expect(await loadNarrationContext(book, { kind: "system" })).toBeNull()
   expect(await loadNarrationContext(undefined, { kind: "system" })).toBeNull()
   expect(getBookNarration).toHaveBeenCalledTimes(1)
+  expect(readiumPublication.getContent).not.toHaveBeenCalled()
   jest.mocked(getBookNarration).mockResolvedValue({
     bookId: 42,
     enabled: true,
@@ -167,4 +172,65 @@ it("leaves disabled books on the existing playback path", async () => {
   expect(
     await loadNarrationContext(book, { kind: "system", voiceId: "saved" }),
   ).toEqual({ book, defaultVoice: { engine: "system", voiceId: "saved" } })
+})
+
+it.each([
+  "utterances",
+  "content",
+])("loads native %s once per narration session and uses neighboring text", async (key) => {
+  jest
+    .mocked(getBookNarration)
+    .mockResolvedValue({ enabled: true } as Awaited<
+      ReturnType<typeof getBookNarration>
+    >)
+  const utterances = [
+    { text: request.text, locator: request.locator! },
+    { text: "真昼向周打了招呼。", locator: request.locator! },
+  ]
+  jest
+    .mocked(readiumPublication.getContent)
+    .mockResolvedValue({ [key]: utterances } as unknown as Awaited<
+      ReturnType<typeof readiumPublication.getContent>
+    >)
+  jest.mocked(prepareBookNarration).mockResolvedValue([])
+  const context = await loadNarrationContext(
+    { ...book, publicationId: "native-book" },
+    { kind: "system" },
+  )
+  await prepareNarrationPlayback(
+    context!.book,
+    context!.defaultVoice,
+    { ...request, locator: { ...request.locator!, text: { after: "\n" } } },
+    [],
+    new AbortController().signal,
+  )
+  expect(readiumPublication.getContent).toHaveBeenCalledTimes(1)
+  expect(readiumPublication.getContent).toHaveBeenCalledWith("native-book")
+  expect(prepareBookNarration).toHaveBeenCalledWith(
+    book.library,
+    expect.objectContaining({
+      text: request.text,
+      after: "\n真昼向周打了招呼。",
+    }),
+    expect.anything(),
+    expect.anything(),
+  )
+})
+
+it("surfaces content extraction failures before starting role playback", async () => {
+  jest
+    .mocked(getBookNarration)
+    .mockResolvedValue({ enabled: true } as Awaited<
+      ReturnType<typeof getBookNarration>
+    >)
+  jest
+    .mocked(readiumPublication.getContent)
+    .mockRejectedValue(new Error("Publication closed"))
+  await expect(
+    loadNarrationContext(
+      { ...book, publicationId: "native-book" },
+      { kind: "system" },
+    ),
+  ).rejects.toThrow("Publication closed")
+  expect(prepareBookNarration).not.toHaveBeenCalled()
 })

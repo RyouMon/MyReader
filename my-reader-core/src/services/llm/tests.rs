@@ -220,3 +220,142 @@ async fn caps_inference_output_using_the_configured_model_limit_for_both_protoco
         }
     }
 }
+
+async fn inference_server(
+    responses: Vec<(u16, serde_json::Value)>,
+) -> (
+    LlmProviderProfile,
+    tokio::task::JoinHandle<Vec<serde_json::Value>>,
+) {
+    use tokio::{
+        io::{AsyncReadExt, AsyncWriteExt},
+        net::TcpListener,
+    };
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let mut model = profile();
+    model.endpoint = format!("http://{}", listener.local_addr().unwrap());
+    model.max_output_tokens = Some(1024);
+    let server = tokio::spawn(async move {
+        let mut requests = Vec::new();
+        for (status, response) in responses {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let mut bytes = Vec::new();
+            loop {
+                let mut chunk = [0u8; 4096];
+                let count = stream.read(&mut chunk).await.unwrap();
+                assert!(count > 0);
+                bytes.extend_from_slice(&chunk[..count]);
+                if let Some(offset) = bytes.windows(4).position(|w| w == b"\r\n\r\n") {
+                    if let Ok(body) =
+                        serde_json::from_slice::<serde_json::Value>(&bytes[offset + 4..])
+                    {
+                        let headers =
+                            String::from_utf8_lossy(&bytes[..offset]).to_ascii_lowercase();
+                        assert!(headers.contains("authorization: bearer test-key"));
+                        requests.push(body);
+                        break;
+                    }
+                }
+            }
+            let response = response.to_string();
+            stream.write_all(format!("HTTP/1.1 {status} Result\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{response}", response.len()).as_bytes()).await.unwrap();
+        }
+        requests
+    });
+    (model, server)
+}
+
+#[tokio::test]
+async fn retries_unsupported_schema_as_json_without_losing_the_request_contract() {
+    use serde_json::json;
+    let unsupported = json!({"error":{"message":"This response_format type is unavailable now"}});
+    let success =
+        json!({"choices":[{"finish_reason":"stop","message":{"content":"{\"ok\":true}"}}]});
+    let (model, server) = inference_server(vec![(400, unsupported), (200, success)]).await;
+    let messages = [crate::models::LlmMessage {
+        role: "user".into(),
+        content: "Return ok=true.".into(),
+    }];
+    let schema = json!({"type":"object","properties":{"ok":{"type":"boolean"}},"required":["ok"],"additionalProperties":false});
+    let result = llm::complete(&model, Some("test-key"), &messages, schema.clone())
+        .await
+        .unwrap();
+    assert_eq!(result, json!({"ok":true}));
+    let requests = server.await.unwrap();
+    assert_eq!(requests.len(), 2);
+    assert_eq!(requests[0]["response_format"]["type"], "json_schema");
+    assert_eq!(
+        requests[1]["response_format"],
+        json!({"type":"json_object"})
+    );
+    assert!(requests[1]["messages"][0]["content"]
+        .as_str()
+        .unwrap()
+        .contains(&schema.to_string()));
+    assert_eq!(requests[1]["messages"][1], json!(messages[0]));
+    for request in requests {
+        assert_eq!(request["model"], model.model);
+        assert_eq!(request["stream"], false);
+        assert_eq!(request["max_completion_tokens"], 1024);
+    }
+}
+
+#[tokio::test]
+async fn schema_fallback_does_not_retry_other_errors_or_hide_retry_failures() {
+    use serde_json::json;
+    let unsupported = json!({"error":{"message":"json_schema is not supported"}});
+    let cases = [
+        (
+            LlmProtocol::ChatCompletions,
+            vec![(400, json!({"error":{"message":"Unknown model"}}))],
+            "LLM_HTTP_400",
+        ),
+        (
+            LlmProtocol::ChatCompletions,
+            vec![(401, unsupported.clone())],
+            "LLM_HTTP_401",
+        ),
+        (
+            LlmProtocol::Responses,
+            vec![(400, unsupported.clone())],
+            "LLM_HTTP_400",
+        ),
+        (
+            LlmProtocol::ChatCompletions,
+            vec![(400, unsupported.clone()), (400, unsupported.clone())],
+            "LLM_HTTP_400",
+        ),
+        (
+            LlmProtocol::ChatCompletions,
+            vec![
+                (400, unsupported.clone()),
+                (
+                    200,
+                    json!({"choices":[{"finish_reason":"length","message":{"content":"{}"}}]}),
+                ),
+            ],
+            "LLM_OUTPUT_LIMIT",
+        ),
+        (
+            LlmProtocol::ChatCompletions,
+            vec![
+                (400, unsupported),
+                (
+                    200,
+                    json!({"choices":[{"finish_reason":"stop","message":{"content":"not JSON"}}]}),
+                ),
+            ],
+            "LLM_INVALID_RESPONSE",
+        ),
+    ];
+    for (protocol, responses, expected) in cases {
+        let expected_requests = responses.len();
+        let (mut model, server) = inference_server(responses).await;
+        model.protocol = protocol;
+        let error = llm::complete(&model, Some("test-key"), &[], json!({"type":"object"}))
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains(expected), "{error}");
+        assert_eq!(server.await.unwrap().len(), expected_requests);
+    }
+}

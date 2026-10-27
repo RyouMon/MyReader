@@ -43,7 +43,7 @@ pub(crate) async fn complete_with_output_limit(
 ) -> Result<Value, CoreError> {
     let format = json!({"name":"myreader_result", "strict":true, "schema":schema});
     let output_tokens = output_tokens.min(profile.max_output_tokens.unwrap_or(u32::MAX));
-    let (suffix, body) = match profile.protocol {
+    let (suffix, mut body) = match profile.protocol {
         LlmProtocol::ChatCompletions => (
             "chat/completions",
             json!({
@@ -61,14 +61,55 @@ pub(crate) async fn complete_with_output_limit(
             }),
         ),
     };
-    let response = authorize(client()?.post(endpoint(profile, suffix)), credential)
+    let client = client()?;
+    let url = endpoint(profile, suffix);
+    let response = authorize(client.post(&url), credential)
         .json(&body)
         .send()
         .await
         .map_err(map_network_error)?;
-    let response = read_json(response).await?;
+    let response = if profile.protocol == LlmProtocol::ChatCompletions
+        && response.status() == reqwest::StatusCode::BAD_REQUEST
+    {
+        let bytes = read_bytes(response).await?;
+        let failure: Value = serde_json::from_slice(&bytes).unwrap_or(Value::Null);
+        if !unsupported_schema(&failure) {
+            return Err(error("HTTP_400"));
+        }
+        body["response_format"] = json!({"type":"json_object"});
+        let mut json_messages = vec![json!({
+            "role":"system",
+            "content":format!("Return only a JSON object matching this JSON schema: {}", format["schema"])
+        })];
+        json_messages.extend(messages.iter().map(|message| json!(message)));
+        body["messages"] = json!(json_messages);
+        let response = authorize(client.post(&url), credential)
+            .json(&body)
+            .send()
+            .await
+            .map_err(map_network_error)?;
+        read_json(response).await?
+    } else {
+        read_json(response).await?
+    };
     let text = response_text(profile.protocol, &response)?;
     serde_json::from_str(&text).map_err(|_| error("INVALID_RESPONSE"))
+}
+
+fn unsupported_schema(response: &Value) -> bool {
+    let message = response["error"]["message"]
+        .as_str()
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    (message.contains("response_format") || message.contains("json_schema"))
+        && [
+            "unsupported",
+            "not supported",
+            "unavailable",
+            "not available",
+        ]
+        .iter()
+        .any(|reason| message.contains(reason))
 }
 
 fn response_text(protocol: LlmProtocol, response: &Value) -> Result<String, CoreError> {
@@ -166,10 +207,15 @@ fn endpoint(profile: &LlmProviderProfile, suffix: &str) -> String {
     format!("{base}/{suffix}")
 }
 
-pub(crate) async fn read_json(mut response: Response) -> Result<Value, CoreError> {
+pub(crate) async fn read_json(response: Response) -> Result<Value, CoreError> {
     if !response.status().is_success() {
         return Err(error(&format!("HTTP_{}", response.status().as_u16())));
     }
+    let bytes = read_bytes(response).await?;
+    serde_json::from_slice(&bytes).map_err(|_| error("INVALID_RESPONSE"))
+}
+
+async fn read_bytes(mut response: Response) -> Result<Vec<u8>, CoreError> {
     if response
         .content_length()
         .is_some_and(|length| length > MAX_RESPONSE_BYTES as u64)
@@ -183,7 +229,7 @@ pub(crate) async fn read_json(mut response: Response) -> Result<Value, CoreError
         }
         bytes.extend_from_slice(&chunk);
     }
-    serde_json::from_slice(&bytes).map_err(|_| error("INVALID_RESPONSE"))
+    Ok(bytes)
 }
 
 fn map_network_error(error_value: reqwest::Error) -> CoreError {
