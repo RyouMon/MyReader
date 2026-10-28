@@ -7,13 +7,13 @@ import type { TtsModelDto } from "@/lib/tauri-specta"
 export function TtsModelDetails({
   draft,
   model,
-  readOnly,
+  fieldErrors,
   onVoicesChange,
   onRefresh,
 }: {
   draft: TtsProviderDraft
   model: TtsModelDto
-  readOnly: boolean
+  fieldErrors?: Record<string, string>
   onVoicesChange: (voices: string[]) => void
   onRefresh: () => void
 }) {
@@ -22,11 +22,10 @@ export function TtsModelDetails({
     <TtsVoicesEditor
       draft={draft}
       model={model}
-      readOnly={readOnly}
-      embedded
+      fieldErrors={fieldErrors}
       onChange={onVoicesChange}
       actions={
-        !readOnly && draft.kind === "qwen" && model.model.trim() ? (
+        draft.kind === "qwen" && model.model.trim() ? (
           <Button type="button" variant="ghost" size="sm" onClick={onRefresh}>
             {t("providerEditor.fetchVoices")}
           </Button>

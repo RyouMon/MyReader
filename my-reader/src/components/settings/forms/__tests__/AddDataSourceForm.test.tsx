@@ -52,7 +52,7 @@ describe("AddDataSourceForm", () => {
     fireEvent.change(screen.getByLabelText("密码"), {
       target: { value: "secret" },
     })
-    fireEvent.click(screen.getByRole("button", { name: "添加" }))
+    fireEvent.click(screen.getByRole("button", { name: "保存" }))
 
     await waitFor(() => {
       expect(onCreateDataSource).toHaveBeenCalledWith(
@@ -78,14 +78,14 @@ describe("AddDataSourceForm", () => {
     const content = container.querySelector('[data-slot="webdav-form-content"]')
     const actions = container.querySelector('[data-slot="dialog-footer"]')
     const testButton = screen.getByRole("button", { name: "测试连接" })
-    const addButton = screen.getByRole("button", { name: "添加" })
+    const saveButton = screen.getByRole("button", { name: "保存" })
 
     expect(form).toHaveClass("h-full", "min-h-0", "flex-col")
     expect(content).toHaveClass("min-h-0", "flex-1", "overflow-y-auto")
     expect(actions).toHaveClass("shrink-0", "justify-between")
     expect(content?.nextElementSibling).toBe(actions)
     expect(testButton.parentElement).toBe(actions)
-    expect(addButton.parentElement).toBe(actions)
+    expect(saveButton.parentElement).toBe(actions)
     expect(testButton.querySelector("svg")).toBeInTheDocument()
   })
 

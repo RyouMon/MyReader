@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { readerChromePalette } from "@my-reader/tools/reader-chrome-palette"
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ReaderTtsSettingsPanel } from "@/components/reader/readium/ReaderTtsSettingsPanel"
@@ -197,7 +197,7 @@ describe("ReaderTtsSettingsPanel", () => {
       name: "OpenAI/gpt-4o-mini-tts",
     })
     const oceanPalette = readerChromePalette("#ffffff", "#181842")
-    expect(openAiOption.closest('[data-slot="select-content"]')).toHaveStyle({
+    expect(openAiOption.closest('[style*="--popover"]')).toHaveStyle({
       "--popover": oceanPalette.sheetSurface,
       "--foreground": oceanPalette.text,
       "--primary": oceanPalette.accent,
@@ -216,9 +216,9 @@ describe("ReaderTtsSettingsPanel", () => {
     )
     expect(ttsSession.setVoice).toHaveBeenCalledWith("li-mu")
 
-    fireEvent.change(speedSlider, { target: { value: "1.5" } })
-    fireEvent.pointerUp(speedSlider, { target: { value: "1.5" } })
-    expect(ttsSession.setSpeed).toHaveBeenCalledWith(1.5)
+    act(() => speedSlider.focus())
+    await user.keyboard("{ArrowRight>5}")
+    expect(vi.mocked(ttsSession.setSpeed).mock.lastCall?.[0]).toBeCloseTo(1.5)
 
     fireEvent.click(
       screen.getByRole("button", { name: "ttsSettings.manageProviders" }),
@@ -300,7 +300,7 @@ it("names the character being edited and replaces general playback controls unti
   ).toBeInTheDocument()
   fireEvent.click(screen.getByRole("button", { name: /陈默/ }))
   expect(await screen.findByText("陈默")).toBeInTheDocument()
-  expect(screen.getByLabelText("narration.name")).toHaveValue("陈默")
+  expect(screen.getByLabelText(/narration\.name/)).toHaveValue("陈默")
   expect(
     screen.queryByRole("combobox", { name: "reader.tts.engine" }),
   ).not.toBeInTheDocument()

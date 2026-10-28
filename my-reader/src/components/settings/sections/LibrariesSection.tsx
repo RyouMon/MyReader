@@ -1,9 +1,9 @@
 import type { Library } from "@my-reader/tools/types/library"
-import { Library as LibraryIcon, Trash2 } from "lucide-react"
-import { useRef, useState } from "react"
+import { Library as LibraryIcon } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { AddPanelButton } from "@/components/common/AddPanelButton"
 import { AppRow } from "@/components/common/AppRow"
+import { RowActions } from "@/components/common/RowActions"
 import { EntityIcon, type EntityIconKind } from "@/components/common/EntityIcon"
 import { GroupList, GroupListItem } from "@/components/common/GroupList"
 import { SectionHeader } from "@/components/common/SectionHeader"
@@ -18,7 +18,6 @@ import {
   useLibrariesQuery,
   useLibraryMutations,
 } from "@/hooks/queries/useLibrariesQuery"
-import { cn } from "@/lib/utils"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 
 interface LibrariesSectionProps {
@@ -32,24 +31,6 @@ export default function LibrariesSection({
   const { data: libraries = [] } = useLibrariesQuery()
   const { removeLibrary } = useLibraryMutations()
   const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
-
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
-  const [removingId, setRemovingId] = useState<string | null>(null)
-
-  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  function handleDeleteClick(id: string) {
-    if (pendingDeleteId === id) {
-      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current)
-      setPendingDeleteId(null)
-      setRemovingId(id)
-      removeLibrary(id).finally(() => setRemovingId(null))
-    } else {
-      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current)
-      setPendingDeleteId(id)
-      deleteTimerRef.current = setTimeout(() => setPendingDeleteId(null), 3000)
-    }
-  }
 
   return (
     <div className="flex flex-col h-full">
@@ -87,9 +68,7 @@ export default function LibrariesSection({
                 lib={lib}
                 index={index}
                 isActive={lib.id === activeLibraryId}
-                isPendingDelete={pendingDeleteId === lib.id}
-                isRemoving={removingId === lib.id}
-                onDeleteClick={handleDeleteClick}
+                onDelete={removeLibrary}
               />
             ))
           )}
@@ -110,19 +89,10 @@ interface LibraryCardProps {
   lib: Library
   index: number
   isActive: boolean
-  isPendingDelete: boolean
-  isRemoving: boolean
-  onDeleteClick: (id: string) => void
+  onDelete: (id: string) => Promise<void>
 }
 
-function LibraryCard({
-  lib,
-  index,
-  isActive,
-  isPendingDelete,
-  isRemoving,
-  onDeleteClick,
-}: LibraryCardProps) {
+function LibraryCard({ lib, index, isActive, onDelete }: LibraryCardProps) {
   const { t } = useTranslation()
   const isWebdav = lib.sourceType === "webdav"
   const isOnedrive = lib.sourceType === "onedrive"
@@ -142,11 +112,7 @@ function LibraryCard({
 
   return (
     <GroupListItem
-      className={cn(
-        "@container/library-row transition-[opacity,transform,background-color] hover:bg-accent",
-        isRemoving &&
-          "pointer-events-none ltr:translate-x-2 rtl:-translate-x-2 opacity-0",
-      )}
+      className="@container/library-row"
       style={{ animationDelay: `${index * 60}ms` }}
     >
       <AppRow
@@ -171,33 +137,13 @@ function LibraryCard({
                 {t("settings.libraries.current")}
               </span>
             )}
-            {isPendingDelete ? (
-              <span className="whitespace-nowrap text-[11.5px] text-destructive animate-in fade-in-0 duration-150">
-                {t("settings.libraries.confirmDelete")}
-              </span>
-            ) : (
-              <span className="text-xs text-muted-foreground">
-                {t("settings.libraries.bookCount", { count: lib.bookCount })}
-              </span>
-            )}
+            <span className="text-xs text-muted-foreground">
+              {t("settings.libraries.bookCount", { count: lib.bookCount })}
+            </span>
           </div>
         }
         actions={
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => onDeleteClick(lib.id)}
-              title={t("settings.libraries.deleteTitle")}
-              className={cn(
-                "size-[30px] rounded-md border flex items-center justify-center transition-colors",
-                isPendingDelete
-                  ? "border-destructive/30 bg-destructive/10 text-destructive"
-                  : "border-transparent text-muted-foreground hover:border-destructive/20 hover:bg-destructive/10 hover:text-destructive",
-              )}
-            >
-              <Trash2 className="size-3.5" />
-            </button>
-          </div>
+          <RowActions name={lib.name} onDelete={() => onDelete(lib.id)} />
         }
       />
     </GroupListItem>

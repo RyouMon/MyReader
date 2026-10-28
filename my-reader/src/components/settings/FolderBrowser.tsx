@@ -35,7 +35,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
+import { FormTextField } from "@/components/common/FormTextField"
 import { cn } from "@/lib/utils"
 
 export interface FolderBrowserFolder {
@@ -195,33 +195,27 @@ export function FolderBrowser({
       />
 
       {createSubdirectory && (
-        <div className="mt-3 space-y-1.5 rounded-md border border-border bg-bg-secondary p-3">
-          <label
-            htmlFor="remote-library-folder-name"
-            className="text-sm font-medium text-ink-1"
-          >
-            {t("addLibraryForm.newRemoteFolder")}
-          </label>
-          <Input
+        <div className="mt-3">
+          <FormTextField
             id="remote-library-folder-name"
-            data-testid="remote-library-folder-name"
             value={newDirectoryName}
             onChange={(event) => setNewDirectoryName(event.target.value)}
             placeholder={t("library.defaultMyreaderName")}
-            className="h-9"
             autoComplete="off"
-            spellCheck={false}
+            label={t("addLibraryForm.newRemoteFolder")}
+            slotProps={{
+              htmlInput: {
+                spellCheck: false,
+                "data-testid": "remote-library-folder-name",
+              },
+            }}
+            helperText={
+              newDirectoryNameInvalid
+                ? t("addLibraryForm.newRemoteFolderInvalid")
+                : t("addLibraryForm.newRemoteFolderDetail")
+            }
+            error={newDirectoryNameInvalid}
           />
-          <p
-            className={cn(
-              "text-xs",
-              newDirectoryNameInvalid ? "text-danger" : "text-ink-2",
-            )}
-          >
-            {newDirectoryNameInvalid
-              ? t("addLibraryForm.newRemoteFolderInvalid")
-              : t("addLibraryForm.newRemoteFolderDetail")}
-          </p>
         </div>
       )}
 

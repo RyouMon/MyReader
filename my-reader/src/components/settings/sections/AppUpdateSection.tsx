@@ -4,7 +4,8 @@ import {
 } from "@my-reader/i18n/desktop"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
+import { AppRow } from "@/components/common/AppRow"
+import { FormSwitch } from "@/components/common/FormSwitch"
 import { useAppUpdate } from "@/hooks/useAppUpdate"
 import { ReleaseNotes } from "./ReleaseNotes"
 
@@ -25,23 +26,48 @@ export default function AppUpdateSection() {
 
   return (
     <section className="w-full space-y-5" aria-label={t("appUpdates.title")}>
-      <div>
-        <h2 className="text-base font-semibold">{t("appUpdates.title")}</h2>
-        {data ? (
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("appUpdates.currentVersion", { version: data.currentVersion })}
-          </p>
-        ) : null}
-      </div>
       <UpdatePreferences
         data={data}
         busy={busy}
         setPreferences={setPreferences}
       />
       <div className="space-y-3">
-        <p role="status" className="text-sm text-muted-foreground">
-          {statusText}
-        </p>
+        <AppRow
+          className="flex-wrap items-center"
+          bodyClassName="flex-none"
+          body={
+            data
+              ? t("appUpdates.currentVersion", { version: data.currentVersion })
+              : ""
+          }
+          tail={
+            <Button
+              variant="outline"
+              disabled={busy || !supported}
+              onClick={() => check()}
+            >
+              {t("appUpdates.check")}
+            </Button>
+          }
+          actionsClassName="ml-auto min-w-0 shrink"
+          actions={
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <p role="status" className="text-sm text-muted-foreground">
+                {statusText}
+              </p>
+              {data?.version && status !== "downloaded" ? (
+                <Button disabled={busy} onClick={download}>
+                  {t("appUpdates.download")}
+                </Button>
+              ) : null}
+              {status === "downloaded" ? (
+                <Button disabled={busy} onClick={install}>
+                  {t("appUpdates.install")}
+                </Button>
+              ) : null}
+            </div>
+          }
+        />
         {status === "downloading" ? (
           <progress
             className="h-2 w-full accent-primary"
@@ -55,25 +81,6 @@ export default function AppUpdateSection() {
             {errorText}
           </p>
         ) : null}
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            disabled={busy || !supported}
-            onClick={() => check()}
-          >
-            {t("appUpdates.check")}
-          </Button>
-          {data?.version && status !== "downloaded" ? (
-            <Button disabled={busy} onClick={download}>
-              {t("appUpdates.download")}
-            </Button>
-          ) : null}
-          {status === "downloaded" ? (
-            <Button disabled={busy} onClick={install}>
-              {t("appUpdates.install")}
-            </Button>
-          ) : null}
-        </div>
         {data?.assetName ? (
           <p className="break-all text-xs text-muted-foreground">
             {data.assetName}
@@ -109,43 +116,27 @@ function UpdatePreferences({
 }: Pick<ReturnType<typeof useAppUpdate>, "data" | "busy" | "setPreferences">) {
   const { t } = useTranslation()
   return (
-    <div className="divide-y divide-border rounded-lg border border-border bg-card">
-      <label className="flex items-center justify-between gap-4 p-4">
-        <span className="space-y-1">
-          <span className="block text-sm font-medium">
-            {t("appUpdates.autoCheck")}
-          </span>
-          <span className="block text-sm text-muted-foreground">
-            {t("appUpdates.autoCheckDetail")}
-          </span>
-        </span>
-        <Switch
-          aria-label={t("appUpdates.autoCheck")}
-          checked={data?.autoCheck ?? true}
-          disabled={busy || !data}
-          onCheckedChange={(value) =>
-            setPreferences(value, data?.autoDownload ?? false)
-          }
-        />
-      </label>
-      <label className="flex items-center justify-between gap-4 p-4">
-        <span className="space-y-1">
-          <span className="block text-sm font-medium">
-            {t("appUpdates.autoDownload")}
-          </span>
-          <span className="block text-sm text-muted-foreground">
-            {t("appUpdates.autoDownloadDetail")}
-          </span>
-        </span>
-        <Switch
-          aria-label={t("appUpdates.autoDownload")}
-          checked={data?.autoDownload ?? false}
-          disabled={busy || !data}
-          onCheckedChange={(value) =>
-            setPreferences(data?.autoCheck ?? true, value)
-          }
-        />
-      </label>
+    <div className="flex flex-col gap-4">
+      <FormSwitch
+        align="between"
+        label={t("appUpdates.autoCheck")}
+        description={t("appUpdates.autoCheckDetail")}
+        checked={data?.autoCheck ?? true}
+        disabled={busy || !data}
+        onCheckedChange={(value) =>
+          setPreferences(value, data?.autoDownload ?? false)
+        }
+      />
+      <FormSwitch
+        align="between"
+        label={t("appUpdates.autoDownload")}
+        description={t("appUpdates.autoDownloadDetail")}
+        checked={data?.autoDownload ?? false}
+        disabled={busy || !data}
+        onCheckedChange={(value) =>
+          setPreferences(data?.autoCheck ?? true, value)
+        }
+      />
     </div>
   )
 }

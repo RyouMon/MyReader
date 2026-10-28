@@ -1,4 +1,18 @@
 {
+  "rowActions": {
+    "edit": "編輯 {{name}}",
+    "delete": "刪除 {{name}}",
+    "confirmDelete": "刪除「{{name}}」？"
+  },
+  "formValidation": {
+    "required": "此欄位為必填",
+    "url": "請輸入有效的 URL",
+    "number": "請輸入有效的數字",
+    "minimum": "不得小於 {{min}}",
+    "maximum": "不得大於 {{max}}",
+    "integer": "請輸入整數",
+    "invalid": "請輸入有效的內容"
+  },
   "errors": {
     "io": "檔案讀寫錯誤",
     "database": "資料庫錯誤",

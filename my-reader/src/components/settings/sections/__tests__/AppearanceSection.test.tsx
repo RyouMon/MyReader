@@ -23,7 +23,9 @@ describe("AppearanceSection", () => {
   it("should save English when the English language option is selected", () => {
     render(<AppearanceSection />)
 
-    fireEvent.keyDown(screen.getByRole("combobox"), { key: "ArrowDown" })
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "App language" }), {
+      key: "ArrowDown",
+    })
     fireEvent.click(screen.getByRole("option", { name: "English" }))
 
     expect(useAppUiStore.getState().appLanguageMode).toBe("en")

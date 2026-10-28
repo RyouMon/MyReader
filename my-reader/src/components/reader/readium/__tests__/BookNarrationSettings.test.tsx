@@ -163,13 +163,13 @@ it("clears the previous voice when switching provider and preserves the stable c
   const user = userEvent.setup()
   await user.click(screen.getByRole("combobox", { name: "narration.provider" }))
   await user.click(screen.getByRole("option", { name: "two/tts" }))
-  expect(screen.getByRole("button", { name: "llm.save" })).toBeDisabled()
+  expect(screen.getByRole("button", { name: "common.save" })).toBeDisabled()
   await user.click(screen.getByRole("combobox", { name: "narration.voice" }))
   await user.click(await screen.findByRole("option", { name: "A" }))
   fireEvent.change(screen.getByLabelText("narration.instructions"), {
     target: { value: "仿男声" },
   })
-  fireEvent.click(screen.getByRole("button", { name: "llm.save" }))
+  fireEvent.click(screen.getByRole("button", { name: "common.save" }))
   await waitFor(() =>
     expect(mocks.saveBookNarration).toHaveBeenCalledWith(
       "library",

@@ -1,3 +1,6 @@
+import { FormTextField } from "@/components/common/FormTextField"
+import { FormScrollArea } from "@/components/common/FormScrollArea"
+import { SaveButton } from "@/components/common/SaveButton"
 import {
   READER_ANNOTATION_COLORS,
   type ReaderAnnotationColor,
@@ -126,16 +129,19 @@ export function ReaderAnnotationEditorDialog({
             </div>
           </fieldset>
 
-          <label className="mx-6 mt-6 min-h-0 flex-1">
-            <span className="sr-only">{t("reader.note")}</span>
-            <textarea
-              className="h-full min-h-44 w-full resize-none bg-transparent p-0 text-base leading-7 text-reader-chrome-fg caret-reader-chrome-active outline-none disabled:opacity-50"
+          <FormScrollArea className="mx-6 mt-6 flex-1">
+            <FormTextField
+              placeholder={t("reader.notePlaceholder")}
+              multiline
+              minRows={6}
               value={note}
-              maxLength={4000}
+              slotProps={{
+                htmlInput: { maxLength: 4000, "aria-label": t("reader.note") },
+              }}
               disabled={mutating}
               onChange={(event) => setNote(event.target.value)}
             />
-          </label>
+          </FormScrollArea>
 
           <DialogFooter className="mt-4 flex-row justify-between px-6 pb-6 sm:justify-between">
             <div>
@@ -151,15 +157,13 @@ export function ReaderAnnotationEditorDialog({
                 </Button>
               ) : null}
             </div>
-            <Button
+            <SaveButton
               type="button"
               variant="ghost"
               className="bg-[var(--reader-chrome-action-surface)] text-[var(--reader-chrome-action-text)] hover:bg-[var(--reader-chrome-hover)] hover:text-reader-chrome-fg focus-visible:border-reader-chrome-active focus-visible:ring-reader-chrome-active/30"
-              disabled={mutating}
+              saving={mutating}
               onClick={() => void onSave({ color, note })}
-            >
-              {t("common.save")}
-            </Button>
+            />
           </DialogFooter>
         </DialogContent>
       </Dialog>

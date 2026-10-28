@@ -1,25 +1,14 @@
+import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
 import type { TFunction } from "i18next"
 import { NarrationMergeEditor } from "./NarrationMergeEditor"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState, type CSSProperties } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-  FieldError,
-} from "@/components/ui/field"
-import { Switch } from "@/components/ui/switch"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SaveButton } from "@/components/common/SaveButton"
+import { FormTextField } from "@/components/common/FormTextField"
+import { Field, FieldGroup, FieldError } from "@/components/ui/field"
+import { FormSwitch } from "@/components/common/FormSwitch"
 import {
   Dialog,
   DialogContent,
@@ -51,10 +40,12 @@ export type NarrationBook = {
 export function BookNarrationSettings({
   book,
   config,
+  themeStyle,
   onSubviewChange,
 }: {
   book: NarrationBook
   config: TtsConfigDto
+  themeStyle?: CSSProperties
   onSubviewChange?: (view: NarrationSubview | null) => void
 }) {
   const { t } = useTranslation()
@@ -82,31 +73,28 @@ export function BookNarrationSettings({
   return (
     <section className="flex flex-col gap-3">
       {!subview ? (
-        <Field orientation="horizontal">
-          <FieldLabel htmlFor="narration-enabled">
-            {t("narration.enabled")}
-          </FieldLabel>
-          <Switch
-            id="narration-enabled"
-            checked={settings.enabled}
-            disabled={save.isPending}
-            onCheckedChange={(enabled) => {
-              setEnableError(null)
-              if (!enabled) {
-                save.mutate({ ...settings, enabled })
-                return
-              }
-              void api
-                .getLlmConfig()
-                .then((config) => {
-                  if (!config.defaultProfileId)
-                    setEnableError(t("narration.llmRequired"))
-                  else setConfirmEnable(true)
-                })
-                .catch((value) => setEnableError(errorMessage(value)))
-            }}
-          />
-        </Field>
+        <FormSwitch
+          align="between"
+          label={t("narration.enabled")}
+          id="narration-enabled"
+          checked={settings.enabled}
+          disabled={save.isPending}
+          onCheckedChange={(enabled) => {
+            setEnableError(null)
+            if (!enabled) {
+              save.mutate({ ...settings, enabled })
+              return
+            }
+            void api
+              .getLlmConfig()
+              .then((config) => {
+                if (!config.defaultProfileId)
+                  setEnableError(t("narration.llmRequired"))
+                else setConfirmEnable(true)
+              })
+              .catch((value) => setEnableError(errorMessage(value)))
+          }}
+        />
       ) : null}
       {enableError ? <FieldError>{enableError}</FieldError> : null}
       {error ? <FieldError>{errorMessage(error)}</FieldError> : null}
@@ -140,6 +128,7 @@ export function BookNarrationSettings({
         <BookCharacters
           book={book}
           config={config}
+          themeStyle={themeStyle}
           settings={settings}
           save={save}
           importCharacters={importCharacters}
@@ -155,6 +144,7 @@ export function BookNarrationSettings({
 function BookCharacters({
   book,
   config,
+  themeStyle,
   settings,
   save,
   importCharacters,
@@ -164,6 +154,7 @@ function BookCharacters({
 }: {
   book: NarrationBook
   config: TtsConfigDto
+  themeStyle?: CSSProperties
   settings: NonNullable<ReturnType<typeof useBookNarration>["query"]["data"]>
   save: ReturnType<typeof useBookNarration>["save"]
   importCharacters: ReturnType<typeof useBookNarration>["importCharacters"]
@@ -212,6 +203,7 @@ function BookCharacters({
   if (mergePlan)
     return (
       <NarrationMergeEditor
+        themeStyle={themeStyle}
         settings={settings}
         plan={mergePlan}
         onChange={setMergePlan}
@@ -249,6 +241,7 @@ function BookCharacters({
     )
   return draft ? (
     <CharacterEditor
+      themeStyle={themeStyle}
       character={draft}
       config={config}
       saving={save.isPending}
@@ -408,6 +401,7 @@ function BookCharacters({
 function CharacterEditor({
   character,
   config,
+  themeStyle,
   saving,
   onSave,
   onCancel,
@@ -415,6 +409,7 @@ function CharacterEditor({
 }: {
   character: BookCharacterDto
   config: TtsConfigDto
+  themeStyle?: CSSProperties
   saving: boolean
   onSave: (value: BookCharacterDto) => void
   onCancel: () => void
@@ -460,48 +455,34 @@ function CharacterEditor({
       <FieldGroup>
         {draft.id !== "narrator" ? (
           <>
-            <Field>
-              <FieldLabel htmlFor="character-name">
-                {t("narration.name")}
-              </FieldLabel>
-              <Input
-                id="character-name"
-                value={draft.name}
-                onChange={(event) =>
-                  setDraft({ ...draft, name: event.target.value })
-                }
-                required
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="character-aliases">
-                {t("narration.aliases")}
-              </FieldLabel>
-              <Input
-                id="character-aliases"
-                value={aliases}
-                onChange={(event) => setAliases(event.target.value)}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="character-identity">
-                {t("narration.identity")}
-              </FieldLabel>
-              <Input
-                id="character-identity"
-                value={draft.identity}
-                onChange={(event) =>
-                  setDraft({ ...draft, identity: event.target.value })
-                }
-              />
-            </Field>
+            <FormTextField
+              id="character-name"
+              value={draft.name}
+              onChange={(event) =>
+                setDraft({ ...draft, name: event.target.value })
+              }
+              required
+              label={t("narration.name")}
+            />
+            <FormTextField
+              id="character-aliases"
+              value={aliases}
+              onChange={(event) => setAliases(event.target.value)}
+              label={t("narration.aliases")}
+            />
+            <FormTextField
+              id="character-identity"
+              value={draft.identity}
+              onChange={(event) =>
+                setDraft({ ...draft, identity: event.target.value })
+              }
+              label={t("narration.identity")}
+            />
           </>
         ) : null}
         <Field>
-          <FieldLabel htmlFor="character-provider">
-            {t("narration.provider")}
-          </FieldLabel>
-          <Select
+          <FormSelect
+            themeStyle={themeStyle}
             value={
               provider ??
               (draft.voice?.engine === "system" ? "system" : "default")
@@ -517,31 +498,27 @@ function CharacterEditor({
                       : { engine: "provider", profileId: value, voiceId: "" },
               })
             }
+            id="character-provider"
+            label={t("narration.provider")}
+            className="w-full"
           >
-            <SelectTrigger id="character-provider" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="default">
-                  {t("narration.defaultVoice")}
-                </SelectItem>
-                <SelectItem value="system">{t("narration.system")}</SelectItem>
-                {config.profiles.map((profile) => (
-                  <SelectItem key={profile.id} value={profile.id}>
-                    {`${profile.name}/${profile.model}`}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+            <FormSelectItem value="default">
+              {t("narration.defaultVoice")}
+            </FormSelectItem>
+            <FormSelectItem value="system">
+              {t("narration.system")}
+            </FormSelectItem>
+            {config.profiles.map((profile) => (
+              <FormSelectItem key={profile.id} value={profile.id}>
+                {`${profile.name}/${profile.model}`}
+              </FormSelectItem>
+            ))}
+          </FormSelect>
         </Field>
         {draft.voice ? (
           <Field>
-            <FieldLabel htmlFor="character-voice">
-              {t("narration.voice")}
-            </FieldLabel>
-            <Select
+            <FormSelect
+              themeStyle={themeStyle}
               value={draft.voice.voiceId || "default"}
               onValueChange={(voiceId) =>
                 setDraft({
@@ -552,47 +529,39 @@ function CharacterEditor({
                   },
                 })
               }
+              id="character-voice"
+              label={t("narration.voice")}
+              className="w-full"
             >
-              <SelectTrigger id="character-voice" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="default" disabled={Boolean(provider)}>
-                    {t("narration.defaultVoice")}
-                  </SelectItem>
-                  {provider
-                    ? voices.data?.map((voice) => (
-                        <SelectItem key={voice.id} value={voice.id}>
-                          {voice.id}
-                        </SelectItem>
-                      ))
-                    : systemVoices.map((voice) => (
-                        <SelectItem key={voice.voiceURI} value={voice.voiceURI}>
-                          {voice.name}
-                        </SelectItem>
-                      ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+              <FormSelectItem value="default" disabled={Boolean(provider)}>
+                {t("narration.defaultVoice")}
+              </FormSelectItem>
+              {provider
+                ? voices.data?.map((voice) => (
+                    <FormSelectItem key={voice.id} value={voice.id}>
+                      {voice.id}
+                    </FormSelectItem>
+                  ))
+                : systemVoices.map((voice) => (
+                    <FormSelectItem key={voice.voiceURI} value={voice.voiceURI}>
+                      {voice.name}
+                    </FormSelectItem>
+                  ))}
+            </FormSelect>
           </Field>
         ) : null}
         {voices.error ? (
           <FieldError>{errorMessage(voices.error)}</FieldError>
         ) : null}
-        <Field>
-          <FieldLabel htmlFor="character-instructions">
-            {t("narration.instructions")}
-          </FieldLabel>
-          <Input
-            id="character-instructions"
-            value={draft.instructions}
-            disabled={draft.voice?.engine === "system"}
-            onChange={(event) =>
-              setDraft({ ...draft, instructions: event.target.value })
-            }
-          />
-        </Field>
+        <FormTextField
+          id="character-instructions"
+          value={draft.instructions}
+          disabled={draft.voice?.engine === "system"}
+          onChange={(event) =>
+            setDraft({ ...draft, instructions: event.target.value })
+          }
+          label={t("narration.instructions")}
+        />
       </FieldGroup>
       {draft.source ? (
         <a
@@ -605,7 +574,7 @@ function CharacterEditor({
         </a>
       ) : null}
       <div className="flex flex-wrap gap-2">
-        <Button disabled={!valid || saving}>{t("llm.save")}</Button>
+        <SaveButton disabled={!valid} saving={saving} />
         <Button type="button" variant="ghost" onClick={onCancel}>
           {t("llm.cancel")}
         </Button>

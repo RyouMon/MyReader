@@ -1,4 +1,18 @@
 {
+  "rowActions": {
+    "edit": "{{name}} 편집",
+    "delete": "{{name}} 삭제",
+    "confirmDelete": "“{{name}}”을(를) 삭제하시겠습니까?"
+  },
+  "formValidation": {
+    "required": "필수 항목입니다.",
+    "url": "올바른 URL을 입력하세요.",
+    "number": "올바른 숫자를 입력하세요.",
+    "minimum": "{{min}} 이상의 값을 입력하세요.",
+    "maximum": "{{max}} 이하의 값을 입력하세요.",
+    "integer": "정수를 입력하세요.",
+    "invalid": "올바른 값을 입력하세요."
+  },
   "errors": {
     "io": "파일 I/O 오류",
     "database": "데이터베이스 오류",

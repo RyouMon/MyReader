@@ -120,7 +120,7 @@ When("用户创建一个{string}语音服务", async ({ page }, source: string) 
   await page.locator("#tts-profile-credential").fill("fixture-key")
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "添加语音服务", exact: true })
+    .getByRole("button", { name: "保存", exact: true })
     .click()
 })
 
@@ -211,7 +211,7 @@ When("用户将该音色设为默认声音并保存", async ({ page }) => {
     .click()
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "添加语音服务", exact: true })
+    .getByRole("button", { name: "保存", exact: true })
     .click()
 })
 

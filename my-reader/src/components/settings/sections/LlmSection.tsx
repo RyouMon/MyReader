@@ -2,9 +2,16 @@ import { ModelDiscovery } from "@/components/settings/ModelDiscovery"
 import { ProviderModels } from "@/components/settings/ProviderModels"
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Cpu, Pencil, Loader2 } from "lucide-react"
+import { Cpu, Loader2 } from "lucide-react"
+import { FormTextField } from "@/components/common/FormTextField"
+import { FormScrollArea } from "@/components/common/FormScrollArea"
+import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
+import { FormSwitch } from "@/components/common/FormSwitch"
 import { AddPanelButton } from "@/components/common/AddPanelButton"
 import { AppRow } from "@/components/common/AppRow"
+import { RowActions } from "@/components/common/RowActions"
+import { SaveButton } from "@/components/common/SaveButton"
+import { SectionHeader } from "@/components/common/SectionHeader"
 import { GroupList, GroupListItem } from "@/components/common/GroupList"
 import {
   FlowDialogContent,
@@ -12,23 +19,10 @@ import {
 } from "@/components/common/FlowDialog"
 import { Dialog, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-  FieldError,
-} from "@/components/ui/field"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
+import { FieldGroup, FieldError } from "@/components/ui/field"
+import { Separator } from "@/components/ui/separator"
 import { useLlmSettings } from "@/hooks/use-llm-settings"
+import { useFormValidation } from "@/hooks/useFormValidation"
 import { errorMessage } from "@/lib/error-presentation"
 import type { LlmProviderDto, LlmProfileInput } from "@/lib/tauri-specta"
 
@@ -62,11 +56,12 @@ export default function LlmSection() {
     probe.reset()
   }
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 border-b border-border px-7 py-5">
-        <h1 className="text-xl font-semibold">{t("llm.title")}</h1>
-      </div>
-      <div className="flex-1 space-y-5 overflow-y-auto px-7 py-5">
+    <section aria-label={t("llm.title")}>
+      <SectionHeader
+        title={t("llm.title")}
+        description={t("aiProviders.llmDescription")}
+      />
+      <div className="space-y-5">
         {query.isPending ? (
           <Loader2
             className="animate-spin"
@@ -77,64 +72,50 @@ export default function LlmSection() {
         {error && !draft ? (
           <FieldError>{errorMessage(error)}</FieldError>
         ) : null}
-        <GroupList>
-          <GroupListItem>
-            <AppRow
-              body={t("llm.default")}
-              className="items-center"
-              tail={
-                <Select
-                  value={query.data?.defaultProfileId ?? "none"}
-                  onValueChange={(id) =>
-                    select.mutate(id === "none" ? null : id)
-                  }
-                  disabled={select.isPending}
-                >
-                  <SelectTrigger
-                    id="llm-default"
-                    aria-label={t("llm.default")}
-                    className="w-52"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="none">{t("llm.none")}</SelectItem>
-                      {query.data?.profiles.map((profile) => (
-                        <SelectItem key={profile.id} value={profile.id}>
-                          {`${profile.name}/${profile.model}`}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              }
-            />
-          </GroupListItem>
-        </GroupList>
+        <FormSelect
+          value={query.data?.defaultProfileId ?? "none"}
+          onValueChange={(id) => select.mutate(id === "none" ? null : id)}
+          disabled={select.isPending}
+          id="llm-default"
+          label={t("llm.default")}
+          labelMode="external"
+        >
+          <FormSelectItem value="none">{t("llm.none")}</FormSelectItem>
+          {query.data?.profiles.map((profile) => (
+            <FormSelectItem key={profile.id} value={profile.id}>
+              {`${profile.name}/${profile.model}`}
+            </FormSelectItem>
+          ))}
+        </FormSelect>
         {query.data?.providers.length ? (
           <GroupList>
             {query.data.providers.map((profile) => (
-              <GroupListItem key={profile.id} className="p-0 hover:bg-accent">
-                <button
-                  type="button"
-                  className="w-full px-4 py-3 text-start"
-                  aria-label={`${t("llm.edit")} ${profile.name}`}
-                  onClick={() => edit(profile)}
-                >
-                  <AppRow
-                    head={
-                      <div className="flex size-8 items-center justify-center rounded-md bg-accent text-accent-foreground">
-                        <Cpu className="size-4" />
-                      </div>
-                    }
-                    body={profile.name}
-                    detail={profile.models
-                      .map((model) => model.model)
-                      .join(" · ")}
-                    tail={<Pencil className="size-3.5 text-muted-foreground" />}
-                  />
-                </button>
+              <GroupListItem key={profile.id}>
+                <AppRow
+                  head={
+                    <div className="flex size-8 items-center justify-center rounded-md bg-accent text-accent-foreground">
+                      <Cpu className="size-4" />
+                    </div>
+                  }
+                  body={profile.name}
+                  detail={profile.models
+                    .map((model) => model.model)
+                    .join(" · ")}
+                  actions={
+                    <RowActions
+                      name={profile.name}
+                      disabled={remove.isPending}
+                      onEdit={() => edit(profile)}
+                      onDelete={async () => {
+                        try {
+                          await remove.mutateAsync(profile.id)
+                        } finally {
+                          remove.reset()
+                        }
+                      }}
+                    />
+                  }
+                />
               </GroupListItem>
             ))}
           </GroupList>
@@ -173,7 +154,7 @@ export default function LlmSection() {
           </div>
         </FlowDialogContent>
       </Dialog>
-    </div>
+    </section>
   )
 }
 
@@ -187,9 +168,10 @@ function LlmProviderForm({
   onClose: () => void
 }) {
   const { t } = useTranslation()
-  const { save, remove, models, probe, error } = settings
+  const { save, models, probe, error } = settings
   const [draft, setDraft] = useState(profile)
-  const [selected, setSelected] = useState<number | null>(0)
+  const { fieldErrors, validationProps } = useFormValidation(draft)
+  const [selected, setSelected] = useState<number | null>(null)
   const model = draft.models[selected ?? 0]
   const setModel = (
     index: number,
@@ -219,9 +201,10 @@ function LlmProviderForm({
     clearCredential,
   })
   const valid = validProfile(draft)
-  const busy = save.isPending || remove.isPending
+  const busy = save.isPending
   return (
     <form
+      {...validationProps}
       className="flex h-full min-h-0 flex-col"
       onSubmit={(event) => {
         event.preventDefault()
@@ -236,101 +219,85 @@ function LlmProviderForm({
           )
       }}
     >
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
+      <FormScrollArea className="flex-1 space-y-5 px-6 py-5">
         {error ? <FieldError>{errorMessage(error)}</FieldError> : null}
         <FieldGroup className="gap-6">
-          <GroupList>
-            <GroupListItem>
-              <FieldGroup className="grid grid-cols-2 gap-4">
-                <Field>
-                  <FieldLabel htmlFor="llm-name">{t("llm.name")}</FieldLabel>
-                  <Input
-                    id="llm-name"
-                    value={draft.name}
-                    autoFocus
-                    required
-                    onChange={(event) =>
-                      setDraft({ ...draft, name: event.target.value })
-                    }
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="llm-protocol">
-                    {t("llm.protocol")}
-                  </FieldLabel>
-                  <Select
-                    value={draft.protocol}
-                    onValueChange={(value) =>
-                      setDraft({
-                        ...draft,
-                        protocol: value as LlmProviderDto["protocol"],
-                      })
-                    }
-                  >
-                    <SelectTrigger id="llm-protocol" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="chatCompletions">
-                          Chat Completions
-                        </SelectItem>
-                        <SelectItem value="responses">Responses</SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </Field>
-              </FieldGroup>
-            </GroupListItem>
-            <GroupListItem>
-              <Field>
-                <FieldLabel htmlFor="llm-endpoint">
-                  {t("llm.endpoint")}
-                </FieldLabel>
-                <Input
-                  id="llm-endpoint"
-                  type="url"
-                  value={draft.endpoint}
-                  required
-                  autoComplete="off"
-                  onChange={(event) =>
-                    setDraft({ ...draft, endpoint: event.target.value })
-                  }
+          <FieldGroup className="gap-4">
+            <FieldGroup className="grid grid-cols-2 gap-4">
+              <FormTextField
+                id="llm-name"
+                label={t("llm.name")}
+                value={draft.name}
+                autoFocus
+                required
+                fullWidth
+                error={Boolean(fieldErrors["llm-name"])}
+                helperText={fieldErrors["llm-name"]}
+                onChange={(event) =>
+                  setDraft({ ...draft, name: event.target.value })
+                }
+              />
+              <FormSelect
+                id="llm-protocol"
+                label={t("llm.protocol")}
+                value={draft.protocol}
+                onValueChange={(value) =>
+                  setDraft({
+                    ...draft,
+                    protocol: value as LlmProviderDto["protocol"],
+                  })
+                }
+              >
+                <FormSelectItem value="chatCompletions">
+                  Chat Completions
+                </FormSelectItem>
+                <FormSelectItem value="responses">Responses</FormSelectItem>
+              </FormSelect>
+            </FieldGroup>
+
+            <FormTextField
+              id="llm-endpoint"
+              label={t("llm.endpoint")}
+              type="url"
+              value={draft.endpoint}
+              required
+              fullWidth
+              autoComplete="off"
+              error={Boolean(fieldErrors["llm-endpoint"])}
+              helperText={fieldErrors["llm-endpoint"]}
+              onChange={(event) =>
+                setDraft({ ...draft, endpoint: event.target.value })
+              }
+            />
+
+            <FieldGroup className="gap-4">
+              <FormTextField
+                id="llm-key"
+                label={t("llm.key")}
+                type="password"
+                value={credential}
+                fullWidth
+                autoComplete="new-password"
+                placeholder={draft.hasCredential ? t("llm.keySaved") : ""}
+                onChange={(event) => {
+                  setCredential(event.target.value)
+                  setClearCredential(false)
+                }}
+              />
+              {draft.hasCredential ? (
+                <FormSwitch
+                  id="llm-clear-key"
+                  label={t("llm.clearKey")}
+                  checked={clearCredential}
+                  onCheckedChange={setClearCredential}
                 />
-              </Field>
-            </GroupListItem>
-            <GroupListItem>
-              <FieldGroup className="gap-4">
-                <Field>
-                  <FieldLabel htmlFor="llm-key">{t("llm.key")}</FieldLabel>
-                  <Input
-                    id="llm-key"
-                    type="password"
-                    value={credential}
-                    autoComplete="new-password"
-                    placeholder={draft.hasCredential ? t("llm.keySaved") : ""}
-                    onChange={(event) => {
-                      setCredential(event.target.value)
-                      setClearCredential(false)
-                    }}
-                  />
-                </Field>
-                {draft.hasCredential ? (
-                  <Field orientation="horizontal">
-                    <FieldLabel htmlFor="llm-clear-key">
-                      {t("llm.clearKey")}
-                    </FieldLabel>
-                    <Switch
-                      id="llm-clear-key"
-                      checked={clearCredential}
-                      onCheckedChange={setClearCredential}
-                    />
-                  </Field>
-                ) : null}
-              </FieldGroup>
-            </GroupListItem>
-          </GroupList>
+              ) : null}
+            </FieldGroup>
+          </FieldGroup>
+          <Separator />
           <ProviderModels
+            fieldErrors={fieldErrors}
+            detailsClassName="col-span-1"
             discovery={
               showModels && models.data ? (
                 <ModelDiscovery
@@ -361,7 +328,7 @@ function LlmProviderForm({
             onChange={setModel}
             onAdd={() => {
               setDraft({ ...draft, models: [...draft.models, newModel()] })
-              setSelected(draft.models.length)
+              setSelected(null)
             }}
             onRemove={(index) => {
               setDraft({
@@ -392,88 +359,79 @@ function LlmProviderForm({
           >
             {(index) => (
               <FieldGroup className="grid grid-cols-2 gap-3">
-                <Field>
-                  <FieldLabel
-                    className="border-l border-transparent pl-3"
-                    htmlFor="llm-context"
-                  >
-                    {t("llm.context")}
-                  </FieldLabel>
-                  <Input
-                    id="llm-context"
-                    type="number"
-                    min={8192}
-                    max={2000000}
-                    value={draft.models[index].contextWindow}
-                    onChange={(event) =>
-                      setModel(index, {
-                        contextWindow: Number(event.target.value),
-                      })
-                    }
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel
-                    className="border-l border-transparent pl-3"
-                    htmlFor="llm-output"
-                  >
-                    {t("providerEditor.maxOutput")}
-                  </FieldLabel>
-                  <Input
-                    id="llm-output"
-                    type="number"
-                    min={1}
-                    max={draft.models[index].contextWindow}
-                    placeholder={t("providerEditor.automatic")}
-                    value={draft.models[index].maxOutputTokens ?? ""}
-                    onChange={(event) =>
-                      setModel(index, {
-                        maxOutputTokens: event.target.value
-                          ? Number(event.target.value)
-                          : null,
-                      })
-                    }
-                  />
-                </Field>
+                <FormTextField
+                  id={`llm-context-${draft.models[index].id}`}
+                  label={t("llm.context")}
+                  type="number"
+                  required
+                  fullWidth
+                  slotProps={{ htmlInput: { min: 8192, max: 2000000 } }}
+                  value={draft.models[index].contextWindow}
+                  error={Boolean(
+                    fieldErrors[`llm-context-${draft.models[index].id}`],
+                  )}
+                  helperText={
+                    fieldErrors[`llm-context-${draft.models[index].id}`]
+                  }
+                  onChange={(event) =>
+                    setModel(index, {
+                      contextWindow: Number(event.target.value),
+                    })
+                  }
+                />
+                <FormTextField
+                  id={`llm-output-${draft.models[index].id}`}
+                  label={t("providerEditor.maxOutput")}
+                  type="number"
+                  fullWidth
+                  slotProps={{
+                    htmlInput: {
+                      min: 1,
+                      max: draft.models[index].contextWindow,
+                    },
+                  }}
+                  placeholder={t("providerEditor.automatic")}
+                  value={draft.models[index].maxOutputTokens ?? ""}
+                  error={Boolean(
+                    fieldErrors[`llm-output-${draft.models[index].id}`],
+                  )}
+                  helperText={
+                    fieldErrors[`llm-output-${draft.models[index].id}`]
+                  }
+                  onChange={(event) =>
+                    setModel(index, {
+                      maxOutputTokens: event.target.value
+                        ? Number(event.target.value)
+                        : null,
+                    })
+                  }
+                />
               </FieldGroup>
             )}
           </ProviderModels>
         </FieldGroup>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={!valid || probe.isPending}
-          onClick={() =>
-            probe.mutate(input(), {
-              onSuccess: () => setTestedInput(inputIdentity),
-            })
-          }
-        >
-          {t("llm.test")}
-        </Button>
-        {probe.isSuccess && testedInput === inputIdentity ? (
-          <p className="text-sm text-muted-foreground" role="status">
-            {t("llm.testPassed")}
-          </p>
-        ) : null}
-      </div>
-      <DialogFooter className="shrink-0 border-t border-border px-6 py-4">
-        <Button type="button" variant="ghost" onClick={onClose}>
-          {t("llm.cancel")}
-        </Button>
-        {draft.id ? (
+      </FormScrollArea>
+      <DialogFooter className="shrink-0 flex-row items-center justify-between border-t border-border px-6 py-4 sm:justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
           <Button
             type="button"
-            variant="destructive"
-            disabled={busy}
-            onClick={() => remove.mutate(draft.id, { onSuccess: onClose })}
+            variant="outline"
+            disabled={!valid || probe.isPending}
+            onClick={() =>
+              probe.mutate(input(), {
+                onSuccess: () => setTestedInput(inputIdentity),
+              })
+            }
           >
-            {t("llm.delete")}
+            {t("llm.test")}
           </Button>
-        ) : null}
-        <Button type="submit" disabled={!valid || busy}>
-          {t("llm.save")}
-        </Button>
+          {probe.isSuccess && testedInput === inputIdentity ? (
+            <p className="text-sm text-muted-foreground" role="status">
+              {t("llm.testPassed")}
+            </p>
+          ) : null}
+        </div>
+        <SaveButton disabled={!valid} saving={busy} />
       </DialogFooter>
     </form>
   )

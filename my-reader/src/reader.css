@@ -997,22 +997,6 @@
   }
 }
 
-@layer utilities {
-  .reader-window-root .reader-tts-themed-trigger {
-    border-color: var(--reader-chrome-border);
-    background: var(--reader-chrome-segment-idle);
-    color: var(--reader-chrome-fg);
-  }
-
-  .reader-window-root .reader-tts-themed-trigger:hover {
-    background: var(--reader-chrome-segment-active);
-  }
-
-  .reader-window-root .reader-tts-themed-trigger svg {
-    color: var(--reader-chrome-muted);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .reader-tts-mini-player,
   .reader-tts-mini-control {

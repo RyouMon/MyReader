@@ -1,4 +1,18 @@
 {
+  "rowActions": {
+    "edit": "Editar {{name}}",
+    "delete": "Excluir {{name}}",
+    "confirmDelete": "Excluir “{{name}}”?"
+  },
+  "formValidation": {
+    "required": "Este campo é obrigatório.",
+    "url": "Insira uma URL válida.",
+    "number": "Insira um número válido.",
+    "minimum": "Insira um valor maior ou igual a {{min}}.",
+    "maximum": "Insira um valor menor ou igual a {{max}}.",
+    "integer": "Insira um número inteiro.",
+    "invalid": "Insira um valor válido."
+  },
   "errors": {
     "io": "Erro de E/S de arquivo",
     "database": "Erro de banco de dados",

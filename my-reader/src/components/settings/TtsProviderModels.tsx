@@ -1,23 +1,16 @@
 import { Loader2 } from "lucide-react"
+import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
+import { FormSwitch } from "@/components/common/FormSwitch"
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { AppRow } from "@/components/common/AppRow"
 import { StatusNotice } from "@/components/common/StatusNotice"
 import { ModelDiscovery } from "@/components/settings/ModelDiscovery"
 import { ProviderModels } from "@/components/settings/ProviderModels"
 import { TtsVoicesEditor } from "@/components/settings/TtsVoicesEditor"
 import { Button } from "@/components/ui/button"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { FieldGroup } from "@/components/ui/field"
 import { TtsModelDetails } from "@/components/settings/TtsModelDetails"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
+import { Separator } from "@/components/ui/separator"
 import { useTtsModelDiscovery } from "@/hooks/useTtsModelDiscovery"
 import { errorMessage } from "@/lib/error-presentation"
 import {
@@ -32,12 +25,14 @@ import type { TtsModelDto } from "@/lib/tauri-specta"
 
 export function TtsProviderModels({
   draft,
+  previewModel,
+  fieldErrors,
   onChange,
-  readOnly = false,
 }: {
   draft: TtsProviderDraft
+  previewModel?: TtsModelDto
+  fieldErrors?: Record<string, string>
   onChange: (draft: TtsProviderDraft) => void
-  readOnly?: boolean
 }) {
   const { t } = useTranslation()
   const [selected, setSelected] = useState<number | null>(0)
@@ -164,6 +159,15 @@ export function TtsProviderModels({
   }
   return (
     <FieldGroup>
+      {draft.kind === "openAiCompatible" ? (
+        <FormSwitch
+          label={t("aiProviders.modelScopedVoices")}
+          checked={scoped}
+          disabled={busy}
+          onCheckedChange={(value) => onChange(setTtsVoiceScope(draft, value))}
+        />
+      ) : null}
+      <Separator />
       {discover.error || importing.error ? (
         <StatusNotice tone="error">
           {errorMessage(discover.error || importing.error)}
@@ -171,24 +175,7 @@ export function TtsProviderModels({
       ) : null}
       <fieldset disabled={busy} className="min-w-0">
         <ProviderModels
-          settings={
-            !readOnly && draft.kind === "openAiCompatible" ? (
-              <AppRow
-                body={t("aiProviders.modelScopedVoices")}
-                className="items-center"
-                tail={
-                  <Switch
-                    aria-label={t("aiProviders.modelScopedVoices")}
-                    checked={scoped}
-                    disabled={busy}
-                    onCheckedChange={(value) =>
-                      onChange(setTtsVoiceScope(draft, value))
-                    }
-                  />
-                }
-              />
-            ) : null
-          }
+          fieldErrors={fieldErrors}
           discovery={
             showDiscovery && options ? (
               <ModelDiscovery
@@ -202,33 +189,31 @@ export function TtsProviderModels({
           models={draft.models}
           selected={selected}
           onSelect={setSelected}
-          onChange={readOnly ? undefined : changeModel}
-          onRemove={readOnly ? undefined : removeModel}
-          onAdd={readOnly ? undefined : addModel}
+          onChange={changeModel}
+          onRemove={removeModel}
+          onAdd={addModel}
           actions={
-            readOnly ? undefined : (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={busy || !draft.endpoint.trim()}
-                onClick={() => {
-                  const source = identity(draft)
-                  discover.mutate(
-                    { draft, catalog },
-                    {
-                      onSuccess: () => {
-                        if (identity(current.current) === source)
-                          setShowDiscovery(true)
-                      },
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={busy || !draft.endpoint.trim()}
+              onClick={() => {
+                const source = identity(draft)
+                discover.mutate(
+                  { draft, catalog },
+                  {
+                    onSuccess: () => {
+                      if (identity(current.current) === source)
+                        setShowDiscovery(true)
                     },
-                  )
-                }}
-              >
-                {busy ? <Loader2 className="animate-spin" /> : null}
-                {t("providerEditor.fetchModels")}
-              </Button>
-            )
+                  },
+                )
+              }}
+            >
+              {busy ? <Loader2 className="animate-spin" /> : null}
+              {t("providerEditor.fetchModels")}
+            </Button>
           }
         >
           {scoped
@@ -236,7 +221,7 @@ export function TtsProviderModels({
                 <TtsModelDetails
                   draft={draft}
                   model={draft.models[index]}
-                  readOnly={readOnly}
+                  fieldErrors={fieldErrors}
                   onVoicesChange={(voices) =>
                     updateVoices(draft.models[index], voices)
                   }
@@ -270,68 +255,48 @@ export function TtsProviderModels({
         </ProviderModels>
       </fieldset>
       {!scoped ? (
-        <SharedVoices
-          draft={draft}
-          readOnly={readOnly}
-          busy={busy}
-          onChange={onChange}
-          updateVoices={updateVoices}
-        />
+        <>
+          <Separator />
+          <TtsVoicesEditor
+            draft={draft}
+            model={previewModel}
+            fieldErrors={fieldErrors}
+            disabled={busy}
+            onChange={(voices) => {
+              if (previewModel) updateVoices(previewModel, voices)
+              else onChange({ ...draft, voices })
+            }}
+          />
+        </>
       ) : null}
     </FieldGroup>
   )
 }
 
-function SharedVoices({
+export function TtsTestModelSelect({
   draft,
-  readOnly,
-  busy,
+  model,
   onChange,
-  updateVoices,
 }: {
   draft: TtsProviderDraft
-  readOnly: boolean
-  busy: boolean
-  onChange: (draft: TtsProviderDraft) => void
-  updateVoices: (model: TtsModelDto, voices: string[]) => void
+  model?: TtsModelDto
+  onChange: (id: string) => void
 }) {
   const { t } = useTranslation()
-  const [previewId, setPreviewId] = useState(draft.models[0]?.id ?? "")
-  const preview =
-    draft.models.find((model) => model.id === previewId) ?? draft.models[0]
+  if (modelVoices(draft) || draft.models.length < 2) return null
   return (
-    <TtsVoicesEditor
-      actions={
-        draft.models.length > 1 ? (
-          <Field orientation="horizontal" className="w-auto">
-            <FieldLabel htmlFor="voice-test-model">
-              {t("providerEditor.testModel")}
-            </FieldLabel>
-            <Select value={preview?.id} onValueChange={setPreviewId}>
-              <SelectTrigger id="voice-test-model" className="w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {draft.models.map((model) => (
-                    <SelectItem key={model.id} value={model.id}>
-                      {model.model || t("aiProviders.newModel")}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
-        ) : null
-      }
-      draft={draft}
-      model={preview}
-      readOnly={readOnly}
-      disabled={busy}
-      onChange={(voices) => {
-        if (preview) updateVoices(preview, voices)
-        else onChange({ ...draft, voices })
-      }}
-    />
+    <FormSelect
+      id="voice-test-model"
+      label={t("providerEditor.testModel")}
+      value={model?.id ?? ""}
+      onValueChange={onChange}
+      fullWidth={false}
+    >
+      {draft.models.map((model) => (
+        <FormSelectItem key={model.id} value={model.id}>
+          {model.model || t("aiProviders.newModel")}
+        </FormSelectItem>
+      ))}
+    </FormSelect>
   )
 }

@@ -1,22 +1,30 @@
 import "@/i18n"
 import type { Library } from "@my-reader/tools/types/library"
-import { fireEvent, render, screen } from "@testing-library/react"
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import LibrariesSection from "../LibrariesSection"
 
 const queryState = vi.hoisted(() => ({
   libraries: [] as Library[],
+  removeLibrary: vi.fn(),
 }))
 
 vi.mock("@/hooks/queries/useLibrariesQuery", () => ({
   useLibrariesQuery: () => ({ data: queryState.libraries }),
-  useLibraryMutations: () => ({ removeLibrary: vi.fn() }),
+  useLibraryMutations: () => ({ removeLibrary: queryState.removeLibrary }),
 }))
 
 describe("LibrariesSection", () => {
   beforeEach(() => {
     queryState.libraries = []
+    queryState.removeLibrary.mockReset().mockResolvedValue(undefined)
   })
 
   it("should show the standard library empty state when no libraries exist", () => {
@@ -64,4 +72,28 @@ describe("LibrariesSection", () => {
       ),
     ).not.toBeInTheDocument()
   })
+})
+
+it("removes the selected library only after dialog confirmation", async () => {
+  queryState.libraries = [
+    {
+      id: "local-library",
+      name: "本地图书",
+      path: "/books",
+      sourceType: "local",
+      libraryType: "myreader",
+      bookCount: 2,
+    },
+  ]
+  render(<LibrariesSection onAddLibrary={vi.fn()} />)
+  fireEvent.click(screen.getByRole("button", { name: "删除 本地图书" }))
+  expect(queryState.removeLibrary).not.toHaveBeenCalled()
+  const dialog = within(screen.getByRole("alertdialog"))
+  fireEvent.click(dialog.getByRole("button", { name: "删除" }))
+  await waitFor(() =>
+    expect(queryState.removeLibrary).toHaveBeenCalledWith("local-library"),
+  )
+  await waitFor(() =>
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument(),
+  )
 })
