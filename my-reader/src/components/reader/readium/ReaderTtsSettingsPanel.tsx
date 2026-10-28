@@ -1,29 +1,20 @@
+import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
 import { formatTtsLanguageName } from "@my-reader/tools/reader-tts-language"
 import { ChevronRight, Loader2, Settings2 } from "lucide-react"
 import type { CSSProperties } from "react"
 import { useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { ReaderSettingsRangeControl } from "@/components/reader/shared/ReaderSettingsRangeControl"
+import { FormSlider } from "@/components/common/FormSlider"
+import { TTS_PITCH_RANGE, TTS_SPEED_RANGE } from "@/constants/tts"
 import { readerChromeThemeStyle } from "@/components/reader/shared/ReaderChromeShell"
 import {
   READER_SETTINGS_CONTENT_CLASS,
-  READER_SETTINGS_LABEL_CLASS,
-  READER_SETTINGS_VALUE_CLASS,
   ReaderSidePanelFrame,
   ReaderSidePanelHeader,
   ReaderSidePanelScrollArea,
 } from "@/components/reader/shared/ReaderSidePanelChrome"
 import { openTtsProviderSettings } from "@/lib/settingsWindow"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
+import { FormSwitch } from "@/components/common/FormSwitch"
 import type { EpubTtsSession } from "@/hooks/reader/useEpubTtsSession"
 import { api } from "@/lib/tauri-api"
 import { errorMessage } from "@/lib/error-presentation"
@@ -45,12 +36,7 @@ type ReaderTtsSettingsPanelProps = {
   book?: NarrationBook
 }
 
-const RANGE_INPUT_CLASS = "reader-settings-range disabled:opacity-50"
 const SETTINGS_EVENT_SOURCE = "reader-tts-settings"
-const rangeStyle = (value: number, min: number, max: number): CSSProperties =>
-  ({
-    "--reader-settings-range-progress": `${((value - min) / (max - min)) * 100}%`,
-  }) as CSSProperties
 
 function finitePreference(value: number | null, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback
@@ -185,6 +171,7 @@ export function ReaderTtsSettingsPanel({
                 key={`${book.libraryId}:${book.bookId}`}
                 book={book}
                 config={config}
+                themeStyle={themeStyle}
                 onSubviewChange={setNarrationView}
               />
             ) : null}
@@ -198,81 +185,53 @@ export function ReaderTtsSettingsPanel({
                 />
 
                 <section className="flex flex-col gap-2">
-                  <Label
-                    className={READER_SETTINGS_LABEL_CLASS}
-                    htmlFor="reader-tts-voice"
-                  >
-                    {t("reader.tts.voice")}
-                  </Label>
-                  <Select
+                  <FormSelect
                     value={session.currentVoiceId}
                     disabled={session.voices.length === 0}
                     onValueChange={session.setVoice}
+                    id="reader-tts-voice"
+                    label={t("reader.tts.voice")}
+                    placeholder={t("reader.tts.loadingVoices")}
+                    themeStyle={themeStyle}
                   >
-                    <SelectTrigger
-                      id="reader-tts-voice"
-                      aria-label={t("reader.tts.voice")}
-                      className="reader-tts-themed-trigger w-full"
-                    >
-                      <SelectValue
-                        placeholder={t("reader.tts.loadingVoices")}
-                      />
-                    </SelectTrigger>
-                    <SelectContent
-                      position="popper"
-                      align="start"
-                      style={themeStyle}
-                    >
-                      <SelectGroup>
-                        {session.voices.map((voice) => (
-                          <SelectItem
-                            key={voiceId(voice)}
-                            value={voiceId(voice)}
-                          >
-                            {voice.label || voice.name} ·{" "}
-                            {formatTtsLanguageName(
-                              voice.language,
-                              interfaceLanguage,
-                            )}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                    {session.voices.map((voice) => (
+                      <FormSelectItem
+                        key={voiceId(voice)}
+                        value={voiceId(voice)}
+                      >
+                        {voice.label || voice.name} ·{" "}
+                        {formatTtsLanguageName(
+                          voice.language,
+                          interfaceLanguage,
+                        )}
+                      </FormSelectItem>
+                    ))}
+                  </FormSelect>
                 </section>
 
                 <section className="flex flex-col gap-4 rounded-md bg-[var(--reader-chrome-segment-idle)] p-3">
-                  <ReaderSettingsRangeControl
+                  <FormSlider
+                    {...TTS_SPEED_RANGE}
                     id="reader-tts-speed"
                     label={t("reader.tts.speed")}
                     value={session.speed}
-                    min={0.5}
-                    max={3}
-                    step={0.1}
-                    className={RANGE_INPUT_CLASS}
-                    labelClassName={READER_SETTINGS_LABEL_CLASS}
-                    valueClassName={READER_SETTINGS_VALUE_CLASS}
+                    themeStyle={themeStyle}
                     formatValue={(value) => `${value.toFixed(1)}×`}
-                    rangeStyle={rangeStyle}
                     onCommit={updateSpeed}
                   />
-                  <ReaderSettingsRangeControl
+                  <FormSlider
+                    {...TTS_PITCH_RANGE}
                     id="reader-tts-pitch"
                     label={t("reader.tts.pitch")}
                     value={finitePreference(config.playback.pitch, 1)}
-                    min={0.5}
-                    max={2}
-                    step={0.1}
-                    className={RANGE_INPUT_CLASS}
-                    labelClassName={READER_SETTINGS_LABEL_CLASS}
-                    valueClassName={READER_SETTINGS_VALUE_CLASS}
+                    themeStyle={themeStyle}
                     formatValue={(value) => value.toFixed(1)}
-                    rangeStyle={rangeStyle}
                     onCommit={(pitch) => void updatePlayback({ pitch })}
                   />
                 </section>
 
-                <ReaderPlaybackSwitch
+                <FormSwitch
+                  align="between"
                   id="reader-tts-skip-page-breaks"
                   label={t("reader.tts.skipPageBreaks")}
                   description={t("reader.tts.skipPageBreaksDescription")}
@@ -282,7 +241,8 @@ export function ReaderTtsSettingsPanel({
                     void updatePlayback({ skipPageBreaks })
                   }
                 />
-                <ReaderPlaybackSwitch
+                <FormSwitch
+                  align="between"
                   id="reader-tts-skip-footnotes"
                   label={t("reader.tts.skipFootnotes")}
                   description={t("reader.tts.skipFootnotesDescription")}
@@ -317,44 +277,6 @@ export function ReaderTtsSettingsPanel({
   )
 }
 
-function ReaderPlaybackSwitch({
-  id,
-  label,
-  description,
-  checked,
-  disabled,
-  onCheckedChange,
-}: {
-  id: string
-  label: string
-  description: string
-  checked: boolean
-  disabled: boolean
-  onCheckedChange: (checked: boolean) => void
-}) {
-  return (
-    <section className="flex min-h-14 items-center justify-between gap-4 rounded-md bg-[var(--reader-chrome-segment-idle)] px-3 py-2">
-      <div className="min-w-0 flex-1">
-        <Label
-          htmlFor={id}
-          className="text-[13px] font-medium text-reader-chrome-fg"
-        >
-          {label}
-        </Label>
-        <p className="mt-0.5 text-[11px] leading-4 text-reader-chrome-muted">
-          {description}
-        </p>
-      </div>
-      <Switch
-        id={id}
-        checked={checked}
-        disabled={disabled}
-        onCheckedChange={onCheckedChange}
-      />
-    </section>
-  )
-}
-
 function ReaderTtsEngineSelect({
   config,
   saving,
@@ -369,13 +291,7 @@ function ReaderTtsEngineSelect({
   const { t } = useTranslation()
   return (
     <section className="flex flex-col gap-2">
-      <Label
-        className={READER_SETTINGS_LABEL_CLASS}
-        htmlFor="reader-tts-engine"
-      >
-        {t("reader.tts.engine")}
-      </Label>
-      <Select
+      <FormSelect
         value={
           config.defaultEngine.kind === "provider"
             ? config.defaultEngine.profileId
@@ -385,27 +301,19 @@ function ReaderTtsEngineSelect({
         onValueChange={(value) =>
           void selectEngine(value === "system" ? undefined : value)
         }
+        id="reader-tts-engine"
+        label={t("reader.tts.engine")}
+        themeStyle={themeStyle}
       >
-        <SelectTrigger
-          id="reader-tts-engine"
-          aria-label={t("reader.tts.engine")}
-          className="reader-tts-themed-trigger w-full"
-        >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent position="popper" align="start" style={themeStyle}>
-          <SelectGroup>
-            <SelectItem value="system">
-              {t("reader.tts.systemEngine")}
-            </SelectItem>
-            {config.profiles.map((profile) => (
-              <SelectItem key={profile.id} value={profile.id}>
-                {`${profile.name}/${profile.model}`}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
+        <FormSelectItem value="system">
+          {t("reader.tts.systemEngine")}
+        </FormSelectItem>
+        {config.profiles.map((profile) => (
+          <FormSelectItem key={profile.id} value={profile.id}>
+            {`${profile.name}/${profile.model}`}
+          </FormSelectItem>
+        ))}
+      </FormSelect>
     </section>
   )
 }

@@ -38,12 +38,7 @@ export default function SettingsActivity({
         {activeSection === "dataSources" && <DataSourcesSection />}
         {(activeSection === "aiProviders" ||
           activeSection === "ttsProviders" ||
-          activeSection === "llm") && (
-          <AiProvidersSection
-            section={activeSection}
-            onSectionChange={onSectionChange}
-          />
-        )}
+          activeSection === "llm") && <AiProvidersSection />}
         {activeSection === "speech" && <SpeechSection />}
         {activeSection === "appearance" && <AppearanceSection />}
         {activeSection === "about" && <AboutSection />}

@@ -1,13 +1,8 @@
+import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
 import { useTranslation } from "react-i18next"
+import type { CSSProperties } from "react"
 import { Button } from "@/components/ui/button"
-import { Field, FieldLabel } from "@/components/ui/field"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Field } from "@/components/ui/field"
 import type {
   BookNarrationSettingsDto,
   NarrationMergePlanDto,
@@ -15,6 +10,7 @@ import type {
 
 export function NarrationMergeEditor({
   settings,
+  themeStyle,
   plan,
   onChange,
   onSave,
@@ -22,6 +18,7 @@ export function NarrationMergeEditor({
   saving,
 }: {
   settings: BookNarrationSettingsDto
+  themeStyle?: CSSProperties
   plan: NarrationMergePlanDto
   onChange: (value: NarrationMergePlanDto) => void
   onSave: () => void
@@ -63,62 +60,56 @@ export function NarrationMergeEditor({
         return (
           <div key={choice.characterId} className="flex flex-col gap-2">
             <Field>
-              <FieldLabel htmlFor={`merge-${index}`}>{name}</FieldLabel>
               {incoming.identity ? (
                 <p className="text-sm text-muted-foreground">
                   {incoming.identity}
                 </p>
               ) : null}
               {incoming.id !== "narrator" ? (
-                <Select
+                <FormSelect
+                  themeStyle={themeStyle}
                   value={choice.targetCharacterId ?? "new"}
                   onValueChange={(value) =>
                     update(index, {
                       targetCharacterId: value === "new" ? null : value,
                     })
                   }
+                  id={`merge-${index}`}
+                  label={name}
+                  className="w-full"
                 >
-                  <SelectTrigger id={`merge-${index}`} className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new">
-                      {t("narration.newCharacter")}
-                    </SelectItem>
-                    {settings.characters
-                      .filter((character) => character.id !== "narrator")
-                      .map((character) => (
-                        <SelectItem key={character.id} value={character.id}>
-                          {character.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+                  <FormSelectItem value="new">
+                    {t("narration.newCharacter")}
+                  </FormSelectItem>
+                  {settings.characters
+                    .filter((character) => character.id !== "narrator")
+                    .map((character) => (
+                      <FormSelectItem key={character.id} value={character.id}>
+                        {character.name}
+                      </FormSelectItem>
+                    ))}
+                </FormSelect>
               ) : null}
             </Field>
             {conflict ? (
               <Field>
-                <FieldLabel htmlFor={`merge-voice-${index}`}>
-                  {t("narration.voiceAndInstructions")}
-                </FieldLabel>
-                <Select
+                <FormSelect
+                  themeStyle={themeStyle}
                   value={choice.preferIncoming ? "incoming" : "existing"}
                   onValueChange={(value) =>
                     update(index, { preferIncoming: value === "incoming" })
                   }
+                  id={`merge-voice-${index}`}
+                  label={t("narration.voiceAndInstructions")}
+                  className="w-full"
                 >
-                  <SelectTrigger id={`merge-voice-${index}`} className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="existing">
-                      {t("narration.keepExisting")}
-                    </SelectItem>
-                    <SelectItem value="incoming">
-                      {t("narration.useIncoming", { title: source.title })}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                  <FormSelectItem value="existing">
+                    {t("narration.keepExisting")}
+                  </FormSelectItem>
+                  <FormSelectItem value="incoming">
+                    {t("narration.useIncoming", { title: source.title })}
+                  </FormSelectItem>
+                </FormSelect>
               </Field>
             ) : null}
           </div>

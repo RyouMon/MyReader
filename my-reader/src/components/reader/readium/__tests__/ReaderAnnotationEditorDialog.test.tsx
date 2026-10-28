@@ -27,7 +27,7 @@ describe("ReaderAnnotationEditorDialog", () => {
     expect(screen.getByRole("heading", { name: "笔记" })).toBeInTheDocument()
     expect(screen.getByText("Selected passage")).toBeInTheDocument()
     const note = screen.getByRole("textbox", { name: "笔记" })
-    expect(note).not.toHaveAttribute("placeholder")
+    expect(note).toHaveAttribute("placeholder", "记录此处的想法…")
 
     fireEvent.change(note, { target: { value: "Updated note" } })
     fireEvent.click(screen.getByRole("button", { name: "鼠尾草绿" }))

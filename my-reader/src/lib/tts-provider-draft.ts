@@ -22,7 +22,9 @@ export function newTtsModel(
     model,
     responseFormat: catalog?.audioFormats[0] ?? "mp3",
     instructions: null,
-    voices: catalog?.voices.map((voice) => voice.id) ?? [],
+    voices: catalog?.voices.length
+      ? catalog.voices.map((voice) => voice.id)
+      : [""],
     defaultVoice: catalog?.voices[0]?.id ?? null,
   }
 }
@@ -31,9 +33,15 @@ export function mergeTtsVoices(
   model: TtsModelDto,
   voices: TtsVoiceDto[],
 ): TtsModelDto {
+  const merged = [
+    ...new Set([
+      ...model.voices.filter(Boolean),
+      ...voices.map((voice) => voice.id),
+    ]),
+  ]
   return {
     ...model,
-    voices: [...new Set([...model.voices, ...voices.map((voice) => voice.id)])],
+    voices: merged.length ? merged : [""],
     defaultVoice: model.defaultVoice || voices[0]?.id || null,
   }
 }
@@ -73,9 +81,10 @@ export function setTtsVoiceScope(
   draft: TtsProviderDraft,
   scoped: boolean,
 ): TtsProviderDraft {
-  const voices = scoped
+  const configured = scoped
     ? draft.voices
     : [...new Set(draft.models.flatMap((model) => model.voices))]
+  const voices = configured.length ? configured : [""]
   return {
     ...draft,
     modelScopedVoices: scoped,
@@ -88,7 +97,7 @@ export function setTtsVoiceScope(
       defaultVoice:
         model.defaultVoice && voices.includes(model.defaultVoice)
           ? model.defaultVoice
-          : (voices[0] ?? null),
+          : (voices.find((voice) => voice.trim()) ?? null),
     })),
   }
 }

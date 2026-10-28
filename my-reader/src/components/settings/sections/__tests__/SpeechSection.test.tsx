@@ -13,6 +13,7 @@ function render(ui: ReactElement) {
   )
 }
 import {
+  act,
   fireEvent,
   render as renderView,
   screen,
@@ -31,11 +32,13 @@ import SpeechSection, { TtsProvidersSection } from "../SpeechSection"
 
 const mocks = vi.hoisted(() => ({
   getTtsConfig: vi.fn(),
+  setTtsPlaybackPreferences: vi.fn(),
   discoverTtsModels: vi.fn(),
   listQwenTtsModels: vi.fn(),
   listQwenTtsPresets: vi.fn(),
   discoverQwenTtsVoices: vi.fn(),
   saveTtsProvider: vi.fn(),
+  removeTtsProfile: vi.fn(),
   testTtsProvider: vi.fn(),
   cancelTtsSynthesis: vi.fn(),
   notifyTtsConfigChanged: vi.fn(),
@@ -44,11 +47,13 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/tauri-api", () => ({
   api: {
     getTtsConfig: mocks.getTtsConfig,
+    setTtsPlaybackPreferences: mocks.setTtsPlaybackPreferences,
     discoverTtsModels: mocks.discoverTtsModels,
     listQwenTtsModels: mocks.listQwenTtsModels,
     listQwenTtsPresets: mocks.listQwenTtsPresets,
     discoverQwenTtsVoices: mocks.discoverQwenTtsVoices,
     saveTtsProvider: mocks.saveTtsProvider,
+    removeTtsProfile: mocks.removeTtsProfile,
     testTtsProvider: mocks.testTtsProvider,
     cancelTtsSynthesis: mocks.cancelTtsSynthesis,
   },
@@ -116,6 +121,10 @@ beforeEach(() => {
   vi.stubGlobal("ResizeObserver", ResizeObserverMock)
   HTMLElement.prototype.scrollIntoView = vi.fn()
   mocks.getTtsConfig.mockResolvedValue(config)
+  mocks.setTtsPlaybackPreferences.mockImplementation(async (playback) => ({
+    ...config,
+    playback,
+  }))
   mocks.listQwenTtsPresets.mockResolvedValue(
     presets.map(({ id, endpoint }) => ({ id, endpoint })),
   )
@@ -129,6 +138,7 @@ beforeEach(() => {
     { id: "custom-voice", language: "mul", gender: null },
   ])
   mocks.saveTtsProvider.mockResolvedValue(config)
+  mocks.removeTtsProfile.mockResolvedValue(config)
 })
 
 async function importQwenModel(name: RegExp = /qwen-audio-3.0-tts-plus/) {
@@ -143,6 +153,29 @@ async function importQwenModel(name: RegExp = /qwen-audio-3.0-tts-plus/) {
 }
 
 describe("SpeechSection", () => {
+  it("persists speed and pitch slider changes without resetting other preferences", async () => {
+    const user = userEvent.setup()
+    render(<SpeechSection />)
+    const speed = await screen.findByRole("slider", { name: "默认语速" })
+    act(() => speed.focus())
+    await user.keyboard("{ArrowRight}")
+    await waitFor(() =>
+      expect(mocks.setTtsPlaybackPreferences).toHaveBeenLastCalledWith({
+        ...config.playback,
+        speed: 1.1,
+      }),
+    )
+    act(() => screen.getByRole("slider", { name: "默认音高" }).focus())
+    await user.keyboard("{ArrowLeft}")
+    await waitFor(() =>
+      expect(mocks.setTtsPlaybackPreferences).toHaveBeenLastCalledWith({
+        ...config.playback,
+        speed: 1.1,
+        pitch: 0.9,
+      }),
+    )
+  })
+
   it.each([
     [0, "Qwen · Token Plan", "Token Plan 套餐密钥（sk-sp- 开头）"],
     [1, "Qwen · 按需计费", "千问 AI 平台 API Key（非套餐密钥）"],
@@ -164,14 +197,19 @@ describe("SpeechSection", () => {
       }),
     )
     const form = within(screen.getByRole("dialog"))
-    expect(form.getByLabelText("名称")).toHaveValue(title)
-    expect(form.getByLabelText("服务器地址")).toHaveValue(preset.endpoint)
+    expect(form.getAllByLabelText(/模型 ID\s*\*?$/)).toHaveLength(1)
+    expect(form.getByLabelText(/模型 ID\s*\*?$/)).toHaveValue("")
+    expect(form.getAllByLabelText(/声音 ID\s*\*?$/)).toHaveLength(1)
+    expect(form.getByLabelText(/声音 ID\s*\*?$/)).toHaveValue("")
+    expect(form.getByLabelText(/名称\s*\*?$/)).toHaveValue(title)
+    expect(form.getByLabelText(/服务器地址\s*\*?$/)).toHaveValue(
+      preset.endpoint,
+    )
     await user.type(form.getByPlaceholderText(placeholder), "fixture-key")
     expect(mocks.listQwenTtsModels).not.toHaveBeenCalled()
     await importQwenModel()
     if (index === 0) {
-      fireEvent.click(form.getByRole("button", { name: "添加声音" }))
-      fireEvent.change(form.getByLabelText("声音 ID"), {
+      fireEvent.change(form.getByLabelText(/声音 ID\s*\*?$/), {
         target: { value: "manual-voice" },
       })
     }
@@ -181,7 +219,7 @@ describe("SpeechSection", () => {
         credential: "fixture-key",
       }),
     )
-    await user.click(form.getByRole("button", { name: "添加语音服务" }))
+    await user.click(form.getByRole("button", { name: "保存" }))
     await waitFor(() =>
       expect(mocks.saveTtsProvider).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -200,11 +238,9 @@ describe("SpeechSection", () => {
         }),
       ),
     )
-    await user.click(
-      await screen.findByRole("button", { name: "编辑语音服务" }),
-    )
+    await user.click(await screen.findByRole("button", { name: /^编辑 / }))
     expect(
-      within(screen.getByRole("dialog")).getByLabelText("服务器地址"),
+      within(screen.getByRole("dialog")).getByLabelText(/服务器地址\s*\*?$/),
     ).toHaveValue(preset.endpoint)
   })
 
@@ -222,17 +258,21 @@ describe("SpeechSection", () => {
       "sk-sp-fixture",
     )
     await importQwenModel()
-    await user.click(screen.getByRole("button", { name: "添加声音" }))
-    await user.type(screen.getByLabelText("声音 ID"), "subscription-voice")
+    await user.type(
+      screen.getByLabelText(/声音 ID\s*\*?$/),
+      "subscription-voice",
+    )
     await user.click(screen.getByRole("button", { name: "返回" }))
     await user.click(screen.getByRole("button", { name: /^Qwen · 按需计费/ }))
     expect(screen.getByLabelText("API 密钥或访问令牌")).toHaveValue("")
-    expect(screen.queryByLabelText("声音 ID")).not.toBeInTheDocument()
+    expect(screen.getByLabelText(/声音 ID\s*\*?$/)).toHaveValue("")
     await importQwenModel()
-    expect(screen.getByLabelText("声音 ID")).toHaveValue("custom-voice")
+    expect(screen.getByLabelText(/声音 ID\s*\*?$/)).toHaveValue("custom-voice")
     await user.click(screen.getByRole("button", { name: "添加声音" }))
-    expect(screen.getAllByLabelText("声音 ID")[1]).toHaveValue("")
-    expect(screen.getByLabelText("服务器地址")).toHaveValue(presets[1].endpoint)
+    expect(screen.getAllByLabelText(/声音 ID\s*\*?$/)[1]).toHaveValue("")
+    expect(screen.getByLabelText(/服务器地址\s*\*?$/)).toHaveValue(
+      presets[1].endpoint,
+    )
   })
 
   it("imports Token Plan models without built-in voices and accepts manually supplied voice IDs", async () => {
@@ -246,22 +286,21 @@ describe("SpeechSection", () => {
     fireEvent.click(choice)
     await importQwenModel()
     const form = within(screen.getByRole("dialog"))
-    expect(form.getByLabelText("模型 ID")).toHaveValue(
+    expect(form.getByLabelText(/模型 ID\s*\*?$/)).toHaveValue(
       "qwen-audio-3.0-tts-plus",
     )
     expect(form.queryByLabelText("音频格式")).not.toBeInTheDocument()
-    expect(form.queryByLabelText("声音 ID")).not.toBeInTheDocument()
+    expect(form.getByLabelText(/声音 ID\s*\*?$/)).toHaveValue("")
     expect(form.queryByLabelText("默认声音")).not.toBeInTheDocument()
     expect(form.queryByLabelText("默认朗读指令")).not.toBeInTheDocument()
-    expect(form.getByLabelText("服务器地址")).toHaveValue(
+    expect(form.getByLabelText(/服务器地址\s*\*?$/)).toHaveValue(
       "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference",
     )
     fireEvent.change(form.getByLabelText("API 密钥或访问令牌"), {
       target: { value: "sk-sp-fixture" },
     })
     expect(mocks.discoverQwenTtsVoices).not.toHaveBeenCalled()
-    fireEvent.click(form.getByRole("button", { name: "添加声音" }))
-    fireEvent.change(form.getByLabelText("声音 ID"), {
+    fireEvent.change(form.getByLabelText(/声音 ID\s*\*?$/), {
       target: { value: "future-voice" },
     })
     fireEvent.click(form.getByRole("button", { name: "测试 future-voice" }))
@@ -276,7 +315,7 @@ describe("SpeechSection", () => {
         expect.any(String),
       ),
     )
-    fireEvent.click(form.getByRole("button", { name: "添加语音服务" }))
+    fireEvent.click(form.getByRole("button", { name: "保存" }))
     await waitFor(() =>
       expect(mocks.saveTtsProvider).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -318,13 +357,12 @@ describe("SpeechSection", () => {
     await importQwenModel(/qwen3-tts-flash/)
     const form = within(screen.getByRole("dialog"))
     expect(mocks.discoverQwenTtsVoices).not.toHaveBeenCalled()
-    fireEvent.click(form.getByRole("button", { name: "添加声音" }))
-    fireEvent.change(form.getByLabelText("声音 ID"), {
+    fireEvent.change(form.getByLabelText(/声音 ID\s*\*?$/), {
       target: { value: "Cherry" },
     })
-    expect(form.getByLabelText("声音 ID")).toHaveValue("Cherry")
+    expect(form.getByLabelText(/声音 ID\s*\*?$/)).toHaveValue("Cherry")
     expect(form.queryByLabelText("音频格式")).not.toBeInTheDocument()
-    fireEvent.click(form.getByRole("button", { name: "添加语音服务" }))
+    fireEvent.click(form.getByRole("button", { name: "保存" }))
     await waitFor(() =>
       expect(mocks.saveTtsProvider).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -372,16 +410,16 @@ describe("SpeechSection", () => {
     expect(
       screen.getByRole("combobox", { name: "朗读引擎" }),
     ).toHaveTextContent("My voice service")
-    expect(
-      screen.getByRole("combobox", { name: "默认声音" }),
-    ).toHaveTextContent("reader")
-    expect(screen.getByRole("combobox", { name: "默认语速" })).toHaveAttribute(
-      "data-slot",
-      "select-trigger",
+    expect(screen.getByRole("combobox", { name: "声音" })).toHaveTextContent(
+      "reader",
     )
-    expect(screen.getByRole("combobox", { name: "默认音高" })).toHaveAttribute(
-      "data-slot",
-      "select-trigger",
+    expect(screen.getByRole("slider", { name: "默认语速" })).toHaveAttribute(
+      "aria-valuetext",
+      "1.0×",
+    )
+    expect(screen.getByRole("slider", { name: "默认音高" })).toHaveAttribute(
+      "aria-valuetext",
+      "1.0",
     )
     expect(
       screen.queryByRole("combobox", { name: "默认音量" }),
@@ -432,7 +470,7 @@ describe("SpeechSection", () => {
       "data-variant",
       "ghost",
     )
-    expect(flow.getByLabelText("服务器地址")).toHaveValue(
+    expect(flow.getByLabelText(/服务器地址\s*\*?$/)).toHaveValue(
       "https://api.openai.com/v1",
     )
     expect(flow.queryByLabelText("音频格式")).not.toBeInTheDocument()
@@ -445,20 +483,18 @@ describe("SpeechSection", () => {
     expect(
       flow.queryByRole("button", { name: /模型设置/ }),
     ).not.toBeInTheDocument()
-    expect(
-      flow.getByRole("button", { name: "添加语音服务" }),
-    ).toBeInTheDocument()
+    expect(flow.getByRole("button", { name: "保存" })).toBeInTheDocument()
 
     fireEvent.click(flow.getByRole("button", { name: "返回" }))
     expect(
       flow.getByRole("heading", { name: "添加语音服务" }),
     ).toBeInTheDocument()
-    expect(flow.queryByLabelText("服务器地址")).not.toBeInTheDocument()
+    expect(flow.queryByLabelText(/服务器地址\s*\*?$/)).not.toBeInTheDocument()
 
     fireEvent.click(flow.getByRole("button", { name: "关闭" }))
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })
-  it("tests both saved details and an edited draft without saving or changing defaults", async () => {
+  it("tests saved settings and an edited draft without saving or changing defaults", async () => {
     const profile = {
       id: "fixture",
       name: "Fixture provider",
@@ -489,19 +525,15 @@ describe("SpeechSection", () => {
     })
     const user = userEvent.setup()
     render(<TtsProvidersSection />)
+    await user.click(await screen.findByText("Fixture provider"))
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     await user.click(
-      await screen.findByRole("button", { name: /Fixture provider/ }),
+      screen.getByRole("button", { name: "编辑 Fixture provider" }),
     )
     const dialog = within(screen.getByRole("dialog"))
-    expect(
-      dialog.getByRole("heading", { name: profile.name }),
-    ).toBeInTheDocument()
-    expect(dialog.getByText(profile.endpoint)).toBeInTheDocument()
-    expect(
-      dialog
-        .getAllByRole("textbox")
-        .every((input) => input.hasAttribute("readonly")),
-    ).toBe(true)
+    expect(dialog.getByLabelText(/服务器地址\s*\*?$/)).toHaveValue(
+      profile.endpoint,
+    )
     expect(
       dialog.queryByRole("button", { name: "测试" }),
     ).not.toBeInTheDocument()
@@ -520,8 +552,7 @@ describe("SpeechSection", () => {
       }),
       "欢迎使用 MyReader 朗读功能。",
     )
-    await user.click(dialog.getByRole("button", { name: "编辑语音服务" }))
-    fireEvent.change(dialog.getByLabelText("服务器地址"), {
+    fireEvent.change(dialog.getByLabelText(/服务器地址\s*\*?$/), {
       target: { value: "https://draft.example/v1" },
     })
     fireEvent.change(dialog.getByLabelText("API 密钥或访问令牌"), {
@@ -554,8 +585,7 @@ describe("SpeechSection", () => {
     await user.click(
       screen.getByRole("button", { name: "添加 OpenAI 兼容服务" }),
     )
-    await user.click(screen.getByRole("button", { name: "添加声音" }))
-    fireEvent.change(screen.getByLabelText("声音 ID"), {
+    fireEvent.change(screen.getByLabelText(/声音 ID\s*\*?$/), {
       target: { value: "reader" },
     })
     await user.click(screen.getByRole("button", { name: "测试 reader" }))
@@ -577,27 +607,26 @@ it("saves multiple OpenAI models with shared voices and automatic playback defau
   await user.click(
     await screen.findByRole("button", { name: "添加 OpenAI 兼容服务" }),
   )
-  await user.click(screen.getByRole("button", { name: "添加声音" }))
-  fireEvent.change(screen.getByLabelText("声音 ID"), {
+  fireEvent.change(screen.getByLabelText(/声音 ID\s*\*?$/), {
     target: { value: "reader" },
   })
   await user.click(screen.getByRole("button", { name: "添加声音" }))
-  fireEvent.change(screen.getAllByLabelText("声音 ID")[1], {
+  fireEvent.change(screen.getAllByLabelText(/声音 ID\s*\*?$/)[1], {
     target: { value: "actor" },
   })
   await user.click(screen.getByRole("button", { name: "添加模型" }))
-  fireEvent.change(screen.getAllByLabelText("模型 ID")[1], {
+  fireEvent.change(screen.getAllByLabelText(/模型 ID\s*\*?$/)[1], {
     target: { value: "tts-second" },
   })
   expect(screen.queryByLabelText("默认朗读指令")).not.toBeInTheDocument()
   expect(
     screen
-      .getAllByLabelText("声音 ID")
+      .getAllByLabelText(/声音 ID\s*\*?$/)
       .map((input) => (input as HTMLInputElement).value),
   ).toEqual(["reader", "actor"])
   await user.click(
     within(screen.getByRole("dialog")).getByRole("button", {
-      name: "添加语音服务",
+      name: "保存",
     }),
   )
   await waitFor(() =>
@@ -632,27 +661,29 @@ it("keeps OpenAI model-specific voices separate when saving", async () => {
   render(<TtsProvidersSection />)
   await user.click(await screen.findByRole("button", { name: "添加语音服务" }))
   await user.click(screen.getByRole("button", { name: "添加 OpenAI 兼容服务" }))
-  await user.click(screen.getByRole("button", { name: "添加声音" }))
-  fireEvent.change(screen.getByLabelText("声音 ID"), {
+  fireEvent.change(screen.getByLabelText(/声音 ID\s*\*?$/), {
     target: { value: "reader" },
   })
   await user.click(screen.getByRole("button", { name: "添加模型" }))
-  fireEvent.change(screen.getAllByLabelText("模型 ID")[1], {
+  fireEvent.change(screen.getAllByLabelText(/模型 ID\s*\*?$/)[1], {
     target: { value: "second-tts" },
   })
   await user.click(screen.getByRole("switch", { name: "音色按模型配置" }))
-  expect(screen.getByLabelText("声音 ID")).toHaveValue("reader")
-  fireEvent.change(screen.getByLabelText("声音 ID"), {
+  expect(
+    screen.getByRole("button", { name: "模型设置 second-tts" }),
+  ).toHaveAttribute("aria-expanded", "true")
+  expect(screen.getByLabelText(/声音 ID\s*\*?$/)).toHaveValue("reader")
+  fireEvent.change(screen.getByLabelText(/声音 ID\s*\*?$/), {
     target: { value: "actor" },
   })
   await user.click(
     screen.getByRole("button", { name: "模型设置 gpt-4o-mini-tts" }),
   )
-  expect(screen.getByLabelText("声音 ID")).toHaveValue("reader")
+  expect(screen.getByLabelText(/声音 ID\s*\*?$/)).toHaveValue("reader")
   expect(screen.queryByLabelText("默认声音")).not.toBeInTheDocument()
   await user.click(
     within(screen.getByRole("dialog")).getByRole("button", {
-      name: "添加语音服务",
+      name: "保存",
     }),
   )
   await waitFor(() =>
@@ -709,7 +740,7 @@ it("merges editable system presets with account voices and tests each unsaved vo
   await waitFor(() =>
     expect(
       screen
-        .getAllByLabelText("声音 ID")
+        .getAllByLabelText(/声音 ID\s*\*?$/)
         .map((el) => (el as HTMLInputElement).value),
     ).toEqual(["builtin", "custom"]),
   )
@@ -741,13 +772,13 @@ it("merges editable system presets with account voices and tests each unsaved vo
   await waitFor(() =>
     expect(mocks.discoverQwenTtsVoices).toHaveBeenCalledTimes(2),
   )
-  expect(screen.getAllByLabelText("声音 ID")).toHaveLength(1)
+  expect(screen.getAllByLabelText(/声音 ID\s*\*?$/)).toHaveLength(1)
   expect(
     screen.getByRole("button", { name: "测试 custom" }),
   ).toBeInTheDocument()
   fireEvent.click(
     within(screen.getByRole("dialog")).getByRole("button", {
-      name: "添加语音服务",
+      name: "保存",
     }),
   )
   await waitFor(() =>
@@ -808,14 +839,12 @@ it("previews a shared voice with the chosen model and preserves saved playback v
   })
   const user = userEvent.setup()
   render(<TtsProvidersSection />)
-  await user.click(await screen.findByRole("button", { name: "编辑语音服务" }))
+  await user.click(await screen.findByRole("button", { name: /^编辑 / }))
   expect(screen.queryByLabelText("默认声音")).not.toBeInTheDocument()
   expect(screen.queryByLabelText("音频格式")).not.toBeInTheDocument()
   expect(screen.queryByLabelText("默认朗读指令")).not.toBeInTheDocument()
-  fireEvent.keyDown(screen.getByRole("combobox", { name: "测试模型" }), {
-    key: "ArrowDown",
-  })
-  await user.click(await screen.findByRole("option", { name: "second-model" }))
+  await user.click(screen.getByRole("combobox", { name: "测试模型" }))
+  await user.click(screen.getByRole("option", { name: "second-model" }))
   await user.click(screen.getByRole("button", { name: "测试 reader" }))
   expect(mocks.testTtsProvider).toHaveBeenLastCalledWith(
     expect.any(String),
@@ -830,7 +859,7 @@ it("previews a shared voice with the chosen model and preserves saved playback v
     }),
     expect.any(String),
   )
-  fireEvent.change(screen.getByLabelText("名称"), {
+  fireEvent.change(screen.getByLabelText(/名称\s*\*?$/), {
     target: { value: "Renamed service" },
   })
   await user.click(screen.getByRole("button", { name: "保存" }))
@@ -843,4 +872,87 @@ it("previews a shared voice with the chosen model and preserves saved playback v
       }),
     ),
   )
+})
+
+it("shows field errors, blocks invalid URLs and clears errors when corrected or removed", async () => {
+  const user = userEvent.setup()
+  render(<TtsProvidersSection />)
+  await user.click(await screen.findByRole("button", { name: "添加语音服务" }))
+  await user.click(await screen.findByRole("button", { name: /OpenAI 兼容/ }))
+  const endpoint = screen.getByLabelText(/服务器地址/)
+  expect(screen.getByLabelText(/声音 ID/)).toHaveAttribute(
+    "aria-invalid",
+    "false",
+  )
+  fireEvent.change(endpoint, { target: { value: "invalid-url" } })
+  await user.click(
+    within(screen.getByRole("dialog")).getByRole("button", {
+      name: "保存",
+    }),
+  )
+  expect(endpoint).toHaveAttribute("aria-invalid", "true")
+  expect(endpoint).toHaveAccessibleDescription("请输入有效的 URL")
+  expect(mocks.saveTtsProvider).not.toHaveBeenCalled()
+  fireEvent.change(endpoint, { target: { value: "https://example.com/v1" } })
+  expect(endpoint).toHaveAttribute("aria-invalid", "false")
+
+  const voice = screen.getByLabelText(/声音 ID/)
+  expect(voice).toHaveAttribute("aria-invalid", "true")
+  fireEvent.blur(voice)
+  expect(voice).toHaveAttribute("aria-invalid", "true")
+  expect(voice).toHaveAccessibleDescription("此项为必填项")
+  await user.click(screen.getByRole("button", { name: "添加声音" }))
+  fireEvent.change(screen.getAllByLabelText(/声音 ID/)[1], {
+    target: { value: "alloy" },
+  })
+  await user.click(screen.getByRole("button", { name: "删除声音 1" }))
+  expect(screen.getByLabelText(/声音 ID/)).toHaveValue("alloy")
+  expect(screen.getByLabelText(/声音 ID/)).toHaveAttribute(
+    "aria-invalid",
+    "false",
+  )
+})
+
+it("confirms provider deletion before removing it and notifying readers", async () => {
+  mocks.getTtsConfig.mockResolvedValue({
+    ...config,
+    providers: [
+      {
+        id: "provider-id",
+        name: "待删除的语音服务",
+        kind: "openAiCompatible",
+        endpoint: "https://example.com/v1",
+        hasCredential: true,
+        modelScopedVoices: false,
+        voices: ["alloy"],
+        models: [
+          {
+            id: "model-id",
+            model: "tts-1",
+            defaultVoice: "alloy",
+            voices: [],
+            responseFormat: "mp3",
+            instructions: null,
+          },
+        ],
+      },
+    ],
+  })
+  render(<TtsProvidersSection />)
+  fireEvent.click(
+    await screen.findByRole("button", { name: "删除 待删除的语音服务" }),
+  )
+  expect(mocks.removeTtsProfile).not.toHaveBeenCalled()
+  fireEvent.click(
+    within(screen.getByRole("alertdialog")).getByRole("button", {
+      name: "删除",
+    }),
+  )
+  await waitFor(() =>
+    expect(mocks.removeTtsProfile).toHaveBeenCalledWith("provider-id"),
+  )
+  await waitFor(() =>
+    expect(screen.queryByText("待删除的语音服务")).not.toBeInTheDocument(),
+  )
+  expect(mocks.notifyTtsConfigChanged).toHaveBeenCalledOnce()
 })

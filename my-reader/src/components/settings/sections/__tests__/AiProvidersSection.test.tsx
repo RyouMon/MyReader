@@ -1,34 +1,29 @@
 import "@/i18n"
-import { useState } from "react"
-import { fireEvent, render, screen, within } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import { expect, it, vi } from "vitest"
 import SettingsNav from "../../SettingsNav"
 import AiProvidersSection from "../AiProvidersSection"
-import type { SettingsSection } from "@/types/settings"
 
 vi.mock("@/hooks/use-window-size-class", () => ({
   useWindowSizeClass: () => "large",
 }))
 vi.mock("../SpeechSection", () => ({
-  TtsProvidersSection: () => <h1>TTS management</h1>,
+  TtsProvidersSection: () => <h2>TTS management</h2>,
 }))
-vi.mock("../LlmSection", () => ({ default: () => <h1>LLM management</h1> }))
+vi.mock("../LlmSection", () => ({ default: () => <h2>LLM management</h2> }))
 
 function Settings() {
-  const [section, setSection] = useState<SettingsSection>("aiProviders")
   return (
     <>
-      <SettingsNav activeSection={section} onSectionChange={setSection} />
-      {(section === "aiProviders" ||
-        section === "ttsProviders" ||
-        section === "llm") && (
-        <AiProvidersSection section={section} onSectionChange={setSection} />
-      )}
+      <SettingsNav activeSection="aiProviders" onSectionChange={vi.fn()} />
+      <main>
+        <AiProvidersSection />
+      </main>
     </>
   )
 }
 
-it("groups TTS and LLM under one sidebar entry and returns to the provider chooser", () => {
+it("shows both provider managers in order under one sidebar entry", () => {
   render(<Settings />)
   const nav = within(screen.getByRole("navigation"))
   expect(nav.getByRole("button", { name: "AI 供应商" })).toHaveAttribute(
@@ -42,20 +37,14 @@ it("groups TTS and LLM under one sidebar entry and returns to the provider choos
     nav.queryByRole("button", { name: /^LLM 供应商/ }),
   ).not.toBeInTheDocument()
   expect(nav.getByRole("button", { name: "朗读配置" })).toBeInTheDocument()
-  fireEvent.click(screen.getByRole("button", { name: /^TTS 供应商/ }))
+  const page = within(screen.getByRole("main"))
   expect(
-    screen.getByRole("heading", { name: "TTS management" }),
-  ).toBeInTheDocument()
-  expect(nav.getByRole("button", { name: "AI 供应商" })).toHaveAttribute(
-    "aria-current",
-    "page",
-  )
-  fireEvent.click(screen.getAllByRole("button", { name: "AI 供应商" })[1])
-  fireEvent.click(screen.getByRole("button", { name: /^LLM 供应商/ }))
+    page.getAllByRole("heading").map((heading) => heading.textContent),
+  ).toEqual(["AI 供应商", "TTS management", "LLM management"])
   expect(
-    screen.getByRole("heading", { name: "LLM management" }),
-  ).toBeInTheDocument()
+    page.queryByRole("button", { name: /^TTS 供应商/ }),
+  ).not.toBeInTheDocument()
   expect(
-    screen.queryByRole("heading", { name: "TTS management" }),
+    page.queryByRole("button", { name: /^LLM 供应商/ }),
   ).not.toBeInTheDocument()
 })

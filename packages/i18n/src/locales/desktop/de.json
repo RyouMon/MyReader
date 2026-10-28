@@ -1,4 +1,18 @@
 {
+  "rowActions": {
+    "edit": "{{name}} bearbeiten",
+    "delete": "{{name}} löschen",
+    "confirmDelete": "„{{name}}“ löschen?"
+  },
+  "formValidation": {
+    "required": "Pflichtfeld.",
+    "url": "Geben Sie eine gültige URL ein.",
+    "number": "Geben Sie eine gültige Zahl ein.",
+    "minimum": "Der Wert muss mindestens {{min}} betragen.",
+    "maximum": "Der Wert darf höchstens {{max}} betragen.",
+    "integer": "Geben Sie eine ganze Zahl ein.",
+    "invalid": "Geben Sie einen gültigen Wert ein."
+  },
   "errors": {
     "io": "Datei-E/A-Fehler",
     "database": "Datenbankfehler",

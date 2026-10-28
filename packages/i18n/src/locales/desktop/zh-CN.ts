@@ -1,5 +1,19 @@
 export const desktopZhCN = {
   translation: {
+    rowActions: {
+      edit: "编辑 {{name}}",
+      delete: "删除 {{name}}",
+      confirmDelete: "删除“{{name}}”？",
+    },
+    formValidation: {
+      required: "此项为必填项",
+      url: "请输入有效的 URL",
+      number: "请输入有效的数字",
+      minimum: "不能小于 {{min}}",
+      maximum: "不能大于 {{max}}",
+      integer: "请输入整数",
+      invalid: "请输入有效的内容",
+    },
     errors: {
       io: "文件读写错误",
       database: "数据库错误",

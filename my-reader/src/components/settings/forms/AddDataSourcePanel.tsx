@@ -6,20 +6,17 @@ import type {
 } from "@my-reader/tools/types/data-source"
 import { useForm } from "@tanstack/react-form"
 import { isTauri } from "@tauri-apps/api/core"
-import { Cable, Loader2, PlusCircle } from "lucide-react"
+import { Cable, Loader2 } from "lucide-react"
 import { type ReactNode, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { z } from "zod"
 import { StatusNotice } from "@/components/common/StatusNotice"
+import { SaveButton } from "@/components/common/SaveButton"
 import { Button } from "@/components/ui/button"
 import { DialogFooter } from "@/components/ui/dialog"
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+import { FieldGroup } from "@/components/ui/field"
+import { FormTextField } from "@/components/common/FormTextField"
+import { FormScrollArea } from "@/components/common/FormScrollArea"
 import {
   type CreateDataSourceInput,
   useDataSourceMutations,
@@ -321,164 +318,164 @@ function WebdavDataSourceForm({
         void webdavForm.handleSubmit()
       }}
     >
-      <div
+      <FormScrollArea
         data-slot="webdav-form-content"
-        className={cn(fillAvailableHeight && "min-h-0 flex-1 overflow-y-auto")}
+        className={cn(fillAvailableHeight && "flex-1")}
       >
-        <FieldGroup>
-          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_136px]">
-            <webdavForm.Field name="endpoint">
-              {(field) => {
-                const isInvalid =
-                  (field.state.meta.isTouched && !field.state.meta.isValid) ||
-                  Boolean(testValidationErrors.endpoint)
-                return (
-                  <Field data-invalid={isInvalid}>
-                    <FieldLabel htmlFor={field.name}>
-                      {t("addDataSourceForm.endpointLabel")}
-                    </FieldLabel>
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(event) => {
-                        field.handleChange(event.target.value)
-                        clearTestValidationErrors()
-                        onClearMessages()
-                      }}
-                      placeholder={t("addDataSourceForm.endpointPlaceholder")}
-                      disabled={loading}
-                      aria-invalid={isInvalid}
-                    />
-                    {isInvalid && (
-                      <FieldError
-                        errors={mergeFieldErrors(
-                          testValidationErrors.endpoint,
-                          field.state.meta.errors,
-                        )}
-                      />
-                    )}
-                  </Field>
-                )
-              }}
-            </webdavForm.Field>
-            <webdavForm.Field name="port">
-              {(field) => {
-                const isInvalid =
-                  (field.state.meta.isTouched && !field.state.meta.isValid) ||
-                  Boolean(testValidationErrors.port)
-                return (
-                  <Field data-invalid={isInvalid}>
-                    <FieldLabel htmlFor={field.name}>
-                      {t("addDataSourceForm.portLabel")}
-                    </FieldLabel>
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(event) => {
-                        field.handleChange(event.target.value)
-                        clearTestValidationErrors()
-                        onClearMessages()
-                      }}
-                      placeholder={t("addDataSourceForm.portPlaceholder")}
-                      inputMode="numeric"
-                      disabled={loading}
-                      aria-invalid={isInvalid}
-                    />
-                    {isInvalid && (
-                      <FieldError
-                        errors={mergeFieldErrors(
-                          testValidationErrors.port,
-                          field.state.meta.errors,
-                        )}
-                      />
-                    )}
-                  </Field>
-                )
-              }}
-            </webdavForm.Field>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <webdavForm.Field name="username">
-              {(field) => {
-                const isInvalid =
-                  (field.state.meta.isTouched && !field.state.meta.isValid) ||
-                  Boolean(testValidationErrors.username)
-                return (
-                  <Field data-invalid={isInvalid}>
-                    <FieldLabel htmlFor={field.name}>
-                      {t("addDataSourceForm.usernameLabel")}
-                    </FieldLabel>
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(event) => {
-                        field.handleChange(event.target.value)
-                        clearTestValidationErrors()
-                        onClearMessages()
-                      }}
-                      placeholder={t("addDataSourceForm.usernamePlaceholder")}
-                      disabled={loading}
-                      aria-invalid={isInvalid}
-                    />
-                    {isInvalid && (
-                      <FieldError
-                        errors={mergeFieldErrors(
-                          testValidationErrors.username,
-                          field.state.meta.errors,
-                        )}
-                      />
-                    )}
-                  </Field>
-                )
-              }}
-            </webdavForm.Field>
-            <webdavForm.Field name="password">
-              {(field) => {
-                const isInvalid =
-                  (field.state.meta.isTouched && !field.state.meta.isValid) ||
-                  Boolean(testValidationErrors.password)
-                return (
-                  <Field data-invalid={isInvalid}>
-                    <FieldLabel htmlFor={field.name}>
-                      {t("addDataSourceForm.passwordLabel")}
-                    </FieldLabel>
-                    <Input
-                      type="password"
-                      id={field.name}
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(event) => {
-                        field.handleChange(event.target.value)
-                        clearTestValidationErrors()
-                        onClearMessages()
-                      }}
-                      placeholder={t("addDataSourceForm.passwordPlaceholder")}
-                      disabled={loading}
-                      aria-invalid={isInvalid}
-                    />
-                    {isInvalid && (
-                      <FieldError
-                        errors={mergeFieldErrors(
-                          testValidationErrors.password,
-                          field.state.meta.errors,
-                        )}
-                      />
-                    )}
-                  </Field>
-                )
-              }}
-            </webdavForm.Field>
-          </div>
+        <FieldGroup className="gap-4">
+          <webdavForm.Field name="endpoint">
+            {(field) => {
+              const isInvalid =
+                (field.state.meta.isTouched && !field.state.meta.isValid) ||
+                Boolean(testValidationErrors.endpoint)
+              return (
+                <FormTextField
+                  id={field.name}
+                  name={field.name}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value)
+                    clearTestValidationErrors()
+                    onClearMessages()
+                  }}
+                  placeholder={t("addDataSourceForm.endpointPlaceholder")}
+                  disabled={loading}
+                  label={t("addDataSourceForm.endpointLabel")}
+                  error={isInvalid}
+                  helperText={
+                    isInvalid
+                      ? (
+                          mergeFieldErrors(
+                            testValidationErrors.endpoint,
+                            field.state.meta.errors,
+                          ) ?? []
+                        )
+                          .map((error) => error?.message)
+                          .filter(Boolean)
+                          .join(" ")
+                      : undefined
+                  }
+                />
+              )
+            }}
+          </webdavForm.Field>
+          <webdavForm.Field name="port">
+            {(field) => {
+              const isInvalid =
+                (field.state.meta.isTouched && !field.state.meta.isValid) ||
+                Boolean(testValidationErrors.port)
+              return (
+                <FormTextField
+                  id={field.name}
+                  name={field.name}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value)
+                    clearTestValidationErrors()
+                    onClearMessages()
+                  }}
+                  placeholder={t("addDataSourceForm.portPlaceholder")}
+                  disabled={loading}
+                  label={t("addDataSourceForm.portLabel")}
+                  error={isInvalid}
+                  slotProps={{ htmlInput: { inputMode: "numeric" } }}
+                  helperText={
+                    isInvalid
+                      ? (
+                          mergeFieldErrors(
+                            testValidationErrors.port,
+                            field.state.meta.errors,
+                          ) ?? []
+                        )
+                          .map((error) => error?.message)
+                          .filter(Boolean)
+                          .join(" ")
+                      : undefined
+                  }
+                />
+              )
+            }}
+          </webdavForm.Field>
+          <webdavForm.Field name="username">
+            {(field) => {
+              const isInvalid =
+                (field.state.meta.isTouched && !field.state.meta.isValid) ||
+                Boolean(testValidationErrors.username)
+              return (
+                <FormTextField
+                  id={field.name}
+                  name={field.name}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value)
+                    clearTestValidationErrors()
+                    onClearMessages()
+                  }}
+                  placeholder={t("addDataSourceForm.usernamePlaceholder")}
+                  disabled={loading}
+                  label={t("addDataSourceForm.usernameLabel")}
+                  error={isInvalid}
+                  helperText={
+                    isInvalid
+                      ? (
+                          mergeFieldErrors(
+                            testValidationErrors.username,
+                            field.state.meta.errors,
+                          ) ?? []
+                        )
+                          .map((error) => error?.message)
+                          .filter(Boolean)
+                          .join(" ")
+                      : undefined
+                  }
+                />
+              )
+            }}
+          </webdavForm.Field>
+          <webdavForm.Field name="password">
+            {(field) => {
+              const isInvalid =
+                (field.state.meta.isTouched && !field.state.meta.isValid) ||
+                Boolean(testValidationErrors.password)
+              return (
+                <FormTextField
+                  type="password"
+                  id={field.name}
+                  name={field.name}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value)
+                    clearTestValidationErrors()
+                    onClearMessages()
+                  }}
+                  placeholder={t("addDataSourceForm.passwordPlaceholder")}
+                  disabled={loading}
+                  label={t("addDataSourceForm.passwordLabel")}
+                  error={isInvalid}
+                  helperText={
+                    isInvalid
+                      ? (
+                          mergeFieldErrors(
+                            testValidationErrors.password,
+                            field.state.meta.errors,
+                          ) ?? []
+                        )
+                          .map((error) => error?.message)
+                          .filter(Boolean)
+                          .join(" ")
+                      : undefined
+                  }
+                />
+              )
+            }}
+          </webdavForm.Field>
         </FieldGroup>
         {feedback ? <div className="mt-3">{feedback}</div> : null}
-      </div>
+      </FormScrollArea>
       <DialogFooter
         className={cn(
           "shrink-0 flex-row items-center justify-between border-t border-border pt-3 sm:justify-between",
@@ -501,14 +498,7 @@ function WebdavDataSourceForm({
             ? t("addDataSourceForm.testing")
             : t("addDataSourceForm.testConnection")}
         </Button>
-        <Button size="sm" type="submit" disabled={loading}>
-          {submitting ? (
-            <Loader2 data-icon="inline-start" className="animate-spin" />
-          ) : (
-            <PlusCircle data-icon="inline-start" />
-          )}
-          {t("addDataSourceForm.addButton")}
-        </Button>
+        <SaveButton disabled={loading} saving={submitting} />
       </DialogFooter>
     </form>
   )

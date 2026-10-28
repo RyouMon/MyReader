@@ -27,8 +27,8 @@ import { OnedriveFolderBrowser } from "@/components/settings/OnedriveFolderBrows
 import { WebdavFolderBrowser } from "@/components/settings/WebdavFolderBrowser"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogFooter } from "@/components/ui/dialog"
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+import { FormTextField } from "@/components/common/FormTextField"
+import { FormScrollArea } from "@/components/common/FormScrollArea"
 import {
   useDataSourceMutations,
   useDataSourcesQuery,
@@ -461,33 +461,29 @@ function NewLibraryNameForm({
         void onSubmit()
       }}
     >
-      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto">
-        <Field data-invalid={nameInvalid}>
-          <FieldLabel htmlFor="new-library-name">
-            {t("addLibraryFlow.name.label")}
-          </FieldLabel>
-          <Input
-            id="new-library-name"
-            value={libraryName}
-            onChange={(event) => {
-              onNameChange(event.target.value)
-            }}
-            disabled={submitting}
-            aria-invalid={nameInvalid}
-            autoFocus
-            autoComplete="off"
-          />
-          <FieldDescription>
-            {nameInvalid
+      <FormScrollArea className="flex flex-1 flex-col gap-5">
+        <FormTextField
+          id="new-library-name"
+          value={libraryName}
+          onChange={(event) => {
+            onNameChange(event.target.value)
+          }}
+          disabled={submitting}
+          autoFocus
+          autoComplete="off"
+          label={t("addLibraryFlow.name.label")}
+          error={nameInvalid}
+          helperText={
+            nameInvalid
               ? t("addLibraryFlow.name.invalid")
               : t("addLibraryFlow.name.parent", {
                   path: parentPath,
-                })}
-          </FieldDescription>
-        </Field>
+                })
+          }
+        />
 
         {error ? <StatusNotice tone="error">{error}</StatusNotice> : null}
-      </div>
+      </FormScrollArea>
 
       <DialogFooter className="mt-4 shrink-0 border-t border-border pt-3">
         <Button type="submit" disabled={submitting || !name || nameInvalid}>

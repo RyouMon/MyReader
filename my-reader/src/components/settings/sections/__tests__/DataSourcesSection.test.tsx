@@ -1,6 +1,12 @@
 import "@/i18n"
 import type { DataSource } from "@my-reader/tools/types/data-source"
-import { fireEvent, render, screen } from "@testing-library/react"
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import DataSourcesSection from "../DataSourcesSection"
@@ -122,7 +128,7 @@ describe("DataSourcesSection", () => {
       "ghost",
     )
     expect(screen.getByRole("button", { name: "测试连接" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "添加" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "保存" })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole("button", { name: "返回" }))
     expect(screen.getByRole("dialog")).toBe(dialog)
@@ -133,4 +139,43 @@ describe("DataSourcesSection", () => {
     fireEvent.click(screen.getByRole("button", { name: "关闭" }))
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })
+})
+
+it("confirms removal of the selected data source and preserves readonly sources", async () => {
+  queryState.dataSources = [
+    {
+      id: "dav",
+      type: "webdav",
+      name: "家庭存储",
+      enabled: true,
+      endpoint: "https://dav.example.com",
+      username: "reader",
+      hasPassword: true,
+    },
+    {
+      id: "readonly-dav",
+      type: "webdav",
+      name: "只读数据源",
+      enabled: true,
+      endpoint: "https://readonly.example.com",
+      username: "reader",
+      hasPassword: true,
+      readonly: true,
+    },
+  ]
+  dataSourceMocks.deleteDataSource.mockResolvedValue(undefined)
+  render(<DataSourcesSection />)
+  expect(
+    screen.queryByRole("button", { name: "删除 只读数据源" }),
+  ).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole("button", { name: "删除 家庭存储" }))
+  expect(dataSourceMocks.deleteDataSource).not.toHaveBeenCalled()
+  const dialog = within(screen.getByRole("alertdialog"))
+  fireEvent.click(dialog.getByRole("button", { name: "删除" }))
+  await waitFor(() =>
+    expect(dataSourceMocks.deleteDataSource).toHaveBeenCalledWith("dav"),
+  )
+  await waitFor(() =>
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument(),
+  )
 })

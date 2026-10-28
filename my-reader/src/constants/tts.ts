@@ -1,7 +1,3 @@
-export const TTS_SPEED_OPTIONS = Array.from({ length: 26 }, (_, index) =>
-  Number((0.5 + index * 0.1).toFixed(1)),
-)
+export const TTS_SPEED_RANGE = { min: 0.5, max: 3, step: 0.1 }
 
-export const TTS_PITCH_OPTIONS = Array.from({ length: 16 }, (_, index) =>
-  Number((0.5 + index * 0.1).toFixed(1)),
-)
+export const TTS_PITCH_RANGE = { min: 0.5, max: 2, step: 0.1 }

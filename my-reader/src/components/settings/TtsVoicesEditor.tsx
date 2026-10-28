@@ -1,11 +1,9 @@
 import { Loader2, Play, Plus, Square, Trash2 } from "lucide-react"
 import type { ReactNode } from "react"
+import { FormTextField } from "@/components/common/FormTextField"
 import { useTranslation } from "react-i18next"
-import { GroupList, GroupListItem } from "@/components/common/GroupList"
-import { StatusNotice } from "@/components/common/StatusNotice"
 import { Button } from "@/components/ui/button"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+import { FieldGroup } from "@/components/ui/field"
 import { useTtsProviderTest } from "@/hooks/useTtsProviderTest"
 import {
   modelVoices,
@@ -17,18 +15,16 @@ import type { TtsModelDto, UpsertTtsProviderInput } from "@/lib/tauri-specta"
 export function TtsVoicesEditor({
   draft,
   model,
-  readOnly,
   disabled,
-  embedded,
   actions,
+  fieldErrors,
   onChange,
 }: {
   draft: TtsProviderDraft
   model?: TtsModelDto
-  readOnly?: boolean
   disabled?: boolean
-  embedded?: boolean
   actions?: ReactNode
+  fieldErrors?: Record<string, string>
   onChange: (voices: string[]) => void
 }) {
   const { t } = useTranslation()
@@ -39,64 +35,44 @@ export function TtsVoicesEditor({
     next[index] = id
     onChange(next)
   }
-  const prefix = model?.id || "shared"
+  const prefix = scoped ? model?.id || "shared" : "shared"
   return (
     <section
-      className={
-        embedded
-          ? "flex flex-col gap-3 border-l border-transparent pl-3"
-          : "flex flex-col gap-3"
-      }
+      className="flex flex-col gap-3"
       aria-label={t("providerEditor.voices")}
     >
       <div className="flex items-center justify-between gap-3">
         <h4 className="text-sm font-medium">{t("providerEditor.voices")}</h4>
-        {actions}
+        <div className="flex items-center gap-2">
+          {actions}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={disabled}
+            onClick={() => onChange([...voices, ""])}
+          >
+            <Plus data-icon="inline-start" />
+            {t("providerEditor.addVoice")}
+          </Button>
+        </div>
       </div>
-      <GroupList
-        className={
-          embedded
-            ? "overflow-visible rounded-none border-0 bg-transparent"
-            : undefined
-        }
-      >
+      <FieldGroup className="gap-4">
         {voices.map((voice, index) => (
-          <GroupListItem
+          <VoiceRow
             key={`${prefix}-${index}`}
-            className={embedded ? "border-b-0 px-0 first:pt-0" : "border-b-0"}
-          >
-            <VoiceRow
-              prefix={`${prefix}-${index}`}
-              index={index}
-              voice={voice}
-              readOnly={readOnly}
-              disabled={disabled}
-              input={ttsDraftInput(draft, model, voice)}
-              canPlay={Boolean(voice.trim() && model?.model.trim())}
-              onIdChange={(id) => updateId(index, id)}
-              onRemove={() => onChange(voices.filter((_, i) => i !== index))}
-            />
-          </GroupListItem>
+            prefix={`${prefix}-${index}`}
+            index={index}
+            voice={voice}
+            disabled={disabled}
+            fieldError={fieldErrors?.[`${prefix}-${index}-voice-id`]}
+            input={ttsDraftInput(draft, model, voice)}
+            canPlay={Boolean(voice.trim() && model?.model.trim())}
+            onIdChange={(id) => updateId(index, id)}
+            onRemove={() => onChange(voices.filter((_, i) => i !== index))}
+          />
         ))}
-        {!readOnly ? (
-          <GroupListItem
-            className={
-              embedded ? "flex justify-end px-0 pb-0" : "flex justify-end"
-            }
-          >
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={disabled}
-              onClick={() => onChange([...voices, ""])}
-            >
-              <Plus data-icon="inline-start" />
-              {t("providerEditor.addVoice")}
-            </Button>
-          </GroupListItem>
-        ) : null}
-      </GroupList>
+      </FieldGroup>
     </section>
   )
 }
@@ -105,8 +81,8 @@ function VoiceRow({
   prefix,
   index,
   voice,
-  readOnly,
   disabled,
+  fieldError,
   input,
   canPlay,
   onIdChange,
@@ -115,8 +91,8 @@ function VoiceRow({
   prefix: string
   index: number
   voice: string
-  readOnly?: boolean
   disabled?: boolean
+  fieldError?: string
   input: UpsertTtsProviderInput
   canPlay: boolean
   onIdChange: (id: string) => void
@@ -129,25 +105,18 @@ function VoiceRow({
   const playLabel = `${t(active ? "settings.speech.stopPreview" : "ttsSettings.test")} ${label}`
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-end gap-2">
-        <FieldGroup className="min-w-0 flex-1">
-          <Field>
-            <FieldLabel
-              className={index ? "sr-only" : "border-l border-transparent pl-3"}
-              htmlFor={`${prefix}-voice-id`}
-            >
-              {t("providerEditor.voiceId")}
-            </FieldLabel>
-            <Input
-              id={`${prefix}-voice-id`}
-              value={voice}
-              readOnly={readOnly}
-              disabled={disabled}
-              placeholder={t("providerEditor.voiceId")}
-              onChange={(event) => onIdChange(event.target.value)}
-            />
-          </Field>
-        </FieldGroup>
+      <div className="flex items-start gap-2">
+        <FormTextField
+          id={`${prefix}-voice-id`}
+          label={t("providerEditor.voiceId")}
+          value={voice}
+          required
+          fullWidth
+          disabled={disabled}
+          error={Boolean(fieldError || error)}
+          helperText={fieldError || error}
+          onChange={(event) => onIdChange(event.target.value)}
+        />
         <div className="flex w-20 shrink-0 items-center justify-end gap-2">
           <Button
             type="button"
@@ -168,21 +137,18 @@ function VoiceRow({
               <Play />
             )}
           </Button>
-          {!readOnly ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              disabled={disabled}
-              aria-label={`${t("providerEditor.removeVoice")} ${label}`}
-              onClick={onRemove}
-            >
-              <Trash2 />
-            </Button>
-          ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            disabled={disabled}
+            aria-label={`${t("providerEditor.removeVoice")} ${label}`}
+            onClick={onRemove}
+          >
+            <Trash2 />
+          </Button>
         </div>
       </div>
-      {error ? <StatusNotice tone="error">{error}</StatusNotice> : null}
     </div>
   )
 }

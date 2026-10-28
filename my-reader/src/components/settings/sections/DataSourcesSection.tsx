@@ -1,9 +1,10 @@
 import type { DataSource } from "@my-reader/tools/types/data-source"
-import { Trash2, Unplug } from "lucide-react"
+import { Unplug } from "lucide-react"
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { AddPanelButton } from "@/components/common/AddPanelButton"
 import { AppRow } from "@/components/common/AppRow"
+import { RowActions } from "@/components/common/RowActions"
 import { EntityIcon, type EntityIconKind } from "@/components/common/EntityIcon"
 import { GroupList, GroupListItem } from "@/components/common/GroupList"
 import { SectionHeader } from "@/components/common/SectionHeader"
@@ -12,7 +13,6 @@ import {
   useDataSourceMutations,
   useDataSourcesQuery,
 } from "@/hooks/queries/useDataSourcesQuery"
-import { cn } from "@/lib/utils"
 
 export default function DataSourcesSection() {
   const { t } = useTranslation()
@@ -20,26 +20,6 @@ export default function DataSourcesSection() {
   const { deleteDataSource } = useDataSourceMutations()
 
   const [addDataSourceOpen, setAddDataSourceOpen] = useState(false)
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
-  const [removingId, setRemovingId] = useState<string | null>(null)
-
-  async function handleDelete(id: string) {
-    const target = dataSources.find((item) => item.id === id)
-    if (target?.readonly) return
-
-    if (pendingDeleteId === id) {
-      setPendingDeleteId(null)
-      setRemovingId(id)
-      try {
-        await deleteDataSource(id)
-      } finally {
-        setRemovingId(null)
-      }
-      return
-    }
-
-    setPendingDeleteId(id)
-  }
 
   return (
     <div className="flex h-full flex-col">
@@ -62,9 +42,7 @@ export default function DataSourcesSection() {
               <DataSourceCard
                 key={source.id}
                 source={source}
-                isPendingDelete={pendingDeleteId === source.id}
-                isRemoving={removingId === source.id}
-                onDelete={handleDelete}
+                onDelete={deleteDataSource}
               />
             ))}
           </GroupList>
@@ -89,7 +67,7 @@ export default function DataSourcesSection() {
 function LocalStorageStaticRow() {
   const { t } = useTranslation()
   return (
-    <GroupListItem className="transition-[opacity,transform,background-color] hover:bg-accent">
+    <GroupListItem>
       <AppRow
         head={
           <EntityIcon
@@ -107,17 +85,10 @@ function LocalStorageStaticRow() {
 
 interface DataSourceCardProps {
   source: DataSource
-  isPendingDelete: boolean
-  isRemoving: boolean
   onDelete: (id: string) => Promise<void>
 }
 
-function DataSourceCard({
-  source,
-  isPendingDelete,
-  isRemoving,
-  onDelete,
-}: DataSourceCardProps) {
+function DataSourceCard({ source, onDelete }: DataSourceCardProps) {
   const { t } = useTranslation()
   let bodyText = source.name
   let secondaryText: string | undefined
@@ -137,44 +108,19 @@ function DataSourceCard({
   }
 
   return (
-    <GroupListItem
-      className={cn(
-        "transition-[opacity,transform,background-color] hover:bg-accent",
-        isRemoving &&
-          "pointer-events-none ltr:translate-x-2 rtl:-translate-x-2 opacity-0",
-      )}
-    >
+    <GroupListItem>
       <AppRow
         head={<EntityIcon kind={iconKind} label={iconLabel} />}
         body={bodyText}
         detail={secondaryText}
         detailClassName="font-mono"
-        tail={
-          isPendingDelete && !source.readonly ? (
-            <span className="hidden text-[11px] text-destructive md:inline">
-              {t("settings.dataSources.confirmDelete")}
-            </span>
-          ) : undefined
-        }
         actions={
           source.readonly ? (
             <div className="flex size-[30px] items-center justify-center rounded-md text-muted-foreground">
               <Unplug className="size-3.5" />
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={() => void onDelete(source.id)}
-              className={cn(
-                "flex size-[30px] items-center justify-center rounded-md border transition-colors",
-                isPendingDelete
-                  ? "border-destructive/30 bg-destructive/10 text-destructive"
-                  : "border-transparent text-muted-foreground hover:border-destructive/20 hover:bg-destructive/10 hover:text-destructive",
-              )}
-              title={t("settings.dataSources.deleteTitle")}
-            >
-              <Trash2 className="size-3.5" />
-            </button>
+            <RowActions name={bodyText} onDelete={() => onDelete(source.id)} />
           )
         }
       />

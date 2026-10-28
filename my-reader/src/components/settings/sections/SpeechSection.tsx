@@ -1,25 +1,21 @@
-import { AppRow } from "@/components/common/AppRow"
-import { GroupList, GroupListItem } from "@/components/common/GroupList"
-import { TtsProviderModels } from "@/components/settings/TtsProviderModels"
+import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
+import { FormTextField } from "@/components/common/FormTextField"
+import { FormScrollArea } from "@/components/common/FormScrollArea"
+import { FormSlider } from "@/components/common/FormSlider"
+import {
+  TtsProviderModels,
+  TtsTestModelSelect,
+} from "@/components/settings/TtsProviderModels"
 import {
   newTtsModel,
   modelVoices as usesModelVoices,
   type TtsProviderDraft,
 } from "@/lib/tts-provider-draft"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { FieldGroup } from "@/components/ui/field"
 import { formatTtsLanguageName } from "@my-reader/tools/reader-tts-language"
 import { qwenTtsSourceKeys } from "@my-reader/i18n/desktop"
 import { convertFileSrc, isTauri } from "@tauri-apps/api/core"
-import {
-  Check,
-  Loader2,
-  Pencil,
-  Play,
-  PlusCircle,
-  Server,
-  Trash2,
-  Volume2,
-} from "lucide-react"
+import { Loader2, Play, Server, Volume2 } from "lucide-react"
 import {
   type CSSProperties,
   useCallback,
@@ -29,6 +25,10 @@ import {
 } from "react"
 import { useTranslation } from "react-i18next"
 import { AddPanelButton } from "@/components/common/AddPanelButton"
+import { AppRow } from "@/components/common/AppRow"
+import { RowActions } from "@/components/common/RowActions"
+import { SaveButton } from "@/components/common/SaveButton"
+import { GroupList, GroupListItem } from "@/components/common/GroupList"
 import {
   FlowDialogChoice,
   FlowDialogContent,
@@ -39,19 +39,12 @@ import { StatusNotice } from "@/components/common/StatusNotice"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogFooter } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
+import { Separator } from "@/components/ui/separator"
+import { FormSwitch } from "@/components/common/FormSwitch"
 import { useProviderTtsVoices, useQwenTtsPresets } from "@/hooks/useQwenTts"
-import { TTS_PITCH_OPTIONS, TTS_SPEED_OPTIONS } from "@/constants/tts"
+import { useFormValidation } from "@/hooks/useFormValidation"
+import { TTS_PITCH_RANGE, TTS_SPEED_RANGE } from "@/constants/tts"
 import { api } from "@/lib/tauri-api"
 import { errorMessage } from "@/lib/error-presentation"
 import type {
@@ -62,7 +55,6 @@ import type {
   TtsProviderDto,
 } from "@/lib/tauri-specta"
 import { notifyTtsConfigChanged } from "@/lib/tts/events"
-import { cn } from "@/lib/utils"
 
 type ProfileDraft = TtsProviderDraft
 
@@ -90,7 +82,7 @@ function newProfileDraft(): ProfileDraft {
     endpoint: "https://api.openai.com/v1",
     modelScopedVoices: false,
     models: [newTtsModel("gpt-4o-mini-tts")],
-    voices: [],
+    voices: [""],
 
     credential: "",
     hasCredential: false,
@@ -412,28 +404,15 @@ export default function SpeechSection() {
         <h1 className="text-xl font-semibold">{t("ttsSettings.defaults")}</h1>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-7 py-5">
+      <FormScrollArea className="flex-1 px-7 py-5">
         {error ? (
           <p className="select-text whitespace-pre-wrap break-words mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
             {error}
           </p>
         ) : null}
         {config ? (
-          <DefaultEngineSettings
-            config={config}
-            saving={saving}
-            selectedDefaultVoiceId={selectedDefaultVoiceId}
-            systemVoices={systemVoices}
-            providerVoices={providerVoices}
-            previewLanguage={previewLanguage}
-            selectEngine={selectEngine}
-            selectVoice={selectVoice}
-          />
-        ) : null}
-
-        {config ? (
-          <section className="mt-4">
-            <div className="flex items-center justify-between gap-5 rounded-md border border-border bg-card px-4 py-4">
+          <FieldGroup className="gap-5">
+            <div className="flex items-center justify-between gap-5 py-2">
               <p className="text-sm leading-6 text-foreground">
                 {t("settings.speech.previewText")}
               </p>
@@ -454,95 +433,58 @@ export default function SpeechSection() {
                   : t("settings.speech.previewAction")}
               </Button>
             </div>
-          </section>
+            <DefaultEngineSettings
+              config={config}
+              saving={saving}
+              selectedDefaultVoiceId={selectedDefaultVoiceId}
+              systemVoices={systemVoices}
+              providerVoices={providerVoices}
+              previewLanguage={previewLanguage}
+              selectEngine={selectEngine}
+              selectVoice={selectVoice}
+            />
+            <FormSlider
+              {...TTS_SPEED_RANGE}
+              value={finitePreference(config.playback.speed, 1)}
+              onCommit={(speed) => void updatePlayback({ speed })}
+              disabled={saving}
+              id="tts-default-speed"
+              label={t("settings.speech.defaultSpeed")}
+              formatValue={(value) => `${value.toFixed(1)}×`}
+            />
+            <FormSlider
+              {...TTS_PITCH_RANGE}
+              value={finitePreference(config.playback.pitch, 1)}
+              onCommit={(pitch) => void updatePlayback({ pitch })}
+              disabled={saving}
+              id="tts-default-pitch"
+              label={t("settings.speech.defaultPitch")}
+              formatValue={(value) => value.toFixed(1)}
+            />
+            <Separator />
+            <FormSwitch
+              align="between"
+              id="tts-skip-page-breaks"
+              label={t("settings.speech.skipPageBreaks")}
+              description={t("settings.speech.skipPageBreaksDescription")}
+              checked={config.playback.skipPageBreaks}
+              onCheckedChange={(checked) =>
+                void updatePlayback({ skipPageBreaks: checked })
+              }
+            />
+            <FormSwitch
+              align="between"
+              id="tts-skip-footnotes"
+              label={t("settings.speech.skipFootnotes")}
+              description={t("settings.speech.skipFootnotesDescription")}
+              checked={config.playback.skipFootnotes}
+              onCheckedChange={(checked) =>
+                void updatePlayback({ skipFootnotes: checked })
+              }
+            />
+          </FieldGroup>
         ) : null}
-
-        {config ? (
-          <section className="mt-8 border-t border-border pt-6">
-            <SectionHeader title={t("settings.speech.playbackTitle")} />
-            <div className="divide-y divide-border overflow-hidden rounded-md border border-border bg-card">
-              <div className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
-                <Label htmlFor="tts-default-speed">
-                  {t("settings.speech.defaultSpeed")}
-                </Label>
-                <Select
-                  value={String(finitePreference(config.playback.speed, 1))}
-                  onValueChange={(value) =>
-                    void updatePlayback({ speed: Number(value) })
-                  }
-                  disabled={saving}
-                >
-                  <SelectTrigger
-                    id="tts-default-speed"
-                    aria-label={t("settings.speech.defaultSpeed")}
-                    className="min-w-32"
-                    size="sm"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {TTS_SPEED_OPTIONS.map((value) => (
-                        <SelectItem key={value} value={String(value)}>
-                          {value.toFixed(1)}×
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
-                <Label htmlFor="tts-default-pitch">
-                  {t("settings.speech.defaultPitch")}
-                </Label>
-                <Select
-                  value={String(finitePreference(config.playback.pitch, 1))}
-                  onValueChange={(value) =>
-                    void updatePlayback({ pitch: Number(value) })
-                  }
-                  disabled={saving}
-                >
-                  <SelectTrigger
-                    id="tts-default-pitch"
-                    aria-label={t("settings.speech.defaultPitch")}
-                    className="min-w-32"
-                    size="sm"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {TTS_PITCH_OPTIONS.map((value) => (
-                        <SelectItem key={value} value={String(value)}>
-                          {value.toFixed(1)}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-              <PlaybackSwitch
-                id="tts-skip-page-breaks"
-                label={t("settings.speech.skipPageBreaks")}
-                description={t("settings.speech.skipPageBreaksDescription")}
-                checked={config.playback.skipPageBreaks}
-                onCheckedChange={(checked) =>
-                  void updatePlayback({ skipPageBreaks: checked })
-                }
-              />
-              <PlaybackSwitch
-                id="tts-skip-footnotes"
-                label={t("settings.speech.skipFootnotes")}
-                description={t("settings.speech.skipFootnotesDescription")}
-                checked={config.playback.skipFootnotes}
-                onCheckedChange={(checked) =>
-                  void updatePlayback({ skipFootnotes: checked })
-                }
-              />
-            </div>
-          </section>
-        ) : null}
-      </div>
+      </FormScrollArea>
     </div>
   )
 }
@@ -566,11 +508,12 @@ export function TtsProvidersSection() {
     }
   }, [])
   return (
-    <div className="flex h-full flex-col">
-      <div className="shrink-0 border-b border-border px-7 py-5">
-        <h1 className="text-xl font-semibold">{t("ttsSettings.providers")}</h1>
-      </div>
-      <div className="flex-1 overflow-y-auto px-7 py-5">
+    <section aria-label={t("ttsSettings.providers")}>
+      <SectionHeader
+        title={t("ttsSettings.providers")}
+        description={t("aiProviders.ttsDescription")}
+      />
+      <div>
         {error ? <StatusNotice tone="error">{error}</StatusNotice> : null}
         {config ? (
           <TtsProviderManager
@@ -584,7 +527,7 @@ export function TtsProvidersSection() {
           <Loader2 className="size-5 animate-spin" role="status" />
         ) : null}
       </div>
-    </div>
+    </section>
   )
 }
 
@@ -596,12 +539,9 @@ export function TtsProviderManager({
   const { t } = useTranslation()
   const [draft, setDraft] = useState<ProfileDraft | null>(null)
   const [providerDialogOpen, setProviderDialogOpen] = useState(false)
-  const [readOnly, setReadOnly] = useState(false)
   const [providerError, setProviderError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const qwenPresets = useQwenTtsPresets(providerDialogOpen)
 
   const saveProfile = async () => {
@@ -661,20 +601,16 @@ export function TtsProviderManager({
   }
 
   const openAddProvider = () => {
-    setReadOnly(false)
     setDraft(null)
     setProviderError(null)
     setMessage(null)
-    setError(null)
     setProviderDialogOpen(true)
   }
 
-  const openEditProvider = (profile: TtsProviderDto, readOnly = false) => {
-    setReadOnly(readOnly)
+  const openEditProvider = (profile: TtsProviderDto) => {
     setDraft(profileDraft(profile))
     setProviderError(null)
     setMessage(null)
-    setError(null)
     setProviderDialogOpen(true)
   }
 
@@ -687,19 +623,11 @@ export function TtsProviderManager({
   }
 
   const removeProfile = async (profileId: string) => {
-    if (pendingDeleteId !== profileId) {
-      setPendingDeleteId(profileId)
-      return
-    }
     setSaving(true)
-    setError(null)
     setMessage(null)
     try {
       await onConfigChange(await api.removeTtsProfile(profileId))
-      setPendingDeleteId(null)
       setDraft((current) => (current?.id === profileId ? null : current))
-    } catch (removeError: unknown) {
-      setError(errorMessage(removeError))
     } finally {
       setSaving(false)
     }
@@ -707,57 +635,36 @@ export function TtsProviderManager({
 
   return (
     <div data-slot="tts-provider-manager" style={themeStyle}>
-      {error || message ? (
-        <div className="mb-3 flex flex-col gap-2">
-          {error ? <StatusNotice tone="error">{error}</StatusNotice> : null}
-          {message ? (
-            <StatusNotice tone="success">{message}</StatusNotice>
-          ) : null}
+      {message ? (
+        <div className="mb-3">
+          <StatusNotice tone="success">{message}</StatusNotice>
         </div>
       ) : null}
-      <div className="divide-y divide-border overflow-hidden rounded-md border border-border bg-card">
-        {config.providers.map((profile) => (
-          <ManagedEngineRow
-            key={profile.id}
-            title={profile.name}
-            onOpen={() => openEditProvider(profile, true)}
-            description={`${profile.kind === "qwen" ? "Qwen" : t("settings.speech.openAiCompatible")} · ${profile.endpoint}`}
-            icon={<Server className="size-4" />}
-            actions={
-              <>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={t("settings.speech.editProvider")}
-                  disabled={saving}
-                  onClick={() => openEditProvider(profile)}
-                >
-                  <Pencil />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className={cn(
-                    pendingDeleteId === profile.id &&
-                      "bg-destructive/10 text-destructive",
-                  )}
-                  aria-label={
-                    pendingDeleteId === profile.id
-                      ? t("settings.speech.confirmRemoveProvider")
-                      : t("settings.speech.removeProvider")
-                  }
-                  disabled={saving}
-                  onClick={() => void removeProfile(profile.id)}
-                >
-                  <Trash2 />
-                </Button>
-              </>
-            }
-          />
-        ))}
-      </div>
+      {config.providers.length ? (
+        <GroupList>
+          {config.providers.map((profile) => (
+            <GroupListItem key={profile.id}>
+              <AppRow
+                head={
+                  <div className="flex size-8 items-center justify-center rounded-md bg-accent text-accent-foreground">
+                    <Server className="size-4" />
+                  </div>
+                }
+                body={profile.name}
+                detail={`${profile.kind === "qwen" ? "Qwen" : t("settings.speech.openAiCompatible")} · ${profile.endpoint}`}
+                actions={
+                  <RowActions
+                    name={profile.name}
+                    disabled={saving}
+                    onEdit={() => openEditProvider(profile)}
+                    onDelete={() => removeProfile(profile.id)}
+                  />
+                }
+              />
+            </GroupListItem>
+          ))}
+        </GroupList>
+      ) : null}
       <div className="mt-3 overflow-hidden rounded-lg border border-dashed border-border">
         <AddPanelButton
           label={t("settings.speech.addProvider")}
@@ -768,8 +675,6 @@ export function TtsProviderManager({
 
       <ProviderDialog
         open={providerDialogOpen}
-        readOnly={readOnly}
-        onEdit={() => setReadOnly(false)}
         draft={draft}
         error={providerError || qwenPresets.error}
         qwenPresets={qwenPresets.presets}
@@ -783,7 +688,8 @@ export function TtsProviderManager({
             name: t(qwenTtsSourceKeys(preset.id).title),
             endpoint: preset.endpoint,
             modelScopedVoices: true,
-            models: [],
+            models: [newTtsModel()],
+            voices: [],
           })
         }}
         onBack={() => {
@@ -798,56 +704,8 @@ export function TtsProviderManager({
   )
 }
 
-function ManagedEngineRow({
-  title,
-  description,
-  status,
-  icon,
-  actions,
-  onOpen,
-}: {
-  title: string
-  description: string
-  status?: string
-  icon: React.ReactNode
-  actions?: React.ReactNode
-  onOpen?: () => void
-}) {
-  return (
-    <div className="flex min-h-16 items-center gap-3 bg-card px-4 py-3">
-      <button
-        type="button"
-        onClick={onOpen}
-        className="flex min-w-0 flex-1 items-center gap-3 text-start"
-      >
-        <span className="grid size-8 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
-          {icon}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2 text-sm font-medium">
-            {title}
-            {status ? (
-              <span className="text-xs font-normal text-muted-foreground">
-                {status}
-              </span>
-            ) : null}
-          </span>
-          <span className="block truncate text-xs text-muted-foreground">
-            {description}
-          </span>
-        </span>
-      </button>
-      {actions ? (
-        <div className="flex shrink-0 items-center gap-1">{actions}</div>
-      ) : null}
-    </div>
-  )
-}
-
 function ProviderDialog({
   open,
-  readOnly,
-  onEdit,
   draft,
   error,
   saving,
@@ -861,8 +719,6 @@ function ProviderDialog({
   themeStyle,
 }: {
   open: boolean
-  readOnly: boolean
-  onEdit: () => void
   draft: ProfileDraft | null
   error: string | null
   saving: boolean
@@ -894,8 +750,8 @@ function ProviderDialog({
         className="sm:max-w-2xl"
       >
         <FlowDialogHeader
-          title={readOnly ? (draft?.name ?? title) : title}
-          description={readOnly ? undefined : description}
+          title={title}
+          description={description}
           onBack={!choosingType && !editing ? onBack : undefined}
           backLabel={t("common.back")}
           closeLabel={t("common.close")}
@@ -921,12 +777,6 @@ function ProviderDialog({
               ))}
               {error ? <StatusNotice tone="error">{error}</StatusNotice> : null}
             </div>
-          ) : readOnly ? (
-            <ProviderDetails
-              draft={draft}
-              onEdit={onEdit}
-              onChange={onChange}
-            />
           ) : (
             <ProfileEditor
               draft={draft}
@@ -941,42 +791,6 @@ function ProviderDialog({
         </div>
       </FlowDialogContent>
     </Dialog>
-  )
-}
-
-function ProviderDetails({
-  draft,
-  onEdit,
-  onChange,
-}: {
-  draft: ProfileDraft
-  onEdit: () => void
-  onChange: (draft: ProfileDraft) => void
-}) {
-  const { t } = useTranslation()
-  return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-5">
-        <GroupList>
-          <GroupListItem>
-            <dl>
-              <dt className="text-sm text-muted-foreground">
-                {t("settings.speech.endpoint")}
-              </dt>
-              <dd className="mt-1 select-text break-words text-sm">
-                {draft.endpoint}
-              </dd>
-            </dl>
-          </GroupListItem>
-        </GroupList>
-        <TtsProviderModels draft={draft} onChange={onChange} readOnly />
-      </div>
-      <DialogFooter className="shrink-0 border-t border-border px-6 py-4">
-        <Button size="sm" type="button" onClick={onEdit}>
-          {t("settings.speech.editProvider")}
-        </Button>
-      </DialogFooter>
-    </div>
   )
 }
 
@@ -997,20 +811,25 @@ function ProfileEditor({
   onSave: () => void
 }) {
   const { t } = useTranslation()
+  const { fieldErrors, validationProps } = useFormValidation(draft)
+  const [previewId, setPreviewId] = useState(draft.models[0]?.id ?? "")
+  const previewModel =
+    draft.models.find((model) => model.id === previewId) ?? draft.models[0]
   const update = (patch: Partial<ProfileDraft>) =>
     onChange({ ...draft, ...patch })
 
   return (
     <form
       className="flex h-full min-h-0 flex-col"
+      {...validationProps}
       onSubmit={(event) => {
         event.preventDefault()
         onSave()
       }}
     >
-      <div
+      <FormScrollArea
         data-slot="tts-provider-form-content"
-        className="min-h-0 flex-1 overflow-y-auto px-6 py-5"
+        className="flex-1 px-6 py-5"
       >
         {error ? (
           <div className="mb-4">
@@ -1018,66 +837,69 @@ function ProfileEditor({
           </div>
         ) : null}
         <FieldGroup className="gap-6">
-          <GroupList>
-            <GroupListItem>
-              <FieldGroup className="grid grid-cols-2 gap-4">
-                <Field>
-                  <FieldLabel htmlFor="tts-profile-name">
-                    {t("settings.speech.name")}
-                  </FieldLabel>
-                  <Input
-                    id="tts-profile-name"
-                    value={draft.name}
-                    onChange={(event) => update({ name: event.target.value })}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="tts-profile-endpoint">
-                    {t("settings.speech.endpoint")}
-                  </FieldLabel>
-                  <Input
-                    id="tts-profile-endpoint"
-                    value={draft.endpoint}
-                    placeholder="https://api.openai.com/v1"
-                    onChange={(event) =>
-                      update({ endpoint: event.target.value })
-                    }
-                  />
-                </Field>
-              </FieldGroup>
-            </GroupListItem>
-            <GroupListItem>
-              <Field>
-                <FieldLabel htmlFor="tts-profile-credential">
-                  {t("settings.speech.credential")}
-                </FieldLabel>
-                <Input
-                  id="tts-profile-credential"
-                  type="password"
-                  autoComplete="new-password"
-                  value={draft.credential}
-                  placeholder={
-                    draft.hasCredential
-                      ? t("settings.speech.credentialSaved")
-                      : draft.kind === "qwen"
-                        ? t(qwenTtsSourceKeys(preset?.id ?? "").credential)
-                        : t("settings.speech.credentialOptional")
-                  }
-                  onChange={(event) =>
-                    update({
-                      credential: event.target.value,
-                      clearCredential: false,
-                    })
-                  }
-                />
-              </Field>
-            </GroupListItem>
-          </GroupList>
-          <TtsProviderModels draft={draft} onChange={onChange} />
+          <FieldGroup className="gap-4">
+            <FieldGroup className="grid grid-cols-2 gap-4">
+              <FormTextField
+                id="tts-profile-name"
+                label={t("settings.speech.name")}
+                value={draft.name}
+                required
+                fullWidth
+                error={Boolean(fieldErrors["tts-profile-name"])}
+                helperText={fieldErrors["tts-profile-name"]}
+                onChange={(event) => update({ name: event.target.value })}
+              />
+              <FormTextField
+                id="tts-profile-endpoint"
+                label={t("settings.speech.endpoint")}
+                type="url"
+                value={draft.endpoint}
+                required
+                fullWidth
+                error={Boolean(fieldErrors["tts-profile-endpoint"])}
+                helperText={fieldErrors["tts-profile-endpoint"]}
+                placeholder="https://api.openai.com/v1"
+                onChange={(event) => update({ endpoint: event.target.value })}
+              />
+            </FieldGroup>
+
+            <FormTextField
+              id="tts-profile-credential"
+              label={t("settings.speech.credential")}
+              type="password"
+              fullWidth
+              autoComplete="new-password"
+              value={draft.credential}
+              placeholder={
+                draft.hasCredential
+                  ? t("settings.speech.credentialSaved")
+                  : draft.kind === "qwen"
+                    ? t(qwenTtsSourceKeys(preset?.id ?? "").credential)
+                    : t("settings.speech.credentialOptional")
+              }
+              onChange={(event) =>
+                update({
+                  credential: event.target.value,
+                  clearCredential: false,
+                })
+              }
+            />
+          </FieldGroup>
+          <TtsProviderModels
+            draft={draft}
+            previewModel={previewModel}
+            fieldErrors={fieldErrors}
+            onChange={onChange}
+          />
         </FieldGroup>
-      </div>
+      </FormScrollArea>
       <DialogFooter className="shrink-0 flex-row items-center justify-between border-t border-border px-6 py-4 sm:justify-between">
         <div className="flex items-center gap-4">
+          <TtsTestModelSelect
+            draft={draft}
+            model={previewModel}
+            onChange={setPreviewId}
+          />
           {draft.hasCredential ? (
             <div className="flex items-center gap-2">
               <Checkbox
@@ -1099,16 +921,7 @@ function ProfileEditor({
             </div>
           ) : null}
         </div>
-        <Button size="sm" type="submit" disabled={saving}>
-          {saving ? (
-            <Loader2 data-icon="inline-start" className="animate-spin" />
-          ) : draft.id ? (
-            <Check data-icon="inline-start" />
-          ) : (
-            <PlusCircle data-icon="inline-start" />
-          )}
-          {draft.id ? t("common.save") : t("settings.speech.addProvider")}
-        </Button>
+        <SaveButton saving={saving} />
       </DialogFooter>
     </form>
   )
@@ -1148,93 +961,64 @@ function DefaultEngineSettings({
 }) {
   const { t } = useTranslation()
   return (
-    <section>
-      <SectionHeader title={t("settings.speech.engineTitle")} />
-      <div className="divide-y divide-border overflow-hidden rounded-md border border-border bg-card">
-        <div className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
-          <Label htmlFor="tts-default-engine" className="font-medium">
-            {t("settings.speech.defaultEngine")}
-          </Label>
-          <Select
-            value={
-              config.defaultEngine.kind === "provider"
-                ? config.defaultEngine.profileId
-                : "system"
-            }
-            disabled={saving}
-            onValueChange={(value) =>
-              void selectEngine(value === "system" ? undefined : value)
-            }
-          >
-            <SelectTrigger
-              id="tts-default-engine"
-              aria-label={t("settings.speech.defaultEngine")}
-              className="min-w-52"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="system">
-                  {t("settings.speech.systemTitle")}
-                </SelectItem>
-                {config.profiles.map((profile) => (
-                  <SelectItem key={profile.id} value={profile.id}>
-                    {`${profile.name}/${profile.model}`}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
-          <Label htmlFor="tts-default-voice" className="font-medium">
-            {t("settings.speech.defaultVoice")}
-          </Label>
-          <Select
-            value={selectedDefaultVoiceId || AUTOMATIC_VOICE_VALUE}
-            disabled={saving}
-            onValueChange={(value) =>
-              void selectVoice(value === AUTOMATIC_VOICE_VALUE ? "" : value)
-            }
-          >
-            <SelectTrigger
-              id="tts-default-voice"
-              aria-label={t("settings.speech.defaultVoice")}
-              className="min-w-52"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {config.defaultEngine.kind === "system" ? (
-                  <>
-                    <SelectItem value={AUTOMATIC_VOICE_VALUE}>
-                      {t("settings.speech.automaticVoice")}
-                    </SelectItem>
-                    {systemVoices.map((voice) => (
-                      <SelectItem
-                        key={systemVoiceId(voice)}
-                        value={systemVoiceId(voice)}
-                      >
-                        {voice.name} ·{" "}
-                        {formatTtsLanguageName(voice.lang, previewLanguage)}
-                      </SelectItem>
-                    ))}
-                  </>
-                ) : (
-                  providerVoices.map((voice) => (
-                    <SelectItem key={voice.id} value={voice.id}>
-                      {voice.id}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-    </section>
+    <>
+      <FormSelect
+        value={
+          config.defaultEngine.kind === "provider"
+            ? config.defaultEngine.profileId
+            : "system"
+        }
+        disabled={saving}
+        onValueChange={(value) =>
+          void selectEngine(value === "system" ? undefined : value)
+        }
+        id="tts-default-engine"
+        label={t("settings.speech.defaultEngine")}
+        labelMode="external"
+      >
+        <FormSelectItem value="system">
+          {t("settings.speech.systemTitle")}
+        </FormSelectItem>
+        {config.profiles.map((profile) => (
+          <FormSelectItem key={profile.id} value={profile.id}>
+            {`${profile.name}/${profile.model}`}
+          </FormSelectItem>
+        ))}
+      </FormSelect>
+      <FormSelect
+        value={selectedDefaultVoiceId || AUTOMATIC_VOICE_VALUE}
+        disabled={saving}
+        onValueChange={(value) =>
+          void selectVoice(value === AUTOMATIC_VOICE_VALUE ? "" : value)
+        }
+        id="tts-default-voice"
+        label={t("reader.tts.voice")}
+        labelMode="external"
+      >
+        {config.defaultEngine.kind === "system" ? (
+          <>
+            <FormSelectItem value={AUTOMATIC_VOICE_VALUE}>
+              {t("settings.speech.automaticVoice")}
+            </FormSelectItem>
+            {systemVoices.map((voice) => (
+              <FormSelectItem
+                key={systemVoiceId(voice)}
+                value={systemVoiceId(voice)}
+              >
+                {voice.name} ·{" "}
+                {formatTtsLanguageName(voice.lang, previewLanguage)}
+              </FormSelectItem>
+            ))}
+          </>
+        ) : (
+          providerVoices.map((voice) => (
+            <FormSelectItem key={voice.id} value={voice.id}>
+              {voice.id}
+            </FormSelectItem>
+          ))
+        )}
+      </FormSelect>
+    </>
   )
 }
 
@@ -1257,36 +1041,4 @@ function useProviderDialogCopy(
         })
       : t("settings.speech.addOpenAi")
   return { title, description }
-}
-
-function PlaybackSwitch({
-  id,
-  label,
-  description,
-  checked,
-  onCheckedChange,
-}: {
-  id: string
-  label: string
-  description: string
-  checked: boolean
-  onCheckedChange: (checked: boolean) => void
-}) {
-  return (
-    <div className="px-4 py-3">
-      <AppRow
-        body={label}
-        detail={description}
-        className="items-center"
-        tail={
-          <Switch
-            id={id}
-            aria-label={label}
-            checked={checked}
-            onCheckedChange={onCheckedChange}
-          />
-        }
-      />
-    </div>
-  )
 }

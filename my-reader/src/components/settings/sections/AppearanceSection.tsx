@@ -1,17 +1,10 @@
+import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
 import { LANGUAGE_NAMES, SUPPORTED_LANGUAGES } from "@my-reader/i18n/languages"
 import type { DesktopTranslationKey } from "@my-reader/i18n/desktop"
 import { Check, type LucideIcon, Monitor, Moon, Sun } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useTheme } from "@/components/AppThemeProvider"
 import { SectionHeader } from "@/components/common/SectionHeader"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { normalizeAppLanguageMode } from "@/lib/appLanguage"
 import { cn } from "@/lib/utils"
 import { useAppUiStore } from "@/stores/appUiStore"
@@ -66,31 +59,24 @@ export default function AppearanceSection() {
             description={t("settings.appearance.languageDescription")}
           />
 
-          <Select
+          <FormSelect
             value={languageMode}
             onValueChange={(value) =>
               setLanguageMode(normalizeAppLanguageMode(value))
             }
+            label={t("settings.appearance.languageTitle")}
+            labelMode="hidden"
+            className="w-full"
           >
-            <SelectTrigger
-              aria-label={t("settings.appearance.languageTitle")}
-              className="w-full"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent position="popper">
-              <SelectGroup>
-                <SelectItem value="system">
-                  {t("settings.appearance.languageSystem")}
-                </SelectItem>
-                {SUPPORTED_LANGUAGES.map((language) => (
-                  <SelectItem key={language} value={language}>
-                    <span lang={language}>{LANGUAGE_NAMES[language]}</span>
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+            <FormSelectItem value="system">
+              {t("settings.appearance.languageSystem")}
+            </FormSelectItem>
+            {SUPPORTED_LANGUAGES.map((language) => (
+              <FormSelectItem key={language} value={language}>
+                <span lang={language}>{LANGUAGE_NAMES[language]}</span>
+              </FormSelectItem>
+            ))}
+          </FormSelect>
         </section>
 
         <section className="mt-8 border-t border-border pt-6">

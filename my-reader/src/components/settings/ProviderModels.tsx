@@ -1,10 +1,11 @@
 import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react"
 import type { ReactNode } from "react"
+import { FormTextField } from "@/components/common/FormTextField"
 import { useTranslation } from "react-i18next"
-import { GroupList, GroupListItem } from "@/components/common/GroupList"
 import { Button } from "@/components/ui/button"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+import { FieldGroup } from "@/components/ui/field"
+import { Separator } from "@/components/ui/separator"
+import { cn } from "@/lib/utils"
 
 export function ProviderModels({
   models,
@@ -16,18 +17,20 @@ export function ProviderModels({
   children,
   actions,
   discovery,
-  settings,
+  fieldErrors,
+  detailsClassName,
 }: {
   models: { id: string; model: string }[]
   selected: number | null
   onSelect: (index: number | null) => void
-  onChange?: (index: number, patch: { model?: string }) => void
-  onAdd?: () => void
-  onRemove?: (index: number) => void
+  onChange: (index: number, patch: { model?: string }) => void
+  onAdd: () => void
+  onRemove: (index: number) => void
   children?: (index: number) => ReactNode
   actions?: ReactNode
   discovery?: ReactNode
-  settings?: ReactNode
+  fieldErrors?: Record<string, string>
+  detailsClassName?: string
 }) {
   const { t } = useTranslation()
   return (
@@ -37,81 +40,72 @@ export function ProviderModels({
     >
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-medium">{t("providerEditor.models")}</h3>
-        {actions}
+        <div className="flex items-center gap-2">
+          {actions}
+          <Button type="button" variant="ghost" size="sm" onClick={onAdd}>
+            <Plus data-icon="inline-start" />
+            {t("aiProviders.addModel")}
+          </Button>
+        </div>
       </div>
       {discovery}
-      <GroupList>
-        {settings ? <GroupListItem>{settings}</GroupListItem> : null}
+      <FieldGroup className="gap-4">
         {models.map((model, index) => (
-          <GroupListItem
+          <div
             key={model.id || index}
-            className="flex flex-col gap-3"
+            className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-3"
           >
-            <div className="flex items-end gap-2">
-              <FieldGroup className="min-w-0 flex-1">
-                <Field>
-                  <FieldLabel
-                    className={
-                      index ? "sr-only" : "border-l border-transparent pl-3"
-                    }
-                    htmlFor={`model-id-${model.id || index}`}
-                  >
-                    {t("providerEditor.modelId")}
-                  </FieldLabel>
-                  <Input
-                    id={`model-id-${model.id || index}`}
-                    value={model.model}
-                    readOnly={!onChange}
-                    placeholder={t("providerEditor.modelId")}
-                    onChange={(event) =>
-                      onChange?.(index, { model: event.target.value })
-                    }
-                  />
-                </Field>
-              </FieldGroup>
-              <div className="flex w-20 shrink-0 items-center justify-end gap-2">
-                {children ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-expanded={selected === index}
-                    aria-controls={`model-details-${model.id || index}`}
-                    aria-label={`${t("providerEditor.modelDetails")} ${model.model || index + 1}`}
-                    onClick={() => onSelect(selected === index ? null : index)}
-                  >
-                    {selected === index ? <ChevronDown /> : <ChevronRight />}
-                  </Button>
-                ) : null}
-                {onRemove ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`${t("aiProviders.removeModel")} ${model.model || index + 1}`}
-                    onClick={() => onRemove(index)}
-                  >
-                    <Trash2 />
-                  </Button>
-                ) : null}
-              </div>
+            <FormTextField
+              id={`model-id-${model.id || index}`}
+              label={t("providerEditor.modelId")}
+              value={model.model}
+              required
+              fullWidth
+              error={Boolean(fieldErrors?.[`model-id-${model.id || index}`])}
+              helperText={fieldErrors?.[`model-id-${model.id || index}`]}
+              onChange={(event) =>
+                onChange(index, { model: event.target.value })
+              }
+            />
+            <div className="flex w-20 shrink-0 items-center justify-end gap-2">
+              {children ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-expanded={selected === index}
+                  aria-controls={`model-details-${model.id || index}`}
+                  aria-label={`${t("providerEditor.modelDetails")} ${model.model || index + 1}`}
+                  onClick={() => onSelect(selected === index ? null : index)}
+                >
+                  {selected === index ? <ChevronDown /> : <ChevronRight />}
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={`${t("aiProviders.removeModel")} ${model.model || index + 1}`}
+                onClick={() => onRemove(index)}
+              >
+                <Trash2 />
+              </Button>
             </div>
             {children && selected === index ? (
-              <div id={`model-details-${model.id || index}`} className="pt-3">
-                {children(index)}
+              <div
+                id={`model-details-${model.id || index}`}
+                className={cn("col-span-2 flex gap-4 py-3", detailsClassName)}
+              >
+                <Separator
+                  orientation="vertical"
+                  className="data-[orientation=vertical]:h-auto"
+                />
+                <div className="min-w-0 flex-1">{children(index)}</div>
               </div>
             ) : null}
-          </GroupListItem>
+          </div>
         ))}
-        {onAdd ? (
-          <GroupListItem className="flex justify-end">
-            <Button type="button" variant="ghost" size="sm" onClick={onAdd}>
-              <Plus data-icon="inline-start" />
-              {t("aiProviders.addModel")}
-            </Button>
-          </GroupListItem>
-        ) : null}
-      </GroupList>
+      </FieldGroup>
     </section>
   )
 }

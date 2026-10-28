@@ -31,7 +31,8 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
-import { Input } from "@/components/ui/input"
+import { FormTextField } from "@/components/common/FormTextField"
+import { SaveButton } from "@/components/common/SaveButton"
 import {
   useBookReadingFormats,
   useSetBookReadingFormat,
@@ -503,31 +504,21 @@ function BookMetadataDialog({
           <DialogDescription>{t("bookMore.editMetadata")}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
-          <label
-            className="grid gap-2 text-sm font-medium"
-            htmlFor="book-title"
-          >
-            {t("bookDetail.titleLabel")}
-            <Input
-              id="book-title"
-              value={draftTitle}
-              disabled={savingMetadata}
-              onChange={(event) => setDraftTitle(event.target.value)}
-            />
-          </label>
-          <label
-            className="grid gap-2 text-sm font-medium"
-            htmlFor="book-authors"
-          >
-            {t("bookDetail.authorsLabel")}
-            <Input
-              id="book-authors"
-              value={draftAuthors}
-              placeholder={t("bookDetail.authorsPlaceholder")}
-              disabled={savingMetadata}
-              onChange={(event) => setDraftAuthors(event.target.value)}
-            />
-          </label>
+          <FormTextField
+            id="book-title"
+            value={draftTitle}
+            disabled={savingMetadata}
+            onChange={(event) => setDraftTitle(event.target.value)}
+            label={t("bookDetail.titleLabel")}
+          />
+          <FormTextField
+            id="book-authors"
+            value={draftAuthors}
+            placeholder={t("bookDetail.authorsPlaceholder")}
+            disabled={savingMetadata}
+            onChange={(event) => setDraftAuthors(event.target.value)}
+            label={t("bookDetail.authorsLabel")}
+          />
         </div>
         <DialogFooter>
           <Button
@@ -538,21 +529,17 @@ function BookMetadataDialog({
           >
             {t("common.cancel")}
           </Button>
-          <Button
+          <SaveButton
             type="button"
+            saving={savingMetadata}
             disabled={
-              savingMetadata ||
               !draftTitle.trim() ||
               !draftAuthors
                 .split(/[,，]/)
                 .some((author) => author.trim().length > 0)
             }
             onClick={() => void onSave()}
-          >
-            {savingMetadata
-              ? t("bookDetail.savingMetadata")
-              : t("bookDetail.saveMetadata")}
-          </Button>
+          />
         </DialogFooter>
       </DialogContent>
     </Dialog>

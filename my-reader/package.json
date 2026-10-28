@@ -23,6 +23,10 @@
     "test:e2e:native": "node e2e-native/run.mjs"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@fontsource/roboto": "^5.3.0",
+    "@mui/material": "^9.5.0",
     "@my-reader/fonts": "workspace:*",
     "@my-reader/i18n": "workspace:*",
     "@my-reader/tools": "workspace:*",
