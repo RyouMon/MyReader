@@ -15,8 +15,11 @@ export {
   type EntityIconKind,
 } from "./entity-list-row-icons"
 export { FormFieldSwitch } from "./form-field-switch"
-export { FormLabeledFieldRow } from "./form-labeled-field-row"
 export { FormTextField } from "./form-text-field"
+export { FormSelect } from "./form-select"
+export { FormSlider } from "./form-slider"
+export { FormSwitch } from "./form-switch"
+export { FormInputRow } from "./form-input-row"
 export type {
   HeaderToolbarAction,
   HeaderToolbarProps,

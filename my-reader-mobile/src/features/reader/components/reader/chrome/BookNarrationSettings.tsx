@@ -6,9 +6,12 @@ import { useTranslation } from "react-i18next"
 import { Linking, Switch } from "react-native"
 import { tts as readiumTts } from "@my-reader/readium"
 import type { Library } from "@my-reader/tools/types/library"
-import { Button } from "@/src/components"
+import { Button, FormSwitch } from "@/src/components"
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
-import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
+import {
+  readerFormColors,
+  type ReaderChromePalette,
+} from "@/src/design/reader-chrome-palette"
 import { useBookNarration } from "@/src/domain/llm/use-book-narration"
 import { getLlmConfig } from "@/src/services/core/llm"
 import type {
@@ -89,44 +92,43 @@ function BookNarrationContent({
   return (
     <View className="gap-3">
       {!subview ? (
-        <View className="min-h-12 flex-row items-center justify-between">
-          <Text style={{ color: palette.text }}>{t("narration.enabled")}</Text>
-          <Switch
-            accessibilityLabel={t("narration.enabled")}
-            value={settings.enabled}
-            disabled={save.isPending}
-            onValueChange={(enabled) => {
-              setEnableError(null)
-              if (!enabled) {
-                save.mutate({ ...settings, enabled }, { onSuccess: onChange })
-                return
-              }
-              void getLlmConfig()
-                .then((config) => {
-                  if (!config.defaultProfileId) {
-                    setEnableError(t("narration.llmRequired"))
-                    return
-                  }
-                  showAlertWithStatusBarRestore(
-                    t("narration.enabled"),
-                    t("narration.enableNotice"),
-                    [
-                      { text: t("llm.cancel"), style: "cancel" },
-                      {
-                        text: t("narration.enableConfirm"),
-                        onPress: () =>
-                          save.mutate(
-                            { ...settings, enabled: true },
-                            { onSuccess: onChange },
-                          ),
-                      },
-                    ],
-                  )
-                })
-                .catch((value) => setEnableError(errorMessage(value)))
-            }}
-          />
-        </View>
+        <FormSwitch
+          label={t("narration.enabled")}
+          align="between"
+          colors={readerFormColors(palette)}
+          value={settings.enabled}
+          disabled={save.isPending}
+          onValueChange={(enabled) => {
+            setEnableError(null)
+            if (!enabled) {
+              save.mutate({ ...settings, enabled }, { onSuccess: onChange })
+              return
+            }
+            void getLlmConfig()
+              .then((config) => {
+                if (!config.defaultProfileId) {
+                  setEnableError(t("narration.llmRequired"))
+                  return
+                }
+                showAlertWithStatusBarRestore(
+                  t("narration.enabled"),
+                  t("narration.enableNotice"),
+                  [
+                    { text: t("llm.cancel"), style: "cancel" },
+                    {
+                      text: t("narration.enableConfirm"),
+                      onPress: () =>
+                        save.mutate(
+                          { ...settings, enabled: true },
+                          { onSuccess: onChange },
+                        ),
+                    },
+                  ],
+                )
+              })
+              .catch((value) => setEnableError(errorMessage(value)))
+          }}
+        />
       ) : null}
       {enableError || error ? (
         <Text accessibilityRole="alert" style={{ color: palette.text }}>

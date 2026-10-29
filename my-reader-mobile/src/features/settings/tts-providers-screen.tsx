@@ -8,8 +8,7 @@ import { useThemePalette } from "@/src/design/tokens"
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 import { getTtsConfig, type MobileTtsConfig } from "@/src/services/core/tts"
 import { errorMessage } from "@/src/i18n/error-message"
-import { Text, View } from "@/tw"
-import MaterialIcons from "@expo/vector-icons/MaterialIcons"
+import { View } from "@/tw"
 
 export default function TtsProvidersScreen() {
   const { t } = useTranslation()
@@ -58,7 +57,6 @@ function TtsProviderList({
   profiles: MobileTtsConfig["providers"]
 }) {
   const { t } = useTranslation()
-  const palette = useThemePalette()
   return (
     <View className="gap-3">
       {profiles.length > 0 ? (
@@ -71,7 +69,7 @@ function TtsProviderList({
               isLast={index === profiles.length - 1}
               onPress={() =>
                 router.push({
-                  pathname: "/tts-providers/profile",
+                  pathname: "/tts-providers/form",
                   params: { providerId: profile.id },
                 })
               }
@@ -80,19 +78,10 @@ function TtsProviderList({
         </SectionCard>
       ) : null}
       <Button
-        size="md"
-        variant="primary"
-        accessibilityLabel={t("settings.tts.addProvider")}
+        title={t("settings.tts.addProvider")}
+        icon={{ ios: "plus", android: "add" }}
         onPress={() => router.push("/tts-providers/profile")}
-      >
-        <MaterialIcons name="add" size={20} color={palette.primaryForeground} />
-        <Text
-          className="text-base font-bold"
-          style={{ color: palette.primaryForeground }}
-        >
-          {t("settings.tts.addProvider")}
-        </Text>
-      </Button>
+      />
     </View>
   )
 }

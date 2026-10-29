@@ -97,6 +97,9 @@ jest.mock("@/src/components", () => {
       children,
     )
   return {
+    ...jest.requireActual("@/test/fixtures/form-controls"),
+    ...jest.requireActual("@/src/components/ui/form-input-row"),
+    ...jest.requireActual("@/src/components/ui/form-switch"),
     Button,
     IconButton: ({ label, onPress, disabled, ...props }: any) =>
       React.createElement(Button, {
@@ -108,11 +111,6 @@ jest.mock("@/src/components", () => {
       }),
     RoundIconButton: Button,
     ListRow: Row,
-    FormTextField: ({ label, ...props }: any) =>
-      React.createElement(jest.requireActual("react-native").TextInput, {
-        ...props,
-        accessibilityLabel: label,
-      }),
     FormLabeledFieldRow: ({ label, children }: any) =>
       React.createElement(
         View,
@@ -155,16 +153,25 @@ function save() {
   act(() =>
     (
       mockHeader.mock.calls.at(-1)![0] as { right: { onPress: () => void }[] }
-    ).right[0]!.onPress(),
+    ).right
+      .at(-1)!
+      .onPress(),
   )
 }
 function addVoice(id: string) {
-  fireEvent.press(screen.getByText("providerEditor.addVoice"))
-  fireEvent.changeText(
-    screen.getAllByLabelText("providerEditor.voiceId").at(-1)!,
-    id,
-  )
+  const existing = screen
+    .queryAllByLabelText("providerEditor.voiceId")
+    .find((input) => input.props.value === "")
+  if (existing) fireEvent.changeText(existing, id)
+  else {
+    fireEvent.press(screen.getByText("providerEditor.addVoice"))
+    fireEvent.changeText(
+      screen.getAllByLabelText("providerEditor.voiceId").at(-1)!,
+      id,
+    )
+  }
 }
+
 beforeEach(() => {
   jest.clearAllMocks()
   jest.mocked(tts.saveTtsProvider).mockResolvedValue({} as never)
@@ -319,7 +326,8 @@ it.each([
 
 it("supports manually entering future model and voice IDs without fetching catalogs", async () => {
   mount({ kind: "qwen", sourceId: "dashscope" } as never)
-  fireEvent.press(screen.getByText("aiProviders.addModel"))
+  expect(screen.getAllByLabelText("providerEditor.modelId")).toHaveLength(1)
+  expect(screen.getAllByLabelText("providerEditor.voiceId")).toHaveLength(1)
   fireEvent.changeText(
     screen.getByLabelText("providerEditor.modelId"),
     "qwen-future",
@@ -415,9 +423,12 @@ it("requires confirmation and successful persistence before leaving a deleted pr
   } as never)
   mount({ providerId: "p" } as never)
   await screen.findByLabelText("settings.tts.previewAction v")
-  save()
   await screen.findByTestId("tts-provider-name")
-  fireEvent.press(screen.getByText("settings.tts.removeProvider"))
+  act(() =>
+    (
+      mockHeader.mock.calls.at(-1)![0] as { right: { onPress: () => void }[] }
+    ).right[0]!.onPress(),
+  )
   expect(tts.removeTtsProfile).not.toHaveBeenCalled()
   const remove = jest
     .mocked(showAlertWithStatusBarRestore)

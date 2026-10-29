@@ -221,7 +221,9 @@
       "removeProvider": "刪除供應商",
       "removeProviderTitle": "刪除TTS 供應商？",
       "removeProviderDetail": "將移除“{{name}}”及其本機憑據和聲音偏好。",
-      "removeFailed": "無法刪除TTS 供應商"
+      "removeFailed": "無法刪除TTS 供應商",
+      "defaultSpeed": "預設語速",
+      "defaultPitch": "預設音高"
     },
     "privacy": {
       "title": "隱私",

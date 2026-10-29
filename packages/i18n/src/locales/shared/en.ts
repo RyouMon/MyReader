@@ -1,4 +1,19 @@
 export const sharedEn = {
+  rowActions: {
+    edit: "Edit {{name}}",
+    delete: "Delete {{name}}",
+    confirmDelete: "Delete “{{name}}”?",
+  },
+  formValidation: {
+    duplicate: "This ID is already in the list.",
+    required: "This field is required.",
+    url: "Enter a valid URL.",
+    number: "Enter a valid number.",
+    minimum: "Enter a value of at least {{min}}.",
+    maximum: "Enter a value no greater than {{max}}.",
+    integer: "Enter a whole number.",
+    invalid: "Enter a valid value.",
+  },
   providerEditor: {
     playbackFailed: "Audio playback failed.",
     fetchModels: "Fetch available models",

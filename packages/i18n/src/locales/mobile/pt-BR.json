@@ -233,7 +233,9 @@
       "removeProvider": "Excluir provedor",
       "removeProviderTitle": "Excluir provedor TTS?",
       "removeProviderDetail": "Isso remove “{{name}}”, sua credencial local e preferências de voz relacionadas.",
-      "removeFailed": "Não foi possível excluir o provedor TTS"
+      "removeFailed": "Não foi possível excluir o provedor TTS",
+      "defaultSpeed": "Velocidade padrão",
+      "defaultPitch": "Passo padrão"
     },
     "privacy": {
       "title": "Privacidade",

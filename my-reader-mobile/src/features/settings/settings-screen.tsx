@@ -6,7 +6,7 @@ import { Image as ExpoImage } from "expo-image"
 import { router, useNavigation } from "expo-router"
 import { useEffect, useMemo, useRef } from "react"
 import { useTranslation } from "react-i18next"
-import { Switch } from "react-native"
+import { FormFieldSwitch } from "@/src/components/ui/form-field-switch"
 import {
   ListMenuRow,
   type ListMenuAction,
@@ -27,7 +27,7 @@ import {
   showErrorAlert,
 } from "@/src/constants/alert-with-status-bar"
 import { DEVELOPER_TOOLS_ENABLED } from "@/src/constants/developer-tools"
-import { type ThemeMode, useTheme, useThemePalette } from "@/src/design/tokens"
+import { type ThemeMode, useTheme } from "@/src/design/tokens"
 import { resolveAppLanguage } from "@/src/i18n"
 import { clearBookCoverThumbnailCache } from "@/src/services/core/content"
 import { clearCoverThumbnailCache } from "@/src/services/fs/cover-thumbnail-cache"
@@ -58,7 +58,6 @@ const SETTINGS_ROW_ICONS = {
 export default function SettingsScreen() {
   const { t } = useTranslation()
   const { mode, setMode } = useTheme()
-  const palette = useThemePalette()
   const libraries = useAppStore((s) => s.libraries)
   const activeLibraryId = useAppStore((s) => s.activeLibraryId)
   const navigation = useNavigation()
@@ -365,18 +364,12 @@ export default function SettingsScreen() {
                   : "settings.privacy.diagnostics.unavailable",
               )}
               accessory={
-                <Switch
+                <FormFieldSwitch
                   accessibilityLabel={t("settings.privacy.diagnostics.title")}
                   disabled={!DIAGNOSTICS_AVAILABLE}
                   testID="settings-diagnostics-switch"
                   value={DIAGNOSTICS_AVAILABLE && diagnosticsEnabled}
                   onValueChange={setDiagnosticsEnabled}
-                  trackColor={{
-                    false: palette.border,
-                    true: palette.primary,
-                  }}
-                  thumbColor={palette.surface}
-                  ios_backgroundColor={palette.backgroundSecondary}
                 />
               }
               isLast
@@ -403,19 +396,13 @@ export default function SettingsScreen() {
                   "settings.developer.libraryPerformanceProfiler.detail",
                 )}
                 accessory={
-                  <Switch
+                  <FormFieldSwitch
                     accessibilityLabel={t(
                       "settings.developer.libraryPerformanceProfiler.title",
                     )}
                     testID="settings-library-performance-profiler-switch"
                     value={libraryPerformanceProfilerEnabled}
                     onValueChange={setLibraryPerformanceProfilerEnabled}
-                    trackColor={{
-                      false: palette.border,
-                      true: palette.primary,
-                    }}
-                    thumbColor={palette.surface}
-                    ios_backgroundColor={palette.backgroundSecondary}
                   />
                 }
               />
@@ -425,19 +412,13 @@ export default function SettingsScreen() {
                 icon={SETTINGS_ROW_ICONS.coverLoadingAnimation}
                 detail={t("settings.developer.coverLoadingAnimation.detail")}
                 accessory={
-                  <Switch
+                  <FormFieldSwitch
                     accessibilityLabel={t(
                       "settings.developer.coverLoadingAnimation.title",
                     )}
                     testID="settings-cover-loading-animation-switch"
                     value={coverLoadingSkeletonPulseEnabled}
                     onValueChange={setCoverLoadingSkeletonPulseEnabled}
-                    trackColor={{
-                      false: palette.border,
-                      true: palette.primary,
-                    }}
-                    thumbColor={palette.surface}
-                    ios_backgroundColor={palette.backgroundSecondary}
                   />
                 }
               />

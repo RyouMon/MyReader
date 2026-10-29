@@ -1,4 +1,19 @@
 {
+  "rowActions": {
+    "edit": "Modifier {{name}}",
+    "delete": "Supprimer {{name}}",
+    "confirmDelete": "Supprimer « {{name}} » ?"
+  },
+  "formValidation": {
+    "required": "Ce champ est obligatoire.",
+    "url": "Saisissez une URL valide.",
+    "number": "Saisissez un nombre valide.",
+    "minimum": "Saisissez une valeur supérieure ou égale à {{min}}.",
+    "maximum": "Saisissez une valeur inférieure ou égale à {{max}}.",
+    "integer": "Saisissez un nombre entier.",
+    "invalid": "Saisissez une valeur valide.",
+    "duplicate": "Cet ID figure déjà dans la liste."
+  },
   "providerEditor": {
     "playbackFailed": "La lecture audio a échoué.",
     "fetchModels": "Charger les modèles disponibles",

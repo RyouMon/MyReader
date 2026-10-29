@@ -229,7 +229,9 @@
       "removeProvider": "Anbieter löschen",
       "removeProviderTitle": "TTS-Anbieter löschen?",
       "removeProviderDetail": "Dadurch werden „{{name}}“, seine lokalen Anmeldeinformationen und die zugehörigen Spracheinstellungen entfernt.",
-      "removeFailed": "Der Anbieter TTS konnte nicht gelöscht werden"
+      "removeFailed": "Der Anbieter TTS konnte nicht gelöscht werden",
+      "defaultSpeed": "Standardgeschwindigkeit",
+      "defaultPitch": "Standardtonhöhe"
     },
     "privacy": {
       "title": "Datenschutz",

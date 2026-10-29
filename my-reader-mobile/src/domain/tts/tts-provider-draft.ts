@@ -22,7 +22,9 @@ export function newTtsModel(
     id: randomUUID(),
     model,
     responseFormat: catalog?.audioFormats[0] ?? "mp3",
-    voices: catalog?.voices.map((voice) => voice.id) ?? [],
+    voices: catalog?.voices.length
+      ? catalog.voices.map((voice) => voice.id)
+      : [""],
     defaultVoice: catalog?.voices[0]?.id,
   }
 }
@@ -34,8 +36,8 @@ export function newTtsDraft(): TtsProviderDraft {
     name: "OpenAI",
     endpoint: "https://api.openai.com/v1",
     modelScopedVoices: false,
-    models: [newTtsModel("gpt-4o-mini-tts")],
-    voices: [],
+    models: [{ ...newTtsModel("gpt-4o-mini-tts"), voices: [] }],
+    voices: [""],
     hasCredential: false,
     credential: "",
     clearCredential: false,
@@ -68,11 +70,15 @@ export function previewInput(
 }
 
 export function mergeVoices(model: MobileTtsModel, incoming: TtsVoice[]) {
+  const voices = [
+    ...new Set([
+      ...model.voices.filter((id) => id.trim()),
+      ...incoming.map((voice) => voice.id),
+    ]),
+  ]
   return {
     ...model,
-    voices: [
-      ...new Set([...model.voices, ...incoming.map((voice) => voice.id)]),
-    ],
+    voices: voices.length ? voices : [""],
     defaultVoice: model.defaultVoice || incoming[0]?.id,
   }
 }
@@ -81,9 +87,12 @@ export function setVoiceScope(
   draft: TtsProviderDraft,
   scoped: boolean,
 ): TtsProviderDraft {
-  const voices = scoped
-    ? draft.voices
-    : [...new Set(draft.models.flatMap((model) => model.voices))]
+  const existing = (
+    scoped
+      ? draft.voices
+      : [...new Set(draft.models.flatMap((model) => model.voices))]
+  ).filter((voice) => voice.trim())
+  const voices = existing.length ? existing : [""]
   return {
     ...draft,
     modelScopedVoices: scoped,
@@ -129,18 +138,4 @@ export function updateVoices(
       }
     }),
   }
-}
-
-export function validTtsDraft(draft: TtsProviderDraft | null) {
-  return Boolean(
-    draft?.name.trim() &&
-      draft.endpoint.trim() &&
-      draft.models.length &&
-      draft.models.every((model) => model.model.trim()) &&
-      (usesModelVoices(draft)
-        ? draft.models.every((model) => model.voices.every((id) => id.trim()))
-        : draft.voices.every((id) => id.trim())) &&
-      new Set(draft.models.map((model) => model.model.trim())).size ===
-        draft.models.length,
-  )
 }

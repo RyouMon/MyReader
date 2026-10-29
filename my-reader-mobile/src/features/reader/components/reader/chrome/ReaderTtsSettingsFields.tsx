@@ -1,13 +1,11 @@
 import { BottomSheetTextInput } from "@expo/ui/community/bottom-sheet"
+import type { MenuAction } from "@react-native-menu/menu"
+import { StyleSheet, View as RNView } from "react-native"
+import { FormSelect } from "@/src/components"
 import {
-  MenuView,
-  type MenuAction,
-  type MenuComponentRef,
-} from "@react-native-menu/menu"
-import { useRef } from "react"
-import { Platform, Pressable, StyleSheet, View as RNView } from "react-native"
-import { IosSelectMenu } from "@/src/components/ui/ios-select-menu"
-import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
+  readerFormColors,
+  type ReaderChromePalette,
+} from "@/src/design/reader-chrome-palette"
 import { Text, View } from "@/tw"
 
 export function ReaderTtsMenuRow({
@@ -23,65 +21,21 @@ export function ReaderTtsMenuRow({
   palette: ReaderChromePalette
   onSelect: (id: string) => void
 }) {
-  const menuRef = useRef<MenuComponentRef>(null)
-
-  const trigger = (
-    <Pressable
-      accessibilityLabel={title}
-      accessibilityRole="button"
-      disabled={actions.length === 0}
-      onPress={() => menuRef.current?.show()}
-      style={({ pressed }) => [
-        styles.menuRow,
-        {
-          backgroundColor: palette.segmentIdle,
-          opacity: actions.length === 0 ? 0.55 : pressed ? 0.72 : 1,
-        },
-      ]}
-    >
-      <Text className="text-base font-semibold" style={{ color: palette.text }}>
-        {title}
-      </Text>
-      <Text
-        className="min-w-0 flex-1 text-right text-base"
-        numberOfLines={1}
-        style={{ color: palette.textMuted }}
-      >
-        {value}
-      </Text>
-    </Pressable>
-  )
   return (
-    <View style={styles.menuAnchor}>
-      {Platform.OS === "android" ? (
-        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-          <MenuView
-            ref={menuRef}
-            actions={actions}
-            isAnchoredToRight
-            onPressAction={({ nativeEvent }) => onSelect(nativeEvent.event)}
-            style={StyleSheet.absoluteFill}
-          >
-            <View style={StyleSheet.absoluteFill} />
-          </MenuView>
-        </View>
-      ) : null}
-      {Platform.OS === "ios" ? (
-        <IosSelectMenu
-          label={title}
-          onSelect={onSelect}
-          actions={actions.map(({ id, title, attributes, state }) => ({
-            id,
-            title,
-            attributes,
-            state: state === "on" ? "on" : state === "off" ? "off" : undefined,
-          }))}
-        >
-          {trigger}
-        </IosSelectMenu>
-      ) : (
-        trigger
-      )}
+    <View>
+      <FormSelect
+        label={title}
+        labelMode="external"
+        value={value}
+        colors={readerFormColors(palette)}
+        actions={actions.map(({ id, title, attributes, state }) => ({
+          id,
+          title,
+          attributes,
+          state: state === "on" ? "on" : "off",
+        }))}
+        onSelect={onSelect}
+      />
     </View>
   )
 }
@@ -143,18 +97,6 @@ export function ProviderTextField({
 }
 
 const styles = StyleSheet.create({
-  menuAnchor: {
-    position: "relative",
-    marginBottom: 18,
-  },
-  menuRow: {
-    minHeight: 56,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-  },
   providerField: {
     marginBottom: 16,
   },

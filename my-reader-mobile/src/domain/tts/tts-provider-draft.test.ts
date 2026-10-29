@@ -5,7 +5,6 @@ import {
   previewInput,
   setVoiceScope,
   updateVoices,
-  validTtsDraft,
 } from "./tts-provider-draft"
 
 describe("TTS provider drafts", () => {
@@ -68,7 +67,6 @@ describe("TTS provider drafts", () => {
     const draft = newTtsDraft()
     draft.credential = " draft-key "
     draft.voices = ["future-voice"]
-    expect(validTtsDraft(draft)).toBe(true)
     expect(previewInput(draft, draft.models[0], "future-voice")).toEqual(
       expect.objectContaining({
         credential: "draft-key",

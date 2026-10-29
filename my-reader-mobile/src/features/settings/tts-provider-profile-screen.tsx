@@ -3,23 +3,12 @@ import { router, Stack, useLocalSearchParams } from "expo-router"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { ActivityIndicator } from "react-native"
-import {
-  Button,
-  FormFieldSwitch,
-  FormLabeledFieldRow,
-  ListRow,
-  Screen,
-  SectionCard,
-  SectionLabel,
-} from "@/src/components"
-import {
-  showAlertWithStatusBarRestore,
-  showErrorAlert,
-} from "@/src/constants/alert-with-status-bar"
+import { ListRow, Screen, SectionCard, SectionLabel } from "@/src/components"
+import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
 import { useThemePalette } from "@/src/design/tokens"
 import {
   newTtsDraft,
-  validTtsDraft,
+  newTtsModel,
   type TtsProviderDraft,
 } from "@/src/domain/tts/tts-provider-draft"
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
@@ -27,109 +16,49 @@ import { createSaveAction } from "@/src/navigation/toolbar-action-helpers"
 import {
   getTtsConfig,
   getQwenTtsPresets,
-  removeTtsProfile,
   saveTtsProvider,
+  removeTtsProfile,
 } from "@/src/services/core/tts"
 import { errorMessage } from "@/src/i18n/error-message"
 import { View } from "@/tw"
-import { ProviderTextField } from "./provider-text-field"
+import { ProviderConnectionFields } from "./provider-connection-fields"
 import { TtsProviderModels } from "./tts-provider-models"
+import { useFormValidation } from "@/src/components/ui/use-form-validation"
+import { ttsFormErrors } from "./provider-validation"
+import { useDeleteAction } from "@/src/navigation/hooks/use-delete-action"
 
 function ProviderForm({
   draft,
   onChange,
-  editing,
-  saving,
-  remove,
+  validation,
 }: {
   draft: TtsProviderDraft
   onChange: (value: TtsProviderDraft) => void
-  editing: boolean
-  saving: boolean
-  remove: () => void
+  validation: ReturnType<typeof useFormValidation>
 }) {
   const { t } = useTranslation()
-  const palette = useThemePalette()
   const preset = getQwenTtsPresets().find(
     (item) => item.endpoint === draft.endpoint.trim().replace(/\/+$/, ""),
   )
   return (
     <Screen>
       <View className="gap-3">
-        {editing ? (
-          <View className="gap-3">
-            <ProviderTextField
-              label={t("settings.tts.profileName")}
-              testID="tts-provider-name"
-              required
-              value={draft.name}
-              onChangeText={(name) => onChange({ ...draft, name })}
-            />
-            <ProviderTextField
-              label={t("settings.tts.endpoint")}
-              testID="tts-provider-endpoint"
-              required
-              value={draft.endpoint}
-              onChangeText={(endpoint) => onChange({ ...draft, endpoint })}
-            />
-            <ProviderTextField
-              label={t("settings.tts.credential")}
-              testID="tts-provider-credential"
-              value={draft.credential}
-              secureTextEntry
-              textContentType="none"
-              placeholder={
-                draft.hasCredential
-                  ? t("settings.tts.credentialSaved")
-                  : preset
-                    ? t(qwenTtsSourceKeys(preset.id).credential)
-                    : t("settings.tts.openAiCredentialPlaceholder")
-              }
-              onChangeText={(credential) =>
-                onChange({ ...draft, credential, clearCredential: false })
-              }
-            />
-            {draft.hasCredential ? (
-              <FormLabeledFieldRow label={t("settings.tts.clearCredential")}>
-                <FormFieldSwitch
-                  accessibilityLabel={t("settings.tts.clearCredential")}
-                  activeTrackColor={palette.danger}
-                  value={draft.clearCredential}
-                  onValueChange={(clearCredential) =>
-                    onChange({ ...draft, clearCredential, credential: "" })
-                  }
-                />
-              </FormLabeledFieldRow>
-            ) : null}
-          </View>
-        ) : (
-          <SectionCard>
-            <ListRow
-              title={t("settings.tts.endpoint")}
-              detail={draft.endpoint}
-            />
-            <ListRow
-              title={t("settings.tts.credential")}
-              value={
-                draft.hasCredential ? t("settings.tts.credentialSaved") : "—"
-              }
-              isLast
-            />
-          </SectionCard>
-        )}
+        <ProviderConnectionFields
+          kind="tts"
+          value={draft}
+          validation={validation}
+          credentialPlaceholder={
+            preset
+              ? t(qwenTtsSourceKeys(preset.id).credential)
+              : t("settings.tts.openAiCredentialPlaceholder")
+          }
+          onChange={(connection) => onChange({ ...draft, ...connection })}
+        />
         <TtsProviderModels
           draft={draft}
           onChange={onChange}
-          readOnly={!editing}
+          validation={validation}
         />
-        {editing && draft.id ? (
-          <Button
-            variant="danger"
-            disabled={saving}
-            title={t("settings.tts.removeProvider")}
-            onPress={remove}
-          />
-        ) : null}
       </View>
     </Screen>
   )
@@ -190,13 +119,15 @@ export default function TtsProviderProfileScreen() {
           name: t(qwenTtsSourceKeys(preset.id).title),
           endpoint: preset.endpoint,
           modelScopedVoices: true,
-          models: [],
+          models: [{ ...newTtsModel(), responseFormat: "wav" }],
+          voices: [],
         }
       : newTtsDraft()
   })
   const [loading, setLoading] = useState(Boolean(providerId))
   const [saving, setSaving] = useState(false)
-  const [editing, setEditing] = useState(!providerId)
+  const [removing, setRemoving] = useState(false)
+  const validation = useFormValidation(draft ? ttsFormErrors(draft, t) : {})
   useEffect(() => {
     if (!providerId) return
     let active = true
@@ -222,9 +153,8 @@ export default function TtsProviderProfileScreen() {
       active = false
     }
   }, [providerId, t])
-  const canSave = validTtsDraft(draft)
   const save = useCallback(async () => {
-    if (!draft || !canSave || saving) return
+    if (!draft || saving || removing || !validation.validate()) return
     setSaving(true)
     try {
       const { credential, clearCredential, ...provider } = draft
@@ -239,56 +169,37 @@ export default function TtsProviderProfileScreen() {
     } finally {
       setSaving(false)
     }
-  }, [canSave, draft, saving, t])
-  const remove = useCallback(() => {
-    if (!draft?.id) return
-    showAlertWithStatusBarRestore(
-      t("settings.tts.removeProviderTitle"),
-      t("settings.tts.removeProviderDetail", { name: draft.name }),
-      [
-        { text: t("settings.tts.cancel"), style: "cancel" },
-        {
-          text: t("settings.tts.removeProvider"),
-          style: "destructive",
-          onPress: () => {
-            setSaving(true)
-            void removeTtsProfile(draft.id)
-              .then(() => router.dismissTo("/tts-providers"))
-              .catch((error) =>
-                showErrorAlert(
-                  t("settings.tts.removeFailed"),
-                  errorMessage(error),
-                ),
-              )
-              .finally(() => setSaving(false))
-          },
-        },
-      ],
-    )
-  }, [draft, t])
+  }, [draft, saving, removing, t, validation])
+  const deleteAction = useDeleteAction({
+    name: draft?.name ?? "",
+    disabled: saving || removing,
+    onDelete: () => {
+      if (!draft?.id || saving || removing) return
+      setRemoving(true)
+      void removeTtsProfile(draft.id)
+        .then(() => router.dismissTo("/tts-providers"))
+        .catch((error) =>
+          showErrorAlert(t("settings.tts.removeFailed"), errorMessage(error)),
+        )
+        .finally(() => setRemoving(false))
+    },
+  })
   const choosingType = !providerId && !kind
-  const title = providerTitle(choosingType, providerId, editing, draft, t)
+  const title = providerTitle(choosingType, providerId, draft, t)
   const { options, toolbar } = useScreenHeader({
     backTitle: t("back"),
     title,
     right: draft
-      ? editing
-        ? [
-            createSaveAction({
-              label: t("settings.tts.save"),
-              color: palette.primary,
-              onPress: () => void save(),
-              loading: saving,
-              disabled: !canSave,
-            }),
-          ]
-        : [
-            {
-              label: t("settings.tts.editProvider"),
-              onPress: () => setEditing(true),
-              iosSfSymbol: "pencil",
-            },
-          ]
+      ? [
+          ...(draft.id ? [deleteAction] : []),
+          createSaveAction({
+            label: t("settings.tts.save"),
+            color: palette.primary,
+            onPress: () => void save(),
+            loading: saving,
+            disabled: saving || removing,
+          }),
+        ]
       : undefined,
   })
   return (
@@ -305,9 +216,7 @@ export default function TtsProviderProfileScreen() {
         <ProviderForm
           draft={draft}
           onChange={setDraft}
-          editing={editing}
-          saving={saving}
-          remove={remove}
+          validation={validation}
         />
       ) : null}
     </>
@@ -317,12 +226,11 @@ export default function TtsProviderProfileScreen() {
 function providerTitle(
   choosingType: boolean,
   providerId: string | undefined,
-  editing: boolean,
   draft: TtsProviderDraft | null,
   t: import("i18next").TFunction,
 ) {
   if (choosingType) return t("settings.tts.addProvider")
-  if (providerId) return editing ? t("settings.tts.editProvider") : draft?.name
+  if (providerId) return t("settings.tts.editProvider")
   if (draft?.kind === "qwen") return t("qwenTts.add", { name: draft.name })
   return t("settings.tts.addOpenAi")
 }

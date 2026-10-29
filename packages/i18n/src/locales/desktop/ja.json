@@ -1,18 +1,4 @@
 {
-  "rowActions": {
-    "edit": "{{name}}を編集",
-    "delete": "{{name}}を削除",
-    "confirmDelete": "「{{name}}」を削除しますか？"
-  },
-  "formValidation": {
-    "required": "必須項目です。",
-    "url": "有効な URL を入力してください。",
-    "number": "有効な数値を入力してください。",
-    "minimum": "{{min}} 以上の値を入力してください。",
-    "maximum": "{{max}} 以下の値を入力してください。",
-    "integer": "整数を入力してください。",
-    "invalid": "有効な値を入力してください。"
-  },
   "errors": {
     "io": "ファイル I/O エラー",
     "database": "データベースエラー",

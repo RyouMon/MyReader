@@ -114,6 +114,9 @@ jest.mock("@/src/components", () => {
       ),
     )
   return {
+    ...jest.requireActual("@/test/fixtures/form-controls"),
+    ...jest.requireActual("@/src/components/ui/form-input-row"),
+    ...jest.requireActual("@/src/components/ui/form-switch"),
     Button,
     Screen: View,
     SectionCard: View,
@@ -128,11 +131,6 @@ jest.mock("@/src/components", () => {
       }),
     RoundIconButton: ({ label, onPress }: any) =>
       React.createElement(Button, { title: label, onPress }),
-    FormTextField: ({ label, ...props }: any) =>
-      React.createElement(jest.requireActual("react-native").TextInput, {
-        ...props,
-        accessibilityLabel: label,
-      }),
     FormLabeledFieldRow: Row,
     FormFieldSwitch: jest.requireActual("react-native").Switch,
     ListRow: Row,
@@ -249,6 +247,16 @@ function mount(kind: "settings" | "form" | "reader" = "settings") {
   clients.push(client)
   return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
 }
+
+function headerAction(label: string) {
+  const actions = (
+    mockHeader.mock.calls.at(-1)![0] as {
+      right: { label: string; onPress: () => void }[]
+    }
+  ).right
+  act(() => actions.find((action) => action.label === label)!.onPress())
+}
+
 const onSubviewChange = jest.fn()
 function reader() {
   return (
@@ -307,6 +315,8 @@ it("preserves each model when switching and saves one provider with multiple mod
     screen.getByTestId("provider-model-id-1"),
     "second-model",
   )
+  expect(screen.queryByLabelText("llm.context")).toBeNull()
+  fireEvent.press(screen.getByText("providerEditor.modelDetails second-model"))
   fireEvent.changeText(screen.getByLabelText("llm.context"), "65536")
   fireEvent.press(screen.getByText("providerEditor.modelDetails model"))
   expect(screen.getByLabelText("llm.context").props.value).toBe("32768")
@@ -314,7 +324,7 @@ it("preserves each model when switching and saves one provider with multiple mod
   fireEvent.press(screen.getByText("providerEditor.modelDetails second-model"))
   expect(screen.getByLabelText("llm.context").props.value).toBe("65536")
   expect(screen.getByDisplayValue("model")).toBeTruthy()
-  fireEvent.press(screen.getByText("llm.save"))
+  headerAction("llm.save")
   await waitFor(() =>
     expect(llm.saveLlmProvider).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -337,11 +347,13 @@ it("preserves each model when switching and saves one provider with multiple mod
 it("accepts only integer digits for token limits and requires a model ID before saving", async () => {
   mount("form")
   fireEvent.changeText(screen.getByLabelText("llm.name"), "Local")
-  expect(screen.getByRole("button", { name: "llm.save" })).toBeDisabled()
+  headerAction("llm.save")
+  expect(llm.saveLlmProvider).not.toHaveBeenCalled()
   fireEvent.changeText(
     screen.getByLabelText("providerEditor.modelId"),
     "manual",
   )
+  fireEvent.press(screen.getByText("providerEditor.modelDetails manual"))
   fireEvent.changeText(
     screen.getByLabelText("providerEditor.maxOutput"),
     "4096",
@@ -365,10 +377,11 @@ it("accepts only integer digits for token limits and requires a model ID before 
   )
   fireEvent.changeText(screen.getByLabelText("llm.context"), "")
   expect(screen.getByLabelText("llm.context").props.value).toBe("")
-  expect(screen.getByRole("button", { name: "llm.save" })).toBeDisabled()
+  headerAction("llm.save")
+  expect(llm.saveLlmProvider).not.toHaveBeenCalled()
   fireEvent.changeText(screen.getByLabelText("llm.context"), "65536")
   fireEvent.changeText(screen.getByLabelText("providerEditor.maxOutput"), "")
-  fireEvent.press(screen.getByText("llm.save"))
+  headerAction("llm.save")
   await waitFor(() =>
     expect(llm.saveLlmProvider).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -402,7 +415,7 @@ it("saves a manually entered model without discovery, and clears connection succ
     "manual-model-2",
   )
   expect(screen.queryByText("llm.testPassed")).toBeNull()
-  fireEvent.press(screen.getByText("llm.save"))
+  headerAction("llm.save")
   await waitFor(() =>
     expect(llm.saveLlmProvider).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -428,7 +441,7 @@ it("edits without revealing saved keys, discovers models, and returns to the she
   fireEvent.press(screen.getByText("llm.protocol:responses"))
   fireEvent.changeText(screen.getByLabelText("llm.context"), "65536")
   fireEvent(screen.getByLabelText("llm.clearKey"), "valueChange", true)
-  fireEvent.press(screen.getByText("llm.save"))
+  headerAction("llm.save")
   await waitFor(() =>
     expect(llm.saveLlmProvider).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -468,17 +481,37 @@ it("opens provider forms in the sheet stack and keeps selection on its list page
   await waitFor(() => expect(llm.selectLlmProfile).toHaveBeenCalled())
 })
 
-it("uses back in the form and returns to the list only after successful deletion", async () => {
+it("uses a back button and confirms deletion before removing the provider", async () => {
   mockParams = { providerId: "p" }
   mount("form")
-  fireEvent.press(await screen.findByText("llm.cancel"))
-  expect(mockRouter.back).toHaveBeenCalledTimes(1)
+  await screen.findByLabelText("llm.key")
+  expect(screen.queryByText("llm.cancel")).toBeNull()
   expect(mockHeader.mock.calls.at(-1)?.[0]).not.toHaveProperty("close")
+  const right = (
+    mockHeader.mock.calls.at(-1)![0] as { right: { label: string }[] }
+  ).right
+  expect(right.map((action) => action.label)).toEqual([
+    "rowActions.delete",
+    "llm.save",
+  ])
+  headerAction("rowActions.delete")
+  expect(llm.removeLlmProfile).not.toHaveBeenCalled()
+  const remove = jest
+    .mocked(showAlertWithStatusBarRestore)
+    .mock.calls.at(-1)![2]!
+    .find((button) => button.style === "destructive")!
   jest.mocked(llm.removeLlmProfile).mockRejectedValueOnce(new Error("offline"))
-  fireEvent.press(screen.getByText("llm.delete"))
+  act(() => remove.onPress?.())
   await screen.findByText("offline")
   expect(mockRouter.dismissTo).not.toHaveBeenCalled()
-  fireEvent.press(screen.getByText("llm.delete"))
+  headerAction("rowActions.delete")
+  act(() =>
+    jest
+      .mocked(showAlertWithStatusBarRestore)
+      .mock.calls.at(-1)![2]!
+      .find((button) => button.style === "destructive")!
+      .onPress?.(),
+  )
   await waitFor(() =>
     expect(mockRouter.dismissTo).toHaveBeenCalledWith("/llm-providers"),
   )
@@ -543,7 +576,8 @@ it("preserves a character ID, resets voice after provider changes and saves fixe
     "same person",
   )
   fireEvent.press(screen.getByText("narration.provider:tts-b"))
-  expect(screen.getByRole("button", { name: "llm.save" })).toBeDisabled()
+  fireEvent.press(screen.getByText("llm.save"))
+  expect(llm.saveLlmProvider).not.toHaveBeenCalled()
   fireEvent.press(await screen.findByText("narration.voice:voice-a"))
   fireEvent.changeText(
     screen.getByLabelText("narration.instructions"),

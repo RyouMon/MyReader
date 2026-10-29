@@ -225,7 +225,9 @@
       "removeProvider": "プロバイダーの削除",
       "removeProviderTitle": "TTS プロバイダーを削除しますか?",
       "removeProviderDetail": "これにより、「{{name}}」、そのローカル資格情報、および関連する音声設定が削除されます。",
-      "removeFailed": "TTS プロバイダーを削除できませんでした"
+      "removeFailed": "TTS プロバイダーを削除できませんでした",
+      "defaultSpeed": "デフォルト速度",
+      "defaultPitch": "デフォルトのピッチ"
     },
     "privacy": {
       "title": "プライバシー",

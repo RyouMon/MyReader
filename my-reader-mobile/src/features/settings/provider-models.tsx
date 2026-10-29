@@ -1,8 +1,14 @@
 import type { ReactNode } from "react"
 import { useTranslation } from "react-i18next"
-import { Button, IconButton, SectionLabel } from "@/src/components"
+import {
+  Button,
+  IconButton,
+  FormInputRow,
+  SectionLabel,
+} from "@/src/components"
+import type { useFormValidation } from "@/src/components/ui/use-form-validation"
 import { useThemePalette } from "@/src/design/tokens"
-import { View } from "@/tw"
+import { Text, View } from "@/tw"
 import { ProviderTextField } from "./provider-text-field"
 
 export function ProviderModels({
@@ -14,6 +20,7 @@ export function ProviderModels({
   onRemove,
   actions,
   children,
+  validation,
 }: {
   models: { id: string; model: string }[]
   selected: number | null
@@ -23,6 +30,7 @@ export function ProviderModels({
   onRemove?: (index: number) => void
   actions?: ReactNode
   children?: (index: number) => ReactNode
+  validation: ReturnType<typeof useFormValidation>
 }) {
   const { t } = useTranslation()
   const palette = useThemePalette()
@@ -39,39 +47,38 @@ export function ProviderModels({
             <Button
               variant="ghost"
               size="sm"
-              icon="add"
+              icon={{ ios: "plus", android: "add" }}
               title={t("aiProviders.addModel")}
               onPress={onAdd}
             />
           ) : null}
         </View>
       </View>
+      {validation.field("models").error ? (
+        <Text
+          accessibilityRole="alert"
+          className="px-4 text-sm"
+          style={{ color: palette.danger }}
+        >
+          {validation.field("models").error}
+        </Text>
+      ) : null}
       {models.map((model, index) => {
         const open = selected === index
         const name = model.model || t("aiProviders.newModel")
         return (
-          <View key={model.id || index} className="gap-3">
-            <View className="flex-row items-center gap-1">
-              <View className="min-w-0 flex-1 flex-row gap-2">
-                <View className="min-w-0 flex-1">
-                  <ProviderTextField
-                    label={t("providerEditor.modelId")}
-                    testID={`provider-model-id-${index}`}
-                    required
-                    value={model.model}
-                    editable={Boolean(onChange)}
-                    placeholder={t("providerEditor.modelId")}
-                    onChangeText={(value) =>
-                      onChange?.(index, { model: value })
-                    }
-                  />
-                </View>
-              </View>
-              <View className="flex-row">
+          <FormInputRow
+            key={model.id}
+            details={open ? children?.(index) : undefined}
+            actions={
+              <>
                 {children ? (
                   <IconButton
                     label={`${t("providerEditor.modelDetails")} ${name}`}
-                    icon={open ? "expand-more" : "chevron-right"}
+                    icon={{
+                      ios: open ? "chevron.down" : "chevron.right",
+                      android: open ? "expand-more" : "chevron-right",
+                    }}
                     size="sm"
                     onPress={() => onSelect(open ? null : index)}
                   />
@@ -79,16 +86,24 @@ export function ProviderModels({
                 {onRemove ? (
                   <IconButton
                     label={`${t("aiProviders.removeModel")} ${name}`}
-                    icon="delete-outline"
+                    icon={{ ios: "trash", android: "delete-outline" }}
                     tone="danger"
                     size="sm"
                     onPress={() => onRemove(index)}
                   />
                 ) : null}
-              </View>
-            </View>
-            {open ? children?.(index) : null}
-          </View>
+              </>
+            }
+          >
+            <ProviderTextField
+              label={t("providerEditor.modelId")}
+              testID={`provider-model-id-${index}`}
+              required
+              value={model.model}
+              {...validation.field(model.id)}
+              onChangeText={(value) => onChange?.(index, { model: value })}
+            />
+          </FormInputRow>
         )
       })}
     </View>

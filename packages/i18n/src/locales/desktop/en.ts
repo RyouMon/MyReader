@@ -1,19 +1,5 @@
 export const desktopEn = {
   translation: {
-    rowActions: {
-      edit: "Edit {{name}}",
-      delete: "Delete {{name}}",
-      confirmDelete: "Delete “{{name}}”?",
-    },
-    formValidation: {
-      required: "This field is required.",
-      url: "Enter a valid URL.",
-      number: "Enter a valid number.",
-      minimum: "Enter a value of at least {{min}}.",
-      maximum: "Enter a value no greater than {{max}}.",
-      integer: "Enter a whole number.",
-      invalid: "Enter a valid value.",
-    },
     errors: {
       io: "File I/O error",
       database: "Database error",

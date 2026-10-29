@@ -1,18 +1,4 @@
 {
-  "rowActions": {
-    "edit": "Modifier {{name}}",
-    "delete": "Supprimer {{name}}",
-    "confirmDelete": "Supprimer « {{name}} » ?"
-  },
-  "formValidation": {
-    "required": "Ce champ est obligatoire.",
-    "url": "Saisissez une URL valide.",
-    "number": "Saisissez un nombre valide.",
-    "minimum": "Saisissez une valeur supérieure ou égale à {{min}}.",
-    "maximum": "Saisissez une valeur inférieure ou égale à {{max}}.",
-    "integer": "Saisissez un nombre entier.",
-    "invalid": "Saisissez une valeur valide."
-  },
   "errors": {
     "io": "Erreur d'E/S de fichier",
     "database": "Erreur de base de données",

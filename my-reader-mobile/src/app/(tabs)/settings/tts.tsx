@@ -7,7 +7,7 @@ import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 export default function TtsSettingsRoute() {
   const { t } = useTranslation()
   const { options, toolbar } = useScreenHeader({
-    title: t("settings.tts.title"),
+    title: t("ttsSettings.defaults"),
   })
 
   return (

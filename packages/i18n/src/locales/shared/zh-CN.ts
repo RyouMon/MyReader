@@ -1,4 +1,19 @@
 export const sharedZhCN = {
+  rowActions: {
+    edit: "编辑 {{name}}",
+    delete: "删除 {{name}}",
+    confirmDelete: "删除“{{name}}”？",
+  },
+  formValidation: {
+    duplicate: "此 ID 已在列表中。",
+    required: "此项为必填项",
+    url: "请输入有效的 URL",
+    number: "请输入有效的数字",
+    minimum: "不能小于 {{min}}",
+    maximum: "不能大于 {{max}}",
+    integer: "请输入整数",
+    invalid: "请输入有效的内容",
+  },
   providerEditor: {
     playbackFailed: "音频播放失败。",
     fetchModels: "获取可用模型",
