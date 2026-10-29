@@ -225,7 +225,9 @@
       "removeProvider": "제공자 삭제",
       "removeProviderTitle": "TTS 제공자를 삭제하시겠습니까?",
       "removeProviderDetail": "이는 \"{{name}}\", 로컬 자격 증명 및 관련 음성 기본 설정을 제거합니다.",
-      "removeFailed": "TTS 제공자를 삭제할 수 없습니다."
+      "removeFailed": "TTS 제공자를 삭제할 수 없습니다.",
+      "defaultSpeed": "기본 속도",
+      "defaultPitch": "기본 피치"
     },
     "privacy": {
       "title": "개인정보 보호",

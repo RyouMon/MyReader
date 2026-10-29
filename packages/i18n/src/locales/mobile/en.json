@@ -221,7 +221,9 @@
       "removeProvider": "Delete provider",
       "removeProviderTitle": "Delete TTS provider?",
       "removeProviderDetail": "This removes “{{name}}”, its local credential, and related voice preferences.",
-      "removeFailed": "Couldn't delete TTS provider"
+      "removeFailed": "Couldn't delete TTS provider",
+      "defaultSpeed": "Default speed",
+      "defaultPitch": "Default pitch"
     },
     "privacy": {
       "title": "Privacy",

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 import { ActivityIndicator } from "react-native"
 import {
   Button,
-  ListMenuRow,
+  FormSelect,
   ListRow,
   Screen,
   SectionCard,
@@ -71,35 +71,25 @@ function LlmProviderSettingsList({
   )
   return (
     <View className="gap-3">
-      <SectionCard>
-        <ListMenuRow
-          title={t("llm.default")}
-          value={
-            selected ? `${selected.name}/${selected.model}` : t("llm.none")
-          }
-          actions={[
-            {
-              id: "none",
-              title: t("llm.none"),
-              state: selected ? "off" : "on",
-            },
-            ...(query.data?.profiles.map((profile) => ({
-              id: profile.id,
-              title: `${profile.name}/${profile.model}`,
-              state:
-                profile.id === selected?.id
-                  ? ("on" as const)
-                  : ("off" as const),
-            })) ?? []),
-          ]}
-          onPressAction={({ nativeEvent }) =>
-            select.mutate(
-              nativeEvent.event === "none" ? undefined : nativeEvent.event,
-            )
-          }
-          isLast
-        />
-      </SectionCard>
+      <FormSelect
+        label={t("llm.default")}
+        labelMode="external"
+        value={selected ? `${selected.name}/${selected.model}` : t("llm.none")}
+        actions={[
+          {
+            id: "none",
+            title: t("llm.none"),
+            state: selected ? "off" : "on",
+          },
+          ...(query.data?.profiles.map((profile) => ({
+            id: profile.id,
+            title: `${profile.name}/${profile.model}`,
+            state:
+              profile.id === selected?.id ? ("on" as const) : ("off" as const),
+          })) ?? []),
+        ]}
+        onSelect={(id) => select.mutate(id === "none" ? undefined : id)}
+      />
       {query.data?.providers.length ? (
         <SectionCard>
           {query.data.providers.map((profile, index) => (
@@ -114,6 +104,7 @@ function LlmProviderSettingsList({
         </SectionCard>
       ) : null}
       <Button
+        icon={{ ios: "plus", android: "add" }}
         title={t("llm.add")}
         onPress={() => router.push("/llm-providers/form")}
       />

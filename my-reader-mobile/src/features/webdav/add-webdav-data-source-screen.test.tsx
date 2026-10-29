@@ -45,11 +45,13 @@ jest.mock("react-i18next", () => ({
 }))
 
 jest.mock("@/tw", () => ({
+  Text: mockText,
   TextInput: mockTextInput,
   View: mockView,
 }))
 
 jest.mock("@/src/components", () => ({
+  ...jest.requireActual("@/src/components/ui/form-switch"),
   EmptyState: jest.fn(() => null),
   FormFieldSwitch: jest.fn(() => null),
   FormTextField: ({ label, ...props }: { label: string }) =>
@@ -57,15 +59,6 @@ jest.mock("@/src/components", () => ({
       ...props,
       accessibilityLabel: label,
     }),
-  FormLabeledFieldRow: jest.fn(
-    ({ children, label }: { children: ReactNode; label: string }) =>
-      mockReact.createElement(
-        mockView,
-        null,
-        mockReact.createElement(mockText, null, label),
-        children,
-      ),
-  ),
   PrimaryButton: jest.fn(() => null),
   Screen: jest.fn(({ children }: { children: ReactNode }) =>
     mockReact.createElement(mockView, null, children),

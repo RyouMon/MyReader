@@ -4,13 +4,15 @@ import {
   type TextInputProps,
 } from "react-native-paper"
 
-import { useTheme } from "@/src/design/tokens"
+import { useTheme, type ThemePalette } from "@/src/design/tokens"
 import { Text, View } from "@/tw"
 
 type Props = Omit<TextInputProps, "label" | "error" | "theme" | "mode"> & {
   label: string
   required?: boolean
   error?: string
+  labelMode?: "floating" | "hidden" | "external"
+  colors?: Partial<ThemePalette>
 }
 
 export const FormTextField = forwardRef<
@@ -24,25 +26,36 @@ export const FormTextField = forwardRef<
     style,
     contentStyle,
     placeholder,
-
+    labelMode = "floating",
+    colors,
     ...props
   },
   ref,
 ) {
-  const { palette, colorScheme } = useTheme()
+  const { palette: appPalette, colorScheme } = useTheme()
+  const palette = { ...appPalette, ...colors }
   const displayedLabel = required ? `${label} *` : label
 
   return (
     <View className="gap-1">
+      {labelMode === "external" ? (
+        <Text className="px-4 pb-1 text-base" style={{ color: palette.text }}>
+          {displayedLabel}
+        </Text>
+      ) : null}
       <PaperTextInput
         ref={(input: ComponentRef<typeof PaperTextInput> | null) => {
           if (typeof ref === "function") ref(input)
           else if (ref) ref.current = input
         }}
         mode="flat"
-        label={displayedLabel}
+        label={labelMode === "floating" ? displayedLabel : undefined}
         accessibilityLabel={label}
-        placeholder={placeholder === label ? undefined : placeholder}
+        placeholder={
+          labelMode === "floating" && placeholder === label
+            ? undefined
+            : placeholder
+        }
         error={Boolean(error)}
         underlineColor="transparent"
         activeUnderlineColor={error ? palette.danger : palette.primary}

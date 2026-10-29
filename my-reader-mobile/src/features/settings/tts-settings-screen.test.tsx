@@ -110,6 +110,8 @@ jest.mock("react-i18next", () => ({
 }))
 
 jest.mock("@/src/components", () => ({
+  ...jest.requireActual("@/test/fixtures/form-controls"),
+  ...jest.requireActual("@/src/components/ui/form-slider"),
   Button: jest.fn(
     ({
       accessibilityLabel,
@@ -124,7 +126,11 @@ jest.mock("@/src/components", () => ({
     }) =>
       mockReact.createElement(
         mockPressable,
-        { accessibilityLabel, accessibilityRole: "button", onPress },
+        {
+          accessibilityLabel: accessibilityLabel ?? title,
+          accessibilityRole: "button",
+          onPress,
+        },
         children ?? mockReact.createElement(mockText, null, title),
       ),
   ),
@@ -238,7 +244,7 @@ describe("TtsSettingsScreen preview", () => {
     await act(async () => {
       await Promise.resolve()
     })
-    expect(screen.getByText("reader-voice · Multilingual")).toBeTruthy()
+    expect(screen.getByText("reader-voice")).toBeTruthy()
 
     const action = await screen.findByRole("button", {
       name: "settings.tts.previewAction",
@@ -347,7 +353,7 @@ describe("TtsSettingsScreen preview", () => {
     expect(
       screen.getByRole("button", { name: "settings.tts.previewAction" }),
     ).toBeTruthy()
-    expect(screen.getByText("settings.tts.playbackSection")).toBeTruthy()
+    expect(screen.getByText("settings.tts.defaultSpeed")).toBeTruthy()
     await act(async () => {
       finishRefresh({
         ...mockProviderConfig,

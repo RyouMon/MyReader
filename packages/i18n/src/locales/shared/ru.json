@@ -1,4 +1,19 @@
 {
+  "rowActions": {
+    "edit": "Изменить {{name}}",
+    "delete": "Удалить {{name}}",
+    "confirmDelete": "Удалить «{{name}}»?"
+  },
+  "formValidation": {
+    "required": "Обязательное поле.",
+    "url": "Введите корректный URL.",
+    "number": "Введите число.",
+    "minimum": "Введите значение не меньше {{min}}.",
+    "maximum": "Введите значение не больше {{max}}.",
+    "integer": "Введите целое число.",
+    "invalid": "Введите корректное значение.",
+    "duplicate": "Этот ID уже есть в списке."
+  },
   "providerEditor": {
     "playbackFailed": "Не удалось воспроизвести аудио.",
     "fetchModels": "Загрузить доступные модели",

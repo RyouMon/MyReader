@@ -3,24 +3,22 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import type { MenuAction } from "@react-native-menu/menu"
 import { SymbolView } from "expo-symbols"
 import { useTranslation } from "react-i18next"
-import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
-  StyleSheet,
-  View as RNView,
-} from "react-native"
+import { Platform, Pressable, StyleSheet, View as RNView } from "react-native"
 import { ttsMaximumPlaybackSpeed } from "@/src/constants/tts"
-import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
+import {
+  readerFormColors,
+  type ReaderChromePalette,
+} from "@/src/design/reader-chrome-palette"
+import { Button, FormSlider } from "@/src/components"
+import { TtsPreviewControls } from "@/src/components/tts-preview-controls"
 import type {
   MobileTtsConfig,
   MobileTtsProviderProfile,
   TtsPlayback,
 } from "@/src/services/core/tts"
 import type { useReaderTtsPreview } from "@/src/features/reader/tts/use-reader-tts-preview"
-import { Text } from "@/tw"
+import { Text, View } from "@/tw"
 import { ReaderTtsMenuRow } from "./ReaderTtsSettingsFields"
-import { SegmentPicker, SliderControl } from "./SettingControls"
 
 export function ReaderTtsPlaybackSettings({
   hidden = false,
@@ -62,24 +60,30 @@ export function ReaderTtsPlaybackSettings({
   openProviders: () => void
 }) {
   const { t } = useTranslation()
+  const colors = readerFormColors(palette)
   if (hidden) return null
   return (
-    <>
-      <ReaderTtsPreviewCard
-        palette={palette}
-        previewState={previewState}
+    <View className="gap-4">
+      <TtsPreviewControls
+        state={previewState}
         canPreview={canPreview}
-        startPreview={startPreview}
-        stopPreview={stopPreview}
+        onStart={() => void startPreview()}
+        onStop={stopPreview}
+        colors={colors}
       />
-      <SegmentPicker
-        label={t("settings.tts.engine")}
-        options={engineOptions}
-        value={selectedEngineKey}
-        onChange={(key) => void applyEngine(key)}
+      <ReaderTtsMenuRow
+        title={t("settings.tts.engine")}
+        value={
+          engineOptions.find((option) => option.key === selectedEngineKey)
+            ?.label ?? ""
+        }
+        actions={engineOptions.map((option) => ({
+          id: option.key,
+          title: option.label,
+          state: option.key === selectedEngineKey ? "on" : "off",
+        }))}
+        onSelect={(key) => void applyEngine(key)}
         palette={palette}
-        disableLabelScaling
-        tallOptions
       />
       <ReaderTtsMenuRow
         title={t("settings.tts.voice")}
@@ -94,7 +98,7 @@ export function ReaderTtsPlaybackSettings({
         palette={palette}
         onSelect={(voiceId) => void selectVoice(voiceId)}
       />
-      <SliderControl
+      <FormSlider
         label={t("settings.tts.speed")}
         value={Math.min(
           config.playback.speed,
@@ -105,9 +109,9 @@ export function ReaderTtsPlaybackSettings({
         max={ttsMaximumPlaybackSpeed(selectedProfile)}
         step={0.1}
         formatValue={(value) => `${value.toFixed(1)}×`}
-        palette={palette}
+        colors={colors}
       />
-      <SliderControl
+      <FormSlider
         label={t("settings.tts.pitch")}
         value={config.playback.pitch}
         onChange={(pitch) => void updatePlayback({ pitch })}
@@ -115,102 +119,19 @@ export function ReaderTtsPlaybackSettings({
         max={2}
         step={0.1}
         formatValue={(value) => value.toFixed(1)}
-        palette={palette}
+        colors={colors}
       />
-      <Pressable
-        accessibilityLabel={t("ttsSettings.manageProviders")}
-        accessibilityRole="button"
+      <Button
+        title={t("ttsSettings.manageProviders")}
+        variant="secondary"
         onPress={openProviders}
-        style={({ pressed }) => [
-          styles.manageButton,
-          {
-            backgroundColor: palette.segmentIdle,
-            borderColor: palette.border,
-            opacity: pressed ? 0.72 : 1,
-          },
-        ]}
-      >
-        <Text
-          className="text-base font-semibold"
-          style={{ color: palette.accentText }}
-        >
-          {t("ttsSettings.manageProviders")}
-        </Text>
-      </Pressable>
-    </>
-  )
-}
-
-function ReaderTtsPreviewCard({
-  palette,
-  previewState,
-  canPreview,
-  startPreview,
-  stopPreview,
-}: {
-  palette: ReaderChromePalette
-  previewState: ReturnType<typeof useReaderTtsPreview>["state"]
-  canPreview: boolean
-  startPreview: () => Promise<void>
-  stopPreview: () => void
-}) {
-  const { t } = useTranslation()
-  const previewActionLabel =
-    previewState === "generating" || previewState === "loading"
-      ? t("settings.tts.previewGenerating")
-      : previewState === "playing"
-        ? t("settings.tts.previewPlaying")
-        : t("settings.tts.previewAction")
-  return (
-    <RNView
-      style={[
-        styles.previewCard,
-        {
+        colors={{
           backgroundColor: palette.segmentIdle,
-          borderColor: palette.border,
-        },
-      ]}
-    >
-      <Text className="text-base" style={{ color: palette.text }}>
-        {t("settings.tts.previewText")}
-      </Text>
-      <Pressable
-        accessibilityLabel={previewActionLabel}
-        accessibilityRole="button"
-        accessibilityState={{
-          disabled: previewState === "idle" && !canPreview,
+          textColor: palette.accentText,
+          underlayColor: palette.segmentActive,
         }}
-        disabled={previewState === "idle" && !canPreview}
-        onPress={
-          previewState === "idle" ? () => void startPreview() : stopPreview
-        }
-        style={({ pressed }) => [
-          styles.previewButton,
-          {
-            backgroundColor: palette.accent,
-            opacity:
-              previewState === "idle" && !canPreview
-                ? 0.42
-                : pressed
-                  ? 0.72
-                  : 1,
-          },
-        ]}
-      >
-        {previewState === "generating" || previewState === "loading" ? (
-          <ActivityIndicator color={palette.bg} size="small" />
-        ) : (
-          <MaterialIcons
-            name={previewState === "playing" ? "stop" : "play-arrow"}
-            size={20}
-            color={palette.bg}
-          />
-        )}
-        <Text className="text-base font-semibold" style={{ color: palette.bg }}>
-          {previewActionLabel}
-        </Text>
-      </Pressable>
-    </RNView>
+      />
+    </View>
   )
 }
 
@@ -263,68 +184,6 @@ export function ReaderTtsSettingsHeader({
 }
 
 const styles = StyleSheet.create({
-  providerList: {
-    overflow: "hidden",
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: 12,
-  },
-  providerRow: {
-    minHeight: 64,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  providerCopy: {
-    minWidth: 0,
-    flex: 1,
-    gap: 2,
-  },
-  addProviderButton: {
-    minHeight: 56,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 16,
-  },
-  providerTypeButton: {
-    minHeight: 72,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  manageButton: {
-    minHeight: 56,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  previewCard: {
-    gap: 14,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: 18,
-    padding: 16,
-  },
-  previewButton: {
-    minHeight: 48,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-  },
   header: {
     minHeight: 52,
     flexDirection: "row",

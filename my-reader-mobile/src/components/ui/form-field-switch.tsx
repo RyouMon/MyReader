@@ -1,6 +1,6 @@
-import { Switch } from "react-native"
+import { Switch, type SwitchProps } from "react-native"
 
-import { useThemePalette } from "@/src/design/tokens"
+import { useThemePalette, type ThemePalette } from "@/src/design/tokens"
 import { View } from "@/tw"
 
 /**
@@ -11,17 +11,20 @@ export function FormFieldSwitch({
   activeTrackColor,
   value,
   onValueChange,
-}: {
-  accessibilityLabel?: string
+  colors,
+  ...props
+}: SwitchProps & {
   activeTrackColor?: string
+  colors?: Partial<ThemePalette>
   value: boolean
   onValueChange: (next: boolean) => void
 }) {
-  const palette = useThemePalette()
+  const palette = { ...useThemePalette(), ...colors }
 
   return (
     <View className="flex-row items-center justify-end">
       <Switch
+        {...props}
         accessibilityLabel={accessibilityLabel}
         value={value}
         onValueChange={onValueChange}

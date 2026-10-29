@@ -233,7 +233,9 @@
       "removeProvider": "Elimina fornitore",
       "removeProviderTitle": "Eliminare il provider TTS?",
       "removeProviderDetail": "Ciò rimuove “{{name}}”, le sue credenziali locali e le relative preferenze vocali.",
-      "removeFailed": "Impossibile eliminare il provider TTS"
+      "removeFailed": "Impossibile eliminare il provider TTS",
+      "defaultSpeed": "Velocità predefinita",
+      "defaultPitch": "Passo predefinito"
     },
     "privacy": {
       "title": "Privacy",

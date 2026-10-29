@@ -221,7 +221,9 @@
       "removeProvider": "删除供应商",
       "removeProviderTitle": "删除 TTS 供应商？",
       "removeProviderDetail": "将移除“{{name}}”及其本机凭据和声音偏好。",
-      "removeFailed": "无法删除 TTS 供应商"
+      "removeFailed": "无法删除 TTS 供应商",
+      "defaultSpeed": "默认语速",
+      "defaultPitch": "默认音高"
     },
     "privacy": {
       "title": "隐私",

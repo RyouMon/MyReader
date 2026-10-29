@@ -1,7 +1,7 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import { router, type Href } from "expo-router"
 import { SymbolView } from "expo-symbols"
-import { type ComponentProps, type ReactNode } from "react"
+import { type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import {
   ActivityIndicator,
@@ -14,6 +14,7 @@ import {
 
 import { useThemePalette, type ThemePalette } from "@/src/design/tokens"
 import { Text, TouchableHighlight, View } from "@/tw"
+import { PlatformIcon, type PlatformIconName } from "./platform-icon"
 
 export type ButtonVariant =
   | "primary"
@@ -43,7 +44,7 @@ export type ButtonProps = {
   contentClassName?: string
   disabled?: boolean
   loading?: boolean
-  icon?: ComponentProps<typeof MaterialIcons>["name"]
+  icon?: PlatformIconName
   onPress?: () => void
   size?: ButtonSize
   style?: StyleProp<ViewStyle>
@@ -192,7 +193,7 @@ export function Button({
             size="small"
           />
         ) : icon ? (
-          <MaterialIcons
+          <PlatformIcon
             name={icon}
             size={20}
             color={resolvedColors.textColor}
@@ -222,7 +223,7 @@ export function IconButton({
   size = "md",
 }: {
   label: string
-  icon: ComponentProps<typeof MaterialIcons>["name"]
+  icon: PlatformIconName
   tone?: "neutral" | "primary" | "danger"
   loading?: boolean
   disabled?: boolean
@@ -249,7 +250,7 @@ export function IconButton({
       {loading ? (
         <ActivityIndicator color={color} />
       ) : (
-        <MaterialIcons name={icon} size={24} color={color} />
+        <PlatformIcon name={icon} size={24} color={color} />
       )}
     </Button>
   )

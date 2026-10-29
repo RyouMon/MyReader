@@ -213,6 +213,7 @@ jest.mock("@/src/constants/alert-with-status-bar", () => ({
 }))
 
 jest.mock("@/tw", () => ({
+  TouchableHighlight: jest.requireActual("react-native").TouchableHighlight,
   Text: mockText,
   View: mockView,
 }))
@@ -443,7 +444,7 @@ describe("ReaderTtsSettingsSheet", () => {
     render(<ReaderTtsSettingsSheet language="en" palette={palette} />)
 
     fireEvent.press(
-      await screen.findByRole("button", { name: "OpenAI/gpt-4o-mini-tts" }),
+      await screen.findByRole("button", { name: "provider:openai" }),
     )
 
     await waitFor(() =>
@@ -479,3 +480,11 @@ it("uses the role title and hides playback controls while a character subview is
   act(() => mockBackGestureOnEnd?.({ translationX: 80, velocityX: 0 }))
   expect(screen.getByText("settings.tts.engine")).toBeTruthy()
 })
+
+// Exercise shared form controls without loading app persistence or native menu surfaces.
+jest.mock("@/src/design/tokens", () => ({ useThemePalette: () => ({}) }))
+jest.mock("@/src/components", () => ({
+  ...jest.requireActual("@/src/components/ui/button"),
+  ...jest.requireActual("@/src/components/ui/form-slider"),
+  ...jest.requireActual("@/test/fixtures/form-controls"),
+}))

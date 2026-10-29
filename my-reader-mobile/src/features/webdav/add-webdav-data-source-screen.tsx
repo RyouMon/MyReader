@@ -10,8 +10,7 @@ import { useTranslation } from "react-i18next"
 import { z } from "zod"
 import {
   EmptyState,
-  FormFieldSwitch,
-  FormLabeledFieldRow,
+  FormSwitch,
   FormTextField,
   PrimaryButton,
   Screen,
@@ -327,7 +326,7 @@ export default function AddWebDavDataSourceScreen() {
           createSaveAction({
             label: saving
               ? t(editing ? "webdav.add.saving" : "webdav.add.completing")
-              : t(editing ? "webdav.add.save" : "webdav.add.complete"),
+              : t("webdav.add.save"),
             onPress: () => void handleSave(),
             loading: saving,
             color: palette.primary,
@@ -477,12 +476,12 @@ export default function AddWebDavDataSourceScreen() {
 
             <form.Field name="useSsl">
               {(field) => (
-                <FormLabeledFieldRow label={t("webdav.add.useSSL")}>
-                  <FormFieldSwitch
-                    value={field.state.value}
-                    onValueChange={(next) => field.handleChange(next)}
-                  />
-                </FormLabeledFieldRow>
+                <FormSwitch
+                  label={t("webdav.add.useSSL")}
+                  align="between"
+                  value={field.state.value}
+                  onValueChange={(next) => field.handleChange(next)}
+                />
               )}
             </form.Field>
           </View>

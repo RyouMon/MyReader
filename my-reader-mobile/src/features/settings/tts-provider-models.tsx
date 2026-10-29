@@ -1,11 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import {
-  Button,
-  FormFieldSwitch,
-  FormLabeledFieldRow,
-  ListMenuRow,
-} from "@/src/components"
+import { Button, FormSwitch, FormSelect } from "@/src/components"
 import { useThemePalette } from "@/src/design/tokens"
 import {
   mergeVoices,
@@ -22,19 +17,30 @@ import { Text, View } from "@/tw"
 import { ProviderModels } from "./provider-models"
 import { ModelDiscovery } from "./model-discovery"
 import { TtsVoicesEditor } from "./tts-voices-editor"
+import type { useFormValidation } from "@/src/components/ui/use-form-validation"
 
 export function TtsProviderModels({
   draft,
   onChange,
-  readOnly,
+  validation,
 }: {
   draft: TtsProviderDraft
   onChange: (draft: TtsProviderDraft) => void
-  readOnly?: boolean
+  validation: ReturnType<typeof useFormValidation>
 }) {
   const { t } = useTranslation()
   const palette = useThemePalette()
   const [selected, setSelected] = useState<number | null>(0)
+  const invalidDetails = draft.models.findIndex(
+    (model) =>
+      validation.field(`${model.id}.voices`).error ||
+      model.voices.some(
+        (_, i) => validation.field(`${model.id}.voice.${i}`).error,
+      ),
+  )
+  useEffect(() => {
+    if (invalidDetails >= 0) setSelected(invalidDetails)
+  }, [invalidDetails])
   const [showModels, setShowModels] = useState(false)
   const { discover, voices: importing } = useTtsModelDiscovery()
   const request = useRef<AbortController | null>(null)
@@ -82,8 +88,9 @@ export function TtsProviderModels({
             (model) =>
               !latest.models.some((old) => old.model.trim() === model.model),
           )
-          onChange({ ...latest, models: [...latest.models, ...unique] })
-          setSelected(latest.models.length)
+          const existing = latest.models.filter((model) => model.model.trim())
+          onChange({ ...latest, models: [...existing, ...unique] })
+          setSelected(existing.length)
           setShowModels(false)
         },
       },
@@ -120,18 +127,15 @@ export function TtsProviderModels({
     <TtsVoicesEditor
       draft={draft}
       model={model}
-      readOnly={readOnly}
+      validation={validation}
       onChange={(voices) => onChange(updateVoices(draft, model?.id, voices))}
       actions={
-        !readOnly &&
-        draft.kind === "qwen" &&
-        model?.model.trim() &&
-        index !== undefined ? (
+        draft.kind === "qwen" && model?.model.trim() && index !== undefined ? (
           <Button
             variant="ghost"
             size="sm"
             title={t("providerEditor.fetchVoices")}
-            icon="refresh"
+            icon={{ ios: "arrow.clockwise", android: "refresh" }}
             disabled={busy}
             onPress={() => refresh(index)}
           />
@@ -142,6 +146,7 @@ export function TtsProviderModels({
   const addManual = () => {
     const model = {
       ...newTtsModel(),
+      voices: scoped ? [""] : [],
       responseFormat: draft.kind === "qwen" ? "wav" : "mp3",
       defaultVoice: scoped ? undefined : draft.voices[0],
     }
@@ -160,14 +165,12 @@ export function TtsProviderModels({
           {errorMessage(discover.error || importing.error)}
         </Text>
       ) : null}
-      {!readOnly && draft.kind === "openAiCompatible" ? (
-        <FormLabeledFieldRow label={t("aiProviders.modelScopedVoices")}>
-          <FormFieldSwitch
-            accessibilityLabel={t("aiProviders.modelScopedVoices")}
-            value={scoped}
-            onValueChange={(value) => onChange(setVoiceScope(draft, value))}
-          />
-        </FormLabeledFieldRow>
+      {draft.kind === "openAiCompatible" ? (
+        <FormSwitch
+          label={t("aiProviders.modelScopedVoices")}
+          value={scoped}
+          onValueChange={(value) => onChange(setVoiceScope(draft, value))}
+        />
       ) : null}
       {showModels ? (
         <ModelDiscovery
@@ -182,41 +185,36 @@ export function TtsProviderModels({
         models={draft.models}
         selected={selected}
         onSelect={setSelected}
-        onChange={readOnly ? undefined : patch}
-        onAdd={readOnly ? undefined : addManual}
-        onRemove={
-          readOnly
-            ? undefined
-            : (index) => {
-                onChange({
-                  ...draft,
-                  models: draft.models.filter((_, i) => i !== index),
-                })
-                setSelected(null)
-              }
-        }
+        validation={validation}
+        onChange={patch}
+        onAdd={addManual}
+        onRemove={(index) => {
+          onChange({
+            ...draft,
+            models: draft.models.filter((_, i) => i !== index),
+          })
+          setSelected(null)
+        }}
         actions={
-          readOnly ? undefined : (
-            <Button
-              title={t("providerEditor.fetchModels")}
-              icon="refresh"
-              variant="ghost"
-              size="sm"
-              loading={discover.isPending}
-              disabled={busy || !draft.endpoint.trim()}
-              onPress={() => {
-                const controller = startRequest()
-                discover.mutate(
-                  { draft, signal: controller.signal },
-                  {
-                    onSuccess: () => {
-                      if (!controller.signal.aborted) setShowModels(true)
-                    },
+          <Button
+            title={t("providerEditor.fetchModels")}
+            icon={{ ios: "arrow.clockwise", android: "refresh" }}
+            variant="ghost"
+            size="sm"
+            loading={discover.isPending}
+            disabled={busy || !draft.endpoint.trim()}
+            onPress={() => {
+              const controller = startRequest()
+              discover.mutate(
+                { draft, signal: controller.signal },
+                {
+                  onSuccess: () => {
+                    if (!controller.signal.aborted) setShowModels(true)
                   },
-                )
-              }}
-            />
-          )
+                },
+              )
+            }}
+          />
         }
       >
         {scoped
@@ -224,7 +222,11 @@ export function TtsProviderModels({
           : undefined}
       </ProviderModels>
       {!scoped ? (
-        <SharedVoices draft={draft} readOnly={readOnly} onChange={onChange} />
+        <SharedVoices
+          draft={draft}
+          validation={validation}
+          onChange={onChange}
+        />
       ) : null}
     </View>
   )
@@ -232,11 +234,11 @@ export function TtsProviderModels({
 
 function SharedVoices({
   draft,
-  readOnly,
+  validation,
   onChange,
 }: {
   draft: TtsProviderDraft
-  readOnly?: boolean
+  validation: ReturnType<typeof useFormValidation>
   onChange: (draft: TtsProviderDraft) => void
 }) {
   const { t } = useTranslation()
@@ -249,26 +251,24 @@ function SharedVoices({
       className="gap-3 border-t pt-3"
       style={{ borderColor: palette.border }}
     >
+      <TtsVoicesEditor
+        draft={draft}
+        model={model}
+        validation={validation}
+        onChange={(voices) => onChange(updateVoices(draft, model?.id, voices))}
+      />
       {draft.models.length > 1 ? (
-        <ListMenuRow
-          title={t("providerEditor.testModel")}
-          value={model?.model}
-          backgroundColor={palette.background}
+        <FormSelect
+          label={t("providerEditor.testModel")}
+          value={model?.model || t("aiProviders.newModel")}
           actions={draft.models.map((item) => ({
             id: item.id,
             title: item.model || t("aiProviders.newModel"),
             state: item.id === model?.id ? "on" : "off",
           }))}
-          onPressAction={({ nativeEvent }) => setPreviewId(nativeEvent.event)}
-          isLast
+          onSelect={setPreviewId}
         />
       ) : null}
-      <TtsVoicesEditor
-        draft={draft}
-        model={model}
-        readOnly={readOnly}
-        onChange={(voices) => onChange(updateVoices(draft, model?.id, voices))}
-      />
     </View>
   )
 }

@@ -20,6 +20,8 @@ jest.mock("react-i18next", () => ({
   }),
 }))
 jest.mock("@/src/components", () => ({
+  ...jest.requireActual("@/src/components/ui/form-switch"),
+  ...jest.requireActual("@/src/components/ui/button"),
   ListRow: ({
     title,
     onPress,

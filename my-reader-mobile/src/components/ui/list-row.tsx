@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from "react"
+import { type ReactNode } from "react"
 import {
   Image,
   Platform,
@@ -12,7 +12,6 @@ import {
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import { Host, Icon as MaterialSymbolIcon } from "@expo/ui/jetpack-compose"
-import { MenuView, type MenuComponentRef } from "@react-native-menu/menu"
 import { SymbolView } from "expo-symbols"
 
 import {
@@ -25,14 +24,11 @@ import {
   androidRippleColor,
 } from "@/src/design/press-feedback"
 import { Text, View } from "@/tw"
-import { IosSelectMenu, type SelectMenuAction } from "./ios-select-menu"
+import { type SelectMenuAction } from "./ios-select-menu"
+import { NativeSelectMenu } from "./native-select-menu"
 
 const ROW_CLASS = "flex-row items-start justify-between gap-3 px-4 py-4"
 const ROW_ICON_SIZE = 22
-const HIDDEN_MENU_ANCHOR_STYLE: ViewStyle = {
-  ...StyleSheet.absoluteFill,
-  opacity: 0,
-}
 
 /** Cross-platform row icon — native system symbol or bundled artwork. */
 export type ListRowIcon =
@@ -338,7 +334,6 @@ export function ListMenuRow({
   backgroundColor,
   testID,
 }: ListMenuRowProps) {
-  const menuRef = useRef<MenuComponentRef>(null)
   const palette = useThemePalette()
   const body = (
     <ListRowBody
@@ -352,51 +347,26 @@ export function ListMenuRow({
     />
   )
 
-  if (Platform.OS === "android") {
-    return (
-      <View style={rowSeparatorStyle(isLast, palette)}>
-        <View pointerEvents="none" style={HIDDEN_MENU_ANCHOR_STYLE}>
-          <MenuView
-            ref={menuRef}
-            actions={actions}
-            isAnchoredToRight={isAnchoredToRight}
-            onPressAction={onPressAction}
-            style={styles.menuAnchorFill}
-          >
-            <View style={styles.menuAnchorFill} />
-          </MenuView>
-        </View>
+  return (
+    <NativeSelectMenu
+      label={label ?? title}
+      actions={actions}
+      isAnchoredToRight={isAnchoredToRight}
+      onSelect={(event) => onPressAction({ nativeEvent: { event } })}
+    >
+      {(open) => (
         <ListRowPressable
           accessibilityLabel={label ?? title}
           testID={testID}
-          omitSeparator
-          onPress={() => menuRef.current?.show()}
+          isLast={isLast}
+          onPress={open}
           contentStyle={contentStyle}
           backgroundColor={backgroundColor}
         >
           {body}
         </ListRowPressable>
-      </View>
-    )
-  }
-
-  return (
-    <IosSelectMenu
-      label={label ?? title}
-      actions={actions}
-      onSelect={(event) => onPressAction({ nativeEvent: { event } })}
-    >
-      <ListRowPressable
-        accessibilityLabel={label ?? title}
-        testID={testID}
-        isLast={isLast}
-        onPress={() => {}}
-        contentStyle={contentStyle}
-        backgroundColor={backgroundColor}
-      >
-        {body}
-      </ListRowPressable>
-    </IosSelectMenu>
+      )}
+    </NativeSelectMenu>
   )
 }
 
@@ -444,9 +414,6 @@ export function ListRow({
 const styles = StyleSheet.create({
   pressableRow: {
     width: "100%",
-  },
-  menuAnchorFill: {
-    flex: 1,
   },
   iconSlot: {
     width: ROW_ICON_SIZE,

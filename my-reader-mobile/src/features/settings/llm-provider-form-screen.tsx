@@ -7,13 +7,7 @@ import { ModelDiscovery } from "./model-discovery"
 import { ProviderTextField } from "./provider-text-field"
 import { useTranslation } from "react-i18next"
 import { ActivityIndicator } from "react-native"
-import {
-  Button,
-  FormLabeledFieldRow,
-  FormFieldSwitch,
-  ListMenuRow,
-  Screen,
-} from "@/src/components"
+import { Button, FormSelect, Screen } from "@/src/components"
 import { useThemePalette } from "@/src/design/tokens"
 import { useLlmSettings } from "@/src/domain/llm/use-llm-settings"
 import type {
@@ -22,11 +16,20 @@ import type {
 } from "@/src/services/core/llm"
 import { errorMessage } from "@/src/i18n/error-message"
 import { Text, View } from "@/tw"
+import { createSaveAction } from "@/src/navigation/toolbar-action-helpers"
+import { useFormValidation } from "@/src/components/ui/use-form-validation"
+import { llmFormErrors } from "./provider-validation"
+import { ProviderConnectionFields } from "./provider-connection-fields"
+import { useDeleteAction } from "@/src/navigation/hooks/use-delete-action"
 
-const protocolActions = [
-  { id: "chatCompletions", title: "Chat Completions" },
-  { id: "responses", title: "Responses" },
-]
+const protocolTitles: Record<string, string> = {
+  chatCompletions: "Chat Completions",
+  responses: "Responses",
+}
+const protocolActions = Object.entries(protocolTitles).map(([id, title]) => ({
+  id,
+  title,
+}))
 
 const newModel = (model = "") => ({
   id: randomUUID(),
@@ -62,18 +65,44 @@ export default function LlmProviderFormScreen() {
     if (provider) setDraft((current) => current ?? provider)
   }, [provider])
   const missing = providerId && query.isSuccess && !provider
+  const input = currentProfileInput(draft, credential, clearCredential)
+  const errors = draft ? llmFormErrors(draft, t) : {}
+  const validation = useFormValidation(errors)
+  const busy = save.isPending || remove.isPending
+  const deleteAction = useDeleteAction({
+    name: draft?.name ?? "",
+    disabled: busy,
+    onDelete: () => {
+      if (!draft?.id || busy) return
+      remove.mutate(draft.id, {
+        onSuccess: () => router.dismissTo("/llm-providers"),
+      })
+    },
+  })
   const { options, toolbar } = useScreenHeader({
     title: t(providerId ? "llm.edit" : "llm.add"),
     backTitle: t("back"),
+    right: draft
+      ? [
+          ...(draft.id ? [deleteAction] : []),
+          createSaveAction({
+            label: t("llm.save"),
+            color: palette.primary,
+            loading: save.isPending,
+            disabled: busy,
+            onPress: () => {
+              if (!validation.validate() || busy) return
+              save.mutate(
+                { provider: draft, credential, clearCredential },
+                {
+                  onSuccess: () => router.dismissTo("/llm-providers"),
+                },
+              )
+            },
+          }),
+        ]
+      : undefined,
   })
-  const input = currentProfileInput(
-    draft,
-    draft?.models[0],
-    credential,
-    clearCredential,
-  )
-  const valid = validProfile(draft)
-  const busy = save.isPending || remove.isPending
   return (
     <>
       <Stack.Screen options={options} />
@@ -94,90 +123,53 @@ export default function LlmProviderFormScreen() {
         ) : null}
         {draft && input ? (
           <View className="gap-3">
-            <View className="overflow-hidden rounded-3xl">
-              <ListMenuRow
-                title={t("llm.protocol")}
-                value={
-                  protocolActions.find((action) => action.id === draft.protocol)
-                    ?.title
-                }
-                actions={protocolActions.map((action) => ({
-                  ...action,
-                  state: action.id === draft.protocol ? "on" : "off",
-                }))}
-                onPressAction={({ nativeEvent }) =>
-                  setDraft({ ...draft, protocol: nativeEvent.event })
-                }
-                isLast
-              />
-            </View>
-            <View className="gap-3">
-              {(["name", "endpoint"] as const).map((key) => (
-                <ProviderTextField
-                  key={key}
-                  testID={`llm-provider-${key}`}
-                  label={t(`llm.${key}`)}
-                  required
-                  value={draft[key]}
-                  onChangeText={(value) => setDraft({ ...draft, [key]: value })}
-                />
-              ))}
-
-              <ProviderTextField
-                label={t("llm.key")}
-                value={credential}
-                secureTextEntry
-                textContentType="none"
-                placeholder={draft.hasCredential ? t("llm.keySaved") : ""}
-                onChangeText={(value) => {
-                  setCredential(value)
-                  setClearCredential(false)
-                }}
-              />
-              {draft.hasCredential ? (
-                <FormLabeledFieldRow label={t("llm.clearKey")}>
-                  <FormFieldSwitch
-                    accessibilityLabel={t("llm.clearKey")}
-                    value={clearCredential}
-                    onValueChange={setClearCredential}
-                  />
-                </FormLabeledFieldRow>
-              ) : null}
-            </View>
+            <FormSelect
+              label={t("llm.protocol")}
+              value={protocolTitles[draft.protocol] ?? draft.protocol}
+              actions={protocolActions.map((action) => ({
+                ...action,
+                state: action.id === draft.protocol ? "on" : "off",
+              }))}
+              onSelect={(protocol) => setDraft({ ...draft, protocol })}
+            />
+            <ProviderConnectionFields
+              kind="llm"
+              value={{ ...draft, credential, clearCredential }}
+              validation={validation}
+              onChange={(connection) => {
+                setDraft({
+                  ...draft,
+                  name: connection.name,
+                  endpoint: connection.endpoint,
+                })
+                setCredential(connection.credential)
+                setClearCredential(connection.clearCredential)
+              }}
+            />
             <LlmModelList
               draft={draft}
               onChange={setDraft}
               models={models}
               input={input}
+              validation={validation}
             />
-            <Button
-              title={t("llm.save")}
-              disabled={!valid || busy}
-              onPress={() =>
-                save.mutate(
-                  { provider: draft, credential, clearCredential },
-                  { onSuccess: () => router.dismissTo("/llm-providers") },
-                )
-              }
-            />
-            <View className="flex-row gap-3">
+            <View
+              className="border-t pt-3"
+              style={{ borderColor: palette.border }}
+            >
               <Button
                 title={t("llm.test")}
-                variant="secondary"
-                className="flex-1"
-                icon="network-check"
-                disabled={!valid || probe.isPending}
-                onPress={() =>
+                variant="ghost"
+                className="self-start"
+                icon={{ ios: "network", android: "network-check" }}
+                loading={probe.isPending}
+                disabled={busy || probe.isPending}
+                onPress={() => {
+                  if (!validation.validate()) return
                   probe.mutate(input, {
                     onSuccess: () => setTestedInput(inputIdentity),
                   })
-                }
-              />
-              <Button
-                variant="secondary"
-                className="flex-1"
-                title={t("llm.cancel")}
-                onPress={() => router.back()}
+                }}
               />
             </View>
             {probe.isSuccess && testedInput === inputIdentity ? (
@@ -189,43 +181,10 @@ export default function LlmProviderFormScreen() {
                 {t("llm.testPassed")}
               </Text>
             ) : null}
-            {draft.id ? (
-              <Button
-                title={t("llm.delete")}
-                variant="danger"
-                disabled={busy}
-                onPress={() =>
-                  remove.mutate(draft.id, {
-                    onSuccess: () => router.dismissTo("/llm-providers"),
-                  })
-                }
-              />
-            ) : null}
           </View>
         ) : null}
       </Screen>
     </>
-  )
-}
-
-function validProfile(profile: LlmProviderSettings | null) {
-  return Boolean(
-    profile?.name.trim() &&
-      profile.endpoint.trim() &&
-      profile.models.length > 0 &&
-      profile.models.every(
-        (model) =>
-          model.model.trim() &&
-          Number.isInteger(model.contextWindow) &&
-          model.contextWindow >= 8192 &&
-          model.contextWindow <= 2000000 &&
-          (model.maxOutputTokens == null ||
-            (Number.isInteger(model.maxOutputTokens) &&
-              model.maxOutputTokens > 0 &&
-              model.maxOutputTokens <= model.contextWindow)),
-      ) &&
-      new Set(profile.models.map((model) => model.model.trim())).size ===
-        profile.models.length,
   )
 }
 
@@ -234,14 +193,24 @@ function LlmModelList({
   onChange,
   models,
   input,
+  validation,
 }: {
   draft: LlmProviderSettings
   onChange: (draft: LlmProviderSettings) => void
   models: ReturnType<typeof useLlmSettings>["models"]
   input: LlmProfileInput
+  validation: ReturnType<typeof useFormValidation>
 }) {
   const { t } = useTranslation()
-  const [selected, setSelected] = useState<number | null>(0)
+  const [selected, setSelected] = useState<number | null>(null)
+  const invalidDetails = draft.models.findIndex(
+    (model) =>
+      validation.field(`${model.id}.context`).error ||
+      validation.field(`${model.id}.output`).error,
+  )
+  useEffect(() => {
+    if (invalidDetails >= 0) setSelected(invalidDetails)
+  }, [invalidDetails])
   const [available, setAvailable] = useState<{
     source: string
     ids: string[]
@@ -284,7 +253,7 @@ function LlmModelList({
             onChange({
               ...draft,
               models: [
-                ...draft.models,
+                ...draft.models.filter((model) => model.model.trim()),
                 ...ids
                   .filter(
                     (id) => !draft.models.some((model) => model.model === id),
@@ -299,12 +268,13 @@ function LlmModelList({
       ) : null}
       <ProviderModels
         models={draft.models}
+        validation={validation}
         selected={selected}
         onSelect={setSelected}
         onChange={patch}
         onAdd={() => {
           onChange({ ...draft, models: [...draft.models, newModel()] })
-          setSelected(draft.models.length)
+          setSelected(null)
         }}
         onRemove={(index) => {
           onChange({
@@ -318,7 +288,7 @@ function LlmModelList({
             variant="ghost"
             size="sm"
             title={t("providerEditor.fetchModels")}
-            icon="refresh"
+            icon={{ ios: "arrow.clockwise", android: "refresh" }}
             loading={models.isPending}
             disabled={
               !draft.endpoint.trim() || !draft.name.trim() || models.isPending
@@ -339,6 +309,8 @@ function LlmModelList({
             <View className="min-w-0 flex-1">
               <ProviderTextField
                 label={t("llm.context")}
+                required
+                {...validation.field(`${draft.models[index]!.id}.context`)}
                 inputMode="numeric"
                 keyboardType="number-pad"
                 value={
@@ -354,6 +326,7 @@ function LlmModelList({
             <View className="min-w-0 flex-1">
               <ProviderTextField
                 label={t("providerEditor.maxOutput")}
+                {...validation.field(`${draft.models[index]!.id}.output`)}
                 inputMode="numeric"
                 keyboardType="number-pad"
                 value={draft.models[index]!.maxOutputTokens?.toString() ?? ""}
@@ -386,11 +359,11 @@ function updateModel(
 
 function currentProfileInput(
   draft: LlmProviderSettings | null,
-  model: LlmProviderSettings["models"][number] | undefined,
   credential: string,
   clearCredential: boolean,
 ): LlmProfileInput | null {
   if (!draft) return null
+  const model = draft.models[0]
   return {
     profile: {
       ...draft,

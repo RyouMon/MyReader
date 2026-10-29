@@ -2,9 +2,7 @@ import {
   tts as readiumTts,
   type TtsVoice as SystemTtsVoice,
 } from "@my-reader/readium"
-import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import { formatTtsLanguageName } from "@my-reader/tools/reader-tts-language"
-import Slider from "@react-native-community/slider"
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio"
 import { useFocusEffect } from "expo-router"
 import * as Speech from "expo-speech"
@@ -13,14 +11,12 @@ import { useTranslation } from "react-i18next"
 import { ActivityIndicator } from "react-native"
 
 import {
-  Button,
-  ListMenuRow,
+  FormSelect,
+  FormSlider,
   type ListMenuAction,
-  ListRow,
   Screen,
-  SectionCard,
-  SectionLabel,
 } from "@/src/components"
+import { TtsPreviewControls } from "@/src/components/tts-preview-controls"
 import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
 import { ttsMaximumPlaybackSpeed } from "@/src/constants/tts"
 import { useThemePalette } from "@/src/design/tokens"
@@ -37,7 +33,7 @@ import {
 } from "@/src/services/core/tts"
 import { toFileUri } from "@/src/services/fs/path"
 import { errorMessage } from "@/src/i18n/error-message"
-import { Text, View } from "@/tw"
+import { View } from "@/tw"
 
 const DEFAULT_VOICE_LANGUAGE = "und"
 const PREVIEW_LANGUAGE = "en"
@@ -55,116 +51,6 @@ function engineKey(config: MobileTtsConfig): string {
   return config.defaultEngine.kind === "provider"
     ? `provider:${config.defaultEngine.profileId}`
     : "system"
-}
-
-function playbackValue(value: number, suffix = "") {
-  return `${Number(value.toFixed(1))}${suffix}`
-}
-
-function PlaybackSliderRow({
-  title,
-  value,
-  minimumValue,
-  maximumValue,
-  step,
-  suffix,
-  isLast,
-  onValueChange,
-  onSlidingComplete,
-}: {
-  title: string
-  value: number
-  minimumValue: number
-  maximumValue: number
-  step: number
-  suffix?: string
-  isLast?: boolean
-  onValueChange: (value: number) => void
-  onSlidingComplete: (value: number) => void
-}) {
-  const palette = useThemePalette()
-
-  return (
-    <View
-      className="gap-2 px-4 py-3"
-      style={{
-        borderBottomColor: palette.borderStrong,
-        borderBottomWidth: isLast ? 0 : 1,
-      }}
-    >
-      <View className="flex-row items-center justify-between">
-        <Text className="text-base font-bold" style={{ color: palette.text }}>
-          {title}
-        </Text>
-        <Text className="text-sm" style={{ color: palette.textMuted }}>
-          {playbackValue(value, suffix)}
-        </Text>
-      </View>
-      <Slider
-        accessibilityLabel={title}
-        value={value}
-        minimumValue={minimumValue}
-        maximumValue={maximumValue}
-        step={step}
-        minimumTrackTintColor={palette.primary}
-        maximumTrackTintColor={palette.borderStrong}
-        thumbTintColor={palette.primary}
-        onValueChange={onValueChange}
-        onSlidingComplete={onSlidingComplete}
-      />
-    </View>
-  )
-}
-
-function TtsPreviewControls({
-  previewState,
-  preview,
-  stopPreview,
-}: {
-  previewState: PreviewState
-  preview: () => Promise<void>
-  stopPreview: () => void
-}) {
-  const { t } = useTranslation()
-  const palette = useThemePalette()
-  const previewActionLabel =
-    previewState === "generating" || previewState === "loading"
-      ? t("settings.tts.previewGenerating")
-      : previewState === "playing"
-        ? t("settings.tts.previewPlaying")
-        : t("settings.tts.previewAction")
-
-  return (
-    <View className="gap-3">
-      <Text className="px-1 text-base" style={{ color: palette.textMuted }}>
-        {t("settings.tts.previewText")}
-      </Text>
-      <Button
-        accessibilityLabel={previewActionLabel}
-        size="md"
-        variant="primary"
-        onPress={
-          previewState === "idle" ? () => void preview() : () => stopPreview()
-        }
-      >
-        {previewState === "generating" || previewState === "loading" ? (
-          <ActivityIndicator color={palette.primaryForeground} size="small" />
-        ) : (
-          <MaterialIcons
-            name={previewState === "playing" ? "stop" : "play-arrow"}
-            size={20}
-            color={palette.primaryForeground}
-          />
-        )}
-        <Text
-          className="text-base font-bold"
-          style={{ color: palette.primaryForeground }}
-        >
-          {previewActionLabel}
-        </Text>
-      </Button>
-    </View>
-  )
 }
 
 function voiceLabel(
@@ -535,14 +421,6 @@ export default function TtsSettingsScreen() {
     t,
   ])
 
-  const updatePlaybackLocally = useCallback((patch: Partial<TtsPlayback>) => {
-    setConfig((current) =>
-      current
-        ? { ...current, playback: { ...current.playback, ...patch } }
-        : current,
-    )
-  }, [])
-
   const persistPlayback = useCallback(
     async (patch: Partial<TtsPlayback>) => {
       if (!config) return
@@ -568,72 +446,48 @@ export default function TtsSettingsScreen() {
 
   return (
     <Screen>
-      <View className="gap-3">
-        <SectionLabel>{t("settings.tts.engineSection")}</SectionLabel>
-        <SectionCard>
-          <ListMenuRow
-            actions={engineActions}
-            isAnchoredToRight
-            title={t("settings.tts.engine")}
-            value={selectedEngineLabel}
-            onPressAction={handleEngineAction}
-          />
-          {voiceActions.length > 0 ? (
-            <ListMenuRow
-              actions={voiceActions}
-              isAnchoredToRight
-              title={t("settings.tts.voice")}
-              value={selectedVoiceLabel}
-              isLast
-              onPressAction={(event) => void handleVoiceAction(event)}
-            />
-          ) : (
-            <ListRow
-              title={t("settings.tts.voice")}
-              value={selectedVoiceLabel}
-              isLast
-            />
-          )}
-        </SectionCard>
-      </View>
-
       <TtsPreviewControls
-        previewState={previewState}
-        preview={preview}
-        stopPreview={stopPreview}
+        state={previewState}
+        onStart={() => void preview()}
+        onStop={stopPreview}
       />
-
-      <View className="gap-3">
-        <SectionLabel>{t("settings.tts.playbackSection")}</SectionLabel>
-        <SectionCard>
-          <PlaybackSliderRow
-            title={t("settings.tts.speed")}
-            value={Math.min(
-              config.playback.speed,
-              ttsMaximumPlaybackSpeed(selectedProfile),
-            )}
-            minimumValue={0.5}
-            maximumValue={ttsMaximumPlaybackSpeed(selectedProfile)}
-            step={0.1}
-            suffix="×"
-            onValueChange={(speed) => updatePlaybackLocally({ speed })}
-            onSlidingComplete={(speed) => void persistPlayback({ speed })}
-          />
-          <PlaybackSliderRow
-            title={t("settings.tts.pitch")}
-            value={config.playback.pitch}
-            minimumValue={0.5}
-            maximumValue={2}
-            step={0.1}
-            isLast
-            onValueChange={(pitch) => updatePlaybackLocally({ pitch })}
-            onSlidingComplete={(pitch) => void persistPlayback({ pitch })}
-          />
-        </SectionCard>
-        <Text className="px-1 text-xs" style={{ color: palette.textMuted }}>
-          {t("settings.tts.pitchProviderHint")}
-        </Text>
-      </View>
+      <FormSelect
+        label={t("settings.tts.engine")}
+        labelMode="external"
+        value={selectedEngineLabel}
+        actions={engineActions}
+        onSelect={(id) => handleEngineAction({ nativeEvent: { event: id } })}
+      />
+      <FormSelect
+        label={t("settings.tts.voice")}
+        labelMode="external"
+        value={selectedVoiceLabel}
+        actions={voiceActions}
+        onSelect={(id) =>
+          void handleVoiceAction({ nativeEvent: { event: id } })
+        }
+      />
+      <FormSlider
+        label={t("settings.tts.defaultSpeed")}
+        value={Math.min(
+          config.playback.speed,
+          ttsMaximumPlaybackSpeed(selectedProfile),
+        )}
+        min={0.5}
+        max={ttsMaximumPlaybackSpeed(selectedProfile)}
+        step={0.1}
+        formatValue={(value) => `${Number(value.toFixed(1))}×`}
+        onChange={(speed) => void persistPlayback({ speed })}
+      />
+      <FormSlider
+        label={t("settings.tts.defaultPitch")}
+        value={config.playback.pitch}
+        min={0.5}
+        max={2}
+        step={0.1}
+        formatValue={(value) => `${Number(value.toFixed(1))}`}
+        onChange={(pitch) => void persistPlayback({ pitch })}
+      />
     </Screen>
   )
 }

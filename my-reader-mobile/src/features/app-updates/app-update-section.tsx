@@ -1,8 +1,8 @@
 import { appUpdateMessage, appUpdateErrorMessage } from "@my-reader/i18n/mobile"
 import { router } from "expo-router"
 import { useTranslation } from "react-i18next"
-import { Platform, Switch } from "react-native"
-import { ListRow, SectionCard, SectionLabel } from "@/src/components"
+import { Platform } from "react-native"
+import { Button, FormSwitch, ListRow } from "@/src/components"
 import { useThemePalette } from "@/src/design/tokens"
 import { Text, View } from "@/tw"
 import { useAppUpdate } from "./use-app-update"
@@ -23,24 +23,46 @@ function AndroidAppUpdateSection() {
 
   return (
     <View className="gap-3">
-      <SectionLabel>{t("appUpdates.title")}</SectionLabel>
-      <SectionCard>
+      <UpdatePreferences
+        data={data}
+        busy={busy}
+        setPreferences={setPreferences}
+      />
+      <View className="border-t" style={{ borderColor: palette.border }}>
         <ListRow
-          title={t("appUpdates.check")}
-          value={
+          title={
             data
               ? t("appUpdates.currentVersion", { version: data.currentVersion })
-              : undefined
+              : t("appUpdates.check")
           }
           detail={statusText}
-          onPress={busy ? undefined : () => check()}
+          isLast
+          accessory={
+            <View className="gap-1">
+              <Button
+                title={t("appUpdates.check")}
+                variant="ghost"
+                size="sm"
+                disabled={busy}
+                onPress={() => check()}
+              />
+              {data?.version ? (
+                <Button
+                  title={t(
+                    status === "downloaded"
+                      ? "appUpdates.install"
+                      : "appUpdates.download",
+                  )}
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onPress={onInstallerPress}
+                />
+              ) : null}
+            </View>
+          }
         />
-        <UpdatePreferences
-          data={data}
-          busy={busy}
-          setPreferences={setPreferences}
-        />
-      </SectionCard>
+      </View>
       {data?.error || error ? (
         <Text
           accessibilityRole="alert"
@@ -51,25 +73,13 @@ function AndroidAppUpdateSection() {
         </Text>
       ) : null}
       {data?.version ? (
-        <SectionCard>
-          <ListRow
-            title={t("appUpdates.notes")}
-            icon={{ ios: "doc.text", android: "description" }}
-            value={data.version}
-            onPress={() => router.push("/update-notes")}
-          />
-          <ListRow
-            icon={{ ios: "arrow.down.circle", android: "system-update" }}
-            title={
-              status === "downloaded"
-                ? t("appUpdates.install")
-                : t("appUpdates.download")
-            }
-            detail={data.assetName}
-            isLast
-            onPress={onInstallerPress}
-          />
-        </SectionCard>
+        <ListRow
+          title={t("appUpdates.notes")}
+          icon={{ ios: "doc.text", android: "description" }}
+          value={data.version}
+          isLast
+          onPress={() => router.push("/update-notes")}
+        />
       ) : null}
       {status === "downloaded" ? (
         <Text className="px-4 text-base" style={{ color: palette.textMuted }}>
@@ -86,43 +96,29 @@ function UpdatePreferences({
   setPreferences,
 }: Pick<ReturnType<typeof useAppUpdate>, "data" | "busy" | "setPreferences">) {
   const { t } = useTranslation()
-  const palette = useThemePalette()
   return (
-    <>
-      <ListRow
-        title={t("appUpdates.autoCheck")}
-        detail={t("appUpdates.autoCheckDetail")}
-        accessory={
-          <Switch
-            accessibilityLabel={t("appUpdates.autoCheck")}
-            disabled={busy || !data}
-            value={data?.autoCheck ?? true}
-            onValueChange={(value) =>
-              setPreferences(value, data?.autoDownload ?? false)
-            }
-            trackColor={{ false: palette.border, true: palette.primary }}
-            thumbColor={palette.surface}
-          />
+    <View className="gap-3">
+      <FormSwitch
+        label={t("appUpdates.autoCheck")}
+        description={t("appUpdates.autoCheckDetail")}
+        align="between"
+        disabled={busy || !data}
+        value={data?.autoCheck ?? true}
+        onValueChange={(value) =>
+          setPreferences(value, data?.autoDownload ?? false)
         }
       />
-      <ListRow
-        title={t("appUpdates.autoDownload")}
-        detail={t("appUpdates.autoDownloadDetail")}
-        isLast
-        accessory={
-          <Switch
-            accessibilityLabel={t("appUpdates.autoDownload")}
-            disabled={busy || !data}
-            value={data?.autoDownload ?? false}
-            onValueChange={(value) =>
-              setPreferences(data?.autoCheck ?? true, value)
-            }
-            trackColor={{ false: palette.border, true: palette.primary }}
-            thumbColor={palette.surface}
-          />
+      <FormSwitch
+        label={t("appUpdates.autoDownload")}
+        description={t("appUpdates.autoDownloadDetail")}
+        align="between"
+        disabled={busy || !data}
+        value={data?.autoDownload ?? false}
+        onValueChange={(value) =>
+          setPreferences(data?.autoCheck ?? true, value)
         }
       />
-    </>
+    </View>
   )
 }
 
