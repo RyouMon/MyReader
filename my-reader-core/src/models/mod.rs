@@ -37,8 +37,9 @@ pub use llm::{
     LlmConfig, LlmCredential, LlmMessage, LlmModel, LlmProtocol, LlmProvider, LlmProviderProfile,
 };
 pub use narration::{
-    BookCharacter, BookNarrationSettings, CharacterImportCandidate, CharacterImportRequest,
-    CharacterSource, NarrationMergeChoice, NarrationMergePlan, NarrationMergeSource, NarrationPlan,
+    BookCharacter, BookNarrationSettings, CharacterDraftInput, CharacterDraftRequest,
+    CharacterImportCandidate, CharacterImportRequest, CharacterPassage, CharacterSource,
+    NarrationMergeChoice, NarrationMergePlan, NarrationMergeSource, NarrationPlan,
     NarrationRequest, NarrationSegment, NarrationSpeech, NARRATOR_ID,
 };
 pub use reading::{

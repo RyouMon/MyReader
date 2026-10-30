@@ -55,6 +55,10 @@
     "advanced": "詳細設定"
   },
   "narration": {
+    "select": "選択",
+    "deselect": "選択を解除",
+    "selected": "選択した人物：{{count}}",
+    "deleteSelected": "選択した人物を削除",
     "enabled": "役ごとの読み上げ",
     "characters": "登場人物",
     "add": "人物を追加",
@@ -63,8 +67,8 @@
     "importing": "検索中…",
     "importSelected": "選択した人物を取り込む",
     "name": "名前",
-    "aliases": "別名",
-    "identity": "人物紹介",
+    "nicknames": "通称・ニックネーム",
+    "description": "説明",
     "instructions": "読み上げ指示",
     "provider": "モデル",
     "voice": "音声",
@@ -85,7 +89,18 @@
     "voiceAndInstructions": "音声と指示",
     "keepExisting": "現在の設定を保持",
     "useIncoming": "{{title}} を使用",
-    "confirmMerge": "統合を確定"
+    "confirmMerge": "統合を確定",
+    "manualAdd": "手動で追加",
+    "fromBook": "この本から追加",
+    "organize": "AI で整理",
+    "organizing": "整理中…",
+    "prompt": "指示",
+    "promptPlaceholder": "登場人物の紹介を貼り付けるか、人物情報と整理の指示を入力してください。",
+    "searchQuery": "検索語",
+    "search": "検索",
+    "chooseSource": "該当する作品を選択してください。",
+    "noSources": "一致する百科事典の記事が見つかりません。",
+    "noBookIntroduction": "この本に読み取り可能な登場人物の紹介が見つかりません。"
   },
   "appUpdates": {
     "title": "アプリの更新",
@@ -212,6 +227,8 @@
     "unread": "未読"
   },
   "common": {
+    "selectAll": "すべて選択",
+    "deselectAll": "すべて選択解除",
     "copy": "コピー",
     "cancel": "キャンセル",
     "close": "閉じる",

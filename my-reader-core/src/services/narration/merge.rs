@@ -49,7 +49,7 @@ impl NarrationService {
         if automatic {
             let profile = LlmService::selected_profile(config_path)?;
             let credential = credential_for(&profile, credential)?;
-            let input = json!({"series":settings.scope_name,"existing":roster(&settings),"incoming":source.characters.iter().map(|character| json!({"id":character.id,"name":character.name,"aliases":character.aliases,"identity":character.identity})).collect::<Vec<_>>()}).to_string();
+            let input = json!({"series":settings.scope_name,"existing":roster(&settings),"incoming":source.characters.iter().map(|character| json!({"id":character.id,"name":character.name,"nicknames":character.nicknames,"description":character.description})).collect::<Vec<_>>()}).to_string();
             if input.len() + 5120 > profile.context_window as usize {
                 return Err(error("CONTEXT_LIMIT"));
             }
@@ -157,8 +157,8 @@ fn matching_character<'a>(
     let mut matches = existing.iter().filter(|character| {
         character.id != NARRATOR_ID
             && (character.name == incoming.name
-                || character.aliases.contains(&incoming.name)
-                || incoming.aliases.contains(&character.name))
+                || character.nicknames.contains(&incoming.name)
+                || incoming.nicknames.contains(&character.name))
     });
     let first = matches.next();
     if matches.next().is_none() {
@@ -209,13 +209,13 @@ fn validate_choices(
 }
 
 fn merge_character(target: &mut BookCharacter, incoming: &BookCharacter, prefer_incoming: bool) {
-    for name in std::iter::once(&incoming.name).chain(&incoming.aliases) {
-        if *name != target.name && !target.aliases.contains(name) {
-            target.aliases.push(name.clone());
+    for name in std::iter::once(&incoming.name).chain(&incoming.nicknames) {
+        if *name != target.name && !target.nicknames.contains(name) {
+            target.nicknames.push(name.clone());
         }
     }
-    if target.identity.is_empty() {
-        target.identity = incoming.identity.clone();
+    if target.description.is_empty() {
+        target.description = incoming.description.clone();
     }
     if target.source.is_none() {
         target.source = incoming.source.clone();

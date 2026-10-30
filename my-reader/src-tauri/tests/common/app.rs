@@ -135,6 +135,8 @@ impl TestApp {
                 my_reader_lib::commands::narration::save_book_narration::<MockRuntime>,
                 my_reader_lib::commands::narration::cancel_book_narration::<MockRuntime>,
                 my_reader_lib::commands::narration::import_book_characters::<MockRuntime>,
+                my_reader_lib::commands::narration::search_book_character_sources::<MockRuntime>,
+                my_reader_lib::commands::narration::draft_book_characters::<MockRuntime>,
                 my_reader_lib::commands::narration::prepare_book_narration::<MockRuntime>,
                 my_reader_lib::commands::narration::preview_book_narration_merge::<MockRuntime>,
                 my_reader_lib::commands::narration::merge_book_narration::<MockRuntime>,

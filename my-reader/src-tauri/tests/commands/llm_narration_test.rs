@@ -122,13 +122,17 @@ async fn narration_commands_preserve_identity_and_route_exact_text_with_book_sco
     );
     assert_eq!(settings["enabled"], false);
     settings["enabled"] = json!(true);
-    settings["characters"].as_array_mut().unwrap().push(json!({"id":"alice","name":"Alice","aliases":["A"],"identity":"teacher","voice":{"engine":"provider","profileId":"tts-a","voiceId":"A"},"instructions":"gentle","source":{"title":"Cast","url":"https://en.wikipedia.org/wiki/Novel"}}));
+    settings["characters"].as_array_mut().unwrap().push(json!({"id":"alice","name":"Alice","nicknames":["A"],"description":"teacher","voice":{"engine":"provider","profileId":"tts-a","voiceId":"A"},"instructions":"gentle","source":{"title":"Cast","url":"https://en.wikipedia.org/wiki/Novel"}}));
     let saved: Value = invoke_ok(
         &app,
         "save_book_narration",
         json!({"libraryId":"library","settings":settings}),
     );
     assert_eq!(saved["characters"][1]["id"], "alice");
+    assert_eq!(saved["characters"][1]["nicknames"], json!(["A"]));
+    assert_eq!(saved["characters"][1]["description"], "teacher");
+    assert!(saved["characters"][1].get("aliases").is_none());
+    assert!(saved["characters"][1].get("identity").is_none());
     assert!(invoke_err(
         &app,
         "save_book_narration",
@@ -164,9 +168,22 @@ async fn narration_commands_preserve_identity_and_route_exact_text_with_book_sco
     );
     assert!(error.message.contains("REQUEST_INVALID"));
 
+    let error = invoke_err(
+        &app,
+        "search_book_character_sources",
+        json!({"libraryId":"library","request":{"bookId":7,"title":"","authors":[],"language":"en"}}),
+    );
+    assert!(error.message.contains("REQUEST_INVALID"));
+    let error = invoke_err(
+        &app,
+        "draft_book_characters",
+        json!({"libraryId":"library","request":{"book":{"bookId":8,"title":"Novel","authors":[],"language":"en"},"input":{"kind":"book","passages":[]}}}),
+    );
+    assert!(error.message.contains("DISABLED"));
+
     let mut other = other;
     other["enabled"] = json!(true);
-    other["characters"].as_array_mut().unwrap().push(json!({"id":"second-alice","name":"Alice","aliases":[],"identity":"teacher","voice":{"engine":"provider","profileId":"tts-b","voiceId":"B"},"instructions":"calm","source":null}));
+    other["characters"].as_array_mut().unwrap().push(json!({"id":"second-alice","name":"Alice","nicknames":[],"description":"teacher","voice":{"engine":"provider","profileId":"tts-b","voiceId":"B"},"instructions":"calm","source":null}));
     let _: Value = invoke_ok(
         &app,
         "save_book_narration",

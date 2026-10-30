@@ -1,6 +1,57 @@
 use super::*;
 use crate::models::BookEntry;
 
+#[tokio::test]
+async fn legacy_character_fields_survive_reopening_and_are_saved_with_current_names() {
+    use sea_orm::{ConnectionTrait, DbBackend, Statement};
+
+    let root = tempfile::tempdir().unwrap();
+    let expected = setup(root.path()).await;
+    let context = LibraryContext::open(root.path()).await.unwrap();
+    let db = context.database();
+    let mut legacy = serde_json::to_value(&expected).unwrap();
+    for character in legacy["characters"].as_array_mut().unwrap() {
+        let object = character.as_object_mut().unwrap();
+        let nicknames = object.remove("nicknames").unwrap();
+        let description = object.remove("description").unwrap();
+        object.insert("aliases".into(), nicknames);
+        object.insert("identity".into(), description);
+    }
+    db.execute_raw(Statement::from_sql_and_values(
+        DbBackend::Sqlite,
+        "UPDATE narration_scopes SET settings_json = ? WHERE id = ?",
+        vec![legacy.to_string().into(), expected.scope_id.clone().into()],
+    ))
+    .await
+    .unwrap();
+
+    let reopened = NarrationService::get_settings(root.path(), 42)
+        .await
+        .unwrap();
+    assert_eq!(reopened, expected);
+    let saved = NarrationService::save_settings(root.path(), reopened)
+        .await
+        .unwrap();
+    assert_eq!(saved.identity_revision, expected.identity_revision);
+    assert_eq!(saved.characters, expected.characters);
+    let row = db
+        .query_one_raw(Statement::from_sql_and_values(
+            DbBackend::Sqlite,
+            "SELECT settings_json FROM narration_scopes WHERE id = ?",
+            [saved.scope_id.into()],
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    let stored: Value =
+        serde_json::from_str(&row.try_get::<String>("", "settings_json").unwrap()).unwrap();
+    let character = &stored["characters"][1];
+    assert_eq!(character["nicknames"], json!(["老陈"]));
+    assert_eq!(character["description"], "A teacher");
+    assert!(character.get("aliases").is_none());
+    assert!(character.get("identity").is_none());
+}
+
 fn book(id: i64, series: Option<&str>) -> BookEntry {
     BookEntry {
         id,
@@ -55,8 +106,8 @@ async fn second_config(root: &Path) -> BookNarrationSettings {
     second.characters.push(BookCharacter {
         id: "lin".into(),
         name: "林岚".into(),
-        aliases: vec![],
-        identity: "Traveler".into(),
+        nicknames: vec![],
+        description: "Traveler".into(),
         voice: None,
         instructions: "calm".into(),
         source: None,

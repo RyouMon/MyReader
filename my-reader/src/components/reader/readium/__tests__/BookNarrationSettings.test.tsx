@@ -2,13 +2,20 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, expect, it, vi } from "vitest"
-import { BookNarrationSettings } from "../BookNarrationSettings"
+import {
+  BookNarrationSettings,
+  type NarrationSubview,
+} from "../BookNarrationSettings"
+import { useState, type ComponentProps } from "react"
+import { Settings2 } from "lucide-react"
+import { ReaderSidePanelHeader } from "@/components/reader/shared/ReaderSidePanelChrome"
 import type { BookNarrationSettingsDto, TtsConfigDto } from "@/lib/tauri-specta"
 
 const mocks = vi.hoisted(() => ({
   getBookNarration: vi.fn(),
   saveBookNarration: vi.fn(),
-  importBookCharacters: vi.fn(),
+  searchBookCharacterSources: vi.fn(),
+  draftBookCharacters: vi.fn(),
   previewBookNarrationMerge: vi.fn(),
   mergeBookNarration: vi.fn(),
   getLlmConfig: vi.fn(),
@@ -42,8 +49,8 @@ const settings: BookNarrationSettingsDto = {
     {
       id: "narrator",
       name: "Narrator",
-      aliases: [],
-      identity: "",
+      nicknames: [],
+      description: "",
       voice: null,
       instructions: "",
       source: null,
@@ -51,8 +58,8 @@ const settings: BookNarrationSettingsDto = {
     {
       id: "stable-id",
       name: "陈默",
-      aliases: ["老陈"],
-      identity: "Manual identity",
+      nicknames: ["老陈"],
+      description: "Manual identity",
       voice: { engine: "provider", profileId: "one", voiceId: "A" },
       instructions: "温柔",
       source: null,
@@ -88,14 +95,41 @@ const config: TtsConfigDto = {
   })),
 }
 
-function mount() {
+function SettingsFixture(props: ComponentProps<typeof BookNarrationSettings>) {
+  const [view, setView] = useState<NarrationSubview | null>(null)
+  return (
+    <>
+      <ReaderSidePanelHeader
+        title={view?.title ?? "Listening settings"}
+        icon={Settings2}
+        onBack={view?.onBack}
+        backLabel="common.back"
+      />
+      <BookNarrationSettings {...props} onSubviewChange={setView} />
+    </>
+  )
+}
+
+async function openCharacters() {
+  fireEvent.click(await screen.findByRole("button", { name: "narration.edit" }))
+}
+
+function mount(
+  findIntroductions?: () => Promise<
+    import("@/lib/readium/characterIntroductions").CharacterIntroduction[]
+  >,
+) {
   return render(
     <QueryClientProvider
       client={
         new QueryClient({ defaultOptions: { queries: { retry: false } } })
       }
     >
-      <BookNarrationSettings book={book} config={config} />
+      <SettingsFixture
+        book={book}
+        config={config}
+        findIntroductions={findIntroductions}
+      />
     </QueryClientProvider>,
   )
 }
@@ -134,20 +168,20 @@ it("reveals this book's forms only after enable confirmation and keeps LLM editi
     name: "narration.enabled",
   })
   expect(
-    screen.queryByRole("button", { name: "narration.add" }),
+    screen.queryByRole("button", { name: "narration.edit" }),
   ).not.toBeInTheDocument()
   fireEvent.click(toggle)
   fireEvent.click(
     await screen.findByRole("button", { name: "narration.enableConfirm" }),
   )
   expect(
-    await screen.findByRole("button", { name: "narration.add" }),
+    await screen.findByRole("button", { name: "narration.edit" }),
   ).toBeInTheDocument()
   expect(screen.queryByLabelText("llm.endpoint")).not.toBeInTheDocument()
   fireEvent.click(toggle)
   await waitFor(() =>
     expect(
-      screen.queryByRole("button", { name: "narration.add" }),
+      screen.queryByRole("button", { name: "narration.edit" }),
     ).not.toBeInTheDocument(),
   )
   expect(mocks.saveBookNarration).toHaveBeenLastCalledWith(
@@ -159,6 +193,7 @@ it("reveals this book's forms only after enable confirmation and keeps LLM editi
 it("clears the previous voice when switching provider and preserves the stable character ID", async () => {
   mocks.getBookNarration.mockResolvedValue({ ...settings, enabled: true })
   mount()
+  await openCharacters()
   fireEvent.click(await screen.findByRole("button", { name: /^陈默/ }))
   const user = userEvent.setup()
   await user.click(screen.getByRole("combobox", { name: "narration.provider" }))
@@ -192,14 +227,37 @@ it("imports selected sourced characters without overwriting an existing manual i
     title: "Book",
     url: "https://zh.wikipedia.org/w/index.php?curid=1",
   }
-  mocks.importBookCharacters.mockResolvedValue([
-    { name: "陈默", aliases: [], identity: "Imported identity", source },
-    { name: "林岚", aliases: [], identity: "Student", source },
+  mocks.searchBookCharacterSources.mockResolvedValue([source])
+  mocks.draftBookCharacters.mockResolvedValue([
+    {
+      id: "",
+      voice: null,
+      instructions: "",
+      name: "陈默",
+      nicknames: [],
+      description: "Imported identity",
+      source,
+    },
+    {
+      id: "",
+      voice: null,
+      instructions: "",
+      name: "林岚",
+      nicknames: [],
+      description: "Student",
+      source,
+    },
   ])
   mount()
-  fireEvent.click(
-    await screen.findByRole("button", { name: "narration.import" }),
+  const user = userEvent.setup()
+  await openCharacters()
+  await user.click(await screen.findByRole("button", { name: "narration.add" }))
+  await user.click(
+    await screen.findByRole("menuitem", { name: "narration.import" }),
   )
+  await user.click(screen.getByRole("button", { name: "narration.search" }))
+  await user.click(await screen.findByRole("button", { name: "Book" }))
+  await user.click(screen.getByRole("button", { name: "narration.organize" }))
   fireEvent.click(
     await screen.findByRole("button", { name: "narration.importSelected" }),
   )
@@ -209,14 +267,17 @@ it("imports selected sourced characters without overwriting an existing manual i
   expect(saved.characters).toHaveLength(3)
   expect(
     saved.characters.find((character) => character.id === "stable-id")
-      ?.identity,
+      ?.description,
   ).toBe("Manual identity")
   expect(saved.characters[saved.characters.length - 1]).toEqual(
     expect.objectContaining({ name: "林岚", source, id: "" }),
   )
-  expect(mocks.importBookCharacters).toHaveBeenCalledWith(
+  expect(mocks.draftBookCharacters).toHaveBeenCalledWith(
     "library",
-    expect.objectContaining({ title: "Book", authors: ["Writer"] }),
+    expect.objectContaining({
+      book: expect.objectContaining({ title: "Book", authors: ["Writer"] }),
+      input: { kind: "encyclopedia", source },
+    }),
   )
 })
 
@@ -255,6 +316,7 @@ it("reviews a pending series merge before applying identities and voice preferen
     revision: 1,
   })
   mount()
+  await openCharacters()
   fireEvent.click(
     await screen.findByRole("button", { name: "narration.manualMerge" }),
   )
@@ -281,5 +343,293 @@ it("reviews a pending series merge before applying identities and voice preferen
       choices: [{ ...plan.choices[0], preferIncoming: true }],
     }),
   )
-  await screen.findByRole("button", { name: "narration.import" })
+  await screen.findByRole("button", { name: "narration.add" })
+})
+
+it("returns from an unfinished edit to the list without saving", async () => {
+  mocks.getBookNarration.mockResolvedValue({ ...settings, enabled: true })
+  mount()
+  await openCharacters()
+  fireEvent.click(await screen.findByRole("button", { name: /^陈默/ }))
+  expect(
+    screen.queryByRole("button", { name: "narration.add" }),
+  ).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole("button", { name: /narration.narrator/ }),
+  ).not.toBeInTheDocument()
+  fireEvent.change(screen.getByLabelText("narration.instructions"), {
+    target: { value: "unfinished" },
+  })
+  fireEvent.click(screen.getByRole("button", { name: "common.back" }))
+  expect(
+    screen.queryByLabelText("narration.instructions"),
+  ).not.toBeInTheDocument()
+  expect(
+    screen.getByRole("button", { name: "narration.add" }),
+  ).toBeInTheDocument()
+  expect(mocks.saveBookNarration).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole("button", { name: /^陈默/ }))
+  expect(screen.getByLabelText("narration.instructions")).toHaveValue("温柔")
+})
+
+it("reports a missing book introduction without asking AI to invent characters", async () => {
+  mocks.getBookNarration.mockResolvedValue({ ...settings, enabled: true })
+  const find = vi.fn().mockResolvedValue([])
+  mount(find)
+  const user = userEvent.setup()
+  await openCharacters()
+  await user.click(await screen.findByRole("button", { name: "narration.add" }))
+  await user.click(screen.getByRole("menuitem", { name: "narration.fromBook" }))
+  expect(
+    await screen.findByText("narration.noBookIntroduction"),
+  ).toBeInTheDocument()
+  expect(find).toHaveBeenCalledOnce()
+  expect(mocks.draftBookCharacters).not.toHaveBeenCalled()
+  expect(mocks.saveBookNarration).not.toHaveBeenCalled()
+})
+
+it("only sends selected book passages and waits for candidate confirmation", async () => {
+  mocks.getBookNarration.mockResolvedValue({ ...settings, enabled: true })
+  mocks.draftBookCharacters.mockResolvedValue([
+    { ...settings.characters[1], id: "", name: "林岚" },
+  ])
+  mount(
+    vi.fn().mockResolvedValue([
+      {
+        id: "cast",
+        title: "人物介绍",
+        text: "林岚：旅人。",
+        locator: { href: "cast.xhtml", locations: {} },
+      },
+      {
+        id: "other",
+        title: "角色介绍",
+        text: "未选择的内容。",
+        locator: { href: "other.xhtml", locations: {} },
+      },
+    ]),
+  )
+  const user = userEvent.setup()
+  await openCharacters()
+  await user.click(await screen.findByRole("button", { name: "narration.add" }))
+  await user.click(screen.getByRole("menuitem", { name: "narration.fromBook" }))
+  await user.click(await screen.findByRole("checkbox", { name: "角色介绍" }))
+  expect(mocks.draftBookCharacters).not.toHaveBeenCalled()
+  await user.click(screen.getByRole("button", { name: "narration.organize" }))
+  expect(await screen.findByRole("checkbox", { name: /林岚/ })).toBeChecked()
+  expect(mocks.draftBookCharacters).toHaveBeenCalledWith("library", {
+    book,
+    input: {
+      kind: "book",
+      passages: [{ title: "人物介绍", text: "林岚：旅人。" }],
+    },
+  })
+  expect(mocks.saveBookNarration).not.toHaveBeenCalled()
+})
+
+it("requires a source selection when encyclopedia search returns several works", async () => {
+  mocks.getBookNarration.mockResolvedValue({ ...settings, enabled: true })
+  const sources = [
+    { title: "Novel", url: "https://zh.wikipedia.org/w/index.php?curid=1" },
+    {
+      title: "Adaptation",
+      url: "https://zh.wikipedia.org/w/index.php?curid=2",
+    },
+  ]
+  mocks.searchBookCharacterSources.mockResolvedValue(sources)
+  mocks.draftBookCharacters.mockResolvedValue([
+    { ...settings.characters[1], id: "" },
+  ])
+  mount()
+  const user = userEvent.setup()
+  await openCharacters()
+  await user.click(await screen.findByRole("button", { name: "narration.add" }))
+  await user.click(screen.getByRole("menuitem", { name: "narration.import" }))
+  await user.click(screen.getByRole("button", { name: "narration.search" }))
+  await screen.findByRole("button", { name: "Novel" })
+  expect(
+    screen.getByRole("button", { name: "narration.organize" }),
+  ).toBeDisabled()
+  expect(mocks.draftBookCharacters).not.toHaveBeenCalled()
+  await user.click(screen.getByRole("button", { name: "Novel" }))
+  await user.click(screen.getByRole("button", { name: "narration.organize" }))
+  await screen.findByRole("button", { name: "narration.importSelected" })
+  expect(mocks.draftBookCharacters).toHaveBeenCalledWith("library", {
+    book,
+    input: { kind: "encyclopedia", source: sources[0] },
+  })
+})
+
+it("uses the user's prompt to draft candidates without automatically saving", async () => {
+  mocks.getBookNarration.mockResolvedValue({ ...settings, enabled: true })
+  mocks.draftBookCharacters.mockResolvedValue([
+    { ...settings.characters[1], id: "" },
+  ])
+  mount()
+  const user = userEvent.setup()
+  await openCharacters()
+  await user.click(await screen.findByRole("button", { name: "narration.add" }))
+  await user.click(screen.getByRole("menuitem", { name: "narration.organize" }))
+  await user.type(
+    screen.getByLabelText("narration.prompt"),
+    "陈默是老师，请整理人物身份。",
+  )
+  await user.click(screen.getByRole("button", { name: "narration.organize" }))
+  await screen.findByRole("button", { name: "narration.importSelected" })
+  expect(mocks.draftBookCharacters).toHaveBeenCalledWith("library", {
+    book,
+    input: { kind: "prompt", prompt: "陈默是老师，请整理人物身份。" },
+  })
+  expect(mocks.saveBookNarration).not.toHaveBeenCalled()
+})
+
+it("uses bookmark-style multi-selection to delete characters in one save and protects the narrator", async () => {
+  mocks.getBookNarration.mockResolvedValue({
+    ...settings,
+    enabled: true,
+    characters: [
+      ...settings.characters,
+      { ...settings.characters[1], id: "lin", name: "林岚" },
+    ],
+  })
+  mount()
+  await openCharacters()
+  fireEvent.contextMenu(
+    screen.getByRole("button", { name: /narration.narrator/ }),
+  )
+  expect(
+    screen.queryByRole("menuitem", { name: "common.delete" }),
+  ).not.toBeInTheDocument()
+  fireEvent.contextMenu(screen.getByRole("button", { name: /^陈默/ }))
+  fireEvent.click(
+    await screen.findByRole("menuitem", { name: "narration.select" }),
+  )
+  fireEvent.click(screen.getByRole("button", { name: "common.selectAll" }))
+  expect(
+    screen.getByRole("button", { name: /narration.narrator/ }),
+  ).toBeDisabled()
+  expect(screen.getByRole("button", { name: /^陈默/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  )
+  expect(screen.getByRole("button", { name: /^林岚/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  )
+  fireEvent.click(
+    screen.getByRole("button", { name: "narration.deleteSelected" }),
+  )
+  await waitFor(() => expect(mocks.saveBookNarration).toHaveBeenCalledTimes(1))
+  expect(mocks.saveBookNarration).toHaveBeenCalledWith(
+    "library",
+    expect.objectContaining({ characters: [settings.characters[0]] }),
+  )
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("button", { name: /^陈默/ }),
+    ).not.toBeInTheDocument(),
+  )
+  expect(
+    screen.getByRole("button", { name: /narration.narrator/ }),
+  ).toBeEnabled()
+})
+
+it("exits selection with Escape and keeps failed deletions available for retry", async () => {
+  mocks.getBookNarration.mockResolvedValue({ ...settings, enabled: true })
+  mocks.saveBookNarration.mockRejectedValueOnce(new Error("Could not save"))
+  mount()
+  await openCharacters()
+  fireEvent.contextMenu(screen.getByRole("button", { name: /^陈默/ }))
+  fireEvent.click(
+    await screen.findByRole("menuitem", { name: "narration.select" }),
+  )
+  fireEvent.keyDown(window, { key: "Escape" })
+  expect(
+    screen.queryByRole("button", { name: "narration.deleteSelected" }),
+  ).not.toBeInTheDocument()
+  expect(mocks.saveBookNarration).not.toHaveBeenCalled()
+  fireEvent.contextMenu(screen.getByRole("button", { name: /^陈默/ }))
+  fireEvent.click(
+    await screen.findByRole("menuitem", { name: "narration.select" }),
+  )
+  fireEvent.click(
+    screen.getByRole("button", { name: "narration.deleteSelected" }),
+  )
+  expect(await screen.findByRole("alert")).toHaveTextContent("Could not save")
+  expect(screen.getByRole("button", { name: /^陈默/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  )
+  fireEvent.click(
+    screen.getByRole("button", { name: "narration.deleteSelected" }),
+  )
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("button", { name: /^陈默/ }),
+    ).not.toBeInTheDocument(),
+  )
+})
+
+it("opens a separate add form and returns to the character list after saving", async () => {
+  mocks.getBookNarration.mockResolvedValue({ ...settings, enabled: true })
+  mount()
+  await openCharacters()
+  const user = userEvent.setup()
+  await user.click(screen.getByRole("button", { name: "narration.add" }))
+  await user.click(
+    screen.getByRole("menuitem", { name: "narration.manualAdd" }),
+  )
+  expect(
+    screen.queryByRole("button", { name: /^陈默/ }),
+  ).not.toBeInTheDocument()
+  fireEvent.change(screen.getByLabelText(/narration.name/), {
+    target: { value: "林岚" },
+  })
+  fireEvent.click(screen.getByRole("button", { name: "common.save" }))
+  expect(
+    await screen.findByRole("button", { name: /^林岚/ }),
+  ).toBeInTheDocument()
+  expect(screen.getByRole("button", { name: /^陈默/ })).toBeInTheDocument()
+  expect(screen.queryByLabelText(/narration.name/)).not.toBeInTheDocument()
+})
+
+it("hides adding while selecting and restores it after leaving selection", async () => {
+  mocks.getBookNarration.mockResolvedValue({ ...settings, enabled: true })
+  mount()
+  await openCharacters()
+  expect(screen.getByRole("button", { name: "narration.add" })).toBeVisible()
+  const select = screen.getByRole("button", { name: "narration.select" })
+  expect(select).toHaveAttribute("aria-pressed", "false")
+  expect(
+    screen.queryByRole("button", { name: "narration.deleteSelected" }),
+  ).not.toBeInTheDocument()
+  fireEvent.click(select)
+  const deleteButton = screen.getByRole("button", {
+    name: "narration.deleteSelected",
+  })
+  expect(deleteButton).toBeDisabled()
+  expect(
+    screen.getByRole("button", { name: "narration.deselect" }),
+  ).toHaveAttribute("aria-pressed", "true")
+  expect(
+    screen.queryByRole("button", { name: "narration.add" }),
+  ).not.toBeInTheDocument()
+  const character = screen.getByRole("button", { name: /^陈默/ })
+  fireEvent.click(character)
+  expect(character).toHaveAttribute("aria-pressed", "true")
+  expect(deleteButton).toBeEnabled()
+  fireEvent.click(character)
+  expect(character).toHaveAttribute("aria-pressed", "false")
+  expect(deleteButton).toBeDisabled()
+  fireEvent.click(screen.getByRole("button", { name: "narration.deselect" }))
+  expect(
+    screen.queryByRole("button", { name: "narration.deleteSelected" }),
+  ).not.toBeInTheDocument()
+  expect(
+    screen.getByRole("button", { name: "narration.select" }),
+  ).toHaveAttribute("aria-pressed", "false")
+  expect(screen.getByRole("button", { name: "narration.add" })).toBeVisible()
+  fireEvent.click(character)
+  expect(screen.getByLabelText(/narration.name/)).toHaveValue("陈默")
+  expect(mocks.saveBookNarration).not.toHaveBeenCalled()
 })

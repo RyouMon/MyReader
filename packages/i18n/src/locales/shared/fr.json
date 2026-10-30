@@ -55,6 +55,10 @@
     "advanced": "Avancé"
   },
   "narration": {
+    "select": "Sélectionner",
+    "deselect": "Désélectionner",
+    "selected": "Personnages sélectionnés : {{count}}",
+    "deleteSelected": "Supprimer les personnages sélectionnés",
     "enabled": "Lecture par personnage",
     "characters": "Personnages",
     "add": "Ajouter un personnage",
@@ -63,8 +67,8 @@
     "importing": "Recherche…",
     "importSelected": "Importer la sélection",
     "name": "Nom",
-    "aliases": "Autres noms",
-    "identity": "Description du personnage",
+    "nicknames": "Surnoms",
+    "description": "Description",
     "instructions": "Consignes de lecture",
     "provider": "Modèle",
     "voice": "Voix",
@@ -85,7 +89,18 @@
     "voiceAndInstructions": "Voix et consignes",
     "keepExisting": "Conserver les réglages actuels",
     "useIncoming": "Utiliser {{title}}",
-    "confirmMerge": "Confirmer la fusion"
+    "confirmMerge": "Confirmer la fusion",
+    "manualAdd": "Ajouter manuellement",
+    "fromBook": "Depuis ce livre",
+    "organize": "Organiser avec l’IA",
+    "organizing": "Organisation…",
+    "prompt": "Consignes",
+    "promptPlaceholder": "Collez des présentations de personnages ou saisissez leurs informations et vos consignes.",
+    "searchQuery": "Termes de recherche",
+    "search": "Rechercher",
+    "chooseSource": "Sélectionnez l’œuvre correspondante.",
+    "noSources": "Aucune entrée encyclopédique correspondante trouvée.",
+    "noBookIntroduction": "Aucune présentation de personnages lisible trouvée dans ce livre."
   },
   "appUpdates": {
     "title": "Mises à jour de l’application",
@@ -212,6 +227,8 @@
     "unread": "Non lu"
   },
   "common": {
+    "selectAll": "Tout sélectionner",
+    "deselectAll": "Tout désélectionner",
     "copy": "Copier",
     "cancel": "Annuler",
     "close": "Fermer",

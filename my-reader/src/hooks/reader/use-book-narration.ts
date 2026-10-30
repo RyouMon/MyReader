@@ -3,6 +3,7 @@ import { api } from "@/lib/tauri-api"
 import type {
   BookNarrationSettingsDto,
   CharacterImportRequestDto,
+  CharacterDraftRequestDto,
   NarrationMergePlanDto,
 } from "@/lib/tauri-specta"
 import { notifyTtsConfigChanged } from "@/lib/tts/events"
@@ -32,9 +33,13 @@ export function useBookNarration(
       api.saveBookNarration(libraryId!, settings),
     onSuccess: update,
   })
-  const importCharacters = useMutation({
+  const searchSources = useMutation({
     mutationFn: (request: CharacterImportRequestDto) =>
-      api.importBookCharacters(libraryId!, request),
+      api.searchBookCharacterSources(libraryId!, request),
+  })
+  const draftCharacters = useMutation({
+    mutationFn: (request: CharacterDraftRequestDto) =>
+      api.draftBookCharacters(libraryId!, request),
   })
   const previewMerge = useMutation({
     mutationFn: (automatic: boolean) =>
@@ -45,5 +50,5 @@ export function useBookNarration(
       api.mergeBookNarration(libraryId!, bookId, plan),
     onSuccess: update,
   })
-  return { query, save, importCharacters, previewMerge, merge }
+  return { query, save, searchSources, draftCharacters, previewMerge, merge }
 }

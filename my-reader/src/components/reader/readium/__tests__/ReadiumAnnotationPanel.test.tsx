@@ -83,6 +83,7 @@ describe("ReadiumAnnotationPanel", () => {
       />,
     )
 
+    expect(screen.getByRole("button", { name: "选择" })).toBeDisabled()
     expect(screen.getByText("还没有高亮或笔记")).toBeInTheDocument()
     expect(
       screen.getByText("请先选中文字，再添加高亮或笔记。"),
@@ -184,7 +185,7 @@ describe("ReadiumAnnotationPanel", () => {
     expect(shortAfter).toBe(`${longAfter.slice(0, 18)}…`)
   })
 
-  it("should select annotations and delete the selection", async () => {
+  it("should enter selection from the permanent footer and delete selected annotations", async () => {
     const onDelete = vi.fn().mockResolvedValue(undefined)
     render(
       <ReadiumAnnotationPanel
@@ -199,8 +200,14 @@ describe("ReadiumAnnotationPanel", () => {
       />,
     )
 
-    fireEvent.contextMenu(screen.getByText("被高亮的正文"))
-    fireEvent.click(await screen.findByRole("menuitem", { name: "选择" }))
+    expect(
+      screen.queryByRole("button", { name: "删除所选高亮与笔记" }),
+    ).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "选择" }))
+    expect(
+      screen.getByRole("button", { name: "删除所选高亮与笔记" }),
+    ).toBeDisabled()
+    fireEvent.click(screen.getByRole("button", { name: /被高亮的正文/ }))
     fireEvent.click(screen.getByRole("button", { name: /另一段高亮正文/ }))
     expect(screen.getByText("已选择 2 条高亮与笔记")).toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: "删除所选高亮与笔记" }))
@@ -230,4 +237,33 @@ describe("ReadiumAnnotationPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "重试" }))
     expect(onRetry).toHaveBeenCalledOnce()
   })
+})
+
+it("clears annotation selection when the panel is reopened", () => {
+  const props = {
+    annotations: [annotation],
+    loading: false,
+    mutating: false,
+    onRetry: vi.fn(),
+    onSelect: vi.fn(),
+    onEdit: vi.fn(),
+    onDelete: vi.fn(),
+  }
+  const { rerender } = render(<ReadiumAnnotationPanel {...props} visible />)
+  fireEvent.click(screen.getByRole("button", { name: "选择" }))
+  fireEvent.click(screen.getByRole("button", { name: /被高亮的正文/ }))
+  expect(
+    screen.getByRole("button", { name: "删除所选高亮与笔记" }),
+  ).toBeEnabled()
+  rerender(<ReadiumAnnotationPanel {...props} visible={false} />)
+  rerender(<ReadiumAnnotationPanel {...props} visible />)
+  expect(screen.getByRole("button", { name: "选择" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  )
+  expect(
+    screen.queryByRole("button", { name: "删除所选高亮与笔记" }),
+  ).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole("button", { name: /被高亮的正文/ }))
+  expect(props.onSelect).toHaveBeenCalledWith(annotation)
 })

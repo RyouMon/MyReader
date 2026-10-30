@@ -55,6 +55,10 @@
     "advanced": "Avançado"
   },
   "narration": {
+    "select": "Selecionar",
+    "deselect": "Desmarcar",
+    "selected": "Personagens selecionados: {{count}}",
+    "deleteSelected": "Excluir personagens selecionados",
     "enabled": "Leitura por personagem",
     "characters": "Personagens",
     "add": "Adicionar personagem",
@@ -63,8 +67,8 @@
     "importing": "Pesquisando…",
     "importSelected": "Importar seleção",
     "name": "Nome",
-    "aliases": "Apelidos",
-    "identity": "Descrição do personagem",
+    "nicknames": "Apelidos",
+    "description": "Descrição",
     "instructions": "Instruções de leitura",
     "provider": "Modelo",
     "voice": "Voz",
@@ -85,7 +89,18 @@
     "voiceAndInstructions": "Voz e instruções",
     "keepExisting": "Manter atuais",
     "useIncoming": "Usar {{title}}",
-    "confirmMerge": "Confirmar mesclagem"
+    "confirmMerge": "Confirmar mesclagem",
+    "manualAdd": "Adicionar manualmente",
+    "fromBook": "Deste livro",
+    "organize": "Organizar com IA",
+    "organizing": "Organizando…",
+    "prompt": "Instruções",
+    "promptPlaceholder": "Cole apresentações de personagens ou insira suas informações e instruções.",
+    "searchQuery": "Termos de busca",
+    "search": "Buscar",
+    "chooseSource": "Selecione a obra correspondente.",
+    "noSources": "Nenhum verbete de enciclopédia correspondente encontrado.",
+    "noBookIntroduction": "Nenhuma apresentação legível de personagens encontrada neste livro."
   },
   "appUpdates": {
     "title": "Atualizações do aplicativo",
@@ -212,6 +227,8 @@
     "unread": "Não lido"
   },
   "common": {
+    "selectAll": "Selecionar tudo",
+    "deselectAll": "Desmarcar tudo",
     "copy": "Copiar",
     "cancel": "Cancelar",
     "close": "Fechar",

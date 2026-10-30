@@ -50,12 +50,16 @@ describe("ReadiumBookmarkList", () => {
     expect(onDelete).toHaveBeenCalledWith(bookmarks[0])
   })
 
-  it("should select bookmarks and delete the selection", async () => {
+  it("should enter selection from the permanent footer and delete selected bookmarks", async () => {
     const onDelete = vi.fn().mockResolvedValue(undefined)
     render(<ReadiumBookmarkList bookmarks={bookmarks} onDelete={onDelete} />)
 
-    fireEvent.contextMenu(screen.getByText("第八章"))
-    fireEvent.click(await screen.findByRole("menuitem", { name: "选择" }))
+    expect(
+      screen.queryByRole("button", { name: "删除所选书签" }),
+    ).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "选择" }))
+    expect(screen.getByRole("button", { name: "删除所选书签" })).toBeDisabled()
+    fireEvent.click(screen.getByRole("button", { name: /第八章/ }))
     fireEvent.click(screen.getByRole("button", { name: /第九章/ }))
     expect(screen.getByText("已选择 2 个书签")).toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: "删除所选书签" }))
@@ -67,7 +71,34 @@ describe("ReadiumBookmarkList", () => {
 
   it("should show the bookmark empty state", () => {
     render(<ReadiumBookmarkList bookmarks={[]} />)
+    expect(screen.getByRole("button", { name: "选择" })).toBeDisabled()
     expect(screen.getByText("还没有书签")).toBeInTheDocument()
     expect(screen.getByText("请在阅读时添加书签。")).toBeInTheDocument()
+  })
+
+  it("selects all bookmarks and clears them without leaving selection mode", () => {
+    render(<ReadiumBookmarkList bookmarks={bookmarks} onDelete={vi.fn()} />)
+    expect(
+      screen.queryByRole("button", { name: "全选" }),
+    ).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "选择" }))
+    fireEvent.click(screen.getByRole("button", { name: "全选" }))
+    const first = screen.getByRole("button", { name: /第八章/ })
+    const second = screen.getByRole("button", { name: /第九章/ })
+    expect(first).toHaveAttribute("aria-pressed", "true")
+    expect(second).toHaveAttribute("aria-pressed", "true")
+    expect(screen.getByRole("button", { name: "取消全选" })).toBeEnabled()
+
+    fireEvent.click(first)
+    fireEvent.click(screen.getByRole("button", { name: "全选" }))
+    expect(first).toHaveAttribute("aria-pressed", "true")
+    fireEvent.click(screen.getByRole("button", { name: "取消全选" }))
+    expect(first).toHaveAttribute("aria-pressed", "false")
+    expect(second).toHaveAttribute("aria-pressed", "false")
+    expect(screen.getByRole("button", { name: "删除所选书签" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "取消选择" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    )
   })
 })

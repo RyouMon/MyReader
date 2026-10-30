@@ -17,10 +17,10 @@ pub struct BookCharacter {
     #[serde(default)]
     pub id: String,
     pub name: String,
-    #[serde(default)]
-    pub aliases: Vec<String>,
-    #[serde(default)]
-    pub identity: String,
+    #[serde(default, alias = "aliases")]
+    pub nicknames: Vec<String>,
+    #[serde(default, alias = "identity")]
+    pub description: String,
     #[serde(default)]
     pub voice: Option<TtsVoiceRef>,
     #[serde(default)]
@@ -57,8 +57,8 @@ impl BookNarrationSettings {
             characters: vec![BookCharacter {
                 id: NARRATOR_ID.into(),
                 name: NARRATOR_ID.into(),
-                aliases: Vec::new(),
-                identity: String::new(),
+                nicknames: Vec::new(),
+                description: String::new(),
                 voice: None,
                 instructions: String::new(),
                 source: None,
@@ -160,7 +160,29 @@ pub struct CharacterImportRequest {
 #[serde(rename_all = "camelCase")]
 pub struct CharacterImportCandidate {
     pub name: String,
-    pub aliases: Vec<String>,
-    pub identity: String,
+    pub nicknames: Vec<String>,
+    pub description: String,
     pub source: CharacterSource,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CharacterPassage {
+    pub title: String,
+    pub text: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum CharacterDraftInput {
+    Book { passages: Vec<CharacterPassage> },
+    Encyclopedia { source: CharacterSource },
+    Prompt { prompt: String },
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CharacterDraftRequest {
+    pub book: CharacterImportRequest,
+    pub input: CharacterDraftInput,
 }

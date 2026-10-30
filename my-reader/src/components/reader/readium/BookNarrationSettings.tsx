@@ -1,13 +1,13 @@
-import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
-import type { TFunction } from "i18next"
-import { NarrationMergeEditor } from "./NarrationMergeEditor"
-import { useCallback, useEffect, useState, type CSSProperties } from "react"
-import { useQuery } from "@tanstack/react-query"
+import {
+  useCallback,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react"
+import { ChevronRight } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
-import { SaveButton } from "@/components/common/SaveButton"
-import { FormTextField } from "@/components/common/FormTextField"
-import { Field, FieldGroup, FieldError } from "@/components/ui/field"
+import { FieldError } from "@/components/ui/field"
 import { FormSwitch } from "@/components/common/FormSwitch"
 import {
   Dialog,
@@ -20,12 +20,13 @@ import {
 import { useBookNarration } from "@/hooks/reader/use-book-narration"
 import { api } from "@/lib/tauri-api"
 import { errorMessage } from "@/lib/error-presentation"
-import type {
-  BookCharacterDto,
-  CharacterImportCandidateDto,
-  NarrationMergePlanDto,
-  TtsConfigDto,
-} from "@/lib/tauri-specta"
+import type { TtsConfigDto } from "@/lib/tauri-specta"
+import type { CharacterIntroduction } from "@/lib/readium/characterIntroductions"
+import { NarrationCharacterList } from "./NarrationCharacterList"
+import {
+  READER_SETTINGS_CONTENT_CLASS,
+  ReaderSidePanelScrollArea,
+} from "@/components/reader/shared/ReaderSidePanelChrome"
 
 export type NarrationSubview = { title: string; onBack: () => void }
 
@@ -42,568 +43,115 @@ export function BookNarrationSettings({
   config,
   themeStyle,
   onSubviewChange,
+  findIntroductions,
+  children,
 }: {
   book: NarrationBook
+  findIntroductions?: () => Promise<CharacterIntroduction[]>
   config: TtsConfigDto
   themeStyle?: CSSProperties
   onSubviewChange?: (view: NarrationSubview | null) => void
+  children?: ReactNode
 }) {
   const { t } = useTranslation()
-  const { query, save, importCharacters, previewMerge, merge } =
-    useBookNarration(book.libraryId, book.bookId)
+  const { query, save, previewMerge, merge } = useBookNarration(
+    book.libraryId,
+    book.bookId,
+  )
   const [confirmEnable, setConfirmEnable] = useState(false)
   const [enableError, setEnableError] = useState<string | null>(null)
-  const [subview, setSubview] = useState<NarrationSubview | null>(null)
-  const changeSubview = useCallback(
-    (view: NarrationSubview | null) => {
-      setSubview(view)
-      onSubviewChange?.(view)
-    },
-    [onSubviewChange],
-  )
+  const [charactersOpen, setCharactersOpen] = useState(false)
+  const closeCharacters = useCallback(() => setCharactersOpen(false), [])
   const settings = query.data
-  const error =
-    save.error ??
-    importCharacters.error ??
-    previewMerge.error ??
-    merge.error ??
-    query.error
-  if (!settings)
-    return error ? <FieldError>{errorMessage(error)}</FieldError> : null
-  return (
-    <section className="flex flex-col gap-3">
-      {!subview ? (
-        <FormSwitch
-          align="between"
-          label={t("narration.enabled")}
-          id="narration-enabled"
-          checked={settings.enabled}
-          disabled={save.isPending}
-          onCheckedChange={(enabled) => {
-            setEnableError(null)
-            if (!enabled) {
-              save.mutate({ ...settings, enabled })
-              return
-            }
-            void api
-              .getLlmConfig()
-              .then((config) => {
-                if (!config.defaultProfileId)
-                  setEnableError(t("narration.llmRequired"))
-                else setConfirmEnable(true)
-              })
-              .catch((value) => setEnableError(errorMessage(value)))
-          }}
-        />
-      ) : null}
-      {enableError ? <FieldError>{enableError}</FieldError> : null}
-      {error ? <FieldError>{errorMessage(error)}</FieldError> : null}
-      <Dialog open={confirmEnable} onOpenChange={setConfirmEnable}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("narration.enabled")}</DialogTitle>
-            <DialogDescription>{t("narration.enableNotice")}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmEnable(false)}>
-              {t("llm.cancel")}
-            </Button>
-            <Button
-              onClick={() => {
-                setConfirmEnable(false)
-                save.mutate({ ...settings, enabled: true })
-              }}
-            >
-              {t("narration.enableConfirm")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      {settings.enabled && settings.scopeName && !subview ? (
-        <p className="text-sm text-muted-foreground">
-          {t("narration.series", { name: settings.scopeName })}
-        </p>
-      ) : null}
-      {settings.enabled ? (
-        <BookCharacters
-          book={book}
-          config={config}
-          themeStyle={themeStyle}
-          settings={settings}
-          save={save}
-          importCharacters={importCharacters}
-          previewMerge={previewMerge}
-          merge={merge}
-          onSubviewChange={changeSubview}
-        />
-      ) : null}
-    </section>
-  )
-}
-
-function BookCharacters({
-  book,
-  config,
-  themeStyle,
-  settings,
-  save,
-  importCharacters,
-  previewMerge,
-  merge,
-  onSubviewChange,
-}: {
-  book: NarrationBook
-  config: TtsConfigDto
-  themeStyle?: CSSProperties
-  settings: NonNullable<ReturnType<typeof useBookNarration>["query"]["data"]>
-  save: ReturnType<typeof useBookNarration>["save"]
-  importCharacters: ReturnType<typeof useBookNarration>["importCharacters"]
-  previewMerge: ReturnType<typeof useBookNarration>["previewMerge"]
-  merge: ReturnType<typeof useBookNarration>["merge"]
-  onSubviewChange?: (view: NarrationSubview | null) => void
-}) {
-  const { t } = useTranslation()
-  const [draft, setDraft] = useState<BookCharacterDto | null>(null)
-  const [candidates, setCandidates] = useState<
-    CharacterImportCandidateDto[] | null
-  >(null)
-  const [selected, setSelected] = useState<Set<number>>(new Set())
-  const [mergePlan, setMergePlan] = useState<NarrationMergePlanDto | null>(null)
-  const subviewTitle = characterSubviewTitle(
-    draft,
-    Boolean(candidates),
-    Boolean(mergePlan),
-    t,
-  )
-  useEffect(() => {
-    onSubviewChange?.(
-      subviewTitle
-        ? {
-            title: subviewTitle,
-            onBack: () => {
-              setDraft(null)
-              setCandidates(null)
-              setMergePlan(null)
-            },
-          }
-        : null,
-    )
-    return () => onSubviewChange?.(null)
-  }, [subviewTitle, onSubviewChange])
-  const commit = (characters: BookCharacterDto[]) =>
-    save.mutate(
-      { ...settings, characters },
-      {
-        onSuccess: () => {
-          setDraft(null)
-          setCandidates(null)
-        },
-      },
-    )
-  if (mergePlan)
+  const error = save.error ?? previewMerge.error ?? merge.error ?? query.error
+  if (settings?.enabled && charactersOpen)
     return (
-      <NarrationMergeEditor
+      <NarrationCharacterList
+        book={book}
+        config={config}
         themeStyle={themeStyle}
         settings={settings}
-        plan={mergePlan}
-        onChange={setMergePlan}
-        onCancel={() => setMergePlan(null)}
-        saving={merge.isPending}
-        onSave={() =>
-          merge.mutate(mergePlan, {
-            onSuccess: () => {
-              setMergePlan(null)
-            },
-          })
-        }
+        save={save}
+        findIntroductions={findIntroductions}
+        previewMerge={previewMerge}
+        merge={merge}
+        error={error ? errorMessage(error) : undefined}
+        onSubviewChange={onSubviewChange}
+        onClose={closeCharacters}
       />
     )
-  if (settings.mergeSources.length > 0)
-    return (
-      <div className="flex flex-col gap-3">
-        <p className="text-sm font-medium">{t("narration.merge")}</p>
-        <Button
-          disabled={previewMerge.isPending}
-          onClick={() => previewMerge.mutate(true, { onSuccess: setMergePlan })}
-        >
-          {t("narration.autoMerge")}
-        </Button>
-        <Button
-          variant="outline"
-          disabled={previewMerge.isPending}
-          onClick={() =>
-            previewMerge.mutate(false, { onSuccess: setMergePlan })
-          }
-        >
-          {t("narration.manualMerge")}
-        </Button>
-      </div>
-    )
-  return draft ? (
-    <CharacterEditor
-      themeStyle={themeStyle}
-      character={draft}
-      config={config}
-      saving={save.isPending}
-      onCancel={() => setDraft(null)}
-      onSave={(character) =>
-        commit(
-          draft.id
-            ? settings.characters.map((value) =>
-                value.id === draft.id ? character : value,
-              )
-            : [...settings.characters, character],
-        )
-      }
-      onDelete={
-        draft.id && draft.id !== "narrator"
-          ? () =>
-              commit(
-                settings.characters.filter((value) => value.id !== draft.id),
-              )
-          : undefined
-      }
-    />
-  ) : candidates ? (
-    <div className="flex flex-col gap-3">
-      {candidates.map((candidate, index) => (
-        <label
-          key={`${candidate.source.url}:${candidate.name}`}
-          className="flex items-start gap-2"
-        >
-          <input
-            type="checkbox"
-            checked={selected.has(index)}
-            onChange={(event) =>
-              setSelected((current) => {
-                const next = new Set(current)
-                if (event.target.checked) next.add(index)
-                else next.delete(index)
-                return next
-              })
-            }
-          />
-          <span className="text-sm">
-            <span className="font-medium">{candidate.name}</span>
-            <span className="block text-muted-foreground">
-              {candidate.identity}
-            </span>
-            <a
-              className="text-primary underline"
-              href={candidate.source.url}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {candidate.source.title}
-            </a>
-          </span>
-        </label>
-      ))}
-      <Button
-        disabled={selected.size === 0 || save.isPending}
-        onClick={() =>
-          commit([
-            ...settings.characters,
-            ...candidates
-              .filter((_, index) => selected.has(index))
-              .filter(
-                (candidate) =>
-                  !settings.characters.some(
-                    (character) =>
-                      character.name === candidate.name ||
-                      character.aliases.includes(candidate.name),
-                  ),
-              )
-              .map((candidate) => ({
-                ...candidate,
-                id: "",
-                voice: null,
-                instructions: "",
-              })),
-          ])
-        }
-      >
-        {t("narration.importSelected")}
-      </Button>
-      <Button variant="ghost" onClick={() => setCandidates(null)}>
-        {t("llm.cancel")}
-      </Button>
-    </div>
-  ) : (
-    <>
-      <div className="flex flex-col gap-1">
-        {settings.characters.map((character) => (
-          <Button
-            key={character.id}
-            variant="ghost"
-            className="justify-between"
-            onClick={() => setDraft(character)}
-          >
-            <span>
-              {character.id === "narrator"
-                ? t("narration.narrator")
-                : character.name}
-            </span>
-            <span className="truncate text-muted-foreground">
-              {character.voice?.voiceId || t("narration.defaultVoice")}
-            </span>
-          </Button>
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Button
-          variant="outline"
-          onClick={() =>
-            setDraft({
-              id: "",
-              name: "",
-              aliases: [],
-              identity: "",
-              voice: null,
-              instructions: "",
-              source: null,
-            })
-          }
-        >
-          {t("narration.add")}
-        </Button>
-        <Button
-          variant="outline"
-          disabled={importCharacters.isPending}
-          onClick={() =>
-            importCharacters.mutate(
-              {
-                bookId: book.bookId,
-                title: book.title,
-                authors: book.authors,
-                language: book.language,
-              },
-              {
-                onSuccess: (values) => {
-                  setCandidates(values)
-                  setSelected(new Set(values.map((_, index) => index)))
-                },
-              },
-            )
-          }
-        >
-          {t(
-            importCharacters.isPending
-              ? "narration.importing"
-              : "narration.import",
-          )}
-        </Button>
-      </div>
-    </>
-  )
-}
-
-function CharacterEditor({
-  character,
-  config,
-  themeStyle,
-  saving,
-  onSave,
-  onCancel,
-  onDelete,
-}: {
-  character: BookCharacterDto
-  config: TtsConfigDto
-  themeStyle?: CSSProperties
-  saving: boolean
-  onSave: (value: BookCharacterDto) => void
-  onCancel: () => void
-  onDelete?: () => void
-}) {
-  const { t } = useTranslation()
-  const [draft, setDraft] = useState(character)
-  const [aliases, setAliases] = useState(character.aliases.join(", "))
-  const [systemVoices, setSystemVoices] = useState<SpeechSynthesisVoice[]>([])
-  const provider =
-    draft.voice?.engine === "provider" ? draft.voice.profileId : null
-  const voices = useQuery({
-    queryKey: ["tts-voices", provider],
-    queryFn: () => api.listTtsVoices(provider!),
-    enabled: Boolean(provider),
-  })
-  useEffect(() => {
-    const update = () =>
-      setSystemVoices(window.speechSynthesis?.getVoices() ?? [])
-    update()
-    window.speechSynthesis?.addEventListener("voiceschanged", update)
-    return () =>
-      window.speechSynthesis?.removeEventListener("voiceschanged", update)
-  }, [])
-  const valid = Boolean(
-    draft.name.trim() && (!provider || draft.voice?.voiceId),
-  )
   return (
-    <form
-      className="flex flex-col gap-3"
-      onSubmit={(event) => {
-        event.preventDefault()
-        if (valid)
-          onSave({
-            ...draft,
-            aliases: aliases
-              .split(/[,，\n]/u)
-              .map((value) => value.trim())
-              .filter(Boolean),
-          })
-      }}
-    >
-      <FieldGroup>
-        {draft.id !== "narrator" ? (
-          <>
-            <FormTextField
-              id="character-name"
-              value={draft.name}
-              onChange={(event) =>
-                setDraft({ ...draft, name: event.target.value })
+    <ReaderSidePanelScrollArea className={READER_SETTINGS_CONTENT_CLASS}>
+      <section className="flex flex-col gap-3" style={themeStyle}>
+        {settings ? (
+          <FormSwitch
+            align="between"
+            label={t("narration.enabled")}
+            id="narration-enabled"
+            checked={settings.enabled}
+            disabled={save.isPending}
+            onCheckedChange={(enabled) => {
+              setEnableError(null)
+              if (!enabled) {
+                save.mutate({ ...settings, enabled })
+                return
               }
-              required
-              label={t("narration.name")}
-            />
-            <FormTextField
-              id="character-aliases"
-              value={aliases}
-              onChange={(event) => setAliases(event.target.value)}
-              label={t("narration.aliases")}
-            />
-            <FormTextField
-              id="character-identity"
-              value={draft.identity}
-              onChange={(event) =>
-                setDraft({ ...draft, identity: event.target.value })
-              }
-              label={t("narration.identity")}
-            />
-          </>
-        ) : null}
-        <Field>
-          <FormSelect
-            themeStyle={themeStyle}
-            value={
-              provider ??
-              (draft.voice?.engine === "system" ? "system" : "default")
-            }
-            onValueChange={(value) =>
-              setDraft({
-                ...draft,
-                voice:
-                  value === "default"
-                    ? null
-                    : value === "system"
-                      ? { engine: "system", voiceId: "" }
-                      : { engine: "provider", profileId: value, voiceId: "" },
-              })
-            }
-            id="character-provider"
-            label={t("narration.provider")}
-            className="w-full"
-          >
-            <FormSelectItem value="default">
-              {t("narration.defaultVoice")}
-            </FormSelectItem>
-            <FormSelectItem value="system">
-              {t("narration.system")}
-            </FormSelectItem>
-            {config.profiles.map((profile) => (
-              <FormSelectItem key={profile.id} value={profile.id}>
-                {`${profile.name}/${profile.model}`}
-              </FormSelectItem>
-            ))}
-          </FormSelect>
-        </Field>
-        {draft.voice ? (
-          <Field>
-            <FormSelect
-              themeStyle={themeStyle}
-              value={draft.voice.voiceId || "default"}
-              onValueChange={(voiceId) =>
-                setDraft({
-                  ...draft,
-                  voice: {
-                    ...draft.voice!,
-                    voiceId: voiceId === "default" ? "" : voiceId,
-                  },
+              void api
+                .getLlmConfig()
+                .then((config) => {
+                  if (!config.defaultProfileId)
+                    setEnableError(t("narration.llmRequired"))
+                  else setConfirmEnable(true)
                 })
-              }
-              id="character-voice"
-              label={t("narration.voice")}
-              className="w-full"
-            >
-              <FormSelectItem value="default" disabled={Boolean(provider)}>
-                {t("narration.defaultVoice")}
-              </FormSelectItem>
-              {provider
-                ? voices.data?.map((voice) => (
-                    <FormSelectItem key={voice.id} value={voice.id}>
-                      {voice.id}
-                    </FormSelectItem>
-                  ))
-                : systemVoices.map((voice) => (
-                    <FormSelectItem key={voice.voiceURI} value={voice.voiceURI}>
-                      {voice.name}
-                    </FormSelectItem>
-                  ))}
-            </FormSelect>
-          </Field>
+                .catch((value) => setEnableError(errorMessage(value)))
+            }}
+          />
         ) : null}
-        {voices.error ? (
-          <FieldError>{errorMessage(voices.error)}</FieldError>
+        {enableError ? <FieldError>{enableError}</FieldError> : null}
+        {error ? <FieldError>{errorMessage(error)}</FieldError> : null}
+        <Dialog open={confirmEnable} onOpenChange={setConfirmEnable}>
+          <DialogContent style={themeStyle}>
+            <DialogHeader>
+              <DialogTitle>{t("narration.enabled")}</DialogTitle>
+              <DialogDescription>
+                {t("narration.enableNotice")}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setConfirmEnable(false)}>
+                {t("llm.cancel")}
+              </Button>
+              <Button
+                onClick={() => {
+                  setConfirmEnable(false)
+                  if (settings) save.mutate({ ...settings, enabled: true })
+                }}
+              >
+                {t("narration.enableConfirm")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        {settings?.enabled && settings.scopeName ? (
+          <p className="text-sm text-muted-foreground">
+            {t("narration.series", { name: settings.scopeName })}
+          </p>
         ) : null}
-        <FormTextField
-          id="character-instructions"
-          value={draft.instructions}
-          disabled={draft.voice?.engine === "system"}
-          onChange={(event) =>
-            setDraft({ ...draft, instructions: event.target.value })
-          }
-          label={t("narration.instructions")}
-        />
-      </FieldGroup>
-      {draft.source ? (
-        <a
-          className="text-xs text-primary underline"
-          href={draft.source.url}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {draft.source.title}
-        </a>
-      ) : null}
-      <div className="flex flex-wrap gap-2">
-        <SaveButton disabled={!valid} saving={saving} />
-        <Button type="button" variant="ghost" onClick={onCancel}>
-          {t("llm.cancel")}
-        </Button>
-        {onDelete ? (
+        {settings?.enabled ? (
           <Button
-            type="button"
-            variant="destructive"
-            disabled={saving}
-            onClick={onDelete}
+            variant="ghost"
+            className="w-full justify-between text-reader-chrome-fg"
+            onClick={() => setCharactersOpen(true)}
           >
-            {t("narration.delete")}
+            {t("narration.edit")}
+            <ChevronRight
+              className="size-4 text-reader-chrome-muted"
+              aria-hidden
+            />
           </Button>
         ) : null}
-      </div>
-    </form>
+      </section>
+      {children}
+    </ReaderSidePanelScrollArea>
   )
-}
-
-function characterSubviewTitle(
-  character: { id: string; name: string } | null,
-  importing: boolean,
-  merging: boolean,
-  t: TFunction,
-) {
-  if (character)
-    return character.id === "narrator"
-      ? t("narration.narrator")
-      : character.name || t("narration.add")
-  if (importing) return t("narration.import")
-  if (merging) return t("narration.merge")
-  return null
 }

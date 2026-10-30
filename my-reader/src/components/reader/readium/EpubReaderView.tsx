@@ -610,6 +610,7 @@ export function EpubReaderView({ state }: { state: EpubReaderViewState }) {
             visible={ttsSettingsOpen}
             session={ttsSession}
             book={state.narrationBook}
+            findIntroductions={state.findIntroductions}
             theme={isFixedLayout ? undefined : readerSettings.theme}
           />
         </>

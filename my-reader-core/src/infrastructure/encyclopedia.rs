@@ -1,5 +1,8 @@
 use super::llm;
-use crate::{models::CharacterImportRequest, CoreError};
+use crate::{
+    models::{CharacterImportRequest, CharacterSource},
+    CoreError,
+};
 use serde_json::{json, Value};
 
 fn error(code: &str) -> CoreError {
@@ -10,6 +13,20 @@ pub async fn search_cast(
     origin: &str,
     request: &CharacterImportRequest,
 ) -> Result<Vec<Value>, CoreError> {
+    let mut sources = Vec::new();
+    for source in search_sources(origin, request).await? {
+        sources.extend(read_cast(origin, &source).await?);
+    }
+    if sources.is_empty() {
+        return Err(error("CHARACTERS_NOT_FOUND"));
+    }
+    Ok(sources)
+}
+
+pub async fn search_sources(
+    origin: &str,
+    request: &CharacterImportRequest,
+) -> Result<Vec<CharacterSource>, CoreError> {
     let client = llm::client()?;
     let api = format!("{origin}/w/api.php");
     let suffix = if request.language.starts_with("zh") {
@@ -57,41 +74,68 @@ pub async fn search_cast(
             break;
         }
     }
-    let mut sources = Vec::new();
-    for (id, title) in pages.into_iter().take(3) {
-        let mut url = url::Url::parse(&api).map_err(|_| error("SOURCE_INVALID"))?;
-        url.query_pairs_mut().extend_pairs([
-            ("action", "query"),
-            ("format", "json"),
-            ("formatversion", "2"),
-            ("prop", "revisions"),
-            ("rvprop", "content"),
-            ("rvslots", "main"),
-            ("pageids", &id.to_string()),
-        ]);
-        let response = client
-            .get(url)
-            .header(
-                "User-Agent",
-                "MyReader/0.19 (https://github.com/RyouMon/MyReader)",
-            )
-            .send()
-            .await
-            .map_err(|_| error("SEARCH_FAILED"))?;
-        let result = llm::read_json(response).await?;
-        if let Some(content) =
-            result["query"]["pages"][0]["revisions"][0]["slots"]["main"]["content"].as_str()
-        {
+    pages
+        .into_iter()
+        .take(3)
+        .map(|(id, title)| {
             let mut url = url::Url::parse(origin).map_err(|_| error("SOURCE_INVALID"))?;
             url.set_path("/w/index.php");
             url.query_pairs_mut().append_pair("curid", &id.to_string());
-            for excerpt in cast_excerpts(content) {
-                sources.push(json!({"title":title,"url":url.as_str(),"content":excerpt}));
-            }
-        }
+            Ok(CharacterSource {
+                title,
+                url: url.into(),
+            })
+        })
+        .collect()
+}
+
+pub async fn read_cast(origin: &str, source: &CharacterSource) -> Result<Vec<Value>, CoreError> {
+    let selected = url::Url::parse(&source.url).map_err(|_| error("SOURCE_INVALID"))?;
+    let expected = url::Url::parse(origin).map_err(|_| error("SOURCE_INVALID"))?;
+    if selected.origin() != expected.origin() || selected.path() != "/w/index.php" {
+        return Err(error("SOURCE_INVALID"));
     }
-    if sources.is_empty() {
-        return Err(error("CHARACTERS_NOT_FOUND"));
+    let id = selected
+        .query_pairs()
+        .find(|(key, _)| key == "curid")
+        .and_then(|(_, value)| value.parse::<u64>().ok())
+        .filter(|id| *id > 0)
+        .ok_or_else(|| error("SOURCE_INVALID"))?;
+    let client = llm::client()?;
+    let api = format!("{origin}/w/api.php");
+    let mut url = url::Url::parse(&api).map_err(|_| error("SOURCE_INVALID"))?;
+    url.query_pairs_mut().extend_pairs([
+        ("action", "query"),
+        ("format", "json"),
+        ("formatversion", "2"),
+        ("prop", "revisions"),
+        ("rvprop", "content"),
+        ("rvslots", "main"),
+        ("pageids", &id.to_string()),
+    ]);
+    let response = client
+        .get(url)
+        .header(
+            "User-Agent",
+            "MyReader/0.19 (https://github.com/RyouMon/MyReader)",
+        )
+        .send()
+        .await
+        .map_err(|_| error("SEARCH_FAILED"))?;
+    let result = llm::read_json(response).await?;
+    let mut sources = Vec::new();
+    if let Some(content) =
+        result["query"]["pages"][0]["revisions"][0]["slots"]["main"]["content"].as_str()
+    {
+        let mut url = url::Url::parse(origin).map_err(|_| error("SOURCE_INVALID"))?;
+        url.set_path("/w/index.php");
+        url.query_pairs_mut().append_pair("curid", &id.to_string());
+        let title = result["query"]["pages"][0]["title"]
+            .as_str()
+            .unwrap_or(&source.title);
+        for excerpt in cast_excerpts(content) {
+            sources.push(json!({"title":title,"url":url.as_str(),"content":excerpt}));
+        }
     }
     Ok(sources)
 }

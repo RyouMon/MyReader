@@ -244,8 +244,8 @@ it("names the character being edited and replaces general playback controls unti
       {
         id: "narrator",
         name: "narrator",
-        aliases: [],
-        identity: "",
+        nicknames: [],
+        description: "",
         voice: null,
         instructions: "",
         source: null,
@@ -253,8 +253,8 @@ it("names the character being edited and replaces general playback controls unti
       {
         id: "chen",
         name: "陈默",
-        aliases: [],
-        identity: "Teacher",
+        nicknames: [],
+        description: "Teacher",
         voice: null,
         instructions: "",
         source: null,
@@ -281,10 +281,17 @@ it("names the character being edited and replaces general playback controls unti
     </QueryClientProvider>,
   )
   await screen.findByRole("combobox", { name: "reader.tts.engine" })
-  fireEvent.click(
-    await screen.findByRole("button", { name: /narration.narrator/ }),
-  )
-  expect(await screen.findByText("narration.narrator")).toBeInTheDocument()
+  expect(screen.queryByRole("button", { name: /陈默/ })).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole("button", { name: "narration.add" }),
+  ).not.toBeInTheDocument()
+  fireEvent.click(await screen.findByRole("button", { name: "narration.edit" }))
+  expect(
+    await screen.findByRole("button", { name: /陈默/ }),
+  ).toBeInTheDocument()
+  expect(
+    screen.getByRole("button", { name: "narration.add" }),
+  ).toBeInTheDocument()
   expect(
     screen.queryByRole("combobox", { name: "reader.tts.engine" }),
   ).not.toBeInTheDocument()
@@ -294,19 +301,37 @@ it("names the character being edited and replaces general playback controls unti
   expect(
     screen.queryByRole("switch", { name: "narration.enabled" }),
   ).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole("button", { name: /narration.narrator/ }))
+  expect(await screen.findByText("narration.narrator")).toBeInTheDocument()
+  expect(
+    screen.getByRole("combobox", { name: "narration.provider" }),
+  ).toBeInTheDocument()
+  expect(screen.queryByRole("button", { name: /陈默/ })).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole("button", { name: "narration.add" }),
+  ).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole("button", { name: "common.back" }))
+  expect(
+    await screen.findByRole("button", { name: /陈默/ }),
+  ).toBeInTheDocument()
+  expect(
+    screen.queryByRole("combobox", { name: "reader.tts.engine" }),
+  ).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole("button", { name: /陈默/ }))
+  expect(screen.getByLabelText(/narration\.name/)).toHaveValue("陈默")
+  fireEvent.click(screen.getByRole("button", { name: "llm.cancel" }))
+  expect(
+    await screen.findByRole("button", { name: /陈默/ }),
+  ).toBeInTheDocument()
+  expect(
+    screen.queryByRole("combobox", { name: "reader.tts.engine" }),
+  ).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole("button", { name: "common.back" }))
   expect(
     await screen.findByRole("combobox", { name: "reader.tts.engine" }),
   ).toBeInTheDocument()
-  fireEvent.click(screen.getByRole("button", { name: /陈默/ }))
-  expect(await screen.findByText("陈默")).toBeInTheDocument()
-  expect(screen.getByLabelText(/narration\.name/)).toHaveValue("陈默")
   expect(
-    screen.queryByRole("combobox", { name: "reader.tts.engine" }),
+    screen.queryByRole("button", { name: "common.back" }),
   ).not.toBeInTheDocument()
-  fireEvent.click(screen.getByRole("button", { name: "llm.cancel" }))
-  expect(
-    await screen.findByRole("combobox", { name: "reader.tts.engine" }),
-  ).toBeInTheDocument()
   client.clear()
 })

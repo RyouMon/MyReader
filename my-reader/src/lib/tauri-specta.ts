@@ -97,6 +97,8 @@ export const commands = {
 	saveBookNarration: (libraryId: string, settings: BookNarrationSettingsDto) => typedError<BookNarrationSettingsDto, ErrorKind>(__TAURI_INVOKE("save_book_narration", { libraryId, settings })),
 	cancelBookNarration: (libraryId: string, bookId: number) => typedError<null, ErrorKind>(__TAURI_INVOKE("cancel_book_narration", { libraryId, bookId })),
 	importBookCharacters: (libraryId: string, request: CharacterImportRequestDto) => typedError<CharacterImportCandidateDto[], ErrorKind>(__TAURI_INVOKE("import_book_characters", { libraryId, request })),
+	searchBookCharacterSources: (libraryId: string, request: CharacterImportRequestDto) => typedError<CharacterSourceDto[], ErrorKind>(__TAURI_INVOKE("search_book_character_sources", { libraryId, request })),
+	draftBookCharacters: (libraryId: string, request: CharacterDraftRequestDto) => typedError<BookCharacterDto[], ErrorKind>(__TAURI_INVOKE("draft_book_characters", { libraryId, request })),
 	prepareBookNarration: (libraryId: string, requestId: string, request: NarrationRequestDto, defaultVoice: TtsVoiceRefDto) => typedError<NarrationSpeechDto[], ErrorKind>(__TAURI_INVOKE("prepare_book_narration", { libraryId, requestId, request, defaultVoice })),
 	previewBookNarrationMerge: (libraryId: string, bookId: number, automatic: boolean) => typedError<NarrationMergePlanDto, ErrorKind>(__TAURI_INVOKE("preview_book_narration_merge", { libraryId, bookId, automatic })),
 	mergeBookNarration: (libraryId: string, bookId: number, plan: NarrationMergePlanDto) => typedError<BookNarrationSettingsDto, ErrorKind>(__TAURI_INVOKE("merge_book_narration", { libraryId, bookId, plan })),
@@ -143,8 +145,8 @@ export type AppUpdateSnapshot = {
 export type BookCharacterDto = {
 	id: string,
 	name: string,
-	aliases: string[],
-	identity: string,
+	nicknames: string[],
+	description: string,
 	voice: TtsVoiceRefDto | null,
 	instructions: string,
 	source: CharacterSourceDto | null,
@@ -239,10 +241,17 @@ export type CatalogQuery = {
 	limit: number | null,
 };
 
+export type CharacterDraftInputDto = { kind: "book"; passages: CharacterPassageDto[] } | { kind: "encyclopedia"; source: CharacterSourceDto } | { kind: "prompt"; prompt: string };
+
+export type CharacterDraftRequestDto = {
+	book: CharacterImportRequestDto,
+	input: CharacterDraftInputDto,
+};
+
 export type CharacterImportCandidateDto = {
 	name: string,
-	aliases: string[],
-	identity: string,
+	nicknames: string[],
+	description: string,
 	source: CharacterSourceDto,
 };
 
@@ -251,6 +260,11 @@ export type CharacterImportRequestDto = {
 	title: string,
 	authors: string[],
 	language: string,
+};
+
+export type CharacterPassageDto = {
+	title: string,
+	text: string,
 };
 
 export type CharacterSourceDto = {

@@ -55,6 +55,10 @@
     "advanced": "進階"
   },
   "narration": {
+    "select": "選取",
+    "deselect": "取消選取",
+    "selected": "已選人物：{{count}}",
+    "deleteSelected": "刪除所選人物",
     "enabled": "分角色朗讀",
     "characters": "人物",
     "add": "新增人物",
@@ -63,8 +67,8 @@
     "importing": "搜尋中…",
     "importSelected": "匯入所選",
     "name": "姓名",
-    "aliases": "別名",
-    "identity": "人物介紹",
+    "nicknames": "外號/暱稱",
+    "description": "描述",
     "instructions": "朗讀指令",
     "provider": "模型",
     "voice": "音色",
@@ -85,7 +89,18 @@
     "voiceAndInstructions": "音色與指令",
     "keepExisting": "保留現有",
     "useIncoming": "使用《{{title}}》",
-    "confirmMerge": "確認合併"
+    "confirmMerge": "確認合併",
+    "manualAdd": "手動新增",
+    "fromBook": "從本書新增",
+    "organize": "AI 整理",
+    "organizing": "正在整理…",
+    "prompt": "提示詞",
+    "promptPlaceholder": "貼上人物介紹，或輸入人物資訊及整理要求。",
+    "searchQuery": "搜尋詞",
+    "search": "搜尋",
+    "chooseSource": "選擇對應的作品。",
+    "noSources": "找不到符合的百科條目。",
+    "noBookIntroduction": "未在本書中找到可讀取的人物介紹。"
   },
   "appUpdates": {
     "title": "應用程式更新",
@@ -212,6 +227,8 @@
     "unread": "未讀"
   },
   "common": {
+    "selectAll": "全選",
+    "deselectAll": "取消全選",
     "copy": "複製",
     "cancel": "取消",
     "close": "關閉",

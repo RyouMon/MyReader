@@ -7486,8 +7486,8 @@ const FfiConverterTypeCharacterSource = (() => {
 export type BookCharacter = {
   id: string;
   name: string;
-  aliases: Array<string>;
-  identity: string;
+  nicknames: Array<string>;
+  description: string;
   voice?: NarrationVoice;
   instructions: string;
   source?: CharacterSource;
@@ -7517,8 +7517,8 @@ const FfiConverterTypeBookCharacter = (() => {
       return {
         id: FfiConverterString.read(from),
         name: FfiConverterString.read(from),
-        aliases: FfiConverterSequenceString.read(from),
-        identity: FfiConverterString.read(from),
+        nicknames: FfiConverterSequenceString.read(from),
+        description: FfiConverterString.read(from),
         voice: FfiConverterOptionalTypeNarrationVoice.read(from),
         instructions: FfiConverterString.read(from),
         source: FfiConverterOptionalTypeCharacterSource.read(from),
@@ -7527,8 +7527,8 @@ const FfiConverterTypeBookCharacter = (() => {
     write(value: TypeName, into: RustBuffer): void {
       FfiConverterString.write(value.id, into);
       FfiConverterString.write(value.name, into);
-      FfiConverterSequenceString.write(value.aliases, into);
-      FfiConverterString.write(value.identity, into);
+      FfiConverterSequenceString.write(value.nicknames, into);
+      FfiConverterString.write(value.description, into);
       FfiConverterOptionalTypeNarrationVoice.write(value.voice, into);
       FfiConverterString.write(value.instructions, into);
       FfiConverterOptionalTypeCharacterSource.write(value.source, into);
@@ -7537,8 +7537,8 @@ const FfiConverterTypeBookCharacter = (() => {
       return (
         FfiConverterString.allocationSize(value.id) +
         FfiConverterString.allocationSize(value.name) +
-        FfiConverterSequenceString.allocationSize(value.aliases) +
-        FfiConverterString.allocationSize(value.identity) +
+        FfiConverterSequenceString.allocationSize(value.nicknames) +
+        FfiConverterString.allocationSize(value.description) +
         FfiConverterOptionalTypeNarrationVoice.allocationSize(value.voice) +
         FfiConverterString.allocationSize(value.instructions) +
         FfiConverterOptionalTypeCharacterSource.allocationSize(value.source)
@@ -8670,8 +8670,8 @@ const FfiConverterTypeCatalogQuery = (() => {
 
 export type CharacterImportCandidate = {
   name: string;
-  aliases: Array<string>;
-  identity: string;
+  nicknames: Array<string>;
+  description: string;
   source: CharacterSource;
 };
 
@@ -8700,22 +8700,22 @@ const FfiConverterTypeCharacterImportCandidate = (() => {
     read(from: RustBuffer): TypeName {
       return {
         name: FfiConverterString.read(from),
-        aliases: FfiConverterSequenceString.read(from),
-        identity: FfiConverterString.read(from),
+        nicknames: FfiConverterSequenceString.read(from),
+        description: FfiConverterString.read(from),
         source: FfiConverterTypeCharacterSource.read(from),
       };
     }
     write(value: TypeName, into: RustBuffer): void {
       FfiConverterString.write(value.name, into);
-      FfiConverterSequenceString.write(value.aliases, into);
-      FfiConverterString.write(value.identity, into);
+      FfiConverterSequenceString.write(value.nicknames, into);
+      FfiConverterString.write(value.description, into);
       FfiConverterTypeCharacterSource.write(value.source, into);
     }
     allocationSize(value: TypeName): number {
       return (
         FfiConverterString.allocationSize(value.name) +
-        FfiConverterSequenceString.allocationSize(value.aliases) +
-        FfiConverterString.allocationSize(value.identity) +
+        FfiConverterSequenceString.allocationSize(value.nicknames) +
+        FfiConverterString.allocationSize(value.description) +
         FfiConverterTypeCharacterSource.allocationSize(value.source)
       );
     }

@@ -55,6 +55,10 @@
     "advanced": "Avanzate"
   },
   "narration": {
+    "select": "Seleziona",
+    "deselect": "Deseleziona",
+    "selected": "Personaggi selezionati: {{count}}",
+    "deleteSelected": "Elimina i personaggi selezionati",
     "enabled": "Lettura per personaggio",
     "characters": "Personaggi",
     "add": "Aggiungi personaggio",
@@ -63,8 +67,8 @@
     "importing": "Ricerca…",
     "importSelected": "Importa selezione",
     "name": "Nome",
-    "aliases": "Altri nomi",
-    "identity": "Descrizione del personaggio",
+    "nicknames": "Soprannomi",
+    "description": "Descrizione",
     "instructions": "Istruzioni di lettura",
     "provider": "Modello",
     "voice": "Voce",
@@ -85,7 +89,18 @@
     "voiceAndInstructions": "Voce e istruzioni",
     "keepExisting": "Mantieni impostazioni attuali",
     "useIncoming": "Usa {{title}}",
-    "confirmMerge": "Conferma unione"
+    "confirmMerge": "Conferma unione",
+    "manualAdd": "Aggiungi manualmente",
+    "fromBook": "Da questo libro",
+    "organize": "Organizza con IA",
+    "organizing": "Organizzazione…",
+    "prompt": "Istruzioni",
+    "promptPlaceholder": "Incolla le presentazioni dei personaggi o inserisci informazioni e istruzioni.",
+    "searchQuery": "Termini di ricerca",
+    "search": "Cerca",
+    "chooseSource": "Seleziona l’opera corrispondente.",
+    "noSources": "Nessuna voce enciclopedica corrispondente trovata.",
+    "noBookIntroduction": "Nessuna presentazione leggibile dei personaggi trovata in questo libro."
   },
   "appUpdates": {
     "title": "Aggiornamenti dell’app",
@@ -212,6 +227,8 @@
     "unread": "Non letto"
   },
   "common": {
+    "selectAll": "Seleziona tutto",
+    "deselectAll": "Deseleziona tutto",
     "copy": "Copia",
     "cancel": "Annulla",
     "close": "Chiudi",

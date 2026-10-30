@@ -188,15 +188,15 @@ const config: llm.LlmSettings = {
 const narrator: narration.BookCharacter = {
   id: "narrator",
   name: "Narrator",
-  aliases: [],
-  identity: "",
+  nicknames: [],
+  description: "",
   instructions: "",
 }
 const alice: narration.BookCharacter = {
   id: "stable-alice",
   name: "Alice",
-  aliases: ["A"],
-  identity: "manual identity",
+  nicknames: ["A"],
+  description: "manual identity",
   instructions: "gentle",
   voice: { engine: "provider", profileId: "tts-a", voiceId: "voice-a" },
 }
@@ -570,9 +570,9 @@ it("preserves a character ID, resets voice after provider changes and saves fixe
   mount("reader")
   fireEvent.press(await screen.findByText("Alice"))
   fireEvent.changeText(screen.getByLabelText("narration.name"), "Alice edited")
-  fireEvent.changeText(screen.getByLabelText("narration.aliases"), "A， Ally")
+  fireEvent.changeText(screen.getByLabelText("narration.nicknames"), "A， Ally")
   fireEvent.changeText(
-    screen.getByLabelText("narration.identity"),
+    screen.getByLabelText("narration.description"),
     "same person",
   )
   fireEvent.press(screen.getByText("narration.provider:tts-b"))
@@ -592,7 +592,7 @@ it("preserves a character ID, resets voice after provider changes and saves fixe
           narrator,
           expect.objectContaining({
             id: "stable-alice",
-            aliases: ["A", "Ally"],
+            nicknames: ["A", "Ally"],
             instructions: "soft male voice",
             voice: {
               engine: "provider",
@@ -621,9 +621,9 @@ it("imports selected sourced candidates without overwriting manually edited iden
     url: "https://en.wikipedia.org/wiki/Novel",
   }
   jest.mocked(narration.importBookCharacters).mockResolvedValue([
-    { name: "A", aliases: [], identity: "overwrite", source },
-    { name: "Bob", aliases: [], identity: "friend", source },
-    { name: "Skip", aliases: [], identity: "skip", source },
+    { name: "A", nicknames: [], description: "overwrite", source },
+    { name: "Bob", nicknames: [], description: "friend", source },
+    { name: "Skip", nicknames: [], description: "skip", source },
   ])
   mount("reader")
   fireEvent.press(await screen.findByText("narration.import"))
