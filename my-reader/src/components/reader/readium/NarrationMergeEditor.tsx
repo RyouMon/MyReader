@@ -60,9 +60,9 @@ export function NarrationMergeEditor({
         return (
           <div key={choice.characterId} className="flex flex-col gap-2">
             <Field>
-              {incoming.identity ? (
+              {incoming.description ? (
                 <p className="text-sm text-muted-foreground">
-                  {incoming.identity}
+                  {incoming.description}
                 </p>
               ) : null}
               {incoming.id !== "narrator" ? (

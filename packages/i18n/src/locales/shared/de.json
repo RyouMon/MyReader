@@ -55,6 +55,10 @@
     "advanced": "Erweitert"
   },
   "narration": {
+    "select": "Auswählen",
+    "deselect": "Auswahl aufheben",
+    "selected": "Ausgewählte Figuren: {{count}}",
+    "deleteSelected": "Ausgewählte Figuren löschen",
     "enabled": "Vorlesen nach Figuren",
     "characters": "Figuren",
     "add": "Figur hinzufügen",
@@ -63,8 +67,8 @@
     "importing": "Suche läuft…",
     "importSelected": "Auswahl importieren",
     "name": "Name",
-    "aliases": "Andere Namen",
-    "identity": "Figurenbeschreibung",
+    "nicknames": "Spitznamen",
+    "description": "Beschreibung",
     "instructions": "Vorleseanweisungen",
     "provider": "Modell",
     "voice": "Stimme",
@@ -85,7 +89,18 @@
     "voiceAndInstructions": "Stimme und Anweisungen",
     "keepExisting": "Vorhandene beibehalten",
     "useIncoming": "{{title}} verwenden",
-    "confirmMerge": "Zusammenführen bestätigen"
+    "confirmMerge": "Zusammenführen bestätigen",
+    "manualAdd": "Manuell hinzufügen",
+    "fromBook": "Aus diesem Buch",
+    "organize": "Mit KI ordnen",
+    "organizing": "Wird geordnet…",
+    "prompt": "Anweisungen",
+    "promptPlaceholder": "Figurenbeschreibungen einfügen oder Angaben zu Figuren und Anweisungen eingeben.",
+    "searchQuery": "Suchbegriffe",
+    "search": "Suchen",
+    "chooseSource": "Das passende Werk auswählen.",
+    "noSources": "Keine passenden Enzyklopädieeinträge gefunden.",
+    "noBookIntroduction": "In diesem Buch wurden keine lesbaren Figurenbeschreibungen gefunden."
   },
   "appUpdates": {
     "title": "App-Updates",
@@ -212,6 +227,8 @@
     "unread": "Ungelesen"
   },
   "common": {
+    "selectAll": "Alle auswählen",
+    "deselectAll": "Alle abwählen",
     "copy": "Kopieren",
     "cancel": "Abbrechen",
     "close": "Schließen",

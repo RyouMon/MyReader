@@ -126,6 +126,8 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::narration::save_book_narration::<tauri::Wry>,
             commands::narration::cancel_book_narration::<tauri::Wry>,
             commands::narration::import_book_characters::<tauri::Wry>,
+            commands::narration::search_book_character_sources::<tauri::Wry>,
+            commands::narration::draft_book_characters::<tauri::Wry>,
             commands::narration::prepare_book_narration::<tauri::Wry>,
             commands::narration::preview_book_narration_merge::<tauri::Wry>,
             commands::narration::merge_book_narration::<tauri::Wry>,

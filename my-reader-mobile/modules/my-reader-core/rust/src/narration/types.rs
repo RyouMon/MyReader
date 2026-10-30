@@ -27,8 +27,8 @@ impl TryFrom<CharacterSource> for core::CharacterSource {
 pub struct BookCharacter {
     pub id: String,
     pub name: String,
-    pub aliases: Vec<String>,
-    pub identity: String,
+    pub nicknames: Vec<String>,
+    pub description: String,
     pub voice: Option<NarrationVoice>,
     pub instructions: String,
     pub source: Option<CharacterSource>,
@@ -38,8 +38,8 @@ impl From<core::BookCharacter> for BookCharacter {
         Self {
             id: value.id,
             name: value.name,
-            aliases: value.aliases,
-            identity: value.identity,
+            nicknames: value.nicknames,
+            description: value.description,
             voice: value.voice.map(Into::into),
             instructions: value.instructions,
             source: value.source.map(Into::into),
@@ -52,8 +52,8 @@ impl TryFrom<BookCharacter> for core::BookCharacter {
         Ok(Self {
             id: value.id,
             name: value.name,
-            aliases: value.aliases,
-            identity: value.identity,
+            nicknames: value.nicknames,
+            description: value.description,
             voice: value.voice.map(TryInto::try_into).transpose()?,
             instructions: value.instructions,
             source: value.source.map(TryInto::try_into).transpose()?,
@@ -176,16 +176,16 @@ impl TryFrom<CharacterImportRequest> for core::CharacterImportRequest {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct CharacterImportCandidate {
     pub name: String,
-    pub aliases: Vec<String>,
-    pub identity: String,
+    pub nicknames: Vec<String>,
+    pub description: String,
     pub source: CharacterSource,
 }
 impl From<core::CharacterImportCandidate> for CharacterImportCandidate {
     fn from(value: core::CharacterImportCandidate) -> Self {
         Self {
             name: value.name,
-            aliases: value.aliases,
-            identity: value.identity,
+            nicknames: value.nicknames,
+            description: value.description,
             source: value.source.into(),
         }
     }
@@ -195,8 +195,8 @@ impl TryFrom<CharacterImportCandidate> for core::CharacterImportCandidate {
     fn try_from(value: CharacterImportCandidate) -> Result<Self, Self::Error> {
         Ok(Self {
             name: value.name,
-            aliases: value.aliases,
-            identity: value.identity,
+            nicknames: value.nicknames,
+            description: value.description,
             source: value.source.try_into()?,
         })
     }

@@ -29,8 +29,8 @@ impl From<CharacterSourceDto> for core::CharacterSource {
 pub struct BookCharacterDto {
     pub id: String,
     pub name: String,
-    pub aliases: Vec<String>,
-    pub identity: String,
+    pub nicknames: Vec<String>,
+    pub description: String,
     pub voice: Option<TtsVoiceRefDto>,
     pub instructions: String,
     pub source: Option<CharacterSourceDto>,
@@ -40,8 +40,8 @@ impl From<core::BookCharacter> for BookCharacterDto {
         Self {
             id: value.id,
             name: value.name,
-            aliases: value.aliases,
-            identity: value.identity,
+            nicknames: value.nicknames,
+            description: value.description,
             voice: value.voice.map(Into::into),
             instructions: value.instructions,
             source: value.source.map(Into::into),
@@ -53,8 +53,8 @@ impl From<BookCharacterDto> for core::BookCharacter {
         Self {
             id: value.id,
             name: value.name,
-            aliases: value.aliases,
-            identity: value.identity,
+            nicknames: value.nicknames,
+            description: value.description,
             voice: value.voice.map(Into::into),
             instructions: value.instructions,
             source: value.source.map(Into::into),
@@ -170,16 +170,65 @@ impl From<CharacterImportRequestDto> for core::CharacterImportRequest {
 #[serde(rename_all = "camelCase")]
 pub struct CharacterImportCandidateDto {
     pub name: String,
-    pub aliases: Vec<String>,
-    pub identity: String,
+    pub nicknames: Vec<String>,
+    pub description: String,
     pub source: CharacterSourceDto,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CharacterPassageDto {
+    pub title: String,
+    pub text: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum CharacterDraftInputDto {
+    Book { passages: Vec<CharacterPassageDto> },
+    Encyclopedia { source: CharacterSourceDto },
+    Prompt { prompt: String },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CharacterDraftRequestDto {
+    pub book: CharacterImportRequestDto,
+    pub input: CharacterDraftInputDto,
+}
+
+impl From<CharacterDraftRequestDto> for core::CharacterDraftRequest {
+    fn from(value: CharacterDraftRequestDto) -> Self {
+        Self {
+            book: value.book.into(),
+            input: match value.input {
+                CharacterDraftInputDto::Book { passages } => core::CharacterDraftInput::Book {
+                    passages: passages
+                        .into_iter()
+                        .map(|p| core::CharacterPassage {
+                            title: p.title,
+                            text: p.text,
+                        })
+                        .collect(),
+                },
+                CharacterDraftInputDto::Encyclopedia { source } => {
+                    core::CharacterDraftInput::Encyclopedia {
+                        source: source.into(),
+                    }
+                }
+                CharacterDraftInputDto::Prompt { prompt } => {
+                    core::CharacterDraftInput::Prompt { prompt }
+                }
+            },
+        }
+    }
 }
 impl From<core::CharacterImportCandidate> for CharacterImportCandidateDto {
     fn from(value: core::CharacterImportCandidate) -> Self {
         Self {
             name: value.name,
-            aliases: value.aliases,
-            identity: value.identity,
+            nicknames: value.nicknames,
+            description: value.description,
             source: value.source.into(),
         }
     }
@@ -188,8 +237,8 @@ impl From<CharacterImportCandidateDto> for core::CharacterImportCandidate {
     fn from(value: CharacterImportCandidateDto) -> Self {
         Self {
             name: value.name,
-            aliases: value.aliases,
-            identity: value.identity,
+            nicknames: value.nicknames,
+            description: value.description,
             source: value.source.into(),
         }
     }

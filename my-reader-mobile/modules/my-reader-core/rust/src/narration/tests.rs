@@ -10,8 +10,8 @@ async fn ffi_preserves_book_identity_and_voice_settings_and_exact_fallback_text(
         core::BookCharacter {
             id: "alice".into(),
             name: "Alice".into(),
-            aliases: vec!["A".into()],
-            identity: "A teacher".into(),
+            nicknames: vec!["A".into()],
+            description: "A teacher".into(),
             voice: Some(core::TtsVoiceRef::Provider {
                 profile_id: "p".into(),
                 voice_id: "a".into(),
@@ -30,7 +30,8 @@ async fn ffi_preserves_book_identity_and_voice_settings_and_exact_fallback_text(
     let restored = narration_get_settings(root.clone(), 7.0).await.unwrap();
     assert_eq!(restored.revision, saved.revision);
     assert_eq!(restored.characters[1].id, "alice");
-    assert_eq!(restored.characters[1].aliases, ["A"]);
+    assert_eq!(restored.characters[1].nicknames, ["A"]);
+    assert_eq!(restored.characters[1].description, "A teacher");
     assert_eq!(
         restored.characters[1].source.as_ref().unwrap().title,
         "Novel"
@@ -93,8 +94,8 @@ fn ffi_rejects_unknown_voice_engines_and_keeps_import_provenance() {
     }
     let candidate = core::CharacterImportCandidate {
         name: "Alice".into(),
-        aliases: vec!["A".into()],
-        identity: "Teacher".into(),
+        nicknames: vec!["A".into()],
+        description: "Teacher".into(),
         source: core::CharacterSource {
             title: "Cast".into(),
             url: "https://en.wikipedia.org/wiki/Cast".into(),
@@ -103,7 +104,7 @@ fn ffi_rejects_unknown_voice_engines_and_keeps_import_provenance() {
     let dto: CharacterImportCandidate = candidate.into();
     let restored: core::CharacterImportCandidate = dto.try_into().unwrap();
     assert_eq!(restored.source.url, "https://en.wikipedia.org/wiki/Cast");
-    assert_eq!(restored.aliases, ["A"]);
+    assert_eq!(restored.nicknames, ["A"]);
     let request: CharacterImportRequest = core::CharacterImportRequest {
         book_id: 7,
         title: "Novel".into(),

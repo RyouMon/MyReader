@@ -1,3 +1,4 @@
+mod character_drafts;
 mod scopes;
 
 use super::*;
@@ -23,7 +24,6 @@ async fn fixture() -> Fixture {
     let endpoint = format!("http://{}", listener.local_addr().unwrap());
     let requests = Arc::new(Mutex::new(Vec::new()));
     let captured = requests.clone();
-    let origin = endpoint.clone();
     let slow_request = Arc::new(tokio::sync::Notify::new());
     let release_slow = Arc::new(tokio::sync::Notify::new());
     let received = slow_request.clone();
@@ -32,7 +32,6 @@ async fn fixture() -> Fixture {
         loop {
             let (mut stream, _) = listener.accept().await.unwrap();
             let captured = captured.clone();
-            let origin = origin.clone();
             let received = received.clone();
             let release = release.clone();
             tokio::spawn(async move {
@@ -85,15 +84,20 @@ async fn fixture() -> Fixture {
                         )
                         .unwrap();
                         let content = input["sources"][0]["content"].as_str().unwrap();
+                        let source_url = if request["model"] == "invalid-source" {
+                            "https://unverified.invalid/"
+                        } else {
+                            input["sources"][0]["url"].as_str().unwrap()
+                        };
                         let mut characters = vec![
-                            json!({"name":"陈默","aliases":["老陈"],"identity":"A teacher","sourceUrl":format!("{origin}/w/index.php?curid=1")}),
+                            json!({"name":"陈默","nicknames":["老陈"],"description":"A teacher","sourceUrl":source_url}),
                         ];
                         for index in 1..=30 {
                             if content.contains(&format!("; Person {index}\n")) {
-                                characters.push(json!({"name":format!("Person {index}"),"aliases":[],"identity":"A supporting character","sourceUrl":format!("{origin}/w/index.php?curid=1")}));
+                                characters.push(json!({"name":format!("Person {index}"),"nicknames":[],"description":"A supporting character","sourceUrl":source_url}));
                             }
                         }
-                        json!({"characters":characters})
+                        json!({"characters":if request["model"] == "no-characters" { Vec::new() } else { characters }})
                     } else if system.starts_with("Match each") {
                         let input: Value = serde_json::from_str(
                             messages.last().unwrap()["content"].as_str().unwrap(),
@@ -161,8 +165,8 @@ async fn setup(root: &Path) -> BookNarrationSettings {
     settings.characters.push(BookCharacter {
         id: "char-chen".into(),
         name: "陈默".into(),
-        aliases: vec!["老陈".into()],
-        identity: "A teacher".into(),
+        nicknames: vec!["老陈".into()],
+        description: "A teacher".into(),
         voice: Some(TtsVoiceRef::Provider {
             profile_id: "voice-provider".into(),
             voice_id: "A".into(),
@@ -437,7 +441,7 @@ async fn encyclopedia_import_searches_reads_and_keeps_verified_provenance() {
     assert!(candidates
         .iter()
         .any(|character| character.name == "Person 30"));
-    assert_eq!(candidates[0].aliases, vec!["老陈"]);
+    assert_eq!(candidates[0].nicknames, vec!["老陈"]);
     assert_eq!(
         candidates[0].source.url,
         format!("{}/w/index.php?curid=1", fixture.endpoint)
@@ -510,7 +514,7 @@ async fn voice_edits_reuse_analysis_but_manual_identity_edits_invalidate_it() {
         .await
         .unwrap();
     assert_eq!(fixture.requests.lock().unwrap().len(), 1);
-    settings.characters[1].identity = "Corrected identity".into();
+    settings.characters[1].description = "Corrected identity".into();
     NarrationService::save_settings(root.path(), settings)
         .await
         .unwrap();

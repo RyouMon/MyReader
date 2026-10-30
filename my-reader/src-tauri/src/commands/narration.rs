@@ -100,6 +100,45 @@ pub async fn import_book_characters<R: tauri::Runtime>(
 }
 #[tauri::command]
 #[specta::specta]
+pub async fn search_book_character_sources<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    library_id: String,
+    request: CharacterImportRequestDto,
+) -> Result<Vec<CharacterSourceDto>, AppError> {
+    let (root, _) = paths(&app, &state, &library_id)?;
+    resolve_settings(&app, &state, &library_id, request.book_id).await?;
+    Ok(
+        NarrationService::search_character_sources(&root, request.into())
+            .await?
+            .into_iter()
+            .map(Into::into)
+            .collect(),
+    )
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn draft_book_characters<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    library_id: String,
+    request: CharacterDraftRequestDto,
+) -> Result<Vec<BookCharacterDto>, AppError> {
+    let (root, config) = paths(&app, &state, &library_id)?;
+    resolve_settings(&app, &state, &library_id, request.book.book_id).await?;
+    let credential = selected_credential(&config)?;
+    Ok(
+        NarrationService::draft_characters(&root, &config, request.into(), Some(&credential))
+            .await?
+            .into_iter()
+            .map(Into::into)
+            .collect(),
+    )
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn prepare_book_narration<R: tauri::Runtime>(
     app: AppHandle<R>,
     state: State<'_, AppState>,

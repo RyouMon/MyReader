@@ -84,6 +84,7 @@ import {
   epubPreferencesForSpread,
 } from "@/lib/readium/epubReaderPrefs"
 import { EpubSearchService } from "@/lib/readium/epubSearch"
+import { findCharacterIntroductions } from "@/lib/readium/characterIntroductions"
 import {
   applyEpubSearchHighlight,
   clearEpubSearchHighlight,
@@ -1082,6 +1083,18 @@ function useEpubReaderController({
   const tocRows = useMemo(() => {
     return tocItems.map(tocItemToReadiumRow)
   }, [tocItems])
+
+  const findIntroductions = useCallback(
+    () =>
+      epubSearchService
+        ? findCharacterIntroductions(
+            epubSearchService,
+            epubTextResources,
+            tocItems,
+          )
+        : Promise.resolve([]),
+    [epubSearchService, epubTextResources, tocItems],
+  )
 
   const tocItemByKey = useMemo(() => {
     return new Map(tocItems.map((item) => [item.id, item]))
@@ -2401,6 +2414,7 @@ function useEpubReaderController({
           language: readerLanguage,
         }
       : undefined,
+    findIntroductions,
     getPageImages: async () => {
       const container = containerRef.current
       const nav = navigatorRef.current

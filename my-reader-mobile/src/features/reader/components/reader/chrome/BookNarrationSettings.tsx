@@ -305,7 +305,9 @@ function BookCharacters({
               }
             />
           </View>
-          <Text style={{ color: palette.textMuted }}>{candidate.identity}</Text>
+          <Text style={{ color: palette.textMuted }}>
+            {candidate.description}
+          </Text>
           <Text
             accessibilityRole="link"
             style={{ color: palette.accentText }}
@@ -328,7 +330,7 @@ function BookCharacters({
                   !settings.characters.some(
                     (character) =>
                       character.name === candidate.name ||
-                      character.aliases.includes(candidate.name),
+                      character.nicknames.includes(candidate.name),
                   ),
               )
               .map((candidate) => ({
@@ -367,8 +369,8 @@ function BookCharacters({
           setDraft({
             id: "",
             name: "",
-            aliases: [],
-            identity: "",
+            nicknames: [],
+            description: "",
             voice: undefined,
             instructions: "",
             source: undefined,
@@ -423,7 +425,7 @@ function CharacterEditor({
 }) {
   const { t } = useTranslation()
   const [draft, setDraft] = useState(character)
-  const [aliases, setAliases] = useState(character.aliases.join(", "))
+  const [nicknames, setNicknames] = useState(character.nicknames.join(", "))
   const valid = Boolean(
     draft.name.trim() &&
       (draft.voice?.engine !== "provider" || draft.voice.voiceId),
@@ -440,19 +442,19 @@ function CharacterEditor({
             onChangeText={(name) => setDraft({ ...draft, name })}
           />
           <ProviderTextField
-            testID="narration-aliases"
-            label={t("narration.aliases")}
+            testID="narration-nicknames"
+            label={t("narration.nicknames")}
             palette={palette}
-            value={aliases}
-            onChangeText={setAliases}
+            value={nicknames}
+            onChangeText={setNicknames}
           />
           <ProviderTextField
-            testID="narration-identity"
+            testID="narration-description"
             multiline
-            label={t("narration.identity")}
+            label={t("narration.description")}
             palette={palette}
-            value={draft.identity}
-            onChangeText={(identity) => setDraft({ ...draft, identity })}
+            value={draft.description}
+            onChangeText={(description) => setDraft({ ...draft, description })}
           />
         </>
       ) : null}
@@ -487,7 +489,7 @@ function CharacterEditor({
         onPress={() =>
           onSave({
             ...draft,
-            aliases: aliases
+            nicknames: nicknames
               .split(/[,，\n]/u)
               .map((value) => value.trim())
               .filter(Boolean),

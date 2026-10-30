@@ -82,9 +82,9 @@ export function NarrationMergeEditor({
                 }
               />
             )}
-            {incoming.identity ? (
+            {incoming.description ? (
               <Text style={{ color: palette.textMuted }}>
-                {incoming.identity}
+                {incoming.description}
               </Text>
             ) : null}
             {conflict ? (

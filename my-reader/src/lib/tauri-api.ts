@@ -58,6 +58,8 @@ export const api = {
   saveBookNarration: wrap(commands.saveBookNarration),
   cancelBookNarration: wrap(commands.cancelBookNarration),
   importBookCharacters: wrap(commands.importBookCharacters),
+  searchBookCharacterSources: wrap(commands.searchBookCharacterSources),
+  draftBookCharacters: wrap(commands.draftBookCharacters),
   prepareBookNarration: async (
     libraryId: string,
     request: NarrationRequestDto,

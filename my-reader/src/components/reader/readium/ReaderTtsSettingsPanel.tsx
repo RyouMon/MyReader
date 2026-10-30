@@ -15,6 +15,9 @@ import {
 } from "@/components/reader/shared/ReaderSidePanelChrome"
 import { openTtsProviderSettings } from "@/lib/settingsWindow"
 import { FormSwitch } from "@/components/common/FormSwitch"
+import { Separator } from "@/components/ui/separator"
+import { Button } from "@/components/ui/button"
+import type { CharacterIntroduction } from "@/lib/readium/characterIntroductions"
 import type { EpubTtsSession } from "@/hooks/reader/useEpubTtsSession"
 import { api } from "@/lib/tauri-api"
 import { errorMessage } from "@/lib/error-presentation"
@@ -34,6 +37,7 @@ type ReaderTtsSettingsPanelProps = {
   session: EpubTtsSession
   theme?: string
   book?: NarrationBook
+  findIntroductions?: () => Promise<CharacterIntroduction[]>
 }
 
 const SETTINGS_EVENT_SOURCE = "reader-tts-settings"
@@ -51,6 +55,7 @@ export function ReaderTtsSettingsPanel({
   session,
   theme,
   book,
+  findIntroductions,
 }: ReaderTtsSettingsPanelProps) {
   const { t, i18n } = useTranslation()
   const interfaceLanguage = i18n?.resolvedLanguage || i18n?.language || "en"
@@ -140,6 +145,99 @@ export function ReaderTtsSettingsPanel({
     session.setSpeed(speed)
   }
 
+  const controls = config ? (
+    <>
+      {book ? <Separator className="bg-reader-chrome-border" /> : null}
+      <ReaderTtsEngineSelect
+        config={config}
+        saving={saving}
+        themeStyle={themeStyle}
+        selectEngine={selectEngine}
+      />
+
+      <section className="flex flex-col gap-2">
+        <FormSelect
+          value={session.currentVoiceId}
+          disabled={session.voices.length === 0}
+          onValueChange={session.setVoice}
+          id="reader-tts-voice"
+          label={t("reader.tts.voice")}
+          labelMode="external"
+          placeholder={t("reader.tts.loadingVoices")}
+          themeStyle={themeStyle}
+        >
+          {session.voices.map((voice) => (
+            <FormSelectItem key={voiceId(voice)} value={voiceId(voice)}>
+              {voice.label || voice.name} ·{" "}
+              {formatTtsLanguageName(voice.language, interfaceLanguage)}
+            </FormSelectItem>
+          ))}
+        </FormSelect>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <FormSlider
+          {...TTS_SPEED_RANGE}
+          id="reader-tts-speed"
+          label={t("reader.tts.speed")}
+          value={session.speed}
+          themeStyle={themeStyle}
+          formatValue={(value) => `${value.toFixed(1)}×`}
+          onCommit={updateSpeed}
+        />
+        <FormSlider
+          {...TTS_PITCH_RANGE}
+          id="reader-tts-pitch"
+          label={t("reader.tts.pitch")}
+          value={finitePreference(config.playback.pitch, 1)}
+          themeStyle={themeStyle}
+          formatValue={(value) => value.toFixed(1)}
+          onCommit={(pitch) => void updatePlayback({ pitch })}
+        />
+      </section>
+
+      <Separator className="bg-reader-chrome-border" />
+
+      <FormSwitch
+        align="between"
+        id="reader-tts-skip-page-breaks"
+        label={t("reader.tts.skipPageBreaks")}
+        description={t("reader.tts.skipPageBreaksDescription")}
+        checked={config.playback.skipPageBreaks}
+        disabled={saving}
+        onCheckedChange={(skipPageBreaks) =>
+          void updatePlayback({ skipPageBreaks })
+        }
+      />
+      <FormSwitch
+        align="between"
+        id="reader-tts-skip-footnotes"
+        label={t("reader.tts.skipFootnotes")}
+        description={t("reader.tts.skipFootnotesDescription")}
+        checked={config.playback.skipFootnotes}
+        disabled={saving}
+        onCheckedChange={(skipFootnotes) =>
+          void updatePlayback({ skipFootnotes })
+        }
+      />
+
+      <Button
+        type="button"
+        variant="ghost"
+        style={themeStyle}
+        className="w-full justify-between text-reader-chrome-fg"
+        onClick={() =>
+          void openTtsProviderSettings().catch((error: unknown) =>
+            setError(errorMessage(error)),
+          )
+        }
+      >
+        <span>{t("ttsSettings.manageProviders")}</span>
+        <ChevronRight className="size-4 text-reader-chrome-muted" aria-hidden />
+      </Button>
+    </>
+  ) : null
+
   return (
     <ReaderSidePanelFrame visible={visible} side="right">
       <ReaderSidePanelHeader
@@ -148,131 +246,36 @@ export function ReaderTtsSettingsPanel({
         onBack={narrationView?.onBack}
         backLabel={t("common.back")}
       />
-      <ReaderSidePanelScrollArea className={READER_SETTINGS_CONTENT_CLASS}>
-        {loading ? (
-          <div className="grid min-h-36 place-items-center" role="status">
-            <Loader2 className="size-5 animate-spin text-reader-chrome-muted" />
-          </div>
-        ) : null}
-
-        {error ? (
-          <p
-            className="select-text whitespace-pre-wrap break-words rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
-            role="alert"
+      {error ? (
+        <p
+          className="m-4 select-text whitespace-pre-wrap break-words rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : null}
+      {loading ? (
+        <div className="grid min-h-36 place-items-center" role="status">
+          <Loader2 className="size-5 animate-spin text-reader-chrome-muted" />
+        </div>
+      ) : config ? (
+        book ? (
+          <BookNarrationSettings
+            key={`${book.libraryId}:${book.bookId}`}
+            book={book}
+            config={config}
+            themeStyle={themeStyle}
+            findIntroductions={findIntroductions}
+            onSubviewChange={setNarrationView}
           >
-            {error}
-          </p>
-        ) : null}
-
-        {!loading && config ? (
-          <>
-            {book ? (
-              <BookNarrationSettings
-                key={`${book.libraryId}:${book.bookId}`}
-                book={book}
-                config={config}
-                themeStyle={themeStyle}
-                onSubviewChange={setNarrationView}
-              />
-            ) : null}
-            {!narrationView ? (
-              <>
-                <ReaderTtsEngineSelect
-                  config={config}
-                  saving={saving}
-                  themeStyle={themeStyle}
-                  selectEngine={selectEngine}
-                />
-
-                <section className="flex flex-col gap-2">
-                  <FormSelect
-                    value={session.currentVoiceId}
-                    disabled={session.voices.length === 0}
-                    onValueChange={session.setVoice}
-                    id="reader-tts-voice"
-                    label={t("reader.tts.voice")}
-                    placeholder={t("reader.tts.loadingVoices")}
-                    themeStyle={themeStyle}
-                  >
-                    {session.voices.map((voice) => (
-                      <FormSelectItem
-                        key={voiceId(voice)}
-                        value={voiceId(voice)}
-                      >
-                        {voice.label || voice.name} ·{" "}
-                        {formatTtsLanguageName(
-                          voice.language,
-                          interfaceLanguage,
-                        )}
-                      </FormSelectItem>
-                    ))}
-                  </FormSelect>
-                </section>
-
-                <section className="flex flex-col gap-4 rounded-md bg-[var(--reader-chrome-segment-idle)] p-3">
-                  <FormSlider
-                    {...TTS_SPEED_RANGE}
-                    id="reader-tts-speed"
-                    label={t("reader.tts.speed")}
-                    value={session.speed}
-                    themeStyle={themeStyle}
-                    formatValue={(value) => `${value.toFixed(1)}×`}
-                    onCommit={updateSpeed}
-                  />
-                  <FormSlider
-                    {...TTS_PITCH_RANGE}
-                    id="reader-tts-pitch"
-                    label={t("reader.tts.pitch")}
-                    value={finitePreference(config.playback.pitch, 1)}
-                    themeStyle={themeStyle}
-                    formatValue={(value) => value.toFixed(1)}
-                    onCommit={(pitch) => void updatePlayback({ pitch })}
-                  />
-                </section>
-
-                <FormSwitch
-                  align="between"
-                  id="reader-tts-skip-page-breaks"
-                  label={t("reader.tts.skipPageBreaks")}
-                  description={t("reader.tts.skipPageBreaksDescription")}
-                  checked={config.playback.skipPageBreaks}
-                  disabled={saving}
-                  onCheckedChange={(skipPageBreaks) =>
-                    void updatePlayback({ skipPageBreaks })
-                  }
-                />
-                <FormSwitch
-                  align="between"
-                  id="reader-tts-skip-footnotes"
-                  label={t("reader.tts.skipFootnotes")}
-                  description={t("reader.tts.skipFootnotesDescription")}
-                  checked={config.playback.skipFootnotes}
-                  disabled={saving}
-                  onCheckedChange={(skipFootnotes) =>
-                    void updatePlayback({ skipFootnotes })
-                  }
-                />
-
-                <button
-                  type="button"
-                  className="flex h-11 w-full items-center justify-between rounded-md bg-[var(--reader-chrome-segment-idle)] px-3 text-[13px] font-medium text-reader-chrome-fg transition-colors hover:bg-[var(--reader-chrome-segment-active)]"
-                  onClick={() =>
-                    void openTtsProviderSettings().catch((error: unknown) =>
-                      setError(errorMessage(error)),
-                    )
-                  }
-                >
-                  <span>{t("ttsSettings.manageProviders")}</span>
-                  <ChevronRight
-                    className="size-4 text-reader-chrome-muted"
-                    aria-hidden
-                  />
-                </button>
-              </>
-            ) : null}
-          </>
-        ) : null}
-      </ReaderSidePanelScrollArea>
+            {controls}
+          </BookNarrationSettings>
+        ) : (
+          <ReaderSidePanelScrollArea className={READER_SETTINGS_CONTENT_CLASS}>
+            {controls}
+          </ReaderSidePanelScrollArea>
+        )
+      ) : null}
     </ReaderSidePanelFrame>
   )
 }
@@ -303,6 +306,7 @@ function ReaderTtsEngineSelect({
         }
         id="reader-tts-engine"
         label={t("reader.tts.engine")}
+        labelMode="external"
         themeStyle={themeStyle}
       >
         <FormSelectItem value="system">

@@ -55,6 +55,10 @@
     "advanced": "고급"
   },
   "narration": {
+    "select": "선택",
+    "deselect": "선택 해제",
+    "selected": "선택한 인물: {{count}}",
+    "deleteSelected": "선택한 인물 삭제",
     "enabled": "등장인물별 읽어주기",
     "characters": "등장인물",
     "add": "등장인물 추가",
@@ -63,8 +67,8 @@
     "importing": "검색 중…",
     "importSelected": "선택 항목 가져오기",
     "name": "이름",
-    "aliases": "별칭",
-    "identity": "인물 소개",
+    "nicknames": "별명/닉네임",
+    "description": "설명",
     "instructions": "읽기 지시",
     "provider": "모델",
     "voice": "음성",
@@ -85,7 +89,18 @@
     "voiceAndInstructions": "음성과 지시",
     "keepExisting": "기존 설정 유지",
     "useIncoming": "{{title}} 사용",
-    "confirmMerge": "병합 확인"
+    "confirmMerge": "병합 확인",
+    "manualAdd": "직접 추가",
+    "fromBook": "이 책에서 추가",
+    "organize": "AI로 정리",
+    "organizing": "정리 중…",
+    "prompt": "지시 사항",
+    "promptPlaceholder": "등장인물 소개를 붙여 넣거나 인물 정보와 정리 지시를 입력하세요.",
+    "searchQuery": "검색어",
+    "search": "검색",
+    "chooseSource": "해당 작품을 선택하세요.",
+    "noSources": "일치하는 백과사전 항목을 찾을 수 없습니다.",
+    "noBookIntroduction": "이 책에서 읽을 수 있는 등장인물 소개를 찾을 수 없습니다."
   },
   "appUpdates": {
     "title": "앱 업데이트",
@@ -212,6 +227,8 @@
     "unread": "읽지 않음"
   },
   "common": {
+    "selectAll": "전체 선택",
+    "deselectAll": "전체 선택 해제",
     "copy": "복사",
     "cancel": "취소",
     "close": "닫기",
