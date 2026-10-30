@@ -2,18 +2,27 @@ use std::time::Duration;
 
 use reqwest::{Client, RequestBuilder, Response};
 use serde_json::{json, Value};
+use tokio::time::{timeout_at, Instant};
 
 use crate::{
-    models::{LlmMessage, LlmProtocol, LlmProviderProfile},
+    models::{LlmMessage, LlmProgress, LlmProtocol, LlmProviderProfile, LlmStreamEvent},
     CoreError,
 };
 
 const MAX_RESPONSE_BYTES: usize = 2 * 1024 * 1024;
+const IDLE_TIMEOUT: Duration = Duration::from_secs(30);
+
+mod streaming;
+
+fn client_builder() -> reqwest::ClientBuilder {
+    super::http::client_builder()
+        .connect_timeout(IDLE_TIMEOUT)
+        .redirect(reqwest::redirect::Policy::none())
+}
 
 pub(crate) fn client() -> Result<Client, CoreError> {
-    super::http::client_builder()
-        .timeout(Duration::from_secs(30))
-        .redirect(reqwest::redirect::Policy::none())
+    client_builder()
+        .timeout(IDLE_TIMEOUT)
         .build()
         .map_err(|_| error("CLIENT"))
 }
@@ -31,7 +40,7 @@ pub(crate) async fn complete(
     messages: &[LlmMessage],
     schema: Value,
 ) -> Result<Value, CoreError> {
-    complete_with_output_limit(profile, credential, messages, schema, 4096).await
+    complete_with_output_limit(profile, credential, messages, schema, 4096, None).await
 }
 
 pub(crate) async fn complete_with_output_limit(
@@ -40,38 +49,40 @@ pub(crate) async fn complete_with_output_limit(
     messages: &[LlmMessage],
     schema: Value,
     output_tokens: u32,
+    progress: Option<LlmProgress<'_>>,
 ) -> Result<Value, CoreError> {
+    if let Some(progress) = progress {
+        progress(LlmStreamEvent::Started);
+    }
     let format = json!({"name":"myreader_result", "strict":true, "schema":schema});
     let output_tokens = output_tokens.min(profile.max_output_tokens.unwrap_or(u32::MAX));
     let (suffix, mut body) = match profile.protocol {
         LlmProtocol::ChatCompletions => (
             "chat/completions",
             json!({
-                "model":profile.model, "messages":messages, "stream":false,
+                "model":profile.model, "messages":messages, "stream":true,
                 "max_completion_tokens":output_tokens, "response_format":{"type":"json_schema", "json_schema":format}
             }),
         ),
         LlmProtocol::Responses => (
             "responses",
             json!({
-                "model":profile.model, "input":messages, "store":false, "stream":false,
+                "model":profile.model, "input":messages, "store":false, "stream":true,
                 "max_output_tokens":output_tokens, "text":{"format":{
                     "type":"json_schema", "name":"myreader_result", "strict":true, "schema":format["schema"]
                 }}
             }),
         ),
     };
-    let client = client()?;
+    let client = client_builder().build().map_err(|_| error("CLIENT"))?;
     let url = endpoint(profile, suffix);
-    let response = authorize(client.post(&url), credential)
-        .json(&body)
-        .send()
-        .await
-        .map_err(map_network_error)?;
-    let response = if profile.protocol == LlmProtocol::ChatCompletions
+    let (response, deadline) = send_completion(&client, &url, credential, &body).await?;
+    let (response, deadline) = if profile.protocol == LlmProtocol::ChatCompletions
         && response.status() == reqwest::StatusCode::BAD_REQUEST
     {
-        let bytes = read_bytes(response).await?;
+        let bytes = timeout_at(deadline, read_bytes(response))
+            .await
+            .map_err(|_| error("TIMEOUT"))??;
         let failure: Value = serde_json::from_slice(&bytes).unwrap_or(Value::Null);
         if !unsupported_schema(&failure) {
             return Err(error("HTTP_400"));
@@ -83,17 +94,55 @@ pub(crate) async fn complete_with_output_limit(
         })];
         json_messages.extend(messages.iter().map(|message| json!(message)));
         body["messages"] = json!(json_messages);
-        let response = authorize(client.post(&url), credential)
-            .json(&body)
-            .send()
-            .await
-            .map_err(map_network_error)?;
-        read_json(response).await?
+        send_completion(&client, &url, credential, &body).await?
     } else {
-        read_json(response).await?
+        (response, deadline)
     };
-    let text = response_text(profile.protocol, &response)?;
+    if !response.status().is_success() {
+        return Err(error(&format!("HTTP_{}", response.status().as_u16())));
+    }
+    let is_stream = response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.split(';').next())
+        .is_some_and(|value| value.trim().eq_ignore_ascii_case("text/event-stream"));
+    let text = if is_stream {
+        streaming::read_text(response, profile.protocol, deadline, progress).await?
+    } else {
+        // Some compatible services ignore stream=true. They still need to
+        // return a complete response within the first-content deadline.
+        let value = timeout_at(deadline, read_json(response))
+            .await
+            .map_err(|_| error("TIMEOUT"))??;
+        response_text(profile.protocol, &value)?
+    };
+    if text.len() > MAX_RESPONSE_BYTES {
+        return Err(error("RESPONSE_TOO_LARGE"));
+    }
+    if !is_stream {
+        if let Some(progress) = progress {
+            progress(LlmStreamEvent::Text(text.clone()));
+        }
+    }
     serde_json::from_str(&text).map_err(|_| error("INVALID_RESPONSE"))
+}
+
+async fn send_completion(
+    client: &Client,
+    url: &str,
+    credential: Option<&str>,
+    body: &Value,
+) -> Result<(Response, Instant), CoreError> {
+    let deadline = Instant::now() + IDLE_TIMEOUT;
+    let response = timeout_at(
+        deadline,
+        authorize(client.post(url), credential).json(body).send(),
+    )
+    .await
+    .map_err(|_| error("TIMEOUT"))?
+    .map_err(map_network_error)?;
+    Ok((response, deadline))
 }
 
 fn unsupported_schema(response: &Value) -> bool {

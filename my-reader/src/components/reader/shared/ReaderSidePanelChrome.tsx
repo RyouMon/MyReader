@@ -116,6 +116,14 @@ export function ReaderSidePanelHeader({
   )
 }
 
+export function ReaderSidePanelFooter({ children }: { children: ReactNode }) {
+  return (
+    <footer className="flex min-h-14 shrink-0 items-center gap-2 border-t border-reader-chrome-border px-4">
+      {children}
+    </footer>
+  )
+}
+
 type ReaderSidePanelScrollAreaProps = {
   children: ReactNode
   className?: string

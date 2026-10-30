@@ -2,13 +2,15 @@ use crate::{
     commands::{common, AppState},
     error::AppError,
     services::{
-        library_service::LibraryService, llm_service::selected_credential, narration_dto::*,
+        library_service::LibraryService,
+        llm_service::{selected_credential, LlmStreamEventDto},
+        narration_dto::*,
         tts_service::TtsVoiceRefDto,
     },
     utils::paths::library_sidecar_path,
 };
 use my_reader_core::api::narration::NarrationService;
-use tauri::{AppHandle, State};
+use tauri::{ipc::Channel, AppHandle, State};
 
 async fn resolve_settings<R: tauri::Runtime>(
     app: &AppHandle<R>,
@@ -124,17 +126,25 @@ pub async fn draft_book_characters<R: tauri::Runtime>(
     state: State<'_, AppState>,
     library_id: String,
     request: CharacterDraftRequestDto,
+    on_progress: Channel<LlmStreamEventDto>,
 ) -> Result<Vec<BookCharacterDto>, AppError> {
     let (root, config) = paths(&app, &state, &library_id)?;
     resolve_settings(&app, &state, &library_id, request.book.book_id).await?;
     let credential = selected_credential(&config)?;
-    Ok(
-        NarrationService::draft_characters(&root, &config, request.into(), Some(&credential))
-            .await?
-            .into_iter()
-            .map(Into::into)
-            .collect(),
+    let progress = |event| {
+        let _ = on_progress.send(LlmStreamEventDto::from(event));
+    };
+    Ok(NarrationService::draft_characters_with_progress(
+        &root,
+        &config,
+        request.into(),
+        Some(&credential),
+        Some(&progress),
     )
+    .await?
+    .into_iter()
+    .map(Into::into)
+    .collect())
 }
 
 #[tauri::command]

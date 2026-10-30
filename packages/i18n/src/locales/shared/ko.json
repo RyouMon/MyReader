@@ -72,7 +72,7 @@
     "instructions": "읽기 지시",
     "provider": "모델",
     "voice": "음성",
-    "defaultVoice": "기본값",
+    "defaultModel": "기본값",
     "system": "시스템",
     "narrator": "해설자",
     "source": "출처",
@@ -100,7 +100,10 @@
     "search": "검색",
     "chooseSource": "해당 작품을 선택하세요.",
     "noSources": "일치하는 백과사전 항목을 찾을 수 없습니다.",
-    "noBookIntroduction": "이 책에서 읽을 수 있는 등장인물 소개를 찾을 수 없습니다."
+    "noBookIntroduction": "이 책에서 읽을 수 있는 등장인물 소개를 찾을 수 없습니다.",
+    "alreadyExists": "이미 있음",
+    "willReplace": "덮어쓰기 예정",
+    "replaceCharacter": "{{name}} 덮어쓰기"
   },
   "appUpdates": {
     "title": "앱 업데이트",

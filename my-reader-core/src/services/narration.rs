@@ -1,6 +1,7 @@
 mod draft;
 mod import;
 mod merge;
+mod names;
 #[cfg(test)]
 mod tests;
 
@@ -85,12 +86,7 @@ impl NarrationService {
                     .iter()
                     .find(|character| character.id == segment.character_id)
                     .unwrap_or(narrator);
-                let voice = character
-                    .voice
-                    .as_ref()
-                    .or(narrator.voice.as_ref())
-                    .unwrap_or(&default_voice)
-                    .clone();
+                let voice = character.voice.as_ref().unwrap_or(&default_voice).clone();
                 let instructions = [character.instructions.as_str(), segment.delivery.as_str()]
                     .into_iter()
                     .filter(|value| !value.trim().is_empty())

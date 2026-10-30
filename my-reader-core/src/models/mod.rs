@@ -34,7 +34,8 @@ pub use library::{
 };
 pub use library_source::LibrarySourceType;
 pub use llm::{
-    LlmConfig, LlmCredential, LlmMessage, LlmModel, LlmProtocol, LlmProvider, LlmProviderProfile,
+    LlmConfig, LlmCredential, LlmMessage, LlmModel, LlmProgress, LlmProtocol, LlmProvider,
+    LlmProviderProfile, LlmStreamEvent,
 };
 pub use narration::{
     BookCharacter, BookNarrationSettings, CharacterDraftInput, CharacterDraftRequest,

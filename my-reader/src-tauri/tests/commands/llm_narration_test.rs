@@ -177,7 +177,7 @@ async fn narration_commands_preserve_identity_and_route_exact_text_with_book_sco
     let error = invoke_err(
         &app,
         "draft_book_characters",
-        json!({"libraryId":"library","request":{"book":{"bookId":8,"title":"Novel","authors":[],"language":"en"},"input":{"kind":"book","passages":[]}}}),
+        json!({"libraryId":"library","onProgress":"__CHANNEL__:0","request":{"book":{"bookId":8,"title":"Novel","authors":[],"language":"en"},"input":{"kind":"book","passages":[]}}}),
     );
     assert!(error.message.contains("DISABLED"));
 

@@ -1,14 +1,14 @@
-use super::{error, import, LlmService, NarrationService};
+use super::{error, import, names::name_key, LlmService, NarrationService};
 use crate::{
     infrastructure::encyclopedia,
     models::{
         BookCharacter, CharacterDraftInput, CharacterDraftRequest, CharacterImportRequest,
-        CharacterSource, LlmCredential, LlmProviderProfile,
+        CharacterSource, LlmCredential, LlmProgress, LlmProviderProfile,
     },
     CoreError,
 };
 use serde_json::{json, Value};
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 fn validate_book(book: &CharacterImportRequest) -> Result<(), CoreError> {
     if book.title.trim().is_empty() || book.title.len() > 500 || book.authors.len() > 20 {
@@ -44,22 +44,53 @@ impl NarrationService {
         request: CharacterDraftRequest,
         credential: Option<&LlmCredential>,
     ) -> Result<Vec<BookCharacter>, CoreError> {
+        Self::draft_characters_with_progress(root, config_path, request, credential, None).await
+    }
+
+    pub async fn draft_characters_with_progress(
+        root: &Path,
+        config_path: &Path,
+        request: CharacterDraftRequest,
+        credential: Option<&LlmCredential>,
+        progress: Option<LlmProgress<'_>>,
+    ) -> Result<Vec<BookCharacter>, CoreError> {
         validate_book(&request.book)?;
-        if !Self::get_settings(root, request.book.book_id)
-            .await?
-            .enabled
-        {
+        let settings = Self::get_settings(root, request.book.book_id).await?;
+        if !settings.enabled {
             return Err(error("DISABLED"));
         }
         let profile = LlmService::selected_profile(config_path)?;
         let credential = super::credential_for(&profile, credential)?;
-        draft(
+        let mut characters = draft(
             &origin(&request.book.language),
             &request,
             &profile,
             credential,
+            progress,
         )
-        .await
+        .await?;
+        let current = Self::get_settings(root, request.book.book_id).await?;
+        if current.revision != settings.revision || current.scope_id != settings.scope_id {
+            return Err(error("STALE_REQUEST"));
+        }
+        let mut existing_by_name = HashMap::new();
+        for existing in &settings.characters {
+            existing_by_name
+                .entry(name_key(&existing.name))
+                .or_insert(existing);
+        }
+        for character in &mut characters {
+            if let Some(existing) = settings
+                .characters
+                .iter()
+                .find(|existing| existing.name == character.name)
+                .or_else(|| existing_by_name.get(&name_key(&character.name)).copied())
+            {
+                // A draft with an existing ID is an explicit replacement candidate.
+                character.id = existing.id.clone();
+            }
+        }
+        Ok(characters)
     }
 }
 
@@ -68,6 +99,7 @@ pub(super) async fn draft(
     request: &CharacterDraftRequest,
     profile: &LlmProviderProfile,
     credential: Option<&str>,
+    progress: Option<LlmProgress<'_>>,
 ) -> Result<Vec<BookCharacter>, CoreError> {
     let sourced = matches!(request.input, CharacterDraftInput::Encyclopedia { .. });
     let (sources, instructions) = match &request.input {
@@ -104,21 +136,26 @@ pub(super) async fn draft(
             (text_sources("User input", "prompt", prompt), Some("Extract and organize the character facts supplied by the user. Follow their requested naming, grouping and description style, but only use characters and facts explicitly supplied in their input. Return names, evidenced nicknames and concise identities in the requested book's language. Do not fill missing information from memory or guess identities from the book title. Return an empty characters array if the input does not supply enough character information. Use exactly the supplied sourceUrl; it is a reference to user input, not a verified web citation."))
         }
     };
-    Ok(
-        import::extract_sources(&sources, &request.book, profile, credential, instructions)
-            .await?
-            .into_iter()
-            .map(|candidate| BookCharacter {
-                id: String::new(),
-                name: candidate.name,
-                nicknames: candidate.nicknames,
-                description: candidate.description,
-                voice: None,
-                instructions: String::new(),
-                source: sourced.then_some(candidate.source),
-            })
-            .collect(),
+    Ok(import::extract_sources(
+        &sources,
+        &request.book,
+        profile,
+        credential,
+        instructions,
+        progress,
     )
+    .await?
+    .into_iter()
+    .map(|candidate| BookCharacter {
+        id: String::new(),
+        name: candidate.name,
+        nicknames: candidate.nicknames,
+        description: candidate.description,
+        voice: None,
+        instructions: String::new(),
+        source: sourced.then_some(candidate.source),
+    })
+    .collect())
 }
 
 fn text_sources(title: &str, reference: &str, text: &str) -> Vec<Value> {

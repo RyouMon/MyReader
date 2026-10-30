@@ -284,7 +284,7 @@ export const desktopEn = {
         previewText: "Welcome to MyReader read aloud.",
         saved: "Voice service saved.",
         validationRequired:
-          "Enter a name, endpoint, model, at least one voice ID, and choose a default voice from that list.",
+          "Enter a name, endpoint, model, and at least one voice ID.",
         name: "Name",
         endpoint: "Server address",
         model: "Model",
@@ -292,8 +292,6 @@ export const desktopEn = {
         voicesPlaceholder: "Enter one provider-supported voice ID per line",
         voicesDescription:
           "OpenAI-compatible APIs have no shared voice discovery contract. MyReader assumes no voice names; use the provider documentation.",
-        defaultVoice: "Default voice",
-        selectDefaultVoice: "Enter voice IDs first",
         instructions: "Default reading instructions",
         instructionsPlaceholder: "For example: Read naturally and calmly",
         credential: "API key or access token",

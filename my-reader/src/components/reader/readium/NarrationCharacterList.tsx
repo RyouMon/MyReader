@@ -21,6 +21,7 @@ import type {
   BookNarrationSettingsDto,
   NarrationMergePlanDto,
   TtsConfigDto,
+  TtsVoiceRefDto,
 } from "@/lib/tauri-specta"
 import type { CharacterIntroduction } from "@/lib/readium/characterIntroductions"
 import type { NarrationBook, NarrationSubview } from "./BookNarrationSettings"
@@ -60,6 +61,7 @@ function characterViewTitle(view: CharacterView, t: TFunction): string {
 export function NarrationCharacterList({
   book,
   config,
+  readingVoice,
   themeStyle,
   settings,
   save,
@@ -72,6 +74,7 @@ export function NarrationCharacterList({
 }: {
   book: NarrationBook
   config: TtsConfigDto
+  readingVoice: TtsVoiceRefDto
   themeStyle?: CSSProperties
   settings: BookNarrationSettingsDto
   save: Narration["save"]
@@ -168,7 +171,7 @@ export function NarrationCharacterList({
             character.id === "narrator"
               ? t("narration.narrator")
               : character.name,
-          description: character.voice?.voiceId || t("narration.defaultVoice"),
+          description: character.voice?.voiceId || t("narration.defaultModel"),
           selectable: character.id !== "narrator",
         }))}
         mutating={save.isPending || previewMerge.isPending || needsMerge}
@@ -223,6 +226,30 @@ export function NarrationCharacterList({
     )
   }
 
+  if (view.kind === "edit") {
+    return (
+      <CharacterEditor
+        key={view.character.id || "new"}
+        character={view.character}
+        config={config}
+        readingVoice={readingVoice}
+        themeStyle={themeStyle}
+        saving={save.isPending}
+        error={error}
+        onCancel={() => setView({ kind: "list" })}
+        onSave={(value) =>
+          commit(
+            view.character.id
+              ? settings.characters.map((entry) =>
+                  entry.id === view.character.id ? value : entry,
+                )
+              : [...settings.characters, value],
+          )
+        }
+      />
+    )
+  }
+
   return (
     <ReaderSidePanelScrollArea className={READER_SETTINGS_CONTENT_CLASS}>
       {error ? <FieldError>{error}</FieldError> : null}
@@ -241,7 +268,7 @@ export function NarrationCharacterList({
               })
             }
           />
-        ) : view.kind === "import" ? (
+        ) : (
           <CharacterImportPanel
             key={view.mode}
             book={book}
@@ -250,34 +277,22 @@ export function NarrationCharacterList({
             saving={save.isPending}
             onImport={(characters) =>
               commit([
-                ...settings.characters,
-                ...characters.filter(
-                  (candidate) =>
-                    !settings.characters.some(
-                      (character) =>
-                        character.name === candidate.name ||
-                        character.nicknames.includes(candidate.name),
-                    ),
-                ),
+                ...settings.characters.map((character) => {
+                  const replacement = characters.find(
+                    (candidate) => candidate.id === character.id,
+                  )
+                  return replacement
+                    ? {
+                        ...character,
+                        name: replacement.name,
+                        nicknames: replacement.nicknames,
+                        description: replacement.description,
+                        source: replacement.source,
+                      }
+                    : character
+                }),
+                ...characters.filter((candidate) => !candidate.id),
               ])
-            }
-          />
-        ) : (
-          <CharacterEditor
-            key={view.character.id || "new"}
-            character={view.character}
-            config={config}
-            themeStyle={themeStyle}
-            saving={save.isPending}
-            onCancel={() => setView({ kind: "list" })}
-            onSave={(value) =>
-              commit(
-                view.character.id
-                  ? settings.characters.map((entry) =>
-                      entry.id === view.character.id ? value : entry,
-                    )
-                  : [...settings.characters, value],
-              )
             }
           />
         )}

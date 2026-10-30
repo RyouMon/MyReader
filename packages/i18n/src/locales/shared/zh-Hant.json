@@ -72,7 +72,7 @@
     "instructions": "朗讀指令",
     "provider": "模型",
     "voice": "音色",
-    "defaultVoice": "預設",
+    "defaultModel": "預設",
     "system": "系統",
     "narrator": "旁白",
     "source": "來源",
@@ -100,7 +100,10 @@
     "search": "搜尋",
     "chooseSource": "選擇對應的作品。",
     "noSources": "找不到符合的百科條目。",
-    "noBookIntroduction": "未在本書中找到可讀取的人物介紹。"
+    "noBookIntroduction": "未在本書中找到可讀取的人物介紹。",
+    "alreadyExists": "已存在",
+    "willReplace": "將覆蓋",
+    "replaceCharacter": "覆蓋{{name}}"
   },
   "appUpdates": {
     "title": "應用程式更新",

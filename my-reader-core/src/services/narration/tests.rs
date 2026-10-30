@@ -84,6 +84,10 @@ async fn fixture() -> Fixture {
                         )
                         .unwrap();
                         let content = input["sources"][0]["content"].as_str().unwrap();
+                        if request["model"] == "slow-draft" {
+                            received.notify_one();
+                            release.notified().await;
+                        }
                         let source_url = if request["model"] == "invalid-source" {
                             "https://unverified.invalid/"
                         } else {
@@ -92,6 +96,18 @@ async fn fixture() -> Fixture {
                         let mut characters = vec![
                             json!({"name":"陈默","nicknames":["老陈"],"description":"A teacher","sourceUrl":source_url}),
                         ];
+                        if request["model"] == "shared-nickname" && content == "second character" {
+                            characters[0]["name"] = json!("老陈");
+                            characters[0]["nicknames"] = json!(["陈默"]);
+                        }
+                        if request["model"] == "name-variants" {
+                            characters[0]["name"] = json!(if content == "first character" {
+                                "陳默"
+                            } else {
+                                "陈默"
+                            });
+                            characters.push(json!({"name":"陈　默","nicknames":["老师"],"description":"A teacher","sourceUrl":source_url}));
+                        }
                         for index in 1..=30 {
                             if content.contains(&format!("; Person {index}\n")) {
                                 characters.push(json!({"name":format!("Person {index}"),"nicknames":[],"description":"A supporting character","sourceUrl":source_url}));
@@ -337,6 +353,51 @@ async fn speech_preparation_keeps_identity_separate_from_voice_and_delivery() {
     assert!(NarrationService::save_settings(root.path(), settings)
         .await
         .is_err());
+}
+
+#[tokio::test]
+async fn default_character_model_follows_reader_settings_without_inheriting_narrator_voice() {
+    let fixture = fixture().await;
+    let root = tempfile::tempdir().unwrap();
+    let config = root.path().join("config.json");
+    LlmService::upsert_profile(&config, profile(fixture.endpoint.clone())).unwrap();
+    let mut settings = setup(root.path()).await;
+    settings.characters[0].voice = Some(TtsVoiceRef::Provider {
+        profile_id: "narrator-model".into(),
+        voice_id: "narrator-voice".into(),
+    });
+    settings.characters[1].voice = None;
+    NarrationService::save_settings(root.path(), settings)
+        .await
+        .unwrap();
+    for reading_voice in [
+        TtsVoiceRef::Provider {
+            profile_id: "reader-model".into(),
+            voice_id: "reader-voice".into(),
+        },
+        TtsVoiceRef::System {
+            voice_id: "system-voice".into(),
+        },
+    ] {
+        let speech = NarrationService::prepare(
+            root.path(),
+            &config,
+            request(1),
+            reading_voice.clone(),
+            None,
+        )
+        .await
+        .unwrap();
+        assert_eq!(speech[0].voice, reading_voice);
+        assert_eq!(speech[0].instructions, "沉稳的男声\ncalm");
+    }
+    assert_eq!(fixture.requests.lock().unwrap().len(), 1);
+    assert!(NarrationService::get_settings(root.path(), 42)
+        .await
+        .unwrap()
+        .characters[1]
+        .voice
+        .is_none());
 }
 
 fn request(position: usize) -> NarrationRequest {

@@ -20,7 +20,7 @@ import {
 import { useBookNarration } from "@/hooks/reader/use-book-narration"
 import { api } from "@/lib/tauri-api"
 import { errorMessage } from "@/lib/error-presentation"
-import type { TtsConfigDto } from "@/lib/tauri-specta"
+import type { TtsConfigDto, TtsVoiceRefDto } from "@/lib/tauri-specta"
 import type { CharacterIntroduction } from "@/lib/readium/characterIntroductions"
 import { NarrationCharacterList } from "./NarrationCharacterList"
 import {
@@ -41,6 +41,7 @@ export type NarrationBook = {
 export function BookNarrationSettings({
   book,
   config,
+  readingVoice,
   themeStyle,
   onSubviewChange,
   findIntroductions,
@@ -49,6 +50,7 @@ export function BookNarrationSettings({
   book: NarrationBook
   findIntroductions?: () => Promise<CharacterIntroduction[]>
   config: TtsConfigDto
+  readingVoice: TtsVoiceRefDto
   themeStyle?: CSSProperties
   onSubviewChange?: (view: NarrationSubview | null) => void
   children?: ReactNode
@@ -69,6 +71,7 @@ export function BookNarrationSettings({
       <NarrationCharacterList
         book={book}
         config={config}
+        readingVoice={readingVoice}
         themeStyle={themeStyle}
         settings={settings}
         save={save}
