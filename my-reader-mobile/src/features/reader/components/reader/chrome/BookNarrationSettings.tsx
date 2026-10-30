@@ -427,8 +427,7 @@ function CharacterEditor({
   const [draft, setDraft] = useState(character)
   const [nicknames, setNicknames] = useState(character.nicknames.join(", "))
   const valid = Boolean(
-    draft.name.trim() &&
-      (draft.voice?.engine !== "provider" || draft.voice.voiceId),
+    draft.name.trim() && (!draft.voice || draft.voice.voiceId.trim()),
   )
   return (
     <View className="gap-3">
@@ -547,14 +546,10 @@ function CharacterVoiceFields({
             ? selectedModel
               ? `${selectedModel.name}/${selectedModel.model}`
               : provider
-            : t(
-                draft.voice?.engine === "system"
-                  ? "narration.system"
-                  : "narration.defaultVoice",
-              )
+            : t(draft.voice ? "narration.system" : "narration.defaultModel")
         }
         actions={[
-          { id: "default", title: t("narration.defaultVoice") },
+          { id: "default", title: t("narration.defaultModel") },
           { id: "system", title: t("narration.system") },
           ...config.profiles.map((profile) => ({
             id: profile.id,
@@ -580,26 +575,21 @@ function CharacterVoiceFields({
           title={t("narration.voice")}
           palette={palette}
           value={
-            (voices.data?.find((voice) => voice.id === draft.voice?.voiceId)
-              ?.name ??
-              draft.voice.voiceId) ||
-            t("narration.defaultVoice")
+            voices.data?.find((voice) => voice.id === draft.voice?.voiceId)
+              ?.name ?? draft.voice.voiceId
           }
-          actions={[
-            ...(!provider
-              ? [{ id: "default", title: t("narration.defaultVoice") }]
-              : []),
-            ...(voices.data?.map((voice) => ({
+          actions={
+            voices.data?.map((voice) => ({
               id: voice.id,
               title: voice.name,
-            })) ?? []),
-          ]}
+            })) ?? []
+          }
           onSelect={(voiceId) =>
             setDraft({
               ...draft,
               voice: {
                 ...draft.voice!,
-                voiceId: voiceId === "default" ? "" : voiceId,
+                voiceId,
               },
             })
           }

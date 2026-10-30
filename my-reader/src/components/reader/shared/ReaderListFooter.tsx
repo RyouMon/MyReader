@@ -3,6 +3,7 @@ import type { ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
+import { ReaderSidePanelFooter } from "./ReaderSidePanelChrome"
 
 export type ReaderListSelectionLabels = {
   select: string
@@ -42,7 +43,7 @@ export function ReaderListFooter({
     allSelected ? "common.deselectAll" : "common.selectAll",
   )
   return (
-    <div className="flex min-h-14 shrink-0 items-center gap-2 border-t border-reader-chrome-border px-4">
+    <ReaderSidePanelFooter>
       <ButtonGroup className="shrink-0">
         <Button
           type="button"
@@ -99,6 +100,6 @@ export function ReaderListFooter({
       ) : (
         children
       )}
-    </div>
+    </ReaderSidePanelFooter>
   )
 }

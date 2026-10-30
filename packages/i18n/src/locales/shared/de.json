@@ -72,7 +72,7 @@
     "instructions": "Vorleseanweisungen",
     "provider": "Modell",
     "voice": "Stimme",
-    "defaultVoice": "Standard",
+    "defaultModel": "Standard",
     "system": "System",
     "narrator": "Erzähler",
     "source": "Quelle",
@@ -100,7 +100,10 @@
     "search": "Suchen",
     "chooseSource": "Das passende Werk auswählen.",
     "noSources": "Keine passenden Enzyklopädieeinträge gefunden.",
-    "noBookIntroduction": "In diesem Buch wurden keine lesbaren Figurenbeschreibungen gefunden."
+    "noBookIntroduction": "In diesem Buch wurden keine lesbaren Figurenbeschreibungen gefunden.",
+    "alreadyExists": "Bereits vorhanden",
+    "willReplace": "Wird ersetzt",
+    "replaceCharacter": "{{name}} ersetzen"
   },
   "appUpdates": {
     "title": "App-Updates",

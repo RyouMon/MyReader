@@ -72,7 +72,7 @@
     "instructions": "読み上げ指示",
     "provider": "モデル",
     "voice": "音声",
-    "defaultVoice": "既定",
+    "defaultModel": "既定",
     "system": "システム",
     "narrator": "ナレーター",
     "source": "出典",
@@ -100,7 +100,10 @@
     "search": "検索",
     "chooseSource": "該当する作品を選択してください。",
     "noSources": "一致する百科事典の記事が見つかりません。",
-    "noBookIntroduction": "この本に読み取り可能な登場人物の紹介が見つかりません。"
+    "noBookIntroduction": "この本に読み取り可能な登場人物の紹介が見つかりません。",
+    "alreadyExists": "登録済み",
+    "willReplace": "上書き予定",
+    "replaceCharacter": "{{name}}を上書き"
   },
   "appUpdates": {
     "title": "アプリの更新",

@@ -139,6 +139,16 @@ pub struct LlmMessage {
     pub content: String,
 }
 
+// Transient, request-scoped output; never persisted as conversation history.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LlmStreamEvent {
+    Started,
+    Reasoning(String),
+    Text(String),
+}
+
+pub type LlmProgress<'a> = &'a (dyn Fn(LlmStreamEvent) + Send + Sync + 'a);
+
 // Request-scoped only: never serialized into configuration or conversation history.
 pub struct LlmCredential {
     pub profile_id: String,

@@ -3,9 +3,11 @@ import { useTranslation } from "react-i18next"
 import { Check, Loader2, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
 import { FieldError } from "@/components/ui/field"
 import { FormTextField } from "@/components/common/FormTextField"
 import { CollapsibleSection } from "@/components/common/CollapsibleSection"
+import { StreamingStatusLine } from "@/components/common/StreamingStatusLine"
 import { useBookNarration } from "@/hooks/reader/use-book-narration"
 import { errorMessage } from "@/lib/error-presentation"
 import type {
@@ -33,7 +35,10 @@ export function CharacterImportPanel({
   onImport: (characters: BookCharacterDto[]) => void
 }) {
   const { t } = useTranslation()
-  const { draftCharacters } = useBookNarration(book.libraryId, book.bookId)
+  const { draftCharacters, draftProgress } = useBookNarration(
+    book.libraryId,
+    book.bookId,
+  )
   const [prompt, setPrompt] = useState("")
   const [candidates, setCandidates] = useState<BookCharacterDto[] | null>(null)
   const busy = draftCharacters.isPending || saving
@@ -79,7 +84,12 @@ export function CharacterImportPanel({
               </Button>
             </>
           )}
-          {draftCharacters.isPending ? <ImportStatus organizing /> : null}
+          {draftCharacters.isPending ? (
+            <StreamingStatusLine
+              text={draftProgress}
+              label={t("narration.organizing")}
+            />
+          ) : null}
         </>
       )}
     </div>
@@ -97,7 +107,9 @@ function CharacterCandidates({
 }) {
   const { t } = useTranslation()
   const [selected, setSelected] = useState(
-    new Set(candidates.map((_, index) => index)),
+    new Set(
+      candidates.flatMap((candidate, index) => (candidate.id ? [] : [index])),
+    ),
   )
   return (
     <>
@@ -112,6 +124,11 @@ function CharacterCandidates({
           className="flex items-start gap-3 py-1"
         >
           <Checkbox
+            aria-label={
+              candidate.id
+                ? t("narration.replaceCharacter", { name: candidate.name })
+                : candidate.name
+            }
             checked={selected.has(index)}
             onCheckedChange={() =>
               setSelected((current) => toggleSelection(current, index))
@@ -119,7 +136,18 @@ function CharacterCandidates({
             disabled={saving}
           />
           <span className="min-w-0 text-sm">
-            <span className="font-medium">{candidate.name}</span>
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="font-medium">{candidate.name}</span>
+              {candidate.id ? (
+                <Badge variant="secondary">
+                  {t(
+                    selected.has(index)
+                      ? "narration.willReplace"
+                      : "narration.alreadyExists",
+                  )}
+                </Badge>
+              ) : null}
+            </span>
             <span className="block whitespace-pre-wrap text-muted-foreground">
               {candidate.description}
             </span>
@@ -338,7 +366,7 @@ function PassagePreview({
   )
 }
 
-function ImportStatus({ organizing = false }: { organizing?: boolean }) {
+function ImportStatus() {
   const { t } = useTranslation()
   return (
     <p
@@ -346,7 +374,7 @@ function ImportStatus({ organizing = false }: { organizing?: boolean }) {
       className="flex items-center gap-2 text-sm text-muted-foreground"
     >
       <Loader2 className="size-4 animate-spin" />
-      {t(organizing ? "narration.organizing" : "narration.importing")}
+      {t("narration.importing")}
     </p>
   )
 }

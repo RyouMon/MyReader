@@ -208,6 +208,7 @@ async fn caps_inference_output_using_the_configured_model_limit_for_both_protoco
                 &[],
                 serde_json::json!({"type":"object"}),
                 requested,
+                None,
             )
             .await
             .unwrap();
@@ -227,17 +228,33 @@ async fn inference_server(
     LlmProviderProfile,
     tokio::task::JoinHandle<Vec<serde_json::Value>>,
 ) {
+    inference_server_with_content_type(
+        responses
+            .into_iter()
+            .map(|(status, value)| (status, "application/json", value.to_string()))
+            .collect(),
+    )
+    .await
+}
+
+async fn inference_server_with_content_type(
+    responses: Vec<(u16, &'static str, String)>,
+) -> (
+    LlmProviderProfile,
+    tokio::task::JoinHandle<Vec<serde_json::Value>>,
+) {
     use tokio::{
         io::{AsyncReadExt, AsyncWriteExt},
         net::TcpListener,
     };
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let mut model = profile();
+    model.id = "fixture".into();
     model.endpoint = format!("http://{}", listener.local_addr().unwrap());
     model.max_output_tokens = Some(1024);
     let server = tokio::spawn(async move {
         let mut requests = Vec::new();
-        for (status, response) in responses {
+        for (status, content_type, response) in responses {
             let (mut stream, _) = listener.accept().await.unwrap();
             let mut bytes = Vec::new();
             loop {
@@ -257,12 +274,99 @@ async fn inference_server(
                     }
                 }
             }
-            let response = response.to_string();
-            stream.write_all(format!("HTTP/1.1 {status} Result\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{response}", response.len()).as_bytes()).await.unwrap();
+            stream.write_all(format!("HTTP/1.1 {status} Result\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{response}", response.len()).as_bytes()).await.unwrap();
         }
         requests
     });
     (model, server)
+}
+
+#[tokio::test]
+async fn connection_probes_use_the_same_streaming_protocol_as_generation() {
+    use serde_json::json;
+    for protocol in [LlmProtocol::ChatCompletions, LlmProtocol::Responses] {
+        let events = match protocol {
+            LlmProtocol::ChatCompletions => vec![
+                json!({"choices":[{"index":0,"delta":{"content":"{\"ok\":true}"}}]}),
+                json!({"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}),
+            ],
+            LlmProtocol::Responses => vec![
+                json!({"type":"response.output_text.delta","delta":"{\"ok\":true}"}),
+                json!({"type":"response.completed","response":{"status":"completed","output":[{"type":"message","content":[{"type":"output_text","text":"{\"ok\":true}"}]}]}}),
+            ],
+        };
+        let body = events
+            .iter()
+            .map(|event| format!("data: {event}\n\n"))
+            .collect::<String>();
+        let (mut model, server) = inference_server_with_content_type(vec![(
+            200,
+            "text/event-stream; charset=utf-8",
+            body,
+        )])
+        .await;
+        model.protocol = protocol;
+        LlmService::probe(&model, Some("test-key")).await.unwrap();
+        let requests = server.await.unwrap();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(requests[0]["stream"], true);
+        assert_eq!(requests[0]["model"], model.model);
+    }
+}
+
+#[tokio::test]
+async fn schema_fallback_keeps_streaming_and_returns_complete_json() {
+    use serde_json::json;
+    let unsupported = json!({"error":{"message":"json_schema is not supported"}});
+    let delta = json!({"choices":[{"index":0,"delta":{"content":"{\"ok\":true}"}}]});
+    let done = json!({"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]});
+    let (model, server) = inference_server_with_content_type(vec![
+        (400, "application/json", unsupported.to_string()),
+        (
+            200,
+            "text/event-stream",
+            format!("data: {delta}\n\ndata: {done}\n\n"),
+        ),
+    ])
+    .await;
+    LlmService::probe(&model, Some("test-key")).await.unwrap();
+    let requests = server.await.unwrap();
+    assert_eq!(requests.len(), 2);
+    assert_eq!(requests[1]["response_format"]["type"], "json_object");
+    assert!(requests.iter().all(|request| request["stream"] == true));
+}
+
+#[tokio::test]
+async fn waiting_for_headers_or_the_first_content_is_bounded() {
+    use tokio::{
+        io::{AsyncReadExt, AsyncWriteExt},
+        net::TcpListener,
+    };
+    for content_type in [None, Some("application/json"), Some("text/event-stream")] {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let mut model = profile();
+        model.id = "fixture".into();
+        model.endpoint = format!("http://{}", listener.local_addr().unwrap());
+        let (ready, waiting) = tokio::sync::oneshot::channel();
+        let server = tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut buffer = [0u8; 8192];
+            assert!(socket.read(&mut buffer).await.unwrap() > 0);
+            if let Some(content_type) = content_type {
+                socket.write_all(format!("HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nConnection: close\r\n\r\n").as_bytes()).await.unwrap();
+            }
+            ready.send(()).unwrap();
+            std::future::pending::<()>().await;
+        });
+        let request = tokio::spawn(async move { LlmService::probe(&model, None).await });
+        waiting.await.unwrap();
+        tokio::time::pause();
+        tokio::time::advance(std::time::Duration::from_secs(31)).await;
+        let error = request.await.unwrap().unwrap_err();
+        tokio::time::resume();
+        server.abort();
+        assert!(error.to_string().contains("LLM_TIMEOUT"), "{error}");
+    }
 }
 
 #[tokio::test]
@@ -295,7 +399,7 @@ async fn retries_unsupported_schema_as_json_without_losing_the_request_contract(
     assert_eq!(requests[1]["messages"][1], json!(messages[0]));
     for request in requests {
         assert_eq!(request["model"], model.model);
-        assert_eq!(request["stream"], false);
+        assert_eq!(request["stream"], true);
         assert_eq!(request["max_completion_tokens"], 1024);
     }
 }

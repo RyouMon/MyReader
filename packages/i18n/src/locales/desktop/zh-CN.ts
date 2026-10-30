@@ -276,8 +276,7 @@ export const desktopZhCN = {
         confirmRemoveProvider: "再次点击确认移除",
         previewText: "欢迎使用 MyReader 朗读功能。",
         saved: "语音服务已保存。",
-        validationRequired:
-          "请填写名称、服务地址、模型、至少一个声音 ID，并从中指定默认声音。",
+        validationRequired: "请填写名称、服务地址、模型和至少一个声音 ID。",
         name: "名称",
         endpoint: "服务器地址",
         model: "模型",
@@ -285,8 +284,6 @@ export const desktopZhCN = {
         voicesPlaceholder: "每行填写一个供应商支持的声音 ID",
         voicesDescription:
           "OpenAI 兼容接口没有统一的声音发现能力；MyReader 不预设声音名，请按供应商文档填写。",
-        defaultVoice: "默认声音",
-        selectDefaultVoice: "请先填写声音 ID",
         instructions: "默认朗读指令",
         instructionsPlaceholder: "例如：自然、平静地朗读",
         credential: "API 密钥或访问令牌",

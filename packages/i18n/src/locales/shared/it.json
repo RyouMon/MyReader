@@ -72,7 +72,7 @@
     "instructions": "Istruzioni di lettura",
     "provider": "Modello",
     "voice": "Voce",
-    "defaultVoice": "Predefinita",
+    "defaultModel": "Predefinito",
     "system": "Sistema",
     "narrator": "Narratore",
     "source": "Fonte",
@@ -100,7 +100,10 @@
     "search": "Cerca",
     "chooseSource": "Seleziona l’opera corrispondente.",
     "noSources": "Nessuna voce enciclopedica corrispondente trovata.",
-    "noBookIntroduction": "Nessuna presentazione leggibile dei personaggi trovata in questo libro."
+    "noBookIntroduction": "Nessuna presentazione leggibile dei personaggi trovata in questo libro.",
+    "alreadyExists": "Già presente",
+    "willReplace": "Verrà sostituito",
+    "replaceCharacter": "Sostituisci {{name}}"
   },
   "appUpdates": {
     "title": "Aggiornamenti dell’app",

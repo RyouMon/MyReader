@@ -264,6 +264,15 @@ export function ReaderTtsSettingsPanel({
             key={`${book.libraryId}:${book.bookId}`}
             book={book}
             config={config}
+            readingVoice={
+              config.defaultEngine.kind === "provider"
+                ? {
+                    engine: "provider",
+                    profileId: config.defaultEngine.profileId,
+                    voiceId: session.currentVoiceId,
+                  }
+                : { engine: "system", voiceId: session.currentVoiceId }
+            }
             themeStyle={themeStyle}
             findIntroductions={findIntroductions}
             onSubviewChange={setNarrationView}

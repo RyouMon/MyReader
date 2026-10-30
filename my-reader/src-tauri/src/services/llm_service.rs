@@ -4,6 +4,23 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::path::Path;
 
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(tag = "kind", content = "delta", rename_all = "camelCase")]
+pub enum LlmStreamEventDto {
+    Started,
+    Reasoning(String),
+    Text(String),
+}
+
+impl From<core::LlmStreamEvent> for LlmStreamEventDto {
+    fn from(event: core::LlmStreamEvent) -> Self {
+        match event {
+            core::LlmStreamEvent::Started => Self::Started,
+            core::LlmStreamEvent::Reasoning(delta) => Self::Reasoning(delta),
+            core::LlmStreamEvent::Text(delta) => Self::Text(delta),
+        }
+    }
+}
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub enum LlmProtocolDto {

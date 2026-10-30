@@ -14,20 +14,15 @@ import {
 import { FieldGroup } from "@/components/ui/field"
 import { formatTtsLanguageName } from "@my-reader/tools/reader-tts-language"
 import { qwenTtsSourceKeys } from "@my-reader/i18n/desktop"
-import { convertFileSrc, isTauri } from "@tauri-apps/api/core"
-import { Loader2, Play, Server, Volume2 } from "lucide-react"
-import {
-  type CSSProperties,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react"
+import { Loader2, Server, Volume2 } from "lucide-react"
+import { type CSSProperties, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { AddPanelButton } from "@/components/common/AddPanelButton"
 import { AppRow } from "@/components/common/AppRow"
 import { RowActions } from "@/components/common/RowActions"
 import { SaveButton } from "@/components/common/SaveButton"
+import { TtsPreviewButton } from "@/components/common/TtsPreviewButton"
+import { useTtsPreviewPlayer } from "@/hooks/useTtsPreviewPlayer"
 import { GroupList, GroupListItem } from "@/components/common/GroupList"
 import {
   FlowDialogChoice,
@@ -36,7 +31,6 @@ import {
 } from "@/components/common/FlowDialog"
 import { SectionHeader } from "@/components/common/SectionHeader"
 import { StatusNotice } from "@/components/common/StatusNotice"
-import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
@@ -62,13 +56,6 @@ const SETTINGS_EVENT_SOURCE = "settings-speech"
 const DEFAULT_VOICE_LANGUAGE = "und"
 const AUTOMATIC_VOICE_VALUE = "__automatic__"
 const PREVIEW_LANGUAGE = "en"
-const PREVIEW_MIME_TYPES = [
-  "audio/mpeg",
-  "audio/ogg",
-  "audio/aac",
-  "audio/flac",
-  "audio/wav",
-]
 
 function systemVoiceId(voice: SpeechSynthesisVoice): string {
   return voice.voiceURI || voice.name
@@ -121,163 +108,6 @@ function useSystemSpeechVoices(enabled = true): SpeechSynthesisVoice[] {
   }, [enabled])
 
   return voices
-}
-
-function useTtsPreviewPlayer({
-  config,
-  engineId,
-  voiceId,
-  systemVoices,
-  language,
-  onError,
-}: {
-  config: TtsConfigDto | null
-  engineId: string
-  voiceId: string
-  systemVoices: SpeechSynthesisVoice[]
-  language: string
-  onError: (error: string | null) => void
-}) {
-  const { t } = useTranslation()
-  const [previewing, setPreviewing] = useState(false)
-  const previewAudioRef = useRef<HTMLAudioElement | null>(null)
-  const previewRequestIdRef = useRef<string | null>(null)
-  const previewGenerationRef = useRef(0)
-  const systemPreviewActiveRef = useRef(false)
-
-  const stopPreview = useCallback(() => {
-    previewGenerationRef.current += 1
-    const requestId = previewRequestIdRef.current
-    previewRequestIdRef.current = null
-    if (requestId) void api.cancelTtsSynthesis(requestId)
-    if (systemPreviewActiveRef.current && typeof window !== "undefined") {
-      window.speechSynthesis?.cancel()
-      systemPreviewActiveRef.current = false
-    }
-    previewAudioRef.current?.pause()
-    previewAudioRef.current = null
-    setPreviewing(false)
-  }, [])
-
-  useEffect(
-    () => () => {
-      previewGenerationRef.current += 1
-      const requestId = previewRequestIdRef.current
-      previewRequestIdRef.current = null
-      if (requestId) void api.cancelTtsSynthesis(requestId)
-      if (systemPreviewActiveRef.current && typeof window !== "undefined") {
-        window.speechSynthesis?.cancel()
-        systemPreviewActiveRef.current = false
-      }
-      previewAudioRef.current?.pause()
-      previewAudioRef.current = null
-    },
-    [],
-  )
-
-  const preview = useCallback(async () => {
-    if (!config) return
-    stopPreview()
-    const generation = previewGenerationRef.current
-    let requestId: string | null = null
-    let requestPending = false
-    setPreviewing(true)
-    onError(null)
-    try {
-      if (engineId === "system") {
-        if (typeof window === "undefined" || !window.speechSynthesis) {
-          throw new Error("TTS_SYSTEM_UNAVAILABLE")
-        }
-        const voice = systemVoices.find(
-          (candidate) => systemVoiceId(candidate) === voiceId,
-        )
-        const utterance = new SpeechSynthesisUtterance(
-          t("settings.speech.previewText"),
-        )
-        utterance.voice = voice ?? null
-        utterance.lang = voice?.lang || language
-        utterance.rate = finitePreference(config.playback.speed, 1)
-        utterance.pitch = finitePreference(config.playback.pitch, 1)
-        utterance.onend = () => {
-          if (previewGenerationRef.current !== generation) return
-          systemPreviewActiveRef.current = false
-          setPreviewing(false)
-        }
-        utterance.onerror = (event) => {
-          if (previewGenerationRef.current !== generation) return
-          systemPreviewActiveRef.current = false
-          setPreviewing(false)
-          console.warn("Speech preview failed", event.error)
-          onError(errorMessage({ kind: "Tts" }))
-        }
-        systemPreviewActiveRef.current = true
-        window.speechSynthesis.speak(utterance)
-        return
-      }
-
-      const profile = config.profiles.find(
-        (candidate) => candidate.id === engineId,
-      )
-      if (!profile) throw new Error("TTS_DEFAULT_PROFILE_NOT_FOUND")
-      if (!voiceId) throw new Error("TTS_VOICE_REQUIRED")
-      requestId = `settings-preview-${Date.now()}-${Math.random()}`
-      requestPending = true
-      previewRequestIdRef.current = requestId
-      const artifact = await api.synthesizeTtsRequest(requestId, {
-        profileId: profile.id,
-        text: t("settings.speech.previewText"),
-        language,
-        voiceId,
-        speed: finitePreference(config.playback.speed, 1),
-        acceptedMimeTypes: PREVIEW_MIME_TYPES,
-        cachePolicy: "bypass",
-      })
-      if (previewRequestIdRef.current !== requestId) return
-      previewRequestIdRef.current = null
-      requestPending = false
-      previewAudioRef.current?.pause()
-      const audio = new Audio(
-        isTauri() ? convertFileSrc(artifact.path) : artifact.path,
-      )
-      audio.playbackRate = artifact.playbackRate ?? 1
-      audio.onended = () => {
-        if (previewGenerationRef.current !== generation) return
-        previewAudioRef.current = null
-        setPreviewing(false)
-      }
-      audio.onerror = () => {
-        if (previewGenerationRef.current !== generation) return
-        previewAudioRef.current = null
-        setPreviewing(false)
-        onError("TTS_PLAYBACK_FAILED")
-      }
-      previewAudioRef.current = audio
-      await audio.play()
-    } catch (previewError: unknown) {
-      if (
-        previewGenerationRef.current !== generation ||
-        (requestPending && previewRequestIdRef.current !== requestId)
-      ) {
-        return
-      }
-      if (previewRequestIdRef.current === requestId) {
-        previewRequestIdRef.current = null
-      }
-      setPreviewing(false)
-      onError(errorMessage(previewError))
-    }
-  }, [
-    config,
-    engineId,
-    language,
-    onError,
-    stopPreview,
-    systemVoices,
-    t,
-    voiceId,
-  ])
-
-  return { preview, previewing, stopPreview }
 }
 
 export default function SpeechSection() {
@@ -416,22 +246,13 @@ export default function SpeechSection() {
               <p className="text-sm leading-6 text-foreground">
                 {t("settings.speech.previewText")}
               </p>
-              <Button
-                type="button"
-                size="sm"
+              <TtsPreviewButton
+                previewing={previewing}
+                variant="default"
                 className="shrink-0"
                 disabled={saving}
                 onClick={() => (previewing ? stopPreview() : void preview())}
-              >
-                {previewing ? (
-                  <Loader2 data-icon="inline-start" className="animate-spin" />
-                ) : (
-                  <Play data-icon="inline-start" />
-                )}
-                {previewing
-                  ? t("settings.speech.stopPreview")
-                  : t("settings.speech.previewAction")}
-              </Button>
+              />
             </div>
             <DefaultEngineSettings
               config={config}

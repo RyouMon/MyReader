@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { beforeEach, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, expect, it, vi } from "vitest"
 import {
   BookNarrationSettings,
   type NarrationSubview,
@@ -20,6 +20,8 @@ const mocks = vi.hoisted(() => ({
   mergeBookNarration: vi.fn(),
   getLlmConfig: vi.fn(),
   listTtsVoices: vi.fn(),
+  synthesizeTtsRequest: vi.fn(),
+  cancelTtsSynthesis: vi.fn(),
 }))
 vi.mock("@/lib/tauri-api", () => ({ api: mocks, formatApiError: String }))
 vi.mock("@/lib/tts/events", () => ({
@@ -128,6 +130,7 @@ function mount(
       <SettingsFixture
         book={book}
         config={config}
+        readingVoice={{ engine: "provider", profileId: "two", voiceId: "A" }}
         findIntroductions={findIntroductions}
       />
     </QueryClientProvider>,
@@ -152,6 +155,15 @@ beforeEach(() => {
   mocks.saveBookNarration.mockImplementation(async (_library, value) => ({
     ...value,
     revision: value.revision + 1,
+    characters: value.characters.map(
+      (
+        character: BookNarrationSettingsDto["characters"][number],
+        index: number,
+      ) => ({
+        ...character,
+        id: character.id || `new-character-${index}`,
+      }),
+    ),
   }))
   mocks.getLlmConfig.mockResolvedValue({
     defaultProfileId: "llm",
@@ -160,7 +172,10 @@ beforeEach(() => {
   mocks.listTtsVoices.mockResolvedValue([
     { id: "A", language: "zh", gender: null },
   ])
+  mocks.synthesizeTtsRequest.mockReturnValue(new Promise(() => {}))
+  mocks.cancelTtsSynthesis.mockResolvedValue(undefined)
 })
+afterEach(() => vi.unstubAllGlobals())
 
 it("reveals this book's forms only after enable confirmation and keeps LLM editing out of the reader", async () => {
   mount()
@@ -197,9 +212,15 @@ it("clears the previous voice when switching provider and preserves the stable c
   fireEvent.click(await screen.findByRole("button", { name: /^陈默/ }))
   const user = userEvent.setup()
   await user.click(screen.getByRole("combobox", { name: "narration.provider" }))
+  expect(
+    screen.getByRole("option", { name: "narration.defaultModel" }),
+  ).toBeInTheDocument()
   await user.click(screen.getByRole("option", { name: "two/tts" }))
   expect(screen.getByRole("button", { name: "common.save" })).toBeDisabled()
   await user.click(screen.getByRole("combobox", { name: "narration.voice" }))
+  expect(
+    screen.queryByRole("option", { name: "narration.defaultModel" }),
+  ).not.toBeInTheDocument()
   await user.click(await screen.findByRole("option", { name: "A" }))
   fireEvent.change(screen.getByLabelText("narration.instructions"), {
     target: { value: "仿男声" },
@@ -221,7 +242,159 @@ it("clears the previous voice when switching provider and preserves the stable c
   )
 })
 
-it("imports selected sourced characters without overwriting an existing manual identity", async () => {
+it("requires a concrete system voice and never offers a default voice option", async () => {
+  vi.stubGlobal("speechSynthesis", {
+    getVoices: () => [{ voiceURI: "system-voice", name: "System Voice" }],
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  })
+  mocks.getBookNarration.mockResolvedValue({ ...settings, enabled: true })
+  mount()
+  await openCharacters()
+  fireEvent.click(await screen.findByRole("button", { name: /^陈默/ }))
+  const user = userEvent.setup()
+  await user.click(screen.getByRole("combobox", { name: "narration.provider" }))
+  await user.click(screen.getByRole("option", { name: "narration.system" }))
+  expect(screen.getByRole("button", { name: "common.save" })).toBeDisabled()
+  expect(
+    screen.getByRole("button", { name: "settings.speech.previewAction" }),
+  ).toBeDisabled()
+  await user.click(screen.getByRole("combobox", { name: "narration.voice" }))
+  expect(
+    screen.queryByRole("option", { name: "narration.defaultModel" }),
+  ).not.toBeInTheDocument()
+  await user.click(screen.getByRole("option", { name: "System Voice" }))
+  fireEvent.click(screen.getByRole("button", { name: "common.save" }))
+  await waitFor(() =>
+    expect(mocks.saveBookNarration).toHaveBeenCalledWith(
+      "library",
+      expect.objectContaining({
+        characters: expect.arrayContaining([
+          expect.objectContaining({
+            id: "stable-id",
+            voice: { engine: "system", voiceId: "system-voice" },
+          }),
+        ]),
+      }),
+    ),
+  )
+})
+
+it("previews the unsaved character voice and instructions, then cancels without saving", async () => {
+  mocks.getBookNarration.mockResolvedValue({ ...settings, enabled: true })
+  mount()
+  await openCharacters()
+  fireEvent.click(await screen.findByRole("button", { name: /^陈默/ }))
+  fireEvent.change(screen.getByLabelText("narration.instructions"), {
+    target: { value: "轻声、温柔" },
+  })
+  fireEvent.click(
+    screen.getByRole("button", { name: "settings.speech.previewAction" }),
+  )
+  expect(mocks.synthesizeTtsRequest).toHaveBeenCalledWith(
+    expect.any(String),
+    expect.objectContaining({
+      profileId: "one",
+      voiceId: "A",
+      instructions: "轻声、温柔",
+    }),
+  )
+  expect(
+    screen.getByRole("button", { name: "settings.speech.stopPreview" }),
+  ).toBeInTheDocument()
+  fireEvent.click(screen.getByRole("button", { name: "llm.cancel" }))
+  expect(mocks.cancelTtsSynthesis).toHaveBeenCalledWith(
+    mocks.synthesizeTtsRequest.mock.calls[0][0],
+  )
+  expect(mocks.saveBookNarration).not.toHaveBeenCalled()
+  expect(
+    await screen.findByRole("button", { name: /^陈默/ }),
+  ).toBeInTheDocument()
+})
+
+it("saves the default model as inheritance and previews the current external settings", async () => {
+  mocks.getBookNarration.mockResolvedValue({ ...settings, enabled: true })
+  mount()
+  await openCharacters()
+  fireEvent.click(await screen.findByRole("button", { name: /^陈默/ }))
+  const user = userEvent.setup()
+  await user.click(screen.getByRole("combobox", { name: "narration.provider" }))
+  await user.click(
+    screen.getByRole("option", { name: "narration.defaultModel" }),
+  )
+  expect(
+    screen.queryByRole("combobox", { name: "narration.voice" }),
+  ).not.toBeInTheDocument()
+  fireEvent.click(
+    screen.getByRole("button", { name: "settings.speech.previewAction" }),
+  )
+  expect(mocks.synthesizeTtsRequest).toHaveBeenCalledWith(
+    expect.any(String),
+    expect.objectContaining({
+      profileId: "two",
+      voiceId: "A",
+      instructions: "温柔",
+    }),
+  )
+  fireEvent.click(screen.getByRole("button", { name: "common.save" }))
+  await waitFor(() =>
+    expect(mocks.saveBookNarration).toHaveBeenCalledWith(
+      "library",
+      expect.objectContaining({
+        characters: expect.arrayContaining([
+          expect.objectContaining({ id: "stable-id", voice: null }),
+        ]),
+      }),
+    ),
+  )
+})
+
+it.each([
+  true,
+  false,
+])("previews external settings with a separately configured narrator: %s", async (configuredNarrator) => {
+  mocks.getBookNarration.mockResolvedValue({
+    ...settings,
+    enabled: true,
+    characters: settings.characters.map((character) => ({
+      ...character,
+      voice:
+        character.id === "narrator" && configuredNarrator
+          ? { engine: "provider", profileId: "one", voiceId: "A" }
+          : null,
+    })),
+  })
+  mount()
+  await openCharacters()
+  fireEvent.click(await screen.findByRole("button", { name: /^陈默/ }))
+  expect(
+    screen.getByRole("combobox", { name: "narration.provider" }),
+  ).toHaveTextContent("narration.defaultModel")
+  expect(
+    screen.queryByRole("combobox", { name: "narration.voice" }),
+  ).not.toBeInTheDocument()
+  fireEvent.click(
+    screen.getByRole("button", { name: "settings.speech.previewAction" }),
+  )
+  expect(mocks.synthesizeTtsRequest).toHaveBeenCalledWith(
+    expect.any(String),
+    expect.objectContaining({
+      profileId: "two",
+      voiceId: "A",
+    }),
+  )
+  fireEvent.click(screen.getByRole("button", { name: "common.back" }))
+  expect(mocks.cancelTtsSynthesis).toHaveBeenCalledWith(
+    mocks.synthesizeTtsRequest.mock.calls[0][0],
+  )
+})
+
+it.each([
+  ["陈默", false],
+  ["陈默", true],
+  ["陳默", false],
+  ["陳默", true],
+] as const)("imports duplicate %s only with explicit replacement selected: %s", async (name, replace) => {
   mocks.getBookNarration.mockResolvedValue({ ...settings, enabled: true })
   const source = {
     title: "Book",
@@ -230,11 +403,11 @@ it("imports selected sourced characters without overwriting an existing manual i
   mocks.searchBookCharacterSources.mockResolvedValue([source])
   mocks.draftBookCharacters.mockResolvedValue([
     {
-      id: "",
+      id: "stable-id",
       voice: null,
       instructions: "",
-      name: "陈默",
-      nicknames: [],
+      name,
+      nicknames: ["新昵称"],
       description: "Imported identity",
       source,
     },
@@ -245,6 +418,15 @@ it("imports selected sourced characters without overwriting an existing manual i
       name: "林岚",
       nicknames: [],
       description: "Student",
+      source,
+    },
+    {
+      id: "",
+      voice: null,
+      instructions: "",
+      name: "老陈",
+      nicknames: ["陈默"],
+      description: "A different character",
       source,
     },
   ])
@@ -258,26 +440,45 @@ it("imports selected sourced characters without overwriting an existing manual i
   await user.click(screen.getByRole("button", { name: "narration.search" }))
   await user.click(await screen.findByRole("button", { name: "Book" }))
   await user.click(screen.getByRole("button", { name: "narration.organize" }))
+  const duplicate = await screen.findByRole("checkbox", {
+    name: "narration.replaceCharacter",
+  })
+  expect(duplicate).not.toBeChecked()
+  expect(screen.getByText("narration.alreadyExists")).toBeVisible()
+  if (replace) {
+    await user.click(duplicate)
+    expect(screen.getByText("narration.willReplace")).toBeVisible()
+  }
   fireEvent.click(
     await screen.findByRole("button", { name: "narration.importSelected" }),
   )
   await waitFor(() => expect(mocks.saveBookNarration).toHaveBeenCalled())
   const saved = mocks.saveBookNarration.mock
     .calls[0]![1] as BookNarrationSettingsDto
-  expect(saved.characters).toHaveLength(3)
+  expect(saved.characters).toHaveLength(4)
   expect(
     saved.characters.find((character) => character.id === "stable-id")
       ?.description,
-  ).toBe("Manual identity")
-  expect(saved.characters[saved.characters.length - 1]).toEqual(
+  ).toBe(replace ? "Imported identity" : "Manual identity")
+  const existing = saved.characters.find(
+    (character) => character.id === "stable-id",
+  )!
+  expect(existing.name).toBe(replace ? name : "陈默")
+  expect(existing.voice).toEqual(settings.characters[1]!.voice)
+  expect(existing.instructions).toBe(settings.characters[1]!.instructions)
+  expect(existing.nicknames).toEqual(replace ? ["新昵称"] : ["老陈"])
+  expect(existing.source).toEqual(replace ? source : null)
+  expect(saved.characters.slice(2)).toEqual([
     expect.objectContaining({ name: "林岚", source, id: "" }),
-  )
+    expect.objectContaining({ name: "老陈", source, id: "" }),
+  ])
   expect(mocks.draftBookCharacters).toHaveBeenCalledWith(
     "library",
     expect.objectContaining({
       book: expect.objectContaining({ title: "Book", authors: ["Writer"] }),
       input: { kind: "encyclopedia", source },
     }),
+    expect.any(Function),
   )
 })
 
@@ -417,13 +618,17 @@ it("only sends selected book passages and waits for candidate confirmation", asy
   expect(mocks.draftBookCharacters).not.toHaveBeenCalled()
   await user.click(screen.getByRole("button", { name: "narration.organize" }))
   expect(await screen.findByRole("checkbox", { name: /林岚/ })).toBeChecked()
-  expect(mocks.draftBookCharacters).toHaveBeenCalledWith("library", {
-    book,
-    input: {
-      kind: "book",
-      passages: [{ title: "人物介绍", text: "林岚：旅人。" }],
+  expect(mocks.draftBookCharacters).toHaveBeenCalledWith(
+    "library",
+    {
+      book,
+      input: {
+        kind: "book",
+        passages: [{ title: "人物介绍", text: "林岚：旅人。" }],
+      },
     },
-  })
+    expect.any(Function),
+  )
   expect(mocks.saveBookNarration).not.toHaveBeenCalled()
 })
 
@@ -454,10 +659,14 @@ it("requires a source selection when encyclopedia search returns several works",
   await user.click(screen.getByRole("button", { name: "Novel" }))
   await user.click(screen.getByRole("button", { name: "narration.organize" }))
   await screen.findByRole("button", { name: "narration.importSelected" })
-  expect(mocks.draftBookCharacters).toHaveBeenCalledWith("library", {
-    book,
-    input: { kind: "encyclopedia", source: sources[0] },
-  })
+  expect(mocks.draftBookCharacters).toHaveBeenCalledWith(
+    "library",
+    {
+      book,
+      input: { kind: "encyclopedia", source: sources[0] },
+    },
+    expect.any(Function),
+  )
 })
 
 it("uses the user's prompt to draft candidates without automatically saving", async () => {
@@ -476,10 +685,14 @@ it("uses the user's prompt to draft candidates without automatically saving", as
   )
   await user.click(screen.getByRole("button", { name: "narration.organize" }))
   await screen.findByRole("button", { name: "narration.importSelected" })
-  expect(mocks.draftBookCharacters).toHaveBeenCalledWith("library", {
-    book,
-    input: { kind: "prompt", prompt: "陈默是老师，请整理人物身份。" },
-  })
+  expect(mocks.draftBookCharacters).toHaveBeenCalledWith(
+    "library",
+    {
+      book,
+      input: { kind: "prompt", prompt: "陈默是老师，请整理人物身份。" },
+    },
+    expect.any(Function),
+  )
   expect(mocks.saveBookNarration).not.toHaveBeenCalled()
 })
 
