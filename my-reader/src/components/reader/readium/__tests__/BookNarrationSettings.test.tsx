@@ -479,6 +479,7 @@ it.each([
       input: { kind: "encyclopedia", source },
     }),
     expect.any(Function),
+    expect.any(AbortSignal),
   )
 })
 
@@ -628,6 +629,7 @@ it("only sends selected book passages and waits for candidate confirmation", asy
       },
     },
     expect.any(Function),
+    expect.any(AbortSignal),
   )
   expect(mocks.saveBookNarration).not.toHaveBeenCalled()
 })
@@ -666,6 +668,7 @@ it("requires a source selection when encyclopedia search returns several works",
       input: { kind: "encyclopedia", source: sources[0] },
     },
     expect.any(Function),
+    expect.any(AbortSignal),
   )
 })
 
@@ -692,6 +695,7 @@ it("uses the user's prompt to draft candidates without automatically saving", as
       input: { kind: "prompt", prompt: "陈默是老师，请整理人物身份。" },
     },
     expect.any(Function),
+    expect.any(AbortSignal),
   )
   expect(mocks.saveBookNarration).not.toHaveBeenCalled()
 })

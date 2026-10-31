@@ -47,6 +47,10 @@ uuid.workspace = true
 webpki-roots = "1.0.10"
 zip = { version = "9.0.4", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
+[target.'cfg(any(target_os = "ios", target_os = "macos"))'.dependencies]
+objc2-cf-network = { version = "0.3.2", default-features = false, features = ["std", "CFProxySupport"] }
+objc2-core-foundation = { version = "0.3.2", default-features = false, features = ["std", "CFArray", "CFDictionary", "CFNumber", "CFString", "CFURL"] }
+
 [dev-dependencies]
 futures = "0.3"
 tokio = { workspace = true, features = ["test-util"] }

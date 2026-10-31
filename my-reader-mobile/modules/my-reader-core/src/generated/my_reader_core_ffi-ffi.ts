@@ -168,6 +168,9 @@ interface NativeModuleInterface {
     uniffi_out_err: UniffiRustCallStatus,
   ): void;
   ubrn_ffi_my_reader_core_ffi_rust_future_free_void(handle: bigint): void;
+  ubrn_uniffi_my_reader_core_ffi_fn_init_callback_vtable_narrationdraftprogress(
+    vtable: UniffiVTableCallbackInterfaceMyReaderCoreFfiNarrationDraftProgress,
+  ): void;
   ubrn_uniffi_my_reader_core_ffi_fn_func_app_config_initialize(
     configPath: Uint8Array,
     initialConfig: Uint8Array,
@@ -612,6 +615,14 @@ interface NativeModuleInterface {
     root: Uint8Array,
     bookId: number,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_narration_draft_characters(
+    root: Uint8Array,
+    configPath: Uint8Array,
+    book: Uint8Array,
+    input: Uint8Array,
+    credential: Uint8Array,
+    progress: bigint,
+  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_narration_get_settings(
     root: Uint8Array,
     bookId: number,
@@ -650,6 +661,10 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_fn_func_narration_save_settings(
     root: Uint8Array,
     settings: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_narration_search_sources(
+    root: Uint8Array,
+    request: Uint8Array,
   ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_reading_add_annotation(
     sidecarRootPath: Uint8Array,
@@ -1040,6 +1055,7 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_llm_select_profile(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_llm_upsert_profile(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_cancel(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_draft_characters(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_get_settings(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_import(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_merge_settings(): number;
@@ -1047,6 +1063,7 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_preview_merge(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_resolve_settings(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_save_settings(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_search_sources(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_add_annotation(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_add_bookmark(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_add_session_interval(): number;
@@ -1120,6 +1137,23 @@ export type UniffiForeignFutureDroppedCallbackStruct = {
   handle: bigint;
   free: UniffiForeignFutureDroppedCallback;
 };
+type UniffiCallbackInterfaceMyReaderCoreFfiNarrationDraftProgressMethod0 = (
+  uniffiHandle: bigint,
+  kind: Uint8Array,
+  delta: Uint8Array,
+) => UniffiResult<void>;
+type UniffiCallbackInterfaceCloneMyReaderCoreFfiNarrationDraftProgress = (
+  handle: bigint,
+) => UniffiResult<void>;
+type UniffiCallbackInterfaceFreeMyReaderCoreFfiNarrationDraftProgress = (
+  handle: bigint,
+) => void;
+export type UniffiVTableCallbackInterfaceMyReaderCoreFfiNarrationDraftProgress =
+  {
+    uniffi_free: UniffiCallbackInterfaceFreeMyReaderCoreFfiNarrationDraftProgress;
+    uniffi_clone: UniffiCallbackInterfaceCloneMyReaderCoreFfiNarrationDraftProgress;
+    on_progress: UniffiCallbackInterfaceMyReaderCoreFfiNarrationDraftProgressMethod0;
+  };
 
 // UniffiRustFutureContinuationCallback is generated as part of the component interface's
 // ffi_definitions. However, we need it in the runtime.

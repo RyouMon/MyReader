@@ -124,27 +124,41 @@ pub async fn search_book_character_sources<R: tauri::Runtime>(
 pub async fn draft_book_characters<R: tauri::Runtime>(
     app: AppHandle<R>,
     state: State<'_, AppState>,
+    coordinator: State<'_, crate::commands::tts::TtsSynthesisCoordinator>,
     library_id: String,
+    request_id: String,
     request: CharacterDraftRequestDto,
     on_progress: Channel<LlmStreamEventDto>,
 ) -> Result<Vec<BookCharacterDto>, AppError> {
-    let (root, config) = paths(&app, &state, &library_id)?;
-    resolve_settings(&app, &state, &library_id, request.book.book_id).await?;
-    let credential = selected_credential(&config)?;
-    let progress = |event| {
-        let _ = on_progress.send(LlmStreamEventDto::from(event));
+    let Some(mut cancelled) = coordinator.start(&request_id) else {
+        return Err(AppError::Config("NARRATION_CANCELLED".into()));
     };
-    Ok(NarrationService::draft_characters_with_progress(
-        &root,
-        &config,
-        request.into(),
-        Some(&credential),
-        Some(&progress),
-    )
-    .await?
-    .into_iter()
-    .map(Into::into)
-    .collect())
+    let work = async {
+        let (root, config) = paths(&app, &state, &library_id)?;
+        resolve_settings(&app, &state, &library_id, request.book.book_id).await?;
+        let credential = selected_credential(&config)?;
+        let progress = |event| {
+            let _ = on_progress.send(LlmStreamEventDto::from(event));
+        };
+        Ok(NarrationService::draft_characters_with_progress(
+            &root,
+            &config,
+            request.into(),
+            Some(&credential),
+            Some(&progress),
+        )
+        .await?
+        .into_iter()
+        .map(Into::into)
+        .collect())
+    };
+    let result = tokio::select! {
+        biased;
+        _ = &mut cancelled => Err(AppError::Config("NARRATION_CANCELLED".into())),
+        result = work => result,
+    };
+    coordinator.finish(&request_id);
+    result
 }
 
 #[tauri::command]

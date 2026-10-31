@@ -8,14 +8,19 @@ import {
   type UniffiRustFutureContinuationCallback,
   type UniffiForeignFutureDroppedCallback,
   type UniffiForeignFutureDroppedCallbackStruct,
+  type UniffiVTableCallbackInterfaceMyReaderCoreFfiNarrationDraftProgress,
 } from "./my_reader_core_ffi-ffi";
 import {
   type FfiConverter,
   type RustBufferAllocator,
   type UniffiByteArray,
+  type UniffiHandle,
+  type UniffiReferenceHolder,
+  type UniffiRustCallStatus,
   AbstractFfiConverterByteArray,
   FfiConverterArray,
   FfiConverterBool,
+  FfiConverterCallback,
   FfiConverterFloat64,
   FfiConverterInt32,
   FfiConverterInt64,
@@ -23,12 +28,15 @@ import {
   FfiConverterUInt32,
   FfiConverterUInt8,
   RustBuffer,
+  UniffiEnum,
   UniffiError,
   UniffiInternalError,
+  UniffiResult,
   UniffiRustCaller,
   uniffiCreateFfiConverterString,
   uniffiCreateRecord,
   uniffiRustCallAsync,
+  uniffiTraitInterfaceCall,
   uniffiTypeNameSymbol,
   variantOrdinalSymbol,
 } from "@ubjs/core";
@@ -4162,6 +4170,71 @@ export async function narrationCancel(
   }
 }
 
+export async function narrationDraftCharacters(
+  root: string,
+  configPath: string,
+  book: CharacterImportRequest,
+  input: CharacterDraftInput,
+  credential: LlmCredential | undefined,
+  progress: NarrationDraftProgress,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<Array<BookCharacter>> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_narration_draft_characters(
+          FfiConverterString.lower(root, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterTypeCharacterImportRequest.lower(
+            book,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterTypeCharacterDraftInput.lower(
+            input,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterOptionalTypeLlmCredential.lower(
+            credential,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterTypeNarrationDraftProgress.lower(
+            progress,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterSequenceTypeBookCharacter.lift.bind(
+        FfiConverterSequenceTypeBookCharacter,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
 export async function narrationGetSettings(
   root: string,
   bookId: number,
@@ -4514,6 +4587,54 @@ export async function narrationSaveSettings(
       // here using the per-callable return-type converter.
       /*liftFunc:*/ FfiConverterTypeBookNarrationSettings.lift.bind(
         FfiConverterTypeBookNarrationSettings,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function narrationSearchSources(
+  root: string,
+  request: CharacterImportRequest,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<Array<CharacterSource>> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_narration_search_sources(
+          FfiConverterString.lower(root, nativeModule().rustbuffer_alloc),
+          FfiConverterTypeCharacterImportRequest.lower(
+            request,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterSequenceTypeCharacterSource.lift.bind(
+        FfiConverterSequenceTypeCharacterSource,
       ),
       /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
       /*asyncOpts:*/ asyncOpts_,
@@ -8778,6 +8899,51 @@ const FfiConverterTypeCharacterImportRequest = (() => {
   return new FFIConverter();
 })();
 
+export type CharacterPassage = {
+  title: string;
+  text: string;
+};
+
+/**
+ * Generated factory for {@link CharacterPassage} record objects.
+ */
+export const CharacterPassage = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<CharacterPassage, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<CharacterPassage>,
+  });
+})();
+
+const FfiConverterTypeCharacterPassage = (() => {
+  type TypeName = CharacterPassage;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        title: FfiConverterString.read(from),
+        text: FfiConverterString.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.title, into);
+      FfiConverterString.write(value.text, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.title) +
+        FfiConverterString.allocationSize(value.text)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
 /**
  * Typealias from the type name used in the UDL file to the custom type.  This
  * is needed because the UDL type name is used in function/method signatures.
@@ -12115,6 +12281,184 @@ const FfiConverterTypeUpdateBookMetadataRequest = (() => {
   return new FFIConverter();
 })();
 
+// Enum: CharacterDraftInput
+export enum CharacterDraftInput_Tags {
+  Encyclopedia = "Encyclopedia",
+  Book = "Book",
+  Prompt = "Prompt",
+}
+export const CharacterDraftInput = (() => {
+  type Encyclopedia__interface = {
+    tag: CharacterDraftInput_Tags.Encyclopedia;
+    inner: Readonly<{ source: CharacterSource }>;
+  };
+  class Encyclopedia_ extends UniffiEnum implements Encyclopedia__interface {
+    /**
+     * @private
+     * This field is private and should not be used, use `tag` instead.
+     */
+    readonly [uniffiTypeNameSymbol] = "CharacterDraftInput";
+    readonly tag = CharacterDraftInput_Tags.Encyclopedia;
+    readonly inner: Readonly<{ source: CharacterSource }>;
+    constructor(inner: { source: CharacterSource }) {
+      super("CharacterDraftInput", "Encyclopedia");
+
+      this.inner = Object.freeze(inner);
+    }
+    static new(inner: { source: CharacterSource }): Encyclopedia_ {
+      return new Encyclopedia_(inner);
+    }
+
+    static instanceOf(obj: any): obj is Encyclopedia_ {
+      return obj.tag === CharacterDraftInput_Tags.Encyclopedia;
+    }
+  }
+
+  type Book__interface = {
+    tag: CharacterDraftInput_Tags.Book;
+    inner: Readonly<{ passages: Array<CharacterPassage> }>;
+  };
+  class Book_ extends UniffiEnum implements Book__interface {
+    /**
+     * @private
+     * This field is private and should not be used, use `tag` instead.
+     */
+    readonly [uniffiTypeNameSymbol] = "CharacterDraftInput";
+    readonly tag = CharacterDraftInput_Tags.Book;
+    readonly inner: Readonly<{ passages: Array<CharacterPassage> }>;
+    constructor(inner: { passages: Array<CharacterPassage> }) {
+      super("CharacterDraftInput", "Book");
+
+      this.inner = Object.freeze(inner);
+    }
+    static new(inner: { passages: Array<CharacterPassage> }): Book_ {
+      return new Book_(inner);
+    }
+
+    static instanceOf(obj: any): obj is Book_ {
+      return obj.tag === CharacterDraftInput_Tags.Book;
+    }
+  }
+
+  type Prompt__interface = {
+    tag: CharacterDraftInput_Tags.Prompt;
+    inner: Readonly<{ prompt: string }>;
+  };
+  class Prompt_ extends UniffiEnum implements Prompt__interface {
+    /**
+     * @private
+     * This field is private and should not be used, use `tag` instead.
+     */
+    readonly [uniffiTypeNameSymbol] = "CharacterDraftInput";
+    readonly tag = CharacterDraftInput_Tags.Prompt;
+    readonly inner: Readonly<{ prompt: string }>;
+    constructor(inner: { prompt: string }) {
+      super("CharacterDraftInput", "Prompt");
+
+      this.inner = Object.freeze(inner);
+    }
+    static new(inner: { prompt: string }): Prompt_ {
+      return new Prompt_(inner);
+    }
+
+    static instanceOf(obj: any): obj is Prompt_ {
+      return obj.tag === CharacterDraftInput_Tags.Prompt;
+    }
+  }
+
+  function instanceOf(obj: any): obj is CharacterDraftInput {
+    return obj[uniffiTypeNameSymbol] === "CharacterDraftInput";
+  }
+
+  return Object.freeze({
+    instanceOf,
+    Encyclopedia: Encyclopedia_,
+    Book: Book_,
+    Prompt: Prompt_,
+  });
+})();
+export type CharacterDraftInput = InstanceType<
+  (typeof CharacterDraftInput)["Encyclopedia" | "Book" | "Prompt"]
+>;
+
+// FfiConverter for enum CharacterDraftInput
+const FfiConverterTypeCharacterDraftInput = (() => {
+  const ordinalConverter = FfiConverterInt32;
+  type TypeName = CharacterDraftInput;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      switch (ordinalConverter.read(from)) {
+        case 1:
+          return new CharacterDraftInput.Encyclopedia({
+            source: FfiConverterTypeCharacterSource.read(from),
+          });
+        case 2:
+          return new CharacterDraftInput.Book({
+            passages: FfiConverterSequenceTypeCharacterPassage.read(from),
+          });
+        case 3:
+          return new CharacterDraftInput.Prompt({
+            prompt: FfiConverterString.read(from),
+          });
+        default:
+          throw new UniffiInternalError.UnexpectedEnumCase();
+      }
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      switch (value.tag) {
+        case CharacterDraftInput_Tags.Encyclopedia: {
+          ordinalConverter.write(1, into);
+          const inner = value.inner;
+          FfiConverterTypeCharacterSource.write(inner.source, into);
+          return;
+        }
+        case CharacterDraftInput_Tags.Book: {
+          ordinalConverter.write(2, into);
+          const inner = value.inner;
+          FfiConverterSequenceTypeCharacterPassage.write(inner.passages, into);
+          return;
+        }
+        case CharacterDraftInput_Tags.Prompt: {
+          ordinalConverter.write(3, into);
+          const inner = value.inner;
+          FfiConverterString.write(inner.prompt, into);
+          return;
+        }
+        default:
+          // Throwing from here means that CharacterDraftInput_Tags hasn't matched an ordinal.
+          throw new UniffiInternalError.UnexpectedEnumCase();
+      }
+    }
+    allocationSize(value: TypeName): number {
+      switch (value.tag) {
+        case CharacterDraftInput_Tags.Encyclopedia: {
+          const inner = value.inner;
+          let size = ordinalConverter.allocationSize(1);
+          size += FfiConverterTypeCharacterSource.allocationSize(inner.source);
+          return size;
+        }
+        case CharacterDraftInput_Tags.Book: {
+          const inner = value.inner;
+          let size = ordinalConverter.allocationSize(2);
+          size += FfiConverterSequenceTypeCharacterPassage.allocationSize(
+            inner.passages,
+          );
+          return size;
+        }
+        case CharacterDraftInput_Tags.Prompt: {
+          const inner = value.inner;
+          let size = ordinalConverter.allocationSize(3);
+          size += FfiConverterString.allocationSize(inner.prompt);
+          return size;
+        }
+        default:
+          throw new UniffiInternalError.UnexpectedEnumCase();
+      }
+    }
+  }
+  return new FFIConverter();
+})();
+
 // Flat error type: CoreFfiError
 export enum CoreFfiError_Tags {
   Core = "Core",
@@ -12836,6 +13180,64 @@ const FfiConverterTypeSyncTiming = (() => {
   return new FFIConverter();
 })();
 
+export interface NarrationDraftProgress {
+  onProgress(kind: string, delta: string): void;
+}
+
+// Put the implementation in a struct so we don't pollute the top-level namespace
+const uniffiCallbackInterfaceNarrationDraftProgress: {
+  vtable: any;
+  register: () => void;
+} = {
+  // Create the VTable using a series of closures.
+  // ts automatically converts these into C callback functions.
+  vtable: {
+    on_progress: (
+      uniffiHandle: bigint,
+      kind: Uint8Array,
+      delta: Uint8Array,
+    ) => {
+      const uniffiMakeCall = (): void => {
+        const jsCallback =
+          FfiConverterTypeNarrationDraftProgress.lift(uniffiHandle);
+        return jsCallback.onProgress(
+          FfiConverterString.lift(kind),
+          FfiConverterString.lift(delta),
+        );
+      };
+      const uniffiResult = UniffiResult.ready<void>();
+      const uniffiHandleSuccess = (obj: any) => {};
+      const uniffiHandleError = (code: number, errBuf: UniffiByteArray) => {
+        UniffiResult.writeError(uniffiResult, code, errBuf);
+      };
+      uniffiTraitInterfaceCall(
+        /*makeCall:*/ uniffiMakeCall,
+        /*handleSuccess:*/ uniffiHandleSuccess,
+        /*handleError:*/ uniffiHandleError,
+        /*lowerString:*/ FfiConverterString.lower.bind(FfiConverterString),
+        /*alloc:*/ nativeModule().rustbuffer_alloc,
+      );
+      return uniffiResult;
+    },
+    uniffi_free: (uniffiHandle: UniffiHandle): void => {
+      // this will throw a stale handle error if the handle isn't found.
+      FfiConverterTypeNarrationDraftProgress.drop(uniffiHandle);
+    },
+    uniffi_clone: (uniffiHandle: UniffiHandle): UniffiHandle => {
+      return FfiConverterTypeNarrationDraftProgress.clone(uniffiHandle);
+    },
+  },
+  register: () => {
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_init_callback_vtable_narrationdraftprogress(
+      uniffiCallbackInterfaceNarrationDraftProgress.vtable,
+    );
+  },
+};
+
+// FfiConverter protocol for callback interfaces
+const FfiConverterTypeNarrationDraftProgress =
+  new FfiConverterCallback<NarrationDraftProgress>();
+
 // FfiConverter for string | undefined
 const FfiConverterOptionalString = new FfiConverterOptional(FfiConverterString);
 
@@ -13004,6 +13406,11 @@ const FfiConverterSequenceTypeTtsLanguageVoice = new FfiConverterArray(
   FfiConverterTypeTtsLanguageVoice,
 );
 
+// FfiConverter for Array<CharacterPassage>
+const FfiConverterSequenceTypeCharacterPassage = new FfiConverterArray(
+  FfiConverterTypeCharacterPassage,
+);
+
 // FfiConverter for AppConfig | undefined
 const FfiConverterOptionalTypeAppConfig = new FfiConverterOptional(
   FfiConverterTypeAppConfig,
@@ -13077,6 +13484,11 @@ const FfiConverterSequenceTypeCharacterImportCandidate = new FfiConverterArray(
 // FfiConverter for Array<NarrationSpeech>
 const FfiConverterSequenceTypeNarrationSpeech = new FfiConverterArray(
   FfiConverterTypeNarrationSpeech,
+);
+
+// FfiConverter for Array<CharacterSource>
+const FfiConverterSequenceTypeCharacterSource = new FfiConverterArray(
+  FfiConverterTypeCharacterSource,
 );
 
 // FfiConverter for ReadingPosition | undefined
@@ -13877,6 +14289,14 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_draft_characters() !==
+    44815
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_narration_draft_characters",
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_get_settings() !==
     21732
   ) {
@@ -13930,6 +14350,14 @@ function uniffiEnsureInitialized() {
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_narration_save_settings",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_search_sources() !==
+    33265
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_narration_search_sources",
     );
   }
   if (
@@ -14340,6 +14768,8 @@ function uniffiEnsureInitialized() {
       "uniffi_my_reader_core_ffi_checksum_func_tts_upsert_profile",
     );
   }
+
+  uniffiCallbackInterfaceNarrationDraftProgress.register();
 }
 
 export default Object.freeze({
@@ -14364,8 +14794,10 @@ export default Object.freeze({
     FfiConverterTypeCatalogFacet,
     FfiConverterTypeCatalogNavigation,
     FfiConverterTypeCatalogQuery,
+    FfiConverterTypeCharacterDraftInput,
     FfiConverterTypeCharacterImportCandidate,
     FfiConverterTypeCharacterImportRequest,
+    FfiConverterTypeCharacterPassage,
     FfiConverterTypeCharacterSource,
     FfiConverterTypeCoreFfiError,
     FfiConverterTypeDataSource,

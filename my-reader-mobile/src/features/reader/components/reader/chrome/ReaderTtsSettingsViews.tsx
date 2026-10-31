@@ -1,4 +1,5 @@
 import type { TtsVoice } from "@my-reader/readium"
+import type { ReactNode } from "react"
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import type { MenuAction } from "@react-native-menu/menu"
 import { SymbolView } from "expo-symbols"
@@ -140,11 +141,13 @@ export function ReaderTtsSettingsHeader({
   canGoBack,
   goBack,
   headerTitle,
+  action,
 }: {
   palette: ReaderChromePalette
   canGoBack: boolean
   goBack: () => void
   headerTitle: string
+  action?: ReactNode
 }) {
   const { t } = useTranslation()
   return (
@@ -179,6 +182,7 @@ export function ReaderTtsSettingsHeader({
       >
         {headerTitle}
       </Text>
+      {action}
     </RNView>
   )
 }

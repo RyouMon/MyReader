@@ -2,6 +2,9 @@ use std::sync::Arc;
 
 use opendal::{Buffer, Error, ErrorKind, HttpBody, HttpTransport, HttpTransporter};
 
+#[cfg(any(target_os = "ios", all(test, target_os = "macos")))]
+mod apple_proxy;
+
 pub(crate) fn storage_transport(client: reqwest::Client) -> HttpTransporter {
     HttpTransporter::new(StorageHttpTransport(
         opendal_http_transport_reqwest::ReqwestTransport::new(client),
@@ -48,5 +51,10 @@ pub(crate) fn tls_client_config() -> rustls::ClientConfig {
 }
 
 pub(crate) fn client_builder() -> reqwest::ClientBuilder {
-    reqwest::Client::builder().tls_backend_preconfigured(tls_client_config())
+    let builder = reqwest::Client::builder().tls_backend_preconfigured(tls_client_config());
+    // Reqwest's system proxy discovery does not support iOS. Resolve the
+    // configured proxy and bypass rules through CFNetwork for each URL.
+    #[cfg(target_os = "ios")]
+    let builder = builder.proxy(reqwest::Proxy::custom(apple_proxy::system_proxy));
+    builder
 }

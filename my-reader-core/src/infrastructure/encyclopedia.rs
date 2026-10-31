@@ -57,8 +57,7 @@ pub async fn search_sources(
                 "MyReader/0.19 (https://github.com/RyouMon/MyReader)",
             )
             .send()
-            .await
-            .map_err(|_| error("SEARCH_FAILED"))?;
+            .await?;
         let result = llm::read_json(response).await?;
         for page in result["query"]["search"]
             .as_array()
@@ -120,8 +119,7 @@ pub async fn read_cast(origin: &str, source: &CharacterSource) -> Result<Vec<Val
             "MyReader/0.19 (https://github.com/RyouMon/MyReader)",
         )
         .send()
-        .await
-        .map_err(|_| error("SEARCH_FAILED"))?;
+        .await?;
     let result = llm::read_json(response).await?;
     let mut sources = Vec::new();
     if let Some(content) =

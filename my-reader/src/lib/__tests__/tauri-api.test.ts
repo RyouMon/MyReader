@@ -53,6 +53,47 @@ it("keeps draft progress request-scoped and detaches it after the command settle
   expect(onProgress).toHaveBeenCalledOnce()
 })
 
+it("cancels the matching native draft and ignores progress after cancellation", async () => {
+  mockIPC(() => undefined)
+  vi.mocked(invoke).mockReset()
+  let reject!: (error: unknown) => void
+  vi.mocked(invoke).mockImplementationOnce(
+    () =>
+      new Promise((_resolve, fail) => {
+        reject = fail
+      }),
+  )
+  vi.mocked(invoke).mockResolvedValueOnce(true)
+  const controller = new AbortController()
+  const onProgress = vi.fn()
+  const request = {
+    book: { bookId: 1, title: "Book", authors: [], language: "zh" },
+    input: { kind: "prompt" as const, prompt: "Cast" },
+  }
+  const result = api.draftBookCharacters(
+    "library",
+    request,
+    onProgress,
+    controller.signal,
+  )
+  const { requestId, onProgress: channel } = vi.mocked(invoke).mock
+    .calls[0]![1] as {
+    requestId: string
+    onProgress: Channel<LlmStreamEventDto>
+  }
+  controller.abort()
+  expect(invoke).toHaveBeenLastCalledWith("cancel_tts_synthesis", { requestId })
+  channel.onmessage({ kind: "text", delta: "late" })
+  expect(onProgress).not.toHaveBeenCalled()
+  reject({ kind: "Config", message: "NARRATION_CANCELLED" })
+  await expect(result).rejects.toMatchObject({ name: "AbortError" })
+  vi.mocked(invoke).mockClear()
+  await expect(
+    api.draftBookCharacters("library", request, onProgress, controller.signal),
+  ).rejects.toMatchObject({ name: "AbortError" })
+  expect(invoke).not.toHaveBeenCalled()
+})
+
 describe("native reader sharing", () => {
   beforeEach(() => vi.mocked(invoke).mockReset())
 

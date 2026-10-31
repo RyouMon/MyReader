@@ -6,6 +6,11 @@ import {
   narrationPrepare,
   narrationPreviewMerge,
   narrationMergeSettings,
+  narrationSearchSources,
+  narrationDraftCharacters,
+  CharacterDraftInput as NativeDraftInput,
+  type CharacterSource,
+  type CharacterPassage,
   type BookNarrationSettings,
   type CharacterImportRequest,
   type NarrationRequest,
@@ -73,10 +78,54 @@ export async function prepareBookNarration(
 export type {
   BookNarrationSettings,
   BookCharacter,
-  CharacterImportCandidate,
   NarrationVoice,
   NarrationMergePlan,
+  CharacterSource,
+  CharacterPassage,
 } from "my-reader-core"
+
+export type CharacterDraftInput =
+  | { kind: "encyclopedia"; source: CharacterSource }
+  | { kind: "book"; passages: CharacterPassage[] }
+  | { kind: "prompt"; prompt: string }
+
+export async function searchBookCharacterSources(
+  library: Library,
+  request: CharacterImportRequest,
+  signal: AbortSignal,
+) {
+  await getBookNarration(library, request.bookId)
+  assertActive(signal)
+  return narrationSearchSources(root(library), request, { signal })
+}
+
+export async function draftBookCharacters(
+  library: Library,
+  book: CharacterImportRequest,
+  input: CharacterDraftInput,
+  onProgress: (kind: string, delta: string) => void,
+  signal: AbortSignal,
+) {
+  await getBookNarration(library, book.bookId)
+  assertActive(signal)
+  const credential = await selectedLlmCredential()
+  assertActive(signal)
+  const nativeInput =
+    input.kind === "encyclopedia"
+      ? new NativeDraftInput.Encyclopedia({ source: input.source })
+      : input.kind === "book"
+        ? new NativeDraftInput.Book({ passages: input.passages })
+        : new NativeDraftInput.Prompt({ prompt: input.prompt })
+  return narrationDraftCharacters(
+    root(library),
+    appConfigPath,
+    book,
+    nativeInput,
+    credential,
+    { onProgress },
+    { signal },
+  )
+}
 
 export async function previewBookNarrationMerge(
   library: Library,
@@ -100,4 +149,9 @@ export async function mergeBookNarration(
 ) {
   await getBookNarration(library, bookId)
   return narrationMergeSettings(root(library), bookId, plan)
+}
+
+function assertActive(signal: AbortSignal) {
+  if (signal.aborted)
+    throw Object.assign(new Error("Aborted"), { name: "AbortError" })
 }

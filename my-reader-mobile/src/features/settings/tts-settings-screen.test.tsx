@@ -214,6 +214,7 @@ jest.mock("@/src/services/fs/path", () => ({
 }))
 
 jest.mock("@/tw", () => ({
+  TouchableHighlight: jest.requireActual("react-native").TouchableHighlight,
   Text: mockText,
   View: mockView,
 }))

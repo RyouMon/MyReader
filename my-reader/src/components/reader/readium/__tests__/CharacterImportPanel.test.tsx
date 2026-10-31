@@ -121,3 +121,64 @@ it("requires an explicit selection when every candidate already exists", async (
   fireEvent.click(importButton)
   expect(onImport).toHaveBeenCalledExactlyOnceWith([candidate])
 })
+
+it("selects every candidate including existing names and can clear the selection", async () => {
+  const candidates = ["", "existing"].map((id, index) => ({
+    id,
+    name: `Character ${index}`,
+    nicknames: [],
+    description: "",
+    source: null,
+    voice: null,
+    instructions: "",
+  }))
+  vi.mocked(api.draftBookCharacters).mockResolvedValueOnce(candidates)
+  const onImport = vi.fn()
+  mount(onImport)
+  fireEvent.click(
+    await screen.findByRole("button", { name: "common.selectAll" }),
+  )
+  expect(
+    screen
+      .getAllByRole("checkbox")
+      .every((checkbox) => checkbox.getAttribute("data-state") === "checked"),
+  ).toBe(true)
+  expect(screen.getByText("narration.willReplace")).toBeVisible()
+  fireEvent.click(screen.getByRole("button", { name: "common.deselectAll" }))
+  expect(
+    screen.getByRole("button", { name: "narration.importSelected" }),
+  ).toBeDisabled()
+  expect(screen.getByText("narration.alreadyExists")).toBeVisible()
+  fireEvent.click(screen.getByRole("button", { name: "common.selectAll" }))
+  fireEvent.click(
+    screen.getByRole("button", { name: "narration.importSelected" }),
+  )
+  expect(onImport).toHaveBeenCalledWith(candidates)
+})
+
+it("cancels organizing without accepting its result and retains the prompt for retry", async () => {
+  let finish!: (value: BookCharacterDto[]) => void
+  let signal!: AbortSignal
+  vi.mocked(api.draftBookCharacters).mockImplementationOnce(
+    (_library, _request, _progress, abort) => {
+      signal = abort!
+      return new Promise((resolve) => {
+        finish = resolve
+      })
+    },
+  )
+  const onImport = vi.fn()
+  mount(onImport)
+  fireEvent.click(await screen.findByRole("button", { name: "common.cancel" }))
+  expect(signal.aborted).toBe(true)
+  expect(screen.getByLabelText("narration.prompt")).toHaveValue("林岚：旅人。")
+  expect(
+    screen.getByRole("button", { name: "narration.organize" }),
+  ).toBeEnabled()
+  await act(async () => finish([]))
+  expect(
+    screen.queryByRole("button", { name: "narration.importSelected" }),
+  ).not.toBeInTheDocument()
+  expect(screen.queryByRole("status")).not.toBeInTheDocument()
+  expect(onImport).not.toHaveBeenCalled()
+})

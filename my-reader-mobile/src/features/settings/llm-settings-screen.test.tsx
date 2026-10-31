@@ -44,7 +44,13 @@ jest.mock("react-i18next", () => ({
 }))
 jest.mock("@/tw", () => {
   const rn = jest.requireActual("react-native")
-  return { Text: rn.Text, TextInput: rn.TextInput, View: rn.View }
+  return {
+    Text: rn.Text,
+    TextInput: rn.TextInput,
+    View: rn.View,
+    Pressable: rn.Pressable,
+    TouchableHighlight: rn.TouchableHighlight,
+  }
 })
 jest.mock("@/src/design/tokens", () => ({ useThemePalette: () => ({}) }))
 jest.mock("@/src/i18n/error-message", () => ({
@@ -77,6 +83,8 @@ jest.mock("@/src/services/core/narration", () => ({
   getBookNarration: jest.fn(),
   saveBookNarration: jest.fn(),
   importBookCharacters: jest.fn(),
+  searchBookCharacterSources: jest.fn(),
+  draftBookCharacters: jest.fn(),
   previewBookNarrationMerge: jest.fn(),
   mergeBookNarration: jest.fn(),
 }))
@@ -531,7 +539,7 @@ it("shows role controls only after enabling a book with a configured LLM and acc
     .mockResolvedValueOnce({ ...config, defaultProfileId: undefined })
   mount("reader")
   const toggle = await screen.findByLabelText("narration.enabled")
-  expect(screen.queryByText("narration.import")).toBeNull()
+  expect(screen.queryByText("narration.edit")).toBeNull()
   fireEvent(toggle, "valueChange", true)
   await screen.findByText("narration.llmRequired")
   expect(narration.saveBookNarration).not.toHaveBeenCalled()
@@ -546,9 +554,9 @@ it("shows role controls only after enabling a book with a configured LLM and acc
       true,
     ),
   )
-  expect(screen.queryByText("narration.import")).toBeNull()
+  expect(screen.queryByText("narration.edit")).toBeNull()
   await act(async () => completeSave[0]!({ ...settings, enabled: true }))
-  await screen.findByText("narration.import")
+  await screen.findByText("narration.edit")
   await waitFor(() =>
     expect(screen.getByLabelText("narration.enabled")).toHaveProp(
       "disabled",
@@ -564,10 +572,11 @@ it("shows role controls only after enabling a book with a configured LLM and acc
   )
   await waitFor(() => expect(completeSave).toHaveLength(2))
   await act(async () => completeSave[1]!({ ...settings, enabled: false }))
-  await waitFor(() => expect(screen.queryByText("narration.import")).toBeNull())
+  await waitFor(() => expect(screen.queryByText("narration.edit")).toBeNull())
 })
 it("preserves a character ID, resets voice after provider changes and saves fixed instructions", async () => {
   mount("reader")
+  fireEvent.press(await screen.findByText("narration.edit"))
   fireEvent.press(await screen.findByText("Alice"))
   fireEvent.changeText(screen.getByLabelText("narration.name"), "Alice edited")
   fireEvent.changeText(screen.getByLabelText("narration.nicknames"), "A， Ally")
@@ -605,14 +614,26 @@ it("preserves a character ID, resets voice after provider changes and saves fixe
     ),
   )
   fireEvent.press(await screen.findByText("narration.add"))
+  fireEvent.press(screen.getByText("narration.manualAdd"))
   fireEvent.changeText(screen.getByLabelText("narration.name"), "New")
   fireEvent.press(screen.getByText("narration.provider:system"))
   expect(screen.queryByLabelText("narration.instructions")).toBeNull()
   fireEvent.press(await screen.findByText("narration.voice:system-a"))
   fireEvent.press(screen.getByText("llm.save"))
   await screen.findByText("New")
+  await waitFor(() =>
+    expect(screen.getByLabelText("narration.select")).toBeEnabled(),
+  )
+  fireEvent.press(screen.getByLabelText("narration.select"))
   fireEvent.press(screen.getByText("Alice edited"))
-  fireEvent.press(screen.getByText("narration.delete"))
+  fireEvent.press(screen.getByLabelText("narration.deleteSelected"))
+  act(() =>
+    jest
+      .mocked(showAlertWithStatusBarRestore)
+      .mock.calls.at(-1)![2]!
+      .find((button) => button.style === "destructive")!
+      .onPress?.(),
+  )
   await waitFor(() => expect(screen.queryByText("Alice edited")).toBeNull())
 })
 it("imports selected sourced candidates without overwriting manually edited identities", async () => {
@@ -620,15 +641,41 @@ it("imports selected sourced candidates without overwriting manually edited iden
     title: "Encyclopedia",
     url: "https://en.wikipedia.org/wiki/Novel",
   }
-  jest.mocked(narration.importBookCharacters).mockResolvedValue([
-    { name: "A", nicknames: [], description: "overwrite", source },
-    { name: "Bob", nicknames: [], description: "friend", source },
-    { name: "Skip", nicknames: [], description: "skip", source },
+  jest.mocked(narration.searchBookCharacterSources).mockResolvedValue([source])
+  jest.mocked(narration.draftBookCharacters).mockResolvedValue([
+    {
+      id: alice.id,
+      name: "Alice",
+      nicknames: [],
+      instructions: "",
+      description: "overwrite",
+      source,
+    },
+    {
+      id: "",
+      name: "Bob",
+      instructions: "",
+      nicknames: [],
+      description: "friend",
+      source,
+    },
+    {
+      id: "",
+      name: "Skip",
+      instructions: "",
+      nicknames: [],
+      description: "skip",
+      source,
+    },
   ])
   mount("reader")
-  fireEvent.press(await screen.findByText("narration.import"))
+  fireEvent.press(await screen.findByText("narration.edit"))
+  fireEvent.press(screen.getByText("narration.add"))
+  fireEvent.press(screen.getByText("narration.import"))
+  fireEvent.press(await screen.findByText("Encyclopedia"))
+  fireEvent.press(screen.getByText("narration.organize"))
   await screen.findByText("Bob")
-  fireEvent(screen.getByLabelText("Skip"), "valueChange", false)
+  fireEvent.press(screen.getByLabelText("Skip"))
   fireEvent.press(screen.getByText("narration.importSelected"))
   await waitFor(() =>
     expect(narration.saveBookNarration).toHaveBeenCalledWith(
@@ -642,16 +689,21 @@ it("imports selected sourced candidates without overwriting manually edited iden
       }),
     ),
   )
-  expect(narration.importBookCharacters).toHaveBeenCalledWith(book.library, {
-    bookId: 7,
-    title: "Novel",
-    authors: ["Writer"],
-    language: "en",
-  })
+  expect(narration.searchBookCharacterSources).toHaveBeenCalledWith(
+    book.library,
+    {
+      bookId: 7,
+      title: "Novel",
+      authors: ["Writer"],
+      language: "en",
+    },
+    expect.any(AbortSignal),
+  )
 })
 
 it("identifies narrator and named role editing and returns to the character list", async () => {
   mount("reader")
+  fireEvent.press(await screen.findByText("narration.edit"))
   fireEvent.press(await screen.findByText("narration.narrator"))
   expect(onSubviewChange).toHaveBeenLastCalledWith(
     expect.objectContaining({ title: "narration.narrator" }),
@@ -695,6 +747,7 @@ it("reviews a series merge and applies only after confirmation", async () => {
     .mocked(narration.mergeBookNarration)
     .mockResolvedValue({ ...settings, scopeId: "series", revision: 3 })
   mount("reader")
+  fireEvent.press(await screen.findByText("narration.edit"))
   fireEvent.press(await screen.findByText("narration.manualMerge"))
   await screen.findByText("Volume 2")
   expect(narration.previewBookNarrationMerge).toHaveBeenCalledWith(
@@ -711,5 +764,134 @@ it("reviews a series merge and applies only after confirmation", async () => {
       plan,
     ),
   )
-  await screen.findByText("narration.import")
+  await screen.findByText("narration.add")
+})
+
+const mockStopPreview = jest.fn()
+jest.mock("@/src/features/reader/tts/use-reader-tts-preview", () => ({
+  useReaderTtsPreview: () => ({
+    canPreview: true,
+    state: "idle",
+    start: jest.fn(),
+    stop: mockStopPreview,
+  }),
+}))
+jest.mock("@expo/ui/community/bottom-sheet", () => ({
+  BottomSheetScrollView: jest.requireActual("react-native").ScrollView,
+  BottomSheetTextInput: jest.requireActual("react-native").TextInput,
+}))
+jest.mock("@/src/components/streaming-status-line", () => ({
+  StreamingStatusLine: ({ label, text }: any) =>
+    jest
+      .requireActual("react")
+      .createElement(
+        jest.requireActual("react-native").Text,
+        null,
+        text || label,
+      ),
+}))
+jest.mock("@/src/components/ui/native-select-menu", () => ({
+  NativeSelectMenu: ({ children, actions, onSelect }: any) => {
+    const React = jest.requireActual("react")
+    const { View, Pressable, Text } = jest.requireActual("react-native")
+    const [open, setOpen] = React.useState(false)
+    return React.createElement(
+      View,
+      null,
+      children(() => setOpen(true)),
+      open
+        ? actions.map((action: any) =>
+            React.createElement(
+              Pressable,
+              {
+                key: action.id,
+                accessibilityRole: "button",
+                accessibilityLabel: action.title,
+                disabled: action.attributes?.disabled,
+                onPress: () => {
+                  setOpen(false)
+                  onSelect(action.id)
+                },
+              },
+              React.createElement(Text, null, action.title),
+            ),
+          )
+        : null,
+    )
+  },
+}))
+
+it("selects all removable characters, excludes narrator, and cancels without deleting", async () => {
+  mount("reader")
+  fireEvent.press(await screen.findByText("narration.edit"))
+  expect(screen.getByText("narration.add")).toBeTruthy()
+  fireEvent.press(screen.getByLabelText("narration.select"))
+  expect(screen.queryByText("narration.add")).toBeNull()
+  expect(
+    screen.getByRole("checkbox", { name: "narration.narrator" }),
+  ).toBeDisabled()
+  fireEvent.press(screen.getByLabelText("common.selectAll"))
+  expect(screen.getByRole("checkbox", { name: "Alice" })).toBeChecked()
+  expect(
+    screen.getByRole("checkbox", { name: "narration.narrator" }),
+  ).not.toBeChecked()
+  fireEvent.press(screen.getByLabelText("common.deselectAll"))
+  expect(screen.getByRole("checkbox", { name: "Alice" })).not.toBeChecked()
+  expect(screen.getByLabelText("narration.deleteSelected")).toBeDisabled()
+  fireEvent.press(screen.getByLabelText("common.cancel"))
+  expect(screen.getByText("narration.add")).toBeTruthy()
+  expect(narration.saveBookNarration).not.toHaveBeenCalled()
+})
+
+it("explicitly replaces a normalized duplicate while retaining its voice and reading instructions", async () => {
+  const source = {
+    title: "Encyclopedia",
+    url: "https://en.wikipedia.org/wiki/Novel",
+  }
+  jest.mocked(narration.searchBookCharacterSources).mockResolvedValue([source])
+  jest.mocked(narration.draftBookCharacters).mockResolvedValue([
+    {
+      ...alice,
+      name: "Ａｌｉｃｅ",
+      nicknames: ["Ally"],
+      description: "New identity",
+      voice: undefined,
+      instructions: "",
+      source,
+    },
+  ])
+  mount("reader")
+  fireEvent.press(await screen.findByText("narration.edit"))
+  fireEvent.press(screen.getByText("narration.add"))
+  fireEvent.press(screen.getByText("narration.import"))
+  fireEvent.press(await screen.findByText("Encyclopedia"))
+  fireEvent.press(screen.getByText("narration.organize"))
+  const candidate = await screen.findByRole("checkbox", {
+    name: "narration.replaceCharacter",
+  })
+  expect(candidate).not.toBeChecked()
+  expect(screen.getByText(/narration.alreadyExists/)).toBeTruthy()
+  expect(
+    screen.getByRole("button", { name: "narration.importSelected" }),
+  ).toBeDisabled()
+  fireEvent.press(candidate)
+  expect(screen.getByText(/narration.willReplace/)).toBeTruthy()
+  fireEvent.press(screen.getByText("narration.importSelected"))
+  await waitFor(() =>
+    expect(narration.saveBookNarration).toHaveBeenCalledWith(
+      book.library,
+      expect.objectContaining({
+        characters: [
+          narrator,
+          {
+            ...alice,
+            name: "Ａｌｉｃｅ",
+            nicknames: ["Ally"],
+            description: "New identity",
+            source,
+          },
+        ],
+      }),
+    ),
+  )
 })

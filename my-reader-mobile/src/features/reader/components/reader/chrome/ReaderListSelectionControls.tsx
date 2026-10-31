@@ -1,21 +1,29 @@
+import { type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
-import { StyleSheet } from "react-native"
-import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
-import { Pressable, Text, View } from "@/tw"
+import { IconButton } from "@/src/components/ui/button"
+import {
+  readerFormColors,
+  type ReaderChromePalette,
+} from "@/src/design/reader-chrome-palette"
+import { Text, View } from "@/tw"
 import { ReaderChromeIcon } from "./ReaderChromeIcon"
+import { ReaderSheetFooter } from "./ReaderSheetPage"
 
 const LABELS = {
   annotations: {
-    done: "reader.annotations.done",
     manage: "reader.annotations.manage",
     selectedCount: "reader.annotations.selectedCount",
     deleteSelected: "reader.annotations.deleteSelected",
   },
   bookmarks: {
-    done: "reader.bookmarks.done",
     manage: "reader.bookmarks.manage",
     selectedCount: "reader.bookmarks.selectedCount",
     deleteSelected: "reader.bookmarks.deleteSelected",
+  },
+  characters: {
+    manage: "narration.select",
+    selectedCount: "narration.selected",
+    deleteSelected: "narration.deleteSelected",
   },
 } as const
 
@@ -26,8 +34,11 @@ export function ReaderListManagementBar({
   mutationDisabled,
   deletionDisabled,
   selectedCount,
+  totalCount,
   toggleManagement,
+  toggleAll,
   deleteSelected,
+  trailingAction,
 }: {
   kind: keyof typeof LABELS
   palette: ReaderChromePalette
@@ -35,66 +46,90 @@ export function ReaderListManagementBar({
   mutationDisabled: boolean
   deletionDisabled: boolean
   selectedCount: number
+  totalCount: number
   toggleManagement: () => void
-  deleteSelected: () => Promise<void>
+  toggleAll: () => void
+  deleteSelected: () => void | Promise<void>
+  trailingAction?: ReactNode
 }) {
   const { t } = useTranslation()
   const labels = LABELS[kind]
+  const colors = readerFormColors(palette)
+  const allSelected = totalCount > 0 && selectedCount === totalCount
   return (
-    <View
-      className="flex-row items-center px-5 py-2"
-      style={{
-        borderTopWidth: StyleSheet.hairlineWidth,
-        borderColor: palette.border,
-      }}
-    >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t(managing ? labels.done : labels.manage)}
-        accessibilityState={{ disabled: mutationDisabled }}
-        className="h-11 w-11 items-center justify-center rounded-md"
-        hitSlop={2}
-        disabled={mutationDisabled}
-        onPress={toggleManagement}
-      >
-        <ReaderChromeIcon
-          name={managing ? "check" : "manage"}
-          size={24}
-          color={mutationDisabled ? palette.textFaint : palette.accentText}
+    <ReaderSheetFooter palette={palette}>
+      <View className="flex-row items-center">
+        <IconButton
+          label={t(managing ? "common.cancel" : labels.manage)}
+          icon={
+            managing
+              ? { ios: "xmark", android: "close" }
+              : { ios: "checklist", android: "checklist" }
+          }
+          colors={colors}
+          tone="primary"
+          size="sm"
+          disabled={mutationDisabled || (!managing && totalCount === 0)}
+          onPress={toggleManagement}
         />
-      </Pressable>
-      {managing ? (
-        <Text
-          className="flex-1 text-center text-base font-semibold"
-          style={{ color: palette.textMuted }}
-        >
-          {t(labels.selectedCount, {
-            count: selectedCount,
-          })}
-        </Text>
-      ) : (
-        <View className="flex-1" />
-      )}
-      {managing ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t(labels.deleteSelected)}
-          accessibilityState={{ disabled: deletionDisabled }}
-          className="h-11 w-11 items-center justify-center rounded-md"
-          hitSlop={2}
-          disabled={deletionDisabled}
-          onPress={() => void deleteSelected()}
-        >
-          <ReaderChromeIcon
-            name="delete"
-            size={24}
-            color={deletionDisabled ? palette.textFaint : palette.accentText}
+        {managing ? (
+          <ReaderSelectAllButton
+            allSelected={allSelected}
+            palette={palette}
+            disabled={mutationDisabled || totalCount === 0}
+            onPress={toggleAll}
           />
-        </Pressable>
+        ) : null}
+      </View>
+      <View className="flex-1" />
+      {managing ? (
+        <>
+          <Text className="shrink text-sm" style={{ color: palette.textMuted }}>
+            {t(labels.selectedCount, { count: selectedCount })}
+          </Text>
+          <IconButton
+            label={t(labels.deleteSelected)}
+            icon={{ ios: "trash", android: "delete-outline" }}
+            colors={colors}
+            tone="danger"
+            size="sm"
+            disabled={deletionDisabled}
+            onPress={() => void deleteSelected()}
+          />
+        </>
       ) : (
-        <View className="h-11 w-11" />
+        trailingAction
       )}
-    </View>
+    </ReaderSheetFooter>
+  )
+}
+
+export function ReaderSelectAllButton({
+  allSelected,
+  disabled,
+  palette,
+  onPress,
+}: {
+  allSelected: boolean
+  disabled: boolean
+  palette: ReaderChromePalette
+  onPress: () => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <IconButton
+      label={t(allSelected ? "common.deselectAll" : "common.selectAll")}
+      icon={
+        allSelected
+          ? { ios: "checklist.unchecked", android: "remove-done" }
+          : { ios: "checklist.checked", android: "done-all" }
+      }
+      colors={readerFormColors(palette)}
+      tone="primary"
+      size="sm"
+      disabled={disabled}
+      onPress={onPress}
+    />
   )
 }
 

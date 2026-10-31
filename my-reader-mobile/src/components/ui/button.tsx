@@ -221,6 +221,7 @@ export function IconButton({
   disabled,
   onPress,
   size = "md",
+  colors,
 }: {
   label: string
   icon: PlatformIconName
@@ -229,8 +230,9 @@ export function IconButton({
   disabled?: boolean
   onPress?: () => void
   size?: "sm" | "md"
+  colors?: Partial<ThemePalette>
 }) {
-  const palette = useThemePalette()
+  const palette = { ...useThemePalette(), ...colors }
   const color = tone === "neutral" ? palette.textMuted : palette[tone]
   return (
     <Button
@@ -239,7 +241,10 @@ export function IconButton({
       size="md"
       disabled={disabled}
       onPress={onPress}
-      colors={{ indicatorColor: color }}
+      colors={{
+        indicatorColor: color,
+        underlayColor: palette.backgroundSecondary,
+      }}
       style={{
         width: size === "sm" ? 44 : 48,
         height: size === "sm" ? 44 : 48,

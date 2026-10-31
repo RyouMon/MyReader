@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   getBookNarration,
   saveBookNarration,
-  importBookCharacters,
   previewBookNarrationMerge,
   mergeBookNarration,
   type BookNarrationSettings,
@@ -34,10 +33,6 @@ export function useBookNarration(
       saveBookNarration(library!, settings),
     onSuccess: update,
   })
-  const importCharacters = useMutation({
-    mutationFn: (request: Parameters<typeof importBookCharacters>[1]) =>
-      importBookCharacters(library!, request),
-  })
   const previewMerge = useMutation({
     mutationFn: (automatic: boolean) =>
       previewBookNarrationMerge(library!, bookId, automatic),
@@ -47,5 +42,5 @@ export function useBookNarration(
       mergeBookNarration(library!, bookId, plan),
     onSuccess: update,
   })
-  return { query, save, importCharacters, previewMerge, merge }
+  return { query, save, previewMerge, merge }
 }

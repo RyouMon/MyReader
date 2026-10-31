@@ -99,3 +99,34 @@ it("clears failures and ignores late output from retries, another book and an un
     second.finish()
   })
 })
+
+it("aborts a draft, clears pending output and ignores its late result when restarted", async () => {
+  const first = pending()
+  const { result } = mount()
+  const imported = vi.fn()
+  act(() =>
+    result.current.draftCharacters.mutate(request, { onSuccess: imported }),
+  )
+  await waitFor(() => expect(api.draftBookCharacters).toHaveBeenCalledOnce())
+  const signal = vi.mocked(api.draftBookCharacters).mock.calls[0]![3]!
+  act(() => first.emit({ kind: "text", delta: "partial" }))
+  act(() => result.current.cancelDraft())
+  expect(signal.aborted).toBe(true)
+  expect(result.current.draftProgress).toBe("")
+  expect(result.current.draftCharacters.isPending).toBe(false)
+  const second = pending()
+  act(() => result.current.draftCharacters.mutate(request))
+  await waitFor(() => expect(api.draftBookCharacters).toHaveBeenCalledTimes(2))
+  act(() => second.emit({ kind: "text", delta: "new" }))
+  await act(async () => {
+    first.emit({ kind: "text", delta: "stale" })
+    first.finish()
+  })
+  expect(imported).not.toHaveBeenCalled()
+  expect(result.current.draftProgress).toBe("new")
+  expect(result.current.draftCharacters.isPending).toBe(true)
+  await act(async () => second.finish())
+  await waitFor(() =>
+    expect(result.current.draftCharacters.isSuccess).toBe(true),
+  )
+})
