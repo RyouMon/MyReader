@@ -81,7 +81,12 @@ jest.mock("@/src/components", () => ({
       mockReact.createElement(mockText, null, title),
     ),
 }))
-jest.mock("@/tw", () => ({ View: mockView, Text: mockText }))
+jest.mock("@/tw", () => ({
+  View: mockView,
+  Text: mockText,
+  Pressable: mockPressable,
+  TouchableHighlight: jest.requireActual("react-native").TouchableHighlight,
+}))
 jest.mock("./NarrationMergeEditor", () => ({
   NarrationMergeEditor: () => null,
 }))
@@ -172,6 +177,7 @@ function mount() {
           language: "zh",
         }}
         config={config}
+        readingVoice={{ engine: "provider", profileId: "one", voiceId: "A" }}
         palette={{} as ReaderChromePalette}
       />
     </QueryClientProvider>,
@@ -180,6 +186,7 @@ function mount() {
 
 it("keeps an unconfigured character on the default model without saving a fixed voice", () => {
   mount()
+  fireEvent.press(screen.getByRole("button", { name: "narration.edit" }))
   fireEvent.press(screen.getByRole("button", { name: "Alice" }))
   expect(screen.getByTestId("narration.provider")).toHaveTextContent(
     "narration.defaultModel",
@@ -210,6 +217,7 @@ it.each([
   "system",
 ])("requires a concrete voice after switching to %s", async (model) => {
   mount()
+  fireEvent.press(screen.getByRole("button", { name: "narration.edit" }))
   fireEvent.press(screen.getByRole("button", { name: "Alice" }))
   fireEvent.press(screen.getByTestId(`narration.provider-${model}`))
   expect(screen.getByRole("button", { name: "llm.save" })).toBeDisabled()
@@ -229,4 +237,82 @@ it.each([
       (character: { id: string }) => character.id === "alice",
     ).voice,
   ).toBeUndefined()
+})
+
+const mockStopPreview = jest.fn()
+const mockPreviewOptions = jest.fn()
+jest.mock("@/src/features/reader/tts/use-reader-tts-preview", () => ({
+  useReaderTtsPreview: (options: unknown) => {
+    mockPreviewOptions(options)
+    return {
+      canPreview: true,
+      state: "idle",
+      start: jest.fn(),
+      stop: mockStopPreview,
+    }
+  },
+}))
+jest.mock("@expo/ui/community/bottom-sheet", () => ({
+  BottomSheetScrollView: jest.requireActual("react-native").ScrollView,
+  BottomSheetTextInput: jest.requireActual("react-native").TextInput,
+}))
+jest.mock("@/src/components/streaming-status-line", () => ({
+  StreamingStatusLine: ({ label, text }: any) =>
+    jest
+      .requireActual("react")
+      .createElement(
+        jest.requireActual("react-native").Text,
+        null,
+        text || label,
+      ),
+}))
+jest.mock("@/src/components/ui/native-select-menu", () => ({
+  NativeSelectMenu: ({ children, actions, onSelect }: any) => {
+    const React = jest.requireActual("react")
+    const { View, Pressable, Text } = jest.requireActual("react-native")
+    const [open, setOpen] = React.useState(false)
+    return React.createElement(
+      View,
+      null,
+      children(() => setOpen(true)),
+      open
+        ? actions.map((action: any) =>
+            React.createElement(
+              Pressable,
+              {
+                key: action.id,
+                accessibilityRole: "button",
+                accessibilityLabel: action.title,
+                disabled: action.attributes?.disabled,
+                onPress: () => {
+                  setOpen(false)
+                  onSelect(action.id)
+                },
+              },
+              React.createElement(Text, null, action.title),
+            ),
+          )
+        : null,
+    )
+  },
+}))
+
+it("previews the inherited reader voice with draft instructions and cancels without saving", () => {
+  mount()
+  fireEvent.press(screen.getByRole("button", { name: "narration.edit" }))
+  fireEvent.press(screen.getByRole("button", { name: "Alice" }))
+  fireEvent.changeText(screen.getByTestId("narration-instructions"), "gentle")
+  expect(mockPreviewOptions).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      config: expect.objectContaining({
+        defaultEngine: { kind: "provider", profileId: "one" },
+      }),
+      voiceId: "A",
+      instructions: "gentle",
+    }),
+  )
+  fireEvent.press(screen.getByRole("button", { name: "llm.cancel" }))
+  expect(mockStopPreview).toHaveBeenCalled()
+  expect(mockSave).not.toHaveBeenCalled()
+  expect(screen.getByRole("button", { name: "Alice" })).toBeTruthy()
 })

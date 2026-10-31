@@ -303,6 +303,28 @@ async fn encyclopedia_search_waits_for_source_selection_before_reading_or_using_
 }
 
 #[tokio::test]
+async fn encyclopedia_connection_failures_keep_the_network_error_category() {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let origin = format!("http://{}", listener.local_addr().unwrap());
+    drop(listener);
+    let request = draft_request(CharacterDraftInput::Prompt {
+        prompt: String::new(),
+    });
+    let source = CharacterSource {
+        title: "Cast".into(),
+        url: format!("{origin}/w/index.php?curid=1"),
+    };
+    for result in [
+        crate::infrastructure::encyclopedia::search_sources(&origin, &request.book).await,
+        crate::infrastructure::encyclopedia::read_cast(&origin, &source)
+            .await
+            .map(|_| Vec::new()),
+    ] {
+        assert!(matches!(result, Err(CoreError::Request(error)) if error.is_connect()));
+    }
+}
+
+#[tokio::test]
 async fn custom_input_keeps_user_facts_without_fabricating_a_web_source() {
     let server = fixture().await;
     let request = draft_request(CharacterDraftInput::Prompt {

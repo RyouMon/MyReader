@@ -1,12 +1,11 @@
 import { BottomSheetTextInput } from "@expo/ui/community/bottom-sheet"
 import type { MenuAction } from "@react-native-menu/menu"
-import { StyleSheet, View as RNView } from "react-native"
-import { FormSelect } from "@/src/components"
+import { FormSelect, FormTextField } from "@/src/components"
 import {
   readerFormColors,
   type ReaderChromePalette,
 } from "@/src/design/reader-chrome-palette"
-import { Text, View } from "@/tw"
+import { View } from "@/tw"
 
 export function ReaderTtsMenuRow({
   title,
@@ -42,6 +41,7 @@ export function ReaderTtsMenuRow({
 
 export function ProviderTextField({
   label,
+  editable = true,
   multiline = false,
   onChangeText,
   palette,
@@ -52,6 +52,7 @@ export function ProviderTextField({
   value,
 }: {
   label: string
+  editable?: boolean
   multiline?: boolean
   onChangeText: (value: string) => void
   palette: ReaderChromePalette
@@ -62,54 +63,21 @@ export function ProviderTextField({
   value: string
 }) {
   return (
-    <RNView style={styles.providerField}>
-      <Text
-        className="mb-2 text-base font-semibold"
-        style={{ color: palette.textMuted }}
-      >
-        {label}
-        {required ? " *" : ""}
-      </Text>
-      <BottomSheetTextInput
-        accessibilityLabel={label}
-        autoCapitalize="none"
-        autoCorrect={false}
-        multiline={multiline}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={palette.textFaint}
-        secureTextEntry={secureTextEntry}
-        selectionColor={palette.accentText}
-        style={[
-          styles.providerInput,
-          multiline ? styles.providerMultilineInput : null,
-          {
-            backgroundColor: palette.segmentIdle,
-            borderColor: palette.border,
-            color: palette.text,
-          },
-        ]}
-        testID={testID}
-        value={value}
-      />
-    </RNView>
+    <FormTextField
+      label={label}
+      editable={editable}
+      required={required}
+      colors={readerFormColors(palette)}
+      autoCapitalize="none"
+      autoCorrect={false}
+      multiline={multiline}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      secureTextEntry={secureTextEntry}
+      numberOfLines={multiline ? 3 : 1}
+      render={(props) => <BottomSheetTextInput {...props} />}
+      testID={testID}
+      value={value}
+    />
   )
 }
-
-const styles = StyleSheet.create({
-  providerField: {
-    marginBottom: 16,
-  },
-  providerInput: {
-    minHeight: 48,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    fontSize: 16,
-  },
-  providerMultilineInput: {
-    minHeight: 92,
-    textAlignVertical: "top",
-  },
-})

@@ -68,13 +68,27 @@ export const api = {
     libraryId: string,
     request: CharacterDraftRequestDto,
     onProgress?: (event: LlmStreamEventDto) => void,
+    signal?: AbortSignal,
   ) => {
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError")
+    const requestId = crypto.randomUUID()
     const channel = new Channel<LlmStreamEventDto>(onProgress)
+    const cancel = () => {
+      channel.onmessage = () => undefined
+      void commands.cancelTtsSynthesis(requestId).catch(() => undefined)
+    }
+    signal?.addEventListener("abort", cancel, { once: true })
     try {
-      return await unwrap(
-        commands.draftBookCharacters(libraryId, request, channel),
+      const result = await unwrap(
+        commands.draftBookCharacters(libraryId, requestId, request, channel),
       )
+      if (signal?.aborted) throw new DOMException("Aborted", "AbortError")
+      return result
+    } catch (error) {
+      if (signal?.aborted) throw new DOMException("Aborted", "AbortError")
+      throw error
     } finally {
+      signal?.removeEventListener("abort", cancel)
       channel.onmessage = () => undefined
     }
   },

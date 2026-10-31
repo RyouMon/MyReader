@@ -421,18 +421,24 @@ export function ReaderAnnotationList({
         }
       />
 
-      {annotations.length > 0 ? (
-        <ReaderListManagementBar
-          kind="annotations"
-          palette={palette}
-          managing={managing}
-          mutationDisabled={mutationDisabled}
-          deletionDisabled={deletionDisabled}
-          selectedCount={selectedAnnotations.length}
-          toggleManagement={toggleManagement}
-          deleteSelected={deleteSelected}
-        />
-      ) : null}
+      <ReaderListManagementBar
+        kind="annotations"
+        palette={palette}
+        managing={managing}
+        mutationDisabled={mutationDisabled}
+        deletionDisabled={deletionDisabled}
+        selectedCount={selectedAnnotations.length}
+        totalCount={annotations.length}
+        toggleAll={() =>
+          setSelectedIds(
+            selectedAnnotations.length === annotations.length
+              ? new Set()
+              : new Set(annotations.map((item) => item.id)),
+          )
+        }
+        toggleManagement={toggleManagement}
+        deleteSelected={deleteSelected}
+      />
     </RNView>
   )
 }

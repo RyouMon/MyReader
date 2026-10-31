@@ -59,6 +59,7 @@ jest.mock("@/tw", () => {
   const mockReactNative = jest.requireActual("react-native")
   return {
     Pressable: mockReactNative.Pressable,
+    TouchableHighlight: mockReactNative.TouchableHighlight,
     Text: mockReactNative.Text,
     View: mockReactNative.View,
   }

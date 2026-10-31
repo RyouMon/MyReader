@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Check, Loader2, Search } from "lucide-react"
+import { Check, List, ListChecks, Loader2, Search, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
@@ -35,7 +35,7 @@ export function CharacterImportPanel({
   onImport: (characters: BookCharacterDto[]) => void
 }) {
   const { t } = useTranslation()
-  const { draftCharacters, draftProgress } = useBookNarration(
+  const { draftCharacters, draftProgress, cancelDraft } = useBookNarration(
     book.libraryId,
     book.bookId,
   )
@@ -85,10 +85,16 @@ export function CharacterImportPanel({
             </>
           )}
           {draftCharacters.isPending ? (
-            <StreamingStatusLine
-              text={draftProgress}
-              label={t("narration.organizing")}
-            />
+            <>
+              <StreamingStatusLine
+                text={draftProgress}
+                label={t("narration.organizing")}
+              />
+              <Button variant="ghost" onClick={cancelDraft}>
+                <X />
+                {t("common.cancel")}
+              </Button>
+            </>
           ) : null}
         </>
       )}
@@ -111,8 +117,27 @@ function CharacterCandidates({
       candidates.flatMap((candidate, index) => (candidate.id ? [] : [index])),
     ),
   )
+  const allSelected =
+    candidates.length > 0 && selected.size === candidates.length
   return (
     <>
+      {candidates.length > 0 ? (
+        <Button
+          variant="ghost"
+          className="self-start"
+          disabled={saving}
+          onClick={() =>
+            setSelected(
+              allSelected
+                ? new Set()
+                : new Set(candidates.map((_, index) => index)),
+            )
+          }
+        >
+          {allSelected ? <List /> : <ListChecks />}
+          {t(allSelected ? "common.deselectAll" : "common.selectAll")}
+        </Button>
+      ) : null}
       {candidates.length === 0 ? (
         <p role="status" className="text-sm text-muted-foreground">
           {t("narration.noCandidates")}

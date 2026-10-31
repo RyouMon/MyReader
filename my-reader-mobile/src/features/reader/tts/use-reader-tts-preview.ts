@@ -28,6 +28,7 @@ export function useReaderTtsPreview({
   text,
   voiceId,
   voiceLanguage,
+  instructions,
 }: {
   config: MobileTtsConfig | null
   language: string
@@ -35,6 +36,7 @@ export function useReaderTtsPreview({
   text: string
   voiceId?: string
   voiceLanguage?: string
+  instructions?: string
 }) {
   const previewLanguage = normalizeTtsLanguage(language) || "und"
   const selectedProfile =
@@ -151,6 +153,7 @@ export function useReaderTtsPreview({
           text,
           language: previewLanguage,
           voiceId,
+          instructions,
           speed: Math.min(
             config.playback.speed,
             ttsMaximumPlaybackSpeed(selectedProfile),
@@ -177,6 +180,7 @@ export function useReaderTtsPreview({
     }
   }, [
     config,
+    instructions,
     onError,
     previewLanguage,
     selectedProfile,

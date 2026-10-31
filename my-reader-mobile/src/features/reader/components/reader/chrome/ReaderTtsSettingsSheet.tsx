@@ -1,4 +1,3 @@
-import { BottomSheetScrollView } from "@expo/ui/community/bottom-sheet"
 import { tts as readiumTts, type TtsVoice } from "@my-reader/readium"
 import {
   filterTtsVoicesForLanguage,
@@ -15,6 +14,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react"
 import { useTranslation } from "react-i18next"
 import {
@@ -143,6 +143,7 @@ const ReaderTtsSettingsSheet = forwardRef<
   const [narrationView, setNarrationView] = useState<NarrationSubview | null>(
     null,
   )
+  const [headerAction, setHeaderAction] = useState<ReactNode>(null)
   const containerRef = useRef<ReaderSettingsSheetRef>(null)
   const openProvidersOnDismiss = useRef(false)
   const canGoBack = Boolean(narrationView)
@@ -248,6 +249,10 @@ const ReaderTtsSettingsSheet = forwardRef<
     voiceId: selectedVoiceId,
     voiceLanguage: selectedVoice?.language,
   })
+
+  useEffect(() => {
+    if (narrationView) stopPreview()
+  }, [narrationView, stopPreview])
 
   const engineOptions = useMemo(
     () => [
@@ -414,68 +419,67 @@ const ReaderTtsSettingsSheet = forwardRef<
         canGoBack={canGoBack}
         goBack={goBack}
         headerTitle={headerTitle}
+        action={headerAction}
       />
       <RNView style={styles.sceneContainer}>
         <GestureDetector gesture={backGesture}>
           <RNView style={styles.scene}>
-            <BottomSheetScrollView
-              style={styles.scrollArea}
-              contentContainerStyle={styles.scrollContent}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              {error ? (
-                <Text
-                  selectable
-                  className="mb-4 rounded-2xl px-4 py-3 text-base"
-                  style={{
-                    backgroundColor: palette.segmentIdle,
-                    color: palette.accentText,
-                  }}
-                >
-                  {error}
-                </Text>
-              ) : null}
-              {loading || !config ? (
-                <View className="items-center py-12">
-                  <ActivityIndicator color={palette.accent} />
-                </View>
-              ) : (
-                <>
-                  <BookNarrationSettings
-                    book={book}
-                    config={config}
-                    palette={palette}
-                    onChange={onNarrationChange}
-                    onSubviewChange={setNarrationView}
-                  />
-                  <ReaderTtsPlaybackSettings
-                    hidden={Boolean(narrationView)}
-                    config={config}
-                    palette={palette}
-                    selectedProfile={selectedProfile}
-                    selectedEngineKey={selectedEngineKey}
-                    engineOptions={engineOptions}
-                    applyEngine={applyEngine}
-                    voicesLoading={voicesLoading}
-                    selectedVoice={selectedVoice}
-                    selectedVoiceId={selectedVoiceId}
-                    voiceActions={voiceActions}
-                    selectVoice={selectVoice}
-                    updatePlayback={updatePlayback}
-                    previewState={previewState}
-                    canPreview={canPreview}
-                    startPreview={startPreview}
-                    stopPreview={stopPreview}
-                    openProviders={() => {
-                      stopPreview()
-                      openProvidersOnDismiss.current = true
-                      containerRef.current?.dismiss()
+            {loading || !config ? (
+              <View className="items-center py-12">
+                <ActivityIndicator color={palette.accent} />
+              </View>
+            ) : (
+              <BookNarrationSettings
+                book={book}
+                config={config}
+                palette={palette}
+                onChange={onNarrationChange}
+                onSubviewChange={setNarrationView}
+                onHeaderActionChange={setHeaderAction}
+                readingVoice={{
+                  engine: config.defaultEngine.kind,
+                  profileId: config.defaultEngine.profileId,
+                  voiceId: selectedVoiceId ?? "",
+                }}
+              >
+                {error ? (
+                  <Text
+                    selectable
+                    className="mb-4 rounded-2xl px-4 py-3 text-base"
+                    style={{
+                      backgroundColor: palette.segmentIdle,
+                      color: palette.accentText,
                     }}
-                  />
-                </>
-              )}
-            </BottomSheetScrollView>
+                  >
+                    {error}
+                  </Text>
+                ) : null}
+
+                <ReaderTtsPlaybackSettings
+                  config={config}
+                  palette={palette}
+                  selectedProfile={selectedProfile}
+                  selectedEngineKey={selectedEngineKey}
+                  engineOptions={engineOptions}
+                  applyEngine={applyEngine}
+                  voicesLoading={voicesLoading}
+                  selectedVoice={selectedVoice}
+                  selectedVoiceId={selectedVoiceId}
+                  voiceActions={voiceActions}
+                  selectVoice={selectVoice}
+                  updatePlayback={updatePlayback}
+                  previewState={previewState}
+                  canPreview={canPreview}
+                  startPreview={startPreview}
+                  stopPreview={stopPreview}
+                  openProviders={() => {
+                    stopPreview()
+                    openProvidersOnDismiss.current = true
+                    containerRef.current?.dismiss()
+                  }}
+                />
+              </BookNarrationSettings>
+            )}
           </RNView>
         </GestureDetector>
       </RNView>
@@ -493,13 +497,5 @@ const styles = StyleSheet.create({
   },
   scene: {
     flex: 1,
-  },
-  scrollArea: {
-    flexGrow: 1,
-    flexShrink: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 32,
   },
 })

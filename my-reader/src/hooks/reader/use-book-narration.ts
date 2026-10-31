@@ -37,7 +37,7 @@ export function useBookNarration(
     mutationFn: (request: CharacterImportRequestDto) =>
       api.searchBookCharacterSources(libraryId!, request),
   })
-  const { draftCharacters, draftProgress } = useCharacterDraft(
+  const { draftCharacters, draftProgress, cancelDraft } = useCharacterDraft(
     libraryId,
     bookId,
   )
@@ -56,6 +56,7 @@ export function useBookNarration(
     searchSources,
     draftCharacters,
     draftProgress,
+    cancelDraft,
     previewMerge,
     merge,
   }

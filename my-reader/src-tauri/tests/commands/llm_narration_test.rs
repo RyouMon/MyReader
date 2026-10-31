@@ -177,7 +177,7 @@ async fn narration_commands_preserve_identity_and_route_exact_text_with_book_sco
     let error = invoke_err(
         &app,
         "draft_book_characters",
-        json!({"libraryId":"library","onProgress":"__CHANNEL__:0","request":{"book":{"bookId":8,"title":"Novel","authors":[],"language":"en"},"input":{"kind":"book","passages":[]}}}),
+        json!({"libraryId":"library","requestId":"draft-disabled","onProgress":"__CHANNEL__:0","request":{"book":{"bookId":8,"title":"Novel","authors":[],"language":"en"},"input":{"kind":"book","passages":[]}}}),
     );
     assert!(error.message.contains("DISABLED"));
 
@@ -217,4 +217,20 @@ async fn narration_commands_preserve_identity_and_route_exact_text_with_book_sco
         json!({"libraryId":"library","bookId":7}),
     );
     assert_eq!(first["characters"], merged["characters"]);
+}
+
+#[test]
+fn cancelling_a_draft_before_start_prevents_work_without_cancelling_other_requests() {
+    let app = TestApp::new();
+    let _: bool = invoke_ok(
+        &app,
+        "cancel_tts_synthesis",
+        json!({"requestId":"cancelled-draft"}),
+    );
+    let mut request = json!({"libraryId":"missing","requestId":"cancelled-draft","onProgress":"__CHANNEL__:0","request":{"book":{"bookId":1,"title":"Novel","authors":[],"language":"en"},"input":{"kind":"prompt","prompt":"Cast"}}});
+    let error = invoke_err(&app, "draft_book_characters", request.clone());
+    assert!(error.message.contains("NARRATION_CANCELLED"));
+    request["requestId"] = json!("another-draft");
+    let error = invoke_err(&app, "draft_book_characters", request);
+    assert!(!error.message.contains("NARRATION_CANCELLED"));
 }

@@ -23,30 +23,34 @@ import {
 import ReaderTtsSettingsSheet from "./ReaderTtsSettingsSheet"
 
 jest.mock("./BookNarrationSettings", () => ({
-  BookNarrationSettings: ({
-    book,
-    onSubviewChange,
-  }: {
-    book?: unknown
-    onSubviewChange: (
-      view: { title: string; onBack: () => void } | null,
-    ) => void
-  }) =>
-    book
-      ? mockReact.createElement(
-          mockPressable,
-          {
-            accessibilityRole: "button",
-            accessibilityLabel: "Edit Alice",
-            onPress: () =>
-              onSubviewChange({
-                title: "Alice",
-                onBack: () => onSubviewChange(null),
-              }),
-          },
-          mockReact.createElement(mockText, null, "Edit Alice"),
-        )
-      : null,
+  BookNarrationSettings: ({ book, onSubviewChange, children }: any) => {
+    const [editing, setEditing] = mockReact.useState(false)
+    return mockReact.createElement(
+      mockView,
+      null,
+      book
+        ? mockReact.createElement(
+            mockPressable,
+            {
+              accessibilityRole: "button",
+              accessibilityLabel: "Edit Alice",
+              onPress: () => {
+                setEditing(true)
+                onSubviewChange({
+                  title: "Alice",
+                  onBack: () => {
+                    setEditing(false)
+                    onSubviewChange(null)
+                  },
+                })
+              },
+            },
+            mockReact.createElement(mockText, null, "Edit Alice"),
+          )
+        : null,
+      editing ? null : children,
+    )
+  },
 }))
 
 let mockPlaybackRate = 1

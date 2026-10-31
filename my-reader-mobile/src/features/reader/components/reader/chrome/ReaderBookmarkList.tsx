@@ -362,18 +362,24 @@ export function ReaderBookmarkList({
         }
       />
 
-      {bookmarks.length > 0 ? (
-        <ReaderListManagementBar
-          kind="bookmarks"
-          palette={palette}
-          managing={managing}
-          mutationDisabled={mutationDisabled}
-          deletionDisabled={deletionDisabled}
-          selectedCount={selectedBookmarks.length}
-          toggleManagement={toggleManagement}
-          deleteSelected={deleteSelected}
-        />
-      ) : null}
+      <ReaderListManagementBar
+        kind="bookmarks"
+        palette={palette}
+        managing={managing}
+        mutationDisabled={mutationDisabled}
+        deletionDisabled={deletionDisabled}
+        selectedCount={selectedBookmarks.length}
+        totalCount={bookmarks.length}
+        toggleAll={() =>
+          setSelectedIds(
+            selectedBookmarks.length === bookmarks.length
+              ? new Set()
+              : new Set(bookmarks.map((item) => item.id)),
+          )
+        }
+        toggleManagement={toggleManagement}
+        deleteSelected={deleteSelected}
+      />
     </RNView>
   )
 }
