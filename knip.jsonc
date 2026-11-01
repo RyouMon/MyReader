@@ -5,7 +5,9 @@
   "workspaces": {
     ".": {
       "entry": ["scripts/*.{mjs,sh}", "scripts/quality/*.mjs"],
-      "project": ["scripts/**/*.{mjs,js,ts}"]
+      "project": ["scripts/**/*.{mjs,js,ts}"],
+      // packageExtensions repairs third-party peers supplied by the apps, not the root.
+      "ignoreDependencies": ["react", "react-native"]
     },
     "scripts/experiments/issue-107-pi": {
       "entry": ["probe.mjs", "browser-entry.mjs"],
