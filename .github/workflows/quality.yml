@@ -270,7 +270,12 @@ jobs:
         shell: bash
         run: |
           mkdir -p reports/rust-desktop
-          cargo llvm-cov --locked -p my-reader --lcov --output-path reports/rust-desktop/lcov.info
+          coverage_packages=(-p my-reader)
+          # Collect Core's Apple-only proxy tests on macOS.
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            coverage_packages+=(-p my-reader-core)
+          fi
+          cargo llvm-cov --locked "${coverage_packages[@]}" --lcov --output-path reports/rust-desktop/lcov.info
       - uses: actions/upload-artifact@v4
         if: always()
         with:

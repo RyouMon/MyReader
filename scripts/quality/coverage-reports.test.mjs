@@ -78,6 +78,82 @@ test("unreported changed product sources fail instead of silently becoming N/A",
   )
 })
 
+test("multiline declarations need no counters but executable code still requires a report", () => {
+  const fixtures = new Map([
+    [
+      "my-reader-core/src/models/mod.rs",
+      "mod model;\npub use model::{\n  Model, OtherModel,\n};",
+    ],
+    [
+      "my-reader-mobile/src/components/ui/index.ts",
+      'export {\n  Button, type ButtonProps,\n} from "./button"\nexport * as icons from "./icons"',
+    ],
+    [
+      "my-reader-mobile/src/app/tts-providers/form.tsx",
+      'export { default } from "@/src/features/settings/form"',
+    ],
+  ])
+  for (const [file, source] of fixtures) {
+    const changes = new Map([[file, new Set([2])]])
+    assert.doesNotThrow(() =>
+      requireChangedSources(new Set(), changes, () => source),
+    )
+    const implementation = file.endsWith(".rs")
+      ? "\npub fn load() {}"
+      : "\nexport function load() {}"
+    changes.get(file).add((source + implementation).split("\n").length)
+    assert.throws(
+      () =>
+        requireChangedSources(
+          new Set(),
+          changes,
+          () => source + implementation,
+        ),
+      /no coverage report/,
+    )
+  }
+})
+
+test("Rust module-only changes beside existing types need no executable counters", () => {
+  const file = "my-reader/src-tauri/src/commands/mod.rs"
+  assert.doesNotThrow(() =>
+    requireChangedSources(
+      new Set(),
+      new Map([[file, new Set([3])]]),
+      () => "pub struct Source { pub path: String }\n\npub mod narration;",
+    ),
+  )
+})
+
+test("Rust test modules are excluded while similarly named product modules remain required", () => {
+  const root = "my-reader-core/src/services/tts/"
+  const tests = root + "provider_tests.rs"
+  const product = root + "provider.rs"
+  assert.doesNotThrow(() =>
+    requireChangedSources(
+      new Set(),
+      new Map([[tests, new Set([1])]]),
+      () => "fn fixture() {}",
+    ),
+  )
+  assert.throws(
+    () =>
+      requireChangedSources(
+        new Set(),
+        new Map([[product, new Set([1])]]),
+        () => "fn synthesize() {}",
+      ),
+    /no coverage report/,
+  )
+  const normalized = normalizeCoverage(
+    parseLcov(record(tests) + record(product)),
+    "rust",
+    "",
+    sharingPatch,
+  )
+  assert.deepEqual([...normalized.keys()], [product])
+})
+
 const record = (file, lines = "DA:10,0\nDA:11,1") =>
   `SF:${file}\n${lines}\nend_of_record\n`
 const patch =

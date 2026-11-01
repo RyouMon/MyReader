@@ -172,12 +172,7 @@
       "modules/security-scoped-bookmarks/src/**/*.{ts,tsx}",
       "!**/*.{test,spec}.{ts,tsx}",
       "!**/*.d.ts",
-      "!**/__mocks__/**",
-      "!src/app/**",
-      "src/app/_layout.tsx",
-      "src/app/[(]tabs[)]/_layout.tsx",
-      "src/app/reader/[[]id[]].tsx",
-      "src/app/update-notes.tsx"
+      "!**/__mocks__/**"
     ],
     "coverageReporters": [
       "text-summary",
