@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test"
+import type { BookNarrationSettingsDto } from "../../src/lib/tauri-specta"
 import { serveEpubFixture } from "./epub-fixture"
 import { TEST_LIBRARY_ID } from "./library-mock"
 
@@ -87,6 +88,16 @@ export async function setupReaderMocks(
           identifiers: [],
         }),
         get_reading_progress: () => null,
+        get_book_narration: (): BookNarrationSettingsDto => ({
+          bookId: bid,
+          scopeId: `book:${bid}`,
+          scopeName: null,
+          mergeSources: [],
+          enabled: false,
+          revision: 0,
+          identityRevision: 0,
+          characters: [],
+        }),
         prepare_book_source: () => {
           if (hangPrepare) {
             return new Promise(() => {})

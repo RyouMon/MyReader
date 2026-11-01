@@ -1,10 +1,25 @@
-import { expect } from "@playwright/test"
+import { expect, type Page } from "@playwright/test"
 import { createBdd } from "playwright-bdd"
+import type {
+  QwenTtsModelDto,
+  SaveTtsProviderInput,
+  TtsConfigDto,
+  UpsertTtsProviderInput,
+} from "../../../src/lib/tauri-specta"
 import { test } from "../../fixtures/test"
 import { setupFolderBrowserMocks } from "../../fixtures/folder-browser-mock"
 import type { IpcHandler } from "../../fixtures/tauri-browser-mock"
 
 const { Given, When, Then } = createBdd(test)
+
+async function importModel(page: Page, model: string) {
+  await page.getByRole("button", { name: "获取可用模型", exact: true }).click()
+  await page.getByRole("checkbox", { name: model, exact: true }).check()
+  await page.getByRole("button", { name: "添加所选模型", exact: true }).click()
+  await expect(
+    page.getByRole("textbox", { name: /模型 ID/ }).last(),
+  ).toHaveValue(model)
+}
 
 Given("用户正在选择语音服务来源", async ({ page }) => {
   await setupFolderBrowserMocks(page)
@@ -15,36 +30,11 @@ Given("用户正在选择语音服务来源", async ({ page }) => {
         __TAURI_IPC_HANDLERS__: Record<string, IpcHandler>
       }
     ).__TAURI_IPC_HANDLERS__
-    const models = [
-      {
-        id: "qwen3-tts-flash",
-        name: "Qwen3-TTS Flash",
-        audioFormats: ["wav"],
-        supportsInstructions: false,
-        voiceDiscovery: false,
-        voices: [{ id: "Cherry", name: "芊悦", language: "mul" }],
-      },
-      {
-        id: "qwen3-tts-vc-2026-01-22",
-        name: "Qwen3-TTS VC",
-        audioFormats: ["wav"],
-        supportsInstructions: false,
-        voiceDiscovery: true,
-        voices: [],
-      },
-      {
-        id: "qwen3-tts-vd-2026-01-26",
-        name: "Qwen3-TTS VD",
-        audioFormats: ["wav"],
-        supportsInstructions: false,
-        voiceDiscovery: true,
-        voices: [],
-      },
-    ]
-    const config = {
-      schemaVersion: 1,
+    const config: TtsConfigDto = {
+      schemaVersion: 2,
+      providers: [],
       defaultEngine: { kind: "system" },
-      profiles: [] as Record<string, unknown>[],
+      profiles: [],
       voiceByLanguage: {},
       playback: {
         speed: 1,
@@ -55,53 +45,90 @@ Given("用户正在选择语音服务来源", async ({ page }) => {
       },
     }
     handlers.get_tts_config = () => config
-    const presets = [
-      [
-        "tokenPlan",
-        "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference",
-      ],
-      ["qianwen", "https://maas.qianwenaiapi.com/api/v1"],
-      ["dashscope", "https://dashscope.aliyuncs.com/api/v1"],
-    ].map(([id, endpoint]) => ({
-      id,
-      endpoint,
-      defaultModel: {
-        id: "qwen-audio-3.0-tts-plus",
-        name: "Qwen-Audio-TTS Plus",
-        audioFormats: ["mp3", "wav", "opus"],
-        supportsInstructions: true,
-        voiceDiscovery: id !== "tokenPlan",
-        voices: [
-          {
-            id: id === "tokenPlan" ? "longanhuan_v3.6" : "longanlingxin",
-            name: id === "tokenPlan" ? "龙安欢" : "龙安灵心",
-            language: "mul",
-          },
-        ],
+    handlers.get_llm_config = () => ({
+      providers: [],
+      profiles: [],
+      defaultProfileId: null,
+    })
+    handlers.list_qwen_tts_presets = () => [
+      {
+        id: "tokenPlan",
+        endpoint: "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference",
       },
-    }))
-    handlers.list_qwen_tts_presets = () => presets
-    handlers.list_qwen_tts_models = (args) =>
-      String(args.endpoint).startsWith("wss:")
-        ? [presets[0].defaultModel]
-        : [presets[1].defaultModel, ...models]
-    handlers.discover_qwen_tts_voices = (args) => {
-      const input = args.input as { model: string }
-      return input.model.includes("-vc-")
-        ? [{ id: "my-clone", name: "我的复刻音色", language: "zh" }]
-        : [{ id: "my-design", name: "我的设计音色", language: "zh" }]
-    }
-    handlers.upsert_tts_profile = (args) => {
-      const { profile } = args.input as { profile: Record<string, unknown> }
-      config.profiles = [
-        { ...profile, id: "qwen-fixture", revision: 1, hasCredential: true },
+      { id: "qianwen", endpoint: "https://maas.qianwenaiapi.com/api/v1" },
+      { id: "dashscope", endpoint: "https://dashscope.aliyuncs.com/api/v1" },
+    ]
+    handlers.list_qwen_tts_models = (args) => {
+      const { profile } = args.input as UpsertTtsProviderInput
+      const tokenPlan = profile.endpoint.startsWith("wss:")
+      const models: QwenTtsModelDto[] = [
+        {
+          id: "qwen-audio-3.0-tts-plus",
+          audioFormats: ["mp3", "wav", "opus"],
+          supportsInstructions: true,
+          voiceDiscovery: !tokenPlan,
+          voices: [
+            {
+              id: tokenPlan ? "longanhuan_v3.6" : "longanlingxin",
+              language: "mul",
+              gender: null,
+            },
+          ],
+        },
       ]
+      if (!tokenPlan) {
+        models.push(
+          ...["qwen3-tts-vc-2026-01-22", "qwen3-tts-vd-2026-01-26"].map(
+            (id): QwenTtsModelDto => ({
+              id,
+              audioFormats: ["wav"],
+              supportsInstructions: false,
+              voiceDiscovery: true,
+              voices: [],
+            }),
+          ),
+        )
+      }
+      return models
+    }
+    handlers.discover_qwen_tts_voices = (args) => {
+      const input = args.input as { model: string; credential: string }
+      if (input.credential !== "fixture-key")
+        throw new Error("Missing voice discovery credential")
+      const id = input.model.includes("-vc-")
+        ? "my-clone"
+        : input.model.includes("-vd-")
+          ? "my-design"
+          : null
+      return id ? [{ id, language: "zh", gender: null }] : []
+    }
+    handlers.save_tts_provider = (args) => {
+      const { provider, credential } = args.input as SaveTtsProviderInput
+      config.providers = [
+        { ...provider, id: "qwen-fixture", hasCredential: Boolean(credential) },
+      ]
+      config.profiles = provider.models.map((model) => ({
+        id: model.id,
+        name: `${provider.name}/${model.model}`,
+        kind: provider.kind,
+        endpoint: provider.endpoint,
+        model: model.model,
+        options: {
+          kind: provider.kind,
+          responseFormat: model.responseFormat,
+          instructions: model.instructions,
+          voices: model.voices,
+          defaultVoice: model.defaultVoice,
+        },
+        revision: 1,
+        hasCredential: Boolean(credential),
+      }))
       return config
     }
     handlers.list_tts_voices = () => []
   })
   await page.goto("/settings")
-  await page.getByRole("button", { name: "朗读与语音", exact: true }).click()
+  await page.getByRole("button", { name: "AI 供应商", exact: true }).click()
   await page.getByRole("button", { name: "添加语音服务", exact: true }).click()
 })
 
@@ -110,117 +137,83 @@ When("用户选择{string}来源", async ({ page }, source: string) => {
     .getByRole("button")
     .filter({ has: page.getByText(source, { exact: true }) })
     .click()
+  await page.locator("#tts-profile-credential").fill("fixture-key")
 })
 
-When("用户创建一个{string}语音服务", async ({ page }, source: string) => {
-  await page
-    .getByRole("button")
-    .filter({ has: page.getByText(source, { exact: true }) })
-    .click()
-  await page.locator("#tts-profile-credential").fill("fixture-key")
+When("用户获取并添加模型{string}", async ({ page }, model: string) => {
+  await importModel(page, model)
+})
+
+When("用户保存语音服务", async ({ page }) => {
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "保存", exact: true })
     .click()
+  await expect(page.getByRole("dialog")).toBeHidden()
+})
+
+Then("导入模型的声音 ID 为{string}", async ({ page }, voice: string) => {
+  await expect(page.getByRole("textbox", { name: /声音 ID/ })).toHaveValue(
+    voice,
+  )
+})
+
+Then("服务地址为{string}", async ({ page }, endpoint: string) => {
+  await expect(page.getByRole("textbox", { name: /服务器地址/ })).toHaveValue(
+    endpoint,
+  )
 })
 
 Then(
   "该服务使用{string}且保留所选来源名称",
   async ({ page }, endpoint: string) => {
-    await expect(page.getByRole("dialog")).toBeHidden()
     const name = endpoint.includes("maas.qianwenaiapi.com")
       ? "Qwen · 按需计费"
       : "Qwen · DashScope（百炼）"
-    await expect(page.getByText(name, { exact: true })).toBeVisible()
     await page
-      .getByRole("button", { name: "编辑语音服务", exact: true })
+      .getByRole("button", { name: `编辑 ${name}`, exact: true })
       .click()
-    await expect(page.getByLabel("服务器地址", { exact: true })).toHaveValue(
+    await expect(page.getByRole("textbox", { name: /服务器地址/ })).toHaveValue(
       endpoint,
     )
-    await expect(page.getByLabel("名称", { exact: true })).toHaveValue(name)
-    await expect(
-      page.getByRole("combobox", { name: "默认声音", exact: true }),
-    ).toHaveText("龙安灵心")
+    await expect(page.getByRole("textbox", { name: /^名称/ })).toHaveValue(name)
+    await expect(page.getByRole("textbox", { name: /模型 ID/ })).toHaveValue(
+      "qwen-audio-3.0-tts-plus",
+    )
+    await expect(page.getByRole("textbox", { name: /声音 ID/ })).toHaveValue(
+      "longanlingxin",
+    )
   },
 )
 
-When("用户选择复刻模型并填写有效凭据", async ({ page }) => {
-  await page
-    .getByRole("button")
-    .filter({
-      has: page.getByText("Qwen · DashScope（百炼）", { exact: true }),
-    })
-    .click()
-  await page.getByRole("combobox", { name: "模型", exact: true }).click()
-  await page.getByRole("option", { name: "Qwen3-TTS VC", exact: true }).click()
-  await page.locator("#tts-profile-credential").fill("fixture-key")
+When("用户手动填写新音色{string}", async ({ page }, voice: string) => {
+  await page.getByRole("textbox", { name: /声音 ID/ }).fill(voice)
 })
 
-Then("默认使用 Token Plan 支持的模型和套餐地址", async ({ page }) => {
-  await expect(page.getByLabel("服务器地址", { exact: true })).toHaveValue(
-    "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference",
+Then(
+  "已保存的模型{string}包含音色{string}",
+  async ({ page }, model: string, voice: string) => {
+    await page.getByRole("button", { name: /^编辑 Qwen/ }).click()
+    await expect(page.getByRole("textbox", { name: /模型 ID/ })).toHaveValue(
+      model,
+    )
+    await expect(page.getByRole("textbox", { name: /声音 ID/ })).toHaveValue(
+      voice,
+    )
+  },
+)
+
+Then("两个模型分别保留各自的账户音色", async ({ page }) => {
+  await page.getByRole("button", { name: /^编辑 Qwen/ }).click()
+  const models = page.getByRole("textbox", { name: /模型 ID/ })
+  await expect(models).toHaveCount(2)
+  await expect(models.nth(0)).toHaveValue("qwen3-tts-vc-2026-01-22")
+  await expect(models.nth(1)).toHaveValue("qwen3-tts-vd-2026-01-26")
+  await expect(page.getByRole("textbox", { name: /声音 ID/ })).toHaveValue(
+    "my-clone",
   )
-  await expect(
-    page.getByRole("combobox", { name: "模型", exact: true }),
-  ).toHaveText("Qwen-Audio-TTS Plus")
-  await expect(
-    page.getByRole("combobox", { name: "默认声音", exact: true }),
-  ).toHaveText("龙安欢")
-  await page.getByRole("combobox", { name: "模型", exact: true }).click()
-  await expect(page.getByRole("option")).toHaveCount(1)
-})
-
-Then("声音列表包含账户音色“我的复刻音色”", async ({ page }) => {
-  await expect(page.getByText("正在获取账户音色…")).toBeHidden()
-  await page.getByRole("combobox", { name: "默认声音", exact: true }).click()
-  await expect(
-    page.getByRole("option", { name: "我的复刻音色", exact: true }),
-  ).toBeVisible()
-  await page.keyboard.press("Escape")
-})
-
-When("用户改用声音设计模型", async ({ page }) => {
-  await expect(page.getByText("正在获取账户音色…")).toBeHidden()
-  await page.getByRole("combobox", { name: "模型", exact: true }).click()
-  await page.getByRole("option", { name: "Qwen3-TTS VD", exact: true }).click()
-})
-
-Then("声音列表仅包含该模型的账户音色“我的设计音色”", async ({ page }) => {
-  await expect(page.getByText("正在获取账户音色…")).toBeHidden()
-  await page.getByRole("combobox", { name: "默认声音", exact: true }).click()
-  await expect(
-    page.getByRole("option", { name: "我的设计音色", exact: true }),
-  ).toBeVisible()
-  await expect(
-    page.getByRole("option", { name: "我的复刻音色", exact: true }),
-  ).toHaveCount(0)
-})
-
-When("用户手动填写新音色“future-voice”", async ({ page }) => {
-  await page
-    .getByRole("button", { name: "手动输入音色 ID", exact: true })
-    .click()
-  await page.getByLabel("音色 ID", { exact: true }).fill("future-voice")
-})
-
-When("用户将该音色设为默认声音并保存", async ({ page }) => {
-  await page.getByRole("combobox", { name: "默认声音", exact: true }).click()
-  await page
-    .getByRole("option", { name: /^(我的复刻音色|future-voice)$/ })
-    .click()
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "保存", exact: true })
-    .click()
-})
-
-Then("已添加的 Qwen 服务使用该默认音色", async ({ page }) => {
-  await expect(page.getByRole("dialog")).toBeHidden()
-  await page.getByRole("button", { name: "编辑语音服务", exact: true }).click()
-  await expect(
-    page
-      .getByRole("dialog")
-      .getByRole("combobox", { name: "默认声音", exact: true }),
-  ).toHaveText(/^(my-clone|我的复刻音色|future-voice)$/)
+  await page.getByRole("button", { name: /模型设置 qwen3-tts-vd/ }).click()
+  await expect(page.getByRole("textbox", { name: /声音 ID/ })).toHaveValue(
+    "my-design",
+  )
 })

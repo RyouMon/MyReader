@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test"
+import type { TtsConfigDto } from "../../src/lib/tauri-specta"
 import { setupReaderMocks } from "./reader-mock"
 
 export async function setupDesktopTtsMocks(page: Page) {
@@ -154,8 +155,9 @@ export async function setupDesktopTtsMocks(page: Page) {
           Record<string, (args: Record<string, unknown>) => unknown>
         >
       ).__TAURI_IPC_HANDLERS__ ?? {}
-    const ttsConfig = {
-      schemaVersion: 1,
+    const ttsConfig: TtsConfigDto = {
+      schemaVersion: 2,
+      providers: [],
       defaultEngine: { kind: "system" },
       profiles: [],
       voiceByLanguage: {},
