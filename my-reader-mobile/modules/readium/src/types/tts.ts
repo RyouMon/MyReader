@@ -4,6 +4,8 @@ import type { Utterance } from "./publication-handle"
 export type TtsEngineKind = "system" | "provider"
 
 export type TtsEngineConfig = {
+  granularity?: "sentence" | "paragraph"
+  singleUtterance?: boolean
   kind: TtsEngineKind
   profileId?: string
   voiceId?: string

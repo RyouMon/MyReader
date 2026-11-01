@@ -53,6 +53,7 @@ import {
 } from "./ReaderTtsSettingsViews"
 
 type ReaderTtsSettingsSheetProps = {
+  readingPlan?: import("@/src/features/reader/tts/use-reading-plan").ReadingPlanController
   book?: NarrationBook
   onNarrationChange?: () => void
   language: string
@@ -128,6 +129,7 @@ const ReaderTtsSettingsSheet = forwardRef<
     onConfigChange,
     book,
     onNarrationChange,
+    readingPlan,
   },
   ref,
 ) {
@@ -430,6 +432,7 @@ const ReaderTtsSettingsSheet = forwardRef<
               </View>
             ) : (
               <BookNarrationSettings
+                readingPlan={readingPlan}
                 book={book}
                 config={config}
                 palette={palette}

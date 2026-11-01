@@ -55,6 +55,16 @@
     "advanced": "Erweitert"
   },
   "narration": {
+    "plan": {
+      "jump": "Gehe zu",
+      "title": "Vorleseplan",
+      "showMarks": "Markierungen im Text anzeigen",
+      "analyze": "Aktuelles Kapitel analysieren",
+      "analyzing": "Analyse läuft…",
+      "empty": "Noch kein Vorleseplan",
+      "select": "Abschnitte auswählen",
+      "clearSelected": "Auswahl löschen"
+    },
     "select": "Auswählen",
     "deselect": "Auswahl aufheben",
     "selected": "Ausgewählte Figuren: {{count}}",
@@ -458,5 +468,11 @@
     "removeModel": "Modell entfernen",
     "endpointHint": "Die genaue Dienst-URL bis einschließlich /v1 eingeben.",
     "modelScopedVoices": "Modellspezifische Stimmen"
+  },
+  "ttsRemoval": {
+    "book": "Buch #{{id}}",
+    "global": "Globale Vorleseeinstellungen",
+    "reset": "Diese Einstellungen werden zurückgesetzt:\n{{usages}}",
+    "confirm": "Änderungen speichern?"
   }
 }

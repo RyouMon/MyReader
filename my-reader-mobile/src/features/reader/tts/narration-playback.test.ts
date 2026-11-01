@@ -4,21 +4,24 @@ import { publication as readiumPublication } from "@my-reader/readium"
 import {
   getBookNarration,
   prepareBookNarration,
+  analyzeBookNarration,
 } from "@/src/services/core/narration"
 import { synthesizeTts } from "@/src/services/core/tts"
 import {
   loadNarrationContext,
   prepareNarrationPlayback,
+  prepareNarrationSpeech,
   type NarrationBookContext,
 } from "./narration-playback"
 
 jest.mock("@/src/services/core/narration", () => ({
   getBookNarration: jest.fn(),
   prepareBookNarration: jest.fn(),
+  analyzeBookNarration: jest.fn(),
 }))
 jest.mock("@/src/services/core/tts", () => ({ synthesizeTts: jest.fn() }))
 jest.mock("@my-reader/readium", () => ({
-  publication: { getContent: jest.fn() },
+  publication: { getContent: jest.fn(), getTtsContent: jest.fn() },
 }))
 
 const book: NarrationBookContext = {
@@ -45,7 +48,13 @@ const request: TtsSynthesisRequestEvent = {
   },
 }
 
-beforeEach(() => jest.resetAllMocks())
+beforeEach(() => {
+  jest.resetAllMocks()
+  jest
+    .mocked(readiumPublication.getTtsContent)
+    .mockResolvedValue({ utterances: [] })
+  jest.mocked(analyzeBookNarration).mockResolvedValue(undefined)
+})
 
 it("prepares mixed system and provider voices with local ranges and fixed instructions", async () => {
   jest.mocked(prepareBookNarration).mockResolvedValue([
@@ -174,38 +183,37 @@ it("leaves disabled books on the existing playback path", async () => {
   ).toEqual({ book, defaultVoice: { engine: "system", voiceId: "saved" } })
 })
 
-it.each([
-  "utterances",
-  "content",
-])("loads native %s once per narration session and uses neighboring text", async (key) => {
+it("loads only the current chapter once and uses neighboring text", async () => {
   jest
     .mocked(getBookNarration)
     .mockResolvedValue({ enabled: true } as Awaited<
       ReturnType<typeof getBookNarration>
     >)
-  const utterances = [
-    { text: request.text, locator: request.locator! },
-    { text: "真昼向周打了招呼。", locator: request.locator! },
-  ]
-  jest
-    .mocked(readiumPublication.getContent)
-    .mockResolvedValue({ [key]: utterances } as unknown as Awaited<
-      ReturnType<typeof readiumPublication.getContent>
-    >)
+  jest.mocked(readiumPublication.getTtsContent).mockResolvedValue({
+    utterances: [
+      { text: request.text, locator: request.locator! },
+      {
+        text: "真昼向周打了招呼。",
+        locator: { ...request.locator!, locations: { totalProgression: 0.3 } },
+      },
+    ],
+  })
   jest.mocked(prepareBookNarration).mockResolvedValue([])
   const context = await loadNarrationContext(
     { ...book, publicationId: "native-book" },
     { kind: "system" },
   )
-  await prepareNarrationPlayback(
-    context!.book,
-    context!.defaultVoice,
-    { ...request, locator: { ...request.locator!, text: { after: "\n" } } },
-    [],
-    new AbortController().signal,
-  )
-  expect(readiumPublication.getContent).toHaveBeenCalledTimes(1)
-  expect(readiumPublication.getContent).toHaveBeenCalledWith("native-book")
+  for (let i = 0; i < 2; i++)
+    await prepareNarrationPlayback(
+      context!.book,
+      context!.defaultVoice,
+      { ...request, locator: { ...request.locator!, text: { after: "\n" } } },
+      [],
+      new AbortController().signal,
+    )
+  expect(readiumPublication.getContent).not.toHaveBeenCalled()
+  expect(readiumPublication.getTtsContent).toHaveBeenCalledTimes(1)
+  expect(analyzeBookNarration).toHaveBeenCalledTimes(1)
   expect(prepareBookNarration).toHaveBeenCalledWith(
     book.library,
     expect.objectContaining({
@@ -217,20 +225,46 @@ it.each([
   )
 })
 
-it("surfaces content extraction failures before starting role playback", async () => {
+it("does not analyze or synthesize after the publication closes", async () => {
   jest
-    .mocked(getBookNarration)
-    .mockResolvedValue({ enabled: true } as Awaited<
-      ReturnType<typeof getBookNarration>
-    >)
-  jest
-    .mocked(readiumPublication.getContent)
+    .mocked(readiumPublication.getTtsContent)
     .mockRejectedValue(new Error("Publication closed"))
   await expect(
-    loadNarrationContext(
+    prepareNarrationPlayback(
       { ...book, publicationId: "native-book" },
-      { kind: "system" },
+      voice,
+      request,
+      [],
+      new AbortController().signal,
     ),
   ).rejects.toThrow("Publication closed")
   expect(prepareBookNarration).not.toHaveBeenCalled()
+  expect(synthesizeTts).not.toHaveBeenCalled()
+})
+
+it("plays a selected cached entry without invoking analysis or prefetch", async () => {
+  const speech = {
+    text: "你好😀",
+    startUtf16: 0,
+    endUtf16: 4,
+    voice,
+    instructions: "温柔",
+  }
+  const result = await prepareNarrationSpeech(
+    [speech],
+    { ...request, text: "你好😀后面的段落。" },
+    [],
+    new AbortController().signal,
+  )
+  expect(result).toEqual([
+    {
+      text: speech.text,
+      startUtf16: 0,
+      endUtf16: 4,
+      systemVoiceId: "system-zh",
+    },
+  ])
+  expect(prepareBookNarration).not.toHaveBeenCalled()
+  expect(analyzeBookNarration).not.toHaveBeenCalled()
+  expect(synthesizeTts).not.toHaveBeenCalled()
 })

@@ -164,6 +164,8 @@ data class ReadiumFileRecord(
 
 @OptimizedRecord
 data class TtsEngineConfigRecord(
+  @Field val granularity: String = "sentence",
+  @Field val singleUtterance: Boolean = false,
   @Field val kind: String = "system",
   @Field val profileId: String? = null,
   @Field val voiceId: String? = null,

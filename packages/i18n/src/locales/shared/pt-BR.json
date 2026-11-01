@@ -55,6 +55,16 @@
     "advanced": "Avançado"
   },
   "narration": {
+    "plan": {
+      "jump": "Ir para",
+      "title": "Plano de leitura",
+      "showMarks": "Mostrar anotações no texto",
+      "analyze": "Analisar o capítulo atual",
+      "analyzing": "Analisando…",
+      "empty": "Nenhum plano de leitura",
+      "select": "Selecionar trechos",
+      "clearSelected": "Limpar seleção"
+    },
     "select": "Selecionar",
     "deselect": "Desmarcar",
     "selected": "Personagens selecionados: {{count}}",
@@ -459,5 +469,11 @@
     "removeModel": "Remover modelo",
     "endpointHint": "Informe a URL exata do serviço até /v1.",
     "modelScopedVoices": "Vozes por modelo"
+  },
+  "ttsRemoval": {
+    "book": "Livro #{{id}}",
+    "global": "Configurações globais de leitura em voz alta",
+    "reset": "Estas configurações voltarão ao padrão:\n{{usages}}",
+    "confirm": "Salvar estas alterações?"
   }
 }

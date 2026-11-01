@@ -1,3 +1,4 @@
+import { normalizedTextIndex } from "@my-reader/tools/reader-text-index"
 import {
   hrefRoughlyMatches,
   type ReaderLocator,
@@ -44,6 +45,7 @@ export type EpubTtsUtterance = ReadiumSpeechUtterance & {
 }
 
 export type EpubTtsExtractionOptions = {
+  granularity?: "sentence" | "paragraph"
   fallbackLanguage?: string
   skipPageBreaks?: boolean
   skipFootnotes?: boolean
@@ -144,47 +146,6 @@ function sentenceSegments(text: string, language?: string): string[] {
     text.matchAll(/[^.!?。！？…]+(?:[.!?。！？…]+|$)/gu),
   )
   return matches.map((match) => match[0].trim()).filter(Boolean)
-}
-
-type NormalizedTextIndex = {
-  text: string
-  rawStarts: number[]
-  rawEnds: number[]
-}
-
-function normalizedTextIndex(rawText: string): NormalizedTextIndex {
-  let text = ""
-  const rawStarts: number[] = []
-  const rawEnds: number[] = []
-  let rawOffset = 0
-
-  for (const character of rawText) {
-    const rawEnd = rawOffset + character.length
-    if (/\s/u.test(character)) {
-      if (text.endsWith(" ")) {
-        rawEnds[rawEnds.length - 1] = rawEnd
-      } else {
-        text += " "
-        rawStarts.push(rawOffset)
-        rawEnds.push(rawEnd)
-      }
-    } else {
-      text += character
-      for (let index = 0; index < character.length; index += 1) {
-        rawStarts.push(rawOffset)
-        rawEnds.push(rawEnd)
-      }
-    }
-    rawOffset = rawEnd
-  }
-
-  const start = text.startsWith(" ") ? 1 : 0
-  const end = text.endsWith(" ") ? -1 : undefined
-  return {
-    text: text.slice(start, end),
-    rawStarts: rawStarts.slice(start, end),
-    rawEnds: rawEnds.slice(start, end),
-  }
 }
 
 function locateNormalizedText(
@@ -290,43 +251,43 @@ export function extractEpubTtsUtterances(
       extracted.forEach((utterance) => {
         const plain = normalizedText(utterance.plain)
         if (!plain) return
-        sentenceSegments(plain, utterance.language ?? language).forEach(
-          (segment) => {
-            const text = normalizedText(segment)
-            if (!text) return
-            const normalizedRange = locateNormalizedText(
-              rawIndex.text,
-              text,
-              normalizedSearchStart,
-            )
-            if (!normalizedRange) return
-            const { start: normalizedStart, end: normalizedEnd } =
-              normalizedRange
-            normalizedSearchStart = normalizedEnd
-            const rawStart = rawIndex.rawStarts[normalizedStart]
-            const rawEnd = rawIndex.rawEnds[normalizedEnd - 1]
-            if (rawStart == null || rawEnd == null || rawEnd <= rawStart) return
-            const id = `tts-${resourceIndex}-${blockIndex}-${sentenceIndex}`
-            sentenceIndex += 1
-            const progression = Math.min(
-              1,
-              blockProgression + normalizedStart / totalTextLength,
-            )
-            result.push({
-              id,
-              plain: text,
-              language: utterance.language ?? language,
-              locator: locatorForSentence(
-                resource,
-                positions,
-                element,
-                rawStart,
-                rawEnd,
-                progression,
-              ),
-            })
-          },
-        )
+        ;(options.granularity === "paragraph"
+          ? [plain]
+          : sentenceSegments(plain, utterance.language ?? language)
+        ).forEach((segment) => {
+          const text = normalizedText(segment)
+          if (!text) return
+          const normalizedRange = locateNormalizedText(
+            rawIndex.text,
+            text,
+            normalizedSearchStart,
+          )
+          if (!normalizedRange) return
+          const { start: normalizedStart, end: normalizedEnd } = normalizedRange
+          normalizedSearchStart = normalizedEnd
+          const rawStart = rawIndex.rawStarts[normalizedStart]
+          const rawEnd = rawIndex.rawEnds[normalizedEnd - 1]
+          if (rawStart == null || rawEnd == null || rawEnd <= rawStart) return
+          const id = `tts-${resourceIndex}-${blockIndex}-${sentenceIndex}`
+          sentenceIndex += 1
+          const progression = Math.min(
+            1,
+            blockProgression + normalizedStart / totalTextLength,
+          )
+          result.push({
+            id,
+            plain: text,
+            language: utterance.language ?? language,
+            locator: locatorForSentence(
+              resource,
+              positions,
+              element,
+              rawStart,
+              rawEnd,
+              progression,
+            ),
+          })
+        })
       })
     })
   })

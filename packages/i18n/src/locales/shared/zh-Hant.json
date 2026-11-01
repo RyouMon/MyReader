@@ -55,6 +55,16 @@
     "advanced": "進階"
   },
   "narration": {
+    "plan": {
+      "jump": "跳轉",
+      "title": "朗讀計畫",
+      "showMarks": "在正文中顯示標註",
+      "analyze": "分析目前章節",
+      "analyzing": "正在分析…",
+      "empty": "暫無朗讀計畫",
+      "select": "選擇段落",
+      "clearSelected": "清除所選"
+    },
     "select": "選取",
     "deselect": "取消選取",
     "selected": "已選人物：{{count}}",
@@ -456,5 +466,11 @@
     "removeModel": "移除模型",
     "endpointHint": "服務位址需精確填寫至 /v1 層級。",
     "modelScopedVoices": "音色按模型設定"
+  },
+  "ttsRemoval": {
+    "book": "書籍 #{{id}}",
+    "global": "全域朗讀設定",
+    "reset": "以下設定將恢復預設：\n{{usages}}",
+    "confirm": "儲存這些修改？"
   }
 }

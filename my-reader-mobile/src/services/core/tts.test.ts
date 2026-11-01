@@ -1,5 +1,6 @@
 import {
   ttsGetConfig,
+  ttsSaveProvider,
   ttsDiscoverQwenVoices,
   ttsQwenModels,
   ttsQwenPresets,
@@ -23,7 +24,10 @@ import {
   previewTtsProvider,
   type TtsConfig,
   upsertTtsProfile,
+  saveTtsProvider,
 } from "./tts"
+import { queryClient } from "../query/query-client"
+import { QueryObserver } from "@tanstack/react-query"
 
 jest.mock("expo-file-system", () => ({
   Directory: jest.fn(() => ({ uri: "file:///cache/tts" })),
@@ -65,6 +69,7 @@ jest.mock("my-reader-core", () => ({
   ttsSynthesize: jest.fn(),
   ttsPreviewProvider: jest.fn(),
   ttsUpsertProfile: jest.fn(),
+  ttsSaveProvider: jest.fn(),
 }))
 
 const systemConfig: TtsConfig = {
@@ -121,6 +126,44 @@ describe("mobile core TTS", () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
+    queryClient.clear()
+  })
+
+  it.each([
+    "save",
+    "delete",
+  ])("refreshes cached character settings after provider %s", async (action) => {
+    const key = ["book-narration", "library", 1]
+    const before = {
+      revision: 1,
+      characters: [{ id: "alice", voice: { profileId: "removed" } }],
+    }
+    const after = { revision: 2, characters: [{ id: "alice", voice: null }] }
+    queryClient.setQueryData(key, before)
+    const observer = new QueryObserver(queryClient, {
+      queryKey: key,
+      queryFn: async () => after,
+    })
+    const unsubscribe = observer.subscribe(() => {})
+    jest.mocked(ttsGetConfig).mockResolvedValue(systemConfig)
+    jest.mocked(ttsSaveProvider).mockResolvedValue(systemConfig)
+    jest.mocked(ttsRemoveProfile).mockResolvedValue(systemConfig)
+    if (action === "save") {
+      await saveTtsProvider({
+        provider: {
+          id: "provider",
+          name: "Provider",
+          kind: "qwen",
+          endpoint: "https://tts.example",
+          modelScopedVoices: true,
+          models: [],
+          voices: [],
+        },
+      })
+    } else await removeTtsProfile("provider")
+    expect(queryClient.getQueryData(key)).toEqual(after)
+    unsubscribe()
+    queryClient.clear()
   })
 
   it.each([

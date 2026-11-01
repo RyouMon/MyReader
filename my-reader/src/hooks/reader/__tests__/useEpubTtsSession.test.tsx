@@ -1,7 +1,13 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type { ReaderLocator } from "@my-reader/tools/reader-toc"
 import type { EpubNavigator } from "@readium/navigator"
 import { Locator, LocatorLocations, LocatorText } from "@readium/shared"
-import { act, renderHook, waitFor } from "@testing-library/react"
+import {
+  act,
+  renderHook as baseRenderHook,
+  waitFor,
+  type RenderHookOptions,
+} from "@testing-library/react"
 import type { RefObject } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { useEpubTtsSession } from "@/hooks/reader/useEpubTtsSession"
@@ -16,9 +22,35 @@ import {
   clearEpubTtsHighlight,
 } from "@/lib/readium/epubTtsHighlight"
 import { api } from "@/lib/tauri-api"
+import type { NarrationSpeechDto, TtsVoiceRefDto } from "@/lib/tauri-specta"
+
+function renderHook<Result, Props>(
+  render: (props: Props) => Result,
+  options?: RenderHookOptions<Props>,
+) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  return baseRenderHook(render, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+    ...options,
+  })
+}
 
 const speechInstances = vi.hoisted(() => [] as unknown[])
 const speechVoices = vi.hoisted(() => [] as unknown[])
+const narrationPreparers = vi.hoisted(
+  () =>
+    [] as Array<
+      (
+        utterance: { id?: string },
+        voice: TtsVoiceRefDto,
+        signal: AbortSignal,
+      ) => Promise<NarrationSpeechDto[]>
+    >,
+)
 const configChangeListeners = vi.hoisted(
   () => [] as Array<(event: { payload: { source: string } }) => void>,
 )
@@ -157,6 +189,18 @@ vi.mock("@tauri-apps/api/event", () => ({
   ),
 }))
 
+vi.mock("@/lib/tts/NarrationSpeechEngine", () => ({
+  NarrationSpeechEngine: class {
+    constructor(
+      _base: unknown,
+      _profileId: unknown,
+      prepare: (typeof narrationPreparers)[number],
+    ) {
+      narrationPreparers.push(prepare)
+    }
+  },
+}))
+
 vi.mock("@/lib/readium/epubTts", () => ({
   extractEpubTtsUtterances: vi.fn(),
   epubTtsPlaybackPlanAtLocator: ttsLocatorMocks.playbackPlanAtLocator,
@@ -168,9 +212,16 @@ vi.mock("@/lib/readium/epubTtsHighlight", () => ({
   clearEpubTtsHighlight: vi.fn(),
 }))
 
+vi.mock("@/lib/tts/narration-context", () => ({
+  contentVersion: vi.fn().mockResolvedValue("content-version"),
+  narrationContext: vi.fn(),
+}))
+
 vi.mock("@/lib/tauri-api", () => ({
   api: {
     getTtsConfig: vi.fn(),
+    getBookNarration: vi.fn(),
+    getBookReadingPlan: vi.fn(),
     setTtsPlaybackPreferences: vi.fn(),
     setTtsVoiceForLanguage: vi.fn(),
   },
@@ -182,6 +233,7 @@ beforeEach(() => {
   vi.stubGlobal("speechSynthesis", {})
   speechInstances.length = 0
   speechVoices.length = 0
+  narrationPreparers.length = 0
   configChangeListeners.length = 0
   vi.mocked(epubTtsUtteranceIndexAtLocator).mockReturnValue(0)
   vi.mocked(epubTtsPlaybackPlanAtLocator).mockImplementation(
@@ -1793,4 +1845,131 @@ describe("useEpubTtsSession", () => {
     act(() => speech.emitSkip(1))
     expect(applyEpubTtsHighlight).toHaveBeenCalledOnce()
   })
+})
+
+it("plays a selected range with current role settings, preserves it on config changes, and navigates only on explicit jump", async () => {
+  const locator = Locator.deserialize({
+    href: "chapter.xhtml",
+    type: "application/xhtml+xml",
+    text: { highlight: "One paragraph. Two sentences." },
+  })!
+  const entry = {
+    id: "cached:0:29",
+    sourceKey: JSON.stringify(locator.serialize()),
+    position: 0,
+    characterId: "narrator",
+    characterName: "Narrator",
+    speech: {
+      text: "One paragraph. Two sentences.",
+      startUtf16: 0,
+      endUtf16: 29,
+      voice: { engine: "system" as const, voiceId: "en" },
+      instructions: "calm",
+    },
+  }
+  vi.mocked(api.getBookNarration).mockResolvedValue({
+    enabled: true,
+  } as Awaited<ReturnType<typeof api.getBookNarration>>)
+  vi.mocked(api.getBookReadingPlan).mockResolvedValue([entry])
+  vi.mocked(extractEpubTtsUtterances).mockReturnValue([
+    { id: "full-source", plain: entry.speech.text, locator },
+  ])
+  const navigatorRef = {
+    current: { currentLocator: locator, go: vi.fn() },
+  } as unknown as RefObject<EpubNavigator>
+  const resources: EpubTextResource[] = []
+  const positions: ReaderLocator[] = []
+  const navigate = vi.fn()
+  const { result } = renderHook(() =>
+    useEpubTtsSession({
+      libraryId: "library",
+      bookId: 42,
+      enabled: true,
+      navigatorRef,
+      resources,
+      positions,
+      currentLocator: locator,
+      language: "en",
+      highlightTint: "#ff00aa",
+      onNavigate: navigate,
+    }),
+  )
+  await waitFor(() =>
+    expect(result.current.readingPlan?.entries).toHaveLength(1),
+  )
+  const updated = {
+    ...entry,
+    speech: {
+      ...entry.speech,
+      voice: {
+        engine: "provider" as const,
+        profileId: "new-model",
+        voiceId: "new-voice",
+      },
+      instructions: "new delivery",
+    },
+  }
+  vi.mocked(api.getBookReadingPlan).mockResolvedValue([updated])
+  act(() => result.current.readingPlan!.play(entry.id))
+  expect(navigate).not.toHaveBeenCalled()
+  expect(navigatorRef.current?.go).not.toHaveBeenCalled()
+  const defaultVoice: TtsVoiceRefDto = {
+    engine: "system",
+    voiceId: "reader-voice",
+  }
+  expect(
+    await narrationPreparers[narrationPreparers.length - 1]!(
+      { id: entry.id },
+      defaultVoice,
+      new AbortController().signal,
+    ),
+  ).toEqual([updated.speech])
+  expect(api.getBookReadingPlan).toHaveBeenLastCalledWith(
+    "library",
+    42,
+    "content-version",
+    defaultVoice,
+  )
+  vi.mocked(api.getTtsConfig).mockResolvedValue({
+    ...(await api.getTtsConfig()),
+  })
+  act(() => {
+    configChangeListeners.forEach((listener) =>
+      listener({ payload: { source: "book-narration" } }),
+    )
+  })
+  await waitFor(() =>
+    expect(result.current.readingPlan?.entries[0]?.speech).toEqual(
+      updated.speech,
+    ),
+  )
+  await waitFor(() => expect(speechInstances).toHaveLength(2))
+  const speech = speechInstances[speechInstances.length - 1] as {
+    getContentQueue: () => { id: string }[]
+    emitEnd: (index: number, state: "idle") => void
+  }
+  expect(speech.getContentQueue().map((item) => item.id)).toEqual([entry.id])
+  expect(result.current.state).toBe("playing")
+  expect(navigatorRef.current?.go).not.toHaveBeenCalled()
+  vi.mocked(clearEpubTtsHighlight).mockClear()
+  act(() => result.current.pause())
+  expect(clearEpubTtsHighlight).toHaveBeenCalled()
+  act(() => result.current.play())
+  vi.mocked(clearEpubTtsHighlight).mockClear()
+  act(() => speech.emitEnd(0, "idle"))
+  expect(result.current.state).toBe("ended")
+  expect(clearEpubTtsHighlight).toHaveBeenCalled()
+  act(() => result.current.readingPlan!.jump(entry.id))
+  expect(navigate).toHaveBeenCalledWith(
+    expect.objectContaining({ href: "chapter.xhtml" }),
+  )
+  expect(result.current.state).toBe("ended")
+  vi.mocked(api.getBookReadingPlan).mockResolvedValue([])
+  await expect(
+    narrationPreparers[narrationPreparers.length - 1]!(
+      { id: entry.id },
+      defaultVoice,
+      new AbortController().signal,
+    ),
+  ).rejects.toThrow("NARRATION_PLAN_INVALID")
 })

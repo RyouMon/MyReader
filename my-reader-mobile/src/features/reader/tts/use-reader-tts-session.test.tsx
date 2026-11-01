@@ -1,3 +1,8 @@
+import {
+  getBookNarration,
+  getBookReadingPlan,
+} from "@/src/services/core/narration"
+import type { NarrationBookContext } from "./narration-playback"
 import type { Locator } from "@my-reader/readium"
 import { act, renderHook, waitFor } from "@testing-library/react-native"
 
@@ -17,6 +22,11 @@ jest.mock("@/src/services/core/tts", () => ({
   listTtsVoices: jest.fn(),
   setTtsVoice: jest.fn(),
   synthesizeTts: jest.fn(),
+}))
+
+jest.mock("@/src/services/core/narration", () => ({
+  getBookNarration: jest.fn(),
+  getBookReadingPlan: jest.fn(),
 }))
 
 const playback = {
@@ -1628,4 +1638,115 @@ describe("useReaderTtsSession", () => {
       "TTS_NO_READABLE_CONTENT_FROM_POSITION",
     )
   })
+})
+
+it("plays the selected paragraph using current voice settings after the model rechunks it", async () => {
+  jest.clearAllMocks()
+  jest.mocked(getTtsConfig).mockResolvedValue(systemConfig)
+  jest
+    .mocked(getBookNarration)
+    .mockResolvedValue({ enabled: true } as Awaited<
+      ReturnType<typeof getBookNarration>
+    >)
+  const locator = {
+    href: "chapter.xhtml",
+    type: "application/xhtml+xml",
+    text: { highlight: "One paragraph. Two sentences." },
+  }
+  const entry = {
+    id: "plan",
+    sourceKey: JSON.stringify(locator),
+    position: 0,
+    characterId: "narrator",
+    characterName: "Narrator",
+    speech: {
+      text: locator.text.highlight,
+      startUtf16: 0,
+      endUtf16: 29,
+      instructions: "calm",
+      voice: { engine: "system", voiceId: "current-voice" },
+    },
+  }
+  jest.mocked(getBookReadingPlan).mockResolvedValue([
+    {
+      ...entry,
+      id: "new-model:0:15",
+      speech: { ...entry.speech, text: "One paragraph. ", endUtf16: 15 },
+    },
+    {
+      ...entry,
+      id: "new-model:15:29",
+      speech: { ...entry.speech, text: "Two sentences.", startUtf16: 15 },
+    },
+  ])
+  const ref = readerRef()
+  const book: NarrationBookContext = {
+    library: { id: "library", name: "Books", path: "/books", bookCount: 1 },
+    bookId: 42,
+    contentVersion: "version",
+    positions: [locator],
+  }
+  const { result } = renderHook(() =>
+    useReaderTtsSession({
+      enabled: true,
+      publicationKey: "book",
+      language: "en",
+      highlightColor: "#C4622D",
+      readerRef: ref,
+      narrationBook: book,
+    }),
+  )
+  await act(async () =>
+    result.current.start(locator, {
+      planEntry: {
+        ...entry,
+        speech: {
+          ...entry.speech,
+          voice: { engine: "provider", profileId: "old", voiceId: "stale" },
+        },
+      },
+    }),
+  )
+  expect(ref.current.startTts).toHaveBeenCalledWith(
+    expect.objectContaining({
+      kind: "provider",
+      profileId: "narration",
+      granularity: "paragraph",
+      singleUtterance: true,
+    }),
+    locator,
+    expect.objectContaining({ viewportDetached: true }),
+  )
+  const sessionId = lastSessionId(ref)
+  await act(async () =>
+    result.current.handleSynthesisRequest({
+      sessionId,
+      requestId: "request",
+      text: locator.text.highlight,
+      profileId: "narration",
+      voiceId: "narration",
+      speed: 1,
+      pitch: 1,
+      locator,
+    }),
+  )
+  expect(ref.current.completeTtsSynthesis).toHaveBeenCalledWith({
+    sessionId,
+    requestId: "request",
+    segments: [
+      {
+        text: "One paragraph. ",
+        startUtf16: 0,
+        endUtf16: 15,
+        systemVoiceId: "current-voice",
+      },
+      {
+        text: "Two sentences.",
+        startUtf16: 15,
+        endUtf16: 29,
+        systemVoiceId: "current-voice",
+      },
+    ],
+  })
+  expect(synthesizeTts).not.toHaveBeenCalled()
 })

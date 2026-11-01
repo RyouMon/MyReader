@@ -44,6 +44,7 @@ const jobs: NarrationSpeechDto[] = [
 function fixture(
   prepare: ConstructorParameters<typeof NarrationSpeechEngine>[2] = async () =>
     jobs,
+  configureSegment?: (engine: CoreSpeechEngine) => void,
 ) {
   const audio: AudioFixture[] = []
   const requests: { profileId: string; text: string; instructions?: string }[] =
@@ -75,13 +76,16 @@ function fixture(
     create("default"),
     "default",
     prepare,
-    (segment) =>
-      create(
+    (segment) => {
+      const engine = create(
         segment.voice.engine === "provider"
           ? segment.voice.profileId
           : "system",
         segment.instructions,
-      ),
+      )
+      configureSegment?.(engine)
+      return engine
+    },
   )
   engine.loadUtterances([
     {
@@ -94,6 +98,55 @@ function fixture(
 }
 
 describe("NarrationSpeechEngine", () => {
+  it.each([
+    false,
+    true,
+  ])("resolves native voice IDs before speaking and honors cancellation while selecting (stop=%s)", async (stop) => {
+    let ready!: () => void
+    const selection = new Promise<void>((resolve) => {
+      ready = resolve
+    })
+    const chosen = {
+      source: "browser" as const,
+      name: "Selected voice",
+      label: "Selected voice",
+      originalName: "Selected voice",
+      language: "zh",
+      voiceURI: "native-id",
+    }
+    const selected = vi.fn()
+    const { engine, audio, requests } = fixture(
+      async () => [
+        { ...jobs[0]!, voice: { engine: "system", voiceId: "native-id" } },
+      ],
+      (segment) => {
+        vi.spyOn(segment, "getAvailableVoices").mockResolvedValue([chosen])
+        const setVoice = segment.setVoice.bind(segment)
+        vi.spyOn(segment, "setVoice").mockImplementation(async (voice) => {
+          selected(voice)
+          await selection
+          setVoice(voice)
+        })
+      },
+    )
+    engine.speak()
+    await vi.waitFor(() => expect(selected).toHaveBeenCalledWith(chosen))
+    expect(requests).toHaveLength(0)
+    if (stop) engine.stop()
+    ready()
+    if (stop) {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(requests).toHaveLength(0)
+      expect(engine.getState()).toBe("idle")
+    } else {
+      await vi.waitFor(() => expect(audio).toHaveLength(1))
+      expect(requests[0]).toMatchObject({
+        voiceId: "native-id",
+        text: "她说：",
+      })
+    }
+    await engine.destroy()
+  })
   it("keeps one source utterance until every independently voiced segment completes", async () => {
     const { engine, audio, requests } = fixture()
     const ended = vi.fn()

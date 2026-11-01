@@ -36,7 +36,7 @@ pub(super) async fn read_settings(
     Ok(settings)
 }
 
-async fn write_scope(
+pub(super) async fn write_scope(
     db: &impl ConnectionTrait,
     settings: &BookNarrationSettings,
 ) -> Result<(), CoreError> {

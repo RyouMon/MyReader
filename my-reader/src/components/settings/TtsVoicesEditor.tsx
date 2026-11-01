@@ -1,3 +1,4 @@
+import { useTtsRemoval } from "@/hooks/useTtsRemovalConfirmation"
 import { Loader2, Play, Plus, Square, Trash2 } from "lucide-react"
 import type { ReactNode } from "react"
 import { FormTextField } from "@/components/common/FormTextField"
@@ -28,12 +29,25 @@ export function TtsVoicesEditor({
   onChange: (voices: string[]) => void
 }) {
   const { t } = useTranslation()
+  const confirmRemoval = useTtsRemoval()
   const scoped = modelVoices(draft)
   const voices = scoped ? (model?.voices ?? []) : draft.voices
   const updateId = (index: number, id: string) => {
     const next = [...voices]
     next[index] = id
     onChange(next)
+  }
+  const remove = async (index: number) => {
+    const next = voices.filter((_, i) => i !== index)
+    const provider = scoped
+      ? {
+          ...draft,
+          models: draft.models.map((item) =>
+            item.id === model?.id ? { ...item, voices: next } : item,
+          ),
+        }
+      : { ...draft, voices: next }
+    if (await confirmRemoval(provider, voices[index])) onChange(next)
   }
   const prefix = scoped ? model?.id || "shared" : "shared"
   return (
@@ -69,7 +83,7 @@ export function TtsVoicesEditor({
             input={ttsDraftInput(draft, model, voice)}
             canPlay={Boolean(voice.trim() && model?.model.trim())}
             onIdChange={(id) => updateId(index, id)}
-            onRemove={() => onChange(voices.filter((_, i) => i !== index))}
+            onRemove={() => void remove(index)}
           />
         ))}
       </FieldGroup>

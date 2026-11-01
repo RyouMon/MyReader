@@ -28,3 +28,10 @@ export function getContent(
 ): Promise<ContentResult> {
   return ReadiumModule.getContent(publicationId, fromLocator)
 }
+
+export function getTtsContent(
+  publicationId: string,
+  fromLocator: Locator,
+): Promise<ContentResult> {
+  return ReadiumModule.getTtsContent(publicationId, fromLocator)
+}

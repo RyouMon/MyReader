@@ -23,6 +23,8 @@ import { errorMessage } from "@/lib/error-presentation"
 import type { TtsConfigDto, TtsVoiceRefDto } from "@/lib/tauri-specta"
 import type { CharacterIntroduction } from "@/lib/readium/characterIntroductions"
 import { NarrationCharacterList } from "./NarrationCharacterList"
+import { NarrationReadingPlan } from "./NarrationReadingPlan"
+import type { ReadingPlanController } from "@/hooks/reader/use-reading-plan"
 import {
   READER_SETTINGS_CONTENT_CLASS,
   ReaderSidePanelScrollArea,
@@ -46,6 +48,7 @@ export function BookNarrationSettings({
   onSubviewChange,
   findIntroductions,
   children,
+  readingPlan,
 }: {
   book: NarrationBook
   findIntroductions?: () => Promise<CharacterIntroduction[]>
@@ -54,6 +57,7 @@ export function BookNarrationSettings({
   themeStyle?: CSSProperties
   onSubviewChange?: (view: NarrationSubview | null) => void
   children?: ReactNode
+  readingPlan?: ReadingPlanController
 }) {
   const { t } = useTranslation()
   const { query, save, previewMerge, merge } = useBookNarration(
@@ -63,9 +67,23 @@ export function BookNarrationSettings({
   const [confirmEnable, setConfirmEnable] = useState(false)
   const [enableError, setEnableError] = useState<string | null>(null)
   const [charactersOpen, setCharactersOpen] = useState(false)
+  const [planOpen, setPlanOpen] = useState(false)
+  const closePlan = useCallback(() => setPlanOpen(false), [])
   const closeCharacters = useCallback(() => setCharactersOpen(false), [])
   const settings = query.data
-  const error = save.error ?? previewMerge.error ?? merge.error ?? query.error
+  const planVisible = !!settings?.enabled && planOpen && !!readingPlan
+  const error = [save.error, previewMerge.error, merge.error, query.error].find(
+    Boolean,
+  )
+  if (planVisible && readingPlan)
+    return (
+      <NarrationReadingPlan
+        plan={readingPlan}
+        themeStyle={themeStyle}
+        onClose={closePlan}
+        onSubviewChange={onSubviewChange}
+      />
+    )
   if (settings?.enabled && charactersOpen)
     return (
       <NarrationCharacterList
@@ -154,6 +172,19 @@ export function BookNarrationSettings({
           </Button>
         ) : null}
       </section>
+      {settings?.enabled && readingPlan ? (
+        <Button
+          variant="ghost"
+          className="w-full justify-between text-reader-chrome-fg"
+          onClick={() => setPlanOpen(true)}
+        >
+          {t("narration.plan.title")}
+          <ChevronRight
+            className="size-4 text-reader-chrome-muted"
+            aria-hidden
+          />
+        </Button>
+      ) : null}
       {children}
     </ReaderSidePanelScrollArea>
   )

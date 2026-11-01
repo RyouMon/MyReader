@@ -138,22 +138,22 @@ pub async fn test_tts_provider<R: tauri::Runtime>(
 
 #[tauri::command]
 #[specta::specta]
-pub fn upsert_tts_profile<R: tauri::Runtime>(
+pub async fn upsert_tts_profile<R: tauri::Runtime>(
     app: AppHandle<R>,
     input: UpsertTtsProviderInput,
 ) -> Result<TtsConfigDto, AppError> {
     let app_data_dir = common::app_data_dir(&app)?;
-    DesktopTtsService::upsert_profile(&crate::config::config_path(&app_data_dir), input)
+    DesktopTtsService::upsert_profile(&crate::config::config_path(&app_data_dir), input).await
 }
 
 #[tauri::command]
 #[specta::specta]
-pub fn remove_tts_profile<R: tauri::Runtime>(
+pub async fn remove_tts_profile<R: tauri::Runtime>(
     app: AppHandle<R>,
     profile_id: String,
 ) -> Result<TtsConfigDto, AppError> {
     let app_data_dir = common::app_data_dir(&app)?;
-    DesktopTtsService::remove_profile(&crate::config::config_path(&app_data_dir), &profile_id)
+    DesktopTtsService::remove_profile(&crate::config::config_path(&app_data_dir), &profile_id).await
 }
 
 #[tauri::command]
@@ -306,7 +306,7 @@ mod tests {
 
 #[tauri::command]
 #[specta::specta]
-pub fn save_tts_provider<R: tauri::Runtime>(
+pub async fn save_tts_provider<R: tauri::Runtime>(
     app: AppHandle<R>,
     input: crate::services::tts_service::SaveTtsProviderInput,
 ) -> Result<TtsConfigDto, AppError> {
@@ -314,6 +314,7 @@ pub fn save_tts_provider<R: tauri::Runtime>(
         &crate::config::config_path(&common::app_data_dir(&app)?),
         input,
     )
+    .await
 }
 
 #[tauri::command]
@@ -327,4 +328,29 @@ pub async fn discover_tts_models<R: tauri::Runtime>(
         input,
     )
     .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn get_tts_change_usage<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    provider_id: String,
+    models: Vec<crate::services::tts_usage_dto::TtsModelVoicesDto>,
+) -> Result<Vec<crate::services::tts_usage_dto::TtsSelectionUsageDto>, AppError> {
+    let models = models
+        .into_iter()
+        .map(|model| my_reader_core::models::TtsModelVoices {
+            id: model.id,
+            voices: model.voices,
+        })
+        .collect::<Vec<_>>();
+    Ok(my_reader_core::api::tts::TtsService::change_usage(
+        &crate::config::config_path(&common::app_data_dir(&app)?),
+        &provider_id,
+        &models,
+    )
+    .await?
+    .into_iter()
+    .map(Into::into)
+    .collect())
 }

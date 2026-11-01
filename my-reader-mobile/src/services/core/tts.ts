@@ -3,6 +3,8 @@ import { randomUUID } from "expo-crypto"
 import { runTtsRequest } from "@my-reader/tools/tts-request"
 import {
   ttsGetConfig,
+  ttsChangeUsage,
+  type TtsModelVoices,
   ttsSaveProvider,
   type TtsProvider,
   type TtsModel,
@@ -37,6 +39,7 @@ import {
 } from "../storage/credentials"
 import { appConfigPath } from "./app-config"
 import { toNativeFilesystemPath } from "../fs/path"
+import { invalidateBookNarration } from "../query/invalidate-table"
 
 export type MobileTtsProviderProfile = TtsProviderProfile & {
   hasCredential: boolean
@@ -203,6 +206,7 @@ export async function upsertTtsProfile(
     credentialReference,
     revision: existing?.revision ?? 1,
   })
+  await invalidateBookNarration()
 
   if (input.clearCredential && credentialReference) {
     await deleteTtsCredential(credentialReference)
@@ -228,6 +232,7 @@ export async function saveTtsProvider(input: {
     id,
     credentialReference,
   })
+  await invalidateBookNarration()
   if (input.clearCredential) await deleteTtsCredential(credentialReference)
   else if (input.credential?.trim())
     await writeTtsCredential(credentialReference, input.credential.trim())
@@ -242,6 +247,7 @@ export async function removeTtsProfile(
     (profile) => profile.id === profileId,
   )?.credentialReference
   const config = await ttsRemoveProfile(appConfigPath, profileId)
+  await invalidateBookNarration()
   if (reference) await deleteTtsCredential(reference)
   return hydrateConfig(config)
 }
@@ -304,4 +310,11 @@ export type {
   TtsProviderProfile,
   TtsSynthesisRequest,
   TtsVoice,
+}
+
+export function getTtsChangeUsage(
+  providerId: string,
+  models: TtsModelVoices[],
+) {
+  return ttsChangeUsage(appConfigPath, providerId, models)
 }

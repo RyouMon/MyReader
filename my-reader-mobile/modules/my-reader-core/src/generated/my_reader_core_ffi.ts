@@ -4132,6 +4132,54 @@ export async function llmUpsertProfile(
   }
 }
 
+export async function narrationAnalyzeBatch(
+  root: string,
+  configPath: string,
+  requests: Array<NarrationRequest>,
+  credential: LlmCredential | undefined,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<void> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_narration_analyze_batch(
+          FfiConverterString.lower(root, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterSequenceTypeNarrationRequest.lower(
+            requests,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterOptionalTypeLlmCredential.lower(
+            credential,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_void,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_void,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_void,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_void,
+      /*liftFunc:*/ (_v) => {},
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
 export async function narrationCancel(
   root: string,
   bookId: number,
@@ -4145,6 +4193,54 @@ export async function narrationCancel(
         return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_narration_cancel(
           FfiConverterString.lower(root, nativeModule().rustbuffer_alloc),
           FfiConverterFloat64.lower(bookId, nativeModule().rustbuffer_alloc),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_void,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_void,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_void,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_void,
+      /*liftFunc:*/ (_v) => {},
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function narrationClearReadingPlan(
+  root: string,
+  bookId: number,
+  contentVersion: string,
+  ids: Array<string>,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<void> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_narration_clear_reading_plan(
+          FfiConverterString.lower(root, nativeModule().rustbuffer_alloc),
+          FfiConverterFloat64.lower(bookId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            contentVersion,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterSequenceString.lower(
+            ids,
+            nativeModule().rustbuffer_alloc,
+          ),
         );
       },
       /*pollFunc:*/ nativeModule()
@@ -4499,11 +4595,69 @@ export async function narrationPreviewMerge(
   }
 }
 
+export async function narrationReadingPlan(
+  root: string,
+  configPath: string,
+  bookId: number,
+  contentVersion: string,
+  defaultVoice: NarrationVoice,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<Array<NarrationPlanEntry>> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_narration_reading_plan(
+          FfiConverterString.lower(root, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterFloat64.lower(bookId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            contentVersion,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterTypeNarrationVoice.lower(
+            defaultVoice,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterSequenceTypeNarrationPlanEntry.lift.bind(
+        FfiConverterSequenceTypeNarrationPlanEntry,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
 export async function narrationResolveSettings(
   root: string,
   contentRoot: string,
   libraryType: string,
   bookId: number,
+  configPath: string,
   asyncOpts_?: { signal: AbortSignal },
 ): Promise<BookNarrationSettings> /*throws*/ {
   const __stack = uniffiIsDebug ? new Error().stack : undefined;
@@ -4522,6 +4676,7 @@ export async function narrationResolveSettings(
             nativeModule().rustbuffer_alloc,
           ),
           FfiConverterFloat64.lower(bookId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
         );
       },
       /*pollFunc:*/ nativeModule()
@@ -6211,6 +6366,56 @@ export function syncSetLibraryOnline(
       /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
     ),
   );
+}
+
+export async function ttsChangeUsage(
+  configPath: string,
+  providerId: string,
+  models: Array<TtsModelVoices>,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<Array<TtsSelectionUsage>> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_tts_change_usage(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(providerId, nativeModule().rustbuffer_alloc),
+          FfiConverterSequenceTypeTtsModelVoices.lower(
+            models,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterSequenceTypeTtsSelectionUsage.lift.bind(
+        FfiConverterSequenceTypeTtsSelectionUsage,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
 }
 
 export async function ttsDiscoverModels(
@@ -10253,6 +10458,124 @@ const FfiConverterTypeNarrationMergePlan = (() => {
   return new FFIConverter();
 })();
 
+export type NarrationSpeech = {
+  text: string;
+  startUtf16: number;
+  endUtf16: number;
+  voice: NarrationVoice;
+  instructions: string;
+};
+
+/**
+ * Generated factory for {@link NarrationSpeech} record objects.
+ */
+export const NarrationSpeech = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<NarrationSpeech, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<NarrationSpeech>,
+  });
+})();
+
+const FfiConverterTypeNarrationSpeech = (() => {
+  type TypeName = NarrationSpeech;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        text: FfiConverterString.read(from),
+        startUtf16: FfiConverterUInt32.read(from),
+        endUtf16: FfiConverterUInt32.read(from),
+        voice: FfiConverterTypeNarrationVoice.read(from),
+        instructions: FfiConverterString.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.text, into);
+      FfiConverterUInt32.write(value.startUtf16, into);
+      FfiConverterUInt32.write(value.endUtf16, into);
+      FfiConverterTypeNarrationVoice.write(value.voice, into);
+      FfiConverterString.write(value.instructions, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.text) +
+        FfiConverterUInt32.allocationSize(value.startUtf16) +
+        FfiConverterUInt32.allocationSize(value.endUtf16) +
+        FfiConverterTypeNarrationVoice.allocationSize(value.voice) +
+        FfiConverterString.allocationSize(value.instructions)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type NarrationPlanEntry = {
+  id: string;
+  sourceKey: string;
+  position: number;
+  characterId: string;
+  characterName: string;
+  speech: NarrationSpeech;
+};
+
+/**
+ * Generated factory for {@link NarrationPlanEntry} record objects.
+ */
+export const NarrationPlanEntry = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<NarrationPlanEntry, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<NarrationPlanEntry>,
+  });
+})();
+
+const FfiConverterTypeNarrationPlanEntry = (() => {
+  type TypeName = NarrationPlanEntry;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        id: FfiConverterString.read(from),
+        sourceKey: FfiConverterString.read(from),
+        position: FfiConverterFloat64.read(from),
+        characterId: FfiConverterString.read(from),
+        characterName: FfiConverterString.read(from),
+        speech: FfiConverterTypeNarrationSpeech.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.id, into);
+      FfiConverterString.write(value.sourceKey, into);
+      FfiConverterFloat64.write(value.position, into);
+      FfiConverterString.write(value.characterId, into);
+      FfiConverterString.write(value.characterName, into);
+      FfiConverterTypeNarrationSpeech.write(value.speech, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.id) +
+        FfiConverterString.allocationSize(value.sourceKey) +
+        FfiConverterFloat64.allocationSize(value.position) +
+        FfiConverterString.allocationSize(value.characterId) +
+        FfiConverterString.allocationSize(value.characterName) +
+        FfiConverterTypeNarrationSpeech.allocationSize(value.speech)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
 export type NarrationRequest = {
   bookId: number;
   contentVersion: string;
@@ -10312,63 +10635,6 @@ const FfiConverterTypeNarrationRequest = (() => {
         FfiConverterString.allocationSize(value.text) +
         FfiConverterString.allocationSize(value.before) +
         FfiConverterString.allocationSize(value.after)
-      );
-    }
-  }
-  return new FFIConverter();
-})();
-
-export type NarrationSpeech = {
-  text: string;
-  startUtf16: number;
-  endUtf16: number;
-  voice: NarrationVoice;
-  instructions: string;
-};
-
-/**
- * Generated factory for {@link NarrationSpeech} record objects.
- */
-export const NarrationSpeech = (() => {
-  const defaults = () => ({});
-  const create = (() => {
-    return uniffiCreateRecord<NarrationSpeech, ReturnType<typeof defaults>>(
-      defaults,
-    );
-  })();
-  return Object.freeze({
-    create,
-    new: create,
-    defaults: () => Object.freeze(defaults()) as Partial<NarrationSpeech>,
-  });
-})();
-
-const FfiConverterTypeNarrationSpeech = (() => {
-  type TypeName = NarrationSpeech;
-  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
-      return {
-        text: FfiConverterString.read(from),
-        startUtf16: FfiConverterUInt32.read(from),
-        endUtf16: FfiConverterUInt32.read(from),
-        voice: FfiConverterTypeNarrationVoice.read(from),
-        instructions: FfiConverterString.read(from),
-      };
-    }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterString.write(value.text, into);
-      FfiConverterUInt32.write(value.startUtf16, into);
-      FfiConverterUInt32.write(value.endUtf16, into);
-      FfiConverterTypeNarrationVoice.write(value.voice, into);
-      FfiConverterString.write(value.instructions, into);
-    }
-    allocationSize(value: TypeName): number {
-      return (
-        FfiConverterString.allocationSize(value.text) +
-        FfiConverterUInt32.allocationSize(value.startUtf16) +
-        FfiConverterUInt32.allocationSize(value.endUtf16) +
-        FfiConverterTypeNarrationVoice.allocationSize(value.voice) +
-        FfiConverterString.allocationSize(value.instructions)
       );
     }
   }
@@ -12074,6 +12340,51 @@ const FfiConverterTypeTtsConfig = (() => {
   return new FFIConverter();
 })();
 
+export type TtsModelVoices = {
+  id: string;
+  voices: Array<string>;
+};
+
+/**
+ * Generated factory for {@link TtsModelVoices} record objects.
+ */
+export const TtsModelVoices = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<TtsModelVoices, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<TtsModelVoices>,
+  });
+})();
+
+const FfiConverterTypeTtsModelVoices = (() => {
+  type TypeName = TtsModelVoices;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        id: FfiConverterString.read(from),
+        voices: FfiConverterSequenceString.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.id, into);
+      FfiConverterSequenceString.write(value.voices, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.id) +
+        FfiConverterSequenceString.allocationSize(value.voices)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
 export type TtsProviderCapabilities = {
   voiceDiscovery: boolean;
   preview: boolean;
@@ -12147,6 +12458,71 @@ const FfiConverterTypeTtsProviderCapabilities = (() => {
         FfiConverterBool.allocationSize(value.synthesisPitch) +
         FfiConverterOptionalUInt32.allocationSize(value.maxInputChars) +
         FfiConverterSequenceString.allocationSize(value.outputMimeTypes)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type TtsSelectionUsage = {
+  profileId: string;
+  voiceId?: string;
+  language?: string;
+  libraryName?: string;
+  scopeName?: string;
+  bookId?: number;
+  characterName?: string;
+};
+
+/**
+ * Generated factory for {@link TtsSelectionUsage} record objects.
+ */
+export const TtsSelectionUsage = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<TtsSelectionUsage, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<TtsSelectionUsage>,
+  });
+})();
+
+const FfiConverterTypeTtsSelectionUsage = (() => {
+  type TypeName = TtsSelectionUsage;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        profileId: FfiConverterString.read(from),
+        voiceId: FfiConverterOptionalString.read(from),
+        language: FfiConverterOptionalString.read(from),
+        libraryName: FfiConverterOptionalString.read(from),
+        scopeName: FfiConverterOptionalString.read(from),
+        bookId: FfiConverterOptionalFloat64.read(from),
+        characterName: FfiConverterOptionalString.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.profileId, into);
+      FfiConverterOptionalString.write(value.voiceId, into);
+      FfiConverterOptionalString.write(value.language, into);
+      FfiConverterOptionalString.write(value.libraryName, into);
+      FfiConverterOptionalString.write(value.scopeName, into);
+      FfiConverterOptionalFloat64.write(value.bookId, into);
+      FfiConverterOptionalString.write(value.characterName, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.profileId) +
+        FfiConverterOptionalString.allocationSize(value.voiceId) +
+        FfiConverterOptionalString.allocationSize(value.language) +
+        FfiConverterOptionalString.allocationSize(value.libraryName) +
+        FfiConverterOptionalString.allocationSize(value.scopeName) +
+        FfiConverterOptionalFloat64.allocationSize(value.bookId) +
+        FfiConverterOptionalString.allocationSize(value.characterName)
       );
     }
   }
@@ -13471,6 +13847,11 @@ const FfiConverterSequenceTypeDownloadTask = new FfiConverterArray(
   FfiConverterTypeDownloadTask,
 );
 
+// FfiConverter for Array<NarrationRequest>
+const FfiConverterSequenceTypeNarrationRequest = new FfiConverterArray(
+  FfiConverterTypeNarrationRequest,
+);
+
 // FfiConverter for LlmCredential | undefined
 const FfiConverterOptionalTypeLlmCredential = new FfiConverterOptional(
   FfiConverterTypeLlmCredential,
@@ -13484,6 +13865,11 @@ const FfiConverterSequenceTypeCharacterImportCandidate = new FfiConverterArray(
 // FfiConverter for Array<NarrationSpeech>
 const FfiConverterSequenceTypeNarrationSpeech = new FfiConverterArray(
   FfiConverterTypeNarrationSpeech,
+);
+
+// FfiConverter for Array<NarrationPlanEntry>
+const FfiConverterSequenceTypeNarrationPlanEntry = new FfiConverterArray(
+  FfiConverterTypeNarrationPlanEntry,
 );
 
 // FfiConverter for Array<CharacterSource>
@@ -13529,6 +13915,16 @@ const FfiConverterOptionalTypeSidecarSyncReport = new FfiConverterOptional(
 // FfiConverter for RemoteCredential | undefined
 const FfiConverterOptionalTypeRemoteCredential = new FfiConverterOptional(
   FfiConverterTypeRemoteCredential,
+);
+
+// FfiConverter for Array<TtsModelVoices>
+const FfiConverterSequenceTypeTtsModelVoices = new FfiConverterArray(
+  FfiConverterTypeTtsModelVoices,
+);
+
+// FfiConverter for Array<TtsSelectionUsage>
+const FfiConverterSequenceTypeTtsSelectionUsage = new FfiConverterArray(
+  FfiConverterTypeTtsSelectionUsage,
 );
 
 // FfiConverter for Array<QwenTtsModel>
@@ -14281,11 +14677,27 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_analyze_batch() !==
+    28709
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_narration_analyze_batch",
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_cancel() !==
     64419
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_narration_cancel",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_clear_reading_plan() !==
+    17460
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_narration_clear_reading_plan",
     );
   }
   if (
@@ -14337,8 +14749,16 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_reading_plan() !==
+    11414
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_narration_reading_plan",
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_resolve_settings() !==
-    6796
+    56614
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_narration_resolve_settings",
@@ -14633,6 +15053,14 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_change_usage() !==
+    9510
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_tts_change_usage",
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_discover_models() !==
     30721
   ) {
@@ -14826,6 +15254,7 @@ export default Object.freeze({
     FfiConverterTypeNarrationMergeChoice,
     FfiConverterTypeNarrationMergePlan,
     FfiConverterTypeNarrationMergeSource,
+    FfiConverterTypeNarrationPlanEntry,
     FfiConverterTypeNarrationRequest,
     FfiConverterTypeNarrationSpeech,
     FfiConverterTypeNarrationVoice,
@@ -14859,10 +15288,12 @@ export default Object.freeze({
     FfiConverterTypeTtsEngine,
     FfiConverterTypeTtsLanguageVoice,
     FfiConverterTypeTtsModel,
+    FfiConverterTypeTtsModelVoices,
     FfiConverterTypeTtsPlayback,
     FfiConverterTypeTtsProvider,
     FfiConverterTypeTtsProviderCapabilities,
     FfiConverterTypeTtsProviderProfile,
+    FfiConverterTypeTtsSelectionUsage,
     FfiConverterTypeTtsSynthesisRequest,
     FfiConverterTypeTtsTiming,
     FfiConverterTypeTtsVoice,

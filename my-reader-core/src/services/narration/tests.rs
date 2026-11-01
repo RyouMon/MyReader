@@ -1,4 +1,5 @@
 mod character_drafts;
+mod reading_plan;
 mod scopes;
 
 use super::*;
@@ -126,11 +127,11 @@ async fn fixture() -> Fixture {
                             messages.last().unwrap()["content"].as_str().unwrap(),
                         )
                         .unwrap();
-                        if input["text"].as_str().unwrap().contains("slow") {
+                        if input["units"].to_string().contains("slow") {
                             received.notify_one();
                             release.notified().await;
                         }
-                        json!({"segments":[{"text":input["text"],"characterId":"char-chen","delivery":"calm"}]})
+                        json!({"segments":[{"from":"u0","through":format!("u{}", input["units"].as_array().unwrap().len() - 1),"characterId":"char-chen","delivery":"calm","parts":[]}]})
                     } else {
                         json!({"ok":true})
                     };
@@ -193,6 +194,29 @@ async fn setup(root: &Path) -> BookNarrationSettings {
     NarrationService::save_settings(root, settings)
         .await
         .unwrap()
+}
+
+fn add_tts_profile(config: &Path, id: &str) {
+    use crate::models::{TtsAudioFormat, TtsProviderKind, TtsProviderOptions, TtsProviderProfile};
+    crate::services::tts::TtsService::upsert_profile(
+        config,
+        TtsProviderProfile {
+            id: id.into(),
+            name: id.into(),
+            kind: TtsProviderKind::OpenAiCompatible,
+            endpoint: "https://tts.example/v1".into(),
+            model: Some("speech".into()),
+            credential_reference: None,
+            revision: 0,
+            options: TtsProviderOptions::OpenAiCompatible {
+                response_format: TtsAudioFormat::Mp3,
+                instructions: None,
+                voices: vec!["A".into()],
+                default_voice: Some("A".into()),
+            },
+        },
+    )
+    .unwrap();
 }
 
 #[tokio::test]
@@ -269,7 +293,10 @@ async fn replay_after_a_backtrack_keeps_uncompacted_later_positions_and_excludes
                 &settings,
                 &format!("key-{position}"),
                 &request,
-                &NarrationPlan::narrator(&request.text),
+                &NarrationPlan {
+                    fallback: false,
+                    ..NarrationPlan::narrator(&request.text)
+                },
                 checkpoint,
             )
             .await
@@ -315,6 +342,8 @@ async fn speech_preparation_keeps_identity_separate_from_voice_and_delivery() {
     let fixture = fixture().await;
     let root = tempfile::tempdir().unwrap();
     let config = root.path().join("config.json");
+    add_tts_profile(&config, "voice-provider");
+    add_tts_profile(&config, "other-provider");
     LlmService::upsert_profile(&config, profile(fixture.endpoint.clone())).unwrap();
     let settings = setup(root.path()).await;
     let fallback = TtsVoiceRef::System {
@@ -641,18 +670,4 @@ async fn backtracking_excludes_future_scene_context_and_responses_protocol_works
         .to_string()
         .contains("FUTURE_SECRET"));
     assert_eq!(requests.last().unwrap()["store"], false);
-}
-
-#[test]
-fn validates_exact_unicode_source_coverage_and_unknown_identity_falls_back() {
-    let settings = BookNarrationSettings::new(1);
-    let value = json!({"segments":[{"text":"你🙂","characterId":"unknown","delivery":"angry"},{"text":" 好","characterId":"narrator","delivery":""}]});
-    let plan = validate_plan("你🙂 好", &value, &settings).unwrap();
-    assert_eq!(plan.segments[0].end_utf16, 3);
-    assert_eq!(plan.segments[1].start_utf16, 3);
-    assert_eq!(plan.segments[0].character_id, NARRATOR_ID);
-    assert!(plan.segments[0].delivery.is_empty());
-    for text in ["你🙂好", "你🙂 好。", "你🙂 不好", ""] {
-        assert!(validate_plan(text, &value, &settings).is_err());
-    }
 }

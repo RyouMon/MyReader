@@ -223,3 +223,27 @@ describe("EPUB TTS extraction", () => {
     expect(utterances[0]?.locator.text?.highlight).toBe("正文12继续。")
   })
 })
+
+it("preserves a natural paragraph for narration and keeps paragraph boundaries", () => {
+  const paragraph =
+    "真昼有一个很夸张的别称叫做「天使大人」。她温和诚恳，谦虚又善良的性格，文武双全的优秀，再加上无人能比的美丽外表，的确配得上天使这个别称，因而她自然受人欢迎。"
+  const resources = [
+    {
+      href: "chapter.xhtml",
+      type: "application/xhtml+xml",
+      html: `<html lang="zh"><body><p>${paragraph}</p><p>另一段。</p></body></html>`,
+    },
+  ]
+  const units = extractEpubTtsUtterances(resources, [], {
+    granularity: "paragraph",
+  })
+  expect(units.map((unit) => unit.plain)).toEqual([paragraph, "另一段。"])
+  expect(units[0]?.locator.text?.highlight).toBe(paragraph)
+  const start = Locator.deserialize({
+    ...units[0]!.locator.serialize(),
+    text: { highlight: "她温和诚恳", before: "「天使大人」。" },
+  })!
+  expect(epubTtsPlaybackPlanAtLocator(units, start)?.utterances[0]?.plain).toBe(
+    paragraph.slice(paragraph.indexOf("她")),
+  )
+})

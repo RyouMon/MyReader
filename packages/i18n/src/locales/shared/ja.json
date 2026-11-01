@@ -55,6 +55,16 @@
     "advanced": "詳細設定"
   },
   "narration": {
+    "plan": {
+      "jump": "移動",
+      "title": "読み上げ計画",
+      "showMarks": "本文に注釈を表示",
+      "analyze": "現在の章を分析",
+      "analyzing": "分析中…",
+      "empty": "読み上げ計画はありません",
+      "select": "段落を選択",
+      "clearSelected": "選択項目を消去"
+    },
     "select": "選択",
     "deselect": "選択を解除",
     "selected": "選択した人物：{{count}}",
@@ -457,5 +467,11 @@
     "removeModel": "モデルを削除",
     "endpointHint": "サービスURLは /v1 まで正確に入力してください。",
     "modelScopedVoices": "モデルごとに音声を設定"
+  },
+  "ttsRemoval": {
+    "book": "書籍 #{{id}}",
+    "global": "全体の読み上げ設定",
+    "reset": "次の設定が既定に戻ります：\n{{usages}}",
+    "confirm": "変更を保存しますか？"
   }
 }

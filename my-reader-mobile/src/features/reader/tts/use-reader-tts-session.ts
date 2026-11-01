@@ -4,6 +4,7 @@ import type {
   TtsSynthesisCancelEvent,
   TtsSynthesisRequestEvent,
 } from "@my-reader/readium"
+import { narrationSpeechForEntry } from "@my-reader/tools/narration-plan"
 import {
   createReaderTtsSessionMachine,
   type ReaderTtsSessionTransition,
@@ -26,9 +27,14 @@ import {
   synthesizeTts,
 } from "@/src/services/core/tts"
 import { errorMessage } from "@/src/i18n/error-message"
-import { type NarrationVoice } from "@/src/services/core/narration"
+import {
+  getBookReadingPlan,
+  type NarrationVoice,
+  type NarrationPlanEntry,
+} from "@/src/services/core/narration"
 import {
   prepareNarrationPlayback,
+  prepareNarrationSpeech,
   loadNarrationContext,
   type NarrationBookContext,
 } from "./narration-playback"
@@ -90,6 +96,21 @@ async function loadSessionConfig(
   return isCurrent() ? { config, selection, narration } : null
 }
 
+async function loadPlanSpeech(
+  narration: Awaited<ReturnType<typeof loadNarrationContext>>,
+  selected?: NarrationPlanEntry,
+) {
+  if (!selected) return undefined
+  if (!narration) throw new Error("NARRATION_PLAN_INVALID")
+  const entries = await getBookReadingPlan(
+    narration.book.library,
+    narration.book.bookId,
+    narration.book.contentVersion,
+    narration.defaultVoice,
+  )
+  return narrationSpeechForEntry(entries, selected)
+}
+
 export function useReaderTtsSession({
   narrationBook,
   enabled,
@@ -143,9 +164,11 @@ export function useReaderTtsSession({
   const activeNarrationRef = useRef<{
     book: NarrationBookContext
     defaultVoice: NarrationVoice
+    speech?: NarrationPlanEntry["speech"][]
   } | null>(null)
 
   const abortOutstandingSynthesis = useCallback(() => {
+    activeNarrationRef.current?.book.prefetch?.clear()
     synthesisControllersRef.current.forEach((controller) => {
       controller.abort()
     })
@@ -233,6 +256,7 @@ export function useReaderTtsSession({
       options?: {
         navigationId?: string
         pauseAfterStart?: boolean
+        planEntry?: NarrationPlanEntry
         startAtViewportStart?: boolean
       },
     ) => {
@@ -276,15 +300,24 @@ export function useReaderTtsSession({
           language,
           highlightColor,
         )
+        const selectedSpeech = await loadPlanSpeech(
+          narration,
+          options?.planEntry,
+        )
+        if (!isCurrentSession()) return
         activeNarrationRef.current = narration
+          ? { ...narration, speech: selectedSpeech }
+          : null
         if (narration) {
+          engineConfig.granularity = "paragraph"
+          engineConfig.singleUtterance = !!options?.planEntry
           engineConfig.kind = "provider"
           engineConfig.profileId = "narration"
           engineConfig.voiceId = "narration"
         }
         setRemote(engineConfig.kind === "provider")
         activeEngineConfigRef.current = engineConfig
-        const viewportDetached = current.viewportDetached
+        const viewportDetached = current.viewportDetached || !!selectedSpeech
         const viewportNavigationId = viewportNavigationIdRef.current
         const reader = readerRef.current
         if (!reader) throw new Error("TTS_READER_VIEW_UNAVAILABLE")
@@ -609,13 +642,20 @@ export function useReaderTtsSession({
       try {
         const narration = activeNarrationRef.current
         if (narration) {
-          const segments = await prepareNarrationPlayback(
-            narration.book,
-            narration.defaultVoice,
-            request,
-            REMOTE_AUDIO_MIME_TYPES,
-            controller.signal,
-          )
+          const segments = narration.speech
+            ? await prepareNarrationSpeech(
+                narration.speech,
+                request,
+                REMOTE_AUDIO_MIME_TYPES,
+                controller.signal,
+              )
+            : await prepareNarrationPlayback(
+                narration.book,
+                narration.defaultVoice,
+                request,
+                REMOTE_AUDIO_MIME_TYPES,
+                controller.signal,
+              )
           if (
             controller.signal.aborted ||
             sessionMachine.snapshot.generation !== generation ||

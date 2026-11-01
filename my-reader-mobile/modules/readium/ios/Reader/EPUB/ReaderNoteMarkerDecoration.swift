@@ -2,6 +2,23 @@ import ReadiumNavigator
 import UIKit
 
 let readerNoteMarkerStyleId: Decoration.Style.Id = "myreader-note-marker"
+let readerNarrationStyleId: Decoration.Style.Id = "myreader-narration"
+
+func readerNarrationStyle(tint: String?) -> Decoration.Style {
+  Decoration.Style(id: readerNarrationStyleId, config: ReaderNoteMarkerStyleConfig(tint: tint.flatMap(UIColor.fromCSS) ?? .systemYellow))
+}
+
+func readerNarrationTemplate() -> HTMLDecorationTemplate {
+  HTMLDecorationTemplate(layout: .boxes, width: .wrap, element: { decoration in
+    let tint = (decoration.style.config as? ReaderNoteMarkerStyleConfig)?.tint.cssHex ?? "#D9A928"
+    let name = (decoration.userInfo["characterName"] as? String ?? "").readerHTMLAttributeEscaped
+    return "<div data-myreader-overlay=\"true\" class=\"myreader-narration-mark\" style=\"background: \(tint)33 !important\"><span style=\"background: \(tint)99 !important\">\(name)</span></div>"
+  }, stylesheet: """
+  .myreader-narration-mark { height: 100%; pointer-events: none; }
+  .myreader-narration-mark > span { position: absolute; top: 0; right: 0; transform: translateY(-75%); padding: 1px 4px; border-radius: 3px; font: 10px/1.2 sans-serif; color: inherit; white-space: nowrap; max-width: 10em; overflow: hidden; text-overflow: ellipsis; }
+  .myreader-narration-mark:not(:first-child) > span { display: none; }
+  """)
+}
 
 struct ReaderNoteMarkerStyleConfig: Hashable {
   let tint: UIColor

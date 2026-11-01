@@ -1,6 +1,6 @@
 use super::*;
 
-fn provider(kind: TtsProviderKind) -> TtsProvider {
+pub(super) fn provider(kind: TtsProviderKind) -> TtsProvider {
     TtsProvider {
         id: "provider".into(),
         name: "Provider".into(),

@@ -1,9 +1,10 @@
 import type { EpubTextResource } from "@/lib/readium/epubContentLocators"
 import type { EpubTtsUtterance } from "@/lib/readium/epubTts"
 import type { NarrationRequestDto } from "@/lib/tauri-specta"
+import { narrationSourceKey } from "@my-reader/tools/narration-plan"
 
 const versions = new WeakMap<EpubTextResource[], Promise<string>>()
-function contentVersion(resources: EpubTextResource[]) {
+export function contentVersion(resources: EpubTextResource[]) {
   let version = versions.get(resources)
   if (!version) {
     version = crypto.subtle
@@ -41,7 +42,7 @@ export async function narrationContext(
   return {
     bookId,
     contentVersion: await contentVersion(resources),
-    sourceKey: JSON.stringify(utterance.locator.serialize()),
+    sourceKey: narrationSourceKey(utterance.locator.serialize()),
     position:
       (resourceIndex + (utterance.locator.locations.progression ?? 0)) /
       Math.max(1, resources.length),

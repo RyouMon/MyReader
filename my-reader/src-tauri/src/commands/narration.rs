@@ -26,8 +26,80 @@ async fn resolve_settings<R: tauri::Runtime>(
         &crate::utils::paths::library_root_path(&library, &app_data),
         library.library_type.into(),
         book_id,
+        &crate::config::config_path(&app_data),
     )
     .await?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn analyze_book_narration<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    coordinator: State<'_, crate::commands::tts::TtsSynthesisCoordinator>,
+    library_id: String,
+    request_id: String,
+    requests: Vec<NarrationRequestDto>,
+) -> Result<(), AppError> {
+    let Some(mut cancelled) = coordinator.start(&request_id) else {
+        return Err(AppError::Config("NARRATION_CANCELLED".into()));
+    };
+    let work = async {
+        let (root, config) = paths(&app, &state, &library_id)?;
+        if let Some(first) = requests.first() {
+            resolve_settings(&app, &state, &library_id, first.book_id).await?;
+        }
+        let credential = selected_credential(&config)?;
+        Ok(NarrationService::analyze_batch(
+            &root,
+            &config,
+            requests.into_iter().map(Into::into).collect(),
+            Some(&credential),
+        )
+        .await?)
+    };
+    let result = tokio::select! { biased; _ = &mut cancelled => Err(AppError::Config("NARRATION_CANCELLED".into())), result = work => result };
+    coordinator.finish(&request_id);
+    result
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn get_book_reading_plan<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    library_id: String,
+    book_id: i64,
+    content_version: String,
+    default_voice: TtsVoiceRefDto,
+) -> Result<Vec<NarrationPlanEntryDto>, AppError> {
+    let (root, config) = paths(&app, &state, &library_id)?;
+    resolve_settings(&app, &state, &library_id, book_id).await?;
+    Ok(NarrationService::reading_plan(
+        &root,
+        &config,
+        book_id,
+        &content_version,
+        default_voice.into(),
+    )
+    .await?
+    .into_iter()
+    .map(Into::into)
+    .collect())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn clear_book_reading_plan<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    library_id: String,
+    book_id: i64,
+    content_version: String,
+    ids: Vec<String>,
+) -> Result<(), AppError> {
+    let (root, _) = paths(&app, &state, &library_id)?;
+    Ok(NarrationService::clear_reading_plan(&root, book_id, &content_version, ids).await?)
 }
 
 fn paths<R: tauri::Runtime>(

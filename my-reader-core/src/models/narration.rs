@@ -133,6 +133,18 @@ pub struct NarrationSpeech {
     pub instructions: String,
 }
 
+/// One resolved synthesis request, anchored to the original Readium source.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NarrationPlanEntry {
+    pub id: String,
+    pub source_key: String,
+    pub position: f64,
+    pub character_id: String,
+    pub character_name: String,
+    pub speech: NarrationSpeech,
+}
+
 impl NarrationPlan {
     pub fn narrator(text: &str) -> Self {
         Self {

@@ -1,3 +1,8 @@
+import { ttsUsageMessage } from "@my-reader/tools/tts-selection-usage"
+import {
+  TtsRemovalContext,
+  useTtsRemovalConfirmation,
+} from "@/src/domain/tts/use-tts-removal-confirmation"
 import { qwenTtsSourceKeys } from "@my-reader/i18n/mobile"
 import { router, Stack, useLocalSearchParams } from "expo-router"
 import { useCallback, useEffect, useMemo, useState } from "react"
@@ -15,6 +20,7 @@ import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 import { createSaveAction } from "@/src/navigation/toolbar-action-helpers"
 import {
   getTtsConfig,
+  getTtsChangeUsage,
   getQwenTtsPresets,
   saveTtsProvider,
   removeTtsProfile,
@@ -127,6 +133,7 @@ export default function TtsProviderProfileScreen() {
   const [loading, setLoading] = useState(Boolean(providerId))
   const [saving, setSaving] = useState(false)
   const [removing, setRemoving] = useState(false)
+  const confirmRemoval = useTtsRemovalConfirmation()
   const validation = useFormValidation(draft ? ttsFormErrors(draft, t) : {})
   useEffect(() => {
     if (!providerId) return
@@ -157,6 +164,7 @@ export default function TtsProviderProfileScreen() {
     if (!draft || saving || removing || !validation.validate()) return
     setSaving(true)
     try {
+      if (!(await confirmRemoval(draft))) return
       const { credential, clearCredential, ...provider } = draft
       await saveTtsProvider({
         provider,
@@ -169,10 +177,12 @@ export default function TtsProviderProfileScreen() {
     } finally {
       setSaving(false)
     }
-  }, [draft, saving, removing, t, validation])
+  }, [draft, saving, removing, t, validation, confirmRemoval])
   const deleteAction = useDeleteAction({
     name: draft?.name ?? "",
     disabled: saving || removing,
+    getDeleteDescription: async () =>
+      ttsUsageMessage(await getTtsChangeUsage(draft?.id ?? "", []), t),
     onDelete: () => {
       if (!draft?.id || saving || removing) return
       setRemoving(true)
@@ -203,7 +213,7 @@ export default function TtsProviderProfileScreen() {
       : undefined,
   })
   return (
-    <>
+    <TtsRemovalContext.Provider value={confirmRemoval}>
       <Stack.Screen options={options} />
       {toolbar}
       {loading ? (
@@ -219,7 +229,7 @@ export default function TtsProviderProfileScreen() {
           validation={validation}
         />
       ) : null}
-    </>
+    </TtsRemovalContext.Provider>
   )
 }
 

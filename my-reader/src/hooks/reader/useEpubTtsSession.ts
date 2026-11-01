@@ -1,3 +1,4 @@
+import { narrationSpeechForText } from "@my-reader/tools/narration-plan"
 import type { ReaderLocator } from "@my-reader/tools/reader-toc"
 import {
   chooseTtsVoiceForLanguage,
@@ -42,6 +43,7 @@ import { resolveEpubTtsViewportRelation } from "@/lib/readium/epubTtsViewport"
 import { api } from "@/lib/tauri-api"
 import { errorMessage } from "@/lib/error-presentation"
 import type {
+  NarrationPlanEntryDto,
   TtsConfigDto,
   TtsPlaybackPreferencesDto,
   TtsVoiceRefDto,
@@ -49,6 +51,7 @@ import type {
 import { CoreSpeechEngine } from "@/lib/tts/CoreSpeechEngine"
 import { NarrationSpeechEngine } from "@/lib/tts/NarrationSpeechEngine"
 import { narrationContext } from "@/lib/tts/narration-context"
+import { useReadingPlan, type ReadingPlanController } from "./use-reading-plan"
 import {
   notifyTtsConfigChanged,
   TTS_CONFIG_CHANGED_EVENT,
@@ -65,9 +68,11 @@ type UseEpubTtsSessionOptions = {
   currentLocator: Locator | null
   language: string
   highlightTint: string
+  onNavigate?: (locator: Locator) => void
 }
 
 export type EpubTtsSession = {
+  readingPlan?: ReadingPlanController
   available: boolean
   loading: boolean
   state: ReaderTtsSessionStatus
@@ -190,6 +195,7 @@ export function useEpubTtsSession({
   currentLocator,
   language,
   highlightTint,
+  onNavigate,
 }: UseEpubTtsSessionOptions): EpubTtsSession {
   const [config, setConfig] = useState<TtsConfigDto | null>(null)
   const [narrationEnabled, setNarrationEnabled] = useState(false)
@@ -206,12 +212,21 @@ export function useEpubTtsSession({
   const speechRef = useRef<ReadiumSpeechNavigator | null>(null)
   const configRef = useRef<TtsConfigDto | null>(null)
   const playbackUtterancesRef = useRef<EpubTtsUtterance[]>([])
+  const selectedPlanRef = useRef<NarrationPlanEntryDto | null>(null)
+  const playEntryRef = useRef<
+    (
+      entry: NarrationPlanEntryDto,
+      locator: Locator,
+      pauseAfterStart?: boolean,
+    ) => void
+  >(() => {})
   const currentLocatorRef = useRef<Locator | null>(currentLocator)
   const positionsRef = useRef(positions)
   const resourcesRef = useRef(resources)
   const restartAfterConfigRef = useRef<{
     locator: Locator
     autoplay: boolean
+    entry: NarrationPlanEntryDto | null
   } | null>(null)
   const configRefreshRevisionRef = useRef(0)
   const highlightRevisionRef = useRef(0)
@@ -233,15 +248,43 @@ export function useEpubTtsSession({
       enabled && config
         ? extractEpubTtsUtterances(resources, positions, {
             fallbackLanguage: normalizeTtsLanguage(language) || undefined,
+            granularity: narrationEnabled ? "paragraph" : "sentence",
             skipPageBreaks: config.playback.skipPageBreaks,
             skipFootnotes: config.playback.skipFootnotes,
           })
         : [],
-    [config, enabled, language, positions, resources],
+    [config, enabled, narrationEnabled, language, positions, resources],
   )
   currentLocatorRef.current = currentLocator
   positionsRef.current = positions
   resourcesRef.current = resources
+  const stopForPlan = useCallback(() => {
+    speechRef.current?.stop()
+  }, [])
+  const readingPlan = useReadingPlan({
+    libraryId,
+    bookId,
+    enabled: enabled && narrationEnabled,
+    resources,
+    utterances,
+    navigatorRef,
+    currentLocator,
+    stop: stopForPlan,
+    playEntry: (entry, locator) => playEntryRef.current(entry, locator),
+    navigate: (locator) => onNavigate?.(locator),
+    voice:
+      config?.defaultEngine.kind === "provider"
+        ? {
+            engine: "provider",
+            profileId: config.defaultEngine.profileId,
+            voiceId: currentVoiceId,
+          }
+        : { engine: "system", voiceId: currentVoiceId },
+  })
+  const ensureChapterRef = useRef(readingPlan.ensureChapter)
+  ensureChapterRef.current = readingPlan.ensureChapter
+  const resolvePlanSpeechRef = useRef(readingPlan.resolveSpeech)
+  resolvePlanSpeechRef.current = readingPlan.resolveSpeech
 
   const syncViewportState = useCallback(
     (transition: ReaderTtsSessionTransition, originLocator?: Locator) => {
@@ -331,13 +374,18 @@ export function useEpubTtsSession({
       : undefined
     const locator = utterance?.locator ?? currentLocatorRef.current
     restartAfterConfigRef.current = locator
-      ? { locator, autoplay: activeState !== "paused" }
+      ? {
+          locator,
+          autoplay: activeState !== "paused",
+          entry: selectedPlanRef.current,
+        }
       : null
     return Boolean(restartAfterConfigRef.current)
   }, [])
 
   const preparePlaybackPlan = useCallback(
     (speech: ReadiumSpeechNavigator, locator: Locator, forceReload = false) => {
+      selectedPlanRef.current = null
       const plan = epubTtsPlaybackPlanAtLocator(utterances, locator)
       if (!plan) return null
       const loaded = speech.getContentQueue()
@@ -462,14 +510,33 @@ export function useEpubTtsSession({
             baseEngine,
             provider?.id,
             async (utterance, voice, signal) => {
+              const selected = selectedPlanRef.current
+              if (selected && utterance.id === selected.id) {
+                return resolvePlanSpeechRef.current(selected, voice)
+              }
+              await ensureChapterRef.current(
+                utterance as EpubTtsUtterance,
+                signal,
+              )
+              const source =
+                utterances.find((item) => item.id === utterance.id) ??
+                (utterance as EpubTtsUtterance)
               const request = await narrationContext(
                 bookId,
-                utterance as EpubTtsUtterance,
+                source,
                 utterances,
                 resourcesRef.current,
               )
-              return api.prepareBookNarration(libraryId, request, voice, signal)
+              const speech = await api.prepareBookNarration(
+                libraryId,
+                request,
+                voice,
+                signal,
+              )
+              return narrationSpeechForText(speech, utterance.plain ?? "")
             },
+            undefined,
+            true,
           )
         : baseEngine
     const speech = new ReadiumSpeechNavigator(engine, {
@@ -520,7 +587,8 @@ export function useEpubTtsSession({
           setCurrentIndex(index)
           return
         }
-        if (!suppressFollow) showUtterance(index, !viewportWasDetached)
+        if (!suppressFollow)
+          showUtterance(index, !viewportWasDetached && !selectedPlanRef.current)
       }
     }
     const applyPlayback = (
@@ -554,6 +622,15 @@ export function useEpubTtsSession({
       if (transition.effect?.type === "report-error") {
         setError(transition.effect.error)
       }
+      if (
+        status === "ended" ||
+        status === "stopped" ||
+        status === "error" ||
+        (status === "paused" && selectedPlanRef.current)
+      ) {
+        highlightRevisionRef.current++
+        if (navigator) clearEpubTtsHighlight(navigator)
+      }
       setState(transition.snapshot.status)
       if (transition.effect?.type === "pause") speech.pause()
       return transition
@@ -562,6 +639,10 @@ export function useEpubTtsSession({
       const restart = restartAfterConfigRef.current
       if (!restart || speechRef.current !== speech) return
       restartAfterConfigRef.current = null
+      if (restart.entry && narrationEnabled) {
+        playEntryRef.current(restart.entry, restart.locator, !restart.autoplay)
+        return
+      }
       const plan = preparePlaybackPlan(speech, restart.locator, true)
       if (!plan) return
       const sessionId = beginSession({
@@ -712,6 +793,7 @@ export function useEpubTtsSession({
   const stop = useCallback(() => {
     const highlightRevision = ++highlightRevisionRef.current
     restartAfterConfigRef.current = null
+    selectedPlanRef.current = null
     suppressNextFollowRef.current = false
     pendingViewportNavigationRef.current = null
     const transition = sessionMachineRef.current!.send({ type: "stop" })
@@ -737,6 +819,26 @@ export function useEpubTtsSession({
       })
     }
   }, [navigatorRef, syncViewportState])
+
+  playEntryRef.current = (entry, locator, pauseAfterStart = false) => {
+    const speech = speechRef.current
+    if (!speech) return
+    stop()
+    setError(null)
+    selectedPlanRef.current = entry
+    const utterance: EpubTtsUtterance = {
+      id: entry.id,
+      plain: entry.speech.text,
+      locator,
+      language,
+    }
+    playbackUtterancesRef.current = [utterance]
+    speechSessionsRef.current.delete(speech)
+    speech.loadContent([utterance])
+    if (!beginSession({ pauseAfterStart })) return
+    showUtterance(0, false)
+    playPreparedUtterance(speech, { index: 0, utterances: [utterance] })
+  }
 
   const previous = useCallback(() => {
     speechRef.current?.previous()
@@ -935,6 +1037,7 @@ export function useEpubTtsSession({
       : undefined
 
   return {
+    readingPlan,
     available: enabled && Boolean(speechRef.current) && utterances.length > 0,
     loading,
     state,

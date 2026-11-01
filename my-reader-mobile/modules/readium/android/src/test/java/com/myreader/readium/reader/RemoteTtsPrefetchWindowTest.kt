@@ -6,6 +6,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.readium.r2.shared.publication.Locator
 import org.readium.r2.shared.util.Url
+import org.readium.r2.shared.util.Language
+import org.readium.r2.shared.util.tokenizer.TextUnit
 import org.readium.r2.shared.util.mediatype.MediaType
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
@@ -13,6 +15,13 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class RemoteTtsPrefetchWindowTest {
+  @Test
+  fun should_keep_sentences_in_one_paragraph_for_role_narration() {
+    val text = "真昼有一个别称叫做天使大人。她温和诚恳，因而受人欢迎。"
+    val tokenizer = StartLocatorTextTokenizer(TextUnit.Paragraph).make(Language("zh"))
+    assertEquals(listOf(text), tokenizer.tokenize(text).map { text.substring(it) })
+  }
+
   @Test
   fun should_anchor_repeated_text_to_the_readium_locator() {
     val first = utterance(1, "Again.")

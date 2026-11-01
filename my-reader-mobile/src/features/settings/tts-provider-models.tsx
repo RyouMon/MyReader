@@ -1,3 +1,4 @@
+import { useTtsRemoval } from "@/src/domain/tts/use-tts-removal-confirmation"
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button, FormSwitch, FormSelect } from "@/src/components"
@@ -29,6 +30,7 @@ export function TtsProviderModels({
   validation: ReturnType<typeof useFormValidation>
 }) {
   const { t } = useTranslation()
+  const confirmRemoval = useTtsRemoval()
   const palette = useThemePalette()
   const [selected, setSelected] = useState<number | null>(0)
   const invalidDetails = draft.models.findIndex(
@@ -188,12 +190,15 @@ export function TtsProviderModels({
         validation={validation}
         onChange={patch}
         onAdd={addManual}
-        onRemove={(index) => {
-          onChange({
+        onRemove={async (index) => {
+          const next = {
             ...draft,
             models: draft.models.filter((_, i) => i !== index),
-          })
-          setSelected(null)
+          }
+          if (await confirmRemoval(next, draft.models[index]!.model)) {
+            onChange(next)
+            setSelected(null)
+          }
         }}
         actions={
           <Button

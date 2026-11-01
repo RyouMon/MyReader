@@ -68,6 +68,7 @@ it("routes book settings and import to the library sidecar and passes cancellati
     "/content/library",
     "calibre",
     1,
+    "/config.json",
   )
   await saveBookNarration(library, settings)
   expect(core.narrationSaveSettings).toHaveBeenCalledWith(

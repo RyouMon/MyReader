@@ -58,6 +58,28 @@ export const api = {
   listLlmModels: wrap(commands.listLlmModels),
   probeLlmProfile: wrap(commands.probeLlmProfile),
   getBookNarration: wrap(commands.getBookNarration),
+  getBookReadingPlan: wrap(commands.getBookReadingPlan),
+  clearBookReadingPlan: wrap(commands.clearBookReadingPlan),
+  analyzeBookNarration: async (
+    libraryId: string,
+    requests: NarrationRequestDto[],
+    signal?: AbortSignal,
+  ) => {
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError")
+    const requestId = crypto.randomUUID()
+    const cancel = () => {
+      void commands.cancelTtsSynthesis(requestId).catch(() => undefined)
+    }
+    signal?.addEventListener("abort", cancel, { once: true })
+    try {
+      await unwrap(
+        commands.analyzeBookNarration(libraryId, requestId, requests),
+      )
+      if (signal?.aborted) throw new DOMException("Aborted", "AbortError")
+    } finally {
+      signal?.removeEventListener("abort", cancel)
+    }
+  },
   previewBookNarrationMerge: wrap(commands.previewBookNarrationMerge),
   mergeBookNarration: wrap(commands.mergeBookNarration),
   saveBookNarration: wrap(commands.saveBookNarration),
@@ -201,6 +223,7 @@ export const api = {
   setReaderTrafficLightsVisible: wrap(commands.setReaderTrafficLightsVisible),
   closeBookStreamer: wrap(commands.closeBookStreamer),
   getTtsConfig: wrap(commands.getTtsConfig),
+  getTtsChangeUsage: wrap(commands.getTtsChangeUsage),
   listQwenTtsModels: wrap(commands.listQwenTtsModels),
   listQwenTtsPresets: commands.listQwenTtsPresets,
   discoverQwenTtsVoices: wrap(commands.discoverQwenTtsVoices),

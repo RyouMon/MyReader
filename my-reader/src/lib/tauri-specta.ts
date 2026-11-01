@@ -85,6 +85,7 @@ export const commands = {
 	setReaderTrafficLightsVisible: (visible: boolean, x: number, y: number, reposition: boolean) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reader_traffic_lights_visible", { visible, x, y, reposition })),
 	closeBookStreamer: (libraryId: string, bookId: number) => typedError<null, ErrorKind>(__TAURI_INVOKE("close_book_streamer", { libraryId, bookId })),
 	getTtsConfig: () => typedError<TtsConfigDto, ErrorKind>(__TAURI_INVOKE("get_tts_config")),
+	getTtsChangeUsage: (providerId: string, models: TtsModelVoicesDto[]) => typedError<TtsSelectionUsageDto[], ErrorKind>(__TAURI_INVOKE("get_tts_change_usage", { providerId, models })),
 	saveTtsProvider: (input: SaveTtsProviderInput) => typedError<TtsConfigDto, ErrorKind>(__TAURI_INVOKE("save_tts_provider", { input })),
 	getLlmConfig: () => typedError<LlmConfigDto, ErrorKind>(__TAURI_INVOKE("get_llm_config")),
 	saveLlmProvider: (input: SaveLlmProviderInput) => typedError<LlmConfigDto, ErrorKind>(__TAURI_INVOKE("save_llm_provider", { input })),
@@ -100,6 +101,9 @@ export const commands = {
 	searchBookCharacterSources: (libraryId: string, request: CharacterImportRequestDto) => typedError<CharacterSourceDto[], ErrorKind>(__TAURI_INVOKE("search_book_character_sources", { libraryId, request })),
 	draftBookCharacters: (libraryId: string, requestId: string, request: CharacterDraftRequestDto, onProgress: Channel<LlmStreamEventDto>) => typedError<BookCharacterDto[], ErrorKind>(__TAURI_INVOKE("draft_book_characters", { libraryId, requestId, request, onProgress })),
 	prepareBookNarration: (libraryId: string, requestId: string, request: NarrationRequestDto, defaultVoice: TtsVoiceRefDto) => typedError<NarrationSpeechDto[], ErrorKind>(__TAURI_INVOKE("prepare_book_narration", { libraryId, requestId, request, defaultVoice })),
+	analyzeBookNarration: (libraryId: string, requestId: string, requests: NarrationRequestDto[]) => typedError<null, ErrorKind>(__TAURI_INVOKE("analyze_book_narration", { libraryId, requestId, requests })),
+	getBookReadingPlan: (libraryId: string, bookId: number, contentVersion: string, defaultVoice: TtsVoiceRefDto) => typedError<NarrationPlanEntryDto[], ErrorKind>(__TAURI_INVOKE("get_book_reading_plan", { libraryId, bookId, contentVersion, defaultVoice })),
+	clearBookReadingPlan: (libraryId: string, bookId: number, contentVersion: string, ids: string[]) => typedError<null, ErrorKind>(__TAURI_INVOKE("clear_book_reading_plan", { libraryId, bookId, contentVersion, ids })),
 	previewBookNarrationMerge: (libraryId: string, bookId: number, automatic: boolean) => typedError<NarrationMergePlanDto, ErrorKind>(__TAURI_INVOKE("preview_book_narration_merge", { libraryId, bookId, automatic })),
 	mergeBookNarration: (libraryId: string, bookId: number, plan: NarrationMergePlanDto) => typedError<BookNarrationSettingsDto, ErrorKind>(__TAURI_INVOKE("merge_book_narration", { libraryId, bookId, plan })),
 	listQwenTtsModels: (input: UpsertTtsProviderInput) => typedError<QwenTtsModelDto[], ErrorKind>(__TAURI_INVOKE("list_qwen_tts_models", { input })),
@@ -410,6 +414,15 @@ export type NarrationMergeSourceDto = {
 	characters: BookCharacterDto[],
 };
 
+export type NarrationPlanEntryDto = {
+	id: string,
+	sourceKey: string,
+	position: number | null,
+	characterId: string,
+	characterName: string,
+	speech: NarrationSpeechDto,
+};
+
 export type NarrationRequestDto = {
 	bookId: number,
 	contentVersion: string,
@@ -659,6 +672,11 @@ export type TtsModelDto = {
 	voices: string[],
 };
 
+export type TtsModelVoicesDto = {
+	id: string,
+	voices: string[],
+};
+
 export type TtsPlaybackPreferencesDto = {
 	speed: number | null,
 	pitch: number | null,
@@ -713,6 +731,16 @@ export type TtsProviderProfileInput = {
 	endpoint: string,
 	model?: string | null,
 	options: TtsProviderOptionsDto,
+};
+
+export type TtsSelectionUsageDto = {
+	profileId: string,
+	voiceId: string | null,
+	language: string | null,
+	libraryName: string | null,
+	scopeName: string | null,
+	bookId: number | null,
+	characterName: string | null,
 };
 
 export type TtsSynthesisInput = {

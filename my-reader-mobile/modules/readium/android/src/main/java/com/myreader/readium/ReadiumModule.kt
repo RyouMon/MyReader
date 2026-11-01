@@ -195,6 +195,13 @@ class ReadiumModule : Module() {
     // Content iteration — the path-neutral data source for any future TTS
     // engine (REP-003). Returns utterance-like {text, locator, language}[]
     // built from Publication.content(); the actual TTS coordinator is Phase 2.
+    AsyncFunction("getTtsContent") Coroutine { id: String, fromLocator: LocatorRecord ->
+      val publication = PublicationStore.get(id) ?: error("Publication not found")
+      val start = locatorRecordToReadium(fromLocator) ?: error("Locator not found")
+      val units = com.myreader.readium.reader.RemoteTtsPrefetchWindow.chapter(publication, start)
+      mapOf("utterances" to units.map { mapOf("text" to it.key.text, "language" to it.key.language, "locator" to readiumLocatorToMap(it.locator)) })
+    }
+
     AsyncFunction("getContent") Coroutine { id: String, fromLocator: LocatorRecord? ->
       val publication = PublicationStore.get(id)
       if (publication == null) {

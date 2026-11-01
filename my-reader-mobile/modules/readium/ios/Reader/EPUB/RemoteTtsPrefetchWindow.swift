@@ -35,6 +35,16 @@ enum RemoteTtsPrefetchWindow {
   private static let windowSize = 3
   private static let maxScannedUtterances = 128
 
+  static func chapter(publication: Publication, start: Locator) async -> [RemoteTtsPrefetchUtterance] {
+    guard let loader = Loader(publication: publication, start: start, defaultLanguage: nil, paragraphs: true) else { return [] }
+    var result: [RemoteTtsPrefetchUtterance] = []
+    while !Task.isCancelled, let utterance = await loader.nextUtterance() {
+      guard utterance.locator.href == start.href else { break }
+      result.append(utterance)
+    }
+    return result
+  }
+
   static func load(
     publication: Publication,
     start: Locator?,
@@ -73,15 +83,16 @@ enum RemoteTtsPrefetchWindow {
     private let tokenizer: ContentTokenizer
     private var buffered: [RemoteTtsPrefetchUtterance] = []
 
-    init?(publication: Publication, start: Locator?, defaultLanguage: Language?) {
+    init?(publication: Publication, start: Locator?, defaultLanguage: Language?, paragraphs: Bool = false) {
       guard let iterator = publication.content(from: start)?.iterator() else {
         return nil
       }
       self.publication = publication
       self.defaultLanguage = defaultLanguage
       self.iterator = iterator
-      tokenizer = PublicationSpeechSynthesizer.defaultTokenizerFactory(
-        defaultLanguage ?? publication.metadata.language
+      tokenizer = makeTextContentTokenizer(
+        defaultLanguage: defaultLanguage ?? publication.metadata.language,
+        textTokenizerFactory: { makeDefaultTextTokenizer(unit: paragraphs ? .paragraph : .sentence, language: $0) }
       )
     }
 

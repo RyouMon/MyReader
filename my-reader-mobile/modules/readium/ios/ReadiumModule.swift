@@ -179,6 +179,17 @@ public final class ReadiumModule: Module {
       }
     }
 
+    AsyncFunction("getTtsContent") { (id: String, fromLocator: LocatorRecord, promise: Promise) in
+      guard let publication = PublicationStore.shared.get(id), let start = locatorRecordToReadium(fromLocator) else {
+        promise.reject("ERR_PUBLICATION_NOT_FOUND", "Publication or locator unavailable")
+        return
+      }
+      Task { @MainActor in
+        let units = await RemoteTtsPrefetchWindow.chapter(publication: publication, start: start)
+        promise.resolve(["utterances": units.map { ["text": $0.key.text, "language": $0.key.language, "locator": locatorToDict($0.locator)] as [String: Any] }])
+      }
+    }
+
     AsyncFunction("getContent") { (id: String, fromLocator: LocatorRecord?, promise: Promise) in
       guard let publication = PublicationStore.shared.get(id) else {
         promise.reject("ERR_PUBLICATION_NOT_FOUND", "Publication not found for id: \(id)")

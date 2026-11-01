@@ -4,6 +4,9 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest"
 import { api } from "@/lib/tauri-api"
 import type { BookCharacterDto, LlmStreamEventDto } from "@/lib/tauri-specta"
 import { CharacterImportPanel } from "../CharacterImportPanel"
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: vi.fn().mockResolvedValue(() => {}),
+}))
 
 vi.mock("@/lib/tauri-api", () => ({
   api: {

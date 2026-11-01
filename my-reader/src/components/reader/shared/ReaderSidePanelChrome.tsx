@@ -1,7 +1,12 @@
 import type { LucideIcon } from "lucide-react"
 import { ArrowLeft, X } from "lucide-react"
 import type { ScrollbarsAutoHideBehavior } from "overlayscrollbars"
-import { type CSSProperties, type ReactNode, useRef } from "react"
+import {
+  type CSSProperties,
+  type ReactNode,
+  type RefObject,
+  useRef,
+} from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar"
@@ -125,6 +130,7 @@ export function ReaderSidePanelFooter({ children }: { children: ReactNode }) {
 }
 
 type ReaderSidePanelScrollAreaProps = {
+  viewportRef?: RefObject<HTMLDivElement>
   children: ReactNode
   className?: string
   scrollbarAutoHide?: ScrollbarsAutoHideBehavior
@@ -135,9 +141,11 @@ export function ReaderSidePanelScrollArea({
   children,
   className,
   scrollbarAutoHide,
+  viewportRef,
 }: ReaderSidePanelScrollAreaProps) {
   const scrollHostRef = useRef<HTMLDivElement>(null)
-  const scrollViewportRef = useRef<HTMLDivElement>(null)
+  const ownViewportRef = useRef<HTMLDivElement>(null)
+  const scrollViewportRef = viewportRef ?? ownViewportRef
   const scrollContentRef = useRef<HTMLDivElement>(null)
 
   useOverlayScrollbar(

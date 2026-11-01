@@ -1,11 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useEffect } from "react"
+import { listen } from "@tauri-apps/api/event"
 import { api } from "@/lib/tauri-api"
 import type {
   BookNarrationSettingsDto,
   CharacterImportRequestDto,
   NarrationMergePlanDto,
 } from "@/lib/tauri-specta"
-import { notifyTtsConfigChanged } from "@/lib/tts/events"
+import {
+  notifyTtsConfigChanged,
+  TTS_CONFIG_CHANGED_EVENT,
+} from "@/lib/tts/events"
 import { useCharacterDraft } from "./use-character-draft"
 
 export function useBookNarration(
@@ -20,6 +25,24 @@ export function useBookNarration(
     queryFn: () => api.getBookNarration(libraryId!, bookId),
     enabled: enabled && Boolean(libraryId),
   })
+  useEffect(() => {
+    if (!enabled || !libraryId) return
+    let disposed = false
+    let unlisten: (() => void) | undefined
+    void listen(TTS_CONFIG_CHANGED_EVENT, () => {
+      void client.invalidateQueries({
+        queryKey: ["book-narration", libraryId, bookId],
+        exact: true,
+      })
+    }).then((cleanup) => {
+      if (disposed) cleanup()
+      else unlisten = cleanup
+    })
+    return () => {
+      disposed = true
+      unlisten?.()
+    }
+  }, [bookId, client, enabled, libraryId])
   const update = async (data: BookNarrationSettingsDto) => {
     client.setQueryData(key, data)
     await client.invalidateQueries({

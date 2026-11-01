@@ -125,6 +125,7 @@ impl TestApp {
                 my_reader_lib::commands::reader::set_reader_traffic_lights_visible::<MockRuntime>,
                 my_reader_lib::commands::reader::close_book_streamer,
                 my_reader_lib::commands::tts::get_tts_config::<MockRuntime>,
+                my_reader_lib::commands::tts::get_tts_change_usage::<MockRuntime>,
                 my_reader_lib::commands::llm::get_llm_config::<MockRuntime>,
                 my_reader_lib::commands::llm::upsert_llm_profile::<MockRuntime>,
                 my_reader_lib::commands::llm::remove_llm_profile::<MockRuntime>,

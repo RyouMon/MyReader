@@ -61,3 +61,7 @@ export function invalidateRecentlyReadBooks(libraryId?: string) {
     queryKey: queryKeys.recentlyReadBooks(libraryId),
   })
 }
+
+export function invalidateBookNarration() {
+  return queryClient.invalidateQueries({ queryKey: ["book-narration"] })
+}

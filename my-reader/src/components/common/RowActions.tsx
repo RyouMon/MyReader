@@ -18,16 +18,21 @@ export function RowActions({
   onEdit,
   onDelete,
   disabled = false,
+  getDeleteDescription,
 }: {
   name: string
   onEdit?: () => void
   onDelete: () => Promise<unknown>
   disabled?: boolean
+  getDeleteDescription?: () => Promise<string>
 }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [description, setDescription] = useState("")
+  const [checking, setChecking] = useState(false)
+  const [checkFailed, setCheckFailed] = useState(false)
   const editLabel = t("rowActions.edit", { name })
   const deleteLabel = t("rowActions.delete", { name })
 
@@ -65,6 +70,18 @@ export function RowActions({
           if (deleting) return
           setError(null)
           setOpen(next)
+          if (next && getDeleteDescription) {
+            setChecking(true)
+            setCheckFailed(false)
+            setDescription("")
+            void getDeleteDescription()
+              .then(setDescription)
+              .catch((error) => {
+                setError(errorMessage(error))
+                setCheckFailed(true)
+              })
+              .finally(() => setChecking(false))
+          }
         }}
       >
         <DialogTrigger asChild>
@@ -89,6 +106,14 @@ export function RowActions({
               {t("rowActions.confirmDelete", { name })}
             </DialogTitle>
           </DialogHeader>
+          {checking ? (
+            <Loader2 className="size-4 animate-spin" role="status" />
+          ) : null}
+          {description ? (
+            <p className="max-h-64 overflow-y-auto whitespace-pre-wrap text-sm">
+              {description}
+            </p>
+          ) : null}
           {error ? <FieldError>{error}</FieldError> : null}
           <DialogFooter>
             <Button
@@ -102,7 +127,7 @@ export function RowActions({
             <Button
               type="button"
               variant="destructive"
-              disabled={deleting}
+              disabled={deleting || checking || checkFailed}
               aria-busy={deleting}
               onClick={() => void confirmDelete()}
             >

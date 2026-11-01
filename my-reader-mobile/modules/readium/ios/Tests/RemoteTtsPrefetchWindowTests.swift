@@ -261,3 +261,18 @@ private func locator(position: Int, text: String) -> Locator {
     text: .init(highlight: text)
   )
 }
+
+
+@Test
+func should_keep_sentences_in_one_paragraph_for_role_narration() throws {
+  let text = "真昼有一个别称叫做天使大人。她温和诚恳，因而受人欢迎。"
+  let source = locator(position: 1, text: text)
+  let element = TextContentElement(locator: source, role: .body, segments: [
+    .init(locator: source, text: text),
+  ])
+  let tokenize = StartLocatorContentTokenizer(paragraphs: true)
+  let result = try tokenize.make(defaultLanguage: Language(code: .bcp47("zh")))(element)
+  let segments = result.compactMap { $0 as? TextContentElement }.flatMap(\.segments)
+  #expect(segments.map(\.text) == [text])
+  #expect(segments.first?.locator.text.highlight == text)
+}

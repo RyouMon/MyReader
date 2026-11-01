@@ -13,12 +13,14 @@ pub async fn narration_resolve_settings(
     content_root: String,
     library_type: String,
     book_id: f64,
+    config_path: String,
 ) -> Result<BookNarrationSettings, CoreFfiError> {
     Ok(NarrationService::get_library_settings(
         Path::new(&root),
         Path::new(&content_root),
         crate::types::parse_library_type(&library_type)?,
         required_i64(book_id, "bookId")?,
+        Path::new(&config_path),
     )
     .await
     .map_err(CoreFfiError::from_core)?
@@ -174,4 +176,63 @@ pub async fn narration_prepare(
     .into_iter()
     .map(Into::into)
     .collect())
+}
+
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn narration_analyze_batch(
+    root: String,
+    config_path: String,
+    requests: Vec<NarrationRequest>,
+    credential: Option<crate::llm::LlmCredential>,
+) -> Result<(), CoreFfiError> {
+    NarrationService::analyze_batch(
+        Path::new(&root),
+        Path::new(&config_path),
+        requests
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<_, _>>()?,
+        credential.map(Into::into).as_ref(),
+    )
+    .await
+    .map_err(CoreFfiError::from_core)
+}
+
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn narration_reading_plan(
+    root: String,
+    config_path: String,
+    book_id: f64,
+    content_version: String,
+    default_voice: NarrationVoice,
+) -> Result<Vec<NarrationPlanEntry>, CoreFfiError> {
+    Ok(NarrationService::reading_plan(
+        Path::new(&root),
+        Path::new(&config_path),
+        required_i64(book_id, "bookId")?,
+        &content_version,
+        default_voice.try_into()?,
+    )
+    .await
+    .map_err(CoreFfiError::from_core)?
+    .into_iter()
+    .map(Into::into)
+    .collect())
+}
+
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn narration_clear_reading_plan(
+    root: String,
+    book_id: f64,
+    content_version: String,
+    ids: Vec<String>,
+) -> Result<(), CoreFfiError> {
+    NarrationService::clear_reading_plan(
+        Path::new(&root),
+        required_i64(book_id, "bookId")?,
+        &content_version,
+        ids,
+    )
+    .await
+    .map_err(CoreFfiError::from_core)
 }
