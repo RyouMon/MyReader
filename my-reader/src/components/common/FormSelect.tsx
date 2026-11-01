@@ -1,15 +1,15 @@
+import TextField, { type TextFieldProps } from "@mui/material/TextField"
 import {
   Children,
+  type CSSProperties,
   Fragment,
   isValidElement,
+  type ReactNode,
   useId,
   useLayoutEffect,
   useRef,
   useState,
-  type CSSProperties,
-  type ReactNode,
 } from "react"
-import TextField, { type TextFieldProps } from "@mui/material/TextField"
 import { Field, FieldLabel } from "@/components/ui/field"
 
 export { default as FormSelectItem } from "@mui/material/MenuItem"
@@ -23,6 +23,8 @@ type FormSelectProps = Omit<
   onValueChange: (value: string) => void
   children: ReactNode
   themeStyle?: CSSProperties
+  renderValue?: (value: unknown) => ReactNode
+  onMenuClose?: () => void
 }
 
 function menuItems(children: ReactNode): ReactNode[] {
@@ -41,6 +43,8 @@ export function FormSelect({
   onValueChange,
   children,
   themeStyle,
+  renderValue,
+  onMenuClose,
   style,
   "aria-label": ariaLabel,
   ...props
@@ -78,6 +82,8 @@ export function FormSelect({
       onChange={(event) => onValueChange(event.target.value)}
       slotProps={{
         select: {
+          renderValue,
+          onClose: onMenuClose,
           ...(labelId ? { labelId } : {}),
           "aria-label": ariaLabel,
           MenuProps: {

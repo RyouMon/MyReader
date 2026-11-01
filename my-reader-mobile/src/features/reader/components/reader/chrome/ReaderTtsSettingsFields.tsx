@@ -2,8 +2,12 @@ import { BottomSheetTextInput } from "@expo/ui/community/bottom-sheet"
 import type { MenuAction } from "@react-native-menu/menu"
 import { FormSelect, FormTextField } from "@/src/components"
 import {
-  readerFormColors,
+  VoiceSelect,
+  type VoiceSelectPreviewProps,
+} from "@/src/components/ui/voice-select"
+import {
   type ReaderChromePalette,
+  readerFormColors,
 } from "@/src/design/reader-chrome-palette"
 import { View } from "@/tw"
 
@@ -13,28 +17,35 @@ export function ReaderTtsMenuRow({
   actions,
   palette,
   onSelect,
+  preview,
 }: {
   title: string
   value: string
   actions: MenuAction[]
   palette: ReaderChromePalette
+  preview?: VoiceSelectPreviewProps
   onSelect: (id: string) => void
 }) {
+  const props = {
+    label: title,
+    labelMode: "external" as const,
+    value,
+    colors: readerFormColors(palette),
+    actions: actions.map(({ id, title, attributes, state }) => ({
+      id,
+      title,
+      attributes,
+      state: state === "on" ? ("on" as const) : ("off" as const),
+    })),
+    onSelect,
+  }
   return (
     <View>
-      <FormSelect
-        label={title}
-        labelMode="external"
-        value={value}
-        colors={readerFormColors(palette)}
-        actions={actions.map(({ id, title, attributes, state }) => ({
-          id,
-          title,
-          attributes,
-          state: state === "on" ? "on" : "off",
-        }))}
-        onSelect={onSelect}
-      />
+      {preview ? (
+        <VoiceSelect {...props} {...preview} />
+      ) : (
+        <FormSelect {...props} />
+      )}
     </View>
   )
 }

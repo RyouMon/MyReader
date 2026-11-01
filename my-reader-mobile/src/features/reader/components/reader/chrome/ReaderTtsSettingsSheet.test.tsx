@@ -486,7 +486,10 @@ it("uses the role title and hides playback controls while a character subview is
 })
 
 // Exercise shared form controls without loading app persistence or native menu surfaces.
-jest.mock("@/src/design/tokens", () => ({ useThemePalette: () => ({}) }))
+jest.mock("@/src/design/tokens", () => ({
+  useThemePalette: () => ({}),
+  useTheme: () => ({ palette: {}, colorScheme: "light" }),
+}))
 jest.mock("@/src/components", () => ({
   ...jest.requireActual("@/src/components/ui/button"),
   ...jest.requireActual("@/src/components/ui/form-slider"),

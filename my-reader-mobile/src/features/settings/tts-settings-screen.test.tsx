@@ -190,6 +190,15 @@ jest.mock("@/src/constants/alert-with-status-bar", () => ({
 }))
 
 jest.mock("@/src/design/tokens", () => ({
+  useTheme: () => ({
+    colorScheme: "light",
+    palette: {
+      primary: "#c4622d",
+      surface: "#fff",
+      text: "#111",
+      textMuted: "#666",
+    },
+  }),
   useThemePalette: () => ({
     backgroundSecondary: "#eee",
     border: "#ddd",
@@ -245,7 +254,10 @@ describe("TtsSettingsScreen preview", () => {
     await act(async () => {
       await Promise.resolve()
     })
-    expect(screen.getByText("reader-voice")).toBeTruthy()
+    expect(
+      screen.getByRole("button", { name: "settings.tts.voice" }).props
+        .accessibilityValue,
+    ).toEqual({ text: "reader-voice" })
 
     const action = await screen.findByRole("button", {
       name: "settings.tts.previewAction",

@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react"
 import {
   Pressable,
   StyleSheet,
@@ -6,11 +7,10 @@ import {
   type ViewStyle,
 } from "react-native"
 import { TextInput } from "react-native-paper"
-import type { ComponentProps } from "react"
 import { View } from "@/tw"
 import { FormTextField } from "./form-text-field"
-import { NativeSelectMenu } from "./native-select-menu"
 import type { SelectMenuAction } from "./ios-select-menu"
+import { NativeSelectMenu } from "./native-select-menu"
 import { PlatformIcon } from "./platform-icon"
 
 type Props = Pick<
@@ -33,42 +33,52 @@ export function FormSelect({ actions, onSelect, disabled, ...field }: Props) {
       onSelect={onSelect}
     >
       {(open) => (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={field.label}
-          accessibilityValue={{ text: field.value }}
-          accessibilityState={{ disabled: unavailable }}
-          disabled={unavailable}
-          onPress={open}
-          style={({ pressed }) => ({
-            opacity: unavailable ? 0.55 : pressed ? 0.72 : 1,
-          })}
-        >
-          <View
-            pointerEvents="none"
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-          >
-            <FormTextField
-              {...field}
-              editable={false}
-              render={(props) => <SelectValue {...props} />}
-              right={
-                <TextInput.Icon
-                  icon={({ size, color }) => (
-                    <PlatformIcon
-                      name={{ ios: "chevron.down", android: "arrow-drop-down" }}
-                      size={size}
-                      color={color}
-                    />
-                  )}
-                />
-              }
-            />
-          </View>
-        </Pressable>
+        <FormSelectTrigger {...field} disabled={unavailable} onPress={open} />
       )}
     </NativeSelectMenu>
+  )
+}
+
+export function FormSelectTrigger({
+  disabled,
+  onPress,
+  ...field
+}: Omit<Props, "actions" | "onSelect"> & { onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={field.label}
+      accessibilityValue={{ text: field.value }}
+      accessibilityState={{ disabled: disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        opacity: disabled ? 0.55 : pressed ? 0.72 : 1,
+      })}
+    >
+      <View
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <FormTextField
+          {...field}
+          editable={false}
+          render={(props) => <SelectValue {...props} />}
+          right={
+            <TextInput.Icon
+              icon={({ size, color }) => (
+                <PlatformIcon
+                  name={{ ios: "chevron.down", android: "arrow-drop-down" }}
+                  size={size}
+                  color={color}
+                />
+              )}
+            />
+          }
+        />
+      </View>
+    </Pressable>
   )
 }
 

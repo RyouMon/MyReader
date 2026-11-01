@@ -768,8 +768,8 @@ it("reviews a series merge and applies only after confirmation", async () => {
 })
 
 const mockStopPreview = jest.fn()
-jest.mock("@/src/features/reader/tts/use-reader-tts-preview", () => ({
-  useReaderTtsPreview: () => ({
+jest.mock("@/src/domain/tts/use-tts-preview", () => ({
+  useTtsPreview: () => ({
     canPreview: true,
     state: "idle",
     start: jest.fn(),

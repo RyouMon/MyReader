@@ -81,6 +81,47 @@ beforeEach(() => {
 })
 afterEach(() => vi.unstubAllGlobals())
 
+it("previews a candidate without changing the configured voice and replaces previous playback", async () => {
+  const { result } = renderHook(() => useTtsPreviewPlayer(input))
+  await act(() => result.current.preview("candidate"))
+  expect(mocks.synthesizeTtsRequest).toHaveBeenLastCalledWith(
+    expect.any(String),
+    expect.objectContaining({ voiceId: "candidate", instructions: "Softly" }),
+  )
+  expect(result.current.previewVoiceId).toBe("candidate")
+  await act(() => result.current.preview())
+  expect(PreviewAudio.instances[0].pause).toHaveBeenCalledOnce()
+  expect(mocks.synthesizeTtsRequest).toHaveBeenLastCalledWith(
+    expect.any(String),
+    expect.objectContaining({ voiceId: "voice" }),
+  )
+  act(() => result.current.stopPreview())
+  expect(result.current.previewVoiceId).toBeNull()
+})
+
+it("cancels the previous candidate request and ignores its late result", async () => {
+  let resolve!: (value: { path: string }) => void
+  mocks.synthesizeTtsRequest.mockReturnValueOnce(
+    new Promise((done) => {
+      resolve = done
+    }),
+  )
+  const { result } = renderHook(() => useTtsPreviewPlayer(input))
+  let pending!: Promise<void>
+  act(() => {
+    pending = result.current.preview("first")
+  })
+  const requestId = mocks.synthesizeTtsRequest.mock.calls[0][0]
+  await act(() => result.current.preview("second"))
+  expect(mocks.cancelTtsSynthesis).toHaveBeenCalledWith(requestId)
+  await act(async () => {
+    resolve({ path: "/tmp/old.mp3" })
+    await pending
+  })
+  expect(PreviewAudio.instances).toHaveLength(1)
+  expect(result.current.previewVoiceId).toBe("second")
+})
+
 it("synthesizes the selected voice and draft instructions and plays the returned audio", async () => {
   const { result } = renderHook(() => useTtsPreviewPlayer(input))
   await act(() => result.current.preview())
