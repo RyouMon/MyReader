@@ -101,11 +101,12 @@ Knip 的入口包含 Expo 路由、原生模块和字体准备脚本；动态加
   明确指出它不能准确衡量理解难度；其计数方式也不同于 SonarJS。这里将其作为项目的函数拆分
   信号，不将分数解释为人的认知负担，也不跨语言比较分数。
 
-覆盖率分母采用配置中的 authored source：排除声明、测试、生成文件、第三方 UI 模板；移动端
-另外排除 Expo Router 路由装配，i18n 排除翻译 JSON 与入口 re-export。没有被测试导入的范围内
-源码仍计入分母。原生 Tab 布局 `src/app/(tabs)/_layout.tsx` 纳入移动端采集，保护主题切换时的
-选中和按压反馈。i18n 的翻译完整性另有单元测试，100% 覆盖率不表示翻译质量已经验证。
-Rust LCOV 当前覆盖 Core/FFI 两个 crate，没有为尚未测量的 Tauri 原生 UI 设置覆盖率门槛。
+覆盖率分母采用配置中的 authored source：排除声明、测试和生成文件；桌面端公共 UI 组件与
+移动端 Expo Router 路由装配均纳入采集。i18n 排除翻译 JSON 与入口 re-export。没有被测试
+导入的范围内源码仍计入分母。纯声明与 re-export 文件没有可执行计数，不视为报告缺失；
+同一文件新增可执行代码时仍需覆盖率报告。i18n 的翻译完整性另有单元测试，100% 覆盖率
+不表示翻译质量已经验证。Rust LCOV 覆盖 Core/FFI 与 Tauri crate，合并 Linux、macOS 和
+Windows 的计数；macOS 同时采集 Core 测试，包含 Apple 系统代理处理。
 actionlint 当前仅校验工作流本身，显式关闭其可选 ShellCheck / Pyflakes 集成，以保持本地与 CI 范围一致。
 无补丁的已接受风险按通告编号配置在 `pnpm-workspace.yaml` 的 `audit.ignore` 和
 `.cargo/audit.toml`，本地与 CI 使用相同配置；升级依赖时复核并移除已解决的豁免。

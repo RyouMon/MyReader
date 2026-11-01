@@ -37,7 +37,6 @@ export default defineConfig({
         "**/__mocks__/**",
         "src/routeTree.gen.ts",
         "src/lib/tauri-specta.ts",
-        "src/components/ui/**",
         "**/*.generated.*",
         "src/main.tsx",
         "**/*.d.ts",

@@ -119,7 +119,7 @@ export function normalizeCoverage(
       )
         continue
       if (
-        /(?:^|\/)(?:tests|generated|examples)\//.test(file) ||
+        /(?:^|\/)(?:tests|generated|examples)\/|_tests\.rs$/.test(file) ||
         !file.endsWith(".rs")
       )
         continue
@@ -217,19 +217,39 @@ export function requireChangedSources(reported, changes, readSource) {
     if (!/\.(?:[cm]?[jt]sx?|rs|swift|kt|java)$/.test(file)) continue
     // Type declarations, generated bindings and translation tables are not executable product logic.
     if (
-      /(?:^|\/)(?:__tests__|__mocks__|Tests|tests|test|androidTest|types|generated|Generated[^/]*)(?:\/|\.)|\.(?:test|spec|types|d)\.[jt]sx?$|(?:tauri-specta|routeTree\.gen)\.ts$|packages\/i18n\/src\/locales\//.test(
+      /(?:^|\/)(?:__tests__|__mocks__|Tests|tests|test|androidTest|types|generated|Generated[^/]*)(?:\/|\.)|_tests\.rs$|\.(?:test|spec|types|d)\.[jt]sx?$|(?:tauri-specta|routeTree\.gen)\.ts$|packages\/i18n\/src\/locales\//.test(
         file,
       )
     )
       continue
-    const lines = readSource(file).split("\n")
-    // Rust module/import declarations have no compiler counters; a function in the same file still requires coverage.
+    const original = readSource(file)
+    const lines = original.split("\n")
+    // Import-only changes have no compiler counters, even beside existing types.
     if (
       file.endsWith(".rs") &&
       [...added].every((line) =>
         /^\s*(?:(?:pub(?:\([^)]*\))?\s+)?(?:mod|use)\s+[^;]+;|\/\/.*)?\s*$/.test(
           lines[line - 1],
         ),
+      )
+    )
+      continue
+    const source = original.replace(/^\s*\/\/.*$/gm, "")
+    // Declaration-only barrels have no executable instructions to instrument.
+    if (
+      file.endsWith(".rs") &&
+      !source
+        .replace(
+          /\b(?:pub(?:\([^)]*\))?\s+)?(?:mod\s+\w+|use\s+[\w:*,{}\s]+);/g,
+          "",
+        )
+        .trim()
+    )
+      continue
+    if (
+      /\.[cm]?[jt]sx?$/.test(file) &&
+      /^(?:\s*export\s+(?:type\s+)?(?:\{[\w,\s]+\}|\*(?:\s+as\s+\w+)?)\s+from\s+["'][^"'\n]+["']\s*;?\s*)+$/.test(
+        source,
       )
     )
       continue
