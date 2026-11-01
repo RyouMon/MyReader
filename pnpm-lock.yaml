@@ -11,10 +11,16 @@ overrides:
   esbuild@0.28.0: 0.28.1
   lightningcss: 1.30.1
   xcode@3.0.1>uuid: 11.1.1
-  query-string@7.1.3>decode-uri-component: 0.5.0
+  query-string@7.1.3>decode-uri-component: 0.5.1
+  node-forge@<1.4.1: 1.4.1
+  seroval@<1.6.11: 1.6.11
+  vite@6.4.4: 6.4.5
+  test-exclude@<8: 8.0.0
+  glob@>=9 <14.0.2: 14.0.2
+  minimatch@>=9 <11.0.1: 11.0.1
   node-vibrant@4.0.4>@vibrant/image-node: '-'
 
-packageExtensionsChecksum: sha256-fXmlCq1FT0XxZuG555Ze5+ZXW7wjNJlLlQtRKXDhWvo=
+packageExtensionsChecksum: sha256-kZt/Q8CMFa5S7ZrwJxKyCl0FYVusHpeTPpM7Uz4bvLo=
 
 patchedDependencies:
   '@expo/cli@57.0.28': 4a6a2a2536dd0727445342de581435800e80216fa284bddf47ea8b4dd376f77a
@@ -135,19 +141,19 @@ importers:
         version: 0.7.0(patch_hash=1c4134e10e8de69821d0c9050402540fd167d83c6099cccf804a25c27d44a7ff)
       '@tailwindcss/vite':
         specifier: ^4.2.2
-        version: 4.3.0(vite@6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))
+        version: 4.3.0(vite@6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))
       '@tanstack/react-form':
         specifier: ^1.29.0
-        version: 1.32.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 1.32.0(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@tanstack/react-query':
         specifier: ^5.100.10
-        version: 5.100.10(react@18.3.1)
+        version: 5.100.10(@types/react@18.3.28)(react@18.3.1)
       '@tanstack/react-router':
         specifier: ^1.168.7
-        version: 1.170.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 1.170.2(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@tanstack/react-virtual':
         specifier: ^3.13.23
-        version: 3.13.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 3.13.24(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@tauri-apps/api':
         specifier: ~2.10.1
         version: 2.10.1
@@ -168,7 +174,7 @@ importers:
         version: 26.2.0(typescript@5.6.3)
       lucide-react:
         specifier: ^1.7.0
-        version: 1.16.0(react@18.3.1)
+        version: 1.16.0(@types/react@18.3.28)(react@18.3.1)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -192,7 +198,7 @@ importers:
         version: 18.3.1(react@18.3.1)
       react-i18next:
         specifier: ^17.0.7
-        version: 17.0.8(i18next@26.2.0(typescript@5.6.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3)
+        version: 17.0.8(@types/react@18.3.28)(i18next@26.2.0(typescript@5.6.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3)
       react-markdown:
         specifier: 10.1.0
         version: 10.1.0(@types/react@18.3.28)(react@18.3.1)(supports-color@8.1.1)
@@ -201,7 +207,7 @@ importers:
         version: 4.0.1(supports-color@8.1.1)
       sonner:
         specifier: ^2.0.7
-        version: 2.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 2.0.7(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       tailwind-merge:
         specifier: ^3.5.0
         version: 3.6.0
@@ -223,7 +229,7 @@ importers:
         version: 1.60.0
       '@tanstack/router-plugin':
         specifier: ^1.167.8
-        version: 1.168.3(@tanstack/react-router@1.170.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(supports-color@8.1.1)(vite@6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))
+        version: 1.168.3(@tanstack/react-router@1.170.2(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(supports-color@8.1.1)(vite@6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))
       '@tauri-apps/cli':
         specifier: ^2
         version: 2.11.1
@@ -247,7 +253,7 @@ importers:
         version: 18.3.7(@types/react@18.3.28)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
-        version: 4.7.0(supports-color@8.1.1)(vite@6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))
+        version: 4.7.0(supports-color@8.1.1)(vite@6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))
       '@vitest/coverage-v8':
         specifier: ^4.1.6
         version: 4.1.6(vitest@4.1.6)
@@ -264,11 +270,11 @@ importers:
         specifier: ~5.6.2
         version: 5.6.3
       vite:
-        specifier: ^6.0.3
-        version: 6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1)
+        specifier: 6.4.5
+        version: 6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1)
       vitest:
         specifier: ^4.1.4
-        version: 4.1.6(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(@vitest/ui@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))
+        version: 4.1.6(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(@vitest/ui@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))
 
   my-reader-mobile:
     dependencies:
@@ -325,7 +331,7 @@ importers:
         version: 2.2.0(react-native@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))
       '@react-native-community/slider':
         specifier: ^5.2.0
-        version: 5.2.0
+        version: 5.2.0(@types/react@19.2.14)(react-native@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
       '@react-native-menu/menu':
         specifier: ^2.0.0
         version: 2.0.0(patch_hash=10a3f512a6501be9c28096044efef2014b8f3c3ec5efbe3017c77d75d4cf4e02)(react-native@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
@@ -343,13 +349,13 @@ importers:
         version: 5.100.14
       '@tanstack/react-form':
         specifier: ^1.29.0
-        version: 1.32.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        version: 1.32.0(@types/react@19.2.14)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tanstack/react-query':
         specifier: ^5.100.14
-        version: 5.100.14(react@19.2.3)
+        version: 5.100.14(@types/react@19.2.14)(react@19.2.3)
       '@tanstack/react-query-persist-client':
         specifier: ^5.100.14
-        version: 5.100.14(@tanstack/react-query@5.100.14(react@19.2.3))(react@19.2.3)
+        version: 5.100.14(@tanstack/react-query@5.100.14(@types/react@19.2.14)(react@19.2.3))(react@19.2.3)
       '@ubjs/core':
         specifier: 0.31.0-3
         version: 0.31.0-3
@@ -433,7 +439,7 @@ importers:
         version: 57.0.2(expo@57.0.27)(react@19.2.3)
       expo-router:
         specifier: ~57.0.25
-        version: 57.0.25(5817607d4c61aac26600f00fd4669af2)
+        version: 57.0.25(11a55ea420f80f7c55ef2197c4e07c53)
       expo-secure-store:
         specifier: ~57.0.4
         version: 57.0.4(expo@57.0.27)
@@ -481,7 +487,7 @@ importers:
         version: 19.2.3(react@19.2.3)
       react-i18next:
         specifier: ^17.0.8
-        version: 17.0.8(i18next@26.2.0(typescript@6.0.3))(react-dom@19.2.3(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)(typescript@6.0.3)
+        version: 17.0.8(@types/react@19.2.14)(i18next@26.2.0(typescript@6.0.3))(react-dom@19.2.3(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)(typescript@6.0.3)
       react-native:
         specifier: 0.86.3
         version: 0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1)
@@ -551,7 +557,7 @@ importers:
         version: 2.58.4(supports-color@8.1.1)
       '@testing-library/react-native':
         specifier: ^13.3.3
-        version: 13.3.3(jest@29.7.0(@types/node@25.8.0)(babel-plugin-macros@3.1.0)(supports-color@8.1.1))(react-native@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react-test-renderer@19.2.3(react@19.2.3))(react@19.2.3)
+        version: 13.3.3(@types/react@19.2.14)(jest@29.7.0(@types/node@25.8.0)(babel-plugin-macros@3.1.0)(supports-color@8.1.1))(react-native@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react-test-renderer@19.2.3(react@19.2.3))(react@19.2.3)
       '@types/base-64':
         specifier: ^1.0.2
         version: 1.0.2
@@ -606,7 +612,7 @@ importers:
         version: 5.6.3
       vitest:
         specifier: ^4.1.5
-        version: 4.1.6(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(@vitest/ui@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))
+        version: 4.1.6(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(@vitest/ui@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/i18n:
     devDependencies:
@@ -621,7 +627,7 @@ importers:
         version: 5.6.3
       vitest:
         specifier: ^4.1.5
-        version: 4.1.6(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(@vitest/ui@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))
+        version: 4.1.6(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(@vitest/ui@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/tools:
     dependencies:
@@ -649,7 +655,7 @@ importers:
         version: 5.6.3
       vitest:
         specifier: ^4.1.5
-        version: 4.1.6(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(@vitest/ui@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))
+        version: 4.1.6(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(@vitest/ui@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))
 
 packages:
 
@@ -2475,9 +2481,8 @@ packages:
       '@types/node':
         optional: true
 
-  '@isaacs/cliui@8.0.2':
-    resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
-    engines: {node: '>=12'}
+  '@isaacs/nonrecursive-glob-match@1.0.3':
+    resolution: {integrity: sha512-SI7kyKHq4XXDRozw+r9GlRZkia1ZkFrpLW98r2IC2Bpr8YkFGE3fvjzmxCG0x78A++69HmDNrDvSMYBZmHGpKA==}
 
   '@isaacs/ttlcache@1.4.1':
     resolution: {integrity: sha512-RQgQ4uQ+pLbqXfOmieB91ejmLwvSgv9nLx6sT6sD83s7umBypgg+OIBOBbEUiJXrfpnp9j0mRhYYdzp9uqq3lA==}
@@ -3045,10 +3050,6 @@ packages:
 
   '@panzoom/panzoom@4.6.2':
     resolution: {integrity: sha512-Zn3B5/hwa6eYIPRSKX0xf2clv8nviTX8AnAU5kU/EugiTDhG41ya2wlBqYrZJYCWQROr/5XkWObZhIkepi89qw==}
-
-  '@pkgjs/parseargs@0.11.0':
-    resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
-    engines: {node: '>=14'}
 
   '@playwright/test@1.60.0':
     resolution: {integrity: sha512-O71yZIbAh/PxDMNGns37GHBIfrVkEVyn+AXyIa5dOTfb4/xNvRWV+Vv/NMbNCtODB/pO7vLlF2OTmMVLhmr7Ag==}
@@ -3775,6 +3776,13 @@ packages:
 
   '@react-native-community/slider@5.2.0':
     resolution: {integrity: sha512-484sH8aWEaSjxaZ7HT3YZ8CKDcNes2synko1vdEz5DFEdvKAduxKJTj22L/qBMD7rtIkfbX69DMzWDAGbOAV6w==}
+    peerDependencies:
+      '@types/react': '*'
+      react: '*'
+      react-native: '*'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   '@react-native-masked-view/masked-view@0.3.2':
     resolution: {integrity: sha512-XwuQoW7/GEgWRMovOQtX3A4PrXhyaZm0lVUiY8qJDvdngjLms9Cpdck6SmGAUNqQwcj2EadHC1HwL0bEyoa/SQ==}
@@ -4296,7 +4304,7 @@ packages:
   '@tailwindcss/vite@4.3.0':
     resolution: {integrity: sha512-t6J3OrB5Fc0ExuhohouH0fWUGMYL6PTLhW+E7zIk/pdbnJARZDCwjBznFnkh5ynRnIRSI4YjtTH0t6USjJISrw==}
     peerDependencies:
-      vite: ^5.2.0 || ^6 || ^7 || ^8
+      vite: 6.4.5
 
   '@tanstack/devtools-event-client@0.4.3':
     resolution: {integrity: sha512-OZI6QyULw0FI0wjgmeYzCIfbgPsOEzwJtCpa69XrfLMtNXLGnz3d/dIabk7frg0TmHo+Ah49w5I4KC7Tufwsvw==}
@@ -4330,9 +4338,12 @@ packages:
     resolution: {integrity: sha512-6WP5SQTA6/H9crCpvpq3ZppYWqtrdE5NjOy6ebABi6uAQPqhfTzrdjS9t40mCZCFtGI5585OhJV6zBP/KN2zcw==}
     peerDependencies:
       '@tanstack/react-start': '*'
+      '@types/react': '*'
       react: ^17.0.0 || ^18.0.0 || ^19.0.0
     peerDependenciesMeta:
       '@tanstack/react-start':
+        optional: true
+      '@types/react':
         optional: true
 
   '@tanstack/react-query-persist-client@5.100.14':
@@ -4344,19 +4355,31 @@ packages:
   '@tanstack/react-query@5.100.10':
     resolution: {integrity: sha512-FLaZf2RCrA/Zgp4aiu5tG3TyasTRO7aZ99skxQpr3Hg/zXOhu6yq5FZCYQ/tRaJtM9ylnoK8tFK7PolXQadv6Q==}
     peerDependencies:
+      '@types/react': '*'
       react: ^18 || ^19
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   '@tanstack/react-query@5.100.14':
     resolution: {integrity: sha512-oOr6aRdSFEwWhzxEkD/9ZcItM3+LjBSkeVmadWKwUssAHTsqd/7bOjWrX4AbvEkoEhgAxzN0Xk6H/aYzXiYBAw==}
     peerDependencies:
+      '@types/react': '*'
       react: ^18 || ^19
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   '@tanstack/react-router@1.170.2':
     resolution: {integrity: sha512-OxbFxgwLUqF5jCLuMUWXpSXM3aEL5i6pzT/vE6AIFsUrwsWFzALviLQOgLKgmqN6Rd5HVoMYmqRdetRwzt8NVQ==}
     engines: {node: '>=20.19'}
     peerDependencies:
+      '@types/react': '*'
       react: '>=18.0.0 || >=19.0.0'
       react-dom: '>=18.0.0 || >=19.0.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   '@tanstack/react-store@0.9.3':
     resolution: {integrity: sha512-y2iHd/N9OkoQbFJLUX1T9vbc2O9tjH0pQRgTcx1/Nz4IlwLvkgpuglXUx+mXt0g5ZDFrEeDnONPqkbfxXJKwRg==}
@@ -4367,8 +4390,12 @@ packages:
   '@tanstack/react-virtual@3.13.24':
     resolution: {integrity: sha512-aIJvz5OSkhNIhZIpYivrxrPTKYsjW9Uzy+sP/mx0S3sev2HyvPb7xmjbYvokzEpfgYHy/HjzJ2zFAETuUfgCpg==}
     peerDependencies:
+      '@types/react': '*'
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   '@tanstack/router-core@1.171.0':
     resolution: {integrity: sha512-40RHf0YtI+Zf4M672G+r//N+o7SODzEByI8AgM/z+VNFmVwW7K+qbulOrh/xuzMclhAcm4WuIXhtvfWz/p2FAQ==}
@@ -4384,7 +4411,7 @@ packages:
     peerDependencies:
       '@rsbuild/core': '>=1.0.2 || ^2.0.0'
       '@tanstack/react-router': ^1.170.2
-      vite: '>=5.0.0 || >=6.0.0 || >=7.0.0 || >=8.0.0'
+      vite: 6.4.5
       vite-plugin-solid: ^2.11.10 || ^3.0.0-0
       webpack: '>=5.92.0'
     peerDependenciesMeta:
@@ -4517,11 +4544,14 @@ packages:
     resolution: {integrity: sha512-k6Mjsd9dbZgvY4Bl7P1NIpePQNi+dfYtlJ5voi9KQlynxSyQkfOgJmYGCYmw/aSgH/rUcFvG8u5gd4npzgRDyg==}
     engines: {node: '>=18'}
     peerDependencies:
+      '@types/react': '*'
       jest: '>=29.0.0'
       react: '>=18.2.0'
       react-native: '>=0.71'
       react-test-renderer: '>=18.2.0'
     peerDependenciesMeta:
+      '@types/react':
+        optional: true
       jest:
         optional: true
 
@@ -4803,7 +4833,7 @@ packages:
     resolution: {integrity: sha512-gUu9hwfWvvEDBBmgtAowQCojwZmJ5mcLn3aufeCsitijs3+f2NsrPtlAWIR6OPiqljl96GVCUbLe0HyqIpVaoA==}
     engines: {node: ^14.18.0 || >=16.0.0}
     peerDependencies:
-      vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0
+      vite: 6.4.5
 
   '@vitest/coverage-v8@4.1.6':
     resolution: {integrity: sha512-36l628fQ/9a/8ihy97eOtEnvWQEdqULQOJtcaxtoNq0G1w3Mxd4szSahOaMM9/NGyZ+hyKcMtIW/WIxq0XQViQ==}
@@ -4821,7 +4851,7 @@ packages:
     resolution: {integrity: sha512-MCFc63czMjEInOlcY2cpQCvCN+KgbAn+60xu9cMgP4sKaLC5JNAKw7JH8QdAnoAC88hW1IiSNZ+GgVXlN1UcMQ==}
     peerDependencies:
       msw: ^2.4.9
-      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
+      vite: 6.4.5
     peerDependenciesMeta:
       msw:
         optional: true
@@ -5288,9 +5318,6 @@ packages:
   brace-expansion@1.1.21:
     resolution: {integrity: sha512-9zeA+KLZNNzglF2TPKRQEDyx6Yby7daAkuy8MiPzpXPsYDWi/DRM8jmwUDxokQjYqBpv5DgPiwD4h4ZZSy1Ujw==}
 
-  brace-expansion@2.1.7:
-    resolution: {integrity: sha512-uZbew1NqdmPDTMJ8ah1y+b+9QEJrfkXFk3RcTQw3X0jW/xRUvFKsg1CfQdSYGdTbXZWExtU3J3ccxtnfw1Fi0g==}
-
   brace-expansion@5.0.12:
     resolution: {integrity: sha512-YovQ3rzhaLMIrDjNDMkNS01tea93qhEhG5xy8f6+R0l+dw3Ki+5sCoIoI942iuLZTHWogWktgwVDhU09iNEimQ==}
     engines: {node: 20 || >=22}
@@ -5709,8 +5736,8 @@ packages:
   decode-named-character-reference@1.3.0:
     resolution: {integrity: sha512-GtpQYB283KrPp6nRw50q3U9/VfOutZOe103qlN7BPP6Ad27xYnOIWv4lPzo8HCAL+mMZofJ9KEy30fq6MfaK6Q==}
 
-  decode-uri-component@0.5.0:
-    resolution: {integrity: sha512-1BiQVoK8C9gUbQU6NzAtO/tkz2qOFpEObMWpcFvhx4fYnj4Oc5yzaJN/LD36ihkVUdXyh5ZekzX+yM+ty/SrPg==}
+  decode-uri-component@0.5.1:
+    resolution: {integrity: sha512-vWHQkXgg2cE3BB4rR0c+PYw9BCQzLoNIRMI7AunIkZst74tw/vpPp7VLoYtsR/cy1f55g3XDWUslfeCZjiZJyA==}
     engines: {node: '>=14.16'}
 
   dedent@1.7.2:
@@ -5830,9 +5857,6 @@ packages:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
     engines: {node: '>= 0.4'}
 
-  eastasianwidth@0.2.0:
-    resolution: {integrity: sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==}
-
   easy-table@1.2.0:
     resolution: {integrity: sha512-OFzVOv03YpvtcWGe5AayU5G2hgybsg3iqA6drU8UaoZyB9jLGMTrz9+asnLp/E+6qPh88yEI1gvyZFZ41dmgww==}
 
@@ -5860,9 +5884,6 @@ packages:
 
   emoji-regex@8.0.0:
     resolution: {integrity: sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==}
-
-  emoji-regex@9.2.2:
-    resolution: {integrity: sha512-L18DaJsXSUk2+42pv8mLs5jJT2hqFkFE4j21wOmgbUqsZ2hL72NsUU785g9RXgo3s0ZNgVl42TiHp3ZtOv/Vyg==}
 
   empathic@2.1.0:
     resolution: {integrity: sha512-AnfC1ATldl49/cvZdLPDjBfrRNwbDO05aibiOtzQu3qtlbJtomNLhF30HEtn/7iBz50dlMECqATo3fG0LrdEgw==}
@@ -6546,10 +6567,6 @@ packages:
   fontfaceobserver@2.3.0:
     resolution: {integrity: sha512-6FPvD/IVyT4ZlNe7Wcn5Fb/4ChigpucKYSvD6a+0iMoLn2inpo711eyIcKjmDtE5XNcgAkSH9uN/nfAeZzHEfg==}
 
-  foreground-child@3.3.1:
-    resolution: {integrity: sha512-gIXjKqtFuWEgzFRJA9WCQeSJLZDjgJUOMCMzxtvFq/37KojM1BFGufqsCy0r4qSQmYLsZYMeyRqzIWOMup03sw==}
-    engines: {node: '>=14'}
-
   form-data@4.0.5:
     resolution: {integrity: sha512-8RipRLol37bNs2bhoV67fiTEvdTrbMUYcFTiy3+wuuOnUog2QBHCZWXDRijWQfAkhBj2Uf5UnVaiWwA5vdd82w==}
     engines: {node: '>= 6'}
@@ -6657,13 +6674,8 @@ packages:
     resolution: {integrity: sha512-XxwI8EOhVQgWp6iDL+3b0r86f4d6AX6zSU55HfB4ydCEuXLXc5FcYeOu+nnGftS4TEju/11rt4KJPTMgbfmv4A==}
     engines: {node: '>=10.13.0'}
 
-  glob@10.5.0:
-    resolution: {integrity: sha512-DfXN8DfhJ7NH3Oe7cFmu3NCu1wKbkReJ8TorzSAFbSKrlNaQSKfIzqYqVY8zlbs2NLBbWpRiU52GX2PbaBVNkg==}
-    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
-    hasBin: true
-
-  glob@13.0.6:
-    resolution: {integrity: sha512-Wjlyrolmm8uDpm/ogGyXZXb1Z+Ca2B8NbJwqBVg0axK9GbBeoS7yGV6vjXnYdGm6X53iehEuxxbyiKp8QmN4Vw==}
+  glob@14.0.2:
+    resolution: {integrity: sha512-vfMgTR2djMHPUchsJMLpZlYQvtjVL+mHpEr5wPpoCbQs2vr/FBNK+3Gnl9Ara1DSs4Aeg4eG9HiADb5/rkY/ZA==}
     engines: {node: 18 || 20 || >=22}
 
   glob@7.2.3:
@@ -7037,9 +7049,6 @@ packages:
   istanbul-reports@3.2.0:
     resolution: {integrity: sha512-HGYWWS/ehqTV3xN10i23tkPkpH46MLCIMFNCaaKNavAXTF1RkqxawEPtnjnGZ6XKSInBKkiOA5BKS+aZiY3AvA==}
     engines: {node: '>=8'}
-
-  jackspeak@3.4.3:
-    resolution: {integrity: sha512-OGlZQpz2yfahA/Rd1Y8Cd9SIEsqvXkLVoSw/cgwhnhFMDbsQFeZYoJJ7bIZBS9BcamUW96asq/npPWugM+RQBw==}
 
   jest-changed-files@29.7.0:
     resolution: {integrity: sha512-fEArFiwf1BpQ+4bXSprcDc3/x4HSzL4al2tozwVpDFpsxALjLYdyiIK4e5Vz66GQJIbXJ82+35PtysofptNX2w==}
@@ -7576,7 +7585,11 @@ packages:
   lucide-react@1.16.0:
     resolution: {integrity: sha512-dYwyPzb4MEKpGUmNYk3WKWPnMrHs3FKM+q94kAnJrcDIqqn1hq2xY8scaS2ovsOCM5D51ey2gaRG3PBb1vgoYQ==}
     peerDependencies:
+      '@types/react': '*'
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   luxon@3.7.2:
     resolution: {integrity: sha512-vtEhXh/gNjI9Yg1u4jX/0YVPMvxzHuGgCm6tC5kZyb08yjGWGnqAjGJvcXbqQR2P3MyMEFnRbpcdFS6PBcLqew==}
@@ -7960,20 +7973,12 @@ packages:
   minimalistic-assert@1.0.1:
     resolution: {integrity: sha512-UtJcAD4yEaGtjPezWuO9wC4nwUnVH/8/Im3yEHQP4b67cXlD/Qr9hdITCU1xDbSEXg2XKNaP8jsReV7vQd00/A==}
 
-  minimatch@10.2.5:
-    resolution: {integrity: sha512-MULkVLfKGYDFYejP07QOurDLLQpcjk7Fw+7jXS2R2czRQzR56yHRveU5NDJEOviH+hETZKSkIk5c+T23GjFUMg==}
-    engines: {node: 18 || 20 || >=22}
-
-  minimatch@10.2.6:
-    resolution: {integrity: sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A==}
+  minimatch@11.0.1:
+    resolution: {integrity: sha512-t+Vn6DX4wPCxS23y03C0uhF7S1jpi1GfqPrnlEipCJaA2ykiNbMkVlDutZtmvLfRcUN6R8AYVlzTsQrT4RZoLQ==}
     engines: {node: 18 || 20 || >=22}
 
   minimatch@3.1.5:
     resolution: {integrity: sha512-VgjWUsnnT6n+NUk6eZq77zeFdpW2LWDzP6zFGrCbHXiYNul5Dzqk2HHQ5uFH2DNW5Xbp8+jVzaeNt94ssEEl4w==}
-
-  minimatch@9.0.9:
-    resolution: {integrity: sha512-OBwBN9AL4dqmETlpS2zasx+vTeWclWzkblfZk7KTA5j3jeOONz/tRCnZomUyvNg83wL5Zv9Ss6HMJXAgL8R2Yg==}
-    engines: {node: '>=16 || 14 >=14.17'}
 
   minimist@1.2.8:
     resolution: {integrity: sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==}
@@ -8070,8 +8075,8 @@ packages:
       encoding:
         optional: true
 
-  node-forge@1.4.0:
-    resolution: {integrity: sha512-LarFH0+6VfriEhqMMcLX2F7SwSXeWwnEAJEsYm5QKWchiVYVvJyV9v7UDvUv+w5HO23ZpQTXDv/GxdDdMyOuoQ==}
+  node-forge@1.4.1:
+    resolution: {integrity: sha512-w5/MfWaeMrpR/5ba6fZyAUTLSuE6aYz7H/3cYrqwZEmf5eQS3IaaLgJt4MBv7HglGFWmV22K8h4U18RJQmw/ow==}
     engines: {node: '>= 6.13.0'}
 
   node-int64@0.4.0:
@@ -8217,9 +8222,6 @@ packages:
     resolution: {integrity: sha512-5NPgf87AT2STgwa2ntRMr45jTKrYBGkVU36yT0ig/n/GMAa3oPqhZfIQ2kMEimReg0+t9kZViDVZ83qfVUlckg==}
     engines: {node: '>= 14'}
 
-  package-json-from-dist@1.0.1:
-    resolution: {integrity: sha512-UEZIS3/by4OC8vL3P2dTXRETpebLI2NiI5vIrjaD/5UtrkFX/tNbwjTSRAGC/+7CAo2pIcBaRgWmcBBHcsaCIw==}
-
   package-manager-detector@1.9.0:
     resolution: {integrity: sha512-zAMfbta9nPA8AKkA4WdmNAT8R8s6Dk0/xwPsqNnRidMFcLo1YkLuPDTgs2f64XdzS8vbLNnoJ+uUIkgbz7oRHA==}
 
@@ -8283,12 +8285,8 @@ packages:
   path-parse@1.0.7:
     resolution: {integrity: sha512-LDJzPVEEEPR+y48z93A0Ed0yXb8pAByGWo/k5YYdYgpY2/2EsOsksJrq7lOHxryrVOn1ejG6oAp8ahvOIQD8sw==}
 
-  path-scurry@1.11.1:
-    resolution: {integrity: sha512-Xa4Nw17FS9ApQFJ9umLiJS4orGjm7ZzwUrwamcGQuHSzDyth9boKDaycYdDcZDuqYATXw4HFXgaqWTctW/v1HA==}
-    engines: {node: '>=16 || 14 >=14.18'}
-
-  path-scurry@2.0.2:
-    resolution: {integrity: sha512-3O/iVVsJAPsOnpwWIeD+d6z/7PmqApyQePUtCndjatj/9I5LylHvt5qluFaBT3I5h3r1ejfR056c+FCv+NnNXg==}
+  path-scurry@3.0.0:
+    resolution: {integrity: sha512-1pTbQqH1wIwMi/eleQ5leFTTCkzFsPcgXNjwOA8YGGW/W4/kHT3dssE7Z6NH+zuqNLOzOB0uaD61yl7cAcVhgg==}
     engines: {node: 18 || 20 || >=22}
 
   path-type@4.0.0:
@@ -8531,12 +8529,15 @@ packages:
   react-i18next@17.0.8:
     resolution: {integrity: sha512-0ooKbGLU8JXhe1zwpQUWIeXSgLPOfwJmgheWRIUpcoA0CpyabpGhayjdG+/eA5esC1AQ8h2jWpXjJfzQzeDOCw==}
     peerDependencies:
+      '@types/react': '*'
       i18next: '>= 26.2.0'
       react: '>= 16.8.0'
       react-dom: '*'
       react-native: '*'
       typescript: ^5 || ^6
     peerDependenciesMeta:
+      '@types/react':
+        optional: true
       react-dom:
         optional: true
       react-native:
@@ -8980,10 +8981,10 @@ packages:
     resolution: {integrity: sha512-S0xQPhUTefAhNvNWFg0c1J8qJArHt5KdtJ/cFAofo06KD1MVSeFWyl4iiu+ApDIuw0WhjpOfCdgConOfAnLgkw==}
     engines: {node: '>=10'}
     peerDependencies:
-      seroval: ^1.0
+      seroval: 1.6.11
 
-  seroval@1.6.8:
-    resolution: {integrity: sha512-HlSgSAkTk4EqHcje1ptJjfZi1YDv5KbhVJ/d3P7T/nAXua2VmDu+AKDX5VTdFfZf48nDkWB2TKYt0DrCSa+3wg==}
+  seroval@1.6.11:
+    resolution: {integrity: sha512-hpb6XnMCGN/A+79Uf8V7/iTGkyyyazNn5X0CoCAp7Uy9vT3RT8jZ9GLcnxGoVjg3P8AArbe4ZVHq6C8oT2a0kA==}
     engines: {node: '>=10'}
 
   serve-static@1.16.3:
@@ -9096,8 +9097,12 @@ packages:
   sonner@2.0.7:
     resolution: {integrity: sha512-W6ZN4p58k8aDKA4XPcx2hpIQXBRAgyiWVkYhT7CvK6D3iAu7xjvVyhQHg2/iaKJZ1XVJ4r7XuwGL+WGEK37i9w==}
     peerDependencies:
+      '@types/react': '*'
       react: ^18.0.0 || ^19.0.0 || ^19.0.0-rc
       react-dom: ^18.0.0 || ^19.0.0 || ^19.0.0-rc
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
@@ -9221,10 +9226,6 @@ packages:
   string-width@4.2.3:
     resolution: {integrity: sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==}
     engines: {node: '>=8'}
-
-  string-width@5.1.2:
-    resolution: {integrity: sha512-HnLOCR3vjcY8beoNLtcjZ5/nxn2afmME6lhrDrebokqMap+XbeW8n9TXpPDOqdGK5qcI3oT0GKTW6wC7EMiVqA==}
-    engines: {node: '>=12'}
 
   string-width@7.2.0:
     resolution: {integrity: sha512-tsaTIkKW9b4N+AEj+SVA+WhJzV7/zMhcSu78mLKWSk7cXMOSHsBKFWUs0fWwq8QyK3MgJBQRX6Gbi4kYbdvGkQ==}
@@ -9366,9 +9367,9 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
-  test-exclude@6.0.0:
-    resolution: {integrity: sha512-cAGWPIyOHU6zlmg88jwm7VRyXnMN7iV68OGAbYDk/Mh/xC/pzVPlQtY6ngoIH/5/tciuhGfvESU8GrHrcxD56w==}
-    engines: {node: '>=8'}
+  test-exclude@8.0.0:
+    resolution: {integrity: sha512-ZOffsNrXYggvU1mDGHk54I96r26P8SyMjO5slMKSc7+IWmtB/MQKnEC2fP51imB3/pT6YK5cT5E8f+Dd9KdyOQ==}
+    engines: {node: 20 || >=22}
 
   text-decoder@1.2.7:
     resolution: {integrity: sha512-vlLytXkeP4xvEq2otHeJfSQIRyWxo/oZGEbXrtEEF9Hnmrdly59sUbzZ/QgyWuLYHctCHxFF4tRQZNQ9k60ExQ==}
@@ -9716,8 +9717,8 @@ packages:
   vfile@6.0.3:
     resolution: {integrity: sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==}
 
-  vite@6.4.4:
-    resolution: {integrity: sha512-xGjU/SyjeNyb0E4KxXBvYz/1C+3JXuujvf2hXNOtnlcE+58o5ajd9N2/n2VhkiJvpCP2qQasnUpx5PXNeI+p1Q==}
+  vite@6.4.5:
+    resolution: {integrity: sha512-4enwjFfi4IwtEh0w+jPzpLVOFQiPHmmzPxcHXQOyEur47o6u0jE573DmGpjA+7irXoMLYRZD5ZaFUEneS3abPg==}
     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
     hasBin: true
     peerDependencies:
@@ -9772,7 +9773,7 @@ packages:
       '@vitest/ui': 4.1.6
       happy-dom: '*'
       jsdom: '*'
-      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
+      vite: 6.4.5
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
@@ -9926,10 +9927,6 @@ packages:
   wrap-ansi@7.0.0:
     resolution: {integrity: sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q==}
     engines: {node: '>=10'}
-
-  wrap-ansi@8.1.0:
-    resolution: {integrity: sha512-si7QWI6zUMq56bESFvagtmzMdGOtoxfR+Sez11Mobfc7tm+VkUckk9bW2UeffTGVUbOksxmSw0AA2gs8g71NCQ==}
-    engines: {node: '>=12'}
 
   wrap-ansi@9.0.2:
     resolution: {integrity: sha512-42AtmgqjV+X1VpdOfyTGOYRi0/zsoLqtXQckTmqTeybT+BDIbM/Guxo7x3pE2vtpr1ok6xRqM9OpBe+Jyoqyww==}
@@ -11450,10 +11447,10 @@ snapshots:
       expo-server: 57.0.3
       fetch-nodeshim: 0.4.10
       getenv: 2.0.0
-      glob: 13.0.6
+      glob: 14.0.2
       lan-network: 0.2.1
       multitars: 1.0.2
-      node-forge: 1.4.0
+      node-forge: 1.4.1
       npm-package-arg: 11.0.3
       ora: 3.4.0
       picomatch: 4.0.7
@@ -11473,7 +11470,7 @@ snapshots:
       ws: 8.22.0
       zod: 4.6.7
     optionalDependencies:
-      expo-router: 57.0.25(5817607d4c61aac26600f00fd4669af2)
+      expo-router: 57.0.25(11a55ea420f80f7c55ef2197c4e07c53)
       react-native: 0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1)
     transitivePeerDependencies:
       - '@expo/dom-webview'
@@ -11490,7 +11487,7 @@ snapshots:
 
   '@expo/code-signing-certificates@0.0.6':
     dependencies:
-      node-forge: 1.4.0
+      node-forge: 1.4.1
 
   '@expo/config-plugins@57.0.10(supports-color@8.1.1)(typescript@6.0.3)':
     dependencies:
@@ -11502,7 +11499,7 @@ snapshots:
       chalk: 4.1.2
       debug: 4.4.3(supports-color@8.1.1)
       getenv: 2.0.0
-      glob: 13.0.6
+      glob: 14.0.2
       semver: 7.8.5
       slugify: 1.6.9
       xcode: 3.0.1
@@ -11521,7 +11518,7 @@ snapshots:
       '@expo/require-utils': 57.0.6(supports-color@8.1.1)(typescript@6.0.3)
       deepmerge: 4.3.1
       getenv: 2.0.0
-      glob: 13.0.6
+      glob: 14.0.2
       resolve-workspace-root: 2.0.1
       semver: 7.8.5
       slugify: 1.6.9
@@ -11567,9 +11564,9 @@ snapshots:
       chalk: 4.1.2
       debug: 4.4.3(supports-color@8.1.1)
       getenv: 2.0.0
-      glob: 13.0.6
+      glob: 14.0.2
       ignore: 5.3.2
-      minimatch: 10.2.6
+      minimatch: 11.0.1
       resolve-from: 5.0.0
       semver: 7.8.5
     transitivePeerDependencies:
@@ -11637,7 +11634,7 @@ snapshots:
       chalk: 4.1.2
       debug: 4.4.3(supports-color@8.1.1)
       getenv: 2.0.0
-      glob: 13.0.6
+      glob: 14.0.2
       hermes-parser: 0.36.1
       jsc-safe-url: 0.2.4
       lightningcss: 1.30.1
@@ -11751,7 +11748,7 @@ snapshots:
       react: 19.2.3
     optionalDependencies:
       '@expo/metro-runtime': 57.0.16(@expo/log-box@57.0.4)(expo@57.0.27)(react-dom@19.2.3(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
-      expo-router: 57.0.25(5817607d4c61aac26600f00fd4669af2)
+      expo-router: 57.0.25(11a55ea420f80f7c55ef2197c4e07c53)
       react-dom: 19.2.3(react@19.2.3)
     transitivePeerDependencies:
       - supports-color
@@ -11979,14 +11976,7 @@ snapshots:
     optionalDependencies:
       '@types/node': 25.8.0
 
-  '@isaacs/cliui@8.0.2':
-    dependencies:
-      string-width: 5.1.2
-      string-width-cjs: string-width@4.2.3
-      strip-ansi: 7.2.0
-      strip-ansi-cjs: strip-ansi@6.0.1
-      wrap-ansi: 8.1.0
-      wrap-ansi-cjs: wrap-ansi@7.0.0
+  '@isaacs/nonrecursive-glob-match@1.0.3': {}
 
   '@isaacs/ttlcache@1.4.1': {}
 
@@ -12514,9 +12504,6 @@ snapshots:
     optional: true
 
   '@panzoom/panzoom@4.6.2': {}
-
-  '@pkgjs/parseargs@0.11.0':
-    optional: true
 
   '@playwright/test@1.60.0':
     dependencies:
@@ -13494,7 +13481,12 @@ snapshots:
       merge-options: 3.0.4
       react-native: 0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1)
 
-  '@react-native-community/slider@5.2.0': {}
+  '@react-native-community/slider@5.2.0(@types/react@19.2.14)(react-native@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)':
+    dependencies:
+      react: 19.2.3
+      react-native: 0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1)
+    optionalDependencies:
+      '@types/react': 19.2.14
 
   '@react-native-masked-view/masked-view@0.3.2(react-native@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)':
     dependencies:
@@ -13914,7 +13906,7 @@ snapshots:
       execa: 9.6.1
       json-rpc-2.0: 1.8.1
       lodash.groupby: 4.6.0
-      minimatch: 10.2.5
+      minimatch: 11.0.1
       mutation-server-protocol: 0.4.1
       mutation-testing-elements: 3.8.4
       mutation-testing-metrics: 3.8.4
@@ -13957,7 +13949,7 @@ snapshots:
       '@stryker-mutator/util': 10.0.0
       semver: 7.8.0
       tslib: 2.8.1
-      vitest: 4.1.6(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(@vitest/ui@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))
+      vitest: 4.1.6(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(@vitest/ui@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))
 
   '@tailwindcss/node@4.3.0':
     dependencies:
@@ -14028,12 +14020,12 @@ snapshots:
       postcss: 8.5.29
       tailwindcss: 4.3.0
 
-  '@tailwindcss/vite@4.3.0(vite@6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))':
+  '@tailwindcss/vite@4.3.0(vite@6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))':
     dependencies:
       '@tailwindcss/node': 4.3.0
       '@tailwindcss/oxide': 4.3.0
       tailwindcss: 4.3.0
-      vite: 6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1)
+      vite: 6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1)
 
   '@tanstack/devtools-event-client@0.4.3': {}
 
@@ -14060,39 +14052,47 @@ snapshots:
     dependencies:
       '@tanstack/query-core': 5.100.14
 
-  '@tanstack/react-form@1.32.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@tanstack/react-form@1.32.0(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@tanstack/form-core': 1.32.0
       '@tanstack/react-store': 0.9.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
+    optionalDependencies:
+      '@types/react': 18.3.28
     transitivePeerDependencies:
       - react-dom
 
-  '@tanstack/react-form@1.32.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@tanstack/react-form@1.32.0(@types/react@19.2.14)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@tanstack/form-core': 1.32.0
       '@tanstack/react-store': 0.9.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
+    optionalDependencies:
+      '@types/react': 19.2.14
     transitivePeerDependencies:
       - react-dom
 
-  '@tanstack/react-query-persist-client@5.100.14(@tanstack/react-query@5.100.14(react@19.2.3))(react@19.2.3)':
+  '@tanstack/react-query-persist-client@5.100.14(@tanstack/react-query@5.100.14(@types/react@19.2.14)(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@tanstack/query-persist-client-core': 5.100.14
-      '@tanstack/react-query': 5.100.14(react@19.2.3)
+      '@tanstack/react-query': 5.100.14(@types/react@19.2.14)(react@19.2.3)
       react: 19.2.3
 
-  '@tanstack/react-query@5.100.10(react@18.3.1)':
+  '@tanstack/react-query@5.100.10(@types/react@18.3.28)(react@18.3.1)':
     dependencies:
       '@tanstack/query-core': 5.100.10
       react: 18.3.1
+    optionalDependencies:
+      '@types/react': 18.3.28
 
-  '@tanstack/react-query@5.100.14(react@19.2.3)':
+  '@tanstack/react-query@5.100.14(@types/react@19.2.14)(react@19.2.3)':
     dependencies:
       '@tanstack/query-core': 5.100.14
       react: 19.2.3
+    optionalDependencies:
+      '@types/react': 19.2.14
 
-  '@tanstack/react-router@1.170.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@tanstack/react-router@1.170.2(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@tanstack/history': 1.162.0
       '@tanstack/react-store': 0.9.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -14100,6 +14100,8 @@ snapshots:
       isbot: 5.1.40
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
+    optionalDependencies:
+      '@types/react': 18.3.28
 
   '@tanstack/react-store@0.9.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
@@ -14115,18 +14117,20 @@ snapshots:
       react-dom: 19.2.3(react@19.2.3)
       use-sync-external-store: 1.6.0(react@19.2.3)
 
-  '@tanstack/react-virtual@3.13.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@tanstack/react-virtual@3.13.24(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@tanstack/virtual-core': 3.14.0
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
+    optionalDependencies:
+      '@types/react': 18.3.28
 
   '@tanstack/router-core@1.171.0':
     dependencies:
       '@tanstack/history': 1.162.0
       cookie-es: 3.1.1
-      seroval: 1.6.8
-      seroval-plugins: 1.5.4(seroval@1.6.8)
+      seroval: 1.6.11
+      seroval-plugins: 1.5.4(seroval@1.6.11)
 
   '@tanstack/router-generator@1.167.3(supports-color@8.1.1)':
     dependencies:
@@ -14141,7 +14145,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@tanstack/router-plugin@1.168.3(@tanstack/react-router@1.170.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(supports-color@8.1.1)(vite@6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))':
+  '@tanstack/router-plugin@1.168.3(@tanstack/react-router@1.170.2(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(supports-color@8.1.1)(vite@6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))':
     dependencies:
       '@babel/core': 7.29.6(supports-color@8.1.1)
       '@babel/plugin-syntax-jsx': 7.28.6(@babel/core@7.29.6(supports-color@8.1.1))
@@ -14157,8 +14161,8 @@ snapshots:
       unplugin: 3.0.0
       zod: 3.25.76
     optionalDependencies:
-      '@tanstack/react-router': 1.170.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      vite: 6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1)
+      '@tanstack/react-router': 1.170.2(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      vite: 6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -14263,7 +14267,7 @@ snapshots:
       picocolors: 1.1.1
       redent: 3.0.0
 
-  '@testing-library/react-native@13.3.3(jest@29.7.0(@types/node@25.8.0)(babel-plugin-macros@3.1.0)(supports-color@8.1.1))(react-native@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react-test-renderer@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@testing-library/react-native@13.3.3(@types/react@19.2.14)(jest@29.7.0(@types/node@25.8.0)(babel-plugin-macros@3.1.0)(supports-color@8.1.1))(react-native@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react-test-renderer@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       jest-matcher-utils: 30.4.1
       picocolors: 1.1.1
@@ -14273,6 +14277,7 @@ snapshots:
       react-test-renderer: 19.2.3(react@19.2.3)
       redent: 3.0.0
     optionalDependencies:
+      '@types/react': 19.2.14
       jest: 29.7.0(@types/node@25.8.0)(babel-plugin-macros@3.1.0)(supports-color@8.1.1)
 
   '@testing-library/react@16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
@@ -14522,7 +14527,7 @@ snapshots:
       '@typescript-eslint/types': 8.71.1
       '@typescript-eslint/visitor-keys': 8.71.1
       debug: 4.4.3(supports-color@8.1.1)
-      minimatch: 10.2.5
+      minimatch: 11.0.1
       semver: 7.8.5
       tinyglobby: 0.2.16
       ts-api-utils: 2.5.0(typescript@5.6.3)
@@ -14596,7 +14601,7 @@ snapshots:
     dependencies:
       '@vibrant/types': 4.0.4
 
-  '@vitejs/plugin-react@4.7.0(supports-color@8.1.1)(vite@6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))':
+  '@vitejs/plugin-react@4.7.0(supports-color@8.1.1)(vite@6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))':
     dependencies:
       '@babel/core': 7.29.6(supports-color@8.1.1)
       '@babel/plugin-transform-react-jsx-self': 7.27.1(@babel/core@7.29.6(supports-color@8.1.1))
@@ -14604,7 +14609,7 @@ snapshots:
       '@rolldown/pluginutils': 1.0.0-beta.27
       '@types/babel__core': 7.20.5
       react-refresh: 0.17.0
-      vite: 6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1)
+      vite: 6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -14620,7 +14625,7 @@ snapshots:
       obug: 2.1.1
       std-env: 4.1.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.6(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(@vitest/ui@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))
+      vitest: 4.1.6(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(@vitest/ui@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))
 
   '@vitest/expect@4.1.6':
     dependencies:
@@ -14631,13 +14636,13 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.1.0
 
-  '@vitest/mocker@4.1.6(vite@6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))':
+  '@vitest/mocker@4.1.6(vite@6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))':
     dependencies:
       '@vitest/spy': 4.1.6
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1)
+      vite: 6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1)
 
   '@vitest/pretty-format@4.1.12':
     dependencies:
@@ -14677,7 +14682,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.0
-      vitest: 4.1.6(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(@vitest/ui@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))
+      vitest: 4.1.6(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(@vitest/ui@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))
 
   '@vitest/utils@4.1.12':
     dependencies:
@@ -14697,7 +14702,7 @@ snapshots:
       '@wdio/types': 9.32.0
       '@wdio/utils': 9.32.0(supports-color@8.1.1)
       deepmerge-ts: 8.0.2
-      glob: 10.5.0
+      glob: 14.0.2
       import-meta-resolve: 4.2.0
       jiti: 2.7.0
     transitivePeerDependencies:
@@ -15022,7 +15027,7 @@ snapshots:
       '@istanbuljs/load-nyc-config': 1.1.0
       '@istanbuljs/schema': 0.1.6
       istanbul-lib-instrument: 5.2.1(supports-color@8.1.1)
-      test-exclude: 6.0.0
+      test-exclude: 8.0.0
     transitivePeerDependencies:
       - supports-color
 
@@ -15285,10 +15290,6 @@ snapshots:
     dependencies:
       balanced-match: 1.0.2
       concat-map: 0.0.1
-
-  brace-expansion@2.1.7:
-    dependencies:
-      balanced-match: 1.0.2
 
   brace-expansion@5.0.12:
     dependencies:
@@ -15721,7 +15722,7 @@ snapshots:
     dependencies:
       character-entities: 2.0.2
 
-  decode-uri-component@0.5.0: {}
+  decode-uri-component@0.5.1: {}
 
   dedent@1.7.2(babel-plugin-macros@3.1.0):
     optionalDependencies:
@@ -15836,8 +15837,6 @@ snapshots:
       es-errors: 1.3.0
       gopd: 1.2.0
 
-  eastasianwidth@0.2.0: {}
-
   easy-table@1.2.0:
     dependencies:
       ansi-regex: 5.0.1
@@ -15870,8 +15869,6 @@ snapshots:
   emoji-regex@10.6.0: {}
 
   emoji-regex@8.0.0: {}
-
-  emoji-regex@9.2.2: {}
 
   empathic@2.1.0: {}
 
@@ -16056,7 +16053,7 @@ snapshots:
       globals: 17.13.0
       jsx-ast-utils-x: 0.1.0
       lodash.merge: 4.6.2
-      minimatch: 10.2.6
+      minimatch: 11.0.1
       scslre: 0.3.0
       semver: 7.8.5
       ts-api-utils: 2.5.0(typescript@6.0.3)
@@ -16423,7 +16420,7 @@ snapshots:
       expo: 57.0.27(a1aa6d8410dfd3e2b30b7081c6520633)
       react: 19.2.3
 
-  expo-router@57.0.25(5817607d4c61aac26600f00fd4669af2):
+  expo-router@57.0.25(11a55ea420f80f7c55ef2197c4e07c53):
     dependencies:
       '@expo/log-box': 57.0.4(@expo/dom-webview@57.0.1)(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
       '@expo/metro-runtime': 57.0.16(@expo/log-box@57.0.4)(expo@57.0.27)(react-dom@19.2.3(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
@@ -16459,7 +16456,7 @@ snapshots:
       standard-navigation: 0.0.5
       vaul: 1.1.2(@types/react@19.2.14)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
     optionalDependencies:
-      '@testing-library/react-native': 13.3.3(jest@29.7.0(@types/node@25.8.0)(babel-plugin-macros@3.1.0)(supports-color@8.1.1))(react-native@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react-test-renderer@19.2.3(react@19.2.3))(react@19.2.3)
+      '@testing-library/react-native': 13.3.3(@types/react@19.2.14)(jest@29.7.0(@types/node@25.8.0)(babel-plugin-macros@3.1.0)(supports-color@8.1.1))(react-native@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react-test-renderer@19.2.3(react@19.2.3))(react@19.2.3)
       react-dom: 19.2.3(react@19.2.3)
       react-native-gesture-handler: 2.32.0(react-native@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
       react-native-reanimated: 4.5.5(react-native-worklets@0.10.1(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(react-native@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(react-native@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
@@ -16727,11 +16724,6 @@ snapshots:
 
   fontfaceobserver@2.3.0: {}
 
-  foreground-child@3.3.1:
-    dependencies:
-      cross-spawn: 7.0.6
-      signal-exit: 4.1.0
-
   form-data@4.0.5:
     dependencies:
       asynckit: 0.4.0
@@ -16837,20 +16829,11 @@ snapshots:
     dependencies:
       is-glob: 4.0.3
 
-  glob@10.5.0:
+  glob@14.0.2:
     dependencies:
-      foreground-child: 3.3.1
-      jackspeak: 3.4.3
-      minimatch: 9.0.9
+      minimatch: 11.0.1
       minipass: 7.1.3
-      package-json-from-dist: 1.0.1
-      path-scurry: 1.11.1
-
-  glob@13.0.6:
-    dependencies:
-      minimatch: 10.2.5
-      minipass: 7.1.3
-      path-scurry: 2.0.2
+      path-scurry: 3.0.0
 
   glob@7.2.3:
     dependencies:
@@ -17209,12 +17192,6 @@ snapshots:
     dependencies:
       html-escaper: 2.0.2
       istanbul-lib-report: 3.0.1
-
-  jackspeak@3.4.3:
-    dependencies:
-      '@isaacs/cliui': 8.0.2
-    optionalDependencies:
-      '@pkgjs/parseargs': 0.11.0
 
   jest-changed-files@29.7.0:
     dependencies:
@@ -17981,9 +17958,11 @@ snapshots:
 
   lru-cache@7.18.3: {}
 
-  lucide-react@1.16.0(react@18.3.1):
+  lucide-react@1.16.0(@types/react@18.3.28)(react@18.3.1):
     dependencies:
       react: 18.3.1
+    optionalDependencies:
+      '@types/react': 18.3.28
 
   luxon@3.7.2: {}
 
@@ -18817,21 +18796,14 @@ snapshots:
 
   minimalistic-assert@1.0.1: {}
 
-  minimatch@10.2.5:
+  minimatch@11.0.1:
     dependencies:
-      brace-expansion: 5.0.12
-
-  minimatch@10.2.6:
-    dependencies:
+      '@isaacs/nonrecursive-glob-match': 1.0.3
       brace-expansion: 5.0.12
 
   minimatch@3.1.5:
     dependencies:
       brace-expansion: 1.1.21
-
-  minimatch@9.0.9:
-    dependencies:
-      brace-expansion: 2.1.7
 
   minimist@1.2.8: {}
 
@@ -18892,7 +18864,7 @@ snapshots:
     dependencies:
       whatwg-url: 5.0.0
 
-  node-forge@1.4.0: {}
+  node-forge@1.4.1: {}
 
   node-int64@0.4.0: {}
 
@@ -19089,8 +19061,6 @@ snapshots:
       degenerator: 5.0.1
       netmask: 2.1.1
 
-  package-json-from-dist@1.0.1: {}
-
   package-manager-detector@1.9.0: {}
 
   pako@1.0.11: {}
@@ -19153,12 +19123,7 @@ snapshots:
 
   path-parse@1.0.7: {}
 
-  path-scurry@1.11.1:
-    dependencies:
-      lru-cache: 10.4.3
-      minipass: 7.1.3
-
-  path-scurry@2.0.2:
+  path-scurry@3.0.0:
     dependencies:
       lru-cache: 11.3.6
       minipass: 7.1.3
@@ -19334,7 +19299,7 @@ snapshots:
 
   query-string@7.1.3(patch_hash=fe47b885269a14c517ab79b9f7e5d0b46666cf13e5a80856685262c20aa00da5):
     dependencies:
-      decode-uri-component: 0.5.0
+      decode-uri-component: 0.5.1
       filter-obj: 1.1.0
       split-on-first: 1.1.0
       strict-uri-encode: 2.0.0
@@ -19453,7 +19418,7 @@ snapshots:
     dependencies:
       react: 19.2.3
 
-  react-i18next@17.0.8(i18next@26.2.0(typescript@5.6.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3):
+  react-i18next@17.0.8(@types/react@18.3.28)(i18next@26.2.0(typescript@5.6.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3):
     dependencies:
       '@babel/runtime': 7.29.2
       html-parse-stringify: 3.0.1
@@ -19461,10 +19426,11 @@ snapshots:
       react: 18.3.1
       use-sync-external-store: 1.6.0(react@18.3.1)
     optionalDependencies:
+      '@types/react': 18.3.28
       react-dom: 18.3.1(react@18.3.1)
       typescript: 5.6.3
 
-  react-i18next@17.0.8(i18next@26.2.0(typescript@6.0.3))(react-dom@19.2.3(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)(typescript@6.0.3):
+  react-i18next@17.0.8(@types/react@19.2.14)(i18next@26.2.0(typescript@6.0.3))(react-dom@19.2.3(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)(typescript@6.0.3):
     dependencies:
       '@babel/runtime': 7.29.2
       html-parse-stringify: 3.0.1
@@ -19472,6 +19438,7 @@ snapshots:
       react: 19.2.3
       use-sync-external-store: 1.6.0(react@19.2.3)
     optionalDependencies:
+      '@types/react': 19.2.14
       react-dom: 19.2.3(react@19.2.3)
       react-native: 0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(@react-native/jest-preset@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.86.3(@babel/core@7.29.6(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1)
       typescript: 6.0.3
@@ -19805,7 +19772,7 @@ snapshots:
 
   readdir-glob@3.0.0:
     dependencies:
-      minimatch: 10.2.6
+      minimatch: 11.0.1
 
   readdirp@3.6.0:
     dependencies:
@@ -20054,11 +20021,11 @@ snapshots:
 
   serialize-error@2.1.0: {}
 
-  seroval-plugins@1.5.4(seroval@1.6.8):
+  seroval-plugins@1.5.4(seroval@1.6.11):
     dependencies:
-      seroval: 1.6.8
+      seroval: 1.6.11
 
-  seroval@1.6.8: {}
+  seroval@1.6.11: {}
 
   serve-static@1.16.3(supports-color@8.1.1):
     dependencies:
@@ -20172,10 +20139,12 @@ snapshots:
       ip-address: 10.7.4
       smart-buffer: 4.2.0
 
-  sonner@2.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  sonner@2.0.7(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
+    optionalDependencies:
+      '@types/react': 18.3.28
 
   source-map-js@1.2.1: {}
 
@@ -20289,12 +20258,6 @@ snapshots:
       emoji-regex: 8.0.0
       is-fullwidth-code-point: 3.0.0
       strip-ansi: 6.0.1
-
-  string-width@5.1.2:
-    dependencies:
-      eastasianwidth: 0.2.0
-      emoji-regex: 9.2.2
-      strip-ansi: 7.2.0
 
   string-width@7.2.0:
     dependencies:
@@ -20443,11 +20406,11 @@ snapshots:
       commander: 2.20.3
       source-map-support: 0.5.21
 
-  test-exclude@6.0.0:
+  test-exclude@8.0.0:
     dependencies:
       '@istanbuljs/schema': 0.1.6
-      glob: 7.2.3
-      minimatch: 3.1.5
+      glob: 14.0.2
+      minimatch: 11.0.1
 
   text-decoder@1.2.7:
     dependencies:
@@ -20773,7 +20736,7 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vite@6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1):
+  vite@6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1):
     dependencies:
       esbuild: 0.25.12
       fdir: 6.5.0(picomatch@4.0.7)
@@ -20790,10 +20753,10 @@ snapshots:
       tsx: 4.23.15
       yaml: 2.9.1
 
-  vitest@4.1.6(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(@vitest/ui@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1)):
+  vitest@4.1.6(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(@vitest/ui@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1)):
     dependencies:
       '@vitest/expect': 4.1.6
-      '@vitest/mocker': 4.1.6(vite@6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))
+      '@vitest/mocker': 4.1.6(vite@6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1))
       '@vitest/pretty-format': 4.1.6
       '@vitest/runner': 4.1.6
       '@vitest/snapshot': 4.1.6
@@ -20810,7 +20773,7 @@ snapshots:
       tinyexec: 1.1.2
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.0
-      vite: 6.4.4(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1)
+      vite: 6.4.5(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.23.15)(yaml@2.9.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 25.8.0
@@ -20976,12 +20939,6 @@ snapshots:
       ansi-styles: 4.3.0
       string-width: 4.2.3
       strip-ansi: 6.0.1
-
-  wrap-ansi@8.1.0:
-    dependencies:
-      ansi-styles: 6.2.3
-      string-width: 5.1.2
-      strip-ansi: 7.2.0
 
   wrap-ansi@9.0.2:
     dependencies:
