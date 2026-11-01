@@ -1,10 +1,54 @@
 import AVFoundation
 import Foundation
-import ReadiumNavigator
+@testable import ReadiumNavigator
 import ReadiumShared
 import Testing
 import XCTest
 @testable import Readium
+
+@Test
+@MainActor
+func narration_marks_preserve_style_and_escape_character_names() throws {
+  let style = try #require(StyleData(type: "myreader-narration", tint: "#C4622D", isActive: nil).toDecorationStyle())
+  #expect(style.id == readerNarrationStyleId)
+  let color = try #require(style.config as? ReaderNoteMarkerStyleConfig)
+  #expect(color.tint.cssHex.uppercased() == "#C4622D")
+  let locator = Locator(href: AnyURL(string: "chapter.xhtml")!, mediaType: .xhtml)
+  let decoration = Decoration(id: "plan-1", locator: locator, style: style,
+    userInfo: ["characterName": "<script>alert(\"角色\")</script> & 旁白"])
+  let html = readerNarrationTemplate().element(decoration)
+
+  #expect(html.contains("&lt;script&gt;alert(&quot;角色&quot;)&lt;/script&gt; &amp; 旁白"))
+  #expect(!html.contains("<script>"))
+  #expect(html.contains("data-myreader-overlay=\"true\""))
+}
+
+@Test
+@MainActor
+func narration_accepts_single_audio_completion_without_requesting_sentence_prefetch() async throws {
+  let url = try narrationAudioFixture()
+  defer { try? FileManager.default.removeItem(at: url) }
+  let player = try NarrationTestAudioPlayer(contentsOf: url)
+  var requests: [RemoteTtsSynthesisRequest] = []
+  var ranges: [String] = []
+  let text = "Hello."
+  let engine = RemoteTTSEngine(profileId: "narration", voiceId: "narration", speed: 1, pitch: 1,
+    onRequest: { requests.append($0) }, onCancel: { _ in }, onBuffering: { _, _ in }, makeAudioPlayer: { _ in player })
+  defer { engine.cancelAll() }
+  engine.setPrefetchWindow([RemoteTtsPrefetchUtterance(key: .init(text: "Next speaker.", language: "en"),
+    locator: Locator(href: AnyURL(string: "chapter.xhtml")!, mediaType: .xhtml))])
+  #expect(requests.isEmpty)
+  let playback = Task { await engine.speak(text: text, language: "en", onSpeakRange: { ranges.append(String(text[$0])) }) }
+  while requests.isEmpty { await Task.yield() }
+  let completion = TtsSynthesisCompletionRecord()
+  completion.requestId = requests[0].requestId
+  completion.path = url.path
+  engine.complete(completion)
+  #expect(ranges == [text])
+  player.delegate?.audioPlayerDidFinishPlaying?(player, successfully: true)
+  if case let .failure(error) = await playback.value { Issue.record("Playback failed: \(error)") }
+  #expect(requests.count == 1)
+}
 
 @Test
 @MainActor
@@ -85,9 +129,18 @@ func narration_system_voice_follows_audio_without_advancing_the_source_early() a
   var requestID: String?
   var ranges: [String] = []
   let text = "Hi. Hello."
+  let player = try NarrationTestAudioPlayer(contentsOf: url)
+  let wordHighlighted = XCTestExpectation(description: "Audio word highlighted before completion")
+  var completed = false
   let engine = RemoteTTSEngine(profileId: "narration", voiceId: "narration", speed: 1.5, pitch: 1,
-    onRequest: { requestID = $0.requestId }, onCancel: { _ in }, onBuffering: { _, _ in })
-  let playback = Task { await engine.speak(text: text, language: "en-US", onSpeakRange: { ranges.append(String(text[$0])) }) }
+    onRequest: { requestID = $0.requestId }, onCancel: { _ in }, onBuffering: { _, _ in }, makeAudioPlayer: { _ in player })
+  engine.onUtteranceCompleted = { completed = true }
+  defer { engine.cancelAll() }
+  let playback = Task { await engine.speak(text: text, language: "en-US", onSpeakRange: {
+    let spoken = String(text[$0])
+    ranges.append(spoken)
+    if spoken == "Hi" { wordHighlighted.fulfill() }
+  }) }
   while requestID == nil { await Task.yield() }
   var first = TtsPlaybackSegmentRecord()
   first.text = "Hi. "; first.endUtf16 = 4; first.path = url.absoluteString; first.playbackRate = 1.2
@@ -99,10 +152,21 @@ func narration_system_voice_follows_audio_without_advancing_the_source_early() a
   var completion = TtsSynthesisCompletionRecord()
   completion.requestId = requestID!; completion.segments = [first, second]
   engine.complete(completion)
+  let highlighted = await XCTWaiter.fulfillment(of: [wordHighlighted], timeout: 5)
+  try #require(highlighted == .completed)
+  #expect(ranges == ["Hi. ", "Hi"])
+  #expect(!completed)
+  player.delegate?.audioPlayerDidFinishPlaying?(player, successfully: true)
   if case let .failure(error) = await playback.value { Issue.record("Mixed playback failed: \(error)") }
   #expect(ranges.contains("Hi"))
   #expect(ranges.contains("Hello."))
-  engine.cancelAll()
+  #expect(completed)
+}
+
+private final class NarrationTestAudioPlayer: AVAudioPlayer {
+  override func prepareToPlay() -> Bool { true }
+  override func play() -> Bool { true }
+  override func stop() {}
 }
 
 extension ReaderWindowTests {

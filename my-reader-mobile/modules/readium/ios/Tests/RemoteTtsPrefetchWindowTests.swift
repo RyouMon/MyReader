@@ -1,7 +1,46 @@
 import ExpoModulesCore
+import Foundation
 import ReadiumShared
 import Testing
 @testable import Readium
+
+@Test
+@MainActor
+func chapter_preserves_paragraphs_and_stops_at_the_next_resource() async {
+  let paragraph = "真昼有一个别称叫做天使大人。她温和诚恳，因而受人欢迎。"
+  let contents = [
+    "<p>\(paragraph)</p><p>下一段。</p>",
+    "<p>下一章。</p>",
+  ]
+  let links = ["chapter.xhtml", "next.xhtml"].map { Link(href: $0, mediaType: .xhtml) }
+  let publication = Publication(
+    manifest: Manifest(metadata: Metadata(languages: ["zh"]), readingOrder: links),
+    container: CompositeContainer(zip(links, contents).map { link, body in
+      SingleResourceContainer(
+        resource: DataResource(data: Data("<html xmlns=\"http://www.w3.org/1999/xhtml\"><body>\(body)</body></html>".utf8)),
+        at: AnyURL(string: link.href)!
+      )
+    }),
+    servicesBuilder: .init(content: DefaultContentService.makeFactory(resourceContentIteratorFactories: [HTMLResourceContentIterator.Factory()]))
+  )
+  let start = Locator(href: AnyURL(string: "chapter.xhtml")!, mediaType: .xhtml)
+
+  let result = await RemoteTtsPrefetchWindow.chapter(publication: publication, start: start)
+
+  #expect(result.map(\.key.text) == [paragraph, "下一段。"])
+  #expect(result.map(\.key.language) == ["zh", "zh"])
+  #expect(result.allSatisfy { $0.locator.href == start.href })
+  #expect(result.map(\.locator.text.highlight) == result.map { Optional($0.key.text) })
+}
+
+@Test
+@MainActor
+func chapter_returns_no_speech_without_a_content_service() async {
+  let publication = Publication(manifest: Manifest())
+  let start = Locator(href: AnyURL(string: "chapter.xhtml")!, mediaType: .xhtml)
+
+  #expect(await RemoteTtsPrefetchWindow.chapter(publication: publication, start: start).isEmpty)
+}
 
 @Test
 @MainActor

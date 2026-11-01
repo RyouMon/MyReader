@@ -72,6 +72,7 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
   private let onRequest: (RemoteTtsSynthesisRequest) -> Void
   private let onCancel: ([String]) -> Void
   private let onBuffering: (RemoteTtsSpeechKey, Bool) -> Void
+  private let makeAudioPlayer: (URL) throws -> AVAudioPlayer
   private var entries: [RemoteTtsSpeechKey: CacheEntry] = [:]
   private var keysByRequestId: [String: RemoteTtsSpeechKey] = [:]
   private var desiredKeys: Set<RemoteTtsSpeechKey> = []
@@ -85,7 +86,8 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
     pitch: Double,
     onRequest: @escaping (RemoteTtsSynthesisRequest) -> Void,
     onCancel: @escaping ([String]) -> Void,
-    onBuffering: @escaping (RemoteTtsSpeechKey, Bool) -> Void
+    onBuffering: @escaping (RemoteTtsSpeechKey, Bool) -> Void,
+    makeAudioPlayer: @escaping (URL) throws -> AVAudioPlayer = { try AVAudioPlayer(contentsOf: $0) }
   ) {
     self.profileId = profileId
     self.voiceId = voiceId
@@ -94,6 +96,7 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
     self.onRequest = onRequest
     self.onCancel = onCancel
     self.onBuffering = onBuffering
+    self.makeAudioPlayer = makeAudioPlayer
     super.init()
     systemSpeech.delegate = self
   }
@@ -276,7 +279,7 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
       let url = path.hasPrefix("file://")
         ? URL(string: path)!
         : URL(fileURLWithPath: path)
-      let player = try AVAudioPlayer(contentsOf: url)
+      let player = try makeAudioPlayer(url)
       player.delegate = self
       if let rate = segment.playbackRate {
         player.enableRate = true
