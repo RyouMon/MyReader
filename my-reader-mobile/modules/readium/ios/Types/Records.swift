@@ -145,6 +145,8 @@ struct ReadiumFileRecord: Record {
 // MARK: - TTS
 
 struct TtsEngineConfigRecord: Record {
+  @Field var granularity: String = "sentence"
+  @Field var singleUtterance: Bool = false
   @Field var kind: String = "system"
   @Field var profileId: String? = nil
   @Field var voiceId: String? = nil

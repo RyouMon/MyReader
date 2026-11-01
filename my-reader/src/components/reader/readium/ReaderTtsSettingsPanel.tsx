@@ -263,6 +263,7 @@ export function ReaderTtsSettingsPanel({
           <BookNarrationSettings
             key={`${book.libraryId}:${book.bookId}`}
             book={book}
+            readingPlan={session.readingPlan}
             config={config}
             readingVoice={
               config.defaultEngine.kind === "provider"

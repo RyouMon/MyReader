@@ -45,7 +45,7 @@ export type CoreSpeechEngineDependencies = {
   audioSource?: (path: string) => string
 }
 
-const ACCEPTED_MIME_TYPES = [
+export const ACCEPTED_MIME_TYPES = [
   "audio/mpeg",
   "audio/ogg",
   "audio/aac",

@@ -11,6 +11,9 @@ mod reading;
 mod storage;
 mod sync;
 mod tts;
+mod tts_usage;
+pub(crate) use tts_usage::RemovedTtsSelection;
+pub use tts_usage::{TtsModelVoices, TtsSelectionUsage};
 
 pub use app_config::{
     is_remote_library_source_type, AppConfig, AppPreferences, DataSource, Library, LibraryType,
@@ -41,7 +44,7 @@ pub use narration::{
     BookCharacter, BookNarrationSettings, CharacterDraftInput, CharacterDraftRequest,
     CharacterImportCandidate, CharacterImportRequest, CharacterPassage, CharacterSource,
     NarrationMergeChoice, NarrationMergePlan, NarrationMergeSource, NarrationPlan,
-    NarrationRequest, NarrationSegment, NarrationSpeech, NARRATOR_ID,
+    NarrationPlanEntry, NarrationRequest, NarrationSegment, NarrationSpeech, NARRATOR_ID,
 };
 pub use reading::{
     LegacyFinishedReading, ReaderAnnotation, ReaderBookmark, ReadingPosition,

@@ -1,3 +1,4 @@
+import { useTtsRemoval } from "@/hooks/useTtsRemovalConfirmation"
 import { Loader2 } from "lucide-react"
 import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
 import { FormSwitch } from "@/components/common/FormSwitch"
@@ -35,6 +36,7 @@ export function TtsProviderModels({
   onChange: (draft: TtsProviderDraft) => void
 }) {
   const { t } = useTranslation()
+  const confirmRemoval = useTtsRemoval()
   const [selected, setSelected] = useState<number | null>(0)
   const [showDiscovery, setShowDiscovery] = useState(false)
   const { discover, voices: importing } = useTtsModelDiscovery()
@@ -129,9 +131,15 @@ export function TtsProviderModels({
         : change,
     )
   }
-  const removeModel = (index: number) => {
-    onChange({ ...draft, models: draft.models.filter((_, i) => i !== index) })
-    setSelected(null)
+  const removeModel = async (index: number) => {
+    const next = {
+      ...draft,
+      models: draft.models.filter((_, i) => i !== index),
+    }
+    if (await confirmRemoval(next, draft.models[index].model)) {
+      onChange(next)
+      setSelected(null)
+    }
   }
   const addModel = () => {
     const unused =

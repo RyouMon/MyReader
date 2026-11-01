@@ -99,6 +99,7 @@ class RemoteTtsEngine(
   private val onRequest: (RemoteTtsSynthesisRequest) -> Unit,
   private val onCancel: (List<String>) -> Unit,
   private val onBuffering: (RemoteTtsSpeechKey, Boolean) -> Unit,
+  private val onUtteranceCompleted: (() -> Unit)? = null,
 ) : TtsEngine<
   RemoteTtsSettings,
   RemoteTtsPreferences,
@@ -327,7 +328,8 @@ class RemoteTtsEngine(
     systemUtteranceId = null
     request.player?.release()
     request.player = null
-    listener?.onDone(request.id)
+    if (onUtteranceCompleted != null) onUtteranceCompleted.invoke()
+    else listener?.onDone(request.id)
     if (request.key !in desiredKeys) removeEntry(request.key)
   }
 
@@ -433,6 +435,7 @@ class RemoteTtsEngineProvider(
   private val onRequest: (RemoteTtsSynthesisRequest) -> Unit,
   private val onCancel: (List<String>) -> Unit,
   private val onBuffering: (RemoteTtsSpeechKey, Boolean) -> Unit,
+  private val onUtteranceCompleted: (() -> Unit)? = null,
 ) : TtsEngineProvider<
   RemoteTtsSettings,
   RemoteTtsPreferences,
@@ -455,6 +458,7 @@ class RemoteTtsEngineProvider(
       onRequest = onRequest,
       onCancel = onCancel,
       onBuffering = onBuffering,
+      onUtteranceCompleted = onUtteranceCompleted,
     )
     engine = value
     return Try.success(value)

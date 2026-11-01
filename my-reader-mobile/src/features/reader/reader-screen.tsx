@@ -1,3 +1,5 @@
+import type { NarrationPlanEntry } from "@/src/services/core/narration"
+import { useReadingPlan } from "./tts/use-reading-plan"
 import { appendErrorDetail } from "@my-reader/i18n/mobile"
 import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
 import { ReaderScreenSettings } from "./components/ReaderScreenSettings"
@@ -617,6 +619,29 @@ export default function ReaderScreen() {
     [history, isReflowReady],
   )
 
+  const playReadingPlanEntry = useCallback(
+    (locator: Locator, entry: NarrationPlanEntry) => {
+      stopTts()
+      void startTts(locator, { planEntry: entry })
+    },
+    [startTts, stopTts],
+  )
+  const jumpToReadingPlanSource = useCallback(
+    (locator: Locator) => {
+      navigateToLocator(locator)
+      ttsSettingsSheetRef.current?.dismiss()
+    },
+    [navigateToLocator],
+  )
+  const readingPlan = useReadingPlan(
+    narrationBook,
+    currentLocator,
+    readerLanguage,
+    stopTts,
+    playReadingPlanEntry,
+    jumpToReadingPlanSource,
+  )
+
   const handleTocSelect = useCallback(
     (item: ReaderTocItem) => {
       const targetLocator =
@@ -1089,7 +1114,9 @@ export default function ReaderScreen() {
   const handleOpenReaderMore = useCallback(() => {
     dispatch({ type: "moreButtonTap" })
   }, [])
+  const refreshReadingPlan = readingPlan.refresh
   const handleTtsConfigChange = useCallback(() => {
+    void refreshReadingPlan()
     if (
       ttsState?.state !== "loading" &&
       ttsState?.state !== "playing" &&
@@ -1099,7 +1126,7 @@ export default function ReaderScreen() {
     void startTts(ttsState.locator ?? currentLocator, {
       pauseAfterStart: ttsState.state === "paused",
     })
-  }, [currentLocator, startTts, ttsState])
+  }, [currentLocator, startTts, ttsState, refreshReadingPlan])
   const handlePlayTts = useCallback(() => {
     if (!ttsState) {
       void startTts(undefined, { startAtViewportStart: true })
@@ -1225,6 +1252,7 @@ export default function ReaderScreen() {
             ]
           : [],
       },
+      ...readingPlan.decorations,
       ...createReaderAnnotationDecorationGroups(
         readerAnnotations.annotations,
         t("reader.annotations.openNote"),
@@ -1232,6 +1260,7 @@ export default function ReaderScreen() {
     ],
     [
       activeSearchLocator,
+      readingPlan.decorations,
       chromePalette.accent,
       readerAnnotations.annotations,
       t,
@@ -1577,6 +1606,7 @@ export default function ReaderScreen() {
               palette={chromePalette}
               onConfigChange={handleTtsConfigChange}
               book={narrationBook}
+              readingPlan={readingPlan}
               onNarrationChange={stopTts}
             />
           </Animated.View>

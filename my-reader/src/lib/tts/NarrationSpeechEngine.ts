@@ -6,7 +6,8 @@ import {
   type ReadiumSpeechUtterance,
   type ReadiumSpeechVoice,
 } from "@readium/speech"
-import { CoreSpeechEngine } from "./CoreSpeechEngine"
+import { CoreSpeechEngine, ACCEPTED_MIME_TYPES } from "./CoreSpeechEngine"
+import { NarrationPrefetchWindow } from "@my-reader/tools/narration-prefetch"
 import { api } from "@/lib/tauri-api"
 import type { NarrationSpeechDto, TtsVoiceRefDto } from "@/lib/tauri-specta"
 
@@ -15,6 +16,26 @@ type Prepare = (
   voice: TtsVoiceRefDto,
   signal: AbortSignal,
 ) => Promise<NarrationSpeechDto[]>
+
+async function selectVoice(
+  engine: ReadiumSpeechPlaybackEngine,
+  voice: TtsVoiceRefDto,
+) {
+  if (voice.engine === "system" && !voice.voiceId) return
+  // Readium's WebSpeechEngine string selector accepts names/languages, not native voice IDs.
+  const selected =
+    voice.engine === "system"
+      ? (await engine.getAvailableVoices()).find((candidate) =>
+          [
+            candidate.identifier,
+            candidate.voiceURI,
+            candidate.originalName,
+            candidate.name,
+          ].includes(voice.voiceId),
+        )
+      : undefined
+  await engine.setVoice(selected ?? voice.voiceId)
+}
 
 /** One Readium utterance remains one playback unit, even across several voices. */
 export class NarrationSpeechEngine implements ReadiumSpeechPlaybackEngine {
@@ -29,6 +50,7 @@ export class NarrationSpeechEngine implements ReadiumSpeechPlaybackEngine {
   >()
   private generation = 0
   private paused = false
+  private ahead = new NarrationPrefetchWindow()
 
   constructor(
     private readonly base: ReadiumSpeechPlaybackEngine,
@@ -46,12 +68,14 @@ export class NarrationSpeechEngine implements ReadiumSpeechPlaybackEngine {
                 instructions: segment.instructions,
               }),
           }),
+    private readonly prefetch = false,
   ) {}
 
   async initialize() {
     await this.base.initialize?.()
   }
   loadUtterances(contents: ReadiumSpeechUtterance[]) {
+    this.ahead.clear()
     this.cancel()
     this.utterances = [...contents]
     this.index = 0
@@ -59,6 +83,7 @@ export class NarrationSpeechEngine implements ReadiumSpeechPlaybackEngine {
     this.emit({ type: "ready" })
   }
   setVoice(voice: ReadiumSpeechVoice | string) {
+    this.ahead.clear()
     this.base.setVoice(voice)
   }
   getCurrentVoice() {
@@ -111,11 +136,15 @@ export class NarrationSpeechEngine implements ReadiumSpeechPlaybackEngine {
       complete?.(false)
       return
     }
-    if (this.index !== index) this.cancel()
+    if (this.index !== index) {
+      this.cancel()
+      this.ahead.clear()
+    }
     this.index = index
     complete?.(true)
   }
   speak(index = this.index) {
+    if (index !== this.index) this.ahead.clear()
     this.cancel()
     this.paused = false
     this.index = index
@@ -136,6 +165,9 @@ export class NarrationSpeechEngine implements ReadiumSpeechPlaybackEngine {
       this.emit({ type: "error", detail: { error, message: String(error) } })
     })
   }
+  private isCurrent(generation: number, signal: AbortSignal) {
+    return generation === this.generation && !signal.aborted
+  }
   private async play(
     utterance: ReadiumSpeechUtterance,
     generation: number,
@@ -153,13 +185,15 @@ export class NarrationSpeechEngine implements ReadiumSpeechPlaybackEngine {
       ? { engine: "provider", profileId: this.profileId, voiceId }
       : { engine: "system", voiceId }
     const segments = await this.prepare(utterance, defaultVoice, signal)
+    if (!this.isCurrent(generation, signal)) return
+    this.prefetchAhead(defaultVoice)
     for (const segment of segments) {
-      if (generation !== this.generation || signal.aborted) return
+      if (!this.isCurrent(generation, signal)) return
       const engine = this.createEngine(segment)
       this.active = engine
       try {
         await engine.initialize?.()
-        if (generation !== this.generation || signal.aborted) {
+        if (!this.isCurrent(generation, signal)) {
           await engine.destroy()
           return
         }
@@ -167,7 +201,8 @@ export class NarrationSpeechEngine implements ReadiumSpeechPlaybackEngine {
         engine.setPitch(this.getPitch())
         engine.setVolume(this.getVolume())
         engine.setSpeakInContentLanguage(false)
-        engine.setVoice(segment.voice.voiceId)
+        await selectVoice(engine, segment.voice)
+        if (!this.isCurrent(generation, signal)) return
         engine.loadUtterances([
           {
             id: utterance.id,
@@ -220,10 +255,45 @@ export class NarrationSpeechEngine implements ReadiumSpeechPlaybackEngine {
         if (this.active === engine) this.active = null
       }
     }
-    if (generation === this.generation && !signal.aborted) {
+    if (this.isCurrent(generation, signal)) {
       this.state = "ready"
       this.emit({ type: "end" })
     }
+  }
+  private prefetchAhead(defaultVoice: TtsVoiceRefDto) {
+    if (this.prefetch)
+      this.ahead.set(
+        this.utterances
+          .slice(this.index + 1, this.index + 3)
+          .map((next, offset) => ({
+            key: next.id ?? String(this.index + offset + 1),
+            run: async (signal) => {
+              const jobs = await this.prepare(next, defaultVoice, signal)
+              for (const job of jobs) {
+                if (signal.aborted) return
+                if (job.voice.engine !== "provider") continue
+                const requestId = crypto.randomUUID()
+                const cancel = () => {
+                  void api.cancelTtsSynthesis(requestId)
+                }
+                signal.addEventListener("abort", cancel, { once: true })
+                try {
+                  await api.synthesizeTtsRequest(requestId, {
+                    profileId: job.voice.profileId,
+                    voiceId: job.voice.voiceId,
+                    text: job.text,
+                    language: next.language,
+                    instructions: job.instructions,
+                    acceptedMimeTypes: ACCEPTED_MIME_TYPES,
+                    cachePolicy: "use",
+                  })
+                } finally {
+                  signal.removeEventListener("abort", cancel)
+                }
+              }
+            },
+          })),
+      )
   }
   pause() {
     this.paused = true
@@ -243,6 +313,7 @@ export class NarrationSpeechEngine implements ReadiumSpeechPlaybackEngine {
     }
   }
   stop() {
+    this.ahead.clear()
     this.cancel()
     this.state = "idle"
     this.emit({ type: "stop" })
@@ -270,6 +341,7 @@ export class NarrationSpeechEngine implements ReadiumSpeechPlaybackEngine {
     this.listeners.get(event.type)?.forEach((listener) => listener(event))
   }
   async destroy() {
+    this.ahead.clear()
     this.cancel()
     this.listeners.clear()
     await this.base.destroy()

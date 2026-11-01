@@ -35,8 +35,12 @@ static SYNTHESIS_LOCKS: OnceLock<Mutex<HashMap<String, Weak<Mutex<()>>>>> = Once
 
 pub struct TtsService;
 
+mod usage;
+
 #[cfg(test)]
 mod provider_tests;
+#[cfg(test)]
+mod removal_tests;
 
 impl TtsService {
     pub fn qwen_presets() -> Vec<QwenTtsPreset> {
@@ -570,12 +574,21 @@ fn validate_request_for_profile(
 
 fn reconcile_selections(config: &mut TtsConfig, previous: &[TtsProviderProfile]) {
     let profiles = config.profiles();
+    let removed = usage::removed_selections(previous, &usage::model_voices(&profiles));
     if let TtsEngineSelection::Provider { profile_id } = &config.default_engine {
-        if !profiles.iter().any(|profile| &profile.id == profile_id) {
+        if !profiles.iter().any(|profile| &profile.id == profile_id)
+            || config.voice_by_language.values().any(|voice| {
+                matches!(voice, TtsVoiceRef::Provider { profile_id: id, .. } if id == profile_id)
+                    && removed.iter().any(|item| item.matches(voice))
+            })
+        {
             config.default_engine = TtsEngineSelection::System;
         }
     }
     config.voice_by_language.retain(|_, voice| {
+        if removed.iter().any(|item| item.matches(voice)) {
+            return false;
+        }
         let TtsVoiceRef::Provider {
             profile_id,
             voice_id,

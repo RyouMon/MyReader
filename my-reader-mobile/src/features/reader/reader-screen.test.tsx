@@ -9,6 +9,8 @@ import { defaultSettings } from "@/src/store/app-store.constants"
 import type { ReaderPublicationSurface } from "./components/ReaderPublicationSurface"
 import type { ReaderState } from "./components/reader/types"
 import ReaderScreen from "./reader-screen"
+import { useReadingPlan } from "./tts/use-reading-plan"
+import type { NarrationPlanEntry } from "@/src/services/core/narration"
 
 const mockLibrary = {
   id: "local-library",
@@ -23,6 +25,16 @@ const mockStore = {
   settings: defaultSettings,
 }
 let mockSurface: ComponentProps<typeof ReaderPublicationSurface>
+const mockStartTts = jest.fn()
+const mockHistoryJump = jest.fn()
+
+jest.mock("./tts/use-reading-plan", () => ({
+  useReadingPlan: jest.fn(() => ({
+    entries: [],
+    decorations: [],
+    refresh: jest.fn(),
+  })),
+}))
 
 jest.mock("expo-router", () => ({
   router: { back: jest.fn(), canGoBack: () => true },
@@ -75,7 +87,7 @@ jest.mock("@/src/hooks/use-book-loader", () => ({
   }),
 }))
 jest.mock("@/src/hooks/use-reader-navigation-history", () => ({
-  useReaderNavigationHistory: () => ({}),
+  useReaderNavigationHistory: () => ({ jump: mockHistoryJump }),
 }))
 jest.mock(
   "@/src/domain/reading-statistics/hooks/use-reading-session-tracker",
@@ -93,7 +105,7 @@ jest.mock("./hooks/use-reader-search", () => ({
   useReaderSearch: () => ({ locators: [] }),
 }))
 jest.mock("./tts/use-reader-tts-session", () => ({
-  useReaderTtsSession: () => ({ stop: jest.fn() }),
+  useReaderTtsSession: () => ({ stop: jest.fn(), start: mockStartTts }),
 }))
 jest.mock("./reader-open-transition", () => ({
   READER_BOOK_TRANSITION_MS: 360,
@@ -159,6 +171,23 @@ describe("ReaderScreen progress at the native boundary", () => {
   afterEach(() => {
     cleanup()
     jest.restoreAllMocks()
+  })
+
+  it("keeps plan playback separate from history navigation", async () => {
+    render(<ReaderScreen />)
+    const goTo = jest.fn()
+    Object.assign(mockSurface.reflow.ref!, { current: { goTo } })
+    const entry = { id: "entry" } as NarrationPlanEntry
+    const locator = position(2).locator!
+    const args = jest.mocked(useReadingPlan).mock.calls.at(-1)!
+    await act(async () => args[4](locator, entry))
+    expect(mockStartTts).toHaveBeenCalledWith(locator, { planEntry: entry })
+    expect(goTo).not.toHaveBeenCalled()
+    expect(mockHistoryJump).not.toHaveBeenCalled()
+    await act(async () => args[5](locator))
+    expect(goTo).toHaveBeenCalledWith(locator, undefined)
+    expect(mockHistoryJump).toHaveBeenCalledWith(locator)
+    expect(mockStartTts).toHaveBeenCalledTimes(1)
   })
 
   it.each([

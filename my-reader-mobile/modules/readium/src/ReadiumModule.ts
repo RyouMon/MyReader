@@ -45,6 +45,7 @@ export type ReadiumModuleMethods = {
   // Publication handle operations (REP-003/004)
   getPublicationSnapshot: (id: string) => Promise<PublicationSnapshot>
   getContent: (id: string, fromLocator?: Locator) => Promise<ContentResult>
+  getTtsContent: (id: string, fromLocator: Locator) => Promise<ContentResult>
 
   // Search (REP-007)
   getSearchCapabilities: (publicationId: string) => Promise<SearchCapabilities>

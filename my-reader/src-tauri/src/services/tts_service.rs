@@ -363,7 +363,7 @@ impl DesktopTtsService {
         .into())
     }
 
-    pub fn save_provider(
+    pub async fn save_provider(
         config_path: &Path,
         input: SaveTtsProviderInput,
     ) -> Result<TtsConfigDto, AppError> {
@@ -379,7 +379,7 @@ impl DesktopTtsService {
             .find(|p| p.id == value.id)
             .and_then(|p| p.credential_reference.clone())
             .unwrap_or_else(|| credentials::tts_credential_account(&value.id));
-        let config = CoreTtsService::upsert_provider(
+        let config = CoreTtsService::save_provider(
             config_path,
             TtsProvider {
                 id: value.id,
@@ -405,7 +405,8 @@ impl DesktopTtsService {
                     })
                     .collect(),
             },
-        )?;
+        )
+        .await?;
         if input.clear_credential {
             credentials::delete_tts_credential(&reference)?;
         } else if let Some(key) = input
@@ -419,7 +420,7 @@ impl DesktopTtsService {
         config_dto(config)
     }
 
-    pub fn upsert_profile(
+    pub async fn upsert_profile(
         config_path: &Path,
         input: UpsertTtsProviderInput,
     ) -> Result<TtsConfigDto, AppError> {
@@ -443,7 +444,7 @@ impl DesktopTtsService {
             .and_then(|existing| existing.credential_reference.clone())
             .or_else(|| Some(credentials::tts_credential_account(&profile.id)));
 
-        let config = CoreTtsService::upsert_profile(config_path, profile)?;
+        let config = CoreTtsService::save_provider(config_path, profile.into()).await?;
         let persisted = config
             .profiles()
             .into_iter()
@@ -468,14 +469,17 @@ impl DesktopTtsService {
         config_dto(config)
     }
 
-    pub fn remove_profile(config_path: &Path, profile_id: &str) -> Result<TtsConfigDto, AppError> {
+    pub async fn remove_profile(
+        config_path: &Path,
+        profile_id: &str,
+    ) -> Result<TtsConfigDto, AppError> {
         let config = CoreTtsService::get_config(config_path)?;
         let credential_reference = config
             .providers
             .into_iter()
             .find(|profile| profile.id == profile_id)
             .and_then(|profile| profile.credential_reference.clone());
-        let config = CoreTtsService::remove_profile(config_path, profile_id)?;
+        let config = CoreTtsService::delete_provider(config_path, profile_id).await?;
         if let Some(reference) = credential_reference {
             credentials::delete_tts_credential(&reference)?;
         }
@@ -976,14 +980,15 @@ mod tests {
         }
     }
 
-    #[test]
-    fn should_persist_profile_without_writing_secret_to_config() {
+    #[tokio::test]
+    async fn should_persist_profile_without_writing_secret_to_config() {
         let _guard = use_test_backend(MemoryBackend::default());
         let directory = tempfile::tempdir().unwrap();
         let config_path = directory.path().join("config.json");
 
         let config =
             DesktopTtsService::upsert_profile(&config_path, openai_input(Some("desktop-secret")))
+                .await
                 .unwrap();
 
         assert!(config.profiles[0].has_credential);
@@ -997,14 +1002,18 @@ mod tests {
         );
     }
 
-    #[test]
-    fn should_delete_keyring_credential_with_profile() {
+    #[tokio::test]
+    async fn should_delete_keyring_credential_with_profile() {
         let _guard = use_test_backend(MemoryBackend::default());
         let directory = tempfile::tempdir().unwrap();
         let config_path = directory.path().join("config.json");
-        DesktopTtsService::upsert_profile(&config_path, openai_input(Some("secret"))).unwrap();
+        DesktopTtsService::upsert_profile(&config_path, openai_input(Some("secret")))
+            .await
+            .unwrap();
 
-        let config = DesktopTtsService::remove_profile(&config_path, "openai").unwrap();
+        let config = DesktopTtsService::remove_profile(&config_path, "openai")
+            .await
+            .unwrap();
 
         assert!(config.profiles.is_empty());
         assert_eq!(

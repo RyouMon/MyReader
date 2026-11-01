@@ -129,7 +129,7 @@ function normalizedResource(value: string): string {
   }
 }
 
-function resourceMatches(left: string, right: string): boolean {
+export function resourceMatches(left: string, right: string): boolean {
   const normalizedLeft = normalizedResource(left)
   const normalizedRight = normalizedResource(right)
   return (
@@ -152,7 +152,7 @@ export function epubAnnotationMatchesSelection(
   )
 }
 
-function frameResourceHref(frame: {
+export function frameResourceHref(frame: {
   source: string
   iframe: HTMLIFrameElement
 }): string {
@@ -163,7 +163,7 @@ function frameResourceHref(frame: {
   }
 }
 
-function textRangeForLocator(
+export function textRangeForLocator(
   doc: Document,
   locator: ReaderLocator,
 ): Range | null {

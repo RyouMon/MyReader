@@ -277,6 +277,29 @@ impl From<NarrationSpeechDto> for core::NarrationSpeech {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
+pub struct NarrationPlanEntryDto {
+    pub id: String,
+    pub source_key: String,
+    pub position: f64,
+    pub character_id: String,
+    pub character_name: String,
+    pub speech: NarrationSpeechDto,
+}
+impl From<core::NarrationPlanEntry> for NarrationPlanEntryDto {
+    fn from(value: core::NarrationPlanEntry) -> Self {
+        Self {
+            id: value.id,
+            source_key: value.source_key,
+            position: value.position,
+            character_id: value.character_id,
+            character_name: value.character_name,
+            speech: value.speech.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
 pub struct NarrationMergeSourceDto {
     pub scope_id: String,
     pub title: String,

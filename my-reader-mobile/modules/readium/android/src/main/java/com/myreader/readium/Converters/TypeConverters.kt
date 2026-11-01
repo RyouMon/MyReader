@@ -5,6 +5,7 @@ import com.myreader.readium.Types.DecorationRecord
 import com.myreader.readium.Types.LocatorRecord
 import com.myreader.readium.Types.PreferencesRecord
 import com.myreader.readium.reader.ReaderNoteMarkerDecorationStyle
+import com.myreader.readium.reader.ReaderNarrationDecorationStyle
 import com.myreader.readium.utils.normalizeHref
 import org.readium.adapter.pdfium.navigator.PdfiumPreferences as ReadiumPdfPreferences
 import org.readium.r2.navigator.Decoration as ReadiumDecoration
@@ -132,6 +133,7 @@ internal fun decorationRecordToReadium(dec: DecorationRecord): ReadiumDecoration
       tint = parseColorString(styleRec.tint),
       isActive = styleRec.isActive ?: false
     )
+    "myreader-narration" -> ReaderNarrationDecorationStyle(tint = parseColorString(styleRec.tint))
     "myreader-note-marker" -> ReaderNoteMarkerDecorationStyle(
       tint = parseColorString(styleRec.tint)
     )
@@ -357,6 +359,10 @@ internal fun readiumDecorationToMap(dec: ReadiumDecoration): Map<String, Any?> {
       styleType = "underline"
       tint = colorToHex(decStyle.tint)
       isActive = decStyle.isActive
+    }
+    is ReaderNarrationDecorationStyle -> {
+      styleType = "myreader-narration"
+      tint = colorToHex(decStyle.tint)
     }
     is ReaderNoteMarkerDecorationStyle -> {
       styleType = "myreader-note-marker"

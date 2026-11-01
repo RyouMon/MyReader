@@ -1,6 +1,10 @@
 mod scopes;
+mod tts;
 
-use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Statement, TransactionTrait};
+use sea_orm::{
+    ConnectionTrait, DatabaseConnection, DbBackend, SqliteTransactionMode, Statement,
+    TransactionOptions, TransactionTrait,
+};
 use uuid::Uuid;
 
 use crate::{
@@ -18,6 +22,7 @@ pub(crate) struct Session {
 }
 
 pub(crate) struct HistoryEntry {
+    pub cache_key: String,
     pub seq: i64,
     pub position: f64,
     pub request: NarrationRequest,
@@ -76,7 +81,8 @@ impl<'a> NarrationRepository<'a> {
         session: &Session,
         key: &str,
     ) -> Result<Option<NarrationPlan>, CoreError> {
-        self.db
+        let plan: Option<NarrationPlan> = self
+            .db
             .query_one_raw(Statement::from_sql_and_values(
                 DbBackend::Sqlite,
                 "SELECT plan_json FROM narration_entries WHERE session_id = ? AND cache_key = ?",
@@ -84,11 +90,105 @@ impl<'a> NarrationRepository<'a> {
             ))
             .await?
             .map(|row| {
-                Ok(serde_json::from_str(
+                Ok::<_, CoreError>(serde_json::from_str(
                     &row.try_get::<String>("", "plan_json")?,
                 )?)
             })
-            .transpose()
+            .transpose()?;
+        Ok(plan.filter(|plan| !plan.fallback))
+    }
+
+    pub(crate) async fn entries(
+        &self,
+        session: &Session,
+        settings: &BookNarrationSettings,
+    ) -> Result<Vec<HistoryEntry>, CoreError> {
+        self.db.query_all_raw(Statement::from_sql_and_values(DbBackend::Sqlite,
+            "SELECT seq, cache_key, position, request_json, plan_json FROM narration_entries WHERE session_id = ? AND identity_revision = ? AND scope_id = ? ORDER BY position, seq",
+            vec![session.id.clone().into(), settings.identity_revision.into(), settings.scope_id.clone().into()])).await?
+            .into_iter().map(|row| Ok(HistoryEntry {
+                seq: row.try_get("", "seq")?, cache_key: row.try_get("", "cache_key")?, position: row.try_get("", "position")?,
+                request: serde_json::from_str(&row.try_get::<String>("", "request_json")?)?,
+                plan: serde_json::from_str(&row.try_get::<String>("", "plan_json")?)?,
+            })).collect()
+    }
+
+    pub(crate) async fn clear(
+        &self,
+        session: &Session,
+        ranges: &[(String, u32, u32)],
+    ) -> Result<(), CoreError> {
+        let tx = self.db.begin().await?;
+        tx.execute_raw(Statement::from_sql_and_values(
+            DbBackend::Sqlite,
+            "UPDATE narration_sessions SET epoch = epoch + 1 WHERE id = ?",
+            [session.id.clone().into()],
+        ))
+        .await?;
+        // Summaries may contain any removed attribution. Never replay them after a clear.
+        tx.execute_raw(Statement::from_sql_and_values(
+            DbBackend::Sqlite,
+            "DELETE FROM narration_checkpoints WHERE session_id = ?",
+            [session.id.clone().into()],
+        ))
+        .await?;
+        if ranges.is_empty() {
+            tx.execute_raw(Statement::from_sql_and_values(
+                DbBackend::Sqlite,
+                "DELETE FROM narration_entries WHERE session_id = ?",
+                [session.id.clone().into()],
+            ))
+            .await?;
+        } else {
+            for (key, start, end) in ranges {
+                let row = tx.query_one_raw(Statement::from_sql_and_values(DbBackend::Sqlite,
+                    "SELECT request_json, plan_json FROM narration_entries WHERE session_id = ? AND cache_key = ?", vec![session.id.clone().into(), key.clone().into()])).await?;
+                let Some(row) = row else {
+                    continue;
+                };
+                let request: NarrationRequest =
+                    serde_json::from_str(&row.try_get::<String>("", "request_json")?)?;
+                let source: Vec<u16> = request.text.encode_utf16().collect();
+                let valid = source
+                    .get(*start as usize..*end as usize)
+                    .is_some_and(|range| String::from_utf16(range).is_ok());
+                if !valid {
+                    return Err(CoreError::Config("NARRATION_REQUEST_INVALID".into()));
+                }
+                let mut plan: NarrationPlan =
+                    serde_json::from_str(&row.try_get::<String>("", "plan_json")?)?;
+                plan.segments = plan
+                    .segments
+                    .into_iter()
+                    .flat_map(|segment| {
+                        if segment.end_utf16 <= *start || segment.start_utf16 >= *end {
+                            return vec![segment];
+                        }
+                        let mut retained = Vec::new();
+                        if segment.start_utf16 < *start {
+                            retained.push(crate::models::NarrationSegment {
+                                end_utf16: *start,
+                                ..segment.clone()
+                            });
+                        }
+                        if segment.end_utf16 > *end {
+                            retained.push(crate::models::NarrationSegment {
+                                start_utf16: *end,
+                                ..segment
+                            });
+                        }
+                        retained
+                    })
+                    .collect();
+                // Partial plans remain visible, but cannot be used for playback or scene memory.
+                plan.fallback = true;
+                tx.execute_raw(Statement::from_sql_and_values(DbBackend::Sqlite,
+                    "UPDATE narration_entries SET plan_json = ? WHERE session_id = ? AND cache_key = ?",
+                    vec![serde_json::to_string(&plan)?.into(), session.id.clone().into(), key.clone().into()])).await?;
+            }
+        }
+        tx.commit().await?;
+        Ok(())
     }
 
     pub(crate) async fn checkpoint(
@@ -125,12 +225,13 @@ impl<'a> NarrationRepository<'a> {
         scope_id: &str,
     ) -> Result<Vec<HistoryEntry>, CoreError> {
         let rows = self.db.query_all_raw(Statement::from_sql_and_values(DbBackend::Sqlite,
-            "SELECT seq, position, request_json, plan_json FROM narration_entries WHERE session_id = ? AND (seq > ? OR position > ?) AND position < ? AND identity_revision = ? AND scope_id = ? ORDER BY position DESC, seq DESC LIMIT 64",
+            "SELECT seq, cache_key, position, request_json, plan_json FROM narration_entries WHERE session_id = ? AND (seq > ? OR position > ?) AND position < ? AND identity_revision = ? AND scope_id = ? ORDER BY position DESC, seq DESC LIMIT 64",
             vec![session.id.clone().into(), after.into(), after_position.into(), position.into(), identity_revision.into(), scope_id.into()])).await?;
         let mut entries: Vec<HistoryEntry> = rows
             .into_iter()
             .map(|row| {
                 Ok(HistoryEntry {
+                    cache_key: row.try_get("", "cache_key")?,
                     seq: row.try_get("", "seq")?,
                     position: row.try_get("", "position")?,
                     request: serde_json::from_str(&row.try_get::<String>("", "request_json")?)?,
@@ -139,6 +240,7 @@ impl<'a> NarrationRepository<'a> {
             })
             .collect::<Result<_, CoreError>>()?;
         entries.reverse();
+        entries.retain(|entry| !entry.plan.fallback);
         Ok(entries)
     }
 
@@ -151,7 +253,15 @@ impl<'a> NarrationRepository<'a> {
         plan: &NarrationPlan,
         checkpoint: Option<(i64, f64, String)>,
     ) -> Result<(), CoreError> {
-        let transaction = self.db.begin().await?;
+        // Reserve the writer before reading the guard; a deferred read-to-write
+        // upgrade fails immediately when reading-progress persistence is active.
+        let transaction = self
+            .db
+            .begin_with_options(TransactionOptions {
+                sqlite_transaction_mode: Some(SqliteTransactionMode::Immediate),
+                ..Default::default()
+            })
+            .await?;
         let current = transaction.query_one_raw(Statement::from_sql_and_values(DbBackend::Sqlite,
             "SELECT s.epoch, g.settings_json FROM narration_sessions s JOIN narration_books b ON b.book_id = s.book_id JOIN narration_scopes g ON g.id = b.scope_id WHERE s.id = ?",
             [session.id.clone().into()])).await?.ok_or_else(stale)?;
@@ -165,7 +275,7 @@ impl<'a> NarrationRepository<'a> {
             return Err(stale());
         }
         transaction.execute_raw(Statement::from_sql_and_values(DbBackend::Sqlite,
-            "INSERT OR IGNORE INTO narration_entries(session_id, seq, cache_key, identity_revision, position, source_key, request_json, plan_json, scope_id) SELECT ?, COALESCE(MAX(seq), 0) + 1, ?, ?, ?, ?, ?, ?, ? FROM narration_entries WHERE session_id = ?",
+            "INSERT INTO narration_entries(session_id, seq, cache_key, identity_revision, position, source_key, request_json, plan_json, scope_id) SELECT ?, COALESCE(MAX(seq), 0) + 1, ?, ?, ?, ?, ?, ?, ? FROM narration_entries WHERE session_id = ? ON CONFLICT(session_id, cache_key) DO UPDATE SET plan_json = excluded.plan_json",
             vec![session.id.clone().into(), key.into(), settings.identity_revision.into(), request.position.into(), request.source_key.clone().into(), serde_json::to_string(request)?.into(), serde_json::to_string(plan)?.into(), settings.scope_id.clone().into(), session.id.clone().into()])).await?;
         if let Some((seq, position, summary)) = checkpoint {
             transaction.execute_raw(Statement::from_sql_and_values(DbBackend::Sqlite,

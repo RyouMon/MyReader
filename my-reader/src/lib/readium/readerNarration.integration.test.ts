@@ -5,6 +5,7 @@ import type {
 } from "../tauri-specta"
 
 type NarrationTestWindow = Window & {
+  mountReadingPlanFixture: () => Promise<void>
   mountNarrationFixture: (
     enabled?: boolean,
     characterCount?: number,
@@ -158,4 +159,55 @@ test("the character footer stays visible while scrolling and exposes deletion on
   await expect(select).toHaveAttribute("aria-pressed", "false")
   await expect(remove).toHaveCount(0)
   await expect(add).toBeInViewport()
+})
+
+test("reading plans virtualize long lists and open at the current source without trapping scrolling", async ({
+  page,
+}) => {
+  await page.goto("/integration-frontend/readerNarration.html")
+  await page.evaluate(async () => {
+    await (window as unknown as NarrationTestWindow).mountReadingPlanFixture()
+  })
+  const current = page.getByRole("button", {
+    name: "Passage 1500.",
+    exact: false,
+  })
+  await expect(current).toBeVisible()
+  await expect(current).toHaveAttribute("aria-current", "location")
+  expect(await page.locator("li").count()).toBeLessThan(60)
+  const viewport = page.locator(".myreader-overlay-viewport")
+  await viewport.evaluate((element) => {
+    element.scrollTop -= element.clientHeight
+  })
+  await expect(
+    page.getByRole("button", { name: "Passage 1495.", exact: false }),
+  ).toBeVisible()
+  await viewport.evaluate((element) => {
+    element.scrollTop = 0
+  })
+  const first = page.getByRole("button", { name: "Passage 0.", exact: false })
+  await expect(first).toBeVisible()
+  await first.click()
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { planOpened: string[] }).planOpened,
+    ),
+  ).toEqual(["plan-0"])
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { planJumped: string[] }).planJumped,
+    ),
+  ).toEqual([])
+  await first.click({ button: "right" })
+  await page.getByRole("menuitem", { name: "Go to", exact: true }).click()
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { planJumped: string[] }).planJumped,
+    ),
+  ).toEqual(["plan-0"])
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { planOpened: string[] }).planOpened,
+    ),
+  ).toEqual(["plan-0"])
 })

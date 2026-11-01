@@ -1,4 +1,10 @@
 export const sharedEn = {
+  ttsRemoval: {
+    book: "Book #{{id}}",
+    global: "Global reading settings",
+    reset: "The following settings will return to defaults:\n{{usages}}",
+    confirm: "Save these changes?",
+  },
   rowActions: {
     edit: "Edit {{name}}",
     delete: "Delete {{name}}",
@@ -74,6 +80,16 @@ export const sharedEn = {
     advanced: "Advanced",
   },
   narration: {
+    plan: {
+      jump: "Go to",
+      title: "Reading plan",
+      showMarks: "Show annotations in text",
+      analyze: "Analyze current chapter",
+      analyzing: "Analyzing…",
+      empty: "No reading plan yet",
+      select: "Select passages",
+      clearSelected: "Clear selected",
+    },
     select: "Select",
     deselect: "Deselect",
     selected: "Selected characters: {{count}}",

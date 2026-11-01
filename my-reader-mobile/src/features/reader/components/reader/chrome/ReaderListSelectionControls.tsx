@@ -10,6 +10,11 @@ import { ReaderChromeIcon } from "./ReaderChromeIcon"
 import { ReaderSheetFooter } from "./ReaderSheetPage"
 
 const LABELS = {
+  readingPlan: {
+    manage: "narration.plan.select",
+    selectedCount: "narration.selected",
+    deleteSelected: "narration.plan.clearSelected",
+  },
   annotations: {
     manage: "reader.annotations.manage",
     selectedCount: "reader.annotations.selectedCount",

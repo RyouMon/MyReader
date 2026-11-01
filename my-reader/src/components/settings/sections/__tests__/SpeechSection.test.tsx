@@ -32,6 +32,7 @@ import SpeechSection, { TtsProvidersSection } from "../SpeechSection"
 
 const mocks = vi.hoisted(() => ({
   getTtsConfig: vi.fn(),
+  getTtsChangeUsage: vi.fn().mockResolvedValue([]),
   setTtsPlaybackPreferences: vi.fn(),
   discoverTtsModels: vi.fn(),
   listQwenTtsModels: vi.fn(),
@@ -47,6 +48,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/tauri-api", () => ({
   api: {
     getTtsConfig: mocks.getTtsConfig,
+    getTtsChangeUsage: mocks.getTtsChangeUsage,
     setTtsPlaybackPreferences: mocks.setTtsPlaybackPreferences,
     discoverTtsModels: mocks.discoverTtsModels,
     listQwenTtsModels: mocks.listQwenTtsModels,
@@ -943,6 +945,13 @@ it("confirms provider deletion before removing it and notifying readers", async 
     await screen.findByRole("button", { name: "删除 待删除的语音服务" }),
   )
   expect(mocks.removeTtsProfile).not.toHaveBeenCalled()
+  await waitFor(() =>
+    expect(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "删除",
+      }),
+    ).toBeEnabled(),
+  )
   fireEvent.click(
     within(screen.getByRole("alertdialog")).getByRole("button", {
       name: "删除",

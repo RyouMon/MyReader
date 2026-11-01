@@ -35,7 +35,7 @@ fn server() -> Server {
                 let last = messages.last().unwrap()["content"].as_str().unwrap();
                 let output = if messages[0]["content"].as_str().unwrap().starts_with("You assign") {
                     let input: Value = serde_json::from_str(last).unwrap();
-                    json!({"segments":[{"text":input["text"],"characterId":"alice","delivery":"happy"}]})
+                    json!({"segments":[{"from":"u0","through":format!("u{}", input["units"].as_array().unwrap().len() - 1),"characterId":"alice","delivery":"happy","parts":[]}]})
                 } else { json!({"ok":true}) };
                 warp::reply::json(&if request.get("input").is_some() { json!({"status":"completed","output":[{"type":"message","content":[{"type":"output_text","text":output.to_string()}]}]}) } else { json!({"choices":[{"finish_reason":"stop","message":{"content":output.to_string()}}]}) })
             });
@@ -115,6 +115,17 @@ async fn narration_commands_preserve_identity_and_route_exact_text_with_book_sco
         "upsert_llm_profile",
         json!({"input":input(&server.endpoint)}),
     );
+    for (id, voice) in [("tts-a", "A"), ("tts-b", "B")] {
+        let _: Value = invoke_ok(
+            &app,
+            "upsert_tts_profile",
+            json!({"input": {
+                "profile": {"id": id, "name": id, "kind": "openAiCompatible", "endpoint": "https://tts.example/v1", "model": "speech",
+                    "options": {"kind": "openAiCompatible", "responseFormat": "mp3", "voices": [voice], "defaultVoice": voice}},
+                "credential": null, "clearCredential": false
+            }}),
+        );
+    }
     let mut settings: Value = invoke_ok(
         &app,
         "get_book_narration",
@@ -217,6 +228,25 @@ async fn narration_commands_preserve_identity_and_route_exact_text_with_book_sco
         json!({"libraryId":"library","bookId":7}),
     );
     assert_eq!(first["characters"], merged["characters"]);
+    let usages: Value = invoke_ok(
+        &app,
+        "get_tts_change_usage",
+        json!({"providerId": "tts-b", "models": []}),
+    );
+    assert_eq!(usages.as_array().unwrap().len(), 1);
+    assert_eq!(usages[0]["scopeName"], "Novel");
+    assert_eq!(usages[0]["characterName"], "Alice");
+    let _: Value = invoke_ok(&app, "remove_tts_profile", json!({"profileId": "tts-b"}));
+    for book_id in [7, 8] {
+        let reset: Value = invoke_ok(
+            &app,
+            "get_book_narration",
+            json!({"libraryId": "library", "bookId": book_id}),
+        );
+        assert!(reset["characters"][1]["voice"].is_null());
+        assert_eq!(reset["characters"][1]["id"], "alice");
+        assert_eq!(reset["identityRevision"], merged["identityRevision"]);
+    }
 }
 
 #[test]

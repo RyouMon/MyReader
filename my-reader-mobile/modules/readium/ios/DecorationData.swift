@@ -87,6 +87,8 @@ struct StyleData: Codable {
 
     case readerNoteMarkerStyleId.rawValue:
       return readerNoteMarkerStyle(tint: tint)
+    case readerNarrationStyleId.rawValue:
+      return readerNarrationStyle(tint: tint)
 
     default:
       return nil

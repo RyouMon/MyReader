@@ -820,6 +820,7 @@ final class ReadiumView: ExpoView {
         Decoration.Style.Id.highlight,
         Decoration.Style.Id.underline,
         readerNoteMarkerStyleId,
+        readerNarrationStyleId,
       ].filter { decorable?.supports(decorationStyle: $0) == true }
         .map(\.rawValue)
 

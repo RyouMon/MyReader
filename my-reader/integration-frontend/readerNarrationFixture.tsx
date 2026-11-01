@@ -154,6 +154,7 @@ export async function mountNarrationFixture(
         >
           <NarrationPanel
             config={config}
+            readingVoice={{ engine: "system", voiceId: "", profileId: null }}
             themeStyle={theme}
             book={{
               libraryId: "fixture",
@@ -166,6 +167,71 @@ export async function mountNarrationFixture(
           />
         </div>
       </QueryClientProvider>
+    </AppThemeProvider>,
+  )
+}
+
+/** Long-list fixture exercises real virtual layout, independent of network services. */
+export async function mountReadingPlanFixture() {
+  const { NarrationReadingPlan } = await import(
+    "../src/components/reader/readium/NarrationReadingPlan"
+  )
+  await i18n.changeLanguage("en")
+  const opened: string[] = []
+  const jumped: string[] = []
+  Object.assign(window, { planOpened: opened, planJumped: jumped })
+  const theme = readerChromeThemeStyle("sepia")
+  const container = document.createElement("div")
+  document.body.append(container)
+  const entries = Array.from({ length: 3000 }, (_, index) => ({
+    id: `plan-${index}`,
+    sourceKey: "{}",
+    position: index / 3000,
+    characterId: "narrator",
+    characterName: "Narrator",
+    speech: {
+      text: `Passage ${index}. A natural paragraph remains together for continuous reading.`,
+      startUtf16: 0,
+      endUtf16: 80,
+      instructions: "Calm",
+      voice: { engine: "system" as const, voiceId: "", profileId: null },
+    },
+  }))
+  createRoot(container).render(
+    <AppThemeProvider>
+      <div
+        className="reader-window-root relative h-screen w-full"
+        data-reader-theme="sepia"
+        style={theme}
+      >
+        <ReaderSidePanelFrame visible side="right">
+          <ReaderSidePanelHeader title="Reading plan" icon={Settings2} />
+          <NarrationReadingPlan
+            onClose={() => {}}
+            themeStyle={theme}
+            plan={{
+              entries,
+              currentIndex: 1500,
+              locateCurrent: () => 1500,
+              shown: false,
+              setShown: () => {},
+              busy: false,
+              analyzing: false,
+              error: null,
+              ensureChapter: async () => {},
+              cancel: () => {},
+              analyze: async () => {},
+              clear: async () => {},
+              play: (id) => {
+                opened.push(id)
+              },
+              jump: (id) => {
+                jumped.push(id)
+              },
+            }}
+          />
+        </ReaderSidePanelFrame>
+      </div>
     </AppThemeProvider>,
   )
 }

@@ -24,7 +24,6 @@ import org.readium.r2.shared.publication.Locator
 import org.readium.r2.shared.publication.Publication
 import org.readium.r2.shared.util.Language
 import org.readium.r2.shared.util.getOrElse
-import org.readium.r2.shared.util.tokenizer.DefaultTextContentTokenizer
 import org.readium.r2.shared.util.tokenizer.TextUnit
 import org.readium.r2.shared.util.tokenizer.Tokenizer
 
@@ -151,7 +150,7 @@ internal class TtsStartLocatorMatcher {
   }
 }
 
-internal class StartLocatorTextTokenizer {
+internal class StartLocatorTextTokenizer(private val unit: TextUnit = TextUnit.Sentence) {
   private val startLocatorMatcher = TtsStartLocatorMatcher()
 
   fun reset(target: Locator.Text?) {
@@ -159,7 +158,7 @@ internal class StartLocatorTextTokenizer {
   }
 
   fun make(language: Language?): Tokenizer<String, IntRange> {
-    val tokenizer = DefaultTextContentTokenizer(TextUnit.Sentence, language)
+    val tokenizer = readerTtsTextTokenizer(unit, language)
     return object : Tokenizer<String, IntRange> {
       override fun tokenize(data: String): List<IntRange> =
         trimToStartLocator(data, tokenizer.tokenize(data))
@@ -248,7 +247,9 @@ class EpubTtsController(
   private var highlightedLocator: Locator? = null
   private var followedLocator: Locator? = null
   private var followNavigationJob: Job? = null
-  private val startLocatorTokenizer = StartLocatorTextTokenizer()
+  private val startLocatorTokenizer = StartLocatorTextTokenizer(
+    if (config.granularity == "paragraph") TextUnit.Paragraph else TextUnit.Sentence
+  )
 
   suspend fun start(from: Locator?) {
     close(emitState = false)
@@ -312,6 +313,10 @@ class EpubTtsController(
       context = application,
       profileId = profileId,
       voiceId = voiceId,
+      onUtteranceCompleted = if (config.singleUtterance) ({
+        close(emitState = false)
+        onStateChange(mapOf("state" to "ended"))
+      }) else null,
       onRequest = { request ->
         val payload = request.toMap().toMutableMap()
         if (config.profileId == "narration") {
@@ -391,7 +396,7 @@ class EpubTtsController(
         "paused"
       }
     }
-    if (state == "ended") clearHighlight()
+    if (state == "ended" || state == "error" || (config.singleUtterance && state == "paused")) clearHighlight()
     val payload = mutableMapOf<String, Any?>(
       "state" to state,
       "utterance" to playback.utterance,

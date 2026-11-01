@@ -238,9 +238,12 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
     playSegment(playback)
   }
 
+  var onUtteranceCompleted: (() -> Void)?
+
   private func playSegment(_ playback: ActivePlayback) {
     guard active === playback else { return }
     guard playback.segmentIndex < playback.segments.count else {
+      onUtteranceCompleted?()
       finish(playback, result: .success(()))
       return
     }

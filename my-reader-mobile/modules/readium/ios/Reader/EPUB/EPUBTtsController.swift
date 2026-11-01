@@ -151,6 +151,9 @@ final class TtsStartLocatorMatcher {
 }
 
 final class StartLocatorContentTokenizer {
+  private let paragraphs: Bool
+
+  init(paragraphs: Bool = false) { self.paragraphs = paragraphs }
   private let startLocatorMatcher = TtsStartLocatorMatcher()
   private var target: Locator?
 
@@ -160,8 +163,10 @@ final class StartLocatorContentTokenizer {
   }
 
   func make(defaultLanguage: Language?) -> ContentTokenizer {
-    let tokenize = PublicationSpeechSynthesizer.defaultTokenizerFactory(
-      defaultLanguage
+    let paragraphs = self.paragraphs
+    let tokenize = makeTextContentTokenizer(
+      defaultLanguage: defaultLanguage,
+      textTokenizerFactory: { makeDefaultTextTokenizer(unit: paragraphs ? .paragraph : .sentence, language: $0) }
     )
     return { [weak self] element in
       let elements = try tokenize(element)
@@ -312,7 +317,7 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
     self.onSynthesisCancel = onSynthesisCancel
     self.shouldFollowText = shouldFollowText
     self.onFollowTextNavigation = onFollowTextNavigation
-    let startLocatorTokenizer = StartLocatorContentTokenizer()
+    let startLocatorTokenizer = StartLocatorContentTokenizer(paragraphs: config.granularity == "paragraph")
     self.startLocatorTokenizer = startLocatorTokenizer
 
     let engineFactory: PublicationSpeechSynthesizer.EngineFactory
@@ -372,6 +377,12 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
     }
     super.init()
     synthesizer.delegate = self
+    if config.singleUtterance {
+      remoteEngine?.onUtteranceCompleted = { [weak self] in
+        self?.stop(emitState: false)
+        self?.onStateChange(["state": "ended"])
+      }
+    }
     bufferingHandler = { [weak self] key, buffering in
       self?.remoteBufferingChanged(key: key, buffering: buffering)
     }
@@ -464,7 +475,7 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
       currentUtterance = utterance
       currentLocator = locator
       sentenceNavigationPlaybackState.didPause()
-      updateHighlight(at: locator)
+      if config.singleUtterance { clearHighlight() } else { updateHighlight(at: locator) }
       scheduleRemotePrefetch(from: utterance.locator)
       let buffering = remoteBufferingKey == speechKey(for: utterance)
       if !buffering { followText(at: locator) }
@@ -497,6 +508,7 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
     utterance: PublicationSpeechSynthesizer.Utterance,
     didFailWithError error: PublicationSpeechSynthesizer.Error
   ) {
+    clearHighlight()
     var payload = statePayload("error", utterance: utterance, locator: utterance.locator)
     switch error {
     case let .engine(.other(cause)):

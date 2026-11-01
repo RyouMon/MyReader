@@ -126,7 +126,8 @@ pub async fn tts_save_provider(
     provider: TtsProvider,
 ) -> Result<TtsConfig, CoreFfiError> {
     Ok(
-        TtsService::upsert_provider(Path::new(&config_path), provider.try_into()?)
+        TtsService::save_provider(Path::new(&config_path), provider.try_into()?)
+            .await
             .map_err(CoreFfiError::from_core)?
             .into(),
     )
@@ -284,11 +285,13 @@ pub async fn tts_upsert_profile(
     config_path: String,
     profile: TtsProviderProfile,
 ) -> Result<TtsConfig, CoreFfiError> {
-    Ok(
-        TtsService::upsert_profile(Path::new(&config_path), profile.try_into()?)
-            .map_err(CoreFfiError::from_core)?
-            .into(),
+    Ok(TtsService::save_provider(
+        Path::new(&config_path),
+        CoreProviderProfile::try_from(profile)?.into(),
     )
+    .await
+    .map_err(CoreFfiError::from_core)?
+    .into())
 }
 
 #[uniffi::export(async_runtime = "tokio")]
@@ -297,7 +300,8 @@ pub async fn tts_remove_profile(
     profile_id: String,
 ) -> Result<TtsConfig, CoreFfiError> {
     Ok(
-        TtsService::remove_profile(Path::new(&config_path), &profile_id)
+        TtsService::delete_provider(Path::new(&config_path), &profile_id)
+            .await
             .map_err(CoreFfiError::from_core)?
             .into(),
     )
@@ -834,4 +838,52 @@ mod tests {
 
         assert!(CoreProviderProfile::try_from(profile).is_err());
     }
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct TtsModelVoices {
+    pub id: String,
+    pub voices: Vec<String>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct TtsSelectionUsage {
+    pub profile_id: String,
+    pub voice_id: Option<String>,
+    pub language: Option<String>,
+    pub library_name: Option<String>,
+    pub scope_name: Option<String>,
+    pub book_id: Option<f64>,
+    pub character_name: Option<String>,
+}
+
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn tts_change_usage(
+    config_path: String,
+    provider_id: String,
+    models: Vec<TtsModelVoices>,
+) -> Result<Vec<TtsSelectionUsage>, CoreFfiError> {
+    let models = models
+        .into_iter()
+        .map(|model| my_reader_core::models::TtsModelVoices {
+            id: model.id,
+            voices: model.voices,
+        })
+        .collect::<Vec<_>>();
+    Ok(
+        TtsService::change_usage(Path::new(&config_path), &provider_id, &models)
+            .await
+            .map_err(CoreFfiError::from_core)?
+            .into_iter()
+            .map(|usage| TtsSelectionUsage {
+                profile_id: usage.profile_id,
+                voice_id: usage.voice_id,
+                language: usage.language,
+                library_name: usage.library_name,
+                scope_name: usage.scope_name,
+                book_id: usage.book_id.map(|id| id as f64),
+                character_name: usage.character_name,
+            })
+            .collect(),
+    )
 }

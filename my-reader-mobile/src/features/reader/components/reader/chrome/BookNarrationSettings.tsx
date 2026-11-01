@@ -23,6 +23,9 @@ import {
   type CharacterImportMode,
 } from "./NarrationCharacterImport"
 import { NarrationMergeEditor } from "./NarrationMergeEditor"
+import { NarrationReadingPlan } from "./NarrationReadingPlan"
+import type { ReadingPlanController } from "@/src/features/reader/tts/use-reading-plan"
+import { ReaderChoiceRow } from "./ReaderChoiceRow"
 
 export type NarrationSubview = { title: string; onBack: () => void }
 export type NarrationBook = {
@@ -35,6 +38,7 @@ export type NarrationBook = {
 }
 
 type Props = {
+  readingPlan?: ReadingPlanController
   book?: NarrationBook
   config: MobileTtsConfig
   readingVoice?: NarrationVoice
@@ -46,7 +50,7 @@ type Props = {
 }
 
 type CharacterView =
-  | { kind: "settings" | "list" }
+  | { kind: "settings" | "list" | "plan" }
   | { kind: "edit"; character: BookCharacter }
   | { kind: "import"; mode: CharacterImportMode }
   | { kind: "merge"; plan: NarrationMergePlan }
@@ -72,6 +76,7 @@ function BookNarrationContent({
   onSubviewChange,
   onHeaderActionChange,
   children,
+  readingPlan,
 }: Omit<Props, "book"> & { book: NarrationBook }) {
   const { t } = useTranslation()
   const theme = useThemePalette()
@@ -81,7 +86,9 @@ function BookNarrationContent({
   )
   const [view, setView] = useState<CharacterView>({ kind: "settings" })
   const goBack = useCallback(() => {
-    setView({ kind: view.kind === "list" ? "settings" : "list" })
+    setView({
+      kind: view.kind === "list" || view.kind === "plan" ? "settings" : "list",
+    })
   }, [view.kind])
   const title = viewTitle(view, t)
   useEffect(() => {
@@ -112,6 +119,8 @@ function BookNarrationContent({
     )
   const busy = save.isPending || previewMerge.isPending || merge.isPending
 
+  if (view.kind === "plan" && readingPlan)
+    return <NarrationReadingPlan plan={readingPlan} palette={palette} />
   if (view.kind === "settings")
     return (
       <NarrationSettingsEntry
@@ -122,6 +131,13 @@ function BookNarrationContent({
         onEdit={() => setView({ kind: "list" })}
         errorNode={errorNode}
       >
+        {settings.enabled && readingPlan ? (
+          <ReaderChoiceRow
+            title={t("narration.plan.title")}
+            palette={palette}
+            onPress={() => setView({ kind: "plan" })}
+          />
+        ) : null}
         {children}
       </NarrationSettingsEntry>
     )
@@ -245,6 +261,7 @@ function BookNarrationContent({
 }
 
 function viewTitle(view: CharacterView, t: TFunction) {
+  if (view.kind === "plan") return t("narration.plan.title")
   if (view.kind === "edit")
     return view.character.id === "narrator"
       ? t("narration.narrator")

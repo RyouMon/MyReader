@@ -4,6 +4,9 @@ import {
   narrationSaveSettings,
   narrationImport,
   narrationPrepare,
+  narrationAnalyzeBatch,
+  narrationReadingPlan,
+  narrationClearReadingPlan,
   narrationPreviewMerge,
   narrationMergeSettings,
   narrationSearchSources,
@@ -31,6 +34,7 @@ export function getBookNarration(library: Library, bookId: number) {
     toNativeFilesystemPath(libraryRootUri(library)),
     library.libraryType ?? "calibre",
     bookId,
+    appConfigPath,
   )
 }
 export async function saveBookNarration(
@@ -76,6 +80,7 @@ export async function prepareBookNarration(
   )
 }
 export type {
+  NarrationPlanEntry,
   BookNarrationSettings,
   BookCharacter,
   NarrationVoice,
@@ -83,6 +88,48 @@ export type {
   CharacterSource,
   CharacterPassage,
 } from "my-reader-core"
+
+export async function analyzeBookNarration(
+  library: Library,
+  requests: NarrationRequest[],
+  signal?: AbortSignal,
+) {
+  if (!requests.length) return
+  await getBookNarration(library, requests[0]!.bookId)
+  const credential = await selectedLlmCredential()
+  if (signal) assertActive(signal)
+  return narrationAnalyzeBatch(
+    root(library),
+    appConfigPath,
+    requests,
+    credential,
+    signal ? { signal } : undefined,
+  )
+}
+
+export function getBookReadingPlan(
+  library: Library,
+  bookId: number,
+  contentVersion: string,
+  defaultVoice: NarrationVoice,
+) {
+  return narrationReadingPlan(
+    root(library),
+    appConfigPath,
+    bookId,
+    contentVersion,
+    defaultVoice,
+  )
+}
+
+export function clearBookReadingPlan(
+  library: Library,
+  bookId: number,
+  contentVersion: string,
+  ids: string[],
+) {
+  return narrationClearReadingPlan(root(library), bookId, contentVersion, ids)
+}
 
 export type CharacterDraftInput =
   | { kind: "encyclopedia"; source: CharacterSource }

@@ -1,8 +1,17 @@
-import { Check, CircleCheck, Pencil, Trash2 } from "lucide-react"
+import { useVirtualizer } from "@tanstack/react-virtual"
+import {
+  ArrowUpRight,
+  Check,
+  CircleCheck,
+  Pencil,
+  Trash2,
+  type LucideIcon,
+} from "lucide-react"
 import {
   Fragment,
   useEffect,
   useState,
+  useRef,
   type CSSProperties,
   type ReactNode,
 } from "react"
@@ -30,6 +39,7 @@ type ReaderListRow = {
   active?: boolean
   selectable?: boolean
 }
+type ReaderListAction = { label: string; onSelect: (id: string) => void }
 
 export function ReaderItemList({
   rows,
@@ -40,8 +50,13 @@ export function ReaderItemList({
   footerActions,
   onOpen,
   editAction,
+  jumpAction,
   onDelete,
+  virtualized = false,
+  initialIndex = -1,
 }: {
+  virtualized?: boolean
+  initialIndex?: number
   rows: ReaderListRow[]
   labels: ReaderListSelectionLabels
   mutating?: boolean
@@ -49,10 +64,27 @@ export function ReaderItemList({
   children?: ReactNode
   footerActions?: ReactNode
   onOpen?: (id: string) => void
-  editAction?: { label: string; onSelect: (id: string) => void }
+  editAction?: ReaderListAction
+  jumpAction?: ReaderListAction
   onDelete?: (ids: string[]) => void | Promise<void>
 }) {
   const { t } = useTranslation()
+  const viewportRef = useRef<HTMLDivElement>(null)
+  const positioned = useRef(false)
+  const virtualizer = useVirtualizer({
+    count: virtualized ? rows.length : 0,
+    getScrollElement: () => viewportRef.current,
+    estimateSize: () => 84,
+    getItemKey: (index) => rows[index]!.id,
+    overscan: 5,
+  })
+  useEffect(() => {
+    if (!virtualized || positioned.current || !rows.length || initialIndex < 0)
+      return
+    positioned.current = true
+    virtualizer.scrollToIndex(initialIndex, { align: "center" })
+  }, [virtualized, initialIndex, rows.length, virtualizer])
+
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [selecting, setSelecting] = useState(false)
   const selectableRows = rows.filter((row) => row.selectable !== false)
@@ -101,15 +133,45 @@ export function ReaderItemList({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" style={themeStyle}>
-      <ReaderSidePanelScrollArea className="flex min-h-full flex-col">
+      {virtualized && children ? (
+        <div className="px-4 pt-3">{children}</div>
+      ) : null}
+      <ReaderSidePanelScrollArea
+        viewportRef={viewportRef}
+        className="flex min-h-full flex-col"
+      >
         <div className="flex flex-1 flex-col px-4 py-3">
-          {children}
-          <ul className="space-y-0.5">
-            {rows.map((row) => {
+          {!virtualized ? children : null}
+          <ul
+            className={virtualized ? "relative" : "space-y-0.5"}
+            style={
+              virtualized ? { height: virtualizer.getTotalSize() } : undefined
+            }
+          >
+            {(virtualized
+              ? virtualizer.getVirtualItems()
+              : rows.map((_, index) => ({ index, start: 0 }))
+            ).map((item) => {
+              const row = rows[item.index]!
+
               const selected = selectedIds.has(row.id)
               const selectable = row.selectable !== false
               const button = (
-                <li>
+                <li
+                  data-index={item.index}
+                  ref={virtualized ? virtualizer.measureElement : undefined}
+                  style={
+                    virtualized
+                      ? {
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          transform: `translateY(${item.start}px)`,
+                        }
+                      : undefined
+                  }
+                >
                   <button
                     type="button"
                     aria-current={
@@ -147,6 +209,12 @@ export function ReaderItemList({
                 <ContextMenu key={row.id} modal={false}>
                   <ContextMenuTrigger asChild>{button}</ContextMenuTrigger>
                   <ContextMenuContent className="z-80 w-40" style={themeStyle}>
+                    <ReaderListContextAction
+                      action={jumpAction}
+                      id={row.id}
+                      disabled={mutating}
+                      icon={ArrowUpRight}
+                    />
                     <ContextMenuItem
                       disabled={mutating}
                       onSelect={() => toggleSelection(row.id)}
@@ -154,15 +222,12 @@ export function ReaderItemList({
                       <CircleCheck />
                       {selected ? labels.deselect : labels.select}
                     </ContextMenuItem>
-                    {editAction ? (
-                      <ContextMenuItem
-                        disabled={mutating}
-                        onSelect={() => editAction.onSelect(row.id)}
-                      >
-                        <Pencil />
-                        {editAction.label}
-                      </ContextMenuItem>
-                    ) : null}
+                    <ReaderListContextAction
+                      action={editAction}
+                      id={row.id}
+                      disabled={mutating}
+                      icon={Pencil}
+                    />
                     <ContextMenuSeparator />
                     <ContextMenuItem
                       variant="destructive"
@@ -207,6 +272,26 @@ export function ReaderItemList({
         {footerActions}
       </ReaderListFooter>
     </div>
+  )
+}
+
+function ReaderListContextAction({
+  action,
+  id,
+  disabled,
+  icon: Icon,
+}: {
+  action?: ReaderListAction
+  id: string
+  disabled: boolean
+  icon: LucideIcon
+}) {
+  if (!action) return null
+  return (
+    <ContextMenuItem disabled={disabled} onSelect={() => action.onSelect(id)}>
+      <Icon />
+      {action.label}
+    </ContextMenuItem>
   )
 }
 

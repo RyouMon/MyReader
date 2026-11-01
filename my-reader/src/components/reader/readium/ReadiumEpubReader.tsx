@@ -954,7 +954,9 @@ function useEpubReaderController({
     [epubPositions],
   )
 
+  const navigatePlanRef = useRef<(locator: Locator) => void>(() => {})
   const ttsSession = useEpubTtsSession({
+    onNavigate: (locator) => navigatePlanRef.current(locator),
     libraryId,
     bookId,
     enabled:
@@ -1448,6 +1450,16 @@ function useEpubReaderController({
       selectTocItemForNavigation,
     ],
   )
+
+  navigatePlanRef.current = (locator) => {
+    const nav = navigatorRef.current
+    if (!nav) return
+    const sequence = beginContentNavigation(locator)
+    nav.go(locator, false, () => {
+      finishContentNavigation(sequence)
+    })
+    closePanels()
+  }
 
   const onBookmarkSelect = useCallback(
     async (bookmark: ReadiumBookmarkRow) => {

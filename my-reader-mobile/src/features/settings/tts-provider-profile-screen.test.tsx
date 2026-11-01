@@ -63,6 +63,7 @@ jest.mock("@/src/services/core/tts", () => ({
   discoverTtsModels: jest.fn(),
   discoverQwenTtsVoices: jest.fn(),
   getTtsConfig: jest.fn(),
+  getTtsChangeUsage: jest.fn().mockResolvedValue([]),
   saveTtsProvider: jest.fn(),
   removeTtsProfile: jest.fn(),
   previewTtsProvider: jest.fn(),
@@ -430,6 +431,7 @@ it("requires confirmation and successful persistence before leaving a deleted pr
     ).right[0]!.onPress(),
   )
   expect(tts.removeTtsProfile).not.toHaveBeenCalled()
+  await waitFor(() => expect(showAlertWithStatusBarRestore).toHaveBeenCalled())
   const remove = jest
     .mocked(showAlertWithStatusBarRestore)
     .mock.calls.at(-1)![2]!

@@ -25,7 +25,11 @@ const mocks = vi.hoisted(() => ({
 }))
 vi.mock("@/lib/tauri-api", () => ({ api: mocks, formatApiError: String }))
 vi.mock("@/lib/tts/events", () => ({
+  TTS_CONFIG_CHANGED_EVENT: "myreader://tts-config-changed",
   notifyTtsConfigChanged: vi.fn().mockResolvedValue(undefined),
+}))
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: vi.fn().mockResolvedValue(() => {}),
 }))
 vi.mock("react-i18next", async (original) => ({
   ...(await original<typeof import("react-i18next")>()),

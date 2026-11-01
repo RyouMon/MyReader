@@ -611,9 +611,21 @@ interface NativeModuleInterface {
     configPath: Uint8Array,
     profile: Uint8Array,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_narration_analyze_batch(
+    root: Uint8Array,
+    configPath: Uint8Array,
+    requests: Uint8Array,
+    credential: Uint8Array,
+  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_narration_cancel(
     root: Uint8Array,
     bookId: number,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_narration_clear_reading_plan(
+    root: Uint8Array,
+    bookId: number,
+    contentVersion: Uint8Array,
+    ids: Uint8Array,
   ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_narration_draft_characters(
     root: Uint8Array,
@@ -652,11 +664,19 @@ interface NativeModuleInterface {
     automatic: number,
     credential: Uint8Array,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_narration_reading_plan(
+    root: Uint8Array,
+    configPath: Uint8Array,
+    bookId: number,
+    contentVersion: Uint8Array,
+    defaultVoice: Uint8Array,
+  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_narration_resolve_settings(
     root: Uint8Array,
     contentRoot: Uint8Array,
     libraryType: Uint8Array,
     bookId: number,
+    configPath: Uint8Array,
   ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_narration_save_settings(
     root: Uint8Array,
@@ -889,6 +909,11 @@ interface NativeModuleInterface {
     nowMs: number,
     uniffi_out_err: UniffiRustCallStatus,
   ): Uint8Array;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_tts_change_usage(
+    configPath: Uint8Array,
+    providerId: Uint8Array,
+    models: Uint8Array,
+  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_tts_discover_models(
     profile: Uint8Array,
     credential: Uint8Array,
@@ -1054,13 +1079,16 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_llm_save_provider(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_llm_select_profile(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_llm_upsert_profile(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_analyze_batch(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_cancel(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_clear_reading_plan(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_draft_characters(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_get_settings(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_import(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_merge_settings(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_prepare(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_preview_merge(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_reading_plan(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_resolve_settings(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_save_settings(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_search_sources(): number;
@@ -1098,6 +1126,7 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_run_library(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_safety_sweep_delay_ms(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_set_library_online(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_change_usage(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_discover_models(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_discover_qwen_voices(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_get_config(): number;

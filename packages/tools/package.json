@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./tts-selection-usage": "./src/tts-selection-usage.ts",
+    "./reader-text-index": "./src/reader-text-index.ts",
+    "./narration-plan": "./src/narration-plan.ts",
+    "./narration-prefetch": "./src/narration-prefetch.ts",
     "./reader-image-export": "./src/reader-image-export.ts",
     "./book-metadata": "./src/book-metadata.ts",
     "./human-readable-time": "./src/human-readable-time.ts",

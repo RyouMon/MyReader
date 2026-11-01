@@ -120,6 +120,23 @@ afterEach(() => {
 })
 
 describe("reader viewport anchor capture", () => {
+  it("ignores narration labels when capturing a reading position", () => {
+    document.body.innerHTML =
+      '<div data-myreader-overlay><span>旁白</span></div><p id="sentence">Read this sentence.</p>'
+    useViewport(200, 100)
+    const label = document.querySelector("span")!.firstChild!
+    overrideProperty(document, "caretRangeFromPoint", () => rangeAt(label, 0))
+    useRangeRects((range) =>
+      range.startContainer === label ? [rect(90, 10)] : [rect(10, 40)],
+    )
+
+    expect(captureReaderPointAnchor(window, 0.5, 0.2)).toBeNull()
+    expect(captureReaderViewportStartAnchor(window)).toMatchObject({
+      cssSelector: "#sentence",
+      text: { highlight: "R" },
+    })
+  })
+
   it("should capture readable text without taking over interactive content", () => {
     document.body.innerHTML =
       '<p id="sentence">Read from this sentence.</p><a id="link">Open link</a>'

@@ -369,9 +369,16 @@ uniffi_my_reader_core_ffi_fn_func_llm_select_profile(RustBuffer config_path,
 /*handle*/ uint64_t
 uniffi_my_reader_core_ffi_fn_func_llm_upsert_profile(RustBuffer config_path,
                                                      RustBuffer profile);
+/*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_narration_analyze_batch(
+    RustBuffer root, RustBuffer config_path, RustBuffer requests,
+    RustBuffer credential);
 /*handle*/ uint64_t
 uniffi_my_reader_core_ffi_fn_func_narration_cancel(RustBuffer root,
                                                    double book_id);
+/*handle*/ uint64_t
+uniffi_my_reader_core_ffi_fn_func_narration_clear_reading_plan(
+    RustBuffer root, double book_id, RustBuffer content_version,
+    RustBuffer ids);
 /*handle*/ uint64_t
 uniffi_my_reader_core_ffi_fn_func_narration_get_settings(RustBuffer root,
                                                          double book_id);
@@ -386,10 +393,13 @@ uniffi_my_reader_core_ffi_fn_func_narration_get_settings(RustBuffer root,
 /*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_narration_preview_merge(
     RustBuffer root, RustBuffer config_path, double book_id, int8_t automatic,
     RustBuffer credential);
+/*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_narration_reading_plan(
+    RustBuffer root, RustBuffer config_path, double book_id,
+    RustBuffer content_version, RustBuffer default_voice);
 /*handle*/ uint64_t
 uniffi_my_reader_core_ffi_fn_func_narration_resolve_settings(
     RustBuffer root, RustBuffer content_root, RustBuffer library_type,
-    double book_id);
+    double book_id, RustBuffer config_path);
 /*handle*/ uint64_t
 uniffi_my_reader_core_ffi_fn_func_narration_save_settings(RustBuffer root,
                                                           RustBuffer settings);
@@ -504,6 +514,8 @@ double uniffi_my_reader_core_ffi_fn_func_sync_safety_sweep_delay_ms(
 RustBuffer uniffi_my_reader_core_ffi_fn_func_sync_set_library_online(
     RustBuffer coordinator_id, RustBuffer library_id, int8_t online,
     double now_ms, RustCallStatus *uniffi_out_err);
+/*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_tts_change_usage(
+    RustBuffer config_path, RustBuffer provider_id, RustBuffer models);
 /*handle*/ uint64_t
 uniffi_my_reader_core_ffi_fn_func_tts_discover_models(RustBuffer profile,
                                                       RustBuffer credential);
@@ -781,12 +793,15 @@ uint16_t uniffi_my_reader_core_ffi_checksum_func_llm_remove_profile();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_llm_save_provider();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_llm_select_profile();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_llm_upsert_profile();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_narration_analyze_batch();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_narration_cancel();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_narration_clear_reading_plan();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_narration_get_settings();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_narration_import();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_narration_merge_settings();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_narration_prepare();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_narration_preview_merge();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_narration_reading_plan();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_narration_resolve_settings();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_narration_save_settings();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_narration_draft_characters();
@@ -828,6 +843,7 @@ uint16_t uniffi_my_reader_core_ffi_checksum_func_sync_resume();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_sync_run_library();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_sync_safety_sweep_delay_ms();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_sync_set_library_online();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_tts_change_usage();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_tts_discover_models();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_tts_discover_qwen_voices();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_tts_get_config();
@@ -3760,6 +3776,19 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                 ->cpp_uniffi_my_reader_core_ffi_fn_func_llm_upsert_profile(
                     rt, thisVal, args, count);
           });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_narration_analyze_batch"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt,
+              "ubrn_uniffi_my_reader_core_ffi_fn_func_narration_analyze_batch"),
+          4,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_fn_func_narration_analyze_batch(
+                    rt, thisVal, args, count);
+          });
   props["ubrn_uniffi_my_reader_core_ffi_fn_func_narration_cancel"] =
       jsi::Function::createFromHostFunction(
           rt,
@@ -3770,6 +3799,18 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                  const jsi::Value *args, size_t count) -> jsi::Value {
             return this->cpp_uniffi_my_reader_core_ffi_fn_func_narration_cancel(
                 rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_narration_clear_reading_plan"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_fn_"
+                                        "func_narration_clear_reading_plan"),
+          4,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_fn_func_narration_clear_reading_plan(
+                    rt, thisVal, args, count);
           });
   props["ubrn_uniffi_my_reader_core_ffi_fn_func_narration_get_settings"] =
       jsi::Function::createFromHostFunction(
@@ -3832,12 +3873,25 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                 ->cpp_uniffi_my_reader_core_ffi_fn_func_narration_preview_merge(
                     rt, thisVal, args, count);
           });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_narration_reading_plan"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt,
+              "ubrn_uniffi_my_reader_core_ffi_fn_func_narration_reading_plan"),
+          5,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_fn_func_narration_reading_plan(
+                    rt, thisVal, args, count);
+          });
   props["ubrn_uniffi_my_reader_core_ffi_fn_func_narration_resolve_settings"] =
       jsi::Function::createFromHostFunction(
           rt,
           jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_fn_"
                                         "func_narration_resolve_settings"),
-          4,
+          5,
           [this](jsi::Runtime &rt, const jsi::Value &thisVal,
                  const jsi::Value *args, size_t count) -> jsi::Value {
             return this
@@ -4296,6 +4350,17 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
             return this
                 ->cpp_uniffi_my_reader_core_ffi_fn_func_sync_set_library_online(
                     rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_tts_change_usage"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt, "ubrn_uniffi_my_reader_core_ffi_fn_func_tts_change_usage"),
+          3,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_my_reader_core_ffi_fn_func_tts_change_usage(
+                rt, thisVal, args, count);
           });
   props["ubrn_uniffi_my_reader_core_ffi_fn_func_tts_discover_models"] =
       jsi::Function::createFromHostFunction(
@@ -6217,6 +6282,20 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                 ->cpp_uniffi_my_reader_core_ffi_checksum_func_llm_upsert_profile(
                     rt, thisVal, args, count);
           });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_analyze_"
+        "batch"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt,
+                                    "ubrn_uniffi_my_reader_core_ffi_checksum_"
+                                    "func_narration_analyze_batch"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_narration_analyze_batch(
+                    rt, thisVal, args, count);
+          });
   props["ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_cancel"] =
       jsi::Function::createFromHostFunction(
           rt,
@@ -6228,6 +6307,20 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                  const jsi::Value *args, size_t count) -> jsi::Value {
             return this
                 ->cpp_uniffi_my_reader_core_ffi_checksum_func_narration_cancel(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_clear_reading_"
+        "plan"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt,
+                                    "ubrn_uniffi_my_reader_core_ffi_checksum_"
+                                    "func_narration_clear_reading_plan"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_narration_clear_reading_plan(
                     rt, thisVal, args, count);
           });
   props["ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_get_settings"] =
@@ -6294,6 +6387,18 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                  const jsi::Value *args, size_t count) -> jsi::Value {
             return this
                 ->cpp_uniffi_my_reader_core_ffi_checksum_func_narration_preview_merge(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_reading_plan"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_"
+                                        "checksum_func_narration_reading_plan"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_narration_reading_plan(
                     rt, thisVal, args, count);
           });
   props["ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_resolve_"
@@ -6792,6 +6897,19 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                  const jsi::Value *args, size_t count) -> jsi::Value {
             return this
                 ->cpp_uniffi_my_reader_core_ffi_checksum_func_sync_set_library_online(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_change_usage"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt,
+              "ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_change_usage"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_tts_change_usage(
                     rt, thisVal, args, count);
           });
   props["ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_discover_models"] =
@@ -8570,6 +8688,23 @@ NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_fn_func_llm_upsert_profile(
   return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
                                                          value);
 }
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_fn_func_narration_analyze_batch(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_fn_func_narration_analyze_batch(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[1]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[2]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[3]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
+}
 jsi::Value
 NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_fn_func_narration_cancel(
     jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
@@ -8578,6 +8713,22 @@ NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_fn_func_narration_cancel(
       uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
                                                                args[0]),
       uniffi_jsi::Bridging<double>::fromJs(rt, callInvoker, args[1]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_fn_func_narration_clear_reading_plan(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_fn_func_narration_clear_reading_plan(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]),
+      uniffi_jsi::Bridging<double>::fromJs(rt, callInvoker, args[1]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[2]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[3]));
 
   return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
                                                          value);
@@ -8662,6 +8813,24 @@ jsi::Value NativeMyReaderCoreFfi::
                                                          value);
 }
 jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_fn_func_narration_reading_plan(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_fn_func_narration_reading_plan(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[1]),
+      uniffi_jsi::Bridging<double>::fromJs(rt, callInvoker, args[2]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[3]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[4]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
+}
+jsi::Value NativeMyReaderCoreFfi::
     cpp_uniffi_my_reader_core_ffi_fn_func_narration_resolve_settings(
         jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
         size_t count) {
@@ -8672,7 +8841,9 @@ jsi::Value NativeMyReaderCoreFfi::
                                                                args[1]),
       uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
                                                                args[2]),
-      uniffi_jsi::Bridging<double>::fromJs(rt, callInvoker, args[3]));
+      uniffi_jsi::Bridging<double>::fromJs(rt, callInvoker, args[3]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[4]));
 
   return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
                                                          value);
@@ -9331,6 +9502,21 @@ jsi::Value NativeMyReaderCoreFfi::
 
   return uniffi::my_reader_core_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker,
                                                                 value);
+}
+jsi::Value
+NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_fn_func_tts_change_usage(
+    jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+    size_t count) {
+  auto value = uniffi_my_reader_core_ffi_fn_func_tts_change_usage(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[1]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[2]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
 }
 jsi::Value NativeMyReaderCoreFfi::
     cpp_uniffi_my_reader_core_ffi_fn_func_tts_discover_models(
@@ -10937,10 +11123,28 @@ jsi::Value NativeMyReaderCoreFfi::
   return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
 }
 jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_narration_analyze_batch(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value =
+      uniffi_my_reader_core_ffi_checksum_func_narration_analyze_batch();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
     cpp_uniffi_my_reader_core_ffi_checksum_func_narration_cancel(
         jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
         size_t count) {
   auto value = uniffi_my_reader_core_ffi_checksum_func_narration_cancel();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_narration_clear_reading_plan(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value =
+      uniffi_my_reader_core_ffi_checksum_func_narration_clear_reading_plan();
 
   return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
 }
@@ -10983,6 +11187,14 @@ jsi::Value NativeMyReaderCoreFfi::
         size_t count) {
   auto value =
       uniffi_my_reader_core_ffi_checksum_func_narration_preview_merge();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_narration_reading_plan(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_checksum_func_narration_reading_plan();
 
   return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
 }
@@ -11308,6 +11520,14 @@ jsi::Value NativeMyReaderCoreFfi::
         size_t count) {
   auto value =
       uniffi_my_reader_core_ffi_checksum_func_sync_set_library_online();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_tts_change_usage(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_checksum_func_tts_change_usage();
 
   return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
 }

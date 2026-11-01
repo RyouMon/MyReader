@@ -1,4 +1,10 @@
 export const sharedZhCN = {
+  ttsRemoval: {
+    book: "书籍 #{{id}}",
+    global: "全局朗读设置",
+    reset: "以下设置将恢复默认：\n{{usages}}",
+    confirm: "保存这些修改？",
+  },
   rowActions: {
     edit: "编辑 {{name}}",
     delete: "删除 {{name}}",
@@ -74,6 +80,16 @@ export const sharedZhCN = {
     advanced: "高级",
   },
   narration: {
+    plan: {
+      jump: "跳转",
+      title: "朗读计划",
+      showMarks: "在正文中显示标注",
+      analyze: "分析当前章节",
+      analyzing: "正在分析…",
+      empty: "暂无朗读计划",
+      select: "选择段落",
+      clearSelected: "清除所选",
+    },
     select: "选择",
     deselect: "取消选择",
     selected: "已选人物：{{count}}",

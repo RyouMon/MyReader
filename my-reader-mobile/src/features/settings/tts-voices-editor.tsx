@@ -1,3 +1,4 @@
+import { useTtsRemoval } from "@/src/domain/tts/use-tts-removal-confirmation"
 import type { ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import {
@@ -32,6 +33,7 @@ export function TtsVoicesEditor({
   onChange: (voices: string[]) => void
 }) {
   const { t } = useTranslation()
+  const confirmRemoval = useTtsRemoval()
   const palette = useThemePalette()
   const scoped = usesModelVoices(draft)
   const voices = scoped ? (model?.voices ?? []) : draft.voices
@@ -41,6 +43,18 @@ export function TtsVoicesEditor({
     const next = [...voices]
     next[index] = id
     onChange(next)
+  }
+  const remove = async (index: number) => {
+    const next = voices.filter((_, i) => i !== index)
+    const provider = scoped
+      ? {
+          ...draft,
+          models: draft.models.map((item) =>
+            item.id === model?.id ? { ...item, voices: next } : item,
+          ),
+        }
+      : { ...draft, voices: next }
+    if (await confirmRemoval(provider, voices[index])) onChange(next)
   }
   return (
     <View className="gap-3">
@@ -105,7 +119,7 @@ export function TtsVoicesEditor({
                   icon={{ ios: "trash", android: "delete-outline" }}
                   tone="danger"
                   size="sm"
-                  onPress={() => onChange(voices.filter((_, i) => i !== index))}
+                  onPress={() => void remove(index)}
                 />
               </>
             }

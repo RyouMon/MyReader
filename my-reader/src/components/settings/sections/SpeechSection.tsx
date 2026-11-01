@@ -1,3 +1,8 @@
+import { ttsUsageMessage } from "@my-reader/tools/tts-selection-usage"
+import {
+  TtsRemovalContext,
+  useTtsRemovalConfirmation,
+} from "@/hooks/useTtsRemovalConfirmation"
 import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
 import { FormTextField } from "@/components/common/FormTextField"
 import { FormScrollArea } from "@/components/common/FormScrollArea"
@@ -358,6 +363,7 @@ export function TtsProviderManager({
   themeStyle,
 }: TtsProviderManagerProps) {
   const { t } = useTranslation()
+  const removal = useTtsRemovalConfirmation()
   const [draft, setDraft] = useState<ProfileDraft | null>(null)
   const [providerDialogOpen, setProviderDialogOpen] = useState(false)
   const [providerError, setProviderError] = useState<string | null>(null)
@@ -410,6 +416,7 @@ export function TtsProviderManager({
       clearCredential: draft.clearCredential,
     }
     try {
+      if (!(await removal.confirm(draft))) return
       await onConfigChange(await api.saveTtsProvider(input))
       setDraft(null)
       setProviderDialogOpen(false)
@@ -422,6 +429,7 @@ export function TtsProviderManager({
   }
 
   const openAddProvider = () => {
+    removal.reset()
     setDraft(null)
     setProviderError(null)
     setMessage(null)
@@ -429,6 +437,7 @@ export function TtsProviderManager({
   }
 
   const openEditProvider = (profile: TtsProviderDto) => {
+    removal.reset()
     setDraft(profileDraft(profile))
     setProviderError(null)
     setMessage(null)
@@ -438,6 +447,7 @@ export function TtsProviderManager({
   const handleProviderDialogOpenChange = (open: boolean) => {
     setProviderDialogOpen(open)
     if (!open) {
+      removal.reset()
       setDraft(null)
       setProviderError(null)
     }
@@ -455,73 +465,82 @@ export function TtsProviderManager({
   }
 
   return (
-    <div data-slot="tts-provider-manager" style={themeStyle}>
-      {message ? (
-        <div className="mb-3">
-          <StatusNotice tone="success">{message}</StatusNotice>
+    <TtsRemovalContext.Provider value={removal.confirm}>
+      <div data-slot="tts-provider-manager" style={themeStyle}>
+        {message ? (
+          <div className="mb-3">
+            <StatusNotice tone="success">{message}</StatusNotice>
+          </div>
+        ) : null}
+        {config.providers.length ? (
+          <GroupList>
+            {config.providers.map((profile) => (
+              <GroupListItem key={profile.id}>
+                <AppRow
+                  head={
+                    <div className="flex size-8 items-center justify-center rounded-md bg-accent text-accent-foreground">
+                      <Server className="size-4" />
+                    </div>
+                  }
+                  body={profile.name}
+                  detail={`${profile.kind === "qwen" ? "Qwen" : t("settings.speech.openAiCompatible")} · ${profile.endpoint}`}
+                  actions={
+                    <RowActions
+                      name={profile.name}
+                      disabled={saving}
+                      onEdit={() => openEditProvider(profile)}
+                      getDeleteDescription={async () =>
+                        ttsUsageMessage(
+                          await api.getTtsChangeUsage(profile.id, []),
+                          t,
+                        )
+                      }
+                      onDelete={() => removeProfile(profile.id)}
+                    />
+                  }
+                />
+              </GroupListItem>
+            ))}
+          </GroupList>
+        ) : null}
+        <div className="mt-3 overflow-hidden rounded-lg border border-dashed border-border">
+          <AddPanelButton
+            label={t("settings.speech.addProvider")}
+            disabled={saving}
+            onClick={openAddProvider}
+          />
         </div>
-      ) : null}
-      {config.providers.length ? (
-        <GroupList>
-          {config.providers.map((profile) => (
-            <GroupListItem key={profile.id}>
-              <AppRow
-                head={
-                  <div className="flex size-8 items-center justify-center rounded-md bg-accent text-accent-foreground">
-                    <Server className="size-4" />
-                  </div>
-                }
-                body={profile.name}
-                detail={`${profile.kind === "qwen" ? "Qwen" : t("settings.speech.openAiCompatible")} · ${profile.endpoint}`}
-                actions={
-                  <RowActions
-                    name={profile.name}
-                    disabled={saving}
-                    onEdit={() => openEditProvider(profile)}
-                    onDelete={() => removeProfile(profile.id)}
-                  />
-                }
-              />
-            </GroupListItem>
-          ))}
-        </GroupList>
-      ) : null}
-      <div className="mt-3 overflow-hidden rounded-lg border border-dashed border-border">
-        <AddPanelButton
-          label={t("settings.speech.addProvider")}
-          disabled={saving}
-          onClick={openAddProvider}
+
+        <ProviderDialog
+          open={providerDialogOpen}
+          draft={draft}
+          error={providerError || qwenPresets.error}
+          qwenPresets={qwenPresets.presets}
+          saving={saving}
+          onOpenChange={handleProviderDialogOpenChange}
+          onChooseOpenAi={() => setDraft(newProfileDraft())}
+          onChooseQwen={(preset) => {
+            setDraft({
+              ...newProfileDraft(),
+              kind: "qwen",
+              name: t(qwenTtsSourceKeys(preset.id).title),
+              endpoint: preset.endpoint,
+              modelScopedVoices: true,
+              models: [newTtsModel()],
+              voices: [],
+            })
+          }}
+          onBack={() => {
+            setDraft(null)
+            setProviderError(null)
+          }}
+          onChange={setDraft}
+          onSave={() => void saveProfile()}
+          themeStyle={themeStyle}
         />
       </div>
-
-      <ProviderDialog
-        open={providerDialogOpen}
-        draft={draft}
-        error={providerError || qwenPresets.error}
-        qwenPresets={qwenPresets.presets}
-        saving={saving}
-        onOpenChange={handleProviderDialogOpenChange}
-        onChooseOpenAi={() => setDraft(newProfileDraft())}
-        onChooseQwen={(preset) => {
-          setDraft({
-            ...newProfileDraft(),
-            kind: "qwen",
-            name: t(qwenTtsSourceKeys(preset.id).title),
-            endpoint: preset.endpoint,
-            modelScopedVoices: true,
-            models: [newTtsModel()],
-            voices: [],
-          })
-        }}
-        onBack={() => {
-          setDraft(null)
-          setProviderError(null)
-        }}
-        onChange={setDraft}
-        onSave={() => void saveProfile()}
-        themeStyle={themeStyle}
-      />
-    </div>
+      {removal.dialog}
+    </TtsRemovalContext.Provider>
   )
 }
 

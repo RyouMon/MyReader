@@ -167,6 +167,7 @@ abstract class BaseReaderFragment : Fragment() {
               if (decorable.supportsDecorationStyle(Decoration.Style.Underline::class)) add("underline")
               if (decorable.supportsDecorationStyle(ReaderNoteMarkerDecorationStyle::class)) {
                 add("myreader-note-marker")
+                add("myreader-narration")
               }
             }
           } ?: emptyList()

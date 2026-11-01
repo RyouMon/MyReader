@@ -55,6 +55,16 @@
     "advanced": "고급"
   },
   "narration": {
+    "plan": {
+      "jump": "이동",
+      "title": "낭독 계획",
+      "showMarks": "본문에 주석 표시",
+      "analyze": "현재 장 분석",
+      "analyzing": "분석 중…",
+      "empty": "낭독 계획이 없습니다",
+      "select": "문단 선택",
+      "clearSelected": "선택 항목 지우기"
+    },
     "select": "선택",
     "deselect": "선택 해제",
     "selected": "선택한 인물: {{count}}",
@@ -457,5 +467,11 @@
     "removeModel": "모델 제거",
     "endpointHint": "서비스 URL을 /v1 경로까지 정확히 입력하세요.",
     "modelScopedVoices": "모델별 음성 설정"
+  },
+  "ttsRemoval": {
+    "book": "도서 #{{id}}",
+    "global": "전체 읽기 설정",
+    "reset": "다음 설정이 기본값으로 돌아갑니다:\n{{usages}}",
+    "confirm": "변경 사항을 저장할까요?"
   }
 }

@@ -58,6 +58,7 @@ class EPUBViewController: ReaderViewController, SelectionActionHandlerDelegate {
       let epubPreferences = preferences.map(preferencesRecordToEPUB) ?? .empty
       var decorationTemplates = HTMLDecorationTemplate.defaultTemplates()
       decorationTemplates[readerNoteMarkerStyleId] = readerNoteMarkerTemplate()
+      decorationTemplates[readerNarrationStyleId] = readerNarrationTemplate()
       let navigator = try EPUBNavigatorViewController(
         publication: publication,
         initialLocation: locator,

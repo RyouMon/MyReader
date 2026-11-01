@@ -50,7 +50,11 @@ vi.mock("@/lib/tauri-api", () => ({
 }))
 
 vi.mock("@/lib/tts/events", () => ({
+  TTS_CONFIG_CHANGED_EVENT: "myreader://tts-config-changed",
   notifyTtsConfigChanged: mocks.notifyTtsConfigChanged,
+}))
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: vi.fn().mockResolvedValue(() => {}),
 }))
 
 const config: TtsConfigDto = {

@@ -255,7 +255,7 @@ function captureTextPoint(
   rect: DOMRect,
 ): ReaderViewportCapture | null {
   const parent = point.node.parentElement
-  if (!parent) return null
+  if (!parent || parent.closest("[data-myreader-overlay]")) return null
   const cssSelector = stableCssSelector(
     window,
     parent.closest(READABLE_BLOCK_SELECTOR) ?? parent,
@@ -479,7 +479,8 @@ function leadingVisibleTextCandidate(
   best: VisibleTextCandidate | null,
 ): VisibleTextCandidate | null {
   const parent = node.parentElement
-  if (!node.data.trim() || !parent) return best
+  if (!node.data.trim() || !parent || parent.closest("[data-myreader-overlay]"))
+    return best
   const style = window.getComputedStyle(parent)
   if (style.display === "none" || style.visibility === "hidden") return best
   const range = window.document.createRange()

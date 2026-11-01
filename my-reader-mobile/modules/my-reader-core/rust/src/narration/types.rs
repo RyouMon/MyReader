@@ -234,6 +234,28 @@ impl TryFrom<NarrationSpeech> for core::NarrationSpeech {
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
+pub struct NarrationPlanEntry {
+    pub id: String,
+    pub source_key: String,
+    pub position: f64,
+    pub character_id: String,
+    pub character_name: String,
+    pub speech: NarrationSpeech,
+}
+impl From<core::NarrationPlanEntry> for NarrationPlanEntry {
+    fn from(value: core::NarrationPlanEntry) -> Self {
+        Self {
+            id: value.id,
+            source_key: value.source_key,
+            position: value.position,
+            character_id: value.character_id,
+            character_name: value.character_name,
+            speech: value.speech.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
 pub struct NarrationMergeSource {
     pub scope_id: String,
     pub title: String,

@@ -175,7 +175,7 @@ private let readerViewportAnchorRuntimeScript = #"""
   function captureTextPoint(window, point, rect) {
       var _a;
       const parent = point.node.parentElement;
-      if (!parent)
+      if (!parent || parent.closest("[data-myreader-overlay]"))
           return null;
       const cssSelector = stableCssSelector(window, (_a = parent.closest(READABLE_BLOCK_SELECTOR)) !== null && _a !== void 0 ? _a : parent);
       const pointSelector = stableCssSelector(window, parent);
@@ -328,7 +328,7 @@ private let readerViewportAnchorRuntimeScript = #"""
   }
   function leadingVisibleTextCandidate(window, node, best) {
       const parent = node.parentElement;
-      if (!node.data.trim() || !parent)
+      if (!node.data.trim() || !parent || parent.closest("[data-myreader-overlay]"))
           return best;
       const style = window.getComputedStyle(parent);
       if (style.display === "none" || style.visibility === "hidden")
