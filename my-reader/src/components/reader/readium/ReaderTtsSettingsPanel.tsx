@@ -1,11 +1,12 @@
-import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
 import { formatTtsLanguageName } from "@my-reader/tools/reader-tts-language"
 import { ChevronRight, Loader2, Settings2 } from "lucide-react"
 import type { CSSProperties } from "react"
 import { useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
 import { FormSlider } from "@/components/common/FormSlider"
-import { TTS_PITCH_RANGE, TTS_SPEED_RANGE } from "@/constants/tts"
+import { FormSwitch } from "@/components/common/FormSwitch"
+import { VoiceSelect } from "@/components/common/VoiceSelect"
 import { readerChromeThemeStyle } from "@/components/reader/shared/ReaderChromeShell"
 import {
   READER_SETTINGS_CONTENT_CLASS,
@@ -13,14 +14,15 @@ import {
   ReaderSidePanelHeader,
   ReaderSidePanelScrollArea,
 } from "@/components/reader/shared/ReaderSidePanelChrome"
-import { openTtsProviderSettings } from "@/lib/settingsWindow"
-import { FormSwitch } from "@/components/common/FormSwitch"
-import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
-import type { CharacterIntroduction } from "@/lib/readium/characterIntroductions"
+import { Separator } from "@/components/ui/separator"
+import { TTS_PITCH_RANGE, TTS_SPEED_RANGE } from "@/constants/tts"
 import type { EpubTtsSession } from "@/hooks/reader/useEpubTtsSession"
-import { api } from "@/lib/tauri-api"
+import { useTtsPreviewPlayer } from "@/hooks/useTtsPreviewPlayer"
 import { errorMessage } from "@/lib/error-presentation"
+import type { CharacterIntroduction } from "@/lib/readium/characterIntroductions"
+import { openTtsProviderSettings } from "@/lib/settingsWindow"
+import { api } from "@/lib/tauri-api"
 import type {
   TtsConfigDto,
   TtsPlaybackPreferencesDto,
@@ -96,6 +98,19 @@ export function ReaderTtsSettingsPanel({
     }
   }, [visible])
 
+  const { preview, previewVoiceId, stopPreview } = useTtsPreviewPlayer({
+    config,
+    engineId:
+      config?.defaultEngine.kind === "provider"
+        ? config.defaultEngine.profileId
+        : "system",
+    voiceId: session.currentVoiceId,
+    onError: setError,
+  })
+  useEffect(() => {
+    if (!visible || narrationView) stopPreview()
+  }, [visible, narrationView, stopPreview])
+
   const applyConfig = async (
     next: Awaited<ReturnType<typeof api.getTtsConfig>>,
   ) => {
@@ -156,7 +171,7 @@ export function ReaderTtsSettingsPanel({
       />
 
       <section className="flex flex-col gap-2">
-        <FormSelect
+        <VoiceSelect
           value={session.currentVoiceId}
           disabled={session.voices.length === 0}
           onValueChange={session.setVoice}
@@ -165,14 +180,17 @@ export function ReaderTtsSettingsPanel({
           labelMode="external"
           placeholder={t("reader.tts.loadingVoices")}
           themeStyle={themeStyle}
-        >
-          {session.voices.map((voice) => (
-            <FormSelectItem key={voiceId(voice)} value={voiceId(voice)}>
-              {voice.label || voice.name} ·{" "}
-              {formatTtsLanguageName(voice.language, interfaceLanguage)}
-            </FormSelectItem>
-          ))}
-        </FormSelect>
+          previewVoiceId={previewVoiceId}
+          onPreview={(id) => {
+            session.pause()
+            void preview(id)
+          }}
+          onStopPreview={stopPreview}
+          options={session.voices.map((voice) => ({
+            value: voiceId(voice),
+            label: `${voice.label || voice.name} · ${formatTtsLanguageName(voice.language, interfaceLanguage)}`,
+          }))}
+        />
       </section>
 
       <section className="flex flex-col gap-4">

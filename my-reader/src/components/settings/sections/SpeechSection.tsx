@@ -1,59 +1,60 @@
-import { ttsUsageMessage } from "@my-reader/tools/tts-selection-usage"
-import {
-  TtsRemovalContext,
-  useTtsRemovalConfirmation,
-} from "@/hooks/useTtsRemovalConfirmation"
-import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
-import { FormTextField } from "@/components/common/FormTextField"
-import { FormScrollArea } from "@/components/common/FormScrollArea"
-import { FormSlider } from "@/components/common/FormSlider"
-import {
-  TtsProviderModels,
-  TtsTestModelSelect,
-} from "@/components/settings/TtsProviderModels"
-import {
-  newTtsModel,
-  modelVoices as usesModelVoices,
-  type TtsProviderDraft,
-} from "@/lib/tts-provider-draft"
-import { FieldGroup } from "@/components/ui/field"
-import { formatTtsLanguageName } from "@my-reader/tools/reader-tts-language"
 import { qwenTtsSourceKeys } from "@my-reader/i18n/desktop"
+import { formatTtsLanguageName } from "@my-reader/tools/reader-tts-language"
+import { ttsUsageMessage } from "@my-reader/tools/tts-selection-usage"
 import { Loader2, Server, Volume2 } from "lucide-react"
 import { type CSSProperties, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { AddPanelButton } from "@/components/common/AddPanelButton"
 import { AppRow } from "@/components/common/AppRow"
-import { RowActions } from "@/components/common/RowActions"
-import { SaveButton } from "@/components/common/SaveButton"
-import { TtsPreviewButton } from "@/components/common/TtsPreviewButton"
-import { useTtsPreviewPlayer } from "@/hooks/useTtsPreviewPlayer"
-import { GroupList, GroupListItem } from "@/components/common/GroupList"
 import {
   FlowDialogChoice,
   FlowDialogContent,
   FlowDialogHeader,
 } from "@/components/common/FlowDialog"
+import { FormScrollArea } from "@/components/common/FormScrollArea"
+import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
+import { FormSlider } from "@/components/common/FormSlider"
+import { FormSwitch } from "@/components/common/FormSwitch"
+import { FormTextField } from "@/components/common/FormTextField"
+import { GroupList, GroupListItem } from "@/components/common/GroupList"
+import { RowActions } from "@/components/common/RowActions"
+import { SaveButton } from "@/components/common/SaveButton"
 import { SectionHeader } from "@/components/common/SectionHeader"
 import { StatusNotice } from "@/components/common/StatusNotice"
+import { TtsPreviewButton } from "@/components/common/TtsPreviewButton"
+import { VoiceSelect } from "@/components/common/VoiceSelect"
+import {
+  TtsProviderModels,
+  TtsTestModelSelect,
+} from "@/components/settings/TtsProviderModels"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogFooter } from "@/components/ui/dialog"
+import { FieldGroup } from "@/components/ui/field"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { FormSwitch } from "@/components/common/FormSwitch"
-import { useProviderTtsVoices, useQwenTtsPresets } from "@/hooks/useQwenTts"
-import { useFormValidation } from "@/hooks/useFormValidation"
 import { TTS_PITCH_RANGE, TTS_SPEED_RANGE } from "@/constants/tts"
-import { api } from "@/lib/tauri-api"
+import { useFormValidation } from "@/hooks/useFormValidation"
+import { useProviderTtsVoices, useQwenTtsPresets } from "@/hooks/useQwenTts"
+import { useTtsPreviewPlayer } from "@/hooks/useTtsPreviewPlayer"
+import {
+  TtsRemovalContext,
+  useTtsRemovalConfirmation,
+} from "@/hooks/useTtsRemovalConfirmation"
 import { errorMessage } from "@/lib/error-presentation"
+import { api } from "@/lib/tauri-api"
 import type {
   QwenTtsPresetDto,
   TtsConfigDto,
   TtsPlaybackPreferencesDto,
-  TtsProviderProfileDto,
   TtsProviderDto,
+  TtsProviderProfileDto,
 } from "@/lib/tauri-specta"
 import { notifyTtsConfigChanged } from "@/lib/tts/events"
+import {
+  newTtsModel,
+  type TtsProviderDraft,
+  modelVoices as usesModelVoices,
+} from "@/lib/tts-provider-draft"
 
 type ProfileDraft = TtsProviderDraft
 
@@ -137,15 +138,18 @@ export default function SpeechSection() {
     selectedEngine,
     selectedProfile,
   )
-  const { preview, previewing, stopPreview } = useTtsPreviewPlayer({
-    config,
-    engineId:
-      selectedEngine?.kind === "provider" ? selectedEngine.profileId : "system",
-    voiceId: selectedDefaultVoiceId,
-    systemVoices,
-    language: previewLanguage,
-    onError: setError,
-  })
+  const { preview, previewing, previewVoiceId, stopPreview } =
+    useTtsPreviewPlayer({
+      config,
+      engineId:
+        selectedEngine?.kind === "provider"
+          ? selectedEngine.profileId
+          : "system",
+      voiceId: selectedDefaultVoiceId,
+      systemVoices,
+      language: previewLanguage,
+      onError: setError,
+    })
 
   useEffect(() => {
     let cancelled = false
@@ -268,6 +272,9 @@ export default function SpeechSection() {
               previewLanguage={previewLanguage}
               selectEngine={selectEngine}
               selectVoice={selectVoice}
+              preview={preview}
+              previewVoiceId={previewVoiceId}
+              stopPreview={stopPreview}
             />
             <FormSlider
               {...TTS_SPEED_RANGE}
@@ -789,6 +796,9 @@ function DefaultEngineSettings({
   previewLanguage,
   selectEngine,
   selectVoice,
+  preview,
+  previewVoiceId,
+  stopPreview,
 }: {
   config: TtsConfigDto
   saving: boolean
@@ -797,6 +807,9 @@ function DefaultEngineSettings({
   providerVoices: ReturnType<typeof useProviderTtsVoices>
   previewLanguage: string
   selectEngine: (id?: string) => Promise<void>
+  preview: (id?: string) => Promise<void>
+  previewVoiceId: string | null
+  stopPreview: () => void
   selectVoice: (id: string) => Promise<void>
 }) {
   const { t } = useTranslation()
@@ -825,7 +838,7 @@ function DefaultEngineSettings({
           </FormSelectItem>
         ))}
       </FormSelect>
-      <FormSelect
+      <VoiceSelect
         value={selectedDefaultVoiceId || AUTOMATIC_VOICE_VALUE}
         disabled={saving}
         onValueChange={(value) =>
@@ -834,30 +847,29 @@ function DefaultEngineSettings({
         id="tts-default-voice"
         label={t("reader.tts.voice")}
         labelMode="external"
-      >
-        {config.defaultEngine.kind === "system" ? (
-          <>
-            <FormSelectItem value={AUTOMATIC_VOICE_VALUE}>
-              {t("settings.speech.automaticVoice")}
-            </FormSelectItem>
-            {systemVoices.map((voice) => (
-              <FormSelectItem
-                key={systemVoiceId(voice)}
-                value={systemVoiceId(voice)}
-              >
-                {voice.name} ·{" "}
-                {formatTtsLanguageName(voice.lang, previewLanguage)}
-              </FormSelectItem>
-            ))}
-          </>
-        ) : (
-          providerVoices.map((voice) => (
-            <FormSelectItem key={voice.id} value={voice.id}>
-              {voice.id}
-            </FormSelectItem>
-          ))
-        )}
-      </FormSelect>
+        previewVoiceId={
+          previewVoiceId === "" ? AUTOMATIC_VOICE_VALUE : previewVoiceId
+        }
+        onPreview={(id) => void preview(id === AUTOMATIC_VOICE_VALUE ? "" : id)}
+        onStopPreview={stopPreview}
+        options={
+          config.defaultEngine.kind === "system"
+            ? [
+                {
+                  value: AUTOMATIC_VOICE_VALUE,
+                  label: t("settings.speech.automaticVoice"),
+                },
+                ...systemVoices.map((voice) => ({
+                  value: systemVoiceId(voice),
+                  label: `${voice.name} · ${formatTtsLanguageName(voice.lang, previewLanguage)}`,
+                })),
+              ]
+            : providerVoices.map((voice) => ({
+                value: voice.id,
+                label: voice.id,
+              }))
+        }
+      />
     </>
   )
 }

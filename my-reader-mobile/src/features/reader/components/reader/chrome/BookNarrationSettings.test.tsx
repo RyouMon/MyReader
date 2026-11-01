@@ -241,8 +241,8 @@ it.each([
 
 const mockStopPreview = jest.fn()
 const mockPreviewOptions = jest.fn()
-jest.mock("@/src/features/reader/tts/use-reader-tts-preview", () => ({
-  useReaderTtsPreview: (options: unknown) => {
+jest.mock("@/src/domain/tts/use-tts-preview", () => ({
+  useTtsPreview: (options: unknown) => {
     mockPreviewOptions(options)
     return {
       canPreview: true,

@@ -8,25 +8,27 @@ import type { MenuAction } from "@react-native-menu/menu"
 import { router, useFocusEffect } from "expo-router"
 import {
   forwardRef,
+  type ReactNode,
   useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from "react"
 import { useTranslation } from "react-i18next"
 import {
   ActivityIndicator,
   BackHandler,
   Platform,
-  StyleSheet,
   View as RNView,
+  StyleSheet,
 } from "react-native"
 import { Gesture, GestureDetector } from "react-native-gesture-handler"
 import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
 import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
+import { useTtsPreview } from "@/src/domain/tts/use-tts-preview"
+import { errorMessage } from "@/src/i18n/error-message"
 import {
   getTtsConfig,
   listTtsVoices,
@@ -37,16 +39,14 @@ import {
   type TtsLanguageVoice,
   type TtsPlayback,
 } from "@/src/services/core/tts"
-import { errorMessage } from "@/src/i18n/error-message"
 import { Text, View } from "@/tw"
-import { useReaderTtsPreview } from "@/src/features/reader/tts/use-reader-tts-preview"
-import ReaderSettingsSheetContainer from "./ReaderSettingsSheetContainer"
-import type { ReaderSettingsSheetRef } from "./ReaderSettingsSheetContainer.types"
 import {
   BookNarrationSettings,
   type NarrationBook,
   type NarrationSubview,
 } from "./BookNarrationSettings"
+import ReaderSettingsSheetContainer from "./ReaderSettingsSheetContainer"
+import type { ReaderSettingsSheetRef } from "./ReaderSettingsSheetContainer.types"
 import {
   ReaderTtsPlaybackSettings,
   ReaderTtsSettingsHeader,
@@ -242,8 +242,9 @@ const ReaderTtsSettingsSheet = forwardRef<
     canPreview,
     start: startPreview,
     state: previewState,
+    previewVoiceId,
     stop: stopPreview,
-  } = useReaderTtsPreview({
+  } = useTtsPreview({
     config,
     language,
     onError: handlePreviewError,
@@ -473,7 +474,15 @@ const ReaderTtsSettingsSheet = forwardRef<
                   updatePlayback={updatePlayback}
                   previewState={previewState}
                   canPreview={canPreview}
-                  startPreview={startPreview}
+                  previewVoiceId={previewVoiceId}
+                  startPreview={(id) =>
+                    startPreview(
+                      id,
+                      visibleVoices.find(
+                        (voice) => voice.id === (id ?? selectedVoiceId),
+                      )?.language,
+                    )
+                  }
                   stopPreview={stopPreview}
                   openProviders={() => {
                     stopPreview()

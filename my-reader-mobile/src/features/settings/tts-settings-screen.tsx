@@ -3,9 +3,7 @@ import {
   type TtsVoice as SystemTtsVoice,
 } from "@my-reader/readium"
 import { formatTtsLanguageName } from "@my-reader/tools/reader-tts-language"
-import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio"
 import { useFocusEffect } from "expo-router"
-import * as Speech from "expo-speech"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { ActivityIndicator } from "react-native"
@@ -17,9 +15,12 @@ import {
   Screen,
 } from "@/src/components"
 import { TtsPreviewControls } from "@/src/components/tts-preview-controls"
+import { VoiceSelect } from "@/src/components/ui/voice-select"
 import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
 import { ttsMaximumPlaybackSpeed } from "@/src/constants/tts"
 import { useThemePalette } from "@/src/design/tokens"
+import { useTtsPreview } from "@/src/domain/tts/use-tts-preview"
+import { errorMessage } from "@/src/i18n/error-message"
 import {
   getTtsConfig,
   listTtsVoices,
@@ -27,26 +28,13 @@ import {
   setTtsDefaultEngine,
   setTtsPlayback,
   setTtsVoice,
-  synthesizeTts,
   type TtsPlayback,
   type TtsVoice,
 } from "@/src/services/core/tts"
-import { toFileUri } from "@/src/services/fs/path"
-import { errorMessage } from "@/src/i18n/error-message"
 import { View } from "@/tw"
 
 const DEFAULT_VOICE_LANGUAGE = "und"
 const PREVIEW_LANGUAGE = "en"
-const PREVIEW_MIME_TYPES = [
-  "audio/mpeg",
-  "audio/ogg",
-  "audio/aac",
-  "audio/flac",
-  "audio/wav",
-]
-
-type PreviewState = "idle" | "generating" | "loading" | "playing"
-
 function engineKey(config: MobileTtsConfig): string {
   return config.defaultEngine.kind === "provider"
     ? `provider:${config.defaultEngine.profileId}`
@@ -73,23 +61,7 @@ export default function TtsSettingsScreen() {
   const [config, setConfig] = useState<MobileTtsConfig | null>(null)
   const [voices, setVoices] = useState<SystemTtsVoice[]>([])
   const [voicesLoading, setVoicesLoading] = useState(false)
-  const [previewState, setPreviewState] = useState<PreviewState>("idle")
-  const [previewSource, setPreviewSource] = useState<string | null>(null)
-  const previewPlayer = useAudioPlayer(previewSource)
-  const previewStatus = useAudioPlayerStatus(previewPlayer)
-  const previewAbortRef = useRef<AbortController | null>(null)
-  const previewGenerationRef = useRef(0)
-  const previewRateRef = useRef(1)
   const systemVoicesLoadedRef = useRef(false)
-
-  const stopPreview = useCallback((updateState = true) => {
-    previewGenerationRef.current += 1
-    previewAbortRef.current?.abort()
-    previewAbortRef.current = null
-    void Speech.stop()
-    setPreviewSource(null)
-    if (updateState) setPreviewState("idle")
-  }, [])
 
   const loadConfig = useCallback(async () => {
     try {
@@ -98,13 +70,6 @@ export default function TtsSettingsScreen() {
       showErrorAlert(t("settings.tts.loadFailed"), errorMessage(error))
     }
   }, [t])
-
-  useFocusEffect(
-    useCallback(() => {
-      void loadConfig()
-      return () => stopPreview(false)
-    }, [loadConfig, stopPreview]),
-  )
 
   const selectedProfile =
     config?.defaultEngine.kind === "provider"
@@ -165,6 +130,34 @@ export default function TtsSettingsScreen() {
     availableVoices,
     selectedVoiceId,
     t("settings.tts.automaticVoice"),
+  )
+
+  const handlePreviewError = useCallback(
+    (error: unknown) => {
+      showErrorAlert(t("settings.tts.previewFailed"), errorMessage(error))
+    },
+    [t],
+  )
+  const {
+    start: preview,
+    state: previewState,
+    previewVoiceId,
+    stop: stopPreview,
+  } = useTtsPreview({
+    config,
+    language: previewLanguage,
+    text: t("settings.tts.previewText"),
+    voiceId: selectedVoiceId,
+    voiceLanguage: availableVoices.find((voice) => voice.id === selectedVoiceId)
+      ?.language,
+    onError: handlePreviewError,
+  })
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadConfig()
+      return () => stopPreview()
+    }, [loadConfig, stopPreview]),
   )
 
   const engineActions = useMemo<ListMenuAction[]>(() => {
@@ -234,50 +227,6 @@ export default function TtsSettingsScreen() {
     void refreshVoices()
   }, [config?.defaultEngine.kind, refreshVoices, voices.length, voicesLoading])
 
-  useEffect(() => {
-    if (
-      (previewState === "loading" || previewState === "playing") &&
-      previewStatus.error
-    ) {
-      const error = previewStatus.error
-      const timeout = setTimeout(() => {
-        setPreviewSource(null)
-        setPreviewState("idle")
-        showErrorAlert(t("settings.tts.previewFailed"), error)
-      }, 0)
-      return () => clearTimeout(timeout)
-    }
-    if (previewState === "loading" && previewSource && previewStatus.isLoaded) {
-      const timeout = setTimeout(() => {
-        try {
-          previewPlayer.setPlaybackRate(previewRateRef.current)
-          previewPlayer.play()
-          setPreviewState("playing")
-        } catch (error) {
-          setPreviewSource(null)
-          setPreviewState("idle")
-          showErrorAlert(t("settings.tts.previewFailed"), errorMessage(error))
-        }
-      }, 0)
-      return () => clearTimeout(timeout)
-    }
-    if (previewState === "playing" && previewStatus.didJustFinish) {
-      const timeout = setTimeout(() => {
-        setPreviewSource(null)
-        setPreviewState("idle")
-      }, 0)
-      return () => clearTimeout(timeout)
-    }
-  }, [
-    previewPlayer,
-    previewSource,
-    previewState,
-    previewStatus.didJustFinish,
-    previewStatus.error,
-    previewStatus.isLoaded,
-    t,
-  ])
-
   const applyEngine = useCallback(
     async (key: string) => {
       if (!config || key === selectedEngineKey) return
@@ -335,92 +284,6 @@ export default function TtsSettingsScreen() {
     [config, stopPreview, t],
   )
 
-  const preview = useCallback(async () => {
-    if (!config) return
-    stopPreview()
-    const generation = previewGenerationRef.current
-    const previewText = t("settings.tts.previewText")
-
-    if (config.defaultEngine.kind === "system") {
-      const voice = availableVoices.find(
-        (candidate) => candidate.id === selectedVoiceId,
-      )
-      setPreviewState("playing")
-      Speech.speak(previewText, {
-        language: voice?.language || previewLanguage,
-        voice: selectedVoiceId,
-        rate: config.playback.speed,
-        pitch: config.playback.pitch,
-        onDone: () => {
-          if (previewGenerationRef.current === generation) {
-            setPreviewState("idle")
-          }
-        },
-        onStopped: () => {
-          if (previewGenerationRef.current === generation) {
-            setPreviewState("idle")
-          }
-        },
-        onError: (error) => {
-          if (previewGenerationRef.current !== generation) return
-          setPreviewState("idle")
-          showErrorAlert(t("settings.tts.previewFailed"), errorMessage(error))
-        },
-      })
-      return
-    }
-
-    if (!selectedProfile || !selectedVoiceId) return
-    const controller = new AbortController()
-    previewAbortRef.current = controller
-    setPreviewState("generating")
-    try {
-      const artifact = await synthesizeTts(
-        {
-          profileId: selectedProfile.id,
-          text: previewText,
-          language: previewLanguage,
-          voiceId: selectedVoiceId,
-          speed: Math.min(
-            config.playback.speed,
-            ttsMaximumPlaybackSpeed(selectedProfile),
-          ),
-          acceptedMimeTypes: PREVIEW_MIME_TYPES,
-          cachePolicy: "bypass",
-        },
-        { signal: controller.signal },
-      )
-      if (
-        controller.signal.aborted ||
-        previewGenerationRef.current !== generation
-      ) {
-        return
-      }
-      previewAbortRef.current = null
-      previewRateRef.current = artifact.playbackRate ?? 1
-      setPreviewSource(toFileUri(artifact.path))
-      setPreviewState("loading")
-    } catch (error) {
-      if (
-        controller.signal.aborted ||
-        previewGenerationRef.current !== generation
-      ) {
-        return
-      }
-      previewAbortRef.current = null
-      setPreviewState("idle")
-      showErrorAlert(t("settings.tts.previewFailed"), errorMessage(error))
-    }
-  }, [
-    availableVoices,
-    config,
-    previewLanguage,
-    selectedProfile,
-    selectedVoiceId,
-    stopPreview,
-    t,
-  ])
-
   const persistPlayback = useCallback(
     async (patch: Partial<TtsPlayback>) => {
       if (!config) return
@@ -458,11 +321,29 @@ export default function TtsSettingsScreen() {
         actions={engineActions}
         onSelect={(id) => handleEngineAction({ nativeEvent: { event: id } })}
       />
-      <FormSelect
+      <VoiceSelect
         label={t("settings.tts.voice")}
         labelMode="external"
         value={selectedVoiceLabel}
         actions={voiceActions}
+        previewVoiceId={
+          previewVoiceId === null
+            ? null
+            : previewVoiceId
+              ? `voice:${encodeURIComponent(previewVoiceId)}`
+              : "voice:automatic"
+        }
+        onPreview={(id) => {
+          const voiceId =
+            id === "voice:automatic"
+              ? ""
+              : decodeURIComponent(id.slice("voice:".length))
+          void preview(
+            voiceId,
+            availableVoices.find((voice) => voice.id === voiceId)?.language,
+          )
+        }}
+        onStopPreview={stopPreview}
         onSelect={(id) =>
           void handleVoiceAction({ nativeEvent: { event: id } })
         }

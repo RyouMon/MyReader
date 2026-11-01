@@ -1,20 +1,21 @@
-import { useEffect, useState, type CSSProperties } from "react"
 import { useQuery } from "@tanstack/react-query"
+import { type CSSProperties, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Button } from "@/components/ui/button"
+import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
+import { FormTextField } from "@/components/common/FormTextField"
 import { SaveButton } from "@/components/common/SaveButton"
 import { TtsPreviewButton } from "@/components/common/TtsPreviewButton"
-import { FormTextField } from "@/components/common/FormTextField"
-import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
-import { Field, FieldGroup, FieldError } from "@/components/ui/field"
+import { VoiceSelect } from "@/components/common/VoiceSelect"
 import {
   READER_SETTINGS_CONTENT_CLASS,
   ReaderSidePanelFooter,
   ReaderSidePanelScrollArea,
 } from "@/components/reader/shared/ReaderSidePanelChrome"
-import { api } from "@/lib/tauri-api"
-import { errorMessage } from "@/lib/error-presentation"
+import { Button } from "@/components/ui/button"
+import { Field, FieldError, FieldGroup } from "@/components/ui/field"
 import { useTtsPreviewPlayer } from "@/hooks/useTtsPreviewPlayer"
+import { errorMessage } from "@/lib/error-presentation"
+import { api } from "@/lib/tauri-api"
 import type {
   BookCharacterDto,
   TtsConfigDto,
@@ -46,17 +47,18 @@ export function CharacterEditor({
   const [systemVoices, setSystemVoices] = useState<SpeechSynthesisVoice[]>([])
   const [previewError, setPreviewError] = useState<string | null>(null)
   const effectiveVoice = draft.voice ?? readingVoice
-  const { preview, previewing, stopPreview } = useTtsPreviewPlayer({
-    config,
-    engineId:
-      effectiveVoice.engine === "provider"
-        ? effectiveVoice.profileId
-        : "system",
-    voiceId: effectiveVoice.voiceId,
-    instructions: draft.instructions,
-    systemVoices,
-    onError: setPreviewError,
-  })
+  const { preview, previewing, previewVoiceId, stopPreview } =
+    useTtsPreviewPlayer({
+      config,
+      engineId:
+        effectiveVoice.engine === "provider"
+          ? effectiveVoice.profileId
+          : "system",
+      voiceId: effectiveVoice.voiceId,
+      instructions: draft.instructions,
+      systemVoices,
+      onError: setPreviewError,
+    })
   const provider =
     draft.voice?.engine === "provider" ? draft.voice.profileId : null
   const voices = useQuery({
@@ -161,7 +163,7 @@ export function CharacterEditor({
             </Field>
             {draft.voice ? (
               <Field>
-                <FormSelect
+                <VoiceSelect
                   themeStyle={themeStyle}
                   value={draft.voice.voiceId}
                   required
@@ -177,22 +179,21 @@ export function CharacterEditor({
                   id="character-voice"
                   label={t("narration.voice")}
                   className="w-full"
-                >
-                  {provider
-                    ? voices.data?.map((voice) => (
-                        <FormSelectItem key={voice.id} value={voice.id}>
-                          {voice.id}
-                        </FormSelectItem>
-                      ))
-                    : systemVoices.map((voice) => (
-                        <FormSelectItem
-                          key={voice.voiceURI}
-                          value={voice.voiceURI}
-                        >
-                          {voice.name}
-                        </FormSelectItem>
-                      ))}
-                </FormSelect>
+                  previewVoiceId={previewVoiceId}
+                  onPreview={(id) => void preview(id)}
+                  onStopPreview={stopPreview}
+                  options={
+                    provider
+                      ? (voices.data ?? []).map((voice) => ({
+                          value: voice.id,
+                          label: voice.id,
+                        }))
+                      : systemVoices.map((voice) => ({
+                          value: voice.voiceURI,
+                          label: voice.name,
+                        }))
+                  }
+                />
               </Field>
             ) : null}
             {voices.error ? (

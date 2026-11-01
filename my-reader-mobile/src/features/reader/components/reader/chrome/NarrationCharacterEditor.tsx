@@ -1,24 +1,24 @@
-import { useEffect, useMemo, useState } from "react"
+import { tts as readiumTts } from "@my-reader/readium"
 import { useQuery } from "@tanstack/react-query"
+import { useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Linking } from "react-native"
-import { tts as readiumTts } from "@my-reader/readium"
 import { Button } from "@/src/components"
-import { useThemePalette } from "@/src/design/tokens"
 import { TtsPreviewButton } from "@/src/components/tts-preview-controls"
 import {
-  readerFormColors,
   type ReaderChromePalette,
+  readerFormColors,
 } from "@/src/design/reader-chrome-palette"
+import { useThemePalette } from "@/src/design/tokens"
+import { useTtsPreview } from "@/src/domain/tts/use-tts-preview"
+import { errorMessage } from "@/src/i18n/error-message"
 import type {
   BookCharacter,
   NarrationVoice,
 } from "@/src/services/core/narration"
 import { listTtsVoices, type MobileTtsConfig } from "@/src/services/core/tts"
-import { useReaderTtsPreview } from "@/src/features/reader/tts/use-reader-tts-preview"
-import { errorMessage } from "@/src/i18n/error-message"
 import { Text, View } from "@/tw"
-import { ReaderSheetPage, ReaderSheetFooter } from "./ReaderSheetPage"
+import { ReaderSheetFooter, ReaderSheetPage } from "./ReaderSheetPage"
 import { ProviderTextField, ReaderTtsMenuRow } from "./ReaderTtsSettingsFields"
 
 export function NarrationCharacterEditor({
@@ -58,7 +58,7 @@ export function NarrationCharacterEditor({
     }),
     [config, effectiveVoice.engine, effectiveVoice.profileId],
   )
-  const preview = useReaderTtsPreview({
+  const preview = useTtsPreview({
     config: previewConfig,
     language,
     text: t("settings.tts.previewText"),
@@ -170,6 +170,7 @@ export function NarrationCharacterEditor({
         </>
       ) : null}
       <CharacterVoiceFields
+        preview={preview}
         draft={draft}
         setDraft={setDraft}
         config={config}
@@ -205,11 +206,13 @@ export function NarrationCharacterEditor({
 }
 
 function CharacterVoiceFields({
+  preview,
   draft,
   setDraft,
   config,
   palette,
 }: {
+  preview: ReturnType<typeof useTtsPreview>
   draft: BookCharacter
   setDraft: (value: BookCharacter) => void
   config: MobileTtsConfig
@@ -278,6 +281,15 @@ function CharacterVoiceFields({
       {draft.voice ? (
         <ReaderTtsMenuRow
           title={t("narration.voice")}
+          preview={{
+            previewVoiceId: preview.previewVoiceId,
+            onPreview: (id) =>
+              void preview.start(
+                id,
+                voices.data?.find((voice) => voice.id === id)?.language,
+              ),
+            onStopPreview: preview.stop,
+          }}
           palette={palette}
           value={
             voices.data?.find((voice) => voice.id === draft.voice?.voiceId)

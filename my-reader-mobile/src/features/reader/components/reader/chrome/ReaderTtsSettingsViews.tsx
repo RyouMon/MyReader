@@ -1,23 +1,23 @@
-import type { TtsVoice } from "@my-reader/readium"
-import type { ReactNode } from "react"
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
+import type { TtsVoice } from "@my-reader/readium"
 import type { MenuAction } from "@react-native-menu/menu"
 import { SymbolView } from "expo-symbols"
+import type { ReactNode } from "react"
 import { useTranslation } from "react-i18next"
-import { Platform, Pressable, StyleSheet, View as RNView } from "react-native"
-import { ttsMaximumPlaybackSpeed } from "@/src/constants/tts"
-import {
-  readerFormColors,
-  type ReaderChromePalette,
-} from "@/src/design/reader-chrome-palette"
+import { Platform, Pressable, View as RNView, StyleSheet } from "react-native"
 import { Button, FormSlider } from "@/src/components"
 import { TtsPreviewControls } from "@/src/components/tts-preview-controls"
+import { ttsMaximumPlaybackSpeed } from "@/src/constants/tts"
+import {
+  type ReaderChromePalette,
+  readerFormColors,
+} from "@/src/design/reader-chrome-palette"
+import type { useTtsPreview } from "@/src/domain/tts/use-tts-preview"
 import type {
   MobileTtsConfig,
   MobileTtsProviderProfile,
   TtsPlayback,
 } from "@/src/services/core/tts"
-import type { useReaderTtsPreview } from "@/src/features/reader/tts/use-reader-tts-preview"
 import { Text, View } from "@/tw"
 import { ReaderTtsMenuRow } from "./ReaderTtsSettingsFields"
 
@@ -36,6 +36,7 @@ export function ReaderTtsPlaybackSettings({
   selectVoice,
   updatePlayback,
   previewState,
+  previewVoiceId,
   canPreview,
   startPreview,
   stopPreview,
@@ -54,9 +55,10 @@ export function ReaderTtsPlaybackSettings({
   voiceActions: MenuAction[]
   selectVoice: (voiceId: string) => Promise<void>
   updatePlayback: (patch: Partial<TtsPlayback>) => Promise<void>
-  previewState: ReturnType<typeof useReaderTtsPreview>["state"]
+  previewState: ReturnType<typeof useTtsPreview>["state"]
   canPreview: boolean
-  startPreview: () => Promise<void>
+  previewVoiceId: string | null
+  startPreview: (voiceId?: string) => Promise<void>
   stopPreview: () => void
   openProviders: () => void
 }) {
@@ -88,6 +90,11 @@ export function ReaderTtsPlaybackSettings({
       />
       <ReaderTtsMenuRow
         title={t("settings.tts.voice")}
+        preview={{
+          previewVoiceId,
+          onPreview: (id) => void startPreview(id),
+          onStopPreview: stopPreview,
+        }}
         value={
           voicesLoading
             ? t("settings.tts.loading")
