@@ -206,10 +206,12 @@ func narration_system_voice_follows_audio_without_advancing_the_source_early() a
   var ranges: [String] = []
   let text = "Hi. Hello."
   let player = try NarrationTestAudioPlayer(contentsOf: url)
+  let systemSpeech = NarrationTestSpeechSynthesizer()
   let wordHighlighted = XCTestExpectation(description: "Audio word highlighted before completion")
   var completed = false
   let engine = RemoteTTSEngine(profileId: "narration", voiceId: "narration", speed: 1.5, pitch: 1,
-    onRequest: { requestID = $0.requestId }, onCancel: { _ in }, onBuffering: { _, _ in }, makeAudioPlayer: { _ in player })
+    onRequest: { requestID = $0.requestId }, onCancel: { _ in }, onBuffering: { _, _ in },
+    makeAudioPlayer: { _ in player }, systemSpeech: systemSpeech)
   engine.onUtteranceCompleted = { completed = true }
   defer { engine.cancelAll() }
   let playback = Task { await engine.speak(text: text, language: "en-US", onSpeakRange: {
@@ -232,7 +234,16 @@ func narration_system_voice_follows_audio_without_advancing_the_source_early() a
   try #require(highlighted == .completed)
   #expect(ranges == ["Hi. ", "Hi"])
   #expect(!completed)
+  #expect(systemSpeech.utterances.isEmpty)
   player.delegate?.audioPlayerDidFinishPlaying?(player, successfully: true)
+  let utterance = try #require(systemSpeech.utterances.first)
+  #expect(systemSpeech.utterances.count == 1)
+  #expect(utterance.speechString == "Hello.")
+  #expect(!completed)
+  systemSpeech.delegate?.speechSynthesizer?(systemSpeech,
+    willSpeakRangeOfSpeechString: NSRange(location: 0, length: 5), utterance: utterance)
+  #expect(ranges.last == "Hello")
+  systemSpeech.delegate?.speechSynthesizer?(systemSpeech, didFinish: utterance)
   if case let .failure(error) = await playback.value { Issue.record("Mixed playback failed: \(error)") }
   #expect(ranges.contains("Hi"))
   #expect(ranges.contains("Hello."))
@@ -243,6 +254,13 @@ private final class NarrationTestAudioPlayer: AVAudioPlayer {
   override func prepareToPlay() -> Bool { true }
   override func play() -> Bool { true }
   override func stop() {}
+}
+
+private final class NarrationTestSpeechSynthesizer: AVSpeechSynthesizer {
+  var utterances: [AVSpeechUtterance] = []
+
+  override func speak(_ utterance: AVSpeechUtterance) { utterances.append(utterance) }
+  override func stopSpeaking(at boundary: AVSpeechBoundary) -> Bool { true }
 }
 
 extension ReaderWindowTests {
