@@ -49,8 +49,13 @@ function fixture(
   const audio: AudioFixture[] = []
   const requests: { profileId: string; text: string; instructions?: string }[] =
     []
-  const create = (profileId: string, instructions?: string) =>
+  const create = (
+    profileId: string,
+    instructions?: string,
+    preparedArtifact?: import("@/lib/tauri-specta").TtsAudioArtifactDto,
+  ) =>
     new CoreSpeechEngine(profileId, {
+      preparedArtifact,
       listVoices: async () => [
         { id: "A", name: "A", language: "zh", gender: null },
       ],
@@ -76,15 +81,34 @@ function fixture(
     create("default"),
     "default",
     prepare,
-    (segment) => {
+    (segment, artifact) => {
       const engine = create(
         segment.voice.engine === "provider"
           ? segment.voice.profileId
           : "system",
         segment.instructions,
+        artifact,
       )
       configureSegment?.(engine)
       return engine
+    },
+    false,
+    async (segment, text) => {
+      requests.push({
+        profileId:
+          segment.voice.engine === "provider"
+            ? segment.voice.profileId
+            : "system",
+        text,
+        instructions: segment.instructions,
+      })
+      return {
+        path: "/fixture.wav",
+        mimeType: "audio/wav",
+        durationMs: null,
+        timings: [],
+        cacheKey: null,
+      }
     },
   )
   engine.loadUtterances([
@@ -216,7 +240,8 @@ describe("NarrationSpeechEngine", () => {
     engine.stop()
     audio[0]!.end()
     await new Promise((done) => setTimeout(done, 0))
-    expect(requests).toHaveLength(1)
+    expect(audio).toHaveLength(1)
+    expect(requests).toHaveLength(2)
     await engine.destroy()
   })
 })

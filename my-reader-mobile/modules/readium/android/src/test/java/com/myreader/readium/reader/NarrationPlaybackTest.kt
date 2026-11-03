@@ -172,6 +172,55 @@ class NarrationPlaybackTest {
   }
 
   @Test
+  fun partial_audio_waits_for_more_without_replaying_or_finishing_early() {
+    val players = mutableListOf<MediaPlayer>()
+    ShadowMediaPlayer.setCreateListener { player, _ -> players += player }
+    ShadowMediaPlayer.addMediaInfo(DataSource.toDataSource("/fixture.wav"), ShadowMediaPlayer.MediaInfo(1000, 0))
+    val requests = mutableListOf<RemoteTtsSynthesisRequest>()
+    val events = Events()
+    val engine = engine(requests)
+    engine.setListener(events)
+    engine.speak(TtsEngine.RequestId("source"), "One. Two. Three.", null)
+    val first = segment("One. ", 0, 5)
+    val second = segment("Two. ", 5, 10)
+    val third = segment("Three.", 10, 16)
+    val id = requests.single().requestId
+    engine.complete(TtsSynthesisCompletionRecord(requestId = id, segments = listOf(first), isFinal = false))
+    shadowOf(Looper.getMainLooper()).idle()
+    shadowOf(players[0]).invokeCompletionListener()
+    assertEquals(listOf("start"), events.events)
+    engine.complete(TtsSynthesisCompletionRecord(requestId = id, segments = listOf(first, second), isFinal = false))
+    shadowOf(Looper.getMainLooper()).idle()
+    assertEquals(2, players.size)
+    engine.complete(TtsSynthesisCompletionRecord(requestId = id, segments = listOf(first, second, third), isFinal = true))
+    assertEquals(2, players.size)
+    shadowOf(players[1]).invokeCompletionListener()
+    shadowOf(Looper.getMainLooper()).idle()
+    assertEquals(3, players.size)
+    assertEquals(listOf("start"), events.events)
+    shadowOf(players[2]).invokeCompletionListener()
+    assertEquals(listOf("start", "done"), events.events)
+    assertEquals(listOf(0 until 5, 5 until 10, 10 until 16), events.ranges)
+    engine.close()
+  }
+
+  @Test
+  fun cancelling_partial_audio_cancels_remaining_synthesis() {
+    ShadowMediaPlayer.addMediaInfo(DataSource.toDataSource("/fixture.wav"), ShadowMediaPlayer.MediaInfo(1000, 0))
+    val requests = mutableListOf<RemoteTtsSynthesisRequest>()
+    val cancelled = mutableListOf<String>()
+    val engine = engine(requests, cancelled)
+    engine.speak(TtsEngine.RequestId("source"), "One. Two.", null)
+    val completion = TtsSynthesisCompletionRecord(requestId = requests.single().requestId, segments = listOf(segment("One. ", 0, 5)), isFinal = false)
+    engine.complete(completion)
+    shadowOf(Looper.getMainLooper()).idle()
+    engine.stop()
+    assertEquals(listOf(completion.requestId), cancelled)
+    engine.complete(completion)
+    engine.close()
+  }
+
+  @Test
   fun stop_cancels_pending_analysis_and_ignores_late_audio() {
     val requests = mutableListOf<RemoteTtsSynthesisRequest>()
     val cancelled = mutableListOf<String>()

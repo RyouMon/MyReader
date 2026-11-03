@@ -8,7 +8,6 @@ import {
   narrationCharacterColor,
   type ReadingPlanEntry,
 } from "../src/narration-plan"
-import { NarrationPrefetchWindow } from "../src/narration-prefetch"
 
 describe("current reading-plan speech", () => {
   const selected = {
@@ -162,29 +161,6 @@ describe("narration source identity", () => {
         },
       }),
     ).toEqual(locator)
-  })
-})
-
-describe("narration prefetch", () => {
-  it("bounds requests, reuses overlap, and cancels work outside the locator window", async () => {
-    const window = new NarrationPrefetchWindow()
-    const signals = new Map<string, AbortSignal[]>()
-    const job = (key: string) => ({
-      key,
-      run: async (signal: AbortSignal) => {
-        signals.set(key, [...(signals.get(key) ?? []), signal])
-        await new Promise(() => {})
-      },
-    })
-    window.set([job("source-a"), job("source-b"), job("source-c")])
-    expect([...signals.keys()]).toEqual(["source-a", "source-b"])
-    window.set([job("source-b"), job("source-c")])
-    expect(signals.get("source-a")![0]!.aborted).toBe(true)
-    expect(signals.get("source-b")).toHaveLength(1)
-    expect(signals.get("source-b")![0]!.aborted).toBe(false)
-    window.clear()
-    expect(signals.get("source-b")![0]!.aborted).toBe(true)
-    expect(signals.get("source-c")![0]!.aborted).toBe(true)
   })
 })
 

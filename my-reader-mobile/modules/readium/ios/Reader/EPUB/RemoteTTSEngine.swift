@@ -45,6 +45,7 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
     var rangeTasks: [Task<Void, Never>] = []
     var segments: [TtsPlaybackSegmentRecord] = []
     var segmentIndex = 0
+    var isFinal = true
     var systemUtterance: AVSpeechUtterance?
 
     init(
@@ -110,7 +111,7 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
     var cancelled: [String] = []
     let stale = entries.filter { !nextKeys.contains($0.key) }
     for (key, entry) in stale {
-      if entry.completion == nil { cancelled.append(entry.id) }
+      if entry.completion?.isFinal != true { cancelled.append(entry.id) }
       entries.removeValue(forKey: key)
       keysByRequestId.removeValue(forKey: entry.id)
     }
@@ -163,10 +164,11 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
 
   func cancelAll() {
     let cancelled = entries.values.compactMap { entry in
-      entry.completion == nil ? entry.id : nil
+      entry.completion?.isFinal != true ? entry.id : nil
     }
     if let active {
       active.player?.stop()
+      active.player?.delegate = nil
       active.systemUtterance = nil
       systemSpeech.stopSpeaking(at: .immediate)
       active.rangeTasks.forEach { $0.cancel() }
@@ -222,12 +224,13 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
     _ playback: ActivePlayback,
     completion: TtsSynthesisCompletionRecord
   ) {
-    guard active === playback, playback.player == nil, playback.systemUtterance == nil else { return }
+    guard active === playback else { return }
     if let error = completion.error, !error.isEmpty {
       fail(playback, error: .other(PlaybackError(message: error)))
       return
     }
-    if let segments = completion.segments, !segments.isEmpty {
+    playback.isFinal = completion.isFinal
+    if let segments = completion.segments {
       playback.segments = segments
     } else {
       var segment = TtsPlaybackSegmentRecord()
@@ -238,6 +241,7 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
       segment.playbackRate = completion.playbackRate
       playback.segments = [segment]
     }
+    guard playback.player == nil, playback.systemUtterance == nil else { return }
     playSegment(playback)
   }
 
@@ -246,6 +250,10 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
   private func playSegment(_ playback: ActivePlayback) {
     guard active === playback else { return }
     guard playback.segmentIndex < playback.segments.count else {
+      guard playback.isFinal else {
+        onBuffering(playback.key, true)
+        return
+      }
       onUtteranceCompleted?()
       finish(playback, result: .success(()))
       return
@@ -353,7 +361,7 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
   private func removeEntry(for key: RemoteTtsSpeechKey) {
     guard let entry = entries.removeValue(forKey: key) else { return }
     keysByRequestId.removeValue(forKey: entry.id)
-    if entry.completion == nil { onCancel([entry.id]) }
+    if entry.completion?.isFinal != true { onCancel([entry.id]) }
   }
 
   private func scheduleTimings(

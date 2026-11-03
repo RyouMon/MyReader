@@ -248,7 +248,10 @@ export function useEpubTtsSession({
       enabled && config
         ? extractEpubTtsUtterances(resources, positions, {
             fallbackLanguage: normalizeTtsLanguage(language) || undefined,
-            granularity: narrationEnabled ? "paragraph" : "sentence",
+            granularity:
+              narrationEnabled || config.defaultEngine.kind === "provider"
+                ? "paragraph"
+                : "sentence",
             skipPageBreaks: config.playback.skipPageBreaks,
             skipFootnotes: config.playback.skipFootnotes,
           })
@@ -502,7 +505,9 @@ export function useEpubTtsSession({
       return
     }
     const baseEngine = provider
-      ? new CoreSpeechEngine(provider.id)
+      ? new CoreSpeechEngine(provider.id, {
+          performanceKey: `${provider.id}:${provider.revision}`,
+        })
       : new WebSpeechEngine()
     const engine =
       narrationEnabled && libraryId && bookId !== undefined
@@ -537,6 +542,9 @@ export function useEpubTtsSession({
             },
             undefined,
             true,
+            undefined,
+            (id) =>
+              `${id}:${activeConfig.profiles.find((profile) => profile.id === id)?.revision}`,
           )
         : baseEngine
     const speech = new ReadiumSpeechNavigator(engine, {

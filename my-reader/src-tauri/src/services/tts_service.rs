@@ -226,6 +226,8 @@ pub struct TtsAudioArtifactDto {
     pub path: String,
     pub mime_type: String,
     pub duration_ms: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub synthesis_ms: Option<u64>,
     pub timings: Vec<TtsTimingDto>,
     pub cache_key: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -916,6 +918,7 @@ impl From<my_reader_core::models::TtsAudioArtifact> for TtsAudioArtifactDto {
             path: value.path,
             mime_type: value.mime_type,
             duration_ms: value.duration_ms,
+            synthesis_ms: value.synthesis_ms,
             timings: value.timings.into_iter().map(Into::into).collect(),
             cache_key: value.cache_key,
             playback_rate: value.playback_rate,

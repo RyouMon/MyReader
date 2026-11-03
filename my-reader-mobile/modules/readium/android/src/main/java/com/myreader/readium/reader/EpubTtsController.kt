@@ -319,7 +319,7 @@ class EpubTtsController(
       }) else null,
       onRequest = { request ->
         val payload = request.toMap().toMutableMap()
-        if (config.profileId == "narration") {
+        if (config.adaptive || config.profileId == "narration") {
           navigator?.location?.value?.utteranceLocator?.let { payload["locator"] = readiumLocatorToMap(it) }
         }
         onSynthesisRequest(payload)
@@ -461,7 +461,7 @@ class EpubTtsController(
   }
 
   private fun scheduleRemotePrefetch(anchor: Locator) {
-    if (config.profileId == "narration") return
+    if (config.adaptive || config.profileId == "narration") return
     val engine = remoteProvider?.engine ?: return
     if (remotePrefetchAnchor == anchor) return
     remotePrefetchAnchor = anchor

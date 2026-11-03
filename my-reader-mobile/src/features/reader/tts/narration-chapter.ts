@@ -111,11 +111,9 @@ export async function analyzeNarrationChapter(
   return requests
 }
 
-export function matchNarrationRequest(
-  requests: NarrationRequest[],
-  locator: Locator,
-  text: string,
-) {
+export function matchNarrationRequest<
+  T extends Pick<NarrationRequest, "sourceKey" | "text">,
+>(requests: T[], locator: Locator, text: string) {
   const key = narrationSourceKey(locator)
   const exact = requests.find(
     (request) => request.sourceKey === key && request.text === text,

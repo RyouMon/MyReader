@@ -145,6 +145,7 @@ struct ReadiumFileRecord: Record {
 // MARK: - TTS
 
 struct TtsEngineConfigRecord: Record {
+  @Field var adaptive: Bool = false
   @Field var granularity: String = "sentence"
   @Field var singleUtterance: Bool = false
   @Field var kind: String = "system"
@@ -164,6 +165,7 @@ struct TtsTimingRecord: Record {
 }
 
 struct TtsSynthesisCompletionRecord: Record {
+  @Field var isFinal: Bool = true
   @Field var sessionId: String = ""
   @Field var requestId: String = ""
   @Field var path: String? = nil

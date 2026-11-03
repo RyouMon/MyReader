@@ -250,6 +250,7 @@ pub struct TtsAudioArtifact {
     pub path: String,
     pub mime_type: String,
     pub duration_ms: Option<f64>,
+    pub synthesis_ms: Option<f64>,
     pub timings: Vec<TtsTiming>,
     pub cache_key: Option<String>,
     pub playback_rate: Option<f64>,
@@ -662,6 +663,7 @@ impl From<CoreAudioArtifact> for TtsAudioArtifact {
             path: value.path,
             mime_type: value.mime_type,
             duration_ms: value.duration_ms.map(|value| value as f64),
+            synthesis_ms: value.synthesis_ms.map(|value| value as f64),
             timings: value
                 .timings
                 .into_iter()

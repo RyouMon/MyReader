@@ -120,6 +120,7 @@ class RemoteTtsEngine(
     var started: Boolean = false,
     var segments: List<TtsPlaybackSegmentRecord> = emptyList(),
     var segmentIndex: Int = 0,
+    var isFinal: Boolean = true,
   )
 
   private val scope: CoroutineScope = MainScope()
@@ -153,7 +154,7 @@ class RemoteTtsEngine(
 
     val stale = entries.filterKeys { it !in nextKeys }.values.toList()
     val cancelled = stale.mapNotNull { entry ->
-      entry.id.takeIf { entry.completion == null }
+      entry.id.takeIf { entry.completion?.isFinal != true }
     }
     stale.forEach { removeEntry(it.key) }
     utterances.forEach { ensureEntry(it.key) }
@@ -199,7 +200,7 @@ class RemoteTtsEngine(
       listener?.onFlushed(request.id)
     }
     if (request.key !in desiredKeys) {
-      val pending = entries[request.key]?.takeIf { it.completion == null }?.id
+      val pending = entries[request.key]?.takeIf { it.completion?.isFinal != true }?.id
       removeEntry(request.key)
       if (pending != null) onCancel(listOf(pending))
     }
@@ -208,7 +209,7 @@ class RemoteTtsEngine(
   fun cancelAll() {
     stop()
     val cancelled = entries.values.mapNotNull { entry ->
-      entry.id.takeIf { entry.completion == null }
+      entry.id.takeIf { entry.completion?.isFinal != true }
     }
     entries.clear()
     keysByRequestId.clear()
@@ -248,20 +249,25 @@ class RemoteTtsEngine(
     request: ActiveRequest,
     completion: TtsSynthesisCompletionRecord,
   ) {
-    if (active !== request || request.player != null || systemUtteranceId != null) return
+    if (active !== request) return
     completion.error?.takeIf { it.isNotEmpty() }?.let { error ->
       fail(request, RemoteTtsError(error))
       return
     }
-    request.segments = completion.segments?.takeIf { it.isNotEmpty() } ?: listOf(
+    request.isFinal = completion.isFinal
+    request.segments = completion.segments ?: listOf(
       TtsPlaybackSegmentRecord(text = request.text, endUtf16 = request.text.length, path = completion.path, timings = completion.timings, playbackRate = completion.playbackRate)
     )
+    if (request.player != null || systemUtteranceId != null) return
     playSegment(request)
   }
 
   private fun playSegment(request: ActiveRequest) {
     if (active !== request) return
-    val segment = request.segments.getOrNull(request.segmentIndex) ?: return finish(request)
+    val segment = request.segments.getOrNull(request.segmentIndex) ?: run {
+      if (request.isFinal) finish(request) else onBuffering(request.key, true)
+      return
+    }
     if (segment.startUtf16 < 0 || segment.endUtf16 > request.text.length || segment.endUtf16 <= segment.startUtf16 || request.text.substring(segment.startUtf16, segment.endUtf16) != segment.text) {
       return fail(request, RemoteTtsError("NARRATION_PLAN_INVALID"))
     }

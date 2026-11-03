@@ -1,3 +1,4 @@
+import { ReaderAudioBuffer } from "./reader-audio-buffer"
 import type {
   Locator,
   TtsPlaybackState,
@@ -24,7 +25,6 @@ import {
   getTtsConfig,
   listTtsVoices,
   setTtsVoice,
-  synthesizeTts,
 } from "@/src/services/core/tts"
 import { errorMessage } from "@/src/i18n/error-message"
 import {
@@ -33,14 +33,11 @@ import {
   type NarrationPlanEntry,
 } from "@/src/services/core/narration"
 import {
-  prepareNarrationPlayback,
-  prepareNarrationSpeech,
   loadNarrationContext,
   type NarrationBookContext,
 } from "./narration-playback"
 import {
   buildReaderTtsEngineConfig,
-  buildReaderTtsSynthesisRequest,
   chooseReaderTtsVoice,
   resolveReaderTtsSelection,
 } from "./reader-tts"
@@ -160,6 +157,7 @@ export function useReaderTtsSession({
     sessionId: string
     locator: Locator
   } | null>(null)
+  const audioBufferRef = useRef<ReaderAudioBuffer | null>(null)
   const synthesisControllersRef = useRef(new Map<string, AbortController>())
   const activeNarrationRef = useRef<{
     book: NarrationBookContext
@@ -168,7 +166,8 @@ export function useReaderTtsSession({
   } | null>(null)
 
   const abortOutstandingSynthesis = useCallback(() => {
-    activeNarrationRef.current?.book.prefetch?.clear()
+    audioBufferRef.current?.dispose()
+    audioBufferRef.current = null
     synthesisControllersRef.current.forEach((controller) => {
       controller.abort()
     })
@@ -314,6 +313,15 @@ export function useReaderTtsSession({
           engineConfig.kind = "provider"
           engineConfig.profileId = "narration"
           engineConfig.voiceId = "narration"
+        }
+        if (engineConfig.kind === "provider") {
+          engineConfig.granularity = "paragraph"
+          engineConfig.adaptive = true
+          audioBufferRef.current = new ReaderAudioBuffer(
+            narrationBook,
+            activeNarrationRef.current,
+            config.profiles,
+          )
         }
         setRemote(engineConfig.kind === "provider")
         activeEngineConfigRef.current = engineConfig
@@ -587,6 +595,7 @@ export function useReaderTtsSession({
       })
       if (!transition.accepted) return
       syncViewportState(transition)
+      audioBufferRef.current?.setPlaying(next.state === "playing")
       if (transition.effect?.type === "report-error") {
         activeLocatorRef.current = null
         viewportNavigationIdRef.current = null
@@ -640,22 +649,15 @@ export function useReaderTtsSession({
       const controller = new AbortController()
       synthesisControllersRef.current.set(request.requestId, controller)
       try {
-        const narration = activeNarrationRef.current
-        if (narration) {
-          const segments = narration.speech
-            ? await prepareNarrationSpeech(
-                narration.speech,
-                request,
-                REMOTE_AUDIO_MIME_TYPES,
-                controller.signal,
-              )
-            : await prepareNarrationPlayback(
-                narration.book,
-                narration.defaultVoice,
-                request,
-                REMOTE_AUDIO_MIME_TYPES,
-                controller.signal,
-              )
+        audioBufferRef.current ??= new ReaderAudioBuffer(
+          narrationBook,
+          activeNarrationRef.current,
+        )
+        for await (const completion of audioBufferRef.current.stream(
+          request,
+          REMOTE_AUDIO_MIME_TYPES,
+          controller.signal,
+        )) {
           if (
             controller.signal.aborted ||
             sessionMachine.snapshot.generation !== generation ||
@@ -665,29 +667,9 @@ export function useReaderTtsSession({
           readerRef.current?.completeTtsSynthesis({
             sessionId: request.sessionId,
             requestId: request.requestId,
-            segments,
+            ...completion,
           })
-          return
         }
-        const artifact = await synthesizeTts(
-          buildReaderTtsSynthesisRequest(request, REMOTE_AUDIO_MIME_TYPES),
-          { signal: controller.signal },
-        )
-        const current = sessionMachine.snapshot
-        if (
-          current.generation !== generation ||
-          current.sessionId !== request.sessionId ||
-          controller.signal.aborted
-        )
-          return
-        readerRef.current?.completeTtsSynthesis({
-          sessionId: request.sessionId,
-          requestId: request.requestId,
-          path: artifact.path,
-          mimeType: artifact.mimeType,
-          timings: artifact.timings,
-          playbackRate: artifact.playbackRate,
-        })
       } catch (error) {
         if (
           sessionMachine.snapshot.generation !== generation ||
@@ -709,7 +691,7 @@ export function useReaderTtsSession({
         }
       }
     },
-    [readerRef, sessionMachine],
+    [narrationBook, readerRef, sessionMachine],
   )
 
   const handleSynthesisCancel = useCallback(

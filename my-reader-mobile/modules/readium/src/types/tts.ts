@@ -4,6 +4,7 @@ import type { Utterance } from "./publication-handle"
 export type TtsEngineKind = "system" | "provider"
 
 export type TtsEngineConfig = {
+  adaptive?: boolean
   granularity?: "sentence" | "paragraph"
   singleUtterance?: boolean
   kind: TtsEngineKind
@@ -58,6 +59,8 @@ export type TtsTiming = {
 }
 
 export type TtsSynthesisCompletion = {
+  /** Cumulative segment snapshots may arrive before the entire utterance is ready. */
+  isFinal?: boolean
   sessionId: string
   requestId: string
   path?: string

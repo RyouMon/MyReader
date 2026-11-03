@@ -333,7 +333,7 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
         pitch: config.pitch,
         onRequest: { request in
           var payload = request.dictionary
-          if config.profileId == "narration", let locator = narrationLocator?() {
+          if (config.adaptive || config.profileId == "narration"), let locator = narrationLocator?() {
             payload["locator"] = locatorToDict(locator)
           }
           onSynthesisRequest(payload)
@@ -642,7 +642,7 @@ final class EPUBTtsController: NSObject, PublicationSpeechSynthesizerDelegate {
   }
 
   private func scheduleRemotePrefetch(from anchor: Locator) {
-    guard config.profileId != "narration" else { return }
+    guard !config.adaptive, config.profileId != "narration" else { return }
     guard let remoteEngine else { return }
     guard remotePrefetchAnchor != anchor else { return }
     remotePrefetchAnchor = anchor

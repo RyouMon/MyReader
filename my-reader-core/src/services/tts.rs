@@ -34,6 +34,7 @@ static SYNTHESIS_LOCKS: OnceLock<Mutex<HashMap<String, Weak<Mutex<()>>>>> = Once
 
 pub struct TtsService;
 
+mod audio_duration;
 mod usage;
 
 #[cfg(test)]
@@ -364,6 +365,7 @@ impl TtsService {
             None
         };
 
+        let started = std::time::Instant::now();
         let audio = tts::synthesize(profile, &request, credential).await?;
         ensure_accepted_mime(&request, &audio.mime_type)?;
         let (file_stem, artifact_cache_key) = match request.cache_policy {
@@ -373,11 +375,13 @@ impl TtsService {
         tokio::fs::create_dir_all(cache_directory).await?;
         let path = cache_directory.join(format!("{file_stem}.{}", audio.extension));
         write_atomic(&path, &audio.bytes).await?;
+        let duration_ms = artifact_duration(&path).await;
 
         Ok(TtsAudioArtifact {
             path: path.to_string_lossy().into_owned(),
             mime_type: audio.mime_type,
-            duration_ms: None,
+            duration_ms,
+            synthesis_ms: Some(started.elapsed().as_millis().max(1) as u64),
             timings: Vec::new(),
             cache_key: artifact_cache_key,
             playback_rate: None,
@@ -654,6 +658,14 @@ fn synthesis_cache_key(
     Ok(format!("{:x}", Sha256::digest(serde_json::to_vec(&value)?)))
 }
 
+async fn artifact_duration(path: &Path) -> Option<u64> {
+    let path = path.to_owned();
+    tokio::task::spawn_blocking(move || audio_duration::milliseconds(&path))
+        .await
+        .ok()
+        .flatten()
+}
+
 async fn cached_artifact(
     cache_directory: &Path,
     cache_key: &str,
@@ -666,7 +678,8 @@ async fn cached_artifact(
             return Ok(Some(TtsAudioArtifact {
                 path: path.to_string_lossy().into_owned(),
                 mime_type: (*mime_type).into(),
-                duration_ms: None,
+                duration_ms: artifact_duration(&path).await,
+                synthesis_ms: None,
                 timings: Vec::new(),
                 cache_key: Some(cache_key.into()),
                 playback_rate: None,
@@ -1077,7 +1090,10 @@ mod tests {
         assert_eq!(artifact.mime_type, "audio/wav");
         server.await.unwrap();
         assert_eq!(
-            artifact,
+            TtsAudioArtifact {
+                synthesis_ms: None,
+                ..artifact.clone()
+            },
             TtsService::synthesize(&config_path, dir.path(), input, Some("private-key"))
                 .await
                 .unwrap()
@@ -1441,7 +1457,10 @@ mod tests {
             .await
             .unwrap();
             assert_eq!(
-                artifact,
+                TtsAudioArtifact {
+                    synthesis_ms: None,
+                    ..artifact.clone()
+                },
                 TtsService::synthesize(&config_path, dir.path(), input, Some("private-key"))
                     .await
                     .unwrap()
@@ -1836,7 +1855,8 @@ mod tests {
         assert_eq!(body["input"], "Hello from MyReader.");
         assert_eq!(body["speed"], 1.25);
         assert_eq!(body["instructions"], "Speak warmly");
-        assert_eq!(first, second);
+        assert_eq!(first.path, second.path);
+        assert_eq!(first.cache_key, second.cache_key);
         assert_eq!(first.mime_type, "audio/mpeg");
         assert!(PathBuf::from(first.path).is_file());
 
@@ -1878,7 +1898,9 @@ mod tests {
                 .await
                 .unwrap();
         assert_ne!(first.cache_key, second.cache_key);
-        assert_eq!(first, repeated);
+        assert_eq!(first.path, repeated.path);
+        assert!(first.synthesis_ms.is_some());
+        assert_eq!(repeated.synthesis_ms, None);
         assert_eq!(TtsService::get_config(&config_path).unwrap(), original);
         let requests = server.await.unwrap();
         assert_eq!(request_body(&requests[0])["instructions"], "温柔的女声");
@@ -1908,7 +1930,9 @@ mod tests {
         );
         let (first, second) = tokio::join!(first, second);
 
-        assert_eq!(first.unwrap(), second.unwrap());
+        let (first, second) = (first.unwrap(), second.unwrap());
+        assert_eq!(first.path, second.path);
+        assert_ne!(first.synthesis_ms.is_some(), second.synthesis_ms.is_some());
         assert_eq!(server.await.unwrap().len(), 1);
     }
 
