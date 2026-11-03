@@ -78,7 +78,7 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
   private var keysByRequestId: [String: RemoteTtsSpeechKey] = [:]
   private var desiredKeys: Set<RemoteTtsSpeechKey> = []
   private var active: ActivePlayback?
-  private let systemSpeech = AVSpeechSynthesizer()
+  private let systemSpeech: AVSpeechSynthesizer
 
   init(
     profileId: String,
@@ -88,7 +88,8 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
     onRequest: @escaping (RemoteTtsSynthesisRequest) -> Void,
     onCancel: @escaping ([String]) -> Void,
     onBuffering: @escaping (RemoteTtsSpeechKey, Bool) -> Void,
-    makeAudioPlayer: @escaping (URL) throws -> AVAudioPlayer = { try AVAudioPlayer(contentsOf: $0) }
+    makeAudioPlayer: @escaping (URL) throws -> AVAudioPlayer = { try AVAudioPlayer(contentsOf: $0) },
+    systemSpeech: AVSpeechSynthesizer = AVSpeechSynthesizer()
   ) {
     self.profileId = profileId
     self.voiceId = voiceId
@@ -98,6 +99,7 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
     self.onCancel = onCancel
     self.onBuffering = onBuffering
     self.makeAudioPlayer = makeAudioPlayer
+    self.systemSpeech = systemSpeech
     super.init()
     systemSpeech.delegate = self
   }
