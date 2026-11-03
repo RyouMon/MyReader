@@ -25,6 +25,9 @@ const syntheses = requests.filter(
 if (syntheses.length === 0) {
   throw new Error("No OpenAI-compatible synthesis request was recorded")
 }
+if (!(syntheses[0].generationMs > 20000)) {
+  throw new Error("The cold synthesis request did not complete")
+}
 for (const request of syntheses) {
   if (
     request.authorized !== true ||
@@ -36,6 +39,16 @@ for (const request of syntheses) {
     throw new Error("OpenAI-compatible synthesis request is malformed")
   }
 }
+if (
+  !requests.some((request) => request.path === "/openai/v1/chat/completions") ||
+  !syntheses.some(
+    (request) =>
+      request.body.instructions?.includes("Speak gently for Grace") &&
+      request.generationMs > 0,
+  )
+) {
+  throw new Error("Character analysis did not reach speech synthesis")
+}
 process.stdout.write(
-  `Verified ${syntheses.length} OpenAI-compatible synthesis request(s).\n`,
+  `Verified ${syntheses.length} OpenAI-compatible synthesis request(s), including character instructions.\n`,
 )

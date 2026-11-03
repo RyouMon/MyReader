@@ -7,4 +7,6 @@ androidWebViewHierarchy: devtools
 - runFlow: ../reader/read_with_tts.yaml
 - runFlow: ../../common/configure_network_tts.yaml
 - runFlow: ../reader/read_with_tts.yaml
+- runFlow: ../../common/configure_llm.yaml
+- runFlow: ../reader/read_with_characters.yaml
 - runFlow: ../library/delete_local_supported_formats.yaml

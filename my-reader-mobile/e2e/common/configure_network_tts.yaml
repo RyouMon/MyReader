@@ -26,17 +26,13 @@ name: Configure the local speech fixture through provider settings
 - tapOn:
     id: tts-provider-credential
 - inputText: "fixture-openai-key"
-# Android accessibility can include fields underneath the software keyboard.
-- runFlow:
-    when:
-      platform: Android
-    commands:
-      - hideKeyboard
+# Accessibility can include fields underneath the software keyboard.
+- runFlow: finish_single_line_input.yaml
 - scrollUntilVisible:
-    element: "添加声音|Add voice"
+    element:
+      id: tts-voice-id-0
     direction: DOWN
     centerElement: true
-- tapOn: "添加声音|Add voice"
 - tapOn:
     id: tts-voice-id-0
 - runFlow:
@@ -47,11 +43,7 @@ name: Configure the local speech fixture through provider settings
           id: tts-voice-id-0
           focused: true
 - inputText: "alloy"
-- runFlow:
-    when:
-      platform: Android
-    commands:
-      - hideKeyboard
+- runFlow: finish_single_line_input.yaml
 - assertVisible:
     id: tts-voice-id-0
     text: "alloy"
@@ -77,22 +69,23 @@ name: Configure the local speech fixture through provider settings
     element: "朗读引擎.*|Narration engine.*"
     direction: UP
 - tapOn: "朗读引擎.*|Narration engine.*"
+- tapOn: "E2E Speech/.*"
+- waitForAnimationToEnd
+# Reopen the native menu to verify persistence before launching the reader.
+- tapOn: "朗读引擎.*|Narration engine.*"
 - runFlow:
     when:
       platform: iOS
     commands:
+      - assertVisible:
+          text: "E2E Speech/.*"
+          selected: true
       - tapOn:
           text: "E2E Speech/.*"
-          childOf:
-            containsChild:
-              text: "✓ 系统语音|✓ System voice"
+          selected: true
 - runFlow:
     when:
       platform: Android
     commands:
-      - tapOn: "E2E Speech/.*"
-- waitForAnimationToEnd
-# Reopen the native menu to verify persistence before launching the reader.
-- tapOn: "朗读引擎.*|Narration engine.*"
-- assertVisible: "✓ E2E Speech/.*"
-- tapOn: "✓ E2E Speech/.*"
+      - assertVisible: "✓ E2E Speech/.*"
+      - tapOn: "✓ E2E Speech/.*"
