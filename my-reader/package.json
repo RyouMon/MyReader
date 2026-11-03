@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "prepare:reader-fonts": "node scripts/prepare-reader-fonts.mjs",
     "sync:design-tokens": "node ../scripts/sync-design-tokens.mjs",
-    "tauri": "tauri",
+    "tauri": "node scripts/tauri.mjs",
     "test": "npm run test:unit && npm run test:integration:frontend && npm run test:e2e",
     "test:unit": "node ../scripts/generate-reader-viewport-anchor.mjs --check --platform desktop && vitest run",
     "test:unit:watch": "vitest",

@@ -11,7 +11,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   cleanup()
-  clearMocks()
+  if (typeof window !== "undefined") clearMocks()
 })
 
 // WebCrypto polyfill（Tauri 核心依赖）
@@ -25,7 +25,9 @@ if (typeof crypto === "undefined") {
 }
 
 // Tauri 内部桥接对象 mock
-Object.defineProperty(window, "__TAURI_INTERNALS__", {
-  value: {},
-  writable: true,
-})
+if (typeof window !== "undefined") {
+  Object.defineProperty(window, "__TAURI_INTERNALS__", {
+    value: {},
+    writable: true,
+  })
+}

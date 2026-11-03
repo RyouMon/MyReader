@@ -50,7 +50,9 @@ MyReader/
 pnpm dev:desktop
 ```
 
-该命令会在 1420 端口启动 Vite，并打开 Tauri 窗口。首次 Rust 构建所需时间较长。
+该命令会从 1420 开始尝试可用端口启动 Vite，并让 Tauri 窗口连接实际地址。
+在 `my-reader/` 中执行 `pnpm tauri dev` 也有相同行为。退出时会关闭本次启动的 Vite 服务。
+首次 Rust 构建所需时间较长。
 
 ### 测试
 
