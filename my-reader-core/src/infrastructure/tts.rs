@@ -20,6 +20,8 @@ pub(crate) mod qwen;
 
 const MAX_AUDIO_BYTES: u64 = 32 * 1024 * 1024;
 pub(crate) const REQUEST_TIMEOUT: Duration = Duration::from_secs(20);
+pub(crate) const SYNTHESIS_TIMEOUT: Duration = Duration::from_secs(120);
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
 pub(crate) struct SynthesizedAudio {
     pub bytes: Vec<u8>,
@@ -115,7 +117,7 @@ pub(crate) async fn discover_models(
     let mut url = openai_speech_endpoint(profile)?;
     let path = url.path().trim_end_matches("/audio/speech");
     url.set_path(&format!("{path}/models"));
-    let mut request = client()?.get(url);
+    let mut request = client(REQUEST_TIMEOUT)?.get(url);
     if let Some(credential) = credential.filter(|v| !v.trim().is_empty()) {
         request = request.bearer_auth(credential);
     }
@@ -175,7 +177,7 @@ async fn synthesize_openai(
         body["instructions"] = json!(instructions);
     }
 
-    let response = client()?
+    let response = client(SYNTHESIS_TIMEOUT)?
         .post(openai_speech_endpoint(profile)?)
         .header(AUTHORIZATION, format!("Bearer {credential}"))
         .header(CONTENT_TYPE, "application/json")
@@ -285,9 +287,10 @@ fn redact_credential(message: &str, credential: Option<&str>) -> String {
     }
 }
 
-fn client() -> Result<Client, CoreError> {
+fn client(timeout: Duration) -> Result<Client, CoreError> {
     super::http::client_builder()
-        .timeout(REQUEST_TIMEOUT)
+        .connect_timeout(CONNECT_TIMEOUT)
+        .timeout(timeout)
         .redirect(reqwest::redirect::Policy::none())
         .user_agent("MyReader/0.12.0")
         .build()

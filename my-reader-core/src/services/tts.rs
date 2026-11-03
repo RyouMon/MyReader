@@ -265,7 +265,7 @@ impl TtsService {
         validate_request(&request)?;
         validate_request_for_profile(&profile, &request)?;
         tokio::time::timeout(
-            tts::REQUEST_TIMEOUT,
+            tts::SYNTHESIS_TIMEOUT,
             tts::synthesize(&profile, &request, credential),
         )
         .await
@@ -302,7 +302,7 @@ impl TtsService {
         validate_request(&request)?;
         validate_request_for_profile(&profile, &request)?;
         tokio::time::timeout(
-            tts::REQUEST_TIMEOUT,
+            tts::SYNTHESIS_TIMEOUT,
             Self::synthesize_part(&profile, cache_directory, request, credential),
         )
         .await
@@ -331,7 +331,7 @@ impl TtsService {
             None
         };
         let mut artifact = tokio::time::timeout(
-            tts::REQUEST_TIMEOUT,
+            tts::SYNTHESIS_TIMEOUT,
             Self::synthesize_part(&profile, cache_directory, request, credential),
         )
         .await
@@ -986,6 +986,121 @@ mod tests {
         serde_json::from_slice(&request[body_offset..]).unwrap()
     }
 
+    #[tokio::test]
+    async fn cold_http_synthesis_and_previews_can_finish_after_thirty_seconds() {
+        for operation in ["reading", "preview", "test"] {
+            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let endpoint = format!("http://{}", listener.local_addr().unwrap());
+            let (ready, received) = tokio::sync::oneshot::channel();
+            let (respond, finish) = tokio::sync::oneshot::channel();
+            let server = tokio::spawn(async move {
+                let (mut stream, _) = listener.accept().await.unwrap();
+                let mut body = Vec::new();
+                while !request_complete(&body) {
+                    let mut bytes = [0; 4096];
+                    let count = stream.read(&mut bytes).await.unwrap();
+                    assert!(count > 0);
+                    body.extend_from_slice(&bytes[..count]);
+                }
+                ready.send(()).unwrap();
+                finish.await.unwrap();
+                let _ = stream
+                    .write_all(&response("audio/mpeg", b"ID3cold-start-audio"))
+                    .await;
+            });
+            let directory = tempfile::tempdir().unwrap();
+            let config = directory.path().join("config.json");
+            let cache = directory.path().join("audio");
+            let profile = openai_profile(endpoint);
+            TtsService::upsert_profile(&config, profile.clone()).unwrap();
+            let client = tokio::spawn(async move {
+                match operation {
+                    "preview" => TtsService::preview_provider(
+                        profile,
+                        &cache,
+                        "Hello".into(),
+                        Some("fixture-key"),
+                    )
+                    .await
+                    .map(|_| ()),
+                    "test" => {
+                        TtsService::test_provider(profile, "Hello".into(), Some("fixture-key"))
+                            .await
+                    }
+                    _ => TtsService::synthesize(
+                        &config,
+                        &cache,
+                        request("openai", "audio/mpeg"),
+                        Some("fixture-key"),
+                    )
+                    .await
+                    .map(|_| ()),
+                }
+            });
+            received.await.unwrap();
+            tokio::time::pause();
+            tokio::time::advance(std::time::Duration::from_secs(30)).await;
+            tokio::time::resume();
+            respond.send(()).unwrap();
+            client.await.unwrap().unwrap();
+            server.await.unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn unfinished_http_audio_is_discarded_on_timeout_or_cancellation() {
+        for cancel in [false, true] {
+            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let endpoint = format!("http://{}", listener.local_addr().unwrap());
+            let (ready, received) = tokio::sync::oneshot::channel();
+            let server = tokio::spawn(async move {
+                let (mut stream, _) = listener.accept().await.unwrap();
+                let mut body = Vec::new();
+                while !request_complete(&body) {
+                    let mut bytes = [0; 4096];
+                    let count = stream.read(&mut bytes).await.unwrap();
+                    assert!(count > 0);
+                    body.extend_from_slice(&bytes[..count]);
+                }
+                stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Type: audio/mpeg\r\nContent-Length: 100\r\n\r\nID3partial").await.unwrap();
+                ready.send(()).unwrap();
+                let closed = stream.read(&mut [0; 1]).await;
+                assert!(matches!(closed, Ok(0) | Err(_)));
+            });
+            let directory = tempfile::tempdir().unwrap();
+            let config = directory.path().join("config.json");
+            let cache = directory.path().join("audio");
+            TtsService::upsert_profile(&config, openai_profile(endpoint)).unwrap();
+            let audio_path = cache.clone();
+            let client = tokio::spawn(async move {
+                TtsService::synthesize(
+                    &config,
+                    &audio_path,
+                    request("openai", "audio/mpeg"),
+                    Some("fixture-key"),
+                )
+                .await
+            });
+            received.await.unwrap();
+            if cancel {
+                client.abort();
+                assert!(client.await.unwrap_err().is_cancelled());
+            } else {
+                tokio::time::pause();
+                tokio::time::advance(tts::SYNTHESIS_TIMEOUT).await;
+                tokio::time::resume();
+                assert!(client
+                    .await
+                    .unwrap()
+                    .unwrap_err()
+                    .to_string()
+                    .contains("timeout:TTS_REQUEST_TIMEOUT"));
+            }
+            server.await.unwrap();
+            assert!(!cache.exists());
+        }
+    }
+
     fn request_text(request: &[u8]) -> String {
         String::from_utf8_lossy(request).into_owned()
     }
@@ -1365,7 +1480,7 @@ mod tests {
         });
         waiting.await.unwrap();
         tokio::time::pause();
-        tokio::time::advance(std::time::Duration::from_secs(20)).await;
+        tokio::time::advance(tts::SYNTHESIS_TIMEOUT).await;
         assert!(client
             .await
             .unwrap()

@@ -15,7 +15,8 @@ use url::Url;
 use uuid::Uuid;
 
 use super::super::{
-    audio_from_bytes, tts_error, SynthesizedAudio, MAX_AUDIO_BYTES, REQUEST_TIMEOUT,
+    audio_from_bytes, tts_error, SynthesizedAudio, CONNECT_TIMEOUT, MAX_AUDIO_BYTES,
+    SYNTHESIS_TIMEOUT,
 };
 use crate::{
     models::{TtsProviderOptions, TtsProviderProfile, TtsSynthesisRequest},
@@ -30,7 +31,7 @@ pub(super) async fn synthesize(
     // Dropping this future (navigation, stop or provider change) also drops the
     // socket. No detached reader keeps synthesizing or writing a stale artifact.
     tokio::time::timeout(
-        REQUEST_TIMEOUT,
+        SYNTHESIS_TIMEOUT,
         synthesize_task(profile, request, credential),
     )
     .await
@@ -77,10 +78,13 @@ async fn synthesize_task(
     // Desktop dependencies enable both ring and aws-lc. An implicit rustls
     // provider panics before the handshake; use Core's explicit TLS policy.
     let connector = Connector::Rustls(Arc::new(crate::infrastructure::http::tls_client_config()));
-    let (mut socket, _) =
-        connect_async_tls_with_config(upgrade, Some(config), false, Some(connector))
-            .await
-            .map_err(|error| network_error(error, credential))?;
+    let (mut socket, _) = tokio::time::timeout(
+        CONNECT_TIMEOUT,
+        connect_async_tls_with_config(upgrade, Some(config), false, Some(connector)),
+    )
+    .await
+    .map_err(|_| tts_error(TtsErrorKind::Timeout, "TTS_REQUEST_TIMEOUT"))?
+    .map_err(|error| network_error(error, credential))?;
     let task_id = Uuid::new_v4().simple().to_string();
     let header =
         |action: &str| json!({"action": action, "task_id": task_id, "streaming": "duplex"});
