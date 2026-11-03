@@ -42,6 +42,7 @@ name: Configure the local speech fixture through provider settings
       - assertVisible:
           id: tts-voice-id-0
           focused: true
+      - takeScreenshot: tts-voice-field-focused
 - inputText: "alloy"
 - runFlow: finish_single_line_input.yaml
 - assertVisible:
@@ -87,5 +88,8 @@ name: Configure the local speech fixture through provider settings
     when:
       platform: Android
     commands:
-      - assertVisible: "✓ E2E Speech/.*"
-      - tapOn: "✓ E2E Speech/.*"
+      - assertVisible:
+          id: "android:id/checkbox"
+          checked: true
+          rightOf: "E2E Speech/.*"
+      - tapOn: "E2E Speech/.*"
