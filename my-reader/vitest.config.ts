@@ -16,6 +16,7 @@ export default defineConfig({
     include: [
       "src/**/__tests__/**/*.test.ts",
       "src/**/__tests__/**/*.test.tsx",
+      "scripts/**/*.test.mjs",
     ],
     exclude: ["node_modules/", "e2e-frontend/", "e2e/"],
     reporters: ["default"],

@@ -50,7 +50,9 @@ See [ARCHITECTURE_EN.md](./ARCHITECTURE_EN.md) for ownership and dependency boun
 pnpm dev:desktop
 ```
 
-This starts Vite on port 1420 and launches the Tauri window. The first Rust build takes longer.
+This starts Vite on the first available port starting at 1420 and connects Tauri to its actual URL.
+Running `pnpm tauri dev` in `my-reader/` behaves the same way. Exiting also stops that Vite server.
+The first Rust build takes longer.
 
 ### Tests
 
