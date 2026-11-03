@@ -1,3 +1,5 @@
+import { ReaderAudioBuffer } from "./reader-audio-buffer"
+import type { NarrationSpeech } from "my-reader-core"
 import type { Library } from "@my-reader/tools/types/library"
 import type { TtsSynthesisRequestEvent } from "@my-reader/readium"
 import { publication as readiumPublication } from "@my-reader/readium"
@@ -9,8 +11,6 @@ import {
 import { synthesizeTts } from "@/src/services/core/tts"
 import {
   loadNarrationContext,
-  prepareNarrationPlayback,
-  prepareNarrationSpeech,
   type NarrationBookContext,
 } from "./narration-playback"
 
@@ -101,7 +101,7 @@ it("prepares mixed system and provider voices with local ranges and fixed instru
       text: "你好😀",
       instructions: "仿男声\n高兴",
     }),
-    { signal },
+    { signal: expect.any(AbortSignal) },
   )
   expect(result).toEqual([
     { text: "她说：", startUtf16: 0, endUtf16: 3, systemVoiceId: "system-zh" },
@@ -268,3 +268,163 @@ it("plays a selected cached entry without invoking analysis or prefetch", async 
   expect(analyzeBookNarration).not.toHaveBeenCalled()
   expect(synthesizeTts).not.toHaveBeenCalled()
 })
+
+it("delivers the first chunk before the next synthesis completes and cancels the remainder", async () => {
+  let requested!: () => void
+  const nextRequested = new Promise<void>((resolve) => {
+    requested = resolve
+  })
+  let finish!: (audio: Awaited<ReturnType<typeof synthesizeTts>>) => void
+  const pending = new Promise<Awaited<ReturnType<typeof synthesizeTts>>>(
+    (resolve) => {
+      finish = resolve
+    },
+  )
+  const audio = {
+    path: "/cache/audio.wav",
+    mimeType: "audio/wav",
+    timings: [],
+    durationMs: 5000,
+    synthesisMs: 200,
+  }
+  jest
+    .mocked(synthesizeTts)
+    .mockResolvedValueOnce(audio)
+    .mockImplementationOnce(() => {
+      requested()
+      return pending
+    })
+  const buffer = new ReaderAudioBuffer()
+  const controller = new AbortController()
+  const stream = buffer.stream(
+    {
+      ...request,
+      text: "第一句。第二句。",
+      profileId: "incremental",
+      locator: undefined,
+    },
+    [],
+    controller.signal,
+  )
+  try {
+    expect((await stream.next()).value).toMatchObject({
+      isFinal: false,
+      segments: [{ text: "第一句。" }],
+    })
+    await nextRequested
+    const next = stream.next()
+    controller.abort()
+    await expect(next).rejects.toMatchObject({ name: "AbortError" })
+    expect(jest.mocked(synthesizeTts).mock.calls[1]![1]!.signal!.aborted).toBe(
+      true,
+    )
+    finish(audio)
+    jest.mocked(synthesizeTts).mockResolvedValue(audio)
+    const retry = buffer.stream(
+      {
+        ...request,
+        text: "重试。",
+        profileId: "incremental",
+        locator: undefined,
+      },
+      [],
+      new AbortController().signal,
+    )
+    expect((await retry.next()).value).toMatchObject({
+      isFinal: true,
+      segments: [{ text: "重试。" }],
+    })
+    await retry.return(undefined)
+  } finally {
+    buffer.dispose()
+  }
+})
+
+it("reuses prefetched source audio without rerunning analysis for ordinary reading", async () => {
+  const units = ["第一段。", "第二段。", "第三段。"].map((text, index) => ({
+    text,
+    locator: {
+      ...request.locator!,
+      locations: { totalProgression: index / 3, cssSelector: `#p${index}` },
+    },
+  }))
+  jest
+    .mocked(readiumPublication.getTtsContent)
+    .mockResolvedValue({ utterances: units })
+  jest.mocked(synthesizeTts).mockResolvedValue({
+    path: "/cache/source.wav",
+    mimeType: "audio/wav",
+    timings: [],
+    durationMs: 5000,
+  })
+  const buffer = new ReaderAudioBuffer({ ...book, publicationId: "native" })
+  try {
+    for (const unit of units) {
+      for await (const completion of buffer.stream(
+        {
+          ...request,
+          ...unit,
+          profileId: "prefetch",
+          locator: {
+            ...unit.locator,
+            title: "Chapter",
+            locations: {
+              ...unit.locator.locations,
+              position: 1,
+              domRange: {
+                start: { cssSelector: "#p0", charOffset: 0, textNodeIndex: 0 },
+              },
+            },
+          },
+        },
+        [],
+        new AbortController().signal,
+      ))
+        expect(completion.segments[0]!.text).toBe(unit.text)
+    }
+    expect(synthesizeTts).toHaveBeenCalledTimes(3)
+    expect(prepareBookNarration).not.toHaveBeenCalled()
+    expect(analyzeBookNarration).not.toHaveBeenCalled()
+    expect(readiumPublication.getTtsContent).toHaveBeenCalledTimes(1)
+  } finally {
+    buffer.dispose()
+  }
+})
+
+async function prepareNarrationPlayback(
+  book: NarrationBookContext,
+  defaultVoice: { engine: string; voiceId: string },
+  request: TtsSynthesisRequestEvent,
+  mimeTypes: string[],
+  signal: AbortSignal,
+) {
+  const buffer = new ReaderAudioBuffer(book, { book, defaultVoice })
+  try {
+    let segments: import("@my-reader/readium").TtsPlaybackSegment[] = []
+    for await (const completion of buffer.stream(request, mimeTypes, signal))
+      segments = completion.segments
+    return segments
+  } finally {
+    buffer.dispose()
+  }
+}
+async function prepareNarrationSpeech(
+  speech: NarrationSpeech[],
+  request: TtsSynthesisRequestEvent,
+  mimeTypes: string[],
+  signal: AbortSignal,
+) {
+  const buffer = new ReaderAudioBuffer(book, {
+    book,
+    defaultVoice: voice,
+    speech,
+  })
+  try {
+    let segments: import("@my-reader/readium").TtsPlaybackSegment[] = []
+    for await (const completion of buffer.stream(request, mimeTypes, signal))
+      segments = completion.segments
+    return segments
+  } finally {
+    buffer.dispose()
+  }
+}

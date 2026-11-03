@@ -26,7 +26,7 @@ isProject: true
 - System 与 OpenAI-compatible 两种第一阶段引擎；网络引擎使用同一 Core profile、voice
   discovery、合成、缓存、错误和凭据引用合同。
 - Qwen-Audio-TTS Plus、Qwen3-TTS Flash / Instruct、Qwen3-TTS VC / VD 的 HTTP 合成与已有音色选择。
-- 网络引擎为当前句显示生成/缓冲状态，并预取后续两句；停止、选文跳转及切换 provider/voice
+- 网络引擎为当前句显示生成/缓冲状态，并按可播放时长自适应预取；停止、选文跳转及切换 provider/voice
   会取消旧请求并切换 generation，晚到结果不得改变当前播放位置。
 - 移动端预取窗口由 Readium 当前 utterance Locator 锚定的一次性内容投影生成；不维护按文本或语言
   自行推进的第二个 utterance 游标。
@@ -363,7 +363,7 @@ Swift/Kotlin/Web Readium adapter 仍负责产生导航来源和执行真实媒�
 ```mermaid
 flowchart LR
   R["Readium 当前 utterance + Locator"] --> P["系统 TTS 或 Core 合成"]
-  R --> W["以当前 Locator 投影后续两句；不推进会话"]
+  R --> W["以当前 Locator 投影后续段落；不推进会话"]
   W --> Q["有界缓存队列"]
   Q -->|"仅远端 provider"| P
   P --> B["preparing / buffering / playing"]
@@ -402,8 +402,9 @@ flowchart LR
 - “从当前位置播放”以新视口第一句完整可见句子的 Locator 作废旧 generation；若页首只显示上一页
   被截断句子的后半段，则跳过该残句。“从这里朗读”使用 Selection Locator 立即作废旧 generation。
 - Locator 未匹配到当前 Publication resource 时返回“不可定位”，绝不回退到全书 utterance 0。
-- 预取候选必须匹配 Readium 当前 utterance 的完整 Locator；匹配失败时放弃该窗口，不得按
-  `text + language` 猜测位置或让缓存迭代器自行消费句子。
+- 预取候选必须匹配 Readium 当前 utterance 的 Locator。原生端补充位置元数据时，只允许在资源、
+  段落选择器和完整文本一致且无歧义时复用；匹配失败时放弃该窗口，不得按 `text + language`
+  猜测位置或让缓存迭代器自行消费句子。
 - loading/preparing 表示配置或会话准备，buffering 表示当前远端音频尚未可播；二者均给用户可见反馈。
 - provider、voice 或影响音频 bytes 的参数变更是 replace transaction；保留播放/暂停意图，但不复用
   旧 generation 的音频或回调。
@@ -604,7 +605,15 @@ Readium engine 在不经过 React 状态树的情况下调用同一个 Core serv
 
 ### 并发、预取与缓存
 
-- 每个 TTS session 同时最多一个实际 provider 请求；当前句之后默认排队预取 2 句。
+- 每个 TTS session 同时最多一个实际 provider 请求。远端路径由共享 `TtsBuffer` 按可播放秒数
+  调度，替代固定预取 2 句；系统引擎仍由 Readium 调度。
+- 远端冷启动先生成单句（超长句先限长），之后用近期请求的快/慢 EWMA 和长度—耗时预测，
+  在剩余播放时间内合并同一源段落中连续、相同角色配置的句子。当前合成块保守上限为 600 字符，
+  同时受学习上限和预计音频长度约束；不跨 Locator 或角色/音色/指令边界。
+- 缓冲目标根据近期 P90 延迟调整到 10–45 秒，最多多出一个正在合成的块。暂停时只补足有限缓冲；
+  停止、跳转和配置改变取消旧队列。缓存命中保留音频时长但不更新测速；未知时长使用保守估计。
+- 测速只使用正常朗读请求，不额外请求 benchmark。按配置隔离的记录在进程内保留最近 32 次，
+  空闲 30 分钟过期，最多 64 组；不落盘、不同步。持续生成慢于播放时仍可能等待，不承诺绝不缓冲。
 - seek、stop、切换 provider/voice 或更改影响合成的参数时取消未开始任务，并使旧 generation
   结果失效。远端已经接受的请求可能仍计费，UI 不承诺取消必然退款。
 - 相同 cache key 的并发请求 single-flight；失败不写入正 cache。
@@ -890,8 +899,8 @@ Core DTO 或同步 schema 中持久化上游具体 class/enum；升级破坏只�
 ### 远端延迟与成本
 
 完整 artifact 会增加首句等待；短前瞻、single-flight 与 cache 降低重复等待。产品必须显示
-buffering，不以整章预生成掩盖延迟。取消可能不能撤销已计费请求，因此默认窗口保持 2 句且不无限
-重试。
+buffering，不以整章预生成掩盖延迟。取消可能不能撤销已计费请求，因此缓冲按可播放时长设定上限，
+且不无限重试。
 
 ### Provider 协议漂移
 

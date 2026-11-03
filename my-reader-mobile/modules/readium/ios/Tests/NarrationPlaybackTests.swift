@@ -110,6 +110,82 @@ func narration_rejects_a_segment_that_does_not_match_the_source() async {
   if case .success = await playback.value { Issue.record("Invalid source was accepted") }
 }
 
+@Test
+@MainActor
+func adaptive_audio_waits_for_more_segments_without_replaying_or_finishing_early() async throws {
+  let url = try narrationAudioFixture()
+  defer { try? FileManager.default.removeItem(at: url) }
+  var requests: [RemoteTtsSynthesisRequest] = []
+  var players: [NarrationTestAudioPlayer] = []
+  var buffering: [Bool] = []
+  var ranges: [String] = []
+  var completed = false
+  let text = "One. Two. Three."
+  let engine = RemoteTTSEngine(profileId: "provider", voiceId: "voice", speed: 1, pitch: 1,
+    onRequest: { requests.append($0) }, onCancel: { _ in }, onBuffering: { _, value in buffering.append(value) },
+    makeAudioPlayer: { url in
+      let player = try NarrationTestAudioPlayer(contentsOf: url)
+      players.append(player)
+      return player
+    })
+  engine.onUtteranceCompleted = { completed = true }
+  defer { engine.cancelAll() }
+  let playback = Task { await engine.speak(text: text, language: "en", onSpeakRange: { ranges.append(String(text[$0])) }) }
+  while requests.isEmpty { await Task.yield() }
+  func segment(_ text: String, _ start: Int) -> TtsPlaybackSegmentRecord {
+    var result = TtsPlaybackSegmentRecord()
+    result.text = text; result.startUtf16 = start; result.endUtf16 = start + text.utf16.count; result.path = url.path
+    return result
+  }
+  var completion = TtsSynthesisCompletionRecord()
+  completion.requestId = requests[0].requestId
+  completion.segments = [segment("One. ", 0)]
+  completion.isFinal = false
+  engine.complete(completion)
+  #expect(players.count == 1)
+  players[0].delegate?.audioPlayerDidFinishPlaying?(players[0], successfully: true)
+  #expect(!completed)
+  #expect(buffering.last == true)
+  completion.segments?.append(segment("Two. ", 5))
+  engine.complete(completion)
+  #expect(players.count == 2)
+  completion.segments?.append(segment("Three.", 10))
+  completion.isFinal = true
+  engine.complete(completion)
+  #expect(players.count == 2)
+  players[1].delegate?.audioPlayerDidFinishPlaying?(players[1], successfully: true)
+  #expect(players.count == 3)
+  #expect(!completed)
+  players[2].delegate?.audioPlayerDidFinishPlaying?(players[2], successfully: true)
+  if case let .failure(error) = await playback.value { Issue.record("Playback failed: \(error)") }
+  #expect(completed)
+  #expect(ranges == ["One. ", "Two. ", "Three."])
+}
+
+@Test
+@MainActor
+func cancelling_partial_audio_cancels_the_remaining_synthesis() async throws {
+  let url = try narrationAudioFixture()
+  defer { try? FileManager.default.removeItem(at: url) }
+  let player = try NarrationTestAudioPlayer(contentsOf: url)
+  var requests: [RemoteTtsSynthesisRequest] = []
+  var cancelled: [String] = []
+  let engine = RemoteTTSEngine(profileId: "provider", voiceId: "voice", speed: 1, pitch: 1,
+    onRequest: { requests.append($0) }, onCancel: { cancelled += $0 }, onBuffering: { _, _ in }, makeAudioPlayer: { _ in player })
+  let playback = Task { await engine.speak(text: "One. Two.", language: "en", onSpeakRange: { _ in }) }
+  while requests.isEmpty { await Task.yield() }
+  var segment = TtsPlaybackSegmentRecord()
+  segment.text = "One. "; segment.endUtf16 = 5; segment.path = url.path
+  var completion = TtsSynthesisCompletionRecord()
+  completion.requestId = requests[0].requestId; completion.segments = [segment]; completion.isFinal = false
+  engine.complete(completion)
+  engine.cancelAll()
+  _ = await playback.value
+  #expect(cancelled == [completion.requestId])
+  engine.complete(completion)
+  #expect(player.delegate == nil)
+}
+
 private func narrationAudioFixture() throws -> URL {
   let url = FileManager.default.temporaryDirectory.appendingPathComponent("narration-\(UUID().uuidString).wav")
   let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)!

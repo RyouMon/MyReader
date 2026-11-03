@@ -449,6 +449,9 @@ pub struct TtsAudioArtifact {
     pub mime_type: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub duration_ms: Option<u64>,
+    /// Present only for an actual provider request, never for a cache hit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub synthesis_ms: Option<u64>,
     #[serde(default)]
     pub timings: Vec<TtsTiming>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

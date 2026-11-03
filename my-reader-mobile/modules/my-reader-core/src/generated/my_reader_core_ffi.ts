@@ -11802,6 +11802,7 @@ export type TtsAudioArtifact = {
   path: string;
   mimeType: string;
   durationMs?: number;
+  synthesisMs?: number;
   timings: Array<TtsTiming>;
   cacheKey?: string;
   playbackRate?: number;
@@ -11832,6 +11833,7 @@ const FfiConverterTypeTtsAudioArtifact = (() => {
         path: FfiConverterString.read(from),
         mimeType: FfiConverterString.read(from),
         durationMs: FfiConverterOptionalFloat64.read(from),
+        synthesisMs: FfiConverterOptionalFloat64.read(from),
         timings: FfiConverterSequenceTypeTtsTiming.read(from),
         cacheKey: FfiConverterOptionalString.read(from),
         playbackRate: FfiConverterOptionalFloat64.read(from),
@@ -11841,6 +11843,7 @@ const FfiConverterTypeTtsAudioArtifact = (() => {
       FfiConverterString.write(value.path, into);
       FfiConverterString.write(value.mimeType, into);
       FfiConverterOptionalFloat64.write(value.durationMs, into);
+      FfiConverterOptionalFloat64.write(value.synthesisMs, into);
       FfiConverterSequenceTypeTtsTiming.write(value.timings, into);
       FfiConverterOptionalString.write(value.cacheKey, into);
       FfiConverterOptionalFloat64.write(value.playbackRate, into);
@@ -11850,6 +11853,7 @@ const FfiConverterTypeTtsAudioArtifact = (() => {
         FfiConverterString.allocationSize(value.path) +
         FfiConverterString.allocationSize(value.mimeType) +
         FfiConverterOptionalFloat64.allocationSize(value.durationMs) +
+        FfiConverterOptionalFloat64.allocationSize(value.synthesisMs) +
         FfiConverterSequenceTypeTtsTiming.allocationSize(value.timings) +
         FfiConverterOptionalString.allocationSize(value.cacheKey) +
         FfiConverterOptionalFloat64.allocationSize(value.playbackRate)

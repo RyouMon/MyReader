@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import { ReadiumSpeechNavigator } from "@readium/speech"
+import { ttsPerformance } from "@my-reader/tools/tts-performance"
 import type { TtsAudioArtifactDto } from "@/lib/tauri-specta"
 import { CoreSpeechEngine, type TtsAudio } from "@/lib/tts/CoreSpeechEngine"
 
@@ -53,6 +54,36 @@ async function flushPromises() {
 }
 
 describe("CoreSpeechEngine", () => {
+  it("plays prepared narration audio without synthesizing or measuring it twice", async () => {
+    const audio = new FakeAudio()
+    const synthesize = vi.fn()
+    const record = vi.spyOn(
+      ttsPerformance.get(JSON.stringify(["prepared", "voice", null])),
+      "record",
+    )
+    const engine = new CoreSpeechEngine("prepared", {
+      preparedArtifact: {
+        ...artifact("/cache/prepared.wav"),
+        durationMs: 3000,
+        synthesisMs: 500,
+      },
+      synthesize,
+      listVoices: async () => [
+        { id: "voice", name: "Voice", language: "en", gender: null },
+      ],
+      createAudio: () => audio,
+      audioSource: (path) => path,
+    })
+    engine.loadUtterances([{ id: "one", plain: "Hello. Again." }])
+    engine.speak()
+    await vi.waitFor(() => expect(audio.play).toHaveBeenCalledOnce())
+    expect(audio.src).toBe("/cache/prepared.wav")
+    expect(synthesize).not.toHaveBeenCalled()
+    expect(record).not.toHaveBeenCalled()
+    await engine.destroy()
+    record.mockRestore()
+  })
+
   it("plays after Readium replaces a ready queue before the first utterance", async () => {
     const audio = new FakeAudio()
     const synthesize = vi.fn(async () => artifact("/cache/current.mp3"))
@@ -144,7 +175,7 @@ describe("CoreSpeechEngine", () => {
     await vi.waitFor(() => expect(events).toEqual(["start"]))
 
     audio.dispatch("ended")
-    expect(events).toEqual(["start", "end"])
+    await vi.waitFor(() => expect(events).toEqual(["start", "end"]))
     expect(engine.getState()).toBe("ready")
   })
 
@@ -205,7 +236,7 @@ describe("CoreSpeechEngine", () => {
     ])
 
     engine.speak(0)
-    await vi.waitFor(() => expect(synthesize).toHaveBeenCalledTimes(2))
+    await vi.waitFor(() => expect(synthesize).toHaveBeenCalledTimes(1))
     engine.speak(1)
     await flushPromises()
     first.resolve(artifact("/cache/stale.mp3"))
@@ -219,10 +250,9 @@ describe("CoreSpeechEngine", () => {
   })
 
   it("resynthesizes the selected sentence when resuming after a paused skip", async () => {
-    const synthesize = vi
-      .fn()
-      .mockResolvedValueOnce(artifact("/cache/one.mp3"))
-      .mockResolvedValueOnce(artifact("/cache/two.mp3"))
+    const synthesize = vi.fn(async ({ text }: { text: string }) =>
+      artifact(text === "One." ? "/cache/one.mp3" : "/cache/two.mp3"),
+    )
     const audios: FakeAudio[] = []
     const engine = new CoreSpeechEngine("provider", {
       synthesize,
@@ -247,12 +277,17 @@ describe("CoreSpeechEngine", () => {
     engine.setCurrentUtteranceIndex(1)
     engine.resume()
 
-    await vi.waitFor(() => expect(synthesize).toHaveBeenCalledTimes(2))
+    await vi.waitFor(() =>
+      expect(synthesize).toHaveBeenLastCalledWith(
+        expect.objectContaining({ text: "Two." }),
+        expect.anything(),
+      ),
+    )
     await vi.waitFor(() => expect(engine.getState()).toBe("playing"))
     expect(audios[1]?.src).toBe("/cache/two.mp3")
   })
 
-  it("prefetches the next two utterances while the current one is playing", async () => {
+  it("prefetches enough audio and reuses it after natural playback advances", async () => {
     const synthesize = vi.fn(async ({ text }: { text: string }) =>
       artifact(`/cache/${text.toLowerCase()}.mp3`),
     )
@@ -278,14 +313,17 @@ describe("CoreSpeechEngine", () => {
 
     engine.speak(0)
 
-    await vi.waitFor(() => expect(synthesize).toHaveBeenCalledTimes(3))
+    await vi.waitFor(() => expect(synthesize).toHaveBeenCalledTimes(4))
     expect(synthesize.mock.calls.map(([input]) => input.text)).toEqual([
       "One",
       "Two",
       "Three",
+      "Four",
     ])
     await vi.waitFor(() => expect(engine.getState()).toBe("playing"))
 
+    audios[0]!.dispatch("ended")
+    await vi.waitFor(() => expect(engine.getState()).toBe("ready"))
     engine.speak(1)
 
     await vi.waitFor(() => expect(synthesize).toHaveBeenCalledTimes(4))
@@ -326,13 +364,13 @@ describe("CoreSpeechEngine", () => {
       { id: "five", plain: "Five", language: "en" },
     ])
     engine.speak(0)
-    await vi.waitFor(() => expect(synthesize).toHaveBeenCalledTimes(3))
+    await vi.waitFor(() => expect(synthesize).toHaveBeenCalledTimes(1))
 
     engine.speak(4)
 
-    await vi.waitFor(() => expect(synthesize).toHaveBeenCalledTimes(4))
-    expect(signals.slice(0, 3).every((signal) => signal.aborted)).toBe(true)
-    expect(cancelSynthesis).toHaveBeenCalledTimes(3)
-    expect(synthesize.mock.calls[3]?.[0].text).toBe("Five")
+    await vi.waitFor(() => expect(synthesize).toHaveBeenCalledTimes(2))
+    expect(signals.slice(0, 1).every((signal) => signal.aborted)).toBe(true)
+    expect(cancelSynthesis).toHaveBeenCalledTimes(1)
+    expect(synthesize.mock.calls[1]?.[0].text).toBe("Five")
   })
 })

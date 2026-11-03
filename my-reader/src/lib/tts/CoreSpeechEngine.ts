@@ -1,4 +1,5 @@
 import { ttsLanguageMatches } from "@my-reader/tools/reader-tts-language"
+import { TtsBuffer } from "@my-reader/tools/tts-buffer"
 import { runTtsRequest } from "@my-reader/tools/tts-request"
 import type {
   ReadiumSpeechPlaybackEngine,
@@ -25,6 +26,9 @@ export type TtsAudio = {
 }
 
 export type CoreSpeechEngineDependencies = {
+  preparedArtifact?: TtsAudioArtifactDto
+  maxInputChars?: number
+  performanceKey?: string
   synthesize?: (
     input: {
       profileId: string
@@ -53,17 +57,6 @@ export const ACCEPTED_MIME_TYPES = [
   "audio/wav",
   "audio/x-wav",
 ]
-const LOOKAHEAD_UTTERANCE_COUNT = 3
-
-type SynthesisEntry = {
-  requestId: string
-  revision: number
-  controller: AbortController
-  dispatched: boolean
-  settled: boolean
-  promise: Promise<TtsAudioArtifactDto>
-}
-
 function voiceIdentifier(voice: ReadiumSpeechVoice): string {
   return voice.identifier ?? voice.voiceURI ?? voice.originalName ?? voice.name
 }
@@ -118,12 +111,14 @@ export class CoreSpeechEngine implements ReadiumSpeechPlaybackEngine {
   private audioCleanup: (() => void) | null = null
   private playbackController: AbortController | null = null
   private generation = 0
-  private synthesisRevision = 0
   private synthesisSequence = 0
   private readonly synthesisRequestPrefix =
     globalThis.crypto?.randomUUID?.() ??
     `${Date.now()}-${Math.random().toString(36).slice(2)}`
-  private synthesisEntries = new Map<number, SynthesisEntry>()
+  private buffer: TtsBuffer<
+    ReadiumSpeechUtterance & { voiceId: string },
+    TtsAudioArtifactDto
+  > | null = null
   private rate = 1
   private pitch = 1
   private volume = 1
@@ -131,7 +126,7 @@ export class CoreSpeechEngine implements ReadiumSpeechPlaybackEngine {
 
   constructor(
     private readonly profileId: string,
-    dependencies: CoreSpeechEngineDependencies = {},
+    private readonly dependencies: CoreSpeechEngineDependencies = {},
   ) {
     this.synthesize =
       dependencies.synthesize ??
@@ -218,68 +213,152 @@ export class CoreSpeechEngine implements ReadiumSpeechPlaybackEngine {
 
     this.cancelAudio()
     this.playbackController = new AbortController()
+    if (
+      nextIndex !== this.currentIndex &&
+      !(this.state === "ready" && nextIndex === this.currentIndex + 1)
+    )
+      this.resetSynthesisQueue()
     this.currentIndex = nextIndex
     const generation = this.generation
-    const synthesisRevision = this.synthesisRevision
     this.setState("loading")
-    void runTtsRequest(
-      () => this.synthesizeAndPlay(generation, synthesisRevision),
-      this.playbackController.signal,
-    ).catch((error: unknown) => {
+    void this.synthesizeAndPlay(generation).catch((error: unknown) => {
       if (generation === this.generation) this.fail(error)
     })
   }
 
-  private async synthesizeAndPlay(
-    generation: number,
-    synthesisRevision: number,
-  ): Promise<void> {
-    const artifact = await this.scheduleLookahead(
-      this.currentIndex,
-      synthesisRevision,
-    )
-    if (
-      generation !== this.generation ||
-      synthesisRevision !== this.synthesisRevision
-    )
-      return
+  private async synthesizeAndPlay(generation: number): Promise<void> {
+    this.buffer ??= new TtsBuffer({
+      count: this.utterances.length,
+      rate: () => this.rate,
+      split: !this.dependencies.preparedArtifact,
+      load: async (index, signal) => {
+        const utterance = this.utterances[index]
+        const voices = await this.getAvailableVoices()
+        if (signal.aborted) throw new DOMException("Aborted", "AbortError")
+        const voice = this.voiceForUtterance(utterance, voices)
+        if (!voice) throw new Error("TTS_VOICE_UNAVAILABLE")
+        const voiceId = voiceIdentifier(voice)
+        return [
+          {
+            text: utterance.plain ?? "",
+            startUtf16: 0,
+            context: { ...utterance, voiceId },
+            key: JSON.stringify([
+              this.dependencies.performanceKey ?? this.profileId,
+              voiceId,
+              utterance.language,
+            ]),
+            language: utterance.language,
+            maxChars: this.dependencies.maxInputChars,
+          },
+        ]
+      },
+      synthesize: async (run, text, signal) => {
+        if (this.dependencies.preparedArtifact)
+          return { ...this.dependencies.preparedArtifact, synthesisMs: null }
+        const requestId = `${this.profileId}-${this.synthesisRequestPrefix}-${++this.synthesisSequence}`
+        const cancel = () => {
+          void this.cancelSynthesis(requestId).catch(() => undefined)
+        }
+        return runTtsRequest(async (requestSignal) => {
+          requestSignal.addEventListener("abort", cancel, { once: true })
+          try {
+            return await this.synthesize(
+              {
+                profileId: this.profileId,
+                voiceId: run.context.voiceId,
+                text,
+                language: run.language,
+                acceptedMimeTypes: ACCEPTED_MIME_TYPES,
+                cachePolicy: "use",
+              },
+              { requestId, signal: requestSignal },
+            )
+          } finally {
+            requestSignal.removeEventListener("abort", cancel)
+          }
+        }, signal)
+      },
+    })
+    const buffer = this.buffer
+    buffer.activate(this.currentIndex)
+    for (let index = 0; ; index++) {
+      const chunk = await buffer.read(this.currentIndex, index)
+      if (generation !== this.generation || !chunk) break
+      await this.playArtifact(chunk.audio!, generation, () =>
+        buffer.startedChunk(index),
+      )
+      buffer.setPlaying(false)
+      if (generation !== this.generation) return
+    }
+    if (generation === this.generation) {
+      buffer.setPlaying(false)
+      this.setState("ready")
+      this.emit({ type: "end" })
+    }
+  }
 
+  private async playArtifact(
+    artifact: TtsAudioArtifactDto,
+    generation: number,
+    started: () => void,
+  ) {
     const audio = this.createAudio()
     this.audio = audio
     audio.src = this.audioSource(artifact.path)
     audio.playbackRate = Math.max(0.25, Math.min(4, this.rate))
     audio.volume = this.volume
-
-    const onEnded = () => {
-      if (generation !== this.generation) return
-      this.audioCleanup?.()
-      this.audioCleanup = null
-      this.audio = null
-      this.setState("ready")
-      this.emit({ type: "end" })
-    }
-    const onError = () => {
-      if (generation !== this.generation) return
-      this.audioCleanup?.()
-      this.audioCleanup = null
-      this.audio = null
-      this.fail(new Error("TTS_AUDIO_PLAYBACK_FAILED"))
-    }
-    audio.addEventListener("ended", onEnded)
-    audio.addEventListener("error", onError)
-    this.audioCleanup = () => this.detachAudio(audio, onEnded, onError)
-    await audio.play()
-    if (generation !== this.generation) {
-      audio.pause()
-      return
-    }
-    this.setState("playing")
-    this.emit({ type: "start" })
+    await new Promise<void>((resolve, reject) => {
+      const cleanup = () => {
+        audio.removeEventListener("ended", onEnded)
+        audio.removeEventListener("error", onError)
+        if (this.audio === audio) {
+          this.audio = null
+          this.audioCleanup = null
+        }
+      }
+      const onEnded = () => {
+        cleanup()
+        resolve()
+      }
+      const onError = () => {
+        cleanup()
+        reject(new Error("TTS_AUDIO_PLAYBACK_FAILED"))
+      }
+      audio.addEventListener("ended", onEnded)
+      audio.addEventListener("error", onError)
+      this.audioCleanup = () => {
+        cleanup()
+        resolve()
+      }
+      void runTtsRequest(
+        () => audio.play(),
+        this.playbackController?.signal,
+      ).then(
+        () => {
+          if (generation !== this.generation) {
+            audio.pause()
+            cleanup()
+            resolve()
+            return
+          }
+          started()
+          this.setState("playing")
+          this.emit({ type: "start" })
+        },
+        (error) => {
+          audio.pause()
+          cleanup()
+          reject(error)
+        },
+      )
+    })
   }
 
   pause(): void {
     if (this.state !== "playing" || !this.audio) return
     this.audio.pause()
+    this.buffer?.setPlaying(false)
     this.setState("paused")
     this.emit({ type: "pause" })
   }
@@ -297,6 +376,7 @@ export class CoreSpeechEngine implements ReadiumSpeechPlaybackEngine {
     )
       .then(() => {
         if (generation !== this.generation) return
+        this.buffer?.setPlaying(true)
         this.setState("playing")
         this.emit({ type: "resume" })
       })
@@ -314,9 +394,10 @@ export class CoreSpeechEngine implements ReadiumSpeechPlaybackEngine {
   }
 
   setRate(rate: number): void {
+    const previous = this.rate
     this.rate = Math.max(0.25, Math.min(4, rate))
     if (this.audio) this.audio.playbackRate = this.rate
-    this.pruneSynthesisQueue(new Set([this.currentIndex]))
+    this.buffer?.changeRate(previous, this.rate)
   }
 
   getRate(): number {
@@ -356,7 +437,11 @@ export class CoreSpeechEngine implements ReadiumSpeechPlaybackEngine {
       onComplete?.(false)
       return
     }
-    if (index !== this.currentIndex) this.cancelAudio()
+    if (index !== this.currentIndex) {
+      if (!(this.state === "ready" && index === this.currentIndex + 1))
+        this.resetSynthesisQueue()
+      this.cancelAudio()
+    }
     this.currentIndex = index
     onComplete?.(true)
   }
@@ -389,100 +474,17 @@ export class CoreSpeechEngine implements ReadiumSpeechPlaybackEngine {
   }
 
   private cancelAudio(): void {
+    this.buffer?.setPlaying(false)
     this.generation += 1
     this.playbackController?.abort()
     this.playbackController = null
+    const audio = this.audio
     this.audioCleanup?.()
     this.audioCleanup = null
-    if (!this.audio) return
-    this.audio.pause()
-    this.audio.currentTime = 0
+    if (!audio) return
+    audio.pause()
+    audio.currentTime = 0
     this.audio = null
-  }
-
-  private scheduleLookahead(
-    startIndex: number,
-    revision: number,
-  ): Promise<TtsAudioArtifactDto> {
-    const indices = Array.from(
-      { length: LOOKAHEAD_UTTERANCE_COUNT },
-      (_, offset) => startIndex + offset,
-    ).filter((index) => index < this.utterances.length)
-    this.pruneSynthesisQueue(new Set(indices))
-    const requests = indices.map((index) =>
-      this.ensureSynthesis(index, revision),
-    )
-    requests.slice(1).forEach((request) => {
-      void request.catch(() => undefined)
-    })
-    const current = requests[0]
-    if (!current) return Promise.reject(new Error("TTS_UTTERANCE_UNAVAILABLE"))
-    return current
-  }
-
-  private ensureSynthesis(
-    index: number,
-    revision: number,
-  ): Promise<TtsAudioArtifactDto> {
-    const existing = this.synthesisEntries.get(index)
-    if (existing?.revision === revision) return existing.promise
-    if (existing) this.cancelSynthesisEntry(existing)
-
-    const controller = new AbortController()
-    const requestId = `${this.profileId}-${this.synthesisRequestPrefix}-${++this.synthesisSequence}`
-    const entry: SynthesisEntry = {
-      requestId,
-      revision,
-      controller,
-      dispatched: false,
-      settled: false,
-      promise: Promise.resolve(null as unknown as TtsAudioArtifactDto),
-    }
-    entry.promise = this.synthesizeUtterance(
-      index,
-      requestId,
-      controller.signal,
-      () => {
-        entry.dispatched = true
-      },
-    )
-      .catch((error: unknown) => {
-        if (this.synthesisEntries.get(index) === entry) {
-          this.synthesisEntries.delete(index)
-        }
-        throw error
-      })
-      .finally(() => {
-        entry.settled = true
-      })
-    this.synthesisEntries.set(index, entry)
-    return entry.promise
-  }
-
-  private async synthesizeUtterance(
-    index: number,
-    requestId: string,
-    signal: AbortSignal,
-    onDispatch: () => void,
-  ): Promise<TtsAudioArtifactDto> {
-    const utterance = this.utterances[index]
-    if (!utterance) throw new Error("TTS_UTTERANCE_UNAVAILABLE")
-    const voices = await this.getAvailableVoices()
-    if (signal.aborted) throw new DOMException("Aborted", "AbortError")
-    const voice = this.voiceForUtterance(utterance, voices)
-    if (!voice) throw new Error("TTS_VOICE_UNAVAILABLE")
-    onDispatch()
-    return this.synthesize(
-      {
-        profileId: this.profileId,
-        text: utterance.plain ?? "",
-        language: utterance.language,
-        voiceId: voiceIdentifier(voice),
-        acceptedMimeTypes: ACCEPTED_MIME_TYPES,
-        cachePolicy: "use",
-      },
-      { requestId, signal },
-    )
   }
 
   private voiceForUtterance(
@@ -507,34 +509,9 @@ export class CoreSpeechEngine implements ReadiumSpeechPlaybackEngine {
     )
   }
 
-  private pruneSynthesisQueue(keep: Set<number>): void {
-    this.synthesisEntries.forEach((entry, index) => {
-      if (keep.has(index)) return
-      this.cancelSynthesisEntry(entry)
-      this.synthesisEntries.delete(index)
-    })
-  }
-
   private resetSynthesisQueue(): void {
-    this.synthesisRevision += 1
-    this.pruneSynthesisQueue(new Set())
-  }
-
-  private cancelSynthesisEntry(entry: SynthesisEntry): void {
-    if (entry.controller.signal.aborted) return
-    entry.controller.abort()
-    if (entry.dispatched && !entry.settled) {
-      void this.cancelSynthesis(entry.requestId).catch(() => undefined)
-    }
-  }
-
-  private detachAudio(
-    audio: TtsAudio,
-    onEnded: () => void,
-    onError: () => void,
-  ): void {
-    audio.removeEventListener("ended", onEnded)
-    audio.removeEventListener("error", onError)
+    this.buffer?.dispose()
+    this.buffer = null
   }
 
   private setState(state: ReadiumSpeechPlaybackState): void {

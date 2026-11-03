@@ -164,6 +164,7 @@ data class ReadiumFileRecord(
 
 @OptimizedRecord
 data class TtsEngineConfigRecord(
+  @Field val adaptive: Boolean = false,
   @Field val granularity: String = "sentence",
   @Field val singleUtterance: Boolean = false,
   @Field val kind: String = "system",
@@ -185,6 +186,7 @@ data class TtsTimingRecord(
 
 @OptimizedRecord
 data class TtsSynthesisCompletionRecord(
+  @Field val isFinal: Boolean = true,
   @Field val sessionId: String = "",
   @Field val requestId: String = "",
   @Field val path: String? = null,

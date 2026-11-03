@@ -1032,9 +1032,17 @@ describe("useReaderTtsSession", () => {
     expect(ref.current.completeTtsSynthesis).toHaveBeenCalledWith({
       sessionId,
       requestId: "request-1",
-      path: "/cache/tts/speech.mp3",
-      mimeType: "audio/mpeg",
-      timings: [],
+      isFinal: true,
+      segments: [
+        {
+          text: "你好",
+          startUtf16: 0,
+          endUtf16: 2,
+          path: "/cache/tts/speech.mp3",
+          playbackRate: 1,
+          timings: [],
+        },
+      ],
     })
 
     const failure = new Error(
@@ -1212,6 +1220,7 @@ describe("useReaderTtsSession", () => {
           pitch: 1,
         })
       })
+      await waitFor(() => expect(synthesizeTts).toHaveBeenCalled())
       const signal = jest.mocked(synthesizeTts).mock.calls[0]?.[1]?.signal
       await act(async () => {
         if (termination === "cancel") {
@@ -1733,6 +1742,7 @@ it("plays the selected paragraph using current voice settings after the model re
   expect(ref.current.completeTtsSynthesis).toHaveBeenCalledWith({
     sessionId,
     requestId: "request",
+    isFinal: true,
     segments: [
       {
         text: "One paragraph. ",
