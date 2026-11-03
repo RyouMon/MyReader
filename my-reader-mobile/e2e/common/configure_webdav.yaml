@@ -36,7 +36,7 @@ name: Register the isolated local WebDAV source
       platform: Android
     commands:
       - hideKeyboard
-- tapOn: "完成|Complete"
+- tapOn: "保存|Save"
 - extendedWaitUntil:
     notVisible:
       id: webdav-server-url
