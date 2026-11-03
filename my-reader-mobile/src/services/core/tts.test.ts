@@ -8,6 +8,7 @@ import {
   ttsPreviewProvider,
   ttsUpsertProfile,
 } from "my-reader-core"
+import { TTS_REQUEST_TIMEOUT_MS } from "@my-reader/tools/tts-request"
 import {
   deleteTtsCredential,
   readTtsCredential,
@@ -460,7 +461,7 @@ describe("mobile core TTS", () => {
         cachePolicy: "use",
       })
       const assertion = expect(pending).rejects.toThrow("TTS_REQUEST_TIMEOUT")
-      await jest.advanceTimersByTimeAsync(20_000)
+      await jest.advanceTimersByTimeAsync(TTS_REQUEST_TIMEOUT_MS)
       await assertion
       resolveCredential("secret")
       await jest.advanceTimersByTimeAsync(0)

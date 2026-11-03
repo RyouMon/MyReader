@@ -4,15 +4,34 @@ import { runTtsRequest } from "../src/tts-request"
 afterEach(() => vi.useRealTimers())
 
 describe("TTS request deadline", () => {
-  it("times out at 20 seconds and aborts a provider that never responds", async () => {
+  it("allows a cold provider to complete after thirty seconds without retrying", async () => {
+    vi.useFakeTimers()
+    let finish!: (value: string) => void
+    let requestSignal!: AbortSignal
+    const request = vi.fn((signal: AbortSignal) => {
+      requestSignal = signal
+      return new Promise<string>((resolve) => {
+        finish = resolve
+      })
+    })
+    const result = runTtsRequest(request).catch((error: unknown) => error)
+    await vi.advanceTimersByTimeAsync(30_000)
+    finish("audio")
+    expect(await result).toBe("audio")
+    expect(requestSignal.aborted).toBe(false)
+    expect(request).toHaveBeenCalledTimes(1)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it("times out at two minutes and aborts a provider that never responds", async () => {
     vi.useFakeTimers()
     let requestSignal!: AbortSignal
     const result = runTtsRequest((signal) => {
       requestSignal = signal
       return new Promise(() => {})
     })
-    const failure = expect(result).rejects.toThrow("TTS_REQUEST_TIMEOUT")
-    await vi.advanceTimersByTimeAsync(19_999)
+    const failure = expect(result).rejects.toThrow("TTS_REQUEST_TIMEOUT (120s)")
+    await vi.advanceTimersByTimeAsync(119_999)
     expect(requestSignal.aborted).toBe(false)
     await vi.advanceTimersByTimeAsync(1)
     await failure

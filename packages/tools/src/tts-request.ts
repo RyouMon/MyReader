@@ -1,9 +1,10 @@
-export const TTS_REQUEST_TIMEOUT_MS = 20_000
+export const TTS_REQUEST_TIMEOUT_MS = 120_000
 
 /** Bounds synthesis, including credential/bridge waits, and cancels late work. */
 export async function runTtsRequest<T>(
   request: (signal: AbortSignal) => Promise<T>,
   signal?: AbortSignal,
+  timeoutMs = TTS_REQUEST_TIMEOUT_MS,
 ): Promise<T> {
   const controller = new AbortController()
   let rejectPending!: (error: Error) => void
@@ -17,9 +18,9 @@ export async function runTtsRequest<T>(
     controller.abort()
   }
   const timeout = setTimeout(() => {
-    rejectPending(new Error("TTS_REQUEST_TIMEOUT (20s)"))
+    rejectPending(new Error(`TTS_REQUEST_TIMEOUT (${timeoutMs / 1000}s)`))
     controller.abort()
-  }, TTS_REQUEST_TIMEOUT_MS)
+  }, timeoutMs)
   signal?.addEventListener("abort", abort, { once: true })
   try {
     if (signal?.aborted) abort()

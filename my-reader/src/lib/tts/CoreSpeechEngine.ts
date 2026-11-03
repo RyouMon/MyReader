@@ -49,6 +49,8 @@ export type CoreSpeechEngineDependencies = {
   audioSource?: (path: string) => string
 }
 
+const LOCAL_OPERATION_TIMEOUT_MS = 20_000
+
 export const ACCEPTED_MIME_TYPES = [
   "audio/mpeg",
   "audio/ogg",
@@ -182,7 +184,11 @@ export class CoreSpeechEngine implements ReadiumSpeechPlaybackEngine {
 
   async getAvailableVoices(): Promise<ReadiumSpeechVoice[]> {
     if (this.voices) return [...this.voices]
-    this.voicesPromise ??= runTtsRequest(() => this.listVoices(this.profileId))
+    this.voicesPromise ??= runTtsRequest(
+      () => this.listVoices(this.profileId),
+      undefined,
+      LOCAL_OPERATION_TIMEOUT_MS,
+    )
       .then((voices) => {
         this.voices = voices.map(toReadiumVoice)
         this.currentVoice ??= this.voices[0] ?? null
@@ -334,6 +340,7 @@ export class CoreSpeechEngine implements ReadiumSpeechPlaybackEngine {
       void runTtsRequest(
         () => audio.play(),
         this.playbackController?.signal,
+        LOCAL_OPERATION_TIMEOUT_MS,
       ).then(
         () => {
           if (generation !== this.generation) {
@@ -373,6 +380,7 @@ export class CoreSpeechEngine implements ReadiumSpeechPlaybackEngine {
     void runTtsRequest(
       () => this.audio!.play(),
       this.playbackController?.signal,
+      LOCAL_OPERATION_TIMEOUT_MS,
     )
       .then(() => {
         if (generation !== this.generation) return
