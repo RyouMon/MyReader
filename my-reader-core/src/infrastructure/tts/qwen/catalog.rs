@@ -16,7 +16,7 @@ pub(crate) async fn discover_models(
         ));
     }
     let url = models_endpoint(base)?;
-    let http = client()?;
+    let http = client(REQUEST_TIMEOUT)?;
     let mut models: Vec<QwenTtsModel> = Vec::new();
     let mut seen = std::collections::HashSet::new();
     let mut page = 1;

@@ -10,7 +10,10 @@ use crate::{
 use serde_json::{json, Value};
 use url::Url;
 
-use super::{audio_response, client, response_bytes, tts_error, SynthesizedAudio};
+use super::{
+    audio_response, client, response_bytes, tts_error, SynthesizedAudio, REQUEST_TIMEOUT,
+    SYNTHESIS_TIMEOUT,
+};
 
 mod catalog;
 mod websocket;
@@ -149,7 +152,7 @@ pub(crate) async fn synthesize(
         input[if audio { "instruction" } else { "instructions" }] = json!(instructions);
     }
     let endpoint = endpoint(profile, audio)?;
-    let http = client()?;
+    let http = client(SYNTHESIS_TIMEOUT)?;
     let response = http
         .post(endpoint.clone())
         .bearer_auth(credential)
@@ -305,7 +308,7 @@ pub(crate) async fn discover_account_voices(
     } else {
         "qwen-voice-enrollment"
     };
-    let http = client()?;
+    let http = client(REQUEST_TIMEOUT)?;
     let mut voices: Vec<TtsVoice> = Vec::new();
     let page_size = 100;
     let mut page = 0;
