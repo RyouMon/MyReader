@@ -26,6 +26,7 @@ async fn token_plan_synthesizes_selected_voices_into_playable_audio() {
         TtsService::upsert_profile(
             &config_path,
             TtsProviderProfile {
+                voice_names: Default::default(),
                 id: "qwen-live".into(),
                 name: "Qwen live verification".into(),
                 kind: TtsProviderKind::Qwen,

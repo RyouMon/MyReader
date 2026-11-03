@@ -55,6 +55,17 @@ async function hydrate(config: LlmConfig): Promise<LlmSettings> {
 export async function getLlmConfig() {
   return hydrate(await llmGetConfig(appConfigPath))
 }
+export async function getLlmCredential(
+  providerId: string,
+): Promise<string | undefined> {
+  const config = await llmGetConfig(appConfigPath)
+  const provider = config.providers.find((item) => item.id === providerId)
+  if (!provider) throw new Error("LLM_PROFILE_NOT_FOUND")
+  return provider.credentialReference
+    ? ((await SecureStore.getItemAsync(provider.credentialReference)) ??
+        undefined)
+    : undefined
+}
 export async function selectedLlmCredential(): Promise<LlmCredential> {
   const config = await llmGetConfig(appConfigPath)
   const profile = config.profiles.find(

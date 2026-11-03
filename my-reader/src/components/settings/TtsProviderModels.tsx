@@ -92,7 +92,11 @@ export function TtsProviderModels({
       },
     )
   }
-  const updateVoices = (model: TtsModelDto, next: string[]) => {
+  const updateVoices = (
+    model: TtsModelDto,
+    next: string[],
+    voiceNames: Record<string, string>,
+  ) => {
     const defaultVoice = updatedDefaultVoice(
       model.defaultVoice,
       model.voices,
@@ -104,13 +108,14 @@ export function TtsProviderModels({
             ...draft,
             models: draft.models.map((old) =>
               old.id === model.id
-                ? { ...old, voices: next, defaultVoice }
+                ? { ...old, voices: next, voiceNames, defaultVoice }
                 : old,
             ),
           }
         : {
             ...draft,
             voices: next,
+            voiceNames,
             models: draft.models.map((old) => ({
               ...old,
               defaultVoice: updatedDefaultVoice(
@@ -230,8 +235,8 @@ export function TtsProviderModels({
                   draft={draft}
                   model={draft.models[index]}
                   fieldErrors={fieldErrors}
-                  onVoicesChange={(voices) =>
-                    updateVoices(draft.models[index], voices)
+                  onVoicesChange={(voices, names) =>
+                    updateVoices(draft.models[index], voices, names)
                   }
                   onRefresh={() => {
                     const model = draft.models[index]
@@ -270,9 +275,9 @@ export function TtsProviderModels({
             model={previewModel}
             fieldErrors={fieldErrors}
             disabled={busy}
-            onChange={(voices) => {
-              if (previewModel) updateVoices(previewModel, voices)
-              else onChange({ ...draft, voices })
+            onChange={(voices, names) => {
+              if (previewModel) updateVoices(previewModel, voices, names)
+              else onChange({ ...draft, voices, voiceNames: names })
             }}
           />
         </>

@@ -616,6 +616,7 @@ interface NativeModuleInterface {
     configPath: Uint8Array,
     requests: Uint8Array,
     credential: Uint8Array,
+    progress: bigint,
   ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_narration_cancel(
     root: Uint8Array,
@@ -950,9 +951,6 @@ interface NativeModuleInterface {
     endpoint: Uint8Array,
     credential: Uint8Array,
   ): bigint;
-  ubrn_uniffi_my_reader_core_ffi_fn_func_tts_qwen_presets(
-    uniffi_out_err: UniffiRustCallStatus,
-  ): Uint8Array;
   ubrn_uniffi_my_reader_core_ffi_fn_func_tts_remove_profile(
     configPath: Uint8Array,
     profileId: Uint8Array,
@@ -1135,7 +1133,6 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_probe_provider(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_provider_capabilities(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_qwen_models(): number;
-  ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_qwen_presets(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_remove_profile(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_save_provider(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_set_default_engine(): number;

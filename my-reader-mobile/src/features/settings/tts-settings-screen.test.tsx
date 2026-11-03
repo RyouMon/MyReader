@@ -257,7 +257,7 @@ describe("TtsSettingsScreen preview", () => {
     expect(
       screen.getByRole("button", { name: "settings.tts.voice" }).props
         .accessibilityValue,
-    ).toEqual({ text: "reader-voice" })
+    ).toEqual({ text: "reader-voice · Multilingual" })
 
     const action = await screen.findByRole("button", {
       name: "settings.tts.previewAction",

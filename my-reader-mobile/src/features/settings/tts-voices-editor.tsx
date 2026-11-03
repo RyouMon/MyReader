@@ -1,4 +1,8 @@
 import { useTtsRemoval } from "@/src/domain/tts/use-tts-removal-confirmation"
+import {
+  ttsVoiceNameKey,
+  updateTtsVoiceNames,
+} from "@my-reader/tools/tts-voice-names"
 import type { ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import {
@@ -30,19 +34,20 @@ export function TtsVoicesEditor({
   model?: MobileTtsModel
   validation: ReturnType<typeof useFormValidation>
   actions?: ReactNode
-  onChange: (voices: string[]) => void
+  onChange: (voices: string[], names: Record<string, string>) => void
 }) {
   const { t } = useTranslation()
   const confirmRemoval = useTtsRemoval()
   const palette = useThemePalette()
   const scoped = usesModelVoices(draft)
   const voices = scoped ? (model?.voices ?? []) : draft.voices
+  const names = (scoped ? model?.voiceNames : draft.voiceNames) ?? {}
   const group = scoped ? model?.id : "shared"
   const preview = useTtsVoicePreview(JSON.stringify([draft, model?.id]))
   const rename = (index: number, id: string) => {
     const next = [...voices]
     next[index] = id
-    onChange(next)
+    onChange(next, updateTtsVoiceNames(voices, next, names))
   }
   const remove = async (index: number) => {
     const next = voices.filter((_, i) => i !== index)
@@ -54,7 +59,8 @@ export function TtsVoicesEditor({
           ),
         }
       : { ...draft, voices: next }
-    if (await confirmRemoval(provider, voices[index])) onChange(next)
+    if (await confirmRemoval(provider, voices[index]))
+      onChange(next, updateTtsVoiceNames(voices, next, names, index))
   }
   return (
     <View className="gap-3">
@@ -68,7 +74,7 @@ export function TtsVoicesEditor({
             size="sm"
             variant="ghost"
             icon={{ ios: "plus", android: "add" }}
-            onPress={() => onChange([...voices, ""])}
+            onPress={() => onChange([...voices, ""], names)}
           />
         </View>
       </View>
@@ -124,14 +130,33 @@ export function TtsVoicesEditor({
               </>
             }
           >
-            <ProviderTextField
-              label={t("providerEditor.voiceId")}
-              testID={`tts-voice-id-${index}`}
-              required
-              value={voice}
-              {...validation.field(`${group}.voice.${index}`)}
-              onChangeText={(id) => rename(index, id)}
-            />
+            <View className="flex-row gap-2">
+              <View className="min-w-0 flex-1">
+                <ProviderTextField
+                  label={t("providerEditor.voiceId")}
+                  testID={`tts-voice-id-${index}`}
+                  required
+                  value={voice}
+                  {...validation.field(`${group}.voice.${index}`)}
+                  onChangeText={(id) => rename(index, id)}
+                />
+              </View>
+              <View className="min-w-0 flex-1">
+                <ProviderTextField
+                  label={t("providerEditor.voiceName")}
+                  testID={`tts-voice-name-${index}`}
+                  value={names[ttsVoiceNameKey(voice, index)] ?? ""}
+                  placeholder={voice}
+                  floatLabel={Boolean(voice)}
+                  onChangeText={(name) =>
+                    onChange(voices, {
+                      ...names,
+                      [ttsVoiceNameKey(voice, index)]: name,
+                    })
+                  }
+                />
+              </View>
+            </View>
           </FormInputRow>
         )
       })}

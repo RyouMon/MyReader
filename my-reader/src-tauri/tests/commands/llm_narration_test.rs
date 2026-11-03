@@ -68,6 +68,8 @@ async fn llm_commands_keep_keys_out_of_config_and_support_preview_and_profile_li
     let saved: Value = invoke_ok(&app, "upsert_llm_profile", json!({"input":draft}));
     assert_eq!(saved["profiles"][0]["hasCredential"], true);
     let id = saved["profiles"][0]["id"].as_str().unwrap();
+    let key: Option<String> = invoke_ok(&app, "get_llm_credential", json!({"providerId":id}));
+    assert_eq!(key.as_deref(), Some("fixture-secret"));
     let bytes = std::fs::read(app.app_data_dir().join("config.json")).unwrap();
     assert!(!String::from_utf8_lossy(&bytes).contains("fixture-secret"));
     draft["profile"]["id"] = json!(id);
@@ -82,6 +84,8 @@ async fn llm_commands_keep_keys_out_of_config_and_support_preview_and_profile_li
     draft["clearCredential"] = json!(true);
     let cleared: Value = invoke_ok(&app, "upsert_llm_profile", json!({"input":draft}));
     assert_eq!(cleared["profiles"][0]["hasCredential"], false);
+    let key: Option<String> = invoke_ok(&app, "get_llm_credential", json!({"providerId":id}));
+    assert!(key.is_none());
     let _: () = invoke_ok(&app, "probe_llm_profile", json!({"input":draft}));
     let _: Value = invoke_ok(&app, "remove_llm_profile", json!({"profileId":id}));
     let empty: Value = invoke_ok(&app, "get_llm_config", json!({}));

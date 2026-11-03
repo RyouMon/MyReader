@@ -201,6 +201,7 @@ fn add_tts_profile(config: &Path, id: &str) {
     crate::services::tts::TtsService::upsert_profile(
         config,
         TtsProviderProfile {
+            voice_names: Default::default(),
             id: id.into(),
             name: id.into(),
             kind: TtsProviderKind::OpenAiCompatible,

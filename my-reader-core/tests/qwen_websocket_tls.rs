@@ -29,6 +29,7 @@ async fn websocket_tls_reports_handshake_errors_without_a_global_crypto_provider
     TtsService::upsert_profile(
         &config_path,
         TtsProviderProfile {
+            voice_names: Default::default(),
             id: "qwen-tls".into(),
             name: "Qwen TLS regression".into(),
             kind: TtsProviderKind::Qwen,

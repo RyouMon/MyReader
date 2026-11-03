@@ -1,8 +1,7 @@
-import { qwenTtsSourceKeys } from "@my-reader/i18n/desktop"
-import { formatTtsLanguageName } from "@my-reader/tools/reader-tts-language"
+import { ttsVoiceLabel } from "@my-reader/tools/tts-voice-names"
 import { ttsUsageMessage } from "@my-reader/tools/tts-selection-usage"
 import { Loader2, Server, Volume2 } from "lucide-react"
-import { type CSSProperties, useEffect, useState } from "react"
+import { type CSSProperties, useCallback, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { AddPanelButton } from "@/components/common/AddPanelButton"
 import { AppRow } from "@/components/common/AppRow"
@@ -15,6 +14,8 @@ import { FormScrollArea } from "@/components/common/FormScrollArea"
 import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
 import { FormSlider } from "@/components/common/FormSlider"
 import { FormSwitch } from "@/components/common/FormSwitch"
+import { FormPasswordField } from "@/components/common/FormPasswordField"
+import { useProviderCredential } from "@/hooks/useProviderCredential"
 import { FormTextField } from "@/components/common/FormTextField"
 import { GroupList, GroupListItem } from "@/components/common/GroupList"
 import { RowActions } from "@/components/common/RowActions"
@@ -27,14 +28,12 @@ import {
   TtsProviderModels,
   TtsTestModelSelect,
 } from "@/components/settings/TtsProviderModels"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogFooter } from "@/components/ui/dialog"
 import { FieldGroup } from "@/components/ui/field"
-import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { TTS_PITCH_RANGE, TTS_SPEED_RANGE } from "@/constants/tts"
 import { useFormValidation } from "@/hooks/useFormValidation"
-import { useProviderTtsVoices, useQwenTtsPresets } from "@/hooks/useQwenTts"
+import { useProviderTtsVoices } from "@/hooks/useQwenTts"
 import { useTtsPreviewPlayer } from "@/hooks/useTtsPreviewPlayer"
 import {
   TtsRemovalContext,
@@ -43,7 +42,6 @@ import {
 import { errorMessage } from "@/lib/error-presentation"
 import { api } from "@/lib/tauri-api"
 import type {
-  QwenTtsPresetDto,
   TtsConfigDto,
   TtsPlaybackPreferencesDto,
   TtsProviderDto,
@@ -376,7 +374,18 @@ export function TtsProviderManager({
   const [providerError, setProviderError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
-  const qwenPresets = useQwenTtsPresets(providerDialogOpen)
+  const loadCredential = useCallback((credential: string) => {
+    setDraft((current) =>
+      current
+        ? { ...current, credential, clearCredential: !credential.trim() }
+        : null,
+    )
+  }, [])
+  const storedCredential = useProviderCredential(
+    "tts",
+    draft?.id,
+    loadCredential,
+  )
 
   const saveProfile = async () => {
     if (!draft) return
@@ -414,6 +423,7 @@ export function TtsProviderManager({
         kind: draft.kind,
         endpoint: draft.endpoint,
         voices: usesModelVoices(draft) ? [] : voices,
+        voiceNames: draft.voiceNames,
 
         modelScopedVoices: usesModelVoices(draft),
         models,
@@ -521,17 +531,17 @@ export function TtsProviderManager({
         <ProviderDialog
           open={providerDialogOpen}
           draft={draft}
-          error={providerError || qwenPresets.error}
-          qwenPresets={qwenPresets.presets}
+          error={providerError || storedCredential.error}
+          loading={storedCredential.loading}
           saving={saving}
           onOpenChange={handleProviderDialogOpenChange}
           onChooseOpenAi={() => setDraft(newProfileDraft())}
-          onChooseQwen={(preset) => {
+          onChooseQwen={() => {
             setDraft({
               ...newProfileDraft(),
               kind: "qwen",
-              name: t(qwenTtsSourceKeys(preset.id).title),
-              endpoint: preset.endpoint,
+              name: "Qwen",
+              endpoint: "",
               modelScopedVoices: true,
               models: [newTtsModel()],
               voices: [],
@@ -559,7 +569,7 @@ function ProviderDialog({
   onOpenChange,
   onChooseOpenAi,
   onChooseQwen,
-  qwenPresets,
+  loading,
   onBack,
   onChange,
   onSave,
@@ -571,8 +581,8 @@ function ProviderDialog({
   saving: boolean
   onOpenChange: (open: boolean) => void
   onChooseOpenAi: () => void
-  onChooseQwen: (preset: QwenTtsPresetDto) => void
-  qwenPresets: QwenTtsPresetDto[]
+  onChooseQwen: () => void
+  loading: boolean
   onBack: () => void
   onChange: (draft: ProfileDraft) => void
   onSave: () => void
@@ -581,13 +591,7 @@ function ProviderDialog({
   const { t } = useTranslation()
   const choosingType = draft === null
   const editing = Boolean(draft?.id)
-  const preset =
-    draft?.kind === "qwen"
-      ? qwenPresets.find(
-          (item) => item.endpoint === draft.endpoint.trim().replace(/\/+$/, ""),
-        )
-      : undefined
-  const { title, description } = useProviderDialogCopy(draft, preset)
+  const { title, description } = useProviderDialogCopy(draft)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -613,21 +617,24 @@ function ProviderDialog({
                 title={t("settings.speech.addOpenAi")}
                 onClick={onChooseOpenAi}
               />
-              {qwenPresets.map((preset) => (
-                <FlowDialogChoice
-                  key={preset.id}
-                  icon={Volume2}
-                  title={t(qwenTtsSourceKeys(preset.id).title)}
-                  description={t(qwenTtsSourceKeys(preset.id).description)}
-                  onClick={() => onChooseQwen(preset)}
-                />
-              ))}
+              <FlowDialogChoice
+                icon={Volume2}
+                title="Qwen"
+                onClick={onChooseQwen}
+              />
               {error ? <StatusNotice tone="error">{error}</StatusNotice> : null}
+            </div>
+          ) : loading ? (
+            <div className="px-6 py-5">
+              {error ? (
+                <StatusNotice tone="error">{error}</StatusNotice>
+              ) : (
+                <Loader2 className="size-5 animate-spin" role="status" />
+              )}
             </div>
           ) : (
             <ProfileEditor
               draft={draft}
-              preset={preset}
               themeStyle={themeStyle}
               error={error}
               saving={saving}
@@ -643,14 +650,12 @@ function ProviderDialog({
 
 function ProfileEditor({
   draft,
-  preset,
   error,
   saving,
   onChange,
   onSave,
 }: {
   draft: ProfileDraft
-  preset?: QwenTtsPresetDto
   themeStyle?: CSSProperties
   error: string | null
   saving: boolean
@@ -705,29 +710,25 @@ function ProfileEditor({
                 fullWidth
                 error={Boolean(fieldErrors["tts-profile-endpoint"])}
                 helperText={fieldErrors["tts-profile-endpoint"]}
-                placeholder="https://api.openai.com/v1"
+                placeholder={
+                  draft.kind === "qwen"
+                    ? undefined
+                    : "https://api.openai.com/v1"
+                }
                 onChange={(event) => update({ endpoint: event.target.value })}
               />
             </FieldGroup>
 
-            <FormTextField
+            <FormPasswordField
               id="tts-profile-credential"
               label={t("settings.speech.credential")}
-              type="password"
               fullWidth
               autoComplete="new-password"
               value={draft.credential}
-              placeholder={
-                draft.hasCredential
-                  ? t("settings.speech.credentialSaved")
-                  : draft.kind === "qwen"
-                    ? t(qwenTtsSourceKeys(preset?.id ?? "").credential)
-                    : t("settings.speech.credentialOptional")
-              }
               onChange={(event) =>
                 update({
                   credential: event.target.value,
-                  clearCredential: false,
+                  clearCredential: !event.target.value.trim(),
                 })
               }
             />
@@ -747,26 +748,6 @@ function ProfileEditor({
             model={previewModel}
             onChange={setPreviewId}
           />
-          {draft.hasCredential ? (
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="tts-clear-credential"
-                checked={draft.clearCredential}
-                onCheckedChange={(checked) =>
-                  update({
-                    clearCredential: checked === true,
-                    credential: "",
-                  })
-                }
-              />
-              <Label
-                htmlFor="tts-clear-credential"
-                className="text-sm font-normal text-muted-foreground"
-              >
-                {t("settings.speech.clearCredential")}
-              </Label>
-            </div>
-          ) : null}
         </div>
         <SaveButton saving={saving} />
       </DialogFooter>
@@ -813,6 +794,11 @@ function DefaultEngineSettings({
   selectVoice: (id: string) => Promise<void>
 }) {
   const { t } = useTranslation()
+  const selectedProfile = config.profiles.find(
+    (profile) =>
+      config.defaultEngine.kind === "provider" &&
+      profile.id === config.defaultEngine.profileId,
+  )
   return (
     <>
       <FormSelect
@@ -861,12 +847,22 @@ function DefaultEngineSettings({
                 },
                 ...systemVoices.map((voice) => ({
                   value: systemVoiceId(voice),
-                  label: `${voice.name} · ${formatTtsLanguageName(voice.lang, previewLanguage)}`,
+                  label: ttsVoiceLabel(
+                    voice.name,
+                    undefined,
+                    voice.lang,
+                    previewLanguage,
+                  ),
                 })),
               ]
             : providerVoices.map((voice) => ({
                 value: voice.id,
-                label: voice.id,
+                label: ttsVoiceLabel(
+                  voice.id,
+                  selectedProfile?.voiceNames,
+                  voice.language,
+                  previewLanguage,
+                ),
               }))
         }
       />
@@ -874,23 +870,14 @@ function DefaultEngineSettings({
   )
 }
 
-function useProviderDialogCopy(
-  draft: ProfileDraft | null,
-  preset: QwenTtsPresetDto | undefined,
-) {
+function useProviderDialogCopy(draft: ProfileDraft | null) {
   const { t } = useTranslation()
-  if (!draft)
-    return { title: t("settings.speech.addProvider"), description: undefined }
-  const description =
-    draft.kind === "qwen"
-      ? t(qwenTtsSourceKeys(preset?.id ?? "").description)
-      : undefined
-  if (draft.id) return { title: t("settings.speech.editProvider"), description }
-  const title =
-    draft.kind === "qwen"
-      ? t("qwenTts.add", {
-          name: preset ? t(qwenTtsSourceKeys(preset.id).title) : "Qwen",
-        })
-      : t("settings.speech.addOpenAi")
-  return { title, description }
+  const title = !draft
+    ? t("settings.speech.addProvider")
+    : draft.id
+      ? t("settings.speech.editProvider")
+      : draft.kind === "qwen"
+        ? t("qwenTts.add", { name: "Qwen" })
+        : t("settings.speech.addOpenAi")
+  return { title, description: undefined }
 }

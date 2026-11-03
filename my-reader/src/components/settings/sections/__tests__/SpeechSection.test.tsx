@@ -23,11 +23,7 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import userEvent from "@testing-library/user-event"
 
-import type {
-  QwenTtsPresetDto,
-  QwenTtsModelDto,
-  TtsConfigDto,
-} from "@/lib/tauri-specta"
+import type { QwenTtsModelDto, TtsConfigDto } from "@/lib/tauri-specta"
 import SpeechSection, { TtsProvidersSection } from "../SpeechSection"
 
 const mocks = vi.hoisted(() => ({
@@ -36,7 +32,7 @@ const mocks = vi.hoisted(() => ({
   setTtsPlaybackPreferences: vi.fn(),
   discoverTtsModels: vi.fn(),
   listQwenTtsModels: vi.fn(),
-  listQwenTtsPresets: vi.fn(),
+  getTtsCredential: vi.fn().mockResolvedValue("fixture-key"),
   discoverQwenTtsVoices: vi.fn(),
   saveTtsProvider: vi.fn(),
   removeTtsProfile: vi.fn(),
@@ -52,7 +48,7 @@ vi.mock("@/lib/tauri-api", () => ({
     setTtsPlaybackPreferences: mocks.setTtsPlaybackPreferences,
     discoverTtsModels: mocks.discoverTtsModels,
     listQwenTtsModels: mocks.listQwenTtsModels,
-    listQwenTtsPresets: mocks.listQwenTtsPresets,
+    getTtsCredential: mocks.getTtsCredential,
     discoverQwenTtsVoices: mocks.discoverQwenTtsVoices,
     saveTtsProvider: mocks.saveTtsProvider,
     removeTtsProfile: mocks.removeTtsProfile,
@@ -81,7 +77,11 @@ const config: TtsConfigDto = {
   },
 }
 
-const presets: (QwenTtsPresetDto & { defaultModel: QwenTtsModelDto })[] = [
+const presets: {
+  id: string
+  endpoint: string
+  defaultModel: QwenTtsModelDto
+}[] = [
   ["tokenPlan", "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference"],
   ["qianwen", "https://maas.qianwenaiapi.com/api/v1"],
   ["dashscope", "https://dashscope.aliyuncs.com/api/v1"],
@@ -127,9 +127,6 @@ beforeEach(() => {
     ...config,
     playback,
   }))
-  mocks.listQwenTtsPresets.mockResolvedValue(
-    presets.map(({ id, endpoint }) => ({ id, endpoint })),
-  )
   mocks.listQwenTtsModels.mockImplementation(
     async ({ profile: { endpoint } }) =>
       presets
@@ -143,7 +140,12 @@ beforeEach(() => {
   mocks.removeTtsProfile.mockResolvedValue(config)
 })
 
-async function importQwenModel(name: RegExp = /qwen-audio-3.0-tts-plus/) {
+async function importQwenModel(
+  name: RegExp = /qwen-audio-3.0-tts-plus/,
+  endpoint = presets[0].endpoint,
+) {
+  const address = screen.getByLabelText(/服务器地址\s*\*?$/) as HTMLInputElement
+  if (!address.value) fireEvent.change(address, { target: { value: endpoint } })
   fireEvent.click(screen.getByRole("button", { name: "获取可用模型" }))
   fireEvent.click(await screen.findByRole("checkbox", { name }))
   fireEvent.click(screen.getByRole("button", { name: "添加所选模型" }))
@@ -179,10 +181,9 @@ describe("SpeechSection", () => {
   })
 
   it.each([
-    [0, "Qwen · Token Plan", "Token Plan 套餐密钥（sk-sp- 开头）"],
-    [1, "Qwen · 按需计费", "千问 AI 平台 API Key（非套餐密钥）"],
-    [2, "Qwen · DashScope（百炼）", "阿里云百炼 API Key（与服务地域一致）"],
-  ] as const)("creates and reopens Qwen source %s without changing its endpoint", async (index, title, placeholder) => {
+    0, 1, 2,
+  ])("creates and reopens Qwen with explicit endpoint %s", async (index) => {
+    const title = "Qwen"
     const user = userEvent.setup()
     const preset = presets[index]
     mocks.saveTtsProvider.mockImplementation(async ({ provider }) => ({
@@ -203,11 +204,12 @@ describe("SpeechSection", () => {
     expect(form.getByLabelText(/模型 ID\s*\*?$/)).toHaveValue("")
     expect(form.getAllByLabelText(/声音 ID\s*\*?$/)).toHaveLength(1)
     expect(form.getByLabelText(/声音 ID\s*\*?$/)).toHaveValue("")
-    expect(form.getByLabelText(/名称\s*\*?$/)).toHaveValue(title)
-    expect(form.getByLabelText(/服务器地址\s*\*?$/)).toHaveValue(
-      preset.endpoint,
-    )
-    await user.type(form.getByPlaceholderText(placeholder), "fixture-key")
+    expect(form.getByLabelText(/^名称\s*\*?$/)).toHaveValue(title)
+    expect(form.getByLabelText(/服务器地址\s*\*?$/)).toHaveValue("")
+    fireEvent.change(form.getByLabelText(/服务器地址\s*\*?$/), {
+      target: { value: preset.endpoint },
+    })
+    await user.type(form.getByLabelText("API 密钥或访问令牌"), "fixture-key")
     expect(mocks.listQwenTtsModels).not.toHaveBeenCalled()
     await importQwenModel()
     if (index === 0) {
@@ -221,6 +223,9 @@ describe("SpeechSection", () => {
         credential: "fixture-key",
       }),
     )
+    fireEvent.change(form.getByLabelText("显示名称"), {
+      target: { value: "旁白" },
+    })
     await user.click(form.getByRole("button", { name: "保存" }))
     await waitFor(() =>
       expect(mocks.saveTtsProvider).toHaveBeenCalledWith(
@@ -231,6 +236,9 @@ describe("SpeechSection", () => {
             endpoint: preset.endpoint,
             models: [
               expect.objectContaining({
+                voiceNames: {
+                  [index === 0 ? "manual-voice" : "custom-voice"]: "旁白",
+                },
                 model: preset.defaultModel.id,
                 responseFormat: "mp3",
                 defaultVoice: index === 0 ? "manual-voice" : "custom-voice",
@@ -244,17 +252,16 @@ describe("SpeechSection", () => {
     expect(
       within(screen.getByRole("dialog")).getByLabelText(/服务器地址\s*\*?$/),
     ).toHaveValue(preset.endpoint)
+    expect(screen.getByLabelText("显示名称")).toHaveValue("旁白")
   })
 
-  it("clears draft credentials and voices when returning to choose another Qwen source", async () => {
+  it("discards draft credentials and voices when returning to the service picker", async () => {
     const user = userEvent.setup()
     render(<TtsProvidersSection />)
     await user.click(
       await screen.findByRole("button", { name: "添加语音服务" }),
     )
-    await user.click(
-      await screen.findByRole("button", { name: /^Qwen · Token Plan/ }),
-    )
+    await user.click(await screen.findByRole("button", { name: /^Qwen$/ }))
     await user.type(
       screen.getByLabelText("API 密钥或访问令牌"),
       "sk-sp-fixture",
@@ -265,10 +272,10 @@ describe("SpeechSection", () => {
       "subscription-voice",
     )
     await user.click(screen.getByRole("button", { name: "返回" }))
-    await user.click(screen.getByRole("button", { name: /^Qwen · 按需计费/ }))
+    await user.click(screen.getByRole("button", { name: /^Qwen$/ }))
     expect(screen.getByLabelText("API 密钥或访问令牌")).toHaveValue("")
     expect(screen.getByLabelText(/声音 ID\s*\*?$/)).toHaveValue("")
-    await importQwenModel()
+    await importQwenModel(/qwen-audio-3.0-tts-plus/, presets[1].endpoint)
     expect(screen.getByLabelText(/声音 ID\s*\*?$/)).toHaveValue("custom-voice")
     await user.click(screen.getByRole("button", { name: "添加声音" }))
     expect(screen.getAllByLabelText(/声音 ID\s*\*?$/)[1]).toHaveValue("")
@@ -282,7 +289,7 @@ describe("SpeechSection", () => {
     await screen.findByRole("heading", { name: "TTS 供应商" })
     fireEvent.click(screen.getByRole("button", { name: "添加语音服务" }))
     const choice = await screen.findByRole("button", {
-      name: /^Qwen · Token Plan/,
+      name: /^Qwen$/,
     })
     await waitFor(() => expect(choice).toBeEnabled())
     fireEvent.click(choice)
@@ -353,10 +360,8 @@ describe("SpeechSection", () => {
     ])
     render(<TtsProvidersSection />)
     fireEvent.click(await screen.findByRole("button", { name: "添加语音服务" }))
-    fireEvent.click(
-      await screen.findByRole("button", { name: /^Qwen · DashScope/ }),
-    )
-    await importQwenModel(/qwen3-tts-flash/)
+    fireEvent.click(await screen.findByRole("button", { name: /^Qwen$/ }))
+    await importQwenModel(/qwen3-tts-flash/, presets[2].endpoint)
     const form = within(screen.getByRole("dialog"))
     expect(mocks.discoverQwenTtsVoices).not.toHaveBeenCalled()
     fireEvent.change(form.getByLabelText(/声音 ID\s*\*?$/), {
@@ -550,7 +555,7 @@ describe("SpeechSection", () => {
           id: "fixture",
           endpoint: profile.endpoint,
         }),
-        credential: null,
+        credential: "fixture-key",
       }),
       "欢迎使用 MyReader 朗读功能。",
     )
@@ -600,6 +605,24 @@ describe("SpeechSection", () => {
     )
     expect(mocks.saveTtsProvider).not.toHaveBeenCalled()
   })
+})
+
+it("keeps the voice ID placeholder separate from an editable display name", async () => {
+  const user = userEvent.setup()
+  render(<TtsProvidersSection />)
+  await user.click(await screen.findByRole("button", { name: "添加语音服务" }))
+  await user.click(screen.getByRole("button", { name: "Qwen" }))
+  const id = screen.getByLabelText(/声音 ID\s*\*?$/)
+  const name = screen.getByLabelText("显示名称")
+  fireEvent.change(id, { target: { value: "Bunny" } })
+  expect(id).toHaveValue("Bunny")
+  expect(name).toHaveValue("")
+  fireEvent.change(id, { target: { value: "custom-voice" } })
+  expect(name).toHaveValue("")
+  expect(name).toHaveAttribute("placeholder", "custom-voice")
+  fireEvent.change(name, { target: { value: "自定义名称" } })
+  fireEvent.change(id, { target: { value: "Cherry" } })
+  expect(name).toHaveValue("自定义名称")
 })
 
 it("saves multiple OpenAI models with shared voices and automatic playback defaults", async () => {
@@ -730,11 +753,12 @@ it("merges editable system presets with account voices and tests each unsaved vo
   ])
   render(<TtsProvidersSection />)
   fireEvent.click(await screen.findByRole("button", { name: "添加语音服务" }))
-  fireEvent.click(
-    await screen.findByRole("button", { name: /^Qwen · 按需计费/ }),
-  )
+  fireEvent.click(await screen.findByRole("button", { name: /^Qwen$/ }))
   fireEvent.change(screen.getByLabelText("API 密钥或访问令牌"), {
     target: { value: "draft-key" },
+  })
+  fireEvent.change(screen.getByLabelText(/服务器地址\s*\*?$/), {
+    target: { value: presets[1].endpoint },
   })
   fireEvent.click(screen.getByRole("button", { name: "获取可用模型" }))
   fireEvent.click(await screen.findByRole("checkbox", { name: "qwen-new" }))
@@ -861,7 +885,7 @@ it("previews a shared voice with the chosen model and preserves saved playback v
     }),
     expect.any(String),
   )
-  fireEvent.change(screen.getByLabelText(/名称\s*\*?$/), {
+  fireEvent.change(screen.getByLabelText(/^名称\s*\*?$/), {
     target: { value: "Renamed service" },
   })
   await user.click(screen.getByRole("button", { name: "保存" }))
@@ -869,7 +893,7 @@ it("previews a shared voice with the chosen model and preserves saved playback v
     expect(mocks.saveTtsProvider).toHaveBeenCalledWith(
       expect.objectContaining({
         provider: expect.objectContaining({ name: "Renamed service", models }),
-        credential: null,
+        credential: "fixture-key",
         clearCredential: false,
       }),
     ),

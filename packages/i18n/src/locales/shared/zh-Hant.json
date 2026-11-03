@@ -30,7 +30,8 @@
     "removeVoice": "刪除聲音",
     "addVoice": "新增聲音",
     "fetchVoices": "取得聲音",
-    "testModel": "測試模型"
+    "testModel": "測試模型",
+    "voiceName": "顯示名稱"
   },
   "llm": {
     "title": "LLM 供應商",
@@ -40,7 +41,6 @@
     "protocol": "協定",
     "endpoint": "API 位址",
     "key": "API 金鑰",
-    "keySaved": "已儲存",
     "model": "模型",
     "models": "載入模型",
     "test": "測試連線",
@@ -48,7 +48,6 @@
     "context": "上下文視窗",
     "default": "預設模型",
     "none": "無",
-    "clearKey": "移除已儲存的金鑰",
     "save": "儲存",
     "cancel": "取消",
     "delete": "刪除",
@@ -145,32 +144,7 @@
   },
   "qwenTts": {
     "title": "Qwen（通義千問）",
-    "add": "新增 {{name}}",
-    "description": "使用與服務地址對應的憑據，支援指定音色。",
-    "sources": {
-      "tokenPlan": {
-        "title": "Qwen · Token Plan",
-        "description": "使用千問套餐額度和套餐專用金鑰。",
-        "credential": "Token Plan 套餐金鑰（sk-sp- 開頭）"
-      },
-      "qianwen": {
-        "title": "Qwen · 按需計費",
-        "description": "使用千問 AI 平臺 API，按實際用量計費。",
-        "credential": "千問 AI 平臺 API Key（非套餐金鑰）"
-      },
-      "dashscope": {
-        "title": "Qwen · DashScope（百鍊）",
-        "description": "使用阿里雲百鍊 API，預設北京地域。",
-        "credential": "阿里雲百鍊 API Key（與服務地域一致）"
-      }
-    },
-    "manualVoicesAction": "手動輸入音色 ID",
-    "manualVoices": "音色 ID",
-    "manualVoicesHint": "僅用於列表中未顯示的官方或自定義音色，每行一個 ID。",
-    "loadingVoices": "正在獲取賬戶音色…",
-    "voicesFailed": "賬戶音色獲取失敗，可繼續使用已有音色或手動輸入。",
-    "voicesEmpty": "當前模型暫無賬戶音色，請先在對應平臺建立音色，或輸入已有音色 ID。",
-    "credentialRequired": "填寫與服務地址對應的 API Key；Token Plan 使用 sk-sp- 開頭的套餐金鑰"
+    "add": "新增 {{name}}"
   },
   "addLibraryFlow": {
     "title": "新增書庫",
@@ -472,5 +446,9 @@
     "global": "全域朗讀設定",
     "reset": "以下設定將恢復預設：\n{{usages}}",
     "confirm": "儲存這些修改？"
+  },
+  "passwordField": {
+    "show": "顯示密碼",
+    "hide": "隱藏密碼"
   }
 }

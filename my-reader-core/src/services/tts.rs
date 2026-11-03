@@ -12,10 +12,9 @@ use uuid::Uuid;
 use crate::{
     infrastructure::tts,
     models::{
-        QwenTtsModel, QwenTtsPreset, TtsAudioArtifact, TtsCachePolicy, TtsConfig,
-        TtsEngineSelection, TtsPlaybackPreferences, TtsProvider, TtsProviderCapabilities,
-        TtsProviderKind, TtsProviderOptions, TtsProviderProfile, TtsSynthesisRequest, TtsVoice,
-        TtsVoiceRef,
+        QwenTtsModel, TtsAudioArtifact, TtsCachePolicy, TtsConfig, TtsEngineSelection,
+        TtsPlaybackPreferences, TtsProvider, TtsProviderCapabilities, TtsProviderKind,
+        TtsProviderOptions, TtsProviderProfile, TtsSynthesisRequest, TtsVoice, TtsVoiceRef,
     },
     CoreError,
 };
@@ -43,10 +42,6 @@ mod provider_tests;
 mod removal_tests;
 
 impl TtsService {
-    pub fn qwen_presets() -> Vec<QwenTtsPreset> {
-        tts::qwen::presets()
-    }
-
     pub async fn qwen_models(
         endpoint: &str,
         credential: Option<&str>,
@@ -105,10 +100,12 @@ impl TtsService {
             let mut normalized = TtsProvider::from(profile);
             if provider.model_scoped_voices && provider.kind == TtsProviderKind::OpenAiCompatible {
                 normalized.models[0].voices = std::mem::take(&mut normalized.voices);
+                normalized.models[0].voice_names = std::mem::take(&mut normalized.voice_names);
             }
             provider.name = normalized.name;
             provider.endpoint = normalized.endpoint;
             provider.voices = normalized.voices;
+            provider.voice_names = normalized.voice_names;
             models.extend(normalized.models);
         }
         provider.models = models;
@@ -416,13 +413,8 @@ fn normalize_profile(profile: &mut TtsProviderProfile) -> Result<(), CoreError> 
         profile.name = if qwen { "Qwen" } else { "OpenAI" }.into();
     }
     profile.endpoint = profile.endpoint.trim().trim_end_matches('/').to_owned();
-    if profile.endpoint.is_empty() {
-        profile.endpoint = if qwen {
-            tts::qwen::DEFAULT_ENDPOINT
-        } else {
-            "https://api.openai.com/v1"
-        }
-        .into();
+    if profile.endpoint.is_empty() && !qwen {
+        profile.endpoint = "https://api.openai.com/v1".into();
     }
     profile.model = normalize_optional(profile.model.take());
     profile.credential_reference = normalize_optional(profile.credential_reference.take());
@@ -455,6 +447,15 @@ fn normalize_profile(profile: &mut TtsProviderProfile) -> Result<(), CoreError> 
         }
     }
     *voices = normalized_voices;
+    profile.voice_names = std::mem::take(&mut profile.voice_names)
+        .into_iter()
+        .filter_map(|(id, name)| {
+            let id = id.trim();
+            let name = name.trim();
+            (voices.iter().any(|voice| voice == id) && !name.is_empty())
+                .then(|| (id.to_owned(), name.to_owned()))
+        })
+        .collect();
     *default_voice = normalize_optional(default_voice.take());
     if qwen && default_voice.is_none() {
         *default_voice = voices.first().cloned();
@@ -735,6 +736,7 @@ mod tests {
 
     fn openai_profile(endpoint: String) -> TtsProviderProfile {
         TtsProviderProfile {
+            voice_names: Default::default(),
             id: "openai".into(),
             name: "OpenAI".into(),
             kind: TtsProviderKind::OpenAiCompatible,
@@ -977,6 +979,7 @@ mod tests {
 
     fn qwen_profile(endpoint: String, model: &str, voice: &str) -> TtsProviderProfile {
         TtsProviderProfile {
+            voice_names: Default::default(),
             id: "qwen".into(),
             name: "Qwen".into(),
             kind: TtsProviderKind::Qwen,
@@ -1212,15 +1215,6 @@ mod tests {
         assert!(!cache.exists());
     }
 
-    #[test]
-    fn qwen_presets_contain_only_connection_settings() {
-        let presets = TtsService::qwen_presets();
-        assert_eq!(presets.len(), 3);
-        assert_eq!(presets[0].endpoint, tts::qwen::DEFAULT_ENDPOINT);
-        assert_eq!(presets[1].endpoint, "https://maas.qianwenaiapi.com/api/v1");
-        assert_eq!(presets[2].endpoint, "https://dashscope.aliyuncs.com/api/v1");
-    }
-
     #[tokio::test]
     async fn qwen_catalog_pages_official_metadata_and_accepts_future_models() {
         let pages = [
@@ -1251,7 +1245,7 @@ mod tests {
             ]
         );
         assert!(models[0].voices.is_empty());
-        assert!(!models[1].voices.is_empty());
+        assert!(models[1].voices.is_empty());
         for (index, request) in server.await.unwrap().iter().enumerate() {
             let text = request_text(request);
             assert!(text.starts_with(&format!(
@@ -1745,22 +1739,24 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn system_voice_presets_do_not_require_a_network_request() {
-        for (model, endpoint) in [
-            ("qwen3-tts-flash", "http://127.0.0.1:9/api/v1"),
-            (
-                "qwen-audio-3.0-tts-plus",
-                "ws://127.0.0.1:9/api-ws/v1/inference",
-            ),
-        ] {
-            let defaults = tts::qwen::model(model, endpoint).unwrap();
-            assert!(!defaults.voices.is_empty());
-            assert!(!defaults.voice_discovery);
-            assert!(TtsService::discover_qwen_voices(endpoint, model, None)
-                .await
-                .unwrap()
-                .is_empty());
-        }
+    async fn qwen_flash_queries_the_configured_endpoint_without_static_voices() {
+        let body = serde_json::json!({"output":{"voice_list":[
+            {"voice":"account-voice", "target_model":"qwen3-tts-flash"}
+        ]}});
+        let (endpoint, server) = test_server(vec![response(
+            "application/json",
+            &serde_json::to_vec(&body).unwrap(),
+        )])
+        .await;
+        let model = tts::qwen::model("qwen3-tts-flash", &endpoint).unwrap();
+        assert!(model.voices.is_empty());
+        let voices = TtsService::discover_qwen_voices(&endpoint, &model.id, Some("key"))
+            .await
+            .unwrap();
+        assert_eq!(voices.len(), 1);
+        assert_eq!(voices[0].id, "account-voice");
+        assert!(request_text(&server.await.unwrap()[0])
+            .starts_with("POST /api/v1/services/audio/tts/customization HTTP/1.1"));
     }
 
     #[test]

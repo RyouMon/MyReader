@@ -5,6 +5,7 @@ import {
   saveBookNarration,
   importBookCharacters,
   prepareBookNarration,
+  analyzeBookNarration,
   draftBookCharacters,
   searchBookCharacterSources,
   type CharacterDraftInput,
@@ -29,6 +30,7 @@ jest.mock("my-reader-core", () => ({
   narrationSaveSettings: jest.fn(),
   narrationImport: jest.fn(),
   narrationPrepare: jest.fn(),
+  narrationAnalyzeBatch: jest.fn(),
   narrationSearchSources: jest.fn(),
   narrationDraftCharacters: jest.fn(),
   CharacterDraftInput: {
@@ -60,6 +62,27 @@ const settings = {
 beforeEach(() => {
   jest.clearAllMocks()
   jest.mocked(core.narrationResolveSettings).mockResolvedValue(settings)
+})
+it("forwards chapter output only while the analysis request is active", async () => {
+  const abort = new AbortController()
+  const progress = jest.fn()
+  jest
+    .mocked(core.narrationAnalyzeBatch)
+    .mockImplementationOnce(async (...args) => {
+      expect(args[2]).toEqual([request])
+      expect(args[5]?.signal).toBe(abort.signal)
+      args[4].onProgress("reasoning", "分析当前章节")
+      abort.abort()
+      args[4].onProgress("text", "cancelled output")
+    })
+  await analyzeBookNarration(library, [request], abort.signal, progress)
+  const callback = jest.mocked(core.narrationAnalyzeBatch).mock.calls[0]![4]
+  callback.onProgress("text", "late output")
+  expect(progress.mock.calls).toEqual([["reasoning", "分析当前章节"]])
+  await expect(
+    analyzeBookNarration(library, [request], abort.signal, progress),
+  ).rejects.toMatchObject({ name: "AbortError" })
+  expect(core.narrationAnalyzeBatch).toHaveBeenCalledTimes(1)
 })
 it("routes book settings and import to the library sidecar and passes cancellation to FFI", async () => {
   await getBookNarration(library, 1)

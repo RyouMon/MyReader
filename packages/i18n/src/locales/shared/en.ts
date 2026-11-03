@@ -20,7 +20,9 @@ export const sharedEn = {
     integer: "Enter a whole number.",
     invalid: "Enter a valid value.",
   },
+  passwordField: { show: "Show password", hide: "Hide password" },
   providerEditor: {
+    voiceName: "Display name",
     playbackFailed: "Audio playback failed.",
     fetchModels: "Fetch available models",
     models: "Model list",
@@ -65,7 +67,6 @@ export const sharedEn = {
     protocol: "Protocol",
     endpoint: "API endpoint",
     key: "API key",
-    keySaved: "Saved",
     model: "Model",
     models: "Load models",
     test: "Test connection",
@@ -73,7 +74,6 @@ export const sharedEn = {
     context: "Context window",
     default: "Default model",
     none: "None",
-    clearKey: "Remove saved key",
     save: "Save",
     cancel: "Cancel",
     delete: "Delete",
@@ -209,38 +209,6 @@ export const sharedEn = {
   qwenTts: {
     title: "Qwen",
     add: "Add {{name}}",
-    description: "Use credentials for this endpoint and choose your voice.",
-    sources: {
-      tokenPlan: {
-        title: "Qwen · Token Plan",
-        description:
-          "Use your Qwen subscription credits and plan-specific key.",
-        credential: "Token Plan subscription key (starts with sk-sp-)",
-      },
-      qianwen: {
-        title: "Qwen · Pay as you go",
-        description:
-          "Use the Qianwen AI Platform API with usage-based billing.",
-        credential: "Qianwen AI Platform API key (not a subscription key)",
-      },
-      dashscope: {
-        title: "Qwen · DashScope (Model Studio)",
-        description:
-          "Use Alibaba Cloud Model Studio, Beijing region by default.",
-        credential: "Alibaba Cloud Model Studio API key for this region",
-      },
-    },
-    manualVoicesAction: "Enter voice IDs manually",
-    manualVoices: "Voice IDs",
-    manualVoicesHint:
-      "For official or custom voices missing from the list. Enter one ID per line.",
-    loadingVoices: "Loading account voices…",
-    voicesFailed:
-      "Could not load account voices. Saved voices and manually entered IDs are still available.",
-    voicesEmpty:
-      "No account voices for this model. Create a voice on the corresponding platform or enter an existing voice ID.",
-    credentialRequired:
-      "API key matching this endpoint; Token Plan requires an sk-sp- subscription key",
   },
   addLibraryFlow: {
     title: "Add library",

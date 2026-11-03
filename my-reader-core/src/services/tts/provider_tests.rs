@@ -2,6 +2,7 @@ use super::*;
 
 pub(super) fn provider(kind: TtsProviderKind) -> TtsProvider {
     TtsProvider {
+        voice_names: Default::default(),
         id: "provider".into(),
         name: "Provider".into(),
         kind,
@@ -14,6 +15,7 @@ pub(super) fn provider(kind: TtsProviderKind) -> TtsProvider {
             vec![]
         },
         models: vec![crate::models::TtsModel {
+            voice_names: Default::default(),
             id: "model-a".into(),
             model: if kind == TtsProviderKind::Qwen {
                 "qwen3-tts-flash"
@@ -188,7 +190,7 @@ fn openai_can_scope_voices_to_models_and_switch_back_without_changing_model_ids(
 }
 
 #[tokio::test]
-async fn legacy_labels_are_dropped_without_changing_voice_ids_or_synthesis_revision() {
+async fn voice_names_persist_without_changing_voice_ids_or_synthesis_revision() {
     for scoped in [false, true] {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("config.json");
@@ -202,7 +204,17 @@ async fn legacy_labels_are_dropped_without_changing_voice_ids_or_synthesis_revis
         legacy["voiceNames"] = serde_json::json!({"voice-a":"Narrator"});
         let saved =
             TtsService::upsert_provider(&path, serde_json::from_value(legacy).unwrap()).unwrap();
-        assert_eq!(saved, original);
+        assert_eq!(
+            saved.profiles()[0].revision,
+            original.profiles()[0].revision
+        );
+        assert_eq!(
+            saved.profiles()[0]
+                .voice_names
+                .get("voice-a")
+                .map(String::as_str),
+            Some("Narrator")
+        );
         assert_eq!(TtsService::get_config(&path).unwrap(), saved);
         let voices = TtsService::list_voices(&path, "model-a", None)
             .await
@@ -210,6 +222,6 @@ async fn legacy_labels_are_dropped_without_changing_voice_ids_or_synthesis_revis
         assert!(voices.iter().any(|voice| voice.id == "voice-a"));
         let on_disk = std::fs::read_to_string(&path).unwrap();
         assert!(!on_disk.contains("displayName"));
-        assert!(!on_disk.contains("voiceNames"));
+        assert!(on_disk.contains("voiceNames"));
     }
 }

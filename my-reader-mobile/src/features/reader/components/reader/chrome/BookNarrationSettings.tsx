@@ -248,6 +248,7 @@ function BookNarrationContent({
 
   return (
     <NarrationCharacterList
+      config={config}
       characters={settings.characters}
       palette={palette}
       busy={busy}

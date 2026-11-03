@@ -93,6 +93,8 @@ pub struct TtsProvider {
     /// Shared voices when model-scoped voices are disabled.
     #[serde(default)]
     pub voices: Vec<String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub voice_names: BTreeMap<String, String>,
     pub models: Vec<TtsModel>,
 }
 
@@ -109,6 +111,8 @@ pub struct TtsModel {
     /// Voices for this model when model-scoped voices are enabled.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub voices: Vec<String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub voice_names: BTreeMap<String, String>,
     #[serde(default = "initial_profile_revision")]
     pub revision: u64,
 }
@@ -143,6 +147,11 @@ impl TtsProvider {
                     endpoint: self.endpoint.clone(),
                     model: Some(model.model.clone()),
                     credential_reference: self.credential_reference.clone(),
+                    voice_names: if self.model_scoped_voices {
+                        model.voice_names.clone()
+                    } else {
+                        self.voice_names.clone()
+                    },
                     options,
                     revision: model.revision,
                 }
@@ -175,6 +184,11 @@ impl From<TtsProviderProfile> for TtsProvider {
             endpoint: profile.endpoint,
             credential_reference: profile.credential_reference,
             model_scoped_voices: profile.kind == TtsProviderKind::Qwen,
+            voice_names: if profile.kind == TtsProviderKind::OpenAiCompatible {
+                profile.voice_names.clone()
+            } else {
+                BTreeMap::new()
+            },
             voices: if profile.kind == TtsProviderKind::OpenAiCompatible {
                 voices.clone()
             } else {
@@ -188,6 +202,11 @@ impl From<TtsProviderProfile> for TtsProvider {
                 instructions,
                 default_voice,
                 revision: profile.revision,
+                voice_names: if profile.kind == TtsProviderKind::Qwen {
+                    profile.voice_names
+                } else {
+                    BTreeMap::new()
+                },
                 voices: if profile.kind == TtsProviderKind::Qwen {
                     voices
                 } else {
@@ -235,6 +254,8 @@ pub struct TtsProviderProfile {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub credential_reference: Option<String>,
     pub options: TtsProviderOptions,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub voice_names: BTreeMap<String, String>,
     #[serde(default = "initial_profile_revision")]
     pub revision: u64,
 }
@@ -307,14 +328,6 @@ pub struct QwenTtsModel {
     pub voice_discovery: bool,
     pub audio_formats: Vec<TtsAudioFormat>,
     pub voices: Vec<TtsVoice>,
-}
-
-/// Creation defaults, not a separate provider implementation or persisted kind.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct QwenTtsPreset {
-    pub id: String,
-    pub endpoint: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -495,6 +508,7 @@ mod tests {
     #[test]
     fn should_round_trip_provider_profile_without_secret_material() {
         let profile = TtsProviderProfile {
+            voice_names: Default::default(),
             id: "openai".into(),
             name: "OpenAI".into(),
             kind: TtsProviderKind::OpenAiCompatible,

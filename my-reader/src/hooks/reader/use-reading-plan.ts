@@ -1,3 +1,4 @@
+import { appendLlmProgress } from "@my-reader/tools/llm-progress"
 import { captureEpubViewportStartLocator } from "@/lib/readium/epubBookmarkAnchor"
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 import { useQuery } from "@tanstack/react-query"
@@ -48,6 +49,7 @@ export function useReadingPlan({
   const [version, setVersion] = useState("")
   const [shown, setShown] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [progress, setProgress] = useState({ kind: "", text: "" })
   const [failure, setFailure] = useState<unknown>(null)
   const controller = useRef<AbortController | null>(null)
   const chapters = useRef(new Map<string, Promise<void>>())
@@ -74,6 +76,7 @@ export function useReadingPlan({
     controller.current = null
     chapters.current.clear()
     setBusy(false)
+    setProgress({ kind: "", text: "" })
   }, [])
   useEffect(() => {
     reset()
@@ -113,6 +116,7 @@ export function useReadingPlan({
       if (signal?.aborted) abort.abort()
       const current = generation.current
       setBusy(true)
+      setProgress({ kind: "", text: "" })
       setFailure(null)
       const work = (async () => {
         try {
@@ -124,19 +128,35 @@ export function useReadingPlan({
               ),
           )
           if (requests.length)
-            await api.analyzeBookNarration(libraryId, requests, abort.signal)
+            await api.analyzeBookNarration(
+              libraryId,
+              requests,
+              abort.signal,
+              (event) => {
+                if (
+                  generation.current === current &&
+                  controller.current === abort &&
+                  !abort.signal.aborted
+                )
+                  setProgress((previous) => appendLlmProgress(previous, event))
+              },
+            )
         } catch (error) {
           if (generation.current === current) {
             chapters.current.delete(href)
-            if (!abort.signal.aborted) setFailure(error)
+            if (controller.current === abort && !abort.signal.aborted)
+              setFailure(error)
           }
           throw error
         } finally {
           signal?.removeEventListener("abort", cancel)
-          if (generation.current === current) {
+          if (generation.current === current && controller.current === abort) {
             await refreshRef.current()
-            setBusy(false)
-            controller.current = null
+            if (controller.current === abort) {
+              setBusy(false)
+              controller.current = null
+              setProgress({ kind: "", text: "" })
+            }
           }
         }
       })()
@@ -211,6 +231,7 @@ export function useReadingPlan({
     setShown,
     busy: busy || query.isFetching,
     analyzing: busy,
+    progress: progress.text,
     error: failure || query.error ? errorMessage(failure ?? query.error) : null,
     ensureChapter,
     cancel: () => {

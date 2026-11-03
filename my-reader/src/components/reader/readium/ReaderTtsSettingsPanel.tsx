@@ -1,4 +1,4 @@
-import { formatTtsLanguageName } from "@my-reader/tools/reader-tts-language"
+import { ttsVoiceLabel } from "@my-reader/tools/tts-voice-names"
 import { ChevronRight, Loader2, Settings2 } from "lucide-react"
 import type { CSSProperties } from "react"
 import { useEffect, useMemo, useState } from "react"
@@ -98,6 +98,11 @@ export function ReaderTtsSettingsPanel({
     }
   }, [visible])
 
+  const selectedProfile = config?.profiles.find(
+    (profile) =>
+      config.defaultEngine.kind === "provider" &&
+      profile.id === config.defaultEngine.profileId,
+  )
   const { preview, previewVoiceId, stopPreview } = useTtsPreviewPlayer({
     config,
     engineId:
@@ -188,7 +193,16 @@ export function ReaderTtsSettingsPanel({
           onStopPreview={stopPreview}
           options={session.voices.map((voice) => ({
             value: voiceId(voice),
-            label: `${voice.label || voice.name} · ${formatTtsLanguageName(voice.language, interfaceLanguage)}`,
+            label: ttsVoiceLabel(
+              voice.source === "server"
+                ? voiceId(voice)
+                : voice.label || voice.name,
+              voice.source === "server"
+                ? selectedProfile?.voiceNames
+                : undefined,
+              voice.language,
+              interfaceLanguage,
+            ),
           }))}
         />
       </section>

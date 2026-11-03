@@ -50,14 +50,7 @@ Given("用户正在选择语音服务来源", async ({ page }) => {
       profiles: [],
       defaultProfileId: null,
     })
-    handlers.list_qwen_tts_presets = () => [
-      {
-        id: "tokenPlan",
-        endpoint: "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference",
-      },
-      { id: "qianwen", endpoint: "https://maas.qianwenaiapi.com/api/v1" },
-      { id: "dashscope", endpoint: "https://dashscope.aliyuncs.com/api/v1" },
-    ]
+    handlers.get_tts_credential = () => "fixture-key"
     handlers.list_qwen_tts_models = (args) => {
       const { profile } = args.input as UpsertTtsProviderInput
       const tokenPlan = profile.endpoint.startsWith("wss:")
@@ -132,11 +125,9 @@ Given("用户正在选择语音服务来源", async ({ page }) => {
   await page.getByRole("button", { name: "添加语音服务", exact: true }).click()
 })
 
-When("用户选择{string}来源", async ({ page }, source: string) => {
-  await page
-    .getByRole("button")
-    .filter({ has: page.getByText(source, { exact: true }) })
-    .click()
+When("用户填写 Qwen 地址{string}", async ({ page }, endpoint: string) => {
+  await page.getByRole("button", { name: "Qwen", exact: true }).click()
+  await page.getByRole("textbox", { name: /服务器地址/ }).fill(endpoint)
   await page.locator("#tts-profile-credential").fill("fixture-key")
 })
 
@@ -165,11 +156,9 @@ Then("服务地址为{string}", async ({ page }, endpoint: string) => {
 })
 
 Then(
-  "该服务使用{string}且保留所选来源名称",
+  "该服务使用{string}且保留填写的配置",
   async ({ page }, endpoint: string) => {
-    const name = endpoint.includes("maas.qianwenaiapi.com")
-      ? "Qwen · 按需计费"
-      : "Qwen · DashScope（百炼）"
+    const name = "Qwen"
     await page
       .getByRole("button", { name: `编辑 ${name}`, exact: true })
       .click()

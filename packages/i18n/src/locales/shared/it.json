@@ -30,7 +30,8 @@
     "removeVoice": "Rimuovi voce",
     "addVoice": "Aggiungi voce",
     "fetchVoices": "Ottieni voci",
-    "testModel": "Modello di prova"
+    "testModel": "Modello di prova",
+    "voiceName": "Nome visualizzato"
   },
   "llm": {
     "title": "Fornitori LLM",
@@ -40,7 +41,6 @@
     "protocol": "Protocollo",
     "endpoint": "Endpoint API",
     "key": "Chiave API",
-    "keySaved": "Salvata",
     "model": "Modello",
     "models": "Carica modelli",
     "test": "Verifica connessione",
@@ -48,7 +48,6 @@
     "context": "Finestra di contesto",
     "default": "Modello predefinito",
     "none": "Nessuno",
-    "clearKey": "Rimuovi chiave salvata",
     "save": "Salva",
     "cancel": "Annulla",
     "delete": "Elimina",
@@ -145,32 +144,7 @@
   },
   "qwenTts": {
     "title": "Qwen",
-    "add": "Aggiungi {{name}}",
-    "description": "Utilizza le credenziali per questo endpoint e scegli la tua voce.",
-    "sources": {
-      "tokenPlan": {
-        "title": "Qwen · Piano token",
-        "description": "Utilizza i crediti di abbonamento Qwen e la chiave specifica del piano.",
-        "credential": "Chiave di abbonamento al piano token (inizia con sk-sp-)"
-      },
-      "qianwen": {
-        "title": "Qwen · Paga in base al consumo",
-        "description": "Utilizza la piattaforma AI Qianwen API con fatturazione basata sull'utilizzo.",
-        "credential": "Chiave Qianwen AI Platform API (non una chiave di abbonamento)"
-      },
-      "dashscope": {
-        "title": "Qwen · DashScope (Studio modello)",
-        "description": "Utilizza Alibaba Cloud Model Studio, regione di Pechino per impostazione predefinita.",
-        "credential": "Chiave Alibaba Cloud Model Studio API per questa regione"
-      }
-    },
-    "manualVoicesAction": "Immettere manualmente gli ID vocali",
-    "manualVoices": "ID vocali",
-    "manualVoicesHint": "Per le voci ufficiali o personalizzate mancanti dall'elenco. Inserisci un ID per riga.",
-    "loadingVoices": "Caricamento delle voci dell'account…",
-    "voicesFailed": "Impossibile caricare le voci dell'account. Le voci salvate e gli ID immessi manualmente sono ancora disponibili.",
-    "voicesEmpty": "Nessuna voce dell'account per questo modello. Crea una voce sulla piattaforma corrispondente o inserisci un ID vocale esistente.",
-    "credentialRequired": "Chiave API corrispondente a questo endpoint; Il piano token richiede una chiave di abbonamento sk-sp-"
+    "add": "Aggiungi {{name}}"
   },
   "addLibraryFlow": {
     "title": "Aggiungi biblioteca",
@@ -475,5 +449,9 @@
     "global": "Impostazioni globali di lettura vocale",
     "reset": "Queste impostazioni verranno ripristinate:\n{{usages}}",
     "confirm": "Salvare le modifiche?"
+  },
+  "passwordField": {
+    "show": "Mostra password",
+    "hide": "Nascondi password"
   }
 }

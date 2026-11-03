@@ -1,3 +1,4 @@
+import { appendLlmProgress } from "@my-reader/tools/llm-progress"
 import { useEffect, useRef, useState } from "react"
 import { useMutation } from "@tanstack/react-query"
 import type { Library } from "@my-reader/tools/types/library"
@@ -31,8 +32,7 @@ export function useCharacterDraft(library: Library, book: Book) {
   const draftCharacters = useMutation({
     mutationFn: async (input: CharacterDraftInput) => {
       const current = begin()
-      let text = ""
-      let phase = ""
+      let output = { kind: "", text: "" }
       let active = true
       setProgress("")
       try {
@@ -42,12 +42,8 @@ export function useCharacterDraft(library: Library, book: Book) {
           input,
           (kind, delta) => {
             if (!active || current.signal.aborted) return
-            if (kind === "started" || phase !== kind) text = ""
-            phase = kind
-            text = Array.from(text + delta)
-              .slice(-2048)
-              .join("")
-            setProgress(text)
+            output = appendLlmProgress(output, { kind, delta })
+            setProgress(output.text)
           },
           current.signal,
         )

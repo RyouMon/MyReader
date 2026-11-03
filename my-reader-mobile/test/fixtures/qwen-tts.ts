@@ -1,6 +1,6 @@
-import type { QwenTtsModel, QwenTtsPreset } from "@/src/services/core/tts"
+import type { QwenTtsModel } from "@/src/services/core/tts"
 
-export function getQwenTtsPresets(): QwenTtsPreset[] {
+function endpoints() {
   return (
     [
       [
@@ -21,9 +21,7 @@ export async function getQwenTtsModels({
 }: {
   endpoint: string
 }): Promise<QwenTtsModel[]> {
-  const preset = getQwenTtsPresets().find(
-    (preset) => preset.endpoint === endpoint,
-  )
+  const preset = endpoints().find((preset) => preset.endpoint === endpoint)
   if (!preset) return []
   const audio: QwenTtsModel = {
     id: "qwen-audio-3.0-tts-plus",

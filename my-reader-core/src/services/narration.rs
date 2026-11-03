@@ -205,6 +205,7 @@ impl NarrationService {
             std::slice::from_ref(&request),
             checkpoint.summary,
             &history,
+            None,
         )
         .await;
         let (plan, checkpoint) = match result {
@@ -360,6 +361,7 @@ async fn analyze(
     requests: &[NarrationRequest],
     mut summary: String,
     history: &[HistoryEntry],
+    progress: Option<crate::models::LlmProgress<'_>>,
 ) -> Result<(Vec<NarrationPlan>, Option<(i64, f64, String)>), CoreError> {
     let current = message("user", compact::input(requests).to_string());
     let mut recent = history_messages(history)?;
@@ -394,6 +396,7 @@ async fn analyze(
                 &summary,
                 &history[..split],
                 summary_reserve,
+                progress,
             )
             .await?;
             let last = &history[split - 1];
@@ -423,7 +426,7 @@ async fn analyze(
         &messages,
         compact::schema(),
         output_limit,
-        None,
+        progress,
     )
     .await?;
     Ok((compact::decode(requests, &result, settings)?, checkpoint))
@@ -443,6 +446,7 @@ async fn summarize_history(
     previous: &str,
     history: &[HistoryEntry],
     summary_bytes: usize,
+    progress: Option<crate::models::LlmProgress<'_>>,
 ) -> Result<String, CoreError> {
     let output = profile
         .max_output_tokens
@@ -473,7 +477,7 @@ async fn summarize_history(
             "user",
             "Produce the compact scene memory now.".into(),
         ));
-        let result = llm::complete_with_output_limit(profile, credential, &input, json!({"type":"object","properties":{"summary":{"type":"string"}},"required":["summary"],"additionalProperties":false}), output, None).await?;
+        let result = llm::complete_with_output_limit(profile, credential, &input, json!({"type":"object","properties":{"summary":{"type":"string"}},"required":["summary"],"additionalProperties":false}), output, progress).await?;
         summary = result["summary"]
             .as_str()
             .filter(|value| !value.is_empty() && value.len() <= summary_bytes)

@@ -30,7 +30,8 @@
     "removeVoice": "음성 삭제",
     "addVoice": "음성 추가",
     "fetchVoices": "음성 가져오기",
-    "testModel": "테스트 모델"
+    "testModel": "테스트 모델",
+    "voiceName": "표시 이름"
   },
   "llm": {
     "title": "LLM 제공업체",
@@ -40,7 +41,6 @@
     "protocol": "프로토콜",
     "endpoint": "API 엔드포인트",
     "key": "API 키",
-    "keySaved": "저장됨",
     "model": "모델",
     "models": "모델 불러오기",
     "test": "연결 테스트",
@@ -48,7 +48,6 @@
     "context": "컨텍스트 창",
     "default": "기본 모델",
     "none": "없음",
-    "clearKey": "저장된 키 삭제",
     "save": "저장",
     "cancel": "취소",
     "delete": "삭제",
@@ -145,32 +144,7 @@
   },
   "qwenTts": {
     "title": "Qwen",
-    "add": "{{name}} 추가",
-    "description": "이 끝점에 대한 자격 증명을 사용하고 음성을 선택하십시오.",
-    "sources": {
-      "tokenPlan": {
-        "title": "Qwen · 토큰 계획",
-        "description": "Qwen 구독 크레딧과 플랜별 키를 사용하세요.",
-        "credential": "토큰 플랜 구독 키(sk-sp-로 시작)"
-      },
-      "qianwen": {
-        "title": "Qwen · 종량제",
-        "description": "사용량 기반 청구와 함께 Qianwen AI 플랫폼 API을 사용하세요.",
-        "credential": "Qianwen AI Platform API 키(구독 키 아님)"
-      },
-      "dashscope": {
-        "title": "Qwen · DashScope (모델 스튜디오)",
-        "description": "기본적으로 베이징 지역의 Alibaba Cloud Model Studio를 사용합니다.",
-        "credential": "이 지역의 Alibaba Cloud Model Studio API 키"
-      }
-    },
-    "manualVoicesAction": "음성 ID를 수동으로 입력하세요.",
-    "manualVoices": "음성 ID",
-    "manualVoicesHint": "목록에서 누락된 공식 또는 사용자 정의 음성의 경우. 한 줄에 하나의 ID를 입력하세요.",
-    "loadingVoices": "계정 음성 로드 중…",
-    "voicesFailed": "계정 음성을 로드할 수 없습니다. 저장된 음성과 직접 입력한 ID는 계속 사용할 수 있습니다.",
-    "voicesEmpty": "이 모델에는 계정 음성이 없습니다. 해당 플랫폼에서 음성을 생성하거나 기존 음성 ID를 입력하세요.",
-    "credentialRequired": "API 키는 이 엔드포인트와 일치합니다. 토큰 플랜에는 sk-sp- 구독 키가 필요합니다"
+    "add": "{{name}} 추가"
   },
   "addLibraryFlow": {
     "title": "서재 추가",
@@ -473,5 +447,9 @@
     "global": "전체 읽기 설정",
     "reset": "다음 설정이 기본값으로 돌아갑니다:\n{{usages}}",
     "confirm": "변경 사항을 저장할까요?"
+  },
+  "passwordField": {
+    "show": "비밀번호 표시",
+    "hide": "비밀번호 숨기기"
   }
 }

@@ -1,7 +1,7 @@
+import { ttsVoiceLabel } from "@my-reader/tools/tts-voice-names"
 import { tts as readiumTts, type TtsVoice } from "@my-reader/readium"
 import {
   filterTtsVoicesForLanguage,
-  formatTtsLanguageName,
   normalizeTtsLanguage,
 } from "@my-reader/tools/reader-tts-language"
 import type { MenuAction } from "@react-native-menu/menu"
@@ -169,13 +169,17 @@ const ReaderTtsSettingsSheet = forwardRef<
             ]
           : profile.voices
         setVoices(
-          orderedVoiceIds.map((id) => ({ id, name: id, language: "mul" })),
+          orderedVoiceIds.map((id) => ({
+            id,
+            name: ttsVoiceLabel(id, profile.voiceNames),
+            language: "mul",
+          })),
         )
         if (profile.kind === "qwen")
           setVoices(
             (await listTtsVoices(profile.id)).map((voice) => ({
               ...voice,
-              name: voice.id,
+              name: ttsVoiceLabel(voice.id, profile.voiceNames),
             })),
           )
       } else {
@@ -306,11 +310,12 @@ const ReaderTtsSettingsSheet = forwardRef<
     () =>
       visibleVoices.map((voice) => ({
         id: voice.id,
-        title: `${voice.name}${
-          voice.language
-            ? ` · ${formatTtsLanguageName(voice.language, interfaceLanguage)}`
-            : ""
-        }`,
+        title: ttsVoiceLabel(
+          voice.name,
+          undefined,
+          voice.language,
+          interfaceLanguage,
+        ),
         state: voice.id === selectedVoiceId ? "on" : "off",
       })),
     [interfaceLanguage, selectedVoiceId, visibleVoices],

@@ -6,6 +6,21 @@ import { analyzeBookNarration } from "@/src/services/core/narration"
 import type { NarrationBookContext } from "./narration-playback"
 
 const listeners = new Set<() => void>()
+type AnalysisEvent = {
+  book: NarrationBookContext
+  signal: AbortSignal
+  kind: string
+  delta: string
+}
+const analysisListeners = new Set<(event: AnalysisEvent) => void>()
+export function subscribeNarrationAnalysis(
+  listener: (event: AnalysisEvent) => void,
+) {
+  analysisListeners.add(listener)
+  return () => {
+    analysisListeners.delete(listener)
+  }
+}
 export function subscribeReadingPlan(listener: () => void) {
   listeners.add(listener)
   return () => {
@@ -71,9 +86,24 @@ export async function analyzeNarrationChapter(
   const key = locator.href.split("#")[0]!
   let analysis = book.analysis?.get(key)
   if (!analysis && requests.length) {
-    analysis = analyzeBookNarration(book.library, requests, signal).then(() => {
-      readingPlanChanged()
-    })
+    const publish = (kind: string, delta: string) => {
+      analysisListeners.forEach((listener) =>
+        listener({ book, signal, kind, delta }),
+      )
+    }
+    analysis = analyzeBookNarration(
+      book.library,
+      requests,
+      signal,
+      (kind, delta) => {
+        if (signal.aborted) return
+        publish(kind, delta)
+      },
+    )
+      .then(() => {
+        readingPlanChanged()
+      })
+      .finally(() => publish("finished", ""))
     book.analysis?.set(key, analysis)
     analysis.catch(() => book.analysis?.delete(key))
   }

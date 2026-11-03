@@ -37,7 +37,6 @@ vi.mock("@/hooks/use-overlay-scrollbar", () => ({
 vi.mock("@/lib/tauri-api", () => ({
   api: {
     listQwenTtsModels: vi.fn().mockResolvedValue([]),
-    listQwenTtsPresets: vi.fn().mockResolvedValue([]),
     getTtsConfig: mocks.getTtsConfig,
     getBookNarration: mocks.getBookNarration,
     listTtsVoices: vi.fn().mockResolvedValue([]),
@@ -163,6 +162,35 @@ describe("ReaderTtsSettingsPanel", () => {
     )
   })
 
+  it("shows a configured voice name while selecting the original API ID", async () => {
+    const user = userEvent.setup()
+    mocks.getTtsConfig.mockResolvedValue({
+      ...config,
+      defaultEngine: { kind: "provider", profileId: "openai" },
+      profiles: [
+        { ...config.profiles[0], voiceNames: { "reader-voice": "旁白" } },
+      ],
+    })
+    const ttsSession = session()
+    ttsSession.voices = [
+      {
+        ...ttsSession.voices[0]!,
+        source: "server",
+        identifier: "reader-voice",
+        name: "reader-voice",
+      },
+    ]
+    ttsSession.currentVoiceId = ""
+    render(
+      <ReaderTtsSettingsPanel visible session={ttsSession} theme="ocean" />,
+    )
+    await user.click(
+      await screen.findByRole("combobox", { name: "reader.tts.voice" }),
+    )
+    await user.click(await screen.findByRole("option", { name: /旁白/ }))
+    expect(ttsSession.setVoice).toHaveBeenCalledWith("reader-voice")
+  })
+
   it("uses aligned selects and a speed slider without a volume setting", async () => {
     const user = userEvent.setup()
     const ttsSession = session()
@@ -214,7 +242,9 @@ describe("ReaderTtsSettingsPanel", () => {
       }),
     )
 
-    await user.click(screen.getByRole("combobox", { name: "reader.tts.voice" }))
+    await user.click(
+      await screen.findByRole("combobox", { name: "reader.tts.voice" }),
+    )
     await user.click(
       await screen.findByRole("option", { name: "Li-mu · 多语言" }),
     )

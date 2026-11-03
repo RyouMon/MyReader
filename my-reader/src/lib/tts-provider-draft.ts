@@ -85,14 +85,19 @@ export function setTtsVoiceScope(
     ? draft.voices
     : [...new Set(draft.models.flatMap((model) => model.voices))]
   const voices = configured.length ? configured : [""]
+  const voiceNames = scoped
+    ? (draft.voiceNames ?? {})
+    : Object.assign({}, ...draft.models.map((model) => model.voiceNames ?? {}))
   return {
     ...draft,
     modelScopedVoices: scoped,
     voices: scoped ? [] : voices,
+    voiceNames: scoped ? {} : voiceNames,
 
     models: draft.models.map((model) => ({
       ...model,
       voices: scoped ? [...voices] : [],
+      voiceNames: scoped ? { ...voiceNames } : {},
 
       defaultVoice:
         model.defaultVoice && voices.includes(model.defaultVoice)

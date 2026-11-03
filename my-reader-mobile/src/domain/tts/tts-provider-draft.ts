@@ -93,14 +93,19 @@ export function setVoiceScope(
       : [...new Set(draft.models.flatMap((model) => model.voices))]
   ).filter((voice) => voice.trim())
   const voices = existing.length ? existing : [""]
+  const voiceNames = scoped
+    ? (draft.voiceNames ?? {})
+    : Object.assign({}, ...draft.models.map((model) => model.voiceNames ?? {}))
   return {
     ...draft,
     modelScopedVoices: scoped,
     voices: scoped ? [] : voices,
+    voiceNames: scoped ? {} : voiceNames,
 
     models: draft.models.map((model) => ({
       ...model,
       voices: scoped ? [...voices] : [],
+      voiceNames: scoped ? { ...voiceNames } : {},
 
       defaultVoice:
         model.defaultVoice && voices.includes(model.defaultVoice)
@@ -114,11 +119,12 @@ export function updateVoices(
   draft: TtsProviderDraft,
   modelId: string | undefined,
   voices: string[],
+  voiceNames: Record<string, string> = {},
 ): TtsProviderDraft {
   const scoped = usesModelVoices(draft)
   return {
     ...draft,
-    ...(scoped ? {} : { voices }),
+    ...(scoped ? {} : { voices, voiceNames }),
     models: draft.models.map((model) => {
       if (scoped && model.id !== modelId) return model
       const previous = scoped ? model.voices : draft.voices
@@ -133,7 +139,7 @@ export function updateVoices(
             : voices.find((id) => id.trim())
       return {
         ...model,
-        ...(scoped ? { voices } : {}),
+        ...(scoped ? { voices, voiceNames } : {}),
         defaultVoice,
       }
     }),

@@ -30,7 +30,8 @@
     "removeVoice": "Stimme entfernen",
     "addVoice": "Stimme hinzufügen",
     "fetchVoices": "Stimmen abrufen",
-    "testModel": "Testmodell"
+    "testModel": "Testmodell",
+    "voiceName": "Anzeigename"
   },
   "llm": {
     "title": "LLM-Anbieter",
@@ -40,7 +41,6 @@
     "protocol": "Protokoll",
     "endpoint": "API-Endpunkt",
     "key": "API-Schlüssel",
-    "keySaved": "Gespeichert",
     "model": "Modell",
     "models": "Modelle laden",
     "test": "Verbindung testen",
@@ -48,7 +48,6 @@
     "context": "Kontextfenster",
     "default": "Standardmodell",
     "none": "Keiner",
-    "clearKey": "Gespeicherten Schlüssel entfernen",
     "save": "Speichern",
     "cancel": "Abbrechen",
     "delete": "Löschen",
@@ -145,32 +144,7 @@
   },
   "qwenTts": {
     "title": "Qwen",
-    "add": "{{name}} hinzufügen",
-    "description": "Verwenden Sie Anmeldeinformationen für diesen Endpunkt und wählen Sie Ihre Stimme.",
-    "sources": {
-      "tokenPlan": {
-        "title": "Qwen · Token-Plan",
-        "description": "Verwenden Sie Ihr Qwen-Abonnementguthaben und Ihren planspezifischen Schlüssel.",
-        "credential": "Token-Plan-Abonnementschlüssel (beginnt mit sk-sp-)"
-      },
-      "qianwen": {
-        "title": "Qwen · Bezahlung nach Bedarf",
-        "description": "Nutzen Sie die Qianwen AI Platform API mit nutzungsbasierter Abrechnung.",
-        "credential": "Qianwen AI Platform API-Schlüssel (kein Abonnementschlüssel)"
-      },
-      "dashscope": {
-        "title": "Qwen · DashScope (Model Studio)",
-        "description": "Verwenden Sie standardmäßig Alibaba Cloud Model Studio, Region Peking.",
-        "credential": "Alibaba Cloud Model Studio API-Schlüssel für diese Region"
-      }
-    },
-    "manualVoicesAction": "Sprach-IDs manuell eingeben",
-    "manualVoices": "Sprach-IDs",
-    "manualVoicesHint": "Für offizielle oder benutzerdefinierte Stimmen, die in der Liste fehlen. Geben Sie eine ID pro Zeile ein.",
-    "loadingVoices": "Kontostimmen werden geladen…",
-    "voicesFailed": "Kontostimmen konnten nicht geladen werden. Gespeicherte Stimmen und manuell eingegebene IDs sind weiterhin verfügbar.",
-    "voicesEmpty": "Keine Kontostimmen für dieses Modell. Erstellen Sie eine Stimme auf der entsprechenden Plattform oder geben Sie eine vorhandene Sprach-ID ein.",
-    "credentialRequired": "API Schlüssel, der zu diesem Endpunkt passt; Der Token-Plan erfordert einen sk-sp-Abonnementschlüssel"
+    "add": "{{name}} hinzufügen"
   },
   "addLibraryFlow": {
     "title": "Bibliothek hinzufügen",
@@ -474,5 +448,9 @@
     "global": "Globale Vorleseeinstellungen",
     "reset": "Diese Einstellungen werden zurückgesetzt:\n{{usages}}",
     "confirm": "Änderungen speichern?"
+  },
+  "passwordField": {
+    "show": "Passwort anzeigen",
+    "hide": "Passwort verbergen"
   }
 }

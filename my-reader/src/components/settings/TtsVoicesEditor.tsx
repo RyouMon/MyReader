@@ -1,4 +1,8 @@
 import { useTtsRemoval } from "@/hooks/useTtsRemovalConfirmation"
+import {
+  ttsVoiceNameKey,
+  updateTtsVoiceNames,
+} from "@my-reader/tools/tts-voice-names"
 import { Loader2, Play, Plus, Square, Trash2 } from "lucide-react"
 import type { ReactNode } from "react"
 import { FormTextField } from "@/components/common/FormTextField"
@@ -26,16 +30,17 @@ export function TtsVoicesEditor({
   disabled?: boolean
   actions?: ReactNode
   fieldErrors?: Record<string, string>
-  onChange: (voices: string[]) => void
+  onChange: (voices: string[], names: Record<string, string>) => void
 }) {
   const { t } = useTranslation()
   const confirmRemoval = useTtsRemoval()
   const scoped = modelVoices(draft)
   const voices = scoped ? (model?.voices ?? []) : draft.voices
+  const names = (scoped ? model?.voiceNames : draft.voiceNames) ?? {}
   const updateId = (index: number, id: string) => {
     const next = [...voices]
     next[index] = id
-    onChange(next)
+    onChange(next, updateTtsVoiceNames(voices, next, names))
   }
   const remove = async (index: number) => {
     const next = voices.filter((_, i) => i !== index)
@@ -47,7 +52,8 @@ export function TtsVoicesEditor({
           ),
         }
       : { ...draft, voices: next }
-    if (await confirmRemoval(provider, voices[index])) onChange(next)
+    if (await confirmRemoval(provider, voices[index]))
+      onChange(next, updateTtsVoiceNames(voices, next, names, index))
   }
   const prefix = scoped ? model?.id || "shared" : "shared"
   return (
@@ -64,7 +70,7 @@ export function TtsVoicesEditor({
             variant="ghost"
             size="sm"
             disabled={disabled}
-            onClick={() => onChange([...voices, ""])}
+            onClick={() => onChange([...voices, ""], names)}
           >
             <Plus data-icon="inline-start" />
             {t("providerEditor.addVoice")}
@@ -78,6 +84,13 @@ export function TtsVoicesEditor({
             prefix={`${prefix}-${index}`}
             index={index}
             voice={voice}
+            name={names[ttsVoiceNameKey(voice, index)] ?? ""}
+            onNameChange={(name) =>
+              onChange(voices, {
+                ...names,
+                [ttsVoiceNameKey(voice, index)]: name,
+              })
+            }
             disabled={disabled}
             fieldError={fieldErrors?.[`${prefix}-${index}-voice-id`]}
             input={ttsDraftInput(draft, model, voice)}
@@ -95,6 +108,8 @@ function VoiceRow({
   prefix,
   index,
   voice,
+  name,
+  onNameChange,
   disabled,
   fieldError,
   input,
@@ -105,6 +120,8 @@ function VoiceRow({
   prefix: string
   index: number
   voice: string
+  name: string
+  onNameChange: (name: string) => void
   disabled?: boolean
   fieldError?: string
   input: UpsertTtsProviderInput
@@ -130,6 +147,16 @@ function VoiceRow({
           error={Boolean(fieldError || error)}
           helperText={fieldError || error}
           onChange={(event) => onIdChange(event.target.value)}
+        />
+        <FormTextField
+          id={`${prefix}-voice-name`}
+          label={t("providerEditor.voiceName")}
+          fullWidth
+          value={name}
+          placeholder={voice}
+          slotProps={{ inputLabel: { shrink: voice ? true : undefined } }}
+          disabled={disabled}
+          onChange={(event) => onNameChange(event.target.value)}
         />
         <div className="flex w-20 shrink-0 items-center justify-end gap-2">
           <Button

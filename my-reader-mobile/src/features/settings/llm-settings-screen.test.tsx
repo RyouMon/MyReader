@@ -73,6 +73,7 @@ jest.mock("@/src/services/core/tts", () => ({
 }))
 jest.mock("@/src/services/core/llm", () => ({
   getLlmConfig: jest.fn(),
+  getLlmCredential: jest.fn().mockResolvedValue("saved-test-key"),
   saveLlmProvider: jest.fn(),
   removeLlmProfile: jest.fn(),
   selectLlmProfile: jest.fn(),
@@ -437,18 +438,18 @@ it("saves a manually entered model without discovery, and clears connection succ
   )
   expect(llm.listLlmModels).not.toHaveBeenCalled()
 })
-it("edits without revealing saved keys, discovers models, and returns to the sheet list after saving", async () => {
+it("loads the saved key, discovers models, and clears the key by saving an empty field", async () => {
   mockParams = { providerId: "p" }
   mount("form")
   await screen.findByLabelText("llm.key")
-  expect(screen.getByLabelText("llm.key").props.value).toBe("")
+  expect(screen.getByLabelText("llm.key").props.value).toBe("saved-test-key")
   fireEvent.press(screen.getByText("providerEditor.fetchModels"))
   fireEvent.press(await screen.findByText("discovered"))
   fireEvent.press(screen.getByText("providerEditor.addSelected"))
   fireEvent.press(screen.getByText("providerEditor.modelDetails discovered"))
   fireEvent.press(screen.getByText("llm.protocol:responses"))
   fireEvent.changeText(screen.getByLabelText("llm.context"), "65536")
-  fireEvent(screen.getByLabelText("llm.clearKey"), "valueChange", true)
+  fireEvent.changeText(screen.getByLabelText("llm.key"), "")
   headerAction("llm.save")
   await waitFor(() =>
     expect(llm.saveLlmProvider).toHaveBeenCalledWith(

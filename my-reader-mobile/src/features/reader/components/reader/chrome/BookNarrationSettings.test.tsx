@@ -1,5 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { fireEvent, render, screen } from "@testing-library/react-native"
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react-native"
 import * as mockReact from "react"
 import {
   Pressable as mockPressable,
@@ -11,9 +16,11 @@ import type { Library } from "@my-reader/tools/types/library"
 import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
 import type { MobileTtsConfig } from "@/src/services/core/tts"
 import { BookNarrationSettings } from "./BookNarrationSettings"
+import type { BookCharacter } from "@/src/services/core/narration"
 
 const mockSave = jest.fn()
 const mockListVoices = jest.fn()
+let mockAliceVoice: BookCharacter["voice"]
 jest.mock("@/src/domain/llm/use-book-narration", () => ({
   useBookNarration: () => ({
     query: {
@@ -35,6 +42,7 @@ jest.mock("@/src/domain/llm/use-book-narration", () => ({
             nicknames: [],
             description: "",
             instructions: "Softly",
+            voice: mockAliceVoice,
           },
         ],
       },
@@ -156,10 +164,11 @@ const config: MobileTtsConfig = {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  mockAliceVoice = undefined
   mockListVoices.mockResolvedValue([{ id: "A", language: "zh" }])
 })
 
-function mount() {
+function mount(ttsConfig = config) {
   return render(
     <QueryClientProvider
       client={
@@ -176,13 +185,44 @@ function mount() {
           authors: [],
           language: "zh",
         }}
-        config={config}
+        config={ttsConfig}
         readingVoice={{ engine: "provider", profileId: "one", voiceId: "A" }}
         palette={{} as ReaderChromePalette}
       />
     </QueryClientProvider>,
   )
 }
+
+it("uses voice display names in both the character list and editor", async () => {
+  mockAliceVoice = { engine: "provider", profileId: "one", voiceId: "A" }
+  mount({
+    ...config,
+    profiles: config.profiles.map((profile) => ({
+      ...profile,
+      voiceNames: { A: "小樱" },
+    })),
+  })
+  fireEvent.press(screen.getByRole("button", { name: "narration.edit" }))
+  expect(await screen.findByText("小樱 · Chinese")).toBeTruthy()
+  fireEvent.press(screen.getByRole("button", { name: "Alice" }))
+  await waitFor(() =>
+    expect(screen.getByTestId("narration.voice").props.children).toBe(
+      "小樱 · Chinese",
+    ),
+  )
+})
+
+it("distinguishes an explicit system binding from inherited settings in both views", () => {
+  mockAliceVoice = { engine: "system", voiceId: "" }
+  mount()
+  fireEvent.press(screen.getByRole("button", { name: "narration.edit" }))
+  expect(screen.getByText("narration.system")).toBeTruthy()
+  expect(screen.getByText("narration.defaultModel")).toBeTruthy()
+  fireEvent.press(screen.getByRole("button", { name: "Alice" }))
+  expect(screen.getByTestId("narration.provider").props.children).toBe(
+    "narration.system",
+  )
+})
 
 it("keeps an unconfigured character on the default model without saving a fixed voice", () => {
   mount()

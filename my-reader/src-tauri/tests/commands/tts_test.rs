@@ -89,23 +89,6 @@ fn tts_test_server() -> TtsTestServer {
 }
 
 #[tokio::test]
-async fn qwen_commands_should_offer_three_source_presets_from_core() {
-    let app = TestApp::new();
-    let presets: Value = invoke_ok(&app, "list_qwen_tts_presets", json!({}));
-    assert_eq!(presets.as_array().unwrap().len(), 3);
-    assert_eq!(presets[0]["id"], "tokenPlan");
-    assert!(presets[0].get("defaultModel").is_none());
-    assert_eq!(
-        presets[1]["endpoint"],
-        "https://maas.qianwenaiapi.com/api/v1"
-    );
-    assert_eq!(
-        presets[2]["endpoint"],
-        "https://dashscope.aliyuncs.com/api/v1"
-    );
-}
-
-#[tokio::test]
 async fn qwen_commands_should_discover_matching_account_voices_using_stored_credentials() {
     let _guard = use_test_backend(MemoryBackend::default());
     let app = TestApp::new();
@@ -182,6 +165,12 @@ async fn provider_commands_should_round_trip_openai_audio() {
     );
     assert_eq!(config["profiles"][0]["hasCredential"], true);
     assert!(config["profiles"][0].get("credential").is_none());
+    let key: Option<String> = invoke_ok(
+        &app,
+        "get_tts_credential",
+        json!({"providerId": config["profiles"][0]["id"]}),
+    );
+    assert_eq!(key.as_deref(), Some("openai-test-secret"));
 
     let openai_input = json!({
         "input": {

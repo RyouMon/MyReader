@@ -24,6 +24,7 @@ import {
   FfiConverterFloat64,
   FfiConverterInt32,
   FfiConverterInt64,
+  FfiConverterMap,
   FfiConverterOptional,
   FfiConverterUInt32,
   FfiConverterUInt8,
@@ -4137,6 +4138,7 @@ export async function narrationAnalyzeBatch(
   configPath: string,
   requests: Array<NarrationRequest>,
   credential: LlmCredential | undefined,
+  progress: NarrationDraftProgress,
   asyncOpts_?: { signal: AbortSignal },
 ): Promise<void> /*throws*/ {
   const __stack = uniffiIsDebug ? new Error().stack : undefined;
@@ -4153,6 +4155,10 @@ export async function narrationAnalyzeBatch(
           ),
           FfiConverterOptionalTypeLlmCredential.lower(
             credential,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterTypeNarrationDraftProgress.lower(
+            progress,
             nativeModule().rustbuffer_alloc,
           ),
         );
@@ -6811,25 +6817,6 @@ export async function ttsQwenModels(
     }
     throw __error;
   }
-}
-
-export function ttsQwenPresets(): Array<QwenTtsPreset> {
-  return ((__rb: Uint8Array) => {
-    try {
-      return FfiConverterSequenceTypeQwenTtsPreset.lift(__rb);
-    } finally {
-      nativeModule().rustbuffer_free(__rb);
-    }
-  })(
-    uniffiCaller.rustCall(
-      /*caller:*/ (callStatus) => {
-        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_tts_qwen_presets(
-          callStatus,
-        );
-      },
-      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
-    ),
-  );
 }
 
 export async function ttsRemoveProfile(
@@ -10790,51 +10777,6 @@ const FfiConverterTypeQwenTtsModel = (() => {
   return new FFIConverter();
 })();
 
-export type QwenTtsPreset = {
-  id: string;
-  endpoint: string;
-};
-
-/**
- * Generated factory for {@link QwenTtsPreset} record objects.
- */
-export const QwenTtsPreset = (() => {
-  const defaults = () => ({});
-  const create = (() => {
-    return uniffiCreateRecord<QwenTtsPreset, ReturnType<typeof defaults>>(
-      defaults,
-    );
-  })();
-  return Object.freeze({
-    create,
-    new: create,
-    defaults: () => Object.freeze(defaults()) as Partial<QwenTtsPreset>,
-  });
-})();
-
-const FfiConverterTypeQwenTtsPreset = (() => {
-  type TypeName = QwenTtsPreset;
-  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
-      return {
-        id: FfiConverterString.read(from),
-        endpoint: FfiConverterString.read(from),
-      };
-    }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterString.write(value.id, into);
-      FfiConverterString.write(value.endpoint, into);
-    }
-    allocationSize(value: TypeName): number {
-      return (
-        FfiConverterString.allocationSize(value.id) +
-        FfiConverterString.allocationSize(value.endpoint)
-      );
-    }
-  }
-  return new FFIConverter();
-})();
-
 /**
  * Typealias from the type name used in the UDL file to the custom type.  This
  * is needed because the UDL type name is used in function/method signatures.
@@ -11924,6 +11866,7 @@ export type TtsModel = {
   instructions?: string;
   defaultVoice?: string;
   voices: Array<string>;
+  voiceNames?: Map<string, string>;
 };
 
 /**
@@ -11952,6 +11895,7 @@ const FfiConverterTypeTtsModel = (() => {
         instructions: FfiConverterOptionalString.read(from),
         defaultVoice: FfiConverterOptionalString.read(from),
         voices: FfiConverterSequenceString.read(from),
+        voiceNames: FfiConverterOptionalMapStringString.read(from),
       };
     }
     write(value: TypeName, into: RustBuffer): void {
@@ -11961,6 +11905,7 @@ const FfiConverterTypeTtsModel = (() => {
       FfiConverterOptionalString.write(value.instructions, into);
       FfiConverterOptionalString.write(value.defaultVoice, into);
       FfiConverterSequenceString.write(value.voices, into);
+      FfiConverterOptionalMapStringString.write(value.voiceNames, into);
     }
     allocationSize(value: TypeName): number {
       return (
@@ -11969,7 +11914,8 @@ const FfiConverterTypeTtsModel = (() => {
         FfiConverterString.allocationSize(value.responseFormat) +
         FfiConverterOptionalString.allocationSize(value.instructions) +
         FfiConverterOptionalString.allocationSize(value.defaultVoice) +
-        FfiConverterSequenceString.allocationSize(value.voices)
+        FfiConverterSequenceString.allocationSize(value.voices) +
+        FfiConverterOptionalMapStringString.allocationSize(value.voiceNames)
       );
     }
   }
@@ -11984,6 +11930,7 @@ export type TtsProvider = {
   endpoint: string;
   credentialReference?: string;
   voices: Array<string>;
+  voiceNames?: Map<string, string>;
   models: Array<TtsModel>;
 };
 
@@ -12016,6 +11963,7 @@ const FfiConverterTypeTtsProvider = (() => {
         endpoint: FfiConverterString.read(from),
         credentialReference: FfiConverterOptionalString.read(from),
         voices: FfiConverterSequenceString.read(from),
+        voiceNames: FfiConverterOptionalMapStringString.read(from),
         models: FfiConverterSequenceTypeTtsModel.read(from),
       };
     }
@@ -12027,6 +11975,7 @@ const FfiConverterTypeTtsProvider = (() => {
       FfiConverterString.write(value.endpoint, into);
       FfiConverterOptionalString.write(value.credentialReference, into);
       FfiConverterSequenceString.write(value.voices, into);
+      FfiConverterOptionalMapStringString.write(value.voiceNames, into);
       FfiConverterSequenceTypeTtsModel.write(value.models, into);
     }
     allocationSize(value: TypeName): number {
@@ -12038,6 +11987,7 @@ const FfiConverterTypeTtsProvider = (() => {
         FfiConverterString.allocationSize(value.endpoint) +
         FfiConverterOptionalString.allocationSize(value.credentialReference) +
         FfiConverterSequenceString.allocationSize(value.voices) +
+        FfiConverterOptionalMapStringString.allocationSize(value.voiceNames) +
         FfiConverterSequenceTypeTtsModel.allocationSize(value.models)
       );
     }
@@ -12098,6 +12048,7 @@ export type TtsProviderProfile = {
   responseFormat?: string;
   instructions?: string;
   voices: Array<string>;
+  voiceNames?: Map<string, string>;
   defaultVoice?: string;
   revision: number;
 };
@@ -12133,6 +12084,7 @@ const FfiConverterTypeTtsProviderProfile = (() => {
         responseFormat: FfiConverterOptionalString.read(from),
         instructions: FfiConverterOptionalString.read(from),
         voices: FfiConverterSequenceString.read(from),
+        voiceNames: FfiConverterOptionalMapStringString.read(from),
         defaultVoice: FfiConverterOptionalString.read(from),
         revision: FfiConverterFloat64.read(from),
       };
@@ -12147,6 +12099,7 @@ const FfiConverterTypeTtsProviderProfile = (() => {
       FfiConverterOptionalString.write(value.responseFormat, into);
       FfiConverterOptionalString.write(value.instructions, into);
       FfiConverterSequenceString.write(value.voices, into);
+      FfiConverterOptionalMapStringString.write(value.voiceNames, into);
       FfiConverterOptionalString.write(value.defaultVoice, into);
       FfiConverterFloat64.write(value.revision, into);
     }
@@ -12161,6 +12114,7 @@ const FfiConverterTypeTtsProviderProfile = (() => {
         FfiConverterOptionalString.allocationSize(value.responseFormat) +
         FfiConverterOptionalString.allocationSize(value.instructions) +
         FfiConverterSequenceString.allocationSize(value.voices) +
+        FfiConverterOptionalMapStringString.allocationSize(value.voiceNames) +
         FfiConverterOptionalString.allocationSize(value.defaultVoice) +
         FfiConverterFloat64.allocationSize(value.revision)
       );
@@ -13762,6 +13716,17 @@ const FfiConverterSequenceTypeTtsTiming = new FfiConverterArray(
   FfiConverterTypeTtsTiming,
 );
 
+// FfiConverter for Map<string, string>
+const FfiConverterMapStringString = new FfiConverterMap(
+  FfiConverterString,
+  FfiConverterString,
+);
+
+// FfiConverter for Map<string, string> | undefined
+const FfiConverterOptionalMapStringString = new FfiConverterOptional(
+  FfiConverterMapStringString,
+);
+
 // FfiConverter for Array<TtsModel>
 const FfiConverterSequenceTypeTtsModel = new FfiConverterArray(
   FfiConverterTypeTtsModel,
@@ -13930,11 +13895,6 @@ const FfiConverterSequenceTypeTtsSelectionUsage = new FfiConverterArray(
 // FfiConverter for Array<QwenTtsModel>
 const FfiConverterSequenceTypeQwenTtsModel = new FfiConverterArray(
   FfiConverterTypeQwenTtsModel,
-);
-
-// FfiConverter for Array<QwenTtsPreset>
-const FfiConverterSequenceTypeQwenTtsPreset = new FfiConverterArray(
-  FfiConverterTypeQwenTtsPreset,
 );
 
 // FfiConverter for TtsLanguageVoice | undefined
@@ -14678,7 +14638,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_analyze_batch() !==
-    28709
+    53161
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_narration_analyze_batch",
@@ -15125,14 +15085,6 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
-    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_qwen_presets() !==
-    43950
-  ) {
-    throw new UniffiInternalError.ApiChecksumMismatch(
-      "uniffi_my_reader_core_ffi_checksum_func_tts_qwen_presets",
-    );
-  }
-  if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_remove_profile() !==
     20053
   ) {
@@ -15260,7 +15212,6 @@ export default Object.freeze({
     FfiConverterTypeNarrationVoice,
     FfiConverterTypePaginatedBooks,
     FfiConverterTypeQwenTtsModel,
-    FfiConverterTypeQwenTtsPreset,
     FfiConverterTypeReaderAnnotation,
     FfiConverterTypeReaderBookmark,
     FfiConverterTypeReaderLocatorJson,

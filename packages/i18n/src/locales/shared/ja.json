@@ -30,7 +30,8 @@
     "removeVoice": "音声を削除",
     "addVoice": "音声を追加",
     "fetchVoices": "音声を取得",
-    "testModel": "テスト用モデル"
+    "testModel": "テスト用モデル",
+    "voiceName": "表示名"
   },
   "llm": {
     "title": "LLM プロバイダー",
@@ -40,7 +41,6 @@
     "protocol": "プロトコル",
     "endpoint": "API エンドポイント",
     "key": "API キー",
-    "keySaved": "保存済み",
     "model": "モデル",
     "models": "モデルを取得",
     "test": "接続をテスト",
@@ -48,7 +48,6 @@
     "context": "コンテキストウィンドウ",
     "default": "既定のモデル",
     "none": "なし",
-    "clearKey": "保存したキーを削除",
     "save": "保存",
     "cancel": "キャンセル",
     "delete": "削除",
@@ -145,32 +144,7 @@
   },
   "qwenTts": {
     "title": "Qwen",
-    "add": "{{name}} を追加",
-    "description": "このエンドポイントの認証情報を使用し、自分の声を選択してください。",
-    "sources": {
-      "tokenPlan": {
-        "title": "Qwen · トークン プラン",
-        "description": "Qwen サブスクリプション クレジットとプラン固有のキーを使用します。",
-        "credential": "トークン プランのサブスクリプション キー (sk-sp- で始まる)"
-      },
-      "qianwen": {
-        "title": "Qwen · 従量課金制",
-        "description": "使用量ベースの課金で Qianwen AI プラットフォーム API を使用します。",
-        "credential": "Qianwen AI プラットフォーム API キー (サブスクリプション キーではありません)"
-      },
-      "dashscope": {
-        "title": "Qwen · DashScope (モデルスタジオ)",
-        "description": "デフォルトで北京地域の Alibaba Cloud Model Studio を使用します。",
-        "credential": "このリージョンの Alibaba Cloud Model Studio API キー"
-      }
-    },
-    "manualVoicesAction": "音声IDを手動で入力してください",
-    "manualVoices": "音声 ID",
-    "manualVoicesHint": "リストにない公式またはカスタムの音声。 1 行に 1 つの ID を入力します。",
-    "loadingVoices": "アカウントの音声を読み込んでいます…",
-    "voicesFailed": "アカウントの音声をロードできませんでした。保存した音声と手動で入力した ID は引き続き利用できます。",
-    "voicesEmpty": "このモデルにはアカウントボイスがありません。対応するプラットフォームで音声を作成するか、既存の音声 ID を入力します。",
-    "credentialRequired": "このエンドポイントに一致する API キー。トークン プランには sk-sp- サブスクリプション キーが必要です"
+    "add": "{{name}} を追加"
   },
   "addLibraryFlow": {
     "title": "ライブラリを追加",
@@ -473,5 +447,9 @@
     "global": "全体の読み上げ設定",
     "reset": "次の設定が既定に戻ります：\n{{usages}}",
     "confirm": "変更を保存しますか？"
+  },
+  "passwordField": {
+    "show": "パスワードを表示",
+    "hide": "パスワードを非表示"
   }
 }

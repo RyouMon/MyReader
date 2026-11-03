@@ -1,3 +1,7 @@
+import { characterVoiceLabel } from "@my-reader/tools/tts-voice-names"
+import { useQueries, useQuery } from "@tanstack/react-query"
+import { tts as readiumTts } from "@my-reader/readium"
+import { listTtsVoices, type MobileTtsConfig } from "@/src/services/core/tts"
 import { useEffect, useState, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/src/components"
@@ -13,6 +17,7 @@ import type { CharacterImportMode } from "./NarrationCharacterImport"
 
 export function NarrationCharacterList({
   characters,
+  config,
   palette,
   busy,
   hasPublication,
@@ -21,6 +26,7 @@ export function NarrationCharacterList({
   onImport,
   onDelete,
 }: {
+  config: MobileTtsConfig
   characters: BookCharacter[]
   palette: ReaderChromePalette
   busy: boolean
@@ -30,7 +36,32 @@ export function NarrationCharacterList({
   onImport: (mode: CharacterImportMode) => void
   onDelete: (characters: BookCharacter[]) => void
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const profileIds = [
+    ...new Set(
+      characters.flatMap(({ voice }) =>
+        voice?.engine === "provider" && voice.profileId
+          ? [voice.profileId]
+          : [],
+      ),
+    ),
+  ]
+  const voiceQueries = useQueries({
+    queries: profileIds.map((id) => ({
+      queryKey: ["narration-voices", id],
+      queryFn: () => listTtsVoices(id),
+    })),
+  })
+  const providerVoices = Object.fromEntries(
+    profileIds.map((id, index) => [id, voiceQueries[index]?.data ?? []]),
+  )
+  const systemVoices = useQuery({
+    queryKey: ["narration-voices", "system"],
+    queryFn: () => readiumTts.getSystemVoices(),
+    enabled: characters.some(
+      (character) => character.voice?.engine === "system",
+    ),
+  })
   const [managing, setManaging] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   useEffect(() => {
@@ -149,7 +180,19 @@ export function NarrationCharacterList({
                 ? t("narration.narrator")
                 : character.name
             }
-            detail={character.voice?.voiceId || t("narration.defaultModel")}
+            detail={characterVoiceLabel(
+              character.voice,
+              config.profiles,
+              {
+                defaultModel: t("narration.defaultModel"),
+                system: t("narration.system"),
+              },
+              {
+                systemVoices: systemVoices.data,
+                providerVoices,
+                locale: i18n?.resolvedLanguage || i18n?.language,
+              },
+            )}
             selected={managing ? selected.has(character.id) : undefined}
             disabled={busy || (managing && character.id === "narrator")}
             palette={palette}

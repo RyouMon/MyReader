@@ -7,6 +7,54 @@ fn voice() -> TtsVoiceRef {
 }
 
 #[tokio::test]
+async fn analysis_reports_model_output_and_cached_plans_do_not_generate_again() {
+    use crate::models::LlmStreamEvent;
+    let root = tempfile::tempdir().unwrap();
+    let config = root.path().join("config.json");
+    let server = fixture().await;
+    setup(root.path()).await;
+    LlmService::upsert_profile(&config, profile(server.endpoint.clone())).unwrap();
+    let events = std::sync::Mutex::new(Vec::new());
+    let progress = |event| events.lock().unwrap().push(event);
+    let requests = vec![request(1), request(2)];
+    NarrationService::analyze_batch_with_progress(
+        root.path(),
+        &config,
+        requests.clone(),
+        None,
+        Some(&progress),
+    )
+    .await
+    .unwrap();
+    {
+        let mut events = events.lock().unwrap();
+        assert!(matches!(events.first(), Some(LlmStreamEvent::Started)));
+        assert!(events
+            .iter()
+            .any(|event| matches!(event, LlmStreamEvent::Text(text) if text.contains("segments"))));
+        events.clear();
+    }
+    NarrationService::analyze_batch_with_progress(
+        root.path(),
+        &config,
+        requests,
+        None,
+        Some(&progress),
+    )
+    .await
+    .unwrap();
+    assert!(events.lock().unwrap().is_empty());
+    assert_eq!(server.requests.lock().unwrap().len(), 1);
+    assert_eq!(
+        NarrationService::reading_plan(root.path(), &config, 42, "sha256:fixture", voice())
+            .await
+            .unwrap()
+            .len(),
+        2
+    );
+}
+
+#[tokio::test]
 async fn saving_analysis_waits_for_another_library_writer() {
     use std::time::Duration;
     let root = tempfile::tempdir().unwrap();
