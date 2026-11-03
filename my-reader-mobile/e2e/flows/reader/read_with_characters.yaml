@@ -1,0 +1,51 @@
+appId: ${APP_ID}
+name: Character instructions reach network synthesis through a streamed reading plan
+---
+- runFlow: ../../common/launch_preserving_data.yaml
+- tapOn: "Library|书库"
+- tapOn:
+    id: library-collection-all
+- tapOn: '打开《MyReader TTS E2E》|Open "MyReader TTS E2E"'
+- extendedWaitUntil:
+    visible: "Playback position first page.*|Latest narration second page.*|User viewport third page heading.*"
+    timeout: 30000
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      notVisible: "更多操作|More Actions|More actions"
+    commands:
+      - tapOn:
+          point: "50%,50%"
+- tapOn: "更多操作|More Actions|More actions"
+- tapOn: "朗读设置|Read-aloud settings"
+- tapOn:
+    text: "分角色朗读|Character narration"
+    rightOf: "分角色朗读|Character narration"
+- tapOn: "启用|Enable"
+- assertVisible:
+    text: "分角色朗读|Character narration"
+    checked: true
+- tapOn: "编辑人物|Edit character"
+- tapOn: "添加人物|Add character"
+- tapOn: "手动添加|Add manually"
+- tapOn:
+    id: narration-name
+- inputText: "Grace"
+- runFlow: ../../common/finish_single_line_input.yaml
+- scrollUntilVisible:
+    element:
+      id: narration-instructions
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: narration-instructions
+- inputText: "Speak gently for Grace"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- tapOn: "保存|Save"
+- assertVisible: "Grace"
+# Relaunch to verify persisted character configuration and dismiss the sheet.
+- runFlow: read_with_tts.yaml

@@ -186,7 +186,12 @@ try {
   const tts = service(
     process.execPath,
     [join(e2e, "scripts/tts-fixture-server.mjs")],
-    { TTS_FIXTURE_AUDIO_REPEATS: "16", TTS_FIXTURE_PORT: String(ttsPort) },
+    {
+      TTS_FIXTURE_AUDIO_REPEATS: "16",
+      TTS_FIXTURE_PORT: String(ttsPort),
+      TTS_FIXTURE_FIRST_DELAY_MS: "25000",
+      TTS_FIXTURE_DELAY_MS: "400",
+    },
   )
   await ready(`http://127.0.0.1:${davPort}/`, dav, {
     headers: {

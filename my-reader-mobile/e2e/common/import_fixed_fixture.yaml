@@ -8,6 +8,11 @@ name: Import and restore a fixed-layout fixture
     file: select_e2e_fixture.yaml
     env:
       IMPORT_FILE_NAME: ${IMPORT_FILE_NAME}
+- scrollUntilVisible:
+    element:
+      id: library-collection-all
+    direction: UP
+    centerElement: true
 - tapOn:
     id: library-collection-all
 - extendedWaitUntil:

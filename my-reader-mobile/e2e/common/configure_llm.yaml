@@ -1,0 +1,40 @@
+appId: ${APP_ID}
+name: Configure a streaming LLM fixture through provider settings
+---
+- runFlow: launch_preserving_data.yaml
+- runFlow: open_settings.yaml
+- scrollUntilVisible:
+    element:
+      id: settings-llm-providers-row
+    direction: DOWN
+- tapOn:
+    id: settings-llm-providers-row
+- tapOn: "添加供应商|Add provider"
+- tapOn:
+    id: llm-provider-name
+- eraseText
+- inputText: "E2E LLM"
+- tapOn:
+    id: llm-provider-endpoint
+    point: "95%,50%"
+- eraseText
+- inputText: ${TTS_URL}
+- assertVisible: ${TTS_URL}
+- tapOn:
+    id: llm-provider-credential
+- inputText: "fixture-llm-key"
+- runFlow: finish_single_line_input.yaml
+- scrollUntilVisible:
+    element:
+      id: provider-model-id-0
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: provider-model-id-0
+- inputText: "fixture-llm"
+- runFlow: finish_single_line_input.yaml
+- tapOn: "保存|Save"
+- extendedWaitUntil:
+    visible: "E2E LLM/fixture-llm"
+    timeout: 10000
+- tapOn: "关闭|Close"

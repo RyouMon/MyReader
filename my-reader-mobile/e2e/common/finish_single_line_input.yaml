@@ -1,0 +1,13 @@
+appId: ${APP_ID}
+name: Finish a single-line input before moving through the form
+---
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter

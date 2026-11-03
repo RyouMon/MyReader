@@ -1,5 +1,6 @@
 import http from "node:http"
 import { readFileSync } from "node:fs"
+import { setTimeout as delay } from "node:timers/promises"
 
 const host = process.env.TTS_FIXTURE_HOST || "127.0.0.1"
 const port = Number(process.env.TTS_FIXTURE_PORT || 5050)
@@ -19,6 +20,7 @@ const audio = audioFile
   ? readFileSync(audioFile)
   : Buffer.concat(Array.from({ length: audioRepeats }, () => audioFrame))
 const requests = []
+let synthesisCount = 0
 
 function respondJson(response, status, value) {
   const body = Buffer.from(JSON.stringify(value))
@@ -41,12 +43,14 @@ async function readJson(request) {
 }
 
 function record(request, body) {
-  requests.push({
+  const entry = {
     method: request.method,
     path: request.url,
     authorized: Boolean(request.headers.authorization),
     body,
-  })
+  }
+  requests.push(entry)
+  return entry
 }
 
 const server = http.createServer(async (request, response) => {
@@ -61,7 +65,61 @@ const server = http.createServer(async (request, response) => {
     }
     if (request.method === "POST" && request.url === "/reset") {
       requests.length = 0
+      synthesisCount = 0
       respondJson(response, 200, { ok: true })
+      return
+    }
+    if (
+      request.method === "POST" &&
+      request.url === "/openai/v1/chat/completions"
+    ) {
+      if (request.headers.authorization !== "Bearer fixture-llm-key") {
+        respondJson(response, 401, { error: "invalid_fixture_credential" })
+        return
+      }
+      const body = await readJson(request)
+      const system = body.messages?.find((message) =>
+        message.content.includes("\nRoster: "),
+      )?.content
+      const input = body.messages?.at(-1)?.content
+      const roster = JSON.parse(
+        system?.split("\nRoster: ")[1]?.split("\nPrior scene: ")[0] || "[]",
+      )
+      const character = roster.find((entry) => entry.name === "Grace")
+      let result
+      if (input === "Return ok=true.") {
+        result = { ok: true }
+      } else {
+        const units = JSON.parse(input).units
+        if (!character || !units?.length || body.stream !== true) {
+          respondJson(response, 400, { error: "invalid_narration_request" })
+          return
+        }
+        result = {
+          segments: [
+            {
+              from: units[0].id,
+              through: units.at(-1).id,
+              characterId: character.id,
+              delivery: "calm",
+              parts: [],
+            },
+          ],
+        }
+      }
+      record(request, body)
+      response.writeHead(200, { "content-type": "text/event-stream" })
+      const content = JSON.stringify(result)
+      for (let index = 0; index < content.length; index += 32) {
+        response.write(
+          `data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: content.slice(index, index + 32) } }] })}\n\n`,
+        )
+        await delay(50)
+        if (response.destroyed) return
+      }
+      response.end(
+        'data: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
+      )
       return
     }
     if (
@@ -88,12 +146,20 @@ const server = http.createServer(async (request, response) => {
         respondJson(response, 400, { error: "invalid_openai_request" })
         return
       }
-      record(request, body)
+      const entry = record(request, body)
+      const started = performance.now()
+      const delayMs =
+        ++synthesisCount === 1
+          ? Number(process.env.TTS_FIXTURE_FIRST_DELAY_MS || 0)
+          : Number(process.env.TTS_FIXTURE_DELAY_MS || 0)
+      if (delayMs > 0) await delay(delayMs)
+      if (response.destroyed) return
       response.writeHead(200, {
         "content-type": "audio/mpeg",
         "content-length": audio.length,
       })
       response.end(audio)
+      entry.generationMs = performance.now() - started
       return
     }
     respondJson(response, 404, { error: "not_found" })

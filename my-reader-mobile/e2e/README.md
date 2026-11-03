@@ -64,6 +64,8 @@ node my-reader-mobile/e2e/scripts/run-release.mjs ios /absolute/path/MyReader.ap
 `test:e2e:ios <app> <udid>`。相对安装包路径相对于命令工作目录，推荐绝对路径。
 脚本拒绝 Android 真机、debug APK、错误应用 ID、缺少内置 JS 的应用，以及无法在模拟器运行的 IPA。
 iOS Release simulator 在 CI 通过 Expo prebuild 和 Xcode Release 构建，使用与 production 相同的入口、Core 绑定和环境配置；本地也可使用 `eas.json` 的 `release-simulator`。
+本地直接使用 Gradle 或 Xcode 构建前，也需先执行 Expo prebuild（iOS 随后执行 `pod install`），
+使生成的原生工程与当前 `app.json`、插件和依赖一致；构建后核对安装包版本，避免复用旧工程的版本信息。
 
 脚本安装指定包、创建唯一 fixture 目录、通过系统选择器导入自制 EPUB/PDF/CBZ，并启动本地
 WebDAV 和 OpenAI 兼容语音 fixture。Android 使用模拟器的宿主回环地址 `10.0.2.2`，
@@ -77,6 +79,9 @@ CI 等待专用 Simulator 启动后禁用其中的 APNs daemon，减少模拟器
 报告默认保存到 `e2e/.artifacts/<platform>-<run-id>/`，可用 `E2E_REPORT_DIR` 指定目录。
 报告包含安装包摘要、提交号、工作区状态、每个 flow 的 JUnit、失败截图和日志。
 只有完整清单全部成功才写入 `passed.json`。网络朗读还检查实际合成请求。
+网络夹具的首次合成延迟 25 秒，覆盖冷启动等待；后续请求延迟 400 毫秒。
+同一阅读流程通过界面配置流式 LLM、启用分角色朗读并添加人物，重启后再次朗读，
+核对服务端记录中的人物指令和已完成音频。此夹具验证分析、持久化与合成的衔接，不衡量真实模型的角色识别质量。
 单个流程最多运行 30 分钟，覆盖云端完整阅读流程的实际耗时；单步 UI 断言时限保持独立。
 超时强制终止 Maestro JVM，使失败日志能够上传，不依赖可能卡住的 JVM 退出钩子。
 Android 失败后额外采集系统日志、屏幕截图和 WebView 版本，即使 Maestro 本身卡死也保留诊断信息。

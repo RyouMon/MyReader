@@ -42,7 +42,7 @@ name: Narration preserves its own cursor across manual page turns
 - tapOn: "继续朗读|Resume narration"
 - extendedWaitUntil:
     visible: "暂停朗读|Pause narration"
-    timeout: 30000
+    timeout: 45000
 - tapOn: "暂停朗读|Pause narration"
 - assertVisible: "继续朗读|Resume narration"
 - tapOn: "下一句|Next sentence"
