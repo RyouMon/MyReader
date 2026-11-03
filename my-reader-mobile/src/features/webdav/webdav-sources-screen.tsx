@@ -2,7 +2,6 @@ import { useMemo } from "react"
 import { useTranslation } from "react-i18next"
 
 import { Stack, router } from "expo-router"
-import { View } from "react-native"
 
 import { useThemePalette } from "@/src/design/tokens"
 
@@ -17,6 +16,7 @@ import { ENTITY_LIST_ROW_ICONS } from "@/src/components/ui/entity-list-row-icons
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 import { createAddAction } from "@/src/navigation/toolbar-action-helpers"
 import { useAppStore } from "@/src/store/app-store"
+import { View } from "@/tw"
 
 export default function WebDavSourcesScreen() {
   const { t } = useTranslation()

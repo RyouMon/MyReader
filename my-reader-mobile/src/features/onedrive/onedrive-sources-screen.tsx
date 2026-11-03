@@ -2,7 +2,6 @@ import { useMemo } from "react"
 import { useTranslation } from "react-i18next"
 
 import { Stack, router } from "expo-router"
-import { View } from "react-native"
 
 import { useThemePalette } from "@/src/design/tokens"
 
@@ -19,6 +18,7 @@ import { OneDriveAddingEmptyState } from "@/src/features/onedrive/onedrive-addin
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 import { createAddAction } from "@/src/navigation/toolbar-action-helpers"
 import { useAppStore } from "@/src/store/app-store"
+import { View } from "@/tw"
 
 export default function OneDriveSourcesScreen() {
   const { t } = useTranslation()
