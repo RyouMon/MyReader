@@ -16,6 +16,7 @@ export {
 } from "./entity-list-row-icons"
 export { FormFieldSwitch } from "./form-field-switch"
 export { FormTextField } from "./form-text-field"
+export { FormPasswordField } from "./form-password-field"
 export { FormSelect } from "./form-select"
 export { FormSlider } from "./form-slider"
 export { FormSwitch } from "./form-switch"

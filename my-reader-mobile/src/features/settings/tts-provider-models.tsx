@@ -130,7 +130,9 @@ export function TtsProviderModels({
       draft={draft}
       model={model}
       validation={validation}
-      onChange={(voices) => onChange(updateVoices(draft, model?.id, voices))}
+      onChange={(voices, names) =>
+        onChange(updateVoices(draft, model?.id, voices, names))
+      }
       actions={
         draft.kind === "qwen" && model?.model.trim() && index !== undefined ? (
           <Button
@@ -260,7 +262,9 @@ function SharedVoices({
         draft={draft}
         model={model}
         validation={validation}
-        onChange={(voices) => onChange(updateVoices(draft, model?.id, voices))}
+        onChange={(voices, names) =>
+          onChange(updateVoices(draft, model?.id, voices, names))
+        }
       />
       {draft.models.length > 1 ? (
         <FormSelect

@@ -45,3 +45,5 @@ export function FormTextField({
     </View>
   )
 }
+
+export const FormPasswordField = FormTextField

@@ -1,4 +1,5 @@
 import { forwardRef, type ComponentRef } from "react"
+import { TextInput as NativeTextInput } from "react-native"
 import {
   TextInput as PaperTextInput,
   type TextInputProps,
@@ -12,6 +13,7 @@ type Props = Omit<TextInputProps, "label" | "error" | "theme" | "mode"> & {
   required?: boolean
   error?: string
   labelMode?: "floating" | "hidden" | "external"
+  floatLabel?: boolean
   colors?: Partial<ThemePalette>
 }
 
@@ -27,6 +29,7 @@ export const FormTextField = forwardRef<
     contentStyle,
     placeholder,
     labelMode = "floating",
+    floatLabel = false,
     colors,
     ...props
   },
@@ -35,6 +38,13 @@ export const FormTextField = forwardRef<
   const { palette: appPalette, colorScheme } = useTheme()
   const palette = { ...appPalette, ...colors }
   const displayedLabel = required ? `${label} *` : label
+  const pinned =
+    floatLabel &&
+    labelMode === "floating" &&
+    Boolean(placeholder) &&
+    props.value !== undefined
+  const renderInput: NonNullable<TextInputProps["render"]> =
+    props.render ?? ((input) => <NativeTextInput {...input} />)
 
   return (
     <View className="gap-1">
@@ -86,6 +96,20 @@ export const FormTextField = forwardRef<
         ]}
         contentStyle={[{ paddingHorizontal: 16 }, contentStyle]}
         {...props}
+        // Paper floats labels from its value. Its public render slot keeps the
+        // native value empty while the placeholder holds the label above it.
+        value={pinned && !props.value ? placeholder : props.value}
+        render={
+          pinned
+            ? (input) =>
+                renderInput({
+                  ...input,
+                  value: props.value,
+                  placeholderTextColor:
+                    props.placeholderTextColor ?? palette.textMuted,
+                })
+            : props.render
+        }
       />
       {error ? (
         <Text

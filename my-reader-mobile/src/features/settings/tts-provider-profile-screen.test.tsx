@@ -16,7 +16,7 @@ import TtsProviderProfileScreen from "./tts-provider-profile-screen"
 const mockTranslate = (key: string) => key
 const mockRouter = { back: jest.fn(), push: jest.fn(), dismissTo: jest.fn() }
 const mockHeader = jest.fn((options: unknown) => ({ options, toolbar: null }))
-let mockParams: { kind?: string; sourceId?: string; providerId?: string } = {}
+let mockParams: { kind?: string; providerId?: string } = {}
 const mockPlayer = { play: jest.fn(), setPlaybackRate: jest.fn() }
 jest.mock("expo-audio", () => ({
   useAudioPlayer: () => mockPlayer,
@@ -63,6 +63,7 @@ jest.mock("@/src/services/core/tts", () => ({
   discoverTtsModels: jest.fn(),
   discoverQwenTtsVoices: jest.fn(),
   getTtsConfig: jest.fn(),
+  getTtsCredential: jest.fn().mockResolvedValue("saved-test-key"),
   getTtsChangeUsage: jest.fn().mockResolvedValue([]),
   saveTtsProvider: jest.fn(),
   removeTtsProfile: jest.fn(),
@@ -292,11 +293,12 @@ it("blocks saving blank model and voice IDs in either voice scope", async () => 
 })
 
 it.each([
-  "tokenPlan",
-  "qianwen",
-  "dashscope",
-])("fetches %s models explicitly and imports both preset and account voices", async (sourceId) => {
-  mount({ kind: "qwen", sourceId } as never)
+  "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference",
+  "https://maas.qianwenaiapi.com/api/v1",
+  "https://dashscope.aliyuncs.com/api/v1",
+])("fetches %s models explicitly and imports both preset and account voices", async (endpoint) => {
+  mount({ kind: "qwen" })
+  fireEvent.changeText(screen.getByTestId("tts-provider-endpoint"), endpoint)
   expect(tts.getQwenTtsModels).not.toHaveBeenCalled()
   fireEvent.changeText(
     screen.getByTestId("tts-provider-credential"),
@@ -308,6 +310,10 @@ it.each([
   await screen.findByDisplayValue("account")
   expect(screen.getByDisplayValue("preset")).toBeTruthy()
   fireEvent.changeText(screen.getByDisplayValue("preset"), "future-voice")
+  fireEvent.changeText(
+    screen.getAllByLabelText("providerEditor.voiceName")[0]!,
+    "Narrator",
+  )
   save()
   await waitFor(() =>
     expect(tts.saveTtsProvider).toHaveBeenCalledWith(
@@ -316,6 +322,7 @@ it.each([
           models: [
             expect.objectContaining({
               model: "qwen-new",
+              voiceNames: { "future-voice": "Narrator" },
               voices: ["future-voice", "account"],
             }),
           ],
@@ -325,8 +332,27 @@ it.each([
   )
 })
 
+it("keeps the voice ID placeholder separate from edited names", () => {
+  mount({ kind: "qwen" })
+  fireEvent.changeText(screen.getByTestId("tts-voice-id-0"), "Bunny")
+  expect(screen.getByTestId("tts-voice-id-0").props.value).toBe("Bunny")
+  expect(screen.getByTestId("tts-voice-name-0").props.value).toBe("")
+  fireEvent.changeText(screen.getByTestId("tts-voice-id-0"), "custom-voice")
+  expect(screen.getByTestId("tts-voice-name-0").props.value).toBe("")
+  expect(screen.getByTestId("tts-voice-name-0").props.placeholder).toBe(
+    "custom-voice",
+  )
+  fireEvent.changeText(screen.getByTestId("tts-voice-name-0"), "自定义名称")
+  fireEvent.changeText(screen.getByTestId("tts-voice-id-0"), "Cherry")
+  expect(screen.getByTestId("tts-voice-name-0").props.value).toBe("自定义名称")
+})
+
 it("supports manually entering future model and voice IDs without fetching catalogs", async () => {
-  mount({ kind: "qwen", sourceId: "dashscope" } as never)
+  mount({ kind: "qwen" })
+  fireEvent.changeText(
+    screen.getByTestId("tts-provider-endpoint"),
+    "https://dashscope.aliyuncs.com/api/v1",
+  )
   expect(screen.getAllByLabelText("providerEditor.modelId")).toHaveLength(1)
   expect(screen.getAllByLabelText("providerEditor.voiceId")).toHaveLength(1)
   fireEvent.changeText(

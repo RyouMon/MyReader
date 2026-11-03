@@ -1,5 +1,7 @@
+import { useSystemTtsVoices } from "@/hooks/useSystemTtsVoices"
+import { ttsVoiceLabel } from "@my-reader/tools/tts-voice-names"
 import { useQuery } from "@tanstack/react-query"
-import { type CSSProperties, useEffect, useState } from "react"
+import { type CSSProperties, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
 import { FormTextField } from "@/components/common/FormTextField"
@@ -41,10 +43,11 @@ export function CharacterEditor({
   onSave: (value: BookCharacterDto) => void
   onCancel: () => void
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const locale = i18n?.resolvedLanguage
   const [draft, setDraft] = useState(character)
   const [nicknames, setNicknames] = useState(character.nicknames.join(", "))
-  const [systemVoices, setSystemVoices] = useState<SpeechSynthesisVoice[]>([])
+  const systemVoices = useSystemTtsVoices()
   const [previewError, setPreviewError] = useState<string | null>(null)
   const effectiveVoice = draft.voice ?? readingVoice
   const { preview, previewing, previewVoiceId, stopPreview } =
@@ -66,14 +69,6 @@ export function CharacterEditor({
     queryFn: () => api.listTtsVoices(provider!),
     enabled: Boolean(provider),
   })
-  useEffect(() => {
-    const update = () =>
-      setSystemVoices(window.speechSynthesis?.getVoices() ?? [])
-    update()
-    window.speechSynthesis?.addEventListener("voiceschanged", update)
-    return () =>
-      window.speechSynthesis?.removeEventListener("voiceschanged", update)
-  }, [])
   const voiceSelected = !draft.voice || Boolean(draft.voice.voiceId.trim())
   const valid = Boolean(draft.name.trim() && voiceSelected)
   return (
@@ -186,11 +181,23 @@ export function CharacterEditor({
                     provider
                       ? (voices.data ?? []).map((voice) => ({
                           value: voice.id,
-                          label: voice.id,
+                          label: ttsVoiceLabel(
+                            voice.id,
+                            config.profiles.find(
+                              (profile) => profile.id === provider,
+                            )?.voiceNames,
+                            voice.language,
+                            locale,
+                          ),
                         }))
                       : systemVoices.map((voice) => ({
                           value: voice.voiceURI,
-                          label: voice.name,
+                          label: ttsVoiceLabel(
+                            voice.name,
+                            undefined,
+                            voice.lang,
+                            locale,
+                          ),
                         }))
                   }
                 />

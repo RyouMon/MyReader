@@ -19,6 +19,7 @@ function draft(): TtsProviderDraft {
     clearCredential: false,
     modelScopedVoices: false,
     voices: ["reader", "actor"],
+    voiceNames: { reader: "Narrator" },
 
     models: [
       { ...newTtsModel("first"), defaultVoice: "reader" },
@@ -30,6 +31,7 @@ it("moves voices between shared and model scopes without losing IDs or defaults"
   const original = draft()
   const scoped = setTtsVoiceScope(original, true)
   expect(scoped.voices).toEqual([])
+  expect(scoped.models[0]?.voiceNames).toEqual({ reader: "Narrator" })
   expect(scoped.models.map((m) => m.voices)).toEqual([
     original.voices,
     original.voices,
@@ -37,6 +39,7 @@ it("moves voices between shared and model scopes without losing IDs or defaults"
   scoped.models[1].voices.push("guest")
   const shared = setTtsVoiceScope(scoped, false)
   expect(shared.voices).toEqual(["reader", "actor", "guest"])
+  expect(shared.voiceNames).toEqual({ reader: "Narrator" })
   expect(shared.models.map((m) => [m.id, m.defaultVoice])).toEqual(
     original.models.map((m) => [m.id, m.defaultVoice]),
   )

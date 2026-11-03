@@ -184,8 +184,10 @@ pub async fn narration_analyze_batch(
     config_path: String,
     requests: Vec<NarrationRequest>,
     credential: Option<crate::llm::LlmCredential>,
+    progress: Box<dyn draft::NarrationDraftProgress>,
 ) -> Result<(), CoreFfiError> {
-    NarrationService::analyze_batch(
+    let on_progress = |event| draft::emit_progress(progress.as_ref(), event);
+    NarrationService::analyze_batch_with_progress(
         Path::new(&root),
         Path::new(&config_path),
         requests
@@ -193,6 +195,7 @@ pub async fn narration_analyze_batch(
             .map(TryInto::try_into)
             .collect::<Result<_, _>>()?,
         credential.map(Into::into).as_ref(),
+        Some(&on_progress),
     )
     .await
     .map_err(CoreFfiError::from_core)

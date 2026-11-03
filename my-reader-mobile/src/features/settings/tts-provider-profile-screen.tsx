@@ -3,9 +3,8 @@ import {
   TtsRemovalContext,
   useTtsRemovalConfirmation,
 } from "@/src/domain/tts/use-tts-removal-confirmation"
-import { qwenTtsSourceKeys } from "@my-reader/i18n/mobile"
 import { router, Stack, useLocalSearchParams } from "expo-router"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { ActivityIndicator } from "react-native"
 import { ListRow, Screen, SectionCard, SectionLabel } from "@/src/components"
@@ -21,7 +20,7 @@ import { createSaveAction } from "@/src/navigation/toolbar-action-helpers"
 import {
   getTtsConfig,
   getTtsChangeUsage,
-  getQwenTtsPresets,
+  getTtsCredential,
   saveTtsProvider,
   removeTtsProfile,
 } from "@/src/services/core/tts"
@@ -42,10 +41,6 @@ function ProviderForm({
   onChange: (value: TtsProviderDraft) => void
   validation: ReturnType<typeof useFormValidation>
 }) {
-  const { t } = useTranslation()
-  const preset = getQwenTtsPresets().find(
-    (item) => item.endpoint === draft.endpoint.trim().replace(/\/+$/, ""),
-  )
   return (
     <Screen>
       <View className="gap-3">
@@ -53,12 +48,13 @@ function ProviderForm({
           kind="tts"
           value={draft}
           validation={validation}
-          credentialPlaceholder={
-            preset
-              ? t(qwenTtsSourceKeys(preset.id).credential)
-              : t("settings.tts.openAiCredentialPlaceholder")
+          onChange={(connection) =>
+            onChange({
+              ...draft,
+              ...connection,
+              clearCredential: !connection.credential.trim(),
+            })
           }
-          onChange={(connection) => onChange({ ...draft, ...connection })}
         />
         <TtsProviderModels
           draft={draft}
@@ -72,7 +68,6 @@ function ProviderForm({
 
 function ProviderTypeList() {
   const { t } = useTranslation()
-  const presets = useMemo(getQwenTtsPresets, [])
   return (
     <Screen>
       <View className="gap-3">
@@ -87,20 +82,16 @@ function ProviderTypeList() {
               })
             }
           />
-          {presets.map((preset, index) => (
-            <ListRow
-              key={preset.id}
-              title={t(qwenTtsSourceKeys(preset.id).title)}
-              detail={t(qwenTtsSourceKeys(preset.id).description)}
-              isLast={index === presets.length - 1}
-              onPress={() =>
-                router.push({
-                  pathname: "/tts-providers/form",
-                  params: { kind: "qwen", sourceId: preset.id },
-                })
-              }
-            />
-          ))}
+          <ListRow
+            title="Qwen"
+            isLast
+            onPress={() =>
+              router.push({
+                pathname: "/tts-providers/form",
+                params: { kind: "qwen" },
+              })
+            }
+          />
         </SectionCard>
       </View>
     </Screen>
@@ -110,20 +101,18 @@ function ProviderTypeList() {
 export default function TtsProviderProfileScreen() {
   const { t } = useTranslation()
   const palette = useThemePalette()
-  const { providerId, kind, sourceId } = useLocalSearchParams<{
+  const { providerId, kind } = useLocalSearchParams<{
     providerId?: string
     kind?: string
-    sourceId?: string
   }>()
   const [draft, setDraft] = useState<TtsProviderDraft | null>(() => {
     if (providerId || !kind) return null
-    const preset = getQwenTtsPresets().find((item) => item.id === sourceId)
-    return kind === "qwen" && preset
+    return kind === "qwen"
       ? {
           ...newTtsDraft(),
           kind: "qwen",
-          name: t(qwenTtsSourceKeys(preset.id).title),
-          endpoint: preset.endpoint,
+          name: "Qwen",
+          endpoint: "",
           modelScopedVoices: true,
           models: [{ ...newTtsModel(), responseFormat: "wav" }],
           voices: [],
@@ -138,14 +127,18 @@ export default function TtsProviderProfileScreen() {
   useEffect(() => {
     if (!providerId) return
     let active = true
-    void getTtsConfig()
-      .then((config) => {
+    void Promise.all([getTtsConfig(), getTtsCredential(providerId)])
+      .then(([config, credential]) => {
         if (!active) return
         const provider = config.providers.find(
           (candidate) => candidate.id === providerId,
         )
         if (!provider) throw new Error("TTS_PROFILE_NOT_FOUND")
-        setDraft({ ...provider, credential: "", clearCredential: false })
+        setDraft({
+          ...provider,
+          credential: credential ?? "",
+          clearCredential: !credential?.trim(),
+        })
       })
       .catch((error) => {
         if (active)

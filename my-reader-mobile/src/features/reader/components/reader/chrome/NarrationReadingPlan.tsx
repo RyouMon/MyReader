@@ -1,3 +1,4 @@
+import { StreamingStatusLine } from "@/src/components/streaming-status-line"
 import { useInitialListPosition } from "@/src/features/reader/hooks/use-initial-list-position"
 import { BottomSheetFlatList } from "@expo/ui/community/bottom-sheet"
 import { useCallback, useMemo, useState } from "react"
@@ -100,11 +101,6 @@ export function NarrationReadingPlan({
               {plan.error}
             </Text>
           ) : null}
-          {plan.analyzing ? (
-            <Text className="px-4" style={{ color: palette.textMuted }}>
-              {t("narration.plan.analyzing")}
-            </Text>
-          ) : null}
         </View>
       </View>
       <BottomSheetFlatList<NarrationPlanEntry>
@@ -123,6 +119,15 @@ export function NarrationReadingPlan({
         }
       />
       <ReaderListManagementBar
+        status={
+          plan.analyzing ? (
+            <StreamingStatusLine
+              text={plan.progress}
+              label={t("narration.plan.analyzing")}
+              colors={readerFormColors(palette)}
+            />
+          ) : null
+        }
         kind="readingPlan"
         palette={palette}
         managing={managing}

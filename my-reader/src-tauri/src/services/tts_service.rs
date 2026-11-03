@@ -83,13 +83,6 @@ pub struct QwenTtsModelDto {
     pub voices: Vec<TtsVoiceDto>,
 }
 
-#[derive(Debug, Clone, Serialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct QwenTtsPresetDto {
-    pub id: String,
-    pub endpoint: String,
-}
-
 impl From<my_reader_core::models::QwenTtsModel> for QwenTtsModelDto {
     fn from(model: my_reader_core::models::QwenTtsModel) -> Self {
         Self {
@@ -122,6 +115,8 @@ pub struct TtsProviderProfileDto {
     pub options: TtsProviderOptionsDto,
     pub revision: u64,
     pub has_credential: bool,
+    #[serde(default)]
+    pub voice_names: Option<BTreeMap<String, String>>,
 }
 
 #[derive(Debug, Clone, Deserialize, Type)]
@@ -255,6 +250,8 @@ pub struct TtsModelDto {
     pub instructions: Option<String>,
     pub default_voice: Option<String>,
     pub voices: Vec<String>,
+    #[serde(default)]
+    pub voice_names: Option<BTreeMap<String, String>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
@@ -267,6 +264,8 @@ pub struct TtsProviderDto {
     pub kind: TtsProviderKindDto,
     pub endpoint: String,
     pub voices: Vec<String>,
+    #[serde(default)]
+    pub voice_names: Option<BTreeMap<String, String>>,
     pub models: Vec<TtsModelDto>,
     #[serde(default)]
     pub has_credential: bool,
@@ -284,16 +283,12 @@ pub struct SaveTtsProviderInput {
 pub struct DesktopTtsService;
 
 impl DesktopTtsService {
-    pub fn qwen_presets() -> Vec<QwenTtsPresetDto> {
-        CoreTtsService::qwen_presets()
-            .into_iter()
-            .map(|preset| QwenTtsPresetDto {
-                id: preset.id,
-                endpoint: preset.endpoint,
-            })
-            .collect()
+    pub fn get_credential(
+        config_path: &Path,
+        provider_id: &str,
+    ) -> Result<Option<String>, AppError> {
+        resolve_credential(config_path, provider_id)
     }
-
     pub async fn qwen_models(
         config_path: &Path,
         input: UpsertTtsProviderInput,
@@ -388,6 +383,7 @@ impl DesktopTtsService {
                 endpoint: value.endpoint,
                 credential_reference: Some(reference.clone()),
                 voices: value.voices,
+                voice_names: value.voice_names.unwrap_or_default(),
 
                 model_scoped_voices: value.model_scoped_voices,
                 models: value
@@ -401,6 +397,7 @@ impl DesktopTtsService {
                         instructions: m.instructions,
                         default_voice: m.default_voice,
                         voices: m.voices,
+                        voice_names: m.voice_names.unwrap_or_default(),
                         revision: 1,
                     })
                     .collect(),
@@ -615,6 +612,7 @@ fn config_dto(config: my_reader_core::models::TtsConfig) -> Result<TtsConfigDto,
                 kind: p.kind.into(),
                 endpoint: p.endpoint,
                 voices: p.voices,
+                voice_names: Some(p.voice_names),
 
                 model_scoped_voices: p.kind == my_reader_core::models::TtsProviderKind::Qwen
                     || p.model_scoped_voices,
@@ -630,6 +628,7 @@ fn config_dto(config: my_reader_core::models::TtsConfig) -> Result<TtsConfigDto,
                         instructions: m.instructions,
                         default_voice: m.default_voice,
                         voices: m.voices,
+                        voice_names: Some(m.voice_names),
                     })
                     .collect(),
             })
@@ -659,6 +658,7 @@ impl TtsProviderProfileInput {
             model: self.model,
             credential_reference: None,
             options: self.options.into(),
+            voice_names: BTreeMap::new(),
             revision: 1,
         }
     }
@@ -678,6 +678,7 @@ impl TtsProviderProfileDto {
             options: profile.options.into(),
             revision: profile.revision,
             has_credential,
+            voice_names: Some(profile.voice_names),
         }
     }
 }

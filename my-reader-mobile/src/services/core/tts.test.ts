@@ -3,7 +3,6 @@ import {
   ttsSaveProvider,
   ttsDiscoverQwenVoices,
   ttsQwenModels,
-  ttsQwenPresets,
   ttsRemoveProfile,
   ttsSynthesize,
   ttsPreviewProvider,
@@ -18,7 +17,6 @@ import {
   getTtsConfig,
   discoverQwenTtsVoices,
   getQwenTtsModels,
-  getQwenTtsPresets,
   removeTtsProfile,
   synthesizeTts,
   previewTtsProvider,
@@ -59,7 +57,6 @@ jest.mock("my-reader-core", () => ({
   ttsGetConfig: jest.fn(),
   ttsDiscoverQwenVoices: jest.fn(),
   ttsQwenModels: jest.fn(),
-  ttsQwenPresets: jest.fn(),
   ttsListVoices: jest.fn(),
   ttsProbeProvider: jest.fn(),
   ttsProviderCapabilities: jest.fn(),
@@ -221,12 +218,6 @@ describe("mobile core TTS", () => {
     expect(ttsUpsertProfile).not.toHaveBeenCalled()
     expect(writeTtsCredential).not.toHaveBeenCalled()
     expect(deleteTtsCredential).not.toHaveBeenCalled()
-  })
-
-  it("uses the shared Core creation presets without duplicating endpoints", () => {
-    jest.mocked(ttsQwenPresets).mockReturnValue([])
-    expect(getQwenTtsPresets()).toEqual([])
-    expect(ttsQwenPresets).toHaveBeenCalledWith()
   })
 
   it("delegates authenticated model discovery to shared Core", async () => {
@@ -562,4 +553,43 @@ describe("mobile core TTS", () => {
       "ryoumon.myreader.tts.openai",
     )
   })
+})
+
+it("converts voice names across the native map boundary without losing them in JSON caches", async () => {
+  const model = {
+    id: "m",
+    model: "tts",
+    responseFormat: "mp3",
+    voices: ["Cherry"],
+    defaultVoice: "Cherry",
+    voiceNames: new Map([["Cherry", "小樱"]]),
+  }
+  const provider = {
+    id: "p",
+    name: "Qwen",
+    kind: "qwen",
+    endpoint: "https://example.com",
+    modelScopedVoices: true,
+    voices: [],
+    models: [model],
+  }
+  jest
+    .mocked(ttsGetConfig)
+    .mockResolvedValue({ ...systemConfig, providers: [provider] })
+  const publicConfig = await getTtsConfig()
+  expect(
+    JSON.parse(JSON.stringify(publicConfig)).providers[0].models[0].voiceNames,
+  ).toEqual({ Cherry: "小樱" })
+  jest
+    .mocked(ttsSaveProvider)
+    .mockResolvedValue({ ...systemConfig, providers: [provider] })
+  await saveTtsProvider({ provider: publicConfig.providers[0]! })
+  expect(ttsSaveProvider).toHaveBeenCalledWith(
+    expect.any(String),
+    expect.objectContaining({
+      models: [
+        expect.objectContaining({ voiceNames: new Map([["Cherry", "小樱"]]) }),
+      ],
+    }),
+  )
 })

@@ -20,7 +20,9 @@ export const sharedZhCN = {
     integer: "请输入整数",
     invalid: "请输入有效的内容",
   },
+  passwordField: { show: "显示密码", hide: "隐藏密码" },
   providerEditor: {
+    voiceName: "显示名称",
     playbackFailed: "音频播放失败。",
     fetchModels: "获取可用模型",
     models: "模型列表",
@@ -65,7 +67,6 @@ export const sharedZhCN = {
     protocol: "协议",
     endpoint: "API 地址",
     key: "API 密钥",
-    keySaved: "已保存",
     model: "模型",
     models: "获取模型",
     test: "测试连接",
@@ -73,7 +74,6 @@ export const sharedZhCN = {
     context: "上下文窗口",
     default: "默认模型",
     none: "无",
-    clearKey: "删除已存密钥",
     save: "保存",
     cancel: "取消",
     delete: "删除",
@@ -200,33 +200,6 @@ export const sharedZhCN = {
   qwenTts: {
     title: "Qwen（通义千问）",
     add: "添加 {{name}}",
-    description: "使用与服务地址对应的凭据，支持指定音色。",
-    sources: {
-      tokenPlan: {
-        title: "Qwen · Token Plan",
-        description: "使用千问套餐额度和套餐专用密钥。",
-        credential: "Token Plan 套餐密钥（sk-sp- 开头）",
-      },
-      qianwen: {
-        title: "Qwen · 按需计费",
-        description: "使用千问 AI 平台 API，按实际用量计费。",
-        credential: "千问 AI 平台 API Key（非套餐密钥）",
-      },
-      dashscope: {
-        title: "Qwen · DashScope（百炼）",
-        description: "使用阿里云百炼 API，默认北京地域。",
-        credential: "阿里云百炼 API Key（与服务地域一致）",
-      },
-    },
-    manualVoicesAction: "手动输入音色 ID",
-    manualVoices: "音色 ID",
-    manualVoicesHint: "仅用于列表中未显示的官方或自定义音色，每行一个 ID。",
-    loadingVoices: "正在获取账户音色…",
-    voicesFailed: "账户音色获取失败，可继续使用已有音色或手动输入。",
-    voicesEmpty:
-      "当前模型暂无账户音色，请先在对应平台创建音色，或输入已有音色 ID。",
-    credentialRequired:
-      "填写与服务地址对应的 API Key；Token Plan 使用 sk-sp- 开头的套餐密钥",
   },
   addLibraryFlow: {
     title: "添加书库",

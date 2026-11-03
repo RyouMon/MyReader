@@ -6,7 +6,8 @@ import { Cpu, Loader2 } from "lucide-react"
 import { FormTextField } from "@/components/common/FormTextField"
 import { FormScrollArea } from "@/components/common/FormScrollArea"
 import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
-import { FormSwitch } from "@/components/common/FormSwitch"
+import { FormPasswordField } from "@/components/common/FormPasswordField"
+import { useProviderCredential } from "@/hooks/useProviderCredential"
 import { AddPanelButton } from "@/components/common/AddPanelButton"
 import { AppRow } from "@/components/common/AppRow"
 import { RowActions } from "@/components/common/RowActions"
@@ -185,7 +186,12 @@ function LlmProviderForm({
     })
   const [showModels, setShowModels] = useState(false)
   const [credential, setCredential] = useState("")
-  const [clearCredential, setClearCredential] = useState(false)
+  const clearCredential = !credential.trim()
+  const storedCredential = useProviderCredential(
+    "llm",
+    profile.id,
+    setCredential,
+  )
   const [testedInput, setTestedInput] = useState<string | null>(null)
   const inputIdentity = JSON.stringify([draft, credential, clearCredential])
   const currentInput = useRef(inputIdentity)
@@ -202,6 +208,16 @@ function LlmProviderForm({
   })
   const valid = validProfile(draft)
   const busy = save.isPending
+  if (storedCredential.loading)
+    return (
+      <div className="px-6 py-5">
+        {storedCredential.error ? (
+          <FieldError>{storedCredential.error}</FieldError>
+        ) : (
+          <Loader2 className="size-5 animate-spin" role="status" />
+        )}
+      </div>
+    )
   return (
     <form
       {...validationProps}
@@ -271,27 +287,16 @@ function LlmProviderForm({
             />
 
             <FieldGroup className="gap-4">
-              <FormTextField
+              <FormPasswordField
                 id="llm-key"
                 label={t("llm.key")}
-                type="password"
                 value={credential}
                 fullWidth
                 autoComplete="new-password"
-                placeholder={draft.hasCredential ? t("llm.keySaved") : ""}
                 onChange={(event) => {
                   setCredential(event.target.value)
-                  setClearCredential(false)
                 }}
               />
-              {draft.hasCredential ? (
-                <FormSwitch
-                  id="llm-clear-key"
-                  label={t("llm.clearKey")}
-                  checked={clearCredential}
-                  onCheckedChange={setClearCredential}
-                />
-              ) : null}
             </FieldGroup>
           </FieldGroup>
           <Separator />

@@ -70,14 +70,7 @@ pub async fn narration_draft_characters(
     credential: Option<LlmCredential>,
     progress: Box<dyn NarrationDraftProgress>,
 ) -> Result<Vec<BookCharacter>, CoreFfiError> {
-    let on_progress = |event| {
-        let (kind, delta) = match event {
-            core::LlmStreamEvent::Started => ("started", String::new()),
-            core::LlmStreamEvent::Reasoning(delta) => ("reasoning", delta),
-            core::LlmStreamEvent::Text(delta) => ("text", delta),
-        };
-        progress.on_progress(kind.into(), delta);
-    };
+    let on_progress = |event| emit_progress(progress.as_ref(), event);
     Ok(NarrationService::draft_characters_with_progress(
         Path::new(&root),
         Path::new(&config_path),
@@ -93,4 +86,13 @@ pub async fn narration_draft_characters(
     .into_iter()
     .map(Into::into)
     .collect())
+}
+
+pub(super) fn emit_progress(progress: &dyn NarrationDraftProgress, event: core::LlmStreamEvent) {
+    let (kind, delta) = match event {
+        core::LlmStreamEvent::Started => ("started", String::new()),
+        core::LlmStreamEvent::Reasoning(delta) => ("reasoning", delta),
+        core::LlmStreamEvent::Text(delta) => ("text", delta),
+    };
+    progress.on_progress(kind.into(), delta);
 }

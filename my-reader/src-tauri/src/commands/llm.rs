@@ -7,6 +7,18 @@ use tauri::AppHandle;
 
 #[tauri::command]
 #[specta::specta]
+pub fn get_llm_credential<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    provider_id: String,
+) -> Result<Option<String>, AppError> {
+    DesktopLlmService::get_credential(
+        &crate::config::config_path(&common::app_data_dir(&app)?),
+        &provider_id,
+    )
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn get_llm_config<R: tauri::Runtime>(app: AppHandle<R>) -> Result<LlmConfigDto, AppError> {
     DesktopLlmService::get_config(&crate::config::config_path(&common::app_data_dir(&app)?))
 }

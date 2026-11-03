@@ -10,6 +10,7 @@ import { ActivityIndicator } from "react-native"
 import { Button, FormSelect, Screen } from "@/src/components"
 import { useThemePalette } from "@/src/design/tokens"
 import { useLlmSettings } from "@/src/domain/llm/use-llm-settings"
+import { getLlmCredential } from "@/src/services/core/llm"
 import type {
   LlmProviderSettings,
   LlmProfileInput,
@@ -57,14 +58,29 @@ export default function LlmProviderFormScreen() {
     providerId ? null : newProfile(),
   )
   const [credential, setCredential] = useState("")
-  const [clearCredential, setClearCredential] = useState(false)
+  const clearCredential = !credential.trim()
+  const [credentialError, setCredentialError] = useState<unknown>(null)
   const [testedInput, setTestedInput] = useState<string | null>(null)
   const inputIdentity = JSON.stringify([draft, credential, clearCredential])
   const provider = query.data?.providers.find((item) => item.id === providerId)
   useEffect(() => {
-    if (provider) setDraft((current) => current ?? provider)
-  }, [provider])
+    if (!provider || draft) return
+    let active = true
+    void getLlmCredential(provider.id)
+      .then((value) => {
+        if (!active) return
+        setCredential(value ?? "")
+        setDraft(provider)
+      })
+      .catch((cause: unknown) => {
+        if (active) setCredentialError(cause)
+      })
+    return () => {
+      active = false
+    }
+  }, [provider, draft])
   const missing = providerId && query.isSuccess && !provider
+  const loadError = providerLoadError(error, credentialError, Boolean(missing))
   const input = currentProfileInput(draft, credential, clearCredential)
   const errors = draft ? llmFormErrors(draft, t) : {}
   const validation = useFormValidation(errors)
@@ -108,17 +124,17 @@ export default function LlmProviderFormScreen() {
       <Stack.Screen options={options} />
       {toolbar}
       <Screen>
-        {providerId && query.isPending ? (
+        {providerId && !draft && !loadError ? (
           <ActivityIndicator color={palette.primary} />
         ) : null}
-        {error || missing ? (
+        {loadError ? (
           <Text
             selectable
             accessibilityRole="alert"
             className="px-4 text-sm"
             style={{ color: palette.danger }}
           >
-            {errorMessage(error ?? new Error("LLM_PROFILE_NOT_FOUND"))}
+            {errorMessage(loadError)}
           </Text>
         ) : null}
         {draft && input ? (
@@ -134,7 +150,7 @@ export default function LlmProviderFormScreen() {
             />
             <ProviderConnectionFields
               kind="llm"
-              value={{ ...draft, credential, clearCredential }}
+              value={{ ...draft, credential }}
               validation={validation}
               onChange={(connection) => {
                 setDraft({
@@ -143,7 +159,6 @@ export default function LlmProviderFormScreen() {
                   endpoint: connection.endpoint,
                 })
                 setCredential(connection.credential)
-                setClearCredential(connection.clearCredential)
               }}
             />
             <LlmModelList
@@ -375,4 +390,16 @@ function currentProfileInput(
     credential,
     clearCredential,
   }
+}
+
+function providerLoadError(
+  error: unknown,
+  credentialError: unknown,
+  missing: boolean,
+) {
+  return (
+    error ??
+    credentialError ??
+    (missing ? new Error("LLM_PROFILE_NOT_FOUND") : null)
+  )
 }

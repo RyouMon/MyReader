@@ -5,6 +5,7 @@ import {
   analyzeNarrationChapter,
   matchNarrationRequest,
   narrationRequest,
+  subscribeNarrationAnalysis,
 } from "./narration-chapter"
 
 jest.mock("@my-reader/readium", () => ({
@@ -27,6 +28,39 @@ const book = {
   publicationId: "book",
 } as NarrationBookContext
 beforeEach(() => jest.resetAllMocks())
+
+it("publishes playback analysis output with book identity and stops after cancellation", async () => {
+  jest
+    .mocked(publication.getTtsContent)
+    .mockResolvedValue({ utterances: [{ locator, text: "你好" }] })
+  const abort = new AbortController()
+  const listener = jest.fn()
+  const unsubscribe = subscribeNarrationAnalysis(listener)
+  jest
+    .mocked(analyzeBookNarration)
+    .mockImplementationOnce(async (_library, _requests, _signal, progress) => {
+      progress!("started", "")
+      progress!("text", "旁白")
+      abort.abort()
+      progress!("text", "late")
+    })
+  try {
+    await analyzeNarrationChapter(book, locator, abort.signal)
+    expect(
+      listener.mock.calls.map(([event]) => [event.kind, event.delta]),
+    ).toEqual([
+      ["started", ""],
+      ["text", "旁白"],
+      ["finished", ""],
+    ])
+    expect(listener.mock.calls[1]![0]).toMatchObject({
+      book,
+      signal: abort.signal,
+    })
+  } finally {
+    unsubscribe()
+  }
+})
 
 it("identifies repeated text by source position rather than text alone", () => {
   const first = narrationRequest(book, locator, "你好")

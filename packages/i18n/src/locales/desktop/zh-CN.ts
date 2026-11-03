@@ -287,9 +287,7 @@ export const desktopZhCN = {
         instructions: "默认朗读指令",
         instructionsPlaceholder: "例如：自然、平静地朗读",
         credential: "API 密钥或访问令牌",
-        credentialSaved: "已安全保存；留空则保持不变",
         credentialOptional: "可选；部分 OpenAI 兼容服务可不填写",
-        clearCredential: "删除已保存的凭据",
         openAiContract:
           "兼容 OpenAI /v1/audio/speech 接口；服务器地址应填写到 /v1 层级，声音 ID 由你按供应商文档配置。",
         playbackTitle: "阅读偏好",

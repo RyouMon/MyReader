@@ -1,11 +1,6 @@
 import { useEffect, useState } from "react"
 import { api } from "@/lib/tauri-api"
-import { errorMessage } from "@/lib/error-presentation"
-import type {
-  QwenTtsPresetDto,
-  TtsProviderProfileDto,
-  TtsVoiceDto,
-} from "@/lib/tauri-specta"
+import type { TtsProviderProfileDto, TtsVoiceDto } from "@/lib/tauri-specta"
 
 export function useProviderTtsVoices(profile?: TtsProviderProfileDto) {
   const id = profile?.kind === "qwen" ? profile.id : undefined
@@ -37,28 +32,4 @@ export function useProviderTtsVoices(profile?: TtsProviderProfileDto) {
         language: "mul",
         gender: null,
       }))
-}
-
-export function useQwenTtsPresets(enabled: boolean) {
-  const [presets, setPresets] = useState<QwenTtsPresetDto[]>([])
-  const [error, setError] = useState<string | null>(null)
-  useEffect(() => {
-    if (!enabled) return
-    let active = true
-    void api
-      .listQwenTtsPresets()
-      .then((value) => {
-        if (active) {
-          setPresets(value)
-          setError(null)
-        }
-      })
-      .catch((cause) => {
-        if (active) setError(errorMessage(cause))
-      })
-    return () => {
-      active = false
-    }
-  }, [enabled])
-  return { presets, error }
 }

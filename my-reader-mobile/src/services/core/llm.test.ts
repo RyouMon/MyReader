@@ -2,6 +2,7 @@ import * as SecureStore from "expo-secure-store"
 import * as core from "my-reader-core"
 import {
   getLlmConfig,
+  getLlmCredential,
   selectedLlmCredential,
   upsertLlmProfile,
   saveLlmProvider,
@@ -237,5 +238,13 @@ it("discovers models without a chosen model and probes with draft credentials pl
     expect.anything(),
     undefined,
     undefined,
+  )
+})
+
+it("loads the editable credential separately from the public provider config", async () => {
+  expect(await getLlmCredential("p")).toBe("secret")
+  expect(SecureStore.getItemAsync).toHaveBeenCalledWith("llm-provider-p")
+  await expect(getLlmCredential("missing")).rejects.toThrow(
+    "LLM_PROFILE_NOT_FOUND",
   )
 })

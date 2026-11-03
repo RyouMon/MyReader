@@ -1,3 +1,7 @@
+import { characterVoiceLabel } from "@my-reader/tools/tts-voice-names"
+import { useSystemTtsVoices } from "@/hooks/useSystemTtsVoices"
+import { useQueries } from "@tanstack/react-query"
+import { api } from "@/lib/tauri-api"
 import { useEffect, useState, type CSSProperties } from "react"
 import { useTranslation } from "react-i18next"
 import type { TFunction } from "i18next"
@@ -85,7 +89,24 @@ export function NarrationCharacterList({
   onClose: () => void
   findIntroductions?: () => Promise<CharacterIntroduction[]>
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const systemVoices = useSystemTtsVoices()
+  const profileIds = [
+    ...new Set(
+      settings.characters.flatMap(({ voice }) =>
+        voice?.engine === "provider" ? [voice.profileId] : [],
+      ),
+    ),
+  ]
+  const voiceQueries = useQueries({
+    queries: profileIds.map((id) => ({
+      queryKey: ["narration-voices", id],
+      queryFn: () => api.listTtsVoices(id),
+    })),
+  })
+  const providerVoices = Object.fromEntries(
+    profileIds.map((id, index) => [id, voiceQueries[index]?.data ?? []]),
+  )
   const [view, setView] = useState<CharacterView>({ kind: "list" })
   const title = characterViewTitle(view, t)
   const isList = view.kind === "list"
@@ -171,7 +192,23 @@ export function NarrationCharacterList({
             character.id === "narrator"
               ? t("narration.narrator")
               : character.name,
-          description: character.voice?.voiceId || t("narration.defaultModel"),
+          description: characterVoiceLabel(
+            character.voice,
+            config.profiles,
+            {
+              defaultModel: t("narration.defaultModel"),
+              system: t("narration.system"),
+            },
+            {
+              providerVoices,
+              locale: i18n?.resolvedLanguage || i18n?.language,
+              systemVoices: systemVoices.map((voice) => ({
+                id: voice.voiceURI,
+                name: voice.name,
+                language: voice.lang,
+              })),
+            },
+          ),
           selectable: character.id !== "narrator",
         }))}
         mutating={save.isPending || previewMerge.isPending || needsMerge}

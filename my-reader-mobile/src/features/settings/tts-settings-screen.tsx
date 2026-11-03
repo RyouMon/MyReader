@@ -1,8 +1,8 @@
+import { ttsVoiceLabel } from "@my-reader/tools/tts-voice-names"
 import {
   tts as readiumTts,
   type TtsVoice as SystemTtsVoice,
 } from "@my-reader/readium"
-import { formatTtsLanguageName } from "@my-reader/tools/reader-tts-language"
 import { useFocusEffect } from "expo-router"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
@@ -45,11 +45,14 @@ function voiceLabel(
   availableVoices: SystemTtsVoice[],
   selectedVoiceId: string | undefined,
   automaticLabel: string,
+  locale: string,
 ) {
-  return (
-    availableVoices.find((voice) => voice.id === selectedVoiceId)?.name ??
-    selectedVoiceId ??
-    automaticLabel
+  const voice = availableVoices.find((voice) => voice.id === selectedVoiceId)
+  return ttsVoiceLabel(
+    voice?.name ?? selectedVoiceId ?? automaticLabel,
+    undefined,
+    voice?.language,
+    locale,
   )
 }
 
@@ -117,10 +120,13 @@ export default function TtsSettingsScreen() {
     () =>
       selectedProfile
         ? qwenVoices?.profileId === selectedProfile.id
-          ? qwenVoices.voices.map((voice) => ({ ...voice, name: voice.id }))
+          ? qwenVoices.voices.map((voice) => ({
+              ...voice,
+              name: ttsVoiceLabel(voice.id, selectedProfile.voiceNames),
+            }))
           : selectedProfile.voices.map((id) => ({
               id,
-              name: id,
+              name: ttsVoiceLabel(id, selectedProfile.voiceNames),
               language: "mul",
             }))
         : voices,
@@ -130,6 +136,7 @@ export default function TtsSettingsScreen() {
     availableVoices,
     selectedVoiceId,
     t("settings.tts.automaticVoice"),
+    previewLanguage,
   )
 
   const handlePreviewError = useCallback(
@@ -183,11 +190,12 @@ export default function TtsSettingsScreen() {
       (voice): ListMenuAction => ({
         id: `voice:${encodeURIComponent(voice.id)}`,
         state: voice.id === selectedVoiceId ? "on" : "off",
-        title: `${voice.name}${
-          voice.language
-            ? ` · ${formatTtsLanguageName(voice.language, previewLanguage)}`
-            : ""
-        }`,
+        title: ttsVoiceLabel(
+          voice.name,
+          undefined,
+          voice.language,
+          previewLanguage,
+        ),
       }),
     )
     if (selectedProfile) return actions

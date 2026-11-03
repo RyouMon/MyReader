@@ -371,7 +371,7 @@ uniffi_my_reader_core_ffi_fn_func_llm_upsert_profile(RustBuffer config_path,
                                                      RustBuffer profile);
 /*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_narration_analyze_batch(
     RustBuffer root, RustBuffer config_path, RustBuffer requests,
-    RustBuffer credential);
+    RustBuffer credential, uint64_t progress);
 /*handle*/ uint64_t
 uniffi_my_reader_core_ffi_fn_func_narration_cancel(RustBuffer root,
                                                    double book_id);
@@ -535,8 +535,6 @@ uniffi_my_reader_core_ffi_fn_func_tts_get_config(RustBuffer config_path);
 /*handle*/ uint64_t
 uniffi_my_reader_core_ffi_fn_func_tts_qwen_models(RustBuffer endpoint,
                                                   RustBuffer credential);
-RustBuffer uniffi_my_reader_core_ffi_fn_func_tts_qwen_presets(
-    RustCallStatus *uniffi_out_err);
 /*handle*/ uint64_t
 uniffi_my_reader_core_ffi_fn_func_tts_remove_profile(RustBuffer config_path,
                                                      RustBuffer profile_id);
@@ -852,7 +850,6 @@ uint16_t uniffi_my_reader_core_ffi_checksum_func_tts_preview_provider();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_tts_probe_provider();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_tts_provider_capabilities();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_tts_qwen_models();
-uint16_t uniffi_my_reader_core_ffi_checksum_func_tts_qwen_presets();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_tts_remove_profile();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_tts_save_provider();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_tts_set_default_engine();
@@ -3782,7 +3779,7 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
           jsi::PropNameID::forAscii(
               rt,
               "ubrn_uniffi_my_reader_core_ffi_fn_func_narration_analyze_batch"),
-          4,
+          5,
           [this](jsi::Runtime &rt, const jsi::Value &thisVal,
                  const jsi::Value *args, size_t count) -> jsi::Value {
             return this
@@ -4454,17 +4451,6 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
           [this](jsi::Runtime &rt, const jsi::Value &thisVal,
                  const jsi::Value *args, size_t count) -> jsi::Value {
             return this->cpp_uniffi_my_reader_core_ffi_fn_func_tts_qwen_models(
-                rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_fn_func_tts_qwen_presets"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(
-              rt, "ubrn_uniffi_my_reader_core_ffi_fn_func_tts_qwen_presets"),
-          0,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this->cpp_uniffi_my_reader_core_ffi_fn_func_tts_qwen_presets(
                 rt, thisVal, args, count);
           });
   props["ubrn_uniffi_my_reader_core_ffi_fn_func_tts_remove_profile"] =
@@ -7015,19 +7001,6 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                 ->cpp_uniffi_my_reader_core_ffi_checksum_func_tts_qwen_models(
                     rt, thisVal, args, count);
           });
-  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_qwen_presets"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(
-              rt,
-              "ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_qwen_presets"),
-          0,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_checksum_func_tts_qwen_presets(
-                    rt, thisVal, args, count);
-          });
   props["ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_remove_profile"] =
       jsi::Function::createFromHostFunction(
           rt,
@@ -8700,7 +8673,8 @@ jsi::Value NativeMyReaderCoreFfi::
       uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
                                                                args[2]),
       uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[3]));
+                                                               args[3]),
+      uniffi_jsi::Bridging<uint64_t>::fromJs(rt, callInvoker, args[4]));
 
   return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
                                                          value);
@@ -9629,19 +9603,6 @@ NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_fn_func_tts_qwen_models(
 
   return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
                                                          value);
-}
-jsi::Value
-NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_fn_func_tts_qwen_presets(
-    jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-    size_t count) {
-  RustCallStatus status =
-      uniffi::my_reader_core_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
-  auto value = uniffi_my_reader_core_ffi_fn_func_tts_qwen_presets(&status);
-  uniffi::my_reader_core_ffi::Bridging<RustCallStatus>::copyIntoJs(
-      rt, callInvoker, status, args[count - 1]);
-
-  return uniffi::my_reader_core_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker,
-                                                                value);
 }
 jsi::Value
 NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_fn_func_tts_remove_profile(
@@ -11594,14 +11555,6 @@ jsi::Value NativeMyReaderCoreFfi::
         jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
         size_t count) {
   auto value = uniffi_my_reader_core_ffi_checksum_func_tts_qwen_models();
-
-  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_checksum_func_tts_qwen_presets(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value = uniffi_my_reader_core_ffi_checksum_func_tts_qwen_presets();
 
   return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
 }

@@ -12,6 +12,7 @@ import LlmSection from "../LlmSection"
 
 const mocks = vi.hoisted(() => ({
   getLlmConfig: vi.fn(),
+  getLlmCredential: vi.fn().mockResolvedValue("saved-test-key"),
   saveLlmProvider: vi.fn(),
   listLlmModels: vi.fn(),
   probeLlmProfile: vi.fn(),
@@ -119,7 +120,7 @@ it("closes the protocol menu with Escape without closing the provider form", asy
   expect(mocks.saveLlmProvider).not.toHaveBeenCalled()
 })
 
-it("shows saved credential state without filling a secret into the form", async () => {
+it("loads a masked saved key and clears it by saving an empty field", async () => {
   mocks.getLlmConfig.mockResolvedValue({
     profiles: [],
     providers: [
@@ -143,12 +144,13 @@ it("shows saved credential state without filling a secret into the form", async 
   fireEvent.click(
     await screen.findByRole("button", { name: "rowActions.edit Provider" }),
   )
-  expect(screen.getByLabelText("llm.key")).toHaveValue("")
-  expect(screen.getByLabelText("llm.key")).toHaveAttribute(
-    "placeholder",
-    "llm.keySaved",
-  )
-  fireEvent.click(screen.getByRole("switch", { name: "llm.clearKey" }))
+  const key = await screen.findByLabelText("llm.key")
+  expect(key).toHaveValue("saved-test-key")
+  expect(key).toHaveAttribute("type", "password")
+  fireEvent.click(screen.getByRole("button", { name: "passwordField.show" }))
+  expect(key).toHaveAttribute("type", "text")
+  expect(key).toHaveValue("saved-test-key")
+  fireEvent.change(key, { target: { value: "" } })
   fireEvent.click(screen.getByRole("button", { name: "common.save" }))
   await waitFor(() =>
     expect(mocks.saveLlmProvider).toHaveBeenCalledWith(
@@ -182,9 +184,12 @@ it("discards unsaved edits when closing the provider dialog", async () => {
     await screen.findByRole("button", { name: "rowActions.edit Provider" }),
   )
   expect(screen.getByRole("dialog", { name: "Provider" })).toBeInTheDocument()
-  fireEvent.change(screen.getByLabelText(/providerEditor\.modelId\s*\*?$/), {
-    target: { value: "unsaved-model" },
-  })
+  fireEvent.change(
+    await screen.findByLabelText(/providerEditor\.modelId\s*\*?$/),
+    {
+      target: { value: "unsaved-model" },
+    },
+  )
   fireEvent.click(screen.getByRole("button", { name: "common.close" }))
   await waitFor(() =>
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
@@ -193,9 +198,9 @@ it("discards unsaved edits when closing the provider dialog", async () => {
   fireEvent.click(
     screen.getByRole("button", { name: "rowActions.edit Provider" }),
   )
-  expect(screen.getByLabelText(/providerEditor\.modelId\s*\*?$/)).toHaveValue(
-    "saved-model",
-  )
+  expect(
+    await screen.findByLabelText(/providerEditor\.modelId\s*\*?$/),
+  ).toHaveValue("saved-model")
 })
 
 it("adds collapsed models and preserves their details when switching the editor", async () => {

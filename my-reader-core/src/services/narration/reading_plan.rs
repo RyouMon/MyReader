@@ -9,6 +9,16 @@ impl NarrationService {
         requests: Vec<NarrationRequest>,
         credential: Option<&crate::models::LlmCredential>,
     ) -> Result<(), CoreError> {
+        Self::analyze_batch_with_progress(root, config_path, requests, credential, None).await
+    }
+
+    pub async fn analyze_batch_with_progress(
+        root: &Path,
+        config_path: &Path,
+        requests: Vec<NarrationRequest>,
+        credential: Option<&crate::models::LlmCredential>,
+        progress: Option<crate::models::LlmProgress<'_>>,
+    ) -> Result<(), CoreError> {
         let first = requests.first().ok_or_else(|| error("REQUEST_INVALID"))?;
         if requests.len() > 10000
             || requests.iter().map(|r| r.text.len()).sum::<usize>() > 8_000_000
@@ -113,6 +123,7 @@ impl NarrationService {
                 &requests[index..end],
                 checkpoint.summary,
                 &history,
+                progress,
             )
             .await?;
             if LlmService::selected_profile(config_path)? != profile {

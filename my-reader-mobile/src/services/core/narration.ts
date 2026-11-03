@@ -93,18 +93,29 @@ export async function analyzeBookNarration(
   library: Library,
   requests: NarrationRequest[],
   signal?: AbortSignal,
+  onProgress?: (kind: string, delta: string) => void,
 ) {
   if (!requests.length) return
   await getBookNarration(library, requests[0]!.bookId)
   const credential = await selectedLlmCredential()
   if (signal) assertActive(signal)
-  return narrationAnalyzeBatch(
-    root(library),
-    appConfigPath,
-    requests,
-    credential,
-    signal ? { signal } : undefined,
-  )
+  let active = true
+  try {
+    return await narrationAnalyzeBatch(
+      root(library),
+      appConfigPath,
+      requests,
+      credential,
+      {
+        onProgress: (kind, delta) => {
+          if (active && !signal?.aborted) onProgress?.(kind, delta)
+        },
+      },
+      signal ? { signal } : undefined,
+    )
+  } finally {
+    active = false
+  }
 }
 
 export function getBookReadingPlan(

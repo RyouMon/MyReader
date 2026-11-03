@@ -1,3 +1,4 @@
+import { appendLlmProgress } from "@my-reader/tools/llm-progress"
 import { useEffect, useRef, useState } from "react"
 import { useMutation } from "@tanstack/react-query"
 import { api } from "@/lib/tauri-api"
@@ -20,8 +21,7 @@ export function useCharacterDraft(libraryId: string | null, bookId: number) {
       controller.current?.abort()
       const abort = new AbortController()
       controller.current = abort
-      let text = ""
-      let kind = ""
+      let output = { kind: "", text: "" }
       setProgress({ libraryId, bookId, text: "" })
       try {
         const result = await api.draftBookCharacters(
@@ -29,18 +29,8 @@ export function useCharacterDraft(libraryId: string | null, bookId: number) {
           request,
           (event) => {
             if (current !== generation.current) return
-            if (event.kind === "started") {
-              text = ""
-              kind = ""
-            } else {
-              if (kind !== event.kind) text = ""
-              kind = event.kind
-              // The UI only needs the recent tail, not an unbounded transcript.
-              text = Array.from(text + event.delta)
-                .slice(-2048)
-                .join("")
-            }
-            setProgress({ libraryId, bookId, text })
+            output = appendLlmProgress(output, event)
+            setProgress({ libraryId, bookId, text: output.text })
           },
           abort.signal,
         )

@@ -14,7 +14,7 @@ export function TtsModelDetails({
   draft: TtsProviderDraft
   model: TtsModelDto
   fieldErrors?: Record<string, string>
-  onVoicesChange: (voices: string[]) => void
+  onVoicesChange: (voices: string[], names: Record<string, string>) => void
   onRefresh: () => void
 }) {
   const { t } = useTranslation()

@@ -127,6 +127,20 @@ pub struct LlmProfileInput {
 pub struct DesktopLlmService;
 
 impl DesktopLlmService {
+    pub fn get_credential(path: &Path, provider_id: &str) -> Result<Option<String>, AppError> {
+        let config = LlmService::get_config(path)?;
+        let provider = config
+            .providers
+            .iter()
+            .find(|provider| provider.id == provider_id)
+            .ok_or_else(|| AppError::Config("LLM_PROFILE_NOT_FOUND".into()))?;
+        provider
+            .credential_reference
+            .as_deref()
+            .map(credentials::read_llm_credential)
+            .transpose()
+            .map(Option::flatten)
+    }
     pub fn get_config(path: &Path) -> Result<LlmConfigDto, AppError> {
         config_dto(LlmService::get_config(path)?)
     }

@@ -295,10 +295,8 @@ export const desktopEn = {
         instructions: "Default reading instructions",
         instructionsPlaceholder: "For example: Read naturally and calmly",
         credential: "API key or access token",
-        credentialSaved: "Saved securely; leave blank to keep it",
         credentialOptional:
           "Optional; some OpenAI-compatible services may not need one",
-        clearCredential: "Delete saved credential",
         openAiContract:
           "Uses the OpenAI-compatible /v1/audio/speech API. Enter the /v1 base path and configure voice IDs from the provider documentation.",
         playbackTitle: "Reading preferences",

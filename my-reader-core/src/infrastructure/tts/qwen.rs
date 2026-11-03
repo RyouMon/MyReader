@@ -2,8 +2,8 @@ use super::map_reqwest_error;
 use crate::TtsErrorKind;
 use crate::{
     models::{
-        QwenTtsModel, QwenTtsPreset, TtsAudioFormat, TtsProviderOptions, TtsProviderProfile,
-        TtsSynthesisRequest, TtsVoice,
+        QwenTtsModel, TtsAudioFormat, TtsProviderOptions, TtsProviderProfile, TtsSynthesisRequest,
+        TtsVoice,
     },
     CoreError,
 };
@@ -13,26 +13,8 @@ use url::Url;
 use super::{audio_response, client, response_bytes, tts_error, SynthesizedAudio};
 
 mod catalog;
-mod default_voices;
 mod websocket;
 pub(crate) use catalog::discover_models;
-
-pub(crate) const DEFAULT_ENDPOINT: &str =
-    "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference";
-
-pub(crate) fn presets() -> Vec<QwenTtsPreset> {
-    [
-        ("tokenPlan", DEFAULT_ENDPOINT),
-        ("qianwen", "https://maas.qianwenaiapi.com/api/v1"),
-        ("dashscope", "https://dashscope.aliyuncs.com/api/v1"),
-    ]
-    .into_iter()
-    .map(|(id, endpoint)| QwenTtsPreset {
-        id: id.into(),
-        endpoint: endpoint.into(),
-    })
-    .collect()
-}
 
 pub(crate) fn is_audio_model(id: &str) -> bool {
     id.starts_with("qwen-audio-") && id.contains("-tts-")
@@ -50,8 +32,7 @@ pub(crate) fn model(id: &str, endpoint: &str) -> Result<QwenTtsModel, CoreError>
     Ok(QwenTtsModel {
         id: id.into(),
         supports_instructions: audio || id.contains("-instruct-"),
-        voice_discovery: !uses_websocket(endpoint)
-            && (audio || id.starts_with("qwen3-tts-vc-") || id.starts_with("qwen3-tts-vd-")),
+        voice_discovery: !uses_websocket(endpoint),
         audio_formats: if audio {
             vec![
                 TtsAudioFormat::Mp3,
@@ -61,7 +42,7 @@ pub(crate) fn model(id: &str, endpoint: &str) -> Result<QwenTtsModel, CoreError>
         } else {
             vec![TtsAudioFormat::Wav]
         },
-        voices: default_voices::default_voices(id, uses_websocket(endpoint)),
+        voices: vec![],
     })
 }
 
@@ -423,6 +404,7 @@ mod tests {
     #[test]
     fn qianwen_flash_uses_its_documented_http_endpoint() {
         let mut profile = TtsProviderProfile {
+            voice_names: Default::default(),
             id: "qwen".into(),
             name: "Qwen".into(),
             kind: TtsProviderKind::Qwen,

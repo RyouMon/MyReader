@@ -48,6 +48,7 @@ export function ReaderItemList({
   themeStyle,
   children,
   footerActions,
+  footerStatus,
   onOpen,
   editAction,
   jumpAction,
@@ -63,6 +64,7 @@ export function ReaderItemList({
   themeStyle?: CSSProperties
   children?: ReactNode
   footerActions?: ReactNode
+  footerStatus?: ReactNode
   onOpen?: (id: string) => void
   editAction?: ReaderListAction
   jumpAction?: ReaderListAction
@@ -246,6 +248,9 @@ export function ReaderItemList({
           </ul>
         </div>
       </ReaderSidePanelScrollArea>
+      {footerStatus ? (
+        <div className="shrink-0 px-4 py-2">{footerStatus}</div>
+      ) : null}
       <ReaderListFooter
         labels={labels}
         selectionMode={selectionMode}

@@ -30,7 +30,8 @@
     "removeVoice": "Eliminar voz",
     "addVoice": "Añadir voz",
     "fetchVoices": "Obtener voces",
-    "testModel": "Modelo de prueba"
+    "testModel": "Modelo de prueba",
+    "voiceName": "Nombre para mostrar"
   },
   "llm": {
     "title": "Proveedores LLM",
@@ -40,7 +41,6 @@
     "protocol": "Protocolo",
     "endpoint": "Dirección de la API",
     "key": "Clave de API",
-    "keySaved": "Guardada",
     "model": "Modelo",
     "models": "Cargar modelos",
     "test": "Probar conexión",
@@ -48,7 +48,6 @@
     "context": "Ventana de contexto",
     "default": "Modelo predeterminado",
     "none": "Ninguno",
-    "clearKey": "Eliminar clave guardada",
     "save": "Guardar",
     "cancel": "Cancelar",
     "delete": "Eliminar",
@@ -145,32 +144,7 @@
   },
   "qwenTts": {
     "title": "Qwen",
-    "add": "Agregar {{name}}",
-    "description": "Utilice las credenciales para este punto final y elija su voz.",
-    "sources": {
-      "tokenPlan": {
-        "title": "Qwen · Plan de tokens",
-        "description": "Utilice sus créditos de suscripción Qwen y la clave específica del plan.",
-        "credential": "Clave de suscripción al Plan Token (comienza con sk-sp-)"
-      },
-      "qianwen": {
-        "title": "Qwen · Paga sobre la marcha",
-        "description": "Utilice Qianwen AI Platform API con facturación basada en el uso.",
-        "credential": "Clave API de Qianwen AI Platform (no es una clave de suscripción)"
-      },
-      "dashscope": {
-        "title": "Qwen · DashScope (Estudio Modelo)",
-        "description": "Utilice Alibaba Cloud Model Studio, región de Beijing de forma predeterminada.",
-        "credential": "Clave API de Alibaba Cloud Model Studio para esta región"
-      }
-    },
-    "manualVoicesAction": "Ingresar ID de voz manualmente",
-    "manualVoices": "ID de voz",
-    "manualVoicesHint": "Para voces oficiales o personalizadas que faltan en la lista. Ingrese una identificación por línea.",
-    "loadingVoices": "Cargando voces de cuenta…",
-    "voicesFailed": "No se pudieron cargar las voces de la cuenta. Las voces guardadas y las identificaciones ingresadas manualmente todavía están disponibles.",
-    "voicesEmpty": "No hay voces de cuenta para este modelo. Cree una voz en la plataforma correspondiente o ingrese una ID de voz existente.",
-    "credentialRequired": "Clave API que coincide con este punto final; El plan Token requiere una clave de suscripción sk-sp"
+    "add": "Agregar {{name}}"
   },
   "addLibraryFlow": {
     "title": "Añadir biblioteca",
@@ -475,5 +449,9 @@
     "global": "Ajustes globales de lectura en voz alta",
     "reset": "Estos ajustes volverán a los valores predeterminados:\n{{usages}}",
     "confirm": "¿Guardar estos cambios?"
+  },
+  "passwordField": {
+    "show": "Mostrar contraseña",
+    "hide": "Ocultar contraseña"
   }
 }

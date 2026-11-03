@@ -98,7 +98,9 @@ export function ReaderTtsPlaybackSettings({
         value={
           voicesLoading
             ? t("settings.tts.loading")
-            : (selectedVoice?.name ??
+            : (voiceActions.find((action) => action.id === selectedVoiceId)
+                ?.title ??
+              selectedVoice?.name ??
               selectedVoiceId ??
               t("settings.tts.automaticVoice"))
         }

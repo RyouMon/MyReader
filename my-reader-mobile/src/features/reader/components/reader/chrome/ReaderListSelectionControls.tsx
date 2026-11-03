@@ -44,6 +44,7 @@ export function ReaderListManagementBar({
   toggleAll,
   deleteSelected,
   trailingAction,
+  status,
 }: {
   kind: keyof typeof LABELS
   palette: ReaderChromePalette
@@ -56,13 +57,14 @@ export function ReaderListManagementBar({
   toggleAll: () => void
   deleteSelected: () => void | Promise<void>
   trailingAction?: ReactNode
+  status?: ReactNode
 }) {
   const { t } = useTranslation()
   const labels = LABELS[kind]
   const colors = readerFormColors(palette)
   const allSelected = totalCount > 0 && selectedCount === totalCount
   return (
-    <ReaderSheetFooter palette={palette}>
+    <ReaderSheetFooter palette={palette} status={status}>
       <View className="flex-row items-center">
         <IconButton
           label={t(managing ? "common.cancel" : labels.manage)}

@@ -58,3 +58,34 @@ it("exposes the input handle for next-field focus and keeps read-only fields imm
   expect(ref.current?.blur).toEqual(expect.any(Function))
   expect(screen.getByLabelText("Model ID").props.editable).toBe(false)
 })
+
+it("keeps a floating placeholder separate from the editable value", () => {
+  const onChangeText = jest.fn()
+  const { rerender } = render(
+    <FormTextField
+      label="Display name"
+      value=""
+      placeholder="voice-a"
+      floatLabel
+      onChangeText={onChangeText}
+    />,
+  )
+  expect(screen.getByLabelText("Display name").props.value).toBe("")
+  expect(screen.getByLabelText("Display name").props.placeholder).toBe(
+    "voice-a",
+  )
+  fireEvent.changeText(screen.getByLabelText("Display name"), "Narrator")
+  expect(onChangeText).toHaveBeenCalledWith("Narrator")
+  rerender(
+    <FormTextField
+      label="Display name"
+      value="Narrator"
+      placeholder="voice-b"
+      floatLabel
+      onChangeText={onChangeText}
+    />,
+  )
+  expect(screen.getByLabelText("Display name").props.value).toBe("Narrator")
+  fireEvent.changeText(screen.getByLabelText("Display name"), "")
+  expect(onChangeText).toHaveBeenLastCalledWith("")
+})

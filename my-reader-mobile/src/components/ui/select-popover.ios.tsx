@@ -1,10 +1,17 @@
 import { Group, Host, Popover, RNHostView } from "@expo/ui/swift-ui"
 import { presentationBackground } from "@expo/ui/swift-ui/modifiers"
-import { useState } from "react"
-import { useWindowDimensions } from "react-native"
+import { type Context, useState } from "react"
+import { ScrollView, useWindowDimensions } from "react-native"
 import { useTheme } from "@/src/design/tokens"
 import { View } from "@/tw"
 import type { SelectPopoverProps } from "./select-popover.types"
+
+// React Native exposes this static in its generated types, but not its legacy types.
+const ScrollViewContext = (
+  ScrollView as typeof ScrollView & {
+    Context: Context<{ horizontal: boolean } | null>
+  }
+).Context
 
 export function SelectPopover({
   visible,
@@ -36,15 +43,18 @@ export function SelectPopover({
             </RNHostView>
           </Popover.Trigger>
           <Popover.Content>
-            <Group modifiers={[presentationBackground(backgroundColor)]}>
-              <RNHostView matchContents>
-                <View className="py-2" style={{ backgroundColor }}>
-                  {children(
-                    Math.min(width ?? window.width - 32, window.width - 32),
-                  )}
-                </View>
-              </RNHostView>
-            </Group>
+            {/* Like RN Modal, the native presentation has its own scroll container. */}
+            <ScrollViewContext.Provider value={null}>
+              <Group modifiers={[presentationBackground(backgroundColor)]}>
+                <RNHostView matchContents>
+                  <View className="py-2" style={{ backgroundColor }}>
+                    {children(
+                      Math.min(width ?? window.width - 32, window.width - 32),
+                    )}
+                  </View>
+                </RNHostView>
+              </Group>
+            </ScrollViewContext.Provider>
           </Popover.Content>
         </Popover>
       </Host>

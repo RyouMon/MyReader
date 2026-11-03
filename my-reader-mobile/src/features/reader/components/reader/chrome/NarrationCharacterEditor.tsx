@@ -1,3 +1,4 @@
+import { ttsVoiceLabel } from "@my-reader/tools/tts-voice-names"
 import { tts as readiumTts } from "@my-reader/readium"
 import { useQuery } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
@@ -218,7 +219,8 @@ function CharacterVoiceFields({
   config: MobileTtsConfig
   palette: ReaderChromePalette
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const locale = i18n?.resolvedLanguage
   const provider =
     draft.voice?.engine === "provider" ? draft.voice.profileId : undefined
   const selectedModel = config.profiles.find(
@@ -235,6 +237,9 @@ function CharacterVoiceFields({
         : readiumTts.getSystemVoices(),
     enabled: Boolean(draft.voice),
   })
+  const selectedVoice = voices.data?.find(
+    (voice) => voice.id === draft.voice?.voiceId,
+  )
   return (
     <>
       <ReaderTtsMenuRow
@@ -291,14 +296,23 @@ function CharacterVoiceFields({
             onStopPreview: preview.stop,
           }}
           palette={palette}
-          value={
-            voices.data?.find((voice) => voice.id === draft.voice?.voiceId)
-              ?.name ?? draft.voice.voiceId
-          }
+          value={ttsVoiceLabel(
+            provider
+              ? draft.voice.voiceId
+              : (selectedVoice?.name ?? draft.voice.voiceId),
+            provider ? selectedModel?.voiceNames : undefined,
+            selectedVoice?.language,
+            locale,
+          )}
           actions={
             voices.data?.map((voice) => ({
               id: voice.id,
-              title: voice.name,
+              title: ttsVoiceLabel(
+                provider ? voice.id : voice.name,
+                provider ? selectedModel?.voiceNames : undefined,
+                voice.language,
+                locale,
+              ),
               state: voice.id === draft.voice?.voiceId ? "on" : "off",
             })) ?? []
           }

@@ -10,10 +10,9 @@ use crate::{
     commands::common,
     error::AppError,
     services::tts_service::{
-        DesktopTtsService, DiscoverQwenTtsVoicesInput, QwenTtsModelDto, QwenTtsPresetDto,
-        TtsAudioArtifactDto, TtsConfigDto, TtsEngineSelectionDto, TtsPlaybackPreferencesDto,
-        TtsProviderCapabilitiesDto, TtsSynthesisInput, TtsVoiceDto, TtsVoiceRefDto,
-        UpsertTtsProviderInput,
+        DesktopTtsService, DiscoverQwenTtsVoicesInput, QwenTtsModelDto, TtsAudioArtifactDto,
+        TtsConfigDto, TtsEngineSelectionDto, TtsPlaybackPreferencesDto, TtsProviderCapabilitiesDto,
+        TtsSynthesisInput, TtsVoiceDto, TtsVoiceRefDto, UpsertTtsProviderInput,
     },
 };
 
@@ -21,8 +20,14 @@ const MAX_PENDING_TTS_CANCELLATIONS: usize = 128;
 
 #[tauri::command]
 #[specta::specta]
-pub fn list_qwen_tts_presets() -> Vec<QwenTtsPresetDto> {
-    DesktopTtsService::qwen_presets()
+pub fn get_tts_credential<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    provider_id: String,
+) -> Result<Option<String>, AppError> {
+    DesktopTtsService::get_credential(
+        &crate::config::config_path(&common::app_data_dir(&app)?),
+        &provider_id,
+    )
 }
 
 #[tauri::command]

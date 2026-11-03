@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 use my_reader_core::{
     api::tts::TtsService,
@@ -42,6 +42,7 @@ pub struct TtsProviderProfile {
     pub response_format: Option<String>,
     pub instructions: Option<String>,
     pub voices: Vec<String>,
+    pub voice_names: Option<HashMap<String, String>>,
     pub default_voice: Option<String>,
     pub revision: f64,
 }
@@ -54,6 +55,7 @@ pub struct TtsModel {
     pub instructions: Option<String>,
     pub default_voice: Option<String>,
     pub voices: Vec<String>,
+    pub voice_names: Option<HashMap<String, String>>,
 }
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct TtsProvider {
@@ -64,6 +66,7 @@ pub struct TtsProvider {
     pub endpoint: String,
     pub credential_reference: Option<String>,
     pub voices: Vec<String>,
+    pub voice_names: Option<HashMap<String, String>>,
     pub models: Vec<TtsModel>,
 }
 impl TryFrom<TtsProvider> for my_reader_core::models::TtsProvider {
@@ -77,6 +80,7 @@ impl TryFrom<TtsProvider> for my_reader_core::models::TtsProvider {
             credential_reference: value.credential_reference,
             model_scoped_voices: value.model_scoped_voices,
             voices: value.voices,
+            voice_names: value.voice_names.unwrap_or_default().into_iter().collect(),
             models: value
                 .models
                 .into_iter()
@@ -88,6 +92,7 @@ impl TryFrom<TtsProvider> for my_reader_core::models::TtsProvider {
                         instructions: m.instructions,
                         default_voice: m.default_voice,
                         voices: m.voices,
+                        voice_names: m.voice_names.unwrap_or_default().into_iter().collect(),
                         revision: 1,
                     })
                 })
@@ -105,6 +110,7 @@ impl From<my_reader_core::models::TtsProvider> for TtsProvider {
             credential_reference: value.credential_reference,
             model_scoped_voices: value.model_scoped_voices,
             voices: value.voices,
+            voice_names: Some(value.voice_names.into_iter().collect()),
             models: value
                 .models
                 .into_iter()
@@ -115,6 +121,7 @@ impl From<my_reader_core::models::TtsProvider> for TtsProvider {
                     instructions: m.instructions,
                     default_voice: m.default_voice,
                     voices: m.voices,
+                    voice_names: Some(m.voice_names.into_iter().collect()),
                 })
                 .collect(),
         }
@@ -180,12 +187,6 @@ pub struct QwenTtsModel {
     pub voices: Vec<TtsVoice>,
 }
 
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct QwenTtsPreset {
-    pub id: String,
-    pub endpoint: String,
-}
-
 impl From<my_reader_core::models::QwenTtsModel> for QwenTtsModel {
     fn from(model: my_reader_core::models::QwenTtsModel) -> Self {
         Self {
@@ -200,17 +201,6 @@ impl From<my_reader_core::models::QwenTtsModel> for QwenTtsModel {
             voices: model.voices.into_iter().map(Into::into).collect(),
         }
     }
-}
-
-#[uniffi::export]
-pub fn tts_qwen_presets() -> Vec<QwenTtsPreset> {
-    TtsService::qwen_presets()
-        .into_iter()
-        .map(|preset| QwenTtsPreset {
-            id: preset.id,
-            endpoint: preset.endpoint,
-        })
-        .collect()
 }
 
 #[uniffi::export(async_runtime = "tokio")]
@@ -516,6 +506,7 @@ impl From<CoreProviderProfile> for TtsProviderProfile {
             voices,
             default_voice,
             revision: value.revision as f64,
+            voice_names: Some(value.voice_names.into_iter().collect()),
         }
     }
 }
@@ -552,6 +543,7 @@ impl TryFrom<TtsProviderProfile> for CoreProviderProfile {
             credential_reference: value.credential_reference,
             options,
             revision: js_u64(value.revision, "revision")?,
+            voice_names: value.voice_names.unwrap_or_default().into_iter().collect(),
         })
     }
 }
@@ -744,6 +736,7 @@ mod tests {
     fn should_round_trip_typed_config_without_secret_material() {
         let core = CoreTtsConfig {
             providers: vec![CoreProviderProfile {
+                voice_names: Default::default(),
                 id: "openai".into(),
                 name: "OpenAI".into(),
                 kind: TtsProviderKind::OpenAiCompatible,
@@ -781,7 +774,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn mobile_provider_edit_preserves_ids_and_discards_legacy_labels() {
+    async fn mobile_provider_edit_preserves_voice_names_and_ids() {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("config.json");
         let provider = serde_json::from_value(serde_json::json!({
@@ -817,12 +810,20 @@ mod tests {
         );
         let on_disk = std::fs::read_to_string(path).unwrap();
         assert!(!on_disk.contains("displayName"));
-        assert!(!on_disk.contains("voiceNames"));
+        assert!(on_disk.contains("voiceNames"));
+        assert_eq!(
+            saved.profiles()[0]
+                .voice_names
+                .get("reader")
+                .map(String::as_str),
+            Some("Narrator")
+        );
     }
 
     #[test]
     fn should_reject_mismatched_or_unknown_provider_types() {
         let profile = TtsProviderProfile {
+            voice_names: Default::default(),
             id: "bad".into(),
             name: "Bad".into(),
             kind: "unknown".into(),

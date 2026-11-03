@@ -51,6 +51,7 @@ const commands = isDemoApiEnabled()
 
 export const api = {
   getLlmConfig: wrap(commands.getLlmConfig),
+  getLlmCredential: wrap(commands.getLlmCredential),
   upsertLlmProfile: wrap(commands.upsertLlmProfile),
   saveLlmProvider: wrap(commands.saveLlmProvider),
   removeLlmProfile: wrap(commands.removeLlmProfile),
@@ -64,19 +65,23 @@ export const api = {
     libraryId: string,
     requests: NarrationRequestDto[],
     signal?: AbortSignal,
+    onProgress?: (event: LlmStreamEventDto) => void,
   ) => {
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError")
     const requestId = crypto.randomUUID()
+    const channel = new Channel<LlmStreamEventDto>(onProgress)
     const cancel = () => {
+      channel.onmessage = () => undefined
       void commands.cancelTtsSynthesis(requestId).catch(() => undefined)
     }
     signal?.addEventListener("abort", cancel, { once: true })
     try {
       await unwrap(
-        commands.analyzeBookNarration(libraryId, requestId, requests),
+        commands.analyzeBookNarration(libraryId, requestId, requests, channel),
       )
       if (signal?.aborted) throw new DOMException("Aborted", "AbortError")
     } finally {
+      channel.onmessage = () => undefined
       signal?.removeEventListener("abort", cancel)
     }
   },
@@ -223,9 +228,9 @@ export const api = {
   setReaderTrafficLightsVisible: wrap(commands.setReaderTrafficLightsVisible),
   closeBookStreamer: wrap(commands.closeBookStreamer),
   getTtsConfig: wrap(commands.getTtsConfig),
+  getTtsCredential: wrap(commands.getTtsCredential),
   getTtsChangeUsage: wrap(commands.getTtsChangeUsage),
   listQwenTtsModels: wrap(commands.listQwenTtsModels),
-  listQwenTtsPresets: commands.listQwenTtsPresets,
   discoverQwenTtsVoices: wrap(commands.discoverQwenTtsVoices),
   upsertTtsProfile: wrap(commands.upsertTtsProfile),
   saveTtsProvider: wrap(commands.saveTtsProvider),

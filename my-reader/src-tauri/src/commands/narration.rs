@@ -40,6 +40,7 @@ pub async fn analyze_book_narration<R: tauri::Runtime>(
     library_id: String,
     request_id: String,
     requests: Vec<NarrationRequestDto>,
+    on_progress: Channel<LlmStreamEventDto>,
 ) -> Result<(), AppError> {
     let Some(mut cancelled) = coordinator.start(&request_id) else {
         return Err(AppError::Config("NARRATION_CANCELLED".into()));
@@ -50,11 +51,15 @@ pub async fn analyze_book_narration<R: tauri::Runtime>(
             resolve_settings(&app, &state, &library_id, first.book_id).await?;
         }
         let credential = selected_credential(&config)?;
-        Ok(NarrationService::analyze_batch(
+        let progress = |event| {
+            let _ = on_progress.send(LlmStreamEventDto::from(event));
+        };
+        Ok(NarrationService::analyze_batch_with_progress(
             &root,
             &config,
             requests.into_iter().map(Into::into).collect(),
             Some(&credential),
+            Some(&progress),
         )
         .await?)
     };

@@ -124,6 +124,7 @@ function mount(
   findIntroductions?: () => Promise<
     import("@/lib/readium/characterIntroductions").CharacterIntroduction[]
   >,
+  ttsConfig = config,
 ) {
   return render(
     <QueryClientProvider
@@ -133,13 +134,52 @@ function mount(
     >
       <SettingsFixture
         book={book}
-        config={config}
+        config={ttsConfig}
         readingVoice={{ engine: "provider", profileId: "two", voiceId: "A" }}
         findIntroductions={findIntroductions}
       />
     </QueryClientProvider>,
   )
 }
+
+it("shows the same named provider voice in the character list and editor", async () => {
+  mocks.getBookNarration.mockResolvedValue({ ...settings, enabled: true })
+  mount(undefined, {
+    ...config,
+    profiles: config.profiles.map((profile) => ({
+      ...profile,
+      voiceNames: { A: "小樱" },
+    })),
+  })
+  await openCharacters()
+  expect(await screen.findByText("小樱 · Chinese")).toBeInTheDocument()
+  fireEvent.click(screen.getByRole("button", { name: /^陈默/ }))
+  await waitFor(() =>
+    expect(
+      screen.getByRole("combobox", { name: "narration.voice" }),
+    ).toHaveTextContent("小樱 · Chinese"),
+  )
+})
+
+it("labels an explicit system binding consistently instead of calling it default", async () => {
+  mocks.getBookNarration.mockResolvedValue({
+    ...settings,
+    enabled: true,
+    characters: settings.characters.map((character) =>
+      character.id === "stable-id"
+        ? { ...character, voice: { engine: "system", voiceId: "" } }
+        : character,
+    ),
+  })
+  mount()
+  await openCharacters()
+  expect(await screen.findByText("narration.system")).toBeInTheDocument()
+  expect(screen.getByText("narration.defaultModel")).toBeInTheDocument()
+  fireEvent.click(screen.getByRole("button", { name: /^陈默/ }))
+  expect(
+    await screen.findByRole("combobox", { name: "narration.provider" }),
+  ).toHaveTextContent("narration.system")
+})
 beforeEach(() => {
   vi.stubGlobal(
     "ResizeObserver",
@@ -225,7 +265,7 @@ it("clears the previous voice when switching provider and preserves the stable c
   expect(
     screen.queryByRole("option", { name: "narration.defaultModel" }),
   ).not.toBeInTheDocument()
-  await user.click(await screen.findByRole("option", { name: "A" }))
+  await user.click(await screen.findByRole("option", { name: "A · Chinese" }))
   fireEvent.change(screen.getByLabelText("narration.instructions"), {
     target: { value: "仿男声" },
   })

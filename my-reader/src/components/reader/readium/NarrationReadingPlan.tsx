@@ -1,3 +1,4 @@
+import { StreamingStatusLine } from "@/components/common/StreamingStatusLine"
 import { useEffect, useState, type CSSProperties } from "react"
 import { useTranslation } from "react-i18next"
 import { narrationCharacterColor } from "@my-reader/tools/narration-plan"
@@ -62,6 +63,14 @@ export function NarrationReadingPlan({
       onOpen={plan.play}
       jumpAction={{ label: t("narration.plan.jump"), onSelect: plan.jump }}
       onDelete={plan.clear}
+      footerStatus={
+        plan.analyzing ? (
+          <StreamingStatusLine
+            text={plan.progress}
+            label={t("narration.plan.analyzing")}
+          />
+        ) : null
+      }
       footerActions={
         plan.analyzing ? (
           <Button variant="ghost" onClick={plan.cancel}>
@@ -87,11 +96,7 @@ export function NarrationReadingPlan({
           onCheckedChange={plan.setShown}
         />
         {plan.error ? <FieldError>{plan.error}</FieldError> : null}
-        {plan.analyzing ? (
-          <p role="status" className="text-sm text-reader-chrome-muted">
-            {t("narration.plan.analyzing")}
-          </p>
-        ) : !plan.entries.length ? (
+        {!plan.analyzing && !plan.entries.length ? (
           <p className="text-sm text-reader-chrome-muted">
             {t("narration.plan.empty")}
           </p>

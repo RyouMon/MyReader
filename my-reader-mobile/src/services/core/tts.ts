@@ -9,10 +9,8 @@ import {
   type TtsProvider,
   type TtsModel,
   ttsQwenModels,
-  ttsQwenPresets,
   ttsDiscoverQwenVoices,
   type QwenTtsModel,
-  type QwenTtsPreset,
   ttsListVoices,
   ttsRemoveProfile,
   ttsSetDefaultEngine,
@@ -41,12 +39,17 @@ import { appConfigPath } from "./app-config"
 import { toNativeFilesystemPath } from "../fs/path"
 import { invalidateBookNarration } from "../query/invalidate-table"
 
-export type MobileTtsProviderProfile = TtsProviderProfile & {
+type NamedVoices<T> = Omit<T, "voiceNames"> & {
+  voiceNames?: Record<string, string>
+}
+export type MobileTtsProviderProfile = NamedVoices<TtsProviderProfile> & {
   hasCredential: boolean
 }
-
-export type MobileTtsModel = TtsModel
-export type MobileTtsProvider = TtsProvider & { hasCredential: boolean }
+export type MobileTtsModel = NamedVoices<TtsModel>
+export type MobileTtsProvider = Omit<NamedVoices<TtsProvider>, "models"> & {
+  models: MobileTtsModel[]
+  hasCredential: boolean
+}
 export type MobileTtsConfig = Omit<TtsConfig, "profiles" | "providers"> & {
   providers: MobileTtsProvider[]
   profiles: MobileTtsProviderProfile[]
@@ -54,8 +57,8 @@ export type MobileTtsConfig = Omit<TtsConfig, "profiles" | "providers"> & {
 
 export type UpsertMobileTtsProfileInput = {
   profile: Omit<
-    TtsProviderProfile,
-    "id" | "credentialReference" | "revision"
+    MobileTtsProviderProfile,
+    "id" | "credentialReference" | "revision" | "hasCredential"
   > & {
     id?: string
   }
@@ -71,6 +74,9 @@ async function hydrateConfig(config: TtsConfig): Promise<MobileTtsConfig> {
   const profiles = await Promise.all(
     config.profiles.map(async (profile) => ({
       ...profile,
+      voiceNames: profile.voiceNames
+        ? Object.fromEntries(profile.voiceNames)
+        : undefined,
       hasCredential: profile.credentialReference
         ? Boolean(await readTtsCredential(profile.credentialReference))
         : false,
@@ -79,6 +85,15 @@ async function hydrateConfig(config: TtsConfig): Promise<MobileTtsConfig> {
   const providers = await Promise.all(
     config.providers.map(async (provider) => ({
       ...provider,
+      voiceNames: provider.voiceNames
+        ? Object.fromEntries(provider.voiceNames)
+        : undefined,
+      models: provider.models.map((model) => ({
+        ...model,
+        voiceNames: model.voiceNames
+          ? Object.fromEntries(model.voiceNames)
+          : undefined,
+      })),
       hasCredential: provider.credentialReference
         ? Boolean(await readTtsCredential(provider.credentialReference))
         : false,
@@ -87,7 +102,7 @@ async function hydrateConfig(config: TtsConfig): Promise<MobileTtsConfig> {
   return { ...config, profiles, providers }
 }
 
-async function resolveCredential(
+export async function getTtsCredential(
   profileId: string,
 ): Promise<string | undefined> {
   const profile = (await ttsGetConfig(appConfigPath)).providers.find(
@@ -110,16 +125,12 @@ export async function getQwenTtsModels(
 ): Promise<QwenTtsModel[]> {
   const credential =
     input.credential?.trim() ||
-    (input.profileId ? await resolveCredential(input.profileId) : undefined)
+    (input.profileId ? await getTtsCredential(input.profileId) : undefined)
   return ttsQwenModels(
     input.endpoint,
     credential,
     signal ? { signal } : undefined,
   )
-}
-
-export function getQwenTtsPresets(): QwenTtsPreset[] {
-  return ttsQwenPresets()
 }
 
 export async function discoverQwenTtsVoices(
@@ -133,7 +144,7 @@ export async function discoverQwenTtsVoices(
 ): Promise<TtsVoice[]> {
   const credential =
     input.credential?.trim() ||
-    (input.profileId ? await resolveCredential(input.profileId) : undefined)
+    (input.profileId ? await getTtsCredential(input.profileId) : undefined)
   return ttsDiscoverQwenVoices(
     input.endpoint,
     input.model,
@@ -146,13 +157,16 @@ async function draftCredential(input: UpsertMobileTtsProfileInput) {
   if (input.clearCredential) return undefined
   return (
     input.credential?.trim() ||
-    (input.profile.id ? await resolveCredential(input.profile.id) : undefined)
+    (input.profile.id ? await getTtsCredential(input.profile.id) : undefined)
   )
 }
 
 function draftProfile(input: UpsertMobileTtsProfileInput): TtsProviderProfile {
   return {
     ...input.profile,
+    voiceNames: input.profile.voiceNames
+      ? new Map(Object.entries(input.profile.voiceNames))
+      : undefined,
     id: input.profile.id ?? "",
     revision: 1,
     credentialReference: undefined,
@@ -202,6 +216,9 @@ export async function upsertTtsProfile(
 
   const config = await ttsUpsertProfile(appConfigPath, {
     ...input.profile,
+    voiceNames: input.profile.voiceNames
+      ? new Map(Object.entries(input.profile.voiceNames))
+      : undefined,
     id,
     credentialReference,
     revision: existing?.revision ?? 1,
@@ -229,6 +246,15 @@ export async function saveTtsProvider(input: {
       ?.credentialReference ?? ttsCredentialReference(id)
   const config = await ttsSaveProvider(appConfigPath, {
     ...input.provider,
+    voiceNames: input.provider.voiceNames
+      ? new Map(Object.entries(input.provider.voiceNames))
+      : undefined,
+    models: input.provider.models.map((model) => ({
+      ...model,
+      voiceNames: model.voiceNames
+        ? new Map(Object.entries(model.voiceNames))
+        : undefined,
+    })),
     id,
     credentialReference,
   })
@@ -256,7 +282,7 @@ export async function setTtsDefaultEngine(
   engine: TtsEngine,
 ): Promise<MobileTtsConfig> {
   if (engine.kind === "provider" && engine.profileId) {
-    await resolveCredential(engine.profileId)
+    await getTtsCredential(engine.profileId)
   }
   return hydrateConfig(await ttsSetDefaultEngine(appConfigPath, engine))
 }
@@ -278,7 +304,7 @@ export async function listTtsVoices(profileId: string): Promise<TtsVoice[]> {
   return ttsListVoices(
     appConfigPath,
     profileId,
-    await resolveCredential(profileId),
+    await getTtsCredential(profileId),
   )
 }
 
@@ -287,7 +313,7 @@ export async function synthesizeTts(
   options?: { signal?: AbortSignal },
 ): Promise<TtsAudioArtifact> {
   return runTtsRequest(async (signal) => {
-    const credential = await resolveCredential(request.profileId)
+    const credential = await getTtsCredential(request.profileId)
     if (signal.aborted) {
       const error = new Error("TTS_SYNTHESIS_CANCELLED")
       error.name = "AbortError"
@@ -301,7 +327,6 @@ export async function synthesizeTts(
 
 export type {
   QwenTtsModel,
-  QwenTtsPreset,
   TtsAudioArtifact,
   TtsConfig,
   TtsEngine,

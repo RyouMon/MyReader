@@ -22,6 +22,7 @@ import {
   analyzeNarrationChapter,
   subscribeReadingPlan,
 } from "./narration-chapter"
+import { useNarrationAnalysisProgress } from "./use-narration-analysis-progress"
 
 export function useReadingPlan(
   book: NarrationBookContext | undefined,
@@ -32,6 +33,7 @@ export function useReadingPlan(
   navigate: (locator: Locator) => void,
 ) {
   const { t } = useTranslation()
+  const libraryId = book?.library.id
   const { query: settings } = useBookNarration(
     book?.library ?? null,
     book?.bookId ?? 0,
@@ -39,12 +41,17 @@ export function useReadingPlan(
   )
   const [shown, setShown] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
+  const progress = useNarrationAnalysisProgress(book)
+  const resetProgress = progress.reset
+  const isAnalyzing = analyzing || progress.signal !== null
+  const stopRef = useRef(stop)
+  stopRef.current = stop
   const [failure, setFailure] = useState<unknown>(null)
   const controller = useRef<AbortController | null>(null)
   const query = useQuery({
     queryKey: [
       "reading-plan",
-      book?.library.id,
+      libraryId,
       book?.bookId,
       book?.contentVersion,
       settings.data?.revision,
@@ -70,15 +77,17 @@ export function useReadingPlan(
   const refetch = useRef(query.refetch)
   refetch.current = query.refetch
   const cancel = useCallback(() => {
+    const observed = resetProgress(true)
+    if (observed && observed !== controller.current?.signal) stopRef.current()
     controller.current?.abort()
     controller.current = null
     setAnalyzing(false)
-  }, [])
+  }, [resetProgress])
   useEffect(() => {
     cancel()
     setShown(false)
     return cancel
-  }, [book?.bookId, book?.contentVersion, cancel])
+  }, [libraryId, book?.bookId, book?.contentVersion, cancel])
   useEffect(
     () =>
       subscribeReadingPlan(() => {
@@ -123,8 +132,9 @@ export function useReadingPlan(
     currentIndex: narrationPlanIndex(query.data ?? [], locator),
     shown,
     setShown,
-    analyzing,
-    busy: analyzing || query.isFetching,
+    analyzing: isAnalyzing,
+    progress: progress.text,
+    busy: isAnalyzing || query.isFetching,
     decorations,
     error:
       failure || query.error ? errorMessage(failure ?? query.error) : undefined,
@@ -147,8 +157,10 @@ export function useReadingPlan(
       } finally {
         if (controller.current === abort) {
           await query.refetch()
-          controller.current = null
-          setAnalyzing(false)
+          if (controller.current === abort) {
+            controller.current = null
+            setAnalyzing(false)
+          }
         }
       }
     },
