@@ -248,6 +248,52 @@ private final class NarrationTestAudioPlayer: AVAudioPlayer {
 extension ReaderWindowTests {
   @Test
   @MainActor
+  func paused_remote_navigation_follows_the_next_paragraph_before_audio_arrives() async throws {
+    let href = AnyURL(string: "chapter.xhtml")!
+    let start = Locator(href: href, mediaType: .xhtml)
+    let html = Data("<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><p>First speaker.</p><p>Second speaker.</p></body></html>".utf8)
+    let publication = Publication(
+      manifest: Manifest(metadata: Metadata(languages: ["en"]), readingOrder: [Link(href: href.string, mediaType: .xhtml)]),
+      container: SingleResourceContainer(resource: DataResource(data: html), at: href),
+      servicesBuilder: .init(
+        content: DefaultContentService.makeFactory(resourceContentIteratorFactories: [HTMLResourceContentIterator.Factory()]),
+        positions: InMemoryPositionsService.makeFactory(positionsByReadingOrder: [[start]])
+      )
+    )
+    let reader = try EPUBViewController(publication: publication, locator: start, bookId: "paused-remote-test")
+    let config = TtsEngineConfigRecord()
+    config.kind = "provider"; config.profileId = "remote"; config.voiceId = "voice"; config.language = "en"
+    config.adaptive = true; config.granularity = "paragraph"
+    let requested = XCTestExpectation(description: "First paragraph requested")
+    let paused = XCTestExpectation(description: "First paragraph paused")
+    let followed = XCTestExpectation(description: "Paused next paragraph followed without audio")
+    let controller = try #require(EPUBTtsController(
+      publication: publication, navigator: reader.epubNavigator, config: config,
+      onStateChange: { payload in
+        if payload["state"] as? String == "paused", payload["utterance"] as? String == "First speaker." {
+          paused.fulfill()
+        }
+      },
+      onSynthesisRequest: { payload in
+        if payload["text"] as? String == "First speaker." { requested.fulfill() }
+      },
+      onSynthesisCancel: { _ in }, shouldFollowText: { true },
+      onFollowTextNavigation: { _, locator, began in
+        if began, locator.text.highlight == "Second speaker." { followed.fulfill() }
+      }
+    ))
+    defer { controller.stop() }
+    await controller.start(from: start)
+    try #require(await XCTWaiter.fulfillment(of: [requested], timeout: 5) == .completed)
+    controller.pause()
+    try #require(await XCTWaiter.fulfillment(of: [paused], timeout: 5) == .completed)
+    controller.next()
+    #expect(await XCTWaiter.fulfillment(of: [followed], timeout: 5) == .completed)
+    #expect(controller.playbackLocator?.text.highlight == "Second speaker.")
+  }
+
+  @Test
+  @MainActor
   func narration_reader_requests_the_current_locator_without_prefetching_future_speech() async throws {
     let href = AnyURL(string: "chapter.xhtml")!
     let start = Locator(href: href, mediaType: .xhtml,
