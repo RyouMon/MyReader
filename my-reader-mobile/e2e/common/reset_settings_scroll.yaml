@@ -10,3 +10,4 @@ name: Reset the Settings list to its top edge
           start: "50%,25%"
           end: "50%,80%"
           duration: 150
+- waitForAnimationToEnd
