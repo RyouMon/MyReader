@@ -17,9 +17,20 @@ name: Import a prepared local fixture through the system picker
       - tapOn:
           text: ${ANDROID_STORAGE_LABEL}
           id: "android:id/title"
-      - tapOn: "Download"
-      - tapOn: ${E2E_ROOT_FOLDER}
-      - tapOn: "Fixtures"
+      - waitForAnimationToEnd
+      # Folder rows and the previous location's breadcrumbs can share text.
+      - tapOn:
+          text: "Download"
+          id: "android:id/title"
+      - waitForAnimationToEnd
+      - tapOn:
+          text: ${E2E_ROOT_FOLDER}
+          id: "android:id/title"
+      - waitForAnimationToEnd
+      - tapOn:
+          text: "Fixtures"
+          id: "android:id/title"
+      - waitForAnimationToEnd
       - extendedWaitUntil:
           visible: ${IMPORT_FILE_NAME}
           timeout: 30000
