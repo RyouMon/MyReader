@@ -6,6 +6,12 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.20.5] - 2026-11-04
+
+### Fixed
+
+- Fixed central taps failing to reveal the reader toolbar in the iOS EPUB reader.
+
 ## [0.20.4] - 2026-11-04
 
 ### Added
