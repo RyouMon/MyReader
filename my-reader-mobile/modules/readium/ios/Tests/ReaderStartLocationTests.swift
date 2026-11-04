@@ -9,8 +9,8 @@ import XCTest
 import WebKit
 @testable import Readium
 
-// UIKit and WebKit tests share the app foreground window. Serializing each
-// child suite separately still lets those suites replace one another's window.
+// UIKit, WebKit and narration tests share the foreground window and audio session.
+// Serialize them together so native service startup cannot starve another test's callbacks.
 @Suite(.serialized)
 struct ReaderWindowTests {}
 
