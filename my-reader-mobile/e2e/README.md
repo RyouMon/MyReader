@@ -155,6 +155,11 @@ Core 远程书库关键合同位于 `my-reader-core/src/services/library.rs`：
    失败、缺报告、跳过或 flaky 时保留真实结果，并在 Actions 摘要中列出待复核的平台。
 5. 获得放行后提交已构建的 IPA 到 TestFlight，再上传并自动公开 GitHub Release。
 
+各平台独立推进构建与测试：Android APK 上传后立即运行 Android Maestro；iOS simulator app
+上传后立即运行 iPhone/iPad Maestro，不等待 Android 或签名 IPA。Windows、macOS 各自在同一个
+E2E job 内完成测试应用的 Release 构建，再运行该平台全部测试，不等待其他平台或安装包构建。
+最终候选产物汇总仍等待完整 Quality、全部安装包和全部 E2E 结果。
+
 E2E 是发布复核依据，不作为不可豁免的硬门禁。人工或代理先检查失败日志、截图和实际功能；
 只有确认属于测试工具、环境或用例不稳定等非功能原因，才可复核放行。功能缺陷或原因未明时
 继续调查，不能自动归类为 flaky。Quality、构建、安装包摘要与发布上传完整性仍是硬门禁。

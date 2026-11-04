@@ -68,25 +68,21 @@ jobs:
     with:
       build_android: true
       build_ios: true
+      run_e2e: true
+      e2e_advisory: true
     secrets: inherit
 
   desktop-e2e:
     name: Complete desktop E2E
-    needs: desktop
+    needs: verify
+    if: inputs.review_run_id == ''
     uses: ./.github/workflows/desktop-e2e.yml
-    with:
-      advisory: true
-
-  mobile-e2e:
-    name: Complete mobile Release Maestro
-    needs: mobile
-    uses: ./.github/workflows/mobile-e2e.yml
     with:
       advisory: true
 
   candidate:
     name: Verify release assets and summarize E2E
-    needs: [quality, desktop, mobile, desktop-e2e, mobile-e2e]
+    needs: [quality, desktop, mobile, desktop-e2e]
     if: >-
       ${{ !cancelled() && inputs.review_run_id == '' &&
           needs.quality.result == 'success' && needs.desktop.result == 'success' &&
