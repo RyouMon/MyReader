@@ -6,7 +6,7 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
-## [0.20.1] - 2026-11-04
+## [0.20.2] - 2026-11-04
 
 ### Added
 
@@ -28,6 +28,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Fixed the production CSP blocking text selection actions in the Windows reader, restoring highlight and note creation ([#139](https://github.com/RyouMon/MyReader/pull/139)).
 - Fixed cancelled iOS narration tasks still requesting audio and replacing the paused state with a loading indicator.
 - Fixed Qwen pay-as-you-go endpoint routing and character extraction timing out under a fixed total deadline despite a successful LLM connection test ([#133](https://github.com/RyouMon/MyReader/pull/133))
 - Aligned Core and cross-platform bridge synthesis deadlines to accommodate slow model cold starts. Stop and configuration changes cancel obsolete requests and prevent late playback ([#133](https://github.com/RyouMon/MyReader/pull/133))
