@@ -293,13 +293,19 @@ extension ReaderWindowTests {
       delegate.onViewportReady = { viewportReady.fulfill() }
       controller.epubNavigator.delegate = delegate
       let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 1032, height: 1376))
-      delegate.onLoad = { [weak window, weak controller] in
-        guard resizesDuringLoad, let window, let controller else { return }
-        window.frame = CGRect(x: 0, y: 0, width: 402, height: 786)
-        controller.view.frame = window.bounds
+      let host = UIViewController()
+      window.rootViewController = host
+      host.addChild(controller)
+      controller.view.frame = window.bounds
+      host.view.addSubview(controller.view)
+      controller.didMove(toParent: host)
+      // Resize the reader as its native host does. Resizing UIWindow itself
+      // also animates WebKit's viewport scale after pagination has completed.
+      delegate.onLoad = { [weak controller] in
+        guard resizesDuringLoad, let controller else { return }
+        controller.view.frame = CGRect(x: 0, y: 0, width: 402, height: 786)
         controller.view.layoutIfNeeded()
       }
-      window.rootViewController = controller
       window.makeKeyAndVisible()
       defer { window.isHidden = true }
       let result = await XCTWaiter.fulfillment(of: [viewportReady], timeout: 60)

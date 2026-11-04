@@ -302,7 +302,8 @@ extension ReaderWindowTests {
     ))
     defer { controller.stop() }
     await controller.start(from: start)
-    try #require(await XCTWaiter.fulfillment(of: [requested], timeout: 5) == .completed)
+    // The first request includes the simulator's cold audio-session startup.
+    try #require(await XCTWaiter.fulfillment(of: [requested], timeout: 15) == .completed)
     controller.pause()
     try #require(await XCTWaiter.fulfillment(of: [paused], timeout: 5) == .completed)
     controller.next()
