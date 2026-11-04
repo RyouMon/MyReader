@@ -96,6 +96,26 @@ func narration_cancellation_discards_a_late_completion() async {
 
 @Test
 @MainActor
+func cancelled_remote_playback_does_not_request_audio_or_publish_buffering() async {
+  var requests: [RemoteTtsSynthesisRequest] = []
+  var buffering: [Bool] = []
+  let engine = RemoteTTSEngine(profileId: "provider", voiceId: "voice", speed: 1, pitch: 1,
+    onRequest: { requests.append($0) }, onCancel: { _ in }, onBuffering: { _, value in buffering.append(value) })
+  defer { engine.cancelAll() }
+  let playback = Task {
+    await engine.speak(text: "Paused next paragraph.", language: "en", onSpeakRange: { _ in
+      Issue.record("Cancelled playback highlighted text")
+    })
+  }
+  playback.cancel()
+  _ = await playback.value
+
+  #expect(requests.isEmpty)
+  #expect(buffering.isEmpty)
+}
+
+@Test
+@MainActor
 func narration_rejects_a_segment_that_does_not_match_the_source() async {
   var requestID: String?
   let engine = RemoteTTSEngine(profileId: "narration", voiceId: "narration", speed: 1, pitch: 1,
