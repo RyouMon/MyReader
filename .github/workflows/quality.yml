@@ -68,7 +68,7 @@ jobs:
 
   ios-dependencies:
     name: iOS dependencies (no cache)
-    runs-on: macos-latest
+    runs-on: macos-26-intel
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -383,7 +383,7 @@ jobs:
 
   swift-coverage:
     name: Swift native coverage
-    runs-on: macos-latest
+    runs-on: macos-26-intel
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7

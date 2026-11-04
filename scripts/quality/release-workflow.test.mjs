@@ -14,7 +14,7 @@ const workflow = (name) =>
 test("desktop release E2E runs on Windows and macOS", () => {
   assert.deepEqual(workflow("desktop-e2e").jobs.desktop.strategy.matrix.os, [
     "windows-latest",
-    "macos-latest",
+    "macos-26-intel",
   ])
 })
 

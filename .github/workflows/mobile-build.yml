@@ -156,7 +156,7 @@ jobs:
     name: iOS IPA (GitHub runner)
     if: inputs.build_ios
     needs: validate
-    runs-on: macos-latest
+    runs-on: macos-26-intel
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       EXPO_PUBLIC_SENTRY_DSN: ${{ vars.EXPO_PUBLIC_SENTRY_DSN }}
@@ -241,7 +241,7 @@ jobs:
     name: iOS Release simulator application
     if: inputs.build_ios
     needs: validate
-    runs-on: macos-latest
+    runs-on: macos-26-intel
     env:
       EXPO_PUBLIC_SENTRY_DSN: ${{ vars.EXPO_PUBLIC_SENTRY_DSN }}
       EAS_BUILD_PLATFORM: ios

@@ -25,7 +25,7 @@ jobs:
             paths: |
               target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
           - name: macOS Intel
-            runner: macos-latest
+            runner: macos-26-intel
             args: --target x86_64-apple-darwin
             rust_targets: x86_64-apple-darwin
             artifact: MyReader-macOS-x64

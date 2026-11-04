@@ -30,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest]
+        os: [windows-latest, macos-26-intel]
     env:
       CI: 'true'
       CARGO_BUILD_JOBS: '2'

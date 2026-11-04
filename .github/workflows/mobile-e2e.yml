@@ -105,7 +105,7 @@ jobs:
 
   ios:
     name: Maestro / iOS Release / ${{ matrix.device }}
-    runs-on: macos-latest
+    runs-on: macos-26-intel
     # Include cold simulator/driver setup and all five sequential Release flows.
     timeout-minutes: 90
     continue-on-error: ${{ inputs.advisory }}

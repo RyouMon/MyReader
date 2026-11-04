@@ -175,7 +175,7 @@ jobs:
           (github.event_name == 'push' || inputs.review_run_id != '') &&
           (needs.candidate.outputs.publishable == 'true' || needs.review.result == 'success') }}
     needs: [candidate, review]
-    runs-on: macos-latest
+    runs-on: macos-26-intel
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       TESTFLIGHT_GROUP: ${{ vars.TESTFLIGHT_INTERNAL_GROUP || 'Team (Expo)' }}
