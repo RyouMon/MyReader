@@ -53,6 +53,7 @@ jobs:
         with:
           key: desktop-release-e2e
           cache-on-failure: true
+          save-if: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') }}
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Install browser engines
         run: pnpm --filter my-reader exec playwright install --with-deps chromium webkit
