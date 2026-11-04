@@ -6,7 +6,7 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
-## [0.20.2] - 2026-11-04
+## [0.20.3] - 2026-11-04
 
 ### Added
 
