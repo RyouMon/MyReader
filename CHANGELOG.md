@@ -5,7 +5,7 @@
 MyReader 的重要变更均记录于此。
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
-## [0.20.3] - 2026-11-04
+## [0.20.4] - 2026-11-04
 
 ### Added
 
