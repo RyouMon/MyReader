@@ -47,6 +47,7 @@ import { useReaderIframePointerBridge } from "@/hooks/reader/useReaderIframePoin
 import { useReaderPaginateEdgeHover } from "@/hooks/reader/useReaderPaginateEdgeHover"
 import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReaderSearch } from "@/hooks/reader/useReaderSearch"
+import { useReaderWheelPageTurn } from "@/hooks/reader/useReaderWheelPageTurn"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
 import {
   displayProgressionForPosition,
@@ -1822,10 +1823,13 @@ function useEpubReaderController({
   const isRtl = publication.metadata.effectiveReadingProgression === "rtl"
   const edgeTurnActive =
     readiumNavReady &&
-    !tocOpen &&
-    !settingsOpen &&
+    !panelsOpen &&
+    !annotationEditor &&
     !initError &&
-    readerSettings.readingLayout !== "scroll"
+    EpubNavigator.determineLayout(
+      publication,
+      readerSettings.readingLayout === "scroll",
+    ) !== Layout.scrolled
   const {
     nearLeft,
     nearRight,
@@ -1838,8 +1842,6 @@ function useEpubReaderController({
     },
     [handleEdgePointerPosition, handlePointerPosition],
   )
-  useReaderIframePointerBridge(containerRef, handleIframePointerPosition)
-
   const onReadiumEdgePrev = useCallback(() => {
     const sequence = beginContentSettlingForPageTurn("backward")
     navigatorRef.current?.goBackward(false, (ok) => {
@@ -1863,6 +1865,18 @@ function useEpubReaderController({
     revealFailedContentNavigation,
     scheduleTtsUserNavigationCompletion,
   ])
+
+  const onWheelPageTurn = useReaderWheelPageTurn(
+    containerRef,
+    edgeTurnActive,
+    onReadiumEdgePrev,
+    onReadiumEdgeNext,
+  )
+  useReaderIframePointerBridge(
+    containerRef,
+    handleIframePointerPosition,
+    onWheelPageTurn,
+  )
 
   const onProgressSeek = useCallback(
     (progress: number) => {

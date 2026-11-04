@@ -246,7 +246,7 @@ export class DesktopTtsReaderPage {
   }
 
   async visibleReaderText(): Promise<string> {
-    return this.page.evaluate(readVisibleText) as Promise<string>
+    return this.page.evaluate(readVisibleText, undefined) as Promise<string>
   }
 
   async visibleReaderFrameCount(): Promise<number> {

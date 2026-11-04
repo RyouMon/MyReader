@@ -25,18 +25,23 @@ function iframeHostPoint(
 export function useReaderIframePointerBridge(
   containerRef: RefObject<HTMLElement | null>,
   onPointerPosition: ReaderPointerPositionHandler,
+  onWheel?: (event: WheelEvent) => void,
 ): void {
   const onPointerPositionRef = useRef(onPointerPosition)
+  const onWheelRef = useRef(onWheel)
 
   useEffect(() => {
     onPointerPositionRef.current = onPointerPosition
-  }, [onPointerPosition])
+    onWheelRef.current = onWheel
+  }, [onPointerPosition, onWheel])
 
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
 
     const iframeCleanups = new Map<HTMLIFrameElement, () => void>()
+    const handleWheel = (event: WheelEvent) => onWheelRef.current?.(event)
+    container.addEventListener("wheel", handleWheel, { passive: false })
 
     const connect = (iframe: HTMLIFrameElement) => {
       if (iframeCleanups.has(iframe)) return
@@ -59,9 +64,11 @@ export function useReaderIframePointerBridge(
           frameWindow.addEventListener("pointermove", onPointer, {
             passive: true,
           })
+          frameWindow.addEventListener("wheel", handleWheel, { passive: false })
           disconnectWindow = () => {
             frameWindow.removeEventListener("pointerover", onPointer)
             frameWindow.removeEventListener("pointermove", onPointer)
+            frameWindow.removeEventListener("wheel", handleWheel)
           }
         } catch {
           // Readium resources are normally same-origin; ignore inaccessible frames.
@@ -115,6 +122,7 @@ export function useReaderIframePointerBridge(
 
     return () => {
       observer.disconnect()
+      container.removeEventListener("wheel", handleWheel)
       iframeCleanups.forEach((cleanup) => {
         cleanup()
       })
