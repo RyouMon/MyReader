@@ -256,7 +256,14 @@ extension ReaderWindowTests {
     #expect(ranges == ["Hi. ", "Hi"])
     #expect(!completed)
     #expect(systemSpeech.utterances.isEmpty)
-    player.delegate?.audioPlayerDidFinishPlaying?(player, successfully: true)
+    // AVAudioPlayer delivers its delegate callback outside a Swift task.
+    // Voice discovery synchronizes with native speech services in that context.
+    await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+      DispatchQueue.main.async {
+        player.delegate?.audioPlayerDidFinishPlaying?(player, successfully: true)
+        continuation.resume()
+      }
+    }
     let utterance = try #require(systemSpeech.utterances.first)
     #expect(systemSpeech.utterances.count == 1)
     #expect(utterance.speechString == "Hello.")
