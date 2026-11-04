@@ -5,7 +5,7 @@
 MyReader 的重要变更均记录于此。
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
-## [0.20.0] - 2026-11-04
+## [0.20.1] - 2026-11-04
 
 ### Added
 
@@ -27,6 +27,7 @@ MyReader 的重要变更均记录于此。
 
 ### Fixed
 
+- 修复 iOS 已取消的朗读任务仍发起音频请求、将暂停界面误切换为加载状态的问题。
 - 修复 Qwen 按需计费端点路由错误，以及 LLM 连接测试成功后人物整理仍因固定总超时失败的问题（[#133](https://github.com/RyouMon/MyReader/pull/133)）
 - 对齐 Core 和跨端桥接的语音合成等待时间，支持较慢的模型冷启动；停止或切换后取消过期请求，避免迟到结果继续播放（[#133](https://github.com/RyouMon/MyReader/pull/133)）
 - 修复 iOS 暂停远端朗读后切换段落未定位、Android 表单输入被键盘遮挡、数据源列表空白，以及移动音色选择列表的嵌套滚动错误（[#133](https://github.com/RyouMon/MyReader/pull/133)）
