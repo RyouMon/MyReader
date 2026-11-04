@@ -5,6 +5,37 @@
 MyReader 的重要变更均记录于此。
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [0.20.0] - 2026-11-04
+
+### Added
+
+- 新增 LLM 供应商与多模型配置，和 TTS 供应商集中到 AI 供应商设置；支持连接测试和模型发现，密钥保存在系统安全存储中（[#133](https://github.com/RyouMon/MyReader/pull/133)）
+- EPUB 支持分角色朗读，人物可分别设置模型、音色和朗读指令；同一丛书共享人物配置，支持手动录入、从书中介绍或 Wikipedia 导入，以及通过提示词整理人物（[#133](https://github.com/RyouMon/MyReader/pull/133)）
+- 新增可查看、清除、试听和跳转的朗读计划，以及可选的正文人物标记；人物导入与计划分析显示实时输出并支持取消，重复姓名支持繁简与格式规范化后识别（[#133](https://github.com/RyouMon/MyReader/pull/133)）
+- 音色支持可选显示名称和列表内试听，模型或音色删除前提示受影响的引用，并恢复到当前默认朗读配置（[#133](https://github.com/RyouMon/MyReader/pull/133)）
+
+### Changed
+
+- 统一桌面与移动端的表单、错误提示和设置组件，整理阅读配置、人物编辑、书签与笔记的导航和批量选择操作（[#133](https://github.com/RyouMon/MyReader/pull/133)）
+- Qwen 收敛为一个可配置入口，按填写的 API 地址获取支持的模型和账号自建音色；系统音色由用户填写和编辑（[#133](https://github.com/RyouMon/MyReader/pull/133)）
+- 重整中英文架构文档，以组件关系和运行时序图说明系统边界、数据权威、同步及 AI 朗读流程。
+
+### Performance and Internals
+
+- LLM 分析按章节和模型预算分批处理，保存历史、摘要和与音色无关的分析缓存；修改角色配音时动态解析已有计划，减少重复分析（[#133](https://github.com/RyouMon/MyReader/pull/133)）
+- 远端 TTS 从真实合成耗时和音频时长学习性能，自动调整文本分段和预生成缓冲，兼顾首次播放延迟与连续朗读；缓存命中不参与测速（[#133](https://github.com/RyouMon/MyReader/pull/133)）
+
+### Fixed
+
+- 修复 Qwen 按需计费端点路由错误，以及 LLM 连接测试成功后人物整理仍因固定总超时失败的问题（[#133](https://github.com/RyouMon/MyReader/pull/133)）
+- 对齐 Core 和跨端桥接的语音合成等待时间，支持较慢的模型冷启动；停止或切换后取消过期请求，避免迟到结果继续播放（[#133](https://github.com/RyouMon/MyReader/pull/133)）
+- 修复 iOS 暂停远端朗读后切换段落未定位、Android 表单输入被键盘遮挡、数据源列表空白，以及移动音色选择列表的嵌套滚动错误（[#133](https://github.com/RyouMon/MyReader/pull/133)）
+- 桌面开发启动时可在默认端口被占用后选择可用端口；修复草稿 Release 上传后的验证方式（[#133](https://github.com/RyouMon/MyReader/pull/133)、[#128](https://github.com/RyouMon/MyReader/pull/128)）
+
+### Security
+
+- 更新存在已知漏洞的传递依赖，并修复跨端组件依赖解析问题（[#133](https://github.com/RyouMon/MyReader/pull/133)）
+
 ## [0.19.0] - 2026-10-24
 
 ### Added
