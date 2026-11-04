@@ -5,13 +5,7 @@
 MyReader 的重要变更均记录于此。
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
-## [0.20.5] - 2026-11-04
-
-### Fixed
-
-- 修复 iOS EPUB 阅读器中央点击无法唤起阅读工具栏的问题。
-
-## [0.20.4] - 2026-11-04
+## [0.21.0] - 2026-11-04
 
 ### Added
 
@@ -33,6 +27,7 @@ MyReader 的重要变更均记录于此。
 
 ### Fixed
 
+- 修复 iOS EPUB 阅读器中央点击无法唤起阅读工具栏的问题。
 - 修复 Windows 阅读器中文字选区操作菜单被生产 CSP 阻止的问题，恢复高亮和笔记入口（[#139](https://github.com/RyouMon/MyReader/pull/139)）。
 - 修复 iOS 已取消的朗读任务仍发起音频请求、将暂停界面误切换为加载状态的问题。
 - 修复 Qwen 按需计费端点路由错误，以及 LLM 连接测试成功后人物整理仍因固定总超时失败的问题（[#133](https://github.com/RyouMon/MyReader/pull/133)）

@@ -6,13 +6,7 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
-## [0.20.5] - 2026-11-04
-
-### Fixed
-
-- Fixed central taps failing to reveal the reader toolbar in the iOS EPUB reader.
-
-## [0.20.4] - 2026-11-04
+## [0.21.0] - 2026-11-04
 
 ### Added
 
@@ -34,6 +28,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Fixed central taps failing to reveal the reader toolbar in the iOS EPUB reader.
 - Fixed the production CSP blocking text selection actions in the Windows reader, restoring highlight and note creation ([#139](https://github.com/RyouMon/MyReader/pull/139)).
 - Fixed cancelled iOS narration tasks still requesting audio and replacing the paused state with a loading indicator.
 - Fixed Qwen pay-as-you-go endpoint routing and character extraction timing out under a fixed total deadline despite a successful LLM connection test ([#133](https://github.com/RyouMon/MyReader/pull/133))
