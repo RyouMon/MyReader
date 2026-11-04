@@ -94,6 +94,10 @@ jobs:
       - name: Install JavaScript dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Cache Expo Doctor before the timed build check
+        working-directory: my-reader-mobile
+        run: npx --yes expo-doctor --version
+
       - name: Build signed APK on GitHub runner
         shell: bash
         working-directory: my-reader-mobile
@@ -175,6 +179,10 @@ jobs:
 
       - name: Install JavaScript dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Cache Expo Doctor before the timed build check
+        working-directory: my-reader-mobile
+        run: npx --yes expo-doctor --version
 
       - name: Build iOS app on GitHub runner
         id: artifact
