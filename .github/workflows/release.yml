@@ -148,8 +148,6 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
       - name: Load the original release run
         run: |
           test "$GITHUB_REF_TYPE" = tag
@@ -177,7 +175,7 @@ jobs:
           (github.event_name == 'push' || inputs.review_run_id != '') &&
           (needs.candidate.outputs.publishable == 'true' || needs.review.result == 'success') }}
     needs: [candidate, review]
-    runs-on: macos-26-intel
+    runs-on: macos-latest
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       TESTFLIGHT_GROUP: ${{ vars.TESTFLIGHT_INTERNAL_GROUP || 'Team (Expo)' }}

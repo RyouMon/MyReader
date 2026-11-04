@@ -24,23 +24,18 @@ env:
 jobs:
   desktop:
     name: Desktop complete E2E / ${{ matrix.os }}
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     continue-on-error: ${{ inputs.advisory || false }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: windows-latest
-            runner: windows-latest
-          - os: macos-latest
-            runner: macos-26-intel
+        os: [windows-latest, macos-latest]
     env:
       CI: 'true'
       CARGO_BUILD_JOBS: '2'
       CARGO_INCREMENTAL: '0'
       APPLE_SIGNING_IDENTITY: '-'
-      PLAYWRIGHT_BROWSERS_PATH: ~/.cache/ms-playwright
       E2E_REPORT_DIR: ${{ github.workspace }}/reports/desktop-native
     steps:
       - uses: actions/checkout@v7
@@ -50,12 +45,6 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            playwright-${{ runner.os }}-
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
