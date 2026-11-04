@@ -34,7 +34,8 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Check formatting of changed files
         env:
           BASE_REF: ${{ github.base_ref || github.event.repository.default_branch }}
@@ -67,7 +68,7 @@ jobs:
 
   ios-dependencies:
     name: iOS dependencies (no cache)
-    runs-on: macos-latest
+    runs-on: macos-26-intel
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -103,7 +104,8 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --prefer-offline
       - run: pnpm --filter '${{ matrix.package }}' '${{ matrix.command }}'
 
   coverage:
@@ -138,7 +140,8 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Collect Vitest coverage without a percentage gate
         if: matrix.package != 'my-reader-mobile'
         run: >-
@@ -166,7 +169,8 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --prefer-offline
       - run: pnpm qa:mutation
       - uses: actions/upload-artifact@v4
         if: always()
@@ -220,7 +224,8 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --prefer-offline
       - uses: dtolnay/rust-toolchain@1.95.0
         with:
           components: llvm-tools-preview
@@ -241,12 +246,16 @@ jobs:
 
   rust-desktop-coverage:
     name: Rust desktop coverage / ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-2022]
+        include:
+          - os: macos-latest
+            runner: macos-26-intel
+          - os: windows-2022
+            runner: windows-2022
     env:
       CARGO_BUILD_JOBS: "2"
       CARGO_INCREMENTAL: "0"
@@ -294,7 +303,8 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --prefer-offline
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-audit@0.22.2
@@ -329,12 +339,13 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --prefer-offline
       - run: pnpm --filter my-reader-mobile exec expo prebuild --platform android --no-install
       - name: Enable KVM for Android device tests
         run: |
@@ -374,7 +385,7 @@ jobs:
 
   swift-coverage:
     name: Swift native coverage
-    runs-on: macos-latest
+    runs-on: macos-26-intel
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
@@ -385,12 +396,19 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"
       - run: gem install cocoapods -v 1.16.2 --no-document
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --prefer-offline
       - run: pnpm --filter my-reader-mobile exec expo prebuild --platform ios --no-install
+      - uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/CocoaPods
+          key: cocoapods-${{ runner.os }}-${{ hashFiles('my-reader-mobile/modules/**/ios/*.podspec', 'pnpm-lock.yaml') }}
+          restore-keys: |
+            cocoapods-${{ runner.os }}-
       - run: pod install
         working-directory: my-reader-mobile/ios
       - run: python3 scripts/quality/native-coverage.py prepare-swift
