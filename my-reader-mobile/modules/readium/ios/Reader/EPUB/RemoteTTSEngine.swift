@@ -129,6 +129,8 @@ final class RemoteTTSEngine: NSObject, @preconcurrency TTSEngine, @preconcurrenc
   }
 
   func speak(text: String, language: String, onSpeakRange: @escaping (Range<String.Index>) -> Void) async -> Result<Void, TTSError> {
+    // Readium can cancel a selected utterance before its engine starts.
+    guard !Task.isCancelled else { return .success(()) }
     let key = RemoteTtsSpeechKey(text: text, language: language)
     let playback = ActivePlayback(key: key, text: text, onSpeakRange: onSpeakRange)
 

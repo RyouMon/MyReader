@@ -15,7 +15,7 @@ test("desktop release E2E runs on Windows and macOS", () => {
   const { desktop } = workflow("desktop-e2e").jobs
   assert.deepEqual(desktop.strategy.matrix.os, [
     "windows-latest",
-    "macos-latest",
+    "macos-26-intel",
   ])
   assert.equal(desktop.strategy["fail-fast"], false)
   assert.ok((desktop.strategy["max-parallel"] ?? 2) >= 2)
