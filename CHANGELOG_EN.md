@@ -6,6 +6,40 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.21.0] - 2026-11-04
+
+### Added
+
+- Added LLM providers and multiple models alongside TTS providers in AI provider settings, with connection testing, model discovery and credentials stored in platform secure storage ([#133](https://github.com/RyouMon/MyReader/pull/133))
+- Added character narration for EPUB, with individual model, voice and reading instructions. Books in a series share characters, which can be entered manually, imported from book introductions or Wikipedia, or organized from a user prompt ([#133](https://github.com/RyouMon/MyReader/pull/133))
+- Added reading plans that can be inspected, cleared, previewed and used to navigate, plus optional character annotations on the page. Character import and plan analysis stream progress and support cancellation; duplicate names are recognized across simplified/traditional Chinese and formatting differences ([#133](https://github.com/RyouMon/MyReader/pull/133))
+- Added optional voice display names and previews inside voice lists. Deleting models or voices identifies affected references and restores the current default narration configuration ([#133](https://github.com/RyouMon/MyReader/pull/133))
+
+### Changed
+
+- Unified desktop and mobile forms, field errors and settings components, and refined reading configuration, character editing, bookmark/note navigation and bulk selection ([#133](https://github.com/RyouMon/MyReader/pull/133))
+- Consolidated Qwen into one configurable entry. Supported models and account-created voices are discovered through the configured API endpoint; system voices are entered and edited by the user ([#133](https://github.com/RyouMon/MyReader/pull/133))
+- Reorganized the Chinese and English architecture documents around component and runtime diagrams covering system boundaries, data authority, synchronization and AI narration.
+
+### Performance and Internals
+
+- Analyze chapter text in batches within model budgets, retaining history, summaries and voice-independent analysis caches. Resolve existing plans against current character voice settings to avoid repeated analysis ([#133](https://github.com/RyouMon/MyReader/pull/133))
+- Adapt remote TTS chunk size and prefetching from measured synthesis time and audio duration, balancing startup latency with continuous playback. Cache hits do not affect performance estimates ([#133](https://github.com/RyouMon/MyReader/pull/133))
+
+### Fixed
+
+- Fixed central taps failing to reveal the reader toolbar in the iOS EPUB reader.
+- Fixed the production CSP blocking text selection actions in the Windows reader, restoring highlight and note creation ([#139](https://github.com/RyouMon/MyReader/pull/139)).
+- Fixed cancelled iOS narration tasks still requesting audio and replacing the paused state with a loading indicator.
+- Fixed Qwen pay-as-you-go endpoint routing and character extraction timing out under a fixed total deadline despite a successful LLM connection test ([#133](https://github.com/RyouMon/MyReader/pull/133))
+- Aligned Core and cross-platform bridge synthesis deadlines to accommodate slow model cold starts. Stop and configuration changes cancel obsolete requests and prevent late playback ([#133](https://github.com/RyouMon/MyReader/pull/133))
+- Fixed paused remote narration failing to follow paragraph navigation on iOS, Android form fields hidden by the keyboard, blank data-source lists and nested scrolling errors in mobile voice selection ([#133](https://github.com/RyouMon/MyReader/pull/133))
+- Select an available desktop development port when the default is occupied, and fix verification after uploading assets to a draft GitHub Release ([#133](https://github.com/RyouMon/MyReader/pull/133), [#128](https://github.com/RyouMon/MyReader/pull/128))
+
+### Security
+
+- Updated vulnerable transitive dependencies and repaired cross-platform component dependency resolution ([#133](https://github.com/RyouMon/MyReader/pull/133))
+
 ## [0.19.0] - 2026-10-24
 
 ### Added

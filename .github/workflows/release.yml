@@ -101,7 +101,8 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --prefer-offline
       - uses: actions/download-artifact@v5
         with:
           pattern: MyReader-macOS-*
@@ -174,7 +175,7 @@ jobs:
           (github.event_name == 'push' || inputs.review_run_id != '') &&
           (needs.candidate.outputs.publishable == 'true' || needs.review.result == 'success') }}
     needs: [candidate, review]
-    runs-on: macos-latest
+    runs-on: macos-26-intel
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       TESTFLIGHT_GROUP: ${{ vars.TESTFLIGHT_INTERNAL_GROUP || 'Team (Expo)' }}
@@ -185,6 +186,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
       - uses: expo/expo-github-action@v8
         with:
           eas-version: latest
@@ -195,7 +197,7 @@ jobs:
           path: candidate
           run-id: ${{ inputs.review_run_id || github.run_id }}
           github-token: ${{ github.token }}
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Submit the already built IPA after approval
         working-directory: my-reader-mobile
         run: |

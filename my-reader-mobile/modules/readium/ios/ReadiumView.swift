@@ -228,6 +228,9 @@ final class ReadiumView: ExpoView {
             epubVC.onImagePress = { [weak self] href in self?.onImagePress(["href": href]) }
             epubVC.selectionActionDelegate = self
             epubVC.usesCustomSelectionMenu = self.customSelectionMenu
+            epubVC.onTap = { [weak self] point in
+              self?.dispatchTapEvent(at: point)
+            }
             epubVC.updateSelectionMenu(self.selectionMenu)
             epubVC.onSelectionChange = { [weak self] locator, selectedText, rect in
               self?.emitSelectionChange(
@@ -739,11 +742,11 @@ final class ReadiumView: ExpoView {
     // can toggle; edge taps are left for Readium's default navigation gestures.
     // PDF is handled separately through a dedicated gesture recognizer because
     // PDFKit consumes the navigator's generic tap observer.
-    if let visualNavigator = vc.navigator as? VisualNavigator {
-      let isPDF = vc.navigator is PDFNavigatorViewController
+    if !(vc is EPUBViewController),
+       !(vc.navigator is PDFNavigatorViewController),
+       let visualNavigator = vc.navigator as? VisualNavigator {
       let tapToken = visualNavigator.addObserver(.tap { [weak self, weak visualNavigator] event in
         guard let self, event.phase != .cancel else { return false }
-        guard !isPDF else { return false }
         guard let bounds = visualNavigator?.view.bounds,
               bounds.width > 0 && bounds.height > 0 else { return false }
 

@@ -168,6 +168,19 @@ Ubuntu 暂不执行 release E2E；Linux 安装包继续构建并纳入发布资�
 单独的 `Desktop build candidate` / `Mobile build candidate` 工作流只构建并保存 Actions 制品。
 详细门禁、测试层次与证据见 [Release E2E runbook](../my-reader-mobile/e2e/README.md)。
 
+重跑时先区分源码修复与下载、上传等基础设施故障：提交未变时使用
+`gh run rerun <run-id> --failed`，或 `--job <job-id>` 仅重跑失败任务及其下游，保留成功的构建产物。
+[GitHub 重跑](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs)
+仍使用原提交；需要修改源码时，在确认版本尚未公开、停止旧发布运行后，将同一标签更新到修复提交，
+再运行该提交的完整发布验证。未发布版本的修复沿用版本号；已公开版本的标签不移动。
+
+依赖缓存覆盖 pnpm、Cargo、Gradle、CocoaPods、pip 和固定版本的 Maestro。
+EAS 本地构建使用工作区外层的 Cargo target，避免临时构建目录清理掉缓存。
+Gradle 在主分支与发布标签写入缓存；Maestro 命中后跳过安装。依赖缓存不替代构建产物或质量报告。
+[GitHub 缓存](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)
+可从当前分支或标签以及默认分支恢复，不能跨不同标签共享；反复新建版本标签会失去前一标签的缓存。
+[Playwright 官方](https://playwright.dev/docs/ci#caching-browsers)不推荐缓存浏览器二进制，当前保持直接安装。
+
 本机也可以使用相同的本地构建配置：
 
 ```bash

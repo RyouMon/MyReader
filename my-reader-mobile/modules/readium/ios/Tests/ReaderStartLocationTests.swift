@@ -9,8 +9,8 @@ import XCTest
 import WebKit
 @testable import Readium
 
-// UIKit and WebKit tests share the app foreground window. Serializing each
-// child suite separately still lets those suites replace one another's window.
+// UIKit, WebKit and narration tests share the foreground window and audio session.
+// Serialize them together so native service startup cannot starve another test's callbacks.
 @Suite(.serialized)
 struct ReaderWindowTests {}
 
@@ -18,6 +18,19 @@ extension ReaderWindowTests {
   @Suite
   @MainActor
   struct ReaderStartLocationTests {
+    private final class StubTapGestureRecognizer: UITapGestureRecognizer {
+      let tapLocation: CGPoint
+
+      init(tapLocation: CGPoint) {
+        self.tapLocation = tapLocation
+        super.init(target: nil, action: nil)
+      }
+
+      override func location(in view: UIView?) -> CGPoint {
+        tapLocation
+      }
+    }
+
     private let positions = [
       Locator(href: AnyURL(string: "chapter-1.xhtml")!, mediaType: .xhtml,
               locations: .init(progression: 0, totalProgression: 0, position: 1)),
@@ -59,6 +72,20 @@ extension ReaderWindowTests {
       let result = await XCTWaiter.fulfillment(of: [ready], timeout: 60)
       try #require(result == .completed)
       try #require(reader.epubNavigator.viewport?.resources.isEmpty == false)
+    }
+
+    @Test
+    func forwardsCenterTapToReactNativeChrome() async throws {
+      let reader = try #require(await reader(nil, publication: publication(positions: positions)) as? EPUBViewController)
+      reader.view.frame = CGRect(x: 0, y: 0, width: 402, height: 840)
+      var receivedPoint: CGPoint?
+      reader.onTap = { point in receivedPoint = point }
+
+      reader.handleEpubTap(StubTapGestureRecognizer(tapLocation: CGPoint(x: 201, y: 420)))
+      #expect(receivedPoint == CGPoint(x: 201, y: 420))
+
+      reader.handleEpubTap(StubTapGestureRecognizer(tapLocation: CGPoint(x: 20, y: 420)))
+      #expect(receivedPoint == CGPoint(x: 201, y: 420))
     }
 
     @Test(arguments: [

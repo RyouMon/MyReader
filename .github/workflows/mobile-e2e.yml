@@ -29,6 +29,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -36,13 +37,24 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - run: pnpm install --frozen-lockfile
+          cache: pip
+          cache-dependency-path: my-reader-mobile/e2e/requirements.txt
+      - run: pnpm install --frozen-lockfile --prefer-offline
       - run: pip install -r my-reader-mobile/e2e/requirements.txt
+      - uses: actions/cache@v4
+        id: maestro-cache
+        with:
+          path: |
+            ~/.maestro/bin
+            ~/.maestro/lib
+          key: maestro-${{ runner.os }}-${{ runner.arch }}-${{ env.MAESTRO_VERSION }}
       - name: Install pinned Maestro CLI
+        if: steps.maestro-cache.outputs.cache-hit != 'true'
         run: |
           curl --fail --location https://get.maestro.mobile.dev -o "$RUNNER_TEMP/install-maestro.sh"
           bash "$RUNNER_TEMP/install-maestro.sh"
-          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Add Maestro to PATH
+        run: echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
       - uses: actions/download-artifact@v5
         with:
           name: MyReader-Android-APK
@@ -93,8 +105,9 @@ jobs:
 
   ios:
     name: Maestro / iOS Release / ${{ matrix.device }}
-    runs-on: macos-latest
-    timeout-minutes: 60
+    runs-on: macos-26-intel
+    # Include cold simulator/driver setup and all five sequential Release flows.
+    timeout-minutes: 90
     continue-on-error: ${{ inputs.advisory }}
     strategy:
       fail-fast: false
@@ -111,6 +124,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -118,13 +132,24 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - run: pnpm install --frozen-lockfile
+          cache: pip
+          cache-dependency-path: my-reader-mobile/e2e/requirements.txt
+      - run: pnpm install --frozen-lockfile --prefer-offline
       - run: pip install -r my-reader-mobile/e2e/requirements.txt
+      - uses: actions/cache@v4
+        id: maestro-cache
+        with:
+          path: |
+            ~/.maestro/bin
+            ~/.maestro/lib
+          key: maestro-${{ runner.os }}-${{ runner.arch }}-${{ env.MAESTRO_VERSION }}
       - name: Install Maestro
+        if: steps.maestro-cache.outputs.cache-hit != 'true'
         run: |
           curl --fail --location https://get.maestro.mobile.dev -o "$RUNNER_TEMP/install-maestro.sh"
           bash "$RUNNER_TEMP/install-maestro.sh"
-          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Add Maestro to PATH
+        run: echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
       - name: Prepare pinned iOS XCTest driver
         run: |
           python3 my-reader-mobile/e2e/scripts/prepare-ios-maestro.py \
