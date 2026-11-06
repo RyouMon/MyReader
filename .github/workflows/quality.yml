@@ -526,13 +526,19 @@ jobs:
         if: always() && steps.native-tests.outcome != 'skipped'
         run: ccache --show-stats
       - name: Save compiler cache
-        if: always() && steps.ccache-cache.outcome == 'success' && steps.native-tests.outcome != 'skipped'
+        if: >-
+          always() && steps.ccache-cache.outcome == 'success' &&
+          steps.ccache-cache.outputs.cache-hit != 'true' &&
+          steps.native-tests.outcome != 'skipped'
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/ccache
           key: ${{ steps.ccache-cache.outputs.cache-primary-key }}
       - name: Save Xcode derived data
-        if: always() && steps.xcode-cache.outcome == 'success' && steps.native-tests.outcome != 'skipped'
+        if: >-
+          always() && steps.xcode-cache.outcome == 'success' &&
+          steps.xcode-cache.outputs.cache-hit != 'true' &&
+          steps.native-tests.outcome != 'skipped'
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/myreader-native

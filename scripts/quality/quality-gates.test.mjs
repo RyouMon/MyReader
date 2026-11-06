@@ -53,6 +53,10 @@ test("Swift coverage reuses native build work without reusing coverage data", ()
   )
   assert.equal(installPods.if, undefined)
   assert.equal(installPods.run, "pod install")
+  for (const stepName of ["Save compiler cache", "Save Xcode derived data"]) {
+    const save = swift.steps.find((step) => step.name === stepName)
+    assert.match(save.if, /outputs\.cache-hit != 'true'/)
+  }
 })
 
 for (const paths of [
