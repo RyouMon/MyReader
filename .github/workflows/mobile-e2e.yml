@@ -3,6 +3,10 @@ name: Mobile Release E2E
 on:
   workflow_call:
     inputs:
+      platform:
+        description: Mobile platform to test (android, ios or all)
+        type: string
+        default: all
       advisory:
         description: 'Keep release candidates available for failure review'
         type: boolean
@@ -19,6 +23,7 @@ env:
 jobs:
   android:
     name: Maestro / signed Android APK
+    if: inputs.platform == 'all' || inputs.platform == 'android'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     continue-on-error: ${{ inputs.advisory }}
@@ -105,6 +110,7 @@ jobs:
 
   ios:
     name: Maestro / iOS Release / ${{ matrix.device }}
+    if: inputs.platform == 'all' || inputs.platform == 'ios'
     runs-on: macos-26-intel
     # Include cold simulator/driver setup and all five sequential Release flows.
     timeout-minutes: 90

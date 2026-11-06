@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import {
   mkdtempSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -14,6 +15,7 @@ import {
   inputs,
   mergeCoverage,
   normalizeCoverage,
+  parseCoverageGroups,
   parseLcov,
   patchLineMap,
   prepareReports,
@@ -48,6 +50,17 @@ test("changed-line coverage rejects any language below 80%, without rounding or 
   assert.doesNotThrow(() =>
     requireChangedCoverage({ ...passing, rust: { changed: 0, covered: 0 } }),
   )
+  assert.doesNotThrow(() => requireChangedCoverage({ js: passing.js }, ["js"]))
+  assert.throws(
+    () => requireChangedCoverage({ js: passing.js }, ["rust"]),
+    /rust/,
+  )
+})
+
+test("coverage group selection rejects empty and unknown CI output", () => {
+  assert.deepEqual(parseCoverageGroups("swift, js"), new Set(["swift", "js"]))
+  assert.throws(() => parseCoverageGroups(""), /at least one group/)
+  assert.throws(() => parseCoverageGroups("ios"), /Unknown coverage group: ios/)
 })
 
 test("unreported changed product sources fail instead of silently becoming N/A", () => {
@@ -316,7 +329,13 @@ test("the report bundle requires every producer, including Android device and pa
         parseLcov(readFileSync(path.join(output, `${group}.info`), "utf8"))
           .size,
       )
+    const swiftOnly = path.join(dir, "swift-only")
     rmSync(path.join(input, "android-coverage-report/readium-device.info"))
+    prepareReports(input, swiftOnly, dir, new Set(["swift"]))
+    assert.deepEqual(readdirSync(swiftOnly).sort(), [
+      "summary.json",
+      "swift.info",
+    ])
     assert.throws(() => prepareReports(input, output, dir), /ENOENT/)
   } finally {
     rmSync(dir, { recursive: true, force: true })

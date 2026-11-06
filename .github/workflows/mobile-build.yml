@@ -13,6 +13,14 @@ on:
         required: false
         default: true
         type: boolean
+      run_e2e:
+        description: Run each platform's E2E after its test artifact is built
+        default: false
+        type: boolean
+      e2e_advisory:
+        description: Keep release candidates available for E2E failure review
+        default: false
+        type: boolean
   workflow_dispatch:
     inputs:
       build_android:
@@ -152,6 +160,15 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  android-e2e:
+    name: Complete Android Release Maestro
+    if: inputs.run_e2e && inputs.build_android
+    needs: android
+    uses: ./.github/workflows/mobile-e2e.yml
+    with:
+      platform: android
+      advisory: ${{ inputs.e2e_advisory }}
+
   ios:
     name: iOS IPA (GitHub runner)
     if: inputs.build_ios
@@ -236,6 +253,15 @@ jobs:
           path: ${{ steps.artifact.outputs.ipa_path }}
           if-no-files-found: error
           retention-days: 30
+
+  ios-e2e:
+    name: Complete iOS Release Maestro
+    if: inputs.run_e2e && inputs.build_ios
+    needs: ios-simulator
+    uses: ./.github/workflows/mobile-e2e.yml
+    with:
+      platform: ios
+      advisory: ${{ inputs.e2e_advisory }}
 
   ios-simulator:
     name: iOS Release simulator application

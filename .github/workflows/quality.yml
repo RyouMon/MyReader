@@ -18,6 +18,30 @@ env:
   NODE_VERSION: 22.22.2
 
 jobs:
+  changed-areas:
+    name: Detect required quality areas
+    runs-on: ubuntu-22.04
+    outputs:
+      android: ${{ steps.detect.outputs.android }}
+      coverage: ${{ steps.detect.outputs.coverage }}
+      ios: ${{ steps.detect.outputs.ios }}
+      js: ${{ steps.detect.outputs.js }}
+      mutation: ${{ steps.detect.outputs.mutation }}
+      rust: ${{ steps.detect.outputs.rust }}
+      security: ${{ steps.detect.outputs.security }}
+      swift: ${{ steps.detect.outputs.swift }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Detect required quality areas
+        id: detect
+        run: node scripts/quality/changed-areas.mjs
+
   static:
     runs-on: ubuntu-22.04
     timeout-minutes: 15
@@ -67,6 +91,8 @@ jobs:
           retention-days: 14
 
   ios-dependencies:
+    needs: changed-areas
+    if: needs.changed-areas.outputs.ios == 'true'
     name: iOS dependencies (no cache)
     runs-on: macos-26-intel
     timeout-minutes: 15
@@ -80,6 +106,8 @@ jobs:
         run: ruby scripts/quality/readium-ios-dependencies.rb
 
   unit:
+    needs: changed-areas
+    if: needs.changed-areas.outputs.js == 'true'
     name: Unit tests / ${{ matrix.package }}
     runs-on: ubuntu-22.04
     timeout-minutes: 15
@@ -109,6 +137,8 @@ jobs:
       - run: pnpm --filter '${{ matrix.package }}' '${{ matrix.command }}'
 
   coverage:
+    needs: changed-areas
+    if: needs.changed-areas.outputs.js == 'true'
     name: Coverage / ${{ matrix.package }}
     runs-on: ubuntu-22.04
     timeout-minutes: 15
@@ -160,6 +190,8 @@ jobs:
           retention-days: 14
 
   mutation:
+    needs: changed-areas
+    if: needs.changed-areas.outputs.mutation == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
@@ -180,6 +212,8 @@ jobs:
           retention-days: 14
 
   rust:
+    needs: changed-areas
+    if: needs.changed-areas.outputs.rust == 'true'
     name: Rust / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -208,6 +242,8 @@ jobs:
       - run: cargo test --locked --workspace --no-fail-fast
 
   rust-coverage:
+    needs: changed-areas
+    if: needs.changed-areas.outputs.rust == 'true'
     name: Rust coverage
     runs-on: ubuntu-22.04
     timeout-minutes: 45
@@ -245,6 +281,8 @@ jobs:
           retention-days: 14
 
   rust-desktop-coverage:
+    needs: changed-areas
+    if: needs.changed-areas.outputs.rust == 'true'
     name: Rust desktop coverage / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
@@ -290,6 +328,8 @@ jobs:
           retention-days: 14
 
   security:
+    needs: changed-areas
+    if: needs.changed-areas.outputs.security == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
@@ -321,6 +361,8 @@ jobs:
           retention-days: 14
 
   android-coverage:
+    needs: changed-areas
+    if: needs.changed-areas.outputs.android == 'true'
     name: Android native coverage
     runs-on: ubuntu-22.04
     timeout-minutes: 60
@@ -382,9 +424,15 @@ jobs:
           retention-days: 14
 
   swift-coverage:
+    needs: changed-areas
+    if: needs.changed-areas.outputs.swift == 'true'
     name: Swift native coverage
-    runs-on: macos-26-intel
+    runs-on: macos-26
     timeout-minutes: 60
+    env:
+      USE_CCACHE: "1"
+      CCACHE_COMPILERCHECK: content
+      CCACHE_MAXSIZE: 3G
     steps:
       - uses: actions/checkout@v7
         with:
@@ -398,24 +446,105 @@ jobs:
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"
+      - name: Install ccache
+        run: |
+          if ! command -v ccache >/dev/null 2>&1; then
+            brew install ccache
+          fi
+          ccache --version
+          echo "CCACHE_DIR=$RUNNER_TEMP/ccache" >> "$GITHUB_ENV"
+          echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/ccache"
       - run: gem install cocoapods -v 1.16.2 --no-document
       - run: pnpm install --frozen-lockfile --prefer-offline
       - run: pnpm --filter my-reader-mobile exec expo prebuild --platform ios --no-install
-      - uses: actions/cache@v4
+      - name: Identify the native toolchain and dependencies
+        id: native-cache
+        env:
+          DEPENDENCIES_HASH: ${{ hashFiles('my-reader-mobile/package.json', 'my-reader-mobile/app.json', 'my-reader-mobile/app.config.*', 'my-reader-mobile/ios/Podfile*', 'my-reader-mobile/modules/**/package.json', 'my-reader-mobile/modules/**/expo-module.config.json', 'my-reader-mobile/modules/**/*.podspec', 'my-reader-mobile/modules/**/*.rb', 'my-reader-mobile/plugins/**', 'patches/**', 'pnpm-lock.yaml') }}
+        run: |
+          xcodebuild -version
+          xcode_version=$(xcodebuild -version | shasum -a 256 | cut -d ' ' -f 1)
+          echo "key=${{ runner.os }}-${{ runner.arch }}-$xcode_version-$DEPENDENCIES_HASH" >> "$GITHUB_OUTPUT"
+      - name: Restore compiler cache
+        id: ccache-cache
+        uses: actions/cache/restore@v4
         with:
-          path: ~/Library/Caches/CocoaPods
-          key: cocoapods-${{ runner.os }}-${{ hashFiles('my-reader-mobile/modules/**/ios/*.podspec', 'pnpm-lock.yaml') }}
+          path: ${{ runner.temp }}/ccache
+          key: swift-ccache-v1-${{ steps.native-cache.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            cocoapods-${{ runner.os }}-
-      - run: pod install
+            swift-ccache-v1-${{ steps.native-cache.outputs.key }}-
+      - name: Restore CocoaPods installation
+        id: pods-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/Library/Caches/CocoaPods
+            ~/Library/Caches/ReactNative
+            my-reader-mobile/ios/Pods
+            my-reader-mobile/ios/MyReader.xcworkspace
+            my-reader-mobile/ios/Podfile.lock
+          key: swift-pods-v2-${{ steps.native-cache.outputs.key }}
+      - name: Install CocoaPods dependencies
         working-directory: my-reader-mobile/ios
+        # Refresh source membership and codegen even when dependencies are cached.
+        run: pod install
+      - name: Save CocoaPods installation
+        if: steps.pods-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/Library/Caches/CocoaPods
+            ~/Library/Caches/ReactNative
+            my-reader-mobile/ios/Pods
+            my-reader-mobile/ios/MyReader.xcworkspace
+            my-reader-mobile/ios/Podfile.lock
+          key: ${{ steps.pods-cache.outputs.cache-primary-key }}
       - run: python3 scripts/quality/native-coverage.py prepare-swift
+      - name: Restore Xcode derived data
+        id: xcode-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/myreader-native
+          key: swift-derived-data-v2-${{ steps.native-cache.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            swift-derived-data-v2-${{ steps.native-cache.outputs.key }}-
       - name: Run the full native test scheme with compiler coverage
+        id: native-tests
         run: |
           READER_SIMULATOR=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; print(next(d["udid"] for runtime,devices in json.load(sys.stdin)["devices"].items() if "iOS" in runtime for d in devices if "iPhone" in d["name"]))')
+          XCODE_JOBS=$(sysctl -n hw.ncpu)
+          # CocoaPods test hosts lack PODS_ROOT, which RN's ccache wrappers otherwise rely on.
+          READER_REACT_NATIVE_PATH=$(node --print "require('path').dirname(require.resolve('react-native/package.json', { paths: ['./my-reader-mobile'] }))")
+          # Start the cold simulator while xcodebuild compiles the test host.
+          xcrun simctl boot "$READER_SIMULATOR"
+          ccache --zero-stats
+          # Compilation may be reused, but coverage must come from this run.
+          rm -rf "$RUNNER_TEMP/myreader-native/Build/ProfileData"
           mkdir -p reports/native/swift
-          xcodebuild test -quiet -jobs 3 -workspace my-reader-mobile/ios/MyReader.xcworkspace -scheme Reader-Coverage -configuration Debug -sdk iphonesimulator -destination "platform=iOS Simulator,id=$READER_SIMULATOR" -derivedDataPath "$RUNNER_TEMP/myreader-native" -resultBundlePath reports/native/swift/Reader.xcresult -only-testing:Readium-Unit-Tests ENABLE_TESTABILITY=YES CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=-
+          xcodebuild test -quiet -showBuildTimingSummary -jobs "$XCODE_JOBS" -workspace my-reader-mobile/ios/MyReader.xcworkspace -scheme Reader-Coverage -configuration Debug -sdk iphonesimulator -destination "platform=iOS Simulator,id=$READER_SIMULATOR" -derivedDataPath "$RUNNER_TEMP/myreader-native" -resultBundlePath reports/native/swift/Reader.xcresult -only-testing:Readium-Unit-Tests REACT_NATIVE_PATH="$READER_REACT_NATIVE_PATH" ONLY_ACTIVE_ARCH=YES ARCHS="$(uname -m)" ENABLE_TESTABILITY=YES CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=-
           python3 scripts/quality/native-coverage.py swift-llvm "$RUNNER_TEMP/myreader-native" "$READER_SIMULATOR" reports/native/swift/lcov.info
+      - name: Show compiler cache statistics
+        if: always() && steps.native-tests.outcome != 'skipped'
+        run: ccache --show-stats
+      - name: Save compiler cache
+        if: >-
+          always() && steps.ccache-cache.outcome == 'success' &&
+          steps.ccache-cache.outputs.cache-hit != 'true' &&
+          steps.native-tests.outcome != 'skipped'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ steps.ccache-cache.outputs.cache-primary-key }}
+      - name: Save Xcode derived data
+        if: >-
+          always() && steps.xcode-cache.outcome == 'success' &&
+          steps.xcode-cache.outputs.cache-hit != 'true' &&
+          steps.native-tests.outcome != 'skipped'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/myreader-native
+          key: ${{ steps.xcode-cache.outputs.cache-primary-key }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -426,7 +555,8 @@ jobs:
 
   coverage-report:
     name: Coverage report
-    needs: [coverage, rust-coverage, rust-desktop-coverage, android-coverage, swift-coverage]
+    if: always() && needs.changed-areas.outputs.coverage == 'true'
+    needs: [changed-areas, coverage, rust-coverage, rust-desktop-coverage, android-coverage, swift-coverage]
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     permissions:
@@ -446,6 +576,14 @@ jobs:
         with:
           pattern: '*coverage*'
           path: reports/coverage-input
+      - name: Determine active coverage reports
+        run: |
+          groups=()
+          [ '${{ needs.changed-areas.outputs.js }}' = true ] && groups+=(js)
+          [ '${{ needs.changed-areas.outputs.rust }}' = true ] && groups+=(rust)
+          [ '${{ needs.changed-areas.outputs.swift }}' = true ] && groups+=(swift)
+          [ '${{ needs.changed-areas.outputs.android }}' = true ] && groups+=(android)
+          (IFS=,; echo "COVERAGE_GROUPS=${groups[*]}") >> "$GITHUB_ENV"
       - name: Validate and normalize all compiler reports
         id: normalize
         env:
@@ -454,7 +592,7 @@ jobs:
           node scripts/quality/coverage-reports.mjs
           echo "COVERAGE_REPORT_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
       - name: JS and TypeScript coverage
-        if: ${{ !cancelled() && steps.normalize.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.normalize.outcome == 'success' && needs.changed-areas.outputs.js == 'true' }}
         uses: getsentry/coverage-action@18b70839c6f742d77e2341f9d3f13a25d91b9f61
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -468,7 +606,7 @@ jobs:
           fail-ci-if-error: true
           fail-on-error: true
       - name: Rust Core, FFI and Tauri coverage
-        if: ${{ !cancelled() && steps.normalize.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.normalize.outcome == 'success' && needs.changed-areas.outputs.rust == 'true' }}
         uses: getsentry/coverage-action@18b70839c6f742d77e2341f9d3f13a25d91b9f61
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -482,7 +620,7 @@ jobs:
           fail-ci-if-error: true
           fail-on-error: true
       - name: Swift coverage
-        if: ${{ !cancelled() && steps.normalize.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.normalize.outcome == 'success' && needs.changed-areas.outputs.swift == 'true' }}
         uses: getsentry/coverage-action@18b70839c6f742d77e2341f9d3f13a25d91b9f61
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -496,7 +634,7 @@ jobs:
           fail-ci-if-error: true
           fail-on-error: true
       - name: Android Java and Kotlin coverage
-        if: ${{ !cancelled() && steps.normalize.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.normalize.outcome == 'success' && needs.changed-areas.outputs.android == 'true' }}
         uses: getsentry/coverage-action@18b70839c6f742d77e2341f9d3f13a25d91b9f61
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -521,8 +659,8 @@ jobs:
         run: >-
           node --input-type=module -e '
           import { readFileSync } from "node:fs";
-          import { requireChangedCoverage } from "./scripts/quality/coverage-reports.mjs";
-          requireChangedCoverage(JSON.parse(readFileSync("reports/coverage/summary.json", "utf8")));'
+          import { parseCoverageGroups, requireChangedCoverage } from "./scripts/quality/coverage-reports.mjs";
+          requireChangedCoverage(JSON.parse(readFileSync("reports/coverage/summary.json", "utf8")), parseCoverageGroups());'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -534,38 +672,57 @@ jobs:
   changed-coverage-gate:
     name: ${{ github.event_name == 'pull_request' && 'Changed-line coverage' || 'Coverage report integrity' }}
     if: always()
-    needs: [coverage-report]
+    needs: [changed-areas, coverage-report]
     runs-on: ubuntu-22.04
     steps:
       - name: Require all language thresholds and reports to pass
-        run: test '${{ needs.coverage-report.result }}' = success
+        run: |
+          test '${{ needs.changed-areas.result }}' = success
+          if [ '${{ needs.changed-areas.outputs.coverage }}' = true ]; then
+            test '${{ needs.coverage-report.result }}' = success
+          else
+            test '${{ needs.coverage-report.result }}' = skipped
+          fi
 
   qa-gate:
     name: QA
     if: always()
-    needs: [static, ios-dependencies, mutation, rust, security]
+    needs: [changed-areas, static, ios-dependencies, mutation, rust, security]
     runs-on: ubuntu-22.04
     steps:
       - name: Require every QA job to succeed
         run: |
+          test '${{ needs.changed-areas.result }}' = success
           test '${{ needs.static.result }}' = success
-          test '${{ needs.ios-dependencies.result }}' = success
-          test '${{ needs.mutation.result }}' = success
-          test '${{ needs.rust.result }}' = success
-          test '${{ needs.security.result }}' = success
+          if [ '${{ needs.changed-areas.outputs.ios }}' = true ]; then test '${{ needs.ios-dependencies.result }}' = success; else test '${{ needs.ios-dependencies.result }}' = skipped; fi
+          if [ '${{ needs.changed-areas.outputs.mutation }}' = true ]; then test '${{ needs.mutation.result }}' = success; else test '${{ needs.mutation.result }}' = skipped; fi
+          if [ '${{ needs.changed-areas.outputs.rust }}' = true ]; then test '${{ needs.rust.result }}' = success; else test '${{ needs.rust.result }}' = skipped; fi
+          if [ '${{ needs.changed-areas.outputs.security }}' = true ]; then test '${{ needs.security.result }}' = success; else test '${{ needs.security.result }}' = skipped; fi
 
   unit-gate:
     name: Unit tests
     if: always()
-    needs: [unit, coverage, rust, rust-coverage, android-coverage, swift-coverage, coverage-report]
+    needs: [changed-areas, unit, coverage, rust, rust-coverage, rust-desktop-coverage, android-coverage, swift-coverage, coverage-report]
     runs-on: ubuntu-22.04
     steps:
       - name: Require every unit test job to succeed
         run: |
-          test '${{ needs.unit.result }}' = success
-          test '${{ needs.coverage.result }}' = success
-          test '${{ needs.rust.result }}' = success
-          test '${{ needs.rust-coverage.result }}' = success
-          test '${{ needs.android-coverage.result }}' = success
-          test '${{ needs.swift-coverage.result }}' = success
-          test '${{ needs.coverage-report.result }}' = success
+          test '${{ needs.changed-areas.result }}' = success
+          if [ '${{ needs.changed-areas.outputs.js }}' = true ]; then
+            test '${{ needs.unit.result }}' = success
+            test '${{ needs.coverage.result }}' = success
+          else
+            test '${{ needs.unit.result }}' = skipped
+            test '${{ needs.coverage.result }}' = skipped
+          fi
+          if [ '${{ needs.changed-areas.outputs.rust }}' = true ]; then test '${{ needs.rust.result }}' = success; else test '${{ needs.rust.result }}' = skipped; fi
+          if [ '${{ needs.changed-areas.outputs.rust }}' = true ]; then
+            test '${{ needs.rust-coverage.result }}' = success
+            test '${{ needs.rust-desktop-coverage.result }}' = success
+          else
+            test '${{ needs.rust-coverage.result }}' = skipped
+            test '${{ needs.rust-desktop-coverage.result }}' = skipped
+          fi
+          if [ '${{ needs.changed-areas.outputs.android }}' = true ]; then test '${{ needs.android-coverage.result }}' = success; else test '${{ needs.android-coverage.result }}' = skipped; fi
+          if [ '${{ needs.changed-areas.outputs.swift }}' = true ]; then test '${{ needs.swift-coverage.result }}' = success; else test '${{ needs.swift-coverage.result }}' = skipped; fi
+          if [ '${{ needs.changed-areas.outputs.coverage }}' = true ]; then test '${{ needs.coverage-report.result }}' = success; else test '${{ needs.coverage-report.result }}' = skipped; fi

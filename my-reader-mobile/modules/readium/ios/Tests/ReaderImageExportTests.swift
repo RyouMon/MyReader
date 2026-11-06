@@ -61,6 +61,13 @@ extension ReaderWindowTests {
       }
       try #require(ready)
       window.layoutIfNeeded()
+      // DOM readiness and the fade completion do not guarantee that WebKit has
+      // painted. Await its screen updates before exercising the UIKit exporter.
+      let webView = try #require(findWebView(reader.view))
+      let snapshotConfiguration = WKSnapshotConfiguration()
+      snapshotConfiguration.rect = CGRect(x: webView.bounds.midX, y: webView.bounds.midY, width: 1, height: 1)
+      let painted = try await webView.takeSnapshot(configuration: snapshotConfiguration)
+      try #require(pixel(painted) == [255, 0, 0, 255])
       let rendered = try await ReaderImageExport.images(reader: reader, href: nil)
       #expect(rendered.count == 1)
       #expect(rendered[0]["position"] as? Int == 1)

@@ -246,7 +246,7 @@ export class DesktopTtsReaderPage {
   }
 
   async visibleReaderText(): Promise<string> {
-    return this.page.evaluate(readVisibleText) as Promise<string>
+    return this.page.evaluate(readVisibleText, undefined) as Promise<string>
   }
 
   async visibleReaderFrameCount(): Promise<number> {
@@ -261,33 +261,46 @@ export class DesktopTtsReaderPage {
 
   async waitForVisibleText(text: string) {
     await this.page.waitForFunction(readVisibleText, text)
-    await this.visibleReaderIframe().evaluate(async (iframe) => {
-      const frame = iframe as HTMLIFrameElement
-      const wnd = frame.contentWindow
-      const doc = frame.contentDocument
-      if (!wnd || !doc) throw new Error("Reader document is unavailable")
-      await doc.fonts.ready
-      let previous = ""
-      let stableFrames = 0
-      for (let attempt = 0; attempt < 30; attempt += 1) {
-        await new Promise<void>((resolve) =>
-          wnd.requestAnimationFrame(() => resolve()),
-        )
-        const metrics = JSON.stringify([
-          wnd.innerWidth,
-          wnd.innerHeight,
-          wnd.scrollX,
-          wnd.scrollY,
-          doc.documentElement.scrollWidth,
-          doc.documentElement.scrollHeight,
-          wnd.getComputedStyle(doc.body).width,
-        ])
-        stableFrames = metrics === previous ? stableFrames + 1 : 0
-        if (stableFrames >= 3) return
-        previous = metrics
-      }
-      throw new Error("Reader pagination did not settle")
-    })
+    await this.page.waitForFunction(
+      async () => {
+        // Sample inside the page to avoid a browser round trip per sample.
+        // Reacquire frames and use the outer window's timer across navigation.
+        const metrics = () => {
+          const frame = [...document.querySelectorAll("iframe")].find(
+            (candidate) => {
+              const style = getComputedStyle(candidate)
+              return (
+                style.visibility !== "hidden" &&
+                style.opacity !== "0" &&
+                candidate.getBoundingClientRect().width > 0
+              )
+            },
+          )
+          const wnd = frame?.contentWindow
+          const doc = frame?.contentDocument
+          if (!wnd || !doc?.body || doc.fonts.status !== "loaded") return null
+          return JSON.stringify([
+            doc.URL,
+            wnd.innerWidth,
+            wnd.innerHeight,
+            wnd.scrollX,
+            wnd.scrollY,
+            doc.documentElement.scrollWidth,
+            doc.documentElement.scrollHeight,
+            wnd.getComputedStyle(doc.body).width,
+          ])
+        }
+        const initial = metrics()
+        if (initial === null) return false
+        for (let sample = 0; sample < 3; sample += 1) {
+          await new Promise<void>((resolve) => setTimeout(resolve, 50))
+          if (metrics() !== initial) return false
+        }
+        return true
+      },
+      undefined,
+      { polling: 50, timeout: 5000 },
+    )
   }
 
   async waitForSpeechText(text: string) {

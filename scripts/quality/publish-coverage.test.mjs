@@ -164,6 +164,41 @@ test("a missing baseline artifact fails publication instead of reusing old green
   }
 })
 
+test("a partial run requires only its active reports and labels the other languages as not run", async () => {
+  const f = fixture()
+  const previous = process.env.COVERAGE_GROUPS
+  process.env.COVERAGE_GROUPS = "js"
+  try {
+    writeFileSync(
+      f.summary,
+      JSON.stringify({ js: { changed: 10, covered: 8 } }),
+    )
+    f.artifacts.splice(1)
+    f.statuses.splice(2)
+    await publishCoverage(f.args, f.summary)
+    assert.match(f.writes[0].create.body, /80\.00% \(8\/10\)/)
+    assert.equal(
+      f.writes[0].create.body.match(/Not required by this change \| Not run/g)
+        .length,
+      3,
+    )
+    f.artifacts.length = 0
+    await assert.rejects(
+      publishCoverage(f.args, f.summary),
+      /baseline artifact missing/,
+    )
+    writeFileSync(f.summary, "{}")
+    await assert.rejects(
+      publishCoverage(f.args, f.summary),
+      /summary missing: js/,
+    )
+  } finally {
+    if (previous === undefined) delete process.env.COVERAGE_GROUPS
+    else process.env.COVERAGE_GROUPS = previous
+    f.cleanup()
+  }
+})
+
 test("release reports wait until newly written commit statuses are visible", async (t) => {
   t.mock.timers.enable({ apis: ["setTimeout", "Date"] })
   const f = fixture()

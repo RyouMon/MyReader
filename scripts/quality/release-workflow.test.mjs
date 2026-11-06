@@ -12,10 +12,71 @@ const workflow = (name) =>
   )
 
 test("desktop release E2E runs on Windows and macOS", () => {
-  assert.deepEqual(workflow("desktop-e2e").jobs.desktop.strategy.matrix.os, [
+  const { desktop } = workflow("desktop-e2e").jobs
+  assert.deepEqual(desktop.strategy.matrix.os, [
     "windows-latest",
     "macos-26-intel",
   ])
+  assert.equal(desktop.strategy["fail-fast"], false)
+  assert.ok((desktop.strategy["max-parallel"] ?? 2) >= 2)
+  assert.equal(desktop.needs, undefined)
+  const build = desktop.steps.findIndex((step) =>
+    step.run?.includes("build:e2e:native"),
+  )
+  assert.ok(build >= 0)
+  for (const command of [
+    "test:integration:frontend",
+    "test:e2e:frontend",
+    "test:e2e:native",
+  ]) {
+    assert.ok(
+      desktop.steps.findIndex((step) => step.run?.includes(command)) > build,
+      `${command} must run after its platform's Release build`,
+    )
+  }
+  const caller = workflow("release").jobs["desktop-e2e"]
+  assert.equal(caller.needs, "verify")
+  assert.match(caller.if, /inputs.review_run_id == ''/)
+})
+
+test("mobile E2E starts after its own artifact without waiting for another platform", () => {
+  const mobile = workflow("mobile-build")
+  const e2e = workflow("mobile-e2e")
+  assert.equal(mobile.on.workflow_call.inputs.run_e2e.default, false)
+  assert.equal(mobile.on.workflow_call.inputs.e2e_advisory.default, false)
+  assert.equal(e2e.on.workflow_call.inputs.platform.default, "all")
+  for (const [platform, build, artifact] of [
+    ["android", "android", "MyReader-Android-APK"],
+    ["ios", "ios-simulator", "MyReader-iOS-simulator"],
+  ]) {
+    const caller = mobile.jobs[`${platform}-e2e`]
+    assert.equal(caller.needs, build)
+    assert.equal(caller.if, `inputs.run_e2e && inputs.build_${platform}`)
+    assert.equal(caller.uses, "./.github/workflows/mobile-e2e.yml")
+    assert.equal(caller.with.platform, platform)
+    assert.equal(caller.with.advisory, "${{ inputs.e2e_advisory }}")
+    assert.equal(
+      e2e.jobs[platform].if,
+      `inputs.platform == 'all' || inputs.platform == '${platform}'`,
+    )
+    assert.equal(e2e.jobs[platform].needs, undefined)
+    assert.ok(
+      mobile.jobs[build].steps.some(
+        (step) =>
+          step.uses?.startsWith("actions/upload-artifact@") &&
+          step.with?.name === artifact,
+      ),
+    )
+    assert.ok(
+      e2e.jobs[platform].steps.some(
+        (step) =>
+          step.uses?.startsWith("actions/download-artifact@") &&
+          step.with?.name === artifact,
+      ),
+    )
+  }
+  assert.equal(workflow("release").jobs.mobile.with.run_e2e, true)
+  assert.equal(workflow("release").jobs.mobile.with.e2e_advisory, true)
 })
 
 test("publication requires quality and builds plus passed E2E or a recorded review", () => {
@@ -33,7 +94,6 @@ test("publication requires quality and builds plus passed E2E or a recorded revi
       "desktop",
       "mobile",
       "desktop-e2e",
-      "mobile-e2e",
       "candidate",
     ])
       assert.ok(dependencies.includes(gate), `${name} can bypass ${gate}`)
@@ -49,9 +109,9 @@ test("publication requires quality and builds plus passed E2E or a recorded revi
   for (const gate of ["quality", "desktop", "mobile"])
     assert.ok(jobs.candidate.if.includes(`needs.${gate}.result == 'success'`))
   for (const name of ["desktop-e2e", "mobile-e2e"]) {
-    assert.equal(jobs[name].with.advisory, true)
     assert.equal(workflow(name).on.workflow_call.inputs.advisory.default, false)
   }
+  assert.equal(jobs["desktop-e2e"].with.advisory, true)
   assert.match(jobs.review.if, /inputs.review_run_id != ''/)
   assert.deepEqual(jobs.review.needs, "verify")
   assert.ok(
@@ -67,7 +127,7 @@ test("publication requires quality and builds plus passed E2E or a recorded revi
     "${{ inputs.review_run_id || github.run_id }}",
   )
   assert.ok("workflow_dispatch" in workflow("release").on)
-  for (const name of ["release", "desktop-e2e", "mobile-e2e"]) {
+  for (const name of ["release", "desktop-e2e", "mobile-build", "mobile-e2e"]) {
     for (const job of Object.values(workflow(name).jobs)) {
       assert.notEqual(job["continue-on-error"], true)
       for (const step of job.steps || [])
