@@ -45,6 +45,11 @@ test("Swift coverage reuses native build work without reusing coverage data", ()
     swift.steps.some((step) => step.name === "Restore Xcode derived data"),
   )
   const nativeTests = swift.steps.find((step) => step.id === "native-tests")
+  assert.match(nativeTests.run, /READER_REACT_NATIVE_PATH=/)
+  assert.match(
+    nativeTests.run,
+    /REACT_NATIVE_PATH=\"\$READER_REACT_NATIVE_PATH\"/,
+  )
   assert.match(nativeTests.run, /ONLY_ACTIVE_ARCH=YES/)
   assert.match(nativeTests.run, /ARCHS="\$\(uname -m\)"/)
   assert.match(nativeTests.run, /rm -rf .*ProfileData/)
