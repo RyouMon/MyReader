@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test"
+import { expect, type Page } from "@playwright/test"
 
 type TtsHarnessState = {
   currentText: () => string | null
@@ -261,33 +261,46 @@ export class DesktopTtsReaderPage {
 
   async waitForVisibleText(text: string) {
     await this.page.waitForFunction(readVisibleText, text)
-    await this.visibleReaderIframe().evaluate(async (iframe) => {
-      const frame = iframe as HTMLIFrameElement
-      const wnd = frame.contentWindow
-      const doc = frame.contentDocument
-      if (!wnd || !doc) throw new Error("Reader document is unavailable")
-      await doc.fonts.ready
-      let previous = ""
-      let stableFrames = 0
-      for (let attempt = 0; attempt < 30; attempt += 1) {
-        await new Promise<void>((resolve) =>
-          wnd.requestAnimationFrame(() => resolve()),
-        )
-        const metrics = JSON.stringify([
-          wnd.innerWidth,
-          wnd.innerHeight,
-          wnd.scrollX,
-          wnd.scrollY,
-          doc.documentElement.scrollWidth,
-          doc.documentElement.scrollHeight,
-          wnd.getComputedStyle(doc.body).width,
-        ])
-        stableFrames = metrics === previous ? stableFrames + 1 : 0
-        if (stableFrames >= 3) return
-        previous = metrics
-      }
-      throw new Error("Reader pagination did not settle")
-    })
+    let previous: string | null = null
+    let stableSamples = 0
+    await expect
+      .poll(
+        async () => {
+          // Reacquire the current document: Readium replaces or hides frames
+          // during navigation, which can suspend their animation callbacks.
+          const metrics = await this.page.evaluate(() => {
+            const frame = [...document.querySelectorAll("iframe")].find(
+              (candidate) => {
+                const style = getComputedStyle(candidate)
+                return (
+                  style.visibility !== "hidden" &&
+                  style.opacity !== "0" &&
+                  candidate.getBoundingClientRect().width > 0
+                )
+              },
+            )
+            const wnd = frame?.contentWindow
+            const doc = frame?.contentDocument
+            if (!wnd || !doc?.body || doc.fonts.status !== "loaded") return null
+            return JSON.stringify([
+              doc.URL,
+              wnd.innerWidth,
+              wnd.innerHeight,
+              wnd.scrollX,
+              wnd.scrollY,
+              doc.documentElement.scrollWidth,
+              doc.documentElement.scrollHeight,
+              wnd.getComputedStyle(doc.body).width,
+            ])
+          })
+          stableSamples =
+            metrics !== null && metrics === previous ? stableSamples + 1 : 0
+          previous = metrics
+          return stableSamples >= 3
+        },
+        { message: "Reader pagination did not settle", intervals: [50] },
+      )
+      .toBe(true)
   }
 
   async waitForSpeechText(text: string) {
