@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test"
+import type { Page } from "@playwright/test"
 
 type TtsHarnessState = {
   currentText: () => string | null
@@ -261,46 +261,46 @@ export class DesktopTtsReaderPage {
 
   async waitForVisibleText(text: string) {
     await this.page.waitForFunction(readVisibleText, text)
-    let previous: string | null = null
-    let stableSamples = 0
-    await expect
-      .poll(
-        async () => {
-          // Reacquire the current document: Readium replaces or hides frames
-          // during navigation, which can suspend their animation callbacks.
-          const metrics = await this.page.evaluate(() => {
-            const frame = [...document.querySelectorAll("iframe")].find(
-              (candidate) => {
-                const style = getComputedStyle(candidate)
-                return (
-                  style.visibility !== "hidden" &&
-                  style.opacity !== "0" &&
-                  candidate.getBoundingClientRect().width > 0
-                )
-              },
-            )
-            const wnd = frame?.contentWindow
-            const doc = frame?.contentDocument
-            if (!wnd || !doc?.body || doc.fonts.status !== "loaded") return null
-            return JSON.stringify([
-              doc.URL,
-              wnd.innerWidth,
-              wnd.innerHeight,
-              wnd.scrollX,
-              wnd.scrollY,
-              doc.documentElement.scrollWidth,
-              doc.documentElement.scrollHeight,
-              wnd.getComputedStyle(doc.body).width,
-            ])
-          })
-          stableSamples =
-            metrics !== null && metrics === previous ? stableSamples + 1 : 0
-          previous = metrics
-          return stableSamples >= 3
-        },
-        { message: "Reader pagination did not settle", intervals: [50] },
-      )
-      .toBe(true)
+    await this.page.waitForFunction(
+      async () => {
+        // Sample inside the page to avoid a browser round trip per sample.
+        // Reacquire frames and use the outer window's timer across navigation.
+        const metrics = () => {
+          const frame = [...document.querySelectorAll("iframe")].find(
+            (candidate) => {
+              const style = getComputedStyle(candidate)
+              return (
+                style.visibility !== "hidden" &&
+                style.opacity !== "0" &&
+                candidate.getBoundingClientRect().width > 0
+              )
+            },
+          )
+          const wnd = frame?.contentWindow
+          const doc = frame?.contentDocument
+          if (!wnd || !doc?.body || doc.fonts.status !== "loaded") return null
+          return JSON.stringify([
+            doc.URL,
+            wnd.innerWidth,
+            wnd.innerHeight,
+            wnd.scrollX,
+            wnd.scrollY,
+            doc.documentElement.scrollWidth,
+            doc.documentElement.scrollHeight,
+            wnd.getComputedStyle(doc.body).width,
+          ])
+        }
+        const initial = metrics()
+        if (initial === null) return false
+        for (let sample = 0; sample < 3; sample += 1) {
+          await new Promise<void>((resolve) => setTimeout(resolve, 50))
+          if (metrics() !== initial) return false
+        }
+        return true
+      },
+      undefined,
+      { polling: 50, timeout: 5000 },
+    )
   }
 
   async waitForSpeechText(text: string) {

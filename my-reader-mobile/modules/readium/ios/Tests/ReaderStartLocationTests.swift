@@ -319,11 +319,12 @@ extension ReaderWindowTests {
       let viewportReady = XCTestExpectation(description: "Readium published its initial viewport")
       delegate.onViewportReady = { viewportReady.fulfill() }
       controller.epubNavigator.delegate = delegate
-      let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 1032, height: 1376))
+      let window = try #require(UIApplication.shared.delegate?.window ?? nil)
+      let previousRoot = window.rootViewController
       let host = UIViewController()
       window.rootViewController = host
       host.addChild(controller)
-      controller.view.frame = window.bounds
+      controller.view.frame = CGRect(x: 0, y: 0, width: 1032, height: 1376)
       host.view.addSubview(controller.view)
       controller.didMove(toParent: host)
       // Resize the reader as its native host does. Resizing UIWindow itself
@@ -334,7 +335,7 @@ extension ReaderWindowTests {
         controller.view.layoutIfNeeded()
       }
       window.makeKeyAndVisible()
-      defer { window.isHidden = true }
+      defer { window.rootViewController = previousRoot }
       let result = await XCTWaiter.fulfillment(of: [viewportReady], timeout: 60)
       try #require(result == .completed)
       var paginationReady = !delayedFirstFrame
