@@ -3,6 +3,25 @@ import { useCallback, useEffect, useRef } from "react"
 const INTERACTIVE_TARGETS =
   'input, textarea, select, [contenteditable], [role="slider"], [role="spinbutton"], [role="textbox"], [role="combobox"], [role="menu"], [role="listbox"], [role="tablist"], [role="radiogroup"], [role="dialog"], [role="alertdialog"]'
 
+const OVERLAY_ROLES = new Set(["menu", "listbox", "dialog", "alertdialog"])
+
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  if (!target || typeof (target as Element).closest !== "function") return false
+  const interactive = (target as Element).closest(INTERACTIVE_TARGETS)
+  if (!interactive) return false
+
+  const role = interactive.getAttribute("role")
+  if (
+    role &&
+    OVERLAY_ROLES.has(role) &&
+    (interactive.getAttribute("data-state") === "closed" ||
+      interactive.getAttribute("aria-hidden") === "true")
+  ) {
+    return false
+  }
+  return true
+}
+
 export function useReaderKeyboardPageTurn(
   enabled: boolean,
   isRtl: boolean,
@@ -27,8 +46,7 @@ export function useReaderKeyboardPageTurn(
     )
       return
 
-    const target = event.target as Element | null
-    if (target?.closest?.(INTERACTIVE_TARGETS)) return
+    if (isInteractiveTarget(event.target)) return
 
     let forward: boolean
     switch (event.key) {

@@ -120,6 +120,19 @@ describe("useReaderKeyboardPageTurn", () => {
     button.remove()
   })
 
+  it("ignores closed menu overlays left in the DOM during their exit animation", () => {
+    const { onNext } = mount()
+    const menu = document.createElement("div")
+    menu.setAttribute("role", "menu")
+    menu.setAttribute("data-state", "closed")
+    const item = document.createElement("div")
+    menu.append(item)
+    document.body.append(menu)
+    expect(key("ArrowRight", {}, item).defaultPrevented).toBe(true)
+    expect(onNext).toHaveBeenCalledTimes(1)
+    menu.remove()
+  })
+
   it("handles replaced book frames once and respects their controls and current panel state", async () => {
     const container = document.createElement("div")
     const ref = { current: container }
