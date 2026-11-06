@@ -48,7 +48,7 @@ test("Swift coverage reuses native build work without reusing coverage data", ()
   assert.match(nativeTests.run, /READER_REACT_NATIVE_PATH=/)
   assert.match(
     nativeTests.run,
-    /REACT_NATIVE_PATH=\"\$READER_REACT_NATIVE_PATH\"/,
+    /REACT_NATIVE_PATH="\$READER_REACT_NATIVE_PATH"/,
   )
   assert.match(nativeTests.run, /ONLY_ACTIVE_ARCH=YES/)
   assert.match(nativeTests.run, /ARCHS="\$\(uname -m\)"/)
