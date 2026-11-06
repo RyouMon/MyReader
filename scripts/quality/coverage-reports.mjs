@@ -20,6 +20,24 @@ export const inputs = [
   ["android", "android-coverage-report/sharing.info", ""],
 ]
 
+export const coverageGroupKeys = ["js", "rust", "swift", "android"]
+
+export function parseCoverageGroups(value = process.env.COVERAGE_GROUPS) {
+  if (value === undefined) return undefined
+  const requested = value
+    .split(",")
+    .map((group) => group.trim())
+    .filter(Boolean)
+  const unknown = requested.filter(
+    (group) => !coverageGroupKeys.includes(group),
+  )
+  if (unknown.length)
+    throw new Error(`Unknown coverage group: ${unknown.join(", ")}`)
+  if (!requested.length)
+    throw new Error("COVERAGE_GROUPS must contain at least one group")
+  return new Set(requested)
+}
+
 export function parseLcov(text) {
   const files = new Map()
   let lines
@@ -189,8 +207,8 @@ export function summarizeChanges(files, changes) {
   return { changed, covered }
 }
 
-export function requireChangedCoverage(summary) {
-  for (const key of ["js", "rust", "swift", "android"]) {
+export function requireChangedCoverage(summary, groups = coverageGroupKeys) {
+  for (const key of groups) {
     const counts = summary[key]
     if (
       !counts ||
@@ -261,6 +279,7 @@ export function prepareReports(
   inputDirectory,
   outputDirectory,
   repositoryRoot = root,
+  activeGroups = parseCoverageGroups(),
 ) {
   const sharingPatchFile = "patches/expo-sharing@57.0.22.patch"
   const sharingPatch = {
@@ -271,6 +290,7 @@ export function prepareReports(
   }
   const groups = new Map()
   for (const [group, file, directory] of inputs) {
+    if (activeGroups && !activeGroups.has(group)) continue
     const parsed = parseLcov(
       readFileSync(path.join(inputDirectory, file), "utf8"),
     )

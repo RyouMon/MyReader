@@ -3,12 +3,14 @@
 本文是测试策略、QA 命令和债务管理的维护入口。包的 `package.json`、各工具配置和
 `.github/workflows/quality.yml` 是执行权威；Agent 规则只负责引导，不另存一套配置示例。
 
-Quality 在 PR、主分支推送和手动执行时运行；其他分支的普通推送不触发。各入口均运行静态门禁、
-完整单测、变异测试、联网依赖审计、iOS Readium 无缓存依赖安装，以及 JS、Rust、Swift 和
-Android Java / Kotlin 覆盖率报告。主分支推送保存后续 PR 使用的基准。
+Quality 在 PR、主分支推送和手动执行时运行；其他分支的普通推送不触发。静态门禁始终运行。
+PR 按共同祖先到当前提交的完整差异选择 JS、Rust、Swift、Android 测试与覆盖率、共享工具变异测试、
+联网依赖审计及 iOS 无缓存依赖安装。选择规则见 `scripts/quality/changed-areas.mjs`，包括源码、测试、
+构建配置、生成脚本与依赖文件；原生源码改动不重复执行独立的 iOS 无缓存依赖安装。
+主分支、手动及发布调用仍运行全量检查，主分支保存后续 PR 使用的基准。
 
 主分支要求 `QA`、`Unit tests` 和 `Changed-line coverage` 三个聚合检查成功；所依赖的任务失败、取消或意外跳过均不会
-放行。`QA` 汇总静态检查、iOS 依赖安装、变异测试、Rust 门禁和安全审计，`Unit tests` 汇总五包 JS 与
+放行；仅接受路径检测明确判定无需运行的跳过结果。`QA` 汇总静态检查、iOS 依赖安装、变异测试、Rust 门禁和安全审计，`Unit tests` 汇总五包 JS 与
 Cargo workspace 完整单测、原生覆盖率测试及报告任务的执行结果。覆盖率任务独立运行、上传报告，
 PR 按语言展示全量和增量行覆盖率；JS/TS、Rust、Swift、Java/Kotlin 的增量行覆盖率分别必须达到 80%。
 `Changed-line coverage` 拒绝任一语言低于门槛，不按跨语言平均值放行，也不将 79.99% 四舍五入为通过。
@@ -157,6 +159,12 @@ fork PR 仍运行测试并展示 Actions 摘要，受 GitHub 只读令牌限制�
 profile；`jacoco` 子命令导出指定 Java / Kotlin 源码根目录的行命中。
 Android 采集通过 `scripts/quality/android-coverage.init.gradle` 显式开启，不改变日常构建和渲染。
 CI 中的完整采集命令以 `.github/workflows/quality.yml` 为准。
+
+PR 报告仅要求本次选中的语言制品和状态，未运行的语言明确标为 `Not run`。
+Swift 任务使用 Apple Silicon runner，启用 React Native 官方 ccache 支持，并缓存 CocoaPods 下载、
+安装结果与 Xcode DerivedData。缓存按 Xcode、架构及依赖隔离；每次仍执行 `pod install`
+以更新源文件列表和生成代码，并运行完整原生测试。
+覆盖率数据在测试前清空，编译失败也保存已完成的编译缓存，后续修复可以复用；缓存不代替测试结果。
 
 ## 按风险选择验证
 

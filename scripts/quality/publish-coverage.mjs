@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs"
+import { parseCoverageGroups } from "./coverage-reports.mjs"
 
 const groups = [
   ["js", "JS / TS · five packages"],
@@ -13,6 +14,14 @@ export async function publishCoverage(
 ) {
   const repository = context.repo
   const pr = context.payload.pull_request
+  const summary = JSON.parse(readFileSync(summaryPath, "utf8"))
+  const activeGroups = parseCoverageGroups()
+  const requiredGroups = groups.filter(
+    ([key]) => !activeGroups || activeGroups.has(key),
+  )
+  for (const [key] of requiredGroups) {
+    if (!summary[key]) throw new Error(`Coverage summary missing: ${key}`)
+  }
   // Match getsentry/coverage-action's getCurrentBranch, including tag events.
   const branch =
     pr?.head.ref ??
@@ -30,7 +39,7 @@ export async function publishCoverage(
   )
   // The upstream action treats artifact upload failures as warnings. Baseline
   // storage is required here, alongside the changed-line threshold.
-  for (const [key] of groups) {
+  for (const [key] of requiredGroups) {
     const expected = `codecov-coverage-results-${safeBranch}-${process.env.GITHUB_JOB}-${key}`
     if (
       !artifacts.some(
@@ -50,7 +59,7 @@ export async function publishCoverage(
   }
   const startedAt = new Date(process.env.COVERAGE_REPORT_STARTED_AT)
   const deadline = Date.now() + 30_000
-  const contexts = groups.flatMap(([key]) =>
+  const contexts = requiredGroups.flatMap(([key]) =>
     ["project", "patch"].map((kind) => `${kind} (${key})`),
   )
   let statuses
@@ -84,8 +93,9 @@ export async function publishCoverage(
     )
     return status.description.replaceAll("|", "\\|")
   }
-  const summary = JSON.parse(readFileSync(summaryPath, "utf8"))
   const rows = groups.map(([key, label]) => {
+    if (activeGroups && !activeGroups.has(key))
+      return `| ${label} | Not required by this change | Not run |`
     description("patch", key)
     const { changed, covered } = summary[key]
     const patch = changed
@@ -105,7 +115,7 @@ export async function publishCoverage(
     "| --- | --- | --- |",
     ...rows,
     "",
-    "Changed-line coverage must reach 80% independently in every language. Below-target coverage, failed tests, collection errors or missing required reports block merging. Overall coverage remains informational. Passing 80% is a minimum, not a substitute for protecting important behavior.",
+    "Changed-line coverage must reach 80% independently in each collected language. Below-target coverage, failed tests, collection errors or missing required reports block merging. Overall coverage remains informational. Passing 80% is a minimum, not a substitute for protecting important behavior.",
     "",
     "Native reports cover Readium and authored expo-sharing patch instructions. Android includes JVM and device tests; Rust includes Tauri tests on macOS and Windows. Other mobile native modules are not yet collected. Patch percentages describe measured executable lines; the detailed reports identify when no changed executable lines were found.",
     "",
