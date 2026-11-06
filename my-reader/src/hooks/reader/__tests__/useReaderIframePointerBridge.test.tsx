@@ -42,6 +42,35 @@ describe("useReaderIframePointerBridge", () => {
     container.remove()
   })
 
+  it("forwards keyboard events from the active reading frame", async () => {
+    const container = document.createElement("div")
+    document.body.append(container)
+    const iframe = document.createElement("iframe")
+    iframe.className = "readium-navigator-iframe"
+    container.append(iframe)
+    const onKeyDown = vi.fn((event: KeyboardEvent) => event.preventDefault())
+    const onPointerPosition = vi.fn()
+    const { unmount } = renderHook(() =>
+      useReaderIframePointerBridge(
+        { current: container },
+        onPointerPosition,
+        undefined,
+        onKeyDown,
+      ),
+    )
+
+    const event = new KeyboardEvent("keydown", {
+      key: "PageDown",
+      cancelable: true,
+    })
+    iframe.contentWindow?.dispatchEvent(event)
+    expect(event.defaultPrevented).toBe(true)
+    expect(onKeyDown).toHaveBeenCalledTimes(1)
+
+    unmount()
+    container.remove()
+  })
+
   it("should map iframe pointer coordinates into the host viewport", () => {
     const container = document.createElement("div")
     const iframe = document.createElement("iframe")

@@ -44,6 +44,7 @@ import {
 } from "@/hooks/reader/useReaderAnnotations"
 import { useReaderBookmarks } from "@/hooks/reader/useReaderBookmarks"
 import { useReaderIframePointerBridge } from "@/hooks/reader/useReaderIframePointerBridge"
+import { useReaderKeyboardPageTurn } from "@/hooks/reader/useReaderKeyboardPageTurn"
 import { useReaderPaginateEdgeHover } from "@/hooks/reader/useReaderPaginateEdgeHover"
 import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReaderSearch } from "@/hooks/reader/useReaderSearch"
@@ -1872,10 +1873,17 @@ function useEpubReaderController({
     onReadiumEdgePrev,
     onReadiumEdgeNext,
   )
+  const onKeyboardPageTurn = useReaderKeyboardPageTurn(
+    edgeTurnActive,
+    isRtl,
+    onReadiumEdgePrev,
+    onReadiumEdgeNext,
+  )
   useReaderIframePointerBridge(
     containerRef,
     handleIframePointerPosition,
     onWheelPageTurn,
+    onKeyboardPageTurn,
   )
 
   const onProgressSeek = useCallback(
@@ -2188,55 +2196,7 @@ function useEpubReaderController({
             textSelected: onTextSelected,
             contentProtection: () => {},
             contextMenu: () => {},
-            peripheral: (ev) => {
-              const nav2 = navigatorRef.current
-              if (!nav2) return
-              const rec = ev as { key?: string; keyCode?: number }
-              const key = rec.key ?? ""
-              const isRtl =
-                publication.metadata.effectiveReadingProgression === "rtl"
-              if (
-                key === "ArrowRight" ||
-                key === "PageDown" ||
-                rec.keyCode === 39
-              ) {
-                if (isRtl) {
-                  const sequence = beginContentSettlingForPageTurn("backward")
-                  nav2.goBackward(false, (ok) => {
-                    if (ok)
-                      scheduleTtsUserNavigationCompletion(sequence.navigationId)
-                    else revealFailedContentNavigation(sequence)
-                  })
-                } else {
-                  const sequence = beginContentSettlingForPageTurn("forward")
-                  nav2.goForward(false, (ok) => {
-                    if (ok)
-                      scheduleTtsUserNavigationCompletion(sequence.navigationId)
-                    else revealFailedContentNavigation(sequence)
-                  })
-                }
-              } else if (
-                key === "ArrowLeft" ||
-                key === "PageUp" ||
-                rec.keyCode === 37
-              ) {
-                if (isRtl) {
-                  const sequence = beginContentSettlingForPageTurn("forward")
-                  nav2.goForward(false, (ok) => {
-                    if (ok)
-                      scheduleTtsUserNavigationCompletion(sequence.navigationId)
-                    else revealFailedContentNavigation(sequence)
-                  })
-                } else {
-                  const sequence = beginContentSettlingForPageTurn("backward")
-                  nav2.goBackward(false, (ok) => {
-                    if (ok)
-                      scheduleTtsUserNavigationCompletion(sequence.navigationId)
-                    else revealFailedContentNavigation(sequence)
-                  })
-                }
-              }
-            },
+            peripheral: () => {},
           },
           epubPositions,
           initialPosition,
@@ -2320,7 +2280,6 @@ function useEpubReaderController({
     readerLanguage,
     readerPreferencesHydrated,
     beginContentNavigation,
-    beginContentSettlingForPageTurn,
     clearContentNavigationTimers,
     clearPendingProgressSeek,
     finishContentNavigation,
@@ -2330,7 +2289,6 @@ function useEpubReaderController({
     onAnnotationNoteClick,
     onTextSelected,
     noteMarkerAccessibilityLabel,
-    revealFailedContentNavigation,
     resolveChapterTitle,
     scheduleTtsUserNavigationCompletion,
   ])

@@ -27,6 +27,7 @@ import {
 import { useFixedLayoutPanzoom } from "@/hooks/reader/useFixedLayoutPanzoom"
 import { useLocatorProgressSync } from "@/hooks/reader/useLocatorProgressSync"
 import { useReaderBookmarks } from "@/hooks/reader/useReaderBookmarks"
+import { useReaderKeyboardPageTurn } from "@/hooks/reader/useReaderKeyboardPageTurn"
 import { useReaderPaginateEdgeHover } from "@/hooks/reader/useReaderPaginateEdgeHover"
 import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
@@ -302,21 +303,10 @@ export function ReadiumDivinaReader({
       displayProgressionForPosition(currentPage, positions.length) ?? null,
   })
 
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "ArrowRight" || event.key === "PageDown") {
-        ;(direction === "rtl" ? onPrevious : onNext)()
-      } else if (event.key === "ArrowLeft" || event.key === "PageUp") {
-        ;(direction === "rtl" ? onNext : onPrevious)()
-      }
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [direction, onNext, onPrevious])
-
   const isRtl = direction === "rtl"
   const edgeTurnActive =
     positions.length > 0 && !tocOpen && !bookmarksOpen && !settingsOpen
+  useReaderKeyboardPageTurn(edgeTurnActive, isRtl, onPrevious, onNext)
   const { nearLeft, nearRight } = useReaderPaginateEdgeHover(
     edgeTurnActive,
     readerRootRef,
