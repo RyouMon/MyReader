@@ -25,11 +25,9 @@ vi.mock("@/components/settings/forms/AddDataSourcePanel", () => ({
     type,
     onCreated,
     fillAvailableHeight,
-    autoStartOnedriveAuth,
   }: {
     type: "webdav" | "onedrive"
     fillAvailableHeight?: boolean
-    autoStartOnedriveAuth?: boolean
     onCreated: (source: {
       id: string
       type: "webdav" | "onedrive"
@@ -40,7 +38,6 @@ vi.mock("@/components/settings/forms/AddDataSourcePanel", () => ({
     <button
       type="button"
       data-fill-available-height={fillAvailableHeight}
-      data-auto-start-onedrive-auth={autoStartOnedriveAuth}
       onClick={() =>
         onCreated({
           id: `${type}-new`,
@@ -169,10 +166,6 @@ describe("AddLibraryDialog", () => {
     })
     expect(completeOnedriveButton).toHaveAttribute(
       "data-fill-available-height",
-      "true",
-    )
-    expect(completeOnedriveButton).toHaveAttribute(
-      "data-auto-start-onedrive-auth",
       "true",
     )
     expect(completeOnedriveButton.parentElement).toHaveClass("overflow-hidden")

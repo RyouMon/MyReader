@@ -28,7 +28,7 @@ flowchart TB
     Shared["共享 TypeScript"]
     Core["Rust Core"]
     Local[("本地数据与缓存")]
-    Sources["书库数据源<br/>本地目录 · WebDAV · OneDrive"]
+    Sources["书库数据源<br/>本地目录 · WebDAV · OneDrive · Google Drive · Dropbox · S3"]
     AI["LLM / TTS 服务"]
     DUI --> Shared
     MUI --> Shared
@@ -85,6 +85,11 @@ flowchart TB
 界面与阅读渲染不跨端共享。系统目录授权、OAuth 交互、凭据存储、音频焦点、播放、窗口及
 应用生命周期由平台实现。Core 只接收执行请求所需的临时凭据，持久配置保存凭据引用。
 移动 Core binding 与 Readium bridge 是两个独立边界：前者承载业务，后者承载阅读器能力。
+
+书库数据源统一经过 Core 的 `StorageService` 和 OpenDAL transport。供应商差异集中在数据源配置、
+凭据解析和 transport 构建，目录浏览、文件传输、预签名下载和同步复用同一套路径隔离、超时与
+重试策略。桌面与移动端只负责供应商授权、平台安全存储和类型转换；新增供应商时实现 Core
+transport、凭据映射和平台配置表单即可，不需要再为每个平台复制一套 HTTP 传输层。
 
 ## 3. 数据所有权
 

@@ -1,3 +1,4 @@
+pub mod cloud_source;
 use std::sync::Mutex;
 
 use crate::models::AppConfig;

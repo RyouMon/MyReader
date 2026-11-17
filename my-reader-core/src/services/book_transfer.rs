@@ -8,6 +8,8 @@ use std::{
 use opendal::{ErrorKind, Operator};
 use tokio::sync::Mutex as AsyncMutex;
 
+use crate::infrastructure::storage::transport::{self, RemoteUploadProgress};
+
 use crate::{
     library::{self, LibraryContext},
     models::{FileLocalState, LibraryStorageConfig},
@@ -19,7 +21,6 @@ use crate::{
             async_io::{ensure_database_document, execute_local_database_command},
             DatabaseIdentity, SyncDatabaseCommand,
         },
-        transport::{self, RemoteUploadProgress},
     },
     CoreError,
 };

@@ -11,6 +11,10 @@ export const commands = {
 	openAppUpdateInstaller: () => typedError<null, ErrorKind>(__TAURI_INVOKE("open_app_update_installer")),
 	listLibraries: () => typedError<LibraryInfo[], ErrorKind>(__TAURI_INVOKE("list_libraries")),
 	listDataSources: () => typedError<DataSourceDto[], ErrorKind>(__TAURI_INVOKE("list_data_sources")),
+	connectCloudSource: (input: CloudConnectInput) => typedError<DataSourceDto, ErrorKind>(__TAURI_INVOKE("connect_cloud_source", { input })),
+	addS3Source: (input: S3SourceInput) => typedError<DataSourceDto, ErrorKind>(__TAURI_INVOKE("add_s3_source", { input })),
+	remoteListFolders: (dataSourceId: string, path: string) => typedError<WebdavFolderEntry[], ErrorKind>(__TAURI_INVOKE("remote_list_folders", { dataSourceId, path })),
+	remoteCreateFolder: (dataSourceId: string, parentPath: string, name: string) => typedError<WebdavFolderEntry, ErrorKind>(__TAURI_INVOKE("remote_create_folder", { dataSourceId, parentPath, name })),
 	testWebdavConnection: (input: TestWebdavConnectionInput) => typedError<null, ErrorKind>(__TAURI_INVOKE("test_webdav_connection", { input })),
 	addLibrary: (path: string, name: string | null) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("add_library", { path, name })),
 	createMyreaderLibrary: (path: string, name: string | null) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("create_myreader_library", { path, name })),
@@ -20,9 +24,11 @@ export const commands = {
 	openRemoteMyreaderLibrary: (dataSourceId: string, remotePath: string, name: string | null) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("open_remote_myreader_library", { dataSourceId, remotePath, name })),
 	addWebdavLibrary: (dataSourceId: string, remotePath: string, name: string | null) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("add_webdav_library", { dataSourceId, remotePath, name })),
 	addOnedriveLibrary: (dataSourceId: string, remotePath: string, name: string | null) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("add_onedrive_library", { dataSourceId, remotePath, name })),
+	addRemoteLibrary: (dataSourceId: string, remotePath: string, name: string | null) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("add_remote_library", { dataSourceId, remotePath, name })),
 	refreshLibrary: (id: string) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("refresh_library", { id })),
 	refreshWebdavLibrary: (id: string) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("refresh_webdav_library", { id })),
 	refreshOnedriveLibrary: (id: string) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("refresh_onedrive_library", { id })),
+	refreshRemoteLibrary: (id: string) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("refresh_remote_library", { id })),
 	addLocalDataSource: (input: NewLocalDataSourceInput) => typedError<DataSourceDto, ErrorKind>(__TAURI_INVOKE("add_local_data_source", { input })),
 	addWebdavDataSource: (input: NewWebdavDataSourceInput) => typedError<DataSourceDto, ErrorKind>(__TAURI_INVOKE("add_webdav_data_source", { input })),
 	removeLibrary: (id: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("remove_library", { id })),
@@ -277,7 +283,14 @@ export type CharacterSourceDto = {
 	url: string,
 };
 
-export type DataSourceDetailDto = { kind: "local"; root_path: string } | { kind: "webdav"; endpoint: string; username: string; has_password: boolean; root_path: string | null } | { kind: "onedrive"; client_id: string; tenant_id: string; has_refresh_token: boolean; root_path: string | null; user_name: string | null; user_email: string | null };
+export type CloudConnectInput = {
+	provider: CloudProvider,
+	rootFolderId: string | null,
+};
+
+export type CloudProvider = "gdrive" | "dropbox";
+
+export type DataSourceDetailDto = { kind: "local"; root_path: string } | { kind: "webdav"; endpoint: string; username: string; has_password: boolean; root_path: string | null } | { kind: "onedrive"; client_id: string; tenant_id: string; has_refresh_token: boolean; root_path: string | null; user_name: string | null; user_email: string | null } | { kind: "gdrive"; account_id: string | null; client_id: string; has_refresh_token: boolean; root_path: string | null; root_folder_id: string | null; user_name: string | null; user_email: string | null } | { kind: "dropbox"; account_id: string | null; client_id: string; has_refresh_token: boolean; root_path: string | null; user_name: string | null; user_email: string | null } | { kind: "s3"; endpoint: string; bucket: string; region: string; has_credentials: boolean; root_path: string | null; virtual_host_style: boolean };
 
 /**  Data source DTO for the frontend. For WebDAV only whether a password is configured is returned, to avoid echoing plaintext secrets on the settings page. */
 export type DataSourceDto = {
@@ -603,6 +616,18 @@ export type ReflowTtsDto = {
 export type ReflowableReaderPreferencesDto = {
 	settings?: ReaderSettingsDto,
 	tts?: ReflowTtsDto,
+};
+
+export type S3SourceInput = {
+	name: string,
+	endpoint: string,
+	bucket: string,
+	region: string,
+	rootPath: string | null,
+	virtualHostStyle: boolean,
+	accessKeyId: string,
+	secretAccessKey: string,
+	sessionToken: string | null,
 };
 
 export type SaveLlmProviderInput = {

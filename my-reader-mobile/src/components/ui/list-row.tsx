@@ -31,23 +31,37 @@ const ROW_CLASS = "flex-row items-start justify-between gap-3 px-4 py-4"
 const ROW_ICON_SIZE = 22
 
 /** Cross-platform row icon — native system symbol or bundled artwork. */
+type ListRowIconTone = "onedrive" | "webdav"
+
+type ListRowIconBase = {
+  tone?: ListRowIconTone
+}
+
 export type ListRowIcon =
-  | {
+  | (ListRowIconBase & {
       ios: string
       android: string
       androidSource?: ImageSourcePropType
       iconSet?: "material"
-      tone?: "onedrive" | "webdav"
       imageSource?: never
-    }
-  | {
+      render?: never
+    })
+  | (ListRowIconBase & {
       imageSource: ImageSourcePropType
       ios?: never
       android?: never
       androidSource?: never
       iconSet?: never
-      tone?: never
-    }
+      render?: never
+    })
+  | (ListRowIconBase & {
+      render: (props: { size: number; color: string }) => ReactNode
+      ios?: never
+      android?: never
+      androidSource?: never
+      iconSet?: never
+      imageSource?: never
+    })
 
 function listRowTextStyle(color: string) {
   return Platform.OS === "android"
@@ -84,6 +98,56 @@ function rowSeparatorStyle(
     borderBottomColor: palette.borderStrong,
     borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
   }
+}
+
+function listRowIconTint(icon: ListRowIcon, palette: ThemePalette) {
+  if (icon.tone === "onedrive") return palette.brandOnedrive
+  if (icon.tone === "webdav") return palette.dataSourceWebdav
+  return palette.primary
+}
+
+function renderListRowIcon(icon: ListRowIcon, tintColor: string): ReactNode {
+  if (icon.render) return icon.render({ size: ROW_ICON_SIZE, color: tintColor })
+  if (icon.imageSource) {
+    return <Image source={icon.imageSource} style={styles.brandIcon} />
+  }
+  if (icon.iconSet === "material") {
+    return (
+      <MaterialIcons
+        name={icon.android as never}
+        size={ROW_ICON_SIZE}
+        color={tintColor}
+      />
+    )
+  }
+  if (Platform.OS === "android") {
+    if (icon.androidSource) {
+      return (
+        <Host matchContents pointerEvents="none">
+          <MaterialSymbolIcon
+            source={icon.androidSource}
+            size={ROW_ICON_SIZE}
+            tint={tintColor}
+          />
+        </Host>
+      )
+    }
+    return (
+      <MaterialIcons
+        name={icon.android as never}
+        size={ROW_ICON_SIZE}
+        color={tintColor}
+      />
+    )
+  }
+  return (
+    <SymbolView
+      name={{ ios: icon.ios, android: icon.android } as never}
+      resizeMode="scaleAspectFit"
+      size={ROW_ICON_SIZE}
+      tintColor={tintColor}
+    />
+  )
 }
 
 type ListRowProps = {
@@ -123,12 +187,7 @@ function ListRowIconView({
   palette: ThemePalette
   centered: boolean
 }) {
-  const tintColor =
-    icon.tone === "onedrive"
-      ? palette.brandOnedrive
-      : icon.tone === "webdav"
-        ? palette.dataSourceWebdav
-        : palette.primary
+  const tintColor = listRowIconTint(icon, palette)
 
   return (
     <View
@@ -136,38 +195,7 @@ function ListRowIconView({
       importantForAccessibility="no-hide-descendants"
       style={[styles.iconSlot, centered && styles.centeredIconSlot]}
     >
-      {icon.imageSource ? (
-        <Image source={icon.imageSource} style={styles.brandIcon} />
-      ) : icon.iconSet === "material" ? (
-        <MaterialIcons
-          name={icon.android as never}
-          size={ROW_ICON_SIZE}
-          color={tintColor}
-        />
-      ) : Platform.OS === "android" ? (
-        icon.androidSource ? (
-          <Host matchContents pointerEvents="none">
-            <MaterialSymbolIcon
-              source={icon.androidSource}
-              size={ROW_ICON_SIZE}
-              tint={tintColor}
-            />
-          </Host>
-        ) : (
-          <MaterialIcons
-            name={icon.android as never}
-            size={ROW_ICON_SIZE}
-            color={tintColor}
-          />
-        )
-      ) : (
-        <SymbolView
-          name={{ ios: icon.ios, android: icon.android } as never}
-          resizeMode="scaleAspectFit"
-          size={ROW_ICON_SIZE}
-          tintColor={tintColor}
-        />
-      )}
+      {renderListRowIcon(icon, tintColor)}
     </View>
   )
 }

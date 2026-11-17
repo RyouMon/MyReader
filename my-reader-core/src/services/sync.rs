@@ -8,10 +8,12 @@ use std::{
 use opendal::Operator;
 use tokio::sync::Mutex as AsyncMutex;
 
+use crate::infrastructure::storage::transport;
+
 use crate::{
     library::{self, LibraryContext},
     models::{
-        AppConfig, BookSummary, CalibreSyncReport, DataSource, Library, LibraryStorageConfig,
+        AppConfig, BookSummary, CalibreSyncReport, Library, LibraryStorageConfig,
         LibrarySyncOptions, LibrarySyncReport, LibrarySyncScope, MyReaderSyncReport,
         RemoteCredential, SidecarSyncMode, SidecarSyncReport, SyncFailureDisposition,
         SyncFailureKind, SyncScheduleSnapshot,
@@ -24,7 +26,6 @@ use crate::{
             SchedulerEvent, SchedulerPolicy, SchedulerState, SchedulerTransition, SyncExecution,
             SyncTiming,
         },
-        transport,
     },
     CoreError,
 };
@@ -354,35 +355,7 @@ impl SyncService {
             credential.ok_or_else(|| CoreError::Config("REMOTE_CREDENTIAL_REQUIRED".into()))?;
         let library_root = library.source_path.as_deref().unwrap_or_default();
 
-        match (source, credential) {
-            (
-                DataSource::Webdav {
-                    endpoint,
-                    username,
-                    root_path,
-                    ..
-                },
-                RemoteCredential::Webdav { password },
-            ) => Ok(LibraryStorageConfig::Webdav {
-                endpoint: endpoint.clone(),
-                username: username.clone(),
-                password: password.clone(),
-                root: Some(Self::scope_remote_root(root_path.as_deref(), library_root)?),
-            }),
-            (
-                DataSource::Onedrive { root_path, .. },
-                RemoteCredential::Onedrive { access_token },
-            ) => Ok(LibraryStorageConfig::Onedrive {
-                access_token: access_token.clone(),
-                root: Some(Self::scope_remote_root(root_path.as_deref(), library_root)?),
-            }),
-            (DataSource::Local { .. }, _) => {
-                Err(CoreError::Config("LIBRARY_DATASOURCE_TYPE_MISMATCH".into()))
-            }
-            _ => Err(CoreError::Config(
-                "DATASOURCE_CREDENTIAL_TYPE_MISMATCH".into(),
-            )),
-        }
+        crate::infrastructure::storage::resolve_remote_storage(source, credential, library_root)
     }
 
     pub async fn sync_sidecar(
@@ -916,10 +889,7 @@ fn metadata_version(metadata: &opendal::Metadata) -> String {
 }
 
 fn is_remote_storage(storage: &LibraryStorageConfig) -> bool {
-    matches!(
-        storage,
-        LibraryStorageConfig::Webdav { .. } | LibraryStorageConfig::Onedrive { .. }
-    )
+    !matches!(storage, LibraryStorageConfig::LocalDirect { .. })
 }
 
 async fn evict_stale_book_files(
@@ -1049,7 +1019,9 @@ mod tests {
     fn count_calibre_books(root: &Path) -> usize {
         let connection = rusqlite::Connection::open(root.join("metadata.db")).unwrap();
         connection
-            .query_row("SELECT COUNT(*) FROM books", [], |row| row.get(0))
+            .query_row("SELECT COUNT(*) FROM books", [], |row| row.get::<_, i64>(0))
+            .unwrap()
+            .try_into()
             .unwrap()
     }
 

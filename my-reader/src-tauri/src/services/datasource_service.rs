@@ -136,6 +136,7 @@ impl DataSourceService {
         )?;
         let mut webdav_accounts_to_delete = Vec::new();
         let mut is_onedrive = false;
+        let mut remote_accounts = Vec::new();
         for source in &config.data_sources {
             if source.id != id {
                 continue;
@@ -146,6 +147,18 @@ impl DataSourceService {
                     ..
                 } => webdav_accounts_to_delete.push(account.clone()),
                 DataSourceDetail::Onedrive { .. } => is_onedrive = true,
+                DataSourceDetail::Gdrive {
+                    credential_account: Some(account),
+                    ..
+                }
+                | DataSourceDetail::Dropbox {
+                    credential_account: Some(account),
+                    ..
+                }
+                | DataSourceDetail::S3 {
+                    credential_account: Some(account),
+                    ..
+                } => remote_accounts.push(account.clone()),
                 _ => {}
             }
         }
@@ -156,6 +169,9 @@ impl DataSourceService {
 
         for account in webdav_accounts_to_delete {
             credentials::delete_webdav_password(&account)?;
+        }
+        for account in remote_accounts {
+            credentials::delete_remote_credentials(&account)?;
         }
         if is_onedrive {
             let _ = credentials::delete_onedrive_refresh_token(id);
@@ -194,6 +210,33 @@ impl DataSourceService {
             })
             .collect(),
         )
+    }
+
+    pub async fn create_remote_folder(
+        data_source_id: &str,
+        parent_path: &str,
+        name: &str,
+        config_path: &Path,
+        config: &AppConfig,
+    ) -> Result<WebdavFolderEntry, AppError> {
+        let source = config
+            .data_sources
+            .iter()
+            .find(|source| source.id == data_source_id)
+            .ok_or_else(|| AppError::NotFound(format!("DATASOURCE_NOT_FOUND: {data_source_id}")))?;
+        let credential = crate::storage::core_remote_credential(source).await?;
+        let entry = my_reader_core::api::datasource::DataSourceService::create_directory(
+            config_path,
+            data_source_id,
+            parent_path,
+            name,
+            &credential,
+        )
+        .await?;
+        Ok(WebdavFolderEntry {
+            name: entry.name,
+            path: entry.path,
+        })
     }
 
     // Keep the existing platform contract; group parameters only in a deliberate API migration.

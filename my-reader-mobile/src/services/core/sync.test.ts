@@ -3,15 +3,81 @@ jest.mock("my-reader-core", () => ({
     "../../../modules/my-reader-core/src/generated/my_reader_core_ffi",
   ).CoreFfiError,
   syncRunLibrary: jest.fn(),
+  syncResolveLibraryStorage: jest.fn(),
 }))
 
-import { CoreFfiError, syncRunLibrary } from "my-reader-core"
+import {
+  CoreFfiError,
+  syncRunLibrary,
+  syncResolveLibraryStorage,
+} from "my-reader-core"
 import { DataIntegrityError } from "@/src/errors"
 import { classifySyncFailure } from "@/src/domain/sync/failure"
 
-import { syncLibraryData } from "./sync"
+import {
+  syncLibraryData,
+  resolveLibraryStorage,
+  toCoreLibraryStorage,
+  type LibraryStorageConfig,
+} from "./sync"
 
 describe("core sync adapter", () => {
+  it.each<LibraryStorageConfig>([
+    {
+      kind: "gdrive",
+      accessToken: "access",
+      root: "/Books",
+      rootFolderId: "folder",
+    },
+    { kind: "dropbox", accessToken: "access", root: "/Books" },
+    {
+      kind: "s3",
+      endpoint: "https://storage.example",
+      bucket: "books",
+      region: "us-east-1",
+      root: "/Books",
+      virtualHostStyle: true,
+      accessKeyId: "key",
+      secretAccessKey: " secret ",
+      sessionToken: "session",
+    },
+  ])("preserves scoped $kind storage through the native sync boundary", (storage) => {
+    const wire = toCoreLibraryStorage(storage)
+    jest.mocked(syncResolveLibraryStorage).mockReturnValue(wire)
+    const input = {
+      configPath: "/config.json",
+      libraryId: "library",
+      localRootPath: "/cache",
+      credential: { kind: storage.kind, accessToken: "access" },
+    }
+    expect(resolveLibraryStorage(input)).toEqual(storage)
+    expect(syncResolveLibraryStorage).toHaveBeenCalledWith(
+      input.configPath,
+      input.libraryId,
+      input.localRootPath,
+      input.credential,
+    )
+  })
+
+  it.each([
+    "gdrive",
+    "dropbox",
+    "s3",
+  ])("rejects an incomplete %s storage record", (kind) => {
+    jest.mocked(syncResolveLibraryStorage).mockReturnValue({ kind })
+    expect(() =>
+      resolveLibraryStorage({
+        configPath: "/config.json",
+        libraryId: "library",
+        localRootPath: "/cache",
+      }),
+    ).toThrow(
+      kind === "s3"
+        ? "S3_STORAGE_CONFIG_INVALID"
+        : "OAUTH_ACCESS_TOKEN_REQUIRED",
+    )
+  })
+
   it("should preserve data integrity error when native library sync rejects", async () => {
     const error = new CoreFfiError.DataIntegrity(
       "Remote object change.am is corrupt",

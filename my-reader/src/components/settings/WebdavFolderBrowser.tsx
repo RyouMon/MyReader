@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import { FolderBrowser } from "@/components/settings/FolderBrowser"
 import { api } from "@/lib/tauri-api"
-import type { WebdavFolderEntry } from "@/lib/tauri-specta"
+import { useRemoteFolderBrowser } from "@/hooks/useRemoteFolderBrowser"
 
 interface WebdavFolderBrowserProps {
   dataSourceId: string
@@ -33,39 +32,15 @@ export function WebdavFolderBrowser({
   embedded,
 }: WebdavFolderBrowserProps) {
   const { t } = useTranslation()
-  const [currentPath, setCurrentPath] = useState("/")
-  const [folders, setFolders] = useState<WebdavFolderEntry[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchFolders = useCallback(
-    async (path: string) => {
-      setLoading(true)
-      setError(null)
-      try {
-        const result = await api.webdavListFolders(dataSourceId, path)
-        setFolders(result)
-      } catch {
-        setError(t("addLibraryForm.webdavBrowserError"))
-        setFolders([])
-      } finally {
-        setLoading(false)
-      }
-    },
-    [dataSourceId, t],
-  )
-
-  useEffect(() => {
-    if (open) {
-      setCurrentPath("/")
-      fetchFolders("/")
-    }
-  }, [open, fetchFolders])
-
-  function navigateTo(path: string) {
-    setCurrentPath(path)
-    fetchFolders(path)
-  }
+  const {
+    currentPath,
+    folders,
+    loading,
+    error,
+    navigateTo,
+    refresh,
+    createFolder,
+  } = useRemoteFolderBrowser(dataSourceId, open, api.webdavListFolders)
 
   return (
     <FolderBrowser
@@ -81,13 +56,13 @@ export function WebdavFolderBrowser({
       errorMessage={t("addLibraryForm.webdavBrowserError")}
       selectLabel={selectLabel ?? t("addLibraryForm.webdavBrowserSelect")}
       onNavigate={navigateTo}
-      onRefresh={() => fetchFolders(currentPath)}
+      onRefresh={refresh}
       onSelect={onSelect}
       onCancel={onCancel}
       cancelLabel={cancelLabel}
       selectingLabel={selectingLabel}
       closeOnSelect={closeOnSelect}
-      createSubdirectory={createSubdirectory}
+      onCreateDirectory={createSubdirectory ? createFolder : undefined}
       embedded={embedded}
     />
   )

@@ -4,3 +4,4 @@ pub mod app;
 pub mod calibre;
 pub mod config;
 pub mod ipc;
+pub mod s3;

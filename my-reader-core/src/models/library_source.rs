@@ -8,6 +8,9 @@ pub enum LibrarySourceType {
     Local,
     Webdav,
     Onedrive,
+    Gdrive,
+    Dropbox,
+    S3,
     Unknown(String),
 }
 
@@ -17,12 +20,18 @@ impl LibrarySourceType {
             Self::Local => "local",
             Self::Webdav => "webdav",
             Self::Onedrive => "onedrive",
+            Self::Gdrive => "gdrive",
+            Self::Dropbox => "dropbox",
+            Self::S3 => "s3",
             Self::Unknown(value) => value,
         }
     }
 
     pub fn is_remote(&self) -> bool {
-        matches!(self, Self::Webdav | Self::Onedrive)
+        matches!(
+            self,
+            Self::Webdav | Self::Onedrive | Self::Gdrive | Self::Dropbox | Self::S3
+        )
     }
 }
 
@@ -32,6 +41,9 @@ impl From<String> for LibrarySourceType {
             "local" => Self::Local,
             "webdav" => Self::Webdav,
             "onedrive" => Self::Onedrive,
+            "gdrive" => Self::Gdrive,
+            "dropbox" => Self::Dropbox,
+            "s3" => Self::S3,
             _ => Self::Unknown(value),
         }
     }

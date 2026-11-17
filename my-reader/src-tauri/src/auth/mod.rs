@@ -4,6 +4,7 @@
 //! - [`credentials`]: secure credential storage based on `keyring`.
 //! - [`onedrive`]: OneDrive OAuth2 flow and token management.
 
+pub(crate) mod cloud;
 pub(crate) mod credentials;
 pub mod onedrive;
 
@@ -11,7 +12,8 @@ pub mod onedrive;
 #[doc(hidden)]
 pub mod test_support {
     pub use super::credentials::{
-        read_onedrive_refresh_token, read_webdav_password, save_webdav_password, use_test_backend,
-        webdav_password_account, MemoryBackend,
+        read_onedrive_refresh_token, read_remote_credential_field, read_remote_credentials,
+        read_webdav_password, save_webdav_password, use_test_backend, webdav_password_account,
+        MemoryBackend,
     };
 }

@@ -10,5 +10,6 @@ pub(crate) mod llm;
 pub(crate) mod narration;
 pub(crate) mod publication_analysis;
 pub(crate) mod reading;
+pub(crate) mod storage;
 pub(crate) mod sync;
 pub(crate) mod tts;

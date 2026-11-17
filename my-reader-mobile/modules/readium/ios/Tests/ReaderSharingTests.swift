@@ -18,11 +18,12 @@ extension ReaderWindowTests {
       let context = AppContext(config: AppContextConfig(documentDirectory: folder, cacheDirectory: folder, appGroups: nil))
       let module = SharingModule(appContext: context)
       let function = try #require(module.definition().functions["shareAsync"] as? AsyncFunctionDefinition<(URL, SharingOptions, Promise), URL, Void>)
-      let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 800))
+      let window = try ReaderWindowTests.window()
+      let previousRoot = window.rootViewController
       let presenter = SharePresenter()
       window.rootViewController = presenter
       window.makeKeyAndVisible()
-      defer { window.isHidden = true }
+      defer { window.rootViewController = previousRoot }
       var options = SharingOptions()
       options.additionalUrls = [files[1]]
       let promise = Promise(appContext: context, resolver: { _ in }, rejecter: { _ in })

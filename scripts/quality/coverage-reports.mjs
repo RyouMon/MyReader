@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process"
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
+import * as ts from "typescript"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 
@@ -18,6 +19,7 @@ export const inputs = [
   ["android", "android-coverage-report/readium-unit.info", ""],
   ["android", "android-coverage-report/readium-device.info", ""],
   ["android", "android-coverage-report/sharing.info", ""],
+  ["android", "android-coverage-report/google-authorization.info", ""],
 ]
 
 export const coverageGroupKeys = ["js", "rust", "swift", "android"]
@@ -122,9 +124,11 @@ export function normalizeCoverage(
       )
     } else if (group === "swift" || group === "android") {
       if (
-        !file.startsWith(
-          `my-reader-mobile/modules/readium/${group === "swift" ? "ios" : "android/src/main"}/`,
-        )
+        !(group === "swift"
+          ? file.startsWith("my-reader-mobile/modules/readium/ios/")
+          : /^my-reader-mobile\/modules\/(?:readium|google-authorization)\/android\/src\/main\//.test(
+              file,
+            ))
       )
         continue
       if (!/\.(swift|kt|java)$/.test(file)) continue
@@ -223,6 +227,61 @@ export function requireChangedCoverage(summary, groups = coverageGroupKeys) {
   }
 }
 
+function rustDeclarationOnly(source) {
+  let remaining = source
+    .replace(/\/\/.*$/gm, "")
+    .replace(/#\[[\s\S]*?\]\s*/g, "")
+    .replace(/\b(?:pub(?:\([^)]*\))?\s+)?(?:mod|use)\s+[^;]+;/g, "")
+
+  const declaration =
+    /\b(?:pub(?:\([^)]*\))?\s+)?(?:struct|enum|union)\s+[A-Za-z_][A-Za-z0-9_]*\b/g
+  let match
+  while ((match = declaration.exec(remaining))) {
+    const opening = remaining.indexOf("{", declaration.lastIndex)
+    const semicolon = remaining.indexOf(";", declaration.lastIndex)
+    if (opening < 0 || (semicolon >= 0 && semicolon < opening)) {
+      if (semicolon >= 0) {
+        remaining =
+          remaining.slice(0, match.index) + remaining.slice(semicolon + 1)
+        declaration.lastIndex = match.index
+      }
+      continue
+    }
+    let depth = 0
+    let end = opening
+    for (; end < remaining.length; end++) {
+      if (remaining[end] === "{") depth++
+      else if (remaining[end] === "}" && --depth === 0) break
+    }
+    if (depth !== 0) break
+    remaining = remaining.slice(0, match.index) + remaining.slice(end + 1)
+    declaration.lastIndex = match.index
+  }
+
+  return !remaining.trim()
+}
+
+function typescriptDeclarationOnly(source, file) {
+  const sourceFile = ts.createSourceFile(
+    file,
+    source,
+    ts.ScriptTarget.Latest,
+    false,
+    file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  )
+  return sourceFile.statements.every((statement) => {
+    if (ts.isImportDeclaration(statement))
+      return statement.importClause?.isTypeOnly === true
+    if (
+      ts.isInterfaceDeclaration(statement) ||
+      ts.isTypeAliasDeclaration(statement)
+    )
+      return true
+    if (ts.isExportDeclaration(statement)) return statement.isTypeOnly === true
+    return ts.isEmptyStatement(statement)
+  })
+}
+
 export function requireChangedSources(reported, changes, readSource) {
   for (const [file, added] of changes) {
     if (!added.size || reported.has(file)) continue
@@ -253,24 +312,19 @@ export function requireChangedSources(reported, changes, readSource) {
     )
       continue
     const source = original.replace(/^\s*\/\/.*$/gm, "")
-    // Declaration-only barrels have no executable instructions to instrument.
-    if (
-      file.endsWith(".rs") &&
-      !source
-        .replace(
-          /\b(?:pub(?:\([^)]*\))?\s+)?(?:mod\s+\w+|use\s+[\w:*,{}\s]+);/g,
-          "",
-        )
-        .trim()
-    )
+    // Declaration-only Rust modules have no executable instructions to instrument.
+    if (file.endsWith(".rs") && rustDeclarationOnly(source)) continue
+    // TypeScript interfaces, aliases and type-only imports emit no JavaScript.
+    if (/\.[cm]?[jt]sx?$/.test(file) && typescriptDeclarationOnly(source, file))
       continue
-    if (
-      /\.[cm]?[jt]sx?$/.test(file) &&
+    const reExportOnly =
       /^(?:\s*export\s+(?:type\s+)?(?:\{[\w,\s]+\}|\*(?:\s+as\s+\w+)?)\s+from\s+["'][^"'\n]+["']\s*;?\s*)+$/.test(
         source,
+      ) ||
+      /^\s*import\s+\w+\s+from\s+["'][^"'\n]+["']\s*;?\s*export\s+default\s+\w+\s*;?\s*$/.test(
+        source,
       )
-    )
-      continue
+    if (/\.[cm]?[jt]sx?$/.test(file) && reExportOnly) continue
     throw new Error(`Changed product source has no coverage report: ${file}`)
   }
 }

@@ -26,8 +26,10 @@ import {
 } from "@/src/domain/library/hooks/library-actions"
 import { pickLocalLibraryDirectory } from "@/src/domain/library/local-library-picker"
 import type { DataSource } from "@/src/domain/types"
-import { useAddOneDriveDataSource } from "@/src/features/onedrive/hooks/use-add-onedrive-data-source"
-import { OneDriveAddingEmptyState } from "@/src/features/onedrive/onedrive-adding-empty-state"
+import {
+  cloudSourceIcon,
+  type CloudProvider,
+} from "@/src/features/cloud/cloud-data-source"
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 import { createSaveAction } from "@/src/navigation/toolbar-action-helpers"
 import { useAppStore } from "@/src/store/app-store"
@@ -42,7 +44,12 @@ function libraryOperation(value: string | undefined): LibraryOperation {
 
 function remoteSources(dataSources: DataSource[]): DataSource[] {
   return dataSources.filter(
-    (source) => source.type === "webdav" || source.type === "onedrive",
+    (source) =>
+      source.type === "webdav" ||
+      source.type === "onedrive" ||
+      source.type === "gdrive" ||
+      source.type === "dropbox" ||
+      source.type === "s3",
   )
 }
 
@@ -173,9 +180,6 @@ export function AddLibraryLocationScreen() {
   const sources = remoteSources(useAppStore((state) => state.dataSources))
   const { finishAddingLibrary, setLocalFolder, setPendingImport } =
     useAddLibraryFlow()
-  const { addOneDriveDataSource, busy: addingOneDrive } =
-    useAddOneDriveDataSource()
-
   useEffect(() => {
     if (!pendingShareUri) return
     setPendingImport({
@@ -205,9 +209,14 @@ export function AddLibraryLocationScreen() {
     }
   }
 
-  async function handleAddOneDrive() {
-    const source = await addOneDriveDataSource()
-    if (source) router.push(sourceBrowserPath(source, operation))
+  function handleAddCloud(provider: CloudProvider) {
+    router.push({
+      pathname: `/settings/add-library/${provider}` as never,
+      params: {
+        from: "add-library",
+        libraryAction: operation,
+      } as never,
+    })
   }
 
   const { options, toolbar } = useScreenHeader({
@@ -217,18 +226,6 @@ export function AddLibraryLocationScreen() {
         : t("addLibrary.selectLibraryLocation"),
     backTitle: t("back"),
   })
-
-  if (addingOneDrive) {
-    return (
-      <>
-        <Stack.Screen options={options} />
-        {toolbar}
-        <Screen>
-          <OneDriveAddingEmptyState />
-        </Screen>
-      </>
-    )
-  }
 
   return (
     <>
@@ -263,13 +260,30 @@ export function AddLibraryLocationScreen() {
                 <ListRow
                   key={source.id}
                   testID={`add-library-data-source-${source.id}`}
-                  title={source.name}
+                  title={
+                    source.type === "onedrive" ||
+                    source.type === "gdrive" ||
+                    source.type === "dropbox"
+                      ? source.displayName || source.name
+                      : source.name
+                  }
+                  detail={
+                    source.type === "onedrive" ||
+                    source.type === "gdrive" ||
+                    source.type === "dropbox"
+                      ? (source.email ?? undefined)
+                      : source.type === "webdav"
+                        ? source.endpoint
+                        : source.type === "s3"
+                          ? `${source.endpoint}/${source.bucket}`
+                          : undefined
+                  }
                   icon={
-                    ENTITY_LIST_ROW_ICONS[
-                      source.type === "onedrive"
-                        ? "onedriveDataSource"
-                        : "webdavDataSource"
-                    ]
+                    source.type === "webdav"
+                      ? ENTITY_LIST_ROW_ICONS.webdavDataSource
+                      : source.type === "onedrive"
+                        ? ENTITY_LIST_ROW_ICONS.onedriveDataSource
+                        : ENTITY_LIST_ROW_ICONS[cloudSourceIcon(source.type)]
                   }
                   onPress={() =>
                     router.push(sourceBrowserPath(source, operation))
@@ -301,7 +315,33 @@ export function AddLibraryLocationScreen() {
               testID="add-library-add-onedrive"
               title={t("addLibraryFlow.addOnedrive.title")}
               icon={ENTITY_LIST_ROW_ICONS.onedriveDataSource}
-              onPress={() => void handleAddOneDrive()}
+              onPress={() =>
+                router.push({
+                  pathname: "/settings/add-library/onedrive",
+                  params: {
+                    from: "add-library",
+                    libraryAction: operation,
+                  },
+                })
+              }
+            />
+            <ListRow
+              testID="add-library-add-gdrive"
+              title={t("addLibraryFlow.addGdrive.title")}
+              icon={ENTITY_LIST_ROW_ICONS.gdriveDataSource}
+              onPress={() => handleAddCloud("gdrive")}
+            />
+            <ListRow
+              testID="add-library-add-dropbox"
+              title={t("addLibraryFlow.addDropbox.title")}
+              icon={ENTITY_LIST_ROW_ICONS.dropboxDataSource}
+              onPress={() => handleAddCloud("dropbox")}
+            />
+            <ListRow
+              testID="add-library-add-s3"
+              title={t("addLibraryFlow.addS3.title")}
+              icon={ENTITY_LIST_ROW_ICONS.s3DataSource}
+              onPress={() => handleAddCloud("s3")}
               isLast
             />
           </SectionCard>

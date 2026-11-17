@@ -29,7 +29,7 @@ flowchart TB
     Shared["Shared TypeScript"]
     Core["Rust Core"]
     Local[("Local data and caches")]
-    Sources["Library sources<br/>Local directories · WebDAV · OneDrive"]
+    Sources["Library sources<br/>Local directories · WebDAV · OneDrive · Google Drive · Dropbox · S3"]
     AI["LLM / TTS services"]
     DUI --> Shared
     MUI --> Shared
@@ -89,6 +89,13 @@ UI and reading surfaces remain platform-specific. Directory access, OAuth intera
 audio focus, playback, windows and application lifecycle belong to the platform. Core receives only
 the temporary credentials needed for a request and persists credential references. The mobile Core
 binding and Readium bridge are separate boundaries for business operations and reader capabilities.
+
+Library data sources all pass through Core's `StorageService` and OpenDAL transport. Provider-specific
+details are limited to source configuration, credential resolution and transport construction, while
+directory browsing, file transfer, presigned downloads and synchronization reuse the same path
+isolation, timeout and retry policies. Desktop and mobile adapters own authorization, platform secure
+storage and type conversion; adding a provider requires Core transport, credential mapping and a
+platform form instead of another platform-specific HTTP stack.
 
 ## 3. Data Ownership
 

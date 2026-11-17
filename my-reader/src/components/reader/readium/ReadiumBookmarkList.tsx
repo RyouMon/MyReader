@@ -17,6 +17,7 @@ export type ReadiumBookmarkRow = {
   locatorKey: string
   locator: ReaderLocator
   chapterTitle?: string
+  displayPosition?: number
   createdAt: number
 }
 
@@ -38,7 +39,8 @@ function bookmarkDisplay(
   t: TFunction,
 ) {
   const title = bookmark.chapterTitle?.trim() || bookmark.locator.title?.trim()
-  const position = bookmark.locator.locations?.position
+  const position =
+    bookmark.displayPosition ?? bookmark.locator.locations?.position
   const hasPosition = typeof position === "number" && position > 0
   const isPage =
     bookmark.locator.type.toLowerCase() === "application/pdf" ||

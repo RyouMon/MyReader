@@ -17,6 +17,8 @@ export type BookItem = {
   readableFormats?: string[]
   preferredFormat?: string | null
   coverUri?: BookCoverUri
+  /** Stable, non-secret identity used while a remote cover URL is resolved. */
+  coverKey?: string
   progress?: number
   path?: string
   hasCover?: boolean

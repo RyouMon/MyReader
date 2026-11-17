@@ -8,7 +8,6 @@ pub mod exchange;
 pub mod persistence;
 pub mod scheduler;
 pub mod storage;
-pub mod transport;
 
 pub use error::SyncError;
 

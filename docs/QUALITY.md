@@ -135,7 +135,7 @@ fork PR 即使没有状态写权限也执行相同校验。某组失败后仍生
 - Rust：Core / FFI 与 Tauri 的 LLVM 行覆盖率；Tauri 在 macOS / Windows 运行完整原生测试并合并命中。
 - Swift：完整 `Readium-Unit-Tests` scheme，插桩 Readium 和 ExpoSharing，
   从 Xcode 生成的 LLVM profile 导出 LCOV。运行入口见 [原生测试](../my-reader-mobile/modules/readium/README.md#native-tests)。
-- Android：Readium 与 patched ExpoSharing 的完整 JVM 测试，以及模拟器上的 Readium 设备测试。
+- Android：Readium、Google Authorization 与 patched ExpoSharing 的完整 JVM 测试，以及模拟器上的 Readium 设备测试。
   使用 Android Gradle Plugin 的 JaCoCo 任务，合并同一源码行的 JVM / 设备命中，不重复计数。
 
 Swift / Android 暂不代表 book-transition、security-scoped-bookmarks 或生成的 Core binding。
@@ -156,7 +156,8 @@ fork PR 仍运行测试并展示 Actions 摘要，受 GitHub 只读令牌限制�
 `pull_request_target` 执行外部 PR 代码。报告制品缺失始终失败；增量低于 80% 阻断合入，不改写已有基线。
 
 `native-coverage.py` 的 `prepare-swift` 和 `swift-llvm` 子命令用于准备插桩 scheme、导出 Xcode
-profile；`jacoco` 子命令导出指定 Java / Kotlin 源码根目录的行命中。
+profile；前者也更新 CocoaPods 生成的测试宿主，使其使用 iOS 27 SDK 要求的 Scene 生命周期。
+`jacoco` 子命令导出指定 Java / Kotlin 源码根目录的行命中。
 Android 采集通过 `scripts/quality/android-coverage.init.gradle` 显式开启，不改变日常构建和渲染。
 CI 中的完整采集命令以 `.github/workflows/quality.yml` 为准。
 

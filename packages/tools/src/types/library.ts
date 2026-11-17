@@ -30,5 +30,11 @@ export function libraryTypeOf(
 }
 
 export function isRemoteLibrarySourceType(sourceType?: string | null): boolean {
-  return sourceType === "webdav" || sourceType === "onedrive"
+  return (
+    sourceType === "webdav" ||
+    sourceType === "onedrive" ||
+    sourceType === "gdrive" ||
+    sourceType === "dropbox" ||
+    sourceType === "s3"
+  )
 }

@@ -255,7 +255,10 @@
         "decrementLabel": "减少封面生成并发",
         "incrementLabel": "增加封面生成并发"
       }
-    }
+    },
+    "gdriveDetail": "管理 Google Drive 数据源",
+    "dropboxDetail": "管理 Dropbox 数据源",
+    "s3Detail": "管理 S3 数据源"
   },
   "reader": {
     "cannotOpen": "无法打开书籍",
@@ -881,7 +884,9 @@
     "webdavMkcolFailed": "WebDAV MKCOL 失败: {{status}} {{path}}",
     "localFileNotExist": "本地文件不存在: {{path}}",
     "basicAuthNotSupported": "当前环境不支持 Basic Auth 编码",
-    "syncPathCannotBeEmpty": "同步路径不能为空"
+    "syncPathCannotBeEmpty": "同步路径不能为空",
+    "remoteSourceNotFound": "它可能已被移除，请返回数据源列表。",
+    "remoteCredentialsMissing": "请重新登录或更新数据源凭据。"
   },
   "notifications": {
     "libraryAdded": "成功添加书库：{{name}}",
@@ -910,5 +915,116 @@
     "restoreBookmark": "恢复书库授权",
     "accessDirectory": "访问书库目录",
     "refreshBookmark": "刷新书库授权"
+  },
+  "addLibraryFlow": {
+    "addGdrive": {
+      "title": "添加 Google Drive 数据源"
+    },
+    "addDropbox": {
+      "title": "添加 Dropbox 数据源"
+    },
+    "addS3": {
+      "title": "添加 S3 数据源"
+    }
+  },
+  "cloud": {
+    "sources": {
+      "title": "{{provider}} 数据源",
+      "add": "添加数据源",
+      "emptyTitle": "暂无 {{provider}} 数据源",
+      "emptyDetail": "请先点击下方按钮添加 {{provider}} 数据源。"
+    },
+    "auth": {
+      "alreadyAdded": {
+        "title": "账号已添加",
+        "detail": "此 {{provider}} 账号已作为 {{name}} 连接。"
+      },
+      "failed": {
+        "title": "认证失败"
+      },
+      "accountMismatch": {
+        "title": "账号不一致",
+        "detail": "请使用已为 {{email}} 配置的账号登录。"
+      },
+      "reauthenticate": "重新登录"
+    },
+    "form": {
+      "addTitle": "添加 {{provider}} 数据源",
+      "editTitle": "编辑 {{provider}} 数据源",
+      "save": "保存",
+      "saving": "保存中",
+      "signIn": "登录并继续",
+      "reauthenticate": "重新登录",
+      "addFailed": "添加失败",
+      "updateFailed": "保存失败",
+      "connectionFailed": "连接测试失败",
+      "clientIdLabel": "Google OAuth Client ID",
+      "clientIdPlaceholder": "Use the client ID registered for this app",
+      "appKeyLabel": "Dropbox App Key",
+      "appKeyPlaceholder": "Paste the Dropbox App Key",
+      "appKeyRequired": "Enter the Dropbox App Key.",
+      "openDropboxConsole": "Dropbox App Console",
+      "rootPathLabel": "根路径（可选）",
+      "nameLabel": "名称",
+      "endpointLabel": "服务地址",
+      "bucketLabel": "存储桶",
+      "regionLabel": "区域",
+      "accessKeyLabel": "访问密钥 ID",
+      "secretKeyLabel": "访问密钥",
+      "sessionTokenLabel": "会话令牌（可选）",
+      "virtualHostStyle": "使用虚拟主机样式的存储桶地址",
+      "endpointRequired": "请输入 S3 地址。",
+      "bucketRequired": "请输入 S3 存储桶。",
+      "regionRequired": "请输入 S3 区域。",
+      "accessKeyRequired": "请输入访问密钥 ID。",
+      "secretKeyRequired": "请输入访问密钥。",
+      "appKeyHint": "Create a Dropbox app and paste its App Key here. The redirect URI is configured by the app."
+    },
+    "browser": {
+      "title": "选择 {{provider}} 书库",
+      "validating": "正在验证目录",
+      "reading": {
+        "title": "正在读取目录",
+        "detail": "正在从 {{provider}} 获取目录列表。"
+      },
+      "readFailed": {
+        "title": "读取失败"
+      },
+      "loadFailed": {
+        "title": "浏览失败",
+        "message": "{{provider}} 浏览器遇到意外错误，请重试。"
+      },
+      "credentialsUnavailable": {
+        "title": "{{provider}} 凭据不可用",
+        "detail": "请重新登录或更新数据源凭据。"
+      },
+      "empty": {
+        "title": "空目录",
+        "detail": "当前目录下没有子目录。"
+      }
+    },
+    "detail": {
+      "title": "数据源详情",
+      "type": "类型",
+      "displayName": "显示名称",
+      "email": "邮箱",
+      "endpoint": "服务地址",
+      "bucket": "存储桶",
+      "region": "区域",
+      "rootPath": "根路径",
+      "authStatus": "认证状态",
+      "authenticated": "已认证",
+      "notAuthenticated": "未认证",
+      "addedAt": "添加时间"
+    },
+    "delete": {
+      "title": "删除 {{provider}} 数据源",
+      "confirm": "确认删除「{{name}}」？",
+      "cancel": "取消",
+      "confirmButton": "删除",
+      "failed": "无法删除",
+      "action": "删除数据源"
+    },
+    "edit": "编辑数据源"
   }
 }

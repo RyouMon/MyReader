@@ -4,6 +4,7 @@ pub mod annotation_test;
 pub mod book_file_test;
 pub mod book_test;
 pub mod bookmark_test;
+pub mod cloud_source_test;
 pub mod download_test;
 pub mod favorite_test;
 pub mod library_test;

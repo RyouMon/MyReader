@@ -1,14 +1,14 @@
 import { errorMessage as presentError } from "@/lib/error-presentation"
-import { appendRemotePathSegment } from "@my-reader/tools/remote-path"
 import {
   ArrowUp,
   ChevronRight,
   Folder,
+  FolderPlus,
   Loader2,
   MoreHorizontal,
   RefreshCw,
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { Fragment, type ReactNode, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { StatusNotice } from "@/components/common/StatusNotice"
 
@@ -35,7 +35,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { FormTextField } from "@/components/common/FormTextField"
+import { RemoteFolderCreationForm } from "./RemoteFolderCreationForm"
 import { cn } from "@/lib/utils"
 
 export interface FolderBrowserFolder {
@@ -63,7 +63,7 @@ export interface FolderBrowserProps {
   cancelLabel?: string
   selectingLabel?: string
   closeOnSelect?: boolean
-  createSubdirectory?: boolean
+  onCreateDirectory?: (name: string) => Promise<FolderBrowserFolder>
   embedded?: boolean
 }
 
@@ -87,38 +87,36 @@ export function FolderBrowser({
   cancelLabel,
   selectingLabel,
   closeOnSelect = true,
-  createSubdirectory = false,
+  onCreateDirectory,
   embedded = false,
 }: FolderBrowserProps) {
   const { t } = useTranslation()
-  const [newDirectoryName, setNewDirectoryName] = useState("")
+  const [hasDraft, setHasDraft] = useState(false)
   const [selecting, setSelecting] = useState(false)
+  const [creating, setCreating] = useState(false)
   const [selectError, setSelectError] = useState<string | null>(null)
+
+  const busy = creating || selecting
+  const selectionDisabled = loading || busy || Boolean(error) || hasDraft
 
   const pathParts =
     currentPath === "/" ? [] : currentPath.split("/").filter(Boolean)
   const canGoBack = currentPath !== "/"
 
-  const trimmedDirectoryName = newDirectoryName.trim()
-  const selectedPath = trimmedDirectoryName
-    ? appendRemotePathSegment(currentPath, trimmedDirectoryName)
-    : currentPath
-  const newDirectoryNameInvalid =
-    trimmedDirectoryName.length > 0 && selectedPath === null
-
   useEffect(() => {
     if (open) {
-      setNewDirectoryName("")
+      setHasDraft(false)
       setSelectError(null)
     }
   }, [open])
 
   function resetSelection() {
-    setNewDirectoryName("")
+    setHasDraft(false)
     setSelectError(null)
   }
 
   function navigateTo(path: string) {
+    if (busy) return
     resetSelection()
     onNavigate(path)
   }
@@ -139,11 +137,11 @@ export function FolderBrowser({
   }
 
   async function handleConfirm() {
-    if (!selectedPath) return
+    if (selectionDisabled) return
     setSelecting(true)
     setSelectError(null)
     try {
-      await onSelect(selectedPath)
+      await onSelect(currentPath)
       if (closeOnSelect) onOpenChange(false)
     } catch (error) {
       setSelectError(presentError(error))
@@ -174,11 +172,15 @@ export function FolderBrowser({
       <FolderBrowserToolbar
         pathParts={pathParts}
         canGoBack={canGoBack}
-        loading={loading}
+        loading={loading || busy}
         onRefresh={onRefresh}
         navigateTo={navigateTo}
         handleGoBack={handleGoBack}
         handleBreadcrumbClick={handleBreadcrumbClick}
+        canCreateFolder={Boolean(onCreateDirectory)}
+        onNewFolder={() => setHasDraft(true)}
+        hasDraft={hasDraft}
+        error={Boolean(error)}
       />
 
       <FolderBrowserList
@@ -192,32 +194,20 @@ export function FolderBrowser({
         onRefresh={onRefresh}
         embedded={embedded}
         navigateTo={navigateTo}
+        draft={
+          hasDraft && onCreateDirectory ? (
+            <RemoteFolderCreationForm
+              key={`${open}:${currentPath}`}
+              currentPath={currentPath}
+              disabled={loading || selecting}
+              onCreate={onCreateDirectory}
+              onCreated={resetSelection}
+              onBusyChange={setCreating}
+              onCancel={resetSelection}
+            />
+          ) : null
+        }
       />
-
-      {createSubdirectory && (
-        <div className="mt-3">
-          <FormTextField
-            id="remote-library-folder-name"
-            value={newDirectoryName}
-            onChange={(event) => setNewDirectoryName(event.target.value)}
-            placeholder={t("library.defaultMyreaderName")}
-            autoComplete="off"
-            label={t("addLibraryForm.newRemoteFolder")}
-            slotProps={{
-              htmlInput: {
-                spellCheck: false,
-                "data-testid": "remote-library-folder-name",
-              },
-            }}
-            helperText={
-              newDirectoryNameInvalid
-                ? t("addLibraryForm.newRemoteFolderInvalid")
-                : t("addLibraryForm.newRemoteFolderDetail")
-            }
-            error={newDirectoryNameInvalid}
-          />
-        </div>
-      )}
 
       {selectError ? (
         <StatusNotice tone="error" className="mt-3">
@@ -228,14 +218,14 @@ export function FolderBrowser({
       <DialogFooter className="mt-4 shrink-0 flex-col-reverse gap-3 border-t border-border pt-3 sm:flex-row sm:items-start sm:justify-between">
         <span className="flex-1 min-w-0 text-[13px] text-ink-2 whitespace-normal break-words">
           {t("addLibraryForm.selectedPath", {
-            path: selectedPath ?? currentPath,
+            path: currentPath,
           })}
         </span>
         <div className="flex gap-2 shrink-0">
           {!embedded ? (
             <button
               type="button"
-              disabled={selecting}
+              disabled={busy}
               onClick={onCancel ?? (() => onOpenChange(false))}
               className={cn(
                 "inline-flex items-center justify-center h-9 px-4 rounded-md text-sm font-medium",
@@ -250,7 +240,7 @@ export function FolderBrowser({
           ) : null}
           <button
             type="button"
-            disabled={loading || selecting || newDirectoryNameInvalid}
+            disabled={selectionDisabled}
             onClick={() => void handleConfirm()}
             className={cn(
               "inline-flex items-center justify-center gap-2 h-9 px-4 rounded-md text-sm font-medium",
@@ -283,13 +273,13 @@ export function FolderBrowser({
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
-        if (!nextOpen && selecting) return
+        if (!nextOpen && busy) return
         onOpenChange(nextOpen)
       }}
     >
       <DialogContent
         className="w-full max-w-[calc(100vw-2rem)] sm:max-w-[480px] grid-cols-1 p-5 gap-0 border-border bg-bg-secondary"
-        showCloseButton={!selecting}
+        showCloseButton={!selecting && !creating}
       >
         {content}
       </DialogContent>
@@ -305,6 +295,10 @@ function FolderBrowserToolbar({
   navigateTo,
   handleGoBack,
   handleBreadcrumbClick,
+  onNewFolder,
+  canCreateFolder,
+  hasDraft,
+  error,
 }: {
   pathParts: string[]
   canGoBack: boolean
@@ -313,6 +307,10 @@ function FolderBrowserToolbar({
   navigateTo: (path: string) => void
   handleGoBack: () => void
   handleBreadcrumbClick: (index: number) => void
+  onNewFolder: () => void
+  canCreateFolder: boolean
+  hasDraft: boolean
+  error: boolean
 }) {
   const { t } = useTranslation()
   const ITEMS_TO_DISPLAY = 3
@@ -398,11 +396,8 @@ function FolderBrowserToolbar({
             const isLast = actualIndex === pathParts.length - 1
 
             return (
-              <>
-                <BreadcrumbItem
-                  key={actualIndex}
-                  className="min-w-0 overflow-hidden"
-                >
+              <Fragment key={actualIndex}>
+                <BreadcrumbItem className="min-w-0 overflow-hidden">
                   {isLast ? (
                     <BreadcrumbPage dir="ltr" className="truncate text-ink-1">
                       {part}
@@ -423,18 +418,31 @@ function FolderBrowserToolbar({
                   )}
                 </BreadcrumbItem>
                 {!isLast && <BreadcrumbSeparator key={`sep-${actualIndex}`} />}
-              </>
+              </Fragment>
             )
           })}
         </BreadcrumbList>
       </Breadcrumb>
 
+      {canCreateFolder && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          disabled={loading || hasDraft || error}
+          onClick={onNewFolder}
+          aria-label={t("remoteFolder.create")}
+          title={t("remoteFolder.create")}
+        >
+          <FolderPlus />
+        </Button>
+      )}
       {onRefresh && (
         <Button
           type="button"
           variant="ghost"
           size="icon-sm"
-          disabled={loading}
+          disabled={loading || hasDraft}
           onClick={onRefresh}
           aria-label={t("common.refresh")}
           title={t("common.refresh")}
@@ -457,6 +465,7 @@ function FolderBrowserList({
   onRefresh,
   embedded,
   navigateTo,
+  draft,
 }: Pick<
   FolderBrowserProps,
   | "title"
@@ -468,7 +477,7 @@ function FolderBrowserList({
   | "errorMessage"
   | "onRefresh"
   | "embedded"
-> & { navigateTo: (path: string) => void }) {
+> & { navigateTo: (path: string) => void; draft: ReactNode }) {
   const { t } = useTranslation()
   const folderListClassName = cn(
     "overflow-y-auto rounded-xl border border-border bg-bg-secondary p-1.5",
@@ -512,7 +521,7 @@ function FolderBrowserList({
             </button>
           )}
         </div>
-      ) : folders.length === 0 ? (
+      ) : folders.length === 0 && !draft ? (
         <div
           className={cn(
             folderListStateClassName,
@@ -524,6 +533,7 @@ function FolderBrowserList({
         </div>
       ) : (
         <ul className={folderListClassName} aria-label={title}>
+          {draft ? <li className="list-none">{draft}</li> : null}
           {folders.map((folder, index) => (
             <li key={folder.path} className="list-none">
               <button

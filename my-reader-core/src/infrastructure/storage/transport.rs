@@ -3,13 +3,13 @@ use std::{
     time::Duration,
 };
 
-use super::SyncError;
 use crate::models::LibraryStorageConfig;
+use crate::CoreError;
 use http::{header, Method, Request, Response, StatusCode};
 use opendal::{
     layers::RetryLayer,
     raw::percent_encode_path,
-    services::{Fs, Onedrive, Webdav},
+    services::{Dropbox, Fs, Gdrive, Onedrive, Webdav, S3},
     Buffer, Error, ErrorKind, HttpBody, HttpTransport, HttpTransporter, OperationContext, Operator,
 };
 
@@ -87,19 +87,19 @@ impl HttpTransport for OneDriveHttpClient {
     }
 }
 
-fn sync_error(message: impl Into<String>) -> SyncError {
-    SyncError::Sync(message.into())
+fn storage_error(message: impl Into<String>) -> CoreError {
+    CoreError::Storage(message.into())
 }
 
-fn non_empty(value: &str, name: &str) -> Result<String, SyncError> {
+fn non_empty(value: &str, name: &str) -> Result<String, CoreError> {
     let value = value.trim();
     if value.is_empty() {
-        return Err(sync_error(format!("{name} is missing")));
+        return Err(storage_error(format!("{name} is missing")));
     }
     Ok(value.to_owned())
 }
 
-pub fn build_storage_operator(config: &LibraryStorageConfig) -> Result<Operator, SyncError> {
+pub fn build_storage_operator(config: &LibraryStorageConfig) -> Result<Operator, CoreError> {
     build_storage_operator_with_timeouts(
         config,
         REMOTE_CONNECT_TIMEOUT,
@@ -110,7 +110,7 @@ pub fn build_storage_operator(config: &LibraryStorageConfig) -> Result<Operator,
 
 pub(crate) fn build_storage_operator_with_upload_progress(
     config: &LibraryStorageConfig,
-) -> Result<(Operator, Option<RemoteUploadProgress>), SyncError> {
+) -> Result<(Operator, Option<RemoteUploadProgress>), CoreError> {
     let upload_progress =
         matches!(config, LibraryStorageConfig::Onedrive { .. }).then(RemoteUploadProgress::default);
     let operator = build_storage_operator_with_timeouts_and_progress(
@@ -126,7 +126,7 @@ pub(crate) fn build_storage_operator_with_upload_progress(
 pub(crate) fn build_book_upload_operator(
     config: &LibraryStorageConfig,
     upload_progress: Option<RemoteUploadProgress>,
-) -> Result<Option<Operator>, SyncError> {
+) -> Result<Option<Operator>, CoreError> {
     let LibraryStorageConfig::Onedrive { access_token, root } = config else {
         return Ok(None);
     };
@@ -150,7 +150,7 @@ fn build_storage_operator_with_timeouts(
     connect_timeout: Duration,
     read_timeout: Duration,
     request_timeout: Duration,
-) -> Result<Operator, SyncError> {
+) -> Result<Operator, CoreError> {
     build_storage_operator_with_timeouts_and_progress(
         config,
         connect_timeout,
@@ -166,7 +166,7 @@ fn build_storage_operator_with_timeouts_and_progress(
     read_timeout: Duration,
     request_timeout: Duration,
     upload_progress: Option<RemoteUploadProgress>,
-) -> Result<Operator, SyncError> {
+) -> Result<Operator, CoreError> {
     match config {
         LibraryStorageConfig::LocalDirect { root } => {
             Operator::new(Fs::default().root(&non_empty(root, "Local storage root")?))
@@ -198,6 +198,77 @@ fn build_storage_operator_with_timeouts_and_progress(
             let client = remote_http_client(connect_timeout, read_timeout, request_timeout)?;
             build_onedrive_operator(access_token, root.as_deref(), client, upload_progress, true)
         }
+        LibraryStorageConfig::Gdrive {
+            access_token,
+            root,
+            root_folder_id,
+        } => {
+            let client = remote_http_client(connect_timeout, read_timeout, request_timeout)?;
+            let transport = super::gdrive::GdriveTransport {
+                inner: client,
+                root_folder_id: root_folder_id.clone(),
+            };
+            let root = match root_folder_id {
+                Some(_) => format!(
+                    "/{}/{}",
+                    super::gdrive::SOURCE_ROOT,
+                    root.as_deref().unwrap_or_default().trim_matches('/')
+                ),
+                None => root.clone().unwrap_or_else(|| "/".into()),
+            };
+            let builder = Gdrive::default()
+                .access_token(&non_empty(access_token, "Google Drive access token")?)
+                .root(&root);
+            Ok(Operator::new(builder)?.with_context(
+                OperationContext::new().with_http_transport(HttpTransporter::new(transport)),
+            ))
+        }
+        LibraryStorageConfig::Dropbox { access_token, root } => {
+            let root = root.as_deref().unwrap_or("/");
+            let builder = Dropbox::default()
+                .access_token(&non_empty(access_token, "Dropbox access token")?)
+                .root(root);
+            let client = remote_http_client(connect_timeout, read_timeout, request_timeout)?;
+            let transport = super::dropbox::DropboxTransport {
+                inner: client,
+                root: root.into(),
+            };
+            Ok(Operator::new(builder)?.with_context(
+                OperationContext::new().with_http_transport(HttpTransporter::new(transport)),
+            ))
+        }
+        LibraryStorageConfig::S3 {
+            endpoint,
+            bucket,
+            region,
+            root,
+            virtual_host_style,
+            access_key_id,
+            secret_access_key,
+            session_token,
+        } => {
+            let mut builder = S3::default()
+                .disable_config_load()
+                .disable_ec2_metadata()
+                .endpoint(&non_empty(endpoint, "S3 endpoint")?)
+                .bucket(&non_empty(bucket, "S3 bucket")?)
+                .region(&non_empty(region, "S3 region")?)
+                .root(root.as_deref().unwrap_or("/"))
+                .access_key_id(&non_empty(access_key_id, "S3 access key")?)
+                .secret_access_key(&non_empty(secret_access_key, "S3 secret key")?);
+            if *virtual_host_style {
+                builder = builder.enable_virtual_host_style();
+            }
+            if let Some(token) = session_token
+                .as_deref()
+                .filter(|value| !value.trim().is_empty())
+            {
+                builder = builder.session_token(token);
+            }
+            let client = remote_http_client(connect_timeout, read_timeout, request_timeout)?;
+            Ok(Operator::new(builder)?
+                .with_context(OperationContext::new().with_http_transport(client)))
+        }
     }
 }
 
@@ -207,7 +278,7 @@ fn build_onedrive_operator(
     client: HttpTransporter,
     upload_progress: Option<RemoteUploadProgress>,
     retry_operations: bool,
-) -> Result<Operator, SyncError> {
+) -> Result<Operator, CoreError> {
     let mut builder =
         Onedrive::default().access_token(&non_empty(access_token, "OneDrive access token")?);
     if let Some(root) = root.filter(|value| !value.trim().is_empty()) {
@@ -410,14 +481,14 @@ fn remote_http_client(
     connect_timeout: Duration,
     read_timeout: Duration,
     request_timeout: Duration,
-) -> Result<HttpTransporter, SyncError> {
+) -> Result<HttpTransporter, CoreError> {
     crate::infrastructure::http::client_builder()
         .connect_timeout(connect_timeout)
         .read_timeout(read_timeout)
         .timeout(request_timeout)
         .build()
         .map(crate::infrastructure::http::storage_transport)
-        .map_err(|error| sync_error(format!("Initialize remote HTTP client failed: {error}")))
+        .map_err(|error| storage_error(format!("Initialize remote HTTP client failed: {error}")))
 }
 
 #[cfg(test)]

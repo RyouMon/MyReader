@@ -41,7 +41,10 @@ import {
   readerAnnotationMatchesSelection,
   sortReaderAnnotations,
 } from "@my-reader/tools/reader-annotations"
-import type { ReaderLocator } from "@my-reader/tools/reader-toc"
+import {
+  positionIndexForStoredLocator,
+  type ReaderLocator,
+} from "@my-reader/tools/reader-toc"
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router"
 import {
   useCallback,
@@ -1153,14 +1156,18 @@ export default function ReaderScreen() {
     stopTts()
   }, [stopTts])
   const bookmarkItems = useMemo<ReaderBookmarkItem[]>(() => {
+    const resolvePosition = isReflowReady
+      ? positionIndexForStoredLocator
+      : positionIndexForLocator
     return bookmarks.map((bookmark) => {
-      const positionIndex = positionIndexForLocator(positions, bookmark.locator)
+      const positionIndex = resolvePosition(positions, bookmark.locator)
       const position = positionIndex + 1
       const chapterTitle =
         resolveReaderToc({
           toc,
           positions,
           locator: bookmark.locator,
+          currentPage: positionIndex,
         }).title?.trim() || bookmark.locator.title?.trim()
       const title = isReflowReady
         ? chapterTitle || t("reader.bookmarks.position", { position })

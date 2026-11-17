@@ -160,20 +160,97 @@ pub enum DataSource {
         #[serde(alias = "created_at")]
         created_at: Option<f64>,
     },
+    Gdrive {
+        id: String,
+        name: String,
+        #[serde(default = "enabled_by_default")]
+        enabled: bool,
+        client_id: String,
+        #[serde(default)]
+        account_id: Option<String>,
+        #[serde(default)]
+        display_name: Option<String>,
+        #[serde(default)]
+        email: Option<String>,
+        #[serde(default)]
+        root_path: Option<String>,
+        #[serde(default)]
+        has_refresh_token: bool,
+        #[serde(default)]
+        root_folder_id: Option<String>,
+        #[serde(default)]
+        credential_reference: Option<String>,
+        #[serde(default)]
+        readonly: Option<bool>,
+        #[serde(default)]
+        created_at: Option<f64>,
+    },
+    Dropbox {
+        id: String,
+        name: String,
+        #[serde(default = "enabled_by_default")]
+        enabled: bool,
+        client_id: String,
+        #[serde(default)]
+        account_id: Option<String>,
+        #[serde(default)]
+        display_name: Option<String>,
+        #[serde(default)]
+        email: Option<String>,
+        #[serde(default)]
+        root_path: Option<String>,
+        #[serde(default)]
+        has_refresh_token: bool,
+        #[serde(default)]
+        credential_reference: Option<String>,
+        #[serde(default)]
+        readonly: Option<bool>,
+        #[serde(default)]
+        created_at: Option<f64>,
+    },
+    S3 {
+        id: String,
+        name: String,
+        #[serde(default = "enabled_by_default")]
+        enabled: bool,
+        endpoint: String,
+        bucket: String,
+        region: String,
+        #[serde(default)]
+        root_path: Option<String>,
+        #[serde(default)]
+        virtual_host_style: bool,
+        #[serde(default)]
+        has_credentials: bool,
+        #[serde(default)]
+        credential_reference: Option<String>,
+        #[serde(default)]
+        readonly: Option<bool>,
+        #[serde(default)]
+        created_at: Option<f64>,
+    },
 }
 
 impl DataSource {
     pub fn id(&self) -> &str {
         match self {
-            Self::Local { id, .. } | Self::Webdav { id, .. } | Self::Onedrive { id, .. } => id,
+            Self::Local { id, .. }
+            | Self::Webdav { id, .. }
+            | Self::Onedrive { id, .. }
+            | Self::Gdrive { id, .. }
+            | Self::Dropbox { id, .. }
+            | Self::S3 { id, .. } => id,
         }
     }
 
     pub fn name(&self) -> &str {
         match self {
-            Self::Local { name, .. } | Self::Webdav { name, .. } | Self::Onedrive { name, .. } => {
-                name
-            }
+            Self::Local { name, .. }
+            | Self::Webdav { name, .. }
+            | Self::Onedrive { name, .. }
+            | Self::Gdrive { name, .. }
+            | Self::Dropbox { name, .. }
+            | Self::S3 { name, .. } => name,
         }
     }
 
@@ -182,6 +259,20 @@ impl DataSource {
             Self::Local { .. } => "local",
             Self::Webdav { .. } => "webdav",
             Self::Onedrive { .. } => "onedrive",
+            Self::Gdrive { .. } => "gdrive",
+            Self::Dropbox { .. } => "dropbox",
+            Self::S3 { .. } => "s3",
+        }
+    }
+
+    pub fn readonly(&self) -> bool {
+        match self {
+            Self::Local { readonly, .. }
+            | Self::Webdav { readonly, .. }
+            | Self::Onedrive { readonly, .. }
+            | Self::Gdrive { readonly, .. }
+            | Self::Dropbox { readonly, .. }
+            | Self::S3 { readonly, .. } => *readonly == Some(true),
         }
     }
 
@@ -190,6 +281,9 @@ impl DataSource {
             Self::Local { .. } => LibrarySourceType::Local,
             Self::Webdav { .. } => LibrarySourceType::Webdav,
             Self::Onedrive { .. } => LibrarySourceType::Onedrive,
+            Self::Gdrive { .. } => LibrarySourceType::Gdrive,
+            Self::Dropbox { .. } => LibrarySourceType::Dropbox,
+            Self::S3 { .. } => LibrarySourceType::S3,
         }
     }
 }

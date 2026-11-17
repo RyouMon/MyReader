@@ -12,6 +12,7 @@ const WEBDAV_KEYRING_SERVICE: &str = "com.myreader.webdav";
 const ONEDRIVE_KEYRING_SERVICE: &str = "com.myreader.onedrive";
 const TTS_KEYRING_SERVICE: &str = "com.myreader.tts";
 const LLM_KEYRING_SERVICE: &str = "com.myreader.llm";
+const REMOTE_KEYRING_SERVICE: &str = "com.myreader.remote";
 
 /// Credential type used to unify keyring operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -20,6 +21,7 @@ pub enum Service {
     Onedrive,
     Tts,
     Llm,
+    Remote,
 }
 
 impl Service {
@@ -29,6 +31,7 @@ impl Service {
             Service::Onedrive => ONEDRIVE_KEYRING_SERVICE,
             Service::Tts => TTS_KEYRING_SERVICE,
             Service::Llm => LLM_KEYRING_SERVICE,
+            Service::Remote => REMOTE_KEYRING_SERVICE,
         }
     }
 
@@ -38,6 +41,7 @@ impl Service {
             Service::Onedrive => "OneDrive refresh token",
             Service::Tts => "TTS 凭据",
             Service::Llm => "LLM 凭据",
+            Service::Remote => "远程存储凭据",
         }
     }
 }
@@ -192,6 +196,36 @@ pub fn read_llm_credential(account: &str) -> Result<Option<String>, AppError> {
 
 pub fn delete_llm_credential(account: &str) -> Result<(), AppError> {
     store().delete(Service::Llm, account)
+}
+
+pub fn save_remote_credentials(
+    account: &str,
+    fields: &std::collections::BTreeMap<String, String>,
+) -> Result<(), AppError> {
+    let payload = serde_json::to_string(fields)
+        .map_err(|error| AppError::Credential(format!("序列化远程凭据失败: {error}")))?;
+    store().save(Service::Remote, account, &payload)
+}
+
+pub fn read_remote_credentials(
+    account: &str,
+) -> Result<std::collections::BTreeMap<String, String>, AppError> {
+    let payload = store()
+        .read(Service::Remote, account)?
+        .ok_or_else(|| AppError::Credential("REMOTE_CREDENTIAL_REQUIRED".into()))?;
+    serde_json::from_str(&payload)
+        .map_err(|error| AppError::Credential(format!("Invalid remote credential: {error}")))
+}
+
+pub fn read_remote_credential_field(
+    account: &str,
+    field: &str,
+) -> Result<Option<String>, AppError> {
+    Ok(read_remote_credentials(account)?.get(field).cloned())
+}
+
+pub fn delete_remote_credentials(account: &str) -> Result<(), AppError> {
+    store().delete(Service::Remote, account)
 }
 
 #[cfg(any(test, debug_assertions))]

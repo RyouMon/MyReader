@@ -450,5 +450,12 @@
   "passwordField": {
     "show": "顯示密碼",
     "hide": "隱藏密碼"
+  },
+  "remoteFolder": {
+    "name": "資料夾名稱",
+    "create": "新增資料夾",
+    "creating": "正在建立…",
+    "invalid": "請輸入單一資料夾名稱，不含 / 或 \\。",
+    "exists": "已存在同名檔案或資料夾。"
   }
 }

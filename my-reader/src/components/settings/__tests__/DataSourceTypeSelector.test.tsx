@@ -11,7 +11,7 @@ describe("DataSourceTypeSelector", () => {
     )
 
     const typeIcons = container.querySelectorAll("button > div:first-child svg")
-    expect(typeIcons).toHaveLength(3)
+    expect(typeIcons).toHaveLength(6)
     for (const icon of typeIcons) {
       expect(icon).toHaveAttribute("aria-hidden", "true")
       expect(icon).toHaveAttribute("focusable", "false")

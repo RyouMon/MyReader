@@ -409,12 +409,13 @@ jobs:
           arch: x86_64
           disable-animations: true
           working-directory: my-reader-mobile/android
-          script: ./gradlew -I ../tests/native-sharing/android.init.gradle -I ../../scripts/quality/android-coverage.init.gradle :my-reader-readium:createDebugUnitTestCoverageReport :expo-sharing:createDebugUnitTestCoverageReport :my-reader-readium:createDebugAndroidTestCoverageReport -PreactNativeArchitectures=x86_64 --console=plain
+          script: ./gradlew -I ../tests/native-sharing/android.init.gradle -I ../../scripts/quality/android-coverage.init.gradle :my-reader-readium:createDebugUnitTestCoverageReport :google-authorization:createDebugUnitTestCoverageReport :expo-sharing:createDebugUnitTestCoverageReport :my-reader-readium:createDebugAndroidTestCoverageReport -PreactNativeArchitectures=x86_64 --console=plain
       - name: Export Android compiler coverage
         run: |
           python3 scripts/quality/native-coverage.py jacoco my-reader-mobile/modules/readium/android/build/reports/coverage/test/debug/report.xml reports/native/android/readium-unit.info my-reader-mobile/modules/readium/android/src/main/java
           python3 scripts/quality/native-coverage.py jacoco my-reader-mobile/modules/readium/android/build/reports/coverage/androidTest/debug/connected/report.xml reports/native/android/readium-device.info my-reader-mobile/modules/readium/android/src/main/java
           python3 scripts/quality/native-coverage.py jacoco my-reader-mobile/node_modules/expo-sharing/android/build/reports/coverage/test/debug/report.xml reports/native/android/sharing.info my-reader-mobile/node_modules/expo-sharing/android/src/main/java
+          python3 scripts/quality/native-coverage.py jacoco my-reader-mobile/modules/google-authorization/android/build/reports/coverage/test/debug/report.xml reports/native/android/google-authorization.info my-reader-mobile/modules/google-authorization/android/src/main/java
       - uses: actions/upload-artifact@v4
         if: always()
         with:

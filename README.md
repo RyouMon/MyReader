@@ -18,7 +18,7 @@
 - 支持移动端与桌面端
 - 支持多书库管理
 - 支持 Calibre 书库
-- 支持从 OneDrive、WebDAV 导入书库（更多平台接入中）
+- 支持从 OneDrive、WebDAV、Google Drive、Dropbox 和 S3 兼容对象存储导入书库
 - 支持 EPUB、PDF、CBZ 阅读格式（更多格式开发中）
 - 阅读数据跨设备同步
 
@@ -34,9 +34,9 @@
 | 本地目录 | 已支持，平台有差异 | 桌面端可使用本地目录；iOS / iPadOS 支持应用内部书库和持久授权的外部目录；Android 目前仅支持应用内部书库 |
 | WebDAV | 已支持 | 桌面端、iOS / iPadOS、Android |
 | OneDrive | 已支持 | 桌面端、iOS / iPadOS、Android |
-| Google Drive | 待规划 | 尚未实现，接入方案与平台范围未定 |
-| Dropbox | 待规划 | 尚未实现，接入方案与平台范围未定 |
-| S3 兼容对象存储 | 待规划 | 尚未实现，接入方案与平台范围未定 |
+| Google Drive | 已支持 | 桌面端、iOS / iPadOS、Android；使用 OAuth 授权 |
+| Dropbox | 已支持 | 桌面端、iOS / iPadOS、Android；使用 OAuth 授权 |
+| S3 兼容对象存储 | 已支持 | 桌面端、iOS / iPadOS、Android；使用访问密钥，可配置路径或虚拟主机风格 |
 
 ## 阅读格式支持
 

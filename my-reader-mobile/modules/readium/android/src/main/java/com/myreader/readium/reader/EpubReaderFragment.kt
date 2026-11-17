@@ -35,6 +35,8 @@ import com.myreader.readium.Types.TtsEngineConfigRecord
 import com.myreader.readium.Types.TtsSynthesisCompletionRecord
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.readium.r2.navigator.DecorableNavigator
 import org.readium.r2.navigator.Selection
@@ -79,8 +81,21 @@ class EpubReaderFragment : VisualReaderFragment() {
     private var pendingPreferences: EpubPreferences? = null
     private var firstPageLoaded = CompletableDeferred<Unit>()
 
-    override suspend fun awaitNavigatorReady() {
+    public override suspend fun awaitNavigatorReady() {
       firstPageLoaded.await()
+      settleTextLocator(model.initialLocation)
+    }
+
+    suspend fun settleTextLocator(locator: Locator?) {
+      awaitViewportLayoutStable()
+      if (locator == null || locator.text.highlight.isNullOrBlank()) return
+      // Initial layout and cross-resource paging can finish after Readium
+      // accepts a locator. Verify the text anchor once the viewport settles.
+      if (!isTtsLocatorVisible(locator)) {
+        currentCoroutineContext().ensureActive()
+        navigatorFragment.go(locator, animated = false)
+        awaitViewportLayoutStable()
+      }
     }
 
     private lateinit var userPreferences: EpubPreferences

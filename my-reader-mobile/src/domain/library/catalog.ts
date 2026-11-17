@@ -76,6 +76,10 @@ export function mapListRowsToBookItems(
       hasCover,
       timestamp: row.timestamp,
       coverUri,
+      coverKey:
+        isRemoteSourceType(library.sourceType) && row.path && hasCover
+          ? `${library.id}:${row.path.replace(/\\/g, "/")}/cover.jpg:${row.timestamp ?? ""}`
+          : undefined,
     } satisfies BookItem
   })
 }
@@ -312,7 +316,11 @@ async function ensureRemoteCalibreMetadata(
   const source = dataSources.find(
     (candidate) =>
       candidate.id === library.dataSourceId &&
-      (candidate.type === "webdav" || candidate.type === "onedrive"),
+      (candidate.type === "webdav" ||
+        candidate.type === "onedrive" ||
+        candidate.type === "gdrive" ||
+        candidate.type === "dropbox" ||
+        candidate.type === "s3"),
   )
   if (!source) return library
 

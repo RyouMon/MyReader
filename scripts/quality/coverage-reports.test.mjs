@@ -127,6 +127,51 @@ test("multiline declarations need no counters but executable code still requires
   }
 })
 
+test("route wrappers that import and re-export a screen need no counters", () => {
+  const file =
+    "my-reader-mobile/src/app/(add-library)/settings/add-library/onedrive.tsx"
+  const changes = new Map([[file, new Set([1, 3])]])
+  assert.doesNotThrow(() =>
+    requireChangedSources(
+      new Set(),
+      changes,
+      () =>
+        'import OneDriveAddDataSourceScreen from "@/src/features/onedrive/onedrive-add-data-source-screen"\n\nexport default OneDriveAddDataSourceScreen',
+    ),
+  )
+  assert.throws(
+    () =>
+      requireChangedSources(
+        new Set(),
+        changes,
+        () =>
+          'import OneDriveAddDataSourceScreen from "@/src/features/onedrive/onedrive-add-data-source-screen"\n\nexport default function Route() { return <OneDriveAddDataSourceScreen /> }',
+      ),
+    /no coverage report/,
+  )
+})
+
+test("TypeScript type-only modules need no counters but runtime declarations do", () => {
+  const file = "my-reader-mobile/src/services/remote/backend.ts"
+  const changes = new Map([[file, new Set([1, 3])]])
+  const declarations = `import type { File as ExpoFile } from "expo-file-system"
+
+export type DownloadRequest = { remotePath: string }
+export interface RemoteBackend { readBytes(path: string): Promise<Uint8Array> }`
+  assert.doesNotThrow(() =>
+    requireChangedSources(new Set(), changes, () => declarations),
+  )
+  assert.throws(
+    () =>
+      requireChangedSources(
+        new Set(),
+        changes,
+        () => `${declarations}\n\nexport const backendVersion = 1`,
+      ),
+    /no coverage report/,
+  )
+})
+
 test("Rust module-only changes beside existing types need no executable counters", () => {
   const file = "my-reader/src-tauri/src/commands/mod.rs"
   assert.doesNotThrow(() =>
@@ -135,6 +180,36 @@ test("Rust module-only changes beside existing types need no executable counters
       new Map([[file, new Set([3])]]),
       () => "pub struct Source { pub path: String }\n\npub mod narration;",
     ),
+  )
+
+  const models = "my-reader-core/src/models/storage.rs"
+  const declarations = `use serde::{Deserialize, Serialize};
+
+#[derive(Debug)]
+pub struct RemoteFileStat {
+  pub etag: String,
+  pub size: u64,
+}
+
+pub enum RemoteCredential {
+  Webdav { password: String },
+  S3 { access_key_id: String },
+}`
+  assert.doesNotThrow(() =>
+    requireChangedSources(
+      new Set(),
+      new Map([[models, new Set([5, 10])]]),
+      () => declarations,
+    ),
+  )
+  assert.throws(
+    () =>
+      requireChangedSources(
+        new Set(),
+        new Map([[models, new Set([5, 10, 15])]]),
+        () => `${declarations}\n\npub fn load() {}`,
+      ),
+    /no coverage report/,
   )
 })
 
@@ -301,6 +376,28 @@ test("native reports exclude generated code, tests and upstream libraries", () =
         sharingPatch,
       ),
     /No swift source/,
+  )
+})
+
+test("Android authorization instructions contribute to the native coverage gate", () => {
+  const file =
+    "my-reader-mobile/modules/google-authorization/android/src/main/java/GoogleAuthorizationModule.kt"
+  const normalized = normalizeCoverage(
+    parseLcov(record(file)),
+    "android",
+    "",
+    sharingPatch,
+  )
+  assert.deepEqual([...normalized.keys()], [file])
+  assert.deepEqual(
+    summarizeChanges(normalized, new Map([[file, new Set([10, 11])]])),
+    { changed: 2, covered: 1 },
+  )
+  assert.ok(
+    inputs.some(
+      ([, path]) =>
+        path === "android-coverage-report/google-authorization.info",
+    ),
   )
 })
 

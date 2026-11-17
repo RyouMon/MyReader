@@ -188,6 +188,7 @@ final class ReadiumView: ExpoView {
           fontFamilyDeclarationsReceived,
           bounds.width > 0,
           bounds.height > 0,
+          viewController != nil,
           !hasLoadedBook else {
       return
     }
@@ -201,7 +202,7 @@ final class ReadiumView: ExpoView {
   }
 
   private func loadBook(url: String, location: RLocator?) {
-    guard let rootViewController = UIApplication.shared.delegate?.window??.rootViewController else { return }
+    guard let rootViewController = viewController ?? window?.rootViewController else { return }
 
     loadedFileUrl = url
     let readiumLocator = location

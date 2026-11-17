@@ -13,8 +13,9 @@ stable UI-facing DTOs.
 - `src/NativeMyReaderCore.ts` is the generated React Native codegen specification.
 - `build/` and `android/src/main/jniLibs/` contain local Rust binaries and are ignored by Git.
 
-Do not edit generated sources by hand. After changing an exported Rust function or record, regenerate
-and build the applicable platform from the repository root:
+Do not edit generated sources by hand. After changing shared Core or FFI Rust code, rebuild the
+applicable platform from the repository root. Exported API changes also require the binding
+regeneration included in these commands:
 
 ```bash
 pnpm core:build-bindings:ios
@@ -41,7 +42,8 @@ Run the shared business and FFI tests separately:
 cargo test -p my-reader-core -p my-reader-core-ffi
 ```
 
-Then compile the consuming native app:
+Then compile the consuming native app. A direct `xcodebuild` uses the existing vendored
+XCFramework; it does not rebuild Rust sources:
 
 ```bash
 cd my-reader-mobile/ios

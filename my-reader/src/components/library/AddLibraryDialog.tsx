@@ -4,7 +4,14 @@ import { appendRemotePathSegment } from "@my-reader/tools/remote-path"
 import type { DataSource } from "@my-reader/tools/types/data-source"
 import { join } from "@tauri-apps/api/path"
 import { open as openDirectory } from "@tauri-apps/plugin-dialog"
-import { CircleHelp, FolderOpen, Library, Loader2, Plus } from "lucide-react"
+import {
+  CircleHelp,
+  FolderOpen,
+  Library,
+  Loader2,
+  Plus,
+  type LucideIcon,
+} from "lucide-react"
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
@@ -18,12 +25,16 @@ import { LocalStorageIcon } from "@/components/common/LocalStorageIcon"
 import { OneDriveCloudIcon } from "@/components/common/OneDriveCloudIcon"
 import { SectionHeader } from "@/components/common/SectionHeader"
 import { WebdavServerIcon } from "@/components/common/WebdavServerIcon"
+import { DropboxIcon } from "@/components/common/DropboxIcon"
+import { GoogleDriveIcon } from "@/components/common/GoogleDriveIcon"
+import { S3StorageIcon } from "@/components/common/S3StorageIcon"
 import { StatusNotice } from "@/components/common/StatusNotice"
 import {
   AddDataSourceForm,
   type CreatableDataSourceType,
 } from "@/components/settings/forms/AddDataSourcePanel"
 import { OnedriveFolderBrowser } from "@/components/settings/OnedriveFolderBrowser"
+import { RemoteFolderBrowser } from "@/components/settings/RemoteFolderBrowser"
 import { WebdavFolderBrowser } from "@/components/settings/WebdavFolderBrowser"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogFooter } from "@/components/ui/dialog"
@@ -53,6 +64,49 @@ type FlowStep =
     }
   | { kind: "remoteBrowser"; operation: LibraryOperation; source: DataSource }
   | { kind: "nameLibrary"; location: CreationLocation }
+
+function dataSourceIcon(source: DataSource): LucideIcon {
+  switch (source.type) {
+    case "webdav":
+      return WebdavServerIcon
+    case "onedrive":
+      return OneDriveCloudIcon
+    case "gdrive":
+      return GoogleDriveIcon
+    case "dropbox":
+      return DropboxIcon
+    case "s3":
+      return S3StorageIcon
+    default:
+      return LocalStorageIcon
+  }
+}
+
+function dataSourceTitle(source: DataSource): string {
+  if (
+    source.type === "onedrive" ||
+    source.type === "gdrive" ||
+    source.type === "dropbox"
+  ) {
+    return source.displayName || source.name
+  }
+  return source.name
+}
+
+function dataSourceDescription(source: DataSource): string | undefined {
+  switch (source.type) {
+    case "webdav":
+      return source.endpoint
+    case "onedrive":
+    case "gdrive":
+    case "dropbox":
+      return source.email || undefined
+    case "s3":
+      return `${source.endpoint}/${source.bucket}`
+    default:
+      return undefined
+  }
+}
 
 interface AddLibraryDialogProps {
   open: boolean
@@ -223,6 +277,8 @@ export function AddLibraryDialog({
       onOpenChange: handleDialogOpenChange,
       embedded: true,
       closeOnSelect: false,
+      createSubdirectory:
+        browserStep.operation === "create" && !browserStep.source.readonly,
       selectingLabel: t("addLibraryFlow.opening"),
       onSelect: (path: string) => {
         if (browserStep.operation === "create") {
@@ -237,10 +293,17 @@ export function AddLibraryDialog({
       },
     }
 
-    return browserStep.source.type === "webdav" ? (
-      <WebdavFolderBrowser {...browserProps} />
-    ) : (
-      <OnedriveFolderBrowser {...browserProps} />
+    if (browserStep.source.type === "webdav") {
+      return <WebdavFolderBrowser {...browserProps} />
+    }
+    if (browserStep.source.type === "onedrive") {
+      return <OnedriveFolderBrowser {...browserProps} />
+    }
+    return (
+      <RemoteFolderBrowser
+        {...browserProps}
+        sourceType={browserStep.source.type}
+      />
     )
   }
 
@@ -361,7 +424,6 @@ export function AddLibraryDialog({
             <AddDataSourceForm
               type={step.sourceType}
               fillAvailableHeight
-              autoStartOnedriveAuth={step.sourceType === "onedrive"}
               onCreateDataSource={createDataSource}
               onCreated={(source) => {
                 setError(null)
@@ -399,6 +461,13 @@ function flowStepCopy(step: FlowStep): {
   title: DesktopTranslationKey
   description?: DesktopTranslationKey
 } {
+  const sourceTitle: Record<CreatableDataSourceType, DesktopTranslationKey> = {
+    webdav: "addLibraryFlow.addWebdav.title",
+    onedrive: "addLibraryFlow.addOnedrive.title",
+    gdrive: "addDataSourceForm.typeGdrive",
+    dropbox: "addDataSourceForm.typeDropbox",
+    s3: "addDataSourceForm.typeS3",
+  }
   switch (step.kind) {
     case "action":
       return {
@@ -414,25 +483,24 @@ function flowStepCopy(step: FlowStep): {
             : "addLibraryFlow.location.openDescription",
       }
     case "addDataSource":
-      return {
-        title:
-          step.sourceType === "webdav"
-            ? "addLibraryFlow.addWebdav.title"
-            : "addLibraryFlow.addOnedrive.title",
-      }
+      return { title: sourceTitle[step.sourceType] }
     case "remoteBrowser":
-      return {
-        title:
-          step.source.type === "webdav"
-            ? "addLibraryForm.webdavBrowserTitle"
-            : "addDataSourceForm.onedriveBrowserTitle",
-      }
+      return { title: remoteBrowserTitle(step.source.type, sourceTitle) }
     case "nameLibrary":
       return {
         title: "addLibraryFlow.name.title",
         description: "addLibraryFlow.name.description",
       }
   }
+}
+
+function remoteBrowserTitle(
+  sourceType: DataSource["type"],
+  sourceTitle: Record<CreatableDataSourceType, DesktopTranslationKey>,
+): DesktopTranslationKey {
+  if (sourceType === "webdav") return "addLibraryForm.webdavBrowserTitle"
+  if (sourceType === "onedrive") return "addDataSourceForm.onedriveBrowserTitle"
+  return sourceTitle[sourceType]
 }
 
 function NewLibraryNameForm({
@@ -544,21 +612,9 @@ function LibraryLocationChoices({
             enabledDataSources.map((source) => (
               <FlowDialogChoice
                 key={source.id}
-                icon={
-                  source.type === "webdav"
-                    ? WebdavServerIcon
-                    : OneDriveCloudIcon
-                }
-                title={
-                  source.type === "onedrive"
-                    ? source.displayName || source.name
-                    : source.name
-                }
-                description={
-                  source.type === "webdav"
-                    ? source.endpoint
-                    : source.email || undefined
-                }
+                icon={dataSourceIcon(source)}
+                title={dataSourceTitle(source)}
+                description={dataSourceDescription(source)}
                 disabled={submitting}
                 onClick={() => onChooseRemote(source)}
               />
@@ -583,6 +639,27 @@ function LibraryLocationChoices({
             title={t("addLibraryFlow.addOnedrive.title")}
             disabled={submitting}
             onClick={() => onAddSource("onedrive")}
+          />
+          <FlowDialogChoice
+            compact
+            icon={GoogleDriveIcon}
+            title={t("addDataSourceForm.typeGdrive")}
+            disabled={submitting}
+            onClick={() => onAddSource("gdrive")}
+          />
+          <FlowDialogChoice
+            compact
+            icon={DropboxIcon}
+            title={t("addDataSourceForm.typeDropbox")}
+            disabled={submitting}
+            onClick={() => onAddSource("dropbox")}
+          />
+          <FlowDialogChoice
+            compact
+            icon={S3StorageIcon}
+            title={t("addDataSourceForm.typeS3")}
+            disabled={submitting}
+            onClick={() => onAddSource("s3")}
           />
         </div>
       </section>

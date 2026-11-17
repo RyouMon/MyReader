@@ -3,17 +3,20 @@ package com.myreader.readium
 import android.graphics.Rect
 import android.webkit.WebView
 import com.myreader.readium.Types.TtsEngineConfigRecord
+import com.myreader.readium.Types.LocatorRecord
 import com.myreader.readium.reader.BaseReaderFragment
 import com.myreader.readium.reader.EpubReaderFragment
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.viewevent.ViewEvent
 import io.mockk.every
+import io.mockk.coEvery
 import io.mockk.mockk
 import io.mockk.mockkConstructor
 import io.mockk.slot
 import io.mockk.unmockkConstructor
 import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestCoroutineScheduler
@@ -188,6 +191,37 @@ class ReadiumViewNavigationTest {
 
     assertEquals("user", first["source"])
     assertEquals(first["navigationId"], locationEvent()["navigationId"])
+  }
+
+  @Test fun a_page_turn_cancels_an_unfinished_bookmark_position_correction() {
+    var corrected = false
+    coEvery { epub.settleTextLocator(any()) } coAnswers {
+      delay(100)
+      corrected = true
+    }
+    reader.goTo(LocatorRecord(href = "chapter.xhtml", type = "application/xhtml+xml"))
+    scheduler.runCurrent()
+
+    reader.goForward()
+    scheduler.advanceUntilIdle()
+
+    assertFalse("A delayed bookmark correction must not undo a later page turn", corrected)
+    verify(exactly = 1) { epub.goForward() }
+  }
+
+  @Test fun a_newer_jump_cancels_the_previous_bookmark_position_correction() {
+    val corrected = mutableListOf<String>()
+    coEvery { epub.settleTextLocator(any()) } coAnswers {
+      val locator = firstArg<Locator>()
+      delay(100)
+      corrected.add(locator.href.toString())
+    }
+    reader.goTo(LocatorRecord(href = "first.xhtml", type = "application/xhtml+xml"))
+    scheduler.runCurrent()
+    reader.goTo(LocatorRecord(href = "second.xhtml", type = "application/xhtml+xml"))
+    scheduler.advanceUntilIdle()
+
+    assertEquals(listOf("second.xhtml"), corrected)
   }
 
   private fun startNarration() {

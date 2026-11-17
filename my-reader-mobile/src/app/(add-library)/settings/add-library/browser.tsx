@@ -15,6 +15,20 @@ export default function AddLibraryBrowserRoute() {
     )
   }
 
+  if (
+    sourceType === "gdrive" ||
+    sourceType === "dropbox" ||
+    sourceType === "s3"
+  ) {
+    return (
+      <RemoteDirectoryBrowserScreen
+        sourceType={sourceType}
+        browserRoute="/settings/add-library/browser"
+        translationNamespace="cloud.browser"
+      />
+    )
+  }
+
   return (
     <RemoteDirectoryBrowserScreen
       sourceType="webdav"

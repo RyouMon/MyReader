@@ -12,7 +12,7 @@ overrides:
   lightningcss: 1.30.1
   xcode@3.0.1>uuid: 11.1.1
   query-string@7.1.3>decode-uri-component: 0.5.1
-  node-forge@<1.4.1: 1.4.1
+  node-forge@<1.4.3: 1.4.3
   seroval@<1.6.11: 1.6.11
   vite@6.4.4: 6.4.5
   test-exclude@<8: 8.0.0
@@ -8075,8 +8075,8 @@ packages:
       encoding:
         optional: true
 
-  node-forge@1.4.1:
-    resolution: {integrity: sha512-w5/MfWaeMrpR/5ba6fZyAUTLSuE6aYz7H/3cYrqwZEmf5eQS3IaaLgJt4MBv7HglGFWmV22K8h4U18RJQmw/ow==}
+  node-forge@1.4.3:
+    resolution: {integrity: sha512-P6wzfh6t70avmV8FrVEAd/36sOPJQ+hkaJVX1Laap9J/77m7M0eyozDvc8SwnDf4P7MP94gwbAAo0rg3YVXT+g==}
     engines: {node: '>= 6.13.0'}
 
   node-int64@0.4.0:
@@ -9374,8 +9374,8 @@ packages:
   text-decoder@1.2.7:
     resolution: {integrity: sha512-vlLytXkeP4xvEq2otHeJfSQIRyWxo/oZGEbXrtEEF9Hnmrdly59sUbzZ/QgyWuLYHctCHxFF4tRQZNQ9k60ExQ==}
 
-  thorium-locales@https://codeload.github.com/edrlab/thorium-locales/tar.gz/7fb96cda36b38fff1f3d8bcc790d53fbcfeb88ee:
-    resolution: {gitHosted: true, integrity: sha512-IvrDqCQTJ11Sb5L4ZQZDEaiWPlttFTZK56rZJp1LolxccBFK3WOK4GfyOpg+Z0IIPl7fBsaxdoRaVUNafHCi/g==, tarball: https://codeload.github.com/edrlab/thorium-locales/tar.gz/7fb96cda36b38fff1f3d8bcc790d53fbcfeb88ee}
+  thorium-locales@https://codeload.github.com/edrlab/thorium-locales/tar.gz/d14bec52d2bab40ad3c37e4b72e3831eeb2b29bb:
+    resolution: {gitHosted: true, integrity: sha512-FSmcpEw152WEPvp5nrs53m0vAfpZkhYIb3aUHktu5S9kuq/ohctAPXl1jFaw0FgxsxGAgErqqc/e4UQqWVIZ9Q==, tarball: https://codeload.github.com/edrlab/thorium-locales/tar.gz/d14bec52d2bab40ad3c37e4b72e3831eeb2b29bb}
     version: 1.0.0
 
   throat@5.0.0:
@@ -11450,7 +11450,7 @@ snapshots:
       glob: 14.0.2
       lan-network: 0.2.1
       multitars: 1.0.2
-      node-forge: 1.4.1
+      node-forge: 1.4.3
       npm-package-arg: 11.0.3
       ora: 3.4.0
       picomatch: 4.0.7
@@ -11487,7 +11487,7 @@ snapshots:
 
   '@expo/code-signing-certificates@0.0.6':
     dependencies:
-      node-forge: 1.4.1
+      node-forge: 1.4.3
 
   '@expo/config-plugins@57.0.10(supports-color@8.1.1)(typescript@6.0.3)':
     dependencies:
@@ -13671,7 +13671,7 @@ snapshots:
 
   '@readium/shared@2.2.0':
     dependencies:
-      '@edrlab/thorium-locales': thorium-locales@https://codeload.github.com/edrlab/thorium-locales/tar.gz/7fb96cda36b38fff1f3d8bcc790d53fbcfeb88ee
+      '@edrlab/thorium-locales': thorium-locales@https://codeload.github.com/edrlab/thorium-locales/tar.gz/d14bec52d2bab40ad3c37e4b72e3831eeb2b29bb
 
   '@readium/shared@2.4.0': {}
 
@@ -18864,7 +18864,7 @@ snapshots:
     dependencies:
       whatwg-url: 5.0.0
 
-  node-forge@1.4.1: {}
+  node-forge@1.4.3: {}
 
   node-int64@0.4.0: {}
 
@@ -20418,7 +20418,7 @@ snapshots:
     transitivePeerDependencies:
       - react-native-b4a
 
-  thorium-locales@https://codeload.github.com/edrlab/thorium-locales/tar.gz/7fb96cda36b38fff1f3d8bcc790d53fbcfeb88ee: {}
+  thorium-locales@https://codeload.github.com/edrlab/thorium-locales/tar.gz/d14bec52d2bab40ad3c37e4b72e3831eeb2b29bb: {}
 
   throat@5.0.0: {}
 

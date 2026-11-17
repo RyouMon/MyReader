@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { useQuery } from "@tanstack/react-query"
 
@@ -7,6 +7,9 @@ import {
   COVER_THUMBNAIL_GENERATION_CONCURRENCY,
 } from "@/src/config/library-list-performance"
 import type { BookItem, Library } from "@/src/domain/types"
+import { isRemoteSourceType } from "@/src/domain/types"
+import { createRemoteOps } from "@/src/domain/library/remote-library"
+import { useAppStore } from "@/src/store/app-store"
 import {
   deleteBookCoverThumbnailCache,
   listBookCoverThumbnailCache,
@@ -256,6 +259,64 @@ export function useCoverThumbnails({
   width,
   height,
 }: UseCoverThumbnailsInput): string {
+  const dataSources = useAppStore((state) => state.dataSources)
+  const [resolvedCoverUris, setResolvedCoverUris] = useState(
+    () => new Map<string, NonNullable<BookItem["coverUri"]>>(),
+  )
+  const booksWithResolvedCovers = useMemo(
+    () =>
+      books.map((book) => {
+        const coverUri = resolvedCoverUris.get(book.id)
+        return coverUri ? { ...book, coverUri } : book
+      }),
+    [books, resolvedCoverUris],
+  )
+
+  useEffect(() => {
+    if (
+      !enabled ||
+      !library ||
+      !isRemoteSourceType(library.sourceType) ||
+      !books.some((book) => !book.coverUri && book.coverKey && book.path)
+    ) {
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const ops = await createRemoteOps(library, dataSources)
+        if (!ops?.resolveCoverUri) return
+        const candidates = books.filter(
+          (book) => !book.coverUri && book.coverKey && book.path,
+        )
+        const resolved = await Promise.all(
+          candidates.map(async (book) => {
+            const coverUri = await ops.resolveCoverUri!(
+              library,
+              book.path!,
+              book.hasCover ?? true,
+            )
+            return [book.id, coverUri] as const
+          }),
+        )
+        if (cancelled) return
+        setResolvedCoverUris((current) => {
+          const next = new Map(current)
+          for (const [bookId, coverUri] of resolved) {
+            if (coverUri) next.set(bookId, coverUri)
+          }
+          return next
+        })
+      } catch {
+        // Covers remain deferred; the catalog and reading flow stay usable
+        // while credentials or the network are unavailable.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [books, dataSources, enabled, library])
+
   const displaySize = resolveCoverThumbnailPixelSize(width, height)
   const sizes = useMemo(
     () =>
@@ -464,7 +525,7 @@ export function useCoverThumbnails({
       manifestBySizeAndBookId,
       staleManifestRows,
     }
-    for (const book of books) {
+    for (const book of booksWithResolvedCovers) {
       const plan = prepareThumbnailRequest(
         cache,
         book,
@@ -507,7 +568,8 @@ export function useCoverThumbnails({
     ])
   }, [
     backgroundGenerationBookIds,
-    books,
+    books.length,
+    booksWithResolvedCovers,
     enabled,
     generateMissing,
     generationBookIds,
