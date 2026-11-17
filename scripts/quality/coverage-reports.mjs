@@ -231,10 +231,11 @@ function rustDeclarationOnly(source) {
   let remaining = source
     .replace(/\/\/.*$/gm, "")
     .replace(/#\[[\s\S]*?\]\s*/g, "")
-    .replace(/\b(?:pub(?:\([^)]*\))?\s+)?(?:mod|use)\s+[^;]+;/g, "")
+    .replace(/\b(?:pub(?:\([^)]*\))?\s+)?mod\s+[A-Za-z_][A-Za-z0-9_]*\s*;/g, "")
+    .replace(/\b(?:pub(?:\([^)]*\))?\s+)?use\s+[^;]+;/g, "")
 
   const declaration =
-    /\b(?:pub(?:\([^)]*\))?\s+)?(?:struct|enum|union)\s+[A-Za-z_][A-Za-z0-9_]*\b/g
+    /\b(?:pub(?:\([^)]*\))?\s+)?(?<kind>struct|enum|union|mod)\s+[A-Za-z_][A-Za-z0-9_]*\b/g
   let match
   while ((match = declaration.exec(remaining))) {
     const opening = remaining.indexOf("{", declaration.lastIndex)
@@ -254,6 +255,11 @@ function rustDeclarationOnly(source) {
       else if (remaining[end] === "}" && --depth === 0) break
     }
     if (depth !== 0) break
+    if (
+      match.groups.kind === "mod" &&
+      !rustDeclarationOnly(remaining.slice(opening + 1, end))
+    )
+      return false
     remaining = remaining.slice(0, match.index) + remaining.slice(end + 1)
     declaration.lastIndex = match.index
   }

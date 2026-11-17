@@ -615,13 +615,22 @@ describe("cloud source screens", () => {
       screen.getByLabelText("remoteFolder.name"),
       " Created ",
     )
-    fireEvent.press(screen.getByText("common.confirm"))
+    await act(async () => {
+      fireEvent.press(screen.getByText("common.confirm"))
+    })
     await waitFor(() =>
       expect(screen.queryByLabelText("remoteFolder.name")).toBeNull(),
     )
     expect(mockCreateDirectory).toHaveBeenCalledWith("Created")
-    fireEvent.press(screen.getByText("remoteFolder.create"))
-    fireEvent.press(screen.getByText("common.cancel"))
+    await act(async () => {
+      fireEvent.press(screen.getByText("remoteFolder.create"))
+    })
+    await waitFor(() =>
+      expect(screen.getByLabelText("remoteFolder.name")).toBeTruthy(),
+    )
+    await act(async () => {
+      fireEvent.press(screen.getByText("common.cancel"))
+    })
     expect(screen.queryByLabelText("remoteFolder.name")).toBeNull()
     expect(mockCreateDirectory).toHaveBeenCalledTimes(1)
     fireEvent.press(screen.getByText("Existing"))

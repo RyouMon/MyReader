@@ -211,6 +211,26 @@ pub enum RemoteCredential {
       ),
     /no coverage report/,
   )
+
+  const nested = "my-reader/src-tauri/src/auth/mod.rs"
+  assert.doesNotThrow(() =>
+    requireChangedSources(
+      new Set(),
+      new Map([[nested, new Set([1, 3])]]),
+      () =>
+        `pub(crate) mod cloud;\npub mod test_support {\n  pub use super::credentials::MemoryBackend;\n}`,
+    ),
+  )
+  assert.throws(
+    () =>
+      requireChangedSources(
+        new Set(),
+        new Map([[nested, new Set([1, 3])]]),
+        () =>
+          `pub(crate) mod cloud;\npub mod test_support {\n  pub fn runtime() {}\n}`,
+      ),
+    /no coverage report/,
+  )
 })
 
 test("Rust test modules are excluded while similarly named product modules remain required", () => {
