@@ -279,7 +279,10 @@
     "bookCount_one": "{{count}} книга",
     "bookCount_few": "{{count}} книги",
     "bookCount_many": "{{count}} книг",
-    "bookCount_other": "{{count}} книги"
+    "bookCount_other": "{{count}} книги",
+    "gdriveDetail": "Управление источниками данных Google Drive",
+    "dropboxDetail": "Управление источниками данных Dropbox",
+    "s3Detail": "Управление источниками данных S3"
   },
   "reader": {
     "cannotOpen": "Не могу открыть книгу",
@@ -925,7 +928,9 @@
     "webdavMkcolFailed": "WebDAV MKCOL не удалось: {{status}} {{path}}",
     "localFileNotExist": "Локальный файл не существует: {{path}}",
     "basicAuthNotSupported": "Кодировка базовой аутентификации не поддерживается в этой среде",
-    "syncPathCannotBeEmpty": "Путь синхронизации не может быть пустым"
+    "syncPathCannotBeEmpty": "Путь синхронизации не может быть пустым",
+    "remoteSourceNotFound": "Возможно, оно было удалено. Вернитесь к списку источников.",
+    "remoteCredentialsMissing": "Войдите снова или обновите учётные данные источника."
   },
   "notifications": {
     "libraryAdded": "Добавлена библиотека: {{name}}",
@@ -954,5 +959,116 @@
     "restoreBookmark": "Восстановить закладку",
     "accessDirectory": "Доступ к каталогу",
     "refreshBookmark": "Обновить закладку"
+  },
+  "addLibraryFlow": {
+    "addGdrive": {
+      "title": "Добавить источник Google Drive"
+    },
+    "addDropbox": {
+      "title": "Добавить источник Dropbox"
+    },
+    "addS3": {
+      "title": "Добавить источник S3"
+    }
+  },
+  "cloud": {
+    "sources": {
+      "title": "{{provider}} Источники",
+      "add": "Добавить источник",
+      "emptyTitle": "Источников {{provider}} пока нет",
+      "emptyDetail": "Используйте кнопку ниже, чтобы добавить источник {{provider}}."
+    },
+    "auth": {
+      "alreadyAdded": {
+        "title": "Аккаунт уже добавлен",
+        "detail": "Этот аккаунт {{provider}} уже подключён как {{name}}."
+      },
+      "failed": {
+        "title": "Ошибка аутентификации"
+      },
+      "accountMismatch": {
+        "title": "Несоответствие учетной записи",
+        "detail": "Войдите с аккаунтом, настроенным для {{email}}."
+      },
+      "reauthenticate": "Войти снова"
+    },
+    "form": {
+      "addTitle": "Добавить источник {{provider}}",
+      "editTitle": "Изменить источник {{provider}}",
+      "save": "Сохранить",
+      "saving": "Сохранение",
+      "signIn": "Войти и продолжить",
+      "reauthenticate": "Войти снова",
+      "addFailed": "Не удалось добавить",
+      "updateFailed": "Не удалось сохранить",
+      "connectionFailed": "Проверка соединения не удалась",
+      "clientIdLabel": "Google OAuth Client ID",
+      "clientIdPlaceholder": "Use the client ID registered for this app",
+      "appKeyLabel": "Dropbox App Key",
+      "appKeyPlaceholder": "Paste the Dropbox App Key",
+      "appKeyRequired": "Enter the Dropbox App Key.",
+      "openDropboxConsole": "Dropbox App Console",
+      "rootPathLabel": "Корневой путь (необязательно)",
+      "nameLabel": "Имя",
+      "endpointLabel": "Конечная точка",
+      "bucketLabel": "Бакет",
+      "regionLabel": "Регион",
+      "accessKeyLabel": "ID ключа доступа",
+      "secretKeyLabel": "Секретный ключ доступа",
+      "sessionTokenLabel": "Токен сеанса (необязательно)",
+      "virtualHostStyle": "Использовать URL бакета с виртуальным хостом",
+      "endpointRequired": "Введите конечную точку S3.",
+      "bucketRequired": "Введите бакет S3.",
+      "regionRequired": "Введите регион S3.",
+      "accessKeyRequired": "Введите ID ключа доступа.",
+      "secretKeyRequired": "Введите секретный ключ доступа.",
+      "appKeyHint": "Create a Dropbox app and paste its App Key here. The redirect URI is configured by the app."
+    },
+    "browser": {
+      "title": "Выберите библиотеку {{provider}}",
+      "validating": "Проверка каталога",
+      "reading": {
+        "title": "Чтение каталога",
+        "detail": "Получение списка каталогов из {{provider}}."
+      },
+      "readFailed": {
+        "title": "Не удалось прочитать"
+      },
+      "loadFailed": {
+        "title": "Ошибка просмотра",
+        "message": "В браузере {{provider}} произошла непредвиденная ошибка. Пожалуйста, повторите попытку."
+      },
+      "credentialsUnavailable": {
+        "title": "{{provider}} учетные данные недоступны",
+        "detail": "Войдите снова или обновите учётные данные источника."
+      },
+      "empty": {
+        "title": "Пустой каталог",
+        "detail": "В текущем каталоге нет подкаталогов."
+      }
+    },
+    "detail": {
+      "title": "Подробности источника",
+      "type": "Тип",
+      "displayName": "Отображаемое имя",
+      "email": "Электронная почта",
+      "endpoint": "Конечная точка",
+      "bucket": "Бакет",
+      "region": "Регион",
+      "rootPath": "Базовый путь",
+      "authStatus": "Статус аутентификации",
+      "authenticated": "Аутентифицирован",
+      "notAuthenticated": "Не аутентифицирован",
+      "addedAt": "Добавлено в"
+    },
+    "delete": {
+      "title": "Удалить источник {{provider}}",
+      "confirm": "Удалить \"{{name}}\"?",
+      "cancel": "Отмена",
+      "confirmButton": "Удалить",
+      "failed": "Невозможно удалить",
+      "action": "Удалить источник"
+    },
+    "edit": "Изменить источник"
   }
 }

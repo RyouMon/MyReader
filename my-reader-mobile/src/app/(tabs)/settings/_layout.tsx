@@ -38,6 +38,27 @@ export default function SettingsStackLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="gdrive"
+        options={{
+          presentation: "modal",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="dropbox"
+        options={{
+          presentation: "modal",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="s3"
+        options={{
+          presentation: "modal",
+          headerShown: false,
+        }}
+      />
     </Stack>
   )
 }

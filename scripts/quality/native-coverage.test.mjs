@@ -67,7 +67,18 @@ test("JaCoCo export preserves missed Java/Kotlin instructions and rejects ambigu
 test("Swift coverage instruments production targets while preserving the full native test scheme", () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), "myreader-swift-"))
   try {
-    const schemes = path.join(dir, "xcuserdata/runner.xcuserdatad/xcschemes")
+    const project = path.join(dir, "Pods.xcodeproj")
+    const host = path.join(dir, "AppHost-Readium-Unit-Tests")
+    mkdirSync(host)
+    const infoFile = path.join(host, "AppHost-Readium-Unit-Tests-Info.plist")
+    writeFileSync(
+      infoFile,
+      '<plist version="1.0"><dict><key>CFBundleIdentifier</key><string>reader.tests</string></dict></plist>',
+    )
+    const schemes = path.join(
+      project,
+      "xcuserdata/runner.xcuserdatad/xcschemes",
+    )
     mkdirSync(schemes, { recursive: true })
     writeFileSync(
       path.join(schemes, "Readium-Unit-Tests.xcscheme"),
@@ -78,14 +89,39 @@ test("Swift coverage instruments production targets while preserving the full na
         path.join(schemes, `${name}.xcscheme`),
         `<Scheme><BuildAction><BuildableReference BlueprintName="${name}"/></BuildAction></Scheme>`,
       )
-    run("prepare-swift", "--project", dir)
+    run("prepare-swift", "--project", project)
     const generated = path.join(
-      dir,
+      project,
       "xcshareddata/xcschemes/Reader-Coverage.xcscheme",
     )
     const first = readFileSync(generated, "utf8")
-    run("prepare-swift", "--project", dir)
+    const firstInfo = readFileSync(infoFile, "utf8")
+    run("prepare-swift", "--project", project)
     assert.equal(readFileSync(generated, "utf8"), first)
+    assert.equal(readFileSync(infoFile, "utf8"), firstInfo)
+    const info = JSON.parse(
+      execFileSync(
+        "python3",
+        [
+          "-c",
+          "import json,plistlib,sys; print(json.dumps(plistlib.load(open(sys.argv[1], 'rb'))))",
+          infoFile,
+        ],
+        { encoding: "utf8" },
+      ),
+    )
+    assert.equal(info.CFBundleIdentifier, "reader.tests")
+    assert.deepEqual(info.UIApplicationSceneManifest, {
+      UIApplicationSupportsMultipleScenes: false,
+      UISceneConfigurations: {
+        UIWindowSceneSessionRoleApplication: [
+          {
+            UISceneConfigurationName: "Reader tests",
+            UISceneDelegateClassName: "ReaderTestSceneDelegate",
+          },
+        ],
+      },
+    })
     assert.match(first, /codeCoverageEnabled="YES"/)
     assert.match(first, /all-native-tests/)
     assert.match(first, /BlueprintName="Readium"/)

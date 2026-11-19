@@ -2,7 +2,7 @@ import { appendErrorDetail } from "@my-reader/i18n/mobile"
 import { errorMessage } from "@/src/i18n/error-message"
 import { appErrorKind } from "@/src/errors/kind"
 import { coreErrorKind } from "@/src/services/core/error"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
 import { openRemoteExistingLibrary } from "@/src/domain/library/hooks/library-actions"
@@ -13,6 +13,7 @@ import {
 import type { DataSource } from "@/src/domain/types"
 import type { Library } from "@my-reader/tools/types/library"
 import {
+  createRemoteDirectory,
   listRemoteDirectories,
   type RemoteDirectoryEntry,
 } from "@/src/services/core/remote"
@@ -23,7 +24,7 @@ export type UseRemoteDirectoryBrowserOpts = {
   currentPathParam: string | undefined
   libraryAction: RemoteLibraryAction
   onLibraryOpened: (library: Library) => void
-  sourceType: "webdav" | "onedrive"
+  sourceType: "webdav" | "onedrive" | "gdrive" | "dropbox" | "s3"
 }
 
 export type RemoteLibraryAction = "create" | "open"
@@ -39,6 +40,11 @@ export type RemoteDirectoryBrowserState = {
   loading: boolean
   error: string | null
   saving: boolean
+  creating: boolean
+  canCreateDirectory: boolean
+  createDirectory: (name: string) => Promise<RemoteDirectoryEntry | null>
+  creationError: string | null
+  clearCreationError: () => void
   currentPath: string
   retry: () => void
   choosePath: (
@@ -84,6 +90,30 @@ export function useRemoteDirectoryBrowser({
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [reloadIndex, setReloadIndex] = useState(0)
+  const [creating, setCreating] = useState(false)
+  const [creationError, setCreationError] = useState<string | null>(null)
+  const creationPending = useRef(false)
+  const canCreateDirectory =
+    libraryAction === "create" && candidate !== null && !candidate.readonly
+
+  async function createDirectory(name: string) {
+    if (!candidate || !canCreateDirectory || creationPending.current)
+      return null
+    creationPending.current = true
+    setCreating(true)
+    setCreationError(null)
+    try {
+      const entry = await createRemoteDirectory(candidate, currentPath, name)
+      setEntries((previous) => [entry, ...previous])
+      return entry
+    } catch (caught) {
+      setCreationError(errorMessage(caught))
+      return null
+    } finally {
+      creationPending.current = false
+      setCreating(false)
+    }
+  }
 
   useEffect(() => {
     let active = true
@@ -183,6 +213,11 @@ export function useRemoteDirectoryBrowser({
     loading,
     error,
     saving,
+    creating,
+    canCreateDirectory,
+    creationError,
+    clearCreationError: () => setCreationError(null),
+    createDirectory,
     currentPath,
     retry: () => setReloadIndex((value) => value + 1),
     choosePath,

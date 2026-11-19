@@ -12,7 +12,7 @@ use sea_orm::DatabaseConnection;
 use crate::{
     database,
     models::{
-        AppConfig, DataSource, Library, LibrarySourceType, LibraryType, MyReaderLibraryMarker,
+        AppConfig, Library, LibrarySourceType, LibraryType, MyReaderLibraryMarker,
         MYREADER_LIBRARY_MARKER_RELATIVE_PATH,
     },
     repositories::calibre::CatalogRepository,
@@ -128,10 +128,7 @@ pub(crate) fn writable_myreader_library(
     if library.library_type != LibraryType::MyReader {
         return Err(CoreError::Config("LIBRARY_NOT_MYREADER".into()));
     }
-    if !matches!(
-        library.source_type,
-        Some(LibrarySourceType::Local | LibrarySourceType::Webdav | LibrarySourceType::Onedrive)
-    ) {
+    if library.source_type != Some(LibrarySourceType::Local) && !library.is_remote() {
         return Err(CoreError::Config("MYREADER_LIBRARY_SOURCE_REQUIRED".into()));
     }
     if let Some(data_source_id) = library.data_source_id.as_deref() {
@@ -142,15 +139,10 @@ pub(crate) fn writable_myreader_library(
             .ok_or_else(|| {
                 CoreError::NotFound(format!("DATASOURCE_NOT_FOUND: {data_source_id}"))
             })?;
-        let readonly = match source {
-            DataSource::Local { readonly, .. }
-            | DataSource::Webdav { readonly, .. }
-            | DataSource::Onedrive { readonly, .. } => *readonly,
-        };
         if library.source_type.as_ref() != Some(&source.source_type()) {
             return Err(CoreError::Config("LIBRARY_DATASOURCE_TYPE_MISMATCH".into()));
         }
-        if readonly == Some(true) {
+        if source.readonly() {
             return Err(CoreError::Config("DATASOURCE_READ_ONLY".into()));
         }
     }

@@ -1,6 +1,6 @@
 import { errorMessage } from "@/lib/error-presentation"
 import { Loader2, LogIn, RefreshCw } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import { StatusNotice } from "@/components/common/StatusNotice"
@@ -29,23 +29,20 @@ interface OnedriveDataSourceFormProps {
   }) => Promise<unknown>
   loading: boolean
   fillAvailableHeight?: boolean
-  autoStart?: boolean
 }
 
 export function OnedriveDataSourceForm({
   onSubmit,
   loading,
   fillAvailableHeight = false,
-  autoStart = false,
 }: OnedriveDataSourceFormProps) {
   const { t } = useTranslation()
   const [authResult, setAuthResult] = useState<OnedriveAuthResultDto | null>(
     null,
   )
-  const [authLoading, setAuthLoading] = useState(autoStart)
+  const [authLoading, setAuthLoading] = useState(false)
   const [createLoading, setCreateLoading] = useState(false)
   const [error, setError] = useState("")
-  const autoStartedRef = useRef(false)
 
   const autoCreate = useCallback(
     async (result: OnedriveAuthResultDto) => {
@@ -88,12 +85,6 @@ export function OnedriveDataSourceForm({
       setAuthLoading(false)
     }
   }, [autoCreate])
-
-  useEffect(() => {
-    if (!autoStart || autoStartedRef.current) return
-    autoStartedRef.current = true
-    void handleAuth()
-  }, [autoStart, handleAuth])
 
   const handleRetryCreate = () => {
     if (!authResult) return

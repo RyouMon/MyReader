@@ -74,6 +74,28 @@ export type LibraryStorageConfig =
       accessToken: string
       root: string | null
     }
+  | {
+      kind: "gdrive"
+      accessToken: string
+      root: string | null
+      rootFolderId: string | null
+    }
+  | {
+      kind: "dropbox"
+      accessToken: string
+      root: string | null
+    }
+  | {
+      kind: "s3"
+      endpoint: string
+      bucket: string
+      region: string
+      root: string | null
+      virtualHostStyle: boolean
+      accessKeyId: string
+      secretAccessKey: string
+      sessionToken?: string
+    }
 
 function transitionFromCore(
   transition: CoreSchedulerTransition,
@@ -121,16 +143,42 @@ export function toCoreLibraryStorage(
         accessToken: storage.accessToken,
         root: storage.root ?? undefined,
       }
+    case "gdrive":
+      return {
+        kind: storage.kind,
+        accessToken: storage.accessToken,
+        root: storage.root ?? undefined,
+        rootFolderId: storage.rootFolderId ?? undefined,
+      }
+    case "dropbox":
+      return {
+        kind: storage.kind,
+        accessToken: storage.accessToken,
+        root: storage.root ?? undefined,
+      }
+    case "s3":
+      return {
+        kind: storage.kind,
+        endpoint: storage.endpoint,
+        bucket: storage.bucket,
+        region: storage.region,
+        root: storage.root ?? undefined,
+        virtualHostStyle: storage.virtualHostStyle,
+        accessKeyId: storage.accessKeyId,
+        secretAccessKey: storage.secretAccessKey,
+        sessionToken: storage.sessionToken,
+      }
   }
 }
 
 function storageFromCore(
   storage: CoreLibraryStorageConfig,
 ): LibraryStorageConfig {
+  const root = storage.root ?? null
   switch (storage.kind) {
     case "local-direct":
-      if (!storage.root) throw new Error("LIBRARY_ROOT_PATH_REQUIRED")
-      return { kind: storage.kind, root: storage.root }
+      if (!root) throw new Error("LIBRARY_ROOT_PATH_REQUIRED")
+      return { kind: storage.kind, root }
     case "webdav":
       if (!storage.endpoint || !storage.username || !storage.password) {
         throw new Error("WEBDAV_STORAGE_CONFIG_INVALID")
@@ -140,16 +188,40 @@ function storageFromCore(
         endpoint: storage.endpoint,
         username: storage.username,
         password: storage.password,
-        root: storage.root ?? null,
+        root,
       }
     case "onedrive":
-      if (!storage.accessToken) {
-        throw new Error("ONEDRIVE_STORAGE_CONFIG_INVALID")
-      }
+    case "dropbox":
+      if (!storage.accessToken) throw new Error("OAUTH_ACCESS_TOKEN_REQUIRED")
+      return { kind: storage.kind, accessToken: storage.accessToken, root }
+    case "gdrive":
+      if (!storage.accessToken) throw new Error("OAUTH_ACCESS_TOKEN_REQUIRED")
       return {
         kind: storage.kind,
         accessToken: storage.accessToken,
-        root: storage.root ?? null,
+        root,
+        rootFolderId: storage.rootFolderId ?? null,
+      }
+    case "s3":
+      if (
+        !storage.endpoint ||
+        !storage.bucket ||
+        !storage.region ||
+        !storage.accessKeyId ||
+        !storage.secretAccessKey
+      ) {
+        throw new Error("S3_STORAGE_CONFIG_INVALID")
+      }
+      return {
+        kind: storage.kind,
+        endpoint: storage.endpoint,
+        bucket: storage.bucket,
+        region: storage.region,
+        root,
+        virtualHostStyle: storage.virtualHostStyle ?? false,
+        accessKeyId: storage.accessKeyId,
+        secretAccessKey: storage.secretAccessKey,
+        sessionToken: storage.sessionToken,
       }
     default:
       throw new Error(`Unsupported sidecar storage type: ${storage.kind}`)

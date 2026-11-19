@@ -261,7 +261,7 @@ impl LibraryService {
         name: Option<&str>,
         config: &mut AppConfig,
     ) -> Result<LibraryInfo, AppError> {
-        add_remote_library(app_data_dir, data_source_id, remote_path, name, config).await
+        add_remote_library_impl(app_data_dir, data_source_id, remote_path, name, config).await
     }
 
     /// Add a WebDAV library and refresh the asset protocol scope.
@@ -292,7 +292,7 @@ impl LibraryService {
         name: Option<&str>,
         config: &mut AppConfig,
     ) -> Result<LibraryInfo, AppError> {
-        add_remote_library(app_data_dir, data_source_id, remote_path, name, config).await
+        add_remote_library_impl(app_data_dir, data_source_id, remote_path, name, config).await
     }
 
     /// Add a OneDrive library and refresh the asset protocol scope.
@@ -321,7 +321,7 @@ impl LibraryService {
         id: &str,
         config: &AppConfig,
     ) -> Result<LibraryInfo, AppError> {
-        refresh_remote_library(app_data_dir, id, config).await
+        refresh_remote_library_impl(app_data_dir, id, config).await
     }
 
     /// Refresh a OneDrive library: re-download metadata.db.
@@ -330,7 +330,35 @@ impl LibraryService {
         id: &str,
         config: &AppConfig,
     ) -> Result<LibraryInfo, AppError> {
-        refresh_remote_library(app_data_dir, id, config).await
+        refresh_remote_library_impl(app_data_dir, id, config).await
+    }
+
+    /// Add a Calibre library for any configured remote provider.
+    pub async fn add_remote_library_with_scope_sync<R: tauri::Runtime>(
+        app: &AppHandle<R>,
+        app_data_dir: &Path,
+        data_source_id: &str,
+        remote_path: &str,
+        name: Option<&str>,
+        config: &mut AppConfig,
+    ) -> Result<LibraryInfo, AppError> {
+        let info = add_remote_library_impl(app_data_dir, data_source_id, remote_path, name, config)
+            .await?;
+        if let Err(error) = asset_scope::sync_for_reader_libraries(app, &config.libraries) {
+            tracing::error!(
+                "Failed to extend asset protocol scope after adding remote library. error: {error}"
+            );
+        }
+        Ok(info)
+    }
+
+    /// Refresh a Calibre library for any configured remote provider.
+    pub async fn refresh_remote_library(
+        app_data_dir: &Path,
+        id: &str,
+        config: &AppConfig,
+    ) -> Result<LibraryInfo, AppError> {
+        refresh_remote_library_impl(app_data_dir, id, config).await
     }
 
     pub async fn refresh_library(
@@ -473,7 +501,7 @@ impl LibraryService {
     }
 }
 
-async fn add_remote_library(
+async fn add_remote_library_impl(
     app_data_dir: &Path,
     data_source_id: &str,
     remote_path: &str,
@@ -558,7 +586,7 @@ async fn remote_myreader_library(
     Ok(library_info_from_core(library))
 }
 
-async fn refresh_remote_library(
+async fn refresh_remote_library_impl(
     app_data_dir: &Path,
     id: &str,
     config: &AppConfig,

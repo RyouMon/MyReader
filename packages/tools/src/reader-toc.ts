@@ -201,6 +201,20 @@ export function positionIndexForLocator(
   return 0
 }
 
+/** Stored reflowable locators may come from a different navigator's position list. */
+export function positionIndexForStoredLocator(
+  positions: readonly ReaderLocator[] | undefined,
+  locator: ReaderLocator,
+): number {
+  if (!positions?.some((item) => hrefRoughlyMatches(item.href, locator.href))) {
+    return positionIndexForLocator(positions, locator)
+  }
+  return positionIndexForLocator(positions, {
+    ...locator,
+    locations: { ...locator.locations, position: undefined },
+  })
+}
+
 export function findLocatorForLinkHref(
   positions: ReaderLocator[],
   linkHref: string | undefined,

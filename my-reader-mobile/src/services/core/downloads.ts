@@ -84,7 +84,8 @@ export function reportDownloadTaskProgress(
   received: number,
   total: number,
 ): CoreDownloadTask | null {
-  const task = downloadReportProgress(taskId, received, total)
+  // NSURLSession reports -1 when the response has no Content-Length.
+  const task = downloadReportProgress(taskId, received, Math.max(0, total))
   return task ? taskFromCore(task) : null
 }
 

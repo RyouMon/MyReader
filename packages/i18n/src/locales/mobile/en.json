@@ -255,7 +255,10 @@
         "decrementLabel": "Decrease cover thumbnail concurrency",
         "incrementLabel": "Increase cover thumbnail concurrency"
       }
-    }
+    },
+    "gdriveDetail": "Manage Google Drive data sources",
+    "dropboxDetail": "Manage Dropbox data sources",
+    "s3Detail": "Manage S3-compatible data sources"
   },
   "reader": {
     "cannotOpen": "Cannot open book",
@@ -881,7 +884,9 @@
     "webdavMkcolFailed": "WebDAV MKCOL failed: {{status}} {{path}}",
     "localFileNotExist": "Local file does not exist: {{path}}",
     "basicAuthNotSupported": "Basic Auth encoding not supported in this environment",
-    "syncPathCannotBeEmpty": "Sync path cannot be empty"
+    "syncPathCannotBeEmpty": "Sync path cannot be empty",
+    "remoteSourceNotFound": "The remote source associated with this library does not exist.",
+    "remoteCredentialsMissing": "The current remote source is missing authentication. Please re-authenticate the source."
   },
   "notifications": {
     "libraryAdded": "Library added: {{name}}",
@@ -910,5 +915,116 @@
     "restoreBookmark": "Restore bookmark",
     "accessDirectory": "Access directory",
     "refreshBookmark": "Refresh bookmark"
+  },
+  "addLibraryFlow": {
+    "addGdrive": {
+      "title": "Add Google Drive"
+    },
+    "addDropbox": {
+      "title": "Add Dropbox"
+    },
+    "addS3": {
+      "title": "Add S3-compatible storage"
+    }
+  },
+  "cloud": {
+    "edit": "Edit Source",
+    "sources": {
+      "title": "{{provider}} Sources",
+      "add": "Add Source",
+      "emptyTitle": "No {{provider}} sources yet",
+      "emptyDetail": "Use the button below to add a {{provider}} source."
+    },
+    "auth": {
+      "alreadyAdded": {
+        "title": "Account Already Added",
+        "detail": "This {{provider}} account is already connected as {{name}}."
+      },
+      "failed": {
+        "title": "Authentication Failed"
+      },
+      "accountMismatch": {
+        "title": "Account Mismatch",
+        "detail": "Sign in with the account already configured for {{email}}."
+      },
+      "reauthenticate": "Sign in again"
+    },
+    "form": {
+      "addTitle": "Add {{provider}} Source",
+      "editTitle": "Edit {{provider}} Source",
+      "save": "Save",
+      "saving": "Saving…",
+      "signIn": "Sign in and continue",
+      "reauthenticate": "Sign in again",
+      "addFailed": "Add Failed",
+      "updateFailed": "Save Failed",
+      "connectionFailed": "Connection Test Failed",
+      "clientIdLabel": "Google OAuth Client ID",
+      "clientIdPlaceholder": "Use the client ID registered for this app",
+      "appKeyLabel": "Dropbox App Key",
+      "appKeyPlaceholder": "Paste the Dropbox App Key",
+      "appKeyRequired": "Enter the Dropbox App Key.",
+      "openDropboxConsole": "Dropbox App Console",
+      "rootPathLabel": "Root path (optional)",
+      "nameLabel": "Name",
+      "endpointLabel": "Endpoint",
+      "bucketLabel": "Bucket",
+      "regionLabel": "Region",
+      "accessKeyLabel": "Access key ID",
+      "secretKeyLabel": "Secret access key",
+      "sessionTokenLabel": "Session token (optional)",
+      "virtualHostStyle": "Use virtual-hosted bucket URLs",
+      "endpointRequired": "Enter an S3 endpoint.",
+      "bucketRequired": "Enter an S3 bucket.",
+      "regionRequired": "Enter an S3 region.",
+      "accessKeyRequired": "Enter an access key ID.",
+      "secretKeyRequired": "Enter a secret access key.",
+      "appKeyHint": "Create a Dropbox app and paste its App Key here. The redirect URI is configured by the app."
+    },
+    "browser": {
+      "title": "Select {{provider}} Library",
+      "validating": "Validating directory",
+      "reading": {
+        "title": "Reading directory",
+        "detail": "Fetching directory listing from {{provider}}."
+      },
+      "readFailed": {
+        "title": "Read Failed"
+      },
+      "loadFailed": {
+        "title": "Browse Failed",
+        "message": "The {{provider}} browser encountered an unexpected error. Please retry."
+      },
+      "credentialsUnavailable": {
+        "title": "{{provider}} credentials unavailable",
+        "detail": "Sign in again or update the source credentials."
+      },
+      "empty": {
+        "title": "Empty directory",
+        "detail": "No subdirectories in the current directory."
+      }
+    },
+    "detail": {
+      "title": "Source Details",
+      "type": "Type",
+      "displayName": "Display Name",
+      "email": "Email",
+      "endpoint": "Endpoint",
+      "bucket": "Bucket",
+      "region": "Region",
+      "rootPath": "Root path",
+      "authStatus": "Auth Status",
+      "authenticated": "Authenticated",
+      "notAuthenticated": "Not authenticated",
+      "addedAt": "Added At"
+    },
+    "delete": {
+      "title": "Delete {{provider}} Source",
+      "confirm": "Delete \"{{name}}\"?",
+      "cancel": "Cancel",
+      "confirmButton": "Delete",
+      "failed": "Cannot Delete",
+      "action": "Delete Source"
+    }
   }
 }

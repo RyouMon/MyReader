@@ -60,17 +60,63 @@ export function toCoreDataSource(source: DataSource): CoreDataSource {
       createdAt: source.createdAt,
     }
   }
+  if (source.type === "onedrive")
+    return {
+      kind: "onedrive",
+      id: source.id,
+      name: source.name,
+      enabled: source.enabled,
+      clientId: source.clientId,
+      tenantId: source.tenantId ?? undefined,
+      displayName: source.displayName ?? undefined,
+      email: source.email ?? undefined,
+      rootPath: source.rootPath ?? undefined,
+      hasRefreshToken: source.hasRefreshToken,
+      readonly: source.readonly,
+      createdAt: source.createdAt,
+    }
+  if (source.type === "gdrive")
+    return {
+      kind: "gdrive",
+      id: source.id,
+      name: source.name,
+      enabled: source.enabled,
+      clientId: source.clientId,
+      accountId: source.accountId ?? undefined,
+      displayName: source.displayName ?? undefined,
+      email: source.email ?? undefined,
+      rootPath: source.rootPath ?? undefined,
+      hasRefreshToken: source.hasRefreshToken,
+      rootFolderId: source.rootFolderId ?? undefined,
+      readonly: source.readonly,
+      createdAt: source.createdAt,
+    }
+  if (source.type === "dropbox")
+    return {
+      kind: "dropbox",
+      id: source.id,
+      name: source.name,
+      enabled: source.enabled,
+      clientId: source.clientId,
+      accountId: source.accountId ?? undefined,
+      displayName: source.displayName ?? undefined,
+      email: source.email ?? undefined,
+      rootPath: source.rootPath ?? undefined,
+      hasRefreshToken: source.hasRefreshToken,
+      readonly: source.readonly,
+      createdAt: source.createdAt,
+    }
   return {
-    kind: "onedrive",
+    kind: "s3",
     id: source.id,
     name: source.name,
     enabled: source.enabled,
-    clientId: source.clientId,
-    tenantId: source.tenantId ?? undefined,
-    displayName: source.displayName ?? undefined,
-    email: source.email ?? undefined,
+    endpoint: source.endpoint,
+    bucket: source.bucket,
+    region: source.region,
     rootPath: source.rootPath ?? undefined,
-    hasRefreshToken: source.hasRefreshToken,
+    virtualHostStyle: source.virtualHostStyle,
+    hasCredentials: source.hasCredentials,
     readonly: source.readonly,
     createdAt: source.createdAt,
   }
@@ -107,6 +153,52 @@ function dataSourceFromCore(source: CoreDataSource): DataSource | null {
       createdAt: source.createdAt,
     }
   }
+  if (source.kind === "gdrive")
+    return {
+      id: source.id,
+      type: "gdrive",
+      name: source.name,
+      enabled: source.enabled,
+      clientId: source.clientId ?? "",
+      accountId: source.accountId,
+      displayName: source.displayName,
+      email: source.email,
+      rootPath: source.rootPath,
+      rootFolderId: source.rootFolderId,
+      hasRefreshToken: source.hasRefreshToken ?? false,
+      readonly: source.readonly,
+      createdAt: source.createdAt,
+    }
+  if (source.kind === "dropbox")
+    return {
+      id: source.id,
+      type: "dropbox",
+      name: source.name,
+      enabled: source.enabled,
+      clientId: source.clientId ?? "",
+      accountId: source.accountId,
+      displayName: source.displayName,
+      email: source.email,
+      rootPath: source.rootPath,
+      hasRefreshToken: source.hasRefreshToken ?? false,
+      readonly: source.readonly,
+      createdAt: source.createdAt,
+    }
+  if (source.kind === "s3")
+    return {
+      id: source.id,
+      type: "s3",
+      name: source.name,
+      enabled: source.enabled,
+      endpoint: source.endpoint ?? "",
+      bucket: source.bucket ?? "",
+      region: source.region ?? "",
+      rootPath: source.rootPath,
+      virtualHostStyle: source.virtualHostStyle ?? false,
+      hasCredentials: source.hasCredentials ?? false,
+      readonly: source.readonly,
+      createdAt: source.createdAt,
+    }
   return null
 }
 

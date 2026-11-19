@@ -32,7 +32,10 @@ async function resolveRemoteCoverUri(
 ) {
   const ops = await createRemoteOps(library, dataSources)
   if (!ops) return undefined
-  return ops.buildCoverUri(library, bookPath, hasCover)
+  return (
+    (await ops.resolveCoverUri?.(library, bookPath, hasCover)) ??
+    ops.buildCoverUri(library, bookPath, hasCover)
+  )
 }
 
 async function readFileHeaderBytes(
@@ -119,11 +122,11 @@ async function resolveBookCoverUri(
   dataSources: DataSource[],
   path: string,
   hasCover: boolean,
-) {
+): Promise<BookItem["coverUri"]> {
   const cover = isRemoteSourceType(library.sourceType)
     ? await resolveRemoteCoverUri(library, dataSources, path, hasCover)
     : buildLocalCoverUri(library, path, hasCover)
-  return typeof cover === "string" ? cover : cover?.uri
+  return cover
 }
 
 function readerLayoutMode(format: string): ReadyBookLoad["layoutMode"] {
@@ -196,7 +199,7 @@ export function useBookLoader(
     status: "loading",
     message: i18n.t("bookLoader.loadingBook"),
   })
-  const [coverUri, setCoverUri] = useState<string | undefined>(undefined)
+  const [coverUri, setCoverUri] = useState<BookItem["coverUri"]>(undefined)
   const [bookTitle, setBookTitle] = useState<string | undefined>(undefined)
   const loadStateRef = useRef<LoadState>({
     status: "loading",
@@ -250,8 +253,7 @@ export function useBookLoader(
         ) ?? []
       const bookItem = books.find((b) => b.id === id)
       if (bookItem?.coverUri) {
-        const cover = bookItem.coverUri
-        setCoverUri(typeof cover === "string" ? cover : cover?.uri)
+        setCoverUri(bookItem.coverUri)
       }
       if (bookItem?.title) {
         setBookTitle(bookItem.title)

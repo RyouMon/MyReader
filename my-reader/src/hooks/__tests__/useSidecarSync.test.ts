@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest"
 import { bookFileStateKeys } from "@/hooks/queries/useBookFileState"
 import { favoriteBookKeys } from "@/hooks/queries/useFavoriteBooksQuery"
 import { readingProgressKeys } from "@/hooks/queries/useReadingProgressQuery"
+import { libraryKeys } from "@/hooks/queries/useLibrariesQuery"
 import {
   applySidecarSyncCompleted,
   applySyncStatusObservation,
@@ -13,6 +14,9 @@ import { useSyncStatusStore } from "@/stores/syncStatusStore"
 describe("sidecar sync events", () => {
   it("should invalidate synced library data when a full pull completes", async () => {
     const queryClient = new QueryClient()
+    queryClient.setQueryData(libraryKeys.all, [
+      { id: "library-1", bookCount: 1 },
+    ])
     const progressKey = readingProgressKeys.list("library-1")
     const favoriteKey = favoriteBookKeys.list("library-1")
     const fileStateKey = bookFileStateKeys.detail("library-1", 42, "EPUB")
@@ -43,6 +47,7 @@ describe("sidecar sync events", () => {
     )
 
     expect(queryClient.getQueryState(progressKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(libraryKeys.all)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(favoriteKey)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(fileStateKey)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(otherFileStateKey)?.isInvalidated).toBe(

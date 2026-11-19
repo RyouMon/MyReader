@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import { FolderBrowser } from "@/components/settings/FolderBrowser"
 import { api } from "@/lib/tauri-api"
-import type { OnedriveFolderEntry } from "@/lib/tauri-specta"
+import { useRemoteFolderBrowser } from "@/hooks/useRemoteFolderBrowser"
 
 interface OnedriveFolderBrowserProps {
   dataSourceId: string
@@ -33,39 +32,15 @@ export function OnedriveFolderBrowser({
   embedded,
 }: OnedriveFolderBrowserProps) {
   const { t } = useTranslation()
-  const [currentPath, setCurrentPath] = useState("/")
-  const [folders, setFolders] = useState<OnedriveFolderEntry[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchFolders = useCallback(
-    async (path: string) => {
-      setLoading(true)
-      setError(null)
-      try {
-        const result = await api.onedriveListFolders(dataSourceId, path)
-        setFolders(result)
-      } catch {
-        setError(t("addDataSourceForm.onedriveBrowserError"))
-        setFolders([])
-      } finally {
-        setLoading(false)
-      }
-    },
-    [dataSourceId, t],
-  )
-
-  useEffect(() => {
-    if (open) {
-      setCurrentPath("/")
-      fetchFolders("/")
-    }
-  }, [open, fetchFolders])
-
-  function navigateTo(path: string) {
-    setCurrentPath(path)
-    fetchFolders(path)
-  }
+  const {
+    currentPath,
+    folders,
+    loading,
+    error,
+    navigateTo,
+    refresh,
+    createFolder,
+  } = useRemoteFolderBrowser(dataSourceId, open, api.onedriveListFolders)
 
   return (
     <FolderBrowser
@@ -81,13 +56,13 @@ export function OnedriveFolderBrowser({
       errorMessage={t("addDataSourceForm.onedriveBrowserError")}
       selectLabel={selectLabel ?? t("addDataSourceForm.onedriveBrowserSelect")}
       onNavigate={navigateTo}
-      onRefresh={() => fetchFolders(currentPath)}
+      onRefresh={refresh}
       onSelect={onSelect}
       onCancel={onCancel}
       cancelLabel={cancelLabel}
       selectingLabel={selectingLabel}
       closeOnSelect={closeOnSelect}
-      createSubdirectory={createSubdirectory}
+      onCreateDirectory={createSubdirectory ? createFolder : undefined}
       embedded={embedded}
     />
   )

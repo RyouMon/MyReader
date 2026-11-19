@@ -38,10 +38,8 @@ extension ReaderWindowTests {
         ])
       )
       let reader = try EPUBViewController(publication: publication, locator: nil, bookId: "epub-export")
-      let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
-      window.rootViewController = reader
-      window.makeKeyAndVisible()
-      defer { window.isHidden = true }
+      let detach = try ReaderWindowTests.host(reader, frame: CGRect(x: 0, y: 0, width: 400, height: 600))
+      defer { detach() }
       func findWebView(_ view: UIView) -> WKWebView? {
         if let web = view as? WKWebView { return web }
         return view.subviews.lazy.compactMap { findWebView($0) }.first
@@ -60,7 +58,7 @@ extension ReaderWindowTests {
         try await Task.sleep(nanoseconds: 50_000_000)
       }
       try #require(ready)
-      window.layoutIfNeeded()
+      reader.view.layoutIfNeeded()
       // DOM readiness and the fade completion do not guarantee that WebKit has
       // painted. Await its screen updates before exercising the UIKit exporter.
       let webView = try #require(findWebView(reader.view))
@@ -104,10 +102,8 @@ extension ReaderWindowTests {
       try #require(result == .completed)
       let reader = try #require(controller as? PDFViewController)
       #expect(throws: (any Error).self) { try reader.pageImages() }
-      let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
-      window.rootViewController = reader
-      window.makeKeyAndVisible()
-      defer { window.isHidden = true }
+      let detach = try ReaderWindowTests.host(reader, frame: CGRect(x: 0, y: 0, width: 400, height: 600))
+      defer { detach() }
       func findPDF(_ view: UIView) -> PDFView? {
         if let pdf = view as? PDFView { return pdf }
         return view.subviews.lazy.compactMap { findPDF($0) }.first
@@ -183,11 +179,10 @@ extension ReaderWindowTests {
       controller.navigator(controller.epubNavigator, setupUserScripts: config.userContentController)
       try #require(config.userContentController.userScripts.count == 1)
       let webView = WKWebView(frame: CGRect(x: 0, y: 0, width: 200, height: 200), configuration: config)
-      let window = UIWindow(frame: webView.bounds)
-      window.rootViewController = UIViewController()
-      window.rootViewController!.view = webView
-      window.makeKeyAndVisible()
-      defer { window.isHidden = true }
+      let host = UIViewController()
+      host.view = webView
+      let detach = try ReaderWindowTests.host(host, frame: webView.bounds)
+      defer { detach() }
       var selections: [String] = []
       let selected = XCTestExpectation(description: "Publication image selected through WebKit")
       controller.onImagePress = {
@@ -272,13 +267,10 @@ extension ReaderWindowTests {
         page.backgroundColor = color
         view.addSubview(page)
       }
-      let window = UIWindow(frame: view.bounds)
       let controller = UIViewController()
       controller.view = view
-      window.rootViewController = controller
-      window.makeKeyAndVisible()
-      defer { window.isHidden = true }
-      window.layoutIfNeeded()
+      let detach = try ReaderWindowTests.host(controller, frame: view.bounds)
+      defer { detach() }
       try await Task.sleep(nanoseconds: 100_000_000)
       for rtl in [false, true] {
         let pages = try ReaderImageExport.renderedPages(view: view, start: 4, end: 5, columns: 2, rtl: rtl)
@@ -328,6 +320,10 @@ extension ReaderWindowTests {
       let spread = try ReaderImageExport.pdfPages(view: view)
       #expect(spread.map(\.position) == [2, 3])
       #expect(zip(spread, [[0, 255, 0, 255], [0, 0, 255, 255]]).allSatisfy { near(pixel($0.image), $1) })
+      let repeated = RepeatedVisiblePagesView()
+      repeated.document = document
+      repeated.pages = [document.page(at: 2)!, document.page(at: 1)!, document.page(at: 2)!]
+      #expect(try ReaderImageExport.pdfPages(view: repeated).map(\.position) == [2, 3])
       #expect(throws: (any Error).self) { try ReaderImageExport.pdfPages(view: PDFView()) }
     }
 
@@ -345,6 +341,11 @@ extension ReaderWindowTests {
       zip(actual, expected).allSatisfy { abs(Int($0) - Int($1)) <= 2 }
     }
   }
+}
+
+private final class RepeatedVisiblePagesView: PDFView {
+  var pages: [PDFPage] = []
+  override var visiblePages: [PDFPage] { pages }
 }
 
 @MainActor

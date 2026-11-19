@@ -39,6 +39,7 @@ function sourceIdentity(source: BookItem["coverUri"]): string {
 }
 
 export function createCoverThumbnailCoverIdentity(book: BookItem): string {
+  if (book.coverKey) return book.coverKey
   if (!book.coverUri) return ""
   return [sourceIdentity(book.coverUri), book.timestamp ?? ""].join("|")
 }

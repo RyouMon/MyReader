@@ -273,7 +273,10 @@
     "bookCountCurrent_many": "{{count}} livros · Em uso",
     "bookCount_one": "{{count}} livro",
     "bookCount_other": "{{count}} livros",
-    "bookCount_many": "{{count}} livros"
+    "bookCount_many": "{{count}} livros",
+    "gdriveDetail": "Gerenciar fontes de dados Google Drive",
+    "dropboxDetail": "Gerenciar fontes de dados Dropbox",
+    "s3Detail": "Gerenciar fontes de dados S3"
   },
   "reader": {
     "cannotOpen": "Não é possível abrir o livro",
@@ -914,7 +917,9 @@
     "webdavMkcolFailed": "WebDAV MKCOL falhou: {{status}} {{path}}",
     "localFileNotExist": "Arquivo local não existe: {{path}}",
     "basicAuthNotSupported": "Codificação de autenticação básica não suportada neste ambiente",
-    "syncPathCannotBeEmpty": "O caminho de sincronização não pode ficar vazio"
+    "syncPathCannotBeEmpty": "O caminho de sincronização não pode ficar vazio",
+    "remoteSourceNotFound": "Pode ter sido removido. Retorne à lista de fontes.",
+    "remoteCredentialsMissing": "Entre novamente ou atualize as credenciais da fonte."
   },
   "notifications": {
     "libraryAdded": "Biblioteca adicionada: {{name}}",
@@ -943,5 +948,116 @@
     "restoreBookmark": "Restaurar marcador",
     "accessDirectory": "Diretório de acesso",
     "refreshBookmark": "Atualizar marcador"
+  },
+  "addLibraryFlow": {
+    "addGdrive": {
+      "title": "Adicionar fonte Google Drive"
+    },
+    "addDropbox": {
+      "title": "Adicionar fonte Dropbox"
+    },
+    "addS3": {
+      "title": "Adicionar fonte S3"
+    }
+  },
+  "cloud": {
+    "sources": {
+      "title": "{{provider}} Fontes",
+      "add": "Adicionar fonte",
+      "emptyTitle": "Nenhuma fonte {{provider}} ainda",
+      "emptyDetail": "Use o botão abaixo para adicionar uma fonte {{provider}}."
+    },
+    "auth": {
+      "alreadyAdded": {
+        "title": "Conta já adicionada",
+        "detail": "Esta conta {{provider}} já está conectada como {{name}}."
+      },
+      "failed": {
+        "title": "Falha na autenticação"
+      },
+      "accountMismatch": {
+        "title": "Incompatibilidade de conta",
+        "detail": "Entre com a conta configurada para {{email}}."
+      },
+      "reauthenticate": "Entrar novamente"
+    },
+    "form": {
+      "addTitle": "Adicionar fonte {{provider}}",
+      "editTitle": "Editar fonte {{provider}}",
+      "save": "Salvar",
+      "saving": "Salvando",
+      "signIn": "Entrar e continuar",
+      "reauthenticate": "Entrar novamente",
+      "addFailed": "Falha na adição",
+      "updateFailed": "Falha ao salvar",
+      "connectionFailed": "Falha no teste de conexão",
+      "clientIdLabel": "Google OAuth Client ID",
+      "clientIdPlaceholder": "Use the client ID registered for this app",
+      "appKeyLabel": "Dropbox App Key",
+      "appKeyPlaceholder": "Paste the Dropbox App Key",
+      "appKeyRequired": "Enter the Dropbox App Key.",
+      "openDropboxConsole": "Dropbox App Console",
+      "rootPathLabel": "Caminho raiz (opcional)",
+      "nameLabel": "Nome",
+      "endpointLabel": "Ponto final",
+      "bucketLabel": "Bucket",
+      "regionLabel": "Região",
+      "accessKeyLabel": "ID da chave de acesso",
+      "secretKeyLabel": "Chave de acesso secreta",
+      "sessionTokenLabel": "Token de sessão (opcional)",
+      "virtualHostStyle": "Usar URLs de bucket com hospedagem virtual",
+      "endpointRequired": "Digite um endpoint S3.",
+      "bucketRequired": "Digite um bucket S3.",
+      "regionRequired": "Digite uma região S3.",
+      "accessKeyRequired": "Digite um ID de chave de acesso.",
+      "secretKeyRequired": "Digite uma chave de acesso secreta.",
+      "appKeyHint": "Create a Dropbox app and paste its App Key here. The redirect URI is configured by the app."
+    },
+    "browser": {
+      "title": "Selecione Biblioteca {{provider}}",
+      "validating": "Validando diretório",
+      "reading": {
+        "title": "Lendo diretório",
+        "detail": "Buscando listagem de diretório de {{provider}}."
+      },
+      "readFailed": {
+        "title": "Falha na leitura"
+      },
+      "loadFailed": {
+        "title": "Falha na navegação",
+        "message": "O navegador {{provider}} encontrou um erro inesperado. Por favor, tente novamente."
+      },
+      "credentialsUnavailable": {
+        "title": "{{provider}} credenciais indisponíveis",
+        "detail": "Entre novamente ou atualize as credenciais da fonte."
+      },
+      "empty": {
+        "title": "Diretório vazio",
+        "detail": "Nenhum subdiretório no diretório atual."
+      }
+    },
+    "detail": {
+      "title": "Detalhes da Fonte",
+      "type": "Tipo",
+      "displayName": "Nome de exibição",
+      "email": "E-mail",
+      "endpoint": "Ponto final",
+      "bucket": "Bucket",
+      "region": "Região",
+      "rootPath": "Caminho Base",
+      "authStatus": "Status de autenticação",
+      "authenticated": "Autenticado",
+      "notAuthenticated": "Não autenticado",
+      "addedAt": "Adicionado em"
+    },
+    "delete": {
+      "title": "Excluir fonte {{provider}}",
+      "confirm": "Excluir \"{{name}}\"?",
+      "cancel": "Cancelar",
+      "confirmButton": "Excluir",
+      "failed": "Não é possível excluir",
+      "action": "Excluir fonte"
+    },
+    "edit": "Editar fonte"
   }
 }

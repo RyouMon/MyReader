@@ -6,6 +6,16 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.22.0] - 2026-11-10
+
+### Added
+
+- Added mouse-wheel, arrow-key and Page Up/Page Down page turns to the desktop EPUB reader, with left and right arrows following the reading direction ([#140](https://github.com/RyouMon/MyReader/pull/140)).
+
+### Fixed
+
+- Fixed reader menus continuing to intercept keyboard page turns after they close ([#140](https://github.com/RyouMon/MyReader/pull/140)).
+
 ## [0.21.0] - 2026-11-04
 
 ### Added

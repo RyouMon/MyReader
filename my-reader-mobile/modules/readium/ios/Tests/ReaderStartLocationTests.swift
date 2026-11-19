@@ -12,7 +12,35 @@ import WebKit
 // UIKit, WebKit and narration tests share the foreground window and audio session.
 // Serialize them together so native service startup cannot starve another test's callbacks.
 @Suite(.serialized)
-struct ReaderWindowTests {}
+struct ReaderWindowTests {
+  @MainActor
+  static func window() throws -> UIWindow {
+    try #require(UIApplication.shared.connectedScenes
+      .compactMap { $0 as? UIWindowScene }
+      .flatMap(\.windows)
+      .first { $0.isKeyWindow })
+  }
+
+  @MainActor
+  static func host(_ controller: UIViewController, frame: CGRect) throws -> () -> Void {
+    let window = try window()
+    let previousRoot = window.rootViewController
+    let host = UIViewController()
+    window.rootViewController = host
+    window.makeKeyAndVisible()
+    host.addChild(controller)
+    controller.view.frame = frame
+    host.view.addSubview(controller.view)
+    controller.didMove(toParent: host)
+    host.view.layoutIfNeeded()
+    return {
+      controller.willMove(toParent: nil)
+      controller.view.removeFromSuperview()
+      controller.removeFromParent()
+      window.rootViewController = previousRoot
+    }
+  }
+}
 
 extension ReaderWindowTests {
   @Suite
@@ -179,7 +207,7 @@ extension ReaderWindowTests {
       try Data("application/epub+zip".utf8).write(to: contents.appendingPathComponent("mimetype"))
       try await FileManager.default.zipItem(at: contents, to: book, shouldKeepParent: false)
 
-      let window = try #require(UIApplication.shared.delegate?.window ?? nil)
+      let window = try ReaderWindowTests.window()
       let previousRoot = window.rootViewController
       let host = UIViewController()
       window.rootViewController = host
@@ -319,7 +347,7 @@ extension ReaderWindowTests {
       let viewportReady = XCTestExpectation(description: "Readium published its initial viewport")
       delegate.onViewportReady = { viewportReady.fulfill() }
       controller.epubNavigator.delegate = delegate
-      let window = try #require(UIApplication.shared.delegate?.window ?? nil)
+      let window = try ReaderWindowTests.window()
       let previousRoot = window.rootViewController
       let host = UIViewController()
       window.rootViewController = host
@@ -386,7 +414,7 @@ extension ReaderWindowTests {
       try Data("application/epub+zip".utf8).write(to: contents.appendingPathComponent("mimetype"))
       try await FileManager.default.zipItem(at: contents, to: book, shouldKeepParent: false)
 
-      let window = try #require(UIApplication.shared.delegate?.window ?? nil)
+      let window = try ReaderWindowTests.window()
       let previousRoot = window.rootViewController
       let host = UIViewController()
       window.rootViewController = host

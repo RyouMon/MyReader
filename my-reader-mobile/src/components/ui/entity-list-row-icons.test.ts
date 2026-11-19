@@ -17,4 +17,12 @@ describe("ENTITY_LIST_ROW_ICONS", () => {
       tone: "onedrive",
     })
   })
+
+  it.each([
+    ["gdriveDataSource"],
+    ["dropboxDataSource"],
+    ["s3DataSource"],
+  ] as const)("should render a provider mark for %s", (kind) => {
+    expect(typeof ENTITY_LIST_ROW_ICONS[kind].render).toBe("function")
+  })
 })

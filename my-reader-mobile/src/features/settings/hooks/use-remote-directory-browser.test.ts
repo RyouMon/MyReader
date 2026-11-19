@@ -5,12 +5,14 @@ import { useRemoteDirectoryBrowser } from "./use-remote-directory-browser"
 
 const mockOpenRemoteExistingLibrary = jest.fn()
 const mockListRemoteDirectories = jest.fn()
+const mockCreateRemoteDirectory = jest.fn()
 const mockShowAlert = jest.fn()
 const mockOnLibraryOpened = jest.fn()
 const mockDataSource = {
   id: "source-1",
   type: "onedrive",
   name: "OneDrive",
+  readonly: false,
 }
 const mockStoreState = {
   dataSources: [mockDataSource],
@@ -32,6 +34,8 @@ jest.mock("@/src/domain/library/remote-library", () => ({
 }))
 
 jest.mock("@/src/services/core/remote", () => ({
+  createRemoteDirectory: (...args: unknown[]) =>
+    mockCreateRemoteDirectory(...args),
   listRemoteDirectories: (...args: unknown[]) =>
     mockListRemoteDirectories(...args),
 }))
@@ -57,6 +61,105 @@ describe("useRemoteDirectoryBrowser", () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockListRemoteDirectories.mockResolvedValue([])
+    mockDataSource.readonly = false
+  })
+
+  it.each([
+    false,
+    true,
+  ])("does not create folders while opening or browsing a readonly source (%s)", async (readonly) => {
+    mockDataSource.readonly = readonly
+    const { result } = renderHook(() =>
+      useRemoteDirectoryBrowser({
+        dataSourceId: "source-1",
+        currentPathParam: "/Books",
+        libraryAction: readonly ? "create" : "open",
+        onLibraryOpened: mockOnLibraryOpened,
+        sourceType: "onedrive",
+      }),
+    )
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.canCreateDirectory).toBe(false)
+    await act(async () => {
+      expect(await result.current.createDirectory("New")).toBeNull()
+    })
+    expect(mockCreateRemoteDirectory).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    "onedrive",
+    "gdrive",
+    "dropbox",
+  ] as const)("creates a child directory in the selected %s location", async (sourceType) => {
+    mockDataSource.type = sourceType
+    const folder = { name: "新书库", path: "/Books/新书库", isDirectory: true }
+    mockCreateRemoteDirectory.mockResolvedValue(folder)
+    const { result } = renderHook(() =>
+      useRemoteDirectoryBrowser({
+        dataSourceId: "source-1",
+        currentPathParam: "/Books",
+        libraryAction: "create",
+        onLibraryOpened: mockOnLibraryOpened,
+        sourceType,
+      }),
+    )
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    await act(async () => {
+      expect(await result.current.createDirectory("新书库")).toEqual(folder)
+    })
+    expect(mockCreateRemoteDirectory).toHaveBeenCalledWith(
+      mockDataSource,
+      "/Books",
+      "新书库",
+    )
+    expect(mockOnLibraryOpened).not.toHaveBeenCalled()
+    expect(result.current.creating).toBe(false)
+    expect(result.current.entries).toEqual([folder])
+    expect(result.current.currentPath).toBe("/Books")
+    mockDataSource.type = "onedrive"
+  })
+
+  it("preserves the current directory after failure and allows retry without duplicate submissions", async () => {
+    let reject!: (error: Error) => void
+    mockCreateRemoteDirectory.mockImplementationOnce(
+      () =>
+        new Promise((_, no) => {
+          reject = no
+        }),
+    )
+    const { result } = renderHook(() =>
+      useRemoteDirectoryBrowser({
+        dataSourceId: "source-1",
+        currentPathParam: "/Books",
+        libraryAction: "create",
+        onLibraryOpened: mockOnLibraryOpened,
+        sourceType: "onedrive",
+      }),
+    )
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    let pending!: Promise<unknown>
+    act(() => {
+      pending = result.current.createDirectory("Library")
+    })
+    await act(async () => {
+      expect(await result.current.createDirectory("Library")).toBeNull()
+      reject(new Error("REMOTE_DIRECTORY_ALREADY_EXISTS"))
+      await pending
+    })
+    expect(mockCreateRemoteDirectory).toHaveBeenCalledTimes(1)
+    expect(result.current.currentPath).toBe("/Books")
+    expect(result.current.creationError).toContain(
+      "REMOTE_DIRECTORY_ALREADY_EXISTS",
+    )
+    mockCreateRemoteDirectory.mockResolvedValue({
+      name: "New",
+      path: "/Books/New",
+      isDirectory: true,
+    })
+    await act(async () => {
+      await result.current.createDirectory("New")
+    })
+    expect(result.current.creationError).toBeNull()
   })
 
   it("should show duplicate feedback without replacing directory state when library already exists", async () => {

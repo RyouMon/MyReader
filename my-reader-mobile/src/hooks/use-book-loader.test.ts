@@ -1,15 +1,20 @@
 import { renderHook, waitFor } from "@testing-library/react-native"
 import {
+  getBookFormatPaths,
   readBookDetailFromMetadata,
   resolveBookFileForRead,
 } from "@/src/domain/library/catalog"
+import type { BookItem } from "@/src/domain/types"
+import { createRemoteOps } from "@/src/domain/library/remote-library"
 import { getReadingProgress } from "@/src/domain/library/reading-progress"
 import { listReadingPositionCandidates } from "@/src/services/core/reading"
+import { queryClient } from "@/src/services/query/query-client"
 import { useAppStore } from "@/src/store/app-store"
 import { useBookLoader } from "./use-book-loader"
 
 jest.mock("@/src/domain/library/catalog", () => ({
   libraryQueryKeys: { books: (id: string) => ["books", id] },
+  getBookFormatPaths: jest.fn(),
   readBookDetailFromMetadata: jest.fn(),
   resolveBookFileForRead: jest.fn(),
 }))
@@ -83,4 +88,75 @@ it.each([
     initialLocator: syncedLocator,
   })
   reopened.unmount()
+})
+
+it("keeps authorization headers on a cached remote cover", async () => {
+  const coverUri = {
+    uri: "https://www.googleapis.com/drive/v3/files/cover?alt=media",
+    headers: { Authorization: "Bearer access-token" },
+  }
+  const library = {
+    id: "library",
+    sourceType: "gdrive",
+    dataSourceId: "gdrive-source",
+    path: "file:///library",
+  }
+  jest.mocked(useAppStore.getState).mockReturnValue({
+    libraries: [library],
+    dataSources: [],
+  } as unknown as ReturnType<typeof useAppStore.getState>)
+  jest.mocked(queryClient.getQueryData).mockReturnValue([
+    {
+      id: "4",
+      title: "Book",
+      author: "Author",
+      coverUri,
+    } as BookItem,
+  ] as never)
+  jest.mocked(readBookDetailFromMetadata).mockReturnValue(new Promise(() => {}))
+
+  const { result, unmount } = renderHook(() =>
+    useBookLoader("4", "EPUB", "library"),
+  )
+
+  await waitFor(() => expect(result.current.coverUri).toEqual(coverUri))
+  unmount()
+})
+
+it("keeps authorization headers when resolving a remote cover", async () => {
+  const coverUri = {
+    uri: "https://www.googleapis.com/drive/v3/files/cover?alt=media",
+    headers: { Authorization: "Bearer access-token" },
+  }
+  const library = {
+    id: "library",
+    sourceType: "gdrive",
+    dataSourceId: "gdrive-source",
+    path: "file:///library",
+  }
+  jest.mocked(useAppStore.getState).mockReturnValue({
+    libraries: [library],
+    dataSources: [],
+  } as unknown as ReturnType<typeof useAppStore.getState>)
+  jest.mocked(queryClient.getQueryData).mockReturnValue([] as never)
+  jest.mocked(readBookDetailFromMetadata).mockResolvedValue({
+    title: "Book",
+    path: "Author/Book",
+    hasCover: true,
+    languages: [],
+    readableFormats: ["EPUB"],
+    preferredFormat: "EPUB",
+  } as unknown as Awaited<ReturnType<typeof readBookDetailFromMetadata>>)
+  jest.mocked(getBookFormatPaths).mockResolvedValue([])
+  jest.mocked(createRemoteOps).mockResolvedValue({
+    resolveCoverUri: jest.fn().mockResolvedValue(coverUri),
+    buildCoverUri: jest.fn(),
+  })
+
+  const { result, unmount } = renderHook(() =>
+    useBookLoader("4", "EPUB", "library"),
+  )
+
+  await waitFor(() => expect(result.current.coverUri).toEqual(coverUri))
+  unmount()
 })

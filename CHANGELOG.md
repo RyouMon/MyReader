@@ -5,6 +5,16 @@
 MyReader 的重要变更均记录于此。
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [0.22.0] - 2026-11-10
+
+### Added
+
+- 桌面 EPUB 阅读器支持使用鼠标滚轮、方向键和 Page Up/Page Down 翻页，并按阅读方向处理左右方向键（[#140](https://github.com/RyouMon/MyReader/pull/140)）。
+
+### Fixed
+
+- 修复关闭阅读器菜单后键盘翻页仍被菜单拦截的问题（[#140](https://github.com/RyouMon/MyReader/pull/140)）。
+
 ## [0.21.0] - 2026-11-04
 
 ### Added

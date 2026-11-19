@@ -453,5 +453,12 @@
   "passwordField": {
     "show": "Afficher le mot de passe",
     "hide": "Masquer le mot de passe"
+  },
+  "remoteFolder": {
+    "name": "Nom du dossier",
+    "create": "Créer un dossier",
+    "creating": "Création…",
+    "invalid": "Saisissez un nom de dossier sans / ni \\.",
+    "exists": "Un fichier ou dossier portant ce nom existe déjà."
   }
 }

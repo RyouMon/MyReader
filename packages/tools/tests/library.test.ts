@@ -14,6 +14,9 @@ describe("library source type", () => {
   it("should classify network-backed libraries when source type is remote", () => {
     expect(isRemoteLibrarySourceType("webdav")).toBe(true)
     expect(isRemoteLibrarySourceType("onedrive")).toBe(true)
+    expect(isRemoteLibrarySourceType("gdrive")).toBe(true)
+    expect(isRemoteLibrarySourceType("dropbox")).toBe(true)
+    expect(isRemoteLibrarySourceType("s3")).toBe(true)
   })
 
   it("should reject local and missing source types when source is not remote", () => {

@@ -5,6 +5,7 @@ import {
   linksToTocItems,
   locatorWithHrefFragments,
   positionIndexForLocator,
+  positionIndexForStoredLocator,
   type ReaderLink,
   type ReaderLocator,
   resolveReaderToc,
@@ -56,6 +57,38 @@ describe("reader toc utilities", () => {
         locator("OPS/chapter-2.xhtml", { position: 50 }),
       ),
     ).toBe(2)
+  })
+
+  it("uses the resource when another device's position number points at a different chapter", () => {
+    const synced = locator("OPS/chapter-1.xhtml", {
+      position: 2,
+      progression: 0.6,
+    })
+    expect(positionIndexForStoredLocator(positions, synced)).toBe(0)
+    const toc = linksToTocItems(
+      [
+        { href: "OPS/chapter-1.xhtml", title: "Chapter 1" },
+        { href: "OPS/chapter-2.xhtml", title: "Chapter 2" },
+      ],
+      positions,
+    )
+    expect(
+      resolveReaderToc({
+        toc,
+        positions,
+        locator: synced,
+        currentPage: positionIndexForStoredLocator(positions, synced),
+      }).title,
+    ).toBe("Chapter 1")
+  })
+
+  it("uses local progression when a synced position exceeds the current navigator's positions", () => {
+    expect(
+      positionIndexForStoredLocator(
+        positions,
+        locator("OPS/chapter-2.xhtml", { position: 25, progression: 0.4 }),
+      ),
+    ).toBe(1)
   })
 
   it("should resolve the nearest position when a content locator only has local progression", () => {

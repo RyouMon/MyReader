@@ -19,6 +19,7 @@ import {
   type UniffiRustCallStatus,
   AbstractFfiConverterByteArray,
   FfiConverterArray,
+  FfiConverterArrayBuffer,
   FfiConverterBool,
   FfiConverterCallback,
   FfiConverterFloat64,
@@ -2719,6 +2720,63 @@ export async function contentUpsertFileState(
       /*freeFunc:*/ nativeModule()
         .ubrn_ffi_my_reader_core_ffi_rust_future_free_void,
       /*liftFunc:*/ (_v) => {},
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function dataSourceCreateDirectory(
+  configPath: string,
+  dataSourceId: string,
+  parentPath: string,
+  name: string,
+  credential: RemoteCredential,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<RemoteDirectoryEntry> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_data_source_create_directory(
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(
+            dataSourceId,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(parentPath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(name, nativeModule().rustbuffer_alloc),
+          FfiConverterTypeRemoteCredential.lower(
+            credential,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeRemoteDirectoryEntry.lift.bind(
+        FfiConverterTypeRemoteDirectoryEntry,
+      ),
       /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
       /*asyncOpts:*/ asyncOpts_,
       /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
@@ -5666,6 +5724,280 @@ export async function readingUpdateAnnotation(
   }
 }
 
+export async function storageDelete(
+  storage: LibraryStorageConfig,
+  path: string,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<void> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_storage_delete(
+          FfiConverterTypeLibraryStorageConfig.lower(
+            storage,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(path, nativeModule().rustbuffer_alloc),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_void,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_void,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_void,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_void,
+      /*liftFunc:*/ (_v) => {},
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function storageDownloadRequest(
+  storage: LibraryStorageConfig,
+  path: string,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<RemoteDownloadRequest> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_storage_download_request(
+          FfiConverterTypeLibraryStorageConfig.lower(
+            storage,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(path, nativeModule().rustbuffer_alloc),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypeRemoteDownloadRequest.lift.bind(
+        FfiConverterTypeRemoteDownloadRequest,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function storageList(
+  storage: LibraryStorageConfig,
+  path: string,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<Array<string>> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_storage_list(
+          FfiConverterTypeLibraryStorageConfig.lower(
+            storage,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(path, nativeModule().rustbuffer_alloc),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterSequenceString.lift.bind(
+        FfiConverterSequenceString,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function storageRead(
+  storage: LibraryStorageConfig,
+  path: string,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<ArrayBuffer> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_storage_read(
+          FfiConverterTypeLibraryStorageConfig.lower(
+            storage,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(path, nativeModule().rustbuffer_alloc),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterArrayBuffer.lift.bind(FfiConverterArrayBuffer),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function storageStat(
+  storage: LibraryStorageConfig,
+  path: string,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<RemoteFileStat | undefined> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_storage_stat(
+          FfiConverterTypeLibraryStorageConfig.lower(
+            storage,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(path, nativeModule().rustbuffer_alloc),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterOptionalTypeRemoteFileStat.lift.bind(
+        FfiConverterOptionalTypeRemoteFileStat,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
+export async function storageWrite(
+  storage: LibraryStorageConfig,
+  path: string,
+  bytes: ArrayBuffer,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<void> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_storage_write(
+          FfiConverterTypeLibraryStorageConfig.lower(
+            storage,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(path, nativeModule().rustbuffer_alloc),
+          FfiConverterArrayBuffer.lower(bytes, nativeModule().rustbuffer_alloc),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_void,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_void,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_void,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_void,
+      /*liftFunc:*/ (_v) => {},
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
 export function syncBegin(
   coordinatorId: string,
   libraryId: string,
@@ -7318,6 +7650,7 @@ const FfiConverterTypeAppPreferences = (() => {
 })();
 
 export type DataSource = {
+  accountId?: string;
   kind: string;
   id: string;
   name: string;
@@ -7334,6 +7667,11 @@ export type DataSource = {
   displayName?: string;
   email?: string;
   hasRefreshToken?: boolean;
+  rootFolderId?: string;
+  bucket?: string;
+  region?: string;
+  virtualHostStyle?: boolean;
+  hasCredentials?: boolean;
 };
 
 /**
@@ -7358,6 +7696,7 @@ const FfiConverterTypeDataSource = (() => {
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
     read(from: RustBuffer): TypeName {
       return {
+        accountId: FfiConverterOptionalString.read(from),
         kind: FfiConverterString.read(from),
         id: FfiConverterString.read(from),
         name: FfiConverterString.read(from),
@@ -7374,9 +7713,15 @@ const FfiConverterTypeDataSource = (() => {
         displayName: FfiConverterOptionalString.read(from),
         email: FfiConverterOptionalString.read(from),
         hasRefreshToken: FfiConverterOptionalBoolean.read(from),
+        rootFolderId: FfiConverterOptionalString.read(from),
+        bucket: FfiConverterOptionalString.read(from),
+        region: FfiConverterOptionalString.read(from),
+        virtualHostStyle: FfiConverterOptionalBoolean.read(from),
+        hasCredentials: FfiConverterOptionalBoolean.read(from),
       };
     }
     write(value: TypeName, into: RustBuffer): void {
+      FfiConverterOptionalString.write(value.accountId, into);
       FfiConverterString.write(value.kind, into);
       FfiConverterString.write(value.id, into);
       FfiConverterString.write(value.name, into);
@@ -7393,9 +7738,15 @@ const FfiConverterTypeDataSource = (() => {
       FfiConverterOptionalString.write(value.displayName, into);
       FfiConverterOptionalString.write(value.email, into);
       FfiConverterOptionalBoolean.write(value.hasRefreshToken, into);
+      FfiConverterOptionalString.write(value.rootFolderId, into);
+      FfiConverterOptionalString.write(value.bucket, into);
+      FfiConverterOptionalString.write(value.region, into);
+      FfiConverterOptionalBoolean.write(value.virtualHostStyle, into);
+      FfiConverterOptionalBoolean.write(value.hasCredentials, into);
     }
     allocationSize(value: TypeName): number {
       return (
+        FfiConverterOptionalString.allocationSize(value.accountId) +
         FfiConverterString.allocationSize(value.kind) +
         FfiConverterString.allocationSize(value.id) +
         FfiConverterString.allocationSize(value.name) +
@@ -7411,7 +7762,12 @@ const FfiConverterTypeDataSource = (() => {
         FfiConverterOptionalString.allocationSize(value.tenantId) +
         FfiConverterOptionalString.allocationSize(value.displayName) +
         FfiConverterOptionalString.allocationSize(value.email) +
-        FfiConverterOptionalBoolean.allocationSize(value.hasRefreshToken)
+        FfiConverterOptionalBoolean.allocationSize(value.hasRefreshToken) +
+        FfiConverterOptionalString.allocationSize(value.rootFolderId) +
+        FfiConverterOptionalString.allocationSize(value.bucket) +
+        FfiConverterOptionalString.allocationSize(value.region) +
+        FfiConverterOptionalBoolean.allocationSize(value.virtualHostStyle) +
+        FfiConverterOptionalBoolean.allocationSize(value.hasCredentials)
       );
     }
   }
@@ -9641,12 +9997,19 @@ const FfiConverterTypeLibraryResult = (() => {
 })();
 
 export type LibraryStorageConfig = {
+  rootFolderId?: string;
   kind: string;
   root?: string;
   endpoint?: string;
   username?: string;
   password?: string;
   accessToken?: string;
+  bucket?: string;
+  region?: string;
+  virtualHostStyle?: boolean;
+  accessKeyId?: string;
+  secretAccessKey?: string;
+  sessionToken?: string;
 };
 
 /**
@@ -9672,30 +10035,51 @@ const FfiConverterTypeLibraryStorageConfig = (() => {
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
     read(from: RustBuffer): TypeName {
       return {
+        rootFolderId: FfiConverterOptionalString.read(from),
         kind: FfiConverterString.read(from),
         root: FfiConverterOptionalString.read(from),
         endpoint: FfiConverterOptionalString.read(from),
         username: FfiConverterOptionalString.read(from),
         password: FfiConverterOptionalString.read(from),
         accessToken: FfiConverterOptionalString.read(from),
+        bucket: FfiConverterOptionalString.read(from),
+        region: FfiConverterOptionalString.read(from),
+        virtualHostStyle: FfiConverterOptionalBoolean.read(from),
+        accessKeyId: FfiConverterOptionalString.read(from),
+        secretAccessKey: FfiConverterOptionalString.read(from),
+        sessionToken: FfiConverterOptionalString.read(from),
       };
     }
     write(value: TypeName, into: RustBuffer): void {
+      FfiConverterOptionalString.write(value.rootFolderId, into);
       FfiConverterString.write(value.kind, into);
       FfiConverterOptionalString.write(value.root, into);
       FfiConverterOptionalString.write(value.endpoint, into);
       FfiConverterOptionalString.write(value.username, into);
       FfiConverterOptionalString.write(value.password, into);
       FfiConverterOptionalString.write(value.accessToken, into);
+      FfiConverterOptionalString.write(value.bucket, into);
+      FfiConverterOptionalString.write(value.region, into);
+      FfiConverterOptionalBoolean.write(value.virtualHostStyle, into);
+      FfiConverterOptionalString.write(value.accessKeyId, into);
+      FfiConverterOptionalString.write(value.secretAccessKey, into);
+      FfiConverterOptionalString.write(value.sessionToken, into);
     }
     allocationSize(value: TypeName): number {
       return (
+        FfiConverterOptionalString.allocationSize(value.rootFolderId) +
         FfiConverterString.allocationSize(value.kind) +
         FfiConverterOptionalString.allocationSize(value.root) +
         FfiConverterOptionalString.allocationSize(value.endpoint) +
         FfiConverterOptionalString.allocationSize(value.username) +
         FfiConverterOptionalString.allocationSize(value.password) +
-        FfiConverterOptionalString.allocationSize(value.accessToken)
+        FfiConverterOptionalString.allocationSize(value.accessToken) +
+        FfiConverterOptionalString.allocationSize(value.bucket) +
+        FfiConverterOptionalString.allocationSize(value.region) +
+        FfiConverterOptionalBoolean.allocationSize(value.virtualHostStyle) +
+        FfiConverterOptionalString.allocationSize(value.accessKeyId) +
+        FfiConverterOptionalString.allocationSize(value.secretAccessKey) +
+        FfiConverterOptionalString.allocationSize(value.sessionToken)
       );
     }
   }
@@ -11228,6 +11612,9 @@ export type RemoteCredential = {
   kind: string;
   password?: string;
   accessToken?: string;
+  accessKeyId?: string;
+  secretAccessKey?: string;
+  sessionToken?: string;
 };
 
 /**
@@ -11255,18 +11642,27 @@ const FfiConverterTypeRemoteCredential = (() => {
         kind: FfiConverterString.read(from),
         password: FfiConverterOptionalString.read(from),
         accessToken: FfiConverterOptionalString.read(from),
+        accessKeyId: FfiConverterOptionalString.read(from),
+        secretAccessKey: FfiConverterOptionalString.read(from),
+        sessionToken: FfiConverterOptionalString.read(from),
       };
     }
     write(value: TypeName, into: RustBuffer): void {
       FfiConverterString.write(value.kind, into);
       FfiConverterOptionalString.write(value.password, into);
       FfiConverterOptionalString.write(value.accessToken, into);
+      FfiConverterOptionalString.write(value.accessKeyId, into);
+      FfiConverterOptionalString.write(value.secretAccessKey, into);
+      FfiConverterOptionalString.write(value.sessionToken, into);
     }
     allocationSize(value: TypeName): number {
       return (
         FfiConverterString.allocationSize(value.kind) +
         FfiConverterOptionalString.allocationSize(value.password) +
-        FfiConverterOptionalString.allocationSize(value.accessToken)
+        FfiConverterOptionalString.allocationSize(value.accessToken) +
+        FfiConverterOptionalString.allocationSize(value.accessKeyId) +
+        FfiConverterOptionalString.allocationSize(value.secretAccessKey) +
+        FfiConverterOptionalString.allocationSize(value.sessionToken)
       );
     }
   }
@@ -11317,6 +11713,101 @@ const FfiConverterTypeRemoteDirectoryEntry = (() => {
         FfiConverterString.allocationSize(value.name) +
         FfiConverterString.allocationSize(value.path) +
         FfiConverterBool.allocationSize(value.isDirectory)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type RemoteDownloadRequest = {
+  url: string;
+  headers: Map<string, string>;
+};
+
+/**
+ * Generated factory for {@link RemoteDownloadRequest} record objects.
+ */
+export const RemoteDownloadRequest = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<
+      RemoteDownloadRequest,
+      ReturnType<typeof defaults>
+    >(defaults);
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<RemoteDownloadRequest>,
+  });
+})();
+
+const FfiConverterTypeRemoteDownloadRequest = (() => {
+  type TypeName = RemoteDownloadRequest;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        url: FfiConverterString.read(from),
+        headers: FfiConverterMapStringString.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.url, into);
+      FfiConverterMapStringString.write(value.headers, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.url) +
+        FfiConverterMapStringString.allocationSize(value.headers)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type RemoteFileStat = {
+  etag: string;
+  size: number;
+  mtimeMs: number;
+};
+
+/**
+ * Generated factory for {@link RemoteFileStat} record objects.
+ */
+export const RemoteFileStat = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<RemoteFileStat, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<RemoteFileStat>,
+  });
+})();
+
+const FfiConverterTypeRemoteFileStat = (() => {
+  type TypeName = RemoteFileStat;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        etag: FfiConverterString.read(from),
+        size: FfiConverterFloat64.read(from),
+        mtimeMs: FfiConverterFloat64.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.etag, into);
+      FfiConverterFloat64.write(value.size, into);
+      FfiConverterFloat64.write(value.mtimeMs, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.etag) +
+        FfiConverterFloat64.allocationSize(value.size) +
+        FfiConverterFloat64.allocationSize(value.mtimeMs)
       );
     }
   }
@@ -13695,6 +14186,12 @@ const FfiConverterSequenceTypeReadingDay = new FfiConverterArray(
   FfiConverterTypeReadingDay,
 );
 
+// FfiConverter for Map<string, string>
+const FfiConverterMapStringString = new FfiConverterMap(
+  FfiConverterString,
+  FfiConverterString,
+);
+
 // FfiConverter for Array<ScheduledSync>
 const FfiConverterSequenceTypeScheduledSync = new FfiConverterArray(
   FfiConverterTypeScheduledSync,
@@ -13718,12 +14215,6 @@ const FfiConverterSequenceTypeSyncedReadingPosition = new FfiConverterArray(
 // FfiConverter for Array<TtsTiming>
 const FfiConverterSequenceTypeTtsTiming = new FfiConverterArray(
   FfiConverterTypeTtsTiming,
-);
-
-// FfiConverter for Map<string, string>
-const FfiConverterMapStringString = new FfiConverterMap(
-  FfiConverterString,
-  FfiConverterString,
 );
 
 // FfiConverter for Map<string, string> | undefined
@@ -13869,6 +14360,11 @@ const FfiConverterSequenceTypeReadingPositionCandidate = new FfiConverterArray(
 // FfiConverter for Array<ReadingPosition>
 const FfiConverterSequenceTypeReadingPosition = new FfiConverterArray(
   FfiConverterTypeReadingPosition,
+);
+
+// FfiConverter for RemoteFileStat | undefined
+const FfiConverterOptionalTypeRemoteFileStat = new FfiConverterOptional(
+  FfiConverterTypeRemoteFileStat,
 );
 
 // FfiConverter for SyncTaskProgress | undefined
@@ -14358,6 +14854,14 @@ function uniffiEnsureInitialized() {
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_content_upsert_file_state",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_data_source_create_directory() !==
+    20411
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_data_source_create_directory",
     );
   }
   if (
@@ -14865,6 +15369,54 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_storage_delete() !==
+    59287
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_storage_delete",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_storage_download_request() !==
+    2857
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_storage_download_request",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_storage_list() !==
+    13439
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_storage_list",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_storage_read() !==
+    19227
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_storage_read",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_storage_stat() !==
+    6736
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_storage_stat",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_storage_write() !==
+    20312
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_storage_write",
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_begin() !==
     57751
   ) {
@@ -15226,6 +15778,8 @@ export default Object.freeze({
     FfiConverterTypeReadingStatistics,
     FfiConverterTypeRemoteCredential,
     FfiConverterTypeRemoteDirectoryEntry,
+    FfiConverterTypeRemoteDownloadRequest,
+    FfiConverterTypeRemoteFileStat,
     FfiConverterTypeRemoteLibraryRequest,
     FfiConverterTypeRetrySchedule,
     FfiConverterTypeScheduledSync,

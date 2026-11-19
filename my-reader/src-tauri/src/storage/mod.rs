@@ -3,73 +3,16 @@
 //! Provides generic storage operators for local filesystem, WebDAV, and OneDrive.
 //! This module intentionally has no knowledge of sync semantics.
 
-mod local;
-mod onedrive;
-mod webdav;
+#[cfg(test)]
+mod cloud_tests;
+
+use my_reader_core::api::storage::StorageService;
+use my_reader_core::models::LibraryStorageConfig;
 
 use crate::auth::credentials;
 use crate::auth::onedrive::onedrive_token_manager;
 use crate::error::AppError;
 use crate::models::{AppConfig, DataSourceConfig, DataSourceDetail, LibraryConfig};
-
-/// Runtime description of a storage backend.
-#[derive(Debug, Clone)]
-pub enum StorageBackend {
-    /// Local filesystem: the path is the source of truth, no manifest, no network.
-    LocalDirect { root: String },
-    /// WebDAV remote: `endpoint` like `https://host/dav`, `root_path` relative to endpoint.
-    Webdav {
-        endpoint: String,
-        username: String,
-        credential_account: Option<String>,
-        inline_password: Option<String>,
-        root_path: Option<String>,
-    },
-    /// OneDrive remote: access Microsoft Graph via OAuth2 access token.
-    Onedrive {
-        data_source_id: String,
-        client_id: String,
-        tenant_id: String,
-        inline_access_token: Option<String>,
-        root_path: Option<String>,
-    },
-}
-
-/// Build an OpenDAL `Operator` from a storage backend config.
-pub fn build_operator(kind: &StorageBackend) -> Result<opendal::Operator, AppError> {
-    match kind {
-        StorageBackend::LocalDirect { root } => local::build_operator(root),
-        StorageBackend::Webdav {
-            endpoint,
-            username,
-            credential_account,
-            inline_password,
-            root_path,
-        } => webdav::build_operator(
-            endpoint,
-            username,
-            credential_account,
-            inline_password,
-            root_path,
-        ),
-        StorageBackend::Onedrive {
-            inline_access_token,
-            root_path,
-            ..
-        } => {
-            let token = inline_access_token
-                .as_deref()
-                .filter(|t| !t.trim().is_empty())
-                .ok_or_else(|| {
-                    AppError::Auth(
-                        "OneDrive access token not available; call onedrive_start_auth first"
-                            .into(),
-                    )
-                })?;
-            onedrive::build_operator(token, root_path.as_deref())
-        }
-    }
-}
 
 /// Build an OpenDAL operator for a persisted data source, lazily loading
 /// WebDAV passwords from the keyring and OneDrive tokens from the token manager.
@@ -101,6 +44,52 @@ pub async fn core_remote_credential(
                 .get_access_token(&source.id, Some(client_id), Some(tenant_id))
                 .await?;
             Ok(my_reader_core::models::RemoteCredential::Onedrive { access_token })
+        }
+        DataSourceDetail::Gdrive {
+            credential_account,
+            client_id,
+            ..
+        }
+        | DataSourceDetail::Dropbox {
+            credential_account,
+            client_id,
+            ..
+        } => {
+            let account = credential_account
+                .as_deref()
+                .ok_or_else(|| AppError::Config("OAUTH_REFRESH_TOKEN_REQUIRED".into()))?;
+            let google = matches!(source.detail, DataSourceDetail::Gdrive { .. });
+            let provider = if google {
+                crate::auth::cloud::CloudProvider::Gdrive
+            } else {
+                crate::auth::cloud::CloudProvider::Dropbox
+            };
+            let access_token =
+                crate::auth::cloud::access_token(provider, client_id, account).await?;
+            Ok(if google {
+                my_reader_core::models::RemoteCredential::Gdrive { access_token }
+            } else {
+                my_reader_core::models::RemoteCredential::Dropbox { access_token }
+            })
+        }
+        DataSourceDetail::S3 {
+            credential_account, ..
+        } => {
+            let account = credential_account
+                .as_deref()
+                .filter(|value| !value.trim().is_empty())
+                .ok_or_else(|| AppError::Config("S3_CREDENTIALS_REQUIRED".into()))?;
+            let access_key_id = credentials::read_remote_credential_field(account, "accessKeyId")?
+                .ok_or_else(|| AppError::Config("S3_ACCESS_KEY_REQUIRED".into()))?;
+            let secret_access_key =
+                credentials::read_remote_credential_field(account, "secretAccessKey")?
+                    .ok_or_else(|| AppError::Config("S3_SECRET_KEY_REQUIRED".into()))?;
+            let session_token = credentials::read_remote_credential_field(account, "sessionToken")?;
+            Ok(my_reader_core::models::RemoteCredential::S3 {
+                access_key_id,
+                secret_access_key,
+                session_token,
+            })
         }
         DataSourceDetail::Local { .. } => Err(AppError::Config("DATASOURCE_NOT_REMOTE".into())),
     }
@@ -138,79 +127,24 @@ pub async fn from_data_source_at_path(
     source: &DataSourceConfig,
     relative_root: Option<&str>,
 ) -> Result<opendal::Operator, AppError> {
-    let mut backend = build_backend(source)?;
-    if let Some(relative_root) = relative_root.filter(|value| !value.trim().is_empty()) {
-        match &mut backend {
-            StorageBackend::LocalDirect { root } => {
-                *root = std::path::Path::new(root)
-                    .join(relative_root.trim_matches('/'))
-                    .to_string_lossy()
-                    .to_string();
-            }
-            StorageBackend::Webdav { root_path, .. }
-            | StorageBackend::Onedrive { root_path, .. } => {
-                *root_path = Some(my_reader_core::api::sync::SyncService::scope_remote_root(
-                    root_path.as_deref(),
-                    relative_root,
-                )?);
-            }
-        }
+    if let DataSourceDetail::Local { root_path } = &source.detail {
+        let relative_root = relative_root.unwrap_or_default();
+        let normalized =
+            my_reader_core::api::sync::SyncService::scope_remote_root(None, relative_root)?;
+        let root = std::path::Path::new(root_path)
+            .join(normalized.trim_start_matches('/'))
+            .to_string_lossy()
+            .into_owned();
+        return Ok(StorageService::operator(
+            &LibraryStorageConfig::LocalDirect { root },
+        )?);
     }
-    match &mut backend {
-        StorageBackend::Webdav {
-            inline_password,
-            credential_account: Some(account),
-            ..
-        } => {
-            *inline_password = credentials::read_webdav_password(account)?;
-        }
-        StorageBackend::Onedrive {
-            inline_access_token,
-            data_source_id,
-            client_id,
-            tenant_id,
-            ..
-        } => {
-            let token = onedrive_token_manager()
-                .get_access_token(data_source_id, Some(client_id), Some(tenant_id))
-                .await?;
-            *inline_access_token = Some(token);
-        }
-        _ => {}
-    }
-    build_operator(&backend)
-}
-
-fn build_backend(source: &DataSourceConfig) -> Result<StorageBackend, AppError> {
-    match &source.detail {
-        DataSourceDetail::Local { root_path } => Ok(StorageBackend::LocalDirect {
-            root: root_path.clone(),
-        }),
-        DataSourceDetail::Webdav {
-            endpoint,
-            username,
-            credential_account,
-            root_path,
-        } => Ok(StorageBackend::Webdav {
-            endpoint: endpoint.clone(),
-            username: username.clone(),
-            credential_account: credential_account.clone(),
-            inline_password: None,
-            root_path: root_path.clone(),
-        }),
-        DataSourceDetail::Onedrive {
-            client_id,
-            tenant_id,
-            root_path,
-            ..
-        } => Ok(StorageBackend::Onedrive {
-            data_source_id: source.id.clone(),
-            client_id: client_id.clone(),
-            tenant_id: tenant_id.clone(),
-            inline_access_token: None,
-            root_path: root_path.clone(),
-        }),
-    }
+    let credential = core_remote_credential(source).await?;
+    Ok(StorageService::remote_operator(
+        &source.into(),
+        &credential,
+        relative_root.unwrap_or_default(),
+    )?)
 }
 
 #[cfg(test)]
@@ -289,7 +223,7 @@ mod tests {
 
         let err = from_data_source(&source).await.unwrap_err();
         let msg = format!("{err}");
-        assert!(msg.contains("WebDAV 密码"), "{msg}");
+        assert!(msg.contains("WEBDAV_PASSWORD_REQUIRED"), "{msg}");
     }
 
     #[tokio::test]

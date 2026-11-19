@@ -131,6 +131,43 @@ pub enum DataSourceDetail {
         #[serde(default)]
         user_email: Option<String>,
     },
+    Gdrive {
+        account_id: Option<String>,
+        client_id: String,
+        #[serde(default)]
+        credential_account: Option<String>,
+        #[serde(default)]
+        root_path: Option<String>,
+        #[serde(default)]
+        root_folder_id: Option<String>,
+        #[serde(default)]
+        user_name: Option<String>,
+        #[serde(default)]
+        user_email: Option<String>,
+    },
+    Dropbox {
+        account_id: Option<String>,
+        client_id: String,
+        #[serde(default)]
+        credential_account: Option<String>,
+        #[serde(default)]
+        root_path: Option<String>,
+        #[serde(default)]
+        user_name: Option<String>,
+        #[serde(default)]
+        user_email: Option<String>,
+    },
+    S3 {
+        endpoint: String,
+        bucket: String,
+        region: String,
+        #[serde(default)]
+        credential_account: Option<String>,
+        #[serde(default)]
+        root_path: Option<String>,
+        #[serde(default)]
+        virtual_host_style: bool,
+    },
 }
 
 impl From<&DataSourceConfig> for my_reader_core::models::DataSource {
@@ -182,6 +219,77 @@ impl From<&DataSourceConfig> for my_reader_core::models::DataSource {
                 has_refresh_token: credential_account
                     .as_ref()
                     .is_some_and(|account| !account.trim().is_empty()),
+                credential_reference: credential_account.clone(),
+                readonly: None,
+                created_at: None,
+            },
+            DataSourceDetail::Gdrive {
+                account_id,
+                client_id,
+                credential_account,
+                root_path,
+                root_folder_id,
+                user_name,
+                user_email,
+            } => Self::Gdrive {
+                id: value.id.clone(),
+                name: value.name.clone(),
+                enabled: value.enabled,
+                client_id: client_id.clone(),
+                account_id: account_id.clone(),
+                display_name: user_name.clone(),
+                email: user_email.clone(),
+                root_path: root_path.clone(),
+                has_refresh_token: credential_account
+                    .as_ref()
+                    .is_some_and(|a| !a.trim().is_empty()),
+                root_folder_id: root_folder_id.clone(),
+                credential_reference: credential_account.clone(),
+                readonly: None,
+                created_at: None,
+            },
+            DataSourceDetail::Dropbox {
+                account_id,
+                client_id,
+                credential_account,
+                root_path,
+                user_name,
+                user_email,
+            } => Self::Dropbox {
+                id: value.id.clone(),
+                name: value.name.clone(),
+                enabled: value.enabled,
+                client_id: client_id.clone(),
+                account_id: account_id.clone(),
+                display_name: user_name.clone(),
+                email: user_email.clone(),
+                root_path: root_path.clone(),
+                has_refresh_token: credential_account
+                    .as_ref()
+                    .is_some_and(|a| !a.trim().is_empty()),
+                credential_reference: credential_account.clone(),
+                readonly: None,
+                created_at: None,
+            },
+            DataSourceDetail::S3 {
+                endpoint,
+                bucket,
+                region,
+                credential_account,
+                root_path,
+                virtual_host_style,
+            } => Self::S3 {
+                id: value.id.clone(),
+                name: value.name.clone(),
+                enabled: value.enabled,
+                endpoint: endpoint.clone(),
+                bucket: bucket.clone(),
+                region: region.clone(),
+                root_path: root_path.clone(),
+                virtual_host_style: *virtual_host_style,
+                has_credentials: credential_account
+                    .as_ref()
+                    .is_some_and(|a| !a.trim().is_empty()),
                 credential_reference: credential_account.clone(),
                 readonly: None,
                 created_at: None,
@@ -249,6 +357,80 @@ impl From<&my_reader_core::models::DataSource> for DataSourceConfig {
                     root_path: root_path.clone(),
                     user_name: display_name.clone(),
                     user_email: email.clone(),
+                },
+            },
+            my_reader_core::models::DataSource::Gdrive {
+                account_id,
+                id,
+                name,
+                enabled,
+                client_id,
+                root_path,
+                root_folder_id,
+                display_name,
+                email,
+                credential_reference,
+                ..
+            } => Self {
+                id: id.clone(),
+                name: name.clone(),
+                enabled: *enabled,
+                detail: DataSourceDetail::Gdrive {
+                    account_id: account_id.clone(),
+                    client_id: client_id.clone(),
+                    credential_account: credential_reference.clone(),
+                    root_path: root_path.clone(),
+                    root_folder_id: root_folder_id.clone(),
+                    user_name: display_name.clone(),
+                    user_email: email.clone(),
+                },
+            },
+            my_reader_core::models::DataSource::Dropbox {
+                account_id,
+                id,
+                name,
+                enabled,
+                client_id,
+                root_path,
+                display_name,
+                email,
+                credential_reference,
+                ..
+            } => Self {
+                id: id.clone(),
+                name: name.clone(),
+                enabled: *enabled,
+                detail: DataSourceDetail::Dropbox {
+                    account_id: account_id.clone(),
+                    client_id: client_id.clone(),
+                    credential_account: credential_reference.clone(),
+                    root_path: root_path.clone(),
+                    user_name: display_name.clone(),
+                    user_email: email.clone(),
+                },
+            },
+            my_reader_core::models::DataSource::S3 {
+                id,
+                name,
+                enabled,
+                endpoint,
+                bucket,
+                region,
+                root_path,
+                virtual_host_style,
+                credential_reference,
+                ..
+            } => Self {
+                id: id.clone(),
+                name: name.clone(),
+                enabled: *enabled,
+                detail: DataSourceDetail::S3 {
+                    endpoint: endpoint.clone(),
+                    bucket: bucket.clone(),
+                    region: region.clone(),
+                    credential_account: credential_reference.clone(),
+                    root_path: root_path.clone(),
+                    virtual_host_style: *virtual_host_style,
                 },
             },
         }
@@ -346,6 +528,31 @@ pub enum DataSourceDetailDto {
         user_name: Option<String>,
         user_email: Option<String>,
     },
+    Gdrive {
+        account_id: Option<String>,
+        client_id: String,
+        has_refresh_token: bool,
+        root_path: Option<String>,
+        root_folder_id: Option<String>,
+        user_name: Option<String>,
+        user_email: Option<String>,
+    },
+    Dropbox {
+        account_id: Option<String>,
+        client_id: String,
+        has_refresh_token: bool,
+        root_path: Option<String>,
+        user_name: Option<String>,
+        user_email: Option<String>,
+    },
+    S3 {
+        endpoint: String,
+        bucket: String,
+        region: String,
+        has_credentials: bool,
+        root_path: Option<String>,
+        virtual_host_style: bool,
+    },
 }
 
 impl From<&DataSourceConfig> for DataSourceDto {
@@ -383,6 +590,59 @@ impl From<&DataSourceConfig> for DataSourceDto {
                 root_path: root_path.clone(),
                 user_name: user_name.clone(),
                 user_email: user_email.clone(),
+            },
+            DataSourceDetail::Gdrive {
+                account_id,
+                client_id,
+                credential_account,
+                root_path,
+                root_folder_id,
+                user_name,
+                user_email,
+            } => DataSourceDetailDto::Gdrive {
+                account_id: account_id.clone(),
+                client_id: client_id.clone(),
+                has_refresh_token: credential_account
+                    .as_ref()
+                    .is_some_and(|a| !a.trim().is_empty()),
+                root_path: root_path.clone(),
+                root_folder_id: root_folder_id.clone(),
+                user_name: user_name.clone(),
+                user_email: user_email.clone(),
+            },
+            DataSourceDetail::Dropbox {
+                account_id,
+                client_id,
+                credential_account,
+                root_path,
+                user_name,
+                user_email,
+            } => DataSourceDetailDto::Dropbox {
+                account_id: account_id.clone(),
+                client_id: client_id.clone(),
+                has_refresh_token: credential_account
+                    .as_ref()
+                    .is_some_and(|a| !a.trim().is_empty()),
+                root_path: root_path.clone(),
+                user_name: user_name.clone(),
+                user_email: user_email.clone(),
+            },
+            DataSourceDetail::S3 {
+                endpoint,
+                bucket,
+                region,
+                credential_account,
+                root_path,
+                virtual_host_style,
+            } => DataSourceDetailDto::S3 {
+                endpoint: endpoint.clone(),
+                bucket: bucket.clone(),
+                region: region.clone(),
+                has_credentials: credential_account
+                    .as_ref()
+                    .is_some_and(|a| !a.trim().is_empty()),
+                root_path: root_path.clone(),
+                virtual_host_style: *virtual_host_style,
             },
         };
 

@@ -2,7 +2,7 @@
   "expo": {
     "name": "MyReader",
     "slug": "my-reader-mobile",
-    "version": "0.21.0",
+    "version": "0.22.0",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "myreadermobile",
@@ -82,9 +82,14 @@
       [
         "react-native-app-auth",
         {
-          "redirectUrls": ["ryoumon.myreadermobile.auth://onedrive/"]
+          "redirectUrls": [
+            "ryoumon.myreadermobile.auth://onedrive/",
+            "ryoumon.myreadermobile.auth://dropbox/",
+            "com.googleusercontent.apps.679889280827-7true64oai4far80me20muvlmu81si1s:/oauthredirect"
+          ]
         }
       ],
+      "./plugins/with-cloud-auth-schemes",
       "@sentry/react-native",
       "expo-asset",
       [

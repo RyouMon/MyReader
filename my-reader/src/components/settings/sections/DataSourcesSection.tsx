@@ -105,6 +105,23 @@ function DataSourceCard({ source, onDelete }: DataSourceCardProps) {
       bodyText = source.displayName || source.name || "OneDrive"
       secondaryText = source.email || undefined
       break
+    case "gdrive":
+      iconKind = "gdriveDataSource"
+      iconLabel = t("addDataSourceForm.typeGdrive")
+      bodyText = source.displayName || source.name || "Google Drive"
+      secondaryText = source.email || undefined
+      break
+    case "dropbox":
+      iconKind = "dropboxDataSource"
+      iconLabel = t("addDataSourceForm.typeDropbox")
+      bodyText = source.displayName || source.name || "Dropbox"
+      secondaryText = source.email || undefined
+      break
+    case "s3":
+      iconKind = "s3DataSource"
+      iconLabel = t("addDataSourceForm.typeS3")
+      secondaryText = `${source.endpoint}/${source.bucket}`
+      break
   }
 
   return (

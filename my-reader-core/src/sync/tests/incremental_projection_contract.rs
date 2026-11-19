@@ -231,7 +231,7 @@ fn install_snapshot(path: &str, snapshot: &DocumentCommandResult) {
          (id, schema_version, snapshot_bytes, heads_json, updated_at)
          VALUES ('local', ?1, ?2, ?3, 1)",
             rusqlite::params![
-                snapshot.schema_version,
+                i64::try_from(snapshot.schema_version).unwrap(),
                 snapshot.snapshot_bytes,
                 serde_json::to_string(&snapshot.heads).unwrap()
             ],
@@ -448,14 +448,14 @@ async fn continued_reading_should_update_candidates_without_catalog_writes() {
         let mut objects = shared_objects.clone();
         objects.extend(remote_objects(&branch));
         apply_remote_database_objects(&target, &target_identity, 100, objects).unwrap();
-        let count: usize = connection
+        let count: i64 = connection
             .query_row(
                 "SELECT sync_conflict_count FROM reading_progress WHERE book_id = 42",
                 [],
                 |row| row.get(0),
             )
             .unwrap();
-        assert_eq!(count, index + 1);
+        assert_eq!(count, i64::try_from(index + 1).unwrap());
         let locator: String = connection
             .query_row(
                 "SELECT locator_json FROM reading_progress WHERE book_id = 42",

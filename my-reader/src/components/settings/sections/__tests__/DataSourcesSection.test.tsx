@@ -51,6 +51,37 @@ describe("DataSourcesSection", () => {
         displayName: "个人云盘",
         hasRefreshToken: true,
       },
+      {
+        id: "gdrive-1",
+        type: "gdrive",
+        name: "Google Drive",
+        enabled: true,
+        clientId: "client-id",
+        displayName: "Google Reader",
+        email: "reader@gmail.com",
+        hasRefreshToken: true,
+      },
+      {
+        id: "dropbox-1",
+        type: "dropbox",
+        name: "Dropbox",
+        enabled: true,
+        clientId: "app-key",
+        displayName: "Dropbox Reader",
+        email: "reader@dropbox.com",
+        hasRefreshToken: true,
+      },
+      {
+        id: "s3-1",
+        type: "s3",
+        name: "Archive",
+        enabled: true,
+        endpoint: "https://s3.example.com",
+        bucket: "books",
+        region: "us-east-1",
+        virtualHostStyle: false,
+        hasCredentials: true,
+      },
     ]
 
     render(<DataSourcesSection />)
@@ -92,6 +123,33 @@ describe("DataSourcesSection", () => {
       "currentColor",
     )
     expect(onedriveIcon.querySelector("svg")).toHaveClass("text-brand-onedrive")
+
+    expect(screen.getByText("reader@gmail.com")).toBeInTheDocument()
+    expect(screen.getByText("reader@dropbox.com")).toBeInTheDocument()
+    expect(screen.getByText("Google Reader")).toBeInTheDocument()
+    expect(screen.getByText("Dropbox Reader")).toBeInTheDocument()
+
+    const gdriveIcon = screen.getByRole("img", { name: "Google Drive" })
+    expect(gdriveIcon).toHaveAttribute("data-entity-icon", "gdriveDataSource")
+    expect(gdriveIcon.querySelector("svg")).toHaveAttribute(
+      "data-icon",
+      "google-drive",
+    )
+
+    const dropboxIcon = screen.getByRole("img", { name: "Dropbox" })
+    expect(dropboxIcon).toHaveAttribute("data-entity-icon", "dropboxDataSource")
+    expect(dropboxIcon.querySelector("svg")).toHaveAttribute(
+      "data-icon",
+      "dropbox",
+    )
+
+    const s3Icon = screen.getByRole("img", { name: "S3 兼容存储" })
+    expect(s3Icon).toHaveAttribute("data-entity-icon", "s3DataSource")
+    expect(s3Icon.querySelector("svg")).toHaveAttribute(
+      "data-icon",
+      "s3-storage",
+    )
+    expect(screen.getByText("https://s3.example.com/books")).toBeInTheDocument()
   })
 
   it("should open data source creation as a continuous dialog flow", () => {

@@ -1,6 +1,9 @@
 pub(super) mod llm;
 pub(super) mod tts;
 
+#[cfg(test)]
+mod cloud_tests;
+
 use std::{
     path::Path,
     sync::{LazyLock, Mutex, MutexGuard},
@@ -174,6 +177,60 @@ impl ConfigService {
                 *display_name = normalize_optional_text(display_name.take());
                 *email = normalize_optional_text(email.take());
                 *root_path = normalize_optional_text(root_path.take());
+            }
+            DataSource::Gdrive {
+                id,
+                name,
+                client_id,
+                account_id,
+                display_name,
+                email,
+                root_path,
+                root_folder_id,
+                ..
+            } => {
+                *root_folder_id = normalize_optional_text(root_folder_id.take());
+                normalize_id(id);
+                *name = name.trim().to_owned();
+                *client_id = client_id.trim().to_owned();
+                *account_id = normalize_optional_text(account_id.take());
+                *display_name = normalize_optional_text(display_name.take());
+                *email = normalize_optional_text(email.take());
+                *root_path = normalize_source_root(root_path.take())?;
+            }
+            DataSource::Dropbox {
+                id,
+                name,
+                client_id,
+                account_id,
+                display_name,
+                email,
+                root_path,
+                ..
+            } => {
+                normalize_id(id);
+                *name = name.trim().to_owned();
+                *client_id = client_id.trim().to_owned();
+                *account_id = normalize_optional_text(account_id.take());
+                *display_name = normalize_optional_text(display_name.take());
+                *email = normalize_optional_text(email.take());
+                *root_path = normalize_source_root(root_path.take())?;
+            }
+            DataSource::S3 {
+                id,
+                name,
+                endpoint,
+                bucket,
+                region,
+                root_path,
+                ..
+            } => {
+                normalize_id(id);
+                *name = name.trim().to_owned();
+                *endpoint = endpoint.trim().trim_end_matches('/').to_owned();
+                *bucket = bucket.trim().to_owned();
+                *region = region.trim().to_owned();
+                *root_path = normalize_source_root(root_path.take())?;
             }
         }
         validate_data_source(&source)?;
@@ -377,6 +434,42 @@ fn merge_data_sources(
                         created_at: existing_created_at,
                         ..
                     },
+                )
+                | (
+                    DataSource::Gdrive {
+                        readonly,
+                        created_at,
+                        ..
+                    },
+                    DataSource::Gdrive {
+                        readonly: existing_readonly,
+                        created_at: existing_created_at,
+                        ..
+                    },
+                )
+                | (
+                    DataSource::Dropbox {
+                        readonly,
+                        created_at,
+                        ..
+                    },
+                    DataSource::Dropbox {
+                        readonly: existing_readonly,
+                        created_at: existing_created_at,
+                        ..
+                    },
+                )
+                | (
+                    DataSource::S3 {
+                        readonly,
+                        created_at,
+                        ..
+                    },
+                    DataSource::S3 {
+                        readonly: existing_readonly,
+                        created_at: existing_created_at,
+                        ..
+                    },
                 ) => {
                     *readonly = *existing_readonly;
                     *created_at = *existing_created_at;
@@ -478,8 +571,73 @@ fn validate_data_source(source: &DataSource) -> Result<(), CoreError> {
             }
         }
         DataSource::Onedrive { .. } => {}
+        DataSource::Gdrive {
+            client_id,
+            root_folder_id,
+            root_path,
+            ..
+        } => {
+            validate_client_id(client_id)?;
+            normalize_source_root(root_path.clone())?;
+            if let Some(id) = root_folder_id {
+                if id.is_empty()
+                    || !id
+                        .bytes()
+                        .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
+                {
+                    return Err(CoreError::Config("INVALID_GDRIVE_FOLDER_ID".into()));
+                }
+            }
+        }
+        DataSource::Dropbox {
+            client_id,
+            root_path,
+            ..
+        } => {
+            validate_client_id(client_id)?;
+            normalize_source_root(root_path.clone())?;
+        }
+        DataSource::S3 {
+            endpoint,
+            bucket,
+            region,
+            root_path,
+            ..
+        } => {
+            let url = url::Url::parse(endpoint)
+                .map_err(|_| CoreError::Config("INVALID_S3_ENDPOINT".into()))?;
+            if !matches!(url.scheme(), "http" | "https")
+                || url.host_str().is_none()
+                || !url.username().is_empty()
+                || url.password().is_some()
+                || url.query().is_some()
+                || url.fragment().is_some()
+            {
+                return Err(CoreError::Config("INVALID_S3_ENDPOINT".into()));
+            }
+            if bucket.trim().is_empty() || bucket.contains('/') || bucket.contains('\\') {
+                return Err(CoreError::Config("INVALID_S3_BUCKET".into()));
+            }
+            if region.trim().is_empty() {
+                return Err(CoreError::Config("S3_REGION_REQUIRED".into()));
+            }
+            normalize_source_root(root_path.clone())?;
+        }
     }
     Ok(())
+}
+
+fn validate_client_id(client_id: &str) -> Result<(), CoreError> {
+    if client_id.trim().is_empty() {
+        return Err(CoreError::Config("OAUTH_CLIENT_ID_REQUIRED".into()));
+    }
+    Ok(())
+}
+
+fn normalize_source_root(value: Option<String>) -> Result<Option<String>, CoreError> {
+    value
+        .map(|value| crate::infrastructure::storage::normalize_remote_path(&value))
+        .transpose()
 }
 
 fn normalize_id(id: &mut String) {
@@ -597,6 +755,46 @@ fn ensure_data_source_can_upsert_in(
                     email: Some(email), ..
                 },
             ) => !existing.trim().is_empty() && existing.eq_ignore_ascii_case(email),
+            (
+                DataSource::Gdrive {
+                    account_id: Some(a),
+                    root_folder_id: ar,
+                    root_path: ap,
+                    ..
+                },
+                DataSource::Gdrive {
+                    account_id: Some(b),
+                    root_folder_id: br,
+                    root_path: bp,
+                    ..
+                },
+            ) => a == b && ar == br && ap == bp,
+            (
+                DataSource::Dropbox {
+                    account_id: Some(a),
+                    root_path: ap,
+                    ..
+                },
+                DataSource::Dropbox {
+                    account_id: Some(b),
+                    root_path: bp,
+                    ..
+                },
+            ) => a == b && ap == bp,
+            (
+                DataSource::S3 {
+                    endpoint: ae,
+                    bucket: ab,
+                    root_path: ap,
+                    ..
+                },
+                DataSource::S3 {
+                    endpoint: be,
+                    bucket: bb,
+                    root_path: bp,
+                    ..
+                },
+            ) => ae == be && ab == bb && ap == bp,
             _ => false,
         });
     if !duplicate {
@@ -606,6 +804,9 @@ fn ensure_data_source_can_upsert_in(
         DataSource::Local { .. } => "LOCAL_DATASOURCE_ALREADY_EXISTS",
         DataSource::Webdav { .. } => "WEBDAV_DATASOURCE_ALREADY_EXISTS",
         DataSource::Onedrive { .. } => "ONEDRIVE_DATASOURCE_ALREADY_EXISTS",
+        DataSource::Gdrive { .. } => "GDRIVE_DATASOURCE_ALREADY_EXISTS",
+        DataSource::Dropbox { .. } => "DROPBOX_DATASOURCE_ALREADY_EXISTS",
+        DataSource::S3 { .. } => "S3_DATASOURCE_ALREADY_EXISTS",
     };
     Err(CoreError::Config(code.into()))
 }

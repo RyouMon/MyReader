@@ -16,6 +16,7 @@ import {
   type ReaderLocator,
   type ReaderTocItem,
   resolveReaderToc,
+  positionIndexForStoredLocator,
   resolveReaderTocAtPosition,
 } from "@my-reader/tools/reader-toc"
 import { EpubNavigator } from "@readium/navigator"
@@ -177,6 +178,18 @@ function goToEpubLocator(
   return new Promise((resolve) => {
     navigator.go(locator, false, resolve)
   })
+}
+
+async function restoreInitialEpubTextPosition(
+  navigator: EpubNavigator,
+  locator: Locator,
+  isCurrent: () => boolean,
+) {
+  // Loading restores only progression; resolve saved text anchors once the
+  // viewport has settled so another device resumes the same text.
+  if (await waitForEpubViewportLayout(navigator, isCurrent)) {
+    await goToEpubLocator(navigator, locator)
+  }
 }
 
 async function refreshReaderPreferencesBeforeNavigatorInit(): Promise<void> {
@@ -1108,10 +1121,16 @@ function useEpubReaderController({
     () =>
       readerBookmarks.bookmarks.map((bookmark) => ({
         ...bookmark,
+        displayPosition:
+          positionIndexForStoredLocator(readerPositions, bookmark.locator) + 1,
         chapterTitle: resolveReaderToc({
           toc: tocItems,
           positions: readerPositions,
           locator: bookmark.locator,
+          currentPage: positionIndexForStoredLocator(
+            readerPositions,
+            bookmark.locator,
+          ),
         }).title?.trim(),
       })),
     [readerBookmarks.bookmarks, readerPositions, tocItems],
@@ -2236,6 +2255,13 @@ function useEpubReaderController({
         }
         if (store.readerPreferencesHydrated && isFixedLayout) {
           await applySpreadPreference(activeNav, store.fixedLayout.spreadMode)
+        }
+        if (!isFixedLayout && initialSavedLocator) {
+          await restoreInitialEpubTextPosition(
+            activeNav,
+            initialPosition,
+            () => !cancelled,
+          )
         }
         if (cancelled) return
         setCurrentLocator(activeNav.currentLocator)

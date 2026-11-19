@@ -454,6 +454,13 @@ interface NativeModuleInterface {
     path: Uint8Array,
     update: Uint8Array,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_data_source_create_directory(
+    configPath: Uint8Array,
+    dataSourceId: Uint8Array,
+    parentPath: Uint8Array,
+    name: Uint8Array,
+    credential: Uint8Array,
+  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_data_source_list_directories(
     configPath: Uint8Array,
     dataSourceId: Uint8Array,
@@ -793,6 +800,31 @@ interface NativeModuleInterface {
     note: Uint8Array,
     recordedAtMs: number,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_storage_delete(
+    storage: Uint8Array,
+    path: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_storage_download_request(
+    storage: Uint8Array,
+    path: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_storage_list(
+    storage: Uint8Array,
+    path: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_storage_read(
+    storage: Uint8Array,
+    path: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_storage_stat(
+    storage: Uint8Array,
+    path: Uint8Array,
+  ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_storage_write(
+    storage: Uint8Array,
+    path: Uint8Array,
+    bytes: Uint8Array,
+  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_sync_begin(
     coordinatorId: Uint8Array,
     libraryId: Uint8Array,
@@ -1042,6 +1074,7 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_content_set_reading_format(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_content_upsert_cover_thumbnail_cache(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_content_upsert_file_state(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_data_source_create_directory(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_data_source_list_directories(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_data_source_prepare_for_upsert(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_data_source_remove(): number;
@@ -1105,6 +1138,12 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_set_favorite_book(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_set_position(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_update_annotation(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_storage_delete(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_storage_download_request(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_storage_list(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_storage_read(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_storage_stat(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_storage_write(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_begin(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_cancel_task(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_complete(): number;

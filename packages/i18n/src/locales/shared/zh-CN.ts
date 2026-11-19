@@ -1,4 +1,11 @@
 export const sharedZhCN = {
+  remoteFolder: {
+    name: "文件夹名称",
+    create: "新建文件夹",
+    creating: "正在创建…",
+    invalid: "请输入单个文件夹名称，不含 / 或 \\。",
+    exists: "已存在同名文件或文件夹。",
+  },
   ttsRemoval: {
     book: "书籍 #{{id}}",
     global: "全局朗读设置",

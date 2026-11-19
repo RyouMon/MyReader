@@ -22,6 +22,10 @@ export default function OneDriveModalStackLayout() {
         options={{ title: t("onedrive.sourceDetail") }}
       />
       <Stack.Screen
+        name="add"
+        options={{ title: t("onedrive.add.signInTitle") }}
+      />
+      <Stack.Screen
         name="browser"
         options={{ title: t("onedrive.selectLibrary") }}
       />

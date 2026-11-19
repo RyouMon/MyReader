@@ -6,14 +6,23 @@ import type {
 } from "@my-reader/tools/types/data-source"
 import { useForm } from "@tanstack/react-form"
 import { isTauri } from "@tauri-apps/api/core"
-import { Cable, Loader2 } from "lucide-react"
+import { Cable, Loader2, LogIn } from "lucide-react"
 import { type ReactNode, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { z } from "zod"
 import { StatusNotice } from "@/components/common/StatusNotice"
+import { DropboxIcon } from "@/components/common/DropboxIcon"
+import { GoogleDriveIcon } from "@/components/common/GoogleDriveIcon"
 import { SaveButton } from "@/components/common/SaveButton"
 import { Button } from "@/components/ui/button"
 import { DialogFooter } from "@/components/ui/dialog"
+import {
+  Empty,
+  EmptyContent,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
 import { FieldGroup } from "@/components/ui/field"
 import { FormTextField } from "@/components/common/FormTextField"
 import { FormScrollArea } from "@/components/common/FormScrollArea"
@@ -24,14 +33,18 @@ import {
 import { cn } from "@/lib/utils"
 import { OnedriveDataSourceForm } from "./OnedriveDataSourceForm"
 
-export type CreatableDataSourceType = "webdav" | "onedrive"
+export type CreatableDataSourceType =
+  | "webdav"
+  | "onedrive"
+  | "gdrive"
+  | "dropbox"
+  | "s3"
 
 interface AddDataSourceFormProps {
   type: CreatableDataSourceType
   onCreateDataSource: (input: CreateDataSourceInput) => Promise<DataSource>
   onCreated?: (dataSource: DataSource) => void
   fillAvailableHeight?: boolean
-  autoStartOnedriveAuth?: boolean
 }
 
 export function AddDataSourceForm({
@@ -39,7 +52,6 @@ export function AddDataSourceForm({
   onCreateDataSource,
   onCreated,
   fillAvailableHeight = false,
-  autoStartOnedriveAuth = false,
 }: AddDataSourceFormProps) {
   const { t } = useTranslation()
   const { testConnection } = useDataSourceMutations()
@@ -70,21 +82,9 @@ export function AddDataSourceForm({
     }
   }
 
-  const webdavFeedback =
-    submitError || (testFeedback && type === "webdav") ? (
-      <div className="flex flex-col gap-3">
-        {submitError ? (
-          <StatusNotice tone="error">{submitError}</StatusNotice>
-        ) : null}
-        {testFeedback && type === "webdav" ? (
-          <StatusNotice
-            tone={testFeedback.tone === "success" ? "success" : "error"}
-          >
-            {testFeedback.message}
-          </StatusNotice>
-        ) : null}
-      </div>
-    ) : null
+  const webdavFeedback = (
+    <DataSourceFeedback error={submitError} result={testFeedback} />
+  )
 
   return (
     <div
@@ -125,11 +125,10 @@ export function AddDataSourceForm({
             }
           }}
         />
-      ) : (
+      ) : type === "onedrive" ? (
         <OnedriveDataSourceForm
           loading={submitting}
           fillAvailableHeight={fillAvailableHeight}
-          autoStart={autoStartOnedriveAuth}
           onSubmit={async (data) => {
             await handleSubmit({
               type: "onedrive",
@@ -146,10 +145,208 @@ export function AddDataSourceForm({
             })
           }}
         />
+      ) : type === "s3" ? (
+        <S3DataSourceForm loading={submitting} onSubmit={handleSubmit} />
+      ) : (
+        <CloudDataSourceForm
+          type={type}
+          loading={submitting}
+          error={submitError}
+          onSubmit={handleSubmit}
+        />
       )}
 
-      {type === "webdav" && !fillAvailableHeight ? webdavFeedback : null}
+      {type === "webdav" || type === "s3" ? webdavFeedback : null}
     </div>
+  )
+}
+
+function DataSourceFeedback({
+  error,
+  result,
+}: {
+  error: string | null
+  result: { tone: "success" | "error"; message: string } | null
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      {error ? <StatusNotice tone="error">{error}</StatusNotice> : null}
+      {result ? (
+        <StatusNotice tone={result.tone}>{result.message}</StatusNotice>
+      ) : null}
+    </div>
+  )
+}
+
+function CloudDataSourceForm({
+  type,
+  loading,
+  error,
+  onSubmit,
+}: {
+  type: "gdrive" | "dropbox"
+  loading: boolean
+  error: string | null
+  onSubmit: (input: CreateDataSourceInput) => Promise<unknown>
+}) {
+  const { t } = useTranslation()
+  const providerName =
+    type === "gdrive"
+      ? t("addDataSourceForm.typeGdrive")
+      : t("addDataSourceForm.typeDropbox")
+  const ProviderIcon = type === "gdrive" ? GoogleDriveIcon : DropboxIcon
+  const [rootFolderId, setRootFolderId] = useState("")
+  const busy = loading
+
+  const handleSubmit = () => {
+    const input: CreateDataSourceInput =
+      type === "gdrive"
+        ? {
+            type: "gdrive",
+            rootFolderId: rootFolderId.trim() || null,
+          }
+        : {
+            type: "dropbox",
+          }
+    void onSubmit(input).catch(() => undefined)
+  }
+
+  return (
+    <form
+      className="flex flex-col gap-3"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (!busy) handleSubmit()
+      }}
+    >
+      <Empty
+        className="rounded-none border-0 p-6 md:p-8"
+        role={busy ? "status" : undefined}
+        aria-live={busy ? "polite" : undefined}
+      >
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            {busy ? <Loader2 className="animate-spin" /> : <ProviderIcon />}
+          </EmptyMedia>
+          <EmptyTitle>
+            {busy ? t("addDataSourceForm.cloudAuthenticating") : providerName}
+          </EmptyTitle>
+        </EmptyHeader>
+        {error ? (
+          <EmptyContent>
+            <StatusNotice tone="error">{error}</StatusNotice>
+          </EmptyContent>
+        ) : null}
+      </Empty>
+      {type === "gdrive" ? (
+        <FieldGroup className="gap-4">
+          <FormTextField
+            value={rootFolderId}
+            onChange={(event) => setRootFolderId(event.target.value)}
+            label={t("addDataSourceForm.rootFolderIdLabel")}
+            placeholder={t("addDataSourceForm.rootFolderIdPlaceholder")}
+            disabled={busy}
+          />
+        </FieldGroup>
+      ) : null}
+      {!busy ? (
+        <DialogFooter className="mt-4 shrink-0 border-t border-border pt-3">
+          <Button type="submit">
+            <LogIn data-icon="inline-start" />
+            {t("addDataSourceForm.signInWithProvider", {
+              provider: providerName,
+            })}
+          </Button>
+        </DialogFooter>
+      ) : null}
+    </form>
+  )
+}
+
+function S3DataSourceForm({
+  loading,
+  onSubmit,
+}: {
+  loading: boolean
+  onSubmit: (input: CreateDataSourceInput) => Promise<unknown>
+}) {
+  const { t } = useTranslation()
+  const [values, setValues] = useState({
+    name: "S3",
+    endpoint: "",
+    bucket: "",
+    region: "",
+    rootPath: "",
+    accessKeyId: "",
+    secretAccessKey: "",
+    sessionToken: "",
+  })
+  const [error, setError] = useState<string | null>(null)
+  const field = (key: keyof typeof values, label: string, secret = false) => (
+    <FormTextField
+      type={secret ? "password" : "text"}
+      value={values[key]}
+      onChange={(event) =>
+        setValues((current) => ({ ...current, [key]: event.target.value }))
+      }
+      label={label}
+      disabled={loading}
+    />
+  )
+  return (
+    <form
+      className="flex flex-col gap-4"
+      onSubmit={(event) => {
+        event.preventDefault()
+        const required: Array<[keyof typeof values, string]> = [
+          ["endpoint", "addDataSourceForm.validation.endpoint"],
+          ["bucket", "addDataSourceForm.validation.bucket"],
+          ["region", "addDataSourceForm.validation.region"],
+          ["accessKeyId", "addDataSourceForm.validation.accessKeyId"],
+          ["secretAccessKey", "addDataSourceForm.validation.secretAccessKey"],
+        ]
+        const missing = required.find(([key]) => !values[key].trim())
+        if (missing) {
+          setError(t(missing[1] as "addDataSourceForm.validation.endpoint"))
+          return
+        }
+        setError(null)
+        void onSubmit({
+          id: "",
+          type: "s3",
+          enabled: true,
+          name: values.name.trim() || "S3",
+          endpoint: values.endpoint.trim(),
+          bucket: values.bucket.trim(),
+          region: values.region.trim(),
+          rootPath: values.rootPath.trim() || null,
+          virtualHostStyle: false,
+          hasCredentials: true,
+          accessKeyId: values.accessKeyId.trim(),
+          secretAccessKey: values.secretAccessKey,
+          sessionToken: values.sessionToken.trim() || undefined,
+        }).catch(() => undefined)
+      }}
+    >
+      <FieldGroup className="gap-4">
+        {field("name", t("addDataSourceForm.nameLabel"))}
+        {field("endpoint", t("addDataSourceForm.s3EndpointLabel"))}
+        {field("bucket", t("addDataSourceForm.s3BucketLabel"))}
+        {field("region", t("addDataSourceForm.s3RegionLabel"))}
+        {field("rootPath", t("addDataSourceForm.s3RootPathLabel"))}
+        {field("accessKeyId", t("addDataSourceForm.accessKeyIdLabel"))}
+        {field(
+          "secretAccessKey",
+          t("addDataSourceForm.secretAccessKeyLabel"),
+          true,
+        )}
+        {field("sessionToken", t("addDataSourceForm.sessionTokenLabel"), true)}
+      </FieldGroup>
+      {error ? <StatusNotice tone="error">{error}</StatusNotice> : null}
+      <DialogFooter className="mt-4">
+        <SaveButton disabled={loading} saving={loading} />
+      </DialogFooter>
+    </form>
   )
 }
 

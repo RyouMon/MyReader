@@ -9,7 +9,10 @@ export type {
 export type {
   DataSource,
   DataSourceConnectionTestResult,
+  DataSourceDropbox,
+  DataSourceGdrive,
   DataSourceOnedrive,
+  DataSourceS3,
   DataSourceType,
   DataSourceWebdav,
 } from "./data-source"

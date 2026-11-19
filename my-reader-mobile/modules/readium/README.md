@@ -284,6 +284,7 @@ necessary, then run the complete iOS test scheme:
 ```bash
 cd my-reader-mobile/ios
 pod install
+python3 ../../scripts/quality/native-coverage.py prepare-swift
 xcrun simctl list devices available
 READIUM_SIMULATOR_UDID="paste-simulator-udid-here"
 xcrun simctl boot "$READIUM_SIMULATOR_UDID"
@@ -298,6 +299,8 @@ xcodebuild test -quiet \
 ```
 
 If the selected simulator is already booted, omit the `simctl boot` command.
+The preparation command also gives CocoaPods' generated test host a scene-based
+lifecycle so it can launch when built with the iOS 27 SDK.
 
 ## License
 

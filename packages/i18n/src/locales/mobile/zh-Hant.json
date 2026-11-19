@@ -255,7 +255,10 @@
         "decrementLabel": "減少封面生成併發",
         "incrementLabel": "增加封面生成併發"
       }
-    }
+    },
+    "gdriveDetail": "管理 Google Drive 資料來源",
+    "dropboxDetail": "管理 Dropbox 資料來源",
+    "s3Detail": "管理 S3 資料來源"
   },
   "reader": {
     "cannotOpen": "無法開啟書籍",
@@ -881,7 +884,9 @@
     "webdavMkcolFailed": "WebDAV MKCOL 失敗: {{status}} {{path}}",
     "localFileNotExist": "本地檔案不存在: {{path}}",
     "basicAuthNotSupported": "當前環境不支援 Basic Auth 編碼",
-    "syncPathCannotBeEmpty": "同步路徑不能為空"
+    "syncPathCannotBeEmpty": "同步路徑不能為空",
+    "remoteSourceNotFound": "它可能已被移除，請返回資料來源列表。",
+    "remoteCredentialsMissing": "請重新登入或更新資料來源憑證。"
   },
   "notifications": {
     "libraryAdded": "成功新增書庫：{{name}}",
@@ -910,5 +915,116 @@
     "restoreBookmark": "恢復書庫授權",
     "accessDirectory": "訪問書庫目錄",
     "refreshBookmark": "重新整理書庫授權"
+  },
+  "addLibraryFlow": {
+    "addGdrive": {
+      "title": "新增 Google Drive 資料來源"
+    },
+    "addDropbox": {
+      "title": "新增 Dropbox 資料來源"
+    },
+    "addS3": {
+      "title": "新增 S3 資料來源"
+    }
+  },
+  "cloud": {
+    "sources": {
+      "title": "{{provider}} 資料來源",
+      "add": "新增資料來源",
+      "emptyTitle": "暫無 {{provider}} 資料來源",
+      "emptyDetail": "請先點選下方按鈕新增 {{provider}} 資料來源。"
+    },
+    "auth": {
+      "alreadyAdded": {
+        "title": "賬號已新增",
+        "detail": "此 {{provider}} 帳號已以 {{name}} 連線。"
+      },
+      "failed": {
+        "title": "認證失敗"
+      },
+      "accountMismatch": {
+        "title": "賬號不一致",
+        "detail": "請使用已為 {{email}} 設定的帳號登入。"
+      },
+      "reauthenticate": "重新登入"
+    },
+    "form": {
+      "addTitle": "新增 {{provider}} 資料來源",
+      "editTitle": "編輯 {{provider}} 資料來源",
+      "save": "儲存",
+      "saving": "儲存中",
+      "signIn": "登入並繼續",
+      "reauthenticate": "重新登入",
+      "addFailed": "新增失敗",
+      "updateFailed": "儲存失敗",
+      "connectionFailed": "連線測試失敗",
+      "clientIdLabel": "Google OAuth Client ID",
+      "clientIdPlaceholder": "Use the client ID registered for this app",
+      "appKeyLabel": "Dropbox App Key",
+      "appKeyPlaceholder": "Paste the Dropbox App Key",
+      "appKeyRequired": "Enter the Dropbox App Key.",
+      "openDropboxConsole": "Dropbox App Console",
+      "rootPathLabel": "根路徑（選填）",
+      "nameLabel": "名稱",
+      "endpointLabel": "服務地址",
+      "bucketLabel": "儲存貯體",
+      "regionLabel": "區域",
+      "accessKeyLabel": "存取金鑰 ID",
+      "secretKeyLabel": "私密存取金鑰",
+      "sessionTokenLabel": "工作階段權杖（選填）",
+      "virtualHostStyle": "使用虛擬主機樣式的儲存貯體網址",
+      "endpointRequired": "請輸入 S3 網址。",
+      "bucketRequired": "請輸入 S3 儲存貯體。",
+      "regionRequired": "請輸入 S3 區域。",
+      "accessKeyRequired": "請輸入存取金鑰 ID。",
+      "secretKeyRequired": "請輸入私密存取金鑰。",
+      "appKeyHint": "Create a Dropbox app and paste its App Key here. The redirect URI is configured by the app."
+    },
+    "browser": {
+      "title": "選擇 {{provider}} 書庫",
+      "validating": "正在驗證目錄",
+      "reading": {
+        "title": "正在讀取目錄",
+        "detail": "正在從 {{provider}} 獲取目錄列表。"
+      },
+      "readFailed": {
+        "title": "讀取失敗"
+      },
+      "loadFailed": {
+        "title": "瀏覽失敗",
+        "message": "{{provider}} 瀏覽器遇到意外錯誤，請重試。"
+      },
+      "credentialsUnavailable": {
+        "title": "{{provider}} 憑據不可用",
+        "detail": "請重新登入或更新資料來源憑證。"
+      },
+      "empty": {
+        "title": "空目錄",
+        "detail": "當前目錄下沒有子目錄。"
+      }
+    },
+    "detail": {
+      "title": "資料來源詳情",
+      "type": "型別",
+      "displayName": "顯示名稱",
+      "email": "郵箱",
+      "endpoint": "服務地址",
+      "bucket": "儲存貯體",
+      "region": "區域",
+      "rootPath": "根路徑",
+      "authStatus": "認證狀態",
+      "authenticated": "已認證",
+      "notAuthenticated": "未認證",
+      "addedAt": "新增時間"
+    },
+    "delete": {
+      "title": "刪除 {{provider}} 資料來源",
+      "confirm": "確認刪除「{{name}}」？",
+      "cancel": "取消",
+      "confirmButton": "刪除",
+      "failed": "無法刪除",
+      "action": "刪除資料來源"
+    },
+    "edit": "編輯資料來源"
   }
 }

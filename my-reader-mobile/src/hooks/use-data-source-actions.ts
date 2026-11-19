@@ -3,7 +3,6 @@ import { coreErrorKind } from "@/src/services/core/error"
 import type {
   DataSource,
   DataSourceConnectionTestResult,
-  DataSourceWebdav,
 } from "@my-reader/tools/types/data-source"
 import { DataSourceInUseError } from "@/src/errors"
 import {
@@ -131,7 +130,7 @@ export function useDataSourceActions() {
   }
 
   async function testDataSourceConnection(
-    source: DataSourceWebdav,
+    source: DataSource,
     secrets?: DataSourceSecrets,
   ): Promise<DataSourceConnectionTestResult> {
     try {

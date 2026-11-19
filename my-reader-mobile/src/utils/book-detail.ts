@@ -70,7 +70,12 @@ export async function resolveCoverForDetail(
   if (!library || !detail.path) return undefined
   if (isRemoteSourceType(library.sourceType)) {
     const ops = await createRemoteOps(library, dataSources)
-    if (ops) return ops.buildCoverUri(library, detail.path, detail.hasCover)
+    if (ops) {
+      return (
+        (await ops.resolveCoverUri?.(library, detail.path, detail.hasCover)) ??
+        ops.buildCoverUri(library, detail.path, detail.hasCover)
+      )
+    }
   }
   return buildCoverUri(library, detail.path, detail.hasCover)
 }

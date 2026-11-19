@@ -452,5 +452,12 @@
   "passwordField": {
     "show": "Passwort anzeigen",
     "hide": "Passwort verbergen"
+  },
+  "remoteFolder": {
+    "name": "Ordnername",
+    "create": "Ordner erstellen",
+    "creating": "Wird erstellt…",
+    "invalid": "Gib einen Ordnernamen ohne / oder \\ ein.",
+    "exists": "Eine Datei oder ein Ordner mit diesem Namen existiert bereits."
   }
 }

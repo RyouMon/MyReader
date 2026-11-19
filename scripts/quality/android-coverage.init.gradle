@@ -1,7 +1,7 @@
 // Opt in only for coverage runs; normal app builds keep their existing settings.
 gradle.beforeProject { project ->
   project.plugins.withId('com.android.library') {
-    if (project.name in ['my-reader-readium', 'expo-sharing']) {
+    if (project.name in ['my-reader-readium', 'google-authorization', 'expo-sharing']) {
       project.android.buildTypes.getByName('debug').enableUnitTestCoverage = true
       if (project.name == 'my-reader-readium') {
         project.android.buildTypes.getByName('debug').enableAndroidTestCoverage = true

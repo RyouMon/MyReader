@@ -100,5 +100,6 @@ export function resolveCoverUri(
   )
   const cachedHeaders = backend.getCachedAuthHeaders()
   const uri = backend.contentUrl(relative)
+  if (!uri) return undefined
   return cachedHeaders ? { uri, headers: cachedHeaders } : uri
 }

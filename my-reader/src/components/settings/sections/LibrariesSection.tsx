@@ -94,18 +94,8 @@ interface LibraryCardProps {
 
 function LibraryCard({ lib, index, isActive, onDelete }: LibraryCardProps) {
   const { t } = useTranslation()
-  const isWebdav = lib.sourceType === "webdav"
-  const isOnedrive = lib.sourceType === "onedrive"
-  const sourceIconKind: EntityIconKind = isOnedrive
-    ? "onedriveDataSource"
-    : isWebdav
-      ? "webdavDataSource"
-      : "localDataSource"
-  const sourceLabel = isOnedrive
-    ? t("addDataSourceForm.typeOnedrive")
-    : isWebdav
-      ? t("addLibraryForm.typeWebdav")
-      : t("addLibraryForm.typeLocal")
+  const sourceIconKind = librarySourceIconKind(lib.sourceType)
+  const sourceLabel = librarySourceLabel(lib.sourceType, t)
   const libraryIconKind =
     lib.libraryType === "myreader" ? "myreaderLibrary" : "calibreLibrary"
   const libraryLabel = lib.libraryType === "myreader" ? "MyReader" : "Calibre"
@@ -148,4 +138,41 @@ function LibraryCard({ lib, index, isActive, onDelete }: LibraryCardProps) {
       />
     </GroupListItem>
   )
+}
+
+function librarySourceIconKind(sourceType?: string | null): EntityIconKind {
+  switch (sourceType) {
+    case "gdrive":
+      return "gdriveDataSource"
+    case "dropbox":
+      return "dropboxDataSource"
+    case "s3":
+      return "s3DataSource"
+    case "onedrive":
+      return "onedriveDataSource"
+    case "webdav":
+      return "webdavDataSource"
+    default:
+      return "localDataSource"
+  }
+}
+
+function librarySourceLabel(
+  sourceType: string | null | undefined,
+  t: (key: string) => string,
+): string {
+  switch (sourceType) {
+    case "gdrive":
+      return t("addDataSourceForm.typeGdrive")
+    case "dropbox":
+      return t("addDataSourceForm.typeDropbox")
+    case "s3":
+      return t("addDataSourceForm.typeS3")
+    case "onedrive":
+      return t("addDataSourceForm.typeOnedrive")
+    case "webdav":
+      return t("addLibraryForm.typeWebdav")
+    default:
+      return t("addLibraryForm.typeLocal")
+  }
 }

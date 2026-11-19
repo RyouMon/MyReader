@@ -13,8 +13,6 @@ import {
   ListRow,
 } from "@/src/components"
 import { ENTITY_LIST_ROW_ICONS } from "@/src/components/ui/entity-list-row-icons"
-import { useAddOneDriveDataSource } from "@/src/features/onedrive/hooks/use-add-onedrive-data-source"
-import { OneDriveAddingEmptyState } from "@/src/features/onedrive/onedrive-adding-empty-state"
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 import { createAddAction } from "@/src/navigation/toolbar-action-helpers"
 import { useAppStore } from "@/src/store/app-store"
@@ -24,10 +22,8 @@ export default function OneDriveSourcesScreen() {
   const { t } = useTranslation()
   const palette = useThemePalette()
   const dataSources = useAppStore((state) => state.dataSources)
-  const { addOneDriveDataSource, busy } = useAddOneDriveDataSource()
-
   function handleAdd() {
-    void addOneDriveDataSource()
+    router.push("/settings/onedrive/add")
   }
 
   function openSourceDetail(sourceId: string) {
@@ -52,7 +48,6 @@ export default function OneDriveSourcesScreen() {
         label: t("onedrive.addSource"),
         onPress: handleAdd,
         color: palette.primary,
-        disabled: busy,
       }),
     ],
   })
@@ -65,9 +60,7 @@ export default function OneDriveSourcesScreen() {
       <View className="flex-1" style={{ backgroundColor: palette.background }}>
         <Screen contentContainerClassName="pb-10">
           <View className="gap-3">
-            {busy ? (
-              <OneDriveAddingEmptyState />
-            ) : onedriveSources.length === 0 ? (
+            {onedriveSources.length === 0 ? (
               <EmptyState
                 title={t("onedrive.noSources.title")}
                 detail={t("onedrive.noSources.detail")}

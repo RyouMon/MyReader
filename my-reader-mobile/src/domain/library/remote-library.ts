@@ -11,6 +11,11 @@ export type RemoteLibraryOps = {
     bookPath: string,
     hasCover: boolean,
   ): BookItem["coverUri"]
+  resolveCoverUri?(
+    library: Library,
+    bookPath: string,
+    hasCover: boolean,
+  ): Promise<BookItem["coverUri"]>
 }
 
 export function normalizeCurrentPath(path: string | undefined) {
@@ -31,7 +36,17 @@ export function isMissingMetadataDbError(error: unknown) {
 function buildRemoteOps(backend: RemoteBackend): RemoteLibraryOps {
   return {
     buildCoverUri: (lib: Library, bookPath: string, hasCover: boolean) =>
-      resolveCoverUri(lib, bookPath, hasCover, backend),
+      backend.contentUrl(bookPath)
+        ? resolveCoverUri(lib, bookPath, hasCover, backend)
+        : undefined,
+    resolveCoverUri: async (lib, bookPath, hasCover) => {
+      if (!bookPath || !hasCover) return undefined
+      if (backend.contentUrl(bookPath)) {
+        return resolveCoverUri(lib, bookPath, hasCover, backend)
+      }
+      const relative = `${bookPath.replace(/\/$/, "")}/cover.jpg`
+      return (await backend.getContentUri?.(relative)) ?? undefined
+    },
   }
 }
 
@@ -42,7 +57,11 @@ export async function createRemoteOps(
   const source = dataSources.find(
     (d) =>
       d.id === library.dataSourceId &&
-      (d.type === "webdav" || d.type === "onedrive"),
+      (d.type === "webdav" ||
+        d.type === "onedrive" ||
+        d.type === "gdrive" ||
+        d.type === "dropbox" ||
+        d.type === "s3"),
   )
   if (!source) return null
 
