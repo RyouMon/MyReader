@@ -7,13 +7,13 @@ import type { ReaderTtsViewportRelation } from "@/src/features/reader/tts/reader
 
 import { ReaderFloatingIconButton } from "./ReaderFloatingIconButton"
 import {
-  READER_FLOATING_BUTTON_BOTTOM,
   READER_FLOATING_BUTTON_LEFT,
   READER_FLOATING_BUTTON_SIZE,
   readerTtsControlLayout,
 } from "./readerChromeConstants"
 
 type Props = {
+  bottomInset: number
   visible: boolean
   expanded: boolean
   state: TtsPlaybackState | null
@@ -31,6 +31,7 @@ type Props = {
 }
 
 export function ReaderTtsControls({
+  bottomInset,
   visible,
   expanded,
   state,
@@ -72,7 +73,7 @@ export function ReaderTtsControls({
         playbackControlsVisible ? t("reader.tts.controls") : ""
       }
       pointerEvents="box-none"
-      style={styles.controls}
+      style={[styles.controls, { bottom: bottomInset }]}
     >
       <ReaderFloatingIconButton
         accessibilityLabel={t(
@@ -143,7 +144,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: READER_FLOATING_BUTTON_BOTTOM,
     height: READER_FLOATING_BUTTON_SIZE,
   },
 })

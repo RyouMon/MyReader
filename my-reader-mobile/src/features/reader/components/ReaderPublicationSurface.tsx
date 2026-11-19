@@ -1,4 +1,5 @@
 import { lazy, type ComponentProps } from "react"
+import type { StyleProp, ViewStyle } from "react-native"
 import type { LoadState } from "@/src/hooks/use-book-loader"
 import { toNativeFilesystemPath } from "@/src/services/fs/path"
 import { Animated } from "@/tw"
@@ -17,11 +18,13 @@ const ReadiumReflowReader = lazy(
 export function ReaderPublicationSurface({
   loadState,
   reflowStyle,
+  fixedStyle,
   reflow,
   fixed,
 }: {
   loadState: Extract<LoadState, { status: "ready" }>
   reflowStyle: ComponentProps<typeof Animated.View>["style"]
+  fixedStyle?: StyleProp<ViewStyle>
   reflow: Omit<
     ComponentProps<typeof ReadiumReflowReader>,
     "epubPath" | "initialLocator" | "imageBook"
@@ -53,6 +56,7 @@ export function ReaderPublicationSurface({
     return (
       <FixedReaderSurface
         {...fixed}
+        style={fixedStyle}
         imageBook={{ title: loadState.title, authors: loadState.authors }}
         archiveUri={loadState.bookArchiveUri}
         pdfLocalUri={loadState.pdfLocalUri}

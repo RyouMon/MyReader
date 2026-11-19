@@ -8,6 +8,8 @@ export default function ReaderLayout() {
         headerTitle: "",
         animation: "none",
         gestureEnabled: false,
+        statusBarAnimation: "none",
+        statusBarHidden: false,
       }}
     />
   )

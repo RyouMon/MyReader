@@ -33,7 +33,25 @@ export const READER_FLOATING_BUTTON_SHADOW_OFFSET_Y = 3
 export const READER_FLOATING_BUTTON_ELEVATION = 8
 
 export const READER_BOTTOM_ACTION_SIZE = READER_FLOATING_BUTTON_SIZE
-export const READER_BOTTOM_ACTION_OFFSET = READER_FLOATING_BUTTON_BOTTOM
+
+/**
+ * Keep the floating chrome inset consistent on all three visible edges.
+ * The safe-area inset is part of the bottom inset, so a device with a
+ * larger navigation area still keeps the controls outside system gestures.
+ */
+export function readerChromeEdgeInset(
+  safeAreaInset: number,
+  horizontalInset = READER_FLOATING_BUTTON_LEFT,
+) {
+  return Math.max(0, safeAreaInset, horizontalInset)
+}
+
+export function readerBottomActionInset(
+  edgeInset: number,
+  actionHeight = READER_BOTTOM_ACTION_SIZE,
+) {
+  return Math.max(0, edgeInset) + actionHeight
+}
 
 export const READER_EXPANDED_ACTION_RIGHT = READER_FLOATING_BUTTON_RIGHT
 export const READER_EXPANDED_ACTION_BOTTOM_OFFSET =
@@ -53,6 +71,14 @@ export const READER_EXPANDED_ACTION_SHEET_SHADOW_RADIUS = 14
 export const READER_EXPANDED_ACTION_SHEET_SHADOW_OFFSET_X = 0
 export const READER_EXPANDED_ACTION_SHEET_SHADOW_OFFSET_Y = 4
 export const READER_EXPANDED_ACTION_SHEET_ELEVATION = 8
+
+export function readerExpandedActionBottomInset(edgeInset: number) {
+  return (
+    Math.max(edgeInset, READER_EXPANDED_ACTION_SAFE_BOTTOM_MIN) +
+    READER_EXPANDED_ACTION_BOTTOM_OFFSET
+  )
+}
+
 export const READER_TOC_SHEET_SNAP_POINTS: (string | number)[] = ["100%"]
 export const READER_TOC_SHEET_INITIAL_INDEX = 0
 

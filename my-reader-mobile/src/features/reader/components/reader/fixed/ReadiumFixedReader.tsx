@@ -12,7 +12,7 @@ import {
   useMemo,
   useRef,
 } from "react"
-import { StyleSheet, View } from "react-native"
+import { StyleSheet, type StyleProp, View, type ViewStyle } from "react-native"
 import { ReadiumView } from "@my-reader/readium"
 import type {
   Locator,
@@ -47,6 +47,7 @@ export type ReadiumFixedReaderRef = {
 }
 
 export type ReadiumFixedReaderProps = {
+  style?: StyleProp<ViewStyle>
   imageBook?: ReaderImageBook
   /** Native filesystem path to the CBZ archive. */
   filePath: string
@@ -90,6 +91,7 @@ const ReadiumFixedReader = forwardRef<
   ReadiumFixedReaderProps
 >(function ReadiumFixedReader(
   {
+    style,
     filePath,
     imageBook,
     initialLocator,
@@ -264,7 +266,7 @@ const ReadiumFixedReader = forwardRef<
   )
 
   return (
-    <View style={styles.reader}>
+    <View style={[styles.reader, style]}>
       <ReadiumView
         ref={readiumRef}
         file={file}

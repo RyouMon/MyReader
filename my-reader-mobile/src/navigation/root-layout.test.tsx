@@ -43,7 +43,10 @@ jest.mock("expo-router", () => {
           : "Deleted book",
     )
   }
-  return { Stack: Object.assign(CatalogRoute, { Screen: () => null }) }
+  return {
+    Stack: Object.assign(CatalogRoute, { Screen: () => null }),
+    usePathname: () => "/",
+  }
 })
 jest.mock("expo-router/react-navigation", () => ({
   DarkTheme: { colors: {} },

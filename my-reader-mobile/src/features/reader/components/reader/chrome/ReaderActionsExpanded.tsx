@@ -25,13 +25,11 @@ import type {
   ReaderProgressPreview,
 } from "./reader-progress-scrubber"
 import {
-  READER_EXPANDED_ACTION_BOTTOM_OFFSET,
   READER_EXPANDED_ACTION_ICON_SIZE,
   READER_EXPANDED_ACTION_PADDING_HORIZONTAL,
   READER_EXPANDED_ACTION_PADDING_VERTICAL,
   READER_EXPANDED_ACTION_RADIUS,
   READER_EXPANDED_ACTION_RIGHT,
-  READER_EXPANDED_ACTION_SAFE_BOTTOM_MIN,
   READER_EXPANDED_ACTION_SHEET_ELEVATION,
   READER_EXPANDED_ACTION_SHEET_SHADOW_COLOR,
   READER_EXPANDED_ACTION_SHEET_SHADOW_OFFSET_X,
@@ -40,6 +38,7 @@ import {
   READER_EXPANDED_ACTION_SHEET_SHADOW_RADIUS,
   READER_EXPANDED_ACTION_STACK_GAP,
   READER_EXPANDED_ACTION_TEXT_GAP,
+  readerExpandedActionBottomInset,
   readerExpandedActionWidth,
 } from "./readerChromeConstants"
 import { useReaderChromePressFeedback } from "./useReaderChromePressFeedback"
@@ -166,9 +165,7 @@ export default function ReaderActionsExpanded({
         {
           position: "absolute",
           right: READER_EXPANDED_ACTION_RIGHT,
-          bottom:
-            Math.max(insetsBottom, READER_EXPANDED_ACTION_SAFE_BOTTOM_MIN) +
-            READER_EXPANDED_ACTION_BOTTOM_OFFSET,
+          bottom: readerExpandedActionBottomInset(insetsBottom),
         },
         animatedStyle,
       ]}
