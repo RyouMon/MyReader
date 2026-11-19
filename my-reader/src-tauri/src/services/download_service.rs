@@ -454,12 +454,13 @@ impl DownloadService {
         }
 
         let lib = LibraryService::resolve_library(Some(library_id), config)?;
-        let root = dunce::canonicalize(library_root_path(&lib, app_data_dir))?;
-        let path = dunce::canonicalize(root.join(state.path))?;
+        // Keep Windows verbatim prefixes consistent until after the containment check.
+        let root = std::fs::canonicalize(library_root_path(&lib, app_data_dir))?;
+        let path = std::fs::canonicalize(root.join(state.path))?;
         if !path.starts_with(&root) {
             return Err(AppError::Config("BOOK_FILE_OUTSIDE_LIBRARY".into()));
         }
-        Ok(path)
+        Ok(dunce::simplified(&path).to_path_buf())
     }
 
     /// Build an OpenDAL operator for a remote library's data source.

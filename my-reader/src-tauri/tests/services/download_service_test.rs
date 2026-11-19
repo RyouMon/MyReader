@@ -285,6 +285,97 @@ async fn available_book_path_should_require_complete_remote_cache() {
         .is_err());
 }
 
+#[cfg(windows)]
+#[tokio::test]
+async fn available_book_path_should_resolve_long_windows_cache_paths() {
+    use my_reader_core::test_support::entities::calibre::data;
+    use sea_orm::{ActiveModelTrait, Set};
+    use std::os::windows::ffi::OsStrExt;
+
+    let app_data = tempfile::tempdir().unwrap();
+    let lib = remote_test_library("remote");
+    let root = library_container_dir(app_data.path(), &lib.id);
+    tokio::fs::create_dir_all(&root).await.unwrap();
+    let seeded = seed_minimal_calibre_library(&root).await;
+    let name = "long-title".repeat(24);
+    let relative_path = format!("It/{name}.epub");
+    let file_path = root.join(&relative_path);
+    tokio::fs::rename(&seeded.file_path, &file_path)
+        .await
+        .unwrap();
+    let db = crate::common::calibre::create_calibre_db(&root).await;
+    data::ActiveModel {
+        id: Set(1),
+        name: Set(name),
+        ..Default::default()
+    }
+    .update(&db)
+    .await
+    .unwrap();
+    db.close().await.unwrap();
+    TestFileStateRepository::upsert(&root, &relative_path, "present", Some(12), None)
+        .await
+        .unwrap();
+    assert!(root.as_os_str().encode_wide().count() < 260);
+    assert!(file_path.as_os_str().encode_wide().count() > 260);
+    let config = AppConfig {
+        libraries: vec![lib],
+        ..Default::default()
+    };
+
+    let path = DownloadService::new()
+        .resolve_available_book_file_path(
+            app_data.path(),
+            &config,
+            "remote",
+            seeded.book_id,
+            "EPUB",
+        )
+        .await
+        .expect("a complete long-path book inside the library must be shareable");
+
+    assert_eq!(path, dunce::canonicalize(&file_path).unwrap());
+    assert_eq!(tokio::fs::read(path).await.unwrap(), b"book content");
+}
+
+#[tokio::test]
+async fn available_book_path_should_reject_parent_paths_outside_library() {
+    use my_reader_core::test_support::entities::calibre::books;
+    use sea_orm::{ActiveModelTrait, Set};
+
+    let app_data = tempfile::tempdir().unwrap();
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path().join("library");
+    let outside = directory.path().join("outside");
+    tokio::fs::create_dir_all(&root).await.unwrap();
+    tokio::fs::create_dir_all(&outside).await.unwrap();
+    let seeded = seed_minimal_calibre_library(&root).await;
+    tokio::fs::rename(&seeded.file_path, outside.join("It.epub"))
+        .await
+        .unwrap();
+    let db = crate::common::calibre::create_calibre_db(&root).await;
+    books::ActiveModel {
+        id: Set(seeded.book_id),
+        path: Set(Some("../outside".into())),
+        ..Default::default()
+    }
+    .update(&db)
+    .await
+    .unwrap();
+    db.close().await.unwrap();
+    let config = AppConfig {
+        libraries: vec![local_test_library("local", &root)],
+        ..Default::default()
+    };
+
+    let error = DownloadService::new()
+        .resolve_available_book_file_path(app_data.path(), &config, "local", seeded.book_id, "EPUB")
+        .await
+        .unwrap_err();
+
+    assert!(error.to_string().contains("BOOK_FILE_OUTSIDE_LIBRARY"));
+}
+
 #[cfg(unix)]
 #[tokio::test]
 async fn available_book_path_should_reject_symlinks_outside_library() {
