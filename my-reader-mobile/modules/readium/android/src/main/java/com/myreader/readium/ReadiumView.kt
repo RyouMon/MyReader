@@ -83,6 +83,7 @@ class ReadiumView(
   private var frameCallback: Choreographer.FrameCallback? = null
   private var pendingTeardownRunnable: Runnable? = null
   private var preferenceApplyJob: Job? = null
+  private var programmaticNavigationJob: Job? = null
   private var preferenceApplyGeneration = 0L
   private var viewportAnchor: ViewportAnchor? = null
   private var suppressLocationEvents = false
@@ -364,6 +365,8 @@ class ReadiumView(
     detachViewport: Boolean = true,
     scheduleReset: Boolean = true,
   ): String {
+    programmaticNavigationJob?.cancel()
+    programmaticNavigationJob = null
     userNavigationResetJob?.cancel()
     userNavigationViewport = UserNavigationViewport.capture(fragment?.view)
     val navigationId = ttsNavigationState.beginUserNavigation(detachViewport)
@@ -427,13 +430,15 @@ class ReadiumView(
     val action = Runnable {
       val readiumLocator = locatorRecordToReadium(locator) ?: return@Runnable
       if (requestedPreferences != null) preferences = requestedPreferences
-      scope.launch {
+      beginUserNavigation(detachViewport = false)
+      programmaticNavigationJob = scope.launch {
         // A font/layout transaction must not restore its old anchor after this jump.
         while (preferenceApplyJob?.isActive == true) {
           preferenceApplyJob?.join()
         }
-        beginUserNavigation(detachViewport = false)
-        fragment?.go(LinkOrLocator.Locator(readiumLocator), true)
+        val target = fragment ?: return@launch
+        target.go(LinkOrLocator.Locator(readiumLocator), true)
+        (target as? EpubReaderFragment)?.settleTextLocator(readiumLocator)
       }
     }
     if (Looper.myLooper() == Looper.getMainLooper()) {

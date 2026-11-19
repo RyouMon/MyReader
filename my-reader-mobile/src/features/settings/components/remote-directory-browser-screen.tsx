@@ -1,7 +1,11 @@
+import {
+  NewRemoteFolderButton,
+  RemoteFolderCreationForm,
+} from "./remote-folder-creation-form"
 import type { MobileTranslationKey } from "@my-reader/i18n/mobile"
 import type { Library } from "@my-reader/tools/types/library"
 import { router, Stack, useLocalSearchParams } from "expo-router"
-import { useCallback } from "react"
+import { type ReactNode, useCallback, useState } from "react"
 import { useTranslation } from "react-i18next"
 import {
   EmptyState,
@@ -16,6 +20,14 @@ import { switchActiveLibrary } from "@/src/domain/library/hooks/library-actions"
 import { normalizeCurrentPath } from "@/src/domain/library/remote-library"
 import { promptLibraryAddedAfterNavigation } from "@/src/domain/notifications/library-notifications"
 import { useAddOneDriveDataSource } from "@/src/features/onedrive/hooks/use-add-onedrive-data-source"
+import { useCloudDataSource } from "@/src/features/cloud/hooks/use-cloud-data-source"
+import {
+  cloudAddPath,
+  cloudSourcePath,
+  isOAuthCloudProvider,
+  providerTitle,
+  type CloudProvider,
+} from "@/src/features/cloud/cloud-data-source"
 import { useAddLibraryFlow } from "@/src/features/settings/add-library-flow-context"
 import { useRemoteDirectoryBrowser } from "@/src/features/settings/hooks/use-remote-directory-browser"
 import type { RemoteLibraryAction } from "@/src/features/settings/hooks/use-remote-directory-browser"
@@ -24,12 +36,15 @@ import { createSaveAction } from "@/src/navigation/toolbar-action-helpers"
 import { Text, View } from "@/tw"
 
 type RemoteDirectoryBrowserScreenProps = {
-  sourceType: "webdav" | "onedrive"
+  sourceType: "webdav" | "onedrive" | "gdrive" | "dropbox" | "s3"
   browserRoute:
     | "/settings/webdav/browser"
     | "/settings/onedrive/browser"
     | "/settings/add-library/browser"
-  translationNamespace: "webdav.browser" | "onedrive.browser"
+    | "/settings/gdrive/browser"
+    | "/settings/dropbox/browser"
+    | "/settings/s3/browser"
+  translationNamespace: "webdav.browser" | "onedrive.browser" | "cloud.browser"
 }
 
 type RemoteBrowserTranslationKey = Extract<
@@ -48,6 +63,7 @@ function DirectoryBrowserEntries({
   handleRecoverCredentials,
   retry,
   handleOpenDirectory,
+  draft,
 }: Pick<
   ReturnType<typeof useRemoteDirectoryBrowser>,
   "loading" | "resolveFailed" | "error" | "entries" | "retry"
@@ -57,6 +73,7 @@ function DirectoryBrowserEntries({
   label: (key: string, options?: Record<string, unknown>) => string
   handleRecoverCredentials: () => void
   handleOpenDirectory: (path: string) => void
+  draft: ReactNode
 }) {
   const { t } = useTranslation()
   if (loading)
@@ -80,7 +97,9 @@ function DirectoryBrowserEntries({
                 ? t("onedrive.add.authenticating")
                 : sourceType === "webdav"
                   ? t("webdav.reconfigureSource")
-                  : t("onedrive.reauthenticate")
+                  : sourceType === "onedrive"
+                    ? t("onedrive.reauthenticate")
+                    : t("cloud.auth.reauthenticate")
             }
             onPress={handleRecoverCredentials}
           />
@@ -105,7 +124,7 @@ function DirectoryBrowserEntries({
         }}
       />
     )
-  if (entries.length === 0)
+  if (entries.length === 0 && !draft)
     return (
       <EmptyState
         title={label("empty.title")}
@@ -115,6 +134,7 @@ function DirectoryBrowserEntries({
     )
   return (
     <SectionCard>
+      {draft}
       {entries.map((entry, index) => (
         <ListRow
           key={entry.path}
@@ -128,7 +148,7 @@ function DirectoryBrowserEntries({
   )
 }
 
-/** Shared directory browser for remote data sources (WebDAV, OneDrive). */
+/** Shared directory browser for remote data sources. */
 export function RemoteDirectoryBrowserScreen({
   sourceType,
   browserRoute,
@@ -136,6 +156,7 @@ export function RemoteDirectoryBrowserScreen({
 }: RemoteDirectoryBrowserScreenProps) {
   const { t } = useTranslation()
   const palette = useThemePalette()
+  const [hasDirectoryDraft, setHasDirectoryDraft] = useState(false)
   const {
     dataSourceId,
     currentPath: currentPathParam,
@@ -153,6 +174,8 @@ export function RemoteDirectoryBrowserScreen({
   const { finishAddingLibrary } = useAddLibraryFlow()
   const { busy: authenticating, reauthenticateOneDriveDataSource } =
     useAddOneDriveDataSource()
+  const { busy: cloudAuthenticating, reauthenticate: reauthenticateCloud } =
+    useCloudDataSource()
   const handleLibraryOpened = useCallback(
     (library: Library) => {
       if (isAddLibraryBrowser) {
@@ -174,7 +197,12 @@ export function RemoteDirectoryBrowserScreen({
   )
 
   const label = (key: string, options?: Record<string, unknown>) =>
-    t(`${translationNamespace}.${key}` as RemoteBrowserTranslationKey, options)
+    t(`${translationNamespace}.${key}` as RemoteBrowserTranslationKey, {
+      ...(translationNamespace === "cloud.browser"
+        ? { provider: providerTitle(sourceType as CloudProvider) }
+        : {}),
+      ...options,
+    })
 
   const {
     notFound,
@@ -185,6 +213,11 @@ export function RemoteDirectoryBrowserScreen({
     loading,
     error,
     saving,
+    creating,
+    canCreateDirectory,
+    creationError,
+    clearCreationError,
+    createDirectory,
     currentPath,
     retry,
     choosePath,
@@ -196,8 +229,11 @@ export function RemoteDirectoryBrowserScreen({
     sourceType,
   })
 
+  const directoryActionsDisabled =
+    loading || resolveFailed || creating || Boolean(error) || hasDirectoryDraft
   function handleOpenDirectory(path: string) {
-    if (!candidateId) return
+    if (!candidateId || creating) return
+    setHasDirectoryDraft(false)
     router.push({
       pathname: browserRoute,
       params: {
@@ -211,7 +247,7 @@ export function RemoteDirectoryBrowserScreen({
   }
 
   function handleChooseCurrentPath() {
-    if (!candidateId) return
+    if (!candidateId || directoryActionsDisabled) return
     if (libraryAction === "create") {
       router.push({
         pathname: "/settings/add-library/create",
@@ -234,7 +270,11 @@ export function RemoteDirectoryBrowserScreen({
       router.replace("/settings/webdav")
       return
     }
-    router.replace("/settings/onedrive")
+    if (sourceType === "onedrive") {
+      router.replace("/settings/onedrive")
+      return
+    }
+    router.replace(cloudSourcePath(sourceType as CloudProvider) as never)
   }
 
   function handleRecoverCredentials() {
@@ -259,10 +299,34 @@ export function RemoteDirectoryBrowserScreen({
       return
     }
 
-    if (candidate?.type !== "onedrive") return
-    void reauthenticateOneDriveDataSource(candidate).then((authenticated) => {
-      if (authenticated) retry()
-    })
+    if (candidate?.type === "onedrive") {
+      void reauthenticateOneDriveDataSource(candidate).then((authenticated) => {
+        if (authenticated) retry()
+      })
+      return
+    }
+    if (
+      candidate &&
+      isOAuthCloudProvider(sourceType as CloudProvider) &&
+      (candidate.type === "gdrive" || candidate.type === "dropbox")
+    ) {
+      void reauthenticateCloud(candidate).then((authenticated) => {
+        if (authenticated) retry()
+      })
+      return
+    }
+    if (candidate?.type === "s3") {
+      router.push({
+        pathname: cloudAddPath("s3") as never,
+        params: {
+          dataSourceId: candidate.id,
+          returnToBrowser: "true",
+          returnPath: currentPath,
+          libraryAction,
+          ...(from ? { from } : {}),
+        } as never,
+      })
+    }
   }
 
   const isAddLibraryFlow = from === "add-library" && currentPath === "/"
@@ -276,6 +340,9 @@ export function RemoteDirectoryBrowserScreen({
     duplicateMessage: t("sync.alreadyAdded"),
     generic: t("addLibrary.operationFailedDetail"),
   }
+
+  const selectLabel =
+    libraryAction === "create" ? t("addLibrary.continue") : t("addLibrary.open")
 
   const { options, toolbar } = useScreenHeader({
     ...(isRootBrowser && !isAddLibraryBrowser
@@ -301,15 +368,11 @@ export function RemoteDirectoryBrowserScreen({
     backTitle: t("reader.back"),
     right: [
       createSaveAction({
-        label: saving
-          ? label("validating")
-          : libraryAction === "create"
-            ? t("addLibrary.continue")
-            : t("addLibrary.open"),
+        label: saving ? label("validating") : selectLabel,
         onPress: handleChooseCurrentPath,
         loading: saving,
         color: palette.primary,
-        disabled: loading || resolveFailed,
+        disabled: directoryActionsDisabled,
       }),
     ],
   })
@@ -363,17 +426,39 @@ export function RemoteDirectoryBrowserScreen({
               {t("addLibrary.path", { path: currentPath })}
             </Text>
 
+            <NewRemoteFolderButton
+              enabled={Boolean(canCreateDirectory)}
+              disabled={directoryActionsDisabled}
+              onPress={() => {
+                clearCreationError()
+                setHasDirectoryDraft(true)
+              }}
+            />
+
             <DirectoryBrowserEntries
               loading={loading}
               resolveFailed={resolveFailed}
               error={error}
               entries={entries}
-              authenticating={authenticating}
+              authenticating={authenticating || cloudAuthenticating}
               sourceType={sourceType}
               label={label}
               handleRecoverCredentials={handleRecoverCredentials}
               retry={retry}
               handleOpenDirectory={handleOpenDirectory}
+              draft={
+                hasDirectoryDraft ? (
+                  <RemoteFolderCreationForm
+                    currentPath={currentPath}
+                    disabled={saving}
+                    creating={creating}
+                    error={creationError}
+                    onCreate={createDirectory}
+                    onCreated={() => setHasDirectoryDraft(false)}
+                    onCancel={() => setHasDirectoryDraft(false)}
+                  />
+                ) : null
+              }
             />
           </View>
         </ErrorBoundary>

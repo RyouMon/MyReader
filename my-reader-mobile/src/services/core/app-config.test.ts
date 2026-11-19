@@ -11,6 +11,7 @@ import {
   initializeAppConfig,
   prepareAppDataSourceForUpsert,
   writeMobileAppConfig,
+  toCoreDataSource,
 } from "./app-config"
 
 jest.mock("expo-file-system", () => ({
@@ -36,6 +37,51 @@ jest.mock("my-reader-core", () => ({
 }))
 
 describe("app config", () => {
+  it.each([
+    "gdrive",
+    "dropbox",
+    "s3",
+  ] as const)("preserves %s identity, scope and credential flags across config writes", async (type) => {
+    const base = {
+      id: "source",
+      name: "Reader",
+      enabled: true,
+      rootPath: "/Books",
+      readonly: false,
+      createdAt: 123,
+    }
+    const source =
+      type === "s3"
+        ? {
+            ...base,
+            type,
+            endpoint: "https://storage.example",
+            bucket: "books",
+            region: "us-east-1",
+            virtualHostStyle: true,
+            hasCredentials: true,
+          }
+        : {
+            ...base,
+            type,
+            clientId: "client",
+            accountId: "account",
+            displayName: "Reader",
+            email: "reader@example.com",
+            hasRefreshToken: true,
+            ...(type === "gdrive" ? { rootFolderId: "folder" } : {}),
+          }
+    const wire = toCoreDataSource(source)
+    jest.mocked(dataSourcePrepareForUpsert).mockResolvedValue(wire)
+    await expect(prepareAppDataSourceForUpsert(source)).resolves.toEqual(source)
+    expect(wire).not.toHaveProperty("accessToken")
+    expect(wire).not.toHaveProperty("secretAccessKey")
+    expect(dataSourcePrepareForUpsert).toHaveBeenLastCalledWith(
+      "/documents/config.json",
+      expect.objectContaining({ kind: type, rootPath: "/Books" }),
+    )
+  })
+
   const coreLibrary = {
     id: "library",
     name: "Library",

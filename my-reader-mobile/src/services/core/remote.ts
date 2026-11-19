@@ -1,25 +1,20 @@
-import { CredentialError } from "@/src/errors"
 import type { DataSource } from "@my-reader/tools/types/data-source"
 import type { Library } from "@my-reader/tools/types/library"
 import { Directory, Paths } from "expo-file-system"
 import {
+  dataSourceCreateDirectory,
   dataSourceListDirectories,
   dataSourceTestConnection,
   libraryAddRemote,
   libraryCreateRemoteMyreader,
   libraryOpenRemoteMyreader,
   libraryRefreshRemote,
-  type RemoteCredential as CoreRemoteCredential,
   type RemoteDirectoryEntry as CoreRemoteDirectoryEntry,
 } from "my-reader-core"
-import { refreshAccessToken } from "../auth/onedrive"
 import { libraryContainerRootUri } from "../fs/library-paths"
 import { toNativeFilesystemPath } from "../fs/path"
-import {
-  type DataSourceSecrets,
-  readOneDriveRefreshToken,
-  readWebDavPassword,
-} from "../storage/credentials"
+import type { DataSourceSecrets } from "../storage/credentials"
+import { resolveRemoteCredential } from "./remote-credentials"
 import {
   appConfigPath,
   type AppConfigSnapshot,
@@ -34,46 +29,11 @@ type RemoteLibraryResult = {
   library: Library
 }
 
-async function credentialFor(
-  source: DataSource,
-  secrets?: DataSourceSecrets,
-): Promise<CoreRemoteCredential> {
-  if (source.type === "webdav") {
-    const password =
-      secrets?.type === "webdav"
-        ? secrets.password
-        : await readWebDavPassword(source.id)
-    if (!password) {
-      throw new CredentialError("WEBDAV_PASSWORD_REQUIRED")
-    }
-    return {
-      kind: "webdav",
-      password,
-    }
-  }
-
-  if (secrets?.type === "onedrive" && secrets.accessToken) {
-    return {
-      kind: "onedrive",
-      accessToken: secrets.accessToken,
-    }
-  }
-  const refreshToken = await readOneDriveRefreshToken(source.id)
-  if (!refreshToken) {
-    throw new CredentialError("ONEDRIVE_REFRESH_TOKEN_REQUIRED")
-  }
-  const { accessToken } = await refreshAccessToken(source.id)
-  return {
-    kind: "onedrive",
-    accessToken,
-  }
-}
-
 export async function testRemoteDataSource(
   source: DataSource,
   secrets?: DataSourceSecrets,
 ): Promise<void> {
-  const credential = await credentialFor(source, secrets)
+  const credential = await resolveRemoteCredential(source, secrets)
   await dataSourceTestConnection(toCoreDataSource(source), credential)
 }
 
@@ -81,8 +41,23 @@ export async function listRemoteDirectories(
   source: DataSource,
   path: string,
 ): Promise<RemoteDirectoryEntry[]> {
-  const credential = await credentialFor(source)
+  const credential = await resolveRemoteCredential(source)
   return dataSourceListDirectories(appConfigPath, source.id, path, credential)
+}
+
+export async function createRemoteDirectory(
+  source: DataSource,
+  parentPath: string,
+  name: string,
+): Promise<RemoteDirectoryEntry> {
+  const credential = await resolveRemoteCredential(source)
+  return dataSourceCreateDirectory(
+    appConfigPath,
+    source.id,
+    parentPath,
+    name,
+    credential,
+  )
 }
 
 export async function addRemoteLibrary(
@@ -93,7 +68,7 @@ export async function addRemoteLibrary(
   if (!librariesRoot.exists) {
     librariesRoot.create({ idempotent: true, intermediates: true })
   }
-  const credential = await credentialFor(source)
+  const credential = await resolveRemoteCredential(source)
   return libraryResultFromCore(
     await libraryAddRemote(
       appConfigPath,
@@ -123,7 +98,7 @@ export async function createRemoteMyreaderLibrary(
   name: string,
 ): Promise<RemoteLibraryResult> {
   const root = librariesRoot()
-  const credential = await credentialFor(source)
+  const credential = await resolveRemoteCredential(source)
   return libraryResultFromCore(
     await libraryCreateRemoteMyreader(
       appConfigPath,
@@ -146,7 +121,7 @@ export async function openRemoteMyreaderLibrary(
   sourcePath: string,
 ): Promise<RemoteLibraryResult> {
   const root = librariesRoot()
-  const credential = await credentialFor(source)
+  const credential = await resolveRemoteCredential(source)
   return libraryResultFromCore(
     await libraryOpenRemoteMyreader(
       appConfigPath,
@@ -167,7 +142,7 @@ export async function refreshRemoteLibrary(
   library: Library,
   source: DataSource,
 ): Promise<RemoteLibraryResult> {
-  const credential = await credentialFor(source)
+  const credential = await resolveRemoteCredential(source)
   return libraryResultFromCore(
     await libraryRefreshRemote(
       appConfigPath,

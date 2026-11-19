@@ -1,13 +1,12 @@
-use std::time::Duration;
+pub(crate) mod download;
+mod dropbox;
+mod gdrive;
+pub(crate) mod transport;
 
-use opendal::{
-    layers::RetryLayer,
-    services::{Onedrive, Webdav},
-    OperationContext, Operator,
-};
+use opendal::Operator;
 
 use crate::{
-    models::{DataSource, RemoteCredential},
+    models::{DataSource, LibraryStorageConfig, RemoteCredential},
     CoreError,
 };
 
@@ -15,7 +14,15 @@ pub(crate) fn build_remote_operator(
     source: &DataSource,
     credential: &RemoteCredential,
 ) -> Result<Operator, CoreError> {
-    let operator = match (source, credential) {
+    transport::build_storage_operator(&resolve_remote_storage(source, credential, "")?)
+}
+
+pub(crate) fn resolve_remote_storage(
+    source: &DataSource,
+    credential: &RemoteCredential,
+    source_path: &str,
+) -> Result<LibraryStorageConfig, CoreError> {
+    match (source, credential) {
         (
             DataSource::Webdav {
                 endpoint,
@@ -24,49 +31,65 @@ pub(crate) fn build_remote_operator(
                 ..
             },
             RemoteCredential::Webdav { password },
-        ) => {
-            let endpoint = required(endpoint, "WEBDAV_ENDPOINT_REQUIRED")?;
-            let username = required(username, "WEBDAV_USERNAME_REQUIRED")?;
-            let password = required(password, "WEBDAV_PASSWORD_REQUIRED")?;
-            let builder = Webdav::default()
-                .endpoint(endpoint)
-                .username(username)
-                .password(password)
-                .root(non_empty_root(root_path.as_deref()));
-            Operator::new(builder).map_err(storage_error)
-        }
+        ) => Ok(LibraryStorageConfig::Webdav {
+            endpoint: required(endpoint, "WEBDAV_ENDPOINT_REQUIRED")?.into(),
+            username: required(username, "WEBDAV_USERNAME_REQUIRED")?.into(),
+            password: required(password, "WEBDAV_PASSWORD_REQUIRED")?.into(),
+            root: Some(scope_remote_root(root_path.as_deref(), source_path)?),
+        }),
         (DataSource::Onedrive { root_path, .. }, RemoteCredential::Onedrive { access_token }) => {
-            let access_token = required(access_token, "ONEDRIVE_ACCESS_TOKEN_REQUIRED")?;
-            let mut builder = Onedrive::default().access_token(access_token);
-            if let Some(root) = root_path
-                .as_deref()
-                .filter(|value| !value.trim().is_empty())
-            {
-                builder = builder.root(root);
-            }
-            Operator::new(builder)
-                .map_err(storage_error)
-                .map(|operator| {
-                    operator.layer(
-                        RetryLayer::new()
-                            .with_min_delay(Duration::from_millis(500))
-                            .with_max_delay(Duration::from_secs(2))
-                            .with_max_times(3)
-                            .with_jitter(),
-                    )
-                })
+            Ok(LibraryStorageConfig::Onedrive {
+                access_token: required(access_token, "ONEDRIVE_ACCESS_TOKEN_REQUIRED")?.into(),
+                root: Some(scope_remote_root(root_path.as_deref(), source_path)?),
+            })
         }
-        (DataSource::Webdav { .. }, RemoteCredential::Onedrive { .. })
-        | (DataSource::Onedrive { .. }, RemoteCredential::Webdav { .. }) => Err(CoreError::Config(
+        (
+            DataSource::Gdrive {
+                root_path,
+                root_folder_id,
+                ..
+            },
+            RemoteCredential::Gdrive { access_token },
+        ) => Ok(LibraryStorageConfig::Gdrive {
+            access_token: required(access_token, "GDRIVE_ACCESS_TOKEN_REQUIRED")?.into(),
+            root: Some(scope_remote_root(root_path.as_deref(), source_path)?),
+            root_folder_id: root_folder_id.clone(),
+        }),
+        (DataSource::Dropbox { root_path, .. }, RemoteCredential::Dropbox { access_token }) => {
+            Ok(LibraryStorageConfig::Dropbox {
+                access_token: required(access_token, "DROPBOX_ACCESS_TOKEN_REQUIRED")?.into(),
+                root: Some(scope_remote_root(root_path.as_deref(), source_path)?),
+            })
+        }
+        (
+            DataSource::S3 {
+                endpoint,
+                bucket,
+                region,
+                root_path,
+                virtual_host_style,
+                ..
+            },
+            RemoteCredential::S3 {
+                access_key_id,
+                secret_access_key,
+                session_token,
+            },
+        ) => Ok(LibraryStorageConfig::S3 {
+            endpoint: endpoint.clone(),
+            bucket: bucket.clone(),
+            region: region.clone(),
+            root: Some(scope_remote_root(root_path.as_deref(), source_path)?),
+            virtual_host_style: *virtual_host_style,
+            access_key_id: required(access_key_id, "S3_ACCESS_KEY_REQUIRED")?.into(),
+            secret_access_key: required(secret_access_key, "S3_SECRET_KEY_REQUIRED")?.into(),
+            session_token: session_token.clone(),
+        }),
+        (DataSource::Local { .. }, _) => Err(CoreError::Config("DATASOURCE_NOT_REMOTE".into())),
+        _ => Err(CoreError::Config(
             "DATASOURCE_CREDENTIAL_TYPE_MISMATCH".into(),
         )),
-        (DataSource::Local { .. }, _) => Err(CoreError::Config("DATASOURCE_NOT_REMOTE".into())),
-    }?;
-    let client = super::http::client_builder()
-        .build()
-        .map_err(|error| CoreError::Storage(error.to_string()))?;
-    let transport = super::http::storage_transport(client);
-    Ok(operator.with_context(OperationContext::new().with_http_transport(transport)))
+    }
 }
 
 pub(crate) fn scope_remote_root(base: Option<&str>, library: &str) -> Result<String, CoreError> {
@@ -103,10 +126,6 @@ pub(crate) fn join_remote_path(parent: &str, child: &str) -> Result<String, Core
         (false, true) => Ok(parent),
         (false, false) => Ok(format!("{parent}/{child}")),
     }
-}
-
-fn non_empty_root(root: Option<&str>) -> &str {
-    root.filter(|value| !value.trim().is_empty()).unwrap_or("/")
 }
 
 fn required<'a>(value: &'a str, code: &str) -> Result<&'a str, CoreError> {

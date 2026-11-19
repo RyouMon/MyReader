@@ -168,6 +168,7 @@
     "collectCoverageFrom": [
       "src/**/*.{ts,tsx}",
       "modules/readium/src/**/*.{ts,tsx}",
+      "modules/google-authorization/src/**/*.{ts,tsx}",
       "modules/book-transition/src/**/*.{ts,tsx}",
       "modules/security-scoped-bookmarks/src/**/*.{ts,tsx}",
       "!**/*.{test,spec}.{ts,tsx}",

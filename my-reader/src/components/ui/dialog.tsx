@@ -66,8 +66,8 @@ function DialogContent({
         )}
         {...props}
         onEscapeKeyDown={(event) => {
-          // A select menu consumes Escape before its containing dialog.
-          if (event.target instanceof Element && event.target.closest('[role="listbox"]')) {
+          // Menus and inline editors consume Escape before their containing dialog.
+          if (event.target instanceof Element && event.target.closest('[role="listbox"], [data-dialog-escape-boundary]')) {
             event.preventDefault()
             return
           }

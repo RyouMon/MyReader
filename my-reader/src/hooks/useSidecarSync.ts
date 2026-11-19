@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import { bookFileStateKeys } from "@/hooks/queries/useBookFileState"
 import { invalidateFavoriteBookQueries } from "@/hooks/queries/useFavoriteBooksQuery"
 import { readingProgressKeys } from "@/hooks/queries/useReadingProgressQuery"
+import { libraryKeys } from "@/hooks/queries/useLibrariesQuery"
 import { api } from "@/lib/tauri-api"
 import {
   type SyncStatusObservation,
@@ -36,6 +37,7 @@ export async function applySidecarSyncCompleted(
     new CustomEvent(SIDECAR_SYNC_COMPLETED_EVENT, { detail: event }),
   )
   await Promise.all([
+    queryClient.invalidateQueries({ queryKey: libraryKeys.all }),
     queryClient.invalidateQueries({
       queryKey: readingProgressKeys.list(event.libraryId),
     }),

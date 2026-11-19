@@ -55,7 +55,9 @@ enum ReaderImageExport {
   @MainActor
   static func pdfPages(view: PDFView) throws -> [(image: UIImage, position: Int)] {
     guard let document = view.document else { throw NSError(domain: "ReadiumImage", code: 5) }
-    return view.visiblePages.sorted { document.index(for: $0) < document.index(for: $1) }.map { page in
+    var positions = Set<Int>()
+    return view.visiblePages.filter { positions.insert(document.index(for: $0)).inserted }
+      .sorted { document.index(for: $0) < document.index(for: $1) }.map { page in
       let bounds = page.bounds(for: .cropBox)
       let scale = max(1, min(3, (view.window?.screen.scale ?? 2) * view.scaleFactor))
       return (page.thumbnail(of: CGSize(width: bounds.width * scale, height: bounds.height * scale), for: .cropBox), document.index(for: page) + 1)

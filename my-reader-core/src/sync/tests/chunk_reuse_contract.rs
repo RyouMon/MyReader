@@ -17,6 +17,7 @@ use crate::sync::document::{
 struct OneDrive {
     chunks: Arc<Mutex<BTreeMap<String, Vec<u8>>>>,
     downloads: Arc<Mutex<Vec<String>>>,
+    download_error: Arc<Mutex<Option<StatusCode>>>,
 }
 
 fn response(status: StatusCode, bytes: Vec<u8>) -> opendal::Result<Response<HttpBody>> {
@@ -52,6 +53,9 @@ impl HttpTransport for OneDrive {
                 })).unwrap());
             }
             self.downloads.lock().unwrap().push(path.to_owned());
+            if let Some(status) = *self.download_error.lock().unwrap() {
+                return response(status, br#"{"error":{"code":"test"}}"#.to_vec());
+            }
             return match chunks.get(path) {
                 Some(bytes) => response(StatusCode::OK, bytes.clone()),
                 None => response(
@@ -140,6 +144,86 @@ fn set_position(document: &mut automerge::AutoCommit, identity: &DatabaseIdentit
         },
     )
     .unwrap();
+}
+
+struct CompactAfterListing {
+    remote: OneDrive,
+    snapshot: Mutex<Option<StorageChunk>>,
+}
+
+impl SyncObserver for CompactAfterListing {
+    fn is_cancelled(&self) -> bool {
+        false
+    }
+
+    fn on_progress(&self, progress: SyncProgress) {
+        if progress.stage == SyncStage::Preparing && progress.completed == 1 {
+            if let Some(snapshot) = self.snapshot.lock().unwrap().take() {
+                self.remote.chunks.lock().unwrap().clear();
+                self.remote.save(snapshot);
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn compaction_during_download_should_relist_and_preserve_remote_and_local_changes() {
+    let (remote, mut document, source) = fixture(1);
+    set_position(&mut document, &source, 2);
+    let bytes = document.save();
+    let heads = library_sidecar_snapshot_heads(&bytes).unwrap();
+    let observer = CompactAfterListing {
+        remote: remote.clone(),
+        snapshot: Mutex::new(Some(StorageChunk {
+            key: snapshot_key(source.library_uuid.as_str(), &heads_hash(&heads)),
+            data: bytes,
+        })),
+    };
+    let (_directory, path) = tests::database();
+    let target = tests::identity("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+    tests::set_progress(&path, &target, 99, 9);
+
+    let report = sync_database_with_operator_observed(
+        &path,
+        &remote.operator(),
+        &target,
+        3,
+        SyncMode::Full,
+        &observer,
+    )
+    .await
+    .unwrap();
+
+    assert!(report.pulled > 0);
+    assert!(report.pushed > 0);
+    let database = rusqlite::Connection::open(path).unwrap();
+    for (book_id, page) in [(42, 2), (99, 9)] {
+        let locator: String = database
+            .query_row(
+                "SELECT locator_json FROM reading_progress WHERE book_id = ?1",
+                [book_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(locator, format!(r#"{{"href":"page={page}"}}"#));
+    }
+}
+
+#[tokio::test]
+async fn unavailable_chunks_should_fail_after_bounded_retries_without_hiding_permission_errors() {
+    for (status, expected_downloads) in [(StatusCode::NOT_FOUND, 3), (StatusCode::FORBIDDEN, 1)] {
+        let (remote, _document, target) = fixture(1);
+        *remote.download_error.lock().unwrap() = Some(status);
+        let (_directory, path) = tests::database();
+
+        let error =
+            sync_database_with_operator(&path, &remote.operator(), &target, 0, SyncMode::Full)
+                .await
+                .unwrap_err();
+
+        assert!(matches!(error, SyncError::Storage(_)));
+        assert_eq!(remote.take_downloads().len(), expected_downloads);
+    }
 }
 
 #[tokio::test]

@@ -453,5 +453,12 @@
   "passwordField": {
     "show": "Mostrar senha",
     "hide": "Ocultar senha"
+  },
+  "remoteFolder": {
+    "name": "Nome da pasta",
+    "create": "Criar pasta",
+    "creating": "Criando…",
+    "invalid": "Digite um nome de pasta sem / ou \\.",
+    "exists": "Já existe um arquivo ou pasta com esse nome."
   }
 }

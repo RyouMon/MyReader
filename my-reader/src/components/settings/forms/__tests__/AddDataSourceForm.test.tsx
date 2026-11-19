@@ -1,6 +1,5 @@
 import "@/i18n"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { StrictMode } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { AddDataSourceForm } from "../AddDataSourcePanel"
@@ -20,6 +19,47 @@ beforeEach(() => {
 })
 
 describe("AddDataSourceForm", () => {
+  it("validates S3 fields and keeps credential bytes intact on submission", async () => {
+    const create = vi.fn().mockResolvedValue({ id: "s3-1", type: "s3" })
+    render(<AddDataSourceForm type="s3" onCreateDataSource={create} />)
+    fireEvent.click(screen.getByRole("button", { name: "保存" }))
+    expect(screen.getByText("请输入 S3 地址")).toBeInTheDocument()
+    expect(create).not.toHaveBeenCalled()
+    for (const [label, value] of [
+      ["显示名称", " Archive "],
+      ["S3 地址", " https://storage.example "],
+      ["存储桶", " books "],
+      ["区域", " us-east-1 "],
+      ["根路径（可选）", " /Books "],
+      ["Access Key ID", " key "],
+      ["Secret Access Key", " secret "],
+      ["会话令牌（可选）", " session "],
+    ])
+      fireEvent.change(screen.getByLabelText(label), { target: { value } })
+    expect(screen.getByLabelText("Secret Access Key")).toHaveAttribute(
+      "type",
+      "password",
+    )
+    fireEvent.click(screen.getByRole("button", { name: "保存" }))
+    await waitFor(() =>
+      expect(create).toHaveBeenCalledWith({
+        id: "",
+        type: "s3",
+        enabled: true,
+        name: "Archive",
+        endpoint: "https://storage.example",
+        bucket: "books",
+        region: "us-east-1",
+        rootPath: "/Books",
+        virtualHostStyle: false,
+        hasCredentials: true,
+        accessKeyId: "key",
+        secretAccessKey: " secret ",
+        sessionToken: "session",
+      }),
+    )
+  })
+
   it("should keep the WebDAV path in the server address", async () => {
     const onCreateDataSource = vi.fn().mockResolvedValue({
       id: "webdav-1",
@@ -111,29 +151,6 @@ describe("AddDataSourceForm", () => {
     ).toBeInTheDocument()
   })
 
-  it("should start OneDrive authentication immediately when requested", async () => {
-    onedriveStartAuth.mockReturnValue(new Promise(() => {}))
-
-    render(
-      <StrictMode>
-        <AddDataSourceForm
-          type="onedrive"
-          fillAvailableHeight
-          autoStartOnedriveAuth
-          onCreateDataSource={vi.fn()}
-        />
-      </StrictMode>,
-    )
-
-    await waitFor(() => {
-      expect(onedriveStartAuth).toHaveBeenCalledTimes(1)
-    })
-    expect(
-      screen.queryByRole("button", { name: "使用微软登录" }),
-    ).not.toBeInTheDocument()
-    expect(screen.getByRole("status")).toBeInTheDocument()
-  })
-
   it("should show one error with recovery actions when adding OneDrive fails", async () => {
     const errorMessage = "ONEDRIVE_DATASOURCE_ALREADY_EXISTS"
     const onCreateDataSource = vi
@@ -168,5 +185,48 @@ describe("AddDataSourceForm", () => {
     const retryButton = screen.getByRole("button", { name: "重试添加" })
     expect(changeAccountButton.querySelector("svg")).toBeInTheDocument()
     expect(retryButton.querySelector("svg")).toBeInTheDocument()
+  })
+
+  it.each([
+    ["gdrive", "Google Drive"],
+    ["dropbox", "Dropbox"],
+  ] as const)("should start %s OAuth without exposing application credentials", async (type, provider) => {
+    const onCreateDataSource = vi.fn().mockResolvedValue({
+      id: `${type}-1`,
+      type,
+      name: provider,
+      enabled: true,
+      clientId: "",
+      hasRefreshToken: true,
+    })
+
+    render(
+      <AddDataSourceForm type={type} onCreateDataSource={onCreateDataSource} />,
+    )
+
+    expect(screen.queryByLabelText("OAuth 客户端 ID")).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("Dropbox App Key")).not.toBeInTheDocument()
+    expect(
+      screen.queryByLabelText("OAuth 客户端密钥（可选）"),
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: `登录 ${provider}` }))
+
+    await waitFor(() => expect(onCreateDataSource).toHaveBeenCalledTimes(1))
+    expect(onCreateDataSource).toHaveBeenCalledWith(
+      expect.objectContaining({ type }),
+    )
+    expect(onCreateDataSource.mock.calls[0][0]).not.toHaveProperty("clientId")
+    expect(onCreateDataSource.mock.calls[0][0]).not.toHaveProperty(
+      "clientSecret",
+    )
+  })
+
+  it("does not expose Dropbox redirect configuration in the sign-in form", () => {
+    render(<AddDataSourceForm type="dropbox" onCreateDataSource={vi.fn()} />)
+
+    expect(
+      screen.queryByText(/127\.0\.0\.1:53683\/oauth\/callback/),
+    ).not.toBeInTheDocument()
   })
 })

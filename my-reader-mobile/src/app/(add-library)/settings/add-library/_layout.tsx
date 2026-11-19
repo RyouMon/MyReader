@@ -21,6 +21,10 @@ export default function AddLibraryStackLayout() {
       <Stack.Screen name="browser" />
       <Stack.Screen name="create" />
       <Stack.Screen name="webdav" />
+      <Stack.Screen name="onedrive" />
+      <Stack.Screen name="gdrive" />
+      <Stack.Screen name="dropbox" />
+      <Stack.Screen name="s3" />
     </Stack>
   )
 }

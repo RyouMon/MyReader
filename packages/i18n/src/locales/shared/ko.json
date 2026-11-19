@@ -451,5 +451,12 @@
   "passwordField": {
     "show": "비밀번호 표시",
     "hide": "비밀번호 숨기기"
+  },
+  "remoteFolder": {
+    "name": "폴더 이름",
+    "create": "폴더 만들기",
+    "creating": "만드는 중…",
+    "invalid": "/ 또는 \\ 없이 폴더 이름 하나를 입력하세요.",
+    "exists": "같은 이름의 파일 또는 폴더가 이미 있습니다."
   }
 }

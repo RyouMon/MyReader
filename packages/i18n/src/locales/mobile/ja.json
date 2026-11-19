@@ -261,7 +261,10 @@
       }
     },
     "bookCountCurrent_other": "{{count}} 冊 · 使用中",
-    "bookCount_other": "{{count}} 冊"
+    "bookCount_other": "{{count}} 冊",
+    "gdriveDetail": "Google Drive データ ソースを管理する",
+    "dropboxDetail": "Dropbox データ ソースを管理する",
+    "s3Detail": "S3 データ ソースを管理する"
   },
   "reader": {
     "cannotOpen": "本を開けません",
@@ -892,7 +895,9 @@
     "webdavMkcolFailed": "WebDAV MKCOL が失敗しました: {{status}} {{path}}",
     "localFileNotExist": "ローカル ファイルが存在しません: {{path}}",
     "basicAuthNotSupported": "Basic 認証エンコーディングはこの環境ではサポートされていません",
-    "syncPathCannotBeEmpty": "同期パスを空にすることはできません"
+    "syncPathCannotBeEmpty": "同期パスを空にすることはできません",
+    "remoteSourceNotFound": "削除された可能性があります。ソースリストに戻ります。",
+    "remoteCredentialsMissing": "再ログインするか、データソースの認証情報を更新してください。"
   },
   "notifications": {
     "libraryAdded": "ライブラリが追加されました: {{name}}",
@@ -921,5 +926,116 @@
     "restoreBookmark": "ブックマークを復元する",
     "accessDirectory": "アクセスディレクトリ",
     "refreshBookmark": "ブックマークを更新"
+  },
+  "addLibraryFlow": {
+    "addGdrive": {
+      "title": "Google Drive ソースを追加"
+    },
+    "addDropbox": {
+      "title": "Dropbox ソースを追加"
+    },
+    "addS3": {
+      "title": "S3 ソースを追加"
+    }
+  },
+  "cloud": {
+    "sources": {
+      "title": "{{provider}} ソース",
+      "add": "ソースを追加",
+      "emptyTitle": "{{provider}} ソースはまだありません",
+      "emptyDetail": "{{provider}} ソースを追加するには、下のボタンを使用します。"
+    },
+    "auth": {
+      "alreadyAdded": {
+        "title": "アカウントはすでに追加されています",
+        "detail": "この {{provider}} アカウントは {{name}} として接続済みです。"
+      },
+      "failed": {
+        "title": "認証に失敗しました"
+      },
+      "accountMismatch": {
+        "title": "アカウントの不一致",
+        "detail": "{{email}} に設定済みのアカウントでログインしてください。"
+      },
+      "reauthenticate": "再ログイン"
+    },
+    "form": {
+      "addTitle": "{{provider}} ソースを追加",
+      "editTitle": "{{provider}} データソースを編集",
+      "save": "保存",
+      "saving": "保存",
+      "signIn": "ログインして続行",
+      "reauthenticate": "再ログイン",
+      "addFailed": "追加に失敗しました",
+      "updateFailed": "保存に失敗しました",
+      "connectionFailed": "接続テストに失敗しました",
+      "clientIdLabel": "Google OAuth Client ID",
+      "clientIdPlaceholder": "Use the client ID registered for this app",
+      "appKeyLabel": "Dropbox App Key",
+      "appKeyPlaceholder": "Paste the Dropbox App Key",
+      "appKeyRequired": "Enter the Dropbox App Key.",
+      "openDropboxConsole": "Dropbox App Console",
+      "rootPathLabel": "ルートパス（任意）",
+      "nameLabel": "名前",
+      "endpointLabel": "エンドポイント",
+      "bucketLabel": "バケット",
+      "regionLabel": "リージョン",
+      "accessKeyLabel": "アクセスキー ID",
+      "secretKeyLabel": "シークレットアクセスキー",
+      "sessionTokenLabel": "セッショントークン（任意）",
+      "virtualHostStyle": "仮想ホスト形式のバケット URL を使用",
+      "endpointRequired": "S3 エンドポイントを入力してください。",
+      "bucketRequired": "S3 バケットを入力してください。",
+      "regionRequired": "S3 リージョンを入力してください。",
+      "accessKeyRequired": "アクセスキー ID を入力してください。",
+      "secretKeyRequired": "シークレットアクセスキーを入力してください。",
+      "appKeyHint": "Create a Dropbox app and paste its App Key here. The redirect URI is configured by the app."
+    },
+    "browser": {
+      "title": "{{provider}} ライブラリを選択してください",
+      "validating": "ディレクトリを検証しています",
+      "reading": {
+        "title": "ディレクトリの閲覧",
+        "detail": "{{provider}} からディレクトリ リストを取得しています。"
+      },
+      "readFailed": {
+        "title": "読み取りに失敗しました"
+      },
+      "loadFailed": {
+        "title": "参照に失敗しました",
+        "message": "{{provider}} ブラウザで予期しないエラーが発生しました。再試行してください。"
+      },
+      "credentialsUnavailable": {
+        "title": "{{provider}} 資格情報が利用できません",
+        "detail": "再ログインするか、データソースの認証情報を更新してください。"
+      },
+      "empty": {
+        "title": "空のディレクトリ",
+        "detail": "現在のディレクトリにはサブディレクトリがありません。"
+      }
+    },
+    "detail": {
+      "title": "ソースの詳細",
+      "type": "タイプ",
+      "displayName": "表示名",
+      "email": "電子メール",
+      "endpoint": "エンドポイント",
+      "bucket": "バケット",
+      "region": "リージョン",
+      "rootPath": "ベースパス",
+      "authStatus": "認証ステータス",
+      "authenticated": "認証されました",
+      "notAuthenticated": "認証されていません",
+      "addedAt": "に追加されました"
+    },
+    "delete": {
+      "title": "{{provider}} ソースを削除",
+      "confirm": "「{{name}}」を削除しますか?",
+      "cancel": "キャンセル",
+      "confirmButton": "削除",
+      "failed": "削除できません",
+      "action": "ソースの削除"
+    },
+    "edit": "データソースを編集"
   }
 }

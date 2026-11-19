@@ -1,3 +1,4 @@
+import type { DataSourceType } from "@my-reader/tools/types/data-source"
 import { apiErrorKind } from "@/lib/api-error"
 import type { Library } from "@my-reader/tools/types/library"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -153,6 +154,26 @@ export function useLibraryMutations() {
     onSuccess: handleLibraryAdded,
   })
 
+  const addRemoteLibrary = useMutation({
+    mutationFn: async ({
+      dataSourceId,
+      rootPath,
+      name,
+    }: {
+      dataSourceId: string
+      rootPath: string
+      name?: string
+    }) => {
+      const info = await api.addRemoteLibrary(
+        dataSourceId,
+        rootPath,
+        name ?? null,
+      )
+      return mapLibraryFromBackendJson(info)
+    },
+    onSuccess: handleLibraryAdded,
+  })
+
   async function openExistingLocalLibrary(path: string) {
     try {
       return await openLocalMyreaderLibrary.mutateAsync(path)
@@ -169,7 +190,7 @@ export function useLibraryMutations() {
   }: {
     dataSourceId: string
     rootPath: string
-    sourceType: "webdav" | "onedrive"
+    sourceType: DataSourceType
   }) {
     try {
       return await openRemoteMyreaderLibrary.mutateAsync({
@@ -180,7 +201,9 @@ export function useLibraryMutations() {
       if (!shouldTryCalibreLibrary(error)) throw error
       return sourceType === "webdav"
         ? addWebdavLibrary.mutateAsync({ dataSourceId, rootPath })
-        : addOnedriveLibrary.mutateAsync({ dataSourceId, rootPath })
+        : sourceType === "onedrive"
+          ? addOnedriveLibrary.mutateAsync({ dataSourceId, rootPath })
+          : addRemoteLibrary.mutateAsync({ dataSourceId, rootPath })
     }
   }
 
@@ -202,6 +225,12 @@ export function useLibraryMutations() {
         await api.refreshWebdavLibrary(id)
       } else if (lib.sourceType === "onedrive") {
         await api.refreshOnedriveLibrary(id)
+      } else if (
+        lib.sourceType === "gdrive" ||
+        lib.sourceType === "dropbox" ||
+        lib.sourceType === "s3"
+      ) {
+        await api.refreshRemoteLibrary(id)
       } else {
         await api.refreshLibrary(id)
       }
@@ -222,6 +251,7 @@ export function useLibraryMutations() {
     openExistingRemoteLibrary,
     addWebdavLibrary: addWebdavLibrary.mutateAsync,
     addOnedriveLibrary: addOnedriveLibrary.mutateAsync,
+    addRemoteLibrary: addRemoteLibrary.mutateAsync,
     removeLibrary: removeLibrary.mutateAsync,
     refreshLibrary: refreshLibrary.mutateAsync,
     isAdding:
@@ -232,6 +262,7 @@ export function useLibraryMutations() {
       openRemoteMyreaderLibrary.isPending,
     isAddingWebdav: addWebdavLibrary.isPending,
     isAddingOnedrive: addOnedriveLibrary.isPending,
+    isAddingRemote: addRemoteLibrary.isPending,
     isRemoving: removeLibrary.isPending,
     isRefreshing: refreshLibrary.isPending,
   }

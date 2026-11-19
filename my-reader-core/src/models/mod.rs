@@ -50,7 +50,10 @@ pub use reading::{
     LegacyFinishedReading, ReaderAnnotation, ReaderBookmark, ReadingPosition,
     ReadingPositionCandidate, ReadingStatistics,
 };
-pub use storage::{LibraryStorageConfig, RemoteCredential, RemoteDirectoryEntry};
+pub use storage::{
+    LibraryStorageConfig, RemoteCredential, RemoteDirectoryEntry, RemoteDownloadRequest,
+    RemoteFileStat,
+};
 pub use sync::{
     CalibreSyncReport, LibrarySyncOptions, LibrarySyncReport, LibrarySyncScope, MyReaderSyncReport,
     SidecarSyncMode, SidecarSyncReport, SyncFailureKind, SyncedReadingPosition,

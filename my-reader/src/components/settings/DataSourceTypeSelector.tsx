@@ -2,9 +2,18 @@ import { Check } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { LocalStorageIcon } from "@/components/common/LocalStorageIcon"
 import { WebdavServerIcon } from "@/components/common/WebdavServerIcon"
+import { DropboxIcon } from "@/components/common/DropboxIcon"
+import { GoogleDriveIcon } from "@/components/common/GoogleDriveIcon"
+import { S3StorageIcon } from "@/components/common/S3StorageIcon"
 import { cn } from "@/lib/utils"
 
-export type DataSourceType = "local" | "webdav" | "onedrive"
+export type DataSourceType =
+  | "local"
+  | "webdav"
+  | "onedrive"
+  | "gdrive"
+  | "dropbox"
+  | "s3"
 
 interface DataSourceTypeSelectorProps {
   value: DataSourceType
@@ -77,6 +86,36 @@ export function DataSourceTypeSelector({
       selectedIconBg: "bg-blue-500/15",
       selectedIconColor: "text-blue-500",
     },
+    {
+      key: "gdrive",
+      icon: <GoogleDriveIcon size={20} aria-hidden="true" focusable="false" />,
+      title: t("addDataSourceForm.typeGdrive"),
+      desc: t("addDataSourceForm.typeGdriveDesc"),
+      iconBg: "bg-accent",
+      iconColor: "text-accent-foreground",
+      selectedIconBg: "bg-accent",
+      selectedIconColor: "text-accent-foreground",
+    },
+    {
+      key: "dropbox",
+      icon: <DropboxIcon size={20} aria-hidden="true" focusable="false" />,
+      title: t("addDataSourceForm.typeDropbox"),
+      desc: t("addDataSourceForm.typeDropboxDesc"),
+      iconBg: "bg-accent",
+      iconColor: "text-accent-foreground",
+      selectedIconBg: "bg-accent",
+      selectedIconColor: "text-accent-foreground",
+    },
+    {
+      key: "s3",
+      icon: <S3StorageIcon size={20} aria-hidden="true" focusable="false" />,
+      title: t("addDataSourceForm.typeS3"),
+      desc: t("addDataSourceForm.typeS3Desc"),
+      iconBg: "bg-accent",
+      iconColor: "text-accent-foreground",
+      selectedIconBg: "bg-accent",
+      selectedIconColor: "text-accent-foreground",
+    },
   ]
   const visibleOptions = types
     ? options.filter((option) => types.includes(option.key))
@@ -86,7 +125,7 @@ export function DataSourceTypeSelector({
     <div
       className={cn(
         "grid gap-2.5",
-        visibleOptions.length === 2 ? "grid-cols-2" : "grid-cols-3",
+        visibleOptions.length <= 2 ? "grid-cols-2" : "grid-cols-3",
       )}
     >
       {visibleOptions.map((type) => {

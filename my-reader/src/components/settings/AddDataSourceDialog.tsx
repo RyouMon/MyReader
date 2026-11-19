@@ -1,3 +1,4 @@
+import type { DesktopTranslationKey } from "@my-reader/i18n/desktop"
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 
@@ -7,6 +8,9 @@ import {
   FlowDialogHeader,
 } from "@/components/common/FlowDialog"
 import { OneDriveCloudIcon } from "@/components/common/OneDriveCloudIcon"
+import { DropboxIcon } from "@/components/common/DropboxIcon"
+import { GoogleDriveIcon } from "@/components/common/GoogleDriveIcon"
+import { S3StorageIcon } from "@/components/common/S3StorageIcon"
 import { WebdavServerIcon } from "@/components/common/WebdavServerIcon"
 import {
   AddDataSourceForm,
@@ -18,6 +22,17 @@ import { useDataSourceMutations } from "@/hooks/queries/useDataSourcesQuery"
 type AddDataSourceStep =
   | { kind: "chooseType" }
   | { kind: "form"; sourceType: CreatableDataSourceType }
+
+function titleKey(sourceType: CreatableDataSourceType) {
+  const titles: Record<CreatableDataSourceType, DesktopTranslationKey> = {
+    webdav: "addLibraryFlow.addWebdav.title",
+    onedrive: "addLibraryFlow.addOnedrive.title",
+    gdrive: "addDataSourceForm.typeGdrive",
+    dropbox: "addDataSourceForm.typeDropbox",
+    s3: "addDataSourceForm.typeS3",
+  }
+  return titles[sourceType]
+}
 
 interface AddDataSourceDialogProps {
   open: boolean
@@ -49,9 +64,7 @@ export function AddDataSourceDialog({
   const title =
     step.kind === "chooseType"
       ? t("addDataSourceForm.label")
-      : step.sourceType === "webdav"
-        ? t("addLibraryFlow.addWebdav.title")
-        : t("addLibraryFlow.addOnedrive.title")
+      : t(titleKey(step.sourceType))
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -83,13 +96,30 @@ export function AddDataSourceDialog({
                   setStep({ kind: "form", sourceType: "onedrive" })
                 }
               />
+              <FlowDialogChoice
+                icon={GoogleDriveIcon}
+                title={t("addDataSourceForm.typeGdrive")}
+                description={t("addDataSourceForm.typeGdriveDesc")}
+                onClick={() => setStep({ kind: "form", sourceType: "gdrive" })}
+              />
+              <FlowDialogChoice
+                icon={DropboxIcon}
+                title={t("addDataSourceForm.typeDropbox")}
+                description={t("addDataSourceForm.typeDropboxDesc")}
+                onClick={() => setStep({ kind: "form", sourceType: "dropbox" })}
+              />
+              <FlowDialogChoice
+                icon={S3StorageIcon}
+                title={t("addDataSourceForm.typeS3")}
+                description={t("addDataSourceForm.typeS3Desc")}
+                onClick={() => setStep({ kind: "form", sourceType: "s3" })}
+              />
             </div>
           ) : (
             <AddDataSourceForm
               key={step.sourceType}
               type={step.sourceType}
               fillAvailableHeight
-              autoStartOnedriveAuth={step.sourceType === "onedrive"}
               onCreateDataSource={createDataSource}
               onCreated={closeDialog}
             />

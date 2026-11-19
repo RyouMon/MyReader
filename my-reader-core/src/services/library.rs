@@ -8,9 +8,9 @@ use crate::{
     infrastructure::storage,
     library::{metadata::download_and_validate_metadata, LibraryContext},
     models::{
-        AppConfig, DataSource, Library, LibrarySourceType, LibraryStorageConfig, LibraryType,
-        LocalLibraryRequest, ManagedLocalLibraryRequest, MyReaderLibraryMarker, RemoteCredential,
-        RemoteLibraryRequest, SidecarSyncMode, MYREADER_LIBRARY_MARKER_RELATIVE_PATH,
+        AppConfig, DataSource, Library, LibrarySourceType, LibraryType, LocalLibraryRequest,
+        ManagedLocalLibraryRequest, MyReaderLibraryMarker, RemoteCredential, RemoteLibraryRequest,
+        SidecarSyncMode, MYREADER_LIBRARY_MARKER_RELATIVE_PATH,
     },
     repositories::calibre::CatalogRepository,
     services::config,
@@ -307,8 +307,8 @@ impl LibraryService {
         let source_path = storage::normalize_remote_path(&request.source_path)?;
         let base_operator = storage::build_remote_operator(source, credential)?;
         ensure_remote_myreader_create_target(&base_operator, &source_path).await?;
-        let scoped_storage = remote_library_storage(source, credential, &source_path)?;
-        let scoped_operator = crate::sync::transport::build_storage_operator(&scoped_storage)?;
+        let scoped_storage = storage::resolve_remote_storage(source, credential, &source_path)?;
+        let scoped_operator = storage::transport::build_storage_operator(&scoped_storage)?;
         create_remote_myreader_with_operators(
             config_path,
             request,
@@ -342,8 +342,8 @@ impl LibraryService {
         let source_name = source.name();
         let source_path = storage::normalize_remote_path(&request.source_path)?;
         let base_operator = storage::build_remote_operator(source, credential)?;
-        let scoped_storage = remote_library_storage(source, credential, &source_path)?;
-        let scoped_operator = crate::sync::transport::build_storage_operator(&scoped_storage)?;
+        let scoped_storage = storage::resolve_remote_storage(source, credential, &source_path)?;
+        let scoped_operator = storage::transport::build_storage_operator(&scoped_storage)?;
         open_remote_myreader_with_operators(
             config_path,
             request,
@@ -984,61 +984,20 @@ async fn add_remote_library_with_operator(
 }
 
 fn remote_source_type(source: &DataSource) -> Result<LibrarySourceType, CoreError> {
-    match source {
-        DataSource::Webdav { .. } => Ok(LibrarySourceType::Webdav),
-        DataSource::Onedrive { .. } => Ok(LibrarySourceType::Onedrive),
-        DataSource::Local { .. } => Err(CoreError::Config("DATASOURCE_NOT_REMOTE".into())),
+    let kind = source.source_type();
+    if kind.is_remote() {
+        Ok(kind)
+    } else {
+        Err(CoreError::Config("DATASOURCE_NOT_REMOTE".into()))
     }
 }
 
 fn ensure_remote_source_writable(source: &DataSource) -> Result<(), CoreError> {
-    let readonly = match source {
-        DataSource::Webdav { readonly, .. } | DataSource::Onedrive { readonly, .. } => *readonly,
-        DataSource::Local { .. } => return Err(CoreError::Config("DATASOURCE_NOT_REMOTE".into())),
-    };
-    if readonly == Some(true) {
+    remote_source_type(source)?;
+    if source.readonly() {
         return Err(CoreError::Config("DATASOURCE_READ_ONLY".into()));
     }
     Ok(())
-}
-
-fn remote_library_storage(
-    source: &DataSource,
-    credential: &RemoteCredential,
-    source_path: &str,
-) -> Result<LibraryStorageConfig, CoreError> {
-    match (source, credential) {
-        (
-            DataSource::Webdav {
-                endpoint,
-                username,
-                root_path,
-                ..
-            },
-            RemoteCredential::Webdav { password },
-        ) => Ok(LibraryStorageConfig::Webdav {
-            endpoint: endpoint.clone(),
-            username: username.clone(),
-            password: password.clone(),
-            root: Some(storage::scope_remote_root(
-                root_path.as_deref(),
-                source_path,
-            )?),
-        }),
-        (DataSource::Onedrive { root_path, .. }, RemoteCredential::Onedrive { access_token }) => {
-            Ok(LibraryStorageConfig::Onedrive {
-                access_token: access_token.clone(),
-                root: Some(storage::scope_remote_root(
-                    root_path.as_deref(),
-                    source_path,
-                )?),
-            })
-        }
-        (DataSource::Local { .. }, _) => Err(CoreError::Config("DATASOURCE_NOT_REMOTE".into())),
-        _ => Err(CoreError::Config(
-            "DATASOURCE_CREDENTIAL_TYPE_MISMATCH".into(),
-        )),
-    }
 }
 
 fn validate_remote_myreader_request(

@@ -270,6 +270,27 @@ export default function SettingsScreen() {
               icon={ENTITY_LIST_ROW_ICONS.onedriveDataSource}
               detail={t("settings.onedriveDetail")}
               onPress={() => navigateTo("/settings/onedrive")}
+            />
+            <ListRow
+              testID="settings-gdrive-row"
+              title="Google Drive"
+              icon={ENTITY_LIST_ROW_ICONS.gdriveDataSource}
+              detail={t("settings.gdriveDetail")}
+              onPress={() => navigateTo("/settings/gdrive")}
+            />
+            <ListRow
+              testID="settings-dropbox-row"
+              title="Dropbox"
+              icon={ENTITY_LIST_ROW_ICONS.dropboxDataSource}
+              detail={t("settings.dropboxDetail")}
+              onPress={() => navigateTo("/settings/dropbox")}
+            />
+            <ListRow
+              testID="settings-s3-row"
+              title="S3"
+              icon={ENTITY_LIST_ROW_ICONS.s3DataSource}
+              detail={t("settings.s3Detail")}
+              onPress={() => navigateTo("/settings/s3")}
               isLast
             />
           </SectionCard>

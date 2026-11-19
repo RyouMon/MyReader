@@ -12,9 +12,13 @@ mod library;
 mod llm;
 mod narration;
 mod reading;
+mod storage;
 mod sync;
 mod tts;
 mod types;
+
+#[cfg(test)]
+mod cloud_tests;
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 #[uniffi(flat_error)]

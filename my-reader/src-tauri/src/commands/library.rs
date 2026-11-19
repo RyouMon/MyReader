@@ -273,6 +273,32 @@ pub async fn add_onedrive_library<R: tauri::Runtime>(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn add_remote_library<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    data_source_id: String,
+    remote_path: String,
+    name: Option<String>,
+) -> Result<LibraryInfo, AppError> {
+    let _add_guard = LIBRARY_ADD_LOCK.lock().await;
+    let app_data_dir = common::app_data_dir(&app)?;
+    let mut config = common::config_snapshot(&state);
+    let info = LibraryService::add_remote_library_with_scope_sync(
+        &app,
+        &app_data_dir,
+        &data_source_id,
+        &remote_path,
+        name.as_deref(),
+        &mut config,
+    )
+    .await?;
+    common::with_config_mut(&state, |current| *current = config.clone());
+    common::persist_config(&app, &config)?;
+    Ok(info)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn refresh_webdav_library<R: tauri::Runtime>(
     app: AppHandle<R>,
     state: State<'_, AppState>,
@@ -311,6 +337,18 @@ pub async fn refresh_onedrive_library<R: tauri::Runtime>(
     );
 
     Ok(info)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn refresh_remote_library<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<LibraryInfo, AppError> {
+    let app_data_dir = common::app_data_dir(&app)?;
+    let config = common::config_snapshot(&state);
+    LibraryService::refresh_remote_library(&app_data_dir, &id, &config).await
 }
 
 #[tauri::command]

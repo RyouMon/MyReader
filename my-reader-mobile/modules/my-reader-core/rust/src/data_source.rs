@@ -74,3 +74,23 @@ pub async fn data_source_list_directories(
     .map(Into::into)
     .collect())
 }
+
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn data_source_create_directory(
+    config_path: String,
+    data_source_id: String,
+    parent_path: String,
+    name: String,
+    credential: RemoteCredential,
+) -> Result<RemoteDirectoryEntry, CoreFfiError> {
+    Ok(DataSourceService::create_directory(
+        Path::new(&config_path),
+        &data_source_id,
+        &parent_path,
+        &name,
+        &credential.try_into()?,
+    )
+    .await
+    .map_err(CoreFfiError::from_core)?
+    .into())
+}

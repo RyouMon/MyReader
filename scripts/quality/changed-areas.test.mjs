@@ -68,6 +68,7 @@ for (const [file, enabled] of [
   ],
   ["my-reader-mobile/modules/my-reader-core/rust/src/lib.rs", ["rust"]],
   ["scripts/quality/native-coverage.py", ["swift", "android"]],
+  ["scripts/quality/ios-test-host.m", ["swift"]],
   ["scripts/quality/readium-ios-dependencies.rb", ["ios"]],
   ["scripts/generate-reader-viewport-anchor.mjs", ["swift", "android"]],
   ["Cargo.lock", ["rust", "security"]],

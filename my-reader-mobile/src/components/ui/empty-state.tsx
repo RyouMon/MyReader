@@ -13,12 +13,23 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useThemePalette } from "@/src/design/tokens"
 import { Text, View } from "@/tw"
 
-export type EmptyStateIcon = {
-  ios: string
-  android: string | ImageSourcePropType
-  iconSet?: "material"
+type EmptyStateIconBase = {
   tone?: "onedrive" | "webdav"
 }
+
+export type EmptyStateIcon =
+  | (EmptyStateIconBase & {
+      ios: string
+      android: string | ImageSourcePropType
+      iconSet?: "material"
+      render?: never
+    })
+  | (EmptyStateIconBase & {
+      render: (props: { size: number; color: string }) => ReactNode
+      ios?: never
+      android?: never
+      iconSet?: never
+    })
 
 export type EmptyStateLayout = "screen" | "container"
 
@@ -75,7 +86,9 @@ export function EmptyState({
       className="flex-1 items-center justify-center px-6"
       style={{ minHeight, gap: 24 }}
     >
-      {icon.iconSet === "material" ? (
+      {typeof icon.render === "function" ? (
+        icon.render({ size: 80, color: iconColor })
+      ) : icon.iconSet === "material" ? (
         <MaterialIcons
           name={icon.android as never}
           size={80}

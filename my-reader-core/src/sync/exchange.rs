@@ -108,6 +108,29 @@ async fn load_document_chunks(
     mode: SyncMode,
     observer: &dyn SyncObserver,
 ) -> Result<(Vec<StorageChunk>, Vec<SyncRemoteObject>), SyncError> {
+    let mut retries = 2;
+    loop {
+        match load_document_chunks_once(adapter, cache, identity, mode, observer).await {
+            Err(SyncError::Storage(error))
+                if error.kind() == opendal::ErrorKind::NotFound && retries > 0 =>
+            {
+                // Another replica may replace listed chunks with a compacted snapshot.
+                // Relist both ranges so the replacement is loaded before applying data.
+                check_cancelled(observer)?;
+                retries -= 1;
+            }
+            result => return result,
+        }
+    }
+}
+
+async fn load_document_chunks_once(
+    adapter: &StorageAdapter<'_>,
+    cache: &StorageAdapter<'_>,
+    identity: &DatabaseIdentity,
+    mode: SyncMode,
+    observer: &dyn SyncObserver,
+) -> Result<(Vec<StorageChunk>, Vec<SyncRemoteObject>), SyncError> {
     let document_id = identity.library_uuid.as_str();
     let snapshots = snapshot_prefix(document_id);
     let incrementals = incremental_prefix(document_id);

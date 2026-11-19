@@ -59,6 +59,7 @@ const patterns = {
   swift: [
     ...iosDependencies,
     ...sharedNativeSources,
+    /^scripts\/quality\/ios-test-host\.m$/,
     /^my-reader-mobile\/(?:ios\/|modules\/[^/]+\/ios\/)/,
   ],
   android: [

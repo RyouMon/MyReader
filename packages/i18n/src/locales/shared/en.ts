@@ -1,4 +1,11 @@
 export const sharedEn = {
+  remoteFolder: {
+    name: "Folder name",
+    create: "Create folder",
+    creating: "Creating…",
+    invalid: "Enter one folder name without / or \\.",
+    exists: "A file or folder with this name already exists.",
+  },
   ttsRemoval: {
     book: "Book #{{id}}",
     global: "Global reading settings",

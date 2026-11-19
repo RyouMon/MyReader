@@ -177,17 +177,6 @@ jest.mock("./add-library-flow-context", () => ({
   }),
 }))
 
-jest.mock("@/src/features/onedrive/hooks/use-add-onedrive-data-source", () => ({
-  useAddOneDriveDataSource: () => ({
-    addOneDriveDataSource: jest.fn(),
-    busy: false,
-  }),
-}))
-
-jest.mock("@/src/features/onedrive/onedrive-adding-empty-state", () => ({
-  OneDriveAddingEmptyState: jest.fn(() => null),
-}))
-
 jest.mock("@/src/navigation/hooks/use-screen-header", () => ({
   useScreenHeader: (options: unknown) => mockUseScreenHeader(options),
 }))
@@ -385,11 +374,20 @@ describe("AddLibraryLocationScreen", () => {
     expect(rowProps("家庭存储")?.icon).toBe(
       ENTITY_LIST_ROW_ICONS.webdavDataSource,
     )
-    expect(rowProps("OneDrive")?.icon).toBe(
+    expect(rowProps("个人云盘")?.icon).toBe(
       ENTITY_LIST_ROW_ICONS.onedriveDataSource,
     )
     expect(rowProps("家庭存储")?.value).toBeUndefined()
     expect(rowProps("OneDrive")?.value).toBeUndefined()
+
+    rowProps("addLibraryFlow.addOnedrive.title")?.onPress()
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: "/settings/add-library/onedrive",
+      params: {
+        from: "add-library",
+        libraryAction: "open",
+      },
+    })
   })
 })
 

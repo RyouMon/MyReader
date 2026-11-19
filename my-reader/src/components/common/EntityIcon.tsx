@@ -4,6 +4,9 @@ import calibreIconUrl from "@/assets/third-party/calibre-library-icon.png"
 import { LocalStorageIcon } from "@/components/common/LocalStorageIcon"
 import { OneDriveCloudIcon } from "@/components/common/OneDriveCloudIcon"
 import { WebdavServerIcon } from "@/components/common/WebdavServerIcon"
+import { DropboxIcon } from "@/components/common/DropboxIcon"
+import { GoogleDriveIcon } from "@/components/common/GoogleDriveIcon"
+import { S3StorageIcon } from "@/components/common/S3StorageIcon"
 import { cn } from "@/lib/utils"
 
 export type EntityIconKind =
@@ -12,11 +15,17 @@ export type EntityIconKind =
   | "localDataSource"
   | "webdavDataSource"
   | "onedriveDataSource"
+  | "gdriveDataSource"
+  | "dropboxDataSource"
+  | "s3DataSource"
 
 const ENTITY_ICONS: Partial<Record<EntityIconKind, LucideIcon>> = {
   localDataSource: LocalStorageIcon,
   webdavDataSource: WebdavServerIcon,
   onedriveDataSource: OneDriveCloudIcon,
+  gdriveDataSource: GoogleDriveIcon,
+  dropboxDataSource: DropboxIcon,
+  s3DataSource: S3StorageIcon,
 }
 
 interface EntityIconProps {
@@ -29,7 +38,8 @@ interface EntityIconProps {
 /**
  * Identifies library and data-source kinds without relying on visible text
  * badges. Libraries use their respective artwork; data sources use interface
- * symbols until provider artwork is available.
+ * provider marks keep cloud sources recognizable in settings and library
+ * pickers without relying on their visible names.
  */
 export function EntityIcon({
   kind,

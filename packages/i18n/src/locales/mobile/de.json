@@ -267,7 +267,10 @@
     "bookCountCurrent_one": "{{count}} Buch · In Verwendung",
     "bookCountCurrent_other": "{{count}} Bücher · In Verwendung",
     "bookCount_one": "{{count}} Buch",
-    "bookCount_other": "{{count}} Bücher"
+    "bookCount_other": "{{count}} Bücher",
+    "gdriveDetail": "Google Drive-Datenquellen verwalten",
+    "dropboxDetail": "Dropbox-Datenquellen verwalten",
+    "s3Detail": "S3-Datenquellen verwalten"
   },
   "reader": {
     "cannotOpen": "Buch kann nicht geöffnet werden",
@@ -903,7 +906,9 @@
     "webdavMkcolFailed": "WebDAV MKCOL fehlgeschlagen: {{status}} {{path}}",
     "localFileNotExist": "Lokale Datei existiert nicht: {{path}}",
     "basicAuthNotSupported": "Basic Auth-Kodierung wird in dieser Umgebung nicht unterstützt",
-    "syncPathCannotBeEmpty": "Der Synchronisierungspfad darf nicht leer sein"
+    "syncPathCannotBeEmpty": "Der Synchronisierungspfad darf nicht leer sein",
+    "remoteSourceNotFound": "Möglicherweise wurde es entfernt. Kehren Sie zur Quellenliste zurück.",
+    "remoteCredentialsMissing": "Melde dich erneut an oder aktualisiere die Zugangsdaten der Quelle."
   },
   "notifications": {
     "libraryAdded": "Bibliothek hinzugefügt: {{name}}",
@@ -932,5 +937,116 @@
     "restoreBookmark": "Lesezeichen wiederherstellen",
     "accessDirectory": "Zugriffsverzeichnis",
     "refreshBookmark": "Lesezeichen aktualisieren"
+  },
+  "addLibraryFlow": {
+    "addGdrive": {
+      "title": "Google Drive Quelle hinzufügen"
+    },
+    "addDropbox": {
+      "title": "Dropbox Quelle hinzufügen"
+    },
+    "addS3": {
+      "title": "S3 Quelle hinzufügen"
+    }
+  },
+  "cloud": {
+    "sources": {
+      "title": "{{provider}} Quellen",
+      "add": "Quelle hinzufügen",
+      "emptyTitle": "Noch keine {{provider}}-Quellen",
+      "emptyDetail": "Verwenden Sie die Schaltfläche unten, um eine {{provider}}-Quelle hinzuzufügen."
+    },
+    "auth": {
+      "alreadyAdded": {
+        "title": "Konto bereits hinzugefügt",
+        "detail": "Dieses {{provider}}-Konto ist bereits als {{name}} verbunden."
+      },
+      "failed": {
+        "title": "Authentifizierung fehlgeschlagen"
+      },
+      "accountMismatch": {
+        "title": "Kontokonflikt",
+        "detail": "Melde dich mit dem für {{email}} eingerichteten Konto an."
+      },
+      "reauthenticate": "Erneut anmelden"
+    },
+    "form": {
+      "addTitle": "{{provider}} Quelle hinzufügen",
+      "editTitle": "{{provider}}-Quelle bearbeiten",
+      "save": "Speichern",
+      "saving": "Speichern",
+      "signIn": "Anmelden und fortfahren",
+      "reauthenticate": "Erneut anmelden",
+      "addFailed": "Hinzufügen fehlgeschlagen",
+      "updateFailed": "Speichern fehlgeschlagen",
+      "connectionFailed": "Verbindungstest fehlgeschlagen",
+      "clientIdLabel": "Google OAuth Client ID",
+      "clientIdPlaceholder": "Use the client ID registered for this app",
+      "appKeyLabel": "Dropbox App Key",
+      "appKeyPlaceholder": "Paste the Dropbox App Key",
+      "appKeyRequired": "Enter the Dropbox App Key.",
+      "openDropboxConsole": "Dropbox App Console",
+      "rootPathLabel": "Stammpfad (optional)",
+      "nameLabel": "Name",
+      "endpointLabel": "Endpunkt",
+      "bucketLabel": "Bucket",
+      "regionLabel": "Region",
+      "accessKeyLabel": "Zugriffsschlüssel-ID",
+      "secretKeyLabel": "Geheimer Zugriffsschlüssel",
+      "sessionTokenLabel": "Sitzungstoken (optional)",
+      "virtualHostStyle": "Bucket-URLs im virtuellen Hostformat verwenden",
+      "endpointRequired": "Gib einen S3-Endpunkt ein.",
+      "bucketRequired": "Gib einen S3-Bucket ein.",
+      "regionRequired": "Gib eine S3-Region ein.",
+      "accessKeyRequired": "Gib eine Zugriffsschlüssel-ID ein.",
+      "secretKeyRequired": "Gib einen geheimen Zugriffsschlüssel ein.",
+      "appKeyHint": "Create a Dropbox app and paste its App Key here. The redirect URI is configured by the app."
+    },
+    "browser": {
+      "title": "Wählen Sie die Bibliothek {{provider}} aus",
+      "validating": "Verzeichnis wird validiert",
+      "reading": {
+        "title": "Verzeichnis lesen",
+        "detail": "Verzeichnisliste von {{provider}} abrufen."
+      },
+      "readFailed": {
+        "title": "Lesen fehlgeschlagen"
+      },
+      "loadFailed": {
+        "title": "Durchsuchen fehlgeschlagen",
+        "message": "Im Browser {{provider}} ist ein unerwarteter Fehler aufgetreten. Bitte versuchen Sie es erneut."
+      },
+      "credentialsUnavailable": {
+        "title": "{{provider}} Anmeldeinformationen nicht verfügbar",
+        "detail": "Melde dich erneut an oder aktualisiere die Zugangsdaten der Quelle."
+      },
+      "empty": {
+        "title": "Leeres Verzeichnis",
+        "detail": "Keine Unterverzeichnisse im aktuellen Verzeichnis."
+      }
+    },
+    "detail": {
+      "title": "Quelldetails",
+      "type": "Typ",
+      "displayName": "Anzeigename",
+      "email": "E-Mail",
+      "endpoint": "Endpunkt",
+      "bucket": "Bucket",
+      "region": "Region",
+      "rootPath": "Basispfad",
+      "authStatus": "Authentifizierungsstatus",
+      "authenticated": "Authentifiziert",
+      "notAuthenticated": "Nicht authentifiziert",
+      "addedAt": "Hinzugefügt um"
+    },
+    "delete": {
+      "title": "{{provider}}-Quelle löschen",
+      "confirm": "„{{name}}“ löschen?",
+      "cancel": "Abbrechen",
+      "confirmButton": "Löschen",
+      "failed": "Kann nicht gelöscht werden",
+      "action": "Quelle löschen"
+    },
+    "edit": "Quelle bearbeiten"
   }
 }

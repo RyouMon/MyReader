@@ -73,6 +73,30 @@ export async function resolveSyncTarget(
     }
   }
 
+  if (
+    library.sourceType === "gdrive" ||
+    library.sourceType === "dropbox" ||
+    library.sourceType === "s3"
+  ) {
+    const rawSource = dataSources.find(
+      (item) =>
+        item.id === library.dataSourceId && item.type === library.sourceType,
+    )
+    if (!rawSource) {
+      throw new SyncConfigError("sync.remoteSourceNotFound")
+    }
+    const resolved = await resolveRemoteBackend(rawSource, library)
+    if (!resolved) throw new SyncConfigError("sync.remoteCredentialsMissing")
+    return {
+      backend: resolved.backend,
+      libraryStorage: resolved.libraryStorage,
+      dataSourceId: rawSource.id,
+      libraryId: library.id,
+      libraryRootUri: rootUri,
+      librarySidecarRootUri: sidecarRootUri,
+    }
+  }
+
   const backend = new LocalDirectBackend(rootUri)
   return {
     backend,
@@ -91,5 +115,5 @@ export async function resolveSyncTarget(
 export function isRemoteBackend(
   backend: SyncBackend,
 ): backend is RemoteBackend {
-  return backend.kind === "onedrive" || backend.kind === "webdav"
+  return backend.kind !== "local-direct"
 }

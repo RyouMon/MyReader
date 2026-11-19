@@ -4,11 +4,35 @@
 import argparse
 import copy
 from pathlib import Path
+import plistlib
 import re
 import subprocess
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def prepare_swift_host(project):
+    # CocoaPods' generated app host still uses the pre-UIScene lifecycle, which
+    # fails before tests can connect when built with the iOS 27 SDK.
+    host = project.parent / "AppHost-Readium-Unit-Tests"
+    info_file = host / "AppHost-Readium-Unit-Tests-Info.plist"
+    with info_file.open("rb") as stream:
+        info = plistlib.load(stream)
+    info["UIApplicationSceneManifest"] = {
+        "UIApplicationSupportsMultipleScenes": False,
+        "UISceneConfigurations": {
+            "UIWindowSceneSessionRoleApplication": [{
+                "UISceneConfigurationName": "Reader tests",
+                "UISceneDelegateClassName": "ReaderTestSceneDelegate",
+            }],
+        },
+    }
+    with info_file.open("wb") as stream:
+        plistlib.dump(info, stream)
+    (host / "main.m").write_text(
+        Path(__file__).with_name("ios-test-host.m").read_text()
+    )
 
 
 def prepare_swift(project):
@@ -35,6 +59,7 @@ def prepare_swift(project):
     destination = project / "xcshareddata/xcschemes/Reader-Coverage.xcscheme"
     destination.parent.mkdir(parents=True, exist_ok=True)
     tree.write(destination, encoding="utf-8", xml_declaration=True)
+    prepare_swift_host(project)
     return destination
 
 

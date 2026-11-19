@@ -7,6 +7,7 @@ pub mod library;
 pub mod llm;
 pub mod narration;
 pub mod reading;
+pub mod storage;
 pub mod sync;
 pub mod tts;
 

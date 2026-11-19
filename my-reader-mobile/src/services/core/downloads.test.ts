@@ -64,4 +64,20 @@ describe("core download adapter", () => {
     expect(downloadReportProgress).toHaveBeenCalledWith("task", 50, 100)
     expect(downloadCancel).toHaveBeenCalledWith("task")
   })
+
+  it("reports an unknown native response length as indeterminate to Core", () => {
+    jest
+      .mocked(downloadReportProgress)
+      .mockImplementation((_id, received, total) => {
+        if (total < 0)
+          throw new Error("total must be a non-negative safe integer number")
+        return undefined
+      })
+
+    expect(() => reportDownloadTaskProgress("task", 0, -1)).not.toThrow()
+    reportDownloadTaskProgress("task", 50, -1)
+    expect(downloadReportProgress).toHaveBeenLastCalledWith("task", 50, 0)
+    reportDownloadTaskProgress("task", 100, 100)
+    expect(downloadReportProgress).toHaveBeenLastCalledWith("task", 100, 100)
+  })
 })

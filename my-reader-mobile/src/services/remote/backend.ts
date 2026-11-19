@@ -25,7 +25,12 @@ export type RemoteFileStat = {
   mtimeMs: number
 }
 
-export type RemoteBackendKind = "onedrive" | "webdav"
+export type RemoteBackendKind =
+  | "onedrive"
+  | "webdav"
+  | "gdrive"
+  | "dropbox"
+  | "s3"
 
 export interface RemoteBackend {
   readonly kind: RemoteBackendKind
@@ -34,7 +39,7 @@ export interface RemoteBackend {
   // -- Auth --
   getAuthHeaders(): Promise<Record<string, string>>
   getCachedAuthHeaders(): Record<string, string> | null
-  invalidateAuth(): void
+  invalidateAuth(): void | Promise<void>
 
   // -- Stat --
   statRemoteFile(remotePath: string): Promise<RemoteFileStat | null>
@@ -62,4 +67,9 @@ export interface RemoteBackend {
 
   // -- Path / URL --
   contentUrl(remotePath: string): string
+
+  /** Resolves provider-specific URLs such as GDrive IDs or S3 signatures. */
+  getContentUri?(
+    remotePath: string,
+  ): Promise<string | { uri: string; headers?: Record<string, string> }>
 }

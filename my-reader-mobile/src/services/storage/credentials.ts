@@ -2,6 +2,8 @@ import * as SecureStore from "expo-secure-store"
 
 import type {
   DataSource,
+  DataSourceDropbox,
+  DataSourceGdrive,
   DataSourceOnedrive,
   DataSourceType,
   DataSourceWebdav,
@@ -14,6 +16,10 @@ import {
 
 const WEB_DAV_PASSWORD_KEY_PREFIX = "ryoumon.myreader.webdav.password."
 const TTS_CREDENTIAL_KEY_PREFIX = "ryoumon.myreader.tts."
+const CLOUD_REFRESH_TOKEN_KEY_PREFIX = "ryoumon.myreader.cloud.refresh."
+const CLOUD_ACCESS_TOKEN_KEY_PREFIX = "ryoumon.myreader.cloud.access."
+const GOOGLE_ACCOUNT_KEY_PREFIX = "ryoumon.myreader.google.account."
+const S3_CREDENTIAL_KEY_PREFIX = "ryoumon.myreader.s3."
 
 /**
  * 为指定 WebDAV 数据源生成凭证键。
@@ -107,6 +113,125 @@ export async function deleteOneDriveRefreshToken(id: string): Promise<void> {
   await SecureStore.deleteItemAsync(`${ONEDRIVE_REFRESH_TOKEN_KEY}.${id}`)
 }
 
+function cloudKey(prefix: string, id: string) {
+  return `${prefix}${id}`
+}
+
+export async function readCloudRefreshToken(
+  id: string,
+): Promise<string | null> {
+  return id
+    ? SecureStore.getItemAsync(cloudKey(CLOUD_REFRESH_TOKEN_KEY_PREFIX, id))
+    : null
+}
+export async function writeCloudRefreshToken(
+  id: string,
+  token: string,
+): Promise<void> {
+  if (id)
+    await SecureStore.setItemAsync(
+      cloudKey(CLOUD_REFRESH_TOKEN_KEY_PREFIX, id),
+      token,
+    )
+}
+export async function deleteCloudRefreshToken(id: string): Promise<void> {
+  if (id)
+    await SecureStore.deleteItemAsync(
+      cloudKey(CLOUD_REFRESH_TOKEN_KEY_PREFIX, id),
+    )
+}
+
+// Android's Google Identity SDK owns token renewal. Keep the selected account
+// bound to this source, rather than storing a fabricated refresh token.
+export async function readGoogleAccount(id: string): Promise<string | null> {
+  return id
+    ? SecureStore.getItemAsync(cloudKey(GOOGLE_ACCOUNT_KEY_PREFIX, id))
+    : null
+}
+
+async function writeGoogleAccount(id: string, account?: string): Promise<void> {
+  if (!id) return
+  const key = cloudKey(GOOGLE_ACCOUNT_KEY_PREFIX, id)
+  if (account) await SecureStore.setItemAsync(key, account)
+  else await SecureStore.deleteItemAsync(key)
+}
+
+export type CloudAccessToken = { accessToken: string; expiresAt: number }
+
+export async function readCloudAccessToken(
+  id: string,
+): Promise<CloudAccessToken | null> {
+  if (!id) return null
+  const raw = await SecureStore.getItemAsync(
+    cloudKey(CLOUD_ACCESS_TOKEN_KEY_PREFIX, id),
+  )
+  if (!raw) return null
+  try {
+    const value = JSON.parse(raw) as Partial<CloudAccessToken>
+    if (
+      typeof value.accessToken !== "string" ||
+      typeof value.expiresAt !== "number"
+    ) {
+      return null
+    }
+    return value as CloudAccessToken
+  } catch {
+    return null
+  }
+}
+
+export async function writeCloudAccessToken(
+  id: string,
+  value: CloudAccessToken,
+): Promise<void> {
+  if (!id) return
+  await SecureStore.setItemAsync(
+    cloudKey(CLOUD_ACCESS_TOKEN_KEY_PREFIX, id),
+    JSON.stringify(value),
+  )
+}
+
+export async function deleteCloudAccessToken(id: string): Promise<void> {
+  if (id)
+    await SecureStore.deleteItemAsync(
+      cloudKey(CLOUD_ACCESS_TOKEN_KEY_PREFIX, id),
+    )
+}
+
+export type S3Credentials = {
+  accessKeyId: string
+  secretAccessKey: string
+  sessionToken?: string
+}
+export async function readS3Credentials(
+  id: string,
+): Promise<S3Credentials | null> {
+  if (!id) return null
+  const raw = await SecureStore.getItemAsync(
+    cloudKey(S3_CREDENTIAL_KEY_PREFIX, id),
+  )
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as S3Credentials
+  } catch {
+    return null
+  }
+}
+export async function writeS3Credentials(
+  id: string,
+  value: S3Credentials,
+): Promise<void> {
+  if (id)
+    await SecureStore.setItemAsync(
+      cloudKey(S3_CREDENTIAL_KEY_PREFIX, id),
+      JSON.stringify(value),
+    )
+}
+export async function deleteS3Credentials(id: string): Promise<void> {
+  if (id)
+    await SecureStore.deleteItemAsync(cloudKey(S3_CREDENTIAL_KEY_PREFIX, id))
+}
+
 /**
  * Hydrate data sources from secure storage, filling in passwords/tokens.
  */
@@ -130,6 +255,21 @@ export async function hydrateDataSourcesFromSecureCredentials(
         hasRefreshToken: Boolean(refreshToken),
       }
       hydrated.push(withToken)
+    } else if (source.type === "gdrive" || source.type === "dropbox") {
+      const refreshToken = await readCloudRefreshToken(source.id)
+      const googleAccount =
+        source.type === "gdrive" ? await readGoogleAccount(source.id) : null
+      const withToken: DataSourceGdrive | DataSourceDropbox = {
+        ...source,
+        // Preserve the shared DTO's renewable-credential flag for native grants.
+        hasRefreshToken: Boolean(refreshToken || googleAccount),
+      }
+      hydrated.push(withToken)
+    } else if (source.type === "s3") {
+      hydrated.push({
+        ...source,
+        hasCredentials: Boolean(await readS3Credentials(source.id)),
+      })
     } else {
       hydrated.push(source)
     }
@@ -143,6 +283,14 @@ export async function hydrateDataSourcesFromSecureCredentials(
 export type DataSourceSecrets =
   | { type: "webdav"; password: string }
   | { type: "onedrive"; accessToken: string; refreshToken?: string }
+  | {
+      type: "gdrive" | "dropbox"
+      accessToken: string
+      refreshToken: string
+      accessTokenExpiresAt?: number
+      googleAccount?: string
+    }
+  | ({ type: "s3" } & S3Credentials)
 
 export async function writeSecrets(
   id: string,
@@ -157,6 +305,31 @@ export async function writeSecrets(
       if (secrets.refreshToken) {
         await writeOneDriveRefreshToken(id, secrets.refreshToken)
       }
+      break
+    case "gdrive":
+    case "dropbox":
+      if (secrets.type === "gdrive") {
+        await writeGoogleAccount(id, secrets.googleAccount)
+      }
+      if (secrets.refreshToken) {
+        await writeCloudRefreshToken(id, secrets.refreshToken)
+      } else {
+        await deleteCloudRefreshToken(id)
+      }
+      if (secrets.accessToken) {
+        await writeCloudAccessToken(id, {
+          accessToken: secrets.accessToken,
+          expiresAt:
+            secrets.accessTokenExpiresAt ?? Date.now() + 50 * 60 * 1000,
+        })
+      }
+      break
+    case "s3":
+      await writeS3Credentials(id, {
+        accessKeyId: secrets.accessKeyId,
+        secretAccessKey: secrets.secretAccessKey,
+        sessionToken: secrets.sessionToken,
+      })
       break
   }
 }
@@ -173,6 +346,15 @@ export async function deleteSecrets(
       await deleteOneDriveAccessToken(id)
       await deleteOneDriveRefreshToken(id)
       break
+    case "gdrive":
+    case "dropbox":
+      if (type === "gdrive") await writeGoogleAccount(id)
+      await deleteCloudRefreshToken(id)
+      await deleteCloudAccessToken(id)
+      break
+    case "s3":
+      await deleteS3Credentials(id)
+      break
   }
 }
 
@@ -185,6 +367,15 @@ export function deriveCredentialFlags(
       return { hasPassword: Boolean(secrets.password) }
     case "onedrive":
       return { hasRefreshToken: Boolean(secrets.refreshToken) }
+    case "gdrive":
+    case "dropbox":
+      return {
+        hasRefreshToken: Boolean(secrets.refreshToken || secrets.googleAccount),
+      }
+    case "s3":
+      return {
+        hasCredentials: Boolean(secrets.accessKeyId && secrets.secretAccessKey),
+      }
   }
 }
 
