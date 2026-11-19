@@ -5,6 +5,17 @@
 MyReader 的重要变更均记录于此。
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [0.23.0] - 2026-11-20
+
+### Added
+
+- 新增 Google Drive、Dropbox 和 S3 数据源，支持桌面与移动端的 OAuth/PKCE 授权、目录浏览、文件夹创建和书库接入（[#145](https://github.com/RyouMon/MyReader/pull/145)）。
+
+### Fixed
+
+- 修复桌面端长书库路径的下载处理（[#142](https://github.com/RyouMon/MyReader/pull/142)）。
+- 稳定 iOS 与 Android 阅读器的安全区和工具栏布局，修复不同设备上的阅读控件位置与可用性问题（[#146](https://github.com/RyouMon/MyReader/pull/146)）。
+
 ## [0.22.0] - 2026-11-10
 
 ### Added

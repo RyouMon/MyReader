@@ -6,6 +6,17 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.23.0] - 2026-11-20
+
+### Added
+
+- Added Google Drive, Dropbox and S3 data sources with OAuth/PKCE authorization, folder browsing, folder creation and library setup on desktop and mobile ([#145](https://github.com/RyouMon/MyReader/pull/145)).
+
+### Fixed
+
+- Fixed desktop downloads for libraries with long paths ([#142](https://github.com/RyouMon/MyReader/pull/142)).
+- Stabilized safe-area and reader-toolbar layout across iOS and Android, fixing reader control placement and availability on different devices ([#146](https://github.com/RyouMon/MyReader/pull/146)).
+
 ## [0.22.0] - 2026-11-10
 
 ### Added
