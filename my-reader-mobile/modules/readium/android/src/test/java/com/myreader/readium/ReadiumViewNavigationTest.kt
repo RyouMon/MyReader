@@ -161,6 +161,21 @@ class ReadiumViewNavigationTest {
     assertFalse(followsNarration.captured())
   }
 
+  @Test fun a_destroyed_web_view_cannot_crash_navigation_settling() {
+    startNarration()
+    every { web.postVisualStateCallback(any(), any()) } throws
+      IllegalStateException("WebView has been destroyed")
+
+    reader.goForward()
+    scheduler.runCurrent()
+    frames.removeFirst().run()
+    scheduler.runCurrent()
+
+    assertFalse(followsNarration.captured())
+    assertEquals("user", locationEvent()["source"])
+    verify(exactly = 1) { epub.goForward() }
+  }
+
   @Test fun stopping_narration_cancels_navigation_waits_and_ignores_late_rendering() {
     startNarration()
     reader.goForward()

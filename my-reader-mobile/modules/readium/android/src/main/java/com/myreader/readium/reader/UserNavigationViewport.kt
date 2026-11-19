@@ -31,13 +31,18 @@ internal class UserNavigationViewport private constructor(private val view: WebV
         continuation.invokeOnCancellation { view.removeCallbacks(frame) }
       }
       // A native frame alone says nothing about a busy WebView renderer.
-      suspendCancellableCoroutine { continuation ->
-        view.postVisualStateCallback(0, object : WebView.VisualStateCallback() {
-          override fun onComplete(requestId: Long) {
-            if (continuation.isActive) continuation.resume(Unit)
-          }
-        })
+      val visualStateCompleted = suspendCancellableCoroutine { continuation ->
+        try {
+          view.postVisualStateCallback(0, object : WebView.VisualStateCallback() {
+            override fun onComplete(requestId: Long) {
+              if (continuation.isActive) continuation.resume(true)
+            }
+          })
+        } catch (_: IllegalStateException) {
+          continuation.resume(false)
+        }
       }
+      if (!visualStateCompleted) return@withTimeoutOrNull false
       val current = position() ?: return@withTimeoutOrNull false
       stableFrames = if (current == previous) stableFrames + 1 else 0
       if (stableFrames >= 2) return@withTimeoutOrNull current == origin
