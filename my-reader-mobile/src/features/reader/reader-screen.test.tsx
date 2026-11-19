@@ -38,6 +38,7 @@ jest.mock("./tts/use-reading-plan", () => ({
 
 jest.mock("expo-router", () => ({
   router: { back: jest.fn(), canGoBack: () => true },
+  useNavigation: () => ({ setOptions: jest.fn() }),
   useLocalSearchParams: () => ({ id: "7", format: "EPUB" }),
   useFocusEffect: (callback: () => void | (() => void)) =>
     mockUseEffect(callback, [callback]),

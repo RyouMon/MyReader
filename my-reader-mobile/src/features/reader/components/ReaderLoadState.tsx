@@ -1,5 +1,5 @@
 import { memo } from "react"
-import { ActivityIndicator, StatusBar, type StatusBarStyle } from "react-native"
+import { ActivityIndicator } from "react-native"
 import { useTranslation } from "react-i18next"
 import { useTheme } from "@/src/design/tokens"
 import { READER_CHROME } from "@/src/design/reader-tokens"
@@ -10,28 +10,22 @@ const ERROR_BACK_BUTTON_BORDER_COLOR = READER_CHROME.border
 
 export function ReaderLoadState({
   loadState,
-  statusBarStyle,
   themeBgColor,
   themeFgColor,
   handleBack,
 }: Pick<ReturnType<typeof useBookLoader>, "loadState"> & {
-  statusBarStyle: StatusBarStyle
   themeBgColor: string
   themeFgColor: string
   handleBack: () => void
 }) {
   const { t } = useTranslation()
-  const { palette, colorScheme } = useTheme()
+  const { palette } = useTheme()
   if (loadState.status === "error") {
     return (
       <View
         className="flex-1 w-full items-center justify-center px-7"
         style={{ backgroundColor: palette.background }}
       >
-        <StatusBar
-          hidden={false}
-          barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
-        />
         <View
           className="w-full max-w-[400px] items-center py-7 px-[22px] rounded-2xl border"
           style={{
@@ -75,7 +69,6 @@ export function ReaderLoadState({
 
   return (
     <View className="flex-1" style={{ backgroundColor: themeBgColor }}>
-      <StatusBar hidden={false} barStyle={statusBarStyle} />
       <ReaderLoadingSurface
         backgroundColor={themeBgColor}
         foregroundColor={themeFgColor}

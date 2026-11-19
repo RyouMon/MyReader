@@ -2,7 +2,7 @@ import "@/src/global.css"
 import "@/src/i18n"
 import "@/src/polyfills/reader-engine-globals"
 
-import { Stack } from "expo-router"
+import { Stack, usePathname } from "expo-router"
 import {
   DarkTheme,
   DefaultTheme,
@@ -35,6 +35,7 @@ import { AppUpdateRuntime } from "@/src/features/app-updates/app-update-runtime"
 function RootNavigator() {
   const { colorScheme, palette } = useTheme()
   const { t } = useTranslation()
+  const pathname = usePathname()
   const statusBarStyle = colorScheme === "dark" ? "light" : "dark"
   const storeReady = useAppStore((s) => s.storeReady)
   const hydrateDataSources = useDataSourceActions().hydrateFromBackend
@@ -87,8 +88,17 @@ function RootNavigator() {
   return (
     <>
       <NavigationThemeProvider value={navigationTheme}>
-        <StatusBar style={statusBarStyle} />
-        <Stack screenOptions={{ headerShown: false }}>
+        {pathname.startsWith("/reader") ? null : (
+          <StatusBar style={statusBarStyle} />
+        )}
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            statusBarAnimation: "none",
+            statusBarHidden: false,
+            statusBarStyle,
+          }}
+        >
           <Stack.Screen name="(tabs)" />
           <Stack.Screen
             name="llm-providers"
@@ -165,6 +175,9 @@ function RootNavigator() {
               gestureEnabled: false,
               headerShown: false,
               headerTitle: "",
+              statusBarAnimation: "none",
+              statusBarHidden: false,
+              statusBarStyle,
             }}
           />
         </Stack>

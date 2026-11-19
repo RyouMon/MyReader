@@ -45,7 +45,12 @@ import {
   positionIndexForStoredLocator,
   type ReaderLocator,
 } from "@my-reader/tools/reader-toc"
-import { router, useFocusEffect, useLocalSearchParams } from "expo-router"
+import {
+  router,
+  useFocusEffect,
+  useLocalSearchParams,
+  useNavigation,
+} from "expo-router"
 import {
   useCallback,
   useEffect,
@@ -58,11 +63,14 @@ import { useTranslation } from "react-i18next"
 import {
   Animated as RNAnimated,
   BackHandler,
-  StatusBar,
+  Platform,
   StyleSheet,
 } from "react-native"
 import { FadeIn, FadeOut } from "react-native-reanimated"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
+import {
+  initialWindowMetrics,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context"
 import { ErrorBoundary } from "@/src/components/error-boundary"
 import { useTheme } from "@/src/design/tokens"
 import { useReadingSessionTracker } from "@/src/domain/reading-statistics/hooks/use-reading-session-tracker"
@@ -89,6 +97,7 @@ import {
   ChromeState,
   chromeReducer,
 } from "@/src/features/reader/components/reader/chrome/chrome-state"
+import { readerChromeEdgeInset } from "@/src/features/reader/components/reader/chrome/readerChromeConstants"
 import { type ReaderSettingsSheetRef } from "@/src/features/reader/components/reader/chrome/ReaderSettingsSheet"
 import type { FixedReaderSurfaceRef } from "@/src/features/reader/components/reader/fixed/FixedReaderSurface"
 import { resolveReaderBookmarkNavigationLocator } from "@/src/features/reader/components/reader/reader-bookmark-navigation"
@@ -129,6 +138,11 @@ import {
 } from "@/src/features/reader/tts/reader-tts"
 import { useReaderTtsSession } from "@/src/features/reader/tts/use-reader-tts-session"
 import { bookLoadRequestKey } from "@/src/hooks/book-load-identity"
+import {
+  readerContentBottomInset,
+  readerContentTopInset,
+  reserveReaderInsets,
+} from "./reader-safe-area"
 import { useBookLoader, type LoadState } from "@/src/hooks/use-book-loader"
 import { useReaderProgressSaver } from "@/src/hooks/use-reader-progress-saver"
 import { useAppStore } from "@/src/store/app-store"
@@ -144,6 +158,13 @@ const READER_ANNOTATION_COLOR_ORDER = [
   "green",
   "blue",
 ] as const satisfies readonly ReaderAnnotationColor[]
+
+function isIpadPlatform() {
+  return (
+    Platform.OS === "ios" &&
+    Boolean((Platform as unknown as { isPad?: boolean }).isPad)
+  )
+}
 
 type ReaderRuntime = {
   publicationKey: string
@@ -200,7 +221,10 @@ export default function ReaderScreen() {
   const activeLibraryId = useAppStore((s) => s.activeLibraryId)
   const publicationKey = bookLoadRequestKey(activeLibraryId, id, formatParam)
   const { palette, colorScheme } = useTheme()
-  const insets = useSafeAreaInsets()
+  const insets = reserveReaderInsets(
+    useSafeAreaInsets(),
+    initialWindowMetrics?.insets,
+  )
   const [readerRuntime, setReaderRuntime] = useState<ReaderRuntime>(() =>
     emptyReaderRuntime(publicationKey),
   )
@@ -223,6 +247,7 @@ export default function ReaderScreen() {
     totalPages,
   } = readerState ?? {}
   const [chromeState, dispatch] = useReducer(chromeReducer, ChromeState.Reading)
+  const navigation = useNavigation()
   const settings = useAppStore((s) => s.settings)
 
   const navigationSheetRef = useRef<BottomSheetModal>(null)
@@ -1241,6 +1266,15 @@ export default function ReaderScreen() {
     reflowSettings,
     colorScheme,
   })
+
+  useEffect(() => {
+    navigation.setOptions({
+      statusBarAnimation: "none",
+      statusBarHidden:
+        loadState.status === "ready" && chromeState === ChromeState.Reading,
+      statusBarStyle: statusBarStyle === "light-content" ? "light" : "dark",
+    })
+  }, [chromeState, loadState.status, navigation, statusBarStyle])
   const readerDecorations = useMemo<DecorationGroup[]>(
     () => [
       {
@@ -1306,7 +1340,6 @@ export default function ReaderScreen() {
     return (
       <ReaderLoadState
         loadState={loadState}
-        statusBarStyle={statusBarStyle}
         themeBgColor={themeBgColor}
         themeFgColor={themeFgColor}
         handleBack={handleBack}
@@ -1341,6 +1374,13 @@ export default function ReaderScreen() {
     hasTtsState: Boolean(ttsState),
     toc,
   })
+  const readerContentBottomPadding = readerContentBottomInset(
+    insets.bottom,
+    Platform.OS,
+    isIpadPlatform(),
+  )
+  const readerChromeBottomInset = readerChromeEdgeInset(insets.bottom)
+  const readerChromeTopInset = readerChromeEdgeInset(insets.top)
 
   return (
     <View style={styles.readerRouteFrame}>
@@ -1354,12 +1394,6 @@ export default function ReaderScreen() {
             className="flex-1"
             style={{ backgroundColor: themeBgColor }}
           >
-            <StatusBar
-              hidden={chromeState === ChromeState.Reading}
-              barStyle={statusBarStyle}
-              translucent={false}
-            />
-
             <ErrorBoundary
               title={t("reader.loadFailed")}
               message={t("reader.loadFailedMessage")}
@@ -1370,12 +1404,20 @@ export default function ReaderScreen() {
                   loadState={loadState}
                   reflowStyle={[
                     {
-                      paddingTop: insets.top - 8,
-                      paddingBottom: insets.bottom,
+                      paddingTop: readerContentTopInset(
+                        insets.top,
+                        Platform.OS,
+                        isIpadPlatform(),
+                      ),
+                      paddingBottom: readerContentBottomPadding,
                       flex: 1,
                     },
                     themeBgStyle,
                   ]}
+                  fixedStyle={{
+                    paddingBottom: readerContentBottomPadding,
+                    flex: 1,
+                  }}
                   reflow={{
                     ref: reflowReaderRef,
                     onStateChange: handleStateChange,
@@ -1434,6 +1476,7 @@ export default function ReaderScreen() {
             </ErrorBoundary>
 
             <ReaderPositionLabel
+              bottomInset={readerChromeBottomInset}
               visible={positionLabelVisible}
               currentPage={currentPage}
               totalPages={totalPages}
@@ -1443,7 +1486,7 @@ export default function ReaderScreen() {
 
             {/* State 2+: Close button (top-right circle) */}
             <ReaderCloseButton
-              insetsTop={insets.top}
+              insetsTop={readerChromeTopInset}
               visible={chromeState >= ChromeState.Chrome}
               palette={chromePalette}
               onPress={handleRequestClose}
@@ -1452,7 +1495,7 @@ export default function ReaderScreen() {
             <ReaderNavigationButtons
               history={history}
               chromeVisible={chromeState >= ChromeState.Chrome}
-              insetsTop={insets.top}
+              insetsTop={readerChromeTopInset}
               title={showChapterLabel ? chapterLabelTitle : undefined}
               palette={chromePalette}
               getLocationLabel={(locator) =>
@@ -1465,6 +1508,7 @@ export default function ReaderScreen() {
 
             {/* Fixed-layout fallback; text EPUB renders both bottom anchors together below. */}
             <ReaderMoreButton
+              bottomInset={readerChromeBottomInset}
               visible={moreButtonVisible}
               palette={chromePalette}
               onPress={handleOpenReaderMore}
@@ -1475,7 +1519,7 @@ export default function ReaderScreen() {
               bookmarked={isCurrentLocationBookmarked}
               disabled={bookmarkActionDisabled}
               iconOnly={chromeState === ChromeState.Reading}
-              insetsTop={insets.top}
+              insetsTop={readerChromeTopInset}
               visible={bookmarkButtonVisible}
               palette={chromePalette}
               onPress={toggleCurrentBookmark}
@@ -1489,7 +1533,7 @@ export default function ReaderScreen() {
                   : reflowReaderRef.current
                 void reader?.sharePage()
               }}
-              insetsBottom={insets.bottom}
+              insetsBottom={readerChromeBottomInset}
               visible={chromeState === ChromeState.Expanded}
               currentPositionIndex={currentPage ?? 0}
               positionCount={totalPages ?? 1}
@@ -1510,6 +1554,7 @@ export default function ReaderScreen() {
             />
 
             <ReaderTtsControls
+              bottomInset={readerChromeBottomInset}
               visible={ttsPlayerVisible}
               expanded={ttsControlsExpanded}
               state={ttsState}

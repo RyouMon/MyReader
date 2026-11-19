@@ -38,6 +38,7 @@ function renderPlayer(
 ) {
   return render(
     <ReaderTtsControls
+      bottomInset={0}
       visible
       expanded={expanded}
       state={state}
@@ -64,6 +65,7 @@ describe("ReaderTtsControls", () => {
 
     screen.rerender(
       <ReaderTtsControls
+        bottomInset={0}
         visible
         expanded
         state={null}
@@ -128,6 +130,7 @@ describe("ReaderTtsControls", () => {
 
     screen.rerender(
       <ReaderTtsControls
+        bottomInset={0}
         visible
         expanded={false}
         state={null}
@@ -148,6 +151,7 @@ describe("ReaderTtsControls", () => {
   it("returns on the left and fast-forwards from a viewport after playback", () => {
     const screen = render(
       <ReaderTtsControls
+        bottomInset={0}
         visible
         expanded
         state={{
@@ -202,6 +206,7 @@ describe("ReaderTtsControls", () => {
   it("rewinds from the left and returns on the right from a viewport before playback", () => {
     const screen = render(
       <ReaderTtsControls
+        bottomInset={0}
         visible
         expanded
         state={{ sessionId: "session-1", state: "paused" }}

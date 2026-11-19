@@ -1,11 +1,9 @@
 import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
 import { Text, View } from "@/tw"
-import {
-  READER_BOTTOM_ACTION_OFFSET,
-  READER_BOTTOM_ACTION_SIZE,
-} from "./readerChromeConstants"
+import { READER_BOTTOM_ACTION_SIZE } from "./readerChromeConstants"
 
 export type ReaderPositionLabelProps = {
+  bottomInset: number
   visible: boolean
   currentPage?: number | null
   totalPages?: number | null
@@ -24,6 +22,7 @@ export function readerPositionLabelVisible(
 }
 
 export function ReaderPositionLabel({
+  bottomInset,
   visible,
   currentPage,
   totalPages,
@@ -36,7 +35,7 @@ export function ReaderPositionLabel({
     <View
       className="absolute left-0 right-0 z-10 items-center justify-center"
       style={{
-        bottom: READER_BOTTOM_ACTION_OFFSET,
+        bottom: bottomInset,
         height: READER_BOTTOM_ACTION_SIZE,
       }}
       pointerEvents="none"

@@ -488,6 +488,10 @@ class EpubReaderFragment : VisualReaderFragment() {
                 }
               },
               configuration = EpubNavigatorFragment.Configuration {
+                // RN owns the reader's system-bar and display-cutout insets.
+                // Keeping Readium's default padding enabled would reserve an
+                // additional 40dp inside every EPUB page.
+                shouldApplyInsetsPadding = false
                 registerJavascriptInterface("ReaderImage") { _ ->
                   ReaderImageBridge { source ->
                     val href = ReaderImageExport.imageHref(model.publication, source)
