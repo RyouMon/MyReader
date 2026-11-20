@@ -156,54 +156,7 @@ Sentry 为可选功能。
 
 ## 发布构建
 
-推送 `v*` 标签后，`Release` 自动构建所有产物，运行完整质量检查、移动 Maestro 和桌面 E2E。
-Android 使用将发布的签名 APK；iOS 使用同提交、同 production 配置的 Release simulator app，
-在 iPhone/iPad 分别执行完整套件和原生设置 XCTest。IPA 不能直接安装到模拟器。
-桌面 macOS/Windows 执行完整浏览器套件和独立 Release 原生 WebDriver 套件。
-Ubuntu 暂不执行 release E2E；Linux 安装包继续构建并纳入发布资产核验。
-
-只有全部报告通过且提交号、套件清单、APK 摘要一致，才提交已构建的 IPA 到 TestFlight，
-随后自动公开 GitHub Release。失败、缺失报告、跳过和 flaky 结果均阻断发布。
-手动触发 `Release` 运行相同的构建和测试，但不提交 TestFlight、不公开版本。
-单独的 `Desktop build candidate` / `Mobile build candidate` 工作流只构建并保存 Actions 制品。
-详细门禁、测试层次与证据见 [Release E2E runbook](../my-reader-mobile/e2e/README.md)。
-
-重跑时先区分源码修复与下载、上传等基础设施故障：提交未变时使用
-`gh run rerun <run-id> --failed`，或 `--job <job-id>` 仅重跑失败任务及其下游，保留成功的构建产物。
-[GitHub 重跑](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs)
-仍使用原提交；需要修改源码时，在确认版本尚未公开、停止旧发布运行后，将同一标签更新到修复提交，
-再运行该提交的完整发布验证。未发布版本的修复沿用版本号；已公开版本的标签不移动。
-
-依赖缓存覆盖 pnpm、Cargo、Gradle、CocoaPods、pip 和固定版本的 Maestro。
-EAS 本地构建使用工作区外层的 Cargo target，避免临时构建目录清理掉缓存。
-Gradle 在主分支与发布标签写入缓存；Maestro 命中后跳过安装。依赖缓存不替代构建产物或质量报告。
-[GitHub 缓存](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)
-可从当前分支或标签以及默认分支恢复，不能跨不同标签共享；反复新建版本标签会失去前一标签的缓存。
-[Playwright 官方](https://playwright.dev/docs/ci#caching-browsers)不推荐缓存浏览器二进制，当前保持直接安装。
-
-本机也可以使用相同的本地构建配置：
-
-```bash
-cd my-reader-mobile
-mkdir -p ../.tmp/release-artifacts/{android,ios}
-
-EAS_LOCAL_BUILD_ARTIFACTS_DIR=../.tmp/release-artifacts/android \
-  pnpm build:release:android:local
-
-EAS_LOCAL_BUILD_ARTIFACTS_DIR=../.tmp/release-artifacts/ios \
-  pnpm build:release:ios:local
-
-npx eas-cli@latest submit \
-  --platform ios \
-  --profile production \
-  --path ../.tmp/release-artifacts/ios/<artifact>.ipa \
-  --groups "Team (Expo)"
-```
-
-本地构建仍需登录 Expo，以读取远端版本和托管签名凭据；它只是不使用 EAS 的云构建机器。
-Android 本地构建需要 JDK 17、Android SDK/NDK，iOS 本地构建需要 macOS、Xcode、CocoaPods 和
-Fastlane。将生成的 Android APK 重命名为 `MyReader-<version>-android.apk`，生成 SHA-256 后可用
-`gh release upload <tag> <apk> <apk>.sha256 --clobber` 上传到现有草稿。
+从最新 `main` 创建 `release/<版本>` 并向 `main` 开 MR。在 Mac 上运行 `pnpm release:local --pr <编号>` 构建候选包。平台分工、凭据、失败处理和合并后的发布步骤见[发布手册](./RELEASE.md)。此前标签流程的实测耗时保存在[迁移前审计](./RELEASE_PROCESS_CURRENT_STATE.md)。
 
 ## 共享包
 

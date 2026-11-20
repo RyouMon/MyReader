@@ -93,6 +93,11 @@ export function classifyChangedPaths(paths) {
 function changedPaths() {
   const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"))
   const pullRequest = event.pull_request
+  if (
+    pullRequest?.base.ref === "main" &&
+    pullRequest.head.ref?.startsWith("release/")
+  )
+    return null
   if (pullRequest) {
     return gitChangedPaths(pullRequest.base.sha, pullRequest.head.sha)
   }

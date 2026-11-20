@@ -2,7 +2,13 @@ name: Desktop Release E2E
 
 on:
   workflow_call:
+    outputs:
+      result:
+        value: ${{ jobs.desktop.outputs.result }}
     inputs:
+      windows_only:
+        type: boolean
+        default: false
       advisory:
         description: 'Keep release candidates available for failure review'
         type: boolean
@@ -24,13 +30,16 @@ env:
 jobs:
   desktop:
     name: Desktop complete E2E / ${{ matrix.os }}
+    if: github.workflow != 'Desktop Release E2E' || !startsWith(github.head_ref, 'release/')
+    outputs:
+      result: ${{ steps.outcome.outputs.result }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     continue-on-error: ${{ inputs.advisory || false }}
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-26-intel]
+        os: ${{ fromJSON(inputs.windows_only && '["windows-latest"]' || '["windows-latest","macos-26-intel"]') }}
     env:
       CI: 'true'
       CARGO_BUILD_JOBS: '2'
@@ -39,6 +48,8 @@ jobs:
       E2E_REPORT_DIR: ${{ github.workspace }}/reports/desktop-native
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v6
         with:
@@ -71,8 +82,10 @@ jobs:
           test -s my-reader/integration-frontend/reports/integration.json
           test -s my-reader/e2e-frontend/reports/report.json
       - name: Run complete native suite
+        id: native
         run: pnpm --filter my-reader test:e2e:native
       - uses: actions/upload-artifact@v4
+        id: reports
         if: always()
         with:
           name: e2e-desktop-${{ matrix.os }}
@@ -84,3 +97,8 @@ jobs:
             my-reader/playwright-report/
           if-no-files-found: error
           retention-days: 30
+      - name: Record advisory outcome before the job conclusion
+        if: always()
+        id: outcome
+        shell: bash
+        run: echo "result=${{ steps.native.outcome == 'success' && steps.reports.outcome == 'success' && 'success' || 'failure' }}" >> "$GITHUB_OUTPUT"

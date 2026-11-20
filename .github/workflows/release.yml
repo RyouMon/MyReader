@@ -1,256 +1,178 @@
 name: Release
+run-name: "${{ github.event.action == 'closed' && 'Finalize' || 'Candidate' }} PR #${{ github.event.number }} at ${{ github.event.pull_request.head.sha }}"
 
 on:
-  push:
-    tags: ['v*']
-  workflow_dispatch:
-    inputs:
-      review_run_id:
-        description: 'Original tag Release run to publish after E2E review; empty starts a rehearsal'
-        type: string
-        default: ''
-      non_functional_e2e_reason:
-        description: 'Confirmed non-functional cause and supporting evidence; required for review'
-        type: string
-        default: ''
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, closed]
 
 permissions:
   contents: read
-  actions: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.event.number }}-${{ github.event.action == 'closed' && 'publish' || github.event.pull_request.head.sha }}
   cancel-in-progress: false
-
-env:
-  NODE_VERSION: 22.22.0
 
 jobs:
   verify:
-    name: Verify release metadata
+    if: github.event.action != 'closed' && startsWith(github.head_ref, 'release/') && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v7
-      - name: Require consistent version and tag
-        shell: bash
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Check the branch version, applications and changelog
         run: |
-          desktop_version=$(jq -er '.version' my-reader/src-tauri/tauri.conf.json)
-          mobile_version=$(jq -er '.expo.version' my-reader-mobile/app.json)
-          test "$desktop_version" = "$mobile_version"
-          if [ "$GITHUB_REF_TYPE" = tag ]; then
-            test "${GITHUB_REF_NAME#v}" = "$desktop_version"
-          fi
+          version="${GITHUB_HEAD_REF#release/}"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$version" = "$(jq -er .version my-reader/src-tauri/tauri.conf.json)"
+          test "$version" = "$(jq -er .expo.version my-reader-mobile/app.json)"
+          grep -Fq "## [$version] -" CHANGELOG.md
 
-  quality:
-    name: All release quality gates
+  windows:
+    name: Windows
     needs: verify
-    if: inputs.review_run_id == ''
-    permissions:
-      contents: read
-      actions: read
-      pull-requests: write
-      statuses: write
-    uses: ./.github/workflows/quality.yml
-    secrets: inherit
-
-  desktop:
-    name: Build desktop release artifacts
-    needs: verify
-    if: inputs.review_run_id == ''
     uses: ./.github/workflows/desktop-build.yml
-    secrets: inherit
-
-  mobile:
-    name: Build mobile release artifacts
-    needs: verify
-    if: inputs.review_run_id == ''
-    uses: ./.github/workflows/mobile-build.yml
-    with:
-      build_android: true
-      build_ios: true
-      run_e2e: true
-      e2e_advisory: true
-    secrets: inherit
 
   desktop-e2e:
-    name: Complete desktop E2E
+    name: Windows E2E
     needs: verify
-    if: inputs.review_run_id == ''
     uses: ./.github/workflows/desktop-e2e.yml
     with:
+      windows_only: true
       advisory: true
 
-  candidate:
-    name: Verify release assets and summarize E2E
-    needs: [quality, desktop, mobile, desktop-e2e]
-    if: >-
-      ${{ !cancelled() && inputs.review_run_id == '' &&
-          needs.quality.result == 'success' && needs.desktop.result == 'success' &&
-          needs.mobile.result == 'success' }}
+  report:
+    needs: [verify, windows, desktop-e2e]
+    if: always() && needs.verify.result == 'success'
     runs-on: ubuntu-22.04
-    outputs:
-      publishable: ${{ steps.evidence.outputs.publishable }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile --prefer-offline
-      - uses: actions/download-artifact@v5
-        with:
-          pattern: MyReader-macOS-*
-          path: release-assets
-          merge-multiple: true
-      - uses: actions/download-artifact@v5
-        with:
-          name: MyReader-Windows-x64
-          path: release-assets
-      - uses: actions/download-artifact@v5
-        with:
-          name: MyReader-Linux-x64
-          path: release-assets
-      - uses: actions/download-artifact@v5
-        with:
-          name: MyReader-Android-APK
-          path: release-assets
-      - uses: actions/download-artifact@v5
-        with:
-          pattern: e2e-*
-          path: test-evidence
-      - name: Verify assets and record incomplete or failed E2E for review
-        id: evidence
-        run: node scripts/release/candidate.mjs release-assets test-evidence "$GITHUB_SHA"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: MyReader-Release-Candidate
-          path: release-assets/
-          if-no-files-found: error
-          retention-days: 30
-
-  review:
-    name: Approve reviewed non-functional E2E failures
-    needs: verify
-    if: inputs.review_run_id != ''
-    runs-on: ubuntu-22.04
+    permissions:
+      pull-requests: write
     env:
       GH_TOKEN: ${{ github.token }}
-      REVIEW_RUN_ID: ${{ inputs.review_run_id }}
-      REVIEW_REASON: ${{ inputs.non_functional_e2e_reason }}
+      PR: ${{ github.event.number }}
+      SHA: ${{ github.event.pull_request.head.sha }}
+      E2E: ${{ needs.desktop-e2e.outputs.result }}
+      WINDOWS: ${{ needs.windows.result }}
+    steps:
+      - name: Report Windows results on the release PR
+        run: |
+          result="⚠️ ${E2E:-no result reported}"
+          if [[ "$E2E" == success ]]; then result="passed"; fi
+          printf 'Windows installers: %s. Windows E2E: %s.\n\nCommit `%s` · [CI logs and reports](%s/%s/actions/runs/%s). E2E is advisory.\n' \
+            "$WINDOWS" "$result" "$SHA" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > "$RUNNER_TEMP/report.md"
+          gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/report.md"
+
+  stage:
+    name: Verify merged candidate and stage public installers
+    if: github.event.action == 'closed' && github.event.pull_request.merged && startsWith(github.head_ref, 'release/') && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+      actions: read
+      statuses: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    outputs:
+      tag: ${{ steps.verify.outputs.tag }}
+      candidate: ${{ steps.verify.outputs.candidate }}
+      ipa: ${{ steps.upload.outputs.ipa }}
+      public_assets: ${{ steps.upload.outputs.public_assets }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
       - uses: actions/setup-node@v6
         with:
-          node-version: ${{ env.NODE_VERSION }}
-      - name: Load the original release run
+          node-version: '22.22.2'
+      - name: Bind PR, merged tree, required checks and verified bytes
+        id: verify
+        run: node scripts/release/finalize-candidate.mjs
+      - name: Stage and verify the exact public asset set
+        id: upload
+        env:
+          TAG: ${{ steps.verify.outputs.tag }}
+          IPA: ${{ steps.verify.outputs.ipa }}
         run: |
-          test "$GITHUB_REF_TYPE" = tag
-          [[ "$REVIEW_RUN_ID" =~ ^[0-9]+$ ]]
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$REVIEW_RUN_ID" > "$RUNNER_TEMP/source-run.json"
-      - uses: actions/download-artifact@v5
-        with:
-          name: MyReader-Release-Candidate
-          path: release-assets
-          run-id: ${{ inputs.review_run_id }}
-          github-token: ${{ github.token }}
-      - name: Bind the review to the same tag, commit, run and artifact bytes
-        run: node scripts/release/review.mjs release-assets "$RUNNER_TEMP/source-run.json"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: MyReader-Release-Candidate
-          path: release-assets/
-          if-no-files-found: error
-          retention-days: 30
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            test "$(gh release view "$TAG" --json isDraft,targetCommitish --jq '[.isDraft,.targetCommitish]|@tsv')" = "$(printf 'true\t%s' "$GITHUB_SHA")"
+          else
+            gh release create "$TAG" --draft --target "$GITHUB_SHA" --title "MyReader $TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
+          fi
+          gh release upload "$TAG" release-assets/* --clobber
+          url=$(gh release view "$TAG" --json apiUrl --jq .apiUrl)
+          gh api "$url" > "$RUNNER_TEMP/draft.json"
+          node scripts/release/verify-upload.mjs release-assets "$RUNNER_TEMP/draft.json" "$TAG"
+          echo "public_assets=$(jq -c '[.assets[] | {name,size,digest,state}]|sort_by(.name)' "$RUNNER_TEMP/draft.json")" >> "$GITHUB_OUTPUT"
+          echo "ipa=$(sha256sum "$IPA" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
   submit-ios:
-    name: Submit approved iOS release to TestFlight
-    if: >-
-      ${{ !cancelled() && startsWith(github.ref, 'refs/tags/v') &&
-          (github.event_name == 'push' || inputs.review_run_id != '') &&
-          (needs.candidate.outputs.publishable == 'true' || needs.review.result == 'success') }}
-    needs: [candidate, review]
-    runs-on: macos-26-intel
+    name: Submit the verified IPA to TestFlight
+    needs: stage
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+      statuses: write
     env:
-      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-      TESTFLIGHT_GROUP: ${{ vars.TESTFLIGHT_INTERNAL_GROUP || 'Team (Expo)' }}
+      GH_TOKEN: ${{ github.token }}
+      CANDIDATE: ${{ needs.stage.outputs.candidate }}
+      EXPECTED: ${{ needs.stage.outputs.ipa }}
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v6
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-      - uses: actions/download-artifact@v5
-        with:
-          name: MyReader-iOS-IPA
-          path: candidate
-          run-id: ${{ inputs.review_run_id || github.run_id }}
-          github-token: ${{ github.token }}
-      - run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Submit the already built IPA after approval
-        working-directory: my-reader-mobile
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+      - name: Check for a previous submission of the same IPA
+        id: prior
         run: |
-          ipa_paths=(../candidate/*.ipa)
-          test "${#ipa_paths[@]}" -eq 1
-          eas submit --platform ios --profile production --path "${ipa_paths[0]}" --groups "$TESTFLIGHT_GROUP" --non-interactive --wait
+          value=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/status" --jq '.statuses[]|select(.context=="Release TestFlight" and .state=="success")|.description')
+          if [[ "$value" == "$EXPECTED" ]]; then echo "submitted=true" >> "$GITHUB_OUTPUT"; fi
+      - uses: pnpm/action-setup@v4
+        if: steps.prior.outputs.submitted != 'true'
+      - uses: actions/setup-node@v6
+        if: steps.prior.outputs.submitted != 'true'
+        with:
+          node-version: '22.22.2'
+          cache: pnpm
+      - if: steps.prior.outputs.submitted != 'true'
+        run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Submit the same binary and record Apple's accepted submission
+        if: steps.prior.outputs.submitted != 'true'
+        working-directory: my-reader-mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          TESTFLIGHT_GROUP: ${{ vars.TESTFLIGHT_INTERNAL_GROUP || 'Team (Expo)' }}
+        run: |
+          gh release download "$CANDIDATE" --pattern '*.ipa' --dir "$RUNNER_TEMP/ipa"
+          files=("$RUNNER_TEMP"/ipa/*.ipa)
+          test "${#files[@]}" = 1
+          test "$(sha256sum "${files[0]}" | cut -d' ' -f1)" = "$EXPECTED"
+          npx --yes eas-cli@27.11.0 submit --platform ios --profile production --path "${files[0]}" --groups "$TESTFLIGHT_GROUP" --non-interactive --wait
+          gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" -f context='Release TestFlight' -f state=success -f description="$EXPECTED" --silent
 
   publish:
-    name: Publish approved release automatically
-    if: >-
-      ${{ !cancelled() && needs.submit-ios.result == 'success' &&
-          (github.event_name == 'push' || inputs.review_run_id != '') &&
-          startsWith(github.ref, 'refs/tags/v') }}
-    needs: submit-ios
+    name: Publish at the merge commit
+    needs: [stage, submit-ios]
     runs-on: ubuntu-22.04
     permissions:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
+      EXPECTED: ${{ needs.stage.outputs.public_assets }}
+      TAG: ${{ needs.stage.outputs.tag }}
+      CANDIDATE: ${{ needs.stage.outputs.candidate }}
+      GH_REPO: ${{ github.repository }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v5
-        with:
-          name: MyReader-Release-Candidate
-          path: release-assets
-      - name: Prepare changelog and verify artifact integrity
+      - name: Check staged bytes and publish the final tag
         run: |
-          version="${GITHUB_REF_NAME#v}"
-          heading="## [$version]"
-          awk -v heading="$heading" '
-            index($0, heading) == 1 { capture = 1; next }
-            capture && /^## \[/ { exit }
-            capture { print }
-          ' CHANGELOG.md > "$RUNNER_TEMP/release-notes.md"
-          test -s "$RUNNER_TEMP/release-notes.md"
-          python3 - <<'PY'
-          import hashlib, json, os, pathlib
-          root = pathlib.Path('release-assets')
-          manifest = json.loads((root / 'release-evidence.json').read_text())
-          assert manifest['commit'] == os.environ['GITHUB_SHA']
-          e2e = manifest['e2e']
-          assert e2e['status'] == 'passed' or e2e.get('review', {}).get('classification') == 'non-functional'
-          for name, digest in manifest['assets'].items():
-              assert pathlib.Path(name).name == name
-              assert hashlib.sha256((root / name).read_bytes()).hexdigest() == digest, name
-          PY
-      - name: Publish only after upload succeeds
-        run: |
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            test "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq '.isDraft')" = true
-            gh release edit "$GITHUB_REF_NAME" --draft --verify-tag --title "MyReader $GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md"
-          else
-            gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "MyReader $GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md"
+          url=$(gh release view "$TAG" --json apiUrl --jq .apiUrl)
+          gh api "$url" > "$RUNNER_TEMP/final.json"
+          jq -e --arg sha "$GITHUB_SHA" --arg tag "$TAG" --argjson expected "$EXPECTED" \
+            '.target_commitish==$sha and .tag_name==$tag and ([.assets[] | {name,size,digest,state}] | sort_by(.name))==$expected' "$RUNNER_TEMP/final.json"
+          if jq -e .draft "$RUNNER_TEMP/final.json" >/dev/null; then
+            gh release edit "$TAG" --draft=false --latest
           fi
-          gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber
-          release_api_url=$(gh release view "$GITHUB_REF_NAME" --json apiUrl --jq '.apiUrl')
-          gh api "$release_api_url" > "$RUNNER_TEMP/uploaded-release.json"
-          node scripts/release/verify-upload.mjs release-assets "$RUNNER_TEMP/uploaded-release.json" "$GITHUB_REF_NAME"
-          gh release edit "$GITHUB_REF_NAME" --draft=false --latest
-          test "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq '.isDraft')" = false
+          test "$(gh api "repos/$GH_REPO/commits/$TAG" --jq .sha)" = "$GITHUB_SHA"
+          test "$(gh release view "$TAG" --json isDraft --jq .isDraft)" = false
+      - name: Remove the promoted candidate draft
+        run: |
+          if gh release view "$CANDIDATE" --json isDraft --jq .isDraft | grep -qx true; then gh release delete "$CANDIDATE" --yes; fi

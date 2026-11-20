@@ -1,182 +1,83 @@
 import assert from "node:assert/strict"
-import { createHash } from "node:crypto"
-import {
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  readdirSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { dirname, join } from "node:path"
+import { join } from "node:path"
 import test from "node:test"
 import {
-  prepareCandidate,
-  validateBrowserReport,
-  validateEvidence,
+  candidateIdentity,
+  digest,
+  evidenceFile,
+  manifestFor,
+  releaseFiles,
+  verifyCandidate,
 } from "../release/candidate.mjs"
+import { isCandidateRun } from "../release/github.mjs"
 
-test("release evidence rejects an old commit, partial suites and missing artifact identity", () => {
-  const suite = ["import", "read", "restore"]
-  const passing = { commit: "candidate", sha256: "a".repeat(64), suite }
-  validateEvidence(passing, "candidate", suite)
-  assert.throws(
-    () => validateEvidence(passing, "new-head", suite),
-    /another commit/,
-  )
-  assert.throws(
-    () =>
-      validateEvidence({ ...passing, suite: ["import"] }, "candidate", suite),
-    /complete suite/,
-  )
-  assert.throws(
-    () => validateEvidence({ ...passing, sha256: "" }, "candidate", suite),
-    /digest/,
-  )
-})
+const repo = "example/project",
+  commit = "1".repeat(40),
+  tree = "2".repeat(40)
+const pr = {
+  number: 8,
+  head: { ref: "release/1.2.3", sha: commit, repo: { full_name: repo } },
+  base: { ref: "main", repo: { full_name: repo } },
+}
+const identity = candidateIdentity(pr, repo, tree)
 
-test("release candidates retain assets for E2E review without relaxing artifact integrity", () => {
-  const root = mkdtempSync(join(tmpdir(), "myreader-release-"))
-  try {
-    const assets = join(root, "assets")
-    const evidence = join(root, "evidence")
-    mkdirSync(assets)
-    const apk = "MyReader.apk"
-    const digest = createHash("sha256").update("release payload").digest("hex")
-    for (const name of [
-      "arm.dmg",
-      "intel.dmg",
-      "msi/app.msi",
-      "nsis/app.exe",
-      "appimage/app.AppImage",
-      "deb/app.deb",
-      "rpm/app.rpm",
-      apk,
-    ]) {
-      mkdirSync(dirname(join(assets, name)), { recursive: true })
-      writeFileSync(join(assets, name), "release payload")
-    }
-    writeFileSync(join(assets, `${apk}.sha256`), `${digest}  ${apk}\n`)
-    const mobile = JSON.parse(
-      readFileSync(
-        new URL(
-          "../../my-reader-mobile/e2e/release-suite.json",
-          import.meta.url,
-        ),
-      ),
-    )
-    const desktop = JSON.parse(
-      readFileSync(
-        new URL("../../my-reader/e2e-native/suite.json", import.meta.url),
-      ),
-    )
-    const report = (name, platform, suite) => {
-      const directory = join(evidence, name, "reports")
-      mkdirSync(directory, { recursive: true })
-      writeFileSync(
-        join(directory, "passed.json"),
-        JSON.stringify({ commit: "head", platform, suite, sha256: digest }),
-      )
-      return directory
-    }
-    report("e2e-mobile-android", "android", mobile.android)
-    report("e2e-mobile-ios-iPhone", "ios", mobile.ios)
-    report("e2e-mobile-ios-iPad", "ios", mobile.ios)
-    for (const [runner, platform] of [
-      ["windows-latest", "win32"],
-      ["macos-latest", "darwin"],
-    ]) {
-      const directory = report(`e2e-desktop-${runner}`, platform, desktop)
-      for (const name of ["report.json", "integration.json"]) {
-        writeFileSync(
-          join(directory, name),
-          JSON.stringify({
-            stats: { expected: 12, unexpected: 0, skipped: 0, flaky: 0 },
-            errors: [],
-          }),
-        )
-      }
-    }
-    const manifest = prepareCandidate(assets, evidence, "head")
-    assert.equal(manifest.e2e.status, "passed")
-    assert.equal(manifest.e2e.results.length, 5)
-    assert.equal(manifest.assets[apk], digest)
-    assert.deepEqual(
-      readdirSync(assets).sort(),
-      [
-        ...Object.keys(manifest.assets),
-        `${apk}.sha256`,
-        "release-evidence.json",
-      ].sort(),
-    )
-    for (const name of Object.keys(manifest.assets))
-      assert.equal(readFileSync(join(assets, name), "utf8"), "release payload")
-    rmSync(join(assets, "release-evidence.json"))
-    mkdirSync(join(assets, "nested"))
-    writeFileSync(join(assets, "nested/arm.dmg"), "conflicting installer")
-    rmSync(join(assets, "intel.dmg"))
-    assert.throws(() => prepareCandidate(assets, evidence, "head"), /unique/)
-    assert.equal(
-      readFileSync(join(assets, "arm.dmg"), "utf8"),
-      "release payload",
-    )
-    rmSync(join(assets, "nested"), { recursive: true })
-    writeFileSync(join(assets, "intel.dmg"), "release payload")
-    writeFileSync(join(assets, apk), "untested replacement")
-    assert.throws(
-      () => prepareCandidate(assets, evidence, "head"),
-      /checksum mismatch/,
-    )
-    const replacementDigest = createHash("sha256")
-      .update("untested replacement")
-      .digest("hex")
-    writeFileSync(
-      join(assets, `${apk}.sha256`),
-      `${replacementDigest}  ${apk}\n`,
-    )
-    assert.throws(
-      () => prepareCandidate(assets, evidence, "head"),
-      /Tested APK differs/,
-    )
-    assert.throws(
-      () => prepareCandidate(assets, evidence, "head", { advisory: true }),
-      /Tested APK differs/,
-    )
-    writeFileSync(join(assets, apk), "release payload")
-    writeFileSync(join(assets, `${apk}.sha256`), `${digest}  ${apk}\n`)
-    rmSync(join(evidence, "e2e-desktop-windows-latest"), { recursive: true })
-    assert.throws(() => prepareCandidate(assets, evidence, "head"), /ENOENT/)
-    const reviewed = prepareCandidate(assets, evidence, "head", {
-      advisory: true,
-      sourceRun: { id: "123", attempt: "1" },
-    })
-    assert.equal(reviewed.e2e.status, "review-required")
-    assert.deepEqual(reviewed.sourceRun, { id: "123", attempt: "1" })
-    assert.equal(
-      reviewed.e2e.results.filter((result) => result.status === "passed")
-        .length,
-      4,
-    )
-    assert.match(reviewed.e2e.results.at(-2).reason, /ENOENT/)
-    assert.equal(readFileSync(join(assets, apk), "utf8"), "release payload")
-  } finally {
-    rmSync(root, { recursive: true, force: true })
+test("release PRs bind the repo, version, SHA, PR number and built tree", () => {
+  assert.equal(identity.version, "1.2.3")
+  for (const changed of [
+    { ...pr, head: { ...pr.head, ref: "release/latest" } },
+    { ...pr, base: { ...pr.base, ref: "test" } },
+    { ...pr, head: { ...pr.head, repo: { full_name: "fork/project" } } },
+  ])
+    assert.throws(() => candidateIdentity(changed, repo, tree))
+  const run = {
+    event: "pull_request",
+    head_sha: commit,
+    head_branch: "release/1.2.3",
+    head_repository: { full_name: repo },
+    path: ".github/workflows/release.yml",
+    display_title: `Candidate PR #8 at ${commit}`,
   }
+  assert.ok(isCandidateRun(run, identity))
+  for (const changes of [
+    { head_sha: tree },
+    { event: "push" },
+    { head_repository: { full_name: "other/project" } },
+    { display_title: `Candidate PR #9 at ${commit}` },
+  ])
+    assert.equal(isCandidateRun({ ...run, ...changes }, identity), false)
 })
 
-test("browser release gate rejects failures, retries, skipped tests and empty runs", () => {
-  const stats = { expected: 10, unexpected: 0, flaky: 0, skipped: 0 }
-  validateBrowserReport({ stats, errors: [] })
-  for (const key of ["unexpected", "flaky", "skipped"]) {
+test("promotion verifies every file, exact architecture, checksum, PR and tree", (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "reader-candidate-"))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  const { installers, ipa, simulator, checksum } = releaseFiles(
+    identity.version,
+  )
+  const apk = checksum.slice(0, -7)
+  for (const f of [...installers, ipa, simulator])
+    writeFileSync(join(dir, f), f)
+  const apkHash = digest(join(dir, apk))
+  writeFileSync(join(dir, checksum), apkHash + "  " + apk + "\n")
+  const manifest = manifestFor(dir, identity, 215)
+  writeFileSync(join(dir, evidenceFile), JSON.stringify(manifest))
+  const seal = digest(join(dir, evidenceFile))
+  assert.deepEqual(verifyCandidate(dir, identity, seal), manifest)
+  assert.equal(manifest.e2e.policy, "advisory")
+  assert.ok(!Object.hasOwn(manifest.assets, ipa))
+  for (const mismatch of [{ tree: commit }, { commit: tree }, { pr: 9 }])
     assert.throws(() =>
-      validateBrowserReport({ stats: { ...stats, [key]: 1 }, errors: [] }),
+      verifyCandidate(dir, { ...identity, ...mismatch }, seal),
     )
-  }
-  assert.throws(() =>
-    validateBrowserReport({ stats: { ...stats, expected: 0 }, errors: [] }),
+  assert.throws(
+    () => verifyCandidate(dir, identity, "0".repeat(64)),
+    /approved/,
   )
-  assert.throws(() =>
-    validateBrowserReport({ stats, errors: [{ message: "runner crashed" }] }),
-  )
+  writeFileSync(join(dir, ipa), "replacement")
+  assert.throws(() => verifyCandidate(dir, identity, seal), /bytes/)
+  writeFileSync(join(dir, checksum), "stale  " + apk)
+  assert.throws(() => manifestFor(dir, identity, 215), /checksum mismatch/)
+  writeFileSync(join(dir, "unexpected.dmg"), "extra")
+  assert.throws(() => manifestFor(dir, identity, 215), /Unexpected/)
 })
