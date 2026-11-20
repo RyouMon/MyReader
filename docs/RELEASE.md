@@ -1,5 +1,7 @@
 # MyReader 发布手册
 
+自 v0.23.1 起，正式发布面向 Windows、macOS、Android 和 iOS。Linux 安装包停止分发。
+
 1. 从最新的 `main` 创建 `release/<版本>`，例如 `release/0.23.1`。同步桌面和移动版本，更新中英文更新日志，向 `main` 开 MR。创建或更新 MR 会启动验证，正式标签要等到合并之后。
 2. 在发布 Mac 的仓库目录运行 `pnpm release:local --pr <MR 编号>`。命令检查 MR 所属仓库、目标分支、版本和当前提交，在独立工作目录构建。Windows 流水线与本机可以同时工作。
 
@@ -7,7 +9,6 @@
    | --- | --- | --- |
    | Windows x64 | GitHub Actions | MSI、NSIS 安装程序 |
    | macOS | Mac | Apple Silicon、Intel 各一个 Developer ID 签名、公证并装订公证票据的 DMG |
-   | Linux x64 | Mac 上的 Linux amd64 容器 | AppImage、DEB、RPM |
    | Android | Mac，EAS local | 使用生产签名的 APK 及 SHA-256 |
    | iOS | Mac | 分发 IPA，以及供 iPhone/iPad 测试的 Release simulator app |
 
@@ -28,7 +29,7 @@ xcrun notarytool store-credentials MyReader-Notary --apple-id "开发者账号�
 xcrun notarytool history --keychain-profile MyReader-Notary
 ```
 
-Mac 需要 Xcode、CocoaPods、Fastlane、JDK 和 Android SDK/NDK、Rust 两种 macOS 架构目标、pnpm、Docker 及 Maestro。GitHub 仓库 Secrets 供 Actions 使用。本机 Expo 可使用已登录的账号或环境变量 `EXPO_TOKEN`。
+Mac 需要 Xcode、CocoaPods、Fastlane、JDK 和 Android SDK/NDK、Rust 两种 macOS 架构目标、pnpm 及 Maestro。GitHub 仓库 Secrets 供 Actions 使用。本机 Expo 可使用已登录的账号或环境变量 `EXPO_TOKEN`。
 
 ## 失败和重试
 

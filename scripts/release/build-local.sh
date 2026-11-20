@@ -13,40 +13,31 @@ case "$platform" in
     identity=${APPLE_SIGNING_IDENTITY:-$(security find-identity -v -p codesigning | awk -F'"' '/Developer ID Application:/ { print $2; exit }')}
     [[ "$identity" == "Developer ID Application:"* ]] || { echo 'Developer ID Application identity required' >&2; exit 1; }
     export APPLE_SIGNING_IDENTITY="$identity"
+    verify_dmg() (
+      mount=$(mktemp -d "$cache/macos-mount.XXXXXX")
+      trap 'rmdir "$mount"' EXIT
+      hdiutil attach -nobrowse -readonly -mountpoint "$mount" "$1" >/dev/null
+      trap 'hdiutil detach "$mount" >/dev/null && rmdir "$mount"' EXIT
+      app="$mount/MyReader.app"
+      codesign --verify --deep --strict "$app"
+      binary=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")
+      lipo "$app/Contents/MacOS/$binary" -verify_arch "$2"
+    )
     for target in aarch64-apple-darwin x86_64-apple-darwin; do
       pnpm --filter my-reader tauri build --target "$target" --bundles dmg -- --locked
       arch=aarch64
       if [[ "$target" == x86_64-* ]]; then arch=x64; fi
       bundle="$CARGO_TARGET_DIR/$target/release/bundle"
       disk="$bundle/dmg/MyReader_${version}_${arch}.dmg"
-      app="$bundle/macos/MyReader.app"
-      codesign --verify --deep --strict "$app"
-      binary=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")
       cpu=x86_64
       if [[ "$arch" == aarch64 ]]; then cpu=arm64; fi
-      lipo -verify_arch "$cpu" "$app/Contents/MacOS/$binary"
+      verify_dmg "$disk" "$cpu"
       xcrun notarytool submit "$disk" --keychain-profile "${MYREADER_NOTARY_PROFILE:-MyReader-Notary}" --wait
       xcrun stapler staple "$disk"
       xcrun stapler validate "$disk"
       spctl --assess --type open --context context:primary-signature "$disk"
       cp "$disk" "$out/"
     done
-    ;;
-  linux)
-    image="myreader-release-linux:$(git rev-parse HEAD:scripts/release/linux)"
-    docker build --platform linux/amd64 -t "$image" scripts/release/linux
-    git archive HEAD | docker run --rm -i --platform linux/amd64 \
-      -v "$out:/out" -v myreader-linux-pnpm:/pnpm -v myreader-linux-cargo:/root/.cargo/registry \
-      -v myreader-linux-target:/target -v myreader-linux-tools:/root/.cache \
-      -e CI=true -e HUSKY=0 -e CARGO_BUILD_JOBS=4 -e CARGO_TARGET_DIR=/target \
-      "$image" bash -euc '
-        tar -xf -
-        pnpm install --frozen-lockfile --prefer-offline --store-dir /pnpm
-        pnpm --filter my-reader tauri build --bundles appimage,deb,rpm -- --locked
-        cp "/target/release/bundle/appimage/MyReader_${1}_amd64.AppImage" \
-           "/target/release/bundle/deb/MyReader_${1}_amd64.deb" \
-           "/target/release/bundle/rpm/MyReader-${1}-1.x86_64.rpm" /out/
-      ' bash "$version"
     ;;
   android|ios)
     export CARGO_TARGET_DIR="$cache/mobile-$platform"

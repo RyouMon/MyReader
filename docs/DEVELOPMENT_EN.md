@@ -163,7 +163,7 @@ Sentry is optional.
 
 ## Release Builds
 
-Open a PR from `release/<version>` to `main`. Run `pnpm release:local --pr <number>` on the release Mac. GitHub Actions builds Windows. The Mac builds and uploads macOS, Linux x64, Android and iOS candidates. Post E2E failures on the PR as warnings. After quality and artifact checks pass, merge the PR and publish the verified candidate at the merge commit. See the [release runbook](./RELEASE.md).
+Open a PR from `release/<version>` to `main`. Run `pnpm release:local --pr <number>` on the release Mac. GitHub Actions builds Windows. The Mac builds and uploads macOS, Android and iOS candidates. Post E2E failures on the PR as warnings. After quality and artifact checks pass, merge the PR and publish the verified candidate at the merge commit. See the [release runbook](./RELEASE.md).
 
 ## Shared Packages
 

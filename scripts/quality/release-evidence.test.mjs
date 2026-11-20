@@ -66,6 +66,15 @@ test("promotion verifies every file, exact architecture, checksum, PR and tree",
   assert.deepEqual(verifyCandidate(dir, identity, seal), manifest)
   assert.equal(manifest.e2e.policy, "advisory")
   assert.ok(!Object.hasOwn(manifest.assets, ipa))
+  for (const name of [
+    "MyReader_1.2.3_amd64.AppImage",
+    "MyReader_1.2.3_amd64.deb",
+    "MyReader-1.2.3-1.x86_64.rpm",
+  ]) {
+    writeFileSync(join(dir, name), "discontinued installer")
+    assert.throws(() => verifyCandidate(dir, identity, seal), /Unexpected/)
+    rmSync(join(dir, name))
+  }
   for (const mismatch of [{ tree: commit }, { commit: tree }, { pr: 9 }])
     assert.throws(() =>
       verifyCandidate(dir, { ...identity, ...mismatch }, seal),

@@ -1,6 +1,6 @@
 # 应用更新
 
-Windows、macOS、Linux 和 Android 从本仓库的 GitHub Releases 检查正式版本。
+Windows、macOS 和 Android 从本仓库的 GitHub Releases 获取正式版本。自 v0.23.1 起停止发布 Linux 安装包，历史 Linux 安装包仍保留在原版本的 Release 中。
 iOS 继续通过 App Store 更新，不展示更新设置，也不会发起 Release 检查。
 
 ## 用户操作
@@ -11,8 +11,7 @@ iOS 继续通过 App Store 更新，不展示更新设置，也不会发起 Rele
 - 发现新版本后，桌面端将版本号和 Markdown 更新日志一起展示；Android 点击“更新说明”后，在独立 sheet 中查看版本和日志。没有新版本时隐藏更新说明入口。
 - 自动下载安装包默认关闭。启用后，在应用运行期间下载新版本，不会自动安装或重启。
 - 桌面端下载完成后，点击“打开安装程序”，直接打开已校验的安装包并手动完成安装。
-  macOS 打开 DMG 安装界面；Linux DEB/RPM 交给系统软件包管理器，
-  AppImage 在点击后赋予执行权限并启动，作为便携应用使用。
+  macOS 打开 DMG 安装界面。
 - Android 下载完成后，点击“打开安装程序”，由系统完成权限提示和安装确认。
   首次使用可能需要允许 MyReader 安装未知应用。
 - 下载状态与偏好保存在设备本地，不随书库同步。重启后会重新校验已下载的文件。
@@ -32,14 +31,9 @@ iOS 继续通过 App Store 更新，不展示更新设置，也不会发起 Rele
 | macOS Intel | `MyReader_<version>_x64.dmg` |
 | Windows NSIS | `MyReader_<version>_x64-setup.exe` |
 | Windows MSI | `MyReader_<version>_x64_en-US.msi` |
-| Linux AppImage | `MyReader_<version>_amd64.AppImage` |
-| Linux Debian | `MyReader_<version>_amd64.deb` |
-| Linux RPM | `MyReader-<version>-1.x86_64.rpm` |
 | Android | `MyReader-<version>-android.apk` |
 
-桌面端根据运行架构及 Tauri 的 bundle type 选择安装包，保留 MSI/NSIS、
-AppImage/DEB/RPM 的安装格式。开发环境未记录 bundle type 时，
-Windows 默认 NSIS，Linux 默认 AppImage。缺少匹配的安装包时显示提示，不下载其他架构。
+桌面端按运行架构选择安装包。在 Windows 上，更新沿用 MSI 或 NSIS 安装格式，开发环境未记录 bundle type 时默认 NSIS。
 
 下载仅接受本仓库 Release 的 HTTPS 资产地址，并要求 GitHub 返回资产 SHA-256。
 先写入临时文件，通过文件大小和 SHA-256 校验后才标记下载完成；

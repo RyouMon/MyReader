@@ -8,6 +8,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [0.23.1] - 2026-11-20
 
+- Linux AppImage, DEB and RPM packages are discontinued starting with this version. Previously published packages are available from their original GitHub Releases.
 - Adds Google Drive, Dropbox and S3 libraries and includes the desktop long-path and mobile reader toolbar fixes from 0.23.0. Guards Android callbacks after a WebView is destroyed and updates the Rust ZIP dependency with a security fix.
 
 ## [0.23.0] - 2026-11-20

@@ -171,7 +171,7 @@ Swift 任务使用 Apple Silicon runner，启用 React Native 官方 ccache 支�
 
 - 桌面 React：完整 `pnpm test:desktop`；交互流程使用现有 Playwright + IPC mock。
   发布时 Windows、macOS 还运行 `test:integration:frontend`、`test:e2e:frontend` 和 `test:e2e:native`。
-  Ubuntu 暂不执行 release E2E；Linux 安装包仍正常构建。
+  Ubuntu 继续运行 Rust 等质量检查。发布流程不再构建 Linux 安装包。
   原生套件通过可选 `e2e` Cargo feature 操作独立 Release 应用、真实 Core 和窗口；生产包不含测试服务。
   该套件不替代系统文件对话框与权限的人工验证。
 - 移动 React Native：完整 `pnpm test:mobile`；日常使用 dev build 直接操作模拟器/真机。
@@ -183,10 +183,8 @@ Swift 任务使用 Apple Silicon runner，启用 React Native 官方 ccache 支�
   再决定测试层；不为每个组件强制建测试，不固定容易调整的像素或 utility class。
 - 改动包必须运行完整单元套件。聚焦测试可用于开发，不能替代最终全包回归。
 
-Release E2E 全部通过时自动发布；失败、缺报告、跳过或 flaky 时保留候选包和证据，
-由人工或代理复核原因。确认属于非功能原因后，可通过原运行编号和复核说明复用同一批包发布；
-功能问题或原因未明时不自动放行。Quality、构建和安装包完整性仍须通过。
-复核入口与审计记录见 [发布流水线](../my-reader-mobile/e2e/README.md#发布流水线)。
+在发布 MR 中记录 E2E 失败、跳过和缺失的报告，供审阅者判断是否需要修复。
+质量检查、构建及产物校验是合并门禁。具体步骤见[发布手册](./RELEASE.md)。
 
 当前变异集合只覆盖配置中指定的共享 TS 模块（实际列表见
 [`packages/tools/stryker.config.json`](../packages/tools/stryker.config.json)），不代表全部 UI、Rust、

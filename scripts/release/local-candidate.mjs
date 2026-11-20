@@ -221,7 +221,6 @@ async function main() {
     mkdirSync(windows, { recursive: true })
     const pending = [
       windowsDownload(identity, windows),
-      build("linux", source),
       sharedInstall.then(() => build("macos", source)),
       sharedInstall.then(() => build("android", source)),
       sharedInstall.then(() => build("ios", source)),
@@ -235,12 +234,13 @@ async function main() {
       readFileSync(join(windows, "commit.txt"), "utf8").trim(),
       commit,
     )
-    for (const dir of [windows, ...results.slice(1).map((r) => r.value)]) {
+    const [windowsResult, ...localResults] = results
+    for (const dir of [windows, ...localResults.map((r) => r.value)]) {
       for (const file of readdirSync(dir))
         if (file !== "commit.txt")
           copyFileSync(join(dir, file), join(assets, file))
     }
-    const manifest = manifestFor(assets, identity, results[0].value)
+    const manifest = manifestFor(assets, identity, windowsResult.value)
     writeFileSync(
       join(assets, evidenceFile),
       JSON.stringify(manifest, null, 2) + "\n",
@@ -292,7 +292,7 @@ async function main() {
     ready = true
     comment(
       "candidate",
-      `Candidate for **v${version}** at \`${commit}\` uploaded. All eight installers, the APK checksum, IPA and simulator archive match their server-side SHA-256. [Windows build](https://github.com/${repository}/actions/runs/${manifest.windowsRun}). Local E2E reports follow as advisory comments.\n`,
+      `Candidate for **v${version}** at \`${commit}\` uploaded. All five installers, the APK checksum, IPA and simulator archive match their server-side SHA-256. [Windows build](https://github.com/${repository}/actions/runs/${manifest.windowsRun}). Local E2E reports follow as advisory comments.\n`,
     )
     await Promise.all([refreshQA(), advise(source)])
   } catch (error) {
