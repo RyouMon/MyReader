@@ -218,6 +218,7 @@ async function main() {
       )
     const sharedInstall = install(source)
     const windows = join(releaseRoot, "windows")
+    rmSync(windows, { recursive: true, force: true })
     mkdirSync(windows, { recursive: true })
     const pending = [
       windowsDownload(identity, windows),
