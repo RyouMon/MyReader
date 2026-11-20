@@ -163,44 +163,7 @@ Sentry is optional.
 
 ## Release Builds
 
-A `v*` tag starts the complete automated release pipeline: build all packages, run the full
-Quality workflow, run mobile Maestro and desktop E2E, and validate reports and artifact digests.
-Android tests the exact signed distribution APK. iPhone and iPad test the same Release simulator
-app, built from the IPA's commit and production configuration, including native settings XCTest.
-A device IPA cannot run in Simulator. macOS and Windows run every browser integration/E2E
-scenario and the Release native WebDriver suite with an isolated test application ID.
-Ubuntu release E2E is temporarily disabled; Linux installers are still built and validated as release assets.
-
-Only a complete successful gate permits submitting the already built IPA to TestFlight and then
-publishing the GitHub Release automatically. Missing reports, skips, failures and flaky results block
-publication. Manual `Release` dispatch is a full rehearsal with no TestFlight submission or publication.
-The separate desktop/mobile candidate workflows only build and store Actions artifacts.
-See the [Release E2E runbook](../my-reader-mobile/e2e/README.md) for commands and evidence boundaries.
-
-Local production builds remain available:
-
-```bash
-cd my-reader-mobile
-mkdir -p ../.tmp/release-artifacts/{android,ios}
-
-EAS_LOCAL_BUILD_ARTIFACTS_DIR=../.tmp/release-artifacts/android \
-  pnpm build:release:android:local
-
-EAS_LOCAL_BUILD_ARTIFACTS_DIR=../.tmp/release-artifacts/ios \
-  pnpm build:release:ios:local
-
-npx eas-cli@latest submit \
-  --platform ios \
-  --profile production \
-  --path ../.tmp/release-artifacts/ios/<artifact>.ipa \
-  --groups "Team (Expo)"
-```
-
-Local builds still authenticate with Expo to read remote versions and managed signing credentials; they only
-avoid the EAS cloud builders. Android local builds require JDK 17 and the Android SDK/NDK. iOS local builds
-require macOS, Xcode, CocoaPods, and Fastlane. Rename the Android result to
-`MyReader-<version>-android.apk`, create its SHA-256 checksum, and upload both files to the existing draft with
-`gh release upload <tag> <apk> <apk>.sha256 --clobber`.
+Open a PR from `release/<version>` to `main`. Run `pnpm release:local --pr <number>` on the release Mac. GitHub Actions builds Windows. The Mac builds and uploads macOS, Android and iOS candidates. Post E2E failures on the PR as warnings. After quality and artifact checks pass, merge the PR and publish the verified candidate at the merge commit. See the [release runbook](./RELEASE.md).
 
 ## Shared Packages
 

@@ -148,6 +148,16 @@ test("PR detection handles renames and Unicode paths without including unrelated
     assert.equal(result.android, "true")
     assert.equal(result.rust, "false")
     assert.ok(Object.values(detect({})).every((value) => value === "true"))
+    assert.ok(
+      Object.values(
+        detect({
+          pull_request: {
+            base: { ref: "main", sha: base },
+            head: { ref: "release/1.0.0", sha: head },
+          },
+        }),
+      ).every((value) => value === "true"),
+    )
     assert.throws(() =>
       detect({
         pull_request: { base: { sha: "missing" }, head: { sha: head } },

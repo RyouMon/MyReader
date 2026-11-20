@@ -89,8 +89,9 @@ Installers for the current stable release are available from [GitHub Releases](h
 | Android | Available | Signed APK with SHA-256 checksum |
 | macOS | Available | Apple Silicon / Intel DMG |
 | Windows | Available | x64 EXE / MSI |
-| Linux | Available | AppImage / DEB / RPM |
 | iOS / iPadOS | Preparing for review | External TestFlight will open after approval |
+
+Linux installers are discontinued starting with v0.23.1. Previously published Linux packages remain in their original Releases.
 
 > [!NOTE]
 > Release asset names include a version number. Open the latest Release first, then choose the installer that matches your platform and architecture.

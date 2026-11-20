@@ -5,6 +5,11 @@
 MyReader 的重要变更均记录于此。
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [0.23.1] - 2026-11-20
+
+- 自本版起停止发布 Linux 的 AppImage、DEB 和 RPM 安装包。历史版本的安装包仍可在对应的 GitHub Release 下载。
+- 新增 Google Drive、Dropbox 和 S3 书库，延续 0.23.0 的桌面长路径与移动阅读器工具栏修复。修复 Android 已销毁的 WebView 回调，并更新 Rust ZIP 依赖的安全补丁。
+
 ## [0.23.0] - 2026-11-20
 
 ### Added

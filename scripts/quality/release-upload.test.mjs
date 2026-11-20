@@ -66,7 +66,7 @@ test("draft publication resolves its API resource and verifies uploads before pu
       "utf8",
     ),
   )
-  const publish = jobs.publish.steps.find((step) =>
+  const publish = jobs.stage.steps.find((step) =>
     step.run?.includes("scripts/release/verify-upload.mjs"),
   )
   const directory = mkdtempSync(join(tmpdir(), "myreader-publish-"))
@@ -78,6 +78,8 @@ test("draft publication resolves its API resource and verifies uploads before pu
       join(directory, "scripts/release/verify-upload.mjs"),
     )
     writeFileSync(join(directory, "release-assets/app.apk"), "tested")
+    const ipa = join(directory, "test.ipa")
+    writeFileSync(ipa, "test ipa")
     const state = join(directory, "draft-state")
     const response = join(directory, "release.json")
     writeFileSync(
@@ -88,6 +90,7 @@ case "$1 $2" in
   "release view")
     case "$*" in
       *"--json apiUrl"*) printf '%s\\n' "$GH_MOCK_API_URL" ;;
+      *"--json isDraft,targetCommitish"*) printf 'true\\tmerge\\n' ;;
       *"--json isDraft"*) cat "$GH_MOCK_STATE" ;;
     esac ;;
   "release edit")
@@ -126,7 +129,10 @@ esac
         env: {
           ...process.env,
           PATH: `${directory}:${process.env.PATH}`,
-          GITHUB_REF_NAME: "v1.0.0",
+          TAG: "v1.0.0",
+          GITHUB_OUTPUT: join(directory, "output"),
+          IPA: ipa,
+          GITHUB_SHA: "merge",
           GITHUB_REPOSITORY: "example/repo",
           RUNNER_TEMP: directory,
           GH_MOCK_API_URL:
@@ -136,7 +142,7 @@ esac
         },
       })
       assert.equal(result.status, mismatched ? 1 : 0, result.stderr)
-      assert.equal(readFileSync(state, "utf8"), String(mismatched))
+      assert.equal(readFileSync(state, "utf8"), "true")
     }
   } finally {
     rmSync(directory, { recursive: true, force: true })

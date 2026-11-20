@@ -89,8 +89,9 @@ MyReader 最初面向使用 Calibre 管理电子书的用户设计。Calibre 仍
 | Android | 可下载 | Release 中的签名 APK（同时提供 SHA-256） |
 | macOS | 可下载 | Apple Silicon / Intel DMG |
 | Windows | 可下载 | x64 EXE / MSI |
-| Linux | 可下载 | AppImage / DEB / RPM |
 | iOS / iPadOS | 准备审核中 | 外部 TestFlight 通过审核后开放 |
+
+从 v0.23.1 起停止发布 Linux 安装包，历史 Linux 安装包仍保留在原版本的 Release 中。
 
 > [!NOTE]
 > Release 文件名包含版本号。为避免网站链接随版本失效，请先进入最新 Release，再选择与你的平台和架构匹配的安装包。

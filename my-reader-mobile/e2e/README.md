@@ -8,7 +8,7 @@
 
 `release-suite.json` 是发布套件清单。Android 全部执行；iOS 在 iPhone 和 iPad 各执行全部流程，
 包括原生阅读设置弹层中的字体切换和位置保持。
-失败保留并进入发布复核；没有 `wip`、排除标签、AI 视觉断言或整例自动重试。
+失败保留并记入发布 MR；没有 `wip`、排除标签、AI 视觉断言或整例自动重试。
 
 iOS 使用官方 `snapshotKeyHonorModalViews: false`，让 iPad 系统文件选择器的跨进程控件进入
 可访问性快照。选择器内的返回、取消操作限定在 `Browse View (Picker)`，并等待选择器关闭后
@@ -90,7 +90,7 @@ Android 失败后额外采集系统日志、屏幕截图和 WebView 版本，即
 
 Maestro 2.11.0 的 XCTest runner 在截图请求超时后可能退出，后续操作全部失去连接（[上游问题 #3538](https://github.com/mobile-dev-inc/Maestro/issues/3538)）。
 iOS CI 暂时从固定的官方源码构建驱动，并应用[固定提交的社区补丁](https://github.com/arun279/cue/blob/ca84a837c2806f5997c3a103c3209e288f7ef44c/patches/maestro-runner/0001-keep-serving-after-xctest-issues.patch)。
-补丁将 XCTest issue 转成该请求的 HTTP 500 错误，并保持服务存活；断言、用例退出码和发布门禁继续处理真实失败。
+补丁将 XCTest issue 转成该请求的 HTTP 500 错误，并保持服务存活；断言和用例退出码仍会报告失败。
 本地故障注入已对照官方二进制、同环境重编译的原版和补丁版；另以必然失败的断言确认 CLI 仍返回失败。
 
 `scripts/prepare-ios-maestro.py` 校验官方源码归档、补丁和原版驱动 JAR 的 SHA-256，
@@ -145,37 +145,7 @@ Core 远程书库关键合同位于 `my-reader-core/src/services/library.rs`：
 
 ## 发布流水线
 
-推送版本标签触发 `.github/workflows/release.yml`：
-
-1. 校验版本，构建桌面安装包、签名 Android APK、iOS IPA 和同提交的 iOS Release simulator app。
-2. 运行完整 Quality 工作流；Android 使用将要发布的同一 APK，iPhone/iPad 使用同一 simulator app。
-3. 桌面 Windows、macOS 运行完整浏览器集成/行为套件，以及 Release 原生 WebDriver 套件。
-   Ubuntu 暂不执行 release E2E；Linux 安装包继续构建并核验。
-4. 核验安装包完整性和摘要，归档 `MyReader-Release-Candidate`。E2E 全部通过时自动放行；
-   失败、缺报告、跳过或 flaky 时保留真实结果，并在 Actions 摘要中列出待复核的平台。
-5. 获得放行后提交已构建的 IPA 到 TestFlight，再上传并自动公开 GitHub Release。
-
-各平台独立推进构建与测试：Android APK 上传后立即运行 Android Maestro；iOS simulator app
-上传后立即运行 iPhone/iPad Maestro，不等待 Android 或签名 IPA。Windows、macOS 各自在同一个
-E2E job 内完成测试应用的 Release 构建，再运行该平台全部测试，不等待其他平台或安装包构建。
-最终候选产物汇总仍等待完整 Quality、全部安装包和全部 E2E 结果。
-
-E2E 是发布复核依据，不作为不可豁免的硬门禁。人工或代理先检查失败日志、截图和实际功能；
-只有确认属于测试工具、环境或用例不稳定等非功能原因，才可复核放行。功能缺陷或原因未明时
-继续调查，不能自动归类为 flaky。Quality、构建、安装包摘要与发布上传完整性仍是硬门禁。
-
-复核时，在 Actions 中手动运行 `Release`，选择**原版本标签**，填写 `review_run_id`
-和 `non_functional_e2e_reason`（结论及证据）。该入口校验原运行、提交、标签和安装包字节，
-复用原候选包与 IPA，不重建、不重跑 E2E；复核人和原因写入 `release-evidence.json`，
-原失败结果保留。原运行必须是版本标签触发且已生成候选产物，报告和包的保留期为 30 天。
-
-未填写 `review_run_id` 的手动 `Release` 仍是完整演练：构建和全部测试照常执行，
-生成候选产物，但不会提交 TestFlight 或公开版本。单独的两个 candidate build 工作流只生成构建产物。
-
-iOS IPA 的设备架构不能运行在 Simulator；其 Release simulator app 与 IPA 使用同一提交、
-production 环境和原生依赖。模拟器结果不等同于设备签名、Apple 处理或真机验证。
-桌面 WebDriver 仅由可选 `e2e` Cargo feature 启用，使用独立应用 ID；发布安装包不含该测试服务。
-浏览器层使用真实前端和 IPC 替身；原生层使用真实 Tauri/Core、文件及 WebView。
+在 `release/<版本>` MR 上，Android 测试使用候选 APK，iPhone 和 iPad 使用同提交的 Release simulator app。Windows 和 macOS 执行桌面浏览器与原生套件。失败、缺失报告和跳过项记录到 MR，附提交号及报告位置；审阅者按实际产品风险决定是否修复。发版入口、产物校验与失败处理见[发布手册](../../docs/RELEASE.md)。
 
 ## 维护要求
 

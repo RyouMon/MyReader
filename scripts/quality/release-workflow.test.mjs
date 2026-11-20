@@ -2,7 +2,6 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 import { parse } from "yaml"
-
 const workflow = (name) =>
   parse(
     readFileSync(
@@ -10,130 +9,43 @@ const workflow = (name) =>
       "utf8",
     ),
   )
-
-test("desktop release E2E runs on Windows and macOS", () => {
-  const { desktop } = workflow("desktop-e2e").jobs
-  assert.deepEqual(desktop.strategy.matrix.os, [
-    "windows-latest",
-    "macos-26-intel",
-  ])
-  assert.equal(desktop.strategy["fail-fast"], false)
-  assert.ok((desktop.strategy["max-parallel"] ?? 2) >= 2)
-  assert.equal(desktop.needs, undefined)
-  const build = desktop.steps.findIndex((step) =>
-    step.run?.includes("build:e2e:native"),
-  )
-  assert.ok(build >= 0)
-  for (const command of [
-    "test:integration:frontend",
-    "test:e2e:frontend",
-    "test:e2e:native",
-  ]) {
-    assert.ok(
-      desktop.steps.findIndex((step) => step.run?.includes(command)) > build,
-      `${command} must run after its platform's Release build`,
+const release = workflow("release")
+test("only release PRs into main can build or promote; no tag or manual entry point", () => {
+  assert.deepEqual(Object.keys(release.on), ["pull_request"])
+  assert.deepEqual(release.on.pull_request.branches, ["main"])
+  for (const name of ["verify", "stage"]) {
+    assert.match(
+      release.jobs[name].if,
+      /startsWith\(github.head_ref, 'release\/'\)/,
+    )
+    assert.match(
+      release.jobs[name].if,
+      /head.repo.full_name == github.repository/,
     )
   }
-  const caller = workflow("release").jobs["desktop-e2e"]
-  assert.equal(caller.needs, "verify")
-  assert.match(caller.if, /inputs.review_run_id == ''/)
-})
-
-test("mobile E2E starts after its own artifact without waiting for another platform", () => {
-  const mobile = workflow("mobile-build")
-  const e2e = workflow("mobile-e2e")
-  assert.equal(mobile.on.workflow_call.inputs.run_e2e.default, false)
-  assert.equal(mobile.on.workflow_call.inputs.e2e_advisory.default, false)
-  assert.equal(e2e.on.workflow_call.inputs.platform.default, "all")
-  for (const [platform, build, artifact] of [
-    ["android", "android", "MyReader-Android-APK"],
-    ["ios", "ios-simulator", "MyReader-iOS-simulator"],
-  ]) {
-    const caller = mobile.jobs[`${platform}-e2e`]
-    assert.equal(caller.needs, build)
-    assert.equal(caller.if, `inputs.run_e2e && inputs.build_${platform}`)
-    assert.equal(caller.uses, "./.github/workflows/mobile-e2e.yml")
-    assert.equal(caller.with.platform, platform)
-    assert.equal(caller.with.advisory, "${{ inputs.e2e_advisory }}")
-    assert.equal(
-      e2e.jobs[platform].if,
-      `inputs.platform == 'all' || inputs.platform == '${platform}'`,
-    )
-    assert.equal(e2e.jobs[platform].needs, undefined)
-    assert.ok(
-      mobile.jobs[build].steps.some(
-        (step) =>
-          step.uses?.startsWith("actions/upload-artifact@") &&
-          step.with?.name === artifact,
-      ),
-    )
-    assert.ok(
-      e2e.jobs[platform].steps.some(
-        (step) =>
-          step.uses?.startsWith("actions/download-artifact@") &&
-          step.with?.name === artifact,
-      ),
-    )
-  }
-  assert.equal(workflow("release").jobs.mobile.with.run_e2e, true)
-  assert.equal(workflow("release").jobs.mobile.with.e2e_advisory, true)
-})
-
-test("publication requires quality and builds plus passed E2E or a recorded review", () => {
-  const { jobs } = workflow("release")
-  function ancestors(name) {
-    const needs = jobs[name].needs
-    return (Array.isArray(needs) ? needs : needs ? [needs] : []).flatMap(
-      (parent) => [parent, ...ancestors(parent)],
-    )
-  }
-  for (const name of ["submit-ios", "publish"]) {
-    const dependencies = ancestors(name)
-    for (const gate of [
-      "quality",
-      "desktop",
-      "mobile",
-      "desktop-e2e",
-      "candidate",
-    ])
-      assert.ok(dependencies.includes(gate), `${name} can bypass ${gate}`)
-    assert.match(jobs[name].if, /github.event_name == 'push'/)
-    assert.match(jobs[name].if, /refs\/tags\/v/)
-  }
-  assert.ok(ancestors("publish").includes("submit-ios"))
   assert.match(
-    jobs["submit-ios"].if,
-    /needs.candidate.outputs.publishable == 'true'/,
+    release.jobs.stage.if,
+    /github.event.action == 'closed' && github.event.pull_request.merged/,
   )
-  assert.match(jobs["submit-ios"].if, /needs.review.result == 'success'/)
-  for (const gate of ["quality", "desktop", "mobile"])
-    assert.ok(jobs.candidate.if.includes(`needs.${gate}.result == 'success'`))
-  for (const name of ["desktop-e2e", "mobile-e2e"]) {
-    assert.equal(workflow(name).on.workflow_call.inputs.advisory.default, false)
-  }
-  assert.equal(jobs["desktop-e2e"].with.advisory, true)
-  assert.match(jobs.review.if, /inputs.review_run_id != ''/)
-  assert.deepEqual(jobs.review.needs, "verify")
+  assert.equal(release.jobs["submit-ios"].needs, "stage")
+  assert.deepEqual(release.jobs.publish.needs, ["stage", "submit-ios"])
   assert.ok(
-    jobs.review.steps.some((step) =>
-      step.run?.includes("scripts/release/review.mjs"),
-    ),
-  )
-  const ipa = jobs["submit-ios"].steps.find(
-    (step) => step.with?.name === "MyReader-iOS-IPA",
+    !Object.values(release.jobs).some((j) => j.uses?.includes("mobile-build")),
   )
   assert.equal(
-    ipa.with["run-id"],
-    "${{ inputs.review_run_id || github.run_id }}",
+    workflow("desktop-build").jobs.windows["runs-on"],
+    "windows-latest",
   )
-  assert.ok("workflow_dispatch" in workflow("release").on)
-  for (const name of ["release", "desktop-e2e", "mobile-build", "mobile-e2e"]) {
-    for (const job of Object.values(workflow(name).jobs)) {
-      assert.notEqual(job["continue-on-error"], true)
-      for (const step of job.steps || [])
-        assert.notEqual(step["continue-on-error"], true)
-    }
-  }
-  const mobileBuild = JSON.stringify(workflow("mobile-build"))
-  assert.doesNotMatch(mobileBuild, /eas submit|gh release/)
+  assert.equal(release.jobs["desktop-e2e"].with.windows_only, true)
+  assert.ok(release.jobs["desktop-e2e"].with.advisory)
+  assert.match(release.jobs.report.if, /always\(\)/)
+})
+test("required QA checks the candidate status on this PR head only on release PRs", () => {
+  const gate = workflow("quality").jobs["qa-gate"].steps.find(
+    (s) => s.name === "Require release candidate for this commit",
+  )
+  assert.match(gate.if, /startsWith\(github.head_ref, 'release\/'\)/)
+  assert.match(gate.run, /Release local artifacts/)
+  assert.match(gate.run, /target_url == \$url/)
+  assert.match(gate.env.RELEASE_HEAD, /pull_request.head.sha/)
 })
