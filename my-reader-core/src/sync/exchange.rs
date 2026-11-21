@@ -25,6 +25,7 @@ use super::{
 
 const MAX_REMOTE_OBJECT_BYTES: usize = 16 * 1024 * 1024;
 const MAX_REMOTE_OBJECTS_PER_SYNC: usize = 10_000;
+const COMPACTION_OBJECT_COUNT_THRESHOLD: usize = 256;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -337,7 +338,11 @@ async fn save_total(
     adapter: &StorageAdapter<'_>,
     cache: &StorageAdapter<'_>,
     document_id: &str,
-) -> Result<(StorageChunk, usize), SyncError> {
+) -> Result<Option<(StorageChunk, usize)>, SyncError> {
+    // Keep the covered objects and outbox intact if peers could not read their replacement.
+    if snapshot.snapshot_bytes.len() > MAX_REMOTE_OBJECT_BYTES {
+        return Ok(None);
+    }
     let change_count = snapshot.pending.iter().map(|row| row.change_count).sum();
     let key = snapshot_key(document_id, &heads_hash(&snapshot.heads));
     adapter.save(&key, &snapshot.snapshot_bytes).await?;
@@ -345,16 +350,24 @@ async fn save_total(
     for row in snapshot.pending {
         delete_outbox_entry(database_path, &row.storage_key).await?;
     }
-    Ok((
+    Ok(Some((
         StorageChunk {
             key,
             data: snapshot.snapshot_bytes,
         },
         change_count,
-    ))
+    )))
 }
 
 fn should_compact(chunks: &[StorageChunk]) -> bool {
+    match chunks {
+        [] => return false,
+        [only] => return only.key.get(1).map(String::as_str) == Some("incremental"),
+        _ => {}
+    }
+    if chunks.len() >= COMPACTION_OBJECT_COUNT_THRESHOLD {
+        return true;
+    }
     let mut snapshot_size = 0;
     let mut incremental_size = 0;
     for chunk in chunks {
@@ -381,16 +394,19 @@ async fn compact(
     else {
         return Ok(());
     };
-    let (snapshot, _) = save_total(
+    let Some((snapshot, _)) = save_total(
         publishable,
         database_path,
         adapter,
         cache,
         identity.library_uuid.as_str(),
     )
-    .await?;
+    .await?
+    else {
+        return Ok(());
+    };
     for chunk in chunks {
-        if chunk.key.get(2) != snapshot.key.get(2) {
+        if chunk.key != snapshot.key {
             adapter.remove(&chunk.key).await?;
             cache.remove(&chunk.key).await?;
         }
@@ -497,7 +513,12 @@ pub async fn sync_database_with_operator_observed(
                 &cache,
                 identity.library_uuid.as_str(),
             )
-            .await?;
+            .await?
+            .ok_or_else(|| {
+                sync_error(format!(
+                    "Required Automerge snapshot exceeds {MAX_REMOTE_OBJECT_BYTES} bytes"
+                ))
+            })?;
             covered_chunks.push(snapshot);
             observer.on_progress(SyncProgress {
                 stage: SyncStage::Pushing,
@@ -520,7 +541,7 @@ pub async fn sync_database_with_operator_observed(
         }
     };
 
-    if mode == SyncMode::Full && (pushed > 0 || pulled > 0) {
+    if mode == SyncMode::Full {
         compact(database_path, &adapter, &cache, identity, &covered_chunks).await?;
     }
 
@@ -899,6 +920,76 @@ mod tests {
         ]));
     }
 
+    #[test]
+    fn object_count_triggers_even_when_small_incrementals_do_not_reach_the_byte_threshold() {
+        let mut chunks = vec![StorageChunk {
+            key: snapshot_key(LIBRARY_UUID, "snapshot"),
+            data: vec![0; 4_096],
+        }];
+        for index in 1..COMPACTION_OBJECT_COUNT_THRESHOLD {
+            chunks.push(StorageChunk {
+                key: super::super::storage::incremental_key(LIBRARY_UUID, &index.to_string()),
+                data: vec![0],
+            });
+        }
+
+        assert!(!should_compact(&chunks[..chunks.len() - 1]));
+        assert!(should_compact(&chunks));
+    }
+
+    #[test]
+    fn a_small_snapshot_is_stable_but_incrementals_without_a_snapshot_need_a_baseline() {
+        let chunk = StorageChunk {
+            key: snapshot_key(LIBRARY_UUID, "small"),
+            data: vec![0; 100],
+        };
+        assert!(!should_compact(&[]));
+        assert!(!should_compact(&[chunk]));
+        assert!(should_compact(&[StorageChunk {
+            key: super::super::storage::incremental_key(LIBRARY_UUID, "incremental"),
+            data: vec![0; 100],
+        }]));
+    }
+
+    #[tokio::test]
+    async fn an_oversized_replacement_keeps_the_outbox_and_remote_objects() {
+        let (_directory, path) = database();
+        let identity = identity("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+        set_progress(&path, &identity, 42, 7);
+        let mut snapshot = load_publishable_database_snapshot(&path, &identity)
+            .await
+            .unwrap()
+            .unwrap();
+        let pending = snapshot.pending.clone();
+        assert!(!pending.is_empty());
+        snapshot
+            .snapshot_bytes
+            .resize(MAX_REMOTE_OBJECT_BYTES + 1, 0);
+        let remote = tempfile::tempdir().unwrap();
+        let operator = operator(&remote);
+        let adapter = StorageAdapter::new(&operator);
+        let old = snapshot_key(LIBRARY_UUID, "old");
+        adapter.save(&old, b"old snapshot").await.unwrap();
+        let cache_operator = local_chunk_storage(&path).await.unwrap();
+        let cache = StorageAdapter::new(&cache_operator);
+
+        assert!(save_total(snapshot, &path, &adapter, &cache, LIBRARY_UUID)
+            .await
+            .unwrap()
+            .is_none());
+        assert_eq!(
+            adapter
+                .list_range(&snapshot_prefix(LIBRARY_UUID))
+                .await
+                .unwrap(),
+            [old]
+        );
+        assert_eq!(
+            super::super::persistence::list_pending_outbox(&path).unwrap(),
+            pending
+        );
+    }
+
     #[tokio::test]
     async fn should_reject_incremental_when_storage_key_hash_does_not_match_content() {
         let (_directory, path) = database();
@@ -977,7 +1068,7 @@ mod tests {
         let operator = operator(&remote);
         let adapter = StorageAdapter::new(&operator);
         let covered = StorageChunk {
-            key: snapshot_key(LIBRARY_UUID, "covered"),
+            key: super::super::storage::incremental_key(LIBRARY_UUID, "covered"),
             data: vec![0],
         };
         let concurrent = super::super::storage::incremental_key(LIBRARY_UUID, "concurrent");
@@ -996,6 +1087,15 @@ mod tests {
         .await
         .unwrap();
 
+        assert!(adapter.load(&covered.key).await.unwrap().is_none());
+        assert_eq!(
+            adapter
+                .list_range(&snapshot_prefix(LIBRARY_UUID))
+                .await
+                .unwrap()
+                .len(),
+            1
+        );
         assert_eq!(
             adapter.load(&concurrent).await.unwrap(),
             Some(b"concurrent".to_vec())

@@ -210,6 +210,43 @@ Content must be available before its catalog change is published, preventing oth
 unavailable books. Deletion publishes a logical tombstone before cleaning up files. Intermediate
 transfer state remains device-local and does not participate in Automerge merging.
 
+### Snapshot Compaction and Concurrent Writes
+
+When snapshots and increments total 256 objects or reach a byte threshold, a full sync saves the
+merged Automerge document and its history as one snapshot. A device that is already up to date can
+compact the backlog before another device joins. Later syncs reuse a lone snapshot. Here the desktop reads the old
+snapshot `S0` and three increments. The phone then uploads a new bookmark as `I4`.
+
+```mermaid
+sequenceDiagram
+    participant A as Desktop
+    participant L as Desktop SQLite
+    participant R as Remote storage
+    participant B as Phone
+    A->>R: List snapshots and increments
+    R-->>A: S0, I1, I2, I3
+    A->>A: Validate and merge the four objects
+    A->>L: Save the merged document
+    B->>R: Upload bookmark increment I4
+    A->>L: Read the snapshot and its outbox entries
+    L-->>A: New snapshot S1 and matching entries
+    A->>R: Write S1
+    R-->>A: S1 write succeeded
+    A->>L: Remove outbox entries covered by S1
+    A->>R: Delete S0, I1, I2, I3 individually
+    Note over R: S1 and I4 remain
+    B->>R: List objects on the next sync
+    R-->>B: S1 and I4
+    B->>B: Merge S1 and I4
+```
+
+The desktop starts cleanup only after storage confirms the new snapshot was written. It deletes
+individual objects covered by the snapshot that it loaded or successfully published during this sync.
+The phone's later upload `I4` therefore remains available on the next sync. If the snapshot write fails,
+the old objects remain. If cleanup stops partway through, Automerge can load the new snapshot alongside
+the remaining objects and deduplicate their changes. An existing device downloads only missing objects.
+In the example, the phone downloads only `S1`. See the [compaction rules in ADR-0020](./adr/0020-adopt-automerge-repo-storage-model.md#压缩与并发安全).
+
 ## 6. AI Analysis and Narration
 
 ```mermaid

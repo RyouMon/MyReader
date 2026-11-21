@@ -250,21 +250,33 @@ chunks 时，push 保存 outbox 中的 incrementals。上传成功后按精确 S
 
 ## 压缩与并发安全
 
-压缩采用 automerge-repo `StorageSubsystem` 的规则：
+MyReader 在 automerge-repo 的字节阈值上增加了对象数量阈值。空集合和仅有一个快照的集合会跳过压缩。
+其他集合满足以下任一条件即尝试压缩：
 
 ```text
+snapshot 数量 + incremental 数量 >= 256
+或
 snapshot 总字节数 < 1024
 或
 incremental 总字节数 >= snapshot 总字节数
 ```
 
-满足阈值时：
+计数范围包括本轮列举、校验并加载的对象（包括缓存命中），以及本机在本轮成功发布的对象。
+完整同步即使没有新变更也会评估，因而已同步设备可以在新设备加入前整理积压。仅推送同步（PushOnly）可以继续累积对象。
+当前最多并行下载 4 个对象，256 个对象已相当于 64 批下载。触发值预留了日常增量空间，也早于常见的 500～1000 项积压。
+如果第一个遇到积压的是新设备，它需要先取得这批对象，再为后续设备整理。
 
-1. 保存包含当前完整 document 的新 snapshot，key 使用当前 heads hash；
+执行顺序如下：
+
+1. 在同一 SQLite 读事务中取得完整 document 和它覆盖的 outbox 记录，以当前 heads hash 为 key 发布 snapshot；
 2. 等待 `save` 成功；
 3. 只删除本次同步已经加载，或由本设备在本轮成功发布并且已包含在 snapshot 中的旧 keys；
 4. 不删除列举完成后由其他设备并发新增、因而本轮从未加载的 key；
 5. 删除失败只留下冗余 chunks，下次加载仍能合并，不得回滚或删除新 snapshot。
+
+如果替代快照超过读取端的单对象上限（16 MiB），本次压缩保留原对象。空远端初始化或依赖修复必须发布快照，
+此时超限会报告错误并保留待发记录。其他设备下次同步只下载本地缺少的新 key（例如一个替代快照），
+Automerge 按变更历史去重，之后的同步继续复用该快照的本地缓存。
 
 普通压缩禁止对 `[documentId]`、`snapshot` 或 `incremental` prefix 直接执行 `removeRange`。这会
 删除并发设备刚写入但当前设备尚未加载的数据。
