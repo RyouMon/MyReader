@@ -3,7 +3,7 @@
     "importingTitle": "Импорт общей книги",
     "importingDetail": "MyReader добавляет книгу в вашу библиотеку.",
     "failedTitle": "Не удалось импортировать общий элемент.",
-    "failedDetail": "Отправьте в MyReader один файл EPUB, PDF или CBZ.",
+    "failedDetail": "Отправьте в MyReader одну книгу или документ поддерживаемого формата.",
     "openLibrary": "Открыть библиотеку"
   },
   "back": "Назад",
@@ -71,7 +71,7 @@
     },
     "importUnsupported": {
       "title": "Неподдерживаемый формат книги",
-      "detail": "Выберите файл EPUB, PDF или CBZ."
+      "detail": "Выберите книгу или документ поддерживаемого формата."
     },
     "switchLibrary": "Переключение библиотеки",
     "syncCurrentLibrary": "Синхронизировать текущую библиотеку",
@@ -844,7 +844,7 @@
     "readingBookInfo": "Чтение информации о книге…",
     "invalidId": "Неверный идентификатор книги.",
     "notFoundInLibrary": "Книга не найдена в библиотеке",
-    "noReadableFormat": "Нет читаемого формата (требуется EPUB, CBZ или PDF)",
+    "noReadableFormat": "У этой книги нет поддерживаемого формата для чтения.",
     "downloadingFromWebdav": "Загрузка книги с WebDAV…",
     "downloadingFromRemote": "Загрузка книги с удаленного…",
     "loadingBookFile": "Загрузка файла книги…",

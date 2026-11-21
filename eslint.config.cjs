@@ -7,6 +7,7 @@ const globals = require("globals")
 
 module.exports = defineConfig([
   globalIgnores([
+    "packages/reader-formats/vendor/foliate-js/**/*.js",
     "**/node_modules/**",
     "**/dist/**",
     "**/build/**",

@@ -1088,6 +1088,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "chardetng"
+version = "0.1.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14b8f0b65b7b08ae3c8187e8d77174de20cb6777864c6b832d8ad365999cf1ea"
+dependencies = [
+ "cfg-if",
+ "encoding_rs",
+ "memchr",
+]
+
+[[package]]
 name = "chrono"
 version = "0.4.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4172,8 +4183,11 @@ name = "my-reader-core"
 version = "0.12.0"
 dependencies = [
  "automerge",
+ "axum",
+ "chardetng",
  "chrono",
  "dunce",
+ "encoding_rs",
  "eventsource-stream",
  "ferrous-opencc",
  "futures",
@@ -4185,6 +4199,7 @@ dependencies = [
  "objc2-core-foundation",
  "opendal",
  "opendal-http-transport-reqwest",
+ "pulldown-cmark",
  "quick-xml 0.41.0",
  "rbook",
  "reqwest 0.13.5",
@@ -5745,6 +5760,24 @@ dependencies = [
  "quote",
  "syn 3.0.6",
 ]
+
+[[package]]
+name = "pulldown-cmark"
+version = "0.13.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3db2be46835f013dd3f4fa7f5f7402c537787b54ebb6fe2b94bbdd7e2669bb7b"
+dependencies = [
+ "bitflags 2.11.0",
+ "memchr",
+ "pulldown-cmark-escape",
+ "unicase",
+]
+
+[[package]]
+name = "pulldown-cmark-escape"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "007d8adb5ddab6f8e3f491ac63566a7d5002cc7ed73901f72057943fa71ae1ae"
 
 [[package]]
 name = "pxfm"

@@ -19,7 +19,7 @@
 - Multiple library management
 - Calibre library support
 - Import libraries from OneDrive and WebDAV, with more providers in development
-- EPUB, PDF, and CBZ support, with more formats in development
+- Read EPUB, PDF, CBZ, DRM-free Kindle books, FB2, text, Markdown, and HTML
 - Cross-device reading data sync
 
 > [!WARNING]
@@ -42,12 +42,13 @@
 
 | Format | Current status | Platform scope and notes |
 |---|---|---|
-| EPUB | Available | Desktop, iOS / iPadOS, and Android |
+| EPUB / KEPUB | Available | Desktop, iOS / iPadOS, and Android |
 | PDF | Available | Desktop, iOS / iPadOS, and Android |
 | CBZ | Available | Desktop, iOS / iPadOS, and Android |
-| MOBI / AZW3 | Planned | Not implemented; parser and reader design are undecided |
-| FB2 | Planned | Not implemented; parser and reader design are undecided |
-| TXT / HTML | Planned | Not implemented; import and layout design are undecided |
+| Kindle | Available | DRM-free MOBI, combination MOBI, and KF8 / AZW3. AZW and PRC require matching content. KFX and AZW4 are unsupported |
+| FictionBook | Available | FB2, FBZ, and FB2.ZIP |
+| Text and Markdown | Available | TXT, TXTZ, MD, and MARKDOWN |
+| HTML | Available | HTML, HTM, XHTML, and HTMLZ. An HTMLZ archive can include linked images and styles |
 | CBR | Planned | Not implemented; archive parsing design is undecided |
 
 > [!NOTE]

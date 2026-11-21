@@ -6,6 +6,7 @@ pub mod datasource;
 pub mod library;
 pub mod llm;
 pub mod narration;
+pub mod publication;
 pub mod reading;
 pub mod storage;
 pub mod sync;

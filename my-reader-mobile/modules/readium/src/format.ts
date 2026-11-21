@@ -12,3 +12,7 @@ import type { FormatRegistration } from "./types"
 export function registerFormat(registration: FormatRegistration): void {
   ReadiumModule.registerFormat(registration)
 }
+
+export function runParser(address: string): Promise<void> {
+  return ReadiumModule.runFormatParser(address)
+}

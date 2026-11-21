@@ -5,7 +5,10 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { buildReadiumManifest } from "@/lib/readium/epubManifest"
 import { TauriFetcher } from "@/lib/readium/tauriFetcher"
 
+import { readPreparedManifest } from "@/lib/readium/preparedPublication"
+
 interface UseReadiumPublicationOptions {
+  preparedManifest?: boolean
   /** Tauri asset URL of the extracted EPUB directory (`convertFileSrc` result). */
   assetBaseUrl: string | null
   enabled: boolean
@@ -24,6 +27,7 @@ interface UseReadiumPublicationResult {
 export function useReadiumPublication({
   assetBaseUrl,
   enabled,
+  preparedManifest = false,
 }: UseReadiumPublicationOptions): UseReadiumPublicationResult {
   const [publication, setPublication] = useState<Publication | null>(null)
   const [loading, setLoading] = useState(false)
@@ -43,7 +47,9 @@ export function useReadiumPublication({
     setError(null)
 
     try {
-      const result = await buildReadiumManifest(assetBaseUrl)
+      const result = await (preparedManifest
+        ? readPreparedManifest(assetBaseUrl)
+        : buildReadiumManifest(assetBaseUrl))
       if (requestId !== activeRequestRef.current) return
 
       if (!result) {
@@ -80,7 +86,7 @@ export function useReadiumPublication({
         setLoading(false)
       }
     }
-  }, [assetBaseUrl])
+  }, [assetBaseUrl, preparedManifest])
 
   useEffect(() => {
     if (!enabled) {
@@ -89,7 +95,11 @@ export function useReadiumPublication({
       setLoading(false)
       return
     }
-    load()
+    void load()
+    const nextRequest = activeRequestRef.current + 1
+    return () => {
+      activeRequestRef.current = nextRequest
+    }
   }, [enabled, load])
 
   return {

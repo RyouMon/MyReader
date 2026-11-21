@@ -31,10 +31,15 @@ name: Import a prepared local fixture through the system picker
           text: "Fixtures"
           id: "android:id/title"
       - waitForAnimationToEnd
-      - extendedWaitUntil:
-          visible: ${IMPORT_FILE_NAME}
+      - scrollUntilVisible:
+          element:
+            text: ${IMPORT_FILE_NAME}
+            id: "android:id/title"
+          direction: DOWN
           timeout: 30000
-      - tapOn: ${IMPORT_FILE_NAME}
+      - tapOn:
+          text: ${IMPORT_FILE_NAME}
+          id: "android:id/title"
       - runFlow:
           when:
             visible: "^Select$|^选择$"

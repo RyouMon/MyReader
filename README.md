@@ -19,7 +19,7 @@
 - 支持多书库管理
 - 支持 Calibre 书库
 - 支持从 OneDrive、WebDAV、Google Drive、Dropbox 和 S3 兼容对象存储导入书库
-- 支持 EPUB、PDF、CBZ 阅读格式（更多格式开发中）
+- 支持 EPUB、PDF、CBZ、无 DRM 的 Kindle 电子书、FB2、TXT、Markdown 和 HTML
 - 阅读数据跨设备同步
 
 > [!WARNING]
@@ -42,12 +42,13 @@
 
 | 格式 | 当前状态 | 平台范围与说明 |
 |---|---|---|
-| EPUB | 已支持 | 桌面端、iOS / iPadOS、Android |
+| EPUB / KEPUB | 已支持 | 桌面端、iOS / iPadOS、Android |
 | PDF | 已支持 | 桌面端、iOS / iPadOS、Android |
 | CBZ | 已支持 | 桌面端、iOS / iPadOS、Android |
-| MOBI / AZW3 | 待规划 | 尚未实现，解析与阅读方案未定 |
-| FB2 | 待规划 | 尚未实现，解析与阅读方案未定 |
-| TXT / HTML | 待规划 | 尚未实现，导入与排版方案未定 |
+| Kindle | 已支持 | 无 DRM 的 MOBI、组合 MOBI、KF8 / AZW3。AZW、PRC 按文件内容识别。KFX、AZW4 暂不支持 |
+| FictionBook | 已支持 | FB2、FBZ、FB2.ZIP |
+| 文本与 Markdown | 已支持 | TXT、TXTZ、MD、MARKDOWN |
+| HTML | 已支持 | HTML、HTM、XHTML、HTMLZ。HTMLZ 可包含关联的图片和样式 |
 | CBR | 待规划 | 尚未实现，压缩包解析方案未定 |
 
 > [!NOTE]

@@ -491,8 +491,7 @@ export const desktopEn = {
       loadingReadium: "Loading Readium book…",
       noActiveLibrary:
         "No active library. Select a library in the main window first",
-      noReadableFormat:
-        "No readable format available. EPUB, CBZ, or PDF required",
+      noReadableFormat: "This book has no supported reading format.",
       loadEpubFailed: "Failed to load EPUB",
       loadComicFailed: "Failed to load comic",
       comicDirUnavailable: "Comic extraction directory unavailable",

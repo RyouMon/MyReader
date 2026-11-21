@@ -12,6 +12,7 @@ export const inputs = [
   ["js", "coverage-2/lcov.info", "packages/tools"],
   ["js", "coverage-3/lcov.info", "my-reader"],
   ["js", "coverage-4/lcov.info", "my-reader-mobile"],
+  ["js", "coverage-5/lcov.info", "packages/reader-formats"],
   ["rust", "rust-coverage-report/lcov.info", ""],
   ["rust", "rust-desktop-coverage-macos-latest/lcov.info", ""],
   ["rust", "rust-desktop-coverage-windows-2022/lcov.info", ""],

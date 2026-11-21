@@ -3,7 +3,7 @@
     "importingTitle": "Importing shared book",
     "importingDetail": "MyReader is adding the book to your library.",
     "failedTitle": "Couldn’t import shared item",
-    "failedDetail": "Share one EPUB, PDF, or CBZ file to MyReader.",
+    "failedDetail": "Share one supported book or document file to MyReader.",
     "openLibrary": "Open library"
   },
   "back": "Back",
@@ -59,7 +59,7 @@
     },
     "importUnsupported": {
       "title": "Unsupported Book Format",
-      "detail": "Choose an EPUB, PDF, or CBZ file."
+      "detail": "Choose a supported book or document file."
     },
     "switchLibrary": "Switch Library",
     "syncCurrentLibrary": "Sync Current Library",
@@ -800,7 +800,7 @@
     "readingBookInfo": "Reading book info…",
     "invalidId": "Invalid book ID",
     "notFoundInLibrary": "Book not found in library",
-    "noReadableFormat": "No readable format (EPUB, CBZ, or PDF required)",
+    "noReadableFormat": "This book has no supported reading format.",
     "downloadingFromWebdav": "Downloading book from WebDAV…",
     "downloadingFromRemote": "Downloading book from remote…",
     "loadingBookFile": "Loading book file…",

@@ -27,6 +27,7 @@
     "@emotion/styled": "^11.14.1",
     "@fontsource/roboto": "^5.3.0",
     "@mui/material": "^9.5.0",
+    "@my-reader/reader-formats": "workspace:*",
     "@my-reader/fonts": "workspace:*",
     "@my-reader/i18n": "workspace:*",
     "@my-reader/tools": "workspace:*",

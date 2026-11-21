@@ -10,7 +10,7 @@ PR 按共同祖先到当前提交的完整差异选择 JS、Rust、Swift、Andro
 主分支、手动及发布调用仍运行全量检查，主分支保存后续 PR 使用的基准。
 
 主分支要求 `QA`、`Unit tests` 和 `Changed-line coverage` 三个聚合检查成功；所依赖的任务失败、取消或意外跳过均不会
-放行；仅接受路径检测明确判定无需运行的跳过结果。`QA` 汇总静态检查、iOS 依赖安装、变异测试、Rust 门禁和安全审计，`Unit tests` 汇总五包 JS 与
+放行；仅接受路径检测明确判定无需运行的跳过结果。`QA` 汇总静态检查、iOS 依赖安装、变异测试、Rust 门禁和安全审计，`Unit tests` 汇总六个 JS 包与
 Cargo workspace 完整单测、原生覆盖率测试及报告任务的执行结果。覆盖率任务独立运行、上传报告，
 PR 按语言展示全量和增量行覆盖率；JS/TS、Rust、Swift、Java/Kotlin 的增量行覆盖率分别必须达到 80%。
 `Changed-line coverage` 拒绝任一语言低于门槛，不按跨语言平均值放行，也不将 79.99% 四舍五入为通过。
@@ -28,10 +28,10 @@ Windows 集成测试通过 `my-reader/src-tauri/build.rs` 单独嵌入 Common Co
 
 | 命令 | 用途 | 定位 |
 |---|---|---|
-| `pnpm qa` | Lint、五个 JS 包类型检查、依赖边界、未使用代码、重复率、文档、生成漂移、QA 脚本测试 | PR 静态门禁 |
+| `pnpm qa` | Lint、六个 JS 包类型检查、依赖边界、未使用代码、重复率、文档、生成漂移、QA 脚本测试 | PR 静态门禁 |
 | `pnpm qa:docs` | markdownlint 格式与 Lychee 本地链接、图片引用、标题锚点 | 离线门禁；需安装 Lychee |
-| `pnpm test:unit` | 五个 JS 包的完整单元测试及 QA 脚本测试 | 回归门禁 |
-| `pnpm qa:coverage` | 五包完整测试及显式源码范围的 Vitest/Jest 覆盖率 | 基线报告，非合入硬指标 |
+| `pnpm test:unit` | 六个 JS 包的完整单元测试及 QA 脚本测试 | 回归门禁 |
+| `pnpm qa:coverage` | 六个 JS 包的完整测试及显式源码范围的 Vitest/Jest 覆盖率 | 基线报告，非合入硬指标 |
 | `pnpm qa:mutation` | 共享路径、进度、计时、TTS 状态与语言逻辑的 Stryker 变异测试 | 测试有效性门禁 |
 | `pnpm qa:rust` | rustfmt、Clippy、Cargo workspace 完整测试 | Rust 门禁 |
 | `pnpm qa:rust:complexity` | Rust 认知复杂度检查 | 超限返回非零；同时纳入 Rust 门禁 |
@@ -131,7 +131,7 @@ fork PR 即使没有状态写权限也执行相同校验。某组失败后仍生
 
 采集范围：
 
-- JS / TS：现有五个包的 Vitest / Jest 源码范围，不额外运行一套报告专用测试。
+- JS / TS：现有六个包的 Vitest / Jest 源码范围，不额外运行一套报告专用测试。
 - Rust：Core / FFI 与 Tauri 的 LLVM 行覆盖率；Tauri 在 macOS / Windows 运行完整原生测试并合并命中。
 - Swift：完整 `Readium-Unit-Tests` scheme，插桩 Readium 和 ExpoSharing，
   从 Xcode 生成的 LLVM profile 导出 LCOV。运行入口见 [原生测试](../my-reader-mobile/modules/readium/README.md#native-tests)。

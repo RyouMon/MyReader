@@ -3,7 +3,7 @@
     "importingTitle": "Geteiltes Buch importieren",
     "importingDetail": "MyReader fügt das Buch Ihrer Bibliothek hinzu.",
     "failedTitle": "Geteiltes Element konnte nicht importiert werden",
-    "failedDetail": "Geben Sie eine EPUB-, PDF- oder CBZ-Datei für MyReader frei.",
+    "failedDetail": "Teilen Sie ein unterstütztes Buch oder Dokument mit MyReader.",
     "openLibrary": "Bibliothek öffnen"
   },
   "back": "Zurück",
@@ -65,7 +65,7 @@
     },
     "importUnsupported": {
       "title": "Nicht unterstütztes Buchformat",
-      "detail": "Wählen Sie eine EPUB-, PDF- oder CBZ-Datei."
+      "detail": "Wählen Sie ein unterstütztes Buch oder Dokument."
     },
     "switchLibrary": "Bibliothek wechseln",
     "syncCurrentLibrary": "Aktuelle Bibliothek synchronisieren",
@@ -822,7 +822,7 @@
     "readingBookInfo": "Buchinformationen lesen…",
     "invalidId": "Ungültige Buch-ID",
     "notFoundInLibrary": "Buch nicht in der Bibliothek gefunden",
-    "noReadableFormat": "Kein lesbares Format (EPUB, CBZ oder PDF erforderlich)",
+    "noReadableFormat": "Dieses Buch liegt in keinem unterstützten Format vor.",
     "downloadingFromWebdav": "Buch wird heruntergeladen von WebDAV…",
     "downloadingFromRemote": "Buch von Remote herunterladen…",
     "loadingBookFile": "Buchdatei wird geladen…",

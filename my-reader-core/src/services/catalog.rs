@@ -633,17 +633,15 @@ impl CatalogService {
         if !source_path.is_file() {
             return Err(CoreError::NotFound("BOOK_FILE_NOT_FOUND".into()));
         }
-        let format = source_path
-            .extension()
-            .and_then(|value| value.to_str())
-            .and_then(ReadingFormatPolicy::normalize)
-            .ok_or_else(|| CoreError::Config("BOOK_FORMAT_UNSUPPORTED".into()))?;
         let imported_file_name = request
             .source_file_name
             .as_deref()
             .and_then(imported_file_basename)
             .or_else(|| source_path.file_name().and_then(|value| value.to_str()))
             .ok_or_else(|| CoreError::Config("BOOK_FILE_NAME_REQUIRED".into()))?;
+        let format = ReadingFormatPolicy::from_filename(imported_file_name)
+            .or_else(|| ReadingFormatPolicy::from_filename(source_path.file_name()?.to_str()?))
+            .ok_or_else(|| CoreError::Config("BOOK_FORMAT_UNSUPPORTED".into()))?;
         let original_stem = imported_file_stem(imported_file_name, &format)
             .ok_or_else(|| CoreError::Config("BOOK_FILE_NAME_REQUIRED".into()))?;
         let analysis = crate::services::publication_analysis::analyze_publication_metadata(

@@ -147,6 +147,10 @@ public final class ReadiumModule: Module {
 
     // MARK: - Streamer / opener configuration (REP-005/006)
 
+    AsyncFunction("runFormatParser") { (address: String) async throws in
+      try await FormatParser.run(address)
+    }
+
     AsyncFunction("configure") { (config: PublicationOpenerConfigRecord) in
       StreamerConfig.shared.apply(config)
     }

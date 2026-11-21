@@ -150,9 +150,12 @@ sequenceDiagram
 
 | 格式 | 桌面阅读引擎 | 移动阅读引擎 |
 | --- | --- | --- |
-| EPUB | Web Readium | Readium Swift / Kotlin EPUB Navigator |
+| EPUB / KEPUB | Web Readium | Readium Swift / Kotlin EPUB Navigator |
 | PDF | PDF.js 与 Locator 适配 | Readium PDF Navigator |
 | CBZ | Divina / fixed-layout 适配 | Readium fixed-layout / CBZ Navigator |
+| TXT、Markdown、FB2、Kindle、HTML 及其可读归档 | Readium Web 加载本地 manifest | Readium 打开本地 .webpub |
+
+Core 在首次阅读时生成 EPUB Profile 出版物并原子写入缓存。TXT 和 Markdown 由 Rust 解析，FB2 和 Kindle 使用共享包内固定版本的 Foliate 模块。Core 将模块原样嵌入三端构建，按次在本机回环地址提供解析页。临时 WebView 或 iframe 输出章节和资源后即可关闭。阅读进度、书签和批注继续使用原始格式和 Readium Locator。
 
 搜索、选择、标记和分享由对应引擎及平台能力实现，业务通过共同的位置语义协作。
 导航历史属于打开的阅读会话，持久阅读进度负责下次续读。显式跳转创建历史，普通翻页与朗读

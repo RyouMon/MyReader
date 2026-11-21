@@ -1,3 +1,4 @@
+import { isTextPublication } from "@my-reader/reader-formats"
 import type { BookItem } from "@/src/domain/types"
 import { READER_THEMES } from "@/src/design/reader-tokens"
 import { useAppStore } from "@/src/store/app-store"
@@ -166,7 +167,7 @@ function resolveFixedReaderVisual(fixedBackground: FixedBackground) {
 function resolveReaderVisual(format?: string | null) {
   const settings = useAppStore.getState().settings
   const normalizedFormat = format?.toUpperCase() ?? null
-  if (normalizedFormat === "EPUB") {
+  if (isTextPublication(normalizedFormat)) {
     const theme = settings.reflowable.theme
     const colors = READER_THEMES[theme] ?? READER_THEMES.neutral
     return {

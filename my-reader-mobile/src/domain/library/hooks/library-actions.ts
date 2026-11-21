@@ -49,17 +49,24 @@ import { useAppStore } from "@/src/store/app-store"
 import { excludeLocalLibrarySource } from "@/src/store/app-store.constants"
 import { scheduleIdleWork, uuid } from "@/src/utils/common"
 
-const SUPPORTED_BOOK_EXTENSIONS = new Set([".epub", ".pdf", ".cbz"])
+import { bookExtensions } from "@my-reader/reader-formats"
 
 /** Resolves a supported import extension from the original name or file URI. */
 export function supportedBookExtension(
   sourceFile: File,
   originalName?: string | null,
 ): string | null {
-  const extension = originalName
-    ? `.${originalName.split(".").at(-1) ?? ""}`.toLowerCase()
-    : sourceFile.extension.toLowerCase()
-  return SUPPORTED_BOOK_EXTENSIONS.has(extension) ? extension : null
+  const name = (
+    originalName ||
+    sourceFile.name ||
+    sourceFile.extension
+  ).toLowerCase()
+  const ext = bookExtensions.find(
+    (extension) =>
+      name.endsWith("." + extension) &&
+      !(extension === "epub" && name.endsWith(".kepub.epub")),
+  )
+  return ext ? "." + ext : null
 }
 
 function applyLibraryConfig(config: {

@@ -694,6 +694,11 @@ interface NativeModuleInterface {
     root: Uint8Array,
     request: Uint8Array,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_publication_prepare(
+    sourcePath: Uint8Array,
+    format: Uint8Array,
+    cacheRoot: Uint8Array,
+  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_reading_add_annotation(
     sidecarRootPath: Uint8Array,
     libraryRootPath: Uint8Array,
@@ -1125,6 +1130,7 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_resolve_settings(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_save_settings(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_narration_search_sources(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_publication_prepare(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_add_annotation(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_add_bookmark(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_add_session_interval(): number;

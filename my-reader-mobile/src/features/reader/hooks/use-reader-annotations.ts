@@ -1,3 +1,4 @@
+import { isTextPublication } from "@my-reader/reader-formats"
 import type { Locator } from "@my-reader/readium"
 import type { ReaderAnnotationColor } from "@my-reader/tools/reader-annotations"
 import { sortReaderAnnotations } from "@my-reader/tools/reader-annotations"
@@ -58,7 +59,13 @@ export function useReaderAnnotations(
   const queryClient = useQueryClient()
   const normalizedFormat = format?.toUpperCase() ?? null
   const scope = useMemo(() => {
-    if (!library || bookId == null || normalizedFormat !== "EPUB") return null
+    if (
+      !library ||
+      bookId == null ||
+      !normalizedFormat ||
+      !isTextPublication(normalizedFormat)
+    )
+      return null
     return { library, bookId, format: normalizedFormat }
   }, [bookId, library, normalizedFormat])
   const queryKey = queryKeys.readerAnnotations(

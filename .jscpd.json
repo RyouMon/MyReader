@@ -9,6 +9,7 @@
   ],
   "format": ["typescript", "tsx", "javascript", "rust", "swift", "kotlin"],
   "ignore": [
+    "packages/reader-formats/vendor/foliate-js/**/*.js",
     "**/node_modules/**",
     "**/target/**",
     "**/build/**",

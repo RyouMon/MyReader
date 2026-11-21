@@ -37,6 +37,11 @@
       "entry": ["src/index.ts"],
       "project": ["src/**/*.ts", "tests/**/*.ts"]
     },
+    "packages/reader-formats": {
+      "entry": ["src/index.ts", "src/foliate/run.js"],
+      "project": ["src/**/*.{js,ts}", "tests/**/*.ts"],
+      "ignore": ["vendor/foliate-js/**/*.js"]
+    },
     "packages/fonts": {
       "entry": ["scripts/*.mjs"],
       "project": ["src/**/*.ts", "tests/**/*.ts", "scripts/*.mjs"],

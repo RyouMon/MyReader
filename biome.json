@@ -28,6 +28,7 @@
       "packages/**/*.json",
       "packages/**/*.css",
       "scripts/**/*.mjs",
+      "!packages/reader-formats/vendor/foliate-js/**/*.js",
       "!**/dist/**/*",
       "!**/node_modules/**/*",
       "!**/.expo/**/*",

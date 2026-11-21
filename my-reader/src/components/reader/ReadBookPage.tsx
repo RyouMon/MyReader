@@ -52,6 +52,8 @@ function isBrowserDemoReader(): boolean {
   )
 }
 
+import { isEpubContainer, isTextPublication } from "@my-reader/reader-formats"
+
 export type ReadBookPageProps = {
   bookId: string
   formatFromSearch?: string
@@ -65,9 +67,13 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   const { bookTitle, format, bookPayload, mainHandoff } = bookSource
 
   const readiumPub = useReadiumPublication({
-    assetBaseUrl:
-      format === "EPUB" ? (bookPayload?.source.extractedDirPath ?? null) : null,
-    enabled: format === "EPUB" && Boolean(bookPayload?.source.extractedDirPath),
+    assetBaseUrl: isTextPublication(format)
+      ? (bookPayload?.source.extractedDirPath ?? null)
+      : null,
+    preparedManifest: !isEpubContainer(format),
+    enabled:
+      isTextPublication(format) &&
+      Boolean(bookPayload?.source.extractedDirPath),
   })
 
   const divinaPub = useReadiumDivinaPublication({
@@ -259,10 +265,10 @@ function ReadBookContent({
   if (format === "CBZ" && !bookPayload.source.extractedDirPath) {
     return showError(t("reader.comicDirUnavailable"))
   }
-  if (format !== "EPUB" && format !== "CBZ") {
+  if (!isTextPublication(format) && format !== "CBZ") {
     return showError(t("reader.unsupportedFormat"))
   }
-  const isEpub = format === "EPUB"
+  const isEpub = isTextPublication(format)
   const result = isEpub ? readiumPub : divinaPub
   const Reader = isEpub ? ReadiumEpubReader : ReadiumDivinaReader
   if (result.loading) {

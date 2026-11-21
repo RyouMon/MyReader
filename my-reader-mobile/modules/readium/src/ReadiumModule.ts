@@ -40,6 +40,7 @@ export type ReadiumModuleMethods = {
 
   // Streamer / opener configuration (REP-005/006)
   configure: (config: PublicationOpenerConfig) => void
+  runFormatParser: (address: string) => Promise<void>
   registerFormat: (registration: FormatRegistration) => void
 
   // Publication handle operations (REP-003/004)

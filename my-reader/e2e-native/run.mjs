@@ -34,6 +34,47 @@ let mainWindow
 let library
 const books = {}
 const completed = []
+const formatFixtureRoot = join(root, "packages/reader-formats/tests/fixtures")
+const convertedFormatFixtures = {
+  TXT: "Daybreak.txt",
+  MD: "Reading-journal.md",
+  FB2: "ReaderFormats.fb2",
+  FBZ: "ReaderFormats.fbz",
+  "FB2.ZIP": "ReaderFormats.fb2.zip",
+  TXTZ: "Daybreak.txtz",
+  HTML: "Lantern.html",
+  HTM: "Lantern.htm",
+  XHTML: "Lantern.xhtml",
+  HTMLZ: "Lantern.htmlz",
+  MOBI: "Combo.mobi",
+  AZW3: "Lantern.azw3",
+  KF8: "Lantern.kf8",
+  AZW: "Lantern.azw",
+  PRC: "Lantern.prc",
+  KEPUB: "Lantern.kepub",
+  "KEPUB.EPUB": "Lantern.kepub.epub",
+}
+const convertedFormatText = {
+  TXT: "渡船停在桥下",
+  MD: "lantern on the river is still orange",
+  FB2: "paper lantern glowed beside the window",
+  FBZ: "paper lantern glowed beside the window",
+  "FB2.ZIP": "paper lantern glowed beside the window",
+  TXTZ: "渡船停在桥下",
+  HTML: "paper lantern glowed beside the window",
+  HTM: "paper lantern glowed beside the window",
+  XHTML: "paper lantern glowed beside the window",
+  HTMLZ: "paper lantern glowed beside the window",
+  MOBI: "lantern glowed",
+  AZW3: "lantern glowed",
+  KF8: "lantern glowed",
+  AZW: "lantern glowed",
+  PRC: "lantern glowed",
+  KEPUB: "MyReader reads this first sentence aloud",
+  "KEPUB.EPUB": "MyReader reads this first sentence aloud",
+}
+const verifiedFormats = []
+const verifiedSearchHighlights = []
 
 async function start() {
   browser = await startWdioSession(
@@ -122,18 +163,97 @@ async function revealReaderChrome() {
   await browser.$('section[data-reader-chrome-visible="true"]').waitForExist()
 }
 
+async function waitForTtsReady(format) {
+  await browser.waitUntil(
+    async () =>
+      evaluate(() => {
+        const section = document.querySelector(
+          '[data-testid="reader-tts-controls"]',
+        )
+        const buttons = section?.querySelectorAll("button") ?? []
+        const expand = buttons[buttons.length - 1]
+        return Boolean(expand && !expand.disabled)
+      }),
+    {
+      timeout: 30000,
+      timeoutMsg: "Readium TTS did not become available for " + format,
+    },
+  )
+  return true
+}
+
+async function readerText() {
+  return evaluate(() => {
+    const texts = [document.body?.innerText ?? ""]
+    for (const frame of document.querySelectorAll("iframe")) {
+      try {
+        texts.push(frame.contentDocument?.body?.innerText ?? "")
+      } catch {
+        // Cross-origin frames are not publication content.
+      }
+    }
+    return texts.join("\n")
+  })
+}
+
+async function revealCatalogBook(selector) {
+  return evaluate(async (target) => {
+    const viewport = document.querySelector('[data-testid="library-scroll"]')
+    if (!viewport) return false
+    const step = Math.max(viewport.clientHeight, 240)
+    for (let top = 0; top <= viewport.scrollHeight; top += step) {
+      viewport.scrollTop = top
+      await new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+      )
+      if (document.querySelector(target)) return true
+    }
+    viewport.scrollTop = viewport.scrollHeight
+    await new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve)),
+    )
+    return Boolean(document.querySelector(target))
+  }, selector)
+}
+
 async function openReader(format) {
   const book = books[format]
   await focusMainWindow()
-  await click(`[role='button'][aria-label='Open ${book.title}']`)
+  const selector = `[role='button'][aria-label='Open ${book.title}']`
+  let openButton = await browser.$(selector)
+  try {
+    await openButton.waitForDisplayed({ timeout: 2000 })
+  } catch {
+    // The catalog virtualizes a long list. Refreshing resets its scroll window
+    // before looking for a book that is currently outside the rendered range.
+    await browser.refresh()
+    await browser.waitUntil(() =>
+      evaluate(() =>
+        Boolean(document.querySelector('[data-testid="library-scroll"]')),
+      ),
+    )
+    if (!(await revealCatalogBook(selector))) {
+      const search = await browser.$(
+        'input[role="combobox"][aria-label*="Search titles"]',
+      )
+      await search.setValue(book.title)
+      await browser.waitUntil(
+        async () => (await browser.$$(selector)).length > 0,
+        { timeout: 30000, timeoutMsg: `Book is not rendered: ${format}` },
+      )
+    }
+    openButton = await browser.$(selector)
+    await openButton.waitForDisplayed()
+  }
+  await openButton.click()
   const read = await browser.$(
-    "button[aria-label='Start reading'], button[aria-label='Continue reading']",
+    "button[aria-label='Start reading'], button[aria-label='Continue reading'], button[aria-label='Read again']",
   )
   await read.waitForExist()
   await evaluate(() =>
     document
       .querySelector(
-        "button[aria-label='Start reading'], button[aria-label='Continue reading']",
+        "button[aria-label='Start reading'], button[aria-label='Continue reading'], button[aria-label='Read again']",
       )
       .scrollIntoView({ block: "center" }),
   )
@@ -241,6 +361,12 @@ const cases = [
     )
     for (const [format, path] of Object.entries({
       EPUB: epub,
+      ...Object.fromEntries(
+        Object.entries(convertedFormatFixtures).map(([format, file]) => [
+          format,
+          join(formatFixtureRoot, file),
+        ]),
+      ),
       PDF: join(root, "my-reader-mobile/e2e/fixtures/formats/MyReader-QA.pdf"),
       CBZ: join(root, "my-reader-mobile/e2e/fixtures/formats/MyReader-QA.cbz"),
     })) {
@@ -259,6 +385,91 @@ const cases = [
         .$(`[role='button'][aria-label='Open ${book.title}']`)
         .waitForDisplayed()
     await browser.saveScreenshot(join(output, "library.png"))
+  },
+  async () => {
+    for (const format of Object.keys(convertedFormatFixtures)) {
+      await openReader(format)
+      await browser.waitUntil(
+        async () => {
+          const saved = await position(format)
+          return Boolean(saved?.locator?.href && saved?.locator?.locations)
+        },
+        { timeout: 30000, timeoutMsg: "Missing Readium Locator for " + format },
+      )
+      const saved = await position(format)
+      await browser.waitUntil(
+        async () =>
+          (await readerText())
+            .toLowerCase()
+            .includes(convertedFormatText[format].toLowerCase()),
+        {
+          timeout: 30000,
+          timeoutMsg: "Converted publication text is not visible for " + format,
+        },
+      )
+      await revealReaderChrome()
+      await browser.$('[data-testid="reader-tts-controls"]').waitForExist()
+      const ttsReady = await waitForTtsReady(format)
+      if (format === "FB2") {
+        await click('button[title="Search"]')
+        const search = await browser.$('input[role="searchbox"]')
+        await search.setValue("folded from a map")
+        await evaluate(() =>
+          document
+            .querySelector('input[role="searchbox"]')
+            .form.requestSubmit(),
+        )
+        await click('//aside//ol//button[contains(., "folded from a map")]')
+        await browser.waitUntil(async () =>
+          (await position(format))?.locator.href.includes("chapter-0002.xhtml"),
+        )
+        const highlightState = await evaluate(() =>
+          [...document.querySelectorAll("iframe")].map((frame) => {
+            try {
+              return {
+                ready: Boolean(frame.contentDocument),
+                groups: frame.contentDocument?.querySelectorAll(
+                  '[data-readium="true"][data-group="search"]',
+                ).length,
+                cssHighlights: frame.contentWindow?.CSS?.highlights?.size ?? 0,
+              }
+            } catch {
+              return { ready: false, groups: 0, cssHighlights: 0 }
+            }
+          }),
+        )
+        console.log("Readium search highlight state", highlightState)
+        assert.equal(
+          highlightState.some(
+            (item) => item.groups > 0 || item.cssHighlights > 0,
+          ),
+          true,
+          "Readium search result was not highlighted",
+        )
+        verifiedSearchHighlights.push(format)
+        await click('button[title="Search"]')
+        await revealReaderChrome()
+      }
+      verifiedFormats.push({
+        format,
+        locator: saved.locator,
+        textMatched: true,
+        ttsControls: true,
+        ttsReady,
+      })
+      await click('button[title="Bookmark"]')
+      await browser.waitUntil(
+        async () =>
+          (
+            await invoke("list_reader_bookmarks", {
+              libraryId: library.id,
+              bookId: books[format].id,
+              format,
+            })
+          ).length === 1,
+      )
+      await closeReader()
+    }
   },
   async () => {
     await openReader("EPUB")
@@ -328,6 +539,8 @@ try {
         commit,
         sha256,
         suite: completed,
+        formatVerification: verifiedFormats,
+        searchHighlightVerification: verifiedSearchHighlights,
       },
       null,
       2,
@@ -355,7 +568,7 @@ try {
           "section[data-reader-theme], section[data-reader-mode]",
         ) ||
         document.querySelector(
-          "button[aria-label='Start reading'], button[aria-label='Continue reading']",
+          "button[aria-label='Start reading'], button[aria-label='Continue reading'], button[aria-label='Read again']",
         )
       const ancestors = []
       for (let element = button; element; element = element.parentElement) {

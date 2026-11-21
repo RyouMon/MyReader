@@ -22,6 +22,9 @@ import { useAppStore } from "@/src/store/app-store"
 import { libraryQueryKeys } from "../features/library/hooks/useLibraryQuery"
 import { isReadyBookLoadForRequest } from "./book-load-identity"
 
+import { isEpubContainer, isTextPublication } from "@my-reader/reader-formats"
+import { preparePublication } from "@/src/services/core/publication"
+
 const INITIAL_READER_PAGE = 0
 
 async function resolveRemoteCoverUri(
@@ -130,7 +133,7 @@ async function resolveBookCoverUri(
 }
 
 function readerLayoutMode(format: string): ReadyBookLoad["layoutMode"] {
-  if (format === "EPUB") return "reflowable"
+  if (isTextPublication(format)) return "reflowable"
   if (format === "PDF" || format === "CBZ") return "fixedLayout"
   return "unknown"
 }
@@ -147,7 +150,8 @@ async function resolveReaderFiles(
 ) {
   const upper = format.toUpperCase()
   const remote = isRemoteSourceType(library.sourceType)
-  const needsFile = ["EPUB", "PDF", "CBZ"].includes(upper)
+  const text = isTextPublication(upper)
+  const needsFile = text || upper === "PDF" || upper === "CBZ"
   const file = remote
     ? await resolveDownloadedWebDavBookFile({
         library,
@@ -157,11 +161,14 @@ async function resolveReaderFiles(
     : needsFile
       ? await resolveBookFileForRead(library, bookId, format)
       : null
-  if (remote && needsFile && !file) return null
-  const epubFile = upper === "EPUB" ? file : null
+  if (needsFile && !file) return null
+  const epubFile = text ? file : null
   const archiveFile = upper === "PDF" || upper === "CBZ" ? file : null
   return {
-    epubFileUri: epubFile?.uri ?? null,
+    epubFileUri:
+      epubFile && !isEpubContainer(upper)
+        ? await preparePublication(epubFile.uri, upper)
+        : (epubFile?.uri ?? null),
     pdfLocalUri: upper === "PDF" ? (file?.uri ?? null) : null,
     bookArchiveUri: archiveFile?.uri ?? null,
     bookArchiveFingerprint: archiveFingerprint(
