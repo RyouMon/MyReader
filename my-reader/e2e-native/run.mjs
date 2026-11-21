@@ -196,56 +196,38 @@ async function readerText() {
   })
 }
 
-async function revealCatalogBook(selector) {
-  return evaluate(async (target) => {
-    const viewport = document.querySelector('[data-testid="library-scroll"]')
-    if (!viewport) return false
-    const step = Math.max(viewport.clientHeight, 240)
-    for (let top = 0; top <= viewport.scrollHeight; top += step) {
-      viewport.scrollTop = top
-      await new Promise((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(resolve)),
-      )
-      if (document.querySelector(target)) return true
-    }
-    viewport.scrollTop = viewport.scrollHeight
-    await new Promise((resolve) =>
-      requestAnimationFrame(() => requestAnimationFrame(resolve)),
-    )
-    return Boolean(document.querySelector(target))
-  }, selector)
-}
-
 async function openReader(format) {
   const book = books[format]
   await focusMainWindow()
   const selector = `[role='button'][aria-label='Open ${book.title}']`
-  let openButton = await browser.$(selector)
-  try {
-    await openButton.waitForDisplayed({ timeout: 2000 })
-  } catch {
-    // The catalog virtualizes a long list. Refreshing resets its scroll window
-    // before looking for a book that is currently outside the rendered range.
-    await browser.refresh()
-    await browser.waitUntil(() =>
-      evaluate(() =>
-        Boolean(document.querySelector('[data-testid="library-scroll"]')),
-      ),
+  const waitForDisplayed = async (timeout = 5000) => {
+    await browser.waitUntil(
+      async () => {
+        try {
+          const openButton = await browser.$(selector)
+          return await openButton.isDisplayed()
+        } catch {
+          // The virtualized catalog can replace the button while it settles.
+          return false
+        }
+      },
+      { timeout },
     )
-    if (!(await revealCatalogBook(selector))) {
-      const search = await browser.$(
-        'input[role="combobox"][aria-label*="Search titles"]',
-      )
-      await search.setValue(book.title)
-      await browser.waitUntil(
-        async () => (await browser.$$(selector)).length > 0,
-        { timeout: 30000, timeoutMsg: `Book is not rendered: ${format}` },
-      )
-    }
-    openButton = await browser.$(selector)
-    await openButton.waitForDisplayed()
   }
-  await openButton.click()
+  try {
+    await waitForDisplayed()
+  } catch {
+    // The catalog virtualizes a long list. Filtering by title makes the
+    // requested row render without refreshing the native WebView.
+    const search = await browser.$(
+      'input[role="combobox"][aria-label*="Search titles"]',
+    )
+    await search.waitForDisplayed({ timeout: 30000 })
+    await search.clearValue()
+    await search.setValue(book.title)
+    await waitForDisplayed(30000)
+  }
+  await (await browser.$(selector)).click()
   const read = await browser.$(
     "button[aria-label='Start reading'], button[aria-label='Continue reading'], button[aria-label='Read again']",
   )
