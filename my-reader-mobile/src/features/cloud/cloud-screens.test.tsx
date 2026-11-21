@@ -8,6 +8,12 @@ import {
 } from "@testing-library/react-native"
 import { router } from "expo-router"
 import type { ReactNode } from "react"
+import DropboxEditRoute from "@/src/app/(tabs)/settings/(sources)/dropbox/add"
+import DropboxDetailRoute from "@/src/app/(tabs)/settings/(sources)/dropbox/[dataSourceId]"
+import GoogleDriveEditRoute from "@/src/app/(tabs)/settings/(sources)/gdrive/add"
+import GoogleDriveDetailRoute from "@/src/app/(tabs)/settings/(sources)/gdrive/[dataSourceId]"
+import S3EditRoute from "@/src/app/(tabs)/settings/(sources)/s3/add"
+import S3DetailRoute from "@/src/app/(tabs)/settings/(sources)/s3/[dataSourceId]"
 import {
   showAlertWithStatusBarRestore,
   showErrorAlert,
@@ -15,7 +21,6 @@ import {
 import { DataSourceInUseError } from "@/src/errors"
 import { CloudAddDataSourceScreen } from "./cloud-add-data-source-screen"
 import { CloudDataSourceDetailScreen } from "./cloud-data-source-detail-screen"
-import { CloudSourcesScreen } from "./cloud-sources-screen"
 import { RemoteDirectoryBrowserScreen } from "../settings/components/remote-directory-browser-screen"
 
 let mockParams: Record<string, string> = {}
@@ -37,6 +42,7 @@ jest.mock("expo-router", () => ({
   router: {
     push: jest.fn(),
     replace: jest.fn(),
+    dismissTo: jest.fn(),
     back: jest.fn(),
     canGoBack: jest.fn(() => true),
   },
@@ -307,16 +313,16 @@ describe("cloud source screens", () => {
   })
 
   it.each([
-    "gdrive",
-    "dropbox",
-  ] as const)("keeps an edited %s source and returns to its previous directory", async (provider) => {
+    ["gdrive", GoogleDriveEditRoute],
+    ["dropbox", DropboxEditRoute],
+  ] as const)("keeps an edited %s source and returns to its previous directory", async (provider, EditRoute) => {
     mockSources = [oauthSource(provider)]
     mockParams = {
       dataSourceId: `${provider}-1`,
       returnToBrowser: "true",
       returnPath: "/Nested",
     }
-    render(<CloudAddDataSourceScreen provider={provider} />)
+    render(<EditRoute />)
     fireEvent.changeText(
       screen.getByLabelText("cloud.form.rootPathLabel"),
       " /Updated ",
@@ -359,7 +365,7 @@ describe("cloud source screens", () => {
     expect(mockCreate).not.toHaveBeenCalled()
     await headerAction("cloud.form.save")
     expect(mockCreate).toHaveBeenCalledTimes(1)
-    expect(router.back).toHaveBeenCalledTimes(1)
+    expect(router.dismissTo).toHaveBeenCalledWith("/settings/data-sources")
   })
 
   it("surfaces persistence errors without leaving the form", async () => {
@@ -394,13 +400,13 @@ describe("cloud source screens", () => {
       { ...s3Source, id: "" },
       { type: "s3", ...secrets },
     )
-    expect(router.replace).toHaveBeenCalledWith("/settings/s3")
+    expect(router.dismissTo).toHaveBeenCalledWith("/settings/data-sources")
   })
 
   it("loads saved S3 credentials before editing and preserves secret whitespace", async () => {
     mockSources = [s3Source]
     mockParams = { dataSourceId: s3Source.id }
-    render(<CloudAddDataSourceScreen provider="s3" />)
+    render(<S3EditRoute />)
     await waitFor(() =>
       expect(
         screen.getByLabelText("cloud.form.accessKeyLabel").props.value,
@@ -439,50 +445,21 @@ describe("cloud source screens", () => {
     expect(screen.getByText("dataSource.notFound.title")).toBeTruthy()
     expect(mockHeader.right).toEqual([])
     fireEvent.press(screen.getByText("dataSource.backToList"))
-    expect(router.replace).toHaveBeenCalledWith("/settings/s3")
+    expect(router.replace).toHaveBeenCalledWith("/settings/data-sources")
   })
 
   it.each([
-    "gdrive",
-    "dropbox",
-    "s3",
-  ] as const)("shows only %s accounts and routes to their details", (provider) => {
-    mockSources = [oauthSource("gdrive"), oauthSource("dropbox"), s3Source]
-    render(<CloudSourcesScreen provider={provider} />)
-    const label = provider === "s3" ? "Archive" : "Reader"
-    expect(screen.getAllByText(label)).toHaveLength(1)
-    expect(
-      screen.getByText(
-        provider === "s3"
-          ? "https://s3.example.com/books"
-          : "reader@example.com",
-      ),
-    ).toBeTruthy()
-    fireEvent.press(screen.getByText(label))
-    expect(router.push).toHaveBeenCalledWith({
-      pathname: `/settings/${provider}/[dataSourceId]`,
-      params: { dataSourceId: `${provider}-1` },
-    })
-  })
-
-  it("provides an add action in the empty account list", () => {
-    render(<CloudSourcesScreen provider="dropbox" />)
-    fireEvent.press(screen.getByText("cloud.sources.add"))
-    expect(router.push).toHaveBeenCalledWith("/settings/dropbox/add")
-  })
-
-  it.each([
-    "gdrive",
-    "dropbox",
-    "s3",
-  ] as const)("shows %s details and routes editing without exposing credentials", async (provider) => {
+    ["gdrive", GoogleDriveDetailRoute],
+    ["dropbox", DropboxDetailRoute],
+    ["s3", S3DetailRoute],
+  ] as const)("shows %s details and routes editing without exposing credentials", async (provider, DetailRoute) => {
     mockSources = [
       provider === "s3"
         ? s3Source
         : { ...oauthSource(provider), createdAt: 1700000000000 },
     ]
     mockParams = { dataSourceId: `${provider}-1` }
-    render(<CloudDataSourceDetailScreen provider={provider} />)
+    render(<DetailRoute />)
     expect(
       screen.getByText(provider === "s3" ? "books" : "reader@example.com"),
     ).toBeTruthy()
@@ -522,7 +499,7 @@ describe("cloud source screens", () => {
     )
     expect(mockDelete).toHaveBeenCalledWith(s3Source.id)
     if (outcome === "success")
-      expect(router.replace).toHaveBeenCalledWith("/settings/s3")
+      expect(router.replace).toHaveBeenCalledWith("/settings/data-sources")
     else {
       expect(router.replace).not.toHaveBeenCalled()
       if (outcome === "in-use")
@@ -542,7 +519,7 @@ describe("cloud source screens", () => {
     mockParams = { dataSourceId: "removed" }
     render(<CloudDataSourceDetailScreen provider="gdrive" />)
     fireEvent.press(screen.getByText("dataSource.backToList"))
-    expect(router.replace).toHaveBeenCalledWith("/settings/gdrive")
+    expect(router.replace).toHaveBeenCalledWith("/settings/data-sources")
   })
 
   it.each([
@@ -661,6 +638,6 @@ describe("cloud source screens", () => {
       />,
     )
     fireEvent.press(screen.getByText("dataSource.backToList"))
-    expect(router.replace).toHaveBeenCalledWith("/settings/gdrive")
+    expect(router.dismissTo).toHaveBeenCalledWith("/settings/data-sources")
   })
 })

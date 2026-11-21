@@ -148,6 +148,13 @@
     "bookCount_other": "{{count}}권"
   },
   "settings": {
+    "resources": {
+      "title": "리소스",
+      "libraries": "서재 관리",
+      "dataSources": "데이터 소스 관리",
+      "noSources": "데이터 소스가 없습니다",
+      "noSourcesDetail": "데이터 소스를 추가하여 원격 서재에 연결하세요."
+    },
     "libraryDetail": "서재 세부사항",
     "manageLibrary": "서재 관리: {{name}}",
     "addLibrary": "서재 추가",

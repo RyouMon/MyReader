@@ -22,7 +22,6 @@ import {
   type CloudDataSource,
   type CloudProvider,
   cloudBrowserPath,
-  cloudSourcePath,
   isOAuthCloudProvider,
   providerTitle,
 } from "@/src/features/cloud/cloud-data-source"
@@ -315,11 +314,11 @@ export function CloudAddDataSourceScreen({
       }
       return
     }
-    if (router.canGoBack()) {
+    if (editing && router.canGoBack()) {
       router.back()
-    } else {
-      router.replace(cloudSourcePath(provider) as never)
+      return
     }
+    router.dismissTo("/settings/data-sources")
   }
 
   async function persistOAuthSource(
@@ -517,9 +516,7 @@ export function CloudAddDataSourceScreen({
             action={
               <PrimaryButton
                 title={t("dataSource.backToList")}
-                onPress={() =>
-                  router.replace(cloudSourcePath(provider) as never)
-                }
+                onPress={() => router.replace("/settings/data-sources")}
               />
             }
             icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }}

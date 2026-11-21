@@ -83,7 +83,7 @@ describe("AddLibraryFlowProvider", () => {
     expect(mockDismiss).toHaveBeenCalledTimes(1)
   })
 
-  it("should return to Settings before offering the added-library actions", () => {
+  it("should return to the library list before offering the added-library actions", () => {
     const { router } = jest.requireMock("expo-router") as {
       router: { dismissTo: jest.Mock; replace: jest.Mock }
     }
@@ -105,7 +105,7 @@ describe("AddLibraryFlowProvider", () => {
         onSwitch: expect.any(Function),
       }),
     )
-    expect(router.dismissTo).toHaveBeenCalledWith("/settings")
+    expect(router.dismissTo).toHaveBeenCalledWith("/settings/libraries")
     expect(router.dismissTo.mock.invocationCallOrder[0]).toBeLessThan(
       jest.mocked(promptLibraryAddedAfterNavigation).mock
         .invocationCallOrder[0]!,

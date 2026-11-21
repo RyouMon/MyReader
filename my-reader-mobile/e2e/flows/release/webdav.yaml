@@ -5,7 +5,7 @@ androidWebViewHierarchy: devtools
 - runFlow: ../../common/launch_and_prepare.yaml
 - runFlow: ../../common/configure_webdav.yaml
 # Return to Settings and create a library on the configured source.
-- runFlow: ../../common/close_webdav_sources.yaml
+- runFlow: ../../common/tap_header_back.yaml
 - runFlow: ../../common/open_add_library.yaml
 - tapOn:
     id: add-library-create
@@ -81,7 +81,7 @@ androidWebViewHierarchy: devtools
     timeout: 60000
 - runFlow: ../../common/launch_and_prepare.yaml
 - runFlow: ../../common/configure_webdav.yaml
-- runFlow: ../../common/close_webdav_sources.yaml
+- runFlow: ../../common/tap_header_back.yaml
 - runFlow: ../../common/open_add_library.yaml
 - tapOn:
     id: add-library-open

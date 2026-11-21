@@ -125,6 +125,10 @@ function RootNavigator() {
             options={{ headerShown: false, presentation: "modal" }}
           />
           <Stack.Screen
+            name="settings/source-type"
+            options={{ headerShown: false, presentation: "modal" }}
+          />
+          <Stack.Screen
             name="switch-library"
             options={{
               contentStyle: { backgroundColor: palette.background },

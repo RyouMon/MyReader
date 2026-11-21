@@ -41,20 +41,12 @@ export function cloudSourceIcon(provider: CloudProvider) {
   }
 }
 
-export function cloudSourcePath(provider: CloudProvider): string {
-  return `/settings/${provider}`
-}
-
 export function cloudAddPath(provider: CloudProvider): string {
   return `/settings/${provider}/add`
 }
 
 export function cloudBrowserPath(provider: CloudProvider): string {
   return `/settings/${provider}/browser`
-}
-
-export function cloudDetailPath(provider: CloudProvider): string {
-  return `/settings/${provider}/[dataSourceId]`
 }
 
 export function cloudDataSource(

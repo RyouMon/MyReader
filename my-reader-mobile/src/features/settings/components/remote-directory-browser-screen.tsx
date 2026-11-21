@@ -23,7 +23,6 @@ import { useAddOneDriveDataSource } from "@/src/features/onedrive/hooks/use-add-
 import { useCloudDataSource } from "@/src/features/cloud/hooks/use-cloud-data-source"
 import {
   cloudAddPath,
-  cloudSourcePath,
   isOAuthCloudProvider,
   providerTitle,
   type CloudProvider,
@@ -190,7 +189,7 @@ export function RemoteDirectoryBrowserScreen({
           })
         },
       }
-      router.dismissTo("/settings")
+      router.dismissTo("/settings/libraries")
       promptLibraryAddedAfterNavigation(library.name, actions)
     },
     [finishAddingLibrary, isAddLibraryBrowser],
@@ -266,15 +265,7 @@ export function RemoteDirectoryBrowserScreen({
       router.replace("/settings/add-library")
       return
     }
-    if (sourceType === "webdav") {
-      router.replace("/settings/webdav")
-      return
-    }
-    if (sourceType === "onedrive") {
-      router.replace("/settings/onedrive")
-      return
-    }
-    router.replace(cloudSourcePath(sourceType as CloudProvider) as never)
+    router.dismissTo("/settings/data-sources")
   }
 
   function handleRecoverCredentials() {
@@ -330,7 +321,9 @@ export function RemoteDirectoryBrowserScreen({
   }
 
   const isAddLibraryFlow = from === "add-library" && currentPath === "/"
-  const closeTarget = isAddLibraryFlow ? "/settings/add-library" : "/settings"
+  const closeTarget = isAddLibraryFlow
+    ? "/settings/add-library"
+    : "/settings/data-sources"
   const isRootBrowser = currentPath === "/"
 
   const chooseErrorMessages = {
@@ -345,6 +338,7 @@ export function RemoteDirectoryBrowserScreen({
     libraryAction === "create" ? t("addLibrary.continue") : t("addLibrary.open")
 
   const { options, toolbar } = useScreenHeader({
+    title: t("addLibrary.selectLibraryLocation"),
     ...(isRootBrowser && !isAddLibraryBrowser
       ? { close: { target: closeTarget, dismissTo: true, variant: "layout" } }
       : {}),

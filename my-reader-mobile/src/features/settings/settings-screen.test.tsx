@@ -289,20 +289,14 @@ describe("SettingsScreen library navigation", () => {
     jest.clearAllMocks()
   })
 
-  it("should open library details when a library row is pressed", () => {
+  it("opens the two resource managers without listing individual resources on Settings", () => {
     render(<SettingsScreen />)
-
-    expect(
-      screen.getByLabelText(
-        "manage-library:Remote Library, libraryDetail.calibreLibrary",
-      ),
-    ).toBeTruthy()
-    fireEvent.press(screen.getByTestId("settings-library-row-library-2"))
-
-    expect(router.push).toHaveBeenCalledWith({
-      pathname: "/settings/library/[libraryId]",
-      params: { libraryId: "library-2" },
-    })
+    fireEvent.press(screen.getByText("settings.resources.libraries"))
+    expect(router.push).toHaveBeenLastCalledWith("/settings/libraries")
+    fireEvent.press(screen.getByText("settings.resources.dataSources"))
+    expect(router.push).toHaveBeenLastCalledWith("/settings/data-sources")
+    expect(screen.queryByText("Remote Library")).toBeNull()
+    expect(screen.queryByText("WebDAV")).toBeNull()
   })
 
   it("should open read-aloud settings from the settings list", () => {
@@ -336,32 +330,17 @@ describe("SettingsScreen library navigation", () => {
     }
   })
 
-  it("should keep the add-library row separate from the library list", () => {
+  it("orders the main groups with Resources first and Privacy last", () => {
     render(<SettingsScreen />)
-
-    const { SectionCard } = jest.requireMock("@/src/components") as {
-      SectionCard: jest.Mock
-    }
-    const sectionChildren = SectionCard.mock.calls.map(
-      ([props]) => props.children,
+    const labels = screen.getAllByText(
+      /^(settings\.resources\.title|aiProviders\.title|settings\.tts\.sectionTitle|settings\.appearance|settings\.privacy\.title)$/,
     )
-    const libraryRows = mockReact.Children.toArray(sectionChildren[0])
-    const addLibraryRows = mockReact.Children.toArray(sectionChildren[1])
-
-    expect(
-      libraryRows.map(
-        (child) =>
-          (child as mockReact.ReactElement<{ testID?: string }>).props.testID,
-      ),
-    ).toEqual([
-      "settings-library-row-library-1",
-      "settings-library-row-library-2",
+    expect(labels.map((label) => label.props.children)).toEqual([
+      "settings.resources.title",
+      "aiProviders.title",
+      "settings.tts.sectionTitle",
+      "settings.appearance",
+      "settings.privacy.title",
     ])
-    expect(
-      addLibraryRows.map(
-        (child) =>
-          (child as mockReact.ReactElement<{ testID?: string }>).props.testID,
-      ),
-    ).toEqual(["settings-add-library-row"])
   })
 })

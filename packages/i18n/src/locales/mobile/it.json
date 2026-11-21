@@ -156,6 +156,13 @@
     "bookCount_many": "{{count}} libri"
   },
   "settings": {
+    "resources": {
+      "title": "Risorse",
+      "libraries": "Gestisci biblioteche",
+      "dataSources": "Gestisci sorgenti dati",
+      "noSources": "Nessuna sorgente dati",
+      "noSourcesDetail": "Aggiungi una sorgente dati per collegare una biblioteca remota."
+    },
     "libraryDetail": "Dettagli libreria",
     "manageLibrary": "Gestisci libreria: {{name}}",
     "addLibrary": "Aggiungi biblioteca",

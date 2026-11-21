@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next"
 
 import { useStackScreenOptions } from "@/src/navigation/hooks/use-stack-screen-options"
 
+export const unstable_settings = { anchor: "index" }
+
 export default function SettingsStackLayout() {
   const screenOptions = useStackScreenOptions()
   const { t } = useTranslation()
@@ -25,39 +27,12 @@ export default function SettingsStackLayout() {
         }}
       />
       <Stack.Screen
-        name="webdav"
-        options={{
-          presentation: "modal",
-          headerShown: false,
-        }}
+        name="libraries"
+        options={{ title: t("settings.resources.libraries") }}
       />
       <Stack.Screen
-        name="onedrive"
-        options={{
-          presentation: "modal",
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="gdrive"
-        options={{
-          presentation: "modal",
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="dropbox"
-        options={{
-          presentation: "modal",
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="s3"
-        options={{
-          presentation: "modal",
-          headerShown: false,
-        }}
+        name="(sources)/data-sources"
+        options={{ title: t("settings.resources.dataSources") }}
       />
     </Stack>
   )

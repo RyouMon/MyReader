@@ -38,11 +38,7 @@ export default function OneDriveAddDataSourceScreen() {
       return
     }
 
-    if (router.canGoBack()) {
-      router.back()
-    } else {
-      router.replace("/settings/onedrive")
-    }
+    router.dismissTo("/settings/data-sources")
   }
 
   async function handleAdd() {

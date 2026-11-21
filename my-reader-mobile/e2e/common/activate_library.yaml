@@ -2,7 +2,8 @@ appId: ${APP_ID}
 name: Activate a registered library and open the library tab
 ---
 # Required env: LIBRARY_NAME.
-- runFlow: reset_settings_scroll.yaml
+- tapOn:
+    id: settings-libraries-row
 - scrollUntilVisible:
     element: "管理书库：${LIBRARY_NAME}.*|Manage library: ${LIBRARY_NAME}.*"
     direction: DOWN

@@ -148,6 +148,13 @@
     "bookCount_other": "{{count}} 冊"
   },
   "settings": {
+    "resources": {
+      "title": "リソース",
+      "libraries": "ライブラリ管理",
+      "dataSources": "データソース管理",
+      "noSources": "データソースはまだありません",
+      "noSourcesDetail": "データソースを追加してリモートライブラリに接続できます。"
+    },
     "libraryDetail": "ライブラリの詳細",
     "manageLibrary": "ライブラリの管理: {{name}}",
     "addLibrary": "ライブラリを追加",

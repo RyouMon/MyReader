@@ -120,6 +120,8 @@ tags:
       platform: Android
     commands:
       - tapOn: "设置|Settings"
+- tapOn:
+    id: settings-libraries-row
 - scrollUntilVisible:
     element: "管理书库：${LOCAL_LIBRARY_NAME}.*|Manage library: ${LOCAL_LIBRARY_NAME}.*"
     direction: DOWN

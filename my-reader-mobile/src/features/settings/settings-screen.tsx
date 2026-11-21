@@ -1,7 +1,6 @@
 import { errorMessage } from "@/src/i18n/error-message"
 import { LANGUAGE_NAMES, SUPPORTED_LANGUAGES } from "@my-reader/i18n/languages"
 import HeadphonesIcon from "@expo/material-symbols/headphones.xml"
-import { libraryTypeOf } from "@my-reader/tools/types/library"
 import { Image as ExpoImage } from "expo-image"
 import { router, useNavigation } from "expo-router"
 import { useEffect, useMemo, useRef } from "react"
@@ -16,7 +15,6 @@ import {
   SectionCard,
   SectionLabel,
 } from "@/src/components"
-import { ENTITY_LIST_ROW_ICONS } from "@/src/components/ui/entity-list-row-icons"
 import { DIAGNOSTICS_AVAILABLE } from "@/src/config/diagnostics"
 import {
   COVER_THUMBNAIL_GENERATION_CONCURRENCY_MAX,
@@ -38,7 +36,11 @@ import { DeveloperConcurrencyControl } from "./components/developer-concurrency-
 import { AppUpdateSection } from "@/src/features/app-updates/app-update-section"
 
 const SETTINGS_ROW_ICONS = {
-  addLibrary: { ios: "plus.circle", android: "add-circle-outline" },
+  libraries: { ios: "books.vertical", android: "library-books" },
+  dataSources: {
+    ios: "externaldrive.connected.to.line.below",
+    android: "storage",
+  },
   language: { ios: "globe", android: "language" },
   llm: { ios: "cpu", android: "memory" },
   tts: {
@@ -59,7 +61,6 @@ export default function SettingsScreen() {
   const { t } = useTranslation()
   const { mode, setMode } = useTheme()
   const libraries = useAppStore((s) => s.libraries)
-  const activeLibraryId = useAppStore((s) => s.activeLibraryId)
   const navigation = useNavigation()
   const isTransitioningRef = useRef(false)
 
@@ -208,89 +209,51 @@ export default function SettingsScreen() {
     <>
       <Screen>
         <View className="gap-3">
-          <SectionLabel>{t("settings.librarySection")}</SectionLabel>
-          {libraries.length > 0 ? (
-            <SectionCard>
-              {libraries.map((library, index) => (
-                <ListRow
-                  key={library.id}
-                  testID={`settings-library-row-${library.id}`}
-                  title={library.name}
-                  label={`${t("settings.manageLibrary", { name: library.name })}, ${t(
-                    libraryTypeOf(library) === "myreader"
-                      ? "libraryDetail.myreaderLibrary"
-                      : "libraryDetail.calibreLibrary",
-                  )}`}
-                  icon={
-                    ENTITY_LIST_ROW_ICONS[
-                      libraryTypeOf(library) === "myreader"
-                        ? "myreaderLibrary"
-                        : "calibreLibrary"
-                    ]
-                  }
-                  value={
-                    activeLibraryId === library.id
-                      ? t("settings.currentInUse")
-                      : undefined
-                  }
-                  isLast={index === libraries.length - 1}
-                  onPress={() =>
-                    navigateTo({
-                      pathname: "/settings/library/[libraryId]",
-                      params: { libraryId: library.id },
-                    })
-                  }
-                />
-              ))}
-            </SectionCard>
-          ) : null}
+          <SectionLabel>{t("settings.resources.title")}</SectionLabel>
           <SectionCard>
             <ListRow
-              testID="settings-add-library-row"
-              title={t("settings.addLibrary")}
-              icon={SETTINGS_ROW_ICONS.addLibrary}
+              testID="settings-libraries-row"
+              title={t("settings.resources.libraries")}
+              icon={SETTINGS_ROW_ICONS.libraries}
+              onPress={() => navigateTo("/settings/libraries")}
+            />
+            <ListRow
+              testID="settings-data-sources-row"
+              title={t("settings.resources.dataSources")}
+              icon={SETTINGS_ROW_ICONS.dataSources}
               isLast
-              onPress={() => navigateTo("/settings/add-library")}
+              onPress={() => navigateTo("/settings/data-sources")}
             />
           </SectionCard>
         </View>
         <View className="gap-3">
-          <SectionLabel>{t("settings.remoteDataSources")}</SectionLabel>
+          <SectionLabel>{t("aiProviders.title")}</SectionLabel>
           <SectionCard>
             <ListRow
-              testID="settings-webdav-row"
-              title="WebDAV"
-              icon={ENTITY_LIST_ROW_ICONS.webdavDataSource}
-              detail={t("settings.webdavDetail")}
-              onPress={() => navigateTo("/settings/webdav")}
+              testID="settings-tts-providers-row"
+              title={t("ttsSettings.providers")}
+              detail={t("aiProviders.ttsDescription")}
+              icon={SETTINGS_ROW_ICONS.tts}
+              onPress={() => navigateTo("/tts-providers")}
             />
             <ListRow
-              testID="settings-onedrive-row"
-              title="OneDrive"
-              icon={ENTITY_LIST_ROW_ICONS.onedriveDataSource}
-              detail={t("settings.onedriveDetail")}
-              onPress={() => navigateTo("/settings/onedrive")}
+              testID="settings-llm-providers-row"
+              title={t("llm.title")}
+              detail={t("aiProviders.llmDescription")}
+              icon={SETTINGS_ROW_ICONS.llm}
+              onPress={() => navigateTo("/llm-providers")}
+              isLast
             />
+          </SectionCard>
+        </View>
+        <View className="gap-3">
+          <SectionLabel>{t("settings.tts.sectionTitle")}</SectionLabel>
+          <SectionCard>
             <ListRow
-              testID="settings-gdrive-row"
-              title="Google Drive"
-              icon={ENTITY_LIST_ROW_ICONS.gdriveDataSource}
-              detail={t("settings.gdriveDetail")}
-              onPress={() => navigateTo("/settings/gdrive")}
-            />
-            <ListRow
-              testID="settings-dropbox-row"
-              title="Dropbox"
-              icon={ENTITY_LIST_ROW_ICONS.dropboxDataSource}
-              detail={t("settings.dropboxDetail")}
-              onPress={() => navigateTo("/settings/dropbox")}
-            />
-            <ListRow
-              testID="settings-s3-row"
-              title="S3"
-              icon={ENTITY_LIST_ROW_ICONS.s3DataSource}
-              detail={t("settings.s3Detail")}
-              onPress={() => navigateTo("/settings/s3")}
+              testID="settings-tts-row"
+              title={t("ttsSettings.defaults")}
+              icon={SETTINGS_ROW_ICONS.tts}
+              onPress={() => navigateTo("/settings/tts")}
               isLast
             />
           </SectionCard>
@@ -336,63 +299,6 @@ export default function SettingsScreen() {
               title={t("settings.homeCardStyle")}
               icon={SETTINGS_ROW_ICONS.homeCardStyle}
               value={homeCardStyleValue}
-              isLast
-            />
-          </SectionCard>
-        </View>
-        <View className="gap-3">
-          <SectionLabel>{t("settings.tts.sectionTitle")}</SectionLabel>
-          <SectionCard>
-            <ListRow
-              testID="settings-tts-row"
-              title={t("ttsSettings.defaults")}
-              icon={SETTINGS_ROW_ICONS.tts}
-              onPress={() => navigateTo("/settings/tts")}
-              isLast
-            />
-          </SectionCard>
-        </View>
-        <View className="gap-3">
-          <SectionLabel>{t("aiProviders.title")}</SectionLabel>
-          <SectionCard>
-            <ListRow
-              testID="settings-tts-providers-row"
-              title={t("ttsSettings.providers")}
-              detail={t("aiProviders.ttsDescription")}
-              icon={SETTINGS_ROW_ICONS.tts}
-              onPress={() => navigateTo("/tts-providers")}
-            />
-            <ListRow
-              testID="settings-llm-providers-row"
-              title={t("llm.title")}
-              detail={t("aiProviders.llmDescription")}
-              icon={SETTINGS_ROW_ICONS.llm}
-              onPress={() => navigateTo("/llm-providers")}
-              isLast
-            />
-          </SectionCard>
-        </View>
-        <View className="gap-3">
-          <SectionLabel>{t("settings.privacy.title")}</SectionLabel>
-          <SectionCard>
-            <ListRow
-              testID="settings-diagnostics-row"
-              title={t("settings.privacy.diagnostics.title")}
-              icon={SETTINGS_ROW_ICONS.diagnostics}
-              detail={t(
-                DIAGNOSTICS_AVAILABLE
-                  ? "settings.privacy.diagnostics.detail"
-                  : "settings.privacy.diagnostics.unavailable",
-              )}
-              accessory={
-                <FormFieldSwitch
-                  accessibilityLabel={t("settings.privacy.diagnostics.title")}
-                  disabled={!DIAGNOSTICS_AVAILABLE}
-                  testID="settings-diagnostics-switch"
-                  value={DIAGNOSTICS_AVAILABLE && diagnosticsEnabled}
-                  onValueChange={setDiagnosticsEnabled}
-                />
-              }
               isLast
             />
           </SectionCard>
@@ -470,6 +376,31 @@ export default function SettingsScreen() {
             </SectionCard>
           </View>
         ) : null}
+        <View className="gap-3">
+          <SectionLabel>{t("settings.privacy.title")}</SectionLabel>
+          <SectionCard>
+            <ListRow
+              testID="settings-diagnostics-row"
+              title={t("settings.privacy.diagnostics.title")}
+              icon={SETTINGS_ROW_ICONS.diagnostics}
+              detail={t(
+                DIAGNOSTICS_AVAILABLE
+                  ? "settings.privacy.diagnostics.detail"
+                  : "settings.privacy.diagnostics.unavailable",
+              )}
+              accessory={
+                <FormFieldSwitch
+                  accessibilityLabel={t("settings.privacy.diagnostics.title")}
+                  disabled={!DIAGNOSTICS_AVAILABLE}
+                  testID="settings-diagnostics-switch"
+                  value={DIAGNOSTICS_AVAILABLE && diagnosticsEnabled}
+                  onValueChange={setDiagnosticsEnabled}
+                />
+              }
+              isLast
+            />
+          </SectionCard>
+        </View>
       </Screen>
     </>
   )

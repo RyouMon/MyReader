@@ -144,6 +144,13 @@
     "addedAt": "新增時間"
   },
   "settings": {
+    "resources": {
+      "title": "資源",
+      "libraries": "書庫管理",
+      "dataSources": "資料來源管理",
+      "noSources": "尚未新增資料來源",
+      "noSourcesDetail": "新增資料來源即可連接遠端書庫。"
+    },
     "libraryDetail": "書庫詳情",
     "manageLibrary": "管理書庫：{{name}}",
     "addLibrary": "新增書庫",

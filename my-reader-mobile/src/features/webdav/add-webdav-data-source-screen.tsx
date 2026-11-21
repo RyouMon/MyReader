@@ -222,11 +222,11 @@ export default function AddWebDavDataSourceScreen() {
       })
       return
     }
-    if (router.canGoBack()) {
+    if (editing && router.canGoBack()) {
       router.back()
-    } else {
-      router.replace("/settings/webdav")
+      return
     }
+    router.dismissTo("/settings/data-sources")
   }
 
   function validateForm() {
@@ -355,7 +355,7 @@ export default function AddWebDavDataSourceScreen() {
               action={
                 <PrimaryButton
                   title={t("dataSource.backToList")}
-                  onPress={() => router.replace("/settings/webdav")}
+                  onPress={() => router.replace("/settings/data-sources")}
                 />
               }
               icon={{
