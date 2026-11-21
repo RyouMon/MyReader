@@ -201,11 +201,15 @@ export function DataSourcesScreen() {
 
 export function SourceTypeScreen() {
   const { t } = useTranslation()
-  const { options } = useScreenHeader({ title: t("libraryDetail.sourceType") })
+  const { options, toolbar } = useScreenHeader({
+    title: t("libraryDetail.sourceType"),
+    close: { target: "/settings/data-sources", dismissTo: true },
+  })
   const providers = Object.keys(SOURCE_TYPES) as DataSourceType[]
   return (
     <>
       <Stack.Screen options={options} />
+      {toolbar}
       <Screen>
         <SectionCard>
           {providers.map((type, index) => (
@@ -215,7 +219,12 @@ export function SourceTypeScreen() {
               testID={`source-type-${type}`}
               icon={ENTITY_LIST_ROW_ICONS[`${type}DataSource`]}
               isLast={index === providers.length - 1}
-              onPress={() => router.push(`/settings/${type}/add`)}
+              onPress={() =>
+                router.push({
+                  pathname: "/settings/source-type/[type]",
+                  params: { type },
+                })
+              }
             />
           ))}
         </SectionCard>

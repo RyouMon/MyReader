@@ -188,6 +188,9 @@ it("opens the corresponding add form for each of the five source types", () => {
     ["S3", "s3"],
   ]) {
     fireEvent.press(screen.getByText(title!))
-    expect(router.push).toHaveBeenLastCalledWith(`/settings/${type}/add`)
+    expect(router.push).toHaveBeenLastCalledWith({
+      pathname: "/settings/source-type/[type]",
+      params: { type },
+    })
   }
 })

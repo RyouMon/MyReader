@@ -5,6 +5,8 @@ name: Register the isolated local WebDAV source
 - tapOn:
     id: settings-data-sources-row
 - tapOn: "添加数据源|Add Source"
+- assertVisible: "^(关闭|Close)$"
+- assertNotVisible: "^(主页|Home)$"
 - tapOn:
     id: source-type-webdav
 - tapOn:
