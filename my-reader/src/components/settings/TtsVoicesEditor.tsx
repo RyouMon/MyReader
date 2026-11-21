@@ -93,7 +93,7 @@ export function TtsVoicesEditor({
             }
             disabled={disabled}
             fieldError={fieldErrors?.[`${prefix}-${index}-voice-id`]}
-            input={ttsDraftInput(draft, model, voice)}
+            input={ttsDraftInput(draft, model)}
             canPlay={Boolean(voice.trim() && model?.model.trim())}
             onIdChange={(id) => updateId(index, id)}
             onRemove={() => void remove(index)}
@@ -130,7 +130,7 @@ function VoiceRow({
   onRemove: () => void
 }) {
   const { t } = useTranslation()
-  const { state, error, test, stop } = useTtsProviderTest(input)
+  const { state, error, test, stop } = useTtsProviderTest(input, voice.trim())
   const active = state === "testing" || state === "playing"
   const label = voice || index + 1
   const playLabel = `${t(active ? "settings.speech.stopPreview" : "ttsSettings.test")} ${label}`

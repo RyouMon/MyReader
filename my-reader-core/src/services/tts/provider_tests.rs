@@ -25,14 +25,6 @@ pub(super) fn provider(kind: TtsProviderKind) -> TtsProvider {
             .into(),
             response_format: crate::models::TtsAudioFormat::Wav,
             instructions: None,
-            default_voice: Some(
-                if kind == TtsProviderKind::Qwen {
-                    "Cherry"
-                } else {
-                    "voice-a"
-                }
-                .into(),
-            ),
             voices: vec![],
             revision: 1,
         }],
@@ -62,6 +54,49 @@ fn legacy_migration_keeps_engine_voice_references_and_writes_only_providers() {
     assert_eq!(serde_json::from_value::<TtsConfig>(json).unwrap(), config);
 }
 
+#[tokio::test]
+async fn saving_a_multi_model_catalog_preserves_only_the_reading_voice_selection() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("config.json");
+    let mut catalog = serde_json::to_value(provider(TtsProviderKind::OpenAiCompatible)).unwrap();
+    catalog["models"][0]["defaultVoice"] = "voice-a".into(); // Written by older clients.
+    let saved = TtsService::save_provider(&path, serde_json::from_value(catalog.clone()).unwrap())
+        .await
+        .unwrap();
+    assert!(saved.voice_by_language.is_empty());
+    let engine = TtsEngineSelection::Provider {
+        profile_id: "model-a".into(),
+    };
+    TtsService::set_default_engine(&path, engine.clone()).unwrap();
+    let reading_voice = TtsVoiceRef::Provider {
+        profile_id: "model-a".into(),
+        voice_id: "voice-b".into(),
+    };
+    TtsService::set_voice_for_language(&path, "und", Some(reading_voice.clone())).unwrap();
+    for model in ["tts-b", "tts-c", "tts-d"] {
+        catalog["models"]
+            .as_array_mut()
+            .unwrap()
+            .push(serde_json::json!({
+                "id": model, "model": model, "responseFormat": "mp3"
+            }));
+    }
+    TtsService::save_provider(&path, serde_json::from_value(catalog).unwrap())
+        .await
+        .unwrap();
+    let saved = TtsService::get_config(&path).unwrap();
+    assert_eq!(saved.profiles().len(), 4);
+    assert!(saved
+        .profiles()
+        .iter()
+        .all(|p| p.options.voices() == ["voice-a", "voice-b"]));
+    assert_eq!(saved.default_engine, engine);
+    assert_eq!(saved.voice_by_language["und"], reading_voice);
+    assert!(!std::fs::read_to_string(path)
+        .unwrap()
+        .contains("defaultVoice"));
+}
+
 #[test]
 fn openai_models_share_voices_credentials_and_cleanup_only_deleted_models() {
     let dir = tempfile::tempdir().unwrap();
@@ -70,7 +105,7 @@ fn openai_models_share_voices_credentials_and_cleanup_only_deleted_models() {
     let mut second = provider.models[0].clone();
     second.id = "model-b".into();
     second.model = "tts-b".into();
-    second.default_voice = Some("voice-b".into());
+
     provider.models.push(second);
     let first = TtsService::upsert_provider(&path, provider.clone()).unwrap();
     assert!(first
@@ -113,13 +148,13 @@ fn qwen_keeps_model_voice_catalogs_separate_and_rejects_foreign_model_ids() {
     let mut provider = provider(TtsProviderKind::Qwen);
     provider.model_scoped_voices = false;
     provider.models[0].voices = vec!["future-a".into()];
-    provider.models[0].default_voice = Some("future-a".into());
+
     let mut second = provider.models[0].clone();
     second.id = "model-b".into();
     second.model = "qwen3-tts-instruct-flash".into();
     second.instructions = Some("Speak softly".into());
     second.voices = vec!["future-b".into()];
-    second.default_voice = Some("future-b".into());
+
     provider.models.push(second);
     let saved = TtsService::upsert_provider(&path, provider.clone()).unwrap();
     assert!(saved.profiles()[0]
@@ -150,7 +185,7 @@ fn openai_can_scope_voices_to_models_and_switch_back_without_changing_model_ids(
     second.id = "model-b".into();
     second.model = "tts-b".into();
     second.voices = vec!["voice-b".into()];
-    second.default_voice = Some("voice-b".into());
+
     provider.models.push(second);
     let saved = TtsService::upsert_provider(&path, provider.clone()).unwrap();
     assert!(saved.providers[0].voices.is_empty());

@@ -62,14 +62,11 @@ pub enum TtsProviderOptionsDto {
         instructions: Option<String>,
         #[serde(default)]
         voices: Vec<String>,
-        #[serde(default)]
-        default_voice: Option<String>,
     },
     Qwen {
         response_format: TtsAudioFormatDto,
         instructions: Option<String>,
         voices: Vec<String>,
-        default_voice: Option<String>,
     },
 }
 
@@ -250,7 +247,6 @@ pub struct TtsModelDto {
     pub model: String,
     pub response_format: TtsAudioFormatDto,
     pub instructions: Option<String>,
-    pub default_voice: Option<String>,
     pub voices: Vec<String>,
     #[serde(default)]
     pub voice_names: Option<BTreeMap<String, String>>,
@@ -348,12 +344,14 @@ impl DesktopTtsService {
         cache_directory: &Path,
         input: UpsertTtsProviderInput,
         text: String,
+        voice_id: String,
     ) -> Result<TtsAudioArtifactDto, AppError> {
         let credential = draft_credential(config_path, &input)?;
         Ok(CoreTtsService::preview_provider(
             input.profile.into_core(),
             cache_directory,
             text,
+            voice_id,
             credential.as_deref(),
         )
         .await?
@@ -397,7 +395,6 @@ impl DesktopTtsService {
 
                         response_format: m.response_format.into(),
                         instructions: m.instructions,
-                        default_voice: m.default_voice,
                         voices: m.voices,
                         voice_names: m.voice_names.unwrap_or_default(),
                         revision: 1,
@@ -628,7 +625,6 @@ fn config_dto(config: my_reader_core::models::TtsConfig) -> Result<TtsConfigDto,
 
                         response_format: m.response_format.into(),
                         instructions: m.instructions,
-                        default_voice: m.default_voice,
                         voices: m.voices,
                         voice_names: Some(m.voice_names),
                     })
@@ -754,23 +750,19 @@ impl From<TtsProviderOptionsDto> for my_reader_core::models::TtsProviderOptions 
                 response_format,
                 instructions,
                 voices,
-                default_voice,
             } => Self::Qwen {
                 response_format: response_format.into(),
                 instructions,
                 voices,
-                default_voice,
             },
             TtsProviderOptionsDto::OpenAiCompatible {
                 response_format,
                 instructions,
                 voices,
-                default_voice,
             } => Self::OpenAiCompatible {
                 response_format: response_format.into(),
                 instructions,
                 voices,
-                default_voice,
             },
         }
     }
@@ -783,23 +775,19 @@ impl From<my_reader_core::models::TtsProviderOptions> for TtsProviderOptionsDto 
                 response_format,
                 instructions,
                 voices,
-                default_voice,
             } => Self::Qwen {
                 response_format: response_format.into(),
                 instructions,
                 voices,
-                default_voice,
             },
             my_reader_core::models::TtsProviderOptions::OpenAiCompatible {
                 response_format,
                 instructions,
                 voices,
-                default_voice,
             } => Self::OpenAiCompatible {
                 response_format: response_format.into(),
                 instructions,
                 voices,
-                default_voice,
             },
         }
     }
@@ -976,7 +964,6 @@ mod tests {
                     response_format: TtsAudioFormatDto::Mp3,
                     instructions: None,
                     voices: vec!["reader-voice".into()],
-                    default_voice: Some("reader-voice".into()),
                 },
             },
             credential: credential.map(Into::into),

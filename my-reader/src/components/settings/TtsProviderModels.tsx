@@ -19,7 +19,6 @@ import {
   mergeTtsVoices,
   newTtsModel,
   setTtsVoiceScope,
-  updatedDefaultVoice,
   type TtsProviderDraft,
 } from "@/lib/tts-provider-draft"
 import type { TtsModelDto } from "@/lib/tauri-specta"
@@ -77,14 +76,7 @@ export function TtsProviderModels({
           )
           onChange({
             ...draft,
-            models: [
-              ...previous,
-              ...additions.map((model) =>
-                scoped
-                  ? model
-                  : { ...model, defaultVoice: draft.voices[0] ?? null },
-              ),
-            ],
+            models: [...previous, ...additions],
           })
           setSelected(previous.length)
           setShowDiscovery(false)
@@ -97,33 +89,18 @@ export function TtsProviderModels({
     next: string[],
     voiceNames: Record<string, string>,
   ) => {
-    const defaultVoice = updatedDefaultVoice(
-      model.defaultVoice,
-      model.voices,
-      next,
-    )
     onChange(
       scoped
         ? {
             ...draft,
             models: draft.models.map((old) =>
-              old.id === model.id
-                ? { ...old, voices: next, voiceNames, defaultVoice }
-                : old,
+              old.id === model.id ? { ...old, voices: next, voiceNames } : old,
             ),
           }
         : {
             ...draft,
             voices: next,
             voiceNames,
-            models: draft.models.map((old) => ({
-              ...old,
-              defaultVoice: updatedDefaultVoice(
-                old.defaultVoice,
-                draft.voices,
-                next,
-              ),
-            })),
           },
     )
   }
@@ -160,13 +137,7 @@ export function TtsProviderModels({
     }
     onChange({
       ...draft,
-      models: [
-        ...draft.models,
-        {
-          ...newTtsModel(),
-          defaultVoice: scoped ? null : (draft.voices[0] ?? null),
-        },
-      ],
+      models: [...draft.models, newTtsModel()],
     })
     setSelected(draft.models.length)
   }

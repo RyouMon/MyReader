@@ -8,13 +8,11 @@ import {
 } from "./tts-provider-draft"
 
 describe("TTS provider drafts", () => {
-  it("preserves voice IDs and model defaults when changing voice scope", () => {
+  it("preserves voice IDs and names when changing voice scope", () => {
     const draft = newTtsDraft()
     draft.voices = ["gentle", "bright"]
-    draft.models = [
-      { ...newTtsModel("first"), defaultVoice: "gentle" },
-      { ...newTtsModel("second"), defaultVoice: "bright" },
-    ]
+    draft.voiceNames = { gentle: "Narrator" }
+    draft.models = [newTtsModel("first"), newTtsModel("second")]
     const scoped = setVoiceScope(draft, true)
     expect(scoped.models.map((model) => model.voices)).toEqual([
       draft.voices,
@@ -22,13 +20,10 @@ describe("TTS provider drafts", () => {
     ])
     const shared = setVoiceScope(scoped, false)
     expect(shared.voices).toEqual(draft.voices)
-    expect(shared.models.map((model) => model.defaultVoice)).toEqual([
-      "gentle",
-      "bright",
-    ])
+    expect(shared.voiceNames).toEqual({ gentle: "Narrator" })
   })
 
-  it("renames a default voice only in its model and repairs it after deletion", () => {
+  it("edits only the selected model's voice list in model-scoped mode", () => {
     const draft = newTtsDraft()
     draft.modelScopedVoices = true
     draft.models = [
@@ -36,44 +31,38 @@ describe("TTS provider drafts", () => {
         ...newTtsModel("first"),
         id: "first",
         voices: ["old", "other"],
-
-        defaultVoice: "old",
       },
       { ...newTtsModel("second"), id: "second", instructions: "Quiet" },
     ]
     const renamed = updateVoices(draft, draft.models[0]!.id, ["new", "other"])
-    expect(renamed.models[0]!.defaultVoice).toBe("new")
-    expect(renamed.models[1]).toBe(draft.models[1])
+    expect(renamed.models[0]!.voices).toEqual(["new", "other"])
+    expect(renamed.models[1]).toEqual(draft.models[1])
     const removed = updateVoices(renamed, draft.models[0]!.id, ["other"])
-    expect(removed.models[0]!.defaultVoice).toBe("other")
+    expect(removed.models[0]!.voices).toEqual(["other"])
   })
 
-  it("merges discovered voices without duplicating IDs or changing the selected ID", () => {
+  it("appends newly discovered voices without duplicating saved IDs", () => {
     const model = {
       ...newTtsModel("custom-model"),
       voices: ["saved"],
-
-      defaultVoice: "saved",
     }
     const merged = mergeVoices(model, [
       { id: "saved", language: "en" },
       { id: "new", language: "zh" },
     ])
     expect(merged.voices).toEqual(["saved", "new"])
-    expect(merged.defaultVoice).toBe("saved")
   })
 
   it("previews manually entered voice IDs without a catalog allowlist", () => {
     const draft = newTtsDraft()
     draft.credential = " draft-key "
     draft.voices = ["future-voice"]
-    expect(previewInput(draft, draft.models[0], "future-voice")).toEqual(
+    expect(previewInput(draft, draft.models[0])).toEqual(
       expect.objectContaining({
         credential: "draft-key",
         profile: expect.objectContaining({
           model: "gpt-4o-mini-tts",
           voices: ["future-voice"],
-          defaultVoice: "future-voice",
         }),
       }),
     )

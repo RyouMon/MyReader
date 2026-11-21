@@ -98,7 +98,7 @@ async fn qwen_commands_should_discover_matching_account_voices_using_stored_cred
         "upsert_tts_profile",
         json!({"input": {
             "profile": {"id": "qwen-e2e", "name": "Qwen", "kind": "qwen", "endpoint": server,
-                "model": "qwen3-tts-vc-2026-01-22", "options": {"kind": "qwen", "responseFormat": "wav", "instructions": null, "voices": ["account-voice"], "defaultVoice": "account-voice"}},
+                "model": "qwen3-tts-vc-2026-01-22", "options": {"kind": "qwen", "responseFormat": "wav", "instructions": null, "voices": ["account-voice"]}},
             "credential": "qwen-private-key", "clearCredential": false
         }}),
     );
@@ -107,7 +107,7 @@ async fn qwen_commands_should_discover_matching_account_voices_using_stored_cred
         &app,
         "list_qwen_tts_models",
         json!({"input": {
-            "profile": {"id":"qwen-e2e","name":"Qwen","kind":"qwen","endpoint":server,"model":null,"options":{"kind":"qwen","responseFormat":"wav","instructions":null,"voices":[],"defaultVoice":null}},
+            "profile": {"id":"qwen-e2e","name":"Qwen","kind":"qwen","endpoint":server,"model":null,"options":{"kind":"qwen","responseFormat":"wav","instructions":null,"voices":[]}},
             "credential":null,"clearCredential":false
         }}),
     );
@@ -154,8 +154,7 @@ async fn provider_commands_should_round_trip_openai_audio() {
                         "kind": "openAiCompatible",
                         "responseFormat": "mp3",
                         "instructions": "Read calmly",
-                        "voices": ["reader-voice", "narrator-voice"],
-                        "defaultVoice": "reader-voice"
+                        "voices": ["reader-voice", "narrator-voice"]
                     }
                 },
                 "credential": "openai-test-secret",

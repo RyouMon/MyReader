@@ -548,7 +548,7 @@ uniffi_my_reader_core_ffi_fn_func_tts_get_config(RustBuffer config_path);
     RustBuffer config_path, RustBuffer profile_id, RustBuffer credential);
 /*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_tts_preview_provider(
     RustBuffer profile, RustBuffer cache_directory, RustBuffer text,
-    RustBuffer credential);
+    RustBuffer voice_id, RustBuffer credential);
 /*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_tts_probe_provider(
     RustBuffer config_path, RustBuffer profile_id, RustBuffer credential);
 /*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_tts_provider_capabilities(
@@ -574,7 +574,8 @@ uniffi_my_reader_core_ffi_fn_func_tts_set_playback(RustBuffer config_path,
     RustBuffer config_path, RustBuffer cache_directory, RustBuffer request,
     RustBuffer credential);
 /*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_tts_test_provider(
-    RustBuffer profile, RustBuffer text, RustBuffer credential);
+    RustBuffer profile, RustBuffer text, RustBuffer voice_id,
+    RustBuffer credential);
 /*handle*/ uint64_t
 uniffi_my_reader_core_ffi_fn_func_tts_upsert_profile(RustBuffer config_path,
                                                      RustBuffer profile);
@@ -4518,7 +4519,7 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
           jsi::PropNameID::forAscii(
               rt,
               "ubrn_uniffi_my_reader_core_ffi_fn_func_tts_preview_provider"),
-          4,
+          5,
           [this](jsi::Runtime &rt, const jsi::Value &thisVal,
                  const jsi::Value *args, size_t count) -> jsi::Value {
             return this
@@ -4635,7 +4636,7 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
           rt,
           jsi::PropNameID::forAscii(
               rt, "ubrn_uniffi_my_reader_core_ffi_fn_func_tts_test_provider"),
-          3,
+          4,
           [this](jsi::Runtime &rt, const jsi::Value &thisVal,
                  const jsi::Value *args, size_t count) -> jsi::Value {
             return this
@@ -9853,7 +9854,9 @@ jsi::Value NativeMyReaderCoreFfi::
       uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
                                                                args[2]),
       uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[3]));
+                                                               args[3]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[4]));
 
   return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
                                                          value);
@@ -9993,7 +9996,9 @@ NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_fn_func_tts_test_provider(
       uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
                                                                args[1]),
       uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[2]));
+                                                               args[2]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[3]));
 
   return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
                                                          value);

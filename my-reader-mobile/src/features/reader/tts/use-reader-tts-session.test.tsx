@@ -958,7 +958,6 @@ describe("useReaderTtsSession", () => {
       model: "gpt-4o-mini-tts",
       responseFormat: "mp3",
       voices: ["reader-voice", "narrator-voice"],
-      defaultVoice: "reader-voice",
       revision: 1,
       hasCredential: true,
     }
@@ -1182,7 +1181,6 @@ describe("useReaderTtsSession", () => {
             endpoint: "https://example.com/v1",
             model: "tts-model",
             voices: ["reader"],
-            defaultVoice: "reader",
             revision: 1,
             hasCredential: true,
           },
@@ -1260,7 +1258,6 @@ describe("useReaderTtsSession", () => {
       model: "gpt-4o-mini-tts",
       responseFormat: "mp3",
       voices: ["reader-voice"],
-      defaultVoice: "reader-voice",
       revision: 1,
       hasCredential: true,
     }
@@ -1332,7 +1329,6 @@ describe("useReaderTtsSession", () => {
       model: "gpt-4o-mini-tts",
       responseFormat: "mp3",
       voices: ["reader-voice"],
-      defaultVoice: "reader-voice",
       revision: 1,
       hasCredential: true,
     }

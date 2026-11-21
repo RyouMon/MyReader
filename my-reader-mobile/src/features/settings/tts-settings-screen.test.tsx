@@ -55,13 +55,19 @@ const mockProviderConfig = {
       endpoint: "https://api.openai.com/v1",
       model: "gpt-4o-mini-tts",
       responseFormat: "mp3" as const,
-      voices: ["reader-voice"],
-      defaultVoice: "reader-voice",
+      voices: ["other-voice", "reader-voice"],
       revision: 1,
       hasCredential: true,
     },
   ],
-  voices: [],
+  voices: [
+    {
+      language: "und",
+      engine: "provider",
+      profileId: "openai",
+      voiceId: "reader-voice",
+    },
+  ],
   playback: {
     speed: 1.25,
     pitch: 1,

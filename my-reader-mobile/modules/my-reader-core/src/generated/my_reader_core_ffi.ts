@@ -6954,6 +6954,7 @@ export async function ttsPreviewProvider(
   profile: TtsProviderProfile,
   cacheDirectory: string,
   text: string,
+  voiceId: string,
   credential: string | undefined,
   asyncOpts_?: { signal: AbortSignal },
 ): Promise<TtsAudioArtifact> /*throws*/ {
@@ -6972,6 +6973,7 @@ export async function ttsPreviewProvider(
             nativeModule().rustbuffer_alloc,
           ),
           FfiConverterString.lower(text, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(voiceId, nativeModule().rustbuffer_alloc),
           FfiConverterOptionalString.lower(
             credential,
             nativeModule().rustbuffer_alloc,
@@ -7451,6 +7453,7 @@ export async function ttsSynthesize(
 export async function ttsTestProvider(
   profile: TtsProviderProfile,
   text: string,
+  voiceId: string,
   credential: string | undefined,
   asyncOpts_?: { signal: AbortSignal },
 ): Promise<void> /*throws*/ {
@@ -7465,6 +7468,7 @@ export async function ttsTestProvider(
             nativeModule().rustbuffer_alloc,
           ),
           FfiConverterString.lower(text, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(voiceId, nativeModule().rustbuffer_alloc),
           FfiConverterOptionalString.lower(
             credential,
             nativeModule().rustbuffer_alloc,
@@ -12359,7 +12363,6 @@ export type TtsModel = {
   model: string;
   responseFormat: string;
   instructions?: string;
-  defaultVoice?: string;
   voices: Array<string>;
   voiceNames?: Map<string, string>;
 };
@@ -12388,7 +12391,6 @@ const FfiConverterTypeTtsModel = (() => {
         model: FfiConverterString.read(from),
         responseFormat: FfiConverterString.read(from),
         instructions: FfiConverterOptionalString.read(from),
-        defaultVoice: FfiConverterOptionalString.read(from),
         voices: FfiConverterSequenceString.read(from),
         voiceNames: FfiConverterOptionalMapStringString.read(from),
       };
@@ -12398,7 +12400,6 @@ const FfiConverterTypeTtsModel = (() => {
       FfiConverterString.write(value.model, into);
       FfiConverterString.write(value.responseFormat, into);
       FfiConverterOptionalString.write(value.instructions, into);
-      FfiConverterOptionalString.write(value.defaultVoice, into);
       FfiConverterSequenceString.write(value.voices, into);
       FfiConverterOptionalMapStringString.write(value.voiceNames, into);
     }
@@ -12408,7 +12409,6 @@ const FfiConverterTypeTtsModel = (() => {
         FfiConverterString.allocationSize(value.model) +
         FfiConverterString.allocationSize(value.responseFormat) +
         FfiConverterOptionalString.allocationSize(value.instructions) +
-        FfiConverterOptionalString.allocationSize(value.defaultVoice) +
         FfiConverterSequenceString.allocationSize(value.voices) +
         FfiConverterOptionalMapStringString.allocationSize(value.voiceNames)
       );
@@ -12544,7 +12544,6 @@ export type TtsProviderProfile = {
   instructions?: string;
   voices: Array<string>;
   voiceNames?: Map<string, string>;
-  defaultVoice?: string;
   revision: number;
 };
 
@@ -12580,7 +12579,6 @@ const FfiConverterTypeTtsProviderProfile = (() => {
         instructions: FfiConverterOptionalString.read(from),
         voices: FfiConverterSequenceString.read(from),
         voiceNames: FfiConverterOptionalMapStringString.read(from),
-        defaultVoice: FfiConverterOptionalString.read(from),
         revision: FfiConverterFloat64.read(from),
       };
     }
@@ -12595,7 +12593,6 @@ const FfiConverterTypeTtsProviderProfile = (() => {
       FfiConverterOptionalString.write(value.instructions, into);
       FfiConverterSequenceString.write(value.voices, into);
       FfiConverterOptionalMapStringString.write(value.voiceNames, into);
-      FfiConverterOptionalString.write(value.defaultVoice, into);
       FfiConverterFloat64.write(value.revision, into);
     }
     allocationSize(value: TypeName): number {
@@ -12610,7 +12607,6 @@ const FfiConverterTypeTtsProviderProfile = (() => {
         FfiConverterOptionalString.allocationSize(value.instructions) +
         FfiConverterSequenceString.allocationSize(value.voices) +
         FfiConverterOptionalMapStringString.allocationSize(value.voiceNames) +
-        FfiConverterOptionalString.allocationSize(value.defaultVoice) +
         FfiConverterFloat64.allocationSize(value.revision)
       );
     }
@@ -15610,7 +15606,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_preview_provider() !==
-    47845
+    47679
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_tts_preview_provider",
@@ -15690,7 +15686,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_test_provider() !==
-    38413
+    32073
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_tts_test_provider",

@@ -73,6 +73,7 @@ export function useTtsVoicePreview(identity: string) {
     index: number,
     input: UpsertMobileTtsProfileInput,
     text: string,
+    voiceId: string,
   ) => {
     stopActivePreview?.()
     stopActivePreview = stop
@@ -82,7 +83,12 @@ export function useTtsVoicePreview(identity: string) {
     setState("generating")
     setError(null)
     try {
-      const artifact = await previewTtsProvider(input, text, controller.signal)
+      const artifact = await previewTtsProvider(
+        input,
+        text,
+        voiceId,
+        controller.signal,
+      )
       if (controller.signal.aborted) return
       rate.current = artifact.playbackRate ?? 1
       setSource(toFileUri(artifact.path))

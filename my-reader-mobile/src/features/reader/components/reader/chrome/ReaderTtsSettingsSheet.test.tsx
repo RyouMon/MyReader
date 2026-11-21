@@ -89,7 +89,6 @@ const mockConfig = {
       model: "gpt-4o-mini-tts",
       responseFormat: "mp3" as const,
       voices: ["reader-voice"],
-      defaultVoice: "reader-voice",
       revision: 1,
       hasCredential: true,
     },

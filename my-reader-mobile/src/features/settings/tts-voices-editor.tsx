@@ -107,8 +107,9 @@ export function TtsVoicesEditor({
                       ? preview.stop()
                       : void preview.play(
                           index,
-                          previewInput(draft, model, voice),
+                          previewInput(draft, model),
                           t("settings.tts.previewText"),
+                          voice.trim(),
                         )
                   }
                   icon={{

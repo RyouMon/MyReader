@@ -106,8 +106,6 @@ pub struct TtsModel {
     pub response_format: TtsAudioFormat,
     #[serde(default)]
     pub instructions: Option<String>,
-    #[serde(default)]
-    pub default_voice: Option<String>,
     /// Voices for this model when model-scoped voices are enabled.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub voices: Vec<String>,
@@ -126,7 +124,6 @@ impl TtsProvider {
                     TtsProviderKind::OpenAiCompatible => TtsProviderOptions::OpenAiCompatible {
                         response_format: model.response_format,
                         instructions: model.instructions.clone(),
-                        default_voice: model.default_voice.clone(),
                         voices: if self.model_scoped_voices {
                             model.voices.clone()
                         } else {
@@ -136,7 +133,6 @@ impl TtsProvider {
                     TtsProviderKind::Qwen => TtsProviderOptions::Qwen {
                         response_format: model.response_format,
                         instructions: model.instructions.clone(),
-                        default_voice: model.default_voice.clone(),
                         voices: model.voices.clone(),
                     },
                 };
@@ -162,19 +158,17 @@ impl TtsProvider {
 
 impl From<TtsProviderProfile> for TtsProvider {
     fn from(profile: TtsProviderProfile) -> Self {
-        let (response_format, instructions, voices, default_voice) = match profile.options {
+        let (response_format, instructions, voices) = match profile.options {
             TtsProviderOptions::OpenAiCompatible {
                 response_format,
                 instructions,
                 voices,
-                default_voice,
             }
             | TtsProviderOptions::Qwen {
                 response_format,
                 instructions,
                 voices,
-                default_voice,
-            } => (response_format, instructions, voices, default_voice),
+            } => (response_format, instructions, voices),
         };
         Self {
             id: profile.id.clone(),
@@ -200,7 +194,6 @@ impl From<TtsProviderProfile> for TtsProvider {
                 model: profile.model.unwrap_or_default(),
                 response_format,
                 instructions,
-                default_voice,
                 revision: profile.revision,
                 voice_names: if profile.kind == TtsProviderKind::Qwen {
                     profile.voice_names
@@ -282,8 +275,6 @@ pub enum TtsProviderOptions {
         instructions: Option<String>,
         #[serde(default)]
         voices: Vec<String>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        default_voice: Option<String>,
     },
     Qwen {
         #[serde(default)]
@@ -292,8 +283,6 @@ pub enum TtsProviderOptions {
         instructions: Option<String>,
         #[serde(default)]
         voices: Vec<String>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        default_voice: Option<String>,
     },
 }
 
@@ -308,14 +297,6 @@ impl TtsProviderOptions {
     pub fn voices(&self) -> &[String] {
         match self {
             Self::OpenAiCompatible { voices, .. } | Self::Qwen { voices, .. } => voices,
-        }
-    }
-
-    pub fn default_voice(&self) -> Option<&str> {
-        match self {
-            Self::OpenAiCompatible { default_voice, .. } | Self::Qwen { default_voice, .. } => {
-                default_voice.as_deref()
-            }
         }
     }
 }
@@ -522,7 +503,6 @@ mod tests {
                 response_format: TtsAudioFormat::Mp3,
                 instructions: Some("Speak warmly".into()),
                 voices: vec!["reader-voice".into(), "narrator-voice".into()],
-                default_voice: Some("reader-voice".into()),
             },
             revision: 1,
         };
@@ -531,7 +511,7 @@ mod tests {
 
         assert_eq!(json["kind"], "openAiCompatible");
         assert_eq!(json["credentialReference"], "tts:openai:api-key");
-        assert_eq!(json["options"]["defaultVoice"], "reader-voice");
+        assert!(json["options"].get("defaultVoice").is_none());
         assert!(json.get("apiKey").is_none());
         assert_eq!(
             serde_json::from_value::<TtsProviderProfile>(json).unwrap(),

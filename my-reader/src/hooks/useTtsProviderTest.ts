@@ -7,14 +7,17 @@ import type { UpsertTtsProviderInput } from "@/lib/tauri-specta"
 
 let stopActivePreview: (() => void) | undefined
 
-export function useTtsProviderTest(input: UpsertTtsProviderInput) {
+export function useTtsProviderTest(
+  input: UpsertTtsProviderInput,
+  voiceId: string,
+) {
   const [state, setState] = useState<
     "idle" | "testing" | "playing" | "success"
   >("idle")
   const [error, setError] = useState<string | null>(null)
   const request = useRef<string | null>(null)
   const audio = useRef<HTMLAudioElement | null>(null)
-  const identity = JSON.stringify(input)
+  const identity = JSON.stringify([input, voiceId])
   const stop = useCallback(() => {
     if (request.current) void api.cancelTtsSynthesis(request.current)
     request.current = null
@@ -44,7 +47,7 @@ export function useTtsProviderTest(input: UpsertTtsProviderInput) {
     setState("testing")
     setError(null)
     try {
-      const artifact = await api.testTtsProvider(id, input, text)
+      const artifact = await api.testTtsProvider(id, input, text, voiceId)
       if (request.current !== id) return
       const player = new Audio(
         isTauri() ? convertFileSrc(artifact.path) : artifact.path,

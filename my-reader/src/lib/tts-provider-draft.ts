@@ -25,7 +25,6 @@ export function newTtsModel(
     voices: catalog?.voices.length
       ? catalog.voices.map((voice) => voice.id)
       : [""],
-    defaultVoice: catalog?.voices[0]?.id ?? null,
   }
 }
 
@@ -42,14 +41,12 @@ export function mergeTtsVoices(
   return {
     ...model,
     voices: merged.length ? merged : [""],
-    defaultVoice: model.defaultVoice || voices[0]?.id || null,
   }
 }
 
 export function ttsDraftInput(
   draft: TtsProviderDraft,
   model = draft.models[0],
-  voiceId = model?.defaultVoice,
 ): UpsertTtsProviderInput {
   const voices = modelVoices(draft) ? (model?.voices ?? []) : draft.voices
   return {
@@ -64,12 +61,8 @@ export function ttsDraftInput(
         responseFormat: model?.responseFormat ?? "mp3",
         instructions: model?.instructions || null,
         voices: [
-          ...new Set([
-            ...voices.map((voice) => voice.trim()).filter(Boolean),
-            ...(voiceId ? [voiceId.trim()] : []),
-          ]),
+          ...new Set(voices.map((voice) => voice.trim()).filter(Boolean)),
         ],
-        defaultVoice: voiceId?.trim() || null,
       },
     },
     credential: draft.credential.trim() || null,
@@ -98,23 +91,6 @@ export function setTtsVoiceScope(
       ...model,
       voices: scoped ? [...voices] : [],
       voiceNames: scoped ? { ...voiceNames } : {},
-
-      defaultVoice:
-        model.defaultVoice && voices.includes(model.defaultVoice)
-          ? model.defaultVoice
-          : (voices.find((voice) => voice.trim()) ?? null),
     })),
   }
-}
-
-export function updatedDefaultVoice(
-  current: string | null,
-  previous: string[],
-  next: string[],
-) {
-  if (current && next.includes(current)) return current
-  const index = current ? previous.indexOf(current) : -1
-  if (previous.length === next.length && index >= 0 && next[index]?.trim())
-    return next[index]
-  return next.find((id) => id.trim()) ?? null
 }

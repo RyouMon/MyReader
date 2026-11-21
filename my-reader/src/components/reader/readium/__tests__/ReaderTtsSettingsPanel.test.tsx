@@ -71,7 +71,6 @@ const config: TtsConfigDto = {
         kind: "openAiCompatible",
         responseFormat: "mp3",
         voices: ["reader-voice"],
-        defaultVoice: "reader-voice",
       },
       revision: 1,
       hasCredential: true,

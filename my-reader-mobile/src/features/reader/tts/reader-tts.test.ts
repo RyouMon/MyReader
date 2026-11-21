@@ -106,7 +106,6 @@ describe("reader TTS selection", () => {
       model: "gpt-4o-mini-tts",
       responseFormat: "mp3",
       voices: ["reader-voice", "narrator-voice"],
-      defaultVoice: "reader-voice",
       revision: 1,
       hasCredential: true,
     }
@@ -136,7 +135,7 @@ describe("reader TTS selection", () => {
     })
   })
 
-  it("should use the provider default when no language override exists", () => {
+  it("should use the first available voice when no reading preference exists", () => {
     const provider = {
       id: "openai",
       name: "OpenAI",
@@ -145,7 +144,6 @@ describe("reader TTS selection", () => {
       model: "speech-model",
       responseFormat: "mp3",
       voices: ["reader-voice", "narrator-voice"],
-      defaultVoice: "narrator-voice",
       revision: 1,
       hasCredential: true,
     }
@@ -160,7 +158,7 @@ describe("reader TTS selection", () => {
     expect(selection).toEqual({
       kind: "provider",
       profile: provider,
-      voiceId: "narrator-voice",
+      voiceId: "reader-voice",
     })
   })
 

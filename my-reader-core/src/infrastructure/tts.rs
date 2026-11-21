@@ -316,23 +316,12 @@ fn openai_speech_endpoint(profile: &TtsProviderProfile) -> Result<Url, CoreError
 }
 
 fn configured_voices(profile: &TtsProviderProfile) -> Vec<TtsVoice> {
-    let voices = profile.options.voices();
-    let default_voice = profile.options.default_voice();
-    let mut ordered_ids = Vec::new();
-    if let Some(default_voice) =
-        default_voice.filter(|default_voice| voices.iter().any(|voice| voice == default_voice))
-    {
-        ordered_ids.push(default_voice);
-    }
-    for voice in voices {
-        if !ordered_ids.iter().any(|existing| existing == voice) {
-            ordered_ids.push(voice);
-        }
-    }
-    ordered_ids
-        .into_iter()
+    profile
+        .options
+        .voices()
+        .iter()
         .map(|id| TtsVoice {
-            id: id.to_owned(),
+            id: id.clone(),
             language: "mul".into(),
             gender: None,
         })

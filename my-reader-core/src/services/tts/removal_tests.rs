@@ -9,7 +9,7 @@ async fn fixture(kind: TtsProviderKind) -> (tempfile::TempDir, std::path::PathBu
     let path = directory.path().join("config.json");
     let mut provider = super::provider_tests::provider(kind);
     provider.models[0].voices = vec!["voice-a".into(), "voice-b".into()];
-    provider.models[0].default_voice = Some("voice-a".into());
+
     let mut other = provider.models[0].clone();
     other.id = "model-b".into();
     other.model = if kind == TtsProviderKind::Qwen {
@@ -116,7 +116,7 @@ async fn preview_is_read_only_and_model_deletion_resets_only_affected_bindings()
 async fn voice_deletion_respects_model_scope_and_qwen_custom_ids() {
     let (directory, path, mut provider) = fixture(TtsProviderKind::Qwen).await;
     provider.models[0].voices = vec!["voice-b".into()];
-    provider.models[0].default_voice = Some("voice-b".into());
+
     let usages = TtsService::change_usage(
         &path,
         &provider.id,
@@ -157,9 +157,6 @@ async fn voice_deletion_respects_model_scope_and_qwen_custom_ids() {
 async fn shared_voice_and_provider_deletion_include_every_model() {
     let (directory, path, mut provider) = fixture(TtsProviderKind::OpenAiCompatible).await;
     provider.voices = vec!["voice-b".into()];
-    for model in &mut provider.models {
-        model.default_voice = Some("voice-b".into());
-    }
     let usages = TtsService::change_usage(
         &path,
         &provider.id,

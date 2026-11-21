@@ -37,9 +37,9 @@ it("cancels a pending preview when its draft changes and ignores its result", as
     initialProps: { identity: "before" },
   })
   act(() => {
-    void result.current.play(0, input, "Hello")
+    void result.current.play(0, input, "Hello", "voice-one")
   })
-  const signal = jest.mocked(previewTtsProvider).mock.calls[0]![2]!
+  const signal = jest.mocked(previewTtsProvider).mock.calls[0]![3]!
   rerender({ identity: "after" })
   expect(signal.aborted).toBe(true)
   await act(async () => {
@@ -54,11 +54,11 @@ it("stops the previous voice when another editor starts a preview", async () => 
   const first = renderHook(() => useTtsVoicePreview("first"))
   const second = renderHook(() => useTtsVoicePreview("second"))
   await act(async () => {
-    await first.result.current.play(0, input, "First")
+    await first.result.current.play(0, input, "First", "voice-one")
   })
   await waitFor(() => expect(first.result.current.state).toBe("playing"))
   await act(async () => {
-    await second.result.current.play(1, input, "Second")
+    await second.result.current.play(1, input, "Second", "voice-two")
   })
   await waitFor(() => expect(second.result.current.state).toBe("playing"))
   expect(first.result.current.state).toBe("idle")
@@ -69,9 +69,9 @@ it("aborts a request on unmount", () => {
   jest.mocked(previewTtsProvider).mockReturnValue(new Promise(() => {}))
   const { result, unmount } = renderHook(() => useTtsVoicePreview("preview"))
   act(() => {
-    void result.current.play(0, input, "Hello")
+    void result.current.play(0, input, "Hello", "voice-one")
   })
-  const signal = jest.mocked(previewTtsProvider).mock.calls[0]![2]!
+  const signal = jest.mocked(previewTtsProvider).mock.calls[0]![3]!
   unmount()
   expect(signal.aborted).toBe(true)
 })

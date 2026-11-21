@@ -25,7 +25,6 @@ export function newTtsModel(
     voices: catalog?.voices.length
       ? catalog.voices.map((voice) => voice.id)
       : [""],
-    defaultVoice: catalog?.voices[0]?.id,
   }
 }
 
@@ -47,7 +46,6 @@ export function newTtsDraft(): TtsProviderDraft {
 export function previewInput(
   draft: TtsProviderDraft,
   model = draft.models[0],
-  voice = model?.defaultVoice,
 ): UpsertMobileTtsProfileInput {
   return {
     profile: {
@@ -62,7 +60,6 @@ export function previewInput(
         ? (model?.voices ?? [])
         : draft.voices
       ).filter((id) => id.trim()),
-      defaultVoice: voice?.trim(),
     },
     credential: draft.credential.trim() || undefined,
     clearCredential: draft.clearCredential,
@@ -79,7 +76,6 @@ export function mergeVoices(model: MobileTtsModel, incoming: TtsVoice[]) {
   return {
     ...model,
     voices: voices.length ? voices : [""],
-    defaultVoice: model.defaultVoice || incoming[0]?.id,
   }
 }
 
@@ -106,11 +102,6 @@ export function setVoiceScope(
       ...model,
       voices: scoped ? [...voices] : [],
       voiceNames: scoped ? { ...voiceNames } : {},
-
-      defaultVoice:
-        model.defaultVoice && voices.includes(model.defaultVoice)
-          ? model.defaultVoice
-          : voices[0],
     })),
   }
 }
@@ -121,27 +112,11 @@ export function updateVoices(
   voices: string[],
   voiceNames: Record<string, string> = {},
 ): TtsProviderDraft {
-  const scoped = usesModelVoices(draft)
+  if (!usesModelVoices(draft)) return { ...draft, voices, voiceNames }
   return {
     ...draft,
-    ...(scoped ? {} : { voices, voiceNames }),
-    models: draft.models.map((model) => {
-      if (scoped && model.id !== modelId) return model
-      const previous = scoped ? model.voices : draft.voices
-      const index = previous.indexOf(model.defaultVoice ?? "")
-      const defaultVoice =
-        model.defaultVoice && voices.includes(model.defaultVoice)
-          ? model.defaultVoice
-          : previous.length === voices.length &&
-              index >= 0 &&
-              voices[index]?.trim()
-            ? voices[index]
-            : voices.find((id) => id.trim())
-      return {
-        ...model,
-        ...(scoped ? { voices, voiceNames } : {}),
-        defaultVoice,
-      }
-    }),
+    models: draft.models.map((model) =>
+      model.id === modelId ? { ...model, voices, voiceNames } : model,
+    ),
   }
 }

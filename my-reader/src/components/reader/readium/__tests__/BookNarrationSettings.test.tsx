@@ -96,7 +96,6 @@ const config: TtsConfigDto = {
       kind: "openAiCompatible",
       responseFormat: "mp3",
       voices: ["A"],
-      defaultVoice: "A",
     },
   })),
 }
