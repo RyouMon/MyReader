@@ -15,7 +15,6 @@ import {
 } from "@/src/components"
 import { ENTITY_LIST_ROW_ICONS } from "@/src/components/ui/entity-list-row-icons"
 import { LIBRARY_EMPTY_STATE_ICON } from "@/src/components/ui/library-empty-state-icon"
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import { useThemePalette } from "@/src/design/tokens"
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 import { createAddAction } from "@/src/navigation/toolbar-action-helpers"
@@ -31,44 +30,26 @@ const SOURCE_TYPES = {
 
 function ResourceList({
   title,
+  addLabel,
+  onAdd,
   empty,
   children,
 }: {
   title: string
+  addLabel: string
+  onAdd: () => void
   empty?: Pick<ComponentProps<typeof EmptyState>, "title" | "detail" | "icon">
   children: ReactNode
 }) {
-  const { t } = useTranslation()
   const palette = useThemePalette()
-  const addLabel = t("settings.resources.add")
-  function chooseResource() {
-    showAlertWithStatusBarRestore(
-      addLabel,
-      undefined,
-      [
-        { text: t("common.cancel"), style: "cancel" },
-        {
-          text: t("settings.addLibrary"),
-          onPress: () => router.push("/settings/add-library"),
-        },
-        {
-          text: t("cloud.sources.add"),
-          onPress: () =>
-            router.push("/settings/source-type", { withAnchor: true }),
-        },
-      ],
-      { cancelable: true },
-    )
-  }
   const { options, toolbar } = useScreenHeader({
     title,
-    close: { target: "/settings", dismissTo: true, variant: "layout" },
     right: empty
       ? []
       : [
           createAddAction({
             label: addLabel,
-            onPress: chooseResource,
+            onPress: onAdd,
             color: palette.primary,
           }),
         ],
@@ -81,7 +62,7 @@ function ResourceList({
         {empty ? (
           <EmptyState
             {...empty}
-            action={<PrimaryButton title={addLabel} onPress={chooseResource} />}
+            action={<PrimaryButton title={addLabel} onPress={onAdd} />}
           />
         ) : (
           <SectionCard>{children}</SectionCard>
@@ -98,6 +79,8 @@ export function LibrariesScreen() {
   return (
     <ResourceList
       title={t("settings.resources.libraries")}
+      addLabel={t("settings.addLibrary")}
+      onAdd={() => router.push("/settings/add-library")}
       empty={
         libraries.length
           ? undefined
@@ -177,6 +160,8 @@ export function DataSourcesScreen() {
   return (
     <ResourceList
       title={t("settings.resources.dataSources")}
+      addLabel={t("cloud.sources.add")}
+      onAdd={() => router.push("/settings/source-type")}
       empty={
         sources.length
           ? undefined

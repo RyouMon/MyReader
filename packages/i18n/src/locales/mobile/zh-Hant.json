@@ -148,7 +148,6 @@
       "title": "資源",
       "libraries": "書庫管理",
       "dataSources": "資料來源管理",
-      "add": "新增",
       "noSources": "尚未新增資料來源",
       "noSourcesDetail": "新增資料來源即可連接遠端書庫。"
     },

@@ -2,7 +2,6 @@ import { fireEvent, render, screen } from "@testing-library/react-native"
 import { router } from "expo-router"
 import type { DataSource } from "@my-reader/tools/types/data-source"
 import type { Library } from "@my-reader/tools/types/library"
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import type { UseScreenHeaderOptions } from "@/src/navigation/hooks/use-screen-header"
 import {
   DataSourcesScreen,
@@ -36,9 +35,6 @@ jest.mock("@/src/navigation/hooks/use-screen-header", () => ({
     mockHeader = options
     return { options: {}, toolbar: null }
   },
-}))
-jest.mock("@/src/constants/alert-with-status-bar", () => ({
-  showAlertWithStatusBarRestore: jest.fn(),
 }))
 jest.mock("@/src/design/tokens", () => ({ useThemePalette: () => ({}) }))
 jest.mock("@/src/components", () => {
@@ -89,20 +85,24 @@ beforeEach(() => {
 })
 
 it.each([
-  [LibrariesScreen, "addLibraryFlow.noLibrary.title"],
-  [DataSourcesScreen, "settings.resources.noSources"],
-] as const)("offers both resource types from an empty manager", (Manager, title) => {
+  [
+    "/settings/add-library",
+    LibrariesScreen,
+    "addLibraryFlow.noLibrary.title",
+    "settings.addLibrary",
+  ],
+  [
+    "/settings/source-type",
+    DataSourcesScreen,
+    "settings.resources.noSources",
+    "cloud.sources.add",
+  ],
+] as const)("opens %s directly from its empty state", (destination, Manager, title, addLabel) => {
   render(<Manager />)
   expect(screen.getByText(title)).toBeTruthy()
   expect(mockHeader.right).toHaveLength(0)
-  fireEvent.press(screen.getByText("settings.resources.add"))
-  const buttons = jest.mocked(showAlertWithStatusBarRestore).mock.calls[0]?.[2]
-  buttons?.find((action) => action.text === "settings.addLibrary")?.onPress?.()
-  expect(router.push).toHaveBeenLastCalledWith("/settings/add-library")
-  buttons?.find((action) => action.text === "cloud.sources.add")?.onPress?.()
-  expect(router.push).toHaveBeenLastCalledWith("/settings/source-type", {
-    withAnchor: true,
-  })
+  fireEvent.press(screen.getByText(addLabel))
+  expect(router.push).toHaveBeenCalledWith(destination)
 })
 
 it("lists all libraries, marks the active one and opens the selected library", () => {
@@ -125,7 +125,7 @@ it("lists all libraries, marks the active one and opens the selected library", (
     params: { libraryId: "legacy" },
   })
   mockHeader.right?.[0]?.onPress()
-  expect(showAlertWithStatusBarRestore).toHaveBeenCalled()
+  expect(router.push).toHaveBeenLastCalledWith("/settings/add-library")
 })
 
 it("shows configured accounts together and opens their own details, including accounts with the same name", () => {
@@ -175,7 +175,7 @@ it("shows configured accounts together and opens their own details, including ac
     })
   })
   mockHeader.right?.[0]?.onPress()
-  expect(showAlertWithStatusBarRestore).toHaveBeenCalled()
+  expect(router.push).toHaveBeenLastCalledWith("/settings/source-type")
 })
 
 it("opens the corresponding add form for each of the five source types", () => {

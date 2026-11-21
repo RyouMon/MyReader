@@ -156,7 +156,6 @@
       "title": "Ressourcen",
       "libraries": "Bibliotheken verwalten",
       "dataSources": "Datenquellen verwalten",
-      "add": "Hinzufügen",
       "noSources": "Noch keine Datenquellen",
       "noSourcesDetail": "Füge eine Datenquelle hinzu, um eine entfernte Bibliothek zu verbinden."
     },

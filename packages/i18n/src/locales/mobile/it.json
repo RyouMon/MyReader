@@ -160,7 +160,6 @@
       "title": "Risorse",
       "libraries": "Gestisci biblioteche",
       "dataSources": "Gestisci sorgenti dati",
-      "add": "Aggiungi",
       "noSources": "Nessuna sorgente dati",
       "noSourcesDetail": "Aggiungi una sorgente dati per collegare una biblioteca remota."
     },

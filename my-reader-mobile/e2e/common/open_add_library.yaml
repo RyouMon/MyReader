@@ -3,7 +3,6 @@ name: Add a library through Resources
 ---
 - tapOn:
     id: settings-libraries-row
-- tapOn: "^添加$|^Add$"
 - tapOn: "添加书库|Add Library"
 - assertVisible:
     id: add-library-create

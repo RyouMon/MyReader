@@ -160,7 +160,6 @@
       "title": "Ressources",
       "libraries": "Gérer les bibliothèques",
       "dataSources": "Gérer les sources de données",
-      "add": "Ajouter",
       "noSources": "Aucune source de données",
       "noSourcesDetail": "Ajoutez une source de données pour connecter une bibliothèque distante."
     },

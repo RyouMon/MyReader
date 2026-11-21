@@ -4,7 +4,6 @@ name: Register the isolated local WebDAV source
 - runFlow: open_settings.yaml
 - tapOn:
     id: settings-data-sources-row
-- tapOn: "^添加$|^Add$"
 - tapOn: "添加数据源|Add Source"
 - tapOn:
     id: source-type-webdav

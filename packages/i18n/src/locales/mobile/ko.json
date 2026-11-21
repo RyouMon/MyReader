@@ -152,7 +152,6 @@
       "title": "리소스",
       "libraries": "서재 관리",
       "dataSources": "데이터 소스 관리",
-      "add": "추가",
       "noSources": "데이터 소스가 없습니다",
       "noSourcesDetail": "데이터 소스를 추가하여 원격 서재에 연결하세요."
     },

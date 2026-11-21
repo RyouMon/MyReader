@@ -160,7 +160,6 @@
       "title": "Recursos",
       "libraries": "Gestionar bibliotecas",
       "dataSources": "Gestionar fuentes de datos",
-      "add": "Añadir",
       "noSources": "Aún no hay fuentes de datos",
       "noSourcesDetail": "Añade una fuente de datos para conectar una biblioteca remota."
     },

@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next"
 
 import { useStackScreenOptions } from "@/src/navigation/hooks/use-stack-screen-options"
 
+export const unstable_settings = { anchor: "index" }
+
 export default function SettingsStackLayout() {
   const screenOptions = useStackScreenOptions()
   const { t } = useTranslation()
@@ -28,7 +30,10 @@ export default function SettingsStackLayout() {
         name="libraries"
         options={{ title: t("settings.resources.libraries") }}
       />
-      <Stack.Screen name="(sources)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="(sources)/data-sources"
+        options={{ title: t("settings.resources.dataSources") }}
+      />
     </Stack>
   )
 }
