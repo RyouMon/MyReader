@@ -76,7 +76,7 @@ export function AddLibraryFlowProvider({
           })
         },
       }
-      router.dismissTo("/settings")
+      router.dismissTo("/settings/libraries")
       promptLibraryAddedAfterNavigation(library.name, actions)
     },
     [],

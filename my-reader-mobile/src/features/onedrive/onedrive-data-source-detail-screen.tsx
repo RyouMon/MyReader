@@ -140,7 +140,7 @@ export default function OneDriveDataSourceDetailScreen() {
       router.back()
       return
     }
-    router.replace("/settings/onedrive")
+    router.replace("/settings/data-sources")
   }
 
   function confirmDelete() {
@@ -232,6 +232,7 @@ export default function OneDriveDataSourceDetailScreen() {
       : undefined
 
   const { options, toolbar } = useScreenHeader({
+    title: t("onedrive.sourceDetail"),
     backTitle: t("back"),
     right: [reauthenticateAction, deleteAction].filter(
       (action): action is ScreenHeaderAction => action !== undefined,
@@ -249,7 +250,7 @@ export default function OneDriveDataSourceDetailScreen() {
           action={
             <PrimaryButton
               title={t("dataSource.backToList")}
-              onPress={() => router.replace("/settings/onedrive")}
+              onPress={() => router.replace("/settings/data-sources")}
             />
           }
           icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }}

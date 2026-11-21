@@ -144,6 +144,14 @@
     "addedAt": "添加时间"
   },
   "settings": {
+    "resources": {
+      "title": "资源",
+      "libraries": "书库管理",
+      "dataSources": "数据源管理",
+      "add": "添加",
+      "noSources": "尚未添加数据源",
+      "noSourcesDetail": "添加一个数据源，即可连接远程书库。"
+    },
     "libraryDetail": "书库详情",
     "manageLibrary": "管理书库：{{name}}",
     "addLibrary": "添加书库",

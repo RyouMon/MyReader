@@ -152,6 +152,14 @@
     "bookCount_other": "{{count}} Bücher"
   },
   "settings": {
+    "resources": {
+      "title": "Ressourcen",
+      "libraries": "Bibliotheken verwalten",
+      "dataSources": "Datenquellen verwalten",
+      "add": "Hinzufügen",
+      "noSources": "Noch keine Datenquellen",
+      "noSourcesDetail": "Füge eine Datenquelle hinzu, um eine entfernte Bibliothek zu verbinden."
+    },
     "libraryDetail": "Bibliotheksdetails",
     "manageLibrary": "Bibliothek verwalten: {{name}}",
     "addLibrary": "Bibliothek hinzufügen",

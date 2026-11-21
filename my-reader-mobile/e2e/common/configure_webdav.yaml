@@ -2,14 +2,12 @@ appId: ${APP_ID}
 name: Register the isolated local WebDAV source
 ---
 - runFlow: open_settings.yaml
-- scrollUntilVisible:
-    element:
-      id: settings-webdav-row
-    direction: DOWN
-    centerElement: true
 - tapOn:
-    id: settings-webdav-row
-- tapOn: "添加 WebDAV 数据源|Add WebDAV Source"
+    id: settings-data-sources-row
+- tapOn: "^添加$|^Add$"
+- tapOn: "添加数据源|Add Source"
+- tapOn:
+    id: source-type-webdav
 - tapOn:
     id: webdav-server-url
 - inputText: ${WEBDAV_URL}
@@ -48,5 +46,7 @@ name: Register the isolated local WebDAV source
     commands:
       - tapOn: "以后|Not Now"
 - extendedWaitUntil:
-    visible: ${WEBDAV_HOST}
+    visible:
+      id: "data-source-row-.+"
+      text: ".*${WEBDAV_HOST}.*"
     timeout: 30000

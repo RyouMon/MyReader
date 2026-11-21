@@ -35,7 +35,6 @@ import {
   type CloudDataSource,
   type CloudProvider,
   cloudAddPath,
-  cloudSourcePath,
   isOAuthCloudProvider,
   providerTitle,
 } from "./cloud-data-source"
@@ -176,7 +175,7 @@ export function CloudDataSourceDetailScreen({
 
   function goBack() {
     if (router.canGoBack()) router.back()
-    else router.replace(cloudSourcePath(provider) as never)
+    else router.replace("/settings/data-sources")
   }
 
   function confirmDelete() {
@@ -283,6 +282,7 @@ export function CloudDataSourceDetailScreen({
       : undefined
 
   const { options, toolbar } = useScreenHeader({
+    title: t("cloud.detail.title"),
     backTitle: t("back"),
     right: [reauthAction, editAction, deleteAction].filter(
       (action): action is ScreenHeaderAction => action !== undefined,
@@ -301,9 +301,7 @@ export function CloudDataSourceDetailScreen({
             action={
               <PrimaryButton
                 title={t("dataSource.backToList")}
-                onPress={() =>
-                  router.replace(cloudSourcePath(provider) as never)
-                }
+                onPress={() => router.replace("/settings/data-sources")}
               />
             }
             icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }}

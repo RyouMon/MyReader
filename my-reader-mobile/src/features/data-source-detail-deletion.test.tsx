@@ -185,19 +185,16 @@ jest.mock("@/tw", () => ({
 const detailCases: {
   DetailScreen: ComponentType
   notFoundTitle: string
-  sourceListRoute: "/settings/onedrive" | "/settings/webdav"
   source: DataSource
 }[] = [
   {
     DetailScreen: WebDavDataSourceDetailScreen,
     notFoundTitle: "dataSource.notFound.title",
-    sourceListRoute: "/settings/webdav",
     source: mockWebDavSource,
   },
   {
     DetailScreen: OneDriveDataSourceDetailScreen,
     notFoundTitle: "dataSource.notFound.title",
-    sourceListRoute: "/settings/onedrive",
     source: mockOneDriveSource,
   },
 ]
@@ -205,7 +202,6 @@ const detailCases: {
 describe.each(detailCases)("$source.type data source detail", ({
   DetailScreen,
   notFoundTitle,
-  sourceListRoute,
   source,
 }) => {
   beforeEach(() => {
@@ -286,6 +282,6 @@ describe.each(detailCases)("$source.type data source detail", ({
     fireEvent.press(
       screen.getByRole("button", { name: "dataSource.backToList" }),
     )
-    expect(router.replace).toHaveBeenCalledWith(sourceListRoute)
+    expect(router.replace).toHaveBeenCalledWith("/settings/data-sources")
   })
 })

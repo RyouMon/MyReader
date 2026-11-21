@@ -91,7 +91,7 @@ function dismissLibraryDetail() {
     return
   }
 
-  router.replace("/settings")
+  router.replace("/settings/libraries")
 }
 
 function DetailHero({
@@ -219,7 +219,11 @@ export default function LibraryDetailScreen() {
   }
 
   const { options, toolbar } = useScreenHeader({
-    close: { target: "/settings", dismissTo: true, variant: "layout" },
+    close: {
+      target: "/settings/libraries",
+      dismissTo: true,
+      variant: "layout",
+    },
     right: library
       ? [
           {

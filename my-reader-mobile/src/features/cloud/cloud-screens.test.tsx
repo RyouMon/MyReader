@@ -15,7 +15,6 @@ import {
 import { DataSourceInUseError } from "@/src/errors"
 import { CloudAddDataSourceScreen } from "./cloud-add-data-source-screen"
 import { CloudDataSourceDetailScreen } from "./cloud-data-source-detail-screen"
-import { CloudSourcesScreen } from "./cloud-sources-screen"
 import { RemoteDirectoryBrowserScreen } from "../settings/components/remote-directory-browser-screen"
 
 let mockParams: Record<string, string> = {}
@@ -37,6 +36,7 @@ jest.mock("expo-router", () => ({
   router: {
     push: jest.fn(),
     replace: jest.fn(),
+    dismissTo: jest.fn(),
     back: jest.fn(),
     canGoBack: jest.fn(() => true),
   },
@@ -359,7 +359,7 @@ describe("cloud source screens", () => {
     expect(mockCreate).not.toHaveBeenCalled()
     await headerAction("cloud.form.save")
     expect(mockCreate).toHaveBeenCalledTimes(1)
-    expect(router.back).toHaveBeenCalledTimes(1)
+    expect(router.dismissTo).toHaveBeenCalledWith("/settings/data-sources")
   })
 
   it("surfaces persistence errors without leaving the form", async () => {
@@ -394,7 +394,7 @@ describe("cloud source screens", () => {
       { ...s3Source, id: "" },
       { type: "s3", ...secrets },
     )
-    expect(router.replace).toHaveBeenCalledWith("/settings/s3")
+    expect(router.dismissTo).toHaveBeenCalledWith("/settings/data-sources")
   })
 
   it("loads saved S3 credentials before editing and preserves secret whitespace", async () => {
@@ -439,36 +439,7 @@ describe("cloud source screens", () => {
     expect(screen.getByText("dataSource.notFound.title")).toBeTruthy()
     expect(mockHeader.right).toEqual([])
     fireEvent.press(screen.getByText("dataSource.backToList"))
-    expect(router.replace).toHaveBeenCalledWith("/settings/s3")
-  })
-
-  it.each([
-    "gdrive",
-    "dropbox",
-    "s3",
-  ] as const)("shows only %s accounts and routes to their details", (provider) => {
-    mockSources = [oauthSource("gdrive"), oauthSource("dropbox"), s3Source]
-    render(<CloudSourcesScreen provider={provider} />)
-    const label = provider === "s3" ? "Archive" : "Reader"
-    expect(screen.getAllByText(label)).toHaveLength(1)
-    expect(
-      screen.getByText(
-        provider === "s3"
-          ? "https://s3.example.com/books"
-          : "reader@example.com",
-      ),
-    ).toBeTruthy()
-    fireEvent.press(screen.getByText(label))
-    expect(router.push).toHaveBeenCalledWith({
-      pathname: `/settings/${provider}/[dataSourceId]`,
-      params: { dataSourceId: `${provider}-1` },
-    })
-  })
-
-  it("provides an add action in the empty account list", () => {
-    render(<CloudSourcesScreen provider="dropbox" />)
-    fireEvent.press(screen.getByText("cloud.sources.add"))
-    expect(router.push).toHaveBeenCalledWith("/settings/dropbox/add")
+    expect(router.replace).toHaveBeenCalledWith("/settings/data-sources")
   })
 
   it.each([
@@ -522,7 +493,7 @@ describe("cloud source screens", () => {
     )
     expect(mockDelete).toHaveBeenCalledWith(s3Source.id)
     if (outcome === "success")
-      expect(router.replace).toHaveBeenCalledWith("/settings/s3")
+      expect(router.replace).toHaveBeenCalledWith("/settings/data-sources")
     else {
       expect(router.replace).not.toHaveBeenCalled()
       if (outcome === "in-use")
@@ -542,7 +513,7 @@ describe("cloud source screens", () => {
     mockParams = { dataSourceId: "removed" }
     render(<CloudDataSourceDetailScreen provider="gdrive" />)
     fireEvent.press(screen.getByText("dataSource.backToList"))
-    expect(router.replace).toHaveBeenCalledWith("/settings/gdrive")
+    expect(router.replace).toHaveBeenCalledWith("/settings/data-sources")
   })
 
   it.each([
@@ -661,6 +632,6 @@ describe("cloud source screens", () => {
       />,
     )
     fireEvent.press(screen.getByText("dataSource.backToList"))
-    expect(router.replace).toHaveBeenCalledWith("/settings/gdrive")
+    expect(router.dismissTo).toHaveBeenCalledWith("/settings/data-sources")
   })
 })

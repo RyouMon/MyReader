@@ -132,7 +132,7 @@ export default function WebDavDataSourceDetailScreen() {
       return
     }
 
-    router.replace("/settings/webdav")
+    router.replace("/settings/data-sources")
   }
 
   function confirmDelete() {
@@ -221,6 +221,7 @@ export default function WebDavDataSourceDetailScreen() {
     : undefined
 
   const { options, toolbar } = useScreenHeader({
+    title: t("webdav.sourceDetail"),
     backTitle: t("back"),
     right: [editAction, deleteAction].filter(
       (action): action is ScreenHeaderAction => action !== undefined,
@@ -238,7 +239,7 @@ export default function WebDavDataSourceDetailScreen() {
           action={
             <PrimaryButton
               title={t("dataSource.backToList")}
-              onPress={() => router.replace("/settings/webdav")}
+              onPress={() => router.replace("/settings/data-sources")}
             />
           }
           icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }}

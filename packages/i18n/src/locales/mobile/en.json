@@ -144,6 +144,14 @@
     "addedAt": "Added At"
   },
   "settings": {
+    "resources": {
+      "title": "Resources",
+      "libraries": "Manage Libraries",
+      "dataSources": "Manage Data Sources",
+      "add": "Add",
+      "noSources": "No data sources yet",
+      "noSourcesDetail": "Add a data source to connect a remote library."
+    },
     "libraryDetail": "Library Details",
     "manageLibrary": "Manage library: {{name}}",
     "addLibrary": "Add Library",
