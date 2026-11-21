@@ -8,6 +8,12 @@ import {
 } from "@testing-library/react-native"
 import { router } from "expo-router"
 import type { ReactNode } from "react"
+import DropboxEditRoute from "@/src/app/(tabs)/settings/(sources)/dropbox/add"
+import DropboxDetailRoute from "@/src/app/(tabs)/settings/(sources)/dropbox/[dataSourceId]"
+import GoogleDriveEditRoute from "@/src/app/(tabs)/settings/(sources)/gdrive/add"
+import GoogleDriveDetailRoute from "@/src/app/(tabs)/settings/(sources)/gdrive/[dataSourceId]"
+import S3EditRoute from "@/src/app/(tabs)/settings/(sources)/s3/add"
+import S3DetailRoute from "@/src/app/(tabs)/settings/(sources)/s3/[dataSourceId]"
 import {
   showAlertWithStatusBarRestore,
   showErrorAlert,
@@ -307,16 +313,16 @@ describe("cloud source screens", () => {
   })
 
   it.each([
-    "gdrive",
-    "dropbox",
-  ] as const)("keeps an edited %s source and returns to its previous directory", async (provider) => {
+    ["gdrive", GoogleDriveEditRoute],
+    ["dropbox", DropboxEditRoute],
+  ] as const)("keeps an edited %s source and returns to its previous directory", async (provider, EditRoute) => {
     mockSources = [oauthSource(provider)]
     mockParams = {
       dataSourceId: `${provider}-1`,
       returnToBrowser: "true",
       returnPath: "/Nested",
     }
-    render(<CloudAddDataSourceScreen provider={provider} />)
+    render(<EditRoute />)
     fireEvent.changeText(
       screen.getByLabelText("cloud.form.rootPathLabel"),
       " /Updated ",
@@ -400,7 +406,7 @@ describe("cloud source screens", () => {
   it("loads saved S3 credentials before editing and preserves secret whitespace", async () => {
     mockSources = [s3Source]
     mockParams = { dataSourceId: s3Source.id }
-    render(<CloudAddDataSourceScreen provider="s3" />)
+    render(<S3EditRoute />)
     await waitFor(() =>
       expect(
         screen.getByLabelText("cloud.form.accessKeyLabel").props.value,
@@ -443,17 +449,17 @@ describe("cloud source screens", () => {
   })
 
   it.each([
-    "gdrive",
-    "dropbox",
-    "s3",
-  ] as const)("shows %s details and routes editing without exposing credentials", async (provider) => {
+    ["gdrive", GoogleDriveDetailRoute],
+    ["dropbox", DropboxDetailRoute],
+    ["s3", S3DetailRoute],
+  ] as const)("shows %s details and routes editing without exposing credentials", async (provider, DetailRoute) => {
     mockSources = [
       provider === "s3"
         ? s3Source
         : { ...oauthSource(provider), createdAt: 1700000000000 },
     ]
     mockParams = { dataSourceId: `${provider}-1` }
-    render(<CloudDataSourceDetailScreen provider={provider} />)
+    render(<DetailRoute />)
     expect(
       screen.getByText(provider === "s3" ? "books" : "reader@example.com"),
     ).toBeTruthy()
