@@ -120,6 +120,7 @@ pub async fn test_tts_provider<R: tauri::Runtime>(
     request_id: String,
     input: UpsertTtsProviderInput,
     text: String,
+    voice_id: String,
 ) -> Result<TtsAudioArtifactDto, AppError> {
     let request_id = request_id.trim();
     if request_id.is_empty() {
@@ -132,7 +133,7 @@ pub async fn test_tts_provider<R: tauri::Runtime>(
     };
     let cache_directory = app.path().app_cache_dir()?.join("tts");
     let result = tokio::select! {
-        result = DesktopTtsService::test_provider(&config_path, &cache_directory, input, text) => result,
+        result = DesktopTtsService::test_provider(&config_path, &cache_directory, input, text, voice_id) => result,
         _ = &mut cancelled => Err(AppError::Tts("TTS_SYNTHESIS_CANCELLED".into())),
     };
     coordinator.finish(request_id);

@@ -43,7 +43,6 @@ pub struct TtsProviderProfile {
     pub instructions: Option<String>,
     pub voices: Vec<String>,
     pub voice_names: Option<HashMap<String, String>>,
-    pub default_voice: Option<String>,
     pub revision: f64,
 }
 
@@ -53,7 +52,6 @@ pub struct TtsModel {
     pub model: String,
     pub response_format: String,
     pub instructions: Option<String>,
-    pub default_voice: Option<String>,
     pub voices: Vec<String>,
     pub voice_names: Option<HashMap<String, String>>,
 }
@@ -90,7 +88,6 @@ impl TryFrom<TtsProvider> for my_reader_core::models::TtsProvider {
                         model: m.model,
                         response_format: parse_audio_format(&m.response_format)?,
                         instructions: m.instructions,
-                        default_voice: m.default_voice,
                         voices: m.voices,
                         voice_names: m.voice_names.unwrap_or_default().into_iter().collect(),
                         revision: 1,
@@ -119,7 +116,6 @@ impl From<my_reader_core::models::TtsProvider> for TtsProvider {
                     model: m.model,
                     response_format: m.response_format.as_str().into(),
                     instructions: m.instructions,
-                    default_voice: m.default_voice,
                     voices: m.voices,
                     voice_names: Some(m.voice_names.into_iter().collect()),
                 })
@@ -366,9 +362,10 @@ pub async fn tts_probe_provider(
 pub async fn tts_test_provider(
     profile: TtsProviderProfile,
     text: String,
+    voice_id: String,
     credential: Option<String>,
 ) -> Result<(), CoreFfiError> {
-    TtsService::test_provider(profile.try_into()?, text, credential.as_deref())
+    TtsService::test_provider(profile.try_into()?, text, voice_id, credential.as_deref())
         .await
         .map_err(CoreFfiError::from_core)
 }
@@ -388,12 +385,14 @@ pub async fn tts_preview_provider(
     profile: TtsProviderProfile,
     cache_directory: String,
     text: String,
+    voice_id: String,
     credential: Option<String>,
 ) -> Result<TtsAudioArtifact, CoreFfiError> {
     Ok(TtsService::preview_provider(
         profile.try_into()?,
         Path::new(&cache_directory),
         text,
+        voice_id,
         credential.as_deref(),
     )
     .await
@@ -487,13 +486,11 @@ impl From<CoreProviderProfile> for TtsProviderProfile {
             response_format,
             instructions,
             voices,
-            default_voice,
         }
         | TtsProviderOptions::Qwen {
             response_format,
             instructions,
             voices,
-            default_voice,
         }) = value.options;
         Self {
             id: value.id,
@@ -505,7 +502,6 @@ impl From<CoreProviderProfile> for TtsProviderProfile {
             response_format: Some(response_format.as_str().into()),
             instructions,
             voices,
-            default_voice,
             revision: value.revision as f64,
             voice_names: Some(value.voice_names.into_iter().collect()),
         }
@@ -524,7 +520,6 @@ impl TryFrom<TtsProviderProfile> for CoreProviderProfile {
                 )?,
                 instructions: value.instructions,
                 voices: value.voices,
-                default_voice: value.default_voice,
             },
             TtsProviderKind::OpenAiCompatible => TtsProviderOptions::OpenAiCompatible {
                 response_format: parse_audio_format(
@@ -532,7 +527,6 @@ impl TryFrom<TtsProviderProfile> for CoreProviderProfile {
                 )?,
                 instructions: value.instructions,
                 voices: value.voices,
-                default_voice: value.default_voice,
             },
         };
         Ok(Self {
@@ -749,7 +743,6 @@ mod tests {
                     response_format: TtsAudioFormat::Mp3,
                     instructions: Some("Speak warmly".into()),
                     voices: vec!["reader-voice".into(), "narrator-voice".into()],
-                    default_voice: Some("reader-voice".into()),
                 },
                 revision: 2,
             }
@@ -767,10 +760,6 @@ mod tests {
         assert_eq!(
             ffi.profiles[0].voices,
             vec!["reader-voice", "narrator-voice"]
-        );
-        assert_eq!(
-            ffi.profiles[0].default_voice.as_deref(),
-            Some("reader-voice")
         );
         assert_eq!(ffi.profiles[0].revision, 2.0);
     }
@@ -806,10 +795,6 @@ mod tests {
             saved.providers[0].models[0].voices,
             ["reader", "another-voice"]
         );
-        assert_eq!(
-            saved.providers[0].models[0].default_voice.as_deref(),
-            Some("reader")
-        );
         let on_disk = std::fs::read_to_string(path).unwrap();
         assert!(!on_disk.contains("displayName"));
         assert!(on_disk.contains("voiceNames"));
@@ -835,7 +820,6 @@ mod tests {
             response_format: None,
             instructions: None,
             voices: Vec::new(),
-            default_voice: None,
             revision: 1.0,
         };
 

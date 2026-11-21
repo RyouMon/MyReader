@@ -184,9 +184,7 @@ export function resolveReaderTtsSelection(
       (mappedVoiceId &&
       (profile.kind === "qwen" || profile.voices.includes(mappedVoiceId))
         ? mappedVoiceId
-        : undefined) ??
-      profile.defaultVoice ??
-      profile.voices[0],
+        : undefined) ?? profile.voices[0],
   }
 }
 

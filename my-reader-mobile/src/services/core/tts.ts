@@ -187,12 +187,14 @@ export async function discoverTtsModels(
 export async function previewTtsProvider(
   input: UpsertMobileTtsProfileInput,
   text: string,
+  voiceId: string,
   signal?: AbortSignal,
 ): Promise<TtsAudioArtifact> {
   return ttsPreviewProvider(
     draftProfile(input),
     ttsCachePath,
     text,
+    voiceId,
     await draftCredential(input),
     signal ? { signal } : undefined,
   )

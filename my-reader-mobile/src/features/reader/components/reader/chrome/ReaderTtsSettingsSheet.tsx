@@ -109,12 +109,12 @@ function selectedVoiceForConfig(
     ? selectedVoiceMapping(config, language)
     : undefined
 
-  const selectedVoice = visibleVoices.find(
-    (voice) =>
-      voice.id === (selectedMapping?.voiceId ?? selectedProfile?.defaultVoice),
-  )
   const selectedVoiceId =
-    selectedMapping?.voiceId ?? selectedProfile?.defaultVoice
+    selectedMapping?.voiceId ??
+    (selectedProfile ? visibleVoices[0]?.id : undefined)
+  const selectedVoice = visibleVoices.find(
+    (voice) => voice.id === selectedVoiceId,
+  )
   return { selectedEngineKey, selectedProfile, selectedVoice, selectedVoiceId }
 }
 
@@ -160,16 +160,8 @@ const ReaderTtsSettingsSheet = forwardRef<
           (candidate) => candidate.id === nextConfig.defaultEngine.profileId,
         )
         if (!profile) throw new Error("TTS_DEFAULT_PROFILE_NOT_FOUND")
-        const orderedVoiceIds = profile.defaultVoice
-          ? [
-              profile.defaultVoice,
-              ...profile.voices.filter(
-                (voice) => voice !== profile.defaultVoice,
-              ),
-            ]
-          : profile.voices
         setVoices(
-          orderedVoiceIds.map((id) => ({
+          profile.voices.map((id) => ({
             id,
             name: ttsVoiceLabel(id, profile.voiceNames),
             language: "mul",

@@ -111,7 +111,6 @@ Given("用户正在选择语音服务来源", async ({ page }) => {
           responseFormat: model.responseFormat,
           instructions: model.instructions,
           voices: model.voices,
-          defaultVoice: model.defaultVoice,
         },
         revision: 1,
         hasCredential: Boolean(credential),

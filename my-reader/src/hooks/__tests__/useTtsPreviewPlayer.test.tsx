@@ -54,7 +54,6 @@ const config: TtsConfigDto = {
         kind: "openAiCompatible",
         responseFormat: "mp3",
         voices: ["voice"],
-        defaultVoice: "voice",
       },
     },
   ],

@@ -213,7 +213,6 @@ fn add_tts_profile(config: &Path, id: &str) {
                 response_format: TtsAudioFormat::Mp3,
                 instructions: None,
                 voices: vec!["A".into()],
-                default_voice: Some("A".into()),
             },
         },
     )

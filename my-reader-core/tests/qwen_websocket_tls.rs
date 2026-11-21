@@ -40,7 +40,6 @@ async fn websocket_tls_reports_handshake_errors_without_a_global_crypto_provider
                 response_format: TtsAudioFormat::Mp3,
                 instructions: None,
                 voices: vec!["longanhuan_v3.6".into()],
-                default_voice: Some("longanhuan_v3.6".into()),
             },
             revision: 1,
         },

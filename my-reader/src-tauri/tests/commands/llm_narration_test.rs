@@ -125,7 +125,7 @@ async fn narration_commands_preserve_identity_and_route_exact_text_with_book_sco
             "upsert_tts_profile",
             json!({"input": {
                 "profile": {"id": id, "name": id, "kind": "openAiCompatible", "endpoint": "https://tts.example/v1", "model": "speech",
-                    "options": {"kind": "openAiCompatible", "responseFormat": "mp3", "voices": [voice], "defaultVoice": voice}},
+                    "options": {"kind": "openAiCompatible", "responseFormat": "mp3", "voices": [voice]}},
                 "credential": null, "clearCredential": false
             }}),
         );

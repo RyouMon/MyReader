@@ -123,7 +123,7 @@ export const commands = {
 	setTtsVoiceForLanguage: (language: string, voice: { engine: "system"; voiceId: string } | { engine: "provider"; profileId: string; voiceId: string } | null) => typedError<TtsConfigDto, ErrorKind>(__TAURI_INVOKE("set_tts_voice_for_language", { language, voice })),
 	getTtsProviderCapabilities: (profileId: string) => typedError<TtsProviderCapabilitiesDto, ErrorKind>(__TAURI_INVOKE("get_tts_provider_capabilities", { profileId })),
 	probeTtsProvider: (profileId: string) => typedError<TtsProviderCapabilitiesDto, ErrorKind>(__TAURI_INVOKE("probe_tts_provider", { profileId })),
-	testTtsProvider: (requestId: string, input: UpsertTtsProviderInput, text: string) => typedError<TtsAudioArtifactDto_Serialize, ErrorKind>(__TAURI_INVOKE("test_tts_provider", { requestId, input, text })),
+	testTtsProvider: (requestId: string, input: UpsertTtsProviderInput, text: string, voiceId: string) => typedError<TtsAudioArtifactDto_Serialize, ErrorKind>(__TAURI_INVOKE("test_tts_provider", { requestId, input, text, voiceId })),
 	discoverTtsModels: (input: UpsertTtsProviderInput) => typedError<string[], ErrorKind>(__TAURI_INVOKE("discover_tts_models", { input })),
 	listTtsVoices: (profileId: string) => typedError<TtsVoiceDto[], ErrorKind>(__TAURI_INVOKE("list_tts_voices", { profileId })),
 	synthesizeTts: (input: TtsSynthesisInput) => typedError<TtsAudioArtifactDto_Serialize, ErrorKind>(__TAURI_INVOKE("synthesize_tts", { input })),
@@ -691,7 +691,6 @@ export type TtsModelDto = {
 	model: string,
 	responseFormat: TtsAudioFormatDto,
 	instructions: string | null,
-	defaultVoice: string | null,
 	voices: string[],
 	voiceNames?: { [key in string]: string } | null,
 };
@@ -736,7 +735,7 @@ export type TtsProviderDto = {
 
 export type TtsProviderKindDto = "openAiCompatible" | "qwen";
 
-export type TtsProviderOptionsDto = { kind: "openAiCompatible"; responseFormat?: TtsAudioFormatDto; instructions?: string | null; voices?: string[]; defaultVoice?: string | null } | { kind: "qwen"; responseFormat: TtsAudioFormatDto; instructions: string | null; voices: string[]; defaultVoice: string | null };
+export type TtsProviderOptionsDto = { kind: "openAiCompatible"; responseFormat?: TtsAudioFormatDto; instructions?: string | null; voices?: string[] } | { kind: "qwen"; responseFormat: TtsAudioFormatDto; instructions: string | null; voices: string[] };
 
 export type TtsProviderProfileDto = {
 	id: string,

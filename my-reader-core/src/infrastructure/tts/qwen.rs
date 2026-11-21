@@ -418,7 +418,6 @@ mod tests {
                 response_format: TtsAudioFormat::Wav,
                 instructions: None,
                 voices: vec!["Bunny".into()],
-                default_voice: Some("Bunny".into()),
             },
             revision: 1,
         };

@@ -152,7 +152,6 @@ export function TtsProviderModels({
       ...newTtsModel(),
       voices: scoped ? [""] : [],
       responseFormat: draft.kind === "qwen" ? "wav" : "mp3",
-      defaultVoice: scoped ? undefined : draft.voices[0],
     }
     onChange({ ...draft, models: [...draft.models, model] })
     setSelected(draft.models.length)

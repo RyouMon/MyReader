@@ -293,7 +293,6 @@ describe("useEpubTtsSession", () => {
             options: {
               kind: "openAiCompatible",
               voices: ["reader"],
-              defaultVoice: "reader",
             },
             revision: 1,
             hasCredential: false,
@@ -1655,7 +1654,6 @@ describe("useEpubTtsSession", () => {
           options: {
             kind: "openAiCompatible",
             voices: ["reader"],
-            defaultVoice: "reader",
           },
           revision: 2,
           hasCredential: true,

@@ -241,7 +241,7 @@ describe("SpeechSection", () => {
                 },
                 model: preset.defaultModel.id,
                 responseFormat: "mp3",
-                defaultVoice: index === 0 ? "manual-voice" : "custom-voice",
+                voices: [index === 0 ? "manual-voice" : "custom-voice"],
               }),
             ],
           }),
@@ -318,10 +318,11 @@ describe("SpeechSection", () => {
         expect.any(String),
         expect.objectContaining({
           profile: expect.objectContaining({
-            options: expect.objectContaining({ defaultVoice: "future-voice" }),
+            options: expect.objectContaining({ voices: ["future-voice"] }),
           }),
         }),
         expect.any(String),
+        "future-voice",
       ),
     )
     fireEvent.click(form.getByRole("button", { name: "保存" }))
@@ -336,7 +337,6 @@ describe("SpeechSection", () => {
               expect.objectContaining({
                 model: "qwen-audio-3.0-tts-plus",
                 responseFormat: "mp3",
-                defaultVoice: "future-voice",
                 voices: ["future-voice"],
               }),
             ],
@@ -378,7 +378,7 @@ describe("SpeechSection", () => {
               expect.objectContaining({
                 model: "qwen3-tts-flash",
                 responseFormat: "wav",
-                defaultVoice: "Cherry",
+                voices: ["Cherry"],
               }),
             ],
           }),
@@ -401,7 +401,6 @@ describe("SpeechSection", () => {
             kind: "openAiCompatible",
             responseFormat: "mp3",
             voices: ["reader"],
-            defaultVoice: "reader",
           },
           revision: 1,
           hasCredential: true,
@@ -512,7 +511,6 @@ describe("SpeechSection", () => {
         kind: "openAiCompatible" as const,
         responseFormat: "mp3" as const,
         voices: ["reader"],
-        defaultVoice: "reader",
       },
       hasCredential: true,
       revision: 1,
@@ -558,6 +556,7 @@ describe("SpeechSection", () => {
         credential: "fixture-key",
       }),
       "欢迎使用 MyReader 朗读功能。",
+      "reader",
     )
     fireEvent.change(dialog.getByLabelText(/服务器地址\s*\*?$/), {
       target: { value: "https://draft.example/v1" },
@@ -577,6 +576,7 @@ describe("SpeechSection", () => {
         credential: "draft-key",
       }),
       expect.any(String),
+      "reader",
     )
     expect(mocks.saveTtsProvider).not.toHaveBeenCalled()
     expect(mocks.notifyTtsConfigChanged).not.toHaveBeenCalled()
@@ -625,7 +625,7 @@ it("keeps the voice ID placeholder separate from an editable display name", asyn
   expect(name).toHaveValue("自定义名称")
 })
 
-it("saves multiple OpenAI models with shared voices and automatic playback defaults", async () => {
+it("saves multiple OpenAI models with a shared voice catalog", async () => {
   const user = userEvent.setup()
   render(<TtsProvidersSection />)
   await user.click(await screen.findByRole("button", { name: "添加语音服务" }))
@@ -664,14 +664,12 @@ it("saves multiple OpenAI models with shared voices and automatic playback defau
               model: "gpt-4o-mini-tts",
               instructions: null,
               responseFormat: "mp3",
-              defaultVoice: "reader",
               voices: [],
             }),
             expect.objectContaining({
               model: "tts-second",
               instructions: null,
               responseFormat: "mp3",
-              defaultVoice: "reader",
               voices: [],
             }),
           ],
@@ -721,12 +719,10 @@ it("keeps OpenAI model-specific voices separate when saving", async () => {
             expect.objectContaining({
               model: "gpt-4o-mini-tts",
               voices: ["reader"],
-              defaultVoice: "reader",
             }),
             expect.objectContaining({
               model: "second-tts",
               voices: ["actor"],
-              defaultVoice: "actor",
             }),
           ],
         }),
@@ -781,12 +777,12 @@ it("merges editable system presets with account voices and tests each unsaved vo
         profile: expect.objectContaining({
           model: "qwen-new",
           options: expect.objectContaining({
-            defaultVoice: "custom",
             responseFormat: "wav",
           }),
         }),
       }),
       expect.any(String),
+      "custom",
     ),
   )
   expect(mocks.saveTtsProvider).not.toHaveBeenCalled()
@@ -833,7 +829,6 @@ it("previews a shared voice with the chosen model and preserves saved playback v
       voices: [],
 
       responseFormat: "wav",
-      defaultVoice: "reader",
       instructions: "Warm",
     },
     {
@@ -843,7 +838,6 @@ it("previews a shared voice with the chosen model and preserves saved playback v
       voices: [],
 
       responseFormat: "mp3",
-      defaultVoice: "actor",
       instructions: null,
     },
   ]
@@ -871,19 +865,19 @@ it("previews a shared voice with the chosen model and preserves saved playback v
   expect(screen.queryByLabelText("默认朗读指令")).not.toBeInTheDocument()
   await user.click(screen.getByRole("combobox", { name: "测试模型" }))
   await user.click(screen.getByRole("option", { name: "second-model" }))
-  await user.click(screen.getByRole("button", { name: "测试 reader" }))
+  await user.click(screen.getByRole("button", { name: "测试 actor" }))
   expect(mocks.testTtsProvider).toHaveBeenLastCalledWith(
     expect.any(String),
     expect.objectContaining({
       profile: expect.objectContaining({
         model: "second-model",
         options: expect.objectContaining({
-          defaultVoice: "reader",
           responseFormat: "mp3",
         }),
       }),
     }),
     expect.any(String),
+    "actor",
   )
   fireEvent.change(screen.getByLabelText(/^名称\s*\*?$/), {
     target: { value: "Renamed service" },
@@ -955,7 +949,6 @@ it("confirms provider deletion before removing it and notifying readers", async 
           {
             id: "model-id",
             model: "tts-1",
-            defaultVoice: "alloy",
             voices: [],
             responseFormat: "mp3",
             instructions: null,

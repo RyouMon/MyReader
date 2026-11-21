@@ -30,7 +30,6 @@ const config: MobileTtsConfig = {
       revision: 1,
       hasCredential: true,
       voices: ["one", "two"],
-      defaultVoice: "one",
       responseFormat: "mp3",
     },
   ],

@@ -37,7 +37,6 @@ async fn token_plan_synthesizes_selected_voices_into_playable_audio() {
                     response_format: format,
                     instructions: None,
                     voices: vec![voice.into()],
-                    default_voice: Some(voice.into()),
                 },
                 revision: 1,
             },

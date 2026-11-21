@@ -114,8 +114,6 @@ export default function TtsSettingsScreen() {
       voice.profileId === config.defaultEngine.profileId
     )
   })
-  const selectedVoiceId =
-    selectedVoice?.voiceId ?? selectedProfile?.defaultVoice
   const availableVoices = useMemo(
     () =>
       selectedProfile
@@ -132,6 +130,9 @@ export default function TtsSettingsScreen() {
         : voices,
     [selectedProfile, voices, qwenVoices],
   )
+  const selectedVoiceId =
+    selectedVoice?.voiceId ??
+    (selectedProfile ? availableVoices[0]?.id : undefined)
   const selectedVoiceLabel = voiceLabel(
     availableVoices,
     selectedVoiceId,

@@ -229,15 +229,38 @@ it("persists model and voice IDs, keeps a failed draft open, and exposes only pe
   expect(tts.saveTtsProvider).toHaveBeenLastCalledWith(
     expect.objectContaining({
       provider: expect.objectContaining({
+        voices: ["custom-voice"],
         models: [
           expect.objectContaining({
             model: "custom-model",
-            defaultVoice: "custom-voice",
           }),
         ],
       }),
     }),
   )
+})
+
+it("saves catalog models added after the shared voices without assigning a voice to any model", async () => {
+  const additions = ["tts-b", "tts-c", "tts-d"]
+  jest.mocked(tts.discoverTtsModels).mockResolvedValueOnce(additions)
+  mount()
+  fireEvent.changeText(screen.getByTestId("provider-model-id-0"), "tts-a")
+  addVoice("warm")
+  addVoice("bright")
+  fireEvent.press(screen.getByText("providerEditor.fetchModels"))
+  for (const id of additions) fireEvent.press(await screen.findByText(id))
+  fireEvent.press(screen.getByText("providerEditor.addSelected"))
+  await screen.findByDisplayValue("tts-d")
+  save()
+  await waitFor(() => expect(tts.saveTtsProvider).toHaveBeenCalledTimes(1))
+  const { provider } = jest.mocked(tts.saveTtsProvider).mock.calls[0]![0]
+  expect(provider.voices).toEqual(["warm", "bright"])
+  expect(provider.models.map((model) => model.model)).toEqual([
+    "tts-a",
+    ...additions,
+  ])
+  for (const model of provider.models)
+    expect(model).not.toHaveProperty("defaultVoice")
 })
 
 it("keeps model fields visible and expands voices only in model-scoped mode", () => {
@@ -376,6 +399,7 @@ it("previews unsaved voice IDs with current credentials and surfaces API failure
     screen.getByTestId("tts-provider-endpoint"),
     "https://draft.example/v1",
   )
+  addVoice("first-voice")
   addVoice("unknown-voice")
   jest
     .mocked(tts.previewTtsProvider)
@@ -393,10 +417,10 @@ it("previews unsaved voice IDs with current credentials and surfaces API failure
       credential: "draft-key",
       profile: expect.objectContaining({
         endpoint: "https://draft.example/v1",
-        defaultVoice: "unknown-voice",
       }),
     }),
     "settings.tts.previewText",
+    "unknown-voice",
     expect.any(AbortSignal),
   )
   expect(tts.saveTtsProvider).not.toHaveBeenCalled()
@@ -441,8 +465,6 @@ it("requires confirmation and successful persistence before leaving a deleted pr
 
             responseFormat: "mp3",
             voices: [],
-
-            defaultVoice: "v",
           },
         ],
       },

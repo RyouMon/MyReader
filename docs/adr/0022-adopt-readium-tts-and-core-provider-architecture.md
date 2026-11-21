@@ -18,6 +18,9 @@ isProject: true
 
 2026-09-29 扩展：增加 Qwen 原生 DashScope adapter；三端共享 Core 的模型能力、音色发现与合成协议。
 
+2026-11-21 修订：供应商设置维护模型和可用声音列表，朗读设置保存选用的模型和声音。
+读取旧配置时忽略模型上的 `defaultVoice`。
+
 当前已实施：
 
 - 桌面、iOS 和 Android 的文本 EPUB Readium 朗读会话、句子 Decoration、Locator 跟随与
@@ -74,8 +77,8 @@ isProject: true
    对应服务。
 7. **推理供应商采用能力驱动的 adapter，而不是供应商条件分支。** 每个 voice 必须由
    `(providerProfileId, voiceId)` 唯一标识；不能把不同供应商的 voice ID 展平成一个全局字符串。
-   对 `voiceDiscovery = false` 的 OpenAI-compatible，profile 必须由用户填写声音 ID 列表并指定
-   默认声音；MyReader 不内置、猜测或把 OpenAI 官方声音名套用到其他兼容供应商。
+   对 `voiceDiscovery = false` 的 OpenAI-compatible，用户填写可用的声音 ID 列表。
+   MyReader 不内置、猜测或把 OpenAI 官方声音名套用到其他兼容供应商。
 8. **第一阶段引擎只包括 System 和 OpenAI-compatible。** System 先验证 Readium 会话和平台
    媒体生命周期，随后在同一阶段接入 OpenAI-compatible 网络 adapter。MiniMax、火山引擎、
    Azure Speech、ElevenLabs 和 Google Gemini TTS 后续接入；GPT-SoVITS、CosyVoice、
@@ -283,10 +286,10 @@ interface TtsSession {
 
 用户语音选择按语言保存为 `TtsVoiceRef { engine, providerProfileId?, voiceId }`。系统 voice 以及声明
 `voiceDiscovery = true` 的供应商 voice 列表来自运行时或短期 cache，不是配置权威。第一阶段的
-OpenAI-compatible 声明 `voiceDiscovery = false`，其 profile 中由用户填写的 `voices` 与
-`defaultVoice` 是配置权威；Core 只返回这些声音，不附加任何内置名称。持久化的语言覆盖消失时：
+OpenAI-compatible 声明 `voiceDiscovery = false`，Core 只返回用户填写的 `voices`。
+持久化的语言覆盖消失时：
 
-1. OpenAI-compatible 回退到该 profile 的用户指定默认 voice；支持发现的引擎选择同 provider、
+1. OpenAI-compatible 先使用朗读设置中适用的声音，未指定时临时取列表中的第一个声音；支持发现的引擎选择同 provider、
    同语言的确定性默认 voice；
 2. UI 显示“原语音不可用”的非阻塞提示；
 3. 不静默换 provider，不把正文从系统引擎发送到网络。
@@ -483,14 +486,13 @@ type OpenAiCompatibleOptions = {
   responseFormat: "mp3" | "opus" | "aac" | "flac" | "wav"
   instructions?: string
   voices: string[]
-  defaultVoice: string
 }
 ```
 
 - `kind` 与 `options` 使用 tagged enum 和逐 provider 校验，不保存任意可执行模板。
 - `id` 是设备本地稳定 UUID；`revision` 在影响合成结果的 profile 变化时递增，用于 cache 失效。
 - endpoint、model、region、voice 参数可保存；OpenAI-compatible 的 `voices` 至少包含一个去重后的
-  用户输入 ID，`defaultVoice` 必须属于该列表。API key、cookie、token、client secret 不可保存。
+  用户输入 ID。API key、cookie、token、client secret 不可保存。
 - 默认系统 engine 不创建伪造的 provider profile；UI 将平台 system descriptor 与 Core profile
   列表合并展示。
 - profile、voice 与 playback 偏好不进入 Automerge/sidecar，因为系统 voice、endpoint、密钥和
@@ -674,7 +676,7 @@ CosyVoice、AllTalk、XTTS、TTS-WebUI 等。MyReader 借鉴的是能力拆分�
 | 阶段 | Adapter | 原因与边界 |
 |---|---|---|
 | A | System | 零服务配置、正文不出设备；先验证 Readium 会话和平台媒体生命周期 |
-| B | OpenAI-compatible | 一个 typed adapter 覆盖 OpenAI `/v1/audio/speech` 与大量兼容网关；preset 只提供 endpoint/model 起点，声音 ID 与默认声音始终由用户配置 |
+| B | OpenAI-compatible | 一个 typed adapter 覆盖 OpenAI `/v1/audio/speech` 与大量兼容网关；preset 只提供 endpoint/model 起点，可用声音 ID 由用户配置 |
 | C | MiniMax | 中文场景常见，能力和错误独立建 adapter |
 | C | Volcengine | 中文场景常见，按官方鉴权与 voice 模型实现 |
 | C | Azure Speech | Microsoft 的稳定官方云服务，支持 region/voice 管理 |
@@ -689,8 +691,8 @@ Kokoro、Silero、StyleTTS 等可以在有真实用户需求且存在稳定服�
 
 ### Qwen 原生接入
 
-沿用既有 provider flow：桌面 Dialog、移动设置页与阅读器 Sheet 均提供模型、音色、默认音色、
-端点与密钥；格式和指令字段由 Core 返回的模型能力决定，不伪装成 OpenAI-compatible。
+供应商设置维护端点、密钥、模型和可用音色，朗读设置选择使用的模型和音色。
+格式和指令字段由 Core 返回的模型能力决定，不伪装成 OpenAI-compatible。
 
 创建入口区分三种来源，选择后直接进入预填好的表单：
 
@@ -826,7 +828,7 @@ TTS 不创建独立的“音频进度”表：
 - 实现 Core cache、single-flight、cancellation、artifact 校验与 normalized errors。
 - 完成第一阶段 OpenAI-compatible adapter。
 - 完成 foreground typed pull protocol、短前瞻和切换/seek 的 stale-response 防护。
-- 增加网络隐私确认、成本提示、用户管理的 voice/default voice、preview 和 cache 管理页；只有声明
+- 增加网络隐私确认、成本提示、声音目录与朗读偏好、preview 和 cache 管理页；只有声明
   `voiceDiscovery = true` 的后续 adapter 才显示声音发现/刷新。
 
 ### Phase 3：交互与远端后台

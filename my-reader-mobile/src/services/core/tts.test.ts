@@ -94,7 +94,6 @@ const openAiProfile = {
   credentialReference: "ryoumon.myreader.tts.openai",
   responseFormat: "mp3",
   voices: ["reader-voice"],
-  defaultVoice: "reader-voice",
   revision: 1,
 }
 
@@ -183,7 +182,6 @@ describe("mobile core TTS", () => {
               model: openAiProfile.model,
 
               responseFormat: "mp3",
-              defaultVoice: "reader-voice",
               voices: [],
             },
           ],
@@ -204,6 +202,7 @@ describe("mobile core TTS", () => {
         clearCredential,
       },
       "Test",
+      "reader-voice",
       signal,
     )
     expect(ttsPreviewProvider).toHaveBeenCalledWith(
@@ -213,6 +212,7 @@ describe("mobile core TTS", () => {
       }),
       "/cache/tts",
       "Test",
+      "reader-voice",
       expected,
       { signal },
     )
@@ -308,7 +308,6 @@ describe("mobile core TTS", () => {
               model: openAiProfile.model,
 
               responseFormat: "mp3",
-              defaultVoice: "reader-voice",
               voices: [],
             },
           ],
@@ -354,7 +353,6 @@ describe("mobile core TTS", () => {
         model: "gpt-4o-mini-tts",
         responseFormat: "mp3",
         voices: ["reader-voice"],
-        defaultVoice: "reader-voice",
       },
       credential: " secret ",
     })
@@ -390,7 +388,6 @@ describe("mobile core TTS", () => {
               model: openAiProfile.model,
 
               responseFormat: "mp3",
-              defaultVoice: "reader-voice",
               voices: [],
             },
           ],
@@ -440,7 +437,6 @@ describe("mobile core TTS", () => {
                 model: openAiProfile.model,
 
                 responseFormat: "mp3",
-                defaultVoice: "reader-voice",
                 voices: [],
               },
             ],
@@ -486,7 +482,6 @@ describe("mobile core TTS", () => {
               model: openAiProfile.model,
 
               responseFormat: "mp3",
-              defaultVoice: "reader-voice",
               voices: [],
             },
           ],
@@ -539,7 +534,6 @@ describe("mobile core TTS", () => {
               model: openAiProfile.model,
 
               responseFormat: "mp3",
-              defaultVoice: "reader-voice",
               voices: [],
             },
           ],
@@ -562,7 +556,6 @@ it("converts voice names across the native map boundary without losing them in J
     model: "tts",
     responseFormat: "mp3",
     voices: ["Cherry"],
-    defaultVoice: "Cherry",
     voiceNames: new Map([["Cherry", "小樱"]]),
   }
   const provider = {

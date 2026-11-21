@@ -33,7 +33,6 @@ const input: UpsertTtsProviderInput = {
     options: {
       kind: "openAiCompatible",
       voices: ["draft-voice"],
-      defaultVoice: "draft-voice",
       responseFormat: "mp3",
       instructions: "Softly",
     },
@@ -52,7 +51,7 @@ afterEach(() => vi.unstubAllGlobals())
 
 it("plays the returned draft audio, reports completion and stops playback on edit", async () => {
   const { result, rerender } = renderHook(
-    ({ value }) => useTtsProviderTest(value),
+    ({ value }) => useTtsProviderTest(value, "draft-voice"),
     { initialProps: { value: input } },
   )
   await act(() => result.current.test("Preview"))
@@ -60,6 +59,7 @@ it("plays the returned draft audio, reports completion and stops playback on edi
     expect.any(String),
     input,
     "Preview",
+    "draft-voice",
   )
   expect(PreviewAudio.instances[0].src).toBe("asset:/tmp/preview.mp3")
   expect(result.current.state).toBe("playing")
@@ -78,8 +78,8 @@ it("cancels a superseded request and ignores its late result", async () => {
       resolve = done
     }),
   )
-  const first = renderHook(() => useTtsProviderTest(input))
-  const second = renderHook(() => useTtsProviderTest(input))
+  const first = renderHook(() => useTtsProviderTest(input, "draft-voice"))
+  const second = renderHook(() => useTtsProviderTest(input, "draft-voice"))
   let pending!: Promise<void>
   act(() => {
     pending = first.result.current.test("First")
@@ -99,7 +99,7 @@ it("cancels a superseded request and ignores its late result", async () => {
 
 it("cancels a pending request on close and exposes synthesis failures", async () => {
   mocks.testTtsProvider.mockRejectedValueOnce(new Error("Rejected voice"))
-  const hook = renderHook(() => useTtsProviderTest(input))
+  const hook = renderHook(() => useTtsProviderTest(input, "draft-voice"))
   await act(() => hook.result.current.test("Test"))
   expect(hook.result.current.error).toContain("Rejected voice")
   expect(hook.result.current.state).toBe("idle")

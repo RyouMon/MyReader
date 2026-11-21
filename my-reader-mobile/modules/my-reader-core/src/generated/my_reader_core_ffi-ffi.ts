@@ -968,6 +968,7 @@ interface NativeModuleInterface {
     profile: Uint8Array,
     cacheDirectory: Uint8Array,
     text: Uint8Array,
+    voiceId: Uint8Array,
     credential: Uint8Array,
   ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_tts_probe_provider(
@@ -1013,6 +1014,7 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_fn_func_tts_test_provider(
     profile: Uint8Array,
     text: Uint8Array,
+    voiceId: Uint8Array,
     credential: Uint8Array,
   ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_tts_upsert_profile(

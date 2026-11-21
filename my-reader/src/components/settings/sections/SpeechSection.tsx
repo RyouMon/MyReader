@@ -45,7 +45,6 @@ import type {
   TtsConfigDto,
   TtsPlaybackPreferencesDto,
   TtsProviderDto,
-  TtsProviderProfileDto,
 } from "@/lib/tauri-specta"
 import { notifyTtsConfigChanged } from "@/lib/tts/events"
 import {
@@ -134,7 +133,7 @@ export default function SpeechSection() {
   const selectedDefaultVoiceId = configuredVoiceId(
     config,
     selectedEngine,
-    selectedProfile,
+    providerVoices[0]?.id,
   )
   const { preview, previewing, previewVoiceId, stopPreview } =
     useTtsPreviewPlayer({
@@ -393,7 +392,6 @@ export function TtsProviderManager({
     const models = draft.models.map((model) => ({
       ...model,
       model: model.model.trim(),
-      defaultVoice: model.defaultVoice?.trim() || null,
       voices: model.voices.map((voice) => voice.trim()).filter(Boolean),
     }))
     if (
@@ -404,10 +402,7 @@ export function TtsProviderManager({
       models.some(
         (model) =>
           !model.model ||
-          !model.defaultVoice ||
-          !(usesModelVoices(draft) ? model.voices : voices).includes(
-            model.defaultVoice,
-          ),
+          !(usesModelVoices(draft) ? model.voices : voices).length,
       )
     ) {
       setProviderError(t("settings.speech.validationRequired"))
@@ -758,14 +753,14 @@ function ProfileEditor({
 function configuredVoiceId(
   config: TtsConfigDto | null,
   engine: TtsConfigDto["defaultEngine"] | undefined,
-  profile: TtsProviderProfileDto | undefined,
+  firstVoiceId: string | undefined,
 ) {
   const voice = config?.voiceByLanguage[DEFAULT_VOICE_LANGUAGE]
   if (engine?.kind !== "provider")
     return voice?.engine === "system" ? voice.voiceId : ""
   if (voice?.engine === "provider" && voice.profileId === engine.profileId)
     return voice.voiceId
-  return profile?.options.defaultVoice ?? ""
+  return firstVoiceId ?? ""
 }
 
 function DefaultEngineSettings({
