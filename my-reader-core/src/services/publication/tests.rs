@@ -62,6 +62,7 @@ async fn source_format_and_anchors_survive_cache_rebuilds() {
             && expected.contains("<strong>River</strong>")
             && !expected.contains("<script>")
     );
+    drop(archive);
     fs::remove_file(&chapter).unwrap();
     let rebuilt = prepare(&source, "md", &cache).await.unwrap();
     assert_eq!(rebuilt.directory, result.directory);
