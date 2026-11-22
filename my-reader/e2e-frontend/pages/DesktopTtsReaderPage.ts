@@ -49,8 +49,8 @@ export class DesktopTtsReaderPage {
 
   async goto() {
     await this.page.goto("/read/1?format=EPUB")
-    await this.controls().waitFor({ state: "attached", timeout: 10_000 })
     await this.waitForVisibleText("TTS verification")
+    await this.controls().waitFor({ state: "attached", timeout: 10_000 })
   }
 
   controls() {

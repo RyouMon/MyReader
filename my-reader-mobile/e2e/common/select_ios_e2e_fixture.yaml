@@ -36,6 +36,7 @@ name: Select a supported book fixture from the prepared iOS E2E folder
       - waitForAnimationToEnd
 - tapOn:
     id: "MyReader Fixtures, Container"
+    point: "50%,25%"
 - waitForAnimationToEnd
 - scrollUntilVisible:
     element:
@@ -44,6 +45,7 @@ name: Select a supported book fixture from the prepared iOS E2E folder
     timeout: 15000
 - tapOn:
     id: "${E2E_ROOT_FOLDER}, Folder"
+    point: "50%,25%"
 - waitForAnimationToEnd
 - scrollUntilVisible:
     element:
@@ -52,14 +54,15 @@ name: Select a supported book fixture from the prepared iOS E2E folder
     timeout: 15000
 - tapOn:
     id: "Fixtures, Folder"
+    point: "50%,25%"
 - waitForAnimationToEnd
 - extendedWaitUntil:
     visible:
-      id: "${IMPORT_FILE_NAME}, (epub|pdf|cbz)"
+      id: "${IMPORT_FILE_NAME}, (epub|pdf|cbz|md|fb2|azw3)"
     timeout: 30000
 - waitForAnimationToEnd
 - tapOn:
-    id: "${IMPORT_FILE_NAME}, (epub|pdf|cbz)"
+    id: "${IMPORT_FILE_NAME}, (epub|pdf|cbz|md|fb2|azw3)"
     point: "50%,25%"
 - extendedWaitUntil:
     notVisible:

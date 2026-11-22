@@ -1,12 +1,18 @@
 #import <UIKit/UIKit.h>
 
 @interface FixtureDelegate : UIResponder <UIApplicationDelegate>
-@property(strong, nonatomic) UIWindow *window;
 @end
 
 @implementation FixtureDelegate
-- (BOOL)application:(UIApplication *)application
-    didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+@end
+
+@interface FixtureSceneDelegate : UIResponder <UIWindowSceneDelegate>
+@property(strong, nonatomic) UIWindow *window;
+@end
+
+@implementation FixtureSceneDelegate
+- (void)scene:(UIScene *)scene willConnectToSession:(UISceneSession *)session
+    options:(UISceneConnectionOptions *)connectionOptions {
   NSFileManager *files = NSFileManager.defaultManager;
   NSURL *documents = [files URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask].firstObject;
   NSString *folder = [NSBundle.mainBundle objectForInfoDictionaryKey:@"FixtureFolder"];
@@ -37,7 +43,7 @@
   [status writeToURL:[documents URLByAppendingPathComponent:error ? @".failed" : @".ready"]
       atomically:YES encoding:NSUTF8StringEncoding error:nil];
 
-  self.window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
+  self.window = [[UIWindow alloc] initWithWindowScene:(UIWindowScene *)scene];
   UIViewController *controller = [UIViewController new];
   UILabel *label = [[UILabel alloc] initWithFrame:self.window.bounds];
   label.text = status;
@@ -46,7 +52,6 @@
   controller.view = label;
   self.window.rootViewController = controller;
   [self.window makeKeyAndVisible];
-  return YES;
 }
 @end
 

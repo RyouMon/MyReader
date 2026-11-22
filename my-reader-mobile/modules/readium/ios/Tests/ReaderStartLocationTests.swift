@@ -105,15 +105,18 @@ extension ReaderWindowTests {
     @Test
     func forwardsCenterTapToReactNativeChrome() async throws {
       let reader = try #require(await reader(nil, publication: publication(positions: positions)) as? EPUBViewController)
-      reader.view.frame = CGRect(x: 0, y: 0, width: 402, height: 840)
+      reader.view.layoutIfNeeded()
+      let bounds = reader.epubNavigator.view.bounds
+      try #require(!bounds.isEmpty)
+      let center = CGPoint(x: bounds.midX, y: bounds.midY)
       var receivedPoint: CGPoint?
       reader.onTap = { point in receivedPoint = point }
 
-      reader.handleEpubTap(StubTapGestureRecognizer(tapLocation: CGPoint(x: 201, y: 420)))
-      #expect(receivedPoint == CGPoint(x: 201, y: 420))
+      reader.handleEpubTap(StubTapGestureRecognizer(tapLocation: center))
+      #expect(receivedPoint == center)
 
-      reader.handleEpubTap(StubTapGestureRecognizer(tapLocation: CGPoint(x: 20, y: 420)))
-      #expect(receivedPoint == CGPoint(x: 201, y: 420))
+      reader.handleEpubTap(StubTapGestureRecognizer(tapLocation: CGPoint(x: bounds.minX, y: bounds.midY)))
+      #expect(receivedPoint == center)
     }
 
     @Test(arguments: [

@@ -504,7 +504,7 @@ describe("book import", () => {
     mockGetDocument.mockResolvedValue({
       assets: [
         {
-          name: "Notes.txt",
+          name: "Notes.docx",
           uri: "file:///cache/DocumentPicker/generated-id",
         },
       ],

@@ -32,7 +32,7 @@ async fn seed_format_library(root: &std::path::Path) -> SeededBook {
         data::ActiveModel {
             id: Set(3),
             book: Set(seeded.book_id),
-            format: Set("MOBI".to_string()),
+            format: Set("KFX".to_string()),
             uncompressed_size: Set(34),
             name: Set("It".to_string()),
         },
@@ -198,11 +198,11 @@ async fn set_should_reject_unreadable_format_and_missing_book() {
         &config,
         "lib-format",
         seeded.book_id,
-        Some("mobi"),
+        Some("kfx"),
     )
     .await
     .expect_err("unreadable format should fail");
-    assert!(format!("{unreadable}").contains("BOOK_READING_FORMAT_NOT_READABLE: MOBI"));
+    assert!(format!("{unreadable}").contains("BOOK_READING_FORMAT_NOT_READABLE: KFX"));
 
     let missing =
         BookReadingFormatService::set(app_data.path(), &config, "lib-format", 404, Some("epub"))

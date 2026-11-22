@@ -11,6 +11,10 @@ name = "executor_baseline"
 required-features = ["test-support"]
 
 [dependencies]
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
+chardetng = "0.1"
+encoding_rs = "0.8"
+pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
 automerge.workspace = true
 chrono.workspace = true
 dunce.workspace = true

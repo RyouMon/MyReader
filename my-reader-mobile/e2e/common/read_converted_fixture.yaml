@@ -1,0 +1,28 @@
+appId: ${APP_ID}
+name: Open a converted book and find its publication text
+---
+- tapOn: "导入图书|Import Book"
+- runFlow:
+    file: select_e2e_fixture.yaml
+    env:
+      IMPORT_FILE_NAME: ${FILE_NAME}
+- runFlow:
+    when:
+      visible:
+        id: library-collection-all
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: library-collection-all
+          direction: UP
+          centerElement: true
+      - tapOn:
+          id: library-collection-all
+- extendedWaitUntil:
+    visible: ${BOOK_NAME}
+    timeout: 30000
+- tapOn: '打开《${BOOK_NAME}》|Open "${BOOK_NAME}"'
+- extendedWaitUntil:
+    visible: ${PASSAGE}
+    timeout: 45000
+- runFlow: close_reader.yaml

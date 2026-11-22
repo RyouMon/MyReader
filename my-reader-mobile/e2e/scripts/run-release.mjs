@@ -164,7 +164,14 @@ try {
     join(e2e, "scripts/build-fixture.py"),
     join(e2e, ".artifacts/MyReader-TTS.epub"),
   ])
+  const formatFixtureRoot = join(
+    mobile,
+    "../packages/reader-formats/tests/fixtures",
+  )
   const fixtureSources = [
+    ...["ReaderFormats.fb2", "Reading-journal.md", "Lantern.azw3"].map((name) =>
+      join(formatFixtureRoot, name),
+    ),
     join(e2e, ".artifacts/MyReader-TTS.epub"),
     join(e2e, "fixtures/formats/MyReader-QA.pdf"),
     join(e2e, "fixtures/formats/MyReader-QA.cbz"),

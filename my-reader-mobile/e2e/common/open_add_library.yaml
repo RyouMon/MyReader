@@ -1,6 +1,15 @@
 appId: ${APP_ID}
 name: Add a library through Resources
 ---
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: settings-libraries-row
+          direction: UP
+          centerElement: true
 - tapOn:
     id: settings-libraries-row
 - tapOn: "添加书库|Add Library"

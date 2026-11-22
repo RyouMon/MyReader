@@ -12,7 +12,7 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
-    include: ["tests/**/*.test.ts"],
+    include: ["{src,tests}/**/*.test.ts"],
     reporters: ["default"],
     coverage: {
       provider: "v8",

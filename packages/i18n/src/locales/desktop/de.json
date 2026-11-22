@@ -463,7 +463,7 @@
     "loadingBook": "Buch wird geladen…",
     "loadingReadium": "Readium-Buch wird geladen…",
     "noActiveLibrary": "Keine aktive Bibliothek. Wählen Sie zunächst im Hauptfenster eine Bibliothek aus",
-    "noReadableFormat": "Kein lesbares Format verfügbar. EPUB, CBZ oder PDF erforderlich",
+    "noReadableFormat": "Dieses Buch liegt in keinem unterstützten Format vor.",
     "loadEpubFailed": "EPUB konnte nicht geladen werden",
     "loadComicFailed": "Comic konnte nicht geladen werden",
     "comicDirUnavailable": "Comic-Extraktionsverzeichnis nicht verfügbar",

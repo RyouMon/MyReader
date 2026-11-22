@@ -2,6 +2,7 @@ packages:
   - "packages/fonts"
   - "packages/i18n"
   - "packages/tools"
+  - "packages/reader-formats"
   - "my-reader"
   - "my-reader-mobile"
 packageExtensions:

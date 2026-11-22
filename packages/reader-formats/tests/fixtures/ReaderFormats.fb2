@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">
+<description><title-info><genre>prose</genre><author><first-name>MyReader</first-name><last-name>QA</last-name></author><book-title>Lantern Notes</book-title><coverpage><image l:href="#lamp"/></coverpage><lang>en</lang></title-info><document-info><id>reader-formats-fixture</id></document-info></description>
+<body><section id="opening"><title><p>The lantern</p></title><p>The paper lantern glowed beside the window.</p><image l:href="#lamp"/><p>Read the <a type="note" l:href="#note-one">lantern note</a>.</p></section>
+<section id="river"><title><p>Across the river</p></title><p>The reflection reached the other shore.</p></section></body>
+<body name="notes"><section id="note-one"><title><p>Lantern note</p></title><p>The lamp was folded from a map.</p><p><a l:href="#opening">Return to the window</a></p></section></body>
+<binary id="lamp" content-type="image/png">iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAKklEQVR4nGO4WqBNU8QwasGoBaMWjFowasGoBaMWjFowasGoBaMWDBULAL9AwExEXKFoAAAAAElFTkSuQmCC</binary>
+</FictionBook>

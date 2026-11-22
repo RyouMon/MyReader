@@ -11,6 +11,7 @@ mod download;
 mod library;
 mod llm;
 mod narration;
+mod publication;
 mod reading;
 mod storage;
 mod sync;

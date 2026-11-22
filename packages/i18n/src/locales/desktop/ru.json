@@ -467,7 +467,7 @@
     "loadingBook": "Загрузка книги…",
     "loadingReadium": "Загрузка книги Readium…",
     "noActiveLibrary": "Нет активной библиотеки. Сначала выберите библиотеку в главном окне",
-    "noReadableFormat": "Не доступен читаемый формат. Требуется EPUB, CBZ или PDF.",
+    "noReadableFormat": "У этой книги нет поддерживаемого формата для чтения.",
     "loadEpubFailed": "Не удалось загрузить EPUB.",
     "loadComicFailed": "Не удалось загрузить комикс.",
     "comicDirUnavailable": "Каталог для извлечения комиксов недоступен.",

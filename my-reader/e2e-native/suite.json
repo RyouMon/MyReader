@@ -1,5 +1,6 @@
 [
   "imports EPUB, PDF and CBZ through the real Core and renders the library",
+  "converted books open in Readium and bookmarks retain the original format",
   "EPUB navigation and bookmarks survive closing the native reader",
   "PDF pagination survives closing the native reader",
   "CBZ pagination survives closing the native reader",

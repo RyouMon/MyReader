@@ -1,0 +1,21 @@
+{
+  "name": "@my-reader/reader-formats",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "typescript": "~5.6.2",
+    "vitest": "^4.1.5",
+    "jsdom": "^29.1.1",
+    "@vitest/coverage-v8": "^4.1.6"
+  }
+}

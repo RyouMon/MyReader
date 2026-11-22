@@ -169,6 +169,10 @@ class ReadiumModule : Module() {
 
     // MARK: - Streamer open-architecture config (REP-005/006)
 
+    AsyncFunction("runFormatParser") Coroutine { address: String ->
+      com.myreader.readium.Streamer.FormatParser.run(requireNotNull(appContext.reactContext), address)
+    }
+
     AsyncFunction("configure") { config: PublicationOpenerConfigRecord ->
       StreamerConfig.apply(config)
     }

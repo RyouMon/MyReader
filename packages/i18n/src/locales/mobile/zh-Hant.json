@@ -3,7 +3,7 @@
     "importingTitle": "正在匯入分享的圖書",
     "importingDetail": "MyReader 正在將圖書新增到書庫。",
     "failedTitle": "無法匯入分享內容",
-    "failedDetail": "請向 MyReader 分享一個 EPUB、PDF 或 CBZ 檔案。",
+    "failedDetail": "請向 MyReader 分享一個支援的電子書或文字文件。",
     "openLibrary": "開啟書庫"
   },
   "back": "返回",
@@ -59,7 +59,7 @@
     },
     "importUnsupported": {
       "title": "不支援的圖書格式",
-      "detail": "請選擇 EPUB、PDF 或 CBZ 檔案。"
+      "detail": "請選擇支援的電子書或文字文件。"
     },
     "switchLibrary": "切換書庫",
     "syncCurrentLibrary": "同步當前書庫",
@@ -800,7 +800,7 @@
     "readingBookInfo": "正在讀取書籍資訊…",
     "invalidId": "無效的書籍 ID",
     "notFoundInLibrary": "在書庫中未找到該書",
-    "noReadableFormat": "該書沒有可閱讀的格式（需要 EPUB、CBZ 或 PDF）",
+    "noReadableFormat": "這本書沒有可閱讀的格式。",
     "downloadingFromWebdav": "正在從 WebDAV 下載書籍…",
     "downloadingFromRemote": "正在從遠端資料來源下載書籍…",
     "loadingBookFile": "正在載入書籍檔案…",

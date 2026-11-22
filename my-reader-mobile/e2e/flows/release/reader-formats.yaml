@@ -1,0 +1,26 @@
+appId: ${APP_ID}
+name: Read converted books in the native Readium Navigator
+androidWebViewHierarchy: devtools
+---
+- runFlow: ../../common/create_fixture_library.yaml
+- runFlow:
+    file: ../../common/read_converted_fixture.yaml
+    env:
+      FILE_NAME: ReaderFormats.fb2
+      BOOK_NAME: ReaderFormats
+      PASSAGE: ".*The paper lantern glowed beside the window.*"
+- runFlow: ../../common/tap_header_back.yaml
+- runFlow:
+    file: ../../common/read_converted_fixture.yaml
+    env:
+      # Files can hide the Markdown extension; Android displays it.
+      FILE_NAME: 'Reading-journal([.]md)?'
+      BOOK_NAME: Reading-journal
+      PASSAGE: ".*Morning entry.*"
+- runFlow: ../../common/tap_header_back.yaml
+- runFlow:
+    file: ../../common/read_converted_fixture.yaml
+    env:
+      FILE_NAME: Lantern.azw3
+      BOOK_NAME: Lantern
+      PASSAGE: ".*The lantern.*"

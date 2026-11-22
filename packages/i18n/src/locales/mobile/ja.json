@@ -3,7 +3,7 @@
     "importingTitle": "共有ブックをインポートしています",
     "importingDetail": "MyReader がその本をあなたのライブラリに追加しています。",
     "failedTitle": "共有アイテムをインポートできませんでした",
-    "failedDetail": "1 つの EPUB、PDF、または CBZ ファイルを MyReader と共有します。",
+    "failedDetail": "対応する電子書籍または文書ファイルを1つ MyReader に共有してください。",
     "openLibrary": "ライブラリを開く"
   },
   "back": "戻る",
@@ -62,7 +62,7 @@
     },
     "importUnsupported": {
       "title": "サポートされていない書籍フォーマット",
-      "detail": "EPUB、PDF、または CBZ ファイルを選択します。"
+      "detail": "対応する電子書籍または文書ファイルを選んでください。"
     },
     "switchLibrary": "スイッチ ライブラリ",
     "syncCurrentLibrary": "現在のライブラリを同期",
@@ -811,7 +811,7 @@
     "readingBookInfo": "読書情報…",
     "invalidId": "無効な書籍 ID",
     "notFoundInLibrary": "ライブラリに本が見つかりません",
-    "noReadableFormat": "読み取り可能な形式はありません (EPUB、CBZ、または PDF が必要です)",
+    "noReadableFormat": "この本には読み取り可能な形式がありません。",
     "downloadingFromWebdav": "WebDAV から書籍をダウンロードしています…",
     "downloadingFromRemote": "リモートから本をダウンロードしています…",
     "loadingBookFile": "ブックファイルをロード中…",

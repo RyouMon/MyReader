@@ -32,7 +32,9 @@ const iosDependencies = [
   /^my-reader-mobile\/modules\/[^/]+\/scripts\/.*\.rb$/,
   /^my-reader-mobile\/plugins\/with-.*ios.*\.[cm]?js$/,
 ]
+const parserSources = [/^packages\/reader-formats\//]
 const sharedNativeSources = [
+  ...parserSources,
   /^packages\/tools\/src\/reader-(?:viewport-anchor|note-marker)/,
   /^scripts\/generate-reader-viewport-anchor\.mjs$/,
   /^my-reader-mobile\/modules\/readium\/scripts\/generate-reader-note-marker-template\.mjs$/,
@@ -41,6 +43,7 @@ const sharedNativeSources = [
 
 const patterns = {
   js: [
+    ...parserSources,
     ...workspaceDependencies,
     /^(?:my-reader|my-reader-mobile|packages\/[^/]+)\/src\//,
     /^my-reader-mobile\/modules\/[^/]+\/src\//,
@@ -50,6 +53,7 @@ const patterns = {
     /^(?:vitest|jest|babel|tsconfig)[^/]*\.(?:[cm]?[jt]s|json)$/,
   ],
   rust: [
+    ...parserSources,
     /^my-reader-core\//,
     /^my-reader\/src-tauri\//,
     /^my-reader-mobile\/modules\/my-reader-core\/rust\//,

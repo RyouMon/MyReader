@@ -55,7 +55,7 @@ module.exports = {
   options: {
     doNotFollow: { path: "node_modules|/generated/|tauri-specta\\.ts$" },
     exclude:
-      "(?:^|/)(?:__tests__|__mocks__|tests)/|\\.(?:test|spec)\\.[cm]?[jt]sx?$|\\.d\\.ts$|routeTree\\.gen\\.ts$",
+      "^packages/reader-formats/vendor/foliate-js/.*\\.js$|(?:^|/)(?:__tests__|__mocks__|tests)/|\\.(?:test|spec)\\.[cm]?[jt]sx?$|\\.d\\.ts$|routeTree\\.gen\\.ts$",
     tsPreCompilationDeps: "specify",
     enhancedResolveOptions: {
       exportsFields: ["exports"],

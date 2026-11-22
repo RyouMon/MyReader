@@ -471,7 +471,7 @@ export const desktopZhCN = {
       loadingBook: "正在加载书籍…",
       loadingReadium: "正在加载 Readium 书籍…",
       noActiveLibrary: "没有活动书库。请先在主窗口选择书库后再阅读",
-      noReadableFormat: "该书籍没有可阅读的格式。需要 EPUB、CBZ 或 PDF",
+      noReadableFormat: "这本书没有可阅读的格式。",
       loadEpubFailed: "无法加载 EPUB",
       loadComicFailed: "无法加载漫画",
       comicDirUnavailable: "漫画解压目录不可用",

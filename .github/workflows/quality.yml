@@ -125,6 +125,8 @@ jobs:
             command: test:unit
           - package: my-reader-mobile
             command: test:ci
+          - package: "@my-reader/reader-formats"
+            command: test
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
@@ -161,6 +163,9 @@ jobs:
           - package: my-reader-mobile
             command: test:coverage
             directory: my-reader-mobile
+          - package: "@my-reader/reader-formats"
+            command: test:coverage
+            directory: packages/reader-formats
     steps:
       - uses: actions/checkout@v7
         with:

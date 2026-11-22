@@ -4869,6 +4869,53 @@ export async function narrationSearchSources(
   }
 }
 
+export async function publicationPrepare(
+  sourcePath: string,
+  format: string,
+  cacheRoot: string,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<PreparedPublication> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_publication_prepare(
+          FfiConverterString.lower(sourcePath, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(format, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(cacheRoot, nativeModule().rustbuffer_alloc),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterTypePreparedPublication.lift.bind(
+        FfiConverterTypePreparedPublication,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
 export async function readingAddAnnotation(
   sidecarRootPath: string,
   libraryRootPath: string,
@@ -11061,6 +11108,51 @@ const FfiConverterTypePaginatedBooks = (() => {
   return new FFIConverter();
 })();
 
+export type PreparedPublication = {
+  packagePath: string;
+  parserUrl?: string;
+};
+
+/**
+ * Generated factory for {@link PreparedPublication} record objects.
+ */
+export const PreparedPublication = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<PreparedPublication, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<PreparedPublication>,
+  });
+})();
+
+const FfiConverterTypePreparedPublication = (() => {
+  type TypeName = PreparedPublication;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        packagePath: FfiConverterString.read(from),
+        parserUrl: FfiConverterOptionalString.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.packagePath, into);
+      FfiConverterOptionalString.write(value.parserUrl, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.packagePath) +
+        FfiConverterOptionalString.allocationSize(value.parserUrl)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
 export type TtsVoice = {
   id: string;
   language: string;
@@ -15245,6 +15337,14 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_publication_prepare() !==
+    44270
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_publication_prepare",
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_add_annotation() !==
     6103
   ) {
@@ -15763,6 +15863,7 @@ export default Object.freeze({
     FfiConverterTypeNarrationSpeech,
     FfiConverterTypeNarrationVoice,
     FfiConverterTypePaginatedBooks,
+    FfiConverterTypePreparedPublication,
     FfiConverterTypeQwenTtsModel,
     FfiConverterTypeReaderAnnotation,
     FfiConverterTypeReaderBookmark,

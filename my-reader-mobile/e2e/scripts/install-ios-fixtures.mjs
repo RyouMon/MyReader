@@ -28,6 +28,17 @@ export async function installIosFixtures(device, folder, sources, output) {
       MinimumOSVersion: "15.1",
       UIDeviceFamily: [1, 2],
       UILaunchScreen: {},
+      UIApplicationSceneManifest: {
+        UIApplicationSupportsMultipleScenes: false,
+        UISceneConfigurations: {
+          UIWindowSceneSessionRoleApplication: [
+            {
+              UISceneConfigurationName: "Fixtures",
+              UISceneDelegateClassName: "FixtureSceneDelegate",
+            },
+          ],
+        },
+      },
       UIFileSharingEnabled: true,
       LSSupportsOpeningDocumentsInPlace: true,
       FixtureFolder: folder,

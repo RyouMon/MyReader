@@ -117,7 +117,10 @@ impl ReaderService {
         }
 
         let format_upper = format.to_uppercase();
-        if format_upper == "EPUB" || format_upper == "CBZ" {
+        if matches!(
+            format_upper.as_str(),
+            "EPUB" | "CBZ" | "KEPUB" | "KEPUB.EPUB"
+        ) {
             let cache_key = cache::build_archive_cache_key(lib_id, book_id, &format_upper);
             let extracted_dir = cache::reader_cache_extracted_root().join(&cache_key);
 
@@ -133,6 +136,21 @@ impl ReaderService {
                 extracted_dir_path: Some(extracted_dir.to_string_lossy().to_string()),
                 extracted_entries: entries,
                 streamer_url: None,
+            })
+        } else if format_upper != "PDF" {
+            let root = cache::reader_cache_extracted_root().join(cache::build_archive_cache_key(
+                lib_id,
+                book_id,
+                &format_upper,
+            ));
+            let publication =
+                my_reader_core::api::publication::prepare(&file_path, &format_upper, &root).await?;
+            Ok(PreparedBookSource {
+                format: format_upper,
+                file_path: file_path.to_string_lossy().into_owned(),
+                extracted_dir_path: Some(publication.directory.to_string_lossy().into_owned()),
+                extracted_entries: Vec::new(),
+                streamer_url: publication.parser_url,
             })
         } else {
             Ok(PreparedBookSource {

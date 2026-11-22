@@ -1,3 +1,4 @@
+import { isTextPublication } from "@my-reader/reader-formats"
 import { useEffect, useMemo, useRef } from "react"
 import {
   useAnimatedStyle,
@@ -32,7 +33,7 @@ export function useReaderTheme({
   reflowSettings: ReflowableReaderSettings
   colorScheme: ColorSchemeName
 }) {
-  const isReflowFormatHint = formatParam?.toUpperCase() === "EPUB"
+  const isReflowFormatHint = isTextPublication(formatParam)
   const shouldUseReflowTheme = isReflowReady || (loading && isReflowFormatHint)
   const fixedBgColor =
     fixedSettings.background === "black"

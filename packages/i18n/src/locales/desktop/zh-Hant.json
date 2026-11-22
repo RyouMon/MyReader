@@ -459,7 +459,7 @@
     "loadingBook": "正在載入書籍…",
     "loadingReadium": "正在載入 Readium 書籍…",
     "noActiveLibrary": "沒有活動書庫。請先在主視窗選擇書庫後再閱讀",
-    "noReadableFormat": "該書籍沒有可閱讀的格式。需要 EPUB、CBZ 或 PDF",
+    "noReadableFormat": "這本書沒有可閱讀的格式。",
     "loadEpubFailed": "無法載入 EPUB",
     "loadComicFailed": "無法載入漫畫",
     "comicDirUnavailable": "漫畫解壓目錄不可用",

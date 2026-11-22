@@ -3,7 +3,7 @@
     "importingTitle": "Importation d'un livre partagé",
     "importingDetail": "MyReader ajoute le livre à votre bibliothèque.",
     "failedTitle": "Impossible d'importer l'élément partagé",
-    "failedDetail": "Partagez un fichier EPUB, PDF ou CBZ avec MyReader.",
+    "failedDetail": "Partagez un seul livre ou document pris en charge avec MyReader.",
     "openLibrary": "Ouvrir la bibliothèque"
   },
   "back": "Retour",
@@ -68,7 +68,7 @@
     },
     "importUnsupported": {
       "title": "Format de livre non pris en charge",
-      "detail": "Choisissez un fichier EPUB, PDF ou CBZ."
+      "detail": "Choisissez un livre ou un document pris en charge."
     },
     "switchLibrary": "Changer de bibliothèque",
     "syncCurrentLibrary": "Synchroniser la bibliothèque actuelle",
@@ -833,7 +833,7 @@
     "readingBookInfo": "Lecture d’informations sur le livre…",
     "invalidId": "ID de livre invalide",
     "notFoundInLibrary": "Livre introuvable en bibliothèque",
-    "noReadableFormat": "Aucun format lisible (EPUB, CBZ ou PDF requis)",
+    "noReadableFormat": "Aucun format de ce livre n’est pris en charge.",
     "downloadingFromWebdav": "Téléchargement du livre à partir de WebDAV…",
     "downloadingFromRemote": "Téléchargement du livre à distance…",
     "loadingBookFile": "Chargement du fichier du livre…",

@@ -23,6 +23,9 @@ import { parseSavedLocator } from "@/lib/readium/locator"
 import { api } from "@/lib/tauri-api"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 
+import { runPublicationParser } from "@/lib/readium/preparedPublication"
+import { isEpubContainer, isTextPublication } from "@my-reader/reader-formats"
+
 function toReaderAssetSrc(path: string): string {
   return isTauri() ? convertFileSrc(path) : path
 }
@@ -49,10 +52,17 @@ async function prepareReaderSource(
   const prepared = await pTimeout(
     api.prepareBookSource(libraryId, bookId, format),
     {
-      milliseconds: 10000,
+      milliseconds:
+        isTextPublication(format) && !isEpubContainer(format) ? 180000 : 10000,
       message: timeoutMessage,
     },
   )
+  if (
+    prepared.streamerUrl &&
+    isTextPublication(format) &&
+    !isEpubContainer(format)
+  )
+    await runPublicationParser(prepared.streamerUrl)
   return {
     filePath: toReaderAssetSrc(prepared.filePath),
     extractedDirPath: prepared.extractedDirPath

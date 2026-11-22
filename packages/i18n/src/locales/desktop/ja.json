@@ -461,7 +461,7 @@
     "loadingBook": "本を読み込み中…",
     "loadingReadium": "Readium ブックを読み込み中…",
     "noActiveLibrary": "アクティブなライブラリがありません。最初にメインウィンドウでライブラリを選択します",
-    "noReadableFormat": "利用可能な読み取り可能なフォーマットがありません。 EPUB、CBZ、または PDF が必要です",
+    "noReadableFormat": "この本には読み取り可能な形式がありません。",
     "loadEpubFailed": "EPUB のロードに失敗しました",
     "loadComicFailed": "コミックの読み込みに失敗しました",
     "comicDirUnavailable": "コミック抽出ディレクトリが利用できません",

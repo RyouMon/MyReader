@@ -159,9 +159,12 @@ a recoverable source location, not a visual page number that changes with layout
 
 | Format | Desktop engine | Mobile engine |
 | --- | --- | --- |
-| EPUB | Web Readium | Readium Swift / Kotlin EPUB Navigator |
+| EPUB / KEPUB | Web Readium | Readium Swift / Kotlin EPUB Navigator |
 | PDF | PDF.js with Locator adaptation | Readium PDF Navigator |
 | CBZ | Divina / fixed-layout adaptation | Readium fixed-layout / CBZ Navigator |
+| Text, Markdown, FictionBook, Kindle, HTML and their supported archives | Readium Web opens the local manifest | Readium opens the local .webpub |
+
+Core prepares an EPUB Profile publication on the first read and publishes its cache atomically. Rust handles text and Markdown. FictionBook and Kindle use pinned Foliate modules from the shared package. Core embeds the original module bytes in each build and serves a temporary parser page on loopback. The WebView or iframe closes after exporting the chapters and resources. Progress, bookmarks and annotations retain the original book format and a Readium Locator.
 
 Search, selection, decorations and sharing depend on the engine and platform; common location
 semantics connect them to the business layer. Navigation history belongs to the open reading session,

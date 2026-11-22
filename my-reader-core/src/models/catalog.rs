@@ -1,6 +1,28 @@
 use serde::{Deserialize, Serialize};
 
-const READING_FORMAT_PRIORITY: [&str; 3] = ["EPUB", "CBZ", "PDF"];
+const READING_FORMAT_PRIORITY: &[&str] = &[
+    "EPUB",
+    "CBZ",
+    "PDF",
+    "KEPUB",
+    "KEPUB.EPUB",
+    "AZW3",
+    "KF8",
+    "MOBI",
+    "AZW",
+    "PRC",
+    "FB2",
+    "FBZ",
+    "FB2.ZIP",
+    "MD",
+    "MARKDOWN",
+    "TXT",
+    "TXTZ",
+    "XHTML",
+    "HTML",
+    "HTM",
+    "HTMLZ",
+];
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -13,6 +35,15 @@ impl ReadingFormatPolicy {
     pub fn normalize(format: &str) -> Option<String> {
         let format = format.trim().to_uppercase();
         Self::is_canonical(&format).then_some(format)
+    }
+
+    pub fn from_filename(name: &str) -> Option<String> {
+        let name = name.to_ascii_uppercase();
+        ["FB2.ZIP", "KEPUB.EPUB"]
+            .into_iter()
+            .find(|suffix| name.ends_with(&format!(".{suffix}")))
+            .map(str::to_owned)
+            .or_else(|| Self::normalize(name.rsplit_once('.')?.1))
     }
 
     pub fn is_canonical(format: &str) -> bool {
@@ -223,7 +254,7 @@ mod tests {
             "epub".into(),
         ]);
 
-        assert_eq!(policy.readable_formats, ["EPUB", "CBZ", "PDF"]);
+        assert_eq!(policy.readable_formats, ["EPUB", "CBZ", "PDF", "MOBI"]);
         assert_eq!(policy.preferred_format.as_deref(), Some("EPUB"));
     }
 
@@ -243,6 +274,6 @@ mod tests {
         );
         assert!(ReadingFormatPolicy::is_canonical("EPUB"));
         assert!(!ReadingFormatPolicy::is_canonical("epub"));
-        assert!(!ReadingFormatPolicy::is_canonical("MOBI"));
+        assert!(!ReadingFormatPolicy::is_canonical("KFX"));
     }
 }

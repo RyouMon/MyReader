@@ -8,6 +8,7 @@ pub(crate) mod download;
 pub(crate) mod library;
 pub(crate) mod llm;
 pub(crate) mod narration;
+pub(crate) mod publication;
 pub(crate) mod publication_analysis;
 pub(crate) mod reading;
 pub(crate) mod storage;
