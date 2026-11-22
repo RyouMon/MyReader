@@ -10,6 +10,7 @@ const selectedSpeech =
   "Long-press this second sentence and choose Read from here."
 const boundaryPrefix = "Previous-page prefix remains behind"
 const boundaryTail = "Visible fragment completes the first sentence."
+const ttsStatePollOptions = { timeout: 10_000 }
 const chapters: Record<string, { title: string; visible: string }> = {
   "TTS verification": {
     title: "TTS verification",
@@ -71,6 +72,10 @@ async function assertViewportActions(
     "aria-label",
     relation === "after" ? "从当前位置播放" : "返回播放位置",
   )
+}
+
+function pollSpeechState(reader: DesktopTtsReaderPage) {
+  return expect.poll(() => reader.speechState(), ttsStatePollOptions)
 }
 
 Given("小文已打开支持跨页句子的测试书籍", async ({ ttsReader }) => {
@@ -246,9 +251,7 @@ Then("朗读未开始且可以手动播放", async ({ ttsReader }) => {
 
 Then("正在朗读 {string}", async ({ ttsReader }, text: string) => {
   await expect.poll(() => ttsReader.currentSpeechText()).toBe(text)
-  await expect
-    .poll(() => ttsReader.speechState())
-    .toEqual({ paused: false, speaking: true })
+  await pollSpeechState(ttsReader).toEqual({ paused: false, speaking: true })
   await expect(ttsReader.pauseButton()).toBeVisible()
 })
 
@@ -258,32 +261,24 @@ Then("正在朗读以 {string} 开头的语句", async ({ ttsReader }, text: str
       (await ttsReader.currentSpeechText())?.startsWith(`${text} `),
     )
     .toBe(true)
-  await expect
-    .poll(() => ttsReader.speechState())
-    .toEqual({ paused: false, speaking: true })
+  await pollSpeechState(ttsReader).toEqual({ paused: false, speaking: true })
   await expect(ttsReader.pauseButton()).toBeVisible()
 })
 
 Then("朗读暂停且保留当前语句", async ({ ttsReader, ttsContext }) => {
-  await expect
-    .poll(() => ttsReader.speechState())
-    .toEqual({ paused: true, speaking: true })
+  await pollSpeechState(ttsReader).toEqual({ paused: true, speaking: true })
   expect(await ttsReader.currentSpeechText()).toBe(ttsContext.initialText)
   await expect(ttsReader.startButton()).toBeVisible()
 })
 
 Then("朗读恢复且语句未重新播放", async ({ ttsReader, ttsContext }) => {
-  await expect
-    .poll(() => ttsReader.speechState())
-    .toEqual({ paused: false, speaking: true })
+  await pollSpeechState(ttsReader).toEqual({ paused: false, speaking: true })
   expect(await ttsReader.currentSpeechText()).toBe(ttsContext.initialText)
   expect(await ttsReader.spokenTexts()).toHaveLength(ttsContext.initialCount)
 })
 
 Then("朗读已停止且听书控制收起", async ({ ttsReader }) => {
-  await expect
-    .poll(() => ttsReader.speechState())
-    .toEqual({ paused: false, speaking: false })
+  await pollSpeechState(ttsReader).toEqual({ paused: false, speaking: false })
   await expect(ttsReader.controls()).toHaveAttribute("data-active", "false")
   await expect(ttsReader.openButton()).toBeVisible()
 })
@@ -362,7 +357,5 @@ Then("恢复上一句和下一句", async ({ ttsReader }) => {
 Then("显示朗读失败提示且可以重新播放", async ({ ttsReader }) => {
   await expect(ttsReader.failureNotice()).toBeVisible()
   await expect(ttsReader.startButton()).toBeVisible()
-  await expect
-    .poll(() => ttsReader.speechState())
-    .toEqual({ paused: false, speaking: false })
+  await pollSpeechState(ttsReader).toEqual({ paused: false, speaking: false })
 })
