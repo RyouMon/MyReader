@@ -227,11 +227,9 @@ async function openReader(format) {
     // The catalog virtualizes a long list. Refreshing resets its scroll window
     // before looking for a book that is currently outside the rendered range.
     await browser.refresh()
-    await browser.waitUntil(() =>
-      evaluate(() =>
-        Boolean(document.querySelector('[data-testid="library-scroll"]')),
-      ),
-    )
+    await browser
+      .$("[data-testid='library-scroll']")
+      .waitForExist({ timeout: 30000 })
     if (!(await revealCatalogBook(selector))) {
       const search = await browser.$(
         'input[role="combobox"][aria-label*="Search titles"]',
