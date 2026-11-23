@@ -4,7 +4,9 @@ use std::{
     sync::{Arc, LazyLock, Mutex as StdMutex},
 };
 
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement};
+use sea_orm::{
+    ConnectOptions, ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement,
+};
 use sea_orm_migration::MigratorTrait;
 use tokio::sync::{Mutex, OwnedRwLockReadGuard, OwnedRwLockWriteGuard, RwLock};
 use tracing::info;
@@ -80,8 +82,7 @@ pub async fn open_database_file(path: &Path) -> Result<DatabaseConnection, CoreE
         "Start to open library database. path: \"{}\"",
         path.display()
     );
-    let url = format!("sqlite://{}?mode=rwc", path.display());
-    let db = Database::connect(&url).await?;
+    let db = Database::connect(sqlite_file_options(&path, false, true)).await?;
     migrate_database(&db).await?;
     stores.insert(
         path.clone(),
@@ -95,6 +96,28 @@ pub async fn open_database_file(path: &Path) -> Result<DatabaseConnection, CoreE
         path.display()
     );
     Ok(db)
+}
+
+/// Build SQLite options with the filesystem path passed directly to SQLx.
+///
+/// Constructing `sqlite://` URLs by interpolating a native path makes Windows
+/// paths invalid for URL parsers because they contain backslashes. SeaORM's
+/// SQLite option mapper keeps the URL parser on a harmless placeholder while
+/// preserving the actual path and access mode as typed options.
+pub fn sqlite_file_options(
+    path: &Path,
+    read_only: bool,
+    create_if_missing: bool,
+) -> ConnectOptions {
+    let path = path.to_owned();
+    let mut options = ConnectOptions::new("sqlite://myreader-placeholder.db");
+    options.map_sqlx_sqlite_opts(move |sqlite| {
+        sqlite
+            .filename(&path)
+            .read_only(read_only)
+            .create_if_missing(create_if_missing)
+    });
+    options
 }
 
 fn absolute_path(path: &Path) -> Result<PathBuf, CoreError> {

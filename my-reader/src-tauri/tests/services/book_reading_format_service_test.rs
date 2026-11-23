@@ -8,16 +8,12 @@ use my_reader_lib::models::{AppConfig, LibraryConfig};
 use my_reader_lib::services::book_reading_format_service::BookReadingFormatService;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set};
 
-use crate::common::calibre::{seed_minimal_calibre_library, SeededBook};
+use crate::common::calibre::{seed_minimal_calibre_library, sqlite_file_options, SeededBook};
 
 async fn seed_format_library(root: &std::path::Path) -> SeededBook {
     let seeded = seed_minimal_calibre_library(root).await;
     let db_path = root.join("metadata.db");
-    let url = format!(
-        "sqlite://{}?mode=rwc",
-        db_path.to_str().expect("valid utf8")
-    );
-    let db = sea_orm::Database::connect(&url)
+    let db = sea_orm::Database::connect(sqlite_file_options(&db_path, false, true))
         .await
         .expect("connect to setup db");
 

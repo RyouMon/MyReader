@@ -7,6 +7,7 @@ use my_reader_core::test_support::entities::calibre::{
     books_ratings_link, books_series_link, books_tags_link, comments, data, identifiers, languages,
     publishers, ratings, series, tags,
 };
+pub use my_reader_core::test_support::sqlite_file_options;
 use sea_orm::{
     ActiveModelTrait, ConnectionTrait, Database, DatabaseConnection, EntityTrait, Schema, Set,
 };
@@ -22,11 +23,9 @@ pub struct SeededBook {
 /// Create an empty Calibre `metadata.db` using the real SeaORM entity definitions.
 pub async fn create_calibre_db(root: &Path) -> DatabaseConnection {
     let db_path = root.join("metadata.db");
-    let url = format!(
-        "sqlite://{}?mode=rwc",
-        db_path.to_str().expect("valid utf8")
-    );
-    let db = Database::connect(&url).await.expect("connect to setup db");
+    let db = Database::connect(sqlite_file_options(&db_path, false, true))
+        .await
+        .expect("connect to setup db");
 
     let builder = db.get_database_backend();
     let schema = Schema::new(builder);

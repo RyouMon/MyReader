@@ -947,9 +947,10 @@ mod tests {
     use crate::entities::calibre::library_id;
 
     async fn seed_library_uuid(root: &Path) {
-        let db = Database::connect(format!(
-            "sqlite://{}?mode=rwc",
-            root.join("metadata.db").display()
+        let db = Database::connect(crate::database::sqlite_file_options(
+            &root.join("metadata.db"),
+            false,
+            true,
         ))
         .await
         .unwrap();

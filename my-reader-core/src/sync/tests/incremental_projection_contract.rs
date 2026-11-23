@@ -1,4 +1,5 @@
 use rusqlite::{types::Value, Connection};
+use std::path::Path;
 
 use super::persistence_contract::{catalog_book, create_database, identity};
 use crate::sync::{
@@ -487,9 +488,13 @@ async fn continued_reading_should_update_candidates_without_catalog_writes() {
     assert_ne!(rows(&connection, "sync_automerge_outbox"), outbox_before);
     assert_eq!(rows(&connection, "reading_position_candidates").len(), 1);
     // Indexed candidate reads are independent of document decoding.
-    let db = sea_orm::Database::connect(format!("sqlite:{target}?mode=rw"))
-        .await
-        .unwrap();
+    let db = sea_orm::Database::connect(crate::database::sqlite_file_options(
+        Path::new(&target),
+        false,
+        false,
+    ))
+    .await
+    .unwrap();
     let repository = crate::repositories::reading::ReadingRepository::new(&db);
     let candidates = repository
         .list_position_candidates(42, "EPUB")

@@ -3,7 +3,7 @@ use my_reader_lib::models::{AppConfig, LibraryConfig};
 use my_reader_lib::services::sync_service::SyncService;
 use sea_orm::{Database, EntityTrait};
 
-use crate::common::calibre::create_calibre_db;
+use crate::common::calibre::{create_calibre_db, sqlite_file_options};
 
 fn local_library(id: &str, original_path: &str) -> LibraryConfig {
     LibraryConfig {
@@ -46,9 +46,10 @@ async fn should_initialize_automerge_replica_when_local_library_syncs() {
         .await
         .expect("local sync should succeed");
     let sidecar = app_data.path().join("libraries").join("lib-local");
-    let db = Database::connect(format!(
-        "sqlite://{}?mode=ro",
-        sidecar.join(".myreader").join("myreader.db").display()
+    let db = Database::connect(sqlite_file_options(
+        &sidecar.join(".myreader").join("myreader.db"),
+        true,
+        false,
     ))
     .await
     .unwrap();

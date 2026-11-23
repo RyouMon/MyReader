@@ -10,7 +10,7 @@ use my_reader_lib::streamer::{EpubStreamer, StreamerState};
 use sea_orm::{ActiveModelTrait, Database, Set};
 use tokio::sync::RwLock;
 
-use crate::common::calibre::seed_minimal_calibre_library;
+use crate::common::calibre::{seed_minimal_calibre_library, sqlite_file_options};
 
 #[tokio::test]
 async fn reader_ui_preferences_should_round_trip_in_config() {
@@ -240,11 +240,9 @@ async fn add_format_to_seeded_book(
     format: &str,
 ) {
     let db_path = root.join("metadata.db");
-    let url = format!(
-        "sqlite://{}?mode=rwc",
-        db_path.to_str().expect("valid utf8")
-    );
-    let db = Database::connect(&url).await.expect("connect to setup db");
+    let db = Database::connect(sqlite_file_options(&db_path, false, true))
+        .await
+        .expect("connect to setup db");
     data::ActiveModel {
         id: Set(data_id),
         book: Set(book_id),

@@ -9,6 +9,7 @@ use serde_json::json;
 use my_reader_lib::models::{AppConfig, LibraryConfig};
 
 use crate::common::app::TestApp;
+use crate::common::calibre::sqlite_file_options;
 use crate::common::ipc::{invoke_err, invoke_ok};
 
 const LIBRARY_UUID: &str = "018f2f8d-980b-40ef-b72e-c6e86cb7cc28";
@@ -26,12 +27,9 @@ fn library_fixture(id: &str, path: &str) -> LibraryConfig {
 }
 
 async fn create_calibre_metadata(root: &std::path::Path) {
-    let db = Database::connect(format!(
-        "sqlite://{}?mode=rwc",
-        root.join("metadata.db").display()
-    ))
-    .await
-    .unwrap();
+    let db = Database::connect(sqlite_file_options(&root.join("metadata.db"), false, true))
+        .await
+        .unwrap();
     db.execute_unprepared(&format!(
         "CREATE TABLE library_id (\
            id INTEGER PRIMARY KEY, uuid TEXT NOT NULL, UNIQUE(uuid)\

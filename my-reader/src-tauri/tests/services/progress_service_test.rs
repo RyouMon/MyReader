@@ -1,6 +1,7 @@
 use sea_orm::{ConnectionTrait, Database};
 use serde_json::json;
 
+use crate::common::calibre::sqlite_file_options;
 use my_reader_lib::models::{AppConfig, LibraryConfig};
 use my_reader_lib::services::progress_service::ProgressService;
 
@@ -19,11 +20,9 @@ fn library_config(id: &str) -> LibraryConfig {
 }
 
 async fn create_calibre_metadata(root: &std::path::Path) {
-    let url = format!(
-        "sqlite://{}?mode=rwc",
-        root.join("metadata.db").to_string_lossy()
-    );
-    let db = Database::connect(&url).await.unwrap();
+    let db = Database::connect(sqlite_file_options(&root.join("metadata.db"), false, true))
+        .await
+        .unwrap();
     db.execute_unprepared(&format!(
         "CREATE TABLE library_id (\
            id INTEGER PRIMARY KEY, uuid TEXT NOT NULL, UNIQUE(uuid)\

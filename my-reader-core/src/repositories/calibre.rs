@@ -10,6 +10,7 @@ use tracing::{debug, info};
 use super::calibre_schema::{CatalogSchema, Metadata};
 use sea_orm::sea_query::Expr;
 
+use crate::database::sqlite_file_options;
 use crate::entities::calibre::{
     authors, books, books_authors_link, books_languages_link, books_publishers_link,
     books_ratings_link, books_series_link, books_tags_link, comments, data, identifiers, languages,
@@ -125,13 +126,10 @@ impl CatalogRepository {
     }
 
     async fn open_calibre_file(db_path: &Path) -> Result<Self, CoreError> {
-        let url = format!(
-            "sqlite://{}?mode=ro",
-            db_path
-                .to_str()
-                .ok_or_else(|| CoreError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?
-        );
-        let db = Database::connect(&url)
+        if db_path.to_str().is_none() {
+            return Err(CoreError::Config("LIBRARY_PATH_INVALID_UTF8".into()));
+        }
+        let db = Database::connect(sqlite_file_options(db_path, true, false))
             .await
             .map_err(|e| CoreError::Database(e.to_string()))?;
         info!(
@@ -1138,18 +1136,16 @@ mod tests {
     use sea_orm::{ConnectionTrait, Database};
 
     use super::CatalogRepository;
+    use crate::database::sqlite_file_options;
     use crate::models::catalog::BookFilePathRequest;
 
     #[tokio::test]
     async fn should_keep_external_calibre_database_read_only() {
         let library = tempfile::tempdir().expect("create library");
         let database_path = library.path().join("metadata.db");
-        let database = Database::connect(format!(
-            "sqlite://{}?mode=rwc",
-            database_path.to_string_lossy()
-        ))
-        .await
-        .expect("open fixture database");
+        let database = Database::connect(sqlite_file_options(&database_path, false, true))
+            .await
+            .expect("open fixture database");
         database
             .execute_unprepared("CREATE TABLE fixture (id INTEGER PRIMARY KEY);")
             .await

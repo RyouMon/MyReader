@@ -1,5 +1,6 @@
 use sea_orm::{ConnectionTrait, Database};
 
+use crate::common::calibre::sqlite_file_options;
 use my_reader_lib::models::{AppConfig, LibraryConfig};
 use my_reader_lib::services::favorite_book_service::FavoriteBookService;
 
@@ -18,12 +19,9 @@ fn library_config(id: &str, path: &str) -> LibraryConfig {
 }
 
 async fn create_calibre_metadata(root: &std::path::Path) {
-    let db = Database::connect(format!(
-        "sqlite://{}?mode=rwc",
-        root.join("metadata.db").display()
-    ))
-    .await
-    .unwrap();
+    let db = Database::connect(sqlite_file_options(&root.join("metadata.db"), false, true))
+        .await
+        .unwrap();
     db.execute_unprepared(&format!(
         "CREATE TABLE library_id (\
            id INTEGER PRIMARY KEY, uuid TEXT NOT NULL, UNIQUE(uuid)\

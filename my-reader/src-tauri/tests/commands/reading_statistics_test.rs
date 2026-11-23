@@ -7,6 +7,7 @@ use serde_json::json;
 
 use crate::common::app::TestApp;
 use crate::common::calibre::create_calibre_db;
+use crate::common::calibre::sqlite_file_options;
 use crate::common::ipc::invoke_ok;
 
 fn library_fixture(id: &str, path: &str) -> LibraryConfig {
@@ -22,14 +23,14 @@ fn library_fixture(id: &str, path: &str) -> LibraryConfig {
 }
 
 async fn projection_database(app: &TestApp, library_id: &str) -> sea_orm::DatabaseConnection {
-    Database::connect(format!(
-        "sqlite://{}?mode=ro",
-        app.app_data_dir()
+    Database::connect(sqlite_file_options(
+        &app.app_data_dir()
             .join("libraries")
             .join(library_id)
             .join(".myreader")
-            .join("myreader.db")
-            .display()
+            .join("myreader.db"),
+        true,
+        false,
     ))
     .await
     .unwrap()

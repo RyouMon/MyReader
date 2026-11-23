@@ -1392,9 +1392,10 @@ mod tests {
 
     async fn seed_library(root: &Path) {
         let database_path = root.join("metadata.db");
-        let database = Database::connect(format!(
-            "sqlite://{}?mode=rwc",
-            database_path.to_string_lossy()
+        let database = Database::connect(crate::database::sqlite_file_options(
+            &database_path,
+            false,
+            true,
         ))
         .await
         .expect("open fixture database");
@@ -1583,9 +1584,10 @@ mod tests {
         let library = tempfile::tempdir().expect("create library");
         let sidecar = tempfile::tempdir().expect("create sidecar");
         seed_library(library.path()).await;
-        let database = Database::connect(format!(
-            "sqlite://{}?mode=rw",
-            library.path().join("metadata.db").to_string_lossy()
+        let database = Database::connect(crate::database::sqlite_file_options(
+            &library.path().join("metadata.db"),
+            false,
+            false,
         ))
         .await
         .expect("open fixture database");

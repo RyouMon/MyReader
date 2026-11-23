@@ -8,6 +8,7 @@ use sea_orm::{Database, EntityTrait};
 
 use crate::common::app::TestApp;
 use crate::common::calibre::create_calibre_db;
+use crate::common::calibre::sqlite_file_options;
 use crate::common::ipc::{invoke_err, invoke_ok};
 
 fn library_fixture(id: &str) -> LibraryConfig {
@@ -155,14 +156,14 @@ async fn should_record_completion_when_final_reading_progress_is_saved() {
         }),
     );
 
-    let db = Database::connect(format!(
-        "sqlite://{}?mode=ro",
-        app.app_data_dir()
+    let db = Database::connect(sqlite_file_options(
+        &app.app_data_dir()
             .join("libraries")
             .join("lib-a")
             .join(".myreader")
-            .join("myreader.db")
-            .display()
+            .join("myreader.db"),
+        true,
+        false,
     ))
     .await
     .unwrap();

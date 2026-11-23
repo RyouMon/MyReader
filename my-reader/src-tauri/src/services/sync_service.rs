@@ -248,6 +248,7 @@ impl SyncService {
 
 #[cfg(test)]
 mod tests {
+    use my_reader_core::test_support::sqlite_file_options;
     use sea_orm::{ConnectionTrait, Database};
 
     use super::*;
@@ -271,11 +272,9 @@ mod tests {
     }
 
     async fn create_calibre_metadata(root: &Path) {
-        let url = format!(
-            "sqlite://{}?mode=rwc",
-            root.join("metadata.db").to_string_lossy()
-        );
-        let db = Database::connect(&url).await.unwrap();
+        let db = Database::connect(sqlite_file_options(&root.join("metadata.db"), false, true))
+            .await
+            .unwrap();
         db.execute_unprepared(&format!(
             "CREATE TABLE books (
                id INTEGER PRIMARY KEY,
