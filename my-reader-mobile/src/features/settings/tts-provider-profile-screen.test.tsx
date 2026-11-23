@@ -379,6 +379,28 @@ it("supports manually entering future model and voice IDs without fetching catal
   expect(tts.discoverQwenTtsVoices).not.toHaveBeenCalled()
 })
 
+it("refreshes shared voices for providers with a voice catalog", async () => {
+  jest
+    .mocked(tts.discoverTtsVoices)
+    .mockResolvedValueOnce([{ id: "warm-voice", language: "en" }])
+  mount({ kind: "miniMax" })
+
+  fireEvent.press(screen.getByLabelText("providerEditor.fetchVoices"))
+  await waitFor(() =>
+    expect(screen.getByDisplayValue("warm-voice")).toBeTruthy(),
+  )
+  expect(tts.discoverTtsVoices).toHaveBeenCalledWith(
+    expect.objectContaining({
+      profile: expect.objectContaining({
+        kind: "miniMax",
+        model: "speech-2.8-turbo",
+      }),
+      credential: undefined,
+    }),
+    expect.any(AbortSignal),
+  )
+})
+
 it("previews unsaved voice IDs with current credentials and surfaces API failures", async () => {
   mount()
   fireEvent.changeText(

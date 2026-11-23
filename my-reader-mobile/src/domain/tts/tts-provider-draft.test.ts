@@ -67,4 +67,32 @@ describe("TTS provider drafts", () => {
       }),
     )
   })
+
+  it.each([
+    ["miniMax", "MiniMax", "https://api.minimaxi.com/v1", "speech-2.8-turbo"],
+    [
+      "volcengine",
+      "火山引擎",
+      "https://openspeech.bytedance.com",
+      "volcano_tts",
+    ],
+    ["doubao", "豆包语音", "https://openspeech.bytedance.com", "seed-tts-2.0"],
+    [
+      "elevenLabs",
+      "ElevenLabs",
+      "https://api.elevenlabs.io",
+      "eleven_multilingual_v2",
+    ],
+    ["fishAudio", "Fish Audio", "https://api.fish.audio", "s2.1-pro-free"],
+  ] as const)("uses the built-in %s provider defaults", (kind, name, endpoint, model) => {
+    expect(newTtsDraft(kind)).toEqual(
+      expect.objectContaining({
+        kind,
+        name,
+        endpoint,
+        modelScopedVoices: ["volcengine", "doubao"].includes(kind),
+        models: [expect.objectContaining({ model })],
+      }),
+    )
+  })
 })

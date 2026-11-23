@@ -2,6 +2,7 @@ import {
   ttsGetConfig,
   ttsSaveProvider,
   ttsDiscoverQwenVoices,
+  ttsDiscoverVoices,
   ttsQwenModels,
   ttsRemoveProfile,
   ttsSynthesize,
@@ -17,6 +18,7 @@ import {
 import {
   getTtsConfig,
   discoverQwenTtsVoices,
+  discoverTtsVoices,
   getQwenTtsModels,
   removeTtsProfile,
   synthesizeTts,
@@ -57,6 +59,7 @@ jest.mock("my-reader-core", () => ({
   librarySwitch: jest.fn(),
   ttsGetConfig: jest.fn(),
   ttsDiscoverQwenVoices: jest.fn(),
+  ttsDiscoverVoices: jest.fn(),
   ttsQwenModels: jest.fn(),
   ttsListVoices: jest.fn(),
   ttsProbeProvider: jest.fn(),
@@ -254,6 +257,35 @@ describe("mobile core TTS", () => {
     )
     expect(ttsUpsertProfile).not.toHaveBeenCalled()
     expect(writeTtsCredential).not.toHaveBeenCalled()
+  })
+
+  it("delegates native provider voice discovery with the transient credential", async () => {
+    const controller = new AbortController()
+    jest
+      .mocked(ttsDiscoverVoices)
+      .mockResolvedValue([{ id: "native-voice", language: "mul" }])
+    const input = {
+      profile: {
+        ...openAiProfile,
+        id: "mini-max",
+        kind: "miniMax",
+        endpoint: "https://api.minimaxi.com/v1",
+      },
+      credential: " draft-key ",
+    } as never
+
+    await expect(discoverTtsVoices(input, controller.signal)).resolves.toEqual([
+      { id: "native-voice", language: "mul" },
+    ])
+    expect(ttsDiscoverVoices).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "mini-max",
+        kind: "miniMax",
+        endpoint: "https://api.minimaxi.com/v1",
+      }),
+      "draft-key",
+      { signal: controller.signal },
+    )
   })
 
   it("resolves an existing provider credential for voice discovery", async () => {

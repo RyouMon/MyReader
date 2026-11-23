@@ -500,6 +500,27 @@ describe("SpeechSection", () => {
     fireEvent.click(flow.getByRole("button", { name: "关闭" }))
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })
+
+  it.each([
+    ["MiniMax", "https://api.minimaxi.com/v1", "speech-2.8-turbo"],
+    ["火山引擎", "https://openspeech.bytedance.com", "volcano_tts"],
+    ["豆包语音", "https://openspeech.bytedance.com", "seed-tts-2.0"],
+    ["ElevenLabs", "https://api.elevenlabs.io", "eleven_multilingual_v2"],
+    ["Fish Audio", "https://api.fish.audio", "s2.1-pro-free"],
+  ])("uses %s provider defaults without a default voice", async (title, endpoint, model) => {
+    const user = userEvent.setup()
+    render(<TtsProvidersSection />)
+    await user.click(
+      await screen.findByRole("button", { name: "添加语音服务" }),
+    )
+    await user.click(await screen.findByRole("button", { name: title }))
+
+    const dialog = within(screen.getByRole("dialog"))
+    expect(dialog.getByLabelText(/服务器地址\s*\*?$/)).toHaveValue(endpoint)
+    expect(dialog.getByLabelText(/模型 ID\s*\*?$/)).toHaveValue(model)
+    expect(dialog.queryByLabelText("默认声音")).not.toBeInTheDocument()
+  })
+
   it("tests saved settings and an edited draft without saving or changing defaults", async () => {
     const profile = {
       id: "fixture",

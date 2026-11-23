@@ -15,6 +15,7 @@ import {
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import {
   getTtsConfig,
+  listTtsVoices,
   setTtsDefaultEngine,
   synthesizeTts,
 } from "@/src/services/core/tts"
@@ -218,6 +219,7 @@ jest.mock("@/src/design/tokens", () => ({
 
 jest.mock("@/src/services/core/tts", () => ({
   getTtsConfig: jest.fn().mockResolvedValue(mockProviderConfig),
+  listTtsVoices: jest.fn(),
   setTtsDefaultEngine: jest.fn(),
   setTtsPlayback: jest.fn(),
   setTtsVoice: jest.fn(),
@@ -385,5 +387,48 @@ describe("TtsSettingsScreen preview", () => {
     expect(
       screen.getAllByText("Updated provider/gpt-4o-mini-tts").length,
     ).toBeGreaterThan(0)
+  })
+
+  it("loads and labels Qwen provider voices, then clears them on failure", async () => {
+    const qwenConfig = {
+      ...mockProviderConfig,
+      profiles: [
+        {
+          ...mockProviderConfig.profiles[0],
+          id: "qwen",
+          name: "Qwen",
+          kind: "qwen" as const,
+          revision: 2,
+          voices: ["saved-voice"],
+        },
+      ],
+      defaultEngine: { kind: "provider" as const, profileId: "qwen" },
+      voices: [],
+    }
+    jest.mocked(getTtsConfig).mockResolvedValue(qwenConfig)
+    jest
+      .mocked(listTtsVoices)
+      .mockResolvedValueOnce([{ id: "catalog-voice", language: "zh" }])
+    render(<TtsSettingsScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByText("catalog-voice · Chinese")).toBeTruthy(),
+    )
+    expect(listTtsVoices).toHaveBeenCalledWith("qwen")
+
+    jest.mocked(getTtsConfig).mockResolvedValueOnce({
+      ...qwenConfig,
+      profiles: qwenConfig.profiles.map((profile) => ({
+        ...profile,
+        revision: 3,
+      })),
+    })
+    jest.mocked(listTtsVoices).mockRejectedValueOnce(new Error("offline"))
+    act(() => {
+      mockFocus?.()
+    })
+    await waitFor(() => expect(listTtsVoices).toHaveBeenCalledTimes(2))
+    expect(screen.queryByText("catalog-voice · Chinese")).toBeNull()
+    expect(screen.getByText("saved-voice · Multilingual")).toBeTruthy()
   })
 })
