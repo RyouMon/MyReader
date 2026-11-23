@@ -390,18 +390,20 @@ describe("TtsSettingsScreen preview", () => {
   })
 
   it("loads and labels Qwen provider voices, then clears them on failure", async () => {
+    const qwenProfile = {
+      id: "qwen",
+      name: "Qwen",
+      kind: "qwen" as const,
+      endpoint: "https://qwen.example/v1",
+      model: "qwen-model",
+      responseFormat: "mp3" as const,
+      voices: ["saved-voice"],
+      revision: 2,
+      hasCredential: true,
+    }
     const qwenConfig = {
       ...mockProviderConfig,
-      profiles: [
-        {
-          ...mockProviderConfig.profiles[0],
-          id: "qwen",
-          name: "Qwen",
-          kind: "qwen" as const,
-          revision: 2,
-          voices: ["saved-voice"],
-        },
-      ],
+      profiles: [qwenProfile],
       defaultEngine: { kind: "provider" as const, profileId: "qwen" },
       voices: [],
     }
